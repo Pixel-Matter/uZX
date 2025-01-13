@@ -28,23 +28,36 @@ endif()
 
 juce_add_gui_app(${TARGET_NAME}
     # Bundle information for macOS
-    PRODUCT_NAME "MoTool Demomaking tool"
+    PRODUCT_NAME "${PROJECT_NAME}"
     COMPANY_NAME "The Legacy"
-    BUNDLE_ID "com.thelegacy.motool"
+    BUNDLE_ID "com.thelegacy.${TARGET_NAME}"
 
     # Icon files
     # ICON_BIG ...                      # Optional: Custom icon file
     # ICON_SMALL ...                    # Optional: Custom icon file
 )
 
+juce_generate_juce_header(${TARGET_NAME})
+
+
+# # macOS specific bundle properties
+# set_target_properties(${TARGET_NAME} PROPERTIES
+# MACOSX_BUNDLE TRUE
+# MACOSX_BUNDLE_GUI_IDENTIFIER "${JUCE_BUNDLE_ID}"
+# MACOSX_BUNDLE_BUNDLE_NAME "${JUCE_PRODUCT_NAME}"
+# MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+# MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+# )
+
 target_compile_features(${TARGET_NAME} PRIVATE cxx_std_20)
 
 set_target_properties(${TARGET_NAME} PROPERTIES
-    C_VISIBILITY_PRESET hidden
-    CXX_VISIBILITY_PRESET hidden)
+C_VISIBILITY_PRESET hidden
+CXX_VISIBILITY_PRESET hidden)
 
 set(SourceFiles
-    main.cpp
+    gui/main.cpp
+    # gui/nodes/GraphEditorPanel.cpp
 )
 
 target_sources(${TARGET_NAME} PRIVATE ${SourceFiles})
@@ -54,12 +67,14 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils
 addModuleSourceTarget()
 
 if (DEFINED ENV{VST2_SDK_DIR})
-    target_compile_definitions(${TARGET_NAME} PRIVATE
-        JUCE_PLUGINHOST_VST=1)
+target_compile_definitions(${TARGET_NAME} PRIVATE
+JUCE_PLUGINHOST_VST=1)
 endif()
 
 
 target_compile_definitions(${TARGET_NAME} PRIVATE
+    APP_VERSION="${CURRENT_VERSION}"
+    APP_NAME="${PROJECT_NAME}"
     JUCE_PLUGINHOST_AU=1
     JUCE_PLUGINHOST_LADSPA=1
     JUCE_PLUGINHOST_VST3=1

@@ -183,6 +183,21 @@ public:
         return nullptr;
     }
 
+    void removeNode(const Node* node) {
+        if (auto it = std::find_if(Nodes.begin(), Nodes.end(), [node](const auto& n) { return n.get() == node; });
+            it != Nodes.end()) {
+            Nodes.erase(it);
+        }
+    }
+
+    void disconnectNode(const Node* node) {
+        for (auto& connection : Connections) {
+            if (connection->Input.lock()->Owner == node || connection->Output.lock()->Owner == node) {
+                removeConnection(connection.get());
+            }
+        }
+    }
+
     std::vector<std::shared_ptr<Node>>& getNodes() {
         return Nodes;
     }

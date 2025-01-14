@@ -198,7 +198,6 @@ struct GraphEditorPanel::NodeComponent final : public Component,
 
         int numIns = node->getNumInputs();
         int numOuts = node->getNumOutputs();
-        DBG("numIns: " << numIns << ", numOuts: " << numOuts);
         w = jmax(w, (jmax(numIns, numOuts) + 1) * 20);
 
         const auto textWidth = GlyphArrangement::getStringWidthInt(font, node->getName());
@@ -234,10 +233,16 @@ struct GraphEditorPanel::NodeComponent final : public Component,
     }
 
     void showPopupMenu() {
-        // menu.reset(new PopupMenu);
-        // menu->addItem("Delete this filter", [this] { graph.removeNode(node); });
-        // menu->addItem("Disconnect all pins", [this] { graph.disconnectNode(node); });
-        // menu->showMenuAsync({});
+        menu.reset(new PopupMenu);
+        menu->addItem("Delete this node", [this] {
+            graph.removeNode(std::move(node).get());
+            panel.updateComponents();
+        });
+        menu->addItem("Disconnect all pins", [this] {
+            graph.disconnectNode(node.get());
+            panel.updateComponents();
+        });
+        menu->showMenuAsync({});
     }
 
     void parameterValueChanged(int, float) override {

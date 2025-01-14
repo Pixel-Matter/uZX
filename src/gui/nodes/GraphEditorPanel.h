@@ -18,7 +18,7 @@ public:
     GraphEditorPanel (MoTool::Nodes::Graph& graph);
     ~GraphEditorPanel() override;
 
-    void createNewNode (const MoTool::Nodes::NodeDescriptor&, Point<int> position);
+    void createNewNode(const MoTool::Nodes::NodeType& nodeType, Point<int> position);
 
     void paint (Graphics&) override;
     void resized() override;
@@ -36,8 +36,8 @@ public:
     void showPopupMenu (Point<int> position);
 
     //==============================================================================
-    void beginConnectorDrag (Pin source,
-                             Pin dest,
+    void beginConnectorDrag (const MoTool::Nodes::Pin* source,
+                             const MoTool::Nodes::Pin* dest,
                              const MouseEvent&);
     void dragConnector (const MouseEvent&);
     void endDraggingConnector (const MouseEvent&);
@@ -46,17 +46,17 @@ public:
     MoTool::Nodes::Graph& graph;
 
 private:
-    struct PluginComponent;
+    struct NodeComponent;
     struct ConnectorComponent;
     struct PinComponent;
 
-    OwnedArray<PluginComponent> nodes;
+    OwnedArray<NodeComponent> nodes;
     OwnedArray<ConnectorComponent> connectors;
     std::unique_ptr<ConnectorComponent> draggingConnector;
     std::unique_ptr<PopupMenu> menu;
 
-    PluginComponent* getComponentForPlugin (AudioProcessorGraph::NodeID) const;
-    ConnectorComponent* getComponentForConnection (const AudioProcessorGraph::Connection&) const;
+    NodeComponent* getComponentForNode(MoTool::Nodes::Node* node) const;
+    ConnectorComponent* getComponentForConnection(const MoTool::Nodes::Connection&) const;
     PinComponent* findPinAt (Point<float>) const;
 
     //==============================================================================
@@ -80,16 +80,14 @@ class GraphDocumentComponent final : public Component,
                                      private ChangeListener
 {
 public:
-    GraphDocumentComponent (AudioPluginFormatManager& formatManager,
-                            AudioDeviceManager& deviceManager,
-                            KnownPluginList& pluginList);
+    GraphDocumentComponent();
 
     ~GraphDocumentComponent() override;
 
     //==============================================================================
-    void createNewNode (const MoTool::Nodes::NodeDescriptor&, Point<int> position);
+    void createNewNode (const MoTool::Nodes::NodeType&, Point<int> position);
     void setDoublePrecision (bool doublePrecision);
-    bool closeAnyOpenPluginWindows();
+    // bool closeAnyOpenPluginWindows();
 
     //==============================================================================
     std::unique_ptr<MoTool::Nodes::Graph> graph;
@@ -103,7 +101,7 @@ public:
 
     //==============================================================================
     std::unique_ptr<GraphEditorPanel> graphPanel;
-    std::unique_ptr<MidiKeyboardComponent> keyboardComp;
+    // std::unique_ptr<MidiKeyboardComponent> keyboardComp;
 
     //==============================================================================
     void showSidePanel (bool isSettingsPanel);
@@ -113,35 +111,28 @@ public:
 
 private:
     //==============================================================================
-    AudioDeviceManager& deviceManager;
-    KnownPluginList& pluginList;
-
-    AudioProcessorPlayer graphPlayer;
-    MidiKeyboardState keyState;
-    MidiOutput* midiOutput = nullptr;
 
     struct TooltipBar;
-    std::unique_ptr<TooltipBar> statusBar;
+    // std::unique_ptr<TooltipBar> statusBar;
 
     class TitleBarComponent;
     std::unique_ptr<TitleBarComponent> titleBarComponent;
 
     //==============================================================================
-    struct PluginListBoxModel;
-    std::unique_ptr<PluginListBoxModel> pluginListBoxModel;
+    // struct PluginListBoxModel;
+    // std::unique_ptr<PluginListBoxModel> pluginListBoxModel;
 
-    ListBox pluginListBox;
+    // ListBox pluginListBox;
 
-    SidePanel mobileSettingsSidePanel { "Settings", 300, true };
-    SidePanel pluginListSidePanel    { "Plugins", 250, false };
-    SidePanel* lastOpenedSidePanel = nullptr;
+    // SidePanel mobileSettingsSidePanel { "Settings", 300, true };
+    // SidePanel pluginListSidePanel    { "Plugins", 250, false };
+    // SidePanel* lastOpenedSidePanel = nullptr;
 
     //==============================================================================
     void changeListenerCallback (ChangeBroadcaster*) override;
 
     void init();
     void checkAvailableWidth();
-    void updateMidiOutput();
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GraphDocumentComponent)

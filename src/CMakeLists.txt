@@ -49,15 +49,16 @@ juce_generate_juce_header(${TARGET_NAME})
 # MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
 # )
 
-target_compile_features(${TARGET_NAME} PRIVATE cxx_std_20)
+target_compile_features(${TARGET_NAME} PRIVATE cxx_std_23)
 
 set_target_properties(${TARGET_NAME} PROPERTIES
 C_VISIBILITY_PRESET hidden
 CXX_VISIBILITY_PRESET hidden)
 
 set(SourceFiles
-    gui/nodes/NodeComponent.cpp
     gui/main.cpp
+    gui/nodes/GraphEditorPanel.cpp
+    gui/nodes/NodeComponent.cpp
 )
 
 target_sources(${TARGET_NAME} PRIVATE ${SourceFiles})

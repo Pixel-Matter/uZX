@@ -10,6 +10,7 @@ PinComponent::PinComponent(bool isInput)
     : IsInputPin_(isInput)
 {
     setSize(Size_, Size_);
+    setTooltip(isInput ? "Input" : "Output");
 }
 
 void PinComponent::paint(Graphics& g) {
@@ -24,7 +25,6 @@ bool PinComponent::isInput() const { return IsInputPin_; }
 void PinComponent::mouseDown(const MouseEvent& e) {
     if (auto* editor = findParentComponentOfClass<NodeEditorComponent>()) {
         auto editorEvent = e.getEventRelativeTo(editor);
-        DBG("PinComponent::mouseDown: " << editorEvent.position.toString() << " editor: " << editor->getBounds().toString());
         editor->handlePinMouseDown(this, editorEvent);
     }
 }
@@ -32,14 +32,14 @@ void PinComponent::mouseDown(const MouseEvent& e) {
 void PinComponent::mouseDrag(const MouseEvent& e) {
     if (auto* editor = findParentComponentOfClass<NodeEditorComponent>()) {
         auto editorEvent = e.getEventRelativeTo(editor);
-        editor->handlePinMouseDrag(this, editorEvent);
+        editor->handlePinMouseDrag(editorEvent);
     }
 }
 
 void PinComponent::mouseUp(const MouseEvent& e) {
     if (auto* editor = findParentComponentOfClass<NodeEditorComponent>()) {
         auto editorEvent = e.getEventRelativeTo(editor);
-        editor->handlePinMouseUp(this, editorEvent);
+        editor->handlePinMouseUp(editorEvent);
     }
 }
 
@@ -240,7 +240,7 @@ void NodeEditorComponent::handlePinMouseDown(PinComponent* pin, const MouseEvent
     beginConnectorDrag(pin);
 }
 
-void NodeEditorComponent::handlePinMouseDrag(PinComponent* pin, const MouseEvent& e) {
+void NodeEditorComponent::handlePinMouseDrag(const MouseEvent& e) {
    if (DraggingConnector_ != nullptr) {
        auto pos = e.getPosition();
        auto* targetPin = findPinAt(pos);
@@ -255,7 +255,7 @@ void NodeEditorComponent::handlePinMouseDrag(PinComponent* pin, const MouseEvent
    }
 }
 
-void NodeEditorComponent::handlePinMouseUp(PinComponent* pin, const MouseEvent& e) {
+void NodeEditorComponent::handlePinMouseUp(const MouseEvent& e) {
     if (DraggingConnector_ != nullptr) {
         auto* targetPin = findPinAt(e.getPosition());
         if (targetPin != nullptr && canConnect(DragSourcePin_, targetPin)) {

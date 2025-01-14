@@ -4,7 +4,7 @@
 #include <JuceHeader.h>
 #include <memory>
 
-class PinComponent : public juce::Component {
+class PinComponent : public juce::Component, public SettableTooltipClient{
 public:
     PinComponent(bool isInput);
     void paint(Graphics& g) override;
@@ -77,8 +77,8 @@ public:
 
     void createNode(const String& name, bool hasInput, bool hasOutput, Point<int> position);
     void handlePinMouseDown(PinComponent* pin, const MouseEvent& e);
-    void handlePinMouseDrag(PinComponent* pin, const MouseEvent& e);
-    void handlePinMouseUp(PinComponent* pin, const MouseEvent& e);
+    void handlePinMouseDrag(const MouseEvent& e);
+    void handlePinMouseUp(const MouseEvent& e);
 
 private:
     void showNodeMenu();

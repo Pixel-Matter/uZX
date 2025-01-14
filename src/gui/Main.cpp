@@ -1,30 +1,29 @@
 
 #include "nodes/NodeComponent.h"
-// #include "nodes/GraphEditorPanel.h"
+#include "nodes/GraphEditorPanel.h"
 
 #include <JuceHeader.h>
 
 using namespace juce;
 
 
-class MainComponent : public Component {
-public:
-    MainComponent()
-    {
-        addAndMakeVisible(nodeEditor);
-        setSize(1024, 740);
-    }
+// class MainComponent : public Component {
+// public:
+//     MainComponent() {
+//         addAndMakeVisible(nodeEditor);
+//         setSize(1024, 740);
+//     }
 
-    void resized() override
-    {
-        nodeEditor.setBounds(getLocalBounds());
-    }
+//     void resized() override {
+//         nodeEditor.setBounds(getLocalBounds());
+//     }
 
-private:
-    NodeEditorComponent nodeEditor;
+// private:
+//     GraphDocumentComponent nodeEditor {};
+//     // NodeEditorComponent nodeEditor;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
-};
+//     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
+// };
 
 
 class MainWindow : public DocumentWindow {
@@ -36,8 +35,10 @@ public:
             DocumentWindow::allButtons)
     {
         setUsingNativeTitleBar(true);
-        setContentOwned(new MainComponent(), true);
+        setContentOwned(new GraphDocumentComponent(), true);
+        // setContentOwned(new MainComponent(), true);
         setResizable(true, true);
+        setSize(1024, 740);
         centreWithSize(getWidth(), getHeight());
         setVisible(true);
     }

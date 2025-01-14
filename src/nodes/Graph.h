@@ -9,12 +9,43 @@
 namespace MoTool::Nodes {
 
 // TODO use plugin registry mechanism like from DemoRunner (make registy generic)
+
+struct PinType {
+    template <typename T>
+    static PinType of() {
+        return PinType{ typeid(T) };
+    }
+
+    bool operator==(const PinType& other) const {
+        return TypeInfo == other.TypeInfo;
+    }
+
+    bool operator!=(const PinType& other) const {
+        return !(*this == other);
+    }
+
+    std::string getName() const {
+        return TypeInfo.name();
+    }
+
+    bool isFor(const std::type_info& type) const {
+        return TypeInfo == type;
+    }
+
+    template <typename T>
+    bool isFor() const {
+        return isFor(typeid(T));
+    }
+
+    const std::type_info& TypeInfo;
+};
+
 struct NodeType {
     std::string Name;
-    // Could add info about default pins configuration
-
-    bool canBeCreated = true;
-    bool canBeDeleted = true;
+    std::vector<PinType> InputPins;
+    std::vector<PinType> OutputPins;
+    bool CanBeCreated = true;
+    bool CanBeDeleted = true;
 };
 
 class Node;
@@ -33,7 +64,15 @@ class Node {
 public:
     Node(const NodeType& type)
         : Type(type)
-    {}
+        , Name(type.Name)
+    {
+        for (const auto& pinType : type.InputPins) {
+            addPin(true, pinType.getName());
+        }
+        for (const auto& pinType : type.OutputPins) {
+            addPin(false, pinType.getName());
+        }
+    }
 
     void setName(std::string name) {
         Name = std::move(name);
@@ -94,10 +133,10 @@ struct Connection {
     std::weak_ptr<Pin> Output;
 };
 
-inline static std::map<std::string, NodeType> BuiltinNodeTypes = {
-    { "Source",    { "Source",    false, false }},
-    { "Sink",      { "Sink",      false, false }},
-    { "Transform", { "Transform", true,  true  }},
+inline static const std::map<std::string, NodeType> BuiltinNodeTypes = {
+    { "Source",    { "Source",    {},                     {PinType::of<float>()}, false, false }},
+    { "Sink",      { "Sink",      {PinType::of<float>()}, {},                     false, false }},
+    { "Transform", { "Transform", {PinType::of<float>()}, {PinType::of<float>(), PinType::of<float>()}, true,  true  }},
 };
 
 class Graph {

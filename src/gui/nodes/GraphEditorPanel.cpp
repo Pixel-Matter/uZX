@@ -196,8 +196,9 @@ struct GraphEditorPanel::NodeComponent final : public Component,
         int w = 100;
         int h = 60;
 
-        int numIns = inputPins.size();
-        int numOuts = outputPins.size();
+        int numIns = node->getNumInputs();
+        int numOuts = node->getNumOutputs();
+        DBG("numIns: " << numIns << ", numOuts: " << numOuts);
         w = jmax(w, (jmax(numIns, numOuts) + 1) * 20);
 
         const auto textWidth = GlyphArrangement::getStringWidthInt(font, node->getName());
@@ -548,18 +549,14 @@ void GraphEditorPanel::updateComponents() {
 }
 
 void GraphEditorPanel::showPopupMenu(juce::Point<int> mousePos) {
-    // menu.reset(new PopupMenu);
-    // if (auto* mainWindow = findParentComponentOfClass<MainHostWindow>()) {
-    //     mainWindow->addPluginsToMenu (*menu);
-
-    //     menu->showMenuAsync ({},
-    //                          ModalCallbackFunction::create ([this, mousePos] (int r)
-    //                                                         {
-    //                                                             if (auto* mainWin = findParentComponentOfClass<MainHostWindow>())
-    //                                                                 if (const auto chosen = mainWin->getChosenType (r))
-    //                                                                     createNewPlugin (*chosen, mousePos);
-    //                                                         }));
-    // }
+    menu.reset(new PopupMenu);
+    for (const auto& type : BuiltinNodeTypes) {
+        menu->addItem(type.first, [this, type, mousePos] {
+            createNewNode(type.second, mousePos);
+            updateComponents();
+        });
+    }
+    menu->showMenuAsync({});
 }
 
 void GraphEditorPanel::beginConnectorDrag(const Pin* source,

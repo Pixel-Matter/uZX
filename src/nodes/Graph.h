@@ -347,14 +347,11 @@ public:
 
     Connection* addConnection(std::shared_ptr<Pin> source, std::shared_ptr<Pin> destination) {
         if (!source || !destination) {
-            DBG("Source or destination is empty");
             return nullptr;
         }
         if (!canConnect(source.get(), destination.get())) {
-            DBG("Source can not be connected to destination");
             return nullptr;
         }
-        DBG("Adding connection to graph");
         Connections.push_back(std::make_shared<Connection>(std::move(source), std::move(destination)));
         return Connections.back().get();
     }

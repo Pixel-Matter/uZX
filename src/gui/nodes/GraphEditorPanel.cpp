@@ -51,12 +51,10 @@ struct GraphEditorPanel::PinComponent final : public Component,
     }
 
     void mouseDown(const MouseEvent& e) override {
-        DBG("PinComponent::mouseDown");
-        // TODO: make it work right
-        // auto dummy = std::shared_ptr<Pin>{}; // empty pin
-        // panel.beginConnectorDrag(isInput ? dummy : pin,
-        //                          isInput ? pin : dummy,
-        //                          e);
+        auto dummy = std::shared_ptr<Pin>{}; // empty pin
+        panel.beginConnectorDrag(isInput ? dummy : pin,
+                                 isInput ? pin : dummy,
+                                 e);
     }
 
     void mouseDrag(const MouseEvent& e) override {
@@ -386,7 +384,6 @@ struct GraphEditorPanel::ConnectorComponent final : public Component,
             panel.dragConnector(e);
         } else if (e.mouseWasDraggedSinceMouseDown()) {
             dragging = true;
-            DBG("ConnectorComponent::mouseDrag");
 
             graph.removeConnection(connection);
 
@@ -564,6 +561,9 @@ void GraphEditorPanel::updateComponents() {
         cc->toBack();
     }
 
+    if (draggingConnector != nullptr)
+        draggingConnector->toBack();
+
     // 3. Add new nodes and connections
     for (const auto& c : graph.getConnections()) {
         if (getComponentForConnection(c.get()) == nullptr) {
@@ -615,7 +615,6 @@ void GraphEditorPanel::beginConnectorDrag(const std::shared_ptr<Pin> source,
     addAndMakeVisible(draggingConnector.get());
     draggingConnector->toFront(false);
 
-    DBG("Dragging connection " << draggingConnector->connection.toString());
     dragConnector(e);
 }
 
@@ -626,26 +625,20 @@ void GraphEditorPanel::dragConnector(const MouseEvent& e) {
         return;
 
     draggingConnector->setTooltip({});
-    // draggingConnector->toFront(false);
 
     auto pos = e2.position;
     auto connection = draggingConnector->connection;
-    DBG("Pos is " << pos.toString());
 
     if (auto* pinComp = findPinAt(pos)){
         if (connection.Source.lock() == nullptr && !pinComp->isInput) {
             connection.Source = pinComp->pin;
-            DBG("Connecting source to" << pinComp->pin->getName());
         } else if (connection.Destination.lock() == nullptr && pinComp->isInput) {
             connection.Destination = pinComp->pin;
-            DBG("Connecting destination to " << pinComp->pin->getName());
         }
-        DBG("Ponential connection " << connection.toString());
 
         if (graph.canConnect(connection)) {
             // snap position to pin
             pos = (pinComp->getParentComponent()->getPosition() + pinComp->getBounds().getCentre()).toFloat();
-            DBG("Position snap to pin " << pos.toString());
             draggingConnector->setTooltip(pinComp->getTooltip());
         }
     }
@@ -655,7 +648,6 @@ void GraphEditorPanel::dragConnector(const MouseEvent& e) {
     } else {
         draggingConnector->dragEnd(pos);
     }
-    DBG("Dragging connection " << draggingConnector->connection.toString());
 }
 
 void GraphEditorPanel::endDraggingConnector(const MouseEvent& e) {
@@ -663,34 +655,25 @@ void GraphEditorPanel::endDraggingConnector(const MouseEvent& e) {
         return;
 
     draggingConnector->setTooltip ({});
+    draggingConnector->toBack();
 
     auto e2 = e.getEventRelativeTo (this);
     auto connection = draggingConnector->connection;
     draggingConnector.reset();
-    DBG("Dragging connection " << connection.toString());
 
     if (auto* pinComp = findPinAt(e2.position)) {
-        DBG("Drag to pin found");
-        DBG("Connection " << connection.toString());
         if (connection.Source.lock() == nullptr) {
             if (pinComp->isInput) {
-                DBG("Source is empty but target pin is input, sorry");
                 return;
             }
             connection.Source = pinComp->pin;
         } else {
             if (!pinComp->isInput) {
-                DBG("Source is not empty but target pin is output, sorry");
                 return;
             }
             connection.Destination = pinComp->pin;
         }
-        DBG("Adding connection after drag to pin " << pinComp->pin->getName());
-        DBG("Connection " << connection.toString());
-        auto added = graph.addConnection(connection);
-        if (!added) {
-            DBG("Connection was not added, sorry");
-        }
+        graph.addConnection(connection);
         updateComponents();
     }
 }

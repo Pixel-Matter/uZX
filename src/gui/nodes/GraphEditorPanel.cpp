@@ -51,9 +51,12 @@ struct GraphEditorPanel::PinComponent final : public Component,
     }
 
     void mouseDown(const MouseEvent& e) override {
-        panel.beginConnectorDrag(isInput ? nullptr : pin.get(),
-                                 isInput ? pin.get() : nullptr,
-                                 e);
+        DBG("PinComponent::mouseDown");
+        // TODO: make it work right
+        // auto dummy = std::shared_ptr<Pin>{}; // empty pin
+        // panel.beginConnectorDrag(isInput ? dummy : pin,
+        //                          isInput ? pin : dummy,
+        //                          e);
     }
 
     void mouseDrag(const MouseEvent& e) override {
@@ -278,7 +281,14 @@ struct GraphEditorPanel::NodeComponent final : public Component,
 struct GraphEditorPanel::ConnectorComponent final : public Component,
                                                     public SettableTooltipClient
 {
-    explicit ConnectorComponent(GraphEditorPanel& p, const Connection& conn)
+    explicit ConnectorComponent(GraphEditorPanel& p)
+        : panel(p)
+        , graph(p.graph)
+    {
+        // setAlwaysOnTop(true);
+    }
+
+    ConnectorComponent(GraphEditorPanel& p, const Connection& conn)
         : panel(p)
         , graph(p.graph)
         , connection(conn)
@@ -377,17 +387,18 @@ struct GraphEditorPanel::ConnectorComponent final : public Component,
             panel.dragConnector(e);
         } else if (e.mouseWasDraggedSinceMouseDown()) {
             dragging = true;
+            DBG("ConnectorComponent::mouseDrag");
 
-            graph.removeConnection(&connection);  // TODO wrong
+            graph.removeConnection(connection);
 
             double distanceFromStart, distanceFromEnd;
-            getDistancesFromEnds (getPosition().toFloat() + e.position, distanceFromStart, distanceFromEnd);
+            getDistancesFromEnds(getPosition().toFloat() + e.position, distanceFromStart, distanceFromEnd);
             const bool isNearerSource = (distanceFromStart < distanceFromEnd);
 
-            // TODO make it right
-            // panel.beginConnectorDrag (isNearerSource ? dummy : connection.source,
-            //                           isNearerSource ? connection.destination : dummy,
-            //                           e);
+            auto dummy = std::shared_ptr<Pin>{};
+            panel.beginConnectorDrag(isNearerSource ? dummy : connection.Source.lock(),
+                                     isNearerSource ? connection.Destination.lock() : dummy,
+                                     e);
         }
     }
 
@@ -530,6 +541,10 @@ void GraphEditorPanel::changeListenerCallback (ChangeBroadcaster*) {
 }
 
 void GraphEditorPanel::updateComponents() {
+    if (!graph.checkGraph()) {
+        DBG("GraphEditorPanel::updateComponents: Graph is invalid");
+    }
+
     // 1. Check deleted nodes and connections
     for (int i = connectors.size(); --i >= 0;)
         if (!graph.findConnection(connectors.getUnchecked(i)->connection))
@@ -580,91 +595,101 @@ void GraphEditorPanel::showPopupMenu(juce::Point<int> mousePos) {
     menu->showMenuAsync({});
 }
 
-void GraphEditorPanel::beginConnectorDrag(const Pin* source,
-                                          const Pin* dest,
+void GraphEditorPanel::beginConnectorDrag(const std::shared_ptr<Pin> source,
+                                          const std::shared_ptr<Pin> dest,
                                           const MouseEvent& e) {
-    // auto* c = dynamic_cast<ConnectorComponent*>(e.originalComponent);
-    // connectors.removeObject(c, false);
-    // draggingConnector.reset(c);
+    auto* c = dynamic_cast<ConnectorComponent*>(e.originalComponent);
 
-    // if (draggingConnector == nullptr)
-    //     draggingConnector.reset(new ConnectorComponent (*this));
+    if (c != nullptr) {
+        graph.removeConnection(c->connection);
+        connectors.removeObject(c, false);
+    }
+    draggingConnector.reset(c);
 
-    // draggingConnector->setInput(source);
-    // draggingConnector->setOutput(dest);
+    if (draggingConnector == nullptr) {
+        draggingConnector.reset(new ConnectorComponent(*this));
+    }
 
-    // addAndMakeVisible(draggingConnector.get());
-    // draggingConnector->toFront(false);
+    draggingConnector->setInput(source);
+    draggingConnector->setOutput(dest);
 
-    // dragConnector(e);
+    addAndMakeVisible(draggingConnector.get());
+    draggingConnector->toFront(false);
+
+    DBG("Dragging connection " << draggingConnector->connection.toString());
+    dragConnector(e);
 }
 
 void GraphEditorPanel::dragConnector(const MouseEvent& e) {
-    // auto e2 = e.getEventRelativeTo (this);
+    auto e2 = e.getEventRelativeTo(this);
 
-    // if (draggingConnector != nullptr)
-    // {
-    //     draggingConnector->setTooltip ({});
+    if (draggingConnector == nullptr)
+        return;
 
-    //     auto pos = e2.position;
+    draggingConnector->setTooltip({});
 
-    //     if (auto* pin = findPinAt (pos))
-    //     {
-    //         auto connection = draggingConnector->connection;
+    auto pos = e2.position;
+    auto connection = draggingConnector->connection;
 
-    //         if (connection.source.nodeID == AudioProcessorGraph::NodeID() && ! pin->isInput)
-    //         {
-    //             connection.source = pin->pin;
-    //         }
-    //         else if (connection.destination.nodeID == AudioProcessorGraph::NodeID() && pin->isInput)
-    //         {
-    //             connection.destination = pin->pin;
-    //         }
+    if (auto* pinComp = findPinAt(pos)){
+        if (connection.Source.lock() == nullptr && !pinComp->isInput) {
+            connection.Source = pinComp->pin;
+            DBG("Connecting source to" << pinComp->pin->getName());
+        } else if (connection.Destination.lock() == nullptr && pinComp->isInput) {
+            connection.Destination = pinComp->pin;
+            DBG("Connecting destination to " << pinComp->pin->getName());
+        }
+        DBG("Ponential connection " << connection.toString());
 
-    //         if (graph.graph.canConnect (connection))
-    //         {
-    //             pos = (pin->getParentComponent()->getPosition() + pin->getBounds().getCentre()).toFloat();
-    //             draggingConnector->setTooltip (pin->getTooltip());
-    //         }
-    //     }
+        if (graph.canConnect(connection)) {
+            pos = (pinComp->getParentComponent()->getPosition() + pinComp->getBounds().getCentre()).toFloat();
+            draggingConnector->setTooltip(pinComp->getTooltip());
+        }
+    }
 
-    //     if (draggingConnector->connection.source.nodeID == AudioProcessorGraph::NodeID())
-    //         draggingConnector->dragStart (pos);
-    //     else
-    //         draggingConnector->dragEnd (pos);
-    // }
+    if (connection.Source.lock() == nullptr) {
+        draggingConnector->dragStart(pos);
+    } else {
+        draggingConnector->dragEnd(pos);
+    }
+    DBG("Dragging connection " << draggingConnector->connection.toString());
 }
 
 void GraphEditorPanel::endDraggingConnector(const MouseEvent& e) {
     if (draggingConnector == nullptr)
         return;
 
-    // draggingConnector->setTooltip ({});
+    draggingConnector->setTooltip ({});
 
-    // auto e2 = e.getEventRelativeTo (this);
-    // auto connection = draggingConnector->connection;
+    auto e2 = e.getEventRelativeTo (this);
+    auto connection = draggingConnector->connection;
+    draggingConnector = nullptr;
+    DBG("Dragging connection " << connection.toString());
 
-    // draggingConnector = nullptr;
-
-    // if (auto* pin = findPinAt (e2.position))
-    // {
-    //     if (connection.source.nodeID == AudioProcessorGraph::NodeID())
-    //     {
-    //         if (pin->isInput)
-    //             return;
-
-    //         connection.source = pin->pin;
-    //     }
-    //     else
-    //     {
-    //         if (! pin->isInput)
-    //             return;
-
-    //         connection.destination = pin->pin;
-    //     }
-
-    //     graph.addConnection (connection);
-    // }
+    if (auto* pinComp = findPinAt(e2.position)) {
+        DBG("Drag to pin found");
+        DBG("Connection " << connection.toString());
+        if (connection.Source.lock() == nullptr) {
+            if (pinComp->isInput) {
+                DBG("Source is empty but target pin is input, sorry");
+                return;
+            }
+            connection.Source = pinComp->pin;
+        } else {
+            if (!pinComp->isInput) {
+                DBG("Source is not empty but target pin is output, sorry");
+                return;
+            }
+            connection.Destination = pinComp->pin;
+        }
+        DBG("Adding connection after drag to pin " << pinComp->pin->getName());
+        DBG("Connection " << connection.toString());
+        auto added = graph.addConnection(connection);
+        if (!added) {
+            DBG("Connection was not added, sorry");
+        }
+        updateComponents();
+    }
 }
 
 void GraphEditorPanel::timerCallback() {

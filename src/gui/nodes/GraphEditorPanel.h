@@ -36,8 +36,8 @@ public:
     void showPopupMenu (Point<int> position);
 
     //==============================================================================
-    void beginConnectorDrag (const MoTool::Nodes::Pin* source,
-                             const MoTool::Nodes::Pin* dest,
+    void beginConnectorDrag (const std::shared_ptr<MoTool::Nodes::Pin> source,
+                             const std::shared_ptr<MoTool::Nodes::Pin> dest,
                              const MouseEvent&);
     void dragConnector (const MouseEvent&);
     void endDraggingConnector (const MouseEvent&);

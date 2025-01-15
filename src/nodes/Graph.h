@@ -1,9 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <sstream>
+#include <streambuf>
 #include <string>
 #include <vector>
 #include <map>
+#include <iostream>
 
 
 namespace MoTool::Nodes {
@@ -264,6 +267,13 @@ struct Connection {
         return !(*this == other);
     }
 
+    std::string toString() const {
+        std::stringstream buf;
+        buf << (Source.expired() ? "null" : Source.lock()->getName())
+            << " -> " << (Destination.expired() ? "null" : Destination.lock()->getName());
+        return buf.str();
+    }
+
     std::weak_ptr<Pin> Source;
     std::weak_ptr<Pin> Destination;
 };
@@ -315,6 +325,19 @@ public:
         addConnection(xfm->getOutput(1), sink->getInput(1));  // Will not connect, silently ignored
     }
 
+    bool checkEmptyConnections() {
+        for (const auto& connection : Connections) {
+            if (!connection) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool checkGraph() {
+        return checkEmptyConnections();
+    }
+
     Node* addNode(const NodeType& type, Point position) {
         auto node = std::make_shared<Node>(type);
         node->setPosition(position);
@@ -322,15 +345,22 @@ public:
         return Nodes.back().get();
     }
 
-    Connection* addConnection(std::shared_ptr<Pin> output, std::shared_ptr<Pin> input) {
-        if (!output || !input) {
+    Connection* addConnection(std::shared_ptr<Pin> source, std::shared_ptr<Pin> destination) {
+        if (!source || !destination) {
+            DBG("Source or destination is empty");
             return nullptr;
         }
-        if (!canConnect(output.get(), input.get())) {
+        if (!canConnect(source.get(), destination.get())) {
+            DBG("Source can not be connected to destination");
             return nullptr;
         }
-        Connections.push_back(std::make_shared<Connection>(std::move(output), std::move(input)));
+        DBG("Adding connection to graph");
+        Connections.push_back(std::make_shared<Connection>(std::move(source), std::move(destination)));
         return Connections.back().get();
+    }
+
+    Connection* addConnection(const Connection& connection) {
+        return addConnection(connection.Source.lock(), connection.Destination.lock());
     }
 
     Point getNodePosition(const Node* node) {
@@ -355,6 +385,7 @@ public:
     }
 
     void removeNode(const Node* node) {
+        disconnectNode(node);
         if (auto it = std::find_if(Nodes.begin(), Nodes.end(), [node](const auto& n) { return n.get() == node; });
             it != Nodes.end()) {
             Nodes.erase(it);
@@ -362,9 +393,10 @@ public:
     }
 
     void disconnectNode(const Node* node) {
-        for (auto& connection : Connections) {
-            if (connection->Destination.lock()->getOwner() == node || connection->Source.lock()->getOwner() == node) {
-                removeConnection(connection.get());
+        // iterate from the end to avoid invalidating the iterator
+        for (auto it = Connections.rbegin(); it != Connections.rend(); ++it) {
+            if (!*it || (*it)->Destination.lock()->getOwner() == node || (*it)->Source.lock()->getOwner() == node) {
+                Connections.erase(std::next(it).base());
             }
         }
     }
@@ -385,14 +417,6 @@ public:
         return Connections;
     }
 
-    // Connection* findConnection(const Connection* connection) {
-    //     if (auto it = std::find_if(Connections.begin(), Connections.end(), [connection](const auto& c) { return c.get() == connection; });
-    //         it != Connections.end()) {
-    //         return it->get();
-    //     }
-    //     return nullptr;
-    // }
-
     Connection* findConnection(const Connection& connection) {
         if (auto it = std::find_if(Connections.begin(), Connections.end(), [connection](const auto& c) { return *c == connection; });
             it != Connections.end()) {
@@ -401,21 +425,27 @@ public:
         return nullptr;
     }
 
-    bool canConnect(Pin* output, Pin* input) {
-        if (!output || !input) return false;
+    bool canConnect(Pin* source, Pin* destination) {
+        if (!source || !destination) return false;
         // check if input is not already connected
         for (const auto& connection : Connections) {
-            if (connection->Destination.lock().get() == input) {
+            if (connection->Destination.lock().get() == destination) {
                 return false;
             }
         }
-        return input->canRecieveConnectionFrom(*output);
+        return destination->canRecieveConnectionFrom(*source);
     }
 
-    void removeConnection(const Connection* connection) {
-        if (auto it = std::find_if(Connections.begin(), Connections.end(), [connection](const auto& c) { return c.get() == connection; });
-            it != Connections.end()) {
-            Connections.erase(it);
+    bool canConnect(const Connection& connection) {
+        return canConnect(connection.Source.lock().get(), connection.Destination.lock().get());
+    }
+
+    void removeConnection(const Connection& connection) {
+        // iterate from end to avoid invalidating the iterator
+        for (auto it = Connections.rbegin(); it != Connections.rend(); ++it) {
+            if (*it && **it == connection) {
+                Connections.erase(std::next(it).base());
+            }
         }
     }
 

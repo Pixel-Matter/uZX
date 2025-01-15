@@ -16,7 +16,6 @@ public:
     {
         setUsingNativeTitleBar(true);
         setContentOwned(new GraphDocumentComponent(), true);
-        // setContentOwned(new MainComponent(), true);
         setResizable(true, true);
         setSize(1024, 740);
         centreWithSize(getWidth(), getHeight());

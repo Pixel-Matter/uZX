@@ -160,23 +160,24 @@ private:
     Point Position;
 };
 
+
 struct Connection {
     bool operator==(const Connection& other) const {
-        return From.lock() == other.From.lock() && To.lock() == other.To.lock();
+        return Source.lock() == other.Source.lock() && Destination.lock() == other.Destination.lock();
     }
 
     bool operator!=(const Connection& other) const {
         return !(*this == other);
     }
 
-    std::weak_ptr<Pin> From;
-    std::weak_ptr<Pin> To;
+    std::weak_ptr<Pin> Source;
+    std::weak_ptr<Pin> Destination;
 };
 
 inline static const std::map<std::string, NodeType> BuiltinNodeTypes = {
-    { "Source",    { "Source",    {},                     {PinType::of<float>()}, false, false }},
-    { "Sink",      { "Sink",      {PinType::of<float>()}, {},                     false, false }},
-    { "Transform", { "Transform", {PinType::of<float>()}, {PinType::of<float>(), PinType::of<float>()}, true,  true  }},
+    { "Source",    { "Source",    {},                     {PinType::of<float>()},                       false, false }},
+    { "Sink",      { "Sink",      {PinType::of<float>()}, {},                                           false, false }},
+    { "Transform", { "Transform", {PinType::of<float>()}, {PinType::of<float>(), PinType::of<int>()},   true,  true  }},
 };
 
 class Graph {
@@ -187,18 +188,18 @@ public:
     }
 
     void fillWithSimpleGraph() {
-        addNode(BuiltinNodeTypes.at("Source"),    { 0.1, 0.1 })->setName("Source");
-        addNode(BuiltinNodeTypes.at("Sink"),      { 0.3, 0.1 })->setName("Sink");
-        addNode(BuiltinNodeTypes.at("Transform"), { 0.2, 0.2 })->setName("Transform");
+        addNode(BuiltinNodeTypes.at("Source"),    { 0.5, 0.1 })->setName("Source");
+        addNode(BuiltinNodeTypes.at("Transform"), { 0.5, 0.3 })->setName("Transform");
+        addNode(BuiltinNodeTypes.at("Sink"),      { 0.5, 0.5 })->setName("Sink");
 
         // add connections
         Connections.push_back(std::make_shared<Connection>(
             Nodes[0]->getPin(false, 0),
-            Nodes[2]->getPin(true, 0)
+            Nodes[1]->getPin(true, 0)
         ));
         Connections.push_back(std::make_shared<Connection>(
-            Nodes[2]->getPin(false, 0),
-            Nodes[1]->getPin(true, 0)
+            Nodes[1]->getPin(false, 0),
+            Nodes[2]->getPin(true, 0)
         ));
     }
 
@@ -239,7 +240,7 @@ public:
 
     void disconnectNode(const Node* node) {
         for (auto& connection : Connections) {
-            if (connection->To.lock()->getOwner() == node || connection->From.lock()->getOwner() == node) {
+            if (connection->Destination.lock()->getOwner() == node || connection->Source.lock()->getOwner() == node) {
                 removeConnection(connection.get());
             }
         }

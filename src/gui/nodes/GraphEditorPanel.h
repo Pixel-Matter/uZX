@@ -116,7 +116,7 @@ private:
     // std::unique_ptr<TooltipBar> statusBar;
 
     class TitleBarComponent;
-    std::unique_ptr<TitleBarComponent> titleBarComponent;
+    // std::unique_ptr<TitleBarComponent> titleBarComponent;
 
     //==============================================================================
     // struct PluginListBoxModel;

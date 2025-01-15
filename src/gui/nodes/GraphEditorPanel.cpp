@@ -3,6 +3,7 @@
 
 #include "GraphEditorPanel.h"
 #include "../../nodes/Graph.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 
 using namespace juce;
 using namespace MoTool::Nodes;
@@ -12,41 +13,17 @@ using namespace MoTool::Nodes;
 struct GraphEditorPanel::PinComponent final : public Component,
                                               public SettableTooltipClient
 {
-    PinComponent(GraphEditorPanel& p, std::shared_ptr<Pin> pinToUse, bool isIn)
+    PinComponent(GraphEditorPanel& p, std::shared_ptr<Pin> pinToUse)
         : panel(p)
         , graph(p.graph)
         , pin(std::move(pinToUse))
-        , isInput (isIn)
+        , isInput (pin->isInput())
     {
         setPinTooltip();
         setSize(16, 16);
     }
 
     void setPinTooltip() {
-        // if (auto node = graph.graph.getNodeForId (pin.nodeID)) {
-        //     String tip;
-
-        //     if (pin.isMIDI())
-        //     {
-        //         tip = isInput ? "MIDI Input"
-        //                       : "MIDI Output";
-        //     }
-        //     else
-        //     {
-        //         auto& processor = *node->getProcessor();
-        //         auto channel = processor.getOffsetInBusBufferForAbsoluteChannelIndex (isInput, pin.channelIndex, busIdx);
-
-        //         if (auto* bus = processor.getBus (isInput, busIdx))
-        //             tip = bus->getName() + ": " + AudioChannelSet::getAbbreviatedChannelTypeName (bus->getCurrentLayout().getTypeOfChannel (channel));
-        //         else
-        //             tip = (isInput ? "Main Input: "
-        //                            : "Main Output: ") + String (pin.channelIndex + 1);
-
-        //     }
-
-        //     setTooltip (tip);
-        // }
-
         String tip = isInput ? "Main Input: " : "Main Output: ";
         setTooltip(tip + pin->getName());
     }
@@ -99,9 +76,9 @@ struct GraphEditorPanel::NodeComponent final : public Component,
         , graph(p.graph)
         , node(std::move(node_))
     {
-        shadow.setShadowProperties(DropShadow(Colours::black.withAlpha (0.5f), 3, { 0, 1 }));
+        shadow.setShadowProperties(DropShadow(Colours::black.withAlpha(0.5f), 3, { 0, 1 }));
         setComponentEffect(&shadow);
-        setSize (150, 60);
+        setSize(150, 60);
     }
 
     NodeComponent(const NodeComponent&) = delete;
@@ -148,7 +125,7 @@ struct GraphEditorPanel::NodeComponent final : public Component,
 
     bool hitTest(int x, int y) override {
         for (auto* child : getChildren())
-            if (child->getBounds().contains (x, y))
+            if (child->getBounds().contains(x, y))
                 return true;
 
         return x >= 3 && x < getWidth() - 6 && y >= pinSize && y < getHeight() - pinSize;
@@ -187,9 +164,29 @@ struct GraphEditorPanel::NodeComponent final : public Component,
         }
     }
 
+    PinComponent* getComponentForPin(const Pin& pin, bool isInput) const {
+        auto& pins = isInput ? inputPins : outputPins;
+        for (auto* p : pins)
+            if (p->pin.get() == &pin)
+                return p;
+
+        return nullptr;
+    }
+
+    juce::Point<float> getPinPos(const Pin& pin, bool isInput) const {
+        if (auto pinComp = getComponentForPin(pin, isInput)) {
+            return getPosition().toFloat() + pinComp->getBounds().getCentre().toFloat();
+        }
+        return {};
+    }
+
+    juce::Point<float> getPinPos(const PinComponent& pin) const {
+        return getPosition().toFloat() + pin.getBounds().getCentre().toFloat();
+    }
+
     juce::Point<float> getPinPos(int index, bool isInput) const {
-        auto pin = isInput ? inputPins[index] : outputPins[index];
-        return getPosition().toFloat() + pin->getBounds().getCentre().toFloat();
+        auto* pin = isInput ? inputPins[index] : outputPins[index];
+        return getPinPos(*pin);
     }
 
     void update() {
@@ -222,11 +219,11 @@ struct GraphEditorPanel::NodeComponent final : public Component,
             outputPins.clear();
 
             for (int i = 0; i < node->getNumInputs(); ++i) {
-                addAndMakeVisible(inputPins.add(new PinComponent(panel, node->getPin(true, i), true)));
+                addAndMakeVisible(inputPins.add(new PinComponent(panel, node->getPin(true, i))));
             }
 
             for (int i = 0; i < node->getNumOutputs(); ++i)
-                addAndMakeVisible(outputPins.add(new PinComponent(panel, node->getPin(false, i), false)));
+                addAndMakeVisible(outputPins.add(new PinComponent(panel, node->getPin(false, i))));
 
             resized();
         }
@@ -275,12 +272,26 @@ struct GraphEditorPanel::NodeComponent final : public Component,
 struct GraphEditorPanel::ConnectorComponent final : public Component,
                                                     public SettableTooltipClient
 {
-    explicit ConnectorComponent (GraphEditorPanel& p, const Connection& conn)
+    explicit ConnectorComponent(GraphEditorPanel& p, const Connection& conn)
         : panel(p)
         , graph(p.graph)
         , connection(conn)
     {
         setAlwaysOnTop(true);
+    }
+
+    void setInput(std::shared_ptr<Pin> newSource) {
+        if (connection.Source.lock().get() != newSource.get()) {
+            connection.Source = newSource;
+            update();
+        }
+    }
+
+    void setOutput(std::shared_ptr<Pin> newDest) {
+        if (connection.Destination.lock().get() != newDest.get()) {
+            connection.Destination = newDest;
+            update();
+        }
     }
 
     void dragStart(juce::Point<float> pos) {
@@ -303,14 +314,15 @@ struct GraphEditorPanel::ConnectorComponent final : public Component,
 
     void resizeToFit() {
         juce::Point<float> p1, p2;
-        getPoints (p1, p2);
+        getPoints(p1, p2);
 
         auto newBounds = Rectangle<float>(p1, p2).expanded(4.0f).getSmallestIntegerContainer();
 
-        if (newBounds != getBounds())
+        if (newBounds != getBounds()) {
             setBounds(newBounds);
-        else
+        } else {
             resized();
+        }
 
         repaint();
     }
@@ -319,15 +331,20 @@ struct GraphEditorPanel::ConnectorComponent final : public Component,
         p1 = lastInputPos;
         p2 = lastOutputPos;
 
-        // if (auto* src = panel.getComponentForNode(connection.Input.lock().get()))
-        //     p1 = src->getPinPos (connection.source.channelIndex, false);
+        if (auto srcPin = connection.Source.lock())
+            if (auto* srcNode = panel.getComponentForNode(srcPin->getOwner())) {
+                p1 = srcNode->getPinPos(*srcPin.get(), false);
+            }
 
-        // if (auto* dest = panel.getComponentForNode(connection.destination.nodeID))
-        //     p2 = dest->getPinPos (connection.destination.channelIndex, true);
+        if (auto destPin = connection.Destination.lock())
+            if (auto* destNode = panel.getComponentForNode(destPin->getOwner())) {
+                p2 = destNode->getPinPos(*destPin.get(), true);
+            }
     }
 
     void paint(Graphics& g) override {
         g.setColour(Colours::green);
+        // fill rect
         g.fillPath(linePath);
     }
 
@@ -375,7 +392,7 @@ struct GraphEditorPanel::ConnectorComponent final : public Component,
 
     void resized() override {
         juce::Point<float> p1, p2;
-        getPoints (p1, p2);
+        getPoints(p1, p2);
 
         lastInputPos = p1;
         lastOutputPos = p2;
@@ -384,31 +401,31 @@ struct GraphEditorPanel::ConnectorComponent final : public Component,
         p2 -= getPosition().toFloat();
 
         linePath.clear();
-        linePath.startNewSubPath (p1);
-        linePath.cubicTo (p1.x, p1.y + (p2.y - p1.y) * 0.33f,
-                          p2.x, p1.y + (p2.y - p1.y) * 0.66f,
-                          p2.x, p2.y);
+        linePath.startNewSubPath(p1);
+        linePath.cubicTo(p1.x, p1.y + (p2.y - p1.y) * 0.33f,
+                         p2.x, p1.y + (p2.y - p1.y) * 0.66f,
+                         p2.x, p2.y);
 
-        PathStrokeType wideStroke (8.0f);
-        wideStroke.createStrokedPath (hitPath, linePath);
+        PathStrokeType wideStroke(8.0f);
+        wideStroke.createStrokedPath(hitPath, linePath);
 
-        PathStrokeType stroke (2.5f);
-        stroke.createStrokedPath (linePath, linePath);
+        PathStrokeType stroke(2.5f);
+        stroke.createStrokedPath(linePath, linePath);
 
         auto arrowW = 5.0f;
         auto arrowL = 4.0f;
 
         Path arrow;
-        arrow.addTriangle (-arrowL, arrowW,
-                           -arrowL, -arrowW,
-                           arrowL, 0.0f);
+        arrow.addTriangle(-arrowL, arrowW,
+                          -arrowL, -arrowW,
+                          arrowL, 0.0f);
 
-        arrow.applyTransform (AffineTransform()
-                                .rotated (MathConstants<float>::halfPi - (float) atan2 (p2.x - p1.x, p2.y - p1.y))
-                                .translated ((p1 + p2) * 0.5f));
+        arrow.applyTransform(AffineTransform()
+                             .rotated(MathConstants<float>::halfPi - (float) atan2(p2.x - p1.x, p2.y - p1.y))
+                             .translated((p1 + p2) * 0.5f));
 
-        linePath.addPath (arrow);
-        linePath.setUsingNonZeroWinding (true);
+        linePath.addPath(arrow);
+        linePath.setUsingNonZeroWinding(true);
     }
 
     void getDistancesFromEnds(juce::Point<float> p, double& distanceFromStart, double& distanceFromEnd) const {
@@ -522,8 +539,8 @@ void GraphEditorPanel::updateComponents() {
         fc->update();
     }
 
-    // for (auto* cc : connectors)
-    //     cc->update();
+    for (auto* cc : connectors)
+        cc->update();
 
     // 3. Add new nodes and connections
     for (const auto& node : graph.getNodes()) {
@@ -682,100 +699,97 @@ struct GraphDocumentComponent::TooltipBar final : public Component, private Time
 };
 
 //==============================================================================
-class GraphDocumentComponent::TitleBarComponent final : public Component,
-                                                        private Button::Listener
-{
-public:
-    explicit TitleBarComponent (GraphDocumentComponent& graphDocumentComponent)
-        : owner (graphDocumentComponent)
-    {
-        static const unsigned char burgerMenuPathData[]
-            = { 110,109,0,0,128,64,0,0,32,65,108,0,0,224,65,0,0,32,65,98,254,212,232,65,0,0,32,65,0,0,240,65,252,
-                169,17,65,0,0,240,65,0,0,0,65,98,0,0,240,65,8,172,220,64,254,212,232,65,0,0,192,64,0,0,224,65,0,0,
-                192,64,108,0,0,128,64,0,0,192,64,98,16,88,57,64,0,0,192,64,0,0,0,64,8,172,220,64,0,0,0,64,0,0,0,65,
-                98,0,0,0,64,252,169,17,65,16,88,57,64,0,0,32,65,0,0,128,64,0,0,32,65,99,109,0,0,224,65,0,0,96,65,108,
-                0,0,128,64,0,0,96,65,98,16,88,57,64,0,0,96,65,0,0,0,64,4,86,110,65,0,0,0,64,0,0,128,65,98,0,0,0,64,
-                254,212,136,65,16,88,57,64,0,0,144,65,0,0,128,64,0,0,144,65,108,0,0,224,65,0,0,144,65,98,254,212,232,
-                65,0,0,144,65,0,0,240,65,254,212,136,65,0,0,240,65,0,0,128,65,98,0,0,240,65,4,86,110,65,254,212,232,
-                65,0,0,96,65,0,0,224,65,0,0,96,65,99,109,0,0,224,65,0,0,176,65,108,0,0,128,64,0,0,176,65,98,16,88,57,
-                64,0,0,176,65,0,0,0,64,2,43,183,65,0,0,0,64,0,0,192,65,98,0,0,0,64,254,212,200,65,16,88,57,64,0,0,208,
-                65,0,0,128,64,0,0,208,65,108,0,0,224,65,0,0,208,65,98,254,212,232,65,0,0,208,65,0,0,240,65,254,212,
-                200,65,0,0,240,65,0,0,192,65,98,0,0,240,65,2,43,183,65,254,212,232,65,0,0,176,65,0,0,224,65,0,0,176,
-                65,99,101,0,0 };
+// class GraphDocumentComponent::TitleBarComponent final : public Component,
+//                                                         private Button::Listener
+// {
+// public:
+//     explicit TitleBarComponent (GraphDocumentComponent& graphDocumentComponent)
+//         : owner (graphDocumentComponent)
+//     {
+//         static const unsigned char burgerMenuPathData[]
+//             = { 110,109,0,0,128,64,0,0,32,65,108,0,0,224,65,0,0,32,65,98,254,212,232,65,0,0,32,65,0,0,240,65,252,
+//                 169,17,65,0,0,240,65,0,0,0,65,98,0,0,240,65,8,172,220,64,254,212,232,65,0,0,192,64,0,0,224,65,0,0,
+//                 192,64,108,0,0,128,64,0,0,192,64,98,16,88,57,64,0,0,192,64,0,0,0,64,8,172,220,64,0,0,0,64,0,0,0,65,
+//                 98,0,0,0,64,252,169,17,65,16,88,57,64,0,0,32,65,0,0,128,64,0,0,32,65,99,109,0,0,224,65,0,0,96,65,108,
+//                 0,0,128,64,0,0,96,65,98,16,88,57,64,0,0,96,65,0,0,0,64,4,86,110,65,0,0,0,64,0,0,128,65,98,0,0,0,64,
+//                 254,212,136,65,16,88,57,64,0,0,144,65,0,0,128,64,0,0,144,65,108,0,0,224,65,0,0,144,65,98,254,212,232,
+//                 65,0,0,144,65,0,0,240,65,254,212,136,65,0,0,240,65,0,0,128,65,98,0,0,240,65,4,86,110,65,254,212,232,
+//                 65,0,0,96,65,0,0,224,65,0,0,96,65,99,109,0,0,224,65,0,0,176,65,108,0,0,128,64,0,0,176,65,98,16,88,57,
+//                 64,0,0,176,65,0,0,0,64,2,43,183,65,0,0,0,64,0,0,192,65,98,0,0,0,64,254,212,200,65,16,88,57,64,0,0,208,
+//                 65,0,0,128,64,0,0,208,65,108,0,0,224,65,0,0,208,65,98,254,212,232,65,0,0,208,65,0,0,240,65,254,212,
+//                 200,65,0,0,240,65,0,0,192,65,98,0,0,240,65,2,43,183,65,254,212,232,65,0,0,176,65,0,0,224,65,0,0,176,
+//                 65,99,101,0,0 };
 
-        static const unsigned char pluginListPathData[]
-            = { 110,109,193,202,222,64,80,50,21,64,108,0,0,48,65,0,0,0,0,108,160,154,112,65,80,50,21,64,108,0,0,48,65,80,
-                50,149,64,108,193,202,222,64,80,50,21,64,99,109,0,0,192,64,251,220,127,64,108,160,154,32,65,165,135,202,
-                64,108,160,154,32,65,250,220,47,65,108,0,0,192,64,102,144,10,65,108,0,0,192,64,251,220,127,64,99,109,0,0,
-                128,65,251,220,127,64,108,0,0,128,65,103,144,10,65,108,96,101,63,65,251,220,47,65,108,96,101,63,65,166,135,
-                202,64,108,0,0,128,65,251,220,127,64,99,109,96,101,79,65,148,76,69,65,108,0,0,136,65,0,0,32,65,108,80,
-                77,168,65,148,76,69,65,108,0,0,136,65,40,153,106,65,108,96,101,79,65,148,76,69,65,99,109,0,0,64,65,63,247,
-                95,65,108,80,77,128,65,233,161,130,65,108,80,77,128,65,125,238,167,65,108,0,0,64,65,51,72,149,65,108,0,0,64,
-                65,63,247,95,65,99,109,0,0,176,65,63,247,95,65,108,0,0,176,65,51,72,149,65,108,176,178,143,65,125,238,167,65,
-                108,176,178,143,65,233,161,130,65,108,0,0,176,65,63,247,95,65,99,109,12,86,118,63,148,76,69,65,108,0,0,160,
-                64,0,0,32,65,108,159,154,16,65,148,76,69,65,108,0,0,160,64,40,153,106,65,108,12,86,118,63,148,76,69,65,99,
-                109,0,0,0,0,63,247,95,65,108,62,53,129,64,233,161,130,65,108,62,53,129,64,125,238,167,65,108,0,0,0,0,51,
-                72,149,65,108,0,0,0,0,63,247,95,65,99,109,0,0,32,65,63,247,95,65,108,0,0,32,65,51,72,149,65,108,193,202,190,
-                64,125,238,167,65,108,193,202,190,64,233,161,130,65,108,0,0,32,65,63,247,95,65,99,101,0,0 };
+//         static const unsigned char pluginListPathData[]
+//             = { 110,109,193,202,222,64,80,50,21,64,108,0,0,48,65,0,0,0,0,108,160,154,112,65,80,50,21,64,108,0,0,48,65,80,
+//                 50,149,64,108,193,202,222,64,80,50,21,64,99,109,0,0,192,64,251,220,127,64,108,160,154,32,65,165,135,202,
+//                 64,108,160,154,32,65,250,220,47,65,108,0,0,192,64,102,144,10,65,108,0,0,192,64,251,220,127,64,99,109,0,0,
+//                 128,65,251,220,127,64,108,0,0,128,65,103,144,10,65,108,96,101,63,65,251,220,47,65,108,96,101,63,65,166,135,
+//                 202,64,108,0,0,128,65,251,220,127,64,99,109,96,101,79,65,148,76,69,65,108,0,0,136,65,0,0,32,65,108,80,
+//                 77,168,65,148,76,69,65,108,0,0,136,65,40,153,106,65,108,96,101,79,65,148,76,69,65,99,109,0,0,64,65,63,247,
+//                 95,65,108,80,77,128,65,233,161,130,65,108,80,77,128,65,125,238,167,65,108,0,0,64,65,51,72,149,65,108,0,0,64,
+//                 65,63,247,95,65,99,109,0,0,176,65,63,247,95,65,108,0,0,176,65,51,72,149,65,108,176,178,143,65,125,238,167,65,
+//                 108,176,178,143,65,233,161,130,65,108,0,0,176,65,63,247,95,65,99,109,12,86,118,63,148,76,69,65,108,0,0,160,
+//                 64,0,0,32,65,108,159,154,16,65,148,76,69,65,108,0,0,160,64,40,153,106,65,108,12,86,118,63,148,76,69,65,99,
+//                 109,0,0,0,0,63,247,95,65,108,62,53,129,64,233,161,130,65,108,62,53,129,64,125,238,167,65,108,0,0,0,0,51,
+//                 72,149,65,108,0,0,0,0,63,247,95,65,99,109,0,0,32,65,63,247,95,65,108,0,0,32,65,51,72,149,65,108,193,202,190,
+//                 64,125,238,167,65,108,193,202,190,64,233,161,130,65,108,0,0,32,65,63,247,95,65,99,101,0,0 };
 
-        {
-            Path p;
-            p.loadPathFromData (burgerMenuPathData, sizeof (burgerMenuPathData));
-            burgerButton.setShape (p, true, true, false);
-        }
+//         {
+//             Path p;
+//             p.loadPathFromData (burgerMenuPathData, sizeof (burgerMenuPathData));
+//             burgerButton.setShape (p, true, true, false);
+//         }
 
-        {
-            Path p;
-            p.loadPathFromData (pluginListPathData, sizeof (pluginListPathData));
-            pluginButton.setShape (p, true, true, false);
-        }
+//         {
+//             Path p;
+//             p.loadPathFromData (pluginListPathData, sizeof (pluginListPathData));
+//             pluginButton.setShape (p, true, true, false);
+//         }
 
-        burgerButton.addListener (this);
-        addAndMakeVisible (burgerButton);
+//         burgerButton.addListener (this);
+//         addAndMakeVisible (burgerButton);
 
-        pluginButton.addListener (this);
-        addAndMakeVisible (pluginButton);
+//         pluginButton.addListener (this);
+//         addAndMakeVisible (pluginButton);
 
-        titleLabel.setJustificationType (Justification::centredLeft);
-        addAndMakeVisible (titleLabel);
+//         titleLabel.setJustificationType (Justification::centredLeft);
+//         addAndMakeVisible (titleLabel);
 
-        setOpaque (true);
-    }
+//         setOpaque (true);
+//     }
 
-private:
-    void paint (Graphics& g) override
-    {
-        auto titleBarBackgroundColour = getLookAndFeel().findColour (ResizableWindow::backgroundColourId).darker();
+// private:
+//     void paint (Graphics& g) override {
+//         auto titleBarBackgroundColour = getLookAndFeel().findColour (ResizableWindow::backgroundColourId).darker();
 
-        g.setColour (titleBarBackgroundColour);
-        g.fillRect (getLocalBounds());
-    }
+//         g.setColour (titleBarBackgroundColour);
+//         g.fillRect (getLocalBounds());
+//     }
 
-    void resized() override
-    {
-        auto r = getLocalBounds();
+//     void resized() override {
+//         auto r = getLocalBounds();
 
-        burgerButton.setBounds (r.removeFromLeft (40).withSizeKeepingCentre (20, 20));
+//         burgerButton.setBounds(r.removeFromLeft (40).withSizeKeepingCentre (20, 20));
+//         pluginButton.setBounds(r.removeFromRight (40).withSizeKeepingCentre (20, 20));
 
-        pluginButton.setBounds (r.removeFromRight (40).withSizeKeepingCentre (20, 20));
+//         titleLabel.setFont (FontOptions (static_cast<float> (getHeight()) * 0.5f, Font::plain));
+//         titleLabel.setBounds (r);
+//     }
 
-        titleLabel.setFont (FontOptions (static_cast<float> (getHeight()) * 0.5f, Font::plain));
-        titleLabel.setBounds (r);
-    }
+//     void buttonClicked (Button* b) override
+//     {
+//         owner.showSidePanel (b == &burgerButton);
+//     }
 
-    void buttonClicked (Button* b) override
-    {
-        owner.showSidePanel (b == &burgerButton);
-    }
+//     GraphDocumentComponent& owner;
 
-    GraphDocumentComponent& owner;
+//     Label titleLabel {"titleLabel", "Plugin Host"};
+//     ShapeButton burgerButton {"burgerButton", Colours::lightgrey, Colours::lightgrey, Colours::white};
+//     ShapeButton pluginButton {"pluginButton", Colours::lightgrey, Colours::lightgrey, Colours::white};
 
-    Label titleLabel {"titleLabel", "Plugin Host"};
-    ShapeButton burgerButton {"burgerButton", Colours::lightgrey, Colours::lightgrey, Colours::white};
-    ShapeButton pluginButton {"pluginButton", Colours::lightgrey, Colours::lightgrey, Colours::white};
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TitleBarComponent)
-};
+//     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TitleBarComponent)
+// };
 
 
 //==============================================================================

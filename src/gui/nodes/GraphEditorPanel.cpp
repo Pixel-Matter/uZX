@@ -92,7 +92,6 @@ struct GraphEditorPanel::NodeComponent final : public Component,
 
     NodeComponent(const NodeComponent&) = delete;
     NodeComponent& operator=(const NodeComponent&) = delete;
-
     ~NodeComponent() override {}
 
     void mouseDown(const MouseEvent& e) override {
@@ -474,7 +473,7 @@ GraphEditorPanel::GraphEditorPanel(Graph& g)
 
 GraphEditorPanel::~GraphEditorPanel() {
     // graph.removeChangeListener (this);
-    draggingConnector = nullptr;
+    draggingConnector.reset();
     nodes.clear();
     connectors.clear();
 }
@@ -627,9 +626,11 @@ void GraphEditorPanel::dragConnector(const MouseEvent& e) {
         return;
 
     draggingConnector->setTooltip({});
+    // draggingConnector->toFront(false);
 
     auto pos = e2.position;
     auto connection = draggingConnector->connection;
+    DBG("Pos is " << pos.toString());
 
     if (auto* pinComp = findPinAt(pos)){
         if (connection.Source.lock() == nullptr && !pinComp->isInput) {
@@ -642,12 +643,14 @@ void GraphEditorPanel::dragConnector(const MouseEvent& e) {
         DBG("Ponential connection " << connection.toString());
 
         if (graph.canConnect(connection)) {
+            // snap position to pin
             pos = (pinComp->getParentComponent()->getPosition() + pinComp->getBounds().getCentre()).toFloat();
+            DBG("Position snap to pin " << pos.toString());
             draggingConnector->setTooltip(pinComp->getTooltip());
         }
     }
 
-    if (connection.Source.lock() == nullptr) {
+    if (draggingConnector->connection.Source.lock() == nullptr) {
         draggingConnector->dragStart(pos);
     } else {
         draggingConnector->dragEnd(pos);
@@ -663,7 +666,7 @@ void GraphEditorPanel::endDraggingConnector(const MouseEvent& e) {
 
     auto e2 = e.getEventRelativeTo (this);
     auto connection = draggingConnector->connection;
-    draggingConnector = nullptr;
+    draggingConnector.reset();
     DBG("Dragging connection " << connection.toString());
 
     if (auto* pinComp = findPinAt(e2.position)) {
@@ -692,13 +695,7 @@ void GraphEditorPanel::endDraggingConnector(const MouseEvent& e) {
     }
 }
 
-void GraphEditorPanel::timerCallback() {
-    // this should only be called on touch devices
-    // jassert (isOnTouchDevice());
-
-    // stopTimer();
-    // showPopupMenu (originalTouchPos);
-}
+void GraphEditorPanel::timerCallback() {}
 
 //==============================================================================
 struct GraphDocumentComponent::TooltipBar final : public Component, private Timer {

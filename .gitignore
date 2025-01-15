@@ -38,3 +38,6 @@ build/
 .idea/
 CMakeFiles/
 *.user
+
+# MacOs
+.DS_Store

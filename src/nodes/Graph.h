@@ -54,9 +54,41 @@ struct Point {
     double x, y;
 };
 
-struct Pin {
+class Pin {
+public:
+    Pin(std::string name, bool isInput, const PinType& type, Node* owner)
+        : Name(std::move(name))
+        , IsInput(isInput)
+        , Type(type)
+        , Owner(owner)
+    {}
+
+    bool canRecieveConnectionFrom(const Pin& output) const {
+        if (!IsInput || output.IsInput) return false;
+        // TODO add compatibility checks, for example int -> float, double -> float, etc.
+        return Type == output.Type;
+    }
+
+    std::string getName() const {
+        return Name;
+    }
+
+    bool isInput() const {
+        return IsInput;
+    }
+
+    const PinType& getType() const {
+        return Type;
+    }
+
+    Node* getOwner() const {
+        return Owner;
+    }
+
+private:
     std::string Name;
     bool IsInput;
+    PinType Type;
     Node* Owner;  // Back reference to owning node
 };
 
@@ -67,10 +99,10 @@ public:
         , Name(type.Name)
     {
         for (const auto& pinType : type.InputPins) {
-            addPin(true, pinType.getName());
+            addPin(true, pinType.getName(), pinType);
         }
         for (const auto& pinType : type.OutputPins) {
-            addPin(false, pinType.getName());
+            addPin(false, pinType.getName(), pinType);
         }
     }
 
@@ -82,21 +114,21 @@ public:
         return Name;
     }
 
-    Pin& addInputPin(const std::string& name) {
-        InputPins.emplace_back(name, true, this);
+    std::shared_ptr<Pin> addInputPin(const std::string& name, const PinType& type) {
+        InputPins.push_back(std::make_shared<Pin>(name, true, type, this));
         return InputPins.back();
     }
 
-    Pin& addOutputPin(const std::string& name) {
-        OutputPins.emplace_back(name, false, this);
+    std::shared_ptr<Pin> addOutputPin(const std::string& name, const PinType& type) {
+        OutputPins.push_back(std::make_shared<Pin>(name, false, type, this));
         return OutputPins.back();
     }
 
-    Pin& addPin(bool isInput, const std::string& name) {
-        return isInput ? addInputPin(name) : addOutputPin(name);
+    std::shared_ptr<Pin> addPin(bool isInput, const std::string& name, const PinType& type) {
+        return isInput ? addInputPin(name, type) : addOutputPin(name, type);
     }
 
-    Pin& getPin(bool isInput, int index) {
+    std::shared_ptr<Pin> getPin(bool isInput, int index) {
         return isInput ? InputPins.at(static_cast<size_t>(index)) : OutputPins.at(static_cast<size_t>(index));
     }
 
@@ -123,14 +155,22 @@ public:
 private:
     const NodeType& Type;
     std::string Name;
-    std::vector<Pin> InputPins;
-    std::vector<Pin> OutputPins;
+    std::vector<std::shared_ptr<Pin>> InputPins;
+    std::vector<std::shared_ptr<Pin>> OutputPins;
     Point Position;
 };
 
 struct Connection {
-    std::weak_ptr<Pin> Input;
-    std::weak_ptr<Pin> Output;
+    bool operator==(const Connection& other) const {
+        return From.lock() == other.From.lock() && To.lock() == other.To.lock();
+    }
+
+    bool operator!=(const Connection& other) const {
+        return !(*this == other);
+    }
+
+    std::weak_ptr<Pin> From;
+    std::weak_ptr<Pin> To;
 };
 
 inline static const std::map<std::string, NodeType> BuiltinNodeTypes = {
@@ -143,9 +183,23 @@ class Graph {
 public:
 
     Graph() {
+        fillWithSimpleGraph();
+    }
+
+    void fillWithSimpleGraph() {
         addNode(BuiltinNodeTypes.at("Source"),    { 0.1, 0.1 })->setName("Source");
         addNode(BuiltinNodeTypes.at("Sink"),      { 0.3, 0.1 })->setName("Sink");
         addNode(BuiltinNodeTypes.at("Transform"), { 0.2, 0.2 })->setName("Transform");
+
+        // add connections
+        Connections.push_back(std::make_shared<Connection>(
+            Nodes[0]->getPin(false, 0),
+            Nodes[2]->getPin(true, 0)
+        ));
+        Connections.push_back(std::make_shared<Connection>(
+            Nodes[2]->getPin(false, 0),
+            Nodes[1]->getPin(true, 0)
+        ));
     }
 
     Node* addNode(const NodeType& type, Point position) {
@@ -153,13 +207,6 @@ public:
         node->setPosition(position);
         Nodes.push_back(std::move(node));
         return Nodes.back().get();
-    }
-
-    bool canConnect(Pin* output, Pin* input) {
-        if (!output || !input) return false;
-        if (output->IsInput || !input->IsInput) return false;
-        // Add more validation as needed
-        return true;
     }
 
     Point getNodePosition(const Node* node) {
@@ -192,7 +239,7 @@ public:
 
     void disconnectNode(const Node* node) {
         for (auto& connection : Connections) {
-            if (connection->Input.lock()->Owner == node || connection->Output.lock()->Owner == node) {
+            if (connection->To.lock()->getOwner() == node || connection->From.lock()->getOwner() == node) {
                 removeConnection(connection.get());
             }
         }
@@ -202,10 +249,35 @@ public:
         return Nodes;
     }
 
+    const std::vector<std::shared_ptr<Node>>& getNodes() const {
+        return Nodes;
+    }
+
+    std::vector<std::shared_ptr<Connection>>& getConnections() {
+        return Connections;
+    }
+
+    const std::vector<std::shared_ptr<Connection>>& getConnections() const {
+        return Connections;
+    }
+
     Connection* findConnection(const Connection* connection) {
         if (auto it = std::find_if(Connections.begin(), Connections.end(), [connection](const auto& c) { return c.get() == connection; });
             it != Connections.end()) {
             return it->get();
+        }
+        return nullptr;
+    }
+
+    bool canConnect(Pin* output, Pin* input) {
+        if (!output || !input) return false;
+        return output->canRecieveConnectionFrom(*input);
+    }
+
+    Connection* addConnection(std::shared_ptr<Pin> output, std::shared_ptr<Pin> input) {
+        if (canConnect(output.get(), input.get())) {
+            Connections.push_back(std::make_shared<Connection>(std::move(output), std::move(input)));
+            return Connections.back().get();
         }
         return nullptr;
     }

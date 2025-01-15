@@ -56,7 +56,7 @@ private:
     std::unique_ptr<PopupMenu> menu;
 
     NodeComponent* getComponentForNode(MoTool::Nodes::Node* node) const;
-    ConnectorComponent* getComponentForConnection(const MoTool::Nodes::Connection&) const;
+    ConnectorComponent* getComponentForConnection(const MoTool::Nodes::Connection* conn) const;
     PinComponent* findPinAt (Point<float>) const;
 
     //==============================================================================

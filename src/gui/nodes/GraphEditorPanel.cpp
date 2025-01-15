@@ -12,10 +12,10 @@ using namespace MoTool::Nodes;
 struct GraphEditorPanel::PinComponent final : public Component,
                                               public SettableTooltipClient
 {
-    PinComponent(GraphEditorPanel& p, Pin& pinToUse, bool isIn)
+    PinComponent(GraphEditorPanel& p, std::shared_ptr<Pin> pinToUse, bool isIn)
         : panel(p)
         , graph(p.graph)
-        , pin(pinToUse)
+        , pin(std::move(pinToUse))
         , isInput (isIn)
     {
         setPinTooltip();
@@ -48,7 +48,7 @@ struct GraphEditorPanel::PinComponent final : public Component,
         // }
 
         String tip = isInput ? "Main Input: " : "Main Output: ";
-        setTooltip(tip);
+        setTooltip(tip + pin->getName());
     }
 
     void paint(Graphics& g) override {
@@ -68,8 +68,8 @@ struct GraphEditorPanel::PinComponent final : public Component,
     }
 
     void mouseDown(const MouseEvent& e) override {
-        panel.beginConnectorDrag(isInput ? nullptr : &pin,
-                                 isInput ? &pin : nullptr,
+        panel.beginConnectorDrag(isInput ? nullptr : pin.get(),
+                                 isInput ? pin.get() : nullptr,
                                  e);
     }
 
@@ -83,7 +83,7 @@ struct GraphEditorPanel::PinComponent final : public Component,
 
     GraphEditorPanel& panel;
     Graph& graph;
-    MoTool::Nodes::Pin& pin;
+    std::shared_ptr<Pin> pin;
     const bool isInput;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PinComponent)
@@ -253,7 +253,9 @@ struct GraphEditorPanel::NodeComponent final : public Component,
 
     void parameterGestureChanged(int, bool) override  {}
 
-    void handleAsyncUpdate() override { repaint(); }
+    void handleAsyncUpdate() override {
+        repaint();
+    }
 
     GraphEditorPanel& panel;
     Graph& graph;
@@ -273,26 +275,13 @@ struct GraphEditorPanel::NodeComponent final : public Component,
 struct GraphEditorPanel::ConnectorComponent final : public Component,
                                                     public SettableTooltipClient
 {
-    explicit ConnectorComponent (GraphEditorPanel& p)
+    explicit ConnectorComponent (GraphEditorPanel& p, const Connection& conn)
         : panel(p)
         , graph(p.graph)
+        , connection(conn)
     {
         setAlwaysOnTop(true);
     }
-
-    // void setInput(Pin* newSource) {
-    //     if (connection.source != newSource) {
-    //         connection.source = newSource;
-    //         update();
-    //     }
-    // }
-
-    // void setOutput(AudioProcessorGraph::NodeAndChannel newDest) {
-    //     if (connection.destination != newDest) {
-    //         connection.destination = newDest;
-    //         update();
-    //     }
-    // }
 
     void dragStart(juce::Point<float> pos) {
         lastInputPos = pos;
@@ -306,7 +295,7 @@ struct GraphEditorPanel::ConnectorComponent final : public Component,
 
     void update() {
         juce::Point<float> p1, p2;
-        getPoints (p1, p2);
+        getPoints(p1, p2);
 
         if (lastInputPos != p1 || lastOutputPos != p2)
             resizeToFit();
@@ -432,7 +421,7 @@ struct GraphEditorPanel::ConnectorComponent final : public Component,
 
     GraphEditorPanel& panel;
     Graph& graph;
-    Connection connection { {}, {} };
+    Connection connection = {};
     juce::Point<float> lastInputPos, lastOutputPos;
     Path linePath, hitPath;
     bool dragging = false;
@@ -477,6 +466,8 @@ void GraphEditorPanel::createNewNode(const NodeType& nodeType, juce::Point<int> 
 }
 
 GraphEditorPanel::NodeComponent* GraphEditorPanel::getComponentForNode(Node* nodePtr) const {
+    if (nodePtr == nullptr)
+        return nullptr;
     for (auto* node : nodes)
        if (node->node.get() == nodePtr)
             return node;
@@ -484,10 +475,12 @@ GraphEditorPanel::NodeComponent* GraphEditorPanel::getComponentForNode(Node* nod
     return nullptr;
 }
 
-GraphEditorPanel::ConnectorComponent* GraphEditorPanel::getComponentForConnection(const MoTool::Nodes::Connection& conn) const {
-    // for (auto* cc : connectors)
-    //     if (cc->connection == conn)
-    //         return cc;
+GraphEditorPanel::ConnectorComponent* GraphEditorPanel::getComponentForConnection(const Connection* conn) const {
+    if (conn == nullptr)
+        return nullptr;
+    for (auto* cc : connectors)
+        if (cc->connection == *conn)
+            return cc;
 
     return nullptr;
 }
@@ -542,15 +535,13 @@ void GraphEditorPanel::updateComponents() {
         comp->update();
     }
 
-    // for (auto& c : graph.getConnections()) {
-    //     if (getComponentForConnection(c) == nullptr) {
-    //         auto* comp = connectors.add (new ConnectorComponent (*this));
-    //         addAndMakeVisible (comp);
-
-    //         comp->setInput (c.source);
-    //         comp->setOutput (c.destination);
-    //     }
-    // }
+    for (const auto& c : graph.getConnections()) {
+        if (getComponentForConnection(c.get()) == nullptr) {
+            auto* comp = connectors.add(new ConnectorComponent(*this, *c));
+            addAndMakeVisible(comp);
+            comp->update();
+        }
+    }
 }
 
 void GraphEditorPanel::showPopupMenu(juce::Point<int> mousePos) {

@@ -74,8 +74,8 @@ endif()
 
 
 target_compile_definitions(${TARGET_NAME} PRIVATE
-    APP_VERSION="${CURRENT_VERSION}"
-    APP_NAME="${PROJECT_NAME}"
+    # APP_VERSION="${CURRENT_VERSION}"  # Use ProjectInfo::projectName instead
+    # APP_NAME="${PROJECT_NAME}"        # Use ProjectInfo::versionString instead
     JUCE_PLUGINHOST_AU=1
     JUCE_PLUGINHOST_LADSPA=1
     JUCE_PLUGINHOST_VST3=1

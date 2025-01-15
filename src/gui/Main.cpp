@@ -55,11 +55,12 @@ private:
 class MoToolApp : public JUCEApplication {
 public:
     const String getApplicationName() override      {
-        return APP_NAME;
+        return ProjectInfo::projectName;
     }
     const String getApplicationVersion() override   {
-        return APP_VERSION;
+        return ProjectInfo::versionString;
     }
+
     bool moreThanOneInstanceAllowed() override            { return true; }
 
     void initialise(const String& commandLine) override {

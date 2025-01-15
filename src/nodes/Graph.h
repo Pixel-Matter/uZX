@@ -11,36 +11,110 @@ namespace MoTool::Nodes {
 // TODO use plugin registry mechanism like from DemoRunner (make registy generic)
 
 struct PinType {
+    std::string getName() const {
+        return TypeInfo.name();
+    }
+
     template <typename T>
     static PinType of() {
         return PinType{ typeid(T) };
     }
 
-    bool operator==(const PinType& other) const {
-        return TypeInfo == other.TypeInfo;
+    template <typename T>
+    bool is() const {
+        return is(typeid(T));
     }
 
-    bool operator!=(const PinType& other) const {
-        return !(*this == other);
-    }
-
-    std::string getName() const {
-        return TypeInfo.name();
-    }
-
-    bool isFor(const std::type_info& type) const {
+    bool is(const std::type_info& type) const {
         return TypeInfo == type;
     }
 
-    template <typename T>
-    bool isFor() const {
-        return isFor(typeid(T));
+    bool is_integer() const {
+        return is<char>() || is<unsigned char>() || is<short>() || is<unsigned short>() ||
+               is<int>() || is<unsigned int>() || is<long>() || is<unsigned long>();
+    }
+
+    bool is_floating() const {
+        return is<float>() || is<double>();
+    }
+
+    bool is_numeric() const {
+        return is_integer() || is_floating();
+    }
+
+    bool is_signed() const {
+        return is<char>() || is<short>() || is<int>() || is<long>();
+    }
+
+    bool is_unsigned() const {
+        return is<unsigned char>() || is<unsigned short>() || is<unsigned int>() || is<unsigned long>();
+    }
+
+    bool operator == (const PinType& other) const {
+        return TypeInfo == other.TypeInfo;
+    }
+
+    bool operator != (const PinType& other) const {
+        return !(*this == other);
+    }
+
+    bool operator < (const PinType& other) const {
+        if (is_numeric() && other.is_floating()) return true;
+        if (is<uint8_t>() && (
+            is<uint16_t>() || is<uint32_t>() || is<uint64_t>() ||
+            is<int16_t>() || is<int32_t>() || is<int64_t>()
+        )) return true;
+        if (is<uint16_t>() && (
+            is<uint32_t>() || is<uint64_t>() || is<int32_t>() || is<int64_t>()
+        )) return true;
+        if (is<uint32_t>() && (
+            is<uint64_t>() || is<int64_t>()
+        )) return true;
+        if (is<int8_t>() && (
+            is<int16_t>() || is<int32_t>() || is<int64_t>()
+        )) return true;
+        if (is<int16_t>() && (
+            is<int32_t>() || is<int64_t>()
+        )) return true;
+        if (is<int32_t>() && (
+            is<int64_t>()
+        )) return true;
+        if (is<bool>() && other.is_numeric()) return true;
+        return false;
+    }
+
+    bool operator <= (const PinType& other) const {
+        return *this == other || *this < other;
+    }
+
+    bool operator > (const PinType& other) const {
+        return !(*this <= other);
+    }
+
+    bool operator >= (const PinType& other) const {
+        return !(*this < other);
+    }
+
+    bool isConvertableFrom(const PinType& from) const {
+        return from <= *this;
     }
 
     const std::type_info& TypeInfo;
 };
 
 struct NodeType {
+    NodeType(std::string name, std::vector<PinType> inputs, std::vector<PinType> outputs, bool canCreate, bool canDelete)
+        : Name(std::move(name))
+        , InputPins(std::move(inputs))
+        , OutputPins(std::move(outputs))
+        , CanBeCreated(canCreate)
+        , CanBeDeleted(canDelete)
+    {}
+
+    NodeType(std::string name, std::vector<PinType> inputs, std::vector<PinType> outputs)
+        : NodeType(std::move(name), std::move(inputs), std::move(outputs), true, true)
+    {}
+
     std::string Name;
     std::vector<PinType> InputPins;
     std::vector<PinType> OutputPins;
@@ -65,8 +139,7 @@ public:
 
     bool canRecieveConnectionFrom(const Pin& output) const {
         if (!IsInput || output.IsInput) return false;
-        // TODO add compatibility checks, for example int -> float, double -> float, etc.
-        return Type == output.Type;
+        return Type.isConvertableFrom(output.getType());
     }
 
     std::string getName() const {
@@ -94,70 +167,91 @@ private:
 
 class Node {
 public:
-    Node(const NodeType& type)
-        : Type(type)
-        , Name(type.Name)
+    Node(const std::shared_ptr<NodeType> type, std::string name, const std::vector<PinType>& inputs, const std::vector<PinType>& outputs)
+        : Type_(type)
+        , Name_(name)
     {
-        for (const auto& pinType : type.InputPins) {
+        for (const auto& pinType : inputs) {
             addPin(true, pinType.getName(), pinType);
         }
-        for (const auto& pinType : type.OutputPins) {
+        for (const auto& pinType : outputs) {
             addPin(false, pinType.getName(), pinType);
         }
     }
 
-    void setName(std::string name) {
-        Name = std::move(name);
+    Node(std::string name, const std::vector<PinType>& inputs, const std::vector<PinType>& outputs)
+        : Node(std::make_shared<NodeType>(name, inputs, outputs), name, inputs, outputs)
+    {}
+
+    Node(const std::shared_ptr<NodeType> type)
+        : Node(type, type->Name, type->InputPins, type->OutputPins)
+    {}
+
+    Node(const NodeType& type)
+        : Node(std::make_shared<NodeType>(type))
+    {}
+
+    Node* setName(std::string name) {
+        Name_ = std::move(name);
+        return this;
     }
 
     std::string getName() const {
-        return Name;
+        return Name_;
     }
 
     std::shared_ptr<Pin> addInputPin(const std::string& name, const PinType& type) {
-        InputPins.push_back(std::make_shared<Pin>(name, true, type, this));
-        return InputPins.back();
+        InputPins_.push_back(std::make_shared<Pin>(name, true, type, this));
+        return InputPins_.back();
     }
 
     std::shared_ptr<Pin> addOutputPin(const std::string& name, const PinType& type) {
-        OutputPins.push_back(std::make_shared<Pin>(name, false, type, this));
-        return OutputPins.back();
+        OutputPins_.push_back(std::make_shared<Pin>(name, false, type, this));
+        return OutputPins_.back();
     }
 
     std::shared_ptr<Pin> addPin(bool isInput, const std::string& name, const PinType& type) {
         return isInput ? addInputPin(name, type) : addOutputPin(name, type);
     }
 
+    std::shared_ptr<Pin> getInput(int index) {
+        return InputPins_.at(static_cast<size_t>(index));
+    }
+
+    std::shared_ptr<Pin> getOutput(int index) {
+        return OutputPins_.at(static_cast<size_t>(index));
+    }
+
     std::shared_ptr<Pin> getPin(bool isInput, int index) {
-        return isInput ? InputPins.at(static_cast<size_t>(index)) : OutputPins.at(static_cast<size_t>(index));
+        return (isInput ? InputPins_ : OutputPins_).at(static_cast<size_t>(index));
     }
 
     int getNumInputs() const {
-        return static_cast<int>(InputPins.size());
+        return static_cast<int>(InputPins_.size());
     }
 
     int getNumOutputs() const {
-        return static_cast<int>(OutputPins.size());
+        return static_cast<int>(OutputPins_.size());
     }
 
     Point getPosition() const {
-        return Position;
+        return Position_;
     }
 
     void setPosition(Point position) {
-        Position = position;
+        Position_ = position;
     }
 
-    const NodeType& getType() const {
-        return Type;
+    const NodeType* getType() const {
+        return Type_.get();
     }
 
 private:
-    const NodeType& Type;
-    std::string Name;
-    std::vector<std::shared_ptr<Pin>> InputPins;
-    std::vector<std::shared_ptr<Pin>> OutputPins;
-    Point Position;
+    const std::shared_ptr<NodeType> Type_;
+    std::string Name_;
+    std::vector<std::shared_ptr<Pin>> InputPins_;
+    std::vector<std::shared_ptr<Pin>> OutputPins_;
+    Point Position_;
 };
 
 
@@ -174,33 +268,46 @@ struct Connection {
     std::weak_ptr<Pin> Destination;
 };
 
+
+//=============================================================================
 inline static const std::map<std::string, NodeType> BuiltinNodeTypes = {
-    { "Source",    { "Source",    {},                     {PinType::of<float>()},                       false, false }},
-    { "Sink",      { "Sink",      {PinType::of<float>()}, {},                                           false, false }},
-    { "Transform", { "Transform", {PinType::of<float>()}, {PinType::of<float>(), PinType::of<int>()},   true,  true  }},
+    { "Source",    { "Source",    {}, {PinType::of<float>()},                                             false, false }},
+    { "Transform", { "Transform", {PinType::of<float>()}, {PinType::of<int>(), PinType::of<float>()},     true,  true  }},
+    { "Sink",      { "Sink",                              {PinType::of<float>(), PinType::of<int>()}, {}, false, false }},
 };
 
+//=============================================================================
 class Graph {
 public:
-
     Graph() {
         fillWithSimpleGraph();
     }
 
     void fillWithSimpleGraph() {
-        addNode(BuiltinNodeTypes.at("Source"),    { 0.5, 0.1 })->setName("Source");
-        addNode(BuiltinNodeTypes.at("Transform"), { 0.5, 0.3 })->setName("Transform");
-        addNode(BuiltinNodeTypes.at("Sink"),      { 0.5, 0.5 })->setName("Sink");
+        float x = 0.1f, y = 0.1f, s = 0.2f;
 
-        // add connections
-        Connections.push_back(std::make_shared<Connection>(
-            Nodes[0]->getPin(false, 0),
-            Nodes[1]->getPin(true, 0)
-        ));
-        Connections.push_back(std::make_shared<Connection>(
-            Nodes[1]->getPin(false, 0),
-            Nodes[2]->getPin(true, 0)
-        ));
+        auto floatNode = addNode({"Float", {}, {PinType::of<bool>()}}, { x,    y });
+        auto boolNode  = addNode({"Bool",  {}, {PinType::of<bool>()}}, { x+=s, y });
+        auto intNode   = addNode({"Int",   {}, {PinType::of<int>()}},  { x+=s, y });
+
+        x = 0.2f, y = 0.4f;
+
+        auto xfm = addNode({"Transform (f)->(i, f)",
+                           {PinType::of<float>()},
+                           {PinType::of<int>(), PinType::of<float>()}}, { x, y });
+
+        addConnection(floatNode->getOutput(0), xfm->getInput(0));
+        addConnection(boolNode->getOutput(0),  xfm->getInput(0));
+        addConnection(intNode->getOutput(0),   xfm->getInput(0));
+
+        x = 0.2f, y = 0.6f;
+
+        auto sink = addNode({"Sink (f, i)->()",
+                           {PinType::of<float>(), PinType::of<int>()},
+                           {}},                                         { x, y });
+
+        addConnection(xfm->getOutput(0), sink->getInput(0));
+        addConnection(xfm->getOutput(1), sink->getInput(1));  // Will not connect, silently ignored
     }
 
     Node* addNode(const NodeType& type, Point position) {
@@ -210,15 +317,26 @@ public:
         return Nodes.back().get();
     }
 
+    Connection* addConnection(std::shared_ptr<Pin> output, std::shared_ptr<Pin> input) {
+        if (!output || !input) {
+            return nullptr;
+        }
+        if (!input->canRecieveConnectionFrom(*output)) {
+            return nullptr;
+        }
+        Connections.push_back(std::make_shared<Connection>(std::move(output), std::move(input)));
+        return Connections.back().get();
+    }
+
     Point getNodePosition(const Node* node) {
-        if (auto found = findNode(node); found) {
+        if (auto found = findNode(node)) {
             return found->getPosition();
         }
         return {};
     }
 
     void setNodePosition(const Node* node, Point position) {
-        if (auto found = findNode(node); found) {
+        if (auto found = findNode(node)) {
             found->setPosition(position);
         }
     }
@@ -273,14 +391,6 @@ public:
     bool canConnect(Pin* output, Pin* input) {
         if (!output || !input) return false;
         return output->canRecieveConnectionFrom(*input);
-    }
-
-    Connection* addConnection(std::shared_ptr<Pin> output, std::shared_ptr<Pin> input) {
-        if (canConnect(output.get(), input.get())) {
-            Connections.push_back(std::make_shared<Connection>(std::move(output), std::move(input)));
-            return Connections.back().get();
-        }
-        return nullptr;
     }
 
     void removeConnection(const Connection* connection) {

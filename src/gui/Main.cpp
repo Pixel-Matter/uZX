@@ -1,29 +1,9 @@
 
-#include "nodes/NodeComponent.h"
 #include "nodes/GraphEditorPanel.h"
 
 #include <JuceHeader.h>
 
 using namespace juce;
-
-
-// class MainComponent : public Component {
-// public:
-//     MainComponent() {
-//         addAndMakeVisible(nodeEditor);
-//         setSize(1024, 740);
-//     }
-
-//     void resized() override {
-//         nodeEditor.setBounds(getLocalBounds());
-//     }
-
-// private:
-//     GraphDocumentComponent nodeEditor {};
-//     // NodeEditorComponent nodeEditor;
-
-//     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
-// };
 
 
 class MainWindow : public DocumentWindow {

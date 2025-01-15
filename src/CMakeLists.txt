@@ -58,7 +58,6 @@ CXX_VISIBILITY_PRESET hidden)
 set(SourceFiles
     gui/main.cpp
     gui/nodes/GraphEditorPanel.cpp
-    gui/nodes/NodeComponent.cpp
 )
 
 target_sources(${TARGET_NAME} PRIVATE ${SourceFiles})

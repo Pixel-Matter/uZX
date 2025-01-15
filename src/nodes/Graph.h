@@ -286,25 +286,30 @@ public:
     void fillWithSimpleGraph() {
         float x = 0.1f, y = 0.1f, s = 0.2f;
 
-        auto floatNode = addNode({"Float", {}, {PinType::of<bool>()}}, { x,    y });
+        auto floatNode = addNode({"Float", {}, {PinType::of<float>()}}, { x,    y });
         auto boolNode  = addNode({"Bool",  {}, {PinType::of<bool>()}}, { x+=s, y });
         auto intNode   = addNode({"Int",   {}, {PinType::of<int>()}},  { x+=s, y });
 
         x = 0.2f, y = 0.4f;
 
-        auto xfm = addNode({"Transform (f)->(i, f)",
-                           {PinType::of<float>()},
+        auto xfm = addNode({"Transform (f, f, f)->(i, f)",
+                           {PinType::of<float>(), PinType::of<float>(), PinType::of<float>()},
                            {PinType::of<int>(), PinType::of<float>()}}, { x, y });
 
         addConnection(floatNode->getOutput(0), xfm->getInput(0));
-        addConnection(boolNode->getOutput(0),  xfm->getInput(0));
-        addConnection(intNode->getOutput(0),   xfm->getInput(0));
+        addConnection(boolNode-> getOutput(0), xfm->getInput(1));
+        addConnection(intNode->  getOutput(0), xfm->getInput(2));
 
         x = 0.2f, y = 0.6f;
 
         auto sink = addNode({"Sink (f, i)->()",
-                           {PinType::of<float>(), PinType::of<int>()},
+                           {PinType::of<float>(), PinType::of<int>(), PinType::of<int>(), PinType::of<int>()},
                            {}},                                         { x, y });
+
+        addConnection(floatNode->getOutput(0), sink->getInput(1));
+        addConnection(boolNode-> getOutput(0), sink->getInput(2));
+        addConnection(intNode->  getOutput(0), sink->getInput(3));
+
 
         addConnection(xfm->getOutput(0), sink->getInput(0));
         addConnection(xfm->getOutput(1), sink->getInput(1));  // Will not connect, silently ignored
@@ -321,7 +326,7 @@ public:
         if (!output || !input) {
             return nullptr;
         }
-        if (!input->canRecieveConnectionFrom(*output)) {
+        if (!canConnect(output.get(), input.get())) {
             return nullptr;
         }
         Connections.push_back(std::make_shared<Connection>(std::move(output), std::move(input)));
@@ -380,8 +385,16 @@ public:
         return Connections;
     }
 
-    Connection* findConnection(const Connection* connection) {
-        if (auto it = std::find_if(Connections.begin(), Connections.end(), [connection](const auto& c) { return c.get() == connection; });
+    // Connection* findConnection(const Connection* connection) {
+    //     if (auto it = std::find_if(Connections.begin(), Connections.end(), [connection](const auto& c) { return c.get() == connection; });
+    //         it != Connections.end()) {
+    //         return it->get();
+    //     }
+    //     return nullptr;
+    // }
+
+    Connection* findConnection(const Connection& connection) {
+        if (auto it = std::find_if(Connections.begin(), Connections.end(), [connection](const auto& c) { return *c == connection; });
             it != Connections.end()) {
             return it->get();
         }
@@ -390,7 +403,13 @@ public:
 
     bool canConnect(Pin* output, Pin* input) {
         if (!output || !input) return false;
-        return output->canRecieveConnectionFrom(*input);
+        // check if input is not already connected
+        for (const auto& connection : Connections) {
+            if (connection->Destination.lock().get() == input) {
+                return false;
+            }
+        }
+        return input->canRecieveConnectionFrom(*output);
     }
 
     void removeConnection(const Connection* connection) {

@@ -33,8 +33,9 @@ struct GraphEditorPanel::PinComponent final : public Component,
         auto h = (float) getHeight();
 
         Path p;
-        p.addEllipse(w * 0.25f, h * 0.25f, w * 0.5f, h * 0.5f);
-        p.addRectangle(w * 0.4f, isInput ? (0.5f * h) : 0.0f, w * 0.2f, h * 0.5f);
+        p.addEllipse(0, 0, w, h);
+        // p.addEllipse(w * 0.25f, h * 0.25f, w * 0.5f, h * 0.5f);
+        // p.addRectangle(w * 0.4f, isInput ? (0.5f * h) : 0.0f, w * 0.2f, h * 0.5f);
 
         auto colour = Colours::green;
         // auto colour = (pin.isMIDI() ? Colours::red : Colours::green);
@@ -42,6 +43,11 @@ struct GraphEditorPanel::PinComponent final : public Component,
 
         g.setColour(colour);
         g.fillPath(p);
+
+        // put text in the centre of circle
+        g.setColour(Colours::white);
+        g.setFont(12.0f);
+        g.drawText(pin->getName(), getLocalBounds(), Justification::centred);
     }
 
     void mouseDown(const MouseEvent& e) override {
@@ -277,7 +283,7 @@ struct GraphEditorPanel::ConnectorComponent final : public Component,
         , graph(p.graph)
         , connection(conn)
     {
-        setAlwaysOnTop(true);
+        // setAlwaysOnTop(true);
     }
 
     void setInput(std::shared_ptr<Pin> newSource) {
@@ -525,38 +531,40 @@ void GraphEditorPanel::changeListenerCallback (ChangeBroadcaster*) {
 
 void GraphEditorPanel::updateComponents() {
     // 1. Check deleted nodes and connections
+    for (int i = connectors.size(); --i >= 0;)
+        if (!graph.findConnection(connectors.getUnchecked(i)->connection))
+            connectors.remove(i);
 
     for (int i = nodes.size(); --i >= 0;)
-        if (graph.findNode(nodes[i]->node.get()) == nullptr)
-            nodes.remove (i);
-
-    // for (int i = connectors.size(); --i >= 0;)
-    //     if (! graph.graph.isConnected (connectors.getUnchecked (i)->connection))
-    //         connectors.remove (i);
+        if (!graph.findNode(nodes[i]->node.get()))
+            nodes.remove(i);
 
     // 2. Update nodes and connections
     for (auto* fc : nodes) {
         fc->update();
+        fc->toFront(false);
     }
 
-    for (auto* cc : connectors)
+    for (auto* cc : connectors) {
         cc->update();
+        cc->toBack();
+    }
 
     // 3. Add new nodes and connections
-    for (const auto& node : graph.getNodes()) {
-        if (getComponentForNode(node.get()) != nullptr)
-            continue;
-
-        auto* comp = nodes.add(new NodeComponent(*this, node));
-        addAndMakeVisible(comp);
-        comp->update();
-    }
-
     for (const auto& c : graph.getConnections()) {
         if (getComponentForConnection(c.get()) == nullptr) {
             auto* comp = connectors.add(new ConnectorComponent(*this, *c));
             addAndMakeVisible(comp);
             comp->update();
+            comp->toBack();
+        }
+    }
+    for (const auto& node : graph.getNodes()) {
+        if (getComponentForNode(node.get()) == nullptr) {
+            auto* comp = nodes.add(new NodeComponent(*this, node));
+            addAndMakeVisible(comp);
+            comp->update();
+            comp->toFront(false);
         }
     }
 }

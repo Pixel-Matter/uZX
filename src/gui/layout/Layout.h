@@ -7,113 +7,169 @@
 // This is a simplified version of the layout system
 // ****************************************************************************
 
+
 namespace Layout {
 
-// ==============================
-//  Example usage:
-// ==============================
-/**
-    lo::Vertical editor_layout {
-        Toolbar {} >> 32_px,
-        lo::Horizontal {
-            LeftDock {} >> 300_px,
-            VideoViewer {} >> 1.0_fr,
-            RightDock {} >> 300_px
-        } >> fill,
-        ResizerBar {},
-        TransportBar {} >> 32_px,
-        Timeline {} >> 300_px
+struct LayoutItem {
+    GridItem item;
+    Grid::TrackInfo track;
+};
+
+class Layout {
+protected:
+    enum class Direction {
+        Horizontal,
+        Vertical
     };
-*/
-// ==============================
 
+    Direction direction_;
 
-// Base classes for layout elements
-class LayoutElement {
+    Layout(Direction direction) noexcept
+        : direction_ {direction}
+    {
+        gridInit();
+    }
+
+    template<typename... Sizes>
+    explicit Layout(Direction direction, Sizes&&... size) noexcept
+        : Layout {direction}
+    {
+        (addSection(std::forward<Sizes>(size)), ...);
+    }
+
 public:
-    LayoutElement() = default;  // TODO remove
-    explicit LayoutElement(const LayoutElement&) = default;
-    LayoutElement& operator=(const LayoutElement&) = default;
-    virtual ~LayoutElement() = default;
-};
-
-
-class JuceComponent : public LayoutElement {
-public:
-    explicit JuceComponent(juce::Component* component) : component_(component) {}
-    juce::Component* getComponent() { return component_; }
-private:
-    juce::Component* component_;
-};
-
-
-class LayoutContainer : public LayoutElement {
-public:
-    template<typename... Children>
-    explicit LayoutContainer(Children&&... children) {
-        (add(std::forward<Children>(children)), ...);
+    template<typename... Sizes>
+    void addSections(Sizes&&... size) noexcept {
+        (addSection(std::forward<Sizes>(size)), ...);
     }
 
     template<typename T>
-    T& add(T&& child) {
-        auto ptr = std::make_unique<T>(std::move(child));
-        T& ref = *ptr;
-        children_.push_back(std::move(ptr));
-        return ref;
+    void addSection(T&& size) noexcept {
+        addGridTrackInfo(Grid::TrackInfo(std::forward<T>(size)));
     }
-protected:
-    std::vector<std::unique_ptr<LayoutElement>> children_;
+
+    template<typename... Components>
+    void addComponents(Components&... components) noexcept {
+        (addGridItem(GridItem(components)), ...);
+    }
+
+    template<typename... Items>
+    void addItems(Items&&... items) noexcept {
+        (addGridTrackInfo(std::move(items.track)), ...);
+        (addGridItem(std::move(items.item)), ...);
+    }
+
+    void performLayout(Rectangle<int> bounds) noexcept {
+        grid_.performLayout(bounds);
+    }
+
+private:
+    Grid grid_;
+
+    void gridInit() noexcept {
+        if (direction_ == Direction::Vertical) {
+            grid_.templateColumns = { Grid::TrackInfo(1_fr) };
+        } else {
+            grid_.templateRows = { Grid::TrackInfo(1_fr) };
+        }
+    }
+
+    void addGridItem(GridItem&& item) noexcept {
+        grid_.items.add(std::move(item));
+    }
+
+    void addGridTrackInfo(Grid::TrackInfo&& track) noexcept {
+        if (direction_ == Direction::Vertical) {
+            grid_.templateRows.add(std::move(track));
+        } else {
+            grid_.templateColumns.add(std::move(track));
+        }
+    }
+
 };
 
-// // Size specifiers
-// struct Fill {};
 
-// struct Fixed {
-//     int size;
-//     constexpr explicit Fixed(int s) : size(s) {}
-// };
-
-// struct Resizable {
-//     int initial_size;
-//     constexpr explicit Resizable(int s) : initial_size(s) {}
-// };
-
-// // Operator for size specification
-// template<typename T>
-// struct SizedElement {
-//     T element;
-//     int size;
-
-//     SizedElement(int s, T&& e) : element(std::move(e)), size(s) {}
-// };
-
-// User-defined literal for pixels
-// constexpr auto operator""_px(unsigned long long size) {
-//     return Fixed(static_cast<int>(size));
-// }
-
-// Containers
-class Vertical : public LayoutContainer {
+class VerticalLayout : public Layout {
 public:
-    using LayoutContainer::LayoutContainer;
+    template<typename... Sizes>
+    explicit VerticalLayout(Sizes&&... size) noexcept
+        : Layout {Direction::Vertical, std::forward<Sizes>(size)...}
+    {}
 };
 
-class Horizontal : public LayoutContainer {
+class HorizontalLayout : public Layout {
 public:
-    using LayoutContainer::LayoutContainer;
+    template<typename... Sizes>
+    explicit HorizontalLayout(Sizes&&... size) noexcept
+        : Layout {Direction::Horizontal, std::forward<Sizes>(size)...}
+    {}
 };
 
+namespace Operators {
 
-// // Operator overloads for intuitive syntax
-// template<typename T>
-// auto operator>>(T&& component, Fixed size) {
-//     return SizedElement(size.size, std::forward<T>(component));
-// }
+// Forward declare all operator>> overloads
+LayoutItem operator>>(Component& component, Grid::Fr size);
+LayoutItem operator>>(Component& component, Grid::Px size);
+LayoutItem operator>>(Component* component, Grid::Fr size);
+LayoutItem operator>>(Component* component, Grid::Px size);
 
-// template<typename T>
-// auto operator>>(T&& component, Resizable size) {
-//     return SizedElement(size.initial_size, std::forward<T>(component));
-// }
+// Define the operators
+LayoutItem operator>>(Component& component, Grid::Fr size) {
+    return {
+        GridItem(component),
+        Grid::TrackInfo(size)
+    };
+}
+
+LayoutItem operator>>(Component& component, Grid::Px size) {
+    return {
+        GridItem(component),
+        Grid::TrackInfo(size)
+    };
+}
+
+LayoutItem operator>>(Component* component, Grid::Fr size) {
+    return {
+        GridItem(component),
+        Grid::TrackInfo(size)
+    };
+}
+
+LayoutItem operator>>(Component* component, Grid::Px size) {
+    return {
+        GridItem(component),
+        Grid::TrackInfo(size)
+    };
+}
+
+}  // namespace Layout::Operators
+}  // namespace Layout
 
 
-} // namespace Layout
+namespace Helpers {
+
+template<class LayoutType, class... Components>
+void addToLayoutAndMakeVisible(Component& parent, LayoutType& layout, Components&&... components) {
+    (parent.addAndMakeVisible(std::forward<Components>(components)), ...);
+    layout.addComponents(components...);
+}
+
+//==============================================================================
+// Example
+//==============================================================================
+/**
+    Helpers::addLayoutItemsAndMakeVisible(*this, layout,
+        transportBar  >> 32_px,
+        timelinePanel >> 1_fr,
+        footer        >> 32_px
+    );
+*/
+//==============================================================================
+
+template<class LayoutType, typename... Items>
+void addLayoutItemsAndMakeVisible(Component& parent, LayoutType& layout, Items&&... items) noexcept {
+    (parent.addAndMakeVisible(items.item.associatedComponent), ...);
+    layout.addItems(std::forward<Items>(items)...);
+}
+
+} // namespace Helpers

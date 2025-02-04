@@ -312,7 +312,7 @@ public:
 
         x = 0.2f, y = 0.6f;
 
-        auto sink = addNode({"Sink (f, i)->()",
+        auto sink = addNode({"Sink (f, i, i, i)->()",
                            {PinType::of<float>(), PinType::of<int>(), PinType::of<int>(), PinType::of<int>()},
                            {}},                                         { x, y });
 

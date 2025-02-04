@@ -63,6 +63,11 @@ set(SourceFiles
 target_sources(${TARGET_NAME} PRIVATE ${SourceFiles})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES ${SourceFiles})
 
+target_include_directories(${TARGET_NAME}
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
+)
+
 include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
 addModuleSourceTarget()
 

@@ -487,7 +487,7 @@ void GraphEditorPanel::mouseDown(const MouseEvent& e) {
 void GraphEditorPanel::mouseUp(const MouseEvent&) {
 }
 
-void GraphEditorPanel::mouseDrag(const MouseEvent& e) {
+void GraphEditorPanel::mouseDrag(const MouseEvent&) {
 }
 
 void GraphEditorPanel::createNewNode(const NodeType& nodeType, juce::Point<int> position) {
@@ -716,8 +716,8 @@ struct GraphDocumentComponent::TooltipBar final : public Component, private Time
 //                                                         private Button::Listener
 // {
 // public:
-//     explicit TitleBarComponent (GraphDocumentComponent& graphDocumentComponent)
-//         : owner (graphDocumentComponent)
+//     explicit TitleBarComponent (GraphDocumentComponent& GraphDocumentComponent)
+//         : owner (GraphDocumentComponent)
 //     {
 //         static const unsigned char burgerMenuPathData[]
 //             = { 110,109,0,0,128,64,0,0,32,65,108,0,0,224,65,0,0,32,65,98,254,212,232,65,0,0,32,65,0,0,240,65,252,
@@ -858,14 +858,14 @@ bool GraphDocumentComponent::isInterestedInDragSource(const SourceDetails& detai
             && details.description.toString().startsWith("NODE"));
 }
 
-void GraphDocumentComponent::itemDropped(const SourceDetails& details) {
+void GraphDocumentComponent::itemDropped(const SourceDetails&) {
     // don't allow items to be dropped behind the sidebar
     // if (pluginListSidePanel.getBounds().contains (details.localPosition))
     //     return;
 
-    auto nodeTypeIndex = details.description.toString()
-                                .fromFirstOccurrenceOf ("NODE: ", false, false)
-                                .getIntValue();
+    // auto nodeTypeIndex = details.description.toString()
+    //                             .fromFirstOccurrenceOf ("NODE: ", false, false)
+    //                             .getIntValue();
 
     // must be a valid index!
     // jassert (isPositiveAndBelow (nodeTypeIndex, pluginList.getNumTypes()));
@@ -874,7 +874,7 @@ void GraphDocumentComponent::itemDropped(const SourceDetails& details) {
     //                  details.localPosition);
 }
 
-void GraphDocumentComponent::showSidePanel(bool showSettingsPanel) {
+void GraphDocumentComponent::showSidePanel(bool) {
     // pluginListSidePanel.showOrHide (true);
     // checkAvailableWidth();
     // lastOpenedSidePanel = showSettingsPanel ? &mobileSettingsSidePanel

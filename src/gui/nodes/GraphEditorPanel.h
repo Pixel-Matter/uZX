@@ -43,13 +43,13 @@ public:
     void endDraggingConnector (const MouseEvent&);
 
     //==============================================================================
-    MoTool::Nodes::Graph& graph;
 
 private:
     struct NodeComponent;
     struct ConnectorComponent;
     struct PinComponent;
 
+    MoTool::Nodes::Graph& graph;
     OwnedArray<NodeComponent> nodes;
     OwnedArray<ConnectorComponent> connectors;
     std::unique_ptr<ConnectorComponent> draggingConnector;
@@ -60,8 +60,6 @@ private:
     PinComponent* findPinAt (Point<float>) const;
 
     //==============================================================================
-    Point<int> originalTouchPos;
-
     void timerCallback() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GraphEditorPanel)
@@ -86,8 +84,6 @@ public:
 
     //==============================================================================
     void createNewNode (const MoTool::Nodes::NodeType&, Point<int> position);
-    void setDoublePrecision (bool doublePrecision);
-    // bool closeAnyOpenPluginWindows();
 
     //==============================================================================
     std::unique_ptr<MoTool::Nodes::Graph> graph;

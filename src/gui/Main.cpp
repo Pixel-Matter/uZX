@@ -1,21 +1,25 @@
 
 #include "nodes/GraphEditorPanel.h"
+#include "MainDocument.h"
 
 #include <JuceHeader.h>
 
 using namespace juce;
+// namespace te = tracktion::engine;
 
 
 class MainWindow : public DocumentWindow {
 public:
-    MainWindow(String name)
+    MainWindow(String name, te::Engine& engine)
         : DocumentWindow(name,
             Desktop::getInstance().getDefaultLookAndFeel()
                 .findColour(ResizableWindow::backgroundColourId),
             DocumentWindow::allButtons)
+        , engine_(engine)
     {
         setUsingNativeTitleBar(true);
-        setContentOwned(new GraphDocumentComponent(), true);
+        setContentOwned(new MainDocumentComponent(engine_), true);
+        // setContentOwned(new GraphDocumentComponent(), true);
         setResizable(true, true);
         setSize(1024, 740);
         centreWithSize(getWidth(), getHeight());
@@ -27,6 +31,7 @@ public:
     }
 
 private:
+    te::Engine& engine_;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)
 };
 
@@ -40,15 +45,15 @@ public:
         return ProjectInfo::versionString;
     }
 
-    bool moreThanOneInstanceAllowed() override            { return true; }
+    bool moreThanOneInstanceAllowed() override          { return true; }
 
-    void initialise(const String& commandLine) override {
+    void initialise(const String&) override {
         auto title = getApplicationName() + " v" + getApplicationVersion();
-        mainWindow.reset(new MainWindow(title));
+        mainWindow_.reset(new MainWindow(title, engine_));
     }
 
     void shutdown() override {
-        mainWindow = nullptr;
+        mainWindow_ = nullptr;
     }
 
     void systemRequestedQuit() override {
@@ -56,7 +61,8 @@ public:
     }
 
 private:
-    std::unique_ptr<MainWindow> mainWindow;
+    te::Engine engine_ { ProjectInfo::projectName };
+    std::unique_ptr<MainWindow> mainWindow_;
 };
 
 START_JUCE_APPLICATION(MoToolApp)

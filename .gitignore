@@ -33,10 +33,13 @@
 
 # Cmake
 build/
-.vscode/
-.cache/
-.idea/
 CMakeFiles/
+.cache/
+
+# IDE
+.vscode/
+*.code-workspace
+.idea/
 *.user
 
 # MacOs

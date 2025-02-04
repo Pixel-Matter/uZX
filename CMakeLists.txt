@@ -13,3 +13,9 @@ add_subdirectory(third_party/tracktion_engine/modules ./cmake_build_tracktion)
 
 # Add our source
 add_subdirectory(src)
+
+# Add option to build examples
+option(BUILD_TRACKTION_EXAMPLES "Build Tracktion Engine examples" ON)
+if(BUILD_TRACKTION_EXAMPLES)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples)
+endif()

@@ -5,7 +5,6 @@
 #include <memory>
 
 using namespace juce;
-// namespace te = tracktion::engine;
 
 
 class MainWindow : public DocumentWindow {
@@ -28,9 +27,10 @@ public:
 
     ~MainWindow() override {
         if (edit_ != nullptr) {
-            te::EditFileOperations (*edit_).save(true, true, false);
+            te::EditFileOperations(*edit_).save(true, true, false);
             edit_->getTempDirectory(false).deleteRecursively();
         }
+        clearContentComponent();
         engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
     }
 

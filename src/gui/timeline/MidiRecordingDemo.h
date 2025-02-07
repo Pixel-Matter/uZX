@@ -50,49 +50,33 @@ public:
         : engine (e)
         , edit (ed)
     {
-        updatePlayButtonText();
-        updateRecordButtonText();
+        setupComponents();
 
         editNameLabel.setJustificationType(Justification::centred);
         deleteButton.setEnabled(false);
 
-        Helpers::addAndMakeVisible(*this, { &newEditButton, &playPauseButton, &showEditButton,
+        Helpers::addAndMakeVisible(*this, { &newEditButton, &showEditButton,
                                             &recordButton, &newTrackButton, &deleteButton, &editNameLabel,
                                             &insertButton, &showWaveformButton });
-
-        setupComponents();
-
-        // auto d = File::getSpecialLocation(File::tempDirectory).getChildFile("MoTool");
-        // d.createDirectory();
-
-        // auto f = Helpers::findRecentEdit(d);
-        // if (f.existsAsFile())
-        //     createOrLoadEdit(f);
-        // else
-        //     createOrLoadEdit(d.getNonexistentChildFile ("Unnamed", ".motool", false));
-
         setupButtons();
-        setSize (600, 400);
+        updateRecordButtonText();
+        setSize(600, 400);
     }
 
-    // ~MidiRecordingDemo() override {
-    //     te::EditFileOperations (*edit).save (true, true, false);
-    //     engine.getTemporaryFileManager().getTempDirectory().deleteRecursively();
-    // }
+    ~MidiRecordingDemo() override {
+        teardownComponents();
+    }
 
     //==============================================================================
-    void paint (Graphics& g) override
-    {
-        g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
+    void paint (Graphics& g) override {
+        g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
     }
 
-    void resized() override
-    {
+    void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 8;
+        int w = r.getWidth() / 7;
         auto topR = r.removeFromTop (30);
         newEditButton.setBounds (topR.removeFromLeft (w).reduced (2));
-        playPauseButton.setBounds (topR.removeFromLeft (w).reduced (2));
         insertButton.setBounds (topR.removeFromLeft (w).reduced (2));
         recordButton.setBounds (topR.removeFromLeft (w).reduced (2));
         showEditButton.setBounds (topR.removeFromLeft (w).reduced (2));
@@ -114,7 +98,6 @@ private:
     std::unique_ptr<EditComponent> editComponent;
 
     TextButton newEditButton { "New" },
-               playPauseButton { "Play" },
                showEditButton { "Show Edit" },
                newTrackButton { "New Track" },
                deleteButton { "Delete" },
@@ -131,8 +114,7 @@ private:
         edit.getTransport().addChangeListener(this);
         selectionManager.addChangeListener(this);
 
-        editNameLabel.setText(edit.getName(), dontSendNotification);
-        // editNameLabel.setText(te::EditFileOperations(edit).getEditFile().getFileNameWithoutExtension(), dontSendNotification);
+        editNameLabel.setText(te::EditFileOperations(edit).getEditFile().getFileNameWithoutExtension(), dontSendNotification);
         showEditButton.onClick = [this] {
             te::EditFileOperations(edit).save(true, true, false);
             te::EditFileOperations(edit).getEditFile().revealToUser();
@@ -148,14 +130,17 @@ private:
         addAndMakeVisible(*editComponent);
     }
 
+    void teardownComponents() {
+        selectionManager.deselectAll();
+        edit.getTransport().removeChangeListener(this);
+        selectionManager.removeChangeListener(this);
+    }
+
     void setupButtons() {
         // TODO Implement in DocumentWindow
         // newEditButton.onClick = [this] {
         //     // createOrLoadEdit();
         // };
-        playPauseButton.onClick = [this] {
-            EngineHelpers::togglePlay(edit);
-        };
         recordButton.onClick = [this] {
             bool wasRecording = edit.getTransport().isRecording();
             EngineHelpers::toggleRecord(edit);
@@ -202,64 +187,17 @@ private:
         };
     }
 
-    void updatePlayButtonText() {
-        playPauseButton.setButtonText(edit.getTransport().isPlaying() ? "Stop" : "Play");
-    }
-
     void updateRecordButtonText() {
         recordButton.setButtonText(edit.getTransport().isRecording() ? "Abort" : "Record");
     }
 
-    // void createOrLoadEdit (File editFile = {}) {
-    //     if (editFile == File()) {
-    //         FileChooser fc("New Edit", File::getSpecialLocation (File::userDocumentsDirectory), "*.tracktionedit");
-    //         if (fc.browseForFileToSave(true))
-    //             editFile = fc.getResult();
-    //         else
-    //             return;
-    //     }
-
-    //     selectionManager.deselectAll();
-    //     editComponent = nullptr;
-
-    //     if (editFile.existsAsFile())
-    //         edit = te::loadEditFromFile (engine, editFile);
-    //     else
-    //         edit = te::createEmptyEdit (engine, editFile);
-
-    //     edit->editFileRetriever = [editFile] { return editFile; };
-    //     edit->playInStopEnabled = true;
-
-    //     auto& transport = edit->getTransport();
-    //     transport.addChangeListener (this);
-
-    //     editNameLabel.setText (editFile.getFileNameWithoutExtension(), dontSendNotification);
-    //     showEditButton.onClick = [this, editFile]
-    //     {
-    //         te::EditFileOperations (*edit).save (true, true, false);
-    //         editFile.revealToUser();
-    //     };
-
-    //     createTracksAndAssignInputs();
-
-    //     te::EditFileOperations (*edit).save (true, true, false);
-
-    //     editComponent = std::make_unique<EditComponent> (*edit, selectionManager);
-    //     editComponent->getEditViewState().showFooters = true;
-    //     editComponent->getEditViewState().showMidiDevices = true;
-    //     editComponent->getEditViewState().showWaveDevices = false;
-
-    //     addAndMakeVisible (*editComponent);
-    // }
-
     void changeListenerCallback (ChangeBroadcaster* source) override
     {
         if (source == &edit.getTransport()) {
-            updatePlayButtonText();
             updateRecordButtonText();
         } else if (source == &selectionManager) {
-            auto sel = selectionManager.getSelectedObject (0);
-            deleteButton.setEnabled (dynamic_cast<te::Clip*> (sel) != nullptr
+            auto sel = selectionManager.getSelectedObject(0);
+            deleteButton.setEnabled(dynamic_cast<te::Clip*> (sel) != nullptr
                                      || dynamic_cast<te::Track*> (sel) != nullptr
                                      || dynamic_cast<te::Plugin*> (sel));
         }
@@ -267,8 +205,8 @@ private:
 
     void createTracksAndAssignInputs() {
         for (auto& midiIn : engine.getDeviceManager().getMidiInDevices()) {
-            midiIn->setMonitorMode (te::InputDevice::MonitorMode::automatic);
-            midiIn->setEnabled (true);
+            midiIn->setMonitorMode(te::InputDevice::MonitorMode::automatic);
+            midiIn->setEnabled(true);
         }
 
         edit.getTransport().ensureContextAllocated();

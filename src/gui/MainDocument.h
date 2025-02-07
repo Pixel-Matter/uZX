@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include <common/Utilities.h>
+#include <memory>
 
 #include "timeline/MidiPlaybackDemo.h"
 #include "timeline/MidiRecordingDemo.h"
@@ -14,16 +15,22 @@
 using namespace juce;
 namespace lo = Layout;
 
+//==============================================================================
+/** MainDocumentComponent
+    Ideal modular interface:
+    We have a timeline panel, transport bar, and footer bar
+    Timeline can playback and record,
+    we can hear the audio and view the display (not shown)
+*/
 
 class MainDocumentComponent: public Component {
 public:
 
-    explicit MainDocumentComponent(te::Engine& engine)
+    explicit MainDocumentComponent(te::Engine& engine, te::Edit& edit)
         : engine_ {engine}
+        , edit_ {edit}
     {
-        EngineHelpers::getOrInsertAudioTrackAt(edit_, 0);
         using namespace Layout::Operators;  // for operator>>
-
         Helpers::addLayoutItemsAndMakeVisible(*this, layout_,
             transportBar_  >> 32_px,
             timelinePanel_ >> 1_fr,
@@ -32,8 +39,6 @@ public:
     }
 
     ~MainDocumentComponent() override {
-        edit_.getTempDirectory(false).deleteRecursively();
-        engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
     }
 
     void resized() override {
@@ -42,12 +47,13 @@ public:
 
 private:
     te::Engine& engine_;
-    te::Edit edit_ {engine_, te::Edit::EditRole::forEditing};
+    te::Edit& edit_;
+    // std::unique_ptr<EditComponent> editComponent_;
 
-    TransportBar transportBar_       {edit_};
+    TransportBar transportBar_ {edit_};
     // TimelinePanel timelinePanel_     {edit_};
-    MidiPlaybackDemo timelinePanel_  {engine_};
-    // MidiRecordingDemo timelinePanel_ {engine_};
+    // MidiPlaybackDemo timelinePanel_  {engine_};
+    MidiRecordingDemo timelinePanel_ {engine_, edit_};
     FooterBar footer_                {engine_};
 
     lo::VerticalLayout layout_;

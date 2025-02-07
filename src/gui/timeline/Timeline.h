@@ -6,6 +6,26 @@
 
 using namespace juce;
 
+
+//==============================================================================
+/** TimelinePanel
+    Ideal modular interface:
+    Timeline consist of tracks one under the other
+    Tracks can be sorted and moved around, added and deleted
+    Dragging from track to empty space creates a new track
+    Track can be one of:
+      - Marker: for labeling sections of the timeline
+      - Audio/Video: for prototyping
+      - MIDI: for prototyping or for downmixing to PSG tracks
+      - MIDI FX: for processing MIDI events
+      - PSG: music data for playback on a machine
+      - FX: Python, Lua, JS, C++, Asm plugins, for video effects prototyping
+      - Machine: emulated machine with code and data
+
+    == TODO ==
+    - Implement track adding and deleting
+*/
+
 class TimelinePanel: public Component,
                     private ChangeListener {
 public:
@@ -26,7 +46,6 @@ public:
     }
 
     void changeListenerCallback (ChangeBroadcaster*) override {
-        // updatePlayButtonText();
     }
 
 private:

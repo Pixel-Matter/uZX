@@ -1,8 +1,8 @@
 
-#include "nodes/GraphEditorPanel.h"
 #include "MainDocument.h"
 
 #include <JuceHeader.h>
+#include <memory>
 
 using namespace juce;
 // namespace te = tracktion::engine;
@@ -18,12 +18,20 @@ public:
         , engine_(engine)
     {
         setUsingNativeTitleBar(true);
-        setContentOwned(new MainDocumentComponent(engine_), true);
-        // setContentOwned(new GraphDocumentComponent(), true);
+        setEdit(createOrLoadEdit(getRecentEditFile()));
+
         setResizable(true, true);
         setSize(1024, 740);
         centreWithSize(getWidth(), getHeight());
         setVisible(true);
+    }
+
+    ~MainWindow() override {
+        if (edit_ != nullptr) {
+            te::EditFileOperations (*edit_).save(true, true, false);
+            edit_->getTempDirectory(false).deleteRecursively();
+        }
+        engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
     }
 
     void closeButtonPressed() override {
@@ -32,6 +40,56 @@ public:
 
 private:
     te::Engine& engine_;
+    std::unique_ptr<te::Edit> edit_;
+
+    String getApplicationExtension() {
+        return ".motool";
+    }
+
+    File getRecentEditFile() {
+        auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(ProjectInfo::projectName);
+        d.createDirectory();
+
+        auto f = Helpers::findRecentEdit(d);
+        if (f.existsAsFile()) {
+            return f;
+        } else {
+            return d.getNonexistentChildFile("Test", getApplicationExtension(), false);
+        }
+    }
+
+    std::unique_ptr<te::Edit> createOrLoadEdit(File editFile = {}) {
+        if (editFile == File()) {
+            FileChooser fc ("New Edit", File::getSpecialLocation (File::userDocumentsDirectory), "*" + getApplicationExtension());
+            if (fc.browseForFileToSave(true))
+                editFile = fc.getResult();
+            else
+                return {};
+        }
+
+        std::unique_ptr<te::Edit> edit;
+        if (editFile.existsAsFile())
+            edit = te::loadEditFromFile(engine_, editFile);
+        else
+            edit = te::createEmptyEdit(engine_, editFile);
+
+        edit->editFileRetriever = [editFile] { return editFile; };
+        edit->playInStopEnabled = true;
+        return edit;
+    }
+
+    void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) {
+        jassert(edit != nullptr);
+
+        if (savePrev && edit_ != nullptr) {
+            te::EditFileOperations(*edit_).save(true, true, false);
+        }
+        clearContentComponent();
+
+        edit_ = std::move(edit);
+        setContentOwned(new MainDocumentComponent(engine_, *edit_), true);
+    }
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)
 };
 
@@ -49,7 +107,7 @@ public:
 
     void initialise(const String&) override {
         auto title = getApplicationName() + " v" + getApplicationVersion();
-        mainWindow_.reset(new MainWindow(title, engine_));
+        mainWindow_ = std::make_unique<MainWindow>(title, engine_);
     }
 
     void shutdown() override {

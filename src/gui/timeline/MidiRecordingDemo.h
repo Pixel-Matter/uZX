@@ -55,8 +55,8 @@ public:
         editNameLabel.setJustificationType(Justification::centred);
         deleteButton.setEnabled(false);
 
-        Helpers::addAndMakeVisible(*this, { &newEditButton, &showEditButton,
-                                            &recordButton, &newTrackButton, &deleteButton, &editNameLabel,
+        Helpers::addAndMakeVisible(*this, { &showEditButton, &recordButton, &newTrackButton,
+                                            &deleteButton, &editNameLabel,
                                             &insertButton, &showWaveformButton });
         setupButtons();
         updateRecordButtonText();
@@ -74,9 +74,8 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 7;
+        int w = r.getWidth() / 6;
         auto topR = r.removeFromTop (30);
-        newEditButton.setBounds (topR.removeFromLeft (w).reduced (2));
         insertButton.setBounds (topR.removeFromLeft (w).reduced (2));
         recordButton.setBounds (topR.removeFromLeft (w).reduced (2));
         showEditButton.setBounds (topR.removeFromLeft (w).reduced (2));
@@ -97,8 +96,7 @@ private:
     te::Edit& edit;
     std::unique_ptr<EditComponent> editComponent;
 
-    TextButton newEditButton { "New" },
-               showEditButton { "Show Edit" },
+    TextButton showEditButton { "Show Edit" },
                newTrackButton { "New Track" },
                deleteButton { "Delete" },
                recordButton { "Record" },
@@ -137,10 +135,6 @@ private:
     }
 
     void setupButtons() {
-        // TODO Implement in DocumentWindow
-        // newEditButton.onClick = [this] {
-        //     // createOrLoadEdit();
-        // };
         recordButton.onClick = [this] {
             bool wasRecording = edit.getTransport().isRecording();
             EngineHelpers::toggleRecord(edit);
@@ -166,7 +160,6 @@ private:
             clip->setMidiChannel(te::MidiChannel(1));
         };
         newTrackButton.onClick = [this] {
-            DBG("Edit size " << getAudioTracks(edit).size());
             edit.ensureNumberOfAudioTracks(getAudioTracks(edit).size() + 1);
         };
         deleteButton.onClick = [this]{

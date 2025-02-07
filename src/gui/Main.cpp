@@ -11,10 +11,10 @@ using namespace MoTool::Commands;
 
 namespace {
 
-static inline constexpr auto APP_EXTENSION = ".motool";
+static inline constexpr auto EDIT_FILE_SUFFIX = ".motool";
 
 static String getAppFileGlob() {
-    return "*" + String(APP_EXTENSION);
+    return "*" + String(EDIT_FILE_SUFFIX);
 }
 
 static inline File findRecentEdit(const File& dir, const String& fileGlob) {
@@ -41,7 +41,7 @@ static File getRecentEditFile() {
 static File getTempEditFile() {
     auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(ProjectInfo::projectName);
     d.createDirectory();
-    return d.getNonexistentChildFile("Unnamed", APP_EXTENSION, false);
+    return d.getNonexistentChildFile("Unnamed", EDIT_FILE_SUFFIX, false);
 }
 
 static File getStartupEditFile() {
@@ -66,13 +66,21 @@ public:
         , engine_(engine)
     {
         setUsingNativeTitleBar(true);
-        setSize(1024, 740); // set in setEdit
+        setSize(1024, 740);
         setResizable(true, true);
         centreWithSize(getWidth(), getHeight());
 
         setEdit(createOrLoadEdit(getStartupEditFile()));
         commandManager.initializeWithTarget(this);
-        setMenuBar(this);
+        #if JUCE_MAC
+            setMacMainMenu (this);
+        #else
+            setMenuBar (this);
+        #endif
+        // Install key mappings
+        commandManager.getKeyMappings()->resetToDefaultMappings();
+        addKeyListener(commandManager.getKeyMappings());
+
         setVisible(true);
     }
 
@@ -81,6 +89,12 @@ public:
             te::EditFileOperations(*edit_).save(true, true, false);
             edit_->getTempDirectory(false).deleteRecursively();
         }
+        removeKeyListener(commandManager.getKeyMappings());
+        #if JUCE_MAC
+            setMacMainMenu(nullptr);
+        #else
+            setMenuBar(nullptr);
+        #endif
         clearContentComponent();
         engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
     }
@@ -123,6 +137,10 @@ public:
                 result.setActive(edit_ != nullptr);
                 break;
 
+            case AppCommands::fileReveal:
+                result.setActive(edit_ != nullptr);
+                break;
+
             case AppCommands::editUndo:
                 result.setActive(edit_ != nullptr && edit_->getUndoManager().canUndo());
                 break;
@@ -131,9 +149,9 @@ public:
                 result.setActive(edit_ != nullptr && edit_->getUndoManager().canRedo());
                 break;
 
-            // case AppCommands::transportPlay:
-            //     result.setActive(edit_ != nullptr && !edit_->getTransport().isPlaying());
-            //     break;
+            case AppCommands::transportPlay:
+                result.setActive(edit_ != nullptr);
+                break;
 
             case AppCommands::transportRecord:
                 result.setActive(edit_ != nullptr && !edit_->getTransport().isRecording());
@@ -168,15 +186,51 @@ public:
                 break;
 
             case AppCommands::fileSaveAs:
+                handleSaveAs();
+                break;
+
+            case AppCommands::fileReveal:
                 if (edit_ != nullptr) {
-                    te::EditFileOperations(*edit_).saveAs();
+                    te::EditFileOperations(*edit_).save(false, true, false);
+                    te::EditFileOperations(*edit_).getEditFile().revealToUser();
                 }
                 break;
 
-            // ... other command handlers
-
             case AppCommands::fileQuit:
                 JUCEApplication::getInstance()->systemRequestedQuit();
+                break;
+
+            case AppCommands::editUndo:
+                if (edit_ != nullptr) {
+                    edit_->getUndoManager().undo();
+                }
+                break;
+
+            case AppCommands::editRedo:
+                if (edit_ != nullptr) {
+                    edit_->getUndoManager().redo();
+                }
+                break;
+
+            case AppCommands::transportPlay:
+                handlePlayPause();
+                break;
+
+            case AppCommands::transportRecord:
+                if (edit_ != nullptr) {
+                    auto& transport = edit_->getTransport();
+                    if (transport.isRecording()) {
+                        transport.stop(true, true);
+                    } else {
+                        transport.record(false);
+                    }
+                }
+                break;
+
+            case AppCommands::transportRewind:
+                if (edit_ != nullptr) {
+                    edit_->getTransport().setPosition(te::TimePosition::fromSeconds(0.0));
+                }
                 break;
 
             default:
@@ -204,6 +258,29 @@ private:
         }
     }
 
+    void handleSaveAs() {
+        if (edit_ == nullptr) return;
+
+        auto efo = te::EditFileOperations(*edit_);
+        auto newEditName = te::getNonExistentSiblingWithIncrementedNumberSuffix(efo.getEditFile(), false);
+        juce::FileChooser chooser("Save As...", newEditName, getAppFileGlob());
+
+        if (chooser.browseForFileToSave(false)) {
+            efo.saveAs(chooser.getResult().withFileExtension(EDIT_FILE_SUFFIX));
+        }
+    }
+
+    void handlePlayPause() {
+        if (edit_ == nullptr) return;
+
+        auto& transport = edit_->getTransport();
+        if (transport.isPlaying()) {
+            transport.stop(false, true);
+        } else {
+            transport.play(false);
+        }
+    }
+
     std::unique_ptr<te::Edit> createOrLoadEdit(File editFile) {
         std::unique_ptr<te::Edit> edit;
         if (editFile.existsAsFile())
@@ -225,6 +302,7 @@ private:
         clearContentComponent();
 
         edit_ = std::move(edit);
+        setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
         setContentOwned(new MainDocumentComponent(engine_, *edit_), true);
         setSize(w, h);
         repaint();

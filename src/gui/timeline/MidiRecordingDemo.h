@@ -52,11 +52,9 @@ public:
     {
         setupComponents();
 
-        editNameLabel.setJustificationType(Justification::centred);
         deleteButton.setEnabled(false);
 
-        Helpers::addAndMakeVisible(*this, { &showEditButton, &recordButton, &newTrackButton,
-                                            &deleteButton, &editNameLabel,
+        Helpers::addAndMakeVisible(*this, { &recordButton, &newTrackButton, &deleteButton,
                                             &insertButton, &showWaveformButton });
         setupButtons();
         updateRecordButtonText();
@@ -74,16 +72,13 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 6;
+        int w = r.getWidth() / 5;
         auto topR = r.removeFromTop (30);
         insertButton.setBounds (topR.removeFromLeft (w).reduced (2));
         recordButton.setBounds (topR.removeFromLeft (w).reduced (2));
-        showEditButton.setBounds (topR.removeFromLeft (w).reduced (2));
         newTrackButton.setBounds (topR.removeFromLeft (w).reduced (2));
         deleteButton.setBounds (topR.removeFromLeft (w).reduced (2));
         showWaveformButton.setBounds (topR.removeFromLeft (w).reduced (2));
-        topR = r.removeFromTop (30);
-        editNameLabel.setBounds (topR);
 
         if (editComponent != nullptr)
             editComponent->setBounds (r);
@@ -96,12 +91,10 @@ private:
     te::Edit& edit;
     std::unique_ptr<EditComponent> editComponent;
 
-    TextButton showEditButton { "Show Edit" },
-               newTrackButton { "New Track" },
+    TextButton newTrackButton { "New Track" },
                deleteButton { "Delete" },
                recordButton { "Record" },
                insertButton { "Insert MIDI Clip" };
-    Label editNameLabel { "No Edit Loaded" };
     ToggleButton showWaveformButton { "Show Waveforms" };
 
     //==============================================================================
@@ -111,12 +104,6 @@ private:
 
         edit.getTransport().addChangeListener(this);
         selectionManager.addChangeListener(this);
-
-        editNameLabel.setText(te::EditFileOperations(edit).getEditFile().getFileNameWithoutExtension(), dontSendNotification);
-        showEditButton.onClick = [this] {
-            te::EditFileOperations(edit).save(true, true, false);
-            te::EditFileOperations(edit).getEditFile().revealToUser();
-        };
 
         createTracksAndAssignInputs();
         te::EditFileOperations(edit).save(true, true, false);
@@ -142,15 +129,14 @@ private:
                 te::EditFileOperations(edit).save(true, true, false);
         };
         insertButton.onClick = [this] {
-            double insertTime = 5.0;  // TODO use current time
-            auto track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
-
             auto seq = readMidi(MIDI_CLIP_DATA, 1);
             auto len = seq.getEndTime();
 
-            auto time = tracktion::TimeRange(tracktion::TimePosition::fromSeconds(insertTime), tracktion::TimeDuration::fromSeconds(len));
-
+            auto track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
             auto valueTree = juce::ValueTree(te::IDs::MIDICLIP);
+
+            double insertTime = edit.getTransport().getPosition().inSeconds();
+            auto time = tracktion::TimeRange(tracktion::TimePosition::fromSeconds(insertTime), tracktion::TimeDuration::fromSeconds(len));
             te::MidiClip* clip = dynamic_cast<te::MidiClip*>
                                 (track->insertClipWithState (valueTree, "Clip", te::TrackItem::Type::midi,
                                                              { time, tracktion::TimeDuration::fromSeconds(0.0) }, true, false));

@@ -24,6 +24,7 @@ public:
         fileOpen,
         fileSave,
         fileSaveAs,
+        fileReveal,
         fileQuit,
 
         // Edit Menu
@@ -39,6 +40,10 @@ public:
         transportRewind,
         transportLoop,
 
+        // Settings Menu
+        settingsAudioMidi   = 300,
+        settingsPlugins,
+
         // Help Menu
         helpAbout           = 1000
 
@@ -52,9 +57,10 @@ public:
     // Get all commands
     static Array<CommandID> getCommandIDs() {
         CommandID ids[] = {
-            fileNew, fileOpen, fileSave, fileSaveAs, fileQuit,
+            fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileQuit,
             editUndo, editRedo, editCut, editCopy, editPaste,
             transportPlay, transportRecord, transportRewind, transportLoop,
+            settingsAudioMidi, settingsPlugins,
             helpAbout
         };
 
@@ -69,6 +75,7 @@ public:
             menu.addSeparator();
             menu.addCommandItem(manager, AppCommands::fileSave);
             menu.addCommandItem(manager, AppCommands::fileSaveAs);
+            menu.addCommandItem(manager, AppCommands::fileReveal);
             menu.addSeparator();
             menu.addCommandItem(manager, AppCommands::fileQuit);
         } else if (menuName == "Edit") {
@@ -84,6 +91,9 @@ public:
             menu.addCommandItem(manager, AppCommands::transportRewind);
             menu.addSeparator();
             menu.addCommandItem(manager, AppCommands::transportLoop);
+        } else if (menuName == "Settings") {
+            menu.addCommandItem(manager, AppCommands::settingsAudioMidi);
+            menu.addCommandItem(manager, AppCommands::settingsPlugins);
         } else if (menuName == "Help") {
             menu.addCommandItem(manager, AppCommands::helpAbout);
         }
@@ -111,6 +121,10 @@ public:
             case fileSaveAs:
                 result.setInfo("Save As...", "Save the current edit with a new name", "File", 0);
                 result.addDefaultKeypress('s', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
+                break;
+
+            case fileReveal:
+                result.setInfo("Reveal", "Reveal the current edit in Finder", "File", 0);
                 break;
 
             case fileQuit:
@@ -163,6 +177,15 @@ public:
             case transportLoop:
                 result.setInfo("Loop", "Toggle loop playback", "Transport", 0);
                 result.addDefaultKeypress('l', ModifierKeys::commandModifier);
+                break;
+
+            // Settings commands
+            case settingsAudioMidi:
+                result.setInfo("Audio/MIDI", "Open audio and MIDI settings", "Settings", 0);
+                break;
+
+            case settingsPlugins:
+                result.setInfo("Plugins", "Open plugin manager", "Settings", 0);
                 break;
 
             // Help commands

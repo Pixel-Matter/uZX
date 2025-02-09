@@ -40,10 +40,10 @@ constexpr bool is_base64(unsigned char c) {
     return (isalnum(c) || (c == '+') || (c == '/'));
 }
 
-constexpr std::uint8_t base64_decode_char(char c) {
-    if (c >= 'A' && c <= 'Z') return static_cast<std::uint8_t>(c - 'A');
-    if (c >= 'a' && c <= 'z') return static_cast<std::uint8_t>(c - 'a' + 26);
-    if (c >= '0' && c <= '9') return static_cast<std::uint8_t>(c - '0' + 52);
+constexpr std::uint32_t b64DecodeChar(char c) {
+    if (c >= 'A' && c <= 'Z') return static_cast<std::uint32_t>(c - 'A');
+    if (c >= 'a' && c <= 'z') return static_cast<std::uint32_t>(c - 'a' + 26);
+    if (c >= '0' && c <= '9') return static_cast<std::uint32_t>(c - '0' + 52);
     if (c == '+') return 62;
     if (c == '/') return 63;
     return 0; // Handle padding '='
@@ -53,26 +53,24 @@ constexpr std::uint8_t base64_decode_char(char c) {
 
 template <std::size_t N>
 constexpr std::string b64Decode(const char (&input)[N]) {
-    size_t i = 0, j = 0;
-    int padding = 0;
+    size_t i = 0, j = 0, padding = 0;
     std::uint32_t buffer = 0;
     std::string out(b64DecodedSize(input), '\0');
-    // std::string out(b64DecodedSize(input, N), '\0');
 
     for (; i < N - 1; i += 4, j += 3) {
-        buffer = (base64_decode_char(input[i]) << 18) |
-                 (base64_decode_char(input[i + 1]) << 12) |
-                 (base64_decode_char(input[i + 2]) << 6) |
-                  base64_decode_char(input[i + 3]);
+        buffer = (b64DecodeChar(input[i]) << 18) |
+                 (b64DecodeChar(input[i + 1]) << 12) |
+                 (b64DecodeChar(input[i + 2]) << 6) |
+                  b64DecodeChar(input[i + 3]);
 
-        out[j] = (buffer >> 16) & 0xff;
+        out[j] = static_cast<char>((buffer >> 16) & 0xff);
         if (out[i + 2] != '=') {
-            out[j + 1] = (buffer >> 8) & 0xff;
+            out[j + 1] = static_cast<char>((buffer >> 8) & 0xff);
         } else {
             padding++;
         }
         if (out[i + 3] != '=') {
-            out[j + 2] = buffer & 0xff;
+            out[j + 2] = static_cast<char>(buffer & 0xff);
         } else {
             padding++;
         }
@@ -82,7 +80,7 @@ constexpr std::string b64Decode(const char (&input)[N]) {
 
 namespace {
 
-[[maybe_unused]] static void static_test() {
+[[maybe_unused]] static void staticTest() {
     constexpr char example_encoded[] = "aGVsbG8=";
     static_assert(b64DecodedSize(example_encoded) == 5, "Test failed");
     static_assert(b64Decode(example_encoded) == "hello", "Test failed");

@@ -10,9 +10,8 @@
 
 #pragma once
 
-#include "../../util/base64.h"
-#include "juce_core/system/juce_PlatformDefs.h"
-#include "tracktion_engine/tracktion_engine.h"
+#include "../../util/base64_cx.h"
+#include "../Commands.h"
 
 #include <JuceHeader.h>
 #include <common/Utilities.h>
@@ -24,7 +23,7 @@ using namespace juce;
 
 namespace {
 
-inline static const auto MIDI_CLIP_DATA = Util::b64decode("TVRoZAAAAAYAAQACBABNVHJrAAAAKAD/WQL+AAD/WQL+AAD/WAQGAyQIAP9RAwehILAA/1gEBgMMCAD/LwBNVHJrAAAAapUwwDUAsAdkALAnKgCwCkAAsCoAAJAuZIJlgC4AAJAvZIJlgC8AAJAyWoMAgDIAAJA1boYAgDUAAJA6X4MBgDoAAJA5ZIJ4gDkAAJA4ZIJ3gDgAAJA5ZoMEgDkAAJA1aYQKgDUAhg7/LwA=");
+inline static const auto MIDI_CLIP_DATA = MoTool::Util::b64Decode("TVRoZAAAAAYAAQACBABNVHJrAAAAKAD/WQL+AAD/WQL+AAD/WAQGAyQIAP9RAwehILAA/1gEBgMMCAD/LwBNVHJrAAAAapUwwDUAsAdkALAnKgCwCkAAsCoAAJAuZIJlgC4AAJAvZIJlgC8AAJAyWoMAgDIAAJA1boYAgDUAAJA6X4MBgDoAAJA5ZIJ4gDkAAJA4ZIJ3gDgAAJA5ZoMEgDkAAJA1aYQKgDUAhg7/LwA=");
 
 MidiMessageSequence readMidi(const std::string& data, int track) {
     auto stream = juce::MemoryInputStream(&data[0], data.length(), false);
@@ -54,10 +53,9 @@ public:
 
         deleteButton.setEnabled(false);
 
-        Helpers::addAndMakeVisible(*this, { &recordButton, &newTrackButton, &deleteButton,
+        Helpers::addAndMakeVisible(*this, { &newTrackButton, &deleteButton,
                                             &insertButton, &showWaveformButton });
         setupButtons();
-        updateRecordButtonText();
         setSize(600, 400);
     }
 
@@ -72,10 +70,9 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 5;
+        int w = r.getWidth() / 8;
         auto topR = r.removeFromTop (30);
         insertButton.setBounds (topR.removeFromLeft (w).reduced (2));
-        recordButton.setBounds (topR.removeFromLeft (w).reduced (2));
         newTrackButton.setBounds (topR.removeFromLeft (w).reduced (2));
         deleteButton.setBounds (topR.removeFromLeft (w).reduced (2));
         showWaveformButton.setBounds (topR.removeFromLeft (w).reduced (2));
@@ -93,7 +90,6 @@ private:
 
     TextButton newTrackButton { "New Track" },
                deleteButton { "Delete" },
-               recordButton { "Record" },
                insertButton { "Insert MIDI Clip" };
     ToggleButton showWaveformButton { "Show Waveforms" };
 
@@ -122,21 +118,20 @@ private:
     }
 
     void setupButtons() {
-        recordButton.onClick = [this] {
-            bool wasRecording = edit.getTransport().isRecording();
-            EngineHelpers::toggleRecord(edit);
-            if (wasRecording)
-                te::EditFileOperations(edit).save(true, true, false);
-        };
         insertButton.onClick = [this] {
             auto seq = readMidi(MIDI_CLIP_DATA, 1);
             auto len = seq.getEndTime();
 
-            auto track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
+            auto sel = selectionManager.getSelectedObject(0);
+            auto track = dynamic_cast<te::AudioTrack*>(sel);
+            if (track == nullptr) {
+                track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
+            }
             auto valueTree = juce::ValueTree(te::IDs::MIDICLIP);
 
             double insertTime = edit.getTransport().getPosition().inSeconds();
-            auto time = tracktion::TimeRange(tracktion::TimePosition::fromSeconds(insertTime), tracktion::TimeDuration::fromSeconds(len));
+            auto time = tracktion::TimeRange(tracktion::TimePosition::fromSeconds(insertTime),
+                                             tracktion::TimeDuration::fromSeconds(len));
             te::MidiClip* clip = dynamic_cast<te::MidiClip*>
                                 (track->insertClipWithState (valueTree, "Clip", te::TrackItem::Type::midi,
                                                              { time, tracktion::TimeDuration::fromSeconds(0.0) }, true, false));
@@ -166,15 +161,8 @@ private:
         };
     }
 
-    void updateRecordButtonText() {
-        recordButton.setButtonText(edit.getTransport().isRecording() ? "Abort" : "Record");
-    }
-
-    void changeListenerCallback (ChangeBroadcaster* source) override
-    {
-        if (source == &edit.getTransport()) {
-            updateRecordButtonText();
-        } else if (source == &selectionManager) {
+    void changeListenerCallback (ChangeBroadcaster* source) override {
+        if (source == &selectionManager) {
             auto sel = selectionManager.getSelectedObject(0);
             deleteButton.setEnabled(dynamic_cast<te::Clip*> (sel) != nullptr
                                      || dynamic_cast<te::Track*> (sel) != nullptr

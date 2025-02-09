@@ -15,7 +15,7 @@
 #include <common/Components.h>
 #include <common/PluginWindow.h>
 
-#include "../../util/base64.h"
+// #include "../../util/base64.h"
 
 using namespace juce;
 
@@ -109,7 +109,8 @@ private:
         {
             auto track = EngineHelpers::getOrInsertAudioTrackAt (*edit, 0);
 
-            auto data = Util::b64decode("TVRoZAAAAAYAAQACBABNVHJrAAAAKAD/WQL+AAD/WQL+AAD/WAQGAyQIAP9RAwehILAA/1gEBgMMCAD/LwBNVHJrAAAAapUwwDUAsAdkALAnKgCwCkAAsCoAAJAuZIJlgC4AAJAvZIJlgC8AAJAyWoMAgDIAAJA1boYAgDUAAJA6X4MBgDoAAJA5ZIJ4gDkAAJA4ZIJ3gDgAAJA5ZoMEgDkAAJA1aYQKgDUAhg7/LwA=");
+            auto data = std::string("111");
+            // auto data = Util::b64decode("TVRoZAAAAAYAAQACBABNVHJrAAAAKAD/WQL+AAD/WQL+AAD/WAQGAyQIAP9RAwehILAA/1gEBgMMCAD/LwBNVHJrAAAAapUwwDUAsAdkALAnKgCwCkAAsCoAAJAuZIJlgC4AAJAvZIJlgC8AAJAyWoMAgDIAAJA1boYAgDUAAJA6X4MBgDoAAJA5ZIJ4gDkAAJA4ZIJ3gDgAAJA5ZoMEgDkAAJA1aYQKgDUAhg7/LwA=");
             auto stream = juce::MemoryInputStream(&data[0], data.length(), false);
             auto midiFile = juce::MidiFile();
             midiFile.readFrom(stream);

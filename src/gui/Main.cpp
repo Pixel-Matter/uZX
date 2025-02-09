@@ -1,5 +1,6 @@
 
 #include "Commands.h"
+#include "../util/FileOps.h"
 #include "MainDocument.h"
 
 #include <JuceHeader.h>
@@ -7,53 +8,10 @@
 
 using namespace juce;
 using namespace MoTool::Commands;
+using namespace MoTool::EditFileOps;
 
 
-namespace {
-
-static inline constexpr auto EDIT_FILE_SUFFIX = ".motool";
-
-static String getAppFileGlob() {
-    return "*" + String(EDIT_FILE_SUFFIX);
-}
-
-static inline File findRecentEdit(const File& dir, const String& fileGlob) {
-    auto files = dir.findChildFiles(File::findFiles, false, fileGlob);
-    if (files.size() > 0) {
-        files.sort();
-        return files.getLast();
-    }
-    return {};
-}
-
-static File getRecentEditFile() {
-    auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(ProjectInfo::projectName);
-    d.createDirectory();
-
-    auto f = findRecentEdit(d, getAppFileGlob());
-    if (f.existsAsFile()) {
-        return f;
-    } else {
-        return {};
-    }
-}
-
-static File getTempEditFile() {
-    auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(ProjectInfo::projectName);
-    d.createDirectory();
-    return d.getNonexistentChildFile("Unnamed", EDIT_FILE_SUFFIX, false);
-}
-
-static File getStartupEditFile() {
-    auto f = getRecentEditFile();
-    if (!f.existsAsFile()) {
-        f = getTempEditFile();
-    }
-    return f;
-}
-
-} // namespace
-
+namespace MoTool {
 
 class MainWindow final : public DocumentWindow,
                          public MenuBarModel,
@@ -63,8 +21,10 @@ public:
         : DocumentWindow(name,
             Desktop::getInstance().getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId),
             DocumentWindow::allButtons)
-        , engine_(engine)
+        , engine_ {engine}
+        , commandManager {getGlobalCommandManager()}
     {
+
         setUsingNativeTitleBar(true);
         setSize(1024, 740);
         setResizable(true, true);
@@ -157,6 +117,10 @@ public:
                 result.setActive(edit_ != nullptr && !edit_->getTransport().isRecording());
                 break;
 
+            case AppCommands::transportRecordStop:
+                result.setActive(edit_ != nullptr && edit_->getTransport().isRecording());
+                break;
+
             case AppCommands::transportRewind:
                 result.setActive(edit_ != nullptr);
                 break;
@@ -217,14 +181,11 @@ public:
                 break;
 
             case AppCommands::transportRecord:
-                if (edit_ != nullptr) {
-                    auto& transport = edit_->getTransport();
-                    if (transport.isRecording()) {
-                        transport.stop(true, true);
-                    } else {
-                        transport.record(false);
-                    }
-                }
+                handleRecord();
+                break;
+
+            case AppCommands::transportRecordStop:
+                handleRecord();
                 break;
 
             case AppCommands::transportRewind:
@@ -243,7 +204,7 @@ public:
 private:
     te::Engine& engine_;
     std::unique_ptr<te::Edit> edit_;
-    CommandManager commandManager;
+    CommandManager& commandManager;
 
     void handleNew() {
         auto newEdit = createOrLoadEdit(getTempEditFile());
@@ -251,7 +212,7 @@ private:
     }
 
     void handleOpen() {
-        FileChooser fc ("Open file", File::getSpecialLocation(File::userDocumentsDirectory), getAppFileGlob());
+        FileChooser fc("Open file", File::getSpecialLocation(File::userDocumentsDirectory), getAppFileGlob());
         if (fc.browseForFileToOpen()) {
             auto newEdit = createOrLoadEdit(fc.getResult());
             setEdit(std::move(newEdit), true);
@@ -263,21 +224,26 @@ private:
 
         auto efo = te::EditFileOperations(*edit_);
         auto newEditName = te::getNonExistentSiblingWithIncrementedNumberSuffix(efo.getEditFile(), false);
-        juce::FileChooser chooser("Save As...", newEditName, getAppFileGlob());
+        juce::FileChooser fc("Save As...", newEditName, getAppFileGlob());
 
-        if (chooser.browseForFileToSave(false)) {
-            efo.saveAs(chooser.getResult().withFileExtension(EDIT_FILE_SUFFIX));
+        if (fc.browseForFileToSave(false)) {
+            efo.saveAs(fc.getResult().withFileExtension(EDIT_FILE_SUFFIX));
         }
     }
 
     void handlePlayPause() {
         if (edit_ == nullptr) return;
 
-        auto& transport = edit_->getTransport();
-        if (transport.isPlaying()) {
-            transport.stop(false, true);
-        } else {
-            transport.play(false);
+        EngineHelpers::togglePlay(*edit_);
+    }
+
+    void handleRecord() {
+        if (edit_ == nullptr) return;
+
+        bool wasRecording = edit_->getTransport().isRecording();
+        EngineHelpers::toggleRecord(*edit_);
+        if (wasRecording) {
+            te::EditFileOperations(*edit_).save(true, true, false);
         }
     }
 
@@ -336,9 +302,28 @@ public:
         quit();
     }
 
+    static CommandManager& getCommandManager() {
+        return getApp().commandManager;
+    }
+
+    static MoToolApp& getApp() {
+        return *dynamic_cast<MoToolApp*>(JUCEApplication::getInstance());
+    }
+
 private:
     te::Engine engine_ { ProjectInfo::projectName };
     std::unique_ptr<MainWindow> mainWindow_;
+    CommandManager commandManager;
 };
 
-START_JUCE_APPLICATION(MoToolApp)
+namespace Commands {
+
+CommandManager& getGlobalCommandManager() {
+    return MoToolApp::getCommandManager();
+}
+
+} // namespace Commands
+
+} // namespace MoTool
+
+START_JUCE_APPLICATION(MoTool::MoToolApp)

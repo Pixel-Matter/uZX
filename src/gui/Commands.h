@@ -37,6 +37,7 @@ public:
         // Transport Menu
         transportPlay       = 200,
         transportRecord,
+        transportRecordStop,
         transportRewind,
         transportLoop,
 
@@ -59,7 +60,7 @@ public:
         CommandID ids[] = {
             fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileQuit,
             editUndo, editRedo, editCut, editCopy, editPaste,
-            transportPlay, transportRecord, transportRewind, transportLoop,
+            transportPlay, transportRecord, transportRecordStop, transportRewind, transportLoop,
             settingsAudioMidi, settingsPlugins,
             helpAbout
         };
@@ -88,6 +89,7 @@ public:
         } else if (menuName == "Transport") {
             menu.addCommandItem(manager, AppCommands::transportPlay);
             menu.addCommandItem(manager, AppCommands::transportRecord);
+            menu.addCommandItem(manager, AppCommands::transportRecordStop);
             menu.addCommandItem(manager, AppCommands::transportRewind);
             menu.addSeparator();
             menu.addCommandItem(manager, AppCommands::transportLoop);
@@ -124,7 +126,7 @@ public:
                 break;
 
             case fileReveal:
-                result.setInfo("Reveal", "Reveal the current edit in Finder", "File", 0);
+                result.setInfo("Reveal in Finder", "Reveal the current edit in Finder", "File", 0);
                 break;
 
             case fileQuit:
@@ -165,8 +167,13 @@ public:
                 break;
 
             case transportRecord:
-                result.setInfo("Record", "Start or stop recording", "Transport", 0);
-                result.addDefaultKeypress('r', 0);
+                result.setInfo("Record", "Start recording", "Transport", 0);
+                // result.addDefaultKeypress('r', 0);
+                break;
+
+            case transportRecordStop:
+                result.setInfo("Record stop", "Stop recording", "Transport", 0);
+                // result.addDefaultKeypress('r', 0);
                 break;
 
             case transportRewind:
@@ -199,7 +206,7 @@ public:
 };
 
 
-class CommandManager  : public ApplicationCommandManager {
+class CommandManager : public ApplicationCommandManager {
 public:
     CommandManager() = default;
 
@@ -224,5 +231,9 @@ public:
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CommandManager)
 };
+
+
+CommandManager& getGlobalCommandManager();
+
 
 } // namespace MoTool::Commands

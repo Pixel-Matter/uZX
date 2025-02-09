@@ -24,16 +24,16 @@ constexpr inline static int B64index[256] = {
     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
 };
 
-
-constexpr size_t b64DecodedSize(const char* data, const size_t &len) {
+template <std::size_t N>
+constexpr size_t b64DecodedSize(const char (&input)[N]) {
     size_t padding = 0;
-    if (len > 0 && data[len - 1] == '=') {
+    if (N > 0 && input[N - 1] == '=') {
         padding++;
     }
-    if (len > 1 && data[len - 2] == '=') {
+    if (N > 1 && input[N - 2] == '=') {
         padding++;
     }
-    return (len / 4 * 3) - padding;
+    return (N / 4 * 3) - padding;
 }
 
 constexpr bool is_base64(unsigned char c) {
@@ -41,47 +41,23 @@ constexpr bool is_base64(unsigned char c) {
 }
 
 constexpr std::uint8_t base64_decode_char(char c) {
-    if (c >= 'A' && c <= 'Z') return c - 'A';
-    if (c >= 'a' && c <= 'z') return c - 'a' + 26;
-    if (c >= '0' && c <= '9') return c - '0' + 52;
+    if (c >= 'A' && c <= 'Z') return static_cast<std::uint8_t>(c - 'A');
+    if (c >= 'a' && c <= 'z') return static_cast<std::uint8_t>(c - 'a' + 26);
+    if (c >= '0' && c <= '9') return static_cast<std::uint8_t>(c - '0' + 52);
     if (c == '+') return 62;
     if (c == '/') return 63;
     return 0; // Handle padding '='
 }
 
-constexpr std::string b64DecodeImpl(const char* input, const size_t &len) {
-    size_t i = 0, j = 0;
-    std::uint32_t buffer = 0;
-    int padding = 0;
-    std::string out(b64DecodedSize(input, len), '\0');
-
-    for (; i < len - 1; i += 4, j += 3) {
-        buffer = (base64_decode_char(input[i]) << 18) |
-                 (base64_decode_char(input[i + 1]) << 12) |
-                 (base64_decode_char(input[i + 2]) << 6) |
-                  base64_decode_char(input[i + 3]);
-
-        out[j] = (buffer >> 16) & 0xff;
-        if (out[i + 2] != '=') {
-            out[j + 1] = (buffer >> 8) & 0xff;
-        } else {
-            padding++;
-        }
-        if (out[i + 3] != '=') {
-            out[j + 2] = buffer & 0xff;
-        } else {
-            padding++;
-        }
-    }
-    return out.substr(0, j - padding);
-}
+}  // namespace
 
 template <std::size_t N>
-constexpr std::string b64DecodeImpl2(const char (&input)[N]) {
+constexpr std::string b64Decode(const char (&input)[N]) {
     size_t i = 0, j = 0;
-    std::uint32_t buffer = 0;
     int padding = 0;
-    std::string out(b64DecodedSize(input, N), '\0');
+    std::uint32_t buffer = 0;
+    std::string out(b64DecodedSize(input), '\0');
+    // std::string out(b64DecodedSize(input, N), '\0');
 
     for (; i < N - 1; i += 4, j += 3) {
         buffer = (base64_decode_char(input[i]) << 18) |
@@ -104,20 +80,12 @@ constexpr std::string b64DecodeImpl2(const char (&input)[N]) {
     return out.substr(0, j - padding);
 }
 
-}
-
-template <std::size_t N>
-constexpr std::string b64Decode(const char (&str64)[N]) {
-    return b64DecodeImpl2(str64);
-}
-
 namespace {
 
-[[maybe_unused]] void static_test() {
+[[maybe_unused]] static void static_test() {
     constexpr char example_encoded[] = "aGVsbG8=";
-    constexpr std::size_t inputSize = sizeof(example_encoded);
-    static_assert(b64DecodedSize(example_encoded, inputSize) == 5, "Test failed");
-    static_assert(b64DecodeImpl(example_encoded, inputSize) == "hello", "Test failed");
+    static_assert(b64DecodedSize(example_encoded) == 5, "Test failed");
+    static_assert(b64Decode(example_encoded) == "hello", "Test failed");
 }
 
 }

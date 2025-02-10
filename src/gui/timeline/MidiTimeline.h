@@ -12,7 +12,7 @@
 
 #include "../../util/base64_cx.h"
 #include "../../util/Midi.h"
-#include "../Commands.h"
+// #include "../Commands.h"
 
 #include <JuceHeader.h>
 #include <common/Utilities.h>
@@ -113,8 +113,8 @@ private:
         auto time = tracktion::TimeRange(tracktion::TimePosition::fromSeconds(insertTime),
                                             tracktion::TimeDuration::fromSeconds(len));
         te::MidiClip* clip = dynamic_cast<te::MidiClip*>
-                            (track->insertClipWithState (valueTree, "Clip", te::TrackItem::Type::midi,
-                                                            { time, tracktion::TimeDuration::fromSeconds(0.0) }, true, false));
+                            (track->insertClipWithState(valueTree, "Clip", te::TrackItem::Type::midi,
+                                                        { time, tracktion::TimeDuration::fromSeconds(0.0) }, true, false));
 
         seq.addTimeToMessages(insertTime);
         clip->mergeInMidiSequence(seq, te::MidiList::NoteAutomationType::none);
@@ -127,7 +127,7 @@ private:
             clip->removeFromParent();
         } else if (auto track = dynamic_cast<te::Track*>(sel)) {
             if (! (track->isMarkerTrack() || track->isTempoTrack() || track->isChordTrack()))
-                edit.deleteTrack (track);
+                edit.deleteTrack(track);
         } else if (auto plugin = dynamic_cast<te::Plugin*>(sel)) {
             plugin->deleteFromParent();
         }
@@ -143,8 +143,8 @@ private:
         if (source == &selectionManager) {
             auto sel = selectionManager.getSelectedObject(0);
             deleteButton.setEnabled(dynamic_cast<te::Clip*> (sel) != nullptr
-                                     || dynamic_cast<te::Track*> (sel) != nullptr
-                                     || dynamic_cast<te::Plugin*> (sel));
+                                    || dynamic_cast<te::Track*> (sel) != nullptr
+                                    || dynamic_cast<te::Plugin*> (sel));
         }
     }
 

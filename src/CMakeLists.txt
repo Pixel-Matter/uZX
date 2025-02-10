@@ -59,6 +59,7 @@ set(SourceFiles
     gui/main.cpp
     gui/nodes/GraphEditorPanel.cpp
     util/FileOps.cpp
+    util/Midi.cpp
 )
 
 target_sources(${TARGET_NAME} PRIVATE ${SourceFiles})

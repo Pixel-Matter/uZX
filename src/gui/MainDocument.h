@@ -2,13 +2,12 @@
 
 #include <JuceHeader.h>
 #include <common/Utilities.h>
-#include <memory>
 
 #include "timeline/MidiTimeline.h"
-#include "timeline/Timeline.h"
+// #include "timeline/Timeline.h"
 #include "layout/Layout.h"
 #include "Transport.h"
-#include "Footer.h"
+// #include "Footer.h"
 
 
 using namespace juce;

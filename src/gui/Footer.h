@@ -3,10 +3,8 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>
 
-#include "layout/Layout.h"
 
 using namespace juce;
-namespace lo = Layout;
 
 namespace MoTool {
 

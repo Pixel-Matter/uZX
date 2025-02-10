@@ -1,14 +1,13 @@
 #pragma once
 
-#include <memory>
-#include <vector>
+#include <JuceHeader.h>
 
 // ****************************************************************************
 // This is a simplified version of the layout system
 // ****************************************************************************
 
 
-namespace Layout {
+namespace MoTool::Layout {
 
 struct LayoutItem {
     GridItem item;

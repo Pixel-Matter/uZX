@@ -7,7 +7,10 @@
 
 
 using namespace juce;
-using namespace MoTool::Commands;
+
+namespace MoTool {
+
+using namespace Commands;
 
 class TransportBar: public Component,
                     private ChangeListener {
@@ -71,3 +74,5 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TransportBar)
 };
+
+}  // namespace MoTool

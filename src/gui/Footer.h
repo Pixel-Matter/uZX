@@ -8,6 +8,8 @@
 using namespace juce;
 namespace lo = Layout;
 
+namespace MoTool {
+
 class FooterBar: public Component {
 public:
 
@@ -62,3 +64,5 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FooterBar)
 };
+
+}  // namespace MoTool

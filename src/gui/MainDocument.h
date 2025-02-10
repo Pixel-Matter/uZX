@@ -4,7 +4,6 @@
 #include <common/Utilities.h>
 #include <memory>
 
-#include "timeline/MidiPlaybackDemo.h"
 #include "timeline/MidiRecordingDemo.h"
 #include "timeline/Timeline.h"
 #include "layout/Layout.h"
@@ -13,6 +12,9 @@
 
 
 using namespace juce;
+
+namespace MoTool {
+
 namespace lo = Layout;
 
 //==============================================================================
@@ -33,8 +35,8 @@ public:
         using namespace Layout::Operators;  // for operator>>
         Helpers::addLayoutItemsAndMakeVisible(*this, layout_,
             transportBar_  >> 32_px,
-            timelinePanel_ >> 1_fr,
-            footer_        >> 32_px
+            timelinePanel_ >> 1_fr
+            // footer_        >> 32_px
         );
     }
 
@@ -52,11 +54,12 @@ private:
 
     TransportBar transportBar_ {edit_};
     // TimelinePanel timelinePanel_     {edit_};
-    // MidiPlaybackDemo timelinePanel_  {engine_};
-    MidiRecordingDemo timelinePanel_ {engine_, edit_};
-    FooterBar footer_                {engine_};
+    MidiRecordingDemo timelinePanel_ {edit_};
+    // FooterBar footer_                {engine_};
 
     lo::VerticalLayout layout_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainDocumentComponent)
 };
+
+}  // namespace MoTool

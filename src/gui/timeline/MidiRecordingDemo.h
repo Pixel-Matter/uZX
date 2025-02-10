@@ -11,6 +11,7 @@
 #pragma once
 
 #include "../../util/base64_cx.h"
+#include "../../util/Midi.h"
 #include "../Commands.h"
 
 #include <JuceHeader.h>
@@ -21,21 +22,11 @@
 
 using namespace juce;
 
+namespace MoTool {
+
 namespace {
 
 inline static const auto MIDI_CLIP_DATA = MoTool::Util::b64Decode("TVRoZAAAAAYAAQACBABNVHJrAAAAKAD/WQL+AAD/WQL+AAD/WAQGAyQIAP9RAwehILAA/1gEBgMMCAD/LwBNVHJrAAAAapUwwDUAsAdkALAnKgCwCkAAsCoAAJAuZIJlgC4AAJAvZIJlgC8AAJAyWoMAgDIAAJA1boYAgDUAAJA6X4MBgDoAAJA5ZIJ4gDkAAJA4ZIJ3gDgAAJA5ZoMEgDkAAJA1aYQKgDUAhg7/LwA=");
-
-MidiMessageSequence readMidi(const std::string& data, int track) {
-    auto stream = juce::MemoryInputStream(&data[0], data.length(), false);
-    juce::MidiFile midiFile;
-    midiFile.readFrom(stream);
-    MidiMessageSequence sequence = *midiFile.getTrack(track);
-    for (int j = sequence.getNumEvents(); --j >= 0;) {
-        auto& m = sequence.getEventPointer(j)->message;
-        m.setTimeStamp(m.getTimeStamp() * 0.001);
-    }
-    return sequence;
-}
 
 }  // namespace
 
@@ -45,9 +36,9 @@ class MidiRecordingDemo  : public Component,
 {
 public:
     //==============================================================================
-    MidiRecordingDemo (te::Engine& e, te::Edit& ed)
-        : engine (e)
-        , edit (ed)
+    MidiRecordingDemo (te::Edit& ed)
+        : edit (ed)
+        , engine (ed.engine)
     {
         setupComponents();
 
@@ -119,7 +110,7 @@ private:
 
     void setupButtons() {
         insertButton.onClick = [this] {
-            auto seq = readMidi(MIDI_CLIP_DATA, 1);
+            auto seq = Util::readMidi(MIDI_CLIP_DATA, 1);
             auto len = seq.getEndTime();
 
             auto sel = selectionManager.getSelectedObject(0);
@@ -195,3 +186,5 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MidiRecordingDemo)
 };
+
+}  // namespace MoTool

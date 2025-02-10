@@ -52,7 +52,7 @@ public:
     };
 
     static StringArray getMenuBarNames() {
-        return { "File", "Edit", "Transport", "Help" };
+        return { "File", "Edit", "Transport", "Settings", "Help" };
     }
 
     // Get all commands
@@ -189,6 +189,7 @@ public:
             // Settings commands
             case settingsAudioMidi:
                 result.setInfo("Audio/MIDI", "Open audio and MIDI settings", "Settings", 0);
+                result.addDefaultKeypress(',', ModifierKeys::commandModifier);
                 break;
 
             case settingsPlugins:

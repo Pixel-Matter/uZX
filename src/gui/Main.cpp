@@ -1,6 +1,16 @@
 
-#include "Commands.h"
+/*
+    d88o888ob.      d888888888b             d8b
+    8@@8@@@8@@b ,d888b.`8@8',d888b. ,d888b. B@8
+    B@8'B@8'8@8 8@8 8@8 B@8 8@8 8@8 8@8 8@8 B@8    Copyright 2025
+    B@8 B@8 B@8 '"" 8@8 B@8 8@b ""' '"" 8@8 B@8    Ruslan Grokhovetskii
+    Y@8 8@8 Y@@88@@@8P' 8@8 `Y@@@88888@@@P' Y8b
+
+    The MoTool uses GPL licence - see LICENCE.md for details.
+*/
+
 #include "../util/FileOps.h"
+#include "Commands.h"
 #include "MainDocument.h"
 
 #include <JuceHeader.h>
@@ -194,6 +204,20 @@ public:
                 }
                 break;
 
+            case AppCommands::transportLoop:
+                if (edit_ != nullptr) {
+                    edit_->getTransport().looping = !edit_->getTransport().looping;
+                }
+                break;
+
+            case AppCommands::settingsAudioMidi:
+                EngineHelpers::showAudioDeviceSettings(engine_);
+                break;
+
+            case AppCommands::settingsPlugins:
+                hanldePluginManager();
+                break;
+
             default:
                 return false;
         }
@@ -227,7 +251,7 @@ private:
         juce::FileChooser fc("Save As...", newEditName, getAppFileGlob());
 
         if (fc.browseForFileToSave(false)) {
-            efo.saveAs(fc.getResult().withFileExtension(EDIT_FILE_SUFFIX));
+            efo.saveAs(fc.getResult().withFileExtension(EditFileOps::EDIT_FILE_SUFFIX));
         }
     }
 
@@ -245,6 +269,24 @@ private:
         if (wasRecording) {
             te::EditFileOperations(*edit_).save(true, true, false);
         }
+    }
+
+    void hanldePluginManager() {
+        DialogWindow::LaunchOptions o;
+        o.dialogTitle                   = TRANS("Plugins");
+        o.dialogBackgroundColour        = juce::Colours::black;
+        o.escapeKeyTriggersCloseButton  = true;
+        o.useNativeTitleBar             = true;
+        o.resizable                     = true;
+        o.useBottomRightCornerResizer   = true;
+
+        auto v = new PluginListComponent (engine_.getPluginManager().pluginFormatManager,
+                                          engine_.getPluginManager().knownPluginList,
+                                          engine_.getTemporaryFileManager().getTempFile ("PluginScanDeadMansPedal"),
+                                          std::addressof (engine_.getPropertyStorage().getPropertiesFile()));
+        v->setSize(800, 600);
+        o.content.setOwned(v);
+        o.launchAsync();
     }
 
     std::unique_ptr<te::Edit> createOrLoadEdit(File editFile) {

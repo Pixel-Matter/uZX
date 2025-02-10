@@ -6,6 +6,7 @@
 
 using namespace juce;
 
+namespace MoTool {
 
 //==============================================================================
 /** TimelinePanel
@@ -54,3 +55,5 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TimelinePanel)
 };
+
+}  // namespace MoTool

@@ -4,7 +4,7 @@
 #include <common/Utilities.h>
 #include <memory>
 
-#include "timeline/MidiRecordingDemo.h"
+#include "timeline/MidiTimeline.h"
 #include "timeline/Timeline.h"
 #include "layout/Layout.h"
 #include "Transport.h"
@@ -54,7 +54,7 @@ private:
 
     TransportBar transportBar_ {edit_};
     // TimelinePanel timelinePanel_     {edit_};
-    MidiRecordingDemo timelinePanel_ {edit_};
+    MidiTimeline timelinePanel_ {edit_};
     // FooterBar footer_                {engine_};
 
     lo::VerticalLayout layout_;

@@ -28,7 +28,7 @@ namespace MoTool {
 */
 
 class TimelinePanel: public Component,
-                    private ChangeListener {
+                     private ChangeListener {
 public:
 
     explicit TimelinePanel(te::Edit& edit)

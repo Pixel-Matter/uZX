@@ -1,5 +1,6 @@
 #pragma once
 
+#include "juce_gui_basics/juce_gui_basics.h"
 #include <JuceHeader.h>
 
 namespace MoTool::Commands {
@@ -179,6 +180,7 @@ public:
             case transportRewind:
                 result.setInfo("Rewind", "Rewind to the beginning", "Transport", 0);
                 result.addDefaultKeypress(KeyPress::leftKey, ModifierKeys::commandModifier);
+                result.addDefaultKeypress(KeyPress::homeKey, 0);
                 break;
 
             case transportLoop:

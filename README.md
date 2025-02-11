@@ -8,6 +8,16 @@
     Y@8 8@8 Y@@88@@@8P' 8@8 `Y@@@88888@@@P' Y8b
 ```
 
-Based on [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/) and [JUCE](https://github.com/juce-framework/JUCE) for performance.
+Powered by [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/).
 
 Designed for easy prototyping.
+
+## ZX Spectrum-friendly logo
+
+```text
+    d8o88o.     d888888b          db
+    8888888b ,o8o.`88',o8o. ,o8o. B8
+    B8'B8'88 88'88 B8 88'88 88'88 B8
+    B8 B8 B8 '" 88 B8 8b "' '" 88 B8
+    Y8 88 Y@888@8' 88 `8@88888@8' Yb
+```

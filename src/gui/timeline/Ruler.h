@@ -1,0 +1,100 @@
+#pragma once
+
+#include <JuceHeader.h>
+
+#include "../common/Components.h"
+
+namespace MoTool {
+
+class RulerComponent : public Component,
+                       private Timer,
+                       private te::TempoSequence::Listener {
+public:
+    RulerComponent(te::Edit& ed, EditViewState& evs)
+        : te::TempoSequence::Listener {ed.tempoSequence}
+        , edit {ed}
+        , editViewState {evs}
+    {
+        edit.tempoSequence.addListener(this);
+        startTimerHz(30);
+    }
+
+    ~RulerComponent() override {
+        edit.tempoSequence.removeListener(this);
+        stopTimer();
+    }
+
+    void paint(Graphics& g) override {
+        auto bounds = getLocalBounds();
+
+        g.setColour(Colours::grey);
+        g.fillRect(bounds);
+
+        // TODO get zoom x1 and x2 from editViewState
+
+        te::TimePosition startTime = editViewState.viewX1;
+        te::TimeDuration viewLength = editViewState.viewX2 - editViewState.viewX1;
+
+        // Draw major beat lines (bars)
+        g.setColour(Colours::white.darker());
+        int beatNumber = 0;
+        auto currentTime = startTime;
+        const int width = bounds.getWidth();
+        const float height = (float)bounds.getHeight();
+        const auto beatColor = Colours::white.darker();
+        g.setColour(beatColor);
+        g.setFont(10.0f);
+
+        while (currentTime < startTime + viewLength) {
+            double beatsPerSec = edit.tempoSequence.getBeatsPerSecondAt(currentTime);
+            auto timePerBeat = te::TimeDuration::fromSeconds(1.0f / beatsPerSec);
+            float pixelsPerBeat = editViewState.pixelsPerBeat(timePerBeat, width);
+            float x = (float)editViewState.timeToX(currentTime, width);
+
+            if (beatNumber % 4 == 0) { // TODO get TimeSig from editViewState
+                // Bar line (assuming 4/4 time)
+                g.drawLine(x, 0, x, height, 1.0f);
+
+                // Draw bar number
+                String barText = String(beatNumber / 4 + 1);
+                g.drawText(barText, Rectangle<float>(x + 2, -4, 20, 20), Justification::left);
+            } else {
+                // Beat line
+                g.drawLine(x, height * 0.5f, x, height, 1.0f);
+            }
+
+            // TODO draw frames
+            float pixelsPerSubdiv = pixelsPerBeat;
+            int numSubdivs = 1;
+            while (numSubdivs < 16 && pixelsPerSubdiv > 8.0f) {
+                numSubdivs *= 2;
+                pixelsPerSubdiv /= 2;
+            }
+            for (int sub = 1; sub < numSubdivs; ++sub) {
+                float subX = x + (pixelsPerBeat * (float)sub / (float)numSubdivs);
+                g.drawLine(subX, height * 0.75f, subX, height, 0.5f);
+            }
+            currentTime = currentTime + timePerBeat;
+            beatNumber++;
+        }
+    }
+
+    void resized() override {
+        repaint();
+    }
+
+private:
+    te::Edit& edit;
+    EditViewState& editViewState;
+
+    void timerCallback() override {
+        repaint();
+    }
+
+    // TempoSequenceChange listener implementation
+    void selectableObjectChanged(te::Selectable* ) override {
+        repaint();
+    }
+};
+
+} // namespace MoTool

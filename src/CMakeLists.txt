@@ -56,8 +56,11 @@ C_VISIBILITY_PRESET hidden
 CXX_VISIBILITY_PRESET hidden)
 
 set(SourceFiles
-    gui/main.cpp
+    gui/Main.cpp
     gui/nodes/GraphEditorPanel.cpp
+    gui/common/Components.cpp
+    gui/timeline/EditComponent.cpp
+
     util/FileOps.cpp
     util/Midi.cpp
 )

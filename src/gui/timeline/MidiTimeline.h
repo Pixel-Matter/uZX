@@ -10,17 +10,11 @@
 
 #pragma once
 
+#include <JuceHeader.h>
+
 #include "../../util/base64_cx.h"
 #include "../../util/Midi.h"
-// #include "../Commands.h"
-
-#include <JuceHeader.h>
-#include <common/Utilities.h>
-#include <common/Components.h>
-#include <common/PluginWindow.h>
-
-
-using namespace juce;
+#include "EditComponent.h"
 
 namespace MoTool {
 
@@ -29,6 +23,16 @@ namespace {
 inline static const auto MIDI_CLIP_DATA = MoTool::Util::b64Decode("TVRoZAAAAAYAAQACBABNVHJrAAAAKAD/WQL+AAD/WQL+AAD/WAQGAyQIAP9RAwehILAA/1gEBgMMCAD/LwBNVHJrAAAAapUwwDUAsAdkALAnKgCwCkAAsCoAAJAuZIJlgC4AAJAvZIJlgC8AAJAyWoMAgDIAAJA1boYAgDUAAJA6X4MBgDoAAJA5ZIJ4gDkAAJA4ZIJ3gDgAAJA5ZoMEgDkAAJA1aYQKgDUAhg7/LwA=");
 
 }  // namespace
+
+
+//==============================================================================
+/** TODO
+    - Move buttons to toolbar component
+    - Make zoom struct
+    - Make grid positions struct with several types of subdivisions: regions, bars, beats, subs, frames
+    - Make ruler component
+    - Make grid component
+*/
 
 //==============================================================================
 class MidiTimeline  : public Component,
@@ -45,6 +49,10 @@ public:
         evs.showFooters = true;
         evs.showMidiDevices = true;
         evs.showWaveDevices = false;
+        evs.showMarkerTrack = false;
+        evs.showChordTrack = false;
+        evs.showGlobalTrack = false;
+        evs.showMasterTrack = false;
 
         createTracksAndAssignInputs();
         te::EditFileOperations(edit).save(true, true, false);
@@ -54,13 +62,15 @@ public:
         insertButton.onClick =       [this] { handleInsertClip(); };
         newTrackButton.onClick =     [this] { edit.ensureNumberOfAudioTracks(getAudioTracks(edit).size() + 1); };
         deleteButton.onClick =       [this] { handleDelete(); };
-        showWaveformButton.onClick = [this] { handleShowWaveform(); };
+        // showWaveformButton.onClick = [this] { handleShowWaveform(); };
 
         deleteButton.setEnabled(false);
 
         setSize(600, 400);
         Helpers::addAndMakeVisible(*this, { &editComponent,
-                                            &newTrackButton, &deleteButton, &insertButton, &showWaveformButton });
+                                            &newTrackButton, &deleteButton, &insertButton,
+                                            // &showWaveformButton
+                                          });
     }
 
     ~MidiTimeline() override {
@@ -75,12 +85,12 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 8;
+        int w = r.getWidth() / 6;
         auto topR = r.removeFromTop(30);
         insertButton.setBounds(topR.removeFromLeft (w).reduced (2));
         newTrackButton.setBounds(topR.removeFromLeft (w).reduced (2));
         deleteButton.setBounds(topR.removeFromLeft (w).reduced (2));
-        showWaveformButton.setBounds(topR.removeFromLeft (w).reduced (2));
+        // showWaveformButton.setBounds(topR.removeFromLeft (w).reduced (2));
         editComponent.setBounds(r);
     }
 
@@ -94,7 +104,7 @@ private:
     TextButton newTrackButton { "New Track" },
                deleteButton { "Delete" },
                insertButton { "Insert MIDI Clip" };
-    ToggleButton showWaveformButton { "Show Waveforms" };
+    // ToggleButton showWaveformButton { "Show Waveforms" };
 
     //==============================================================================
 
@@ -133,11 +143,11 @@ private:
         }
     }
 
-    void handleShowWaveform() {
-        auto& evs = editComponent.getEditViewState();
-        evs.drawWaveforms = ! evs.drawWaveforms.get();
-        showWaveformButton.setToggleState(evs.drawWaveforms, dontSendNotification);
-    }
+    // void handleShowWaveform() {
+    //     auto& evs = editComponent.getEditViewState();
+    //     evs.drawWaveforms = ! evs.drawWaveforms.get();
+    //     showWaveformButton.setToggleState(evs.drawWaveforms, dontSendNotification);
+    // }
 
     void changeListenerCallback(ChangeBroadcaster* source) override {
         if (source == &selectionManager) {

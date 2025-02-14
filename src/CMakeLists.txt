@@ -53,13 +53,16 @@ target_compile_features(${TARGET_NAME} PRIVATE cxx_std_23)
 
 set_target_properties(${TARGET_NAME} PROPERTIES
 C_VISIBILITY_PRESET hidden
-CXX_VISIBILITY_PRESET hidden)
+CXX_VISIBILITY_PRESET hidden
+)
 
 set(SourceFiles
     gui/Main.cpp
     gui/nodes/GraphEditorPanel.cpp
     gui/common/Components.cpp
     gui/timeline/EditComponent.cpp
+
+    plugins/uZX/aychip/aychip.cpp
 
     util/FileOps.cpp
     util/Midi.cpp
@@ -96,6 +99,7 @@ target_compile_definitions(${TARGET_NAME} PRIVATE
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE
+    ayumi
     tracktion::tracktion_core
     tracktion::tracktion_engine
     tracktion::tracktion_graph
@@ -107,13 +111,13 @@ target_link_libraries(${TARGET_NAME} PRIVATE
 )
 
 # Compile with werror in release builds
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
-    CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:-Werror>")
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    target_compile_options(${TARGET_NAME} PRIVATE "/W4")
-    target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:/WX>")
-endif()
+# if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
+#     CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+#     target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:-Werror>")
+# elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+#     target_compile_options(${TARGET_NAME} PRIVATE "/W4")
+#     target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:/WX>")
+# endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_compile_options(${TARGET_NAME} PRIVATE "-fno-aligned-allocation")

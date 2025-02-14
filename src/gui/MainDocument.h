@@ -27,9 +27,8 @@ namespace lo = Layout;
 class MainDocumentComponent: public Component {
 public:
 
-    explicit MainDocumentComponent(te::Engine& engine, te::Edit& edit)
-        : engine_ {engine}
-        , edit_ {edit}
+    explicit MainDocumentComponent(te::Edit& edit)
+        : edit_ {edit}
     {
         using namespace Layout::Operators;  // for operator>>
         Helpers::addLayoutItemsAndMakeVisible(*this, layout_,
@@ -47,14 +46,13 @@ public:
     }
 
 private:
-    te::Engine& engine_;
     te::Edit& edit_;
     // std::unique_ptr<EditComponent> editComponent_;
 
     TransportBar transportBar_ {edit_};
     // TimelinePanel timelinePanel_     {edit_};
     MidiTimeline timelinePanel_ {edit_};
-    // FooterBar footer_                {engine_};
+    // FooterBar footer_                {edit_.engine,};
 
     lo::VerticalLayout layout_;
 

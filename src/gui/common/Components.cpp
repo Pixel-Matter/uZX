@@ -7,6 +7,7 @@
 */
 
 #include "Components.h"
+#include "LookAndFeel.h"
 
 namespace te = tracktion;
 using namespace std::literals;
@@ -255,19 +256,16 @@ inline te::Plugin::Ptr showMenuAndCreatePlugin (te::Edit& edit)
 //==============================================================================
 ClipComponent::ClipComponent (EditViewState& evs, te::Clip::Ptr c)
     : editViewState (evs), clip (c)
-{
-}
+{}
 
-void ClipComponent::paint (Graphics& g)
-{
-    g.fillAll (clip->getColour().withAlpha (0.5f));
-    g.setColour (Colours::black);
-    g.drawRect (getLocalBounds());
+void ClipComponent::paint (Graphics& g) {
+    g.fillAll(clip->getColour().withAlpha(0.5f));
+    g.setColour(Colors::Theme::border.withAlpha(0.5f));
+    g.drawRect(getLocalBounds());
 
-    if (editViewState.selectionManager.isSelected (clip.get()))
-    {
-        g.setColour (Colours::red);
-        g.drawRect (getLocalBounds(), 2);
+    if (editViewState.selectionManager.isSelected(clip.get())) {
+        g.setColour(Colors::Timeline::clipSelected);
+        g.drawRect(getLocalBounds(), 2);
     }
 }
 
@@ -290,19 +288,17 @@ void AudioClipComponent::paint (Graphics& g) {
                       0, getWidth(), 0, getHeight(), 0);
 }
 
-void AudioClipComponent::drawWaveform (Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour,
+void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour,
                                        int left, int right, int y, int h, int xOffset)
 {
     auto getTimeRangeForDrawing = [this] (const int l, const int r) -> tracktion::TimeRange
     {
-        if (auto p = getParentComponent())
-        {
-            auto t1 = editViewState.xToTime (l, p->getWidth());
-            auto t2 = editViewState.xToTime (r, p->getWidth());
+        if (auto p = getParentComponent()) {
+            auto t1 = editViewState.xToTime(l, p->getWidth());
+            auto t2 = editViewState.xToTime(r, p->getWidth());
 
             return { t1, t2 };
         }
-
         return {};
     };
 
@@ -320,7 +316,7 @@ void AudioClipComponent::drawWaveform (Graphics& g, te::AudioClipBase& c, te::Sm
     auto offset = clipPos.getOffset();
     auto speedRatio = c.getSpeedRatio();
 
-    g.setColour (colour);
+    g.setColour(colour);
 
     if (usesTimeStretchedProxy)
     {
@@ -400,8 +396,7 @@ void drawMidiClip (juce::Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r, 
         return juce::roundToInt (((time - tr.getStart()) * width) / (tr.getLength()));
     };
 
-    for (auto n : mc.getSequence().getNotes())
-    {
+    for (auto n : mc.getSequence().getNotes()) {
         auto sBeat = mc.getStartBeat() + toDuration (n->getStartBeat());
         auto eBeat = mc.getStartBeat() + toDuration (n->getEndBeat());
 
@@ -413,8 +408,8 @@ void drawMidiClip (juce::Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r, 
 
         double y = (1.0 - double (n->getNoteNumber()) / 127.0) * r.getHeight();
 
-        g.setColour (Colours::white.withAlpha (n->getVelocity() / 127.0f));
-        g.drawLine (float (t1), float (y), float (t2), float (y));
+        g.setColour(Colours::white.withAlpha (n->getVelocity() / 127.0f));
+        g.drawLine(float (t1), float (y), float (t2), float (y));
     }
 }
 
@@ -475,35 +470,32 @@ void RecordingClipComponent::initialiseThumbnailAndPunchTime()
     }
 }
 
-void RecordingClipComponent::paint (Graphics& g)
-{
-    g.fillAll (Colours::red.withAlpha (0.5f));
-    g.setColour (Colours::black);
-    g.drawRect (getLocalBounds());
+void RecordingClipComponent::paint(Graphics& g) {
+    g.fillAll(Colours::red.withAlpha(0.5f));
+    // no outline
+    // g.setColour(Colours::black);
+    // g.drawRect(getLocalBounds());
 
     if (editViewState.drawWaveforms)
-        drawThumbnail (g, Colours::black.withAlpha (0.5f));
+        drawThumbnail(g, Colours::black.withAlpha(0.5f));
 }
 
-void RecordingClipComponent::drawThumbnail (Graphics& g, Colour waveformColour) const
-{
+void RecordingClipComponent::drawThumbnail(Graphics& g, Colour waveformColour) const {
     if (thumbnail == nullptr)
         return;
 
     Rectangle<int> bounds;
     tracktion::TimeRange times;
-    getBoundsAndTime (bounds, times);
+    getBoundsAndTime(bounds, times);
     auto w = bounds.getWidth();
 
-    if (w > 0 && w < 10000)
-    {
-        g.setColour (waveformColour);
-        thumbnail->thumb->drawChannels (g, bounds, times.getStart().inSeconds(), times.getEnd().inSeconds(), 1.0f);
+    if (w > 0 && w < 10000) {
+        g.setColour(waveformColour);
+        thumbnail->thumb->drawChannels(g, bounds, times.getStart().inSeconds(), times.getEnd().inSeconds(), 1.0f);
     }
 }
 
-bool RecordingClipComponent::getBoundsAndTime (Rectangle<int>& bounds, tracktion::TimeRange& times) const
-{
+bool RecordingClipComponent::getBoundsAndTime (Rectangle<int>& bounds, tracktion::TimeRange& times) const {
     auto editTimeToX = [this] (te::TimePosition t)
     {
         if (auto p = getParentComponent())
@@ -758,25 +750,21 @@ void TrackHeaderComponent::valueTreePropertyChanged (juce::ValueTree& v, const j
     }
 }
 
-void TrackHeaderComponent::paint (Graphics& g)
-{
-    g.setColour (Colours::grey);
-    g.fillRect (getLocalBounds().withTrimmedRight (2));
+void TrackHeaderComponent::paint(Graphics& g) {
+    g.setColour(Colors::Theme::backgroundAlt);
+    g.fillRect(getLocalBounds().withTrimmedRight(2));
 
-    if (editViewState.selectionManager.isSelected (track.get()))
-    {
-        g.setColour (Colours::red);
-        g.drawRect (getLocalBounds().withTrimmedRight (-4), 2);
+    if (editViewState.selectionManager.isSelected(track.get())) {
+        g.setColour(Colors::Theme::primary);
+        g.drawRect(getLocalBounds().withTrimmedRight(-4), 2);
     }
 }
 
-void TrackHeaderComponent::mouseDown (const MouseEvent&)
-{
-    editViewState.selectionManager.selectOnly (track.get());
+void TrackHeaderComponent::mouseDown (const MouseEvent&) {
+    editViewState.selectionManager.selectOnly(track.get());
 }
 
-void TrackHeaderComponent::resized()
-{
+void TrackHeaderComponent::resized() {
     auto r = getLocalBounds().reduced (4);
     trackName.setBounds (r.removeFromTop (r.getHeight() / 2));
 
@@ -856,14 +844,12 @@ void TrackFooterComponent::valueTreeChildOrderChanged (juce::ValueTree&, int, in
     markAndUpdate (updatePlugins);
 }
 
-void TrackFooterComponent::paint (Graphics& g)
-{
-    g.setColour (Colours::grey);
+void TrackFooterComponent::paint (Graphics& g) {
+    g.setColour (Colors::Theme::backgroundAlt);
     g.fillRect (getLocalBounds().withTrimmedLeft (2));
 
-    if (editViewState.selectionManager.isSelected (track.get()))
-    {
-        g.setColour (Colours::red);
+    if (editViewState.selectionManager.isSelected (track.get())) {
+        g.setColour (Colors::Theme::primary);
         g.drawRect (getLocalBounds().withTrimmedLeft (-4), 2);
     }
 }
@@ -924,10 +910,10 @@ TrackComponent::~TrackComponent()
 }
 
 void TrackComponent::paint(Graphics& g) {
-    g.fillAll(Colours::grey);
+    g.fillAll(Colors::Theme::backgroundAlt);
 
     if (editViewState.selectionManager.isSelected(track.get())) {
-        g.setColour (Colours::red);
+        g.setColour(Colors::Theme::primary);
 
         auto rc = getLocalBounds();
         if (editViewState.showHeaders) rc = rc.withTrimmedLeft(-4);
@@ -1045,7 +1031,7 @@ PlayheadComponent::PlayheadComponent(te::Edit& e, EditViewState& evs)
 }
 
 void PlayheadComponent::paint(Graphics& g) {
-    g.setColour(Colours::yellow);
+    g.setColour(Colors::Theme::success);
     g.drawRect(xPosition, 0, 2, getHeight());
 }
 

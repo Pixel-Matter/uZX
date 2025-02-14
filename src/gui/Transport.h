@@ -59,6 +59,10 @@ public:
         startTimerHz(30);
     }
 
+    void paint(Graphics& g) override {
+        g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+    }
+
     void resized() override {
         // TODO use layout system
         auto b = getLocalBounds();

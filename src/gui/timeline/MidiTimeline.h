@@ -15,6 +15,7 @@
 #include "../../util/base64_cx.h"
 #include "../../util/Midi.h"
 #include "EditComponent.h"
+#include "tracktion_engine/tracktion_engine.h"
 
 namespace MoTool {
 
@@ -53,23 +54,28 @@ public:
         evs.showChordTrack = false;
         evs.showGlobalTrack = false;
         evs.showMasterTrack = false;
+        evs.drawWaveforms = true;
 
         createTracksAndAssignInputs();
         te::EditFileOperations(edit).save(true, true, false);
 
         selectionManager.addChangeListener(this);
 
-        insertButton.onClick =       [this] { handleInsertClip(); };
+        insertMidiButton.onClick =       [this] {
+            handleInsertMidiClip();
+        };
+        insertAudioButton.onClick =       [this] {
+            handleInsertAudioClip();
+        };
         newTrackButton.onClick =     [this] { edit.ensureNumberOfAudioTracks(getAudioTracks(edit).size() + 1); };
         deleteButton.onClick =       [this] { handleDelete(); };
-        // showWaveformButton.onClick = [this] { handleShowWaveform(); };
 
         deleteButton.setEnabled(false);
 
         setSize(600, 400);
         Helpers::addAndMakeVisible(*this, { &editComponent,
-                                            &newTrackButton, &deleteButton, &insertButton,
-                                            // &showWaveformButton
+                                            &newTrackButton, &deleteButton,
+                                            &insertMidiButton, &insertAudioButton
                                           });
     }
 
@@ -85,12 +91,12 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 6;
+        int w = r.getWidth() / 8;
         auto topR = r.removeFromTop(30);
-        insertButton.setBounds(topR.removeFromLeft (w).reduced (2));
+        insertMidiButton.setBounds(topR.removeFromLeft (w).reduced (2));
+        insertAudioButton.setBounds(topR.removeFromLeft (w).reduced (2));
         newTrackButton.setBounds(topR.removeFromLeft (w).reduced (2));
         deleteButton.setBounds(topR.removeFromLeft (w).reduced (2));
-        // showWaveformButton.setBounds(topR.removeFromLeft (w).reduced (2));
         editComponent.setBounds(r);
     }
 
@@ -103,12 +109,33 @@ private:
 
     TextButton newTrackButton { "New Track" },
                deleteButton { "Delete" },
-               insertButton { "Insert MIDI Clip" };
+               insertMidiButton { "Insert MIDI" },
+               insertAudioButton { "Insert Audio" }
+               ;
     // ToggleButton showWaveformButton { "Show Waveforms" };
 
     //==============================================================================
 
-    void handleInsertClip() {
+    void handleInsertAudioClip() {
+        using namespace te;
+        EngineHelpers::browseForAudioFile(edit.engine, [this](const File& f) {
+            if (f.existsAsFile()) {
+                auto sel = selectionManager.getSelectedObject(0);
+                auto track = dynamic_cast<te::AudioTrack*>(sel);
+                if (track == nullptr) {
+                    track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
+                }
+                te::AudioFile audioFile (edit.engine, f);
+                if (audioFile.isValid()) {
+                    if (auto inserted = track->insertWaveClip({}, f, {{{}, te::TimeDuration::fromSeconds(audioFile.getLength())}, {}}, false)) {
+                        DBG("Inserted clip: " << inserted->getName());
+                    }
+                }
+            }
+        });
+    }
+
+    void handleInsertMidiClip() {
         auto seq = Util::readMidi(MIDI_CLIP_DATA, 1);
         auto len = seq.getEndTime();
 

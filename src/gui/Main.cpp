@@ -10,6 +10,7 @@
 */
 
 #include "../util/FileOps.h"
+#include "common/LookAndFeel.h"
 #include "Commands.h"
 #include "MainDocument.h"
 
@@ -29,12 +30,11 @@ class MainWindow final : public DocumentWindow,
 public:
     MainWindow(String name, te::Engine& engine)
         : DocumentWindow(name,
-            Desktop::getInstance().getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId),
+            Colors::Theme::backgroundAlt,
             DocumentWindow::allButtons)
         , engine_ {engine}
         , commandManager {getGlobalCommandManager()}
     {
-
         setUsingNativeTitleBar(true);
         setSize(1024, 740);
         setResizable(true, true);
@@ -311,7 +311,7 @@ private:
 
         edit_ = std::move(edit);
         setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
-        setContentOwned(new MainDocumentComponent(engine_, *edit_), true);
+        setContentOwned(new MainDocumentComponent(*edit_), true);
         setSize(w, h);
         repaint();
     }
@@ -333,10 +333,15 @@ public:
 
     void initialise(const String&) override {
         auto title = getApplicationName() + " v" + getApplicationVersion();
+
+        lookAndFeel = std::make_unique<MoLookAndFeel>();
+        juce::LookAndFeel::setDefaultLookAndFeel(lookAndFeel.get());
+
         mainWindow_ = std::make_unique<MainWindow>(title, engine_);
     }
 
     void shutdown() override {
+        juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
         mainWindow_ = nullptr;
     }
 
@@ -355,6 +360,7 @@ public:
 private:
     te::Engine engine_ { ProjectInfo::projectName };
     std::unique_ptr<MainWindow> mainWindow_;
+    std::unique_ptr<MoLookAndFeel> lookAndFeel;
     CommandManager commandManager;
 };
 

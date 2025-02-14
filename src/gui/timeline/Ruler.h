@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include "../common/LookAndFeel.h"
 #include "../common/Components.h"
 
 namespace MoTool {
@@ -16,7 +17,7 @@ public:
         , editViewState {evs}
     {
         edit.tempoSequence.addListener(this);
-        startTimerHz(30);
+        // startTimerHz(30);
     }
 
     ~RulerComponent() override {
@@ -26,23 +27,20 @@ public:
 
     void paint(Graphics& g) override {
         auto bounds = getLocalBounds();
+        auto &lf = getLookAndFeel();
 
-        g.setColour(Colours::grey);
+        g.setColour(lf.findColour(ResizableWindow::backgroundColourId));
         g.fillRect(bounds);
 
-        // TODO get zoom x1 and x2 from editViewState
-
         te::TimePosition startTime = editViewState.viewX1;
-        te::TimeDuration viewLength = editViewState.viewX2 - editViewState.viewX1;
+        te::TimeDuration viewLength = editViewState.viewLength();
 
         // Draw major beat lines (bars)
-        g.setColour(Colours::white.darker());
+        g.setColour(Colors::Theme::border);
         int beatNumber = 0;
         auto currentTime = startTime;
         const int width = bounds.getWidth();
         const float height = (float)bounds.getHeight();
-        const auto beatColor = Colours::white.darker();
-        g.setColour(beatColor);
         g.setFont(10.0f);
 
         while (currentTime < startTime + viewLength) {

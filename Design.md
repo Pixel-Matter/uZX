@@ -137,4 +137,157 @@ Each aspect of demo production supports a natural progression from modern protot
 - Extended live coding capabilities
 - Community plugin system
 
-*Note: This is a living document - like the demoscene itself, it should evolve with new ideas and possibilities!*
+## Video FX System Design for MoTool
+
+### Problem Statement
+
+MoTool needs to support multiple types of video effects for demoscene production:
+
+- Real-time shader effects (because why not, let's introduce the concept with well-known example)
+- Scriptable effects (Python/Cython/ChaiScript)
+- Emulator output with both video and audio
+- Multiple effects composited together
+- Timeline-based editing with automation
+
+Key challenges:
+
+1. Synchronization between audio and video
+2. Real-time preview during editing
+3. Parameter automation per clip
+4. Efficient frame buffering and caching
+5. State management for emulator rewind/seeking
+6. Multiple data types (video frames, memory buffers, data streams)
+
+### Design Constraints
+
+1. Technical Constraints:
+   - Fixed video resolution (256x192, 16 or 256 colors)
+   - Target frame rate up to 50 FPS
+   - Must support both video and audio for emulator
+   - Must integrate with Tracktion Engine's timing system
+2. Architectural Constraints:
+   - Use existing Tracktion Engine infrastructure where possible
+   - Support plugin-style effects with parameters
+   - Allow mixing different effect types on timeline
+   - Enable real-time parameter editing
+
+### Proposed Solution
+
+#### 1. Architecture Overview
+
+The system is designed in three layers:
+
+##### A. Edit Structure Layer
+
+- FXTrack: Timeline track containing video effects
+- FXClip: Individual effect instances on timeline
+- FXPlugin: Effect implementation with parameters
+- All integrated into Tracktion's existing Edit model
+
+##### B. Processing Layer
+
+- NodeGraph: Manages processing nodes and connections
+- FXNode: Base class for effect processing
+- Specialized nodes (EmulatorNode, VideoNode, ImageNode, TextNode, ShaderNode, ScriptNode)
+- Port system for flexible data routing
+
+##### C. Data Layer
+
+- Multiple data types through typed ports
+- Buffering system for video frames
+- Memory management for emulator state
+- Parameter automation storage
+
+#### 2. Key Components
+
+##### FXNode Base System
+
+```cpp
+class FXNode : public tracktion::graph::Node {
+    virtual std::vector<Port> getPorts() const = 0;
+    virtual void process() = 0;
+};
+```
+
+##### Port System
+
+Subject to change, now it is very roughly defined, only as a placeholder for further discussion.
+
+```cpp
+enum class PortType {
+    Audio,
+    Video,
+    Memory,
+    DataStream
+};
+
+struct Port {
+    juce::String name;
+    PortType type;
+    bool isInput;
+    PortFormat format;
+};
+```
+
+##### Integration with Tracktion Engine
+
+- Uses existing EditPlaybackContext for timing
+- Leverages Plugin architecture for parameters
+- Reuses automation system for parameters
+- Parallels audio/MIDI processing model
+
+#### 3. Processing Flow
+
+1. During Edit Construction:
+   - FXTracks are created in Edit
+   - FXClips are added to tracks
+   - Each clip creates its FXPlugin instance
+
+2. During Playback:
+   - EditPlaybackContext creates node graph
+   - Plugins create their processing nodes
+   - Nodes are connected based on ports
+   - Graph processes frame by frame
+
+3. Per-Frame Processing:
+   - Get current time from transport
+   - Update node parameters from automation
+   - Process nodes in graph order
+   - Output final frame to display
+
+#### 4. Key Benefits
+
+1. Leverages Existing Infrastructure:
+   - Uses Tracktion's proven plugin system
+   - Integrates with existing timing/automation
+   - Follows familiar track/clip model
+
+2. Flexible Effect System:
+   - Support for multiple effect types
+   - Extensible node/port system
+   - Clean separation of concerns
+
+3. Efficient Processing:
+   - Graph-based processing
+   - Type-safe port connections
+   - Reusable node infrastructure
+
+### Next Steps
+
+1. Implementation Priorities:
+   - Base FXNode and port system
+   - Basic ShaderFX implementation
+   - Integration with EditPlaybackContext
+   - Parameter automation support
+
+2. Future Considerations:
+   - Frame caching strategy
+   - Latency compensation
+   - Multiple input/output support
+   - Enhanced buffering system (?)
+
+3. Open Questions:
+   - Specific caching requirements
+   - Real-time performance optimization
+   - Advanced port metadata needs
+   - Script engine integration details

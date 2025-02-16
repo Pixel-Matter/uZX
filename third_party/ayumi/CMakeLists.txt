@@ -1,3 +1,5 @@
+# File: third_party/ayumi/CMakeLists.txt
+
 add_library(ayumi STATIC
     ayumi.h
     ayumi.c

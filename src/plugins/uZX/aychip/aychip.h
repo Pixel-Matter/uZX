@@ -84,25 +84,7 @@ public:
 
     // AYInterface(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::AY) ;
 
-    /************************************************************************/
-    /* Register array accessor structure. Example of usage:                 */
-    /*   uint8_t v = ay.R[0]                                                */
-    /*   ay.R[0] = 42                                                       */
-    /************************************************************************/
-    class RegisterAccessor {
-    public:
-        RegisterAccessor(AYInterface& obj) : Obj_(obj) {}
-
-        inline void operator[](size_t index, unsigned char value) noexcept {
-            Obj_.setRegister(index, value);
-        }
-    private:
-        AYInterface& Obj_;
-    };
-
-    AYInterface() : R(*this) {}
-
-    RegisterAccessor R;
+    AYInterface() {}
 
     virtual ~AYInterface() {}
 
@@ -118,11 +100,14 @@ public:
     virtual auto setPan(int chan, double pan, bool isEqp = false) -> void = 0;
     virtual auto getPan(int chan) const -> double = 0;
 
+    // TODO maybe just store registers in an ordinary byte array and after setting them update the chip?
+    void setRegister(size_t index, unsigned char value) noexcept;
+
     // Processing
     virtual auto processBlock(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
 
+protected:
     // AY functions
-    // TODO hide these functions and use R0-R13 registers instead. Make protected
     virtual auto setMixer(int chan, bool tOn, bool nOn, bool eOn) -> void = 0;
     virtual auto setEnvelopeOn(int chan, bool on) -> void = 0;
     virtual auto setNoiseOn(int chan, bool on) -> void = 0;
@@ -191,8 +176,6 @@ private:
     inline void setR13(unsigned char envShape) noexcept {
         setEnvelopeShape(static_cast<EnvShape>(envShape));
     }
-    // TODO maybe just store registers in an ordinary byte array and after setting them update the chip?
-    void setRegister(size_t index, unsigned char value) noexcept;
 };
 
 

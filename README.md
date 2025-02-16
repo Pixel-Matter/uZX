@@ -1,4 +1,4 @@
-# MoTool is a PC-based *de***motool** for retrocomputer demoscene production
+# MoTool is a modern PC-based *de*motool for retrocomputer demoscene production
 
 ```text
         █▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌
@@ -31,6 +31,8 @@
     B8 B8 B8 "" 8P B8 Yb "" "" 8P B8
     Y8 88 Y@888@8' 88 `8@88888@8' YP
 ```
+
+![Tracktion Engine](third_party/tracktion_engine/tutorials/images/tracktion_engine_powered.png)
 
 Powered by [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/).
 

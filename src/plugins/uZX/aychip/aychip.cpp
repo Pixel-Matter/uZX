@@ -8,12 +8,6 @@
 
 namespace uZX::Chip {
 
-// namespace {
-//     extern "C" {
-//         #include "ayumi/ayumi.c"
-//     }
-// }
-
 
 void AYInterface::setRegister(size_t index, unsigned char value) noexcept {
     if (index >= 14) {

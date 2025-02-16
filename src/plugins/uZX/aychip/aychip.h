@@ -109,6 +109,7 @@ public:
 protected:
     // AY functions
     virtual auto setMixer(int chan, bool tOn, bool nOn, bool eOn) -> void = 0;
+    virtual auto getMixer(int chan) const -> std::tuple<bool, bool, bool> = 0;
     virtual auto setEnvelopeOn(int chan, bool on) -> void = 0;
     virtual auto setNoiseOn(int chan, bool on) -> void = 0;
     virtual auto setVolume(int chan, int volume) -> void = 0;
@@ -199,6 +200,7 @@ public:
 
     // Chip functions
     auto setMixer(int chan, bool tOn, bool nOn, bool eOn) -> void override;
+    auto getMixer(int chan) const -> std::tuple<bool, bool, bool> override;
     auto setEnvelopeOn(int chan, bool on) -> void override;
     auto setNoiseOn(int chan, bool on) -> void override;
     auto setVolume(int chan, int volume) -> void override;

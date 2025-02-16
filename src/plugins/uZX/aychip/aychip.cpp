@@ -144,6 +144,10 @@ auto AyumiEmulator::setMixer(int chan, bool tOn, bool nOn, bool eOn) -> void {
     ayumi_set_mixer(&Ayumi_, chan, !tOn, !nOn, eOn);
 }
 
+auto AyumiEmulator::getMixer(int chan) const -> std::tuple<bool, bool, bool> {
+    return { !Ayumi_.channels[chan].t_off, !Ayumi_.channels[chan].n_off, Ayumi_.channels[chan].e_on };
+}
+
 auto AyumiEmulator::setVolume(int chan, int volume) -> void {
     ayumi_set_volume(&Ayumi_, chan, volume);
 }

@@ -137,81 +137,143 @@ Each aspect of demo production supports a natural progression from modern protot
 - Extended live coding capabilities
 - Community plugin system
 
-## Video FX System Design for MoTool
+# Video FX System Design for MoTool
 
-### Problem Statement
+## Background
 
-MoTool needs to support multiple types of video effects for demoscene production:
+The demoscene on retro platforms like ZX Spectrum requires complex video effects synchronized with music. Traditional development involves:
 
-- Real-time shader effects (because why not, let's introduce the concept with well-known example)
-- Scriptable effects (Python/Cython/ChaiScript)
-- Emulator output with both video and audio
-- Multiple effects composited together
-- Timeline-based editing with automation
+- Writing effects directly in assembly
+- Manual synchronization with music
+- Limited ability to prototype or iterate
 
-Key challenges:
+Modern tools like video editors and motion graphics software offer powerful prototyping but lack:
 
-1. Synchronization between audio and video
-2. Real-time preview during editing
-3. Parameter automation per clip
-4. Efficient frame buffering and caching
-5. State management for emulator rewind/seeking
-6. Multiple data types (video frames, memory buffers, data streams)
+- Integration with retro platform constraints
+- Direct machine code development
+- Real-time preview of actual hardware behavior
 
-### Design Constraints
+## Problem Statement
 
-1. Technical Constraints:
-   - Fixed video resolution (256x192, 16 or 256 colors)
-   - Target frame rate up to 50 FPS
-   - Must support both video and audio for emulator
-   - Must integrate with Tracktion Engine's timing system
-2. Architectural Constraints:
-   - Use existing Tracktion Engine infrastructure where possible
-   - Support plugin-style effects with parameters
-   - Allow mixing different effect types on timeline
-   - Enable real-time parameter editing
+MoTool needs to bridge these worlds by providing:
 
-### Proposed Solution
+1. Modern timeline-based editing for rapid prototyping
+2. Direct integration with retro platform development
+3. Real-time preview of effects
+4. Parameter automation and synchronization with music
 
-#### 1. Architecture Overview
+Key technical requirements:
 
-The system is designed in three layers:
+- Multiple effect types (shaders, scripts, emulator output)
+- 256x192 resolution, 16 colors
+- Up to 50 FPS performance
+- Frame-accurate synchronization with audio
+- State management for emulator
+- Timeline-based editing
 
-##### A. Edit Structure Layer
+## Existing Architecture Analysis
 
-- FXTrack: Timeline track containing video effects
-- FXClip: Individual effect instances on timeline
-- FXPlugin: Effect implementation with parameters
-- All integrated into Tracktion's existing Edit model
+Tracktion Engine provides:
 
-##### B. Processing Layer
+1. Robust timeline editing
+2. Parameter automation
+3. Plugin architecture
+4. Real-time processing graph
 
-- NodeGraph: Manages processing nodes and connections
-- FXNode: Base class for effect processing
-- Specialized nodes (EmulatorNode, VideoNode, ImageNode, TextNode, ShaderNode, ScriptNode)
-- Port system for flexible data routing
+These capabilities align perfectly with our needs, but require extension for:
 
-##### C. Data Layer
+- Video processing
+- Emulator state management
+- Multiple data types beyond audio/MIDI
 
-- Multiple data types through typed ports
-- Buffering system for video frames
-- Memory management for emulator state
-- Parameter automation storage
+## Design Solution
 
-#### 2. Key Components
+### Core Architecture
 
-##### FXNode Base System
+The design extends Tracktion's existing architecture while maintaining its core principles:
 
-```cpp
-class FXNode : public tracktion::graph::Node {
-    virtual std::vector<Port> getPorts() const = 0;
-    virtual void process() = 0;
-};
-```
+1. Timeline Layer:
 
-##### Port System
+   ```text
+   Edit
+   └─ FXTrack
+         └─ FXClip
+               └─ FXPlugin
+   ```
 
-Subject to change, now it is very roughly defined, only as a placeholder for further discussion.
+2. Processing Layer:
+
+   ```text
+   EditPlaybackContext
+   └─ NodeGraph
+         ├─ EmulatorNode
+         ├─ ShaderNode
+         └─ ScriptNode
+   ```
+
+3. Data Layer:
+   - Type-safe ports for different data types
+   - Frame and state buffering
+   - Parameter automation storage
+
+This mirrors Tracktion's proven audio/MIDI architecture while adding video capabilities.
+
+### Key Design Decisions
+
+1. Plugin-Based Architecture
+   - Why: Leverages Tracktion's existing parameter automation and state management
+   - Alternative considered: Direct clip processing
+     - Rejected due to loss of parameter automation and preset capabilities
+
+2. Node Graph Processing
+   - Why: Enables flexible routing of different data types
+   - Alternative considered: Direct frame processing chain
+     - Rejected due to complexity in handling multiple input/output types
+
+3. Port System
+   - Why: Type-safe connections between nodes
+   - Alternative considered: Generic data passing
+     - Rejected due to type safety concerns and debugging difficulty
+
+### Implementation Strategy
+
+1. Base Infrastructure:
+   - FXNode base class
+   - Port system
+   - Basic parameter automation
+
+2. Core Components:
+   - EmulatorNode for machine emulation
+   - ShaderNode for GPU effects
+   - ScriptNode for custom processing
+
+3. Integration:
+   - Timeline editing
+   - Real-time preview
+   - Parameter automation
+
+## Validation
+
+The design satisfies our requirements:
+
+1. Rapid Prototyping:
+   - Timeline-based editing
+   - Real-time preview
+   - Parameter automation
+
+2. Retro Platform Integration:
+   - Direct emulator integration
+   - Machine code development
+   - State management
+
+3. Performance:
+   - Graph-based processing is efficient
+   - Type-safe connections minimize overhead
+   - Reuses proven Tracktion infrastructure
+
+## Technical Details
+
+### Port System
 
 ```cpp
 enum class PortType {
@@ -229,65 +291,35 @@ struct Port {
 };
 ```
 
-##### Integration with Tracktion Engine
+### Node Base Class
 
-- Uses existing EditPlaybackContext for timing
-- Leverages Plugin architecture for parameters
-- Reuses automation system for parameters
-- Parallels audio/MIDI processing model
+```cpp
+class FXNode : public tracktion_graph::Node {
+    virtual std::vector<Port> getPorts() const = 0;
+    virtual void process() = 0;
+};
+```
 
-#### 3. Processing Flow
+## Next Steps
 
-1. During Edit Construction:
-   - FXTracks are created in Edit
-   - FXClips are added to tracks
-   - Each clip creates its FXPlugin instance
-
-2. During Playback:
-   - EditPlaybackContext creates node graph
-   - Plugins create their processing nodes
-   - Nodes are connected based on ports
-   - Graph processes frame by frame
-
-3. Per-Frame Processing:
-   - Get current time from transport
-   - Update node parameters from automation
-   - Process nodes in graph order
-   - Output final frame to display
-
-#### 4. Key Benefits
-
-1. Leverages Existing Infrastructure:
-   - Uses Tracktion's proven plugin system
-   - Integrates with existing timing/automation
-   - Follows familiar track/clip model
-
-2. Flexible Effect System:
-   - Support for multiple effect types
-   - Extensible node/port system
-   - Clean separation of concerns
-
-3. Efficient Processing:
-   - Graph-based processing
-   - Type-safe port connections
-   - Reusable node infrastructure
-
-### Next Steps
-
-1. Implementation Priorities:
-   - Base FXNode and port system
-   - Basic ShaderFX implementation
-   - Integration with EditPlaybackContext
-   - Parameter automation support
+1. Implementation Priority:
+   1. Port system and base node infrastructure
+   2. Basic EmulatorNode implementation
+   3. Parameter automation integration
+   4. ShaderNode development
 
 2. Future Considerations:
    - Frame caching strategy
-   - Latency compensation
-   - Multiple input/output support
-   - Enhanced buffering system (?)
+   - Enhanced buffering system
+   - Advanced node types
 
-3. Open Questions:
-   - Specific caching requirements
-   - Real-time performance optimization
-   - Advanced port metadata needs
-   - Script engine integration details
+## Conclusion
+
+This design:
+- Leverages proven Tracktion architecture
+- Adds video capabilities naturally
+- Maintains flexibility for future extensions
+- Meets all current requirements
+- Provides clear implementation path
+
+The solution is optimal given our constraints and requirements, building on existing architecture while adding necessary capabilities for demoscene production.

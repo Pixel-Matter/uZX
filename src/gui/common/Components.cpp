@@ -9,6 +9,8 @@
 #include "Components.h"
 #include "LookAndFeel.h"
 
+#include "../../plugins/uZX/aychip/AYPlugin.h"
+
 namespace te = tracktion;
 using namespace std::literals;
 
@@ -149,44 +151,42 @@ void PluginTreeGroup::populateFrom (KnownPluginList::PluginTree& tree)
 
 
 template<class FilterClass>
-void addInternalPlugin (PluginTreeBase& item, int& num, bool synth = false)
-{
-    item.addSubItem (new PluginTreeItem (String (num++) + "_trkbuiltin",
-                                         TRANS (FilterClass::getPluginName()),
+void addInternalPlugin(PluginTreeBase& item, int& num, bool synth = false) {
+    item.addSubItem(new PluginTreeItem(String(num++) + "_trkbuiltin",
+                                         TRANS(FilterClass::getPluginName()),
                                          FilterClass::xmlTypeName, synth, false));
 }
 
-void PluginTreeGroup::createBuiltInItems (int& num, te::Plugin::Type types)
-{
-    addInternalPlugin<te::VolumeAndPanPlugin> (*this, num);
-    addInternalPlugin<te::LevelMeterPlugin> (*this, num);
-    addInternalPlugin<te::EqualiserPlugin> (*this, num);
-    addInternalPlugin<te::ReverbPlugin> (*this, num);
-    addInternalPlugin<te::DelayPlugin> (*this, num);
-    addInternalPlugin<te::ChorusPlugin> (*this, num);
-    addInternalPlugin<te::PhaserPlugin> (*this, num);
-    addInternalPlugin<te::CompressorPlugin> (*this, num);
-    addInternalPlugin<te::PitchShiftPlugin> (*this, num);
-    addInternalPlugin<te::LowPassPlugin> (*this, num);
-    addInternalPlugin<te::MidiModifierPlugin> (*this, num);
-    addInternalPlugin<te::MidiPatchBayPlugin> (*this, num);
-    addInternalPlugin<te::PatchBayPlugin> (*this, num);
-    addInternalPlugin<te::AuxSendPlugin> (*this, num);
-    addInternalPlugin<te::AuxReturnPlugin> (*this, num);
-    addInternalPlugin<te::TextPlugin> (*this, num);
-    addInternalPlugin<te::FreezePointPlugin> (*this, num);
+void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
+    addInternalPlugin<uZX::AYChipPlugin>(*this, num);
+    addInternalPlugin<te::VolumeAndPanPlugin>(*this, num);
+    addInternalPlugin<te::LevelMeterPlugin>(*this, num);
+    addInternalPlugin<te::EqualiserPlugin>(*this, num);
+    addInternalPlugin<te::ReverbPlugin>(*this, num);
+    addInternalPlugin<te::DelayPlugin>(*this, num);
+    addInternalPlugin<te::ChorusPlugin>(*this, num);
+    addInternalPlugin<te::PhaserPlugin>(*this, num);
+    addInternalPlugin<te::CompressorPlugin>(*this, num);
+    addInternalPlugin<te::PitchShiftPlugin>(*this, num);
+    addInternalPlugin<te::LowPassPlugin>(*this, num);
+    addInternalPlugin<te::MidiModifierPlugin>(*this, num);
+    addInternalPlugin<te::MidiPatchBayPlugin>(*this, num);
+    addInternalPlugin<te::PatchBayPlugin>(*this, num);
+    addInternalPlugin<te::AuxSendPlugin>(*this, num);
+    addInternalPlugin<te::AuxReturnPlugin>(*this, num);
+    addInternalPlugin<te::TextPlugin>(*this, num);
+    addInternalPlugin<te::FreezePointPlugin>(*this, num);
 
    #if TRACKTION_ENABLE_REWIRE
     addInternalPlugin<te::ReWirePlugin> (*this, num, true);
    #endif
 
-    if (types == te::Plugin::Type::allPlugins)
-    {
-        addInternalPlugin<te::SamplerPlugin> (*this, num, true);
-        addInternalPlugin<te::FourOscPlugin> (*this, num, true);
+    if (types == te::Plugin::Type::allPlugins) {
+        addInternalPlugin<te::SamplerPlugin>(*this, num, true);
+        addInternalPlugin<te::FourOscPlugin>(*this, num, true);
     }
 
-    addInternalPlugin<te::InsertPlugin> (*this, num);
+    addInternalPlugin<te::InsertPlugin>(*this, num);
 
    #if ENABLE_INTERNAL_PLUGINS
     for (auto& d : PluginTypeBase::getAllPluginDescriptions())
@@ -196,13 +196,11 @@ void PluginTreeGroup::createBuiltInItems (int& num, te::Plugin::Type types)
 }
 
 //==============================================================================
-class PluginMenu : public PopupMenu
-{
+class PluginMenu : public PopupMenu {
 public:
     PluginMenu() = default;
 
-    PluginMenu (PluginTreeGroup& node)
-    {
+    PluginMenu(PluginTreeGroup& node) {
         for (int i = 0; i < node.getNumSubItems(); ++i)
             if (auto subNode = dynamic_cast<PluginTreeGroup*> (node.getSubItem (i)))
                 addSubMenu (subNode->name, PluginMenu (*subNode), true);
@@ -212,44 +210,39 @@ public:
                 addItem (subType->getUniqueName().hashCode(), subType->desc.name, true, false);
     }
 
-    static PluginTreeItem* findType (PluginTreeGroup& node, int hash)
-    {
+    static PluginTreeItem* findType(PluginTreeGroup& node, int hash) {
         for (int i = 0; i < node.getNumSubItems(); ++i)
-            if (auto subNode = dynamic_cast<PluginTreeGroup*> (node.getSubItem (i)))
-                if (auto* t = findType (*subNode, hash))
+            if (auto subNode = dynamic_cast<PluginTreeGroup*>(node.getSubItem (i)))
+                if (auto* t = findType(*subNode, hash))
                     return t;
 
         for (int i = 0; i < node.getNumSubItems(); ++i)
-            if (auto t = dynamic_cast<PluginTreeItem*> (node.getSubItem (i)))
+            if (auto t = dynamic_cast<PluginTreeItem*>(node.getSubItem (i)))
                 if (t->getUniqueName().hashCode() == hash)
                     return t;
 
         return nullptr;
     }
 
-    PluginTreeItem* runMenu (PluginTreeGroup& node)
-    {
+    PluginTreeItem* runMenu(PluginTreeGroup& node) {
         int res = show();
 
         if (res == 0)
             return nullptr;
 
-        return findType (node, res);
+        return findType(node, res);
     }
 };
 
 //==============================================================================
-inline te::Plugin::Ptr showMenuAndCreatePlugin (te::Edit& edit)
-{
-    if (auto tree = EngineHelpers::createPluginTree (edit.engine))
-    {
-        PluginTreeGroup root (edit, *tree, te::Plugin::Type::allPlugins);
-        PluginMenu m (root);
+inline te::Plugin::Ptr showMenuAndCreatePlugin(te::Edit& edit) {
+    if (auto tree = EngineHelpers::createPluginTree(edit.engine)) {
+        PluginTreeGroup root(edit, *tree, te::Plugin::Type::allPlugins);
+        PluginMenu m(root);
 
-        if (auto type = m.runMenu (root))
-            return type->create (edit);
+        if (auto type = m.runMenu(root))
+            return type->create(edit);
     }
-
     return {};
 }
 
@@ -807,106 +800,99 @@ void PluginComponent::clicked (const ModifierKeys& modifiers)
 
 //==============================================================================
 TrackFooterComponent::TrackFooterComponent (EditViewState& evs, te::Track::Ptr t)
-    : editViewState (evs), track (t)
+    : editViewState (evs)
+    , track (t)
 {
     addAndMakeVisible (addButton);
 
     buildPlugins();
 
-    track->state.addListener (this);
+    track->state.addListener(this);
 
-    addButton.onClick = [this]
-    {
-        if (auto plugin = showMenuAndCreatePlugin (track->edit))
-            track->pluginList.insertPlugin (plugin, 0, &editViewState.selectionManager);
+    addButton.onClick = [this] {
+        // TODO implement showMenuAndCreatePlugin in UIBehaviour
+        // if (auto plugin = track->edit.engine.getUIBehaviour().showMenuAndCreatePlugin (te::Plugin::Type::effectPlugins, track->edit)) {
+        if (auto plugin = showMenuAndCreatePlugin(track->edit)) {
+            track->pluginList.insertPlugin(plugin, 0, &editViewState.selectionManager);
+        }
     };
 }
 
-TrackFooterComponent::~TrackFooterComponent()
-{
-    track->state.removeListener (this);
+TrackFooterComponent::~TrackFooterComponent() {
+    track->state.removeListener(this);
 }
 
-void TrackFooterComponent::valueTreeChildAdded (juce::ValueTree&, juce::ValueTree& c)
-{
-    if (c.hasType (te::IDs::PLUGIN))
-        markAndUpdate (updatePlugins);
+void TrackFooterComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {
+    if (c.hasType(te::IDs::PLUGIN))
+        markAndUpdate(updatePlugins);
 }
 
-void TrackFooterComponent::valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree& c, int)
-{
-    if (c.hasType (te::IDs::PLUGIN))
-        markAndUpdate (updatePlugins);
+void TrackFooterComponent::valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) {
+    if (c.hasType(te::IDs::PLUGIN))
+        markAndUpdate(updatePlugins);
 }
 
-void TrackFooterComponent::valueTreeChildOrderChanged (juce::ValueTree&, int, int)
-{
-    markAndUpdate (updatePlugins);
+void TrackFooterComponent::valueTreeChildOrderChanged(juce::ValueTree&, int, int) {
+    markAndUpdate(updatePlugins);
 }
 
-void TrackFooterComponent::paint (Graphics& g) {
-    g.setColour (Colors::Theme::backgroundAlt);
-    g.fillRect (getLocalBounds().withTrimmedLeft (2));
+void TrackFooterComponent::paint(Graphics& g) {
+    g.setColour(Colors::Theme::backgroundAlt);
+    g.fillRect(getLocalBounds().withTrimmedLeft(2));
 
     if (editViewState.selectionManager.isSelected (track.get())) {
-        g.setColour (Colors::Theme::primary);
-        g.drawRect (getLocalBounds().withTrimmedLeft (-4), 2);
+        g.setColour(Colors::Theme::primary);
+        g.drawRect(getLocalBounds().withTrimmedLeft(-4), 2);
     }
 }
 
-void TrackFooterComponent::mouseDown (const MouseEvent&)
-{
-    editViewState.selectionManager.selectOnly (track.get());
+void TrackFooterComponent::mouseDown (const MouseEvent&) {
+    editViewState.selectionManager.selectOnly(track.get());
 }
 
-void TrackFooterComponent::resized()
-{
+void TrackFooterComponent::resized() {
     auto r = getLocalBounds().reduced (4);
     const int cx = 21;
 
-    addButton.setBounds (r.removeFromLeft (cx).withSizeKeepingCentre (cx, cx));
-    r.removeFromLeft (6);
+    addButton.setBounds(r.removeFromLeft (cx).withSizeKeepingCentre (cx, cx));
+    r.removeFromLeft(6);
 
-    for (auto p : plugins)
-    {
-        p->setBounds (r.removeFromLeft (cx).withSizeKeepingCentre (cx, cx));
+    for (auto p : plugins) {
+        p->setBounds(r.removeFromLeft (cx).withSizeKeepingCentre (cx, cx));
         r.removeFromLeft (2);
     }
 }
 
-void TrackFooterComponent::handleAsyncUpdate()
-{
-    if (compareAndReset (updatePlugins))
+void TrackFooterComponent::handleAsyncUpdate() {
+    if (compareAndReset(updatePlugins))
         buildPlugins();
 }
 
-void TrackFooterComponent::buildPlugins()
-{
+void TrackFooterComponent::buildPlugins() {
     plugins.clear();
 
-    for (auto plugin : track->pluginList)
-    {
-        auto p = new PluginComponent (editViewState, plugin);
-        addAndMakeVisible (p);
-        plugins.add (p);
+    for (auto plugin : track->pluginList) {
+        auto p = new PluginComponent(editViewState, plugin);
+        addAndMakeVisible(p);
+        plugins.add(p);
     }
     resized();
 }
 
 //==============================================================================
 TrackComponent::TrackComponent (EditViewState& evs, te::Track::Ptr t)
-    : editViewState (evs), track (t)
+    : editViewState (evs)
+    , track (t)
 {
-    track->state.addListener (this);
-    track->edit.getTransport().addChangeListener (this);
+    track->state.addListener(this);
+    track->edit.getTransport().addChangeListener(this);
 
-    markAndUpdate (updateClips);
+    markAndUpdate(updateClips);
 }
 
-TrackComponent::~TrackComponent()
-{
-    track->state.removeListener (this);
-    track->edit.getTransport().removeChangeListener (this);
+TrackComponent::~TrackComponent() {
+    track->state.removeListener(this);
+    track->edit.getTransport().removeChangeListener(this);
 }
 
 void TrackComponent::paint(Graphics& g) {

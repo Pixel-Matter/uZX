@@ -6,7 +6,7 @@
 #include <cmath>
 #include <vector>
 
-namespace uZX::Chip {
+namespace MoTool::uZX {
 
 
 void AYInterface::setRegister(size_t index, unsigned char value) noexcept {
@@ -179,4 +179,4 @@ auto AyumiEmulator::processBlock(float* outLeft, float* outRight, size_t numSamp
     }
 }
 
-}
+} // namespace MoTool::uZX

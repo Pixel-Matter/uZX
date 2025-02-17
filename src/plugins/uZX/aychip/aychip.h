@@ -5,7 +5,7 @@
 
 #include "../../../util/enumchoice.h"
 
-namespace uZX::Chip {
+namespace MoTool::uZX {
 
 /*****************************************************************************/
 /*  C++ wrapper for aychip struct and functions                              */
@@ -229,4 +229,4 @@ private:
     float MasterVolume_;
 };
 
-} // namespace uZX::Chip
+} // namespace MoTool::uZX

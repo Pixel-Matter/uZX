@@ -31,7 +31,9 @@ set(SourceFiles
     plugins/uZX/aychip/aychip.cpp
     util/FileOps.cpp
     util/Midi.cpp
+
     plugins/uZX/aychip/aychip.cpp
+    plugins/uZX/aychip/AYPlugin.cpp
 )
 
 target_sources(${TARGET_NAME} PRIVATE ${SourceFiles})
@@ -64,6 +66,7 @@ target_compile_definitions(${TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 # Dependencies
 target_link_libraries(${TARGET_NAME} PRIVATE
     ayumi
+    # motool::uZX
     tracktion::tracktion_core
     tracktion::tracktion_engine
     tracktion::tracktion_graph

@@ -32,7 +32,7 @@ public:
             &stepRightButton_,
             &bpmLabel_,
             &timeSigLabel_,
-            &positionLabel_
+            &transportReadout_
         });
         rewindButton_.onClick = [] {
             getGlobalCommandManager().invokeDirectly(AppCommands::transportRewind, false);
@@ -54,6 +54,8 @@ public:
         stepRightButton_.onClick = [] {
             // getGlobalCommandManager().invokeDirectly(AppCommands::transportStepForward, false);
         };
+        // transportReadout_.setFont(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 14, juce::Font::plain));
+
         updatePlayButtonText();
         updateTimeLabels();
         startTimerHz(30);
@@ -74,7 +76,7 @@ public:
 
         bpmLabel_.setBounds(b.removeFromLeft(w * 2).reduced(2));
         timeSigLabel_.setBounds(b.removeFromLeft(w * 2).reduced(2));
-        positionLabel_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+        transportReadout_.setBounds(b.removeFromLeft(w * 2).reduced(2));
 
         rewindButton_.setBounds(b.removeFromLeft(w).reduced(2));
         stepLeftButton_.setBounds(b.removeFromLeft(w).reduced(2));
@@ -95,7 +97,7 @@ private:
 
     Label      bpmLabel_      { "BPM",      "BPM:" },
                timeSigLabel_  { "TimeSig",  "Sig:" },
-               positionLabel_ { "Position", "Pos:" };
+               transportReadout_ { "Position", "Pos:" };
     te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
 
     void changeListenerCallback (ChangeBroadcaster*) override {
@@ -125,11 +127,9 @@ private:
 
         lastPosition_ = pos;
         auto& ts = edit_.tempoSequence;
-        auto barsNbeats = ts.toBarsAndBeats(pos);
-        auto detailed = String::formatted("Pos: %d.%.3f",
-                                          barsNbeats.bars + 1,
-                                          barsNbeats.beats.inBeats() + 1.0f);
-        positionLabel_.setText(detailed, dontSendNotification);
+        auto t = te::TimecodeDisplayFormat(te::TimecodeType::barsBeats).getString(edit_.tempoSequence, transport_.getPosition(), false);
+        transportReadout_.setText("Pos: " + t, dontSendNotification);
+
         bpmLabel_.setText(String::formatted("BPM: %.2f", ts.getBpmAt(pos)), dontSendNotification);
         timeSigLabel_.setText(String::formatted("Sig: " + ts.getTimeSigAt(pos).getStringTimeSig()), dontSendNotification);
     }

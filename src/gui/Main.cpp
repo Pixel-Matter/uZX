@@ -13,6 +13,7 @@
 #include "common/LookAndFeel.h"
 #include "Commands.h"
 #include "MainDocument.h"
+#include "../plugins/uZX/aychip/AYPlugin.h"
 
 #include <JuceHeader.h>
 #include <memory>
@@ -332,6 +333,8 @@ public:
     bool moreThanOneInstanceAllowed() override          { return true; }
 
     void initialise(const String&) override {
+        engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
+        
         auto title = getApplicationName() + " v" + getApplicationVersion();
 
         lookAndFeel = std::make_unique<MoLookAndFeel>();

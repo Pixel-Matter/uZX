@@ -6,7 +6,7 @@
 
 // #include "TestUtils.h"
 
-using namespace uZX::Chip;
+using namespace MoTool::uZX;
 
 namespace {
     // for example to bypass initial click

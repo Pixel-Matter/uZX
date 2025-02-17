@@ -14,8 +14,8 @@
 
 #include "../../util/base64_cx.h"
 #include "../../util/Midi.h"
+#include "../../plugins/uZX/aychip/AYPlugin.h"
 #include "EditComponent.h"
-#include "tracktion_engine/tracktion_engine.h"
 
 namespace MoTool {
 

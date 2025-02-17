@@ -6,6 +6,8 @@ set(TARGET_NAME uZX)
 add_library(${TARGET_NAME}
     aychip/aychip.cpp
     aychip/aychip.h
+    aychip/AYPlugin.h
+    aychip/AYPlugin.cpp
     # aychip/freq_tables.h
 )
 

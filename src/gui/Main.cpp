@@ -328,11 +328,11 @@ public:
     ExtEngineBehaviour() = default;
 
     bool autoInitialiseDeviceManager() override {
-        return false;
+        return true;
     }
 
     bool shouldOpenAudioInputByDefault() override {
-        return true;
+        return false;
     }
 };
 
@@ -349,10 +349,7 @@ public:
     bool moreThanOneInstanceAllowed() override          { return true; }
 
     void initialise(const String&) override {
-        // // To try to set input channels to 0 or else in my BT Phones sound sets to mono
-        // engine_.getDeviceManager().deviceManager.initialise(0, 2, nullptr, false, {}, nullptr);
-        // engine_.getDeviceManager().deviceManager.initialiseWithDefaultDevices(0, 2);
-
+        DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
         engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
 
         auto title = getApplicationName() + " v" + getApplicationVersion();
@@ -381,8 +378,7 @@ public:
     }
 
 private:
-    te::Engine engine_ { ProjectInfo::projectName, std::make_unique<ExtendedUIBehaviour>(), nullptr};
-    // te::Engine engine_ { ProjectInfo::projectName, std::make_unique<ExtendedUIBehaviour>(), std::make_unique<ExtEngineBehaviour>() };
+    te::Engine engine_ { ProjectInfo::projectName, std::make_unique<ExtendedUIBehaviour>(), std::make_unique<ExtEngineBehaviour>() };
     std::unique_ptr<MainWindow> mainWindow_;
     std::unique_ptr<MoLookAndFeel> lookAndFeel;
     CommandManager commandManager;

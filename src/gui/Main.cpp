@@ -327,13 +327,13 @@ class ExtEngineBehaviour : public te::EngineBehaviour {
 public:
     ExtEngineBehaviour() = default;
 
-    // bool autoInitialiseDeviceManager() override {
-    //     return true;
-    // }
+    bool autoInitialiseDeviceManager() override {
+        return false;
+    }
 
-    // bool shouldOpenAudioInputByDefault() override {
-    //     return false;
-    // }
+    bool shouldOpenAudioInputByDefault() override {
+        return true;
+    }
 };
 
 
@@ -350,6 +350,7 @@ public:
 
     void initialise(const String&) override {
         // // To try to set input channels to 0 or else in my BT Phones sound sets to mono
+        // engine_.getDeviceManager().deviceManager.initialise(0, 2, nullptr, false, {}, nullptr);
         // engine_.getDeviceManager().deviceManager.initialiseWithDefaultDevices(0, 2);
 
         engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();

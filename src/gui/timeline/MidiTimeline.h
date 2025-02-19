@@ -112,25 +112,44 @@ private:
                insertMidiButton { "Insert MIDI" },
                insertAudioButton { "Insert Audio" }
                ;
-    // ToggleButton showWaveformButton { "Show Waveforms" };
 
     //==============================================================================
 
+    te::AudioTrack* getSelectedOrInsertAudioTrack() {
+        auto sel = selectionManager.getSelectedObject(0);
+        auto track = dynamic_cast<te::AudioTrack*>(sel);
+        if (track == nullptr) {
+            track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
+        }
+        return track;
+    }
+
     void handleInsertAudioClip() {
-        using namespace te;
         EngineHelpers::browseForAudioFile(edit.engine, [this](const File& f) {
             if (f.existsAsFile()) {
-                auto sel = selectionManager.getSelectedObject(0);
-                auto track = dynamic_cast<te::AudioTrack*>(sel);
-                if (track == nullptr) {
-                    track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
-                }
-                te::AudioFile audioFile (edit.engine, f);
+                auto track = getSelectedOrInsertAudioTrack();
+                te::AudioFile audioFile(edit.engine, f);
                 if (audioFile.isValid()) {
                     if (auto inserted = track->insertWaveClip({}, f, {{{}, te::TimeDuration::fromSeconds(audioFile.getLength())}, {}}, false)) {
-                        DBG("Inserted clip: " << inserted->getName());
+                        // DBG("Inserted clip: " << inserted->getName());
                     }
                 }
+            }
+        });
+    }
+
+    void handleInsertPSGClip() {
+        EngineHelpers::browseForAudioFile(edit.engine, [this](const File& f) {
+            if (f.existsAsFile()) {
+                auto track = getSelectedOrInsertAudioTrack();
+                DBG("TODO insert PSG clip");
+                // uZX::PsgFile psgFile(edit.engine, f);
+                // if (psgFile.isValid()) {
+                //     if (auto inserted = track->insertWaveClip({}, f,
+                //         {{{}, te::TimeDuration::fromSeconds(psgFile.getLength())}, {}}, false)) {
+                //         // DBG("Inserted clip: " << inserted->getName());
+                //     }
+                // }
             }
         });
     }
@@ -138,14 +157,10 @@ private:
     void handleInsertMidiClip() {
         auto seq = Util::readMidi(MIDI_CLIP_DATA, 1);
         auto len = seq.getEndTime();
+        auto track = getSelectedOrInsertAudioTrack();
 
-        auto sel = selectionManager.getSelectedObject(0);
-        auto track = dynamic_cast<te::AudioTrack*>(sel);
-        if (track == nullptr) {
-            track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
-        }
+        // TODO or use track->insertMidiClip?
         auto valueTree = juce::ValueTree(te::IDs::MIDICLIP);
-
         double insertTime = edit.getTransport().getPosition().inSeconds();
         auto time = tracktion::TimeRange(tracktion::TimePosition::fromSeconds(insertTime),
                                             tracktion::TimeDuration::fromSeconds(len));

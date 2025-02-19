@@ -14,8 +14,10 @@
 #include "Commands.h"
 #include "MainDocument.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
+#include <common/PluginWindow.h>
 
 #include <JuceHeader.h>
+
 #include <memory>
 
 using namespace juce;
@@ -321,6 +323,20 @@ private:
 };
 
 
+class ExtEngineBehaviour : public te::EngineBehaviour {
+public:
+    ExtEngineBehaviour() = default;
+
+    // bool autoInitialiseDeviceManager() override {
+    //     return true;
+    // }
+
+    // bool shouldOpenAudioInputByDefault() override {
+    //     return false;
+    // }
+};
+
+
 class MoToolApp : public JUCEApplication {
 public:
     const String getApplicationName() override      {
@@ -333,8 +349,11 @@ public:
     bool moreThanOneInstanceAllowed() override          { return true; }
 
     void initialise(const String&) override {
+        // // To try to set input channels to 0 or else in my BT Phones sound sets to mono
+        // engine_.getDeviceManager().deviceManager.initialiseWithDefaultDevices(0, 2);
+
         engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
-        
+
         auto title = getApplicationName() + " v" + getApplicationVersion();
 
         lookAndFeel = std::make_unique<MoLookAndFeel>();
@@ -361,7 +380,8 @@ public:
     }
 
 private:
-    te::Engine engine_ { ProjectInfo::projectName };
+    te::Engine engine_ { ProjectInfo::projectName, std::make_unique<ExtendedUIBehaviour>(), nullptr};
+    // te::Engine engine_ { ProjectInfo::projectName, std::make_unique<ExtendedUIBehaviour>(), std::make_unique<ExtEngineBehaviour>() };
     std::unique_ptr<MainWindow> mainWindow_;
     std::unique_ptr<MoLookAndFeel> lookAndFeel;
     CommandManager commandManager;

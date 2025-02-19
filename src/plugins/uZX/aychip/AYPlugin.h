@@ -7,7 +7,7 @@ namespace te = tracktion;
 namespace MoTool::uZX {
 
 class AYChipPlugin : public te::Plugin,
-                 private juce::AsyncUpdater {
+                     private juce::AsyncUpdater {
 public:
     AYChipPlugin (te::PluginCreationInfo);
     ~AYChipPlugin() override;
@@ -57,7 +57,7 @@ public:
 
     //==============================================================================
     bool takesMidiInput() override                      { return true; }
-    bool takesAudioInput() override                     { return true; }
+    bool takesAudioInput() override                     { return false; }
     bool producesAudioWhenNoAudioInput() override       { return true; }
     bool hasNameForMidiNoteNumber (int note, int midiChannel, juce::String& name) override;
 

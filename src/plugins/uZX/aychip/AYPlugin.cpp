@@ -207,7 +207,7 @@ void AYChipPlugin::deinitialise() {
 }
 
 //==============================================================================
-void AYChipPlugin::playNotes([[maybe_unused]] const juce::BigInteger& keysDown) {
+// void AYChipPlugin::highlightedNotes(const juce::BigInteger& keysDown) {
     // const juce::ScopedLock sl(lock);
 
     // if (highlightedNotes != keysDown) {
@@ -242,7 +242,7 @@ void AYChipPlugin::playNotes([[maybe_unused]] const juce::BigInteger& keysDown) 
     //     }
     //     highlightedNotes = keysDown;
     // }
-}
+// }
 
 void AYChipPlugin::allNotesOff() {
     const juce::ScopedLock sl(lock);
@@ -258,11 +258,11 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
 
         te::clearChannels(*fc.destBuffer, 2, -1, fc.bufferStartSample, fc.bufferNumSamples);
 
-        // if (fc.bufferForMidiMessages != nullptr) {
-        //     if (fc.bufferForMidiMessages->isAllNotesOff) {
-        //         playingNotes.clear();
-        //         highlightedNotes.clear();
-        //     }
+        if (fc.bufferForMidiMessages != nullptr) {
+            if (fc.bufferForMidiMessages->isAllNotesOff) {
+                // playingNotes.clear();
+                highlightedNotes.clear();
+            }
 
         //     for (auto& m : *fc.bufferForMidiMessages) {
         //         if (m.isNoteOn()) {
@@ -316,15 +316,13 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
         //             highlightedNotes.clear();
         //         }
         //     }
-        // }
+        }
 
         // for (int i = playingNotes.size(); --i >= 0;) {
-        //     auto sn = playingNotes.getUnchecked (i);
-
+        //     auto sn = playingNotes.getUnchecked(i);
         //     sn->addNextBlock(*fc.destBuffer, fc.bufferStartSample, fc.bufferNumSamples);
-
         //     if (sn->isFinished)
-        //         playingNotes.remove (i);
+        //         playingNotes.remove(i);
         // }
     }
 }
@@ -336,16 +334,15 @@ int AYChipPlugin::getNumSounds() const {
 }
 
 juce::String AYChipPlugin::getSoundName(int index) const {
-    return getSound (index)[te::IDs::name];
+    return getSound(index)[te::IDs::name];
 }
 
-void AYChipPlugin::setSoundName (int index, const juce::String& n) {
-    getSound (index).setProperty (te::IDs::name, n, getUndoManager());
+void AYChipPlugin::setSoundName(int index, const juce::String& n) {
+    getSound (index).setProperty(te::IDs::name, n, getUndoManager());
 }
 
 bool AYChipPlugin::hasNameForMidiNoteNumber (int note, int, juce::String& noteName) {
     juce::String s;
-
     {
         const juce::ScopedLock sl (lock);
 
@@ -389,11 +386,11 @@ float AYChipPlugin::getSoundPan(int index) const          { return getSound(inde
 double AYChipPlugin::getSoundStartTime(int index) const   { return getSound(index)[te::IDs::startTime]; }
 bool AYChipPlugin::isSoundOpenEnded(int index) const      { return getSound(index)[te::IDs::openEnded]; }
 
-double AYChipPlugin::getSoundLength (int index) const {
-    const double l = getSound (index)[te::IDs::length];
+double AYChipPlugin::getSoundLength(int index) const {
+    const double l = getSound(index)[te::IDs::length];
 
     if (l == 0.0) {
-        const juce::ScopedLock sl (lock);
+        const juce::ScopedLock sl(lock);
 
         if (auto s = soundList[index])
             return s->length;

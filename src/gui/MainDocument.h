@@ -1,13 +1,11 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include <common/Utilities.h>
+#include <common/Utilities.h>  // from JUCE
 
 #include "timeline/MidiTimeline.h"
-// #include "timeline/Timeline.h"
 #include "layout/Layout.h"
 #include "Transport.h"
-// #include "Footer.h"
 
 
 using namespace juce;

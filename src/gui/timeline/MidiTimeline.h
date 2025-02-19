@@ -15,6 +15,8 @@
 #include "../../util/base64_cx.h"
 #include "../../util/Midi.h"
 #include "../../plugins/uZX/aychip/AYPlugin.h"
+#include "../common/Utilities.h"  // from MoTool
+
 #include "EditComponent.h"
 
 namespace MoTool {
@@ -64,6 +66,9 @@ public:
         insertMidiButton.onClick =       [this] {
             handleInsertMidiClip();
         };
+        insertPSGButton.onClick =       [this] {
+            handleInsertPSGClip();
+        };
         insertAudioButton.onClick =       [this] {
             handleInsertAudioClip();
         };
@@ -73,9 +78,9 @@ public:
         deleteButton.setEnabled(false);
 
         setSize(600, 400);
-        Helpers::addAndMakeVisible(*this, { &editComponent,
+        ::Helpers::addAndMakeVisible(*this, { &editComponent,
                                             &newTrackButton, &deleteButton,
-                                            &insertMidiButton, &insertAudioButton
+                                            &insertMidiButton, &insertPSGButton, &insertAudioButton
                                           });
     }
 
@@ -91,9 +96,10 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 8;
+        int w = r.getWidth() / 10;
         auto topR = r.removeFromTop(30);
         insertMidiButton.setBounds(topR.removeFromLeft (w).reduced (2));
+        insertPSGButton.setBounds(topR.removeFromLeft (w).reduced (2));
         insertAudioButton.setBounds(topR.removeFromLeft (w).reduced (2));
         newTrackButton.setBounds(topR.removeFromLeft (w).reduced (2));
         deleteButton.setBounds(topR.removeFromLeft (w).reduced (2));
@@ -110,6 +116,7 @@ private:
     TextButton newTrackButton { "New Track" },
                deleteButton { "Delete" },
                insertMidiButton { "Insert MIDI" },
+               insertPSGButton { "Insert PSG" },
                insertAudioButton { "Insert Audio" }
                ;
 
@@ -125,7 +132,7 @@ private:
     }
 
     void handleInsertAudioClip() {
-        EngineHelpers::browseForAudioFile(edit.engine, [this](const File& f) {
+        Helpers::browseForAudioFile(edit.engine, [this](const File& f) {
             if (f.existsAsFile()) {
                 auto track = getSelectedOrInsertAudioTrack();
                 te::AudioFile audioFile(edit.engine, f);
@@ -138,11 +145,26 @@ private:
         });
     }
 
+    void handleInsertMidiClip() {
+        auto seq = Helpers::readMidi(MIDI_CLIP_DATA, 1);
+        auto len = seq.getEndTime();
+        double insertTime = edit.getTransport().getPosition().inSeconds();
+        seq.addTimeToMessages(insertTime);
+        auto time = te::TimeRange(te::TimePosition::fromSeconds(insertTime), te::TimeDuration::fromSeconds(len));
+        auto track = getSelectedOrInsertAudioTrack();
+
+        if (auto clip = track->insertMIDIClip(time, &selectionManager)) {
+            DBG("Inserted midi clip: " << clip->getName());
+            clip->mergeInMidiSequence(seq, te::MidiList::NoteAutomationType::none);
+            clip->setMidiChannel(te::MidiChannel(1));
+        }
+    }
+
     void handleInsertPSGClip() {
-        EngineHelpers::browseForAudioFile(edit.engine, [this](const File& f) {
+        Helpers::browseForPSGFile(edit.engine, [this](const File& f) {
             if (f.existsAsFile()) {
                 auto track = getSelectedOrInsertAudioTrack();
-                DBG("TODO insert PSG clip");
+                DBG("TODO insert PSG clip " << f.getFullPathName());
                 // uZX::PsgFile psgFile(edit.engine, f);
                 // if (psgFile.isValid()) {
                 //     if (auto inserted = track->insertWaveClip({}, f,
@@ -152,25 +174,6 @@ private:
                 // }
             }
         });
-    }
-
-    void handleInsertMidiClip() {
-        auto seq = Util::readMidi(MIDI_CLIP_DATA, 1);
-        auto len = seq.getEndTime();
-        auto track = getSelectedOrInsertAudioTrack();
-
-        // TODO or use track->insertMidiClip?
-        auto valueTree = juce::ValueTree(te::IDs::MIDICLIP);
-        double insertTime = edit.getTransport().getPosition().inSeconds();
-        auto time = tracktion::TimeRange(tracktion::TimePosition::fromSeconds(insertTime),
-                                            tracktion::TimeDuration::fromSeconds(len));
-        te::MidiClip* clip = dynamic_cast<te::MidiClip*>
-                            (track->insertClipWithState(valueTree, "Clip", te::TrackItem::Type::midi,
-                                                        { time, tracktion::TimeDuration::fromSeconds(0.0) }, true, false));
-
-        seq.addTimeToMessages(insertTime);
-        clip->mergeInMidiSequence(seq, te::MidiList::NoteAutomationType::none);
-        clip->setMidiChannel(te::MidiChannel(1));
     }
 
     void handleDelete() {

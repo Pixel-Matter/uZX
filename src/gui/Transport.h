@@ -24,7 +24,7 @@ public:
     {
         transport_.addChangeListener(this);
 
-        Helpers::addAndMakeVisible (*this, {
+        ::Helpers::addAndMakeVisible (*this, {
             &rewindButton_,
             &stepLeftButton_,
             &playPauseButton_,

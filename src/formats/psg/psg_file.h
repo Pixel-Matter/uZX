@@ -8,8 +8,34 @@ namespace MoTool::uZX {
 
 namespace PsgFileHelpers {
 
+namespace {
+
+    template <typename Integral>
+struct ReadTrait;
+
 template <>
-struct ReadTrait<uint8> { static constexpr auto read = ByteOrder::bigEndianShort; };
+struct ReadTrait<uint32> { static constexpr auto read = ByteOrder::bigEndianInt; };
+
+template <>
+struct ReadTrait<uint16> { static constexpr auto read = ByteOrder::bigEndianShort; };
+
+template <typename Integral>
+Optional<Integral> tryRead(const uint8*& data, size_t& remaining) {
+        using Trait = ReadTrait<Integral>;
+        constexpr auto size = sizeof (Integral);
+
+        if (remaining < size)
+        return {};
+
+    const Optional<Integral> result { Trait::read (data) };
+
+    data += size;
+    remaining -= size;
+
+    return result;
+}
+
+}  // namespace {}
 
 struct HeaderDetails {
     size_t bytesRead = 0;
@@ -43,7 +69,6 @@ struct HeaderDetails {
         raise ValueError('Not a PSG file or wrong file format')
 */
 static Optional<HeaderDetails> parsePsgHeader(const uint8* const initialData, const size_t maxSize) {
-    using namespace juce::MidiFileHelpers;
 
     auto* data = initialData;
     auto remaining = maxSize;
@@ -57,54 +82,56 @@ static Optional<HeaderDetails> parsePsgHeader(const uint8* const initialData, co
         return {};
     }
 
-    const auto bytesRemaining = tryRead<uint32>(data, remaining);
+    // const auto bytesRemaining = tryRead<uint32>(data, remaining);
 
-    if (! bytesRemaining.hasValue() || *bytesRemaining > remaining)
-        return {};
+    // if (! bytesRemaining.hasValue() || *bytesRemaining > remaining)
+    //     return {};
 
-    const auto optFileType = tryRead<uint16> (data, remaining);
+    // const auto optFileType = tryRead<uint16> (data, remaining);
 
-    if (! optFileType.hasValue() || 2 < *optFileType)
-        return {};
+    // if (! optFileType.hasValue() || 2 < *optFileType)
+    //     return {};
 
-    const auto optNumTracks = tryRead<uint16> (data, remaining);
+    // const auto optNumTracks = tryRead<uint16> (data, remaining);
 
-    if (! optNumTracks.hasValue() || (*optFileType == 0 && *optNumTracks != 1))
-        return {};
+    // if (! optNumTracks.hasValue() || (*optFileType == 0 && *optNumTracks != 1))
+    //     return {};
 
-    const auto optTimeFormat = tryRead<uint16> (data, remaining);
+    // const auto optTimeFormat = tryRead<uint16> (data, remaining);
 
-    if (! optTimeFormat.hasValue())
-        return {};
+    // if (! optTimeFormat.hasValue())
+    //     return {};
 
     HeaderDetails result;
 
-    result.fileType = (short) *optFileType;
-    result.timeFormat = (short) *optTimeFormat;
-    result.numberOfTracks = (short) *optNumTracks;
-    result.bytesRead = maxSize - remaining;
+    // result.fileType = (short) *optFileType;
+    // result.timeFormat = (short) *optTimeFormat;
+    // result.numberOfTracks = (short) *optNumTracks;
+    // result.bytesRead = maxSize - remaining;
 
-    return { result };
+    return {result};
 }
 
 }
 
 //==============================================================================
-class PSGFile {
+class PsgFile {
 public:
     //==============================================================================
-    PSGFile() = default;
-    PSGFile(const PSGFile&) = default;
-    PSGFile& operator= (const PSGFile&) = default;
-    PSGFile (PSGFile&&) = default;
-    PSGFile& operator= (PSGFile&&) = default;
+    PsgFile(const juce::File&) {
+
+    }
+    PsgFile(const PsgFile&) = default;
+    PsgFile& operator= (const PsgFile&) = default;
+    PsgFile (PsgFile&&) = default;
+    PsgFile& operator= (PsgFile&&) = default;
 
     //==============================================================================
-    PSGData& getData() noexcept {
+    PsgData& getData() noexcept {
         return psgData_;
     }
 
-    const PSGData& getData() const noexcept {
+    const PsgData& getData() const noexcept {
         return psgData_;
     }
 
@@ -114,6 +141,12 @@ public:
 
     size_t getMachineFramesSize() const {
         return psgData_.frames.size() * psgData_.frameStep;
+    }
+
+    double getLengthSeconds() const {
+        // FIXME proper frame rate from edit settings
+        double frameRate = 50;
+        return frameRate * static_cast<double>(getMachineFramesSize());
     }
 
     //==============================================================================
@@ -133,8 +166,6 @@ public:
         if (!sourceStream.readIntoMemoryBlock(data, maxSensibleMidiFileSize))
             return false;
 
-        
-
         return true;
     }
 
@@ -146,9 +177,9 @@ public:
 
 private:
     //==============================================================================
-    PSGData psgData_;
+    PsgData psgData_;
 
-    JUCE_LEAK_DETECTOR(PSGFile)
+    JUCE_LEAK_DETECTOR(PsgFile)
 };
 
 

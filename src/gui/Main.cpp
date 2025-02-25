@@ -15,6 +15,7 @@
 #include "MainDocument.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include <common/PluginWindow.h>
+#include "../model/PsgTrack.h"
 
 #include <JuceHeader.h>
 
@@ -352,12 +353,40 @@ public:
         DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
         engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
 
+        // Register custom track types
+        registerCustomTrackTypes();
+
         auto title = getApplicationName() + " v" + getApplicationVersion();
 
         lookAndFeel = std::make_unique<MoLookAndFeel>();
         juce::LookAndFeel::setDefaultLookAndFeel(lookAndFeel.get());
 
         mainWindow_ = std::make_unique<MainWindow>(title, engine_);
+    }
+    
+    void registerCustomTrackTypes() {
+        // Register PsgTrack with the engine
+        engine_.getProjectManager().createNewItem = [this](te::Project& project, const juce::Identifier& type, const juce::String& name,
+                                                              const juce::File& file, const juce::String& description) -> te::ProjectItemID {
+            if (type == IDs::PSGTRACK) {
+                // Here you might need to create a custom project item for PSG tracks if needed
+                return engine_.getProjectManager().createNewItemOriginal(project, type, name, file, description);
+            }
+            return engine_.getProjectManager().createNewItemOriginal(project, type, name, file, description);
+        };
+        
+        // Store original method for creating tracks
+        auto originalCreateTrackLambda = te::EditItemFactory::getDefaultCreateTrackLambda(engine_);
+        
+        // Override with our custom function
+        te::EditItemFactory::setCreateTrackLambda([this, originalCreateTrackLambda](te::Edit& edit, const juce::ValueTree& v) -> te::Track* {
+            if (v.hasType(IDs::PSGTRACK)) {
+                return new PsgTrack(edit, v);
+            }
+            
+            // Call original implementation for other track types
+            return originalCreateTrackLambda(edit, v);
+        });
     }
 
     void shutdown() override {

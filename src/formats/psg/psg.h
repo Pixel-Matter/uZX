@@ -11,13 +11,13 @@ namespace te = tracktion;
 namespace MoTool::uZX {
 
 template <size_t NREGS>
-struct PSGFrame {
+struct PsgFrame {
     std::array<uint8_t, NREGS> registers;
     std::array<bool, NREGS> mask;
 };
 
 
-struct PSGRegsAYFrame : public PSGFrame<14> {
+struct PsgRegsAYFrame : public PsgFrame<14> {
     // Helpers for common register access
     inline bool hasTonePeriodSet(size_t chan) const {
         return mask[0 + chan * 2] || mask[1 + chan * 2];
@@ -111,9 +111,9 @@ struct PSGRegsAYFrame : public PSGFrame<14> {
 
 // TODO maybe depack this and store depacked data in a separate structure to view it in a more convenient way
 
-struct PSGData {
+struct PsgData {
     size_t frameStep = 1;
-    std::vector<PSGRegsAYFrame> frames;
+    std::vector<PsgRegsAYFrame> frames;
     // TODO frequency table or id or shared_ptr to it
 };
 

@@ -11,13 +11,17 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "EditComponent.h"
 
 #include "../../util/base64_cx.h"
 #include "../../util/Midi.h"
 #include "../../plugins/uZX/aychip/AYPlugin.h"
 #include "../common/Utilities.h"  // from MoTool
 
-#include "EditComponent.h"
+#include "../../formats/psg/psg_file.h"
+#include "../../model/PsgClip.h"
+#include "../../model/PsgTrack.h"
+
 
 namespace MoTool {
 
@@ -73,15 +77,16 @@ public:
             handleInsertAudioClip();
         };
         newTrackButton.onClick =     [this] { edit.ensureNumberOfAudioTracks(getAudioTracks(edit).size() + 1); };
+        newPsgTrackButton.onClick =  [this] { handleInsertPsgTrack(); };
         deleteButton.onClick =       [this] { handleDelete(); };
 
         deleteButton.setEnabled(false);
 
         setSize(600, 400);
         ::Helpers::addAndMakeVisible(*this, { &editComponent,
-                                            &newTrackButton, &deleteButton,
-                                            &insertMidiButton, &insertPSGButton, &insertAudioButton
-                                          });
+                                              &newPsgTrackButton, &newTrackButton, &deleteButton,
+                                              &insertMidiButton, &insertPSGButton, &insertAudioButton
+                                            });
     }
 
     ~MidiTimeline() override {
@@ -96,13 +101,14 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 10;
+        int w = r.getWidth() / 6;
         auto topR = r.removeFromTop(30);
-        insertMidiButton.setBounds(topR.removeFromLeft (w).reduced (2));
-        insertPSGButton.setBounds(topR.removeFromLeft (w).reduced (2));
-        insertAudioButton.setBounds(topR.removeFromLeft (w).reduced (2));
-        newTrackButton.setBounds(topR.removeFromLeft (w).reduced (2));
-        deleteButton.setBounds(topR.removeFromLeft (w).reduced (2));
+        insertMidiButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        insertPSGButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        insertAudioButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        newTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        newPsgTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        deleteButton.setBounds(topR.removeFromLeft(w).reduced(2));
         editComponent.setBounds(r);
     }
 
@@ -113,7 +119,9 @@ private:
     te::Edit& edit;
     EditComponent editComponent;
 
-    TextButton newTrackButton { "New Track" },
+    TextButton
+               newTrackButton { "New Audio Track" },
+               newPsgTrackButton { "New PSG Track" },
                deleteButton { "Delete" },
                insertMidiButton { "Insert MIDI" },
                insertPSGButton { "Insert PSG" },
@@ -129,6 +137,32 @@ private:
             track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
         }
         return track;
+    }
+
+    PsgTrack* getSelectedOrInsertPsgTrack() {
+        auto sel = selectionManager.getSelectedObject(0);
+        auto track = dynamic_cast<PsgTrack*>(sel);
+        if (track == nullptr) {
+            track = addNewPsgTrack();
+        }
+        return track;
+    }
+
+    PsgTrack* addNewPsgTrack() {
+        edit.getTransport().stopIfRecording();
+        if (auto newTrack = edit.insertNewTrack(te::TrackInsertPoint::getEndOfTracks(edit), IDs::PSGTRACK, &selectionManager)) {
+            DBG("Added new PSG track");
+            return dynamic_cast<PsgTrack*>(newTrack.get());
+        }
+        DBG("Failed to add new PSG track");
+        return {};
+    }
+
+    void handleInsertPsgTrack() {
+        auto track = addNewPsgTrack();
+        if (track != nullptr) {
+            selectionManager.select({track});
+        }
     }
 
     void handleInsertAudioClip() {
@@ -163,21 +197,18 @@ private:
     void handleInsertPSGClip() {
         Helpers::browseForPSGFile(edit.engine, [this](const File& f) {
             if (f.existsAsFile()) {
-                auto track = getSelectedOrInsertAudioTrack();
-                DBG("TODO insert PSG clip " << f.getFullPathName());
-                // uZX::PsgFile psgFile(edit.engine, f);
-                // if (psgFile.isValid()) {
-                //     if (auto inserted = track->insertWaveClip({}, f,
-                //         {{{}, te::TimeDuration::fromSeconds(psgFile.getLength())}, {}}, false)) {
-                //         // DBG("Inserted clip: " << inserted->getName());
-                //     }
-                // }
+                auto track = getSelectedOrInsertPsgTrack();
+                auto psgFile = uZX::PsgFile(f);
+                if (auto inserted = track->insertPsgClip({}, f,
+                    {{{}, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}})) {
+                    DBG("Inserted clip: " << inserted->getName());
+                }
             }
         });
     }
 
     void handleDelete() {
-        auto sel = selectionManager.getSelectedObject (0);
+        auto sel = selectionManager.getSelectedObject(0);
         if (auto clip = dynamic_cast<te::Clip*>(sel)) {
             clip->removeFromParent();
         } else if (auto track = dynamic_cast<te::Track*>(sel)) {
@@ -187,12 +218,6 @@ private:
             plugin->deleteFromParent();
         }
     }
-
-    // void handleShowWaveform() {
-    //     auto& evs = editComponent.getEditViewState();
-    //     evs.drawWaveforms = ! evs.drawWaveforms.get();
-    //     showWaveformButton.setToggleState(evs.drawWaveforms, dontSendNotification);
-    // }
 
     void changeListenerCallback(ChangeBroadcaster* source) override {
         if (source == &selectionManager) {

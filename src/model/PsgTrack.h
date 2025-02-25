@@ -29,9 +29,25 @@ public:
     }
 
     juce::String getSelectableDescription() override { return TRANS("PSG Track"); }
-    // bool canContainPlugin (Plugin*) const override  { // TODO implement this }
+
+    bool canContainPlugin ([[maybe_unused]] te::Plugin* plugin) const override {
+        // Allow same plugins as AudioTrack for now
+        return true;
+    }
+
+    // Override any AudioTrack methods that need customization for PSG
 
     PsgClip::Ptr insertPsgClip(const juce::String& name, const juce::File& sourceFile, te::ClipPosition position) {
+        // // Create a PsgClip
+        // auto v = te::MidiClip::createNewMidiClipValueTree(juce::Uuid().toString(), name, position);
+        // v.setType(IDs::PSGCLIP); // Change the type to our custom PSG clip type
+
+        // if (auto clip = dynamic_cast<PsgClip*>(edit.insertClipWithState(*this, v, &edit.getUndoManager()).get())) {
+        //     // Load PSG file data
+        //     clip->loadPsgFile(sourceFile);
+
+        //     return clip;
+        // }
         return {};
     }
 

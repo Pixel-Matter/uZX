@@ -155,6 +155,24 @@ private:
             return dynamic_cast<PsgTrack*>(newTrack.get());
         }
         DBG("Failed to add new PSG track");
+        // // Workaround: Create a normal AudioTrack and then adapt it to be a PsgTrack
+        // if (auto audioTrack = edit.insertNewAudioTrack(te::TrackInsertPoint::getEndOfTracks(edit), &selectionManager)) {
+        //     // Create a PSG track state
+        //     juce::ValueTree v = audioTrack->state.createCopy();
+        //     v.setType(IDs::PSGTRACK);
+
+        //     // Remove the original track
+        //     auto insertIndex = audioTrack->getIndexInEditTrackList();
+        //     edit.deleteTrack(audioTrack.get());
+
+        //     // Add a new track with our state
+        //     // Note: We manually create and add our track because Edit::createTrack doesn't know about PsgTrack
+        //     auto psgTrack = new PsgTrack(edit, v);
+        //     psgTrack->initialise();
+
+        //     // Insert the track at the same position
+        //     te::TrackList& trackList = edit.getTrackList();
+        //     trackList.state.addChild(v, insertIndex, &edit.getUndoManager());
         return {};
     }
 

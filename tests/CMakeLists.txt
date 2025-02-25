@@ -1,17 +1,6 @@
 # File: tests/CMakeLists.txt
 
-# Ensure this option is set before root processes src/
-set(BUILD_MOTOOL_TESTS ON CACHE BOOL "Build test application" FORCE)
-
 set(TARGET_NAME MoToolTests)
-
-# # Include shared source code paths
-# include_directories(${CMAKE_SOURCE_DIR}/src)
-
-# Test-specific files
-list(APPEND TEST_SOURCES
-    main.cpp
-)
 
 juce_add_console_app(${TARGET_NAME})
 juce_generate_juce_header(${TARGET_NAME})

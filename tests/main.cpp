@@ -4,6 +4,6 @@
 // but for console application
 int main([[maybe_unused]] int argc, char* argv[]) {
     juce::UnitTestRunner testRunner;
-    testRunner.runTestsInCategory("MoToolPlugins");
+    testRunner.runTestsInCategory("MoTool");
     return 0;
 }

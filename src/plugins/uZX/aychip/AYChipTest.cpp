@@ -1,8 +1,8 @@
-#include "juce_core/system/juce_PlatformDefs.h"
 #include <JuceHeader.h>
 
+#include "aychip.h"
+
 #include <cstddef>
-#include <plugins/uZX/aychip/aychip.h>
 
 // #include "TestUtils.h"
 
@@ -33,7 +33,7 @@ namespace {
 //==============================================================================
 class AyChipPluginTests : public juce::UnitTest {
 public:
-    AyChipPluginTests() : UnitTest("AYChipPlugin", "MoToolPlugins") {}
+    AyChipPluginTests() : UnitTest("AYChipPlugin", "MoTool") {}
 
     void runTest() override {
         beginTest("AYEmulator creation");

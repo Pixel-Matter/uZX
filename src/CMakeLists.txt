@@ -1,3 +1,5 @@
+# File src/CMakeLists.txt
+
 # Target Definition
 set(TARGET_NAME MoTool)
 
@@ -22,22 +24,14 @@ set_target_properties(${TARGET_NAME} PROPERTIES
     CXX_VISIBILITY_PRESET hidden
 )
 
-# Source Files
-set(SourceFiles
-    gui/Main.cpp
-    gui/nodes/GraphEditorPanel.cpp
-    gui/common/Components.cpp
-    gui/timeline/EditComponent.cpp
-    plugins/uZX/aychip/aychip.cpp
-    util/FileOps.cpp
-    util/Midi.cpp
+include(sources.cmake)
 
-    plugins/uZX/aychip/aychip.cpp
-    plugins/uZX/aychip/AYPlugin.cpp
+target_sources(${TARGET_NAME} PRIVATE
+    ${SHARED_SOURCES}
+    ${GUI_SOURCES}
 )
 
-target_sources(${TARGET_NAME} PRIVATE ${SourceFiles})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES ${SourceFiles})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES ${SHARED_SOURCES} ${GUI_SOURCES})
 
 # Include Directories
 target_include_directories(${TARGET_NAME}
@@ -66,13 +60,13 @@ target_compile_definitions(${TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 # Dependencies
 target_link_libraries(${TARGET_NAME} PRIVATE
     ayumi
-    # motool::uZX
     tracktion::tracktion_core
     tracktion::tracktion_engine
     tracktion::tracktion_graph
     juce::juce_audio_devices
     juce::juce_audio_processors
     juce::juce_audio_utils
+    juce::juce_gui_extra
     juce::juce_recommended_warning_flags
 )
 

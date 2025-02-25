@@ -25,14 +25,12 @@ file(READ VERSION.md CURRENT_VERSION)
 project(MoTool VERSION ${CURRENT_VERSION})
 message ("Project name: ${PROJECT_NAME}, version: ${CURRENT_VERSION}")
 
-add_subdirectory(third_party/ayumi)
-add_subdirectory(third_party/tracktion_engine/modules/juce ./cmake_build_juce)
-add_subdirectory(third_party/tracktion_engine/modules ./cmake_build_tracktion)
+add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/ayumi)
+add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce ./cmake_build_juce)
+add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules ./cmake_build_tracktion)
 
-# Add our source
-add_subdirectory(src/plugins/uZX)
-add_subdirectory(src)
-add_subdirectory(tests)
+add_subdirectory(${CMAKE_SOURCE_DIR}/src)
+add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
 # Add option to build examples
 option(BUILD_TRACKTION_EXAMPLES "Build Tracktion Engine examples" OFF)

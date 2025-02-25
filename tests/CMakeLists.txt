@@ -1,18 +1,21 @@
 # File: tests/CMakeLists.txt
 
-# Target Definition
+# Ensure this option is set before root processes src/
+set(BUILD_MOTOOL_TESTS ON CACHE BOOL "Build test application" FORCE)
+
 set(TARGET_NAME MoToolTests)
 
-# JUCE Application Setup
-juce_add_console_app(${TARGET_NAME}
-    PRODUCT_NAME "${TARGET_NAME}"
-    COMPANY_NAME "Pixel Matter"
-    BUNDLE_ID "org.pixelmatter.${TARGET_NAME}"
+# # Include shared source code paths
+# include_directories(${CMAKE_SOURCE_DIR}/src)
+
+# Test-specific files
+list(APPEND TEST_SOURCES
+    main.cpp
 )
 
+juce_add_console_app(${TARGET_NAME})
 juce_generate_juce_header(${TARGET_NAME})
 
-# Compiler and Language Settings
 target_compile_features(${TARGET_NAME} PRIVATE cxx_std_23)
 
 set_target_properties(${TARGET_NAME} PROPERTIES
@@ -20,21 +23,46 @@ set_target_properties(${TARGET_NAME} PROPERTIES
     CXX_VISIBILITY_PRESET hidden
 )
 
-# Source Files
-set(TestSourceFiles
+function(get_full_paths output_var base_dir)
+    set(result)
+    foreach(source ${ARGN})
+        list(APPEND result "${base_dir}/${source}")
+    endforeach()
+    set(${output_var} ${result} PARENT_SCOPE)
+endfunction()
+
+include(${CMAKE_SOURCE_DIR}/src/sources.cmake)
+get_full_paths(SHARED_SOURCES ${CMAKE_SOURCE_DIR}/src ${SHARED_SOURCES})
+get_full_paths(TEST_SOURCES ${CMAKE_SOURCE_DIR}/src ${TEST_SOURCES})
+get_full_paths(GUI_SOURCES ${CMAKE_SOURCE_DIR}/src ${GUI_SOURCES})
+
+# Include the same source files as the main app
+target_sources(${TARGET_NAME} PRIVATE
+    ${SHARED_SOURCES}
+    ${TEST_SOURCES}
     main.cpp
-    plugins/uXZ/AYChipTest.cpp
-    # TestUtils.h
 )
 
-target_sources(${TARGET_NAME} PRIVATE ${TestSourceFiles})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX Tests FILES ${TestSourceFiles})
+source_group(TREE ${CMAKE_SOURCE_DIR} PREFIX "Source Files" FILES ${SHARED_SOURCES} ${GUI_SOURCES} ${TEST_SOURCES})
 
 # Include Directories
 target_include_directories(${TARGET_NAME}
     PRIVATE
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/third_party/ayumi
     ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
+)
+
+# Dependencies
+target_link_libraries(${TARGET_NAME} PRIVATE
+    ayumi
+    tracktion::tracktion_core
+    tracktion::tracktion_engine
+    tracktion::tracktion_graph
+    juce::juce_audio_devices
+    juce::juce_audio_processors
+    juce::juce_audio_utils
+    juce::juce_recommended_warning_flags
 )
 
 # Tracktion Utils
@@ -54,18 +82,6 @@ set(JUCE_TEST_DEFINITIONS
 
 target_compile_definitions(${TARGET_NAME} PRIVATE ${JUCE_TEST_DEFINITIONS})
 
-# Dependencies
-target_link_libraries(${TARGET_NAME} PRIVATE
-    motool::uZX
-    tracktion::tracktion_core
-    tracktion::tracktion_engine
-    tracktion::tracktion_graph
-    juce::juce_audio_devices
-    juce::juce_audio_processors
-    juce::juce_audio_utils
-    juce::juce_recommended_warning_flags
-)
-
 # Platform-Specific Settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_compile_options(${TARGET_NAME} PRIVATE "-fno-aligned-allocation")
@@ -80,4 +96,4 @@ endif()
 
 # Test-specific settings
 enable_testing()
-add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME})
+add_test(NAME AllTests COMMAND ${TARGET_NAME})

@@ -30,12 +30,10 @@ public:
 
     juce::String getSelectableDescription() override { return TRANS("PSG Track"); }
 
-    bool canContainPlugin ([[maybe_unused]] te::Plugin* plugin) const override {
+    bool canContainPlugin([[maybe_unused]] te::Plugin* plugin) const override {
         // Allow same plugins as AudioTrack for now
         return true;
     }
-
-    // Override any AudioTrack methods that need customization for PSG
 
     PsgClip::Ptr insertPsgClip(const juce::String& name, const juce::File& sourceFile, te::ClipPosition position) {
         // // Create a PsgClip
@@ -51,6 +49,24 @@ public:
         return {};
     }
 
+    // void initialise() override {
+    //     using namespace te;
+    //     CRASH_TRACER
+
+    //     initialiseClipOwner(edit, state);
+    //     DBG("PsgTrack::initialise() before Track::initialise()");
+    //     Track::initialise();
+    //     DBG("PsgTrack::initialise() after ClipTrack::initialise()");
+
+    //     if (!edit.isLoading())
+    //         getClipSlotList().ensureNumberOfSlots(edit.getSceneList().getNumScenes());
+
+    //     // if (frozenIndividually && !getFreezeFile().existsAsFile())
+    //     //     setFrozen(false, individualFreeze);
+
+    //     getOutput().initialise();
+    // }
+private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgTrack)
 };
 

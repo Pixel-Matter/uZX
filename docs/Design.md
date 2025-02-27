@@ -190,7 +190,9 @@ These capabilities align perfectly with our needs, but require extension for:
 
 ### Core Architecture
 
-The design extends Tracktion's existing architecture while maintaining its core principles:
+Proposed design extends Tracktion's existing architecture while maintaining its core principles.
+But is it possible to extend it by own class for tracks and clips in the current
+Tracktion Engine architecture is an open question yet.
 
 1. Timeline Layer:
 

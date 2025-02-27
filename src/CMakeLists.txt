@@ -40,8 +40,8 @@ target_include_directories(${TARGET_NAME}
 )
 
 # Tracktion Utils
-include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
-addModuleSourceTarget()
+# include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
+# addModuleSourceTarget()
 
 # Compile Definitions
 set(JUCE_DEFINITIONS

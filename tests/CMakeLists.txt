@@ -55,7 +55,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
 )
 
 # Tracktion Utils
-include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
+# include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
 
 # Compile Definitions
 set(JUCE_TEST_DEFINITIONS

@@ -17,23 +17,13 @@ class PsgClip : public te::MidiClip {
 public:
     using Ptr = juce::ReferenceCountedObjectPtr<PsgClip>;
 
-    // PsgClip(te::Edit& edit, const juce::ValueTree& v)
-    //     : te::MidiClip(edit, v)
-    // {
-    // }
+    PsgClip(const juce::ValueTree& v, te::EditItemID id, te::ClipOwner& parent_)
+        : te::MidiClip(v, id, parent_)
+    {}
 
-    // ~PsgClip() override
-    // {
-    //     notifyListenersOfDeletion();
-    // }
-
-    // juce::String getSelectableDescription() override
-    // {
-    //     return TRANS("PSG Clip") + " - " + getName();
-    // }
-
-    // bool isMidiClip() const override { return false; }
-    // bool isPsgClip() const { return true; }
+    juce::String getSelectableDescription() override {
+        return TRANS("PSG Clip") + " - " + getName();
+    }
 
     // void loadPsgFile(const juce::File& file)
     // {

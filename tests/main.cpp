@@ -1,6 +1,9 @@
 #include <JuceHeader.h>
 
+#include <model/Behavior.h>
+
 using namespace tracktion;
+using namespace MoTool;
 
 class TestUIBehaviour : public UIBehaviour {
 public:
@@ -41,7 +44,7 @@ private:
 
 //==============================================================================
 //==============================================================================
-class TestEngineBehaviour : public EngineBehaviour {
+class TestEngineBehaviour : public ExtEngineBehaviour {
 public:
     TestEngineBehaviour() = default;
 
@@ -97,9 +100,9 @@ struct CoutLogger : public Logger {
 };
 
 
-int main([[maybe_unused]] int argc, char* argv[]) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     ScopedJuceInitialiser_GUI init;
-    
+
     CoutLogger logger;
     Logger::setCurrentLogger (&logger);
 

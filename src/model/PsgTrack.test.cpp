@@ -96,6 +96,7 @@ private:
         auto& engine = *tracktion::engine::Engine::getEngines()[0];
         auto edit = te::Edit::createSingleTrackEdit(engine);
 
+        logMessage("--------------------------------------------------");
         logMessage("Step 1: Demonstrate that insertNewTrack with PSGTRACK fails");
 
         // First prove that the direct approach fails
@@ -105,6 +106,7 @@ private:
 
         expect(directAttempt == nullptr, "Direct insertNewTrack with PSGTRACK should fail without a custom factory");
 
+        logMessage("--------------------------------------------------");
         logMessage("Step 2: Create a standard AudioTrack as a template");
         auto audioTrack = edit->insertNewAudioTrack(insertPoint, nullptr);
         expect(audioTrack != nullptr, "Should be able to create a standard AudioTrack");
@@ -117,13 +119,16 @@ private:
         auto originalPosition = audioTrack->getIndexInEditTrackList();
         logMessage("Track position in list: " + juce::String(originalPosition));
 
+        logMessage("--------------------------------------------------");
         logMessage("Step 4: Delete the original AudioTrack");
         edit->deleteTrack(audioTrack.get());
 
+        logMessage("--------------------------------------------------");
         logMessage("Step 5: Manually create a PsgTrack instance with our modified state");
         auto psgTrack = new PsgTrack(*edit, psgState);
         psgTrack->initialise();
 
+        logMessage("--------------------------------------------------");
         logMessage("Step 6: Add the PSG track state to the edit at the same position");
         // edit->getTrackList().createNewObject(psgState, originalPosition, &edit->getUndoManager());
 

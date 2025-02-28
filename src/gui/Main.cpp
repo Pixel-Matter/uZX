@@ -324,20 +324,6 @@ private:
 };
 
 
-class ExtEngineBehaviour : public te::EngineBehaviour {
-public:
-    ExtEngineBehaviour() = default;
-
-    bool autoInitialiseDeviceManager() override {
-        return true;
-    }
-
-    bool shouldOpenAudioInputByDefault() override {
-        return false;
-    }
-};
-
-
 class MoToolApp : public JUCEApplication {
 public:
     const String getApplicationName() override      {
@@ -360,7 +346,7 @@ public:
 
         mainWindow_ = std::make_unique<MainWindow>(title, engine_);
     }
-    
+
 
     void shutdown() override {
         juce::LookAndFeel::setDefaultLookAndFeel(nullptr);

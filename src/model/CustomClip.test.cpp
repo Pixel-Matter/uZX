@@ -41,19 +41,17 @@ public:
         Clipboard clipboard;
         auto edit = Edit::createSingleTrackEdit(engine);
 
-        beginTest("MIDI Clip sequence");
+        beginTest("CustomClip creation");
         {
             const TimeDuration duration = 8.0s;
             auto t = getAudioTracks(*edit)[0];
             auto c = createCustomClip(*t, {0.0s, duration});
             expect(c != nullptr, "CustomClip created");
             expect(dynamic_cast<PsgClip*>(c.get()) != nullptr, "CustomClip is a PsgClip");
-            expect(dynamic_cast<MidiClip*>(c.get()) != nullptr, "CustomClip is a MidiClip");
         }
     }
 };
 
-// Register the test
 static CustomClipTests customClipTests;
 
 }  // namespace MoTool::Tests

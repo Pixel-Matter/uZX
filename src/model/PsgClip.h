@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "../formats/psg/psg_file.h"
+#include "tracktion_engine/tracktion_engine.h"
 
 namespace te = tracktion;
 
@@ -20,6 +21,15 @@ public:
     PsgClip(const juce::ValueTree& v, te::EditItemID id, te::ClipOwner& parent_)
         : te::MidiClip(v, id, parent_)
     {}
+
+    void initialise() override {
+        DBG("PsgClip::initialise()");
+        te::MidiClip::initialise();
+    }
+
+    static Ptr insertTo(te::ClipOwner& owner, const String& name, uZX::PsgFile& psgFile, te::ClipPosition position) {
+        return {};
+    }
 
     juce::String getSelectableDescription() override {
         return TRANS("PSG Clip") + " - " + getName();

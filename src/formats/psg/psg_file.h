@@ -1,5 +1,6 @@
 #pragma once
 
+#include "juce_core/system/juce_PlatformDefs.h"
 #include "psg.h"
 
 #include <JuceHeader.h>
@@ -119,12 +120,12 @@ class PsgFile {
 public:
     //==============================================================================
     PsgFile(const juce::File&) {
-
+        // TODO
     }
-    PsgFile(const PsgFile&) = default;
-    PsgFile& operator= (const PsgFile&) = default;
-    PsgFile (PsgFile&&) = default;
-    PsgFile& operator= (PsgFile&&) = default;
+    // PsgFile(const PsgFile&) = default;
+    // PsgFile& operator= (const PsgFile&) = default;
+    // PsgFile (PsgFile&&) = default;
+    // PsgFile& operator= (PsgFile&&) = default;
 
     //==============================================================================
     PsgData& getData() noexcept {
@@ -179,7 +180,7 @@ private:
     //==============================================================================
     PsgData psgData_;
 
-    JUCE_LEAK_DETECTOR(PsgFile)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgFile)
 };
 
 

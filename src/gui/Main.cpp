@@ -8,17 +8,16 @@
 
     The MoTool uses GPL licence - see LICENCE.md for details.
 */
-
-#include "../util/FileOps.h"
-#include "common/LookAndFeel.h"
-#include "Commands.h"
-#include "MainDocument.h"
-#include "../plugins/uZX/aychip/AYPlugin.h"
-#include <common/PluginWindow.h>
-#include "../model/PsgTrack.h"
-
 #include <JuceHeader.h>
 
+#include "MainDocument.h"
+#include "Commands.h"
+#include "common/LookAndFeel.h"
+#include "../util/FileOps.h"
+#include "../plugins/uZX/aychip/AYPlugin.h"
+#include "../model/Behavior.h"
+
+#include <common/PluginWindow.h>  // from JUCE
 #include <memory>
 
 using namespace juce;

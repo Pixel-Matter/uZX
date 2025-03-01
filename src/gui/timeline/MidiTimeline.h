@@ -20,7 +20,6 @@
 
 #include "../../formats/psg/psg_file.h"
 #include "../../model/PsgClip.h"
-#include "../../model/PsgTrack.h"
 
 
 namespace MoTool {
@@ -76,15 +75,14 @@ public:
         insertAudioButton.onClick =       [this] {
             handleInsertAudioClip();
         };
-        newTrackButton.onClick =     [this] { edit.ensureNumberOfAudioTracks(getAudioTracks(edit).size() + 1); };
-        newPsgTrackButton.onClick =  [this] { handleInsertPsgTrack(); };
+        newTrackButton.onClick =     [this] { handleInsertNewTrack(); };
         deleteButton.onClick =       [this] { handleDelete(); };
 
         deleteButton.setEnabled(false);
 
         setSize(600, 400);
         ::Helpers::addAndMakeVisible(*this, { &editComponent,
-                                              &newPsgTrackButton, &newTrackButton, &deleteButton,
+                                              &newTrackButton, &deleteButton,
                                               &insertMidiButton, &insertPSGButton, &insertAudioButton
                                             });
     }
@@ -101,13 +99,12 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 6;
+        int w = r.getWidth() / 5;
         auto topR = r.removeFromTop(30);
         insertMidiButton.setBounds(topR.removeFromLeft(w).reduced(2));
         insertPSGButton.setBounds(topR.removeFromLeft(w).reduced(2));
         insertAudioButton.setBounds(topR.removeFromLeft(w).reduced(2));
         newTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        newPsgTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
         deleteButton.setBounds(topR.removeFromLeft(w).reduced(2));
         editComponent.setBounds(r);
     }
@@ -120,8 +117,7 @@ private:
     EditComponent editComponent;
 
     TextButton
-               newTrackButton { "New Audio Track" },
-               newPsgTrackButton { "New PSG Track" },
+               newTrackButton { "New Track" },
                deleteButton { "Delete" },
                insertMidiButton { "Insert MIDI" },
                insertPSGButton { "Insert PSG" },
@@ -139,47 +135,38 @@ private:
         return track;
     }
 
-    PsgTrack* getSelectedOrInsertPsgTrack() {
-        auto sel = selectionManager.getSelectedObject(0);
-        auto track = dynamic_cast<PsgTrack*>(sel);
-        if (track == nullptr) {
-            track = addNewPsgTrack();
-        }
-        return track;
-    }
+    // PsgTrack* getSelectedOrInsertPsgTrack() {
+    //     auto sel = selectionManager.getSelectedObject(0);
+    //     auto track = dynamic_cast<PsgTrack*>(sel);
+    //     if (track == nullptr) {
+    //         track = addNewPsgTrack();
+    //     }
+    //     return track;
+    // }
 
-    PsgTrack* addNewPsgTrack() {
-        edit.getTransport().stopIfRecording();
-        if (auto newTrack = edit.insertNewTrack(te::TrackInsertPoint::getEndOfTracks(edit), IDs::PSGTRACK, &selectionManager)) {
-            DBG("Added new PSG track");
-            return dynamic_cast<PsgTrack*>(newTrack.get());
-        }
-        DBG("Failed to add new PSG track");
-        // // Workaround: Create a normal AudioTrack and then adapt it to be a PsgTrack
-        // if (auto audioTrack = edit.insertNewAudioTrack(te::TrackInsertPoint::getEndOfTracks(edit), &selectionManager)) {
-        //     // Create a PSG track state
-        //     juce::ValueTree v = audioTrack->state.createCopy();
-        //     v.setType(IDs::PSGTRACK);
+    // PsgTrack* addNewPsgTrack() {
+    //     edit.getTransport().stopIfRecording();
+    //     if (auto newTrack = edit.insertNewTrack(te::TrackInsertPoint::getEndOfTracks(edit), IDs::PSGTRACK, &selectionManager)) {
+    //         DBG("Added new PSG track");
+    //         return dynamic_cast<PsgTrack*>(newTrack.get());
+    //     }
+    //     DBG("Failed to add new PSG track");
+    //     return {};
+    // }
 
-        //     // Remove the original track
-        //     auto insertIndex = audioTrack->getIndexInEditTrackList();
-        //     edit.deleteTrack(audioTrack.get());
+    // void handleInsertPsgTrack() {
+    //     auto track = addNewPsgTrack();
+    //     if (track != nullptr) {
+    //         selectionManager.select({track});
+    //     }
+    // }
 
-        //     // Add a new track with our state
-        //     // Note: We manually create and add our track because Edit::createTrack doesn't know about PsgTrack
-        //     auto psgTrack = new PsgTrack(edit, v);
-        //     psgTrack->initialise();
-
-        //     // Insert the track at the same position
-        //     te::TrackList& trackList = edit.getTrackList();
-        //     trackList.state.addChild(v, insertIndex, &edit.getUndoManager());
-        return {};
-    }
-
-    void handleInsertPsgTrack() {
-        auto track = addNewPsgTrack();
-        if (track != nullptr) {
-            selectionManager.select({track});
+    void handleInsertNewTrack() {
+        edit.ensureNumberOfAudioTracks(getAudioTracks(edit).size() + 1);
+        // select the new track
+        auto tracks = getAudioTracks(edit);
+        if (tracks.size() > 0) {
+            selectionManager.select({tracks.getLast()});
         }
     }
 
@@ -206,7 +193,6 @@ private:
         auto track = getSelectedOrInsertAudioTrack();
 
         if (auto clip = track->insertMIDIClip(time, &selectionManager)) {
-            DBG("Inserted midi clip: " << clip->getName());
             clip->mergeInMidiSequence(seq, te::MidiList::NoteAutomationType::none);
             clip->setMidiChannel(te::MidiChannel(1));
         }
@@ -215,10 +201,10 @@ private:
     void handleInsertPSGClip() {
         Helpers::browseForPSGFile(edit.engine, [this](const File& f) {
             if (f.existsAsFile()) {
-                auto track = getSelectedOrInsertPsgTrack();
+                auto track = getSelectedOrInsertAudioTrack();
                 auto psgFile = uZX::PsgFile(f);
-                if (auto inserted = track->insertPsgClip({}, f,
-                    {{{}, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}})) {
+                te::ClipPosition pos = {{{}, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
+                if (auto inserted = PsgClip::insertTo(*track, {}, psgFile, pos)) {
                     DBG("Inserted clip: " << inserted->getName());
                 }
             }

@@ -204,7 +204,7 @@ private:
                 auto track = getSelectedOrInsertAudioTrack();
                 auto psgFile = uZX::PsgFile(f);
                 te::ClipPosition pos = {{{}, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
-                if (auto inserted = PsgClip::insertTo(*track, {}, psgFile, pos)) {
+                if (auto inserted = PsgClip::insertTo(*track, "test PSG", psgFile, pos)) {
                     DBG("Inserted clip: " << inserted->getName());
                 }
             }

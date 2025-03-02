@@ -2,19 +2,14 @@
 
 #include <JuceHeader.h>
 #include "../formats/psg/psg_file.h"
-#include "tracktion_engine/tracktion_engine.h"
+#include "CustomClip.h"
 
 namespace te = tracktion;
 
 namespace MoTool {
 
-namespace IDs {
-    #define DECLARE_ID(name)  const juce::Identifier name(#name);
-    DECLARE_ID(PSGCLIP)
-    #undef DECLARE_ID
-}  // namespace IDs
 
-class PsgClip : public te::MidiClip {
+class PsgClip : public te::MidiClip, public CustomClip {
 public:
     using Ptr = juce::ReferenceCountedObjectPtr<PsgClip>;
 
@@ -28,7 +23,9 @@ public:
     }
 
     static Ptr insertTo(te::ClipOwner& owner, const String& name, uZX::PsgFile& psgFile, te::ClipPosition position) {
-        return {};
+        auto* clip = dynamic_cast<PsgClip*>(CustomClip::insertClipWithState(owner, {}, name, CustomClip::Type::psg, position,
+                                            te::DeleteExistingClips::no, false));
+        return clip;
     }
 
     juce::String getSelectableDescription() override {
@@ -43,14 +40,15 @@ public:
     //     // Clear existing MIDI sequence
     //     getMidiList().clear();
 
-    //     // TODO: Convert PSG data to MIDI events
-    //     // This would involve parsing the PSG file and creating
-    //     // appropriate MIDI messages for the AY chip plugin
+    //     // TODO: Convert PSG data to MIDI list
+    //     // This would involve parsing the PSG file and creating appropriate MIDI
 
     //     // For now, this is just a placeholder
     //     setName(file.getFileNameWithoutExtension());
     //     setCurrentSourceFile(file);
     // }
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgClip)
 };
 
 }  // namespace MoTool

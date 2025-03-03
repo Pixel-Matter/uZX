@@ -205,9 +205,11 @@ private:
     void handleInsertPSGClip() {
         Helpers::browseForPSGFile(edit.engine, [this](const File& f) {
             if (f.existsAsFile()) {
+                double insertTime = edit.getTransport().getPosition().inSeconds();
                 auto track = getSelectedOrInsertAudioTrack();
                 auto psgFile = uZX::PsgFile(f);
-                te::ClipPosition pos = {{{}, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
+                psgFile.ensureRead();
+                te::ClipPosition pos = {{te::TimePosition::fromSeconds(insertTime), te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
                 if (auto inserted = PsgClip::insertTo(*track, psgFile, pos, &edit.getUndoManager())) {
                     DBG("Inserted clip: " << inserted->getName());
                 }

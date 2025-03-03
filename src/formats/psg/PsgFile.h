@@ -1,5 +1,6 @@
 #pragma once
 
+#include "juce_core/juce_core.h"
 #include "juce_core/system/juce_PlatformDefs.h"
 #include "PsgData.h"
 
@@ -11,8 +12,11 @@ namespace PsgFileHelpers {
 
 namespace {
 
-    template <typename Integral>
+template <typename Integral>
 struct ReadTrait;
+
+template <>
+struct ReadTrait<uint8> { static constexpr auto read = [](const uint8*& data) { return *data; }; };
 
 template <>
 struct ReadTrait<uint32> { static constexpr auto read = ByteOrder::bigEndianInt; };
@@ -22,10 +26,10 @@ struct ReadTrait<uint16> { static constexpr auto read = ByteOrder::bigEndianShor
 
 template <typename Integral>
 Optional<Integral> tryRead(const uint8*& data, size_t& remaining) {
-        using Trait = ReadTrait<Integral>;
-        constexpr auto size = sizeof (Integral);
+    using Trait = ReadTrait<Integral>;
+    constexpr auto size = sizeof(Integral);
 
-        if (remaining < size)
+    if (remaining < size)
         return {};
 
     const Optional<Integral> result { Trait::read (data) };
@@ -47,27 +51,25 @@ struct HeaderDetails {
 
 //==============================================================================
 /**
-    AY registers dump data structure is simple:
-    list of frames, and each frame is a list of pairs (register, value)
+    AY registers dump data structure:
 
+    The data consists of a list of frames, where each frame is a list of register-value pairs.
+
+    Header:
     | Offset | Bytes | Description                       |
     |--------|-------|-----------------------------------|
     | +0     | 3     | Magic 'PSG'                       |
     | +3     | 1     | Marker '1Ah'                      |
     | +4     | 1     | Version number                    |
     | +5     | 1     | Interrupt rate (for versions 10+) |
-    | +6     | 10    | Unknown                           |
+    | +6     | 10    | Reserved                          |
 
-    Далее следуют строки байтов, начинающиеся с 0FFh или 0FEh.
-    Байт, следующий за 0FEh, помноженный на 4 даст количество прерываний, в течении которых не было вывода на сопроцессор.
-    Байт 0FFh – маркёр начала прерывания.
-    Если вслед за ним идёт байт от 0 до 15, то это номер регистра АY, в который произошёл вывод значения, следующего за этим байтом.
-    Далее идёт следующая двойка байт, первый байт которой – номер регистра, а второй – значение.
-    И так пока не встретится маркер следующего прерывания, конец файла или байт 0FEh.
+    Data:
+    - Byte 0xFF: Start of an interrupt.
+    - Byte 0xFE: Indicates a pause. The following byte, multiplied by 4, gives the number of interrupts during which there was no output.
+    - Byte 0x00-0x0F: AY register number. The next byte is the value to be written to this register.
 
-    header = stream.read(16)  # Read enough bytes for header + unused
-    if not header.startswith(b'PSG\x1A'):
-        raise ValueError('Not a PSG file or wrong file format')
+    The sequence continues with register-value pairs until the next interrupt marker (0xFF), the end of the file, or a pause marker (0xFE).
 */
 static Optional<HeaderDetails> parsePsgHeader(const uint8* const initialData, const size_t maxSize) {
 
@@ -83,34 +85,50 @@ static Optional<HeaderDetails> parsePsgHeader(const uint8* const initialData, co
         return {};
     }
 
-    // const auto bytesRemaining = tryRead<uint32>(data, remaining);
+    const auto version = tryRead<uint8>(data, remaining);
+    if (!version.hasValue())
+        return {};
 
-    // if (! bytesRemaining.hasValue() || *bytesRemaining > remaining)
-    //     return {};
+    const auto interruptRate = tryRead<uint8>(data, remaining);
+    if (!interruptRate.hasValue())
+        return {};
 
-    // const auto optFileType = tryRead<uint16> (data, remaining);
-
-    // if (! optFileType.hasValue() || 2 < *optFileType)
-    //     return {};
-
-    // const auto optNumTracks = tryRead<uint16> (data, remaining);
-
-    // if (! optNumTracks.hasValue() || (*optFileType == 0 && *optNumTracks != 1))
-    //     return {};
-
-    // const auto optTimeFormat = tryRead<uint16> (data, remaining);
-
-    // if (! optTimeFormat.hasValue())
-    //     return {};
+    static constexpr size_t headerSize = 10;
+    if (remaining <= headerSize)
+        return {};
 
     HeaderDetails result;
-
-    // result.fileType = (short) *optFileType;
-    // result.timeFormat = (short) *optTimeFormat;
-    // result.numberOfTracks = (short) *optNumTracks;
-    // result.bytesRead = maxSize - remaining;
+    result.version = (short)*version;
+    result.interruptRate = (short)*interruptRate;
+    result.bytesRead = maxSize - remaining + headerSize;
 
     return {result};
+}
+
+static Optional<PsgRegsAYFrame> readNextFrame(const uint8*& data, size_t& remaining) {
+    PsgRegsAYFrame currentFrame {};
+    if (remaining == 0)
+        return {};
+
+    while (remaining > 0) {
+        const auto byte = tryRead<uint8>(data, remaining);
+        if (!byte.hasValue())
+            return {};
+
+        if (*byte <= 0x0F) {
+            const auto reg = *byte;
+            const auto val = tryRead<uint8>(data, remaining);
+            if (!val.hasValue())
+                return {};
+            currentFrame.registers[reg] = *val;
+            currentFrame.mask[reg] = true;
+        } else {
+            // not a register, rewind
+            data -= 1;
+            remaining += 1;
+            return currentFrame;
+        }
+    }
 }
 
 }
@@ -121,16 +139,21 @@ public:
     //==============================================================================
     PsgFile(const juce::File& file)
         : file_(file)
-    {
-        // fake loading data
-        psgData_.frames.resize(10);
-        psgData_.frameStep = 2;
-    }
+    {}
 
     //==============================================================================
 
-    juce::File& getFile() noexcept {
+    const juce::File& getFile() const noexcept {
         return file_;
+    }
+
+    inline bool isEmpty() const noexcept {
+        return psgData_.frames.empty();
+    }
+
+    void ensureRead() {
+        if (isEmpty())
+            read();
     }
 
     PsgData& getData() noexcept {
@@ -155,6 +178,11 @@ public:
         return static_cast<double>(getLengthMachineFrames()) / frameRate;
     }
 
+private:
+    //==============================================================================
+    juce::File file_;
+    PsgData psgData_;
+
     //==============================================================================
     /** Reads a PSG file format stream.
 
@@ -163,8 +191,12 @@ public:
 
         @returns true if the stream was read successfully
     */
-    bool readFrom(InputStream& sourceStream /* TODO int* psgFileType = nullptr */ ) {
+    bool read() {
         clear();
+
+        using namespace PsgFileHelpers;
+
+        FileInputStream sourceStream(file_);
         MemoryBlock data;
 
         const int maxSensibleMidiFileSize = 200 * 1024 * 1024;
@@ -172,6 +204,54 @@ public:
         if (!sourceStream.readIntoMemoryBlock(data, maxSensibleMidiFileSize))
             return false;
 
+        auto remaining = data.getSize();
+        auto d = static_cast<const uint8*> (data.getData());
+
+        const auto header = parsePsgHeader(d, remaining);
+        if (!header.hasValue())
+            return false;
+
+        d += header->bytesRead;
+        remaining -= (size_t) header->bytesRead;
+
+        bool expectFrame = false;
+        while (remaining > 0) {
+            // DBG("Remaining: " << remaining);
+            if (expectFrame) {
+                auto oldRemaining = remaining;
+                const auto frame = readNextFrame(d, remaining);
+                if (!frame.hasValue())
+                    return false;
+                psgData_.frames.push_back(*frame);
+                // DBG("Frame added for " << oldRemaining - remaining << " bytes");
+                expectFrame = false;
+                continue;
+            }
+
+            // expect marker
+            const auto marker = tryRead<uint8>(d, remaining);
+            if (!marker.hasValue())
+                return false;
+
+            if (*marker == 0xFE) {
+                const auto pause = tryRead<uint8>(d, remaining);
+                if (!pause.hasValue())
+                    return false;
+                // add pause * 4 empty frames
+                // DBG("Pause " << *pause * 4 << " frames");
+                for (int i = 0; i < *pause * 4; ++i) {
+                    psgData_.frames.push_back({});
+                }
+                expectFrame = true;
+            } else if (*marker == 0xFF) {
+                // DBG("Frame start");
+                expectFrame = true;
+            } else {
+                // DBG("Unexpected byte " << (int)*marker);
+                return false;
+            }
+        }
+        // DBG("Read " << psgData_.frames.size() << " frames, remaining: " << remaining);
         return true;
     }
 
@@ -182,10 +262,6 @@ public:
     bool writeTo(OutputStream& destStream /*TODO int psgFileType = 1*/) const;
     // TODO implement
 
-private:
-    //==============================================================================
-    juce::File file_;
-    PsgData psgData_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgFile)
 };

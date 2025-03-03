@@ -48,10 +48,11 @@ public:
     }
 
 private:
-    void loadFromFile(const uZX::PsgFile& psgFile, UndoManager* undoManager = nullptr) {
+    void loadFromFile(uZX::PsgFile& psgFile, UndoManager* undoManager = nullptr) {
         // Load PSG file and convert to MIDI events
-
         getSequence().clear(undoManager);
+        psgFile.ensureRead();
+        auto& seq = getSequence();
     }
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgClip)
 };

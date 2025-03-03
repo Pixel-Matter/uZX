@@ -1,7 +1,7 @@
 #pragma once
 
 #include "juce_core/system/juce_PlatformDefs.h"
-#include "psg.h"
+#include "PsgData.h"
 
 #include <JuceHeader.h>
 
@@ -119,13 +119,20 @@ static Optional<HeaderDetails> parsePsgHeader(const uint8* const initialData, co
 class PsgFile {
 public:
     //==============================================================================
-    PsgFile(const juce::File&) {
+    PsgFile(const juce::File& file)
+        : file_(file)
+    {
         // fake loading data
         psgData_.frames.resize(10);
         psgData_.frameStep = 2;
     }
 
     //==============================================================================
+
+    juce::File& getFile() noexcept {
+        return file_;
+    }
+
     PsgData& getData() noexcept {
         return psgData_;
     }
@@ -138,14 +145,14 @@ public:
         psgData_.frames.clear();
     }
 
-    size_t getMachineFramesSize() const {
+    size_t getLengthMachineFrames() const {
         return psgData_.frames.size() * psgData_.frameStep;
     }
 
     double getLengthSeconds() const {
         // FIXME proper frame rate from edit settings
         double frameRate = 50;
-        return frameRate * static_cast<double>(getMachineFramesSize());
+        return static_cast<double>(getLengthMachineFrames()) / frameRate;
     }
 
     //==============================================================================
@@ -173,9 +180,11 @@ public:
         @returns true if the operation succeeded.
     */
     bool writeTo(OutputStream& destStream /*TODO int psgFileType = 1*/) const;
+    // TODO implement
 
 private:
     //==============================================================================
+    juce::File file_;
     PsgData psgData_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgFile)

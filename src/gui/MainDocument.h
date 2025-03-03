@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>  // from JUCE
 
-#include "timeline/MidiTimeline.h"
+#include "timeline/AudioTimeline.h"
 #include "layout/Layout.h"
 #include "Transport.h"
 

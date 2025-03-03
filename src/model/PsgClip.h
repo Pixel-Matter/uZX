@@ -1,8 +1,9 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "../formats/psg/psg_file.h"
+#include "../formats/psg/PsgFile.h"
 #include "CustomClip.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 
 namespace te = tracktion;
 
@@ -22,9 +23,23 @@ public:
         te::MidiClip::initialise();
     }
 
-    static Ptr insertTo(te::ClipOwner& owner, const String& name, uZX::PsgFile& psgFile, te::ClipPosition position) {
-        auto* clip = dynamic_cast<PsgClip*>(CustomClip::insertClipWithState(owner, {}, name, CustomClip::Type::psg, position,
-                                            te::DeleteExistingClips::no, false));
+    static Ptr insertTo(
+        te::ClipOwner& owner,
+        uZX::PsgFile& psgFile,
+        te::ClipPosition position,
+        UndoManager* undoManager = nullptr
+    ) {
+        auto* clip = dynamic_cast<PsgClip*>(CustomClip::insertClipWithState(
+            owner,
+            /*stateToUse=*/ {},
+            psgFile.getFile().getFileNameWithoutExtension(),
+            CustomClip::Type::psg,
+            position,
+            te::DeleteExistingClips::no,
+            false
+        ));
+        jassert(clip != nullptr);
+        clip->loadFromFile(psgFile, undoManager);
         return clip;
     }
 
@@ -32,22 +47,12 @@ public:
         return TRANS("PSG Clip") + " - " + getName();
     }
 
-    // void loadPsgFile(const juce::File& file)
-    // {
-    //     // Load PSG file and convert to MIDI events
-    //     uZX::PsgFile psgFile(file);
-
-    //     // Clear existing MIDI sequence
-    //     getMidiList().clear();
-
-    //     // TODO: Convert PSG data to MIDI list
-    //     // This would involve parsing the PSG file and creating appropriate MIDI
-
-    //     // For now, this is just a placeholder
-    //     setName(file.getFileNameWithoutExtension());
-    //     setCurrentSourceFile(file);
-    // }
 private:
+    void loadFromFile(const uZX::PsgFile& psgFile, UndoManager* undoManager = nullptr) {
+        // Load PSG file and convert to MIDI events
+
+        getSequence().clear(undoManager);
+    }
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgClip)
 };
 

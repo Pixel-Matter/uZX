@@ -64,6 +64,7 @@ public:
 
         headersWidth.referTo(state, IDs::headersWidth, nullptr, 150);
 
+        // TODO Make separate zoom state class
         viewX1.referTo(state, IDs::viewX1, um, 0s);   // time of the left edge of the view
         viewX2.referTo(state, IDs::viewX2, um, 60s);  // time of the right edge of the view
         viewY.referTo(state, IDs::viewY, um, 0);      // not used yet

@@ -16,9 +16,9 @@
 #include "../../util/base64_cx.h"
 #include "../../util/Midi.h"
 #include "../../plugins/uZX/aychip/AYPlugin.h"
-#include "../common/Utilities.h"  // from MoTool
+#include "../common/Utilities.h"
 
-#include "../../formats/psg/psg_file.h"
+#include "../../formats/psg/PsgFile.h"
 #include "../../model/PsgClip.h"
 
 
@@ -35,8 +35,7 @@ inline static const auto MIDI_CLIP_DATA = MoTool::Util::b64Decode("TVRoZAAAAAYAA
 /** TODO
     - Move buttons to toolbar component
     - Make zoom struct
-    - Make grid positions struct with several types of subdivisions: regions, bars, beats, subs, frames
-    - Make ruler component
+    - Make grid positions struct with several types of subdivisions: regions/arranger clips, bars, beats, subs, frames
     - Make grid component
 */
 
@@ -176,7 +175,12 @@ private:
                 auto track = getSelectedOrInsertAudioTrack();
                 te::AudioFile audioFile(edit.engine, f);
                 if (audioFile.isValid()) {
-                    if (auto inserted = track->insertWaveClip({}, f, {{{}, te::TimeDuration::fromSeconds(audioFile.getLength())}, {}}, false)) {
+                    if (auto inserted = track->insertWaveClip(
+                        f.getFileNameWithoutExtension(),
+                        f,
+                        {{{}, te::TimeDuration::fromSeconds(audioFile.getLength())}, {}},
+                        false)
+                    ) {
                         // DBG("Inserted clip: " << inserted->getName());
                     }
                 }
@@ -204,7 +208,7 @@ private:
                 auto track = getSelectedOrInsertAudioTrack();
                 auto psgFile = uZX::PsgFile(f);
                 te::ClipPosition pos = {{{}, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
-                if (auto inserted = PsgClip::insertTo(*track, "test PSG", psgFile, pos)) {
+                if (auto inserted = PsgClip::insertTo(*track, psgFile, pos, &edit.getUndoManager())) {
                     DBG("Inserted clip: " << inserted->getName());
                 }
             }

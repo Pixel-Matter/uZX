@@ -7,27 +7,10 @@
 namespace MoTool::Tests {
 
 using namespace MoTool;
+using namespace tracktion::literals;
 using namespace tracktion;
 using namespace juce;
 using namespace std::literals;
-
-//==============================================================================
-
-// Helper method to create and add a PsgClip to a track
-static PsgClip::Ptr createCustomClip(ClipOwner& track, TimeRange position) {
-    auto& edit = track.getClipOwnerEdit();
-
-    ValueTree state(MoTool::IDs::PSGCLIP);
-    state.setProperty(tracktion::IDs::start, position.getStart().inSeconds(), nullptr);
-    state.setProperty(tracktion::IDs::length, position.getLength().inSeconds(), nullptr);
-    state.setProperty(tracktion::IDs::id, edit.createNewItemID().toString(), nullptr);
-    state.setProperty("isCustomClip", true, nullptr);
-
-    // Insert the clip using the standard method
-    auto* clip = dynamic_cast<PsgClip*>(insertClipWithState(track, state));
-    return clip;
-}
-
 
 //==============================================================================
 //==============================================================================
@@ -43,11 +26,39 @@ public:
 
         beginTest("CustomClip creation");
         {
-            const TimeDuration duration = 8.0s;
             auto t = getAudioTracks(*edit)[0];
-            auto c = createCustomClip(*t, {0.0s, duration});
+            auto* c = CustomClip::insertClipWithState(*t, {}, {}, CustomClip::Type::psg, {{0_tp, 4_td}, {}},
+                      te::DeleteExistingClips::no, false);
+
             expect(c != nullptr, "CustomClip created");
-            expect(dynamic_cast<PsgClip*>(c.get()) != nullptr, "CustomClip is a PsgClip");
+            auto* psgClip = dynamic_cast<PsgClip*>(c);
+            expect(psgClip != nullptr, "CustomClip is a PsgClip");
+
+            // add one note for testing
+            auto& seq = psgClip->getSequence();
+            seq.addNote(36, 0_bp, 4_bd, 127, 0, &edit->getUndoManager());
+        }
+
+        beginTest("CustomClip loading from edit");
+        {
+            auto t = getAudioTracks(*edit)[0];
+            auto& clips = t->getClips();
+
+            expect(clips.size() == 1, "Clip added to track");
+
+            auto* c = dynamic_cast<PsgClip*>(clips.getFirst());
+            expect(c != nullptr, "CustomClip is a PsgClip");
+        }
+
+        beginTest("Edit loading by copying the state");
+        {
+            auto editStateCopy = edit->state.createCopy();
+            DBG("vilues state copied");
+            Edit editCopy ({ engine, editStateCopy, ProjectItemID::createNewID(0) });
+            jassert(getAudioTracks(editCopy).size() == 1);
+            auto t = getAudioTracks(editCopy)[0];
+            auto& clips = t->getClips();
+            jassert(clips.size() == 1);
         }
     }
 };

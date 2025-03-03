@@ -192,7 +192,7 @@ private:
         auto time = te::TimeRange(te::TimePosition::fromSeconds(insertTime), te::TimeDuration::fromSeconds(len));
         auto track = getSelectedOrInsertAudioTrack();
 
-        if (auto clip = track->insertMIDIClip(time, &selectionManager)) {
+        if (auto clip = track->insertMIDIClip("MidiClip", time, &selectionManager)) {
             clip->mergeInMidiSequence(seq, te::MidiList::NoteAutomationType::none);
             clip->setMidiChannel(te::MidiChannel(1));
         }

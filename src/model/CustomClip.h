@@ -16,6 +16,7 @@ namespace IDs {
 }  // namespace IDs
 
 
+// TODO change CustomClip to be a pure utility namespace rather than a class to avoid the dual inheritance pattern
 class CustomClip {
 public:
 
@@ -26,8 +27,8 @@ public:
 
     static te::Clip* insertClipWithState(te::ClipOwner& parent,
                                          const juce::ValueTree& stateToUse, const juce::String& name, Type type,
-                                         te::ClipPosition position, te::DeleteExistingClips deleteExistingClips, bool allowSpottingAdjustment)
-    {
+                                         te::ClipPosition position, te::DeleteExistingClips deleteExistingClips, bool allowSpottingAdjustment) {
+        // NOTE see tracktion_engine/modules/tracktion_engine/model/clips/tracktion_ClipOwner.cpp:insertClipWithState
         using namespace te;
         CRASH_TRACER
         auto& edit = parent.getClipOwnerEdit();
@@ -45,11 +46,9 @@ public:
             deleteRegion(parent, position.time);
 
         auto newClipID = edit.createNewItemID();
-
-        juce::ValueTree newState;
+        ValueTree newState;
 
         if (stateToUse.isValid()) {
-            // Custom clips cannot use Tracktion clip types
             jassert(stateToUse.hasType(clipTypeToXMLType(type)));
             newState = stateToUse;
             updateClipState(newState, name, newClipID, position);
@@ -79,18 +78,17 @@ private:
     inline static void updateClipState(ValueTree& state, const String& name,
                                        te::EditItemID itemID, te::ClipPosition position) {
         te::addValueTreeProperties(state,
-            te::IDs::name, name,
-            te::IDs::start, position.getStart().inSeconds(),
-            te::IDs::length, position.getLength().inSeconds(),
-            te::IDs::offset, position.getOffset().inSeconds()
+                                   te::IDs::name, name,
+                                   te::IDs::start, position.getStart().inSeconds(),
+                                   te::IDs::length, position.getLength().inSeconds(),
+                                   te::IDs::offset, position.getOffset().inSeconds()
         );
-
         itemID.writeID(state, nullptr);
     }
 
     inline static ValueTree createNewClipState(const String& name, Type type,
                                                te::EditItemID itemID, te::ClipPosition position) {
-        juce::ValueTree state(clipTypeToXMLType(type));
+        ValueTree state(clipTypeToXMLType(type));
         updateClipState(state, name, itemID, position);
         return state;
     }

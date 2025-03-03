@@ -210,7 +210,7 @@ private:
                 auto psgFile = uZX::PsgFile(f);
                 psgFile.ensureRead();
                 te::ClipPosition pos = {{te::TimePosition::fromSeconds(insertTime), te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
-                if (auto inserted = PsgClip::insertTo(*track, psgFile, pos, &edit.getUndoManager())) {
+                if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
                     DBG("Inserted clip: " << inserted->getName());
                 }
             }

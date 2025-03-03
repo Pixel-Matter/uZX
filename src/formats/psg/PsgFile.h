@@ -172,9 +172,11 @@ public:
         return psgData_.frames.size() * psgData_.frameStep;
     }
 
-    double getLengthSeconds() const {
-        // FIXME proper frame rate from edit settings
-        double frameRate = 50;
+    inline double frameNumToSeconds(size_t frameNum, double frameRate = 50) const {
+        return static_cast<double>(frameNum) / frameRate;
+    }
+
+    double getLengthSeconds(double frameRate = 50) const {
         return static_cast<double>(getLengthMachineFrames()) / frameRate;
     }
 
@@ -218,7 +220,7 @@ private:
         while (remaining > 0) {
             // DBG("Remaining: " << remaining);
             if (expectFrame) {
-                auto oldRemaining = remaining;
+                // auto oldRemaining = remaining;
                 const auto frame = readNextFrame(d, remaining);
                 if (!frame.hasValue())
                     return false;

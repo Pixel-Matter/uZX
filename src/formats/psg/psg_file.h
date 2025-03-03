@@ -120,12 +120,10 @@ class PsgFile {
 public:
     //==============================================================================
     PsgFile(const juce::File&) {
-        // TODO
+        // fake loading data
+        psgData_.frames.resize(10);
+        psgData_.frameStep = 2;
     }
-    // PsgFile(const PsgFile&) = default;
-    // PsgFile& operator= (const PsgFile&) = default;
-    // PsgFile (PsgFile&&) = default;
-    // PsgFile& operator= (PsgFile&&) = default;
 
     //==============================================================================
     PsgData& getData() noexcept {

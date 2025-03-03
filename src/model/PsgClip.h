@@ -18,7 +18,7 @@ public:
     {}
 
     void initialise() override {
-        DBG("PsgClip::initialise()");
+        // DBG("PsgClip::initialise()");
         te::MidiClip::initialise();
     }
 

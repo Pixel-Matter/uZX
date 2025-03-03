@@ -18,22 +18,25 @@ public:
 
     EditViewState& getEditViewState()   { return editViewState; }
 
+    void zoomTracksHorizontally(te::TimePosition pos, double factor);
+    void zoomToFit();
+
 private:
     void valueTreeChanged() override {}
 
-    void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
-    void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override;
-    void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override;
-    void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override;
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
+    void valueTreeChildAdded(ValueTree&, ValueTree&) override;
+    void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
+    void valueTreeChildOrderChanged(ValueTree&, int, int) override;
 
     void handleAsyncUpdate() override;
     void resized() override;
 
-    void changeListenerCallback (ChangeBroadcaster*) override { repaint(); }
+    void changeListenerCallback(ChangeBroadcaster*) override { repaint(); }
 
     void buildTracks();
 
-    void mouseDown (const MouseEvent& e) override;
+    void mouseDown(const MouseEvent& e) override;
 
     te::Edit& edit;
 

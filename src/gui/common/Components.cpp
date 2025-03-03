@@ -383,17 +383,21 @@ void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r, te::Tim
     maxNote += 1;
 
     for (auto n : mc.getSequence().getNotes()) {
-        // TODO draw only notes in the visible range
-        auto sBeat = mc.getStartBeat() + toDuration(n->getStartBeat());
+        // draw only notes in the visible range
         auto eBeat = mc.getStartBeat() + toDuration(n->getEndBeat());
-
-        auto s = mc.edit.tempoSequence.toTime(sBeat);
         auto e = mc.edit.tempoSequence.toTime(eBeat);
+        if (e.inSeconds() < tr.getStart().inSeconds())
+            continue;
+
+        auto sBeat = mc.getStartBeat() + toDuration(n->getStartBeat());
+        auto s = mc.edit.tempoSequence.toTime(sBeat);
+        if (s.inSeconds() > tr.getEnd().inSeconds())
+            break;
 
         auto t1 = (double) timeToX(s) - r.getX();
         auto t2 = (double) timeToX(e) - r.getX();
 
-        double y = (1.0 - double (n->getNoteNumber() - minNote) / noteRange) * r.getHeight();
+        double y = (1.0 - double(n->getNoteNumber() - minNote) / noteRange) * r.getHeight();
 
         g.setColour(Colours::white.withAlpha(n->getVelocity() / 127.0f));
         g.drawLine(float(t1), float(y), float(t2), float(y));
@@ -407,15 +411,7 @@ MidiClipComponent::MidiClipComponent (EditViewState& evs, te::Clip::Ptr c)
 
 void MidiClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
-    auto getTimeRangeForDrawing = [this] (const int l, const int r) -> te::TimeRange {
-        if (auto p = getParentComponent()) {
-            auto t1 = editViewState.xToTime(l, p->getWidth());
-            auto t2 = editViewState.xToTime(r, p->getWidth());
-            return {t1, t2};
-        }
-        return {};
-    };
-    drawMidiClip(g, *getMidiClip(), getLocalBounds(), getTimeRangeForDrawing(0, getWidth()));
+    drawMidiClip(g, *getMidiClip(), getLocalBounds(), editViewState.getTimeRange());
 }
 
 //==============================================================================

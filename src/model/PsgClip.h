@@ -51,12 +51,12 @@ public:
     }
 
 private:
-    inline ValueTree createRegValueTree(te::BeatPosition start, double dur, int reg, double val) {
+    inline ValueTree createRegValueTree(te::BeatRange range, int reg, double val) {
         return te::createValueTree(
             te::IDs::NOTE,
             te::IDs::p, reg,
-            te::IDs::b, start.inBeats(),
-            te::IDs::l, dur,
+            te::IDs::b, range.getStart().inBeats(),
+            te::IDs::l, range.getLength().inBeats(),
             te::IDs::v, val);
         // or
         // auto v = te::MidiControllerEvent::createControllerEvent(startBeat, 20 + j, reg);
@@ -74,12 +74,13 @@ private:
             auto& frame = data.frames[i];
             auto timeSec = psgFile.frameNumToSeconds(i, frameRate);
             auto startBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec));
+            auto endBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec + 1.0 / frameRate));
             // DBG("Frame " << i << " time=" << timeBeat);
             for (size_t j = 0; j < frame.registers.size(); j++) {
                 if (frame.mask[j]) {
                     // DBG("Register " << j << " = " << reg);
                     auto reg = frame.registers[j];
-                    auto v = createRegValueTree(startBeat, 0.01, 20 + j, reg);
+                    auto v = createRegValueTree({startBeat, endBeat}, 60 + j, reg);
                     // auto v = juce::createNoteValueTree(j, startBeat, 1.0/50, 127, 0);
                     seq.state.addChild(v, -1, getUndoManager());
                     // Too slow to call addControllerEvent

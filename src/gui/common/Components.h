@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "tracktion_core/utilities/tracktion_Time.h"
 #include <JuceHeader.h>
 #include <common/Utilities.h>
 
@@ -119,6 +118,10 @@ public:
         viewY.referTo(state, IDs::viewY, um, 0);      // not used yet
     }
 
+    te::TimeRange getTimeRange() const {
+        return { viewX1, viewX2 };
+    }
+
     int timeToX(te::TimePosition time, int width) const {
         return roundToInt(((time - viewX1) * width) / viewLength());
     }
@@ -140,12 +143,20 @@ public:
     }
 
     te::TimeDuration viewLength() const {
-        return viewX2 - viewX1;
+        return viewX2.get() - viewX1.get();
     }
 
     te::TimePosition beatToTime(te::BeatPosition b) const {
         auto& ts = edit.tempoSequence;
         return ts.toTime(b);
+    }
+
+    void zoomHorizontally(te::TimePosition pos, double factor) {
+        auto left = (pos - viewX1.get()) * factor;
+        auto right = (viewX2.get() - pos) * factor;
+        viewX1 = pos - left;
+        viewX2 = pos + right;
+        viewX1 = jmax(te::TimePosition(), viewX1.get());
     }
 
     te::Edit& edit;

@@ -39,7 +39,7 @@ private:
             juce::Identifier trackType;
             juce::String addedNodeXml;
 
-            // JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR8(TrackListener)
+            // JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackListener)
         };
 
         TrackListener listener;

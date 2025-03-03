@@ -79,10 +79,15 @@ public:
 
         deleteButton.setEnabled(false);
 
+        zoomInButton.onClick =       [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 1.0 / 2); };
+        zoomOutButton.onClick =      [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 2.0); };
+        zoomFitButton.onClick =      [this] { editComponent.zoomToFit(); };
+
         setSize(600, 400);
         ::Helpers::addAndMakeVisible(*this, { &editComponent,
                                               &newTrackButton, &deleteButton,
-                                              &insertMidiButton, &insertPSGButton, &insertAudioButton
+                                              &insertMidiButton, &insertPSGButton, &insertAudioButton,
+                                              &zoomInButton, &zoomOutButton, &zoomFitButton
                                             });
     }
 
@@ -98,13 +103,16 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 5;
+        int w = r.getWidth() / 8;
         auto topR = r.removeFromTop(30);
         insertMidiButton.setBounds(topR.removeFromLeft(w).reduced(2));
         insertPSGButton.setBounds(topR.removeFromLeft(w).reduced(2));
         insertAudioButton.setBounds(topR.removeFromLeft(w).reduced(2));
         newTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
         deleteButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        zoomInButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        zoomOutButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        zoomFitButton.setBounds(topR.removeFromLeft(w).reduced(2));
         editComponent.setBounds(r);
     }
 
@@ -120,7 +128,10 @@ private:
                deleteButton { "Delete" },
                insertMidiButton { "Insert MIDI" },
                insertPSGButton { "Insert PSG" },
-               insertAudioButton { "Insert Audio" }
+               insertAudioButton { "Insert Audio" },
+               zoomInButton { "Zoom In" },
+               zoomOutButton { "Zoom Out" },
+               zoomFitButton { "Zoom Fit" }
                ;
 
     //==============================================================================

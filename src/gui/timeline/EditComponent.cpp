@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "../common/Components.h"
+#include "tracktion_core/utilities/tracktion_Time.h"
 #include "EditComponent.h"
 
 namespace MoTool {
@@ -23,7 +24,7 @@ EditComponent::~EditComponent() {
     edit.state.removeListener(this);
 }
 
-void EditComponent::valueTreePropertyChanged (juce::ValueTree& v, const juce::Identifier& i) {
+void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
     if (v.hasType(IDs::EDITVIEWSTATE)) {
         if (i == IDs::viewX1
             || i == IDs::viewX2
@@ -36,6 +37,19 @@ void EditComponent::valueTreePropertyChanged (juce::ValueTree& v, const juce::Id
             repaint();
         }
     }
+}
+
+void EditComponent::zoomTracksHorizontally(te::TimePosition pos, double factor) {
+    editViewState.zoomHorizontally(pos, factor);
+    markAndUpdate(updateZoom);
+}
+
+void EditComponent::zoomToFit() {
+    editViewState.viewX1 = 0s;
+    editViewState.viewX2 = 60s;
+    // TODO get global start and end
+    // editViewState.zoomHorizontally(factor);
+    markAndUpdate(updateZoom);
 }
 
 void EditComponent::valueTreeChildAdded (juce::ValueTree&, juce::ValueTree& c) {

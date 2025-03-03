@@ -4,12 +4,14 @@
 
 #include "../common/LookAndFeel.h"
 #include "../common/Components.h"
+#include "juce_data_structures/juce_data_structures.h"
 
 namespace MoTool {
 
 class RulerComponent : public Component,
                        private Timer,
-                       private te::TempoSequence::Listener {
+                       private te::TempoSequence::Listener,
+                       private ValueTree::Listener {
 public:
     RulerComponent(te::Edit& ed, EditViewState& evs)
         : te::TempoSequence::Listener {ed.tempoSequence}
@@ -17,11 +19,13 @@ public:
         , editViewState {evs}
     {
         edit.tempoSequence.addListener(this);
+        editViewState.state.addListener(this);
         // startTimerHz(30);
     }
 
     ~RulerComponent() override {
         edit.tempoSequence.removeListener(this);
+        editViewState.state.removeListener(this);
         stopTimer();
     }
 
@@ -92,6 +96,12 @@ private:
     // TempoSequenceChange listener implementation
     void selectableObjectChanged(te::Selectable* ) override {
         repaint();
+    }
+
+    void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override {
+        if (prop == IDs::viewX1 || prop == IDs::viewX2) {
+            repaint();
+        }
     }
 };
 

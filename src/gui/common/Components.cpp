@@ -17,8 +17,7 @@ using namespace std::literals;
 namespace MoTool {
 
 //==============================================================================
-class PluginTreeBase
-{
+class PluginTreeBase {
 public:
     virtual ~PluginTreeBase() = default;
     virtual String getUniqueName() const = 0;
@@ -32,16 +31,14 @@ private:
 };
 
 //==============================================================================
-class PluginTreeItem : public PluginTreeBase
-{
+class PluginTreeItem : public PluginTreeBase {
 public:
-    PluginTreeItem (const PluginDescription&);
-    PluginTreeItem (const String& uniqueId, const String& name, const String& xmlType, bool isSynth, bool isPlugin);
+    PluginTreeItem(const PluginDescription&);
+    PluginTreeItem(const String& uniqueId, const String& name, const String& xmlType, bool isSynth, bool isPlugin);
 
     te::Plugin::Ptr create (te::Edit&);
 
-    String getUniqueName() const override
-    {
+    String getUniqueName() const override {
         if (desc.fileOrIdentifier.startsWith (te::RackType::getRackPresetPrefix()))
             return desc.fileOrIdentifier;
 
@@ -52,37 +49,39 @@ public:
     String xmlType;
     bool isPlugin = true;
 
-    JUCE_LEAK_DETECTOR (PluginTreeItem)
+    JUCE_LEAK_DETECTOR(PluginTreeItem)
 };
 
 //==============================================================================
-class PluginTreeGroup : public PluginTreeBase
-{
+class PluginTreeGroup : public PluginTreeBase {
 public:
-    PluginTreeGroup (te::Edit&, KnownPluginList::PluginTree&, te::Plugin::Type);
-    PluginTreeGroup (const String&);
+    PluginTreeGroup(te::Edit&, KnownPluginList::PluginTree&, te::Plugin::Type);
+    PluginTreeGroup(const String&);
 
     String getUniqueName() const override           { return name; }
 
     String name;
 
 private:
-    void populateFrom (KnownPluginList::PluginTree&);
-    void createBuiltInItems (int& num, te::Plugin::Type);
+    void populateFrom(KnownPluginList::PluginTree&);
+    void createBuiltInItems(int& num, te::Plugin::Type);
 
-    JUCE_LEAK_DETECTOR (PluginTreeGroup)
+    JUCE_LEAK_DETECTOR(PluginTreeGroup)
 };
 
 //==============================================================================
 PluginTreeItem::PluginTreeItem (const juce::PluginDescription& d)
-    : desc (d), xmlType (te::ExternalPlugin::xmlTypeName), isPlugin (true)
+    : desc (d)
+    , xmlType (te::ExternalPlugin::xmlTypeName)
+    , isPlugin (true)
 {
-    jassert (xmlType.isNotEmpty());
+    jassert(xmlType.isNotEmpty());
 }
 
 PluginTreeItem::PluginTreeItem (const juce::String& uniqueId, const juce::String& name,
                                 const juce::String& xmlType_, bool isSynth, bool isPlugin_)
-    : xmlType (xmlType_), isPlugin (isPlugin_)
+    : xmlType (xmlType_)
+    , isPlugin (isPlugin_)
 {
     jassert (xmlType.isNotEmpty());
     desc.name = name;
@@ -93,8 +92,7 @@ PluginTreeItem::PluginTreeItem (const juce::String& uniqueId, const juce::String
     desc.isInstrument = isSynth;
 }
 
-te::Plugin::Ptr PluginTreeItem::create (te::Edit& ed)
-{
+te::Plugin::Ptr PluginTreeItem::create(te::Edit& ed) {
     return ed.getPluginCache().createNewPlugin (xmlType, desc);
 }
 
@@ -127,13 +125,13 @@ PluginTreeGroup::PluginTreeGroup (te::Edit& edit, KnownPluginList::PluginTree& t
     populateFrom (tree);
 }
 
-PluginTreeGroup::PluginTreeGroup (const String& s)  : name (s)
+PluginTreeGroup::PluginTreeGroup(const String& s)
+    : name (s)
 {
     jassert (name.isNotEmpty());
 }
 
-void PluginTreeGroup::populateFrom (KnownPluginList::PluginTree& tree)
-{
+void PluginTreeGroup::populateFrom(KnownPluginList::PluginTree& tree) {
     for (auto subTree : tree.subFolders)
     {
         if (subTree->plugins.size() > 0 || subTree->subFolders.size() > 0)
@@ -153,8 +151,8 @@ void PluginTreeGroup::populateFrom (KnownPluginList::PluginTree& tree)
 template<class FilterClass>
 void addInternalPlugin(PluginTreeBase& item, int& num, bool synth = false) {
     item.addSubItem(new PluginTreeItem(String(num++) + "_trkbuiltin",
-                                         TRANS(FilterClass::getPluginName()),
-                                         FilterClass::xmlTypeName, synth, false));
+                                       TRANS(FilterClass::getPluginName()),
+                                       FilterClass::xmlTypeName, synth, false));
 }
 
 void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
@@ -251,14 +249,17 @@ ClipComponent::ClipComponent (EditViewState& evs, te::Clip::Ptr c)
     : editViewState (evs), clip (c)
 {}
 
-void ClipComponent::paint (Graphics& g) {
-    g.fillAll(clip->getColour().withAlpha(0.5f));
-    g.setColour(Colors::Theme::border.withAlpha(0.5f));
-    g.drawRect(getLocalBounds());
+void ClipComponent::paint(Graphics& g) {
+    // TODO Move to lookAndFeel
+    g.setColour(clip->getColour().withAlpha(0.5f));
+    g.fillRoundedRectangle(getLocalBounds().toFloat(), 6.0f);
 
     if (editViewState.selectionManager.isSelected(clip.get())) {
         g.setColour(Colors::Timeline::clipSelected);
-        g.drawRect(getLocalBounds(), 2);
+        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0), 6.0f, 2.0f);
+    } else {
+        // g.setColour(Colors::Theme::border.withAlpha(0.5f));
+        // g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0), 6.0f, 2.0f);
     }
 }
 
@@ -268,24 +269,22 @@ void ClipComponent::mouseDown(const MouseEvent&) {
 
 //==============================================================================
 AudioClipComponent::AudioClipComponent(EditViewState& evs, te::Clip::Ptr c)
-    : ClipComponent (evs, c)
+    : ClipComponent(evs, c)
 {
     updateThumbnail();
 }
 
-void AudioClipComponent::paint (Graphics& g) {
-    ClipComponent::paint (g);
+void AudioClipComponent::paint(Graphics& g) {
+    ClipComponent::paint(g);
 
     if (editViewState.drawWaveforms && thumbnail != nullptr)
-        drawWaveform (g, *getWaveAudioClip(), *thumbnail, Colours::black.withAlpha (0.5f),
-                      0, getWidth(), 0, getHeight(), 0);
+        drawWaveform(g, *getWaveAudioClip(), *thumbnail, Colours::black.withAlpha (0.5f),
+                     0, getWidth(), 0, getHeight(), 0);
 }
 
 void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour,
-                                       int left, int right, int y, int h, int xOffset)
-{
-    auto getTimeRangeForDrawing = [this] (const int l, const int r) -> tracktion::TimeRange
-    {
+                                       int left, int right, int y, int h, int xOffset) {
+    auto getTimeRangeForDrawing = [this] (const int l, const int r) -> te::TimeRange {
         if (auto p = getParentComponent()) {
             auto t1 = editViewState.xToTime(l, p->getWidth());
             auto t2 = editViewState.xToTime(r, p->getWidth());
@@ -311,134 +310,112 @@ void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::Sma
 
     g.setColour(colour);
 
-    if (usesTimeStretchedProxy)
-    {
-        const Rectangle<int> area (left + xOffset, y, right - left, h);
+    if (usesTimeStretchedProxy) {
+        const Rectangle<int> area(left + xOffset, y, right - left, h);
 
-        if (! thumb.isOutOfDate())
-        {
-            drawChannels (g, thumb, area,
-                          getTimeRangeForDrawing (left, right),
-                          c.isLeftChannelActive(), c.isRightChannelActive(),
-                          gainL, gainR);
+        if (!thumb.isOutOfDate()) {
+            drawChannels(g, thumb, area,
+                         getTimeRangeForDrawing(left, right),
+                         c.isLeftChannelActive(), c.isRightChannelActive(),
+                         gainL, gainR);
         }
-    }
-    else if (c.getLoopLength() == 0s)
-    {
+    } else if (c.getLoopLength() == 0s) {
         auto region = getTimeRangeForDrawing (left, right);
 
         auto t1 = (region.getStart() + offset) * speedRatio;
         auto t2 = (region.getEnd()   + offset) * speedRatio;
 
-        drawChannels (g, thumb,
-                      { left + xOffset, y, right - left, h },
-                      { t1, t2 },
-                      c.isLeftChannelActive(), c.isRightChannelActive(),
-                      gainL, gainR);
+        drawChannels(g, thumb,
+                     { left + xOffset, y, right - left, h },
+                     { t1, t2 },
+                     c.isLeftChannelActive(), c.isRightChannelActive(),
+                     gainL, gainR);
     }
 }
 
 void AudioClipComponent::drawChannels (Graphics& g, te::SmartThumbnail& thumb, Rectangle<int> area,
                                        te::TimeRange time, bool useLeft, bool useRight,
-                                       float leftGain, float rightGain)
-{
-    if (useLeft && useRight && thumb.getNumChannels() > 1)
-    {
+                                       float leftGain, float rightGain) {
+    if (useLeft && useRight && thumb.getNumChannels() > 1) {
         thumb.drawChannel (g, area.removeFromTop (area.getHeight() / 2), time, 0, leftGain);
         thumb.drawChannel (g, area, time, 1, rightGain);
-    }
-    else if (useLeft)
-    {
+    } else if (useLeft) {
         thumb.drawChannel (g, area, time, 0, leftGain);
-    }
-    else if (useRight)
-    {
+    } else if (useRight) {
         thumb.drawChannel (g, area, time, 1, rightGain);
     }
 }
 
-void AudioClipComponent::updateThumbnail()
-{
-    if (auto* wac = getWaveAudioClip())
-    {
-        te::AudioFile af (wac->getAudioFile());
+void AudioClipComponent::updateThumbnail() {
+    if (auto* wac = getWaveAudioClip()) {
+        te::AudioFile af {wac->getAudioFile()};
 
-        if (af.getFile().existsAsFile() || (! wac->usesSourceFile()))
-        {
-            if (af.isValid())
-            {
-                const te::AudioFile proxy ((wac->hasAnyTakes() && wac->isShowingTakes()) ? wac->getAudioFile() : wac->getPlaybackFile());
+        if (af.getFile().existsAsFile() || (! wac->usesSourceFile())) {
+            if (af.isValid()) {
+                const te::AudioFile proxy((wac->hasAnyTakes() && wac->isShowingTakes()) ? wac->getAudioFile() : wac->getPlaybackFile());
 
                 if (thumbnail == nullptr)
-                    thumbnail = std::make_unique<te::SmartThumbnail> (wac->edit.engine, proxy, *this, &wac->edit);
+                    thumbnail = std::make_unique<te::SmartThumbnail>(wac->edit.engine, proxy, *this, &wac->edit);
                 else
                     thumbnail->setNewFile (proxy);
-            }
-            else
-            {
+            } else {
                 thumbnail = nullptr;
             }
         }
     }
 }
 
-void drawMidiClip (juce::Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r, te::TimeRange tr)
-{
-    auto timeToX = [width = r.getWidth(), tr] (auto time)
-    {
-        return juce::roundToInt (((time - tr.getStart()) * width) / (tr.getLength()));
+void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r, te::TimeRange tr) {
+    auto timeToX = [width = r.getWidth(), tr] (auto time) {
+        return roundToInt(((time - tr.getStart()) * width) / (tr.getLength()));
     };
+    auto& notes = mc.getSequence().getNotes();
+    if (notes.size() == 0)
+        return;
+
+    int minNote = 127, maxNote = 0;
+    for (auto n : notes) {
+        minNote = jmin(minNote, n->getNoteNumber());
+        maxNote = jmax(maxNote, n->getNoteNumber());
+    }
+    const auto noteRange = maxNote - minNote;
+    minNote -= 1;
+    maxNote += 1;
 
     for (auto n : mc.getSequence().getNotes()) {
-        auto sBeat = mc.getStartBeat() + toDuration (n->getStartBeat());
-        auto eBeat = mc.getStartBeat() + toDuration (n->getEndBeat());
+        // TODO draw only notes in the visible range
+        auto sBeat = mc.getStartBeat() + toDuration(n->getStartBeat());
+        auto eBeat = mc.getStartBeat() + toDuration(n->getEndBeat());
 
-        auto s = mc.edit.tempoSequence.toTime (sBeat);
-        auto e = mc.edit.tempoSequence.toTime (eBeat);
+        auto s = mc.edit.tempoSequence.toTime(sBeat);
+        auto e = mc.edit.tempoSequence.toTime(eBeat);
 
-        auto t1 = (double) timeToX (s) - r.getX();
-        auto t2 = (double) timeToX (e) - r.getX();
+        auto t1 = (double) timeToX(s) - r.getX();
+        auto t2 = (double) timeToX(e) - r.getX();
 
-        double y = (1.0 - double (n->getNoteNumber()) / 127.0) * r.getHeight();
+        double y = (1.0 - double (n->getNoteNumber() - minNote) / noteRange) * r.getHeight();
 
-        g.setColour(Colours::white.withAlpha (n->getVelocity() / 127.0f));
-        g.drawLine(float (t1), float (y), float (t2), float (y));
+        g.setColour(Colours::white.withAlpha(n->getVelocity() / 127.0f));
+        g.drawLine(float(t1), float(y), float(t2), float(y));
     }
 }
 
 //==============================================================================
 MidiClipComponent::MidiClipComponent (EditViewState& evs, te::Clip::Ptr c)
-    : ClipComponent (evs, c)
-{
-}
+    : ClipComponent(evs, c)
+{}
 
-void MidiClipComponent::paint (Graphics& g)
-{
-    ClipComponent::paint (g);
-
-    if (auto mc = getMidiClip())
-    {
-        auto& seq = mc->getSequence();
-        for (auto n : seq.getNotes())
-        {
-            auto sBeat = mc->getStartBeat() + toDuration (n->getStartBeat());
-            auto eBeat = mc->getStartBeat() + toDuration (n->getEndBeat());
-
-            auto s = editViewState.beatToTime (sBeat);
-            auto e = editViewState.beatToTime (eBeat);
-
-            if (auto p = getParentComponent())
-            {
-                auto t1 = (double) editViewState.timeToX (s, p->getWidth()) - getX();
-                auto t2 = (double) editViewState.timeToX (e, p->getWidth()) - getX();
-
-                double y = (1.0 - double (n->getNoteNumber()) / 127.0) * getHeight();
-
-                g.setColour (Colours::white.withAlpha (n->getVelocity() / 127.0f));
-                g.drawLine (float (t1), float (y), float (t2), float (y));
-            }
+void MidiClipComponent::paint(Graphics& g) {
+    ClipComponent::paint(g);
+    auto getTimeRangeForDrawing = [this] (const int l, const int r) -> te::TimeRange {
+        if (auto p = getParentComponent()) {
+            auto t1 = editViewState.xToTime(l, p->getWidth());
+            auto t2 = editViewState.xToTime(r, p->getWidth());
+            return {t1, t2};
         }
-    }
+        return {};
+    };
+    drawMidiClip(g, *getMidiClip(), getLocalBounds(), getTimeRangeForDrawing(0, getWidth()));
 }
 
 //==============================================================================
@@ -457,8 +434,8 @@ void RecordingClipComponent::initialiseThumbnailAndPunchTime()
         {
             punchInTime = idi->getPunchInTime (at->itemID);
 
-            if (idi->getRecordingFile (at->itemID).exists())
-                thumbnail = at->edit.engine.getRecordingThumbnailManager().getThumbnailFor (idi->getRecordingFile (at->itemID));
+            if (idi->getRecordingFile(at->itemID).exists())
+                thumbnail = at->edit.engine.getRecordingThumbnailManager().getThumbnailFor(idi->getRecordingFile(at->itemID));
         }
     }
 }
@@ -478,7 +455,7 @@ void RecordingClipComponent::drawThumbnail(Graphics& g, Colour waveformColour) c
         return;
 
     Rectangle<int> bounds;
-    tracktion::TimeRange times;
+    te::TimeRange times;
     getBoundsAndTime(bounds, times);
     auto w = bounds.getWidth();
 
@@ -488,19 +465,17 @@ void RecordingClipComponent::drawThumbnail(Graphics& g, Colour waveformColour) c
     }
 }
 
-bool RecordingClipComponent::getBoundsAndTime (Rectangle<int>& bounds, tracktion::TimeRange& times) const {
-    auto editTimeToX = [this] (te::TimePosition t)
-    {
+bool RecordingClipComponent::getBoundsAndTime(Rectangle<int>& bounds, tracktion::TimeRange& times) const {
+    auto editTimeToX = [this] (te::TimePosition t) {
         if (auto p = getParentComponent())
-            return editViewState.timeToX (t, p->getWidth()) - getX();
+            return editViewState.timeToX(t, p->getWidth()) - getX();
 
         return 0;
     };
 
-    auto xToEditTime = [this] (int x)
-    {
+    auto xToEditTime = [this] (int x) {
         if (auto p = getParentComponent())
-            return editViewState.xToTime (x + getX(), p->getWidth());
+            return editViewState.xToTime(x + getX(), p->getWidth());
 
         return te::TimePosition();
     };
@@ -508,8 +483,7 @@ bool RecordingClipComponent::getBoundsAndTime (Rectangle<int>& bounds, tracktion
     bool hasLooped = false;
     auto& edit = track->edit;
 
-    if (auto epc = edit.getTransport().getCurrentPlaybackContext())
-    {
+    if (auto epc = edit.getTransport().getCurrentPlaybackContext()) {
         auto localBounds = getLocalBounds();
 
         auto timeStarted = thumbnail->punchInTime;
@@ -518,121 +492,106 @@ bool RecordingClipComponent::getBoundsAndTime (Rectangle<int>& bounds, tracktion
         auto t1 = timeStarted;
         auto t2 = unloopedPos;
 
-        if (epc->isLooping() && t2 >= epc->getLoopTimes().getEnd())
-        {
+        if (epc->isLooping() && t2 >= epc->getLoopTimes().getEnd()) {
             hasLooped = true;
 
-            t1 = jmin (t1, epc->getLoopTimes().getStart());
+            t1 = jmin(t1, epc->getLoopTimes().getStart());
             t2 = epc->getPosition();
 
-            t1 = jmax (editViewState.viewX1.get(), t1);
-            t2 = jmin (editViewState.viewX2.get(), t2);
-        }
-        else if (edit.recordingPunchInOut)
-        {
+            t1 = jmax(editViewState.viewX1.get(), t1);
+            t2 = jmin(editViewState.viewX2.get(), t2);
+        } else if (edit.recordingPunchInOut) {
             const auto in  = thumbnail->punchInTime;
             const auto out = edit.getTransport().getLoopRange().getEnd();
 
-            t1 = jlimit (in, out, t1);
-            t2 = jlimit (in, out, t2);
+            t1 = jlimit(in, out, t1);
+            t2 = jlimit(in, out, t2);
         }
 
-        bounds = localBounds.withX (jmax (localBounds.getX(), editTimeToX (t1)))
-                 .withRight (jmin (localBounds.getRight(), editTimeToX (t2)));
+        bounds = localBounds.withX(jmax(localBounds.getX(), editTimeToX (t1)))
+                 .withRight(jmin(localBounds.getRight(), editTimeToX (t2)));
 
         auto loopRange = epc->getLoopTimes();
-        const auto recordedTime = unloopedPos - toDuration (epc->getLoopTimes().getStart());
+        const auto recordedTime = unloopedPos - toDuration(epc->getLoopTimes().getStart());
         const int numLoops = (int) (recordedTime / loopRange.getLength());
 
-        const tracktion::TimeRange editTimes (xToEditTime (bounds.getX()),
-                                              xToEditTime (bounds.getRight()));
+        const tracktion::TimeRange editTimes(xToEditTime (bounds.getX()),
+                                             xToEditTime (bounds.getRight()));
 
-        times = (editTimes + (loopRange.getLength() * numLoops)) - toDuration (timeStarted);
+        times = (editTimes + (loopRange.getLength() * numLoops)) - toDuration(timeStarted);
     }
 
     return hasLooped;
 }
 
-void RecordingClipComponent::timerCallback()
-{
+void RecordingClipComponent::timerCallback() {
     updatePosition();
 }
 
-void RecordingClipComponent::updatePosition()
-{
+void RecordingClipComponent::updatePosition() {
     auto& edit = track->edit;
 
-    if (auto epc = edit.getTransport().getCurrentPlaybackContext())
-    {
+    if (auto epc = edit.getTransport().getCurrentPlaybackContext()) {
         auto t1 = punchInTime >= 0s ? punchInTime : edit.getTransport().getTimeWhenStarted();
-        auto t2 = jmax (t1, epc->getUnloopedPosition());
+        auto t2 = jmax(t1, epc->getUnloopedPosition());
 
-        if (epc->isLooping())
-        {
+        if (epc->isLooping()) {
             auto loopTimes = epc->getLoopTimes();
 
-            if (t2 >= loopTimes.getEnd())
-            {
-                t1 = jmin (t1, loopTimes.getStart());
+            if (t2 >= loopTimes.getEnd()) {
+                t1 = jmin(t1, loopTimes.getStart());
                 t2 = loopTimes.getEnd();
             }
-        }
-        else if (edit.recordingPunchInOut)
-        {
+        } else if (edit.recordingPunchInOut) {
             auto mr = edit.getTransport().getLoopRange();
             auto in  = mr.getStart();
             auto out = mr.getEnd();
 
-            t1 = jlimit (in, out, t1);
-            t2 = jlimit (in, out, t2);
+            t1 = jlimit(in, out, t1);
+            t2 = jlimit(in, out, t2);
         }
 
-        t1 = jmax (t1, editViewState.viewX1.get());
-        t2 = jmin (t2, editViewState.viewX2.get());
+        t1 = jmax(t1, editViewState.viewX1.get());
+        t2 = jmin(t2, editViewState.viewX2.get());
 
-        if (auto p = getParentComponent())
-        {
-            int x1 = editViewState.timeToX (t1, p->getWidth());
-            int x2 = editViewState.timeToX (t2, p->getWidth());
+        if (auto p = getParentComponent()) {
+            int x1 = editViewState.timeToX(t1, p->getWidth());
+            int x2 = editViewState.timeToX(t2, p->getWidth());
 
-            setBounds (x1, 0, x2 - x1, p->getHeight());
+            setBounds(x1, 0, x2 - x1, p->getHeight());
             return;
         }
     }
 
-    setBounds ({});
+    setBounds({});
 }
 
 //==============================================================================
-TrackHeaderComponent::TrackHeaderComponent (EditViewState& evs, te::Track::Ptr t)
-    : editViewState (evs), track (t)
+TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
+    : editViewState(evs)
+    , track(t)
 {
     Helpers::addAndMakeVisible (*this, { &trackName, &armButton, &muteButton, &soloButton, &inputButton });
 
-    armButton.setColour (TextButton::buttonOnColourId, Colours::red);
-    muteButton.setColour (TextButton::buttonOnColourId, Colours::red);
-    soloButton.setColour (TextButton::buttonOnColourId, Colours::green);
+    armButton.setColour(TextButton::buttonOnColourId, Colours::red);
+    muteButton.setColour(TextButton::buttonOnColourId, Colours::red);
+    soloButton.setColour(TextButton::buttonOnColourId, Colours::green);
 
-    trackName.setText (t->getName(), dontSendNotification);
+    trackName.setText(t->getName(), dontSendNotification);
 
-    if (auto at = dynamic_cast<te::AudioTrack*> (track.get()))
-    {
-        inputButton.onClick = [this, at]
-        {
+    if (auto at = dynamic_cast<te::AudioTrack*>(track.get())) {
+        inputButton.onClick = [this, at] {
             PopupMenu m;
 
-            if (EngineHelpers::trackHasInput (*at))
-            {
-                bool ticked = EngineHelpers::isInputMonitoringEnabled (*at);
-                m.addItem (1000, "Input Monitoring", true, ticked);
+            if (EngineHelpers::trackHasInput(*at)) {
+                bool ticked = EngineHelpers::isInputMonitoringEnabled(*at);
+                m.addItem(1000, "Input Monitoring", true, ticked);
                 m.addSeparator();
             }
 
-            if (editViewState.showWaveDevices)
-            {
+            if (editViewState.showWaveDevices) {
                 int id = 1;
-                for (auto instance : at->edit.getAllInputDevices())
-                {
+                for (auto instance : at->edit.getAllInputDevices()) {
                     if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice)
                     {
                         bool ticked = instance->getTargets().getFirst() == at->itemID;
@@ -641,15 +600,12 @@ TrackHeaderComponent::TrackHeaderComponent (EditViewState& evs, te::Track::Ptr t
                 }
             }
 
-            if (editViewState.showMidiDevices)
-            {
+            if (editViewState.showMidiDevices) {
                 m.addSeparator();
 
                 int id = 100;
-                for (auto instance : at->edit.getAllInputDevices())
-                {
-                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice)
-                    {
+                for (auto instance : at->edit.getAllInputDevices()) {
+                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
                         bool ticked = instance->getTargets().getFirst() == at->itemID;
                         m.addItem (id++, instance->getInputDevice().getName(), true, ticked);
                     }
@@ -658,31 +614,22 @@ TrackHeaderComponent::TrackHeaderComponent (EditViewState& evs, te::Track::Ptr t
 
             int res = m.show();
 
-            if (res == 1000)
-            {
+            if (res == 1000) {
                 EngineHelpers::enableInputMonitoring (*at, ! EngineHelpers::isInputMonitoringEnabled (*at));
-            }
-            else if (res >= 100)
-            {
+            } else if (res >= 100) {
                 int id = 100;
-                for (auto instance : at->edit.getAllInputDevices())
-                {
-                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice)
-                    {
+                for (auto instance : at->edit.getAllInputDevices()) {
+                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
                         if (id == res)
                             [[ maybe_unused ]] auto result = instance->setTarget (at->itemID, true, &at->edit.getUndoManager(), 0);
 
                         id++;
                     }
                 }
-            }
-            else if (res >= 1)
-            {
+            } else if (res >= 1) {
                 int id = 1;
-                for (auto instance : at->edit.getAllInputDevices())
-                {
-                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice)
-                    {
+                for (auto instance : at->edit.getAllInputDevices()) {
+                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice) {
                         if (id == res)
                             [[ maybe_unused ]] auto result = instance->setTarget (at->itemID, true, &at->edit.getUndoManager(), 0);
 
@@ -691,21 +638,18 @@ TrackHeaderComponent::TrackHeaderComponent (EditViewState& evs, te::Track::Ptr t
                 }
             }
         };
-        armButton.onClick = [this, at]
-        {
-            EngineHelpers::armTrack (*at, ! EngineHelpers::isTrackArmed (*at));
-            armButton.setToggleState (EngineHelpers::isTrackArmed (*at), dontSendNotification);
+        armButton.onClick = [this, at] {
+            EngineHelpers::armTrack(*at, ! EngineHelpers::isTrackArmed(*at));
+            armButton.setToggleState(EngineHelpers::isTrackArmed(*at), dontSendNotification);
         };
-        muteButton.onClick = [at] { at->setMute (! at->isMuted (false)); };
-        soloButton.onClick = [at] { at->setSolo (! at->isSolo (false)); };
+        muteButton.onClick = [at] { at->setMute(!at->isMuted(false)); };
+        soloButton.onClick = [at] { at->setSolo(!at->isSolo(false)); };
 
-        armButton.setToggleState (EngineHelpers::isTrackArmed (*at), dontSendNotification);
-    }
-    else
-    {
-        armButton.setVisible (false);
-        muteButton.setVisible (false);
-        soloButton.setVisible (false);
+        armButton.setToggleState(EngineHelpers::isTrackArmed(*at), dontSendNotification);
+    } else {
+        armButton.setVisible(false);
+        muteButton.setVisible(false);
+        soloButton.setVisible(false);
     }
 
     track->state.addListener (this);
@@ -717,28 +661,22 @@ TrackHeaderComponent::TrackHeaderComponent (EditViewState& evs, te::Track::Ptr t
     valueTreePropertyChanged (inputsState, te::IDs::targetIndex);
 }
 
-TrackHeaderComponent::~TrackHeaderComponent()
-{
-    track->state.removeListener (this);
+TrackHeaderComponent::~TrackHeaderComponent() {
+    track->state.removeListener(this);
 }
 
-void TrackHeaderComponent::valueTreePropertyChanged (juce::ValueTree& v, const juce::Identifier& i)
-{
-    if (te::TrackList::isTrack (v))
-    {
+void TrackHeaderComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
+    if (te::TrackList::isTrack(v)) {
         if (i == te::IDs::mute)
-            muteButton.setToggleState ((bool)v[i], dontSendNotification);
+            muteButton.setToggleState((bool)v[i], dontSendNotification);
         else if (i == te::IDs::solo)
-            soloButton.setToggleState ((bool)v[i], dontSendNotification);
-    }
-    else if (v.hasType (te::IDs::INPUTDEVICES)
-             || v.hasType (te::IDs::INPUTDEVICE)
-             || v.hasType (te::IDs::INPUTDEVICEDESTINATION))
-    {
-        if (auto at = dynamic_cast<te::AudioTrack*> (track.get()))
-        {
-            armButton.setEnabled (EngineHelpers::trackHasInput (*at));
-            armButton.setToggleState (EngineHelpers::isTrackArmed (*at), dontSendNotification);
+            soloButton.setToggleState((bool)v[i], dontSendNotification);
+    } else if (v.hasType (te::IDs::INPUTDEVICES)
+              || v.hasType (te::IDs::INPUTDEVICE)
+              || v.hasType (te::IDs::INPUTDEVICEDESTINATION)) {
+        if (auto at = dynamic_cast<te::AudioTrack*>(track.get())) {
+            armButton.setEnabled (EngineHelpers::trackHasInput(*at));
+            armButton.setToggleState (EngineHelpers::isTrackArmed(*at), dontSendNotification);
         }
     }
 }
@@ -758,18 +696,18 @@ void TrackHeaderComponent::mouseDown (const MouseEvent&) {
 }
 
 void TrackHeaderComponent::resized() {
-    auto r = getLocalBounds().reduced (4);
-    trackName.setBounds (r.removeFromTop (r.getHeight() / 2));
-
-    int w = r.getHeight();
-    inputButton.setBounds (r.removeFromLeft (w));
-    r.removeFromLeft (2);
-    armButton.setBounds (r.removeFromLeft (w));
-    r.removeFromLeft (2);
-    muteButton.setBounds (r.removeFromLeft (w));
-    r.removeFromLeft (2);
-    soloButton.setBounds (r.removeFromLeft (w));
-    r.removeFromLeft (2);
+    auto r = getLocalBounds().reduced(4);
+    trackName.setBounds(r.removeFromTop(20));
+    int w = 24;
+    r.setHeight(w);
+    inputButton.setBounds(r.removeFromLeft(w));
+    r.removeFromLeft(2);
+    armButton.setBounds(r.removeFromLeft(w));
+    r.removeFromLeft(2);
+    muteButton.setBounds(r.removeFromLeft(w));
+    r.removeFromLeft(2);
+    soloButton.setBounds(r.removeFromLeft(w));
+    r.removeFromLeft(2);
 }
 
 //==============================================================================
@@ -780,20 +718,15 @@ PluginComponent::PluginComponent (EditViewState& evs, te::Plugin::Ptr p)
 }
 
 PluginComponent::~PluginComponent()
-{
-}
+{}
 
-void PluginComponent::clicked (const ModifierKeys& modifiers)
-{
+void PluginComponent::clicked(const ModifierKeys& modifiers) {
     editViewState.selectionManager.selectOnly (plugin.get());
-    if (modifiers.isPopupMenu())
-    {
+    if (modifiers.isPopupMenu()) {
         PopupMenu m;
-        m.addItem ("Delete", [this] { plugin->deleteFromParent(); });
-        m.showAt (this);
-    }
-    else
-    {
+        m.addItem("Delete", [this] { plugin->deleteFromParent(); });
+        m.showAt(this);
+    } else {
         plugin->showWindowExplicitly();
     }
 }
@@ -880,7 +813,7 @@ void TrackFooterComponent::buildPlugins() {
 }
 
 //==============================================================================
-TrackComponent::TrackComponent (EditViewState& evs, te::Track::Ptr t)
+TrackComponent::TrackComponent(EditViewState& evs, te::Track::Ptr t)
     : editViewState (evs)
     , track (t)
 {

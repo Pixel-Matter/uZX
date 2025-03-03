@@ -51,12 +51,12 @@ public:
     }
 
 private:
-    inline ValueTree createRegValueTree(te::BeatRange range, int reg, double val) {
+    inline ValueTree createRegValueTree(te::BeatPosition start, double dur, int reg, double val) {
         return te::createValueTree(
             te::IDs::NOTE,
             te::IDs::p, reg,
-            te::IDs::b, range.getStart().inBeats(),
-            te::IDs::l, range.getLength().inBeats(),
+            te::IDs::b, start.inBeats(),
+            te::IDs::l, dur,
             te::IDs::v, val);
         // or
         // auto v = te::MidiControllerEvent::createControllerEvent(startBeat, 20 + j, reg);
@@ -79,7 +79,7 @@ private:
                 if (frame.mask[j]) {
                     // DBG("Register " << j << " = " << reg);
                     auto reg = frame.registers[j];
-                    auto v = createRegValueTree({startBeat, 1.0_bd/100}, 20 + j, reg);
+                    auto v = createRegValueTree(startBeat, 0.01, 20 + j, reg);
                     // auto v = juce::createNoteValueTree(j, startBeat, 1.0/50, 127, 0);
                     seq.state.addChild(v, -1, getUndoManager());
                     // Too slow to call addControllerEvent

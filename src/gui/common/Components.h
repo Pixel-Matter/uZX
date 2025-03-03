@@ -24,23 +24,72 @@ namespace IDs
     DECLARE_ID(showChordTrack)
     DECLARE_ID(showMidiDevices)
     DECLARE_ID(showWaveDevices)
-    DECLARE_ID(viewX1)
-    DECLARE_ID(viewX2)
-    DECLARE_ID(viewY)
     DECLARE_ID(drawWaveforms)
     DECLARE_ID(showHeaders)
     DECLARE_ID(showFooters)
     DECLARE_ID(showArranger)
     DECLARE_ID(headersWidth)
+    DECLARE_ID(ZOOMVIEWSTATE)
+    DECLARE_ID(viewX1)
+    DECLARE_ID(viewX2)
+    DECLARE_ID(viewY)
     #undef DECLARE_ID
 }
 
 namespace te = tracktion;
 
 //==============================================================================
-void drawMidiClip (juce::Graphics&, te::MidiClip&, juce::Rectangle<int>, te::TimeRange);
+void drawMidiClip(juce::Graphics&, te::MidiClip&, juce::Rectangle<int>, te::TimeRange);
 
 //==============================================================================
+class ZoomViewState {
+public:
+    ZoomViewState(te::Edit& e)
+        : edit(e)
+    {
+        state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
+        auto um = &edit.getUndoManager();
+        viewX1.referTo(state, IDs::viewX1, um, 0s);   // time of the left edge of the view
+        viewX2.referTo(state, IDs::viewX2, um, 60s);  // time of the right edge of the view
+        viewY.referTo(state, IDs::viewY, um, 0);      // not used yet
+    }
+
+    int timeToX(te::TimePosition time, int width) const {
+        return roundToInt(((time - viewX1) * width) / viewLength());
+    }
+
+    float durationToPixels(te::TimeDuration duration, int width) const {
+        return (float)(duration * width / viewLength());
+    }
+
+    float pixelsPerBeat(te::TimeDuration beatDur, int width) const {
+        return durationToPixels(beatDur, width);
+    }
+
+    float pixelsPerBeat(double beatDur, int width) const {
+        return durationToPixels(te::TimeDuration::fromSeconds(beatDur), width);
+    }
+
+    te::TimePosition xToTime(int x, int width) const {
+        return toPosition(viewLength() * (double (x) / width)) + toDuration(viewX1.get());
+    }
+
+    te::TimeDuration viewLength() const {
+        return viewX2 - viewX1;
+    }
+
+    te::TimePosition beatToTime(te::BeatPosition b) const {
+        auto& ts = edit.tempoSequence;
+        return ts.toTime(b);
+    }
+
+    te::Edit& edit;
+    CachedValue<te::TimePosition> viewX1, viewX2;
+    CachedValue<double> viewY;
+    ValueTree state;
+};
+
+
 class EditViewState {
 public:
     EditViewState (te::Edit& e, te::SelectionManager& s)
@@ -133,7 +182,9 @@ class AudioClipComponent : public ClipComponent {
 public:
     AudioClipComponent(EditViewState&, te::Clip::Ptr);
 
-    te::WaveAudioClip* getWaveAudioClip() { return dynamic_cast<te::WaveAudioClip*> (clip.get()); }
+    te::WaveAudioClip* getWaveAudioClip() {
+        return dynamic_cast<te::WaveAudioClip*>(clip.get());
+    }
 
     void paint(Graphics& g) override;
 
@@ -151,11 +202,13 @@ private:
 //==============================================================================
 class MidiClipComponent : public ClipComponent {
 public:
-    MidiClipComponent (EditViewState&, te::Clip::Ptr);
+    MidiClipComponent(EditViewState&, te::Clip::Ptr);
 
-    te::MidiClip* getMidiClip() { return dynamic_cast<te::MidiClip*> (clip.get()); }
+    te::MidiClip* getMidiClip() {
+        return dynamic_cast<te::MidiClip*>(clip.get());
+    }
 
-    void paint (Graphics& g) override;
+    void paint(Graphics& g) override;
 };
 
 //==============================================================================

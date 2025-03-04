@@ -12,6 +12,14 @@ namespace te = tracktion;
 
 namespace MoTool {
 
+namespace {
+
+double roundTo(double value, int decimalPlaces = 2) {
+    double factor = std::pow(10.0, decimalPlaces);
+    return std::round(value * factor) / factor;
+}
+
+}
 
 class PsgClip : public te::MidiClip, public CustomClip {
 public:
@@ -55,15 +63,14 @@ private:
         return te::createValueTree(
             te::IDs::NOTE,
             te::IDs::p, reg,
-            te::IDs::b, range.getStart().inBeats(),
-            te::IDs::l, range.getLength().inBeats(),
+            te::IDs::b, roundTo(range.getStart().inBeats()),
+            te::IDs::l, roundTo(range.getLength().inBeats()),
             te::IDs::v, val);
         // or
         // auto v = te::MidiControllerEvent::createControllerEvent(startBeat, 20 + j, reg);
     }
 
     void loadFromFile(uZX::PsgFile& psgFile) {
-        // Load PSG file and convert to MidiList data
         te::MidiList& seq = getSequence();
         seq.clear(getUndoManager());
         psgFile.ensureRead();
@@ -80,11 +87,9 @@ private:
                 if (frame.mask[j]) {
                     // DBG("Register " << j << " = " << reg);
                     auto reg = frame.registers[j];
-                    auto v = createRegValueTree({startBeat, endBeat}, 60 + j, reg);
-                    // auto v = juce::createNoteValueTree(j, startBeat, 1.0/50, 127, 0);
+                    // NOTE It is too slow to call seq.addControllerEvent
+                    auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j) + 60, reg);
                     seq.state.addChild(v, -1, getUndoManager());
-                    // Too slow to call addControllerEvent
-                    // seq.addControllerEvent(timeBeat, 20 + j, reg, undoManager);
                 }
             }
         }

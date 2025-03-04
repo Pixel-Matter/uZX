@@ -129,6 +129,7 @@ static Optional<PsgRegsAYFrame> readNextFrame(const uint8*& data, size_t& remain
             return currentFrame;
         }
     }
+    return currentFrame;
 }
 
 }

@@ -71,9 +71,9 @@ public:
         insertPSGButton.onClick =       [this] {
             handleInsertPSGClip();
         };
-        insertAudioButton.onClick =       [this] {
-            handleInsertAudioClip();
-        };
+        // insertAudioButton.onClick =       [this] {
+        //     handleInsertAudioClip();
+        // };
         newTrackButton.onClick =     [this] { handleInsertNewTrack(); };
         deleteButton.onClick =       [this] { handleDelete(); };
 
@@ -86,7 +86,8 @@ public:
         setSize(600, 400);
         ::Helpers::addAndMakeVisible(*this, { &editComponent,
                                               &newTrackButton, &deleteButton,
-                                              &insertMidiButton, &insertPSGButton, &insertAudioButton,
+                                              &insertMidiButton, &insertPSGButton,
+                                            //    &insertAudioButton,
                                               &zoomInButton, &zoomOutButton, &zoomFitButton
                                             });
     }
@@ -103,11 +104,11 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 8;
+        int w = r.getWidth() / 7;
         auto topR = r.removeFromTop(30);
         insertMidiButton.setBounds(topR.removeFromLeft(w).reduced(2));
         insertPSGButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        insertAudioButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        // insertAudioButton.setBounds(topR.removeFromLeft(w).reduced(2));
         newTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
         deleteButton.setBounds(topR.removeFromLeft(w).reduced(2));
         zoomInButton.setBounds(topR.removeFromLeft(w).reduced(2));
@@ -128,7 +129,7 @@ private:
                deleteButton { "Delete" },
                insertMidiButton { "Insert MIDI" },
                insertPSGButton { "Insert PSG" },
-               insertAudioButton { "Insert Audio" },
+            //    insertAudioButton { "Insert Audio" },
                zoomInButton { "Zoom In" },
                zoomOutButton { "Zoom Out" },
                zoomFitButton { "Zoom Fit" }

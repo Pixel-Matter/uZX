@@ -1,7 +1,7 @@
 #include <JuceHeader.h>
 
+#include "../common/Utilities.h"
 #include "../common/Components.h"
-#include "tracktion_core/utilities/tracktion_Time.h"
 #include "EditComponent.h"
 
 namespace MoTool {
@@ -45,11 +45,12 @@ void EditComponent::zoomTracksHorizontally(te::TimePosition pos, double factor) 
 }
 
 void EditComponent::zoomToFit() {
-    editViewState.viewX1 = 0s;
-    editViewState.viewX2 = 60s;
-    // TODO get global start and end
-    // editViewState.zoomHorizontally(factor);
-    markAndUpdate(updateZoom);
+    auto range = Helpers::getEffectiveClipsTimeRange(edit);
+    if (!range.isEmpty()) {
+        editViewState.viewX1 = range.getStart();
+        editViewState.viewX2 = range.getEnd();
+        markAndUpdate(updateZoom);
+    }
 }
 
 void EditComponent::valueTreeChildAdded (juce::ValueTree&, juce::ValueTree& c) {

@@ -9,7 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include <common/Utilities.h>
+#include <common/Utilities.h>  // from Tracktion
 
 namespace MoTool {
 
@@ -152,11 +152,14 @@ public:
     }
 
     void zoomHorizontally(te::TimePosition pos, double factor) {
-        auto left = (pos - viewX1.get()) * factor;
-        auto right = (viewX2.get() - pos) * factor;
-        viewX1 = pos - left;
-        viewX2 = pos + right;
-        viewX1 = jmax(te::TimePosition(), viewX1.get());
+        auto range = viewLength();
+        auto newHalfRange = range * factor / 2.0;
+        // limit zoom to 1s to 1 year
+        if (newHalfRange > 0.5s && newHalfRange < 600s) {
+            viewX1 = pos - newHalfRange;
+            viewX2 = pos + newHalfRange;
+            viewX1 = jmax(te::TimePosition(), viewX1.get());
+        }
     }
 
     te::Edit& edit;

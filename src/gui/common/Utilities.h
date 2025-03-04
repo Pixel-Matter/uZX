@@ -41,7 +41,28 @@ inline void browseForMidiFile(te::Engine& engine, std::function<void (const File
 
 inline void browseForPSGFile(te::Engine& engine, std::function<void (const File&)> fileChosenCallback) {
     browseForFile(engine, "a PSG", String(PSG_WILDCARD), fileChosenCallback);
+}
 
+inline te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
+    te::TimeRange result;
+
+    // Visit all tracks and collect clip ranges
+    edit.visitAllTracksRecursive([&](te::Track& track) {
+        if (auto clipTrack = dynamic_cast<te::ClipTrack*>(&track)) {
+            auto trackRange = clipTrack->getTotalRange();
+
+            if (!trackRange.isEmpty()) {
+                if (result.isEmpty()) {
+                    result = trackRange;
+                } else {
+                    result = result.getUnionWith(trackRange);
+                }
+            }
+        }
+        return true; // Continue visiting tracks
+    });
+
+    return result;
 }
 
 }  // namespace MoToolHelpers

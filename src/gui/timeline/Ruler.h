@@ -34,14 +34,15 @@ public:
 
     void paint(Graphics& g) override {
         using namespace te::tempo;
-        
+
         auto bounds = getLocalBounds();
         auto &lf = getLookAndFeel();
         auto& ts = edit.tempoSequence;
 
-        constexpr auto minPxPerDev = 8.0f;
         const int width = bounds.getWidth();
         const float height = (float)bounds.getHeight();
+        constexpr auto minPxPerDev = 6.0f;
+        auto beatStep = te::BeatDuration::fromBeats(1.0 / 64);  // max 64 subdivs in beat
 
         g.setColour(lf.findColour(ResizableWindow::backgroundColourId));
         g.fillRect(bounds);
@@ -52,8 +53,8 @@ public:
         auto startTime = ts.toTime(startBar);
 
         auto currentTime = startTime;
-        auto beatStep = te::BeatDuration::fromBeats(1.0 / 64);  // max 64 subdivs in beat
 
+        double prevBarX = -20.0;
         while (currentTime <= editViewState.viewX2.get()) {
             auto barBeats = ts.toBarsAndBeats(currentTime);
 
@@ -72,16 +73,22 @@ public:
                 continue;
             }
             if (barBeats.beats < te::BeatDuration::fromBeats(0.001)) {
-                // Bar line
                 g.setColour(Colors::Theme::borderLight);
-                g.drawLine(x, 0, x, height, 1.0f);
-                // Draw bar number
-                String barText = String(barBeats.bars + 1);
-                g.drawText(barText, Rectangle<float>(x + 2, -4, 20, 20), Justification::left);
+                if (x - prevBarX >= 20) {
+                    // Bar line
+                    g.drawLine(x, 0, x, height, 1.0f);
+                    // Draw bar number
+                    String barText = String(barBeats.bars + 1);
+                    g.drawText(barText, Rectangle<float>(x + 2, -4, 20, 20), Justification::left);
+                    prevBarX = x;
+                } else {
+                    // smaller bar line
+                    g.drawLine(x, 14, x, height, 1.0f);
+                }
             } else if (barBeats.getFractionalBeats() < te::BeatDuration::fromBeats(0.001)) {
                 // Beat line
                 g.setColour(Colors::Theme::border);
-                g.drawLine(x, height * 0.5f, x, height, 1.0f);
+                g.drawLine(x, height * 0.7f, x, height, 1.0f);
             } else {
                 // subdiv line
                 g.setColour(Colors::Theme::border.withAlpha(0.5f));

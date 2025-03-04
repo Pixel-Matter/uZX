@@ -151,8 +151,13 @@ void EditComponent::buildTracks() {
     resized();
 }
 
-void EditComponent::mouseDown (const MouseEvent&) {
+void EditComponent::mouseDown(const MouseEvent& e) {
     editViewState.selectionManager.deselectAll();
+
+    // NOTE can't move this functionality to PlayheadComponent because we should be able to select clips and tracks as well
+    auto rulerRect = ruler.getBounds();
+    if (e.x > rulerRect.getX() && e.x < rulerRect.getX() + rulerRect.getWidth())
+        ruler.repositionTransportToX(e.x - ruler.getX());
 }
 
 }  // namespace MoTool

@@ -85,6 +85,32 @@ public:
         repaint();
     }
 
+    void mouseDown(const MouseEvent& e) override {
+        if (e.mods.isPopupMenu()) {
+            PopupMenu m;
+            m.addItem("Zoom In", [this] {
+                editViewState.zoomHorizontally(edit.getTransport().getPosition(), 1.0 / 1.25);
+            });
+            m.addItem("Zoom Out", [this] {
+                editViewState.zoomHorizontally(edit.getTransport().getPosition(), 1.25);
+            });
+            m.addItem("Zoom Fit", [this] {
+                editViewState.viewX1 = 0s;
+                editViewState.viewX2 = 60s;
+                // TODO get global start and end
+                // editViewState.zoomHorizontally(factor);
+            });
+            m.showMenuAsync({});
+        } else {
+            repositionTransportToX(e.x);
+        }
+    }
+
+    void repositionTransportToX(int x) {
+        auto pos = editViewState.xToTime(x, getWidth());
+        edit.getTransport().setPosition(pos);
+    }
+
 private:
     te::Edit& edit;
     EditViewState& editViewState;

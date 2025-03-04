@@ -34,11 +34,12 @@ public:
 
     void paint(Graphics& g) override {
         using namespace te::tempo;
+        
         auto bounds = getLocalBounds();
         auto &lf = getLookAndFeel();
         auto& ts = edit.tempoSequence;
 
-        constexpr auto minPixelsPerBeat = 16.0f;
+        constexpr auto minPxPerDev = 8.0f;
         const int width = bounds.getWidth();
         const float height = (float)bounds.getHeight();
 
@@ -47,14 +48,11 @@ public:
         g.setFont(12.0f);
 
         auto startBar = ts.toBarsAndBeats(editViewState.viewX1.get());
-        // DBG("Ruler start beats " << startBarBeats.bars << "|" << startBarBeats.getWholeBeats() << "|" << startBarBeats.getFractionalBeats());
         startBar.beats = te::BeatDuration::fromBeats(0);
-        // DBG("Ruler start beats rounded " << startBarBeats.bars << "|" << startBarBeats.getWholeBeats() << "|" << startBarBeats.getFractionalBeats());
         auto startTime = ts.toTime(startBar);
-        DBG("Ruler start time " << startTime.inSeconds());
 
         auto currentTime = startTime;
-        auto beatStep = te::BeatDuration::fromBeats(0.25);
+        auto beatStep = te::BeatDuration::fromBeats(1.0 / 64);  // max 64 subdivs in beat
 
         while (currentTime <= editViewState.viewX2.get()) {
             auto barBeats = ts.toBarsAndBeats(currentTime);
@@ -62,16 +60,10 @@ public:
             auto nextDiv = BarsAndBeats { barBeats.bars, barBeats.beats + beatStep };
             auto nextTime = ts.toTime(nextDiv);
             auto pixelsPerDiv = editViewState.durationToPixels(nextTime - currentTime, width);
-            if (pixelsPerDiv < minPixelsPerBeat) {
+            if (pixelsPerDiv < minPxPerDev) {
                 beatStep = beatStep * 2.0;
-                DBG("PixelsPerDiv == " << pixelsPerDiv << ", adjusting beat step " << beatStep);
                 continue;
             }
-
-            DBG("Beats " << barBeats.bars << "|" << barBeats.getWholeBeats() << "|" << barBeats.getFractionalBeats());
-            DBG("Time " << currentTime.inSeconds());
-            DBG("Next div " << nextDiv.bars << "|" << nextDiv.getWholeBeats() << "|" << nextDiv.getFractionalBeats());
-            DBG("Next time " << nextTime.inSeconds());
 
             auto x = static_cast<float>(editViewState.timeToX(currentTime, width));
             currentTime = nextTime;
@@ -86,27 +78,15 @@ public:
                 // Draw bar number
                 String barText = String(barBeats.bars + 1);
                 g.drawText(barText, Rectangle<float>(x + 2, -4, 20, 20), Justification::left);
-            } else {
+            } else if (barBeats.getFractionalBeats() < te::BeatDuration::fromBeats(0.001)) {
                 // Beat line
                 g.setColour(Colors::Theme::border);
                 g.drawLine(x, height * 0.5f, x, height, 1.0f);
+            } else {
+                // subdiv line
+                g.setColour(Colors::Theme::border.withAlpha(0.5f));
+                g.drawLine(x, height * 0.75f, x, height, 1.0f);
             }
-
-            // g.setColour(Colors::Theme::border);
-            // // TODO draw frames
-            // float pixelsPerSubdiv = pixelsPerBeat;
-            // int numSubdivs = 1;
-            // while (numSubdivs < 16 && pixelsPerSubdiv > minPixelsPerDiv) {
-            //     numSubdivs *= 2;
-            //     pixelsPerSubdiv /= 2;
-            // }
-            // for (int sub = 1; sub < numSubdivs; ++sub) {
-            //     float subX = x + (pixelsPerBeat * (float)sub / (float)numSubdivs);
-            //     g.drawLine(subX, height * 0.75f, subX, height, 0.5f);
-            // }
-            // currentTime = currentTime + timePerBeat;
-            // beatNumber++;
-            // break;
         }
     }
 

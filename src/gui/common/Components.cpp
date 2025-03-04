@@ -365,37 +365,46 @@ void AudioClipComponent::updateThumbnail() {
     }
 }
 
-void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r, te::TimeRange tr) {
+void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r) {
+    auto tr = mc.getEditTimeRange();
     auto timeToX = [width = r.getWidth(), tr, l = tr.getLength()] (auto time) {
-        return ((time - tr.getStart()) * width) / l;
+        return roundToInt(((time - tr.getStart()) * width) / l);
     };
+
     auto& notes = mc.getSequence().getNotes();
     if (notes.size() == 0)
         return;
 
-    int minNote = 127, maxNote = 0;
-    for (auto n : notes) {
-        minNote = jmin(minNote, n->getNoteNumber());
-        maxNote = jmax(maxNote, n->getNoteNumber());
-    }
-    minNote -= 2;
-    maxNote += 1;
-    const float noteRange = maxNote - minNote;
-    float noteH = static_cast<float>(r.getHeight()) / noteRange;
+    // Get vertical scale settings from the track
+    auto track = dynamic_cast<te::AudioTrack*>(mc.getTrack());
+    if (!track) return;
+
+    const int midiRange = 128;
+
+    // Calculate visible range based on track settings
+    int visibleRange = int(midiRange * track->getMidiVisibleProportion());
+    int lowestNote = int(midiRange * track->getMidiVerticalOffset());
+    int highestNote = lowestNote + visibleRange;
+
+    // Calculate height of one note
+    float noteH = static_cast<float>(r.getHeight()) / visibleRange;
 
     const auto startBeat = mc.getStartBeat();
     const auto rangeStartSec = tr.getStart().inSeconds();
     const auto rangeEndSec = tr.getEnd().inSeconds();
     const float left = static_cast<float>(r.getX());
-    // TODO getNotes() maybe slow because of sorting and copying
-    // consider caching or using a different method
-    // maybe use thumbnail mechanism
+
     for (auto n : mc.getSequence().getNotes()) {
-        // draw only notes in the visible range
+        // Only process notes within the visible vertical range
+        int noteNumber = n->getNoteNumber();
+        if (noteNumber < lowestNote || noteNumber >= highestNote)
+            continue;
+
+        // Calculate time range for this note
         auto eBeat = startBeat + toDuration(n->getEndBeat());
         auto e = mc.edit.tempoSequence.toTime(eBeat);
         if (e.inSeconds() < rangeStartSec)
-          continue;
+            continue;
 
         auto sBeat = startBeat + toDuration(n->getStartBeat());
         auto s = mc.edit.tempoSequence.toTime(sBeat);
@@ -404,7 +413,9 @@ void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r, te::Tim
 
         float t1 = (float) timeToX(s) - left;
         float t2 = (float) timeToX(e) - left;
-        float y1 = (1.0f - float(n->getNoteNumber() - minNote) / noteRange) * r.getHeight();
+
+        // Map note position in the visible range (inverted since y=0 is at top)
+        float y1 = (1.0f - (noteNumber - lowestNote) / float(visibleRange)) * r.getHeight();
 
         g.setColour(Colours::white.withAlpha(static_cast<float>(n->getVelocity()) / 127.0f));
         g.fillRect(t1, y1, t2 - t1, noteH);
@@ -418,7 +429,9 @@ MidiClipComponent::MidiClipComponent (EditViewState& evs, te::Clip::Ptr c)
 
 void MidiClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
-    drawMidiClip(g, *getMidiClip(), getLocalBounds(), editViewState.getTimeRange());
+    auto* clip = getMidiClip();
+    if (clip == nullptr) return;
+    drawMidiClip(g, *clip, getLocalBounds());
 }
 
 //==============================================================================

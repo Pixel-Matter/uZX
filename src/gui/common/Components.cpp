@@ -251,7 +251,7 @@ ClipComponent::ClipComponent (EditViewState& evs, te::Clip::Ptr c)
 
 void ClipComponent::paint(Graphics& g) {
     // TODO Move to lookAndFeel
-    g.setColour(clip->getColour().withAlpha(0.5f));
+    g.setColour(clip->getColour().withAlpha(0.25f));
     g.fillRoundedRectangle(getLocalBounds().toFloat(), 6.0f);
 
     if (editViewState.selectionManager.isSelected(clip.get())) {
@@ -366,8 +366,8 @@ void AudioClipComponent::updateThumbnail() {
 }
 
 void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r, te::TimeRange tr) {
-    auto timeToX = [width = r.getWidth(), tr] (auto time) {
-        return roundToInt(((time - tr.getStart()) * width) / (tr.getLength()));
+    auto timeToX = [width = r.getWidth(), tr, l = tr.getLength()] (auto time) {
+        return ((time - tr.getStart()) * width) / l;
     };
     auto& notes = mc.getSequence().getNotes();
     if (notes.size() == 0)
@@ -378,29 +378,36 @@ void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r, te::Tim
         minNote = jmin(minNote, n->getNoteNumber());
         maxNote = jmax(maxNote, n->getNoteNumber());
     }
-    const auto noteRange = maxNote - minNote;
-    minNote -= 1;
+    minNote -= 2;
     maxNote += 1;
+    const float noteRange = maxNote - minNote;
+    float noteH = static_cast<float>(r.getHeight()) / noteRange;
 
+    const auto startBeat = mc.getStartBeat();
+    const auto rangeStartSec = tr.getStart().inSeconds();
+    const auto rangeEndSec = tr.getEnd().inSeconds();
+    const float left = static_cast<float>(r.getX());
+    // TODO getNotes() maybe slow because of sorting and copying
+    // consider caching or using a different method
+    // maybe use thumbnail mechanism
     for (auto n : mc.getSequence().getNotes()) {
         // draw only notes in the visible range
-        auto eBeat = mc.getStartBeat() + toDuration(n->getEndBeat());
+        auto eBeat = startBeat + toDuration(n->getEndBeat());
         auto e = mc.edit.tempoSequence.toTime(eBeat);
-        if (e.inSeconds() < tr.getStart().inSeconds())
-            continue;
+        if (e.inSeconds() < rangeStartSec)
+          continue;
 
-        auto sBeat = mc.getStartBeat() + toDuration(n->getStartBeat());
+        auto sBeat = startBeat + toDuration(n->getStartBeat());
         auto s = mc.edit.tempoSequence.toTime(sBeat);
-        if (s.inSeconds() > tr.getEnd().inSeconds())
+        if (s.inSeconds() > rangeEndSec)
             break;
 
-        auto t1 = (double) timeToX(s) - r.getX();
-        auto t2 = (double) timeToX(e) - r.getX();
+        float t1 = (float) timeToX(s) - left;
+        float t2 = (float) timeToX(e) - left;
+        float y1 = (1.0f - float(n->getNoteNumber() - minNote) / noteRange) * r.getHeight();
 
-        double y = (1.0 - double(n->getNoteNumber() - minNote) / noteRange) * r.getHeight();
-
-        g.setColour(Colours::white.withAlpha(n->getVelocity() / 127.0f));
-        g.drawLine(float(t1), float(y), float(t2), float(y));
+        g.setColour(Colours::white.withAlpha(static_cast<float>(n->getVelocity()) / 127.0f));
+        g.fillRect(t1, y1, t2 - t1, noteH);
     }
 }
 

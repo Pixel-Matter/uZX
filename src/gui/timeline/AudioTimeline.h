@@ -79,8 +79,8 @@ public:
 
         deleteButton.setEnabled(false);
 
-        zoomInButton.onClick =       [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 1.0 / 2); };
-        zoomOutButton.onClick =      [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 2.0); };
+        zoomInButton.onClick =       [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 1.0 / 1.25); };
+        zoomOutButton.onClick =      [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 1.25); };
         zoomFitButton.onClick =      [this] { editComponent.zoomToFit(); };
 
         setSize(600, 400);

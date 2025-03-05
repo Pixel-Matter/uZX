@@ -365,18 +365,31 @@ void AudioClipComponent::updateThumbnail() {
     }
 }
 
-void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r) {
-    auto tr = mc.getEditTimeRange();
+
+//==============================================================================
+MidiClipComponent::MidiClipComponent (EditViewState& evs, te::Clip::Ptr c)
+    : ClipComponent(evs, c)
+{}
+
+void MidiClipComponent::paint(Graphics& g) {
+    ClipComponent::paint(g);
+    auto* mc = getMidiClip();
+    if (mc == nullptr) return;
+
+    auto r = getLocalBounds();
+    auto tr = mc->getEditTimeRange();
+
     auto timeToX = [width = r.getWidth(), tr, l = tr.getLength()] (auto time) {
         return roundToInt(((time - tr.getStart()) * width) / l);
     };
 
-    auto& notes = mc.getSequence().getNotes();
+    auto& notes = mc->getSequence().getNotes();
+
     if (notes.size() == 0)
         return;
 
     // Get vertical scale settings from the track
-    auto track = dynamic_cast<te::AudioTrack*>(mc.getTrack());
+    auto track = dynamic_cast<te::AudioTrack*>(mc->getTrack());
     if (!track) return;
 
     const int midiRange = 128;
@@ -389,25 +402,22 @@ void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r) {
     // Calculate height of one note
     float noteH = static_cast<float>(r.getHeight()) / visibleRange;
 
-    const auto startBeat = mc.getStartBeat();
     const auto rangeStartSec = tr.getStart().inSeconds();
     const auto rangeEndSec = tr.getEnd().inSeconds();
     const float left = static_cast<float>(r.getX());
 
-    for (auto n : mc.getSequence().getNotes()) {
+    for (auto n : notes) {
         // Only process notes within the visible vertical range
         int noteNumber = n->getNoteNumber();
         if (noteNumber < lowestNote || noteNumber >= highestNote)
             continue;
 
         // Calculate time range for this note
-        auto eBeat = startBeat + toDuration(n->getEndBeat());
-        auto e = mc.edit.tempoSequence.toTime(eBeat);
+        auto e = n->getEditEndTime(*mc);
         if (e.inSeconds() < rangeStartSec)
             continue;
 
-        auto sBeat = startBeat + toDuration(n->getStartBeat());
-        auto s = mc.edit.tempoSequence.toTime(sBeat);
+        auto s = n->getEditStartTime(*mc);
         if (s.inSeconds() > rangeEndSec)
             break;
 
@@ -423,16 +433,57 @@ void drawMidiClip(Graphics& g, te::MidiClip& mc, juce::Rectangle<int> r) {
 }
 
 //==============================================================================
-MidiClipComponent::MidiClipComponent (EditViewState& evs, te::Clip::Ptr c)
-    : ClipComponent(evs, c)
-{}
-
-void MidiClipComponent::paint(Graphics& g) {
+void PsgClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
-    auto* clip = getMidiClip();
-    if (clip == nullptr) return;
-    drawMidiClip(g, *clip, getLocalBounds());
+
+    auto* psgClip = getPsgClip();
+    if (psgClip == nullptr) return;
+
+    auto rect = getLocalBounds();
+    auto timeRange = psgClip->getEditTimeRange();
+
+    auto timeToX = [width = rect.getWidth(), timeRange, l = timeRange.getLength()] (auto time) {
+        return roundToInt(((time - timeRange.getStart()) * width) / l);
+    };
+
+    auto& regs = psgClip->getSequence().getControllerEvents();
+
+    if (regs.size() == 0)
+        return;
+
+    // Get vertical scale settings from the track
+    auto track = dynamic_cast<te::AudioTrack*>(psgClip->getTrack());
+    if (!track) return;
+
+    const int regsRange = 14;
+    const float laneHeight = static_cast<float>(rect.getHeight()) / regsRange;
+    const float left = static_cast<float>(rect.getX());
+
+    // int counter = 0;
+    for (auto reg : regs) {
+        int regNumber = reg->getType() - 20;
+
+        auto s = reg->getEditTime(*psgClip);
+        if (s < timeRange.getStart() || s < editViewState.viewX1.get())
+            continue;
+        if (s >= timeRange.getEnd() || s >= editViewState.viewX2.get())
+            break;
+
+        float x1 = (float) timeToX(s) - left;
+        if (x1 < 0)
+            continue;
+        float x2 = x1 + 1;
+
+        // Map note position in the visible range (inverted since y=0 is at top)
+        float y1 = (1.0f - static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
+
+        g.setColour(Colours::white.withAlpha(static_cast<float>(reg->getControllerValue()) / 255.0f));
+        g.fillRect(x1, y1, x2 - x1, laneHeight);
+        // ++counter;
+    }
+    // DBG("Painted " << counter << " registers");
 }
+
 
 //==============================================================================
 RecordingClipComponent::RecordingClipComponent (te::Track::Ptr t, EditViewState& evs)
@@ -920,6 +971,8 @@ void TrackComponent::buildClips() {
 
             if (dynamic_cast<te::WaveAudioClip*>(c))
                 cc = new AudioClipComponent(editViewState, c);
+            else if (dynamic_cast<PsgClip*>(c))  // must be before MidiClip
+                cc = new PsgClipComponent(editViewState, c);
             else if (dynamic_cast<te::MidiClip*>(c))
                 cc = new MidiClipComponent(editViewState, c);
             else

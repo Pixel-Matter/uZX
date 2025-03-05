@@ -74,14 +74,19 @@ public:
 
 private:
     inline ValueTree createRegValueTree(te::BeatRange range, int reg, double val) {
-        return te::createValueTree(
-            te::IDs::NOTE,
-            te::IDs::p, reg,
-            te::IDs::b, roundTo(range.getStart().inBeats()),
-            te::IDs::l, roundTo(range.getLength().inBeats()),
-            te::IDs::v, val);
-        // or
-        // auto v = te::MidiControllerEvent::createControllerEvent(startBeat, 20 + j, reg);
+        // return te::createValueTree(
+        //     te::IDs::NOTE,
+        //     te::IDs::p, 60 + reg,
+        //     te::IDs::b, roundTo(range.getStart().inBeats()),
+        //     te::IDs::l, roundTo(range.getLength().inBeats()),
+        //     te::IDs::v, val);
+        // // or
+        return te::createValueTree (
+            te::IDs::CONTROL,
+            te::IDs::b,     roundTo(range.getStart().inBeats()),
+            te::IDs::type,  20 + reg,
+            te::IDs::val,   round(val)
+        );
     }
 
     void loadFromFile(uZX::PsgFile& psgFile) {
@@ -102,7 +107,7 @@ private:
                     // DBG("Register " << j << " = " << reg);
                     auto reg = frame.registers[j];
                     // NOTE It is too slow to call seq.addControllerEvent
-                    auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j) + 60, reg);
+                    auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j), reg);
                     seq.state.addChild(v, -1, getUndoManager());
                 }
             }
@@ -118,8 +123,6 @@ private:
                 return;
             }
         }
-        // te::Plugin::Ptr plugin =
-        // auto plgugins = this->addClipPlugin(plugin, nullptr);
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgClip)

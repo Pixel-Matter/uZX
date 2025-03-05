@@ -99,6 +99,8 @@ public:
     virtual auto setClock(double v) -> void = 0;
     virtual auto setPan(int chan, double pan, bool isEqp = false) -> void = 0;
     virtual auto getPan(int chan) const -> double = 0;
+    virtual auto setMasterVolume(float volume) -> void = 0;
+    virtual auto getMasterVolume() const -> float = 0;
 
     // TODO maybe just store registers in an ordinary byte array and after setting them update the chip?
     void setRegister(size_t index, unsigned char value) noexcept;
@@ -123,8 +125,6 @@ protected:
     virtual auto getEnvelopeShape() const -> EnvShape = 0;
     virtual auto setEnvelopePeriod(int period) -> void = 0;
     virtual auto getEnvelopePeriod() const -> int = 0;
-    virtual auto setMasterVolume(float volume) -> void = 0;
-    virtual auto getMasterVolume() const -> float = 0;
 
 private:
     inline void setFineTonePeriod(int chan, unsigned char fine) noexcept {

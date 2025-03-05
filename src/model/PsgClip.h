@@ -1,12 +1,10 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "../formats/psg/PsgFile.h"
+
 #include "CustomClip.h"
-#include "juce_core/system/juce_PlatformDefs.h"
-#include "tracktion_core/utilities/tracktion_Time.h"
-#include "tracktion_core/utilities/tracktion_TimeRange.h"
-#include "tracktion_engine/tracktion_engine.h"
+#include "../formats/psg/PsgFile.h"
+#include "../plugins/uZX/aychip/AYPlugin.h"
 
 namespace te = tracktion;
 
@@ -30,8 +28,28 @@ public:
     {}
 
     void initialise() override {
-        // DBG("PsgClip::initialise()");
+        DBG("PsgClip::initialise()");
         te::MidiClip::initialise();
+        if (getColour() == getDefaultColour()) {
+            auto track = getTrack();
+            // TODO make clip colors use themed palette
+            float hue = (track->getIndexInEditTrackList() % 18) * 1.0f / 18.0f + 0.3f;
+            // DBG("Clip default color " << getDefaultColour().toString());
+            // DBG("Clip color " << getColour().toString());
+            // DBG("Clip hue=" << hue);
+            setColour(getDefaultColour().withHue(hue));
+            // DBG("Clip color set" << getColour().toString());
+        }
+        // Not sure we should have clip plugins yet
+        // ensureHasAYPlugin();
+    }
+
+    String getSelectableDescription() override {
+        return "PSG AY data clip - " + getName();
+    }
+
+    Colour getDefaultColour() const override {
+        return Colours::blue;
     }
 
     static Ptr insertTo(
@@ -52,10 +70,6 @@ public:
         clip->getUndoManager()->beginNewTransaction();
         clip->loadFromFile(psgFile);
         return clip;
-    }
-
-    juce::String getSelectableDescription() override {
-        return "PSG AY data clip - " + getName();
     }
 
 private:
@@ -96,6 +110,18 @@ private:
         changed();
         scaleVerticallyToFit();
     }
+
+    void ensureHasAYPlugin() {
+        // check plugins first
+        for (auto plugin : getAllPlugins()) {
+            if (dynamic_cast<uZX::AYChipPlugin*>(plugin)) {
+                return;
+            }
+        }
+        // te::Plugin::Ptr plugin =
+        // auto plgugins = this->addClipPlugin(plugin, nullptr);
+    }
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgClip)
 };
 

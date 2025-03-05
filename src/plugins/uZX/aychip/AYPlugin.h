@@ -2,55 +2,31 @@
 
 #include <JuceHeader.h>
 
+#include "../../../formats/psg/PsgData.h"
+#include "aychip.h"
+
+
 namespace te = tracktion;
 
 namespace MoTool::uZX {
 
 class AYChipPlugin : public te::Plugin,
-                     private juce::AsyncUpdater {
+                     private AsyncUpdater {
 public:
     AYChipPlugin (te::PluginCreationInfo);
     ~AYChipPlugin() override;
 
     //==============================================================================
-    int getNumSounds() const;
-    juce::String getSoundName (int index) const;
-    void setSoundName (int index, const juce::String& name);
-    te::AudioFile getSoundFile (int index) const;
-    juce::String getSoundMedia (int index) const;
-    int getKeyNote (int index) const;
-    int getMinKey (int index) const;
-    int getMaxKey (int index) const;
-    float getSoundGainDb (int index) const;
-    float getSoundPan (int index) const;
-    bool isSoundOpenEnded (int index) const;
-    double getSoundStartTime (int index) const;
-    double getSoundLength (int index) const;
-    void setSoundExcerpt (int index, double start, double length);
-
-    // returns an error
-    juce::String addSound (const juce::String& sourcePathOrProjectID, const juce::String& name,
-                            double startTime, double length, float gainDb);
-    void removeSound (int index);
-    void setSoundParams (int index, int keyNote, int minNote, int maxNote);
-    void setSoundGains (int index, float gainDb, float pan);
-    void setSoundOpenEnded (int index, bool isOpenEnded);
-    void setSoundMedia (int index, const juce::String& sourcePathOrProjectID);
-
-    void playNotes (const juce::BigInteger& keysDown);
-    void allNotesOff();
-
-    //==============================================================================
-    static const char* getPluginName()                  { return NEEDS_TRANS("AY Chip"); }
+    static const char* getPluginName()                  { return "AY Chip"; }
     static const char* xmlTypeName;
 
-    juce::String getName() const override               { return TRANS("AY Chip"); }
-    juce::String getPluginType() override               { return xmlTypeName; }
-    juce::String getShortName (int) override            { return "AY"; }
-    juce::String getSelectableDescription() override    { return TRANS("AY Chip"); }
-    bool isSynth() override                             { return true; }
+    String getName() const override               { return "AY Chip"; }
+    String getPluginType() override               { return xmlTypeName; }
+    String getShortName (int) override            { return "AY"; }
+    String getSelectableDescription() override    { return "AY Chip plugin based on Ayumi emulator"; }
+    bool isSynth() override                       { return true; }
 
-    int getNumOutputChannelsGivenInputs (int numInputChannels) override { return juce::jmin (numInputChannels, 2); }
+    int getNumOutputChannelsGivenInputs (int numInputChannels) override { return jmin (numInputChannels, 2); }
     void initialise (const te::PluginInitialisationInfo&) override;
     void deinitialise() override;
     void applyToBuffer (const te::PluginRenderContext&) override;
@@ -59,49 +35,16 @@ public:
     bool takesMidiInput() override                      { return true; }
     bool takesAudioInput() override                     { return false; }
     bool producesAudioWhenNoAudioInput() override       { return true; }
-    bool hasNameForMidiNoteNumber (int note, int midiChannel, juce::String& name) override;
-
-    juce::Array<ReferencedItem> getReferencedItems() override;
-    void reassignReferencedItem (const ReferencedItem&, te::ProjectItemID newID, double newStartTime) override;
-    void sourceMediaChanged() override;
-
-    void restorePluginStateFromValueTree (const juce::ValueTree&) override;
-
-    //==============================================================================
-    struct SamplerSound
-    {
-        SamplerSound (AYChipPlugin&, const juce::String& sourcePathOrProjectID, const juce::String& name,
-                      double startTime, double length, float gainDb);
-
-        void setExcerpt (double startTime, double length);
-        void refreshFile();
-
-        AYChipPlugin& owner;
-        juce::String source;
-        juce::String name;
-        int keyNote = -1, minNote = 0, maxNote = 0;
-        int fileStartSample = 0, fileLengthSamples = 0;
-        bool openEnded = false;
-        float gainDb = 0, pan = 0;
-        double startTime = 0, length = 0;
-        te::AudioFile audioFile;
-        juce::AudioBuffer<float> audioData { 2, 64 };
-
-    private:
-        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SamplerSound)
-    };
+    void restorePluginStateFromValueTree (const ValueTree&) override;
 
 private:
     //==============================================================================
-    // struct SampledNote;
 
-    juce::Colour colour;
-    juce::CriticalSection lock;
-    // juce::ReferenceCountedArray<SampledNote> playingNotes;
-    juce::OwnedArray<SamplerSound> soundList;
-    juce::BigInteger highlightedNotes;
+    Colour colour;
+    CriticalSection lock;
 
-    juce::ValueTree getSound (int index) const;
+    PsgRegsAYFrame registers;
+    std::unique_ptr<AYInterface> chip;
 
     void valueTreeChanged() override;
     void handleAsyncUpdate() override;

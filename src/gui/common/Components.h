@@ -157,8 +157,8 @@ public:
         // limit zoom to 1s to 1 year
         if (newHalfRange > 0.5s && newHalfRange < 600s) {
             viewX1 = pos - newHalfRange;
-            viewX2 = pos + newHalfRange;
             viewX1 = jmax(te::TimePosition(), viewX1.get());
+            viewX2 = viewX1 + newHalfRange * 2.0;
         }
     }
 

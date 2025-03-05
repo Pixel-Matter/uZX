@@ -43,6 +43,10 @@ AyumiEmulator::~AyumiEmulator() {
 
 }
 
+auto AyumiEmulator::ResetSound() -> void {
+    Reset(SampleRate_, ClockRate_, Type_);
+}
+
 auto AyumiEmulator::Reset(int sampleRate, double clock, ChipType type) -> void {
     SampleRate_ = sampleRate;
     ClockRate_ = clock;

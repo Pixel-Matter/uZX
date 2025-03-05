@@ -30,16 +30,36 @@ void AYChipPlugin::handleAsyncUpdate() {
 }
 
 void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
-    const juce::ScopedLock sl (lock);
-    chip = std::make_unique<AyumiEmulator>();
+    const juce::ScopedLock sl(lock);
+    chip = std::make_unique<AyumiEmulator>(sampleRate);
     chip->setMasterVolume(0.1f);
+
+    // edit.getTransport().addChangeListener(this);
 }
 
 void AYChipPlugin::deinitialise() {
+    // edit.getTransport().removeChangeListener(this);
+}
+
+void AYChipPlugin::reset() {
+    const juce::ScopedLock sl(lock);
+    if (chip) {
+        chip->ResetSound();
+    }
+}
+
+// void AYChipPlugin::changeListenerCallback(ChangeBroadcaster* source) {
+//     if (auto* transport = dynamic_cast<te::TransportControl*>(source); transport != nullptr && chip != nullptr) {
+//         const ScopedLock sl(lock);
+//         mutedWhileNotPlaying = !transport->isPlaying();
+//     }}
+
+void AYChipPlugin::midiPanic() {
+    reset();
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
-    if (fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr) {
+    if (!fc.isPlaying || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr) {
         return;
     }
 
@@ -63,6 +83,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
                                    static_cast<size_t>(noteTimeSample - currentSample));
             }
             chip->setRegister(reg, val);
+            // DBG("setRegister(" << reg << ", " << val << ")");
             currentSample = noteTimeSample;
         }
     }

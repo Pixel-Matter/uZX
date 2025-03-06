@@ -19,6 +19,7 @@ list of frames, and each frame is a list of pairs (register, value)
 И так пока не встретится маркер следующего прерывания, конец файла или байт 0FEh.
 
 ## AY regisers
+
 | Register | Function                 | Range                   |
 |----------|--------------------------|-------------------------|
 |     0    | Channel A fine pitch     | 8-bit (0-255)           |
@@ -37,12 +38,14 @@ list of frames, and each frame is a list of pairs (register, value)
 |    13    | Envelope shape           | 4-bit (0-15)            |
 
 ### Mixer register bits
+
 |   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 |-------|-------|-------|-------|-------|-------|-------|-------|
 |  I/O  |  I/O  | Noise | Noise | Noise | Tone  | Tone  | Tone  |
 |   B   |   A   |   C   |   B   |   A   |   C   |   B   |   A   |
 
 ### Volume register bits
+
 |   4   |   3   |   2   |   1   |   0   |
 |-------|-------|-------|-------|-------|
 |  Env  |  Vol  |  Vol  |  Vol  |  Vol  |

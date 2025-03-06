@@ -3,9 +3,10 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>  // from JUCE
 
-#include "timeline/AudioTimeline.h"
-#include "layout/Layout.h"
+#include "../timeline/AudioTimeline.h"
+#include "../layout/Layout.h"
 #include "Transport.h"
+#include "tracktion_engine/tracktion_engine.h"
 
 
 using namespace juce;
@@ -25,8 +26,12 @@ namespace lo = Layout;
 class MainDocumentComponent: public Component {
 public:
 
-    explicit MainDocumentComponent(te::Edit& edit)
+    explicit MainDocumentComponent(te::Edit& edit, te::SelectionManager& selectionManager)
         : edit_ {edit}
+        , selectionManager_ {selectionManager}
+        , transportBar_ {edit_}
+        , timelinePanel_ {edit_, selectionManager_}
+        // , footer_        {edit_.engine,}
     {
         using namespace Layout::Operators;  // for operator>>
         Helpers::addLayoutItemsAndMakeVisible(*this, layout_,
@@ -45,12 +50,11 @@ public:
 
 private:
     te::Edit& edit_;
-    // std::unique_ptr<EditComponent> editComponent_;
-
-    TransportBar transportBar_ {edit_};
-    // TimelinePanel timelinePanel_     {edit_};
-    MidiTimeline timelinePanel_ {edit_};
-    // FooterBar footer_                {edit_.engine,};
+    te::SelectionManager& selectionManager_;
+    
+    TransportBar transportBar_;
+    MidiTimeline timelinePanel_;
+    // FooterBar footer_;
 
     lo::VerticalLayout layout_;
 

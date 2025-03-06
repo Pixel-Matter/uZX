@@ -9,6 +9,7 @@ set(SHARED_SOURCES
 
 # GUI-specific files
 set(GUI_SOURCES
+    gui/app/App.cpp
     gui/Main.cpp
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Components.cpp
@@ -19,5 +20,5 @@ set(GUI_SOURCES
 set(TEST_SOURCES
     # model/PsgTrack.test.cpp
     model/CustomClip.test.cpp
-    # plugins/uZX/aychip/AYChip.test.cpp
+    plugins/uZX/aychip/AYChip.test.cpp
 )

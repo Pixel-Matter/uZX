@@ -45,9 +45,10 @@ class MidiTimeline  : public Component,
 {
 public:
     //==============================================================================
-    MidiTimeline (te::Edit& ed)
+    MidiTimeline (te::Edit& ed, te::SelectionManager& selMgr)
         : engine {ed.engine}
         , edit {ed}
+        , selectionManager {selMgr}
         , editComponent {edit, selectionManager}
     {
         auto& evs = editComponent.getEditViewState();
@@ -120,8 +121,8 @@ public:
 private:
     //==============================================================================
     te::Engine& engine;
-    te::SelectionManager selectionManager { engine };
     te::Edit& edit;
+    te::SelectionManager& selectionManager;
     EditComponent editComponent;
 
     TextButton

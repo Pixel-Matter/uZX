@@ -1,10 +1,9 @@
 #pragma once
 
-#include "Commands.h"
-#include "tracktion_core/utilities/tracktion_Time.h"
-
 #include <JuceHeader.h>
 #include <common/Utilities.h>
+
+#include "Commands.h"
 
 
 using namespace juce;
@@ -34,21 +33,25 @@ public:
             &timeSigLabel_,
             &transportReadout_
         });
-        rewindButton_.onClick = [] {
-            getGlobalCommandManager().invokeDirectly(AppCommands::transportRewind, false);
+        rewindButton_.onClick = [this] {
+            // TODO change to AppFunctions
+            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRewind, false);
         };
         stepLeftButton_.onClick = [] {
-            // getGlobalCommandManager().invokeDirectly(AppCommands::transportStepBack, false);
+            // TODO change to AppFunctions
+            // edit_.engine.getUIBehaviour().getApplicationCommandManager().invokeDirectly(AppCommands::transportStepBack, false);
         };
         playPauseButton_.onClick = [] {
-            getGlobalCommandManager().invokeDirectly(AppCommands::transportPlay, false);
+            te::AppFunctions::startStopPlay();
+            // edit_.engine.getUIBehaviour().getApplicationCommandManager().invokeDirectly(AppCommands::transportPlay, false);
         };
         recordButton_.onClick = [this] {
+            // TODO change to AppFunctions
             bool wasRecording = edit_.getTransport().isRecording();
             if (!wasRecording) {
-                getGlobalCommandManager().invokeDirectly(AppCommands::transportRecord, false);
+                edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRecord, false);
             } else {
-                getGlobalCommandManager().invokeDirectly(AppCommands::transportRecordStop, false);
+                edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRecordStop, false);
             }
         };
         stepRightButton_.onClick = [] {

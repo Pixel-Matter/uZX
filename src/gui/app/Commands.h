@@ -1,6 +1,5 @@
 #pragma once
 
-#include "juce_gui_basics/juce_gui_basics.h"
 #include <JuceHeader.h>
 
 namespace MoTool::Commands {
@@ -31,6 +30,7 @@ public:
         // Edit Menu
         editUndo            = 100,
         editRedo,
+        editDelete,
         editCut,
         editCopy,
         editPaste,
@@ -40,6 +40,7 @@ public:
         transportRecord,
         transportRecordStop,
         transportRewind,
+        transportToEnd,
         transportLoop,
 
         // Settings Menu
@@ -60,7 +61,7 @@ public:
     static Array<CommandID> getCommandIDs() {
         CommandID ids[] = {
             fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileQuit,
-            editUndo, editRedo, editCut, editCopy, editPaste,
+            editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
             transportPlay, transportRecord, transportRecordStop, transportRewind, transportLoop,
             settingsAudioMidi, settingsPlugins,
             helpAbout
@@ -84,6 +85,7 @@ public:
             menu.addCommandItem(manager, AppCommands::editUndo);
             menu.addCommandItem(manager, AppCommands::editRedo);
             menu.addSeparator();
+            menu.addCommandItem(manager, AppCommands::editDelete);
             menu.addCommandItem(manager, AppCommands::editCut);
             menu.addCommandItem(manager, AppCommands::editCopy);
             menu.addCommandItem(manager, AppCommands::editPaste);
@@ -144,6 +146,11 @@ public:
             case editRedo:
                 result.setInfo("Redo", "Redo the last action", "Edit", 0);
                 result.addDefaultKeypress('z', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
+                break;
+
+            case editDelete:
+                result.setInfo("Delete", "Delete the selected item", "Edit", 0);
+                result.addDefaultKeypress(KeyPress::deleteKey, 0);
                 break;
 
             case editCut:
@@ -208,7 +215,23 @@ public:
     }
 };
 
+//==============================================================================
+/**
+    One of these objects holds a list of all the commands your app can perform,
+    and despatches these commands when needed.
 
+    Application commands are a good way to trigger actions in your app, e.g. "Quit",
+    "Copy", "Paste", etc. Menus, buttons and keypresses can all be given commands
+    to invoke automatically, which means you don't have to handle the result of a menu
+    or button click manually. Commands are despatched to ApplicationCommandTarget objects
+    which can choose which events they want to handle.
+
+    This architecture also allows for nested ApplicationCommandTargets, so that for example
+    you could have two different objects, one inside the other, both of which can respond to
+    a "delete" command. Depending on which one has focus, the command will be sent to the
+    appropriate place, regardless of whether it was triggered by a menu, keypress or some other
+    method.
+*/
 class CommandManager : public ApplicationCommandManager {
 public:
     CommandManager() = default;
@@ -234,9 +257,6 @@ public:
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CommandManager)
 };
-
-
-CommandManager& getGlobalCommandManager();
 
 
 } // namespace MoTool::Commands

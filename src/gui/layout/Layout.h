@@ -113,28 +113,28 @@ LayoutItem operator>>(Component* component, Grid::Fr size);
 LayoutItem operator>>(Component* component, Grid::Px size);
 
 // Define the operators
-LayoutItem operator>>(Component& component, Grid::Fr size) {
+inline LayoutItem operator>>(Component& component, Grid::Fr size) {
     return {
         GridItem(component),
         Grid::TrackInfo(size)
     };
 }
 
-LayoutItem operator>>(Component& component, Grid::Px size) {
+inline LayoutItem operator>>(Component& component, Grid::Px size) {
     return {
         GridItem(component),
         Grid::TrackInfo(size)
     };
 }
 
-LayoutItem operator>>(Component* component, Grid::Fr size) {
+inline LayoutItem operator>>(Component* component, Grid::Fr size) {
     return {
         GridItem(component),
         Grid::TrackInfo(size)
     };
 }
 
-LayoutItem operator>>(Component* component, Grid::Px size) {
+inline LayoutItem operator>>(Component* component, Grid::Px size) {
     return {
         GridItem(component),
         Grid::TrackInfo(size)

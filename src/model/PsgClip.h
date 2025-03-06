@@ -73,19 +73,14 @@ public:
     }
 
 private:
-    inline ValueTree createRegValueTree(te::BeatRange range, int reg, double val) {
-        // return te::createValueTree(
-        //     te::IDs::NOTE,
-        //     te::IDs::p, 60 + reg,
-        //     te::IDs::b, roundTo(range.getStart().inBeats()),
-        //     te::IDs::l, roundTo(range.getLength().inBeats()),
-        //     te::IDs::v, val);
-        // // or
+    inline ValueTree createRegValueTree(te::BeatRange range, int reg, int val) {
+        // N.B. Tracktion store controller values in edit's MidiList with extra precision
+        // but then rounds them to 7 bits
         return te::createValueTree (
             te::IDs::CONTROL,
             te::IDs::b,     roundTo(range.getStart().inBeats()),
             te::IDs::type,  20 + reg,
-            te::IDs::val,   round(val)
+            te::IDs::val,   (val & 255)  // store as is, then break down to 2 times by 4 bits
         );
     }
 
@@ -105,9 +100,9 @@ private:
             for (size_t j = 0; j < frame.registers.size(); j++) {
                 if (frame.mask[j]) {
                     // DBG("Register " << j << " = " << reg);
-                    auto reg = frame.registers[j];
+                    auto regVal = frame.registers[j];
                     // NOTE It is too slow to call seq.addControllerEvent
-                    auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j), reg);
+                    auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j), regVal);
                     seq.state.addChild(v, -1, getUndoManager());
                 }
             }

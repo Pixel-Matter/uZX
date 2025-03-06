@@ -447,13 +447,8 @@ void PsgClipComponent::paint(Graphics& g) {
     };
 
     auto& regs = psgClip->getSequence().getControllerEvents();
-
     if (regs.size() == 0)
         return;
-
-    // Get vertical scale settings from the track
-    auto track = dynamic_cast<te::AudioTrack*>(psgClip->getTrack());
-    if (!track) return;
 
     const int regsRange = 14;
     const float laneHeight = static_cast<float>(rect.getHeight()) / regsRange;
@@ -474,7 +469,7 @@ void PsgClipComponent::paint(Graphics& g) {
             continue;
         float x2 = x1 + 1;
 
-        // Map note position in the visible range (inverted since y=0 is at top)
+        // Map reg position in the visible range (inverted since y=0 is at top)
         float y1 = (1.0f - static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
 
         g.setColour(Colours::white.withAlpha(static_cast<float>(reg->getControllerValue()) / 255.0f));

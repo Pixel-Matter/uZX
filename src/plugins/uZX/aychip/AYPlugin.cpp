@@ -33,12 +33,9 @@ void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
     const juce::ScopedLock sl(lock);
     chip = std::make_unique<AyumiEmulator>(sampleRate);
     chip->setMasterVolume(0.1f);
-
-    // edit.getTransport().addChangeListener(this);
 }
 
 void AYChipPlugin::deinitialise() {
-    // edit.getTransport().removeChangeListener(this);
 }
 
 void AYChipPlugin::reset() {
@@ -47,12 +44,6 @@ void AYChipPlugin::reset() {
         chip->ResetSound();
     }
 }
-
-// void AYChipPlugin::changeListenerCallback(ChangeBroadcaster* source) {
-//     if (auto* transport = dynamic_cast<te::TransportControl*>(source); transport != nullptr && chip != nullptr) {
-//         const ScopedLock sl(lock);
-//         mutedWhileNotPlaying = !transport->isPlaying();
-//     }}
 
 void AYChipPlugin::midiPanic() {
     reset();
@@ -70,21 +61,48 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
 
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
+    PsgRegsAYFrame regs {};
+    // DBG("----");
     for (auto& m : *fc.bufferForMidiMessages) {
+        // process up to this event
+        const int timeSample = juce::roundToInt(m.getTimeStamp() * sampleRate);
+        if (timeSample - currentSample > 0) {
+            chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
+                               static_cast<size_t>(timeSample - currentSample));
+            currentSample = timeSample;
+        }
         if (m.isNoteOn()) {
-            const int note = m.getNoteNumber();
-            const size_t reg = static_cast<size_t>(note - 60);
-            const unsigned char val = m.getVelocity();
-            const int noteTimeSample = juce::roundToInt(m.getTimeStamp() * sampleRate);
-
-            // process up to this event
-            if (noteTimeSample - currentSample > 0) {
-                chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
-                                   static_cast<size_t>(noteTimeSample - currentSample));
-            }
-            chip->setRegister(reg, val);
+            // note based PSG-MIDI mapping is deprecated
+            // const int note = m.getNoteNumber();
+            // const size_t reg = static_cast<size_t>(note - 60);
+            // const unsigned char val = m.getVelocity();
+            // chip->setRegister(reg, val);
             // DBG("setRegister(" << reg << ", " << val << ")");
-            currentSample = noteTimeSample;
+        } else if (m.isController()) {
+            const int ctrlNum = m.getControllerNumber();
+            const int val = static_cast<unsigned char>(m.getControllerValue());
+            size_t reg = 0;
+            if (20 <= ctrlNum && ctrlNum < 34) {
+                // coarse value
+                reg = static_cast<size_t>(ctrlNum - 20);
+                regs.registers[reg] = (val << 4) | regs.registers[reg];
+                regs.mask[reg] = !regs.mask[reg];
+                // DBG("register coarse " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off"));
+            } else if (40 <= ctrlNum && ctrlNum < 54) {
+                // fine value
+                reg = static_cast<size_t>(ctrlNum - 40);
+                regs.registers[reg] = val | regs.registers[reg];
+                regs.mask[reg] = !regs.mask[reg];
+                // DBG("register fine " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off") << " reg is " << regs.registers[reg]);
+            } else {
+                jassertfalse;
+            }
+            if (!regs.mask[reg]) {
+                chip->setRegister(reg, regs.registers[reg]);
+                // DBG("setRegister(" << reg << ", " << regs.registers[reg] << ")");
+                regs.registers[reg] = 0;
+            }
+            // break;
         }
     }
     // process to the end of the block

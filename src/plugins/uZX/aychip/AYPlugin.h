@@ -11,8 +11,7 @@ namespace te = tracktion;
 namespace MoTool::uZX {
 
 class AYChipPlugin : public te::Plugin,
-                     private AsyncUpdater
-                     /*private ChangeListener*/ {
+                     private AsyncUpdater {
 public:
     AYChipPlugin (te::PluginCreationInfo);
     ~AYChipPlugin() override;
@@ -48,11 +47,9 @@ private:
 
     PsgRegsAYFrame registers;
     std::unique_ptr<AYInterface> chip;
-    // bool mutedWhileNotPlaying = true;
 
     void valueTreeChanged() override;
     void handleAsyncUpdate() override;
-    // void changeListenerCallback(ChangeBroadcaster*) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };

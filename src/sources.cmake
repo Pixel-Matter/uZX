@@ -3,6 +3,7 @@ set(SHARED_SOURCES
     util/FileOps.cpp
     util/Midi.cpp
     model/PsgMidi.cpp
+    model/Selectable.cpp
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
 )

@@ -6,6 +6,7 @@
 #include "Commands.h"
 
 #include "../common/LookAndFeel.h"
+// #include "../../model/Selectable.h"
 #include "../../util/FileOps.h"
 
 #include <memory>
@@ -208,7 +209,7 @@ public:
                 break;
 
             case AppCommands::editDelete:
-                handleDelete();
+                te::AppFunctions::deleteSelected();
                 break;
 
             case AppCommands::transportPlay:
@@ -309,35 +310,10 @@ private:
         auto v = new PluginListComponent (engine_.getPluginManager().pluginFormatManager,
                                           engine_.getPluginManager().knownPluginList,
                                           engine_.getTemporaryFileManager().getTempFile ("PluginScanDeadMansPedal"),
-                                          std::addressof (engine_.getPropertyStorage().getPropertiesFile()));
+                                          std::addressof(engine_.getPropertyStorage().getPropertiesFile()));
         v->setSize(800, 600);
         o.content.setOwned(v);
         o.launchAsync();
-    }
-
-    void handleDelete() {
-        if (edit_ == nullptr) return;
-
-        auto selectionManager = edit_->engine.getUIBehaviour().getCurrentlyFocusedSelectionManager();
-        if (selectionManager == nullptr) return;
-
-        auto sel = selectionManager->getSelectedObject(0);
-        if (auto clip = dynamic_cast<te::Clip*>(sel)) {
-            clip->removeFromParent();
-        } else if (auto track = dynamic_cast<te::Track*>(sel)) {
-            if (!(track->isMarkerTrack() || track->isTempoTrack() || track->isChordTrack()))
-                edit_->deleteTrack(track);
-        } else if (auto plugin = dynamic_cast<te::Plugin*>(sel)) {
-            plugin->deleteFromParent();
-        }
-
-        // TODO Not working
-        // if (edit_ != nullptr) {
-        //     if (auto sm = edit_->engine.getUIBehaviour().getCurrentlyFocusedSelectionManager()) {
-        //         DBG("Selected objects: " << sm->getNumObjectsSelected());
-        //     }
-        // }
-        // te::AppFunctions::deleteSelected();
     }
 
     std::unique_ptr<te::Edit> createOrLoadEdit(File editFile) {

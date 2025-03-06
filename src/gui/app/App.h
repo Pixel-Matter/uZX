@@ -8,6 +8,7 @@
 #include "../common/LookAndFeel.h"
 // #include "../../model/Selectable.h"
 #include "../../util/FileOps.h"
+#include "tracktion_engine/tracktion_engine.h"
 
 #include <memory>
 
@@ -176,9 +177,7 @@ public:
                 break;
 
             case AppCommands::fileSave:
-                if (edit_ != nullptr) {
-                    te::EditFileOperations(*edit_).save(false, true, false);
-                }
+                te::AppFunctions::saveEdit();
                 break;
 
             case AppCommands::fileSaveAs:
@@ -197,15 +196,11 @@ public:
                 break;
 
             case AppCommands::editUndo:
-                if (edit_ != nullptr) {
-                    edit_->getUndoManager().undo();
-                }
+                te::AppFunctions::undo();
                 break;
 
             case AppCommands::editRedo:
-                if (edit_ != nullptr) {
-                    edit_->getUndoManager().redo();
-                }
+                te::AppFunctions::redo();
                 break;
 
             case AppCommands::editDelete:
@@ -213,7 +208,7 @@ public:
                 break;
 
             case AppCommands::transportPlay:
-                handlePlayPause();
+                te::AppFunctions::startStopPlay();
                 break;
 
             case AppCommands::transportRecord:
@@ -233,9 +228,7 @@ public:
                 break;
 
             case AppCommands::transportLoop:
-                if (edit_ != nullptr) {
-                    edit_->getTransport().looping = !edit_->getTransport().looping;
-                }
+                te::AppFunctions::toggleLoop();
                 break;
 
             case AppCommands::settingsAudioMidi:
@@ -284,17 +277,11 @@ private:
         }
     }
 
-    void handlePlayPause() {
-        if (edit_ == nullptr) return;
-
-        EngineHelpers::togglePlay(*edit_);
-    }
-
     void handleRecord() {
         if (edit_ == nullptr) return;
 
         bool wasRecording = edit_->getTransport().isRecording();
-        EngineHelpers::toggleRecord(*edit_);
+        te::AppFunctions::record();
         if (wasRecording) {
             te::EditFileOperations(*edit_).save(true, true, false);
         }

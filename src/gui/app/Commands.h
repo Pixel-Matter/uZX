@@ -31,7 +31,7 @@ public:
         transportPlay       = 200,
         transportRecord,
         transportRecordStop,
-        transportRewind,
+        transportToStart,
         transportToEnd,
         transportLoop,
 
@@ -54,7 +54,7 @@ public:
         CommandID ids[] = {
             fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileQuit,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
-            transportPlay, transportRecord, transportRecordStop, transportRewind, transportToEnd, transportLoop,
+            transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
             settingsAudioMidi, settingsPlugins,
             helpAbout
         };
@@ -85,7 +85,7 @@ public:
             menu.addCommandItem(manager, AppCommands::transportPlay);
             menu.addCommandItem(manager, AppCommands::transportRecord);
             menu.addCommandItem(manager, AppCommands::transportRecordStop);
-            menu.addCommandItem(manager, AppCommands::transportRewind);
+            menu.addCommandItem(manager, AppCommands::transportToStart);
             menu.addCommandItem(manager, AppCommands::transportToEnd);
             menu.addSeparator();
             menu.addCommandItem(manager, AppCommands::transportLoop);
@@ -178,7 +178,7 @@ public:
                 // result.addDefaultKeypress('r', 0);
                 break;
 
-            case transportRewind:
+            case transportToStart:
                 result.setInfo("Rewind", "Rewind to the beginning", "Transport", 0);
                 result.addDefaultKeypress(KeyPress::leftKey, ModifierKeys::commandModifier);
                 result.addDefaultKeypress(KeyPress::homeKey, 0);

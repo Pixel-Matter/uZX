@@ -36,7 +36,7 @@ public:
 
         if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
             // TODO Use invoking of AppFunctions in main command target
-            rewindButton_.setCommandToTrigger(mgr, AppCommands::transportRewind, true);
+            rewindButton_.setCommandToTrigger(mgr, AppCommands::transportToStart, true);
             // stepLeftButton_.setCommandToTrigger(mgr, AppCommands::transportStepBack, true);
             playPauseButton_.setCommandToTrigger(mgr, AppCommands::transportPlay, true);
             // recordButton_.setCommandToTrigger(mgr, AppCommands::transportRecordStartStop, true);

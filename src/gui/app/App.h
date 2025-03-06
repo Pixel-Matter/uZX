@@ -153,7 +153,7 @@ public:
                 result.setActive(edit_ != nullptr && edit_->getTransport().isRecording());
                 break;
 
-            case AppCommands::transportRewind:
+            case AppCommands::transportToStart:
                 result.setActive(edit_ != nullptr);
                 break;
 
@@ -224,10 +224,12 @@ public:
                 handleRecord();
                 break;
 
-            case AppCommands::transportRewind:
-                if (edit_ != nullptr) {
-                    edit_->getTransport().setPosition(te::TimePosition::fromSeconds(0.0));
-                }
+            case AppCommands::transportToStart:
+                te::AppFunctions::goToStart();
+                break;
+
+            case AppCommands::transportToEnd:
+                te::AppFunctions::goToEnd();
                 break;
 
             case AppCommands::transportLoop:

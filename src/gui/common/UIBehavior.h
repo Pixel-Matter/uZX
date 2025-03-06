@@ -44,14 +44,23 @@ public:
     void selectProjectInFocusedWindow(te::Project::Ptr)                   override {}
     void updateAllProjectItemLists()                                      override {}
 
-    juce::ApplicationCommandManager* getApplicationCommandManager()       override {
+    juce::ApplicationCommandManager* getApplicationCommandManager() override {
         return dynamic_cast<ApplicationCommandManager*>(&MoToolApp::getCommandManager());
     }
 
-    // TODO implement
-    void getAllCommands(juce::Array<juce::CommandID>&)                    override {}
-    void getCommandInfo(juce::CommandID, juce::ApplicationCommandInfo&)   override {}
-    bool perform(const juce::ApplicationCommandTarget::InvocationInfo&)   override { return false; }
+    void getAllCommands(juce::Array<juce::CommandID>& commands) override {
+        if (auto* win = MoToolApp::getApp().getMainWindow())
+            return win->getAllCommands(commands);
+    }
+    void getCommandInfo(juce::CommandID cmd, juce::ApplicationCommandInfo& result) override {
+        if (auto* win = MoToolApp::getApp().getMainWindow())
+            win->getCommandInfo(cmd, result);
+    }
+    bool perform(const juce::ApplicationCommandTarget::InvocationInfo& info) override {
+        if (auto* win = MoToolApp::getApp().getMainWindow())
+            return win->perform(info);
+        return false;
+     }
 
     //==============================================================================
     /** Should show the new plugin window and creates the Plugin the user selects. */

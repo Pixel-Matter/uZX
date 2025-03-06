@@ -806,7 +806,7 @@ TrackFooterComponent::TrackFooterComponent (EditViewState& evs, te::Track::Ptr t
 
     addButton.onClick = [this] {
         // TODO implement showMenuAndCreatePlugin in UIBehaviour
-        // if (auto plugin = track->edit.engine.getUIBehaviour().showMenuAndCreatePlugin (te::Plugin::Type::effectPlugins, track->edit)) {
+        // if (auto plugin = AppFunctions::getCurrentUIBehaviour().showMenuAndCreatePlugin (te::Plugin::Type::effectPlugins, track->edit)) {
         if (auto plugin = showMenuAndCreatePlugin(track->edit)) {
             track->pluginList.insertPlugin(plugin, 0, &editViewState.selectionManager);
         }

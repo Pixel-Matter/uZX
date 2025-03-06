@@ -85,13 +85,13 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
             if (20 <= ctrlNum && ctrlNum < 34) {
                 // coarse value
                 reg = static_cast<size_t>(ctrlNum - 20);
-                regs.registers[reg] = (val << 4) | regs.registers[reg];
+                regs.registers[reg] = static_cast<unsigned char>((val << 4) | regs.registers[reg]);
                 regs.mask[reg] = !regs.mask[reg];
                 // DBG("register coarse " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off"));
             } else if (40 <= ctrlNum && ctrlNum < 54) {
                 // fine value
                 reg = static_cast<size_t>(ctrlNum - 40);
-                regs.registers[reg] = val | regs.registers[reg];
+                regs.registers[reg] = static_cast<unsigned char>(val | regs.registers[reg]);
                 regs.mask[reg] = !regs.mask[reg];
                 // DBG("register fine " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off") << " reg is " << regs.registers[reg]);
             } else {

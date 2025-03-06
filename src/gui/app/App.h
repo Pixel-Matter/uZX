@@ -7,7 +7,6 @@
 
 #include "../common/LookAndFeel.h"
 #include "../../util/FileOps.h"
-#include "tracktion_engine/tracktion_engine.h"
 
 #include <memory>
 
@@ -20,7 +19,8 @@ namespace MoTool {
 
 class MainWindow final : public DocumentWindow,
                          public MenuBarModel,
-                         public ApplicationCommandTarget {
+                         public ApplicationCommandTarget,
+                         private ChangeListener {
 public:
     MainWindow(String name, te::Engine& engine, CommandManager& cmdMgr)
         : DocumentWindow(name,
@@ -45,6 +45,8 @@ public:
         commandManager_.getKeyMappings()->resetToDefaultMappings();
         addKeyListener(commandManager_.getKeyMappings());
 
+        selectionManager_.addChangeListener(this);
+
         setVisible(true);
     }
 
@@ -53,6 +55,7 @@ public:
             te::EditFileOperations(*edit_).save(true, true, false);
             edit_->getTempDirectory(false).deleteRecursively();
         }
+        selectionManager_.removeChangeListener(this);
         removeKeyListener(commandManager_.getKeyMappings());
         #if JUCE_MAC
             setMacMainMenu(nullptr);
@@ -97,6 +100,8 @@ public:
     }
 
     void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) override {
+        // DBG("MainWindow::getCommandInfo: " << commandID);
+        // Get main command info, name, desc, keypresses
         AppCommands::getCommandInfo(commandID, result);
 
         // Update command status based on current state
@@ -121,9 +126,19 @@ public:
                 result.setActive(edit_ != nullptr && edit_->getUndoManager().canRedo());
                 break;
 
-            case AppCommands::editDelete:
-                result.setActive(edit_ != nullptr && edit_->getUndoManager().canRedo());
-                break;
+            // TODO  Theese commands are not being updated on selection change, only transportPlay and transportRecordStop are updated
+            // case AppCommands::editDelete: [[fallthrough]];
+            // case AppCommands::editCut:    [[fallthrough]];
+            // case AppCommands::editCopy:
+            //     if (edit_ != nullptr) {
+            //         if (auto sm = edit_->engine.getUIBehaviour().getCurrentlyFocusedSelectionManager()) {
+            //             DBG("Selected objects: " << sm->getSelectedObjects().size());
+            //             result.setActive(!sm->getSelectedObjects().isEmpty());
+            //             break;
+            //         }
+            //     }
+            //     result.setActive(false);
+            //     break;
 
             case AppCommands::transportPlay:
                 result.setActive(edit_ != nullptr);
@@ -190,6 +205,10 @@ public:
                 if (edit_ != nullptr) {
                     edit_->getUndoManager().redo();
                 }
+                break;
+
+            case AppCommands::editDelete:
+                handleDelete();
                 break;
 
             case AppCommands::transportPlay:
@@ -296,6 +315,31 @@ private:
         o.launchAsync();
     }
 
+    void handleDelete() {
+        if (edit_ == nullptr) return;
+
+        auto selectionManager = edit_->engine.getUIBehaviour().getCurrentlyFocusedSelectionManager();
+        if (selectionManager == nullptr) return;
+
+        auto sel = selectionManager->getSelectedObject(0);
+        if (auto clip = dynamic_cast<te::Clip*>(sel)) {
+            clip->removeFromParent();
+        } else if (auto track = dynamic_cast<te::Track*>(sel)) {
+            if (!(track->isMarkerTrack() || track->isTempoTrack() || track->isChordTrack()))
+                edit_->deleteTrack(track);
+        } else if (auto plugin = dynamic_cast<te::Plugin*>(sel)) {
+            plugin->deleteFromParent();
+        }
+
+        // TODO Not working
+        // if (edit_ != nullptr) {
+        //     if (auto sm = edit_->engine.getUIBehaviour().getCurrentlyFocusedSelectionManager()) {
+        //         DBG("Selected objects: " << sm->getNumObjectsSelected());
+        //     }
+        // }
+        // te::AppFunctions::deleteSelected();
+    }
+
     std::unique_ptr<te::Edit> createOrLoadEdit(File editFile) {
         std::unique_ptr<te::Edit> edit;
         if (editFile.existsAsFile())
@@ -321,6 +365,12 @@ private:
         setContentOwned(new MainDocumentComponent(*edit_, getSelectionManager()), true);
         setSize(w, h);
         repaint();
+    }
+
+    void changeListenerCallback (ChangeBroadcaster*) override {
+        // Called when the selection changes
+        // DBG("Selection changed");
+        commandManager_.commandStatusChanged();
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)

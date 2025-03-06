@@ -5,16 +5,8 @@
 namespace MoTool::Commands {
 
 //==============================================================================
-/**  Application commans and menus
-
-    == TODO ==
-    - Make it nice declarative DSL-like class
+/**  Application commands and menus
 */
-
-struct MenuItem {
-    ApplicationCommandInfo info;
-};
-
 
 class AppCommands {
 public:
@@ -62,7 +54,7 @@ public:
         CommandID ids[] = {
             fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileQuit,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
-            transportPlay, transportRecord, transportRecordStop, transportRewind, transportLoop,
+            transportPlay, transportRecord, transportRecordStop, transportRewind, transportToEnd, transportLoop,
             settingsAudioMidi, settingsPlugins,
             helpAbout
         };
@@ -94,6 +86,7 @@ public:
             menu.addCommandItem(manager, AppCommands::transportRecord);
             menu.addCommandItem(manager, AppCommands::transportRecordStop);
             menu.addCommandItem(manager, AppCommands::transportRewind);
+            menu.addCommandItem(manager, AppCommands::transportToEnd);
             menu.addSeparator();
             menu.addCommandItem(manager, AppCommands::transportLoop);
         } else if (menuName == "Settings") {
@@ -106,6 +99,7 @@ public:
     }
 
     static void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) {
+        // DBG("Appcommands::getCommandInfo: " << commandID);
         switch (commandID) {
             // File commands
             case fileNew:
@@ -188,6 +182,12 @@ public:
                 result.setInfo("Rewind", "Rewind to the beginning", "Transport", 0);
                 result.addDefaultKeypress(KeyPress::leftKey, ModifierKeys::commandModifier);
                 result.addDefaultKeypress(KeyPress::homeKey, 0);
+                break;
+
+            case transportToEnd:
+                result.setInfo("End", "Go to the end", "Transport", 0);
+                result.addDefaultKeypress(KeyPress::rightKey, ModifierKeys::commandModifier);
+                result.addDefaultKeypress(KeyPress::endKey, 0);
                 break;
 
             case transportLoop:

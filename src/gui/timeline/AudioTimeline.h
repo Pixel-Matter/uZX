@@ -15,8 +15,8 @@
 
 #include "../../util/base64_cx.h"
 #include "../../util/Midi.h"
-#include "../../plugins/uZX/aychip/AYPlugin.h"
 #include "../common/Utilities.h"
+#include "../app/Commands.h"
 
 #include "../../formats/psg/PsgFile.h"
 #include "../../model/PsgClip.h"
@@ -75,11 +75,15 @@ public:
         // insertAudioButton.onClick =       [this] {
         //     handleInsertAudioClip();
         // };
+
         newTrackButton.onClick =     [this] { handleInsertNewTrack(); };
-        deleteButton.onClick =       [this] { handleDelete(); };
 
-        deleteButton.setEnabled(false);
+        // ===================================================================================
+        if (auto mgr = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
+            deleteButton.setCommandToTrigger(mgr, Commands::AppCommands::editDelete, true);
+        }
 
+        // ===================================================================================
         zoomInButton.onClick =       [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 1.0 / 1.25); };
         zoomOutButton.onClick =      [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 1.25); };
         zoomFitButton.onClick =      [this] { editComponent.zoomToFit(); };
@@ -228,18 +232,6 @@ private:
                 }
             }
         });
-    }
-
-    void handleDelete() {
-        auto sel = selectionManager.getSelectedObject(0);
-        if (auto clip = dynamic_cast<te::Clip*>(sel)) {
-            clip->removeFromParent();
-        } else if (auto track = dynamic_cast<te::Track*>(sel)) {
-            if (! (track->isMarkerTrack() || track->isTempoTrack() || track->isChordTrack()))
-                edit.deleteTrack(track);
-        } else if (auto plugin = dynamic_cast<te::Plugin*>(sel)) {
-            plugin->deleteFromParent();
-        }
     }
 
     void changeListenerCallback(ChangeBroadcaster* source) override {

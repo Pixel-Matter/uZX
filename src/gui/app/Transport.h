@@ -33,29 +33,23 @@ public:
             &timeSigLabel_,
             &transportReadout_
         });
-        rewindButton_.onClick = [this] {
-            // TODO change to AppFunctions
-            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRewind, false);
-        };
-        stepLeftButton_.onClick = [] {
-            // TODO change to AppFunctions
-            // edit_.engine.getUIBehaviour().getApplicationCommandManager().invokeDirectly(AppCommands::transportStepBack, false);
-        };
-        playPauseButton_.onClick = [] {
-            te::AppFunctions::startStopPlay();
-            // edit_.engine.getUIBehaviour().getApplicationCommandManager().invokeDirectly(AppCommands::transportPlay, false);
-        };
+
+        if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
+            // TODO Use invoking of AppFunctions in main command target
+            rewindButton_.setCommandToTrigger(mgr, AppCommands::transportRewind, true);
+            // stepLeftButton_.setCommandToTrigger(mgr, AppCommands::transportStepBack, true);
+            playPauseButton_.setCommandToTrigger(mgr, AppCommands::transportPlay, true);
+            // recordButton_.setCommandToTrigger(mgr, AppCommands::transportRecordStartStop, true);
+            // stepRightButton_.setCommandToTrigger(mgr, AppCommands::transportStepForward, true);
+        }
         recordButton_.onClick = [this] {
-            // TODO change to AppFunctions
+            // TODO change to setCommandToTrigger + AppFunctions
             bool wasRecording = edit_.getTransport().isRecording();
             if (!wasRecording) {
                 edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRecord, false);
             } else {
                 edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRecordStop, false);
             }
-        };
-        stepRightButton_.onClick = [] {
-            // getGlobalCommandManager().invokeDirectly(AppCommands::transportStepForward, false);
         };
         // transportReadout_.setFont(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 14, juce::Font::plain));
 
@@ -104,6 +98,7 @@ private:
     te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
 
     void changeListenerCallback (ChangeBroadcaster*) override {
+        // Called when the transport changes
         // if (source == &edit.getTransport()) { // not needed
         updatePlayButtonText();
         updateRecordButtonText();

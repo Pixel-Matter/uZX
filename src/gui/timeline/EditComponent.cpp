@@ -25,6 +25,7 @@ EditComponent::~EditComponent() {
 }
 
 void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
+    // FIXME abstraction leaked
     if (v.hasType(IDs::EDITVIEWSTATE)) {
         if (i == IDs::viewX1
             || i == IDs::viewX2
@@ -40,15 +41,14 @@ void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Ide
 }
 
 void EditComponent::zoomTracksHorizontally(te::TimePosition pos, double factor) {
-    editViewState.zoomHorizontally(pos, factor);
+    editViewState.zoom.zoomHorizontally(pos, factor);
     markAndUpdate(updateZoom);
 }
 
 void EditComponent::zoomToFit() {
     auto range = Helpers::getEffectiveClipsTimeRange(edit);
     if (!range.isEmpty()) {
-        editViewState.viewX1 = range.getStart();
-        editViewState.viewX2 = range.getEnd();
+        editViewState.zoom.setRange(range);
         markAndUpdate(updateZoom);
     }
 }
@@ -86,7 +86,7 @@ void EditComponent::resized() {
 
     playhead.setBounds(getLocalBounds().withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
 
-    int y = roundToInt(editViewState.viewY.get());
+    int y = roundToInt(editViewState.zoom.getViewY());
 
     ruler.setBounds(headerWidth, y, getWidth() - headerWidth - footerWidth, rulerHeight);
     y += rulerHeight;

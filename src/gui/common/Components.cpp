@@ -286,8 +286,8 @@ void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::Sma
                                        int left, int right, int y, int h, int xOffset) {
     auto getTimeRangeForDrawing = [this] (const int l, const int r) -> te::TimeRange {
         if (auto p = getParentComponent()) {
-            auto t1 = editViewState.xToTime(l, p->getWidth());
-            auto t2 = editViewState.xToTime(r, p->getWidth());
+            auto t1 = editViewState.zoom.xToTime(l, p->getWidth());
+            auto t2 = editViewState.zoom.xToTime(r, p->getWidth());
 
             return { t1, t2 };
         }
@@ -440,10 +440,11 @@ void PsgClipComponent::paint(Graphics& g) {
     if (psgClip == nullptr) return;
 
     auto rect = getLocalBounds();
-    auto timeRange = psgClip->getEditTimeRange();
+    auto clipRange = psgClip->getEditTimeRange();
+    auto viewRange = editViewState.zoom.getRange();
 
-    auto timeToX = [width = rect.getWidth(), timeRange, l = timeRange.getLength()] (auto time) {
-        return roundToInt(((time - timeRange.getStart()) * width) / l);
+    auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
+        return roundToInt(((time - clipRange.getStart()) * width) / l);
     };
 
     auto& regs = psgClip->getSequence().getControllerEvents();
@@ -459,9 +460,9 @@ void PsgClipComponent::paint(Graphics& g) {
         int regNumber = reg->getType() - 20;
 
         auto s = reg->getEditTime(*psgClip);
-        if (s < timeRange.getStart() || s < editViewState.viewX1.get())
+        if (s < clipRange.getStart() || s < viewRange.getStart())
             continue;
-        if (s >= timeRange.getEnd() || s >= editViewState.viewX2.get())
+        if (s >= clipRange.getEnd() || s >= viewRange.getEnd())
             break;
 
         float x1 = (float) timeToX(s) - left;
@@ -530,14 +531,14 @@ void RecordingClipComponent::drawThumbnail(Graphics& g, Colour waveformColour) c
 bool RecordingClipComponent::getBoundsAndTime(Rectangle<int>& bounds, tracktion::TimeRange& times) const {
     auto editTimeToX = [this] (te::TimePosition t) {
         if (auto p = getParentComponent())
-            return editViewState.timeToX(t, p->getWidth()) - getX();
+            return editViewState.zoom.timeToX(t, p->getWidth()) - getX();
 
         return 0;
     };
 
     auto xToEditTime = [this] (int x) {
         if (auto p = getParentComponent())
-            return editViewState.xToTime(x + getX(), p->getWidth());
+            return editViewState.zoom.xToTime(x + getX(), p->getWidth());
 
         return te::TimePosition();
     };
@@ -560,8 +561,8 @@ bool RecordingClipComponent::getBoundsAndTime(Rectangle<int>& bounds, tracktion:
             t1 = jmin(t1, epc->getLoopTimes().getStart());
             t2 = epc->getPosition();
 
-            t1 = jmax(editViewState.viewX1.get(), t1);
-            t2 = jmin(editViewState.viewX2.get(), t2);
+            t1 = jmax(editViewState.zoom.getRangeStart(), t1);
+            t2 = jmin(editViewState.zoom.getRangeEnd(), t2);
         } else if (edit.recordingPunchInOut) {
             const auto in  = thumbnail->punchInTime;
             const auto out = edit.getTransport().getLoopRange().getEnd();
@@ -577,8 +578,8 @@ bool RecordingClipComponent::getBoundsAndTime(Rectangle<int>& bounds, tracktion:
         const auto recordedTime = unloopedPos - toDuration(epc->getLoopTimes().getStart());
         const int numLoops = (int) (recordedTime / loopRange.getLength());
 
-        const tracktion::TimeRange editTimes(xToEditTime (bounds.getX()),
-                                             xToEditTime (bounds.getRight()));
+        const tracktion::TimeRange editTimes(xToEditTime(bounds.getX()),
+                                             xToEditTime(bounds.getRight()));
 
         times = (editTimes + (loopRange.getLength() * numLoops)) - toDuration(timeStarted);
     }
@@ -613,12 +614,12 @@ void RecordingClipComponent::updatePosition() {
             t2 = jlimit(in, out, t2);
         }
 
-        t1 = jmax(t1, editViewState.viewX1.get());
-        t2 = jmin(t2, editViewState.viewX2.get());
+        t1 = jmax(t1, editViewState.zoom.getRangeStart());
+        t2 = jmin(t2, editViewState.zoom.getRangeEnd());
 
         if (auto p = getParentComponent()) {
-            int x1 = editViewState.timeToX(t1, p->getWidth());
-            int x2 = editViewState.timeToX(t2, p->getWidth());
+            int x1 = editViewState.zoom.timeToX(t1, p->getWidth());
+            int x2 = editViewState.zoom.timeToX(t2, p->getWidth());
 
             setBounds(x1, 0, x2 - x1, p->getHeight());
             return;
@@ -950,8 +951,8 @@ void TrackComponent::resized() {
     for (auto cc : clips) {
         auto& c = cc->getClip();
         auto pos = c.getPosition();
-        int x1 = editViewState.timeToX(pos.getStart(), getWidth());
-        int x2 = editViewState.timeToX(pos.getEnd(), getWidth());
+        int x1 = editViewState.zoom.timeToX(pos.getStart(), getWidth());
+        int x2 = editViewState.zoom.timeToX(pos.getEnd(), getWidth());
 
         cc->setBounds(x1, 0, x2 - x1, getHeight());
     }
@@ -1034,7 +1035,7 @@ void PlayheadComponent::mouseUp(const MouseEvent&) {
 }
 
 void PlayheadComponent::mouseDrag(const MouseEvent& e) {
-    auto t = editViewState.xToTime (e.x, getWidth());
+    auto t = editViewState.zoom.xToTime (e.x, getWidth());
     edit.getTransport().setPosition(t);
     timerCallback();
 }
@@ -1046,7 +1047,7 @@ void PlayheadComponent::timerCallback() {
         setMouseCursor(MouseCursor::LeftRightResizeCursor);
     }
 
-    int newX = editViewState.timeToX(edit.getTransport().getPosition(), getWidth());
+    int newX = editViewState.zoom.timeToX(edit.getTransport().getPosition(), getWidth());
     if (newX != xPosition) {
         repaint(jmin(newX, xPosition) - 1, 0, jmax(newX, xPosition) - jmin(newX, xPosition) + 3, getHeight());
         xPosition = newX;

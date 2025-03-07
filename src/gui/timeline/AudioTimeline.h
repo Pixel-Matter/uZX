@@ -79,9 +79,9 @@ public:
         newTrackButton.onClick =     [this] { handleInsertNewTrack(); };
 
         // ===================================================================================
-        if (auto mgr = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
-            deleteButton.setCommandToTrigger(mgr, Commands::AppCommands::editDelete, true);
-        }
+        // if (auto mgr = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
+        //     deleteButton.setCommandToTrigger(mgr, Commands::AppCommands::editDelete, true);
+        // }
 
         // ===================================================================================
         zoomInButton.onClick =       [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 1.0 / 1.25); };
@@ -90,7 +90,8 @@ public:
 
         setSize(600, 400);
         ::Helpers::addAndMakeVisible(*this, { &editComponent,
-                                              &newTrackButton, &deleteButton,
+                                              &newTrackButton,
+                                            //   &deleteButton,
                                               &insertMidiButton, &insertPSGButton,
                                             //    &insertAudioButton,
                                               &zoomInButton, &zoomOutButton, &zoomFitButton
@@ -109,13 +110,13 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        int w = r.getWidth() / 7;
+        int w = r.getWidth() / 6;
         auto topR = r.removeFromTop(30);
         insertMidiButton.setBounds(topR.removeFromLeft(w).reduced(2));
         insertPSGButton.setBounds(topR.removeFromLeft(w).reduced(2));
         // insertAudioButton.setBounds(topR.removeFromLeft(w).reduced(2));
         newTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        deleteButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        // deleteButton.setBounds(topR.removeFromLeft(w).reduced(2));
         zoomInButton.setBounds(topR.removeFromLeft(w).reduced(2));
         zoomOutButton.setBounds(topR.removeFromLeft(w).reduced(2));
         zoomFitButton.setBounds(topR.removeFromLeft(w).reduced(2));
@@ -131,7 +132,7 @@ private:
 
     TextButton
                newTrackButton { "New Track" },
-               deleteButton { "Delete" },
+            //    deleteButton { "Delete" },
                insertMidiButton { "Insert MIDI" },
                insertPSGButton { "Insert PSG" },
             //    insertAudioButton { "Insert Audio" },
@@ -234,13 +235,13 @@ private:
         });
     }
 
-    void changeListenerCallback(ChangeBroadcaster* source) override {
-        if (source == &selectionManager) {
-            auto sel = selectionManager.getSelectedObject(0);
-            deleteButton.setEnabled(dynamic_cast<te::Clip*> (sel) != nullptr
-                                    || dynamic_cast<te::Track*> (sel) != nullptr
-                                    || dynamic_cast<te::Plugin*> (sel));
-        }
+    void changeListenerCallback(ChangeBroadcaster* /*source*/) override {
+        // if (source == &selectionManager) {
+        //     auto sel = selectionManager.getSelectedObject(0);
+        //     deleteButton.setEnabled(dynamic_cast<te::Clip*> (sel) != nullptr
+        //                             || dynamic_cast<te::Track*> (sel) != nullptr
+        //                             || dynamic_cast<te::Plugin*> (sel));
+        // }
     }
 
     void createTracksAndAssignInputs() {

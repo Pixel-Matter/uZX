@@ -47,26 +47,27 @@ public:
         g.setColour(lf.findColour(ResizableWindow::backgroundColourId));
         g.fillRect(bounds);
         g.setFont(12.0f);
+        auto& zoomState = editViewState.zoom;
 
-        auto startBar = ts.toBarsAndBeats(editViewState.viewX1.get());
+        auto startBar = ts.toBarsAndBeats(zoomState.getRangeStart());
         startBar.beats = te::BeatDuration::fromBeats(0);
         auto startTime = ts.toTime(startBar);
 
         auto currentTime = startTime;
 
         double prevBarX = -20.0;
-        while (currentTime <= editViewState.viewX2.get()) {
+        while (currentTime <= zoomState.getRangeEnd()) {
             auto barBeats = ts.toBarsAndBeats(currentTime);
 
             auto nextDiv = BarsAndBeats { barBeats.bars, barBeats.beats + beatStep };
             auto nextTime = ts.toTime(nextDiv);
-            auto pixelsPerDiv = editViewState.durationToPixels(nextTime - currentTime, width);
+            auto pixelsPerDiv = zoomState.durationToPixels(nextTime - currentTime, width);
             if (pixelsPerDiv < minPxPerDev) {
                 beatStep = beatStep * 2.0;
                 continue;
             }
 
-            auto x = static_cast<float>(editViewState.timeToX(currentTime, width));
+            auto x = static_cast<float>(zoomState.timeToX(currentTime, width));
             currentTime = nextTime;
 
             if (x < 0) {
@@ -105,16 +106,15 @@ public:
         if (e.mods.isPopupMenu()) {
             PopupMenu m;
             m.addItem("Zoom In", [this] {
-                editViewState.zoomHorizontally(edit.getTransport().getPosition(), 1.0 / 1.25);
+                editViewState.zoom.zoomHorizontally(edit.getTransport().getPosition(), 1.0 / 1.25);
             });
             m.addItem("Zoom Out", [this] {
-                editViewState.zoomHorizontally(edit.getTransport().getPosition(), 1.25);
+                editViewState.zoom.zoomHorizontally(edit.getTransport().getPosition(), 1.25);
             });
             m.addItem("Zoom Fit", [this] {
                 auto range = Helpers::getEffectiveClipsTimeRange(edit);
                 if (!range.isEmpty()) {
-                    editViewState.viewX1 = range.getStart();
-                    editViewState.viewX2 = range.getEnd();
+                    editViewState.zoom.setRange(range);
                 }
             });
             m.showMenuAsync({});
@@ -124,7 +124,7 @@ public:
     }
 
     void repositionTransportToX(int x) {
-        auto pos = editViewState.xToTime(x, getWidth());
+        auto pos = editViewState.zoom.xToTime(x, getWidth());
         edit.getTransport().setPosition(pos);
     }
 

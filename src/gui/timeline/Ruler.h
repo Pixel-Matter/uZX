@@ -106,12 +106,15 @@ public:
         if (e.mods.isPopupMenu()) {
             PopupMenu m;
             m.addItem("Zoom In", [this] {
-                editViewState.zoom.zoomHorizontally(edit.getTransport().getPosition(), 1.0 / 1.25);
+                // TODO link to command
+                editViewState.zoom.zoomHorizontally(1.0 / 1.25);
             });
             m.addItem("Zoom Out", [this] {
-                editViewState.zoom.zoomHorizontally(edit.getTransport().getPosition(), 1.25);
+                // TODO link to command
+                editViewState.zoom.zoomHorizontally(1.25);
             });
             m.addItem("Zoom Fit", [this] {
+                // TODO link to command
                 auto range = Helpers::getEffectiveClipsTimeRange(edit);
                 if (!range.isEmpty()) {
                     editViewState.zoom.setRange(range);

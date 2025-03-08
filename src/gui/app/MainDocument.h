@@ -26,11 +26,11 @@ namespace lo = Layout;
 class MainDocumentComponent: public Component {
 public:
 
-    explicit MainDocumentComponent(te::Edit& edit, te::SelectionManager& selectionManager)
+    explicit MainDocumentComponent(te::Edit& edit, EditViewState& evs, te::SelectionManager& selectionManager)
         : edit_ {edit}
         , selectionManager_ {selectionManager}
         , transportBar_ {edit_}
-        , timelinePanel_ {edit_, selectionManager_}
+        , timelinePanel_ {edit_, evs, selectionManager_}
         // , footer_        {edit_.engine,}
     {
         using namespace Layout::Operators;  // for operator>>
@@ -51,9 +51,9 @@ public:
 private:
     te::Edit& edit_;
     te::SelectionManager& selectionManager_;
-    
+
     TransportBar transportBar_;
-    MidiTimeline timelinePanel_;
+    AudioTimeline timelinePanel_;
     // FooterBar footer_;
 
     lo::VerticalLayout layout_;

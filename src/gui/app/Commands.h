@@ -35,8 +35,14 @@ public:
         transportToEnd,
         transportLoop,
 
+        // View menu
+        viewZoomToProject    = 300,
+        viewZoomToSelection,
+        viewZoomIn,
+        viewZoomOut,
+
         // Settings Menu
-        settingsAudioMidi   = 300,
+        settingsAudioMidi   = 400,
         settingsPlugins,
 
         // Help Menu
@@ -46,7 +52,7 @@ public:
     };
 
     static StringArray getMenuBarNames() {
-        return { "File", "Edit", "Transport", "Settings", "Help" };
+        return { "File", "Edit", "Transport", "View", "Settings", "Help" };
     }
 
     // Get all commands
@@ -55,6 +61,7 @@ public:
             fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileQuit,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
+            viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
             settingsAudioMidi, settingsPlugins,
             helpAbout
         };
@@ -89,6 +96,11 @@ public:
             menu.addCommandItem(manager, AppCommands::transportToEnd);
             menu.addSeparator();
             menu.addCommandItem(manager, AppCommands::transportLoop);
+        } else if (menuName == "View") {
+            menu.addCommandItem(manager, AppCommands::viewZoomToProject);
+            menu.addCommandItem(manager, AppCommands::viewZoomToSelection);
+            menu.addCommandItem(manager, AppCommands::viewZoomIn);
+            menu.addCommandItem(manager, AppCommands::viewZoomOut);
         } else if (menuName == "Settings") {
             menu.addCommandItem(manager, AppCommands::settingsAudioMidi);
             menu.addCommandItem(manager, AppCommands::settingsPlugins);
@@ -145,6 +157,7 @@ public:
             case editDelete:
                 result.setInfo("Delete", "Delete the selected item", "Edit", 0);
                 result.addDefaultKeypress(KeyPress::deleteKey, 0);
+                result.addDefaultKeypress(KeyPress::backspaceKey, 0);
                 break;
 
             case editCut:
@@ -195,6 +208,27 @@ public:
                 result.addDefaultKeypress('l', ModifierKeys::commandModifier);
                 break;
 
+            // View commands
+            case viewZoomToProject:
+                result.setInfo("Zoom to project", "Zoom to project", "View", 0);
+                result.addDefaultKeypress('Z', ModifierKeys::shiftModifier);
+                break;
+
+            case viewZoomToSelection:
+                result.setInfo("Zoom to selection", "Zoom to selection", "View", 0);
+                result.addDefaultKeypress('Z', 0);
+                break;
+
+            case viewZoomIn:
+                result.setInfo("Zoom in", "Zoom in", "View", 0);
+                result.addDefaultKeypress('=', 0);
+                break;
+
+            case viewZoomOut:
+                result.setInfo("Zoom out", "Zoom out", "View", 0);
+                result.addDefaultKeypress('-', 0);
+                break;
+
             // Settings commands
             case settingsAudioMidi:
                 result.setInfo("Audio/MIDI", "Open audio and MIDI settings", "Settings", 0);
@@ -232,31 +266,31 @@ public:
     appropriate place, regardless of whether it was triggered by a menu, keypress or some other
     method.
 */
-class CommandManager : public ApplicationCommandManager {
-public:
-    CommandManager() = default;
+// class CommandManager : public ApplicationCommandManager {
+// public:
+//     CommandManager() = default;
 
-    void initializeWithTarget(ApplicationCommandTarget* target) {
-        setFirstCommandTarget(target);
-        registerAllCommandsForTarget();
-    }
+//     void initializeWithTarget(ApplicationCommandTarget* target) {
+//         setFirstCommandTarget(target);
+//         myRegisterAllCommandsForTarget();
+//     }
 
-    void registerAllCommandsForTarget() {
-        auto commands = AppCommands::getCommandIDs();
-        for (auto commandID : commands) {
-            ApplicationCommandInfo info(commandID);
-            AppCommands::getCommandInfo(commandID, info);
-            registerCommand(info);
-        }
-    }
+//     void myRegisterAllCommandsForTarget() {
+//         auto commands = AppCommands::getCommandIDs();
+//         for (auto commandID : commands) {
+//             ApplicationCommandInfo info(commandID);
+//             AppCommands::getCommandInfo(commandID, info);
+//             registerCommand(info);
+//         }
+//     }
 
-    PopupMenu createMenu(const String& menuName) {
-        return AppCommands::createMenu(this, menuName);
-    }
+//     PopupMenu createMenu(const String& menuName) {
+//         return AppCommands::createMenu(this, menuName);
+//     }
 
-private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CommandManager)
-};
+// private:
+//     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CommandManager)
+// };
 
 
 } // namespace MoTool::Commands

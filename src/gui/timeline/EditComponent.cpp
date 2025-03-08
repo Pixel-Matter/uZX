@@ -1,18 +1,33 @@
 #include <JuceHeader.h>
 
+#include "EditComponent.h"
 #include "../common/Utilities.h"
 #include "../common/Components.h"
-#include "EditComponent.h"
+#include "../app/Commands.h"
+#include "../app/App.h"
 
 namespace MoTool {
 
 //==============================================================================
-EditComponent::EditComponent(te::Edit& e, te::SelectionManager& sm)
+EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
     : edit (e)
-    , editViewState (e, sm)
+    , editViewState (evs)
 {
     edit.state.addListener(this);
     editViewState.selectionManager.addChangeListener(this);
+    editViewState.state.addListener(this);
+    editViewState.zoom.addListener(this);
+
+    // needed to be able to recieve commands from the command manager?
+    // setWantsKeyboardFocus(true);
+    // setFocusContainerType(FocusContainerType::focusContainer);
+
+    // TODO or maybe register itself in MoToolApp::registerCommandTarget(this)
+    // to add to commaind chain?
+    // register commands
+    // auto& mgr = MoToolApp::getCommandManager();
+    // mgr.registerAllCommandsForTarget(this);
+    // mgr.setFirstCommandTarget(this);
 
     addAndMakeVisible(playhead);
     addAndMakeVisible(ruler);
@@ -20,18 +35,83 @@ EditComponent::EditComponent(te::Edit& e, te::SelectionManager& sm)
 }
 
 EditComponent::~EditComponent() {
+    // MoToolApp::getCommandManager().setFirstCommandTarget(nullptr);
+    editViewState.zoom.removeListener(this);
+    editViewState.state.removeListener(this);
     editViewState.selectionManager.removeChangeListener(this);
     edit.state.removeListener(this);
 }
 
+// ApplicationCommandTarget* EditComponent::getNextCommandTarget() {
+//     DBG("EditComponent::getNextCommandTarget");
+//     return findFirstTargetParentComponent();
+//     // return nullptr;
+// }
+
+// void EditComponent::getAllCommands(Array<CommandID>& commands) {
+//     using namespace Commands;
+//     const CommandID ids[] = {
+//         AppCommands::viewZoomToProject, AppCommands::viewZoomToSelection, AppCommands::viewZoomIn, AppCommands::viewZoomOut,
+//     };
+//     commands.addArray(ids, numElementsInArray(ids));
+// }
+
+// void EditComponent::getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) {
+//     DBG("EditComponent::getCommandInfo: " << commandID);
+//     using namespace Commands;
+//     switch (commandID) {
+//         case AppCommands::viewZoomToProject:
+//             result.setInfo("Zoom to project", "Zoom to project", "View", 0);
+//             result.addDefaultKeypress('Z', ModifierKeys::shiftModifier);
+//             break;
+
+//         case AppCommands::viewZoomToSelection:
+//             result.setInfo("Zoom to selection", "Zoom to selection", "View", 0);
+//             result.addDefaultKeypress('Z', 0);
+//             break;
+
+//         case AppCommands::viewZoomIn:
+//             result.setInfo("Zoom in", "Zoom in", "View", 0);
+//             result.addDefaultKeypress('=', 0);
+//             break;
+
+//         case AppCommands::viewZoomOut:
+//             result.setInfo("Zoom out", "Zoom out", "View", 0);
+//             result.addDefaultKeypress('-', 0);
+//             break;
+//     }
+// }
+
+// // TODO lets make nice API for defining and performing commands in a Component
+
+// bool EditComponent::perform(const InvocationInfo& info) {
+//     DBG("EditComponent::perform: " << info.commandID);
+//     using namespace Commands;
+//     switch (info.commandID) {
+//         case AppCommands::viewZoomIn:
+//             zoomTracksHorizontally(1.0 / 1.25);
+//             return true;
+//         case AppCommands::viewZoomOut:
+//             zoomTracksHorizontally(1.25);
+//             return true;
+//         case AppCommands::viewZoomToProject:
+//             zoomToFit();
+//             return true;
+//         default:
+//             return false;
+//     }
+// }
+
 void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
-    // FIXME abstraction leaked
+    // FIXME abstraction leaked. Change to EditViewState::Listener
     if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::viewX1
-            || i == IDs::viewX2
-            || i == IDs::viewY) {
-            markAndUpdate(updateZoom);
-        } else if (i == IDs::showHeaders
+        // if (i == IDs::viewX1
+        //     || i == IDs::viewX2
+        //     || i == IDs::viewY) {
+        //     // DBG("EditComponent::valueTreePropertyChanged: " << i);
+        //     markAndUpdate(updateZoom);
+        // } else
+        if (i == IDs::showHeaders
                  || i == IDs::showFooters) {
             markAndUpdate(updateZoom);
         } else if (i == IDs::drawWaveforms) {
@@ -40,26 +120,26 @@ void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Ide
     }
 }
 
-void EditComponent::zoomTracksHorizontally(te::TimePosition pos, double factor) {
-    editViewState.zoom.zoomHorizontally(pos, factor);
-    markAndUpdate(updateZoom);
-}
+// void EditComponent::zoomTracksHorizontally(double factor) {
+//     editViewState.zoom.zoomHorizontally(factor);
+//     markAndUpdate(updateZoom);
+// }
 
-void EditComponent::zoomToFit() {
-    auto range = Helpers::getEffectiveClipsTimeRange(edit);
-    if (!range.isEmpty()) {
-        editViewState.zoom.setRange(range);
-        markAndUpdate(updateZoom);
-    }
-}
+// void EditComponent::zoomToFit() {
+//     auto range = Helpers::getEffectiveClipsTimeRange(edit);
+//     if (!range.isEmpty()) {
+//         editViewState.zoom.setRange(range);
+//         markAndUpdate(updateZoom);
+//     }
+// }
 
 void EditComponent::valueTreeChildAdded (juce::ValueTree&, juce::ValueTree& c) {
-    if (te::TrackList::isTrack (c))
+    if (te::TrackList::isTrack(c))
         markAndUpdate(updateTracks);
 }
 
 void EditComponent::valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree& c, int) {
-    if (te::TrackList::isTrack (c))
+    if (te::TrackList::isTrack(c))
         markAndUpdate(updateTracks);
 }
 

@@ -48,19 +48,19 @@ public:
         return dynamic_cast<ApplicationCommandManager*>(&MoToolApp::getCommandManager());
     }
 
-    void getAllCommands(juce::Array<juce::CommandID>& commands) override {
-        if (auto* win = MoToolApp::getApp().getMainWindow())
-            return win->getAllCommands(commands);
+    void getAllCommands(juce::Array<juce::CommandID>& /*commands*/) override {
+        // if (auto* win = MoToolApp::getApp().getMainWindow())
+        //     return win->getAllCommands(commands);
     }
-    void getCommandInfo(juce::CommandID cmd, juce::ApplicationCommandInfo& result) override {
-        if (auto* win = MoToolApp::getApp().getMainWindow())
-            win->getCommandInfo(cmd, result);
+    void getCommandInfo(juce::CommandID /*cmd*/, juce::ApplicationCommandInfo& /*result*/) override {
+        // if (auto* win = MoToolApp::getApp().getMainWindow())
+        //     win->getCommandInfo(cmd, result);
     }
-    bool perform(const juce::ApplicationCommandTarget::InvocationInfo& info) override {
-        if (auto* win = MoToolApp::getApp().getMainWindow())
-            return win->perform(info);
+    bool perform(const juce::ApplicationCommandTarget::InvocationInfo& /*info*/) override {
+        // if (auto* win = MoToolApp::getApp().getMainWindow())
+        //     return win->perform(info);
         return false;
-     }
+    }
 
     //==============================================================================
     /** Should show the new plugin window and creates the Plugin the user selects. */
@@ -101,8 +101,12 @@ public:
     void showSafeRecordDialog(te::TransportControl&)            override {}
     void hideSafeRecordDialog(te::TransportControl&)            override {}  // empty line
     void showProjectScreen()                                    override {}
+
     // TODO implement
-    void showSettingsScreen()                                   override {}
+    void showSettingsScreen()                                   override {
+        // EngineHelpers::showAudioDeviceSettings(engine);
+    }
+
     void showEditScreen()                                       override {}  // empty line
     void showHideVideo()                                        override {}
     void showHideInputs()                                       override {}
@@ -137,11 +141,25 @@ public:
     void resetOverloads()                                       override {}
     void resetPeaks()                                           override {}
 
-    // TODO implement this
-    void zoomHorizontal(float /*increment*/)                    override {}
+    void zoomHorizontal(float increment)                        override {
+        // DBG("zoomHorizontal: " << increment);
+        if (auto* win = MoToolApp::getApp().getMainWindow()) {
+            auto viewState = win->getEditViewState();
+            viewState->zoom.zoomHorizontally(increment);
+        }
+    }
     void zoomVertical(float /*amount*/)                         override {}
     void zoomToSelection()                                      override {}
-    void zoomToFitHorizontally()                                override {}
+    void zoomToFitHorizontally()                                override {
+        if (auto* win = MoToolApp::getApp().getMainWindow()) {
+            auto viewState = win->getEditViewState();
+            auto range = Helpers::getEffectiveClipsTimeRange(*win->getEdit());
+            if (!range.isEmpty()) {
+                viewState->zoom.setRange(range);
+            }
+
+        }
+    }
     void zoomToFitVertically()                                  override {}
 
     //==============================================================================

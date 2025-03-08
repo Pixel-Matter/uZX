@@ -40,7 +40,7 @@ void MoToolApp::systemRequestedQuit() {
     quit();
 }
 
-CommandManager& MoToolApp::getCommandManager() {
+ApplicationCommandManager& MoToolApp::getCommandManager() {
     return getApp().commandManager;
 }
 

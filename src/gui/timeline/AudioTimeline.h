@@ -34,24 +34,22 @@ inline static const auto MIDI_CLIP_DATA = MoTool::Util::b64Decode("TVRoZAAAAAYAA
 //==============================================================================
 /** TODO
     - Move buttons to toolbar component
-    - Make zoom struct
     - Make grid positions struct with several types of subdivisions: regions/arranger clips, bars, beats, subs, frames
     - Make grid component
 */
 
 //==============================================================================
-class MidiTimeline  : public Component,
+class AudioTimeline : public Component,
                       private ChangeListener
 {
 public:
     //==============================================================================
-    MidiTimeline (te::Edit& ed, te::SelectionManager& selMgr)
+    AudioTimeline (te::Edit& ed, EditViewState& evs, te::SelectionManager& selMgr)
         : engine {ed.engine}
         , edit {ed}
         , selectionManager {selMgr}
-        , editComponent {edit, selectionManager}
+        , editComponent {edit, evs}
     {
-        auto& evs = editComponent.getEditViewState();
         evs.showFooters = true;
         evs.showMidiDevices = true;
         evs.showWaveDevices = false;
@@ -84,9 +82,14 @@ public:
         // }
 
         // ===================================================================================
-        zoomInButton.onClick =       [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 1.0 / 1.25); };
-        zoomOutButton.onClick =      [this] { editComponent.zoomTracksHorizontally(edit.getTransport().getPosition(), 1.25); };
-        zoomFitButton.onClick =      [this] { editComponent.zoomToFit(); };
+        if (auto mgr = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
+            zoomInButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomIn, true);
+            zoomOutButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomOut, true);
+            zoomFitButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomToProject, true);
+        }
+        // zoomInButton.onClick =       [this] { editComponent.zoomTracksHorizontally(1.0 / 1.25); };
+        // zoomOutButton.onClick =      [this] { editComponent.zoomTracksHorizontally(1.25); };
+        // zoomFitButton.onClick =      [this] { editComponent.zoomToFit(); };
 
         setSize(600, 400);
         ::Helpers::addAndMakeVisible(*this, { &editComponent,
@@ -98,7 +101,7 @@ public:
                                             });
     }
 
-    ~MidiTimeline() override {
+    ~AudioTimeline() override {
         selectionManager.deselectAll();
         selectionManager.removeChangeListener(this);
     }
@@ -267,7 +270,7 @@ private:
         edit.restartPlayback();
     }
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MidiTimeline)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioTimeline)
 };
 
 }  // namespace MoTool

@@ -24,7 +24,7 @@ class MainWindow final : public DocumentWindow,
                          public ApplicationCommandTarget,
                          private ChangeListener {
 public:
-    MainWindow(String name, te::Engine& engine, CommandManager& cmdMgr)
+    MainWindow(String name, te::Engine& engine, ApplicationCommandManager& cmdMgr)
         : DocumentWindow(name,
             Colors::Theme::backgroundAlt,
             DocumentWindow::allButtons)
@@ -37,17 +37,21 @@ public:
         centreWithSize(getWidth(), getHeight());
 
         setEdit(createOrLoadEdit(getStartupEditFile()));
-        commandManager_.initializeWithTarget(this);
-        #if JUCE_MAC
-            setMacMainMenu(this);
-        #else
-            setMenuBar(this);
-        #endif
+        selectionManager_.addChangeListener(this);
+
+        commandManager_.registerAllCommandsForTarget(this);
+        // commandManager_.setFirstCommandTarget(this);
         // Install key mappings
         commandManager_.getKeyMappings()->resetToDefaultMappings();
         addKeyListener(commandManager_.getKeyMappings());
 
-        selectionManager_.addChangeListener(this);
+        // menuBarModel::
+        setApplicationCommandManagerToWatch(&commandManager_);
+        #if JUCE_MAC
+        setMacMainMenu(this);
+        #else
+        setMenuBar(this);
+        #endif
 
         setVisible(true);
     }
@@ -57,6 +61,7 @@ public:
             te::EditFileOperations(*edit_).save(true, true, false);
             edit_->getTempDirectory(false).deleteRecursively();
         }
+        // commandManager_.setFirstCommandTarget(nullptr);
         selectionManager_.removeChangeListener(this);
         removeKeyListener(commandManager_.getKeyMappings());
         #if JUCE_MAC
@@ -72,6 +77,10 @@ public:
         return edit_.get();
     }
 
+    EditViewState* getEditViewState() {
+        return editViewState_.get();
+    }
+
     te::SelectionManager& getSelectionManager() {
         return selectionManager_;
     }
@@ -85,15 +94,30 @@ public:
     }
 
     PopupMenu getMenuForIndex(int /* menuIndex */, const String& menuName) override {
-        return commandManager_.createMenu(menuName);
+        return AppCommands::createMenu(&commandManager_, menuName);
     }
 
     void menuItemSelected(int /* menuItemID */, int /* topLevelMenuIndex*/ ) override {
         // hadled by CommandManager
-        // commandManager.invokeDirectly(menuItemID, true);
     }
 
     ApplicationCommandTarget* getNextCommandTarget() override {
+        // DBG("MainWindow::getNextCommandTarget");
+        // find in children
+        // for (auto* c : getChildren()) {
+        //     if (auto* main = dynamic_cast<MainDocumentComponent*>(c)) {
+        //         DBG("MainWindow::getNextCommandTarget: MainDocumentComponent found");
+        //         for (auto* d : main->getChildren()) {
+        //             if (auto* target = dynamic_cast<ApplicationCommandTarget*>(d)) {
+        //                 DBG("MainWindow::getNextCommandTarget: found");
+        //                 return target;
+        //             }
+        //         }
+        //     } else {
+        //         DBG("MainWindow::getNextCommandTarget: MainDocumentComponent not found");
+        //     }
+        // }
+        // DBG("MainWindow::getNextCommandTarget: not found");
         return nullptr;
     }
 
@@ -162,11 +186,17 @@ public:
                 result.setTicked(edit_ != nullptr && edit_->getTransport().looping);
                 break;
 
+            // case AppCommands::viewZoomToSelection:
+            //     result.setActive(edit_ != nullptr);
+            //     // TODO check if there is a selection
+            //     break;
+
             // Add more dynamic command states...
         }
     }
 
     bool perform(const InvocationInfo& info) override {
+        // DBG("MainWindow::perform: " << info.commandID);
         switch (info.commandID) {
             case AppCommands::fileNew:
                 handleNew();
@@ -207,6 +237,7 @@ public:
                 te::AppFunctions::deleteSelected();
                 break;
 
+            // Transport commands
             case AppCommands::transportPlay:
                 te::AppFunctions::startStopPlay();
                 break;
@@ -231,6 +262,24 @@ public:
                 te::AppFunctions::toggleLoop();
                 break;
 
+            // View commands
+            case AppCommands::viewZoomToProject:
+                te::AppFunctions::zoomToFitHorizontally();
+                break;
+
+            case AppCommands::viewZoomToSelection:
+                te::AppFunctions::zoomToSelection();
+                break;
+
+            case AppCommands::viewZoomIn:
+                te::AppFunctions::zoomIn();
+                break;
+
+            case AppCommands::viewZoomOut:
+                te::AppFunctions::zoomOut();
+                break;
+
+            // Settings commands
             case AppCommands::settingsAudioMidi:
                 EngineHelpers::showAudioDeviceSettings(engine_);
                 break;
@@ -249,8 +298,9 @@ public:
 private:
     te::Engine& engine_;
     std::unique_ptr<te::Edit> edit_;
-    CommandManager& commandManager_;
+    std::unique_ptr<EditViewState> editViewState_;
     te::SelectionManager selectionManager_ {engine_};
+    ApplicationCommandManager& commandManager_;
 
     void handleNew() {
         auto newEdit = createOrLoadEdit(getTempEditFile());
@@ -325,9 +375,12 @@ private:
         auto w = getWidth(), h = getHeight();
         clearContentComponent();
 
+        editViewState_.reset();
         edit_ = std::move(edit);
+        editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
+
         setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
-        setContentOwned(new MainDocumentComponent(*edit_, getSelectionManager()), true);
+        setContentOwned(new MainDocumentComponent(*edit_, *editViewState_, getSelectionManager()), true);
         setSize(w, h);
         repaint();
     }
@@ -364,7 +417,7 @@ public:
         return mainWindow_.get();
     }
 
-    static CommandManager& getCommandManager();
+    static ApplicationCommandManager& getCommandManager();
 
     static MoToolApp& getApp();
 
@@ -372,7 +425,7 @@ private:
     te::Engine engine_;
     std::unique_ptr<MainWindow> mainWindow_;
     std::unique_ptr<MoLookAndFeel> lookAndFeel;
-    CommandManager commandManager;
+    ApplicationCommandManager commandManager;
 };
 
 namespace Commands {

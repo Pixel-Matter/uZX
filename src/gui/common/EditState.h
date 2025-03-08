@@ -42,6 +42,13 @@ namespace te = tracktion;
 //==============================================================================
 class ZoomViewState {
 public:
+
+    class Listener {
+    public:
+        virtual ~Listener() = default;
+        virtual void zoomChanged() = 0;
+    };
+
     ZoomViewState(te::Edit& e, ValueTree& st)
         : edit(e)
         , state(st)
@@ -53,6 +60,14 @@ public:
         viewY.referTo(state, IDs::viewY, um, 0);      // not used yet
     }
 
+    void addListener(Listener* l) {
+        listeners.add(l);
+    }
+
+    void removeListener(Listener* l) {
+        listeners.remove(l);
+    }
+
     te::TimeRange getRange() const {
         return {viewX1, viewX2};
     }
@@ -60,6 +75,7 @@ public:
     void setRange(te::TimeRange range) {
         viewX1 = range.getStart();
         viewX2 = range.getEnd();
+        listeners.call(&Listener::zoomChanged);
     }
 
     te::TimePosition getRangeStart() const {
@@ -103,22 +119,25 @@ public:
         return durationToPixels(te::TimeDuration::fromSeconds(beatDur), width);
     }
 
-    void zoomHorizontally(te::TimePosition pos, double factor) {
+    void zoomHorizontally(double factor) {
+        double scaleFactor = std::pow(2.0, -factor * 5.0);
+        auto pos = edit.getTransport().getPosition();
         auto range = viewLength();
-        auto newHalfRange = range * factor / 2.0;
-        // limit zoom to 1s to 1 year
+        auto newHalfRange = range * scaleFactor / 2.0;
+        // limit zoom to 1s .. 1 hour
         if (newHalfRange > 0.5s && newHalfRange < 600s) {
-            viewX1 = pos - newHalfRange;
-            viewX1 = jmax(te::TimePosition(), viewX1.get());
+            viewX1 = jmax(te::TimePosition(), pos - newHalfRange);
             viewX2 = viewX1 + newHalfRange * 2.0;
+            listeners.call(&Listener::zoomChanged);
         }
     }
 
-private:
     te::Edit& edit;
+    ValueTree state;
+private:
     CachedValue<te::TimePosition> viewX1, viewX2;
     CachedValue<double> viewY;
-    ValueTree state;
+    ListenerList<Listener> listeners;
 };
 
 
@@ -155,6 +174,7 @@ public:
 
 private:
     te::Edit& edit;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditViewState)
 };
 
 }  // namespace MoTool

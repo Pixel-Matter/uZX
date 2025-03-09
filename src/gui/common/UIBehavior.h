@@ -102,9 +102,9 @@ public:
     void hideSafeRecordDialog(te::TransportControl&)            override {}  // empty line
     void showProjectScreen()                                    override {}
 
-    // TODO implement
     void showSettingsScreen()                                   override {
-        // EngineHelpers::showAudioDeviceSettings(engine);
+        auto& engine = MoToolApp::getApp().getEngine();
+        EngineHelpers::showAudioDeviceSettings(engine);
     }
 
     void showEditScreen()                                       override {}  // empty line
@@ -149,7 +149,18 @@ public:
         }
     }
     void zoomVertical(float /*amount*/)                         override {}
-    void zoomToSelection()                                      override {}
+
+    void zoomToSelection()                                      override {
+        if (auto* win = MoToolApp::getApp().getMainWindow()) {
+            auto viewState = win->getEditViewState();
+            auto objects = win->getSelectionManager().getSelectedObjects();
+            auto range = te::getTimeRangeForSelectedItems(objects);
+            if (!range.isEmpty()) {
+                viewState->zoom.setRange(range);
+            }
+        }
+    }
+
     void zoomToFitHorizontally()                                override {
         if (auto* win = MoToolApp::getApp().getMainWindow()) {
             auto viewState = win->getEditViewState();

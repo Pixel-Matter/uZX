@@ -77,6 +77,10 @@ public:
         return edit_.get();
     }
 
+    te::Engine& getEngine() {
+        return engine_;
+    }
+
     EditViewState* getEditViewState() {
         return editViewState_.get();
     }
@@ -405,6 +409,11 @@ public:
     const String getApplicationVersion() override   {
         return ProjectInfo::versionString;
     }
+
+    te::Engine& getEngine() {
+        return engine_;
+    }
+
     bool moreThanOneInstanceAllowed() override  { return true; }
 
     void initialise(const String&) override;

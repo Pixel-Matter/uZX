@@ -255,8 +255,8 @@ void ClipComponent::paint(Graphics& g) {
     g.fillRoundedRectangle(getLocalBounds().toFloat(), 6.0f);
 
     if (editViewState.selectionManager.isSelected(clip.get())) {
-        g.setColour(Colors::Timeline::clipSelected);
-        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0), 6.0f, 2.0f);
+        g.setColour(Colours::white.withAlpha(0.5f));
+        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0), 5.0f, 2.0f);
     } else {
         // g.setColour(Colors::Theme::border.withAlpha(0.5f));
         // g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0), 6.0f, 2.0f);

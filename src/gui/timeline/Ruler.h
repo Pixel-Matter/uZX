@@ -102,8 +102,8 @@ public:
     }
 
     void resized() override {
-        DBG("RulerComponent::resized");
-        repaint();
+        // DBG("RulerComponent::resized");
+        // repaint();
     }
 
     void mouseDown(const MouseEvent& e) override {

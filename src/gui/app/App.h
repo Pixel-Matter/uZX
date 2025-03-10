@@ -6,15 +6,15 @@
 #include "Commands.h"
 
 #include "../common/LookAndFeel.h"
-// #include "../../model/Selectable.h"
+#include "../common/Utilities.h"
 #include "../../util/FileOps.h"
-#include "tracktion_engine/tracktion_engine.h"
 
 #include <memory>
 
 using namespace juce;
 using namespace MoTool::Commands;
 using namespace MoTool::EditFileOps;
+using namespace MoTool::Helpers;
 
 
 namespace MoTool {
@@ -225,6 +225,12 @@ public:
                 }
                 break;
 
+            case AppCommands::fileImportPsg:
+                if (edit_ != nullptr) {
+                    importPsgAsClip(*edit_, selectionManager_);
+                }
+                break;
+
             case AppCommands::fileQuit:
                 JUCEApplication::getInstance()->systemRequestedQuit();
                 break;
@@ -239,6 +245,13 @@ public:
 
             case AppCommands::editDelete:
                 te::AppFunctions::deleteSelected();
+                break;
+
+            // Add commands
+            case AppCommands::addAudioTrack:
+                if (edit_ != nullptr) {
+                    // addAudioTrack(*edit_, selectionManager_);
+                }
                 break;
 
             // Transport commands
@@ -256,10 +269,12 @@ public:
 
             case AppCommands::transportToStart:
                 te::AppFunctions::goToStart();
+                editViewState_->zoom.scrollToCurrentPosition();
                 break;
 
             case AppCommands::transportToEnd:
                 te::AppFunctions::goToEnd();
+                editViewState_->zoom.scrollToCurrentPosition();
                 break;
 
             case AppCommands::transportLoop:
@@ -381,6 +396,13 @@ private:
 
         editViewState_.reset();
         edit_ = std::move(edit);
+        // FIXME implement BPM editing
+        // 8 * 13f = 104f — one bar
+        // one beat - 104f / 4 = 26f = 1s / 50f * 26f = 0.52s
+        // beats per minute = 60 * 50 / 26 = 115.3846153846 bpm
+        // need to remap clips to new tempo
+        edit_->tempoSequence.getTempoAt(edit_->getTransport().getPosition()).setBpm(115.3846153846);
+
         editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 
         setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());

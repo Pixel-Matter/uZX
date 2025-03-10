@@ -163,7 +163,7 @@ void EditComponent::handleAsyncUpdate() {
 void EditComponent::resized() {
     jassert (headers.size() == tracks.size());
 
-    const int trackHeight = 100, trackGap = 4, rulerHeight = 32;
+    const int trackHeight = 160, trackGap = 4, rulerHeight = 32;
     const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
     const int footerWidth = editViewState.showFooters ? 100 : 0;
 

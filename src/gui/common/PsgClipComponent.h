@@ -67,11 +67,11 @@ public:
         const auto rect = getLocalBounds();
         const auto clipRange = psgClip->getEditTimeRange();
         const auto viewRange = editViewState.zoom.getRange();
-        const auto frameDur = te::TimeDuration::fromSeconds(1 / 50.0);
-
         auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
             return roundToInt(((time - clipRange.getStart()) * width) / l);
         };
+        const auto frameDur = te::TimeDuration::fromSeconds(1.0 / 50.0);
+        const auto pixelsPerFrame = frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds();
 
         auto& regs = psgClip->getSequence().getControllerEvents();
         if (regs.size() == 0)
@@ -80,6 +80,7 @@ public:
         const int regsRange = 14;
         const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / regsRange);
         const float left = static_cast<float>(rect.getX());
+        g.setFont(12.0f);
 
         for (auto reg : regs) {
             int regNumber = reg->getType() - 20;
@@ -90,22 +91,23 @@ public:
             if (s >= clipRange.getEnd() || s >= viewRange.getEnd())
                 break;
 
-            float x1 = (float) timeToX(s) - left;
+            float x1 = (float)timeToX(s) - left;
             if (x1 < 0)
                 continue;
-            float x2 = (float)timeToX(s + frameDur) - left;
-            // float x2 = x1 + 1;
-
             float y1 = (static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
 
             auto color = ColorCoding::regColors[static_cast<size_t>(regNumber)];
-            auto value = static_cast<float>(reg->getControllerValue()) / 255.0f;
-            color = color.withLightness(0.75f);
-            // color = color.withMultipliedLightness(1.0f);
-            g.setColour(color);
-            // g.fillRect(x1, y1, x2 - x1, laneHeight);
-            y1 = y1 + laneHeight * value;
-            g.drawLine(x1, y1, x2, y1, 1.0f);
+            if (pixelsPerFrame >= 12) {
+                String hexValue = choc::text::createHexString(static_cast<uint8_t>(reg->getControllerValue()), 2);
+                g.setColour(color.withLightness(0.75f));
+                g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
+                g.setColour(Colours::black);
+                g.drawText(hexValue, (int)(x1 + 0), (int)y1, (int)(pixelsPerFrame), (int)laneHeight, Justification::left, false);
+            } else {
+                auto value = static_cast<float>(reg->getControllerValue()) / 255.0f;
+                g.setColour(color.withLightness(0.75f).withAlpha(0.5f + value / 2.0f));
+                g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
+            }
         }
         // DBG("Painted " << counter << " registers");
     }

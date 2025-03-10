@@ -5,6 +5,7 @@
 #include "CustomClip.h"
 #include "../formats/psg/PsgFile.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
+#include "tracktion_engine/tracktion_engine.h"
 
 namespace te = tracktion;
 

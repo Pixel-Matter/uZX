@@ -2,6 +2,11 @@
 
 #include <JuceHeader.h>
 
+#include "../../formats/psg/PsgFile.h"
+#include "../../model/PsgClip.h"
+
+#include <common/Utilities.h>
+
 #include <string>
 
 namespace te = tracktion;
@@ -43,6 +48,7 @@ inline void browseForPSGFile(te::Engine& engine, std::function<void (const File&
     browseForFile(engine, "a PSG", String(PSG_WILDCARD), fileChosenCallback);
 }
 
+// TODO see Edit::something for implenetation
 inline te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
     te::TimeRange result;
 
@@ -63,6 +69,32 @@ inline te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
     });
 
     return result;
+}
+
+
+inline te::AudioTrack* getSelectedOrInsertAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
+    auto sel = selectionManager.getSelectedObject(0);
+    auto track = dynamic_cast<te::AudioTrack*>(sel);
+    if (track == nullptr) {
+        track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
+    }
+    return track;
+}
+
+inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor = false) {
+    Helpers::browseForPSGFile(edit.engine, [&](const File& f) {
+        auto track = getSelectedOrInsertAudioTrack(edit, selectionManager);
+        auto psgFile = uZX::PsgFile(f);
+        psgFile.ensureRead();
+        te::TimePosition insertTime;
+        if (insertAtCursor) {
+            insertTime = edit.getTransport().getPosition();
+        }
+        te::ClipPosition pos = {{insertTime, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
+        if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
+            DBG("Inserted clip: " << inserted->getName());
+        }
+    });
 }
 
 }  // namespace MoToolHelpers

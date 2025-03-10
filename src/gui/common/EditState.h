@@ -44,8 +44,8 @@ namespace te = tracktion;
 //==============================================================================
 class ZoomViewState :
         private Timer,
-        // private te::TransportControl::Listener,
-                      private ChangeListener {
+        private te::TransportControl::Listener,
+        private ChangeListener {
 public:
 
     class Listener {
@@ -63,13 +63,13 @@ public:
         viewX1.referTo(state, IDs::viewX1, um, 0s);   // time of the left edge of the view
         viewX2.referTo(state, IDs::viewX2, um, 60s);  // time of the right edge of the view
         viewY.referTo(state, IDs::viewY, um, 0);      // not used yet
-        // edit.getTransport().addListener(this);
+        edit.getTransport().addListener(this);
         edit.getTransport().addChangeListener(this);
     }
 
     ~ZoomViewState() override {
         edit.getTransport().removeChangeListener(this);
-        // edit.getTransport().removeListener(this);
+        edit.getTransport().removeListener(this);
     }
 
     void addListener(Listener* l) {
@@ -88,6 +88,10 @@ public:
         viewX1 = range.getStart();
         viewX2 = range.getEnd();
         listeners.call(&Listener::zoomChanged);
+    }
+
+    void setStart(te::TimePosition start) {
+        setRange({start, start + viewLength()});
     }
 
     te::TimePosition getRangeStart() const {
@@ -131,13 +135,28 @@ public:
         return durationToPixels(te::TimeDuration::fromSeconds(beatDur), width);
     }
 
+    bool scrollToPosition(te::TimePosition pos) {
+        if (pos < viewX1 || pos > viewX2) {
+            auto range = viewLength();
+            auto newViewX1 = jmax(te::TimePosition(), pos - range / 2.0);
+            setStart(newViewX1);
+            return true;
+        }
+        return false;
+    }
+
+    bool scrollToCurrentPosition() {
+        auto pos = edit.getTransport().getPosition();
+        return scrollToPosition(pos);
+    }
+
     void zoomHorizontally(double factor) {
         double scaleFactor = std::pow(2.0, -factor * 5.0);
         auto pos = edit.getTransport().getPosition();
         auto range = viewLength();
         auto newHalfRange = range * scaleFactor / 2.0;
         // limit zoom to 1s .. 1 hour
-        if (newHalfRange > 0.5s && newHalfRange < 600s) {
+        if (newHalfRange > 0.25s && newHalfRange < 600s) {
             viewX1 = jmax(te::TimePosition(), pos - newHalfRange);
             viewX2 = viewX1 + newHalfRange * 2.0;
             listeners.call(&Listener::zoomChanged);
@@ -153,6 +172,7 @@ private:
 
     void changeListenerCallback(ChangeBroadcaster* source) override {
         if (source == &edit.getTransport()) {
+            // DBG("ZoomViewState::changeListenerCallback");
             if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
                 startTimerHz(60);
             } else {
@@ -203,8 +223,7 @@ public:
         showFooters.referTo(state, IDs::showFooters, um, false);
         showMidiDevices.referTo(state, IDs::showMidiDevices, um, false);
         showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
-
-        headersWidth.referTo(state, IDs::headersWidth, nullptr, 150);
+        headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
     }
 
     CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,

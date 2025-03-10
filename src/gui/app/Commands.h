@@ -17,6 +17,7 @@ public:
         fileSave,
         fileSaveAs,
         fileReveal,
+        fileImportPsg,
         fileQuit,
 
         // Edit Menu
@@ -27,8 +28,12 @@ public:
         editCopy,
         editPaste,
 
+        // Add Menu
+        addAudioTrack       = 200,
+        // addMidiClip,
+
         // Transport Menu
-        transportPlay       = 200,
+        transportPlay       = 300,
         transportRecord,
         transportRecordStop,
         transportToStart,
@@ -36,30 +41,31 @@ public:
         transportLoop,
 
         // View menu
-        viewZoomToProject    = 300,
+        viewZoomToProject    = 400,
         viewZoomToSelection,
         viewZoomIn,
         viewZoomOut,
 
         // Settings Menu
-        settingsAudioMidi   = 400,
+        settingsAudioMidi    = 500,
         settingsPlugins,
 
         // Help Menu
-        helpAbout           = 1000
+        helpAbout            = 1000
 
         // Add more commands as needed...
     };
 
     static StringArray getMenuBarNames() {
-        return { "File", "Edit", "Transport", "View", "Settings", "Help" };
+        return { "File", "Edit", "Add", "Transport", "View", "Settings", "Help" };
     }
 
     // Get all commands
     static Array<CommandID> getCommandIDs() {
         CommandID ids[] = {
-            fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileQuit,
+            fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileImportPsg, fileQuit,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
+            addAudioTrack,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
             settingsAudioMidi, settingsPlugins,
@@ -79,6 +85,8 @@ public:
             menu.addCommandItem(manager, AppCommands::fileSaveAs);
             menu.addCommandItem(manager, AppCommands::fileReveal);
             menu.addSeparator();
+            menu.addCommandItem(manager, AppCommands::fileImportPsg);
+            menu.addSeparator();
             menu.addCommandItem(manager, AppCommands::fileQuit);
         } else if (menuName == "Edit") {
             menu.addCommandItem(manager, AppCommands::editUndo);
@@ -88,6 +96,8 @@ public:
             menu.addCommandItem(manager, AppCommands::editCut);
             menu.addCommandItem(manager, AppCommands::editCopy);
             menu.addCommandItem(manager, AppCommands::editPaste);
+        } else if (menuName == "Add") {
+            menu.addCommandItem(manager, AppCommands::addAudioTrack);
         } else if (menuName == "Transport") {
             menu.addCommandItem(manager, AppCommands::transportPlay);
             menu.addCommandItem(manager, AppCommands::transportRecord);
@@ -138,6 +148,10 @@ public:
                 result.setInfo("Reveal in Finder", "Reveal the current edit in Finder", "File", 0);
                 break;
 
+            case fileImportPsg:
+                result.setInfo("Import PSG...", "Import PSG file", "File", 0);
+                break;
+
             case fileQuit:
                 result.setInfo("Quit", "Quit the application", "File", 0);
                 result.addDefaultKeypress('q', ModifierKeys::commandModifier);
@@ -173,6 +187,12 @@ public:
             case editPaste:
                 result.setInfo("Paste", "Paste the clipboard content", "Edit", 0);
                 result.addDefaultKeypress('v', ModifierKeys::commandModifier);
+                break;
+
+            // Add commands
+            case addAudioTrack:
+                result.setInfo("Audio Track", "Add a new audio track", "Add", 0);
+                result.addDefaultKeypress('t', ModifierKeys::commandModifier);
                 break;
 
             // Transport commands

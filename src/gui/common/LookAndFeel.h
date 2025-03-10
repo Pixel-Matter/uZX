@@ -53,15 +53,24 @@ struct Timeline {
 
     // Track colors array
     static inline const std::array<juce::Colour, 8> trackColors = {
-        juce::Colour::fromString("#FF3B82F6"),  // blue-500
-        juce::Colour::fromString("#FF10B981"),  // emerald-500
-        juce::Colour::fromString("#FF8B5CF6"),  // violet-500
-        juce::Colour::fromString("#FFF59E0B"),  // amber-500
-        juce::Colour::fromString("#FFEC4899"),  // pink-500
-        juce::Colour::fromString("#FF06B6D4"),  // cyan-500
-        juce::Colour::fromString("#FF84CC16"),  // lime-500
-        juce::Colour::fromString("#FFF97316")   // orange-500
+        juce::Colour(0xFF3B82F6),  // blue-500
+        juce::Colour(0xFF10B981),  // emerald-500
+        juce::Colour(0xFF8B5CF6),  // violet-500
+        juce::Colour(0xFFF59E0B),  // amber-500
+        juce::Colour(0xFFEC4899),  // pink-500
+        juce::Colour(0xFF06B6D4),  // cyan-500
+        juce::Colour(0xFF84CC16),  // lime-500
+        juce::Colour(0xFFF97316)   // orange-500
     };
+};
+
+// PSG specific colors
+struct PSG {
+    inline static const auto A   = juce::Colour(0xffff0000);  // red
+    inline static const auto B   = juce::Colour(0xff00ff00);  // green
+    inline static const auto C   = juce::Colour(0xff0000ff);  // blue
+    inline static const auto Mix = juce::Colour(0xffffff00);  // yellow
+    inline static const auto Env = juce::Colour(0xffff00ff);  // purple
 };
 
 } // namespace Colors

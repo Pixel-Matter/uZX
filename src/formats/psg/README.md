@@ -20,22 +20,22 @@ list of frames, and each frame is a list of pairs (register, value)
 
 ## AY regisers
 
-| Register | Function                 | Range                   |
-|----------|--------------------------|-------------------------|
-|     0    | Channel A fine pitch     | 8-bit (0-255)           |
-|     1    | Channel A coarse pitch   | 4-bit (0-15)            |
-|     2    | Channel B fine pitch     | 8-bit (0-255)           |
-|     3    | Channel B coarse pitch   | 4-bit (0-15)            |
-|     4    | Channel C fine pitch     | 8-bit (0-255)           |
-|     5    | Channel C coarse pitch   | 4-bit (0-15)            |
-|     6    | Noise pitch              | 5-bit (0-31)            |
-|     7    | Mixer                    | 8-bit (see below)       |
-|     8    | Channel A volume + env   | 5-bit (see below)       |
-|     9    | Channel B volume + env   | 5-bit (see below)       |
-|    10    | Channel C volume + env   | 5-bit (see below)       |
-|    11    | Envelope fine duration   | 8-bit (0-255)           |
-|    12    | Envelope coarse duration | 8-bit (0-255)           |
-|    13    | Envelope shape           | 4-bit (0-15)            |
+| Register | Function                 | Range             |
+|----------|--------------------------|-------------------|
+|     0    | Channel A fine pitch     | 8-bit (0-255)     |
+|     1    | Channel A coarse pitch   | 4-bit (0-15)      |
+|     2    | Channel B fine pitch     | 8-bit (0-255)     |
+|     3    | Channel B coarse pitch   | 4-bit (0-15)      |
+|     4    | Channel C fine pitch     | 8-bit (0-255)     |
+|     5    | Channel C coarse pitch   | 4-bit (0-15)      |
+|     6    | Noise pitch              | 5-bit (0-31)      |
+|     7    | Mixer                    | 8-bit (see below) |
+|     8    | Channel A volume + env   | 5-bit (see below) |
+|     9    | Channel B volume + env   | 5-bit (see below) |
+|    10    | Channel C volume + env   | 5-bit (see below) |
+|    11    | Envelope fine duration   | 8-bit (0-255)     |
+|    12    | Envelope coarse duration | 8-bit (0-255)     |
+|    13    | Envelope shape           | 4-bit (0-15)      |
 
 ### Mixer register bits
 

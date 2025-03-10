@@ -12,7 +12,6 @@
 #include <common/Utilities.h>  // from Tracktion
 
 #include "EditState.h"
-#include "../../model/PsgClip.h"
 
 namespace MoTool {
 
@@ -60,18 +59,6 @@ public:
 
     te::MidiClip* getMidiClip() {
         return dynamic_cast<te::MidiClip*>(clip.get());
-    }
-
-    void paint(Graphics& g) override;
-};
-
-//==============================================================================
-class PsgClipComponent : public MidiClipComponent {
-public:
-    using MidiClipComponent::MidiClipComponent;
-
-    PsgClip* getPsgClip() {
-        return dynamic_cast<PsgClip*>(clip.get());
     }
 
     void paint(Graphics& g) override;

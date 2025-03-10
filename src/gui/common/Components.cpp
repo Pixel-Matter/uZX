@@ -8,6 +8,7 @@
 
 #include "Components.h"
 #include "LookAndFeel.h"
+#include "PsgClipComponent.h"
 
 #include "../../plugins/uZX/aychip/AYPlugin.h"
 
@@ -431,55 +432,6 @@ void MidiClipComponent::paint(Graphics& g) {
         g.fillRect(t1, y1, t2 - t1, noteH);
     }
 }
-
-//==============================================================================
-void PsgClipComponent::paint(Graphics& g) {
-    ClipComponent::paint(g);
-
-    auto* psgClip = getPsgClip();
-    if (psgClip == nullptr) return;
-
-    auto rect = getLocalBounds();
-    auto clipRange = psgClip->getEditTimeRange();
-    auto viewRange = editViewState.zoom.getRange();
-
-    auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
-        return roundToInt(((time - clipRange.getStart()) * width) / l);
-    };
-
-    auto& regs = psgClip->getSequence().getControllerEvents();
-    if (regs.size() == 0)
-        return;
-
-    const int regsRange = 14;
-    const float laneHeight = static_cast<float>(rect.getHeight()) / regsRange;
-    const float left = static_cast<float>(rect.getX());
-
-    // int counter = 0;
-    for (auto reg : regs) {
-        int regNumber = reg->getType() - 20;
-
-        auto s = reg->getEditTime(*psgClip);
-        if (s < clipRange.getStart() || s < viewRange.getStart())
-            continue;
-        if (s >= clipRange.getEnd() || s >= viewRange.getEnd())
-            break;
-
-        float x1 = (float) timeToX(s) - left;
-        if (x1 < 0)
-            continue;
-        float x2 = x1 + 1;
-
-        // Map reg position in the visible range (inverted since y=0 is at top)
-        float y1 = (1.0f - static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
-
-        g.setColour(Colours::white.withAlpha(static_cast<float>(reg->getControllerValue()) / 255.0f));
-        g.fillRect(x1, y1, x2 - x1, laneHeight);
-        // ++counter;
-    }
-    // DBG("Painted " << counter << " registers");
-}
-
 
 //==============================================================================
 RecordingClipComponent::RecordingClipComponent (te::Track::Ptr t, EditViewState& evs)

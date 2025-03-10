@@ -154,7 +154,7 @@ private:
     void changeListenerCallback(ChangeBroadcaster* source) override {
         if (source == &edit.getTransport()) {
             if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
-                startTimerHz(30);
+                startTimerHz(60);
             } else {
                 stopTimer();
             }
@@ -172,10 +172,13 @@ private:
             auto leftRange = range.getLength() / 3.0;
             // for paging in the middle of the view
             // if (pos < viewX1 + leftRange || pos > viewX2 - leftRange) {
+
             // for continuous scrolling
-            auto newX1 = jmax(te::TimePosition {}, pos - leftRange);
-            if (newX1 != viewX1)
-                setRange({newX1, newX1 + range.getLength()});
+            if (pos < viewX1 || pos > viewX1 + leftRange) {
+                auto newX1 = jmax(te::TimePosition {}, pos - leftRange);
+                if (newX1 != viewX1)
+                    setRange({newX1, newX1 + range.getLength()});
+            }
         }
     }
 };

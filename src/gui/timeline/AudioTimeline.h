@@ -39,9 +39,9 @@ inline static const auto MIDI_CLIP_DATA = MoTool::Util::b64Decode("TVRoZAAAAAYAA
 */
 
 //==============================================================================
-class AudioTimeline : public Component,
-                      private ChangeListener
-{
+class AudioTimeline : public Component
+                    //   private ChangeListener
+                                                {
 public:
     //==============================================================================
     AudioTimeline (te::Edit& ed, EditViewState& evs, te::SelectionManager& selMgr)
@@ -62,7 +62,7 @@ public:
         createTracksAndAssignInputs();
         te::EditFileOperations(edit).save(true, true, false);
 
-        selectionManager.addChangeListener(this);
+        // selectionManager.addChangeListener(this);
 
         insertMidiButton.onClick =       [this] {
             handleInsertMidiClip();
@@ -78,32 +78,24 @@ public:
 
         // ===================================================================================
         // if (auto mgr = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
-        //     deleteButton.setCommandToTrigger(mgr, Commands::AppCommands::editDelete, true);
+        //     zoomInButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomIn, true);
+        //     zoomOutButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomOut, true);
+        //     zoomFitButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomToProject, true);
         // }
-
-        // ===================================================================================
-        if (auto mgr = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
-            zoomInButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomIn, true);
-            zoomOutButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomOut, true);
-            zoomFitButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomToProject, true);
-        }
-        // zoomInButton.onClick =       [this] { editComponent.zoomTracksHorizontally(1.0 / 1.25); };
-        // zoomOutButton.onClick =      [this] { editComponent.zoomTracksHorizontally(1.25); };
-        // zoomFitButton.onClick =      [this] { editComponent.zoomToFit(); };
 
         setSize(600, 400);
         ::Helpers::addAndMakeVisible(*this, { &editComponent,
                                               &newTrackButton,
-                                            //   &deleteButton,
                                               &insertMidiButton, &insertPSGButton,
+                                            //   &deleteButton,
                                             //    &insertAudioButton,
-                                              &zoomInButton, &zoomOutButton, &zoomFitButton
+                                            //   &zoomInButton, &zoomOutButton, &zoomFitButton
                                             });
     }
 
     ~AudioTimeline() override {
         selectionManager.deselectAll();
-        selectionManager.removeChangeListener(this);
+        // selectionManager.removeChangeListener(this);
     }
 
     //==============================================================================
@@ -120,9 +112,9 @@ public:
         // insertAudioButton.setBounds(topR.removeFromLeft(w).reduced(2));
         newTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
         // deleteButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        zoomInButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        zoomOutButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        zoomFitButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        // zoomInButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        // zoomOutButton.setBounds(topR.removeFromLeft(w).reduced(2));
+        // zoomFitButton.setBounds(topR.removeFromLeft(w).reduced(2));
         editComponent.setBounds(r);
     }
 
@@ -137,11 +129,11 @@ private:
                newTrackButton { "New Track" },
             //    deleteButton { "Delete" },
                insertMidiButton { "Insert MIDI" },
-               insertPSGButton { "Insert PSG" },
+               insertPSGButton { "Insert PSG" }
             //    insertAudioButton { "Insert Audio" },
-               zoomInButton { "Zoom In" },
-               zoomOutButton { "Zoom Out" },
-               zoomFitButton { "Zoom Fit" }
+            //    zoomInButton { "Zoom In" },
+            //    zoomOutButton { "Zoom Out" },
+            //    zoomFitButton { "Zoom Fit" },
                ;
 
     //==============================================================================
@@ -238,14 +230,14 @@ private:
         });
     }
 
-    void changeListenerCallback(ChangeBroadcaster* /*source*/) override {
-        // if (source == &selectionManager) {
-        //     auto sel = selectionManager.getSelectedObject(0);
-        //     deleteButton.setEnabled(dynamic_cast<te::Clip*> (sel) != nullptr
-        //                             || dynamic_cast<te::Track*> (sel) != nullptr
-        //                             || dynamic_cast<te::Plugin*> (sel));
-        // }
-    }
+    // void changeListenerCallback(ChangeBroadcaster* /*source*/) override {
+    //     // if (source == &selectionManager) {
+    //     //     auto sel = selectionManager.getSelectedObject(0);
+    //     //     deleteButton.setEnabled(dynamic_cast<te::Clip*> (sel) != nullptr
+    //     //                             || dynamic_cast<te::Track*> (sel) != nullptr
+    //     //                             || dynamic_cast<te::Plugin*> (sel));
+    //     // }
+    // }
 
     void createTracksAndAssignInputs() {
         for (auto& midiIn : engine.getDeviceManager().getMidiInDevices()) {

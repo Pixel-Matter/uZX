@@ -8,8 +8,10 @@
 
 #pragma once
 
+#include "juce_events/juce_events.h"
 #include "tracktion_core/utilities/tracktion_Time.h"
 #include "tracktion_core/utilities/tracktion_TimeRange.h"
+#include "tracktion_engine/tracktion_engine.h"
 #include <JuceHeader.h>
 #include <common/Utilities.h>  // from Tracktion
 
@@ -40,7 +42,10 @@ namespace IDs
 namespace te = tracktion;
 
 //==============================================================================
-class ZoomViewState {
+class ZoomViewState :
+        private Timer,
+        // private te::TransportControl::Listener,
+                      private ChangeListener {
 public:
 
     class Listener {
@@ -58,6 +63,13 @@ public:
         viewX1.referTo(state, IDs::viewX1, um, 0s);   // time of the left edge of the view
         viewX2.referTo(state, IDs::viewX2, um, 60s);  // time of the right edge of the view
         viewY.referTo(state, IDs::viewY, um, 0);      // not used yet
+        // edit.getTransport().addListener(this);
+        edit.getTransport().addChangeListener(this);
+    }
+
+    ~ZoomViewState() override {
+        edit.getTransport().removeChangeListener(this);
+        // edit.getTransport().removeListener(this);
     }
 
     void addListener(Listener* l) {
@@ -138,6 +150,34 @@ private:
     CachedValue<te::TimePosition> viewX1, viewX2;
     CachedValue<double> viewY;
     ListenerList<Listener> listeners;
+
+    void changeListenerCallback(ChangeBroadcaster* source) override {
+        if (source == &edit.getTransport()) {
+            if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
+                startTimerHz(30);
+            } else {
+                stopTimer();
+            }
+        }
+    }
+
+    void timerCallback() override {
+        handlePlaybackScrolling();
+    }
+
+    void handlePlaybackScrolling() {
+        if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
+            auto pos = edit.getTransport().getPosition();
+            auto range = getRange();
+            auto leftRange = range.getLength() / 3.0;
+            // for paging in the middle of the view
+            // if (pos < viewX1 + leftRange || pos > viewX2 - leftRange) {
+            // for continuous scrolling
+            auto newX1 = jmax(te::TimePosition {}, pos - leftRange);
+            if (newX1 != viewX1)
+                setRange({newX1, newX1 + range.getLength()});
+        }
+    }
 };
 
 

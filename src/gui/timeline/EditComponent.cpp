@@ -151,10 +151,13 @@ void EditComponent::valueTreeChildOrderChanged (juce::ValueTree& v, int a, int b
 }
 
 void EditComponent::handleAsyncUpdate() {
+    // DBG("EditComponent::handleAsyncUpdate");
     if (compareAndReset(updateTracks))
         buildTracks();
-    if (compareAndReset(updateZoom))
+    if (compareAndReset(updateZoom)) {
         resized();
+        ruler.repaint();
+    }
 }
 
 void EditComponent::resized() {

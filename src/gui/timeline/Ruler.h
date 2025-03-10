@@ -33,6 +33,7 @@ public:
     }
 
     void paint(Graphics& g) override {
+        // DBG("RulerComponent::paint");
         using namespace te::tempo;
 
         auto bounds = getLocalBounds();
@@ -48,6 +49,8 @@ public:
         g.fillRect(bounds);
         g.setFont(12.0f);
         auto& zoomState = editViewState.zoom;
+
+        // DBG("RulerComponent::paint: " << zoomState.getRangeStart().inSeconds() << " - " << zoomState.getRangeEnd().inSeconds());
 
         auto startBar = ts.toBarsAndBeats(zoomState.getRangeStart());
         startBar.beats = te::BeatDuration::fromBeats(0);
@@ -99,6 +102,7 @@ public:
     }
 
     void resized() override {
+        DBG("RulerComponent::resized");
         repaint();
     }
 

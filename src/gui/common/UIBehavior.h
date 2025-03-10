@@ -154,6 +154,7 @@ public:
         if (auto* win = MoToolApp::getApp().getMainWindow()) {
             auto viewState = win->getEditViewState();
             auto objects = win->getSelectionManager().getSelectedObjects();
+            objects = te::getClipSelectionWithCollectionClipContents(objects);
             auto range = te::getTimeRangeForSelectedItems(objects);
             if (!range.isEmpty()) {
                 viewState->zoom.setRange(range);

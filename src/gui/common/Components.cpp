@@ -252,7 +252,7 @@ ClipComponent::ClipComponent (EditViewState& evs, te::Clip::Ptr c)
 
 void ClipComponent::paint(Graphics& g) {
     // TODO Move to lookAndFeel
-    g.setColour(clip->getColour().withAlpha(0.75f));
+    g.setColour(clip->getColour().withMultipliedBrightness(0.25f).withAlpha(0.75f));
     g.fillRoundedRectangle(getLocalBounds().toFloat(), 6.0f);
 
     if (editViewState.selectionManager.isSelected(clip.get())) {

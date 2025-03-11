@@ -396,7 +396,7 @@ private:
 
         editViewState_.reset();
         edit_ = std::move(edit);
-        // FIXME implement BPM editing
+        // FIXME implement BPM editing with remapping
         // 8 * 13f = 104f — one bar
         // one beat - 104f / 4 = 26f = 1s / 50f * 26f = 0.52s
         // beats per minute = 60 * 50 / 26 = 115.3846153846 bpm

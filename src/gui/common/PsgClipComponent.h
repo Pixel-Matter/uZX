@@ -4,9 +4,9 @@
 #include <common/Utilities.h>  // from Tracktion
 
 #include "Components.h"
-#include "../../model/PsgClip.h"
 #include "LookAndFeel.h"
-#include "juce_graphics/juce_graphics.h"
+#include "../../model/PsgClip.h"
+#include "../../model/EditUtilities.h"
 
 namespace MoTool {
 
@@ -70,7 +70,8 @@ public:
         auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
             return roundToInt(((time - clipRange.getStart()) * width) / l);
         };
-        const auto frameDur = te::TimeDuration::fromSeconds(1.0 / 50.0);
+        const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
+        const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
         const auto pixelsPerFrame = frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds();
 
         auto& regs = psgClip->getSequence().getControllerEvents();

@@ -586,7 +586,7 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
     : editViewState(evs)
     , track(t)
 {
-    Helpers::addAndMakeVisible (*this, { &trackName, &armButton, &muteButton, &soloButton, &inputButton });
+    ::Helpers::addAndMakeVisible(*this, { &trackName, &armButton, &muteButton, &soloButton, &inputButton });
 
     armButton.setColour(TextButton::buttonOnColourId, Colours::red);
     muteButton.setColour(TextButton::buttonOnColourId, Colours::red);

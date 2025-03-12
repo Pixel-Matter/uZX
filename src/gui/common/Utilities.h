@@ -97,4 +97,41 @@ inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManag
     });
 }
 
+// inline juce::String formatTimecodeDisplay(const TempoSequence& tempo, const TimePosition time, bool isRelative) const
+// {
+//     if (type == TimecodeType::barsBeats)
+//     {
+//         tempo::BarsAndBeats barsBeats;
+//         int bars, beats;
+//         BeatDuration fraction;
+
+//         if (! isRelative)
+//         {
+//             barsBeats = tempo.toBarsAndBeats (time + nudge);
+//             bars = barsBeats.bars + 1;
+//             beats = barsBeats.getWholeBeats() + 1;
+//             fraction = barsBeats.getFractionalBeats();
+//         }
+//         else if (time < 0s)
+//         {
+//             barsBeats = tempo.toBarsAndBeats (time - nudge);
+//             bars = -barsBeats.bars - 1;
+//             beats = (tempo.getTimeSig(0)->numerator - 1) - barsBeats.getWholeBeats();
+//             fraction = BeatDuration::fromBeats (1.0) - barsBeats.getFractionalBeats();
+//         }
+//         else
+//         {
+//             barsBeats = tempo.toBarsAndBeats (time + nudge);
+//             bars = barsBeats.bars + 1;
+//             beats = barsBeats.getWholeBeats() + 1;
+//             fraction = barsBeats.getFractionalBeats();
+//         }
+
+//         auto s = juce::String::formatted ("%d|%d|%03d", bars, beats, (int) (fraction.inBeats() * Edit::ticksPerQuarterNote));
+//         return time < 0s ? ("-" + s) : s;
+//     }
+
+//     return TimecodeDisplayFormat::toFullTimecode (time, getSubSecondDivisions());
+// }
+
 }  // namespace MoToolHelpers

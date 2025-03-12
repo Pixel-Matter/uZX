@@ -396,13 +396,12 @@ private:
 
         editViewState_.reset();
         edit_ = std::move(edit);
-        // FIXME implement BPM editing with remapping
+        // FIXME implement BPM editing with clips remapping
         // 8 * 13f = 104f — one bar
         // one beat - 104f / 4 = 26f = 1s / 50f * 26f = 0.52s
         // beats per minute = 60 * 50 / 26 = 115.3846153846 bpm
         // need to remap clips to new tempo
         edit_->tempoSequence.getTempoAt(edit_->getTransport().getPosition()).setBpm(115.3846153846);
-
         editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 
         setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());

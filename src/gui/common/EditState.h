@@ -155,8 +155,9 @@ public:
         auto pos = edit.getTransport().getPosition();
         auto range = viewLength();
         auto newHalfRange = range * scaleFactor / 2.0;
-        // limit zoom to 1s .. 1 hour
-        if (newHalfRange > 0.25s && newHalfRange < 600s) {
+        // TODO limit must be relative to pixels
+        // limit zoom to
+        if (newHalfRange > 0.5s && newHalfRange < 600s) {
             viewX1 = jmax(te::TimePosition(), pos - newHalfRange);
             viewX2 = viewX1 + newHalfRange * 2.0;
             listeners.call(&Listener::zoomChanged);

@@ -4,6 +4,7 @@
 #include <common/Utilities.h>
 
 #include "Commands.h"
+#include "../../model/Timecode.h"
 
 
 using namespace juce;
@@ -22,6 +23,8 @@ public:
         , transport_ {edit_.getTransport()}
     {
         transport_.addChangeListener(this);
+        // cached value is ValueTree::Listener
+        timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr);
 
         ::Helpers::addAndMakeVisible (*this, {
             &rewindButton_,
@@ -85,6 +88,7 @@ public:
 private:
     te::Edit& edit_;
     te::TransportControl& transport_;
+    juce::CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
 
     TextButton rewindButton_    { "|<<" },
                stepLeftButton_  { "<" },
@@ -125,7 +129,10 @@ private:
 
         lastPosition_ = pos;
         auto& ts = edit_.tempoSequence;
-        auto t = te::TimecodeDisplayFormat(te::TimecodeType::barsBeats).getString(edit_.tempoSequence, transport_.getPosition(), false);
+
+        // DBG("timecode = " << (int)timecodeFormat->typeExt << " " << (int)timecodeFormat->type);
+
+        auto t = timecodeFormat->getString(ts, transport_.getPosition(), true);
         transportReadout_.setText("Pos: " + t, dontSendNotification);
 
         bpmLabel_.setText(String::formatted("BPM: %.2f", ts.getBpmAt(pos)), dontSendNotification);

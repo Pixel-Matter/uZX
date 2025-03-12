@@ -5,9 +5,8 @@
 #include "../common/LookAndFeel.h"
 #include "../common/Components.h"
 #include "../common/Utilities.h"
-#include "juce_data_structures/juce_data_structures.h"
-#include "tracktion_core/utilities/tracktion_Tempo.h"
-#include "tracktion_core/utilities/tracktion_Time.h"
+#include "../../model/Timecode.h"
+
 
 namespace MoTool {
 
@@ -23,6 +22,8 @@ public:
     {
         edit.tempoSequence.addListener(this);
         editViewState.state.addListener(this);
+        // cached value is ValueTree::Listener
+        timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr);
         // startTimerHz(30);
     }
 
@@ -36,29 +37,37 @@ public:
         // DBG("RulerComponent::paint");
         using namespace te::tempo;
 
+        double fps = timecodeFormat->getFPS();
+        constexpr float minPxPerDev = 6.0f;
+
+        auto& zoomState = editViewState.zoom;
         auto bounds = getLocalBounds();
         auto &lf = getLookAndFeel();
         auto& ts = edit.tempoSequence;
 
         const int width = bounds.getWidth();
         const float height = (float)bounds.getHeight();
-        constexpr auto minPxPerDev = 6.0f;
-        auto beatStep = te::BeatDuration::fromBeats(1.0 / 64);  // max 64 subdivs in beat
+        // auto beatStep = te::BeatDuration::fromBeats(1.0 / 26);  // Tiratok
+        auto beatStep = te::BeatDuration::fromBeats(1.0 / 2);  // max 64 subdivs in beat
 
         g.setColour(lf.findColour(ResizableWindow::backgroundColourId));
         g.fillRect(bounds);
         g.setFont(12.0f);
-        auto& zoomState = editViewState.zoom;
 
         // DBG("RulerComponent::paint: " << zoomState.getRangeStart().inSeconds() << " - " << zoomState.getRangeEnd().inSeconds());
 
         auto startBar = ts.toBarsAndBeats(zoomState.getRangeStart());
-        startBar.beats = te::BeatDuration::fromBeats(0);
-        auto startTime = ts.toTime(startBar);
+        startBar = te::tempo::BarsAndBeats(startBar.bars, te::BeatDuration::fromBeats(startBar.getWholeBeats()), startBar.numerator);
+        const auto startTime = ts.toTime(startBar);
 
         auto currentTime = startTime;
+        auto prevBarX = -20.0;
+        auto pixelsPerFrame = zoomState.durationToPixels(te::TimeDuration::fromSeconds(1.0 / fps), width);
+        auto pixelsPerFrameTick = pixelsPerFrame;
+        while (pixelsPerFrameTick < minPxPerDev) {
+            pixelsPerFrameTick *= 2;
+        }
 
-        double prevBarX = -20.0;
         while (currentTime <= zoomState.getRangeEnd()) {
             auto barBeats = ts.toBarsAndBeats(currentTime);
 
@@ -71,40 +80,52 @@ public:
             }
 
             auto x = static_cast<float>(zoomState.timeToX(currentTime, width));
-            currentTime = nextTime;
 
-            if (x < 0) {
-                continue;
-            }
-            if (barBeats.beats < te::BeatDuration::fromBeats(0.001)) {
-                g.setColour(Colors::Theme::borderLight);
-                if (x - prevBarX >= 20) {
-                    // Bar line
-                    g.drawLine(x, 0, x, height, 1.0f);
-                    // Draw bar number
-                    String barText = String(barBeats.bars + 1);
-                    g.drawText(barText, Rectangle<float>(x + 2, -4, 20, 20), Justification::left);
-                    prevBarX = x;
+            if (x >= 0) {
+                if (barBeats.beats < te::BeatDuration::fromBeats(0.001)) {
+                    g.setColour(Colors::Theme::borderLight);
+                    if (x - prevBarX >= 20) {
+                        // Bar line
+                        g.drawLine(x, 0, x, height, 1.0f);
+                        // Draw bar number
+                        String barText = String(barBeats.bars + 1);
+                        g.drawText(barText, Rectangle<float>(x + 2, -4, 20, 20), Justification::left);
+                        prevBarX = x;
+                    } else {
+                        // smaller bar line
+                        g.drawLine(x, 14, x, height, 1.0f);
+                    }
+                } else if (barBeats.getFractionalBeats() < te::BeatDuration::fromBeats(0.001)) {
+                    // Beat line
+                    g.setColour(Colors::Theme::border);
+                    g.drawLine(x, height * 0.5f, x, height, 1.0f);
                 } else {
-                    // smaller bar line
-                    g.drawLine(x, 14, x, height, 1.0f);
+                    // subdiv line
+                    g.setColour(Colors::Theme::border);
+                    g.drawLine(x, height * 0.66f, x, height, 1.0f);
                 }
-            } else if (barBeats.getFractionalBeats() < te::BeatDuration::fromBeats(0.001)) {
-                // Beat line
-                g.setColour(Colors::Theme::border);
-                g.drawLine(x, height * 0.7f, x, height, 1.0f);
-            } else {
-                // subdiv line
-                g.setColour(Colors::Theme::border.withAlpha(0.5f));
-                g.drawLine(x, height * 0.75f, x, height, 1.0f);
             }
+            // draw frame ticks
+            if (exactlyEqual(pixelsPerFrame, pixelsPerFrameTick)) {
+                auto frameTime = te::TimePosition::fromSeconds(std::ceil(currentTime.inSeconds() * fps) / fps);
+                auto frameX = static_cast<float>(zoomState.timeToX(frameTime, width));
+                auto nextX = static_cast<float>(zoomState.timeToX(nextTime, width));
+
+                g.setColour(Colors::Theme::border.withAlpha(0.5f));
+                for (float f = frameX; f < nextX; f += pixelsPerFrameTick) {
+                    if (f > 0) {
+                        g.drawLine(f, height * 0.75f, f, height, 1.0f);
+                    }
+                }
+            }
+            currentTime = nextTime;
         }
     }
 
-    void resized() override {
-        // DBG("RulerComponent::resized");
-        // repaint();
-    }
+    // void resized() override {
+    //     // DBG("RulerComponent::resized");
+    //     // repaint();
+    // }
 
     void mouseDown(const MouseEvent& e) override {
         if (e.mods.isPopupMenu()) {
@@ -138,6 +159,7 @@ public:
 private:
     te::Edit& edit;
     EditViewState& editViewState;
+    juce::CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
 
     void timerCallback() override {
         repaint();

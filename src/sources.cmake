@@ -4,7 +4,7 @@ set(SHARED_SOURCES
     util/Midi.cpp
     model/PsgMidi.cpp
     model/Selectable.cpp
-    # model/EditUtilities.cpp
+    model/EditUtilities.cpp
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
 )

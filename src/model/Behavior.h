@@ -43,7 +43,7 @@ public:
         return identifier == IDs::PSGCLIP;
     }
 
-    MidiMessageSequence createPlaybackMidiSequence (const te::MidiList& list, te::MidiClip& clip, te::MidiList::TimeBase tb, bool generateMPE) override {
+    MidiMessageSequence createPlaybackMidiSequence(const te::MidiList& list, te::MidiClip& clip, te::MidiList::TimeBase tb, bool generateMPE) override {
         if (dynamic_cast<PsgClip*>(&clip) != nullptr) {
             // DBG("createPlaybackMidiSequence for PsgClip");
             return createPsgPlaybackMidiSequence(list, clip, tb, generateMPE);

@@ -87,13 +87,13 @@ public:
             int regNumber = reg->getType() - 20;
 
             auto s = reg->getEditTime(*psgClip);
-            if (s < clipRange.getStart() || s < viewRange.getStart())
+            if (s < clipRange.getStart() || s + frameDur < viewRange.getStart())
                 continue;
             if (s >= clipRange.getEnd() || s >= viewRange.getEnd())
                 break;
 
             float x1 = (float)timeToX(s) - left;
-            if (x1 < 0)
+            if (x1 + pixelsPerFrame < 0)
                 continue;
             float y1 = (static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
 

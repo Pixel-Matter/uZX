@@ -62,7 +62,6 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
     PsgRegsAYFrame regs {};
-    // DBG("----");
     for (auto& m : *fc.bufferForMidiMessages) {
         // process up to this event
         const int timeSample = juce::roundToInt(m.getTimeStamp() * sampleRate);
@@ -106,8 +105,10 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
         }
     }
     // process to the end of the block
-    chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
-                       static_cast<size_t>(fc.bufferNumSamples - currentSample));
+    if (currentSample < fc.destBuffer->getNumSamples()) {
+        chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
+                           static_cast<size_t>(fc.bufferNumSamples - currentSample));
+    }
 }
 
 void AYChipPlugin::restorePluginStateFromValueTree (const juce::ValueTree& v) {

@@ -93,8 +93,31 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        // int w = r.getWidth() / 6;
+        editComponent.setBounds(r);
+
+        // TODO consider fast declarative Layout engine
+        // this is Builder template actually
+        // using lo = Layout;
+        // lo::Vertical layout_ {
+        //     32_px << topBar,
+        //     display.getHeightFr() << display,
+        //     32_px << transportBar,
+        //     32_px << lo::Horizonal {
+        //         1_fr << lo::Horizonal {
+        //             lo::Options {.margin = 2_px},
+        //             1_fr << insertMidiButton,
+        //             1_fr << insertPSGButton,
+        //             1_fr << insertAudioButton,
+        //             1_fr << deleteButton,
+        //         },
+        //         1_fr << lo::Empty,
+        //     },
+        //     1_fr << editComponent,
+        //     32_px << footer
+        // };
+
         // auto topR = r.removeFromTop(30);
+        // int w = r.getWidth() / 6;
         // insertMidiButton.setBounds(topR.removeFromLeft(w).reduced(2));
         // insertPSGButton.setBounds(topR.removeFromLeft(w).reduced(2));
         // newTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
@@ -103,7 +126,7 @@ public:
         // zoomInButton.setBounds(topR.removeFromLeft(w).reduced(2));
         // zoomOutButton.setBounds(topR.removeFromLeft(w).reduced(2));
         // zoomFitButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        editComponent.setBounds(r);
+        // editComponent.setBounds(r);
     }
 
 private:

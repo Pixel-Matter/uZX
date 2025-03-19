@@ -40,6 +40,7 @@ void AYChipPlugin::deinitialise() {
 
 void AYChipPlugin::reset() {
     const juce::ScopedLock sl(lock);
+    registers = {};
     if (chip) {
         chip->ResetSound();
     }
@@ -61,7 +62,6 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
 
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
-    PsgRegsAYFrame regs {};
     for (auto& m : *fc.bufferForMidiMessages) {
         // process up to this event
         const int timeSample = juce::roundToInt(m.getTimeStamp() * sampleRate);
@@ -71,7 +71,8 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
             currentSample = timeSample;
         }
         if (m.isNoteOn()) {
-            // note based PSG-MIDI mapping is deprecated
+            // note based PSG-MIDI mapping is not used yet
+            // but can be used with MPE
             // const int note = m.getNoteNumber();
             // const size_t reg = static_cast<size_t>(note - 60);
             // const unsigned char val = m.getVelocity();
@@ -84,24 +85,23 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
             if (20 <= ctrlNum && ctrlNum < 34) {
                 // coarse value
                 reg = static_cast<size_t>(ctrlNum - 20);
-                regs.registers[reg] = static_cast<unsigned char>((val << 4) | regs.registers[reg]);
-                regs.mask[reg] = !regs.mask[reg];
+                registers.registers[reg] = static_cast<unsigned char>((val << 4) | registers.registers[reg]);
+                registers.mask[reg] = !registers.mask[reg];
                 // DBG("register coarse " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off"));
             } else if (40 <= ctrlNum && ctrlNum < 54) {
                 // fine value
                 reg = static_cast<size_t>(ctrlNum - 40);
-                regs.registers[reg] = static_cast<unsigned char>(val | regs.registers[reg]);
-                regs.mask[reg] = !regs.mask[reg];
+                registers.registers[reg] = static_cast<unsigned char>(val | registers.registers[reg]);
+                registers.mask[reg] = !registers.mask[reg];
                 // DBG("register fine " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off") << " reg is " << regs.registers[reg]);
             } else {
                 jassertfalse;
             }
-            if (!regs.mask[reg]) {
-                chip->setRegister(reg, regs.registers[reg]);
+            if (!registers.mask[reg]) {
+                chip->setRegister(reg, registers.registers[reg]);
                 // DBG("setRegister(" << reg << ", " << regs.registers[reg] << ")");
-                regs.registers[reg] = 0;
+                registers.registers[reg] = 0;
             }
-            // break;
         }
     }
     // process to the end of the block

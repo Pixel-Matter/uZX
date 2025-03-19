@@ -246,14 +246,6 @@ public:
             case AppCommands::editDelete:
                 te::AppFunctions::deleteSelected();
                 break;
-
-            // Add commands
-            case AppCommands::addAudioTrack:
-                if (edit_ != nullptr) {
-                    // addAudioTrack(*edit_, selectionManager_);
-                }
-                break;
-
             // Transport commands
             case AppCommands::transportPlay:
                 te::AppFunctions::startStopPlay();
@@ -279,6 +271,20 @@ public:
 
             case AppCommands::transportLoop:
                 te::AppFunctions::toggleLoop();
+                break;
+
+            // Add commands
+            case AppCommands::addAudioTrack:
+                if (edit_ != nullptr) {
+                    Helpers::addAndSelectAudioTrack(*edit_, selectionManager_);
+                }
+                break;
+
+            // Track commands
+            case AppCommands::trackRenderToAudio:
+                if (edit_ != nullptr) {
+                    // Helpers::renderSelectedTracksToAudioTrack(*edit_, selectionManager_);
+                }
                 break;
 
             // View commands

@@ -21,33 +21,36 @@ public:
         fileQuit,
 
         // Edit Menu
-        editUndo            = 100,
+        editUndo             = 100,
         editRedo,
         editDelete,
         editCut,
         editCopy,
         editPaste,
 
-        // Add Menu
-        addAudioTrack       = 200,
-        // addMidiClip,
-
         // Transport Menu
-        transportPlay       = 300,
+        transportPlay        = 200,
         transportRecord,
         transportRecordStop,
         transportToStart,
         transportToEnd,
         transportLoop,
 
+        // Add Menu
+        addAudioTrack        = 300,
+        // addMidiClip,
+
+        // Track menu
+        trackRenderToAudio   = 400,
+
         // View menu
-        viewZoomToProject    = 400,
+        viewZoomToProject    = 500,
         viewZoomToSelection,
         viewZoomIn,
         viewZoomOut,
 
         // Settings Menu
-        settingsAudioMidi    = 500,
+        settingsAudioMidi    = 600,
         settingsPlugins,
 
         // Help Menu
@@ -57,7 +60,7 @@ public:
     };
 
     static StringArray getMenuBarNames() {
-        return { "File", "Edit", "Add", "Transport", "View", "Settings", "Help" };
+        return { "File", "Edit", "Transport", "Add", "Track", "View", "Settings", "Help" };
     }
 
     // Get all commands
@@ -65,8 +68,9 @@ public:
         CommandID ids[] = {
             fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileImportPsg, fileQuit,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
-            addAudioTrack,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
+            addAudioTrack,
+            trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
             settingsAudioMidi, settingsPlugins,
             helpAbout
@@ -96,8 +100,6 @@ public:
             menu.addCommandItem(manager, AppCommands::editCut);
             menu.addCommandItem(manager, AppCommands::editCopy);
             menu.addCommandItem(manager, AppCommands::editPaste);
-        } else if (menuName == "Add") {
-            menu.addCommandItem(manager, AppCommands::addAudioTrack);
         } else if (menuName == "Transport") {
             menu.addCommandItem(manager, AppCommands::transportPlay);
             menu.addCommandItem(manager, AppCommands::transportRecord);
@@ -106,6 +108,10 @@ public:
             menu.addCommandItem(manager, AppCommands::transportToEnd);
             menu.addSeparator();
             menu.addCommandItem(manager, AppCommands::transportLoop);
+        } else if (menuName == "Add") {
+            menu.addCommandItem(manager, AppCommands::addAudioTrack);
+        } else if (menuName == "Track") {
+            menu.addCommandItem(manager, AppCommands::trackRenderToAudio);
         } else if (menuName == "View") {
             menu.addCommandItem(manager, AppCommands::viewZoomToProject);
             menu.addCommandItem(manager, AppCommands::viewZoomToSelection);
@@ -189,12 +195,6 @@ public:
                 result.addDefaultKeypress('v', ModifierKeys::commandModifier);
                 break;
 
-            // Add commands
-            case addAudioTrack:
-                result.setInfo("Audio Track", "Add a new audio track", "Add", 0);
-                result.addDefaultKeypress('t', ModifierKeys::commandModifier);
-                break;
-
             // Transport commands
             case transportPlay:
                 result.setInfo("Play/Stop", "Start or stop playback", "Transport", 0);
@@ -226,6 +226,17 @@ public:
             case transportLoop:
                 result.setInfo("Loop", "Toggle loop playback", "Transport", 0);
                 result.addDefaultKeypress('l', ModifierKeys::commandModifier);
+                break;
+
+            // Add commands
+            case addAudioTrack:
+                result.setInfo("Audio Track", "Add a new audio track", "Add", 0);
+                result.addDefaultKeypress('t', ModifierKeys::commandModifier);
+                break;
+
+            // Track commands
+            case trackRenderToAudio:
+                result.setInfo("Render to audio", "Render track to audio track", "Track", 0);
                 break;
 
             // View commands

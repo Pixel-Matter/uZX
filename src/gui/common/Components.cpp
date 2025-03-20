@@ -306,7 +306,8 @@ void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::Sma
 
     int left = timeToX(region.getStart());
     int right = timeToX(region.getEnd());
-    int xOffset = timeToX(offset);
+    int xOffset = 0;
+    // int xOffset = timeToX(offset);
     int h = rect.getHeight();
     int y = rect.getY();
     const Rectangle<int> area(left + xOffset, y, right - left, h);

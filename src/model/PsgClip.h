@@ -104,7 +104,7 @@ private:
                     auto regVal = frame.registers[j];
                     // NOTE It is too slow to call seq.addControllerEvent
                     auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j), regVal);
-                    seq.state.addChild(v, -1, getUndoManager());
+                    seq.state.appendChild(v, getUndoManager());
                 }
             }
         }

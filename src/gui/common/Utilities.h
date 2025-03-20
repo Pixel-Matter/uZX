@@ -73,11 +73,14 @@ inline te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
 }
 
 
-inline te::AudioTrack* getSelectedOrInsertAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
+inline te::AudioTrack* getSelectedOrInsertAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager, String name = {}) {
     auto sel = selectionManager.getSelectedObject(0);
     auto track = dynamic_cast<te::AudioTrack*>(sel);
     if (track == nullptr) {
         track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
+        if (name.isNotEmpty()) {
+            track->setName(name);
+        }
     }
     return track;
 }
@@ -97,7 +100,7 @@ inline te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManag
 
 inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor = false) {
     Helpers::browseForPSGFile(edit.engine, [&](const File& f) {
-        auto track = getSelectedOrInsertAudioTrack(edit, selectionManager);
+        auto track = getSelectedOrInsertAudioTrack(edit, selectionManager, f.getFileNameWithoutExtension());
         auto psgFile = uZX::PsgFile(f);
         psgFile.ensureRead();
         te::TimePosition insertTime;
@@ -105,8 +108,16 @@ inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManag
             insertTime = edit.getTransport().getPosition();
         }
         te::ClipPosition pos = {{insertTime, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
+        // TODO make it ThreadBackgroundJob
         if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
-            DBG("Inserted clip: " << inserted->getName());
+            // make sure AYChipPlugin is added to the track
+            for (auto& p : track->pluginList) {
+                if (auto ay = dynamic_cast<uZX::AYChipPlugin*>(p)) {
+                    return;
+                }
+            }
+            auto plugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
+            track->pluginList.insertPlugin(plugin, 0, nullptr);
         }
     });
 }

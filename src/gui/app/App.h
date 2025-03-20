@@ -190,10 +190,9 @@ public:
                 result.setTicked(edit_ != nullptr && edit_->getTransport().looping);
                 break;
 
-            // case AppCommands::viewZoomToSelection:
-            //     result.setActive(edit_ != nullptr);
-            //     // TODO check if there is a selection
-            //     break;
+            case AppCommands::viewZoomToSelection:
+                result.setActive(edit_ != nullptr && selectionManager_.getSelectedObjects().size() > 0);
+                break;
 
             // Add more dynamic command states...
         }

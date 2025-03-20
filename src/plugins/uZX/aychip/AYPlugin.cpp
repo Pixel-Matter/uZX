@@ -52,7 +52,7 @@ void AYChipPlugin::midiPanic() {
     reset();
 }
 
-void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
+void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     if (!fc.isPlaying || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr) {
         return;
     }

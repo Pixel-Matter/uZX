@@ -29,7 +29,7 @@ public:
     int getNumOutputChannelsGivenInputs(int numInputChannels) override { return jmin (numInputChannels, 2); }
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;
-    void applyToBuffer(const te::PluginRenderContext&) override;
+    void applyToBuffer(const te::PluginRenderContext&) noexcept override;
     void midiPanic() override;
     void reset() override;
 

@@ -279,23 +279,18 @@ void AudioClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
 
     if (editViewState.drawWaveforms && thumbnail != nullptr)
-        drawWaveform(g, *getWaveAudioClip(), *thumbnail, Colours::black.withAlpha (0.5f),
-                     0, getWidth(), 0, getHeight(), 0);
+        drawWaveform(g, *getWaveAudioClip(), *thumbnail, Colours::white.withAlpha(0.5f));
 }
 
-void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour,
-                                       int left, int right, int y, int h, int xOffset) {
-    auto getTimeRangeForDrawing = [this] (const int l, const int r) -> te::TimeRange {
-        if (auto p = getParentComponent()) {
-            auto t1 = editViewState.zoom.xToTime(l, p->getWidth());
-            auto t2 = editViewState.zoom.xToTime(r, p->getWidth());
+void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour) {
+    const auto rect = getLocalBounds();
+    const auto clipRange = c.getEditTimeRange();
 
-            return { t1, t2 };
-        }
-        return {};
+    auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
+        return roundToInt(((time - clipRange.getStart()) * width) / l);
     };
+    auto region = editViewState.zoom.getRange();
 
-    jassert (left <= right);
     const auto gain = c.getGain();
     const auto pan = thumb.getNumChannels() == 1 ? 0.0f : c.getPan();
 
@@ -309,26 +304,27 @@ void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::Sma
     auto offset = clipPos.getOffset();
     auto speedRatio = c.getSpeedRatio();
 
+    int left = timeToX(region.getStart());
+    int right = timeToX(region.getEnd());
+    int xOffset = timeToX(offset);
+    int h = rect.getHeight();
+    int y = rect.getY();
+    const Rectangle<int> area(left + xOffset, y, right - left, h);
+
     g.setColour(colour);
 
     if (usesTimeStretchedProxy) {
-        const Rectangle<int> area(left + xOffset, y, right - left, h);
-
         if (!thumb.isOutOfDate()) {
-            drawChannels(g, thumb, area,
-                         getTimeRangeForDrawing(left, right),
+            drawChannels(g, thumb, area, region,
                          c.isLeftChannelActive(), c.isRightChannelActive(),
                          gainL, gainR);
         }
     } else if (c.getLoopLength() == 0s) {
-        auto region = getTimeRangeForDrawing (left, right);
 
         auto t1 = (region.getStart() + offset) * speedRatio;
         auto t2 = (region.getEnd()   + offset) * speedRatio;
 
-        drawChannels(g, thumb,
-                     { left + xOffset, y, right - left, h },
-                     { t1, t2 },
+        drawChannels(g, thumb, area, { t1, t2 },
                      c.isLeftChannelActive(), c.isRightChannelActive(),
                      gainL, gainR);
     }

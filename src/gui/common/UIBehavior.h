@@ -3,8 +3,10 @@
 #include <JuceHeader.h>
 
 #include <common/PluginWindow.h>  // from JUCE
+#include <memory>
 
 #include "../app/App.h"
+#include "ProgressDialog.h"
 
 
 namespace te = tracktion;
@@ -26,7 +28,10 @@ public:
         return getCurrentlyFocusedEdit();
     }
 
-    juce::Array<te::Edit*> getAllOpenEdits()                              override { return {}; }
+    juce::Array<te::Edit*> getAllOpenEdits()                              override {
+        return {getLastFocusedEdit()};
+    }
+
     bool isEditVisibleOnScreen(const te::Edit&)                           override { return true; }
     bool closeAllEditsBelongingToProject(te::Project&)                    override { return false; }
     void editNamesMayHaveChanged()                                        override {}
@@ -94,12 +99,38 @@ public:
     /** Should run this task in the current window, with a progress bar, blocking
         until the task is done.
     */
-    void runTaskWithProgressBar(te::ThreadPoolJobWithProgress&) override { jassertfalse; }  // empty line
-    bool getBigInputMetersMode()                                override { return false; }  // empty line
+    void runTaskWithProgressBar(te::ThreadPoolJobWithProgress& job) override {
+        auto& engine = MoToolApp::getApp().getEngine();
+        auto& jobManager = engine.getBackgroundJobs();
+        jobManager.addJob(&job, false);
+
+        // while (true) {
+        //     for (int i = 0; i < jobManager.getNumJobs(); ++i) {
+        //         auto info = jobManager.getJobInfo(i);
+        //         if (info.name == job.getJobName()) {
+        //             DBG(". " << info.progress << " " << (job.isRunning()? "running" : "done"));
+        //             break;
+        //         }
+        //     }
+        //     juce::Thread::sleep(100);
+        // }
+
+        ProgressDialog dialog {"Rendering", job, jobManager};
+        dialog.setVisible(true);
+        dialog.runModalLoop();
+
+        job.prepareForJobDeletion();
+        jobManager.removeJob(&job, false, 1000);
+    }
+
+    bool getBigInputMetersMode()                                override { return false; }
+
     void setBigInputMetersMode(bool)                            override {}
-    bool shouldGenerateLiveWaveformsWhenRecording()             override { return true;  }  // empty line
+    bool shouldGenerateLiveWaveformsWhenRecording()             override { return true;  }
+
     void showSafeRecordDialog(te::TransportControl&)            override {}
-    void hideSafeRecordDialog(te::TransportControl&)            override {}  // empty line
+    void hideSafeRecordDialog(te::TransportControl&)            override {}
+
     void showProjectScreen()                                    override {}
 
     void showSettingsScreen()                                   override {
@@ -107,7 +138,8 @@ public:
         EngineHelpers::showAudioDeviceSettings(engine);
     }
 
-    void showEditScreen()                                       override {}  // empty line
+    void showEditScreen()                                       override {}
+
     void showHideVideo()                                        override {}
     void showHideInputs()                                       override {}
     void showHideOutputs()                                      override {}

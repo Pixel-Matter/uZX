@@ -283,7 +283,7 @@ public:
             // Track commands
             case AppCommands::trackRenderToAudio:
                 if (edit_ != nullptr) {
-                    // Helpers::renderSelectedTracksToAudioTrack(*edit_, selectionManager_);
+                    Helpers::renderSelectedTracksToAudioTrack(*edit_, selectionManager_);
                 }
                 break;
 

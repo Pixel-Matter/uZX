@@ -47,6 +47,7 @@ private:
 
     PsgRegsAYFrame registers;
     std::unique_ptr<AYInterface> chip;
+    double timeFromReset;
 
     void valueTreeChanged() override;
     void handleAsyncUpdate() override;

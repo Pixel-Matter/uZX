@@ -33,6 +33,7 @@ void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
     const juce::ScopedLock sl(lock);
     chip = std::make_unique<AyumiEmulator>(sampleRate);
     chip->setMasterVolume(0.1f);
+    reset();
 }
 
 void AYChipPlugin::deinitialise() {
@@ -40,6 +41,7 @@ void AYChipPlugin::deinitialise() {
 
 void AYChipPlugin::reset() {
     const juce::ScopedLock sl(lock);
+    timeFromReset = 0.0;
     registers = {};
     if (chip) {
         chip->ResetSound();
@@ -109,6 +111,8 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
         chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
                            static_cast<size_t>(fc.bufferNumSamples - currentSample));
     }
+    timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;
+    // DBG("timeFromReset = " << timeFromReset);
 }
 
 void AYChipPlugin::restorePluginStateFromValueTree (const juce::ValueTree& v) {

@@ -4,6 +4,7 @@
 
 #include "../../formats/psg/PsgFile.h"
 #include "../../model/PsgClip.h"
+#include "juce_core/juce_core.h"
 
 #include <common/Utilities.h>
 
@@ -81,14 +82,17 @@ inline te::AudioTrack* getSelectedOrInsertAudioTrack(te::Edit& edit, te::Selecti
     return track;
 }
 
-inline te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
-    auto sel = selectionManager.getSelectedObject(0);
-    auto track = dynamic_cast<te::AudioTrack*>(sel);
+inline te::AudioTrack* addAudioTrackAfter(te::Edit& edit, te::Track* track) {
     auto insertPoint = (track != nullptr) ? track : getAllTracks(edit).getLast();
     edit.getTransport().stopIfRecording();
-    auto added = edit.insertNewAudioTrack(te::TrackInsertPoint(nullptr, insertPoint), nullptr);
-    selectionManager.select({added.get()});
-    return added.get();
+    return edit.insertNewAudioTrack(te::TrackInsertPoint(nullptr, insertPoint), nullptr).get();
+}
+
+inline te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
+    auto sel = selectionManager.getSelectedObject(0);
+    auto added = addAudioTrackAfter(edit, dynamic_cast<te::AudioTrack*>(sel));
+    selectionManager.select({added});
+    return added;
 }
 
 inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor = false) {
@@ -105,6 +109,85 @@ inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManag
             DBG("Inserted clip: " << inserted->getName());
         }
     });
+}
+
+inline File getRendersDirectory(te::Edit& edit) {
+    auto editFile = edit.editFileRetriever();
+    File rendersDir = editFile.existsAsFile()
+        ? editFile.getParentDirectory().getChildFile(editFile.getFileNameWithoutExtension()).withFileExtension("Renders")
+        : File::getSpecialLocation(File::userMusicDirectory)
+            .getChildFile(ProjectInfo::projectName).getChildFile("Renders");
+
+    rendersDir.createDirectory();
+    return rendersDir;
+}
+
+inline File getFreezeFileForTrack(const te::AudioTrack& track) {
+    return getRendersDirectory(track.edit).getChildFile("0_" + track.itemID.toString() + ".freeze");
+}
+
+inline te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
+    auto sel = selectionManager.getSelectedObject(0);
+    auto track = dynamic_cast<te::AudioTrack*>(sel);
+    if (track == nullptr) {
+        edit.engine.getUIBehaviour().showWarningMessage("No track selected");
+        return nullptr;
+    }
+
+    // render selected tracks to added track
+
+    const bool shouldBeMuted = track->isMuted(true);
+    track->setMute(false);
+
+    auto freezeFile = getFreezeFileForTrack(*track);
+    DBG("Freeze file: " << freezeFile.getFullPathName());
+
+    auto& dm = edit.engine.getDeviceManager();
+    juce::Array<te::EditItemID> trackIDs { track->itemID };
+
+    juce::BigInteger trackNum;
+    trackNum.setBit(track->getIndexInEditTrackList());
+
+    te::Renderer::Parameters r (edit);
+    r.tracksToDo = trackNum;
+    r.destFile = freezeFile;
+    r.audioFormat = edit.engine.getAudioFileFormatManager().getFrozenFileFormat();
+    r.blockSizeForAudio = dm.getBlockSize();
+    r.sampleRateForAudio = dm.getSampleRate();
+    r.time = { {}, track->getLengthIncludingInputTracks() };
+    r.endAllowance = te::RenderOptions::findEndAllowance(edit, &trackIDs, nullptr);
+    r.checkNodesForAudio = false;
+    r.canRenderInMono = true;
+    r.mustRenderInMono = false;
+    r.usePlugins = true;
+    r.useMasterPlugins = false;
+
+    const te::Edit::ScopedRenderStatus srs (edit, true);
+    const auto desc = String("Rendering track \"") + track->getName() + "\" to audio";
+
+    if (getProjectForEdit(edit) != nullptr) {
+        te::Renderer::renderToProjectItem(desc, r, te::ProjectItem::Category::frozen);
+    } else {
+        te::Renderer::renderToFile(desc, r);
+    }
+
+    if (! r.destFile.existsAsFile()) {
+        edit.engine.getUIBehaviour().showWarningMessage("Render failed");
+        track->setMute(shouldBeMuted);
+        return nullptr;
+    }
+
+    // add audio file to added track (name, file, position, deleteExistingClips)
+    auto added = addAudioTrackAfter(edit, track);
+    auto clip = added->insertWaveClip(String("Frozen ") + track->getName(), freezeFile, {r.time, {}}, true);
+    if (clip != nullptr) {
+        clip->setAutoTempo(false);
+        clip->setAutoPitch(false);
+    }
+
+    track->setMute(true);  // mute original track
+    selectionManager.select({added});
+    return added;
 }
 
 // inline juce::String formatTimecodeDisplay(const TempoSequence& tempo, const TimePosition time, bool isRelative) const

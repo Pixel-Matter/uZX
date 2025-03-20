@@ -32,7 +32,7 @@ void AYChipPlugin::handleAsyncUpdate() {
 void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
     const juce::ScopedLock sl(lock);
     chip = std::make_unique<AyumiEmulator>(sampleRate);
-    chip->setMasterVolume(0.1f);
+    chip->setMasterVolume(0.7f);
     reset();
 }
 

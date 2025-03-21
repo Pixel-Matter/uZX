@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 
 #include "AYPlugin.h"
+#include "AYPluginEditor.h"
 
 namespace te = tracktion;
 
@@ -10,9 +11,15 @@ namespace MoTool::uZX {
 
 //==============================================================================
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
-    : Plugin(info)
+    : te::Plugin(info)
 {
-    triggerAsyncUpdate();
+    staticParams.clockValue.referTo(IDs::clock, "Clock frequncy", {1.0, 2,0}, 1.75, "MHz");
+
+    auto um = getUndoManager();
+    chipTypeValue.referTo(state, IDs::chip, um, AYInterface::TypeEnum::AY);
+    // clockValue.referTo(state, IDs::clock, um, 1770000.0);
+
+    // triggerAsyncUpdate();
 }
 
 AYChipPlugin::~AYChipPlugin() {
@@ -22,17 +29,30 @@ AYChipPlugin::~AYChipPlugin() {
 const char* AYChipPlugin::xmlTypeName = "aychip";
 
 void AYChipPlugin::valueTreeChanged() {
-    triggerAsyncUpdate();
+    // triggerAsyncUpdate();
     te::Plugin::valueTreeChanged();
 }
 
+void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
+    if (v == state && id == IDs::clock) {
+        if (chip) {
+            chip->setClock(staticParams.clockValue * MHz);
+            DBG("AYChipPlugin::valueTreePropertyChanged: setClock(" << staticParams.clockValue << "Mhz)");
+        }
+    }
+    propertiesChanged();
+    Plugin::valueTreePropertyChanged(v, id);
+}
+
 void AYChipPlugin::handleAsyncUpdate() {
+    // DBG("AYChipPlugin::handleAsyncUpdate");
 }
 
 void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
     const juce::ScopedLock sl(lock);
-    chip = std::make_unique<AyumiEmulator>(sampleRate);
-    chip->setMasterVolume(0.7f);
+    chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.clockValue * MHz);
+    chip->setMasterVolume(0.65f);
+    DBG("AYChipPlugin::initialise");
     reset();
 }
 
@@ -109,16 +129,47 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     // process to the end of the block
     if (currentSample < fc.destBuffer->getNumSamples()) {
         chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
-                           static_cast<size_t>(fc.bufferNumSamples - currentSample));
+                           static_cast<size_t>(fc.bufferNumSamples - currentSample),
+                           /* removeDC = */ false
+                        );
     }
     timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;
     // DBG("timeFromReset = " << timeFromReset);
 }
 
-void AYChipPlugin::restorePluginStateFromValueTree (const juce::ValueTree& v) {
-    te::copyValueTree(state, v, getUndoManager());
+void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
+    te::copyPropertiesToCachedValues(v, chipTypeValue, staticParams.clockValue.value);
+
+    for (auto p : getAutomatableParameters())
+        p->updateFromAttachedValue();
+}
+
+std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {
+    return std::make_unique<AYPluginEditor>(*this);
 }
 
 //==============================================================================
 
 } // namespace MoTool::uZX
+
+
+namespace juce {
+
+template<>
+struct VariantConverter<MoTool::uZX::AYInterface::ChipType> {
+    static MoTool::uZX::AYInterface::ChipType fromVar(const var& v) {
+        if (v == "YM")
+            return MoTool::uZX::AYInterface::TypeEnum::YM;
+        else
+            return MoTool::uZX::AYInterface::TypeEnum::AY;
+    }
+
+    static var toVar(MoTool::uZX::AYInterface::ChipType ct) {
+        if (ct == MoTool::uZX::AYInterface::TypeEnum::YM)
+            return "YM";
+        else
+            return "AY";
+    }
+};
+
+}

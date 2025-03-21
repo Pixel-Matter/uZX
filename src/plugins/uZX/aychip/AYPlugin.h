@@ -8,13 +8,78 @@
 
 namespace te = tracktion;
 
-namespace MoTool::uZX {
+namespace MoTool {
+
+namespace IDs {
+    #define DECLARE_ID(name)  const juce::Identifier name(#name);
+    DECLARE_ID(chip)
+    DECLARE_ID(clock)
+    DECLARE_ID(layout)
+    DECLARE_ID(pan)
+    #undef DECLARE_ID
+}  // namespace IDs
+
+namespace uZX {
+
+constexpr double MHz = 1000000.0;
+
+template <typename Type>
+struct ParamAttachment {
+    ParamAttachment(te::Plugin& p)
+        : plugin(p)
+    {}
+
+    void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u) {
+        name = n;
+        units = u;
+        range = r;
+        value.referTo(plugin.state, id, plugin.getUndoManager(), def);
+    }
+
+    inline operator CachedValue<Type>&() noexcept { return value; }
+
+    // for CachedValue-like transparent access
+    inline operator Type() const noexcept         { return value.get(); }
+
+    inline Type get() const noexcept              { return value.get(); }
+
+    inline const Type& operator*() const noexcept        { return *value; }
+
+    template <typename OtherType>
+    inline bool operator== (const OtherType& other) const { return value == other; }
+
+    template <typename OtherType>
+    inline bool operator!= (const OtherType& other) const   { return ! operator== (other); }
+
+    inline Type getDefault() const                          { return value.getDefault(); }
+
+    inline ParamAttachment& operator= (const Type& newValue) {
+        value = newValue;
+        return *this;
+    }
+
+    // ======================================================================================
+    te::Plugin& plugin;
+    String name;
+    String units;
+    CachedValue<Type> value;
+    NormalisableRange<Type> range;
+
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamAttachment)
+};
 
 class AYChipPlugin : public te::Plugin,
                      private AsyncUpdater {
 public:
     AYChipPlugin (te::PluginCreationInfo);
     ~AYChipPlugin() override;
+
+    enum ChannelsLayout {
+        ABC,
+        ACB,
+        BAC
+    };
 
     //==============================================================================
     static const char* getPluginName()                  { return "AY Chip"; }
@@ -38,6 +103,20 @@ public:
     bool takesAudioInput() override                     { return false; }
     bool producesAudioWhenNoAudioInput() override       { return false; }
     void restorePluginStateFromValueTree (const ValueTree&) override;
+    std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
+
+    struct Params {
+        // ParamAttachment<AYInterface::ChipType> chipTypeValue;
+        ParamAttachment<double> clockValue;
+        // ParamAttachment<ChannelsLayout> channelsLayoutValue;
+        // ParamAttachment<double> panWidthValue;
+    };
+
+    Params staticParams {
+        .clockValue = {*this}
+    };
+
+    juce::CachedValue<AYInterface::ChipType> chipTypeValue;
 
 private:
     //==============================================================================
@@ -47,12 +126,16 @@ private:
 
     PsgRegsAYFrame registers;
     std::unique_ptr<AYInterface> chip;
+
     double timeFromReset;
 
     void valueTreeChanged() override;
+    void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
     void handleAsyncUpdate() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };
 
 } // namespace MoTool::uZX
+
+} // namespace MoTool

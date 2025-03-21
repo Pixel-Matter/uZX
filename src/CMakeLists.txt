@@ -9,7 +9,8 @@ option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
 # JUCE Application Setup
 juce_add_gui_app(${TARGET_NAME}
-    PRODUCT_NAME "${PROJECT_NAME}"
+    PRODUCT_NAME "uZX"
+    # PRODUCT_NAME "${PROJECT_NAME}"
     COMPANY_NAME "Pixel Matter"
     BUNDLE_ID "org.pixelmatter.${TARGET_NAME}"
 )

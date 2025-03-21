@@ -429,9 +429,14 @@ class MoToolApp : public JUCEApplication {
 public:
     MoToolApp();
 
+    const String getApplicationFancyName() {
+        return "Pixel Matter μZX";
+    }
+
     const String getApplicationName() override      {
         return ProjectInfo::projectName;
     }
+
     const String getApplicationVersion() override   {
         return ProjectInfo::versionString;
     }
@@ -462,14 +467,5 @@ private:
     std::unique_ptr<MoLookAndFeel> lookAndFeel;
     ApplicationCommandManager commandManager;
 };
-
-namespace Commands {
-
-// // ApplicationCommandManager& getGlobalCommandManager();
-// ApplicationCommandManager& getGlobalCommandManager() {
-//     return MoToolApp::getCommandManager();
-// }
-
-} // namespace Commands
 
 } // namespace MoTool

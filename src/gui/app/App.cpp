@@ -27,7 +27,7 @@ MoToolApp::MoToolApp()
 }
 
 void MoToolApp::initialise(const String&) {
-    auto title = getApplicationName() + " v" + getApplicationVersion();
+    auto title = getApplicationFancyName() + " v" + getApplicationVersion();
     mainWindow_ = std::make_unique<MainWindow>(std::move(title), engine_, getCommandManager());
 }
 

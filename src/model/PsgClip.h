@@ -29,17 +29,12 @@ public:
     {}
 
     void initialise() override {
-        DBG("PsgClip::initialise()");
         te::MidiClip::initialise();
         if (getColour() == getDefaultColour()) {
             auto track = getTrack();
             // TODO make clip colors use themed palette
             float hue = (track->getIndexInEditTrackList() % 18) * 1.0f / 18.0f + 0.3f;
-            // DBG("Clip default color " << getDefaultColour().toString());
-            // DBG("Clip color " << getColour().toString());
-            // DBG("Clip hue=" << hue);
             setColour(getDefaultColour().withHue(hue));
-            // DBG("Clip color set" << getColour().toString());
         }
         // Not sure we should have clip plugins yet
         // ensureHasAYPlugin();

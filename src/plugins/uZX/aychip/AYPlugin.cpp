@@ -1,5 +1,6 @@
 
 #include <JuceHeader.h>
+#include <utility>
 
 #include "AYPlugin.h"
 #include "AYPluginEditor.h"
@@ -17,9 +18,8 @@ AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
 
     auto um = getUndoManager();
     chipTypeValue.referTo(state, IDs::chip, um, AYInterface::TypeEnum::AY);
-    // clockValue.referTo(state, IDs::clock, um, 1770000.0);
 
-    // triggerAsyncUpdate();
+    triggerAsyncUpdate();
 }
 
 AYChipPlugin::~AYChipPlugin() {
@@ -29,31 +29,38 @@ AYChipPlugin::~AYChipPlugin() {
 const char* AYChipPlugin::xmlTypeName = "aychip";
 
 void AYChipPlugin::valueTreeChanged() {
-    // triggerAsyncUpdate();
+    // triggerAsyncUpdate(); // only if chip static params were changed
     te::Plugin::valueTreeChanged();
 }
 
 void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
     if (v == state && id == IDs::clock) {
-        if (chip) {
-            chip->setClock(staticParams.clockValue * MHz);
-            DBG("AYChipPlugin::valueTreePropertyChanged: setClock(" << staticParams.clockValue << "Mhz)");
-        }
+        triggerAsyncUpdate();
     }
     propertiesChanged();
     Plugin::valueTreePropertyChanged(v, id);
 }
 
-void AYChipPlugin::handleAsyncUpdate() {
-    // DBG("AYChipPlugin::handleAsyncUpdate");
+void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
+    initialiseAY();
 }
 
-void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
-    const juce::ScopedLock sl(lock);
-    chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.clockValue * MHz);
-    chip->setMasterVolume(0.65f);
-    DBG("AYChipPlugin::initialise");
-    reset();
+void AYChipPlugin::initialiseAY() {
+    std::unique_ptr<AYInterface> newChip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.clockValue * MHz);
+    newChip->setMasterVolume(0.65f);
+    newChip->ResetSound();
+
+    // atomic chip swap
+    {
+        const ScopedLock sl(lock);
+        std::swap(newChip, chip);
+    }
+    DBG("Chip swapped");
+}
+
+void AYChipPlugin::handleAsyncUpdate() {
+    // Assuming async changes are only for chip static params
+    initialiseAY();
 }
 
 void AYChipPlugin::deinitialise() {

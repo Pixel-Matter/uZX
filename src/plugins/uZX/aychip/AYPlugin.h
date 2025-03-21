@@ -5,6 +5,8 @@
 #include "../../../formats/psg/PsgData.h"
 #include "aychip.h"
 
+#include <atomic>
+#include <optional>
 
 namespace te = tracktion;
 
@@ -93,6 +95,7 @@ public:
 
     int getNumOutputChannelsGivenInputs(int numInputChannels) override { return jmin (numInputChannels, 2); }
     void initialise(const te::PluginInitialisationInfo&) override;
+    void initialiseAY();
     void deinitialise() override;
     void applyToBuffer(const te::PluginRenderContext&) noexcept override;
     void midiPanic() override;
@@ -128,6 +131,13 @@ private:
     std::unique_ptr<AYInterface> chip;
 
     double timeFromReset;
+
+    struct PendingChanges {
+        std::unique_ptr<AYInterface> chip;
+    };
+
+    PendingChanges pendingChanges;
+    std::atomic<bool> isProcessing {false};
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;

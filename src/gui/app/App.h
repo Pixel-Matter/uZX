@@ -430,7 +430,7 @@ public:
     MoToolApp();
 
     const String getApplicationFancyName() {
-        return "Pixel Matter μZX";
+        return CharPointer_UTF8("Pixel Matter μZX");
     }
 
     const String getApplicationName() override      {

@@ -434,7 +434,7 @@ public:
     }
 
     const String getApplicationName() override      {
-        return ProjectInfo::projectName;
+        return CharPointer_UTF8(ProjectInfo::projectName);
     }
 
     const String getApplicationVersion() override   {

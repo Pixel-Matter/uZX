@@ -18,9 +18,9 @@ inline static constexpr std::string MIDI_WILDCARD {"*.mid;*.midi"};
 inline static constexpr std::string PSG_WILDCARD {"*.psg;*.ay"};
 
 inline void browseForFile(te::Engine& engine, const String& name, const String& wildcard, std::function<void (const File&)> fileChosenCallback) {
-    DBG("Default save directory is " << engine.getPropertyStorage().getDefaultLoadSaveDirectory(ProjectInfo::projectName).getFullPathName());
+    DBG("Default save directory is " << engine.getPropertyStorage().getDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName)).getFullPathName());
     auto fc = std::make_shared<FileChooser>("Please select " + name + " file to load...",
-                                            engine.getPropertyStorage().getDefaultLoadSaveDirectory(ProjectInfo::projectName),
+                                            engine.getPropertyStorage().getDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName)),
                                             wildcard);
 
     fc->launchAsync(FileBrowserComponent::openMode + FileBrowserComponent::canSelectFiles,
@@ -29,8 +29,8 @@ inline void browseForFile(te::Engine& engine, const String& name, const String& 
 
                             if (f.existsAsFile()) {
                                 DBG("Set save directory is " << f.getParentDirectory().getFullPathName());
-                                engine.getPropertyStorage().setDefaultLoadSaveDirectory(ProjectInfo::projectName, f.getParentDirectory());
-                                DBG("Set save directory is " << engine.getPropertyStorage().getDefaultLoadSaveDirectory(ProjectInfo::projectName).getFullPathName());
+                                engine.getPropertyStorage().setDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName), f.getParentDirectory());
+                                DBG("Set save directory is " << engine.getPropertyStorage().getDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName)).getFullPathName());
                             }
 
                             callback(f);
@@ -127,7 +127,7 @@ inline File getRendersDirectory(te::Edit& edit) {
     File rendersDir = editFile.existsAsFile()
         ? editFile.getParentDirectory().getChildFile(editFile.getFileNameWithoutExtension()).withFileExtension("Renders")
         : File::getSpecialLocation(File::userMusicDirectory)
-            .getChildFile(ProjectInfo::projectName).getChildFile("Renders");
+            .getChildFile(CharPointer_UTF8(ProjectInfo::projectName)).getChildFile("Renders");
 
     rendersDir.createDirectory();
     return rendersDir;

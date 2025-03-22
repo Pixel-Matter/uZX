@@ -18,7 +18,7 @@ using namespace MoTool::EditFileOps;
 namespace MoTool {
 
 MoToolApp::MoToolApp()
-    : engine_ { ProjectInfo::projectName, std::make_unique<ExtUIBehaviour>(), std::make_unique<ExtEngineBehaviour>() }
+    : engine_ { CharPointer_UTF8(ProjectInfo::projectName), std::make_unique<ExtUIBehaviour>(), std::make_unique<ExtEngineBehaviour>() }
     , lookAndFeel {std::make_unique<MoLookAndFeel>()}
 {
     DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());

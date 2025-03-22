@@ -107,7 +107,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     Logger::setCurrentLogger (&logger);
 
     tracktion_engine::Engine engine {
-        std::make_unique<TestPropertyStorage>(ProjectInfo::projectName),
+        std::make_unique<TestPropertyStorage>(CharPointer_UTF8(ProjectInfo::projectName)),
         std::make_unique<TestUIBehaviour>(),
         std::make_unique<TestEngineBehaviour>()
     };

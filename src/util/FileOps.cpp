@@ -17,7 +17,7 @@ File findRecentEdit(const File& dir, const String& fileGlob) {
 }
 
 File getRecentEditFile() {
-    auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(ProjectInfo::projectName);
+    auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(CharPointer_UTF8(ProjectInfo::projectName));
     d.createDirectory();
 
     auto f = findRecentEdit(d, getAppFileGlob());
@@ -29,7 +29,7 @@ File getRecentEditFile() {
 }
 
 File getTempEditFile() {
-    auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(ProjectInfo::projectName);
+    auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(CharPointer_UTF8(ProjectInfo::projectName));
     d.createDirectory();
     return d.getNonexistentChildFile("Unnamed", EDIT_FILE_SUFFIX, false);
 }

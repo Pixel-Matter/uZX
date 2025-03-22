@@ -27,9 +27,18 @@ constexpr double MHz = 1000000.0;
 
 template <typename Type>
 struct ParamAttachment {
+    using type = Type;
+
     ParamAttachment(te::Plugin& p)
         : plugin(p)
     {}
+
+    // TODO implement
+    // class Listener {
+    //     virtual void valueChanged() = 0;
+    // };
+    // TODO implement
+    // void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
 
     void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u) {
         name = n;
@@ -109,14 +118,16 @@ public:
     std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
 
     struct Params {
-        // ParamAttachment<AYInterface::ChipType> chipTypeValue;
+        ParamAttachment<AYInterface::ChipType> chipTypeValue;
         ParamAttachment<double> clockValue;
         // ParamAttachment<ChannelsLayout> channelsLayoutValue;
         // ParamAttachment<double> panWidthValue;
     };
 
+    // TODO make it nice
     Params staticParams {
-        .clockValue = {*this}
+        .chipTypeValue = {*this},
+        .clockValue    = {*this}
     };
 
     juce::CachedValue<AYInterface::ChipType> chipTypeValue;

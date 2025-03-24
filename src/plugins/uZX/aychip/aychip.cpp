@@ -6,6 +6,8 @@
 #include <cmath>
 #include <vector>
 
+#include <JuceHeader.h>
+
 namespace MoTool::uZX {
 
 
@@ -36,22 +38,24 @@ AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type)
     , Pan_ {0.25, 0.75, 0.5}  // ACB is default
     , MasterVolume_(1.0)
 {
-    Reset(sampleRate, clock, type);
+    reset(sampleRate, clock, type);
 }
 
 AyumiEmulator::~AyumiEmulator() {
 
 }
 
-auto AyumiEmulator::ResetSound() -> void {
-    Reset(SampleRate_, ClockRate_, Type_);
+auto AyumiEmulator::resetSound() -> void {
+    reset(SampleRate_, ClockRate_, Type_);
 }
 
-auto AyumiEmulator::Reset(int sampleRate, double clock, ChipType type) -> void {
+auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {
     SampleRate_ = sampleRate;
     ClockRate_ = clock;
     Type_ = type;
-    ayumi_configure(&Ayumi_, type, clock, sampleRate);
+    auto result = ayumi_configure(&Ayumi_, type, clock, sampleRate);
+    result = ayumi_configure(&Ayumi_, type, clock, sampleRate);
+    jassert(result == 1);
     for (int i = 0; i < TONE_CHANNELS; ++i) {
         setPan(i, Pan_[i]);
         setMixer(i, false, false, false);
@@ -71,7 +75,7 @@ auto AyumiEmulator::getClockValues() const -> std::vector<float> {
 }
 
 auto AyumiEmulator::setSampleRate(int sampleRate) -> void {
-    Reset(sampleRate, ClockRate_, Type_);
+    reset(sampleRate, ClockRate_, Type_);
 }
 
 auto AyumiEmulator::getSampleRate() const -> int {
@@ -79,7 +83,7 @@ auto AyumiEmulator::getSampleRate() const -> int {
 }
 
 auto AyumiEmulator::setType(ChipType type) -> void {
-    Reset(SampleRate_, ClockRate_, type);
+    reset(SampleRate_, ClockRate_, type);
 }
 
 auto AyumiEmulator::getType() const -> ChipType {
@@ -91,7 +95,7 @@ auto AyumiEmulator::getClock() const -> double {
 }
 
 auto AyumiEmulator::setClock(double rate) -> void {
-    Reset(SampleRate_, rate, Type_);
+    reset(SampleRate_, rate, Type_);
 }
 
 auto AyumiEmulator::setPan(int chan, double pan, bool isEqp) -> void {

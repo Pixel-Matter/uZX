@@ -1,6 +1,7 @@
 /* Author: Peter Sovietov */
 
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 #include "ayumi.h"
 
@@ -92,7 +93,7 @@ static void hold_bottom(struct ayumi* ay) {
 static void (* const Envelopes[][2])(struct ayumi*) = {
   {slide_down, hold_bottom},
   {slide_down, hold_bottom},
-  {slide_down, hold_bottom},	
+  {slide_down, hold_bottom},
   {slide_down, hold_bottom},
   {slide_up, hold_bottom},
   {slide_up, hold_bottom},
@@ -136,12 +137,21 @@ static void update_mixer(struct ayumi* ay) {
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     out = (update_tone(ay, i) | ay->channels[i].t_off) & (noise | ay->channels[i].n_off);
     out *= ay->channels[i].e_on ? envelope : ay->channels[i].volume * 2 + 1;
+    // TODO refactor panning out to ayumi_mix_stereo(ay) store ay->out[i] instead
     ay->left += ay->dac_table[out] * ay->channels[i].pan_left;
     ay->right += ay->dac_table[out] * ay->channels[i].pan_right;
   }
 }
 
+// static int CONFIGURED = 0;
+
 int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr) {
+  printf("ayumi_configure %p, %i, %f, %i\n", ay, is_ym, clock_rate, sr);
+  // if (CONFIGURED) {
+  //   return 1;
+  // }
+  // printf("ayumi_configure real %p, %i, %f, %i\n", ay, is_ym, clock_rate, sr);
+  // CONFIGURED = 1;
   int i;
   memset(ay, 0, sizeof(struct ayumi));
   ay->step = clock_rate / (sr * 8 * DECIMATE_FACTOR);
@@ -151,6 +161,7 @@ int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr) {
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     ayumi_set_tone(ay, i, 1);
   }
+  printf("ayumi_configure ay->step %f\n", ay->step);
   return ay->step < 1;
 }
 

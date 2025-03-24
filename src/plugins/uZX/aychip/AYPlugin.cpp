@@ -14,13 +14,11 @@ namespace MoTool::uZX {
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
 {
-    staticParams.clockValue.referTo(IDs::clock, "Clock frequncy", {1.0, 2,0}, 1.75, "MHz");
+    staticParams.clockValue.referTo(IDs::clock, "Clock frequncy", {0.894887, 2.0, 0.01}, 1.7734, "MHz");
     staticParams.chipTypeValue.referTo(IDs::chip, "Chip type", {AYInterface::TypeEnum::AY, AYInterface::TypeEnum::YM}, AYInterface::TypeEnum::AY, {});
 
-    // auto um = getUndoManager();
-    // chipTypeValue.referTo(state, IDs::chip, um, AYInterface::TypeEnum::AY);
-
-    initialiseAY();
+    // initialiseAY();
+    DBG("AYChipPlugin::AYChipPlugin() chip type " << (int) staticParams.chipTypeValue.value.get() << " clock " << staticParams.clockValue << " MHz");
 }
 
 AYChipPlugin::~AYChipPlugin() {
@@ -43,19 +41,29 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
 }
 
 void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
+    DBG("AYChipPlugin::initialise()");
     initialiseAY();
 }
 
 void AYChipPlugin::initialiseAY() {
-    std::unique_ptr<AYInterface> newChip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.clockValue * MHz, staticParams.chipTypeValue);
-    newChip->setMasterVolume(0.65f);
-    newChip->ResetSound();
+    DBG("AYChipPlugin::initialiseAY()");
+    // std::unique_ptr<AYInterface> newChip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.clockValue * MHz, staticParams.chipTypeValue);
+    // newChip->setMasterVolume(0.65f);
+    // newChip->ResetSound();
 
-    // atomic chip swap
-    {
-        const ScopedLock sl(lock);
-        std::swap(newChip, chip);
+    // // atomic chip swap
+    // {
+    //     const ScopedLock sl(lock);
+    //     std::swap(newChip, chip);
+    // }
+    const ScopedLock sl(lock);
+    if (chip == nullptr) {
+        chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.clockValue * MHz, staticParams.chipTypeValue);
+    } else {
+        chip->setType(staticParams.chipTypeValue);
+        chip->setClock(staticParams.clockValue * MHz);
     }
+    DBG("AYChipPlugin::initialiseAY() chip type " << (int) chip->getType() << " clock " << chip->getClock() << " MHz");
 }
 
 void AYChipPlugin::handleAsyncUpdate() {
@@ -67,11 +75,11 @@ void AYChipPlugin::deinitialise() {
 }
 
 void AYChipPlugin::reset() {
-    const juce::ScopedLock sl(lock);
+    const ScopedLock sl(lock);
     timeFromReset = 0.0;
     registers = {};
     if (chip) {
-        chip->ResetSound();
+        chip->resetSound();
     }
 }
 
@@ -80,20 +88,23 @@ void AYChipPlugin::midiPanic() {
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
-    if (!fc.isPlaying || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr) {
+    if (chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr
+        || !(fc.isPlaying || fc.isScrubbing || fc.isRendering)
+    ) {
         return;
     }
 
     SCOPED_REALTIME_CHECK
-    const juce::ScopedLock sl(lock);
+    const ScopedLock sl(lock);
 
     te::clearChannels(*fc.destBuffer, 2, -1, fc.bufferStartSample, fc.bufferNumSamples);
 
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
+    // DBG("AYChipPlugin::applyToBuffer() chip type " << (int) chip->getType() << " clock " << chip->getClock() << " MHz");
     for (auto& m : *fc.bufferForMidiMessages) {
         // process up to this event
-        const int timeSample = juce::roundToInt(m.getTimeStamp() * sampleRate);
+        const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample - currentSample > 0) {
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
                                static_cast<size_t>(timeSample - currentSample));
@@ -145,7 +156,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 }
 
 void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
-    te::copyPropertiesToCachedValues(v, chipTypeValue, staticParams.clockValue.value);
+    te::copyPropertiesToCachedValues(v, staticParams.chipTypeValue.value, staticParams.clockValue.value);
 
     for (auto p : getAutomatableParameters())
         p->updateFromAttachedValue();

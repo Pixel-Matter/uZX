@@ -104,11 +104,14 @@ public:
 
     int getNumOutputChannelsGivenInputs(int numInputChannels) override { return jmin (numInputChannels, 2); }
     void initialise(const te::PluginInitialisationInfo&) override;
-    void initialiseAY();
     void deinitialise() override;
     void applyToBuffer(const te::PluginRenderContext&) noexcept override;
     void midiPanic() override;
     void reset() override;
+
+    //==============================================================================
+    void initialiseAY();
+    void staticParamsChanged();
 
     //==============================================================================
     bool takesMidiInput() override                      { return true; }
@@ -130,7 +133,7 @@ public:
         .clockValue    = {*this}
     };
 
-    juce::CachedValue<AYInterface::ChipType> chipTypeValue;
+    // juce::CachedValue<AYInterface::ChipType> chipTypeValue;
 
 private:
     //==============================================================================

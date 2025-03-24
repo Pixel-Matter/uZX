@@ -7,23 +7,23 @@ namespace te = tracktion;
 
 namespace MoTool {
 
-class ProgressDialog : public juce::DialogWindow,
+class ProgressDialog : public DialogWindow,
                        private te::BackgroundJobManager::Listener,
-                       private juce::Timer
+                       private Timer
 {
 public:
-    ProgressDialog(const juce::String& title,
+    ProgressDialog(const String& title,
                    te::ThreadPoolJobWithProgress& j,
                    te::BackgroundJobManager& jm)
         : DialogWindow(title,
-                       juce::LookAndFeel::getDefaultLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId),
+                       LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId),
                        true)
         , job(j)
         , jobManager(jm)
     {
         // Setup components
-        content.taskLabel.setJustificationType(juce::Justification::centred);
-        content.taskLabel.setText(job.getJobName(), juce::dontSendNotification);
+        content.taskLabel.setJustificationType(Justification::centred);
+        content.taskLabel.setText(job.getJobName(), dontSendNotification);
 
         content.cancelButton.setButtonText("Cancel");
         if (job.canCancel()) {
@@ -73,7 +73,7 @@ private:
         backgroundJobsChanged();
     }
 
-    class ContentComponent : public juce::Component {
+    class ContentComponent : public Component {
     public:
         void resized() override {
             auto bounds = getLocalBounds().reduced(10);
@@ -88,9 +88,9 @@ private:
             taskLabel.setBounds(bounds);
         }
 
-        juce::ProgressBar progressBar { progress };
-        juce::Label taskLabel;
-        juce::TextButton cancelButton;
+        ProgressBar progressBar { progress };
+        Label taskLabel;
+        TextButton cancelButton;
         double progress = 0.0;
     };
 

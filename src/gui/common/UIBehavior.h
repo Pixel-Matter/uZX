@@ -134,8 +134,16 @@ public:
     void showProjectScreen()                                    override {}
 
     void showSettingsScreen()                                   override {
-        auto& engine = MoToolApp::getApp().getEngine();
-        EngineHelpers::showAudioDeviceSettings(engine);
+        DialogWindow::LaunchOptions o;
+        o.dialogTitle = TRANS("Audio Settings");
+        o.dialogBackgroundColour = LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId);
+        o.content.setOwned(new AudioDeviceSelectorComponent(MoToolApp::getApp().getEngine().getDeviceManager().deviceManager,
+                                                            0, 512, 1, 512, true, true, true, false));
+        o.useNativeTitleBar = true;
+        o.escapeKeyTriggersCloseButton  = true;
+        o.resizable = true;
+        o.content->setSize(500, 600);
+        o.launchAsync();
     }
 
     void showEditScreen()                                       override {}

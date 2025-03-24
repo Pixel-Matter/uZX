@@ -305,7 +305,7 @@ public:
 
             // Settings commands
             case AppCommands::settingsAudioMidi:
-                EngineHelpers::showAudioDeviceSettings(engine_);
+                te::AppFunctions::showSettingsScreen();
                 break;
 
             case AppCommands::settingsPlugins:

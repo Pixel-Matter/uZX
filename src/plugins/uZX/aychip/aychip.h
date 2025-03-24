@@ -87,6 +87,7 @@ public:
     AYInterface() {}
     virtual ~AYInterface() {}
 
+    virtual auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::AY) -> void = 0;
     virtual auto resetSound() -> void = 0;
     virtual auto canChangeClock() const -> bool = 0;
     virtual auto canChangeClockContinously() const -> bool = 0;
@@ -185,7 +186,7 @@ public:
     AyumiEmulator(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM);
     ~AyumiEmulator() override;
 
-    auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM) -> void;
+    auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM) -> void override;
     auto resetSound() -> void override;
 
     auto canChangeClock() const -> bool override;

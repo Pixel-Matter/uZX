@@ -16,9 +16,6 @@ AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
 {
     staticParams.clockValue.referTo(IDs::clock, "Clock frequncy", {0.894887, 2.0, 0.01}, 1.7734, "MHz");
     staticParams.chipTypeValue.referTo(IDs::chip, "Chip type", {AYInterface::TypeEnum::AY, AYInterface::TypeEnum::YM}, AYInterface::TypeEnum::AY, {});
-
-    // initialiseAY();
-    DBG("AYChipPlugin::AYChipPlugin() chip type " << (int) staticParams.chipTypeValue.value.get() << " clock " << staticParams.clockValue << " MHz");
 }
 
 AYChipPlugin::~AYChipPlugin() {
@@ -28,63 +25,39 @@ AYChipPlugin::~AYChipPlugin() {
 const char* AYChipPlugin::xmlTypeName = "aychip";
 
 void AYChipPlugin::valueTreeChanged() {
-    // triggerAsyncUpdate(); // only if chip static params were changed
     te::Plugin::valueTreeChanged();
 }
 
 void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
     if (v == state && (id == IDs::clock || id == IDs::chip)) {
-        triggerAsyncUpdate();
+        reset();
     }
     propertiesChanged();
     Plugin::valueTreePropertyChanged(v, id);
 }
 
 void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
-    DBG("AYChipPlugin::initialise()");
-    initialiseAY();
-}
-
-void AYChipPlugin::initialiseAY() {
-    DBG("AYChipPlugin::initialiseAY()");
-    // std::unique_ptr<AYInterface> newChip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.clockValue * MHz, staticParams.chipTypeValue);
-    // newChip->setMasterVolume(0.65f);
-    // newChip->ResetSound();
-
-    // // atomic chip swap
-    // {
-    //     const ScopedLock sl(lock);
-    //     std::swap(newChip, chip);
-    // }
-    const ScopedLock sl(lock);
-    if (chip == nullptr) {
-        chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.clockValue * MHz, staticParams.chipTypeValue);
-    } else {
-        chip->setType(staticParams.chipTypeValue);
-        chip->setClock(staticParams.clockValue * MHz);
-    }
-    DBG("AYChipPlugin::initialiseAY() chip type " << (int) chip->getType() << " clock " << chip->getClock() << " MHz");
-}
-
-void AYChipPlugin::handleAsyncUpdate() {
-    // Assuming async changes are only for chip static params
-    initialiseAY();
+    reset();
 }
 
 void AYChipPlugin::deinitialise() {
-}
-
-void AYChipPlugin::reset() {
-    const ScopedLock sl(lock);
-    timeFromReset = 0.0;
-    registers = {};
-    if (chip) {
-        chip->resetSound();
-    }
+    chip = nullptr;
 }
 
 void AYChipPlugin::midiPanic() {
     reset();
+}
+
+void AYChipPlugin::reset() {
+    const ScopedLock sl(lock);
+    if (chip == nullptr) {
+        chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.clockValue * MHz, staticParams.chipTypeValue);
+    } else {
+        chip->reset(static_cast<int>(sampleRate), staticParams.clockValue * MHz, staticParams.chipTypeValue);
+    }
+    chip->setMasterVolume(0.6f);
+    timeFromReset = 0.0;
+    registers = {};
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
@@ -101,7 +74,6 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
-    // DBG("AYChipPlugin::applyToBuffer() chip type " << (int) chip->getType() << " clock " << chip->getClock() << " MHz");
     for (auto& m : *fc.bufferForMidiMessages) {
         // process up to this event
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);

@@ -1,7 +1,6 @@
 /* Author: Peter Sovietov */
 
 #include <string.h>
-#include <stdio.h>
 #include <math.h>
 #include "ayumi.h"
 
@@ -143,15 +142,7 @@ static void update_mixer(struct ayumi* ay) {
   }
 }
 
-// static int CONFIGURED = 0;
-
 int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr) {
-  printf("ayumi_configure %p, %i, %f, %i\n", ay, is_ym, clock_rate, sr);
-  // if (CONFIGURED) {
-  //   return 1;
-  // }
-  // printf("ayumi_configure real %p, %i, %f, %i\n", ay, is_ym, clock_rate, sr);
-  // CONFIGURED = 1;
   int i;
   memset(ay, 0, sizeof(struct ayumi));
   ay->step = clock_rate / (sr * 8 * DECIMATE_FACTOR);
@@ -161,7 +152,6 @@ int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr) {
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     ayumi_set_tone(ay, i, 1);
   }
-  printf("ayumi_configure ay->step %f\n", ay->step);
   return ay->step < 1;
 }
 

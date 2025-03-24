@@ -80,8 +80,7 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamAttachment)
 };
 
-class AYChipPlugin : public te::Plugin,
-                     private AsyncUpdater {
+class AYChipPlugin : public te::Plugin {
 public:
     AYChipPlugin (te::PluginCreationInfo);
     ~AYChipPlugin() override;
@@ -110,10 +109,6 @@ public:
     void reset() override;
 
     //==============================================================================
-    void initialiseAY();
-    void staticParamsChanged();
-
-    //==============================================================================
     bool takesMidiInput() override                      { return true; }
     bool takesAudioInput() override                     { return false; }
     bool producesAudioWhenNoAudioInput() override       { return false; }
@@ -132,8 +127,6 @@ public:
         .chipTypeValue = {*this},
         .clockValue    = {*this}
     };
-
-    // juce::CachedValue<AYInterface::ChipType> chipTypeValue;
 
 private:
     //==============================================================================
@@ -155,7 +148,6 @@ private:
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
-    void handleAsyncUpdate() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };

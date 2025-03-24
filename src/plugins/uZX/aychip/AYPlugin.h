@@ -69,6 +69,15 @@ struct ParamAttachment {
         return *this;
     }
 
+    inline Value getPropertyAsValue() {
+        return value.getPropertyAsValue();
+    }
+
+    StringArray getChioces() const {
+        // FIXME implement this
+        return {"AY-3-8910", "YM2149F", "3", "4", "5", "6"};
+    }
+
     // ======================================================================================
     te::Plugin& plugin;
     String name;

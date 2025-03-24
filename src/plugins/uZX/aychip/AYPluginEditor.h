@@ -19,37 +19,29 @@ namespace MoTool::uZX {
 template <typename Type, typename WidgetType>
 class ParameterComponent : public Component {
 public:
-    ParameterComponent(ParamAttachment<Type>& param)
-      : attachment(param),
-        widget(),
-        label(param.name, "")
+    ParameterComponent(ParamAttachment<Type>& att)
+      : attachment(att)
+      , label("", att.name)
+      , widget()
     {
-        configureWidget();
-
-        // Initialize widget with parameter value
-        widget.setValue(attachment.get(), dontSendNotification);
-
         addAndMakeVisible(label);
         addAndMakeVisible(widget);
     }
 
-    // Override in derived classes to configure the specific widget
-    virtual void configureWidget() = 0;
-
     void resized() override {
         auto r = getLocalBounds();
-        label.setBounds(r.removeFromTop(24).reduced(4));
-        widget.setBounds(r.reduced(4));
+        label.setBounds(r.removeFromTop(30));
+        widget.setBounds(r.removeFromTop(30));
     }
 
 protected:
     ParamAttachment<Type>& attachment;
-    WidgetType widget;
     Label label;
+    WidgetType widget;
 };
 
 // Specialized for sliders
-class SliderParameterComponent : public ParameterComponent<double, Slider>, private Slider::Listener  {
+class SliderParameterComponent : public ParameterComponent<double, Slider> {
 public:
     SliderParameterComponent(
         ParamAttachment<double>& param,
@@ -58,40 +50,39 @@ public:
       : ParameterComponent<double, Slider>(param),
         sliderStyle(style),
         boxPosition(textBoxPosition)
-    {}
-
-    void configureWidget() override {
+    {
         widget.setSliderStyle(sliderStyle);
         widget.setTextBoxStyle(boxPosition, false, widget.getTextBoxWidth(), widget.getTextBoxHeight());
         widget.setRange(attachment.range.start, attachment.range.end, attachment.range.interval);
         widget.setValue(attachment.get(), dontSendNotification);
-        widget.addListener(this);
+        widget.getValueObject().referTo(attachment.getPropertyAsValue());
     }
 
-    private:
+private:
     Slider::SliderStyle sliderStyle;
     Slider::TextEntryBoxPosition boxPosition;
-
-    // void updateWidgetFromValue() override {
-    //     widget.setValue(attachment.get(), dontSendNotification);
-    // }
-
-    void sliderValueChanged(Slider*) override {
-        attachment = widget.getValue();
-    }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParameterComponent)
 };
 
 
 // Similar specializations for other widget types
-class ToggleParameterComponent : public ParameterComponent<bool, ToggleButton> {
-    // Implementation...
+template <typename Type>
+class ComboParameterComponent : public ParameterComponent<Type, ComboBox> {
+    public:
+    ComboParameterComponent(
+        ParamAttachment<Type>& att)
+      : ParameterComponent<Type, ComboBox>(att)
+    {
+        this->widget.addItemList(this->attachment.getChioces(), 1);
+        this->widget.setSelectedItemIndex(this->attachment.get() + 1, dontSendNotification);
+        this->widget.getSelectedIdAsValue().referTo(this->attachment.getPropertyAsValue());
+    }
+
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ComboParameterComponent)
 };
 
-class ComboParameterComponent : public ParameterComponent<int, ComboBox> {
-    // Implementation...
-};
 
 class AYPluginEditor : public te::Plugin::EditorComponent {
 public:
@@ -101,6 +92,7 @@ public:
         constrainer_.setMinimumWidth(200);
         setSize(200, 200);
 
+        addAndMakeVisible(chipParameter);
         addAndMakeVisible(clockParameter);
     }
 
@@ -114,20 +106,23 @@ public:
 
     void resized() override {
         auto r = getLocalBounds().reduced(8);
-        // chipAttachment.setBounds(r.removeFromTop(72));
-        clockParameter.setBounds(r.removeFromTop(72));
+        chipParameter.setBounds(r.removeFromTop(60));
+        clockParameter.setBounds(r.removeFromTop(90));
     }
 
     ComponentBoundsConstrainer* getBoundsConstrainer() override {
         return &constrainer_;
     }
 
+    static constexpr int itemHeight = 30;
+    static constexpr int itemSpacing = 7;
+
 private:
     AYChipPlugin& plugin_;
     ComponentBoundsConstrainer constrainer_;
 
-    // SliderAttachment<AYInterface::ChipType> chipAttachment  { plugin_.staticParams.chipTypeValue };
-    SliderParameterComponent                 clockParameter { plugin_.staticParams.clockValue };
+    ComboParameterComponent<AYInterface::ChipType> chipParameter  { plugin_.staticParams.chipTypeValue };
+    SliderParameterComponent                       clockParameter { plugin_.staticParams.clockValue };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginEditor)
 };

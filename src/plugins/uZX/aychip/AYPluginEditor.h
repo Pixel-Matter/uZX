@@ -68,18 +68,47 @@ private:
 
 // Similar specializations for other widget types
 template <typename Type>
-class ComboParameterComponent : public ParameterComponent<Type, ComboBox> {
+class ComboParameterComponent : public ParameterComponent<Type, ComboBox>, private ComboBox::Listener, private Value::Listener {
     public:
     ComboParameterComponent(
         ParamAttachment<Type>& att)
       : ParameterComponent<Type, ComboBox>(att)
     {
-        this->widget.addItemList(this->attachment.getChioces(), 1);
-        this->widget.setSelectedItemIndex(this->attachment.get() + 1, dontSendNotification);
-        this->widget.getSelectedIdAsValue().referTo(this->attachment.getPropertyAsValue());
+        for (const auto& [idx, label] : this->attachment.getChoices()) {
+            this->widget.addItem(label, idx + 1);
+        }
+        this->widget.setSelectedItemIndex(valueToIdx(this->attachment.get()), dontSendNotification);
+        this->attachment.getPropertyAsValue().addListener(this);
+        this->widget.addListener(this);
     }
 
 private:
+    int valueToIdx(Type value) {
+        for (size_t i = 0; i < this->attachment.getChoices().size(); ++i) {
+            if (this->attachment.getChoices()[i].first == value) {
+                return static_cast<int>(i);
+            }
+        }
+        return -1;
+    }
+
+    Type idxToValue(int idx) {
+        jassert(idx >= 0 && idx < static_cast<int>(this->attachment.getChoices().size()));
+        return this->attachment.getChoices()[static_cast<size_t>(idx)].first;
+    }
+
+    void comboBoxChanged(ComboBox* comboBox) override {
+        if (comboBox == &this->widget) {
+            if (auto idx = this->widget.getSelectedItemIndex(); idx >= 0) {
+                this->attachment = idxToValue(this->widget.getSelectedItemIndex());
+            }
+        }
+    }
+
+    void valueChanged(Value&) override {
+        this->widget.setSelectedItemIndex(valueToIdx(this->attachment.get()), dontSendNotification);
+    }
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ComboParameterComponent)
 };
 
@@ -90,10 +119,12 @@ public:
       : plugin_(p)
     {
         constrainer_.setMinimumWidth(200);
-        setSize(200, 200);
+        setSize(200, 300);
 
         addAndMakeVisible(chipParameter);
         addAndMakeVisible(clockParameter);
+        addAndMakeVisible(channelsParameter);
+        addAndMakeVisible(stereoParameter);
     }
 
     bool allowWindowResizing() override {
@@ -107,7 +138,9 @@ public:
     void resized() override {
         auto r = getLocalBounds().reduced(8);
         chipParameter.setBounds(r.removeFromTop(60));
-        clockParameter.setBounds(r.removeFromTop(90));
+        clockParameter.setBounds(r.removeFromTop(60));
+        channelsParameter.setBounds(r.removeFromTop(60));
+        stereoParameter.setBounds(r.removeFromTop(60));
     }
 
     ComponentBoundsConstrainer* getBoundsConstrainer() override {
@@ -121,8 +154,10 @@ private:
     AYChipPlugin& plugin_;
     ComponentBoundsConstrainer constrainer_;
 
-    ComboParameterComponent<AYInterface::ChipType> chipParameter  { plugin_.staticParams.chipTypeValue };
-    SliderParameterComponent                       clockParameter { plugin_.staticParams.clockValue };
+    ComboParameterComponent<AYInterface::ChipType>       chipParameter  { plugin_.staticParams.chipTypeValue };
+    SliderParameterComponent                             clockParameter { plugin_.staticParams.clockValue };
+    ComboParameterComponent<AYInterface::ChannelsLayout> channelsParameter { plugin_.staticParams.channelsLayoutValue };
+    SliderParameterComponent                             stereoParameter { plugin_.staticParams.stereoWidthValue };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginEditor)
 };

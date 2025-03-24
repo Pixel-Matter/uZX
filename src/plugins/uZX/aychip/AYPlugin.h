@@ -6,7 +6,7 @@
 #include "aychip.h"
 
 #include <atomic>
-#include <optional>
+#include <array>
 
 namespace te = tracktion;
 
@@ -17,13 +17,23 @@ namespace IDs {
     DECLARE_ID(chip)
     DECLARE_ID(clock)
     DECLARE_ID(layout)
-    DECLARE_ID(pan)
+    DECLARE_ID(stereo)
     #undef DECLARE_ID
 }  // namespace IDs
 
 namespace uZX {
 
 constexpr double MHz = 1000000.0;
+
+
+template <size_t N>
+static StringArray toStringArray(const std::array<std::string_view, N>& ch) {
+    StringArray result;
+    for (const auto& s : ch) {
+        result.add(String(s.data(), s.size()));
+    }
+    return result;
+}
 
 template <typename Type>
 struct ParamAttachment {
@@ -33,18 +43,33 @@ struct ParamAttachment {
         : plugin(p)
     {}
 
-    // TODO implement
-    // class Listener {
-    //     virtual void valueChanged() = 0;
-    // };
-    // TODO implement
-    // void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
-
-    void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u) {
+    void referTo(const Identifier& id, const String& n, const Type& def, const String& u) {
         name = n;
         units = u;
-        range = r;
         value.referTo(plugin.state, id, plugin.getUndoManager(), def);
+    }
+
+    void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u) {
+        referTo(id, n, def, u);
+        range = r;
+    }
+
+    void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def, const String& u) {
+        referTo(id, n, def, u);
+        choices.clear();
+        for (int i = 0; i < ch.size(); ++i) {
+            choices.push_back({static_cast<Type>(i), ch[i]});
+        }
+    }
+
+    template <size_t N>
+    void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def, const String& u) {
+        referTo(id, n, toStringArray(ch), def, u);
+    }
+
+    void referTo(const Identifier& id, const String& n, const std::vector<std::pair<Type, String>>& ch, const Type& def, const String& u) {
+        referTo(id, n, def, u);
+        choices = ch;
     }
 
     inline operator CachedValue<Type>&() noexcept { return value; }
@@ -73,9 +98,8 @@ struct ParamAttachment {
         return value.getPropertyAsValue();
     }
 
-    StringArray getChioces() const {
-        // FIXME implement this
-        return {"AY-3-8910", "YM2149F", "3", "4", "5", "6"};
+    const std::vector<std::pair<Type, String>>& getChoices() const {
+        return choices;
     }
 
     // ======================================================================================
@@ -84,6 +108,7 @@ struct ParamAttachment {
     String units;
     CachedValue<Type> value;
     NormalisableRange<Type> range;
+    std::vector<std::pair<Type, String>> choices;
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamAttachment)
@@ -93,12 +118,6 @@ class AYChipPlugin : public te::Plugin {
 public:
     AYChipPlugin (te::PluginCreationInfo);
     ~AYChipPlugin() override;
-
-    enum ChannelsLayout {
-        ABC,
-        ACB,
-        BAC
-    };
 
     //==============================================================================
     static const char* getPluginName()                  { return "AY Chip"; }
@@ -127,15 +146,18 @@ public:
     struct Params {
         ParamAttachment<AYInterface::ChipType> chipTypeValue;
         ParamAttachment<double> clockValue;
-        // ParamAttachment<ChannelsLayout> channelsLayoutValue;
-        // ParamAttachment<double> panWidthValue;
+        ParamAttachment<AYInterface::ChannelsLayout> channelsLayoutValue;
+        ParamAttachment<double> stereoWidthValue;
+
+        Params(te::Plugin& p)
+            : chipTypeValue(p)
+            , clockValue(p)
+            , channelsLayoutValue(p)
+            , stereoWidthValue(p)
+        {}
     };
 
-    // TODO make it nice
-    Params staticParams {
-        .chipTypeValue = {*this},
-        .clockValue    = {*this}
-    };
+    Params staticParams {*this};
 
 private:
     //==============================================================================

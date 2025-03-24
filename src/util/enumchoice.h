@@ -28,9 +28,9 @@ public:
         return result;
     }
 
-     inline static constexpr auto size() noexcept -> size_t  {
-         return std::size(E::labels);
-     }
+    inline static constexpr auto size() noexcept -> size_t  {
+        return std::size(E::labels);
+    }
 
     inline static constexpr auto getLabelFor(int index) noexcept {
         return getLabels()[index];

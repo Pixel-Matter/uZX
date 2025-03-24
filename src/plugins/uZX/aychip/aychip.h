@@ -36,11 +36,25 @@ public:
             YM
         };
         static inline constexpr std::string_view labels[] {
-            "AY",
-            "YM"
+            "AY-3-8910",
+            "YM2149F"
         };
     };
     using ChipType = MoTool::Util::EnumChoice<TypeEnum>;
+
+    struct LayoutEnum {
+        enum Enum {
+            ABC,
+            ACB,
+            BAC
+        };
+        static inline constexpr std::string_view labels[] {
+            "ABC",
+            "ACB",
+            "BAC"
+        };
+    };
+    using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
 
     struct EnvShapeEnum {
         enum Enum {

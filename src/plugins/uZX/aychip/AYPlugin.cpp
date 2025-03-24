@@ -14,8 +14,11 @@ namespace MoTool::uZX {
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
 {
+    // TODO staticParams.initialise();
     staticParams.clockValue.referTo(IDs::clock, "Clock frequncy", {0.894887, 2.0, 0.01}, 1.7734, "MHz");
-    staticParams.chipTypeValue.referTo(IDs::chip, "Chip type", {AYInterface::TypeEnum::AY, AYInterface::TypeEnum::YM}, AYInterface::TypeEnum::AY, {});
+    staticParams.chipTypeValue.referTo(IDs::chip, "Chip type", AYInterface::ChipType::getLabels(), AYInterface::TypeEnum::AY, {});
+    staticParams.channelsLayoutValue.referTo(IDs::layout, "Channels layout", AYInterface::ChannelsLayout::getLabels(), AYInterface::LayoutEnum::ABC, {});
+    staticParams.stereoWidthValue.referTo(IDs::stereo, "Stereo width", {0.0, 1.0, 0.01}, 0.5, {});
 }
 
 AYChipPlugin::~AYChipPlugin() {
@@ -29,7 +32,8 @@ void AYChipPlugin::valueTreeChanged() {
 }
 
 void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
-    if (v == state && (id == IDs::clock || id == IDs::chip)) {
+    // TODO staticParams.isParamProperty(id);
+    if (v == state && (id == IDs::clock || id == IDs::chip || id == IDs::stereo)) {
         reset();
     }
     propertiesChanged();
@@ -55,6 +59,9 @@ void AYChipPlugin::reset() {
     } else {
         chip->reset(static_cast<int>(sampleRate), staticParams.clockValue * MHz, staticParams.chipTypeValue);
     }
+    // TODO
+    // chip->setChannelsLayout(staticParams.channelsLayoutValue);
+    // chip->setStereoWidth(staticParams.stereoWidthValue);
     chip->setMasterVolume(0.6f);
     timeFromReset = 0.0;
     registers = {};
@@ -128,7 +135,12 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 }
 
 void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
-    te::copyPropertiesToCachedValues(v, staticParams.chipTypeValue.value, staticParams.clockValue.value);
+    // TODO staticParams.copyPropertiesToCachedValues(v);
+    te::copyPropertiesToCachedValues(v,
+        staticParams.chipTypeValue.value,
+        staticParams.clockValue.value,
+        staticParams.channelsLayoutValue.value,
+        staticParams.stereoWidthValue.value);
 
     for (auto p : getAutomatableParameters())
         p->updateFromAttachedValue();
@@ -140,26 +152,50 @@ std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {
 
 //==============================================================================
 
+template <typename ChoiceType>
+static ChoiceType choiceFromVar(const var& v) {
+    // look for the first match from getLabels
+    for (int i = 0; i <= ChoiceType::size(); ++i) {
+        auto ct = ChoiceType::getLabelFor(i);
+        if (v.toString().toStdString() == ct)
+            return static_cast<ChoiceType>(i);
+    }
+    return static_cast<ChoiceType>(0);
+}
+
+template <typename ChoiceType>
+static var choicetoVar(ChoiceType c) {
+    const std::string_view label = c.getLabel();
+    return String {label.data(), label.size()};
+}
+
 } // namespace MoTool::uZX
 
 
 namespace juce {
 
+using namespace MoTool::uZX;
+
 template<>
-struct VariantConverter<MoTool::uZX::AYInterface::ChipType> {
-    static MoTool::uZX::AYInterface::ChipType fromVar(const var& v) {
-        if (v == "YM")
-            return MoTool::uZX::AYInterface::TypeEnum::YM;
-        else
-            return MoTool::uZX::AYInterface::TypeEnum::AY;
+struct VariantConverter<AYInterface::ChipType> {
+    static AYInterface::ChipType fromVar(const var& v) {
+        return choiceFromVar<AYInterface::ChipType>(v);
     }
 
-    static var toVar(MoTool::uZX::AYInterface::ChipType ct) {
-        if (ct == MoTool::uZX::AYInterface::TypeEnum::YM)
-            return "YM";
-        else
-            return "AY";
+    static var toVar(AYInterface::ChipType ct) {
+        return choicetoVar(ct);
     }
 };
 
-}
+template<>
+struct VariantConverter<AYInterface::ChannelsLayout> {
+    static AYInterface::ChannelsLayout fromVar(const var& v) {
+        return choiceFromVar<AYInterface::ChannelsLayout>(v);
+    }
+
+    static var toVar(AYInterface::ChannelsLayout layout) {
+        return choicetoVar(layout);
+    }
+};
+
+} // namespace juce

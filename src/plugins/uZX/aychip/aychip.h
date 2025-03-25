@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <array>
 
 #include "../../../util/enumchoice.h"
 
@@ -46,15 +47,31 @@ public:
         enum Enum {
             ABC,
             ACB,
-            BAC
+            BAC,
+            BCA,
+            CAB,
+            CBA
         };
         static inline constexpr std::string_view labels[] {
             "ABC",
             "ACB",
-            "BAC"
+            "BAC",
+            "BCA",
+            "CAB",
+            "CBA"
         };
     };
     using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
+    using PanValues = std::array<double, 3>;
+
+    static inline constexpr std::array<std::array<double, 3>, 6> channelPans = {{
+        {{0.0, 0.5, 1.0}},  // ABC
+        {{0.0, 1.0, 0.5}},  // ACB
+        {{0.5, 0.0, 1.0}},  // BAC
+        {{1.0, 0.0, 0.5}},  // BCA
+        {{0.5, 1.0, 0.0}},  // CAB
+        {{1.0, 0.5, 0.0}}   // CBA
+    }};
 
     struct EnvShapeEnum {
         enum Enum {

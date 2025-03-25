@@ -155,8 +155,8 @@ std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {
 template <typename ChoiceType>
 static ChoiceType choiceFromVar(const var& v) {
     // look for the first match from getLabels
-    for (int i = 0; i <= ChoiceType::size(); ++i) {
-        auto ct = ChoiceType::getLabelFor(i);
+    for (int i = 0; i <= static_cast<int>(ChoiceType::size()); ++i) {
+        auto ct = ChoiceType::getLabelFor(static_cast<size_t>(i));
         if (v.toString().toStdString() == ct)
             return static_cast<ChoiceType>(i);
     }

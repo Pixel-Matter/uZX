@@ -32,7 +32,7 @@ public:
         return std::size(E::labels);
     }
 
-    inline static constexpr auto getLabelFor(int index) noexcept {
+    inline static constexpr auto getLabelFor(size_t index) noexcept {
         return getLabels()[index];
     }
 

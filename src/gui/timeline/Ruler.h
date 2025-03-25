@@ -23,7 +23,7 @@ public:
         edit.tempoSequence.addListener(this);
         editViewState.state.addListener(this);
         // cached value is ValueTree::Listener
-        timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr);
+        timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr, TimecodeDisplayFormatExt {TimecodeTypeExt::barsBeatsFps50});
         // startTimerHz(30);
     }
 

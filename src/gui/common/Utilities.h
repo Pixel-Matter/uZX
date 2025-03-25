@@ -49,7 +49,7 @@ inline void browseForPSGFile(te::Engine& engine, std::function<void (const File&
     browseForFile(engine, "a PSG", String(PSG_WILDCARD), fileChosenCallback);
 }
 
-// TODO see Edit::something for implenetation
+// TODO see Edit::something for implementation
 inline te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
     te::TimeRange result;
 

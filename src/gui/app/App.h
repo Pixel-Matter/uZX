@@ -8,6 +8,7 @@
 #include "../common/LookAndFeel.h"
 #include "../common/Utilities.h"
 #include "../../util/FileOps.h"
+#include "../../model/EditUtilities.h"
 
 #include <memory>
 
@@ -408,6 +409,8 @@ private:
         // beats per minute = 60 * 50 / 26 = 115.3846153846 bpm
         // need to remap clips to new tempo
         edit_->tempoSequence.getTempoAt(edit_->getTransport().getPosition()).setBpm(115.3846153846);
+        setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
+
         editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 
         setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());

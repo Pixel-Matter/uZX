@@ -60,6 +60,7 @@ public:
         if (edit_ != nullptr) {
             te::EditFileOperations(*edit_).save(true, true, false);
             edit_->getTempDirectory(false).deleteRecursively();
+            removeUnusedRenderFiles(*edit_);
         }
         // commandManager_.setFirstCommandTarget(nullptr);
         selectionManager_.removeChangeListener(this);

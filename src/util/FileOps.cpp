@@ -39,7 +39,7 @@ File getStartupEditFile() {
     if (!f.existsAsFile()) {
         f = getTempEditFile();
     }
-    DBG("Startup file is located at " << f.getFullPathName());
+    // DBG("Startup file is located at " << f.getFullPathName());
     return f;
 }
 

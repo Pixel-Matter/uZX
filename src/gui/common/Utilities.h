@@ -133,6 +133,24 @@ inline File getRendersDirectory(te::Edit& edit) {
     return rendersDir;
 }
 
+inline void removeUnusedRenderFiles(te::Edit& edit) {
+    auto rendersDir = getRendersDirectory(edit);
+    DBG("Cleaning renders directory " << rendersDir.getFullPathName());
+
+    Array<File> usedFiles;
+    for (auto audioTrack : getAudioTracks(edit))
+        for (auto clip : audioTrack->getClips())
+            if (auto waveClip = dynamic_cast<te::AudioClipBase*>(clip)) {
+                usedFiles.add(waveClip->getOriginalFile());
+            }
+
+    for (auto& file : rendersDir.findChildFiles(File::findFiles, false, "0_*.wav")) {
+        if (!usedFiles.contains(file)) {
+            file.deleteFile();
+        }
+    }
+}
+
 inline File getFreezeFileForTrack(const te::AudioTrack& track) {
     auto location = getRendersDirectory(track.edit);
     auto file = location.getChildFile("0_" + track.itemID.toString() + ".wav");
@@ -156,7 +174,7 @@ inline te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::Sele
     track->setMute(false);
 
     auto freezeFile = getFreezeFileForTrack(*track);
-    DBG("Freeze file: " << freezeFile.getFullPathName());
+    // DBG("Freeze file: " << freezeFile.getFullPathName());
 
     auto& dm = edit.engine.getDeviceManager();
     juce::Array<te::EditItemID> trackIDs { track->itemID };

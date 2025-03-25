@@ -42,13 +42,16 @@ struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
     using te::TimecodeDisplayFormat::TimecodeDisplayFormat;
 
     inline int getFPS() const {
-        if (typeExt <= TimecodeTypeExt::fps30) {
-            return te::TimecodeDisplayFormat::getFPS();
-        }
         int frameRate = 25; // Default
         switch (typeExt) {
-            case TimecodeTypeExt::fps50: frameRate = 50; break;
-            case TimecodeTypeExt::fps60: frameRate = 60; break;
+            case TimecodeTypeExt::millisecs: [[fallthrough]];
+            case TimecodeTypeExt::barsBeats: [[fallthrough]];
+            case TimecodeTypeExt::fps24:     [[fallthrough]];
+            case TimecodeTypeExt::fps25:
+                frameRate = te::TimecodeDisplayFormat::getFPS();  break;
+            case TimecodeTypeExt::fps30:          frameRate = 30; break;
+            case TimecodeTypeExt::fps50:          frameRate = 50; break;
+            case TimecodeTypeExt::fps60:          frameRate = 60; break;
             case TimecodeTypeExt::barsBeatsFps24: frameRate = 24; break;
             case TimecodeTypeExt::barsBeatsFps25: frameRate = 25; break;
             case TimecodeTypeExt::barsBeatsFps30: frameRate = 30; break;

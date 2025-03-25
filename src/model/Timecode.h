@@ -14,13 +14,23 @@ enum class TimecodeTypeExt {
     fps24           = (int) te::TimecodeType::fps24,
     fps25           = (int) te::TimecodeType::fps25,
     fps30           = (int) te::TimecodeType::fps30,
-    fps50           = 100,
-    fps60,
+    fps48           = 100,  // For non-fractional BPM
+    fps48_828,              // Pentagon
+    fps50,                  // ZX Spectrum/PAL
+    fps60,                  // Atari ST/NTSC
+    fps100,                 // Double PAL
+    fps200,                 // Atari ST 200Hz
+    // fpsCustom,              // Custom FPS
     barsBeatsFps24,
     barsBeatsFps25,
     barsBeatsFps30,
+    barsBeatsFps48,
+    barsBeatsFps48_828,
     barsBeatsFps50,
-    barsBeatsFps60
+    barsBeatsFps60,
+    barsBeatsFps100,
+    barsBeatsFps200,
+    // barsBeatsFpsCustom
 };
 
 struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
@@ -41,22 +51,32 @@ struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
 
     using te::TimecodeDisplayFormat::TimecodeDisplayFormat;
 
-    inline int getFPS() const {
-        int frameRate = 25; // Default
+    inline float getFPS() const {
+        float frameRate = 25; // Default
         switch (typeExt) {
             case TimecodeTypeExt::millisecs: [[fallthrough]];
             case TimecodeTypeExt::barsBeats: [[fallthrough]];
             case TimecodeTypeExt::fps24:     [[fallthrough]];
-            case TimecodeTypeExt::fps25:
-                frameRate = te::TimecodeDisplayFormat::getFPS();  break;
-            case TimecodeTypeExt::fps30:          frameRate = 30; break;
-            case TimecodeTypeExt::fps50:          frameRate = 50; break;
-            case TimecodeTypeExt::fps60:          frameRate = 60; break;
-            case TimecodeTypeExt::barsBeatsFps24: frameRate = 24; break;
-            case TimecodeTypeExt::barsBeatsFps25: frameRate = 25; break;
-            case TimecodeTypeExt::barsBeatsFps30: frameRate = 30; break;
-            case TimecodeTypeExt::barsBeatsFps50: frameRate = 50; break;
-            case TimecodeTypeExt::barsBeatsFps60: frameRate = 60; break;
+            case TimecodeTypeExt::fps25:     [[fallthrough]];
+            case TimecodeTypeExt::fps30:
+                frameRate = static_cast<float>(te::TimecodeDisplayFormat::getFPS());
+                break;
+
+            case TimecodeTypeExt::fps48:              frameRate = 48;      break;
+            case TimecodeTypeExt::fps48_828:          frameRate = 48.828f; break;
+            case TimecodeTypeExt::fps50:              frameRate = 50;      break;
+            case TimecodeTypeExt::fps60:              frameRate = 60;      break;
+            case TimecodeTypeExt::fps100:             frameRate = 100;     break;
+            case TimecodeTypeExt::fps200:             frameRate = 200;     break;
+            case TimecodeTypeExt::barsBeatsFps24:     frameRate = 24;      break;
+            case TimecodeTypeExt::barsBeatsFps25:     frameRate = 25;      break;
+            case TimecodeTypeExt::barsBeatsFps30:     frameRate = 30;      break;
+            case TimecodeTypeExt::barsBeatsFps48:     frameRate = 48;      break;
+            case TimecodeTypeExt::barsBeatsFps48_828: frameRate = 48.828f; break;
+            case TimecodeTypeExt::barsBeatsFps50:     frameRate = 50;      break;
+            case TimecodeTypeExt::barsBeatsFps60:     frameRate = 60;      break;
+            case TimecodeTypeExt::barsBeatsFps100:    frameRate = 100;     break;
+            case TimecodeTypeExt::barsBeatsFps200:    frameRate = 200;     break;
             default: jassertfalse; break;
         }
         return frameRate;
@@ -118,34 +138,50 @@ namespace juce {
 template<>
 struct VariantConverter<MoTool::TimecodeDisplayFormatExt> {
     static MoTool::TimecodeDisplayFormatExt fromVar(const var& v) {
-        if (v == "seconds")        return MoTool::TimecodeTypeExt::millisecs;
-        if (v == "beats")          return MoTool::TimecodeTypeExt::barsBeats;
-        if (v == "fps24")          return MoTool::TimecodeTypeExt::fps24;
-        if (v == "fps25")          return MoTool::TimecodeTypeExt::fps25;
-        if (v == "fps30")          return MoTool::TimecodeTypeExt::fps30;
-        if (v == "fps50")          return MoTool::TimecodeTypeExt::fps50;
-        if (v == "fps60")          return MoTool::TimecodeTypeExt::fps60;
-        if (v == "barsBeatsFps24") return MoTool::TimecodeTypeExt::barsBeatsFps24;
-        if (v == "barsBeatsFps25") return MoTool::TimecodeTypeExt::barsBeatsFps25;
-        if (v == "barsBeatsFps30") return MoTool::TimecodeTypeExt::barsBeatsFps30;
-        if (v == "barsBeatsFps50") return MoTool::TimecodeTypeExt::barsBeatsFps50;
-        if (v == "barsBeatsFps60") return MoTool::TimecodeTypeExt::barsBeatsFps60;
+        if (v == "seconds")            return MoTool::TimecodeTypeExt::millisecs;
+        if (v == "beats")              return MoTool::TimecodeTypeExt::barsBeats;
+        if (v == "fps24")              return MoTool::TimecodeTypeExt::fps24;
+        if (v == "fps25")              return MoTool::TimecodeTypeExt::fps25;
+        if (v == "fps30")              return MoTool::TimecodeTypeExt::fps30;
+        if (v == "fps48")              return MoTool::TimecodeTypeExt::fps48;
+        if (v == "fps48_828")          return MoTool::TimecodeTypeExt::fps48_828;
+        if (v == "fps50")              return MoTool::TimecodeTypeExt::fps50;
+        if (v == "fps60")              return MoTool::TimecodeTypeExt::fps60;
+        if (v == "fps100")             return MoTool::TimecodeTypeExt::fps100;
+        if (v == "fps200")             return MoTool::TimecodeTypeExt::fps200;
+        if (v == "barsBeatsFps24")     return MoTool::TimecodeTypeExt::barsBeatsFps24;
+        if (v == "barsBeatsFps25")     return MoTool::TimecodeTypeExt::barsBeatsFps25;
+        if (v == "barsBeatsFps30")     return MoTool::TimecodeTypeExt::barsBeatsFps30;
+        if (v == "barsBeatsFps48")     return MoTool::TimecodeTypeExt::barsBeatsFps48;
+        if (v == "barsBeatsFps48_828") return MoTool::TimecodeTypeExt::barsBeatsFps48_828;
+        if (v == "barsBeatsFps50")     return MoTool::TimecodeTypeExt::barsBeatsFps50;
+        if (v == "barsBeatsFps60")     return MoTool::TimecodeTypeExt::barsBeatsFps60;
+        if (v == "barsBeatsFps100")    return MoTool::TimecodeTypeExt::barsBeatsFps100;
+        if (v == "barsBeatsFps200")    return MoTool::TimecodeTypeExt::barsBeatsFps200;
         return MoTool::TimecodeTypeExt::millisecs;
     }
 
     static var toVar(MoTool::TimecodeDisplayFormatExt t) {
-        if (t.typeExt == MoTool::TimecodeTypeExt::millisecs)      return "seconds";
-        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeats)      return "beats";
-        if (t.typeExt == MoTool::TimecodeTypeExt::fps24)          return "fps24";
-        if (t.typeExt == MoTool::TimecodeTypeExt::fps25)          return "fps25";
-        if (t.typeExt == MoTool::TimecodeTypeExt::fps30)          return "fps30";
-        if (t.typeExt == MoTool::TimecodeTypeExt::fps50)          return "fps50";
-        if (t.typeExt == MoTool::TimecodeTypeExt::fps60)          return "fps60";
-        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps24) return "barsBeatsFps24";
-        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps25) return "barsBeatsFps25";
-        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps30) return "barsBeatsFps30";
-        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps50) return "barsBeatsFps50";
-        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps60) return "barsBeatsFps60";
+        if (t.typeExt == MoTool::TimecodeTypeExt::millisecs)          return "seconds";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeats)          return "beats";
+        if (t.typeExt == MoTool::TimecodeTypeExt::fps24)              return "fps24";
+        if (t.typeExt == MoTool::TimecodeTypeExt::fps25)              return "fps25";
+        if (t.typeExt == MoTool::TimecodeTypeExt::fps30)              return "fps30";
+        if (t.typeExt == MoTool::TimecodeTypeExt::fps48)              return "fps48";
+        if (t.typeExt == MoTool::TimecodeTypeExt::fps48_828)          return "fps48_828";
+        if (t.typeExt == MoTool::TimecodeTypeExt::fps50)              return "fps50";
+        if (t.typeExt == MoTool::TimecodeTypeExt::fps60)              return "fps60";
+        if (t.typeExt == MoTool::TimecodeTypeExt::fps100)             return "fps100";
+        if (t.typeExt == MoTool::TimecodeTypeExt::fps200)             return "fps200";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps24)     return "barsBeatsFps24";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps25)     return "barsBeatsFps25";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps30)     return "barsBeatsFps30";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps48)     return "barsBeatsFps48";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps48_828) return "barsBeatsFps48_828";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps50)     return "barsBeatsFps50";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps60)     return "barsBeatsFps60";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps100)    return "barsBeatsFps100";
+        if (t.typeExt == MoTool::TimecodeTypeExt::barsBeatsFps200)    return "barsBeatsFps200";
         return "seconds";
     }
 };

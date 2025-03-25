@@ -18,6 +18,7 @@ namespace IDs {
     DECLARE_ID(clock)
     DECLARE_ID(layout)
     DECLARE_ID(stereo)
+    DECLARE_ID(noDC)
     #undef DECLARE_ID
 }  // namespace IDs
 
@@ -148,12 +149,14 @@ public:
         ParamAttachment<double> clockValue;
         ParamAttachment<AYInterface::ChannelsLayout> channelsLayoutValue;
         ParamAttachment<double> stereoWidthValue;
+        ParamAttachment<bool> removeDCValue;
 
         Params(te::Plugin& p)
             : chipTypeValue(p)
             , clockValue(p)
             , channelsLayoutValue(p)
             , stereoWidthValue(p)
+            , removeDCValue(p)
         {}
     };
 

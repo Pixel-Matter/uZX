@@ -18,20 +18,20 @@ inline static constexpr std::string MIDI_WILDCARD {"*.mid;*.midi"};
 inline static constexpr std::string PSG_WILDCARD {"*.psg;*.ay"};
 
 inline void browseForFile(te::Engine& engine, const String& name, const String& wildcard, std::function<void (const File&)> fileChosenCallback) {
-    DBG("Default save directory is " << engine.getPropertyStorage().getDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName)).getFullPathName());
+    auto location = engine.getPropertyStorage().getDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName));
+    // DBG("Default save location is " << dir.getFullPathName());
     auto fc = std::make_shared<FileChooser>("Please select " + name + " file to load...",
-                                            engine.getPropertyStorage().getDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName)),
-                                            wildcard);
+                                            location, wildcard);
 
     fc->launchAsync(FileBrowserComponent::openMode + FileBrowserComponent::canSelectFiles,
                         [fc, &engine, callback = std::move(fileChosenCallback)] (const FileChooser&) {
                             const auto f = fc->getResult();
-
-                            if (f.existsAsFile()) {
-                                DBG("Set save directory is " << f.getParentDirectory().getFullPathName());
-                                engine.getPropertyStorage().setDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName), f.getParentDirectory());
-                                DBG("Set save directory is " << engine.getPropertyStorage().getDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName)).getFullPathName());
-                            }
+                            // if (f.existsAsFile()) {
+                                // NOTE do not work, but we should define own PropertyStorage to it to work
+                                // DBG("Set save directory is " << f.getParentDirectory().getFullPathName());
+                                // engine.getPropertyStorage().setDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName), f.getParentDirectory());
+                                // DBG("Set save directory is " << engine.getPropertyStorage().getDefaultLoadSaveDirectory(CharPointer_UTF8(ProjectInfo::projectName)).getFullPathName());
+                            // }
 
                             callback(f);
                         });
@@ -134,7 +134,12 @@ inline File getRendersDirectory(te::Edit& edit) {
 }
 
 inline File getFreezeFileForTrack(const te::AudioTrack& track) {
-    return getRendersDirectory(track.edit).getChildFile("0_" + track.itemID.toString() + ".freeze");
+    auto location = getRendersDirectory(track.edit);
+    auto file = location.getChildFile("0_" + track.itemID.toString() + "_0.wav");
+
+    // TODO on exit, remove all unused files in Renders directory
+    file = te::getNonExistentSiblingWithIncrementedNumberSuffix(file, false);
+    return file;
 }
 
 inline te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
@@ -162,7 +167,7 @@ inline te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::Sele
     te::Renderer::Parameters r (edit);
     r.tracksToDo = trackNum;
     r.destFile = freezeFile;
-    r.audioFormat = edit.engine.getAudioFileFormatManager().getFrozenFileFormat();
+    r.audioFormat = edit.engine.getAudioFileFormatManager().getDefaultFormat();
     r.blockSizeForAudio = dm.getBlockSize();
     r.sampleRateForAudio = dm.getSampleRate();
     r.time = { {}, track->getLengthIncludingInputTracks() };
@@ -182,7 +187,7 @@ inline te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::Sele
         te::Renderer::renderToFile(desc, r);
     }
 
-    if (! r.destFile.existsAsFile()) {
+    if (!r.destFile.existsAsFile()) {
         edit.engine.getUIBehaviour().showWarningMessage("Render failed");
         track->setMute(shouldBeMuted);
         return nullptr;

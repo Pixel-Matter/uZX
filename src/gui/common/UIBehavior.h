@@ -104,18 +104,7 @@ public:
         auto& jobManager = engine.getBackgroundJobs();
         jobManager.addJob(&job, false);
 
-        // while (true) {
-        //     for (int i = 0; i < jobManager.getNumJobs(); ++i) {
-        //         auto info = jobManager.getJobInfo(i);
-        //         if (info.name == job.getJobName()) {
-        //             DBG(". " << info.progress << " " << (job.isRunning()? "running" : "done"));
-        //             break;
-        //         }
-        //     }
-        //     juce::Thread::sleep(100);
-        // }
-
-        ProgressDialog dialog {"Rendering", job, jobManager};
+        ProgressDialog dialog {job.getJobName(), job, jobManager};
         dialog.setVisible(true);
         dialog.runModalLoop();
 

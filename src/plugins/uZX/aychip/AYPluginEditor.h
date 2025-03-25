@@ -19,23 +19,27 @@ namespace MoTool::uZX {
 template <typename Type, typename WidgetType>
 class ParameterComponent : public Component {
 public:
-    ParameterComponent(ParamAttachment<Type>& att)
+    ParameterComponent(ParamAttachment<Type>& att, bool useLabel_ = true)
       : attachment(att)
+      , useLabel(useLabel_)
       , label("", att.name)
       , widget()
     {
-        addAndMakeVisible(label);
+        if (useLabel)
+            addAndMakeVisible(label);
         addAndMakeVisible(widget);
     }
 
     void resized() override {
         auto r = getLocalBounds();
-        label.setBounds(r.removeFromTop(30));
+        if (useLabel)
+            label.setBounds(r.removeFromTop(30));
         widget.setBounds(r.removeFromTop(30));
     }
 
 protected:
     ParamAttachment<Type>& attachment;
+    bool useLabel;
     Label label;
     WidgetType widget;
 };
@@ -73,6 +77,35 @@ private:
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParameterComponent)
+};
+
+class ToggleParameterComponent : public ParameterComponent<bool, ToggleButton>, private Button::Listener, private Value::Listener {
+public:
+    ToggleParameterComponent(
+        ParamAttachment<bool>& param
+    )
+      : ParameterComponent<bool, ToggleButton>(param, /* useLabel_ = */ false)
+    {
+        widget.setButtonText(attachment.name);
+        widget.setToggleState(attachment.get(), dontSendNotification);
+        attachment.getPropertyAsValue().addListener(this);
+        widget.addListener(this);
+    }
+
+private:
+    void buttonClicked(Button*) override {
+        attachment = widget.getToggleState();
+    }
+
+    void buttonStateChanged(Button*) override {
+        attachment = widget.getToggleState();
+    }
+
+    void valueChanged(Value&) override {
+        widget.setToggleState(attachment.get(), dontSendNotification);
+    }
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ToggleParameterComponent)
 };
 
 
@@ -134,6 +167,7 @@ public:
         addAndMakeVisible(clockParameter);
         addAndMakeVisible(channelsParameter);
         addAndMakeVisible(stereoParameter);
+        addAndMakeVisible(removeDCParameter);
     }
 
     bool allowWindowResizing() override {
@@ -150,6 +184,7 @@ public:
         clockParameter.setBounds(r.removeFromTop(60));
         channelsParameter.setBounds(r.removeFromTop(60));
         stereoParameter.setBounds(r.removeFromTop(60));
+        removeDCParameter.setBounds(r.removeFromTop(60));
     }
 
     ComponentBoundsConstrainer* getBoundsConstrainer() override {
@@ -167,6 +202,7 @@ private:
     SliderParameterComponent                             clockParameter { plugin_.staticParams.clockValue };
     ComboParameterComponent<AYInterface::ChannelsLayout> channelsParameter { plugin_.staticParams.channelsLayoutValue };
     SliderParameterComponent                             stereoParameter { plugin_.staticParams.stereoWidthValue };
+    ToggleParameterComponent                           removeDCParameter { plugin_.staticParams.removeDCValue };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginEditor)
 };

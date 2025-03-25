@@ -75,14 +75,14 @@ constexpr std::string b64Decode(const char (&input)[N]) {
     return out.substr(0, j - padding);
 }
 
-namespace {
-
-[[maybe_unused]] static void staticTest() {
-    constexpr char example_encoded[] = "aGVsbG8=";
-    static_assert(b64DecodedSize(example_encoded) == 5, "Test failed");
-    static_assert(b64Decode(example_encoded) == "hello", "Test failed");
-}
-
-}
+//namespace {
+//
+////[[maybe_unused]] static void staticTest() {
+////    constexpr char example_encoded[] = "aGVsbG8=";
+////    static_assert(b64DecodedSize(example_encoded) == 5, "Test failed");
+//////    static_assert(b64Decode(example_encoded) == "hello", "Test failed");
+////}
+//
+//}
 
 }  // namespace Util

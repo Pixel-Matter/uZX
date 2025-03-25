@@ -21,9 +21,9 @@ MoToolApp::MoToolApp()
     : engine_ { CharPointer_UTF8(ProjectInfo::projectName), std::make_unique<ExtUIBehaviour>(), std::make_unique<ExtEngineBehaviour>() }
     , lookAndFeel {std::make_unique<MoLookAndFeel>()}
 {
-    DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
-    engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
+    // DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
     juce::LookAndFeel::setDefaultLookAndFeel(lookAndFeel.get());
+    engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
 }
 
 void MoToolApp::initialise(const String&) {

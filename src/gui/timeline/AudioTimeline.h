@@ -13,12 +13,6 @@
 
 namespace MoTool {
 
-namespace {
-
-inline static const auto MIDI_CLIP_DATA = MoTool::Util::b64Decode("TVRoZAAAAAYAAQACBABNVHJrAAAAKAD/WQL+AAD/WQL+AAD/WAQGAyQIAP9RAwehILAA/1gEBgMMCAD/LwBNVHJrAAAAapUwwDUAsAdkALAnKgCwCkAAsCoAAJAuZIJlgC4AAJAvZIJlgC8AAJAyWoMAgDIAAJA1boYAgDUAAJA6X4MBgDoAAJA5ZIJ4gDkAAJA4ZIJ3gDgAAJA5ZoMEgDkAAJA1aYQKgDUAhg7/LwA=");
-
-}  // namespace
-
 
 //==============================================================================
 /** TODO

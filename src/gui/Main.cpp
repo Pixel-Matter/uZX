@@ -26,7 +26,7 @@
 
 #include "app/App.h"
 
-using namespace MoTool;
+using namespace MoTool; 
 
 
 START_JUCE_APPLICATION(MoToolApp)

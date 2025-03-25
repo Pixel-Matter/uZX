@@ -54,9 +54,9 @@ public:
             emulator.setVolume(0, 15);
             expect(emulator.getVolume(0) == 15, "Volume should be 15");
 
-            expect(emulator.getPan(0) == 0.25, "Pan should be 0.25");
-            emulator.setPan(0, 0.5);
-            expect(emulator.getPan(0) == 0.5, "Pan should be 0.5");
+            expect(emulator.getChannelPan(0) == 0.25, "Pan should be 0.25");
+            emulator.setChannelPan(0, 0.5);
+            expect(emulator.getChannelPan(0) == 0.5, "Pan should be 0.5");
 
             expect(emulator.getTonePeriod(0) == 1, "Tone period should be 1");
             emulator.setTonePeriod(0, 42);
@@ -85,7 +85,7 @@ public:
         beginTest("AYEmulator tone");
         {
             auto emulator = AyumiEmulator {44100, 2000000, AyumiEmulator::TypeEnum::AY};
-            emulator.setPan(0, 0.5);
+            emulator.setChannelPan(0, 0.5);
             emulator.setTonePeriod(0, 1000);
             emulator.setToneOn(0, true);
             emulator.setVolume(0, 15);
@@ -101,7 +101,7 @@ public:
         beginTest("AYEmulator noise");
         {
             auto emulator = AyumiEmulator {44100, 2000000, AyumiEmulator::TypeEnum::AY};
-            emulator.setPan(0, 0.5);
+            emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, true);
             emulator.setVolume(0, 15);
@@ -120,7 +120,7 @@ public:
         beginTest("AYEmulator envelope");
         {
             auto emulator = AyumiEmulator {44100, 2000000, AyumiEmulator::TypeEnum::AY};
-            emulator.setPan(0, 0.5);
+            emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, false);
             emulator.setEnvelopeOn(0, true);

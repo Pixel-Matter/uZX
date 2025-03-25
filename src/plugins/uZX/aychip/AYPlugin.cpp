@@ -19,6 +19,7 @@ AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     staticParams.chipTypeValue.referTo(IDs::chip, "Chip type", AYInterface::ChipType::getLabels(), AYInterface::TypeEnum::AY, {});
     staticParams.channelsLayoutValue.referTo(IDs::layout, "Channels layout", AYInterface::ChannelsLayout::getLabels(), AYInterface::LayoutEnum::ABC, {});
     staticParams.stereoWidthValue.referTo(IDs::stereo, "Stereo width", {0.0, 1.0, 0.01}, 0.5, {});
+    staticParams.removeDCValue.referTo(IDs::noDC, "Remove DC", true, {});
 }
 
 AYChipPlugin::~AYChipPlugin() {
@@ -41,6 +42,9 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 const ScopedLock sl(lock);
                 chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
             }
+        } else if (id == IDs::noDC) {
+            // no need to do anything
+            // DBG("removeDC = " << (staticParams.removeDCValue ? "true" : "false"));
         }
         propertiesChanged();
     }
@@ -91,7 +95,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample - currentSample > 0) {
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
-                               static_cast<size_t>(timeSample - currentSample));
+                               static_cast<size_t>(timeSample - currentSample), staticParams.removeDCValue);
             currentSample = timeSample;
         }
         if (m.isNoteOn()) {
@@ -132,7 +136,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     if (currentSample < fc.destBuffer->getNumSamples()) {
         chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
                            static_cast<size_t>(fc.bufferNumSamples - currentSample),
-                           /* removeDC = */ false
+                           staticParams.removeDCValue
                         );
     }
     timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;
@@ -145,7 +149,9 @@ void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
         staticParams.chipTypeValue.value,
         staticParams.clockValue.value,
         staticParams.channelsLayoutValue.value,
-        staticParams.stereoWidthValue.value);
+        staticParams.stereoWidthValue.value,
+        staticParams.removeDCValue.value
+    );
 
     for (auto p : getAutomatableParameters())
         p->updateFromAttachedValue();

@@ -62,16 +62,6 @@ public:
         };
     };
     using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
-    using PanValues = std::array<double, 3>;
-
-    static inline constexpr std::array<std::array<double, 3>, 6> channelPans = {{
-        {{0.0, 0.5, 1.0}},  // ABC
-        {{0.0, 1.0, 0.5}},  // ACB
-        {{0.5, 0.0, 1.0}},  // BAC
-        {{1.0, 0.0, 0.5}},  // BCA
-        {{0.5, 1.0, 0.0}},  // CAB
-        {{1.0, 0.5, 0.0}}   // CBA
-    }};
 
     struct EnvShapeEnum {
         enum Enum {
@@ -129,8 +119,11 @@ public:
     virtual auto getType() const -> ChipType = 0;
     virtual auto getClock() const -> double = 0;
     virtual auto setClock(double v) -> void = 0;
-    virtual auto setPan(int chan, double pan, bool isEqp = false) -> void = 0;
-    virtual auto getPan(int chan) const -> double = 0;
+    virtual auto setLayoutAndStereoWidth(ChannelsLayout layout, double stereoWidth) -> void = 0;
+    virtual auto getLayout() -> ChannelsLayout = 0;
+    virtual auto getStereoWidth() -> double = 0;
+    virtual auto setChannelPan(int chan, double pan, bool isEqp = false) -> void = 0;
+    virtual auto getChannelPan(int chan) const -> double = 0;
     virtual auto setMasterVolume(float volume) -> void = 0;
     virtual auto getMasterVolume() const -> float = 0;
 
@@ -229,8 +222,11 @@ public:
     auto setType(ChipType type) -> void override;
     auto getType() const -> ChipType override;
     auto setClock(double v) -> void override;
-    auto setPan(int chan, double pan, bool isEqp = false) -> void override;
-    auto getPan(int chan) const -> double override;
+    auto setLayoutAndStereoWidth(ChannelsLayout layout, double stereoWidth) -> void override;
+    auto getLayout() -> ChannelsLayout override;
+    auto getStereoWidth() -> double override;
+    auto setChannelPan(int chan, double pan, bool isEqp = false) -> void override;
+    auto getChannelPan(int chan) const -> double override;
 
     // Chip functions
     auto setMixer(int chan, bool tOn, bool nOn, bool eOn) -> void override;
@@ -261,6 +257,18 @@ private:
     int SampleRate_;
     double Pan_[TONE_CHANNELS];
     float MasterVolume_;
+    ChannelsLayout ChannelsLayout_;
+    double StereoWidth_;
+
+    static inline constexpr std::array<std::array<double, TONE_CHANNELS>, 6> ChannelPans_ = {{
+        {{0.0, 0.5, 1.0}},  // ABC
+        {{0.0, 1.0, 0.5}},  // ACB
+        {{0.5, 0.0, 1.0}},  // BAC
+        {{1.0, 0.0, 0.5}},  // BCA
+        {{0.5, 1.0, 0.0}},  // CAB
+        {{1.0, 0.5, 0.0}}   // CBA
+    }};
+
 };
 
 } // namespace MoTool::uZX

@@ -56,7 +56,7 @@ auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {
     auto result = ayumi_configure(&Ayumi_, type, clock, sampleRate);
     jassert(result == 1);
     for (int i = 0; i < TONE_CHANNELS; ++i) {
-        setPan(i, Pan_[i]);
+        setChannelPan(i, Pan_[i]);
         setMixer(i, false, false, false);
     }
 }
@@ -97,13 +97,35 @@ auto AyumiEmulator::setClock(double rate) -> void {
     reset(SampleRate_, rate, Type_);
 }
 
-auto AyumiEmulator::setPan(int chan, double pan, bool isEqp) -> void {
+auto AyumiEmulator::setLayoutAndStereoWidth(ChannelsLayout layout, double stereoWidth) -> void {
+    std::array<double, TONE_CHANNELS> pan = {0.0, 0.0, 0.0};
+    pan = ChannelPans_[static_cast<size_t>(layout)];
+    for (size_t i = 0; i < TONE_CHANNELS; ++i) {
+        // use stereoWidth to adjust pan.
+        // stereoWidth == 0.0 — pan is 0.5,
+        // stereoWidth == 1.0 — pan is pan
+        // stereoWidth == 0.5 — pan is halfway to 0.5
+        setChannelPan(static_cast<int>(i), 0.5 + (pan[i] - 0.5) * stereoWidth);
+    }
+    ChannelsLayout_ = layout;
+    StereoWidth_ = stereoWidth;
+}
+
+auto AyumiEmulator::getLayout() -> ChannelsLayout {
+    return ChannelsLayout_;
+}
+
+auto AyumiEmulator::getStereoWidth() -> double {
+    return StereoWidth_;
+}
+
+auto AyumiEmulator::setChannelPan(int chan, double pan, bool isEqp) -> void {
     // 1.0 is right, 0.0 is left
     Pan_[chan] = pan;
     ayumi_set_pan(&Ayumi_, chan, pan, isEqp);
 }
 
-auto AyumiEmulator::getPan(int chan) const -> double {
+auto AyumiEmulator::getChannelPan(int chan) const -> double {
     return Pan_[chan];
 }
 

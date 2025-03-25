@@ -33,8 +33,15 @@ void AYChipPlugin::valueTreeChanged() {
 
 void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
     // TODO staticParams.isParamProperty(id);
-    if (v == state && (id == IDs::clock || id == IDs::chip || id == IDs::stereo)) {
-        reset();
+    if (v == state) {
+        if (id == IDs::clock || id == IDs::chip) {
+            reset();
+        } else if (id == IDs::stereo || id == IDs::layout) {
+            if (chip != nullptr) {
+                const ScopedLock sl(lock);
+                chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
+            }
+        }
     }
     propertiesChanged();
     Plugin::valueTreePropertyChanged(v, id);

@@ -40,8 +40,7 @@ protected:
     WidgetType widget;
 };
 
-// Specialized for sliders
-class SliderParameterComponent : public ParameterComponent<double, Slider> {
+class SliderParameterComponent : public ParameterComponent<double, Slider>, private Slider::Listener, private Value::Listener {
 public:
     SliderParameterComponent(
         ParamAttachment<double>& param,
@@ -55,18 +54,28 @@ public:
         widget.setTextBoxStyle(boxPosition, false, widget.getTextBoxWidth(), widget.getTextBoxHeight());
         widget.setRange(attachment.range.start, attachment.range.end, attachment.range.interval);
         widget.setValue(attachment.get(), dontSendNotification);
-        widget.getValueObject().referTo(attachment.getPropertyAsValue());
+        // NOTE referTo tracks values poorly, doesnt track edge values
+        // widget.getValueObject().referTo(attachment.getPropertyAsValue());
+        attachment.getPropertyAsValue().addListener(this);
+        widget.addListener(this);
     }
 
 private:
     Slider::SliderStyle sliderStyle;
     Slider::TextEntryBoxPosition boxPosition;
 
+    void sliderValueChanged(Slider*) override {
+        attachment = widget.getValue();
+    }
+
+    void valueChanged(Value&) override {
+        widget.setValue(attachment.get(), dontSendNotification);
+    }
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParameterComponent)
 };
 
 
-// Similar specializations for other widget types
 template <typename Type>
 class ComboParameterComponent : public ParameterComponent<Type, ComboBox>, private ComboBox::Listener, private Value::Listener {
     public:

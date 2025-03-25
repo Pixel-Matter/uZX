@@ -42,8 +42,8 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
             }
         }
+        propertiesChanged();
     }
-    propertiesChanged();
     Plugin::valueTreePropertyChanged(v, id);
 }
 
@@ -66,10 +66,8 @@ void AYChipPlugin::reset() {
     } else {
         chip->reset(static_cast<int>(sampleRate), staticParams.clockValue * MHz, staticParams.chipTypeValue);
     }
-    // TODO
-    // chip->setChannelsLayout(staticParams.channelsLayoutValue);
-    // chip->setStereoWidth(staticParams.stereoWidthValue);
-    chip->setMasterVolume(0.6f);
+    chip->setMasterVolume(0.5f);
+    chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
     timeFromReset = 0.0;
     registers = {};
 }

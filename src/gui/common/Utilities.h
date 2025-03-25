@@ -135,10 +135,10 @@ inline File getRendersDirectory(te::Edit& edit) {
 
 inline File getFreezeFileForTrack(const te::AudioTrack& track) {
     auto location = getRendersDirectory(track.edit);
-    auto file = location.getChildFile("0_" + track.itemID.toString() + "_0.wav");
+    auto file = location.getChildFile("0_" + track.itemID.toString() + ".wav");
 
     // TODO on exit, remove all unused files in Renders directory
-    file = te::getNonExistentSiblingWithIncrementedNumberSuffix(file, false);
+    file = te::getNonExistentSiblingWithIncrementedNumberSuffix(file, true);
     return file;
 }
 

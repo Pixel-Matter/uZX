@@ -24,7 +24,7 @@ inline void browseForFile(te::Engine& engine, const String& name, const String& 
                                             location, wildcard);
 
     fc->launchAsync(FileBrowserComponent::openMode + FileBrowserComponent::canSelectFiles,
-                        [fc, &engine, callback = std::move(fileChosenCallback)] (const FileChooser&) {
+                        [fc, /*&engine,*/ callback = std::move(fileChosenCallback)] (const FileChooser&) {
                             const auto f = fc->getResult();
                             // if (f.existsAsFile()) {
                                 // NOTE do not work, but we should define own PropertyStorage to it to work

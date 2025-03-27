@@ -15,6 +15,8 @@ set(GUI_SOURCES
     gui/Main.cpp
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Components.cpp
+    gui/timeline/ClipComponents.cpp
+    gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
 )
 

@@ -233,6 +233,7 @@ public:
 
     ValueTree state;
     ZoomViewState zoom;
+    // TODO actually it is better to make EditContext class and put EditViewState and selection managers there
     te::SelectionManager& selectionManager;
 
 private:

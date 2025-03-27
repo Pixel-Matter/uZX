@@ -3,8 +3,8 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>  // from Tracktion
 
-#include "Components.h"
-#include "LookAndFeel.h"
+#include "ClipComponents.h"
+#include "../common/LookAndFeel.h"
 #include "../../model/PsgClip.h"
 #include "../../model/EditUtilities.h"
 

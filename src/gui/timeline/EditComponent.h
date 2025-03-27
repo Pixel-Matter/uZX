@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../common/Components.h"
+#include "TrackComponents.h"
 #include "Ruler.h"
 
 namespace MoTool {

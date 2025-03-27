@@ -38,6 +38,7 @@ public:
 
         // Add Menu
         addAudioTrack        = 300,
+        // addAutomationTrack,
         // addMidiClip,
 
         // Track menu
@@ -70,6 +71,7 @@ public:
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
             addAudioTrack,
+            // addAutomationTrack,
             trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
             settingsAudioMidi, settingsPlugins,
@@ -110,6 +112,7 @@ public:
             menu.addCommandItem(manager, AppCommands::transportLoop);
         } else if (menuName == "Add") {
             menu.addCommandItem(manager, AppCommands::addAudioTrack);
+            // menu.addCommandItem(manager, AppCommands::addAutomationTrack);
         } else if (menuName == "Track") {
             menu.addCommandItem(manager, AppCommands::trackRenderToAudio);
         } else if (menuName == "View") {
@@ -233,6 +236,10 @@ public:
                 result.setInfo("Audio Track", "Add a new audio track", "Add", 0);
                 result.addDefaultKeypress('t', ModifierKeys::commandModifier);
                 break;
+
+            // case addAutomationTrack:
+            //     result.setInfo("Automation Track", "Add a new automation track", "Add", 0);
+            //     break;
 
             // Track commands
             case trackRenderToAudio:

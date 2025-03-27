@@ -281,6 +281,12 @@ public:
                 }
                 break;
 
+            // case AppCommands::addAutomationTrack:
+            //     if (edit_ != nullptr) {
+            //         Helpers::addAndSelectAutomationTrack(*edit_, selectionManager_);
+            //     }
+            //     break;
+
             // Track commands
             case AppCommands::trackRenderToAudio:
                 if (edit_ != nullptr) {

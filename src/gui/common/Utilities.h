@@ -98,6 +98,19 @@ inline te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManag
     return added;
 }
 
+// inline te::AutomationTrack* addAutomationTrackAfter(te::Edit& edit, te::Track* track) {
+//     auto insertPoint = (track != nullptr) ? track : getAllTracks(edit).getLast();
+//     edit.getTransport().stopIfRecording();
+//     return edit.insertNewAutomationTrack(te::TrackInsertPoint(nullptr, insertPoint), nullptr).get();
+// }
+
+// inline te::AutomationTrack* addAndSelectAutomationTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
+//     auto sel = selectionManager.getSelectedObject(0);
+//     auto added = addAutomationTrackAfter(edit, dynamic_cast<te::AudioTrack*>(sel));
+//     selectionManager.select({added});
+//     return added;
+// }
+
 inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor = false) {
     Helpers::browseForPSGFile(edit.engine, [&](const File& f) {
         auto track = getSelectedOrInsertAudioTrack(edit, selectionManager, f.getFileNameWithoutExtension());

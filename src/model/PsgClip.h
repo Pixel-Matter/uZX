@@ -4,22 +4,13 @@
 #include <_stdio.h>
 
 #include "CustomClip.h"
+#include "PsgMidi.h"
 #include "../formats/psg/PsgFile.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
-#include "tracktion_engine/tracktion_engine.h"
 
 namespace te = tracktion;
 
 namespace MoTool {
-
-namespace {
-
-double roundTo(double value, int decimalPlaces = 2) {
-    double factor = std::pow(10.0, decimalPlaces);
-    return std::round(value * factor) / factor;
-}
-
-}
 
 class PsgClip : public te::MidiClip, public CustomClip {
 public:
@@ -70,73 +61,29 @@ public:
     }
 
 private:
-    inline ValueTree createRegValueTree(te::BeatRange range, int reg, int val) {
-        // N.B. Tracktion store controller values in edit's MidiList with extra precision
-        // but then rounds them to 7 bits
-        return te::createValueTree (
-            te::IDs::CONTROL,
-            te::IDs::b,     roundTo(range.getStart().inBeats()),
-            te::IDs::type,  20 + reg,
-            te::IDs::val,   (val & 255)  // store as is, then break down to 2 times by 4 bits
-        );
-    }
-
     // TODO
     // 1. Dialog for interpreting PSG file
     // 2. BackgroundJob for loading PSG file
-    void loadFromFile(uZX::PsgFile& psgFile) {
+    void loadFromFile(uZX::PsgFile &psgFile) {
         psgFile.ensureRead();
-        const double frameRate = psgFile.getFrameRate();
-        auto& data = psgFile.getData();
-
-        auto* um = getUndoManager();
+        auto *um = getUndoManager();
 
         getSequence().clear(um);
-        // to fastest midi inport
+        // Fastest midi inport
         // 1. construct MidiList state detached from everything,
-        // 2. remove from state old sequence
-        // 3. add the new sequence tree directly to clips state in one operation
+        // 2. remove old sequence from the state
+        // 3. add the new sequence tree directly to the clips state in one operation
         auto seqState = getSequence().state.createCopy();
-
         double timeElapsed;
         {
             juce::ScopedTimeMeasurement measurement(timeElapsed);
-            DBG("constructing the tree");
-            for (size_t i = 0; i < data.frames.size(); i++) {
-                auto& frame = data.frames[i];
-                auto timeSec = psgFile.frameNumToSeconds(i);
-                auto startBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec));
-                auto endBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec + 1.0 / frameRate));
-                // DBG("Frame " << i << " time=" << timeBeat);
-                for (size_t j = 0; j < frame.registers.size(); j++) {
-                    if (frame.mask[j]) {
-                        // DBG("Register " << j << " = " << reg);
-                        auto regVal = frame.registers[j];
-                        // NOTE It is too slow to call seq.addControllerEvent
-                        auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j), regVal);
-                        seqState.appendChild(std::move(v), nullptr);  // no need for um here
-                    }
-                }
-            }
-        }
-        DBG("constructed in " << timeElapsed << "s");
-        {
-            juce::ScopedTimeMeasurement measurement(timeElapsed);
+            loadMidiListStateFrom(edit, seqState, psgFile);
             state.removeChild(state.getChildWithName(te::IDs::SEQUENCE), um);
             state.addChild(seqState, -1, um);
         }
-        DBG("copied in " << timeElapsed << "s");
+        DBG("PSG clip constructed in " << timeElapsed << "s");
         changed();
         scaleVerticallyToFit();
-    }
-
-    void ensureHasAYPlugin() {
-        // check plugins first
-        for (auto plugin : getAllPlugins()) {
-            if (dynamic_cast<uZX::AYChipPlugin*>(plugin)) {
-                return;
-            }
-        }
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgClip)

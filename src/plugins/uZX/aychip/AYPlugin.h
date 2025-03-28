@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../../../formats/psg/PsgData.h"
+#include "../../../model/PsgMidi.h"
 #include "aychip.h"
 
 #include <atomic>
@@ -168,7 +169,8 @@ private:
     Colour colour;
     CriticalSection lock;
 
-    PsgRegsAYFrame registers;
+    PsgMidiCCSequenceReader midiCCReader;
+    // PsgRegsAYFrame registers;
     std::unique_ptr<AYInterface> chip;
 
     double timeFromReset;

@@ -73,7 +73,7 @@ void AYChipPlugin::reset() {
     chip->setMasterVolume(0.5f);
     chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
     timeFromReset = 0.0;
-    registers = {};
+    midiCCReader = {};
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
@@ -98,39 +98,10 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
                                static_cast<size_t>(timeSample - currentSample), staticParams.removeDCValue);
             currentSample = timeSample;
         }
-        if (m.isNoteOn()) {
-            // note based PSG-MIDI mapping is not used yet
-            // but can be used with MPE
-            // const int note = m.getNoteNumber();
-            // const size_t reg = static_cast<size_t>(note - 60);
-            // const unsigned char val = m.getVelocity();
-            // chip->setRegister(reg, val);
-            // DBG("setRegister(" << reg << ", " << val << ")");
-        } else if (m.isController()) {
-            const int ctrlNum = m.getControllerNumber();
-            const int val = static_cast<unsigned char>(m.getControllerValue());
-            size_t reg = 0;
-            if (20 <= ctrlNum && ctrlNum < 34) {
-                // coarse value
-                reg = static_cast<size_t>(ctrlNum - 20);
-                registers.registers[reg] = static_cast<unsigned char>((val << 4) | registers.registers[reg]);
-                registers.mask[reg] = !registers.mask[reg];
-                // DBG("register coarse " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off"));
-            } else if (40 <= ctrlNum && ctrlNum < 54) {
-                // fine value
-                reg = static_cast<size_t>(ctrlNum - 40);
-                registers.registers[reg] = static_cast<unsigned char>(val | registers.registers[reg]);
-                registers.mask[reg] = !registers.mask[reg];
-                // DBG("register fine " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off") << " reg is " << regs.registers[reg]);
-            } else {
-                jassertfalse;
-            }
-            if (!registers.mask[reg]) {
-                chip->setRegister(reg, registers.registers[reg]);
-                // DBG("setRegister(" << reg << ", " << regs.registers[reg] << ")");
-                registers.registers[reg] = 0;
-            }
+        if (auto regpair = midiCCReader.read(m)) {
+            chip->setRegister(static_cast<size_t>(regpair.reg), regpair.value);
         }
+
     }
     // process to the end of the block
     if (currentSample < fc.destBuffer->getNumSamples()) {

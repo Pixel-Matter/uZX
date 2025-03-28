@@ -269,6 +269,8 @@ void TrackComponent::paint(Graphics& g) {
 
         g.drawRect(rc, 2);
     }
+
+    // TODO draw a grid
 }
 
 void TrackComponent::mouseDown(const MouseEvent&) {
@@ -333,7 +335,7 @@ void TrackComponent::buildClips() {
 
             if (dynamic_cast<te::WaveAudioClip*>(c))
                 cc = new AudioClipComponent(editViewState, c);
-            else if (dynamic_cast<PsgClip*>(c))  // must be before MidiClip
+            else if (dynamic_cast<PsgClip*>(c))  // must go before MidiClip
                 cc = new PsgClipComponent(editViewState, c);
             else if (dynamic_cast<te::MidiClip*>(c))
                 cc = new MidiClipComponent(editViewState, c);

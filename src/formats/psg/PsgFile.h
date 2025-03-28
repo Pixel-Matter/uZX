@@ -42,7 +42,7 @@ Optional<Integral> tryRead(const uint8*& data, size_t& remaining) {
 
 }  // namespace {}
 
-struct HeaderDetails {
+struct PsgHeaderDetails {
     size_t bytesRead = 0;
     short version = 0;
     short interruptRate = 0;
@@ -71,7 +71,7 @@ struct HeaderDetails {
 
     The sequence continues with register-value pairs until the next interrupt marker (0xFF), the end of the file, or a pause marker (0xFE).
 */
-static Optional<HeaderDetails> parsePsgHeader(const uint8* const initialData, const size_t maxSize) {
+static Optional<PsgHeaderDetails> parsePsgHeader(const uint8* const initialData, const size_t maxSize) {
 
     auto* data = initialData;
     auto remaining = maxSize;
@@ -97,7 +97,7 @@ static Optional<HeaderDetails> parsePsgHeader(const uint8* const initialData, co
     if (remaining <= headerSize)
         return {};
 
-    HeaderDetails result;
+    PsgHeaderDetails result;
     result.version = (short)*version;
     result.interruptRate = (short)*interruptRate;
     result.bytesRead = maxSize - remaining + headerSize;
@@ -137,9 +137,18 @@ static Optional<PsgRegsAYFrame> readNextFrame(const uint8*& data, size_t& remain
 //==============================================================================
 class PsgFile {
 public:
+
+    struct Options {
+        Options() : frameRate(50) {}
+
+        double frameRate = 50;
+        // bool usesRetriggers = false;
+    };
+
     //==============================================================================
-    PsgFile(const juce::File& file)
+    PsgFile(const juce::File& file, Options options = {}) noexcept
         : file_(file)
+        , options_(options)
     {}
 
     //==============================================================================
@@ -173,17 +182,22 @@ public:
         return psgData_.frames.size() * psgData_.frameStep;
     }
 
-    inline double frameNumToSeconds(size_t frameNum, double frameRate = 50) const {
-        return static_cast<double>(frameNum) / frameRate;
+    inline double frameNumToSeconds(size_t frameNum) const {
+        return static_cast<double>(frameNum) / getFrameRate();
     }
 
-    double getLengthSeconds(double frameRate = 50) const {
-        return static_cast<double>(getLengthMachineFrames()) / frameRate;
+    inline double getFrameRate() const {
+        return options_.frameRate;
+    }
+
+    double getLengthSeconds() const {
+        return static_cast<double>(getLengthMachineFrames()) / getFrameRate();
     }
 
 private:
     //==============================================================================
     juce::File file_;
+    Options options_;
     PsgData psgData_;
 
     //==============================================================================

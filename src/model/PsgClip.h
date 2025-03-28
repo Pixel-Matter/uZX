@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <_stdio.h>
 
 #include "CustomClip.h"
 #include "../formats/psg/PsgFile.h"
@@ -59,7 +60,7 @@ public:
             psgFile.getFile().getFileNameWithoutExtension(),
             CustomClip::Type::psg,
             position,
-            te::DeleteExistingClips::no,
+            te::DeleteExistingClips::yes,
             false
         ));
         jassert(clip != nullptr);
@@ -80,29 +81,51 @@ private:
         );
     }
 
+    // TODO
+    // 1. Dialog for interpreting PSG file
+    // 2. BackgroundJob for loading PSG file
     void loadFromFile(uZX::PsgFile& psgFile) {
-        te::MidiList& seq = getSequence();
-        seq.clear(getUndoManager());
         psgFile.ensureRead();
-        // auto& edit = getEdit();
-        const double frameRate = 50; // TODO get from edit timeOptions
+        const double frameRate = psgFile.getFrameRate();
         auto& data = psgFile.getData();
-        for (size_t i = 0; i < data.frames.size(); i++) {
-            auto& frame = data.frames[i];
-            auto timeSec = psgFile.frameNumToSeconds(i, frameRate);
-            auto startBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec));
-            auto endBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec + 1.0 / frameRate));
-            // DBG("Frame " << i << " time=" << timeBeat);
-            for (size_t j = 0; j < frame.registers.size(); j++) {
-                if (frame.mask[j]) {
-                    // DBG("Register " << j << " = " << reg);
-                    auto regVal = frame.registers[j];
-                    // NOTE It is too slow to call seq.addControllerEvent
-                    auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j), regVal);
-                    seq.state.appendChild(v, getUndoManager());
+
+        auto* um = getUndoManager();
+
+        getSequence().clear(um);
+        // to fastest midi inport
+        // 1. construct MidiList state detached from everything,
+        // 2. remove from state old sequence
+        // 3. add the new sequence tree directly to clips state in one operation
+        auto seqState = getSequence().state.createCopy();
+
+        double timeElapsed;
+        {
+            juce::ScopedTimeMeasurement measurement(timeElapsed);
+            DBG("constructing the tree");
+            for (size_t i = 0; i < data.frames.size(); i++) {
+                auto& frame = data.frames[i];
+                auto timeSec = psgFile.frameNumToSeconds(i);
+                auto startBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec));
+                auto endBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec + 1.0 / frameRate));
+                // DBG("Frame " << i << " time=" << timeBeat);
+                for (size_t j = 0; j < frame.registers.size(); j++) {
+                    if (frame.mask[j]) {
+                        // DBG("Register " << j << " = " << reg);
+                        auto regVal = frame.registers[j];
+                        // NOTE It is too slow to call seq.addControllerEvent
+                        auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j), regVal);
+                        seqState.appendChild(std::move(v), nullptr);  // no need for um here
+                    }
                 }
             }
         }
+        DBG("constructed in " << timeElapsed << "s");
+        {
+            juce::ScopedTimeMeasurement measurement(timeElapsed);
+            state.removeChild(state.getChildWithName(te::IDs::SEQUENCE), um);
+            state.addChild(seqState, -1, um);
+        }
+        DBG("copied in " << timeElapsed << "s");
         changed();
         scaleVerticallyToFit();
     }

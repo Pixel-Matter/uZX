@@ -121,6 +121,8 @@ void TrackHeaderComponent::valueTreePropertyChanged(juce::ValueTree& v, const ju
             muteButton.setToggleState((bool)v[i], dontSendNotification);
         else if (i == te::IDs::solo)
             soloButton.setToggleState((bool)v[i], dontSendNotification);
+        else if (i == te::IDs::name)
+            trackName.setText(v[i], dontSendNotification);
     } else if (v.hasType (te::IDs::INPUTDEVICES)
               || v.hasType (te::IDs::INPUTDEVICE)
               || v.hasType (te::IDs::INPUTDEVICEDESTINATION)) {

@@ -72,23 +72,22 @@ inline te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
     return result;
 }
 
+inline te::AudioTrack* addAudioTrackAfter(te::Edit& edit, te::Track* track) {
+    auto insertPoint = (track != nullptr) ? track : getAllTracks(edit).getLast();
+    edit.getTransport().stopIfRecording();
+    return edit.insertNewAudioTrack(te::TrackInsertPoint(nullptr, insertPoint), nullptr).get();
+}
 
 inline te::AudioTrack* getSelectedOrInsertAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager, String name = {}) {
     auto sel = selectionManager.getSelectedObject(0);
     auto track = dynamic_cast<te::AudioTrack*>(sel);
     if (track == nullptr) {
-        track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
+        track = addAudioTrackAfter(edit, nullptr);
         if (name.isNotEmpty()) {
             track->setName(name);
         }
     }
     return track;
-}
-
-inline te::AudioTrack* addAudioTrackAfter(te::Edit& edit, te::Track* track) {
-    auto insertPoint = (track != nullptr) ? track : getAllTracks(edit).getLast();
-    edit.getTransport().stopIfRecording();
-    return edit.insertNewAudioTrack(te::TrackInsertPoint(nullptr, insertPoint), nullptr).get();
 }
 
 inline te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
@@ -114,6 +113,10 @@ inline te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManag
 inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor = false) {
     Helpers::browseForPSGFile(edit.engine, [&](const File& f) {
         auto track = getSelectedOrInsertAudioTrack(edit, selectionManager, f.getFileNameWithoutExtension());
+        jassert(track != nullptr);
+        if (track->getClips().size() == 0) {
+            track->setName(f.getFileNameWithoutExtension());
+        }
         auto psgFile = uZX::PsgFile(f);
         psgFile.ensureRead();
         te::TimePosition insertTime;
@@ -123,7 +126,8 @@ inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManag
         te::ClipPosition pos = {{insertTime, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
         // TODO make it ThreadBackgroundJob
         if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
-            // make sure AYChipPlugin is added to the track
+            track->changed();
+                // make sure AYChipPlugin is added to the track
             for (auto& p : track->pluginList) {
                 if (auto ay = dynamic_cast<uZX::AYChipPlugin*>(p)) {
                     return;

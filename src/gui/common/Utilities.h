@@ -4,7 +4,7 @@
 
 #include "../../formats/psg/PsgFile.h"
 #include "../../model/PsgClip.h"
-#include "juce_core/juce_core.h"
+#include "../../plugins/uZX/aychip/AYPlugin.h"
 
 #include <common/Utilities.h>
 
@@ -127,7 +127,7 @@ inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManag
         // TODO make it ThreadBackgroundJob
         if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
             track->changed();
-                // make sure AYChipPlugin is added to the track
+            // make sure AYChipPlugin is added to the track
             for (auto& p : track->pluginList) {
                 if (auto ay = dynamic_cast<uZX::AYChipPlugin*>(p)) {
                     return;

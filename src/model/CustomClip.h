@@ -1,20 +1,13 @@
 #pragma once
 
 #include <JuceHeader.h>
-
+#include "Ids.h"
 
 namespace te = tracktion;
 
 namespace MoTool {
 
 using namespace tracktion::literals;
-
-namespace IDs {
-    #define DECLARE_ID(name)  const juce::Identifier name(#name);
-    DECLARE_ID(PSGCLIP)
-    #undef DECLARE_ID
-}  // namespace IDs
-
 
 // TODO change CustomClip to be a pure utility namespace rather than a class to avoid the dual inheritance pattern
 class CustomClip {

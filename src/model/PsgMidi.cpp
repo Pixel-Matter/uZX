@@ -1,6 +1,8 @@
 #include <JuceHeader.h>
+#include <sys/types.h>
 
 #include "PsgMidi.h"
+#include "PsgClip.h"
 
 
 using namespace tracktion;
@@ -19,12 +21,12 @@ static double roundTo(double value, int decimalPlaces = 2) {
     return std::round(value * factor) / factor;
 }
 
-inline static ValueTree createRegValueTree(te::BeatRange range, int reg, int val) {
+inline static ValueTree createRegValueTree(te::BeatPosition pos, int reg, int val) {
     // N.B. Tracktion store controller values in edit's MidiList with extra precision
     // but then rounds them to 7 bits
     return te::createValueTree (
         te::IDs::CONTROL,
-        te::IDs::b,     roundTo(range.getStart().inBeats()),
+        te::IDs::b,     roundTo(pos.inBeats()),
         te::IDs::type,  MIDI_PSG_CC_COARSE_START + reg,
         te::IDs::val,   (val & 255)  // store as is, then break down to 2 times by 4 bits
     );
@@ -34,21 +36,17 @@ inline static ValueTree createRegValueTree(te::BeatRange range, int reg, int val
 
 void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgFile &psgFile) {
     auto &data = psgFile.getData();
-    const double frameDurSec = 1.0 / psgFile.getFrameRate();
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];
         auto timeSec = psgFile.frameNumToSeconds(i);
         auto startBeat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
-        auto endBeat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec + frameDurSec));
-        // auto startBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec));
-        // auto endBeat = getContentBeatAtTime(te::TimePosition::fromSeconds(timeSec + 1.0 / frameRate));
         // DBG("Frame " << i << " time=" << timeBeat);
         for (size_t j = 0; j < frame.registers.size(); j++) {
             if (frame.mask[j]) {
                 // DBG("Register " << j << " = " << reg);
                 auto regVal = frame.registers[j];
                 // NOTE It is too slow to call seq.addControllerEvent
-                auto v = createRegValueTree({startBeat, endBeat}, static_cast<int>(j), regVal);
+                auto v = createRegValueTree(startBeat, static_cast<int>(j), regVal);
                 seqState.appendChild(std::move(v), nullptr); // no need for um here
             }
         }
@@ -78,13 +76,107 @@ static void addToSequence(juce::MidiMessageSequence& seq, const MidiClip& clip, 
             seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber, type - MIDI_PSG_CC_COARSE_START + MIDI_PSG_CC_FINE_START, value & 15), time);  // Add the fine value
             // DBG("Add fine " << type - MIDI_PSG_CC_START << ", " << (value & 15));
         }
-        return;
     }
-    // No other controller types should be present in PSG fake MIDI
-    return;
 }
 
-juce::MidiMessageSequence createPsgPlaybackMidiSequence(const MidiList& list, const MidiClip& clip, MidiList::TimeBase timeBase, bool /*generateMPE*/) {
+void addToSequence(
+    juce::MidiMessageSequence& seq,
+    const PsgClip& clip,
+    PsgList::TimeBase tb,
+    const PsgParamFrame& frame,
+    int channelNumber
+) {
+    const auto time = [&] {
+        switch (tb) {
+            case PsgList::TimeBase::beatsRaw:  return frame.getBeatPosition().inBeats();
+            case PsgList::TimeBase::beats:     return std::max(0_bp, frame.getEditBeats(clip) - toDuration (clip.getStartBeat())).inBeats();
+            case PsgList::TimeBase::seconds:   [[ fallthrough ]];
+            default:                            return std::max(0_tp, frame.getEditTime(clip) - toDuration (clip.getPosition().getStart())).inSeconds();
+        }
+    }();
+
+    int psgChan = 0;
+    uint8_t valueCoarse = 0;
+    uint8_t valueFine = 0;
+    for (auto [type, value] : frame.getData().getParams()) {
+        switch (type) {
+            case PsgParamType::VolumeA:
+                psgChan = 0;
+            case PsgParamType::VolumeB:
+                psgChan = 1;
+            case PsgParamType::VolumeC:
+                psgChan = 2;
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::Volume), value), time);
+                break;
+            case PsgParamType::TonePeriodA:
+                psgChan = 0;
+            case PsgParamType::TonePeriodB:
+                psgChan = 1;
+            case PsgParamType::TonePeriodC:
+                psgChan = 2;
+                // period has 12 bits, coarse 7 bit + fine 5 bits
+                valueCoarse = (value >> 7) & 0x7F;
+                valueFine = value & 0x7F;
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::CC20PeriodCoarse), valueCoarse), time);
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::CC20PeriodFine),   valueFine), time);
+                break;
+            case PsgParamType::ToneIsOnA:
+                psgChan = 0;
+            case PsgParamType::ToneIsOnB:
+                psgChan = 1;
+            case PsgParamType::ToneIsOnC:
+                psgChan = 2;
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::GPC5), value), time);
+                break;
+            case PsgParamType::NoiseIsOnA:
+                psgChan = 0;
+            case PsgParamType::NoiseIsOnB:
+                psgChan = 1;
+            case PsgParamType::NoiseIsOnC:
+                psgChan = 2;
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::GPC6), value), time);
+                break;
+            case PsgParamType::EnvelopeIsOnA:
+                psgChan = 0;
+            case PsgParamType::EnvelopeIsOnB:
+                psgChan = 1;
+            case PsgParamType::EnvelopeIsOnC:
+                psgChan = 2;
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::GPC7), value), time);
+                break;
+            case PsgParamType::RetriggerA:
+                psgChan = 0;
+            case PsgParamType::RetriggerB:
+                psgChan = 1;
+            case PsgParamType::RetriggerC:
+                psgChan = 2;
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::GPC8), value), time);
+                break;
+            case PsgParamType::NoisePeriod:
+                psgChan = 3;
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::Breath), value), time);
+                break;
+            case PsgParamType::EnvelopePeriod:
+                psgChan = 3;
+                // period can has max 14 bits, coarse 7 bit + fine 7 bits
+                valueCoarse = (value >> 7) & 0x7F;
+                valueFine = value & 0x7F;
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::CC20PeriodCoarse), valueCoarse), time);
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::CC20PeriodFine),   valueFine), time);
+                break;
+            case PsgParamType::EnvelopeShape:
+                psgChan = 3;
+                seq.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(MidiCCType::SoundVariation), value), time);
+                break;
+            case PsgParamType::SIZE:
+            default:
+                jassertfalse;
+                break;
+        }
+    }
+}
+
+juce::MidiMessageSequence createPsgPlaybackMidiSequence(const MidiList& list, const MidiClip& clip, MidiList::TimeBase timeBase) {
     using TimeBase = te::MidiList::TimeBase;
     juce::MidiMessageSequence destSequence;
 
@@ -127,19 +219,12 @@ juce::MidiMessageSequence createPsgPlaybackMidiSequence(const MidiList& list, co
         if (beat >= firstNoteBeat && beat < lastNoteBeat)
             addToSequence(destSequence, clip, timeBase, *e, channelNumber);
     }
-
-    // Then the note events
-    // But no notes for PSG
-
-    // Add the SysEx events:
-    // But no SysEx for PSG
-
     return destSequence;
 }
 
-// =============================================================================
 
-PsgMidiCCSequenceReader::MaybeRegPair PsgMidiCCSequenceReader::read(const te::MidiMessageWithSource& m) {
+// =============================================================================
+PsgRegsMidiCCSequenceReader::MaybeRegPair PsgRegsMidiCCSequenceReader::read(const te::MidiMessageWithSource& m) {
     MaybeRegPair result {-1, 0};
     if (m.isNoteOn()) {
         // note based PSG-MIDI mapping is not implemented yet
@@ -153,15 +238,15 @@ PsgMidiCCSequenceReader::MaybeRegPair PsgMidiCCSequenceReader::read(const te::Mi
         const int ctrlNum = m.getControllerNumber();
         const int val = static_cast<unsigned char>(m.getControllerValue());
         size_t reg = 0;
-        if (20 <= ctrlNum && ctrlNum < 34) {
+        if (MIDI_PSG_CC_COARSE_START <= ctrlNum && ctrlNum < MIDI_PSG_CC_COARSE_START + 14) {
             // coarse value
-            reg = static_cast<size_t>(ctrlNum - 20);
+            reg = static_cast<size_t>(ctrlNum - MIDI_PSG_CC_COARSE_START);
             registers.registers[reg] = static_cast<unsigned char>((val << 4) | registers.registers[reg]);
             registers.mask[reg] = !registers.mask[reg];
             // DBG("register coarse " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off"));
-        } else if (40 <= ctrlNum && ctrlNum < 54) {
+        } else if (MIDI_PSG_CC_FINE_START <= ctrlNum && ctrlNum < MIDI_PSG_CC_FINE_START + 14) {
             // fine value
-            reg = static_cast<size_t>(ctrlNum - 40);
+            reg = static_cast<size_t>(ctrlNum - MIDI_PSG_CC_FINE_START);
             registers.registers[reg] = static_cast<unsigned char>(val | registers.registers[reg]);
             registers.mask[reg] = !registers.mask[reg];
             // DBG("register fine " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off") << " reg is " << regs.registers[reg]);

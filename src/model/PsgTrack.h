@@ -3,19 +3,12 @@
 #include <JuceHeader.h>
 
 #include "PsgClip.h"
+#include "Ids.h"
 
 
 namespace te = tracktion;
 
 namespace MoTool {
-
-namespace IDs {
-    #define DECLARE_ID(name)  const juce::Identifier name(#name);
-
-    DECLARE_ID(PSGTRACK)
-    #undef DECLARE_ID
-}  // namespace IDs
-
 
 class PsgTrack : public te::AudioTrack {
 public:

@@ -105,8 +105,8 @@ static Optional<PsgHeaderDetails> parsePsgHeader(const uint8* const initialData,
     return {result};
 }
 
-static Optional<PsgRegsAYFrame> readNextFrame(const uint8*& data, size_t& remaining) {
-    PsgRegsAYFrame currentFrame {};
+static Optional<PsgRegsFrame> readNextFrame(const uint8*& data, size_t& remaining) {
+    PsgRegsFrame currentFrame {};
     if (remaining == 0)
         return {};
 

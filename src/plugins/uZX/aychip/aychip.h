@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <sys/types.h>
 #include <vector>
 #include <array>
 
@@ -44,7 +45,7 @@ public:
     using ChipType = MoTool::Util::EnumChoice<TypeEnum>;
 
     struct LayoutEnum {
-        enum Enum {
+        enum Enum : uint8_t {
             ABC,
             ACB,
             BAC,
@@ -64,7 +65,7 @@ public:
     using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
 
     struct EnvShapeEnum {
-        enum Enum {
+        enum Enum : uint8_t {
             DOWN_HOLD_BOTTOM_0,
             DOWN_HOLD_BOTTOM_1,
             DOWN_HOLD_BOTTOM_2,
@@ -260,7 +261,9 @@ private:
     ChannelsLayout ChannelsLayout_;
     double StereoWidth_;
 
-    static inline constexpr std::array<std::array<double, TONE_CHANNELS>, 6> ChannelPans_ = {{
+    static inline constexpr std::array<std::array<double, TONE_CHANNELS>, 6>
+    // TODO move to AYInterface protected section
+    ChannelPans_ = {{
         {{0.0, 0.5, 1.0}},  // ABC
         {{0.0, 1.0, 0.5}},  // ACB
         {{0.5, 0.0, 1.0}},  // BAC

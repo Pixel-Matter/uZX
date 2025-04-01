@@ -14,11 +14,17 @@ template <size_t NREGS>
 struct PsgFrame {
     std::array<uint8_t, NREGS> registers {};
     std::array<bool, NREGS> mask {};
+
+    PsgFrame() = default;
+    PsgFrame(const PsgFrame&) = default;
+    PsgFrame(PsgFrame&&) = default;
+    PsgFrame& operator=(const PsgFrame&) = default;
+    PsgFrame& operator=(PsgFrame&&) = default;
+    PsgFrame(std::array<uint8_t, NREGS>&& regs, std::array<bool, NREGS>&& m)
+        : registers(std::move(regs)), mask(std::move(m)) {}
 };
 
-
 struct PsgRegsFrame : public PsgFrame<14> {
-
     enum PsgRegisterType {
         TonePeriodFineA      = 0,
         TonePeriodCoarseA    = 1,
@@ -36,6 +42,11 @@ struct PsgRegsFrame : public PsgFrame<14> {
         EnvelopeShape        = 13
     };
 
+    using PsgFrame::PsgFrame;
+
+    inline bool empty() const {
+        return mask == std::array<bool, 14> {false};
+    }
     // Helpers for common register access
     inline bool hasTonePeriodSet(size_t chan) const {
         return mask[TonePeriodFineA + chan * 2] || mask[TonePeriodCoarseA + chan * 2];
@@ -172,12 +183,40 @@ struct PsgRegsFrame : public PsgFrame<14> {
     }
 };
 
-// TODO maybe depack this and store depacked data in a separate structure to view it in a more convenient way
-
 struct PsgData {
-    size_t frameStep = 1;
+    struct Options {
+        double frameRate = 50;
+        size_t frameStep = 1;
+        // bool usesRetriggers = false;
+        // TODO frequency table or id or shared_ptr to it
+    };
+
     std::vector<PsgRegsFrame> frames;
-    // TODO frequency table or id or shared_ptr to it
+    Options options;
+
+    void clear() {
+        frames.clear();
+    }
+
+    size_t getLengthMachineFrames() const noexcept {
+        return frames.size() * options.frameStep;
+    }
+
+    double getLengthSeconds() const noexcept {
+        return static_cast<double>(getLengthMachineFrames()) / options.frameRate;
+    }
+
+    inline bool isEmpty() const noexcept {
+        return frames.empty();
+    }
+
+    inline double getFrameRate() const {
+        return options.frameRate;
+    }
+
+    inline double frameNumToSeconds(size_t frameNum) const {
+        return static_cast<double>(frameNum) / getFrameRate();
+    }
 };
 
 

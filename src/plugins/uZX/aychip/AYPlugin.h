@@ -169,7 +169,7 @@ private:
     Colour colour;
     CriticalSection lock;
 
-    PsgRegsMidiCCSequenceReader midiCCReader;
+    PsgRegsMidiSequenceReader midiCCReader;
     // PsgRegsAYFrame registers;
     std::unique_ptr<AYInterface> chip;
 

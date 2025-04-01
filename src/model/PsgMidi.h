@@ -5,6 +5,7 @@
 #include "../formats/psg/PsgFile.h"
 #include "../formats/psg/PsgData.h"
 #include "PsgClip.h"
+#include "juce_audio_basics/juce_audio_basics.h"
 
 namespace te = tracktion;
 
@@ -25,23 +26,6 @@ void addToSequence(
     const PsgParamFrame& frame,
     int channelNumber
 );
-
-//===================================================================
-class PsgRegsMidiCCSequenceReader {
-    public:
-    struct MaybeRegPair {
-        int reg = -1;
-        uint8_t value = 0;
-
-        bool isValid() const noexcept { return reg >= 0; }
-        operator bool() const noexcept { return isValid(); }
-    };
-
-    MaybeRegPair read(const te::MidiMessageWithSource& m);
-
-    private:
-    uZX::PsgRegsFrame registers = {};
-};
 
 //===================================================================
 enum class MidiCCType {
@@ -94,7 +78,7 @@ enum class MidiCCType {
     GPC3Fine          = 50,  ///< General Purpose Controller #3 (Slider Fine)
     GPC4Fine          = 51,  ///< General Purpose Controller #4 (Slider Fine)
 
-    CC20PeriodFine    = 52,  ///< Tone period (Fine)
+    CC52PeriodFine    = 52,  ///< Tone period (Fine)
     // unused         = 53-63 (10)
 
     //---Channel Play Mode---
@@ -118,10 +102,10 @@ enum class MidiCCType {
     SoundCtrler10     = 79,  ///< undefined (Sound Control 10)
 
     //---General Purpose Controllers #5 to #8---
-    GPC5              = 80,  ///< General Purpose Switch #1 (on/off)
-    GPC6              = 81,  ///< General Purpose Switch #2 (on/off)
-    GPC7              = 82,  ///< General Purpose Switch #3 (on/off)
-    GPC8              = 83,  ///< General Purpose Switch #4 (on/off)
+    GPB1              = 80,  ///< General Purpose Switch #1 (on/off)
+    GPB2              = 81,  ///< General Purpose Switch #2 (on/off)
+    GPB3              = 82,  ///< General Purpose Switch #3 (on/off)
+    GPB4              = 83,  ///< General Purpose Switch #4 (on/off)
     PortaControl      = 84,  ///< Portamento Control
 
     // unused         = 85-90 (6)
@@ -185,11 +169,43 @@ enum class MidiCCType {
     */
 };
 
+
+//===================================================================
+class PsgRegsMidiSequenceReader {
+    public:
+    struct MaybeRegPair {
+        int reg = -1;
+        uint8_t value = 0;
+
+        bool isValid() const noexcept { return reg >= 0; }
+        operator bool() const noexcept { return isValid(); }
+    };
+
+    MaybeRegPair read(const te::MidiMessageWithSource& m);
+
+    private:
+    uZX::PsgRegsFrame registers = {};
+};
+
 //===================================================================
 class PsgParamsMidiWriter {
 public:
+    PsgParamsMidiWriter(int chan) noexcept
+        : channelNumber(chan)
+    {}
+
+    void write(double time, const PsgParamFrameData& data);
+
+    juce::MidiMessageSequence& getSequence() noexcept { return sequence; }
 
 private:
+    int channelNumber = 1;
+    juce::MidiMessageSequence sequence {};
+
+    inline void addEvent(double time, int psgChan, MidiCCType type, int value) {
+        sequence.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(type), value), time);
+    }
+
 };
 
 //===================================================================

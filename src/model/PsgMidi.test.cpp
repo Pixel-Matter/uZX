@@ -1,3 +1,4 @@
+#include "formats/psg/PsgData.h"
 #include "juce_core/juce_core.h"
 #include "model/Ids.h"
 #include <JuceHeader.h>
@@ -62,29 +63,6 @@ public:
             data.set(PsgParamType::VolumeB, 0x1234);
 
             expect(data[PsgParamType::VolumeB] == 0x1234, "Expected VolumeB to be 0x1234");
-        }
-
-        beginTest("PsgParamFrame::createPsgFrameValueTree");
-        {
-            PsgParamFrameData data {
-                {
-                    1, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 2
-                },
-                {
-                    true, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false,
-                    false, false, false, false, true
-                }
-            };
-            auto v = PsgParamFrame::createPsgFrameValueTree(2.3_bp, data);
-            expect(v.hasType(IDs::FRAME), "Expected FRAME type");
-            expect(v.getProperty(te::IDs::b).equals(2.3), "Expected beat number to be 2.3");
-            expect(v.getProperty(IDs::va).equals(1), "Expected VolumeA to be 1");
-            expect(v.getProperty(IDs::va).isInt(), "Expected VolumeA to be an int");
-            expect(!v.hasProperty(IDs::vb), "Expected VolumeB to be missing");
-            expect(v.getProperty(IDs::s).equals(2), "Expected EnvelopeShape to be 1");
         }
 
         beginTest("uZX::PsgRegsFrame tone period");
@@ -237,6 +215,29 @@ public:
             expect(f[PsgParamType::EnvelopeShape] == 0x0f, "Expected EnvelopeShape to be 0x0f");
         }
 
+        beginTest("PsgParamFrame::createPsgFrameValueTree");
+        {
+            PsgParamFrameData data {
+                {
+                    1, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 2
+                },
+                {
+                    true, false, false, false, false, false, false, false,
+                    false, false, false, false, false, false, false, false,
+                    false, false, false, false, true
+                }
+            };
+            auto v = PsgParamFrame::createPsgFrameValueTree(2.3_bp, data);
+            expect(v.hasType(IDs::FRAME), "Expected FRAME type");
+            expect(v.getProperty(te::IDs::b).equals(2.3), "Expected beat number to be 2.3");
+            expect(v.getProperty(IDs::va).equals(1), "Expected VolumeA to be 1");
+            expect(v.getProperty(IDs::va).isInt(), "Expected VolumeA to be an int");
+            expect(!v.hasProperty(IDs::vb), "Expected VolumeB to be missing");
+            expect(v.getProperty(IDs::s).equals(2), "Expected EnvelopeShape to be 1");
+        }
+
         beginTest("PsgParamFrame ctor");
         {
             PsgParamFrameData data {
@@ -263,6 +264,150 @@ public:
     }
 };
 
-static PsgParamsMidiTests psgParamsMidiTests;
+class PsgParamsChangeTrackerTest  : public UnitTest {
+public:
+    PsgParamsChangeTrackerTest() : UnitTest("PsgParamsChangeTracker", "MoTool") {}
+
+    void runTest() override {
+        // auto& engine = *Engine::getEngines()[0];
+        // auto edit = Edit::createSingleTrackEdit(engine);
+        // edit->tempoSequence.getTempoAt(edit->getTransport().getPosition()).setBpm(60);
+        // auto t = getAudioTracks(*edit)[0];
+
+        beginTest("PsgParamsMidiWriterTests not changed");
+        {
+            // PsgParamsChangeTracker tracker;
+            PsgParamFrameData data {
+                {
+                    1, 1, 2, 3, 4, 5, 6, 7,
+                    8, 9, 10, 11, 12, 13, 14, 15,
+                    16, 17, 18, 19, 20
+                },
+                {
+                    true, true, true, true, true, true, true, true,
+                    true, true, true, true, true, true, true, true,
+                    true, true, true, true, true
+                }
+            };
+            // data.debugValues();
+            std::vector<std::pair<PsgParamType, uint16_t>> fullChange {
+                {PsgParamType::VolumeA,        1},
+                {PsgParamType::VolumeB,        1},
+                {PsgParamType::VolumeC,        2},
+                {PsgParamType::TonePeriodA,    3},
+                {PsgParamType::TonePeriodB,    4},
+                {PsgParamType::TonePeriodC,    5},
+                {PsgParamType::ToneIsOnA,      6},
+                {PsgParamType::ToneIsOnB,      7},
+                {PsgParamType::ToneIsOnC,      8},
+                {PsgParamType::NoiseIsOnA,     9},
+                {PsgParamType::NoiseIsOnB,     10},
+                {PsgParamType::NoiseIsOnC,     11},
+                {PsgParamType::EnvelopeIsOnA,  12},
+                {PsgParamType::EnvelopeIsOnB,  13},
+                {PsgParamType::EnvelopeIsOnC,  14},
+                {PsgParamType::RetriggerA,     15},
+                {PsgParamType::RetriggerB,     16},
+                {PsgParamType::RetriggerC,     17},
+                {PsgParamType::NoisePeriod,    18},
+                {PsgParamType::EnvelopePeriod, 19},
+                {PsgParamType::EnvelopeShape,  20}
+            };
+            expect(data.getParams() == fullChange, "Expected all params to be set");
+
+            data.update(data);
+            expect(data.getParams() == std::vector<std::pair<PsgParamType, uint16_t>> {}, "Expected no params to be changed");
+
+            PsgParamFrameData partialData {
+                {
+                    15, 1, 2, 3, 4, 5, 6, 7,
+                    1, 9, 10, 11, 12, 13, 14, 15,
+                    100, 17, 18, 19, 20
+                },
+                {
+                    true, false, false, false, false, false, false, false,
+                    true, false, false, false, false, false, false, false,
+                    false, false, false, false, false
+                }
+            };
+            data.update(partialData);
+            expect(data.getParams() == std::vector<std::pair<PsgParamType, uint16_t>> {
+                {PsgParamType::VolumeA, 15},
+                {PsgParamType::ToneIsOnC, 1},
+            }, "Expected 2 params to be changed");
+        }
+    }
+};
+
+class PsgParamsMidiWriterTests  : public UnitTest {
+public:
+    PsgParamsMidiWriterTests() : UnitTest("PsgParamsMidiWriter", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *Engine::getEngines()[0];
+        auto edit = Edit::createSingleTrackEdit(engine);
+        edit->tempoSequence.getTempoAt(edit->getTransport().getPosition()).setBpm(60);
+        auto t = getAudioTracks(*edit)[0];
+
+        uZX::PsgData data;
+        data.frames.push_back({
+            {0x12, 0x34, 0,     0,     0,     0,     0x1f, 0b00001001, 0,     0,     0,     0,     0,     0},
+            {true, true, false, false, false, false, true, true,       false, false, false, false, false, false}
+        });
+        data.frames.push_back({
+            {0,     0,     0x56, 0x32, 0,     0,     0x10, 0b00000011, 0,     0,     0,     0,     0,     0},
+            {false, false, true, true, false, false, true, true,       false, false, false, false, false, false}
+        });
+
+        te::ClipPosition pos = {{0_tp, te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}};
+        auto* psgClip = dynamic_cast<PsgClip*>(CustomClip::insertClipWithState(
+            *t, /*stateToUse=*/ {}, /*name=*/ {},
+            CustomClip::Type::psg, pos, te::DeleteExistingClips::yes, false
+        ));
+        psgClip->getPsg().loadFrom(data, *edit, nullptr);
+
+        beginTest("PsgParamsMidiWriterTests write");
+        {
+            expect(psgClip != nullptr, "CustomClip is a PsgClip");
+            PsgParamsMidiWriter writer {1};
+            auto& frames = psgClip->getPsg().getFrames();
+            expect(frames.size() == 2, "Expected 2 frames, got " + std::to_string(frames.size()));
+            for (auto f : frames) {
+                writer.write(f->getBeatPosition().inBeats(), f->getData());
+            }
+            auto seq = writer.getSequence();
+            for (auto e : seq) {
+                // juce::MidiMessageSequence::MidiEventHolder
+                DBG(e->message.getDescription() << " @" << e->message.getTimeStamp());
+            }
+            DBG("----------------------------------------------");
+
+            expectEquals(seq.getNumEvents(), 10);
+
+            // 0x03412 split by 7 bits 0x68, 0x12
+            expectEvent(seq, 0, 0.0, "Controller 20: 104 Channel 1");
+            expectEvent(seq, 1, 0.0, "Controller 52: 18 Channel 1");
+            expectEvent(seq, 2, 0.0, "Controller General Purpose Button 1 (on/off): 1 Channel 1");
+            expectEvent(seq, 3, 0.0, "Controller General Purpose Button 2 (on/off): 1 Channel 1");
+            expectEvent(seq, 4, 0.0, "Controller Breath controller (coarse): 31 Channel 4");
+
+            expectEvent(seq, 5, 0.02, "Controller 20: 100 Channel 2");
+            expectEvent(seq, 6, 0.02, "Controller 52: 86 Channel 2");
+            expectEvent(seq, 7, 0.02, "Controller General Purpose Button 1 (on/off): 1 Channel 2");
+            expectEvent(seq, 8, 0.02, "Controller General Purpose Button 2 (on/off): 0 Channel 1");
+            expectEvent(seq, 9, 0.02, "Controller Breath controller (coarse): 16 Channel 4");
+        }
+    }
+
+    void expectEvent(const juce::MidiMessageSequence& seq, int num, double ts, const String& desc) {
+        auto& m = seq.getEventPointer(num)->message;
+        expectWithinAbsoluteError(m.getTimeStamp(), ts, 0.00001);
+        expectEquals(m.getDescription(), desc);
+    }
+};
+
+// static PsgParamsMidiTests psgParamsMidiTests;
+static PsgParamsChangeTrackerTest psgParamsChengeTrackerTests;
+static PsgParamsMidiWriterTests psgParamsMidiWriterTests;
 
 }  // namespace MoTool::Tests

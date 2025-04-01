@@ -75,6 +75,10 @@ public:
     }
 
     explicit PsgParamFrameData(const uZX::PsgRegsFrame& regs) noexcept {
+        update(regs);
+    }
+
+    void update(const uZX::PsgRegsFrame& regs) noexcept {
         for (size_t i = 0; i < 3; ++i) {
             if (regs.hasVolumeOrEnvModSet(i)) {
                 set(static_cast<PsgParamType>(static_cast<size_t>(PsgParamType::VolumeA) + i), regs.getVolume(i));
@@ -100,6 +104,14 @@ public:
         }
         if (regs.hasEnvelopeShapeSet()) {
             set(PsgParamType::EnvelopeShape, regs.getEnvelopeShape());
+        }
+    }
+
+    void update(const PsgParamFrameData& data) noexcept {
+        // track what params was changed actually, compare with current values
+        for (size_t i = 0; i < static_cast<size_t>(PsgParamType::SIZE); ++i) {
+            masks[i] = data.masks[i] && data.values[i] != values[i];
+            values[i] = data.values[i];
         }
     }
 
@@ -155,6 +167,10 @@ public:
         result.shrink_to_fit();
         return result;
     }
+
+    friend class PsgParamFrame;
+    friend class PsgParamsChangeTracker;
+
 private:
     // not map or vector to avoid dynamic allocations
     std::array<uint16_t, static_cast<size_t>(PsgParamType::SIZE)> values {};
@@ -163,10 +179,11 @@ private:
     std::array<bool,     static_cast<size_t>(PsgParamType::SIZE)> masks {};
 };
 
+
 class PsgParamFrame {
 public:
     static juce::ValueTree createPsgFrameValueTree(te::BeatPosition, const PsgParamFrameData& data);
-    static juce::ValueTree createPsgFrameValueTree(te::BeatPosition, const uZX::PsgRegsFrame& regs);
+    // static juce::ValueTree createPsgFrameValueTree(te::BeatPosition, const uZX::PsgRegsFrame& regs);
     static juce::ValueTree createPsgFrame(const PsgParamFrame&, te::BeatPosition);
 
     PsgParamFrame(const juce::ValueTree&);
@@ -214,20 +231,6 @@ private:
 
     te::BeatPosition beatNumber;
     PsgParamFrameData data;
-    // TODO
-    /*
-      <A b="0.0" v="15" p="12354" m="rne"/>
-      <B b="0.0" p="2323"/>
-      <E b="0.0" n="13" e="8764" s="8"/>
-
-      ^ but state is single, so
-
-      <F b="0.0" va="15" pa="12345" ma="rne" pb="2323" mc="n" n="13" e="8764" s="8"/>
-
-      or
-
-      <P b="0.0 t="" v=""/>
-    */
 
     void updatePropertiesFromState() noexcept;
 
@@ -256,6 +259,9 @@ public:
     /** Adds copies of the events in another list to this one. */
     void addFrom(const PsgList&, juce::UndoManager*);
 
+    /** Loads from Psg data. */
+    void loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager*);
+
     /** Loads from Psg file. */
     void loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager*);
 
@@ -282,7 +288,7 @@ public:
     //==============================================================================
     bool isEmpty() const noexcept                                   { return state.getNumChildren() == 0; }
 
-    void clear(juce::UndoManager*);
+    void clear(juce::UndoManager* = nullptr);
     void trimOutside(te::BeatPosition firstBeat, te::BeatPosition lastBeat, juce::UndoManager*);
     void moveAllBeatPositions(te::BeatDuration deltaBeats, juce::UndoManager*);
     void rescale(double factor, juce::UndoManager*);
@@ -332,6 +338,9 @@ public:
         beats,      /** Event times will be in beats relative to the Edit timeline. */
         beatsRaw    /** Event times will be in beats with no quantisation or groove. */
     };
+
+    /** Get time according to MIDI timing */
+    double getTimeInBeats(const PsgParamFrame& frame, PsgClip& clip, PsgList::TimeBase timeBase) const;
 
     /** Creates a juce::MidiMessageSequence from the list in order to be played back
         The sequence will be in terms of edit time, either in seconds or beats

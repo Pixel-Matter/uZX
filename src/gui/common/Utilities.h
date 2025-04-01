@@ -123,7 +123,7 @@ inline void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManag
         if (insertAtCursor) {
             insertTime = edit.getTransport().getPosition();
         }
-        te::ClipPosition pos = {{insertTime, te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
+        te::ClipPosition pos = {{insertTime, te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
         // TODO make it ThreadBackgroundJob
         if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
             track->changed();

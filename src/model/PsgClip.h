@@ -27,16 +27,29 @@ public:
         return Colours::blue;
     }
 
+    PsgList& getPsg() const noexcept {
+        jassert(psgList != nullptr);
+        return *psgList;
+    }
+
     static Ptr insertTo(
         te::ClipOwner& owner,
         uZX::PsgFile& psgFile,
         te::ClipPosition position
     );
 
+    static Ptr insertTo(
+        te::ClipOwner& owner,
+        uZX::PsgData& data,
+        te::ClipPosition position,
+        String name = {}
+    );
+
 private:
     std::unique_ptr<PsgList> psgList;
 
-    void loadFromFile(uZX::PsgFile &psgFile);
+    void loadFrom(uZX::PsgData &data);
+    void loadFrom(uZX::PsgFile &psgFile);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgClip)
 };

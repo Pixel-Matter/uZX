@@ -95,10 +95,6 @@ juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, co
     return v;
 }
 
-juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, const uZX::PsgRegsFrame& regs) {
-    return createPsgFrameValueTree(beat, PsgParamFrameData {regs});
-}
-
 te::BeatPosition PsgParamFrame::getEditBeats(const PsgClip& c) const {
     return c.getQuantisation().roundBeatToNearest(beatNumber - toDuration(c.getLoopStartBeats()) + toDuration(c.getContentStartBeat()));
     return beatNumber;
@@ -278,7 +274,7 @@ PsgParamFrame* PsgList::addFrameEvent(te::BeatPosition beat, const PsgParamFrame
 }
 
 PsgParamFrame* PsgList::addFrameEvent(te::BeatPosition beat, const uZX::PsgRegsFrame& regs, juce::UndoManager* um) {
-    auto v = PsgParamFrame::createPsgFrameValueTree(beat, regs);
+    auto v = PsgParamFrame::createPsgFrameValueTree(beat, PsgParamFrameData {regs});
     state.addChild(v, -1, um);
     return framesList->getEventFor(v);
 }
@@ -293,16 +289,32 @@ void PsgList::removeAllFrames(juce::UndoManager* um) {
             state.removeChild(i, um);
 }
 
-void PsgList::loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager* um) {
-    auto &data = psgFile.getData();
+void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager* um) {
+    // use PsgParamChangeTracker
+    PsgParamFrameData params;
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];
-        auto timeSec = psgFile.frameNumToSeconds(i);
+        if (frame.empty()) {
+            continue;
+        }
+        auto timeSec = data.frameNumToSeconds(i);
         auto beat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
         // FIXME too slow
         // list.addFrameEvent(startBeat, frame, um);
-        auto v = PsgParamFrame::createPsgFrameValueTree(beat, frame);
+        params.update(PsgParamFrameData {frame});  // tracks really changed params
+        auto v = PsgParamFrame::createPsgFrameValueTree(beat, params);
         state.addChild(v, -1, um);
+    }
+}
+
+void PsgList::loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager* um) {
+    loadFrom(psgFile.getData(), edit, um);
+    if (psgFile.getFile().existsAsFile()) {
+        importedName = psgFile.getFile().getFileNameWithoutExtension();
+        importedFileName = psgFile.getFile().getFullPathName();
+    } else {
+        importedName = {};
+        importedFileName = {};
     }
 }
 
@@ -324,12 +336,21 @@ te::BeatPosition PsgList::getLastBeatNumber() const {
     return t;
 }
 
-juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, TimeBase timeBase) const {
-    juce::MidiMessageSequence destSequence;
-    for (auto e : getFrames()) {
-        addToSequence(destSequence, clip, timeBase, *e, getMidiChannel().getChannelNumber());
+double PsgList::getTimeInBeats(const PsgParamFrame& frame, PsgClip& clip, PsgList::TimeBase timeBase) const {
+    switch (timeBase) {
+        case PsgList::TimeBase::beatsRaw:  return frame.getBeatPosition().inBeats();
+        case PsgList::TimeBase::beats:     return std::max(0_bp, frame.getEditBeats(clip) - toDuration (clip.getStartBeat())).inBeats();
+        case PsgList::TimeBase::seconds:   [[ fallthrough ]];
+        default:                           return std::max(0_tp, frame.getEditTime(clip) - toDuration (clip.getPosition().getStart())).inSeconds();
     }
-    return destSequence;
+}
+
+juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, TimeBase timeBase) const {
+    PsgParamsMidiWriter writer {getMidiChannel().getChannelNumber()};
+    for (auto f : getFrames()) {
+        writer.write(getTimeInBeats(*f, clip, timeBase), f->getData());
+    }
+    return writer.getSequence();
 }
 
 }  // namespace MoTool

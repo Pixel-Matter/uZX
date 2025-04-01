@@ -135,20 +135,12 @@ static Optional<PsgRegsFrame> readNextFrame(const uint8*& data, size_t& remainin
 }
 
 //==============================================================================
+
 class PsgFile {
 public:
-
-    struct Options {
-        Options() : frameRate(50) {}
-
-        double frameRate = 50;
-        // bool usesRetriggers = false;
-    };
-
     //==============================================================================
-    PsgFile(const juce::File& file, Options options = {}) noexcept
+    PsgFile(const juce::File& file) noexcept
         : file_(file)
-        , options_(options)
     {}
 
     //==============================================================================
@@ -157,12 +149,8 @@ public:
         return file_;
     }
 
-    inline bool isEmpty() const noexcept {
-        return psgData_.frames.empty();
-    }
-
     void ensureRead() {
-        if (isEmpty())
+        if (psgData_.isEmpty())
             read();
     }
 
@@ -174,30 +162,9 @@ public:
         return psgData_;
     }
 
-    void clear() {
-        psgData_.frames.clear();
-    }
-
-    size_t getLengthMachineFrames() const {
-        return psgData_.frames.size() * psgData_.frameStep;
-    }
-
-    inline double frameNumToSeconds(size_t frameNum) const {
-        return static_cast<double>(frameNum) / getFrameRate();
-    }
-
-    inline double getFrameRate() const {
-        return options_.frameRate;
-    }
-
-    double getLengthSeconds() const {
-        return static_cast<double>(getLengthMachineFrames()) / getFrameRate();
-    }
-
 private:
     //==============================================================================
     juce::File file_;
-    Options options_;
     PsgData psgData_;
 
     //==============================================================================
@@ -209,7 +176,7 @@ private:
         @returns true if the stream was read successfully
     */
     bool read() {
-        clear();
+        psgData_.clear();
 
         using namespace PsgFileHelpers;
 
@@ -233,14 +200,12 @@ private:
 
         bool expectFrame = false;
         while (remaining > 0) {
-            // DBG("Remaining: " << remaining);
             if (expectFrame) {
                 // auto oldRemaining = remaining;
                 const auto frame = readNextFrame(d, remaining);
                 if (!frame.hasValue())
                     return false;
                 psgData_.frames.push_back(*frame);
-                // DBG("Frame added for " << oldRemaining - remaining << " bytes");
                 expectFrame = false;
                 continue;
             }
@@ -255,20 +220,16 @@ private:
                 if (!pause.hasValue())
                     return false;
                 // add pause * 4 empty frames
-                // DBG("Pause " << *pause * 4 << " frames");
                 for (int i = 0; i < *pause * 4; ++i) {
                     psgData_.frames.push_back({});
                 }
                 expectFrame = true;
             } else if (*marker == 0xFF) {
-                // DBG("Frame start");
                 expectFrame = true;
             } else {
-                // DBG("Unexpected byte " << (int)*marker);
                 return false;
             }
         }
-        // DBG("Read " << psgData_.frames.size() << " frames, remaining: " << remaining);
         return true;
     }
 
@@ -276,8 +237,8 @@ private:
         @param destStream        the destination stream
         @returns true if the operation succeeded.
     */
-    bool writeTo(OutputStream& destStream /*TODO int psgFileType = 1*/) const;
     // TODO implement
+    bool writeTo(OutputStream& destStream) const;
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgFile)

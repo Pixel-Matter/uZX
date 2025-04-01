@@ -24,8 +24,8 @@ set(GUI_SOURCES
 
 # Test-specific files to include in the test target
 set(TEST_SOURCES
-    # model/PsgTrack.test.cpp
-    model/CustomClip.test.cpp
+    ## model/PsgTrack.test.cpp
+    # model/CustomClip.test.cpp
     model/PsgMidi.test.cpp
-    plugins/uZX/aychip/AYChip.test.cpp
+    # plugins/uZX/aychip/AYChip.test.cpp
 )

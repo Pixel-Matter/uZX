@@ -14,13 +14,15 @@ namespace MoTool {
 void PsgClip::initialise() {
     te::MidiClip::initialise();
 
-    // loaad PSG list
+    // load PSG list
     auto um = getUndoManager();
     auto psg = state.getChildWithName(IDs::PSG);
     if (psg.isValid())
         psgList = std::make_unique<PsgList>(psg, um);
-    else
+    else {
         state.addChild(PsgList::createPsgList(), -1, um);
+        psgList = std::make_unique<PsgList>();
+    }
 
     if (getColour() == getDefaultColour()) {
         auto track = getTrack();
@@ -41,10 +43,25 @@ PsgClip::Ptr PsgClip::insertTo(
     uZX::PsgFile& psgFile,
     te::ClipPosition position
 ) {
+    psgFile.ensureRead();
+    return insertTo(
+        owner,
+        psgFile.getData(),
+        position,
+        psgFile.getFile().getFileNameWithoutExtension()
+    );
+}
+
+PsgClip::Ptr PsgClip::insertTo(
+    te::ClipOwner& owner,
+    uZX::PsgData& data,
+    te::ClipPosition position,
+    String name
+) {
     auto* clip = dynamic_cast<PsgClip*>(CustomClip::insertClipWithState(
         owner,
         /*stateToUse=*/ {},
-        psgFile.getFile().getFileNameWithoutExtension(),
+        name,
         CustomClip::Type::psg,
         position,
         te::DeleteExistingClips::yes,
@@ -52,38 +69,40 @@ PsgClip::Ptr PsgClip::insertTo(
     ));
     jassert(clip != nullptr);
     clip->getUndoManager()->beginNewTransaction();
-    clip->loadFromFile(psgFile);
+    clip->loadFrom(data);
     return clip;
 }
 
-void PsgClip::loadFromFile(uZX::PsgFile &psgFile) {
-    psgFile.ensureRead();
+void PsgClip::loadFrom(uZX::PsgData &data) {
     auto *um = getUndoManager();
 
-    getSequence().clear(um);
+    // getSequence().clear(um);
     // Fastest midi inport
     // 1. construct MidiList state detached from everything,
     // 2. remove old sequence from the state
     // 3. add the new sequence tree directly to the clips state in one operation
-    auto seqState = getSequence().state.createCopy();
+    // auto seqState = getSequence().state.createCopy();
+    getPsg().clear();
     double timeElapsed;
     {
         juce::ScopedTimeMeasurement measurement(timeElapsed);
-        loadMidiListStateFrom(edit, seqState, psgFile);
-        PsgList psg;
-        psg.loadFrom(psgFile, edit, um);
-        DBG("Frames " << psg.getFrames().size());
-        // for (auto frame : psg.getFrames()) {
-        //     DBG("Beat " << frame->getBeatPosition());
-        // }
-        state.removeChild(state.getChildWithName(IDs::PSG), um);
-        state.addChild(psg.state, -1, um);
+        // loadMidiListStateFrom(edit, seqState, psgFile.getData());
         // state.removeChild(state.getChildWithName(te::IDs::SEQUENCE), um);
         // state.addChild(seqState, -1, um);
+        PsgList psg;
+        psg.loadFrom(data, edit, um);
+        state.removeChild(state.getChildWithName(IDs::PSG), um);
+        state.addChild(psg.state, -1, um);
+        initialise();
     }
     DBG("PSG clip constructed in " << timeElapsed << "s");
     changed();
     scaleVerticallyToFit();
+}
+
+void PsgClip::loadFrom(uZX::PsgFile &psgFile) {
+    psgFile.ensureRead();
+    loadFrom(psgFile.getData());
 }
 
 }  // namespace MoTool

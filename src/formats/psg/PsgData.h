@@ -93,10 +93,10 @@ struct PsgRegsFrame : public PsgFrame<14> {
         mask[Mixer] = true;
     }
     inline bool getToneOn(size_t chan) const {
-        return registers[Mixer] & (1 << chan);
+        return !(registers[Mixer] & (1 << chan));  // inverted
     }
     inline void setToneOn(size_t chan, bool on) {
-        if (on) {
+        if (!on) {  // inverted
             registers[Mixer] |= (1 << chan);
         } else {
             registers[Mixer] &= ~(1 << chan);
@@ -104,10 +104,10 @@ struct PsgRegsFrame : public PsgFrame<14> {
         mask[Mixer] = true;
     }
     inline bool getNoiseOn(size_t chan) const {
-        return registers[Mixer] & (0x08 << chan);
+        return !(registers[Mixer] & (0x08 << chan));  // inverted
     }
     inline void setNoiseOn(size_t chan, bool on) {
-        if (on) {
+        if (!on) {  // inverted
             registers[Mixer] |= (0x08 << chan);
         } else {
             registers[Mixer] &= ~(0x08 << chan);

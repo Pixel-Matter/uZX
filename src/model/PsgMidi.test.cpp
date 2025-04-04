@@ -166,8 +166,8 @@ public:
         {
             uZX::PsgRegsFrame regs;
             expect(!regs.hasMixerSet(), "Expected Mixer to be not set");
-            regs.setMixer(0x2d);
-            expect(regs.registers[uZX::PsgRegsFrame::Mixer] == 0x2d, "Expected Mixer to be 0x2d");
+            regs.setMixer(0b00010010);  // inverted
+            expect(regs.registers[uZX::PsgRegsFrame::Mixer] == 0b00010010, "Expected Mixer to be 0x2d");
             expect(regs.hasMixerSet(), "Expected Mixer to be set");
 
             expect(regs.getToneOn(0), "Expected ToneOnA to be true");
@@ -199,6 +199,7 @@ public:
             expect(f[PsgParamType::TonePeriodA] == 0x1234, "Expected TonePeriodA to be 0x1234");
             expect(f[PsgParamType::VolumeA] == 0, "Expected VolumeA to be 0");
             expect(f[PsgParamType::ToneIsOnA] == true, "Expected ToneIsOnA to be true");
+            expect(f[PsgParamType::ToneIsOnB] == true, "Expected ToneIsOnB to be true");
             expect(f[PsgParamType::EnvelopeIsOnA] == true, "Expected EnvelopeIsOnA to be true");
 
             expect(f[PsgParamType::TonePeriodB] == 0x5678, "Expected TonePeriodB to be 0x5678");
@@ -208,7 +209,7 @@ public:
             expect(f[PsgParamType::TonePeriodC] == std::nullopt, "Expected TonePeriodC to be nullopt");
             expect(f[PsgParamType::VolumeC] == std::nullopt, "Expected VolumeC to be nullopt");
             // we can not detect if this was set separately from other mixer bits
-            expect(f[PsgParamType::ToneIsOnC] == false, "Expected ToneIsOnC to be false");
+            expect(f[PsgParamType::ToneIsOnC] == true, "Expected ToneIsOnC to be true");
 
             expect(f[PsgParamType::NoisePeriod] == 0xf0, "Expected NoisePeriod to be 0xf0");
             expect(f[PsgParamType::EnvelopePeriod] == 0x1234, "Expected EnvelopePeriod to be 0x1234");
@@ -264,9 +265,9 @@ public:
     }
 };
 
-class PsgParamsChangeTrackerTest  : public UnitTest {
+class PsgParamsChangeTrackingTest  : public UnitTest {
 public:
-    PsgParamsChangeTrackerTest() : UnitTest("PsgParamsChangeTracker", "MoTool") {}
+    PsgParamsChangeTrackingTest() : UnitTest("PsgParamsChangeTracker", "MoTool") {}
 
     void runTest() override {
         // auto& engine = *Engine::getEngines()[0];
@@ -351,11 +352,11 @@ public:
 
         uZX::PsgData data;
         data.frames.push_back({
-            {0x12, 0x34, 0,     0,     0,     0,     0x1f, 0b00001001, 0,     0,     0,     0,     0,     0},
+            {0x12, 0x34, 0,     0,     0,     0,     0x1f, 0b00110110, 0,     0,     0,     0,     0,     0},
             {true, true, false, false, false, false, true, true,       false, false, false, false, false, false}
         });
         data.frames.push_back({
-            {0,     0,     0x56, 0x32, 0,     0,     0x10, 0b00000011, 0,     0,     0,     0,     0,     0},
+            {0,     0,     0x56, 0x32, 0,     0,     0x10, 0b00111100, 0,     0,     0,     0,     0,     0},
             {false, false, true, true, false, false, true, true,       false, false, false, false, false, false}
         });
 
@@ -407,7 +408,7 @@ public:
 };
 
 // static PsgParamsMidiTests psgParamsMidiTests;
-static PsgParamsChangeTrackerTest psgParamsChengeTrackerTests;
+// static PsgParamsChangeTrackingTest psgParamsChangeTrackingTests;
 static PsgParamsMidiWriterTests psgParamsMidiWriterTests;
 
 }  // namespace MoTool::Tests

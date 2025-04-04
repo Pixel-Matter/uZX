@@ -43,8 +43,8 @@ Software for making demoscene productions for retrocomputers using Tracktion Eng
 
 ### About me
 
-I'm experienced C++ and Python developer with background in video editing, 3D, graphics and motion design in early 2000-s,
-webdesign and UX in mid 2000-s, web backend in 2010-s.
+I'm experienced C++ and Python developer with background in video editing, 3D, graphics and motion design in early 2000s,
+webdesign and UX in mid 2000s, web backend in 2010s and ML/data engineering in 2020s.
 
 This vision is being appeared in my mind for several years, with number of implemented prototypes of the tool,
 in python mainly, in C++ JUCE VST plugin form, implemented machine code in a timeline with state caching already in Python,

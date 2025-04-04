@@ -350,21 +350,22 @@ public:
         edit->tempoSequence.getTempoAt(edit->getTransport().getPosition()).setBpm(60);
         auto t = getAudioTracks(*edit)[0];
 
-        uZX::PsgData data;
-        data.frames.push_back({
-            {0x12, 0x34, 0,     0,     0,     0,     0x1f, 0b00110110, 0,     0,     0,     0,     0,     0},
-            {true, true, false, false, false, false, true, true,       false, false, false, false, false, false}
-        });
-        data.frames.push_back({
-            {0,     0,     0x56, 0x32, 0,     0,     0x10, 0b00111100, 0,     0,     0,     0,     0,     0},
-            {false, false, true, true, false, false, true, true,       false, false, false, false, false, false}
-        });
-
-        te::ClipPosition pos = {{0_tp, te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}};
+        te::ClipPosition pos = {{0_tp, 2.0_tp / 50}, {}};
         auto* psgClip = dynamic_cast<PsgClip*>(CustomClip::insertClipWithState(
             *t, /*stateToUse=*/ {}, /*name=*/ {},
             CustomClip::Type::psg, pos, te::DeleteExistingClips::yes, false
         ));
+
+        uZX::PsgData data;
+        data.frames.push_back({
+            {0x12, 0x34, 0,     0,     0,     0,     0x1f, 0b00110110, 0x3,   0,     0,     0,     0,     0},
+            {true, true, false, false, false, false, true, true,       true,  false, false, false, false, false}
+        });
+        data.frames.push_back({
+            {0,     0,     0x56, 0x32, 0,     0,     0x10, 0b00111100, 0xf,   0x18,  0,     0x12,  0x34,  0x8},
+            {false, false, true, true, false, false, true, true,       true,  true,  false, true,  true,  true}
+        });
+
         psgClip->getPsg().loadFrom(data, *edit, nullptr);
 
         beginTest("PsgParamsMidiWriterTests write");
@@ -383,32 +384,61 @@ public:
             }
             DBG("----------------------------------------------");
 
-            expectEquals(seq.getNumEvents(), 10);
+            expectEquals(seq.getNumEvents(), 17);
 
-            // 0x03412 split by 7 bits 0x68, 0x12
-            expectEvent(seq, 0, 0.0, "Controller 20: 104 Channel 1");
-            expectEvent(seq, 1, 0.0, "Controller 52: 18 Channel 1");
-            expectEvent(seq, 2, 0.0, "Controller General Purpose Button 1 (on/off): 1 Channel 1");
-            expectEvent(seq, 3, 0.0, "Controller General Purpose Button 2 (on/off): 1 Channel 1");
-            expectEvent(seq, 4, 0.0, "Controller Breath controller (coarse): 31 Channel 4");
+            // TODO group by timestamp and compare sets or maps
+            std::map<double, std::set<std::string>> expectedEvents = {
+                {0.0, {
+                    "Controller Volume (coarse): 3 Channel 1",
+                    "Controller 20: 104 Channel 1",
+                    "Controller 52: 18 Channel 1",
+                    "Controller General Purpose Button 1 (on/off): 1 Channel 1",
+                    "Controller General Purpose Button 2 (on/off): 1 Channel 1",
+                    "Controller Breath controller (coarse): 31 Channel 4"
+                }},
+                {0.02, {
+                    "Controller Volume (coarse): 15 Channel 1",
+                    "Controller Volume (coarse): 8 Channel 2",
+                    "Controller 20: 100 Channel 2",
+                    "Controller 52: 86 Channel 2",
+                    "Controller General Purpose Button 1 (on/off): 1 Channel 2",
+                    "Controller General Purpose Button 2 (on/off): 0 Channel 1",
+                    "Controller General Purpose Button 3 (on/off): 1 Channel 2",
+                    "Controller Breath controller (coarse): 16 Channel 4",
+                    "Controller 20: 104 Channel 4",
+                    "Controller 52: 18 Channel 4",
+                    "Controller Sound Variation: 8 Channel 4"
+                }}
+            };
 
-            expectEvent(seq, 5, 0.02, "Controller 20: 100 Channel 2");
-            expectEvent(seq, 6, 0.02, "Controller 52: 86 Channel 2");
-            expectEvent(seq, 7, 0.02, "Controller General Purpose Button 1 (on/off): 1 Channel 2");
-            expectEvent(seq, 8, 0.02, "Controller General Purpose Button 2 (on/off): 0 Channel 1");
-            expectEvent(seq, 9, 0.02, "Controller Breath controller (coarse): 16 Channel 4");
+            std::map<double, std::set<std::string>> actualEvents;
+
+            for (auto e : seq) {
+                actualEvents[e->message.getTimeStamp()].insert(e->message.getDescription().toStdString());
+            }
+
+            expectEquals(actualEvents.size(), expectedEvents.size(), "Mismatch in number of timestamps");
+
+            auto joinStrings = [](const std::set<std::string>& strings) {
+                return std::accumulate(strings.begin(), strings.end(), std::string(),
+                                       [](const std::string& a, const std::string& b) { return a + (a.empty() ? "" : ", ") + b; });
+            };
+
+            for (const auto& [timestamp, expectedSet] : expectedEvents) {
+                expect(actualEvents.count(timestamp) > 0, "Missing timestamp: " + std::to_string(timestamp));
+                if (actualEvents.count(timestamp) > 0) {
+                    expectEquals(
+                        joinStrings(actualEvents[timestamp]),
+                        joinStrings(expectedSet),
+                        "Mismatch in events at timestamp: " + std::to_string(timestamp));
+                }
+            }
         }
-    }
-
-    void expectEvent(const juce::MidiMessageSequence& seq, int num, double ts, const String& desc) {
-        auto& m = seq.getEventPointer(num)->message;
-        expectWithinAbsoluteError(m.getTimeStamp(), ts, 0.00001);
-        expectEquals(m.getDescription(), desc);
     }
 };
 
-// static PsgParamsMidiTests psgParamsMidiTests;
-// static PsgParamsChangeTrackingTest psgParamsChangeTrackingTests;
+static PsgParamsMidiTests psgParamsMidiTests;
+static PsgParamsChangeTrackingTest psgParamsChangeTrackingTests;
 static PsgParamsMidiWriterTests psgParamsMidiWriterTests;
 
 }  // namespace MoTool::Tests

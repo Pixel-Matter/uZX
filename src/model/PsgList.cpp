@@ -4,10 +4,16 @@
 #include "PsgClip.h"
 #include "PsgMidi.h"
 #include "Ids.h"
+#include "juce_core/juce_core.h"
 
 namespace te = tracktion;
 
 namespace MoTool {
+
+static double roundTo(double value, int decimalPlaces = 3) {
+    double factor = std::pow(10.0, decimalPlaces);
+    return std::round(value * factor) / factor;
+}
 
 namespace {
     void convertPsgFrameFromStrings(juce::ValueTree& frames) {
@@ -60,7 +66,7 @@ PsgParamFrame::PsgParamFrame(const juce::ValueTree& v)
 
 juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, const PsgParamFrameData& data) {
     auto v = te::createValueTree(IDs::FRAME,
-        te::IDs::b,     beat.inBeats()
+        te::IDs::b,    roundTo(beat.inBeats())
     );
     for (size_t i = 0; i < static_cast<size_t>(PsgParamType::size()); ++i) {
         if (data.isSet(i)) {

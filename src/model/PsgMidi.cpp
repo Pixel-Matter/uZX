@@ -16,10 +16,10 @@ inline static constexpr int MIDI_PSG_CC_FINE_START = 40;
 
 namespace {
 
-static double roundTo(double value, int decimalPlaces = 2) {
-    double factor = std::pow(10.0, decimalPlaces);
-    return std::round(value * factor) / factor;
-}
+// static double roundTo(double value, int decimalPlaces = 3) {
+//     double factor = std::pow(10.0, decimalPlaces);
+//     return std::round(value * factor) / factor;
+// }
 
 // inline static ValueTree createRegValueTree(te::BeatPosition pos, int reg, int val) {
 //     // N.B. Tracktion store controller values in edit's MidiList with extra precision
@@ -78,7 +78,12 @@ static void addToSequence(juce::MidiMessageSequence& seq, const MidiClip& clip, 
     }
 }
 
+
 //===============================================================================
+inline void PsgParamsMidiWriter::addEvent(double time, int psgChan, MidiCCType type, int value) {
+    sequence.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(type), value), time);
+}
+
 void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
     int psgChan = 0;
     for (auto [type, value] : data.getParams()) {
@@ -184,6 +189,61 @@ void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
                 break;
         }
     }
+}
+
+void PsgParamsMidiReader::nextFrame() noexcept {
+    params.clearAll();
+}
+
+std::optional<PsgParamFrameData> PsgParamsMidiReader::read(const juce::MidiMessage& m) {
+    std::optional<PsgParamFrameData> result {};
+    const auto ts = m.getTimeStamp();
+    if (ts > currentTimestamp) {
+        // now we can emit the previous frame
+        if (!params.isEmpty()) {
+            result = params;
+        }
+        nextFrame();
+    }
+    currentTimestamp = ts;
+    const auto channel = m.getChannel();
+    if (m.isController() && channel >= baseChannel && channel < baseChannel + 4) {
+        int psgChan = channel - baseChannel;
+        const auto ctrlNum = static_cast<MidiCCType>(m.getControllerNumber());
+        const auto val = static_cast<uint16_t>(m.getControllerValue());
+        if (psgChan == 3) {
+            if (ctrlNum == MidiCCType::CC20PeriodCoarse) { // Envelope coarse
+                auto raw = params.getRawValue(PsgParamType::EnvelopePeriod);
+                params.set(PsgParamType::EnvelopePeriod, static_cast<uint16_t>((val << 7) | (raw & 0x7F)));
+            } else if (ctrlNum == MidiCCType::CC52PeriodFine) { // Envelope fine
+                auto raw = params.getRawValue(PsgParamType::EnvelopePeriod);
+                params.set(PsgParamType::EnvelopePeriod, static_cast<uint16_t>((raw & 0xFF80) | val));
+            } else if (ctrlNum == MidiCCType::Breath) { // Noise period
+                params.set(PsgParamType::NoisePeriod, val);
+            } else if (ctrlNum == MidiCCType::SoundVariation) { // Envelope shape
+                params.set(PsgParamType::EnvelopeShape, val);
+            }
+        } else {  // Tone channels 0..2
+            if (ctrlNum == MidiCCType::Volume) { // Tone volume
+                params.set(PsgParamType::VolumeA + psgChan, val);
+            } else if (ctrlNum == MidiCCType::CC20PeriodCoarse) { // Tone period coarse
+                auto raw = params.getRawValue(PsgParamType::TonePeriodA + psgChan);
+                params.set(PsgParamType::TonePeriodA + psgChan, static_cast<uint16_t>((val << 7) | (raw & 0x7F)));
+            } else if (ctrlNum == MidiCCType::CC52PeriodFine) { // Tone period fine
+                auto raw = params.getRawValue(PsgParamType::TonePeriodA + psgChan);
+                params.set(PsgParamType::TonePeriodA + psgChan, static_cast<uint16_t>((raw & 0xFF80) | val));
+            } else if (ctrlNum == MidiCCType::GPB1) { // Tone on/off
+                params.set(PsgParamType::ToneIsOnA + psgChan, val);
+            } else if (ctrlNum == MidiCCType::GPB2) { // Noise on/off
+                params.set(PsgParamType::NoiseIsOnA + psgChan, val);
+            } else if (ctrlNum == MidiCCType::GPB3) { // Envelope on/off
+                params.set(PsgParamType::EnvelopeIsOnA + psgChan, val);
+            } else if (ctrlNum == MidiCCType::GPB4) { // Retrigger on/off
+                params.set(PsgParamType::RetriggerToneA + psgChan, val);
+            }
+        }
+    }
+    return result;
 }
 
 // TODO rewrite as PsgRegsMidiWriter, see above

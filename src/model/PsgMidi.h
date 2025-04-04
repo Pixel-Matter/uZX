@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <limits>
 
 #include "../formats/psg/PsgFile.h"
 #include "../formats/psg/PsgData.h"
@@ -28,6 +29,7 @@ void addToSequence(
 );
 
 //===================================================================
+// TODO use ChoiceEnum<> CRTP
 enum class MidiCCType {
     BankSelectMSB     = 0,   ///< Bank Select MSB
     ModWheel          = 1,   ///< Modulation Wheel (Coarse)
@@ -202,17 +204,28 @@ private:
     int channelNumber = 1;
     juce::MidiMessageSequence sequence {};
 
-    inline void addEvent(double time, int psgChan, MidiCCType type, int value) {
-        sequence.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(type), value), time);
-    }
+    inline void addEvent(double time, int psgChan, MidiCCType type, int value);
 
 };
 
 //===================================================================
 class PsgParamsMidiReader {
 public:
+    PsgParamsMidiReader(int chan) noexcept
+        : baseChannel(chan)
+    {}
+
+    std::optional<PsgParamFrameData> read(const juce::MidiMessage& m);
+
+    PsgParamFrameData& getParams() noexcept { return params; }
+    const PsgParamFrameData& getParams() const noexcept { return params; }
+
+    void nextFrame() noexcept;
 
 private:
+    int baseChannel = 1;
+    double currentTimestamp = std::numeric_limits<double>::min();
+    PsgParamFrameData params {};
 };
 
 }  // namespace MoTool

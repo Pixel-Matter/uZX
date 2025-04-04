@@ -5,6 +5,7 @@
 #include "../formats/psg/PsgFile.h"
 #include "../util/enumchoice.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <initializer_list>
 
@@ -171,42 +172,38 @@ public:
 
     void debugPrint() const noexcept {
         for (size_t i = 0; i < PsgParamType::size(); ++i) {
-            DBG("PsgParamFrameData: " << static_cast<PsgParamType>(static_cast<int>(i)) << ": " << values[i] << " " << (masks[i] ? "true" : "false"));
+            DBG("PsgParamFrameData: " << std::string(static_cast<PsgParamType>(static_cast<int>(i)).getLabel()) << ": " << values[i] << " " << (masks[i] ? "true" : "false"));
         }
     }
 
-    inline std::optional<uint16_t> operator [](size_t type) const noexcept {
-        return masks[type] ? std::optional<uint16_t> {values[type]} : std::nullopt;
+    bool isEmpty() const noexcept {
+        return !std::any_of(masks.begin(), masks.end() , [](bool mask) { return mask; });
     }
 
     inline std::optional<uint16_t> operator [](PsgParamType type) const noexcept {
-        return operator[](static_cast<size_t>(type));
-    }
-
-    inline bool isSet(size_t type) const noexcept {
-        return masks[type];
+        return masks[type] ? std::optional<uint16_t> {values[type]} : std::nullopt;
     }
 
     inline bool isSet(PsgParamType type) const noexcept {
-        return isSet(static_cast<size_t>(type));
-    }
-
-    inline uint16_t& set(size_t type, uint16_t value) noexcept {
-        masks[type] = true;
-        values[type] = value;
-        return values[type];
+        return masks[static_cast<size_t>(type)];
     }
 
     inline uint16_t& set(PsgParamType type, uint16_t value) noexcept {
-        return set(static_cast<size_t>(type), value);
+        masks[static_cast<size_t>(type)] = true;
+        values[static_cast<size_t>(type)] = value;
+        return values[static_cast<size_t>(type)];
     }
 
-    inline void remove(size_t type) noexcept {
-        masks[type] = false;
+    inline uint16_t getRawValue(PsgParamType type) const noexcept {
+        return values[static_cast<size_t>(type)];
     }
 
-    inline void remove(PsgParamType type) noexcept {
-        remove(static_cast<size_t>(type));
+    inline void clear(PsgParamType type) noexcept {
+        masks[static_cast<size_t>(type)] = false;
+    }
+
+    inline void clearAll() noexcept {
+        std::fill(masks.begin(), masks.end(), false);
     }
 
     std::vector<std::pair<PsgParamType, uint16_t>> getParams() const {
@@ -268,7 +265,7 @@ public:
     }
 
     inline std::optional<uint16_t> getParam(PsgParamType type) const noexcept {
-        return data[static_cast<size_t>(type)];
+        return data[type];
     }
     // std::vector<std::pair<PsgParamType, int>> getPsgParams() const noexcept;
 

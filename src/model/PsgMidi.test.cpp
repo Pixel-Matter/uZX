@@ -1,13 +1,11 @@
+#include <JuceHeader.h>
 #include "formats/psg/PsgData.h"
-#include "juce_audio_basics/juce_audio_basics.h"
-#include "juce_core/juce_core.h"
 #include "model/Ids.h"
 #include "model/PsgList.h"
-#include <JuceHeader.h>
+#include "model/PsgMidi.h"
 
+#include <optional>
 #include <string>
-#include <tracktion_graph/tracktion_graph/tracktion_TestUtilities.h>
-#include <model/PsgMidi.h>
 
 
 namespace MoTool::Tests {
@@ -41,7 +39,7 @@ public:
             expect(data[PsgParamType::VolumeA] == 1, "Expected VolumeA to be 1");
             expect(data[PsgParamType::VolumeB] == std::nullopt, "Expected VolumeB to be nullopt");
 
-            data.remove(PsgParamType::VolumeA);
+            data.clear(PsgParamType::VolumeA);
             expect(data.getParams().size() == 1, "Expected 1 param, but got " + std::to_string(data.getParams().size()));
             expect(data[PsgParamType::VolumeA] == std::nullopt, "Expected VolumeB to be nullopt");
             expect(data.getParams()[0].first == PsgParamType::EnvelopeShape, "Expected EnvelopeShape");
@@ -310,91 +308,6 @@ public:
     }
 };
 
-class PsgParamsMidiWriterTests  : public UnitTest {
-public:
-    PsgParamsMidiWriterTests() : UnitTest("PsgParamsMidiWriter", "MoTool") {}
-
-    void compareEvents(const juce::MidiMessageSequence &sequence,
-                       const std::map<double, std::set<std::string>> &expected) {
-
-        std::map<double, std::set<std::string>> actual;
-        for (auto e : sequence) {
-            actual[e->message.getTimeStamp()].insert(e->message.getDescription().toStdString());
-        }
-
-        expectEquals(actual.size(), expected.size(), "Different number of timestamps");
-
-        for (const auto &[timestamp, expectedEvents] : expected) {
-            expect(actual.contains(timestamp), "Missing timestamp: " + std::to_string(timestamp));
-            if (actual.contains(timestamp)) {
-                expectEquals(actual.at(timestamp).size(), expected.at(timestamp).size(),
-                    "Wrong number of events at timestamp: " + std::to_string(timestamp));
-                for (const auto& expectedStr : expected.at(timestamp)) {
-                    expect(actual.at(timestamp).contains(expectedStr),
-                        "Missing expected event at " + std::to_string(timestamp) + ": " + expectedStr);
-                }
-            }
-        }
-    }
-
-    static std::vector<uZX::PsgRegsFrame> getTestRegFrames() {
-        return {{
-            {0x12, 0x34, 0,     0,     0,     0,     0x1f, 0b00110110, 0x3,   0,     0,     0,     0,     0},
-            {true, true, false, false, false, false, true, true,       true,  false, false, false, false, false}
-        }, {
-            {0,     0,     0x56, 0x32, 0,     0,     0x10, 0b00111100, 0xf,   0x18,  0,     0x12,  0x34,  0x8},
-            {false, false, true, true, false, false, true, true,       true,  true,  false, true,  true,  true}
-        }};
-    }
-
-    void runTest() override {
-        beginTest("PsgParamsMidiWriterTests write");
-        {
-            PsgParamsMidiWriter writer{1};
-            auto frames = getTestRegFrames();
-
-            PsgParamFrameData params {};
-            for (size_t i = 0; i < frames.size(); ++i) {
-                params.update(frames[i]);
-                writer.write(0.02 * static_cast<double>(i), params);
-            }
-            auto seq = writer.getSequence();
-            // for (auto e : seq) {
-            //     DBG(e->message.getDescription() << " @" << e->message.getTimeStamp());
-            // }
-            // DBG("----------------------------------------------");
-
-            expectEquals(seq.getNumEvents(), 17);
-
-            // group by timestamp and compare sets or maps
-            std::map<double, std::set<std::string>> expectedEvents = {
-                {0.0, {
-                    "Controller Volume (coarse): 3 Channel 1",
-                    "Controller 20: 104 Channel 1",
-                    "Controller 52: 18 Channel 1",
-                    "Controller General Purpose Button 1 (on/off): 1 Channel 1",
-                    "Controller General Purpose Button 2 (on/off): 1 Channel 1",
-                    "Controller Breath controller (coarse): 31 Channel 4"
-                }},
-                {0.02, {
-                    "Controller Volume (coarse): 15 Channel 1",
-                    "Controller Volume (coarse): 8 Channel 2",
-                    "Controller 20: 100 Channel 2",
-                    "Controller 52: 86 Channel 2",
-                    "Controller General Purpose Button 1 (on/off): 1 Channel 2",
-                    "Controller General Purpose Button 2 (on/off): 0 Channel 1",
-                    "Controller General Purpose Button 3 (on/off): 1 Channel 2",
-                    "Controller Breath controller (coarse): 16 Channel 4",
-                    "Controller 20: 104 Channel 4",
-                    "Controller 52: 18 Channel 4",
-                    "Controller Sound Variation: 8 Channel 4"
-                }}
-            };
-            compareEvents(seq, expectedEvents);
-        }
-    }
-};
-
 class PsgParamsToRegistersTest  : public UnitTest {
 public:
     PsgParamsToRegistersTest() : UnitTest("PsgParamsToRegisters", "MoTool") {}
@@ -442,9 +355,180 @@ public:
 };
 
 
+
+class PsgParamsMidiConverterTests  : public UnitTest {
+public:
+    PsgParamsMidiConverterTests() : UnitTest("PsgParamsMidiConverter", "MoTool") {}
+
+    void compareEvents(const juce::MidiMessageSequence &sequence,
+                        const std::map<double, std::set<std::string>> &expected) {
+
+        std::map<double, std::set<std::string>> actual;
+        for (auto e : sequence) {
+            actual[e->message.getTimeStamp()].insert(e->message.getDescription().toStdString());
+        }
+
+        expectEquals(actual.size(), expected.size(), "Different number of timestamps");
+
+        for (const auto &[timestamp, expectedEvents] : expected) {
+            expect(actual.contains(timestamp), "Missing timestamp: " + std::to_string(timestamp));
+            if (actual.contains(timestamp)) {
+                expectEquals(actual.at(timestamp).size(), expected.at(timestamp).size(),
+                    "Wrong number of events at timestamp: " + std::to_string(timestamp));
+                for (const auto& expectedStr : expected.at(timestamp)) {
+                    expect(actual.at(timestamp).contains(expectedStr),
+                        "Missing expected event at " + std::to_string(timestamp) + ": " + expectedStr);
+                }
+            }
+        }
+    }
+
+    static std::vector<uZX::PsgRegsFrame> getTestRegFrames() {
+        return {{
+            {0x12, 0x34, 0,     0,     0,     0,     0x1f, 0b00110110, 0x3,   0,     0,     0,     0,     0},
+            {true, true, false, false, false, false, true, true,       true,  false, false, false, false, false}
+        }, {
+            {0,     0,     0x56, 0x32, 0,     0,     0x10, 0b00111100, 0xf,   0x18,  0,     0x12,  0x34,  0x8},
+            {false, false, true, true, false, false, true, true,       true,  true,  false, true,  true,  true}
+        }};
+    }
+
+    inline static void addEvent(juce::MidiMessageSequence& sequence, double time, int channel, MidiCCType type, int value) {
+        sequence.addEvent(juce::MidiMessage::controllerEvent(channel, static_cast<int>(type), value), time);
+    }
+
+    void runTest() override {
+        beginTest("PsgParamsMidiWriterTests write");
+        {
+            PsgParamsMidiWriter writer{1};
+            auto frames = getTestRegFrames();
+
+            PsgParamFrameData params {};
+            for (size_t i = 0; i < frames.size(); ++i) {
+                params.update(frames[i]);
+                writer.write(0.02 * static_cast<double>(i), params);
+            }
+            auto seq = writer.getSequence();
+            // for (auto e : seq) {
+            //     DBG(e->message.getDescription() << " @" << e->message.getTimeStamp());
+            // }
+            // DBG("----------------------------------------------");
+
+            expectEquals(seq.getNumEvents(), 17);
+
+            // group by timestamp and compare sets or maps
+            std::map<double, std::set<std::string>> expectedEvents = {
+                {0.0, {
+                    "Controller Volume (coarse): 3 Channel 1",
+                    "Controller 20: 104 Channel 1",
+                    "Controller 52: 18 Channel 1",
+                    "Controller General Purpose Button 1 (on/off): 1 Channel 1",
+                    "Controller General Purpose Button 2 (on/off): 1 Channel 1",
+                    "Controller Breath controller (coarse): 31 Channel 4"
+                }},
+                {0.02, {
+                    "Controller Volume (coarse): 15 Channel 1",
+                    "Controller Volume (coarse): 8 Channel 2",
+                    "Controller 20: 100 Channel 2",
+                    "Controller 52: 86 Channel 2",
+                    "Controller General Purpose Button 1 (on/off): 1 Channel 2",
+                    "Controller General Purpose Button 2 (on/off): 0 Channel 1",
+                    "Controller General Purpose Button 3 (on/off): 1 Channel 2",
+                    "Controller Breath controller (coarse): 16 Channel 4",
+                    "Controller 20: 104 Channel 4",
+                    "Controller 52: 18 Channel 4",
+                    "Controller Sound Variation: 8 Channel 4"
+                }}
+            };
+            compareEvents(seq, expectedEvents);
+        }
+
+        beginTest("PsgParamsMidiWriterTests write");
+        {
+            juce::MidiMessageSequence seq;
+            addEvent(seq, 0.00, 1, MidiCCType::Volume, 3);
+            addEvent(seq, 0.00, 1, MidiCCType::CC20PeriodCoarse, 104);
+            addEvent(seq, 0.00, 1, MidiCCType::CC52PeriodFine, 18);
+            addEvent(seq, 0.00, 1, MidiCCType::GPB1, 1);
+            addEvent(seq, 0.00, 1, MidiCCType::GPB2, 1);
+            addEvent(seq, 0.00, 4, MidiCCType::Breath, 31);
+
+            addEvent(seq, 0.02, 1, MidiCCType::Volume, 15);
+            addEvent(seq, 0.02, 2, MidiCCType::Volume, 8);
+            addEvent(seq, 0.02, 2, MidiCCType::CC20PeriodCoarse, 100);
+            addEvent(seq, 0.02, 2, MidiCCType::CC52PeriodFine, 86);
+            addEvent(seq, 0.02, 2, MidiCCType::GPB1, 1);
+            addEvent(seq, 0.02, 1, MidiCCType::GPB2, 0);
+            addEvent(seq, 0.02, 2, MidiCCType::GPB3, 1);
+            addEvent(seq, 0.02, 4, MidiCCType::Breath, 16);
+            addEvent(seq, 0.02, 4, MidiCCType::CC20PeriodCoarse, 104);
+            addEvent(seq, 0.02, 4, MidiCCType::CC52PeriodFine, 18);
+            addEvent(seq, 0.02, 4, MidiCCType::SoundVariation, 8);
+
+            PsgParamsMidiReader reader{1};
+            std::vector<PsgParamFrameData> frames;
+            for (auto e : seq) {
+                auto newParams = reader.read(e->message);
+                if (newParams.has_value()) {
+                    frames.push_back(newParams.value());
+                }
+            }
+            frames.push_back(reader.getParams());
+            frames[0].debugPrint();
+            DBG("----------------------------------------------");
+
+            expect(frames.size() == 2, "Expected 2 frames, got " + std::to_string(frames.size()));
+            expect(frames[0].getParams().size() == 5,
+                "Expected 5 params, got " + std::to_string(frames[0].getParams().size()));
+            expect(frames[1].getParams().size() == 9,
+                "Expected 9 params, got " + std::to_string(frames[1].getParams().size()));
+
+            expect(frames[0][PsgParamType::VolumeA] == 3, "Expected VolumeA to be 3");
+            expect(frames[0][PsgParamType::VolumeB] == std::nullopt,
+                "Expected VolumeB to be nullopt");
+            expect(frames[0][PsgParamType::TonePeriodA] == 0x3412,
+                "Expected TonePeriodA to be 0x3412, got "
+                + std::to_string(frames[0][PsgParamType::TonePeriodA].value_or(-1)));
+            expect(frames[0][PsgParamType::ToneIsOnA] == 1, "Expected ToneIsOnA be true");
+            expect(frames[0][PsgParamType::ToneIsOnB] == std::nullopt,
+                "Expected ToneIsOnB be nullopt");
+            expect(frames[0][PsgParamType::NoiseIsOnA] == 1, "Expected NoiseIsOnA be true");
+            expect(frames[0][PsgParamType::NoiseIsOnB] == std::nullopt,
+                "Expected NoiseIsOnB be nullopt");
+
+            expect(frames[0][PsgParamType::NoisePeriod] == 0x1f, "Expected NoisePeriod be 0x1f");
+
+            frames[1].debugPrint();
+            DBG("----------------------------------------------");
+
+            expect(frames[1][PsgParamType::VolumeA] == 15, "Expected VolumeA to be 15");
+            expect(frames[1][PsgParamType::VolumeB] == 8, "Expected VolumeB to be 8");
+            expect(frames[1][PsgParamType::VolumeC] == std::nullopt, "Expected VolumeC to be nullopt");
+            expect(frames[1][PsgParamType::TonePeriodA] == std::nullopt,
+                "Expected TonePeriodA to be std::nullopt, got "
+                + std::to_string(frames[1][PsgParamType::TonePeriodA].value_or(-1)));
+            expect(frames[1][PsgParamType::TonePeriodB] == 0x3256,
+                "Expected TonePeriodB to be 0x3256, got "
+                + std::to_string(frames[1][PsgParamType::TonePeriodB].value_or(-1)));
+            expect(frames[1][PsgParamType::ToneIsOnA]      == std::nullopt, "Expected TonePeriodA to be nullopt");
+            expect(frames[1][PsgParamType::ToneIsOnB]      == 1,            "Expected ToneIsOnB be 0");
+            expect(frames[1][PsgParamType::ToneIsOnC]      == std::nullopt, "Expected ToneIsOnC be nullopt");
+            expect(frames[1][PsgParamType::NoiseIsOnA]     == 0,            "Expected NoiseIsOnA be 0");
+            expect(frames[1][PsgParamType::NoiseIsOnB]     == std::nullopt, "Expected NoiseIsOnB be nullopt");
+            expect(frames[1][PsgParamType::EnvelopeIsOnA]  == std::nullopt, "Expected EnvelopeIsOnA be nullopt");
+            expect(frames[1][PsgParamType::EnvelopeIsOnB]  == 1,            "Expected EnvelopeIsOnB be 1");
+            expect(frames[1][PsgParamType::NoisePeriod]    == 0x10,         "Expected NoisePeriod be 0x10");
+            expect(frames[1][PsgParamType::EnvelopePeriod] == 0x3412,       "Expected EnvelopePeriod be 0x3412, got "
+                + std::to_string(frames[1][PsgParamType::EnvelopePeriod].value_or(-1)));
+            expect(frames[1][PsgParamType::EnvelopeShape]  == 8,            "Expected EnvelopeShape be 8");
+
+        }
+    }
+};
+
 static PsgParamsMidiTests psgParamsMidiTests;
 static PsgParamsChangeTrackingTest psgParamsChangeTrackingTests;
-static PsgParamsMidiWriterTests psgParamsMidiWriterTests;
 static PsgParamsToRegistersTest psgParamsToRegisterTest;
+static PsgParamsMidiConverterTests psgParamsMidiConverterTests;
 
 }  // namespace MoTool::Tests

@@ -156,10 +156,11 @@ void PsgParamFrame::updatePropertiesFromState() noexcept {
         } else if (p == IDs::s) {
             type = PsgParamType::EnvelopeShape;
         } else {
-            jassertfalse;
             continue; // unknown property
         }
-        data.set(type, static_cast<uint16>(static_cast<int>(state.getProperty(p))));
+        if (type.isValid()) {
+            data.set(type, static_cast<uint16>(static_cast<int>(state.getProperty(p))));
+        }
     }
 }
 

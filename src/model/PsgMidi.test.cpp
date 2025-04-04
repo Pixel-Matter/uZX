@@ -2,6 +2,7 @@
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_core/juce_core.h"
 #include "model/Ids.h"
+#include "model/PsgList.h"
 #include <JuceHeader.h>
 
 #include <string>
@@ -24,30 +25,18 @@ public:
     PsgParamsMidiTests() : UnitTest("PsgParams", "MoTool") {}
 
     void runTest() override {
-        // auto& engine = *Engine::getEngines()[0];
-        // Clipboard clipboard;
-        // auto edit = Edit::createSingleTrackEdit(engine);
-
         beginTest("PsgParamFrameData getParams");
         {
             PsgParamFrameData data {
-                {
-                    1, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 1
-                },
-                {
-                    true, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false,
-                    false, false, false, false, true
-                }
+                {PsgParamTypeEnum::VolumeA, 1},
+                {PsgParamTypeEnum::EnvelopeShape, 1}
             };
 
             // expect(sizeof(PsgParamFrameData::values) == 42, "Expected 42 bytes, got " + std::to_string(sizeof(PsgParamFrameData::values)));
             // expect(sizeof(PsgParamFrameData::masks) == 21, "Expected 21 bytes, got " + std::to_string(sizeof(PsgParamFrameData::masks)));
-            expect(sizeof(PsgParamFrameData) == 64, "Expected 64 bytes, got " + std::to_string(sizeof(PsgParamFrameData)));
+            expectEquals(sizeof(PsgParamFrameData), 66ul);
 
-            expect(data.getParams().size() == 2, "Expected 2 params, but got " + std::to_string(data.getParams().size()));
+            expectEquals(data.getParams().size(), 2ul);
             expect(data.getParams()[1].first == PsgParamType::EnvelopeShape, "Expected EnvelopeShape");
             expect(data[PsgParamType::VolumeA] == 1, "Expected VolumeA to be 1");
             expect(data[PsgParamType::VolumeB] == std::nullopt, "Expected VolumeB to be nullopt");
@@ -220,16 +209,8 @@ public:
         beginTest("PsgParamFrame::createPsgFrameValueTree");
         {
             PsgParamFrameData data {
-                {
-                    1, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 2
-                },
-                {
-                    true, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false,
-                    false, false, false, false, true
-                }
+                {PsgParamType::VolumeA, 1},
+                {PsgParamType::EnvelopeShape, 2}
             };
             auto v = PsgParamFrame::createPsgFrameValueTree(2.3_bp, data);
             expect(v.hasType(IDs::FRAME), "Expected FRAME type");
@@ -237,22 +218,15 @@ public:
             expect(v.getProperty(IDs::va).equals(1), "Expected VolumeA to be 1");
             expect(v.getProperty(IDs::va).isInt(), "Expected VolumeA to be an int");
             expect(!v.hasProperty(IDs::vb), "Expected VolumeB to be missing");
-            expect(v.getProperty(IDs::s).equals(2), "Expected EnvelopeShape to be 1");
+            expect(v.getProperty(IDs::s).equals(2), "Expected EnvelopeShape to be 2");
         }
 
         beginTest("PsgParamFrame ctor");
         {
             PsgParamFrameData data {
-                {
-                    1, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 2
-                },
-                {
-                    true, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false,
-                    false, false, false, false, true
-                }
+                {PsgParamType::VolumeA, 1},
+                {PsgParamType::EnvelopeShape, 2}
+
             };
             auto v = PsgParamFrame::createPsgFrameValueTree(2.3_bp, data);
             PsgParamFrame frame(v);
@@ -273,20 +247,6 @@ public:
     void runTest() override {
         beginTest("PsgParamsMidiWriterTests not changed");
         {
-            // PsgParamsChangeTracker tracker;
-            PsgParamFrameData data {
-                {
-                    1, 1, 2, 3, 4, 5, 6, 7,
-                    8, 9, 10, 11, 12, 13, 14, 15,
-                    16, 17, 18, 19, 20
-                },
-                {
-                    true, true, true, true, true, true, true, true,
-                    true, true, true, true, true, true, true, true,
-                    true, true, true, true, true
-                }
-            };
-            // data.debugValues();
             std::vector<std::pair<PsgParamType, uint16_t>> fullChange {
                 {PsgParamType::VolumeA,           1},
                 {PsgParamType::VolumeB,           1},
@@ -303,31 +263,44 @@ public:
                 {PsgParamType::EnvelopeIsOnA,     12},
                 {PsgParamType::EnvelopeIsOnB,     13},
                 {PsgParamType::EnvelopeIsOnC,     14},
-                {PsgParamType::RetriggerToneA,    15},
-                {PsgParamType::RetriggerToneB,    16},
-                {PsgParamType::RetriggerToneC,    17},
-                {PsgParamType::RetriggerEnvelope, 18},
-                {PsgParamType::NoisePeriod,       19},
-                {PsgParamType::EnvelopePeriod,    20},
-                {PsgParamType::EnvelopeShape,     21}
+                {PsgParamType::NoisePeriod,       15},
+                {PsgParamType::EnvelopePeriod,    16},
+                {PsgParamType::EnvelopeShape,     17},
+                {PsgParamType::RetriggerToneA,    18},
+                {PsgParamType::RetriggerToneB,    19},
+                {PsgParamType::RetriggerToneC,    20},
+                {PsgParamType::RetriggerEnvelope, 21},
             };
+            PsgParamFrameData data {fullChange};
             expect(data.getParams() == fullChange, "Expected all params to be set");
 
             data.update(data);
             expect(data.getParams() == std::vector<std::pair<PsgParamType, uint16_t>> {}, "Expected no params to be changed");
 
-            PsgParamFrameData partialData {
-                {
-                    15, 1, 2, 3, 4, 5, 6, 7,
-                    1, 9, 10, 11, 12, 13, 14, 15,
-                    100, 17, 18, 19, 20
-                },
-                {
-                    true, false, false, false, false, false, false, false,
-                    true, false, false, false, false, false, false, false,
-                    false, false, false, false, false
-                }
-            };
+            PsgParamFrameData partialData {{
+                {PsgParamType::VolumeA,           15, true},  // here
+                {PsgParamType::VolumeB,            1, false},
+                {PsgParamType::VolumeC,            2, false},
+                {PsgParamType::TonePeriodA,        3, false},
+                {PsgParamType::TonePeriodB,        4, false},
+                {PsgParamType::TonePeriodC,        5, false},
+                {PsgParamType::ToneIsOnA,          6, false},
+                {PsgParamType::ToneIsOnB,          7, false},
+                {PsgParamType::ToneIsOnC,          1, true},
+                {PsgParamType::NoiseIsOnA,         9, false},  // here
+                {PsgParamType::NoiseIsOnB,        10, false},
+                {PsgParamType::NoiseIsOnC,        11, false},
+                {PsgParamType::EnvelopeIsOnA,     12, false},
+                {PsgParamType::EnvelopeIsOnB,     13, false},
+                {PsgParamType::EnvelopeIsOnC,     14, false},
+                {PsgParamType::NoisePeriod,       15, false},
+                {PsgParamType::EnvelopePeriod,   100, false},  // here but not set
+                {PsgParamType::EnvelopeShape,     17, false},
+                {PsgParamType::RetriggerToneA,    18, false},
+                {PsgParamType::RetriggerToneB,    19, false},
+                {PsgParamType::RetriggerToneC,    20, false},
+                {PsgParamType::RetriggerEnvelope, 21, false},
+            }};
             data.update(partialData);
             expect(data.getParams() == std::vector<std::pair<PsgParamType, uint16_t>> {
                 {PsgParamType::VolumeA, 15},
@@ -383,17 +356,13 @@ public:
             PsgParamFrameData params {};
             for (size_t i = 0; i < frames.size(); ++i) {
                 params.update(frames[i]);
-                params.debugPrint();
-                for (auto& p : params.getParams()) {
-                    DBG("Frame " << i << ": " << std::string(p.first.getLabel()) << " = " << p.second);
-                }
                 writer.write(0.02 * static_cast<double>(i), params);
             }
             auto seq = writer.getSequence();
-            for (auto e : seq) {
-                DBG(e->message.getDescription() << " @" << e->message.getTimeStamp());
-            }
-            DBG("----------------------------------------------");
+            // for (auto e : seq) {
+            //     DBG(e->message.getDescription() << " @" << e->message.getTimeStamp());
+            // }
+            // DBG("----------------------------------------------");
 
             expectEquals(seq.getNumEvents(), 17);
 

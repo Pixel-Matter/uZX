@@ -19,6 +19,10 @@ public:
     constexpr EnumChoice(const EnumChoice&) = default;
     constexpr EnumChoice(EnumChoice&&) = default;
 
+    inline constexpr auto isValid() noexcept -> bool {
+        return static_cast<int>(value) >= 0 && static_cast<int>(value) < static_cast<int>(size());
+    }
+
     inline static constexpr auto getLabels() noexcept {
         std::array<std::string_view, std::size(E::labels)> result;
         size_t i = 0;

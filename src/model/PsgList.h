@@ -76,15 +76,23 @@ public:
     PsgParamFrameData& operator=(PsgParamFrameData&&) = default;
     ~PsgParamFrameData() = default;
 
-    PsgParamFrameData(const std::initializer_list<std::pair<PsgParamType, uint16_t>>& params) noexcept {
+    PsgParamFrameData(std::initializer_list<std::pair<PsgParamType, uint16_t>> params) noexcept {
         for (const auto& [type, value] : params) {
             set(type, value);
         }
     }
 
-    PsgParamFrameData(const std::initializer_list<uint16_t>& values_, const std::initializer_list<bool>& masks_) noexcept {
-        std::copy(values_.begin(), values_.end(), values.begin());
-        std::copy(masks_.begin(), masks_.end(), masks.begin());
+    PsgParamFrameData(const std::vector<std::pair<PsgParamType, uint16_t>>& params) noexcept {
+        for (const auto& [type, value] : params) {
+            set(type, value);
+        }
+    }
+
+    PsgParamFrameData(const std::vector<std::tuple<PsgParamType, uint16_t, bool>>& params) noexcept {
+        for (const auto& [type, value, isSet] : params) {
+            values[static_cast<size_t>(type)] = value;
+            masks[static_cast<size_t>(type)] = isSet;
+        }
     }
 
     explicit PsgParamFrameData(const uZX::PsgRegsFrame& regs) noexcept {

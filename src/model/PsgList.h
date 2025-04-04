@@ -5,6 +5,7 @@
 #include "../formats/psg/PsgFile.h"
 #include "../util/enumchoice.h"
 
+#include <cstdint>
 #include <initializer_list>
 
 namespace te = tracktion;
@@ -122,6 +123,38 @@ public:
         if (regs.hasEnvelopeShapeSet()) {
             set(PsgParamType::EnvelopeShape, regs.getEnvelopeShape());
         }
+    }
+
+    uZX::PsgRegsFrame toRegisters() {
+        uZX::PsgRegsFrame regs;
+        // per-tone-channel parameters
+        for (size_t i = 0; i < 3; ++i) {
+            if (masks[size_t(PsgParamType::VolumeA) + size_t(i)]) {
+                regs.setVolume(i, static_cast<uint8>(values[size_t(PsgParamType::VolumeA) + size_t(i)]));
+            }
+            if (masks[size_t(PsgParamType::TonePeriodA) + size_t(i)]) {
+                regs.setTonePeriod(i, values[size_t(PsgParamType::TonePeriodA) + size_t(i)]);
+            }
+            if (masks[size_t(PsgParamType::ToneIsOnA) + size_t(i)]) {
+                regs.setToneOn(i, values[size_t(PsgParamType::ToneIsOnA) + size_t(i)]);
+            }
+            if (masks[size_t(PsgParamType::EnvelopeIsOnA) + size_t(i)]) {
+                regs.setEnvMod(i, values[size_t(PsgParamType::EnvelopeIsOnA) + size_t(i)]);
+            }
+            if (masks[size_t(PsgParamType::NoiseIsOnA) + size_t(i)]) {
+                regs.setNoiseOn(i, values[size_t(PsgParamType::NoiseIsOnA) + size_t(i)]);
+            }
+        }
+        if (masks[size_t(PsgParamType::NoisePeriod)]) {
+            regs.setNoisePeriod(static_cast<uint8>(values[size_t(PsgParamType::NoisePeriod)]));
+        }
+        if (masks[size_t(PsgParamType::EnvelopePeriod)]) {
+            regs.setEnvelopePeriod(values[size_t(PsgParamType::EnvelopePeriod)]);
+        }
+        if (masks[size_t(PsgParamType::EnvelopeShape)]) {
+            regs.setEnvelopeShape(static_cast<uint8>(values[size_t(PsgParamType::EnvelopeShape)]));
+        }
+        return regs;
     }
 
     void update(const uZX::PsgRegsFrame& regs) noexcept {

@@ -395,8 +395,56 @@ public:
     }
 };
 
+class PsgParamsToRegistersTest  : public UnitTest {
+public:
+    PsgParamsToRegistersTest() : UnitTest("PsgParamsToRegisters", "MoTool") {}
+
+    void runTest() override {
+        beginTest("PsgParamsToRegistersTest");
+        {
+            PsgParamFrameData data {
+                {PsgParamType::VolumeA, 1},
+                {PsgParamType::VolumeB, 8},
+                {PsgParamType::TonePeriodA, 0x1234},
+                {PsgParamType::TonePeriodB, 0x5678},
+                {PsgParamType::ToneIsOnA, 1},
+                {PsgParamType::ToneIsOnB, 1},
+                {PsgParamType::ToneIsOnC, 0},
+                {PsgParamType::NoiseIsOnA, 1},
+                {PsgParamType::NoiseIsOnB, 0},
+                {PsgParamType::NoiseIsOnC, 0},
+                {PsgParamType::EnvelopeIsOnA, 0},
+                {PsgParamType::EnvelopeIsOnB, 1},
+                {PsgParamType::EnvelopeIsOnC, 0},
+                {PsgParamType::NoisePeriod, 0x10},
+                {PsgParamType::EnvelopePeriod, 0x4321},
+                {PsgParamType::EnvelopeShape, 2}
+            };
+            auto regs = data.toRegisters();
+
+            expect(regs.registers[uZX::PsgRegsFrame::VolumeA] == 0x1, "Expected VolumeA to be 0x1");
+            expect(regs.registers[uZX::PsgRegsFrame::VolumeB] == 0x18, "Expected VolumeB to be 0x18");  // env mod
+            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineA]   == 0x34, "Expected TonePeriodFineA to be 0x34");
+            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseA] == 0x12, "Expected TonePeriodCoarseA to be 0x12");
+            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineB]   == 0x78, "Expected TonePeriodFineB to be 0x78");
+            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseB] == 0x56, "Expected TonePeriodCoarseB to be 0x56");
+            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineC]   == 0x00, "Expected TonePeriodFineC to be 0");
+            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseC] == 0x00, "Expected TonePeriodCoarseC to be 0");
+            expect(regs.registers[uZX::PsgRegsFrame::Mixer] == 0b00110100, "Expected Mixer to be 0b00110100, got "
+                + std::to_string(regs.registers[uZX::PsgRegsFrame::Mixer]));
+
+            expect(regs.registers[uZX::PsgRegsFrame::NoisePeriod] == 0x10, "Expected NoisePeriod to be 0x10");
+            expect(regs.registers[uZX::PsgRegsFrame::EnvelopePeriodFine] == 0x21, "Expected EnvelopePeriodFine to be 0x21");
+            expect(regs.registers[uZX::PsgRegsFrame::EnvelopePeriodCoarse] == 0x43, "Expected EnvelopePeriodCoarse to be 0x43");
+            expect(regs.registers[uZX::PsgRegsFrame::EnvelopeShape] == 2, "Expected EnvelopeShape to be 2");
+        }
+    }
+};
+
+
 static PsgParamsMidiTests psgParamsMidiTests;
 static PsgParamsChangeTrackingTest psgParamsChangeTrackingTests;
 static PsgParamsMidiWriterTests psgParamsMidiWriterTests;
+static PsgParamsToRegistersTest psgParamsToRegisterTest;
 
 }  // namespace MoTool::Tests

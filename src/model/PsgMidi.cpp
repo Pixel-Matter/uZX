@@ -149,16 +149,20 @@ void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
                 psgChan = 2;
                 addEvent(time, psgChan, MidiCCType::GPB3, value);
                 break;
-            case PsgParamType::RetriggerA:
+            case PsgParamType::RetriggerToneA:
                 psgChan = 0;
                 addEvent(time, psgChan, MidiCCType::GPB4, value);
                 break;
-            case PsgParamType::RetriggerB:
+            case PsgParamType::RetriggerToneB:
                 psgChan = 1;
                 addEvent(time, psgChan, MidiCCType::GPB4, value);
                 break;
-            case PsgParamType::RetriggerC:
+            case PsgParamType::RetriggerToneC:
                 psgChan = 2;
+                addEvent(time, psgChan, MidiCCType::GPB4, value);
+                break;
+            case PsgParamType::RetriggerEnvelope:
+                psgChan = 3;
                 addEvent(time, psgChan, MidiCCType::GPB4, value);
                 break;
             case PsgParamType::NoisePeriod:
@@ -175,7 +179,6 @@ void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
                 psgChan = 3;
                 addEvent(time, psgChan, MidiCCType::SoundVariation, value);
                 break;
-            case PsgParamType::SIZE:
             default:
                 jassertfalse;
                 break;

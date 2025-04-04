@@ -1,4 +1,5 @@
 #include "formats/psg/PsgData.h"
+#include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_core/juce_core.h"
 #include "model/Ids.h"
 #include <JuceHeader.h>
@@ -270,11 +271,6 @@ public:
     PsgParamsChangeTrackingTest() : UnitTest("PsgParamsChangeTracker", "MoTool") {}
 
     void runTest() override {
-        // auto& engine = *Engine::getEngines()[0];
-        // auto edit = Edit::createSingleTrackEdit(engine);
-        // edit->tempoSequence.getTempoAt(edit->getTransport().getPosition()).setBpm(60);
-        // auto t = getAudioTracks(*edit)[0];
-
         beginTest("PsgParamsMidiWriterTests not changed");
         {
             // PsgParamsChangeTracker tracker;
@@ -292,27 +288,28 @@ public:
             };
             // data.debugValues();
             std::vector<std::pair<PsgParamType, uint16_t>> fullChange {
-                {PsgParamType::VolumeA,        1},
-                {PsgParamType::VolumeB,        1},
-                {PsgParamType::VolumeC,        2},
-                {PsgParamType::TonePeriodA,    3},
-                {PsgParamType::TonePeriodB,    4},
-                {PsgParamType::TonePeriodC,    5},
-                {PsgParamType::ToneIsOnA,      6},
-                {PsgParamType::ToneIsOnB,      7},
-                {PsgParamType::ToneIsOnC,      8},
-                {PsgParamType::NoiseIsOnA,     9},
-                {PsgParamType::NoiseIsOnB,     10},
-                {PsgParamType::NoiseIsOnC,     11},
-                {PsgParamType::EnvelopeIsOnA,  12},
-                {PsgParamType::EnvelopeIsOnB,  13},
-                {PsgParamType::EnvelopeIsOnC,  14},
-                {PsgParamType::RetriggerA,     15},
-                {PsgParamType::RetriggerB,     16},
-                {PsgParamType::RetriggerC,     17},
-                {PsgParamType::NoisePeriod,    18},
-                {PsgParamType::EnvelopePeriod, 19},
-                {PsgParamType::EnvelopeShape,  20}
+                {PsgParamType::VolumeA,           1},
+                {PsgParamType::VolumeB,           1},
+                {PsgParamType::VolumeC,           2},
+                {PsgParamType::TonePeriodA,       3},
+                {PsgParamType::TonePeriodB,       4},
+                {PsgParamType::TonePeriodC,       5},
+                {PsgParamType::ToneIsOnA,         6},
+                {PsgParamType::ToneIsOnB,         7},
+                {PsgParamType::ToneIsOnC,         8},
+                {PsgParamType::NoiseIsOnA,        9},
+                {PsgParamType::NoiseIsOnB,        10},
+                {PsgParamType::NoiseIsOnC,        11},
+                {PsgParamType::EnvelopeIsOnA,     12},
+                {PsgParamType::EnvelopeIsOnB,     13},
+                {PsgParamType::EnvelopeIsOnC,     14},
+                {PsgParamType::RetriggerToneA,    15},
+                {PsgParamType::RetriggerToneB,    16},
+                {PsgParamType::RetriggerToneC,    17},
+                {PsgParamType::RetriggerEnvelope, 18},
+                {PsgParamType::NoisePeriod,       19},
+                {PsgParamType::EnvelopePeriod,    20},
+                {PsgParamType::EnvelopeShape,     21}
             };
             expect(data.getParams() == fullChange, "Expected all params to be set");
 
@@ -344,49 +341,63 @@ class PsgParamsMidiWriterTests  : public UnitTest {
 public:
     PsgParamsMidiWriterTests() : UnitTest("PsgParamsMidiWriter", "MoTool") {}
 
-    void runTest() override {
-        auto& engine = *Engine::getEngines()[0];
-        auto edit = Edit::createSingleTrackEdit(engine);
-        edit->tempoSequence.getTempoAt(edit->getTransport().getPosition()).setBpm(60);
-        auto t = getAudioTracks(*edit)[0];
+    void compareEvents(const juce::MidiMessageSequence &sequence,
+                       const std::map<double, std::set<std::string>> &expected) {
 
-        te::ClipPosition pos = {{0_tp, 2.0_tp / 50}, {}};
-        auto* psgClip = dynamic_cast<PsgClip*>(CustomClip::insertClipWithState(
-            *t, /*stateToUse=*/ {}, /*name=*/ {},
-            CustomClip::Type::psg, pos, te::DeleteExistingClips::yes, false
-        ));
+        std::map<double, std::set<std::string>> actual;
+        for (auto e : sequence) {
+            actual[e->message.getTimeStamp()].insert(e->message.getDescription().toStdString());
+        }
 
-        uZX::PsgData data;
-        data.frames.push_back({
+        expectEquals(actual.size(), expected.size(), "Different number of timestamps");
+
+        for (const auto &[timestamp, expectedEvents] : expected) {
+            expect(actual.contains(timestamp), "Missing timestamp: " + std::to_string(timestamp));
+            if (actual.contains(timestamp)) {
+                expectEquals(actual.at(timestamp).size(), expected.at(timestamp).size(),
+                    "Wrong number of events at timestamp: " + std::to_string(timestamp));
+                for (const auto& expectedStr : expected.at(timestamp)) {
+                    expect(actual.at(timestamp).contains(expectedStr),
+                        "Missing expected event at " + std::to_string(timestamp) + ": " + expectedStr);
+                }
+            }
+        }
+    }
+
+    static std::vector<uZX::PsgRegsFrame> getTestRegFrames() {
+        return {{
             {0x12, 0x34, 0,     0,     0,     0,     0x1f, 0b00110110, 0x3,   0,     0,     0,     0,     0},
             {true, true, false, false, false, false, true, true,       true,  false, false, false, false, false}
-        });
-        data.frames.push_back({
+        }, {
             {0,     0,     0x56, 0x32, 0,     0,     0x10, 0b00111100, 0xf,   0x18,  0,     0x12,  0x34,  0x8},
             {false, false, true, true, false, false, true, true,       true,  true,  false, true,  true,  true}
-        });
+        }};
+    }
 
-        psgClip->getPsg().loadFrom(data, *edit, nullptr);
-
+    void runTest() override {
         beginTest("PsgParamsMidiWriterTests write");
         {
-            expect(psgClip != nullptr, "CustomClip is a PsgClip");
-            PsgParamsMidiWriter writer {1};
-            auto& frames = psgClip->getPsg().getFrames();
-            expect(frames.size() == 2, "Expected 2 frames, got " + std::to_string(frames.size()));
-            for (auto f : frames) {
-                writer.write(f->getBeatPosition().inBeats(), f->getData());
+            PsgParamsMidiWriter writer{1};
+            auto frames = getTestRegFrames();
+
+            PsgParamFrameData params {};
+            for (size_t i = 0; i < frames.size(); ++i) {
+                params.update(frames[i]);
+                params.debugPrint();
+                for (auto& p : params.getParams()) {
+                    DBG("Frame " << i << ": " << std::string(p.first.getLabel()) << " = " << p.second);
+                }
+                writer.write(0.02 * static_cast<double>(i), params);
             }
             auto seq = writer.getSequence();
             for (auto e : seq) {
-                // juce::MidiMessageSequence::MidiEventHolder
                 DBG(e->message.getDescription() << " @" << e->message.getTimeStamp());
             }
             DBG("----------------------------------------------");
 
             expectEquals(seq.getNumEvents(), 17);
 
-            // TODO group by timestamp and compare sets or maps
+            // group by timestamp and compare sets or maps
             std::map<double, std::set<std::string>> expectedEvents = {
                 {0.0, {
                     "Controller Volume (coarse): 3 Channel 1",
@@ -410,29 +421,7 @@ public:
                     "Controller Sound Variation: 8 Channel 4"
                 }}
             };
-
-            std::map<double, std::set<std::string>> actualEvents;
-
-            for (auto e : seq) {
-                actualEvents[e->message.getTimeStamp()].insert(e->message.getDescription().toStdString());
-            }
-
-            expectEquals(actualEvents.size(), expectedEvents.size(), "Mismatch in number of timestamps");
-
-            auto joinStrings = [](const std::set<std::string>& strings) {
-                return std::accumulate(strings.begin(), strings.end(), std::string(),
-                                       [](const std::string& a, const std::string& b) { return a + (a.empty() ? "" : ", ") + b; });
-            };
-
-            for (const auto& [timestamp, expectedSet] : expectedEvents) {
-                expect(actualEvents.count(timestamp) > 0, "Missing timestamp: " + std::to_string(timestamp));
-                if (actualEvents.count(timestamp) > 0) {
-                    expectEquals(
-                        joinStrings(actualEvents[timestamp]),
-                        joinStrings(expectedSet),
-                        "Mismatch in events at timestamp: " + std::to_string(timestamp));
-                }
-            }
+            compareEvents(seq, expectedEvents);
         }
     }
 };

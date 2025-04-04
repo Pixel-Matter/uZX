@@ -3,9 +3,9 @@
 #include <JuceHeader.h>
 
 #include "../formats/psg/PsgFile.h"
+#include "../util/enumchoice.h"
 
 #include <initializer_list>
-#include <ranges>
 
 namespace te = tracktion;
 
@@ -13,45 +13,58 @@ namespace MoTool {
 
 class PsgClip;
 
-// struct PsgChanParams {
-//     int Volume;
-//     int TonePeriod;
-//     bool ToneIsOn;
-//     bool NoiseIsOn;
-//     bool EnvIsOn;
-//     bool Retrigger;  // event, not mode
-// };
+struct PsgParamTypeEnum {
+    enum Enum {
+        VolumeA = 0,
+        VolumeB,
+        VolumeC,
+        TonePeriodA,
+        TonePeriodB,
+        TonePeriodC,
+        ToneIsOnA,
+        ToneIsOnB,
+        ToneIsOnC,
+        NoiseIsOnA,
+        NoiseIsOnB,
+        NoiseIsOnC,
+        EnvelopeIsOnA,
+        EnvelopeIsOnB,
+        EnvelopeIsOnC,
+        NoisePeriod,
+        EnvelopePeriod,
+        EnvelopeShape,
+        RetriggerToneA,
+        RetriggerToneB,
+        RetriggerToneC,
+        RetriggerEnvelope,
+    };
 
-// enum class PsgModParams {
-//     EnvPeriod,
-//     EnvShape,
-//     NoisePeriod,
-// };
-
-enum class PsgParamType {
-    VolumeA = 0,
-    VolumeB,
-    VolumeC,
-    TonePeriodA,
-    TonePeriodB,
-    TonePeriodC,
-    ToneIsOnA,
-    ToneIsOnB,
-    ToneIsOnC,
-    NoiseIsOnA,
-    NoiseIsOnB,
-    NoiseIsOnC,
-    EnvelopeIsOnA,
-    EnvelopeIsOnB,
-    EnvelopeIsOnC,
-    RetriggerA,
-    RetriggerB,
-    RetriggerC,
-    NoisePeriod,
-    EnvelopePeriod,
-    EnvelopeShape,
-    SIZE  // 21
+    static inline constexpr std::string_view labels[] {
+        "Volume A",
+        "Volume B",
+        "Volume C",
+        "Tone Period A",
+        "Tone Period B",
+        "Tone Period C",
+        "Tone Is On A",
+        "Tone Is On B",
+        "Tone Is On C",
+        "Noise Is On A",
+        "Noise Is On B",
+        "Noise Is On C",
+        "Envelope Is On A",
+        "Envelope Is On B",
+        "Envelope Is On C",
+        "Noise Period",
+        "Envelope Period",
+        "Envelope Shape",
+        "Retrigger Tone A",
+        "Retrigger Tone B",
+        "Retrigger Tone C",
+        "Retrigger Envelope",
+    };
 };
+using PsgParamType = MoTool::Util::EnumChoice<PsgParamTypeEnum>;
 
 class PsgParamFrameData {
 public:
@@ -75,17 +88,13 @@ public:
     }
 
     explicit PsgParamFrameData(const uZX::PsgRegsFrame& regs) noexcept {
-        update(regs);
-    }
-
-    void update(const uZX::PsgRegsFrame& regs) noexcept {
         for (size_t i = 0; i < 3; ++i) {
             if (regs.hasVolumeOrEnvModSet(i)) {
-                set(static_cast<PsgParamType>(static_cast<size_t>(PsgParamType::VolumeA) + i), regs.getVolume(i));
-                set(static_cast<PsgParamType>(static_cast<size_t>(PsgParamType::EnvelopeIsOnA) + i), regs.getEnvMod(i));
+                set(PsgParamType(int(PsgParamType::VolumeA) + int(i)), regs.getVolume(i));
+                set(PsgParamType(int(PsgParamType::EnvelopeIsOnA) + int(i)), regs.getEnvMod(i));
             }
             if (regs.hasTonePeriodSet(i)) {
-                set(static_cast<PsgParamType>(static_cast<size_t>(PsgParamType::TonePeriodA) + i), regs.getTonePeriod(i));
+                set(PsgParamType(int(PsgParamType::TonePeriodA) + int(i)), regs.getTonePeriod(i));
             }
         }
         if (regs.hasMixerSet()) {
@@ -107,17 +116,21 @@ public:
         }
     }
 
+    void update(const uZX::PsgRegsFrame& regs) noexcept {
+        update(PsgParamFrameData {regs});
+    }
+
     void update(const PsgParamFrameData& data) noexcept {
         // track what params was changed actually, compare with current values
-        for (size_t i = 0; i < static_cast<size_t>(PsgParamType::SIZE); ++i) {
+        for (size_t i = 0; i < PsgParamType::size(); ++i) {
             masks[i] = data.masks[i] && data.values[i] != values[i];
             values[i] = data.values[i];
         }
     }
 
-    void debugValues() const noexcept {
-        for (size_t i = 0; i < static_cast<size_t>(PsgParamType::SIZE); ++i) {
-            DBG("PsgParamFrameData: " << static_cast<int>(static_cast<PsgParamType>(i)) << ": " << values[i] << " " << (masks[i] ? "true" : "false"));
+    void debugPrint() const noexcept {
+        for (size_t i = 0; i < PsgParamType::size(); ++i) {
+            DBG("PsgParamFrameData: " << static_cast<PsgParamType>(static_cast<int>(i)) << ": " << values[i] << " " << (masks[i] ? "true" : "false"));
         }
     }
 
@@ -161,7 +174,7 @@ public:
         result.reserve(std::size(values));
         for (size_t i = 0; i < std::size(values); ++i) {
             if (masks[i]) {
-                result.emplace_back(static_cast<PsgParamType>(i), values[i]);
+                result.emplace_back(static_cast<PsgParamType>(static_cast<int>(i)), values[i]);
             }
         }
         result.shrink_to_fit();
@@ -173,10 +186,10 @@ public:
 
 private:
     // not map or vector to avoid dynamic allocations
-    std::array<uint16_t, static_cast<size_t>(PsgParamType::SIZE)> values {};
+    std::array<uint16_t, static_cast<size_t>(PsgParamType::size())> values {};
     // TODO or use bitmask for 21 bits
     // sizeof(std::vector<bool>) is 24 bytes
-    std::array<bool,     static_cast<size_t>(PsgParamType::SIZE)> masks {};
+    std::array<bool,     static_cast<size_t>(PsgParamType::size())> masks {};
 };
 
 

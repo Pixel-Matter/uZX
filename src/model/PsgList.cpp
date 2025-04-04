@@ -4,7 +4,6 @@
 #include "PsgClip.h"
 #include "PsgMidi.h"
 #include "Ids.h"
-#include "juce_core/juce_core.h"
 
 namespace te = tracktion;
 
@@ -63,31 +62,31 @@ juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, co
     auto v = te::createValueTree(IDs::FRAME,
         te::IDs::b,     beat.inBeats()
     );
-    for (size_t i = 0; i < static_cast<size_t>(PsgParamType::SIZE); ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(PsgParamType::size()); ++i) {
         if (data.isSet(i)) {
-            switch (static_cast<PsgParamType>(i)) {
-                case PsgParamType::VolumeA:        v.setProperty(IDs::va, *data[i], nullptr); break;
-                case PsgParamType::VolumeB:        v.setProperty(IDs::vb, *data[i], nullptr); break;
-                case PsgParamType::VolumeC:        v.setProperty(IDs::vc, *data[i], nullptr); break;
-                case PsgParamType::TonePeriodA:    v.setProperty(IDs::pa, *data[i], nullptr); break;
-                case PsgParamType::TonePeriodB:    v.setProperty(IDs::pb, *data[i], nullptr); break;
-                case PsgParamType::TonePeriodC:    v.setProperty(IDs::pc, *data[i], nullptr); break;
-                case PsgParamType::ToneIsOnA:      v.setProperty(IDs::ta, *data[i], nullptr); break;
-                case PsgParamType::ToneIsOnB:      v.setProperty(IDs::tb, *data[i], nullptr); break;
-                case PsgParamType::ToneIsOnC:      v.setProperty(IDs::tc, *data[i], nullptr); break;
-                case PsgParamType::NoiseIsOnA:     v.setProperty(IDs::na, *data[i], nullptr); break;
-                case PsgParamType::NoiseIsOnB:     v.setProperty(IDs::nb, *data[i], nullptr); break;
-                case PsgParamType::NoiseIsOnC:     v.setProperty(IDs::nc, *data[i], nullptr); break;
-                case PsgParamType::EnvelopeIsOnA:  v.setProperty(IDs::ea, *data[i], nullptr); break;
-                case PsgParamType::EnvelopeIsOnB:  v.setProperty(IDs::eb, *data[i], nullptr); break;
-                case PsgParamType::EnvelopeIsOnC:  v.setProperty(IDs::ec, *data[i], nullptr); break;
-                case PsgParamType::RetriggerA:     v.setProperty(IDs::ra, *data[i], nullptr); break;
-                case PsgParamType::RetriggerB:     v.setProperty(IDs::rb, *data[i], nullptr); break;
-                case PsgParamType::RetriggerC:     v.setProperty(IDs::rc, *data[i], nullptr); break;
-                case PsgParamType::NoisePeriod:    v.setProperty(IDs::n,  *data[i], nullptr); break;
-                case PsgParamType::EnvelopePeriod: v.setProperty(IDs::e,  *data[i], nullptr); break;
-                case PsgParamType::EnvelopeShape:  v.setProperty(IDs::s,  *data[i], nullptr); break;
-                case PsgParamType::SIZE: break; // should never happen
+            switch (i) {
+                case PsgParamType::VolumeA:           v.setProperty(IDs::va, *data[i], nullptr); break;
+                case PsgParamType::VolumeB:           v.setProperty(IDs::vb, *data[i], nullptr); break;
+                case PsgParamType::VolumeC:           v.setProperty(IDs::vc, *data[i], nullptr); break;
+                case PsgParamType::TonePeriodA:       v.setProperty(IDs::pa, *data[i], nullptr); break;
+                case PsgParamType::TonePeriodB:       v.setProperty(IDs::pb, *data[i], nullptr); break;
+                case PsgParamType::TonePeriodC:       v.setProperty(IDs::pc, *data[i], nullptr); break;
+                case PsgParamType::ToneIsOnA:         v.setProperty(IDs::ta, *data[i], nullptr); break;
+                case PsgParamType::ToneIsOnB:         v.setProperty(IDs::tb, *data[i], nullptr); break;
+                case PsgParamType::ToneIsOnC:         v.setProperty(IDs::tc, *data[i], nullptr); break;
+                case PsgParamType::NoiseIsOnA:        v.setProperty(IDs::na, *data[i], nullptr); break;
+                case PsgParamType::NoiseIsOnB:        v.setProperty(IDs::nb, *data[i], nullptr); break;
+                case PsgParamType::NoiseIsOnC:        v.setProperty(IDs::nc, *data[i], nullptr); break;
+                case PsgParamType::EnvelopeIsOnA:     v.setProperty(IDs::ea, *data[i], nullptr); break;
+                case PsgParamType::EnvelopeIsOnB:     v.setProperty(IDs::eb, *data[i], nullptr); break;
+                case PsgParamType::EnvelopeIsOnC:     v.setProperty(IDs::ec, *data[i], nullptr); break;
+                case PsgParamType::RetriggerToneA:    v.setProperty(IDs::ra, *data[i], nullptr); break;
+                case PsgParamType::RetriggerToneB:    v.setProperty(IDs::rb, *data[i], nullptr); break;
+                case PsgParamType::RetriggerToneC:    v.setProperty(IDs::rc, *data[i], nullptr); break;
+                case PsgParamType::RetriggerEnvelope: v.setProperty(IDs::re, *data[i], nullptr); break;
+                case PsgParamType::NoisePeriod:       v.setProperty(IDs::n,  *data[i], nullptr); break;
+                case PsgParamType::EnvelopePeriod:    v.setProperty(IDs::e,  *data[i], nullptr); break;
+                case PsgParamType::EnvelopeShape:     v.setProperty(IDs::s,  *data[i], nullptr); break;
                 default: break;
             }
         }
@@ -108,7 +107,7 @@ void PsgParamFrame::updatePropertiesFromState() noexcept {
     // TODO update other properties
     // Why not use CahedValue<>? Too slow?
     // read all properties from state
-    PsgParamType type = PsgParamType::SIZE; // invalid
+    PsgParamType type = static_cast<PsgParamType>(-1);  // invalid
     for (int i = 0; i < state.getNumProperties(); ++i) {
         // TODO optimize somehow
         auto p = state.getPropertyName(i);
@@ -143,11 +142,13 @@ void PsgParamFrame::updatePropertiesFromState() noexcept {
         } else if (p == IDs::ec) {
             type = PsgParamType::EnvelopeIsOnC;
         } else if (p == IDs::ra) {
-            type = PsgParamType::RetriggerA;
+            type = PsgParamType::RetriggerToneA;
         } else if (p == IDs::rb) {
-            type = PsgParamType::RetriggerB;
+            type = PsgParamType::RetriggerToneB;
         } else if (p == IDs::rc) {
-            type = PsgParamType::RetriggerC;
+            type = PsgParamType::RetriggerToneC;
+        } else if (p == IDs::re) {
+            type = PsgParamType::RetriggerEnvelope;
         } else if (p == IDs::n) {
             type = PsgParamType::NoisePeriod;
         } else if (p == IDs::e) {
@@ -155,6 +156,7 @@ void PsgParamFrame::updatePropertiesFromState() noexcept {
         } else if (p == IDs::s) {
             type = PsgParamType::EnvelopeShape;
         } else {
+            jassertfalse;
             continue; // unknown property
         }
         data.set(type, static_cast<uint16>(static_cast<int>(state.getProperty(p))));

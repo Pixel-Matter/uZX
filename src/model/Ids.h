@@ -55,6 +55,7 @@ namespace IDs {
     DECLARE_ID(ra)
     DECLARE_ID(rb)
     DECLARE_ID(rc)
+    DECLARE_ID(re)
     DECLARE_ID(n)
     DECLARE_ID(e)
     DECLARE_ID(s)

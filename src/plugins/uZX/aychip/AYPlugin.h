@@ -60,7 +60,7 @@ struct ParamAttachment {
         referTo(id, n, def, u);
         choices.clear();
         for (int i = 0; i < ch.size(); ++i) {
-            choices.push_back({static_cast<Type>(i), ch[i]});
+            choices.push_back({static_cast<Type>(static_cast<size_t>(i)), ch[i]});
         }
     }
 

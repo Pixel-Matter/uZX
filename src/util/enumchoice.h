@@ -43,6 +43,7 @@ public:
     constexpr EnumChoice& operator=(const EnumChoice&) = default;
     constexpr EnumChoice& operator=(EnumChoice&&) = default;
     constexpr operator Enum() const { return value; }
+    // NOTE confuses switch statements
     // constexpr operator int() const noexcept { return static_cast<int>(value); }
     constexpr operator std::string_view() const noexcept { return getLabel(); }
 

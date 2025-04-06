@@ -76,19 +76,20 @@ PsgClip::Ptr PsgClip::insertTo(
 void PsgClip::loadFrom(uZX::PsgData &data) {
     auto *um = getUndoManager();
 
-    // getSequence().clear(um);
     // Fastest midi inport
     // 1. construct MidiList state detached from everything,
     // 2. remove old sequence from the state
     // 3. add the new sequence tree directly to the clips state in one operation
-    // auto seqState = getSequence().state.createCopy();
-    getPsg().clear();
+    getSequence().clear(um);
+    auto seqState = getSequence().state.createCopy();
     double timeElapsed;
     {
         juce::ScopedTimeMeasurement measurement(timeElapsed);
-        // loadMidiListStateFrom(edit, seqState, psgFile.getData());
-        // state.removeChild(state.getChildWithName(te::IDs::SEQUENCE), um);
-        // state.addChild(seqState, -1, um);
+        loadMidiListStateFrom(edit, seqState, data);
+        state.removeChild(state.getChildWithName(te::IDs::SEQUENCE), um);
+        state.addChild(seqState, -1, um);
+
+        getPsg().clear();
         PsgList psg;
         psg.loadFrom(data, edit, um);
         state.removeChild(state.getChildWithName(IDs::PSG), um);

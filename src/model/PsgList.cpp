@@ -68,7 +68,7 @@ juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, co
     auto v = te::createValueTree(IDs::FRAME,
         te::IDs::b,    roundTo(beat.inBeats())
     );
-    for (size_t i = 0; i < static_cast<size_t>(PsgParamType::size()); ++i) {
+    for (int i = 0; i < static_cast<int>(PsgParamType::size()); ++i) {
         if (data.isSet(i)) {
             switch (i) {
                 case PsgParamType::VolumeA:           v.setProperty(IDs::va, *data[i], nullptr); break;

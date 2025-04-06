@@ -16,41 +16,41 @@ inline static constexpr int MIDI_PSG_CC_FINE_START = 40;
 
 namespace {
 
-// static double roundTo(double value, int decimalPlaces = 3) {
-//     double factor = std::pow(10.0, decimalPlaces);
-//     return std::round(value * factor) / factor;
-// }
+static double roundTo(double value, int decimalPlaces = 3) {
+    double factor = std::pow(10.0, decimalPlaces);
+    return std::round(value * factor) / factor;
+}
 
-// inline static ValueTree createRegValueTree(te::BeatPosition pos, int reg, int val) {
-//     // N.B. Tracktion store controller values in edit's MidiList with extra precision
-//     // but then rounds them to 7 bits
-//     return te::createValueTree (
-//         te::IDs::CONTROL,
-//         te::IDs::b,     roundTo(pos.inBeats()),
-//         te::IDs::type,  MIDI_PSG_CC_COARSE_START + reg,
-//         te::IDs::val,   (val & 255)  // store as is, then break down to 2 times by 4 bits
-//     );
-// }
+inline static ValueTree createRegValueTree(te::BeatPosition pos, int reg, int val) {
+    // N.B. Tracktion store controller values in edit's MidiList with extra precision
+    // but then rounds them to 7 bits
+    return te::createValueTree (
+        te::IDs::CONTROL,
+        te::IDs::b,     roundTo(pos.inBeats()),
+        te::IDs::type,  MIDI_PSG_CC_COARSE_START + reg,
+        te::IDs::val,   (val & 255)  // store as is, then break down to 2 times by 4 bits
+    );
+}
 
 }
 
-// static void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgData &data) {
-//     for (size_t i = 0; i < data.frames.size(); i++) {
-//         auto &frame = data.frames[i];
-//         auto timeSec = data.frameNumToSeconds(i);
-//         auto startBeat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
-//         // DBG("Frame " << i << " time=" << timeBeat);
-//         for (size_t j = 0; j < frame.registers.size(); j++) {
-//             if (frame.mask[j]) {
-//                 // DBG("Register " << j << " = " << reg);
-//                 auto regVal = frame.registers[j];
-//                 // NOTE It is too slow to call seq.addControllerEvent
-//                 auto v = createRegValueTree(startBeat, static_cast<int>(j), regVal);
-//                 seqState.appendChild(std::move(v), nullptr); // no need for um here
-//             }
-//         }
-//     }
-// }
+void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgData &data) {
+    for (size_t i = 0; i < data.frames.size(); i++) {
+        auto &frame = data.frames[i];
+        auto timeSec = data.frameNumToSeconds(i);
+        auto startBeat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
+        // DBG("Frame " << i << " time=" << timeBeat);
+        for (size_t j = 0; j < frame.registers.size(); j++) {
+            if (frame.mask[j]) {
+                // DBG("Register " << j << " = " << reg);
+                auto regVal = frame.registers[j];
+                // NOTE It is too slow to call seq.addControllerEvent
+                auto v = createRegValueTree(startBeat, static_cast<int>(j), regVal);
+                seqState.appendChild(std::move(v), nullptr); // no need for um here
+            }
+        }
+    }
+}
 
 // Implementation based on third_party/tracktion_engine/modules/tracktion_engine/midi/tracktion_MidiList.cpp
 

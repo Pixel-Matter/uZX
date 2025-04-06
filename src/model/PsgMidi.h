@@ -16,7 +16,7 @@ class PsgClip;
 class PsgParamFrame;
 //==============================================================================
 
-void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgFile &psgFile);
+void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgData& data);
 
 juce::MidiMessageSequence createPsgPlaybackMidiSequence(const te::MidiList& list, const te::MidiClip& clip, te::MidiList::TimeBase timeBase);
 

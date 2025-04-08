@@ -44,24 +44,27 @@ protected:
     WidgetType widget;
 };
 
-class SliderParameterComponent : public ParameterComponent<double, Slider>, private Slider::Listener, private Value::Listener {
+template <typename Type>
+class SliderParameterComponent : public ParameterComponent<Type, Slider>, private Slider::Listener, private Value::Listener {
 public:
     SliderParameterComponent(
-        ParamAttachment<double>& param,
+        ParamAttachment<Type>& param,
         Slider::SliderStyle style = Slider::LinearHorizontal,
         Slider::TextEntryBoxPosition textBoxPosition = Slider::TextBoxLeft)
-      : ParameterComponent<double, Slider>(param),
+      : ParameterComponent<Type, Slider>(param),
         sliderStyle(style),
         boxPosition(textBoxPosition)
     {
-        widget.setSliderStyle(sliderStyle);
-        widget.setTextBoxStyle(boxPosition, false, widget.getTextBoxWidth(), widget.getTextBoxHeight());
-        widget.setRange(attachment.range.start, attachment.range.end, attachment.range.interval);
-        widget.setValue(attachment.get(), dontSendNotification);
+        this->widget.setSliderStyle(sliderStyle);
+        this->widget.setTextBoxStyle(boxPosition, false, this->widget.getTextBoxWidth(), this->widget.getTextBoxHeight());
+        this->widget.setRange(this->attachment.range.start, this->attachment.range.end, this->attachment.range.interval);
+        this->widget.setValue(this->attachment.get(), dontSendNotification);
         // NOTE referTo tracks values poorly, doesnt track edge values
         // widget.getValueObject().referTo(attachment.getPropertyAsValue());
-        attachment.getPropertyAsValue().addListener(this);
-        widget.addListener(this);
+        this->attachment.getPropertyAsValue().addListener(this);
+        this->widget.addListener(this);
+
+        DBG("Range interval for " << this->attachment.name  << " is " << this->attachment.range.interval);
     }
 
 private:
@@ -69,11 +72,11 @@ private:
     Slider::TextEntryBoxPosition boxPosition;
 
     void sliderValueChanged(Slider*) override {
-        attachment = widget.getValue();
+        this->attachment = this->widget.getValue();
     }
 
     void valueChanged(Value&) override {
-        widget.setValue(attachment.get(), dontSendNotification);
+        this->widget.setValue(this->attachment.get(), dontSendNotification);
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParameterComponent)
@@ -161,13 +164,14 @@ public:
       : plugin_(p)
     {
         constrainer_.setMinimumWidth(200);
-        setSize(200, 300);
+        setSize(200, 350);
 
         addAndMakeVisible(chipParameter);
         addAndMakeVisible(clockParameter);
         addAndMakeVisible(channelsParameter);
         addAndMakeVisible(stereoParameter);
         addAndMakeVisible(removeDCParameter);
+        addAndMakeVisible(midiParameter);
     }
 
     bool allowWindowResizing() override {
@@ -180,11 +184,14 @@ public:
 
     void resized() override {
         auto r = getLocalBounds().reduced(8);
-        chipParameter.setBounds(r.removeFromTop(60));
-        clockParameter.setBounds(r.removeFromTop(60));
-        channelsParameter.setBounds(r.removeFromTop(60));
-        stereoParameter.setBounds(r.removeFromTop(60));
-        removeDCParameter.setBounds(r.removeFromTop(60));
+        chipParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        clockParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        channelsParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        stereoParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        DBG("removeDCParameter height is " << removeDCParameter.getHeight());
+        removeDCParameter.setBounds(r.removeFromTop(itemHeight));
+        DBG("removeDCParameter height is " << removeDCParameter.getHeight());
+        midiParameter.setBounds(r.removeFromTop(itemHeight * 2));
     }
 
     ComponentBoundsConstrainer* getBoundsConstrainer() override {
@@ -198,11 +205,12 @@ private:
     AYChipPlugin& plugin_;
     ComponentBoundsConstrainer constrainer_;
 
-    ComboParameterComponent<AYInterface::ChipType>       chipParameter  { plugin_.staticParams.chipTypeValue };
-    SliderParameterComponent                             clockParameter { plugin_.staticParams.clockValue };
+    ComboParameterComponent<AYInterface::ChipType>       chipParameter     { plugin_.staticParams.chipTypeValue };
+    SliderParameterComponent<double>                     clockParameter    { plugin_.staticParams.clockValue };
     ComboParameterComponent<AYInterface::ChannelsLayout> channelsParameter { plugin_.staticParams.channelsLayoutValue };
-    SliderParameterComponent                             stereoParameter { plugin_.staticParams.stereoWidthValue };
-    ToggleParameterComponent                           removeDCParameter { plugin_.staticParams.removeDCValue };
+    SliderParameterComponent<double>                     stereoParameter   { plugin_.staticParams.stereoWidthValue };
+    ToggleParameterComponent                             removeDCParameter { plugin_.staticParams.removeDCValue };
+    SliderParameterComponent<int>                        midiParameter     { plugin_.staticParams.baseMidiChannelValue };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginEditor)
 };

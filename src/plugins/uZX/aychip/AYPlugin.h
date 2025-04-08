@@ -20,6 +20,7 @@ namespace IDs {
     DECLARE_ID(layout)
     DECLARE_ID(stereo)
     DECLARE_ID(noDC)
+    DECLARE_ID(midi)
     #undef DECLARE_ID
 }  // namespace IDs
 
@@ -151,6 +152,7 @@ public:
         ParamAttachment<AYInterface::ChannelsLayout> channelsLayoutValue;
         ParamAttachment<double> stereoWidthValue;
         ParamAttachment<bool> removeDCValue;
+        ParamAttachment<int> baseMidiChannelValue;
 
         Params(te::Plugin& p)
             : chipTypeValue(p)
@@ -158,7 +160,10 @@ public:
             , channelsLayoutValue(p)
             , stereoWidthValue(p)
             , removeDCValue(p)
+            , baseMidiChannelValue(p)
         {}
+
+        void initialise();
     };
 
     Params staticParams {*this};

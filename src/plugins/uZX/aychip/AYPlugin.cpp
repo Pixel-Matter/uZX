@@ -4,6 +4,7 @@
 
 #include "AYPlugin.h"
 #include "AYPluginEditor.h"
+#include "tracktion_engine/tracktion_engine.h"
 
 namespace te = tracktion;
 
@@ -11,15 +12,20 @@ namespace MoTool::uZX {
 
 
 //==============================================================================
+void AYChipPlugin::Params::initialise() {
+    clockValue          .referTo(IDs::clock,  "Clock frequncy",    {0.894887, 2.0, 0.01},  1.7734, "MHz");
+    chipTypeValue       .referTo(IDs::chip,   "Chip type",         AYInterface::ChipType::getLabels(),       AYInterface::TypeEnum::AY,    {});
+    channelsLayoutValue .referTo(IDs::layout, "Channels layout",   AYInterface::ChannelsLayout::getLabels(), AYInterface::LayoutEnum::ACB, {});
+    stereoWidthValue    .referTo(IDs::stereo, "Stereo width",      {0.0, 1.0, 0.01},       0.5,    {});
+    removeDCValue       .referTo(IDs::noDC,   "Remove DC",                                 true,   {});
+    baseMidiChannelValue.referTo(IDs::midi,   "Base MIDI channel", {1, 15 - 4, 1},         1,      {});
+}
+
+//==============================================================================
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
 {
-    // TODO staticParams.initialise();
-    staticParams.clockValue.referTo(IDs::clock, "Clock frequncy", {0.894887, 2.0, 0.01}, 1.7734, "MHz");
-    staticParams.chipTypeValue.referTo(IDs::chip, "Chip type", AYInterface::ChipType::getLabels(), AYInterface::TypeEnum::AY, {});
-    staticParams.channelsLayoutValue.referTo(IDs::layout, "Channels layout", AYInterface::ChannelsLayout::getLabels(), AYInterface::LayoutEnum::ABC, {});
-    staticParams.stereoWidthValue.referTo(IDs::stereo, "Stereo width", {0.0, 1.0, 0.01}, 0.5, {});
-    staticParams.removeDCValue.referTo(IDs::noDC, "Remove DC", true, {});
+    staticParams.initialise();
 }
 
 AYChipPlugin::~AYChipPlugin() {

@@ -198,14 +198,16 @@ public:
 
     MaybeRegPair read(const te::MidiMessageWithSource& m);
 
+    void reset() noexcept { registers = {}; }
+
 private:
     uZX::PsgRegsFrame registers = {};
 };
 
 //===================================================================
-class PsgParamsMidiWriter {
+class PsgParamsMidiSequenceWriter {
 public:
-    PsgParamsMidiWriter(int chan) noexcept
+    PsgParamsMidiSequenceWriter(int chan) noexcept
         : channelNumber(chan)
     {}
 
@@ -234,6 +236,8 @@ public:
     const PsgParamFrameData& getParams() const noexcept { return params; }
 
     void nextFrame() noexcept;
+
+    void reset() noexcept { params.clearAll(); }
 
 private:
     int baseChannel = 1;

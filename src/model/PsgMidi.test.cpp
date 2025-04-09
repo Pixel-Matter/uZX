@@ -400,7 +400,7 @@ public:
     void runTest() override {
         beginTest("PsgParamsMidiWriterTests write");
         {
-            PsgParamsMidiWriter writer{1};
+            PsgParamsMidiSequenceWriter writer{1};
             auto frames = getTestRegFrames();
 
             PsgParamFrameData params {};

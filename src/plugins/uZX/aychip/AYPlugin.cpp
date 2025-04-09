@@ -16,11 +16,23 @@ void AYChipPlugin::Params::initialise() {
     baseMidiChannelValue.referTo(IDs::midi,   "Base MIDI channel", {1, 15 - 4, 1},         1,      {});
 }
 
+
+void AYChipPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
+    te::copyPropertiesToCachedValues(v,
+        chipTypeValue.value,
+        clockValue.value,
+        channelsLayoutValue.value,
+        stereoWidthValue.value,
+        removeDCValue.value,
+        baseMidiChannelValue.value
+    );
+}
+
 //==============================================================================
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
+    , midiParamsCCReader(1) // FIXME refer to plugin midi channel
 {
-    staticParams.initialise();
 }
 
 AYChipPlugin::~AYChipPlugin() {
@@ -74,7 +86,8 @@ void AYChipPlugin::reset() {
     chip->setMasterVolume(0.5f);
     chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
     timeFromReset = 0.0;
-    midiCCReader = {};
+    midiParamsCCReader.reset();
+    midiCCReader.reset();
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
@@ -116,14 +129,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 }
 
 void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
-    // TODO staticParams.copyPropertiesToCachedValues(v);
-    te::copyPropertiesToCachedValues(v,
-        staticParams.chipTypeValue.value,
-        staticParams.clockValue.value,
-        staticParams.channelsLayoutValue.value,
-        staticParams.stereoWidthValue.value,
-        staticParams.removeDCValue.value
-    );
+    staticParams.restoreFromTree(v);
 
     for (auto p : getAutomatableParameters())
         p->updateFromAttachedValue();

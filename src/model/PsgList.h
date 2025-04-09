@@ -206,6 +206,11 @@ public:
         std::fill(masks.begin(), masks.end(), false);
     }
 
+    inline void reset() noexcept {
+        std::fill(masks.begin(), masks.end(), false);
+        std::fill(values.begin(), values.end(), 0);
+    }
+
     std::vector<std::pair<PsgParamType, uint16_t>> getParams() const {
         // TODO use ranges?
         std::vector<std::pair<PsgParamType, uint16_t>> result;

@@ -161,9 +161,12 @@ public:
             , stereoWidthValue(p)
             , removeDCValue(p)
             , baseMidiChannelValue(p)
-        {}
+        {
+            initialise();
+        }
 
         void initialise();
+        void restoreFromTree(const juce::ValueTree& v);
     };
 
     Params staticParams {*this};
@@ -174,8 +177,8 @@ private:
     Colour colour;
     CriticalSection lock;
 
+    PsgParamsMidiReader midiParamsCCReader;
     PsgRegsMidiSequenceReader midiCCReader;
-    // PsgRegsAYFrame registers;
     std::unique_ptr<AYInterface> chip;
 
     double timeFromReset;

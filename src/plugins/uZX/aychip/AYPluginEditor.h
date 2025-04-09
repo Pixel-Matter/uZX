@@ -72,7 +72,7 @@ private:
     Slider::TextEntryBoxPosition boxPosition;
 
     void sliderValueChanged(Slider*) override {
-        this->attachment = this->widget.getValue();
+        this->attachment = static_cast<Type>(this->widget.getValue());
     }
 
     void valueChanged(Value&) override {

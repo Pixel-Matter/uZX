@@ -1,12 +1,10 @@
-// #include <string.h>
-// #include <math.h>
+
+#include <JuceHeader.h>
 
 #include "aychip.h"
 
 #include <cmath>
 #include <vector>
-
-#include <JuceHeader.h>
 
 namespace MoTool::uZX {
 

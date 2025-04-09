@@ -1,10 +1,5 @@
-
-#include <JuceHeader.h>
-#include <utility>
-
 #include "AYPlugin.h"
 #include "AYPluginEditor.h"
-#include "tracktion_engine/tracktion_engine.h"
 
 namespace te = tracktion;
 

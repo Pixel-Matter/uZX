@@ -21,12 +21,9 @@
 
     The MoTool uses GPL licence - see LICENCE.md for details.
 */
-
-#include <JuceHeader.h>
-
 #include "app/App.h"
 
-using namespace MoTool; 
+using namespace MoTool;
 
 
 START_JUCE_APPLICATION(MoToolApp)

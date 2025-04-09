@@ -1,5 +1,4 @@
 #include "FileOps.h"
-#include <JuceHeader.h>
 
 namespace MoTool::EditFileOps {
 

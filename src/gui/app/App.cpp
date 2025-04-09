@@ -1,5 +1,3 @@
-#include <JuceHeader.h>
-
 #include "App.h"
 #include "Commands.h"
 

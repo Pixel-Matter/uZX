@@ -1,9 +1,8 @@
-#include <JuceHeader.h>
-#include <sys/types.h>
 
 #include "PsgMidi.h"
 #include "PsgClip.h"
 
+#include <sys/types.h>
 
 using namespace tracktion;
 

@@ -1,5 +1,3 @@
-#include <JuceHeader.h>
-
 #include "PsgList.h"
 #include "PsgClip.h"
 #include "PsgMidi.h"

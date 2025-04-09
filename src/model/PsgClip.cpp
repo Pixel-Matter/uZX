@@ -1,11 +1,10 @@
-#include <JuceHeader.h>
-#include <memory>
-
 #include "PsgClip.h"
 #include "Ids.h"
 #include "PsgMidi.h"
 #include "PsgList.h"
 #include "../formats/psg/PsgFile.h"
+
+#include <memory>
 
 namespace te = tracktion;
 

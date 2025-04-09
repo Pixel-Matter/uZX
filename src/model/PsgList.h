@@ -391,7 +391,7 @@ public:
     };
 
     /** Get time according to MIDI timing */
-    double getTimeInBeats(const PsgParamFrame& frame, PsgClip& clip, PsgList::TimeBase timeBase) const;
+    double getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, PsgList::TimeBase timeBase) const;
 
     /** Creates a juce::MidiMessageSequence from the list in order to be played back
         The sequence will be in terms of edit time, either in seconds or beats

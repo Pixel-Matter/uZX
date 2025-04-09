@@ -343,7 +343,7 @@ te::BeatPosition PsgList::getLastBeatNumber() const {
     return t;
 }
 
-double PsgList::getTimeInBeats(const PsgParamFrame& frame, PsgClip& clip, PsgList::TimeBase timeBase) const {
+double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, PsgList::TimeBase timeBase) const {
     switch (timeBase) {
         case PsgList::TimeBase::beatsRaw:  return frame.getBeatPosition().inBeats();
         case PsgList::TimeBase::beats:     return std::max(0_bp, frame.getEditBeats(clip) - toDuration (clip.getStartBeat())).inBeats();
@@ -355,7 +355,7 @@ double PsgList::getTimeInBeats(const PsgParamFrame& frame, PsgClip& clip, PsgLis
 juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, TimeBase timeBase) const {
     PsgParamsMidiWriter writer {getMidiChannel().getChannelNumber()};
     for (auto f : getFrames()) {
-        writer.write(getTimeInBeats(*f, clip, timeBase), f->getData());
+        writer.write(getTimeInBase(*f, clip, timeBase), f->getData());
     }
     return writer.getSequence();
 }

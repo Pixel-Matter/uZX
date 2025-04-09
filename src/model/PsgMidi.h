@@ -12,22 +12,6 @@ namespace te = tracktion;
 
 namespace MoTool {
 
-class PsgClip;
-class PsgParamFrame;
-//==============================================================================
-
-void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgData& data);
-
-juce::MidiMessageSequence createPsgPlaybackMidiSequence(const te::MidiList& list, const te::MidiClip& clip, te::MidiList::TimeBase timeBase);
-
-void addToSequence(
-    juce::MidiMessageSequence& seq,
-    const PsgClip& clip,
-    PsgList::TimeBase tb,
-    const PsgParamFrame& frame,
-    int channelNumber
-);
-
 //===================================================================
 // TODO use ChoiceEnum<> CRTP
 enum class MidiCCType {
@@ -173,8 +157,37 @@ enum class MidiCCType {
 
 
 //===================================================================
+
+class PsgClip;
+class PsgParamFrame;
+
+//==============================================================================
+
+void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgData& data);
+
+//==============================================================================
+class PsgRegsMidiWriter {
+public:
+    PsgRegsMidiWriter(int chan) noexcept
+        : channelNumber(chan)
+    {}
+
+    double getTimeInBase(const te::MidiControllerEvent& controller) const;
+
+    juce::MidiMessageSequence& getSequence() noexcept { return sequence; }
+    inline void write(double time, int type, int value);
+
+private:
+    int channelNumber = 1;
+    juce::MidiMessageSequence sequence {};
+
+};
+
+juce::MidiMessageSequence createPsgPlaybackMidiSequence(const te::MidiList& list, const te::MidiClip& clip, te::MidiList::TimeBase timeBase);
+
+//===================================================================
 class PsgRegsMidiSequenceReader {
-    public:
+public:
     struct MaybeRegPair {
         int reg = -1;
         uint8_t value = 0;
@@ -185,7 +198,7 @@ class PsgRegsMidiSequenceReader {
 
     MaybeRegPair read(const te::MidiMessageWithSource& m);
 
-    private:
+private:
     uZX::PsgRegsFrame registers = {};
 };
 

@@ -209,6 +209,7 @@ juce::ValueTree PsgList::createPsgList() {
 
 PsgList::PsgList() : state (IDs::PSG) {
     state.setProperty(te::IDs::ver, 1, nullptr);
+    state.setProperty(te::IDs::channelNumber, te::MidiChannel(1), nullptr);
     initialise(nullptr);
 }
 
@@ -217,6 +218,7 @@ PsgList::PsgList(const juce::ValueTree& v, juce::UndoManager* um)
 {
     jassert (state.hasType(IDs::PSG));
     state.setProperty(te::IDs::ver, 1, um);
+    state.setProperty(te::IDs::channelNumber, te::MidiChannel(1), um);
     convertPsgFrameFromStrings(state);
 
     initialise(um);
@@ -343,16 +345,17 @@ te::BeatPosition PsgList::getLastBeatNumber() const {
     return t;
 }
 
-double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, PsgList::TimeBase timeBase) const {
+double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::MidiList::TimeBase timeBase) const {
     switch (timeBase) {
-        case PsgList::TimeBase::beatsRaw:  return frame.getBeatPosition().inBeats();
-        case PsgList::TimeBase::beats:     return std::max(0_bp, frame.getEditBeats(clip) - toDuration (clip.getStartBeat())).inBeats();
-        case PsgList::TimeBase::seconds:   [[ fallthrough ]];
+        case te::MidiList::TimeBase::beatsRaw:  return frame.getBeatPosition().inBeats();
+        case te::MidiList::TimeBase::beats:     return std::max(0_bp, frame.getEditBeats(clip) - toDuration (clip.getStartBeat())).inBeats();
+        case te::MidiList::TimeBase::seconds:   [[ fallthrough ]];
         default:                           return std::max(0_tp, frame.getEditTime(clip) - toDuration (clip.getPosition().getStart())).inSeconds();
     }
 }
 
-juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, TimeBase timeBase) const {
+juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, te::MidiList::TimeBase timeBase) const {
+    DBG("Exporting PSG to MIDI sequence, channel " << getMidiChannel().getChannelNumber());
     PsgParamsMidiWriter writer {getMidiChannel().getChannelNumber()};
     for (auto f : getFrames()) {
         writer.write(getTimeInBase(*f, clip, timeBase), f->getData());

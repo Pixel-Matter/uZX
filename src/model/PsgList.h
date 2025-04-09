@@ -382,23 +382,15 @@ public:
     // void importFromEditTimeSequenceWithNoteExpression (const juce::MidiMessageSequence&, Edit*,
     //                                                    te::TimePosition editTimeOfListTimeZero, juce::UndoManager*);
 
-    /** Determines MIDI event timing. */
-    enum class TimeBase
-    {
-        seconds,    /** Event times will be in seconds relative to the Edit timeline. */
-        beats,      /** Event times will be in beats relative to the Edit timeline. */
-        beatsRaw    /** Event times will be in beats with no quantisation or groove. */
-    };
-
     /** Get time according to MIDI timing */
-    double getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, PsgList::TimeBase timeBase) const;
+    double getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::MidiList::TimeBase timeBase) const;
 
     /** Creates a juce::MidiMessageSequence from the list in order to be played back
         The sequence will be in terms of edit time, either in seconds or beats
         @param PsgClip      The clip boundries to use
         @param TimeBase     The format the exported MIDI event times will be in
     */
-    juce::MidiMessageSequence exportToPlaybackMidiSequence(PsgClip&, TimeBase) const;
+    juce::MidiMessageSequence exportToPlaybackMidiSequence(PsgClip&, te::MidiList::TimeBase) const;
 
     //==============================================================================
     template <typename Type>

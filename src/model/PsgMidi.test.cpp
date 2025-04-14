@@ -15,6 +15,7 @@ using namespace tracktion::literals;
 using namespace tracktion;
 using namespace juce;
 using namespace std::literals;
+using namespace MoTool::uZX;
 
 //==============================================================================
 //==============================================================================
@@ -53,40 +54,40 @@ public:
             expect(data[PsgParamType::VolumeB] == 0x1234, "Expected VolumeB to be 0x1234");
         }
 
-        beginTest("uZX::PsgRegsFrame tone period");
+        beginTest("PsgRegType tone period");
         {
-            uZX::PsgRegsFrame regs;
+            PsgRegsFrame regs;
             regs.setTonePeriod(0, 0x1234);
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineA] == 0x34, "Expected TonePeriodFineA to be 0x34");
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseA] == 0x12, "Expected TonePeriodCoarseA to be 0x12");
+            expect(regs.registers[PsgRegType::TonePeriodFineA] == 0x34, "Expected TonePeriodFineA to be 0x34");
+            expect(regs.registers[PsgRegType::TonePeriodCoarseA] == 0x12, "Expected TonePeriodCoarseA to be 0x12");
             expect(regs.getTonePeriod(0) == 0x1234, "Expected TonePeriodA to be 0x1234");
             expect(regs.hasTonePeriodSet(0), "Expected TonePeriodB to be set");
             expect(!regs.hasTonePeriodSet(1), "Expected TonePeriodB to not be set");
             regs.setTonePeriodCoarse(0, 0x56);
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseA] == 0x56, "Expected TonePeriodCoarseA to be 0x56");
+            expect(regs.registers[PsgRegType::TonePeriodCoarseA] == 0x56, "Expected TonePeriodCoarseA to be 0x56");
             expect(regs.getTonePeriod(0) == 0x5634, "Expected TonePeriodA to be 0x5634");
             regs.setTonePeriodFine(0, 0x78);
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineA] == 0x78, "Expected TonePeriodFineA to be 0x78");
+            expect(regs.registers[PsgRegType::TonePeriodFineA] == 0x78, "Expected TonePeriodFineA to be 0x78");
             expect(regs.getTonePeriod(0) == 0x5678, "Expected TonePeriodA to be 0x5678");
 
             regs.setTonePeriod(1, 0x5678);
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineB] == 0x78, "Expected TonePeriodFineB to be 0x78");
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseB] == 0x56, "Expected TonePeriodCoarseB to be 0x56");
+            expect(regs.registers[PsgRegType::TonePeriodFineB] == 0x78, "Expected TonePeriodFineB to be 0x78");
+            expect(regs.registers[PsgRegType::TonePeriodCoarseB] == 0x56, "Expected TonePeriodCoarseB to be 0x56");
             expect(regs.getTonePeriod(1) == 0x5678, "Expected TonePeriodB to be 0x5678");
             expect(regs.hasTonePeriodSet(0), "Expected TonePeriodA to be set");
 
             regs.setTonePeriod(2, 0x9abc);
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineC] == 0xbc, "Expected TonePeriodFineC to be 0xbc");
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseC] == 0x9a, "Expected TonePeriodCoarseC to be 0x9a");
+            expect(regs.registers[PsgRegType::TonePeriodFineC] == 0xbc, "Expected TonePeriodFineC to be 0xbc");
+            expect(regs.registers[PsgRegType::TonePeriodCoarseC] == 0x9a, "Expected TonePeriodCoarseC to be 0x9a");
             expect(regs.getTonePeriod(2) == 0x9abc, "Expected TonePeriodC to be 0x9abc");
             expect(regs.hasTonePeriodSet(2), "Expected TonePeriodC to be set");
         }
 
-        beginTest("uZX::PsgRegsFrame volume");
+        beginTest("PsgRegType volume");
         {
-            uZX::PsgRegsFrame regs;
+            PsgRegsFrame regs;
             regs.setVolume(0, 1);
-            expect(regs.registers[uZX::PsgRegsFrame::VolumeA] == 1, "Expected VolumeA to be 1");
+            expect(regs.registers[PsgRegType::VolumeA] == 1, "Expected VolumeA to be 1");
             expect(regs.hasVolumeSet(0), "Expected VolumeA to be set");
             expect(!regs.hasVolumeSet(1), "Expected VolumeB to not be set");
             expect(regs.getVolume(0) == 1, "Expected VolumeA to be 1");
@@ -95,67 +96,67 @@ public:
             expect(regs.hasVolumeOrEnvModSet(0), "Expected VolumeOrEnvModSet for A to be set");
 
             regs.setEnvMod(0, true);
-            expect(regs.registers[uZX::PsgRegsFrame::VolumeA] == 0x11, "Expected VolumeA to be 0x11");
+            expect(regs.registers[PsgRegType::VolumeA] == 0x11, "Expected VolumeA to be 0x11");
             expect(regs.getVolume(0) == 1, "Expected VolumeA to be 1");
             expect(regs.getEnvMod(0), "Expected EnvModA to be true");
 
             regs.setEnvMod(1, true);
-            expect(regs.registers[uZX::PsgRegsFrame::VolumeB] == 0x10, "Expected VolumeB to be 0x10");
+            expect(regs.registers[PsgRegType::VolumeB] == 0x10, "Expected VolumeB to be 0x10");
             expect(regs.hasVolumeOrEnvModSet(1), "Expected VolumeOrEnvModSet for A to be set");
             expect(!regs.hasVolumeSet(1), "Expected VolumeB to be not set");
 
             regs.setVolume(1, 2);
-            expect(regs.registers[uZX::PsgRegsFrame::VolumeB] == 0x12, "Expected VolumeB to be 0x12");
+            expect(regs.registers[PsgRegType::VolumeB] == 0x12, "Expected VolumeB to be 0x12");
             expect(regs.hasVolumeSet(1), "Expected VolumeB to be set");
             expect(!regs.hasVolumeSet(2), "Expected VolumeC to not be set");
             expect(regs.getVolume(1) == 2, "Expected VolumeB to be 2");
 
             regs.setVolume(2, 3);
-            expect(regs.registers[uZX::PsgRegsFrame::VolumeC] == 3, "Expected VolumeC to be 3");
+            expect(regs.registers[PsgRegType::VolumeC] == 3, "Expected VolumeC to be 3");
             expect(regs.hasVolumeSet(2), "Expected VolumeC to be set");
             expect(regs.getVolume(2) == 3, "Expected VolumeC to be 3");
         }
 
-        beginTest("uZX::PsgRegsFrame noise period");
+        beginTest("PsgRegType noise period");
         {
-            uZX::PsgRegsFrame regs;
+            PsgRegsFrame regs;
             expect(!regs.hasNoisePeriodSet(), "Expected NoisePeriod to be not set");
             regs.setNoisePeriod(0x1f);
-            expect(regs.registers[uZX::PsgRegsFrame::NoisePeriod] == 0x1f, "Expected NoisePeriod to be 0xf0");
+            expect(regs.registers[PsgRegType::NoisePeriod] == 0x1f, "Expected NoisePeriod to be 0xf0");
             expect(regs.hasNoisePeriodSet(), "Expected NoisePeriod to be set");
         }
 
-        beginTest("uZX::PsgRegsFrame envelope period");
+        beginTest("PsgRegType envelope period");
         {
-            uZX::PsgRegsFrame regs;
+            PsgRegsFrame regs;
             regs.setEnvelopePeriod(0x1234);
-            expect(regs.registers[uZX::PsgRegsFrame::EnvelopePeriodFine] == 0x34, "Expected EnvelopePeriodFine to be 0x34");
-            expect(regs.registers[uZX::PsgRegsFrame::EnvelopePeriodCoarse] == 0x12, "Expected EnvelopePeriodCoarse to be 0x12");
+            expect(regs.registers[PsgRegType::EnvelopePeriodFine] == 0x34, "Expected EnvelopePeriodFine to be 0x34");
+            expect(regs.registers[PsgRegType::EnvelopePeriodCoarse] == 0x12, "Expected EnvelopePeriodCoarse to be 0x12");
             expect(regs.getEnvelopePeriod() == 0x1234, "Expected EnvelopePeriod to be 0x1234");
             expect(regs.hasEnvelopePeriodSet(), "Expected EnvelopePeriod to be set");
             regs.setEnvelopePeriodCoarse(0x56);
-            expect(regs.registers[uZX::PsgRegsFrame::EnvelopePeriodCoarse] == 0x56, "Expected EnvelopePeriodCoarse to be 0x56");
+            expect(regs.registers[PsgRegType::EnvelopePeriodCoarse] == 0x56, "Expected EnvelopePeriodCoarse to be 0x56");
             expect(regs.getEnvelopePeriod() == 0x5634, "Expected EnvelopePeriod to be 0x5634");
             regs.setEnvelopePeriodFine(0x78);
-            expect(regs.registers[uZX::PsgRegsFrame::EnvelopePeriodFine] == 0x78, "Expected EnvelopePeriodFine to be 0x78");
+            expect(regs.registers[PsgRegType::EnvelopePeriodFine] == 0x78, "Expected EnvelopePeriodFine to be 0x78");
             expect(regs.getEnvelopePeriod() == 0x5678, "Expected EnvelopePeriod to be 0x5678");
         }
 
-        beginTest("uZX::PsgRegsFrame envelope shape");
+        beginTest("PsgRegType envelope shape");
         {
-            uZX::PsgRegsFrame regs;
+            PsgRegsFrame regs;
             expect(!regs.hasEnvelopeShapeSet(), "Expected EnvelopeShape to be not set");
             regs.setEnvelopeShape(0x0f);
-            expect(regs.registers[uZX::PsgRegsFrame::EnvelopeShape] == 0x0f, "Expected EnvelopeShape to be 0x0f");
+            expect(regs.registers[PsgRegType::EnvelopeShape] == 0x0f, "Expected EnvelopeShape to be 0x0f");
             expect(regs.hasEnvelopeShapeSet(), "Expected EnvelopeShape to be set");
         }
 
-        beginTest("uZX::PsgRegsFrame mixer");
+        beginTest("PsgRegType mixer");
         {
-            uZX::PsgRegsFrame regs;
+            PsgRegsFrame regs;
             expect(!regs.hasMixerSet(), "Expected Mixer to be not set");
             regs.setMixer(0b00010010);  // inverted
-            expect(regs.registers[uZX::PsgRegsFrame::Mixer] == 0b00010010, "Expected Mixer to be 0x2d");
+            expect(regs.registers[PsgRegType::Mixer] == 0b00010010, "Expected Mixer to be 0x2d");
             expect(regs.hasMixerSet(), "Expected Mixer to be set");
 
             expect(regs.getToneOn(0), "Expected ToneOnA to be true");
@@ -166,9 +167,9 @@ public:
             expect(regs.getNoiseOn(2), "Expected NoiseOnC to be true");
         }
 
-        beginTest("PsgParamFrameData from uZX::PsgRegsFrame");
+        beginTest("PsgParamFrameData from PsgRegType");
         {
-            uZX::PsgRegsFrame regs;
+            PsgRegsFrame regs;
             regs.setTonePeriod(0, 0x1234);
             regs.setToneOn(0, true);
             regs.setEnvMod(0, true);
@@ -335,21 +336,21 @@ public:
             };
             auto regs = data.toRegisters();
 
-            expect(regs.registers[uZX::PsgRegsFrame::VolumeA] == 0x1, "Expected VolumeA to be 0x1");
-            expect(regs.registers[uZX::PsgRegsFrame::VolumeB] == 0x18, "Expected VolumeB to be 0x18");  // env mod
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineA]   == 0x34, "Expected TonePeriodFineA to be 0x34");
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseA] == 0x12, "Expected TonePeriodCoarseA to be 0x12");
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineB]   == 0x78, "Expected TonePeriodFineB to be 0x78");
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseB] == 0x56, "Expected TonePeriodCoarseB to be 0x56");
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodFineC]   == 0x00, "Expected TonePeriodFineC to be 0");
-            expect(regs.registers[uZX::PsgRegsFrame::TonePeriodCoarseC] == 0x00, "Expected TonePeriodCoarseC to be 0");
-            expect(regs.registers[uZX::PsgRegsFrame::Mixer] == 0b00110100, "Expected Mixer to be 0b00110100, got "
-                + std::to_string(regs.registers[uZX::PsgRegsFrame::Mixer]));
+            expect(regs.registers[PsgRegType::VolumeA] == 0x1, "Expected VolumeA to be 0x1");
+            expect(regs.registers[PsgRegType::VolumeB] == 0x18, "Expected VolumeB to be 0x18");  // env mod
+            expect(regs.registers[PsgRegType::TonePeriodFineA]   == 0x34, "Expected TonePeriodFineA to be 0x34");
+            expect(regs.registers[PsgRegType::TonePeriodCoarseA] == 0x12, "Expected TonePeriodCoarseA to be 0x12");
+            expect(regs.registers[PsgRegType::TonePeriodFineB]   == 0x78, "Expected TonePeriodFineB to be 0x78");
+            expect(regs.registers[PsgRegType::TonePeriodCoarseB] == 0x56, "Expected TonePeriodCoarseB to be 0x56");
+            expect(regs.registers[PsgRegType::TonePeriodFineC]   == 0x00, "Expected TonePeriodFineC to be 0");
+            expect(regs.registers[PsgRegType::TonePeriodCoarseC] == 0x00, "Expected TonePeriodCoarseC to be 0");
+            expect(regs.registers[PsgRegType::Mixer] == 0b00110100, "Expected Mixer to be 0b00110100, got "
+                + std::to_string(regs.registers[PsgRegType::Mixer]));
 
-            expect(regs.registers[uZX::PsgRegsFrame::NoisePeriod] == 0x10, "Expected NoisePeriod to be 0x10");
-            expect(regs.registers[uZX::PsgRegsFrame::EnvelopePeriodFine] == 0x21, "Expected EnvelopePeriodFine to be 0x21");
-            expect(regs.registers[uZX::PsgRegsFrame::EnvelopePeriodCoarse] == 0x43, "Expected EnvelopePeriodCoarse to be 0x43");
-            expect(regs.registers[uZX::PsgRegsFrame::EnvelopeShape] == 2, "Expected EnvelopeShape to be 2");
+            expect(regs.registers[PsgRegType::NoisePeriod] == 0x10, "Expected NoisePeriod to be 0x10");
+            expect(regs.registers[PsgRegType::EnvelopePeriodFine] == 0x21, "Expected EnvelopePeriodFine to be 0x21");
+            expect(regs.registers[PsgRegType::EnvelopePeriodCoarse] == 0x43, "Expected EnvelopePeriodCoarse to be 0x43");
+            expect(regs.registers[PsgRegType::EnvelopeShape] == 2, "Expected EnvelopeShape to be 2");
         }
     }
 };
@@ -383,7 +384,7 @@ public:
         }
     }
 
-    static std::vector<uZX::PsgRegsFrame> getTestRegFrames() {
+    static std::vector<PsgRegsFrame> getTestRegFrames() {
         return {{
             {0x12, 0x34, 0,     0,     0,     0,     0x1f, 0b00110110, 0x3,   0,     0,     0,     0,     0},
             {true, true, false, false, false, false, true, true,       true,  false, false, false, false, false}
@@ -400,7 +401,7 @@ public:
     void runTest() override {
         beginTest("PsgParamsMidiWriterTests write");
         {
-            PsgParamsMidiSequenceWriter writer{1};
+            PsgParamsMidiSequenceWriter writer {1};
             auto frames = getTestRegFrames();
 
             PsgParamFrameData params {};
@@ -443,14 +444,16 @@ public:
             compareEvents(seq, expectedEvents);
         }
 
-        beginTest("PsgParamsMidiWriterTests write");
+        beginTest("PsgParamsMidiReader read");
         {
             juce::MidiMessageSequence seq;
             addEvent(seq, 0.00, 1, MidiCCType::Volume, 3);
             addEvent(seq, 0.00, 1, MidiCCType::CC20PeriodCoarse, 104);
             addEvent(seq, 0.00, 1, MidiCCType::CC52PeriodFine, 18);
-            addEvent(seq, 0.00, 1, MidiCCType::GPB1, 1);
-            addEvent(seq, 0.00, 1, MidiCCType::GPB2, 1);
+            addEvent(seq, 0.00, 2, MidiCCType::GPB1, 0);
+            addEvent(seq, 0.00, 2, MidiCCType::GPB2, 0);
+            addEvent(seq, 0.00, 3, MidiCCType::GPB1, 0);
+            addEvent(seq, 0.00, 3, MidiCCType::GPB2, 0);
             addEvent(seq, 0.00, 4, MidiCCType::Breath, 31);
 
             addEvent(seq, 0.02, 1, MidiCCType::Volume, 15);
@@ -465,7 +468,7 @@ public:
             addEvent(seq, 0.02, 4, MidiCCType::CC52PeriodFine, 18);
             addEvent(seq, 0.02, 4, MidiCCType::SoundVariation, 8);
 
-            PsgParamsMidiReader reader{1};
+            PsgParamsMidiReader reader {1};
             std::vector<PsgParamFrameData> frames;
             for (auto e : seq) {
                 auto newParams = reader.read(e->message);
@@ -478,8 +481,8 @@ public:
             DBG("----------------------------------------------");
 
             expect(frames.size() == 2, "Expected 2 frames, got " + std::to_string(frames.size()));
-            expect(frames[0].getParams().size() == 5,
-                "Expected 5 params, got " + std::to_string(frames[0].getParams().size()));
+            expect(frames[0].getParams().size() == 7,
+                "Expected 7 params, got " + std::to_string(frames[0].getParams().size()));
             expect(frames[1].getParams().size() == 9,
                 "Expected 9 params, got " + std::to_string(frames[1].getParams().size()));
 
@@ -489,12 +492,12 @@ public:
             expect(frames[0][PsgParamType::TonePeriodA] == 0x3412,
                 "Expected TonePeriodA to be 0x3412, got "
                 + std::to_string(frames[0][PsgParamType::TonePeriodA].value_or(-1)));
-            expect(frames[0][PsgParamType::ToneIsOnA] == 1, "Expected ToneIsOnA be true");
-            expect(frames[0][PsgParamType::ToneIsOnB] == std::nullopt,
-                "Expected ToneIsOnB be nullopt");
-            expect(frames[0][PsgParamType::NoiseIsOnA] == 1, "Expected NoiseIsOnA be true");
-            expect(frames[0][PsgParamType::NoiseIsOnB] == std::nullopt,
-                "Expected NoiseIsOnB be nullopt");
+            expect(frames[0].getRaw(PsgParamType::ToneIsOnA) == 1, "Expected ToneIsOnA be true");
+            expect(frames[0][PsgParamType::ToneIsOnB] == 0,
+                "Expected ToneIsOnB be 0");
+            expect(frames[0].getRaw(PsgParamType::NoiseIsOnA) == 1, "Expected NoiseIsOnA be true");
+            expect(frames[0][PsgParamType::NoiseIsOnB] == 0,
+                "Expected NoiseIsOnB be 0");
 
             expect(frames[0][PsgParamType::NoisePeriod] == 0x1f, "Expected NoisePeriod be 0x1f");
 

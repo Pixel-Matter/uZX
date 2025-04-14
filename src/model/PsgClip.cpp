@@ -4,6 +4,7 @@
 #include "PsgList.h"
 #include "../formats/psg/PsgFile.h"
 
+#include <cstddef>
 #include <memory>
 
 namespace te = tracktion;
@@ -69,6 +70,60 @@ PsgClip::Ptr PsgClip::insertTo(
     jassert(clip != nullptr);
     clip->getUndoManager()->beginNewTransaction();
     clip->loadFrom(data);
+
+    // debug checks
+    auto seq = clip->getPsg().exportToPlaybackMidiSequence(*clip, te::MidiList::TimeBase::seconds);
+    DBG("PSG clip created with " << seq.getNumEvents() << " events");
+
+    PsgParamsMidiReader reader {1};
+    std::vector<PsgParamFrameData> paramFromSeq;
+    for (auto e : seq) {
+        auto newParams = reader.read(e->message);
+        if (newParams.has_value()) {
+            paramFromSeq.push_back(newParams.value());
+        }
+    }
+    paramFromSeq.push_back(reader.getParams());
+    DBG("PSG clip converted to " << paramFromSeq.size() << " frames");
+    // ^^^ That is sparce, this vvv is dense
+    DBG("PSG data has " << data.frames.size() << " frames");
+
+    uZX::PsgRegsFrame regsFromSeq, regsFromPsg;
+    DBG("------------- Regs from params 0 -------------");
+    regsFromSeq.debugPrint();
+    size_t idxPsg = 0;
+    for (size_t i = 0; i < paramFromSeq.size() && idxPsg < data.frames.size(); ++i, ++idxPsg) {
+        paramFromSeq[i].updateRegisters(regsFromSeq);
+        // auto regsFromSeq = paramFromSeq[i].toRegisters();
+
+        while (idxPsg < data.frames.size() && data.frames[idxPsg].isEmpty()) {
+            ++idxPsg;
+            // DBG("Skipping empty frame " << idxPsg);
+        };
+        regsFromPsg.update(data.frames[idxPsg]);
+        if (i < 7) {
+            DBG("------------------------------------------------------------ at frame " << i << ", psg frame " << idxPsg);
+            if (regsFromPsg.registers != regsFromSeq.registers) {
+            // if (data.frames[idxPsg].isSupersetOf(regsFromSeq)) {
+                DBG("Registers do NOT match after conversion from params");
+            }
+            DBG("------------- Params -------------");
+            paramFromSeq[i].debugPrint();
+            DBG("------------- Regs from params -------------");
+            regsFromSeq.debugPrint();
+            DBG("------------- PSG -------------");
+            regsFromPsg.debugPrint();
+            // break;
+        }
+        regsFromSeq.clear();
+        regsFromPsg.clear();
+    }
+    // DBG("------------------------------------------------------------");
+    // if (idxPsg < data.frames.size()) {
+    //     DBG("PSG data has " << data.frames.size() << " frames, but only " << paramFromSeq.size() << " params");
+    // }
+    // end of debug checks
+
     return clip;
 }
 

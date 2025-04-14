@@ -45,7 +45,7 @@ public:
 
     MidiMessageSequence createPlaybackMidiSequence(const te::MidiList& list, te::MidiClip& clip, te::MidiList::TimeBase tb, bool generateMPE) override {
         if (auto psgClip = dynamic_cast<PsgClip*>(&clip)) {
-            psgClip->getPsg().exportToPlaybackMidiSequence(*psgClip, tb);
+            return psgClip->getPsg().exportToPlaybackMidiSequence(*psgClip, tb);
             // return createPsgPlaybackMidiSequence(list, clip, tb);
         }
         return te::MidiList::createDefaultPlaybackMidiSequence(list, clip, tb, generateMPE);

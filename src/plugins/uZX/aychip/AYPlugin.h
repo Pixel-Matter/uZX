@@ -179,6 +179,7 @@ private:
 
     PsgParamsMidiReader midiParamsCCReader;
     PsgRegsMidiSequenceReader midiCCReader;
+    PsgRegsFrame registersFrame;
     std::unique_ptr<AYInterface> chip;
 
     double timeFromReset;
@@ -192,6 +193,7 @@ private:
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
+    void updateChip(const PsgParamFrameData& params);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };

@@ -228,7 +228,9 @@ class PsgParamsMidiReader {
 public:
     PsgParamsMidiReader(int chan) noexcept
         : baseChannel(chan)
-    {}
+    {
+        params.resetMixer();
+    }
 
     std::optional<PsgParamFrameData> read(const juce::MidiMessage& m);
 
@@ -237,11 +239,15 @@ public:
 
     void nextFrame() noexcept;
 
-    void reset() noexcept { params.clearAll(); }
+    void reset() noexcept {
+        params.clearAll();
+    }
+
+    void setBaseChannel(int chan) noexcept { baseChannel = chan; }
 
 private:
     int baseChannel = 1;
-    double currentTimestamp = std::numeric_limits<double>::min();
+    double currentTimestamp = std::numeric_limits<double>::lowest();
     PsgParamFrameData params {};
 };
 

@@ -1,5 +1,7 @@
 #include "AYPlugin.h"
 #include "AYPluginEditor.h"
+#include "juce_core/juce_core.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 
 namespace te = tracktion;
 
@@ -31,7 +33,8 @@ void AYChipPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
 //==============================================================================
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
-    , midiParamsCCReader(1) // FIXME refer to plugin midi channel
+    , staticParams(*this)
+    , midiParamsCCReader(staticParams.baseMidiChannelValue)
 {
 }
 
@@ -55,10 +58,13 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 const ScopedLock sl(lock);
                 chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
             }
-        } else if (id == IDs::noDC) {
-            // no need to do anything
-            // DBG("removeDC = " << (staticParams.removeDCValue ? "true" : "false"));
+        } else if (id == IDs::midi) {
+            midiParamsCCReader.setBaseChannel(staticParams.baseMidiChannelValue);
         }
+        // no need to do anything
+        // else if (id == IDs::noDC) {
+        //     // DBG("removeDC = " << (staticParams.removeDCValue ? "true" : "false"));
+        // }
         propertiesChanged();
     }
     Plugin::valueTreePropertyChanged(v, id);
@@ -88,6 +94,21 @@ void AYChipPlugin::reset() {
     timeFromReset = 0.0;
     midiParamsCCReader.reset();
     midiCCReader.reset();
+    registersFrame = {};
+}
+
+void AYChipPlugin::updateChip(const PsgParamFrameData& params) {
+    // already called under ScopedLock
+    DBG("----- updateChip Params");
+    params.debugPrint();
+    auto regs = params.toRegisters();
+    DBG("----- updateChip Registers");
+    regs.debugPrint();
+    for (size_t i = 0; i < PsgRegsFrame::size(); ++i) {
+        if (regs.isSet(i)) {
+            chip->setRegister(i, regs.registers[i]);
+        }
+    }
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
@@ -107,15 +128,19 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     for (auto& m : *fc.bufferForMidiMessages) {
         // process up to this event
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
-        if (timeSample - currentSample > 0) {
+        if (timeSample <= currentSample) {
+            DBG("----- midiParamsCCReader: " << m.getTimeStamp());
+            DBG(m.getDescription());
+            midiParamsCCReader.read(m);
+        } else {
+            DBG("----- Next midi time " << currentSample << " -> " << timeSample);
+            updateChip(midiParamsCCReader.getParams());
+
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
-                               static_cast<size_t>(timeSample - currentSample), staticParams.removeDCValue);
+            static_cast<size_t>(timeSample - currentSample), staticParams.removeDCValue);
+            midiParamsCCReader.nextFrame();
             currentSample = timeSample;
         }
-        if (auto regpair = midiCCReader.read(m)) {
-            chip->setRegister(static_cast<size_t>(regpair.reg), regpair.value);
-        }
-
     }
     // process to the end of the block
     if (currentSample < fc.destBuffer->getNumSamples()) {

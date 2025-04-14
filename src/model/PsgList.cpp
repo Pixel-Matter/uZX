@@ -299,20 +299,44 @@ void PsgList::removeAllFrames(juce::UndoManager* um) {
 }
 
 void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager* um) {
-    // use PsgParamChangeTracker
     PsgParamFrameData params;
+    params.resetMixer();  // because AY regs after reset has all NNNTTT flags set (bits==0)
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];
-        if (frame.empty()) {
+        if (frame.isEmpty()) {
             continue;
         }
         auto timeSec = data.frameNumToSeconds(i);
         auto beat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
-        // FIXME too slow
-        // list.addFrameEvent(startBeat, frame, um);
         params.update(PsgParamFrameData {frame});  // tracks really changed params
         auto v = PsgParamFrame::createPsgFrameValueTree(beat, params);
         state.addChild(v, -1, um);
+
+        // if (i < 100) {
+            auto regsFromParams = params.toRegisters();
+            bool match = true;
+            for (size_t j = 0; j < uZX::PsgRegsFrame::size(); ++j) {
+                if (frame.mask[j] && frame.registers[j] != regsFromParams.registers[j]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (!match) {
+                DBG("------------------------------------------------------------");
+                DBG("Registers do NOT match after conversion from params at frame " << i);
+                DBG("------------- Frame -------------");
+                frame.debugPrint();
+                DBG("------------- Regs From Params -------------");
+                regsFromParams.debugPrint();
+                DBG("------------- Params from frame -------------");
+                PsgParamFrameData {frame}.debugPrint();
+                DBG("------------- Params -------------");
+                params.debugPrint();
+            }
+            // else {
+            //     DBG("Registers MATCH after conversion from params at frame " << i);
+            // }
+        // }
     }
 }
 
@@ -354,8 +378,8 @@ double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::Mid
     }
 }
 
-juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, te::MidiList::TimeBase timeBase) const {
-    DBG("Exporting PSG to MIDI sequence, channel " << getMidiChannel().getChannelNumber());
+[[nodiscard]] juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, te::MidiList::TimeBase timeBase) const {
+    DBG("Exporting PSG to MIDI sequence, channel " << getMidiChannel().getChannelNumber() << ", timebase " << (timeBase == te::MidiList::TimeBase::beats ? "beats" : "seconds"));
     PsgParamsMidiSequenceWriter writer {getMidiChannel().getChannelNumber()};
     for (auto f : getFrames()) {
         writer.write(getTimeInBase(*f, clip, timeBase), f->getData());

@@ -114,6 +114,7 @@ public:
             set(PsgParamType::NoiseIsOnA, regs.getNoiseOn(0));
             set(PsgParamType::NoiseIsOnB, regs.getNoiseOn(1));
             set(PsgParamType::NoiseIsOnC, regs.getNoiseOn(2));
+            // DBG("Mixer from PsgRegsFrame (" << static_cast<int>(regs.getMixer()) << ") set");
         }
         if (regs.hasNoisePeriodSet()) {
             set(PsgParamType::NoisePeriod, regs.getNoisePeriod());
@@ -126,26 +127,32 @@ public:
         }
     }
 
-    uZX::PsgRegsFrame toRegisters() {
-        uZX::PsgRegsFrame regs;
+    void updateRegisters(uZX::PsgRegsFrame& regs) const noexcept {
         // per-tone-channel parameters
         for (size_t i = 0; i < 3; ++i) {
-            if (masks[size_t(PsgParamType::VolumeA) + size_t(i)]) {
-                regs.setVolume(i, static_cast<uint8>(values[size_t(PsgParamType::VolumeA) + size_t(i)]));
-            }
-            if (masks[size_t(PsgParamType::TonePeriodA) + size_t(i)]) {
-                regs.setTonePeriod(i, values[size_t(PsgParamType::TonePeriodA) + size_t(i)]);
-            }
-            if (masks[size_t(PsgParamType::ToneIsOnA) + size_t(i)]) {
-                regs.setToneOn(i, values[size_t(PsgParamType::ToneIsOnA) + size_t(i)]);
-            }
-            if (masks[size_t(PsgParamType::EnvelopeIsOnA) + size_t(i)]) {
-                regs.setEnvMod(i, values[size_t(PsgParamType::EnvelopeIsOnA) + size_t(i)]);
-            }
-            if (masks[size_t(PsgParamType::NoiseIsOnA) + size_t(i)]) {
-                regs.setNoiseOn(i, values[size_t(PsgParamType::NoiseIsOnA) + size_t(i)]);
+            if (masks[size_t(PsgParamType::EnvelopeIsOnA) + i]
+                || masks[size_t(PsgParamType::VolumeA) + i]) {
+                regs.setVolumeAndEnvMod(i, uint8(values[size_t(PsgParamType::VolumeA) + i]), values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
             }
         }
+        for (size_t i = 0; i < 3; ++i) {
+            if (masks[size_t(PsgParamType::TonePeriodA) + i]) {
+                regs.setTonePeriod(i, values[size_t(PsgParamType::TonePeriodA) + i]);
+            }
+        }
+        // Set all mixer params regardless of individual mask
+        bool mixerSet = false;
+        for (size_t i = 0; i < 3; ++i) {
+            mixerSet = mixerSet || masks[size_t(PsgParamType::ToneIsOnA) + i] || masks[size_t(PsgParamType::NoiseIsOnA) + i];
+        }
+        if (mixerSet) {
+            for (size_t i = 0; i < 3; ++i) {
+                regs.setToneOn(i, values[size_t(PsgParamType::ToneIsOnA) + i]);
+                regs.setNoiseOn(i, values[size_t(PsgParamType::NoiseIsOnA) + i]);
+            }
+            // DBG("Mixer set to " << regs.getMixer());
+        }
+        // Noise and env para
         if (masks[size_t(PsgParamType::NoisePeriod)]) {
             regs.setNoisePeriod(static_cast<uint8>(values[size_t(PsgParamType::NoisePeriod)]));
         }
@@ -155,6 +162,11 @@ public:
         if (masks[size_t(PsgParamType::EnvelopeShape)]) {
             regs.setEnvelopeShape(static_cast<uint8>(values[size_t(PsgParamType::EnvelopeShape)]));
         }
+    }
+
+    uZX::PsgRegsFrame toRegisters() const noexcept {
+        uZX::PsgRegsFrame regs;
+        updateRegisters(regs);
         return regs;
     }
 
@@ -164,15 +176,18 @@ public:
 
     void update(const PsgParamFrameData& data) noexcept {
         // track what params was changed actually, compare with current values
+        // values = data.values;
         for (size_t i = 0; i < PsgParamType::size(); ++i) {
             masks[i] = data.masks[i] && data.values[i] != values[i];
-            values[i] = data.values[i];
+            if (masks[i]) {
+                values[i] = data.values[i];
+            }
         }
     }
 
     void debugPrint() const noexcept {
         for (size_t i = 0; i < PsgParamType::size(); ++i) {
-            DBG("PsgParamFrameData: " << std::string(static_cast<PsgParamType>(static_cast<int>(i)).getLabel()) << ": " << values[i] << " " << (masks[i] ? "true" : "false"));
+            DBG(std::string(static_cast<PsgParamType>(static_cast<int>(i)).getLabel()) << ": " << values[i] << " " << (masks[i] ? "true" : "false"));
         }
     }
 
@@ -194,7 +209,7 @@ public:
         return values[static_cast<size_t>(type)];
     }
 
-    inline uint16_t getRawValue(PsgParamType type) const noexcept {
+    inline uint16_t getRaw(PsgParamType type) const noexcept {
         return values[static_cast<size_t>(type)];
     }
 
@@ -211,8 +226,28 @@ public:
         std::fill(values.begin(), values.end(), 0);
     }
 
+    inline void resetMixer() noexcept {
+        values[static_cast<size_t>(PsgParamType::ToneIsOnA)] = 1;
+        values[static_cast<size_t>(PsgParamType::ToneIsOnB)] = 1;
+        values[static_cast<size_t>(PsgParamType::ToneIsOnC)] = 1;
+        values[static_cast<size_t>(PsgParamType::NoiseIsOnA)] = 1;
+        values[static_cast<size_t>(PsgParamType::NoiseIsOnB)] = 1;
+        values[static_cast<size_t>(PsgParamType::NoiseIsOnC)] = 1;
+        masks[static_cast<size_t>(PsgParamType::ToneIsOnA)]  = false;
+        masks[static_cast<size_t>(PsgParamType::ToneIsOnB)]  = false;
+        masks[static_cast<size_t>(PsgParamType::ToneIsOnC)]  = false;
+        masks[static_cast<size_t>(PsgParamType::NoiseIsOnA)] = false;
+        masks[static_cast<size_t>(PsgParamType::NoiseIsOnB)] = false;
+        masks[static_cast<size_t>(PsgParamType::NoiseIsOnC)] = false;
+        // masks[static_cast<size_t>(PsgParamType::ToneIsOnA)] = true;
+        // masks[static_cast<size_t>(PsgParamType::ToneIsOnB)] = true;
+        // masks[static_cast<size_t>(PsgParamType::ToneIsOnC)] = true;
+        // masks[static_cast<size_t>(PsgParamType::NoiseIsOnA)] = true;
+        // masks[static_cast<size_t>(PsgParamType::NoiseIsOnB)] = true;
+        // masks[static_cast<size_t>(PsgParamType::NoiseIsOnC)] = true;
+    }
+
     std::vector<std::pair<PsgParamType, uint16_t>> getParams() const {
-        // TODO use ranges?
         std::vector<std::pair<PsgParamType, uint16_t>> result;
         result.reserve(std::size(values));
         for (size_t i = 0; i < std::size(values); ++i) {
@@ -395,7 +430,7 @@ public:
         @param PsgClip      The clip boundries to use
         @param TimeBase     The format the exported MIDI event times will be in
     */
-    juce::MidiMessageSequence exportToPlaybackMidiSequence(PsgClip&, te::MidiList::TimeBase) const;
+    [[nodiscard]] juce::MidiMessageSequence exportToPlaybackMidiSequence(PsgClip&, te::MidiList::TimeBase) const;
 
     //==============================================================================
     template <typename Type>

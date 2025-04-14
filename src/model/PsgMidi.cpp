@@ -59,6 +59,7 @@ void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX:
 //===============================================================================
 
 void PsgRegsMidiWriter::write(double time, int type, int value) {
+    jassertfalse;
     if (juce::isPositiveAndBelow(type, 128)) {
         if (type >= MIDI_PSG_CC_COARSE_START && type < MIDI_PSG_CC_COARSE_START + 14) {
             sequence.addEvent(juce::MidiMessage::controllerEvent(channelNumber, type, value >> 4), time);
@@ -260,10 +261,10 @@ std::optional<PsgParamFrameData> PsgParamsMidiReader::read(const juce::MidiMessa
         const auto val = static_cast<uint16_t>(m.getControllerValue());
         if (psgChan == 3) {
             if (ctrlNum == MidiCCType::CC20PeriodCoarse) { // Envelope coarse
-                auto raw = params.getRawValue(PsgParamType::EnvelopePeriod);
+                auto raw = params.getRaw(PsgParamType::EnvelopePeriod);
                 params.set(PsgParamType::EnvelopePeriod, static_cast<uint16_t>((val << 7) | (raw & 0x7F)));
             } else if (ctrlNum == MidiCCType::CC52PeriodFine) { // Envelope fine
-                auto raw = params.getRawValue(PsgParamType::EnvelopePeriod);
+                auto raw = params.getRaw(PsgParamType::EnvelopePeriod);
                 params.set(PsgParamType::EnvelopePeriod, static_cast<uint16_t>((raw & 0xFF80) | val));
             } else if (ctrlNum == MidiCCType::Breath) { // Noise period
                 params.set(PsgParamType::NoisePeriod, val);
@@ -274,10 +275,10 @@ std::optional<PsgParamFrameData> PsgParamsMidiReader::read(const juce::MidiMessa
             if (ctrlNum == MidiCCType::Volume) { // Tone volume
                 params.set(PsgParamType::VolumeA + psgChan, val);
             } else if (ctrlNum == MidiCCType::CC20PeriodCoarse) { // Tone period coarse
-                auto raw = params.getRawValue(PsgParamType::TonePeriodA + psgChan);
+                auto raw = params.getRaw(PsgParamType::TonePeriodA + psgChan);
                 params.set(PsgParamType::TonePeriodA + psgChan, static_cast<uint16_t>((val << 7) | (raw & 0x7F)));
             } else if (ctrlNum == MidiCCType::CC52PeriodFine) { // Tone period fine
-                auto raw = params.getRawValue(PsgParamType::TonePeriodA + psgChan);
+                auto raw = params.getRaw(PsgParamType::TonePeriodA + psgChan);
                 params.set(PsgParamType::TonePeriodA + psgChan, static_cast<uint16_t>((raw & 0xFF80) | val));
             } else if (ctrlNum == MidiCCType::GPB1) { // Tone on/off
                 params.set(PsgParamType::ToneIsOnA + psgChan, val);

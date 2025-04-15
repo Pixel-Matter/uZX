@@ -71,37 +71,40 @@ using PsgParamType = MoTool::Util::EnumChoice<PsgParamTypeEnum>;
 class PsgParamFrameData {
 public:
 
-    PsgParamFrameData() noexcept = default;
-    PsgParamFrameData(const PsgParamFrameData&) = default;
-    PsgParamFrameData(PsgParamFrameData&&) = default;
-    PsgParamFrameData& operator=(const PsgParamFrameData&) = default;
-    PsgParamFrameData& operator=(PsgParamFrameData&&) = default;
-    ~PsgParamFrameData() = default;
+    constexpr PsgParamFrameData() noexcept = default;
+    constexpr PsgParamFrameData(const PsgParamFrameData&) = default;
+    constexpr PsgParamFrameData(PsgParamFrameData&&) = default;
+    constexpr PsgParamFrameData& operator=(const PsgParamFrameData&) = default;
+    constexpr PsgParamFrameData& operator=(PsgParamFrameData&&) = default;
+    constexpr ~PsgParamFrameData() = default;
 
-    PsgParamFrameData(std::initializer_list<std::pair<PsgParamType, uint16_t>> params) noexcept {
+    constexpr PsgParamFrameData(std::initializer_list<std::pair<PsgParamType, uint16_t>> params) noexcept {
         for (const auto& [type, value] : params) {
             set(type, value);
         }
     }
 
-    PsgParamFrameData(const std::vector<std::pair<PsgParamType, uint16_t>>& params) noexcept {
+    constexpr PsgParamFrameData(const std::vector<std::pair<PsgParamType, uint16_t>>& params) noexcept {
         for (const auto& [type, value] : params) {
             set(type, value);
         }
     }
 
-    PsgParamFrameData(const std::vector<std::tuple<PsgParamType, uint16_t, bool>>& params) noexcept {
+    constexpr PsgParamFrameData(const std::vector<std::tuple<PsgParamType, uint16_t, bool>>& params) noexcept {
         for (const auto& [type, value, isSet] : params) {
             values[static_cast<size_t>(type)] = value;
             masks[static_cast<size_t>(type)] = isSet;
         }
     }
 
-    explicit PsgParamFrameData(const uZX::PsgRegsFrame& regs) noexcept {
+    explicit constexpr PsgParamFrameData(const uZX::PsgRegsFrame& regs) noexcept {
         for (size_t i = 0; i < 3; ++i) {
             if (regs.hasVolumeOrEnvModSet(i)) {
-                set(PsgParamType(int(PsgParamType::VolumeA) + int(i)), regs.getVolume(i));
                 set(PsgParamType(int(PsgParamType::EnvelopeIsOnA) + int(i)), regs.getEnvMod(i));
+                if (!regs.getEnvMod(i)) {
+                    // volume set only if envelope is off
+                    set(PsgParamType(int(PsgParamType::VolumeA) + int(i)), regs.getVolume(i));
+                }
             }
             if (regs.hasTonePeriodSet(i)) {
                 set(PsgParamType(int(PsgParamType::TonePeriodA) + int(i)), regs.getTonePeriod(i));
@@ -127,7 +130,7 @@ public:
         }
     }
 
-    void updateRegisters(uZX::PsgRegsFrame& regs) const noexcept {
+    constexpr void updateRegisters(uZX::PsgRegsFrame& regs) const noexcept {
         // per-tone-channel parameters
         for (size_t i = 0; i < 3; ++i) {
             if (masks[size_t(PsgParamType::EnvelopeIsOnA) + i]
@@ -188,6 +191,13 @@ public:
     void debugPrint() const noexcept {
         for (size_t i = 0; i < PsgParamType::size(); ++i) {
             DBG(std::string(static_cast<PsgParamType>(static_cast<int>(i)).getLabel()) << ": " << values[i] << " " << (masks[i] ? "true" : "false"));
+        }
+    }
+
+    void debugPrintSet() const noexcept {
+        for (size_t i = 0; i < PsgParamType::size(); ++i) {
+            if (!masks[i]) continue;
+            DBG(std::string(static_cast<PsgParamType>(static_cast<int>(i)).getLabel()) << ": " << values[i]);
         }
     }
 

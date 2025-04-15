@@ -300,6 +300,7 @@ void PsgList::removeAllFrames(juce::UndoManager* um) {
 
 void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager* um) {
     PsgParamFrameData params;
+    uZX::PsgRegsFrame regsState;
     params.resetMixer();  // because AY regs after reset has all NNNTTT flags set (bits==0)
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];
@@ -308,7 +309,10 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
         }
         auto timeSec = data.frameNumToSeconds(i);
         auto beat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
-        params.update(PsgParamFrameData {frame});  // tracks really changed params
+        regsState.clear();
+        regsState.update(data.frames[i]);
+        params.clearAll();
+        params.update(regsState);  // tracks really changed params
         auto v = PsgParamFrame::createPsgFrameValueTree(beat, params);
         state.addChild(v, -1, um);
 
@@ -316,7 +320,7 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
             auto regsFromParams = params.toRegisters();
             bool match = true;
             for (size_t j = 0; j < uZX::PsgRegsFrame::size(); ++j) {
-                if (frame.mask[j] && frame.registers[j] != regsFromParams.registers[j]) {
+                if (regsState.mask[j] && regsState.registers[j] != regsFromParams.registers[j]) {
                     match = false;
                     break;
                 }
@@ -325,11 +329,11 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
                 DBG("------------------------------------------------------------");
                 DBG("Registers do NOT match after conversion from params at frame " << i);
                 DBG("------------- Frame -------------");
-                frame.debugPrint();
+                regsState.debugPrint();
                 DBG("------------- Regs From Params -------------");
                 regsFromParams.debugPrint();
                 DBG("------------- Params from frame -------------");
-                PsgParamFrameData {frame}.debugPrint();
+                PsgParamFrameData {regsState}.debugPrint();
                 DBG("------------- Params -------------");
                 params.debugPrint();
             }

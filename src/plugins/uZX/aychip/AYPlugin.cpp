@@ -99,11 +99,11 @@ void AYChipPlugin::reset() {
 
 void AYChipPlugin::updateChip(const PsgParamFrameData& params) {
     // already called under ScopedLock
-    DBG("----- updateChip Params");
-    params.debugPrint();
+    // DBG("----- updateChip Params");
+    // params.debugPrint();
     auto regs = params.toRegisters();
-    DBG("----- updateChip Registers");
-    regs.debugPrint();
+    // DBG("----- updateChip Registers");
+    // regs.debugPrint();
     for (size_t i = 0; i < PsgRegsFrame::size(); ++i) {
         if (regs.isSet(i)) {
             chip->setRegister(i, regs.registers[i]);
@@ -129,16 +129,17 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         // process up to this event
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample <= currentSample) {
-            DBG("----- midiParamsCCReader: " << m.getTimeStamp());
-            DBG(m.getDescription());
+            // DBG("----- midiParamsCCReader: " << m.getTimeStamp());
+            // DBG(m.getDescription());
             midiParamsCCReader.read(m);
         } else {
-            DBG("----- Next midi time " << currentSample << " -> " << timeSample);
+            // DBG("----- Next midi time " << currentSample << " -> " << timeSample);
             updateChip(midiParamsCCReader.getParams());
 
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
             static_cast<size_t>(timeSample - currentSample), staticParams.removeDCValue);
-            midiParamsCCReader.nextFrame();
+            // midiParamsCCReader.nextFrame();
+            midiParamsCCReader.read(m);
             currentSample = timeSample;
         }
     }

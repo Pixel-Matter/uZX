@@ -4,6 +4,7 @@
 #include "model/PsgList.h"
 #include "model/PsgMidi.h"
 
+#include <cstdint>
 #include <optional>
 #include <string>
 
@@ -19,9 +20,9 @@ using namespace MoTool::uZX;
 
 //==============================================================================
 //==============================================================================
-class PsgParamsMidiTests  : public UnitTest {
+class PsgParamsTests  : public UnitTest {
 public:
-    PsgParamsMidiTests() : UnitTest("PsgParams", "MoTool") {}
+    PsgParamsTests() : UnitTest("PsgParams", "MoTool") {}
 
     void runTest() override {
         beginTest("PsgParamFrameData getParams");
@@ -167,7 +168,7 @@ public:
             expect(regs.getNoiseOn(2), "Expected NoiseOnC to be true");
         }
 
-        beginTest("PsgParamFrameData from PsgRegType");
+        beginTest("PsgParamFrameData from PsgRegsFrame");
         {
             PsgRegsFrame regs;
             regs.setTonePeriod(0, 0x1234);
@@ -186,7 +187,7 @@ public:
             auto f = PsgParamFrameData {regs};
 
             expect(f[PsgParamType::TonePeriodA] == 0x1234, "Expected TonePeriodA to be 0x1234");
-            expect(f[PsgParamType::VolumeA] == 0, "Expected VolumeA to be 0");
+            expect(f[PsgParamType::VolumeA] == std::nullopt, "Expected VolumeA to be std::nullopt");
             expect(f[PsgParamType::ToneIsOnA] == true, "Expected ToneIsOnA to be true");
             expect(f[PsgParamType::ToneIsOnB] == true, "Expected ToneIsOnB to be true");
             expect(f[PsgParamType::EnvelopeIsOnA] == true, "Expected EnvelopeIsOnA to be true");
@@ -203,6 +204,97 @@ public:
             expect(f[PsgParamType::NoisePeriod] == 0xf0, "Expected NoisePeriod to be 0xf0");
             expect(f[PsgParamType::EnvelopePeriod] == 0x1234, "Expected EnvelopePeriod to be 0x1234");
             expect(f[PsgParamType::EnvelopeShape] == 0x0f, "Expected EnvelopeShape to be 0x0f");
+        }
+
+        beginTest("PsgParamFrameData from PsgRegsFrame series");
+        {
+            static constexpr std::array<PsgRegsFrame, 3> testRegFrames {
+                {{
+                //  Period A       Period B      Period C      Noise Mxr NNNTTT  Vol A  Vol B  Vol C  Env Period    Shape
+                    {0x12,  0x34,  0x00,  0x00,  0x57,  0x13,  0x1f, 0b00110101, 0x03,  0x01,  0x00,  0x00,  0x00,  0x00},
+                    {true,  true,  false, false, true,  true,  true, true,       true,  true,  false, false, false, false}
+                }, {
+                    {0x00,  0x00,  0x56,  0x32,  0x00,  0x24,  0x00, 0b00101110, 0x00,  0x18,  0x01,  0x12,  0x34,  0x08},
+                    {false, false, true,  true,  false, true,  true, true,       false, true,  true,  true,  true,  true}
+                }, {
+                    {0x00,  0x33,  0x00,  0x00,  0x34,  0x00,  0x10, 0b00000000, 0x13,  0x00,  0x11,  0x24,  0x00,  0x00},
+                    {false, true,  true,  false, true,  false, true, false,      true,  false, false, true,  false, false}
+                }}
+            };
+
+            static constexpr std::array<std::array<uint8_t, 14>, 3> expectedCumulRegStates {
+                {{
+                //  Period A       Period B      Period C      Noise Mxr NNNTTT  Vol A  Vol B  Vol C  Env Period    Shape
+                    {0x12,  0x34,  0x00,  0x00,  0x57,  0x13,  0x1f, 0b00110101, 0x03,  0x01,  0x00,  0x00,  0x00,  0x00},
+                }, {
+                    {0x12,  0x34,  0x56,  0x32,  0x57,  0x24,  0x00, 0b00101110, 0x03,  0x18,  0x01,  0x12,  0x34,  0x08},
+                }, {
+                    {0x12,  0x33,  0x00,  0x32,  0x34,  0x24,  0x10, 0b00101110, 0x13,  0x18,  0x01,  0x24,  0x34,  0x08},
+                }}
+            };
+
+            static std::array<PsgParamFrameData, 3> expectedParams {{
+                {
+                    {PsgParamType::TonePeriodA,   0x3412},
+                    {PsgParamType::TonePeriodC,   0x1357},
+                    {PsgParamType::NoisePeriod,   0x1f},
+                    {PsgParamType::ToneIsOnA,     false},
+                    {PsgParamType::ToneIsOnB,     true},
+                    {PsgParamType::ToneIsOnC,     false},
+                    {PsgParamType::NoiseIsOnA,    true},
+                    {PsgParamType::NoiseIsOnB,    false},
+                    {PsgParamType::NoiseIsOnC,    false},
+                    {PsgParamType::VolumeA,       0x03},
+                    {PsgParamType::VolumeB,       0x01},
+                    {PsgParamType::EnvelopeIsOnA, false},
+                    {PsgParamType::EnvelopeIsOnB, false},
+                },
+                {
+                    {PsgParamType::TonePeriodB,   0x3256},
+                    {PsgParamType::TonePeriodC,   0x2457},
+                    {PsgParamType::NoisePeriod,   0x00},
+                    {PsgParamType::ToneIsOnA,     true},
+                    {PsgParamType::ToneIsOnB,     false},
+                    {PsgParamType::ToneIsOnC,     false},
+                    {PsgParamType::NoiseIsOnA,    false},
+                    {PsgParamType::NoiseIsOnB,    true},
+                    {PsgParamType::NoiseIsOnC,    false},
+                    {PsgParamType::VolumeC,       0x01},
+                    {PsgParamType::EnvelopeIsOnB, true},
+                    {PsgParamType::EnvelopeIsOnC, false},
+                    {PsgParamType::EnvelopePeriod,0x3412},
+                    {PsgParamType::EnvelopeShape, 0x08}
+                },
+                {
+                    {PsgParamType::TonePeriodA,   0x3312},
+                    {PsgParamType::TonePeriodB,   0x3200},
+                    {PsgParamType::TonePeriodC,   0x2434},
+                    {PsgParamType::NoisePeriod,   0x10},
+                    {PsgParamType::EnvelopeIsOnA, true},
+                    {PsgParamType::EnvelopePeriod,0x3424},
+                }
+            }};
+
+            PsgRegsFrame state;
+            for (size_t i = 0; i < testRegFrames.size(); ++i) {
+                state.clear();
+                state.update(testRegFrames[i]);
+                auto params = PsgParamFrameData {state};
+
+                auto& expected = expectedCumulRegStates[i];
+                expect(state.registers == expected, "Unexpected register state in index " + std::to_string(i));
+
+                // DBG("------------------------------");
+                // DBG("--- reg state ---");
+                // state.debugPrintSet();
+                // DBG("--- existing ---");
+                // params.debugPrintSet();
+                // DBG("--- expected ---");
+                // expectedParams[i].debugPrintSet();
+
+                expect(params.getParams() == expectedParams[i].getParams(), "Unexpected params in index " + std::to_string(i));
+            }
+
         }
 
         beginTest("PsgParamFrame::createPsgFrameValueTree");
@@ -415,7 +507,7 @@ public:
             // }
             // DBG("----------------------------------------------");
 
-            expectEquals(seq.getNumEvents(), 17);
+            expectEquals(seq.getNumEvents(), 16);
 
             // group by timestamp and compare sets or maps
             std::map<double, std::set<std::string>> expectedEvents = {
@@ -429,7 +521,7 @@ public:
                 }},
                 {0.02, {
                     "Controller Volume (coarse): 15 Channel 1",
-                    "Controller Volume (coarse): 8 Channel 2",
+                    // "Controller Volume (coarse): 8 Channel 2",  // when env is on, volume is not set
                     "Controller 20: 100 Channel 2",
                     "Controller 52: 86 Channel 2",
                     "Controller General Purpose Button 1 (on/off): 1 Channel 2",
@@ -529,7 +621,7 @@ public:
     }
 };
 
-static PsgParamsMidiTests psgParamsMidiTests;
+static PsgParamsTests psgParamsTests;
 static PsgParamsChangeTrackingTest psgParamsChangeTrackingTests;
 static PsgParamsToRegistersTest psgParamsToRegisterTest;
 static PsgParamsMidiConverterTests psgParamsMidiConverterTests;

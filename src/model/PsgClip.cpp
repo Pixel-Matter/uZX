@@ -5,6 +5,7 @@
 #include "../formats/psg/PsgFile.h"
 
 #include <cstddef>
+#include <limits>
 #include <memory>
 
 namespace te = tracktion;
@@ -77,11 +78,28 @@ PsgClip::Ptr PsgClip::insertTo(
 
     PsgParamsMidiReader reader {1};
     std::vector<PsgParamFrameData> paramFromSeq;
+    double time = (*seq.begin())->message.getTimeStamp();
+    // int i = 0;
     for (auto e : seq) {
-        auto newParams = reader.read(e->message);
-        if (newParams.has_value()) {
-            paramFromSeq.push_back(newParams.value());
+        if (e->message.getTimeStamp() <= time) {
+            reader.read(e->message);
+            // if (i < 7) {
+            //     DBG("Current timestamp " << e->message.getTimeStamp() << " <= " << time);
+            //     DBG("Message " << e->message.getDescription());
+            //     reader.getParams().debugPrint();
+            // }
+        } else {
+            paramFromSeq.push_back(reader.getParams());
+            // if (i < 7) {
+            //     DBG("--------------------------- " << e->message.getTimeStamp() << " > " << time);
+            //     DBG("Message " << e->message.getDescription());
+            //     reader.getParams().debugPrint();
+            // }
+            // reader.nextFrame();
+            reader.read(e->message);
+            // ++i;
         }
+        time = e->message.getTimeStamp();
     }
     paramFromSeq.push_back(reader.getParams());
     DBG("PSG clip converted to " << paramFromSeq.size() << " frames");
@@ -92,6 +110,7 @@ PsgClip::Ptr PsgClip::insertTo(
     DBG("------------- Regs from params 0 -------------");
     regsFromSeq.debugPrint();
     size_t idxPsg = 0;
+    int errors = 0;
     for (size_t i = 0; i < paramFromSeq.size() && idxPsg < data.frames.size(); ++i, ++idxPsg) {
         paramFromSeq[i].updateRegisters(regsFromSeq);
         // auto regsFromSeq = paramFromSeq[i].toRegisters();
@@ -101,10 +120,13 @@ PsgClip::Ptr PsgClip::insertTo(
             // DBG("Skipping empty frame " << idxPsg);
         };
         regsFromPsg.update(data.frames[idxPsg]);
-        if (i < 7) {
+        // if (regsFromPsg.registers != regsFromSeq.registers) {
+        // if (errors < 7 && regsFromPsg.registers != regsFromSeq.registers) {
+        if (i <= 538) {
             DBG("------------------------------------------------------------ at frame " << i << ", psg frame " << idxPsg);
-            if (regsFromPsg.registers != regsFromSeq.registers) {
+            // TODO check that we set that should be set
             // if (data.frames[idxPsg].isSupersetOf(regsFromSeq)) {
+            if (regsFromPsg.registers != regsFromSeq.registers) {
                 DBG("Registers do NOT match after conversion from params");
             }
             DBG("------------- Params -------------");
@@ -113,7 +135,7 @@ PsgClip::Ptr PsgClip::insertTo(
             regsFromSeq.debugPrint();
             DBG("------------- PSG -------------");
             regsFromPsg.debugPrint();
-            // break;
+            ++errors;
         }
         regsFromSeq.clear();
         regsFromPsg.clear();

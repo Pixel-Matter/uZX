@@ -16,23 +16,23 @@ struct PsgFrame {
     std::array<uint8_t, NREGS> registers {};
     std::array<bool, NREGS> mask {};
 
-    PsgFrame() = default;
-    PsgFrame(const PsgFrame&) = default;
-    PsgFrame(PsgFrame&&) = default;
-    PsgFrame& operator=(const PsgFrame&) = default;
-    PsgFrame& operator=(PsgFrame&&) = default;
-    PsgFrame(std::array<uint8_t, NREGS>&& regs, std::array<bool, NREGS>&& m)
+    constexpr PsgFrame() = default;
+    constexpr PsgFrame(const PsgFrame&) = default;
+    constexpr PsgFrame(PsgFrame&&) = default;
+    constexpr PsgFrame& operator=(const PsgFrame&) = default;
+    constexpr PsgFrame& operator=(PsgFrame&&) = default;
+    constexpr PsgFrame(std::array<uint8_t, NREGS>&& regs, std::array<bool, NREGS>&& m)
         : registers(std::move(regs)), mask(std::move(m)) {}
 
-    inline static size_t size() noexcept{
+    inline static constexpr size_t size() noexcept{
         return NREGS;
     }
 
-    inline bool isEmpty() const {
+    inline constexpr bool isEmpty() const {
         return mask == std::array<bool, 14> {false};
     }
 
-    inline bool isSet(size_t reg) const {
+    inline constexpr bool isSet(size_t reg) const {
         return mask[reg];
     }
 };
@@ -79,54 +79,54 @@ struct PsgRegsFrame : public PsgFrame<14> {
     using PsgFrame::PsgFrame;
 
     // Helpers for common register access
-    inline bool hasTonePeriodSet(size_t chan) const noexcept {
+    inline constexpr bool hasTonePeriodSet(size_t chan) const noexcept {
         return mask[PsgRegType::TonePeriodFineA + chan * 2] || mask[PsgRegType::TonePeriodCoarseA + chan * 2];
     }
-    inline uint8_t getTonePeriodFine(size_t chan) const noexcept {
+    inline constexpr uint8_t getTonePeriodFine(size_t chan) const noexcept {
         return registers[PsgRegType::TonePeriodFineA + chan * 2];
     }
-    inline uint8_t getTonePeriodCoarse(size_t chan) const noexcept {
+    inline constexpr uint8_t getTonePeriodCoarse(size_t chan) const noexcept {
         return registers[PsgRegType::TonePeriodCoarseA + chan * 2];
     }
-    inline void setTonePeriodFine(size_t chan, uint8_t period) noexcept {
+    inline constexpr void setTonePeriodFine(size_t chan, uint8_t period) noexcept {
         registers[PsgRegType::TonePeriodFineA + chan * 2] = period;
         mask[PsgRegType::TonePeriodFineA + chan * 2] = true;
     }
-    inline void setTonePeriodCoarse(size_t chan, uint8_t period) noexcept {
+    inline constexpr void setTonePeriodCoarse(size_t chan, uint8_t period) noexcept {
         registers[PsgRegType::TonePeriodCoarseA + chan * 2] = period;
         mask[PsgRegType::TonePeriodCoarseA + chan * 2] = true;
     }
-    inline void setTonePeriod(size_t chan, uint16_t period) noexcept {
+    inline constexpr void setTonePeriod(size_t chan, uint16_t period) noexcept {
         setTonePeriodCoarse(chan, period >> 8);
         setTonePeriodFine(chan, period & 0xff);
     }
-    inline uint16_t getTonePeriod(size_t chan) const noexcept {
+    inline constexpr uint16_t getTonePeriod(size_t chan) const noexcept {
         return static_cast<uint16_t>(getTonePeriodCoarse(chan) << 8) | getTonePeriodFine(chan);
     }
-    inline bool hasNoisePeriodSet() const noexcept {
+    inline constexpr bool hasNoisePeriodSet() const noexcept {
         return mask[PsgRegType::NoisePeriod];
     }
-    inline uint8_t getNoisePeriod() const noexcept {
+    inline constexpr uint8_t getNoisePeriod() const noexcept {
         return registers[PsgRegType::NoisePeriod];
     }
-    inline void setNoisePeriod(uint8_t period) noexcept {
+    inline constexpr void setNoisePeriod(uint8_t period) noexcept {
         registers[PsgRegType::NoisePeriod] = period;
         mask[PsgRegType::NoisePeriod] = true;
     }
-    inline bool hasMixerSet() const noexcept {
+    inline constexpr bool hasMixerSet() const noexcept {
         return mask[PsgRegType::Mixer];
     }
-    inline uint8_t getMixer() const noexcept {
+    inline constexpr uint8_t getMixer() const noexcept {
         return registers[PsgRegType::Mixer];
     }
-    inline void setMixer(uint8_t mixer) noexcept {
+    inline constexpr void setMixer(uint8_t mixer) noexcept {
         registers[PsgRegType::Mixer] = mixer;
         mask[PsgRegType::Mixer] = true;
     }
-    inline bool getToneOn(size_t chan) const noexcept {
+    inline constexpr bool getToneOn(size_t chan) const noexcept {
         return !(registers[PsgRegType::Mixer] & (1 << chan));  // inverted
     }
-    inline void setToneOn(size_t chan, bool on) noexcept {
+    inline constexpr void setToneOn(size_t chan, bool on) noexcept {
         if (!on) {
             // DBG("registers[PsgRegType::Mixer] = " << registers[PsgRegType::Mixer] << "|" << (1 << chan));
             registers[PsgRegType::Mixer] |= (1 << chan);
@@ -137,10 +137,10 @@ struct PsgRegsFrame : public PsgFrame<14> {
         // DBG("setToneOn " << chan << " " << (on? "on" : "off") << " " << registers[PsgRegType::Mixer]);
         mask[PsgRegType::Mixer] = true;
     }
-    inline bool getNoiseOn(size_t chan) const noexcept {
+    inline constexpr bool getNoiseOn(size_t chan) const noexcept {
         return !(registers[PsgRegType::Mixer] & (0x08 << chan));  // inverted
     }
-    inline void setNoiseOn(size_t chan, bool on) noexcept {
+    inline constexpr void setNoiseOn(size_t chan, bool on) noexcept {
         if (!on) {  // inverted
             registers[PsgRegType::Mixer] |= (0x08 << chan);
         } else {
@@ -148,72 +148,73 @@ struct PsgRegsFrame : public PsgFrame<14> {
         }
         mask[PsgRegType::Mixer] = true;
     }
-    inline bool hasVolumeOrEnvModSet(size_t chan) const noexcept {
+    inline constexpr bool hasVolumeOrEnvModSet(size_t chan) const noexcept {
         return mask[PsgRegType::VolumeA + chan];
     }
-    inline bool hasVolumeSet(size_t chan) const noexcept {
+    inline constexpr bool hasVolumeSet(size_t chan) const noexcept {
         return mask[PsgRegType::VolumeA + chan] && (registers[PsgRegType::VolumeA + chan] & 0xF);
     }
-    inline uint8_t getVolumeAndEnvMod(size_t chan) const noexcept {
+    inline constexpr uint8_t getVolumeAndEnvMod(size_t chan) const noexcept {
         return registers[PsgRegType::VolumeA + chan];
     }
-    inline bool getEnvMod(size_t chan) const noexcept {
+    inline constexpr bool getEnvMod(size_t chan) const noexcept {
         return registers[PsgRegType::VolumeA + chan] & 0x10;
     }
-    inline uint8_t getVolume(size_t chan) const noexcept {
+    inline constexpr uint8_t getVolume(size_t chan) const noexcept {
         return registers[PsgRegType::VolumeA + chan] & 0x0F;
     }
-    inline void setVolumeAndEnvMod(size_t chan, uint8_t volume, bool envMod) noexcept {
+    inline constexpr void setVolumeAndEnvMod(size_t chan, uint8_t volume, bool envMod) noexcept {
         registers[PsgRegType::VolumeA + chan] = (volume & 0x0F) | (envMod ? 0x10 : 0);
         mask[PsgRegType::VolumeA + chan] = true;
     }
-    inline void setEnvMod(size_t chan, bool envMod) noexcept {
+    inline constexpr void setEnvMod(size_t chan, bool envMod) noexcept {
         registers[PsgRegType::VolumeA + chan] = (registers[PsgRegType::VolumeA + chan] & 0x0F) | (envMod ? 0x10 : 0);
         mask[PsgRegType::VolumeA + chan] = true;
     }
-    inline void setVolume(size_t chan, uint8_t volume) noexcept {
+    inline constexpr void setVolume(size_t chan, uint8_t volume) noexcept {
         registers[PsgRegType::VolumeA + chan] = (registers[PsgRegType::VolumeA + chan] & 0x10) | (volume & 0x0F);
         mask[PsgRegType::VolumeA + chan] = true;
     }
-    inline bool hasEnvelopePeriodSet() const noexcept {
+    inline constexpr bool hasEnvelopePeriodSet() const noexcept {
         return mask[PsgRegType::EnvelopePeriodFine] || mask[PsgRegType::EnvelopePeriodCoarse];
     }
-    inline uint8_t getEnvelopePeriodFine() const noexcept {
+    inline constexpr uint8_t getEnvelopePeriodFine() const noexcept {
         return registers[PsgRegType::EnvelopePeriodFine];
     }
-    inline uint8_t getEnvelopePeriodCoarse() const noexcept {
+    inline constexpr uint8_t getEnvelopePeriodCoarse() const noexcept {
         return registers[PsgRegType::EnvelopePeriodCoarse];
     }
-    inline void setEnvelopePeriodFine(uint8_t period) noexcept {
+    inline constexpr void setEnvelopePeriodFine(uint8_t period) noexcept {
         registers[PsgRegType::EnvelopePeriodFine] = period;
         mask[PsgRegType::EnvelopePeriodFine] = true;
     }
-    inline void setEnvelopePeriodCoarse(uint8_t period) noexcept {
+    inline constexpr void setEnvelopePeriodCoarse(uint8_t period) noexcept {
         registers[PsgRegType::EnvelopePeriodCoarse] = period;
         mask[PsgRegType::EnvelopePeriodCoarse] = true;
     }
-    inline void setEnvelopePeriod(uint16_t period) noexcept {
+    inline constexpr void setEnvelopePeriod(uint16_t period) noexcept {
         setEnvelopePeriodCoarse(period >> 8);
         setEnvelopePeriodFine(period & 0xff);
     }
-    inline uint16_t getEnvelopePeriod() const noexcept {
+    inline constexpr uint16_t getEnvelopePeriod() const noexcept {
         return static_cast<uint16_t>(getEnvelopePeriodCoarse() << 8) | getEnvelopePeriodFine();
     }
-    inline bool hasEnvelopeShapeSet() const noexcept {
+    inline constexpr bool hasEnvelopeShapeSet() const noexcept {
         return mask[PsgRegType::EnvelopeShape];
     }
-    inline uint8_t getEnvelopeShape() const noexcept {
+    inline constexpr uint8_t getEnvelopeShape() const noexcept {
         return registers[PsgRegType::EnvelopeShape];
     }
-    inline void setEnvelopeShape(uint8_t shape) noexcept {
+    inline constexpr void setEnvelopeShape(uint8_t shape) noexcept {
         registers[PsgRegType::EnvelopeShape] = shape;
         mask[PsgRegType::EnvelopeShape] = true;
     }
-    inline void clear() noexcept {
+    inline constexpr void clear() noexcept {
         std::fill(mask.begin(), mask.end(), false);
     }
 
-    inline void update(const PsgRegsFrame& other) noexcept {
+    // Do not forget to clear before updating
+    inline constexpr void update(const PsgRegsFrame& other) noexcept {
         for (size_t i = 0; i < size(); ++i) {
             if (other.mask[i]) {
                 registers[i] = other.registers[i];
@@ -246,6 +247,13 @@ struct PsgRegsFrame : public PsgFrame<14> {
     void debugPrint() const noexcept {
         for (size_t i = 0; i < PsgFrame::size(); ++i) {
             DBG(std::string(static_cast<PsgRegType>(static_cast<int>(i)).getLabel()) << ": " << static_cast<int>(registers[i]) << " " << (mask[i] ? "true" : "false"));
+        }
+    }
+
+    void debugPrintSet() const noexcept {
+        for (size_t i = 0; i < PsgFrame::size(); ++i) {
+            if (!mask[i]) continue;
+            DBG(std::string(static_cast<PsgRegType>(static_cast<int>(i)).getLabel()) << ": " << static_cast<int>(registers[i]));
         }
     }
 };

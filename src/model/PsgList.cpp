@@ -301,6 +301,7 @@ void PsgList::removeAllFrames(juce::UndoManager* um) {
 void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager* um) {
     PsgParamFrameData params;
     uZX::PsgRegsFrame regsState;
+    uZX::PsgRegsFrame regsFromParamsState;
     params.resetMixer();  // because AY regs after reset has all NNNTTT flags set (bits==0)
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];
@@ -311,36 +312,38 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
         auto beat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
         regsState.clear();
         regsState.update(data.frames[i]);
+        for (int j = 0; j < 3; ++j) {
+            if (regsState.getEnvMod(size_t(j))) {
+                regsState.setVolume(size_t(j), 0);
+                // params.clear(PsgParamType::VolumeA + j);
+            }
+        }
+
         params.clearAll();
         params.update(regsState);  // tracks really changed params
         auto v = PsgParamFrame::createPsgFrameValueTree(beat, params);
         state.addChild(v, -1, um);
 
-        // if (i < 100) {
-            auto regsFromParams = params.toRegisters();
-            bool match = true;
-            for (size_t j = 0; j < uZX::PsgRegsFrame::size(); ++j) {
-                if (regsState.mask[j] && regsState.registers[j] != regsFromParams.registers[j]) {
-                    match = false;
-                    break;
-                }
-            }
-            if (!match) {
+        if (i < 7) {
+            regsFromParamsState.clear();
+            params.updateRegisters(regsFromParamsState);
+            // auto regsFromParams = params.toRegisters();
+            if (!regsState.matches(regsFromParamsState)) {
                 DBG("------------------------------------------------------------");
                 DBG("Registers do NOT match after conversion from params at frame " << i);
-                DBG("------------- Frame -------------");
-                regsState.debugPrint();
-                DBG("------------- Regs From Params -------------");
-                regsFromParams.debugPrint();
+                DBG("------------- Regs state from data -------------");
+                regsState.debugPrintSet();
+                DBG("------------- Regs state from params -------------");
+                regsFromParamsState.debugPrintSet();
                 DBG("------------- Params from frame -------------");
-                PsgParamFrameData {regsState}.debugPrint();
+                PsgParamFrameData {regsState}.debugPrintSet();
                 DBG("------------- Params -------------");
-                params.debugPrint();
+                params.debugPrintSet();
             }
             // else {
             //     DBG("Registers MATCH after conversion from params at frame " << i);
             // }
-        // }
+        }
     }
 }
 

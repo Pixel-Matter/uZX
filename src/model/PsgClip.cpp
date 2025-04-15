@@ -106,40 +106,38 @@ PsgClip::Ptr PsgClip::insertTo(
     // ^^^ That is sparce, this vvv is dense
     DBG("PSG data has " << data.frames.size() << " frames");
 
-    uZX::PsgRegsFrame regsFromSeq, regsFromPsg;
-    DBG("------------- Regs from params 0 -------------");
-    regsFromSeq.debugPrint();
-    size_t idxPsg = 0;
-    int errors = 0;
-    for (size_t i = 0; i < paramFromSeq.size() && idxPsg < data.frames.size(); ++i, ++idxPsg) {
-        paramFromSeq[i].updateRegisters(regsFromSeq);
-        // auto regsFromSeq = paramFromSeq[i].toRegisters();
+    // uZX::PsgRegsFrame regsFromSeq, regsFromPsg;
+    // size_t idxPsg = 0;
+    // int errors = 0;
+    // for (size_t i = 0; i < paramFromSeq.size() && idxPsg < data.frames.size(); ++i, ++idxPsg) {
+    //     paramFromSeq[i].updateRegisters(regsFromSeq);
+    //     // auto regsFromSeq = paramFromSeq[i].toRegisters();
 
-        while (idxPsg < data.frames.size() && data.frames[idxPsg].isEmpty()) {
-            ++idxPsg;
-            // DBG("Skipping empty frame " << idxPsg);
-        };
-        regsFromPsg.update(data.frames[idxPsg]);
-        // if (regsFromPsg.registers != regsFromSeq.registers) {
-        // if (errors < 7 && regsFromPsg.registers != regsFromSeq.registers) {
-        if (i <= 538) {
-            DBG("------------------------------------------------------------ at frame " << i << ", psg frame " << idxPsg);
-            // TODO check that we set that should be set
-            // if (data.frames[idxPsg].isSupersetOf(regsFromSeq)) {
-            if (regsFromPsg.registers != regsFromSeq.registers) {
-                DBG("Registers do NOT match after conversion from params");
-            }
-            DBG("------------- Params -------------");
-            paramFromSeq[i].debugPrint();
-            DBG("------------- Regs from params -------------");
-            regsFromSeq.debugPrint();
-            DBG("------------- PSG -------------");
-            regsFromPsg.debugPrint();
-            ++errors;
-        }
-        regsFromSeq.clear();
-        regsFromPsg.clear();
-    }
+    //     while (idxPsg < data.frames.size() && data.frames[idxPsg].isEmpty()) {
+    //         ++idxPsg;
+    //         // DBG("Skipping empty frame " << idxPsg);
+    //     };
+    //     regsFromPsg.update(data.frames[idxPsg]);
+    //     // if (regsFromPsg.registers != regsFromSeq.registers) {
+    //     // if (errors < 7 && regsFromPsg.registers != regsFromSeq.registers) {
+    //     if (i <= 538) {
+    //         DBG("------------------------------------------------------------ at frame " << i << ", psg frame " << idxPsg);
+    //         // TODO check that we set that should be set
+    //         // if (data.frames[idxPsg].isSupersetOf(regsFromSeq)) {
+    //         if (regsFromPsg.registers != regsFromSeq.registers) {
+    //             DBG("Registers do NOT match after conversion from params");
+    //         }
+    //         DBG("------------- Params -------------");
+    //         paramFromSeq[i].debugPrint();
+    //         DBG("------------- Regs from params -------------");
+    //         regsFromSeq.debugPrint();
+    //         DBG("------------- PSG -------------");
+    //         regsFromPsg.debugPrint();
+    //         ++errors;
+    //     }
+    //     regsFromSeq.clear();
+    //     regsFromPsg.clear();
+    // }
     // DBG("------------------------------------------------------------");
     // if (idxPsg < data.frames.size()) {
     //     DBG("PSG data has " << data.frames.size() << " frames, but only " << paramFromSeq.size() << " params");

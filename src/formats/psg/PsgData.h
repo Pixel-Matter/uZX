@@ -223,26 +223,14 @@ struct PsgRegsFrame : public PsgFrame<14> {
         }
     }
 
-    // inline bool isSupersetOf(const PsgRegsFrame& other) const noexcept {
-    //     for (size_t i = 0; i < size(); ++i) {
-    //         if (mask[i]) {
-    //             if (!other.mask[i] || registers[i] != other.registers[i]) {
-    //                 DBG("i = " << i << ": registers[i] != other.registers[i] (" << static_cast<int>(registers[i]) << " != " << static_cast<int>(other.registers[i]) << ")");
-    //                 return false;
-    //             }
-    //         }
-
-    //         // if (mask[i] != other.mask[i]) {
-    //         //     DBG("i = " << i << ": mask[i] != other.mask[i] (" << int(mask[i]) << " != " << int(other.mask[i]) << ")");
-    //         //     return false;
-    //         // }
-    //         // if (mask[i] && other.mask[i] && registers[i] != other.registers[i]) {
-    //         //     DBG("i = " << i << ": registers[i] != other.registers[i] (" << static_cast<int>(registers[i]) << " != " << static_cast<int>(other.registers[i]) << ")");
-    //         //     return false;
-    //         // }
-    //     }
-    //     return true;
-    // }
+    inline constexpr bool matches(const PsgRegsFrame& other) const noexcept {
+        for (size_t i = 0; i < size(); ++i) {
+            if ((mask[i] || other.mask[i]) && registers[i] != other.registers[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     void debugPrint() const noexcept {
         for (size_t i = 0; i < PsgFrame::size(); ++i) {

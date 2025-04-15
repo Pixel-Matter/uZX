@@ -133,8 +133,10 @@ public:
     constexpr void updateRegisters(uZX::PsgRegsFrame& regs) const noexcept {
         // per-tone-channel parameters
         for (size_t i = 0; i < 3; ++i) {
-            if (masks[size_t(PsgParamType::EnvelopeIsOnA) + i]
-                || masks[size_t(PsgParamType::VolumeA) + i]) {
+            if (masks[size_t(PsgParamType::EnvelopeIsOnA) + i] && values[size_t(PsgParamType::EnvelopeIsOnA) + i]) {
+                // if env is set, volume is 0
+                regs.setVolumeAndEnvMod(i, 0, values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
+            } else if (masks[size_t(PsgParamType::EnvelopeIsOnA) + i] || masks[size_t(PsgParamType::VolumeA) + i]) {
                 regs.setVolumeAndEnvMod(i, uint8(values[size_t(PsgParamType::VolumeA) + i]), values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
             }
         }
@@ -167,17 +169,17 @@ public:
         }
     }
 
-    uZX::PsgRegsFrame toRegisters() const noexcept {
+    constexpr uZX::PsgRegsFrame toRegisters() const noexcept {
         uZX::PsgRegsFrame regs;
         updateRegisters(regs);
         return regs;
     }
 
-    void update(const uZX::PsgRegsFrame& regs) noexcept {
+    constexpr void update(const uZX::PsgRegsFrame& regs) noexcept {
         update(PsgParamFrameData {regs});
     }
 
-    void update(const PsgParamFrameData& data) noexcept {
+    constexpr void update(const PsgParamFrameData& data) noexcept {
         // track what params was changed actually, compare with current values
         // values = data.values;
         for (size_t i = 0; i < PsgParamType::size(); ++i) {
@@ -201,42 +203,42 @@ public:
         }
     }
 
-    bool isEmpty() const noexcept {
+    constexpr bool isEmpty() const noexcept {
         return !std::any_of(masks.begin(), masks.end() , [](bool mask) { return mask; });
     }
 
-    inline std::optional<uint16_t> operator [](PsgParamType type) const noexcept {
+    inline constexpr std::optional<uint16_t> operator [](PsgParamType type) const noexcept {
         return masks[type] ? std::optional<uint16_t> {values[type]} : std::nullopt;
     }
 
-    inline bool isSet(PsgParamType type) const noexcept {
+    inline constexpr bool isSet(PsgParamType type) const noexcept {
         return masks[static_cast<size_t>(type)];
     }
 
-    inline uint16_t& set(PsgParamType type, uint16_t value) noexcept {
+    inline constexpr uint16_t& set(PsgParamType type, uint16_t value) noexcept {
         masks[static_cast<size_t>(type)] = true;
         values[static_cast<size_t>(type)] = value;
         return values[static_cast<size_t>(type)];
     }
 
-    inline uint16_t getRaw(PsgParamType type) const noexcept {
+    inline constexpr uint16_t getRaw(PsgParamType type) const noexcept {
         return values[static_cast<size_t>(type)];
     }
 
-    inline void clear(PsgParamType type) noexcept {
+    inline constexpr void clear(PsgParamType type) noexcept {
         masks[static_cast<size_t>(type)] = false;
     }
 
-    inline void clearAll() noexcept {
+    inline constexpr void clearAll() noexcept {
         std::fill(masks.begin(), masks.end(), false);
     }
 
-    inline void reset() noexcept {
+    inline constexpr void reset() noexcept {
         std::fill(masks.begin(), masks.end(), false);
         std::fill(values.begin(), values.end(), 0);
     }
 
-    inline void resetMixer() noexcept {
+    inline constexpr void resetMixer() noexcept {
         values[static_cast<size_t>(PsgParamType::ToneIsOnA)] = 1;
         values[static_cast<size_t>(PsgParamType::ToneIsOnB)] = 1;
         values[static_cast<size_t>(PsgParamType::ToneIsOnC)] = 1;
@@ -257,7 +259,7 @@ public:
         // masks[static_cast<size_t>(PsgParamType::NoiseIsOnC)] = true;
     }
 
-    std::vector<std::pair<PsgParamType, uint16_t>> getParams() const {
+    constexpr std::vector<std::pair<PsgParamType, uint16_t>> getParams() const {
         std::vector<std::pair<PsgParamType, uint16_t>> result;
         result.reserve(std::size(values));
         for (size_t i = 0; i < std::size(values); ++i) {

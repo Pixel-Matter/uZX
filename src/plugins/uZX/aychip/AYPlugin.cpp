@@ -109,9 +109,9 @@ void AYChipPlugin::updateRegistersFromMidiRegs() noexcept {
 }
 
 void AYChipPlugin::updateChip() noexcept {
-    if (midiReaderMode == MidiReaderMode::MidiParams) {
+    if (midiReaderMode == MidiReaderMode::Params) {
         updateRegistersFromMidiParams();
-    } else if (midiReaderMode == MidiReaderMode::MidiRegs) {
+    } else if (midiReaderMode == MidiReaderMode::Regs) {
         updateRegistersFromMidiRegs();
     }
 
@@ -123,9 +123,9 @@ void AYChipPlugin::updateChip() noexcept {
 }
 
 void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
-    if (midiReaderMode == MidiReaderMode::MidiParams) {
+    if (midiReaderMode == MidiReaderMode::Params) {
         midiParamsCCReader.read(m);
-    } else if (midiReaderMode == MidiReaderMode::MidiRegs) {
+    } else if (midiReaderMode == MidiReaderMode::Regs) {
         midiCCReader.read(m);
     }
 }

@@ -172,11 +172,11 @@ public:
     Params staticParams {*this};
 
     enum class MidiReaderMode {
-        MidiParams,
-        MidiRegs
+        Params,
+        Regs
     };
 
-    MidiReaderMode midiReaderMode = MidiReaderMode::MidiParams;
+    MidiReaderMode midiReaderMode = MidiReaderMode::Params;
 
 private:
     //==============================================================================

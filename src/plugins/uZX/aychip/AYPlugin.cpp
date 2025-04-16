@@ -99,14 +99,14 @@ void AYChipPlugin::reset() {
 
 void AYChipPlugin::updateChip(const PsgParamFrameData& params) {
     // already called under ScopedLock
-    DBG("----- updateChip Params");
-    params.debugPrintSet();
+    // DBG("----- updateChip Params");
+    // params.debugPrintSet();
 
     registersFrame.clear();
     params.updateRegisters(registersFrame);
 
-    DBG("----- updateChip Registers");
-    registersFrame.debugPrintSet();
+    // DBG("----- updateChip Registers");
+    // registersFrame.debugPrintSet();
 
     // TODO iterator over set registers
     for (size_t i = 0; i < PsgRegsFrame::size(); ++i) {
@@ -132,12 +132,21 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     int currentSample = 0;
     for (auto& m : *fc.bufferForMidiMessages) {
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
-        if (timeSample > currentSample) {
-            DBG("----- Next midi time " << currentSample << " -> " << timeSample);
-            // get current PSG paramss and update chip with corresponding register values
-            updateChip(midiParamsCCReader.getParams());
+        // Registers midi playing
+        // if (timeSample > currentSample) {
+        //     chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
+        //                        fc.destBuffer->getWritePointer(1, currentSample),
+        //                        static_cast<size_t>(timeSample - currentSample),
+        //                        staticParams.removeDCValue);
+        //     currentSample = timeSample;
+        // }
+        // if (auto regpair = midiCCReader.read(m)) {
+        //     chip->setRegister(static_cast<size_t>(regpair.reg), regpair.value);
+        // }
 
-            // process up to this event
+        if (timeSample > currentSample) {
+            updateChip(midiParamsCCReader.getParams());
+            // DBG("----- Next midi time " << currentSample << " -> " << timeSample);
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                fc.destBuffer->getWritePointer(1, currentSample),
                                static_cast<size_t>(timeSample - currentSample),

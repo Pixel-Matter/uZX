@@ -215,9 +215,9 @@ private:
 };
 
 //===================================================================
-class PsgParamsMidiSequenceWriter {
+class PsgParamsMidiWriter {
 public:
-    PsgParamsMidiSequenceWriter(int chan) noexcept
+    PsgParamsMidiWriter(int chan) noexcept
         : channelNumber(chan)
     {}
 

@@ -121,11 +121,11 @@ PsgRegsMidiReader::MaybeRegPair PsgRegsMidiReader::read(const te::MidiMessageWit
 //===============================================================================
 // PsgParamsMidiWriter class
 //===============================================================================
-inline void PsgParamsMidiSequenceWriter::addEvent(double time, int psgChan, MidiCCType type, int value) {
+inline void PsgParamsMidiWriter::addEvent(double time, int psgChan, MidiCCType type, int value) {
     sequence.addEvent(juce::MidiMessage::controllerEvent(channelNumber + psgChan, static_cast<int>(type), value), time);
 }
 
-void PsgParamsMidiSequenceWriter::write(double time, const PsgParamFrameData& data) {
+void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
     int psgChan = 0;
     for (auto [type, value] : data.getParams()) {
         switch (type) {

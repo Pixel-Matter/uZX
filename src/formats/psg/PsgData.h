@@ -1,5 +1,6 @@
 #pragma once
 
+#include "juce_core/juce_core.h"
 #include <JuceHeader.h>
 #include "../../util/enumchoice.h"
 
@@ -7,21 +8,19 @@
 #include <array>
 #include <vector>
 
-namespace te = tracktion;
-
 namespace MoTool::uZX {
 
-template <size_t NREGS>
-struct PsgFrame {
-    std::array<uint8_t, NREGS> registers {};
+template <typename T, size_t NREGS>
+struct PsgDeltaBase {
+    std::array<T, NREGS> registers {};
     std::array<bool, NREGS> mask {};
 
-    constexpr PsgFrame() = default;
-    constexpr PsgFrame(const PsgFrame&) = default;
-    constexpr PsgFrame(PsgFrame&&) = default;
-    constexpr PsgFrame& operator=(const PsgFrame&) = default;
-    constexpr PsgFrame& operator=(PsgFrame&&) = default;
-    constexpr PsgFrame(std::array<uint8_t, NREGS>&& regs, std::array<bool, NREGS>&& m)
+    constexpr PsgDeltaBase() = default;
+    constexpr PsgDeltaBase(const PsgDeltaBase&) = default;
+    constexpr PsgDeltaBase(PsgDeltaBase&&) = default;
+    constexpr PsgDeltaBase& operator=(const PsgDeltaBase&) = default;
+    constexpr PsgDeltaBase& operator=(PsgDeltaBase&&) = default;
+    constexpr PsgDeltaBase(std::array<uint8_t, NREGS>&& regs, std::array<bool, NREGS>&& m)
         : registers(std::move(regs)), mask(std::move(m)) {}
 
     inline static constexpr size_t size() noexcept{
@@ -34,6 +33,14 @@ struct PsgFrame {
 
     inline constexpr bool isSet(size_t reg) const {
         return mask[reg];
+    }
+
+    inline constexpr T getRaw(size_t index) const noexcept {
+        return registers[index];
+    }
+
+    inline void constexpr clear() noexcept {
+        mask.fill(false);
     }
 };
 
@@ -74,9 +81,9 @@ struct RegTypeEnum {
 
 using PsgRegType = MoTool::Util::EnumChoice<RegTypeEnum>;
 
-struct PsgRegsFrame : public PsgFrame<14> {
+struct PsgRegsFrame : public PsgDeltaBase<uint8_t, 14> {
 
-    using PsgFrame::PsgFrame;
+    using PsgDeltaBase::PsgDeltaBase;
 
     // Helpers for common register access
     inline constexpr bool hasTonePeriodSet(size_t chan) const noexcept {

@@ -193,7 +193,9 @@ private:
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
-    void updateChip(const PsgParamFrameData& params);
+    void updateChipFromParams(const PsgParamFrameData& params);
+    void updateChip() noexcept;
+    void readMidi(const te::MidiMessageWithSource& m) noexcept;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };

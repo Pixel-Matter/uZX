@@ -97,7 +97,7 @@ void AYChipPlugin::reset() {
     registersFrame = {};
 }
 
-void AYChipPlugin::updateChip(const PsgParamFrameData& params) {
+void AYChipPlugin::updateChipFromParams(const PsgParamFrameData& params) {
     // already called under ScopedLock
     // DBG("----- updateChip Params");
     // params.debugPrintSet();
@@ -116,6 +116,24 @@ void AYChipPlugin::updateChip(const PsgParamFrameData& params) {
     }
 }
 
+void AYChipPlugin::updateChip() noexcept {
+    const auto& regs = midiCCReader.getRegisters();
+    // DBG("----- updateChip");
+    // regs.debugPrint();
+    for (size_t i = 0; i < regs.size(); ++i) {
+        if (regs.isSet(i)) {
+            // DBG("chip->setRegister: " << i << " " << regs.getRaw(i));
+            chip->setRegister(i, regs.getRaw(i));
+        }
+    }
+    midiCCReader.clear();
+}
+
+void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
+    // midiCCReader.read(m);
+    midiParamsCCReader.read(m);
+}
+
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     if (chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr
         || !(fc.isPlaying || fc.isScrubbing || fc.isRendering)
@@ -127,38 +145,29 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     const ScopedLock sl(lock);
 
     te::clearChannels(*fc.destBuffer, 2, -1, fc.bufferStartSample, fc.bufferNumSamples);
-
+    // DBG("======== applyToBuffer");
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
     for (auto& m : *fc.bufferForMidiMessages) {
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
-        // Registers midi playing
-        // if (timeSample > currentSample) {
-        //     chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
-        //                        fc.destBuffer->getWritePointer(1, currentSample),
-        //                        static_cast<size_t>(timeSample - currentSample),
-        //                        staticParams.removeDCValue);
-        //     currentSample = timeSample;
-        // }
-        // if (auto regpair = midiCCReader.read(m)) {
-        //     chip->setRegister(static_cast<size_t>(regpair.reg), regpair.value);
-        // }
-
         if (timeSample > currentSample) {
-            updateChip(midiParamsCCReader.getParams());
-            // DBG("----- Next midi time " << currentSample << " -> " << timeSample);
+            // DBG("---------- " << m.getTimeStamp());
+            // updateChip();
+            updateChipFromParams(midiParamsCCReader.getParams());
+            // DBG("---------- processing " << double(currentSample) / sampleRate << "-" << m.getTimeStamp());
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                fc.destBuffer->getWritePointer(1, currentSample),
                                static_cast<size_t>(timeSample - currentSample),
                                staticParams.removeDCValue);
             currentSample = timeSample;
         }
-        midiParamsCCReader.read(m);
+        readMidi(m);
     }
     // process to the end of the block
+    // updateChip();
+    updateChipFromParams(midiParamsCCReader.getParams());
     if (currentSample < fc.destBuffer->getNumSamples()) {
-        chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
-                           fc.destBuffer->getWritePointer(1, currentSample),
+        chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
                            static_cast<size_t>(fc.bufferNumSamples - currentSample),
                            staticParams.removeDCValue);
     }

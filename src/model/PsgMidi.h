@@ -248,7 +248,7 @@ public:
     const PsgParamFrameData& getParams() const noexcept { return params; }
 
     void reset() noexcept {
-        params.clearAll();
+        params.clear();
     }
 
     void setBaseChannel(int chan) noexcept { baseChannel = chan; }

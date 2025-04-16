@@ -228,11 +228,11 @@ public:
         return values[static_cast<size_t>(type)];
     }
 
-    inline constexpr void clear(PsgParamType type) noexcept {
+    inline constexpr void unSet(PsgParamType type) noexcept {
         masks[static_cast<size_t>(type)] = false;
     }
 
-    inline constexpr void clearAll() noexcept {
+    inline constexpr void clear() noexcept {
         std::fill(masks.begin(), masks.end(), false);
     }
 

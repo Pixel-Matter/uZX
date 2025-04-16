@@ -236,7 +236,7 @@ void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
 // PsgParamsMidiReader class
 //===============================================================================
 void PsgParamsMidiReader::nextFrame() noexcept {
-    params.clearAll();
+    params.clear();
 }
 
 std::optional<PsgParamFrameData> PsgParamsMidiReader::read(const juce::MidiMessage& m) {

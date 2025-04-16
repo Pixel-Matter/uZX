@@ -81,24 +81,23 @@ PsgClip::Ptr PsgClip::insertTo(
     double time = (*seq.begin())->message.getTimeStamp();
     // int i = 0;
     for (auto e : seq) {
-        if (e->message.getTimeStamp() <= time) {
-            reader.read(e->message);
-            // if (i < 7) {
-            //     DBG("Current timestamp " << e->message.getTimeStamp() << " <= " << time);
-            //     DBG("Message " << e->message.getDescription());
-            //     reader.getParams().debugPrint();
-            // }
-        } else {
+        if (e->message.getTimeStamp() > time) {
             paramFromSeq.push_back(reader.getParams());
             // if (i < 7) {
             //     DBG("--------------------------- " << e->message.getTimeStamp() << " > " << time);
             //     DBG("Message " << e->message.getDescription());
             //     reader.getParams().debugPrint();
             // }
-            // reader.nextFrame();
-            reader.read(e->message);
             // ++i;
         }
+        // else {
+        //     // if (i < 7) {
+        //     //     DBG("Current timestamp " << e->message.getTimeStamp() << " <= " << time);
+        //     //     DBG("Message " << e->message.getDescription());
+        //     //     reader.getParams().debugPrint();
+        //     // }
+        // }
+        reader.read(e->message);
         time = e->message.getTimeStamp();
     }
     paramFromSeq.push_back(reader.getParams());

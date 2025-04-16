@@ -7,9 +7,31 @@
 #include "../common/LookAndFeel.h"
 #include "../../model/PsgClip.h"
 #include "../../model/EditUtilities.h"
+#include "tracktion_core/utilities/tracktion_Time.h"
 
 namespace MoTool {
 
+namespace {
+
+static int bisectFindPosition(
+    const juce::Array<PsgParamFrame*>& frames,
+    const PsgClip& clip,
+    te::TimePosition pos
+) {
+    int low = 0;
+    int high = frames.size() - 1;
+
+    while (low <= high) {
+        int mid = (low + high) / 2;
+        if (frames[mid]->getEditTime(clip) < pos)
+            low = mid + 1;
+        else
+            high = mid - 1;
+    }
+    return low;
+}
+
+} // namespace
 
 //==============================================================================
 class PsgClipComponent : public MidiClipComponent {
@@ -74,23 +96,29 @@ public:
         const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
         const auto pixelsPerFrame = frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds();
 
-        auto& frames = psgClip->getPsg().getFrames();
-        if (frames.size() == 0)
-            return;
-
         const int regsRange = 14;
         const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / regsRange);
         const float left = static_cast<float>(rect.getX());
         g.setFont(12.0f);
 
+        te::TimePosition startPos = jmax(clipRange.getStart(), viewRange.getStart() - frameDur);
+        te::TimePosition endPos = jmin(clipRange.getEnd(), viewRange.getEnd());
+
         // TODO get frames in range
+        auto& frames = psgClip->getPsg().getFrames();
+        if (frames.size() == 0)
+            return;
+
         uZX::PsgRegsFrame regsFrame;
-        for (auto frame : frames) {
+        const auto startIdx = bisectFindPosition(frames, *psgClip, startPos);
+        for (int i = startIdx; i < frames.size(); ++i) {
+            auto frame = frames[i];
             auto s = frame->getEditTime(*psgClip);
 
-            if (s < clipRange.getStart() || s + frameDur < viewRange.getStart())
+            // if (s < clipRange.getStart() || s < viewRange.getStart() - frameDur)
+            if (s < startPos)
                 continue;
-            if (s >= clipRange.getEnd() || s >= viewRange.getEnd())
+            if (s >= endPos)
                 break;
 
             float x1 = (float)timeToX(s) - left;

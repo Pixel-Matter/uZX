@@ -167,7 +167,8 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     // updateChip();
     updateChipFromParams(midiParamsCCReader.getParams());
     if (currentSample < fc.destBuffer->getNumSamples()) {
-        chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
+        chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
+                           fc.destBuffer->getWritePointer(1, currentSample),
                            static_cast<size_t>(fc.bufferNumSamples - currentSample),
                            staticParams.removeDCValue);
     }

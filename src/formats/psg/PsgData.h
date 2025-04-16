@@ -240,13 +240,13 @@ struct PsgRegsFrame : public PsgDeltaBase<uint8_t, 14> {
     }
 
     void debugPrint() const noexcept {
-        for (size_t i = 0; i < PsgFrame::size(); ++i) {
+        for (size_t i = 0; i < size(); ++i) {
             DBG(std::string(static_cast<PsgRegType>(static_cast<int>(i)).getLabel()) << ": " << static_cast<int>(registers[i]) << " " << (mask[i] ? "true" : "false"));
         }
     }
 
     void debugPrintSet() const noexcept {
-        for (size_t i = 0; i < PsgFrame::size(); ++i) {
+        for (size_t i = 0; i < size(); ++i) {
             if (!mask[i]) continue;
             DBG(std::string(static_cast<PsgRegType>(static_cast<int>(i)).getLabel()) << ": " << static_cast<int>(registers[i]));
         }

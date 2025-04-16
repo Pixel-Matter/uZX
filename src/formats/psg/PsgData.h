@@ -192,7 +192,7 @@ struct PsgRegsFrame : public PsgDeltaBase<uint8_t, 14> {
         mask[EnvelopeShape] = true;
     }
 
-    void debugRegisters() const {
+    void debugPrint() const {
         for (size_t i = 0; i < registers.size(); ++i) {
             DBG("PsgRegsFrame: " << i << ": " << static_cast<int>(registers[i]) << " " << (mask[i] ? "true" : "false"));
         }

@@ -79,12 +79,19 @@ void AYChipPlugin::reset() {
 
 void AYChipPlugin::updateChip() noexcept {
     const auto& regs = midiCCReader.getRegisters();
+    // DBG("----- updateChip");
+    // regs.debugPrint();
     for (size_t i = 0; i < regs.size(); ++i) {
         if (regs.isSet(i)) {
+            // DBG("chip->setRegister: " << i << " " << regs.getRaw(i));
             chip->setRegister(i, regs.getRaw(i));
         }
     }
     midiCCReader.clear();
+}
+
+void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
+    midiCCReader.read(m);
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
@@ -98,27 +105,28 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     const ScopedLock sl(lock);
 
     te::clearChannels(*fc.destBuffer, 2, -1, fc.bufferStartSample, fc.bufferNumSamples);
-
+    // DBG("======== applyToBuffer");
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
     for (auto& m : *fc.bufferForMidiMessages) {
         // process up to this event
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample > currentSample) {
-            // updateChip();
+            // DBG("---------- " << m.getTimeStamp());
+            updateChip();
+            // DBG("---------- processing " << double(currentSample) / sampleRate << "-" << m.getTimeStamp());
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                fc.destBuffer->getWritePointer(1, currentSample),
                                static_cast<size_t>(timeSample - currentSample),
                                staticParams.removeDCValue);
             currentSample = timeSample;
         }
-        // midiCCReader.read(m);
-        if (auto regpair = midiCCReader.read(m)) {
-            chip->setRegister(static_cast<size_t>(regpair.reg), regpair.value);
-        }
+        readMidi(m);
     }
     // process to the end of the block
+    updateChip();
     if (currentSample < fc.destBuffer->getNumSamples()) {
+        // DBG("---------- processing " << double(currentSample) / sampleRate << "-" << double(fc.bufferNumSamples) / sampleRate);
         chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                            fc.destBuffer->getWritePointer(1, currentSample),
                            static_cast<size_t>(fc.bufferNumSamples - currentSample),

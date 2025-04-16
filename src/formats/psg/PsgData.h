@@ -1,30 +1,46 @@
 #pragma once
 
+#include "juce_core/juce_core.h"
 #include <JuceHeader.h>
 
 #include <cstdint>
 #include <array>
 #include <vector>
 
-namespace te = tracktion;
-
 namespace MoTool::uZX {
 
-template <size_t NREGS>
-struct PsgFrame {
-    std::array<uint8_t, NREGS> registers {};
+template <typename T, size_t NREGS>
+struct PsgDeltaBase {
+    std::array<T, NREGS> registers {};
     std::array<bool, NREGS> mask {};
 
-    PsgFrame() = default;
-    PsgFrame(const PsgFrame&) = default;
-    PsgFrame(PsgFrame&&) = default;
-    PsgFrame& operator=(const PsgFrame&) = default;
-    PsgFrame& operator=(PsgFrame&&) = default;
-    PsgFrame(std::array<uint8_t, NREGS>&& regs, std::array<bool, NREGS>&& m)
+    PsgDeltaBase() = default;
+    PsgDeltaBase(const PsgDeltaBase&) = default;
+    PsgDeltaBase(PsgDeltaBase&&) = default;
+    PsgDeltaBase& operator=(const PsgDeltaBase&) = default;
+    PsgDeltaBase& operator=(PsgDeltaBase&&) = default;
+    PsgDeltaBase(std::array<T, NREGS>&& regs, std::array<bool, NREGS>&& m)
         : registers(std::move(regs)), mask(std::move(m)) {}
+
+    inline constexpr static size_t size() noexcept {
+        return NREGS;
+    }
+
+    inline constexpr bool isSet(size_t index) const noexcept {
+        return mask[index];
+    }
+
+    inline constexpr T getRaw(size_t index) const noexcept {
+        return registers[index];
+    }
+
+    inline void constexpr clear() noexcept {
+        mask.fill(false);
+    }
+
 };
 
-struct PsgRegsFrame : public PsgFrame<14> {
+struct PsgRegsFrame : public PsgDeltaBase<uint8_t, 14> {
     enum PsgRegisterType {
         TonePeriodFineA      = 0,
         TonePeriodCoarseA    = 1,
@@ -42,7 +58,7 @@ struct PsgRegsFrame : public PsgFrame<14> {
         EnvelopeShape        = 13
     };
 
-    using PsgFrame::PsgFrame;
+    using PsgDeltaBase::PsgDeltaBase;
 
     inline bool empty() const {
         return mask == std::array<bool, 14> {false};

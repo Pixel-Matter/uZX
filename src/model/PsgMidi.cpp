@@ -94,27 +94,23 @@ PsgRegsMidiSequenceReader::MaybeRegPair PsgRegsMidiSequenceReader::read(const te
     MaybeRegPair result {-1, 0};
     if (m.isController()) {
         const int ctrlNum = m.getControllerNumber();
-        const int val = static_cast<unsigned char>(m.getControllerValue());
+        const uint8_t val = static_cast<uint8_t>(m.getControllerValue());
         size_t reg = 0;
         if (MIDI_PSG_CC_COARSE_START <= ctrlNum && ctrlNum < MIDI_PSG_CC_COARSE_START + 14) {
             // coarse value
             reg = static_cast<size_t>(ctrlNum - MIDI_PSG_CC_COARSE_START);
-            registers.registers[reg] = static_cast<unsigned char>((val << 4) | registers.registers[reg]);
-            registers.mask[reg] = !registers.mask[reg];
-            // DBG("register coarse " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off"));
+            registers.registers[reg] = (registers.registers[reg] & 0x0f) | static_cast<uint8_t>(val << 4);
+            registers.mask[reg] = true;
         } else if (MIDI_PSG_CC_FINE_START <= ctrlNum && ctrlNum < MIDI_PSG_CC_FINE_START + 14) {
             // fine value
             reg = static_cast<size_t>(ctrlNum - MIDI_PSG_CC_FINE_START);
-            registers.registers[reg] = static_cast<unsigned char>(val | registers.registers[reg]);
-            registers.mask[reg] = !registers.mask[reg];
-            // DBG("register fine " << reg << ", " << m.getControllerValue() << ", mask " << (regs.mask[reg] ? "on" : "off") << " reg is " << regs.registers[reg]);
+            registers.registers[reg] = (registers.registers[reg] & 0xf0) | val;
+            registers.mask[reg] = true;
         } else {
             jassertfalse;
         }
-        if (!registers.mask[reg]) {
+        if (registers.mask[reg]) {
             result = {static_cast<int>(reg), registers.registers[reg]};
-            // DBG("setRegister(" << reg << ", " << regs.registers[reg] << ")");
-            registers.registers[reg] = 0;
         }
     }
     return result;

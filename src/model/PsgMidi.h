@@ -198,6 +198,12 @@ public:
 
     MaybeRegPair read(const te::MidiMessageWithSource& m);
 
+    uZX::PsgRegsFrame getRegisters() const noexcept { return registers; }
+
+    void clear() noexcept {
+        registers.clear();
+    }
+
 private:
     uZX::PsgRegsFrame registers = {};
 };

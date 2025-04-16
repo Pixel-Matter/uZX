@@ -34,7 +34,7 @@ void AYChipPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
     , staticParams(*this)
-    , midiParamsCCReader(staticParams.baseMidiChannelValue)
+    , midiParamsReader(staticParams.baseMidiChannelValue)
 {
 }
 
@@ -59,7 +59,7 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
             }
         } else if (id == IDs::midi) {
-            midiParamsCCReader.setBaseChannel(staticParams.baseMidiChannelValue);
+            midiParamsReader.setBaseChannel(staticParams.baseMidiChannelValue);
         }
         // no need to do anything
         // else if (id == IDs::noDC) {
@@ -92,20 +92,20 @@ void AYChipPlugin::reset() {
     chip->setMasterVolume(0.5f);
     chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
     timeFromReset = 0.0;
-    midiParamsCCReader.reset();
-    midiCCReader.reset();
+    midiParamsReader.reset();
+    midiRegsReader.reset();
     registersFrame = {};
 }
 
 void AYChipPlugin::updateRegistersFromMidiParams() noexcept {
-    const auto& params = midiParamsCCReader.getParams();
+    const auto& params = midiParamsReader.getParams();
     registersFrame.clear();
     params.updateRegisters(registersFrame);
 }
 
 void AYChipPlugin::updateRegistersFromMidiRegs() noexcept {
-    registersFrame = midiCCReader.getRegisters();
-    midiCCReader.clear();
+    registersFrame = midiRegsReader.getRegisters();
+    midiRegsReader.clear();
 }
 
 void AYChipPlugin::updateChip() noexcept {
@@ -124,9 +124,9 @@ void AYChipPlugin::updateChip() noexcept {
 
 void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
     if (midiReaderMode == MidiReaderMode::Params) {
-        midiParamsCCReader.read(m);
+        midiParamsReader.read(m);
     } else if (midiReaderMode == MidiReaderMode::Regs) {
-        midiCCReader.read(m);
+        midiRegsReader.read(m);
     }
 }
 

@@ -186,7 +186,7 @@ private:
 juce::MidiMessageSequence createPsgPlaybackMidiSequence(const te::MidiList& list, const te::MidiClip& clip, te::MidiList::TimeBase timeBase);
 
 //===================================================================
-class PsgRegsMidiSequenceReader {
+class PsgRegsMidiReader {
 public:
     struct MaybeRegPair {
         int reg = -1;
@@ -247,18 +247,18 @@ public:
     PsgParamFrameData& getParams() noexcept { return params; }
     const PsgParamFrameData& getParams() const noexcept { return params; }
 
-    void nextFrame() noexcept;
-
     void reset() noexcept {
         params.clearAll();
     }
 
     void setBaseChannel(int chan) noexcept { baseChannel = chan; }
 
-private:
+    private:
     int baseChannel = 1;
     double currentTimestamp = std::numeric_limits<double>::lowest();
     PsgParamFrameData params {};
+
+    void nextFrame() noexcept;
 };
 
 }  // namespace MoTool

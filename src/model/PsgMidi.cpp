@@ -89,9 +89,9 @@ juce::MidiMessageSequence createPsgPlaybackMidiSequence(const MidiList& list, co
 }
 
 //=============================================================================
-// PsgRegsMidiSequenceReader class
+// PsgRegsMidiReader class
 //===============================================================================
-PsgRegsMidiSequenceReader::MaybeRegPair PsgRegsMidiSequenceReader::read(const te::MidiMessageWithSource& m) {
+PsgRegsMidiReader::MaybeRegPair PsgRegsMidiReader::read(const te::MidiMessageWithSource& m) {
     MaybeRegPair result {-1, 0};
     if (m.isController()) {
         const int ctrlNum = m.getControllerNumber();

@@ -171,6 +171,13 @@ public:
 
     Params staticParams {*this};
 
+    enum class MidiReaderMode {
+        MidiParams,
+        MidiRegs
+    };
+
+    MidiReaderMode midiReaderMode = MidiReaderMode::MidiParams;
+
 private:
     //==============================================================================
 
@@ -193,7 +200,8 @@ private:
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
-    void updateChipFromParams(const PsgParamFrameData& params);
+    void updateRegistersFromMidiParams() noexcept;
+    void updateRegistersFromMidiRegs() noexcept;
     void updateChip() noexcept;
     void readMidi(const te::MidiMessageWithSource& m) noexcept;
 

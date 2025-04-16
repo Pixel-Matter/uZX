@@ -97,41 +97,37 @@ void AYChipPlugin::reset() {
     registersFrame = {};
 }
 
-void AYChipPlugin::updateChipFromParams(const PsgParamFrameData& params) {
-    // already called under ScopedLock
-    // DBG("----- updateChip Params");
-    // params.debugPrintSet();
-
+void AYChipPlugin::updateRegistersFromMidiParams() noexcept {
+    const auto& params = midiParamsCCReader.getParams();
     registersFrame.clear();
     params.updateRegisters(registersFrame);
-
-    // DBG("----- updateChip Registers");
-    // registersFrame.debugPrintSet();
-
-    // TODO iterator over set registers
-    for (size_t i = 0; i < PsgRegsFrame::size(); ++i) {
-        if (registersFrame.isSet(i)) {
-            chip->setRegister(i, registersFrame.registers[i]);
-        }
-    }
 }
 
-void AYChipPlugin::updateChip() noexcept {
-    const auto& regs = midiCCReader.getRegisters();
-    // DBG("----- updateChip");
-    // regs.debugPrint();
-    for (size_t i = 0; i < regs.size(); ++i) {
-        if (regs.isSet(i)) {
-            // DBG("chip->setRegister: " << i << " " << regs.getRaw(i));
-            chip->setRegister(i, regs.getRaw(i));
-        }
-    }
+void AYChipPlugin::updateRegistersFromMidiRegs() noexcept {
+    registersFrame = midiCCReader.getRegisters();
     midiCCReader.clear();
 }
 
+void AYChipPlugin::updateChip() noexcept {
+    if (midiReaderMode == MidiReaderMode::MidiParams) {
+        updateRegistersFromMidiParams();
+    } else if (midiReaderMode == MidiReaderMode::MidiRegs) {
+        updateRegistersFromMidiRegs();
+    }
+
+    for (size_t i = 0; i < registersFrame.size(); ++i) {
+        if (registersFrame.isSet(i)) {
+            chip->setRegister(i, registersFrame.getRaw(i));
+        }
+    }
+}
+
 void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
-    // midiCCReader.read(m);
-    midiParamsCCReader.read(m);
+    if (midiReaderMode == MidiReaderMode::MidiParams) {
+        midiParamsCCReader.read(m);
+    } else if (midiReaderMode == MidiReaderMode::MidiRegs) {
+        midiCCReader.read(m);
+    }
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
@@ -152,8 +148,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample > currentSample) {
             // DBG("---------- " << m.getTimeStamp());
-            // updateChip();
-            updateChipFromParams(midiParamsCCReader.getParams());
+            updateChip();
             // DBG("---------- processing " << double(currentSample) / sampleRate << "-" << m.getTimeStamp());
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                fc.destBuffer->getWritePointer(1, currentSample),
@@ -164,8 +159,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         readMidi(m);
     }
     // process to the end of the block
-    // updateChip();
-    updateChipFromParams(midiParamsCCReader.getParams());
+    updateChip();
     if (currentSample < fc.destBuffer->getNumSamples()) {
         chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                            fc.destBuffer->getWritePointer(1, currentSample),

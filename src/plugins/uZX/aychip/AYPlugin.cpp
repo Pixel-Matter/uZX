@@ -94,9 +94,11 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     for (auto& m : *fc.bufferForMidiMessages) {
         // process up to this event
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
-        if (timeSample - currentSample > 0) {
-            chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
-                               static_cast<size_t>(timeSample - currentSample), staticParams.removeDCValue);
+        if (timeSample > currentSample) {
+            chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
+                               fc.destBuffer->getWritePointer(1, currentSample),
+                               static_cast<size_t>(timeSample - currentSample),
+                               staticParams.removeDCValue);
             currentSample = timeSample;
         }
         if (auto regpair = midiCCReader.read(m)) {
@@ -106,7 +108,8 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     }
     // process to the end of the block
     if (currentSample < fc.destBuffer->getNumSamples()) {
-        chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample), fc.destBuffer->getWritePointer(1, currentSample),
+        chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
+                           fc.destBuffer->getWritePointer(1, currentSample),
                            static_cast<size_t>(fc.bufferNumSamples - currentSample),
                            staticParams.removeDCValue
                         );

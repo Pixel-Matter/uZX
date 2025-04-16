@@ -187,7 +187,7 @@ public:
             auto f = PsgParamFrameData {regs};
 
             expect(f[PsgParamType::TonePeriodA] == 0x1234, "Expected TonePeriodA to be 0x1234");
-            expect(f[PsgParamType::VolumeA] == std::nullopt, "Expected VolumeA to be std::nullopt");
+            expect(f[PsgParamType::VolumeA] == 0, "Expected VolumeA to be 0");
             expect(f[PsgParamType::ToneIsOnA] == true, "Expected ToneIsOnA to be true");
             expect(f[PsgParamType::ToneIsOnB] == true, "Expected ToneIsOnB to be true");
             expect(f[PsgParamType::EnvelopeIsOnA] == true, "Expected EnvelopeIsOnA to be true");
@@ -259,6 +259,7 @@ public:
                     {PsgParamType::NoiseIsOnA,    false},
                     {PsgParamType::NoiseIsOnB,    true},
                     {PsgParamType::NoiseIsOnC,    false},
+                    {PsgParamType::VolumeB,       0x08},
                     {PsgParamType::VolumeC,       0x01},
                     {PsgParamType::EnvelopeIsOnB, true},
                     {PsgParamType::EnvelopeIsOnC, false},
@@ -270,6 +271,7 @@ public:
                     {PsgParamType::TonePeriodB,   0x3200},
                     {PsgParamType::TonePeriodC,   0x2434},
                     {PsgParamType::NoisePeriod,   0x10},
+                    {PsgParamType::VolumeA,       0x03},
                     {PsgParamType::EnvelopeIsOnA, true},
                     {PsgParamType::EnvelopePeriod,0x3424},
                 }
@@ -283,16 +285,22 @@ public:
 
                 auto& expected = expectedCumulRegStates[i];
                 expect(state.registers == expected, "Unexpected register state in index " + std::to_string(i));
-
-                // DBG("------------------------------");
-                // DBG("--- reg state ---");
-                // state.debugPrintSet();
-                // DBG("--- existing ---");
-                // params.debugPrintSet();
-                // DBG("--- expected ---");
-                // expectedParams[i].debugPrintSet();
+                if (state.registers != expected) {
+                    DBG("------------------------------");
+                    DBG("--- reg state ---");
+                    state.debugPrintSet();
+                }
 
                 expect(params.getParams() == expectedParams[i].getParams(), "Unexpected params in index " + std::to_string(i));
+                if (params.getParams() != expectedParams[i].getParams()) {
+                    DBG("------------------------------");
+                    DBG("--- reg state ---");
+                    state.debugPrintSet();
+                    DBG("--- existing ---");
+                    params.debugPrintSet();
+                    DBG("--- expected ---");
+                    expectedParams[i].debugPrintSet();
+                }
             }
 
         }
@@ -507,8 +515,6 @@ public:
             // }
             // DBG("----------------------------------------------");
 
-            expectEquals(seq.getNumEvents(), 16);
-
             // group by timestamp and compare sets or maps
             std::map<double, std::set<std::string>> expectedEvents = {
                 {0.0, {
@@ -521,7 +527,7 @@ public:
                 }},
                 {0.02, {
                     "Controller Volume (coarse): 15 Channel 1",
-                    // "Controller Volume (coarse): 8 Channel 2",  // when env is on, volume is not set
+                    "Controller Volume (coarse): 8 Channel 2",
                     "Controller 20: 100 Channel 2",
                     "Controller 52: 86 Channel 2",
                     "Controller General Purpose Button 1 (on/off): 1 Channel 2",
@@ -569,8 +575,8 @@ public:
                 }
             }
             frames.push_back(reader.getParams());
-            frames[0].debugPrint();
-            DBG("----------------------------------------------");
+            // frames[0].debugPrint();
+            // DBG("----------------------------------------------");
 
             expect(frames.size() == 2, "Expected 2 frames, got " + std::to_string(frames.size()));
             expect(frames[0].getParams().size() == 7,
@@ -593,8 +599,8 @@ public:
 
             expect(frames[0][PsgParamType::NoisePeriod] == 0x1f, "Expected NoisePeriod be 0x1f");
 
-            frames[1].debugPrint();
-            DBG("----------------------------------------------");
+            // frames[1].debugPrint();
+            // DBG("----------------------------------------------");
 
             expect(frames[1][PsgParamType::VolumeA] == 15, "Expected VolumeA to be 15");
             expect(frames[1][PsgParamType::VolumeB] == 8, "Expected VolumeB to be 8");

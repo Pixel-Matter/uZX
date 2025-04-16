@@ -312,12 +312,12 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
         auto beat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
         regsState.clear();
         regsState.update(data.frames[i]);
-        for (int j = 0; j < 3; ++j) {
-            if (regsState.getEnvMod(size_t(j))) {
-                regsState.setVolume(size_t(j), 0);
-                // params.clear(PsgParamType::VolumeA + j);
-            }
-        }
+        // for (int j = 0; j < 3; ++j) {
+        //     if (regsState.getEnvMod(size_t(j))) {
+        //         regsState.setVolume(size_t(j), 0);
+        //         // params.clear(PsgParamType::VolumeA + j);
+        //     }
+        // }
 
         params.clearAll();
         params.update(regsState);  // tracks really changed params

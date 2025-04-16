@@ -295,15 +295,6 @@ public:
     PsgParamFrame(const juce::ValueTree&);
     PsgParamFrame(PsgParamFrame&&) = default;
 
-//     //==============================================================================
-//     int getControllerValue() const noexcept                         { return value; }
-//     void setControllerValue(int newValue, juce::UndoManager*);
-
-//     static int getControllerDefautValue(PsgParamType type);
-
-//     int getMetadata() const noexcept                                { return metadata; }
-//     void setMetadata (int metaValue, juce::UndoManager*);
-
     //==============================================================================
     te::BeatPosition getBeatPosition() const noexcept                         { return beatNumber; }
     void setBeatPosition (te::BeatPosition, juce::UndoManager*);
@@ -312,9 +303,7 @@ public:
     te::BeatPosition getEditBeats(const PsgClip&) const;
     te::TimePosition getEditTime(const PsgClip&) const;
 
-//     juce::String getLevelDescription (te::MidiClip*) const;
-
-//     //==============================================================================
+    //==============================================================================
     inline const PsgParamFrameData& getData() const noexcept {
         return data;
     }

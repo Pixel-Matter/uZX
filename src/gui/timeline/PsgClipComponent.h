@@ -74,8 +74,8 @@ public:
         const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
         const auto pixelsPerFrame = frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds();
 
-        auto& regs = psgClip->getSequence().getControllerEvents();
-        if (regs.size() == 0)
+        auto& frames = psgClip->getPsg().getFrames();
+        if (frames.size() == 0)
             return;
 
         const int regsRange = 14;
@@ -83,10 +83,11 @@ public:
         const float left = static_cast<float>(rect.getX());
         g.setFont(12.0f);
 
-        for (auto reg : regs) {
-            int regNumber = reg->getType() - 20;
+        // TODO get frames in range
+        uZX::PsgRegsFrame regsFrame;
+        for (auto frame : frames) {
+            auto s = frame->getEditTime(*psgClip);
 
-            auto s = reg->getEditTime(*psgClip);
             if (s < clipRange.getStart() || s + frameDur < viewRange.getStart())
                 continue;
             if (s >= clipRange.getEnd() || s >= viewRange.getEnd())
@@ -95,23 +96,87 @@ public:
             float x1 = (float)timeToX(s) - left;
             if (x1 + pixelsPerFrame < 0)
                 continue;
-            float y1 = (static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
 
-            auto color = ColorCoding::regColors[static_cast<size_t>(regNumber)];
-            if (pixelsPerFrame >= 12) {
-                String hexValue = choc::text::createHexString(static_cast<uint8_t>(reg->getControllerValue()), 2);
-                g.setColour(color.withLightness(0.75f));
-                g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
-                g.setColour(Colours::black);
-                g.drawText(hexValue, (int)(x1 + 0), (int)y1, (int)(pixelsPerFrame), (int)laneHeight, Justification::left, false);
-            } else {
-                auto value = static_cast<float>(reg->getControllerValue()) / 255.0f;
-                g.setColour(color.withLightness(0.75f).withAlpha(0.5f + value / 2.0f));
-                g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
+            const auto& frameData = frame->getData();
+            regsFrame.clear();
+            frameData.updateRegisters(regsFrame);
+
+            for (size_t regNumber = 0; regNumber < regsFrame.size(); ++regNumber) {
+                if (regsFrame.isSet(regNumber)) {
+                    auto value = regsFrame.getRaw(regNumber);
+                    float y1 = (static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
+
+                    auto color = ColorCoding::regColors[static_cast<size_t>(regNumber)];
+                    if (pixelsPerFrame >= 12) {
+                        String hexValue = choc::text::createHexString(value, 2);
+                        g.setColour(color.withLightness(0.75f));
+                        g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
+                        g.setColour(Colours::black);
+                        g.drawText(hexValue, (int)(x1 + 0), (int)y1, (int)(pixelsPerFrame), (int)laneHeight, Justification::left, false);
+                    } else {
+                        auto val = static_cast<float>(value) / 255.0f;
+                        g.setColour(color.withLightness(0.75f).withAlpha(0.5f + val / 2.0f));
+                        g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
+                    }
+                }
             }
         }
-        // DBG("Painted " << counter << " registers");
     }
+
+    // void paint(Graphics& g) override {
+    //     ClipComponent::paint(g);
+
+    //     auto* psgClip = getPsgClip();
+    //     if (psgClip == nullptr) return;
+
+    //     const auto rect = getLocalBounds();
+    //     const auto clipRange = psgClip->getEditTimeRange();
+    //     const auto viewRange = editViewState.zoom.getRange();
+    //     auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
+    //         return roundToInt(((time - clipRange.getStart()) * width) / l);
+    //     };
+    //     const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
+    //     const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
+    //     const auto pixelsPerFrame = frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds();
+
+    //     auto& regs = psgClip->getSequence().getControllerEvents();
+    //     if (regs.size() == 0)
+    //         return;
+
+    //     const int regsRange = 14;
+    //     const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / regsRange);
+    //     const float left = static_cast<float>(rect.getX());
+    //     g.setFont(12.0f);
+
+    //     for (auto reg : regs) {
+    //         int regNumber = reg->getType() - 20;
+
+    //         auto s = reg->getEditTime(*psgClip);
+    //         if (s < clipRange.getStart() || s + frameDur < viewRange.getStart())
+    //             continue;
+    //         if (s >= clipRange.getEnd() || s >= viewRange.getEnd())
+    //             break;
+
+    //         float x1 = (float)timeToX(s) - left;
+    //         if (x1 + pixelsPerFrame < 0)
+    //             continue;
+    //         float y1 = (static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
+
+    //         auto color = ColorCoding::regColors[static_cast<size_t>(regNumber)];
+    //         if (pixelsPerFrame >= 12) {
+    //             String hexValue = choc::text::createHexString(static_cast<uint8_t>(reg->getControllerValue()), 2);
+    //             g.setColour(color.withLightness(0.75f));
+    //             g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
+    //             g.setColour(Colours::black);
+    //             g.drawText(hexValue, (int)(x1 + 0), (int)y1, (int)(pixelsPerFrame), (int)laneHeight, Justification::left, false);
+    //         } else {
+    //             auto value = static_cast<float>(reg->getControllerValue()) / 255.0f;
+    //             g.setColour(color.withLightness(0.75f).withAlpha(0.5f + value / 2.0f));
+    //             g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
+    //         }
+    //     }
+    //     // DBG("Painted " << counter << " registers");
+    // }
 
 };
 

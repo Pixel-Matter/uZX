@@ -124,6 +124,7 @@ public:
     TrackHeaderComponent header;
     TrackComponent body;
     TrackFooterComponent footer;
+    ResizableEdgeComponent resizer {this, nullptr, ResizableEdgeComponent::Edge::bottomEdge};
 
 private:
     //  TODO trackViewState instead?

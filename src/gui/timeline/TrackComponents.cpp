@@ -397,6 +397,8 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, te::Track::Ptr t)
     addAndMakeVisible(header);
     addAndMakeVisible(body);
     addAndMakeVisible(footer);
+    addAndMakeVisible(resizer);
+    setSize(getWidth(), 160 + 4);
 }
 
 TrackRowComponent::~TrackRowComponent() {
@@ -413,12 +415,16 @@ void TrackRowComponent::resized() {
     const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
     const int footerWidth = editViewState.showFooters ? 100 : 0;
     auto r = getLocalBounds();
+    resizer.setBounds(r.removeFromBottom(2));
+
     header.setBounds(r.removeFromLeft(headerWidth));
     footer.setBounds(r.removeFromRight(footerWidth));
     body.setBounds(r);
+
     body.resized();
     header.resized();
     footer.resized();
+
     header.setVisible(editViewState.showHeaders);
     footer.setVisible(editViewState.showFooters);
     header.setEnabled(editViewState.showHeaders);

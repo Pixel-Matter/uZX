@@ -68,7 +68,7 @@ void EditComponent::handleAsyncUpdate() {
 }
 
 void EditComponent::resized() {
-    const int trackHeight = 160, trackGap = 2, rulerHeight = 32;
+    const int trackGap = 0, rulerHeight = 32;
     const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
     const int footerWidth = editViewState.showFooters ? 100 : 0;
 
@@ -81,10 +81,14 @@ void EditComponent::resized() {
 
     for (auto t : trackRows) {
         // TODO get trackHeight from trackViewState
-        t->setBounds(0, y, getWidth(), trackHeight);
+        t->setBounds(0, y, getWidth(), t->getHeight());
         t->resized();
-        y += trackHeight + trackGap;
+        y += t->getHeight() + trackGap;
     }
+}
+
+void EditComponent::componentMovedOrResized(Component& component, bool /*wasMoved*/, bool /*wasResized*/) {
+    resized();
 }
 
 void EditComponent::buildTracks() {
@@ -114,6 +118,7 @@ void EditComponent::buildTracks() {
 
         if (c != nullptr) {
             trackRows.add(c);
+            c->addComponentListener(this);
             addAndMakeVisible(c);
         }
     }

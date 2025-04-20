@@ -13,7 +13,8 @@ class EditComponent final : public Component,
                       private te::ValueTreeAllEventListener,
                       private ZoomViewState::Listener,
                       private FlaggedAsyncUpdater,  // for marking and updating asynchronously
-                      private ChangeListener
+                      private ChangeListener,
+                      private ComponentListener
                     //   private ApplicationCommandTarget
                       {
 public:
@@ -41,6 +42,7 @@ private:
 
     void handleAsyncUpdate() override;
     void resized() override;
+    void componentMovedOrResized(Component&, bool /*wasMoved*/, bool /*wasResized*/) override;
 
     void changeListenerCallback(ChangeBroadcaster*) override { repaint(); }
 

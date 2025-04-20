@@ -7,7 +7,6 @@
 #include "../common/LookAndFeel.h"
 #include "../../model/PsgClip.h"
 #include "../../model/EditUtilities.h"
-#include "tracktion_core/utilities/tracktion_Time.h"
 
 namespace MoTool {
 
@@ -81,7 +80,13 @@ public:
     }
 
     void paint(Graphics& g) override {
+        paintParameters(g);
+        // paintRegisters(g);
+    }
+
+    void paintRegisters(Graphics& g) {
         ClipComponent::paint(g);
+        g.setFont(12.0f);
 
         auto* psgClip = getPsgClip();
         if (psgClip == nullptr) return;
@@ -89,39 +94,39 @@ public:
         const auto rect = getLocalBounds();
         const auto clipRange = psgClip->getEditTimeRange();
         const auto viewRange = editViewState.zoom.getRange();
-        auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
-            return roundToInt(((time - clipRange.getStart()) * width) / l);
+
+        auto timeToX = [w = rect.getWidth(), s = clipRange.getStart(), len = clipRange.getLength(),
+                        left = rect.getX()] (auto time) {
+            return static_cast<float>(((time - s) * w) / len - left);
         };
+
         const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
         const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
-        const auto pixelsPerFrame = frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds();
+        const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth()) / static_cast<float>(clipRange.getLength().inSeconds());
 
-        const int regsRange = 14;
+        constexpr auto regsRange = uZX::PsgRegsFrame::size();
         const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / regsRange);
-        const float left = static_cast<float>(rect.getX());
-        g.setFont(12.0f);
 
         te::TimePosition startPos = jmax(clipRange.getStart(), viewRange.getStart() - frameDur);
         te::TimePosition endPos = jmin(clipRange.getEnd(), viewRange.getEnd());
 
-        // TODO get frames in range
-        auto& frames = psgClip->getPsg().getFrames();
+        const auto& frames = psgClip->getPsg().getFrames();
         if (frames.size() == 0)
             return;
 
-        uZX::PsgRegsFrame regsFrame;
         const auto startIdx = bisectFindPosition(frames, *psgClip, startPos);
+
+        uZX::PsgRegsFrame regsFrame;
         for (int i = startIdx; i < frames.size(); ++i) {
-            auto frame = frames[i];
+            const auto& frame = frames[i];
             auto s = frame->getEditTime(*psgClip);
 
-            // if (s < clipRange.getStart() || s < viewRange.getStart() - frameDur)
             if (s < startPos)
                 continue;
             if (s >= endPos)
                 break;
 
-            float x1 = (float)timeToX(s) - left;
+            float x1 = timeToX(s);
             if (x1 + pixelsPerFrame < 0)
                 continue;
 
@@ -132,79 +137,89 @@ public:
             for (size_t regNumber = 0; regNumber < regsFrame.size(); ++regNumber) {
                 if (regsFrame.isSet(regNumber)) {
                     auto value = regsFrame.getRaw(regNumber);
-                    float y1 = (static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
+                    float y1 = static_cast<float>(regNumber) / regsRange * static_cast<float>(rect.getHeight());
 
                     auto color = ColorCoding::regColors[static_cast<size_t>(regNumber)];
                     if (pixelsPerFrame >= 12) {
                         String hexValue = choc::text::createHexString(value, 2);
                         g.setColour(color.withLightness(0.75f));
-                        g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
+                        g.fillRect(x1, y1, pixelsPerFrame, laneHeight);
                         g.setColour(Colours::black);
-                        g.drawText(hexValue, (int)(x1 + 0), (int)y1, (int)(pixelsPerFrame), (int)laneHeight, Justification::left, false);
+                        // it uses GlyphArrangementCache!
+                        g.drawSingleLineText(hexValue, (int)(x1 + 1), (int)(y1 + laneHeight - 1), Justification::left);
                     } else {
                         auto val = static_cast<float>(value) / 255.0f;
                         g.setColour(color.withLightness(0.75f).withAlpha(0.5f + val / 2.0f));
-                        g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
+                        g.fillRect(x1, y1, pixelsPerFrame, laneHeight);
                     }
                 }
             }
         }
     }
 
-    // void paint(Graphics& g) override {
-    //     ClipComponent::paint(g);
+    void paintParameters(Graphics& g) {
+        ClipComponent::paint(g);
+        g.setFont(12.0f);
 
-    //     auto* psgClip = getPsgClip();
-    //     if (psgClip == nullptr) return;
+        auto* psgClip = getPsgClip();
+        if (psgClip == nullptr) return;
 
-    //     const auto rect = getLocalBounds();
-    //     const auto clipRange = psgClip->getEditTimeRange();
-    //     const auto viewRange = editViewState.zoom.getRange();
-    //     auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
-    //         return roundToInt(((time - clipRange.getStart()) * width) / l);
-    //     };
-    //     const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
-    //     const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
-    //     const auto pixelsPerFrame = frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds();
+        const auto rect = getLocalBounds();
+        const auto clipRange = psgClip->getEditTimeRange();
+        const auto viewRange = editViewState.zoom.getRange();
 
-    //     auto& regs = psgClip->getSequence().getControllerEvents();
-    //     if (regs.size() == 0)
-    //         return;
+        auto timeToX = [w = rect.getWidth(), s = clipRange.getStart(), len = clipRange.getLength(),
+                        left = rect.getX()] (auto time) {
+            return static_cast<float>(((time - s) * w) / len - left);
+        };
 
-    //     const int regsRange = 14;
-    //     const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / regsRange);
-    //     const float left = static_cast<float>(rect.getX());
-    //     g.setFont(12.0f);
+        const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
+        const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
+        const float pixelsPerFrame = frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds();
 
-    //     for (auto reg : regs) {
-    //         int regNumber = reg->getType() - 20;
+        constexpr auto lanesRange = PsgParamType::size();
+        const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / lanesRange);
 
-    //         auto s = reg->getEditTime(*psgClip);
-    //         if (s < clipRange.getStart() || s + frameDur < viewRange.getStart())
-    //             continue;
-    //         if (s >= clipRange.getEnd() || s >= viewRange.getEnd())
-    //             break;
+        te::TimePosition startPos = jmax(clipRange.getStart(), viewRange.getStart() - frameDur);
+        te::TimePosition endPos = jmin(clipRange.getEnd(), viewRange.getEnd());
 
-    //         float x1 = (float)timeToX(s) - left;
-    //         if (x1 + pixelsPerFrame < 0)
-    //             continue;
-    //         float y1 = (static_cast<float>(regNumber) / regsRange) * static_cast<float>(rect.getHeight());
+        const auto& frames = psgClip->getPsg().getFrames();
+        if (frames.size() == 0)
+            return;
 
-    //         auto color = ColorCoding::regColors[static_cast<size_t>(regNumber)];
-    //         if (pixelsPerFrame >= 12) {
-    //             String hexValue = choc::text::createHexString(static_cast<uint8_t>(reg->getControllerValue()), 2);
-    //             g.setColour(color.withLightness(0.75f));
-    //             g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
-    //             g.setColour(Colours::black);
-    //             g.drawText(hexValue, (int)(x1 + 0), (int)y1, (int)(pixelsPerFrame), (int)laneHeight, Justification::left, false);
-    //         } else {
-    //             auto value = static_cast<float>(reg->getControllerValue()) / 255.0f;
-    //             g.setColour(color.withLightness(0.75f).withAlpha(0.5f + value / 2.0f));
-    //             g.fillRect(x1, y1, (float)pixelsPerFrame, (float)laneHeight);
-    //         }
-    //     }
-    //     // DBG("Painted " << counter << " registers");
-    // }
+        const auto startIdx = bisectFindPosition(frames, *psgClip, startPos);
+
+        for (int i = startIdx; i < frames.size(); ++i) {
+            const auto& frame = frames[i];
+            jassert(frame != nullptr);
+            auto s = frame->getEditTime(*psgClip);
+
+            if (s < startPos)
+                continue;
+            if (s >= endPos)
+                break;
+
+            float x1 = timeToX(s);
+            if (x1 + pixelsPerFrame < 0)
+                continue;
+
+            const auto& frameData = frame->getData();
+
+            for (int paramNum = 0; paramNum < static_cast<int>(frameData.size()); ++paramNum) {
+
+                if (frameData.isSet(paramNum)) {
+                    auto value = frameData.getRaw(static_cast<PsgParamType>(paramNum));
+                    float y1 = static_cast<float>(paramNum) / lanesRange * static_cast<float>(rect.getHeight());
+
+                    g.setColour(Colors::PSG::A);
+                    auto val = static_cast<float>(value) / 16384.0f;
+                    g.drawHorizontalLine(roundToInt(y1 + val / laneHeight), x1, x1 + pixelsPerFrame);
+                    // g.fillRect(x1, y1, (float)pixelsPerFrame, laneHeight);
+                }
+            }
+        }
+    }
+
 
 };
 

@@ -251,6 +251,8 @@ TrackComponent::TrackComponent(EditViewState& evs, te::Track::Ptr t)
     track->state.addListener(this);
     track->edit.getTransport().addChangeListener(this);
 
+    // setBufferedToImage(true);
+    // setRepaintsOnMouseActivity(true);
     markAndUpdate(updateClips);
 }
 
@@ -373,6 +375,28 @@ void TrackComponent::buildRecordClips() {
     {
         recordingClip = nullptr;
     }
+}
+
+//==============================================================================
+TrackRowComponent::TrackRowComponent(EditViewState& evs, te::Track::Ptr t)
+    : editViewState (evs)
+    , track (t)
+{
+}
+
+TrackRowComponent::~TrackRowComponent() {
+}
+
+void TrackRowComponent::paint(Graphics& g) {
+    // nothing to draw
+}
+
+void TrackRowComponent::mouseDown(const MouseEvent&) {
+    editViewState.selectionManager.selectOnly(track.get());
+}
+
+void TrackRowComponent::resized() {
+    // TODO resize header, body, footer
 }
 
 }  // namespace MoTool

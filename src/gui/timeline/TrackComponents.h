@@ -108,5 +108,24 @@ private:
     bool updateClips = false, updatePositions = false, updateRecordClips = false;
 };
 
+//==============================================================================
+// Its function is to only resize the track row as a whole
+// and to sync track height with a view state
+//==============================================================================
+class TrackRowComponent : public Component {
+public:
+    TrackRowComponent(EditViewState&, te::Track::Ptr);
+    ~TrackRowComponent() override;
+
+    void paint(Graphics& g) override;
+    void mouseDown(const MouseEvent& e) override;
+    void resized() override;
+
+private:
+    //  TODO trackViewState instead?
+    EditViewState& editViewState;
+    te::Track::Ptr track;
+};
+
 
 }  // namespace MoTool

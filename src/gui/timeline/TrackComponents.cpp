@@ -10,6 +10,7 @@
 #include "PsgClipComponent.h"
 #include "../common/Components.h"
 #include "../common/LookAndFeel.h"
+#include "tracktion_engine/tracktion_engine.h"
 
 namespace te = tracktion;
 using namespace std::literals;
@@ -250,15 +251,17 @@ TrackComponent::TrackComponent(EditViewState& evs, te::Track::Ptr t)
 {
     track->state.addListener(this);
     track->edit.getTransport().addChangeListener(this);
+    editViewState.selectionManager.addChangeListener(this);
 
-    // setBufferedToImage(true);
-    // setRepaintsOnMouseActivity(true);
+    setBufferedToImage(true);
+    setRepaintsOnMouseActivity(true);
     markAndUpdate(updateClips);
 }
 
 TrackComponent::~TrackComponent() {
     track->state.removeListener(this);
     track->edit.getTransport().removeChangeListener(this);
+    editViewState.selectionManager.removeChangeListener(this);
 }
 
 void TrackComponent::paint(Graphics& g) {
@@ -281,7 +284,11 @@ void TrackComponent::mouseDown(const MouseEvent&) {
     editViewState.selectionManager.selectOnly(track.get());
 }
 
-void TrackComponent::changeListenerCallback(ChangeBroadcaster*) {
+void TrackComponent::changeListenerCallback(ChangeBroadcaster* source) {
+    if (source == &editViewState.selectionManager) {
+        // TODO repaint only on its track or clips selection/deselection
+        markAndUpdate(updateSelection);
+    }
     markAndUpdate(updateRecordClips);
 }
 
@@ -317,6 +324,8 @@ void TrackComponent::handleAsyncUpdate() {
         resized();
     if (compareAndReset(updateRecordClips))
         buildRecordClips();
+    if (compareAndReset(updateSelection))
+        repaint();
 }
 
 void TrackComponent::resized() {

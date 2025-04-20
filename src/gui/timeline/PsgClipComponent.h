@@ -206,20 +206,34 @@ public:
             const auto& frameData = frame->getData();
 
             for (int paramNum = 0; paramNum < static_cast<int>(frameData.size()); ++paramNum) {
-
+                const auto paramType = static_cast<PsgParamType>(paramNum);
                 if (frameData.isSet(paramNum)) {
+                    juce::Colour color;
                     auto value = frameData.getRaw(static_cast<PsgParamType>(paramNum));
-                    float y1 = static_cast<float>(paramNum) / lanesRange * static_cast<float>(rect.getHeight());
-
-                    g.setColour(Colors::PSG::A);
-                    auto val = static_cast<float>(value) / 16384.0f;
-                    g.drawHorizontalLine(roundToInt(y1 + val / laneHeight), x1, x1 + pixelsPerFrame);
-                    // g.fillRect(x1, y1, (float)pixelsPerFrame, laneHeight);
+                    switch (paramType) {
+                        case PsgParamType::TonePeriodA:
+                            color = Colors::PSG::A;
+                            break;
+                        case PsgParamType::TonePeriodB:
+                            color = Colors::PSG::B;
+                            break;
+                        case PsgParamType::TonePeriodC:
+                            color = Colors::PSG::C;
+                            break;
+                        case PsgParamType::EnvelopePeriod:
+                            color = Colors::PSG::Env;
+                            value *= 16;
+                            break;
+                        default:
+                            continue;
+                    }
+                    float val = 1.0f - static_cast<float>(value) / 4096.0f;
+                    g.setColour(color.withSaturation(1.0f).withAlpha(0.75f));
+                    g.fillRect(x1, val * rect.getHeight() - 4, (float)pixelsPerFrame, 4.0f);
                 }
             }
         }
     }
-
 
 };
 

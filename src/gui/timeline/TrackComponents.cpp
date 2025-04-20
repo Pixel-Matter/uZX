@@ -388,16 +388,21 @@ void TrackComponent::buildRecordClips() {
 
 //==============================================================================
 TrackRowComponent::TrackRowComponent(EditViewState& evs, te::Track::Ptr t)
-    : editViewState (evs)
+    : header (evs, t)
+    , body (evs, t)
+    , footer (evs, t)
+    , editViewState (evs)
     , track (t)
 {
+    addAndMakeVisible(header);
+    addAndMakeVisible(body);
+    addAndMakeVisible(footer);
 }
 
 TrackRowComponent::~TrackRowComponent() {
 }
 
-void TrackRowComponent::paint(Graphics& g) {
-    // nothing to draw
+void TrackRowComponent::paint(Graphics&) {
 }
 
 void TrackRowComponent::mouseDown(const MouseEvent&) {
@@ -405,7 +410,19 @@ void TrackRowComponent::mouseDown(const MouseEvent&) {
 }
 
 void TrackRowComponent::resized() {
-    // TODO resize header, body, footer
+    const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
+    const int footerWidth = editViewState.showFooters ? 100 : 0;
+    auto r = getLocalBounds();
+    header.setBounds(r.removeFromLeft(headerWidth));
+    footer.setBounds(r.removeFromRight(footerWidth));
+    body.setBounds(r);
+    body.resized();
+    header.resized();
+    footer.resized();
+    header.setVisible(editViewState.showHeaders);
+    footer.setVisible(editViewState.showFooters);
+    header.setEnabled(editViewState.showHeaders);
+    footer.setEnabled(editViewState.showFooters);
 }
 
 }  // namespace MoTool

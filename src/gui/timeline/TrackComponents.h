@@ -121,6 +121,10 @@ public:
     void mouseDown(const MouseEvent& e) override;
     void resized() override;
 
+    TrackHeaderComponent header;
+    TrackComponent body;
+    TrackFooterComponent footer;
+
 private:
     //  TODO trackViewState instead?
     EditViewState& editViewState;

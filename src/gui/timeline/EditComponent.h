@@ -58,9 +58,7 @@ private:
     PlayheadComponent playhead {edit, editViewState};
     RulerComponent ruler {edit, editViewState};
 
-    OwnedArray<TrackComponent> tracks;
-    OwnedArray<TrackHeaderComponent> headers;
-    OwnedArray<TrackFooterComponent> footers;
+    OwnedArray<TrackRowComponent> trackRows;
 
     bool updateTracks = false, updateZoom = false;
 };

@@ -27,6 +27,7 @@ public:
     // void zoomToFit();
 
 private:
+
     void buildTracks();
 
     void valueTreeChanged() override {}
@@ -59,8 +60,8 @@ private:
 
     PlayheadComponent playhead {edit, editViewState};
     RulerComponent ruler {edit, editViewState};
-
     OwnedArray<TrackRowComponent> trackRows;
+    TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
 
     bool updateTracks = false, updateZoom = false;
 };

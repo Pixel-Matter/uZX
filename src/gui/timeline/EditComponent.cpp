@@ -2,8 +2,10 @@
 
 #include "EditComponent.h"
 #include "../common/Components.h"
+#include "TrackComponents.h"
 
 namespace MoTool {
+
 
 //==============================================================================
 EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
@@ -17,6 +19,10 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
 
     addAndMakeVisible(playhead);
     addAndMakeVisible(ruler);
+    addAndMakeVisible(trackHeaderOverlay);
+    trackHeaderOverlay.setAlwaysOnTop(true);
+    trackHeaderOverlay.addComponentListener(this);
+
     markAndUpdate(updateTracks);
 }
 
@@ -30,10 +36,10 @@ EditComponent::~EditComponent() {
 void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
     // FIXME abstraction leaked. Change to EditViewState::Listener
     if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::showHeaders
-                 || i == IDs::showFooters) {
+        if (i == IDs::showHeaders || i == IDs::showFooters) {
             markAndUpdate(updateZoom);
         } else if (i == IDs::drawWaveforms) {
+            // TODO move to track body?
             repaint();
         }
     }
@@ -69,14 +75,16 @@ void EditComponent::handleAsyncUpdate() {
 
 void EditComponent::resized() {
     const int trackGap = 0, rulerHeight = 32;
-    const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
     const int footerWidth = editViewState.showFooters ? 100 : 0;
 
-    playhead.setBounds(getLocalBounds().withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
+    const auto headerWidth = trackHeaderOverlay.getWidth();
+    auto r = getLocalBounds();
+    playhead.setBounds(r.withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
+
+    ruler.setBounds(r.removeFromTop(rulerHeight).withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
+    trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
 
     int y = roundToInt(editViewState.zoom.getViewY());
-
-    ruler.setBounds(headerWidth, y, getWidth() - headerWidth - footerWidth, rulerHeight);
     y += rulerHeight;
 
     for (auto t : trackRows) {
@@ -92,6 +100,10 @@ void EditComponent::componentMovedOrResized(Component& component, bool /*wasMove
 }
 
 void EditComponent::buildTracks() {
+    for (auto tr : trackRows) {
+        tr->removeComponentListener(this);
+        removeChildComponent(tr);
+    }
     trackRows.clear();
 
     for (auto t : getAllTracks(edit)) {

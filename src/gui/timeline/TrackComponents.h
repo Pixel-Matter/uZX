@@ -117,7 +117,6 @@ public:
     TrackRowComponent(EditViewState&, te::Track::Ptr);
     ~TrackRowComponent() override;
 
-    void paint(Graphics& g) override;
     void mouseDown(const MouseEvent& e) override;
     void resized() override;
 
@@ -130,6 +129,23 @@ private:
     //  TODO trackViewState instead?
     EditViewState& editViewState;
     te::Track::Ptr track;
+};
+
+
+class TrackHeaderOverlayComponent : public Component, private te::ValueTreeAllEventListener {
+public:
+    TrackHeaderOverlayComponent(EditViewState& evs);
+    ~TrackHeaderOverlayComponent() override;
+    void paint(Graphics& g) override;
+    void resized() override;
+    void valueTreeChanged() override {}
+    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+
+
+private:
+    EditViewState& editViewState;
+    ComponentBoundsConstrainer constrainer;
+    ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::rightEdge};
 };
 
 

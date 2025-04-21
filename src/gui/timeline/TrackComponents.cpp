@@ -404,9 +404,6 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, te::Track::Ptr t)
 TrackRowComponent::~TrackRowComponent() {
 }
 
-void TrackRowComponent::paint(Graphics&) {
-}
-
 void TrackRowComponent::mouseDown(const MouseEvent&) {
     editViewState.selectionManager.selectOnly(track.get());
 }
@@ -430,5 +427,40 @@ void TrackRowComponent::resized() {
     header.setEnabled(editViewState.showHeaders);
     footer.setEnabled(editViewState.showFooters);
 }
+
+
+//==============================================================================
+TrackHeaderOverlayComponent::TrackHeaderOverlayComponent(EditViewState& evs)
+    : editViewState (evs)
+{
+    // setInterceptsMouseClicks(false, false);
+
+    editViewState.state.addListener(this);
+    setSize(editViewState.showHeaders ? editViewState.headersWidth : 0, getHeight());
+    constrainer.setMinimumWidth(110);
+    constrainer.setMaximumWidth(300);
+    addAndMakeVisible(resizer);
+}
+
+TrackHeaderOverlayComponent::~TrackHeaderOverlayComponent() {
+    editViewState.state.removeListener(this);
+}
+
+void TrackHeaderOverlayComponent::paint(Graphics&) {
+}
+
+void TrackHeaderOverlayComponent::resized() {
+    editViewState.headersWidth = getWidth();
+    auto bounds = getLocalBounds();
+    resizer.setBounds(bounds.removeFromRight(2));
+}
+
+void TrackHeaderOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, const juce::Identifier& i) {
+    if (i == IDs::headersWidth && s.hasType(IDs::EDITVIEWSTATE)) {
+        setSize(editViewState.showHeaders ? editViewState.headersWidth : 0, getHeight());
+        resized();
+    }
+}
+
 
 }  // namespace MoTool

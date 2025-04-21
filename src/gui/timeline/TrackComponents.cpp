@@ -10,7 +10,6 @@
 #include "PsgClipComponent.h"
 #include "../common/Components.h"
 #include "../common/LookAndFeel.h"
-#include "tracktion_engine/tracktion_engine.h"
 
 namespace te = tracktion;
 using namespace std::literals;
@@ -393,15 +392,27 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, te::Track::Ptr t)
     , footer (evs, t)
     , editViewState (evs)
     , track (t)
+    , viewState(t->state, &editViewState.edit.getUndoManager())
+    , resizer(this, &viewState.getConstrainer(), ResizableEdgeComponent::Edge::bottomEdge)
 {
     addAndMakeVisible(header);
     addAndMakeVisible(body);
     addAndMakeVisible(footer);
     addAndMakeVisible(resizer);
-    setSize(getWidth(), 160 + 4);
+
+    viewState.addListener (this);
 }
 
 TrackRowComponent::~TrackRowComponent() {
+    viewState.removeListener(this);
+}
+
+int TrackRowComponent::getTrackHeight() const noexcept {
+    return viewState.getHeight();
+}
+
+void TrackRowComponent::trackViewStateChanged() {
+    resized();
 }
 
 void TrackRowComponent::mouseDown(const MouseEvent&) {
@@ -409,6 +420,8 @@ void TrackRowComponent::mouseDown(const MouseEvent&) {
 }
 
 void TrackRowComponent::resized() {
+    viewState.setTrackHeight(getHeight());
+
     const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
     const int footerWidth = editViewState.showFooters ? 100 : 0;
     auto r = getLocalBounds();
@@ -417,15 +430,6 @@ void TrackRowComponent::resized() {
     header.setBounds(r.removeFromLeft(headerWidth));
     footer.setBounds(r.removeFromRight(footerWidth));
     body.setBounds(r);
-
-    body.resized();
-    header.resized();
-    footer.resized();
-
-    header.setVisible(editViewState.showHeaders);
-    footer.setVisible(editViewState.showFooters);
-    header.setEnabled(editViewState.showHeaders);
-    footer.setEnabled(editViewState.showFooters);
 }
 
 
@@ -433,7 +437,7 @@ void TrackRowComponent::resized() {
 TrackHeaderOverlayComponent::TrackHeaderOverlayComponent(EditViewState& evs)
     : editViewState (evs)
 {
-    // setInterceptsMouseClicks(false, false);
+    setInterceptsMouseClicks(false, true);
 
     editViewState.state.addListener(this);
     setSize(editViewState.showHeaders ? editViewState.headersWidth : 0, getHeight());

@@ -88,10 +88,8 @@ void EditComponent::resized() {
     y += rulerHeight;
 
     for (auto t : trackRows) {
-        // TODO get trackHeight from trackViewState
-        t->setBounds(0, y, getWidth(), t->getHeight());
-        t->resized();
-        y += t->getHeight() + trackGap;
+        t->setBounds(0, y, getWidth(), t->getTrackHeight());
+        y += t->getTrackHeight() + trackGap;
     }
 }
 

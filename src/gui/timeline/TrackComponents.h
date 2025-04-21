@@ -19,7 +19,7 @@ namespace MoTool {
 
 //==============================================================================
 class TrackHeaderComponent : public Component,
-                             private te::ValueTreeAllEventListener {
+                             private ValueTree::Listener {
 public:
     TrackHeaderComponent(EditViewState&, te::Track::Ptr);
     ~TrackHeaderComponent() override;
@@ -29,8 +29,7 @@ public:
     void resized() override;
 
 private:
-    void valueTreeChanged() override {}
-    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
 
     EditViewState& editViewState;
     te::Track::Ptr track;
@@ -43,7 +42,7 @@ private:
 //==============================================================================
 class TrackFooterComponent : public Component,
                              private FlaggedAsyncUpdater,
-                             private te::ValueTreeAllEventListener {
+                             private ValueTree::Listener {
 public:
     TrackFooterComponent(EditViewState&, te::Track::Ptr);
     ~TrackFooterComponent() override;
@@ -53,10 +52,9 @@ public:
     void resized() override;
 
 private:
-    void valueTreeChanged() override {}
-    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override;
-    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override;
-    void valueTreeChildOrderChanged(juce::ValueTree&, int, int) override;
+    void valueTreeChildAdded(ValueTree&, ValueTree&) override;
+    void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
+    void valueTreeChildOrderChanged(ValueTree&, int, int) override;
 
     void handleAsyncUpdate() override;
 
@@ -73,7 +71,7 @@ private:
 
 //==============================================================================
 class TrackComponent : public Component,
-                       private te::ValueTreeAllEventListener,
+                       private ValueTree::Listener,
                        private FlaggedAsyncUpdater,
                        private ChangeListener {
 public:
@@ -87,12 +85,10 @@ public:
 private:
     void changeListenerCallback(ChangeBroadcaster*) override;
 
-    void valueTreeChanged() override {}
-
-    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
-    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override;
-    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override;
-    void valueTreeChildOrderChanged(juce::ValueTree&, int, int) override;
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
+    void valueTreeChildAdded(ValueTree&, ValueTree&) override;
+    void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
+    void valueTreeChildOrderChanged(ValueTree&, int, int) override;
 
     void handleAsyncUpdate() override;
 
@@ -112,7 +108,8 @@ private:
 // Its function is to only resize the track row as a whole
 // and to sync track height with a view state
 //==============================================================================
-class TrackRowComponent : public Component {
+class TrackRowComponent : public Component,
+                          private TrackViewState::Listener {
 public:
     TrackRowComponent(EditViewState&, te::Track::Ptr);
     ~TrackRowComponent() override;
@@ -120,15 +117,19 @@ public:
     void mouseDown(const MouseEvent& e) override;
     void resized() override;
 
+    void trackViewStateChanged() override;
+
+    int getTrackHeight() const noexcept;
+
     TrackHeaderComponent header;
     TrackComponent body;
     TrackFooterComponent footer;
-    ResizableEdgeComponent resizer {this, nullptr, ResizableEdgeComponent::Edge::bottomEdge};
 
 private:
-    //  TODO trackViewState instead?
     EditViewState& editViewState;
     te::Track::Ptr track;
+    TrackViewState viewState;
+    ResizableEdgeComponent resizer;
 };
 
 
@@ -139,7 +140,7 @@ public:
     void paint(Graphics& g) override;
     void resized() override;
     void valueTreeChanged() override {}
-    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
 
 
 private:

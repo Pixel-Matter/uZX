@@ -264,7 +264,6 @@ TrackComponent::~TrackComponent() {
 }
 
 void TrackComponent::paint(Graphics& g) {
-    DBG("TrackComponent::paint");
     g.fillAll(Colors::Theme::backgroundAlt);
 
     if (editViewState.selectionManager.isSelected(track.get())) {

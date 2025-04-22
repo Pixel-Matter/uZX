@@ -47,6 +47,9 @@ class ZoomViewState :
         private ChangeListener {
 public:
 
+    // Actually we do not need to use listeners in every ValueTree state wrapper,
+    // IDs and ValueTree::Listener are enough.
+    // But with Listener we can achieve encapsulation of the state properties
     class Listener {
     public:
         virtual ~Listener() = default;
@@ -164,8 +167,8 @@ public:
     }
 
     te::Edit& edit;
-    ValueTree state;
 private:
+    ValueTree state;
     CachedValue<te::TimePosition> viewX1, viewX2;
     CachedValue<double> viewY;
     ListenerList<Listener> listeners;

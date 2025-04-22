@@ -250,7 +250,7 @@ TrackBodyComponent::TrackBodyComponent(EditViewState& evs, te::Track::Ptr t)
 {
     track->state.addListener(this);
     editViewState.state.addListener(this);
-    editViewState.zoom.state.addListener(this);
+    editViewState.zoom.addListener(this);
 
     track->edit.getTransport().addChangeListener(this);
     editViewState.selectionManager.addChangeListener(this);
@@ -265,7 +265,7 @@ TrackBodyComponent::~TrackBodyComponent() {
     track->edit.getTransport().removeChangeListener(this);
     editViewState.selectionManager.removeChangeListener(this);
     editViewState.state.removeListener(this);
-    editViewState.zoom.state.removeListener(this);
+    editViewState.zoom.removeListener(this);
 }
 
 void TrackBodyComponent::paint(Graphics& g) {
@@ -305,11 +305,11 @@ void TrackBodyComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce
         if (i == IDs::drawWaveforms) {
             repaint();
         }
-    } else if (v.hasType(IDs::ZOOMVIEWSTATE)) {
-        if (i == IDs::viewX1 || i == IDs::viewX2) {
-            markAndUpdate(updateZoom);
-        }
     }
+}
+
+void TrackBodyComponent::zoomChanged() {
+    markAndUpdate(updateZoom);
 }
 
 void TrackBodyComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {

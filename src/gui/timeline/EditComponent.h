@@ -37,7 +37,6 @@ private:
     void valueTreeChildOrderChanged(ValueTree&, int, int) override;
 
     void zoomChanged() override {
-        // DBG("EditComponent::zoomChanged");
         markAndUpdate(updateZoom);
     }
 

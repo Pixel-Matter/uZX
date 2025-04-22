@@ -244,26 +244,31 @@ void TrackFooterComponent::buildPlugins() {
 }
 
 //==============================================================================
-TrackComponent::TrackComponent(EditViewState& evs, te::Track::Ptr t)
+TrackBodyComponent::TrackBodyComponent(EditViewState& evs, te::Track::Ptr t)
     : editViewState (evs)
     , track (t)
 {
     track->state.addListener(this);
+    editViewState.state.addListener(this);
+    editViewState.zoom.state.addListener(this);
+
     track->edit.getTransport().addChangeListener(this);
     editViewState.selectionManager.addChangeListener(this);
 
-    setBufferedToImage(true);  // FIXME doesn't get updated on scrolls
+    setBufferedToImage(true);
     setRepaintsOnMouseActivity(true);
     markAndUpdate(updateClips);
 }
 
-TrackComponent::~TrackComponent() {
+TrackBodyComponent::~TrackBodyComponent() {
     track->state.removeListener(this);
     track->edit.getTransport().removeChangeListener(this);
     editViewState.selectionManager.removeChangeListener(this);
+    editViewState.state.removeListener(this);
+    editViewState.zoom.state.removeListener(this);
 }
 
-void TrackComponent::paint(Graphics& g) {
+void TrackBodyComponent::paint(Graphics& g) {
     g.fillAll(Colors::Theme::backgroundAlt);
 
     if (editViewState.selectionManager.isSelected(track.get())) {
@@ -279,47 +284,57 @@ void TrackComponent::paint(Graphics& g) {
     // TODO draw a grid
 }
 
-void TrackComponent::mouseDown(const MouseEvent&) {
+void TrackBodyComponent::mouseDown(const MouseEvent&) {
     editViewState.selectionManager.selectOnly(track.get());
 }
 
-void TrackComponent::changeListenerCallback(ChangeBroadcaster* source) {
+void TrackBodyComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &editViewState.selectionManager) {
-        // TODO repaint only on its track or clips selection/deselection
+        // TODO repaint only on its own track or clips selection/deselection
         markAndUpdate(updateSelection);
     }
     markAndUpdate(updateRecordClips);
 }
 
-void TrackComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
+void TrackBodyComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
     if (te::Clip::isClipState(v)) {
         if (i == te::IDs::start || i == te::IDs::length) {
             markAndUpdate(updatePositions);
         }
+    } else if (v.hasType(IDs::EDITVIEWSTATE)) {
+        if (i == IDs::drawWaveforms) {
+            repaint();
+        }
+    } else if (v.hasType(IDs::ZOOMVIEWSTATE)) {
+        if (i == IDs::viewX1 || i == IDs::viewX2) {
+            markAndUpdate(updateZoom);
+        }
     }
 }
 
-void TrackComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {
+void TrackBodyComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {
     if (te::Clip::isClipState(c))
         markAndUpdate(updateClips);
 }
 
-void TrackComponent::valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) {
+void TrackBodyComponent::valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) {
     if (te::Clip::isClipState(c))
         markAndUpdate(updateClips);
 }
 
-void TrackComponent::valueTreeChildOrderChanged(juce::ValueTree& v, int a, int b) {
+void TrackBodyComponent::valueTreeChildOrderChanged(juce::ValueTree& v, int a, int b) {
     if (te::Clip::isClipState(v.getChild(a)))
         markAndUpdate(updatePositions);
     else if (te::Clip::isClipState(v.getChild(b)))
         markAndUpdate(updatePositions);
 }
 
-void TrackComponent::handleAsyncUpdate() {
+void TrackBodyComponent::handleAsyncUpdate() {
     if (compareAndReset(updateClips))
         buildClips();
     if (compareAndReset(updatePositions))
+        resized();
+    if (compareAndReset(updateZoom))
         resized();
     if (compareAndReset(updateRecordClips))
         buildRecordClips();
@@ -327,7 +342,7 @@ void TrackComponent::handleAsyncUpdate() {
         repaint();
 }
 
-void TrackComponent::resized() {
+void TrackBodyComponent::resized() {
     for (auto cc : clips) {
         auto& c = cc->getClip();
         auto pos = c.getPosition();
@@ -338,7 +353,7 @@ void TrackComponent::resized() {
     }
 }
 
-void TrackComponent::buildClips() {
+void TrackBodyComponent::buildClips() {
     clips.clear();
 
     if (auto ct = dynamic_cast<te::ClipTrack*>(track.get())) {
@@ -362,7 +377,7 @@ void TrackComponent::buildClips() {
     resized();
 }
 
-void TrackComponent::buildRecordClips() {
+void TrackBodyComponent::buildRecordClips() {
     bool needed = false;
 
     if (track->edit.getTransport().isRecording()) {
@@ -387,11 +402,11 @@ void TrackComponent::buildRecordClips() {
 
 //==============================================================================
 TrackRowComponent::TrackRowComponent(EditViewState& evs, te::Track::Ptr t)
-    : header (evs, t)
-    , body (evs, t)
-    , footer (evs, t)
-    , editViewState (evs)
-    , track (t)
+    : header(evs, t)
+    , body(evs, t)
+    , footer(evs, t)
+    , editViewState(evs)
+    , track(t)
     , trackViewState(t->state, &editViewState.edit.getUndoManager())
     , resizer(this, &trackViewState.getConstrainer(), ResizableEdgeComponent::Edge::bottomEdge)
 {

@@ -70,13 +70,13 @@ private:
 };
 
 //==============================================================================
-class TrackComponent : public Component,
+class TrackBodyComponent : public Component,
                        private ValueTree::Listener,
                        private FlaggedAsyncUpdater,
                        private ChangeListener {
 public:
-    TrackComponent(EditViewState&, te::Track::Ptr);
-    ~TrackComponent() override;
+    TrackBodyComponent(EditViewState&, te::Track::Ptr);
+    ~TrackBodyComponent() override;
 
     void paint(Graphics& g) override;
     void mouseDown(const MouseEvent& e) override;
@@ -101,7 +101,7 @@ private:
     OwnedArray<ClipComponent> clips;
     std::unique_ptr<RecordingClipComponent> recordingClip;
 
-    bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false;
+    bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false, updateZoom = false;
 };
 
 //==============================================================================
@@ -122,7 +122,7 @@ public:
     int getTrackHeight() const noexcept;
 
     TrackHeaderComponent header;
-    TrackComponent body;
+    TrackBodyComponent body;
     TrackFooterComponent footer;
 
 private:

@@ -8,10 +8,6 @@
 
 #pragma once
 
-#include "juce_events/juce_events.h"
-#include "tracktion_core/utilities/tracktion_Time.h"
-#include "tracktion_core/utilities/tracktion_TimeRange.h"
-#include "tracktion_engine/tracktion_engine.h"
 #include <JuceHeader.h>
 #include <common/Utilities.h>  // from Tracktion
 
@@ -19,7 +15,7 @@ namespace MoTool {
 
 namespace IDs
 {
-    #define DECLARE_ID(name)  const juce::Identifier name(#name);
+    #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(EDITVIEWSTATE)
     DECLARE_ID(showMasterTrack)
     DECLARE_ID(showGlobalTrack)
@@ -36,6 +32,9 @@ namespace IDs
     DECLARE_ID(viewX1)
     DECLARE_ID(viewX2)
     DECLARE_ID(viewY)
+
+    DECLARE_ID(VIEWSTATE)
+    DECLARE_ID(height)
     #undef DECLARE_ID
 }
 
@@ -235,10 +234,83 @@ public:
     ZoomViewState zoom;
     // TODO actually it is better to make EditContext class and put EditViewState and selection managers there
     te::SelectionManager& selectionManager;
+    te::Edit& edit;
 
 private:
-    te::Edit& edit;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditViewState)
+};
+
+
+//==============================================================================
+/**
+    Wrapper for storing the view state of a single track,
+    similar to EditViewState, but tied to a specific track's ValueTree.
+*/
+//==============================================================================
+class TrackViewState : private ValueTree::Listener {
+public:
+    /**
+        @param trackState  ValueTree with type TRACK, inside which VIEWSTATE is created or extracted
+        @param undoManager  UndoManager from EditViewState
+    */
+    TrackViewState(ValueTree trackState, UndoManager* undoManager)
+        : state(ensure(trackState))
+        , height(state, IDs::height, undoManager, 160)
+    {
+        constrainer.setMinimumHeight(56);
+        constrainer.setMaximumHeight(600);
+        state.addListener(this);
+    }
+
+    ~TrackViewState() override {
+        state.removeListener(this);
+    }
+
+    int getHeight() const noexcept {
+        return height.get();
+    }
+
+    void setTrackHeight(int h) {
+        height = h;
+    }
+
+    class Listener {
+        public: virtual ~Listener() = default;
+        virtual void trackViewStateChanged() = 0;
+    };
+
+    void addListener(Listener* l)    {
+        listeners.add(l);
+    }
+
+    void removeListener(Listener* l) {
+        listeners.remove(l);
+    }
+
+    ComponentBoundsConstrainer& getConstrainer() {
+        return constrainer;
+    }
+
+private:
+    ValueTree state;
+    CachedValue<int> height;
+    ComponentBoundsConstrainer constrainer;
+    ListenerList<Listener> listeners;
+
+    static ValueTree ensure(ValueTree trackState) {
+        if (auto existing = trackState.getChildWithName(IDs::VIEWSTATE); existing.isValid()) {
+            return existing;
+        }
+        auto vt = ValueTree(IDs::VIEWSTATE);
+        trackState.addChild(vt, -1, nullptr);
+        return vt;
+    }
+
+    void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override {
+        if (v == state && id == IDs::height) {
+            listeners.call(&Listener::trackViewStateChanged);
+        }
+    }
 };
 
 }  // namespace MoTool

@@ -80,6 +80,7 @@ public:
     }
 
     void paint(Graphics& g) override {
+        DBG("PsgClipComponent::paint");
         paintParameters(g);
         // paintRegisters(g);
     }

@@ -252,7 +252,7 @@ TrackComponent::TrackComponent(EditViewState& evs, te::Track::Ptr t)
     track->edit.getTransport().addChangeListener(this);
     editViewState.selectionManager.addChangeListener(this);
 
-    setBufferedToImage(true);
+    setBufferedToImage(true);  // FIXME doesn't get updated on scrolls
     setRepaintsOnMouseActivity(true);
     markAndUpdate(updateClips);
 }
@@ -264,6 +264,7 @@ TrackComponent::~TrackComponent() {
 }
 
 void TrackComponent::paint(Graphics& g) {
+    DBG("TrackComponent::paint");
     g.fillAll(Colors::Theme::backgroundAlt);
 
     if (editViewState.selectionManager.isSelected(track.get())) {

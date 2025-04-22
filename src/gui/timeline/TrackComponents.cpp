@@ -413,6 +413,7 @@ int TrackRowComponent::getTrackHeight() const noexcept {
 }
 
 void TrackRowComponent::trackViewStateChanged() {
+    // TODO triggerAsyncUpdate();
     resized();
 }
 
@@ -431,6 +432,9 @@ void TrackRowComponent::resized() {
     header.setBounds(r.removeFromLeft(headerWidth));
     footer.setBounds(r.removeFromRight(footerWidth));
     body.setBounds(r);
+
+    // do not remove
+    body.resized();
 }
 
 

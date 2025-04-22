@@ -34,7 +34,6 @@ EditComponent::~EditComponent() {
 }
 
 void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
-    // FIXME abstraction leaked. Change to EditViewState::Listener
     if (v.hasType(IDs::EDITVIEWSTATE)) {
         if (i == IDs::showHeaders || i == IDs::showFooters) {
             markAndUpdate(updateZoom);
@@ -63,7 +62,6 @@ void EditComponent::valueTreeChildOrderChanged (juce::ValueTree& v, int a, int b
 }
 
 void EditComponent::handleAsyncUpdate() {
-    // DBG("EditComponent::handleAsyncUpdate");
     if (compareAndReset(updateTracks)) {
         buildTracks();
     }
@@ -74,6 +72,7 @@ void EditComponent::handleAsyncUpdate() {
 }
 
 void EditComponent::resized() {
+    // also get called on updated zoom
     const int trackGap = 0, rulerHeight = 32;
     const int footerWidth = editViewState.showFooters ? 100 : 0;
 
@@ -89,6 +88,8 @@ void EditComponent::resized() {
 
     for (auto t : trackRows) {
         t->setBounds(0, y, getWidth(), t->getTrackHeight());
+        // do not remove t->resized(); because it triggers repainting on zoom/scroll change when bounds not change
+        t->resized();
         y += t->getTrackHeight() + trackGap;
     }
 }

@@ -109,6 +109,7 @@ struct ParamAttachment {
     te::Plugin& plugin;
     String name;
     String units;
+    // TODO CachedValue<te::AtomicWrapper<Type>> value;
     CachedValue<Type> value;
     NormalisableRange<Type> range;
     std::vector<std::pair<Type, String>> choices;

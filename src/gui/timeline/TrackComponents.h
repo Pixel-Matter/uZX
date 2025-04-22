@@ -128,7 +128,7 @@ public:
 private:
     EditViewState& editViewState;
     te::Track::Ptr track;
-    TrackViewState viewState;
+    TrackViewState trackViewState;
     ResizableEdgeComponent resizer;
 };
 

@@ -18,7 +18,6 @@ class PsgClip;
 class PsgParamFrame {
 public:
     static juce::ValueTree createPsgFrameValueTree(te::BeatPosition, const PsgParamFrameData& data);
-    // static juce::ValueTree createPsgFrameValueTree(te::BeatPosition, const uZX::PsgRegsFrame& regs);
     static juce::ValueTree createPsgFrame(const PsgParamFrame&, te::BeatPosition);
 
     PsgParamFrame(const juce::ValueTree&);
@@ -90,7 +89,14 @@ public:
     void loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager*);
 
     //==============================================================================
+    /** Returns the frames sorted array. No copy made */
     const juce::Array<PsgParamFrame*>& getFrames() const;
+
+    template <typename Visitor>
+    void visitFrames(Visitor&& visitor) const {
+        for (auto* frame : getFrames())
+            visitor(*frame);
+    }
 
     //==============================================================================
     bool isAttachedToClip() const noexcept                          { return ! state.getParent().hasType(te::IDs::NA); }

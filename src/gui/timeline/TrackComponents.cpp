@@ -392,23 +392,23 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, te::Track::Ptr t)
     , footer (evs, t)
     , editViewState (evs)
     , track (t)
-    , viewState(t->state, &editViewState.edit.getUndoManager())
-    , resizer(this, &viewState.getConstrainer(), ResizableEdgeComponent::Edge::bottomEdge)
+    , trackViewState(t->state, &editViewState.edit.getUndoManager())
+    , resizer(this, &trackViewState.getConstrainer(), ResizableEdgeComponent::Edge::bottomEdge)
 {
     addAndMakeVisible(header);
     addAndMakeVisible(body);
     addAndMakeVisible(footer);
     addAndMakeVisible(resizer);
 
-    viewState.addListener (this);
+    trackViewState.addListener(this);
 }
 
 TrackRowComponent::~TrackRowComponent() {
-    viewState.removeListener(this);
+    trackViewState.removeListener(this);
 }
 
 int TrackRowComponent::getTrackHeight() const noexcept {
-    return viewState.getHeight();
+    return trackViewState.getHeight();
 }
 
 void TrackRowComponent::trackViewStateChanged() {
@@ -420,7 +420,7 @@ void TrackRowComponent::mouseDown(const MouseEvent&) {
 }
 
 void TrackRowComponent::resized() {
-    viewState.setTrackHeight(getHeight());
+    trackViewState.setTrackHeight(getHeight());
 
     const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
     const int footerWidth = editViewState.showFooters ? 100 : 0;

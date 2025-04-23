@@ -13,7 +13,9 @@ namespace MoTool {
 class RulerComponent : public Component,
                        private Timer,
                        private te::TempoSequence::Listener,
-                       private ValueTree::Listener {
+                       private ValueTree::Listener,
+                       private ZoomViewState::Listener
+{
 public:
     RulerComponent(te::Edit& ed, EditViewState& evs)
         : te::TempoSequence::Listener {ed.tempoSequence}
@@ -22,6 +24,7 @@ public:
     {
         edit.tempoSequence.addListener(this);
         editViewState.state.addListener(this);
+        editViewState.zoom.addListener(this);
         // cached value is ValueTree::Listener
         timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr, TimecodeDisplayFormatExt {TimecodeTypeExt::barsBeatsFps50});
         // startTimerHz(30);
@@ -30,7 +33,12 @@ public:
     ~RulerComponent() override {
         edit.tempoSequence.removeListener(this);
         editViewState.state.removeListener(this);
-        stopTimer();
+        editViewState.zoom.removeListener(this);
+        // stopTimer();
+    }
+
+    void zoomChanged() override {
+        repaint();
     }
 
     void paint(Graphics& g) override {

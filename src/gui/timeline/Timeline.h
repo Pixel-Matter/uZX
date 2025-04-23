@@ -20,7 +20,6 @@ public:
     }
 
     void resized() override {
-        // TODO use layout system
     }
 
     void paint(Graphics& g) override {

@@ -4,49 +4,32 @@
 
 #include "../common/Components.h"
 #include "TrackComponents.h"
+#include "DetailsPanelComponent.h"
 #include "Ruler.h"
 
 namespace MoTool {
 
 //==============================================================================
 class EditComponent final : public Component,
-                      private te::ValueTreeAllEventListener,
-                      private ZoomViewState::Listener,
+                      //   private ApplicationCommandTarget
                       private FlaggedAsyncUpdater,  // for marking and updating asynchronously
-                      private ChangeListener,
-                      private ComponentListener
-                    //   private ApplicationCommandTarget
-                      {
+                    //   private ComponentListener,
+                      //   private ChangeListener,
+                      //   private ZoomViewState::Listener
+                      private ValueTree::Listener
+                    {
 public:
     EditComponent(te::Edit&, EditViewState&);
     ~EditComponent() override;
 
-    EditViewState& getEditViewState()   { return editViewState; }
-
-    // void zoomTracksHorizontally(double factor);
-    // void zoomToFit();
-
 private:
-
-    void buildTracks();
-
-    void valueTreeChanged() override {}
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
-    void valueTreeChildAdded(ValueTree&, ValueTree&) override;
-    void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
-    void valueTreeChildOrderChanged(ValueTree&, int, int) override;
 
-    void zoomChanged() override {
-        markAndUpdate(updateZoom);
-    }
-
+    // void zoomChanged() override;
+    // void componentMovedOrResized(Component&, bool /*wasMoved*/, bool /*wasResized*/) override;
     void handleAsyncUpdate() override;
     void resized() override;
-    void componentMovedOrResized(Component&, bool /*wasMoved*/, bool /*wasResized*/) override;
-
-    void changeListenerCallback(ChangeBroadcaster*) override { repaint(); }
-
-    void mouseDown(const MouseEvent& e) override;
+    // void mouseDown(const MouseEvent& e) override;
 
     // implementation for ApplicationCommandTarget
     // ApplicationCommandTarget* getNextCommandTarget() override;
@@ -59,10 +42,12 @@ private:
 
     PlayheadComponent playhead {edit, editViewState};
     RulerComponent ruler {edit, editViewState};
-    OwnedArray<TrackRowComponent> trackRows;
-    TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
 
-    bool updateTracks = false, updateZoom = false;
+    Viewport trackViewport;  // TODO use this to scroll tracks
+    TracksContainerComponent tracksContainer {edit, editViewState, ruler};
+    DetailsPanelComponent detailsPanel {editViewState};
+
+    bool updateSizes = false;
 };
 
 }

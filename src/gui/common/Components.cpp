@@ -255,7 +255,7 @@ PluginComponent::~PluginComponent()
 {}
 
 void PluginComponent::clicked(const ModifierKeys& modifiers) {
-    editViewState.selectionManager.selectOnly (plugin.get());
+    editViewState.selectionManager.selectOnly(plugin.get());
     if (modifiers.isPopupMenu()) {
         PopupMenu m;
         m.addItem("Delete", [this] { plugin->deleteFromParent(); });
@@ -295,7 +295,11 @@ void PlayheadComponent::mouseUp(const MouseEvent&) {
 }
 
 void PlayheadComponent::mouseDrag(const MouseEvent& e) {
-    auto t = editViewState.zoom.xToTime (e.x, getWidth());
+    // TODO start horizontal scroll instead (if mouse is outside of the component)
+    // limit x to LocalBounds
+    auto r = getLocalBounds();
+    auto x = jmax(jmin(e.x, r.getRight() - 1), r.getX());
+    auto t = jmax(0_tp, editViewState.zoom.xToTime(x, getWidth()));
     edit.getTransport().setPosition(t);
     timerCallback();
 }

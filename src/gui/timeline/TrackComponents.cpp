@@ -486,4 +486,143 @@ void TrackHeaderOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, c
 }
 
 
+//==============================================================================
+TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& evs, RulerComponent& r)
+    : edit(e)
+    , editViewState(evs)
+    , ruler(r)
+{
+    edit.state.addListener(this);
+    editViewState.selectionManager.addChangeListener(this);
+    editViewState.state.addListener(this);
+    editViewState.zoom.addListener(this);
+
+    addAndMakeVisible(trackHeaderOverlay);
+    trackHeaderOverlay.setAlwaysOnTop(true);
+    trackHeaderOverlay.addComponentListener(this);
+
+    markAndUpdate(updateTracks);
+}
+
+TracksContainerComponent::~TracksContainerComponent() {
+    editViewState.zoom.removeListener(this);
+    editViewState.state.removeListener(this);
+    editViewState.selectionManager.removeChangeListener(this);
+    edit.state.removeListener(this);
+}
+
+void TracksContainerComponent::mouseDown(const MouseEvent& e) {
+    editViewState.selectionManager.deselectAll();
+
+    auto rulerRect = ruler.getBounds();
+    if (e.x > rulerRect.getX() && e.x < rulerRect.getX() + rulerRect.getWidth())
+        ruler.repositionTransportToX(e.x - ruler.getX());
+}
+
+void TracksContainerComponent::resized() {
+    // also get called on updated zoom
+    const int trackGap = 0;
+    const auto headerWidth = trackHeaderOverlay.getWidth();
+    auto r = getLocalBounds();
+
+    trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
+
+    int y = roundToInt(editViewState.zoom.getViewY());
+
+    for (auto t : trackRows) {
+        t->setBounds(0, y, getWidth(), t->getTrackHeight());
+        // do not remove t->resized(); because it triggers repainting on zoom/scroll change when bounds not change
+        t->resized();
+        y += t->getTrackHeight() + trackGap;
+    }
+}
+
+void TracksContainerComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
+if (v.hasType(IDs::EDITVIEWSTATE)) {
+    if (i == IDs::showHeaders || i == IDs::showFooters) {
+        markAndUpdate(updateZoom);
+    } else if (i == IDs::drawWaveforms) {
+        // TODO move to track body?
+        repaint();
+    }
+}
+}
+
+void TracksContainerComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {
+    if (te::TrackList::isTrack(c))
+        markAndUpdate(updateTracks);
+}
+
+void TracksContainerComponent::valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) {
+    if (te::TrackList::isTrack(c))
+        markAndUpdate(updateTracks);
+}
+
+void TracksContainerComponent::valueTreeChildOrderChanged(juce::ValueTree& v, int a, int b) {
+    if (te::TrackList::isTrack(v.getChild(a)))
+        markAndUpdate(updateTracks);
+    else if (te::TrackList::isTrack(v.getChild(b)))
+        markAndUpdate(updateTracks);
+}
+
+void TracksContainerComponent::zoomChanged() {
+    markAndUpdate(updateZoom);
+}
+
+void TracksContainerComponent::changeListenerCallback(ChangeBroadcaster*) {
+    // selectin changed
+    repaint();
+}
+
+void TracksContainerComponent::componentMovedOrResized(Component& /*component*/, bool /*wasMoved*/, bool /*wasResized*/) {
+    markAndUpdate(updateZoom);
+}
+
+void TracksContainerComponent::buildTracks() {
+    for (auto tr : trackRows) {
+        tr->removeComponentListener(this);
+        removeChildComponent(tr);
+    }
+    trackRows.clear();
+
+    for (auto t : getAllTracks(edit)) {
+        TrackRowComponent* c = nullptr;
+
+        if (t->isMasterTrack()) {
+            if (editViewState.showMasterTrack)
+                c = new TrackRowComponent(editViewState, t);
+        } else if (t->isTempoTrack()) {
+            if (editViewState.showGlobalTrack)
+                c = new TrackRowComponent(editViewState, t);
+        } else if (t->isMarkerTrack()) {
+            if (editViewState.showMarkerTrack)
+                c = new TrackRowComponent(editViewState, t);
+        } else if (t->isChordTrack()) {
+            if (editViewState.showChordTrack)
+                c = new TrackRowComponent(editViewState, t);
+        } else if (t->isArrangerTrack()) {
+            if (editViewState.showArrangerTrack)
+                c = new TrackRowComponent(editViewState, t);
+        } else {
+            c = new TrackRowComponent(editViewState, t);
+        }
+
+        if (c != nullptr) {
+            trackRows.add(c);
+            c->addComponentListener(this);
+            addAndMakeVisible(c);
+        }
+    }
+    markAndUpdate(updateZoom);
+}
+
+void TracksContainerComponent::handleAsyncUpdate() {
+    if (compareAndReset(updateTracks)) {
+        buildTracks();
+    }
+    if (compareAndReset(updateZoom)) {
+        resized();
+    }
+}
+
 }  // namespace MoTool

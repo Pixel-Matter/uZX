@@ -11,6 +11,7 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>  // from Tracktion
 
+#include "Ruler.h"
 #include "ClipComponents.h"
 #include "../common/EditState.h"
 #include "../common/Components.h"
@@ -149,6 +150,44 @@ private:
     EditViewState& editViewState;
     ComponentBoundsConstrainer constrainer;
     ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::rightEdge};
+};
+
+
+//==============================================================================
+class TracksContainerComponent : public Component,
+                                 private FlaggedAsyncUpdater,
+                                 private ChangeListener,
+                                 private ComponentListener,
+                                 private ValueTree::Listener,
+                                 private ZoomViewState::Listener
+{
+public:
+    TracksContainerComponent(te::Edit& e, EditViewState& evs, RulerComponent& r);
+
+    ~TracksContainerComponent() override;
+
+    void mouseDown(const MouseEvent& e) override;
+    void resized() override;
+
+private:
+    te::Edit& edit;
+    EditViewState& editViewState;
+    RulerComponent& ruler;
+    OwnedArray<TrackRowComponent> trackRows;
+    TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
+    bool updateTracks = false, updateZoom = false;
+
+    void valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) override;
+    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) override;
+    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) override;
+    void valueTreeChildOrderChanged(juce::ValueTree& v, int a, int b) override;
+
+    void zoomChanged() override;
+    void changeListenerCallback(ChangeBroadcaster*) override;
+    void componentMovedOrResized(Component& /*component*/, bool /*wasMoved*/, bool /*wasResized*/) override;
+
+    void handleAsyncUpdate() override;
+    void buildTracks();
 };
 
 

@@ -45,39 +45,13 @@ public:
         createTracksAndAssignInputs();
         te::EditFileOperations(edit).save(true, true, false);
 
-        // selectionManager.addChangeListener(this);
-
-        // insertMidiButton.onClick =       [this] {
-        //     handleInsertMidiClip();
-        // };
-        // insertPSGButton.onClick =       [this] {
-        //     handleInsertPSGClip();
-        // };
-        // // insertAudioButton.onClick =       [this] {
-        // //     handleInsertAudioClip();
-        // // };
-
-        // newTrackButton.onClick =     [this] { handleInsertNewTrack(); };
-
-        // ===================================================================================
-        // if (auto mgr = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
-        //     zoomInButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomIn, true);
-        //     zoomOutButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomOut, true);
-        //     zoomFitButton.setCommandToTrigger(mgr, Commands::AppCommands::viewZoomToProject, true);
-        // }
-
         setSize(600, 400);
         ::Helpers::addAndMakeVisible(*this, { &editComponent,
-                                            //   &insertMidiButton, &insertPSGButton, &newTrackButton,
-                                            //   &deleteButton,
-                                            //    &insertAudioButton,
-                                            //   &zoomInButton, &zoomOutButton, &zoomFitButton
                                             });
     }
 
     ~AudioTimeline() override {
         selectionManager.deselectAll();
-        // selectionManager.removeChangeListener(this);
     }
 
     //==============================================================================
@@ -109,18 +83,6 @@ public:
         //     1_fr << editComponent,
         //     32_px << footer
         // };
-
-        // auto topR = r.removeFromTop(30);
-        // int w = r.getWidth() / 6;
-        // insertMidiButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        // insertPSGButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        // newTrackButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        // insertAudioButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        // deleteButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        // zoomInButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        // zoomOutButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        // zoomFitButton.setBounds(topR.removeFromLeft(w).reduced(2));
-        // editComponent.setBounds(r);
     }
 
 private:
@@ -130,53 +92,7 @@ private:
     te::SelectionManager& selectionManager;
     EditComponent editComponent;
 
-    // TextButton
-    //            newTrackButton { "New Track" },
-    //            insertMidiButton { "Insert MIDI" },
-    //            insertPSGButton { "Insert PSG" }
-    //            //    deleteButton { "Delete" },
-    //         //    insertAudioButton { "Insert Audio" },
-    //         //    zoomInButton { "Zoom In" },
-    //         //    zoomOutButton { "Zoom Out" },
-    //         //    zoomFitButton { "Zoom Fit" },
-    //            ;
-
     //==============================================================================
-
-    // PsgTrack* getSelectedOrInsertPsgTrack() {
-    //     auto sel = selectionManager.getSelectedObject(0);
-    //     auto track = dynamic_cast<PsgTrack*>(sel);
-    //     if (track == nullptr) {
-    //         track = addNewPsgTrack();
-    //     }
-    //     return track;
-    // }
-
-    // PsgTrack* addNewPsgTrack() {
-    //     edit.getTransport().stopIfRecording();
-    //     if (auto newTrack = edit.insertNewTrack(te::TrackInsertPoint::getEndOfTracks(edit), IDs::PSGTRACK, &selectionManager)) {
-    //         DBG("Added new PSG track");
-    //         return dynamic_cast<PsgTrack*>(newTrack.get());
-    //     }
-    //     DBG("Failed to add new PSG track");
-    //     return {};
-    // }
-
-    // void handleInsertPsgTrack() {
-    //     auto track = addNewPsgTrack();
-    //     if (track != nullptr) {
-    //         selectionManager.select({track});
-    //     }
-    // }
-
-    // void handleInsertNewTrack() {
-    //     edit.ensureNumberOfAudioTracks(getAudioTracks(edit).size() + 1);
-    //     // select the new track
-    //     auto tracks = getAudioTracks(edit);
-    //     if (tracks.size() > 0) {
-    //         selectionManager.select({tracks.getLast()});
-    //     }
-    // }
 
     // void handleInsertAudioClip() {
     //     Helpers::browseForAudioFile(edit.engine, [this](const File& f) {
@@ -209,30 +125,6 @@ private:
     //         clip->mergeInMidiSequence(seq, te::MidiList::NoteAutomationType::none);
     //         clip->setMidiChannel(te::MidiChannel(1));
     //     }
-    // }
-
-    // void handleInsertPSGClip() {
-    //     Helpers::browseForPSGFile(edit.engine, [this](const File& f) {
-    //         if (f.existsAsFile()) {
-    //             double insertTime = edit.getTransport().getPosition().inSeconds();
-    //             auto track = getSelectedOrInsertAudioTrack(edit, selectionManager);
-    //             auto psgFile = uZX::PsgFile(f);
-    //             psgFile.ensureRead();
-    //             te::ClipPosition pos = {{te::TimePosition::fromSeconds(insertTime), te::TimeDuration::fromSeconds(psgFile.getLengthSeconds())}, {}};
-    //             if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
-    //                 DBG("Inserted clip: " << inserted->getName());
-    //             }
-    //         }
-    //     });
-    // }
-
-    // void changeListenerCallback(ChangeBroadcaster* /*source*/) override {
-    //     // if (source == &selectionManager) {
-    //     //     auto sel = selectionManager.getSelectedObject(0);
-    //     //     deleteButton.setEnabled(dynamic_cast<te::Clip*> (sel) != nullptr
-    //     //                             || dynamic_cast<te::Track*> (sel) != nullptr
-    //     //                             || dynamic_cast<te::Plugin*> (sel));
-    //     // }
     // }
 
     void createTracksAndAssignInputs() {

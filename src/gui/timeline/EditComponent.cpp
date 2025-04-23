@@ -18,10 +18,13 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
 
     playhead.setAlwaysOnTop(true);
 
+    trackViewport.setViewedComponent(&tracksContainer, false);
+    trackViewport.setScrollBarsShown(true, false);
+
     addAndMakeVisible(playhead);
     addAndMakeVisible(ruler);
     addAndMakeVisible(detailsPanel);
-    addAndMakeVisible(tracksContainer);
+    addAndMakeVisible(trackViewport);
 }
 
 EditComponent::~EditComponent() {
@@ -58,7 +61,8 @@ void EditComponent::resized() {
     detailsPanel.setBounds(r.removeFromBottom(300));
     playhead.setBounds(r.withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
     ruler.setBounds(r.removeFromTop(rulerHeight).withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
-    tracksContainer.setBounds(r);
+    trackViewport.setBounds(r);
+    tracksContainer.setBounds(r.withHeight(tracksContainer.getIdealHeight()));
 }
 
 // void EditComponent::componentMovedOrResized(Component& /*component*/, bool /*wasMoved*/, bool /*wasResized*/) {

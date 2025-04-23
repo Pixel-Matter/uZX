@@ -511,11 +511,19 @@ void TracksContainerComponent::mouseDown(const MouseEvent& e) {
         ruler.repositionTransportToX(e.x - ruler.getX());
 }
 
+int TracksContainerComponent::getIdealHeight() const {
+    return std::accumulate (trackRows.begin(), trackRows.end(), 0, [] (auto acc, auto& track) {
+        return acc + track->getTrackHeight();
+    });
+}
+
 void TracksContainerComponent::resized() {
     // also get called on updated zoom
     const int trackGap = 0;
     const auto headerWidth = trackHeaderOverlay.getWidth();
     auto r = getLocalBounds();
+    setSize(r.getWidth(), getIdealHeight());
+    r = getLocalBounds();
 
     trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
 

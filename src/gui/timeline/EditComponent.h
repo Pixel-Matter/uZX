@@ -43,8 +43,8 @@ private:
     PlayheadComponent playhead {edit, editViewState};
     RulerComponent ruler {edit, editViewState};
 
-    Viewport trackViewport;  // TODO use this to scroll tracks
     TracksContainerComponent tracksContainer {edit, editViewState, ruler};
+    Viewport trackViewport;
     DetailsPanelComponent detailsPanel {editViewState};
 
     bool updateSizes = false;

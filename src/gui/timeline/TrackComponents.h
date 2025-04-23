@@ -160,6 +160,7 @@ public:
 
     void mouseDown(const MouseEvent& e) override;
     void resized() override;
+    int getIdealHeight() const;
 
 private:
     te::Edit& edit;

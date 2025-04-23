@@ -23,7 +23,6 @@ public:
     }
 
     void resized() override {
-        DBG("DetailsPanelComponent resized to " << getWidth() << "x" << getHeight());
 
         auto bounds = getLocalBounds();
         psgEditor.setBounds(bounds);

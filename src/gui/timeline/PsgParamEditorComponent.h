@@ -20,7 +20,6 @@ public:
     }
 
     void resized() override {
-        DBG("PSG Param Editor resized to " << getWidth() << "x" << getHeight());
     }
 
 private:

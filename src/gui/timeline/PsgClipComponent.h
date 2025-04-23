@@ -175,10 +175,10 @@ public:
 
         const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
         const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
-        const float pixelsPerFrame = frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds();
+        const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds());
 
-        constexpr auto lanesRange = PsgParamType::size();
-        const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / lanesRange);
+        // constexpr auto lanesRange = PsgParamType::size();
+        // const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / lanesRange);
 
         te::TimePosition startPos = jmax(clipRange.getStart(), viewRange.getStart() - frameDur);
         te::TimePosition endPos = jmin(clipRange.getEnd(), viewRange.getEnd());

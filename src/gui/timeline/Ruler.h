@@ -138,20 +138,17 @@ public:
     void mouseDown(const MouseEvent& e) override {
         if (e.mods.isPopupMenu()) {
             PopupMenu m;
-            m.addItem("Zoom In", [this] {
-                // TODO link to command
-                editViewState.zoom.zoomHorizontally(1.0 / 1.25);
+            m.addItem("Zoom in", [] {
+                te::AppFunctions::zoomIn();
             });
-            m.addItem("Zoom Out", [this] {
-                // TODO link to command
-                editViewState.zoom.zoomHorizontally(1.25);
+            m.addItem("Zoom out", [] {
+                te::AppFunctions::zoomOut();
             });
-            m.addItem("Zoom Fit", [this] {
-                // TODO link to command
-                auto range = Helpers::getEffectiveClipsTimeRange(edit);
-                if (!range.isEmpty()) {
-                    editViewState.zoom.setRange(range);
-                }
+            m.addItem("Zoom to selection", [this] {
+                edit.engine.getUIBehaviour().zoomToSelection();
+            });
+            m.addItem("Zoom fit", [this] {
+                edit.engine.getUIBehaviour().zoomToFitHorizontally();
             });
             m.showMenuAsync({});
         } else {

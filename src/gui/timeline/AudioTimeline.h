@@ -4,11 +4,6 @@
 #include "EditComponent.h"
 
 #include "../../util/base64_cx.h"
-// #include "../../util/Midi.h"
-// #include "../common/Utilities.h"
-
-// #include "../../formats/psg/PsgFile.h"
-// #include "../../model/EditUtilities.h"
 
 
 namespace MoTool {

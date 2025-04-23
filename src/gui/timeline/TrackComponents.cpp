@@ -1,11 +1,3 @@
-/*
-    ,--.                     ,--.     ,--.  ,--.
-  ,-'  '-.,--.--.,--,--.,---.|  |,-.,-'  '-.`--' ,---. ,--,--,      Copyright 2018
-  '-.  .-'|  .--' ,-.  | .--'|     /'-.  .-',--.| .-. ||      \   Tracktion Software
-    |  |  |  |  \ '-'  \ `--.|  \  \  |  |  |  |' '-' '|  ||  |       Corporation
-    `---' `--'   `--`--'`---'`--'`--' `---' `--' `---' `--''--'    www.tracktion.com
-*/
-
 #include "TrackComponents.h"
 #include "PsgClipComponent.h"
 #include "../common/Components.h"

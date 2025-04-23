@@ -538,14 +538,14 @@ void TracksContainerComponent::resized() {
 }
 
 void TracksContainerComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
-if (v.hasType(IDs::EDITVIEWSTATE)) {
-    if (i == IDs::showHeaders || i == IDs::showFooters) {
-        markAndUpdate(updateZoom);
-    } else if (i == IDs::drawWaveforms) {
-        // TODO move to track body?
-        repaint();
+    if (v.hasType(IDs::EDITVIEWSTATE)) {
+        if (i == IDs::showHeaders || i == IDs::showFooters) {
+            markAndUpdate(updateZoom);
+        } else if (i == IDs::drawWaveforms) {
+            // TODO move to track body?
+            repaint();
+        }
     }
-}
 }
 
 void TracksContainerComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {

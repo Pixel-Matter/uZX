@@ -13,6 +13,51 @@ namespace MoTool {
 
 using namespace Commands;
 
+class ParameterSliderAttachment : private te::AutomatableParameter::Listener {
+public:
+    ParameterSliderAttachment (Slider& s, te::AutomatableParameter& p)
+        : slider (s)
+        , param (p)
+    {
+        slider.setRange(p.getValueRange().getStart(), p.getValueRange().getEnd(), 0.0);
+        slider.setValue(p.getCurrentValue(), dontSendNotification);
+
+        slider.onValueChange = [this] {
+            juce::ScopedValueSetter<bool> svs(updatingSlider, true);
+            // if (updatingFromParam)
+            //     return;  // don't update the parameter if we're already updating it
+            param.setParameter((float)slider.getValue(), juce::sendNotification);
+        };
+        slider.onDragStart = [&]{ param.parameterChangeGestureBegin(); };
+        slider.onDragEnd   = [&]{ param.parameterChangeGestureEnd(); };
+
+        // слушаем параметр → слайдер
+        param.addListener(this);
+    }
+
+    ~ParameterSliderAttachment() override {
+        param.removeListener(this);
+    }
+
+private:
+    // called from MessageThread (see AsyncCaller)
+    void currentValueChanged(te::AutomatableParameter& p) override {
+        if (updatingSlider)
+            return;  // don't update the parameter if we're already updating it
+        // juce::ScopedValueSetter<bool> svs(updatingFromParam, true);
+        slider.setValue(p.getCurrentValue(), dontSendNotification);
+    }
+
+    void curveHasChanged(te::AutomatableParameter&) override {}
+
+    Slider& slider;
+    te::AutomatableParameter& param;
+    bool updatingSlider { false };
+    // bool updatingFromParam { false };
+};
+
+
+
 class TransportBar: public Component,
                     private Timer,
                     private ChangeListener {
@@ -28,13 +73,14 @@ public:
 
         ::Helpers::addAndMakeVisible (*this, {
             &rewindButton_,
-            &stepLeftButton_,
+            // &stepLeftButton_,
             &playPauseButton_,
             &recordButton_,
-            &stepRightButton_,
+            // &stepRightButton_,
             &bpmLabel_,
             &timeSigLabel_,
-            &transportReadout_
+            &transportReadout_,
+            &masterVolumeSlider_
         });
 
         if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
@@ -79,29 +125,34 @@ public:
         transportReadout_.setBounds(b.removeFromLeft(w * 2).reduced(2));
 
         rewindButton_.setBounds(b.removeFromLeft(w).reduced(2));
-        stepLeftButton_.setBounds(b.removeFromLeft(w).reduced(2));
+        // stepLeftButton_.setBounds(b.removeFromLeft(w).reduced(2));
         playPauseButton_.setBounds(b.removeFromLeft(w).reduced(2));
         recordButton_.setBounds(b.removeFromLeft(w).reduced(2));
-        stepRightButton_.setBounds(b.removeFromLeft(w).reduced(2));
+        // stepRightButton_.setBounds(b.removeFromLeft(w).reduced(2));
+
+        masterVolumeSlider_.setBounds(b.removeFromRight(w).expanded(4, 4));
     }
 
 private:
     te::Edit& edit_;
     te::TransportControl& transport_;
-    juce::CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
+    CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
+
+    Slider masterVolumeSlider_ { Slider::SliderStyle::Rotary, Slider::TextEntryBoxPosition::NoTextBox };
+    ParameterSliderAttachment masterAttachment_ {masterVolumeSlider_, *edit_.getMasterSliderPosParameter()};
 
     TextButton rewindButton_    { "|<<" },
-               stepLeftButton_  { "<" },
+            //    stepLeftButton_  { "<" },
                playPauseButton_ { "Play" },
-               recordButton_    { "Rec" },
-               stepRightButton_ { ">" };
+               recordButton_    { "Rec" };
+            //    stepRightButton_ { ">" };
 
     Label      bpmLabel_      { "BPM",      "BPM:" },
                timeSigLabel_  { "TimeSig",  "Sig:" },
                transportReadout_ { "Position", "Pos:" };
     te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
 
-    void changeListenerCallback (ChangeBroadcaster*) override {
+    void changeListenerCallback(ChangeBroadcaster*) override {
         // Called when the transport changes
         // if (source == &edit.getTransport()) { // not needed
         updatePlayButtonText();

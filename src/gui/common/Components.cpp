@@ -271,7 +271,7 @@ PlayheadComponent::PlayheadComponent(te::Edit& e, EditViewState& evs)
     , editViewState (evs)
 {
     // TODO change to project framerate
-    startTimerHz(60);
+    startTimerHz(30);
 }
 
 void PlayheadComponent::paint(Graphics& g) {

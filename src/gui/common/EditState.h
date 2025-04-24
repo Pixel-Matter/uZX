@@ -177,7 +177,7 @@ private:
         if (source == &edit.getTransport()) {
             // DBG("ZoomViewState::changeListenerCallback");
             if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
-                startTimerHz(60);
+                startTimerHz(30);
             } else {
                 stopTimer();
             }

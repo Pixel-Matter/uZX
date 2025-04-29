@@ -3,7 +3,6 @@
 
 #include "GraphEditorPanel.h"
 #include "../../nodes/Graph.h"
-#include "juce_core/system/juce_PlatformDefs.h"
 
 using namespace juce;
 using namespace MoTool::Nodes;

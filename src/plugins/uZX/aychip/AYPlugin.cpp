@@ -1,7 +1,5 @@
 #include "AYPlugin.h"
 #include "AYPluginEditor.h"
-#include "juce_core/juce_core.h"
-#include "juce_core/system/juce_PlatformDefs.h"
 
 namespace te = tracktion;
 

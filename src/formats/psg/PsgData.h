@@ -1,9 +1,9 @@
 #pragma once
 
-#include "juce_core/juce_core.h"
 #include <JuceHeader.h>
 #include "../../util/enumchoice.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <array>
 #include <vector>

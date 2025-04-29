@@ -1,7 +1,5 @@
 #pragma once
 
-#include "juce_core/juce_core.h"
-#include "juce_core/system/juce_PlatformDefs.h"
 #include <JuceHeader.h>
 
 namespace te = tracktion;

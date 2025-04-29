@@ -1,10 +1,9 @@
 #pragma once
 
-#include "juce_core/juce_core.h"
-#include "juce_core/system/juce_PlatformDefs.h"
+#include <JuceHeader.h>
+
 #include "PsgData.h"
 
-#include <JuceHeader.h>
 
 namespace MoTool::uZX {
 

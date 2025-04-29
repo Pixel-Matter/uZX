@@ -2,7 +2,6 @@
 #include "PsgClip.h"
 #include "PsgMidi.h"
 #include "Ids.h"
-#include "juce_core/juce_core.h"
 
 namespace te = tracktion;
 

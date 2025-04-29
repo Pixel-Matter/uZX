@@ -41,7 +41,7 @@ public:
             expect(data[PsgParamType::VolumeA] == 1, "Expected VolumeA to be 1");
             expect(data[PsgParamType::VolumeB] == std::nullopt, "Expected VolumeB to be nullopt");
 
-            data.unset(PsgParamType::VolumeA);
+            data.unSet(PsgParamType::VolumeA);
             expect(data.getParams().size() == 1, "Expected 1 param, but got " + std::to_string(data.getParams().size()));
             expect(data[PsgParamType::VolumeA] == std::nullopt, "Expected VolumeB to be nullopt");
             expect(data.getParams()[0].first == PsgParamType::EnvelopeShape, "Expected EnvelopeShape");

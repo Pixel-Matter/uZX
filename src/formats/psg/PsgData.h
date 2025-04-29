@@ -120,13 +120,10 @@ struct PsgRegsFrame : public PsgDeltaBase<uint8_t, 14> {
     }
     inline constexpr void setToneOn(size_t chan, bool on) noexcept {
         if (!on) {
-            // DBG("registers[PsgRegType::Mixer] = " << registers[PsgRegType::Mixer] << "|" << (1 << chan));
             registers[PsgRegType::Mixer] |= (1 << chan);
         } else {
-            // DBG("registers[PsgRegType::Mixer] = " << registers[PsgRegType::Mixer] << "&" << ~(1 << chan));
             registers[PsgRegType::Mixer] &= ~(1 << chan);
         }
-        // DBG("setToneOn " << chan << " " << (on? "on" : "off") << " " << registers[PsgRegType::Mixer]);
         mask[PsgRegType::Mixer] = true;
     }
     inline constexpr bool getNoiseOn(size_t chan) const noexcept {

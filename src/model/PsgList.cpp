@@ -110,7 +110,7 @@ void PsgParamFrame::updatePropertiesFromState() noexcept {
     // TODO update other properties
     // Why not use CahedValue<>? Too slow?
     // read all properties from state
-    PsgParamType type = static_cast<PsgParamType>(-1);  // invalid
+    PsgParamType type = PsgParamType::undefined();
     for (int i = 0; i < state.getNumProperties(); ++i) {
         // TODO optimize somehow
         auto p = state.getPropertyName(i);

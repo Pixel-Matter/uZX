@@ -9,8 +9,8 @@ namespace MoTool::uZX {
 //==============================================================================
 void AYChipPlugin::Params::initialise() {
     clockValue          .referTo(IDs::clock,  "Clock frequncy",    {0.894887, 2.0, 0.01},  1.7734, "MHz");
-    chipTypeValue       .referTo(IDs::chip,   "Chip type",         AYInterface::ChipType::getLabels(),       AYInterface::TypeEnum::AY,    {});
-    channelsLayoutValue .referTo(IDs::layout, "Channels layout",   AYInterface::ChannelsLayout::getLabels(), AYInterface::LayoutEnum::ACB, {});
+    chipTypeValue       .referTo(IDs::chip,   "Chip type",         AYInterface::ChipType::getLabels(),       AYInterface::ChipType::AY,    {});
+    channelsLayoutValue .referTo(IDs::layout, "Channels layout",   AYInterface::ChannelsLayout::getLabels(), AYInterface::ChannelsLayout::ACB, {});
     stereoWidthValue    .referTo(IDs::stereo, "Stereo width",      {0.0, 1.0, 0.01},       0.5,    {});
     removeDCValue       .referTo(IDs::noDC,   "Remove DC",                                 true,   {});
     baseMidiChannelValue.referTo(IDs::midi,   "Base MIDI channel", {1, 15 - 4, 1},         1,      {});
@@ -183,13 +183,7 @@ std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {
 
 template <typename ChoiceType>
 static ChoiceType choiceFromVar(const var& v) {
-    // look for the first match from getLabels
-    for (int i = 0; i <= static_cast<int>(ChoiceType::size()); ++i) {
-        auto ct = ChoiceType::getLabelFor(static_cast<size_t>(i));
-        if (v.toString().toStdString() == ct)
-            return static_cast<ChoiceType>(i);
-    }
-    return static_cast<ChoiceType>(0);
+    return ChoiceType(v.toString().toStdString());
 }
 
 template <typename ChoiceType>

@@ -115,7 +115,7 @@ class ComboParameterComponent : public ParameterComponent<Type, ComboBox>, priva
       : ParameterComponent<Type, ComboBox>(att)
     {
         for (const auto& [idx, label] : this->attachment.getChoices()) {
-            this->widget.addItem(label, idx + 1);
+            this->widget.addItem(label, static_cast<int>(idx) + 1);
         }
         this->widget.setSelectedItemIndex(valueToIdx(this->attachment.get()), dontSendNotification);
         this->attachment.getPropertyAsValue().addListener(this);

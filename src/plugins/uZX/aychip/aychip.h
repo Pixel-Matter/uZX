@@ -30,78 +30,95 @@ namespace {
     }
 }
 
+struct TypeEnum {
+    enum Enum : uint8_t {
+        AY,
+        YM
+    };
+};
+
+struct LayoutEnum {
+    enum Enum : uint8_t {
+        ABC,
+        ACB,
+        BAC,
+        BCA,
+        CAB,
+        CBA
+    };
+};
+
+struct EnvShapeEnum {
+    enum Enum : uint8_t {
+        DOWN_HOLD_BOTTOM_0,
+        DOWN_HOLD_BOTTOM_1,
+        DOWN_HOLD_BOTTOM_2,
+        DOWN_HOLD_BOTTOM_3,
+        UP_HOLD_BOTTOM_4,
+        UP_HOLD_BOTTOM_5,
+        UP_HOLD_BOTTOM_6,
+        UP_HOLD_BOTTOM_7,
+        DOWN_DOWN_8,
+        DOWN_HOLD_BOTTOM_9,
+        DOWN_UP_A,
+        DOWN_HOLD_TOP_B,
+        UP_UP_C,
+        UP_HOLD_TOP_D,
+        UP_DOWN_E,
+        UP_HOLD_BOTTOM_F,
+    };
+};
+
+} // namespace MoTool::uZX
+
+
+// Specialization of `enum_name` must be injected in `namespace magic_enum::customize`.
+namespace magic_enum::customize {
+
+template <>
+inline constexpr customize_t enum_name<MoTool::uZX::TypeEnum::Enum>(MoTool::uZX::TypeEnum::Enum value) noexcept {
+    switch(value) {
+        case MoTool::uZX::TypeEnum::AY:
+            return "AY-3-8910";
+        case MoTool::uZX::TypeEnum::YM:
+            return "YM2149F";
+    }
+    return default_tag;
+}
+
+template <>
+inline constexpr customize_t enum_name<MoTool::uZX::EnvShapeEnum::Enum>(MoTool::uZX::EnvShapeEnum::Enum value) noexcept {
+    using EnvShape = MoTool::uZX::EnvShapeEnum::Enum;
+    switch(value) {
+        case EnvShape::DOWN_HOLD_BOTTOM_0: [[fallthrough]];
+        case EnvShape::DOWN_HOLD_BOTTOM_1: [[fallthrough]];
+        case EnvShape::DOWN_HOLD_BOTTOM_2: [[fallthrough]];
+        case EnvShape::DOWN_HOLD_BOTTOM_3: return "\\___";
+        case EnvShape::UP_HOLD_BOTTOM_4:   [[fallthrough]];
+        case EnvShape::UP_HOLD_BOTTOM_5:   [[fallthrough]];
+        case EnvShape::UP_HOLD_BOTTOM_6:   [[fallthrough]];
+        case EnvShape::UP_HOLD_BOTTOM_7:   return "/|__";
+        case EnvShape::DOWN_DOWN_8:        return "\\|\\|";
+        case EnvShape::DOWN_HOLD_BOTTOM_9: return "\\___";
+        case EnvShape::DOWN_UP_A:          return "\\/\\/";
+        case EnvShape::DOWN_HOLD_TOP_B:    return "\\|~~";
+        case EnvShape::UP_UP_C:            return "/|/|";
+        case EnvShape::UP_HOLD_TOP_D:      return "/~~~~";
+        case EnvShape::UP_DOWN_E:          return "/\\/\\";
+        case EnvShape::UP_HOLD_BOTTOM_F:   return "/|__";
+    }
+    return default_tag;
+}
+
+} // namespace magic_enum::customize
+
+
+namespace MoTool::uZX {
+
 class AYInterface {
 public:
-    struct TypeEnum {
-        enum Enum {
-            AY,
-            YM
-        };
-        static inline constexpr std::string_view labels[] {
-            "AY-3-8910",
-            "YM2149F"
-        };
-    };
     using ChipType = MoTool::Util::EnumChoice<TypeEnum>;
-
-    struct LayoutEnum {
-        enum Enum : uint8_t {
-            ABC,
-            ACB,
-            BAC,
-            BCA,
-            CAB,
-            CBA
-        };
-        static inline constexpr std::string_view labels[] {
-            "ABC",
-            "ACB",
-            "BAC",
-            "BCA",
-            "CAB",
-            "CBA"
-        };
-    };
     using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
-
-    struct EnvShapeEnum {
-        enum Enum : uint8_t {
-            DOWN_HOLD_BOTTOM_0,
-            DOWN_HOLD_BOTTOM_1,
-            DOWN_HOLD_BOTTOM_2,
-            DOWN_HOLD_BOTTOM_3,
-            UP_HOLD_BOTTOM_4,
-            UP_HOLD_BOTTOM_5,
-            UP_HOLD_BOTTOM_6,
-            UP_HOLD_BOTTOM_7,
-            DOWN_DOWN_8,
-            DOWN_HOLD_BOTTOM_9,
-            DOWN_UP_A,
-            DOWN_HOLD_TOP_B,
-            UP_UP_C,
-            UP_HOLD_TOP_D,
-            UP_DOWN_E,
-            UP_HOLD_BOTTOM_F,
-        };
-        static inline constexpr std::string_view labels[] {
-            "\\___",
-            "\\___",
-            "\\___",
-            "\\___",
-            "/|__",
-            "/|__",
-            "/|__",
-            "/|__",
-            "\\|\\|",
-            "\\___",
-            "\\/\\/",
-            "\\|~~",
-            "/|/|",
-            "/~~~~",
-            "/\\/\\",
-            "/|__",
-        };
-    };
     using EnvShape = MoTool::Util::EnumChoice<EnvShapeEnum>;
 
     // AYInterface(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::AY) ;

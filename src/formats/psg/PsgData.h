@@ -45,7 +45,7 @@ struct PsgDeltaBase {
 };
 
 struct RegTypeEnum {
-    enum Enum {
+    enum Enum : size_t {
         TonePeriodFineA      = 0,
         TonePeriodCoarseA    = 1,
         TonePeriodFineB      = 2,
@@ -61,25 +61,10 @@ struct RegTypeEnum {
         EnvelopePeriodCoarse = 12,
         EnvelopeShape        = 13
     };
-    static inline constexpr std::string_view labels[] {
-        "TonePeriodFineA",
-        "TonePeriodCoarseA",
-        "TonePeriodFineB",
-        "TonePeriodCoarseB",
-        "TonePeriodFineC",
-        "TonePeriodCoarseC",
-        "NoisePeriod",
-        "Mixer",
-        "VolumeA",
-        "VolumeB",
-        "VolumeC",
-        "EnvelopePeriodFine",
-        "EnvelopePeriodCoarse",
-        "EnvelopeShape"
-    };
 };
 
 using PsgRegType = MoTool::Util::EnumChoice<RegTypeEnum>;
+
 
 struct PsgRegsFrame : public PsgDeltaBase<uint8_t, 14> {
 
@@ -241,14 +226,14 @@ struct PsgRegsFrame : public PsgDeltaBase<uint8_t, 14> {
 
     void debugPrint() const noexcept {
         for (size_t i = 0; i < size(); ++i) {
-            DBG(std::string(static_cast<PsgRegType>(static_cast<int>(i)).getLabel()) << ": " << static_cast<int>(registers[i]) << " " << (mask[i] ? "true" : "false"));
+            DBG(std::string(PsgRegType::getLabel(i)) << ": " << static_cast<int>(registers[i]) << " " << (mask[i] ? "true" : "false"));
         }
     }
 
     void debugPrintSet() const noexcept {
         for (size_t i = 0; i < size(); ++i) {
             if (!mask[i]) continue;
-            DBG(std::string(static_cast<PsgRegType>(static_cast<int>(i)).getLabel()) << ": " << static_cast<int>(registers[i]));
+            DBG(std::string(PsgRegType::getLabel(i)) << ": " << static_cast<int>(registers[i]));
         }
     }
 };

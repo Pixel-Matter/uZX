@@ -8,6 +8,7 @@
 
 #include <atomic>
 #include <array>
+#include <cstddef>
 
 namespace te = tracktion;
 

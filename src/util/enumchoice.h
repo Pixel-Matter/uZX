@@ -1,56 +1,105 @@
 #pragma once
 
+#include <limits>
 #include <string>
 #include <iostream>
+#include <string_view>
+#include "../../../modules/3rd_party/magic_enum/tracktion_magic_enum.hpp"
 
 namespace MoTool::Util {
 
 // Base class for enumerated choices
+
 template <class E>
 class EnumChoice : public E {
 public:
     using Enum = typename E::Enum;
+    using UnderlyingType = typename magic_enum::underlying_type<Enum>::type;
+
+    static_assert(std::is_enum_v<Enum>, "EnumChoice can only be used with enum types");
 
     Enum value;
 
-    constexpr EnumChoice(Enum value_) : value(value_) {}
-    constexpr EnumChoice(int value_) : value(static_cast<Enum>(value_)) {}
-    constexpr EnumChoice() : EnumChoice(0) {}
-    constexpr EnumChoice(const EnumChoice&) = default;
-    constexpr EnumChoice(EnumChoice&&) = default;
+    constexpr EnumChoice(Enum v) noexcept : value(v) {}
 
-    inline constexpr auto isValid() noexcept -> bool {
-        return static_cast<int>(value) >= 0 && static_cast<int>(value) < static_cast<int>(size());
+    // constexpr EnumChoice(UnderlyingType v) noexcept
+    //     : value(magic_enum::enum_cast<Enum>(v).value_or(magic_enum::enum_value<Enum>(0u)))
+    // {}
+
+    constexpr EnumChoice(int v) noexcept
+        : value(magic_enum::enum_cast<Enum>(static_cast<UnderlyingType>(v)).value_or(magic_enum::enum_value<Enum>(0u)))
+    {}
+
+    // constexpr EnumChoice(size_t v) noexcept
+    //     : value(magic_enum::enum_cast<Enum>(static_cast<UnderlyingType>(v)).value_or(magic_enum::enum_value<Enum>(0u)))
+    // {}
+
+    constexpr EnumChoice(std::string_view v) noexcept
+        : value(magic_enum::enum_cast<Enum>(v).value_or(magic_enum::enum_value<Enum>(0u)))
+    {}
+
+    constexpr EnumChoice() noexcept : value(magic_enum::enum_value<Enum>(0u)) {}
+    constexpr EnumChoice(const EnumChoice&) noexcept = default;
+    constexpr EnumChoice(EnumChoice&&) noexcept = default;
+    constexpr EnumChoice& operator=(const EnumChoice&) noexcept = default;
+    constexpr EnumChoice& operator=(EnumChoice&&) noexcept = default;
+
+    constexpr operator Enum() const noexcept { return value; }
+    // constexpr operator UnderlyingType() const noexcept { return magic_enum::enum_underlying(value); }
+
+    template <typename T>
+    constexpr T as() const noexcept { return magic_enum::enum_cast<T>(value); }
+
+    // constexpr operator size_t() const noexcept { return magic_enum::enum_underlying(value); }
+    // constexpr operator int() const noexcept { return magic_enum::enum_underlying(value); }
+
+    // constexpr operator std::string_view() const noexcept { return getLabel(); }
+    // constexpr operator std::string() const noexcept { return std::string(getLabel()); }
+
+    // operator juce::String() const noexcept { return juce::String(std::string(getLabel())); }
+    // operator juce::StringRef() const noexcept { return juce::StringRef(getLabel().data()); }
+
+    constexpr bool operator ==(Enum other) const noexcept {
+        return value == other;
+    }
+    constexpr bool operator !=(Enum other) const noexcept {
+        return value != other;
+    }
+    constexpr bool operator ==(const EnumChoice& other) const noexcept {
+        return value == other.value;
+    }
+    constexpr bool operator !=(const EnumChoice& other) const noexcept {
+        return value != other.value;
     }
 
-    inline static constexpr auto getLabels() noexcept {
-        std::array<std::string_view, std::size(E::labels)> result;
-        size_t i = 0;
-        for (const auto& label: E::labels) {
-            result[i++] = label;
-        }
-        return result;
+    constexpr bool isValid() const noexcept {
+        return magic_enum::enum_contains<Enum>(value);
     }
 
-    inline static constexpr auto size() noexcept -> size_t  {
-        return std::size(E::labels);
+    constexpr std::string_view getLabel() const noexcept {
+        return magic_enum::enum_name<Enum>(value);
     }
 
-    inline static constexpr auto getLabelFor(size_t index) noexcept {
-        return getLabels()[index];
+    constexpr static std::string_view getLabel(size_t i) noexcept {
+        return magic_enum::enum_name<Enum>(static_cast<Enum>(i));
     }
 
-    inline constexpr auto getLabel() const noexcept {
-        return getLabelFor(value);
+    constexpr static auto getLabels() noexcept {
+        return magic_enum::enum_names<Enum>();
     }
 
-    constexpr EnumChoice& operator=(const EnumChoice&) = default;
-    constexpr EnumChoice& operator=(EnumChoice&&) = default;
-    constexpr operator Enum() const { return value; }
-    // NOTE confuses switch statements
-    // constexpr operator int() const noexcept { return static_cast<int>(value); }
-    constexpr operator std::string_view() const noexcept { return getLabel(); }
+    constexpr static size_t size() noexcept {
+        return magic_enum::enum_count<Enum>();
+    }
 
+    constexpr static Enum undefined() noexcept {
+        return static_cast<Enum>(std::numeric_limits<UnderlyingType>::max());
+    }
+
+    template <typename Lambda>
+    static constexpr auto forEach(Lambda&& lambda) {
+        magic_enum::enum_for_each<Enum>(std::forward<Lambda>(lambda));
+    }
 };
 
 template <class E>

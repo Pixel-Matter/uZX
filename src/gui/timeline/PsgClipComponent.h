@@ -210,7 +210,7 @@ public:
                 if (frameData.isSet(paramNum)) {
                     juce::Colour color;
                     auto value = frameData.getRaw(static_cast<PsgParamType>(paramNum));
-                    switch (paramType) {
+                    switch (paramType.value) {
                         case PsgParamType::TonePeriodA:
                             color = Colors::PSG::A;
                             break;

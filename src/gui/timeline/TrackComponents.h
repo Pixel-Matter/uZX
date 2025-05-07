@@ -160,6 +160,7 @@ public:
 
     void mouseDown(const MouseEvent& e) override;
     void resized() override;
+    void paint(Graphics& g) override;
     int getIdealHeight() const;
 
 private:

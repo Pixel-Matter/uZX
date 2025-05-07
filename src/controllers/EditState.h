@@ -215,7 +215,7 @@ public:
         showArrangerTrack.referTo(state, IDs::showArranger, um, false);
         drawWaveforms.referTo(state, IDs::drawWaveforms, um, true);
         showHeaders.referTo(state, IDs::showHeaders, um, true);
-        showFooters.referTo(state, IDs::showFooters, um, false);
+        showFooters.referTo(state, IDs::showFooters, um, true);
         showMidiDevices.referTo(state, IDs::showMidiDevices, um, false);
         showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
         headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);

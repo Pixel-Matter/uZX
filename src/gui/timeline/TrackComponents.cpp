@@ -522,7 +522,7 @@ void TracksContainerComponent::resized() {
     const int trackGap = 0;
     const auto headerWidth = trackHeaderOverlay.getWidth();
     auto r = getLocalBounds();
-    setSize(r.getWidth(), getIdealHeight());
+    setSize(r.getWidth(), getHeight());
     r = getLocalBounds();
 
     trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
@@ -535,6 +535,10 @@ void TracksContainerComponent::resized() {
         t->resized();
         y += t->getTrackHeight() + trackGap;
     }
+}
+
+void TracksContainerComponent::paint(Graphics& g) {
+    // g.fillAll(Colors::Theme::backgroundAlt);
 }
 
 void TracksContainerComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {

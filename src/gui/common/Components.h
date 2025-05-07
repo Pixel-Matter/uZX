@@ -11,7 +11,7 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>  // from Tracktion
 
-#include "EditState.h"
+#include "../../controllers/EditState.h"
 
 namespace MoTool {
 

@@ -5,8 +5,8 @@
 
 #include "ClipComponents.h"
 #include "../common/LookAndFeel.h"
-#include "../../model/PsgClip.h"
-#include "../../model/EditUtilities.h"
+#include "../../models/PsgClip.h"
+#include "../../models/EditUtilities.h"
 
 namespace MoTool {
 

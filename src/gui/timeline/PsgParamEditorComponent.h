@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 #include <memory>
 
-#include "../common/EditState.h"
+#include "../../controllers/EditState.h"
 #include "PsgClipComponent.h"
 
 

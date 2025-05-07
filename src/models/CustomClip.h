@@ -21,7 +21,7 @@ public:
     static te::Clip* insertClipWithState(te::ClipOwner& parent,
                                          const juce::ValueTree& stateToUse, const juce::String& name, Type type,
                                          te::ClipPosition position, te::DeleteExistingClips deleteExistingClips, bool allowSpottingAdjustment) {
-        // NOTE see tracktion_engine/modules/tracktion_engine/model/clips/tracktion_ClipOwner.cpp:insertClipWithState
+        // NOTE see tracktion_engine/modules/tracktion_engine/models/clips/tracktion_ClipOwner.cpp:insertClipWithState
         using namespace te;
         CRASH_TRACER
         auto& edit = parent.getClipOwnerEdit();

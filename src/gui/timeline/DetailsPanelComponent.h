@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "../common/EditState.h"
+#include "../../controllers/EditState.h"
 #include "PsgParamEditorComponent.h"
 
 namespace MoTool {
@@ -29,7 +29,7 @@ public:
     }
 
 private:
-    EditViewState& editViewState;
+    [[maybe_unused]] EditViewState& editViewState;
     PsgParamEditorComponent psgEditor;
 };
 

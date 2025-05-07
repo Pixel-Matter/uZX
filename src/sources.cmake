@@ -2,11 +2,11 @@
 set(SHARED_SOURCES
     util/FileOps.cpp
     util/Midi.cpp
-    model/PsgMidi.cpp
-    model/PsgList.cpp
-    model/PsgClip.cpp
-    model/Selectable.cpp
-    model/EditUtilities.cpp
+    models/PsgMidi.cpp
+    models/PsgList.cpp
+    models/PsgClip.cpp
+    models/Selectable.cpp
+    models/EditUtilities.cpp
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
 )
@@ -24,8 +24,8 @@ set(GUI_SOURCES
 
 # Test-specific files to include in the test target
 set(TEST_SOURCES
-    ## model/PsgTrack.test.cpp
-    # model/CustomClip.test.cpp
-    model/PsgMidi.test.cpp
+    ## models/PsgTrack.test.cpp
+    # models/CustomClip.test.cpp
+    models/PsgMidi.test.cpp
     # plugins/uZX/aychip/AYChip.test.cpp
 )

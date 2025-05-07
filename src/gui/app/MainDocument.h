@@ -5,8 +5,7 @@
 
 #include "../timeline/AudioTimeline.h"
 #include "../layout/Layout.h"
-#include "Transport.h"
-#include "tracktion_engine/tracktion_engine.h"
+#include "../common/Transport.h"
 
 
 using namespace juce;

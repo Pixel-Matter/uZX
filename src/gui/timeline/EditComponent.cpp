@@ -13,8 +13,6 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
     , editViewState(evs)
 {
     editViewState.state.addListener(this);
-    // editViewState.selectionManager.addChangeListener(this);
-    // editViewState.zoom.addListener(this);
 
     playhead.setAlwaysOnTop(true);
 
@@ -28,9 +26,7 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
 }
 
 EditComponent::~EditComponent() {
-    // editViewState.zoom.removeListener(this);
     editViewState.state.removeListener(this);
-    // editViewState.selectionManager.removeChangeListener(this);
 }
 
 void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
@@ -40,10 +36,6 @@ void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Ide
         }
     }
 }
-
-// void EditComponent::zoomChanged() {
-//     // markAndUpdate(updateZoom);
-// }
 
 void EditComponent::handleAsyncUpdate() {
     if (compareAndReset(updateSizes)) {
@@ -64,13 +56,5 @@ void EditComponent::resized() {
     trackViewport.setBounds(r);
     tracksContainer.setBounds(r.withHeight(tracksContainer.getIdealHeight()));
 }
-
-// void EditComponent::componentMovedOrResized(Component& /*component*/, bool /*wasMoved*/, bool /*wasResized*/) {
-//     // if trackHeaderOverlay mas resized, we need to update the bounds of ruler and playhead
-//     // resized();
-// }
-
-// void EditComponent::mouseDown(const MouseEvent& e) {
-// }
 
 }  // namespace MoTool

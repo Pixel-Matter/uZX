@@ -22,27 +22,17 @@ class AudioTimeline : public Component
                                                 {
 public:
     //==============================================================================
-    AudioTimeline (te::Edit& ed, EditViewState& evs, te::SelectionManager& selMgr)
+    AudioTimeline(te::Edit& ed, EditViewState& evs, te::SelectionManager& selMgr)
         : engine {ed.engine}
         , edit {ed}
         , selectionManager {selMgr}
         , editComponent {edit, evs}
     {
-        evs.showFooters = true;
-        evs.showMidiDevices = true;
-        evs.showWaveDevices = false;
-        evs.showMarkerTrack = false;
-        evs.showChordTrack = false;
-        evs.showGlobalTrack = false;
-        evs.showMasterTrack = false;
-        evs.drawWaveforms = true;
-
         createTracksAndAssignInputs();
         te::EditFileOperations(edit).save(true, true, false);
 
         setSize(600, 400);
-        ::Helpers::addAndMakeVisible(*this, { &editComponent,
-                                            });
+        ::Helpers::addAndMakeVisible(*this, { &editComponent });
     }
 
     ~AudioTimeline() override {
@@ -122,6 +112,7 @@ private:
     //     }
     // }
 
+    // TODO refactor to EditController
     void createTracksAndAssignInputs() {
         for (auto& midiIn : engine.getDeviceManager().getMidiInDevices()) {
             midiIn->setMonitorMode(te::InputDevice::MonitorMode::automatic);
@@ -134,9 +125,9 @@ private:
 
             for (auto instance : edit.getAllInputDevices()) {
                 if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
-                    if (auto t = EngineHelpers::getOrInsertAudioTrackAt (edit, trackNum)) {
-                        [[ maybe_unused ]] auto res = instance->setTarget (t->itemID, true, &edit.getUndoManager(), 0);
-                        instance->setRecordingEnabled (t->itemID, true);
+                    if (auto t = EngineHelpers::getOrInsertAudioTrackAt(edit, trackNum)) {
+                        [[ maybe_unused ]] auto res = instance->setTarget(t->itemID, true, &edit.getUndoManager(), 0);
+                        instance->setRecordingEnabled(t->itemID, true);
                         trackNum++;
                     }
                 }

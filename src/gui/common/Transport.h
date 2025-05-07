@@ -3,8 +3,8 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>
 
-#include "Commands.h"
-#include "../../model/Timecode.h"
+#include "../app/Commands.h"
+#include "../../models/Timecode.h"
 
 
 using namespace juce;

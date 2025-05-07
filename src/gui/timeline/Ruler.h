@@ -5,7 +5,7 @@
 #include "../common/LookAndFeel.h"
 #include "../common/Components.h"
 #include "../common/Utilities.h"
-#include "../../model/Timecode.h"
+#include "../../models/Timecode.h"
 
 
 namespace MoTool {

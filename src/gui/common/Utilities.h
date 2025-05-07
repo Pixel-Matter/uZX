@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../../formats/psg/PsgFile.h"
-#include "../../model/PsgClip.h"
+#include "../../models/PsgClip.h"
 #include "../../plugins/uZX/aychip/AYPlugin.h"
 
 #include <common/Utilities.h>

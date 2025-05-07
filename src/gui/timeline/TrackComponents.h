@@ -5,8 +5,8 @@
 
 #include "Ruler.h"
 #include "ClipComponents.h"
-#include "../common/EditState.h"
 #include "../common/Components.h"
+#include "../../controllers/EditState.h"
 
 namespace MoTool {
 

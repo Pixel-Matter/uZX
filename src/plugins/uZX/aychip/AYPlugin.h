@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../../../formats/psg/PsgData.h"
-#include "../../../model/PsgMidi.h"
+#include "../../../models/PsgMidi.h"
 #include "aychip.h"
 
 #include <atomic>

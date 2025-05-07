@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>  // from Tracktion
 
-#include "../common/EditState.h"
+#include "../../controllers/EditState.h"
 
 namespace MoTool {
 

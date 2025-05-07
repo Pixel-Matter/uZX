@@ -21,6 +21,7 @@ set(GUI_SOURCES
     gui/timeline/ClipComponents.cpp
     gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
+    gui/timeline/PsgClipComponent.cpp
 )
 
 # Test-specific files to include in the test target

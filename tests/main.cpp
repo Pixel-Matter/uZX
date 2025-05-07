@@ -1,6 +1,6 @@
 #include <JuceHeader.h>
 
-#include <model/Behavior.h>
+#include <models/Behavior.h>
 
 using namespace tracktion;
 using namespace MoTool;

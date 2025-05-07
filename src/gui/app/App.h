@@ -2,9 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "MainWindow.h"
-
-#include <memory>
+#include "../../controllers/MainController.h"
 
 namespace MoTool {
 
@@ -12,13 +10,11 @@ class MoToolApp : public JUCEApplication {
 public:
     MoToolApp();
 
-    const String getApplicationFancyName();
-
     const String getApplicationName() override;
-
     const String getApplicationVersion() override;
 
-    te::Engine& getEngine();
+    const String getApplicationFancyName() const;
+    const String getWindowTitle();
 
     bool moreThanOneInstanceAllowed() override ;
 
@@ -28,17 +24,13 @@ public:
 
     void systemRequestedQuit() override;
 
-    MainWindow* getMainWindow() const;
-
-    static ApplicationCommandManager& getCommandManager();
-
     static MoToolApp& getApp();
 
+    static MainController& getController();
+
 private:
-    te::Engine engine_;
-    std::unique_ptr<MainWindow> mainWindow_;
-    std::unique_ptr<MoLookAndFeel> lookAndFeel;
-    ApplicationCommandManager commandManager;
+    MoLookAndFeel lookAndFeel_;
+    MainController controller_;
 };
 
 } // namespace MoTool

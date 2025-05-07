@@ -13,6 +13,7 @@ set(SHARED_SOURCES
 
 # GUI-specific files
 set(GUI_SOURCES
+    controllers/MainController.cpp
     gui/app/App.cpp
     gui/Main.cpp
     # gui/nodes/GraphEditorPanel.cpp

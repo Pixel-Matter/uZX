@@ -7,9 +7,7 @@
 
 #include "../app/App.h"
 #include "ProgressDialog.h"
-
-
-namespace te = tracktion;
+#include "Utilities.h"
 
 namespace MoTool {
 
@@ -20,9 +18,7 @@ public:
 
     // Only single edit can be opened at a time
     te::Edit* getCurrentlyFocusedEdit()                                   override {
-        if (auto* win = MoToolApp::getApp().getMainWindow())
-            return win->getEdit();
-        return {};
+        return MoToolApp::getController().getEdit();
     }
     te::Edit* getLastFocusedEdit()                                        override {
         return getCurrentlyFocusedEdit();
@@ -37,9 +33,7 @@ public:
     void editNamesMayHaveChanged()                                        override {}
 
     te::SelectionManager* getCurrentlyFocusedSelectionManager()           override {
-        if (auto* win = MoToolApp::getApp().getMainWindow())
-            return &win->getSelectionManager();
-        return {};
+        return &MoToolApp::getController().getSelectionManager();
     }
 
     te::SelectionManager* getSelectionManagerForRack(const te::RackType&) override { return {}; }
@@ -50,7 +44,7 @@ public:
     void updateAllProjectItemLists()                                      override {}
 
     juce::ApplicationCommandManager* getApplicationCommandManager() override {
-        return dynamic_cast<ApplicationCommandManager*>(&MoToolApp::getCommandManager());
+        return &MoToolApp::getController().getCommandManager();
     }
 
     void getAllCommands(juce::Array<juce::CommandID>& /*commands*/) override {
@@ -100,7 +94,7 @@ public:
         until the task is done.
     */
     void runTaskWithProgressBar(te::ThreadPoolJobWithProgress& job) override {
-        auto& engine = MoToolApp::getApp().getEngine();
+        auto& engine = MoToolApp::getController().getEngine();
         auto& jobManager = engine.getBackgroundJobs();
         jobManager.addJob(&job, false);
 
@@ -126,7 +120,7 @@ public:
         DialogWindow::LaunchOptions o;
         o.dialogTitle = TRANS("Audio Settings");
         o.dialogBackgroundColour = LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId);
-        o.content.setOwned(new AudioDeviceSelectorComponent(MoToolApp::getApp().getEngine().getDeviceManager().deviceManager,
+        o.content.setOwned(new AudioDeviceSelectorComponent(MoToolApp::getController().getEngine().getDeviceManager().deviceManager,
                                                             0, 512, 1, 512, true, true, true, false));
         o.useNativeTitleBar = true;
         o.escapeKeyTriggersCloseButton  = true;
@@ -172,33 +166,29 @@ public:
 
     void zoomHorizontal(float increment)                        override {
         // DBG("zoomHorizontal: " << increment);
-        if (auto* win = MoToolApp::getApp().getMainWindow()) {
-            auto viewState = win->getEditViewState();
+        if (auto* viewState = MoToolApp::getController().getEditViewState()) {
             viewState->zoom.zoomHorizontally(increment);
         }
     }
     void zoomVertical(float /*amount*/)                         override {}
 
     void zoomToSelection()                                      override {
-        if (auto* win = MoToolApp::getApp().getMainWindow()) {
-            auto viewState = win->getEditViewState();
-            auto objects = win->getSelectionManager().getSelectedObjects();
-            objects = te::getClipSelectionWithCollectionClipContents(objects);
-            auto range = te::getTimeRangeForSelectedItems(objects);
-            if (!range.isEmpty()) {
-                viewState->zoom.setRange(range);
-            }
+        auto& ctrl = MoToolApp::getController();
+        auto viewState = ctrl.getEditViewState();
+        auto objects = ctrl.getSelectionManager().getSelectedObjects();
+        objects = te::getClipSelectionWithCollectionClipContents(objects);
+        auto range = te::getTimeRangeForSelectedItems(objects);
+        if (!range.isEmpty()) {
+            viewState->zoom.setRange(range);
         }
     }
 
     void zoomToFitHorizontally()                                override {
-        if (auto* win = MoToolApp::getApp().getMainWindow()) {
-            auto viewState = win->getEditViewState();
-            auto range = Helpers::getEffectiveClipsTimeRange(*win->getEdit());
-            if (!range.isEmpty()) {
-                viewState->zoom.setRange(range);
-            }
-
+        auto& ctrl = MoToolApp::getController();
+        auto viewState = ctrl.getEditViewState();
+        auto range = Helpers::getEffectiveClipsTimeRange(*ctrl.getEdit());
+        if (!range.isEmpty() && viewState != nullptr) {
+            viewState->zoom.setRange(range);
         }
     }
     void zoomToFitVertically()                                  override {}

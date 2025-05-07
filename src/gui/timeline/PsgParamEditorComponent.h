@@ -24,23 +24,23 @@ public:
         return 0.0f;
     }
 
-    te::TimePosition getPointTime(int idx) override {
+    te::TimePosition getPointTime(int /*idx*/) override {
         return {};
     }
 
-    float getPointValue(int idx) override {
+    float getPointValue(int /*idx*/) override {
         return 0;
     }
 
-    float getPointCurve(int idx) override {
+    float getPointCurve(int /*idx*/) override {
         return 0;
     }
 
-    void removePoint(int index) override {
+    void removePoint(int /*index*/) override {
 
     }
 
-    int addPoint(te::TimePosition time, float value, float curve) override {
+    int addPoint(te::TimePosition /*time*/, float /*value*/, float /*curve*/) override {
         return 0;
     }
 
@@ -48,11 +48,11 @@ public:
         return 0;
     }
 
-    te::CurvePoint getBezierHandle(int idx) override {
+    te::CurvePoint getBezierHandle(int /*idx*/) override {
         return {};
     }
 
-    te::CurvePoint getBezierPoint(int idx) override {
+    te::CurvePoint getBezierPoint(int /*idx*/) override {
         return {};
     }
 
@@ -60,26 +60,26 @@ public:
         return 0;
     }
 
-    void getBezierEnds(int index, double& x1out, float& y1out, double& x2out, float& y2out) override {
+    void getBezierEnds(int /*index*/, double& x1out, float& y1out, double& x2out, float& y2out) override {
         x1out = 0;
         y1out = 0;
         x2out = 0;
         y2out = 0;
     }
 
-    int movePoint(int index, te::TimePosition newTime, float newValue, bool removeInterveningPoints) override {
+    int movePoint(int /*index*/, te::TimePosition /*newTime*/, float /*newValue*/, bool /*removeInterveningPoints*/) override {
         return 0;
     }
 
-    void setValueWhenNoPoints(float value) override {
+    void setValueWhenNoPoints(float /*value*/) override {
         // If no points add one anyway
     }
 
-    te::CurveEditorPoint* createPoint(int idx) override {
+    te::CurveEditorPoint* createPoint(int /*idx*/) override {
         return nullptr;
     }
 
-    int curvePoint(int index, float newCurve) override {
+    int curvePoint(int /*index*/, float /*newCurve*/) override {
         return 0;
     }
 

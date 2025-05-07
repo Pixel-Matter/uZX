@@ -1,8 +1,8 @@
 #include <JuceHeader.h>
 #include "formats/psg/PsgData.h"
-#include "model/Ids.h"
-#include "model/PsgList.h"
-#include "model/PsgMidi.h"
+#include "Ids.h"
+#include "PsgList.h"
+#include "PsgMidi.h"
 
 #include <cstdint>
 #include <optional>

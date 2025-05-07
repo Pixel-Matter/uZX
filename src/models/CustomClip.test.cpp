@@ -1,7 +1,7 @@
 #include <JuceHeader.h>
 
 #include <tracktion_graph/tracktion_graph/tracktion_TestUtilities.h>
-#include <model/PsgClip.h>
+#include <PsgClip.h>
 
 
 namespace MoTool::Tests {

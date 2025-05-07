@@ -1,12 +1,14 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include <common/Utilities.h>  // from Tracktion
 
 #include "Ruler.h"
 #include "ClipComponents.h"
-#include "../common/Components.h"
+#include "PluginComponent.h"
+
 #include "../../controllers/EditState.h"
+
+#include <common/Utilities.h>  // from Tracktion, for FlaggedAsyncUpdater
 
 namespace MoTool {
 

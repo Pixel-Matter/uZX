@@ -1,9 +1,10 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include <common/Utilities.h>  // from Tracktion
 
 #include "../../controllers/EditState.h"
+
+using namespace std::literals;
 
 namespace MoTool {
 

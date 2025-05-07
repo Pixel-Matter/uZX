@@ -1,5 +1,7 @@
 #include "EditState.h"
 
+using namespace std::literals;
+
 namespace MoTool {
 
 // ZoomViewState

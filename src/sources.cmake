@@ -18,7 +18,8 @@ set(GUI_SOURCES
     controllers/Main.cpp
     controllers/EditState.cpp
     # gui/nodes/GraphEditorPanel.cpp
-    gui/common/Components.cpp
+    gui/timeline/PlayheadComponent.cpp
+    gui/timeline/PluginComponent.cpp
     gui/common/Utilities.cpp
     gui/timeline/ClipComponents.cpp
     gui/timeline/TrackComponents.cpp

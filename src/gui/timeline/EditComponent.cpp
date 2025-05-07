@@ -2,7 +2,7 @@
 
 #include "EditComponent.h"
 #include "TrackComponents.h"
-#include "../common/Components.h"
+#include "PlayheadComponent.h"
 
 namespace MoTool {
 

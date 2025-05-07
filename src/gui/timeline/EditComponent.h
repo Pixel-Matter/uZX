@@ -2,16 +2,15 @@
 
 #include <JuceHeader.h>
 
-#include "../common/Components.h"
 #include "TrackComponents.h"
 #include "DetailsPanelComponent.h"
 #include "Ruler.h"
+#include "PlayheadComponent.h"
 
 namespace MoTool {
 
 //==============================================================================
 class EditComponent final : public Component,
-                      //   private ApplicationCommandTarget
                       private FlaggedAsyncUpdater,  // for marking and updating asynchronously
                       private ValueTree::Listener
                     {

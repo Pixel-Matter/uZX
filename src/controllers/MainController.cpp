@@ -14,6 +14,8 @@
 
 #include "../util/FileOps.h"
 
+#include <common/Utilities.h>  // from Tracktion
+
 using namespace MoTool::Commands;
 using namespace MoTool::Helpers;
 

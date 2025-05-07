@@ -1,5 +1,4 @@
 #include <JuceHeader.h>
-#include <common/Utilities.h>  // from Tracktion
 
 #include "ClipComponents.h"
 #include "../../models/PsgClip.h"

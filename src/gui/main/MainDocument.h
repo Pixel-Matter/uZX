@@ -1,7 +1,6 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include <common/Utilities.h>  // from JUCE
 
 #include "../timeline/EditComponent.h"
 #include "../common/Transport.h"

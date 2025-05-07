@@ -1,6 +1,6 @@
 #include "TrackComponents.h"
 #include "PsgClipComponent.h"
-#include "../common/Components.h"
+
 #include "../common/LookAndFeel.h"
 
 namespace te = tracktion;

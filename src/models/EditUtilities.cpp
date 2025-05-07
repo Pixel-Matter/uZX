@@ -1,8 +1,6 @@
 
 #include "EditUtilities.h"
 
-#include <common/Utilities.h>
-
 namespace te = tracktion;
 
 namespace MoTool::Helpers {

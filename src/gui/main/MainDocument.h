@@ -4,15 +4,12 @@
 #include <common/Utilities.h>  // from JUCE
 
 #include "../timeline/EditComponent.h"
-#include "../layout/Layout.h"
 #include "../common/Transport.h"
 
 
 using namespace juce;
 
 namespace MoTool {
-
-namespace lo = Layout;
 
 //==============================================================================
 
@@ -24,27 +21,25 @@ public:
         , editComponent_ {edit, evs}
         // , footer_        {edit_.engine,}
     {
-        using namespace Layout::Operators;  // for operator>>
-        Helpers::addLayoutItemsAndMakeVisible(*this, layout_,
-            transportBar_  >> 32_px,
-            editComponent_ >> 1_fr
-            // footer_        >> 32_px
-        );
+        addAndMakeVisible(transportBar_);
+        addAndMakeVisible(editComponent_);
+        // addAndMakeVisible(footer_);
     }
 
-    ~MainDocumentComponent() override {
-    }
+    ~MainDocumentComponent() override {}
 
     void resized() override {
-        layout_.performLayout(getLocalBounds());
+        auto r = getLocalBounds();
+        DBG("MainDocumentComponent::resized " << r.toString());
+        auto transportBarHeight = 32;
+        transportBar_.setBounds(r.removeFromTop(transportBarHeight));
+        editComponent_.setBounds(r);
     }
 
 private:
     TransportBar transportBar_;
     EditComponent editComponent_;  // former AudioTimeline
     // FooterBar footer_;
-
-    lo::VerticalLayout layout_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainDocumentComponent)
 };

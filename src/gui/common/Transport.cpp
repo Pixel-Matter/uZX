@@ -1,0 +1,95 @@
+#include "Transport.h"
+
+#include "../../controllers/Commands.h"
+#include "../../models/Timecode.h"
+
+#include <common/Utilities.h>
+
+
+namespace MoTool {
+
+using namespace Commands;
+
+TransportBar::TransportBar(te::Edit& edit)
+    : edit_{edit}
+    , transport_{edit_.getTransport()}
+{
+    transport_.addChangeListener(this);
+    timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
+    ::Helpers::addAndMakeVisible (*this, {
+        &rewindButton_,
+        &playPauseButton_,
+        &recordButton_,
+        &bpmLabel_,
+        &timeSigLabel_,
+        &transportReadout_,
+        &masterVolumeSlider_
+    });
+    if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
+        rewindButton_.setCommandToTrigger(mgr, AppCommands::transportToStart, true);
+        playPauseButton_.setCommandToTrigger(mgr, AppCommands::transportPlay, true);
+    }
+    recordButton_.onClick = [this] {
+        bool wasRecording = edit_.getTransport().isRecording();
+        if (!wasRecording) {
+            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRecord, false);
+        } else {
+            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRecordStop, false);
+        }
+    };
+    updatePlayButtonText(transport_.isPlaying());
+    updateRecordButtonText(transport_.isRecording());
+    updateTimeLabels(transport_.getPosition());
+    startTimerHz(30);
+}
+
+void TransportBar::paint(Graphics& g) {
+    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+}
+
+void TransportBar::resized() {
+    auto b = getLocalBounds();
+    int w = 60;
+    bpmLabel_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+    timeSigLabel_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+    transportReadout_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+    rewindButton_.setBounds(b.removeFromLeft(w).reduced(2));
+    playPauseButton_.setBounds(b.removeFromLeft(w).reduced(2));
+    recordButton_.setBounds(b.removeFromLeft(w).reduced(2));
+    masterVolumeSlider_.setBounds(b.removeFromRight(w).expanded(4, 4));
+}
+
+void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
+    updatePlayButtonText(transport_.isPlaying());
+    updateRecordButtonText(transport_.isRecording());
+    updateTimeLabels(transport_.getPosition());
+}
+
+void TransportBar::timerCallback() {
+    updateTimeLabels(transport_.getPosition());
+}
+
+void TransportBar::updatePlayButtonText(bool isPlaying) {
+    playPauseButton_.setButtonText(isPlaying ? "||" : "[>]");
+}
+
+void TransportBar::updateRecordButtonText(bool isRecording) {
+    recordButton_.setButtonText(isRecording ? "Stop" : "Rec");
+}
+
+String TransportBar::getTimecode(te::TimePosition pos) const {
+    return timecodeFormat->getString(edit_.tempoSequence, pos, true);
+}
+
+void TransportBar::updateTimeLabels(te::TimePosition pos) {
+    static te::TimePosition lastPosition = te::TimePosition::fromSeconds(-1.0);
+    if (lastPosition == pos) return;
+    lastPosition = pos;
+    auto& ts = edit_.tempoSequence;
+    auto t = getTimecode(pos);
+    transportReadout_.setText("Pos: " + t, dontSendNotification);
+    bpmLabel_.setText(String::formatted("BPM: %.2f", ts.getBpmAt(pos)), dontSendNotification);
+    timeSigLabel_.setText(String::formatted("Sig: " + ts.getTimeSigAt(pos).getStringTimeSig()), dontSendNotification);
+}
+
+} // namespace MoTool

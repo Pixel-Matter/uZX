@@ -26,10 +26,8 @@ class MainDocumentComponent: public Component {
 public:
 
     explicit MainDocumentComponent(te::Edit& edit, EditViewState& evs, te::SelectionManager& selectionManager)
-        : edit_ {edit}
-        , selectionManager_ {selectionManager}
-        , transportBar_ {edit_}
-        , timelinePanel_ {edit_, evs, selectionManager_}
+        : transportBar_ {edit}
+        , timelinePanel_ {edit, evs, selectionManager}
         // , footer_        {edit_.engine,}
     {
         using namespace Layout::Operators;  // for operator>>
@@ -48,9 +46,6 @@ public:
     }
 
 private:
-    te::Edit& edit_;
-    te::SelectionManager& selectionManager_;
-
     TransportBar transportBar_;
     AudioTimeline timelinePanel_;
     // FooterBar footer_;

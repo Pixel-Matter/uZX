@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "../../controllers/MainController.h"
+#include "MainController.h"
 
 namespace MoTool {
 

@@ -2,12 +2,13 @@
 
 #include <JuceHeader.h>
 
+#include "App.h"
+
+#include "../gui/common/ProgressDialog.h"
+#include "../gui/common/Utilities.h"
+
 #include <common/PluginWindow.h>  // from JUCE
 #include <memory>
-
-#include "../app/App.h"
-#include "ProgressDialog.h"
-#include "Utilities.h"
 
 namespace MoTool {
 

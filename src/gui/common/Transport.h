@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>
 
-#include "../app/Commands.h"
+#include "../../controllers/Commands.h"
 #include "../../models/Timecode.h"
 
 

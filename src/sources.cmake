@@ -14,8 +14,8 @@ set(SHARED_SOURCES
 # GUI-specific files
 set(GUI_SOURCES
     controllers/MainController.cpp
-    gui/app/App.cpp
-    gui/Main.cpp
+    controllers/App.cpp
+    controllers/Main.cpp
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Components.cpp
     gui/timeline/ClipComponents.cpp

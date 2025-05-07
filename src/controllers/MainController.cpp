@@ -2,15 +2,15 @@
 
 #include "MainController.h"
 #include "EditState.h"
+#include "Commands.h"
+#include "UIBehavior.h"
 
-#include "../gui/common/UIBehavior.h"
-#include "../gui/common/Utilities.h"
-#include "../gui/app/MainWindow.h"
-#include "../gui/app/MainDocument.h"
-#include "../gui/app/Commands.h"
+// #include "../gui/common/Utilities.h"
+#include "../gui/main/MainWindow.h"
+#include "../gui/main/MainDocument.h"
 
 #include "../models/Behavior.h"
-#include "../models/Timecode.h"
+// #include "../models/Timecode.h"
 
 #include "../util/FileOps.h"
 
@@ -57,6 +57,9 @@ MainController::~MainController() {
     // commandManager_.setFirstCommandTarget(nullptr);
     selectionManager_.deselectAll();
     selectionManager_.removeChangeListener(this);
+
+    commandManager_.setFirstCommandTarget(nullptr);
+    setApplicationCommandManagerToWatch(nullptr);
 
     mainWindow_.removeKeyListener(commandManager_.getKeyMappings());
     #if JUCE_MAC

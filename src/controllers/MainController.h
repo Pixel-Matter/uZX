@@ -4,7 +4,7 @@
 
 #include "EditState.h"
 
-#include "../gui/app/MainWindow.h"
+#include "../gui/main/MainWindow.h"
 
 
 namespace MoTool {

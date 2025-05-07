@@ -43,6 +43,10 @@ void EditComponent::handleAsyncUpdate() {
     }
 }
 
+void EditComponent::paint(Graphics& g) {
+    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+}
+
 void EditComponent::resized() {
     // also get called on updated zoom
     const int rulerHeight = 32;

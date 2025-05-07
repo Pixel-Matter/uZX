@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 #include <common/Utilities.h>  // from JUCE
 
-#include "../timeline/AudioTimeline.h"
+#include "../timeline/EditComponent.h"
 #include "../layout/Layout.h"
 #include "../common/Transport.h"
 
@@ -15,25 +15,19 @@ namespace MoTool {
 namespace lo = Layout;
 
 //==============================================================================
-/** MainDocumentComponent
-    Ideal modular interface:
-    We have a timeline panel, transport bar, and footer bar
-    Timeline can playback and record,
-    we can hear the audio and view the display (not shown)
-*/
 
 class MainDocumentComponent: public Component {
 public:
 
-    explicit MainDocumentComponent(te::Edit& edit, EditViewState& evs, te::SelectionManager& selectionManager)
+    explicit MainDocumentComponent(te::Edit& edit, EditViewState& evs)
         : transportBar_ {edit}
-        , timelinePanel_ {edit, evs, selectionManager}
+        , editComponent_ {edit, evs}
         // , footer_        {edit_.engine,}
     {
         using namespace Layout::Operators;  // for operator>>
         Helpers::addLayoutItemsAndMakeVisible(*this, layout_,
             transportBar_  >> 32_px,
-            timelinePanel_ >> 1_fr
+            editComponent_ >> 1_fr
             // footer_        >> 32_px
         );
     }
@@ -47,7 +41,7 @@ public:
 
 private:
     TransportBar transportBar_;
-    AudioTimeline timelinePanel_;
+    EditComponent editComponent_;  // former AudioTimeline
     // FooterBar footer_;
 
     lo::VerticalLayout layout_;

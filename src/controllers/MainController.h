@@ -60,6 +60,7 @@ private:
     std::unique_ptr<te::Edit> createOrLoadEdit(File editFile);
 
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false);
+    void createTracksAndAssignInputs();
 
     // Called when the selection changes
     void changeListenerCallback (ChangeBroadcaster*) override;

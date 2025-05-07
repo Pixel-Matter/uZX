@@ -24,6 +24,7 @@ private:
 
     void handleAsyncUpdate() override;
     void resized() override;
+    void paint(Graphics& g) override;
 
     te::Edit& edit;
     EditViewState& editViewState;

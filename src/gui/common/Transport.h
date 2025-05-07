@@ -4,6 +4,8 @@
 #include <common/Utilities.h>
 
 #include "../../controllers/Commands.h"
+#include "../../controllers/ParamAttachments.h"
+
 #include "../../models/Timecode.h"
 
 
@@ -13,54 +15,10 @@ namespace MoTool {
 
 using namespace Commands;
 
-class ParameterSliderAttachment : private te::AutomatableParameter::Listener {
-public:
-    ParameterSliderAttachment (Slider& s, te::AutomatableParameter& p)
-        : slider (s)
-        , param (p)
-    {
-        slider.setRange(p.getValueRange().getStart(), p.getValueRange().getEnd(), 0.0);
-        slider.setValue(p.getCurrentValue(), dontSendNotification);
-
-        slider.onValueChange = [this] {
-            juce::ScopedValueSetter<bool> svs(updatingSlider, true);
-            // if (updatingFromParam)
-            //     return;  // don't update the parameter if we're already updating it
-            param.setParameter((float)slider.getValue(), juce::sendNotification);
-        };
-        slider.onDragStart = [&]{ param.parameterChangeGestureBegin(); };
-        slider.onDragEnd   = [&]{ param.parameterChangeGestureEnd(); };
-
-        // слушаем параметр → слайдер
-        param.addListener(this);
-    }
-
-    ~ParameterSliderAttachment() override {
-        param.removeListener(this);
-    }
-
-private:
-    // called from MessageThread (see AsyncCaller)
-    void currentValueChanged(te::AutomatableParameter& p) override {
-        if (updatingSlider)
-            return;  // don't update the parameter if we're already updating it
-        // juce::ScopedValueSetter<bool> svs(updatingFromParam, true);
-        slider.setValue(p.getCurrentValue(), dontSendNotification);
-    }
-
-    void curveHasChanged(te::AutomatableParameter&) override {}
-
-    Slider& slider;
-    te::AutomatableParameter& param;
-    bool updatingSlider { false };
-    // bool updatingFromParam { false };
-};
-
-
-
 class TransportBar: public Component,
                     private Timer,
-                    private ChangeListener {
+                    private ChangeListener
+                    {
 public:
 
     explicit TransportBar(te::Edit& edit)
@@ -69,7 +27,7 @@ public:
     {
         transport_.addChangeListener(this);
         // cached value is ValueTree::Listener
-        timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr);
+        timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
 
         ::Helpers::addAndMakeVisible (*this, {
             &rewindButton_,
@@ -84,7 +42,6 @@ public:
         });
 
         if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
-            // TODO Use invoking of AppFunctions in main command target
             rewindButton_.setCommandToTrigger(mgr, AppCommands::transportToStart, true);
             // stepLeftButton_.setCommandToTrigger(mgr, AppCommands::transportStepBack, true);
             playPauseButton_.setCommandToTrigger(mgr, AppCommands::transportPlay, true);
@@ -102,8 +59,9 @@ public:
         };
         // transportReadout_.setFont(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 14, juce::Font::plain));
 
-        updatePlayButtonText();
-        updateTimeLabels();
+        updatePlayButtonText(transport_.isPlaying());
+        updateRecordButtonText(transport_.isRecording());
+        updateTimeLabels(transport_.getPosition());
         startTimerHz(30);
     }
 
@@ -155,27 +113,31 @@ private:
     void changeListenerCallback(ChangeBroadcaster*) override {
         // Called when the transport changes
         // if (source == &edit.getTransport()) { // not needed
-        updatePlayButtonText();
-        updateRecordButtonText();
-        updateTimeLabels();
+
+        updatePlayButtonText(transport_.isPlaying());
+        updateRecordButtonText(transport_.isRecording());
+        updateTimeLabels(transport_.getPosition());
+        // DBG("TransportBar::changeListenerCallback " << getTimecode(transport_.getPosition()));
         // }
     }
 
     void timerCallback() override {
-        updateTimeLabels();
-        repaint();
+        updateTimeLabels(transport_.getPosition());
     }
 
-    void updatePlayButtonText() {
-        playPauseButton_.setButtonText(transport_.isPlaying() ? "||" : "[>]");
+    void updatePlayButtonText(bool isPlaying) {
+        playPauseButton_.setButtonText(isPlaying ? "||" : "[>]");
     }
 
-    void updateRecordButtonText() {
-        recordButton_.setButtonText(transport_.isRecording() ? "Stop" : "Rec");
+    void updateRecordButtonText(bool isRecording) {
+        recordButton_.setButtonText(isRecording ? "Stop" : "Rec");
     }
 
-    void updateTimeLabels() {
-        auto pos = transport_.getPosition();
+    String getTimecode(te::TimePosition pos) const {
+        return timecodeFormat->getString(edit_.tempoSequence, pos, true);
+    }
+
+    void updateTimeLabels(te::TimePosition pos) {
         if (lastPosition_ == pos) return;
 
         lastPosition_ = pos;
@@ -183,7 +145,7 @@ private:
 
         // DBG("timecode = " << (int)timecodeFormat->typeExt << " " << (int)timecodeFormat->type);
 
-        auto t = timecodeFormat->getString(ts, transport_.getPosition(), true);
+        auto t = getTimecode(pos);
         transportReadout_.setText("Pos: " + t, dontSendNotification);
 
         bpmLabel_.setText(String::formatted("BPM: %.2f", ts.getBpmAt(pos)), dontSendNotification);

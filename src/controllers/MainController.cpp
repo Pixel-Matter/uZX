@@ -366,6 +366,39 @@ void MainController::handleRecord() {
     }
 }
 
+// void handleInsertAudioClip() {
+//     Helpers::browseForAudioFile(edit.engine, [this](const File& f) {
+//         if (f.existsAsFile()) {
+//             auto track = getSelectedOrInsertAudioTrack(edit, selectionManager);
+//             te::AudioFile audioFile(edit.engine, f);
+//             if (audioFile.isValid()) {
+//                 if (auto inserted = track->insertWaveClip(
+//                     f.getFileNameWithoutExtension(),
+//                     f,
+//                     {{{}, te::TimeDuration::fromSeconds(audioFile.getLength())}, {}},
+//                     false)
+//                 ) {
+//                     // DBG("Inserted clip: " << inserted->getName());
+//                 }
+//             }
+//         }
+//     });
+// }
+
+// void handleInsertMidiClip() {
+//     auto seq = Helpers::readMidi(MIDI_CLIP_DATA, 1);
+//     auto len = seq.getEndTime();
+//     double insertTime = edit.getTransport().getPosition().inSeconds();
+//     seq.addTimeToMessages(insertTime);
+//     auto time = te::TimeRange(te::TimePosition::fromSeconds(insertTime), te::TimeDuration::fromSeconds(len));
+//     auto track = getSelectedOrInsertAudioTrack(edit, selectionManager);
+
+//     if (auto clip = track->insertMIDIClip("MidiClip", time, &selectionManager)) {
+//         clip->mergeInMidiSequence(seq, te::MidiList::NoteAutomationType::none);
+//         clip->setMidiChannel(te::MidiChannel(1));
+//     }
+// }
+
 void MainController::hanldePluginManager() {
     DialogWindow::LaunchOptions o;
     o.dialogTitle                   = TRANS("Plugins");
@@ -414,14 +447,41 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     // need to remap clips to new tempo
     edit_->tempoSequence.getTempoAt(edit_->getTransport().getPosition()).setBpm(115.3846153846);
     setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
+    createTracksAndAssignInputs();
+    te::EditFileOperations(*edit_).save(true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 
     mainWindow_.setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
-    mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_, getSelectionManager()), true);
+    mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
     mainWindow_.setSize(w, h);
     mainWindow_.repaint();
 }
+
+// TODO refactor to EditController
+void MainController::createTracksAndAssignInputs() {
+    for (auto& midiIn : engine_.getDeviceManager().getMidiInDevices()) {
+        midiIn->setMonitorMode(te::InputDevice::MonitorMode::automatic);
+        midiIn->setEnabled(true);
+    }
+
+    edit_->getTransport().ensureContextAllocated();
+    if (te::getAudioTracks(*edit_).size() == 0) {
+        int trackNum = 0;
+
+        for (auto instance : edit_->getAllInputDevices()) {
+            if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
+                if (auto t = EngineHelpers::getOrInsertAudioTrackAt(*edit_, trackNum)) {
+                    [[ maybe_unused ]] auto res = instance->setTarget(t->itemID, true, &edit_->getUndoManager(), 0);
+                    instance->setRecordingEnabled(t->itemID, true);
+                    trackNum++;
+                }
+            }
+        }
+    }
+    edit_->restartPlayback();
+}
+
 
 void MainController::changeListenerCallback (ChangeBroadcaster*) {
     // Called when the selection changes

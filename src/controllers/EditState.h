@@ -192,7 +192,7 @@ private:
             if (pos < viewX1 || pos > viewX1 + leftRange) {
                 auto newX1 = jmax(te::TimePosition {}, pos - leftRange);
                 if (newX1 != viewX1)
-                    setRange({newX1, newX1 + range.getLength()});
+                    setRange({newX1, range.getLength()});
             }
         }
     }

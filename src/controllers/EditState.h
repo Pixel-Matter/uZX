@@ -48,115 +48,38 @@ public:
         virtual void zoomChanged() = 0;
     };
 
-    ZoomViewState(te::Edit& e, ValueTree& st)
-        : edit(e)
-        , state(st)
-    {
-        state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
-        auto um = &edit.getUndoManager();
-        viewX1.referTo(state, IDs::viewX1, um, 0s);   // time of the left edge of the view
-        viewX2.referTo(state, IDs::viewX2, um, 60s);  // time of the right edge of the view
-        viewY.referTo(state, IDs::viewY, um, 0);      // not used yet
-        edit.getTransport().addListener(this);
-        edit.getTransport().addChangeListener(this);
-    }
+    ZoomViewState(te::Edit& e, ValueTree& st);
+    ~ZoomViewState() override;
 
-    ~ZoomViewState() override {
-        edit.getTransport().removeChangeListener(this);
-        edit.getTransport().removeListener(this);
-    }
+    void addListener(Listener* l);
+    void removeListener(Listener* l);
 
-    void addListener(Listener* l) {
-        listeners.add(l);
-    }
+    te::TimeRange getRange() const;
+    void setRange(te::TimeRange range);
 
-    void removeListener(Listener* l) {
-        listeners.remove(l);
-    }
+    void setStart(te::TimePosition start);
 
-    te::TimeRange getRange() const {
-        return {viewX1, viewX2};
-    }
+    te::TimePosition getRangeStart() const;
+    te::TimePosition getRangeEnd() const;
 
-    void setRange(te::TimeRange range) {
-        viewX1 = range.getStart();
-        viewX2 = range.getEnd();
-        listeners.call(&Listener::zoomChanged);
-    }
+    double getViewY() const;
 
-    void setStart(te::TimePosition start) {
-        setRange({start, start + viewLength()});
-    }
+    te::TimeDuration viewLength() const;
 
-    te::TimePosition getRangeStart() const {
-        return viewX1;
-    }
+    te::TimePosition beatToTime(te::BeatPosition b) const;
 
-    te::TimePosition getRangeEnd() const {
-        return viewX2;
-    }
+    int timeToX(te::TimePosition time, int width) const;
+    te::TimePosition xToTime(int x, int width) const;
 
-    double getViewY() const {
-        return viewY;
-    }
+    float durationToPixels(te::TimeDuration duration, int width) const;
 
-    te::TimeDuration viewLength() const {
-        return viewX2 - viewX1;
-    }
+    float pixelsPerBeat(te::TimeDuration beatDur, int width) const;
+    float pixelsPerBeat(double beatDur, int width) const;
 
-    te::TimePosition beatToTime(te::BeatPosition b) const {
-        auto& ts = edit.tempoSequence;
-        return ts.toTime(b);
-    }
+    bool scrollToPosition(te::TimePosition pos);
+    bool scrollToCurrentPosition();
 
-    int timeToX(te::TimePosition time, int width) const {
-        return roundToInt(((time - viewX1) * width) / viewLength());
-    }
-
-    te::TimePosition xToTime(int x, int width) const {
-        return toPosition(viewLength() * (double (x) / width)) + toDuration(viewX1.get());
-    }
-
-    float durationToPixels(te::TimeDuration duration, int width) const {
-        return (float)(duration * width / viewLength());
-    }
-
-    float pixelsPerBeat(te::TimeDuration beatDur, int width) const {
-        return durationToPixels(beatDur, width);
-    }
-
-    float pixelsPerBeat(double beatDur, int width) const {
-        return durationToPixels(te::TimeDuration::fromSeconds(beatDur), width);
-    }
-
-    bool scrollToPosition(te::TimePosition pos) {
-        if (pos < viewX1 || pos > viewX2) {
-            auto range = viewLength();
-            auto newViewX1 = jmax(te::TimePosition(), pos - range / 2.0);
-            setStart(newViewX1);
-            return true;
-        }
-        return false;
-    }
-
-    bool scrollToCurrentPosition() {
-        auto pos = edit.getTransport().getPosition();
-        return scrollToPosition(pos);
-    }
-
-    void zoomHorizontally(double factor) {
-        double scaleFactor = std::pow(2.0, -factor * 5.0);
-        auto pos = edit.getTransport().getPosition();
-        auto range = viewLength();
-        auto newHalfRange = range * scaleFactor / 2.0;
-        // TODO limit must be relative to pixels
-        // limit zoom to
-        if (newHalfRange > 0.5s && newHalfRange < 600s) {
-            viewX1 = jmax(te::TimePosition(), pos - newHalfRange);
-            viewX2 = viewX1 + newHalfRange * 2.0;
-            listeners.call(&Listener::zoomChanged);
-        }
-    }
+    void zoomHorizontally(double factor);
 
     te::Edit& edit;
 private:
@@ -165,61 +88,15 @@ private:
     CachedValue<double> viewY;
     ListenerList<Listener> listeners;
 
-    void changeListenerCallback(ChangeBroadcaster* source) override {
-        if (source == &edit.getTransport()) {
-            // DBG("ZoomViewState::changeListenerCallback");
-            if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
-                startTimerHz(30);
-            } else {
-                stopTimer();
-            }
-        }
-    }
-
-    void timerCallback() override {
-        handlePlaybackScrolling();
-    }
-
-    void handlePlaybackScrolling() {
-        if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
-            auto pos = edit.getTransport().getPosition();
-            auto range = getRange();
-            auto leftRange = range.getLength() / 3.0;
-            // for paging in the middle of the view
-            // if (pos < viewX1 + leftRange || pos > viewX2 - leftRange) {
-
-            // for continuous scrolling
-            if (pos < viewX1 || pos > viewX1 + leftRange) {
-                auto newX1 = jmax(te::TimePosition {}, pos - leftRange);
-                if (newX1 != viewX1)
-                    setRange({newX1, range.getLength()});
-            }
-        }
-    }
+    void changeListenerCallback(ChangeBroadcaster* source) override;
+    void timerCallback() override;
+    void handlePlaybackScrolling();
 };
 
 
 class EditViewState {
 public:
-    EditViewState (te::Edit& e, te::SelectionManager& s)
-        : state(e.state.getOrCreateChildWithName(IDs::EDITVIEWSTATE, nullptr))
-        , zoom(e, state)
-        , selectionManager(s)
-        , edit(e)
-    {
-        auto um = &edit.getUndoManager();
-        showMasterTrack.referTo(state, IDs::showMasterTrack, um, false);
-        showGlobalTrack.referTo(state, IDs::showGlobalTrack, um, false);
-        showMarkerTrack.referTo(state, IDs::showMarkerTrack, um, false);
-        showChordTrack.referTo(state, IDs::showChordTrack, um, false);
-        showArrangerTrack.referTo(state, IDs::showArranger, um, false);
-        drawWaveforms.referTo(state, IDs::drawWaveforms, um, true);
-        showHeaders.referTo(state, IDs::showHeaders, um, true);
-        showFooters.referTo(state, IDs::showFooters, um, true);
-        showMidiDevices.referTo(state, IDs::showMidiDevices, um, false);
-        showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
-        headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
-    }
+    EditViewState(te::Edit& e, te::SelectionManager& s);
 
     CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,
                       drawWaveforms, showHeaders, showFooters, showMidiDevices, showWaveDevices;
@@ -248,43 +125,21 @@ public:
         @param trackState  ValueTree with type TRACK, inside which VIEWSTATE is created or extracted
         @param undoManager  UndoManager from EditViewState
     */
-    TrackViewState(ValueTree trackState, UndoManager* undoManager)
-        : state(ensure(trackState))
-        , height(state, IDs::height, undoManager, 160)
-    {
-        constrainer.setMinimumHeight(56);
-        constrainer.setMaximumHeight(600);
-        state.addListener(this);
-    }
+    TrackViewState(ValueTree trackState, UndoManager* undoManager);
+    ~TrackViewState() override;
 
-    ~TrackViewState() override {
-        state.removeListener(this);
-    }
-
-    int getHeight() const noexcept {
-        return height.get();
-    }
-
-    void setTrackHeight(int h) {
-        height = h;
-    }
+    int getHeight() const noexcept;
+    void setTrackHeight(int h);
 
     class Listener {
         public: virtual ~Listener() = default;
         virtual void trackViewStateChanged() = 0;
     };
 
-    void addListener(Listener* l)    {
-        listeners.add(l);
-    }
+    void addListener(Listener* l);
+    void removeListener(Listener* l);
 
-    void removeListener(Listener* l) {
-        listeners.remove(l);
-    }
-
-    ComponentBoundsConstrainer& getConstrainer() {
-        return constrainer;
-    }
+    ComponentBoundsConstrainer& getConstrainer();
 
 private:
     ValueTree state;
@@ -292,20 +147,9 @@ private:
     ComponentBoundsConstrainer constrainer;
     ListenerList<Listener> listeners;
 
-    static ValueTree ensure(ValueTree trackState) {
-        if (auto existing = trackState.getChildWithName(IDs::VIEWSTATE); existing.isValid()) {
-            return existing;
-        }
-        auto vt = ValueTree(IDs::VIEWSTATE);
-        trackState.addChild(vt, -1, nullptr);
-        return vt;
-    }
+    static ValueTree ensure(ValueTree trackState);
 
-    void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override {
-        if (v == state && id == IDs::height) {
-            listeners.call(&Listener::trackViewStateChanged);
-        }
-    }
+    void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
 };
 
 }  // namespace MoTool

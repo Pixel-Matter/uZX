@@ -152,48 +152,4 @@ private:
     juce::Array<PsgParamFrame*> paramFrames;
 };
 
-
-// class PsgParamEditorComponent: public Component,
-//                                private ChangeListener
-// {
-// public:
-//     PsgParamEditorComponent(EditViewState& evs)
-//         : editViewState(evs)
-//     {
-//         editViewState.selectionManager.addChangeListener(this);
-//     }
-
-//     ~PsgParamEditorComponent() override {
-//         editViewState.selectionManager.removeChangeListener(this);
-//     }
-
-//     void changeListenerCallback(ChangeBroadcaster* sender) override {
-//         // auto objects = editViewState.selectionManager.getSelectedObjects();
-//         // DBG("PsgParamEditorComponent::changeListenerCallback " << objects.size());
-
-//         // if (curveEditor != nullptr) {
-//         //     removeChildComponent(curveEditor.get());
-//         //     curveEditor.reset();
-//         // }
-
-//         // if (objects.size() == 1) {
-//         //     if (auto* psgClip = dynamic_cast<PsgClip*>(objects[0]); psgClip != nullptr) {
-//         //         curveEditor = std::make_unique<te::CurveEditor>(editViewState);
-//         //         addAndMakeVisible(*curveEditor);
-//         //     }
-//         // }
-//     }
-
-//     void paint(Graphics& g) override {
-//         g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
-//     }
-
-//     void resized() override {
-//     }
-
-// private:
-//     EditViewState& editViewState;
-//     std::unique_ptr<te::CurveEditor> curveEditor;
-// };
-
 }  // namespace MoTool

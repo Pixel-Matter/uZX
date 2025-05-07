@@ -1,8 +1,8 @@
 #include <JuceHeader.h>
 
 #include "EditComponent.h"
-#include "../common/Components.h"
 #include "TrackComponents.h"
+#include "../common/Components.h"
 
 namespace MoTool {
 

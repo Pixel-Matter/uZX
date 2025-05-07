@@ -10,6 +10,7 @@
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
+#include "../plugins/uZX/aychip/AYPlugin.h"
 
 #include "../util/FileOps.h"
 

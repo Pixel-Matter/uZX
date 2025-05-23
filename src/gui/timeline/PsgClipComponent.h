@@ -8,7 +8,6 @@ namespace MoTool {
 //==============================================================================
 class PsgClipComponent : public MidiClipComponent {
 public:
-
     using MidiClipComponent::MidiClipComponent;
 
     PsgClip* getPsgClip();
@@ -16,6 +15,9 @@ public:
     void paint(Graphics& g) override;
     void paintRegisters(Graphics& g);
     void paintParameters(Graphics& g);
+
+private:
+
 };
 
 }  // namespace MoTool

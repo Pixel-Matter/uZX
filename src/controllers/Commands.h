@@ -287,48 +287,5 @@ public:
     }
 };
 
-//==============================================================================
-/**
-    One of these objects holds a list of all the commands your app can perform,
-    and despatches these commands when needed.
-
-    Application commands are a good way to trigger actions in your app, e.g. "Quit",
-    "Copy", "Paste", etc. Menus, buttons and keypresses can all be given commands
-    to invoke automatically, which means you don't have to handle the result of a menu
-    or button click manually. Commands are despatched to ApplicationCommandTarget objects
-    which can choose which events they want to handle.
-
-    This architecture also allows for nested ApplicationCommandTargets, so that for example
-    you could have two different objects, one inside the other, both of which can respond to
-    a "delete" command. Depending on which one has focus, the command will be sent to the
-    appropriate place, regardless of whether it was triggered by a menu, keypress or some other
-    method.
-*/
-// class CommandManager : public ApplicationCommandManager {
-// public:
-//     CommandManager() = default;
-
-//     void initializeWithTarget(ApplicationCommandTarget* target) {
-//         setFirstCommandTarget(target);
-//         myRegisterAllCommandsForTarget();
-//     }
-
-//     void myRegisterAllCommandsForTarget() {
-//         auto commands = AppCommands::getCommandIDs();
-//         for (auto commandID : commands) {
-//             ApplicationCommandInfo info(commandID);
-//             AppCommands::getCommandInfo(commandID, info);
-//             registerCommand(info);
-//         }
-//     }
-
-//     PopupMenu createMenu(const String& menuName) {
-//         return AppCommands::createMenu(this, menuName);
-//     }
-
-// private:
-//     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CommandManager)
-// };
-
 
 } // namespace MoTool::Commands

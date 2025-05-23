@@ -195,7 +195,7 @@ void MidiClipComponent::paint(Graphics& g) {
 RecordingClipComponent::RecordingClipComponent (te::Track::Ptr t, EditViewState& evs)
     : track (t), editViewState (evs)
 {
-    startTimerHz (10);
+    startTimerHz(15);
     initialiseThumbnailAndPunchTime();
 }
 

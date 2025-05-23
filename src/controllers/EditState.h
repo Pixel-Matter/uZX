@@ -88,6 +88,7 @@ private:
     ListenerList<Listener> listeners;
 
     void changeListenerCallback(ChangeBroadcaster* source) override;
+    void playbackContextChanged() override;
     void timerCallback() override;
     void handlePlaybackScrolling();
 };

@@ -537,7 +537,7 @@ void TracksContainerComponent::resized() {
     }
 }
 
-void TracksContainerComponent::paint(Graphics& g) {
+void TracksContainerComponent::paint(Graphics& /*g*/) {
     // g.fillAll(Colors::Theme::backgroundAlt);
 }
 

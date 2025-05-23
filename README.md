@@ -13,6 +13,14 @@
                `---'    |   |    `---'
                         `-- `--
 
+          ,--------.   ,---.
+          `---/ / / \ / / /
+             / / / \ ' / /     Copyright 2025
+    B8   88 / / /   / / /    Ruslan Grokhovetski
+    B8   88  / /   / / . \   www.pixelmatter.org
+    B8,  88.  /---/ / / \ \
+    B8"oo""8o ---'---'   `-'
+    BP
 
     d88o888ob.      d888888888b             d8b
     8@@8@@@8@@b ,d888b.`8@8',d888b. ,d888b. B@8       Copyright 2025

@@ -7,7 +7,8 @@ namespace MoTool {
 // ZoomViewState
 
 ZoomViewState::ZoomViewState(te::Edit& e, ValueTree& st)
-  : edit(e), state(st)
+  : edit(e)
+  , state(st)
 {
     state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
     auto um = &edit.getUndoManager();
@@ -18,8 +19,7 @@ ZoomViewState::ZoomViewState(te::Edit& e, ValueTree& st)
     edit.getTransport().addChangeListener(this);
 }
 
-ZoomViewState::~ZoomViewState()
-{
+ZoomViewState::~ZoomViewState() {
     edit.getTransport().removeChangeListener(this);
     edit.getTransport().removeListener(this);
 }
@@ -27,76 +27,62 @@ ZoomViewState::~ZoomViewState()
 void ZoomViewState::addListener(Listener* l) { listeners.add(l); }
 void ZoomViewState::removeListener(Listener* l) { listeners.remove(l); }
 
-te::TimeRange ZoomViewState::getRange() const
-{
+te::TimeRange ZoomViewState::getRange() const {
     return { viewX1, viewX2 };
 }
 
-void ZoomViewState::setRange(te::TimeRange range)
-{
+void ZoomViewState::setRange(te::TimeRange range) {
     viewX1 = range.getStart();
     viewX2 = range.getEnd();
     listeners.call(&Listener::zoomChanged);
 }
 
-void ZoomViewState::setStart(te::TimePosition start)
-{
+void ZoomViewState::setStart(te::TimePosition start) {
     setRange({ start, start + viewLength() });
 }
 
-te::TimePosition ZoomViewState::getRangeStart() const
-{
+te::TimePosition ZoomViewState::getRangeStart() const {
     return viewX1;
 }
 
-te::TimePosition ZoomViewState::getRangeEnd() const
-{
+te::TimePosition ZoomViewState::getRangeEnd() const {
     return viewX2;
 }
 
-double ZoomViewState::getViewY() const
-{
+double ZoomViewState::getViewY() const {
     return viewY;
 }
 
-te::TimeDuration ZoomViewState::viewLength() const
-{
+te::TimeDuration ZoomViewState::viewLength() const {
     return viewX2 - viewX1;
 }
 
-te::TimePosition ZoomViewState::beatToTime(te::BeatPosition b) const
-{
+te::TimePosition ZoomViewState::beatToTime(te::BeatPosition b) const {
     auto& ts = edit.tempoSequence;
     return ts.toTime(b);
 }
 
-int ZoomViewState::timeToX(te::TimePosition time, int width) const
-{
+int ZoomViewState::timeToX(te::TimePosition time, int width) const {
     return roundToInt(((time - viewX1) * width) / viewLength());
 }
 
-te::TimePosition ZoomViewState::xToTime(int x, int width) const
-{
+te::TimePosition ZoomViewState::xToTime(int x, int width) const {
     return toPosition(viewLength() * (double(x) / width)) + toDuration(viewX1.get());
 }
 
-float ZoomViewState::durationToPixels(te::TimeDuration duration, int width) const
-{
+float ZoomViewState::durationToPixels(te::TimeDuration duration, int width) const {
     return (float)(duration * width / viewLength());
 }
 
-float ZoomViewState::pixelsPerBeat(te::TimeDuration beatDur, int width) const
-{
+float ZoomViewState::pixelsPerBeat(te::TimeDuration beatDur, int width) const {
     return durationToPixels(beatDur, width);
 }
 
-float ZoomViewState::pixelsPerBeat(double beatDur, int width) const
-{
+float ZoomViewState::pixelsPerBeat(double beatDur, int width) const {
     return durationToPixels(te::TimeDuration::fromSeconds(beatDur), width);
 }
 
-bool ZoomViewState::scrollToPosition(te::TimePosition pos)
-{
+bool ZoomViewState::scrollToPosition(te::TimePosition pos) {
     if (pos < viewX1 || pos > viewX2)
     {
         auto range = viewLength();
@@ -107,14 +93,12 @@ bool ZoomViewState::scrollToPosition(te::TimePosition pos)
     return false;
 }
 
-bool ZoomViewState::scrollToCurrentPosition()
-{
+bool ZoomViewState::scrollToCurrentPosition() {
     auto pos = edit.getTransport().getPosition();
     return scrollToPosition(pos);
 }
 
-void ZoomViewState::zoomHorizontally(double factor)
-{
+void ZoomViewState::zoomHorizontally(double factor) {
     double scaleFactor = std::pow(2.0, -factor * 5.0);
     auto pos = edit.getTransport().getPosition();
     auto range = viewLength();
@@ -127,10 +111,8 @@ void ZoomViewState::zoomHorizontally(double factor)
     }
 }
 
-void ZoomViewState::changeListenerCallback(ChangeBroadcaster* source)
-{
-    if (source == &edit.getTransport())
-    {
+void ZoomViewState::changeListenerCallback(ChangeBroadcaster* source) {
+    if (source == &edit.getTransport()) {
         if (edit.getTransport().isPlaying() || edit.getTransport().isRecording())
             startTimerHz(30);
         else
@@ -138,16 +120,18 @@ void ZoomViewState::changeListenerCallback(ChangeBroadcaster* source)
     }
 }
 
-void ZoomViewState::timerCallback()
-{
+void ZoomViewState::playbackContextChanged() {
+    DBG("ZoomViewState::playbackContextChanged");
+}
+
+void ZoomViewState::timerCallback() {
     handlePlaybackScrolling();
 }
 
-void ZoomViewState::handlePlaybackScrolling()
-{
-    if (edit.getTransport().isPlaying() || edit.getTransport().isRecording())
-    {
+void ZoomViewState::handlePlaybackScrolling() {
+    if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
         auto pos = edit.getTransport().getPosition();
+        DBG("ZoomViewState::timerCallback (handlePlaybackScrolling), pos: " << pos.inSeconds());
         auto range = getRange();
         auto leftRange = range.getLength() / 3.0;
         if (pos < viewX1 || pos > viewX1 + leftRange)

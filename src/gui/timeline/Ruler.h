@@ -26,14 +26,12 @@ public:
         editViewState.zoom.addListener(this);
         // cached value is ValueTree::Listener
         timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr, TimecodeDisplayFormatExt {TimecodeTypeExt::barsBeatsFps50});
-        // startTimerHz(30);
     }
 
     ~RulerComponent() override {
         edit.tempoSequence.removeListener(this);
         editViewState.state.removeListener(this);
         editViewState.zoom.removeListener(this);
-        // stopTimer();
     }
 
     void zoomChanged() override {

@@ -60,21 +60,21 @@ void PlayheadComponent::mouseDrag(const MouseEvent& e) {
 
 void PlayheadComponent::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
     if (tree == edit.getTransport().state && prop == te::IDs::position) {
-        DBG("PlayheadComponent::valueTreePropertyChanged, pos: " << edit.getTransport().getPosition().inSeconds());
+        // DBG("PlayheadComponent::valueTreePropertyChanged, pos: " << edit.getTransport().getPosition().inSeconds());
         checkRepaint();
     }
 }
 
 void PlayheadComponent::zoomChanged() {
-    DBG("PlayheadComponent::zoomChanged");
+    // DBG("PlayheadComponent::zoomChanged");
     checkRepaint();
 }
 
 void PlayheadComponent::checkRepaint() {
     int newX = editViewState.zoom.timeToX(edit.getTransport().getPosition(), getWidth());
-    DBG("PlayheadComponent::checkRepaint, pos: " << edit.getTransport().getPosition().inSeconds());
+    // DBG("PlayheadComponent::checkRepaint, pos: " << edit.getTransport().getPosition().inSeconds());
     if (newX != xPosition) {
-        DBG("PlayheadComponent::checkRepaint, repainting at x: " << newX);
+        // DBG("PlayheadComponent::checkRepaint, repainting at x: " << newX);
         repaint(jmin(newX, xPosition) - 1, 0, jmax(newX, xPosition) - jmin(newX, xPosition) + 3, getHeight());
         xPosition = newX;
     }

@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "Playhead.h"
+// #include "Playhead.h"
 
 namespace MoTool {
 
@@ -35,10 +35,7 @@ namespace te = tracktion;
 
 //==============================================================================
 class ZoomViewState :
-        // private Timer,
-        private te::TransportControl::Listener,
-        private ValueTree::Listener,
-        private ChangeListener {
+        private ValueTree::Listener {
 public:
 
     // Actually we do not need to use listeners in every ValueTree state wrapper,
@@ -90,10 +87,7 @@ private:
     CachedValue<double> viewY;
     ListenerList<Listener> listeners;
 
-    void changeListenerCallback(ChangeBroadcaster* source) override;
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
-    void playbackContextChanged() override;
-    // void timerCallback() override;
     void handlePlaybackScrolling();
 };
 
@@ -108,7 +102,6 @@ public:
 
     ValueTree state;
     ZoomViewState zoom;
-    PlayheadViewState playhead;
     te::SelectionManager& selectionManager;
     te::Edit& edit;
 

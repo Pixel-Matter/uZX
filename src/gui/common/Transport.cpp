@@ -66,7 +66,10 @@ void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
 }
 
 void TransportBar::timerCallback() {
-    updateTimeLabels(transport_.getPosition());
+    // if (transport_.isPlaying() || transport_.isRecording()) {
+        // DBG("TransportBar::timerCallback, pos: " << transport_.getPosition().inSeconds());
+        updateTimeLabels(transport_.getPosition());
+    // }
 }
 
 void TransportBar::updatePlayButtonText(bool isPlaying) {

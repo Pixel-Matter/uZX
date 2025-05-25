@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include "Playhead.h"
+
 namespace MoTool {
 
 namespace IDs
@@ -33,8 +35,9 @@ namespace te = tracktion;
 
 //==============================================================================
 class ZoomViewState :
-        private Timer,
+        // private Timer,
         private te::TransportControl::Listener,
+        private ValueTree::Listener,
         private ChangeListener {
 public:
 
@@ -88,8 +91,9 @@ private:
     ListenerList<Listener> listeners;
 
     void changeListenerCallback(ChangeBroadcaster* source) override;
+    void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
     void playbackContextChanged() override;
-    void timerCallback() override;
+    // void timerCallback() override;
     void handlePlaybackScrolling();
 };
 
@@ -104,7 +108,7 @@ public:
 
     ValueTree state;
     ZoomViewState zoom;
-    // TODO actually it is better to make EditContext class and put EditViewState and selection managers there
+    PlayheadViewState playhead;
     te::SelectionManager& selectionManager;
     te::Edit& edit;
 

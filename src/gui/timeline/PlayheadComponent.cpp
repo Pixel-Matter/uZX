@@ -14,8 +14,13 @@ PlayheadComponent::PlayheadComponent(te::Edit& e, EditViewState& evs)
     : edit (e)
     , editViewState (evs)
 {
-    // TODO change to project framerate
-    startTimerHz(30);
+    edit.getTransport().state.addListener(this);
+    editViewState.zoom.addListener(this);
+}
+
+PlayheadComponent::~PlayheadComponent() {
+    edit.getTransport().state.removeListener(this);
+    editViewState.zoom.removeListener(this);
 }
 
 void PlayheadComponent::paint(Graphics& g) {
@@ -28,6 +33,11 @@ bool PlayheadComponent::hitTest(int x, int) {
         return true;
 
     return false;
+}
+
+void PlayheadComponent::mouseEnter(const MouseEvent&) {
+    // TODO On Linux, don't set the mouse cursor until after the Component has appeared
+    setMouseCursor(MouseCursor::LeftRightResizeCursor);
 }
 
 void PlayheadComponent::mouseDown(const MouseEvent&) {
@@ -45,18 +55,26 @@ void PlayheadComponent::mouseDrag(const MouseEvent& e) {
     auto x = jmax(jmin(e.x, r.getRight() - 1), r.getX());
     auto t = jmax(0_tp, editViewState.zoom.xToTime(x, getWidth()));
     edit.getTransport().setPosition(t);
-    timerCallback();
+    // checkRepaint();
 }
 
-void PlayheadComponent::timerCallback() {
-    if (firstTimer) {
-        // On Linux, don't set the mouse cursor until after the Component has appeared
-        firstTimer = false;
-        setMouseCursor(MouseCursor::LeftRightResizeCursor);
+void PlayheadComponent::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
+    if (tree == edit.getTransport().state && prop == te::IDs::position) {
+        DBG("PlayheadComponent::valueTreePropertyChanged, pos: " << edit.getTransport().getPosition().inSeconds());
+        checkRepaint();
     }
+}
 
+void PlayheadComponent::zoomChanged() {
+    DBG("PlayheadComponent::zoomChanged");
+    checkRepaint();
+}
+
+void PlayheadComponent::checkRepaint() {
     int newX = editViewState.zoom.timeToX(edit.getTransport().getPosition(), getWidth());
+    DBG("PlayheadComponent::checkRepaint, pos: " << edit.getTransport().getPosition().inSeconds());
     if (newX != xPosition) {
+        DBG("PlayheadComponent::checkRepaint, repainting at x: " << newX);
         repaint(jmin(newX, xPosition) - 1, 0, jmax(newX, xPosition) - jmin(newX, xPosition) + 3, getHeight());
         xPosition = newX;
     }

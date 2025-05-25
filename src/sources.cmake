@@ -16,6 +16,7 @@ set(GUI_SOURCES
     controllers/MainController.cpp
     controllers/App.cpp
     controllers/Main.cpp
+    controllers/Playhead.cpp
     controllers/EditState.cpp
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Utilities.cpp

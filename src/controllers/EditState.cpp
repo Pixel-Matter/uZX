@@ -1,4 +1,5 @@
 #include "EditState.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 
 using namespace std::literals;
 
@@ -17,11 +18,13 @@ ZoomViewState::ZoomViewState(te::Edit& e, ValueTree& st)
     viewY.referTo(state, IDs::viewY, um, 0);
     edit.getTransport().addListener(this);
     edit.getTransport().addChangeListener(this);
+    edit.getTransport().state.addListener(this);
 }
 
 ZoomViewState::~ZoomViewState() {
     edit.getTransport().removeChangeListener(this);
     edit.getTransport().removeListener(this);
+    edit.getTransport().state.removeListener(this);
 }
 
 void ZoomViewState::addListener(Listener* l) { listeners.add(l); }
@@ -32,8 +35,10 @@ te::TimeRange ZoomViewState::getRange() const {
 }
 
 void ZoomViewState::setRange(te::TimeRange range) {
+    DBG("ZoomViewState::setRange, range: " << range.getStart().inSeconds() << " - " << range.getEnd().inSeconds());
     viewX1 = range.getStart();
     viewX2 = range.getEnd();
+    DBG("ZoomViewState::setRange, calling zoomChanged");
     listeners.call(&Listener::zoomChanged);
 }
 
@@ -83,8 +88,8 @@ float ZoomViewState::pixelsPerBeat(double beatDur, int width) const {
 }
 
 bool ZoomViewState::scrollToPosition(te::TimePosition pos) {
-    if (pos < viewX1 || pos > viewX2)
-    {
+    DBG("ZoomViewState::scrollToPosition pos: " << pos.inSeconds());
+    if (pos < viewX1 || pos > viewX2) {
         auto range = viewLength();
         auto newViewX1 = jmax(te::TimePosition(), pos - range / 2.0);
         setStart(newViewX1);
@@ -94,44 +99,59 @@ bool ZoomViewState::scrollToPosition(te::TimePosition pos) {
 }
 
 bool ZoomViewState::scrollToCurrentPosition() {
+    DBG("ZoomViewState::scrollToCurrentPosition pos: "
+        << edit.getTransport().getPosition().inSeconds());
     auto pos = edit.getTransport().getPosition();
     return scrollToPosition(pos);
 }
 
 void ZoomViewState::zoomHorizontally(double factor) {
+    DBG("ZoomViewState::zoomHorizontally, factor: " << factor);
     double scaleFactor = std::pow(2.0, -factor * 5.0);
     auto pos = edit.getTransport().getPosition();
     auto range = viewLength();
     auto newHalfRange = range * scaleFactor / 2.0;
-    if (newHalfRange > 0.5s && newHalfRange < 600s)
-    {
+    if (newHalfRange > 0.5s && newHalfRange < 600s) {
         viewX1 = jmax(te::TimePosition(), pos - newHalfRange);
         viewX2 = viewX1 + newHalfRange * 2.0;
+        DBG("ZoomViewState::zoomHorizontally zoomChanged, new range: "
+            << viewX1->inSeconds() << " - " << viewX2->inSeconds());
         listeners.call(&Listener::zoomChanged);
     }
 }
 
 void ZoomViewState::changeListenerCallback(ChangeBroadcaster* source) {
-    if (source == &edit.getTransport()) {
-        if (edit.getTransport().isPlaying() || edit.getTransport().isRecording())
-            startTimerHz(30);
-        else
-            stopTimer();
-    }
+    // if (source == &edit.getTransport()) {
+    //     if (edit.getTransport().isPlaying() || edit.getTransport().isRecording())
+    //         startTimerHz(30);
+    //     else
+    //         stopTimer();
+    // }
 }
 
 void ZoomViewState::playbackContextChanged() {
-    DBG("ZoomViewState::playbackContextChanged");
+    // DBG("ZoomViewState::playbackContextChanged");
 }
 
-void ZoomViewState::timerCallback() {
-    handlePlaybackScrolling();
+void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
+    if (tree == state) {
+    //     if (prop == IDs::viewX1 || prop == IDs::viewX2 || prop == IDs::viewY) {
+    //         listeners.call(&Listener::zoomChanged);
+    //     }
+    } else if (tree == edit.getTransport().state && prop == te::IDs::position) {
+        DBG("ZoomViewState::valueTreePropertyChanged, position: " << edit.getTransport().getPosition().inSeconds());
+        handlePlaybackScrolling();
+    }
 }
+
+// void ZoomViewState::timerCallback() {
+//     handlePlaybackScrolling();
+// }
 
 void ZoomViewState::handlePlaybackScrolling() {
     if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
         auto pos = edit.getTransport().getPosition();
-        DBG("ZoomViewState::timerCallback (handlePlaybackScrolling), pos: " << pos.inSeconds());
+        DBG("ZoomViewState::handlePlaybackScrolling, pos: " << pos.inSeconds());
         auto range = getRange();
         auto leftRange = range.getLength() / 3.0;
         if (pos < viewX1 || pos > viewX1 + leftRange)
@@ -147,8 +167,10 @@ void ZoomViewState::handlePlaybackScrolling() {
 // EditViewState
 
 EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
-  : state(e.state.getOrCreateChildWithName(IDs::EDITVIEWSTATE, nullptr)),
-    zoom(e, state), selectionManager(s), edit(e)
+  : state(e.state.getOrCreateChildWithName(IDs::EDITVIEWSTATE, nullptr))
+  , zoom(e, state)
+  , playhead(e.getTransport())
+  , selectionManager(s), edit(e)
 {
     auto um = &edit.getUndoManager();
     showMasterTrack.referTo(state, IDs::showMasterTrack, um, false);

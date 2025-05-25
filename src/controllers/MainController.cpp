@@ -268,12 +268,14 @@ bool MainController::perform(const InvocationInfo& info) {
 
         case AppCommands::transportToStart:
             te::AppFunctions::goToStart();
-            editViewState_->zoom.scrollToCurrentPosition();
+            // assuming autoscroll is enabled
+            // editViewState_->zoom.scrollToCurrentPosition();
             break;
 
         case AppCommands::transportToEnd:
             te::AppFunctions::goToEnd();
-            editViewState_->zoom.scrollToCurrentPosition();
+            // assuming autoscroll is enabled
+            // editViewState_->zoom.scrollToCurrentPosition();
             break;
 
         case AppCommands::transportLoop:

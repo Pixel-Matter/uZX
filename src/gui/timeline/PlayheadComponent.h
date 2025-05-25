@@ -9,7 +9,6 @@ namespace MoTool {
 
 //==============================================================================
 class PlayheadComponent : public Component,
-                          private ValueTree::Listener,
                           private ZoomViewState::Listener {
 public:
     PlayheadComponent(te::Edit&, EditViewState&);
@@ -23,8 +22,8 @@ public:
     void mouseUp(const MouseEvent&) override;
 
 private:
-    void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
     void zoomChanged() override;
+    void zoomOrPosChanged() override;
 
     void checkRepaint();
 

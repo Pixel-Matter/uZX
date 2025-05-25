@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-// #include "Playhead.h"
+#include <common/Utilities.h>  // from Tracktion, for FlaggedAsyncUpdater
 
 namespace MoTool {
 
@@ -35,6 +35,7 @@ namespace te = tracktion;
 
 //==============================================================================
 class ZoomViewState :
+        private FlaggedAsyncUpdater,
         private ValueTree::Listener {
 public:
 
@@ -45,6 +46,7 @@ public:
     public:
         virtual ~Listener() = default;
         virtual void zoomChanged() = 0;
+        virtual void zoomOrPosChanged() {}
     };
 
     ZoomViewState(te::Edit& e, ValueTree& st);
@@ -75,8 +77,8 @@ public:
     float pixelsPerBeat(te::TimeDuration beatDur, int width) const;
     float pixelsPerBeat(double beatDur, int width) const;
 
-    bool scrollToPosition(te::TimePosition pos);
-    bool scrollToCurrentPosition();
+    bool jumpToPosition(te::TimePosition pos);
+    bool jumpToCurrentPosition();
 
     void zoomHorizontally(double factor);
 
@@ -87,7 +89,11 @@ private:
     CachedValue<double> viewY;
     ListenerList<Listener> listeners;
 
+    bool updateZoom = false, updatePos = false;
+
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
+    void handleAsyncUpdate() override;
+
     void handlePlaybackScrolling();
 };
 

@@ -14,12 +14,12 @@ PlayheadComponent::PlayheadComponent(te::Edit& e, EditViewState& evs)
     : edit (e)
     , editViewState (evs)
 {
-    edit.getTransport().state.addListener(this);
+    // edit.getTransport().state.addListener(this);
     editViewState.zoom.addListener(this);
 }
 
 PlayheadComponent::~PlayheadComponent() {
-    edit.getTransport().state.removeListener(this);
+    // edit.getTransport().state.removeListener(this);
     editViewState.zoom.removeListener(this);
 }
 
@@ -58,16 +58,14 @@ void PlayheadComponent::mouseDrag(const MouseEvent& e) {
     // checkRepaint();
 }
 
-void PlayheadComponent::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
-    if (tree == edit.getTransport().state && prop == te::IDs::position) {
-        // DBG("PlayheadComponent::valueTreePropertyChanged, pos: " << edit.getTransport().getPosition().inSeconds());
-        checkRepaint();
-    }
+void PlayheadComponent::zoomOrPosChanged() {
+    // DBG("PlayheadComponent::zoomOrPosChanged");
+    checkRepaint();
 }
 
 void PlayheadComponent::zoomChanged() {
     // DBG("PlayheadComponent::zoomChanged");
-    checkRepaint();
+    // checkRepaint();
 }
 
 void PlayheadComponent::checkRepaint() {

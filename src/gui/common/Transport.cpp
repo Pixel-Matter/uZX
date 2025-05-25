@@ -15,7 +15,9 @@ TransportBar::TransportBar(te::Edit& edit)
     , transport_{edit_.getTransport()}
 {
     transport_.addChangeListener(this);
+    transport_.state.addListener(this);
     timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
+
     ::Helpers::addAndMakeVisible (*this, {
         &rewindButton_,
         &playPauseButton_,
@@ -40,7 +42,11 @@ TransportBar::TransportBar(te::Edit& edit)
     updatePlayButtonText(transport_.isPlaying());
     updateRecordButtonText(transport_.isRecording());
     updateTimeLabels(transport_.getPosition());
-    startTimerHz(30);
+}
+
+TransportBar::~TransportBar() {
+    transport_.removeChangeListener(this);
+    transport_.state.removeListener(this);
 }
 
 void TransportBar::paint(Graphics& g) {
@@ -65,11 +71,12 @@ void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
     updateTimeLabels(transport_.getPosition());
 }
 
-void TransportBar::timerCallback() {
-    // if (transport_.isPlaying() || transport_.isRecording()) {
-        // DBG("TransportBar::timerCallback, pos: " << transport_.getPosition().inSeconds());
+void TransportBar::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
+    if (tree == edit_.state && prop == te::IDs::timecodeFormat) {
+        // timecodeFormat = TimecodeDisplayFormatExt::fromString(edit_.state[te::IDs::timecodeFormat].toString());
+    } else if (tree == transport_.state && prop == te::IDs::position) {
         updateTimeLabels(transport_.getPosition());
-    // }
+    }
 }
 
 void TransportBar::updatePlayButtonText(bool isPlaying) {

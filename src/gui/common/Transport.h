@@ -5,17 +5,18 @@
 #include "../../controllers/ParamAttachments.h"
 
 #include "../../models/Timecode.h"
+
 namespace te = tracktion;
 
 namespace MoTool {
 
 class TransportBar  : public Component,
-                      private Timer,
+                      private ValueTree::Listener,
                       private ChangeListener
 {
 public:
     explicit TransportBar(te::Edit& edit);
-    ~TransportBar() override = default;
+    ~TransportBar() override;
 
     void paint(Graphics& g) override;
     void resized() override;
@@ -40,7 +41,7 @@ Label      bpmLabel_      { "BPM",      "BPM:" },
 te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
 
     void changeListenerCallback(ChangeBroadcaster*) override;
-    void timerCallback() override;
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
 
     void updatePlayButtonText(bool isPlaying);
     void updateRecordButtonText(bool isRecording);

@@ -55,6 +55,7 @@ void EditComponent::resized() {
     auto r = getLocalBounds();
 
     detailsPanel.setBounds(r.removeFromBottom(300));
+    detailsPanel.resized();  // for internal components
     playhead.setBounds(r.withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
     ruler.setBounds(r.removeFromTop(rulerHeight).withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
     trackViewport.setBounds(r);

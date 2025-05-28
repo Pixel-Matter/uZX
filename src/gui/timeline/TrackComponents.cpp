@@ -94,13 +94,13 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
         soloButton.setVisible(false);
     }
 
-    track->state.addListener (this);
-    inputsState = track->edit.state.getChildWithName (te::IDs::INPUTDEVICES);
-    inputsState.addListener (this);
+    track->state.addListener(this);
+    inputsState = track->edit.state.getChildWithName(te::IDs::INPUTDEVICES);
+    inputsState.addListener(this);
 
-    valueTreePropertyChanged (track->state, te::IDs::mute);
-    valueTreePropertyChanged (track->state, te::IDs::solo);
-    valueTreePropertyChanged (inputsState, te::IDs::targetIndex);
+    valueTreePropertyChanged(track->state, te::IDs::mute);
+    valueTreePropertyChanged(track->state, te::IDs::solo);
+    valueTreePropertyChanged(inputsState, te::IDs::targetIndex);
 }
 
 TrackHeaderComponent::~TrackHeaderComponent() {
@@ -419,7 +419,6 @@ int TrackRowComponent::getTrackHeight() const noexcept {
 }
 
 void TrackRowComponent::trackViewStateChanged() {
-    // TODO triggerAsyncUpdate();
     resized();
 }
 

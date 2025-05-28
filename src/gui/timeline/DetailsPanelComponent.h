@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include "../common/LookAndFeel.h"
 #include "../../controllers/EditState.h"
 #include "PsgParamEditorComponent.h"
 
@@ -13,19 +14,22 @@ public:
         : editViewState(evs)
         , psgEditor(evs)
     {
-        // addAndMakeVisible(psgEditor);
+        addAndMakeVisible(psgEditor);
     }
 
     ~DetailsPanelComponent() override {}
 
     void paint(Graphics& g) override {
-        g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+        g.fillAll(Colors::Theme::backgroundAlt);
     }
 
     void resized() override {
-
         auto bounds = getLocalBounds();
-        psgEditor.setBounds(bounds);
+        // reduce fro left and right
+        bounds.removeFromLeft(editViewState.showHeaders ? editViewState.headersWidth : 0);
+        bounds.removeFromRight(editViewState.showFooters ? 100 : 0);
+        // reduce from top and bottom
+        psgEditor.setBounds(bounds.reduced(0, 8));
     }
 
 private:

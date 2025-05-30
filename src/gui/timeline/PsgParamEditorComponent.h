@@ -49,20 +49,37 @@ public:
         return low;
     }
 
+    int findPrevActiveIndex(int idx) const {
+        if (idx < 0 || idx >= frames.size())
+            return 0;
+
+        for (int i = idx; i >= 0; --i) {
+            if (frames[i]->getData().isSet(paramType))
+                return i;
+        }
+        return 0;
+    }
+
+    inline bool isActive(int idx) const {
+        if (idx < 0 || idx >= frames.size())
+            return false;
+        return frames[idx]->getData().isSet(paramType);
+    }
+
     inline te::TimePosition getTime(int idx) const {
         if (idx < 0 || idx >= frames.size())
             return te::TimePosition {};
         return frames[idx]->getEditTime(clip);
     }
 
-    inline float getPointValue(int idx) const {
+    inline float getValue(int idx) const {
         if (idx < 0 || idx >= frames.size())
             return 0.0f;
         return frames[idx]->getData().getRaw(paramType) / getMaxValue();  // Normalize to 0.0 - 1.0 range
     }
 
     inline float getValueAt(te::TimePosition time) const {
-        return getPointValue(findIndex(time));
+        return getValue(findIndex(time));
     }
 
 private:
@@ -148,6 +165,10 @@ public:
         return "PSG Parameters editor";
     }
 
+    float getValue(int idx) const {
+        return paramList->getValue(idx);
+    }
+
     float getValueAt(te::TimePosition time) override {
         return paramList->getValueAt(time);
     }
@@ -157,7 +178,7 @@ public:
     }
 
     float getPointValue(int idx) override {
-        return paramList->getPointValue(idx);
+        return paramList->getValue(idx);
     }
 
     float getPointCurve(int /*idx*/) override {
@@ -312,26 +333,31 @@ public:
             g.drawText(text, tx + 4, 0, tw + 6, 16, juce::Justification::left, true);
         }
 
-        // draw the line to the first point, or all the way across if there are no points
-        const int start = std::max(0, nextIndexAfter(leftTime) - 1);
+        const int start = jmax(0, paramList->findPrevActiveIndex(paramList->findIndex(leftTime)));
         auto clipBounds = g.getClipBounds();
         {
+            const int preStart = paramList->findPrevActiveIndex(start - 1);
             const auto startX = std::max(0.0f, timeToX({}));
-            auto lastY = valueToY(getValueAt(leftTime));
-
+            auto lastY = valueToY(getValue(preStart));
             juce::Path curvePath;
             curvePath.startNewSubPath(startX, lastY);
-            curvePath.preallocateSpace((numPoints - start) * 5 + 1);
+            curvePath.preallocateSpace((numPoints - start) * 2 + 2);
 
             // int counter = 0;
             auto p1 = getPosition(start);
             curvePath.lineTo(p1.getX(), lastY);
             curvePath.lineTo(p1);
+            lastY = p1.y;
             for (int index = start; index < numPoints - 1; ++index) {
+
+                if (!paramList->isActive(index + 1)) {
+                    continue;
+                }
+
                 auto p2 = getPosition(index + 1);
                 auto c = getPointCurve(index);
 
-                if (c == -1.0f) {
+                if (c <= -1.0f) {
                     curvePath.lineTo(p2.getX(), lastY);
                     curvePath.lineTo(p2);
                 } else if (c == 0.0f) {
@@ -388,6 +414,8 @@ public:
 
             // draw the white points
             for (int i = start; i < numPoints; ++i) {
+                if (!paramList->isActive(i))
+                    continue;
                 auto pos = getPosition(i);
 
                 juce::Rectangle<float> r(pos.x - pointRadius, pos.y - pointRadius,
@@ -417,28 +445,28 @@ public:
             g.setColour(getSelectedLineColour());
             g.fillRectList(selectedRects);
 
-            // draw the curve points
-            for (int i = start; i < numPoints - 1; ++i) {
-                auto pos = getPosition(getBezierHandle(i));
+            // // draw the curve points
+            // for (int i = start; i < numPoints - 1; ++i) {
+            //     auto pos = getPosition(getBezierHandle(i));
 
-                juce::Rectangle<float> r (pos.x - pointRadius,
-                                        pos.y - pointRadius,
-                                        pointRadius * 2,
-                                        pointRadius * 2);
-                r = r.reduced (2);
+            //     juce::Rectangle<float> r (pos.x - pointRadius,
+            //                             pos.y - pointRadius,
+            //                             pointRadius * 2,
+            //                             pointRadius * 2);
+            //     r = r.reduced (2);
 
-                if (r.getX() > clipBounds.getRight())
-                    break;
+            //     if (r.getX() > clipBounds.getRight())
+            //         break;
 
-                g.setColour (curveColour);
-                g.fillEllipse (r);
+            //     g.setColour (curveColour);
+            //     g.fillEllipse (r);
 
-                if (i != curveUnderMouse && ! isPointSelected (i))
-                {
-                    g.setColour (backgroundColour);
-                    g.fillEllipse (r.reduced (1.0f));
-                }
-            }
+            //     if (i != curveUnderMouse && ! isPointSelected (i))
+            //     {
+            //         g.setColour (backgroundColour);
+            //         g.fillEllipse (r.reduced (1.0f));
+            //     }
+            // }
         }
     }
 

@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include <memory>
+#include <optional>
 
 #include "../../controllers/EditState.h"
 #include "../../models/PsgClip.h"
@@ -10,6 +11,82 @@
 
 
 namespace MoTool {
+
+
+class PsgParamList {
+public:
+    PsgParamList(const PsgClip& c, PsgParamType type)
+        : clip(c)
+        , paramType(type)
+        , frames(clip.getPsg().getFrames())
+    {}
+
+    ~PsgParamList() {}
+
+    int size() const {
+        return frames.size();
+    }
+
+    float getMaxValue() const {
+        // TODO implement in PsgParamFrame or PsgParamType
+        return 4096.0f;
+    }
+
+    int findIndex(te::TimePosition pos) const {
+        if (frames.isEmpty())
+            return -1;
+
+        int low = 0;
+        int high = frames.size() - 1;
+
+        while (low <= high) {
+            int mid = (low + high) / 2;
+            if (frames[mid]->getEditTime(clip) < pos)
+                low = mid + 1;
+            else
+                high = mid - 1;
+        }
+        return low;
+    }
+
+    inline te::TimePosition getTime(int idx) const {
+        if (idx < 0 || idx >= frames.size())
+            return te::TimePosition {};
+        return frames[idx]->getEditTime(clip);
+    }
+
+    inline float getPointValue(int idx) const {
+        if (idx < 0 || idx >= frames.size())
+            return 0.0f;
+        return frames[idx]->getData().getRaw(paramType) / getMaxValue();  // Normalize to 0.0 - 1.0 range
+    }
+
+    inline float getValueAt(te::TimePosition time) const {
+        return getPointValue(findIndex(time));
+    }
+
+private:
+    const PsgClip& clip;
+    const PsgParamType paramType;
+    const juce::Array<PsgParamFrame*>& frames;
+
+    // juce::Array<EventType*>& getEventsChecked(juce::Array<EventType*>& events) {
+    //     #if JUCE_DEBUG
+    //         te::BeatPosition lastBeat;
+
+    //         for (auto* e : events) {
+    //             auto beat = e->getBeatPosition();
+    //             jassert(lastBeat <= beat);
+    //             lastBeat = beat;
+    //         }
+    //     #endif
+
+    //     return events;
+    // }
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgParamList)
+};
+
 
 class PsgParamEditorComponent: public te::CurveEditor,
                                public ZoomViewState::Listener
@@ -33,27 +110,35 @@ public:
         repaint();
     }
 
+    void setCurrentClip(PsgClip* c) {
+        currentClip = c;
+        if (currentClip != nullptr) {
+            paramList.emplace(*currentClip, currentParam);
+        } else {
+            paramList.reset();
+        }
+    }
+
     void changeListenerCallback(juce::ChangeBroadcaster* cb) override {
         if (cb == &editViewState.selectionManager) {
             if (auto* s = editViewState.selectionManager.getFirstItemOfType<PsgClip>()) {
-                currentClip = s;
                 currentParam = PsgParamType::TonePeriodA;  // Default to TonePeriodA
+                setCurrentClip(s);
             } else {
-                currentClip = nullptr;
+                setCurrentClip(nullptr);
             }
         }
         te::CurveEditor::changeListenerCallback(cb);
     }
 
     void selectableObjectChanged(te::Selectable* s) override {
+        // TODO when is this called?
         if (auto psgClip = dynamic_cast<PsgClip*>(s)) {
+            setCurrentClip(psgClip);
             currentParam = PsgParamType::TonePeriodA;
-            // currentParam = psgClip->getCurrentParam();
-            paramFrames = psgClip->getPsg().getFrames();
         } else {
-            currentClip = nullptr;
+            setCurrentClip(nullptr);
             currentParam = -1;
-            paramFrames.clear();
         }
         te::CurveEditor::selectableObjectChanged(s);  // updateLineThickness();
     }
@@ -63,44 +148,23 @@ public:
         return "PSG Parameters editor";
     }
 
-    float getMaxValue() {
-        return 4096.0f;
-    }
-
     float getValueAt(te::TimePosition time) override {
-        if (currentClip != nullptr) {
-            auto& frames = currentClip->getPsg().getFrames();
-            for (const auto& frame : frames) {
-                if (frame->getEditTime(*currentClip) >= time) {
-                    return frame->getData().getRaw(currentParam) / getMaxValue();  // Normalize to 0.0 - 1.0 range
-                }
-            }
-        }
-        return 0.0f;  // Default value if no frame found at the given time
+        return paramList->getValueAt(time);
     }
 
     te::TimePosition getPointTime(int idx) override {
-        if (currentClip != nullptr) {
-            auto& frames = currentClip->getPsg().getFrames();
-            return frames[idx]->getEditTime(*currentClip);
-        }
-        return te::TimePosition();
+        return paramList->getTime(idx);
     }
 
     float getPointValue(int idx) override {
-        if (currentClip != nullptr) {
-            auto& frames = currentClip->getPsg().getFrames();
-            return frames[idx]->getData().getRaw(currentParam) / getMaxValue();  // Normalize to 0.0 - 1.0 range
-        }
-        return 0.0f;
+        return paramList->getPointValue(idx);
     }
 
     float getPointCurve(int /*idx*/) override {
-        return 0;
+        return -1.0f;
     }
 
     void removePoint(int /*index*/) override {
-
     }
 
     int addPoint(te::TimePosition /*time*/, float /*value*/, float /*curve*/) override {
@@ -108,10 +172,7 @@ public:
     }
 
     int getNumPoints() override {
-        if (currentClip != nullptr) {
-            return currentClip->getPsg().getFrames().size();
-        }
-        return 0;
+        return paramList.has_value() ? paramList->size() : 0;
     }
 
     te::CurvePoint getBezierHandle(int /*idx*/) override {
@@ -123,15 +184,12 @@ public:
     }
 
     int nextIndexAfter(te::TimePosition time) override {
-        if (currentClip != nullptr) {
-            auto& frames = currentClip->getPsg().getFrames();
-            for (int i = 0; i < frames.size(); ++i) {
-                if (frames[i]->getEditTime(*currentClip) > time) {
-                    return i;
-                }
-            }
+        auto idx = paramList->findIndex(time);
+        if (idx < 0 || idx >= paramList->size()) {
+            return 0;  // No points found, return 0
+        } else {
+            return idx;
         }
-        return 0;
     }
 
     void getBezierEnds(int /*index*/, double& x1out, float& y1out, double& x2out, float& y2out) override {
@@ -198,7 +256,7 @@ public:
     }
 
     juce::Colour getBackgroundColour() const override {
-        return getLookAndFeel().findColour(ResizableWindow::backgroundColourId);
+        return Colours::white;
     }
 
     juce::Colour getCurveNameTextBackgroundColour() const override {
@@ -207,6 +265,16 @@ public:
 
     juce::Colour getPointOutlineColour() const override {
         return Colours::black;
+    }
+
+    void updateLineThickness() {
+        auto newthickness = (isMouseOverOrDragging() || isCurveSelected || areAnyPointsSelected())
+                            ? 1.0f : 0.5f;
+
+        if (lineThickness != newthickness) {
+            lineThickness = newthickness;
+            repaint();
+        }
     }
 
     void paint(juce::Graphics& g) override {
@@ -222,8 +290,10 @@ public:
         }
 
         const bool isOver = isMouseOverOrDragging();
-        // auto curveColour = getCurrentLineColour();
-        // auto backgroundColour = getBackgroundColour();
+        auto curveColour = getCurrentLineColour();
+        auto backgroundColour = getBackgroundColour();
+
+        g.fillAll(LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId));
 
         // draw the name of the curve
         if (isOver || isCurveSelected) {
@@ -244,54 +314,50 @@ public:
 
         // draw the line to the first point, or all the way across if there are no points
         const int start = std::max(0, nextIndexAfter(leftTime) - 1);
-        DBG("CurveEditor::paint cp3 start: " << start);
-
-        g.fillAll(LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId));
-
         auto clipBounds = g.getClipBounds();
-
         {
             const auto startX = std::max(0.0f, timeToX({}));
-            DBG("CurveEditor::paint cp4 startX: " << startX);
             auto lastY = valueToY(getValueAt(leftTime));
 
             juce::Path curvePath;
             curvePath.startNewSubPath(startX, lastY);
             curvePath.preallocateSpace((numPoints - start) * 5 + 1);
 
-            int counter = 0;
+            // int counter = 0;
+            auto p1 = getPosition(start);
+            curvePath.lineTo(p1.getX(), lastY);
+            curvePath.lineTo(p1);
             for (int index = start; index < numPoints - 1; ++index) {
-                if (index == start)
-                    curvePath.lineTo(getPosition(index));
-
                 auto p2 = getPosition(index + 1);
                 auto c = getPointCurve(index);
 
-                if (c == 0) {
+                if (c == -1.0f) {
+                    curvePath.lineTo(p2.getX(), lastY);
+                    curvePath.lineTo(p2);
+                } else if (c == 0.0f) {
                     curvePath.lineTo(p2);
                 } else {
-                    auto bp = getPosition(getBezierPoint(index));
+                    // auto bp = getPosition(getBezierPoint(index));
 
-                    if (c >= -0.5 && c <= 0.5) {
-                        curvePath.quadraticTo(bp, p2);
-                    } else {
-                        double lineX1, lineX2;
-                        float lineY1, lineY2;
-                        getBezierEnds(index, lineX1, lineY1, lineX2, lineY2);
+                    // if (c >= -0.5 && c <= 0.5) {
+                    //     curvePath.quadraticTo(bp, p2);
+                    // } else {
+                    //     double lineX1, lineX2;
+                    //     float lineY1, lineY2;
+                    //     getBezierEnds(index, lineX1, lineY1, lineX2, lineY2);
 
-                        curvePath.lineTo(getPosition({ TimePosition::fromSeconds(lineX1), lineY1 }));
-                        curvePath.quadraticTo(bp, getPosition({ TimePosition::fromSeconds(lineX2), lineY2 }));
-                        curvePath.lineTo(p2);
-                    }
+                    //     curvePath.lineTo(getPosition({ TimePosition::fromSeconds(lineX1), lineY1 }));
+                    //     curvePath.quadraticTo(bp, getPosition({ TimePosition::fromSeconds(lineX2), lineY2 }));
+                    //     curvePath.lineTo(p2);
+                    // }
                 }
 
                 lastY = p2.y;
-                ++counter;
+                // ++counter;
 
                 if (p2.x > clipBounds.getRight())
                     break;
             }
-            DBG("CurveEditor::paint cp5 points: " << counter);
 
             curvePath.lineTo((float) getWidth(), lastY);
 
@@ -313,86 +379,111 @@ public:
         // draw the points along the line - the points, the add point and the curve point
         const bool anySelected = areAnyPointsSelected();
 
-        // if (isOver || isCurveSelected || anySelected)
-        // {
-        //     juce::RectangleList<float> rects, selectedRects, fills;
-        //     rects.ensureStorageAllocated (numPoints);
+        if (isOver || isCurveSelected || anySelected) {
+            juce::RectangleList<float> rects, selectedRects, fills;
+            rects.ensureStorageAllocated(numPoints - start);
 
-        //     if (anySelected)
-        //         fills.ensureStorageAllocated (numPoints);
+            if (anySelected)
+                fills.ensureStorageAllocated(numPoints - start);
 
-        //     // draw the white points
-        //     for (int i = start; i < numPoints; ++i)
-        //     {
-        //         auto pos = getPosition (i);
+            // draw the white points
+            for (int i = start; i < numPoints; ++i) {
+                auto pos = getPosition(i);
 
-        //         juce::Rectangle<float> r (pos.x - pointRadius,
-        //                                 pos.y - pointRadius,
-        //                                 pointRadius * 2,
-        //                                 pointRadius * 2);
-        //         r = r.reduced (2);
+                juce::Rectangle<float> r(pos.x - pointRadius, pos.y - pointRadius,
+                                         pointRadius * 2, pointRadius * 2);
+                r = r.reduced(2);
 
-        //         if (r.getX() > clipBounds.getRight())
-        //             break;
+                if (r.getX() > clipBounds.getRight())
+                    break;
 
-        //         const bool isSelected = isPointSelected (i);
+                const bool isSelected = isPointSelected(i);
 
-        //         if (isSelected)
-        //             selectedRects.addWithoutMerging (r);
-        //         else
-        //             rects.addWithoutMerging (r);
+                if (isSelected)
+                    selectedRects.addWithoutMerging(r);
+                else
+                    rects.addWithoutMerging(r);
 
-        //         if (! isSelected && i != pointUnderMouse)
-        //             fills.addWithoutMerging (r.reduced (1.0f));
-        //     }
+                if (!isSelected && i != pointUnderMouse)
+                    fills.addWithoutMerging(r.reduced(1.0f));
+            }
 
-        //     g.setColour (getPointOutlineColour());
-        //     g.fillRectList (rects);
+            g.setColour(getPointOutlineColour());
+            g.fillRectList(rects);
 
-        //     g.setColour (backgroundColour);
-        //     g.fillRectList (fills);
+            g.setColour(backgroundColour);
+            g.fillRectList(fills);
 
-        //     g.setColour (getSelectedLineColour());
-        //     g.fillRectList (selectedRects);
+            g.setColour(getSelectedLineColour());
+            g.fillRectList(selectedRects);
 
-        //     // draw the curve points
-        //     for (int i = start; i < numPoints - 1; ++i)
-        //     {
-        //         auto pos = getPosition (getBezierHandle (i));
+            // draw the curve points
+            for (int i = start; i < numPoints - 1; ++i) {
+                auto pos = getPosition(getBezierHandle(i));
 
-        //         juce::Rectangle<float> r (pos.x - pointRadius,
-        //                                 pos.y - pointRadius,
-        //                                 pointRadius * 2,
-        //                                 pointRadius * 2);
-        //         r = r.reduced (2);
+                juce::Rectangle<float> r (pos.x - pointRadius,
+                                        pos.y - pointRadius,
+                                        pointRadius * 2,
+                                        pointRadius * 2);
+                r = r.reduced (2);
 
-        //         if (r.getX() > clipBounds.getRight())
-        //             break;
+                if (r.getX() > clipBounds.getRight())
+                    break;
 
-        //         g.setColour (curveColour);
-        //         g.fillEllipse (r);
+                g.setColour (curveColour);
+                g.fillEllipse (r);
 
-        //         if (i != curveUnderMouse && ! isPointSelected (i))
-        //         {
-        //             g.setColour (backgroundColour);
-        //             g.fillEllipse (r.reduced (1.0f));
-        //         }
-        //     }
-        // }
+                if (i != curveUnderMouse && ! isPointSelected (i))
+                {
+                    g.setColour (backgroundColour);
+                    g.fillEllipse (r.reduced (1.0f));
+                }
+            }
+        }
     }
+
+bool hitTest(int x, int y) override {
+    if (currentClip == nullptr)
+        return false;
+    auto py1 = valueToY(getValueAt(xToTime(x - 3.0f)));
+    auto py2 = valueToY(getValueAt(xToTime(x + 3.0f)));
+
+    if (y > std::min(py1, py2) - 4.0f && y < std::max(py1, py2) + 4.0f)
+        return true;
+
+    for (int i = firstIndexOnScreen; i < getNumPoints(); ++i) {
+        auto t = getPointTime(i);
+
+        if (t >= rightTime)
+            break;
+
+        auto px = timeToX(t);
+        auto py = valueToY(getPointValue(i));
+
+        if (std::abs(x - px) < pointRadius
+             && std::abs(y - py) < pointRadius + 2)
+            return true;
+    }
+
+    return false;
+}
 
 protected:
     void showBubbleForPointUnderMouse() override {
+        DBG("showBubbleForPointUnderMouse");
     }
 
     void hideBubble() override {
+        DBG("hideBubble");
     }
 
 private:
     EditViewState& editViewState;
     PsgClip* currentClip = nullptr;
     PsgParamType currentParam;
-    juce::Array<PsgParamFrame*> paramFrames;
+    std::optional<PsgParamList> paramList;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgParamEditorComponent)
 };
 
 }  // namespace MoTool

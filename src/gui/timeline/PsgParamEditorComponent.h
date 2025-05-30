@@ -6,6 +6,7 @@
 
 #include "../../controllers/EditState.h"
 #include "../../models/PsgClip.h"
+#include "juce_core/juce_core.h"
 #include "juce_core/system/juce_PlatformDefs.h"
 #include "tracktion_engine/tracktion_engine.h"
 
@@ -288,14 +289,9 @@ public:
         return Colours::black;
     }
 
-    void updateLineThickness() {
-        auto newthickness = (isMouseOverOrDragging() || isCurveSelected || areAnyPointsSelected())
-                            ? 1.0f : 0.5f;
-
-        if (lineThickness != newthickness) {
-            lineThickness = newthickness;
-            repaint();
-        }
+    double timeScale() const {
+        // seconds per pixel
+        return (rightTime - leftTime).inSeconds() / getWidth();
     }
 
     void paint(juce::Graphics& g) override {
@@ -385,7 +381,7 @@ public:
                     break;
             }
 
-            curvePath.lineTo((float) getWidth(), lastY);
+            // curvePath.lineTo((float) getWidth(), lastY);
 
             if (auto fillCol = getCurrentFillColour(); ! fillCol.isTransparent()) {
                 juce::Path fillPath(curvePath);
@@ -399,7 +395,13 @@ public:
             }
 
             g.setColour(getCurrentLineColour());
-            g.strokePath(curvePath, juce::PathStrokeType(lineThickness));
+            g.strokePath(curvePath, juce::PathStrokeType(lineThickness / 2));
+        }
+
+        //=========================================================================================
+        // fast check if the scale allows drawing the points
+        if (timeScale() > 1 / 50.0f / 4.0f) {
+            return;
         }
 
         // draw the points along the line - the points, the add point and the curve point

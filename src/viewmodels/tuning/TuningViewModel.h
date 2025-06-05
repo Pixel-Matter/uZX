@@ -3,7 +3,7 @@
 #include "JuceHeader.h"
 
 #include "../../models/tuning/TuningSystem.h"
-#include "juce_core/juce_core.h"
+#include "../../plugins/uZX/aychip/aychip.h"
 
 namespace MoTool {
 
@@ -110,11 +110,37 @@ public:
         // return String::formatted("%d Hz", tuningSystem.getChipClock());
     }
 
+    StringArray getChipClockLabels() const {
+        StringArray labels;
+        for (const auto& label : uZX::ChipClockEnum::labels) {
+            labels.add(String(label.data(), label.size()));
+        }
+        return labels;
+    }
+
+    int getCurrentChipClockIndex() const {
+        return static_cast<int>(chipClockChoice.value);
+    }
+
+    void setChipClockChoice(int index) {
+        if (index >= 0 && index < static_cast<int>(uZX::ChipClockChoice::size())) {
+            chipClockChoice = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(index));
+            // Update chip capabilities with new clock frequency
+            if (index != uZX::ChipClockEnum::Custom) {
+                double clockFreq = uZX::ChipClockEnum::clockValues[index];
+                chipCapabilities.clockFrequency = clockFreq;
+                // Recreate tuning system with new capabilities
+                tuningSystem = std::make_unique<EqualTemperamentTuning>(chipCapabilities);
+            }
+        }
+    }
+
     // TODO Tuning table editing? What bindings to use?
 
 private:
     ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
     std::unique_ptr<TuningSystem> tuningSystem;
+    uZX::ChipClockChoice chipClockChoice {uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };

@@ -123,7 +123,18 @@ TuningPreviewComponent::TuningPreviewComponent()
     setOpaque(true);
     addAndMakeVisible(tuningGrid);
 
-    ChipClockLabel.setText("Chip Clock: " + String(viewModel.getChipClock()), juce::dontSendNotification);
+    auto chipClockLabels = viewModel.getChipClockLabels();
+    for (int i = 0; i < chipClockLabels.size(); ++i) {
+        ChipClockLabel.addItem(chipClockLabels[i], i + 1);
+    }
+    ChipClockLabel.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
+    ChipClockLabel.onChange = [this]() {
+        int selectedId = ChipClockLabel.getSelectedId();
+        if (selectedId > 0) {
+            viewModel.setChipClockChoice(selectedId - 1); // Convert from 1-based ID to 0-based index
+            tuningGrid.repaint(); // Refresh the tuning grid with new calculations
+        }
+    };
     ScaleLabel.setText("Scale: " + viewModel.getScaleName(), juce::dontSendNotification);
     // TuningTypeLabel.setText("Tuning Type: " + viewModel.getTuningTypeName(), juce::dontSendNotification);
     TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);

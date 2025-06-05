@@ -198,7 +198,7 @@ public:
     virtual TuningType getType() const = 0;
 
     // Core conversion functions
-    virtual int midiNoteToPeriod(int midiNote, int midiChannel = 0) const = 0;
+    virtual int midiNoteToPeriod(int midiNote) const = 0;
     virtual double midiNoteToFrequency(int midiNote) const = 0;
     virtual int periodToMidiNote(int period) const = 0;
 
@@ -223,7 +223,7 @@ class EqualTemperamentTuning : public TuningSystem {
 public:
     EqualTemperamentTuning(double a4Frequency = 440.0);
 
-    int midiNoteToPeriod(int midiNote, int midiChannel = 0) const override;
+    int midiNoteToPeriod(int midiNote) const override;
     double midiNoteToFrequency(int midiNote) const override;
     // ... other methods
 
@@ -239,7 +239,7 @@ class JustIntonationTuning : public TuningSystem {
 public:
     JustIntonationTuning(const Scale& baseScale, int rootNote = 60);
 
-    int midiNoteToPeriod(int midiNote, int midiChannel = 0) const override;
+    int midiNoteToPeriod(int midiNote) const override;
     // ... other methods
 
 private:

@@ -44,14 +44,14 @@ struct ChipClockEnum {
     };
 
     static inline constexpr double clockValues[] {
-        0.894887,   // NES NTSC
-        0.8313035,  // NES PAL
-        1.7734,     // ZX Spectrum
-        1.75,       // Pentagon
-        1.0,        // Amstrad
-        1.5,        // Vectrex
-        2.0,        // Atari ST
-        -1.0        // Custom (user defined)
+         894887,   // NES NTSC
+         831303.5, // NES PAL
+        1773400,   // ZX Spectrum
+        1750000,   // Pentagon
+        1000000,   // Amstrad
+        1500000,   // Vectrex
+        2000000,   // Atari ST
+       -1000000    // Custom (user defined)
     };
 
     static inline constexpr std::string_view labels[] {

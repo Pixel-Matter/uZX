@@ -54,7 +54,7 @@ struct ChipClockEnum {
        -1000000    // Custom (user defined)
     };
 
-    static inline constexpr std::string_view labels[] {
+    static inline constexpr std::string_view longLabels[] {
         "NES NTSC 0.894887 MHz",
         "NES PAL 0.8313035 MHz",
         "ZX Spectrum 1.7734 MHz",
@@ -66,28 +66,25 @@ struct ChipClockEnum {
     };
 };
 
-using ChipClockChoice = MoTool::Util::EnumChoice<ChipClockEnum>;
+class ChipClockChoice: public Util::EnumChoice<ChipClockEnum> {
+public:
+    using EnumChoice::EnumChoice;
 
-}  // namespace MoTool::uZX
-// Specialization of `enum_name` must be injected in `namespace magic_enum::customize`.
-namespace magic_enum::customize {
+    inline constexpr double getClockValue() const noexcept {
+        return clockValues[static_cast<size_t>(value)];
+    }
+};
 
-template <>
-inline constexpr customize_t enum_name<MoTool::uZX::ChipClockEnum::Enum>(MoTool::uZX::ChipClockEnum::Enum value) noexcept {
-    // const auto size = MoTool::uZX::ChipClockChoice::size();
-    if (value < 0 || value > MoTool::uZX::ChipClockEnum::Custom)
-        return default_tag;
-    return MoTool::uZX::ChipClockEnum::labels[value];
-}
-
-}
-
-namespace MoTool::uZX {
 
 struct TypeEnum {
     enum Enum : uint8_t {
         AY,
         YM
+    };
+
+    static inline constexpr std::string_view longLabels[] {
+        "AY-3-8910",
+        "YM2149F"
     };
 };
 
@@ -123,22 +120,27 @@ struct EnvShapeEnum {
     };
 };
 
+using ChipType = MoTool::Util::EnumChoice<TypeEnum>;
+using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
+using EnvShape = MoTool::Util::EnumChoice<EnvShapeEnum>;
+
 } // namespace MoTool::uZX
 
 
 // Specialization of `enum_name` must be injected in `namespace magic_enum::customize`.
 namespace magic_enum::customize {
 
+using namespace MoTool::uZX;
+
+// template <>
+// inline constexpr customize_t enum_name<ChipClockChoice::Enum>(ChipClockChoice::Enum value) noexcept {
+//     return ChipClockChoice(value).enumNameCustom();
+// }
+
 template <>
-inline constexpr customize_t enum_name<MoTool::uZX::TypeEnum::Enum>(MoTool::uZX::TypeEnum::Enum value) noexcept {
-    switch(value) {
-        case MoTool::uZX::TypeEnum::AY:
-            return "AY-3-8910";
-        case MoTool::uZX::TypeEnum::YM:
-            return "YM2149F";
-    }
-    return default_tag;
-}
+// inline constexpr customize_t enum_name<ChipType::Enum>(ChipType::Enum value) noexcept {
+//     return ChipType(value).enumNameCustom();
+// }
 
 template <>
 inline constexpr customize_t enum_name<MoTool::uZX::EnvShapeEnum::Enum>(MoTool::uZX::EnvShapeEnum::Enum value) noexcept {
@@ -171,9 +173,6 @@ namespace MoTool::uZX {
 
 class AYInterface {
 public:
-    using ChipType = MoTool::Util::EnumChoice<TypeEnum>;
-    using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
-    using EnvShape = MoTool::Util::EnumChoice<EnvShapeEnum>;
 
     // AYInterface(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::AY) ;
 

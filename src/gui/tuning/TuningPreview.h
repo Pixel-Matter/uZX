@@ -34,7 +34,7 @@ public:
 private:
     TuningViewModel viewModel;
 
-    ComboBox ChipClockLabel;
+    ComboBox ChipClockSelect;
     Label ScaleLabel;  // with Root note
     Label TuningTypeLabel;
     Label TuningNameLabel;

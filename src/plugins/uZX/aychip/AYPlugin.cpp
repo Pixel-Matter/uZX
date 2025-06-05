@@ -9,8 +9,8 @@ namespace MoTool::uZX {
 //==============================================================================
 void AYChipPlugin::Params::initialise() {
     clockValue          .referTo(IDs::clock,  "Clock frequncy",    {0.894887, 2.0, 0.01},  1.7734, "MHz");
-    chipTypeValue       .referTo(IDs::chip,   "Chip type",         AYInterface::ChipType::getLabels(),       AYInterface::ChipType::AY,    {});
-    channelsLayoutValue .referTo(IDs::layout, "Channels layout",   AYInterface::ChannelsLayout::getLabels(), AYInterface::ChannelsLayout::ACB, {});
+    chipTypeValue       .referTo(IDs::chip,   "Chip type",         ChipType::getLabels(),       ChipType::AY,    {});
+    channelsLayoutValue .referTo(IDs::layout, "Channels layout",   ChannelsLayout::getLabels(), ChannelsLayout::ACB, {});
     stereoWidthValue    .referTo(IDs::stereo, "Stereo width",      {0.0, 1.0, 0.01},       0.5,    {});
     removeDCValue       .referTo(IDs::noDC,   "Remove DC",                                 true,   {});
     baseMidiChannelValue.referTo(IDs::midi,   "Base MIDI channel", {1, 15 - 4, 1},         1,      {});
@@ -200,23 +200,23 @@ namespace juce {
 using namespace MoTool::uZX;
 
 template<>
-struct VariantConverter<AYInterface::ChipType> {
-    static AYInterface::ChipType fromVar(const var& v) {
-        return choiceFromVar<AYInterface::ChipType>(v);
+struct VariantConverter<ChipType> {
+    static ChipType fromVar(const var& v) {
+        return choiceFromVar<ChipType>(v);
     }
 
-    static var toVar(AYInterface::ChipType ct) {
+    static var toVar(ChipType ct) {
         return choicetoVar(ct);
     }
 };
 
 template<>
-struct VariantConverter<AYInterface::ChannelsLayout> {
-    static AYInterface::ChannelsLayout fromVar(const var& v) {
-        return choiceFromVar<AYInterface::ChannelsLayout>(v);
+struct VariantConverter<ChannelsLayout> {
+    static ChannelsLayout fromVar(const var& v) {
+        return choiceFromVar<ChannelsLayout>(v);
     }
 
-    static var toVar(AYInterface::ChannelsLayout layout) {
+    static var toVar(ChannelsLayout layout) {
         return choicetoVar(layout);
     }
 };

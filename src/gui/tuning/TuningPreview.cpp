@@ -125,22 +125,32 @@ TuningPreviewComponent::TuningPreviewComponent()
 
     auto chipClockLabels = viewModel.getChipClockLabels();
     for (int i = 0; i < chipClockLabels.size(); ++i) {
-        ChipClockLabel.addItem(chipClockLabels[i], i + 1);
+        ChipClockSelect.addItem(chipClockLabels[i], i + 1);
     }
-    ChipClockLabel.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
-    ChipClockLabel.onChange = [this]() {
-        int selectedId = ChipClockLabel.getSelectedId();
+    ChipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
+    ChipClockSelect.onChange = [this]() {
+        int selectedId = ChipClockSelect.getSelectedId();
         if (selectedId > 0) {
             viewModel.setChipClockChoice(selectedId - 1); // Convert from 1-based ID to 0-based index
             tuningGrid.repaint(); // Refresh the tuning grid with new calculations
         }
+    };
+    
+    // Set up callback to update UI when tuning system changes
+    viewModel.onTuningSystemChanged = [this]() {
+        DBG("UI callback triggered - updating tuning name and repainting grid");
+        // Update the tuning name label to reflect the new tuning system
+        TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);
+        
+        // Repaint the tuning grid to show updated calculations
+        tuningGrid.repaint();
     };
     ScaleLabel.setText("Scale: " + viewModel.getScaleName(), juce::dontSendNotification);
     // TuningTypeLabel.setText("Tuning Type: " + viewModel.getTuningTypeName(), juce::dontSendNotification);
     TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);
     // ToneEnvSwitchLabel.setText("Tone Env Switch: " + String(viewModel.isToneEnvSwitchEnabled()), juce::dontSendNotification);
 
-    addAndMakeVisible(ChipClockLabel);
+    addAndMakeVisible(ChipClockSelect);
     addAndMakeVisible(ScaleLabel);
     // addAndMakeVisible(TuningTypeLabel);
     addAndMakeVisible(TuningNameLabel);
@@ -154,7 +164,7 @@ void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds();
     auto labelHeight = 20;
 
-    ChipClockLabel.setBounds(bounds.removeFromTop(labelHeight));
+    ChipClockSelect.setBounds(bounds.removeFromTop(labelHeight));
     ScaleLabel.setBounds(bounds.removeFromTop(labelHeight));
     // TuningTypeLabel.setBounds(bounds.removeFromTop(labelHeight));
     TuningNameLabel.setBounds(bounds.removeFromTop(labelHeight));

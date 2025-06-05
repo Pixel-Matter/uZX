@@ -100,6 +100,12 @@ public:
     static constexpr auto forEach(Lambda&& lambda) {
         magic_enum::enum_for_each<Enum>(std::forward<Lambda>(lambda));
     }
+
+    inline constexpr magic_enum::customize::customize_t enumNameCustom() noexcept {
+        if (value < 0 || value >= std::size(E::labels))
+            return magic_enum::customize::default_tag;
+        return E::labels[value];
+    }
 };
 
 template <class E>

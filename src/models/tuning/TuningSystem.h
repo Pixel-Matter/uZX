@@ -73,6 +73,13 @@ struct TuningTypeEnum {
         Pythagorean,
         Custom
     };
+
+    static inline constexpr std::string_view longLabels[] {
+        "Equal Temperament",
+        "Just Intonation",
+        "Pythagorean",
+        "Custom"
+    };
 };
 
 using TuningType = MoTool::Util::EnumChoice<TuningTypeEnum>;
@@ -174,6 +181,161 @@ public:
 
 private:
     double a5Freq;
+};
+
+class CustomTuning : public TuningSystem {
+public:
+    // Constructor with period table for specific MIDI note range
+    CustomTuning(const ChipCapabilities& caps,
+                 const std::map<int, int>& periodTable,
+                 const String& customName = "Custom Tuning")
+        : TuningSystem(caps)
+        , periodTable_(periodTable)
+        , customName_(customName)
+    {
+        // Find the range of defined notes
+        if (!periodTable_.empty()) {
+            minDefinedNote_ = periodTable_.begin()->first;
+            maxDefinedNote_ = periodTable_.rbegin()->first;
+        } else {
+            minDefinedNote_ = 60; // Default to middle C
+            maxDefinedNote_ = 60;
+        }
+    }
+
+    String getName() const override {
+        return customName_ + String::formatted(" (Custom, %d notes defined)", static_cast<int>(periodTable_.size()));
+    }
+
+    TuningType getType() const override {
+        return TuningType::Custom;
+    }
+
+    double midiNoteToFrequency(double midiNote) const override {
+        int period = midiNoteToPeriod(midiNote);
+        return periodToFrequency(period);
+    }
+
+    double frequencyToMidiNote(double frequency) const override {
+        int period = frequencyToPeriod(frequency);
+        return periodToMidiNote(period);
+    }
+
+    int midiNoteToPeriod(double midiNote) const override {
+        int note = static_cast<int>(std::round(midiNote));
+
+        // If exact note is in table, return it
+        auto it = periodTable_.find(note);
+        if (it != periodTable_.end()) {
+            return it->second;
+        }
+
+        // Handle notes outside the defined range
+        if (note < minDefinedNote_) {
+            // Extrapolate downward using octave relationship
+            int octaveShift = (minDefinedNote_ - note + 11) / 12;
+            int baseNote = note + octaveShift * 12;
+            if (auto baseIt = periodTable_.find(baseNote); baseIt != periodTable_.end()) {
+                return baseIt->second * (1 << octaveShift); // Double period for each octave down
+            }
+            return periodTable_.begin()->second * 2; // Fallback
+        }
+
+        if (note > maxDefinedNote_) {
+            // Extrapolate upward using octave relationship
+            int octaveShift = (note - maxDefinedNote_ + 11) / 12;
+            int baseNote = note - octaveShift * 12;
+            if (auto baseIt = periodTable_.find(baseNote); baseIt != periodTable_.end()) {
+                return std::max(1, baseIt->second / (1 << octaveShift)); // Halve period for each octave up
+            }
+            return std::max(1, periodTable_.rbegin()->second / 2); // Fallback
+        }
+
+        // Interpolate between nearest defined notes
+        auto upper = periodTable_.upper_bound(note);
+        if (upper == periodTable_.end()) {
+            return periodTable_.rbegin()->second;
+        }
+        if (upper == periodTable_.begin()) {
+            return upper->second;
+        }
+
+        auto lower = std::prev(upper);
+
+        // Linear interpolation in logarithmic space (geometric interpolation)
+        double ratio = static_cast<double>(note - lower->first) / (upper->first - lower->first);
+        double logPeriod = std::log(static_cast<double>(lower->second)) * (1.0 - ratio) +
+                          std::log(static_cast<double>(upper->second)) * ratio;
+
+        return static_cast<int>(std::round(std::exp(logPeriod)));
+    }
+
+    double periodToMidiNote(int period) const override {
+        // Find the closest period in the table
+        int closestNote = 60; // Default to middle C
+        int closestPeriodDiff = std::numeric_limits<int>::max();
+
+        for (const auto& [note, notePeriod] : periodTable_) {
+            int diff = std::abs(notePeriod - period);
+            if (diff < closestPeriodDiff) {
+                closestPeriodDiff = diff;
+                closestNote = note;
+            }
+        }
+
+        // Calculate more precise note using frequency relationship
+        double actualFreq = periodToFrequency(period);
+        double targetFreq = periodToFrequency(periodTable_.at(closestNote));
+        double noteOffset = 12.0 * std::log2(actualFreq / targetFreq);
+
+        return closestNote + noteOffset;
+    }
+
+    double getOfftune(double midiNote) const override {
+        // Calculate the difference between the custom tuning and equal temperament
+        double customFreq = midiNoteToFrequency(midiNote);
+        double equalTempFreq = 440.0 * std::pow(2.0, (midiNote - 69) / 12.0);
+
+        if (equalTempFreq == 0.0) return 0.0;
+
+        // Return difference in cents
+        return 1200.0 * std::log2(customFreq / equalTempFreq);
+    }
+
+    // Additional methods specific to CustomTuning
+    const std::map<int, int>& getPeriodTable() const { return periodTable_; }
+
+    void updatePeriodTable(const std::map<int, int>& newTable) {
+        periodTable_ = newTable;
+        if (!periodTable_.empty()) {
+            minDefinedNote_ = periodTable_.begin()->first;
+            maxDefinedNote_ = periodTable_.rbegin()->first;
+        }
+    }
+
+    Range<int> getDefinedNoteRange() const {
+        return Range<int>(minDefinedNote_, maxDefinedNote_ + 1);
+    }
+
+private:
+    std::map<int, int> periodTable_; // MIDI note -> chip period
+    String customName_;
+    int minDefinedNote_;
+    int maxDefinedNote_;
+
+    double periodToFrequency(int period) const {
+        if (period <= 0) return 0.0;
+        return chip.clockFrequency / chip.divider / period;
+    }
+
+    int frequencyToPeriod(double frequency) const {
+        if (frequency <= 0.0) return chip.registerRange.getEnd() - 1;
+        return jlimit(
+            chip.registerRange.getStart(),
+            chip.registerRange.getEnd() - 1,
+            static_cast<int>(std::round(chip.clockFrequency / chip.divider / frequency))
+        );
+    }
 };
 
 }

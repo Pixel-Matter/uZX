@@ -200,12 +200,12 @@ private:
     AYChipPlugin& plugin_;
     ComponentBoundsConstrainer constrainer_;
 
-    ComboParameterComponent<AYInterface::ChipType>       chipParameter     { plugin_.staticParams.chipTypeValue };
-    SliderParameterComponent<double>                     clockParameter    { plugin_.staticParams.clockValue };
-    ComboParameterComponent<AYInterface::ChannelsLayout> channelsParameter { plugin_.staticParams.channelsLayoutValue };
-    SliderParameterComponent<double>                     stereoParameter   { plugin_.staticParams.stereoWidthValue };
-    ToggleParameterComponent                             removeDCParameter { plugin_.staticParams.removeDCValue };
-    SliderParameterComponent<int>                        midiParameter     { plugin_.staticParams.baseMidiChannelValue };
+    ComboParameterComponent<ChipType>       chipParameter     { plugin_.staticParams.chipTypeValue };
+    SliderParameterComponent<double>        clockParameter    { plugin_.staticParams.clockValue };
+    ComboParameterComponent<ChannelsLayout> channelsParameter { plugin_.staticParams.channelsLayoutValue };
+    SliderParameterComponent<double>        stereoParameter   { plugin_.staticParams.stereoWidthValue };
+    ToggleParameterComponent                removeDCParameter { plugin_.staticParams.removeDCValue };
+    SliderParameterComponent<int>           midiParameter     { plugin_.staticParams.baseMidiChannelValue };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginEditor)
 };

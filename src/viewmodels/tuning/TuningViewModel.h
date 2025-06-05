@@ -7,6 +7,7 @@
 
 namespace MoTool {
 
+
 struct TuningNoteName {
     int noteNumber;        // 0-based note number in 12-semitone system, ie C is 0, C# is 1, etc.
     bool isInScale;        // Whether this note is part of the scale
@@ -29,10 +30,17 @@ struct TuningNote {
 
 class TuningViewModel {
 public:
+    // Callback for when tuning system changes
+    std::function<void()> onTuningSystemChanged;
     TuningViewModel()
-        : chipCapabilities {1773400, 16, Range<int>(1, 4096)}
+        : transientState("TuningView")
+        , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
         , tuningSystem {std::make_unique<EqualTemperamentTuning>(chipCapabilities)}
-    {}
+    {
+        // Initialize transient view state
+        chipClock.referTo(transientState, "chipClock", nullptr,
+            uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz));
+    }
 
     std::vector<TuningNoteName> getColumnNoteNames() const {
         return {
@@ -112,37 +120,83 @@ public:
 
     StringArray getChipClockLabels() const {
         StringArray labels;
-        for (const auto& label : uZX::ChipClockEnum::labels) {
+        for (const auto& label : uZX::ChipClockEnum::longLabels) {
             labels.add(String(label.data(), label.size()));
         }
         return labels;
     }
 
     int getCurrentChipClockIndex() const {
-        return static_cast<int>(chipClockChoice.value);
+        return static_cast<int>(chipClock.get().value);
     }
 
     void setChipClockChoice(int index) {
+        DBG("Setting chip clock choice to index: " << index);
         if (index >= 0 && index < static_cast<int>(uZX::ChipClockChoice::size())) {
-            chipClockChoice = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(index));
-            // Update chip capabilities with new clock frequency
-            if (index != uZX::ChipClockEnum::Custom) {
-                double clockFreq = uZX::ChipClockEnum::clockValues[index];
-                chipCapabilities.clockFrequency = clockFreq;
-                // Recreate tuning system with new capabilities
-                tuningSystem = std::make_unique<EqualTemperamentTuning>(chipCapabilities);
-            }
+            chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(index));
+            // Call updateChipCapabilities directly since Value::Listener doesn't work reliably with custom types
+            updateChipCapabilities();
         }
     }
+
+    // // State persistence methods
+    // ValueTree getState() const {
+    //     return transientState.createCopy();
+    // }
+
+    // void setState(const ValueTree& newState) {
+    //     transientState.copyPropertiesFrom(newState, nullptr);
+    // }
 
     // TODO Tuning table editing? What bindings to use?
 
 private:
+    void updateChipCapabilities() {
+        auto choice = chipClock.get();
+        int index = static_cast<int>(choice.value);
+
+        if (index != uZX::ChipClockEnum::Custom) {
+            double clockFreq = uZX::ChipClockEnum::clockValues[index];
+            chipCapabilities.clockFrequency = clockFreq;
+
+            DBG("Updating tuning system with new clock frequency: " << clockFreq << " Hz");
+
+            // Recreate tuning system with new capabilities
+            tuningSystem = std::make_unique<EqualTemperamentTuning>(chipCapabilities);
+
+            // Notify listeners that the tuning system has changed
+            if (onTuningSystemChanged) {
+                DBG("Notifying UI of tuning system change");
+                onTuningSystemChanged();
+            }
+        }
+    }
+
+    // Transient view state
+    ValueTree transientState;
+    CachedValue<uZX::ChipClockChoice> chipClock;
     ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
     std::unique_ptr<TuningSystem> tuningSystem;
-    uZX::ChipClockChoice chipClockChoice {uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };
 
 }
+
+namespace juce {
+
+using namespace MoTool::uZX;
+
+template<>
+struct VariantConverter<MoTool::uZX::ChipClockChoice> {
+    static MoTool::uZX::ChipClockChoice fromVar(const var& v) {
+        return MoTool::uZX::ChipClockChoice(v.toString().toStdString());
+    }
+
+    static var toVar(MoTool::uZX::ChipClockChoice choice) {
+        const std::string_view label = choice.getLabel();
+        return String {label.data(), label.size()};
+    }
+};
+
+} // namespace juce

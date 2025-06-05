@@ -61,9 +61,9 @@ public:
     std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
 
     struct Params {
-        ParamAttachment<AYInterface::ChipType> chipTypeValue;
+        ParamAttachment<ChipType> chipTypeValue;
         ParamAttachment<double> clockValue;
-        ParamAttachment<AYInterface::ChannelsLayout> channelsLayoutValue;
+        ParamAttachment<ChannelsLayout> channelsLayoutValue;
         ParamAttachment<double> stereoWidthValue;
         ParamAttachment<bool> removeDCValue;
         ParamAttachment<int> baseMidiChannelValue;

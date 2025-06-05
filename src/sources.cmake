@@ -17,15 +17,19 @@ set(GUI_SOURCES
     controllers/App.cpp
     controllers/Main.cpp
     controllers/EditState.cpp
+    
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Utilities.cpp
     gui/common/Transport.cpp
+
     gui/timeline/PlayheadComponent.cpp
     gui/timeline/PluginComponent.cpp
     gui/timeline/ClipComponents.cpp
     gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
     gui/timeline/PsgClipComponent.cpp
+
+    gui/tuning/TuningPreview.cpp
 )
 
 # Test-specific files to include in the test target

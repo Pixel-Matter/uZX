@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <sstream>
 #include <sys/types.h>
 #include <vector>
 #include <array>
@@ -29,6 +30,59 @@ namespace {
         #include <ayumi.h>
     }
 }
+
+struct ChipClockEnum {
+    enum Enum : uint8_t {
+        NES_NTSC_0_89_MHz,
+        NES_PAL_0_83_MHz,
+        ZX_Spectrum_1_77_MHz,
+        Pentagon_1_75_MHz,
+        Amstrad_1_MHz,
+        Vectrex_1_5_MHz,
+        Atari_ST_2_MHz,
+        Custom
+    };
+
+    static inline constexpr double clockValues[] {
+        0.894887,   // NES NTSC
+        0.8313035,  // NES PAL
+        1.7734,     // ZX Spectrum
+        1.75,       // Pentagon
+        1.0,        // Amstrad
+        1.5,        // Vectrex
+        2.0,        // Atari ST
+        -1.0        // Custom (user defined)
+    };
+
+    static inline constexpr std::string_view labels[] {
+        "NES NTSC 0.894887 MHz",
+        "NES PAL 0.8313035 MHz",
+        "ZX Spectrum 1.7734 MHz",
+        "Pentagon 1.75 MHz",
+        "Amstrad 1 MHz",
+        "Vectrex 1.5 MHz",
+        "Atari ST 2 MHz",
+        "Custom (user defined)"
+    };
+};
+
+using ChipClockChoice = MoTool::Util::EnumChoice<ChipClockEnum>;
+
+}  // namespace MoTool::uZX
+// Specialization of `enum_name` must be injected in `namespace magic_enum::customize`.
+namespace magic_enum::customize {
+
+template <>
+inline constexpr customize_t enum_name<MoTool::uZX::ChipClockEnum::Enum>(MoTool::uZX::ChipClockEnum::Enum value) noexcept {
+    // const auto size = MoTool::uZX::ChipClockChoice::size();
+    if (value < 0 || value > MoTool::uZX::ChipClockEnum::Custom)
+        return default_tag;
+    return MoTool::uZX::ChipClockEnum::labels[value];
+}
+
+}
+
+namespace MoTool::uZX {
 
 struct TypeEnum {
     enum Enum : uint8_t {

@@ -25,7 +25,7 @@ void TuningPreviewGrid::resized() {
 void TuningPreviewGrid::paint(juce::Graphics& g) {
     const int cols = viewModel.getNumColumns();
     // const int rows = viewModel.getNumRows();
-    const int cellWidth = 80;
+    const int cellWidth = 56;
     const int cellHeight = 32;
 
     g.fillAll(Colors::Theme::backgroundAlt);
@@ -66,13 +66,13 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
         g.drawText(String::formatted("%d", octave), gridCell.withTrimmedRight(8), juce::Justification::right, true);
         gridCell.translate(cellWidth, 0);
         for (const auto& note : viewModel.getOctaveNotes(octave)) {
-            auto offtune = jlimit(-1.0, 1.0, note.offtune / 100.0); // Normalize offtune to -1.0 to 1.0 range
+            auto offtune = jlimit(-0.5, 0.5, note.offtune / 100.0); // Normalize offtune to -0.5 to 0.5 range
 
             auto noteTextColor = Colors::Theme::textPrimary;
             if (offtune > 0.05) {
-                noteTextColor = noteTextColor.interpolatedWith(juce::Colours::blue, offtune);
+                noteTextColor = noteTextColor.interpolatedWith(juce::Colours::blue, offtune * 2);
             } else if (offtune < 0.05) {
-                noteTextColor = noteTextColor.interpolatedWith(juce::Colours::red, -offtune);
+                noteTextColor = noteTextColor.interpolatedWith(juce::Colours::red, -offtune * 2);
             }
 
             auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
@@ -84,22 +84,31 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
                 g.setColour(noteBgColor);
                 g.fillRect(gridCell.reduced(2, 2));
             }
-            // tuner tick
-            auto tickSize = JUCE_LIVE_CONSTANT(6);
-            g.setColour(Colors::Theme::surface);
-            const int cellCenter = gridCell.getX() + (gridCell.getWidth() - 1) / 2;
-            g.fillRect(cellCenter, gridCell.getY(), 2, tickSize);
-            g.fillRect(cellCenter, gridCell.getBottom() - tickSize, 2, tickSize);
+            // tuner ticks
+            auto tickSize = 6;
+            g.setColour(Colors::Theme::surfaceAlt);
+            const int cellCenter = gridCell.getX() + (gridCell.getWidth() - 2) / 2;
+            g.fillRect(cellCenter, gridCell.getY() - 2, 2, 4);
+            g.fillRect(cellCenter, gridCell.getBottom() - 2, 2, 4);
 
-            g.setColour(Colors::Theme::surface);
-            float offX = jmap<float>((float) offtune, -1.0f, 1.0f, (float) gridCell.getX(), (float) gridCell.getRight() - 2.0f);
-            g.fillRect(offX, (float) gridCell.getY() + (float) tickSize + 1.0f, 2.0f, (float) (gridCell.getHeight() - tickSize * 2 - 2));
+            g.setColour(Colors::Theme::surfaceAlt);
+            float offX = jmap<float>((float) offtune, -0.5f, 0.5f, (float) gridCell.getX(), (float) gridCell.getRight() - 2.0f);
+            if (note.offtune >= -50 && note.offtune <= 50) {
+                g.fillRect(offX, (float) gridCell.getY() + 2, 2.0f, (float) tickSize);
+                g.fillRect(offX, (float) gridCell.getBottom() - 2.0f - (float) tickSize, 2.0f, (float) tickSize);
+            }
+
+            auto textCell = gridCell;
+            auto text = String::formatted("%d", note.period);
+            auto textWidth = static_cast<int>(std::ceil(g.getCurrentFont().getStringWidthFloat(text)));
+            textCell.setWidth(textWidth);
+            textCell.setCentre(offX, textCell.getCentreY());
+            textCell = textCell.constrainedWithin(gridCell.reduced(2, 0));
 
             g.setColour(noteTextColor);
-            g.drawText(String::formatted("%d", note.period), gridCell.withTrimmedRight(8), juce::Justification::right, true);
-            // g.drawText(String::formatted("%.2f", note.offtune), gridCell.withTrimmedRight(8), juce::Justification::right, true);
-
+            g.drawText(text, textCell, juce::Justification::centred, false);
             // g.drawText(String::formatted("%.2f", note.frequency), gridCell.withTrimmedRight(8), juce::Justification::right, true);
+
             gridCell.translate(cellWidth, 0);
         }
         // bounds.removeFromTop(1); // Add a line between rows

@@ -36,7 +36,6 @@ void TuningPreviewGrid::mouseMove(const MouseEvent& event) {
     } else {
         if (hasHoveredNote) {
             hasHoveredNote = false;
-            // Tooltip will be cleared automatically when getTooltip() returns empty string
             // repaint(); // Optional: repaint to clear any visual feedback
         }
     }
@@ -214,32 +213,16 @@ bool TuningPreviewGrid::findNoteAtPosition(Point<int> position, TuningNote& outN
 }
 
 String TuningPreviewGrid::getTooltip() {
-    if (!hasHoveredNote) {
-        return "";
-    }
-
-    String midiInfo = hoveredNote.isInMidiRange() ? String::formatted("%d", hoveredNote.midiNote) : String("out of range");
-    auto trackerNote = hoveredNote.getTrackerNote();
-    String trackerInfo = trackerNote != -1 ? String::formatted("%d", trackerNote) : String("out of range");
-
-    return String::formatted("Note: %s\nMIDI: %s\nTracker note: %s\nFrequency: %.2f Hz\nPeriod: %d\nOfftune: %+.1f cents",
-                            hoveredNote.name.toUTF8(),
-                            midiInfo.toUTF8(),
-                            trackerInfo.toUTF8(),
-                            hoveredNote.frequency,
-                            hoveredNote.period,
-                            hoveredNote.offtune);
+    return hasHoveredNote ? hoveredNote.getTooltip() : "";
 }
 
 //================================================================================
 TuningPreviewComponent::TuningPreviewComponent()
     : viewModel(TuningViewModel())
     , tuningGrid(viewModel)
-    , tooltipWindow(nullptr, 500) // 500ms delay
+    , tooltipWindow(nullptr, 750) // ms delay
 {
     setOpaque(true);
-    addAndMakeVisible(tuningGrid);
-
     auto chipClockLabels = viewModel.getChipClockLabels();
     for (int i = 0; i < chipClockLabels.size(); ++i) {
         ChipClockSelect.addItem(chipClockLabels[i], i + 1);
@@ -277,6 +260,10 @@ TuningPreviewComponent::TuningPreviewComponent()
     // addAndMakeVisible(TuningTypeLabel);
     addAndMakeVisible(TuningNameLabel);
     addAndMakeVisible(ToneEnvSwitchLabel);
+    addAndMakeVisible(tuningGrid);
+
+    // Connect tooltip window to grid
+    tuningGrid.setTooltipWindow(&tooltipWindow);
 }
 
 TuningPreviewComponent::~TuningPreviewComponent() {

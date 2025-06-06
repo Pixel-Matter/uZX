@@ -10,6 +10,8 @@ class TuningPreviewGrid : public juce::Component, public TooltipClient {
 public:
     TuningPreviewGrid(TuningViewModel& vm);
     ~TuningPreviewGrid() override;
+    
+    void setTooltipWindow(TooltipWindow* window) { tooltipWindow = window; }
 
     void resized() override;
     void paint(juce::Graphics& g) override;
@@ -31,6 +33,8 @@ private:
 
     // Helper method to find note at mouse position
     bool findNoteAtPosition(Point<int> position, TuningNote& outNote) const;
+    
+    TooltipWindow* tooltipWindow = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPreviewGrid)
 };

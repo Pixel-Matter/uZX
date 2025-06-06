@@ -43,6 +43,39 @@ struct TuningNote {
         }
         return midiNote - trackerNoteOffset; // Convert MIDI note to Tracker note
     }
+
+    String getTooltip() const {
+        String midiInfo = isInMidiRange() ? String::formatted("%d", midiNote) : String("no");
+        auto trackerNote = getTrackerNote();
+        String trackerInfo = trackerNote != -1 ? String::formatted("%d", trackerNote) : String("out of range");
+        String freqInfo;
+        if (frequency >= 1000.0) {
+            freqInfo = String::formatted("%.3f kHz", frequency / 1000.0);
+        } else {
+            freqInfo = String::formatted("%.2f Hz", frequency);
+        }
+        String hearableInfo;
+        if (frequency < 20.0) {
+            hearableInfo = "Clicks only";
+        } else if (frequency < 15000.0) {
+            hearableInfo = "Audible";
+        } else if (frequency < 17000.0) {
+            hearableInfo = "High freq (age-dependent)";
+        } else if (frequency < 20000.0) {
+            hearableInfo = "Very high (age-dependent)";
+        } else {
+            hearableInfo = "Ultrasonic (inaudible)";
+        }
+
+        return String::formatted("%s: MIDI %s\nTracker note: %s\nPeriod: %d\nFrequency: %s\n%s\nOfftune: %+.1f cents",
+                                name.toUTF8(),
+                                midiInfo.toUTF8(),
+                                trackerInfo.toUTF8(),
+                                period,
+                                freqInfo.toUTF8(),
+                                hearableInfo.toUTF8(),
+                                offtune);
+    }
 };
 
 class TuningViewModel : public ChangeBroadcaster {
@@ -102,8 +135,8 @@ public:
                 note.period = 0;
                 note.offtune = 0.0; // Default detune if no tuning system is set
             } else {
-                note.frequency = tuningSystem->midiNoteToFrequency(note.midiNote); // Calculate frequency
                 note.period = tuningSystem->midiNoteToPeriod(note.midiNote); // Calculate period for the chip
+                note.frequency = tuningSystem->periodToFrequency(note.period); // Calculate frequency from period
                 note.offtune = tuningSystem->getOfftune(note.midiNote); // Get detune from tuning system
             }
             // note.detune = 0.0; // Default detune, can be adjusted later

@@ -66,12 +66,12 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
         g.drawText(String::formatted("%d", octave), gridCell.withTrimmedRight(8), juce::Justification::right, true);
         gridCell.translate(cellWidth, 0);
         for (const auto& note : viewModel.getOctaveNotes(octave)) {
-            auto offtune = jlimit(-0.5, 0.5, note.offtune / 100.0); // Normalize offtune to -0.5 to 0.5 range
+            float offtune = jlimit(-0.5f, 0.5f, (float) note.offtune / 100.0f); // Normalize offtune to -0.5 to 0.5 range
 
             auto noteTextColor = Colors::Theme::textPrimary;
-            if (offtune > 0.05) {
+            if (offtune > 0.05f) {
                 noteTextColor = noteTextColor.interpolatedWith(juce::Colours::blue, offtune * 2);
-            } else if (offtune < 0.05) {
+            } else if (offtune < 0.05f) {
                 noteTextColor = noteTextColor.interpolatedWith(juce::Colours::red, -offtune * 2);
             }
 
@@ -84,20 +84,38 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
                 g.setColour(noteBgColor);
                 g.fillRect(gridCell.reduced(2, 2));
             }
+
+            //=================================================================
             // tuner ticks
+
+            // 1. Inter-cell reference tuning ticks at the horizontal center of the cell
             auto tickSize = 6;
             g.setColour(Colors::Theme::surfaceAlt);
             const int cellCenter = gridCell.getX() + (gridCell.getWidth() - 2) / 2;
             g.fillRect(cellCenter, gridCell.getY() - 2, 2, 4);
             g.fillRect(cellCenter, gridCell.getBottom() - 2, 2, 4);
 
-            g.setColour(Colors::Theme::surfaceAlt);
-            float offX = jmap<float>((float) offtune, -0.5f, 0.5f, (float) gridCell.getX(), (float) gridCell.getRight() - 2.0f);
+            // 2. In-cell tuning ticks of this specific note
+            auto calcTickX = [&](const float tick) -> float {
+                return jmap<float>(tick, -0.5f, 0.5f, (float) gridCell.getX(), (float) gridCell.getRight() - 2.0f);
+            };
+            auto drawTick = [&](const float tickX) -> void {
+                g.fillRect(tickX, (float) gridCell.getY() + 2, 2.0f, (float) tickSize);
+                g.fillRect(tickX, (float) gridCell.getBottom() - 2.0f - (float) tickSize, 2.0f, (float) tickSize);
+            };
+
+            // for (const auto& tick : viewModel.getTicksAroundNote(note)) {
+            //     drawTick(calcTickX(tick));
+            // }
+
+            // 3. Offtune tick for this specific note
+            float offX = calcTickX(offtune);
             if (note.offtune >= -50 && note.offtune <= 50) {
-                g.fillRect(offX, (float) gridCell.getY() + 2, 2.0f, (float) tickSize);
-                g.fillRect(offX, (float) gridCell.getBottom() - 2.0f - (float) tickSize, 2.0f, (float) tickSize);
+                drawTick(offX);
             }
 
+            //=================================================================
+            // drawing text
             auto textCell = gridCell;
             auto text = String::formatted("%d", note.period);
             auto textWidth = static_cast<int>(std::ceil(g.getCurrentFont().getStringWidthFloat(text)));
@@ -107,6 +125,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
             g.setColour(noteTextColor);
             g.drawText(text, textCell, juce::Justification::centred, false);
+            // TODO add mousover bubble with frequency, note name, offtune in cents information
             // g.drawText(String::formatted("%.2f", note.frequency), gridCell.withTrimmedRight(8), juce::Justification::right, true);
 
             gridCell.translate(cellWidth, 0);

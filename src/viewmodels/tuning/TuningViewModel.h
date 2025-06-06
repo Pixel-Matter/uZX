@@ -4,6 +4,8 @@
 
 #include "../../models/tuning/TuningSystem.h"
 #include "../../plugins/uZX/aychip/aychip.h"
+#include "juce_core/system/juce_PlatformDefs.h"
+#include <cmath>
 
 namespace MoTool {
 
@@ -18,6 +20,7 @@ struct TuningNoteName {
 struct TuningNote {
     int midiNote;          // can be greater than MIDI note range (0-127) for presentation purposes
     bool isInScale;        // Whether this note is part of the scale
+    bool isDefined;        // If this note period is defined in generated or custom table
     double offtune;        // Offtune in cents (positive or negative)
     double frequency;      // Calculated frequency in Hz
     int period;            // Chip divider value (for AY-3-8910, etc.)
@@ -97,6 +100,57 @@ public:
         return notes;
     }
 
+    // get values in the range -0.5...0.5 representing offtunes of all periods around this note
+    std::vector<double> getTicksAroundNote(const TuningNote& note) const {
+        jassert(tuningSystem != nullptr);
+        std::vector<double> ticks;
+        auto lowerNote = (double) note.midiNote - 0.5f;
+        auto upperPeriod = tuningSystem->midiNoteToPeriod(lowerNote);
+        auto actualLowerNote = tuningSystem->periodToMidiNote(upperPeriod);
+        if (actualLowerNote > note.midiNote + 0.5f) {
+            return ticks; // No ticks available
+        }
+        if (actualLowerNote < note.midiNote - 0.5f) {
+            --upperPeriod;
+        }
+        auto upperNote = (double) note.midiNote + 0.5f;
+        auto lowerPeriod = tuningSystem->midiNoteToPeriod(upperNote);
+        auto actualUpperNote = tuningSystem->periodToMidiNote(lowerPeriod);
+        if (actualUpperNote < note.midiNote - 0.5f) {
+            return ticks; // No ticks available
+        }
+        if (actualUpperNote > note.midiNote + 0.5f) {
+            ++lowerPeriod;
+        }
+        auto ticksNum = upperPeriod - lowerPeriod + 1;
+        if (ticksNum <= 0) {
+            return ticks; // No ticks available
+        }
+        // find suitable step for power of 10
+        auto step = std::log2(ticksNum);
+        if (step < 0.0) {
+            step = std::pow(10.0, std::ceil(step));
+        } else {
+            step = std::pow(10.0, std::floor(step));
+        }
+        // DBG("Ticks around note " << note.name
+        //     << ": lowerPeriod = " << lowerPeriod
+        //     << ", upperPeriod = " << upperPeriod
+        //     << ", note = " << note.midiNote
+        //     << ", actualLowerNote = " << actualLowerNote
+        //     << ", actualUpperNote = " << actualUpperNote
+        //     << ", ticksNum = " << ticksNum
+        //     << ", step = " << step);
+        ticks.reserve(static_cast<size_t>(ticksNum));
+        int intStep = static_cast<int>(step);
+        for (int p = upperPeriod; p >= lowerPeriod; p -= intStep) {
+            auto n = tuningSystem->periodToMidiNote(p);
+            ticks.push_back(n - note.midiNote);
+            // DBG("Tick for period " << p << ": note = " << n << ", offtune = " << (n - note.midiNote));
+        }
+        return ticks;
+    }
+
     // std::vector<Interval> getIntervals() const;
 
     String getScaleName() const {
@@ -113,11 +167,6 @@ public:
 
     Range<int> getChipDividerRange() const {
         return chipCapabilities.registerRange;
-    }
-
-    String getChipClock() const {
-        return String::formatted("%s %f Hz", "ZX Spectrum", 1.7734);
-        // return String::formatted("%d Hz", tuningSystem.getChipClock());
     }
 
     StringArray getChipClockLabels() const {

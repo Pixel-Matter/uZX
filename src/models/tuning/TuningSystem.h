@@ -106,6 +106,8 @@ public:
     // midiNote is double because we want slides and pitch bends
     virtual double midiNoteToFrequency(double midiNote) const = 0;
     virtual double frequencyToMidiNote(double frequency) const = 0;
+    virtual double periodToFrequency(int period) const = 0;
+    virtual int frequencyToPeriod(double frequency) const = 0;
     virtual int midiNoteToPeriod(double midiNote) const = 0;
     virtual double periodToMidiNote(int period) const = 0;
 
@@ -143,12 +145,7 @@ public:
         return 69 + 12 * std::log2(frequency / a5Freq);
     }
 
-    int frequencyToPeriod(double frequency) const {
-        // DBG("Frequency: " << frequency
-        //     << ", Clock: " << chip.clockFrequency
-        //     << ", Divider: " << chip.divider
-        //     << ", Range: " << chip.registerRange.getStart() << "-" << chip.registerRange.getEnd() - 1;
-        // );
+    int frequencyToPeriod(double frequency) const override {
         return jlimit(
             chip.registerRange.getStart(),
             chip.registerRange.getEnd() - 1,
@@ -156,7 +153,7 @@ public:
         );
     }
 
-    double periodToFrequency(int period) const {
+    double periodToFrequency(int period) const override {
         return chip.clockFrequency / chip.divider / period;
     }
 

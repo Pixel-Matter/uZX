@@ -218,47 +218,75 @@ public:
 ### Concrete Implementations
 
 ```cpp
-// Equal temperament implementation
+// ✅ IMPLEMENTED - Equal temperament implementation
 class EqualTemperamentTuning : public TuningSystem {
 public:
-    EqualTemperamentTuning(double a4Frequency = 440.0);
+    EqualTemperamentTuning(const ChipCapabilities& capabilities, double a4Frequency = 440.0);
 
-    int midiNoteToPeriod(int midiNote) const override;
-    double midiNoteToFrequency(int midiNote) const override;
-    // ... other methods
+    // Core conversion methods (MIDI note as double for pitch bends)
+    int midiNoteToPeriod(double midiNote) const override;
+    double midiNoteToFrequency(double midiNote) const override;
+    double periodToMidiNote(int period) const override;
+    double periodToFrequency(int period) const override;
+    int frequencyToPeriod(double frequency) const override;
+    
+    // Accuracy and validation
+    double getOfftune(double midiNote) const override;
+    bool isNoteSupported(double midiNote) const override;
+
+    String getName() const override { return "Equal Temperament"; }
+    TuningType getType() const override { return TuningType::EqualTemperament; }
 
 private:
-    double a4Freq;
-    static constexpr double AY_CLOCK_HZ = 1773400.0;
-    mutable std::array<int, 128> periodCache;
-    mutable std::array<double, 128> accuracyCache;
+    ChipCapabilities chipCapabilities;  // Clock frequency, register range
+    double a4Frequency;
+    
+    static constexpr double SEMITONE_RATIO = 1.0594630943592953;  // 2^(1/12)
+    static constexpr int A4_MIDI_NOTE = 69;
 };
 
-// Just intonation implementation
+// ❌ NOT IMPLEMENTED - Just intonation (only enum declaration exists)
 class JustIntonationTuning : public TuningSystem {
-public:
-    JustIntonationTuning(const Scale& baseScale, int rootNote = 60);
-
-    int midiNoteToPeriod(int midiNote) const override;
-    // ... other methods
-
-private:
-    Scale baseScale;
-    int rootMidiNote;
-    std::map<int, int> periodLookup;  // Pre-computed for all valid notes
+    // Class declared in TuningType enum but no implementation
 };
 
-// User-defined custom tuning
+// ✅ IMPLEMENTED - User-defined custom tuning with interpolation
 class CustomTuning : public TuningSystem {
 public:
-    CustomTuning(const String& name);
+    CustomTuning(const ChipCapabilities& capabilities, const String& name = "Custom");
 
-    void setPeriodForNote(int midiNote, int period);
-    void setFrequencyForNote(int midiNote, double frequency);
+    // Period table management
+    void setPeriodForNote(double midiNote, int period);
+    void setPeriodTable(const std::map<int, int>& periods);
+    std::map<int, int> getPeriodTable() const { return periodTable; }
+
+    // Core conversion methods with interpolation
+    int midiNoteToPeriod(double midiNote) const override;
+    double midiNoteToFrequency(double midiNote) const override;
+    double periodToMidiNote(int period) const override;
+    double periodToFrequency(int period) const override;
+    int frequencyToPeriod(double frequency) const override;
+    
+    // Accuracy and validation
+    double getOfftune(double midiNote) const override;
+    bool isNoteSupported(double midiNote) const override;
+
+    String getName() const override { return tuningName; }
+    TuningType getType() const override { return TuningType::Custom; }
 
 private:
-    String customName;
-    std::map<int, int> customPeriods;
+    ChipCapabilities chipCapabilities;
+    String tuningName;
+    std::map<int, int> periodTable;  // MIDI note → period mapping
+    
+    // Helper methods for interpolation and octave extrapolation
+    int interpolatePeriod(double midiNote) const;
+    int extrapolateToOctave(int basePeriod, int octaveShift) const;
+};
+
+// ❌ NOT IMPLEMENTED - Pythagorean tuning (only enum declaration exists)
+class PythagoreanTuning : public TuningSystem {
+    // Class declared in TuningType enum but no implementation
 };
 ```
 
@@ -298,51 +326,53 @@ private:
 };
 ```
 
-## Implementation Strategy
+## Implementation Status
 
-### Phase 1: Core Infrastructure
+### Phase 1: Core Infrastructure ✅ **COMPLETED**
 
-**1.1 Base Classes (Week 1)**
+**1.1 Base Classes** ✅
 ```cpp
-// Implement base interfaces
-- TuningSystem abstract class
-- Interval class with ratio/semitone support
-- Scale class with interval storage
-- TuningManager singleton
+// ✅ IMPLEMENTED
+- TuningSystem abstract class (complete with all virtual methods)
+- ChipCapabilities struct for chip-specific parameters
+- Interval class with basic structure (❌ methods not implemented)
+- Scale class declaration (❌ no implementation)
+- TuningType enum with all planned types
 ```
 
-**1.2 Equal Temperament (Week 2)**
+**1.2 Equal Temperament** ✅
 ```cpp
-// First concrete implementation for immediate testing
-- EqualTemperamentTuning class
+// ✅ FULLY IMPLEMENTED
+- EqualTemperamentTuning class (complete)
 - MIDI note → period conversion with accuracy tracking
-- Period → frequency calculations using AY clock
-- Unit tests for conversion accuracy
+- Period → frequency calculations using configurable chip clocks
+- A4 frequency support (220-880 Hz range)
+- Offtune calculations in cents
 ```
 
-**1.3 Just Intonation (Week 3)**
+**1.3 Just Intonation** ❌ **NOT IMPLEMENTED**
 ```cpp
-// Core just intonation implementation
-- JustIntonationTuning class
+// ❌ MISSING - Only enum declaration exists
+- JustIntonationTuning class (not implemented)
 - Pre-computed period tables for common scales
 - Support for 5-limit and 7-limit systems
 - Scale-aware note mapping
 ```
 
-### Phase 2: Integration
+### Phase 2: Integration ⚠️ **PARTIALLY IMPLEMENTED**
 
-**2.1 ValueTree Integration (Week 4)**
+**2.1 ValueTree Integration** ❌ **NOT IMPLEMENTED**
 ```cpp
-// Serialization and state management
+// ❌ MISSING - Methods commented out in current code
 - ValueTree serialization for all tuning data
 - Project-level tuning settings storage
 - Clip-level tuning override support
 - Undo/redo support for tuning changes
 ```
 
-**2.2 MidiClip Integration (Week 5)**
+**2.2 MidiClip Integration** ❌ **NOT IMPLEMENTED**
 ```cpp
-// Integrate with existing MIDI system
+// ❌ MISSING - No integration with PSG pipeline
 class MidiClip : public tracktion::MidiClip {
     void setTuningOverride(const String& tuningName);
     TuningSystem* getEffectiveTuning() const;
@@ -351,51 +381,87 @@ private:
     juce::CachedValue<String> tuningOverride;
 };
 
-// Update MIDI → AY conversion in PsgMidiConverter
+// ❌ MISSING - MIDI to PSG conversion not using tuning system
 class PsgMidiConverter {
     void setTuningSystem(TuningSystem* tuning);
     // Update all conversion methods to use tuning system
 };
 ```
 
-**2.3 UI Components (Week 6)**
+**2.3 UI Components** ✅ **IMPLEMENTED (Different Design)**
 ```cpp
-// User interface components
-class TuningSelector : public juce::ComboBox {
-    void populateFromManager(TuningManager& manager);
-    void setCurrentTuning(const String& name);
-};
-
-class ScaleSelector : public juce::ComboBox {
-    void populateFromManager(TuningManager& manager);
-};
-
+// ✅ IMPLEMENTED - As standalone preview component
 class TuningPreviewComponent : public juce::Component {
-    void playScale(const Scale& scale, const TuningSystem& tuning);
-    void showPeriodTable();
+    // ✅ Chip clock selection (7 presets + custom)
+    ComboBox ChipClockSelect;
+    // ✅ A4 frequency slider (220-880 Hz)
+    Slider a4FrequencySlider;
+    // ✅ Visual period table with tooltips
+    TuningPreviewGrid tuningGrid;
+    // ✅ Real-time tuning updates via ChangeListener
 };
+
+class TuningPreviewGrid : public juce::Component, public TooltipClient {
+    // ✅ Interactive grid showing periods, offtune, tooltips
+    // ✅ Hearing range indicators, MIDI/tracker note info
+    // ✅ Mouse hover with detailed note information
+};
+
+// ❌ MISSING - Planned selector components not implemented
+class TuningSelector;  // Not implemented
+class ScaleSelector;   // Not implemented
 ```
 
-### Phase 3: Advanced Features
+### Phase 3: Advanced Features ⚠️ **PARTIALLY IMPLEMENTED**
 
-**3.1 Auto-Detection (Week 7)**
+**3.1 Auto-Detection** ❌ **NOT IMPLEMENTED**
 ```cpp
-// PSG file analysis
+// ❌ MISSING - No PSG analysis functionality
 class TuningDetector {
     TuningSystem* detectFromPsgData(const PsgData& data);
     double calculateFitness(const PsgData& data, const TuningSystem& tuning);
 };
 ```
 
-**3.2 Custom Tunings (Week 8)**
+**3.2 Custom Tunings** ⚠️ **BASIC IMPLEMENTATION**
 ```cpp
-// User-defined tuning systems
+// ✅ IMPLEMENTED - Basic CustomTuning class exists
+class CustomTuning : public TuningSystem {
+    // ✅ Period table mapping with interpolation
+    // ✅ Octave extrapolation
+    // ✅ Full TuningSystem interface implementation
+};
+
+// ❌ MISSING - No UI editor for custom tunings
 class CustomTuningEditor : public juce::Component {
-    void editPeriodTable();
-    void importFromScala(); // .scl file format support
-    void exportToScala();
+    void editPeriodTable();        // Not implemented
+    void importFromScala();        // Not implemented
+    void exportToScala();          // Not implemented
 };
 ```
+
+## Current Implementation Summary (2025-06-06)
+
+### ✅ **What's Working:**
+- **TuningPreviewComponent**: Fully functional standalone tuning analysis tool
+- **EqualTemperamentTuning**: Complete with chip clock and A4 frequency support
+- **CustomTuning**: Basic implementation with period mapping
+- **Interactive UI**: Grid display with tooltips, hover details, offtune visualization
+- **Real-time Updates**: Chip clock and frequency changes update calculations instantly
+
+### ❌ **What's Missing:**
+- **Production Integration**: No Edit/Clip level tuning system usage
+- **MIDI Pipeline**: No integration with PSG conversion workflow
+- **Just Intonation**: Not implemented despite being core to the design
+- **Scale System**: Declared but no actual scale definitions
+- **TuningManager**: No factory/management system
+- **Serialization**: ValueTree methods commented out
+
+### 📊 **Completion Status:**
+- **Core Infrastructure**: 70% (base classes ✅, some implementations missing)
+- **UI/Preview**: 90% (excellent standalone component)
+- **Integration**: 10% (preview only, no production usage)
+- **Advanced Features**: 30% (CustomTuning ✅, detection/editing missing)
 
 ## Integration Points
 

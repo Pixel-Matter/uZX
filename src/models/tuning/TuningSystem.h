@@ -3,68 +3,9 @@
 #include "JuceHeader.h"
 
 #include "../../util/enumchoice.h"
+#include "Scales.h"
 
 namespace MoTool {
-
-// Interval representation (supports both equal-tempered and just)
-class Interval {
-public:
-    static Interval fromSemitones(double semitones) {
-        return Interval {semitones};
-    }
-
-    static Interval fromRatio(int numerator, int denominator);
-    static Interval fromRatio(const juce::String& ratio); // "3:2", "5:4", etc.
-
-    double toSemitones() const {
-        return value;
-    }
-
-    double toCents() const {
-        return (value - 1.0) * 1200.0;
-    }
-
-    double toRatio() const;
-    bool isJustInterval() const { return isRational; }
-
-private:
-    explicit Interval(double v)
-      : value(v)
-      , isRational(false)
-      , num(-1)
-      , denum(-1)
-    {}
-
-    Interval(double v, bool isR, int n, int d)
-      : value(v)
-      , isRational(isR)
-      , num(n)
-      , denum(d)
-    {}
-
-    double value;        // Semitones or ratio
-    bool isRational;     // true = just interval, false = equal tempered
-    int num, denum;        // For rational intervals
-};
-
-// Scale/mode definition
-class Scale {
-public:
-    Scale(const String& name, const std::vector<Interval>& intervals);
-    Scale(const String& name, const std::vector<int>& dividers); // For example, {48, 45, 40, 36, 32, 30, 27}
-
-    String getName() const { return scaleName; }
-    const std::vector<Interval>& getIntervals() const { return intervals; }
-    size_t getNumSteps() const { return intervals.size(); }
-
-    // // Generate frequency ratios for given tuning system
-    // std::vector<double> getFrequencyRatios(const TuningSystem& tuning) const;
-
-private:
-    String scaleName;
-    std::vector<Interval> intervals;  // In semitones or ratio notation
-};
-
 
 struct TuningTypeEnum {
     enum Enum : size_t {
@@ -113,6 +54,7 @@ public:
 
     // Accuracy and validation
     virtual double getOfftune(double midiNote) const = 0;
+    virtual bool isDefined(int midiNote) const = 0;
 
     // Serialization
     // virtual juce::ValueTree getState() const = 0;
@@ -176,13 +118,17 @@ public:
         return (actualNote - midiNote) * 100.0; // Convert to cents
     }
 
+    bool isDefined(int /*midiNote*/) const override {
+        // Equal temperament is defined for all MIDI notes
+        return true;
+    }
+
 private:
     double a5Freq;
 };
 
 class CustomTuning : public TuningSystem {
 public:
-    // Constructor with period table for specific MIDI note range
     CustomTuning(const ChipCapabilities& caps,
                  const std::map<int, int>& periodTable,
                  const String& customName = "Custom Tuning")
@@ -195,9 +141,41 @@ public:
             minDefinedNote_ = periodTable_.begin()->first;
             maxDefinedNote_ = periodTable_.rbegin()->first;
         } else {
-            minDefinedNote_ = 60; // Default to middle C
-            maxDefinedNote_ = 60;
+            minDefinedNote_ = 0; // Default to middle C
+            maxDefinedNote_ = 0;
         }
+    }
+
+    // Constructor for ProTracker-style sequential period tables
+    CustomTuning(const ChipCapabilities& caps,
+                 int startingMidiNote,
+                 const std::vector<int>& periods,
+                 const String& customName = "Custom Tuning")
+        : TuningSystem(caps)
+        , customName_(customName)
+    {
+        // Build period table from sequential array starting at startingMidiNote
+        for (size_t i = 0; i < periods.size(); ++i) {
+            periodTable_[startingMidiNote + static_cast<int>(i)] = periods[i];
+        }
+
+        // Find the range of defined notes
+        if (!periodTable_.empty()) {
+            minDefinedNote_ = periodTable_.begin()->first;
+            maxDefinedNote_ = periodTable_.rbegin()->first;
+        } else {
+            minDefinedNote_ = startingMidiNote;
+            maxDefinedNote_ = startingMidiNote;
+        }
+    }
+
+    // Constructor with initializer list for convenience
+    CustomTuning(const ChipCapabilities& caps,
+                 int startingMidiNote,
+                 std::initializer_list<int> periods,
+                 const String& customName = "Custom Tuning")
+        : CustomTuning(caps, startingMidiNote, std::vector<int>(periods), customName)
+    {
     }
 
     String getName() const override {
@@ -299,6 +277,13 @@ public:
         return 1200.0 * std::log2(customFreq / equalTempFreq);
     }
 
+    bool isDefined(int midiNote) const override {
+        // Check if note is directly in the period table
+        if (periodTable_.find(midiNote) != periodTable_.end()) {
+            return true;
+        }
+    }
+
     // Additional methods specific to CustomTuning
     const std::map<int, int>& getPeriodTable() const { return periodTable_; }
 
@@ -320,12 +305,12 @@ private:
     int minDefinedNote_;
     int maxDefinedNote_;
 
-    double periodToFrequency(int period) const {
+    double periodToFrequency(int period) const override {
         if (period <= 0) return 0.0;
         return chip.clockFrequency / chip.divider / period;
     }
 
-    int frequencyToPeriod(double frequency) const {
+    int frequencyToPeriod(double frequency) const override {
         if (frequency <= 0.0) return chip.registerRange.getEnd() - 1;
         return jlimit(
             chip.registerRange.getStart(),

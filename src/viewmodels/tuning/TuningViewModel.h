@@ -3,6 +3,7 @@
 #include "JuceHeader.h"
 
 #include "../../models/tuning/TuningSystem.h"
+#include "../../models/tuning/Scales.h"
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "juce_core/system/juce_PlatformDefs.h"
 #include <cmath>
@@ -85,12 +86,36 @@ public:
     TuningViewModel()
         : transientState("TuningView")
         , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
-        , tuningSystem {std::make_unique<EqualTemperamentTuning>(chipCapabilities, 440.0)}
     {
         // Initialize transient view state
         chipClock.referTo(transientState, "chipClock", nullptr,
             uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz));
-        a4Frequency.referTo(transientState, "a4Frequency", nullptr, 440.0);
+        a4Frequency.referTo(transientState, "A4", nullptr, 440.0);
+
+        // TODO scale and root note
+
+        auto proTrackerTuning0 = std::make_unique<CustomTuning>(
+            chipCapabilities,
+            std::map<int, int> {
+                /* Delphi code
+                PT3NoteTable_PT: PT3ToneTable = (
+                    $0C22, $0B73, $0ACF, $0A33, $09A1, $0917, $0894, $0819, $07A4, $0737, $06CF, $066D,
+                    $0611, $05BA, $0567, $051A, $04D0, $048B, $044A, $040C, $03D2, $039B, $0367, $0337,
+                    $0308, $02DD, $02B4, $028D, $0268, $0246, $0225, $0206, $01E9, $01CE, $01B4, $019B,
+                    $0184, $016E, $015A, $0146, $0134, $0123, $0112, $0103, $00F5, $00E7, $00DA, $00CE,
+                    $00C2, $00B7, $00AD, $00A3, $009A, $0091, $0089, $0082, $007A, $0073, $006D, $0067,
+                    $0061, $005C, $0056, $0052, $004D, $0049, $0045, $0041, $003D, $003A, $0036, $0033,
+                    $0031, $002E, $002B, $0029, $0027, $0024, $0022, $0020, $001F, $001D, $001B, $001A,
+                    $0018, $0017, $0016, $0014, $0013, $0012, $0011, $0010, $000F, $000E, $000D, $000C);
+                    */
+                {0, 1024}, {1, 960}, {2, 896}, {3, 840}, {4, 800},
+                {5, 768}, {6, 720}, {7, 680}, {8, 640}, {9, 600},
+                {10, 560}, {11, 512}
+            },
+            "ProTracker Tuning #0"
+        );
+
+        tuningSystem = std::make_unique<EqualTemperamentTuning>(chipCapabilities, 440.0);
     }
 
     std::vector<TuningNoteName> getColumnNoteNames() const {

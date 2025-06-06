@@ -7,6 +7,7 @@ set(SHARED_SOURCES
     models/PsgClip.cpp
     models/Selectable.cpp
     models/EditUtilities.cpp
+    models/tuning/Ratios.cpp
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
 )
@@ -37,5 +38,7 @@ set(TEST_SOURCES
     ## models/PsgTrack.test.cpp
     # models/CustomClip.test.cpp
     models/PsgMidi.test.cpp
+    models/tuning/Ratios.test.cpp
+    models/tuning/CustomTuning.test.cpp
     # plugins/uZX/aychip/AYChip.test.cpp
 )

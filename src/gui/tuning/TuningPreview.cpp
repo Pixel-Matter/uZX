@@ -22,11 +22,29 @@ void TuningPreviewGrid::resized() {
     // Resize logic if needed
 }
 
+void TuningPreviewGrid::mouseMove(const MouseEvent& event) {
+    lastMousePosition = event.getPosition();
+
+    TuningNote foundNote;
+    if (findNoteAtPosition(lastMousePosition, foundNote)) {
+        if (!hasHoveredNote || foundNote.midiNote != hoveredNote.midiNote) {
+            hoveredNote = foundNote;
+            hasHoveredNote = true;
+            // Tooltip content will be provided by getTooltip() override
+            // repaint(); // Optional: repaint if we want visual feedback
+        }
+    } else {
+        if (hasHoveredNote) {
+            hasHoveredNote = false;
+            // Tooltip will be cleared automatically when getTooltip() returns empty string
+            // repaint(); // Optional: repaint to clear any visual feedback
+        }
+    }
+}
+
 void TuningPreviewGrid::paint(juce::Graphics& g) {
     const int cols = viewModel.getNumColumns();
     // const int rows = viewModel.getNumRows();
-    const int cellWidth = 56;
-    const int cellHeight = 32;
 
     g.fillAll(Colors::Theme::backgroundAlt);
     auto bounds = getLocalBounds();
@@ -134,10 +152,90 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
     }
 }
 
+bool TuningPreviewGrid::findNoteAtPosition(Point<int> position, TuningNote& outNote) const {
+    const int cols = viewModel.getNumColumns();
+
+    auto bounds = getLocalBounds();
+    bounds.reduce(20, 20); // Same padding as in paint
+    bounds.setWidth(cellWidth * (cols + 2));
+    bounds.setX((getWidth() - bounds.getWidth()) / 2);
+
+    // Skip header row
+    auto headerBounds = bounds.removeFromTop(cellHeight);
+    if (position.y < headerBounds.getBottom()) {
+        return false; // Mouse is in header area
+    }
+
+    // Calculate which octave row we're in
+    const auto octaves = viewModel.getOctaveRange();
+    const int rowsStartY = headerBounds.getBottom();
+    const int relativeY = position.y - rowsStartY;
+
+    if (relativeY < 0) {
+        return false; // Above the grid
+    }
+
+    const int rowIndex = relativeY / cellHeight;
+    const int octave = octaves.getStart() + rowIndex;
+
+    if (octave >= octaves.getEnd()) {
+        return false; // Below the grid
+    }
+
+    // Calculate which note column we're in
+    const int notesStartX = bounds.getX() + cellWidth; // Skip octave label column
+    const int relativeX = position.x - notesStartX;
+
+    if (relativeX < 0) {
+        return false; // In octave label column
+    }
+
+    const int noteIndex = relativeX / cellWidth;
+
+    if (noteIndex >= cols) {
+        return false; // Past the last note column
+    }
+
+    // Verify we're within the actual cell bounds (not in padding)
+    const int cellX = notesStartX + noteIndex * cellWidth;
+    const int cellY = rowsStartY + rowIndex * cellHeight;
+
+    if (position.x >= cellX && position.x < cellX + cellWidth &&
+        position.y >= cellY && position.y < cellY + cellHeight) {
+        // Get the note for this octave and column
+        auto octaveNotes = viewModel.getOctaveNotes(octave);
+        if (noteIndex < static_cast<int>(octaveNotes.size())) {
+            outNote = octaveNotes[noteIndex];
+            return true;
+        }
+    }
+
+    return false; // Mouse not over any note cell
+}
+
+String TuningPreviewGrid::getTooltip() {
+    if (!hasHoveredNote) {
+        return "";
+    }
+
+    String midiInfo = hoveredNote.isInMidiRange() ? String::formatted("%d", hoveredNote.midiNote) : String("out of range");
+    auto trackerNote = hoveredNote.getTrackerNote();
+    String trackerInfo = trackerNote != -1 ? String::formatted("%d", trackerNote) : String("out of range");
+
+    return String::formatted("Note: %s\nMIDI: %s\nTracker note: %s\nFrequency: %.2f Hz\nPeriod: %d\nOfftune: %+.1f cents",
+                            hoveredNote.name.toUTF8(),
+                            midiInfo.toUTF8(),
+                            trackerInfo.toUTF8(),
+                            hoveredNote.frequency,
+                            hoveredNote.period,
+                            hoveredNote.offtune);
+}
+
 //================================================================================
 TuningPreviewComponent::TuningPreviewComponent()
     : viewModel(TuningViewModel())
     , tuningGrid(viewModel)
+    , tooltipWindow(nullptr, 500) // 500ms delay
 {
     setOpaque(true);
     addAndMakeVisible(tuningGrid);

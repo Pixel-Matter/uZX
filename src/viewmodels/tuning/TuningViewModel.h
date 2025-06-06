@@ -26,8 +26,22 @@ struct TuningNote {
     int period;            // Chip divider value (for AY-3-8910, etc.)
     String name;           // Note name (e.g., "C3", "A#4")
 
+    inline static constexpr int trackerNoteOffset = 12; // Tracker note number offset from MIDI number
+    inline static constexpr int trackerNotesNum = 96;
+
     bool isInMidiRange() const {
         return midiNote >= 0 && midiNote <= 127; // MIDI note range check
+    }
+
+    bool isInTrackerRange() const {
+        return midiNote >= trackerNoteOffset && midiNote < trackerNotesNum + trackerNoteOffset; // Tracker note range check
+    }
+
+    int getTrackerNote() const {
+        if (!isInTrackerRange()) {
+            return -1; // Invalid Tracker note number
+        }
+        return midiNote - trackerNoteOffset; // Convert MIDI note to Tracker note
     }
 };
 

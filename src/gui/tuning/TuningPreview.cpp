@@ -135,22 +135,27 @@ TuningPreviewComponent::TuningPreviewComponent()
             tuningGrid.repaint(); // Refresh the tuning grid with new calculations
         }
     };
-    
-    // Set up callback to update UI when tuning system changes
-    viewModel.onTuningSystemChanged = [this]() {
-        DBG("UI callback triggered - updating tuning name and repainting grid");
-        // Update the tuning name label to reflect the new tuning system
-        TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);
-        
-        // Repaint the tuning grid to show updated calculations
-        tuningGrid.repaint();
+
+    // Set up A4 frequency slider
+    a4FrequencySlider.setRange(220.0, 880.0, 0.1);
+    a4FrequencySlider.setValue(viewModel.getA4Frequency(), juce::dontSendNotification);
+    a4FrequencySlider.setSliderStyle(Slider::LinearHorizontal);
+    a4FrequencySlider.setTextBoxStyle(Slider::TextBoxRight, false, 60, 20);
+    a4FrequencySlider.onValueChange = [this]() {
+        viewModel.seta4Frequency(a4FrequencySlider.getValue());
     };
+    a4FrequencyLabel.setText("A4 Frequency (Hz):", juce::dontSendNotification);
+
+    // Register as a change listener to the view model
+    viewModel.addChangeListener(this);
     ScaleLabel.setText("Scale: " + viewModel.getScaleName(), juce::dontSendNotification);
     // TuningTypeLabel.setText("Tuning Type: " + viewModel.getTuningTypeName(), juce::dontSendNotification);
     TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);
     // ToneEnvSwitchLabel.setText("Tone Env Switch: " + String(viewModel.isToneEnvSwitchEnabled()), juce::dontSendNotification);
 
     addAndMakeVisible(ChipClockSelect);
+    addAndMakeVisible(a4FrequencySlider);
+    addAndMakeVisible(a4FrequencyLabel);
     addAndMakeVisible(ScaleLabel);
     // addAndMakeVisible(TuningTypeLabel);
     addAndMakeVisible(TuningNameLabel);
@@ -158,13 +163,21 @@ TuningPreviewComponent::TuningPreviewComponent()
 }
 
 TuningPreviewComponent::~TuningPreviewComponent() {
+    viewModel.removeChangeListener(this);
 }
 
 void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds();
     auto labelHeight = 20;
+    auto sliderHeight = 30;
 
     ChipClockSelect.setBounds(bounds.removeFromTop(labelHeight));
+
+    // A4 frequency slider with label
+    auto a5Row = bounds.removeFromTop(sliderHeight);
+    a4FrequencyLabel.setBounds(a5Row.removeFromLeft(120));
+    a4FrequencySlider.setBounds(a5Row);
+
     ScaleLabel.setBounds(bounds.removeFromTop(labelHeight));
     // TuningTypeLabel.setBounds(bounds.removeFromTop(labelHeight));
     TuningNameLabel.setBounds(bounds.removeFromTop(labelHeight));
@@ -176,6 +189,21 @@ void TuningPreviewComponent::resized() {
 void TuningPreviewComponent::paint(juce::Graphics& g) {
     g.fillAll(Colors::Theme::background);
     g.setColour(juce::Colours::white);
+}
+
+void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
+    if (source == &viewModel) {
+        DBG("ChangeListener callback - updating UI with A4 frequency: " << viewModel.getA4Frequency() << " Hz");
+
+        // Update the tuning name label to reflect the new tuning system
+        TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);
+
+        // Update A4 frequency slider to reflect current value
+        a4FrequencySlider.setValue(viewModel.getA4Frequency(), juce::dontSendNotification);
+
+        // Repaint the tuning grid to show updated calculations
+        tuningGrid.repaint();
+    }
 }
 
 }  // namespace MoTool

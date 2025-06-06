@@ -121,14 +121,14 @@ protected:
 
 class EqualTemperamentTuning : public TuningSystem {
 public:
-    EqualTemperamentTuning(const ChipCapabilities& caps, double a5Frequency = 440.0)
+    EqualTemperamentTuning(const ChipCapabilities& caps, double a4Frequency = 440.0)
         : TuningSystem(caps)
-        , a5Freq(a5Frequency)
+        , a5Freq(a4Frequency)
     {
     }
 
     String getName() const override {
-        return String(std::string(getType().getLabel())) + String::formatted(" Chip clock = %.3f MHz, A5 = %.2f Hz", chip.clockFrequency / 1000000.0, a5Freq);
+        return String(std::string(getType().getLabel())) + String::formatted(" Chip clock = %.3f MHz, A4 = %.2f Hz", chip.clockFrequency / 1000000.0, a5Freq);
     }
 
     TuningType getType() const override {

@@ -28,18 +28,19 @@ struct TuningNote {
     }
 };
 
-class TuningViewModel {
+class TuningViewModel : public ChangeBroadcaster {
 public:
-    // Callback for when tuning system changes
-    std::function<void()> onTuningSystemChanged;
+    // Any UI component can now listen to tuning system changes by implementing ChangeListener
+    // and calling viewModel.addChangeListener(this) in their constructor
     TuningViewModel()
         : transientState("TuningView")
         , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
-        , tuningSystem {std::make_unique<EqualTemperamentTuning>(chipCapabilities)}
+        , tuningSystem {std::make_unique<EqualTemperamentTuning>(chipCapabilities, 440.0)}
     {
         // Initialize transient view state
         chipClock.referTo(transientState, "chipClock", nullptr,
             uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz));
+        a4Frequency.referTo(transientState, "a4Frequency", nullptr, 440.0);
     }
 
     std::vector<TuningNoteName> getColumnNoteNames() const {
@@ -64,19 +65,20 @@ public:
     }
 
     Range<int> getOctaveRange() const {
-        return Range<int>(0, 14);
+        return Range<int>(0, 13);
     }
 
     int getNumRows() const {
         return getOctaveRange().getLength();
     }
 
+    // Octave -1 is subcontroctave
     std::vector<TuningNote> getOctaveNotes(int octave) const {
         std::vector<TuningNote> notes;
         notes.reserve((size_t) getNumColumns());
         for (auto noteName : getColumnNoteNames()) {
             TuningNote note;
-            note.midiNote = octave * 12 + noteName.noteNumber; // MIDI note number
+            note.midiNote = (octave + 1) * 12 + noteName.noteNumber; // MIDI note number
             note.isInScale = noteName.isInScale;
             if (!tuningSystem) {
                 note.frequency = 0.0; // Default frequency
@@ -139,6 +141,18 @@ public:
         }
     }
 
+    double getA4Frequency() const {
+        return a4Frequency.get();
+    }
+
+    void seta4Frequency(double frequency) {
+        DBG("Setting A4 frequency to: " << frequency << " Hz");
+        if (frequency >= 220.0 && frequency <= 880.0) { // Reasonable range for A4
+            a4Frequency = frequency;
+            updateChipCapabilities();
+        }
+    }
+
     // // State persistence methods
     // ValueTree getState() const {
     //     return transientState.createCopy();
@@ -159,22 +173,21 @@ private:
             double clockFreq = uZX::ChipClockEnum::clockValues[index];
             chipCapabilities.clockFrequency = clockFreq;
 
-            DBG("Updating tuning system with new clock frequency: " << clockFreq << " Hz");
+            DBG("Updating tuning system with new clock frequency: " << clockFreq << " Hz and A4 frequency: " << a4Frequency.get() << " Hz");
 
-            // Recreate tuning system with new capabilities
-            tuningSystem = std::make_unique<EqualTemperamentTuning>(chipCapabilities);
+            // Recreate tuning system with new capabilities and current A4 frequency
+            tuningSystem = std::make_unique<EqualTemperamentTuning>(chipCapabilities, a4Frequency.get());
 
-            // Notify listeners that the tuning system has changed
-            if (onTuningSystemChanged) {
-                DBG("Notifying UI of tuning system change");
-                onTuningSystemChanged();
-            }
+            // Notify all registered listeners that the tuning system has changed
+            DBG("Broadcasting tuning system change to all listeners");
+            sendChangeMessage();
         }
     }
 
     // Transient view state
     ValueTree transientState;
     CachedValue<uZX::ChipClockChoice> chipClock;
+    CachedValue<double> a4Frequency;
     ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
     std::unique_ptr<TuningSystem> tuningSystem;
 

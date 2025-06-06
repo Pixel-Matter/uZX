@@ -5,7 +5,7 @@
 ### Tuning Systems in Music
 
 A **tuning system** defines the mathematical relationships between musical pitches. The practical purpose is to translate
-MIDI note numbers C0..G11 (A5 is 440Hz) to frequency based on mathematical relationships between musical pitches.
+MIDI note numbers C-1..G10 (A4 is 440Hz) to frequency based on mathematical relationships between musical pitches.
 And for our case tuning system must translate note numbers to chip register values for hardware clock dividers (periods) as an end result.
 In legacy tracker software this is implemented as lookup tables with fixed period values, note number to value.
 

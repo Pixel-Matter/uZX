@@ -23,7 +23,7 @@ private:
 };
 
 
-class TuningPreviewComponent : public juce::Component {
+class TuningPreviewComponent : public juce::Component, private ChangeListener {
 public:
     TuningPreviewComponent();
     ~TuningPreviewComponent() override;
@@ -32,9 +32,13 @@ public:
     void paint(juce::Graphics& g) override;
 
 private:
+    void changeListenerCallback(ChangeBroadcaster* source) override;
+
     TuningViewModel viewModel;
 
     ComboBox ChipClockSelect;
+    Slider a4FrequencySlider;
+    Label a4FrequencyLabel;
     Label ScaleLabel;  // with Root note
     Label TuningTypeLabel;
     Label TuningNameLabel;

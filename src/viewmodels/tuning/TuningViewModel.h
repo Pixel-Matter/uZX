@@ -85,37 +85,17 @@ public:
     // and calling viewModel.addChangeListener(this) in their constructor
     TuningViewModel()
         : transientState("TuningView")
-        , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
+        , chipCapabilities {1750000, 16, Range<int>(1, 4096)}
+        // , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
     {
         // Initialize transient view state
         chipClock.referTo(transientState, "chipClock", nullptr,
-            uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz));
+            uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz));
+            // uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz));
         a4Frequency.referTo(transientState, "A4", nullptr, 440.0);
 
-        // TODO scale and root note
-
-        auto proTrackerTuning0 = std::make_unique<CustomTuning>(
-            chipCapabilities,
-            std::map<int, int> {
-                /* Delphi code
-                PT3NoteTable_PT: PT3ToneTable = (
-                    $0C22, $0B73, $0ACF, $0A33, $09A1, $0917, $0894, $0819, $07A4, $0737, $06CF, $066D,
-                    $0611, $05BA, $0567, $051A, $04D0, $048B, $044A, $040C, $03D2, $039B, $0367, $0337,
-                    $0308, $02DD, $02B4, $028D, $0268, $0246, $0225, $0206, $01E9, $01CE, $01B4, $019B,
-                    $0184, $016E, $015A, $0146, $0134, $0123, $0112, $0103, $00F5, $00E7, $00DA, $00CE,
-                    $00C2, $00B7, $00AD, $00A3, $009A, $0091, $0089, $0082, $007A, $0073, $006D, $0067,
-                    $0061, $005C, $0056, $0052, $004D, $0049, $0045, $0041, $003D, $003A, $0036, $0033,
-                    $0031, $002E, $002B, $0029, $0027, $0024, $0022, $0020, $001F, $001D, $001B, $001A,
-                    $0018, $0017, $0016, $0014, $0013, $0012, $0011, $0010, $000F, $000E, $000D, $000C);
-                    */
-                {0, 1024}, {1, 960}, {2, 896}, {3, 840}, {4, 800},
-                {5, 768}, {6, 720}, {7, 680}, {8, 640}, {9, 600},
-                {10, 560}, {11, 512}
-            },
-            "ProTracker Tuning #0"
-        );
-
-        tuningSystem = std::make_unique<EqualTemperamentTuning>(chipCapabilities, 440.0);
+        // Initialize with ProTracker tuning
+        updateTuningSystem();
     }
 
     std::vector<TuningNoteName> getColumnNoteNames() const {
@@ -286,6 +266,49 @@ public:
     // TODO Tuning table editing? What bindings to use?
 
 private:
+    void updateTuningSystem() {
+        // TODO scale and root note
+
+        /* Delphi code
+        PT3NoteTable_PT: PT3ToneTable = (
+            $0C22, $0B73, $0ACF, $0A33, $09A1, $0917, $0894, $0819, $07A4, $0737, $06CF, $066D,
+            $0611, $05BA, $0567, $051A, $04D0, $048B, $044A, $040C, $03D2, $039B, $0367, $0337,
+            $0308, $02DD, $02B4, $028D, $0268, $0246, $0225, $0206, $01E9, $01CE, $01B4, $019B,
+            $0184, $016E, $015A, $0146, $0134, $0123, $0112, $0103, $00F5, $00E7, $00DA, $00CE,
+            $00C2, $00B7, $00AD, $00A3, $009A, $0091, $0089, $0082, $007A, $0073, $006D, $0067,
+            $0061, $005C, $0056, $0052, $004D, $0049, $0045, $0041, $003D, $003A, $0036, $0033,
+            $0031, $002E, $002B, $0029, $0027, $0024, $0022, $0020, $001F, $001D, $001B, $001A,
+            $0018, $0017, $0016, $0014, $0013, $0012, $0011, $0010, $000F, $000E, $000D, $000C);
+        */
+        auto proTrackerTuning0 = std::make_unique<CustomTuning>(
+            chipCapabilities,
+            24, // Starting at MIDI note 24 (C1)
+            std::vector<int> {
+                // Octave 1 (C1-B1): $0C22-$066D
+                3106, 2931, 2767, 2611, 2465, 2327, 2196, 2073, 1956, 1847, 1743, 1645,
+                // Octave 2 (C2-B2): $0611-$0337
+                1553, 1466, 1383, 1306, 1232, 1163, 1098, 1036, 978, 923, 871, 823,
+                // Octave 3 (C3-B3): $0308-$019B
+                776, 733, 692, 653, 616, 582, 549, 518, 489, 462, 436, 411,
+                // Octave 4 (C4-B4): $0184-$00CE
+                388, 366, 346, 326, 308, 291, 274, 259, 245, 231, 218, 206,
+                // Octave 5 (C5-B5): $00C2-$0067
+                194, 183, 173, 163, 154, 145, 137, 130, 122, 115, 109, 103,
+                // Octave 6 (C6-B6): $0061-$0033
+                97, 92, 86, 82, 77, 73, 69, 65, 61, 58, 54, 51,
+                // Octave 7 (C7-B7): $0031-$001A
+                49, 46, 43, 41, 39, 36, 34, 32, 31, 29, 27, 26,
+                // Octave 8 (C8-B8): $0018-$000C
+                24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12
+            },
+            "ProTracker Tuning #0"
+        );
+
+        // auto equalTemperamentTuning = std::make_unique<EqualTemperamentTuning>(chipCapabilities, a4Frequency.get());
+
+        tuningSystem = std::move(proTrackerTuning0);
+    }
+
     void updateChipCapabilities() {
         auto choice = chipClock.get();
         int index = static_cast<int>(choice.value);
@@ -297,7 +320,7 @@ private:
             DBG("Updating tuning system with new clock frequency: " << clockFreq << " Hz and A4 frequency: " << a4Frequency.get() << " Hz");
 
             // Recreate tuning system with new capabilities and current A4 frequency
-            tuningSystem = std::make_unique<EqualTemperamentTuning>(chipCapabilities, a4Frequency.get());
+            updateTuningSystem();
 
             // Notify all registered listeners that the tuning system has changed
             DBG("Broadcasting tuning system change to all listeners");

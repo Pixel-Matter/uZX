@@ -34,8 +34,8 @@ struct ChipCapabilities {
 // Base tuning system interface
 class TuningSystem {
 public:
-    TuningSystem(const ChipCapabilities& capabilities)
-        : chip(capabilities)
+    TuningSystem(const ChipCapabilities& capabilities, double a4Frequency = 440.0)
+        : chip(capabilities), a4Freq(a4Frequency)
     {}
 
     virtual ~TuningSystem() = default;
@@ -47,10 +47,23 @@ public:
     // midiNote is double because we want slides and pitch bends
     virtual double midiNoteToFrequency(double midiNote) const = 0;
     virtual double frequencyToMidiNote(double frequency) const = 0;
-    virtual double periodToFrequency(int period) const = 0;
-    virtual int frequencyToPeriod(double frequency) const = 0;
     virtual int midiNoteToPeriod(double midiNote) const = 0;
     virtual double periodToMidiNote(int period) const = 0;
+
+    // Default chip-based period/frequency conversion (can be overridden if needed)
+    virtual double periodToFrequency(int period) const {
+        if (period <= 0) return 0.0;
+        return chip.clockFrequency / chip.divider / period;
+    }
+
+    virtual int frequencyToPeriod(double frequency) const {
+        if (frequency <= 0.0) return chip.registerRange.getEnd() - 1;
+        return jlimit(
+            chip.registerRange.getStart(),
+            chip.registerRange.getEnd() - 1,
+            static_cast<int>(std::round(chip.clockFrequency / chip.divider / frequency))
+        );
+    }
 
     // Accuracy and validation
     virtual double getOfftune(double midiNote) const = 0;
@@ -61,18 +74,21 @@ public:
     // virtual void setState(const juce::ValueTree& state) = 0;
 protected:
     const ChipCapabilities& chip;
+    double a4Freq;
+
+    // Reference frequency calculation (A4 = 69, default 440Hz)
+    virtual double getReferenceFrequency(double midiNote) const {
+        return a4Freq * std::pow(2.0, (midiNote - 69) / 12.0);
+    }
+
 };
 
 class EqualTemperamentTuning : public TuningSystem {
 public:
-    EqualTemperamentTuning(const ChipCapabilities& caps, double a4Frequency = 440.0)
-        : TuningSystem(caps)
-        , a5Freq(a4Frequency)
-    {
-    }
+    using TuningSystem::TuningSystem;
 
     String getName() const override {
-        return String(std::string(getType().getLabel())) + String::formatted(" Chip clock = %.3f MHz, A4 = %.2f Hz", chip.clockFrequency / 1000000.0, a5Freq);
+        return String(std::string(getType().getLabel())) + String::formatted(" Chip clock = %.3f MHz, A4 = %.2f Hz", chip.clockFrequency / 1000000.0, a4Freq);
     }
 
     TuningType getType() const override {
@@ -80,23 +96,15 @@ public:
     }
 
     double midiNoteToFrequency(double midiNote) const override {
-        return a5Freq * std::pow(2.0, (midiNote - 69) / 12.0);
+        return a4Freq * std::pow(2.0, (midiNote - 69) / 12.0);
     }
 
     double frequencyToMidiNote(double frequency) const override {
-        return 69 + 12 * std::log2(frequency / a5Freq);
+        return 69 + 12 * std::log2(frequency / a4Freq);
     }
 
-    int frequencyToPeriod(double frequency) const override {
-        return jlimit(
-            chip.registerRange.getStart(),
-            chip.registerRange.getEnd() - 1,
-            static_cast<int>(std::round(chip.clockFrequency / chip.divider / frequency))
-        );
-    }
-
-    double periodToFrequency(int period) const override {
-        return chip.clockFrequency / chip.divider / period;
+    double getReferenceFrequency(double midiNote) const override {
+        return a4Freq * std::pow(2.0, (midiNote - 69) / 12.0);
     }
 
     int midiNoteToPeriod(double midiNote) const override {
@@ -122,17 +130,15 @@ public:
         // Equal temperament is defined for all MIDI notes
         return true;
     }
-
-private:
-    double a5Freq;
 };
 
 class CustomTuning : public TuningSystem {
 public:
     CustomTuning(const ChipCapabilities& caps,
                  const std::map<int, int>& periodTable,
-                 const String& customName = "Custom Tuning")
-        : TuningSystem(caps)
+                 const String& customName = "Custom Tuning",
+                 double a4Frequency = 440.0)
+        : TuningSystem(caps, a4Frequency)
         , periodTable_(periodTable)
         , customName_(customName)
     {
@@ -150,8 +156,9 @@ public:
     CustomTuning(const ChipCapabilities& caps,
                  int startingMidiNote,
                  const std::vector<int>& periods,
-                 const String& customName = "Custom Tuning")
-        : TuningSystem(caps)
+                 const String& customName = "Custom Tuning",
+                 double a4Frequency = 440.0)
+        : TuningSystem(caps, a4Frequency)
         , customName_(customName)
     {
         // Build period table from sequential array starting at startingMidiNote
@@ -173,8 +180,9 @@ public:
     CustomTuning(const ChipCapabilities& caps,
                  int startingMidiNote,
                  std::initializer_list<int> periods,
-                 const String& customName = "Custom Tuning")
-        : CustomTuning(caps, startingMidiNote, std::vector<int>(periods), customName)
+                 const String& customName = "Custom Tuning",
+                 double a4Frequency = 440.0)
+        : CustomTuning(caps, startingMidiNote, std::vector<int>(periods), customName, a4Frequency)
     {
     }
 
@@ -246,17 +254,11 @@ public:
     }
 
     double periodToMidiNote(int period) const override {
-        // Find the closest period in the table
-        int closestNote = 60; // Default to middle C
-        int closestPeriodDiff = std::numeric_limits<int>::max();
-
-        for (const auto& [note, notePeriod] : periodTable_) {
-            int diff = std::abs(notePeriod - period);
-            if (diff < closestPeriodDiff) {
-                closestPeriodDiff = diff;
-                closestNote = note;
-            }
+        if (periodTable_.empty()) {
+            return 60.0; // Default to middle C
         }
+
+        int closestNote = findClosestNoteByPeriod(period);
 
         // Calculate more precise note using frequency relationship
         double actualFreq = periodToFrequency(period);
@@ -269,7 +271,7 @@ public:
     double getOfftune(double midiNote) const override {
         // Calculate the difference between the custom tuning and equal temperament
         double customFreq = midiNoteToFrequency(midiNote);
-        double equalTempFreq = 440.0 * std::pow(2.0, (midiNote - 69) / 12.0);
+        double equalTempFreq = getReferenceFrequency(midiNote);
 
         if (equalTempFreq == 0.0) return 0.0;
 
@@ -282,6 +284,7 @@ public:
         if (periodTable_.find(midiNote) != periodTable_.end()) {
             return true;
         }
+        return false;  // only defined notes are those in the period table, not interpolated ones
     }
 
     // Additional methods specific to CustomTuning
@@ -305,18 +308,42 @@ private:
     int minDefinedNote_;
     int maxDefinedNote_;
 
-    double periodToFrequency(int period) const override {
-        if (period <= 0) return 0.0;
-        return chip.clockFrequency / chip.divider / period;
-    }
+    int findClosestNoteByPeriod(int period) const {
+        if (periodTable_.empty()) {
+            return 60; // Default to middle C
+        }
 
-    int frequencyToPeriod(double frequency) const override {
-        if (frequency <= 0.0) return chip.registerRange.getEnd() - 1;
-        return jlimit(
-            chip.registerRange.getStart(),
-            chip.registerRange.getEnd() - 1,
-            static_cast<int>(std::round(chip.clockFrequency / chip.divider / frequency))
-        );
+        // Binary search for closest period using lower_bound
+        // Since periods decrease as notes get higher, we need to search by period value
+        int closestNote = periodTable_.begin()->first;
+        int closestPeriodDiff = std::abs(periodTable_.begin()->second - period);
+
+        // Find the first note with period <= target period
+        auto it = std::lower_bound(periodTable_.begin(), periodTable_.end(), period,
+            [](const auto& pair, int targetPeriod) {
+                return pair.second > targetPeriod; // Note: periods decrease with higher notes
+            });
+
+        // Check the found position and its neighbors
+        if (it != periodTable_.end()) {
+            int diff = std::abs(it->second - period);
+            if (diff < closestPeriodDiff) {
+                closestPeriodDiff = diff;
+                closestNote = it->first;
+            }
+        }
+
+        // Check the previous element if it exists
+        if (it != periodTable_.begin()) {
+            auto prev = std::prev(it);
+            int diff = std::abs(prev->second - period);
+            if (diff < closestPeriodDiff) {
+                closestPeriodDiff = diff;
+                closestNote = prev->first;
+            }
+        }
+
+        return closestNote;
     }
 };
 

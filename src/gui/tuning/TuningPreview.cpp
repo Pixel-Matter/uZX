@@ -135,9 +135,10 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
             // drawing text
             auto textCell = gridCell;
             auto text = String::formatted("%d", note.period);
-            auto textWidth = static_cast<int>(std::ceil(g.getCurrentFont().getStringWidthFloat(text)));
+            int textWidth = static_cast<int>(std::ceil(TextLayout::getStringWidth(g.getCurrentFont(), text)));
+            // auto textWidth = static_cast<int>(std::ceil(g.getCurrentFont().getStringWidthFloat(text)));
             textCell.setWidth(textWidth);
-            textCell.setCentre(offX, textCell.getCentreY());
+            textCell.setCentre((int) offX, (int) textCell.getCentreY());
             textCell = textCell.constrainedWithin(gridCell.reduced(2, 0));
 
             g.setColour(noteTextColor);
@@ -242,7 +243,7 @@ TuningPreviewComponent::TuningPreviewComponent()
     a4FrequencySlider.setSliderStyle(Slider::LinearHorizontal);
     a4FrequencySlider.setTextBoxStyle(Slider::TextBoxRight, false, 60, 20);
     a4FrequencySlider.onValueChange = [this]() {
-        viewModel.seta4Frequency(a4FrequencySlider.getValue());
+        viewModel.setA4Frequency(a4FrequencySlider.getValue());
     };
     a4FrequencyLabel.setText("A4 Frequency (Hz):", juce::dontSendNotification);
 

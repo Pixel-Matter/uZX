@@ -1,11 +1,33 @@
 #pragma once
 
-#include "JuceHeader.h"
+#include <JuceHeader.h>
 
 #include "../../util/enumchoice.h"
 #include "Scales.h"
 
+
 namespace MoTool {
+
+
+inline String getMidiNoteName(int note) {
+    return juce::MidiMessage::getMidiNoteName(note, true, true, 4);
+}
+
+struct TemperamentTypeEnum {
+    enum Enum : size_t {
+        EqualTemperament,
+        Just5LimitIntonation,
+        Pythagorean,
+        CustomRationalIntonation,
+    };
+
+    static inline constexpr std::string_view longLabels[] {
+        "Equal Temperament",
+        "5-Limit Just Intonation",
+        "Pythagorean",
+        "Custom Rational Intonation",
+    };
+};
 
 struct TuningTypeEnum {
     enum Enum : size_t {
@@ -69,10 +91,20 @@ public:
     virtual double getOfftune(double midiNote) const = 0;
     virtual bool isDefined(int midiNote) const = 0;
 
+    // Setters
+    void setA4Frequency(double frequency) {
+        a4Freq = frequency;
+    }
+
+    double getA4Frequency() const {
+        return a4Freq;
+    }
+
     // Serialization
     // virtual juce::ValueTree getState() const = 0;
     // virtual void setState(const juce::ValueTree& state) = 0;
 protected:
+    // TODO use CachedValues refTo-ed to a state value in a tree
     const ChipCapabilities& chip;
     double a4Freq;
 
@@ -187,7 +219,8 @@ public:
     }
 
     String getName() const override {
-        return customName_ + String::formatted(" (Custom, %d notes defined)", static_cast<int>(periodTable_.size()));
+        return customName_ + String::formatted(" (Custom, defined notes %s-%s, A4 = %.2fHz)",
+            getMidiNoteName(minDefinedNote_).toUTF8(), getMidiNoteName(maxDefinedNote_).toUTF8(), getA4Frequency());
     }
 
     TuningType getType() const override {
@@ -213,15 +246,18 @@ public:
             return it->second;
         }
 
+        int result;
         // Handle notes outside the defined range
         if (note < minDefinedNote_) {
             // Extrapolate downward using octave relationship
             int octaveShift = (minDefinedNote_ - note + 11) / 12;
             int baseNote = note + octaveShift * 12;
             if (auto baseIt = periodTable_.find(baseNote); baseIt != periodTable_.end()) {
-                return baseIt->second * (1 << octaveShift); // Double period for each octave down
+                result = baseIt->second * (1 << octaveShift); // Double period for each octave down
+            } else {
+                result = periodTable_.begin()->second * 2; // Fallback
             }
-            return periodTable_.begin()->second * 2; // Fallback
+            return jlimit(chip.registerRange.getStart(), chip.registerRange.getEnd() - 1, result);
         }
 
         if (note > maxDefinedNote_) {
@@ -229,9 +265,11 @@ public:
             int octaveShift = (note - maxDefinedNote_ + 11) / 12;
             int baseNote = note - octaveShift * 12;
             if (auto baseIt = periodTable_.find(baseNote); baseIt != periodTable_.end()) {
-                return std::max(1, baseIt->second / (1 << octaveShift)); // Halve period for each octave up
+                result = std::max(1, baseIt->second / (1 << octaveShift)); // Halve period for each octave up
+            } else {
+                result = std::max(1, periodTable_.rbegin()->second / 2); // Fallback
             }
-            return std::max(1, periodTable_.rbegin()->second / 2); // Fallback
+            return jlimit(chip.registerRange.getStart(), chip.registerRange.getEnd() - 1, result);
         }
 
         // Interpolate between nearest defined notes
@@ -250,7 +288,8 @@ public:
         double logPeriod = std::log(static_cast<double>(lower->second)) * (1.0 - ratio) +
                           std::log(static_cast<double>(upper->second)) * ratio;
 
-        return static_cast<int>(std::round(std::exp(logPeriod)));
+        result = static_cast<int>(std::round(std::exp(logPeriod)));
+        return jlimit(chip.registerRange.getStart(), chip.registerRange.getEnd() - 1, result);
     }
 
     double periodToMidiNote(int period) const override {

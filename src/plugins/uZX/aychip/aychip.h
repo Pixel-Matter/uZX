@@ -137,7 +137,7 @@ using namespace MoTool::uZX;
 //     return ChipClockChoice(value).enumNameCustom();
 // }
 
-template <>
+// template <>
 // inline constexpr customize_t enum_name<ChipType::Enum>(ChipType::Enum value) noexcept {
 //     return ChipType(value).enumNameCustom();
 // }

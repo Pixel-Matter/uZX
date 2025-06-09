@@ -15,7 +15,7 @@ public:
             std::map<int, int> emptyTable;
             CustomTuning tuning(testCaps, emptyTable, "Empty Test");
 
-            expectEquals(tuning.getName(), String("Empty Test (Custom, 0 notes defined)"));
+            expectEquals(tuning.getName(), String("Empty Test (Custom, defined notes C-1-C-1, A4 = 440.00Hz)"));
             expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TuningType::Custom));
         }
 
@@ -28,7 +28,7 @@ public:
             };
             CustomTuning tuning(testCaps, simpleTable, "Simple Test");
 
-            expectEquals(tuning.getName(), String("Simple Test (Custom, 3 notes defined)"));
+            expectEquals(tuning.getName(), String("Simple Test (Custom, defined notes C4-D4, A4 = 440.00Hz)"));
         }
 
         beginTest("Constructor with vector of periods");
@@ -40,7 +40,7 @@ public:
                 "Vector Test Tuning"
             );
 
-            expectEquals(tuning.getName(), String("Vector Test Tuning (Custom, 7 notes defined)"));
+            expectEquals(tuning.getName(), String("Vector Test Tuning (Custom, defined notes C4-F#4, A4 = 440.00Hz)"));
 
             const auto& periodTable = tuning.getPeriodTable();
             expectEquals(static_cast<int>(periodTable.size()), 7);
@@ -64,7 +64,7 @@ public:
             const auto& periodTable = tuning.getPeriodTable();
             expectEquals(static_cast<int>(periodTable.size()), 0);
 
-            expectEquals(tuning.getName(), String("Empty Vector Test (Custom, 0 notes defined)"));
+            expectEquals(tuning.getName(), String("Empty Vector Test (Custom, defined notes C4-C4, A4 = 440.00Hz)"));
 
             auto range = tuning.getDefinedNoteRange();
             expectEquals(range.getStart(), 60);
@@ -75,7 +75,7 @@ public:
         {
             CustomTuning tuning(testCaps, 72, {512, 480, 450}); // No custom name provided
 
-            expectEquals(tuning.getName(), String("Custom Tuning (Custom, 3 notes defined)"));
+            expectEquals(tuning.getName(), String("Custom Tuning (Custom, defined notes C5-D5, A4 = 440.00Hz)"));
 
             expectEquals(tuning.midiNoteToPeriod(72), 512);
             expectEquals(tuning.midiNoteToPeriod(73), 480);
@@ -140,7 +140,7 @@ public:
             };
             CustomTuning tuning(testCaps, proTrackerTable, "ProTracker Tuning #1");
 
-            expectEquals(tuning.getName(), String("ProTracker Tuning #1 (Custom, 12 notes defined)"));
+            expectEquals(tuning.getName(), String("ProTracker Tuning #1 (Custom, defined notes C-1-B-1, A4 = 440.00Hz)"));
 
             // Test some specific values
             expectEquals(tuning.midiNoteToPeriod(0), 1024);
@@ -168,7 +168,7 @@ public:
             std::map<int, int> singleNote = {{69, 850}};  // A4
             CustomTuning tuning(testCaps, singleNote, "Single Note");
 
-            expectEquals(tuning.getName(), String("Single Note (Custom, 1 notes defined)"));
+            expectEquals(tuning.getName(), String("Single Note (Custom, defined notes A4-A4, A4 = 440.00Hz)"));
             expectEquals(tuning.midiNoteToPeriod(69), 850);
 
             // Test extrapolation works from single note
@@ -202,6 +202,116 @@ public:
             expect(!tuning.isDefined(60), "No notes should be defined in empty tuning");
             expect(!tuning.isDefined(72), "No notes should be defined in empty tuning");
             expect(!tuning.isDefined(48), "No notes should be defined in empty tuning");
+        }
+
+        beginTest("ProTracker 96-note table starting from MIDI 12");
+        {
+            // Test with actual ProTracker data from TuningViewModel.h (PT3NoteTable_ST)
+            // Starting at MIDI note 12 (C0) for full ProTracker compatibility
+            CustomTuning tuning(
+                testCaps,
+                12, // Starting at MIDI note 12 (C0)
+                {
+                    // First 12 notes (C0-B0): Testing with smaller subset
+                    3832, 3600, 3424, 3200, 3032, 2856, 2696, 2544, 2400, 2272, 2136, 2016
+                },
+                "ProTracker Test"
+            );
+
+            expectEquals(tuning.getName(), String("ProTracker Test (Custom, defined notes C0-B0, A4 = 440.00Hz)"));
+
+            // Test specific period lookups
+            expectEquals(tuning.midiNoteToPeriod(12), 3832); // C0 ($0EF8)
+            expectEquals(tuning.midiNoteToPeriod(13), 3600); // C#0 ($0E10)
+            expectEquals(tuning.midiNoteToPeriod(14), 3424); // D0 ($0D60)
+            expectEquals(tuning.midiNoteToPeriod(23), 2016); // B0 ($07E0)
+
+            // Test that all notes in the range are defined
+            for (int note = 12; note < 24; ++note) {
+                expect(tuning.isDefined(note), "MIDI note " + String(note) + " should be defined");
+            }
+
+            // Test that notes outside the range are not directly defined
+            expect(!tuning.isDefined(11), "MIDI note 11 should not be defined");
+            expect(!tuning.isDefined(24), "MIDI note 24 should not be defined");
+
+            // Test octave extrapolation works
+            int period_C1 = tuning.midiNoteToPeriod(24); // One octave higher
+            expectEquals(period_C1, 1916); // Should be 3832 / 2
+
+            int period_C_minus1 = tuning.midiNoteToPeriod(0); // One octave lower
+            expectEquals(period_C_minus1, 4095); // Should be clamped to chip range maximum
+        }
+
+        beginTest("ProTracker full 96-note table construction");
+        {
+            // Test construction with the complete 96-note ProTracker table
+            std::vector<int> fullProTrackerTable = {
+                // Octave 1 (C1-B1): $0EF8-$07E0
+                3832, 3600, 3424, 3200, 3032, 2856, 2696, 2544, 2400, 2272, 2136, 2016,
+                // Octave 2 (C2-B2): $077C-$03FD
+                1916, 1800, 1712, 1600, 1516, 1428, 1348, 1272, 1200, 1136, 1068, 1021,
+                // Octave 3 (C3-B3): $03BE-$01F8
+                958, 900, 856, 800, 758, 714, 674, 636, 600, 568, 534, 504,
+                // Octave 4 (C4-B4): $01DF-$00FC
+                479, 450, 428, 400, 379, 357, 337, 318, 300, 284, 266, 252,
+                // Octave 5 (C5-B5): $00EF-$007E
+                239, 225, 214, 200, 189, 178, 168, 159, 150, 142, 133, 126,
+                // Octave 6 (C6-B6): $0077-$003F
+                119, 112, 107, 100, 94, 89, 84, 79, 75, 71, 66, 63,
+                // Octave 7 (C7-B7): $003B-$001F
+                59, 56, 53, 50, 47, 44, 42, 39, 37, 35, 33, 31,
+                // Octave 8 (C8-B8): $001D-$000F
+                29, 28, 26, 25, 23, 22, 21, 19, 18, 17, 16, 15
+            };
+
+            CustomTuning tuning(testCaps, 24, fullProTrackerTable, "Full ProTracker"); // Start at C1 (MIDI 24)
+
+            // Verify the table size
+            expectEquals(static_cast<int>(fullProTrackerTable.size()), 96);
+            expectEquals(static_cast<int>(tuning.getPeriodTable().size()), 96);
+
+            // Test a few key values from different octaves
+            expectEquals(tuning.midiNoteToPeriod(24), 3832);  // C1 (first value)
+            expectEquals(tuning.midiNoteToPeriod(36), 1916);  // C2 (second octave start)
+            expectEquals(tuning.midiNoteToPeriod(48), 958);   // C3 (third octave start)
+            expectEquals(tuning.midiNoteToPeriod(119), 15);   // Last note (B8)
+
+            // Test range boundaries
+            auto range = tuning.getDefinedNoteRange();
+            expectEquals(range.getStart(), 24);              // C1
+            expectEquals(range.getEnd(), 120);               // 24 + 96 = 120 (one past last note)
+        }
+
+        beginTest("ProTracker ASM table (table 2)");
+        {
+            // Test with the third ProTracker table (PT3NoteTable_ASM)
+            CustomTuning tuning(
+                testCaps,
+                24, // Starting at MIDI note 24 (C1)
+                {
+                    // First octave from ASM table: $0D10-$06EC
+                    3344, 3157, 2980, 2812, 2655, 2506, 2365, 2232, 2107, 1989, 1877, 1772
+                },
+                "ProTracker ASM Test"
+            );
+
+            expectEquals(tuning.getName(), String("ProTracker ASM Test (Custom, defined notes C1-B1, A4 = 440.00Hz)"));
+
+            // Test specific period lookups from ASM table
+            expectEquals(tuning.midiNoteToPeriod(24), 3344); // C1 ($0D10)
+            expectEquals(tuning.midiNoteToPeriod(25), 3157); // C#1 ($0C55)
+            expectEquals(tuning.midiNoteToPeriod(26), 2980); // D1 ($0BA4)
+            expectEquals(tuning.midiNoteToPeriod(35), 1772); // B1 ($06EC)
+
+            // Test that all notes in the range are defined
+            for (int note = 24; note < 36; ++note) {
+                expect(tuning.isDefined(note), "MIDI note " + String(note) + " should be defined in ASM table");
+            }
+
+            // Test octave extrapolation works correctly
+            int period_C2 = tuning.midiNoteToPeriod(36); // One octave higher
+            expectEquals(period_C2, 1672); // Should be 3344 / 2
         }
     }
 };

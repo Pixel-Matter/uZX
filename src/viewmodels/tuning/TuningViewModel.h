@@ -9,9 +9,14 @@
 #include "../../plugins/uZX/aychip/aychip.h"
 
 #include <cmath>
+#include <set>
+#include <array>
 
 namespace MoTool {
 
+enum class Key {
+    C = 0, CSharp, D, DSharp, E, F, FSharp, G, GSharp, A, ASharp, B
+};
 
 struct TuningNoteName {
     int noteNumber;        // 0-based note number in 12-semitone system, ie C is 0, C# is 1, etc.
@@ -90,6 +95,8 @@ public:
         : transientState("TuningView")
         , chipCapabilities {1750000, 16, Range<int>(1, 4096)}
         // , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
+        , currentScale(Scale::ScaleType::IonianOrMajor)
+        , currentKey(Key::C)
     {
         // Initialize transient view state
         chipClock.referTo(transientState, "chipClock", nullptr,
@@ -102,20 +109,35 @@ public:
     }
 
     std::vector<TuningNoteName> getColumnNoteNames() const {
-        return {
-            {0, true,   Interval::fromSemitones(0),  "C" },
-            {1, false,  Interval::fromSemitones(1),  "C#"},
-            {2, true,   Interval::fromSemitones(2),  "D" },
-            {3, false,  Interval::fromSemitones(3),  "D#"},
-            {4, true,   Interval::fromSemitones(4),  "E" },
-            {5, true,   Interval::fromSemitones(5),  "F" },
-            {6, false,  Interval::fromSemitones(6),  "F#"},
-            {7, true,   Interval::fromSemitones(7),  "G" },
-            {8, false,  Interval::fromSemitones(8),  "G#"},
-            {9, true,   Interval::fromSemitones(9),  "A" },
-            {10, false, Interval::fromSemitones(10), "A#"},
-            {11, true,  Interval::fromSemitones(11), "B" }
+        std::vector<TuningNoteName> noteNames;
+        noteNames.reserve(12);
+
+        // Get the scale intervals
+        auto scaleIntervals = currentScale.getIntervals();
+
+        // Convert to set for fast lookup
+        std::set<int> scaleNotes;
+        for (int interval : scaleIntervals) {
+            int transposedInterval = (interval + static_cast<int>(currentKey)) % 12;
+            scaleNotes.insert(transposedInterval);
+        }
+
+        // Note names array
+        static const std::array<String, 12> noteNamesArray = {
+            "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
         };
+
+        // Build the result
+        for (int i = 0; i < 12; ++i) {
+            noteNames.push_back({
+                i,
+                scaleNotes.count(i) > 0,  // isInScale
+                Interval::fromSemitones(i),
+                noteNamesArray[(size_t) i]
+            });
+        }
+
+        return noteNames;
     }
 
     int getNumColumns() const {
@@ -209,7 +231,7 @@ public:
     // std::vector<Interval> getIntervals() const;
 
     String getScaleName() const {
-        return "C Major";  // Placeholder, should be set based on the tuning system or scale
+        return getKeyName(currentKey) + " " + currentScale.getName();
     }
 
     String getTuningTypeName() const {
@@ -222,6 +244,50 @@ public:
 
     Range<int> getChipDividerRange() const {
         return chipCapabilities.registerRange;
+    }
+
+    // Scale and Key selection methods
+    Scale::ScaleType getCurrentScale() const {
+        return currentScale.getType();
+    }
+
+    void setCurrentScale(Scale::ScaleType scaleType) {
+        currentScale = Scale(scaleType);
+        sendChangeMessage();
+    }
+
+    Key getCurrentKey() const {
+        return currentKey;
+    }
+
+    void setCurrentKey(Key key) {
+        currentKey = key;
+        sendChangeMessage();
+    }
+
+    StringArray getScaleTypeNames() const {
+        StringArray names;
+        for (auto scaleType : Scale::getAllScaleTypes()) {
+            if (scaleType != Scale::ScaleType::UserDefined) {
+                names.add(Scale::getNameForType(scaleType));
+            }
+        }
+        return names;
+    }
+
+    StringArray getKeyNames() const {
+        StringArray names;
+        for (int i = 0; i < 12; ++i) {
+            names.add(getKeyName(static_cast<Key>(i)));
+        }
+        return names;
+    }
+
+    static String getKeyName(Key key) {
+        static const std::array<String, 12> keyNames = {
+            "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+        };
+        return keyNames[static_cast<size_t>(key)];
     }
 
     StringArray getChipClockLabels() const {
@@ -237,7 +303,6 @@ public:
     }
 
     void setChipClockChoice(int index) {
-        // DBG("Setting chip clock choice to index: " << index);
         if (index >= 0 && index < static_cast<int>(uZX::ChipClockChoice::size())) {
             chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(index));
             // Call updateChipCapabilities directly since Value::Listener doesn't work reliably with custom types
@@ -250,7 +315,6 @@ public:
     }
 
     void setA4Frequency(double frequency) {
-        DBG("Setting A4 frequency to: " << frequency << " Hz");
         if (frequency >= 220.0 && frequency <= 880.0) { // Reasonable range for A4
             a4Frequency = frequency;
             updateParameters();
@@ -307,6 +371,10 @@ private:
     CachedValue<double> a4Frequency;
     ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
     std::unique_ptr<TuningSystem> tuningSystem;
+
+    // Scale and Key selection
+    Scale currentScale;
+    Key currentKey;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };

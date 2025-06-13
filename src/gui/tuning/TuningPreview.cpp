@@ -47,7 +47,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
     g.fillAll(Colors::Theme::backgroundAlt);
     auto bounds = getLocalBounds();
-    bounds.reduce(20, 20); // Add some padding
+    // bounds.reduce(20, 20); // Add some padding
 
     bounds.setWidth(cellWidth * (cols + 2));
     // center the grid horizontally
@@ -205,7 +205,7 @@ bool TuningPreviewGrid::findNoteAtPosition(Point<int> position, TuningNote& outN
         // Get the note for this octave and column
         auto octaveNotes = viewModel.getOctaveNotes(octave);
         if (noteIndex < static_cast<int>(octaveNotes.size())) {
-            outNote = octaveNotes[noteIndex];
+            outNote = octaveNotes[(size_t) noteIndex];
             return true;
         }
     }
@@ -224,6 +224,30 @@ TuningPreviewComponent::TuningPreviewComponent()
     , tooltipWindow(nullptr, 750) // ms delay
 {
     setOpaque(true);
+
+    // Set up Key selection ComboBox
+    addAndMakeVisible(KeyScaleLabel);
+    addAndMakeVisible(KeySelect);
+    addAndMakeVisible(ScaleSelect);
+
+    KeyScaleLabel.setText("Scale:", juce::dontSendNotification);
+    KeyScaleLabel.attachToComponent(&KeySelect, true);
+
+    auto keyNames = viewModel.getKeyNames();
+    for (int i = 0; i < keyNames.size(); ++i) {
+        KeySelect.addItem(keyNames[i], i + 1);
+    }
+    KeySelect.setSelectedId(static_cast<int>(viewModel.getCurrentKey()) + 1, juce::dontSendNotification);
+    KeySelect.onChange = [this]() {
+        int selectedId = KeySelect.getSelectedId();
+        if (selectedId > 0) {
+            viewModel.setCurrentKey(static_cast<Key>(selectedId - 1));
+        }
+    };
+
+    // Set up Chip Clock selection ComboBox
+    ChipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
+
     auto chipClockLabels = viewModel.getChipClockLabels();
     for (int i = 0; i < chipClockLabels.size(); ++i) {
         ChipClockSelect.addItem(chipClockLabels[i], i + 1);
@@ -247,17 +271,44 @@ TuningPreviewComponent::TuningPreviewComponent()
     };
     a4FrequencyLabel.setText("A4 Frequency (Hz):", juce::dontSendNotification);
 
+    // Set up Scale selection ComboBox
+    auto scaleNames = viewModel.getScaleTypeNames();
+    for (int i = 0; i < scaleNames.size(); ++i) {
+        ScaleSelect.addItem(scaleNames[i], i + 1);
+    }
+
+    // Find the current scale in the list and select it
+    String currentScaleName = Scale::getNameForType(viewModel.getCurrentScale());
+    int currentScaleIndex = scaleNames.indexOf(currentScaleName);
+    if (currentScaleIndex >= 0) {
+        ScaleSelect.setSelectedId(currentScaleIndex + 1, juce::dontSendNotification);
+    }
+
+    ScaleSelect.onChange = [this]() {
+        int selectedId = ScaleSelect.getSelectedId();
+        if (selectedId > 0) {
+            auto names = viewModel.getScaleTypeNames();
+            String selectedScaleName = names[selectedId - 1];
+            Scale::ScaleType scaleType = Scale::getTypeFromName(selectedScaleName);
+            viewModel.setCurrentScale(scaleType);
+        }
+    };
+    KeyScaleLabel.setText("Scale:", juce::dontSendNotification);
+
     // Register as a change listener to the view model
     viewModel.addChangeListener(this);
-    ScaleLabel.setText("Scale: " + viewModel.getScaleName(), juce::dontSendNotification);
-    // TuningTypeLabel.setText("Tuning Type: " + viewModel.getTuningTypeName(), juce::dontSendNotification);
+    TuningTypeLabel.setText("Tuning Type: " + viewModel.getTuningTypeName(), juce::dontSendNotification);
     TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);
     // ToneEnvSwitchLabel.setText("Tone Env Switch: " + String(viewModel.isToneEnvSwitchEnabled()), juce::dontSendNotification);
 
+    addAndMakeVisible(ChipClockLabel);
     addAndMakeVisible(ChipClockSelect);
+    ChipClockLabel.attachToComponent(&ChipClockSelect, true);
+
     addAndMakeVisible(a4FrequencySlider);
     addAndMakeVisible(a4FrequencyLabel);
-    addAndMakeVisible(ScaleLabel);
+    a4FrequencyLabel.attachToComponent(&a4FrequencySlider, true);
+
     // addAndMakeVisible(TuningTypeLabel);
     addAndMakeVisible(TuningNameLabel);
     addAndMakeVisible(ToneEnvSwitchLabel);
@@ -273,22 +324,40 @@ TuningPreviewComponent::~TuningPreviewComponent() {
 
 void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds();
-    auto labelHeight = 20;
+    auto gap = 8;
+    auto labelHeight = 30;
     auto sliderHeight = 30;
+    auto widthModule = 60;
 
-    ChipClockSelect.setBounds(bounds.removeFromTop(labelHeight));
+    auto formBounds = bounds.reduced(20, 20);
+
+    // Place KeySelect and ScaleSelect on the same row with fixed widths
+    auto keyScaleRow = formBounds.removeFromTop(labelHeight);
+    KeyScaleLabel.setBounds(keyScaleRow.removeFromLeft(widthModule * 2));
+    KeySelect.setBounds(keyScaleRow.removeFromLeft(widthModule - gap));
+    keyScaleRow.removeFromLeft(gap);
+    ScaleSelect.setBounds(keyScaleRow.removeFromLeft(widthModule * 3));
+
+    formBounds.removeFromTop(gap);
+
+    auto chipLabelRow = formBounds.removeFromTop(labelHeight);
+    ChipClockLabel.setBounds(chipLabelRow.removeFromLeft(widthModule * 2));
+    ChipClockSelect.setBounds(chipLabelRow.removeFromTop(labelHeight).withWidth(widthModule * 4));
+
+    formBounds.removeFromTop(gap);
 
     // A4 frequency slider with label
-    auto a5Row = bounds.removeFromTop(sliderHeight);
-    a4FrequencyLabel.setBounds(a5Row.removeFromLeft(120));
-    a4FrequencySlider.setBounds(a5Row);
+    auto a4Row = formBounds.removeFromTop(sliderHeight);
+    a4FrequencyLabel.setBounds(a4Row.removeFromLeft(widthModule * 2));
+    a4FrequencySlider.setBounds(a4Row.removeFromLeft(widthModule * 8));
 
-    ScaleLabel.setBounds(bounds.removeFromTop(labelHeight));
-    // TuningTypeLabel.setBounds(bounds.removeFromTop(labelHeight));
-    TuningNameLabel.setBounds(bounds.removeFromTop(labelHeight));
-    ToneEnvSwitchLabel.setBounds(bounds.removeFromTop(labelHeight));
+    formBounds.removeFromTop(gap);
 
-    tuningGrid.setBounds(bounds);
+    // TuningTypeLabel.setBounds(formBounds.removeFromTop(labelHeight));
+    TuningNameLabel.setBounds(formBounds.removeFromTop(labelHeight));
+    ToneEnvSwitchLabel.setBounds(formBounds.removeFromTop(labelHeight));
+
+    tuningGrid.setBounds(formBounds);
 }
 
 void TuningPreviewComponent::paint(juce::Graphics& g) {
@@ -298,7 +367,6 @@ void TuningPreviewComponent::paint(juce::Graphics& g) {
 
 void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
-        DBG("ChangeListener callback - updating UI with A4 frequency: " << viewModel.getA4Frequency() << " Hz");
 
         // Update the tuning name label to reflect the new tuning system
         TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);

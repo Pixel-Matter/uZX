@@ -42,5 +42,6 @@ set(TEST_SOURCES
     models/tuning/Ratios.test.cpp
     models/tuning/CustomTuning.test.cpp
     models/tuning/Scales.test.cpp
+    viewmodels/tuning/TuningViewModel.test.cpp
     # plugins/uZX/aychip/AYChip.test.cpp
 )

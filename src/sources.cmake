@@ -8,6 +8,7 @@ set(SHARED_SOURCES
     models/Selectable.cpp
     models/EditUtilities.cpp
     models/tuning/Ratios.cpp
+    models/tuning/Scales.cpp
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
 )
@@ -40,5 +41,6 @@ set(TEST_SOURCES
     models/PsgMidi.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/CustomTuning.test.cpp
+    models/tuning/Scales.test.cpp
     # plugins/uZX/aychip/AYChip.test.cpp
 )

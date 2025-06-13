@@ -32,7 +32,7 @@ public:
         Mixolydian,         // V
         AeolianOrMinor,     // VI
         Locrian,            // VII
-        
+
         // MinorVariations
         HarmonicMinor,
         MelodicMinor,
@@ -40,7 +40,7 @@ public:
         NeapolitanMajor,
         HungarianMinor,
         HungarianMajor,
-        
+
         // HarmonicMinorModes
         LocrianNatural6,
         IonianSharp5,
@@ -48,7 +48,7 @@ public:
         PhrygianDominant,
         LydianSharp2,
         AlteredDiminished,
-        
+
         // MelodicMinorModes
         DorianFlat2,
         LydianAugmented,
@@ -56,25 +56,25 @@ public:
         MixolydianFlat6,
         HalfDiminished,
         AlteredScale,
-        
+
         // Pentatonic
         MajorPentatonic,
         MinorPentatonic,
         JapaneseHirajoshi,
         JapaneseIn,
         ChineseScale,
-        
+
         // Blues
         BluesScale,
         MajorBlues,
-        
+
         // Symmetrical
         WholeTone,
         DiminishedHalfWhole,
         DiminishedWholeHalf,
         Chromatic,
         Augmented,
-        
+
         // ExoticWorld
         Persian,
         Arabic,
@@ -83,12 +83,12 @@ public:
         DoubleHarmonic,
         Prometheus,
         Tritone,
-        
+
         // Bebop
         BebopMajor,
         BebopDominant,
         BebopMinor,
-        
+
         // UserDefined
         UserDefined
     };
@@ -121,11 +121,11 @@ public:
     static juce::String getShortNameForType(ScaleType type);
     static ScaleType getTypeFromName(juce::String name);
 
-    std::vector<int> getSteps(int octaves = 1) const;
+    std::vector<int> getIntervals(int octaves = 1) const;
 
 private:
     ScaleType type;
-    std::vector<Steps> steps;
+    std::vector<int> customIntervals;  // For user-defined scales from initializer_list<int>
 };
 
 }

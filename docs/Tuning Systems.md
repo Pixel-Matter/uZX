@@ -80,7 +80,7 @@ leading to slight detuning. For demoscene productions, this creates a choice bet
 **FR1: Multiple Tuning System Support**
 
 - Equal temperament (12-TET)
-- Just intonation (5-limit, 7-limit)
+- Just intonation (5-limit, 7-limit, Pythagorean)
 - Historical temperaments (well-tempered, meantone)
 - Custom user-defined systems
 
@@ -188,11 +188,62 @@ private:
     std::vector<Interval> intervals;  // In semitones or ratio notation
 };
 
+// Global tuning relative to some base note, i.e A4=440Hz
+class TuningPitchFork {
+public:
+    double getA4Frequency() const;
+    void setA4Frequency(double);
+    double getDetune() const;  // in cents, because cents are universally defined
+    void setDetune();  // in cents, because cents are universally defined
+private:
+    double a4Frequency;
+};
 
 // Base tuning system interface
+// Tunings system is defined by mathematical relationships between tone frequencies
+// translates any defined pitch class (note name without an octave) into frequency
+// Doesn't define base note concrete frequency or tuning
 class TuningSystem {
 public:
+    TuningSystem();
     virtual ~TuningSystem() = default;
+
+    virtual String getName() const = 0;
+    virtual TuningSystemType getType() const = 0;
+
+    // Core conversion functions
+    virtual double midiNoteToFrequency(double midiNote) const = 0;
+    virtual double frequencyToMidiNote(double frequency) const = 0;
+
+    // Validation
+    virtual bool isPitchClassSupported(int pitchClass) const = 0;
+    bool isNoteSupported(int midiNote) { return isPitchClassSupported(midiNote % 12); }
+};
+
+class ReferenceTuningSystem {
+public:
+    ReferenceTuningSystem(TuningPitchFork pitchFork, int basePitch);
+    virtual ~ReferenceTuningSystem() = default;
+
+    virtual String getName() const = 0;
+    virtual TuningSystemType getType() const = 0;
+
+    // Core conversion functions
+    virtual double midiNoteToFrequency(double midiNote) const = 0;
+    virtual double frequencyToMidiNote(double frequency) const = 0;
+
+    // Validation
+    virtual bool isPitchClassSupported(int pitchClass) const = 0;
+    bool isNoteSupported(int midiNote) { return isPitchClassSupported(midiNote % 12); }
+private:
+    TuningPitchFork pitchFork;
+};
+
+// Base tuning table interface
+class Tuning {
+public:
+    Tuning(TuningPitchFork pitchFork, int basePitch);
+    virtual ~Tuning() = default;
 
     virtual String getName() const = 0;
     virtual TuningType getType() const = 0;
@@ -229,7 +280,7 @@ public:
     double periodToMidiNote(int period) const override;
     double periodToFrequency(int period) const override;
     int frequencyToPeriod(double frequency) const override;
-    
+
     // Accuracy and validation
     double getOfftune(double midiNote) const override;
     bool isNoteSupported(double midiNote) const override;
@@ -240,7 +291,7 @@ public:
 private:
     ChipCapabilities chipCapabilities;  // Clock frequency, register range
     double a4Frequency;
-    
+
     static constexpr double SEMITONE_RATIO = 1.0594630943592953;  // 2^(1/12)
     static constexpr int A4_MIDI_NOTE = 69;
 };
@@ -266,7 +317,7 @@ public:
     double periodToMidiNote(int period) const override;
     double periodToFrequency(int period) const override;
     int frequencyToPeriod(double frequency) const override;
-    
+
     // Accuracy and validation
     double getOfftune(double midiNote) const override;
     bool isNoteSupported(double midiNote) const override;
@@ -278,7 +329,7 @@ private:
     ChipCapabilities chipCapabilities;
     String tuningName;
     std::map<int, int> periodTable;  // MIDI note → period mapping
-    
+
     // Helper methods for interpolation and octave extrapolation
     int interpolatePeriod(double midiNote) const;
     int extrapolateToOctave(int basePeriod, int octaveShift) const;

@@ -1,67 +1,131 @@
 #pragma once
 
-#include "JuceHeader.h"
-#include "Ratios.h"
+#include <JuceHeader.h>
+#include <initializer_list>
 
 namespace MoTool {
 
-// Interval representation (supports both equal-tempered and just)
-class Interval {
-public:
-    static Interval fromSemitones(double semitones) {
-        return Interval {semitones};
-    }
-
-    static Interval fromRatio(int numerator, int denominator);
-    static Interval fromRatio(const juce::String& ratio); // "3:2", "5:4", etc.
-
-    double toSemitones() const {
-        return value;
-    }
-
-    double toCents() const {
-        return (value - 1.0) * 1200.0;
-    }
-
-    double toRatio() const;
-    bool isJustInterval() const { return isRational; }
-
-private:
-    explicit Interval(double v)
-      : value(v)
-      , isRational(false)
-      , num(-1)
-      , denum(-1)
-    {}
-
-    Interval(double v, bool isR, int n, int d)
-      : value(v)
-      , isRational(isR)
-      , num(n)
-      , denum(d)
-    {}
-
-    double value;        // Semitones or ratio
-    bool isRational;     // true = just interval, false = equal tempered
-    int num, denum;      // For rational intervals
-};
-
 // Scale/mode definition
+//==============================================================================
 class Scale {
 public:
-    Scale(const String& name, const std::vector<Interval>& intervals);
-    Scale(const String& name, const std::vector<int>& freqRatios); // For example, {48, 45, 40, 36, 32, 30, 27}
 
-    String getName() const { return scaleName; }
-    const std::vector<Interval>& getIntervals() const { return intervals; }
-    size_t getNumSteps() const { return intervals.size(); }
+    enum class ScaleCategory {
+        DiatonicModes = 0,
+        MinorVariations,
+        HarmonicMinorModes,
+        MelodicMinorModes,
+        Pentatonic,
+        Blues,
+        Symmetrical,
+        ExoticWorld,
+        Bebop,
+        UserDefined
+    };
 
-    // // Generate frequency ratios for given tuning system
-    // std::vector<double> getFrequencyRatios(const TuningSystem& tuning) const;
+    enum class ScaleType {
+        // DiatonicModes
+        IonianOrMajor = 0,  // I
+        Dorian,             // II
+        Phrygian,           // III
+        Lydian,             // IV
+        Mixolydian,         // V
+        AeolianOrMinor,     // VI
+        Locrian,            // VII
+        
+        // MinorVariations
+        HarmonicMinor,
+        MelodicMinor,
+        NeapolitanMinor,
+        NeapolitanMajor,
+        HungarianMinor,
+        HungarianMajor,
+        
+        // HarmonicMinorModes
+        LocrianNatural6,
+        IonianSharp5,
+        UkrainianDorian,
+        PhrygianDominant,
+        LydianSharp2,
+        AlteredDiminished,
+        
+        // MelodicMinorModes
+        DorianFlat2,
+        LydianAugmented,
+        LydianDominant,
+        MixolydianFlat6,
+        HalfDiminished,
+        AlteredScale,
+        
+        // Pentatonic
+        MajorPentatonic,
+        MinorPentatonic,
+        JapaneseHirajoshi,
+        JapaneseIn,
+        ChineseScale,
+        
+        // Blues
+        BluesScale,
+        MajorBlues,
+        
+        // Symmetrical
+        WholeTone,
+        DiminishedHalfWhole,
+        DiminishedWholeHalf,
+        Chromatic,
+        Augmented,
+        
+        // ExoticWorld
+        Persian,
+        Arabic,
+        Gypsy,
+        Enigmatic,
+        DoubleHarmonic,
+        Prometheus,
+        Tritone,
+        
+        // Bebop
+        BebopMajor,
+        BebopDominant,
+        BebopMinor,
+        
+        // UserDefined
+        UserDefined
+    };
+
+    enum Steps {
+        Whole = 0,
+        Half,
+        WholeHalf,
+    };
+
+    Scale(ScaleType type);
+    Scale(std::initializer_list<Steps> intervalSteps);
+    Scale(std::initializer_list<int> steps);  // for example 0, 2, 4, 5, 7, 9, 11 for a major scale
+
+    static ScaleCategory getCategoryForType(ScaleType type);
+    ScaleCategory getCategory() const { return getCategoryForType(type); }
+    ScaleType getType() const { return type; }
+
+    juce::String getName() const;
+    juce::String getShortName() const;
+
+    static std::vector<ScaleCategory> getAllScaleCategories();
+    static std::vector<ScaleType> getAllScaleTypesForCategory(ScaleCategory category);
+    static std::vector<ScaleType> getAllScaleTypes();
+
+    static std::vector<juce::String> getScaleStrings();
+    static juce::String getNameForCategory(ScaleCategory category);
+    static juce::String getShortNameForCategory(ScaleCategory category);
+    static juce::String getNameForType(ScaleType type);
+    static juce::String getShortNameForType(ScaleType type);
+    static ScaleType getTypeFromName(juce::String name);
+
+    std::vector<int> getSteps(int octaves = 1) const;
 
 private:
-    String scaleName;
-    std::vector<Interval> intervals;  // In semitones or ratio notation
+    ScaleType type;
+    std::vector<Steps> steps;
 };
 
 }

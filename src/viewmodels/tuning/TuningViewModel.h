@@ -4,6 +4,7 @@
 
 #include "../../models/tuning/TuningSystem.h"
 #include "../../models/tuning/TuningRegistry.h"
+#include "../../models/tuning/Ratios.h"
 #include "../../models/tuning/Scales.h"
 #include "../../plugins/uZX/aychip/aychip.h"
 

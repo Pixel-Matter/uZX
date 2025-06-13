@@ -147,7 +147,7 @@ std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType,
                 440.0
             );
         }
-        
+
         case CustomTuningTable::CustomNaturalEPhrygian: {
             // Natural E Phrygian tuning
             // chipCapabilities.clockFrequency = 1773400
@@ -183,37 +183,14 @@ std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType,
     return nullptr; // Should never reach here
 }
 
-std::unique_ptr<TuningSystem> makeTuningByIndex(int index, const ChipCapabilities& capabilities) {
-    if (index == -1) {
-        return makeEqualTemperamentTuning(capabilities);
-    }
-
-    if (index >= 0 && index <= 4) {
-        return makeCustomTableTuning(static_cast<ProTrackerTable>(index), capabilities);
-    }
-
-    if (index == 5) {
-        return makeCustomTableTuning(CustomTuningTable::NaturalEPhrygian, capabilities);
-    }
-
-    // Default to Equal Temperament if index is out of range
-    return makeEqualTemperamentTuning(capabilities);
-}
-
-const char* getTuningTableName(ProTrackerTable tableType) {
-    switch (tableType) {
-        case ProTrackerTable::PT3_PT:      return "ProTracker #0";
-        case ProTrackerTable::PT3_ST:      return "ProTracker #1";
-        case ProTrackerTable::PT3_ASM:     return "ProTracker #2 (ASM)";
-        case ProTrackerTable::PT3_REAL:    return "ProTracker #3 (REAL)";
-        case ProTrackerTable::PT3_NATURAL: return "IvanRochin NATURAL Cmaj/Am #4";
-    }
-    return "Unknown";
-}
-
 const char* getTuningTableName(CustomTuningTable tableType) {
     switch (tableType) {
-        case CustomTuningTable::NaturalEPhrygian: return "Natural E Phrygian";
+        case CustomTuningTable::CustomPT3_0_PT:         return "ProTracker #0";
+        case CustomTuningTable::CustomPT3_1_ST:         return "ProTracker #1";
+        case CustomTuningTable::CustomPT3_2_ASM:        return "ProTracker #2 (ASM)";
+        case CustomTuningTable::CustomPT3_3_REAL:       return "ProTracker #3 (REAL)";
+        case CustomTuningTable::CustomVT_4_NATURAL:     return "IvanRochin NATURAL Cmaj/Am #4";
+        case CustomTuningTable::CustomNaturalEPhrygian: return "Natural E Phrygian";
     }
     return "Unknown";
 }

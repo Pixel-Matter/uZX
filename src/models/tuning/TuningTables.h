@@ -8,10 +8,10 @@
 
 namespace MoTool {
 
+
 inline String getMidiNoteName(int note) {
     return juce::MidiMessage::getMidiNoteName(note, true, true, 4);
 }
-
 
 struct TemperamentTypeEnum {
     enum Enum : size_t {
@@ -46,7 +46,6 @@ struct TuningTypeEnum {
 };
 
 using TuningType = MoTool::Util::EnumChoice<TuningTypeEnum>;
-
 
 struct ChipCapabilities {
     double clockFrequency; // Chip clock frequency in Hz

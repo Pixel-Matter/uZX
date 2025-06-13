@@ -307,7 +307,7 @@ public:
         }
 
         const bool isOver = isMouseOverOrDragging();
-        auto curveColour = getCurrentLineColour();
+        // auto curveColour = getCurrentLineColour();
         auto backgroundColour = getBackgroundColour();
 
         g.fillAll(LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId));

@@ -162,7 +162,7 @@ public:
             Scale majorScale(Scale::ScaleType::IonianOrMajor);
             expectEquals(majorScale.getName(), String("Major (Ionian)"));
             expectEquals(majorScale.getShortName(), String("Maj"));
-            
+
             Scale doubleHarmonicScale(Scale::ScaleType::DoubleHarmonic);
             expectEquals(doubleHarmonicScale.getName(), String("Double Harmonic"));
             expectEquals(doubleHarmonicScale.getShortName(), String("DHrm"));
@@ -171,10 +171,10 @@ public:
         beginTest("Scale construction from Steps enum");
         {
             // Major scale pattern: W-W-H-W-W-W-H
-            Scale majorFromSteps({Scale::Steps::Whole, Scale::Steps::Whole, Scale::Steps::Half, 
-                                 Scale::Steps::Whole, Scale::Steps::Whole, Scale::Steps::Whole, Scale::Steps::Half});
+            Scale majorFromSteps({Scale::Steps::Whole, Scale::Steps::Whole, Scale::Steps::Half,
+                                  Scale::Steps::Whole, Scale::Steps::Whole, Scale::Steps::Whole, Scale::Steps::Half});
             auto intervals = majorFromSteps.getIntervals();
-            
+
             expectEquals(static_cast<int>(intervals.size()), 7);
             expectEquals(intervals[0], 0);  // Root
             expectEquals(intervals[1], 2);  // Whole step

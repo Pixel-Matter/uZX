@@ -123,7 +123,7 @@ public:
     }
 
     Range<int> getOctaveRange() const {
-        return Range<int>(0, 13);
+        return Range<int>(-1, 10);
     }
 
     int getNumRows() const {

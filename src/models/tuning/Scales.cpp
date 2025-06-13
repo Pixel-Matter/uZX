@@ -162,15 +162,19 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
 
 // Constructors
 Scale::Scale(ScaleType scaleType) : type(scaleType) {
-    // Intervals are retrieved via constexpr function getScaleIntervals()
+    // Initialize intervals for known scale types
+    jassert(scaleType != ScaleType::UserDefined && "UserDefined scale type should not be used here");
+    intervals = getScaleIntervals(scaleType);
 }
 
-Scale::Scale(std::initializer_list<Steps> intervalSteps) : type(ScaleType::UserDefined) {
+Scale::Scale(std::initializer_list<Steps> intervalSteps)
+    : type(ScaleType::UserDefined)
+{
     // Convert Steps enum to semitone intervals
-    customIntervals.reserve(intervalSteps.size());
+    intervals.reserve(intervalSteps.size());
     int currentInterval = 0;
     for (auto step : intervalSteps) {
-        customIntervals.push_back(currentInterval);
+        intervals.push_back(currentInterval);
         switch (step) {
             case Steps::Whole:     currentInterval += 2; break;
             case Steps::Half:      currentInterval += 1; break;
@@ -179,9 +183,10 @@ Scale::Scale(std::initializer_list<Steps> intervalSteps) : type(ScaleType::UserD
     }
 }
 
-Scale::Scale(std::initializer_list<int> intervals) : type(ScaleType::UserDefined) {
-    customIntervals = std::vector<int>(intervals);
-}
+Scale::Scale(std::initializer_list<int> ivals)
+    : type(ScaleType::UserDefined)
+    , intervals(ivals)
+{}
 
 // Static methods
 Scale::ScaleCategory Scale::getCategoryForType(ScaleType scaleType) {
@@ -460,27 +465,27 @@ juce::String Scale::getShortName() const {
 }
 
 std::vector<int> Scale::getIntervals(int octaves) const {
-    std::vector<int> intervals;
+    std::vector<int> scaleIntervals;
 
-    if (type == ScaleType::UserDefined && !customIntervals.empty()) {
-        // Use custom intervals for user-defined scales
-        intervals = customIntervals;
+    if (!intervals.empty()) {
+        // Use pre-initialized intervals (both predefined and user-defined)
+        scaleIntervals = intervals;
     } else {
-        // Use constexpr function to get predefined intervals
-        intervals = getScaleIntervals(type);
+        // Fallback for UserDefined scales without intervals
+        scaleIntervals = getScaleIntervals(type);
     }
 
     if (octaves <= 1) {
-        return intervals;
+        return scaleIntervals;
     }
 
     // Extend across multiple octaves
-    std::vector<int> result = intervals;
-    size_t originalSize = intervals.size();
+    std::vector<int> result = scaleIntervals;
+    size_t originalSize = scaleIntervals.size();
 
     for (int octave = 1; octave < octaves; ++octave) {
         for (size_t i = 0; i < originalSize; ++i) {
-            result.push_back(intervals[i] + octave * 12);
+            result.push_back(scaleIntervals[i] + octave * 12);
         }
     }
 

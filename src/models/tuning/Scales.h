@@ -125,7 +125,7 @@ public:
 
 private:
     ScaleType type;
-    std::vector<int> customIntervals;  // For user-defined scales from initializer_list<int>
+    std::vector<int> intervals;  // For all scales - both predefined and user-defined
 };
 
 }

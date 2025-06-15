@@ -40,7 +40,7 @@ private:
 };
 
 
-class TuningPreviewComponent : public juce::Component, private ChangeListener {
+class TuningPreviewComponent : public juce::Component, private ChangeListener, private ListBoxModel {
 public:
     TuningPreviewComponent();
     ~TuningPreviewComponent() override;
@@ -48,10 +48,19 @@ public:
     void resized() override;
     void paint(juce::Graphics& g) override;
 
+    // ListBoxModel implementation
+    int getNumRows() override;
+    void paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected) override;
+    void listBoxItemClicked(int row, const MouseEvent& e) override;
+
 private:
     void changeListenerCallback(ChangeBroadcaster* source) override;
 
     TuningViewModel viewModel;
+
+    // Tuning table selection
+    Label tuningTableLabel;
+    ListBox tuningTableListBox;
 
     Label ChipClockLabel;
     ComboBox ChipClockSelect;

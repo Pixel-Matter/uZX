@@ -9,6 +9,7 @@ set(SHARED_SOURCES
     models/EditUtilities.cpp
     models/tuning/Ratios.cpp
     models/tuning/Scales.cpp
+    models/tuning/TuningRegistry.cpp
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
 )

@@ -225,6 +225,15 @@ TuningPreviewComponent::TuningPreviewComponent()
 {
     setOpaque(true);
 
+    // Set up tuning table ListBox
+    tuningTableLabel.setText("Tuning Tables:", juce::dontSendNotification);
+    tuningTableListBox.setModel(this);
+    tuningTableListBox.setMultipleSelectionEnabled(false);
+    tuningTableListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);
+
+    addAndMakeVisible(tuningTableLabel);
+    addAndMakeVisible(tuningTableListBox);
+
     // Set up Key selection ComboBox
     addAndMakeVisible(KeyScaleLabel);
     addAndMakeVisible(KeySelect);
@@ -331,33 +340,45 @@ void TuningPreviewComponent::resized() {
 
     auto formBounds = bounds.reduced(20, 20);
 
+    // Create two columns layout
+    auto leftColumnWidth = widthModule * 4;  // Width for the left column with tuning table list
+    auto leftColumn = formBounds.removeFromLeft(leftColumnWidth);
+    formBounds.removeFromLeft(gap); // Gap between columns
+    auto rightColumn = formBounds;
+
+    // Left column: Tuning table selection
+    tuningTableLabel.setBounds(leftColumn.removeFromTop(labelHeight));
+    // leftColumn.removeFromTop(gap / 2);
+    tuningTableListBox.setBounds(leftColumn); // Take remaining space in left column
+
+    // Right column: Other controls and tuning grid
     // Place KeySelect and ScaleSelect on the same row with fixed widths
-    auto keyScaleRow = formBounds.removeFromTop(labelHeight);
+    auto keyScaleRow = rightColumn.removeFromTop(labelHeight);
     KeyScaleLabel.setBounds(keyScaleRow.removeFromLeft(widthModule * 2));
     KeySelect.setBounds(keyScaleRow.removeFromLeft(widthModule - gap));
     keyScaleRow.removeFromLeft(gap);
     ScaleSelect.setBounds(keyScaleRow.removeFromLeft(widthModule * 3));
 
-    formBounds.removeFromTop(gap);
+    rightColumn.removeFromTop(gap);
 
-    auto chipLabelRow = formBounds.removeFromTop(labelHeight);
+    auto chipLabelRow = rightColumn.removeFromTop(labelHeight);
     ChipClockLabel.setBounds(chipLabelRow.removeFromLeft(widthModule * 2));
     ChipClockSelect.setBounds(chipLabelRow.removeFromTop(labelHeight).withWidth(widthModule * 4));
 
-    formBounds.removeFromTop(gap);
+    rightColumn.removeFromTop(gap);
 
     // A4 frequency slider with label
-    auto a4Row = formBounds.removeFromTop(sliderHeight);
+    auto a4Row = rightColumn.removeFromTop(sliderHeight);
     a4FrequencyLabel.setBounds(a4Row.removeFromLeft(widthModule * 2));
     a4FrequencySlider.setBounds(a4Row.removeFromLeft(widthModule * 8));
 
-    formBounds.removeFromTop(gap);
+    rightColumn.removeFromTop(gap);
 
-    // TuningTypeLabel.setBounds(formBounds.removeFromTop(labelHeight));
-    TuningNameLabel.setBounds(formBounds.removeFromTop(labelHeight));
-    ToneEnvSwitchLabel.setBounds(formBounds.removeFromTop(labelHeight));
+    // TuningTypeLabel.setBounds(rightColumn.removeFromTop(labelHeight));
+    TuningNameLabel.setBounds(rightColumn.removeFromTop(labelHeight));
+    ToneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(labelHeight));
 
-    tuningGrid.setBounds(formBounds);
+    tuningGrid.setBounds(rightColumn);
 }
 
 void TuningPreviewComponent::paint(juce::Graphics& g) {
@@ -374,9 +395,37 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
         // Update A4 frequency slider to reflect current value
         a4FrequencySlider.setValue(viewModel.getA4Frequency(), juce::dontSendNotification);
 
+        // Update tuning table selection
+        tuningTableListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);
+
         // Repaint the tuning grid to show updated calculations
         tuningGrid.repaint();
     }
+}
+
+// ListBoxModel implementation
+int TuningPreviewComponent::getNumRows() {
+    return viewModel.getTuningTableNames().size();
+}
+
+void TuningPreviewComponent::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected) {
+    if (rowIsSelected) {
+        g.setColour(Colors::Theme::primary);
+        g.fillRect(0, 0, width, height);
+    }
+
+    g.setColour(Colors::Theme::textPrimary);
+    // g.setColour(rowIsSelected ? Colors::Theme::textPrimary : Colors::Theme::textSecondary);
+
+    auto tableNames = viewModel.getTuningTableNames();
+    if (rowNumber >= 0 && rowNumber < tableNames.size()) {
+        g.drawText(tableNames[rowNumber], 4, 0, width - 8, height, juce::Justification::centredLeft, true);
+    }
+}
+
+void TuningPreviewComponent::listBoxItemClicked(int row, const MouseEvent& e) {
+    juce::ignoreUnused(e);
+    viewModel.setCurrentTuningTable(row);
 }
 
 }  // namespace MoTool

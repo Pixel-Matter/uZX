@@ -290,6 +290,28 @@ public:
         return keyNames[static_cast<size_t>(key)];
     }
 
+    // Tuning table selection methods
+    StringArray getTuningTableNames() const {
+        StringArray names;
+        names.add("Equal Temperament");
+        for (int i = 0; i < static_cast<int>(CustomTuningTable::CustomNaturalEPhrygian) + 1; ++i) {
+            names.add(getTuningTableName(static_cast<CustomTuningTable>(i)));
+        }
+        return names;
+    }
+
+    int getCurrentTuningTableIndex() const {
+        return currentTuningTableIndex;
+    }
+
+    void setCurrentTuningTable(int index) {
+        if (index != currentTuningTableIndex && index >= 0 && index < getTuningTableNames().size()) {
+            currentTuningTableIndex = index;
+            updateTuningSystemFromSelection();
+            sendChangeMessage();
+        }
+    }
+
     StringArray getChipClockLabels() const {
         StringArray labels;
         for (const auto& label : uZX::ChipClockEnum::longLabels) {
@@ -340,6 +362,19 @@ private:
         tuningSystem = makeEqualTemperamentTuning(chipCapabilities);
 
         a4Frequency = tuningSystem->getA4Frequency();
+        currentTuningTableIndex = 0; // Equal Temperament
+    }
+
+    void updateTuningSystemFromSelection() {
+        if (currentTuningTableIndex == 0) {
+            // Equal Temperament
+            tuningSystem = makeEqualTemperamentTuning(chipCapabilities, a4Frequency.get());
+        } else {
+            // Custom tuning table
+            int customIndex = currentTuningTableIndex - 1;
+            tuningSystem = makeCustomTableTuning(static_cast<CustomTuningTable>(customIndex), chipCapabilities);
+            tuningSystem->setA4Frequency(a4Frequency.get());
+        }
     }
 
     void updateTuningSystem() {
@@ -357,7 +392,7 @@ private:
             // DBG("Updating tuning system with new clock frequency: " << clockFreq << " Hz and A4 frequency: " << a4Frequency.get() << " Hz");
 
             // Recreate tuning system with new capabilities and current A4 frequency
-            updateTuningSystem();
+            updateTuningSystemFromSelection();
 
             // Notify all registered listeners that the tuning system has changed
             // DBG("Broadcasting tuning system change to all listeners");
@@ -375,6 +410,9 @@ private:
     // Scale and Key selection
     Scale currentScale;
     Key currentKey;
+    
+    // Tuning table selection
+    int currentTuningTableIndex = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };

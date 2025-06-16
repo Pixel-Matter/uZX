@@ -1,15 +1,19 @@
 #include "TuningRegistry.h"
 
 #include "../../plugins/uZX/aychip/aychip.h"
+#include "TuningSystem.h"
+#include <memory>
 
 namespace MoTool {
 
-std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableType, const ChipCapabilities& capabilities) {
+std::unique_ptr<TuningTable> makeCustomTableTuning(CustomTuningType tableType, const ChipCapabilities& capabilities) {
     switch (tableType) {
         case CustomTuningType::CustomPT_0_PT: {
             // ProTracker #0 (Original PT3 table)
-            return std::make_unique<CustomTuningTable>(
+            return std::make_unique<TuningTable>(
                 capabilities,
+                uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
+                std::make_unique<EqualTemperamentTuning>(474.0),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
                     // Octave 1 (C1-B1): $0C22-$066D
@@ -29,16 +33,16 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8): $0018-$000C
                     24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12
                 },
-                tableType.getLongLabel().data(),
-                uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
-                474.0
+                tableType.getLongLabel().data()
             );
         }
 
         case CustomTuningType::CustomPT_1_ST: {
             // ProTracker #1 (SoundTracker)
-            return std::make_unique<CustomTuningTable>(
+            return std::make_unique<TuningTable>(
                 capabilities,
+                uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz).getClockValue(),
+                std::make_unique<EqualTemperamentTuning>(390.5),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
                     // Octave 1 (C1-B1): $0EF8-$07E0
@@ -58,16 +62,16 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8): $001D-$000F
                     29, 28, 26, 25, 23, 22, 21, 19, 18, 17, 16, 15
                 },
-                tableType.getLongLabel().data(),
-                uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz).getClockValue(),
-                390.5
+                tableType.getLongLabel().data()
             );
         }
 
         case CustomTuningType::CustomPT_2_ASM: {
             // ProTracker #2 (ASM)
-            return std::make_unique<CustomTuningTable>(
+            return std::make_unique<TuningTable>(
                 capabilities,
+                uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
+                std::make_unique<EqualTemperamentTuning>(440.0),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
                     // Octave 1 (C1-B1): $0D10-$06EC
@@ -87,16 +91,16 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8): $001A-$000D
                     26, 25, 23, 22, 21, 20, 18, 17, 16, 15, 14, 13
                 },
-                tableType.getLongLabel().data(),
-                uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
-                440.0
+                tableType.getLongLabel().data()
             );
         }
 
         case CustomTuningType::CustomPT_3_REAL: {
             // ProTracker #3 (REAL)
-            return std::make_unique<CustomTuningTable>(
+            return std::make_unique<TuningTable>(
                 capabilities,
+                uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
+                std::make_unique<EqualTemperamentTuning>(447.0),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
                     // Octave 1 (C1-B1): $0CDA-$06CF
@@ -116,17 +120,17 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8): $001A-$000D
                     26, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13
                 },
-                tableType.getLongLabel().data(),
-                uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
-                440.0
+                tableType.getLongLabel().data()
             );
         }
 
         case CustomTuningType::CustomVT_4_NATURAL: {
             // ProTracker #4 (Natural Cmaj/Am)
             // Based on 1520640 MHz
-            return std::make_unique<CustomTuningTable>(
+            return std::make_unique<TuningTable>(
                 capabilities,
+                1520640,
+                std::make_unique<EqualTemperamentTuning>(440.0),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
                     // Octave 1 (C1-B1): Natural tuning based on 1520640 MHz
@@ -146,9 +150,7 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8)
                     23, 21, 20, 19, 18, 17, 16, 15, 14, 14, 13, 12
                 },
-                tableType.getLongLabel().data(),
-                1520640,  // Chip clock frequency
-                440.0
+                tableType.getLongLabel().data()
             );
         }
 

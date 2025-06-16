@@ -30,11 +30,11 @@ using CustomTuningType = MoTool::Util::EnumChoice<CustomTuningEnum>;
 
 // Factory functions for standard tuning systems
 inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabilities& capabilities, double chipClock, double A4Frequency) {
-    return std::make_unique<EqualTemperamentTuning>(capabilities, chipClock, A4Frequency);
+    return std::make_unique<AutoTuning>(capabilities, chipClock, std::make_unique<EqualTemperamentTuning>(A4Frequency));
 }
 
 // Factory functions for ProTracker-style custom table tunings
-std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableType, const ChipCapabilities& capabilities);
+std::unique_ptr<TuningTable> makeCustomTableTuning(CustomTuningType tableType, const ChipCapabilities& capabilities);
 
 // Get descriptive name for tuning table
 const std::string_view getTuningTableName(CustomTuningType tableType);

@@ -42,6 +42,8 @@ set(TEST_SOURCES
     models/PsgMidi.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/CustomTuning.test.cpp
+    models/tuning/EqualTemperamentTuning.test.cpp
+    models/tuning/AutoTuning.test.cpp
     models/tuning/Scales.test.cpp
     viewmodels/tuning/TuningViewModel.test.cpp
     # plugins/uZX/aychip/AYChip.test.cpp

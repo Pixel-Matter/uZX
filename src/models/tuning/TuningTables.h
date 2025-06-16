@@ -8,15 +8,16 @@
 namespace MoTool {
 
 
-class CustomTuningTable : public TuningSystem {
+class TuningTable final : public TuningSystem {
 public:
-    CustomTuningTable(const ChipCapabilities& caps,
-                 const std::map<int, int>& periodTable,
-                 const String& customName,
-                 double chipClock,
-                 double a4Frequency
+    TuningTable(
+        const ChipCapabilities& caps,
+        double chipClock,
+        std::unique_ptr<TemperamentSystem> refTuning,
+        const std::map<int, int>& periodTable,
+        const String& customName
     )
-        : TuningSystem(caps, chipClock, a4Frequency)
+        : TuningSystem(caps, chipClock, std::move(refTuning))
         , periodTable_(periodTable)
         , customName_(customName)
     {
@@ -31,14 +32,15 @@ public:
     }
 
     // Constructor for ProTracker-style sequential period tables
-    CustomTuningTable(const ChipCapabilities& caps,
-                 int startingMidiNote,
-                 const std::vector<int>& periods,
-                 const String& customName,
-                 double chipClock,
-                 double a4Frequency
+    TuningTable(
+        const ChipCapabilities& caps,
+        double chipClock,
+        std::unique_ptr<TemperamentSystem> refTuning,
+        int startingMidiNote,
+        const std::vector<int>& periods,
+        const String& customName
     )
-        : TuningSystem(caps, chipClock, a4Frequency)
+        : TuningSystem(caps, chipClock, std::move(refTuning))
         , customName_(customName)
     {
         // Build period table from sequential array starting at startingMidiNote
@@ -57,32 +59,24 @@ public:
     }
 
     // Constructor with initializer list for convenience
-    CustomTuningTable(const ChipCapabilities& caps,
-                 int startingMidiNote,
-                 std::initializer_list<int> periods,
-                 const String& customName,
-                 double chipClock,
-                 double a4Frequency)
-        : CustomTuningTable(caps, startingMidiNote, std::vector<int>(periods), customName, chipClock, a4Frequency)
+    TuningTable(
+        const ChipCapabilities& caps,
+        double chipClock,
+        std::unique_ptr<TemperamentSystem> refTuning,
+        int startingMidiNote,
+        std::initializer_list<int> periods,
+        const String& customName
+    )
+        : TuningTable(caps, chipClock, std::move(refTuning), startingMidiNote, std::vector<int>(periods), customName)
     {}
 
     String getName() const override {
-        return customName_ + String::formatted(" (Custom, defined notes %s-%s, A4 = %.2fHz)",
+        return customName_ + String::formatted(", defined notes %s-%s, A4 = %.2fHz)",
             getMidiNoteName(minDefinedNote_).toUTF8(), getMidiNoteName(maxDefinedNote_).toUTF8(), getA4Frequency());
     }
 
     TuningType getType() const override {
         return TuningType::CustomTable;
-    }
-
-    double midiNoteToFrequency(double midiNote) const override {
-        int period = midiNoteToPeriod(midiNote);
-        return periodToFrequency(period);
-    }
-
-    double frequencyToMidiNote(double frequency) const override {
-        int period = frequencyToPeriod(frequency);
-        return periodToMidiNote(period);
     }
 
     int midiNoteToPeriod(double midiNote) const override {
@@ -155,16 +149,16 @@ public:
         return closestNote + noteOffset;
     }
 
-    double getOfftune(double midiNote) const override {
-        // Calculate the difference between the custom tuning and equal temperament
-        double customFreq = midiNoteToFrequency(midiNote);
-        double equalTempFreq = getReferenceFrequency(midiNote);
+    // double getOfftune(double midiNote) const override {
+    //     // Calculate the difference between the custom tuning and equal temperament
+    //     double customFreq = midiNoteToFrequency(midiNote);
+    //     double equalTempFreq = getReferenceFrequency(midiNote);
 
-        if (equalTempFreq == 0.0) return 0.0;
+    //     if (equalTempFreq == 0.0) return 0.0;
 
-        // Return difference in cents
-        return 1200.0 * std::log2(customFreq / equalTempFreq);
-    }
+    //     // Return difference in cents
+    //     return 1200.0 * std::log2(customFreq / equalTempFreq);
+    // }
 
     bool isDefined(int midiNote) const override {
         // Check if note is directly in the period table

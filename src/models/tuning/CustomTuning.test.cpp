@@ -16,9 +16,9 @@ public:
         beginTest("Constructor with empty period table");
         {
             std::map<int, int> emptyTable;
-            CustomTuningTable tuning(testCaps, emptyTable, "Empty Test", 1773400, 440.0);
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), emptyTable, "Empty Test");
 
-            expectEquals(tuning.getName(), String("Empty Test (Custom, defined notes C-1-C-1, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("Empty Test, defined notes C-1-C-1, A4 = 440.00Hz)"));
             expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TuningType::CustomTable));
         }
 
@@ -29,20 +29,20 @@ public:
                 {61, 480},  // C#
                 {62, 450}   // D
             };
-            CustomTuningTable tuning(testCaps, simpleTable, "Simple Test", 1773400, 440.0);
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), simpleTable, "Simple Test");
 
-            expectEquals(tuning.getName(), String("Simple Test (Custom, defined notes C4-D4, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("Simple Test, defined notes C4-D4, A4 = 440.00Hz)"));
         }
 
         beginTest("Constructor with vector of periods");
         {
-            CustomTuningTable tuning(
+            TuningTable tuning(
                 testCaps,
+                1773400,
+                std::make_unique<EqualTemperamentTuning>(440.0),
                 60,
                 {1000, 891, 794, 750, 668, 595, 530},
-                "Vector Test Tuning",
-                1773400,
-                440.0
+                "Vector Test Tuning"
             );
 
             expectEquals(tuning.getName(), String("Vector Test Tuning (Custom, defined notes C4-F#4, A4 = 440.00Hz)"));
@@ -64,7 +64,7 @@ public:
 
         beginTest("Constructor with empty vector");
         {
-            CustomTuningTable tuning(testCaps, 60, {}, "Empty Vector Test", 1773400, 440.0);
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), 60, {}, "Empty Vector Test");
 
             const auto& periodTable = tuning.getPeriodTable();
             expectEquals(static_cast<int>(periodTable.size()), 0);
@@ -78,12 +78,11 @@ public:
 
         beginTest("Direct period lookup for defined notes");
         {
-            CustomTuningTable tuning(testCaps, {
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), {
                 {60, 512},  // Middle C
                 {61, 480},  // C#
                 {62, 450}   // D
-            },
-            "Direct Lookup Test", 1773400, 440.0);
+            }, "Direct Lookup Test");
 
             expectEquals(tuning.midiNoteToPeriod(60), 512);
             expectEquals(tuning.midiNoteToPeriod(61), 480);
@@ -92,9 +91,9 @@ public:
 
         beginTest("Period to frequency conversion");
         {
-            CustomTuningTable tuning(testCaps, {
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), {
                 {60, 1000}  // Simple test case
-            }, "Frequency Conversion Test", 1773400, 440.0);
+            }, "Frequency Conversion Test");
 
             double frequency = tuning.midiNoteToFrequency(60);
             double expectedFreq = 1773400 / (16.0 * 1000);  // Clock / (divider * period)
@@ -104,9 +103,9 @@ public:
 
         beginTest("Octave extrapolation");
         {
-            CustomTuningTable tuning(testCaps, {
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), {
                 {60, 1000}  // Middle C (C4)
-            }, "Octave Extrapolation Test", 1773400, 440.0);
+            }, "Octave Extrapolation Test");
 
             // C5 should be half the period of C4 (one octave higher)
             int period_C5 = tuning.midiNoteToPeriod(72);  // C5 = C4 + 12
@@ -133,7 +132,7 @@ public:
                 {5, 768}, {6, 720}, {7, 680}, {8, 640}, {9, 600},
                 {10, 560}, {11, 512}
             };
-            CustomTuningTable tuning(testCaps, proTrackerTable, "ProTracker Tuning #1", 1773400, 440.0);
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), proTrackerTable, "ProTracker Tuning #1");
 
             expectEquals(tuning.getName(), String("ProTracker Tuning #1 (Custom, defined notes C-1-B-1, A4 = 440.00Hz)"));
 
@@ -150,7 +149,7 @@ public:
         beginTest("MIDI note to frequency conversion");
         {
             std::map<int, int> table = {{60, 1000}};
-            CustomTuningTable tuning(testCaps, table, "Frequency Conversion Test", 1773400, 440.0);
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), table, "Frequency Conversion Test");
 
             double frequency = tuning.midiNoteToFrequency(60);
             double expectedFreq = 1773400 / (16.0 * 1000);
@@ -161,7 +160,7 @@ public:
         beginTest("Edge case - single note table");
         {
             std::map<int, int> singleNote = {{69, 850}};  // A4
-            CustomTuningTable tuning(testCaps, singleNote, "Single Note", 1773400, 440.0);
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), singleNote, "Single Note");
 
             expectEquals(tuning.getName(), String("Single Note (Custom, defined notes A4-A4, A4 = 440.00Hz)"));
             expectEquals(tuning.midiNoteToPeriod(69), 850);
@@ -173,11 +172,11 @@ public:
 
         beginTest("isDefined method - directly defined notes");
         {
-            CustomTuningTable tuning(testCaps, {
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), {
                 {60, 1000},  // Middle C
                 {61, 891},   // C#
                 {62, 794}    // D
-            }, "Direct Lookup Test", 1773400, 440.0);
+            }, "Direct Lookup Test");
 
             // Test directly defined notes
             expect(tuning.isDefined(60), "Note 60 should be defined");
@@ -191,7 +190,7 @@ public:
 
         beginTest("isDefined method - empty tuning");
         {
-            CustomTuningTable tuning(testCaps, {}, "Empty Tuning", 1773400, 440.0);
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), {}, "Empty Tuning");
 
             // Empty tuning should have no defined notes
             expect(!tuning.isDefined(60), "No notes should be defined in empty tuning");
@@ -203,14 +202,16 @@ public:
         {
             // Test with actual ProTracker data from TuningViewModel.h (PT3NoteTable_ST)
             // Starting at MIDI note 12 (C0) for full ProTracker compatibility
-            CustomTuningTable tuning(
+            TuningTable tuning(
                 testCaps,
+                1773400,
+                std::make_unique<EqualTemperamentTuning>(440.0),
                 12, // Starting at MIDI note 12 (C0)
                 {
                     // First 12 notes (C0-B0): Testing with smaller subset
                     3832, 3600, 3424, 3200, 3032, 2856, 2696, 2544, 2400, 2272, 2136, 2016
                 },
-                "ProTracker Test", 1773400, 440.0
+                "ProTracker Test"
             );
 
             expectEquals(tuning.getName(), String("ProTracker Test (Custom, defined notes C0-B0, A4 = 440.00Hz)"));
@@ -260,7 +261,7 @@ public:
                 29, 28, 26, 25, 23, 22, 21, 19, 18, 17, 16, 15
             };
 
-            CustomTuningTable tuning(testCaps, 24, fullProTrackerTable, "Full ProTracker", 1773400, 440.0); // Start at C1 (MIDI 24)
+            TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), 24, fullProTrackerTable, "Full ProTracker"); // Start at C1 (MIDI 24)
 
             // Verify the table size
             expectEquals(static_cast<int>(fullProTrackerTable.size()), 96);
@@ -281,14 +282,16 @@ public:
         beginTest("ProTracker ASM table (table 2)");
         {
             // Test with the third ProTracker table (PT3NoteTable_ASM)
-            CustomTuningTable tuning(
+            TuningTable tuning(
                 testCaps,
+                1773400,
+                std::make_unique<EqualTemperamentTuning>(440.0),
                 24, // Starting at MIDI note 24 (C1)
                 {
                     // First octave from ASM table: $0D10-$06EC
                     3344, 3157, 2980, 2812, 2655, 2506, 2365, 2232, 2107, 1989, 1877, 1772
                 },
-                "ProTracker ASM Test", 1773400, 440.0
+                "ProTracker ASM Test"
             );
 
             expectEquals(tuning.getName(), String("ProTracker ASM Test (Custom, defined notes C1-B1, A4 = 440.00Hz)"));

@@ -299,8 +299,8 @@ public:
     StringArray getTuningTableNames() const {
         StringArray names;
         names.add("Equal Temperament");
-        for (int i = 0; i < static_cast<int>(CustomTuningEnum::CustomNaturalEPhrygian) + 1; ++i) {
-            names.add(getTuningTableName(static_cast<CustomTuningEnum>(i)));
+        for (int i = 0; i < static_cast<int>(CustomTuningType::size()); ++i) {
+            names.add(getTuningTableName(static_cast<CustomTuningType>(i)).data());
         }
         return names;
     }
@@ -384,12 +384,12 @@ private:
             } else {
                 // Custom tuning table - create with default values first, then update UI to match
                 int customIndex = currentTuningTableIndex - 1;
-                tuningSystem = makeCustomTableTuning(static_cast<CustomTuningEnum>(customIndex), chipCapabilities);
-                
+                tuningSystem = makeCustomTableTuning(static_cast<CustomTuningType>(customIndex), chipCapabilities);
+
                 // Update UI to reflect the properties of the selected tuning
                 a4Frequency = tuningSystem->getA4Frequency();
                 clockFrequency = tuningSystem->getClockFrequency();
-                
+
                 // Find and set the appropriate chip clock selection based on frequency
                 chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(findBestMatchingClockPreset(clockFrequency.get())));
             }
@@ -407,10 +407,10 @@ private:
         if (index != uZX::ChipClockEnum::Custom) {
             clockFrequency = uZX::ChipClockEnum::clockValues[index];
         }
-        
+
         // Always update tuning system when parameters change
         updateTuningSystem(true);
-        
+
         // Notify all registered listeners that the tuning system has changed
         sendChangeMessage();
     }
@@ -428,7 +428,7 @@ private:
     int findBestMatchingClockPreset(double frequency) {
         int bestMatch = static_cast<int>(uZX::ChipClockEnum::Custom); // Default to Custom
         double bestDiff = std::numeric_limits<double>::max();
-        
+
         for (int i = 0; i < static_cast<int>(uZX::ChipClockEnum::Custom); ++i) {
             double presetFreq = uZX::ChipClockEnum::clockValues[i];
             double diff = std::abs(frequency - presetFreq);
@@ -437,7 +437,7 @@ private:
                 bestDiff = diff;
             }
         }
-        
+
         return bestMatch;
     }
 
@@ -446,7 +446,7 @@ private:
     CachedValue<uZX::ChipClockChoice> chipClock;
     CachedValue<double> clockFrequency; // Current chip clock frequency in Hz
     CachedValue<double> a4Frequency;
-    
+
     ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
     std::unique_ptr<TuningSystem> tuningSystem;
 

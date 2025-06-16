@@ -6,14 +6,27 @@
 
 namespace MoTool {
 
-enum class CustomTuningEnum {
-    CustomPT3_0_PT = 0,         // ProTracker #0 (Original PT3 table)
-    CustomPT3_1_ST = 1,         // ProTracker #1 (SoundTracker)
-    CustomPT3_2_ASM = 2,        // ProTracker #2 (ASM)
-    CustomPT3_3_REAL = 3,       // ProTracker #3 (REAL)
-    CustomVT_4_NATURAL = 4,     // ProTracker #4 (Natural Cmaj/Am)
-    CustomNaturalEPhrygian = 5  // Natural E Phrygian
+struct CustomTuningEnum {
+    enum Enum : size_t {
+        CustomPT_0_PT = 0,          // ProTracker #0 (Original PT3 table)
+        CustomPT_1_ST = 1,          // ProTracker #1 (SoundTracker)
+        CustomPT_2_ASM = 2,         // ProTracker #2 (ASM)
+        CustomPT_3_REAL = 3,        // ProTracker #3 (REAL)
+        CustomVT_4_NATURAL = 4,     // ProTracker #4 (Natural Cmaj/Am)
+        // CustomNaturalEPhrygian = 5  // Natural E Phrygian
+    };
+
+    static inline constexpr std::string_view longLabels[] {
+        "ProTracker #0",
+        "ProTracker #1 (ST)",
+        "ProTracker #2 (ASM)",
+        "ProTracker #3 (REAL)",
+        "IvanRochin #4 (NATURAL Cmaj/Am)",
+        // "Natural E Phrygian"
+    };
 };
+
+using CustomTuningType = MoTool::Util::EnumChoice<CustomTuningEnum>;
 
 // Factory functions for standard tuning systems
 inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabilities& capabilities, double chipClock, double A4Frequency) {
@@ -21,9 +34,9 @@ inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabi
 }
 
 // Factory functions for ProTracker-style custom table tunings
-std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningEnum tableType, const ChipCapabilities& capabilities);
+std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableType, const ChipCapabilities& capabilities);
 
 // Get descriptive name for tuning table
-const char* getTuningTableName(CustomTuningEnum tableType);
+const std::string_view getTuningTableName(CustomTuningType tableType);
 
 }

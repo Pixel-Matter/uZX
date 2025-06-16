@@ -12,6 +12,7 @@
 #include <cmath>
 #include <set>
 #include <array>
+#include <limits>
 
 namespace MoTool {
 
@@ -311,7 +312,7 @@ public:
     void setCurrentTuningTable(int index) {
         if (index != currentTuningTableIndex && index >= 0 && index < getTuningTableNames().size()) {
             currentTuningTableIndex = index;
-            updateTuningSystemFromSelection();
+            updateTuningSystem(true);
             sendChangeMessage();
         }
     }
@@ -341,11 +342,7 @@ public:
     }
 
     void setA4Frequency(double frequency) {
-        if (frequency >= 220.0 && frequency <= 880.0) { // Reasonable range for A4
-            a4Frequency = frequency;
-            updateTuningSystem();
-            sendChangeMessage();
-        }
+        setParameterWithValidation(a4Frequency, frequency, 220.0, 880.0);
     }
 
     double getClockFrequency() const {
@@ -353,11 +350,7 @@ public:
     }
 
     void setClockFrequency(double frequency) {
-        if (frequency >= 1000000.0 && frequency <= 2000000.0) { // Reasonable range for chip clock
-            clockFrequency = frequency;
-            updateTuningSystem();
-            sendChangeMessage();
-        }
+        setParameterWithValidation(clockFrequency, frequency, 1000000.0, 2000000.0);
     }
 
     bool isCustomClockEnabled() const {
@@ -378,55 +371,33 @@ public:
 private:
     void initTuningSystem() {
         // TODO scale and root note
-
         chipCapabilities.divider = 16;
-        tuningSystem = makeEqualTemperamentTuning(chipCapabilities, clockFrequency.get(), a4Frequency.get());
-        a4Frequency = tuningSystem->getA4Frequency();
-        clockFrequency = tuningSystem->getClockFrequency();
         currentTuningTableIndex = 0; // Equal Temperament
+        updateTuningSystem(true);
     }
 
-    void updateTuningSystemFromSelection() {
-        if (currentTuningTableIndex == 0) {
-            // Equal Temperament - create with current UI values
-            tuningSystem = makeEqualTemperamentTuning(chipCapabilities, clockFrequency.get(), a4Frequency.get());
-        } else {
-            // Custom tuning table - create with default values first, then update UI to match
-            int customIndex = currentTuningTableIndex - 1;
-            tuningSystem = makeCustomTableTuning(static_cast<CustomTuningEnum>(customIndex), chipCapabilities);
-            
-            // Update UI to reflect the properties of the selected tuning
-            a4Frequency = tuningSystem->getA4Frequency();
-            clockFrequency = tuningSystem->getClockFrequency();
-            
-            // Find and set the appropriate chip clock selection based on frequency
-            updateChipClockFromFrequency();
-        }
-    }
-    
-    void updateChipClockFromFrequency() {
-        double freq = clockFrequency.get();
-        
-        // Find the closest matching preset clock frequency
-        int bestMatch = static_cast<int>(uZX::ChipClockEnum::Custom); // Default to Custom
-        double bestDiff = std::abs(freq - (-1)); // Start with a large difference
-        
-        for (int i = 0; i < static_cast<int>(uZX::ChipClockEnum::Custom); ++i) {
-            double presetFreq = uZX::ChipClockEnum::clockValues[i];
-            double diff = std::abs(freq - presetFreq);
-            if (diff < bestDiff && diff < 1000.0) { // Within 1kHz tolerance
-                bestMatch = i;
-                bestDiff = diff;
+    void updateTuningSystem(bool recreate = false) {
+        if (recreate) {
+            if (currentTuningTableIndex == 0) {
+                // Equal Temperament - create with current UI values
+                tuningSystem = makeEqualTemperamentTuning(chipCapabilities, clockFrequency.get(), a4Frequency.get());
+            } else {
+                // Custom tuning table - create with default values first, then update UI to match
+                int customIndex = currentTuningTableIndex - 1;
+                tuningSystem = makeCustomTableTuning(static_cast<CustomTuningEnum>(customIndex), chipCapabilities);
+                
+                // Update UI to reflect the properties of the selected tuning
+                a4Frequency = tuningSystem->getA4Frequency();
+                clockFrequency = tuningSystem->getClockFrequency();
+                
+                // Find and set the appropriate chip clock selection based on frequency
+                chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(findBestMatchingClockPreset(clockFrequency.get())));
             }
+        } else {
+            // Apply current UI values to the existing tuning system
+            tuningSystem->setA4Frequency(a4Frequency.get());
+            tuningSystem->setClockFrequency(clockFrequency.get());
         }
-        
-        chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(bestMatch));
-    }
-
-    void updateTuningSystem() {
-        // Apply current UI values to the tuning system
-        tuningSystem->setA4Frequency(a4Frequency.get());
-        tuningSystem->setClockFrequency(clockFrequency.get());
     }
 
     void updateParameters() {
@@ -438,10 +409,36 @@ private:
         }
         
         // Always update tuning system when parameters change
-        updateTuningSystemFromSelection();
+        updateTuningSystem(true);
         
         // Notify all registered listeners that the tuning system has changed
         sendChangeMessage();
+    }
+
+    // Helper methods
+    template<typename T>
+    void setParameterWithValidation(CachedValue<T>& parameter, T value, T minValue, T maxValue) {
+        if (value >= minValue && value <= maxValue) {
+            parameter = value;
+            updateTuningSystem();
+            sendChangeMessage();
+        }
+    }
+
+    int findBestMatchingClockPreset(double frequency) {
+        int bestMatch = static_cast<int>(uZX::ChipClockEnum::Custom); // Default to Custom
+        double bestDiff = std::numeric_limits<double>::max();
+        
+        for (int i = 0; i < static_cast<int>(uZX::ChipClockEnum::Custom); ++i) {
+            double presetFreq = uZX::ChipClockEnum::clockValues[i];
+            double diff = std::abs(frequency - presetFreq);
+            if (diff < bestDiff && diff < 1000.0) { // Within 1kHz tolerance
+                bestMatch = i;
+                bestDiff = diff;
+            }
+        }
+        
+        return bestMatch;
     }
 
     // Transient view state

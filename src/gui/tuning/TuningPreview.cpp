@@ -266,38 +266,26 @@ TuningPreviewComponent::TuningPreviewComponent()
         int selectedId = ChipClockSelect.getSelectedId();
         if (selectedId > 0) {
             viewModel.setChipClockChoice(selectedId - 1); // Convert from 1-based ID to 0-based index
-            // Update clock frequency slider enabled state
-            bool isCustom = viewModel.isCustomClockEnabled();
-            clockFrequencySlider.setEnabled(isCustom);
-            clockFrequencyLabel.setEnabled(isCustom);
+            updateClockControlsState();
             tuningGrid.repaint(); // Refresh the tuning grid with new calculations
         }
     };
 
-    // Set up clock frequency slider
-    clockFrequencySlider.setRange(1000000.0, 2000000.0, 1000.0);
-    clockFrequencySlider.setValue(viewModel.getClockFrequency(), juce::dontSendNotification);
-    clockFrequencySlider.setSliderStyle(Slider::LinearHorizontal);
-    clockFrequencySlider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
-    clockFrequencySlider.onValueChange = [this]() {
+    // Set up frequency sliders using helper
+    setupSlider(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (Hz):", 
+                1000000.0, 2000000.0, 1000.0, [this]() {
         viewModel.setClockFrequency(clockFrequencySlider.getValue());
-    };
-    clockFrequencyLabel.setText("Clock Frequency (Hz):", juce::dontSendNotification);
+    });
+    clockFrequencySlider.setValue(viewModel.getClockFrequency(), juce::dontSendNotification);
     
-    // Set enabled state based on current selection
-    bool isCustom = viewModel.isCustomClockEnabled();
-    clockFrequencySlider.setEnabled(isCustom);
-    clockFrequencyLabel.setEnabled(isCustom);
-
-    // Set up A4 frequency slider
-    a4FrequencySlider.setRange(220.0, 880.0, 0.1);
-    a4FrequencySlider.setValue(viewModel.getA4Frequency(), juce::dontSendNotification);
-    a4FrequencySlider.setSliderStyle(Slider::LinearHorizontal);
-    a4FrequencySlider.setTextBoxStyle(Slider::TextBoxRight, false, 60, 20);
-    a4FrequencySlider.onValueChange = [this]() {
+    setupSlider(a4FrequencySlider, a4FrequencyLabel, "A4 Frequency (Hz):", 
+                220.0, 880.0, 0.1, [this]() {
         viewModel.setA4Frequency(a4FrequencySlider.getValue());
-    };
-    a4FrequencyLabel.setText("A4 Frequency (Hz):", juce::dontSendNotification);
+    });
+    a4FrequencySlider.setValue(viewModel.getA4Frequency(), juce::dontSendNotification);
+
+    // Set initial clock controls state
+    updateClockControlsState();
 
     // Set up Scale selection ComboBox
     auto scaleNames = viewModel.getScaleTypeNames();
@@ -333,13 +321,6 @@ TuningPreviewComponent::TuningPreviewComponent()
     addAndMakeVisible(ChipClockSelect);
     ChipClockLabel.attachToComponent(&ChipClockSelect, true);
 
-    addAndMakeVisible(clockFrequencySlider);
-    addAndMakeVisible(clockFrequencyLabel);
-    clockFrequencyLabel.attachToComponent(&clockFrequencySlider, true);
-
-    addAndMakeVisible(a4FrequencySlider);
-    addAndMakeVisible(a4FrequencyLabel);
-    a4FrequencyLabel.attachToComponent(&a4FrequencySlider, true);
 
     // addAndMakeVisible(TuningTypeLabel);
     addAndMakeVisible(TuningNameLabel);
@@ -357,8 +338,7 @@ TuningPreviewComponent::~TuningPreviewComponent() {
 void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds();
     auto gap = 8;
-    auto labelHeight = 30;
-    auto sliderHeight = 30;
+    auto rowHeight = 30;
     auto widthModule = 60;
 
     auto formBounds = bounds.reduced(20, 20);
@@ -370,43 +350,44 @@ void TuningPreviewComponent::resized() {
     auto rightColumn = formBounds;
 
     // Left column: Tuning table selection
-    tuningTableLabel.setBounds(leftColumn.removeFromTop(labelHeight));
+    tuningTableLabel.setBounds(leftColumn.removeFromTop(rowHeight));
     // leftColumn.removeFromTop(gap / 2);
     tuningTableListBox.setBounds(leftColumn); // Take remaining space in left column
 
     // Right column: Other controls and tuning grid
     // Place KeySelect and ScaleSelect on the same row with fixed widths
-    auto keyScaleRow = rightColumn.removeFromTop(labelHeight);
-    KeyScaleLabel.setBounds(keyScaleRow.removeFromLeft(widthModule * 2));
+    auto labelsColWidth = widthModule * 3; // Width for labels
+    auto keyScaleRow = rightColumn.removeFromTop(rowHeight);
+    KeyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
     KeySelect.setBounds(keyScaleRow.removeFromLeft(widthModule - gap));
     keyScaleRow.removeFromLeft(gap);
     ScaleSelect.setBounds(keyScaleRow.removeFromLeft(widthModule * 3));
 
     rightColumn.removeFromTop(gap);
 
-    auto chipLabelRow = rightColumn.removeFromTop(labelHeight);
-    ChipClockLabel.setBounds(chipLabelRow.removeFromLeft(widthModule * 2));
+    auto chipLabelRow = rightColumn.removeFromTop(rowHeight);
+    ChipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
     ChipClockSelect.setBounds(chipLabelRow.removeFromLeft(widthModule * 4));
 
     rightColumn.removeFromTop(gap);
 
     // Clock frequency slider on its own row
-    auto clockFreqRow = rightColumn.removeFromTop(sliderHeight);
-    clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(widthModule * 2));
-    clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(widthModule * 6));
+    auto clockFreqRow = rightColumn.removeFromTop(rowHeight);
+    clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(labelsColWidth));
+    clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(widthModule * 8));
 
     rightColumn.removeFromTop(gap);
 
     // A4 frequency slider with label
-    auto a4Row = rightColumn.removeFromTop(sliderHeight);
-    a4FrequencyLabel.setBounds(a4Row.removeFromLeft(widthModule * 2));
+    auto a4Row = rightColumn.removeFromTop(rowHeight);
+    a4FrequencyLabel.setBounds(a4Row.removeFromLeft(labelsColWidth));
     a4FrequencySlider.setBounds(a4Row.removeFromLeft(widthModule * 8));
 
     rightColumn.removeFromTop(gap);
 
-    // TuningTypeLabel.setBounds(rightColumn.removeFromTop(labelHeight));
-    TuningNameLabel.setBounds(rightColumn.removeFromTop(labelHeight));
-    ToneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(labelHeight));
+    // TuningTypeLabel.setBounds(rightColumn.removeFromTop(controlHeight));
+    TuningNameLabel.setBounds(rightColumn.removeFromTop(rowHeight));
+    ToneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
 
     tuningGrid.setBounds(rightColumn);
 }
@@ -427,14 +408,12 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
 
         // Update clock frequency slider
         clockFrequencySlider.setValue(viewModel.getClockFrequency(), juce::dontSendNotification);
-        
+
         // Update chip clock selection to reflect current choice
         ChipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
-        
+
         // Update enabled state of clock frequency controls
-        bool isCustom = viewModel.isCustomClockEnabled();
-        clockFrequencySlider.setEnabled(isCustom);
-        clockFrequencyLabel.setEnabled(isCustom);
+        updateClockControlsState();
 
         // Update tuning table selection
         tuningTableListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);
@@ -467,6 +446,27 @@ void TuningPreviewComponent::paintListBoxItem(int rowNumber, Graphics& g, int wi
 void TuningPreviewComponent::listBoxItemClicked(int row, const MouseEvent& e) {
     juce::ignoreUnused(e);
     viewModel.setCurrentTuningTable(row);
+}
+
+// UI setup helpers
+void TuningPreviewComponent::setupSlider(Slider& slider, Label& label, const String& labelText,
+                                        double min, double max, double step, std::function<void()> callback) {
+    slider.setRange(min, max, step);
+    slider.setValue(min, juce::dontSendNotification);
+    slider.setSliderStyle(Slider::LinearHorizontal);
+    slider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
+    slider.onValueChange = callback;
+    label.setText(labelText, juce::dontSendNotification);
+    
+    addAndMakeVisible(slider);
+    addAndMakeVisible(label);
+    label.attachToComponent(&slider, true);
+}
+
+void TuningPreviewComponent::updateClockControlsState() {
+    bool isCustom = viewModel.isCustomClockEnabled();
+    clockFrequencySlider.setEnabled(isCustom);
+    clockFrequencyLabel.setEnabled(isCustom);
 }
 
 }  // namespace MoTool

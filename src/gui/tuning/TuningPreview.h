@@ -55,6 +55,11 @@ public:
 
 private:
     void changeListenerCallback(ChangeBroadcaster* source) override;
+    
+    // UI setup helpers
+    void setupSlider(Slider& slider, Label& label, const String& labelText, 
+                    double min, double max, double step, std::function<void()> callback);
+    void updateClockControlsState();
 
     TuningViewModel viewModel;
 

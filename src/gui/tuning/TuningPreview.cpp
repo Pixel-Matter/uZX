@@ -240,7 +240,7 @@ TuningPreviewComponent::TuningPreviewComponent()
     addAndMakeVisible(ScaleSelect);
 
     KeyScaleLabel.setText("Scale:", juce::dontSendNotification);
-    KeyScaleLabel.attachToComponent(&KeySelect, true);
+    KeyScaleLabel.setJustificationType(juce::Justification::centredRight);
 
     auto keyNames = viewModel.getKeyNames();
     for (int i = 0; i < keyNames.size(); ++i) {
@@ -256,6 +256,7 @@ TuningPreviewComponent::TuningPreviewComponent()
 
     // Set up Chip Clock selection ComboBox
     ChipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
+    ChipClockLabel.setJustificationType(juce::Justification::centredRight);
 
     auto chipClockLabels = viewModel.getChipClockLabels();
     for (int i = 0; i < chipClockLabels.size(); ++i) {
@@ -300,7 +301,6 @@ TuningPreviewComponent::TuningPreviewComponent()
 
     addAndMakeVisible(ChipClockLabel);
     addAndMakeVisible(ChipClockSelect);
-    ChipClockLabel.attachToComponent(&ChipClockSelect, true);
 
 
     // addAndMakeVisible(TuningTypeLabel);
@@ -441,10 +441,10 @@ void TuningPreviewComponent::setupSlider(Slider& slider, Label& label, const Str
     slider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
     slider.onValueChange = callback;
     label.setText(labelText, juce::dontSendNotification);
+    label.setJustificationType(juce::Justification::centredRight);
     
     addAndMakeVisible(slider);
     addAndMakeVisible(label);
-    label.attachToComponent(&slider, true);
 }
 
 void TuningPreviewComponent::updateClockControlsState() {

@@ -312,7 +312,7 @@ public:
     void setCurrentTuningTable(int index) {
         if (index != currentTuningTableIndex && index >= 0 && index < getTuningTableNames().size()) {
             currentTuningTableIndex = index;
-            updateTuningSystem(true);
+            updateTuningSystem(true, true); // Reset UI values when changing tuning table
             sendChangeMessage();
         }
     }
@@ -376,22 +376,26 @@ private:
         updateTuningSystem(true);
     }
 
-    void updateTuningSystem(bool recreate = false) {
+    void updateTuningSystem(bool recreate = false, bool resetUIValues = false) {
         if (recreate) {
             if (currentTuningTableIndex == 0) {
                 // Equal Temperament - create with current UI values
                 tuningSystem = makeEqualTemperamentTuning(chipCapabilities, clockFrequency.get(), a4Frequency.get());
             } else {
-                // Custom tuning table - create with default values first, then update UI to match
+                // Custom tuning table
                 int customIndex = currentTuningTableIndex - 1;
                 tuningSystem = makeCustomTableTuning(static_cast<CustomTuningType>(customIndex), chipCapabilities);
-
-                // Update UI to reflect the properties of the selected tuning
-                a4Frequency = tuningSystem->getA4Frequency();
-                clockFrequency = tuningSystem->getClockFrequency();
-
-                // Find and set the appropriate chip clock selection based on frequency
-                chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(findBestMatchingClockPreset(clockFrequency.get())));
+                
+                if (resetUIValues) {
+                    // When changing tuning table, reset UI to match tuning defaults
+                    a4Frequency = tuningSystem->getA4Frequency();
+                    clockFrequency = tuningSystem->getClockFrequency();
+                    chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(findBestMatchingClockPreset(clockFrequency.get())));
+                } else {
+                    // When updating from user changes, preserve user settings
+                    tuningSystem->setA4Frequency(a4Frequency.get());
+                    tuningSystem->setClockFrequency(clockFrequency.get());
+                }
             }
         } else {
             // Apply current UI values to the existing tuning system

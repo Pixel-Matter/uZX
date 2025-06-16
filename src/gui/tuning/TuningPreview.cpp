@@ -272,11 +272,11 @@ TuningPreviewComponent::TuningPreviewComponent()
     };
 
     // Set up frequency sliders using helper
-    setupSlider(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (Hz):", 
-                1000000.0, 2000000.0, 1000.0, [this]() {
-        viewModel.setClockFrequency(clockFrequencySlider.getValue());
+    setupSlider(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (MHz):", 
+                1.0, 2.0, 0.001, [this]() {
+        viewModel.setClockFrequency(clockFrequencySlider.getValue() * 1000000.0);
     });
-    clockFrequencySlider.setValue(viewModel.getClockFrequency(), juce::dontSendNotification);
+    clockFrequencySlider.setValue(viewModel.getClockFrequency() / 1000000.0, juce::dontSendNotification);
     
     setupSlider(a4FrequencySlider, a4FrequencyLabel, "A4 Frequency (Hz):", 
                 220.0, 880.0, 0.1, [this]() {
@@ -287,28 +287,9 @@ TuningPreviewComponent::TuningPreviewComponent()
     // Set initial clock controls state
     updateClockControlsState();
 
-    // Set up Scale selection ComboBox
-    auto scaleNames = viewModel.getScaleTypeNames();
-    for (int i = 0; i < scaleNames.size(); ++i) {
-        ScaleSelect.addItem(scaleNames[i], i + 1);
-    }
-
-    // Find the current scale in the list and select it
-    String currentScaleName = Scale::getNameForType(viewModel.getCurrentScale());
-    int currentScaleIndex = scaleNames.indexOf(currentScaleName);
-    if (currentScaleIndex >= 0) {
-        ScaleSelect.setSelectedId(currentScaleIndex + 1, juce::dontSendNotification);
-    }
-
-    ScaleSelect.onChange = [this]() {
-        int selectedId = ScaleSelect.getSelectedId();
-        if (selectedId > 0) {
-            auto names = viewModel.getScaleTypeNames();
-            String selectedScaleName = names[selectedId - 1];
-            Scale::ScaleType scaleType = Scale::getTypeFromName(selectedScaleName);
-            viewModel.setCurrentScale(scaleType);
-        }
-    };
+    // Set up Scale selection ComboBox with category grouping
+    setupScaleSelectMenu();
+    updateScaleSelection();
     KeyScaleLabel.setText("Scale:", juce::dontSendNotification);
 
     // Register as a change listener to the view model
@@ -406,8 +387,8 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
         // Update A4 frequency slider to reflect current value
         a4FrequencySlider.setValue(viewModel.getA4Frequency(), juce::dontSendNotification);
 
-        // Update clock frequency slider
-        clockFrequencySlider.setValue(viewModel.getClockFrequency(), juce::dontSendNotification);
+        // Update clock frequency slider (convert Hz to MHz)
+        clockFrequencySlider.setValue(viewModel.getClockFrequency() / 1000000.0, juce::dontSendNotification);
 
         // Update chip clock selection to reflect current choice
         ChipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
@@ -417,6 +398,9 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
 
         // Update tuning table selection
         tuningTableListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);
+
+        // Update scale selection
+        updateScaleSelection();
 
         // Repaint the tuning grid to show updated calculations
         tuningGrid.repaint();
@@ -467,6 +451,76 @@ void TuningPreviewComponent::updateClockControlsState() {
     bool isCustom = viewModel.isCustomClockEnabled();
     clockFrequencySlider.setEnabled(isCustom);
     clockFrequencyLabel.setEnabled(isCustom);
+}
+
+void TuningPreviewComponent::setupScaleSelectMenu() {
+    // Clear any existing items and mapping
+    ScaleSelect.clear();
+    scaleMenuMapping.clear();
+    
+    // Get all scale categories
+    auto categories = Scale::getAllScaleCategories();
+    int menuItemId = 1;
+    
+    // Build the grouped menu structure
+    PopupMenu rootMenu;
+    
+    for (auto category : categories) {
+        if (category == Scale::ScaleCategory::UserDefined) {
+            continue; // Skip user defined for now
+        }
+        
+        // Add category header (non-selectable)
+        rootMenu.addSectionHeader(Scale::getNameForCategory(category));
+        
+        // Add scales in this category
+        auto scalesInCategory = Scale::getAllScaleTypesForCategory(category);
+        for (auto scaleType : scalesInCategory) {
+            String scaleName = Scale::getNameForType(scaleType);
+            rootMenu.addItem(menuItemId, scaleName);
+            scaleMenuMapping[menuItemId] = scaleType;
+            
+            // Also add to ComboBox for text display purposes
+            ScaleSelect.addItem(scaleName, menuItemId);
+            menuItemId++;
+        }
+        
+        // Add separator after each category (except the last one)
+        if (category != categories.back() || categories.back() == Scale::ScaleCategory::UserDefined) {
+            rootMenu.addSeparator();
+        }
+    }
+    
+    // Replace the ComboBox's root menu with our grouped menu
+    *ScaleSelect.getRootMenu() = rootMenu;
+    
+    // Set up the onChange callback to handle selection
+    ScaleSelect.onChange = [this]() {
+        int selectedId = ScaleSelect.getSelectedId();
+        if (selectedId > 0 && scaleMenuMapping.find(selectedId) != scaleMenuMapping.end()) {
+            Scale::ScaleType selectedScale = scaleMenuMapping[selectedId];
+            viewModel.setCurrentScale(selectedScale);
+        }
+    };
+}
+
+void TuningPreviewComponent::updateScaleSelection() {
+    // Update the ComboBox text to show the current scale
+    Scale::ScaleType currentScale = viewModel.getCurrentScale();
+    String currentScaleName = Scale::getNameForType(currentScale);
+    
+    // Find the corresponding menu item ID
+    for (const auto& [itemId, scaleType] : scaleMenuMapping) {
+        if (scaleType == currentScale) {
+            ScaleSelect.setSelectedId(itemId, juce::dontSendNotification);
+            break;
+        }
+    }
+    
+    // If we can't find it in the mapping, set the text directly
+    if (ScaleSelect.getSelectedId() == 0) {
+        ScaleSelect.setText(currentScaleName, juce::dontSendNotification);
+    }
 }
 
 }  // namespace MoTool

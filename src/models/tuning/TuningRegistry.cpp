@@ -89,7 +89,7 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                 },
                 CustomTuningEnum::longLabels[CustomTuningType::CustomPT_2_ASM].data(),
                 uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
-                390.5
+                440.0
             );
         }
 

@@ -3,6 +3,7 @@
 #include "JuceHeader.h"
 #include "../../models/tuning/TuningSystem.h"
 #include "../../viewmodels/tuning/TuningViewModel.h"
+#include <map>
 
 namespace MoTool {
 
@@ -60,8 +61,13 @@ private:
     void setupSlider(Slider& slider, Label& label, const String& labelText, 
                     double min, double max, double step, std::function<void()> callback);
     void updateClockControlsState();
+    void setupScaleSelectMenu();
+    void updateScaleSelection();
 
     TuningViewModel viewModel;
+    
+    // Scale selection mapping (menu item ID -> ScaleType)
+    std::map<int, Scale::ScaleType> scaleMenuMapping;
 
     // Tuning table selection
     Label tuningTableLabel;

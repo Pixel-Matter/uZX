@@ -64,6 +64,8 @@ private:
 
     Label ChipClockLabel;
     ComboBox ChipClockSelect;
+    Slider clockFrequencySlider;
+    Label clockFrequencyLabel;
     Slider a4FrequencySlider;
     Label a4FrequencyLabel;
 

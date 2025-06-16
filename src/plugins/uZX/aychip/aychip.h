@@ -51,7 +51,7 @@ struct ChipClockEnum {
         1000000,   // Amstrad
         1500000,   // Vectrex
         2000000,   // Atari ST
-       -1000000    // Custom (user defined)
+              0    // Custom (user defined)
     };
 
     static inline constexpr std::string_view longLabels[] {

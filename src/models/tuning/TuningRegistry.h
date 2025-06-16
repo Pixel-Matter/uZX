@@ -1,11 +1,12 @@
 #pragma once
 
 #include "TuningSystem.h"
+#include "TuningTables.h"
 #include <memory>
 
 namespace MoTool {
 
-enum class CustomTuningTable {
+enum class CustomTuningEnum {
     CustomPT3_0_PT = 0,         // ProTracker #0 (Original PT3 table)
     CustomPT3_1_ST = 1,         // ProTracker #1 (SoundTracker)
     CustomPT3_2_ASM = 2,        // ProTracker #2 (ASM)
@@ -15,14 +16,14 @@ enum class CustomTuningTable {
 };
 
 // Factory functions for standard tuning systems
-inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabilities& capabilities, double A4Frequency = 440.0) {
-    return std::make_unique<EqualTemperamentTuning>(capabilities, A4Frequency);
+inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabilities& capabilities, double chipClock, double A4Frequency) {
+    return std::make_unique<EqualTemperamentTuning>(capabilities, chipClock, A4Frequency);
 }
 
 // Factory functions for ProTracker-style custom table tunings
-std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType, const ChipCapabilities& capabilities);
+std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningEnum tableType, const ChipCapabilities& capabilities);
 
 // Get descriptive name for tuning table
-const char* getTuningTableName(CustomTuningTable tableType);
+const char* getTuningTableName(CustomTuningEnum tableType);
 
 }

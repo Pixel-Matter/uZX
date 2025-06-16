@@ -266,9 +266,28 @@ TuningPreviewComponent::TuningPreviewComponent()
         int selectedId = ChipClockSelect.getSelectedId();
         if (selectedId > 0) {
             viewModel.setChipClockChoice(selectedId - 1); // Convert from 1-based ID to 0-based index
+            // Update clock frequency slider enabled state
+            bool isCustom = viewModel.isCustomClockEnabled();
+            clockFrequencySlider.setEnabled(isCustom);
+            clockFrequencyLabel.setEnabled(isCustom);
             tuningGrid.repaint(); // Refresh the tuning grid with new calculations
         }
     };
+
+    // Set up clock frequency slider
+    clockFrequencySlider.setRange(1000000.0, 2000000.0, 1000.0);
+    clockFrequencySlider.setValue(viewModel.getClockFrequency(), juce::dontSendNotification);
+    clockFrequencySlider.setSliderStyle(Slider::LinearHorizontal);
+    clockFrequencySlider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
+    clockFrequencySlider.onValueChange = [this]() {
+        viewModel.setClockFrequency(clockFrequencySlider.getValue());
+    };
+    clockFrequencyLabel.setText("Clock Frequency (Hz):", juce::dontSendNotification);
+    
+    // Set enabled state based on current selection
+    bool isCustom = viewModel.isCustomClockEnabled();
+    clockFrequencySlider.setEnabled(isCustom);
+    clockFrequencyLabel.setEnabled(isCustom);
 
     // Set up A4 frequency slider
     a4FrequencySlider.setRange(220.0, 880.0, 0.1);
@@ -313,6 +332,10 @@ TuningPreviewComponent::TuningPreviewComponent()
     addAndMakeVisible(ChipClockLabel);
     addAndMakeVisible(ChipClockSelect);
     ChipClockLabel.attachToComponent(&ChipClockSelect, true);
+
+    addAndMakeVisible(clockFrequencySlider);
+    addAndMakeVisible(clockFrequencyLabel);
+    clockFrequencyLabel.attachToComponent(&clockFrequencySlider, true);
 
     addAndMakeVisible(a4FrequencySlider);
     addAndMakeVisible(a4FrequencyLabel);
@@ -363,7 +386,14 @@ void TuningPreviewComponent::resized() {
 
     auto chipLabelRow = rightColumn.removeFromTop(labelHeight);
     ChipClockLabel.setBounds(chipLabelRow.removeFromLeft(widthModule * 2));
-    ChipClockSelect.setBounds(chipLabelRow.removeFromTop(labelHeight).withWidth(widthModule * 4));
+    ChipClockSelect.setBounds(chipLabelRow.removeFromLeft(widthModule * 4));
+
+    rightColumn.removeFromTop(gap);
+
+    // Clock frequency slider on its own row
+    auto clockFreqRow = rightColumn.removeFromTop(sliderHeight);
+    clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(widthModule * 2));
+    clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(widthModule * 6));
 
     rightColumn.removeFromTop(gap);
 
@@ -394,6 +424,17 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
 
         // Update A4 frequency slider to reflect current value
         a4FrequencySlider.setValue(viewModel.getA4Frequency(), juce::dontSendNotification);
+
+        // Update clock frequency slider
+        clockFrequencySlider.setValue(viewModel.getClockFrequency(), juce::dontSendNotification);
+        
+        // Update chip clock selection to reflect current choice
+        ChipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
+        
+        // Update enabled state of clock frequency controls
+        bool isCustom = viewModel.isCustomClockEnabled();
+        clockFrequencySlider.setEnabled(isCustom);
+        clockFrequencyLabel.setEnabled(isCustom);
 
         // Update tuning table selection
         tuningTableListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);

@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../../models/tuning/TuningSystem.h"
+#include "../../models/tuning/TuningTables.h"
 #include "../../models/tuning/TuningRegistry.h"
 #include "../../models/tuning/Ratios.h"
 #include "../../models/tuning/Scales.h"
@@ -93,15 +94,17 @@ public:
     // and calling viewModel.addChangeListener(this) in their constructor
     TuningViewModel()
         : transientState("TuningView")
-        , chipCapabilities {1750000, 16, Range<int>(1, 4096)}
+        , chipCapabilities {16, Range<int>(1, 4096)}
         // , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
         , currentScale(Scale::ScaleType::IonianOrMajor)
         , currentKey(Key::C)
     {
         // Initialize transient view state
+        // TODO handle Custom option to chipClock
         chipClock.referTo(transientState, "chipClock", nullptr,
-            uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz));
-            // uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz));
+            uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz));
+        // Make it editable only when using custom clock
+        clockFrequency.referTo(transientState, "chipFrequency", nullptr, 1773400.0);
         a4Frequency.referTo(transientState, "A4", nullptr, 440.0);
 
         // Initialize with ProTracker tuning
@@ -145,7 +148,8 @@ public:
     }
 
     Range<int> getOctaveRange() const {
-        return Range<int>(-1, 10);
+        // TODO depends on divider, for envelope use -1, 9
+        return Range<int>(0, 10);
     }
 
     int getNumRows() const {
@@ -294,8 +298,8 @@ public:
     StringArray getTuningTableNames() const {
         StringArray names;
         names.add("Equal Temperament");
-        for (int i = 0; i < static_cast<int>(CustomTuningTable::CustomNaturalEPhrygian) + 1; ++i) {
-            names.add(getTuningTableName(static_cast<CustomTuningTable>(i)));
+        for (int i = 0; i < static_cast<int>(CustomTuningEnum::CustomNaturalEPhrygian) + 1; ++i) {
+            names.add(getTuningTableName(static_cast<CustomTuningEnum>(i)));
         }
         return names;
     }
@@ -339,8 +343,25 @@ public:
     void setA4Frequency(double frequency) {
         if (frequency >= 220.0 && frequency <= 880.0) { // Reasonable range for A4
             a4Frequency = frequency;
-            updateParameters();
+            updateTuningSystem();
+            sendChangeMessage();
         }
+    }
+
+    double getClockFrequency() const {
+        return clockFrequency.get();
+    }
+
+    void setClockFrequency(double frequency) {
+        if (frequency >= 1000000.0 && frequency <= 2000000.0) { // Reasonable range for chip clock
+            clockFrequency = frequency;
+            updateTuningSystem();
+            sendChangeMessage();
+        }
+    }
+
+    bool isCustomClockEnabled() const {
+        return chipClock.get().value == uZX::ChipClockEnum::Custom;
     }
 
     // // State persistence methods
@@ -358,27 +379,54 @@ private:
     void initTuningSystem() {
         // TODO scale and root note
 
-        chipCapabilities.divider = 16 * 16;
-        tuningSystem = makeEqualTemperamentTuning(chipCapabilities);
-
+        chipCapabilities.divider = 16;
+        tuningSystem = makeEqualTemperamentTuning(chipCapabilities, clockFrequency.get(), a4Frequency.get());
         a4Frequency = tuningSystem->getA4Frequency();
+        clockFrequency = tuningSystem->getClockFrequency();
         currentTuningTableIndex = 0; // Equal Temperament
     }
 
     void updateTuningSystemFromSelection() {
         if (currentTuningTableIndex == 0) {
-            // Equal Temperament
-            tuningSystem = makeEqualTemperamentTuning(chipCapabilities, a4Frequency.get());
+            // Equal Temperament - create with current UI values
+            tuningSystem = makeEqualTemperamentTuning(chipCapabilities, clockFrequency.get(), a4Frequency.get());
         } else {
-            // Custom tuning table
+            // Custom tuning table - create with default values first, then update UI to match
             int customIndex = currentTuningTableIndex - 1;
-            tuningSystem = makeCustomTableTuning(static_cast<CustomTuningTable>(customIndex), chipCapabilities);
-            tuningSystem->setA4Frequency(a4Frequency.get());
+            tuningSystem = makeCustomTableTuning(static_cast<CustomTuningEnum>(customIndex), chipCapabilities);
+            
+            // Update UI to reflect the properties of the selected tuning
+            a4Frequency = tuningSystem->getA4Frequency();
+            clockFrequency = tuningSystem->getClockFrequency();
+            
+            // Find and set the appropriate chip clock selection based on frequency
+            updateChipClockFromFrequency();
         }
+    }
+    
+    void updateChipClockFromFrequency() {
+        double freq = clockFrequency.get();
+        
+        // Find the closest matching preset clock frequency
+        int bestMatch = static_cast<int>(uZX::ChipClockEnum::Custom); // Default to Custom
+        double bestDiff = std::abs(freq - (-1)); // Start with a large difference
+        
+        for (int i = 0; i < static_cast<int>(uZX::ChipClockEnum::Custom); ++i) {
+            double presetFreq = uZX::ChipClockEnum::clockValues[i];
+            double diff = std::abs(freq - presetFreq);
+            if (diff < bestDiff && diff < 1000.0) { // Within 1kHz tolerance
+                bestMatch = i;
+                bestDiff = diff;
+            }
+        }
+        
+        chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(bestMatch));
     }
 
     void updateTuningSystem() {
+        // Apply current UI values to the tuning system
         tuningSystem->setA4Frequency(a4Frequency.get());
+        tuningSystem->setClockFrequency(clockFrequency.get());
     }
 
     void updateParameters() {
@@ -386,31 +434,29 @@ private:
         int index = static_cast<int>(choice.value);
 
         if (index != uZX::ChipClockEnum::Custom) {
-            double clockFreq = uZX::ChipClockEnum::clockValues[index];
-            chipCapabilities.clockFrequency = clockFreq;
-
-            // DBG("Updating tuning system with new clock frequency: " << clockFreq << " Hz and A4 frequency: " << a4Frequency.get() << " Hz");
-
-            // Recreate tuning system with new capabilities and current A4 frequency
-            updateTuningSystemFromSelection();
-
-            // Notify all registered listeners that the tuning system has changed
-            // DBG("Broadcasting tuning system change to all listeners");
-            sendChangeMessage();
+            clockFrequency = uZX::ChipClockEnum::clockValues[index];
         }
+        
+        // Always update tuning system when parameters change
+        updateTuningSystemFromSelection();
+        
+        // Notify all registered listeners that the tuning system has changed
+        sendChangeMessage();
     }
 
     // Transient view state
     ValueTree transientState;
     CachedValue<uZX::ChipClockChoice> chipClock;
+    CachedValue<double> clockFrequency; // Current chip clock frequency in Hz
     CachedValue<double> a4Frequency;
+    
     ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
     std::unique_ptr<TuningSystem> tuningSystem;
 
     // Scale and Key selection
     Scale currentScale;
     Key currentKey;
-    
+
     // Tuning table selection
     int currentTuningTableIndex = 0;
 

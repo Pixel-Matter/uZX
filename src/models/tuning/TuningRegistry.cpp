@@ -1,13 +1,14 @@
 #include "TuningRegistry.h"
 
+#include "../../plugins/uZX/aychip/aychip.h"
+
 namespace MoTool {
 
-std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType, const ChipCapabilities& capabilities) {
+std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningEnum tableType, const ChipCapabilities& capabilities) {
     switch (tableType) {
-        case CustomTuningTable::CustomPT3_0_PT: {
+        case CustomTuningEnum::CustomPT3_0_PT: {
             // ProTracker #0 (Original PT3 table)
-            // a4Frequency = 474.0
-            return std::make_unique<CustomTuning>(
+            return std::make_unique<CustomTuningTable>(
                 capabilities,
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -29,14 +30,14 @@ std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType,
                     24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12
                 },
                 "ProTracker #0",
+                uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
                 474.0
             );
         }
 
-        case CustomTuningTable::CustomPT3_1_ST: {
+        case CustomTuningEnum::CustomPT3_1_ST: {
             // ProTracker #1 (SoundTracker)
-            // chipCapabilities.clockFrequency = 1773400 (ZX Spectrum)
-            return std::make_unique<CustomTuning>(
+            return std::make_unique<CustomTuningTable>(
                 capabilities,
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -58,14 +59,14 @@ std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType,
                     29, 28, 26, 25, 23, 22, 21, 19, 18, 17, 16, 15
                 },
                 "ProTracker #1",
+                uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz).getClockValue(),
                 390.5
             );
         }
 
-        case CustomTuningTable::CustomPT3_2_ASM: {
+        case CustomTuningEnum::CustomPT3_2_ASM: {
             // ProTracker #2 (ASM)
-            // chipCapabilities.clockFrequency = 1750000
-            return std::make_unique<CustomTuning>(
+            return std::make_unique<CustomTuningTable>(
                 capabilities,
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -87,13 +88,14 @@ std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType,
                     26, 25, 23, 22, 21, 20, 18, 17, 16, 15, 14, 13
                 },
                 "ProTracker #2 (ASM)",
+                uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
                 390.5
             );
         }
 
-        case CustomTuningTable::CustomPT3_3_REAL: {
+        case CustomTuningEnum::CustomPT3_3_REAL: {
             // ProTracker #3 (REAL)
-            return std::make_unique<CustomTuning>(
+            return std::make_unique<CustomTuningTable>(
                 capabilities,
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -115,14 +117,15 @@ std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType,
                     26, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13
                 },
                 "ProTracker #3 (REAL)",
+                uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
                 440.0
             );
         }
 
-        case CustomTuningTable::CustomVT_4_NATURAL: {
+        case CustomTuningEnum::CustomVT_4_NATURAL: {
             // ProTracker #4 (Natural Cmaj/Am)
             // Based on 1520640 MHz
-            return std::make_unique<CustomTuning>(
+            return std::make_unique<CustomTuningTable>(
                 capabilities,
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -144,14 +147,14 @@ std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType,
                     23, 21, 20, 19, 18, 17, 16, 15, 14, 14, 13, 12
                 },
                 "IvanRochin NATURAL Cmaj/Am #4",
+                1520640,  // Chip clock frequency
                 440.0
             );
         }
 
-        case CustomTuningTable::CustomNaturalEPhrygian: {
+        case CustomTuningEnum::CustomNaturalEPhrygian: {
             // Natural E Phrygian tuning
-            // chipCapabilities.clockFrequency = 1773400
-            return std::make_unique<CustomTuning>(
+            return std::make_unique<CustomTuningTable>(
                 capabilities,
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -175,6 +178,7 @@ std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType,
                     12, 11, 11, 10, 10, 9, 9, 8, 8, 7, 7, 6
                 },
                 "Natural E Phrygian",
+                uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz).getClockValue(),
                 486.0
             );
         }
@@ -183,14 +187,14 @@ std::unique_ptr<CustomTuning> makeCustomTableTuning(CustomTuningTable tableType,
     return nullptr; // Should never reach here
 }
 
-const char* getTuningTableName(CustomTuningTable tableType) {
+const char* getTuningTableName(CustomTuningEnum tableType) {
     switch (tableType) {
-        case CustomTuningTable::CustomPT3_0_PT:         return "ProTracker #0";
-        case CustomTuningTable::CustomPT3_1_ST:         return "ProTracker #1";
-        case CustomTuningTable::CustomPT3_2_ASM:        return "ProTracker #2 (ASM)";
-        case CustomTuningTable::CustomPT3_3_REAL:       return "ProTracker #3 (REAL)";
-        case CustomTuningTable::CustomVT_4_NATURAL:     return "IvanRochin NATURAL Cmaj/Am #4";
-        case CustomTuningTable::CustomNaturalEPhrygian: return "Natural E Phrygian";
+        case CustomTuningEnum::CustomPT3_0_PT:         return "ProTracker #0";
+        case CustomTuningEnum::CustomPT3_1_ST:         return "ProTracker #1";
+        case CustomTuningEnum::CustomPT3_2_ASM:        return "ProTracker #2 (ASM)";
+        case CustomTuningEnum::CustomPT3_3_REAL:       return "ProTracker #3 (REAL)";
+        case CustomTuningEnum::CustomVT_4_NATURAL:     return "IvanRochin NATURAL Cmaj/Am #4";
+        case CustomTuningEnum::CustomNaturalEPhrygian: return "Natural E Phrygian";
     }
     return "Unknown";
 }

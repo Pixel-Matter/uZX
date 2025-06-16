@@ -299,9 +299,9 @@ public:
     StringArray getTuningTableNames() const {
         StringArray names;
         names.add("Equal Temperament");
-        for (int i = 0; i < static_cast<int>(CustomTuningType::size()); ++i) {
-            names.add(getTuningTableName(static_cast<CustomTuningType>(i)).data());
-        }
+        CustomTuningType::forEach([&](auto&& tableType) {
+            names.add(CustomTuningType(tableType).getLongLabel().data());
+        });
         return names;
     }
 
@@ -319,9 +319,9 @@ public:
 
     StringArray getChipClockLabels() const {
         StringArray labels;
-        for (const auto& label : uZX::ChipClockEnum::longLabels) {
-            labels.add(String(label.data(), label.size()));
-        }
+        uZX::ChipClockChoice::forEach([&](auto&& clockType) {
+            labels.add(uZX::ChipClockChoice(clockType).getLongLabel().data());
+        });
         return labels;
     }
 

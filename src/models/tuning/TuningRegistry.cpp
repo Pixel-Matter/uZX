@@ -29,7 +29,7 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8): $0018-$000C
                     24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12
                 },
-                CustomTuningEnum::longLabels[CustomTuningType::CustomPT_0_PT].data(),
+                tableType.getLongLabel().data(),
                 uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
                 474.0
             );
@@ -58,7 +58,7 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8): $001D-$000F
                     29, 28, 26, 25, 23, 22, 21, 19, 18, 17, 16, 15
                 },
-                CustomTuningEnum::longLabels[CustomTuningType::CustomPT_1_ST].data(),
+                tableType.getLongLabel().data(),
                 uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz).getClockValue(),
                 390.5
             );
@@ -87,7 +87,7 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8): $001A-$000D
                     26, 25, 23, 22, 21, 20, 18, 17, 16, 15, 14, 13
                 },
-                CustomTuningEnum::longLabels[CustomTuningType::CustomPT_2_ASM].data(),
+                tableType.getLongLabel().data(),
                 uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
                 440.0
             );
@@ -116,7 +116,7 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8): $001A-$000D
                     26, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13
                 },
-                CustomTuningEnum::longLabels[CustomTuningType::CustomPT_3_REAL].data(),
+                tableType.getLongLabel().data(),
                 uZX::ChipClockChoice(uZX::ChipClockEnum::Pentagon_1_75_MHz).getClockValue(),
                 440.0
             );
@@ -146,7 +146,7 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
                     // Octave 8 (C8-B8)
                     23, 21, 20, 19, 18, 17, 16, 15, 14, 14, 13, 12
                 },
-                CustomTuningEnum::longLabels[CustomTuningType::CustomVT_4_NATURAL].data(),
+                tableType.getLongLabel().data(),
                 1520640,  // Chip clock frequency
                 440.0
             );
@@ -177,7 +177,7 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
         //             // Octave 9 (C9-B9)
         //             12, 11, 11, 10, 10, 9, 9, 8, 8, 7, 7, 6
         //         },
-        //         CustomTuningEnum::longLabels[CustomTuningType::CustomNaturalEPhrygian].data(),
+        //         tableType.getLongLabel().data(),
         //         uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz).getClockValue(),
         //         486.0
         //     );
@@ -188,7 +188,7 @@ std::unique_ptr<CustomTuningTable> makeCustomTableTuning(CustomTuningType tableT
 }
 
 const std::string_view getTuningTableName(CustomTuningType tableType) {
-    return CustomTuningEnum::longLabels[static_cast<size_t>(tableType)];
+    return tableType.getLongLabel();
 }
 
 }

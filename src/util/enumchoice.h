@@ -88,6 +88,14 @@ public:
         return magic_enum::enum_names<Enum>();
     }
 
+    constexpr static auto getLongLabels() noexcept {
+        return E::longLabels;
+    }
+
+    constexpr auto getLongLabel() noexcept {
+        return E::longLabels[value];
+    }
+
     constexpr static size_t size() noexcept {
         return magic_enum::enum_count<Enum>();
     }

@@ -1,6 +1,6 @@
 #include <JuceHeader.h>
 
-#include "TuningSystem.h"
+#include "AutoTuning.h"
 
 using namespace MoTool;
 

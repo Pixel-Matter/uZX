@@ -1,7 +1,9 @@
 #include "TuningRegistry.h"
 
 #include "../../plugins/uZX/aychip/aychip.h"
-#include "TuningSystem.h"
+#include "TemperamentSystem.h"
+#include "TuningSystemBase.h"
+#include "AutoTuning.h"
 #include <memory>
 
 namespace MoTool {

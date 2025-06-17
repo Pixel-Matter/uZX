@@ -2,8 +2,10 @@
 
 #include <JuceHeader.h>
 
-#include "../../models/tuning/TuningSystem.h"
-#include "../../models/tuning/TuningTables.h"
+#include "../../models/tuning/TemperamentSystem.h"
+#include "../../models/tuning/TuningSystemBase.h"
+#include "../../models/tuning/AutoTuning.h"
+#include "../../models/tuning/TuningTable.h"
 #include "../../models/tuning/TuningRegistry.h"
 #include "../../models/tuning/Ratios.h"
 #include "../../models/tuning/Scales.h"

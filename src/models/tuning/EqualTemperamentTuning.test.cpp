@@ -1,12 +1,12 @@
 #include <JuceHeader.h>
 
-#include "TuningSystem.h"
+#include "TemperamentSystem.h"
 
 using namespace MoTool;
 
-class EqualTemperamentTuningTest : public juce::UnitTest {
+class RationalTuningTest : public juce::UnitTest {
 public:
-    EqualTemperamentTuningTest() : UnitTest("EqualTemperamentTuning", "MoTool") {}
+    RationalTuningTest() : UnitTest("EqualTemperamentTuning", "MoTool") {}
 
     void runTest() override {
         beginTest("Constructor with default A4 frequency");
@@ -69,7 +69,7 @@ public:
             for (int note = 21; note <= 108; note += 12) { // Test octaves from A0 to A8
                 double frequency = tuning.midiNoteToFrequency(static_cast<double>(note));
                 double roundTripNote = tuning.frequencyToMidiNote(frequency);
-                expect(std::abs(roundTripNote - note) < 0.001, 
+                expect(std::abs(roundTripNote - note) < 0.001,
                     "Round-trip conversion should be accurate for MIDI note " + String(note));
             }
         }
@@ -77,7 +77,7 @@ public:
         beginTest("isDefined method - all notes should be defined");
         {
             EqualTemperamentTuning tuning(440.0);
-            
+
             // Test various MIDI note ranges
             expect(tuning.isDefined(0), "MIDI note 0 should be defined");
             expect(tuning.isDefined(60), "MIDI note 60 (Middle C) should be defined");
@@ -90,7 +90,7 @@ public:
             EqualTemperamentTuning tuning(440.0);
             tuning.setA4Frequency(432.0);
             expectEquals(tuning.getA4Frequency(), 432.0, "A4 frequency should be updated to 432.0 Hz");
-            
+
             // Verify that frequency calculations use the new A4 frequency
             double a4_freq = tuning.midiNoteToFrequency(69.0);
             expect(std::abs(a4_freq - 432.0) < 0.001, "A4 frequency calculation should use updated value");
@@ -107,15 +107,15 @@ public:
         beginTest("Edge case - very high and low frequencies");
         {
             EqualTemperamentTuning tuning(440.0);
-            
+
             // Test very low MIDI note
             double lowFreq = tuning.midiNoteToFrequency(0.0);
             expect(lowFreq > 0.0, "Very low MIDI note should produce positive frequency");
-            
+
             // Test very high MIDI note
             double highFreq = tuning.midiNoteToFrequency(127.0);
             expect(highFreq > lowFreq, "Very high MIDI note should produce higher frequency than low note");
-            
+
             // Test round-trip
             double roundTripLow = tuning.frequencyToMidiNote(lowFreq);
             double roundTripHigh = tuning.frequencyToMidiNote(highFreq);
@@ -126,15 +126,15 @@ public:
         beginTest("Fractional MIDI notes");
         {
             EqualTemperamentTuning tuning(440.0);
-            
+
             // Test quarter-tone between A4 and A#4
             double quarterToneFreq = tuning.midiNoteToFrequency(69.5);
             double a4_freq = tuning.midiNoteToFrequency(69.0);
             double asharp4_freq = tuning.midiNoteToFrequency(70.0);
-            
+
             expect(quarterToneFreq > a4_freq, "Quarter-tone should be higher than A4");
             expect(quarterToneFreq < asharp4_freq, "Quarter-tone should be lower than A#4");
-            
+
             // Test round-trip accuracy for fractional note
             double roundTrip = tuning.frequencyToMidiNote(quarterToneFreq);
             expect(std::abs(roundTrip - 69.5) < 0.001, "Round-trip for fractional MIDI note should be accurate");
@@ -142,4 +142,4 @@ public:
     }
 };
 
-static EqualTemperamentTuningTest equalTemperamentTuningTest;
+static RationalTuningTest equalTemperamentTuningTest;

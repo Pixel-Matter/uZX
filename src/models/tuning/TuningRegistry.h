@@ -1,7 +1,9 @@
 #pragma once
 
-#include "TuningSystem.h"
-#include "TuningTables.h"
+#include "TemperamentSystem.h"
+#include "TuningSystemBase.h"
+#include "AutoTuning.h"
+#include "TuningTable.h"
 #include <memory>
 
 namespace MoTool {

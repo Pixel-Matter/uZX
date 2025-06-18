@@ -1,6 +1,8 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "../../util/enumchoice.h"
+
 #include <initializer_list>
 #include <string_view>
 
@@ -11,18 +13,35 @@ namespace MoTool {
 class Scale {
 public:
 
-    enum class ScaleCategory {
-        DiatonicModes = 0,
-        MinorVariations,
-        HarmonicMinorModes,
-        MelodicMinorModes,
-        Pentatonic,
-        Blues,
-        Symmetrical,
-        ExoticWorld,
-        Bebop,
-        UserDefined
+    struct ScaleCategoryEnum {
+        enum Enum {
+            Diatonic = 0,
+            Minor,
+            Harmonic,
+            Melodic,
+            Pentatonic,
+            Blues,
+            Symmetrical,
+            Exotic,
+            Bebop,
+            Custom
+        };
+
+        static inline constexpr std::string_view longLabels[] {
+            "Diatonic Modes",
+            "Minor Variations",
+            "Harmonic Minor Modes",
+            "Melodic Minor Modes",
+            "Pentatonic",
+            "Blues",
+            "Symmetrical",
+            "Exotic/World",
+            "Bebop",
+            "Custom"
+        };
     };
+
+    using ScaleCategory = Util::EnumChoice<ScaleCategoryEnum>;
 
     enum class ScaleType {
         // DiatonicModes
@@ -122,40 +141,7 @@ public:
     static juce::String getNameForType(ScaleType type);
     static juce::String getShortNameForType(ScaleType type);
     static ScaleType getTypeFromName(juce::String name);
-    
-    // constexpr std::string_view getters for efficiency
-    static constexpr std::string_view getNameForCategoryView(ScaleCategory category) {
-        switch (category) {
-            case ScaleCategory::DiatonicModes:      return "Diatonic Modes";
-            case ScaleCategory::MinorVariations:    return "Minor Variations";
-            case ScaleCategory::HarmonicMinorModes: return "Harmonic Minor Modes";
-            case ScaleCategory::MelodicMinorModes:  return "Melodic Minor Modes";
-            case ScaleCategory::Pentatonic:         return "Pentatonic";
-            case ScaleCategory::Blues:              return "Blues";
-            case ScaleCategory::Symmetrical:        return "Symmetrical";
-            case ScaleCategory::ExoticWorld:        return "Exotic/World";
-            case ScaleCategory::Bebop:              return "Bebop";
-            case ScaleCategory::UserDefined:        return "User Defined";
-            default:                                return "Unknown";
-        }
-    }
-    
-    static constexpr std::string_view getShortNameForCategoryView(ScaleCategory category) {
-        switch (category) {
-            case ScaleCategory::DiatonicModes:      return "Diatonic";
-            case ScaleCategory::MinorVariations:    return "Minor";
-            case ScaleCategory::HarmonicMinorModes: return "Harmonic";
-            case ScaleCategory::MelodicMinorModes:  return "Melodic";
-            case ScaleCategory::Pentatonic:         return "Pentatonic";
-            case ScaleCategory::Blues:              return "Blues";
-            case ScaleCategory::Symmetrical:        return "Symmetrical";
-            case ScaleCategory::ExoticWorld:        return "Exotic";
-            case ScaleCategory::Bebop:              return "Bebop";
-            case ScaleCategory::UserDefined:        return "Custom";
-            default:                                return "Unknown";
-        }
-    }
-    
+
     static constexpr std::string_view getNameForTypeView(ScaleType type);
     static constexpr std::string_view getShortNameForTypeView(ScaleType type);
 

@@ -273,13 +273,13 @@ TuningPreviewComponent::TuningPreviewComponent()
     };
 
     // Set up frequency sliders using helper
-    setupSlider(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (MHz):", 
+    setupSlider(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (MHz):",
                 1.0, 2.0, 0.001, [this]() {
         viewModel.setClockFrequency(clockFrequencySlider.getValue() * 1000000.0);
     });
     clockFrequencySlider.setValue(viewModel.getClockFrequency() / 1000000.0, juce::dontSendNotification);
-    
-    setupSlider(a4FrequencySlider, a4FrequencyLabel, "A4 Frequency (Hz):", 
+
+    setupSlider(a4FrequencySlider, a4FrequencyLabel, "A4 Frequency (Hz):",
                 220.0, 880.0, 0.1, [this]() {
         viewModel.setA4Frequency(a4FrequencySlider.getValue());
     });
@@ -442,7 +442,7 @@ void TuningPreviewComponent::setupSlider(Slider& slider, Label& label, const Str
     slider.onValueChange = callback;
     label.setText(labelText, juce::dontSendNotification);
     label.setJustificationType(juce::Justification::centredRight);
-    
+
     addAndMakeVisible(slider);
     addAndMakeVisible(label);
 }
@@ -457,43 +457,43 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
     // Clear any existing items and mapping
     ScaleSelect.clear();
     scaleMenuMapping.clear();
-    
+
     // Get all scale categories
     auto categories = Scale::getAllScaleCategories();
     int menuItemId = 1;
-    
+
     // Build the grouped menu structure
     PopupMenu rootMenu;
-    
+
     for (auto category : categories) {
-        if (category == Scale::ScaleCategory::UserDefined) {
+        if (category == Scale::ScaleCategory::Custom) {
             continue; // Skip user defined for now
         }
-        
+
         // Add category header (non-selectable)
         rootMenu.addSectionHeader(Scale::getNameForCategory(category));
-        
+
         // Add scales in this category
         auto scalesInCategory = Scale::getAllScaleTypesForCategory(category);
         for (auto scaleType : scalesInCategory) {
             String scaleName = Scale::getNameForType(scaleType);
             rootMenu.addItem(menuItemId, scaleName);
             scaleMenuMapping[menuItemId] = scaleType;
-            
+
             // Also add to ComboBox for text display purposes
             ScaleSelect.addItem(scaleName, menuItemId);
             menuItemId++;
         }
-        
+
         // Add separator after each category (except the last one)
-        if (category != categories.back() || categories.back() == Scale::ScaleCategory::UserDefined) {
+        if (category != categories.back() || categories.back() == Scale::ScaleCategory::Custom) {
             rootMenu.addSeparator();
         }
     }
-    
+
     // Replace the ComboBox's root menu with our grouped menu
     *ScaleSelect.getRootMenu() = rootMenu;
-    
+
     // Set up the onChange callback to handle selection
     ScaleSelect.onChange = [this]() {
         int selectedId = ScaleSelect.getSelectedId();
@@ -508,7 +508,7 @@ void TuningPreviewComponent::updateScaleSelection() {
     // Update the ComboBox text to show the current scale
     Scale::ScaleType currentScale = viewModel.getCurrentScale();
     String currentScaleName = Scale::getNameForType(currentScale);
-    
+
     // Find the corresponding menu item ID
     for (const auto& [itemId, scaleType] : scaleMenuMapping) {
         if (scaleType == currentScale) {
@@ -516,7 +516,7 @@ void TuningPreviewComponent::updateScaleSelection() {
             break;
         }
     }
-    
+
     // If we can't find it in the mapping, set the text directly
     if (ScaleSelect.getSelectedId() == 0) {
         ScaleSelect.setText(currentScaleName, juce::dontSendNotification);

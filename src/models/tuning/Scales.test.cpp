@@ -123,11 +123,11 @@ public:
         beginTest("Scale category mapping");
         {
             expectEquals(static_cast<int>(Scale::getCategoryForType(Scale::ScaleType::IonianOrMajor)),
-                         static_cast<int>(Scale::ScaleCategory::DiatonicModes));
+                         static_cast<int>(Scale::ScaleCategory::Diatonic));
             expectEquals(static_cast<int>(Scale::getCategoryForType(Scale::ScaleType::HarmonicMinor)),
-                         static_cast<int>(Scale::ScaleCategory::MinorVariations));
+                         static_cast<int>(Scale::ScaleCategory::Minor));
             expectEquals(static_cast<int>(Scale::getCategoryForType(Scale::ScaleType::DoubleHarmonic)),
-                         static_cast<int>(Scale::ScaleCategory::ExoticWorld));
+                         static_cast<int>(Scale::ScaleCategory::Exotic));
             expectEquals(static_cast<int>(Scale::getCategoryForType(Scale::ScaleType::MajorPentatonic)),
                          static_cast<int>(Scale::ScaleCategory::Pentatonic));
             expectEquals(static_cast<int>(Scale::getCategoryForType(Scale::ScaleType::BluesScale)),
@@ -184,73 +184,6 @@ public:
             expectEquals(intervals[4], 7);  // Whole step
             expectEquals(intervals[5], 9);  // Whole step
             expectEquals(intervals[6], 11); // Whole step
-        }
-
-        beginTest("constexpr string_view getters - Category names");
-        {
-            auto diatonicName = Scale::getNameForCategoryView(Scale::ScaleCategory::DiatonicModes);
-            auto minorName = Scale::getNameForCategoryView(Scale::ScaleCategory::MinorVariations);
-            auto pentatonicName = Scale::getNameForCategoryView(Scale::ScaleCategory::Pentatonic);
-            
-            expect(diatonicName == "Diatonic Modes");
-            expect(minorName == "Minor Variations");
-            expect(pentatonicName == "Pentatonic");
-            
-            // Verify consistency with juce::String versions
-            expect(Scale::getNameForCategory(Scale::ScaleCategory::DiatonicModes) == String(diatonicName.data(), diatonicName.size()));
-            expect(Scale::getNameForCategory(Scale::ScaleCategory::MinorVariations) == String(minorName.data(), minorName.size()));
-            expect(Scale::getNameForCategory(Scale::ScaleCategory::Pentatonic) == String(pentatonicName.data(), pentatonicName.size()));
-        }
-
-        beginTest("constexpr string_view getters - Category short names");
-        {
-            auto diatonicShort = Scale::getShortNameForCategoryView(Scale::ScaleCategory::DiatonicModes);
-            auto minorShort = Scale::getShortNameForCategoryView(Scale::ScaleCategory::MinorVariations);
-            auto userShort = Scale::getShortNameForCategoryView(Scale::ScaleCategory::UserDefined);
-            
-            expect(diatonicShort == "Diatonic");
-            expect(minorShort == "Minor");
-            expect(userShort == "Custom");
-            
-            // Verify consistency with juce::String versions
-            expect(Scale::getShortNameForCategory(Scale::ScaleCategory::DiatonicModes) == String(diatonicShort.data(), diatonicShort.size()));
-            expect(Scale::getShortNameForCategory(Scale::ScaleCategory::MinorVariations) == String(minorShort.data(), minorShort.size()));
-            expect(Scale::getShortNameForCategory(Scale::ScaleCategory::UserDefined) == String(userShort.data(), userShort.size()));
-        }
-
-        beginTest("constexpr string_view getters - Scale type names");
-        {
-            auto majorName = Scale::getNameForTypeView(Scale::ScaleType::IonianOrMajor);
-            auto harmonicMinorName = Scale::getNameForTypeView(Scale::ScaleType::HarmonicMinor);
-            auto bluesName = Scale::getNameForTypeView(Scale::ScaleType::BluesScale);
-            
-            expect(majorName == "Major (Ionian)");
-            expect(harmonicMinorName == "Harmonic Minor");
-            expect(bluesName == "Blues Scale");
-            
-            // Verify consistency with juce::String versions
-            expect(Scale::getNameForType(Scale::ScaleType::IonianOrMajor) == String(majorName.data(), majorName.size()));
-            expect(Scale::getNameForType(Scale::ScaleType::HarmonicMinor) == String(harmonicMinorName.data(), harmonicMinorName.size()));
-            expect(Scale::getNameForType(Scale::ScaleType::BluesScale) == String(bluesName.data(), bluesName.size()));
-        }
-
-        beginTest("constexpr string_view getters - Scale type short names");
-        {
-            auto majorShort = Scale::getShortNameForTypeView(Scale::ScaleType::IonianOrMajor);
-            auto harmonicMinorShort = Scale::getShortNameForTypeView(Scale::ScaleType::HarmonicMinor);
-            auto bluesShort = Scale::getShortNameForTypeView(Scale::ScaleType::BluesScale);
-            auto userShort = Scale::getShortNameForTypeView(Scale::ScaleType::UserDefined);
-            
-            expect(majorShort == "Maj");
-            expect(harmonicMinorShort == "HMin");
-            expect(bluesShort == "Blues");
-            expect(userShort == "Custom");
-            
-            // Verify consistency with juce::String versions
-            expect(Scale::getShortNameForType(Scale::ScaleType::IonianOrMajor) == String(majorShort.data(), majorShort.size()));
-            expect(Scale::getShortNameForType(Scale::ScaleType::HarmonicMinor) == String(harmonicMinorShort.data(), harmonicMinorShort.size()));
-            expect(Scale::getShortNameForType(Scale::ScaleType::BluesScale) == String(bluesShort.data(), bluesShort.size()));
-            expect(Scale::getShortNameForType(Scale::ScaleType::UserDefined) == String(userShort.data(), userShort.size()));
         }
     }
 };

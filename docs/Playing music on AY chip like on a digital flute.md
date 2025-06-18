@@ -23,12 +23,33 @@ Just intonation also uses integer ratios between tone frequencies and this tunin
    ├─8/9──┴15/16─┼─8/9 ─┴─9/10─┼15/16─┴─8/9──┼─9/10─├─8/9──┤
    ├─────5/6─────┴─────4/5─────┼─────5/6─────┴─────4/5─────┤
    └────────────2/3────────────┴────────────2/3────────────┘
+
+All 12 chromatic notes
+╔══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╗
+║  C   │  C#  │  D   │  D#  │  E   │  F   │  F#  │  G   │  G#  │  A   │  A#  │  B   ║
+╚══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╝
+
+Harmonic minor
+   ┌──────────────────────3:2───────────────────────┐
+   ├─────────────────4:3──────────────┐             │
+╔══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╗
+║  1   │      │  1   │  b3  │      │  4   │      │  5   │  b6  │      │      │  7   ║
+║  C   │      │  D   │  D#  │      │  F   │      │  G   │  G#  │      │      │  B   ║
+╚══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╝
+   └────────6:5─────────┘
+
 ```
 
-So it seems we can use just intonation tuning to get perfect intervals for chip "tuning"? Surely, and that was achieved long ago, for example see Ivan Roschin's work [1], it's table #4 is in Vortex tracker now.
+### 5-limit just intonation notes frequency ratios
+
+- 5  3:2
+- 4  4:3
+- b3 6:5
+
+
+So it seems we can use just intonation tuning to get perfect intervals for chip "tuning"? Surely, and that was achieved long ago, for example see Ivan Roschin's work [1], it is table #4 in Vortex tracker.
 
 How it's done: period (clock counters) ratios are inverses of frequency ratios. Then you find lowest common denominator and multiply all period ratios by it and voila, you've got minimal integer periods for given frequency ratios of the just intonation tuning.
-
 
 ### Diatonic major 5-limit tuning
 
@@ -67,7 +88,6 @@ But what if we base only on pentatonic, can we do even better?
 | 1:1 | 8:9 | 4:5 | 2:3 | 3:5 | 1:2 | period ratios |
 |  90 |  80 |  72 |  60 |  54 |  45 | periods       |
 
-
 ### Minor pentatonic 1
 
 |  A  |  C  |  D  |  E  |  G  |  A  | Comment       |
@@ -93,7 +113,6 @@ Blues minor pentatonic: 15:18:20:24:27:30 freqs E G A C D E
 Blues major pentatonic: 24:27:32:36:40:48 freqs G A C D E G
 Egyptian, suspended: 24:27:32:36:42:48 freqs D E G A C D
 Another one: 42:48:56:63:72 so freq ratios are 1:1, 8:7, 4:3, 3:2, 12:7
-Some more: 16:19:21:24:28 so freq ratios are 1:1, 19:16, 21:16, 3:2, 7:4
 
 ### What we've got based on pentatonic
 
@@ -117,6 +136,7 @@ Major and minor are ok here and actually they tuned exactly by 5-limit.
 ### Full periods table for 12 tone scale 7-limit tuning
 
 Based on minor pentatonic ACDEG
+
 | [A]  |  A#  |  B   | [C]  |  C#  | [D]  |  D#  | [E]  |  F   |  F#  | [G]  |  G#  | Exact is in '[]' |
 |------|------|------|------|------|------|------|------|------|------|------|------|------------------|
 |      |      | 4095 | 3840!| 3686 | 3456!| 3291 | 3072!| 2880!| 2765 | 2560!| 2458 |                  |
@@ -131,7 +151,6 @@ Based on minor pentatonic ACDEG
 |    9 |    8~|    8 |    8~|    7~|    7~|    6~|    6 |    6~|    5~|    5 |    5~| 4 steps ABEG     |
 |    4~|    4~|    4 |    4~|    4~|    3~|    3~|    3 |    3~|    3~|    2~|    2~| 2 steps BE       |
 |    2~|    2~|    2 |    2~|    2~|    2~|    2~|    2~|    1~|    1~|    1~|    1~| 1 step  B        |
-
 
 ### And finally... one more thing...
 
@@ -153,7 +172,6 @@ Then we have to make a fifth, it's 2:3 in terms of periods, so our tonic must be
 |  6  |     |     |     |     |     |     |  4  |     |     |     |     |  3  | E5                |
 |  3  |     |     |     |     |     |     |  2  |     |     |     |     |     | + stacked fifth B |
 |     |     |     |     |     |     |     |  1  |     |     |     |     |     | + stacked fifth B |
-
 
 Now lets make some real chord, a triad. Major third is 4:5, minor is 5:6. But the major third introduces factor of 5 that is not contained in the tonic. Lets start with minor. And lets change the tonic to A, it's relative anyway. True tonic label can be calculated from the frequency of the chip and period of 3.
 
@@ -201,12 +219,11 @@ So it's a minor scale with lowered second step: sTTTsTT. Phrygian!
 
 Do we have wolf fifth? It's a just intonation tuning, so yeah. And happily, only one: G-D!
 
-
 ```
          ┌──────────2:3──────────┬───────────2:3─────────┬──────────27:40────────┐
-   ┌──────────2:3──────────┐     │           ┌───────2:3─────────────┐           │
-   │     │                 │     │           │           │           │           │
-╔══╧══╤══╧══╤═════╤═════╤══╧══╤══╧══╤═════╗──┴──┬─────┬──┴──┬─────┬──┴──┬─────┬──┴──┬─────┐
+   ┌──────────2:3──────────┐     │                       │                       │
+   │     │                 │     │                       │                       │
+╔══╧══╤══╧══╤═════╤═════╤══╧══╤══╧══╤═════╗─────┬─────┬──┴──┬─────┬─────┬─────┬──┴──┬─────┐
 ║  E  │  F  │  G  │  A  │  B  │  C  │  D  ║  E  │  F  │  G  │  A  │  B  │  C  │  D  │  E  │
 ║ 1:1 │15:16│ 5:6 │ 3:4 │ 2:3 │ 5:8 │ 9:16║ 1:2 │15:32│ 5:12│ 3:8 │ 1:3 │ 5:16│ 9:32│ 1:4 │
 ╚═════╧═════╧══╤══╧══╤══╧═════╧═════╧══╤══╝──┬──┴─────┴─────┴──┬──┴──┬──┴─────┴─────┴──┬──┘
@@ -263,8 +280,9 @@ In this E Phrygian scale with such period values you can play some chords and me
 ### References
 
 * https://zxpress.ru/zxnet/music.zx/2503
+* https://zxpress.ru/article.php?id=17926
 * https://en.wikipedia.org/wiki/Five-limit_tuning
-
+* https://upload.wikimedia.org/wikipedia/commons/4/4f/Moodswingerscale.jpg
 
 ### Helper code
 

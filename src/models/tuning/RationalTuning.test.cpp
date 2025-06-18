@@ -13,12 +13,12 @@ public:
         {
             RationalTuning tuning({
                 {1, 1},   // Unison
-                {16, 15}, // Major second
-                {9, 8},   // Major third
-                {6, 5},   // Perfect fourth
-                {5, 4},   // Perfect fifth
-                {4, 3},   // Major sixth
-                {3, 2}    // Major seventh
+                {9, 8},   // Major second
+                {5, 4},   // Major third
+                {4, 3},   // Perfect fourth
+                {3, 2},   // Perfect fifth
+                {5, 3},   // Major sixth
+                {15, 8}   // Major seventh
             });
             expectEquals(tuning.getA4Frequency(), 440.0, "Default A4 frequency should be 440.0 Hz");
             expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TemperamentType::CustomRational));

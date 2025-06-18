@@ -88,7 +88,7 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
         case Scale::ScaleType::Mixolydian:
         case Scale::ScaleType::AeolianOrMinor:
         case Scale::ScaleType::Locrian:
-            return Scale::ScaleCategory::DiatonicModes;
+            return Scale::ScaleCategory::Diatonic;
 
         // Minor Variations
         case Scale::ScaleType::HarmonicMinor:
@@ -97,7 +97,7 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
         case Scale::ScaleType::NeapolitanMajor:
         case Scale::ScaleType::HungarianMinor:
         case Scale::ScaleType::HungarianMajor:
-            return Scale::ScaleCategory::MinorVariations;
+            return Scale::ScaleCategory::Minor;
 
         // Harmonic Minor Modes
         case Scale::ScaleType::LocrianNatural6:
@@ -106,7 +106,7 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
         case Scale::ScaleType::PhrygianDominant:
         case Scale::ScaleType::LydianSharp2:
         case Scale::ScaleType::AlteredDiminished:
-            return Scale::ScaleCategory::HarmonicMinorModes;
+            return Scale::ScaleCategory::Harmonic;
 
         // Melodic Minor Modes
         case Scale::ScaleType::DorianFlat2:
@@ -115,7 +115,7 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
         case Scale::ScaleType::MixolydianFlat6:
         case Scale::ScaleType::HalfDiminished:
         case Scale::ScaleType::AlteredScale:
-            return Scale::ScaleCategory::MelodicMinorModes;
+            return Scale::ScaleCategory::Melodic;
 
         // Pentatonic
         case Scale::ScaleType::MajorPentatonic:
@@ -146,7 +146,7 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
         case Scale::ScaleType::DoubleHarmonic:
         case Scale::ScaleType::Prometheus:
         case Scale::ScaleType::Tritone:
-            return Scale::ScaleCategory::ExoticWorld;
+            return Scale::ScaleCategory::Exotic;
 
         // Bebop
         case Scale::ScaleType::BebopMajor:
@@ -157,7 +157,7 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
         // User Defined
         case Scale::ScaleType::UserDefined:
         default:
-            return Scale::ScaleCategory::UserDefined;
+            return Scale::ScaleCategory::Custom;
     }
 }
 
@@ -196,16 +196,16 @@ Scale::ScaleCategory Scale::getCategoryForType(ScaleType scaleType) {
 
 std::vector<Scale::ScaleCategory> Scale::getAllScaleCategories() {
     return {
-        ScaleCategory::DiatonicModes,
-        ScaleCategory::MinorVariations,
-        ScaleCategory::HarmonicMinorModes,
-        ScaleCategory::MelodicMinorModes,
+        ScaleCategory::Diatonic,
+        ScaleCategory::Minor,
+        ScaleCategory::Harmonic,
+        ScaleCategory::Melodic,
         ScaleCategory::Pentatonic,
         ScaleCategory::Blues,
         ScaleCategory::Symmetrical,
-        ScaleCategory::ExoticWorld,
+        ScaleCategory::Exotic,
         ScaleCategory::Bebop,
-        ScaleCategory::UserDefined
+        ScaleCategory::Custom
     };
 }
 
@@ -273,13 +273,13 @@ std::vector<juce::String> Scale::getScaleStrings() {
 
 
 juce::String Scale::getNameForCategory(ScaleCategory category) {
-    auto view = getNameForCategoryView(category);
+    auto view = category.getLongLabel();
     return juce::String(view.data(), view.size());
 }
 
 
 juce::String Scale::getShortNameForCategory(ScaleCategory category) {
-    auto view = getShortNameForCategoryView(category);
+    auto view = category.getLabel();
     return juce::String(view.data(), view.size());
 }
 

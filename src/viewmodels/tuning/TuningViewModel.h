@@ -275,7 +275,7 @@ public:
     StringArray getScaleTypeNames() const {
         StringArray names;
         for (auto scaleType : Scale::getAllScaleTypes()) {
-            if (scaleType != Scale::ScaleType::UserDefined) {
+            if (scaleType != Scale::ScaleType::User) {
                 names.add(Scale::getNameForType(scaleType));
             }
         }
@@ -381,13 +381,12 @@ private:
     void updateTuningSystem(bool recreate = false, bool resetUIValues = false) {
         if (recreate) {
             if (currentTuningTableIndex == 0) {
-                // Equal Temperament - create with current UI values
                 tuningSystem = makeEqualTemperamentTuning(chipCapabilities, clockFrequency.get(), a4Frequency.get());
             } else {
                 // Custom tuning table
                 int customIndex = currentTuningTableIndex - 1;
                 tuningSystem = makeCustomTableTuning(static_cast<CustomTuningType>(customIndex), chipCapabilities);
-                
+
                 if (resetUIValues) {
                     // When changing tuning table, reset UI to match tuning defaults
                     a4Frequency = tuningSystem->getA4Frequency();

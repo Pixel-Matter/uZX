@@ -144,7 +144,7 @@ public:
             expectEquals(Scale::getNameForType(Scale::ScaleType::DoubleHarmonic), String("Double Harmonic"));
             expectEquals(Scale::getNameForType(Scale::ScaleType::HarmonicMinor), String("Harmonic Minor"));
             expectEquals(Scale::getNameForType(Scale::ScaleType::PhrygianDominant), String("Phrygian Dominant"));
-            expectEquals(Scale::getNameForType(Scale::ScaleType::UserDefined), String("User Defined"));
+            expectEquals(Scale::getNameForType(Scale::ScaleType::User), String("User Defined"));
         }
 
         beginTest("Scale name functions - Short names");
@@ -155,7 +155,7 @@ public:
             expectEquals(Scale::getShortNameForType(Scale::ScaleType::PhrygianDominant), String("PhrDom"));
             expectEquals(Scale::getShortNameForType(Scale::ScaleType::MinorPentatonic), String("mPent"));
             expectEquals(Scale::getShortNameForType(Scale::ScaleType::BebopMajor), String("BebMaj"));
-            expectEquals(Scale::getShortNameForType(Scale::ScaleType::UserDefined), String("Custom"));
+            expectEquals(Scale::getShortNameForType(Scale::ScaleType::User), String("Custom"));
         }
 
         beginTest("Scale instance name methods");

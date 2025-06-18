@@ -466,7 +466,7 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
     PopupMenu rootMenu;
 
     for (auto category : categories) {
-        if (category == Scale::ScaleCategory::Custom) {
+        if (category == Scale::ScaleCategory::User) {
             continue; // Skip user defined for now
         }
 
@@ -486,7 +486,7 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
         }
 
         // Add separator after each category (except the last one)
-        if (category != categories.back() || categories.back() == Scale::ScaleCategory::Custom) {
+        if (category != categories.back() || categories.back() == Scale::ScaleCategory::User) {
             rootMenu.addSeparator();
         }
     }

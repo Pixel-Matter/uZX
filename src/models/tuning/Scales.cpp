@@ -72,7 +72,7 @@ constexpr std::vector<int> getScaleIntervals(Scale::ScaleType scaleType) {
         case Scale::ScaleType::BebopMinor:       return {0, 2, 3, 5, 7, 8, 9, 10};
 
         // Default fallback
-        case Scale::ScaleType::UserDefined:
+        case Scale::ScaleType::User:
         default:                                 return {0, 2, 4, 5, 7, 9, 11}; // Major scale fallback
     }
 }
@@ -155,21 +155,21 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
             return Scale::ScaleCategory::Bebop;
 
         // User Defined
-        case Scale::ScaleType::UserDefined:
+        case Scale::ScaleType::User:
         default:
-            return Scale::ScaleCategory::Custom;
+            return Scale::ScaleCategory::User;
     }
 }
 
 // Constructors
 Scale::Scale(ScaleType scaleType) : type(scaleType) {
     // Initialize intervals for known scale types
-    jassert(scaleType != ScaleType::UserDefined && "UserDefined scale type should not be used here");
+    jassert(scaleType != ScaleType::User && "UserDefined scale type should not be used here");
     intervals = getScaleIntervals(scaleType);
 }
 
 Scale::Scale(std::initializer_list<Steps> intervalSteps)
-    : type(ScaleType::UserDefined)
+    : type(ScaleType::User)
 {
     // Convert Steps enum to semitone intervals
     intervals.reserve(intervalSteps.size());
@@ -185,7 +185,7 @@ Scale::Scale(std::initializer_list<Steps> intervalSteps)
 }
 
 Scale::Scale(std::initializer_list<int> ivals)
-    : type(ScaleType::UserDefined)
+    : type(ScaleType::User)
     , intervals(ivals)
 {}
 
@@ -205,7 +205,7 @@ std::vector<Scale::ScaleCategory> Scale::getAllScaleCategories() {
         ScaleCategory::Symmetrical,
         ScaleCategory::Exotic,
         ScaleCategory::Bebop,
-        ScaleCategory::Custom
+        ScaleCategory::User
     };
 }
 
@@ -259,7 +259,7 @@ std::vector<Scale::ScaleType> Scale::getAllScaleTypes() {
         ScaleType::BebopMajor, ScaleType::BebopDominant, ScaleType::BebopMinor,
 
         // User Defined
-        ScaleType::UserDefined
+        ScaleType::User
     };
 }
 
@@ -285,13 +285,13 @@ juce::String Scale::getShortNameForCategory(ScaleCategory category) {
 
 
 juce::String Scale::getNameForType(ScaleType scaleType) {
-    auto view = getNameForTypeView(scaleType);
+    auto view = scaleType.getLongLabel();
     return juce::String::fromUTF8(view.data(), static_cast<int>(view.size()));
 }
 
 
 juce::String Scale::getShortNameForType(ScaleType scaleType) {
-    auto view = getShortNameForTypeView(scaleType);
+    auto view = scaleType.getShortLabel();
     return juce::String::fromUTF8(view.data(), static_cast<int>(view.size()));
 }
 
@@ -301,7 +301,7 @@ Scale::ScaleType Scale::getTypeFromName(juce::String name) {
             return scaleType;
         }
     }
-    return ScaleType::UserDefined;
+    return ScaleType::User;
 }
 
 // Instance methods

@@ -18,7 +18,7 @@ public:
             std::map<int, int> emptyTable;
             TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), emptyTable, "Empty Test");
 
-            expectEquals(tuning.getName(), String("Empty Test, defined notes C-1-C-1, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("Empty Test, defined notes C-1-C-1, A4 = 440.00Hz"));
             expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TuningType::CustomTable));
         }
 
@@ -31,7 +31,7 @@ public:
             };
             TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), simpleTable, "Simple Test");
 
-            expectEquals(tuning.getName(), String("Simple Test, defined notes C4-D4, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("Simple Test, defined notes C4-D4, A4 = 440.00Hz"));
         }
 
         beginTest("Constructor with vector of periods");
@@ -45,7 +45,7 @@ public:
                 "Vector Test Tuning"
             );
 
-            expectEquals(tuning.getName(), String("Vector Test Tuning (Custom, defined notes C4-F#4, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("Vector Test Tuning, defined notes C4-F#4, A4 = 440.00Hz"));
 
             const auto& periodTable = tuning.getPeriodTable();
             expectEquals(static_cast<int>(periodTable.size()), 7);
@@ -69,7 +69,7 @@ public:
             const auto& periodTable = tuning.getPeriodTable();
             expectEquals(static_cast<int>(periodTable.size()), 0);
 
-            expectEquals(tuning.getName(), String("Empty Vector Test (Custom, defined notes C4-C4, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("Empty Vector Test, defined notes C4-C4, A4 = 440.00Hz"));
 
             auto range = tuning.getDefinedNoteRange();
             expectEquals(range.getStart(), 60);
@@ -134,7 +134,7 @@ public:
             };
             TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), proTrackerTable, "ProTracker Tuning #1");
 
-            expectEquals(tuning.getName(), String("ProTracker Tuning #1 (Custom, defined notes C-1-B-1, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("ProTracker Tuning #1, defined notes C-1-B-1, A4 = 440.00Hz"));
 
             // Test some specific values
             expectEquals(tuning.midiNoteToPeriod(0), 1024);
@@ -162,7 +162,7 @@ public:
             std::map<int, int> singleNote = {{69, 850}};  // A4
             TuningTable tuning(testCaps, 1773400, std::make_unique<EqualTemperamentTuning>(440.0), singleNote, "Single Note");
 
-            expectEquals(tuning.getName(), String("Single Note (Custom, defined notes A4-A4, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("Single Note, defined notes A4-A4, A4 = 440.00Hz"));
             expectEquals(tuning.midiNoteToPeriod(69), 850);
 
             // Test extrapolation works from single note
@@ -214,7 +214,7 @@ public:
                 "ProTracker Test"
             );
 
-            expectEquals(tuning.getName(), String("ProTracker Test (Custom, defined notes C0-B0, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("ProTracker Test, defined notes C0-B0, A4 = 440.00Hz"));
 
             // Test specific period lookups
             expectEquals(tuning.midiNoteToPeriod(12), 3832); // C0 ($0EF8)
@@ -294,7 +294,7 @@ public:
                 "ProTracker ASM Test"
             );
 
-            expectEquals(tuning.getName(), String("ProTracker ASM Test (Custom, defined notes C1-B1, A4 = 440.00Hz)"));
+            expectEquals(tuning.getName(), String("ProTracker ASM Test, defined notes C1-B1, A4 = 440.00Hz"));
 
             // Test specific period lookups from ASM table
             expectEquals(tuning.midiNoteToPeriod(24), 3344); // C1 ($0D10)

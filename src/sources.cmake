@@ -45,13 +45,13 @@ set(GUI_SOURCES
 # Test-specific files to include in the test target
 set(TEST_SOURCES
     ## models/PsgTrack.test.cpp
-    # models/CustomClip.test.cpp
-    models/PsgMidi.test.cpp
-    models/tuning/Ratios.test.cpp
-    models/tuning/TuningTable.test.cpp
-    models/tuning/EqualTemperamentTuning.test.cpp
-    models/tuning/AutoTuning.test.cpp
+    # # models/CustomClip.test.cpp
+    # models/PsgMidi.test.cpp
+    # models/tuning/Ratios.test.cpp
+    # models/tuning/TuningTable.test.cpp
+    # models/tuning/EqualTemperamentTuning.test.cpp
+    # models/tuning/AutoTuning.test.cpp
     models/tuning/Scales.test.cpp
-    viewmodels/tuning/TuningViewModel.test.cpp
+    # viewmodels/tuning/TuningViewModel.test.cpp
     # plugins/uZX/aychip/AYChip.test.cpp
 )

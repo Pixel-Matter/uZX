@@ -25,8 +25,9 @@ enum class Key {
 struct TuningNoteName {
     int noteNumber;        // 0-based note number in 12-semitone system, ie C is 0, C# is 1, etc.
     bool isInScale;        // Whether this note is part of the scale
-    Interval interval;     // Interval from the root note in semitones or ratio
+    Interval interval;     // Interval from the root note in cents or ratio
     String name;           // Note name (e.g., "C", "A#")
+    String stepName;       // Note step name (e.g., "1", "♭2", "2", etc.)
 };
 
 struct TuningNote {
@@ -128,6 +129,11 @@ public:
             scaleNotes.insert(transposedInterval);
         }
 
+        // Note steps array
+        static constexpr std::array<std::string, 12> noteStepsArray = {
+            "1", "♭2", "2", "♭3", "3", "4", "♭5", "5", "♭6", "6", "♭7", "7"
+        };
+
         // Note names array
         static const std::array<String, 12> noteNamesArray = {
             "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
@@ -135,12 +141,13 @@ public:
 
         // Build the result
         for (int i = 0; i < 12; ++i) {
-            noteNames.push_back({
+            noteNames.emplace_back(
                 i,
                 scaleNotes.count(i) > 0,  // isInScale
                 Interval::fromSemitones(i),
-                noteNamesArray[(size_t) i]
-            });
+                noteNamesArray[(size_t) i],
+                String::fromUTF8(noteStepsArray[(size_t) i].data())
+            );
         }
 
         return noteNames;

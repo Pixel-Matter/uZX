@@ -6,6 +6,9 @@ using namespace MoTool;
 
 class ScaleTest : public juce::UnitTest {
 public:
+    using Degree = Scale::Degree;
+    using Alteration = Scale::Accidental;
+
     ScaleTest() : UnitTest("Scale", "MoTool") {}
 
     void runTest() override {
@@ -58,7 +61,7 @@ public:
         {
             Scale majorScale(Scale::ScaleType::IonianOrMajor);
             expectEquals(static_cast<int>(majorScale.getType()), static_cast<int>(Scale::ScaleType::IonianOrMajor));
-            expectEquals(static_cast<int>(majorScale.getCategory()), static_cast<int>(Scale::ScaleCategory::DiatonicModes));
+            expectEquals(static_cast<int>(majorScale.getCategory()), static_cast<int>(Scale::ScaleCategory::Diatonic));
 
             // Check intervals for Major scale: [0, 2, 4, 5, 7, 9, 11]
             auto intervals = majorScale.getIntervals();
@@ -76,7 +79,7 @@ public:
         {
             Scale harmonicMinorScale(Scale::ScaleType::HarmonicMinor);
             expectEquals(static_cast<int>(harmonicMinorScale.getType()), static_cast<int>(Scale::ScaleType::HarmonicMinor));
-            expectEquals(static_cast<int>(harmonicMinorScale.getCategory()), static_cast<int>(Scale::ScaleCategory::MinorVariations));
+            expectEquals(static_cast<int>(harmonicMinorScale.getCategory()), static_cast<int>(Scale::ScaleCategory::Minor));
 
             // Check intervals for Harmonic Minor scale: [0, 2, 3, 5, 7, 8, 11]
             auto intervals = harmonicMinorScale.getIntervals();
@@ -155,7 +158,7 @@ public:
             expectEquals(Scale::getShortNameForType(Scale::ScaleType::PhrygianDominant), String("PhrDom"));
             expectEquals(Scale::getShortNameForType(Scale::ScaleType::MinorPentatonic), String("mPent"));
             expectEquals(Scale::getShortNameForType(Scale::ScaleType::BebopMajor), String("BebMaj"));
-            expectEquals(Scale::getShortNameForType(Scale::ScaleType::User), String("Custom"));
+            expectEquals(Scale::getShortNameForType(Scale::ScaleType::User), String("User"));
         }
 
         beginTest("Scale instance name methods");
@@ -176,7 +179,7 @@ public:
                                   Scale::Steps::Whole, Scale::Steps::Whole, Scale::Steps::Whole, Scale::Steps::Half});
             auto intervals = majorFromSteps.getIntervals();
 
-            expectEquals(static_cast<int>(intervals.size()), 7);
+            expectEquals((int) intervals.size(), 7);
             expectEquals(intervals[0], 0);  // Root
             expectEquals(intervals[1], 2);  // Whole step
             expectEquals(intervals[2], 4);  // Whole step
@@ -184,6 +187,45 @@ public:
             expectEquals(intervals[4], 7);  // Whole step
             expectEquals(intervals[5], 9);  // Whole step
             expectEquals(intervals[6], 11); // Whole step
+        }
+
+        // beginTest("Scale degree step");
+        // {
+        //     expectEquals(Degree::fromSemitones(0, 1), Degree{1}); // Root
+        //     // expectEquals(Degree::fromSemitones(2, 1), Degree{2}); // Major second
+        //     // expectEquals(Degree::fromSemitones(4, 1), Degree{3}); // Major third
+        //     // expectEquals(Degree::fromSemitones(5, 1), Degree{4}); // Perfect fourth
+        //     // expectEquals(Degree::fromSemitones(7, 1), Degree{5}); // Perfect fifth
+        //     // expectEquals(Degree::fromSemitones(9, 1), Degree{6}); // Major sixth
+        //     // expectEquals(Degree::fromSemitones(11, 1), Degree{7}); // Major seventh
+        // }
+
+        beginTest("Scale steps in the musical form Major");
+        {
+            Scale majorScale(Scale::ScaleType::IonianOrMajor);
+            auto degrees = majorScale.getDegrees();
+            expectEquals((int) degrees.size(), 7);
+            expectEquals(degrees[0], Degree{1}); // Root
+            expectEquals(degrees[1], Degree{2}); // Major second
+            expectEquals(degrees[2], Degree{3}); // Major third
+            expectEquals(degrees[3], Degree{4}); // Perfect fourth
+            expectEquals(degrees[4], Degree{5}); // Perfect fifth
+            expectEquals(degrees[5], Degree{6}); // Major sixth
+            expectEquals(degrees[6], Degree{7}); // Major seventh
+        }
+
+        beginTest("Scale steps in the musical form Harminic Minor");
+        {
+            Scale harmonicMinorScale(Scale::ScaleType::HarmonicMinor);
+            auto degrees = harmonicMinorScale.getDegrees();
+            expectEquals((int) degrees.size(), 7);
+            expectEquals(degrees[0], Degree{1}); // Root
+            expectEquals(degrees[1], Degree{2}); // Major second
+            expectEquals(degrees[2], Degree{3, Alteration::Flat}); // Minor third
+            expectEquals(degrees[3], Degree{4}); // Perfect fourth
+            expectEquals(degrees[4], Degree{5}); // Perfect fifth
+            expectEquals(degrees[5], Degree{6, Alteration::Flat}); // Minor sixth
+            expectEquals(degrees[6], Degree{7}); // Major seventh
         }
     }
 };

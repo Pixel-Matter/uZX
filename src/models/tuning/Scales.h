@@ -206,6 +206,41 @@ public:
         WholeHalf,
     };
 
+    enum Accidental {
+        DoubleFlat = -2,
+        Flat = -1,
+        Natural = 0,
+        Sharp = 1,
+        DoubleSharp = 2
+    };
+
+    struct Degree {
+        int degree;
+        Accidental accidental;
+
+        explicit Degree(int deg, Accidental alt = Accidental::Natural) noexcept
+            : degree(deg), accidental(alt) {}
+
+        Degree(int deg, int alt) noexcept
+            : degree(deg), accidental(static_cast<Accidental>(alt)) {}
+
+        inline bool operator==(const Degree& other) const noexcept {
+            return degree == other.degree && accidental == other.accidental;
+        }
+
+        inline bool operator!=(const Degree& other) const noexcept {
+            return !(*this == other);
+        }
+
+        String accidentalSymbols() const;
+        String toString() const;
+
+        // static Degree fromSemitones(int semitones, int degreeNum) noexcept;
+        // int toSemitones() const noexcept;
+
+        operator String() const { return String::formatted("Degree(%d, %d)", degree, accidental); }
+    };
+
     Scale(ScaleType type);
     Scale(std::initializer_list<Steps> intervalSteps);
     Scale(std::initializer_list<int> steps);  // for example 0, 2, 4, 5, 7, 9, 11 for a major scale
@@ -214,22 +249,22 @@ public:
     ScaleCategory getCategory() const { return getCategoryForType(type); }
     ScaleType getType() const { return type; }
 
-    juce::String getName() const;
-    juce::String getShortName() const;
+    String getName() const;
+    String getShortName() const;
 
     static std::vector<ScaleCategory> getAllScaleCategories();
     static std::vector<ScaleType> getAllScaleTypesForCategory(ScaleCategory category);
     static std::vector<ScaleType> getAllScaleTypes();
 
-    static std::vector<juce::String> getScaleStrings();
-    // juce::String getters for compatibility
-    static juce::String getNameForCategory(ScaleCategory category);
-    static juce::String getShortNameForCategory(ScaleCategory category);
-    static juce::String getNameForType(ScaleType type);
-    static juce::String getShortNameForType(ScaleType type);
-    static ScaleType getTypeFromName(juce::String name);
+    static std::vector<String> getScaleStrings();
+    static String getNameForCategory(ScaleCategory category);
+    static String getShortNameForCategory(ScaleCategory category);
+    static String getNameForType(ScaleType type);
+    static String getShortNameForType(ScaleType type);
+    static ScaleType getTypeFromName(String name);
 
     std::vector<int> getIntervals(int octaves = 1) const;
+    std::vector<Degree> getDegrees() const;
 
 private:
     ScaleType type;

@@ -1,4 +1,5 @@
 #include "AutoTuning.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 
 namespace MoTool {
 
@@ -12,12 +13,12 @@ TuningType AutoTuning::getType() const {
 }
 
 int AutoTuning::midiNoteToPeriod(double midiNote) const {
-    jassert(referenceTuning != nullptr);
     return frequencyToPeriod(getReferenceFrequency(midiNote));
 }
 
 double AutoTuning::periodToMidiNote(int period) const {
-    return frequencyToMidiNote(periodToFrequency(period));
+    jassert(referenceTuning != nullptr);
+    return referenceTuning->frequencyToMidiNote(periodToFrequency(period));
 }
 
 bool AutoTuning::isDefined(int midiNote) const {

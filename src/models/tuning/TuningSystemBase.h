@@ -45,6 +45,9 @@ public:
     virtual double periodToMidiNote(int period) const = 0;
     virtual bool isDefined(int midiNote) const = 0;
 
+    inline TemperamentSystem* getReferenceTuning() const {
+        return referenceTuning.get();
+    }
     // Default chip-based period/frequency conversion
     double periodToFrequency(int period) const;
     int frequencyToPeriod(double frequency) const;

@@ -1,4 +1,6 @@
 #include "Scales.h"
+#include "juce_core/system/juce_PlatformDefs.h"
+#include <cstddef>
 #include <string_view>
 
 namespace MoTool {
@@ -161,6 +163,43 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
     }
 }
 
+// Scale::Degree
+
+Scale::Scale(std::initializer_list<int> ivals)
+    : type(ScaleType::User)
+    , intervals(ivals)
+{}
+
+String Scale::Degree::accidentalSymbols() const {
+    switch(accidental) {
+        case DoubleFlat:  return String::fromUTF8("♭♭");
+        case Flat:        return String::fromUTF8("♭");
+        case Natural:     return {};
+        case Sharp:       return String::fromUTF8("♯");
+        case DoubleSharp: return String::fromUTF8("♯♯");
+        default:          return "?";
+    }
+}
+
+String Scale::Degree::toString() const {
+    return accidentalSymbols() + String(degree);
+}
+
+// Scale::Degree Scale::Degree::fromSemitones(int semitones, int degreeNum) noexcept {
+//     // Normalize semitones to the range [0, 11]
+//     // degreeNum must be 1-based (1 for root, 2 for second, etc.)
+
+//     static constexpr std::array<int, 7> majorSemitones {0, 2, 4, 5, 7, 9, 11}; // Major scale intervals
+//     // FIXME this is wrong
+//     jassert(degreeNum >= 1 && degreeNum <= 8 && "Degree number must be between 1 and 8");
+//     semitones = (semitones % 12 + 12) % 12;
+//     return Scale::Degree(degreeNum, static_cast<Accidental>(semitones - degreeNum));
+// }
+
+// int Scale::Degree::toSemitones() const noexcept {
+//     return (degree - 1) + static_cast<int>(accidental);
+// }
+
 // Constructors
 Scale::Scale(ScaleType scaleType) : type(scaleType) {
     // Initialize intervals for known scale types
@@ -183,11 +222,6 @@ Scale::Scale(std::initializer_list<Steps> intervalSteps)
         }
     }
 }
-
-Scale::Scale(std::initializer_list<int> ivals)
-    : type(ScaleType::User)
-    , intervals(ivals)
-{}
 
 // Static methods
 Scale::ScaleCategory Scale::getCategoryForType(ScaleType scaleType) {
@@ -339,6 +373,25 @@ std::vector<int> Scale::getIntervals(int octaves) const {
     }
 
     return result;
+}
+
+std::vector<Scale::Degree> Scale::getDegrees() const {
+    static constexpr std::array<int, 7> majorSemitones {0, 2, 4, 5, 7, 9, 11}; // Major scale intervals
+
+    std::vector<Degree> degrees;
+    const auto effIntervals = getIntervals();
+
+    if (effIntervals.size() == 7) {
+        for (size_t i = 0; i <= 6; i++) {
+            degrees.emplace_back(
+                static_cast<int>(i + 1), // Degree number (1-based)
+                static_cast<Accidental>(effIntervals[i] - majorSemitones[i]) // Calculate accidental
+            );
+        }
+        return degrees;
+    }
+
+    return degrees;
 }
 
 } // namespace MoTool

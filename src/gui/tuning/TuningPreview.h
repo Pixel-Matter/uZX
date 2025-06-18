@@ -23,7 +23,9 @@ public:
 
 private:
     static constexpr int cellWidth = 56;
+    static constexpr int headerRowHeight = 24;
     static constexpr int cellHeight = 32;
+    static constexpr int gridYOffset = static_cast<int>(headerRowHeight * 2.5);
 
     TuningViewModel& viewModel;
 
@@ -56,16 +58,16 @@ public:
 
 private:
     void changeListenerCallback(ChangeBroadcaster* source) override;
-    
+
     // UI setup helpers
-    void setupSlider(Slider& slider, Label& label, const String& labelText, 
+    void setupSlider(Slider& slider, Label& label, const String& labelText,
                     double min, double max, double step, std::function<void()> callback);
     void updateClockControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();
 
     TuningViewModel viewModel;
-    
+
     // Scale selection mapping (menu item ID -> ScaleType)
     std::map<int, Scale::ScaleType> scaleMenuMapping;
 

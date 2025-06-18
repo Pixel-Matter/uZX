@@ -43,33 +43,42 @@ void TuningPreviewGrid::mouseMove(const MouseEvent& event) {
 
 void TuningPreviewGrid::paint(juce::Graphics& g) {
     const int cols = viewModel.getNumColumns();
-    // const int rows = viewModel.getNumRows();
+
+    auto drawCenterTick = [&](const juce::Rectangle<int>& cell) -> void {
+        g.setColour(Colors::Theme::surfaceAlt);
+        const int cellCenter = cell.getX() + (cell.getWidth() - 2) / 2;
+        g.fillRect(cellCenter, cell.getY() - 2, 2, 4);
+        g.fillRect(cellCenter, cell.getBottom() - 2, 2, 4);
+    };
 
     g.fillAll(Colors::Theme::backgroundAlt);
     auto bounds = getLocalBounds();
-    // bounds.reduce(20, 20); // Add some padding
-
     bounds.setWidth(cellWidth * (cols + 2));
     // center the grid horizontally
     bounds.setX((getWidth() - bounds.getWidth()) / 2);
 
-    // auto grid = bounds.removeFromTop(cellSize);
-    {
-        auto gridCell = bounds.removeFromTop(cellHeight).withSize(cellWidth, cellHeight);
+    const auto columns = viewModel.getColumnNoteNames();
 
-        // g.setColour(juce::Colours::white);
-        // g.drawText("Oct", gridCell, juce::Justification::centred, true);
+    bounds.removeFromTop(headerRowHeight / 2);
+    {
+        auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
         gridCell.translate(cellWidth, 0);
-        for (const auto& column : viewModel.getColumnNoteNames()) {
-            if (!column.isInScale) {
-                // g.setColour(Colors::Theme::background.withAlpha(0.5f));
-                // g.fillRect(gridCell.reduced(2, 2));
-                g.setColour(Colors::Theme::textPrimary.withAlpha(0.5f));
-            } else {
-                // g.setColour(Colors::Theme::background);
-                // g.fillRect(gridCell.reduced(2, 2));
-                g.setColour(Colors::Theme::textPrimary);
-            }
+        for (const auto& column : columns) {
+            // drawCenterTick(gridCell);
+            auto color = column.isInScale ? Colors::Theme::textPrimary : Colors::Theme::textPrimary.withAlpha(0.5f);
+            g.setColour(color);
+            g.drawText(column.stepName, gridCell, juce::Justification::centred, true);
+            gridCell.translate(cellWidth, 0);
+        }
+    }
+
+    {
+        auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
+        gridCell.translate(cellWidth, 0);
+        for (const auto& column : columns) {
+            drawCenterTick(gridCell);
+            auto color = column.isInScale ? Colors::Theme::textPrimary : Colors::Theme::textPrimary.withAlpha(0.5f);
+            g.setColour(color);
             g.drawText(column.name, gridCell, juce::Justification::centred, true);
             gridCell.translate(cellWidth, 0);
         }
@@ -107,10 +116,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
             // 1. Inter-cell reference tuning ticks at the horizontal center of the cell
             auto tickSize = 6;
-            g.setColour(Colors::Theme::surfaceAlt);
-            const int cellCenter = gridCell.getX() + (gridCell.getWidth() - 2) / 2;
-            g.fillRect(cellCenter, gridCell.getY() - 2, 2, 4);
-            g.fillRect(cellCenter, gridCell.getBottom() - 2, 2, 4);
+            drawCenterTick(gridCell);
 
             // 2. In-cell tuning ticks of this specific note
             auto calcTickX = [&](const float tick) -> float {
@@ -156,12 +162,11 @@ bool TuningPreviewGrid::findNoteAtPosition(Point<int> position, TuningNote& outN
     const int cols = viewModel.getNumColumns();
 
     auto bounds = getLocalBounds();
-    bounds.reduce(20, 20); // Same padding as in paint
     bounds.setWidth(cellWidth * (cols + 2));
     bounds.setX((getWidth() - bounds.getWidth()) / 2);
 
     // Skip header row
-    auto headerBounds = bounds.removeFromTop(cellHeight);
+    auto headerBounds = bounds.removeFromTop(gridYOffset);
     if (position.y < headerBounds.getBottom()) {
         return false; // Mouse is in header area
     }

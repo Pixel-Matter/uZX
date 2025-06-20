@@ -1,7 +1,9 @@
 #include <JuceHeader.h>
 #include "TemperamentSystem.h"
+#include "Ratios.h"
 #include "Scales.h"
 #include "juce_core/system/juce_PlatformDefs.h"
+#include <limits>
 
 namespace MoTool {
 
@@ -58,7 +60,7 @@ TemperamentType RationalTuning::getType() const {
 
 double RationalTuning::midiNoteToFrequency(double midiNote) const {
     // Implement custom rational tuning logic here
-    auto octave = static_cast<int>(midiNote / 12 - 1); // MIDI note 0 is C-1, so octave starts at -1
+    auto octave = static_cast<int>(std::floor(midiNote / 12.0 - 1.0)); // MIDI note 0 is C-1, so octave starts at -1
     auto pitchClass = static_cast<int>(midiNote) % 12; // MIDI pitch class is the note within the octave (0-11)
     auto noteIdx = pitchClass - static_cast<int>(tonic);
     /*
@@ -96,8 +98,53 @@ double RationalTuning::midiNoteToFrequency(double midiNote) const {
 }
 
 double RationalTuning::frequencyToMidiNote(double frequency) const {
-    // Implement custom rational tuning logic here
-    return 0.0; // Placeholder
+    // Estimate the octave using A4 as reference (similar to equal temperament approach)
+    double a4Freq = getA4Frequency();
+    double octaveEstimate = 4.0 + std::log2(frequency / a4Freq);
+    
+    // Search within a reasonable range around the estimated octave
+    int minOctave = std::max(-1, static_cast<int>(std::floor(octaveEstimate)) - 1);
+    int maxOctave = std::min(10, static_cast<int>(std::floor(octaveEstimate)) + 2);
+    
+    double bestMidiNote = 0.0;
+    double minDifference = std::numeric_limits<double>::max();
+    
+    // Search through octaves and pitch classes
+    for (int octave = minOctave; octave <= maxOctave; ++octave) {
+        for (int pitchClass = 0; pitchClass < 12; ++pitchClass) {
+            int midiNote = (octave + 1) * 12 + pitchClass;
+            if (midiNote >= 0 && midiNote <= 127) {
+                double calculatedFreq = midiNoteToFrequency(static_cast<double>(midiNote));
+                double difference = std::abs(calculatedFreq - frequency);
+                
+                if (difference < minDifference) {
+                    minDifference = difference;
+                    bestMidiNote = static_cast<double>(midiNote);
+                }
+            }
+        }
+    }
+    
+    // For better accuracy, check fractional notes around the best integer match
+    int baseMidi = static_cast<int>(bestMidiNote);
+    double bestFractionalMidi = bestMidiNote;
+    minDifference = std::numeric_limits<double>::max();
+    
+    // Check fractional notes in a small range around the best integer match
+    for (double fractionalOffset = -0.5; fractionalOffset <= 0.5; fractionalOffset += 0.01) {
+        double testMidi = baseMidi + fractionalOffset;
+        if (testMidi >= 0.0 && testMidi <= 127.0) {
+            double calculatedFreq = midiNoteToFrequency(testMidi);
+            double difference = std::abs(calculatedFreq - frequency);
+            
+            if (difference < minDifference) {
+                minDifference = difference;
+                bestFractionalMidi = testMidi;
+            }
+        }
+    }
+    
+    return bestFractionalMidi;
 }
 
 bool RationalTuning::isDefined(int /*midiNote*/) const {
@@ -106,15 +153,15 @@ bool RationalTuning::isDefined(int /*midiNote*/) const {
 
 double RationalTuning::getTonicFrequency(int octave) const {
     auto semitonesFromTonicToA = static_cast<int>(tonic) - static_cast<int>(Scale::Key::A);
-    auto ratio = ratios.at(size_t (semitonesFromTonicToA + 12) % 12);
-    if (semitonesFromTonicToA < 0) {
-        semitonesFromTonicToA += 12; // Wrap around if negative
-        --octave;
-    }
+    auto ratio = ratios.at(size_t (std::abs(semitonesFromTonicToA)));
     DBG("Tonic " << static_cast<int>(tonic) << " frequency for octave " << octave
         << ": semitones from tonic " << static_cast<int>(tonic) << " to A = " << semitonesFromTonicToA
-        << ", ratio = " << String(ratio)
     );
+    if (semitonesFromTonicToA < 0) {
+        ratio.invert();
+        DBG("Inverted ratio for negative semitones: " << String(ratio));
+    }
+    DBG("Ratio = " << String(ratio));
     return getA4Frequency() * ratio * std::pow(2.0, octave - 4);
 }
 

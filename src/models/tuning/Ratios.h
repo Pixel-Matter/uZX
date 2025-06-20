@@ -309,6 +309,7 @@ public:
     constexpr FractionNumber& invert() noexcept {
         if (isFraction()) {
             std::swap(num, denum);
+            value = static_cast<double>(num) / denum;
         } else {
             value = 1.0 / value;
         }

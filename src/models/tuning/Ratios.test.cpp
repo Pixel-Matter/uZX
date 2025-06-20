@@ -132,83 +132,84 @@ public:
     void runTest() override {
         beginTest("Construction from integers");
         {
-            RationalNumber ratio(3, 2);
-            expect(ratio.isJustInterval(), "Should be rational");
+            FractionNumber ratio(3, 2);
+            expect(ratio.isFraction(), "Should be rational");
             expectWithinAbsoluteError(static_cast<double>(ratio), 1.5, 1e-9);
         }
 
         beginTest("Construction from double");
         {
-            RationalNumber ratio(1.5);
-            expect(!ratio.isJustInterval(), "Should not be rational");
+            FractionNumber ratio(1.5);
+            expect(!ratio.isFraction(), "Should not be rational");
             expectWithinAbsoluteError(static_cast<double>(ratio), 1.5, 1e-9);
         }
 
         beginTest("Construction from semitones");
         {
-            auto ratio = RationalNumber::fromSemitones(12.0); // Octave
+            auto ratio = FractionNumber::fromSemitones(12.0); // Octave
             expectWithinAbsoluteError(static_cast<double>(ratio), 2.0, 1e-9);
         }
 
         beginTest("Construction from cents");
         {
-            auto ratio = RationalNumber::fromCents(1200.0); // Octave
+            auto ratio = FractionNumber::fromCents(1200.0); // Octave
             expectWithinAbsoluteError(static_cast<double>(ratio), 2.0, 1e-9);
         }
 
         beginTest("Rational multiplication");
         {
-            RationalNumber third(5, 4);    // Major third
-            RationalNumber fifth(3, 2);    // Perfect fifth
-            
+            FractionNumber third(5, 4);    // Major third
+            FractionNumber fifth(3, 2);    // Perfect fifth
+
             auto result = third * fifth;   // Should be major seventh (15:8)
-            expect(result.isJustInterval(), "Product should be rational");
+            expect(result.isFraction(), "Product should be rational");
             expectWithinAbsoluteError(static_cast<double>(result), 15.0/8.0, 1e-9);
         }
 
         beginTest("Rational division");
         {
-            RationalNumber fifth(3, 2);    // Perfect fifth
-            RationalNumber third(5, 4);    // Major third
-            
+            FractionNumber fifth(3, 2);    // Perfect fifth
+            FractionNumber third(5, 4);    // Major third
+
             auto result = fifth / third;   // Should be (3/2) / (5/4) = (3/2) * (4/5) = 6/5
-            expect(result.isJustInterval(), "Quotient should be rational");
+            expect(result.isFraction(), "Quotient should be rational");
             expectWithinAbsoluteError(static_cast<double>(result), 6.0/5.0, 1e-9);
         }
 
         beginTest("Mixed rational and irrational operations");
         {
-            RationalNumber rational(3, 2);   // Perfect fifth
-            RationalNumber irrational(1.41421356); // Approximate sqrt(2)
-            
+            FractionNumber rational(3, 2);   // Perfect fifth
+            FractionNumber irrational(1.41421356); // Approximate sqrt(2)
+
             auto result = rational * irrational;
-            expect(!result.isJustInterval(), "Product should not be rational");
+            expect(!result.isFraction(), "Product should not be rational");
             expectWithinAbsoluteError(static_cast<double>(result), 1.5 * 1.41421356, 1e-6);
         }
 
         beginTest("Inversion");
         {
-            RationalNumber fifth(3, 2);
+            FractionNumber fifth(3, 2);
             auto inverted = fifth.inverted();
-            
-            expect(inverted.isJustInterval(), "Inverted should be rational");
+
+            expect(inverted.isFraction(), "Inverted should be rational");
             expectWithinAbsoluteError(static_cast<double>(inverted), 2.0/3.0, 1e-9);
-            
+
             // Test that inversion is reversible
             auto doubleInverted = inverted.inverted();
+            expect(fifth == doubleInverted, "Inversion should be reversible");
             expectWithinAbsoluteError(static_cast<double>(doubleInverted), 1.5, 1e-9);
         }
 
         beginTest("Compound operations - perfect fifth circle");
         {
-            RationalNumber fifth(3, 2);
-            RationalNumber result = fifth;
-            
+            FractionNumber fifth(3, 2);
+            FractionNumber result = fifth;
+
             // Multiply by fifth 12 times (circle of fifths)
             for (int i = 0; i < 11; ++i) {
                 result *= fifth;
             }
-            
+
             // Should be close to multiple octaves (powers of 2)
             // 12 fifths = (3/2)^12 = 531441/4096 ≈ 129.746
             // This is approximately 2^7 = 128 (Pythagorean comma difference)
@@ -218,52 +219,148 @@ public:
 
         beginTest("Free-standing operators - scalar multiplication");
         {
-            RationalNumber third(5, 4);
-            
-            auto result1 = 2 * third;  // int * RationalNumber
-            auto result2 = 2.0 * third; // double * RationalNumber
-            
+            FractionNumber third(5, 4);
+
+            auto result1 = 2 * third;  // int * FractionNumber -> FractionNumber
+            auto result2 = 2.0 * third; // double * FractionNumber -> double
+
+            static_assert(std::is_same_v<decltype(result1), FractionNumber>, "Result1 should be FractionNumber");
+            static_assert(std::is_same_v<decltype(result2), double>, "Result2 should be double");
+
+            expect(result1.isFraction(), "Result should be fraction");
+
             expectWithinAbsoluteError(static_cast<double>(result1), 2.5, 1e-9);
             expectWithinAbsoluteError(static_cast<double>(result2), 2.5, 1e-9);
         }
 
         beginTest("Free-standing operators - scalar division");
         {
-            RationalNumber third(5, 4);
-            
-            auto result1 = 5 / third;    // Should be 5 / (5/4) = 4
-            auto result2 = 5.0 / third;  // Should be 5.0 / (5/4) = 4.0
-            
+            FractionNumber third(5, 4);
+
+            auto result1 = 5 / third;  // int / FractionNumber -> FractionNumber
+            auto result2 = 5.0 / third;  // double / FractionNumber -> double
+
+            static_assert(std::is_same_v<decltype(result1), FractionNumber>, "Result1 should be FractionNumber");
+            static_assert(std::is_same_v<decltype(result2), double>, "Result2 should be double");
+
             expectWithinAbsoluteError(static_cast<double>(result1), 4.0, 1e-9);
             expectWithinAbsoluteError(static_cast<double>(result2), 4.0, 1e-9);
         }
 
+        beginTest("Addition operators");
+        {
+            FractionNumber third(5, 4);  // 1.25
+            
+            // Member operators
+            auto result1 = third + 2;      // FractionNumber + int -> FractionNumber (1.25 + 2 = 3.25)
+            auto result2 = third + third;  // FractionNumber + FractionNumber -> FractionNumber
+            
+            expectWithinAbsoluteError(static_cast<double>(result1), 3.25, 1e-9);
+            expectWithinAbsoluteError(static_cast<double>(result2), 2.5, 1e-9);
+            expect(!result1.isFraction(), "Addition with int should not be fractional");
+            expect(!result2.isFraction(), "Addition of fractions should not be fractional");
+            
+            // Free-standing operators
+            auto result3 = 2 + third;      // int + FractionNumber -> FractionNumber
+            auto result4 = 2.0 + third;    // double + FractionNumber -> double
+            
+            static_assert(std::is_same_v<decltype(result3), FractionNumber>, "Result3 should be FractionNumber");
+            static_assert(std::is_same_v<decltype(result4), double>, "Result4 should be double");
+            
+            expectWithinAbsoluteError(static_cast<double>(result3), 3.25, 1e-9);
+            expectWithinAbsoluteError(result4, 3.25, 1e-9);
+        }
+
+        beginTest("Subtraction operators");
+        {
+            FractionNumber third(5, 4);  // 1.25
+            
+            // Member operators
+            auto result1 = third - 1;      // FractionNumber - int -> FractionNumber (1.25 - 1 = 0.25)
+            auto result2 = third - third;  // FractionNumber - FractionNumber -> FractionNumber (should be 0)
+            
+            expectWithinAbsoluteError(static_cast<double>(result1), 0.25, 1e-9);
+            expectWithinAbsoluteError(static_cast<double>(result2), 0.0, 1e-9);
+            expect(!result1.isFraction(), "Subtraction with int should not be fractional");
+            expect(!result2.isFraction(), "Subtraction of fractions should not be fractional");
+            
+            // Free-standing operators
+            auto result3 = 3 - third;      // int - FractionNumber -> FractionNumber (3 - 1.25 = 1.75)
+            auto result4 = 3.0 - third;    // double - FractionNumber -> double
+            
+            static_assert(std::is_same_v<decltype(result3), FractionNumber>, "Result3 should be FractionNumber");
+            static_assert(std::is_same_v<decltype(result4), double>, "Result4 should be double");
+            
+            expectWithinAbsoluteError(static_cast<double>(result3), 1.75, 1e-9);
+            expectWithinAbsoluteError(result4, 1.75, 1e-9);
+        }
+
+        beginTest("Unary minus operator");
+        {
+            FractionNumber positive(3, 2);   // 1.5
+            FractionNumber negative = -positive;
+            
+            expect(negative.isFraction(), "Unary minus should preserve fractional nature");
+            expectWithinAbsoluteError(static_cast<double>(negative), -1.5, 1e-9);
+            
+            // Test with irrational number
+            FractionNumber irrational(2.5);
+            FractionNumber negIrrational = -irrational;
+            
+            expect(!negIrrational.isFraction(), "Unary minus should preserve non-fractional nature");
+            expectWithinAbsoluteError(static_cast<double>(negIrrational), -2.5, 1e-9);
+            
+            // Test double negation
+            FractionNumber doubleNeg = -negative;
+            expect(doubleNeg == positive, "Double negation should return to original");
+        }
+
+        beginTest("Assignment operators for addition and subtraction");
+        {
+            FractionNumber ratio(5, 4);  // 1.25
+            
+            ratio += 2;  // Should become 3.25
+            expectWithinAbsoluteError(static_cast<double>(ratio), 3.25, 1e-9);
+            expect(!ratio.isFraction(), "After += int, should not be fractional");
+            
+            ratio -= 1;  // Should become 2.25
+            expectWithinAbsoluteError(static_cast<double>(ratio), 2.25, 1e-9);
+            expect(!ratio.isFraction(), "After -= int, should not be fractional");
+            
+            FractionNumber other(1, 4);  // 0.25
+            ratio += other;  // Should become 2.5
+            expectWithinAbsoluteError(static_cast<double>(ratio), 2.5, 1e-9);
+            
+            ratio -= other;  // Should become 2.25 again
+            expectWithinAbsoluteError(static_cast<double>(ratio), 2.25, 1e-9);
+        }
+
         beginTest("Equality comparison - rational vs rational");
         {
-            RationalNumber r1(6, 4);   // 6/4 = 3/2
-            RationalNumber r2(3, 2);   // 3/2
-            RationalNumber r3(5, 4);   // 5/4
-            
+            FractionNumber r1(6, 4);   // 6/4 = 3/2
+            FractionNumber r2(3, 2);   // 3/2
+            FractionNumber r3(5, 4);   // 5/4
+
             expect(r1 == r2, "6/4 should equal 3/2");
             expect(!(r1 == r3), "6/4 should not equal 5/4");
         }
 
         beginTest("Equality comparison - mixed types");
         {
-            RationalNumber rational(3, 2);
-            RationalNumber irrational(1.5);
-            
+            FractionNumber rational(3, 2);
+            FractionNumber irrational(1.5);
+
             expect(rational == irrational, "3/2 should equal 1.5");
         }
 
         beginTest("Conversion to semitones and cents");
         {
-            RationalNumber octave(2, 1);
-            RationalNumber fifth(3, 2);
-            
+            FractionNumber octave(2, 1);
+            FractionNumber fifth(3, 2);
+
             expectWithinAbsoluteError(octave.toSemitones(), 12.0, 1e-6);
             expectWithinAbsoluteError(octave.toCents(), 1200.0, 1e-6);
-            
+
             // Perfect fifth is approximately 7.02 semitones
             expectWithinAbsoluteError(fifth.toSemitones(), std::log2(1.5) * 12.0, 1e-6);
             expectWithinAbsoluteError(fifth.toCents(), std::log2(1.5) * 1200.0, 1e-6);
@@ -271,11 +368,11 @@ public:
 
         beginTest("Assignment operators");
         {
-            RationalNumber ratio(5, 4);
-            
+            FractionNumber ratio(5, 4);
+
             ratio *= 2;  // Should become 10/4 = 5/2
             expectWithinAbsoluteError(static_cast<double>(ratio), 2.5, 1e-9);
-            
+
             ratio /= 5;  // Should become 2/4 = 1/2
             expectWithinAbsoluteError(static_cast<double>(ratio), 0.5, 1e-9);
         }
@@ -283,20 +380,20 @@ public:
         beginTest("Complex musical interval calculations");
         {
             // Test some common musical interval arithmetic
-            RationalNumber majorSecond(9, 8);
-            RationalNumber majorThird(5, 4);
-            RationalNumber perfectFourth(4, 3);
-            RationalNumber perfectFifth(3, 2);
-            
+            FractionNumber majorSecond(9, 8);
+            FractionNumber majorThird(5, 4);
+            FractionNumber perfectFourth(4, 3);
+            FractionNumber perfectFifth(3, 2);
+
             // Major third + minor third should equal perfect fifth
-            RationalNumber minorThird = perfectFifth / majorThird; // (3/2) / (5/4) = 6/5
+            FractionNumber minorThird = perfectFifth / majorThird; // (3/2) / (5/4) = 6/5
             auto testFifth = majorThird * minorThird;
             expectWithinAbsoluteError(static_cast<double>(testFifth), 1.5, 1e-9);
-            
+
             // Perfect fourth + perfect fifth should equal octave
             auto testOctave = perfectFourth * perfectFifth;
             expectWithinAbsoluteError(static_cast<double>(testOctave), 2.0, 1e-9);
-            
+
             // Two major seconds should be close to major third (in equal temperament)
             auto twoSeconds = majorSecond * majorSecond;
             double diff = std::abs(static_cast<double>(twoSeconds) - static_cast<double>(majorThird));
@@ -305,14 +402,14 @@ public:
 
         beginTest("Edge cases - zero and negative values");
         {
-            RationalNumber zero(0, 1);
-            RationalNumber negative(-3, 2);
-            
+            FractionNumber zero(0, 1);
+            FractionNumber negative(-3, 2);
+
             expectWithinAbsoluteError(static_cast<double>(zero), 0.0, 1e-9);
             expectWithinAbsoluteError(static_cast<double>(negative), -1.5, 1e-9);
-            
+
             // Test multiplication with zero
-            RationalNumber third(5, 4);
+            FractionNumber third(5, 4);
             auto result = third * zero;
             expectWithinAbsoluteError(static_cast<double>(result), 0.0, 1e-9);
         }

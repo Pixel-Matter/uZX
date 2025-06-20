@@ -8,41 +8,41 @@
 namespace MoTool {
 
 // Ratio representation (supports both equal-tempered and just)
-class RationalNumber {
+class FractionNumber {
 public:
-    constexpr static RationalNumber fromSemitones(double semitones) {
+    constexpr static FractionNumber fromSemitones(double semitones) {
         // convert semitones to a ratio
         if (semitones == 0.0) {
-            return RationalNumber {1, 1}; // Unison
+            return FractionNumber {1, 1}; // Unison
         }
         double ratio = std::pow(2.0, semitones / 12.0);
-        return RationalNumber {ratio};
+        return FractionNumber {ratio};
     }
 
-    constexpr static RationalNumber fromCents(double cents) {
+    constexpr static FractionNumber fromCents(double cents) {
         // convert cents to a ratio
         if (cents == 0.0) {
-            return RationalNumber {1, 1}; // Unison
+            return FractionNumber {1, 1}; // Unison
         }
         double ratio = std::pow(2.0, cents / 1200.0);
-        return RationalNumber {ratio};
+        return FractionNumber {ratio};
     }
 
-    constexpr explicit RationalNumber(double v)
+    constexpr explicit FractionNumber(double v)
       : value(v)
       , isRational(false)
       , num(-1)
       , denum(-1)
     {}
 
-    constexpr RationalNumber(int numerator, int denominator)
+    constexpr FractionNumber(int numerator, int denominator)
       : value(static_cast<double>(numerator) / denominator)
       , isRational(true)
       , num(numerator)
       , denum(denominator)
     {}
 
-    RationalNumber(const juce::String& ratio); // "3:2", "5:4", etc.
+    FractionNumber(const juce::String& ratio); // "3:2", "5:4", etc.
 
     constexpr double toSemitones() const noexcept {
         return std::log2(value) * 12.0; // Convert ratio to semitones
@@ -52,20 +52,20 @@ public:
         return std::log2(value) * 1200.0; // Convert ratio to cents
     }
 
-    constexpr bool isJustInterval() const noexcept { return isRational; }
+    constexpr bool isFraction() const noexcept { return isRational; }
 
     constexpr operator double() const noexcept { return value; }
 
-    constexpr RationalNumber operator *(int number) const noexcept {
-        if (isJustInterval()) {
-            return RationalNumber {num * number, denum};
+    constexpr FractionNumber operator *(int number) const noexcept {
+        if (isFraction()) {
+            return FractionNumber {num * number, denum};
         } else {
-            return RationalNumber {value * number};
+            return FractionNumber {value * number};
         }
     }
 
-    constexpr RationalNumber& operator *=(int number) noexcept {
-        if (isJustInterval()) {
+    constexpr FractionNumber& operator *=(int number) noexcept {
+        if (isFraction()) {
             num *= number;
             value = static_cast<double>(num) / denum;
         } else {
@@ -74,45 +74,84 @@ public:
         return *this;
     }
 
-    constexpr RationalNumber operator *(double number) const noexcept {
-        return RationalNumber {value * number};
-    }
-
-    constexpr RationalNumber& operator *=(double number) noexcept {
-        value *= number;
-        return *this;
-    }
-
-    constexpr RationalNumber operator *(const RationalNumber& rhs) const noexcept {
-        if (isJustInterval() && rhs.isJustInterval()) {
-            return RationalNumber {num * rhs.num, denum * rhs.denum};
+    constexpr FractionNumber operator *(const FractionNumber& rhs) const noexcept {
+        if (isFraction() && rhs.isFraction()) {
+            return FractionNumber {num * rhs.num, denum * rhs.denum};
         } else {
-            return RationalNumber {value * rhs.value};
+            return FractionNumber {value * rhs.value};
         }
     }
 
-    constexpr RationalNumber& operator *=(const RationalNumber& rhs) noexcept {
-        if (isJustInterval() && rhs.isJustInterval()) {
+    constexpr FractionNumber operator +(int number) const noexcept {
+        return FractionNumber {value + number};
+    }
+
+    constexpr FractionNumber& operator +=(int number) noexcept {
+        value += number;
+        isRational = false;  // Result is no longer fractional
+        return *this;
+    }
+
+    constexpr FractionNumber operator +(const FractionNumber& rhs) const noexcept {
+        return FractionNumber {value + rhs.value};
+    }
+
+    constexpr FractionNumber& operator +=(const FractionNumber& rhs) noexcept {
+        value += rhs.value;
+        isRational = false;  // Result is no longer fractional
+        return *this;
+    }
+
+    constexpr FractionNumber operator -(int number) const noexcept {
+        return FractionNumber {value - number};
+    }
+
+    constexpr FractionNumber& operator -=(int number) noexcept {
+        value -= number;
+        isRational = false;  // Result is no longer fractional
+        return *this;
+    }
+
+    constexpr FractionNumber operator -(const FractionNumber& rhs) const noexcept {
+        return FractionNumber {value - rhs.value};
+    }
+
+    constexpr FractionNumber& operator -=(const FractionNumber& rhs) noexcept {
+        value -= rhs.value;
+        isRational = false;  // Result is no longer fractional
+        return *this;
+    }
+
+    constexpr FractionNumber operator -() const noexcept {
+        if (isFraction()) {
+            return FractionNumber {-num, denum};
+        } else {
+            return FractionNumber {-value};
+        }
+    }
+
+    constexpr FractionNumber& operator *=(const FractionNumber& rhs) noexcept {
+        if (isFraction() && rhs.isFraction()) {
             num *= rhs.num;
             denum *= rhs.denum;
             value = static_cast<double>(num) / denum;
         } else {
             value *= rhs.value;
-            isRational = false;  // Result is no longer rational
+            isRational = false;  // Result is no longer fractional
         }
         return *this;
     }
 
-    constexpr RationalNumber operator /(int number) const {
-        if (isJustInterval()) {
-            return RationalNumber {num, denum * number};
+    constexpr FractionNumber operator /(int number) const {
+        if (isFraction()) {
+            return FractionNumber {num, denum * number};
         } else {
-            return RationalNumber {value / number};
+            return FractionNumber {value / number};
         }
     }
 
-    constexpr RationalNumber& operator /=(int number) {
-        if (isJustInterval()) {
+    constexpr FractionNumber& operator /=(int number) {
+        if (isFraction()) {
             denum *= number;
             value = static_cast<double>(num) / denum;
         } else {
@@ -121,42 +160,35 @@ public:
         return *this;
     }
 
-    constexpr RationalNumber operator /(double number) const {
-        return RationalNumber {value / number};
-    }
-
-    constexpr RationalNumber& operator /=(double number) {
-        value /= number;
-        return *this;
-    }
-
-    constexpr RationalNumber operator /(const RationalNumber& rhs) const {
-        if (isJustInterval() && rhs.isJustInterval()) {
-            return RationalNumber {num * rhs.denum, denum * rhs.num};
+    constexpr FractionNumber operator /(const FractionNumber& rhs) const {
+        if (isFraction() && rhs.isFraction()) {
+            return FractionNumber {num * rhs.denum, denum * rhs.num};
         } else {
-            return RationalNumber {value / rhs.value};
+            return FractionNumber {value / rhs.value};
         }
     }
 
-    constexpr RationalNumber& operator /=(const RationalNumber& rhs) {
-        if (isJustInterval() && rhs.isJustInterval()) {
+    constexpr FractionNumber& operator /=(const FractionNumber& rhs) {
+        if (isFraction() && rhs.isFraction()) {
             num *= rhs.denum;
             denum *= rhs.num;
+            value = static_cast<double>(num) / denum;
         } else {
             value /= rhs.value;
+            isRational = false;  // Result is no longer rational
         }
         return *this;
     }
 
     constexpr bool isFinite() const noexcept {
-        if (isJustInterval()) {
+        if (isFraction()) {
             return denum != 0;
         }
         return std::isfinite(value);
     }
 
-    constexpr bool operator ==(const RationalNumber& other) const noexcept {
-        if (isJustInterval() && other.isJustInterval()) {
+    constexpr bool operator ==(const FractionNumber& other) const noexcept {
+        if (isFraction() && other.isFraction()) {
             // Use cross-multiplication to compare fractions: a/b == c/d if a*d == b*c
             return num * other.denum == denum * other.num;
         } else {
@@ -164,28 +196,28 @@ public:
         }
     }
 
-    constexpr bool operator !=(const RationalNumber& other) const noexcept {
+    constexpr bool operator !=(const FractionNumber& other) const noexcept {
         return !(*this == other);
     }
 
     operator String() const {
-        if (isJustInterval()) {
+        if (isFraction()) {
             return String::formatted("%d:%d", num, denum);
         } else {
             return String(value);
         }
     }
 
-    constexpr RationalNumber inverted() const noexcept {
-        if (isJustInterval()) {
-            return RationalNumber(denum, num);
+    constexpr FractionNumber inverted() const noexcept {
+        if (isFraction()) {
+            return FractionNumber(denum, num);
         } else {
-            return RationalNumber(1.0 / value);
+            return FractionNumber(1.0 / value);
         }
     }
 
-    constexpr RationalNumber& invert() noexcept {
-        if (isJustInterval()) {
+    constexpr FractionNumber& invert() noexcept {
+        if (isFraction()) {
             std::swap(num, denum);
         } else {
             value = 1.0 / value;
@@ -195,7 +227,7 @@ public:
 
 
 private:
-    constexpr RationalNumber(double v, bool isR, int n, int d) noexcept
+    constexpr FractionNumber(double v, bool isR, int n, int d) noexcept
       : value(v)
       , isRational(isR)
       , num(n)
@@ -207,65 +239,37 @@ private:
     int num, denum;      // For rational intervals
 };
 
-constexpr inline RationalNumber operator *(int number, const RationalNumber& ratio) noexcept {
+constexpr inline FractionNumber operator *(int number, const FractionNumber& ratio) noexcept {
     return ratio * number; // Use the existing operator* for multiplication
 }
 
-constexpr inline RationalNumber operator *(double number, const RationalNumber& ratio) noexcept {
-    return ratio * number; // Use the existing operator* for multiplication
+constexpr inline double operator *(double number, const FractionNumber& ratio) noexcept {
+    return static_cast<double>(ratio) * number; // Convert ratio to double and multiply
 }
 
-constexpr inline RationalNumber operator /(int number, const RationalNumber& ratio) {
-    if (ratio.isJustInterval()) {
-        // Special case for 1 / ratio, return the inverted ratio
-        return ratio.inverted() * number; // Invert the ratio and multiply
-    }
-    return RationalNumber{static_cast<double>(number) / static_cast<double>(ratio)};
+constexpr inline FractionNumber operator /(int number, const FractionNumber& ratio) noexcept {
+    return ratio.inverted() * number; // Use the existing operator* for multiplication
 }
 
-constexpr inline RationalNumber operator /(double number, const RationalNumber& ratio) {
-    return RationalNumber{number / static_cast<double>(ratio)};
+constexpr inline double operator /(double number, const FractionNumber& ratio) noexcept {
+    return number / static_cast<double>(ratio); // Convert ratio to double and divide
 }
 
-// constexpr inline RationalNumber operator +(const RationalNumber& lhs, const RationalNumber& rhs) noexcept {
-//     return RationalNumber{static_cast<double>(lhs) + static_cast<double>(rhs)};
-// }
+constexpr inline FractionNumber operator +(int number, const FractionNumber& ratio) noexcept {
+    return ratio + number; // Use the existing operator+ for addition
+}
 
-// constexpr inline RationalNumber operator -(const RationalNumber& lhs, const RationalNumber& rhs) noexcept {
-//     return RationalNumber{static_cast<double>(lhs) - static_cast<double>(rhs)};
-// }
+constexpr inline double operator +(double number, const FractionNumber& ratio) noexcept {
+    return static_cast<double>(ratio) + number; // Convert ratio to double and add
+}
 
-// constexpr inline RationalNumber operator *(const RationalNumber& lhs, const RationalNumber& rhs) noexcept {
-//     return RationalNumber{static_cast<double>(lhs) * static_cast<double>(rhs)};
-// }
+constexpr inline FractionNumber operator -(int number, const FractionNumber& ratio) noexcept {
+    return FractionNumber{static_cast<double>(number) - static_cast<double>(ratio)};
+}
 
-// constexpr inline RationalNumber operator /(const RationalNumber& lhs, const RationalNumber& rhs) {
-//     return RationalNumber{static_cast<double>(lhs) / static_cast<double>(rhs)};
-// }
-
-// constexpr inline bool operator ==(const RationalNumber& lhs, const RationalNumber& rhs) noexcept {
-//     return std::abs(static_cast<double>(lhs) - static_cast<double>(rhs)) < 1e-9;
-// }
-
-// constexpr inline bool operator !=(const RationalNumber& lhs, const RationalNumber& rhs) noexcept {
-//     return !(lhs == rhs);
-// }
-
-// constexpr inline bool operator <(const RationalNumber& lhs, const RationalNumber& rhs) noexcept {
-//     return static_cast<double>(lhs) < static_cast<double>(rhs);
-// }
-
-// constexpr inline bool operator >(const RationalNumber& lhs, const RationalNumber& rhs) noexcept {
-//     return rhs < lhs;
-// }
-
-// constexpr inline bool operator <=(const RationalNumber& lhs, const RationalNumber& rhs) noexcept {
-//     return !(rhs < lhs);
-// }
-
-// constexpr inline bool operator >=(const RationalNumber& lhs, const RationalNumber& rhs) noexcept {
-//     return !(lhs < rhs);
-// }
+constexpr inline double operator -(double number, const FractionNumber& ratio) noexcept {
+    return number - static_cast<double>(ratio); // Convert ratio to double and subtract
+}
 
 // Utility functions for working with frequency and period ratios
 std::vector<int> inverseRatios(const std::vector<int>& ratios);

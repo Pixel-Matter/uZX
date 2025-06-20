@@ -38,7 +38,7 @@ bool EqualTemperamentTuning::isDefined(int /*midiNote*/) const {
 // RationalTuning class implementation
 
 RationalTuning::RationalTuning(
-    const std::array<RationalNumber, 12>& rationalIntervals,
+    const std::array<FractionNumber, 12>& rationalIntervals,
     const Scale::Key keyToUse,
     const Scale* scaleToUse,  // TODO remove?
     double a4Frequency
@@ -89,10 +89,10 @@ double RationalTuning::midiNoteToFrequency(double midiNote) const {
     auto tonicFrequency = getTonicFrequency(octave);
     DBG("Ratio " << String(ratio)
         << ", tonic frequency " << tonicFrequency
-        << ", result " << String(tonicFrequency * ratio)
+        << ", result " << String(tonicFrequency * static_cast<double>(ratio))
     );
 
-    return tonicFrequency * ratio;
+    return tonicFrequency * static_cast<double>(ratio);
 }
 
 double RationalTuning::frequencyToMidiNote(double frequency) const {

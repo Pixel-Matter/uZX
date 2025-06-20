@@ -9,19 +9,19 @@ class RationalTuningTest : public juce::UnitTest {
 public:
     RationalTuningTest() : UnitTest("RationalTuning", "MoTool") {}
 
-    std::array<RationalNumber, 12> justIntonationRatios {
-        RationalNumber {1, 1},   // Unison          C
-        RationalNumber {16, 15}, // Minor second    C#
-        RationalNumber {9, 8},   // Major second    D
-        RationalNumber {6, 5},   // Minor third     D#
-        RationalNumber {5, 4},   // Major third     E
-        RationalNumber {4, 3},   // Perfect fourth  F
-        RationalNumber {45, 32}, // Triton          F#
-        RationalNumber {3, 2},   // Perfect fifth   G
-        RationalNumber {8, 5},   // Minor sixth     G#
-        RationalNumber {5, 3},   // Major sixth     A
-        RationalNumber {16, 9},  // Minor seventh   A#
-        RationalNumber {15, 8}   // Major seventh   B
+    std::array<FractionNumber, 12> justIntonationRatios {
+        FractionNumber {1, 1},   // Unison          C
+        FractionNumber {16, 15}, // Minor second    C#
+        FractionNumber {9, 8},   // Major second    D
+        FractionNumber {6, 5},   // Minor third     D#
+        FractionNumber {5, 4},   // Major third     E
+        FractionNumber {4, 3},   // Perfect fourth  F
+        FractionNumber {45, 32}, // Triton          F#
+        FractionNumber {3, 2},   // Perfect fifth   G
+        FractionNumber {8, 5},   // Minor sixth     G#
+        FractionNumber {5, 3},   // Major sixth     A
+        FractionNumber {16, 9},  // Minor seventh   A#
+        FractionNumber {15, 8}   // Major seventh   B
     };
 
     void runTest() override {
@@ -44,9 +44,9 @@ public:
             const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale};
 
-            expect(std::abs(tuning.getTonicFrequency(4) - 440.0) < 0.001, "Tonic should be A4 = 440.0 Hz");
-            expect(std::abs(tuning.getTonicFrequency(5) - 880.0) < 0.001, "Tonic should be A5 = 880.0 Hz");
-            expect(std::abs(tuning.getTonicFrequency(3) - 220.0) < 0.001, "Tonic should be A3 = 220.0 Hz");
+            expectWithinAbsoluteError(tuning.getTonicFrequency(4), 440.0, 0.001, "Tonic should be A4 = 440.0 Hz");
+            expectWithinAbsoluteError(tuning.getTonicFrequency(5), 880.0, 0.001, "Tonic should be A5 = 880.0 Hz");
+            expectWithinAbsoluteError(tuning.getTonicFrequency(3), 220.0, 0.001, "Tonic should be A3 = 220.0 Hz");
         }
 
         beginTest("Tonic to frequency conversion - A4 = 432.0 Hz");
@@ -84,7 +84,7 @@ public:
 
             auto frequency = tuning.getTonicFrequency(4);
             // ratio is 45:32, tonic * 45:32 = 440, tonic = 440 * 32 / 45
-            expect(frequency == 440.0, "Tonic D#4 should be 440.0 Hz, got " + String(frequency));
+            expectWithinAbsoluteError(frequency, 440.0, 1e-9, "Tonic D#4 should be 440.0 Hz, got " + String(frequency));
         }
 
         // beginTest("MIDI note to frequency conversion - A4, tonic is A");

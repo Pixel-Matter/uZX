@@ -84,7 +84,7 @@ public:
     using TemperamentSystem::TemperamentSystem;
 
     RationalTuning(
-        const std::array<RationalNumber, 12>& rationalIntervals,
+        const std::array<FractionNumber, 12>& rationalIntervals,
         const Scale::Key keyToUse,
         const Scale* scaleToUse,
         double a4Frequency = 440.0
@@ -112,7 +112,7 @@ public:
     double getTonicFrequency(int octave) const;
 
 private:
-    std::array<RationalNumber, 12> ratios;
+    std::array<FractionNumber, 12> ratios;
     Scale::Key tonic;
     const Scale* scale; // Scale to use for this tuning, if applicable
 

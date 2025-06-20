@@ -250,23 +250,26 @@ public:
         beginTest("Addition operators");
         {
             FractionNumber third(5, 4);  // 1.25
-            
+
             // Member operators
             auto result1 = third + 2;      // FractionNumber + int -> FractionNumber (1.25 + 2 = 3.25)
             auto result2 = third + third;  // FractionNumber + FractionNumber -> FractionNumber
-            
+
+            static_assert(std::is_same_v<decltype(result1), FractionNumber>, "Result1 should be FractionNumber");
+            static_assert(std::is_same_v<decltype(result2), FractionNumber>, "Result2 should be FractionNumber");
+
             expectWithinAbsoluteError(static_cast<double>(result1), 3.25, 1e-9);
             expectWithinAbsoluteError(static_cast<double>(result2), 2.5, 1e-9);
-            expect(!result1.isFraction(), "Addition with int should not be fractional");
-            expect(!result2.isFraction(), "Addition of fractions should not be fractional");
-            
+            expect(result1.isFraction(), "Addition with int should be fractional");
+            expect(result2.isFraction(), "Addition of fractions should be fractional");
+
             // Free-standing operators
             auto result3 = 2 + third;      // int + FractionNumber -> FractionNumber
             auto result4 = 2.0 + third;    // double + FractionNumber -> double
-            
+
             static_assert(std::is_same_v<decltype(result3), FractionNumber>, "Result3 should be FractionNumber");
             static_assert(std::is_same_v<decltype(result4), double>, "Result4 should be double");
-            
+
             expectWithinAbsoluteError(static_cast<double>(result3), 3.25, 1e-9);
             expectWithinAbsoluteError(result4, 3.25, 1e-9);
         }
@@ -274,23 +277,23 @@ public:
         beginTest("Subtraction operators");
         {
             FractionNumber third(5, 4);  // 1.25
-            
+
             // Member operators
             auto result1 = third - 1;      // FractionNumber - int -> FractionNumber (1.25 - 1 = 0.25)
             auto result2 = third - third;  // FractionNumber - FractionNumber -> FractionNumber (should be 0)
-            
+
             expectWithinAbsoluteError(static_cast<double>(result1), 0.25, 1e-9);
             expectWithinAbsoluteError(static_cast<double>(result2), 0.0, 1e-9);
-            expect(!result1.isFraction(), "Subtraction with int should not be fractional");
-            expect(!result2.isFraction(), "Subtraction of fractions should not be fractional");
-            
+            expect(result1.isFraction(), "Subtraction with int should be fractional");
+            expect(result2.isFraction(), "Subtraction of fractions should be fractional");
+
             // Free-standing operators
             auto result3 = 3 - third;      // int - FractionNumber -> FractionNumber (3 - 1.25 = 1.75)
             auto result4 = 3.0 - third;    // double - FractionNumber -> double
-            
+
             static_assert(std::is_same_v<decltype(result3), FractionNumber>, "Result3 should be FractionNumber");
             static_assert(std::is_same_v<decltype(result4), double>, "Result4 should be double");
-            
+
             expectWithinAbsoluteError(static_cast<double>(result3), 1.75, 1e-9);
             expectWithinAbsoluteError(result4, 1.75, 1e-9);
         }
@@ -299,17 +302,17 @@ public:
         {
             FractionNumber positive(3, 2);   // 1.5
             FractionNumber negative = -positive;
-            
+
             expect(negative.isFraction(), "Unary minus should preserve fractional nature");
             expectWithinAbsoluteError(static_cast<double>(negative), -1.5, 1e-9);
-            
+
             // Test with irrational number
             FractionNumber irrational(2.5);
             FractionNumber negIrrational = -irrational;
-            
+
             expect(!negIrrational.isFraction(), "Unary minus should preserve non-fractional nature");
             expectWithinAbsoluteError(static_cast<double>(negIrrational), -2.5, 1e-9);
-            
+
             // Test double negation
             FractionNumber doubleNeg = -negative;
             expect(doubleNeg == positive, "Double negation should return to original");
@@ -317,22 +320,47 @@ public:
 
         beginTest("Assignment operators for addition and subtraction");
         {
-            FractionNumber ratio(5, 4);  // 1.25
-            
-            ratio += 2;  // Should become 3.25
+            FractionNumber ratio(5, 4);  // 1.25 = 5/4
+
+            ratio += 2;  // Should become 5/4 + 2 = 5/4 + 8/4 = 13/4 = 3.25
             expectWithinAbsoluteError(static_cast<double>(ratio), 3.25, 1e-9);
-            expect(!ratio.isFraction(), "After += int, should not be fractional");
-            
-            ratio -= 1;  // Should become 2.25
+            expect(ratio.isFraction(), "After += int, should be fractional");
+
+            ratio -= 1;  // Should become 13/4 - 1 = 13/4 - 4/4 = 9/4 = 2.25
             expectWithinAbsoluteError(static_cast<double>(ratio), 2.25, 1e-9);
-            expect(!ratio.isFraction(), "After -= int, should not be fractional");
-            
-            FractionNumber other(1, 4);  // 0.25
-            ratio += other;  // Should become 2.5
+            expect(ratio.isFraction(), "After -= int, should be fractional");
+
+            FractionNumber other(1, 4);  // 0.25 = 1/4
+            ratio += other;  // Should become 9/4 + 1/4 = 10/4 = 2.5
             expectWithinAbsoluteError(static_cast<double>(ratio), 2.5, 1e-9);
-            
-            ratio -= other;  // Should become 2.25 again
+
+            ratio -= other;  // Should become 10/4 - 1/4 = 9/4 = 2.25 again
             expectWithinAbsoluteError(static_cast<double>(ratio), 2.25, 1e-9);
+        }
+
+        beginTest("Proper fractional arithmetic verification");
+        {
+            // Test that fractional arithmetic is exact, not just approximate
+            FractionNumber half(1, 2);      // 1/2
+            FractionNumber third(1, 3);     // 1/3
+            
+            auto sum = half + third;         // 1/2 + 1/3 = 3/6 + 2/6 = 5/6
+            expect(sum.isFraction(), "Sum should be fractional");
+            expectWithinAbsoluteError(static_cast<double>(sum), 5.0/6.0, 1e-15);
+            
+            FractionNumber quarter(1, 4);   // 1/4
+            auto diff = half - quarter;      // 1/2 - 1/4 = 2/4 - 1/4 = 1/4
+            expect(diff.isFraction(), "Difference should be fractional");
+            expectWithinAbsoluteError(static_cast<double>(diff), 0.25, 1e-15);
+            
+            // Test free-standing arithmetic
+            auto result = 2 + third;         // 2 + 1/3 = 6/3 + 1/3 = 7/3
+            expect(result.isFraction(), "Free-standing addition should be fractional");
+            expectWithinAbsoluteError(static_cast<double>(result), 7.0/3.0, 1e-15);
+            
+            auto result2 = 3 - quarter;      // 3 - 1/4 = 12/4 - 1/4 = 11/4
+            expect(result2.isFraction(), "Free-standing subtraction should be fractional");
+            expectWithinAbsoluteError(static_cast<double>(result2), 11.0/4.0, 1e-15);
         }
 
         beginTest("Equality comparison - rational vs rational");

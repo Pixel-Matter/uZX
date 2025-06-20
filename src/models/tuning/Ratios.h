@@ -83,42 +83,80 @@ public:
     }
 
     constexpr FractionNumber operator +(int number) const noexcept {
-        return FractionNumber {value + number};
+        if (isFraction()) {
+            return FractionNumber {num + number * denum, denum};
+        } else {
+            return FractionNumber {value + number};
+        }
     }
 
     constexpr FractionNumber& operator +=(int number) noexcept {
-        value += number;
-        isRational = false;  // Result is no longer fractional
+        if (isFraction()) {
+            num += number * denum;
+            value = static_cast<double>(num) / denum;
+        } else {
+            value += number;
+        }
         return *this;
     }
 
     constexpr FractionNumber operator +(const FractionNumber& rhs) const noexcept {
-        return FractionNumber {value + rhs.value};
+        if (isFraction() && rhs.isFraction()) {
+            // Common denominator: a/b + c/d = (a*d + c*b)/(b*d)
+            return FractionNumber {num * rhs.denum + rhs.num * denum, denum * rhs.denum};
+        } else {
+            return FractionNumber {value + rhs.value};
+        }
     }
 
     constexpr FractionNumber& operator +=(const FractionNumber& rhs) noexcept {
-        value += rhs.value;
-        isRational = false;  // Result is no longer fractional
+        if (isFraction() && rhs.isFraction()) {
+            num = num * rhs.denum + rhs.num * denum;
+            denum *= rhs.denum;
+            value = static_cast<double>(num) / denum;
+        } else {
+            value += rhs.value;
+            isRational = false;  // Result is no longer fractional
+        }
         return *this;
     }
 
     constexpr FractionNumber operator -(int number) const noexcept {
-        return FractionNumber {value - number};
+        if (isFraction()) {
+            return FractionNumber {num - number * denum, denum};
+        } else {
+            return FractionNumber {value - number};
+        }
     }
 
     constexpr FractionNumber& operator -=(int number) noexcept {
-        value -= number;
-        isRational = false;  // Result is no longer fractional
+        if (isFraction()) {
+            num -= number * denum;
+            value = static_cast<double>(num) / denum;
+        } else {
+            value -= number;
+        }
         return *this;
     }
 
     constexpr FractionNumber operator -(const FractionNumber& rhs) const noexcept {
-        return FractionNumber {value - rhs.value};
+        if (isFraction() && rhs.isFraction()) {
+            // Common denominator: a/b - c/d = (a*d - c*b)/(b*d)
+            return FractionNumber {num * rhs.denum - rhs.num * denum, denum * rhs.denum};
+        } else {
+            return FractionNumber {value - rhs.value};
+        }
     }
 
     constexpr FractionNumber& operator -=(const FractionNumber& rhs) noexcept {
-        value -= rhs.value;
-        isRational = false;  // Result is no longer fractional
+        if (isFraction() && rhs.isFraction()) {
+            num = num * rhs.denum - rhs.num * denum;
+            denum *= rhs.denum;
+            value = static_cast<double>(num) / denum;
+        } else {
+            value -= rhs.value;
+            isRational = false;  // Result is no longer fractional
+        }
         return *this;
     }
 
@@ -225,6 +263,8 @@ public:
         return *this;
     }
 
+    constexpr int getNumerator() const noexcept { return num; }
+    constexpr int getDenominator() const noexcept { return denum; }
 
 private:
     constexpr FractionNumber(double v, bool isR, int n, int d) noexcept
@@ -264,7 +304,12 @@ constexpr inline double operator +(double number, const FractionNumber& ratio) n
 }
 
 constexpr inline FractionNumber operator -(int number, const FractionNumber& ratio) noexcept {
-    return FractionNumber{static_cast<double>(number) - static_cast<double>(ratio)};
+    if (ratio.isFraction()) {
+        // number - a/b = (number*b - a)/b
+        return FractionNumber{number * ratio.getDenominator() - ratio.getNumerator(), ratio.getDenominator()};
+    } else {
+        return FractionNumber{static_cast<double>(number) - static_cast<double>(ratio)};
+    }
 }
 
 constexpr inline double operator -(double number, const FractionNumber& ratio) noexcept {

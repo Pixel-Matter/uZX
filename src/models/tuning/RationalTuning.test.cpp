@@ -186,14 +186,24 @@ public:
             expectEquals(a4near2, 70, "460.0 Hz should convert to MIDI note 70 (A4)");
         }
 
-        // beginTest("Frequency to MIDI note conversion - Middle C");
-        // {
-        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
-        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
-        //     double middleCFreq = 440.0 * 3.0 / 5.0; // C to A is 5:3 in just intonation
-        //     double midiNote = tuning.frequencyToMidiNote(middleCFreq);
-        //     expectWithinAbsoluteError(midiNote, 60.0, 1e-3, "Middle C frequency should convert to MIDI note 60");
-        // }
+        beginTest("Frequency to MIDI note conversion - Middle C");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+            double middleCFreq = 440.0 * 3.0 / 5.0; // C to A is 5:3 in just intonation
+            double midiNote = tuning.frequencyToMidiNote(middleCFreq);
+            expectWithinAbsoluteError(midiNote, 60.0, 1e-3, "Middle C frequency should convert to MIDI note 60");
+        }
+
+        beginTest("Frequency to MIDI note conversion - Middle C quarter tone");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+            double middleCFreq = 269.444; // C+ is quarter tone above C
+            double midiNote = tuning.frequencyToMidiNote(middleCFreq);
+
+            expectWithinAbsoluteError(midiNote, 60.5, 1e-3, "Middle C+ frequency should convert to MIDI note 60.5");
+        }
 
         // beginTest("Round-trip conversion accuracy");
         // {

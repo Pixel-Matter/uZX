@@ -123,12 +123,12 @@ double RationalTuning::midiNoteToFrequency(double midiNote) const {
     auto freq2 = midiNoteToFrequency(intNote + 1);
     double fractionalPart = midiNote - intNote;
     double interpolatedFreq = freq1 * std::pow(freq2 / freq1, fractionalPart);
-    // DBG("Interpolated frequency for MIDI note " << midiNote
-    //     << ": freq1 = " << freq1
-    //     << ", freq2 = " << freq2
-    //     << ", fractional part = " << fractionalPart
-    //     << ", result = " << interpolatedFreq
-    // );
+    DBG("Interpolated frequency for MIDI note " << midiNote
+        << ": freq1 = " << freq1
+        << ", freq2 = " << freq2
+        << ", fractional part = " << fractionalPart
+        << ", result = " << interpolatedFreq
+    );
     return interpolatedFreq;
 }
 
@@ -186,17 +186,16 @@ double RationalTuning::frequencyToMidiNote(double frequency) const {
     auto note2 = note1 + 1;
     auto freq1 = midiNoteToFrequency(note1);
     auto freq2 = midiNoteToFrequency(note2);
-    // use log2 to interpolate between two frequencies
-    double fractionalPart = std::log2(frequency / freq1) / std::log2(freq2 / freq1);
+    // use log to interpolate between two frequencies
+    double fractionalPart = std::log(frequency / freq1) / std::log(freq2 / freq1);
     double interpolatedNote = note1 + fractionalPart;
-    DBG("Interpolated MIDI note for frequency " << frequency
-        << ": note1 = " << note1
-        << ", note2 = " << note2
-        << ", freq1 = " << freq1
-        << ", freq2 = " << freq2
-        << ", fractional part = " << fractionalPart
-        << ", result = " << interpolatedNote
-    );
+    // DBG("Interpolated MIDI note for frequency " << frequency
+    //     << "\n: note1 = " << note1
+    //     << "\n, note2 = " << note2
+    //     << "\n, freq1 = " << freq1
+    //     << "\n, freq2 = " << freq2
+    //     << "\n, result = " << interpolatedNote
+    // );
     return interpolatedNote;
 }
 

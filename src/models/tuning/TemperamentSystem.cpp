@@ -93,26 +93,26 @@ double RationalTuning::midiNoteToFrequency(int midiNote) const {
     N         --(-9)--         K
     */
 
-    DBG("---\n"
-        << "MIDI note " << midiNote
-        << ": octave " << octave << ", pitch class " << pitchClass
-        << ", note index " << noteIdx
-    );
+    // DBG("---\n"
+    //     << "MIDI note " << midiNote
+    //     << ": octave " << octave << ", pitch class " << pitchClass
+    //     << ", note index " << noteIdx
+    // );
 
     if (noteIdx < 0) {
         --octave;
         noteIdx += 12;
-        DBG("noteIdx < 0 "
-            << ": octave " << octave
-            << ", note index " << noteIdx
-        );
+        // DBG("noteIdx < 0 "
+        //     << ": octave " << octave
+        //     << ", note index " << noteIdx
+        // );
     }
     auto ratio = ratios.at(size_t(noteIdx % 12));
     auto tonicFrequency = getTonicFrequency(octave);
-    DBG("Ratio " << String(ratio)
-        << ", tonic frequency " << tonicFrequency
-        << ", result " << String(tonicFrequency * static_cast<double>(ratio))
-    );
+    // DBG("Ratio " << String(ratio)
+    //     << ", tonic frequency " << tonicFrequency
+    //     << ", result " << String(tonicFrequency * static_cast<double>(ratio))
+    // );
 
     return tonicFrequency * static_cast<double>(ratio);
 }
@@ -123,12 +123,12 @@ double RationalTuning::midiNoteToFrequency(double midiNote) const {
     auto freq2 = midiNoteToFrequency(intNote + 1);
     double fractionalPart = midiNote - intNote;
     double interpolatedFreq = freq1 * std::pow(freq2 / freq1, fractionalPart);
-    DBG("Interpolated frequency for MIDI note " << midiNote
-        << ": freq1 = " << freq1
-        << ", freq2 = " << freq2
-        << ", fractional part = " << fractionalPart
-        << ", result = " << interpolatedFreq
-    );
+    // DBG("Interpolated frequency for MIDI note " << midiNote
+    //     << ": freq1 = " << freq1
+    //     << ", freq2 = " << freq2
+    //     << ", fractional part = " << fractionalPart
+    //     << ", result = " << interpolatedFreq
+    // );
     return interpolatedFreq;
 }
 
@@ -206,14 +206,14 @@ bool RationalTuning::isDefined(int /*midiNote*/) const {
 double RationalTuning::getTonicFrequency(int octave) const {
     auto semitonesFromTonicToA = static_cast<int>(tonic) - static_cast<int>(Scale::Key::A);
     auto ratio = ratios.at(size_t (std::abs(semitonesFromTonicToA)));
-    DBG("Tonic " << static_cast<int>(tonic) << " frequency for octave " << octave
-        << ": semitones from tonic " << static_cast<int>(tonic) << " to A = " << semitonesFromTonicToA
-    );
+    // DBG("Tonic " << static_cast<int>(tonic) << " frequency for octave " << octave
+    //     << ": semitones from tonic " << static_cast<int>(tonic) << " to A = " << semitonesFromTonicToA
+    // );
     if (semitonesFromTonicToA < 0) {
         ratio.invert();
-        DBG("Inverted ratio for negative semitones: " << String(ratio));
+        // DBG("Inverted ratio for negative semitones: " << String(ratio));
     }
-    DBG("Ratio = " << String(ratio));
+    // DBG("Ratio = " << String(ratio));
     return getA4Frequency() * ratio * std::pow(2.0, octave - 4);
 }
 

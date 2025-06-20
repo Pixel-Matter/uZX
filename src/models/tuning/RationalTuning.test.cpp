@@ -202,91 +202,91 @@ public:
             double middleCFreq = 269.444; // C+ is quarter tone above C
             double midiNote = tuning.frequencyToMidiNote(middleCFreq);
 
-            expectWithinAbsoluteError(midiNote, 60.5, 1e-3, "Middle C+ frequency should convert to MIDI note 60.5");
+            expectWithinAbsoluteError(midiNote, 60.5, 1e-3, "Middle Cq frequency should convert to MIDI note 60.5");
         }
 
-        // beginTest("Round-trip conversion accuracy");
-        // {
-        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
-        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
-        //     for (int note = 21; note <= 108; note += 12) { // Test octaves from A0 to A8
-        //         double frequency = tuning.midiNoteToFrequency(static_cast<double>(note));
-        //         double roundTripNote = tuning.frequencyToMidiNote(frequency);
-        //         expectWithinAbsoluteError(roundTripNote, static_cast<double>(note), 1e-3,
-        //             "Round-trip conversion should be accurate for MIDI note " + String(note));
-        //     }
-        // }
+        beginTest("Round-trip conversion accuracy");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+            for (double note = 21.0; note <= 108.0; note += 0.25) { // Test from A0 to A8
+                double frequency = tuning.midiNoteToFrequency(note);
+                double roundTripNote = tuning.frequencyToMidiNote(frequency);
+                expectWithinAbsoluteError(roundTripNote, note, 1e-3,
+                    "Round-trip conversion should be accurate for MIDI note " + String(note));
+            }
+        }
 
-        // beginTest("isDefined method - all notes should be defined");
-        // {
-        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
-        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+        beginTest("isDefined method - all notes should be defined");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
 
-        //     // Test various MIDI note ranges
-        //     expect(tuning.isDefined(0), "MIDI note 0 should be defined");
-        //     expect(tuning.isDefined(60), "MIDI note 60 (Middle C) should be defined");
-        //     expect(tuning.isDefined(69), "MIDI note 69 (A4) should be defined");
-        //     expect(tuning.isDefined(127), "MIDI note 127 should be defined");
-        // }
+            // Test various MIDI note ranges
+            expect(tuning.isDefined(0), "MIDI note 0 should be defined");
+            expect(tuning.isDefined(60), "MIDI note 60 (Middle C) should be defined");
+            expect(tuning.isDefined(69), "MIDI note 69 (A4) should be defined");
+            expect(tuning.isDefined(127), "MIDI note 127 should be defined");
+        }
 
-        // beginTest("A4 frequency setter");
-        // {
-        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
-        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
-        //     tuning.setA4Frequency(432.0);
-        //     expectWithinAbsoluteError(tuning.getA4Frequency(), 432.0, 1e-6, "A4 frequency should be updated to 432.0 Hz");
+        beginTest("A4 frequency setter");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+            tuning.setA4Frequency(432.0);
+            expectWithinAbsoluteError(tuning.getA4Frequency(), 432.0, 1e-6, "A4 frequency should be updated to 432.0 Hz");
 
-        //     // Verify that frequency calculations use the new A4 frequency
-        //     double a4_freq = tuning.midiNoteToFrequency(69.0);
-        //     expectWithinAbsoluteError(a4_freq, 432.0, 1e-6, "A4 frequency calculation should use updated value");
-        // }
+            // Verify that frequency calculations use the new A4 frequency
+            double a4_freq = tuning.midiNoteToFrequency(69.0);
+            expectWithinAbsoluteError(a4_freq, 432.0, 1e-6, "A4 frequency calculation should use updated value");
+        }
 
-        // beginTest("getName method");
-        // {
-        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
-        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
-        //     String name = tuning.getName();
-        //     expect(name.contains("Rational"), "Name should contain 'Rational'");
-        //     expect(name.contains("440.00"), "Name should contain A4 frequency");
-        // }
+        beginTest("getName method");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+            String name = tuning.getName();
+            expect(name.contains("Rational"), "Name should contain 'Rational'");
+            expect(name.contains("440.00"), "Name should contain A4 frequency");
+        }
 
-        // beginTest("Edge case - very high and low frequencies");
-        // {
-        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
-        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+        beginTest("Edge case - very high and low frequencies");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
 
-        //     // Test very low MIDI note
-        //     double lowFreq = tuning.midiNoteToFrequency(0.0);
-        //     expect(lowFreq > 0.0, "Very low MIDI note should produce positive frequency");
+            // Test very low MIDI note
+            double lowFreq = tuning.midiNoteToFrequency(0.0);
+            expect(lowFreq > 0.0, "Very low MIDI note should produce positive frequency");
 
-        //     // Test very high MIDI note
-        //     double highFreq = tuning.midiNoteToFrequency(127.0);
-        //     expect(highFreq > lowFreq, "Very high MIDI note should produce higher frequency than low note");
+            // Test very high MIDI note
+            double highFreq = tuning.midiNoteToFrequency(127.0);
+            expect(highFreq > lowFreq, "Very high MIDI note should produce higher frequency than low note");
 
-        //     // Test round-trip
-        //     double roundTripLow = tuning.frequencyToMidiNote(lowFreq);
-        //     double roundTripHigh = tuning.frequencyToMidiNote(highFreq);
-        //     expectWithinAbsoluteError(roundTripLow, 0.0, 1e-6, "Round-trip for MIDI note 0 should be accurate");
-        //     expectWithinAbsoluteError(roundTripHigh, 127.0, 1e-6, "Round-trip for MIDI note 127 should be accurate");
-        // }
+            // Test round-trip
+            double roundTripLow = tuning.frequencyToMidiNote(lowFreq);
+            double roundTripHigh = tuning.frequencyToMidiNote(highFreq);
+            expectWithinAbsoluteError(roundTripLow, 0.0, 1e-6, "Round-trip for MIDI note 0 should be accurate");
+            expectWithinAbsoluteError(roundTripHigh, 127.0, 1e-6, "Round-trip for MIDI note 127 should be accurate");
+        }
 
-        // beginTest("Fractional MIDI notes");
-        // {
-        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
-        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+        beginTest("Fractional MIDI notes");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
 
-        //     // Test quarter-tone between A4 and A#4
-        //     double quarterToneFreq = tuning.midiNoteToFrequency(69.5);
-        //     double a4_freq = tuning.midiNoteToFrequency(69.0);
-        //     double asharp4_freq = tuning.midiNoteToFrequency(70.0);
+            // Test quarter-tone between A4 and A#4
+            double quarterToneFreq = tuning.midiNoteToFrequency(69.5);
+            double a4_freq = tuning.midiNoteToFrequency(69.0);
+            double asharp4_freq = tuning.midiNoteToFrequency(70.0);
 
-        //     expect(quarterToneFreq > a4_freq, "Quarter-tone should be higher than A4");
-        //     expect(quarterToneFreq < asharp4_freq, "Quarter-tone should be lower than A#4");
+            expect(quarterToneFreq > a4_freq, "Quarter-tone should be higher than A4");
+            expect(quarterToneFreq < asharp4_freq, "Quarter-tone should be lower than A#4");
 
-        //     // Test round-trip accuracy for fractional note
-        //     double roundTrip = tuning.frequencyToMidiNote(quarterToneFreq);
-        //     expectWithinAbsoluteError(roundTrip, 69.5, 1e-6, "Round-trip for fractional MIDI note should be accurate");
-        // }
+            // Test round-trip accuracy for fractional note
+            double roundTrip = tuning.frequencyToMidiNote(quarterToneFreq);
+            expectWithinAbsoluteError(roundTrip, 69.5, 1e-6, "Round-trip for fractional MIDI note should be accurate");
+        }
     }
 };
 

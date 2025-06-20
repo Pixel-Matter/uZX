@@ -238,6 +238,58 @@ public:
         return !(*this == other);
     }
 
+    constexpr bool operator <(int number) const noexcept {
+        if (isFraction()) {
+            // a/b < n  =>  a < n*b
+            return num < number * denum;
+        } else {
+            return value < number;
+        }
+    }
+
+    constexpr bool operator <(const FractionNumber& other) const noexcept {
+        if (isFraction() && other.isFraction()) {
+            // a/b < c/d  =>  a*d < c*b
+            return num * other.denum < other.num * denum;
+        } else {
+            return value < other.value;
+        }
+    }
+
+    constexpr bool operator >(int number) const noexcept {
+        if (isFraction()) {
+            // a/b > n  =>  a > n*b
+            return num > number * denum;
+        } else {
+            return value > number;
+        }
+    }
+
+    constexpr bool operator >(const FractionNumber& other) const noexcept {
+        if (isFraction() && other.isFraction()) {
+            // a/b > c/d  =>  a*d > c*b
+            return num * other.denum > other.num * denum;
+        } else {
+            return value > other.value;
+        }
+    }
+
+    constexpr bool operator <=(int number) const noexcept {
+        return !(*this > number);
+    }
+
+    constexpr bool operator <=(const FractionNumber& other) const noexcept {
+        return !(*this > other);
+    }
+
+    constexpr bool operator >=(int number) const noexcept {
+        return !(*this < number);
+    }
+
+    constexpr bool operator >=(const FractionNumber& other) const noexcept {
+        return !(*this < other);
+    }
+
     operator String() const {
         if (isFraction()) {
             return String::formatted("%d:%d", num, denum);
@@ -314,6 +366,48 @@ constexpr inline FractionNumber operator -(int number, const FractionNumber& rat
 
 constexpr inline double operator -(double number, const FractionNumber& ratio) noexcept {
     return number - static_cast<double>(ratio); // Convert ratio to double and subtract
+}
+
+constexpr inline bool operator <(int number, const FractionNumber& ratio) noexcept {
+    if (ratio.isFraction()) {
+        // n < a/b  =>  n*b < a
+        return number * ratio.getDenominator() < ratio.getNumerator();
+    } else {
+        return number < static_cast<double>(ratio);
+    }
+}
+
+constexpr inline bool operator <(double number, const FractionNumber& ratio) noexcept {
+    return number < static_cast<double>(ratio);
+}
+
+constexpr inline bool operator >(int number, const FractionNumber& ratio) noexcept {
+    if (ratio.isFraction()) {
+        // n > a/b  =>  n*b > a
+        return number * ratio.getDenominator() > ratio.getNumerator();
+    } else {
+        return number > static_cast<double>(ratio);
+    }
+}
+
+constexpr inline bool operator >(double number, const FractionNumber& ratio) noexcept {
+    return number > static_cast<double>(ratio);
+}
+
+constexpr inline bool operator <=(int number, const FractionNumber& ratio) noexcept {
+    return !(number > ratio);
+}
+
+constexpr inline bool operator <=(double number, const FractionNumber& ratio) noexcept {
+    return number <= static_cast<double>(ratio);
+}
+
+constexpr inline bool operator >=(int number, const FractionNumber& ratio) noexcept {
+    return !(number < ratio);
+}
+
+constexpr inline bool operator >=(double number, const FractionNumber& ratio) noexcept {
+    return number >= static_cast<double>(ratio);
 }
 
 // Utility functions for working with frequency and period ratios

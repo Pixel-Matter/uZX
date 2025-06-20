@@ -96,7 +96,7 @@ public:
         beginTest("Scale octave extension - Single octave");
         {
             Scale majorScale({0, 2, 4, 5, 7, 9, 11});
-            auto singleOctave = majorScale.getIntervals(1);
+            auto singleOctave = majorScale.getIntervalsForOctaves(1);
             auto originalIntervals = majorScale.getIntervals();
 
             expectEquals(static_cast<int>(singleOctave.size()), static_cast<int>(originalIntervals.size()));
@@ -108,7 +108,7 @@ public:
         beginTest("Scale octave extension - Two octaves");
         {
             Scale majorScale({0, 2, 4, 5, 7, 9, 11});
-            auto twoOctaves = majorScale.getIntervals(2);
+            auto twoOctaves = majorScale.getIntervalsForOctaves(2);
 
             expectEquals(static_cast<int>(twoOctaves.size()), 14); // 7 original + 7 transposed
 

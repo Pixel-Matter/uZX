@@ -381,6 +381,188 @@ public:
             expect(rational == irrational, "3/2 should equal 1.5");
         }
 
+        beginTest("Comparison operators - FractionNumber vs int");
+        {
+            FractionNumber half(1, 2);        // 0.5
+            FractionNumber three_halves(3, 2); // 1.5
+            
+            // Test less than
+            expect(half < 1, "1/2 should be less than 1");
+            expect(!(three_halves < 1), "3/2 should not be less than 1");
+            
+            // Test greater than
+            expect(three_halves > 1, "3/2 should be greater than 1");
+            expect(!(half > 1), "1/2 should not be greater than 1");
+            
+            // Test less than or equal
+            expect(half <= 1, "1/2 should be less than or equal to 1");
+            expect(three_halves <= 2, "3/2 should be less than or equal to 2");
+            
+            // Test greater than or equal
+            expect(three_halves >= 1, "3/2 should be greater than or equal to 1");
+            expect(half >= 0, "1/2 should be greater than or equal to 0");
+        }
+
+        beginTest("Comparison operators - FractionNumber vs FractionNumber");
+        {
+            FractionNumber half(1, 2);         // 0.5
+            FractionNumber third(1, 3);        // 0.333...
+            FractionNumber two_thirds(2, 3);   // 0.666...
+            FractionNumber three_quarters(3, 4); // 0.75
+            
+            // Test less than with different denominators
+            expect(third < half, "1/3 should be less than 1/2");
+            expect(half < two_thirds, "1/2 should be less than 2/3");
+            expect(two_thirds < three_quarters, "2/3 should be less than 3/4");
+            
+            // Test greater than
+            expect(three_quarters > two_thirds, "3/4 should be greater than 2/3");
+            expect(two_thirds > half, "2/3 should be greater than 1/2");
+            expect(half > third, "1/2 should be greater than 1/3");
+            
+            // Test equality edge cases
+            FractionNumber half_alt(2, 4);     // 2/4 = 1/2
+            expect(half == half_alt, "1/2 should equal 2/4");
+            expect(!(half < half_alt), "1/2 should not be less than 2/4");
+            expect(!(half > half_alt), "1/2 should not be greater than 2/4");
+        }
+
+        beginTest("Free-standing comparison operators - int vs FractionNumber");
+        {
+            FractionNumber half(1, 2);        // 0.5
+            FractionNumber three_halves(3, 2); // 1.5
+            
+            // Test int < FractionNumber
+            expect(0 < half, "0 should be less than 1/2");
+            expect(1 < three_halves, "1 should be less than 3/2");
+            expect(!(2 < three_halves), "2 should not be less than 3/2");
+            
+            // Test int > FractionNumber
+            expect(1 > half, "1 should be greater than 1/2");
+            expect(2 > three_halves, "2 should be greater than 3/2");
+            expect(!(0 > half), "0 should not be greater than 1/2");
+            
+            // Test int <= and >= FractionNumber
+            expect(0 <= half, "0 should be less than or equal to 1/2");
+            expect(1 >= half, "1 should be greater than or equal to 1/2");
+        }
+
+        beginTest("Free-standing comparison operators - double vs FractionNumber");
+        {
+            FractionNumber half(1, 2);        // 0.5
+            FractionNumber pi_approx(22, 7);  // ~3.14159
+            
+            // Test double comparisons (using implicit conversion)
+            expect(0.25 < half, "0.25 should be less than 1/2");
+            expect(0.75 > half, "0.75 should be greater than 1/2");
+            expect(3.0 < pi_approx, "3.0 should be less than 22/7");
+            expect(3.5 > pi_approx, "3.5 should be greater than 22/7");
+            
+            // Test edge cases near equality
+            expect(!(0.5 < half), "0.5 should not be less than 1/2");
+            expect(!(0.5 > half), "0.5 should not be greater than 1/2");
+        }
+
+        beginTest("Comparison operators with mixed rational/irrational");
+        {
+            FractionNumber rational(3, 2);     // 1.5 (rational)
+            FractionNumber irrational(1.6);    // 1.6 (irrational)
+            
+            expect(rational < irrational, "3/2 should be less than 1.6");
+            expect(irrational > rational, "1.6 should be greater than 3/2");
+            expect(rational < 2, "3/2 should be less than 2");
+            expect(1 < rational, "1 should be less than 3/2");
+        }
+
+        beginTest("Constexpr expressions with fractions");
+        {
+            // Test basic constexpr operations
+            constexpr FractionNumber half(1, 2);
+            constexpr FractionNumber third(1, 3);
+            constexpr FractionNumber quarter(1, 4);
+            
+            // Simple arithmetic
+            constexpr auto sum = half + third;              // 1/2 + 1/3 = 5/6
+            constexpr auto diff = half - quarter;           // 1/2 - 1/4 = 1/4
+            constexpr auto product = half * third;          // 1/2 * 1/3 = 1/6
+            constexpr auto quotient = half / quarter;       // 1/2 / 1/4 = 2
+            
+            // Test the constexpr results at runtime
+            expect(sum.isFraction(), "Constexpr sum should be fractional");
+            expectWithinAbsoluteError(static_cast<double>(sum), 5.0/6.0, 1e-15);
+            
+            expect(diff.isFraction(), "Constexpr difference should be fractional");
+            expectWithinAbsoluteError(static_cast<double>(diff), 0.25, 1e-15);
+            
+            expect(product.isFraction(), "Constexpr product should be fractional");
+            expectWithinAbsoluteError(static_cast<double>(product), 1.0/6.0, 1e-15);
+            
+            expect(quotient.isFraction(), "Constexpr quotient should be fractional");
+            expectWithinAbsoluteError(static_cast<double>(quotient), 2.0, 1e-15);
+            
+            // Test constexpr comparisons
+            constexpr bool half_less_than_third = half < third;
+            constexpr bool third_greater_than_quarter = third > quarter;
+            constexpr bool half_equals_two_quarters = half == (quarter * 2);
+            
+            expect(!half_less_than_third, "1/2 should not be less than 1/3");
+            expect(third_greater_than_quarter, "1/3 should be greater than 1/4");
+            expect(half_equals_two_quarters, "1/2 should equal 1/4 * 2");
+        }
+
+        beginTest("Complex constexpr musical interval calculation");
+        {
+            // Complex compile-time calculation of musical intervals
+            // Calculate the syntonic comma: (3/2)^4 / 2^2 / (5/4) = 81/80
+            // This represents the difference between just intonation and Pythagorean tuning
+            constexpr FractionNumber perfect_fifth(3, 2);
+            constexpr FractionNumber major_third(5, 4);
+            constexpr FractionNumber octave(2, 1);
+            
+            // Build a complex constexpr expression step by step
+            constexpr auto four_fifths = perfect_fifth * perfect_fifth * perfect_fifth * perfect_fifth;  // (3/2)^4
+            constexpr auto two_octaves = octave * octave;                                                 // 2^2 = 4/1
+            constexpr auto pythagorean_major_third = four_fifths / two_octaves;                          // 81/64
+            constexpr auto syntonic_comma = pythagorean_major_third / major_third;                       // (81/64) / (5/4) = 81/80
+            
+            // Alternative: one massive constexpr expression
+            constexpr auto syntonic_comma_direct = 
+                (perfect_fifth * perfect_fifth * perfect_fifth * perfect_fifth) / 
+                (octave * octave) / major_third;
+            
+            // Test that both methods give the same result
+            expect(syntonic_comma == syntonic_comma_direct, "Both syntonic comma calculations should be equal");
+            expect(syntonic_comma.isFraction(), "Syntonic comma should be fractional");
+            expect(syntonic_comma_direct.isFraction(), "Direct syntonic comma should be fractional");
+            
+            // The syntonic comma should be approximately 21.5 cents (very small interval)
+            double syntonic_comma_cents = syntonic_comma.toCents();
+            expectWithinAbsoluteError(syntonic_comma_cents, 21.506, 0.01); // ~21.5 cents
+            
+            // Test that it's exactly 81/80 as expected in music theory
+            expectWithinAbsoluteError(static_cast<double>(syntonic_comma), 81.0/80.0, 1e-15);
+            
+            // Verify the mathematical relationship: 81/80 = 1.0125
+            expect(syntonic_comma > FractionNumber(1, 1), "Syntonic comma should be greater than unison");
+            expect(syntonic_comma < FractionNumber(6, 5), "Syntonic comma should be less than minor third");
+            
+            // Additional complex constexpr calculation: Pythagorean comma
+            // Pythagorean comma = 12 perfect fifths down 7 octaves: (3/2)^12 / 2^7
+            constexpr auto twelve_fifths = perfect_fifth * perfect_fifth * perfect_fifth * perfect_fifth * 
+                                          perfect_fifth * perfect_fifth * perfect_fifth * perfect_fifth *
+                                          perfect_fifth * perfect_fifth * perfect_fifth * perfect_fifth;
+            constexpr auto seven_octaves = octave * octave * octave * octave * octave * octave * octave;
+            constexpr auto pythagorean_comma = twelve_fifths / seven_octaves;
+            
+            expect(pythagorean_comma.isFraction(), "Pythagorean comma should be fractional");
+            // Pythagorean comma should be slightly larger than unison (about 23.5 cents)
+            expect(pythagorean_comma > FractionNumber(1, 1), "Pythagorean comma should be larger than unison");
+            expect(pythagorean_comma < FractionNumber(6, 5), "Pythagorean comma should be less than minor third");
+            
+            // Test the famous musical relationship: Pythagorean comma ≈ 531441/524288
+            expectWithinAbsoluteError(static_cast<double>(pythagorean_comma), 531441.0/524288.0, 1e-10);
+        }
+
         beginTest("Conversion to semitones and cents");
         {
             FractionNumber octave(2, 1);

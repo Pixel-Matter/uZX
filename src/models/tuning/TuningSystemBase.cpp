@@ -58,4 +58,9 @@ double TuningSystem::getReferenceFrequency(double midiNote) const {
     return referenceTuning->midiNoteToFrequency(midiNote);
 }
 
+double TuningSystem::getReferenceFrequency(int midiNote) const {
+    jassert(referenceTuning != nullptr);
+    return referenceTuning->midiNoteToFrequency(midiNote);
+}
+
 }

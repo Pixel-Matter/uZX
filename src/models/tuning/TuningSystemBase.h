@@ -73,8 +73,8 @@ protected:
     double clockFrequency;
     std::unique_ptr<TemperamentSystem> referenceTuning;
 
+    double getReferenceFrequency(int midiNote) const;
     double getReferenceFrequency(double midiNote) const;
-
 };
 
 }

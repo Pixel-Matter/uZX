@@ -39,6 +39,13 @@ using TemperamentType = MoTool::Util::EnumChoice<TemperamentTypeEnum>;
 // Base reference tuning system interface
 class TemperamentSystem {
 public:
+
+    enum NoteSearch {
+        Nearest,    // Find the nearest defined note
+        NextHigher, // Find the next higher defined note
+        NextLower   // Find the next lower defined note
+    };
+
     TemperamentSystem(double a4Frequency = 440.0)
         : a4Freq(a4Frequency)
     {}
@@ -51,7 +58,9 @@ public:
 
     // Core conversion functions
     // midiNote is double because we want slides and pitch bends
+    virtual double midiNoteToFrequency(int midiNote) const = 0;
     virtual double midiNoteToFrequency(double midiNote) const = 0;
+    virtual int frequencyToNearestMidiNote(double frequency, NoteSearch search = NoteSearch::Nearest) const = 0;
     virtual double frequencyToMidiNote(double frequency) const = 0;
 
     virtual bool isDefined(int midiNote) const = 0;
@@ -73,8 +82,10 @@ public:
     using TemperamentSystem::TemperamentSystem;
 
     TemperamentType getType() const override;
+    double midiNoteToFrequency(int midiNote) const override;
     double midiNoteToFrequency(double midiNote) const override;
     double frequencyToMidiNote(double frequency) const override;
+    int frequencyToNearestMidiNote(double frequency, NoteSearch search = NoteSearch::Nearest) const override;
     bool isDefined(int /*midiNote*/) const override;
 };
 
@@ -91,8 +102,10 @@ public:
     );
 
     TemperamentType getType() const override;
+    double midiNoteToFrequency(int midiNote) const override;
     double midiNoteToFrequency(double midiNote) const override;
     double frequencyToMidiNote(double frequency) const override;
+    int frequencyToNearestMidiNote(double frequency, NoteSearch search = NoteSearch::Nearest) const override;
     bool isDefined(int midiNote) const override;
 
     void setKey(Scale::Key newKey) {

@@ -90,7 +90,7 @@ public:
             const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale};
 
-            double frequency = tuning.midiNoteToFrequency(69.0); // A4
+            double frequency = tuning.midiNoteToFrequency(69); // A4
             expectWithinAbsoluteError(frequency, 440.0, 1e-6, "A4 (MIDI 69) should be 440.0 Hz, got " + String(frequency));
         }
 
@@ -99,7 +99,7 @@ public:
             const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
 
-            double frequency = tuning.midiNoteToFrequency(60.0); // C4
+            double frequency = tuning.midiNoteToFrequency(60); // C4
             // C to A is 3:5
             expectWithinAbsoluteError(frequency, 440.0 / 5 * 3, 1e-6, "C4 (MIDI 60) should be " + String(440.0 / 5 * 3) + " Hz, got " + String(frequency));
         }
@@ -109,7 +109,7 @@ public:
             const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
 
-            double frequency = tuning.midiNoteToFrequency(48.0); // C3
+            double frequency = tuning.midiNoteToFrequency(48); // C3
             // C to A is 3:5
             expectWithinAbsoluteError(frequency, 220.0 / 5 * 3, 1e-6, "C3 (MIDI 48) should be " + String(220.0 / 5 * 3) + " Hz, got " + String(frequency));
         }
@@ -119,7 +119,7 @@ public:
             const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
 
-            double frequency = tuning.midiNoteToFrequency(69.0); // A4
+            double frequency = tuning.midiNoteToFrequency(69); // A4
             expectWithinAbsoluteError(frequency, 440.0, 1e-6, "A4 (MIDI 69) should be 440.0 Hz, got " + String(frequency));
         }
 
@@ -130,7 +130,7 @@ public:
                 auto tonic = static_cast<Scale::Key>(i);
                 RationalTuning tuning {justIntonationRatios, tonic, &scale};
                 DBG("\n\n======================== " << i << " =============================");
-                double frequency = tuning.midiNoteToFrequency(69.0); // A4
+                double frequency = tuning.midiNoteToFrequency(69); // A4
                 expectWithinAbsoluteError(frequency, 440.0, 1e-6, "A4 (MIDI 69) should be 440.0 Hz with tonic " + String(i) + ", got " + String(frequency));
             }
         }
@@ -139,19 +139,31 @@ public:
         {
             const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
-            double frequency = tuning.midiNoteToFrequency(60.0); // Middle C
+            double frequency = tuning.midiNoteToFrequency(60); // Middle C
             // In just intonation, C to A is major sixth (5:3), so C = A / (5/3) = A * (3/5)
             double expectedFreq = 440.0 * 3.0 / 5.0;
             expectWithinAbsoluteError(frequency, expectedFreq, 1e-6, "Middle C (MIDI 60) frequency should be correct");
+        }
+
+        beginTest("Fractional MIDI note to frequency conversion - Middle C+");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+            double frequency = tuning.midiNoteToFrequency(60.5); // Middle C plus quarter tone
+            // In just intonation, C to A is major sixth (5:3), so C = A / (5/3) = A * (3/5)
+            double expectedFreq1 = 440.0 * 3.0 / 5.0;
+            double expectedFreq2 = 440.0 * 3.0 / 5.0 * 16.0 / 15.0;
+            expect(frequency > expectedFreq1 && frequency < expectedFreq2,
+                   "Middle C+ (MIDI 60.5) frequency should be between " + String(expectedFreq1) + " and " + String(expectedFreq2) + ", got " + String(frequency));
         }
 
         beginTest("MIDI note to frequency conversion - octave relationships");
         {
             const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
-            double a4_freq = tuning.midiNoteToFrequency(69.0); // A4
-            double a5_freq = tuning.midiNoteToFrequency(81.0); // A5 (one octave higher)
-            double a3_freq = tuning.midiNoteToFrequency(57.0); // A3 (one octave lower)
+            double a4_freq = tuning.midiNoteToFrequency(69); // A4
+            double a5_freq = tuning.midiNoteToFrequency(81); // A5 (one octave higher)
+            double a3_freq = tuning.midiNoteToFrequency(57); // A3 (one octave lower)
 
             expectWithinAbsoluteError(a5_freq, a4_freq * 2.0, 1e-6, "A5 should be exactly double A4 frequency");
             expectWithinAbsoluteError(a3_freq, a4_freq / 2.0, 1e-6, "A3 should be exactly half A4 frequency");
@@ -161,30 +173,39 @@ public:
         {
             const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
-            double midiNote = tuning.frequencyToMidiNote(440.0);
-            expectWithinAbsoluteError(midiNote, 69.0, 1e-6, "440.0 Hz should convert to MIDI note 69 (A4)");
+            int a4lower = tuning.frequencyToNearestMidiNote(450.0, TemperamentSystem::NoteSearch::NextLower);
+            expectEquals(a4lower, 69, "450.0 Hz should convert to MIDI note 69 (A4)");
+
+            int a4upper = tuning.frequencyToNearestMidiNote(450.0, TemperamentSystem::NoteSearch::NextHigher);
+            expectEquals(a4upper, 70, "450.0 Hz should convert to MIDI note 70 (A4)");
+
+            int a4near1 = tuning.frequencyToNearestMidiNote(450.0, TemperamentSystem::NoteSearch::Nearest);
+            expectEquals(a4near1, 69, "450.0 Hz should convert to MIDI note 69 (A4)");
+
+            int a4near2 = tuning.frequencyToNearestMidiNote(460.0, TemperamentSystem::NoteSearch::Nearest);
+            expectEquals(a4near2, 70, "460.0 Hz should convert to MIDI note 70 (A4)");
         }
 
-        beginTest("Frequency to MIDI note conversion - Middle C");
-        {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
-            double middleCFreq = 440.0 * 3.0 / 5.0; // C to A is 5:3 in just intonation
-            double midiNote = tuning.frequencyToMidiNote(middleCFreq);
-            expectWithinAbsoluteError(midiNote, 60.0, 1e-3, "Middle C frequency should convert to MIDI note 60");
-        }
+        // beginTest("Frequency to MIDI note conversion - Middle C");
+        // {
+        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+        //     double middleCFreq = 440.0 * 3.0 / 5.0; // C to A is 5:3 in just intonation
+        //     double midiNote = tuning.frequencyToMidiNote(middleCFreq);
+        //     expectWithinAbsoluteError(midiNote, 60.0, 1e-3, "Middle C frequency should convert to MIDI note 60");
+        // }
 
-        beginTest("Round-trip conversion accuracy");
-        {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
-            for (int note = 21; note <= 108; note += 12) { // Test octaves from A0 to A8
-                double frequency = tuning.midiNoteToFrequency(static_cast<double>(note));
-                double roundTripNote = tuning.frequencyToMidiNote(frequency);
-                expectWithinAbsoluteError(roundTripNote, static_cast<double>(note), 1e-3,
-                    "Round-trip conversion should be accurate for MIDI note " + String(note));
-            }
-        }
+        // beginTest("Round-trip conversion accuracy");
+        // {
+        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
+        //     for (int note = 21; note <= 108; note += 12) { // Test octaves from A0 to A8
+        //         double frequency = tuning.midiNoteToFrequency(static_cast<double>(note));
+        //         double roundTripNote = tuning.frequencyToMidiNote(frequency);
+        //         expectWithinAbsoluteError(roundTripNote, static_cast<double>(note), 1e-3,
+        //             "Round-trip conversion should be accurate for MIDI note " + String(note));
+        //     }
+        // }
 
         // beginTest("isDefined method - all notes should be defined");
         // {

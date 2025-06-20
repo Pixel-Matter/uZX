@@ -3,6 +3,7 @@
 #include "Ratios.h"
 #include "Scales.h"
 #include "juce_core/system/juce_PlatformDefs.h"
+#include <cmath>
 #include <limits>
 
 namespace MoTool {
@@ -23,12 +24,31 @@ TemperamentType EqualTemperamentTuning::getType() const {
     return TemperamentType::EqualTemperament;
 }
 
+double EqualTemperamentTuning::midiNoteToFrequency(int midiNote) const {
+    return midiNoteToFrequency(static_cast<double>(midiNote));
+}
+
 double EqualTemperamentTuning::midiNoteToFrequency(double midiNote) const {
     return getA4Frequency() * std::pow(2.0, (midiNote - 69) / 12.0);
 }
 
 double EqualTemperamentTuning::frequencyToMidiNote(double frequency) const {
     return 69 + 12 * std::log2(frequency / getA4Frequency());
+}
+
+int EqualTemperamentTuning::frequencyToNearestMidiNote(double frequency, NoteSearch search) const {
+    double midiNote = frequencyToMidiNote(frequency);
+    switch (search) {
+        case NoteSearch::Nearest: {
+            return static_cast<int>(std::round(midiNote));
+        }
+        case NoteSearch::NextLower: {
+            return static_cast<int>(std::floor(midiNote));
+        }
+        case NoteSearch::NextHigher: {
+            return static_cast<int>(std::ceil(midiNote));
+        }
+    }
 }
 
 bool EqualTemperamentTuning::isDefined(int /*midiNote*/) const {
@@ -58,9 +78,9 @@ TemperamentType RationalTuning::getType() const {
     return TemperamentType::CustomRational;
 }
 
-double RationalTuning::midiNoteToFrequency(double midiNote) const {
+double RationalTuning::midiNoteToFrequency(int midiNote) const {
     // Implement custom rational tuning logic here
-    auto octave = static_cast<int>(std::floor(midiNote / 12.0 - 1.0)); // MIDI note 0 is C-1, so octave starts at -1
+    auto octave = static_cast<int>(midiNote / 12 - 1); // MIDI note 0 is C-1, so octave starts at -1
     auto pitchClass = static_cast<int>(midiNote) % 12; // MIDI pitch class is the note within the octave (0-11)
     auto noteIdx = pitchClass - static_cast<int>(tonic);
     /*
@@ -97,54 +117,87 @@ double RationalTuning::midiNoteToFrequency(double midiNote) const {
     return tonicFrequency * static_cast<double>(ratio);
 }
 
+double RationalTuning::midiNoteToFrequency(double midiNote) const {
+    int intNote = static_cast<int>(std::floor(midiNote));
+    auto freq1 = midiNoteToFrequency(intNote);
+    auto freq2 = midiNoteToFrequency(intNote + 1);
+    double fractionalPart = midiNote - intNote;
+    double interpolatedFreq = freq1 * std::pow(freq2 / freq1, fractionalPart);
+    // DBG("Interpolated frequency for MIDI note " << midiNote
+    //     << ": freq1 = " << freq1
+    //     << ", freq2 = " << freq2
+    //     << ", fractional part = " << fractionalPart
+    //     << ", result = " << interpolatedFreq
+    // );
+    return interpolatedFreq;
+}
+
+int RationalTuning::frequencyToNearestMidiNote(double frequency, NoteSearch search) const {
+    constexpr int searchRange = 6; // +/- 6 semitones around note estimate by 12TET
+    double a4Freq = getA4Frequency();
+    int noteEstimate = static_cast<int>(std::round(69 + 12 * std::log2(frequency / a4Freq)));
+
+    // Search for the closest MIDI notes around the estimate
+    int left = std::max(0, noteEstimate - searchRange);
+    int right = std::min(127, noteEstimate + searchRange);
+
+    int closestNote = -1;
+    double smallestDifference = std::numeric_limits<double>::max();
+    double closestFrequency = -1.0;
+
+    // Find the note with the smallest frequency difference
+    for (int note = left; note <= right; ++note) {
+        double noteFreq = midiNoteToFrequency(note);
+        double difference = std::abs(noteFreq - frequency);
+
+        if (difference < smallestDifference) {
+            smallestDifference = difference;
+            closestNote = note;
+            closestFrequency = noteFreq;
+        }
+    }
+
+    // Handle different search modes
+    switch (search) {
+        case NoteSearch::Nearest:
+            return closestNote;
+
+        case NoteSearch::NextLower: {
+            if (closestFrequency <= frequency) {
+                return closestNote; // Already the closest lower note
+            }
+            return closestNote - 1; // Return the next lower note if the closest is higher than frequency
+        }
+
+        case NoteSearch::NextHigher: {
+            if (closestFrequency >= frequency) {
+                return closestNote; // Already the closest higher note
+            }
+            return closestNote + 1; // Return the next higher note if the closest is lower than frequency
+        }
+    }
+
+    return closestNote;
+}
+
 double RationalTuning::frequencyToMidiNote(double frequency) const {
     // Estimate the octave using A4 as reference (similar to equal temperament approach)
-    double a4Freq = getA4Frequency();
-    double octaveEstimate = 4.0 + std::log2(frequency / a4Freq);
-    
-    // Search within a reasonable range around the estimated octave
-    int minOctave = std::max(-1, static_cast<int>(std::floor(octaveEstimate)) - 1);
-    int maxOctave = std::min(10, static_cast<int>(std::floor(octaveEstimate)) + 2);
-    
-    double bestMidiNote = 0.0;
-    double minDifference = std::numeric_limits<double>::max();
-    
-    // Search through octaves and pitch classes
-    for (int octave = minOctave; octave <= maxOctave; ++octave) {
-        for (int pitchClass = 0; pitchClass < 12; ++pitchClass) {
-            int midiNote = (octave + 1) * 12 + pitchClass;
-            if (midiNote >= 0 && midiNote <= 127) {
-                double calculatedFreq = midiNoteToFrequency(static_cast<double>(midiNote));
-                double difference = std::abs(calculatedFreq - frequency);
-                
-                if (difference < minDifference) {
-                    minDifference = difference;
-                    bestMidiNote = static_cast<double>(midiNote);
-                }
-            }
-        }
-    }
-    
-    // For better accuracy, check fractional notes around the best integer match
-    int baseMidi = static_cast<int>(bestMidiNote);
-    double bestFractionalMidi = bestMidiNote;
-    minDifference = std::numeric_limits<double>::max();
-    
-    // Check fractional notes in a small range around the best integer match
-    for (double fractionalOffset = -0.5; fractionalOffset <= 0.5; fractionalOffset += 0.01) {
-        double testMidi = baseMidi + fractionalOffset;
-        if (testMidi >= 0.0 && testMidi <= 127.0) {
-            double calculatedFreq = midiNoteToFrequency(testMidi);
-            double difference = std::abs(calculatedFreq - frequency);
-            
-            if (difference < minDifference) {
-                minDifference = difference;
-                bestFractionalMidi = testMidi;
-            }
-        }
-    }
-    
-    return bestFractionalMidi;
+    auto note1 = frequencyToNearestMidiNote(frequency, NoteSearch::NextLower);
+    auto note2 = note1 + 1;
+    auto freq1 = midiNoteToFrequency(note1);
+    auto freq2 = midiNoteToFrequency(note2);
+    // use log2 to interpolate between two frequencies
+    double fractionalPart = std::log2(frequency / freq1) / std::log2(freq2 / freq1);
+    double interpolatedNote = note1 + fractionalPart;
+    DBG("Interpolated MIDI note for frequency " << frequency
+        << ": note1 = " << note1
+        << ", note2 = " << note2
+        << ", freq1 = " << freq1
+        << ", freq2 = " << freq2
+        << ", fractional part = " << fractionalPart
+        << ", result = " << interpolatedNote
+    );
+    return interpolatedNote;
 }
 
 bool RationalTuning::isDefined(int /*midiNote*/) const {

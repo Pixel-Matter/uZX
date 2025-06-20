@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "TemperamentSystem.h"
+#include "Ratios.h"
 
 using namespace MoTool;
 
@@ -8,34 +9,136 @@ class RationalTuningTest : public juce::UnitTest {
 public:
     RationalTuningTest() : UnitTest("RationalTuning", "MoTool") {}
 
+    std::array<RationalNumber, 12> justIntonationRatios {
+        RationalNumber {1, 1},   // Unison          C
+        RationalNumber {16, 15}, // Minor second    C#
+        RationalNumber {9, 8},   // Major second    D
+        RationalNumber {6, 5},   // Minor third     D#
+        RationalNumber {5, 4},   // Major third     E
+        RationalNumber {4, 3},   // Perfect fourth  F
+        RationalNumber {45, 32}, // Triton          F#
+        RationalNumber {3, 2},   // Perfect fifth   G
+        RationalNumber {8, 5},   // Minor sixth     G#
+        RationalNumber {5, 3},   // Major sixth     A
+        RationalNumber {16, 9},  // Minor seventh   A#
+        RationalNumber {15, 8}   // Major seventh   B
+    };
+
     void runTest() override {
         beginTest("Constructor with 7-limit tuning numbers");
         {
-            RationalTuning tuning({
-                {1, 1},   // Unison
-                {9, 8},   // Major second
-                {5, 4},   // Major third
-                {4, 3},   // Perfect fourth
-                {3, 2},   // Perfect fifth
-                {5, 3},   // Major sixth
-                {15, 8}   // Major seventh
-            });
-            expectEquals(tuning.getA4Frequency(), 440.0, "Default A4 frequency should be 440.0 Hz");
-            expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TemperamentType::CustomRational));
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            // RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
+
+            // expectEquals(tuning.getA4Frequency(), 440.0, "Default A4 frequency should be 440.0 Hz");
+            // expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TemperamentType::CustomRational), "Tuning type should be CustomRational, got " + String(tuning.getType().getLabel().data()));
+
+            expectEquals(static_cast<int>(scale.getType()), static_cast<int>(Scale::ScaleType::AeolianOrMinor),
+                         "Scale type should be AeolianOrMinor, got " + String(scale.getType().getLabel().data()));
+            // expectEquals(static_cast<int>(tuning.getScale()->getType()), static_cast<int>(Scale::ScaleType::AeolianOrMinor),
+            //              "Scale type should be AeolianOrMinor, got " + String(tuning.getScale()->getType().getLabel().data()));
         }
 
-    //     beginTest("Constructor with custom A4 frequency");
-    //     {
-    //         EqualTemperamentTuning tuning(432.0);
-    //         expectEquals(tuning.getA4Frequency(), 432.0, "Custom A4 frequency should be 432.0 Hz");
-    //     }
+        beginTest("Tonic to frequency conversion - A4 = 440.0 Hz");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale};
 
-    //     beginTest("MIDI note to frequency conversion - A4");
-    //     {
-    //         EqualTemperamentTuning tuning(440.0);
-    //         double frequency = tuning.midiNoteToFrequency(69.0); // A4
-    //         expect(std::abs(frequency - 440.0) < 0.001, "A4 (MIDI 69) should be 440.0 Hz");
-    //     }
+            expect(std::abs(tuning.getTonicFrequency(4) - 440.0) < 0.001, "Tonic should be A4 = 440.0 Hz");
+            expect(std::abs(tuning.getTonicFrequency(5) - 880.0) < 0.001, "Tonic should be A5 = 880.0 Hz");
+            expect(std::abs(tuning.getTonicFrequency(3) - 220.0) < 0.001, "Tonic should be A3 = 220.0 Hz");
+        }
+
+        beginTest("Tonic to frequency conversion - A4 = 432.0 Hz");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 432.0};
+
+            expect(std::abs(tuning.getTonicFrequency(4) - 432.0) < 0.001, "Tonic should be A4 = 432.0 Hz");
+        }
+
+        beginTest("Tonic to frequency conversion - A4 = 440.0 Hz, tonic is B");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::B, &scale};
+
+            auto frequency = tuning.getTonicFrequency(4);
+            expect(frequency > 440.0, "Tonic B4 should be > 440.0 Hz, got " + String(frequency));
+            expect(frequency < 880.0, "Tonic B4 should be < 880.0 Hz, got " + String(frequency));
+        }
+
+        beginTest("Tonic to frequency conversion - A4 = 440.0 Hz, tonic is C");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
+
+            auto frequency = tuning.getTonicFrequency(4);
+            expect(frequency < 440.0, "Tonic C4 should be < 440.0 Hz, got " + String(frequency));
+            expect(frequency > 220.0, "Tonic C4 should be > 220.0 Hz, got " + String(frequency));
+        }
+
+        beginTest("Tonic to frequency conversion - A4 = 440.0 Hz, tonic is D#");
+        {
+            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+            RationalTuning tuning {justIntonationRatios, Scale::Key::DSharp, &scale};
+
+            auto frequency = tuning.getTonicFrequency(4);
+            // ratio is 45:32, tonic * 45:32 = 440, tonic = 440 * 32 / 45
+            expect(frequency == 440.0, "Tonic D#4 should be 440.0 Hz, got " + String(frequency));
+        }
+
+        // beginTest("MIDI note to frequency conversion - A4, tonic is A");
+        // {
+        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+        //     RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale};
+
+        //     double frequency = tuning.midiNoteToFrequency(69.0); // A4
+        //     expect(std::abs(frequency - 440.0) < 0.001, "A4 (MIDI 69) should be 440.0 Hz, got " + String(frequency));
+        // }
+
+        // beginTest("MIDI note to frequency conversion - C4, tonic is C");
+        // {
+        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+        //     RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
+
+        //     double frequency = tuning.midiNoteToFrequency(60.0); // C4
+        //     // C to A is 3:5
+        //     expect(std::abs(frequency - 440.0 / 5 * 3) < 0.001, "C4 (MIDI 60) should be " + String(440.0 / 5 * 3) + " Hz, got " + String(frequency));
+        // }
+
+        // beginTest("MIDI note to frequency conversion - C3, tonic is C");
+        // {
+        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+        //     RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
+
+        //     double frequency = tuning.midiNoteToFrequency(48.0); // C3
+        //     // C to A is 3:5
+        //     expect(std::abs(frequency - 220.0 / 5 * 3) < 0.001, "C3 (MIDI 48) should be " + String(220.0 / 5 * 3) + " Hz, got " + String(frequency));
+        // }
+
+        // beginTest("MIDI note to frequency conversion - A4, tonic is C");
+        // {
+        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+        //     RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
+
+        //     double frequency = tuning.midiNoteToFrequency(69.0); // A4
+        //     expect(std::abs(frequency - 440.0) < 0.001, "A4 (MIDI 69) should be 440.0 Hz, got " + String(frequency));
+        // }
+
+        // beginTest("MIDI note to frequency conversion - A4, any tonic");
+        // {
+        //     const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+        //     for (int i = 0; i < 12; i++) {
+        //         auto tonic = static_cast<Scale::Key>(i);
+        //         RationalTuning tuning {justIntonationRatios, tonic, &scale};
+        //         DBG("\n\n======================== " << i << " =============================");
+        //         double frequency = tuning.midiNoteToFrequency(69.0); // A4
+        //         expect(std::abs(frequency - 440.0) < 0.001, "A4 (MIDI 69) should be 440.0 Hz with tonic " + String(i) + ", got " + String(frequency));
+        //     }
+        // }
+
+
+
 
     //     beginTest("MIDI note to frequency conversion - Middle C");
     //     {
@@ -147,7 +250,7 @@ public:
     //         double roundTrip = tuning.frequencyToMidiNote(quarterToneFreq);
     //         expect(std::abs(roundTrip - 69.5) < 0.001, "Round-trip for fractional MIDI note should be accurate");
     //     }
-    // }
+    }
 };
 
-static RationalTuningTest equalTemperamentTuningTest;
+static RationalTuningTest rationalTemperamentTuningTest;

@@ -38,14 +38,14 @@ public:
     void runTest() override {
         beginTest("AYEmulator creation");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, AyumiEmulator::TypeEnum::AY};
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             expect(emulator.getSampleRate() == 44100, "Sample rate should be 44100");
             expect(emulator.getClock() == 2000000, "Clock rate should be 2000000");
-            expect(emulator.getType() == AyumiEmulator::TypeEnum::AY, "Type should be AY");
+            expect(emulator.getType() == ChipType::AY, "Type should be AY");
         }
         beginTest("AYEmulator params");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, AyumiEmulator::TypeEnum::AY};
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             expect(emulator.getMasterVolume() == 1.0f, "Master volume should be 1.0f");
             emulator.setMasterVolume(0.5f);
             expect(emulator.getMasterVolume() == 0.5f, "Master volume should be 0.5f");
@@ -70,9 +70,9 @@ public:
             emulator.setEnvelopePeriod(42);
             expect(emulator.getEnvelopePeriod() == 42, "Envelope period should be 42");
 
-            expect(emulator.getEnvelopeShape() == AyumiEmulator::EnvShapeEnum::DOWN_HOLD_BOTTOM_0, "Envelope shape should be Hold");
-            emulator.setEnvelopeShape(AyumiEmulator::EnvShapeEnum::DOWN_DOWN_8);
-            expect(emulator.getEnvelopeShape() == AyumiEmulator::EnvShapeEnum::DOWN_DOWN_8, "Envelope shape should be Down");
+            expect(emulator.getEnvelopeShape() == EnvShape::DOWN_HOLD_BOTTOM_0, "Envelope shape should be Hold");
+            emulator.setEnvelopeShape(EnvShape::DOWN_DOWN_8);
+            expect(emulator.getEnvelopeShape() == EnvShape::DOWN_DOWN_8, "Envelope shape should be Down");
 
             expect(emulator.getMixer(0) == std::make_tuple(false, false, false), "Mixer should be false, false, false");
             emulator.setMixer(0, true, false, true);
@@ -84,7 +84,7 @@ public:
         }
         beginTest("AYEmulator tone");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, AyumiEmulator::TypeEnum::AY};
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             emulator.setChannelPan(0, 0.5);
             emulator.setTonePeriod(0, 1000);
             emulator.setToneOn(0, true);
@@ -100,7 +100,7 @@ public:
         }
         beginTest("AYEmulator noise");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, AyumiEmulator::TypeEnum::AY};
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, true);
@@ -119,14 +119,14 @@ public:
         }
         beginTest("AYEmulator envelope");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, AyumiEmulator::TypeEnum::AY};
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, false);
             emulator.setEnvelopeOn(0, true);
             emulator.setVolume(0, 15);
             emulator.setEnvelopePeriod(100);
-            emulator.setEnvelopeShape(AyumiEmulator::EnvShapeEnum::DOWN_DOWN_8);
+            emulator.setEnvelopeShape(EnvShape::DOWN_DOWN_8);
             bypassBlock(emulator);
 
             float outLeft[44100];

@@ -101,7 +101,7 @@ public:
             EqualTemperamentTuning tuning(440.0);
             String name = tuning.getName();
             expect(name.contains("Equal Temperament"), "Name should contain 'Equal Temperament'");
-            expect(name.contains("440.00"), "Name should contain A4 frequency");
+            expect(name.contains("440.00"), "Name should contain A4 frequency, got `" + name + "`");
         }
 
         beginTest("Edge case - very high and low frequencies");

@@ -3,6 +3,9 @@
 #include <JuceHeader.h>
 #include <memory>
 
+#include "Ratios.h"
+#include "Scales.h"
+
 #include "../../util/enumchoice.h"
 
 namespace MoTool {
@@ -80,10 +83,39 @@ class RationalTuning final : public TemperamentSystem {
 public:
     using TemperamentSystem::TemperamentSystem;
 
+    RationalTuning(
+        const std::array<RationalNumber, 12>& rationalIntervals,
+        const Scale::Key keyToUse,
+        const Scale* scaleToUse,
+        double a4Frequency = 440.0
+    );
+
     TemperamentType getType() const override;
     double midiNoteToFrequency(double midiNote) const override;
     double frequencyToMidiNote(double frequency) const override;
     bool isDefined(int midiNote) const override;
+
+    void setKey(Scale::Key newKey) {
+        tonic = newKey;
+    }
+
+    Scale::Key getKey() const {
+        return tonic;
+    }
+
+    void setScale(const Scale* newScale) {
+        scale = newScale;
+    }
+    const Scale* getScale() const {
+        return scale;
+    }
+    double getTonicFrequency(int octave) const;
+
+private:
+    std::array<RationalNumber, 12> ratios;
+    Scale::Key tonic;
+    const Scale* scale; // Scale to use for this tuning, if applicable
+
 };
 
 } // namespace MoTool

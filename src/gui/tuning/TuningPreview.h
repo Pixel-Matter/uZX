@@ -23,8 +23,9 @@ public:
 
 private:
     static constexpr int cellWidth = 56;
-    static constexpr int headerRowHeight = 24;
     static constexpr int cellHeight = 32;
+    static constexpr int headerRowHeight = 24;
+
     static constexpr int gridYOffset = static_cast<int>(headerRowHeight * 2.5);
 
     TuningViewModel& viewModel;
@@ -93,6 +94,10 @@ private:
 
     TuningPreviewGrid tuningGrid;
     TooltipWindow tooltipWindow;
+
+    static constexpr int rowHeight = 28;
+    static constexpr int moduleWidth = 60;
+    static constexpr int gap = 8;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPreviewComponent)
 };

@@ -51,24 +51,32 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
         g.fillRect(cellCenter, cell.getBottom() - 2, 2, 4);
     };
 
+    auto drawColumnHeader = [&](const TuningNoteName& column, Rectangle<int>& gridCell, const String& text) {
+        auto color = column.isInScale ? Colors::Theme::textPrimary : Colors::Theme::textPrimary.withAlpha(0.5f);
+        if (column.isRootNote) {
+            color = Colors::Theme::primary.interpolatedWith(Colors::Theme::textPrimary, 0.5f);
+        }
+        g.setColour(color);
+        g.drawText(text, gridCell, juce::Justification::centred, true);
+        gridCell.translate(cellWidth, 0);
+    };
+
     g.fillAll(Colors::Theme::backgroundAlt);
     auto bounds = getLocalBounds();
     bounds.setWidth(cellWidth * (cols + 2));
     // center the grid horizontally
     bounds.setX((getWidth() - bounds.getWidth()) / 2);
+    bounds.removeFromTop(headerRowHeight / 2);
+    auto gridY = bounds.getY();
+    auto gridBottom = bounds.getBottom();
 
     const auto columns = viewModel.getColumnNoteNames();
-
-    bounds.removeFromTop(headerRowHeight / 2);
     {
         auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
         gridCell.translate(cellWidth, 0);
         for (const auto& column : columns) {
             // drawCenterTick(gridCell);
-            auto color = column.isInScale ? Colors::Theme::textPrimary : Colors::Theme::textPrimary.withAlpha(0.5f);
-            g.setColour(color);
-            g.drawText(column.stepName, gridCell, juce::Justification::centred, true);
-            gridCell.translate(cellWidth, 0);
+            drawColumnHeader(column, gridCell, column.degree.toString());
         }
     }
 
@@ -77,10 +85,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
         gridCell.translate(cellWidth, 0);
         for (const auto& column : columns) {
             drawCenterTick(gridCell);
-            auto color = column.isInScale ? Colors::Theme::textPrimary : Colors::Theme::textPrimary.withAlpha(0.5f);
-            g.setColour(color);
-            g.drawText(column.name, gridCell, juce::Justification::centred, true);
-            gridCell.translate(cellWidth, 0);
+            drawColumnHeader(column, gridCell, column.name);
         }
     }
 
@@ -102,12 +107,12 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
             }
 
             auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
-            if (!note.isInScale) {
-                g.setColour(noteBgColor.withAlpha(noteBgColor.getFloatAlpha() * 0.5f));
-                g.fillRect(gridCell.reduced(2, 2));
-                noteTextColor = noteTextColor.withAlpha(0.5f);
-            } else {
+            if (note.isInScale) {
                 g.setColour(noteBgColor);
+                g.fillRect(gridCell.reduced(2, 2));
+            } else {
+                noteTextColor = noteTextColor.withAlpha(0.5f);
+                g.setColour(noteBgColor.withAlpha(noteBgColor.getFloatAlpha() * 0.5f));
                 g.fillRect(gridCell.reduced(2, 2));
             }
 
@@ -154,7 +159,16 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
             gridCell.translate(cellWidth, 0);
         }
+        gridBottom = gridCell.getBottom();
         // bounds.removeFromTop(1); // Add a line between rows
+    }
+
+    // Draw vertical line at the root note column (current key)
+    {
+        const int rootColumnIndex = static_cast<int>(viewModel.getCurrentKey());
+        const int rootColumnX = bounds.getX() + cellWidth + rootColumnIndex * cellWidth;
+        g.setColour(Colors::Theme::primary.withAlpha(0.5f));
+        g.fillRect(rootColumnX, gridY, 2, gridBottom - gridY);
     }
 }
 
@@ -255,7 +269,7 @@ TuningPreviewComponent::TuningPreviewComponent()
     KeySelect.onChange = [this]() {
         int selectedId = KeySelect.getSelectedId();
         if (selectedId > 0) {
-            viewModel.setCurrentKey(static_cast<Key>(selectedId - 1));
+            viewModel.setCurrentKey(static_cast<Scale::Key>(selectedId - 1));
         }
     };
 
@@ -323,14 +337,12 @@ TuningPreviewComponent::~TuningPreviewComponent() {
 
 void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds();
-    auto gap = 8;
-    auto rowHeight = 30;
-    auto widthModule = 60;
+
 
     auto formBounds = bounds.reduced(20, 20);
 
     // Create two columns layout
-    auto leftColumnWidth = widthModule * 4;  // Width for the left column with tuning table list
+    auto leftColumnWidth = moduleWidth * 4;  // Width for the left column with tuning table list
     auto leftColumn = formBounds.removeFromLeft(leftColumnWidth);
     formBounds.removeFromLeft(gap); // Gap between columns
     auto rightColumn = formBounds;
@@ -342,32 +354,32 @@ void TuningPreviewComponent::resized() {
 
     // Right column: Other controls and tuning grid
     // Place KeySelect and ScaleSelect on the same row with fixed widths
-    auto labelsColWidth = widthModule * 3; // Width for labels
+    auto labelsColWidth = moduleWidth * 2; // Width for labels
     auto keyScaleRow = rightColumn.removeFromTop(rowHeight);
     KeyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
-    KeySelect.setBounds(keyScaleRow.removeFromLeft(widthModule - gap));
+    KeySelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth));
     keyScaleRow.removeFromLeft(gap);
-    ScaleSelect.setBounds(keyScaleRow.removeFromLeft(widthModule * 3));
+    ScaleSelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth * 3 - gap));
 
     rightColumn.removeFromTop(gap);
 
     auto chipLabelRow = rightColumn.removeFromTop(rowHeight);
     ChipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
-    ChipClockSelect.setBounds(chipLabelRow.removeFromLeft(widthModule * 4));
+    ChipClockSelect.setBounds(chipLabelRow.removeFromLeft(moduleWidth * 4));
 
     rightColumn.removeFromTop(gap);
 
     // Clock frequency slider on its own row
     auto clockFreqRow = rightColumn.removeFromTop(rowHeight);
     clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(labelsColWidth));
-    clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(widthModule * 8));
+    clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(moduleWidth * 8));
 
     rightColumn.removeFromTop(gap);
 
     // A4 frequency slider with label
     auto a4Row = rightColumn.removeFromTop(rowHeight);
     a4FrequencyLabel.setBounds(a4Row.removeFromLeft(labelsColWidth));
-    a4FrequencySlider.setBounds(a4Row.removeFromLeft(widthModule * 8));
+    a4FrequencySlider.setBounds(a4Row.removeFromLeft(moduleWidth * 8));
 
     rightColumn.removeFromTop(gap);
 

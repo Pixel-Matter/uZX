@@ -10,8 +10,61 @@ namespace MoTool {
 
 // Scale/mode definition
 //==============================================================================
+
+enum Accidental {
+    DoubleFlat = -2,
+    Flat = -1,
+    Natural = 0,
+    Sharp = 1,
+    DoubleSharp = 2
+};
+
+struct ScaleDegree {
+    int degree;
+    Accidental accidental;
+
+    constexpr explicit ScaleDegree(int deg, Accidental alt = Accidental::Natural) noexcept
+        : degree(deg), accidental(alt) {}
+
+    constexpr ScaleDegree(int deg, int alt) noexcept
+        : degree(deg), accidental(static_cast<Accidental>(alt)) {}
+
+    inline constexpr bool operator==(const ScaleDegree& other) const noexcept {
+        return degree == other.degree && accidental == other.accidental;
+    }
+
+    inline constexpr bool operator!=(const ScaleDegree& other) const noexcept {
+        return !(*this == other);
+    }
+
+    inline constexpr std::string_view accidentalSymbolsView() const {
+        switch(accidental) {
+            case DoubleFlat:  return "♭♭";
+            case Flat:        return "♭";
+            case Natural:     return "";
+            case Sharp:       return "♯";
+            case DoubleSharp: return "♯♯";
+            default:          return "?";
+        }
+    }
+    String accidentalSymbols() const;
+    String toString() const;
+    operator String() const { return "Degree(" + String(degree) + ", " + String(accidental) + ")"; }
+
+    // static Degree fromSemitones(int semitones, int degreeNum) noexcept;
+    // int toSemitones() const noexcept;
+
+};
+
+
 class Scale {
 public:
+    using Degree = ScaleDegree;
+    using Accidental = Accidental;
+
+    enum class Key {
+        C = 0, CSharp, D, DSharp, E, F, FSharp, G, GSharp, A, ASharp, B
+    };
 
     struct ScaleCategoryEnum {
         enum Enum {
@@ -81,9 +134,12 @@ public:
             // Pentatonic
             MajorPentatonic,
             MinorPentatonic,
-            JapaneseHirajoshi,
-            JapaneseIn,
-            ChineseScale,
+            Hirajoshi,
+            Iwato,
+            In,
+            Yo,
+            Insen,
+            // Chinese,
 
             // Blues
             BluesScale,
@@ -91,10 +147,10 @@ public:
 
             // Symmetrical
             WholeTone,
-            DiminishedHalfWhole,
-            DiminishedWholeHalf,
+            DimHalfWhole,
+            DimWholeHalf,
             Chromatic,
-            Augmented,
+            Hexatonic,
 
             // ExoticWorld
             Persian,
@@ -151,8 +207,11 @@ public:
             "Major Pentatonic",
             "Minor Pentatonic",
             "Japanese Hirajoshi",
+            "Japanese Iwato",
             "Japanese In",
-            "Chinese Scale",
+            "Japanese Yo",
+            "Japanese Insen",
+            // "Chinese Scale",
 
             // Blues
             "Blues Scale",
@@ -160,10 +219,10 @@ public:
 
             // Symmetrical
             "Whole Tone",
+            "Hexatonic",
             "Diminished (H-W)",
             "Diminished (W-H)",
             "Chromatic",
-            "Augmented",
 
             // Exotic/World
             "Persian",
@@ -188,11 +247,13 @@ public:
             "HMin", "MMin", "NMin", "NMaj", "HuMin", "HuMaj",         // Minor Variations
             "Loc♮6", "Ion♯5", "UkrDor", "PhrDom", "Lyd♯2", "AltDim",  // Harmonic Minor Modes
             "Dor♭2", "LydAug", "LydDom", "Mix♭6", "HalfDim", "Alt",   // Melodic Minor Modes
-            "MPent", "mPent", "Hirajo", "In", "Chinese",              // Pentatonic
+            "MPent", "mPent",                                         // Pentatonic
+            "Hirajo", "Iwato", "In", "Yo", "Insen",                   // Pentatonic Japanese
+            // "Chinese",                                                // Pentatonic Chinese
             "Blues", "MajBlu",                                        // Blues
-            "WholeTn", "Dim(H-W)", "Dim(W-H)", "Chrom", "Aug",        // Symmetrical
+            "WholeTn", "Hex", "Dim(H-W)", "Dim(W-H)", "Chrom",        // Symmetrical
             "Persian", "Arabic", "Gypsy", "Enigma",                   // Exotic/World
-            "DHrm", "Prometheus", "Tritone",                          // Exotic/World
+            "DHrm", "Promet", "3Tone",                                // Exotic/World
             "BebMaj", "BebDom", "BebMin",                             // Bebop
             "User"                                                    // User Defined
         };
@@ -206,44 +267,9 @@ public:
         WholeHalf,
     };
 
-    enum Accidental {
-        DoubleFlat = -2,
-        Flat = -1,
-        Natural = 0,
-        Sharp = 1,
-        DoubleSharp = 2
-    };
-
-    struct Degree {
-        int degree;
-        Accidental accidental;
-
-        explicit Degree(int deg, Accidental alt = Accidental::Natural) noexcept
-            : degree(deg), accidental(alt) {}
-
-        Degree(int deg, int alt) noexcept
-            : degree(deg), accidental(static_cast<Accidental>(alt)) {}
-
-        inline bool operator==(const Degree& other) const noexcept {
-            return degree == other.degree && accidental == other.accidental;
-        }
-
-        inline bool operator!=(const Degree& other) const noexcept {
-            return !(*this == other);
-        }
-
-        String accidentalSymbols() const;
-        String toString() const;
-
-        // static Degree fromSemitones(int semitones, int degreeNum) noexcept;
-        // int toSemitones() const noexcept;
-
-        operator String() const { return String::formatted("Degree(%d, %d)", degree, accidental); }
-    };
-
-    Scale(ScaleType type);
-    Scale(std::initializer_list<Steps> intervalSteps);
-    Scale(std::initializer_list<int> steps);  // for example 0, 2, 4, 5, 7, 9, 11 for a major scale
+    Scale(ScaleType t);
+    explicit Scale(std::initializer_list<Steps> intervalSteps);
+    explicit Scale(std::initializer_list<int> steps);  // for example 0, 2, 4, 5, 7, 9, 11 for a major scale
 
     static ScaleCategory getCategoryForType(ScaleType type);
     ScaleCategory getCategory() const { return getCategoryForType(type); }
@@ -263,13 +289,32 @@ public:
     static String getShortNameForType(ScaleType type);
     static ScaleType getTypeFromName(String name);
 
-    std::vector<int> getIntervals(int octaves = 1) const;
+    bool isIntervalInScale(int semitone) const;
+    const std::vector<int>& getIntervals() const;
+    std::vector<int> getIntervalsForOctaves(int octaves = 1) const;
+    std::vector<Degree> getAllFlatsDegrees() const;
     std::vector<Degree> getDegrees() const;
+    std::array<Degree, 12> getChromaticDegrees() const;
 
 private:
     ScaleType type;
     std::vector<int> intervals;  // For all scales - both predefined and user-defined
-};
 
+    static inline constexpr std::array<int, 7> majorPattern {0, 2, 4, 5, 7, 9, 11}; // Major scale intervals
+    static inline constexpr std::array<Degree, 12> chromaticDegrees {{
+        Degree {1},  // Unison
+        Degree {2, Accidental::Flat}, // Minor second
+        Degree {2},  // Major second
+        Degree {3, Accidental::Flat}, // Minor third
+        Degree {3},  // Major third
+        Degree {4},  // Perfect fourth
+        Degree {5, Accidental::Flat}, // Diminished fifth
+        Degree {5},  // Perfect fifth
+        Degree {6, Accidental::Flat}, // Minor sixth
+        Degree {6},  // Major sixth
+        Degree {7, Accidental::Flat}, // Minor seventh
+        Degree {7}   // Major seventh
+    }};
+};
 
 }

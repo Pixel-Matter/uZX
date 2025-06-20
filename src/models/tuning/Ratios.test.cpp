@@ -124,3 +124,199 @@ public:
 };
 
 static RatiosTest ratiosTest;
+
+class RationalNumberTest : public juce::UnitTest {
+public:
+    RationalNumberTest() : UnitTest("RationalNumber", "MoTool") {}
+
+    void runTest() override {
+        beginTest("Construction from integers");
+        {
+            RationalNumber ratio(3, 2);
+            expect(ratio.isJustInterval(), "Should be rational");
+            expectWithinAbsoluteError(static_cast<double>(ratio), 1.5, 1e-9);
+        }
+
+        beginTest("Construction from double");
+        {
+            RationalNumber ratio(1.5);
+            expect(!ratio.isJustInterval(), "Should not be rational");
+            expectWithinAbsoluteError(static_cast<double>(ratio), 1.5, 1e-9);
+        }
+
+        beginTest("Construction from semitones");
+        {
+            auto ratio = RationalNumber::fromSemitones(12.0); // Octave
+            expectWithinAbsoluteError(static_cast<double>(ratio), 2.0, 1e-9);
+        }
+
+        beginTest("Construction from cents");
+        {
+            auto ratio = RationalNumber::fromCents(1200.0); // Octave
+            expectWithinAbsoluteError(static_cast<double>(ratio), 2.0, 1e-9);
+        }
+
+        beginTest("Rational multiplication");
+        {
+            RationalNumber third(5, 4);    // Major third
+            RationalNumber fifth(3, 2);    // Perfect fifth
+            
+            auto result = third * fifth;   // Should be major seventh (15:8)
+            expect(result.isJustInterval(), "Product should be rational");
+            expectWithinAbsoluteError(static_cast<double>(result), 15.0/8.0, 1e-9);
+        }
+
+        beginTest("Rational division");
+        {
+            RationalNumber fifth(3, 2);    // Perfect fifth
+            RationalNumber third(5, 4);    // Major third
+            
+            auto result = fifth / third;   // Should be (3/2) / (5/4) = (3/2) * (4/5) = 6/5
+            expect(result.isJustInterval(), "Quotient should be rational");
+            expectWithinAbsoluteError(static_cast<double>(result), 6.0/5.0, 1e-9);
+        }
+
+        beginTest("Mixed rational and irrational operations");
+        {
+            RationalNumber rational(3, 2);   // Perfect fifth
+            RationalNumber irrational(1.41421356); // Approximate sqrt(2)
+            
+            auto result = rational * irrational;
+            expect(!result.isJustInterval(), "Product should not be rational");
+            expectWithinAbsoluteError(static_cast<double>(result), 1.5 * 1.41421356, 1e-6);
+        }
+
+        beginTest("Inversion");
+        {
+            RationalNumber fifth(3, 2);
+            auto inverted = fifth.inverted();
+            
+            expect(inverted.isJustInterval(), "Inverted should be rational");
+            expectWithinAbsoluteError(static_cast<double>(inverted), 2.0/3.0, 1e-9);
+            
+            // Test that inversion is reversible
+            auto doubleInverted = inverted.inverted();
+            expectWithinAbsoluteError(static_cast<double>(doubleInverted), 1.5, 1e-9);
+        }
+
+        beginTest("Compound operations - perfect fifth circle");
+        {
+            RationalNumber fifth(3, 2);
+            RationalNumber result = fifth;
+            
+            // Multiply by fifth 12 times (circle of fifths)
+            for (int i = 0; i < 11; ++i) {
+                result *= fifth;
+            }
+            
+            // Should be close to multiple octaves (powers of 2)
+            // 12 fifths = (3/2)^12 = 531441/4096 ≈ 129.746
+            // This is approximately 2^7 = 128 (Pythagorean comma difference)
+            double expected = std::pow(3.0/2.0, 12);
+            expectWithinAbsoluteError(static_cast<double>(result), expected, 1e-6);
+        }
+
+        beginTest("Free-standing operators - scalar multiplication");
+        {
+            RationalNumber third(5, 4);
+            
+            auto result1 = 2 * third;  // int * RationalNumber
+            auto result2 = 2.0 * third; // double * RationalNumber
+            
+            expectWithinAbsoluteError(static_cast<double>(result1), 2.5, 1e-9);
+            expectWithinAbsoluteError(static_cast<double>(result2), 2.5, 1e-9);
+        }
+
+        beginTest("Free-standing operators - scalar division");
+        {
+            RationalNumber third(5, 4);
+            
+            auto result1 = 5 / third;    // Should be 5 / (5/4) = 4
+            auto result2 = 5.0 / third;  // Should be 5.0 / (5/4) = 4.0
+            
+            expectWithinAbsoluteError(static_cast<double>(result1), 4.0, 1e-9);
+            expectWithinAbsoluteError(static_cast<double>(result2), 4.0, 1e-9);
+        }
+
+        beginTest("Equality comparison - rational vs rational");
+        {
+            RationalNumber r1(6, 4);   // 6/4 = 3/2
+            RationalNumber r2(3, 2);   // 3/2
+            RationalNumber r3(5, 4);   // 5/4
+            
+            expect(r1 == r2, "6/4 should equal 3/2");
+            expect(!(r1 == r3), "6/4 should not equal 5/4");
+        }
+
+        beginTest("Equality comparison - mixed types");
+        {
+            RationalNumber rational(3, 2);
+            RationalNumber irrational(1.5);
+            
+            expect(rational == irrational, "3/2 should equal 1.5");
+        }
+
+        beginTest("Conversion to semitones and cents");
+        {
+            RationalNumber octave(2, 1);
+            RationalNumber fifth(3, 2);
+            
+            expectWithinAbsoluteError(octave.toSemitones(), 12.0, 1e-6);
+            expectWithinAbsoluteError(octave.toCents(), 1200.0, 1e-6);
+            
+            // Perfect fifth is approximately 7.02 semitones
+            expectWithinAbsoluteError(fifth.toSemitones(), std::log2(1.5) * 12.0, 1e-6);
+            expectWithinAbsoluteError(fifth.toCents(), std::log2(1.5) * 1200.0, 1e-6);
+        }
+
+        beginTest("Assignment operators");
+        {
+            RationalNumber ratio(5, 4);
+            
+            ratio *= 2;  // Should become 10/4 = 5/2
+            expectWithinAbsoluteError(static_cast<double>(ratio), 2.5, 1e-9);
+            
+            ratio /= 5;  // Should become 2/4 = 1/2
+            expectWithinAbsoluteError(static_cast<double>(ratio), 0.5, 1e-9);
+        }
+
+        beginTest("Complex musical interval calculations");
+        {
+            // Test some common musical interval arithmetic
+            RationalNumber majorSecond(9, 8);
+            RationalNumber majorThird(5, 4);
+            RationalNumber perfectFourth(4, 3);
+            RationalNumber perfectFifth(3, 2);
+            
+            // Major third + minor third should equal perfect fifth
+            RationalNumber minorThird = perfectFifth / majorThird; // (3/2) / (5/4) = 6/5
+            auto testFifth = majorThird * minorThird;
+            expectWithinAbsoluteError(static_cast<double>(testFifth), 1.5, 1e-9);
+            
+            // Perfect fourth + perfect fifth should equal octave
+            auto testOctave = perfectFourth * perfectFifth;
+            expectWithinAbsoluteError(static_cast<double>(testOctave), 2.0, 1e-9);
+            
+            // Two major seconds should be close to major third (in equal temperament)
+            auto twoSeconds = majorSecond * majorSecond;
+            double diff = std::abs(static_cast<double>(twoSeconds) - static_cast<double>(majorThird));
+            expect(diff < 0.1, "Two major seconds should be close to major third");
+        }
+
+        beginTest("Edge cases - zero and negative values");
+        {
+            RationalNumber zero(0, 1);
+            RationalNumber negative(-3, 2);
+            
+            expectWithinAbsoluteError(static_cast<double>(zero), 0.0, 1e-9);
+            expectWithinAbsoluteError(static_cast<double>(negative), -1.5, 1e-9);
+            
+            // Test multiplication with zero
+            RationalNumber third(5, 4);
+            auto result = third * zero;
+            expectWithinAbsoluteError(static_cast<double>(result), 0.0, 1e-9);
+        }
+    }
+};
+
+static RationalNumberTest rationalNumberTest;

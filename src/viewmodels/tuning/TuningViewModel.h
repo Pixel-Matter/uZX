@@ -18,16 +18,12 @@
 
 namespace MoTool {
 
-enum class Key {
-    C = 0, CSharp, D, DSharp, E, F, FSharp, G, GSharp, A, ASharp, B
-};
-
 struct TuningNoteName {
     int noteNumber;        // 0-based note number in 12-semitone system, ie C is 0, C# is 1, etc.
     bool isInScale;        // Whether this note is part of the scale
-    Interval interval;     // Interval from the root note in cents or ratio
     String name;           // Note name (e.g., "C", "A#")
-    String stepName;       // Note step name (e.g., "1", "♭2", "2", etc.)
+    ScaleDegree degree;    // Scale degree representation
+    bool isRootNote;
 };
 
 struct TuningNote {
@@ -101,7 +97,7 @@ public:
         , chipCapabilities {16, Range<int>(1, 4096)}
         // , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
         , currentScale(Scale::ScaleType::IonianOrMajor)
-        , currentKey(Key::C)
+        , currentKey(Scale::Key::C)
     {
         // Initialize transient view state
         // TODO handle Custom option to chipClock
@@ -121,32 +117,19 @@ public:
 
         // Get the scale intervals
         auto scaleIntervals = currentScale.getIntervals();
-
-        // Convert to set for fast lookup
-        std::set<int> scaleNotes;
-        for (int interval : scaleIntervals) {
-            int transposedInterval = (interval + static_cast<int>(currentKey)) % 12;
-            scaleNotes.insert(transposedInterval);
-        }
-
-        // Note steps array
-        static constexpr std::array<std::string, 12> noteStepsArray = {
-            "1", "♭2", "2", "♭3", "3", "4", "♭5", "5", "♭6", "6", "♭7", "7"
-        };
-
-        // Note names array
-        static const std::array<String, 12> noteNamesArray = {
-            "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
-        };
+        const auto scaleChromDegrees = currentScale.getChromaticDegrees();
 
         // Build the result
+        const auto keyIdx = static_cast<int>(currentKey);
         for (int i = 0; i < 12; ++i) {
+            const int semitonesFromKey = (i - keyIdx + 12) % 12;
             noteNames.emplace_back(
                 i,
-                scaleNotes.count(i) > 0,  // isInScale
-                Interval::fromSemitones(i),
-                noteNamesArray[(size_t) i],
-                String::fromUTF8(noteStepsArray[(size_t) i].data())
+                currentScale.isIntervalInScale(semitonesFromKey),
+                // scaleNotes.count(i) > 0,  // isInScale
+                String::fromUTF8(chromaticNoteNames[(size_t) i].data()),
+                scaleChromDegrees[(size_t) semitonesFromKey],
+                semitonesFromKey == 0 // isRootNote
             );
         }
 
@@ -242,8 +225,6 @@ public:
         return ticks;
     }
 
-    // std::vector<Interval> getIntervals() const;
-
     String getScaleName() const {
         return getKeyName(currentKey) + " " + currentScale.getName();
     }
@@ -260,7 +241,7 @@ public:
         return chipCapabilities.registerRange;
     }
 
-    // Scale and Key selection methods
+    // Scale and Scale::Key selection methods
     Scale::ScaleType getCurrentScale() const {
         return currentScale.getType();
     }
@@ -270,11 +251,11 @@ public:
         sendChangeMessage();
     }
 
-    Key getCurrentKey() const {
+    Scale::Key getCurrentKey() const {
         return currentKey;
     }
 
-    void setCurrentKey(Key key) {
+    void setCurrentKey(Scale::Key key) {
         currentKey = key;
         sendChangeMessage();
     }
@@ -292,16 +273,16 @@ public:
     StringArray getKeyNames() const {
         StringArray names;
         for (int i = 0; i < 12; ++i) {
-            names.add(getKeyName(static_cast<Key>(i)));
+            names.add(getKeyName(static_cast<Scale::Key>(i)));
         }
         return names;
     }
 
-    static String getKeyName(Key key) {
-        static const std::array<String, 12> keyNames = {
-            "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+    static String getKeyName(Scale::Key key) {
+        static constexpr std::array<std::string_view, 12> keyNames = {
+            "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"
         };
-        return keyNames[static_cast<size_t>(key)];
+        return String::fromUTF8(keyNames[static_cast<size_t>(key)].data());
     }
 
     // Tuning table selection methods
@@ -462,12 +443,20 @@ private:
     ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
     std::unique_ptr<TuningSystem> tuningSystem;
 
-    // Scale and Key selection
+    // Scale and Scale::Key selection
     Scale currentScale;
-    Key currentKey;
+    Scale::Key currentKey;
 
     // Tuning table selection
     int currentTuningTableIndex = 0;
+
+    static inline constexpr std::array<std::string_view, 12> chromaticScaleDegreeNames = {
+        "1", "♭2", "2", "♭3", "3", "4", "♭5", "5", "♭6", "6", "♭7", "7"
+    };
+
+    static inline constexpr std::array<std::string_view, 12> chromaticNoteNames = {
+        "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"
+    };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };

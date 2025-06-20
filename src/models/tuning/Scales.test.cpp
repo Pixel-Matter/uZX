@@ -180,7 +180,7 @@ public:
             auto intervals = majorFromSteps.getIntervals();
 
             expectEquals((int) intervals.size(), 7);
-            expectEquals(intervals[0], 0);  // Root
+            expectEquals(intervals[0], 0);  // Unison
             expectEquals(intervals[1], 2);  // Whole step
             expectEquals(intervals[2], 4);  // Whole step
             expectEquals(intervals[3], 5);  // Half step
@@ -189,23 +189,12 @@ public:
             expectEquals(intervals[6], 11); // Whole step
         }
 
-        // beginTest("Scale degree step");
-        // {
-        //     expectEquals(Degree::fromSemitones(0, 1), Degree{1}); // Root
-        //     // expectEquals(Degree::fromSemitones(2, 1), Degree{2}); // Major second
-        //     // expectEquals(Degree::fromSemitones(4, 1), Degree{3}); // Major third
-        //     // expectEquals(Degree::fromSemitones(5, 1), Degree{4}); // Perfect fourth
-        //     // expectEquals(Degree::fromSemitones(7, 1), Degree{5}); // Perfect fifth
-        //     // expectEquals(Degree::fromSemitones(9, 1), Degree{6}); // Major sixth
-        //     // expectEquals(Degree::fromSemitones(11, 1), Degree{7}); // Major seventh
-        // }
-
         beginTest("Scale steps in the musical form Major");
         {
             Scale majorScale(Scale::ScaleType::IonianOrMajor);
             auto degrees = majorScale.getDegrees();
             expectEquals((int) degrees.size(), 7);
-            expectEquals(degrees[0], Degree{1}); // Root
+            expectEquals(degrees[0], Degree{1}); // Unison
             expectEquals(degrees[1], Degree{2}); // Major second
             expectEquals(degrees[2], Degree{3}); // Major third
             expectEquals(degrees[3], Degree{4}); // Perfect fourth
@@ -219,13 +208,142 @@ public:
             Scale harmonicMinorScale(Scale::ScaleType::HarmonicMinor);
             auto degrees = harmonicMinorScale.getDegrees();
             expectEquals((int) degrees.size(), 7);
-            expectEquals(degrees[0], Degree{1}); // Root
+            expectEquals(degrees[0], Degree{1}); // Unison
             expectEquals(degrees[1], Degree{2}); // Major second
-            expectEquals(degrees[2], Degree{3, Alteration::Flat}); // Minor third
+            expectEquals(degrees[2], Degree{3, Accidental::Flat}); // Minor third
             expectEquals(degrees[3], Degree{4}); // Perfect fourth
             expectEquals(degrees[4], Degree{5}); // Perfect fifth
-            expectEquals(degrees[5], Degree{6, Alteration::Flat}); // Minor sixth
+            expectEquals(degrees[5], Degree{6, Accidental::Flat}); // Minor sixth
             expectEquals(degrees[6], Degree{7}); // Major seventh
+        }
+
+        beginTest("Scale degrees - Double Harmonic (exotic 7-degree scale)");
+        {
+            // Double Harmonic: [0, 1, 4, 5, 7, 8, 11] - semitones
+            Scale doubleHarmonic(Scale::ScaleType::DoubleHarmonic);
+            auto degrees = doubleHarmonic.getDegrees();
+            expectEquals((int) degrees.size(), 7);
+            expectEquals(degrees[0], Degree{1}); // Unison (0 semitones)
+            expectEquals(degrees[1], Degree{2, Accidental::Flat}); // Minor second (1 semitone)
+            expectEquals(degrees[2], Degree{3}); // Major third (4 semitones)
+            expectEquals(degrees[3], Degree{4}); // Perfect fourth (5 semitones)
+            expectEquals(degrees[4], Degree{5}); // Perfect fifth (7 semitones)
+            expectEquals(degrees[5], Degree{6, Accidental::Flat}); // Minor sixth (8 semitones)
+            expectEquals(degrees[6], Degree{7}); // Major seventh (11 semitones)
+        }
+
+        beginTest("Scale degrees - Phrygian Dominant (complex 7-degree scale)");
+        {
+            // Phrygian Dominant: [0, 1, 4, 5, 7, 8, 10] - semitones
+            Scale phrygianDominant(Scale::ScaleType::PhrygianDominant);
+            auto degrees = phrygianDominant.getDegrees();
+            expectEquals((int) degrees.size(), 7);
+            expectEquals(degrees[0], Degree{1}); // Unison
+            expectEquals(degrees[1], Degree{2, Accidental::Flat}); // Minor second
+            expectEquals(degrees[2], Degree{3}); // Major third
+            expectEquals(degrees[3], Degree{4}); // Perfect fourth
+            expectEquals(degrees[4], Degree{5}); // Perfect fifth
+            expectEquals(degrees[5], Degree{6, Accidental::Flat}); // Minor sixth
+            expectEquals(degrees[6], Degree{7, Accidental::Flat}); // Minor seventh
+        }
+
+        beginTest("Scale degree - Hungarian Major (complex 7-degree scale)");
+        {
+            // Hungarian Major: [0, 3, 4, 6, 7, 9, 10] - semitones
+            Scale hungarianMajor(Scale::ScaleType::HungarianMajor);
+            auto degrees = hungarianMajor.getDegrees();
+            expectEquals((int) degrees.size(), 7);
+            expectEquals(degrees[0], Degree{1}); // Unison
+            expectEquals(degrees[1], Degree{2, Accidental::Sharp}); // Augmented second
+            expectEquals(degrees[2], Degree{3}); // Major third
+            expectEquals(degrees[3], Degree{4, Accidental::Sharp}); // Augumented fourth
+            expectEquals(degrees[4], Degree{5}); // Perfect fifth
+            expectEquals(degrees[5], Degree{6}); // Major sixth
+            expectEquals(degrees[6], Degree{7, Accidental::Flat}); // Minor seventh
+
+        }
+
+        beginTest("Scale degrees - Major Pentatonic (5-degree scale)");
+        {
+            // Major Pentatonic: [0, 2, 4, 7, 9] - semitones
+            Scale majorPentatonic(Scale::ScaleType::MajorPentatonic);
+            auto degrees = majorPentatonic.getDegrees();
+            expectEquals((int) degrees.size(), 5);
+            expectEquals(degrees[0], Degree{1}); // Unison
+            expectEquals(degrees[1], Degree{2}); // Major second
+            expectEquals(degrees[2], Degree{3}); // Major third
+            expectEquals(degrees[3], Degree{5}); // Perfect fifth
+            expectEquals(degrees[4], Degree{6}); // Major sixth
+        }
+
+        beginTest("Scale degrees - Minor Pentatonic (5-degree scale)");
+        {
+            // Minor Pentatonic: [0, 3, 5, 7, 10] - semitones
+            Scale minorPentatonic(Scale::ScaleType::MinorPentatonic);
+            auto degrees = minorPentatonic.getDegrees();
+            expectEquals((int) degrees.size(), 5);
+            expectEquals(degrees[0], Degree{1}); // Unison
+            expectEquals(degrees[1], Degree{3, Alteration::Flat}); // Minor third
+            expectEquals(degrees[2], Degree{4}); // Perfect fourth
+            expectEquals(degrees[3], Degree{5}); // Perfect fifth
+            expectEquals(degrees[4], Degree{7, Alteration::Flat}); // Minor seventh
+        }
+
+        beginTest("Scale degrees - Blues Scale (6-degree scale)");
+        {
+            // Blues Scale: [0, 3, 5, 6, 7, 10] - semitones
+            Scale bluesScale(Scale::ScaleType::BluesScale);
+            auto degrees = bluesScale.getDegrees();
+            expectEquals((int) degrees.size(), 6);
+            expectEquals(degrees[0], Degree{1}); // Unison
+            expectEquals(degrees[1], Degree{3, Alteration::Flat}); // Minor third
+            expectEquals(degrees[2], Degree{4}); // Perfect fourth
+            expectEquals(degrees[3], Degree{5, Alteration::Flat}); // Tritone (augmented fourth/diminished fifth)
+            expectEquals(degrees[4], Degree{5}); // Perfect fifth
+            expectEquals(degrees[5], Degree{7, Alteration::Flat}); // Minor seventh
+        }
+
+        beginTest("Scale degrees - Bebop Major (8-degree scale)");
+        {
+            // Bebop Major: [0, 2, 4, 5, 7, 8, 9, 11] - semitones
+            Scale bebopMajor(Scale::ScaleType::BebopMajor);
+            auto degrees = bebopMajor.getDegrees();
+            expectEquals((int) degrees.size(), 8);
+            expectEquals(degrees[0], Degree{1}); // Unison
+            expectEquals(degrees[1], Degree{2}); // Major second
+            expectEquals(degrees[2], Degree{3}); // Major third
+            expectEquals(degrees[3], Degree{4}); // Perfect fourth
+            expectEquals(degrees[4], Degree{5}); // Perfect fifth
+            expectEquals(degrees[5], Degree{6, Alteration::Flat}); // Minor sixth (chromatic passing tone)
+            expectEquals(degrees[6], Degree{6}); // Major sixth
+            expectEquals(degrees[7], Degree{7}); // Major seventh
+        }
+
+        beginTest("Scale degrees - Whole Tone (6-degree scale)");
+        {
+            // Whole Tone: [0, 2, 4, 6, 8, 10] - semitones
+            Scale wholeTone(Scale::ScaleType::WholeTone);
+            auto degrees = wholeTone.getDegrees();
+            expectEquals((int) degrees.size(), 6);
+            expectEquals(degrees[0], Degree{1}); // Unison
+            expectEquals(degrees[1], Degree{2}); // Major second
+            expectEquals(degrees[2], Degree{3}); // Major third
+            expectEquals(degrees[3], Degree{5, Alteration::Flat}); // Tritone
+            expectEquals(degrees[4], Degree{6, Alteration::Flat}); // Augmented fifth/diminished sixth
+            expectEquals(degrees[5], Degree{7, Alteration::Flat}); // Minor seventh
+        }
+
+        beginTest("Scale degrees - Custom scale from intervals");
+        {
+            // Custom scale: [0, 1, 3, 6, 8] - asymmetric 5-note scale
+            Scale customScale({0, 1, 3, 6, 8});
+            auto degrees = customScale.getDegrees();
+            expectEquals((int) degrees.size(), 5);
+            expectEquals(degrees[0], Degree{1}); // Unison
+            expectEquals(degrees[1], Degree{2, Alteration::Flat}); // Minor second
+            expectEquals(degrees[2], Degree{3, Alteration::Flat}); // Minor third
+            expectEquals(degrees[3], Degree{5, Alteration::Flat}); // Tritone
+            expectEquals(degrees[4], Degree{6, Alteration::Flat}); // Minor sixth
         }
     }
 };

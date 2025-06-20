@@ -7,75 +7,109 @@ namespace MoTool {
 
 // Constexpr function to get scale intervals
 constexpr std::vector<int> getScaleIntervals(Scale::ScaleType scaleType) {
+    using ScaleType = Scale::ScaleType;
     switch (scaleType) {
-        // Diatonic Modes
-        case Scale::ScaleType::IonianOrMajor:    return {0, 2, 4, 5, 7, 9, 11};
-        case Scale::ScaleType::Dorian:           return {0, 2, 3, 5, 7, 9, 10};
-        case Scale::ScaleType::Phrygian:         return {0, 1, 3, 5, 7, 8, 10};
-        case Scale::ScaleType::Lydian:           return {0, 2, 4, 6, 7, 9, 11};
-        case Scale::ScaleType::Mixolydian:       return {0, 2, 4, 5, 7, 9, 10};
-        case Scale::ScaleType::AeolianOrMinor:   return {0, 2, 3, 5, 7, 8, 10};
-        case Scale::ScaleType::Locrian:          return {0, 1, 3, 5, 6, 8, 10};
+        // Diatonic Modes                         1     2     3  4     5     6     7
+        case ScaleType::IonianOrMajor:    return {0,    2,    4, 5,    7,    9,    11};
+        //                                        1     2  b3    4     5     6  b7
+        case ScaleType::Dorian:           return {0,    2, 3,    5,    7,    9, 10   };
+        //                                        1  b2    b3    4     5  b6    b7
+        case ScaleType::Phrygian:         return {0, 1,    3,    5,    7, 8,    10   };
+        //                                        1     2     3    #4  5     6     7
+        case ScaleType::Lydian:           return {0,    2,    4,    6, 7,    9,    11};
+        //                                        1     2     3  4     5     6  b7
+        case ScaleType::Mixolydian:       return {0,    2,    4, 5,    7,    9, 10   };
+        //                                        1     2  b3    4     5  b6    b7
+        case ScaleType::AeolianOrMinor:   return {0,    2, 3,    5,    7, 8,    10   };
+        //                                        1  b2    b3    4  b5    b6    b7
+        case ScaleType::Locrian:          return {0, 1,    3,    5, 6,    8,    10   };
 
         // Minor Variations
-        case Scale::ScaleType::HarmonicMinor:    return {0, 2, 3, 5, 7, 8, 11};
-        case Scale::ScaleType::MelodicMinor:     return {0, 2, 3, 5, 7, 9, 11};
-        case Scale::ScaleType::NeapolitanMinor:  return {0, 1, 3, 5, 7, 8, 11};
-        case Scale::ScaleType::NeapolitanMajor:  return {0, 1, 3, 5, 7, 9, 11};
-        case Scale::ScaleType::HungarianMinor:   return {0, 2, 3, 6, 7, 8, 11};
-        case Scale::ScaleType::HungarianMajor:   return {0, 3, 4, 6, 7, 9, 10};
+        case ScaleType::HarmonicMinor:    return {0,    2, 3,    5,    7, 8,       11};
+        case ScaleType::MelodicMinor:     return {0,    2, 3,    5,    7,    9,    11};
+        case ScaleType::NeapolitanMinor:  return {0, 1,    3,    5,    7, 8,       11};
+        case ScaleType::NeapolitanMajor:  return {0, 1,    3,    5,    7,    9,    11};
+        //                                        1     2  b3      #4  5 b6        7
+        case ScaleType::HungarianMinor:   return {0,    2, 3,       6, 7, 8,       11};
+        //                                        1       #2  3    #4  5     6  b7
+        case ScaleType::HungarianMajor:   return {0,       3, 4,    6, 7,    9, 10   };
 
         // Harmonic Minor Modes
-        case Scale::ScaleType::LocrianNatural6:  return {0, 1, 3, 5, 6, 9, 10};
-        case Scale::ScaleType::IonianSharp5:     return {0, 2, 4, 5, 8, 9, 11};
-        case Scale::ScaleType::UkrainianDorian:  return {0, 2, 3, 6, 7, 9, 10};
-        case Scale::ScaleType::PhrygianDominant: return {0, 1, 4, 5, 7, 8, 10};
-        case Scale::ScaleType::LydianSharp2:     return {0, 3, 4, 6, 7, 9, 11};
-        case Scale::ScaleType::AlteredDiminished:return {0, 1, 3, 4, 6, 8, 9};
+        case ScaleType::LocrianNatural6:  return {0, 1,    3,    5, 6,       9, 10    };
+        case ScaleType::IonianSharp5:     return {0,    2,    4, 5,       8, 9,     11};
+        case ScaleType::UkrainianDorian:  return {0,    2, 3,       6, 7,    9, 10    };
+        case ScaleType::PhrygianDominant: return {0, 1,       4, 5,    7, 8,    10    };
+        case ScaleType::LydianSharp2:     return {0,       3, 4,    6, 7,    9,     11};
+        case ScaleType::AlteredDiminished:return {0, 1,    3, 4,    6,    8, 9        };
 
         // Melodic Minor Modes
-        case Scale::ScaleType::DorianFlat2:      return {0, 1, 3, 5, 7, 9, 10};
-        case Scale::ScaleType::LydianAugmented:  return {0, 2, 4, 6, 8, 9, 11};
-        case Scale::ScaleType::LydianDominant:   return {0, 2, 4, 6, 7, 9, 10};
-        case Scale::ScaleType::MixolydianFlat6:  return {0, 2, 4, 5, 7, 8, 10};
-        case Scale::ScaleType::HalfDiminished:   return {0, 2, 3, 5, 6, 8, 10};
-        case Scale::ScaleType::AlteredScale:     return {0, 1, 3, 4, 6, 8, 10};
+        case ScaleType::DorianFlat2:      return {0, 1,    3,    5,    7,    9, 10   };
+        case ScaleType::LydianAugmented:  return {0,    2,    4,    6,    8, 9,    11};
+        case ScaleType::LydianDominant:   return {0,    2,    4,    6, 7,    9, 10   };
+        case ScaleType::MixolydianFlat6:  return {0,    2,    4, 5,    7, 8,    10   };
+        case ScaleType::HalfDiminished:   return {0,    2, 3,    5, 6,    8,    10   };
+        case ScaleType::AlteredScale:     return {0, 1,    3, 4,    6,    8,    10   };
 
-        // Pentatonic
-        case Scale::ScaleType::MajorPentatonic:  return {0, 2, 4, 7, 9};
-        case Scale::ScaleType::MinorPentatonic:  return {0, 3, 5, 7, 10};
-        case Scale::ScaleType::JapaneseHirajoshi:return {0, 2, 3, 7, 8};
-        case Scale::ScaleType::JapaneseIn:       return {0, 1, 5, 7, 8};
-        case Scale::ScaleType::ChineseScale:     return {0, 4, 6, 7, 11};
+        // Rules of assigning degrees for pentatonic and blues scales:
+        // - Can not be two gaps in a sequence
+        // - if the step is more than whole tone, it is a gap in degree sequence
+        // - If there is pure quint, it is 5
+        //   - Else if there is pure quart, it is 4
+        //   - Else it is not a real pentatonic
+        // - If there is a 3 half-tone steps sequence, it is N-1, bN, N
+        // or simply
+        // All b-s (with omitted degrees)
 
-        // Blues
-        case Scale::ScaleType::BluesScale:       return {0, 3, 5, 6, 7, 10};
-        case Scale::ScaleType::MajorBlues:       return {0, 2, 3, 4, 7, 9};
+        // Pentatonic                             1     2     3 (4)    5     6    (7)
+        case ScaleType::MajorPentatonic:  return {0,    2,    4,       7,    9        };
+        //                                        1    (2) b3    4     5    (6) b7
+        case ScaleType::MinorPentatonic:  return {0,       3,    5,    7,       10    };
+        //                                        1     2  b3   (4)    5  b6      (7)
+        case ScaleType::Hirajoshi:        return {0,    2, 3,          7, 8           };
+        //                                        1  b2      (3) 4  b5   (6)    b7
+        case ScaleType::Iwato:            return {0, 1,          5, 6,          10    };
+        //                                        1  b2      (3) 4     5  b6      (7)
+        case ScaleType::In:               return {0, 1,          5,    7, 8           };
+        //                                        1     2    (3) 4     5     6    (7)
+        case ScaleType::Yo:               return {0,    2,       5,    7,    9        };
+        //                                        1  b2      (3) 4     5    (6) b7
+        case ScaleType::Insen:            return {0, 1,          5,    7,       10    };
+        // //                                        1     2     3 (4)    5     6     (7)    !!! Or not all b-s?
+        // case ScaleType::Chinese:          return {0,    2,    4,       7,    9        };
 
-        // Symmetrical
-        case Scale::ScaleType::WholeTone:        return {0, 2, 4, 6, 8, 10};
-        case Scale::ScaleType::DiminishedHalfWhole: return {0, 1, 3, 4, 6, 7, 9, 10};
-        case Scale::ScaleType::DiminishedWholeHalf: return {0, 2, 3, 5, 6, 8, 9, 11};
-        case Scale::ScaleType::Chromatic:        return {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-        case Scale::ScaleType::Augmented:        return {0, 3, 4, 7, 8, 11};
+        // Blues                                  1    (2) b3    4  b5 5    (6) b7        !!! Pentatonic with added note or all b-s
+        case ScaleType::BluesScale:       return {0,       3,    5, 6, 7,       10    };
+        //                                        1     2  b3 3        5     6     (7)    !!! Pentatonic with added note  or all b-s
+        case ScaleType::MajorBlues:       return {0,    2, 3, 4,       7,    9        };
+
+        // Symmetrical 6                          1     2     3    #4    #5     #6  (7)   !!! same logic as for 7-degree scales or all b-s
+        case ScaleType::WholeTone:        return {0,    2,    4,    6,    8,    10    };
+        //                                        1    (2) b3 b4       5  b6        7     !!! Pentatonic logic bit for 6 degrees or all b-s
+        case ScaleType::Hexatonic:        return {0,       3, 4,       7, 8,        11};
+        // Symmetrical 8                          1  b2    b3 3    b5  5     6  b7        !!! All b-s?
+        case ScaleType::DimHalfWhole:     return {0, 1,    3, 4,    6, 7,    9, 10    };
+        //                                        1     2  b3    4  b5    b6 6       7    !!! All b-s?
+        case ScaleType::DimWholeHalf:     return {0,    2, 3,    5, 6,    8, 9,     11};
+        //                                        1   b2 2  b3 3  4  b5 5  b6 6  b7  7    !!! All b-s?
+        case ScaleType::Chromatic:        return {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 
         // Exotic/World
-        case Scale::ScaleType::Persian:          return {0, 1, 4, 5, 6, 8, 11};
-        case Scale::ScaleType::Arabic:           return {0, 1, 4, 5, 7, 8, 11};
-        case Scale::ScaleType::Gypsy:            return {0, 2, 3, 6, 7, 8, 11};
-        case Scale::ScaleType::Enigmatic:        return {0, 1, 4, 6, 8, 10, 11};
-        case Scale::ScaleType::DoubleHarmonic:   return {0, 1, 4, 5, 7, 8, 11};
-        case Scale::ScaleType::Prometheus:       return {0, 2, 4, 6, 9, 10};
-        case Scale::ScaleType::Tritone:          return {0, 1, 4, 6, 7, 10};
+        case ScaleType::Persian:          return {0, 1,       4, 5, 6,    8,        11};
+        case ScaleType::Arabic:           return {0, 1,       4, 5, 7,    8,        11};
+        case ScaleType::Gypsy:            return {0,    2, 3,       6, 7, 8,        11};
+        case ScaleType::Enigmatic:        return {0, 1,       4,    6,    8,    10, 11};
+        case ScaleType::DoubleHarmonic:   return {0, 1,       4, 5,    7, 8,        11};
+        case ScaleType::Prometheus:       return {0,    2,    4,    6,       9, 10    };
+        case ScaleType::Tritone:          return {0, 1,       4,    6, 7,       10    };
 
         // Bebop
-        case Scale::ScaleType::BebopMajor:       return {0, 2, 4, 5, 7, 8, 9, 11};
-        case Scale::ScaleType::BebopDominant:    return {0, 2, 4, 5, 7, 9, 10, 11};
-        case Scale::ScaleType::BebopMinor:       return {0, 2, 3, 5, 7, 8, 9, 10};
+        case ScaleType::BebopMajor:       return {0, 2, 4, 5, 7, 8, 9, 11};
+        case ScaleType::BebopDominant:    return {0, 2, 4, 5, 7, 9, 10, 11};
+        case ScaleType::BebopMinor:       return {0, 2, 3, 5, 7, 8, 9, 10};
 
         // Default fallback
-        case Scale::ScaleType::User:
-        default:                                 return {0, 2, 4, 5, 7, 9, 11}; // Major scale fallback
+        case ScaleType::User:
+        default:                          return {};
     }
 }
 
@@ -122,9 +156,12 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
         // Pentatonic
         case Scale::ScaleType::MajorPentatonic:
         case Scale::ScaleType::MinorPentatonic:
-        case Scale::ScaleType::JapaneseHirajoshi:
-        case Scale::ScaleType::JapaneseIn:
-        case Scale::ScaleType::ChineseScale:
+        case Scale::ScaleType::Hirajoshi:
+        case Scale::ScaleType::Iwato:
+        case Scale::ScaleType::In:
+        case Scale::ScaleType::Yo:
+        case Scale::ScaleType::Insen:
+        // case Scale::ScaleType::Chinese:
             return Scale::ScaleCategory::Pentatonic;
 
         // Blues
@@ -134,10 +171,10 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
 
         // Symmetrical
         case Scale::ScaleType::WholeTone:
-        case Scale::ScaleType::DiminishedHalfWhole:
-        case Scale::ScaleType::DiminishedWholeHalf:
+        case Scale::ScaleType::Hexatonic:
+        case Scale::ScaleType::DimHalfWhole:
+        case Scale::ScaleType::DimWholeHalf:
         case Scale::ScaleType::Chromatic:
-        case Scale::ScaleType::Augmented:
             return Scale::ScaleCategory::Symmetrical;
 
         // Exotic/World
@@ -163,23 +200,23 @@ constexpr Scale::ScaleCategory getScaleCategory(Scale::ScaleType scaleType) {
     }
 }
 
-// Scale::Degree
+Scale::Scale(ScaleType t)
+    : type(t)
+    , intervals(getScaleIntervals(t))
+{
+    jassert(type != ScaleType::User && "UserDefined scale type should not be used here");
+}
 
 Scale::Scale(std::initializer_list<int> ivals)
     : type(ScaleType::User)
     , intervals(ivals)
-{}
+{
+}
 
 String Scale::Degree::accidentalSymbols() const {
-    switch(accidental) {
-        case DoubleFlat:  return String::fromUTF8("♭♭");
-        case Flat:        return String::fromUTF8("♭");
-        case Natural:     return {};
-        case Sharp:       return String::fromUTF8("♯");
-        case DoubleSharp: return String::fromUTF8("♯♯");
-        default:          return "?";
-    }
+    return String::fromUTF8(accidentalSymbolsView().data());
 }
+
 
 String Scale::Degree::toString() const {
     return accidentalSymbols() + String(degree);
@@ -199,13 +236,6 @@ String Scale::Degree::toString() const {
 // int Scale::Degree::toSemitones() const noexcept {
 //     return (degree - 1) + static_cast<int>(accidental);
 // }
-
-// Constructors
-Scale::Scale(ScaleType scaleType) : type(scaleType) {
-    // Initialize intervals for known scale types
-    jassert(scaleType != ScaleType::User && "UserDefined scale type should not be used here");
-    intervals = getScaleIntervals(scaleType);
-}
 
 Scale::Scale(std::initializer_list<Steps> intervalSteps)
     : type(ScaleType::User)
@@ -275,15 +305,16 @@ std::vector<Scale::ScaleType> Scale::getAllScaleTypes() {
         ScaleType::MixolydianFlat6, ScaleType::HalfDiminished, ScaleType::AlteredScale,
 
         // Pentatonic
-        ScaleType::MajorPentatonic, ScaleType::MinorPentatonic, ScaleType::JapaneseHirajoshi,
-        ScaleType::JapaneseIn, ScaleType::ChineseScale,
+        ScaleType::MajorPentatonic, ScaleType::MinorPentatonic,
+        ScaleType::Hirajoshi, ScaleType::Iwato, ScaleType::In, ScaleType::Yo, ScaleType::Insen,
+        // ScaleType::ChineseScale,
 
         // Blues
         ScaleType::BluesScale, ScaleType::MajorBlues,
 
         // Symmetrical
-        ScaleType::WholeTone, ScaleType::DiminishedHalfWhole, ScaleType::DiminishedWholeHalf,
-        ScaleType::Chromatic, ScaleType::Augmented,
+        ScaleType::WholeTone, ScaleType::DimHalfWhole, ScaleType::DimWholeHalf,
+        ScaleType::Chromatic, ScaleType::Hexatonic,
 
         // Exotic/World
         ScaleType::Persian, ScaleType::Arabic, ScaleType::Gypsy, ScaleType::Enigmatic,
@@ -347,51 +378,66 @@ juce::String Scale::getShortName() const {
     return getShortNameForType(type);
 }
 
-std::vector<int> Scale::getIntervals(int octaves) const {
-    std::vector<int> scaleIntervals;
+bool Scale::isIntervalInScale(int semitone) const {
+    semitone = (semitone % 12 + 12) % 12; // Normalize to [0, 11]
+    return std::find(intervals.begin(), intervals.end(), semitone) != intervals.end();
+}
 
-    if (!intervals.empty()) {
-        // Use pre-initialized intervals (both predefined and user-defined)
-        scaleIntervals = intervals;
-    } else {
-        // Fallback for UserDefined scales without intervals
-        scaleIntervals = getScaleIntervals(type);
-    }
+const std::vector<int>& Scale::getIntervals() const {
+    return intervals;
+}
 
+std::vector<int> Scale::getIntervalsForOctaves(int octaves) const {
     if (octaves <= 1) {
-        return scaleIntervals;
+        return intervals;
     }
 
     // Extend across multiple octaves
-    std::vector<int> result = scaleIntervals;
-    size_t originalSize = scaleIntervals.size();
+    std::vector<int> result = intervals;
+    size_t originalSize = intervals.size();
 
     for (int octave = 1; octave < octaves; ++octave) {
         for (size_t i = 0; i < originalSize; ++i) {
-            result.push_back(scaleIntervals[i] + octave * 12);
+            result.push_back(intervals.at(i) + octave * 12);
         }
     }
 
     return result;
 }
 
+std::vector<Scale::Degree> Scale::getAllFlatsDegrees() const {
+    std::vector<Degree> result;
+    result.reserve(intervals.size());
+    // map to chromatic degrees
+    for (const auto& interval : intervals) {
+        result.emplace_back(chromaticDegrees.at((size_t) interval));
+    }
+    return result;
+}
+
 std::vector<Scale::Degree> Scale::getDegrees() const {
-    static constexpr std::array<int, 7> majorSemitones {0, 2, 4, 5, 7, 9, 11}; // Major scale intervals
-
     std::vector<Degree> degrees;
-    const auto effIntervals = getIntervals();
-
-    if (effIntervals.size() == 7) {
-        for (size_t i = 0; i <= 6; i++) {
+    degrees.reserve(intervals.size());
+    if (intervals.size() == 7) {
+        for (size_t i = 0; i < 7; i++) {
             degrees.emplace_back(
                 static_cast<int>(i + 1), // Degree number (1-based)
-                static_cast<Accidental>(effIntervals[i] - majorSemitones[i]) // Calculate accidental
+                static_cast<Accidental>(intervals.at(i) - majorPattern.at(i)) // Calculate accidental
             );
         }
         return degrees;
     }
+    return getAllFlatsDegrees();
+}
 
-    return degrees;
+std::array<Scale::Degree, 12> Scale::getChromaticDegrees() const {
+    const auto degrees = getDegrees();
+    // merge with chromatic degrees
+    std::array<Degree, 12> chromaticDegreesArray = chromaticDegrees;
+    for (size_t i = 0; i < intervals.size(); ++i) {
+        chromaticDegreesArray.at(static_cast<size_t>(intervals[i])) = degrees.at(i);
+    }
+    return chromaticDegreesArray;
 }
 
 } // namespace MoTool

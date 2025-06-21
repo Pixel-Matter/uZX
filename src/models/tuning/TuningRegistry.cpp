@@ -22,8 +22,31 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             );
 
         case BuiltinTuningType::Just5Limit:
-            // TODO: Implement Just Intonation 5-limit tuning
-            return nullptr;
+            // Implement Just Intonation 5-limit tuning
+            return std::make_unique<AutoTuning>(
+                capabilities, chipClock,
+                []() {
+                    auto scale = std::make_unique<Scale>(Scale::ScaleType::Phrygian);
+                    return std::make_unique<RationalTuning>(
+                        std::array<FractionNumber, 12> {
+                            FractionNumber {1, 1},   // Unison          C   A
+                            FractionNumber {16, 15}, // Minor second    C#  A#
+                            FractionNumber {9, 8},   // Major second    D   B
+                            FractionNumber {6, 5},   // Minor third     D#  C
+                            FractionNumber {5, 4},   // Major third     E   C#
+                            FractionNumber {4, 3},   // Perfect fourth  F   D
+                            FractionNumber {45, 32}, // Triton          F#  D#
+                            FractionNumber {3, 2},   // Perfect fifth   G   E
+                            FractionNumber {8, 5},   // Minor sixth     G#  F
+                            FractionNumber {5, 3},   // Major sixth     A   F#
+                            FractionNumber {16, 9},  // Minor seventh   A#  G
+                            FractionNumber {15, 8}   // Major seventh   B   G#
+                        },
+                        Scale::Key::D,
+                        scale.get(),
+                        433.0
+                    );
+            }());
 
         case BuiltinTuningType::CustomPT_0_PT: {
             // ProTracker #0 (Original PT3 table)
@@ -176,7 +199,28 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             return std::make_unique<TuningTable>(
                 capabilities,
                 uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz).getClockValue(),
-                std::make_unique<EqualTemperamentTuning>(486.0),
+                []() {
+                    auto scale = std::make_unique<Scale>(Scale::ScaleType::Phrygian);
+                    return std::make_unique<RationalTuning>(
+                        std::array<FractionNumber, 12> {
+                            FractionNumber {1, 1},   // Unison          C   A
+                            FractionNumber {16, 15}, // Minor second    C#  A#
+                            FractionNumber {9, 8},   // Major second    D   B
+                            FractionNumber {6, 5},   // Minor third     D#  C
+                            FractionNumber {5, 4},   // Major third     E   C#
+                            FractionNumber {4, 3},   // Perfect fourth  F   D
+                            FractionNumber {45, 32}, // Triton          F#  D#
+                            FractionNumber {3, 2},   // Perfect fifth   G   E
+                            FractionNumber {8, 5},   // Minor sixth     G#  F
+                            FractionNumber {5, 3},   // Major sixth     A   F#
+                            FractionNumber {16, 9},  // Minor seventh   A#  G
+                            FractionNumber {15, 8}   // Major seventh   B   G#
+                        },
+                        Scale::Key::E,
+                        scale.get(),
+                        486.0
+                    );
+                }(),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
                     // Octave 1 (C1-B1): Natural E Phrygian tuning

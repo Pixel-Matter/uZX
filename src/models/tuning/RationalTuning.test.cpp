@@ -9,25 +9,25 @@ class RationalTuningTest : public juce::UnitTest {
 public:
     RationalTuningTest() : UnitTest("RationalTuning", "MoTool") {}
 
-    std::array<FractionNumber, 12> justIntonationRatios {
-        FractionNumber {1, 1},   // Unison          C
-        FractionNumber {16, 15}, // Minor second    C#
-        FractionNumber {9, 8},   // Major second    D
-        FractionNumber {6, 5},   // Minor third     D#
-        FractionNumber {5, 4},   // Major third     E
-        FractionNumber {4, 3},   // Perfect fourth  F
-        FractionNumber {45, 32}, // Triton          F#
-        FractionNumber {3, 2},   // Perfect fifth   G
-        FractionNumber {8, 5},   // Minor sixth     G#
-        FractionNumber {5, 3},   // Major sixth     A
-        FractionNumber {16, 9},  // Minor seventh   A#
-        FractionNumber {15, 8}   // Major seventh   B
-    };
-
     void runTest() override {
+        constexpr std::array<FractionNumber, 12> justIntonationRatios {
+            FractionNumber {1, 1},   // Unison          C
+            FractionNumber {16, 15}, // Minor second    C#
+            FractionNumber {9, 8},   // Major second    D
+            FractionNumber {6, 5},   // Minor third     D#
+            FractionNumber {5, 4},   // Major third     E
+            FractionNumber {4, 3},   // Perfect fourth  F
+            FractionNumber {45, 32}, // Triton          F#
+            FractionNumber {3, 2},   // Perfect fifth   G
+            FractionNumber {8, 5},   // Minor sixth     G#
+            FractionNumber {5, 3},   // Major sixth     A
+            FractionNumber {16, 9},  // Minor seventh   A#
+            FractionNumber {15, 8}   // Major seventh   B
+        };
+        auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
+
         beginTest("Constructor with 7-limit tuning numbers");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
 
             expectEquals(tuning.getA4Frequency(), 440.0, "Default A4 frequency should be 440.0 Hz");
@@ -39,7 +39,6 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 440.0 Hz");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale};
 
             expectWithinAbsoluteError(tuning.getTonicFrequency(4), 440.0, 1e-6, "Tonic should be A4 = 440.0 Hz");
@@ -49,7 +48,6 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 432.0 Hz");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 432.0};
 
             expectWithinAbsoluteError(tuning.getTonicFrequency(4), 432.0, 1e-6, "Tonic should be A4 = 432.0 Hz");
@@ -57,7 +55,6 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 440.0 Hz, tonic is B");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::B, &scale};
 
             auto frequency = tuning.getTonicFrequency(4);
@@ -67,7 +64,6 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 440.0 Hz, tonic is C");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
 
             auto frequency = tuning.getTonicFrequency(4);
@@ -77,7 +73,6 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 440.0 Hz, tonic is D#");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::DSharp, &scale};
 
             auto frequency = tuning.getTonicFrequency(4);
@@ -87,7 +82,6 @@ public:
 
         beginTest("MIDI note to frequency conversion - A4, tonic is A");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale};
 
             double frequency = tuning.midiNoteToFrequency(69); // A4
@@ -96,7 +90,6 @@ public:
 
         beginTest("MIDI note to frequency conversion - C4, tonic is C");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
 
             double frequency = tuning.midiNoteToFrequency(60); // C4
@@ -106,7 +99,6 @@ public:
 
         beginTest("MIDI note to frequency conversion - C3, tonic is C");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
 
             double frequency = tuning.midiNoteToFrequency(48); // C3
@@ -116,7 +108,6 @@ public:
 
         beginTest("MIDI note to frequency conversion - A4, tonic is C");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::C, &scale};
 
             double frequency = tuning.midiNoteToFrequency(69); // A4
@@ -125,7 +116,6 @@ public:
 
         beginTest("MIDI note to frequency conversion - A4, any tonic");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             for (int i = 0; i < 12; i++) {
                 auto tonic = static_cast<Scale::Key>(i);
                 RationalTuning tuning {justIntonationRatios, tonic, &scale};
@@ -137,7 +127,6 @@ public:
 
         beginTest("MIDI note to frequency conversion - Middle C");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
             double frequency = tuning.midiNoteToFrequency(60); // Middle C
             // In just intonation, C to A is major sixth (5:3), so C = A / (5/3) = A * (3/5)
@@ -147,7 +136,6 @@ public:
 
         beginTest("Fractional MIDI note to frequency conversion - Middle C+");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
             double frequency = tuning.midiNoteToFrequency(60.5); // Middle C plus quarter tone
             // In just intonation, C to A is major sixth (5:3), so C = A / (5/3) = A * (3/5)
@@ -159,7 +147,6 @@ public:
 
         beginTest("MIDI note to frequency conversion - octave relationships");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
             double a4_freq = tuning.midiNoteToFrequency(69); // A4
             double a5_freq = tuning.midiNoteToFrequency(81); // A5 (one octave higher)
@@ -171,7 +158,6 @@ public:
 
         beginTest("Frequency to MIDI note conversion - A4");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
             int a4lower = tuning.frequencyToNearestMidiNote(450.0, TemperamentSystem::NoteSearch::NextLower);
             expectEquals(a4lower, 69, "450.0 Hz should convert to MIDI note 69 (A4)");
@@ -188,7 +174,6 @@ public:
 
         beginTest("Frequency to MIDI note conversion - Middle C");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
             double middleCFreq = 440.0 * 3.0 / 5.0; // C to A is 5:3 in just intonation
             double midiNote = tuning.frequencyToMidiNote(middleCFreq);
@@ -197,7 +182,6 @@ public:
 
         beginTest("Frequency to MIDI note conversion - Middle C quarter tone");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
             double middleCFreq = 269.444; // C+ is quarter tone above C
             double midiNote = tuning.frequencyToMidiNote(middleCFreq);
@@ -207,7 +191,6 @@ public:
 
         beginTest("Round-trip conversion accuracy");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
             for (double note = 21.0; note <= 108.0; note += 0.25) { // Test from A0 to A8
                 double frequency = tuning.midiNoteToFrequency(note);
@@ -219,7 +202,6 @@ public:
 
         beginTest("isDefined method - all notes should be defined");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
 
             // Test various MIDI note ranges
@@ -231,7 +213,6 @@ public:
 
         beginTest("A4 frequency setter");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
             tuning.setA4Frequency(432.0);
             expectWithinAbsoluteError(tuning.getA4Frequency(), 432.0, 1e-6, "A4 frequency should be updated to 432.0 Hz");
@@ -243,7 +224,6 @@ public:
 
         beginTest("getName method");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
             String name = tuning.getName();
             expect(name.contains("Rational"), "Name should contain 'Rational'");
@@ -252,7 +232,6 @@ public:
 
         beginTest("Edge case - very high and low frequencies");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
 
             // Test very low MIDI note
@@ -272,7 +251,6 @@ public:
 
         beginTest("Fractional MIDI notes");
         {
-            const auto scale = Scale(Scale::ScaleType::AeolianOrMinor);
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, &scale, 440.0};
 
             // Test quarter-tone between A4 and A#4

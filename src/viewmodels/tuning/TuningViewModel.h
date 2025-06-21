@@ -288,9 +288,8 @@ public:
     // Tuning table selection methods
     StringArray getTuningTableNames() const {
         StringArray names;
-        names.add("Equal Temperament");
-        CustomTuningType::forEach([&](auto&& tableType) {
-            names.add(CustomTuningType(tableType).getLongLabel().data());
+        BuiltinTuningType::forEach([&](auto&& tableType) {
+            names.add(BuiltinTuningType(tableType).getLongLabel().data());
         });
         return names;
     }
@@ -368,19 +367,20 @@ private:
 
     void updateTuningSystem(bool recreate = false, bool resetUIValues = false) {
         if (recreate) {
-            if (currentTuningTableIndex == 0) {
+            auto tuningType = static_cast<BuiltinTuningType>(currentTuningTableIndex);
+            
+            if (tuningType == BuiltinTuningType::EqualTemperament) {
                 tuningSystem = makeEqualTemperamentTuning(chipCapabilities, clockFrequency.get(), a4Frequency.get());
             } else {
-                // Custom tuning table
-                int customIndex = currentTuningTableIndex - 1;
-                tuningSystem = makeCustomTableTuning(static_cast<CustomTuningType>(customIndex), chipCapabilities);
+                // Builtin tuning table
+                tuningSystem = makeBuiltinTableTuning(tuningType, chipCapabilities);
 
-                if (resetUIValues) {
+                if (tuningSystem && resetUIValues) {
                     // When changing tuning table, reset UI to match tuning defaults
                     a4Frequency = tuningSystem->getA4Frequency();
                     clockFrequency = tuningSystem->getClockFrequency();
                     chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(findBestMatchingClockPreset(clockFrequency.get())));
-                } else {
+                } else if (tuningSystem) {
                     // When updating from user changes, preserve user settings
                     tuningSystem->setA4Frequency(a4Frequency.get());
                     tuningSystem->setClockFrequency(clockFrequency.get());

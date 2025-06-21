@@ -6,9 +6,9 @@
 
 using namespace MoTool;
 
-class CustomTuningTest : public juce::UnitTest {
+class BuiltinTuningTest : public juce::UnitTest {
 public:
-    CustomTuningTest() : UnitTest("CustomTuning", "MoTool") {}
+    BuiltinTuningTest() : UnitTest("BuiltinTuning", "MoTool") {}
 
     void runTest() override {
         ChipCapabilities testCaps {16, Range<int>(1, 4096)};
@@ -314,4 +314,4 @@ public:
     }
 };
 
-static CustomTuningTest customTuningTest;
+static BuiltinTuningTest builtinTuningTest;

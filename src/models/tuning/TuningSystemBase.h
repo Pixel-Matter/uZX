@@ -48,6 +48,9 @@ public:
     inline TemperamentSystem* getReferenceTuning() const {
         return referenceTuning.get();
     }
+    inline void setReferenceTuning(std::unique_ptr<TemperamentSystem> refTuning) {
+        this->referenceTuning = std::move(refTuning);
+    }
     // Default chip-based period/frequency conversion
     double periodToFrequency(int period) const;
     int frequencyToPeriod(double frequency) const;

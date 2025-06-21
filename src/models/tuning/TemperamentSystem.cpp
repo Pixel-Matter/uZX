@@ -56,6 +56,14 @@ bool EqualTemperamentTuning::isDefined(int /*midiNote*/) const {
     return true;
 }
 
+void EqualTemperamentTuning::setKey(Scale::Key) {
+    // not required for equal temperament
+}
+
+Scale::Key EqualTemperamentTuning::getKey() const {
+    return Scale::Key::C; // Default to C for equal temperament
+}
+
 
 // RationalTuning class implementation
 

@@ -8,27 +8,31 @@
 
 namespace MoTool {
 
-struct CustomTuningEnum {
+struct BuiltinTuningEnum {
     enum Enum : size_t {
-        CustomPT_0_PT = 0,          // ProTracker #0 (Original PT3 table)
-        CustomPT_1_ST = 1,          // ProTracker #1 (SoundTracker)
-        CustomPT_2_ASM = 2,         // ProTracker #2 (ASM)
-        CustomPT_3_REAL = 3,        // ProTracker #3 (REAL)
-        CustomVT_4_NATURAL = 4,     // ProTracker #4 (Natural Cmaj/Am)
-        // CustomNaturalEPhrygian = 5  // Natural E Phrygian
+        EqualTemperament = 0, // Standard equal temperament tuning
+        Just5Limit,       // Just Intonation (5-limit)
+        CustomPT_0_PT,        // ProTracker #0 (Original PT3 table)
+        CustomPT_1_ST,        // ProTracker #1 (SoundTracker)
+        CustomPT_2_ASM,       // ProTracker #2 (ASM)
+        CustomPT_3_REAL,      // ProTracker #3 (REAL)
+        CustomVT_4_NATURAL,   // ProTracker #4 (Natural Cmaj/Am)
+        CustomNaturalEPhrygian  // Natural E Phrygian
     };
 
     static inline constexpr std::string_view longLabels[] {
+        "Equal Temperament",
+        "Just Intonation (5-limit)",
         "ProTracker #0",
         "ProTracker #1 (ST)",
         "ProTracker #2 (ASM)",
         "ProTracker #3 (REAL)",
         "IvanRochin #4 (NATURAL Cmaj/Am)",
-        // "Natural E Phrygian"
+        "Natural E Phrygian"
     };
 };
 
-using CustomTuningType = MoTool::Util::EnumChoice<CustomTuningEnum>;
+using BuiltinTuningType = MoTool::Util::EnumChoice<BuiltinTuningEnum>;
 
 // Factory functions for standard tuning systems
 inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabilities& capabilities, double chipClock, double A4Frequency) {
@@ -36,9 +40,9 @@ inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabi
 }
 
 // Factory functions for ProTracker-style custom table tunings
-std::unique_ptr<TuningTable> makeCustomTableTuning(CustomTuningType tableType, const ChipCapabilities& capabilities);
+std::unique_ptr<TuningTable> makeBuiltinTableTuning(BuiltinTuningType tableType, const ChipCapabilities& capabilities);
 
 // Get descriptive name for tuning table
-const std::string_view getTuningTableName(CustomTuningType tableType);
+const std::string_view getTuningTableName(BuiltinTuningType tableType);
 
 }

@@ -8,16 +8,23 @@
 
 namespace MoTool {
 
-std::unique_ptr<TuningTable> makeBuiltinTableTuning(BuiltinTuningType tableType, const ChipCapabilities& capabilities) {
+std::unique_ptr<TuningSystem> makeBuiltinTuning(
+    BuiltinTuningType tableType,
+    const ChipCapabilities& capabilities,
+    double chipClock,
+    double A4Frequency
+) {
     switch (tableType) {
         case BuiltinTuningType::EqualTemperament:
-            // EqualTemperament is handled by makeEqualTemperamentTuning function
-            return nullptr;
-        
+            // Use makeEqualTemperamentTuning(capabilities, chipClock, a4Frequency) instead
+            return std::make_unique<AutoTuning>(
+                capabilities, chipClock, std::make_unique<EqualTemperamentTuning>(A4Frequency)
+            );
+
         case BuiltinTuningType::Just5Limit:
             // TODO: Implement Just Intonation 5-limit tuning
             return nullptr;
-        
+
         case BuiltinTuningType::CustomPT_0_PT: {
             // ProTracker #0 (Original PT3 table)
             return std::make_unique<TuningTable>(

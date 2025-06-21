@@ -40,7 +40,12 @@ inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabi
 }
 
 // Factory functions for ProTracker-style custom table tunings
-std::unique_ptr<TuningTable> makeBuiltinTableTuning(BuiltinTuningType tableType, const ChipCapabilities& capabilities);
+std::unique_ptr<TuningSystem> makeBuiltinTuning(
+    BuiltinTuningType tableType,
+    const ChipCapabilities& capabilities,
+    double chipClock,
+    double A4Frequency = 440.0
+);
 
 // Get descriptive name for tuning table
 const std::string_view getTuningTableName(BuiltinTuningType tableType);

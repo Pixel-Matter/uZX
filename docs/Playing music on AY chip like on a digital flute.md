@@ -12,31 +12,38 @@ Somewhat similar in PSG chip we have very high fundamental frequency of the chip
 
 Just intonation also uses integer ratios between tone frequencies and this tuning sound very natural except that you can't use all 12 steps while keeping all intervals perfect and natural, but if you can fix on some diatonic scale, and you are not modulating, you're good. European classical musicians didn't want to fix on one scale though, but that's another story.
 
-### Just intonation 7 notes frequency ratios
+### Just intonation 7 notes period ratios
+
+Minor scale
 
 ```
-   ┌──────────────────────1/2───────────────────────┐
-   │      ┌─────5/6─────┐             ┌─────4/5─────┤
+   ┌──────────────────────1:2───────────────────────┐
+   │      ┌─────5:6─────┐             ┌─────4:5─────┤
 ╔══╧═══╤══╧═══╤══════╤══╧═══╤══════╤══╧═══╤══════╗──┴───┬──────┐
-║  A   │  B   │  C   │  D   │  E   │  F   │  G   ║  A   |  B   |
+║  1   │  2   │  b3  │  4   │  5   │  b6  │  b7  ║  1   |  2   │
 ╚══╤═══╧══╤═══╧══╤═══╧══╤═══╧══╤═══╧══╤═══╧══╤═══╝──┬───┴──┬───┘
-   ├─8/9──┴15/16─┼─8/9 ─┴─9/10─┼15/16─┴─8/9──┼─9/10─├─8/9──┤
-   ├─────5/6─────┴─────4/5─────┼─────5/6─────┴─────4/5─────┤
-   └────────────2/3────────────┴────────────2/3────────────┘
+   ├─8:9──┴15:16─┼─8:9 ─┴─9:10─┼15:16─┴─8:9──┼─9:10─├─8:9──┤
+   ├─────5:6─────┴─────4:5─────┼─────5:6─────┴─────4:5─────┤
+   └────────────2:3────────────┴────────────2:3────────────┘
+
+   5/6*4/5 = 5*4/6*5 = 20/30 = 2/3
 
 All 12 chromatic notes
 ╔══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╗
 ║  C   │  C#  │  D   │  D#  │  E   │  F   │  F#  │  G   │  G#  │  A   │  A#  │  B   ║
 ╚══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╝
 
-Harmonic minor
-   ┌──────────────────────3:2───────────────────────┐
-   ├─────────────────4:3──────────────┐             │
+Harmonic minor (nat 7th)
+   ┌──────────────────────2:3───────────────────────┐
+   ├─────────────────3:4──────────────┐             │
 ╔══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╤══════╗
-║  1   │      │  1   │  b3  │      │  4   │      │  5   │  b6  │      │      │  7   ║
-║  C   │      │  D   │  D#  │      │  F   │      │  G   │  G#  │      │      │  B   ║
+║  1   │      │  2   │  b3  │  3   │  4   │      │  5   │  b6  │      │      │  7   ║
 ╚══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╧══════╝
-   └────────6:5─────────┘
+   ├────────5:6─────────┘      │
+   └───────────4:5─────────────┘
+
+   2:3 * 3:4 = 2*3:3*4 = 6:12 = 1:2
+   2/3 * 2/3 = 2*2/3*3 = 4/9 = 4:9 2nd degree of higher octave, so we multiply by 2 to get 8:9
 
 ```
 
@@ -173,7 +180,7 @@ Then we have to make a fifth, it's 2:3 in terms of periods, so our tonic must be
 |  3  |     |     |     |     |     |     |  2  |     |     |     |     |     | + stacked fifth B |
 |     |     |     |     |     |     |     |  1  |     |     |     |     |     | + stacked fifth B |
 
-Now lets make some real chord, a triad. Major third is 4:5, minor is 5:6. But the major third introduces factor of 5 that is not contained in the tonic. Lets start with minor. And lets change the tonic to A, it's relative anyway. True tonic label can be calculated from the frequency of the chip and period of 3.
+Now lets make some real chord, a triad. Major third is 4:5, minor is 5:6. But the major third introduces factor of 5 that is not contained in the tonic. Lets start with minor. And lets change the tonic to E, it's relative anyway. True tonic label can be calculated from the frequency of the chip and period of 3.
 
 |  E  |  F  | F#  |  G  |  G# |  A  | A#  |  B  |  C  | C#  |  D  | D#  |  E  | Chords            |
 |-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-------------------|
@@ -224,7 +231,7 @@ Do we have wolf fifth? It's a just intonation tuning, so yeah. And happily, only
    ┌──────────2:3──────────┐     │                       │                       │
    │     │                 │     │                       │                       │
 ╔══╧══╤══╧══╤═════╤═════╤══╧══╤══╧══╤═════╗─────┬─────┬──┴──┬─────┬─────┬─────┬──┴──┬─────┐
-║  E  │  F  │  G  │  A  │  B  │  C  │  D  ║  E  │  F  │  G  │  A  │  B  │  C  │  D  │  E  │
+║  Ed │
 ║ 1:1 │15:16│ 5:6 │ 3:4 │ 2:3 │ 5:8 │ 9:16║ 1:2 │15:32│ 5:12│ 3:8 │ 1:3 │ 5:16│ 9:32│ 1:4 │
 ╚═════╧═════╧══╤══╧══╤══╧═════╧═════╧══╤══╝──┬──┴─────┴─────┴──┬──┴──┬──┴─────┴─────┴──┬──┘
                │     │                 │     │                 │     │                 │

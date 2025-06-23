@@ -17,7 +17,7 @@ struct BuiltinTuningEnum {
         CustomPT_2_ASM,       // ProTracker #2 (ASM)
         CustomPT_3_REAL,      // ProTracker #3 (REAL)
         CustomVT_4_NATURAL,   // ProTracker #4 (Natural Cmaj/Am)
-        CustomNaturalEPhrygian  // Natural E Phrygian
+        // CustomNaturalEPhrygian  // Natural E Phrygian
     };
 
     static inline constexpr std::string_view longLabels[] {
@@ -28,7 +28,7 @@ struct BuiltinTuningEnum {
         "ProTracker #2 (ASM)",
         "ProTracker #3 (REAL)",
         "IvanRochin #4 (NATURAL Cmaj/Am)",
-        "Natural E Phrygian"
+        // "Natural E Phrygian"
     };
 };
 

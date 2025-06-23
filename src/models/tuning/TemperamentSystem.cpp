@@ -56,11 +56,11 @@ bool EqualTemperamentTuning::isDefined(int /*midiNote*/) const {
     return true;
 }
 
-void EqualTemperamentTuning::setKey(Scale::Key) {
+void EqualTemperamentTuning::setTonic(Scale::Key) {
     // not required for equal temperament
 }
 
-Scale::Key EqualTemperamentTuning::getKey() const {
+Scale::Key EqualTemperamentTuning::getTonic() const {
     return Scale::Key::C; // Default to C for equal temperament
 }
 
@@ -70,15 +70,15 @@ Scale::Key EqualTemperamentTuning::getKey() const {
 RationalTuning::RationalTuning(
     const std::array<FractionNumber, 12>& rationalIntervals,
     const Scale::Key keyToUse,
-    const Scale* scaleToUse,  // TODO remove?
+    // const Scale* scaleToUse,  // TODO remove?
     double a4Frequency
 )
     : TemperamentSystem(a4Frequency)
     , ratios(rationalIntervals)
     , tonic(keyToUse)
-    , scale(scaleToUse)
+    // , scale(scaleToUse)
 {
-    jassert(scaleToUse != nullptr && "Scale must not be null for RationalTuning");
+    // jassert(scaleToUse != nullptr && "Scale must not be null for RationalTuning");
     jassert(ratios.size() == 12 && "RationalTuning must have exactly 12 intervals for the 12 semitones");
 }
 
@@ -223,6 +223,50 @@ double RationalTuning::getTonicFrequency(int octave) const {
     }
     // DBG("Ratio = " << String(ratio));
     return getA4Frequency() * ratio * std::pow(2.0, octave - 4);
+}
+
+
+// Just Intonation 5-limit tuning
+JustIntonation5Limit::JustIntonation5Limit(const Scale::Key tonicToUse, double a4Frequency)
+    : RationalTuning({
+        FractionNumber(1, 1),   // Unison
+        FractionNumber(16, 15), // Minor second
+        FractionNumber(9, 8),   // Major second
+        FractionNumber(6, 5),   // Minor third
+        FractionNumber(5, 4),   // Major third
+        FractionNumber(4, 3),   // Perfect fourth
+        FractionNumber(45, 32), // Augmented fourth / diminished fifth
+        FractionNumber(3, 2),   // Perfect fifth
+        FractionNumber(8, 5),   // Minor sixth
+        FractionNumber(5, 3),   // Major sixth
+        FractionNumber(16, 9),  // Minor seventh
+        FractionNumber(15, 8)   // Major seventh
+    }, tonicToUse, a4Frequency)
+{}
+
+TemperamentType JustIntonation5Limit::getType() const {
+    return TemperamentType::Just5Limit;
+}
+
+
+// standalone functions
+std::unique_ptr<TemperamentSystem> makeTemperamentSystem(
+    TemperamentType type,
+    const Scale::Key tonic,
+    double a4Frequency
+) {
+    switch (type) {
+        case TemperamentTypeEnum::EqualTemperament:
+            return std::make_unique<EqualTemperamentTuning>(a4Frequency);
+
+        case TemperamentTypeEnum::Just5Limit:
+            return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency);
+
+        // Add other temperament types here as needed
+        default:
+            jassertfalse; // Unsupported temperament type
+            return nullptr;
+    }
 }
 
 }

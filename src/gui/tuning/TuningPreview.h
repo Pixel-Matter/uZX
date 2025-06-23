@@ -25,8 +25,7 @@ private:
     static constexpr int cellWidth = 56;
     static constexpr int cellHeight = 32;
     static constexpr int headerRowHeight = 24;
-
-    static constexpr int gridYOffset = static_cast<int>(headerRowHeight * 2.5);
+    static constexpr int gridYOffset = static_cast<int>(headerRowHeight * 3.5);
 
     TuningViewModel& viewModel;
 

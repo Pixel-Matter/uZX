@@ -65,6 +65,7 @@ public:
     virtual double midiNoteToFrequency(double midiNote) const = 0;
     virtual int frequencyToNearestMidiNote(double frequency, NoteSearch search = NoteSearch::Nearest) const = 0;
     virtual double frequencyToMidiNote(double frequency) const = 0;
+    virtual String getDegreeRepresentation(int degree) const = 0;
 
     virtual bool isDefined(int midiNote) const = 0;
 
@@ -92,6 +93,7 @@ public:
     void setTonic(Scale::Key newKey) override;
     int frequencyToNearestMidiNote(double frequency, NoteSearch search = NoteSearch::Nearest) const override;
     bool isDefined(int /*midiNote*/) const override;
+    String getDegreeRepresentation(int degree) const override;
 };
 
 
@@ -110,6 +112,7 @@ public:
     double frequencyToMidiNote(double frequency) const override;
     int frequencyToNearestMidiNote(double frequency, NoteSearch search = NoteSearch::Nearest) const override;
     bool isDefined(int midiNote) const override;
+    String getDegreeRepresentation(int degree) const override;
 
     void setTonic(Scale::Key newKey) override{
         tonic = newKey;

@@ -71,11 +71,21 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
     auto gridBottom = bounds.getBottom();
 
     const auto columns = viewModel.getColumnNoteNames();
+
     {
         auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
         gridCell.translate(cellWidth, 0);
         for (const auto& column : columns) {
             // drawCenterTick(gridCell);
+            drawColumnHeader(column, gridCell, column.tuning);
+        }
+    }
+
+    {
+        auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
+        gridCell.translate(cellWidth, 0);
+        for (const auto& column : columns) {
+            drawCenterTick(gridCell);
             drawColumnHeader(column, gridCell, column.degree.toString());
         }
     }

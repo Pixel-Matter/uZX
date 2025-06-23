@@ -23,6 +23,7 @@ struct TuningNoteName {
     bool isInScale;        // Whether this note is part of the scale
     String name;           // Note name (e.g., "C", "A#")
     ScaleDegree degree;    // Scale degree representation
+    String tuning;         // Tuning representation
     bool isRootNote;
 };
 
@@ -118,6 +119,7 @@ public:
         // Get the scale intervals
         auto scaleIntervals = currentScale.getIntervals();
         const auto scaleChromDegrees = currentScale.getChromaticDegrees();
+        auto refTuning = tuningSystem ? tuningSystem->getReferenceTuning() : nullptr;
 
         // Build the result
         const auto keyIdx = static_cast<int>(currentKey);
@@ -129,6 +131,7 @@ public:
                 // scaleNotes.count(i) > 0,  // isInScale
                 String::fromUTF8(chromaticNoteNames[(size_t) i].data()),
                 scaleChromDegrees[(size_t) semitonesFromKey],
+                refTuning ? refTuning->getDegreeRepresentation(semitonesFromKey) : String(),
                 semitonesFromKey == 0 // isRootNote
             );
         }

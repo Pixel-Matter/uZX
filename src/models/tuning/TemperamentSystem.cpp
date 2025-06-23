@@ -64,6 +64,10 @@ Scale::Key EqualTemperamentTuning::getTonic() const {
     return Scale::Key::C; // Default to C for equal temperament
 }
 
+String EqualTemperamentTuning::getDegreeRepresentation(int degree) const {
+    return String(degree * 100);  // just in cents
+}
+
 
 // RationalTuning class implementation
 
@@ -223,6 +227,11 @@ double RationalTuning::getTonicFrequency(int octave) const {
     }
     // DBG("Ratio = " << String(ratio));
     return getA4Frequency() * ratio * std::pow(2.0, octave - 4);
+}
+
+String RationalTuning::getDegreeRepresentation(int degree) const {
+    const auto& fraction = ratios.at(size_t(degree % 12));
+    return String::formatted("%d:%d", fraction.getDenominator(), fraction.getNumerator());
 }
 
 

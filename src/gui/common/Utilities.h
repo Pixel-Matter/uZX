@@ -27,6 +27,10 @@ void removeUnusedRenderFiles(te::Edit& edit);
 File getFreezeFileForTrack(const te::AudioTrack& track);
 te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager);
 
+// CSV export directory persistence
+File getLastCsvExportDirectory();
+void setLastCsvExportDirectory(const File& directory);
+
 // inline juce::String formatTimecodeDisplay(const TempoSequence& tempo, const TimePosition time, bool isRelative) const;
 
 }  // namespace MoTool::Helpers

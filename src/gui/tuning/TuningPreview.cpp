@@ -1,6 +1,7 @@
 #include "TuningPreview.h"
 
 #include "../common/LookAndFeel.h"
+#include "../common/Utilities.h"
 #include "juce_core/juce_core.h"
 #include "juce_graphics/juce_graphics.h"
 #include "juce_gui_extra/juce_gui_extra.h"
@@ -356,7 +357,10 @@ TuningPreviewComponent::TuningPreviewComponent()
     exportButton.setButtonText("Export to CSV");
     exportButton.onClick = [this]() {
         String defaultFilename = viewModel.getDefaultExportFilename();
-        File defaultFile = File::getSpecialLocation(File::userDesktopDirectory).getChildFile(defaultFilename);
+        
+        // Get last export directory from utility function
+        File lastExportDir = Helpers::getLastCsvExportDirectory();
+        File defaultFile = lastExportDir.getChildFile(defaultFilename);
         
         FileChooser fileChooser("Save Tuning Data as CSV",
                                defaultFile,
@@ -367,6 +371,9 @@ TuningPreviewComponent::TuningPreviewComponent()
             String csvData = viewModel.exportToCSV();
 
             if (selectedFile.replaceWithText(csvData)) {
+                // Save the directory for next time using utility function
+                Helpers::setLastCsvExportDirectory(selectedFile.getParentDirectory());
+                
                 AlertWindow::showMessageBox(AlertWindow::InfoIcon,
                                           "Export Successful",
                                           "Tuning data exported to:\n" + selectedFile.getFullPathName());

@@ -277,4 +277,34 @@ te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionMa
 //     return TimecodeDisplayFormat::toFullTimecode (time, getSubSecondDivisions());
 // }
 
-}  // namespace MoToolHelpers
+File getLastCsvExportDirectory() {
+    PropertiesFile::Options options;
+    options.applicationName = CharPointer_UTF8(ProjectInfo::projectName);
+    options.filenameSuffix = ".settings";
+    options.osxLibrarySubFolder = "Application Support";
+    
+    PropertiesFile settings(options);
+    String lastExportPath = settings.getValue("lastCsvExportDirectory", 
+                                             File::getSpecialLocation(File::userDesktopDirectory).getFullPathName());
+    File lastExportDir(lastExportPath);
+    
+    // If the saved directory doesn't exist anymore, fallback to desktop
+    if (!lastExportDir.exists() || !lastExportDir.isDirectory()) {
+        return File::getSpecialLocation(File::userDesktopDirectory);
+    }
+    
+    return lastExportDir;
+}
+
+void setLastCsvExportDirectory(const File& directory) {
+    PropertiesFile::Options options;
+    options.applicationName = CharPointer_UTF8(ProjectInfo::projectName);
+    options.filenameSuffix = ".settings";
+    options.osxLibrarySubFolder = "Application Support";
+    
+    PropertiesFile settings(options);
+    settings.setValue("lastCsvExportDirectory", directory.getFullPathName());
+    settings.saveIfNeeded();
+}
+
+}  // namespace MoTool::Helpers

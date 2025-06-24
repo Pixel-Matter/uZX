@@ -92,17 +92,35 @@ struct TuningNote {
     }
 };
 
-class TuningViewModel : public ChangeBroadcaster {
+class TuningViewModel : public ChangeBroadcaster, private Value::Listener {
 public:
     // Any UI component can now listen to tuning system changes by implementing ChangeListener
     // and calling viewModel.addChangeListener(this) in their constructor
     TuningViewModel()
         : transientState("TuningView")
+        , currentScale(Scale::ScaleType::IonianOrMajor)
+        , currentKey(Scale::Key::C)
         , chipCapabilities {16, Range<int>(1, 4096)}
         // , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
-        , currentScale(Scale::ScaleType::IonianOrMajor)
-        , currentTonic(Scale::Key::C)
     {
+        // Initialize Value objects for UI binding
+        a4FrequencyValue = 440.0;
+        clockFrequencyValue = 1.7734; // MHz
+        chipClockIndexValue = static_cast<int>(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz);
+        tuningTableIndexValue = 0;
+
+        // Initialize scale/key values
+        scaleValue = static_cast<int>(Scale::ScaleType::IonianOrMajor);
+        keyValue = static_cast<int>(Scale::Key::C);
+        
+        // Set up Value listeners for bidirectional sync
+        scaleValue.addListener(this);
+        keyValue.addListener(this);
+        a4FrequencyValue.addListener(this);
+        clockFrequencyValue.addListener(this);
+        chipClockIndexValue.addListener(this);
+        tuningTableIndexValue.addListener(this);
+
         // Initialize transient view state
         // TODO handle Custom option to chipClock
         chipClock.referTo(transientState, "chipClock", nullptr,
@@ -119,13 +137,17 @@ public:
         std::vector<TuningNoteName> noteNames;
         noteNames.reserve(12);
 
-        // Get the scale intervals
+        // Get the scale intervals - update cache if needed
+        auto currentScaleType = getCurrentScale();
+        if (currentScale.getType() != currentScaleType) {
+            currentScale = Scale(currentScaleType);
+        }
         auto scaleIntervals = currentScale.getIntervals();
         const auto scaleChromDegrees = currentScale.getChromaticDegrees();
         auto refTuning = tuningSystem ? tuningSystem->getReferenceTuning() : nullptr;
 
         // Build the result
-        const auto keyIdx = static_cast<int>(currentTonic);
+        const auto keyIdx = static_cast<int>(getCurrentKey());
         for (int i = 0; i < 12; ++i) {
             const int semitonesFromKey = (i - keyIdx + 12) % 12;
             noteNames.emplace_back(
@@ -232,7 +254,7 @@ public:
     }
 
     String getScaleName() const {
-        return getKeyName(currentTonic) + " " + currentScale.getName();
+        return getKeyName(getCurrentKey()) + " " + Scale(getCurrentScale()).getName();
     }
 
     String getTuningTypeName() const {
@@ -247,22 +269,40 @@ public:
         return chipCapabilities.registerRange;
     }
 
+    // Value-based binding interface for automatic UI sync
+    Value& getScaleValue() { return scaleValue; }
+    Value& getKeyValue() { return keyValue; }
+    Value& getA4FrequencyValue() { return a4FrequencyValue; }
+    Value& getClockFrequencyValue() { return clockFrequencyValue; }
+    Value& getChipClockIndexValue() { return chipClockIndexValue; }
+    Value& getTuningTableIndexValue() { return tuningTableIndexValue; }
+
     // Scale and Scale::Key selection methods
     Scale::ScaleType getCurrentScale() const {
-        return currentScale.getType();
+        auto scaleType = static_cast<Scale::ScaleType>(static_cast<int>(scaleValue.getValue()));
+        if (currentScale.getType() != scaleType) {
+            currentScale = Scale(scaleType); // Update cache only when needed
+        }
+        return scaleType;
     }
 
     void setCurrentScale(Scale::ScaleType scaleType) {
-        currentScale = Scale(scaleType);
+        scaleValue = static_cast<int>(scaleType);
+        currentScale = Scale(scaleType); // Update cache
+        updateTuningSystem();
         sendChangeMessage();
     }
 
     Scale::Key getCurrentKey() const {
-        return currentTonic;
+        auto key = static_cast<Scale::Key>(static_cast<int>(keyValue.getValue()));
+        currentKey = key; // Always sync cache
+        return key;
     }
 
     void setCurrentKey(Scale::Key key) {
-        currentTonic = key;
+        keyValue = static_cast<int>(key);
+        currentKey = key; // Update cache
+        updateTuningSystem();
         sendChangeMessage();
     }
 
@@ -307,7 +347,8 @@ public:
     void setCurrentTuningTable(int index) {
         if (index != currentTuningTableIndex && index >= 0 && index < getTuningTableNames().size()) {
             currentTuningTableIndex = index;
-            recreateTuningSystem();
+            tuningTableIndexValue = index;
+            recreateTuningSystem(true); // Reset to tuning defaults when changing tuning table
             sendChangeMessage();
         }
     }
@@ -321,35 +362,46 @@ public:
     }
 
     int getCurrentChipClockIndex() const {
-        return static_cast<int>(chipClock.get().value);
+        return static_cast<int>(chipClockIndexValue.getValue());
+    }
+    
+    uZX::ChipClockChoice getCurrentChipClock() const {
+        return uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(static_cast<int>(chipClockIndexValue.getValue())));
     }
 
     void setChipClockChoice(int index) {
         if (index >= 0 && index < static_cast<int>(uZX::ChipClockChoice::size())) {
-            chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(index));
-            // Call updateChipCapabilities directly since Value::Listener doesn't work reliably with custom types
+            chipClockIndexValue = index;
             updateParameters();
         }
     }
 
     double getA4Frequency() const {
-        return a4Frequency.get();
+        return a4FrequencyValue.getValue();
     }
 
     void setA4Frequency(double frequency) {
-        setParameterWithValidation(a4Frequency, frequency, 220.0, 880.0);
+        if (frequency >= 220.0 && frequency <= 880.0) {
+            a4FrequencyValue = frequency;
+            updateTuningSystem();
+            sendChangeMessage();
+        }
     }
 
     double getClockFrequency() const {
-        return clockFrequency.get();
+        return static_cast<double>(clockFrequencyValue.getValue()) * 1000000.0; // Convert MHz to Hz
     }
 
     void setClockFrequency(double frequency) {
-        setParameterWithValidation(clockFrequency, frequency, 1000000.0, 2000000.0);
+        if (frequency >= 1000000.0 && frequency <= 2000000.0) {
+            clockFrequencyValue = frequency / 1000000.0; // Store as MHz
+            updateTuningSystem();
+            sendChangeMessage();
+        }
     }
 
     bool isCustomClockEnabled() const {
-        return chipClock.get().value == uZX::ChipClockEnum::Custom;
+        return static_cast<int>(chipClockIndexValue.getValue()) == static_cast<int>(uZX::ChipClockEnum::Custom);
     }
 
     String exportToCSV() const {
@@ -445,35 +497,88 @@ public:
     // TODO Tuning table editing? What bindings to use?
 
 private:
+    // Value::Listener implementation for bidirectional sync
+    void valueChanged(Value& value) override {
+        if (value.refersToSameSourceAs(scaleValue)) {
+            auto newScale = static_cast<Scale::ScaleType>(static_cast<int>(value.getValue()));
+            if (newScale != currentScale.getType()) {
+                currentScale = Scale(newScale); // Update cache
+                updateTuningSystem();
+                sendChangeMessage();
+            }
+        }
+        else if (value.refersToSameSourceAs(keyValue)) {
+            auto newKey = static_cast<Scale::Key>(static_cast<int>(value.getValue()));
+            if (newKey != currentKey) {
+                currentKey = newKey; // Update cache
+                updateTuningSystem();
+                sendChangeMessage();
+            }
+        }
+        else if (value.refersToSameSourceAs(a4FrequencyValue)) {
+            double newFreq = value.getValue();
+            if (newFreq >= 220.0 && newFreq <= 880.0) {
+                updateTuningSystem();
+                sendChangeMessage();
+            }
+        }
+        else if (value.refersToSameSourceAs(clockFrequencyValue)) {
+            double newFreqMHz = value.getValue();
+            if (newFreqMHz >= 1.0 && newFreqMHz <= 2.0) {
+                updateTuningSystem();
+                sendChangeMessage();
+            }
+        }
+        else if (value.refersToSameSourceAs(chipClockIndexValue)) {
+            int newIndex = static_cast<int>(value.getValue());
+            if (newIndex >= 0 && newIndex < static_cast<int>(uZX::ChipClockChoice::size())) {
+                updateParameters();
+            }
+        }
+        else if (value.refersToSameSourceAs(tuningTableIndexValue)) {
+            int newIndex = value.getValue();
+            if (newIndex != currentTuningTableIndex) {
+                setCurrentTuningTable(newIndex);
+            }
+        }
+    }
+
     void initTuningSystem() {
         // TODO scale and root note
         chipCapabilities.divider = 16;
         currentTuningTableIndex = 0; // Equal Temperament
-        recreateTuningSystem();
+        recreateTuningSystem(true); // Apply defaults during initialization
     }
 
-    void recreateTuningSystem() {
+    void recreateTuningSystem(bool applyDefaults = false) {
         auto tuningType = static_cast<BuiltinTuningType>(currentTuningTableIndex);
 
-        // move to class properties
         TuningOptions options {
             .tableType = tuningType,
             .capabilities = chipCapabilities,
             .temperamentType = TemperamentType::EqualTemperament, // TODO from view property
-            .tonic = currentTonic,
-            .scaleType = currentScale.getType(),
-            .chipChoice = findBestMatchingClockPreset(clockFrequency.get()),
-            .chipClock = clockFrequency.get(),
-            .a4Frequency = a4Frequency.get()
+            .tonic = getCurrentKey(),
+            .scaleType = getCurrentScale(),
+            .chipChoice = getCurrentChipClock(),
+            .chipClock = getClockFrequency(),
+            .a4Frequency = getA4Frequency()
         };
 
         tuningSystem = makeBuiltinTuning(options);
 
-        if (tuningSystem) {
-            // TODO make an option
-            // temperamentType = options.temperamentType;
-            currentTonic = options.tonic;
+        if (tuningSystem && applyDefaults) {
+            // Apply tuning defaults when changing tuning table or initializing
+            keyValue = static_cast<int>(options.tonic);
+            scaleValue = static_cast<int>(options.scaleType);
+            currentKey = options.tonic;
             currentScale = Scale(options.scaleType);
+            
+            // Update Value objects to match the new defaults
+            chipClockIndexValue = static_cast<int>(options.chipChoice.value);
+            clockFrequencyValue = options.chipClock / 1000000.0; // Convert Hz to MHz
+            a4FrequencyValue = options.a4Frequency;
+            
+            // Keep CachedValues in sync for ValueTree persistence
             chipClock = options.chipChoice;
             clockFrequency = options.chipClock;
             a4Frequency = options.a4Frequency;
@@ -481,37 +586,32 @@ private:
     }
 
     void updateTuningSystem() {
-        tuningSystem->setA4Frequency(a4Frequency.get());
-        tuningSystem->setClockFrequency(clockFrequency.get());
-        tuningSystem->setTonic(currentTonic);
+        tuningSystem->setA4Frequency(getA4Frequency());
+        tuningSystem->setClockFrequency(getClockFrequency());
+        tuningSystem->setTonic(getCurrentKey());
         // TODO set reference tuning
         // tuningSystem->setReferenceTuning(...)
     }
 
     void updateParameters() {
-        auto choice = chipClock.get();
-        int index = static_cast<int>(choice.value);
+        int index = static_cast<int>(chipClockIndexValue.getValue());
 
         if (index != uZX::ChipClockEnum::Custom) {
-            clockFrequency = uZX::ChipClockEnum::clockValues[index];
+            // Update clock frequency when preset is selected
+            double presetFreq = uZX::ChipClockEnum::clockValues[index];
+            clockFrequencyValue = presetFreq / 1000000.0; // Convert to MHz
         }
 
         // Always update tuning system when parameters change
-        recreateTuningSystem();
+        recreateTuningSystem(false); // Don't override user's current settings
 
         // Notify all registered listeners that the tuning system has changed
         sendChangeMessage();
     }
 
     // Helper methods
-    template<typename T>
-    void setParameterWithValidation(CachedValue<T>& parameter, T value, T minValue, T maxValue) {
-        if (value >= minValue && value <= maxValue) {
-            parameter = value;
-            updateTuningSystem();
-            sendChangeMessage();
-        }
-    }
+    // Helper method for finding best matching clock preset
+    // (old setParameterWithValidation method removed as Values are now authoritative)
 
     int findBestMatchingClockPreset(double frequency) {
         int bestMatch = static_cast<int>(uZX::ChipClockEnum::Custom); // Default to Custom
@@ -531,6 +631,22 @@ private:
 
     // Transient view state
     ValueTree transientState;
+
+    // Value objects for automatic UI binding (single source of truth)
+    Value a4FrequencyValue;        // Hz - authoritative source
+    Value clockFrequencyValue;     // MHz for UI - authoritative source  
+    Value chipClockIndexValue;     // Index - authoritative source
+    Value tuningTableIndexValue;
+
+    // Value objects for scale/key with single source of truth approach
+    Value scaleValue;
+    Value keyValue;
+    
+    // Cached objects derived from values (performance optimization)
+    mutable Scale currentScale;
+    mutable Scale::Key currentKey;
+
+    // Transient view state (for ValueTree persistence)
     CachedValue<uZX::ChipClockChoice> chipClock;
     CachedValue<double> clockFrequency; // Current chip clock frequency in Hz
     CachedValue<double> a4Frequency;
@@ -538,9 +654,6 @@ private:
     ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
     std::unique_ptr<TuningSystem> tuningSystem;
 
-    // Scale and Scale::Key selection
-    Scale currentScale;
-    Scale::Key currentTonic;
 
     // Tuning table selection
     int currentTuningTableIndex = 0;

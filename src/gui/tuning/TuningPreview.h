@@ -44,7 +44,7 @@ private:
 };
 
 
-class TuningPreviewComponent : public juce::Component, private ChangeListener, private ListBoxModel {
+class TuningPreviewComponent : public juce::Component, private ChangeListener, private ListBoxModel, private Value::Listener {
 public:
     TuningPreviewComponent();
     ~TuningPreviewComponent() override;
@@ -63,9 +63,14 @@ private:
     // UI setup helpers
     void setupSlider(Slider& slider, Label& label, const String& labelText,
                      double min, double max, double step, std::function<void()> callback);
+    void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText,
+                                     double min, double max, double step, Value& valueToReference);
     void updateClockControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();
+    
+    // Value::Listener implementation for ListBox sync
+    void valueChanged(Value& value) override;
 
     TuningViewModel viewModel;
 

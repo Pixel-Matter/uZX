@@ -269,44 +269,44 @@ TuningPreviewComponent::TuningPreviewComponent()
 
     // Set up tuning table ListBox
     tuningTableLabel.setText("Tuning Tables:", juce::dontSendNotification);
-    tuningTableListBox.setModel(this);
-    tuningTableListBox.setMultipleSelectionEnabled(false);
-    tuningTableListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);
+    tuningsListBox.setModel(this);
+    tuningsListBox.setMultipleSelectionEnabled(false);
+    tuningsListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);
 
     addAndMakeVisible(tuningTableLabel);
-    addAndMakeVisible(tuningTableListBox);
+    addAndMakeVisible(tuningsListBox);
 
     // Set up Key selection ComboBox
-    addAndMakeVisible(KeyScaleLabel);
-    addAndMakeVisible(KeySelect);
-    addAndMakeVisible(ScaleSelect);
+    addAndMakeVisible(keyScaleLabel);
+    addAndMakeVisible(keySelect);
+    addAndMakeVisible(scaleSelect);
 
-    KeyScaleLabel.setText("Scale:", juce::dontSendNotification);
-    KeyScaleLabel.setJustificationType(juce::Justification::centredRight);
+    keyScaleLabel.setText("Scale:", juce::dontSendNotification);
+    keyScaleLabel.setJustificationType(juce::Justification::centredRight);
 
     auto keyNames = viewModel.getKeyNames();
     for (int i = 0; i < keyNames.size(); ++i) {
-        KeySelect.addItem(keyNames[i], i + 1);
+        keySelect.addItem(keyNames[i], i + 1);
     }
-    KeySelect.setSelectedId(static_cast<int>(viewModel.getCurrentKey()) + 1, juce::dontSendNotification);
-    KeySelect.onChange = [this]() {
-        int selectedId = KeySelect.getSelectedId();
+    keySelect.setSelectedId(static_cast<int>(viewModel.getCurrentKey()) + 1, juce::dontSendNotification);
+    keySelect.onChange = [this]() {
+        int selectedId = keySelect.getSelectedId();
         if (selectedId > 0) {
             viewModel.setCurrentKey(static_cast<Scale::Key>(selectedId - 1));
         }
     };
 
     // Set up Chip Clock selection ComboBox
-    ChipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
-    ChipClockLabel.setJustificationType(juce::Justification::centredRight);
+    chipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
+    chipClockLabel.setJustificationType(juce::Justification::centredRight);
 
     auto chipClockLabels = viewModel.getChipClockLabels();
     for (int i = 0; i < chipClockLabels.size(); ++i) {
-        ChipClockSelect.addItem(chipClockLabels[i], i + 1);
+        chipClockSelect.addItem(chipClockLabels[i], i + 1);
     }
-    ChipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
-    ChipClockSelect.onChange = [this]() {
-        int selectedId = ChipClockSelect.getSelectedId();
+    chipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
+    chipClockSelect.onChange = [this]() {
+        int selectedId = chipClockSelect.getSelectedId();
         if (selectedId > 0) {
             viewModel.setChipClockChoice(selectedId - 1); // Convert from 1-based ID to 0-based index
             updateClockControlsState();
@@ -333,21 +333,21 @@ TuningPreviewComponent::TuningPreviewComponent()
     // Set up Scale selection ComboBox with category grouping
     setupScaleSelectMenu();
     updateScaleSelection();
-    KeyScaleLabel.setText("Scale:", juce::dontSendNotification);
+    keyScaleLabel.setText("Scale:", juce::dontSendNotification);
 
     // Register as a change listener to the view model
     viewModel.addChangeListener(this);
     // TuningTypeLabel.setText("Tuning Type: " + viewModel.getTuningTypeName(), juce::dontSendNotification);
-    TuningNameLabel.setText("Tuning: " + viewModel.getTuningDescription(), juce::dontSendNotification);
+    tuningNameLabel.setText("Tuning: " + viewModel.getTuningDescription(), juce::dontSendNotification);
     // ToneEnvSwitchLabel.setText("Tone Env Switch: " + String(viewModel.isToneEnvSwitchEnabled()), juce::dontSendNotification);
 
-    addAndMakeVisible(ChipClockLabel);
-    addAndMakeVisible(ChipClockSelect);
+    addAndMakeVisible(chipClockLabel);
+    addAndMakeVisible(chipClockSelect);
 
 
     // addAndMakeVisible(TuningTypeLabel);
-    addAndMakeVisible(TuningNameLabel);
-    addAndMakeVisible(ToneEnvSwitchLabel);
+    addAndMakeVisible(tuningNameLabel);
+    addAndMakeVisible(toneEnvSwitchLabel);
     addAndMakeVisible(tuningGrid);
 
     // Connect tooltip window to grid
@@ -406,22 +406,22 @@ void TuningPreviewComponent::resized() {
     // Left column: Tuning table selection
     tuningTableLabel.setBounds(leftColumn.removeFromTop(rowHeight));
     // leftColumn.removeFromTop(gap / 2);
-    tuningTableListBox.setBounds(leftColumn); // Take remaining space in left column
+    tuningsListBox.setBounds(leftColumn); // Take remaining space in left column
 
     // Right column: Other controls and tuning grid
     // Place KeySelect and ScaleSelect on the same row with fixed widths
     auto labelsColWidth = moduleWidth * 2; // Width for labels
     auto keyScaleRow = rightColumn.removeFromTop(rowHeight);
-    KeyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
-    KeySelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth));
+    keyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
+    keySelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth));
     keyScaleRow.removeFromLeft(gap);
-    ScaleSelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth * 3 - gap));
+    scaleSelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth * 3 - gap));
 
     rightColumn.removeFromTop(gap);
 
     auto chipLabelRow = rightColumn.removeFromTop(rowHeight);
-    ChipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
-    ChipClockSelect.setBounds(chipLabelRow.removeFromLeft(moduleWidth * 4));
+    chipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
+    chipClockSelect.setBounds(chipLabelRow.removeFromLeft(moduleWidth * 4));
 
     rightColumn.removeFromTop(gap);
 
@@ -440,8 +440,8 @@ void TuningPreviewComponent::resized() {
     rightColumn.removeFromTop(gap);
 
     // TuningTypeLabel.setBounds(rightColumn.removeFromTop(controlHeight));
-    TuningNameLabel.setBounds(rightColumn.removeFromTop(rowHeight));
-    ToneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
+    tuningNameLabel.setBounds(rightColumn.removeFromTop(rowHeight));
+    toneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
 
     rightColumn.removeFromTop(gap);
 
@@ -464,7 +464,7 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
 
         // Update the tuning name label to reflect the new tuning system
-        TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
+        tuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
 
         // Update A4 frequency slider to reflect current value
         a4FrequencySlider.setValue(viewModel.getA4Frequency(), juce::dontSendNotification);
@@ -473,13 +473,13 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
         clockFrequencySlider.setValue(viewModel.getClockFrequency() / 1000000.0, juce::dontSendNotification);
 
         // Update chip clock selection to reflect current choice
-        ChipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
+        chipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
 
         // Update enabled state of clock frequency controls
         updateClockControlsState();
 
         // Update tuning table selection
-        tuningTableListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);
+        tuningsListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);
 
         // Update scale selection
         updateScaleSelection();
@@ -537,7 +537,7 @@ void TuningPreviewComponent::updateClockControlsState() {
 
 void TuningPreviewComponent::setupScaleSelectMenu() {
     // Clear any existing items and mapping
-    ScaleSelect.clear();
+    scaleSelect.clear();
     scaleMenuMapping.clear();
 
     // Get all scale categories
@@ -563,7 +563,7 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
             scaleMenuMapping[menuItemId] = scaleType;
 
             // Also add to ComboBox for text display purposes
-            ScaleSelect.addItem(scaleName, menuItemId);
+            scaleSelect.addItem(scaleName, menuItemId);
             menuItemId++;
         }
 
@@ -574,11 +574,11 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
     }
 
     // Replace the ComboBox's root menu with our grouped menu
-    *ScaleSelect.getRootMenu() = rootMenu;
+    *scaleSelect.getRootMenu() = rootMenu;
 
     // Set up the onChange callback to handle selection
-    ScaleSelect.onChange = [this]() {
-        int selectedId = ScaleSelect.getSelectedId();
+    scaleSelect.onChange = [this]() {
+        int selectedId = scaleSelect.getSelectedId();
         if (selectedId > 0 && scaleMenuMapping.find(selectedId) != scaleMenuMapping.end()) {
             Scale::ScaleType selectedScale = scaleMenuMapping[selectedId];
             viewModel.setCurrentScale(selectedScale);
@@ -594,14 +594,14 @@ void TuningPreviewComponent::updateScaleSelection() {
     // Find the corresponding menu item ID
     for (const auto& [itemId, scaleType] : scaleMenuMapping) {
         if (scaleType == currentScale) {
-            ScaleSelect.setSelectedId(itemId, juce::dontSendNotification);
+            scaleSelect.setSelectedId(itemId, juce::dontSendNotification);
             break;
         }
     }
 
     // If we can't find it in the mapping, set the text directly
-    if (ScaleSelect.getSelectedId() == 0) {
-        ScaleSelect.setText(currentScaleName, juce::dontSendNotification);
+    if (scaleSelect.getSelectedId() == 0) {
+        scaleSelect.setText(currentScaleName, juce::dontSendNotification);
     }
 }
 

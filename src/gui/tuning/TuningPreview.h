@@ -62,7 +62,7 @@ private:
 
     // UI setup helpers
     void setupSlider(Slider& slider, Label& label, const String& labelText,
-                    double min, double max, double step, std::function<void()> callback);
+                     double min, double max, double step, std::function<void()> callback);
     void updateClockControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();
@@ -74,23 +74,23 @@ private:
 
     // Tuning table selection
     Label tuningTableLabel;
-    ListBox tuningTableListBox;
+    ListBox tuningsListBox;
 
-    Label ChipClockLabel;
-    ComboBox ChipClockSelect;
+    Label chipClockLabel;
+    ComboBox chipClockSelect;
     Slider clockFrequencySlider;
     Label clockFrequencyLabel;
     Slider a4FrequencySlider;
     Label a4FrequencyLabel;
 
     // Scale and Key selection
-    Label KeyScaleLabel;
-    ComboBox KeySelect;
-    ComboBox ScaleSelect;
+    Label keyScaleLabel;
+    ComboBox keySelect;
+    ComboBox scaleSelect;
 
-    Label TuningTypeLabel;
-    Label TuningNameLabel;
-    Label ToneEnvSwitchLabel;
+    Label tuningTypeLabel;
+    Label tuningNameLabel;
+    Label toneEnvSwitchLabel;
 
     TextButton exportButton;
 

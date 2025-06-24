@@ -23,6 +23,7 @@ public:
 
 private:
     static constexpr int cellWidth = 56;
+    static constexpr int firstCellWidth = cellWidth / 2;
     static constexpr int cellHeight = 32;
     static constexpr int headerRowHeight = 24;
     static constexpr int gridYOffset = static_cast<int>(headerRowHeight * 3.5);
@@ -90,6 +91,8 @@ private:
     Label TuningTypeLabel;
     Label TuningNameLabel;
     Label ToneEnvSwitchLabel;
+
+    TextButton exportButton;
 
     TuningPreviewGrid tuningGrid;
     TooltipWindow tooltipWindow;

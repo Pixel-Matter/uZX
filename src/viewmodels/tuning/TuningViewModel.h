@@ -81,8 +81,7 @@ struct TuningNote {
             hearableInfo = "Ultrasonic (inaudible)";
         }
 
-        return String::formatted("%s: MIDI %s\nTracker note: %s\nPeriod: %d\nFrequency: %s\n%s\nOfftune: %+.1f cents",
-                                name.toUTF8(),
+        return name + String::formatted(": MIDI %s\nTracker note: %s\nPeriod: %d\nFrequency: %s\n%s\nOfftune: %+.1f cents",
                                 midiInfo.toUTF8(),
                                 trackerInfo.toUTF8(),
                                 period,
@@ -351,6 +350,84 @@ public:
 
     bool isCustomClockEnabled() const {
         return chipClock.get().value == uZX::ChipClockEnum::Custom;
+    }
+
+    String exportToCSV() const {
+        String csv;
+
+        // CSV Header with metadata
+        // csv += "# Tuning System Export\n";
+        // csv += "# Tuning: " + getTuningName() + "\n";
+        // csv += "# Type: " + getTuningTypeName() + "\n";
+        // csv += "# Scale: " + getScaleName() + "\n";
+        // csv += "# Clock Frequency: " + String(getClockFrequency(), 0) + " Hz\n";
+        // csv += "# A4 Frequency: " + String(getA4Frequency(), 1) + " Hz\n";
+        // csv += "#\n";
+
+        // CSV Data Header
+        csv += "MIDI,Note,Period\n";
+
+        // Export data for each octave
+        auto octaveRange = getOctaveRange();
+        for (int octave = octaveRange.getStart(); octave < octaveRange.getEnd(); ++octave) {
+            auto octaveNotes = getOctaveNotes(octave);
+            for (const auto& note : octaveNotes) {
+                // MIDI note
+                csv += (note.isInMidiRange() ? String(note.midiNote) : "N/A") + ",";
+
+                // Note name - convert to ASCII compatible format
+                String asciiNoteName = note.name;
+                asciiNoteName = asciiNoteName.replace(String::fromUTF8("♯"), "#");
+                asciiNoteName = asciiNoteName.replace(String::fromUTF8("♭"), "b");
+                csv += asciiNoteName + ",";
+
+                // Period
+                csv += String(note.period) + "\n";
+            }
+        }
+
+        return csv;
+    }
+
+    String getDefaultExportFilename() const {
+        // Create a descriptive filename from tuning details
+        String filename = getTuningName();
+
+        // Add scale info if not already included
+        String scaleName = getScaleName();
+        if (!filename.containsIgnoreCase(scaleName)) {
+            filename += " - " + scaleName;
+        }
+
+        // Add A4 frequency if not standard 440Hz
+        if (std::abs(getA4Frequency() - 440.0) > 0.1) {
+            filename += " - A4=" + String(getA4Frequency(), 1) + "Hz";
+        }
+
+        // Replace invalid filename characters
+        filename = filename.replaceCharacter('/', '-')
+                          .replaceCharacter('\\', '-')
+                          .replaceCharacter(':', '-')
+                          .replaceCharacter('*', '-')
+                          .replaceCharacter('?', '-')
+                          .replaceCharacter('"', '\'')
+                          .replaceCharacter('<', '-')
+                          .replaceCharacter('>', '-')
+                          .replaceCharacter('|', '-')
+                          .replaceCharacter('#', '-');
+
+        // Remove multiple consecutive spaces and dashes
+        while (filename.contains("  ")) {
+            filename = filename.replace("  ", " ");
+        }
+        while (filename.contains("--")) {
+            filename = filename.replace("--", "-");
+        }
+
+        // Add extension
+        filename += ".csv";
+
+        return filename;
     }
 
     // // State persistence methods

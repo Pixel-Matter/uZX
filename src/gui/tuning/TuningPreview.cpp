@@ -63,10 +63,10 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
     g.fillAll(Colors::Theme::backgroundAlt);
     auto bounds = getLocalBounds();
-    bounds.setWidth(cellWidth * (cols + 2));
-    // center the grid horizontally
-    bounds.setX((getWidth() - bounds.getWidth()) / 2);
+    // bounds.setX(0);
     bounds.removeFromTop(headerRowHeight / 2);
+    bounds.setWidth(cellWidth * (cols + 1));
+
     auto gridY = bounds.getY();
     auto gridBottom = bounds.getBottom();
 
@@ -74,7 +74,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
     {
         auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
-        gridCell.translate(cellWidth, 0);
+        gridCell.translate(firstCellWidth, 0);
         for (const auto& column : columns) {
             // drawCenterTick(gridCell);
             drawColumnHeader(column, gridCell, column.tuning);
@@ -83,7 +83,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
     {
         auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
-        gridCell.translate(cellWidth, 0);
+        gridCell.translate(firstCellWidth, 0);
         for (const auto& column : columns) {
             drawCenterTick(gridCell);
             drawColumnHeader(column, gridCell, column.degree.toString());
@@ -92,7 +92,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
     {
         auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
-        gridCell.translate(cellWidth, 0);
+        gridCell.translate(firstCellWidth, 0);
         for (const auto& column : columns) {
             drawCenterTick(gridCell);
             drawColumnHeader(column, gridCell, column.name);
@@ -104,8 +104,13 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
         auto gridCell = bounds.removeFromTop(cellHeight).withSize(cellWidth, cellHeight);
 
         g.setColour(Colors::Theme::textPrimary);
-        g.drawText(String::formatted("%d", octave), gridCell.withTrimmedRight(8), juce::Justification::right, true);
-        gridCell.translate(cellWidth, 0);
+        g.drawText(
+            String::formatted("%d", octave),
+            gridCell.withWidth(firstCellWidth).withTrimmedRight(8),
+            juce::Justification::right, true
+        );
+        gridCell.translate(firstCellWidth, 0);
+
         for (const auto& note : viewModel.getOctaveNotes(octave)) {
             float offtune = jlimit(-0.5f, 0.5f, (float) note.offtune / 100.0f); // Normalize offtune to -0.5 to 0.5 range
 
@@ -183,7 +188,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
     // Draw vertical line at the root note column (current key)
     {
         const int rootColumnIndex = static_cast<int>(viewModel.getCurrentKey());
-        const int rootColumnX = bounds.getX() + cellWidth + rootColumnIndex * cellWidth;
+        const int rootColumnX = bounds.getX() + firstCellWidth + rootColumnIndex * cellWidth;
         g.setColour(Colors::Theme::primary.withAlpha(0.5f));
         g.fillRect(rootColumnX, gridY, 2, gridBottom - gridY);
     }
@@ -219,7 +224,7 @@ bool TuningPreviewGrid::findNoteAtPosition(Point<int> position, TuningNote& outN
     }
 
     // Calculate which note column we're in
-    const int notesStartX = bounds.getX() + cellWidth; // Skip octave label column
+    const int notesStartX = bounds.getX() + firstCellWidth; // Skip octave label column
     const int relativeX = position.x - notesStartX;
 
     if (relativeX < 0) {
@@ -346,6 +351,33 @@ TuningPreviewComponent::TuningPreviewComponent()
 
     // Connect tooltip window to grid
     tuningGrid.setTooltipWindow(&tooltipWindow);
+
+    // Set up export button
+    exportButton.setButtonText("Export to CSV");
+    exportButton.onClick = [this]() {
+        String defaultFilename = viewModel.getDefaultExportFilename();
+        File defaultFile = File::getSpecialLocation(File::userDesktopDirectory).getChildFile(defaultFilename);
+        
+        FileChooser fileChooser("Save Tuning Data as CSV",
+                               defaultFile,
+                               "*.csv");
+
+        if (fileChooser.browseForFileToSave(true)) {
+            File selectedFile = fileChooser.getResult();
+            String csvData = viewModel.exportToCSV();
+
+            if (selectedFile.replaceWithText(csvData)) {
+                AlertWindow::showMessageBox(AlertWindow::InfoIcon,
+                                          "Export Successful",
+                                          "Tuning data exported to:\n" + selectedFile.getFullPathName());
+            } else {
+                AlertWindow::showMessageBox(AlertWindow::WarningIcon,
+                                          "Export Failed",
+                                          "Failed to save file:\n" + selectedFile.getFullPathName());
+            }
+        }
+    };
+    addAndMakeVisible(exportButton);
 }
 
 TuningPreviewComponent::~TuningPreviewComponent() {
@@ -404,7 +436,16 @@ void TuningPreviewComponent::resized() {
     TuningNameLabel.setBounds(rightColumn.removeFromTop(rowHeight));
     ToneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
 
+    rightColumn.removeFromTop(gap);
+
+    // Reserve space for export button at bottom
+    auto exportButtonArea = rightColumn.removeFromBottom(rowHeight);
+    rightColumn.removeFromBottom(gap);
+
     tuningGrid.setBounds(rightColumn);
+
+    // Export button below the grid
+    exportButton.setBounds(exportButtonArea.removeFromLeft(moduleWidth * 2));
 }
 
 void TuningPreviewComponent::paint(juce::Graphics& g) {

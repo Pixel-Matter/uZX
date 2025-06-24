@@ -272,7 +272,7 @@ TuningPreviewComponent::TuningPreviewComponent()
     tuningsListBox.setModel(this);
     tuningsListBox.setMultipleSelectionEnabled(false);
     tuningsListBox.selectRow(viewModel.getCurrentTuningTableIndex(), false, false);
-    
+
     // Set up Value binding for tuning table selection
     // Note: ListBox doesn't have direct Value binding, so we'll use a custom approach
     viewModel.getTuningTableIndexValue().addListener(this);
@@ -481,7 +481,7 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
         // Repaint the tuning grid to show updated calculations
         tuningGrid.repaint();
 
-        // Note: A4 frequency and clock frequency sliders are now automatically 
+        // Note: A4 frequency and clock frequency sliders are now automatically
         // synchronized via Value binding, so no manual updates needed
     }
 }
@@ -531,10 +531,10 @@ void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& 
     slider.setRange(min, max, step);
     slider.setSliderStyle(Slider::LinearHorizontal);
     slider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
-    
+
     // Use Value binding for automatic bidirectional sync
     slider.getValueObject().referTo(valueToReference);
-    
+
     label.setText(labelText, juce::dontSendNotification);
     label.setJustificationType(juce::Justification::centredRight);
 
@@ -601,7 +601,7 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
 
 void TuningPreviewComponent::updateScaleSelection() {
     // Update the ComboBox text to show the current scale
-    Scale::ScaleType currentScale = viewModel.getCurrentScale();
+    Scale::ScaleType currentScale = viewModel.getCurrentScaleType();
     String currentScaleName = Scale::getNameForType(currentScale);
 
     // Find the corresponding menu item ID

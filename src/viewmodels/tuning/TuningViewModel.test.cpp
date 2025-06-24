@@ -14,7 +14,7 @@ public:
 
             // Default should be C Major
             expectEquals(static_cast<int>(viewModel.getCurrentKey()), static_cast<int>(Scale::Key::C));
-            expectEquals(static_cast<int>(viewModel.getCurrentScale()), static_cast<int>(Scale::ScaleType::IonianOrMajor));
+            expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::IonianOrMajor));
             expectEquals(viewModel.getScaleName(), String("C Major (Ionian)"));
 
             // Check that C Major scale notes are in scale
@@ -45,7 +45,7 @@ public:
             viewModel.setCurrentScale(Scale::ScaleType::AeolianOrMinor);
 
             expectEquals(static_cast<int>(viewModel.getCurrentKey()), static_cast<int>(Scale::Key::A));
-            expectEquals(static_cast<int>(viewModel.getCurrentScale()), static_cast<int>(Scale::ScaleType::AeolianOrMinor));
+            expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::AeolianOrMinor));
             expectEquals(viewModel.getScaleName(), String("A Minor (Aeolian)"));
 
             // Check that A Minor scale notes are in scale
@@ -216,7 +216,7 @@ public:
                 // First field should be MIDI note, second should be note name
                 expect(fields[0].containsOnly("0123456789") || fields[0] == "N/A", "First field should be MIDI note number");
                 expect(fields[1].contains("C0"), "Second field should contain note name C0");
-                
+
                 // Check that note names use ASCII characters
                 expect(!firstDataRow.contains(String::fromUTF8("♯")), "Should not contain Unicode sharp");
                 expect(!firstDataRow.contains(String::fromUTF8("♭")), "Should not contain Unicode flat");
@@ -228,20 +228,20 @@ public:
 
             String csvData2 = viewModel.exportToCSV();
             expect(csvData2.isNotEmpty(), "CSV data should not be empty for different scale");
-            
+
             // Test ASCII character conversion - should only use sharps, no flats
             String csvData3 = viewModel.exportToCSV();
             expect(!csvData3.contains(String::fromUTF8("♯")), "Should not contain Unicode sharp character");
             expect(!csvData3.contains(String::fromUTF8("♭")), "Should not contain Unicode flat character");
             expect(csvData3.contains("#"), "Should contain ASCII sharp character");
-            
+
             // Verify only sharps are used, no flats
             expect(!csvData3.contains("Db"), "Should not contain Db (use C# instead)");
             expect(!csvData3.contains("Eb"), "Should not contain Eb (use D# instead)");
             expect(!csvData3.contains("Gb"), "Should not contain Gb (use F# instead)");
             expect(!csvData3.contains("Ab"), "Should not contain Ab (use G# instead)");
             expect(!csvData3.contains("Bb"), "Should not contain Bb (use A# instead)");
-            
+
             // Verify sharps are present
             expect(csvData3.contains("C#"), "Should contain C#");
             expect(csvData3.contains("D#"), "Should contain D#");

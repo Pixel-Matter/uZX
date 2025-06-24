@@ -112,7 +112,7 @@ public:
         // Initialize scale/key values
         scaleValue = static_cast<int>(Scale::ScaleType::IonianOrMajor);
         keyValue = static_cast<int>(Scale::Key::C);
-        
+
         // Set up Value listeners for bidirectional sync
         scaleValue.addListener(this);
         keyValue.addListener(this);
@@ -135,7 +135,7 @@ public:
         noteNames.reserve(12);
 
         // Get the scale intervals - update cache if needed
-        auto currentScaleType = getCurrentScale();
+        auto currentScaleType = getCurrentScaleType();
         if (currentScale.getType() != currentScaleType) {
             currentScale = Scale(currentScaleType);
         }
@@ -251,7 +251,7 @@ public:
     }
 
     String getScaleName() const {
-        return getKeyName(getCurrentKey()) + " " + Scale(getCurrentScale()).getName();
+        return getKeyName(getCurrentKey()) + " " + Scale(getCurrentScaleType()).getName();
     }
 
     String getTuningTypeName() const {
@@ -275,7 +275,7 @@ public:
     Value& getTuningTableIndexValue() { return tuningTableIndexValue; }
 
     // Scale and Scale::Key selection methods
-    Scale::ScaleType getCurrentScale() const {
+    Scale::ScaleType getCurrentScaleType() const {
         auto scaleType = static_cast<Scale::ScaleType>(static_cast<int>(scaleValue.getValue()));
         if (currentScale.getType() != scaleType) {
             currentScale = Scale(scaleType); // Update cache only when needed
@@ -322,10 +322,7 @@ public:
     }
 
     static String getKeyName(Scale::Key key) {
-        static constexpr std::array<std::string_view, 12> keyNames = {
-            "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"
-        };
-        return String::fromUTF8(keyNames[static_cast<size_t>(key)].data());
+        return String::fromUTF8(chromaticNoteNames[static_cast<size_t>(key)].data());
     }
 
     // Tuning table selection methods
@@ -361,7 +358,7 @@ public:
     int getCurrentChipClockIndex() const {
         return static_cast<int>(chipClockIndexValue.getValue());
     }
-    
+
     uZX::ChipClockChoice getCurrentChipClock() const {
         int valueIndex = static_cast<int>(chipClockIndexValue.getValue());
         if (static_cast<int>(currentChipClock.value) != valueIndex) {
@@ -386,15 +383,6 @@ public:
         return currentA4Frequency;
     }
 
-    void setA4Frequency(double frequency) {
-        if (frequency >= 220.0 && frequency <= 880.0) {
-            a4FrequencyValue = frequency;
-            currentA4Frequency = frequency; // Update cache
-            updateTuningSystem();
-            sendChangeMessage();
-        }
-    }
-
     double getClockFrequency() const {
         double valueMHz = clockFrequencyValue.getValue();
         double valueHz = valueMHz * 1000000.0;
@@ -402,15 +390,6 @@ public:
             currentClockFrequency = valueHz; // Update cache only when needed
         }
         return currentClockFrequency;
-    }
-
-    void setClockFrequency(double frequency) {
-        if (frequency >= 1000000.0 && frequency <= 2000000.0) {
-            clockFrequencyValue = frequency / 1000000.0; // Store as MHz
-            currentClockFrequency = frequency; // Update cache
-            updateTuningSystem();
-            sendChangeMessage();
-        }
     }
 
     bool isCustomClockEnabled() const {
@@ -574,7 +553,7 @@ private:
             .capabilities = chipCapabilities,
             .temperamentType = TemperamentType::EqualTemperament, // TODO from view property
             .tonic = getCurrentKey(),
-            .scaleType = getCurrentScale(),
+            .scaleType = getCurrentScaleType(),
             .chipChoice = getCurrentChipClock(),
             .chipClock = getClockFrequency(),
             .a4Frequency = getA4Frequency()
@@ -588,12 +567,12 @@ private:
             scaleValue = static_cast<int>(options.scaleType);
             currentKey = options.tonic;
             currentScale = Scale(options.scaleType);
-            
+
             // Update Value objects to match the new defaults
             chipClockIndexValue = static_cast<int>(options.chipChoice.value);
             clockFrequencyValue = options.chipClock / 1000000.0; // Convert Hz to MHz
             a4FrequencyValue = options.a4Frequency;
-            
+
             // Update cached values
             currentChipClock = options.chipChoice;
             currentClockFrequency = options.chipClock;
@@ -652,14 +631,14 @@ private:
 
     // Value objects for automatic UI binding (single source of truth)
     Value a4FrequencyValue;        // Hz - authoritative source
-    Value clockFrequencyValue;     // MHz for UI - authoritative source  
+    Value clockFrequencyValue;     // MHz for UI - authoritative source
     Value chipClockIndexValue;     // Index - authoritative source
     Value tuningTableIndexValue;
 
     // Value objects for scale/key with single source of truth approach
     Value scaleValue;
     Value keyValue;
-    
+
     // Cached objects derived from values (performance optimization)
     mutable Scale currentScale;
     mutable Scale::Key currentKey;
@@ -667,13 +646,13 @@ private:
     mutable double currentClockFrequency;  // Hz
     mutable double currentA4Frequency;     // Hz
 
-    ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
-    std::unique_ptr<TuningSystem> tuningSystem;
-
-
     // Tuning table selection
     int currentTuningTableIndex = 0;
 
+    ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
+    std::unique_ptr<TuningSystem> tuningSystem;
+
+    // TODO move to Scale class
     static inline constexpr std::array<std::string_view, 12> chromaticScaleDegreeNames = {
         "1", "♭2", "2", "♭3", "3", "4", "♭5", "5", "♭6", "6", "♭7", "7"
     };

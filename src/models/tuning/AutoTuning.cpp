@@ -3,9 +3,10 @@
 
 namespace MoTool {
 
-String AutoTuning::getName() const {
+String AutoTuning::getDescription() const {
     jassert(referenceTuning != nullptr);
-    return referenceTuning->getName() + String::formatted(" auto tuning, chip clock = %.3f MHz, A4 = %.2f Hz", clockFrequency / 1000000.0, getA4Frequency());
+    return referenceTuning->getTypeName() + String::formatted(" auto tuning, chip clock = %.3fMHz, A4 = %.2fHz", clockFrequency / 1000000.0,
+                                                          getA4Frequency());
 }
 
 TuningType AutoTuning::getType() const {

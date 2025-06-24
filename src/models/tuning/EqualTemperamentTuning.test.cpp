@@ -99,7 +99,7 @@ public:
         beginTest("getName method");
         {
             EqualTemperamentTuning tuning(440.0);
-            String name = tuning.getName();
+            String name = tuning.getDescription();
             expect(name.contains("Equal Temperament"), "Name should contain 'Equal Temperament'");
             expect(name.contains("440.00"), "Name should contain A4 frequency, got `" + name + "`");
         }

@@ -337,8 +337,8 @@ TuningPreviewComponent::TuningPreviewComponent()
 
     // Register as a change listener to the view model
     viewModel.addChangeListener(this);
-    TuningTypeLabel.setText("Tuning Type: " + viewModel.getTuningTypeName(), juce::dontSendNotification);
-    TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);
+    // TuningTypeLabel.setText("Tuning Type: " + viewModel.getTuningTypeName(), juce::dontSendNotification);
+    TuningNameLabel.setText("Tuning: " + viewModel.getTuningDescription(), juce::dontSendNotification);
     // ToneEnvSwitchLabel.setText("Tone Env Switch: " + String(viewModel.isToneEnvSwitchEnabled()), juce::dontSendNotification);
 
     addAndMakeVisible(ChipClockLabel);
@@ -357,11 +357,11 @@ TuningPreviewComponent::TuningPreviewComponent()
     exportButton.setButtonText("Export to CSV");
     exportButton.onClick = [this]() {
         String defaultFilename = viewModel.getDefaultExportFilename();
-        
+
         // Get last export directory from utility function
         File lastExportDir = Helpers::getLastCsvExportDirectory();
         File defaultFile = lastExportDir.getChildFile(defaultFilename);
-        
+
         FileChooser fileChooser("Save Tuning Data as CSV",
                                defaultFile,
                                "*.csv");
@@ -373,7 +373,7 @@ TuningPreviewComponent::TuningPreviewComponent()
             if (selectedFile.replaceWithText(csvData)) {
                 // Save the directory for next time using utility function
                 Helpers::setLastCsvExportDirectory(selectedFile.getParentDirectory());
-                
+
                 AlertWindow::showMessageBox(AlertWindow::InfoIcon,
                                           "Export Successful",
                                           "Tuning data exported to:\n" + selectedFile.getFullPathName());
@@ -464,7 +464,7 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
 
         // Update the tuning name label to reflect the new tuning system
-        TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningName(), juce::dontSendNotification);
+        TuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
 
         // Update A4 frequency slider to reflect current value
         a4FrequencySlider.setValue(viewModel.getA4Frequency(), juce::dontSendNotification);

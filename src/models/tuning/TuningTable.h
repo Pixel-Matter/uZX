@@ -38,7 +38,7 @@ public:
         const String& customName
     );
 
-    String getName() const override;
+    String getDescription() const override;
     TuningType getType() const override;
     int midiNoteToPeriod(double midiNote) const override;
     double periodToMidiNote(int period) const override;

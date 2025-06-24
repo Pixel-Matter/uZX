@@ -239,8 +239,8 @@ public:
         return tuningSystem ? String(std::string(tuningSystem->getType().getLabel())) : "Unknown tuning system type";
     }
 
-    String getTuningName() const {
-        return tuningSystem ? tuningSystem->getName() : "Default tuning";
+    String getTuningDescription() const {
+        return tuningSystem ? tuningSystem->getDescription() : "Default tuning";
     }
 
     Range<int> getChipDividerRange() const {
@@ -372,8 +372,13 @@ public:
         for (int octave = octaveRange.getStart(); octave < octaveRange.getEnd(); ++octave) {
             auto octaveNotes = getOctaveNotes(octave);
             for (const auto& note : octaveNotes) {
+                // Skip notes beyond MIDI range
+                if (!note.isInMidiRange()) {
+                    continue;
+                }
+
                 // MIDI note
-                csv += (note.isInMidiRange() ? String(note.midiNote) : "N/A") + ",";
+                csv += String(note.midiNote) + ",";
 
                 // Note name - convert to ASCII compatible format
                 String asciiNoteName = note.name;
@@ -391,18 +396,16 @@ public:
 
     String getDefaultExportFilename() const {
         // Create a descriptive filename from tuning details
-        String filename = getTuningName();
+        jassert(tuningSystem != nullptr);
 
-        // Add scale info if not already included
-        String scaleName = getScaleName();
-        if (!filename.containsIgnoreCase(scaleName)) {
-            filename += " - " + scaleName;
-        }
+        String filename = tuningSystem->getReferenceTuning()->getTypeName() + " " + tuningSystem->getTypeName() + " " + getScaleName();
 
-        // Add A4 frequency if not standard 440Hz
-        if (std::abs(getA4Frequency() - 440.0) > 0.1) {
-            filename += " - A4=" + String(getA4Frequency(), 1) + "Hz";
-        }
+        // Add clock frequency info
+        double clockFreq = getClockFrequency();
+        filename += " " + String(clockFreq / 1000000.0, 2).replace(".", "_") + "MHz";
+
+        // Add A4 frequency
+        filename += " A4=" + String(getA4Frequency(), 0);
 
         // Replace invalid filename characters
         filename = filename.replaceCharacter('/', '-')

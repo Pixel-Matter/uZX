@@ -25,7 +25,7 @@ public:
         beginTest("getName method");
         {
             AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
-            String name = tuning.getName();
+            String name = tuning.getDescription();
             expect(name.contains("Equal Temperament"), "Name should contain reference tuning type");
             expect(name.contains("auto tuning"), "Name should contain 'auto tuning'");
             expect(name.contains("1.773"), "Name should contain clock frequency in MHz");
@@ -210,7 +210,7 @@ public:
             AutoTuning tuning(testCaps, testClockFreq,
                 std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
             );
-            String name = tuning.getName();
+            String name = tuning.getDescription();
             expect(name.contains("Custom Rational Intonation"), "Name should contain reference tuning type");
             expect(name.contains("auto tuning"), "Name should contain 'auto tuning'");
             expect(name.contains("1.773"), "Name should contain clock frequency in MHz");

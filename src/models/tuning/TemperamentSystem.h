@@ -52,7 +52,10 @@ public:
 
     virtual ~TemperamentSystem() = default;
 
-    virtual String getName() const;
+    virtual String getDescription() const;
+    inline String getTypeName() const {
+        return getType().getLongLabel().data();
+    }
 
     virtual TemperamentType getType() const = 0;
 

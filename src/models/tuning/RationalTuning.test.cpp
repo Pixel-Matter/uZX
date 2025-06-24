@@ -225,7 +225,7 @@ public:
         beginTest("getName method");
         {
             RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
-            String name = tuning.getName();
+            String name = tuning.getDescription();
             expect(name.contains("Rational"), "Name should contain 'Rational'");
             expect(name.contains("440.00"), "Name should contain A4 frequency");
         }

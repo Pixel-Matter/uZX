@@ -39,7 +39,10 @@ public:
     }
 
     virtual ~TuningSystem() = default;
-    virtual String getName() const = 0;
+    virtual String getDescription() const = 0;
+    inline String getTypeName() const {
+        return getType().getLongLabel().data();
+    }
     virtual TuningType getType() const = 0;
     virtual int midiNoteToPeriod(double midiNote) const = 0;
     virtual double periodToMidiNote(int period) const = 0;

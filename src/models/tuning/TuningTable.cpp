@@ -60,7 +60,7 @@ TuningTable::TuningTable(
     : TuningTable(caps, chipClock, std::move(refTuning), startingMidiNote, std::vector<int>(periods), customName)
 {}
 
-String TuningTable::getName() const {
+String TuningTable::getDescription() const {
     return customName_ + String::formatted(", defined notes %s-%s, A4 = %.2fHz",
         getMidiNoteName(minDefinedNote_).toUTF8(), getMidiNoteName(maxDefinedNote_).toUTF8(), getA4Frequency());
 }

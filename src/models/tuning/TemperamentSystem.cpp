@@ -8,7 +8,7 @@
 
 namespace MoTool {
 
-String TemperamentSystem::getName() const {
+String TemperamentSystem::getDescription() const {
     return String(String::formatted("%s tuning, A4 = %.2f Hz", getType().getLongLabel().data(), getA4Frequency()));
 }
 

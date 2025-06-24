@@ -4,9 +4,13 @@
 #include "TuningSystemBase.h"
 #include "AutoTuning.h"
 #include "TuningTable.h"
+
+#include "../../plugins/uZX/aychip/aychip.h"
+
 #include <memory>
 
 namespace MoTool {
+
 
 struct BuiltinTuningEnum {
     enum Enum : size_t {
@@ -34,6 +38,18 @@ struct BuiltinTuningEnum {
 
 using BuiltinTuningType = MoTool::Util::EnumChoice<BuiltinTuningEnum>;
 
+
+struct TuningOptions {
+    BuiltinTuningType tableType;
+    const ChipCapabilities& capabilities;
+    TemperamentType temperamentType;
+    Scale::Key tonic;
+    Scale::ScaleType scaleType;
+    uZX::ChipClockChoice chipChoice;
+    double chipClock;
+    double a4Frequency;
+};
+
 // Factory functions for standard tuning systems
 inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabilities& capabilities, double chipClock, double A4Frequency) {
     return std::make_unique<AutoTuning>(capabilities, chipClock, std::make_unique<EqualTemperamentTuning>(A4Frequency));
@@ -41,10 +57,7 @@ inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabi
 
 // Factory functions for ProTracker-style custom table tunings
 std::unique_ptr<TuningSystem> makeBuiltinTuning(
-    BuiltinTuningType tableType,
-    const ChipCapabilities& capabilities,
-    double chipClock,
-    double A4Frequency = 440.0
+    TuningOptions& options
 );
 
 // Get descriptive name for tuning table

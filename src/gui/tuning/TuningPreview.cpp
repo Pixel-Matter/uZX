@@ -484,6 +484,9 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
         // Update scale selection
         updateScaleSelection();
 
+        // Update key selection
+        keySelect.setSelectedId(static_cast<int>(viewModel.getCurrentKey()) + 1, juce::dontSendNotification);
+
         // Repaint the tuning grid to show updated calculations
         tuningGrid.repaint();
     }

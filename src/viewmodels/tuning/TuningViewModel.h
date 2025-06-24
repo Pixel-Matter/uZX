@@ -101,7 +101,7 @@ public:
         , chipCapabilities {16, Range<int>(1, 4096)}
         // , chipCapabilities {1773400, 16, Range<int>(1, 4096)}
         , currentScale(Scale::ScaleType::IonianOrMajor)
-        , currentKey(Scale::Key::C)
+        , currentTonic(Scale::Key::C)
     {
         // Initialize transient view state
         // TODO handle Custom option to chipClock
@@ -125,7 +125,7 @@ public:
         auto refTuning = tuningSystem ? tuningSystem->getReferenceTuning() : nullptr;
 
         // Build the result
-        const auto keyIdx = static_cast<int>(currentKey);
+        const auto keyIdx = static_cast<int>(currentTonic);
         for (int i = 0; i < 12; ++i) {
             const int semitonesFromKey = (i - keyIdx + 12) % 12;
             noteNames.emplace_back(
@@ -232,7 +232,7 @@ public:
     }
 
     String getScaleName() const {
-        return getKeyName(currentKey) + " " + currentScale.getName();
+        return getKeyName(currentTonic) + " " + currentScale.getName();
     }
 
     String getTuningTypeName() const {
@@ -258,11 +258,11 @@ public:
     }
 
     Scale::Key getCurrentKey() const {
-        return currentKey;
+        return currentTonic;
     }
 
     void setCurrentKey(Scale::Key key) {
-        currentKey = key;
+        currentTonic = key;
         sendChangeMessage();
     }
 
@@ -307,7 +307,7 @@ public:
     void setCurrentTuningTable(int index) {
         if (index != currentTuningTableIndex && index >= 0 && index < getTuningTableNames().size()) {
             currentTuningTableIndex = index;
-            updateTuningSystem(true, true); // Reset UI values when changing tuning table
+            recreateTuningSystem();
             sendChangeMessage();
         }
     }
@@ -449,30 +449,43 @@ private:
         // TODO scale and root note
         chipCapabilities.divider = 16;
         currentTuningTableIndex = 0; // Equal Temperament
-        updateTuningSystem(true);
+        recreateTuningSystem();
     }
 
-    void updateTuningSystem(bool recreate = false, bool resetUIValues = false) {
-        if (recreate) {
-            auto tuningType = static_cast<BuiltinTuningType>(currentTuningTableIndex);
+    void recreateTuningSystem() {
+        auto tuningType = static_cast<BuiltinTuningType>(currentTuningTableIndex);
 
-            tuningSystem = makeBuiltinTuning(tuningType, chipCapabilities, clockFrequency.get(), a4Frequency.get());
+        // move to class properties
+        TuningOptions options {
+            .tableType = tuningType,
+            .capabilities = chipCapabilities,
+            .temperamentType = TemperamentType::EqualTemperament, // TODO from view property
+            .tonic = currentTonic,
+            .scaleType = currentScale.getType(),
+            .chipChoice = findBestMatchingClockPreset(clockFrequency.get()),
+            .chipClock = clockFrequency.get(),
+            .a4Frequency = a4Frequency.get()
+        };
 
-            if (tuningSystem && resetUIValues) {
-                // When changing tuning table, reset UI to match tuning defaults
-                a4Frequency = tuningSystem->getA4Frequency();
-                clockFrequency = tuningSystem->getClockFrequency();
-                chipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(findBestMatchingClockPreset(clockFrequency.get())));
-            } else if (tuningSystem) {
-                // When updating from user changes, preserve user settings
-                tuningSystem->setA4Frequency(a4Frequency.get());
-                tuningSystem->setClockFrequency(clockFrequency.get());
-            }
-        } else {
-            // Apply current UI values to the existing tuning system
-            tuningSystem->setA4Frequency(a4Frequency.get());
-            tuningSystem->setClockFrequency(clockFrequency.get());
+        tuningSystem = makeBuiltinTuning(options);
+
+        if (tuningSystem) {
+            // TODO make an option
+            // temperamentType = options.temperamentType;
+            currentTonic = options.tonic;
+            currentScale = Scale(options.scaleType);
+            chipClock = options.chipChoice;
+            clockFrequency = options.chipClock;
+            a4Frequency = options.a4Frequency;
         }
+    }
+
+    void updateTuningSystem() {
+        tuningSystem->setA4Frequency(a4Frequency.get());
+        tuningSystem->setClockFrequency(clockFrequency.get());
+        tuningSystem->setTonic(currentTonic);
+        // TODO set reference tuning
+        // tuningSystem->setReferenceTuning(...)
     }
 
     void updateParameters() {
@@ -484,7 +497,7 @@ private:
         }
 
         // Always update tuning system when parameters change
-        updateTuningSystem(true);
+        recreateTuningSystem();
 
         // Notify all registered listeners that the tuning system has changed
         sendChangeMessage();
@@ -527,7 +540,7 @@ private:
 
     // Scale and Scale::Key selection
     Scale currentScale;
-    Scale::Key currentKey;
+    Scale::Key currentTonic;
 
     // Tuning table selection
     int currentTuningTableIndex = 0;

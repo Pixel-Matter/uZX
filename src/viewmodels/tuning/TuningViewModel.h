@@ -54,6 +54,10 @@ struct TuningNote {
         return midiNote - trackerNoteOffset; // Convert MIDI note to Tracker note
     }
 
+    bool isSafeForEnvelope() const {
+        return period % 16 == 0;
+    }
+
     String getTooltip() const {
         String midiInfo = isInMidiRange() ? String::formatted("%d", midiNote) : String("no");
         auto trackerNote = getTrackerNote();

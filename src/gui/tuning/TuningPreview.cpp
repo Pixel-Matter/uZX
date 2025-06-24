@@ -154,6 +154,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
             //=================================================================
             // drawing text
+
             auto textCell = gridCell;
             auto text = String::formatted("%d", note.period);
             int textWidth = static_cast<int>(std::ceil(TextLayout::getStringWidth(g.getCurrentFont(), text)));
@@ -164,8 +165,14 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
             g.setColour(noteTextColor);
             g.drawText(text, textCell, juce::Justification::centred, false);
-            // TODO add mousover bubble with frequency, note name, offtune in cents information
-            // g.drawText(String::formatted("%.2f", note.frequency), gridCell.withTrimmedRight(8), juce::Justification::right, true);
+
+            // safe for env marker
+            if (note.isSafeForEnvelope()) {
+                g.setColour(Colors::Theme::success);
+                // TODO tiny triangle icon
+                // TODO add a legend below the grid
+                g.fillRect(gridCell.getRight() - 6, gridCell.getY() + 2, 4, 4);
+            }
 
             gridCell.translate(cellWidth, 0);
         }

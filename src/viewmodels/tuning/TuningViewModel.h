@@ -121,13 +121,10 @@ public:
         chipClockIndexValue.addListener(this);
         tuningTableIndexValue.addListener(this);
 
-        // Initialize transient view state
-        // TODO handle Custom option to chipClock
-        chipClock.referTo(transientState, "chipClock", nullptr,
-            uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz));
-        // Make it editable only when using custom clock
-        clockFrequency.referTo(transientState, "chipFrequency", nullptr, 1773400.0);
-        a4Frequency.referTo(transientState, "A4", nullptr, 440.0);
+        // Initialize cached values
+        currentChipClock = uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz);
+        currentClockFrequency = 1773400.0;
+        currentA4Frequency = 440.0;
 
         // Initialize with ProTracker tuning
         initTuningSystem();
@@ -366,35 +363,51 @@ public:
     }
     
     uZX::ChipClockChoice getCurrentChipClock() const {
-        return uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(static_cast<int>(chipClockIndexValue.getValue())));
+        int valueIndex = static_cast<int>(chipClockIndexValue.getValue());
+        if (static_cast<int>(currentChipClock.value) != valueIndex) {
+            currentChipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(valueIndex));
+        }
+        return currentChipClock;
     }
 
     void setChipClockChoice(int index) {
         if (index >= 0 && index < static_cast<int>(uZX::ChipClockChoice::size())) {
             chipClockIndexValue = index;
+            currentChipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(index)); // Update cache
             updateParameters();
         }
     }
 
     double getA4Frequency() const {
-        return a4FrequencyValue.getValue();
+        double valueFreq = a4FrequencyValue.getValue();
+        if (std::abs(currentA4Frequency - valueFreq) > 0.01) {
+            currentA4Frequency = valueFreq; // Update cache only when needed
+        }
+        return currentA4Frequency;
     }
 
     void setA4Frequency(double frequency) {
         if (frequency >= 220.0 && frequency <= 880.0) {
             a4FrequencyValue = frequency;
+            currentA4Frequency = frequency; // Update cache
             updateTuningSystem();
             sendChangeMessage();
         }
     }
 
     double getClockFrequency() const {
-        return static_cast<double>(clockFrequencyValue.getValue()) * 1000000.0; // Convert MHz to Hz
+        double valueMHz = clockFrequencyValue.getValue();
+        double valueHz = valueMHz * 1000000.0;
+        if (std::abs(currentClockFrequency - valueHz) > 1000.0) {
+            currentClockFrequency = valueHz; // Update cache only when needed
+        }
+        return currentClockFrequency;
     }
 
     void setClockFrequency(double frequency) {
         if (frequency >= 1000000.0 && frequency <= 2000000.0) {
             clockFrequencyValue = frequency / 1000000.0; // Store as MHz
+            currentClockFrequency = frequency; // Update cache
             updateTuningSystem();
             sendChangeMessage();
         }
@@ -518,6 +531,7 @@ private:
         else if (value.refersToSameSourceAs(a4FrequencyValue)) {
             double newFreq = value.getValue();
             if (newFreq >= 220.0 && newFreq <= 880.0) {
+                currentA4Frequency = newFreq; // Update cache
                 updateTuningSystem();
                 sendChangeMessage();
             }
@@ -525,6 +539,7 @@ private:
         else if (value.refersToSameSourceAs(clockFrequencyValue)) {
             double newFreqMHz = value.getValue();
             if (newFreqMHz >= 1.0 && newFreqMHz <= 2.0) {
+                currentClockFrequency = newFreqMHz * 1000000.0; // Update cache (convert to Hz)
                 updateTuningSystem();
                 sendChangeMessage();
             }
@@ -532,6 +547,7 @@ private:
         else if (value.refersToSameSourceAs(chipClockIndexValue)) {
             int newIndex = static_cast<int>(value.getValue());
             if (newIndex >= 0 && newIndex < static_cast<int>(uZX::ChipClockChoice::size())) {
+                currentChipClock = uZX::ChipClockChoice(static_cast<uZX::ChipClockEnum::Enum>(newIndex)); // Update cache
                 updateParameters();
             }
         }
@@ -578,10 +594,10 @@ private:
             clockFrequencyValue = options.chipClock / 1000000.0; // Convert Hz to MHz
             a4FrequencyValue = options.a4Frequency;
             
-            // Keep CachedValues in sync for ValueTree persistence
-            chipClock = options.chipChoice;
-            clockFrequency = options.chipClock;
-            a4Frequency = options.a4Frequency;
+            // Update cached values
+            currentChipClock = options.chipChoice;
+            currentClockFrequency = options.chipClock;
+            currentA4Frequency = options.a4Frequency;
         }
     }
 
@@ -594,12 +610,14 @@ private:
     }
 
     void updateParameters() {
-        int index = static_cast<int>(chipClockIndexValue.getValue());
+        // Get current chip clock from cache (updated in Value listener)
+        int index = static_cast<int>(currentChipClock.value);
 
         if (index != uZX::ChipClockEnum::Custom) {
             // Update clock frequency when preset is selected
             double presetFreq = uZX::ChipClockEnum::clockValues[index];
-            clockFrequencyValue = presetFreq / 1000000.0; // Convert to MHz
+            clockFrequencyValue = presetFreq / 1000000.0; // Update Value (MHz)
+            currentClockFrequency = presetFreq; // Update cache (Hz)
         }
 
         // Always update tuning system when parameters change
@@ -645,11 +663,9 @@ private:
     // Cached objects derived from values (performance optimization)
     mutable Scale currentScale;
     mutable Scale::Key currentKey;
-
-    // Transient view state (for ValueTree persistence)
-    CachedValue<uZX::ChipClockChoice> chipClock;
-    CachedValue<double> clockFrequency; // Current chip clock frequency in Hz
-    CachedValue<double> a4Frequency;
+    mutable uZX::ChipClockChoice currentChipClock;
+    mutable double currentClockFrequency;  // Hz
+    mutable double currentA4Frequency;     // Hz
 
     ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
     std::unique_ptr<TuningSystem> tuningSystem;

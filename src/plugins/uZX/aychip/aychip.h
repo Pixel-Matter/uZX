@@ -31,6 +31,8 @@ namespace {
     }
 }
 
+constexpr double MHz = 1000000.0;
+
 struct ChipClockEnum {
     enum Enum : uint8_t {
         NES_NTSC_0_89_MHz,

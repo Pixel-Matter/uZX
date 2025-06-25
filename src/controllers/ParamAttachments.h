@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "../util/convert.h"
 
 
 using namespace juce;
@@ -9,9 +10,9 @@ namespace te = tracktion;
 namespace MoTool {
 
 
-class ParameterSliderAttachment : private te::AutomatableParameter::Listener {
+class SliderAttachment : private te::AutomatableParameter::Listener {
 public:
-    ParameterSliderAttachment (Slider& s, te::AutomatableParameter& p)
+    SliderAttachment (Slider& s, te::AutomatableParameter& p)
         : slider (s)
         , param (p)
     {
@@ -29,7 +30,7 @@ public:
         param.addListener(this);
     }
 
-    ~ParameterSliderAttachment() override {
+    ~SliderAttachment() override {
         param.removeListener(this);
     }
 
@@ -50,14 +51,6 @@ private:
 };
 
 
-template <size_t N>
-static StringArray toStringArray(const std::array<std::string_view, N>& ch) {
-    StringArray result;
-    for (const auto& s : ch) {
-        result.add(String(s.data(), s.size()));
-    }
-    return result;
-}
 
 template <typename Type>
 struct ParamAttachment {

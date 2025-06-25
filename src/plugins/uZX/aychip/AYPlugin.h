@@ -28,9 +28,6 @@ namespace IDs {
 
 namespace uZX {
 
-constexpr double MHz = 1000000.0;
-
-
 class AYChipPlugin : public te::Plugin {
 public:
     AYChipPlugin (te::PluginCreationInfo);

@@ -278,7 +278,7 @@ TuningPreviewComponent::TuningPreviewComponent()
     tuningTableLabel.setText("Tuning Tables:", juce::dontSendNotification);
     tuningsListBox.setModel(this);
     tuningsListBox.setMultipleSelectionEnabled(false);
-    tuningsListBox.selectRow(viewModel.tuningTableIndex.get(), false, false);
+    tuningsListBox.selectRow(viewModel.tuningTableIndex0.get(), false, false);
     // Note: ListBox doesn't have direct Value binding, so we'll use a custom approach
     viewModel.tuningTableIndexValue.addListener(this);
 
@@ -299,7 +299,7 @@ TuningPreviewComponent::TuningPreviewComponent()
     addItemsFromStrings(chipClockSelect, viewModel.getChipClockLabels());
     chipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
     chipClockLabel.setJustificationType(juce::Justification::centredRight);
-    chipClockSelect.getSelectedIdAsValue().referTo(viewModel.chipClockIndex1Value);
+    chipClockSelect.getSelectedIdAsValue().referTo(viewModel.chipIndex1Value);
 
     // Set up frequency sliders with Value binding
     setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (MHz):",
@@ -323,7 +323,6 @@ TuningPreviewComponent::TuningPreviewComponent()
 
     addAndMakeVisible(chipClockLabel);
     addAndMakeVisible(chipClockSelect);
-
 
     // addAndMakeVisible(TuningTypeLabel);
     addAndMakeVisible(tuningNameLabel);
@@ -443,23 +442,10 @@ void TuningPreviewComponent::paint(juce::Graphics& g) {
 
 void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
-        // Update the tuning name label to reflect the new tuning system
+        DBG("TuningPreviewComponent::changeListenerCallback");
         tuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
-
-        // Update enabled state of clock frequency controls
         updateClockControlsState();
-
-        // Update key selection (not bound to Value due to 1-based ID issue)
-        keySelect.setSelectedId(static_cast<int>(viewModel.getCurrentKey()) + 1, juce::dontSendNotification);
-
-        // Update chip clock selection (not bound to Value due to 1-based ID issue)
-        chipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
-
-        // Repaint the tuning grid to show updated calculations
         tuningGrid.repaint();
-
-        // Note: A4 frequency and clock frequency sliders are now automatically
-        // synchronized via Value binding, so no manual updates needed
     }
 }
 
@@ -485,7 +471,7 @@ void TuningPreviewComponent::paintListBoxItem(int rowNumber, Graphics& g, int wi
 
 void TuningPreviewComponent::listBoxItemClicked(int row, const MouseEvent& e) {
     juce::ignoreUnused(e);
-    viewModel.setCurrentTuningTableIndex0(row);
+    viewModel.tuningTableIndex0 = row; // Update the tuning table index in the view model
 }
 
 // UI setup helpers
@@ -569,7 +555,9 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
 
 // Value::Listener implementation for ListBox and other custom sync
 void TuningPreviewComponent::valueChanged(Value& value) {
+    DBG("TuningPreviewComponent::valueChanged");
     if (value.refersToSameSourceAs(viewModel.tuningTableIndexValue)) {
+        DBG("Tuning table index changed from valueChanged");
         int newIndex = value.getValue();
         tuningsListBox.selectRow(newIndex, false, false);
     }

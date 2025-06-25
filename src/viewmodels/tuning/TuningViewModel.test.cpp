@@ -128,7 +128,7 @@ public:
         {
             TuningViewModel viewModel;
 
-            auto keyNames = viewModel.getKeyNames();
+            auto keyNames = viewModel.getAllKeyNames();
             expectEquals(static_cast<int>(keyNames.size()), 12);
             expectEquals(keyNames[0], String("C"));
             expectEquals(keyNames[1], String::fromUTF8("C♯"));

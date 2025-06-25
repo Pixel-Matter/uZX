@@ -259,6 +259,13 @@ String TuningPreviewGrid::getTooltip() {
     return hasHoveredNote ? hoveredNote.getTooltip() : "";
 }
 
+
+static void addItemsFromStrings(juce::ComboBox& comboBox, const StringArray& items) {
+    for (int i = 0; i < items.size(); ++i) {
+        comboBox.addItem(items[i], i + 1);
+    }
+}
+
 //================================================================================
 TuningPreviewComponent::TuningPreviewComponent()
     : viewModel(TuningViewModel())
@@ -272,8 +279,6 @@ TuningPreviewComponent::TuningPreviewComponent()
     tuningsListBox.setModel(this);
     tuningsListBox.setMultipleSelectionEnabled(false);
     tuningsListBox.selectRow(viewModel.tuningTableIndex.get(), false, false);
-
-    // Set up Value binding for tuning table selection
     // Note: ListBox doesn't have direct Value binding, so we'll use a custom approach
     viewModel.tuningTableIndexValue.addListener(this);
 
@@ -281,51 +286,27 @@ TuningPreviewComponent::TuningPreviewComponent()
     addAndMakeVisible(tuningsListBox);
 
     // Set up Key selection ComboBox
+    addItemsFromStrings(keySelect, viewModel.getAllKeyNames());
+    keyScaleLabel.setText("Scale:", juce::dontSendNotification);
+    keyScaleLabel.setJustificationType(juce::Justification::centredRight);
+    keySelect.getSelectedIdAsValue().referTo(viewModel.keyIndex1Value);
+
     addAndMakeVisible(keyScaleLabel);
     addAndMakeVisible(keySelect);
     addAndMakeVisible(scaleSelect);
 
-    keyScaleLabel.setText("Scale:", juce::dontSendNotification);
-    keyScaleLabel.setJustificationType(juce::Justification::centredRight);
-
-    auto keyNames = viewModel.getKeyNames();
-    for (int i = 0; i < keyNames.size(); ++i) {
-        keySelect.addItem(keyNames[i], i + 1);
-    }
-    keySelect.setSelectedId(static_cast<int>(viewModel.getCurrentKey()) + 1, juce::dontSendNotification);
-    // Set up manual callback for key selection (ComboBox uses 1-based IDs)
-    keySelect.onChange = [this]() {
-        int selectedId = keySelect.getSelectedId();
-        if (selectedId > 0) {
-            viewModel.setCurrentKey(static_cast<Scale::Key>(selectedId - 1));
-        }
-    };
-
     // Set up Chip Clock selection ComboBox
+    addItemsFromStrings(chipClockSelect, viewModel.getChipClockLabels());
     chipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
     chipClockLabel.setJustificationType(juce::Justification::centredRight);
-
-    auto chipClockLabels = viewModel.getChipClockLabels();
-    for (int i = 0; i < chipClockLabels.size(); ++i) {
-        chipClockSelect.addItem(chipClockLabels[i], i + 1);
-    }
-    chipClockSelect.setSelectedId(viewModel.getCurrentChipClockIndex() + 1, juce::dontSendNotification);
-    // Set up manual callback for chip clock selection (ComboBox uses 1-based IDs)
-    chipClockSelect.onChange = [this]() {
-        int selectedId = chipClockSelect.getSelectedId();
-        if (selectedId > 0) {
-            viewModel.setChipClockChoice(selectedId - 1);
-            updateClockControlsState();
-            tuningGrid.repaint();
-        }
-    };
+    chipClockSelect.getSelectedIdAsValue().referTo(viewModel.chipClockIndex1Value);
 
     // Set up frequency sliders with Value binding
     setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (MHz):",
-                               1.0, 2.0, 0.001, viewModel.clockFrequencyValue);
+                                1.0, 2.0, 0.001, viewModel.clockFrequencyValue);
 
     setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 Frequency (Hz):",
-                               220.0, 880.0, 0.1, viewModel.a4FrequencyValue);
+                                220.0, 880.0, 0.1, viewModel.a4FrequencyValue);
 
     // Set initial clock controls state
     updateClockControlsState();

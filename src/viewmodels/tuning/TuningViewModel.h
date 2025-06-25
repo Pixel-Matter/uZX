@@ -8,6 +8,7 @@
 #include "../../models/tuning/Scales.h"
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../../util/convert.h"
+#include "../../util/CachedValueWithValue.h"
 
 #include <cmath>
 #include <array>
@@ -117,24 +118,17 @@ public:
         , scaleIndex1(transientState, IDs::scale, nullptr, 1)
         , a4Frequency(transientState, IDs::a4Frequency, nullptr, 440.0)
         , clockFrequencyMhz(transientState, IDs::clockFrequency, nullptr, 1.7734) // MHz
-        // value objects, for listeners and bindings
-        , tuningTableIndexValue(tuningTableIndex0.getPropertyAsValue())
-        , chipIndex1Value(chipIndex1.getPropertyAsValue())
-        , keyIndex1Value(keyIndex1.getPropertyAsValue())
-        , scaleIndex1Value(scaleIndex1.getPropertyAsValue())
-        , a4FrequencyValue(a4Frequency.getPropertyAsValue())
-        , clockFrequencyValue(clockFrequencyMhz.getPropertyAsValue())
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
         , chipCapabilities {16, Range<int>(1, 4096)}
     {
         // Set up Value listeners for bidirectional sync
-        tuningTableIndexValue.addListener(this);
-        chipIndex1Value.addListener(this);
-        keyIndex1Value.addListener(this);
-        scaleIndex1Value.addListener(this);
-        a4FrequencyValue.addListener(this);
-        clockFrequencyValue.addListener(this);
+        tuningTableIndex0.addListener(this);
+        chipIndex1.addListener(this);
+        keyIndex1.addListener(this);
+        scaleIndex1.addListener(this);
+        a4Frequency.addListener(this);
+        clockFrequencyMhz.addListener(this);
 
         recreateTuningSystem();
     }
@@ -455,22 +449,13 @@ public:
     // Transient view state
     ValueTree transientState;
 
-    // CachedValue objects - single source of truth for all persisted types
-    CachedValue<int> tuningTableIndex0;
-    CachedValue<int> chipIndex1;
-    CachedValue<int> keyIndex1;
-    CachedValue<int> scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
-    CachedValue<double> a4Frequency;        // Hz - authoritative source
-    CachedValue<double> clockFrequencyMhz;  // MHz - authoritative source
-
-public:
-    // Value objects for UI binding (public for direct access)
-    Value tuningTableIndexValue;
-    Value chipIndex1Value;
-    Value keyIndex1Value;
-    Value scaleIndex1Value;                  // 1-based index for UI convenience, 0 is invalid
-    Value a4FrequencyValue;
-    Value clockFrequencyValue;
+    // CachedValueWithValue objects - single source of truth for all persisted types
+    CachedValueWithValue<int> tuningTableIndex0;
+    CachedValueWithValue<int> chipIndex1;
+    CachedValueWithValue<int> keyIndex1;
+    CachedValueWithValue<int> scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
+    CachedValueWithValue<double> a4Frequency;        // Hz - authoritative source
+    CachedValueWithValue<double> clockFrequencyMhz;  // MHz - authoritative source
 
 private:
     // Cached objects derived from values (performance optimization) - only for complex conversions
@@ -480,7 +465,7 @@ private:
 
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
-        if (value.refersToSameSourceAs(scaleIndex1Value)) {
+        if (value.refersToSameSourceAs(scaleIndex1.getValue())) {
             // DBG("Scale changed from valueChanged");
             auto newScale = static_cast<Scale::ScaleType>(static_cast<int>(value.getValue()));
             if (newScale != currentScale.getType()) {
@@ -492,13 +477,13 @@ private:
                 sendChangeMessage();
             }
         }
-        else if (value.refersToSameSourceAs(keyIndex1Value)) {
+        else if (value.refersToSameSourceAs(keyIndex1.getValue())) {
             // DBG("Key changed from valueChanged");
             tuningSystem->setTonic(getCurrentKey());
             // DBG("Key changed from valueChanged sendChangeMessage");
             sendChangeMessage();
         }
-        else if (value.refersToSameSourceAs(a4FrequencyValue)) {
+        else if (value.refersToSameSourceAs(a4Frequency.getValue())) {
             // DBG("A4 frequency changed from valueChanged");
             double newFreq = value.getValue();
             if (newFreq >= 220.0 && newFreq <= 880.0) {
@@ -507,7 +492,7 @@ private:
                 sendChangeMessage();
             }
         }
-        else if (value.refersToSameSourceAs(clockFrequencyValue)) {
+        else if (value.refersToSameSourceAs(clockFrequencyMhz.getValue())) {
             // DBG("Clock frequency changed from valueChanged");
             double newFreqMHz = value.getValue();
             if (newFreqMHz >= 1.0 && newFreqMHz <= 2.0) {
@@ -516,7 +501,7 @@ private:
                 sendChangeMessage();
             }
         }
-        else if (value.refersToSameSourceAs(chipIndex1Value)) {
+        else if (value.refersToSameSourceAs(chipIndex1.getValue())) {
             // DBG("Chip clock index changed from valueChanged");
             auto chip = getChipChoice();
             if (chip != ChipClockChoice::Custom) {
@@ -530,7 +515,7 @@ private:
                 sendChangeMessage();
             }
         }
-        else if (value.refersToSameSourceAs(tuningTableIndexValue)) {
+        else if (value.refersToSameSourceAs(tuningTableIndex0.getValue())) {
             // DBG("Tuning table index changed from valueChanged: " << static_cast<int>(value.getValue()));
             recreateTuningSystem(); // Reset to tuning defaults when changing tuning table
             // DBG("Tuning table index changed from valueChanged sendChangeMessage");

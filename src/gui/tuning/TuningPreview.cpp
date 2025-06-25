@@ -280,7 +280,7 @@ TuningPreviewComponent::TuningPreviewComponent()
     tuningsListBox.setMultipleSelectionEnabled(false);
     tuningsListBox.selectRow(viewModel.tuningTableIndex0.get(), false, false);
     // Note: ListBox doesn't have direct Value binding, so we'll use a custom approach
-    viewModel.tuningTableIndexValue.addListener(this);
+    viewModel.tuningTableIndex0.addListener(this);
 
     addAndMakeVisible(tuningTableLabel);
     addAndMakeVisible(tuningsListBox);
@@ -290,7 +290,7 @@ TuningPreviewComponent::TuningPreviewComponent()
     setupScaleSelectMenu();
     keyScaleLabel.setText("Scale:", juce::dontSendNotification);
     keyScaleLabel.setJustificationType(juce::Justification::centredRight);
-    keySelect.getSelectedIdAsValue().referTo(viewModel.keyIndex1Value);
+    keySelect.getSelectedIdAsValue().referTo(viewModel.keyIndex1.getValue());
 
     addAndMakeVisible(keyScaleLabel);
     addAndMakeVisible(keySelect);
@@ -300,17 +300,17 @@ TuningPreviewComponent::TuningPreviewComponent()
     addItemsFromStrings(chipClockSelect, viewModel.getChipClockLabels());
     chipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
     chipClockLabel.setJustificationType(juce::Justification::centredRight);
-    chipClockSelect.getSelectedIdAsValue().referTo(viewModel.chipIndex1Value);
+    chipClockSelect.getSelectedIdAsValue().referTo(viewModel.chipIndex1.getValue());
 
     addAndMakeVisible(chipClockLabel);
     addAndMakeVisible(chipClockSelect);
 
     // Set up frequency sliders with Value binding
     setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (MHz):",
-                                1.0, 2.0, 0.001, viewModel.clockFrequencyValue);
+                                1.0, 2.0, 0.001, viewModel.clockFrequencyMhz.getValue());
 
     setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 Frequency (Hz):",
-                                220.0, 880.0, 0.1, viewModel.a4FrequencyValue);
+                                220.0, 880.0, 0.1, viewModel.a4Frequency.getValue());
 
     // Set initial clock controls state
     updateClockControlsState();
@@ -362,7 +362,7 @@ TuningPreviewComponent::TuningPreviewComponent()
 
 TuningPreviewComponent::~TuningPreviewComponent() {
     viewModel.removeChangeListener(this);
-    viewModel.tuningTableIndexValue.removeListener(this);
+    viewModel.tuningTableIndex0.removeListener(this);
 }
 
 void TuningPreviewComponent::resized() {
@@ -528,13 +528,13 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
     // Replace the ComboBox's root menu with our grouped menu
     *scaleSelect.getRootMenu() = rootMenu;
 
-    scaleSelect.getSelectedIdAsValue().referTo(viewModel.scaleIndex1Value);
+    scaleSelect.getSelectedIdAsValue().referTo(viewModel.scaleIndex1.getValue());
 }
 
 // Value::Listener implementation for ListBox and other custom sync
 void TuningPreviewComponent::valueChanged(Value& value) {
     // DBG("TuningPreviewComponent::valueChanged");
-    if (value.refersToSameSourceAs(viewModel.tuningTableIndexValue)) {
+    if (value.refersToSameSourceAs(viewModel.tuningTableIndex0.getValue())) {
         // DBG("Tuning table index changed from valueChanged");
         int newIndex = value.getValue();
         tuningsListBox.selectRow(newIndex, false, false);

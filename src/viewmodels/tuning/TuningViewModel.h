@@ -117,14 +117,14 @@ public:
         , tuningTableIndex(transientState, IDs::tuningTable, nullptr, 0)
         , chipClockIndex(transientState, IDs::chipClock, nullptr, static_cast<int>(ChipClockEnum::ZX_Spectrum_1_77_MHz))
         , keyIndex(transientState, IDs::key, nullptr, 1)
-        , scaleIndex1based(transientState, IDs::scale, nullptr, 1)
+        , scaleIndex(transientState, IDs::scale, nullptr, 1)
         , a4Frequency(transientState, IDs::a4Frequency, nullptr, 440.0)
         , clockFrequencyMhz(transientState, IDs::clockFrequency, nullptr, 1.7734) // MHz
         // value objects, for listeners and bindings
         , tuningTableIndexValue(tuningTableIndex.getPropertyAsValue())
         , chipClockIndexValue(chipClockIndex.getPropertyAsValue())
         , keyIndexValue(keyIndex.getPropertyAsValue())
-        , scaleIndexValue1based(scaleIndex1based.getPropertyAsValue())
+        , scaleIndexValue(scaleIndex.getPropertyAsValue())
         , a4FrequencyValue(a4Frequency.getPropertyAsValue())
         , clockFrequencyValue(clockFrequencyMhz.getPropertyAsValue())
         // objects
@@ -135,7 +135,7 @@ public:
         tuningTableIndexValue.addListener(this);
         chipClockIndexValue.addListener(this);
         keyIndexValue.addListener(this);
-        scaleIndexValue1based.addListener(this);
+        scaleIndexValue.addListener(this);
         a4FrequencyValue.addListener(this);
         clockFrequencyValue.addListener(this);
 
@@ -278,17 +278,9 @@ public:
         return chipCapabilities.registerRange;
     }
 
-    // Value-based binding interface for automatic UI sync
-    Value& getSelectedScaleIndexValue() { return scaleIndexValue1based; }
-    Value& getKeyValue() { return keyIndexValue; }
-    Value& getA4FrequencyValue() { return a4FrequencyValue; }
-    Value& getClockFrequencyValue() { return clockFrequencyValue; }
-    Value& getChipClockIndexValue() { return chipClockIndexValue; }
-    Value& getTuningTableIndexValue() { return tuningTableIndexValue; }
-
     // Scale and Scale::Key selection methods
     Scale::ScaleType getCurrentScaleType() const {
-        auto scaleType = static_cast<Scale::ScaleType>(scaleIndex1based.get() - 1);
+        auto scaleType = static_cast<Scale::ScaleType>(scaleIndex.get() - 1);
         if (currentScale.getType() != scaleType) {
             currentScale = Scale(scaleType); // Update cache only when needed
         }
@@ -296,7 +288,7 @@ public:
     }
 
     void setCurrentScale(Scale::ScaleType scaleType) {
-        scaleIndex1based = static_cast<int>(scaleType) + 1;
+        scaleIndex = static_cast<int>(scaleType) + 1;
         currentScale = Scale(scaleType); // Update cache
         updateTuningSystem();
         sendChangeMessage();
@@ -343,11 +335,11 @@ public:
         return names;
     }
 
-    int getCurrentTuningTableIndex() const {
+    int getCurrentTuningTableIndex0() const {
         return tuningTableIndex.get();
     }
 
-    void setCurrentTuningTable(int index) {
+    void setCurrentTuningTableIndex0(int index) {
         if (index != tuningTableIndex.get() && index >= 0 && index < getTuningTableNames().size()) {
             tuningTableIndex = index;
             recreateTuningSystem(true); // Reset to tuning defaults when changing tuning table
@@ -486,21 +478,48 @@ public:
         return filename;
     }
 
-    // // State persistence methods
-    // ValueTree getState() const {
-    //     return transientState.createCopy();
-    // }
+    //-------------------------------------------------------------------------
 
-    // void setState(const ValueTree& newState) {
-    //     transientState.copyPropertiesFrom(newState, nullptr);
-    // }
+    // Transient view state
+    ValueTree transientState;
 
-    // TODO Tuning table editing? What bindings to use?
+    // CachedValue objects - single source of truth for all persisted types
+    CachedValue<int> tuningTableIndex;
+    CachedValue<int> chipClockIndex;
+    CachedValue<int> keyIndex;
+    CachedValue<int> scaleIndex;            // 1-based index for UI convenience, 0 is invalid
+    CachedValue<double> a4Frequency;        // Hz - authoritative source
+    CachedValue<double> clockFrequencyMhz;  // MHz - authoritative source
+
+public:
+    // Value objects for UI binding (public for direct access)
+    Value tuningTableIndexValue;
+    Value chipClockIndexValue;
+    Value keyIndexValue;
+    Value scaleIndexValue;                  // 1-based index for UI convenience, 0 is invalid
+    Value a4FrequencyValue;
+    Value clockFrequencyValue;
 
 private:
+    // Cached objects derived from values (performance optimization) - only for complex conversions
+    mutable Scale currentScale;            // Scale object cache
+    ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
+    std::unique_ptr<TuningSystem> tuningSystem;
+
+    // TODO move to Scale class
+    static inline constexpr std::array<std::string_view, 12> chromaticScaleDegreeNames = {
+        "1", "♭2", "2", "♭3", "3", "4", "♭5", "5", "♭6", "6", "♭7", "7"
+    };
+
+    static inline constexpr std::array<std::string_view, 12> chromaticNoteNames = {
+        "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"
+    };
+
+
+
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
-        if (value.refersToSameSourceAs(scaleIndexValue1based)) {
+        if (value.refersToSameSourceAs(scaleIndexValue)) {
             auto newScale = static_cast<Scale::ScaleType>(static_cast<int>(value.getValue()));
             if (newScale != currentScale.getType()) {
                 currentScale = Scale(newScale); // Update Scale object cache
@@ -536,7 +555,7 @@ private:
         else if (value.refersToSameSourceAs(tuningTableIndexValue)) {
             int newIndex = value.getValue();
             if (newIndex != tuningTableIndex.get()) {
-                setCurrentTuningTable(newIndex);
+                setCurrentTuningTableIndex0(newIndex);
             }
         }
     }
@@ -567,7 +586,7 @@ private:
         if (tuningSystem && applyDefaults) {
             // Apply tuning defaults when changing tuning table or initializing
             keyIndex = static_cast<int>(options.tonic);
-            scaleIndex1based = static_cast<int>(options.scaleType) + 1;
+            scaleIndex = static_cast<int>(options.scaleType) + 1;
             currentScale = Scale(options.scaleType);
 
             // Update CachedValue objects to match the new defaults
@@ -620,39 +639,6 @@ private:
 
         return bestMatch;
     }
-
-    // Transient view state
-    ValueTree transientState;
-
-    // CachedValue objects - single source of truth for all persisted types
-    CachedValue<int> tuningTableIndex;
-    CachedValue<int> chipClockIndex;
-    CachedValue<int> keyIndex;
-    CachedValue<int> scaleIndex1based;
-    CachedValue<double> a4Frequency;        // Hz - authoritative source
-    CachedValue<double> clockFrequencyMhz;     // MHz - authoritative source
-
-    // Value objects for UI binding (derived from CachedValues for getPropertyAsValue())
-    Value tuningTableIndexValue;
-    Value chipClockIndexValue;
-    Value keyIndexValue;
-    Value scaleIndexValue1based;
-    Value a4FrequencyValue;
-    Value clockFrequencyValue;
-
-    // Cached objects derived from values (performance optimization) - only for complex conversions
-    mutable Scale currentScale;            // Scale object cache
-    ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
-    std::unique_ptr<TuningSystem> tuningSystem;
-
-    // TODO move to Scale class
-    static inline constexpr std::array<std::string_view, 12> chromaticScaleDegreeNames = {
-        "1", "♭2", "2", "♭3", "3", "4", "♭5", "5", "♭6", "6", "♭7", "7"
-    };
-
-    static inline constexpr std::array<std::string_view, 12> chromaticNoteNames = {
-        "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"
-    };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };

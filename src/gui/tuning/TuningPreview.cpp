@@ -286,7 +286,8 @@ TuningPreviewComponent::TuningPreviewComponent()
     addAndMakeVisible(tuningsListBox);
 
     // Set up Key selection ComboBox
-    addItemsFromStrings(keySelect, viewModel.getAllKeyNames());
+    addItemsFromStrings(keySelect, Scale::getAllKeyNames());
+    setupScaleSelectMenu();
     keyScaleLabel.setText("Scale:", juce::dontSendNotification);
     keyScaleLabel.setJustificationType(juce::Justification::centredRight);
     keySelect.getSelectedIdAsValue().referTo(viewModel.keyIndex1Value);
@@ -301,6 +302,9 @@ TuningPreviewComponent::TuningPreviewComponent()
     chipClockLabel.setJustificationType(juce::Justification::centredRight);
     chipClockSelect.getSelectedIdAsValue().referTo(viewModel.chipIndex1Value);
 
+    addAndMakeVisible(chipClockLabel);
+    addAndMakeVisible(chipClockSelect);
+
     // Set up frequency sliders with Value binding
     setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (MHz):",
                                 1.0, 2.0, 0.001, viewModel.clockFrequencyValue);
@@ -311,20 +315,10 @@ TuningPreviewComponent::TuningPreviewComponent()
     // Set initial clock controls state
     updateClockControlsState();
 
-    // Set up Scale selection ComboBox with category grouping
-    setupScaleSelectMenu();
-    keyScaleLabel.setText("Scale:", juce::dontSendNotification);
-
     // Register as a change listener to the view model
     viewModel.addChangeListener(this);
-    // TuningTypeLabel.setText("Tuning Type: " + viewModel.getTuningTypeName(), juce::dontSendNotification);
+
     tuningNameLabel.setText("Tuning: " + viewModel.getTuningDescription(), juce::dontSendNotification);
-    // ToneEnvSwitchLabel.setText("Tone Env Switch: " + String(viewModel.isToneEnvSwitchEnabled()), juce::dontSendNotification);
-
-    addAndMakeVisible(chipClockLabel);
-    addAndMakeVisible(chipClockSelect);
-
-    // addAndMakeVisible(TuningTypeLabel);
     addAndMakeVisible(tuningNameLabel);
     addAndMakeVisible(toneEnvSwitchLabel);
     addAndMakeVisible(tuningGrid);
@@ -354,12 +348,12 @@ TuningPreviewComponent::TuningPreviewComponent()
                 Helpers::setLastCsvExportDirectory(selectedFile.getParentDirectory());
 
                 AlertWindow::showMessageBox(AlertWindow::InfoIcon,
-                                          "Export Successful",
-                                          "Tuning data exported to:\n" + selectedFile.getFullPathName());
+                                            "Export Successful",
+                                            "Tuning data exported to:\n" + selectedFile.getFullPathName());
             } else {
                 AlertWindow::showMessageBox(AlertWindow::WarningIcon,
-                                          "Export Failed",
-                                          "Failed to save file:\n" + selectedFile.getFullPathName());
+                                            "Export Failed",
+                                            "Failed to save file:\n" + selectedFile.getFullPathName());
             }
         }
     };
@@ -373,8 +367,6 @@ TuningPreviewComponent::~TuningPreviewComponent() {
 
 void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds();
-
-
     auto formBounds = bounds.reduced(20, 20);
 
     // Create two columns layout
@@ -442,7 +434,7 @@ void TuningPreviewComponent::paint(juce::Graphics& g) {
 
 void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
-        DBG("TuningPreviewComponent::changeListenerCallback");
+        // DBG("TuningPreviewComponent::changeListenerCallback");
         tuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
         updateClockControlsState();
         tuningGrid.repaint();
@@ -475,20 +467,6 @@ void TuningPreviewComponent::listBoxItemClicked(int row, const MouseEvent& e) {
 }
 
 // UI setup helpers
-void TuningPreviewComponent::setupSlider(Slider& slider, Label& label, const String& labelText,
-                                        double min, double max, double step, std::function<void()> callback) {
-    slider.setRange(min, max, step);
-    slider.setValue(min, juce::dontSendNotification);
-    slider.setSliderStyle(Slider::LinearHorizontal);
-    slider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
-    slider.onValueChange = callback;
-    label.setText(labelText, juce::dontSendNotification);
-    label.setJustificationType(juce::Justification::centredRight);
-
-    addAndMakeVisible(slider);
-    addAndMakeVisible(label);
-}
-
 void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText,
                                                         double min, double max, double step, Value& valueToReference) {
     slider.setRange(min, max, step);
@@ -555,9 +533,9 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
 
 // Value::Listener implementation for ListBox and other custom sync
 void TuningPreviewComponent::valueChanged(Value& value) {
-    DBG("TuningPreviewComponent::valueChanged");
+    // DBG("TuningPreviewComponent::valueChanged");
     if (value.refersToSameSourceAs(viewModel.tuningTableIndexValue)) {
-        DBG("Tuning table index changed from valueChanged");
+        // DBG("Tuning table index changed from valueChanged");
         int newIndex = value.getValue();
         tuningsListBox.selectRow(newIndex, false, false);
     }

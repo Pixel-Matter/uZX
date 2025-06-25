@@ -128,16 +128,16 @@ public:
         {
             TuningViewModel viewModel;
 
-            auto keyNames = viewModel.getAllKeyNames();
+            auto keyNames = Scale::getAllKeyNames();
             expectEquals(static_cast<int>(keyNames.size()), 12);
             expectEquals(keyNames[0], String("C"));
             expectEquals(keyNames[1], String::fromUTF8("C♯"));
             expectEquals(keyNames[9], String("A"));
             expectEquals(keyNames[11], String("B"));
 
-            expectEquals(TuningViewModel::getKeyName(Scale::Key::C), String("C"));
-            expectEquals(TuningViewModel::getKeyName(Scale::Key::A), String("A"));
-            expectEquals(TuningViewModel::getKeyName(Scale::Key::FSharp), String::fromUTF8("F♯"));
+            expectEquals(Scale::getKeyName(Scale::Key::C), String("C"));
+            expectEquals(Scale::getKeyName(Scale::Key::A), String("A"));
+            expectEquals(Scale::getKeyName(Scale::Key::FSharp), String::fromUTF8("F♯"));
         }
 
         beginTest("Scale type names functionality");

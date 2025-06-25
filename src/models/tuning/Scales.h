@@ -296,9 +296,17 @@ public:
     std::vector<Degree> getDegrees() const;
     std::array<Degree, 12> getChromaticDegrees() const;
 
+    // Key-related static methods
+    static StringArray getAllKeyNames();
+    static String getKeyName(Key key);
+
 private:
     ScaleType type;
     std::vector<int> intervals;  // For all scales - both predefined and user-defined
+
+    static inline constexpr std::array<std::string_view, 12> chromaticNoteNames = {
+        "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"
+    };
 
     static inline constexpr std::array<int, 7> majorPattern {0, 2, 4, 5, 7, 9, 11}; // Major scale intervals
     static inline constexpr std::array<Degree, 12> chromaticDegrees {{

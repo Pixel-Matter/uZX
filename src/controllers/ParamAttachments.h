@@ -56,14 +56,18 @@ template <typename Type>
 struct ParamAttachment {
     using type = Type;
 
+    // TODO replace Plugin with VTS and undo manager
     ParamAttachment(te::Plugin& p)
         : plugin(p)
     {}
+
+    // ctor that refers to an existing ValueTree property
 
     void referTo(const Identifier& id, const String& n, const Type& def, const String& u) {
         name = n;
         units = u;
         value.referTo(plugin.state, id, plugin.getUndoManager(), def);
+        // valueValue = value.getPropertyAsValue();
     }
 
     void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u) {
@@ -125,6 +129,7 @@ struct ParamAttachment {
     String units;
     // TODO CachedValue<te::AtomicWrapper<Type>> value;
     CachedValue<Type> value;
+    // Value valueValue;
     NormalisableRange<Type> range;
     std::vector<std::pair<Type, String>> choices;
 

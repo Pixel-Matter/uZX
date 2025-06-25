@@ -547,7 +547,6 @@ void TuningPreviewComponent::updateClockControlsState() {
 void TuningPreviewComponent::setupScaleSelectMenu() {
     // Clear any existing items and mapping
     scaleSelect.clear();
-    scaleMenuMapping.clear();
 
     // Get all scale categories
     auto categories = Scale::getAllScaleCategories();
@@ -569,7 +568,6 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
         for (auto scaleType : scalesInCategory) {
             String scaleName = Scale::getNameForType(scaleType);
             rootMenu.addItem(menuItemId, scaleName);
-            scaleMenuMapping[menuItemId] = scaleType;
 
             // Also add to ComboBox for text display purposes
             scaleSelect.addItem(scaleName, menuItemId);
@@ -585,7 +583,7 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
     // Replace the ComboBox's root menu with our grouped menu
     *scaleSelect.getRootMenu() = rootMenu;
 
-    scaleSelect.getSelectedIdAsValue().referTo(viewModel.scaleIndexValue);
+    scaleSelect.getSelectedIdAsValue().referTo(viewModel.scaleIndex1Value);
 }
 
 // Value::Listener implementation for ListBox and other custom sync

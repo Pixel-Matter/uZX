@@ -42,7 +42,7 @@ public:
 
             // Set to A Minor (Natural Minor = Aeolian)
             viewModel.setCurrentKey(Scale::Key::A);
-            viewModel.setCurrentScale(Scale::ScaleType::AeolianOrMinor);
+            viewModel.setCurrentScaleType(Scale::ScaleType::AeolianOrMinor);
 
             expectEquals(static_cast<int>(viewModel.getCurrentKey()), static_cast<int>(Scale::Key::A));
             expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::AeolianOrMinor));
@@ -72,7 +72,7 @@ public:
 
             // Set to F# Major
             viewModel.setCurrentKey(Scale::Key::FSharp);
-            viewModel.setCurrentScale(Scale::ScaleType::IonianOrMajor);
+            viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
 
             expectEquals(static_cast<int>(viewModel.getCurrentKey()), static_cast<int>(Scale::Key::FSharp));
             expectEquals(viewModel.getScaleName(), String::fromUTF8("F♯ Major (Ionian)"));
@@ -101,7 +101,7 @@ public:
 
             // Set to D Dorian
             viewModel.setCurrentKey(Scale::Key::D);
-            viewModel.setCurrentScale(Scale::ScaleType::Dorian);
+            viewModel.setCurrentScaleType(Scale::ScaleType::Dorian);
 
             expectEquals(static_cast<int>(viewModel.getCurrentKey()), static_cast<int>(Scale::Key::D));
             expectEquals(viewModel.getScaleName(), String("D Dorian"));
@@ -168,7 +168,7 @@ public:
             TuningViewModel viewModel;
 
             // Set up test configuration
-            viewModel.setCurrentScale(Scale::ScaleType::IonianOrMajor);
+            viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
             viewModel.setCurrentKey(Scale::Key::C);
             viewModel.setA4Frequency(440.0);
 
@@ -223,7 +223,7 @@ public:
             }
 
             // Test with different scale
-            viewModel.setCurrentScale(Scale::ScaleType::MinorPentatonic);
+            viewModel.setCurrentScaleType(Scale::ScaleType::MinorPentatonic);
             viewModel.setCurrentKey(Scale::Key::A);
 
             String csvData2 = viewModel.exportToCSV();
@@ -255,7 +255,7 @@ public:
             TuningViewModel viewModel;
 
             // Test default filename with C Major
-            viewModel.setCurrentScale(Scale::ScaleType::IonianOrMajor);
+            viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
             viewModel.setCurrentKey(Scale::Key::C);
             viewModel.setA4Frequency(440.0);
 
@@ -265,7 +265,7 @@ public:
             expect(filename1.contains("C Major"), "Filename should contain scale info");
 
             // Test with different scale and non-standard A4
-            viewModel.setCurrentScale(Scale::ScaleType::MinorPentatonic);
+            viewModel.setCurrentScaleType(Scale::ScaleType::MinorPentatonic);
             viewModel.setCurrentKey(Scale::Key::A);
             viewModel.setA4Frequency(442.0);
 

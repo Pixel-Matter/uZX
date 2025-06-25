@@ -68,14 +68,11 @@ private:
     void updateClockControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();
-    
+
     // Value::Listener implementation for ListBox sync
     void valueChanged(Value& value) override;
 
     TuningViewModel viewModel;
-
-    // Scale selection mapping (menu item ID -> ScaleType)
-    std::map<int, Scale::ScaleType> scaleMenuMapping;
 
     // Tuning table selection
     Label tuningTableLabel;

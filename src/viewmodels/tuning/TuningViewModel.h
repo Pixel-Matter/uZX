@@ -7,7 +7,7 @@
 #include "../../models/tuning/TuningRegistry.h"
 #include "../../models/tuning/Scales.h"
 #include "../../plugins/uZX/aychip/aychip.h"
-#include "juce_core/system/juce_PlatformDefs.h"
+#include "../../util/convert.h"
 
 #include <cmath>
 #include <array>
@@ -319,25 +319,18 @@ public:
 
     // Tuning table selection methods
     StringArray getTuningTableNames() const {
-        StringArray names;
-        BuiltinTuningType::forEach([&](auto&& tableType) {
-            names.add(BuiltinTuningType(tableType).getLongLabel().data());
-        });
-        return names;
+        return toStringArray(BuiltinTuningType::getLongLabelsAsArray());
     }
 
     StringArray getChipClockLabels() const {
-        StringArray labels;
-        ChipClockChoice::forEach([&](auto&& clockType) {
-            labels.add(ChipClockChoice(clockType).getLongLabel().data());
-        });
-        return labels;
+        return toStringArray(ChipClockChoice::getLongLabelsAsArray());
     }
 
     ChipClockChoice getChipChoice() const {
         return chipIndex1.get() - 1;
     }
 
+    // Not used yet
     void setChipChoice(ChipClockChoice clockChoice) {
         // DBG("setChipChoice: " << clockChoice.getLongLabel().data());
         chipIndex1 = static_cast<int>(clockChoice) + 1; // +1 for 1-based index in UI
@@ -347,10 +340,7 @@ public:
         sendChangeMessage();
     }
 
-    double getA4Frequency() const {
-        return a4Frequency.get();
-    }
-
+    // used in tests only
     void setA4Frequency(double frequency) {
         // DBG("setA4Frequency: " << frequency);
         if (frequency >= 220.0 && frequency <= 880.0) {
@@ -361,7 +351,8 @@ public:
         }
     }
 
-    void setClockFrequencyHz(double frequency) {
+    // Not used yet
+    void setClockFrequency(double frequency) {
         // DBG("setClockFrequencyHz: " << frequency);
         if (frequency >= 1.0 * MHz && frequency <= 2.0 * MHz) {
             clockFrequencyMhz = frequency / MHz; // Store as MHz
@@ -431,7 +422,7 @@ public:
         filename += " " + String(clockFrequencyMhz.get(), 2).replace(".", "_") + "MHz";
 
         // Add A4 frequency
-        filename += " A4=" + String(getA4Frequency(), 0);
+        filename += " A4=" + String(a4Frequency.get(), 0);
 
         // Replace invalid filename characters
         filename = filename.replaceCharacter('/', '-')
@@ -559,7 +550,7 @@ private:
             .scaleType = getCurrentScaleType(),
             .chipChoice = getChipChoice(),
             .chipClock = clockFrequencyMhz.get() * MHz,
-            .a4Frequency = getA4Frequency()
+            .a4Frequency = a4Frequency.get()
         };
 
         tuningSystem = makeBuiltinTuning(options);

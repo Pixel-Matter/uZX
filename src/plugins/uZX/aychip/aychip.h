@@ -75,6 +75,7 @@ public:
     inline constexpr double getClockValue() const noexcept {
         return clockValues[static_cast<size_t>(value)];
     }
+
 };
 
 

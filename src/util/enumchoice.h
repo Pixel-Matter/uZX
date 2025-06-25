@@ -8,6 +8,16 @@
 
 namespace MoTool::Util {
 
+// Helper function to convert C-style array to std::array with automatic size deduction
+template<typename T, size_t N>
+constexpr auto to_array(const T (&arr)[N]) -> std::array<T, N> {
+    std::array<T, N> result{};
+    for (size_t i = 0; i < N; ++i) {
+        result[i] = arr[i];
+    }
+    return result;
+}
+
 // Base class for enumerated choices
 
 template <class E>
@@ -94,6 +104,10 @@ public:
 
     constexpr static auto getLongLabels() noexcept {
         return E::longLabels;
+    }
+
+    constexpr static auto getLongLabelsAsArray() noexcept {
+        return to_array(E::longLabels);
     }
 
     constexpr auto getShortLabel() noexcept {

@@ -332,7 +332,6 @@ TuningPreviewComponent::TuningPreviewComponent()
 
     // Set up Scale selection ComboBox with category grouping
     setupScaleSelectMenu();
-    updateScaleSelection();
     keyScaleLabel.setText("Scale:", juce::dontSendNotification);
 
     // Register as a change listener to the view model
@@ -469,9 +468,6 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
         // Update enabled state of clock frequency controls
         updateClockControlsState();
 
-        // Update scale selection
-        updateScaleSelection();
-
         // Update key selection (not bound to Value due to 1-based ID issue)
         keySelect.setSelectedId(static_cast<int>(viewModel.getCurrentKey()) + 1, juce::dontSendNotification);
 
@@ -589,33 +585,7 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
     // Replace the ComboBox's root menu with our grouped menu
     *scaleSelect.getRootMenu() = rootMenu;
 
-    // Set up the onChange callback to handle selection
-    scaleSelect.onChange = [this]() {
-        int selectedId = scaleSelect.getSelectedId();
-        if (selectedId > 0 && scaleMenuMapping.find(selectedId) != scaleMenuMapping.end()) {
-            Scale::ScaleType selectedScale = scaleMenuMapping[selectedId];
-            viewModel.setCurrentScale(selectedScale);
-        }
-    };
-}
-
-void TuningPreviewComponent::updateScaleSelection() {
-    // Update the ComboBox text to show the current scale
-    Scale::ScaleType currentScale = viewModel.getCurrentScaleType();
-    String currentScaleName = Scale::getNameForType(currentScale);
-
-    // Find the corresponding menu item ID
-    for (const auto& [itemId, scaleType] : scaleMenuMapping) {
-        if (scaleType == currentScale) {
-            scaleSelect.setSelectedId(itemId, juce::dontSendNotification);
-            break;
-        }
-    }
-
-    // If we can't find it in the mapping, set the text directly
-    if (scaleSelect.getSelectedId() == 0) {
-        scaleSelect.setText(currentScaleName, juce::dontSendNotification);
-    }
+    scaleSelect.getSelectedIdAsValue().referTo(viewModel.getSelectedScaleIndexValue());
 }
 
 // Value::Listener implementation for ListBox and other custom sync

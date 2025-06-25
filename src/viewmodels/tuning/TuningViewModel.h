@@ -104,8 +104,6 @@ namespace IDs {
     DECLARE_ID(scale)
     DECLARE_ID(a4Frequency)
     DECLARE_ID(clockFrequency)
-    DECLARE_ID(tuningType)
-    DECLARE_ID(tuningTableName)
 
     #undef DECLARE_ID
 }
@@ -118,17 +116,18 @@ public:
         : transientState(IDs::TUNINGVIEWSTATE)
         , tuningTableIndex(transientState, IDs::tuningTable, nullptr, 0)
         , chipClockIndex(transientState, IDs::chipClock, nullptr, static_cast<int>(ChipClockEnum::ZX_Spectrum_1_77_MHz))
-        , keyIndex(transientState, IDs::key, nullptr, static_cast<int>(Scale::Key::C))
-        , scaleIndex(transientState, IDs::scale, nullptr, static_cast<int>(Scale::ScaleType::IonianOrMajor))
+        , keyIndex(transientState, IDs::key, nullptr, 1)
+        , scaleIndex1based(transientState, IDs::scale, nullptr, 1)
         , a4Frequency(transientState, IDs::a4Frequency, nullptr, 440.0)
         , clockFrequencyMhz(transientState, IDs::clockFrequency, nullptr, 1.7734) // MHz
         // value objects, for listeners and bindings
         , tuningTableIndexValue(tuningTableIndex.getPropertyAsValue())
         , chipClockIndexValue(chipClockIndex.getPropertyAsValue())
         , keyIndexValue(keyIndex.getPropertyAsValue())
-        , scaleIndexValue(scaleIndex.getPropertyAsValue())
+        , scaleIndexValue1based(scaleIndex1based.getPropertyAsValue())
         , a4FrequencyValue(a4Frequency.getPropertyAsValue())
         , clockFrequencyValue(clockFrequencyMhz.getPropertyAsValue())
+        // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
         , chipCapabilities {16, Range<int>(1, 4096)}
     {
@@ -136,7 +135,7 @@ public:
         tuningTableIndexValue.addListener(this);
         chipClockIndexValue.addListener(this);
         keyIndexValue.addListener(this);
-        scaleIndexValue.addListener(this);
+        scaleIndexValue1based.addListener(this);
         a4FrequencyValue.addListener(this);
         clockFrequencyValue.addListener(this);
 
@@ -280,7 +279,7 @@ public:
     }
 
     // Value-based binding interface for automatic UI sync
-    Value& getScaleValue() { return scaleIndexValue; }
+    Value& getSelectedScaleIndexValue() { return scaleIndexValue1based; }
     Value& getKeyValue() { return keyIndexValue; }
     Value& getA4FrequencyValue() { return a4FrequencyValue; }
     Value& getClockFrequencyValue() { return clockFrequencyValue; }
@@ -289,7 +288,7 @@ public:
 
     // Scale and Scale::Key selection methods
     Scale::ScaleType getCurrentScaleType() const {
-        auto scaleType = static_cast<Scale::ScaleType>(scaleIndex.get());
+        auto scaleType = static_cast<Scale::ScaleType>(scaleIndex1based.get() - 1);
         if (currentScale.getType() != scaleType) {
             currentScale = Scale(scaleType); // Update cache only when needed
         }
@@ -297,7 +296,7 @@ public:
     }
 
     void setCurrentScale(Scale::ScaleType scaleType) {
-        scaleIndex = static_cast<int>(scaleType);
+        scaleIndex1based = static_cast<int>(scaleType) + 1;
         currentScale = Scale(scaleType); // Update cache
         updateTuningSystem();
         sendChangeMessage();
@@ -501,7 +500,7 @@ public:
 private:
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
-        if (value.refersToSameSourceAs(scaleIndexValue)) {
+        if (value.refersToSameSourceAs(scaleIndexValue1based)) {
             auto newScale = static_cast<Scale::ScaleType>(static_cast<int>(value.getValue()));
             if (newScale != currentScale.getType()) {
                 currentScale = Scale(newScale); // Update Scale object cache
@@ -568,7 +567,7 @@ private:
         if (tuningSystem && applyDefaults) {
             // Apply tuning defaults when changing tuning table or initializing
             keyIndex = static_cast<int>(options.tonic);
-            scaleIndex = static_cast<int>(options.scaleType);
+            scaleIndex1based = static_cast<int>(options.scaleType) + 1;
             currentScale = Scale(options.scaleType);
 
             // Update CachedValue objects to match the new defaults
@@ -629,7 +628,7 @@ private:
     CachedValue<int> tuningTableIndex;
     CachedValue<int> chipClockIndex;
     CachedValue<int> keyIndex;
-    CachedValue<int> scaleIndex;
+    CachedValue<int> scaleIndex1based;
     CachedValue<double> a4Frequency;        // Hz - authoritative source
     CachedValue<double> clockFrequencyMhz;     // MHz - authoritative source
 
@@ -637,7 +636,7 @@ private:
     Value tuningTableIndexValue;
     Value chipClockIndexValue;
     Value keyIndexValue;
-    Value scaleIndexValue;
+    Value scaleIndexValue1based;
     Value a4FrequencyValue;
     Value clockFrequencyValue;
 

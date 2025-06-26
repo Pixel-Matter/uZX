@@ -267,8 +267,8 @@ static void addItemsFromStrings(juce::ComboBox& comboBox, const StringArray& ite
 }
 
 //================================================================================
-TuningPreviewComponent::TuningPreviewComponent()
-    : viewModel(TuningViewModel())
+TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
+    : viewModel(um)
     , tuningGrid(viewModel)
     , tooltipWindow(nullptr, 750) // ms delay
 {

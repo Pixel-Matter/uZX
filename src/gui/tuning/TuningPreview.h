@@ -46,7 +46,7 @@ private:
 
 class TuningPreviewComponent : public juce::Component, private ChangeListener, private ListBoxModel, private Value::Listener {
 public:
-    TuningPreviewComponent();
+    TuningPreviewComponent(UndoManager* um = nullptr);
     ~TuningPreviewComponent() override;
 
     void resized() override;

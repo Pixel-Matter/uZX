@@ -110,14 +110,15 @@ class TuningViewModel : public ChangeBroadcaster, private Value::Listener {
 public:
     // Any UI component can now listen to tuning system changes by implementing ChangeListener
     // and calling viewModel.addChangeListener(this) in their constructor
-    TuningViewModel()
+    TuningViewModel(UndoManager* um = nullptr)
         : transientState(IDs::TUNINGVIEWSTATE)
-        , tuningTableIndex0(transientState, IDs::tuningTable, nullptr, 0)
-        , chipIndex1(transientState, IDs::chipClock, nullptr, static_cast<int>(ChipClockEnum::ZX_Spectrum_1_77_MHz) + 1)
-        , keyIndex1(transientState, IDs::key, nullptr, 1)
-        , scaleIndex1(transientState, IDs::scale, nullptr, 1)
-        , a4Frequency(transientState, IDs::a4Frequency, nullptr, 440.0)
-        , clockFrequencyMhz(transientState, IDs::clockFrequency, nullptr, 1.7734) // MHz
+        , undoManager(um)
+        , tuningTableIndex0(transientState, IDs::tuningTable,    nullptr, 0)  // no undo for this control
+        , chipIndex1       (transientState, IDs::chipClock,      um, static_cast<int>(ChipClockEnum::ZX_Spectrum_1_77_MHz) + 1)
+        , keyIndex1        (transientState, IDs::key,            um, 1)
+        , scaleIndex1      (transientState, IDs::scale,          um, 1)
+        , a4Frequency      (transientState, IDs::a4Frequency,    um, 440.0)
+        , clockFrequencyMhz(transientState, IDs::clockFrequency, um, 1.7734) // MHz
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
         , chipCapabilities {16, Range<int>(1, 4096)}
@@ -445,10 +446,12 @@ public:
     }
 
     //-------------------------------------------------------------------------
-
+private:
     // Transient view state
     ValueTree transientState;
+    UndoManager* undoManager;
 
+public:
     // ParamAttachment objects - single source of truth for all persisted types
     ParamAttachment<int> tuningTableIndex0;
     ParamAttachment<int> chipIndex1;

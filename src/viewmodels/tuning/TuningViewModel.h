@@ -113,7 +113,8 @@ public:
     TuningViewModel(UndoManager* um = nullptr)
         : transientState(IDs::TUNINGVIEWSTATE)
         , undoManager(um)
-        , tuningTableIndex0(transientState, IDs::tuningTable,    nullptr, 0)  // no undo for this control
+                                                                 // no undo for this control
+        , selectedTuningTable(transientState, IDs::tuningTable,  nullptr, BuiltinTuningType::EqualTemperament)
         , chipIndex1       (transientState, IDs::chipClock,      um, static_cast<int>(ChipClockEnum::ZX_Spectrum_1_77_MHz) + 1)
         , keyIndex1        (transientState, IDs::key,            um, 1)
         , scaleIndex1      (transientState, IDs::scale,          um, 1)
@@ -124,7 +125,7 @@ public:
         , chipCapabilities {16, Range<int>(1, 4096)}
     {
         // Set up Value listeners for bidirectional sync
-        tuningTableIndex0.addListener(this);
+        selectedTuningTable.addListener(this);
         chipIndex1.addListener(this);
         keyIndex1.addListener(this);
         scaleIndex1.addListener(this);
@@ -453,8 +454,7 @@ private:
 
 public:
     // ParamAttachment objects - single source of truth for all persisted types
-    ParamAttachment<int> tuningTableIndex0;
-    // ParamAttachment<BuiltinTuningType> tuningTableIndex0;
+    ParamAttachment<BuiltinTuningType> selectedTuningTable;
     ParamAttachment<int>    chipIndex1;
     ParamAttachment<int>    keyIndex1;
     ParamAttachment<int>    scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
@@ -480,14 +480,12 @@ private:
                 // DBG("Scale changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        }
-        else if (value.refersToSameSourceAs(keyIndex1.getValue())) {
+        } else if (value.refersToSameSourceAs(keyIndex1.getValue())) {
             // DBG("Key changed from valueChanged");
             tuningSystem->setTonic(getCurrentKey());
             // DBG("Key changed from valueChanged sendChangeMessage");
             sendChangeMessage();
-        }
-        else if (value.refersToSameSourceAs(a4Frequency.getValue())) {
+        } else if (value.refersToSameSourceAs(a4Frequency.getValue())) {
             // DBG("A4 frequency changed from valueChanged");
             double newFreq = value.getValue();
             if (newFreq >= 220.0 && newFreq <= 880.0) {
@@ -495,8 +493,7 @@ private:
                 // DBG("A4 frequency changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        }
-        else if (value.refersToSameSourceAs(clockFrequencyMhz.getValue())) {
+        } else if (value.refersToSameSourceAs(clockFrequencyMhz.getValue())) {
             // DBG("Clock frequency changed from valueChanged");
             double newFreqMHz = value.getValue();
             if (newFreqMHz >= 1.0 && newFreqMHz <= 2.0) {
@@ -504,9 +501,8 @@ private:
                 // DBG("Clock frequency changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        }
-        else if (value.refersToSameSourceAs(chipIndex1.getValue())) {
-            DBG("Chip index changed from valueChanged");
+        } else if (value.refersToSameSourceAs(chipIndex1.getValue())) {
+            // DBG("Chip index changed from valueChanged");
             auto chip = getChipChoice();
             if (chip != ChipClockChoice::Custom) {
                 // Update clock frequency when preset is selected
@@ -516,10 +512,9 @@ private:
                 // Notify all registered listeners that the tuning system has changed
             }
             // if chip == ChipClockChoice::Custom we should send change message too
-            DBG("Chip index changed from valueChanged sendChangeMessage");
+            // DBG("Chip index changed from valueChanged sendChangeMessage");
             sendChangeMessage();
-        }
-        else if (value.refersToSameSourceAs(tuningTableIndex0.getValue())) {
+        } else if (value.refersToSameSourceAs(selectedTuningTable.getValue())) {
             // DBG("Tuning table index changed from valueChanged: " << static_cast<int>(value.getValue()));
             recreateTuningSystem(); // Reset to tuning defaults when changing tuning table
             // DBG("Tuning table index changed from valueChanged sendChangeMessage");
@@ -529,7 +524,7 @@ private:
 
     void recreateTuningSystem() {
         // DBG("Recreating tuning system with index: " << tuningTableIndex0.get());
-        auto tuningType = static_cast<BuiltinTuningType>(tuningTableIndex0.get());
+        auto tuningType = selectedTuningTable.get();
 
         TuningOptions options {
             .tableType = tuningType,

@@ -278,9 +278,9 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     tuningTableLabel.setText("Tuning Tables:", juce::dontSendNotification);
     tuningsListBox.setModel(this);
     tuningsListBox.setMultipleSelectionEnabled(false);
-    tuningsListBox.selectRow(static_cast<int>(viewModel.tuningTableIndex0.get()), false, false);
+    tuningsListBox.selectRow(static_cast<int>(viewModel.selectedTuningTable.get()), false, false);
     // Note: ListBox doesn't have direct Value binding, so we'll use a custom approach
-    viewModel.tuningTableIndex0.addListener(this);
+    viewModel.selectedTuningTable.addListener(this);
 
     addAndMakeVisible(tuningTableLabel);
     addAndMakeVisible(tuningsListBox);
@@ -362,7 +362,7 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
 
 TuningPreviewComponent::~TuningPreviewComponent() {
     viewModel.removeChangeListener(this);
-    viewModel.tuningTableIndex0.removeListener(this);
+    viewModel.selectedTuningTable.removeListener(this);
 }
 
 void TuningPreviewComponent::resized() {
@@ -463,7 +463,7 @@ void TuningPreviewComponent::paintListBoxItem(int rowNumber, Graphics& g, int wi
 
 void TuningPreviewComponent::listBoxItemClicked(int row, const MouseEvent& e) {
     juce::ignoreUnused(e);
-    viewModel.tuningTableIndex0 = row; // Update the tuning table index in the view model
+    viewModel.selectedTuningTable = BuiltinTuningType(row); // Update the tuning table index in the view model
 }
 
 // UI setup helpers
@@ -534,9 +534,8 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
 // Value::Listener implementation for ListBox and other custom sync
 void TuningPreviewComponent::valueChanged(Value& value) {
     // DBG("TuningPreviewComponent::valueChanged");
-    if (value.refersToSameSourceAs(viewModel.tuningTableIndex0.getValue())) {
-        // DBG("Tuning table index changed from valueChanged");
-        int newIndex = value.getValue();
+    if (value.refersToSameSourceAs(viewModel.selectedTuningTable.getValue())) {
+        int newIndex = static_cast<int>(viewModel.selectedTuningTable.get());
         tuningsListBox.selectRow(newIndex, false, false);
     }
 }

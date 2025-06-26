@@ -73,7 +73,7 @@ struct ParamAttachment {
     // ctor that refers to an existing ValueTree property
 
     void referTo(const Identifier& id, const Type& deflt) {
-        DBG("ParamAttachment::referTo for type " << typeid(Type).name() << " with id " << id.toString());
+        // DBG("ParamAttachment::referTo for type " << typeid(Type).name() << " with id " << id.toString());
         // NOTE not vice versa
         cachedValue.referTo(valueTree, id, undoManager, deflt);
         value = cachedValue.getPropertyAsValue();
@@ -136,7 +136,7 @@ struct ParamAttachment {
     }
 
     void addListener(Value::Listener* listener) {
-        DBG("ParamAttachment::addListener for type " << typeid(Type).name() << " with name " << name);
+        // DBG("ParamAttachment::addListener for type " << typeid(Type).name() << " with name " << name);
         value.addListener(listener);
     }
 

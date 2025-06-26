@@ -182,16 +182,3 @@ std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {
 //==============================================================================
 
 } // namespace MoTool::uZX
-
-
-using namespace MoTool::uZX;
-using namespace MoTool::Util;
-
-template <>
-struct juce::VariantConverter<ChipType> : public EnumVariantConverter<ChipType> {};
-
-template <>
-struct juce::VariantConverter<ChannelsLayout> : public EnumVariantConverter<ChannelsLayout> {};
-
-template <>
-struct juce::VariantConverter<ChipClockChoice> : public EnumVariantConverter<ChipClockChoice> {};

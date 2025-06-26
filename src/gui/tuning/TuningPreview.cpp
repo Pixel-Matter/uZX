@@ -300,7 +300,6 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     addItemsFromStrings(chipClockSelect, viewModel.getChipClockLabels());
     chipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
     chipClockLabel.setJustificationType(juce::Justification::centredRight);
-    chipClockSelect.getSelectedIdAsValue().referTo(viewModel.chipIndex1.getValue());
 
     addAndMakeVisible(chipClockLabel);
     addAndMakeVisible(chipClockSelect);

@@ -45,7 +45,7 @@ struct TuningOptions {
     TemperamentType temperamentType;
     Scale::Key tonic;
     Scale::ScaleType scaleType;
-    uZX::ChipClockChoice chipChoice;
+    ChipClockChoice chipChoice;
     double chipClock;
     double a4Frequency;
 };

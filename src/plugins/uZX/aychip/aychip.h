@@ -348,3 +348,19 @@ private:
 };
 
 } // namespace MoTool::uZX
+
+namespace juce {
+
+using namespace MoTool::uZX;
+using namespace MoTool::Util;
+
+template <>
+struct VariantConverter<ChipType> : public EnumVariantConverter<ChipType> {};
+
+template <>
+struct VariantConverter<ChannelsLayout> : public EnumVariantConverter<ChannelsLayout> {};
+
+template <>
+struct VariantConverter<ChipClockChoice> : public EnumVariantConverter<ChipClockChoice> {};
+
+}

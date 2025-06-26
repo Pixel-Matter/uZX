@@ -78,6 +78,9 @@ private:
 
     Label chipClockLabel;
     ComboBox chipClockSelect;
+
+    ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
+
     Slider clockFrequencySlider;
     Label clockFrequencyLabel;
     Slider a4FrequencySlider;

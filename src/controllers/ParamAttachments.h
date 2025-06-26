@@ -68,7 +68,9 @@ struct ParamAttachment {
         , name(id.toString())
         , cachedValue(tree, id, undoMgr, deflt)
         , value(cachedValue.getPropertyAsValue())
-    {}
+    {
+        // DBG("ParamAttachment::ctor and binding for type " << typeid(Type).name() << " with id " << id.toString());
+    }
 
     // ctor that refers to an existing ValueTree property
 
@@ -198,5 +200,53 @@ private:
 //     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChoicesParamAttachment)
 // };
 
+// Bind ComboBox to a EnumChoice parameter with shift to 1-based ComboBox index
+template <typename ChoiceType>
+class ComboBoxBinding : private Value::Listener,
+                        private ComboBox::Listener
+{
+public:
+    ComboBoxBinding(ComboBox& cb, ParamAttachment<ChoiceType>& cp)
+        : comboBox(cb)
+        , choiceParam(cp)
+    {
+        comboBox.addListener(this);
+        choiceParam.addListener(this);
+        updateComboBox();
+        // DBG("ComboBoxBinding::ComboBoxBinding");
+    }
+
+    ~ComboBoxBinding() override {
+        comboBox.removeListener(this);
+        choiceParam.removeListener(this);
+    }
+
+private:
+    void valueChanged(Value& v) override {
+        if (v.refersToSameSourceAs(choiceParam.getValue())) {
+            updateComboBox();
+        }
+    }
+
+    void comboBoxChanged(ComboBox* cb) override {
+        if (cb == &comboBox && comboBox.getSelectedId() > 0) {
+            // DBG("ComboBoxBinding::comboBoxChanged: " << comboBox.getSelectedId());
+            choiceParam = ChoiceType(comboBox.getSelectedId() - 1);
+        }
+    }
+
+    void updateComboBox() {
+        if (auto param = choiceParam.get(); param.isValid()) {
+            int id = static_cast<int>(param);
+            // DBG("ComboBoxBinding::updateComboBox: " << param.getLabel().data());
+            comboBox.setSelectedId(id + 1, dontSendNotification);
+        } else {
+            comboBox.setSelectedId(0, dontSendNotification);
+        }
+    }
+
+    ComboBox& comboBox;
+    ParamAttachment<ChoiceType>& choiceParam;
+};
 
 }  // namespace MoTool

@@ -101,6 +101,7 @@ private:
     // bindings
     ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
     ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedTonic };
+    ComboBoxBinding<Scale::ScaleType> scaleSelectBinding { scaleSelect, viewModel.selectedScale };
 
     static constexpr int rowHeight = 28;
     static constexpr int moduleWidth = 60;

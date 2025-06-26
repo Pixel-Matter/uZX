@@ -344,4 +344,7 @@ using namespace MoTool::Util;
 template <>
 struct juce::VariantConverter<Scale::Key> : public EnumVariantConverter<Scale::Key> {};
 
+template <>
+struct juce::VariantConverter<Scale::ScaleType> : public EnumVariantConverter<Scale::ScaleType> {};
+
 }

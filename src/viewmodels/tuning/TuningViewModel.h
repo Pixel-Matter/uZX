@@ -117,7 +117,7 @@ public:
         , selectedTuningTable(transientState, IDs::tuningTable, nullptr, BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,   ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
         , selectedTonic      (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C) // Default to C major
-        , scaleIndex1        (transientState, IDs::scale,       um, 1)
+        , selectedScale      (transientState, IDs::scale,       um, Scale::ScaleType::IonianOrMajor)
         , a4Frequency        (transientState, IDs::a4Freq,      um, 440.0)
         , clockFrequencyMhz  (transientState, IDs::clockFreq,   um, 1.7734) // MHz
         // objects
@@ -128,7 +128,7 @@ public:
         selectedTuningTable.addListener(this);
         selectedChip.addListener(this);
         selectedTonic.addListener(this);
-        scaleIndex1.addListener(this);
+        selectedScale.addListener(this);
         a4Frequency.addListener(this);
         clockFrequencyMhz.addListener(this);
 
@@ -268,7 +268,7 @@ public:
     }
 
     Scale::ScaleType getCurrentScaleType() const {
-        auto scaleType = static_cast<Scale::ScaleType>(scaleIndex1.get() - 1);
+        auto scaleType = selectedScale.get();
         if (currentScale.getType() != scaleType) {
             currentScale = Scale(scaleType); // Update cache only when needed
         }
@@ -282,7 +282,7 @@ public:
 
     void setCurrentScaleType(Scale::ScaleType scaleType) {
         // DBG("setCurrentScaleType: " << Scale::getNameForType(scaleType));
-        scaleIndex1 = static_cast<int>(scaleType) + 1;
+        selectedScale = scaleType;
         // TODO double update after assigning to scaleIndex1?
         currentScale = Scale(scaleType); // Update cache
         // no need to update tuning system scale
@@ -453,7 +453,7 @@ public:
     ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
     ChoiceParamAttachment<ChipClockChoice>   selectedChip;
     ChoiceParamAttachment<Scale::Key>        selectedTonic;
-    ChoiceParamAttachment<int>    scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
+    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;            
     ParamAttachment<double> a4Frequency;        // Hz - authoritative source
     ParamAttachment<double> clockFrequencyMhz;  // MHz - authoritative source
 
@@ -465,9 +465,9 @@ private:
 
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
-        if (value.refersToSameSourceAs(scaleIndex1.getValue())) {
+        if (value.refersToSameSourceAs(selectedScale.getValue())) {
             // DBG("Scale changed from valueChanged");
-            auto newScale = static_cast<Scale::ScaleType>(static_cast<int>(value.getValue()));
+            auto newScale = selectedScale.get();
             if (newScale != currentScale.getType()) {
                 // circular dependency if call setCurrentScaleType?
                 // setCurrentScaleType(newScale);
@@ -538,15 +538,10 @@ private:
 
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
-            // DBG("recreateTuningSystem set keyIndex1 " << static_cast<int>(options.tonic) + 1);
             selectedTonic = options.tonic;
-            // DBG("recreateTuningSystem set scaleIndex1 " << static_cast<int>(options.scaleType) + 1);
-            scaleIndex1 = static_cast<int>(options.scaleType) + 1;
-            // DBG("recreateTuningSystem set chipIndex " << options.chipChoice.getLabel().data());
+            selectedScale = options.scaleType;
             selectedChip = options.chipChoice;
-            // DBG("recreateTuningSystem set clockFrequencyMhz " << options.chipClock / MHz);
             clockFrequencyMhz = options.chipClock / MHz; // Convert Hz to MHz
-            // DBG("recreateTuningSystem set a4Frequency " << options.a4Frequency);
             a4Frequency = options.a4Frequency;
         }
     }

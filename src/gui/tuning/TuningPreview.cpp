@@ -279,9 +279,9 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     addAndMakeVisible(tuningsListBox);
 
     // Set up Key selection ComboBox
-    setupScaleSelectMenu();
     keyScaleLabel.setText("Scale:", juce::dontSendNotification);
     keyScaleLabel.setJustificationType(juce::Justification::centredRight);
+    setupScaleSelectMenu();
 
     addAndMakeVisible(keyScaleLabel);
     addAndMakeVisible(keySelect);
@@ -486,38 +486,26 @@ void TuningPreviewComponent::setupScaleSelectMenu() {
     auto categories = Scale::getAllScaleCategories();
     int menuItemId = 1;
 
-    // Build the grouped menu structure
-    PopupMenu rootMenu;
-
     for (auto category : categories) {
         if (category == Scale::ScaleCategory::User) {
             continue; // Skip user defined for now
         }
 
-        // Add category header (non-selectable)
-        rootMenu.addSectionHeader(Scale::getNameForCategory(category));
+        scaleSelect.addSectionHeading(Scale::getNameForCategory(category));
 
         // Add scales in this category
         auto scalesInCategory = Scale::getAllScaleTypesForCategory(category);
         for (auto scaleType : scalesInCategory) {
             String scaleName = Scale::getNameForType(scaleType);
-            rootMenu.addItem(menuItemId, scaleName);
-
-            // Also add to ComboBox for text display purposes
             scaleSelect.addItem(scaleName, menuItemId);
             menuItemId++;
         }
 
         // Add separator after each category (except the last one)
         if (category != categories.back() || categories.back() == Scale::ScaleCategory::User) {
-            rootMenu.addSeparator();
+            scaleSelect.addSeparator();
         }
     }
-
-    // Replace the ComboBox's root menu with our grouped menu
-    *scaleSelect.getRootMenu() = rootMenu;
-
-    scaleSelect.getSelectedIdAsValue().referTo(viewModel.scaleIndex1.getValue());
 }
 
 // Value::Listener implementation for ListBox and other custom sync

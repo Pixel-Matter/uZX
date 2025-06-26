@@ -62,6 +62,7 @@ private:
 
     // UI setup helpers
     void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText,
+                                     Label& unitsLabel, const String& unitsText,
                                      double min, double max, double step, Value& valueToReference);
     void updateClockControlsState();
     void setupScaleSelectMenu();
@@ -81,8 +82,11 @@ private:
 
     Slider clockFrequencySlider;
     Label clockFrequencyLabel;
+    Label clockFrequencyUnits;
+
     Slider a4FrequencySlider;
     Label a4FrequencyLabel;
+    Label a4FrequencyUnits;
 
     // Scale and Key selection
     Label keyScaleLabel;

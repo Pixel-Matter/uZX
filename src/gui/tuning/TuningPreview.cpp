@@ -288,17 +288,20 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     addAndMakeVisible(scaleSelect);
 
     // Set up Chip Clock selection ComboBox
-    chipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
+    chipClockLabel.setText("Chip clock:", juce::dontSendNotification);
     chipClockLabel.setJustificationType(juce::Justification::centredRight);
 
     addAndMakeVisible(chipClockLabel);
     addAndMakeVisible(chipClockSelect);
 
     // Set up frequency sliders with Value binding
-    setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock Frequency (MHz):",
+    setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock frequency:",
+                                clockFrequencyUnits, "MHz",
+                                // TODO replace With const RangedParamAttachment& param
                                 1.0, 2.0, 0.001, viewModel.clockFrequencyMhz.getValue());
 
-    setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 Frequency (Hz):",
+    setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 frequency:",
+                                a4FrequencyUnits, "Hz",
                                 220.0, 880.0, 0.1, viewModel.a4Frequency.getValue());
 
     // Set initial clock controls state
@@ -390,6 +393,7 @@ void TuningPreviewComponent::resized() {
     auto clockFreqRow = rightColumn.removeFromTop(rowHeight);
     clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(labelsColWidth));
     clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(moduleWidth * 8));
+    clockFrequencyUnits.setBounds(clockFreqRow);
 
     rightColumn.removeFromTop(gap);
 
@@ -397,6 +401,7 @@ void TuningPreviewComponent::resized() {
     auto a4Row = rightColumn.removeFromTop(rowHeight);
     a4FrequencyLabel.setBounds(a4Row.removeFromLeft(labelsColWidth));
     a4FrequencySlider.setBounds(a4Row.removeFromLeft(moduleWidth * 8));
+    a4FrequencyUnits.setBounds(a4Row);
 
     rightColumn.removeFromTop(gap);
 
@@ -457,7 +462,8 @@ void TuningPreviewComponent::listBoxItemClicked(int row, const MouseEvent& e) {
 
 // UI setup helpers
 void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText,
-                                                        double min, double max, double step, Value& valueToReference) {
+                                                         Label& unitsLabel, const String& unitsText,
+                                                         double min, double max, double step, Value& valueToReference) {
     slider.setRange(min, max, step);
     slider.setSliderStyle(Slider::LinearHorizontal);
     slider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
@@ -468,8 +474,12 @@ void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& 
     label.setText(labelText, juce::dontSendNotification);
     label.setJustificationType(juce::Justification::centredRight);
 
+    unitsLabel.setText(unitsText, juce::dontSendNotification);
+    unitsLabel.setJustificationType(juce::Justification::centredLeft);
+
     addAndMakeVisible(slider);
     addAndMakeVisible(label);
+    addAndMakeVisible(unitsLabel);
 }
 
 void TuningPreviewComponent::updateClockControlsState() {

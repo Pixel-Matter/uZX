@@ -39,8 +39,8 @@ public:
         beginTest("AYEmulator creation");
         {
             auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
-            expect(emulator.getSampleRate() == 44100, "Sample rate should be 44100");
-            expect(emulator.getClock() == 2000000, "Clock rate should be 2000000");
+            expectEquals(emulator.getSampleRate(), 44100, "Sample rate should be 44100");
+            expectEquals(emulator.getClock(), 2000000.0, "Clock rate should be 2000000");
             expect(emulator.getType() == ChipType::AY, "Type should be AY");
         }
         beginTest("AYEmulator params");

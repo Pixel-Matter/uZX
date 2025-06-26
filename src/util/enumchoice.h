@@ -144,4 +144,27 @@ inline std::ostream& operator<<(std::ostream& out, EnumChoice<E> choice) {
     return out;
 }
 
+/**
+    A helper type that can be used to implement specialisations of VariantConverter that use
+    EnumChoice
+
+    @code
+    template <>
+    struct juce::VariantConverter<YourEnumChoice> : public EnumVariantConverter<YourEnumChoice> {};
+    @endcode
+
+    @tags{Core}
+*/
+template<class E>
+struct EnumVariantConverter {
+    static E fromVar(const juce::var& v) {
+        return E(v.toString().toStdString());
+    }
+
+    static juce::var toVar(E choice) {
+        const std::string_view label = choice.getLabel();
+        return juce::String {label.data(), label.size()};
+    }
+};
+
 } // namespace MoTool::Util

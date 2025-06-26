@@ -17,8 +17,8 @@ public:
         : slider (s)
         , param (p)
     {
-        slider.setRange(p.getValueRange().getStart(), p.getValueRange().getEnd(), 0.0);
-        slider.setValue(p.getCurrentValue(), dontSendNotification);
+        slider.setRange(static_cast<double>(p.getValueRange().getStart()), static_cast<double>(p.getValueRange().getEnd()), 0.0);
+        slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
 
         slider.onValueChange = [this] {
             juce::ScopedValueSetter<bool> svs(updatingSlider, true);
@@ -40,7 +40,7 @@ private:
     void currentValueChanged(te::AutomatableParameter& p) override {
         if (updatingSlider)
             return;  // don't update the parameter if we're already updating it
-        slider.setValue(p.getCurrentValue(), dontSendNotification);
+        slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
     }
 
     void curveHasChanged(te::AutomatableParameter&) override {}

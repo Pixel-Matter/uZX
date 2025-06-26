@@ -64,3 +64,9 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
 const std::string_view getTuningTableName(BuiltinTuningType tableType);
 
 }
+
+using namespace MoTool;
+using namespace MoTool::Util;
+
+template <>
+struct juce::VariantConverter<BuiltinTuningType> : public EnumVariantConverter<BuiltinTuningType> {};

@@ -278,7 +278,7 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     tuningTableLabel.setText("Tuning Tables:", juce::dontSendNotification);
     tuningsListBox.setModel(this);
     tuningsListBox.setMultipleSelectionEnabled(false);
-    tuningsListBox.selectRow(viewModel.tuningTableIndex0.get(), false, false);
+    tuningsListBox.selectRow(static_cast<int>(viewModel.tuningTableIndex0.get()), false, false);
     // Note: ListBox doesn't have direct Value binding, so we'll use a custom approach
     viewModel.tuningTableIndex0.addListener(this);
 

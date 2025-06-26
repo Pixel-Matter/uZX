@@ -454,9 +454,10 @@ private:
 public:
     // ParamAttachment objects - single source of truth for all persisted types
     ParamAttachment<int> tuningTableIndex0;
-    ParamAttachment<int> chipIndex1;
-    ParamAttachment<int> keyIndex1;
-    ParamAttachment<int> scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
+    // ParamAttachment<BuiltinTuningType> tuningTableIndex0;
+    ParamAttachment<int>    chipIndex1;
+    ParamAttachment<int>    keyIndex1;
+    ParamAttachment<int>    scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
     ParamAttachment<double> a4Frequency;        // Hz - authoritative source
     ParamAttachment<double> clockFrequencyMhz;  // MHz - authoritative source
 
@@ -580,22 +581,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };
 
-}
-
-namespace juce {
-
-using namespace MoTool::uZX;
-
-template<>
-struct VariantConverter<MoTool::ChipClockChoice> {
-    static MoTool::ChipClockChoice fromVar(const var& v) {
-        return MoTool::ChipClockChoice(v.toString().toStdString());
-    }
-
-    static var toVar(MoTool::ChipClockChoice choice) {
-        const std::string_view label = choice.getLabel();
-        return String {label.data(), label.size()};
-    }
-};
-
-} // namespace juce
+} // namespace MoTool

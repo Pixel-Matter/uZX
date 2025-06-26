@@ -272,6 +272,7 @@ std::unique_ptr<TemperamentSystem> makeTemperamentSystem(
             return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency);
 
         // Add other temperament types here as needed
+        case TemperamentTypeEnum::CustomRational:
         default:
             jassertfalse; // Unsupported temperament type
             return nullptr;

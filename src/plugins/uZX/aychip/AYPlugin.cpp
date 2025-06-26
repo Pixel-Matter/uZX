@@ -181,44 +181,17 @@ std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {
 
 //==============================================================================
 
-template <typename ChoiceType>
-static ChoiceType choiceFromVar(const var& v) {
-    return ChoiceType(v.toString().toStdString());
-}
-
-template <typename ChoiceType>
-static var choicetoVar(ChoiceType c) {
-    const std::string_view label = c.getLabel();
-    return String {label.data(), label.size()};
-}
-
 } // namespace MoTool::uZX
 
 
-namespace juce {
-
 using namespace MoTool::uZX;
+using namespace MoTool::Util;
 
-template<>
-struct VariantConverter<ChipType> {
-    static ChipType fromVar(const var& v) {
-        return choiceFromVar<ChipType>(v);
-    }
+template <>
+struct juce::VariantConverter<ChipType> : public EnumVariantConverter<ChipType> {};
 
-    static var toVar(ChipType ct) {
-        return choicetoVar(ct);
-    }
-};
+template <>
+struct juce::VariantConverter<ChannelsLayout> : public EnumVariantConverter<ChannelsLayout> {};
 
-template<>
-struct VariantConverter<ChannelsLayout> {
-    static ChannelsLayout fromVar(const var& v) {
-        return choiceFromVar<ChannelsLayout>(v);
-    }
-
-    static var toVar(ChannelsLayout layout) {
-        return choicetoVar(layout);
-    }
-};
-
-} // namespace juce
+template <>
+struct juce::VariantConverter<ChipClockChoice> : public EnumVariantConverter<ChipClockChoice> {};

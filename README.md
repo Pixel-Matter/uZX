@@ -5,17 +5,26 @@
         █▌  █▌    █▌      █▌    █▌█▌    █▌
   █▌█▌█▌█▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌█▌█▌█▌
         █▌
-                        d   d
-    ,ooo.ooo.  ,ooo.  oo8ooo8ooo  ,ooo.   ,oooo
-    8   8   b       b   8   8    d    P  d
-        8   8   ,ooo8   8   8    8ooo'   8
-            8  8    8   8   8    8       8
-               `Yooo'   8   8    `Yooo'
-                        `Yo `Yo
+                        |   |
+    ,---.---.  ,---.  --|---|--  ,---.   ,---
+    |   |   |       |   |   |   |    |  |
+        |   |   ,---|   |   |   |---'   |
+            |  |    |   |   |   |       |
+               `---'    |   |    `---'
+                        `-- `--
+
+          ,--------.   ,---.
+          `---/ / / \ / / /
+             / / / \ ' / /     Copyright 2025
+    B8   88 / / /   / / /    Ruslan Grokhovetski
+    B8   88  / /   / / . \   www.pixelmatter.org
+    B8,  88.  /---/ / / \ \
+    B8"oo""8o ---'---'   `-'
+    BP
 
     d88o888ob.      d888888888b             d8b
     8@@8@@@8@@b ,d888b.`8@8',d888b. ,d888b. B@8       Copyright 2025
-    B@8'B@8'8@8 8@8 8@8 B@8 8@8 8@8 8@8 8@8 B@8    Ruslan Grokhovetskii
+    B@8'B@8'8@8 8@8 8@8 B@8 8@8 8@8 8@8 8@8 B@8    Ruslan Grokhovetski
     B@8 B@8 B@8 '"" 8@8 B@8 8@b ""' '"" 8@8 B@8    www.pixelmatter.org
     Y@8 8@8 Y@@88@@@8P' 8@8 `Y@@@88888@@@P' Y8P
 ```
@@ -42,8 +51,8 @@ Software for making demoscene productions for retrocomputers using Tracktion Eng
 
 ### About me
 
-I'm experienced C++ and Python developer with background in video editing, 3D, graphics and motion design in early 2000-s,
-webdesign and UX in mid 2000-s, web backend in 2010-s.
+I'm experienced C++ and Python developer with background in video editing, 3D, graphics and motion design in early 2000s,
+webdesign and UX in mid 2000s, web backend in 2010s and ML/data engineering in 2020s.
 
 This vision is being appeared in my mind for several years, with number of implemented prototypes of the tool,
 in python mainly, in C++ JUCE VST plugin form, implemented machine code in a timeline with state caching already in Python,

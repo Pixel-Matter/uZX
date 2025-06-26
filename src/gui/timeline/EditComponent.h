@@ -2,50 +2,39 @@
 
 #include <JuceHeader.h>
 
-#include "../common/Components.h"
+#include "TrackComponents.h"
+#include "DetailsPanelComponent.h"
 #include "Ruler.h"
+#include "PlayheadComponent.h"
 
 namespace MoTool {
 
 //==============================================================================
-class EditComponent : public Component,
-                      private te::ValueTreeAllEventListener,
-                      private FlaggedAsyncUpdater,
-                      private ChangeListener {
+class EditComponent final : public Component,
+                      private FlaggedAsyncUpdater,  // for marking and updating asynchronously
+                      private ValueTree::Listener
+                    {
 public:
-    EditComponent (te::Edit&, te::SelectionManager&);
+    EditComponent(te::Edit&, EditViewState&);
     ~EditComponent() override;
 
-    EditViewState& getEditViewState()   { return editViewState; }
-
 private:
-    void valueTreeChanged() override {}
-
-    void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
-    void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override;
-    void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override;
-    void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override;
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
 
     void handleAsyncUpdate() override;
     void resized() override;
-
-    void changeListenerCallback (ChangeBroadcaster*) override { repaint(); }
-
-    void buildTracks();
-
-    void mouseDown (const MouseEvent& e) override;
+    void paint(Graphics& g) override;
 
     te::Edit& edit;
+    EditViewState& editViewState;
 
-    EditViewState editViewState;
     PlayheadComponent playhead {edit, editViewState};
     RulerComponent ruler {edit, editViewState};
+    TracksContainerComponent tracksContainer {edit, editViewState, ruler};
+    Viewport trackViewport;
+    DetailsPanelComponent detailsPanel {editViewState};
 
-    OwnedArray<TrackComponent> tracks;
-    OwnedArray<TrackHeaderComponent> headers;
-    OwnedArray<TrackFooterComponent> footers;
-
-    bool updateTracks = false, updateZoom = false;
+    bool updateSizes = false;
 };
 
 }

@@ -92,7 +92,7 @@ static void hold_bottom(struct ayumi* ay) {
 static void (* const Envelopes[][2])(struct ayumi*) = {
   {slide_down, hold_bottom},
   {slide_down, hold_bottom},
-  {slide_down, hold_bottom},	
+  {slide_down, hold_bottom},
   {slide_down, hold_bottom},
   {slide_up, hold_bottom},
   {slide_up, hold_bottom},
@@ -136,6 +136,7 @@ static void update_mixer(struct ayumi* ay) {
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     out = (update_tone(ay, i) | ay->channels[i].t_off) & (noise | ay->channels[i].n_off);
     out *= ay->channels[i].e_on ? envelope : ay->channels[i].volume * 2 + 1;
+    // TODO refactor panning out to ayumi_mix_stereo(ay) store ay->out[i] instead
     ay->left += ay->dac_table[out] * ay->channels[i].pan_left;
     ay->right += ay->dac_table[out] * ay->channels[i].pan_right;
   }

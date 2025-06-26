@@ -1,6 +1,6 @@
 #include "Midi.h"
 
-namespace MoTool::Util {
+namespace MoTool::Helpers {
 
 MidiMessageSequence readMidi(const std::string& data, int track) {
     auto stream = juce::MemoryInputStream(&data[0], data.length(), false);
@@ -14,4 +14,4 @@ MidiMessageSequence readMidi(const std::string& data, int track) {
     return sequence;
 }
 
-}  // namespace MoTool::Util
+}  // namespace MoTool::Helpers

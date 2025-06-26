@@ -2,14 +2,19 @@
 
 #include <JuceHeader.h>
 
+#include "../../controllers/EditState.h"
 #include "../common/LookAndFeel.h"
-#include "../common/Components.h"
+#include "../../models/Timecode.h"
+
 
 namespace MoTool {
 
 class RulerComponent : public Component,
                        private Timer,
-                       private te::TempoSequence::Listener {
+                       private te::TempoSequence::Listener,
+                       private ValueTree::Listener,
+                       private ZoomViewState::Listener
+{
 public:
     RulerComponent(te::Edit& ed, EditViewState& evs)
         : te::TempoSequence::Listener {ed.tempoSequence}
@@ -17,73 +22,146 @@ public:
         , editViewState {evs}
     {
         edit.tempoSequence.addListener(this);
-        // startTimerHz(30);
+        editViewState.state.addListener(this);
+        editViewState.zoom.addListener(this);
+        // cached value is ValueTree::Listener
+        timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr, TimecodeDisplayFormatExt {TimecodeTypeExt::barsBeatsFps50});
     }
 
     ~RulerComponent() override {
         edit.tempoSequence.removeListener(this);
-        stopTimer();
+        editViewState.state.removeListener(this);
+        editViewState.zoom.removeListener(this);
+    }
+
+    void zoomChanged() override {
+        repaint();
     }
 
     void paint(Graphics& g) override {
+        // DBG("RulerComponent::paint");
+        using namespace te::tempo;
+
+        double fps = timecodeFormat->getFPS();
+        constexpr float minPxPerDev = 6.0f;
+
+        auto& zoomState = editViewState.zoom;
         auto bounds = getLocalBounds();
         auto &lf = getLookAndFeel();
+        auto& ts = edit.tempoSequence;
+
+        const int width = bounds.getWidth();
+        const float height = (float)bounds.getHeight();
+        // auto beatStep = te::BeatDuration::fromBeats(1.0 / 26);  // Tiratok
+        auto beatStep = te::BeatDuration::fromBeats(1.0 / 2);  // max 64 subdivs in beat
 
         g.setColour(lf.findColour(ResizableWindow::backgroundColourId));
         g.fillRect(bounds);
+        g.setFont(12.0f);
 
-        te::TimePosition startTime = editViewState.viewX1;
-        te::TimeDuration viewLength = editViewState.viewLength();
+        // DBG("RulerComponent::paint: " << zoomState.getRangeStart().inSeconds() << " - " << zoomState.getRangeEnd().inSeconds());
 
-        // Draw major beat lines (bars)
-        g.setColour(Colors::Theme::border);
-        int beatNumber = 0;
+        auto startBar = ts.toBarsAndBeats(zoomState.getRangeStart());
+        startBar = te::tempo::BarsAndBeats(startBar.bars, te::BeatDuration::fromBeats(startBar.getWholeBeats()), startBar.numerator);
+        const auto startTime = ts.toTime(startBar);
+
         auto currentTime = startTime;
-        const int width = bounds.getWidth();
-        const float height = (float)bounds.getHeight();
-        g.setFont(10.0f);
+        auto prevBarX = -20.0;
+        auto pixelsPerFrame = zoomState.durationToPixels(te::TimeDuration::fromSeconds(1.0 / fps), width);
+        auto pixelsPerFrameTick = pixelsPerFrame;
+        while (pixelsPerFrameTick < minPxPerDev) {
+            pixelsPerFrameTick *= 2;
+        }
 
-        while (currentTime < startTime + viewLength) {
-            double beatsPerSec = edit.tempoSequence.getBeatsPerSecondAt(currentTime);
-            auto timePerBeat = te::TimeDuration::fromSeconds(1.0f / beatsPerSec);
-            float pixelsPerBeat = editViewState.pixelsPerBeat(timePerBeat, width);
-            float x = (float)editViewState.timeToX(currentTime, width);
+        while (currentTime <= zoomState.getRangeEnd()) {
+            auto barBeats = ts.toBarsAndBeats(currentTime);
 
-            if (beatNumber % 4 == 0) { // TODO get TimeSig from editViewState
-                // Bar line (assuming 4/4 time)
-                g.drawLine(x, 0, x, height, 1.0f);
-
-                // Draw bar number
-                String barText = String(beatNumber / 4 + 1);
-                g.drawText(barText, Rectangle<float>(x + 2, -4, 20, 20), Justification::left);
-            } else {
-                // Beat line
-                g.drawLine(x, height * 0.5f, x, height, 1.0f);
+            auto nextDiv = BarsAndBeats { barBeats.bars, barBeats.beats + beatStep };
+            auto nextTime = ts.toTime(nextDiv);
+            auto pixelsPerDiv = zoomState.durationToPixels(nextTime - currentTime, width);
+            if (pixelsPerDiv < minPxPerDev) {
+                beatStep = beatStep * 2.0;
+                continue;
             }
 
-            // TODO draw frames
-            float pixelsPerSubdiv = pixelsPerBeat;
-            int numSubdivs = 1;
-            while (numSubdivs < 16 && pixelsPerSubdiv > 8.0f) {
-                numSubdivs *= 2;
-                pixelsPerSubdiv /= 2;
+            auto x = static_cast<float>(zoomState.timeToX(currentTime, width));
+
+            if (x >= 0) {
+                if (barBeats.beats < te::BeatDuration::fromBeats(0.001)) {
+                    g.setColour(Colors::Theme::borderLight);
+                    if (x - prevBarX >= 20) {
+                        // Bar line
+                        g.drawLine(x, 0, x, height, 1.0f);
+                        // Draw bar number
+                        String barText = String(barBeats.bars + 1);
+                        g.drawText(barText, Rectangle<float>(x + 2, -4, 20, 20), Justification::left);
+                        prevBarX = x;
+                    } else {
+                        // smaller bar line
+                        g.drawLine(x, 14, x, height, 1.0f);
+                    }
+                } else if (barBeats.getFractionalBeats() < te::BeatDuration::fromBeats(0.001)) {
+                    // Beat line
+                    g.setColour(Colors::Theme::border);
+                    g.drawLine(x, height * 0.5f, x, height, 1.0f);
+                } else {
+                    // subdiv line
+                    g.setColour(Colors::Theme::border);
+                    g.drawLine(x, height * 0.66f, x, height, 1.0f);
+                }
             }
-            for (int sub = 1; sub < numSubdivs; ++sub) {
-                float subX = x + (pixelsPerBeat * (float)sub / (float)numSubdivs);
-                g.drawLine(subX, height * 0.75f, subX, height, 0.5f);
+            // draw frame ticks
+            if (exactlyEqual(pixelsPerFrame, pixelsPerFrameTick)) {
+                auto frameTime = te::TimePosition::fromSeconds(std::ceil(currentTime.inSeconds() * fps) / fps);
+                auto frameX = static_cast<float>(zoomState.timeToX(frameTime, width));
+                auto nextX = static_cast<float>(zoomState.timeToX(nextTime, width));
+
+                g.setColour(Colors::Theme::border.withAlpha(0.5f));
+                for (float f = frameX; f < nextX; f += pixelsPerFrameTick) {
+                    if (f > 0) {
+                        g.drawLine(f, height * 0.75f, f, height, 1.0f);
+                    }
+                }
             }
-            currentTime = currentTime + timePerBeat;
-            beatNumber++;
+            currentTime = nextTime;
         }
     }
 
-    void resized() override {
-        repaint();
+    // void resized() override {
+    //     // DBG("RulerComponent::resized");
+    //     // repaint();
+    // }
+
+    void mouseDown(const MouseEvent& e) override {
+        if (e.mods.isPopupMenu()) {
+            PopupMenu m;
+            m.addItem("Zoom in", [] {
+                te::AppFunctions::zoomIn();
+            });
+            m.addItem("Zoom out", [] {
+                te::AppFunctions::zoomOut();
+            });
+            m.addItem("Zoom to selection", [this] {
+                edit.engine.getUIBehaviour().zoomToSelection();
+            });
+            m.addItem("Zoom fit", [this] {
+                edit.engine.getUIBehaviour().zoomToFitHorizontally();
+            });
+            m.showMenuAsync({});
+        } else {
+            repositionTransportToX(e.x);
+        }
+    }
+
+    void repositionTransportToX(int x) {
+        auto pos = editViewState.zoom.xToTime(x, getWidth());
+        edit.getTransport().setPosition(pos);
     }
 
 private:
     te::Edit& edit;
     EditViewState& editViewState;
+    juce::CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
 
     void timerCallback() override {
         repaint();
@@ -92,6 +170,12 @@ private:
     // TempoSequenceChange listener implementation
     void selectableObjectChanged(te::Selectable* ) override {
         repaint();
+    }
+
+    void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override {
+        if (prop == IDs::viewX1 || prop == IDs::viewX2) {
+            repaint();
+        }
     }
 };
 

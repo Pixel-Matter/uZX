@@ -1,144 +1,65 @@
 #include <JuceHeader.h>
 
-#include "../common/Components.h"
 #include "EditComponent.h"
+#include "TrackComponents.h"
+#include "PlayheadComponent.h"
 
 namespace MoTool {
 
+
 //==============================================================================
-EditComponent::EditComponent(te::Edit& e, te::SelectionManager& sm)
-    : edit (e)
-    , editViewState (e, sm)
+EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
+    : edit(e)
+    , editViewState(evs)
 {
-    edit.state.addListener(this);
-    editViewState.selectionManager.addChangeListener(this);
+    editViewState.state.addListener(this);
+
+    playhead.setAlwaysOnTop(true);
+
+    trackViewport.setViewedComponent(&tracksContainer, false);
+    trackViewport.setScrollBarsShown(true, false);
 
     addAndMakeVisible(playhead);
     addAndMakeVisible(ruler);
-    markAndUpdate(updateTracks);
+    addAndMakeVisible(detailsPanel);
+    addAndMakeVisible(trackViewport);
 }
 
 EditComponent::~EditComponent() {
-    editViewState.selectionManager.removeChangeListener(this);
-    edit.state.removeListener(this);
+    editViewState.state.removeListener(this);
 }
 
-void EditComponent::valueTreePropertyChanged (juce::ValueTree& v, const juce::Identifier& i) {
+void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
     if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::viewX1
-            || i == IDs::viewX2
-            || i == IDs::viewY) {
-            markAndUpdate(updateZoom);
-        } else if (i == IDs::showHeaders
-                 || i == IDs::showFooters) {
-            markAndUpdate(updateZoom);
-        } else if (i == IDs::drawWaveforms) {
-            repaint();
+        if (i == IDs::showHeaders || i == IDs::showFooters || i == IDs::headersWidth) {
+            markAndUpdate(updateSizes);
         }
     }
-}
-
-void EditComponent::valueTreeChildAdded (juce::ValueTree&, juce::ValueTree& c) {
-    if (te::TrackList::isTrack (c))
-        markAndUpdate(updateTracks);
-}
-
-void EditComponent::valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree& c, int) {
-    if (te::TrackList::isTrack (c))
-        markAndUpdate(updateTracks);
-}
-
-void EditComponent::valueTreeChildOrderChanged (juce::ValueTree& v, int a, int b) {
-    if (te::TrackList::isTrack(v.getChild(a)))
-        markAndUpdate(updateTracks);
-    else if (te::TrackList::isTrack(v.getChild(b)))
-        markAndUpdate(updateTracks);
 }
 
 void EditComponent::handleAsyncUpdate() {
-    if (compareAndReset(updateTracks))
-        buildTracks();
-    if (compareAndReset(updateZoom))
+    if (compareAndReset(updateSizes)) {
         resized();
+    }
+}
+
+void EditComponent::paint(Graphics& g) {
+    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
 }
 
 void EditComponent::resized() {
-    jassert (headers.size() == tracks.size());
-
-    const int trackHeight = 100, trackGap = 4, rulerHeight = 32;
-    const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
+    // also get called on updated zoom
+    const int rulerHeight = 32;
     const int footerWidth = editViewState.showFooters ? 100 : 0;
+    const auto headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
+    auto r = getLocalBounds();
 
-    playhead.setBounds(getLocalBounds().withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
-
-    int y = roundToInt(editViewState.viewY.get());
-
-    ruler.setBounds(headerWidth, y, getWidth() - headerWidth - footerWidth, rulerHeight);
-    y += rulerHeight;
-
-    for (int i = 0; i < jmin(headers.size(), tracks.size()); i++) {
-        auto h = headers[i];
-        auto t = tracks[i];
-        auto f = footers[i];
-
-        h->setBounds(0, y, headerWidth, trackHeight);
-        t->setBounds(headerWidth, y, getWidth() - headerWidth - footerWidth, trackHeight);
-        f->setBounds(getWidth() - footerWidth, y, footerWidth, trackHeight);
-
-        y += trackHeight + trackGap;
-    }
-
-    for (auto t : tracks)
-        t->resized();
-}
-
-void EditComponent::buildTracks() {
-    tracks.clear();
-    headers.clear();
-    footers.clear();
-
-    for (auto t : getAllTracks (edit)) {
-        TrackComponent* c = nullptr;
-
-        if (t->isMasterTrack()) {
-            if (editViewState.showMasterTrack)
-                c = new TrackComponent(editViewState, t);
-        } else if (t->isTempoTrack()) {
-            if (editViewState.showGlobalTrack)
-                c = new TrackComponent(editViewState, t);
-        } else if (t->isMarkerTrack()) {
-            if (editViewState.showMarkerTrack)
-                c = new TrackComponent(editViewState, t);
-        } else if (t->isChordTrack()) {
-            if (editViewState.showChordTrack)
-                c = new TrackComponent(editViewState, t);
-        } else if (t->isArrangerTrack()) {
-            if (editViewState.showArrangerTrack)
-                c = new TrackComponent(editViewState, t);
-        } else {
-            c = new TrackComponent(editViewState, t);
-        }
-
-        if (c != nullptr) {
-            tracks.add(c);
-            addAndMakeVisible(c);
-
-            auto h = new TrackHeaderComponent(editViewState, t);
-            headers.add(h);
-            addAndMakeVisible(h);
-
-            auto f = new TrackFooterComponent(editViewState, t);
-            footers.add(f);
-            addAndMakeVisible(f);
-        }
-    }
-
-    playhead.toFront(false);
-    resized();
-}
-
-void EditComponent::mouseDown (const MouseEvent&) {
-    editViewState.selectionManager.deselectAll();
+    detailsPanel.setBounds(r.removeFromBottom(300));
+    detailsPanel.resized();  // for internal components
+    playhead.setBounds(r.withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
+    ruler.setBounds(r.removeFromTop(rulerHeight).withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
+    trackViewport.setBounds(r);
+    tracksContainer.setBounds(r.withHeight(jmax(tracksContainer.getIdealHeight(), r.getHeight())));
 }
 
 }  // namespace MoTool

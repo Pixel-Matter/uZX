@@ -113,28 +113,28 @@ LayoutItem operator>>(Component* component, Grid::Fr size);
 LayoutItem operator>>(Component* component, Grid::Px size);
 
 // Define the operators
-LayoutItem operator>>(Component& component, Grid::Fr size) {
+inline LayoutItem operator>>(Component& component, Grid::Fr size) {
     return {
         GridItem(component),
         Grid::TrackInfo(size)
     };
 }
 
-LayoutItem operator>>(Component& component, Grid::Px size) {
+inline LayoutItem operator>>(Component& component, Grid::Px size) {
     return {
         GridItem(component),
         Grid::TrackInfo(size)
     };
 }
 
-LayoutItem operator>>(Component* component, Grid::Fr size) {
+inline LayoutItem operator>>(Component* component, Grid::Fr size) {
     return {
         GridItem(component),
         Grid::TrackInfo(size)
     };
 }
 
-LayoutItem operator>>(Component* component, Grid::Px size) {
+inline LayoutItem operator>>(Component* component, Grid::Px size) {
     return {
         GridItem(component),
         Grid::TrackInfo(size)
@@ -145,7 +145,7 @@ LayoutItem operator>>(Component* component, Grid::Px size) {
 }  // namespace Layout
 
 
-namespace Helpers {
+namespace MoTool::Helpers {
 
 template<class LayoutType, class... Components>
 void addToLayoutAndMakeVisible(Component& parent, LayoutType& layout, Components&&... components) {
@@ -171,4 +171,4 @@ void addLayoutItemsAndMakeVisible(Component& parent, LayoutType& layout, Items&&
     layout.addItems(std::forward<Items>(items)...);
 }
 
-} // namespace Helpers
+} // namespace MoTool::Helpers

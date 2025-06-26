@@ -1,0 +1,66 @@
+#pragma once
+
+#include <JuceHeader.h>
+
+#include "PsgClip.h"
+#include "Ids.h"
+
+
+namespace te = tracktion;
+
+namespace MoTool {
+
+class PsgTrack : public te::AudioTrack {
+public:
+    PsgTrack() = delete;
+    PsgTrack(te::Edit& ed, const juce::ValueTree& v)
+        : te::AudioTrack(ed, v)
+    {}
+
+    ~PsgTrack() override {
+        notifyListenersOfDeletion();
+    }
+
+    juce::String getSelectableDescription() override { return TRANS("PSG Track"); }
+
+    bool canContainPlugin([[maybe_unused]] te::Plugin* plugin) const override {
+        // Allow same plugins as AudioTrack for now
+        return true;
+    }
+
+    PsgClip::Ptr insertPsgClip(const juce::String& name, const juce::File& sourceFile, te::ClipPosition position) {
+        // // Create a PsgClip
+        // auto v = te::MidiClip::createNewMidiClipValueTree(juce::Uuid().toString(), name, position);
+        // v.setType(IDs::PSGCLIP); // Change the type to our custom PSG clip type
+
+        // if (auto clip = dynamic_cast<PsgClip*>(edit.insertClipWithState(*this, v, &edit.getUndoManager()).get())) {
+        //     // Load PSG file data
+        //     clip->loadPsgFile(sourceFile);
+
+        //     return clip;
+        // }
+        return {};
+    }
+
+    // void initialise() override {
+    //     using namespace te;
+    //     CRASH_TRACER
+
+    //     initialiseClipOwner(edit, state);
+    //     DBG("PsgTrack::initialise() before Track::initialise()");
+    //     Track::initialise();
+    //     DBG("PsgTrack::initialise() after ClipTrack::initialise()");
+
+    //     if (!edit.isLoading())
+    //         getClipSlotList().ensureNumberOfSlots(edit.getSceneList().getNumScenes());
+
+    //     // if (frozenIndividually && !getFreezeFile().existsAsFile())
+    //     //     setFrozen(false, individualFreeze);
+
+    //     getOutput().initialise();
+    // }
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgTrack)
+};
+
+}  // namespace MoTool

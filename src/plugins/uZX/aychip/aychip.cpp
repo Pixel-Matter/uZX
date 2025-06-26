@@ -1,12 +1,12 @@
-// #include <string.h>
-// #include <math.h>
+
+#include <JuceHeader.h>
 
 #include "aychip.h"
 
 #include <cmath>
 #include <vector>
 
-namespace uZX::Chip {
+namespace MoTool::uZX {
 
 
 void AYInterface::setRegister(size_t index, unsigned char value) noexcept {
@@ -36,20 +36,25 @@ AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type)
     , Pan_ {0.25, 0.75, 0.5}  // ACB is default
     , MasterVolume_(1.0)
 {
-    Reset(sampleRate, clock, type);
+    reset(sampleRate, clock, type);
 }
 
 AyumiEmulator::~AyumiEmulator() {
 
 }
 
-auto AyumiEmulator::Reset(int sampleRate, double clock, ChipType type) -> void {
+auto AyumiEmulator::resetSound() -> void {
+    reset(SampleRate_, ClockRate_, Type_);
+}
+
+auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {
     SampleRate_ = sampleRate;
     ClockRate_ = clock;
     Type_ = type;
-    ayumi_configure(&Ayumi_, type, clock, sampleRate);
+    auto result = ayumi_configure(&Ayumi_, type, clock, sampleRate);
+    jassert(result == 1);
     for (int i = 0; i < TONE_CHANNELS; ++i) {
-        setPan(i, Pan_[i]);
+        setChannelPan(i, Pan_[i]);
         setMixer(i, false, false, false);
     }
 }
@@ -67,7 +72,7 @@ auto AyumiEmulator::getClockValues() const -> std::vector<float> {
 }
 
 auto AyumiEmulator::setSampleRate(int sampleRate) -> void {
-    Reset(sampleRate, ClockRate_, Type_);
+    reset(sampleRate, ClockRate_, Type_);
 }
 
 auto AyumiEmulator::getSampleRate() const -> int {
@@ -75,7 +80,7 @@ auto AyumiEmulator::getSampleRate() const -> int {
 }
 
 auto AyumiEmulator::setType(ChipType type) -> void {
-    Reset(SampleRate_, ClockRate_, type);
+    reset(SampleRate_, ClockRate_, type);
 }
 
 auto AyumiEmulator::getType() const -> ChipType {
@@ -87,16 +92,38 @@ auto AyumiEmulator::getClock() const -> double {
 }
 
 auto AyumiEmulator::setClock(double rate) -> void {
-    Reset(SampleRate_, rate, Type_);
+    reset(SampleRate_, rate, Type_);
 }
 
-auto AyumiEmulator::setPan(int chan, double pan, bool isEqp) -> void {
+auto AyumiEmulator::setLayoutAndStereoWidth(ChannelsLayout layout, double stereoWidth) -> void {
+    std::array<double, TONE_CHANNELS> pan = {0.0, 0.0, 0.0};
+    pan = ChannelPans_[static_cast<size_t>(layout)];
+    for (size_t i = 0; i < TONE_CHANNELS; ++i) {
+        // use stereoWidth to adjust pan.
+        // stereoWidth == 0.0 — pan is 0.5,
+        // stereoWidth == 1.0 — pan is pan
+        // stereoWidth == 0.5 — pan is halfway to 0.5
+        setChannelPan(static_cast<int>(i), 0.5 + (pan[i] - 0.5) * stereoWidth);
+    }
+    ChannelsLayout_ = layout;
+    StereoWidth_ = stereoWidth;
+}
+
+auto AyumiEmulator::getLayout() -> ChannelsLayout {
+    return ChannelsLayout_;
+}
+
+auto AyumiEmulator::getStereoWidth() -> double {
+    return StereoWidth_;
+}
+
+auto AyumiEmulator::setChannelPan(int chan, double pan, bool isEqp) -> void {
     // 1.0 is right, 0.0 is left
     Pan_[chan] = pan;
     ayumi_set_pan(&Ayumi_, chan, pan, isEqp);
 }
 
-auto AyumiEmulator::getPan(int chan) const -> double {
+auto AyumiEmulator::getChannelPan(int chan) const -> double {
     return Pan_[chan];
 }
 
@@ -179,4 +206,4 @@ auto AyumiEmulator::processBlock(float* outLeft, float* outRight, size_t numSamp
     }
 }
 
-}
+} // namespace MoTool::uZX

@@ -1,11 +1,14 @@
 #pragma once
 
 #include <cstddef>
+#include <sstream>
+#include <sys/types.h>
 #include <vector>
+#include <array>
 
 #include "../../../util/enumchoice.h"
 
-namespace uZX::Chip {
+namespace MoTool::uZX {
 
 /*****************************************************************************/
 /*  C++ wrapper for aychip struct and functions                              */
@@ -28,66 +31,159 @@ namespace {
     }
 }
 
+constexpr double MHz = 1000000.0;
+
+struct ChipClockEnum {
+    enum Enum : uint8_t {
+        NES_NTSC_0_89_MHz,
+        NES_PAL_0_83_MHz,
+        ZX_Spectrum_1_77_MHz,
+        Pentagon_1_75_MHz,
+        Amstrad_1_MHz,
+        Vectrex_1_5_MHz,
+        Atari_ST_2_MHz,
+        Custom
+    };
+
+    static inline constexpr double clockValues[] {
+         894887,   // NES NTSC
+         831303.5, // NES PAL
+        1773400,   // ZX Spectrum
+        1750000,   // Pentagon
+        1000000,   // Amstrad
+        1500000,   // Vectrex
+        2000000,   // Atari ST
+              0    // Custom (user defined)
+    };
+
+    static inline constexpr std::string_view longLabels[] {
+        "NES NTSC 0.894887 MHz",
+        "NES PAL 0.8313035 MHz",
+        "ZX Spectrum 1.7734 MHz",
+        "Pentagon 1.75 MHz",
+        "Amstrad 1 MHz",
+        "Vectrex 1.5 MHz",
+        "Atari ST 2 MHz",
+        "Custom (user defined)"
+    };
+};
+
+class ChipClockChoice: public Util::EnumChoice<ChipClockEnum> {
+public:
+    using EnumChoice::EnumChoice;
+
+    inline constexpr double getClockValue() const noexcept {
+        return clockValues[static_cast<size_t>(value)];
+    }
+
+};
+
+
+struct TypeEnum {
+    enum Enum : uint8_t {
+        AY,
+        YM
+    };
+
+    static inline constexpr std::string_view longLabels[] {
+        "AY-3-8910",
+        "YM2149F"
+    };
+};
+
+struct LayoutEnum {
+    enum Enum : uint8_t {
+        ABC,
+        ACB,
+        BAC,
+        BCA,
+        CAB,
+        CBA
+    };
+};
+
+struct EnvShapeEnum {
+    enum Enum : uint8_t {
+        DOWN_HOLD_BOTTOM_0,
+        DOWN_HOLD_BOTTOM_1,
+        DOWN_HOLD_BOTTOM_2,
+        DOWN_HOLD_BOTTOM_3,
+        UP_HOLD_BOTTOM_4,
+        UP_HOLD_BOTTOM_5,
+        UP_HOLD_BOTTOM_6,
+        UP_HOLD_BOTTOM_7,
+        DOWN_DOWN_8,
+        DOWN_HOLD_BOTTOM_9,
+        DOWN_UP_A,
+        DOWN_HOLD_TOP_B,
+        UP_UP_C,
+        UP_HOLD_TOP_D,
+        UP_DOWN_E,
+        UP_HOLD_BOTTOM_F,
+    };
+};
+
+using ChipType = MoTool::Util::EnumChoice<TypeEnum>;
+using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
+using EnvShape = MoTool::Util::EnumChoice<EnvShapeEnum>;
+
+} // namespace MoTool::uZX
+
+
+// Specialization of `enum_name` must be injected in `namespace magic_enum::customize`.
+namespace magic_enum::customize {
+
+using namespace MoTool::uZX;
+
+// template <>
+// inline constexpr customize_t enum_name<ChipClockChoice::Enum>(ChipClockChoice::Enum value) noexcept {
+//     return ChipClockChoice(value).enumNameCustom();
+// }
+
+// template <>
+// inline constexpr customize_t enum_name<ChipType::Enum>(ChipType::Enum value) noexcept {
+//     return ChipType(value).enumNameCustom();
+// }
+
+template <>
+inline constexpr customize_t enum_name<MoTool::uZX::EnvShapeEnum::Enum>(MoTool::uZX::EnvShapeEnum::Enum value) noexcept {
+    using EnvShape = MoTool::uZX::EnvShapeEnum::Enum;
+    switch(value) {
+        case EnvShape::DOWN_HOLD_BOTTOM_0: [[fallthrough]];
+        case EnvShape::DOWN_HOLD_BOTTOM_1: [[fallthrough]];
+        case EnvShape::DOWN_HOLD_BOTTOM_2: [[fallthrough]];
+        case EnvShape::DOWN_HOLD_BOTTOM_3: return "\\___";
+        case EnvShape::UP_HOLD_BOTTOM_4:   [[fallthrough]];
+        case EnvShape::UP_HOLD_BOTTOM_5:   [[fallthrough]];
+        case EnvShape::UP_HOLD_BOTTOM_6:   [[fallthrough]];
+        case EnvShape::UP_HOLD_BOTTOM_7:   return "/|__";
+        case EnvShape::DOWN_DOWN_8:        return "\\|\\|";
+        case EnvShape::DOWN_HOLD_BOTTOM_9: return "\\___";
+        case EnvShape::DOWN_UP_A:          return "\\/\\/";
+        case EnvShape::DOWN_HOLD_TOP_B:    return "\\|~~";
+        case EnvShape::UP_UP_C:            return "/|/|";
+        case EnvShape::UP_HOLD_TOP_D:      return "/~~~~";
+        case EnvShape::UP_DOWN_E:          return "/\\/\\";
+        case EnvShape::UP_HOLD_BOTTOM_F:   return "/|__";
+    }
+    return default_tag;
+}
+
+} // namespace magic_enum::customize
+
+
+namespace MoTool::uZX {
+
 class AYInterface {
 public:
-    struct TypeEnum {
-        enum Enum {
-            AY,
-            YM
-        };
-        static inline constexpr std::string_view labels[] {
-            "AY",
-            "YM"
-        };
-    };
-    using ChipType = MoTool::Util::EnumChoice<TypeEnum>;
-
-    struct EnvShapeEnum {
-        enum Enum {
-            DOWN_HOLD_BOTTOM_0,
-            DOWN_HOLD_BOTTOM_1,
-            DOWN_HOLD_BOTTOM_2,
-            DOWN_HOLD_BOTTOM_3,
-            UP_HOLD_BOTTOM_4,
-            UP_HOLD_BOTTOM_5,
-            UP_HOLD_BOTTOM_6,
-            UP_HOLD_BOTTOM_7,
-            DOWN_DOWN_8,
-            DOWN_HOLD_BOTTOM_9,
-            DOWN_UP_A,
-            DOWN_HOLD_TOP_B,
-            UP_UP_C,
-            UP_HOLD_TOP_D,
-            UP_DOWN_E,
-            UP_HOLD_BOTTOM_F,
-        };
-        static inline constexpr std::string_view labels[] {
-            "\\___",
-            "\\___",
-            "\\___",
-            "\\___",
-            "/|__",
-            "/|__",
-            "/|__",
-            "/|__",
-            "\\|\\|",
-            "\\___",
-            "\\/\\/",
-            "\\|~~",
-            "/|/|",
-            "/~~~~",
-            "/\\/\\",
-            "/|__",
-        };
-    };
-    using EnvShape = MoTool::Util::EnumChoice<EnvShapeEnum>;
 
     // AYInterface(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::AY) ;
 
     AYInterface() {}
-
     virtual ~AYInterface() {}
 
+    virtual auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::AY) -> void = 0;
+    virtual auto resetSound() -> void = 0;
     virtual auto canChangeClock() const -> bool = 0;
     virtual auto canChangeClockContinously() const -> bool = 0;
     virtual auto getClockValues() const -> std::vector<float> = 0;
@@ -97,8 +193,13 @@ public:
     virtual auto getType() const -> ChipType = 0;
     virtual auto getClock() const -> double = 0;
     virtual auto setClock(double v) -> void = 0;
-    virtual auto setPan(int chan, double pan, bool isEqp = false) -> void = 0;
-    virtual auto getPan(int chan) const -> double = 0;
+    virtual auto setLayoutAndStereoWidth(ChannelsLayout layout, double stereoWidth) -> void = 0;
+    virtual auto getLayout() -> ChannelsLayout = 0;
+    virtual auto getStereoWidth() -> double = 0;
+    virtual auto setChannelPan(int chan, double pan, bool isEqp = false) -> void = 0;
+    virtual auto getChannelPan(int chan) const -> double = 0;
+    virtual auto setMasterVolume(float volume) -> void = 0;
+    virtual auto getMasterVolume() const -> float = 0;
 
     // TODO maybe just store registers in an ordinary byte array and after setting them update the chip?
     void setRegister(size_t index, unsigned char value) noexcept;
@@ -123,8 +224,6 @@ protected:
     virtual auto getEnvelopeShape() const -> EnvShape = 0;
     virtual auto setEnvelopePeriod(int period) -> void = 0;
     virtual auto getEnvelopePeriod() const -> int = 0;
-    virtual auto setMasterVolume(float volume) -> void = 0;
-    virtual auto getMasterVolume() const -> float = 0;
 
 private:
     inline void setFineTonePeriod(int chan, unsigned char fine) noexcept {
@@ -184,7 +283,9 @@ class AyumiEmulator : public AYInterface {
 public:
     AyumiEmulator(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM);
     ~AyumiEmulator() override;
-    auto Reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM) -> void;
+
+    auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM) -> void override;
+    auto resetSound() -> void override;
 
     auto canChangeClock() const -> bool override;
     auto canChangeClockContinously() const -> bool override;
@@ -195,8 +296,11 @@ public:
     auto setType(ChipType type) -> void override;
     auto getType() const -> ChipType override;
     auto setClock(double v) -> void override;
-    auto setPan(int chan, double pan, bool isEqp = false) -> void override;
-    auto getPan(int chan) const -> double override;
+    auto setLayoutAndStereoWidth(ChannelsLayout layout, double stereoWidth) -> void override;
+    auto getLayout() -> ChannelsLayout override;
+    auto getStereoWidth() -> double override;
+    auto setChannelPan(int chan, double pan, bool isEqp = false) -> void override;
+    auto getChannelPan(int chan) const -> double override;
 
     // Chip functions
     auto setMixer(int chan, bool tOn, bool nOn, bool eOn) -> void override;
@@ -227,6 +331,20 @@ private:
     int SampleRate_;
     double Pan_[TONE_CHANNELS];
     float MasterVolume_;
+    ChannelsLayout ChannelsLayout_;
+    double StereoWidth_;
+
+    static inline constexpr std::array<std::array<double, TONE_CHANNELS>, 6>
+    // TODO move to AYInterface protected section
+    ChannelPans_ = {{
+        {{0.0, 0.5, 1.0}},  // ABC
+        {{0.0, 1.0, 0.5}},  // ACB
+        {{0.5, 0.0, 1.0}},  // BAC
+        {{1.0, 0.0, 0.5}},  // BCA
+        {{0.5, 1.0, 0.0}},  // CAB
+        {{1.0, 0.5, 0.0}}   // CBA
+    }};
+
 };
 
-} // namespace uZX::Chip
+} // namespace MoTool::uZX

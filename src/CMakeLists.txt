@@ -1,3 +1,5 @@
+# File src/CMakeLists.txt
+
 # Target Definition
 set(TARGET_NAME MoTool)
 
@@ -7,7 +9,9 @@ option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
 # JUCE Application Setup
 juce_add_gui_app(${TARGET_NAME}
-    PRODUCT_NAME "${PROJECT_NAME}"
+    PRODUCT_NAME "μZX"
+    # PRODUCT_NAME "uZX"
+    # PRODUCT_NAME "${PROJECT_NAME}"
     COMPANY_NAME "Pixel Matter"
     BUNDLE_ID "org.pixelmatter.${TARGET_NAME}"
 )
@@ -22,20 +26,14 @@ set_target_properties(${TARGET_NAME} PROPERTIES
     CXX_VISIBILITY_PRESET hidden
 )
 
-# Source Files
-set(SourceFiles
-    gui/Main.cpp
-    gui/nodes/GraphEditorPanel.cpp
-    gui/common/Components.cpp
-    gui/timeline/EditComponent.cpp
-    plugins/uZX/aychip/aychip.cpp
-    util/FileOps.cpp
-    util/Midi.cpp
-    plugins/uZX/aychip/aychip.cpp
+include(sources.cmake)
+
+target_sources(${TARGET_NAME} PRIVATE
+    ${SHARED_SOURCES}
+    ${GUI_SOURCES}
 )
 
-target_sources(${TARGET_NAME} PRIVATE ${SourceFiles})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES ${SourceFiles})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES ${SHARED_SOURCES} ${GUI_SOURCES})
 
 # Include Directories
 target_include_directories(${TARGET_NAME}
@@ -44,8 +42,8 @@ target_include_directories(${TARGET_NAME}
 )
 
 # Tracktion Utils
-include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
-addModuleSourceTarget()
+# include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
+# addModuleSourceTarget()
 
 # Compile Definitions
 set(JUCE_DEFINITIONS
@@ -70,6 +68,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
     juce::juce_audio_devices
     juce::juce_audio_processors
     juce::juce_audio_utils
+    juce::juce_gui_extra
     juce::juce_recommended_warning_flags
 )
 

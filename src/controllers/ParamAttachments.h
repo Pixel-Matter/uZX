@@ -54,7 +54,8 @@ private:
 
 
 template <typename Type>
-struct ParamAttachment {
+class ParamAttachment {
+public:
     using type = Type;
 
     ParamAttachment(ValueTree& tree, UndoManager* undoMgr)
@@ -93,24 +94,6 @@ struct ParamAttachment {
         range = r;
     }
 
-    void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def, const String& u) {
-        referTo(id, n, def, u);
-        choices.clear();
-        for (int i = 0; i < ch.size(); ++i) {
-            choices.push_back({static_cast<Type>(i), ch[i]});
-        }
-    }
-
-    template <size_t N>
-    void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def, const String& u) {
-        referTo(id, n, toStringArray(ch), def, u);
-    }
-
-    void referTo(const Identifier& id, const String& n, const std::vector<std::pair<Type, String>>& ch, const Type& def, const String& u) {
-        referTo(id, n, def, u);
-        choices = ch;
-    }
-
     inline operator CachedValue<Type>&() noexcept { return cachedValue; }
 
     // for CachedValue-like transparent access
@@ -146,10 +129,6 @@ struct ParamAttachment {
         value.removeListener(listener);
     }
 
-    const std::vector<std::pair<Type, String>>& getChoices() const {
-        return choices;
-    }
-
     // ======================================================================================
     ValueTree& valueTree;
     UndoManager* undoManager;
@@ -159,46 +138,53 @@ struct ParamAttachment {
     CachedValue<Type> cachedValue;
     Value value;
     NormalisableRange<Type> range;
-    std::vector<std::pair<Type, String>> choices;
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamAttachment)
 };
 
 
-// template <typename Type>
-// struct ChoicesParamAttachment : public ParamAttachment<Type> {
-//     using type = Type;
-//     using ParamAttachment<Type>::ParamAttachment;
+template <typename Type>
+class ChoiceParamAttachment : public ParamAttachment<Type> {
+public:
+    using type = Type;
+    using ParamAttachment<Type>::ParamAttachment;
+    using ParamAttachment<Type>::referTo;
 
-//     void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def, const String& u) {
-//         referTo(id, n, def, u);
-//         choices.clear();
-//         for (int i = 0; i < ch.size(); ++i) {
-//             choices.push_back({static_cast<Type>(i), ch[i]});
-//         }
-//     }
+    inline ChoiceParamAttachment& operator= (const Type& newValue) {
+        this->cachedValue = newValue;
+        return *this;
+    }
 
-//     template <size_t N>
-//     void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def, const String& u) {
-//         referTo(id, n, toStringArray(ch), def, u);
-//     }
+    void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def, const String& u) {
+        referTo(id, n, def, u);
+        choices.clear();
+        for (int i = 0; i < ch.size(); ++i) {
+            choices.push_back({static_cast<Type>(i), ch[i]});
+        }
+    }
 
-//     // void referTo(const Identifier& id, const String& n, const std::vector<std::pair<Type, String>>& ch, const Type& def, const String& u) {
-//     //     referTo(id, n, def, u);
-//     //     choices = ch;
-//     // }
+    template <size_t N>
+    void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def, const String& u) {
+        referTo(id, n, toStringArray(ch), def, u);
+    }
 
-//     const std::vector<std::pair<Type, String>>& getChoices() const {
-//         return choices;
-//     }
+    // void referTo(const Identifier& id, const String& n, const std::vector<std::pair<Type, String>>& ch, const Type& def, const String& u) {
+    //     referTo(id, n, def, u);
+    //     choices = ch;
+    // }
 
-//     // ======================================================================================
-// private:
-//     std::vector<std::pair<Type, String>> choices;
+    const std::vector<std::pair<Type, String>>& getChoices() const {
+        return choices;
+    }
 
-//     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChoicesParamAttachment)
-// };
+    // ======================================================================================
+private:
+    std::vector<std::pair<Type, String>> choices;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChoiceParamAttachment)
+};
+
 
 // Bind ComboBox to a EnumChoice parameter with shift to 1-based ComboBox index
 template <typename ChoiceType>

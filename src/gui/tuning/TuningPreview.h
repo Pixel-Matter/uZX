@@ -79,8 +79,6 @@ private:
     Label chipClockLabel;
     ComboBox chipClockSelect;
 
-    ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
-
     Slider clockFrequencySlider;
     Label clockFrequencyLabel;
     Slider a4FrequencySlider;
@@ -99,6 +97,9 @@ private:
 
     TuningPreviewGrid tuningGrid;
     TooltipWindow tooltipWindow;
+
+    // bindings
+    ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
 
     static constexpr int rowHeight = 28;
     static constexpr int moduleWidth = 60;

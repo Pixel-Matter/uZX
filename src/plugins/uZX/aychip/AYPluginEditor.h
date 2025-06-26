@@ -11,10 +11,10 @@ namespace MoTool::uZX {
 
 
 // Base class for parameter widgets
-template <typename Type, typename WidgetType>
+template <typename Att, typename WidgetType>
 class ParameterComponent : public Component {
 public:
-    ParameterComponent(ParamAttachment<Type>& att, bool useLabel_ = true)
+    ParameterComponent(Att& att, bool useLabel_ = true)
       : attachment(att)
       , useLabel(useLabel_)
       , label("", att.name)
@@ -33,14 +33,14 @@ public:
     }
 
 protected:
-    ParamAttachment<Type>& attachment;
+    Att& attachment;
     bool useLabel;
     Label label;
     WidgetType widget;
 };
 
 template <typename Type>
-class SliderParameterComponent : public ParameterComponent<Type, Slider>,
+class SliderParameterComponent : public ParameterComponent<ParamAttachment<Type>, Slider>,
                                  private Slider::Listener,
                                  private Value::Listener
 {
@@ -50,7 +50,7 @@ public:
         Slider::SliderStyle style = Slider::LinearHorizontal,
         Slider::TextEntryBoxPosition textBoxPosition = Slider::TextBoxLeft
     )
-      : ParameterComponent<Type, Slider>(param)
+      : ParameterComponent<ParamAttachment<Type>, Slider>(param)
       , sliderStyle(style)
       , boxPosition(textBoxPosition)
     {
@@ -81,13 +81,13 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParameterComponent)
 };
 
-class ToggleParameterComponent : public ParameterComponent<bool, ToggleButton>,
+class ToggleParameterComponent : public ParameterComponent<ParamAttachment<bool>, ToggleButton>,
                                  private Button::Listener,
                                  private Value::Listener
 {
 public:
     ToggleParameterComponent(ParamAttachment<bool>& param)
-      : ParameterComponent<bool, ToggleButton>(param, /* useLabel_ = */ false)
+      : ParameterComponent<ParamAttachment<bool>, ToggleButton>(param, /* useLabel_ = */ false)
     {
         widget.setButtonText(attachment.name);
         widget.setToggleState(attachment.get(), dontSendNotification);
@@ -113,11 +113,13 @@ private:
 
 
 template <typename Type>
-class ComboParameterComponent : public ParameterComponent<Type, ComboBox>, private ComboBox::Listener, private Value::Listener {
+class ComboParameterComponent : public ParameterComponent<ChoiceParamAttachment<Type>, ComboBox>,
+                                private ComboBox::Listener,
+                                private Value::Listener {
     public:
     ComboParameterComponent(
-        ParamAttachment<Type>& att)
-      : ParameterComponent<Type, ComboBox>(att)
+        ChoiceParamAttachment<Type>& att)
+      : ParameterComponent<ChoiceParamAttachment<Type>, ComboBox>(att)
     {
         for (const auto& [idx, label] : this->attachment.getChoices()) {
             this->widget.addItem(label, static_cast<int>(idx) + 1);

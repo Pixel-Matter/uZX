@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "../util/convert.h"
+#include "juce_core/juce_core.h"
 
 
 using namespace juce;
@@ -61,12 +62,27 @@ struct ParamAttachment {
         , undoManager(undoMgr)
     {}
 
+    ParamAttachment(ValueTree& tree, const Identifier& id, UndoManager* undoMgr, const Type& deflt)
+        : valueTree(tree)
+        , undoManager(undoMgr)
+        , name(id.toString())
+        , cachedValue(tree, id, undoMgr, deflt)
+        , value(cachedValue.getPropertyAsValue())
+    {}
+
     // ctor that refers to an existing ValueTree property
+
+    void referTo(const Identifier& id, const Type& deflt) {
+        DBG("ParamAttachment::referTo for type " << typeid(Type).name() << " with id " << id.toString());
+        // NOTE not vice versa
+        cachedValue.referTo(valueTree, id, undoManager, deflt);
+        value = cachedValue.getPropertyAsValue();
+    }
 
     void referTo(const Identifier& id, const String& n, const Type& def, const String& u) {
         name = n;
-        units = u;
-        cachedValue.referTo(valueTree, id, undoManager, def);
+        ignoreUnused(u); // units = u;
+        referTo(id, def);
         // value = cachedValue.getPropertyAsValue();
     }
 
@@ -115,8 +131,17 @@ struct ParamAttachment {
         return *this;
     }
 
-    inline Value getPropertyAsValue() {
-        return cachedValue.getPropertyAsValue();
+    inline Value& getValue() {
+        return value;
+    }
+
+    void addListener(Value::Listener* listener) {
+        DBG("ParamAttachment::addListener for type " << typeid(Type).name() << " with name " << name);
+        value.addListener(listener);
+    }
+
+    void removeListener(Value::Listener* listener) {
+        value.removeListener(listener);
     }
 
     const std::vector<std::pair<Type, String>>& getChoices() const {
@@ -127,16 +152,51 @@ struct ParamAttachment {
     ValueTree& valueTree;
     UndoManager* undoManager;
     String name;
-    String units;
+    // String units;
     // TODO CachedValue<te::AtomicWrapper<Type>> value;
     CachedValue<Type> cachedValue;
-    // Value value;
+    Value value;
     NormalisableRange<Type> range;
     std::vector<std::pair<Type, String>> choices;
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamAttachment)
 };
+
+
+// template <typename Type>
+// struct ChoicesParamAttachment : public ParamAttachment<Type> {
+//     using type = Type;
+//     using ParamAttachment<Type>::ParamAttachment;
+
+//     void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def, const String& u) {
+//         referTo(id, n, def, u);
+//         choices.clear();
+//         for (int i = 0; i < ch.size(); ++i) {
+//             choices.push_back({static_cast<Type>(i), ch[i]});
+//         }
+//     }
+
+//     template <size_t N>
+//     void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def, const String& u) {
+//         referTo(id, n, toStringArray(ch), def, u);
+//     }
+
+//     // void referTo(const Identifier& id, const String& n, const std::vector<std::pair<Type, String>>& ch, const Type& def, const String& u) {
+//     //     referTo(id, n, def, u);
+//     //     choices = ch;
+//     // }
+
+//     const std::vector<std::pair<Type, String>>& getChoices() const {
+//         return choices;
+//     }
+
+//     // ======================================================================================
+// private:
+//     std::vector<std::pair<Type, String>> choices;
+
+//     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChoicesParamAttachment)
+// };
 
 
 }  // namespace MoTool

@@ -60,7 +60,7 @@ public:
         this->widget.setValue(this->attachment.get(), dontSendNotification);
         // NOTE referTo tracks values poorly, doesnt track edge values
         // widget.getValueObject().referTo(attachment.getPropertyAsValue());
-        this->attachment.getPropertyAsValue().addListener(this);
+        this->attachment.addListener(this);
         this->widget.addListener(this);
 
         // DBG("Range interval for " << this->attachment.name  << " is " << this->attachment.range.interval);
@@ -91,7 +91,7 @@ public:
     {
         widget.setButtonText(attachment.name);
         widget.setToggleState(attachment.get(), dontSendNotification);
-        attachment.getPropertyAsValue().addListener(this);
+        attachment.getValue().addListener(this);
         widget.addListener(this);
     }
 
@@ -123,7 +123,7 @@ class ComboParameterComponent : public ParameterComponent<Type, ComboBox>, priva
             this->widget.addItem(label, static_cast<int>(idx) + 1);
         }
         this->widget.setSelectedItemIndex(valueToIdx(this->attachment.get()), dontSendNotification);
-        this->attachment.getPropertyAsValue().addListener(this);
+        this->attachment.addListener(this);
         this->widget.addListener(this);
     }
 

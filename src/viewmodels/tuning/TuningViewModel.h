@@ -8,7 +8,7 @@
 #include "../../models/tuning/Scales.h"
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../../util/convert.h"
-#include "../../util/CachedValueWithValue.h"
+#include "../../controllers/ParamAttachments.h"
 
 #include <cmath>
 #include <array>
@@ -449,13 +449,13 @@ public:
     // Transient view state
     ValueTree transientState;
 
-    // CachedValueWithValue objects - single source of truth for all persisted types
-    CachedValueWithValue<int> tuningTableIndex0;
-    CachedValueWithValue<int> chipIndex1;
-    CachedValueWithValue<int> keyIndex1;
-    CachedValueWithValue<int> scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
-    CachedValueWithValue<double> a4Frequency;        // Hz - authoritative source
-    CachedValueWithValue<double> clockFrequencyMhz;  // MHz - authoritative source
+    // ParamAttachment objects - single source of truth for all persisted types
+    ParamAttachment<int> tuningTableIndex0;
+    ParamAttachment<int> chipIndex1;
+    ParamAttachment<int> keyIndex1;
+    ParamAttachment<int> scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
+    ParamAttachment<double> a4Frequency;        // Hz - authoritative source
+    ParamAttachment<double> clockFrequencyMhz;  // MHz - authoritative source
 
 private:
     // Cached objects derived from values (performance optimization) - only for complex conversions
@@ -502,18 +502,18 @@ private:
             }
         }
         else if (value.refersToSameSourceAs(chipIndex1.getValue())) {
-            // DBG("Chip clock index changed from valueChanged");
+            DBG("Chip index changed from valueChanged");
             auto chip = getChipChoice();
             if (chip != ChipClockChoice::Custom) {
                 // Update clock frequency when preset is selected
                 auto clock = chip.getClockValue();
                 clockFrequencyMhz = clock / MHz; // Update CachedValue (MHz)
                 tuningSystem->setClockFrequency(clock); // Update tuning system clock frequency
-
                 // Notify all registered listeners that the tuning system has changed
-                // DBG("Chip clock index changed from valueChanged sendChangeMessage");
-                sendChangeMessage();
             }
+            // if chip == ChipClockChoice::Custom we should send change message too
+            DBG("Chip index changed from valueChanged sendChangeMessage");
+            sendChangeMessage();
         }
         else if (value.refersToSameSourceAs(tuningTableIndex0.getValue())) {
             // DBG("Tuning table index changed from valueChanged: " << static_cast<int>(value.getValue()));

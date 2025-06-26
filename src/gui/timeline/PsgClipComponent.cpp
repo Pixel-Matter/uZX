@@ -163,7 +163,7 @@ void PsgClipComponent::paintParameters(Graphics& g) {
     };
 
     const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
-    const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
+    const auto frameDur = te::TimeDuration::fromSeconds(1.0f / tc.getFPS());
     const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds());
 
     // constexpr auto lanesRange = PsgParamType::size();

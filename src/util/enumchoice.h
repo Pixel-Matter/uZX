@@ -98,19 +98,15 @@ public:
         return magic_enum::enum_names<Enum>();
     }
 
-    constexpr auto getLongLabel() noexcept {
+    constexpr auto getLongLabel() const noexcept {
         return E::longLabels[value];
     }
 
     constexpr static auto getLongLabels() noexcept {
-        return E::longLabels;
-    }
-
-    constexpr static auto getLongLabelsAsArray() noexcept {
         return to_array(E::longLabels);
     }
 
-    constexpr auto getShortLabel() noexcept {
+    constexpr auto getShortLabel() const noexcept {
         return E::shortLabels[value];
     }
 
@@ -143,5 +139,28 @@ inline std::ostream& operator<<(std::ostream& out, EnumChoice<E> choice) {
     out << choice.getLabel();
     return out;
 }
+
+/**
+    A helper type that can be used to implement specialisations of VariantConverter that use
+    EnumChoice
+
+    @code
+    template <>
+    struct juce::VariantConverter<YourEnumChoice> : public EnumVariantConverter<YourEnumChoice> {};
+    @endcode
+
+    @tags{Core}
+*/
+template<class E>
+struct EnumVariantConverter {
+    static E fromVar(const juce::var& v) {
+        return E(v.toString().toStdString());
+    }
+
+    static juce::var toVar(E choice) {
+        const std::string_view label = choice.getLabel();
+        return juce::String {label.data(), label.size()};
+    }
+};
 
 } // namespace MoTool::Util

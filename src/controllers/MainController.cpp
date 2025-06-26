@@ -457,11 +457,13 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 
-    mainWindow_.setContentOwned(new TuningPreviewComponent(), true);
-    mainWindow_.setName("Tuning System View");
-
-    // mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
-    // mainWindow_.setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
+    if (true /* start at Tuning mode */) {
+        mainWindow_.setContentOwned(new TuningPreviewComponent(&edit_->getUndoManager()), true);
+        mainWindow_.setName("Tuning System View");
+    } else {
+        mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
+        mainWindow_.setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
+    }
 
     mainWindow_.setSize(w, h);
     mainWindow_.repaint();

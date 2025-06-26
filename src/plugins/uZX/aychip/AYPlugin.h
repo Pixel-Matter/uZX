@@ -58,20 +58,20 @@ public:
     std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
 
     struct Params {
-        ParamAttachment<ChipType> chipTypeValue;
-        ParamAttachment<double> clockValue;
-        ParamAttachment<ChannelsLayout> channelsLayoutValue;
-        ParamAttachment<double> stereoWidthValue;
+        ChoiceParamAttachment<ChipType> chipTypeValue;
+        RangedParamAttachment<double> clockValue;
+        ChoiceParamAttachment<ChannelsLayout> channelsLayoutValue;
+        RangedParamAttachment<double> stereoWidthValue;
         ParamAttachment<bool> removeDCValue;
-        ParamAttachment<int> baseMidiChannelValue;
+        RangedParamAttachment<int> baseMidiChannelValue;
 
         Params(te::Plugin& p)
-            : chipTypeValue(p)
-            , clockValue(p)
-            , channelsLayoutValue(p)
-            , stereoWidthValue(p)
-            , removeDCValue(p)
-            , baseMidiChannelValue(p)
+            : chipTypeValue(p.state, p.getUndoManager())
+            , clockValue(p.state, p.getUndoManager())
+            , channelsLayoutValue(p.state, p.getUndoManager())
+            , stereoWidthValue(p.state, p.getUndoManager())
+            , removeDCValue(p.state, p.getUndoManager())
+            , baseMidiChannelValue(p.state, p.getUndoManager())
         {
             initialise();
         }

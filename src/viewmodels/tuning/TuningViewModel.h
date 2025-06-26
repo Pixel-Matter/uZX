@@ -8,7 +8,7 @@
 #include "../../models/tuning/Scales.h"
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../../util/convert.h"
-#include "../../util/CachedValueWithValue.h"
+#include "../../controllers/ParamAttachments.h"
 
 #include <cmath>
 #include <array>
@@ -100,8 +100,8 @@ namespace IDs {
     DECLARE_ID(chipClock)
     DECLARE_ID(key)
     DECLARE_ID(scale)
-    DECLARE_ID(a4Frequency)
-    DECLARE_ID(clockFrequency)
+    DECLARE_ID(a4Freq)
+    DECLARE_ID(clockFreq)
 
     #undef DECLARE_ID
 }
@@ -110,23 +110,25 @@ class TuningViewModel : public ChangeBroadcaster, private Value::Listener {
 public:
     // Any UI component can now listen to tuning system changes by implementing ChangeListener
     // and calling viewModel.addChangeListener(this) in their constructor
-    TuningViewModel()
+    TuningViewModel(UndoManager* um = nullptr)
         : transientState(IDs::TUNINGVIEWSTATE)
-        , tuningTableIndex0(transientState, IDs::tuningTable, nullptr, 0)
-        , chipIndex1(transientState, IDs::chipClock, nullptr, static_cast<int>(ChipClockEnum::ZX_Spectrum_1_77_MHz) + 1)
-        , keyIndex1(transientState, IDs::key, nullptr, 1)
-        , scaleIndex1(transientState, IDs::scale, nullptr, 1)
-        , a4Frequency(transientState, IDs::a4Frequency, nullptr, 440.0)
-        , clockFrequencyMhz(transientState, IDs::clockFrequency, nullptr, 1.7734) // MHz
+        , undoManager(um)
+                                                                 // no undo for this control
+        , selectedTuningTable(transientState, IDs::tuningTable, nullptr, BuiltinTuningType::EqualTemperament)
+        , selectedChip       (transientState, IDs::chipClock,   ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
+        , selectedTonic      (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C)
+        , selectedScale      (transientState, IDs::scale,                                         um, Scale::ScaleType::IonianOrMajor)
+        , a4Frequency        (transientState, IDs::a4Freq,      {220.0, 880.0, 0.1},              um, 440.0)
+        , clockFrequencyMhz  (transientState, IDs::clockFreq,   {1.0, 2.0, 0.001},                um, 1.7734) // MHz
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
         , chipCapabilities {16, Range<int>(1, 4096)}
     {
         // Set up Value listeners for bidirectional sync
-        tuningTableIndex0.addListener(this);
-        chipIndex1.addListener(this);
-        keyIndex1.addListener(this);
-        scaleIndex1.addListener(this);
+        selectedTuningTable.addListener(this);
+        selectedChip.addListener(this);
+        selectedTonic.addListener(this);
+        selectedScale.addListener(this);
         a4Frequency.addListener(this);
         clockFrequencyMhz.addListener(this);
 
@@ -150,7 +152,7 @@ public:
                 i,
                 scale.isIntervalInScale(semitonesFromKey),
                 // scaleNotes.count(i) > 0,  // isInScale
-                Scale::getKeyName(static_cast<Scale::Key>(i)),
+                Scale::getKeyName(Scale::Key(i)),
                 scaleChromDegrees[(size_t) semitonesFromKey],
                 refTuning ? refTuning->getDegreeRepresentation(semitonesFromKey) : String(),
                 semitonesFromKey == 0 // isRootNote
@@ -266,7 +268,7 @@ public:
     }
 
     Scale::ScaleType getCurrentScaleType() const {
-        auto scaleType = static_cast<Scale::ScaleType>(scaleIndex1.get() - 1);
+        auto scaleType = selectedScale.get();
         if (currentScale.getType() != scaleType) {
             currentScale = Scale(scaleType); // Update cache only when needed
         }
@@ -280,7 +282,7 @@ public:
 
     void setCurrentScaleType(Scale::ScaleType scaleType) {
         // DBG("setCurrentScaleType: " << Scale::getNameForType(scaleType));
-        scaleIndex1 = static_cast<int>(scaleType) + 1;
+        selectedScale = scaleType;
         // TODO double update after assigning to scaleIndex1?
         currentScale = Scale(scaleType); // Update cache
         // no need to update tuning system scale
@@ -289,12 +291,12 @@ public:
     }
 
     Scale::Key getCurrentKey() const {
-        return static_cast<Scale::Key>(keyIndex1.get() - 1);
+        return selectedTonic.get();
     }
 
     void setCurrentKey(Scale::Key key) {
         // DBG("setCurrentKey: " << Scale::getKeyName(key));
-        keyIndex1 = static_cast<int>(key) + 1;
+        selectedTonic = key;
         // TODO double update after assigning to keyIndex1?
         tuningSystem->setTonic(key); // Update tuning system tonic
         // DBG("setCurrentKey sendChangeMessage");
@@ -313,21 +315,17 @@ public:
 
     // Tuning table selection methods
     StringArray getTuningTableNames() const {
-        return toStringArray(BuiltinTuningType::getLongLabelsAsArray());
-    }
-
-    StringArray getChipClockLabels() const {
-        return toStringArray(ChipClockChoice::getLongLabelsAsArray());
+        return toStringArray(BuiltinTuningType::getLongLabels());
     }
 
     ChipClockChoice getChipChoice() const {
-        return chipIndex1.get() - 1;
+        return selectedChip.get();
     }
 
     // Not used yet
     void setChipChoice(ChipClockChoice clockChoice) {
         // DBG("setChipChoice: " << clockChoice.getLongLabel().data());
-        chipIndex1 = static_cast<int>(clockChoice) + 1; // +1 for 1-based index in UI
+        selectedChip = clockChoice;
         clockFrequencyMhz = clockChoice.getClockValue() / MHz; // Store as MHz
         tuningSystem->setClockFrequency(clockChoice.getClockValue()); // Update tuning system clock frequency
         // DBG("setChipChoice sendChangeMessage");
@@ -445,17 +443,19 @@ public:
     }
 
     //-------------------------------------------------------------------------
-
+private:
     // Transient view state
     ValueTree transientState;
+    UndoManager* undoManager;
 
-    // CachedValueWithValue objects - single source of truth for all persisted types
-    CachedValueWithValue<int> tuningTableIndex0;
-    CachedValueWithValue<int> chipIndex1;
-    CachedValueWithValue<int> keyIndex1;
-    CachedValueWithValue<int> scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
-    CachedValueWithValue<double> a4Frequency;        // Hz - authoritative source
-    CachedValueWithValue<double> clockFrequencyMhz;  // MHz - authoritative source
+public:
+    // ParamAttachment objects - single source of truth for all persisted types
+    ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
+    ChoiceParamAttachment<ChipClockChoice>   selectedChip;
+    ChoiceParamAttachment<Scale::Key>        selectedTonic;
+    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
+    RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
+    RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
 
 private:
     // Cached objects derived from values (performance optimization) - only for complex conversions
@@ -465,9 +465,9 @@ private:
 
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
-        if (value.refersToSameSourceAs(scaleIndex1.getValue())) {
+        if (value.refersToSameSourceAs(selectedScale.getValue())) {
             // DBG("Scale changed from valueChanged");
-            auto newScale = static_cast<Scale::ScaleType>(static_cast<int>(value.getValue()));
+            auto newScale = selectedScale.get();
             if (newScale != currentScale.getType()) {
                 // circular dependency if call setCurrentScaleType?
                 // setCurrentScaleType(newScale);
@@ -476,14 +476,12 @@ private:
                 // DBG("Scale changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        }
-        else if (value.refersToSameSourceAs(keyIndex1.getValue())) {
+        } else if (value.refersToSameSourceAs(selectedTonic.getValue())) {
             // DBG("Key changed from valueChanged");
             tuningSystem->setTonic(getCurrentKey());
             // DBG("Key changed from valueChanged sendChangeMessage");
             sendChangeMessage();
-        }
-        else if (value.refersToSameSourceAs(a4Frequency.getValue())) {
+        } else if (value.refersToSameSourceAs(a4Frequency.getValue())) {
             // DBG("A4 frequency changed from valueChanged");
             double newFreq = value.getValue();
             if (newFreq >= 220.0 && newFreq <= 880.0) {
@@ -491,8 +489,7 @@ private:
                 // DBG("A4 frequency changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        }
-        else if (value.refersToSameSourceAs(clockFrequencyMhz.getValue())) {
+        } else if (value.refersToSameSourceAs(clockFrequencyMhz.getValue())) {
             // DBG("Clock frequency changed from valueChanged");
             double newFreqMHz = value.getValue();
             if (newFreqMHz >= 1.0 && newFreqMHz <= 2.0) {
@@ -500,22 +497,21 @@ private:
                 // DBG("Clock frequency changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        }
-        else if (value.refersToSameSourceAs(chipIndex1.getValue())) {
-            // DBG("Chip clock index changed from valueChanged");
-            auto chip = getChipChoice();
+        } else if (value.refersToSameSourceAs(selectedChip.getValue())) {
+            // DBG("chipIndex0 changed from valueChanged " << value.toString());
+            auto chip = selectedChip.get();
             if (chip != ChipClockChoice::Custom) {
                 // Update clock frequency when preset is selected
+                // DBG("chipIndex0 =" << chip.getLabel().data());
                 auto clock = chip.getClockValue();
                 clockFrequencyMhz = clock / MHz; // Update CachedValue (MHz)
                 tuningSystem->setClockFrequency(clock); // Update tuning system clock frequency
-
                 // Notify all registered listeners that the tuning system has changed
-                // DBG("Chip clock index changed from valueChanged sendChangeMessage");
-                sendChangeMessage();
             }
-        }
-        else if (value.refersToSameSourceAs(tuningTableIndex0.getValue())) {
+            // if chip == ChipClockChoice::Custom we should send change message too
+            // DBG("chipIndex0 changed from valueChanged sendChangeMessage");
+            sendChangeMessage();
+        } else if (value.refersToSameSourceAs(selectedTuningTable.getValue())) {
             // DBG("Tuning table index changed from valueChanged: " << static_cast<int>(value.getValue()));
             recreateTuningSystem(); // Reset to tuning defaults when changing tuning table
             // DBG("Tuning table index changed from valueChanged sendChangeMessage");
@@ -525,7 +521,7 @@ private:
 
     void recreateTuningSystem() {
         // DBG("Recreating tuning system with index: " << tuningTableIndex0.get());
-        auto tuningType = static_cast<BuiltinTuningType>(tuningTableIndex0.get());
+        auto tuningType = selectedTuningTable.get();
 
         TuningOptions options {
             .tableType = tuningType,
@@ -533,7 +529,7 @@ private:
             .temperamentType = TemperamentType::EqualTemperament, // TODO from view property
             .tonic = getCurrentKey(),
             .scaleType = getCurrentScaleType(),
-            .chipChoice = getChipChoice(),
+            .chipChoice = selectedChip.get(),
             .chipClock = clockFrequencyMhz.get() * MHz,
             .a4Frequency = a4Frequency.get()
         };
@@ -542,15 +538,10 @@ private:
 
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
-            // DBG("recreateTuningSystem set keyIndex1 " << static_cast<int>(options.tonic) + 1);
-            keyIndex1 = static_cast<int>(options.tonic) + 1;
-            // DBG("recreateTuningSystem set scaleIndex1 " << static_cast<int>(options.scaleType) + 1);
-            scaleIndex1 = static_cast<int>(options.scaleType) + 1;
-            // DBG("recreateTuningSystem set chipIndex1 " << static_cast<int>(options.chipChoice.value) + 1);
-            chipIndex1 = static_cast<int>(options.chipChoice.value) + 1;
-            // DBG("recreateTuningSystem set clockFrequencyMhz " << options.chipClock / MHz);
+            selectedTonic = options.tonic;
+            selectedScale = options.scaleType;
+            selectedChip = options.chipChoice;
             clockFrequencyMhz = options.chipClock / MHz; // Convert Hz to MHz
-            // DBG("recreateTuningSystem set a4Frequency " << options.a4Frequency);
             a4Frequency = options.a4Frequency;
         }
     }
@@ -577,22 +568,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };
 
-}
-
-namespace juce {
-
-using namespace MoTool::uZX;
-
-template<>
-struct VariantConverter<MoTool::ChipClockChoice> {
-    static MoTool::ChipClockChoice fromVar(const var& v) {
-        return MoTool::ChipClockChoice(v.toString().toStdString());
-    }
-
-    static var toVar(MoTool::ChipClockChoice choice) {
-        const std::string_view label = choice.getLabel();
-        return String {label.data(), label.size()};
-    }
-};
-
-} // namespace juce
+} // namespace MoTool

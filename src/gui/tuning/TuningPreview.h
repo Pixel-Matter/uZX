@@ -46,7 +46,7 @@ private:
 
 class TuningPreviewComponent : public juce::Component, private ChangeListener, private ListBoxModel, private Value::Listener {
 public:
-    TuningPreviewComponent();
+    TuningPreviewComponent(UndoManager* um = nullptr);
     ~TuningPreviewComponent() override;
 
     void resized() override;
@@ -61,8 +61,8 @@ private:
     void changeListenerCallback(ChangeBroadcaster* source) override;
 
     // UI setup helpers
-    void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText,
-                                     double min, double max, double step, Value& valueToReference);
+    void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
+                                     RangedParamAttachment<double>& attachment);
     void updateClockControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();
@@ -78,10 +78,14 @@ private:
 
     Label chipClockLabel;
     ComboBox chipClockSelect;
+
     Slider clockFrequencySlider;
     Label clockFrequencyLabel;
+    Label clockFrequencyUnits;
+
     Slider a4FrequencySlider;
     Label a4FrequencyLabel;
+    Label a4FrequencyUnits;
 
     // Scale and Key selection
     Label keyScaleLabel;
@@ -96,6 +100,11 @@ private:
 
     TuningPreviewGrid tuningGrid;
     TooltipWindow tooltipWindow;
+
+    // bindings
+    ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
+    ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedTonic };
+    ComboBoxBinding<Scale::ScaleType> scaleSelectBinding { scaleSelect, viewModel.selectedScale };
 
     static constexpr int rowHeight = 28;
     static constexpr int moduleWidth = 60;

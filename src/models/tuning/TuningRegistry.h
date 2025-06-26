@@ -45,7 +45,7 @@ struct TuningOptions {
     TemperamentType temperamentType;
     Scale::Key tonic;
     Scale::ScaleType scaleType;
-    uZX::ChipClockChoice chipChoice;
+    ChipClockChoice chipChoice;
     double chipClock;
     double a4Frequency;
 };
@@ -64,3 +64,9 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
 const std::string_view getTuningTableName(BuiltinTuningType tableType);
 
 }
+
+using namespace MoTool;
+using namespace MoTool::Util;
+
+template <>
+struct juce::VariantConverter<BuiltinTuningType> : public EnumVariantConverter<BuiltinTuningType> {};

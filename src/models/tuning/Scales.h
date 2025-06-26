@@ -62,8 +62,21 @@ public:
     using Degree = ScaleDegree;
     using Accidental = Accidental;
 
-    enum class Key {
-        C = 0, CSharp, D, DSharp, E, F, FSharp, G, GSharp, A, ASharp, B
+    struct KeyEnum {
+        enum Enum {
+            C = 0, CSharp, D, DSharp, E, F, FSharp, G, GSharp, A, ASharp, B
+        };
+        // static inline constexpr std::string_view labels[] {
+        //     "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+        // };
+        static inline constexpr std::string_view longLabels[] {
+            "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"
+        };
+    };
+
+    struct Key : public Util::EnumChoice<KeyEnum> {
+        using Util::EnumChoice<KeyEnum>::EnumChoice;
+        inline constexpr auto getName() const { return getLongLabel().data(); }
     };
 
     struct ScaleCategoryEnum {
@@ -304,10 +317,6 @@ private:
     ScaleType type;
     std::vector<int> intervals;  // For all scales - both predefined and user-defined
 
-    static inline constexpr std::array<std::string_view, 12> chromaticNoteNames = {
-        "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"
-    };
-
     static inline constexpr std::array<int, 7> majorPattern {0, 2, 4, 5, 7, 9, 11}; // Major scale intervals
     static inline constexpr std::array<Degree, 12> chromaticDegrees {{
         Degree {1},  // Unison
@@ -324,5 +333,18 @@ private:
         Degree {7}   // Major seventh
     }};
 };
+
+}
+
+namespace juce {
+
+using namespace MoTool;
+using namespace MoTool::Util;
+
+template <>
+struct juce::VariantConverter<Scale::Key> : public EnumVariantConverter<Scale::Key> {};
+
+template <>
+struct juce::VariantConverter<Scale::ScaleType> : public EnumVariantConverter<Scale::ScaleType> {};
 
 }

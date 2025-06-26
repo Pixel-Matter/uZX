@@ -11,10 +11,10 @@ namespace MoTool::uZX {
 
 
 // Base class for parameter widgets
-template <typename Type, typename WidgetType>
+template <typename Att, typename WidgetType>
 class ParameterComponent : public Component {
 public:
-    ParameterComponent(ParamAttachment<Type>& att, bool useLabel_ = true)
+    ParameterComponent(Att& att, bool useLabel_ = true)
       : attachment(att)
       , useLabel(useLabel_)
       , label("", att.name)
@@ -33,33 +33,37 @@ public:
     }
 
 protected:
-    ParamAttachment<Type>& attachment;
+    Att& attachment;
     bool useLabel;
     Label label;
     WidgetType widget;
 };
 
 template <typename Type>
-class SliderParameterComponent : public ParameterComponent<Type, Slider>, private Slider::Listener, private Value::Listener {
+class SliderParameterComponent : public ParameterComponent<RangedParamAttachment<Type>, Slider>,
+                                 private Slider::Listener,
+                                 private Value::Listener
+{
 public:
     SliderParameterComponent(
-        ParamAttachment<Type>& param,
+        RangedParamAttachment<Type>& param,
         Slider::SliderStyle style = Slider::LinearHorizontal,
-        Slider::TextEntryBoxPosition textBoxPosition = Slider::TextBoxLeft)
-      : ParameterComponent<Type, Slider>(param),
-        sliderStyle(style),
-        boxPosition(textBoxPosition)
+        Slider::TextEntryBoxPosition textBoxPosition = Slider::TextBoxLeft
+    )
+      : ParameterComponent<RangedParamAttachment<Type>, Slider>(param)
+      , sliderStyle(style)
+      , boxPosition(textBoxPosition)
     {
         this->widget.setSliderStyle(sliderStyle);
         this->widget.setTextBoxStyle(boxPosition, false, this->widget.getTextBoxWidth(), this->widget.getTextBoxHeight());
-        this->widget.setRange(this->attachment.range.start, this->attachment.range.end, this->attachment.range.interval);
+        this->widget.setRange(this->attachment.getRange().start, this->attachment.getRange().end, this->attachment.getRange().interval);
         this->widget.setValue(this->attachment.get(), dontSendNotification);
         // NOTE referTo tracks values poorly, doesnt track edge values
         // widget.getValueObject().referTo(attachment.getPropertyAsValue());
-        this->attachment.getPropertyAsValue().addListener(this);
+        this->attachment.addListener(this);
         this->widget.addListener(this);
 
-        DBG("Range interval for " << this->attachment.name  << " is " << this->attachment.range.interval);
+        // DBG("Range interval for " << this->attachment.name  << " is " << this->attachment.range.interval);
     }
 
 private:
@@ -77,16 +81,17 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParameterComponent)
 };
 
-class ToggleParameterComponent : public ParameterComponent<bool, ToggleButton>, private Button::Listener, private Value::Listener {
+class ToggleParameterComponent : public ParameterComponent<ParamAttachment<bool>, ToggleButton>,
+                                 private Button::Listener,
+                                 private Value::Listener
+{
 public:
-    ToggleParameterComponent(
-        ParamAttachment<bool>& param
-    )
-      : ParameterComponent<bool, ToggleButton>(param, /* useLabel_ = */ false)
+    ToggleParameterComponent(ParamAttachment<bool>& param)
+      : ParameterComponent<ParamAttachment<bool>, ToggleButton>(param, /* useLabel_ = */ false)
     {
         widget.setButtonText(attachment.name);
         widget.setToggleState(attachment.get(), dontSendNotification);
-        attachment.getPropertyAsValue().addListener(this);
+        attachment.getValue().addListener(this);
         widget.addListener(this);
     }
 
@@ -108,17 +113,19 @@ private:
 
 
 template <typename Type>
-class ComboParameterComponent : public ParameterComponent<Type, ComboBox>, private ComboBox::Listener, private Value::Listener {
+class ComboParameterComponent : public ParameterComponent<ChoiceParamAttachment<Type>, ComboBox>,
+                                private ComboBox::Listener,
+                                private Value::Listener {
     public:
     ComboParameterComponent(
-        ParamAttachment<Type>& att)
-      : ParameterComponent<Type, ComboBox>(att)
+        ChoiceParamAttachment<Type>& att)
+      : ParameterComponent<ChoiceParamAttachment<Type>, ComboBox>(att)
     {
         for (const auto& [idx, label] : this->attachment.getChoices()) {
             this->widget.addItem(label, static_cast<int>(idx) + 1);
         }
         this->widget.setSelectedItemIndex(valueToIdx(this->attachment.get()), dontSendNotification);
-        this->attachment.getPropertyAsValue().addListener(this);
+        this->attachment.addListener(this);
         this->widget.addListener(this);
     }
 

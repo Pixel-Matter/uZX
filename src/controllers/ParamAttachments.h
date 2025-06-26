@@ -16,8 +16,8 @@ public:
         : slider (s)
         , param (p)
     {
-        slider.setRange(p.getValueRange().getStart(), p.getValueRange().getEnd(), 0.0);
-        slider.setValue(p.getCurrentValue(), dontSendNotification);
+        slider.setRange(static_cast<double>(p.getValueRange().getStart()), static_cast<double>(p.getValueRange().getEnd()), 0.0);
+        slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
 
         slider.onValueChange = [this] {
             juce::ScopedValueSetter<bool> svs(updatingSlider, true);
@@ -39,7 +39,7 @@ private:
     void currentValueChanged(te::AutomatableParameter& p) override {
         if (updatingSlider)
             return;  // don't update the parameter if we're already updating it
-        slider.setValue(p.getCurrentValue(), dontSendNotification);
+        slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
     }
 
     void curveHasChanged(te::AutomatableParameter&) override {}
@@ -53,70 +53,159 @@ private:
 
 
 template <typename Type>
-struct ParamAttachment {
+class ParamAttachment {
+public:
     using type = Type;
 
-    // TODO replace Plugin with VTS and undo manager
-    ParamAttachment(te::Plugin& p)
-        : plugin(p)
+    ParamAttachment(ValueTree& tree, UndoManager* undoMgr)
+        : valueTree(tree)
+        , undoManager(undoMgr)
+    {}
+
+    ParamAttachment(ValueTree& tree, const Identifier& id, const String& n, UndoManager* undoMgr, const Type& deflt)
+        : valueTree(tree)
+        , undoManager(undoMgr)
+        , name(n)
+        , cachedValue(tree, id, undoMgr, deflt)
+        , value(cachedValue.getPropertyAsValue())
+    {
+        // DBG("ParamAttachment::ctor and binding for type " << typeid(Type).name() << " with id " << id.toString());
+    }
+
+    ParamAttachment(ValueTree& tree, const Identifier& id, UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment(tree, id, id.toString(), undoMgr, deflt)
     {}
 
     // ctor that refers to an existing ValueTree property
 
-    void referTo(const Identifier& id, const String& n, const Type& def, const String& u) {
+    void referTo(const Identifier& id, const Type& deflt) {
+        // DBG("ParamAttachment::referTo for type " << typeid(Type).name() << " with id " << id.toString());
+        // NOTE not vice versa
+        cachedValue.referTo(valueTree, id, undoManager, deflt);
+        value = cachedValue.getPropertyAsValue();
+    }
+
+    void referTo(const Identifier& id, const String& n, const Type& def) {
         name = n;
-        units = u;
-        value.referTo(plugin.state, id, plugin.getUndoManager(), def);
-        // valueValue = value.getPropertyAsValue();
+        referTo(id, def);
     }
 
-    void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u) {
-        referTo(id, n, def, u);
-        range = r;
-    }
-
-    void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def, const String& u) {
-        referTo(id, n, def, u);
-        choices.clear();
-        for (int i = 0; i < ch.size(); ++i) {
-            choices.push_back({static_cast<Type>(i), ch[i]});
-        }
-    }
-
-    template <size_t N>
-    void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def, const String& u) {
-        referTo(id, n, toStringArray(ch), def, u);
-    }
-
-    void referTo(const Identifier& id, const String& n, const std::vector<std::pair<Type, String>>& ch, const Type& def, const String& u) {
-        referTo(id, n, def, u);
-        choices = ch;
-    }
-
-    inline operator CachedValue<Type>&() noexcept { return value; }
+    inline operator CachedValue<Type>&() noexcept { return cachedValue; }
 
     // for CachedValue-like transparent access
-    inline operator Type() const noexcept         { return value.get(); }
+    inline operator Type() const noexcept         { return cachedValue.get(); }
 
-    inline Type get() const noexcept              { return value.get(); }
+    inline Type get() const noexcept              { return cachedValue.get(); }
 
-    inline const Type& operator*() const noexcept        { return *value; }
+    inline const Type& operator*() const noexcept        { return *cachedValue; }
 
     template <typename OtherType>
-    inline bool operator== (const OtherType& other) const { return value == other; }
+    inline bool operator== (const OtherType& other) const { return cachedValue == other; }
 
     template <typename OtherType>
     inline bool operator!= (const OtherType& other) const   { return ! operator== (other); }
 
-    inline Type getDefault() const                          { return value.getDefault(); }
+    inline Type getDefault() const                          { return cachedValue.getDefault(); }
 
     inline ParamAttachment& operator= (const Type& newValue) {
-        value = newValue;
+        cachedValue = newValue;
         return *this;
     }
 
-    inline Value getPropertyAsValue() {
-        return value.getPropertyAsValue();
+    inline Value& getValue() {
+        return value;
+    }
+
+    void addListener(Value::Listener* listener) {
+        // DBG("ParamAttachment::addListener for type " << typeid(Type).name() << " with name " << name);
+        value.addListener(listener);
+    }
+
+    void removeListener(Value::Listener* listener) {
+        value.removeListener(listener);
+    }
+
+    // ======================================================================================
+    ValueTree& valueTree;
+    UndoManager* undoManager;
+    String name;
+    // TODO CachedValue<te::AtomicWrapper<Type>> value;
+    CachedValue<Type> cachedValue;
+    Value value;
+
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamAttachment)
+};
+
+
+template <typename Type>
+class ChoiceParamAttachment : public ParamAttachment<Type> {
+public:
+    using type = Type;
+    using ParamAttachment<Type>::ParamAttachment;
+    using ParamAttachment<Type>::referTo;
+
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id, const String& n,
+                          const std::vector<std::pair<Type, String>>& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, n, undoMgr, deflt)
+        , choices(ch)
+    {
+        // DBG("ParamAttachment::ctor and binding for type " << typeid(Type).name() << " with id " << id.toString());
+    }
+
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id, const String& n,
+                          const StringArray& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, n, undoMgr, deflt)
+        , choices(toChoices(ch))
+    {}
+
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id,
+                          const StringArray& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, undoMgr, deflt)
+        , choices(toChoices(ch))
+    {}
+
+    template <size_t N>
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id,
+                          const std::array<std::string_view, N>& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, undoMgr, deflt)
+        , choices(toChoices(toStringArray(ch)))
+    {}
+
+    template <size_t N>
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id, const String& n,
+                          const std::array<std::string_view, N>& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, n, undoMgr, deflt)
+        , choices(toChoices(toStringArray(ch)))
+    {}
+
+    inline ChoiceParamAttachment& operator= (const Type& newValue) {
+        this->cachedValue = newValue;
+        return *this;
+    }
+
+    inline static std::vector<std::pair<Type, String>> toChoices(const StringArray& ch) {
+        std::vector<std::pair<Type, String>> choices;
+        for (int i = 0; i < ch.size(); ++i) {
+            choices.push_back({static_cast<Type>(i), ch[i]});
+        }
+        return choices;
+    }
+
+    void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def) {
+        choices = toChoices(ch);
+        referTo(id, n, def);
+    }
+
+    template <size_t N>
+    void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def) {
+        choices = toChoices(toStringArray(ch));
+        referTo(id, n, def);
     }
 
     const std::vector<std::pair<Type, String>>& getChoices() const {
@@ -124,18 +213,111 @@ struct ParamAttachment {
     }
 
     // ======================================================================================
-    te::Plugin& plugin;
-    String name;
-    String units;
-    // TODO CachedValue<te::AtomicWrapper<Type>> value;
-    CachedValue<Type> value;
-    // Value valueValue;
-    NormalisableRange<Type> range;
+private:
     std::vector<std::pair<Type, String>> choices;
 
-private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamAttachment)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChoiceParamAttachment)
 };
 
+
+template <typename Type>
+class RangedParamAttachment : public ParamAttachment<Type> {
+public:
+    using type = Type;
+    using ParamAttachment<Type>::ParamAttachment;
+    using ParamAttachment<Type>::referTo;
+
+    RangedParamAttachment(ValueTree& tree, const Identifier& id,
+                          const NormalisableRange<Type>& r,
+                          UndoManager* undoMgr, const Type& deflt, const String& u = String{})
+        : ParamAttachment<Type>(tree, id, id.toString(), undoMgr, deflt)
+        , range(r)
+        , units(u)
+    {}
+
+    void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u = String{}) {
+        referTo(id, n, def);
+        range = r;
+        units = u;
+    }
+
+    inline RangedParamAttachment& operator= (const Type& newValue) {
+        this->cachedValue = newValue;
+        return *this;
+    }
+
+    const String& getUnits() const {
+        return units;
+    }
+
+    const NormalisableRange<Type>& getRange() const {
+        return range;
+    }
+
+    // ======================================================================================
+private:
+    NormalisableRange<Type> range;
+    String units;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RangedParamAttachment)
+};
+
+
+// Bind ComboBox to a EnumChoice parameter with shift to 1-based ComboBox index
+template <typename ChoiceType>
+class ComboBoxBinding : private Value::Listener,
+                        private ComboBox::Listener
+{
+public:
+    ComboBoxBinding(ComboBox& cb, ChoiceParamAttachment<ChoiceType>& cp)
+        : comboBox(cb)
+        , choiceParam(cp)
+    {
+        comboBox.addListener(this);
+        choiceParam.addListener(this);
+        fillItems();
+        updateComboBox();
+        // DBG("ComboBoxBinding::ComboBoxBinding");
+    }
+
+    void fillItems() {
+        comboBox.clear();
+        for (auto [i, item] : choiceParam.getChoices()) {
+            comboBox.addItem(item, i + 1);
+        }
+    }
+
+    ~ComboBoxBinding() override {
+        comboBox.removeListener(this);
+        choiceParam.removeListener(this);
+    }
+
+private:
+    void valueChanged(Value& v) override {
+        if (v.refersToSameSourceAs(choiceParam.getValue())) {
+            updateComboBox();
+        }
+    }
+
+    void comboBoxChanged(ComboBox* cb) override {
+        if (cb == &comboBox && comboBox.getSelectedId() > 0) {
+            // DBG("ComboBoxBinding::comboBoxChanged: " << comboBox.getSelectedId());
+            choiceParam = ChoiceType(comboBox.getSelectedId() - 1);
+        }
+    }
+
+    void updateComboBox() {
+        if (auto param = choiceParam.get(); param.isValid()) {
+            int id = static_cast<int>(param);
+            // DBG("ComboBoxBinding::updateComboBox: " << param.getLabel().data());
+            comboBox.setSelectedId(id + 1, dontSendNotification);
+        } else {
+            comboBox.setSelectedId(0, dontSendNotification);
+        }
+    }
+
+    ComboBox& comboBox;
+    ChoiceParamAttachment<ChoiceType>& choiceParam;
+};
 
 }  // namespace MoTool

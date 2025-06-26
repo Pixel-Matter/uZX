@@ -1,7 +1,9 @@
 #include "Scales.h"
-#include "juce_core/system/juce_PlatformDefs.h"
+#include "../../util/convert.h"
+
 #include <cstddef>
 #include <string_view>
+
 
 namespace MoTool {
 
@@ -442,15 +444,11 @@ std::array<Scale::Degree, 12> Scale::getChromaticDegrees() const {
 
 // Key-related static methods
 StringArray Scale::getAllKeyNames() {
-    StringArray names;
-    for (int i = 0; i < 12; ++i) {
-        names.add(getKeyName(static_cast<Key>(i)));
-    }
-    return names;
+    return toStringArray(Key::getLongLabels());
 }
 
 String Scale::getKeyName(Key key) {
-    return String::fromUTF8(chromaticNoteNames[static_cast<size_t>(key)].data());
+    return String::fromUTF8(key.getName());
 }
 
 } // namespace MoTool

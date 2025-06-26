@@ -9,22 +9,22 @@ namespace MoTool::uZX {
 //==============================================================================
 void AYChipPlugin::Params::initialise() {
     clockValue          .referTo(IDs::clock,  "Clock frequncy",    {0.894887, 2.0, 0.01},  1.7734, "MHz");
-    chipTypeValue       .referTo(IDs::chip,   "Chip type",         ChipType::getLabels(),       ChipType::AY,    {});
-    channelsLayoutValue .referTo(IDs::layout, "Channels layout",   ChannelsLayout::getLabels(), ChannelsLayout::ACB, {});
-    stereoWidthValue    .referTo(IDs::stereo, "Stereo width",      {0.0, 1.0, 0.01},       0.5,    {});
-    removeDCValue       .referTo(IDs::noDC,   "Remove DC",                                 true,   {});
-    baseMidiChannelValue.referTo(IDs::midi,   "Base MIDI channel", {1, 15 - 4, 1},         1,      {});
+    chipTypeValue       .referTo(IDs::chip,   "Chip type",         ChipType::getLabels(),       ChipType::AY);
+    channelsLayoutValue .referTo(IDs::layout, "Channels layout",   ChannelsLayout::getLabels(), ChannelsLayout::ACB);
+    stereoWidthValue    .referTo(IDs::stereo, "Stereo width",      {0.0, 1.0, 0.01},       0.5);
+    removeDCValue       .referTo(IDs::noDC,   "Remove DC",                                 true);
+    baseMidiChannelValue.referTo(IDs::midi,   "Base MIDI channel", {1, 15 - 4, 1},         1);
 }
 
 
 void AYChipPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
     te::copyPropertiesToCachedValues(v,
-        chipTypeValue.value,
-        clockValue.value,
-        channelsLayoutValue.value,
-        stereoWidthValue.value,
-        removeDCValue.value,
-        baseMidiChannelValue.value
+        chipTypeValue.cachedValue,
+        clockValue.cachedValue,
+        channelsLayoutValue.cachedValue,
+        stereoWidthValue.cachedValue,
+        removeDCValue.cachedValue,
+        baseMidiChannelValue.cachedValue
     );
 }
 
@@ -181,44 +181,4 @@ std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {
 
 //==============================================================================
 
-template <typename ChoiceType>
-static ChoiceType choiceFromVar(const var& v) {
-    return ChoiceType(v.toString().toStdString());
-}
-
-template <typename ChoiceType>
-static var choicetoVar(ChoiceType c) {
-    const std::string_view label = c.getLabel();
-    return String {label.data(), label.size()};
-}
-
 } // namespace MoTool::uZX
-
-
-namespace juce {
-
-using namespace MoTool::uZX;
-
-template<>
-struct VariantConverter<ChipType> {
-    static ChipType fromVar(const var& v) {
-        return choiceFromVar<ChipType>(v);
-    }
-
-    static var toVar(ChipType ct) {
-        return choicetoVar(ct);
-    }
-};
-
-template<>
-struct VariantConverter<ChannelsLayout> {
-    static ChannelsLayout fromVar(const var& v) {
-        return choiceFromVar<ChannelsLayout>(v);
-    }
-
-    static var toVar(ChannelsLayout layout) {
-        return choicetoVar(layout);
-    }
-};
-
-} // namespace juce

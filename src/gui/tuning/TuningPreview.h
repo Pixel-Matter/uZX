@@ -100,6 +100,7 @@ private:
 
     // bindings
     ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
+    ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedTonic };
 
     static constexpr int rowHeight = 28;
     static constexpr int moduleWidth = 60;

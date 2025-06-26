@@ -259,13 +259,6 @@ String TuningPreviewGrid::getTooltip() {
     return hasHoveredNote ? hoveredNote.getTooltip() : "";
 }
 
-
-static void addItemsFromStrings(juce::ComboBox& comboBox, const StringArray& items) {
-    for (int i = 0; i < items.size(); ++i) {
-        comboBox.addItem(items[i], i + 1);
-    }
-}
-
 //================================================================================
 TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     : viewModel(um)
@@ -286,18 +279,15 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     addAndMakeVisible(tuningsListBox);
 
     // Set up Key selection ComboBox
-    addItemsFromStrings(keySelect, Scale::getAllKeyNames());
     setupScaleSelectMenu();
     keyScaleLabel.setText("Scale:", juce::dontSendNotification);
     keyScaleLabel.setJustificationType(juce::Justification::centredRight);
-    keySelect.getSelectedIdAsValue().referTo(viewModel.keyIndex1.getValue());
 
     addAndMakeVisible(keyScaleLabel);
     addAndMakeVisible(keySelect);
     addAndMakeVisible(scaleSelect);
 
     // Set up Chip Clock selection ComboBox
-    addItemsFromStrings(chipClockSelect, viewModel.getChipClockLabels());
     chipClockLabel.setText("Chip Clock:", juce::dontSendNotification);
     chipClockLabel.setJustificationType(juce::Justification::centredRight);
 

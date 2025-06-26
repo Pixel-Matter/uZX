@@ -100,8 +100,8 @@ namespace IDs {
     DECLARE_ID(chipClock)
     DECLARE_ID(key)
     DECLARE_ID(scale)
-    DECLARE_ID(a4Frequency)
-    DECLARE_ID(clockFrequency)
+    DECLARE_ID(a4Freq)
+    DECLARE_ID(clockFreq)
 
     #undef DECLARE_ID
 }
@@ -114,12 +114,12 @@ public:
         : transientState(IDs::TUNINGVIEWSTATE)
         , undoManager(um)
                                                                  // no undo for this control
-        , selectedTuningTable(transientState, IDs::tuningTable,  nullptr, BuiltinTuningType::EqualTemperament)
-        , selectedChip       (transientState, IDs::chipClock,      um, ChipClockEnum::ZX_Spectrum_1_77_MHz)
-        , keyIndex1        (transientState, IDs::key,            um, 1)
-        , scaleIndex1      (transientState, IDs::scale,          um, 1)
-        , a4Frequency      (transientState, IDs::a4Frequency,    um, 440.0)
-        , clockFrequencyMhz(transientState, IDs::clockFrequency, um, 1.7734) // MHz
+        , selectedTuningTable(transientState, IDs::tuningTable, nullptr, BuiltinTuningType::EqualTemperament)
+        , selectedChip       (transientState, IDs::chipClock,   ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
+        , selectedTonic      (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C) // Default to C major
+        , scaleIndex1        (transientState, IDs::scale,       um, 1)
+        , a4Frequency        (transientState, IDs::a4Freq,      um, 440.0)
+        , clockFrequencyMhz  (transientState, IDs::clockFreq,   um, 1.7734) // MHz
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
         , chipCapabilities {16, Range<int>(1, 4096)}
@@ -127,7 +127,7 @@ public:
         // Set up Value listeners for bidirectional sync
         selectedTuningTable.addListener(this);
         selectedChip.addListener(this);
-        keyIndex1.addListener(this);
+        selectedTonic.addListener(this);
         scaleIndex1.addListener(this);
         a4Frequency.addListener(this);
         clockFrequencyMhz.addListener(this);
@@ -152,7 +152,7 @@ public:
                 i,
                 scale.isIntervalInScale(semitonesFromKey),
                 // scaleNotes.count(i) > 0,  // isInScale
-                Scale::getKeyName(static_cast<Scale::Key>(i)),
+                Scale::getKeyName(Scale::Key(i)),
                 scaleChromDegrees[(size_t) semitonesFromKey],
                 refTuning ? refTuning->getDegreeRepresentation(semitonesFromKey) : String(),
                 semitonesFromKey == 0 // isRootNote
@@ -291,12 +291,12 @@ public:
     }
 
     Scale::Key getCurrentKey() const {
-        return static_cast<Scale::Key>(keyIndex1.get() - 1);
+        return selectedTonic.get();
     }
 
     void setCurrentKey(Scale::Key key) {
         // DBG("setCurrentKey: " << Scale::getKeyName(key));
-        keyIndex1 = static_cast<int>(key) + 1;
+        selectedTonic = key;
         // TODO double update after assigning to keyIndex1?
         tuningSystem->setTonic(key); // Update tuning system tonic
         // DBG("setCurrentKey sendChangeMessage");
@@ -315,11 +315,7 @@ public:
 
     // Tuning table selection methods
     StringArray getTuningTableNames() const {
-        return toStringArray(BuiltinTuningType::getLongLabelsAsArray());
-    }
-
-    StringArray getChipClockLabels() const {
-        return toStringArray(ChipClockChoice::getLongLabelsAsArray());
+        return toStringArray(BuiltinTuningType::getLongLabels());
     }
 
     ChipClockChoice getChipChoice() const {
@@ -454,10 +450,10 @@ private:
 
 public:
     // ParamAttachment objects - single source of truth for all persisted types
-    ParamAttachment<BuiltinTuningType> selectedTuningTable;
-    ParamAttachment<ChipClockChoice>   selectedChip;
-    ParamAttachment<int>    keyIndex1;
-    ParamAttachment<int>    scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
+    ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
+    ChoiceParamAttachment<ChipClockChoice>   selectedChip;
+    ChoiceParamAttachment<Scale::Key>        selectedTonic;
+    ChoiceParamAttachment<int>    scaleIndex1;            // 1-based index for UI convenience, 0 is invalid
     ParamAttachment<double> a4Frequency;        // Hz - authoritative source
     ParamAttachment<double> clockFrequencyMhz;  // MHz - authoritative source
 
@@ -480,7 +476,7 @@ private:
                 // DBG("Scale changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        } else if (value.refersToSameSourceAs(keyIndex1.getValue())) {
+        } else if (value.refersToSameSourceAs(selectedTonic.getValue())) {
             // DBG("Key changed from valueChanged");
             tuningSystem->setTonic(getCurrentKey());
             // DBG("Key changed from valueChanged sendChangeMessage");
@@ -543,7 +539,7 @@ private:
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
             // DBG("recreateTuningSystem set keyIndex1 " << static_cast<int>(options.tonic) + 1);
-            keyIndex1 = static_cast<int>(options.tonic) + 1;
+            selectedTonic = options.tonic;
             // DBG("recreateTuningSystem set scaleIndex1 " << static_cast<int>(options.scaleType) + 1);
             scaleIndex1 = static_cast<int>(options.scaleType) + 1;
             // DBG("recreateTuningSystem set chipIndex " << options.chipChoice.getLabel().data());

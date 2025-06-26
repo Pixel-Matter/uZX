@@ -2,7 +2,6 @@
 
 #include <JuceHeader.h>
 #include "../util/convert.h"
-#include "juce_core/juce_core.h"
 
 
 using namespace juce;
@@ -63,15 +62,19 @@ public:
         , undoManager(undoMgr)
     {}
 
-    ParamAttachment(ValueTree& tree, const Identifier& id, UndoManager* undoMgr, const Type& deflt)
+    ParamAttachment(ValueTree& tree, const Identifier& id, const String& n, UndoManager* undoMgr, const Type& deflt)
         : valueTree(tree)
         , undoManager(undoMgr)
-        , name(id.toString())
+        , name(n)
         , cachedValue(tree, id, undoMgr, deflt)
         , value(cachedValue.getPropertyAsValue())
     {
         // DBG("ParamAttachment::ctor and binding for type " << typeid(Type).name() << " with id " << id.toString());
     }
+
+    ParamAttachment(ValueTree& tree, const Identifier& id, UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment(tree, id, id.toString(), undoMgr, deflt)
+    {}
 
     // ctor that refers to an existing ValueTree property
 
@@ -151,22 +154,67 @@ public:
     using ParamAttachment<Type>::ParamAttachment;
     using ParamAttachment<Type>::referTo;
 
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id, const String& n,
+                          const std::vector<std::pair<Type, String>>& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, n, undoMgr, deflt)
+        , choices(ch)
+    {
+        // DBG("ParamAttachment::ctor and binding for type " << typeid(Type).name() << " with id " << id.toString());
+    }
+
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id, const String& n,
+                          const StringArray& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, n, undoMgr, deflt)
+        , choices(toChoices(ch))
+    {}
+
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id,
+                          const StringArray& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, undoMgr, deflt)
+        , choices(toChoices(ch))
+    {}
+
+    template <size_t N>
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id,
+                          const std::array<std::string_view, N>& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, undoMgr, deflt)
+        , choices(toChoices(toStringArray(ch)))
+    {}
+
+    template <size_t N>
+    ChoiceParamAttachment(ValueTree& tree, const Identifier& id, const String& n,
+                          const std::array<std::string_view, N>& ch,
+                          UndoManager* undoMgr, const Type& deflt)
+        : ParamAttachment<Type>(tree, id, n, undoMgr, deflt)
+        , choices(toChoices(toStringArray(ch)))
+    {}
+
     inline ChoiceParamAttachment& operator= (const Type& newValue) {
         this->cachedValue = newValue;
         return *this;
     }
 
-    void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def, const String& u) {
-        referTo(id, n, def, u);
-        choices.clear();
+    inline static std::vector<std::pair<Type, String>> toChoices(const StringArray& ch) {
+        std::vector<std::pair<Type, String>> choices;
         for (int i = 0; i < ch.size(); ++i) {
             choices.push_back({static_cast<Type>(i), ch[i]});
         }
+        return choices;
+    }
+
+    void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def, const String& u) {
+        choices = toChoices(ch);
+        referTo(id, n, def, u);
     }
 
     template <size_t N>
     void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def, const String& u) {
-        referTo(id, n, toStringArray(ch), def, u);
+        choices = toChoices(toStringArray(ch));
+        referTo(id, n, def, u);
     }
 
     // void referTo(const Identifier& id, const String& n, const std::vector<std::pair<Type, String>>& ch, const Type& def, const String& u) {
@@ -185,21 +233,28 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChoiceParamAttachment)
 };
 
-
 // Bind ComboBox to a EnumChoice parameter with shift to 1-based ComboBox index
 template <typename ChoiceType>
 class ComboBoxBinding : private Value::Listener,
                         private ComboBox::Listener
 {
 public:
-    ComboBoxBinding(ComboBox& cb, ParamAttachment<ChoiceType>& cp)
+    ComboBoxBinding(ComboBox& cb, ChoiceParamAttachment<ChoiceType>& cp)
         : comboBox(cb)
         , choiceParam(cp)
     {
         comboBox.addListener(this);
         choiceParam.addListener(this);
+        fillItems();
         updateComboBox();
         // DBG("ComboBoxBinding::ComboBoxBinding");
+    }
+
+    void fillItems() {
+        comboBox.clear();
+        for (auto [i, item] : choiceParam.getChoices()) {
+            comboBox.addItem(item, i + 1);
+        }
     }
 
     ~ComboBoxBinding() override {
@@ -232,7 +287,7 @@ private:
     }
 
     ComboBox& comboBox;
-    ParamAttachment<ChoiceType>& choiceParam;
+    ChoiceParamAttachment<ChoiceType>& choiceParam;
 };
 
 }  // namespace MoTool

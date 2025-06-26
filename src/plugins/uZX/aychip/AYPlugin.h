@@ -59,11 +59,11 @@ public:
 
     struct Params {
         ChoiceParamAttachment<ChipType> chipTypeValue;
-        ParamAttachment<double> clockValue;
+        RangedParamAttachment<double> clockValue;
         ChoiceParamAttachment<ChannelsLayout> channelsLayoutValue;
-        ParamAttachment<double> stereoWidthValue;
+        RangedParamAttachment<double> stereoWidthValue;
         ParamAttachment<bool> removeDCValue;
-        ParamAttachment<int> baseMidiChannelValue;
+        RangedParamAttachment<int> baseMidiChannelValue;
 
         Params(te::Plugin& p)
             : chipTypeValue(p.state, p.getUndoManager())

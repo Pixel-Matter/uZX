@@ -40,23 +40,23 @@ protected:
 };
 
 template <typename Type>
-class SliderParameterComponent : public ParameterComponent<ParamAttachment<Type>, Slider>,
+class SliderParameterComponent : public ParameterComponent<RangedParamAttachment<Type>, Slider>,
                                  private Slider::Listener,
                                  private Value::Listener
 {
 public:
     SliderParameterComponent(
-        ParamAttachment<Type>& param,
+        RangedParamAttachment<Type>& param,
         Slider::SliderStyle style = Slider::LinearHorizontal,
         Slider::TextEntryBoxPosition textBoxPosition = Slider::TextBoxLeft
     )
-      : ParameterComponent<ParamAttachment<Type>, Slider>(param)
+      : ParameterComponent<RangedParamAttachment<Type>, Slider>(param)
       , sliderStyle(style)
       , boxPosition(textBoxPosition)
     {
         this->widget.setSliderStyle(sliderStyle);
         this->widget.setTextBoxStyle(boxPosition, false, this->widget.getTextBoxWidth(), this->widget.getTextBoxHeight());
-        this->widget.setRange(this->attachment.range.start, this->attachment.range.end, this->attachment.range.interval);
+        this->widget.setRange(this->attachment.getRange().start, this->attachment.getRange().end, this->attachment.getRange().interval);
         this->widget.setValue(this->attachment.get(), dontSendNotification);
         // NOTE referTo tracks values poorly, doesnt track edge values
         // widget.getValueObject().referTo(attachment.getPropertyAsValue());

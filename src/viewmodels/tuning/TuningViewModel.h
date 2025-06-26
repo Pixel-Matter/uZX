@@ -116,10 +116,10 @@ public:
                                                                  // no undo for this control
         , selectedTuningTable(transientState, IDs::tuningTable, nullptr, BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,   ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
-        , selectedTonic      (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C) // Default to C major
-        , selectedScale      (transientState, IDs::scale,       um, Scale::ScaleType::IonianOrMajor)
-        , a4Frequency        (transientState, IDs::a4Freq,      um, 440.0)
-        , clockFrequencyMhz  (transientState, IDs::clockFreq,   um, 1.7734) // MHz
+        , selectedTonic      (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C)
+        , selectedScale      (transientState, IDs::scale,                                         um, Scale::ScaleType::IonianOrMajor)
+        , a4Frequency        (transientState, IDs::a4Freq,      {220.0, 880.0, 0.1},              um, 440.0)
+        , clockFrequencyMhz  (transientState, IDs::clockFreq,   {1.0, 2.0, 0.001},                um, 1.7734) // MHz
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
         , chipCapabilities {16, Range<int>(1, 4096)}
@@ -453,9 +453,9 @@ public:
     ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
     ChoiceParamAttachment<ChipClockChoice>   selectedChip;
     ChoiceParamAttachment<Scale::Key>        selectedTonic;
-    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;            
-    ParamAttachment<double> a4Frequency;        // Hz - authoritative source
-    ParamAttachment<double> clockFrequencyMhz;  // MHz - authoritative source
+    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
+    RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
+    RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
 
 private:
     // Cached objects derived from values (performance optimization) - only for complex conversions

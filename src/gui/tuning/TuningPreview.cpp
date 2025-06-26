@@ -295,14 +295,11 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     addAndMakeVisible(chipClockSelect);
 
     // Set up frequency sliders with Value binding
-    setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock frequency:",
-                                clockFrequencyUnits, "MHz",
-                                // TODO replace With const RangedParamAttachment& param
-                                1.0, 2.0, 0.001, viewModel.clockFrequencyMhz.getValue());
+    setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock frequency:", clockFrequencyUnits,
+                                viewModel.clockFrequencyMhz);
 
-    setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 frequency:",
-                                a4FrequencyUnits, "Hz",
-                                220.0, 880.0, 0.1, viewModel.a4Frequency.getValue());
+    setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 frequency:", a4FrequencyUnits,
+                                viewModel.a4Frequency);
 
     // Set initial clock controls state
     updateClockControlsState();
@@ -461,20 +458,20 @@ void TuningPreviewComponent::listBoxItemClicked(int row, const MouseEvent& e) {
 }
 
 // UI setup helpers
-void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText,
-                                                         Label& unitsLabel, const String& unitsText,
-                                                         double min, double max, double step, Value& valueToReference) {
-    slider.setRange(min, max, step);
+void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
+                                                         RangedParamAttachment<double>& attachment) {
+    const auto range = attachment.getRange();
+    slider.setRange(range.start, range.end, range.interval);
     slider.setSliderStyle(Slider::LinearHorizontal);
     slider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
 
     // Use Value binding for automatic bidirectional sync
-    slider.getValueObject().referTo(valueToReference);
+    slider.getValueObject().referTo(attachment.getValue());
 
     label.setText(labelText, juce::dontSendNotification);
     label.setJustificationType(juce::Justification::centredRight);
 
-    unitsLabel.setText(unitsText, juce::dontSendNotification);
+    unitsLabel.setText(attachment.getUnits(), juce::dontSendNotification);
     unitsLabel.setJustificationType(juce::Justification::centredLeft);
 
     addAndMakeVisible(slider);

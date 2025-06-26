@@ -85,16 +85,9 @@ public:
         value = cachedValue.getPropertyAsValue();
     }
 
-    void referTo(const Identifier& id, const String& n, const Type& def, const String& u) {
+    void referTo(const Identifier& id, const String& n, const Type& def) {
         name = n;
-        ignoreUnused(u); // units = u;
         referTo(id, def);
-        // value = cachedValue.getPropertyAsValue();
-    }
-
-    void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u) {
-        referTo(id, n, def, u);
-        range = r;
     }
 
     inline operator CachedValue<Type>&() noexcept { return cachedValue; }
@@ -136,11 +129,9 @@ public:
     ValueTree& valueTree;
     UndoManager* undoManager;
     String name;
-    // String units;
     // TODO CachedValue<te::AtomicWrapper<Type>> value;
     CachedValue<Type> cachedValue;
     Value value;
-    NormalisableRange<Type> range;
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamAttachment)
@@ -206,21 +197,16 @@ public:
         return choices;
     }
 
-    void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def, const String& u) {
+    void referTo(const Identifier& id, const String& n, const StringArray& ch, const Type& def) {
         choices = toChoices(ch);
-        referTo(id, n, def, u);
+        referTo(id, n, def);
     }
 
     template <size_t N>
-    void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def, const String& u) {
+    void referTo(const Identifier& id, const String& n, const std::array<std::string_view, N>& ch, const Type& def) {
         choices = toChoices(toStringArray(ch));
-        referTo(id, n, def, u);
+        referTo(id, n, def);
     }
-
-    // void referTo(const Identifier& id, const String& n, const std::vector<std::pair<Type, String>>& ch, const Type& def, const String& u) {
-    //     referTo(id, n, def, u);
-    //     choices = ch;
-    // }
 
     const std::vector<std::pair<Type, String>>& getChoices() const {
         return choices;
@@ -232,6 +218,50 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChoiceParamAttachment)
 };
+
+
+template <typename Type>
+class RangedParamAttachment : public ParamAttachment<Type> {
+public:
+    using type = Type;
+    using ParamAttachment<Type>::ParamAttachment;
+    using ParamAttachment<Type>::referTo;
+
+    RangedParamAttachment(ValueTree& tree, const Identifier& id,
+                          const NormalisableRange<Type>& r,
+                          UndoManager* undoMgr, const Type& deflt, const String& u = String{})
+        : ParamAttachment<Type>(tree, id, id.toString(), undoMgr, deflt)
+        , range(r)
+        , units(u)
+    {}
+
+    void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u = String{}) {
+        referTo(id, n, def);
+        range = r;
+        units = u;
+    }
+
+    inline RangedParamAttachment& operator= (const Type& newValue) {
+        this->cachedValue = newValue;
+        return *this;
+    }
+
+    const String& getUnits() const {
+        return units;
+    }
+
+    const NormalisableRange<Type>& getRange() const {
+        return range;
+    }
+
+    // ======================================================================================
+private:
+    NormalisableRange<Type> range;
+    String units;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RangedParamAttachment)
+};
+
 
 // Bind ComboBox to a EnumChoice parameter with shift to 1-based ComboBox index
 template <typename ChoiceType>

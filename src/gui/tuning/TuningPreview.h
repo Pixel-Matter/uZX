@@ -61,9 +61,8 @@ private:
     void changeListenerCallback(ChangeBroadcaster* source) override;
 
     // UI setup helpers
-    void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText,
-                                     Label& unitsLabel, const String& unitsText,
-                                     double min, double max, double step, Value& valueToReference);
+    void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
+                                     RangedParamAttachment<double>& attachment);
     void updateClockControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();

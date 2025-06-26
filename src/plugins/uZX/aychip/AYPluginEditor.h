@@ -40,15 +40,19 @@ protected:
 };
 
 template <typename Type>
-class SliderParameterComponent : public ParameterComponent<Type, Slider>, private Slider::Listener, private Value::Listener {
+class SliderParameterComponent : public ParameterComponent<Type, Slider>,
+                                 private Slider::Listener,
+                                 private Value::Listener
+{
 public:
     SliderParameterComponent(
         ParamAttachment<Type>& param,
         Slider::SliderStyle style = Slider::LinearHorizontal,
-        Slider::TextEntryBoxPosition textBoxPosition = Slider::TextBoxLeft)
-      : ParameterComponent<Type, Slider>(param),
-        sliderStyle(style),
-        boxPosition(textBoxPosition)
+        Slider::TextEntryBoxPosition textBoxPosition = Slider::TextBoxLeft
+    )
+      : ParameterComponent<Type, Slider>(param)
+      , sliderStyle(style)
+      , boxPosition(textBoxPosition)
     {
         this->widget.setSliderStyle(sliderStyle);
         this->widget.setTextBoxStyle(boxPosition, false, this->widget.getTextBoxWidth(), this->widget.getTextBoxHeight());
@@ -59,7 +63,7 @@ public:
         this->attachment.getPropertyAsValue().addListener(this);
         this->widget.addListener(this);
 
-        DBG("Range interval for " << this->attachment.name  << " is " << this->attachment.range.interval);
+        // DBG("Range interval for " << this->attachment.name  << " is " << this->attachment.range.interval);
     }
 
 private:
@@ -77,11 +81,12 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParameterComponent)
 };
 
-class ToggleParameterComponent : public ParameterComponent<bool, ToggleButton>, private Button::Listener, private Value::Listener {
+class ToggleParameterComponent : public ParameterComponent<bool, ToggleButton>,
+                                 private Button::Listener,
+                                 private Value::Listener
+{
 public:
-    ToggleParameterComponent(
-        ParamAttachment<bool>& param
-    )
+    ToggleParameterComponent(ParamAttachment<bool>& param)
       : ParameterComponent<bool, ToggleButton>(param, /* useLabel_ = */ false)
     {
         widget.setButtonText(attachment.name);

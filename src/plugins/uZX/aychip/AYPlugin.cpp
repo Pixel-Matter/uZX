@@ -19,12 +19,12 @@ void AYChipPlugin::Params::initialise() {
 
 void AYChipPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
     te::copyPropertiesToCachedValues(v,
-        chipTypeValue.value,
-        clockValue.value,
-        channelsLayoutValue.value,
-        stereoWidthValue.value,
-        removeDCValue.value,
-        baseMidiChannelValue.value
+        chipTypeValue.cachedValue,
+        clockValue.cachedValue,
+        channelsLayoutValue.cachedValue,
+        stereoWidthValue.cachedValue,
+        removeDCValue.cachedValue,
+        baseMidiChannelValue.cachedValue
     );
 }
 

@@ -56,9 +56,9 @@ template <typename Type>
 struct ParamAttachment {
     using type = Type;
 
-    // TODO replace Plugin with VTS and undo manager
-    ParamAttachment(te::Plugin& p)
-        : plugin(p)
+    ParamAttachment(ValueTree& tree, UndoManager* undoMgr)
+        : valueTree(tree)
+        , undoManager(undoMgr)
     {}
 
     // ctor that refers to an existing ValueTree property
@@ -66,8 +66,8 @@ struct ParamAttachment {
     void referTo(const Identifier& id, const String& n, const Type& def, const String& u) {
         name = n;
         units = u;
-        value.referTo(plugin.state, id, plugin.getUndoManager(), def);
-        // valueValue = value.getPropertyAsValue();
+        cachedValue.referTo(valueTree, id, undoManager, def);
+        // value = cachedValue.getPropertyAsValue();
     }
 
     void referTo(const Identifier& id, const String& n, const NormalisableRange<Type>& r, const Type& def, const String& u) {
@@ -93,30 +93,30 @@ struct ParamAttachment {
         choices = ch;
     }
 
-    inline operator CachedValue<Type>&() noexcept { return value; }
+    inline operator CachedValue<Type>&() noexcept { return cachedValue; }
 
     // for CachedValue-like transparent access
-    inline operator Type() const noexcept         { return value.get(); }
+    inline operator Type() const noexcept         { return cachedValue.get(); }
 
-    inline Type get() const noexcept              { return value.get(); }
+    inline Type get() const noexcept              { return cachedValue.get(); }
 
-    inline const Type& operator*() const noexcept        { return *value; }
+    inline const Type& operator*() const noexcept        { return *cachedValue; }
 
     template <typename OtherType>
-    inline bool operator== (const OtherType& other) const { return value == other; }
+    inline bool operator== (const OtherType& other) const { return cachedValue == other; }
 
     template <typename OtherType>
     inline bool operator!= (const OtherType& other) const   { return ! operator== (other); }
 
-    inline Type getDefault() const                          { return value.getDefault(); }
+    inline Type getDefault() const                          { return cachedValue.getDefault(); }
 
     inline ParamAttachment& operator= (const Type& newValue) {
-        value = newValue;
+        cachedValue = newValue;
         return *this;
     }
 
     inline Value getPropertyAsValue() {
-        return value.getPropertyAsValue();
+        return cachedValue.getPropertyAsValue();
     }
 
     const std::vector<std::pair<Type, String>>& getChoices() const {
@@ -124,12 +124,13 @@ struct ParamAttachment {
     }
 
     // ======================================================================================
-    te::Plugin& plugin;
+    ValueTree& valueTree;
+    UndoManager* undoManager;
     String name;
     String units;
     // TODO CachedValue<te::AtomicWrapper<Type>> value;
-    CachedValue<Type> value;
-    // Value valueValue;
+    CachedValue<Type> cachedValue;
+    // Value value;
     NormalisableRange<Type> range;
     std::vector<std::pair<Type, String>> choices;
 

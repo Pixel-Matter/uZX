@@ -24,12 +24,14 @@ void MidiToPsgPlugin::applyToBuffer(const te::PluginRenderContext& rc) noexcept 
     // Process MIDI input
     if (rc.bufferForMidiMessages != nullptr) {
         for (auto& m : *rc.bufferForMidiMessages) {
+            DBG("in midi message " << m.getDescription());
             processMidiMessageWithSource(m);
         }
 
         // Get output messages from converter and add to buffer
         auto outputMessages = converter_.getOutputMessages();
         for (const auto& msg : outputMessages) {
+            DBG("out midi message " << msg.getDescription());
             rc.bufferForMidiMessages->addMidiMessage(msg, 0);
         }
     }
@@ -82,9 +84,10 @@ void MidiToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& i
 void MidiToPsgPlugin::updateConverterParams() {
     converter_.setBaseChannel(staticParams.baseMidiChannelValue.get());
     converter_.setNumChannels(staticParams.numChannelsValue.get());
+}
 
-    // Set tuning system if available (would need to get from project context)
-    // For now, leave as nullptr - converter will work without period calculation
+void MidiToPsgPlugin::setTuningSystem(TuningSystem* tuningSystem) {
+    currentTuningSystem_ = tuningSystem;
     converter_.setTuningSystem(currentTuningSystem_);
 }
 

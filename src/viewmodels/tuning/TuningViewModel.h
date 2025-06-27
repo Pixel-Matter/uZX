@@ -175,6 +175,10 @@ public:
         return getOctaveRange().getLength();
     }
 
+    TuningSystem* getTuningSystem() const {
+        return tuningSystem.get();
+    }
+
     // Octave -1 is subcontroctave
     std::vector<TuningNote> getOctaveNotes(int octave) const {
         std::vector<TuningNote> notes;

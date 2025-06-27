@@ -10,8 +10,8 @@ namespace MoTool {
 
 
 //================================================================================
-TuningPreviewGrid::TuningPreviewGrid(TuningViewModel& vm)
-    : viewModel(vm)
+TuningPreviewGrid::TuningPreviewGrid(TuningViewModel& vm, TuningPlayer& tp)
+    : viewModel(vm), tuningPlayer(tp)
 {
     setOpaque(true);
 }
@@ -259,11 +259,20 @@ String TuningPreviewGrid::getTooltip() {
     return hasHoveredNote ? hoveredNote.getTooltip() : "";
 }
 
+void TuningPreviewGrid::mouseDown(const MouseEvent& event) {
+    TuningNote foundNote;
+    if (findNoteAtPosition(event.getPosition(), foundNote)) {
+        if (foundNote.isInMidiRange()) {
+            tuningPlayer.playNote(foundNote.midiNote);
+        }
+    }
+}
+
 //================================================================================
 TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     : viewModel(um)
     , tuningPlayer(viewModel, MoToolApp::getController().getEngine())
-    , tuningGrid(viewModel)
+    , tuningGrid(viewModel, tuningPlayer)
     , tooltipWindow(nullptr, 750) // ms delay
 {
     setOpaque(true);

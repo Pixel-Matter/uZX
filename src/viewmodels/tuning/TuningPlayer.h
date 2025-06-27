@@ -4,6 +4,8 @@
 
 #include "TuningViewModel.h"
 
+#include "../../plugins/uZX/MidiToPsgPlugin.h"
+
 #include <common/Utilities.h>  // from Tracktion
 
 namespace MoTool {
@@ -41,6 +43,7 @@ private:
     te::Edit edit { engine, te::Edit::EditRole::forEditing };
     te::TransportControl& transport { edit.getTransport() };
     te::AudioTrack& track { *EngineHelpers::getOrInsertAudioTrackAt(edit, 0) };
+    uZX::MidiToPsgPlugin::Ptr midiToPsgPlugin { nullptr };
 
     // Helper methods
     void replaceNotes(const std::vector<int>& midiNotes, double noteLength = 0.5);

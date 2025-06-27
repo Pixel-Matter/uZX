@@ -1,5 +1,7 @@
 #include "TuningPlayer.h"
 
+#include "../../plugins/uZX/aychip/AYPlugin.h"
+
 namespace MoTool {
 
 void TuningPlayer::initialize() {
@@ -11,8 +13,16 @@ void TuningPlayer::initialize() {
 }
 
 void TuningPlayer::createPlugins() {
-    if (auto ayPlugin = edit.getPluginCache().createNewPlugin("AYChipPlugin", {})) {
+    if (auto ayPlugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {})) {
         track.pluginList.insertPlugin(*ayPlugin, 0, nullptr);
+    }
+
+    if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiToPsgPlugin::xmlTypeName, {})) {
+        track.pluginList.insertPlugin(*plugin, 0, nullptr);
+        midiToPsgPlugin = dynamic_cast<uZX::MidiToPsgPlugin*>(plugin.get());
+        if (midiToPsgPlugin != nullptr) {
+            midiToPsgPlugin->setTuningSystem(viewModel.getTuningSystem());
+        }
     }
 }
 
@@ -43,6 +53,7 @@ te::MidiClip::Ptr TuningPlayer::createMIDIClip() {
 
 void TuningPlayer::playNote(int midiNote) {
     // Use playGuideNote for immediate preview playback
+    DBG("Playing note: " << midiNote);
     track.playGuideNote(midiNote, te::MidiChannel(1), 80, true, false, true);
 
     // Previous MIDI clip approach (commented out):

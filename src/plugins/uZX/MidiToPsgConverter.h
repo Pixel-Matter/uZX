@@ -34,7 +34,7 @@ public:
     explicit MidiToPsgConverter(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
-    void setTuningSystem(TuningSystem* tuning) { tuningSystem_ = tuning; }
+    void setTuningSystem(const TuningSystem* tuning) { tuningSystem_ = tuning; }
     void setBaseChannel(int channel) { baseChannel_ = channel; }
     void setNumChannels(int channels) { numChannels_ = juce::jlimit(1, 4, channels); }
 
@@ -55,7 +55,7 @@ private:
     int baseChannel_ = 1;
     int numChannels_ = 3;
     std::array<ChannelState, 4> channels_;
-    TuningSystem* tuningSystem_ = nullptr;
+    const TuningSystem* tuningSystem_ = nullptr;
     std::vector<juce::MidiMessage> outputBuffer_;
 
     // Helper methods

@@ -20,6 +20,7 @@ namespace uZX {
 
 class MidiToPsgPlugin : public te::Plugin {
 public:
+    using Ptr = ReferenceCountedObjectPtr<MidiToPsgPlugin>;
     MidiToPsgPlugin(te::PluginCreationInfo);
     ~MidiToPsgPlugin() override;
 
@@ -33,7 +34,7 @@ public:
     String getSelectableDescription() override { return "Converts MIDI notes to PSG MIDI CC messages"; }
     bool isSynth() override { return false; }
 
-    int getNumOutputChannelsGivenInputs(int numInputChannels) override { return numInputChannels; }
+    int getNumOutputChannelsGivenInputs(int) override { return 0; }
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;
     void applyToBuffer(const te::PluginRenderContext&) noexcept override;
@@ -61,6 +62,9 @@ public:
         void initialise();
         void restoreFromTree(const juce::ValueTree& v);
     };
+
+    // specific for MidiToPsg methods
+    void setTuningSystem(TuningSystem* tuningSystem);
 
     Params staticParams{*this};
 

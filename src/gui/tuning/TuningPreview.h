@@ -11,7 +11,7 @@ namespace MoTool {
 
 class TuningPreviewGrid : public juce::Component, public TooltipClient {
 public:
-    TuningPreviewGrid(TuningViewModel& vm);
+    TuningPreviewGrid(TuningViewModel& vm, TuningPlayer& tp);
     ~TuningPreviewGrid() override;
 
     void setTooltipWindow(TooltipWindow* window) { tooltipWindow = window; }
@@ -19,6 +19,7 @@ public:
     void resized() override;
     void paint(juce::Graphics& g) override;
     void mouseMove(const MouseEvent& event) override;
+    void mouseDown(const MouseEvent& event) override;
 
     // TooltipClient implementation
     String getTooltip() override;
@@ -31,6 +32,7 @@ private:
     static constexpr int gridYOffset = static_cast<int>(headerRowHeight * 3.5);
 
     TuningViewModel& viewModel;
+    TuningPlayer& tuningPlayer;
 
     // Mouse tracking for tooltips
     Point<int> lastMousePosition;

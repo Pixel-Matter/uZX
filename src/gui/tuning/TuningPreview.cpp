@@ -262,6 +262,7 @@ String TuningPreviewGrid::getTooltip() {
 //================================================================================
 TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     : viewModel(um)
+    , tuningPlayer(viewModel, MoToolApp::getController().getEngine())
     , tuningGrid(viewModel)
     , tooltipWindow(nullptr, 750) // ms delay
 {

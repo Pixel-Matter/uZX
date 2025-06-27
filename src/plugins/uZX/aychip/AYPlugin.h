@@ -96,7 +96,7 @@ private:
     CriticalSection lock;
 
     PsgParamsMidiReader midiParamsReader;
-    PsgRegsMidiReader midiRegsReader;
+    PsgRegsMidiReader midiRegsReader;  // old version
     PsgRegsFrame registersFrame;
     std::unique_ptr<AYInterface> chip;
 

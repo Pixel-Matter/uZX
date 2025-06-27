@@ -3,6 +3,8 @@
 #include "JuceHeader.h"
 #include "../../models/tuning/TuningSystemBase.h"
 #include "../../viewmodels/tuning/TuningViewModel.h"
+#include "../../viewmodels/tuning/TuningPlayer.h"
+#include "../../controllers/App.h"
 #include <map>
 
 namespace MoTool {
@@ -71,6 +73,7 @@ private:
     void valueChanged(Value& value) override;
 
     TuningViewModel viewModel;
+    TuningPlayer tuningPlayer;
 
     // Tuning table selection
     Label tuningTableLabel;

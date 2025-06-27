@@ -446,6 +446,7 @@ public:
 private:
     // Transient view state
     ValueTree transientState;
+    // te::Edit edit;             // Edit for undo/redo support, and for previewing tuning
     UndoManager* undoManager;
 
 public:

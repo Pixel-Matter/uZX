@@ -17,6 +17,8 @@ set(SHARED_SOURCES
     models/tuning/AutoTuning.cpp
     models/tuning/TuningTable.cpp
 
+    viewmodels/tuning/TuningPlayer.cpp
+
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
 )

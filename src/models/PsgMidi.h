@@ -16,7 +16,7 @@ namespace MoTool {
 enum class MidiCCType {
     BankSelectMSB     = 0,   ///< Bank Select MSB
     ModWheel          = 1,   ///< Modulation Wheel (Coarse)
-    Breath            = 2,   ///< Breath controller (Coarse)
+    Breath            = 2,   ///< Breath controller (Coarse) uZX: Used for noise pitch control
     // unused         = 3,
     Foot              = 4,   ///< Foot Controller (Coarse)
     PortaTime         = 5,   ///< Portamento Time (Coarse)
@@ -87,9 +87,9 @@ enum class MidiCCType {
     SoundCtrler10     = 79,  ///< undefined (Sound Control 10)
 
     //---General Purpose Controllers #5 to #8---
-    GPB1              = 80,  ///< General Purpose Switch #1 (on/off)
-    GPB2              = 81,  ///< General Purpose Switch #2 (on/off)
-    GPB3              = 82,  ///< General Purpose Switch #3 (on/off)
+    GPB1ToneSwitch    = 80,  ///< General Purpose Switch #1 (on/off)
+    GPB2NoiseSwitch   = 81,  ///< General Purpose Switch #2 (on/off)
+    GPB3EnvSwitch     = 82,  ///< General Purpose Switch #3 (on/off)
     GPB4              = 83,  ///< General Purpose Switch #4 (on/off)
     PortaControl      = 84,  ///< Portamento Control
 

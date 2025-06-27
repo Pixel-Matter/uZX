@@ -161,39 +161,39 @@ void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
                 break;
             case PsgParamType::ToneIsOnA:
                 psgChan = 0;
-                addEvent(time, psgChan, MidiCCType::GPB1, value);
+                addEvent(time, psgChan, MidiCCType::GPB1ToneSwitch, value);
                 break;
             case PsgParamType::ToneIsOnB:
                 psgChan = 1;
-                addEvent(time, psgChan, MidiCCType::GPB1, value);
+                addEvent(time, psgChan, MidiCCType::GPB1ToneSwitch, value);
                 break;
             case PsgParamType::ToneIsOnC:
                 psgChan = 2;
-                addEvent(time, psgChan, MidiCCType::GPB1, value);
+                addEvent(time, psgChan, MidiCCType::GPB1ToneSwitch, value);
                 break;
             case PsgParamType::NoiseIsOnA:
                 psgChan = 0;
-                addEvent(time, psgChan, MidiCCType::GPB2, value);
+                addEvent(time, psgChan, MidiCCType::GPB2NoiseSwitch, value);
                 break;
             case PsgParamType::NoiseIsOnB:
                 psgChan = 1;
-                addEvent(time, psgChan, MidiCCType::GPB2, value);
+                addEvent(time, psgChan, MidiCCType::GPB2NoiseSwitch, value);
                 break;
             case PsgParamType::NoiseIsOnC:
                 psgChan = 2;
-                addEvent(time, psgChan, MidiCCType::GPB2, value);
+                addEvent(time, psgChan, MidiCCType::GPB2NoiseSwitch, value);
                 break;
             case PsgParamType::EnvelopeIsOnA:
                 psgChan = 0;
-                addEvent(time, psgChan, MidiCCType::GPB3, value);
+                addEvent(time, psgChan, MidiCCType::GPB3EnvSwitch, value);
                 break;
             case PsgParamType::EnvelopeIsOnB:
                 psgChan = 1;
-                addEvent(time, psgChan, MidiCCType::GPB3, value);
+                addEvent(time, psgChan, MidiCCType::GPB3EnvSwitch, value);
                 break;
             case PsgParamType::EnvelopeIsOnC:
                 psgChan = 2;
-                addEvent(time, psgChan, MidiCCType::GPB3, value);
+                addEvent(time, psgChan, MidiCCType::GPB3EnvSwitch, value);
                 break;
             case PsgParamType::RetriggerToneA:
                 psgChan = 0;
@@ -276,11 +276,11 @@ std::optional<PsgParamFrameData> PsgParamsMidiReader::read(const juce::MidiMessa
             } else if (ctrlNum == MidiCCType::CC52PeriodFine) { // Tone period fine
                 auto raw = params.getRaw(PsgParamType::TonePeriodA + psgChan);
                 params.set(PsgParamType::TonePeriodA + psgChan, static_cast<uint16_t>((raw & 0xFF80) | val));
-            } else if (ctrlNum == MidiCCType::GPB1) { // Tone on/off
+            } else if (ctrlNum == MidiCCType::GPB1ToneSwitch) { // Tone on/off
                 params.set(PsgParamType::ToneIsOnA + psgChan, val);
-            } else if (ctrlNum == MidiCCType::GPB2) { // Noise on/off
+            } else if (ctrlNum == MidiCCType::GPB2NoiseSwitch) { // Noise on/off
                 params.set(PsgParamType::NoiseIsOnA + psgChan, val);
-            } else if (ctrlNum == MidiCCType::GPB3) { // Envelope on/off
+            } else if (ctrlNum == MidiCCType::GPB3EnvSwitch) { // Envelope on/off
                 params.set(PsgParamType::EnvelopeIsOnA + psgChan, val);
             } else if (ctrlNum == MidiCCType::GPB4) { // Retrigger on/off
                 params.set(PsgParamType::RetriggerToneA + psgChan, val);

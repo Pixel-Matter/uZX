@@ -21,6 +21,8 @@ set(SHARED_SOURCES
 
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
+    plugins/uZX/MidiToPsgConverter.cpp
+    plugins/uZX/MidiToPsgPlugin.cpp
 )
 
 # GUI-specific files
@@ -57,4 +59,5 @@ set(TEST_SOURCES
     models/tuning/AutoTuning.test.cpp
     models/tuning/Scales.test.cpp
     models/tuning/RationalTuning.test.cpp
+    plugins/uZX/MidiToPsgConverter.test.cpp
 )

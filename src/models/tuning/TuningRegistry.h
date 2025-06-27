@@ -50,11 +50,6 @@ struct TuningOptions {
     double a4Frequency;
 };
 
-// Factory functions for standard tuning systems
-inline std::unique_ptr<TuningSystem> makeEqualTemperamentTuning(const ChipCapabilities& capabilities, double chipClock, double A4Frequency) {
-    return std::make_unique<AutoTuning>(capabilities, chipClock, std::make_unique<EqualTemperamentTuning>(A4Frequency));
-}
-
 // Factory functions for ProTracker-style custom table tunings
 std::unique_ptr<TuningSystem> makeBuiltinTuning(
     TuningOptions& options

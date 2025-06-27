@@ -12,6 +12,7 @@
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
+#include "../plugins/uZX/MidiToPsgPlugin.h"
 
 #include "../util/FileOps.h"
 
@@ -31,6 +32,7 @@ MainController::MainController()
 {
     // DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
     engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
+    engine_.getPluginManager().createBuiltInType<uZX::MidiToPsgPlugin>();
 
     setEdit(createOrLoadEdit(EditFileOps::getStartupEditFile()));
     selectionManager_.addChangeListener(this);

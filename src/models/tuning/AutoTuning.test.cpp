@@ -211,7 +211,8 @@ public:
                 std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
             );
             String name = tuning.getDescription();
-            expect(name.contains("Custom Rational Intonation"), "Name should contain reference tuning type");
+
+            expect(name.contains("Just Intonation"), "Name should contain reference tuning type");
             expect(name.contains("auto tuning"), "Name should contain 'auto tuning'");
             expect(name.contains("1.773"), "Name should contain clock frequency in MHz");
             expect(name.contains("440.00"), "Name should contain A4 frequency");
@@ -223,6 +224,7 @@ public:
                 std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
             );
             int period = tuning.midiNoteToPeriod(69.0); // A4 = 440 Hz
+            DBG("A4 period = " << period);
 
             // Expected period: clockFreq / (divider * frequency) = 1773400 / (16 * 440) ≈ 252
             int expectedPeriod = static_cast<int>(std::round(testClockFreq / (testCaps.divider * 440.0)));

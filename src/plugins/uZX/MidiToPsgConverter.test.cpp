@@ -137,18 +137,20 @@ public:
 
             // Should NOT have tone switch messages - tone is already on
             expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Should NOT have tone switch messages when switching notes");
-            
+
             // Should update volume due to different velocity (100 vs 120)
             expectCC(messages, MidiCCType::Volume, "Should update volume when velocity changes between notes");
-            
+
             // Play third note with same velocity (should not emit volume CC)
             converter.clearOutput();
             converter.noteOn(1, 64, 120);
             expectChannelState(converter, 1, 64, "Should track third note");
-            
+
             auto messages2 = converter.getOutputMessages();
             expectNoCC(messages2, MidiCCType::Volume, "Should NOT emit volume CC when velocity stays the same");
             expectNoCC(messages2, MidiCCType::GPB1ToneSwitch, "Should NOT emit tone switch for third note");
+            expectCC(messages2, MidiCCType::CC20PeriodCoarse, "Should emit period coarse for third note");
+            expectCC(messages2, MidiCCType::CC52PeriodFine, "Should emit period fine for third note");
         }
 
         beginTest("Velocity and aftertouch mapping");
@@ -195,14 +197,14 @@ public:
             // First note - should turn tone ON
             converter.noteOn(1, 60, 100);
             auto messages = converter.getOutputMessages();
-            
+
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 127, "First note should turn tone ON");
 
             // Second note - should NOT send tone switch (already on)
             converter.clearOutput();
             converter.noteOn(1, 62, 120);
             messages = converter.getOutputMessages();
-            
+
             expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Second note should NOT send tone switch");
             expectCC(messages, MidiCCType::Volume, "Second note should send volume");
             expectCC(messages, MidiCCType::CC20PeriodCoarse, "Second note should send period coarse");
@@ -212,10 +214,10 @@ public:
             converter.clearOutput();
             converter.noteOff(1, 62);
             messages = converter.getOutputMessages();
-            
+
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 0, "Note off should turn tone OFF");
         }
-        
+
         beginTest("Period encoding correctness");
         {
             MidiToPsgConverter converter(1, 1);

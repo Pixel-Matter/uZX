@@ -3,6 +3,7 @@
 #include "PluginComponent.h"
 
 #include "../../plugins/uZX/aychip/AYPlugin.h"
+#include "../../plugins/uZX/MidiToPsgPlugin.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
@@ -151,8 +152,9 @@ void addInternalPlugin(PluginTreeBase& item, int& num, bool synth = false) {
 
 void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
     addInternalPlugin<uZX::AYChipPlugin>(*this, num);
-    addInternalPlugin<te::VolumeAndPanPlugin>(*this, num);
-    addInternalPlugin<te::LevelMeterPlugin>(*this, num);
+    addInternalPlugin<uZX::MidiToPsgPlugin>(*this, num);
+    // addInternalPlugin<te::VolumeAndPanPlugin>(*this, num);
+    // addInternalPlugin<te::LevelMeterPlugin>(*this, num);
     addInternalPlugin<te::EqualiserPlugin>(*this, num);
     addInternalPlugin<te::ReverbPlugin>(*this, num);
     addInternalPlugin<te::DelayPlugin>(*this, num);
@@ -164,10 +166,10 @@ void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
     addInternalPlugin<te::MidiModifierPlugin>(*this, num);
     addInternalPlugin<te::MidiPatchBayPlugin>(*this, num);
     addInternalPlugin<te::PatchBayPlugin>(*this, num);
-    addInternalPlugin<te::AuxSendPlugin>(*this, num);
-    addInternalPlugin<te::AuxReturnPlugin>(*this, num);
+    // addInternalPlugin<te::AuxSendPlugin>(*this, num);
+    // addInternalPlugin<te::AuxReturnPlugin>(*this, num);
     addInternalPlugin<te::TextPlugin>(*this, num);
-    addInternalPlugin<te::FreezePointPlugin>(*this, num);
+    // addInternalPlugin<te::FreezePointPlugin>(*this, num);
 
    #if TRACKTION_ENABLE_REWIRE
     addInternalPlugin<te::ReWirePlugin> (*this, num, true);
@@ -178,7 +180,7 @@ void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
         addInternalPlugin<te::FourOscPlugin>(*this, num, true);
     }
 
-    addInternalPlugin<te::InsertPlugin>(*this, num);
+    // addInternalPlugin<te::InsertPlugin>(*this, num);
 
    #if ENABLE_INTERNAL_PLUGINS
     for (auto& d : PluginTypeBase::getAllPluginDescriptions())

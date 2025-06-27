@@ -100,7 +100,29 @@ struct CoutLogger : public Logger {
 };
 
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
+static Array<UnitTest*> filterTestsByName(const Array<UnitTest*>& allTests, const String& testNameFilter) {
+    Array<UnitTest*> filteredTests;
+    
+    for (auto* test : allTests) {
+        if (test->getName().containsIgnoreCase(testNameFilter)) {
+            filteredTests.add(test);
+        }
+    }
+    
+    return filteredTests;
+}
+
+static void printUsage() {
+    std::cout << "Usage: MoToolTests [test_name_filter]\n";
+    std::cout << "  test_name_filter: Optional partial test name to filter tests (case-insensitive)\n";
+    std::cout << "  If no filter provided, runs all tests in MoTool category\n";
+    std::cout << "\nExamples:\n";
+    std::cout << "  MoToolTests                    # Run all tests\n";
+    std::cout << "  MoToolTests TuningViewModel    # Run tests containing 'TuningViewModel'\n";
+    std::cout << "  MoToolTests AYChip             # Run tests containing 'AYChip'\n";
+}
+
+int main(int argc, char* argv[]) {
     ScopedJuceInitialiser_GUI init;
 
     CoutLogger logger;
@@ -114,7 +136,38 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     engine.getTemporaryFileManager().getTempDirectory().deleteRecursively (false);
 
     juce::UnitTestRunner testRunner;
-    testRunner.runTestsInCategory("MoTool");
+    
+    if (argc > 1) {
+        String arg = String(argv[1]);
+        
+        if (arg == "--help" || arg == "-h") {
+            printUsage();
+            return 0;
+        }
+        
+        String testNameFilter = arg;
+        auto allTests = UnitTest::getTestsInCategory("MoTool");
+        auto filteredTests = filterTestsByName(allTests, testNameFilter);
+        
+        if (filteredTests.isEmpty()) {
+            std::cout << "No tests found matching filter: '" << testNameFilter << "'\n";
+            std::cout << "\nAvailable tests:\n";
+            for (auto* test : allTests) {
+                std::cout << "  " << test->getName() << "\n";
+            }
+            return 1;
+        }
+        
+        std::cout << "Running " << filteredTests.size() << " test(s) matching filter: '" << testNameFilter << "'\n";
+        for (auto* test : filteredTests) {
+            std::cout << "  " << test->getName() << "\n";
+        }
+        std::cout << "\n";
+        
+        testRunner.runTests(filteredTests);
+    } else {
+        testRunner.runTestsInCategory("MoTool");
+    }
 
     Logger::setCurrentLogger (nullptr);
     engine.getTemporaryFileManager().getTempDirectory().deleteRecursively (false);

@@ -68,7 +68,7 @@ private:
     //==============================================================================
     uZX::MidiToPsgConverter converter_;
     TuningSystem* currentTuningSystem_ = nullptr;
-    
+
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
     void updateConverterParams();

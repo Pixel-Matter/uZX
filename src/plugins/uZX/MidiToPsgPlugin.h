@@ -11,8 +11,8 @@ namespace MoTool {
 
 namespace IDs {
     #define DECLARE_ID(name)  const juce::Identifier name(#name);
-    DECLARE_ID(midiToPsgBaseChannel)
-    DECLARE_ID(midiToPsgNumChannels)
+    DECLARE_ID(midiBase)
+    DECLARE_ID(midiChans)
     #undef DECLARE_ID
 }
 

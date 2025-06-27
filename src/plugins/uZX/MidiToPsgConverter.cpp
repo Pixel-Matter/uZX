@@ -1,5 +1,6 @@
 #include "MidiToPsgConverter.h"
 #include "../../models/PsgMidi.h"
+#include <cstddef>
 
 namespace MoTool::uZX {
 
@@ -7,6 +8,19 @@ MidiToPsgConverter::MidiToPsgConverter(int baseChannel, int numChannels)
     : baseChannel_(baseChannel)
     , numChannels_(juce::jlimit(1, 4, numChannels))
 {
+}
+
+void MidiToPsgConverter::initPSG() {
+    // Initialize channel states
+    for (int i = baseChannel_; i < baseChannel_ + numChannels_; ++i) {
+        auto& state = getChannelState(i);
+        state.clear();
+        emitVolumeCC(i, 0); // Ensure all volumes are off initially
+        // Contrary to that, AY on reset has all flags set
+        emitToneSwitchCC(i, false); // Ensure all tones are off initially
+        emitNoiseSwitchCC(i, false); // Ensure all noise is off initially
+        emitEnvSwitchCC(i, false); // Ensure all envelopes are off initially
+    }
 }
 
 void MidiToPsgConverter::noteOn(int channel, int note, int velocity) {
@@ -47,11 +61,13 @@ void MidiToPsgConverter::aftertouch(int channel, int aftertouch) {
 
 void MidiToPsgConverter::controlChange(int channel, int controller, int value) {
     // Pass through all CC messages unchanged
-    emitPassthroughCC(channel, controller, value);
+    emitCC(channel, controller, value);
 }
 
 std::vector<juce::MidiMessage> MidiToPsgConverter::getOutputMessages() {
-    return std::move(outputBuffer_);
+    auto result = std::move(outputBuffer_);
+    outputBuffer_.clear();
+    return result;
 }
 
 const MidiToPsgConverter::ChannelState& MidiToPsgConverter::getChannelState(int channel) const {
@@ -84,11 +100,18 @@ void MidiToPsgConverter::emitPeriodCC(int channel, int period) {
 }
 
 void MidiToPsgConverter::emitToneSwitchCC(int channel, bool on) {
-    auto msg = juce::MidiMessage::controllerEvent(channel, static_cast<int>(MidiCCType::GPB1ToneSwitch), on ? 127 : 0);
-    outputBuffer_.push_back(msg);
+    emitCC(channel, static_cast<int>(MidiCCType::GPB1ToneSwitch), on ? 127 : 0);
 }
 
-void MidiToPsgConverter::emitPassthroughCC(int channel, int controller, int value) {
+void MidiToPsgConverter::emitNoiseSwitchCC(int channel, bool on) {
+    emitCC(channel, static_cast<int>(MidiCCType::GPB2NoiseSwitch), on ? 127 : 0);
+}
+
+void MidiToPsgConverter::emitEnvSwitchCC(int channel, bool on) {
+    emitCC(channel, static_cast<int>(MidiCCType::GPB3EnvSwitch), on ? 127 : 0);
+}
+
+void MidiToPsgConverter::emitCC(int channel, int controller, int value) {
     auto msg = juce::MidiMessage::controllerEvent(channel, controller, value);
     outputBuffer_.push_back(msg);
 }

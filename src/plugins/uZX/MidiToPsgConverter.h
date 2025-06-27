@@ -39,6 +39,7 @@ public:
     void setNumChannels(int channels) { numChannels_ = juce::jlimit(1, 4, channels); }
 
     // MIDI input processing
+    void initPSG();
     void noteOn(int channel, int note, int velocity);
     void noteOff(int channel, int note);
     void aftertouch(int channel, int aftertouch);
@@ -61,10 +62,12 @@ private:
     // Helper methods
     bool isChannelInRange(int channel) const;
     ChannelState& getChannelState(int channel);
+    void emitToneSwitchCC(int channel, bool on);
+    void emitNoiseSwitchCC(int channel, bool on);
+    void emitEnvSwitchCC(int channel, bool on);
     void emitVolumeCC(int channel, int volume);
     void emitPeriodCC(int channel, int period);
-    void emitToneSwitchCC(int channel, bool on);
-    void emitPassthroughCC(int channel, int controller, int value);
+    void emitCC(int channel, int controller, int value);
     int velocityAndAftertouchToVolume(int velocity, int aftertouch) const;
     void updateChannelOutput(int channel);
 };

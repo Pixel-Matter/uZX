@@ -27,9 +27,7 @@ void TuningPlayer::createPlugins() {
 }
 
 te::MidiClip::Ptr TuningPlayer::getClip() {
-    if (auto clip = dynamic_cast<te::MidiClip*>(track.getClips()[0]))
-        return *clip;
-    return {};
+    return dynamic_cast<te::MidiClip*>(track.getClips()[0]);
 }
 
 te::MidiClip::Ptr TuningPlayer::createMIDIClip() {

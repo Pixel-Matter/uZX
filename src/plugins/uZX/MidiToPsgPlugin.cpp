@@ -24,14 +24,14 @@ void MidiToPsgPlugin::applyToBuffer(const te::PluginRenderContext& rc) noexcept 
     // Process MIDI input
     if (rc.bufferForMidiMessages != nullptr) {
         for (auto& m : *rc.bufferForMidiMessages) {
-            DBG("in midi message " << m.getDescription());
+            // DBG("in midi message " << m.getDescription());
             processMidiMessageWithSource(m);
         }
 
         // Get output messages from converter and add to buffer
         auto outputMessages = converter_.getOutputMessages();
         for (const auto& msg : outputMessages) {
-            DBG("out midi message " << msg.getDescription());
+            // DBG("out midi message " << msg.getDescription());
             rc.bufferForMidiMessages->addMidiMessage(msg, 0);
         }
     }
@@ -41,10 +41,12 @@ void MidiToPsgPlugin::applyToBuffer(const te::PluginRenderContext& rc) noexcept 
 
 void MidiToPsgPlugin::midiPanic() {
     converter_.clearOutput();
+    converter_.initPSG();
 }
 
 void MidiToPsgPlugin::reset() {
     converter_.clearOutput();
+    converter_.initPSG();
 }
 
 void MidiToPsgPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
@@ -58,8 +60,8 @@ std::unique_ptr<te::Plugin::EditorComponent> MidiToPsgPlugin::createEditor() {
 }
 
 void MidiToPsgPlugin::Params::initialise() {
-    baseMidiChannelValue.referTo(IDs::midiToPsgBaseChannel, "Base MIDI channel", {1, 16, 1}, 1);
-    numChannelsValue.referTo(IDs::midiToPsgNumChannels, "Number of channels", {1, 4, 1}, 3);
+    baseMidiChannelValue.referTo(IDs::midiBase, "Base MIDI channel", {1, 16, 1}, 1);
+    numChannelsValue.referTo(IDs::midiChans, "Number of channels", {1, 4, 1}, 3);
 }
 
 void MidiToPsgPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
@@ -76,7 +78,7 @@ void MidiToPsgPlugin::valueTreeChanged() {
 void MidiToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
     juce::ignoreUnused(v);
 
-    if (id == IDs::midiToPsgBaseChannel || id == IDs::midiToPsgNumChannels) {
+    if (id == IDs::midiBase || id == IDs::midiChans) {
         updateConverterParams();
     }
 }
@@ -84,6 +86,7 @@ void MidiToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& i
 void MidiToPsgPlugin::updateConverterParams() {
     converter_.setBaseChannel(staticParams.baseMidiChannelValue.get());
     converter_.setNumChannels(staticParams.numChannelsValue.get());
+    converter_.initPSG();
 }
 
 void MidiToPsgPlugin::setTuningSystem(TuningSystem* tuningSystem) {

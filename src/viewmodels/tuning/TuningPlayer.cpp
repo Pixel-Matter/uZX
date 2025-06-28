@@ -20,14 +20,19 @@ void TuningPlayer::createPlugins() {
     if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiToPsgPlugin::xmlTypeName, {})) {
         track.pluginList.insertPlugin(*plugin, 0, nullptr);
         midiToPsgPlugin = dynamic_cast<uZX::MidiToPsgPlugin*>(plugin.get());
-        if (midiToPsgPlugin != nullptr) {
-            midiToPsgPlugin->setTuningSystem(viewModel.getTuningSystem());
-        }
+        updateTuning();
     }
 }
 
 te::MidiClip::Ptr TuningPlayer::getClip() {
     return dynamic_cast<te::MidiClip*>(track.getClips()[0]);
+}
+
+
+void TuningPlayer::updateTuning() {
+    if (midiToPsgPlugin != nullptr) {
+        midiToPsgPlugin->setTuningSystem(viewModel.getTuningSystem());
+    }
 }
 
 te::MidiClip::Ptr TuningPlayer::createMIDIClip() {
@@ -51,8 +56,8 @@ te::MidiClip::Ptr TuningPlayer::createMIDIClip() {
 
 void TuningPlayer::playNote(int midiNote) {
     // Use playGuideNote for immediate preview playback
-    DBG("Playing note: " << midiNote);
-    track.playGuideNote(midiNote, te::MidiChannel(1), 80, true, false, true);
+    updateTuning();
+    track.playGuideNote(midiNote, te::MidiChannel(1), 127, true, false, true);
 
     // Previous MIDI clip approach (commented out):
     // replaceNotes({midiNote});
@@ -60,6 +65,7 @@ void TuningPlayer::playNote(int midiNote) {
 }
 
 void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
+    updateTuning();
     // // Use playGuideNotes for immediate chord preview
     // juce::Array<int> notes(midiNotes.data(), midiNotes.size());
     // juce::Array<int> velocities;
@@ -73,6 +79,7 @@ void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
 }
 
 void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
+    updateTuning();
     // // For arpeggio, play notes sequentially using guide notes
     // track.turnOffGuideNotes(); // Stop any currently playing notes
 
@@ -116,6 +123,7 @@ void TuningPlayer::replaceNotes(const std::vector<int>& midiNotes, double noteLe
 }
 
 void TuningPlayer::startPlayback() {
+    updateTuning();
     transport.setPosition(te::TimePosition::fromSeconds(0.0));
     transport.play(false);
 }

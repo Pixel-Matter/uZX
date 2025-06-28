@@ -152,7 +152,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
                                staticParams.removeDCValue);
             currentSample = timeSample;
         }
-        DBG("AY in midi " << m.getDescription());
+        // DBG("AY in midi " << m.getDescription());
         readMidi(m);
     }
     // process to the end of the block

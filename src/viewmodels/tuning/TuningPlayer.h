@@ -46,6 +46,7 @@ private:
     uZX::MidiToPsgPlugin::Ptr midiToPsgPlugin { nullptr };
 
     // Helper methods
+    void updateTuning();
     void replaceNotes(const std::vector<int>& midiNotes, double noteLength = 0.5);
     void startPlayback();
 

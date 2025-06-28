@@ -199,8 +199,7 @@ bool TuningPreviewGrid::findNoteAtPosition(Point<int> position, TuningNote& outN
     const int cols = viewModel.getNumColumns();
 
     auto bounds = getLocalBounds();
-    bounds.setWidth(cellWidth * (cols + 2));
-    bounds.setX((getWidth() - bounds.getWidth()) / 2);
+    bounds.setWidth(cellWidth * (cols + 1));
 
     // Skip header row
     auto headerBounds = bounds.removeFromTop(gridYOffset);

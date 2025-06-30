@@ -77,6 +77,10 @@ const std::set<int>& TuningPlayer::getCurrentlyPlayingNotes() const {
     return playingNotes_;
 }
 
+bool TuningPlayer::isNotePlaying(int midiNote) const {
+    return playingNotes_.count(midiNote) > 0;
+}
+
 void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
     // updateTuning();
     // notifyPlayingNotes();

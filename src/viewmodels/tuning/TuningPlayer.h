@@ -50,6 +50,8 @@ public:
     void removeListener(Listener* listener) { listeners_.remove(listener); }
 
     const std::set<int>& getCurrentlyPlayingNotes() const;
+    
+    bool isNotePlaying(int midiNote) const;
 
 private:
     TuningViewModel& viewModel;

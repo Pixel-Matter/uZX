@@ -84,8 +84,7 @@ void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<i
     }
 
     // Check if this note is currently playing
-    const auto& playingNotes = tuningPlayer.getCurrentlyPlayingNotes();
-    bool isPlaying = note.isInMidiRange() && playingNotes.count(note.midiNote) > 0;
+    bool isPlaying = note.isInMidiRange() && tuningPlayer.isNotePlaying(note.midiNote);
 
     auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
     

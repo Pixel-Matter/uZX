@@ -12,6 +12,7 @@
 
 #include <cmath>
 #include <array>
+#include <cstddef>
 #include <limits>
 
 namespace MoTool {
@@ -120,6 +121,7 @@ namespace IDs {
     DECLARE_ID(scale)
     DECLARE_ID(a4Freq)
     DECLARE_ID(clockFreq)
+    DECLARE_ID(playChords)
 
     #undef DECLARE_ID
 }
@@ -134,10 +136,11 @@ public:
                                                                  // no undo for this control
         , selectedTuningTable(transientState, IDs::tuningTable, nullptr, BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,   ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
-        , selectedRoot      (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C)
+        , selectedRoot       (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C)
         , selectedScale      (transientState, IDs::scale,                                         um, Scale::ScaleType::IonianOrMajor)
         , a4Frequency        (transientState, IDs::a4Freq,      {220.0, 880.0, 0.1},              um, 440.0)
         , clockFrequencyMhz  (transientState, IDs::clockFreq,   {1.0, 2.0, 0.001},                um, 1.7734) // MHz
+        , playChords         (transientState, IDs::playChords,                                    um, false)
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
         , chipCapabilities {16, Range<int>(1, 4096)}
@@ -300,6 +303,51 @@ public:
     const Scale& getCurrentScale() const {
         getCurrentScaleType(); // update cache if needed
         return currentScale;
+    }
+
+    std::vector<int> getScaleNotes(int octave, bool includeOctave = false) const {
+        const auto& scale = getCurrentScale();
+        std::vector<int> result;
+        result.reserve(scale.getIntervals().size() + (includeOctave ? 1 : 0));
+        for (const auto& interval : scale.getIntervals()) {
+            int noteNumber = static_cast<int>(getCurrentRoot()) + interval + (octave + 1) * 12;
+            result.push_back(noteNumber);
+        }
+        if (includeOctave) {
+            result.push_back(static_cast<int>(getCurrentRoot()) + (octave + 2) * 12);
+        }
+        return result;
+    }
+
+    std::vector<int> getScaleNotesFrom(int midiNote, size_t numNotes = 5) const {
+        const auto& scale = getCurrentScale();
+        std::vector<int> result;
+        result.reserve(numNotes);
+        // let midiNote = D4, root = E
+        // (midiNote % 12) = 2, root = 4
+        // startInterval = 10
+        // rootMidiNote = E3
+        int root = static_cast<int>(getCurrentRoot());
+        int startInterval = ((midiNote % 12) - root + 12) % 12;
+        int rootMidiNote = midiNote - startInterval;
+
+        auto scaleIntervals = scale.getIntervalsForOctaves(2);
+        // find startInterval in scale
+        auto it = std::find(scaleIntervals.begin(), scaleIntervals.end(), startInterval);
+        if (it == scaleIntervals.end()) {
+            // If the start interval is not found, return an empty vector
+            return result;
+        }
+        // iterate from the found interval
+        for (size_t i = 0; i < numNotes && it != scaleIntervals.end(); ++i, ++it) {
+            int noteNumber = rootMidiNote + *it;
+            if (noteNumber < 0 || noteNumber > 127) {
+                // Skip notes outside MIDI range
+                continue;
+            }
+            result.push_back(noteNumber);
+        }
+        return result;
     }
 
     void setCurrentScaleType(Scale::ScaleType scaleType) {
@@ -487,6 +535,7 @@ public:
     ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
     RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
     RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
+    ParamAttachment<bool>                    playChords; // Instead of individual notes
 
 private:
     // Cached objects derived from values (performance optimization) - only for complex conversions

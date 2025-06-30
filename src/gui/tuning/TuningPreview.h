@@ -142,6 +142,9 @@ private:
     Label tuningNameLabel;
     Label toneEnvSwitchLabel;
 
+    // Label playModeLabel;
+    ToggleButton playModeCheckBox;
+
     TextButton exportButton;
 
     TuningPreviewGrid tuningGrid;

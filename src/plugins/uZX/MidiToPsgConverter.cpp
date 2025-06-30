@@ -24,6 +24,7 @@ void MidiToPsgConverter::initPSG() {
 }
 
 void MidiToPsgConverter::noteOn(int channel, int note, int velocity) {
+    // DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
     if (!isChannelInRange(channel) || velocity == 0) return;
 
     auto& state = getChannelState(channel);
@@ -34,11 +35,13 @@ void MidiToPsgConverter::noteOn(int channel, int note, int velocity) {
 }
 
 void MidiToPsgConverter::noteOff(int channel, int note) {
+    // DBG("Note Off: Channel " << channel << ", Note " << note);
     if (!isChannelInRange(channel)) return;
 
     auto& state = getChannelState(channel);
 
     // Only turn off if this is the currently playing note
+    // DBG("Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
     if (state.currentNote == note) {
         if (state.toneOn) {
             emitToneSwitchCC(channel, false);
@@ -113,6 +116,10 @@ void MidiToPsgConverter::emitEnvSwitchCC(int channel, bool on) {
 
 void MidiToPsgConverter::emitCC(int channel, int controller, int value) {
     auto msg = juce::MidiMessage::controllerEvent(channel, controller, value);
+    // DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
+    // auto& state = getChannelState(channel);
+    // DBG("emitCC Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
+
     outputBuffer_.push_back(msg);
 }
 
@@ -124,6 +131,7 @@ int MidiToPsgConverter::velocityAndAftertouchToVolume(int velocity, int aftertou
 
 void MidiToPsgConverter::updateChannelOutput(int channel) {
     auto& state = getChannelState(channel);
+    // DBG("updateChannelOutput Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
     if (!state.currentNote.has_value()) return;
 
     // Only emit volume if it changed

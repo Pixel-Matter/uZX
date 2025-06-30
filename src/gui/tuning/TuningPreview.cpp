@@ -87,13 +87,13 @@ void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<i
     bool isPlaying = note.isInMidiRange() && tuningPlayer.isNotePlaying(note.midiNote);
 
     auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
-    
+
     // Use pressed button color for currently playing notes
     if (isPlaying) {
         noteBgColor = Colors::Theme::primary;
         noteTextColor = Colors::Theme::background; // Use contrasting text color
     }
-    
+
     if (note.isInScale) {
         g.setColour(noteBgColor);
         g.fillRect(bounds.reduced(2, 2));
@@ -237,10 +237,23 @@ void TuningPreviewGrid::mouseDown(const MouseEvent& event) {
         auto octaveNotes = viewModel.getOctaveNotes(hitResult.octave);
         auto& note = octaveNotes[static_cast<size_t>(hitResult.noteIndex)];
         if (note.isInMidiRange()) {
-            tuningPlayer.playNote(note.midiNote);
+            if (viewModel.playChords.get()) {
+                tuningPlayer.playDegreeChord(note.midiNote);
+            } else {
+                tuningPlayer.playNote(note.midiNote);
+            }
         }
+    } else if (hitResult.regionType == GridRegionType::RowHeader) {
+        // Play scale as arpeggio for the clicked octave
+        auto scaleNotes = viewModel.getScaleNotes(hitResult.octave, true);
+        std::vector<int> notes;
+        for (const auto& note : scaleNotes) {
+            notes.push_back(note);
+        }
+        notes.push_back(scaleNotes.front() + 12); // Add octave note
+        tuningPlayer.playArpeggio(notes);
     }
-    // Could add functionality for clicking on headers here (e.g., playing scales, chords)
+    // Could add functionality for clicking on column headers here
 }
 
 void TuningPreviewGrid::playingNotesChanges() {
@@ -382,9 +395,18 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     // Register as a change listener to the view model
     viewModel.addChangeListener(this);
 
-    tuningNameLabel.setText("Tuning: " + viewModel.getTuningDescription(), juce::dontSendNotification);
+    tuningNameLabel.setText(viewModel.getTuningDescription(), juce::dontSendNotification);
     addAndMakeVisible(tuningNameLabel);
-    addAndMakeVisible(toneEnvSwitchLabel);
+    // addAndMakeVisible(toneEnvSwitchLabel);
+
+    // Set up play mode checkbox
+    // playModeLabel.setText("Play mode:", juce::dontSendNotification);
+    // playModeLabel.setJustificationType(juce::Justification::centredRight);
+    playModeCheckBox.setButtonText("Play chords");
+    playModeCheckBox.getToggleStateValue().referTo(viewModel.playChords.getValue());
+
+    // addAndMakeVisible(playModeLabel);
+    addAndMakeVisible(playModeCheckBox);
     addAndMakeVisible(tuningGrid);
 
     // Connect tooltip window to grid
@@ -479,7 +501,12 @@ void TuningPreviewComponent::resized() {
 
     // TuningTypeLabel.setBounds(rightColumn.removeFromTop(controlHeight));
     tuningNameLabel.setBounds(rightColumn.removeFromTop(rowHeight));
-    toneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
+    // toneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
+
+    // Play mode row
+    auto playModeRow = rightColumn.removeFromTop(rowHeight);
+    playModeRow.removeFromLeft(labelsColWidth);
+    playModeCheckBox.setBounds(playModeRow.removeFromLeft(moduleWidth * 3));
 
     rightColumn.removeFromTop(gap);
 

@@ -95,6 +95,8 @@ void MidiToPsgPlugin::setTuningSystem(TuningSystem* tuningSystem) {
 }
 
 void MidiToPsgPlugin::processMidiMessageWithSource(const te::MidiMessageWithSource& msg) {
+    // DBG("Processing MIDI message: " << msg.getDescription());
+    // converter_.debugChannelStates();
     if (msg.isNoteOn()) {
         converter_.noteOn(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity());
     }

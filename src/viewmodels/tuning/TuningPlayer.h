@@ -40,6 +40,10 @@ public:
 
     void playNote(int midiNote);
 
+    void playDegreeChord(int midiNote);
+
+    void playScale(int octave, bool chromatic = false);
+
     void playChord(const std::vector<int>& midiNotes);
 
     void playArpeggio(const std::vector<int>& midiNotes);
@@ -49,8 +53,6 @@ public:
     void addListener(Listener* listener) { listeners_.add(listener); }
     void removeListener(Listener* listener) { listeners_.remove(listener); }
 
-    const std::set<int>& getCurrentlyPlayingNotes() const;
-    
     bool isNotePlaying(int midiNote) const;
 
 private:
@@ -61,7 +63,7 @@ private:
     te::AudioTrack& track { *EngineHelpers::getOrInsertAudioTrackAt(edit, 0) };
     uZX::MidiToPsgPlugin::Ptr midiToPsgPlugin { nullptr };
     juce::ListenerList<Listener> listeners_;
-    std::set<int> playingNotes_;  // Currently playing MIDI notes
+    std::map<int, int> playingNotes_;  // Currently playing MIDI notes on which channels
 
     // Helper methods
     void updateTuning();

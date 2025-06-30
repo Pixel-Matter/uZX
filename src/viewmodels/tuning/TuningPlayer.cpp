@@ -58,7 +58,7 @@ void TuningPlayer::playNote(int midiNote) {
     // Use playGuideNote for immediate preview playback
     updateTuning();
     track.playGuideNote(midiNote, te::MidiChannel(1), 127, true, false, true);
-    playingNotes_.insert(midiNote);
+    playingNotes_[midiNote] = 1; // Store note with its channel
     notifyPlayingNotes();
 
     // Clear the note after a short delay to simulate note release
@@ -72,46 +72,106 @@ void TuningPlayer::playNote(int midiNote) {
     // startPlayback();
 }
 
-
-const std::set<int>& TuningPlayer::getCurrentlyPlayingNotes() const {
-    return playingNotes_;
-}
-
 bool TuningPlayer::isNotePlaying(int midiNote) const {
     return playingNotes_.count(midiNote) > 0;
 }
 
-void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
-    // updateTuning();
-    // notifyPlayingNotes();
-    // // Use playGuideNotes for immediate chord preview
-    // juce::Array<int> notes(midiNotes.data(), midiNotes.size());
-    // juce::Array<int> velocities;
-    // velocities.resize(notes.size());
-    // velocities.fill(80);
-    // track.playGuideNotes(notes, te::MidiChannel(1), velocities, true);
+void TuningPlayer::playScale(int octave, bool chromatic) {
+    // Build scale notes
+    std::vector<int> notes;
+    if (chromatic) {
+        for (int i = 0; i < 12; ++i) {
+            notes.push_back((octave + 1) * 12 + i);
+        }
+    } else {
+        auto scaleNotes = viewModel.getScaleNotes(octave, true);
+        for (const auto& note : scaleNotes) {
+            notes.push_back(note);
+        }
+    }
 
-    // // Previous MIDI clip approach (commented out):
-    // // replaceNotes(midiNotes);
-    // // startPlayback();
+    playArpeggio(notes);
+}
+
+void TuningPlayer::playDegreeChord(int midiNote) {
+    // Build chord notes based on the degree
+    std::vector<int> notes;
+    auto scaleNotes = viewModel.getScaleNotesFrom(midiNote);
+    if (scaleNotes.empty()) {
+        return;
+    }
+
+    String notesStr;
+    for (const auto& note : scaleNotes) {
+        notesStr += String(note) + " ";
+    }
+
+    jassert(scaleNotes.size() >= 5 && "Scale must have at least 5 notes for degree chord");
+    for (size_t i = 0; i < 5; i += 2) {
+        // take every second note starting from the given note
+        notes.push_back(scaleNotes[i]);
+    }
+
+    playChord(notes);
+}
+
+void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
+    constexpr int duration = 600;
+    updateTuning();
+
+    playingNotes_.clear();
+    // for no more than first 3 notes for chord playback
+    for (size_t i = 0; i < std::min(midiNotes.size(), 3ul); ++i) {
+        track.playGuideNote(midiNotes[i], te::MidiChannel((int) i + 1), 127, false);
+        playingNotes_[midiNotes[i]] = (int) i + 1; // Store note with its channel
+    }
+    notifyPlayingNotes();
+
+    // Clear all notes after chord finishes
+    juce::Timer::callAfterDelay(duration, [this]() {
+        for (auto& [note, channel] : playingNotes_) {
+            track.injectLiveMidiMessage(juce::MidiMessage::noteOff(channel, note), {});
+        }
+        // do not work properly (clears guiding notes array on forst midi channel)
+        track.turnOffGuideNotes();
+        playingNotes_.clear();
+        notifyPlayingNotes();
+    });
+
+    // Previous MIDI clip approach (commented out):
+    // replaceNotes(midiNotes);
+    // startPlayback();
 }
 
 void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
-    // updateTuning();
-    // notifyPlayingNotes();
-    // // For arpeggio, play notes sequentially using guide notes
-    // track.turnOffGuideNotes(); // Stop any currently playing notes
+    constexpr int duration = 200;
+    updateTuning();
 
-    // // Play notes with 250ms delay between each
-    // for (size_t i = 0; i < midiNotes.size(); ++i) {
-    //     // TODO: Implement proper timing for arpeggio - this plays all at once
-    //     // Consider using a Timer or async approach for sequential playback
-    //     track.playGuideNote(midiNotes[i], te::MidiChannel(1), 80, false, false, true);
-    // }
+    if (midiNotes.empty()) return;
 
-    // // Previous MIDI clip approach (commented out):
-    // // replaceNotes(midiNotes, 0.25);
-    // // startPlayback();
+    // Play first note immediately
+    track.playGuideNote(midiNotes[0], te::MidiChannel(1), 127, false);
+    playingNotes_.clear();
+    playingNotes_[midiNotes[0]] = 1; // Store note with its channel
+    notifyPlayingNotes();
+
+    // Add remaining notes with callAfterDelay
+    for (size_t i = 1; i < midiNotes.size(); ++i) {
+        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i]]() {
+            track.turnOffGuideNotes();
+            track.playGuideNote(note, te::MidiChannel(1), 127, true, true, false);
+            playingNotes_.clear();
+            playingNotes_[note] = 1; // Store note with its channel
+            notifyPlayingNotes();
+        });
+    }
+
+    // Clear all notes after arpeggio finishes
+    juce::Timer::callAfterDelay(duration * static_cast<int>(midiNotes.size()), [this]() {
+        track.turnOffGuideNotes();  // works for channel 1 only
+        playingNotes_.clear();
+        notifyPlayingNotes();
+    });
 }
 
 void TuningPlayer::stop() {

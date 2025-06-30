@@ -59,8 +59,8 @@ public:
 
     virtual TemperamentType getType() const = 0;
 
-    virtual Scale::Key getTonic() const = 0;
-    virtual void setTonic(Scale::Key newKey) = 0;
+    virtual Scale::Key getRoot() const = 0;
+    virtual void setRoot(Scale::Key newRoot) = 0;
 
     // Core conversion functions
     // midiNote is double because we want slides and pitch bends
@@ -92,8 +92,8 @@ public:
     double midiNoteToFrequency(int midiNote) const override;
     double midiNoteToFrequency(double midiNote) const override;
     double frequencyToMidiNote(double frequency) const override;
-    Scale::Key getTonic() const override;
-    void setTonic(Scale::Key newKey) override;
+    Scale::Key getRoot() const override;
+    void setRoot(Scale::Key newKey) override;
     int frequencyToNearestMidiNote(double frequency, NoteSearch search = NoteSearch::Nearest) const override;
     bool isDefined(int /*midiNote*/) const override;
     String getDegreeRepresentation(int degree) const override;
@@ -117,11 +117,11 @@ public:
     bool isDefined(int midiNote) const override;
     String getDegreeRepresentation(int degree) const override;
 
-    void setTonic(Scale::Key newKey) override{
+    void setRoot(Scale::Key newKey) override{
         tonic = newKey;
     }
 
-    Scale::Key getTonic() const override{
+    Scale::Key getRoot() const override{
         return tonic;
     }
 

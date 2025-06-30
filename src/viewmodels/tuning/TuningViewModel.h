@@ -134,7 +134,7 @@ public:
                                                                  // no undo for this control
         , selectedTuningTable(transientState, IDs::tuningTable, nullptr, BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,   ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
-        , selectedTonic      (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C)
+        , selectedRoot      (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C)
         , selectedScale      (transientState, IDs::scale,                                         um, Scale::ScaleType::IonianOrMajor)
         , a4Frequency        (transientState, IDs::a4Freq,      {220.0, 880.0, 0.1},              um, 440.0)
         , clockFrequencyMhz  (transientState, IDs::clockFreq,   {1.0, 2.0, 0.001},                um, 1.7734) // MHz
@@ -145,7 +145,7 @@ public:
         // Set up Value listeners for bidirectional sync
         selectedTuningTable.addListener(this);
         selectedChip.addListener(this);
-        selectedTonic.addListener(this);
+        selectedRoot.addListener(this);
         selectedScale.addListener(this);
         a4Frequency.addListener(this);
         clockFrequencyMhz.addListener(this);
@@ -163,7 +163,7 @@ public:
         auto refTuning = tuningSystem ? tuningSystem->getReferenceTuning() : nullptr;
 
         // Build the result
-        const auto keyIdx = static_cast<int>(getCurrentKey());
+        const auto keyIdx = static_cast<int>(getCurrentRoot());
         for (int i = 0; i < 12; ++i) {
             const int semitonesFromKey = (i - keyIdx + 12) % 12;
             noteNames.emplace_back(
@@ -274,7 +274,7 @@ public:
     }
 
     String getScaleName() const {
-        return Scale::getKeyName(getCurrentKey()) + " " + Scale(getCurrentScaleType()).getName();
+        return Scale::getKeyName(getCurrentRoot()) + " " + Scale(getCurrentScaleType()).getName();
     }
 
     String getTuningTypeName() const {
@@ -312,15 +312,15 @@ public:
         sendChangeMessage();
     }
 
-    Scale::Key getCurrentKey() const {
-        return selectedTonic.get();
+    Scale::Key getCurrentRoot() const {
+        return selectedRoot.get();
     }
 
-    void setCurrentKey(Scale::Key key) {
+    void setCurrentRoot(Scale::Key root) {
         // DBG("setCurrentKey: " << Scale::getKeyName(key));
-        selectedTonic = key;
+        selectedRoot = root;
         // TODO double update after assigning to keyIndex1?
-        tuningSystem->setTonic(key); // Update tuning system tonic
+        tuningSystem->setRoot(root); // Update tuning system tonic
         // DBG("setCurrentKey sendChangeMessage");
         sendChangeMessage();
     }
@@ -333,6 +333,14 @@ public:
             }
         }
         return names;
+    }
+
+    static std::vector<NoteGridHeadingType> getHeaderTypes() {
+        return {
+            NoteGridHeadingType::Tuning,
+            NoteGridHeadingType::Degrees,
+            NoteGridHeadingType::Notes
+        };
     }
 
     // Tuning table selection methods
@@ -475,7 +483,7 @@ public:
     // ParamAttachment objects - single source of truth for all persisted types
     ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
     ChoiceParamAttachment<ChipClockChoice>   selectedChip;
-    ChoiceParamAttachment<Scale::Key>        selectedTonic;
+    ChoiceParamAttachment<Scale::Key>        selectedRoot;
     ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
     RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
     RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
@@ -499,10 +507,10 @@ private:
                 // DBG("Scale changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        } else if (value.refersToSameSourceAs(selectedTonic.getValue())) {
-            // DBG("Key changed from valueChanged");
-            tuningSystem->setTonic(getCurrentKey());
-            // DBG("Key changed from valueChanged sendChangeMessage");
+        } else if (value.refersToSameSourceAs(selectedRoot.getValue())) {
+            // DBG("Root changed from valueChanged");
+            tuningSystem->setRoot(getCurrentRoot());
+            // DBG("Root changed from valueChanged sendChangeMessage");
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(a4Frequency.getValue())) {
             // DBG("A4 frequency changed from valueChanged");
@@ -550,7 +558,7 @@ private:
             .tableType = tuningType,
             .capabilities = chipCapabilities,
             .temperamentType = TemperamentType::EqualTemperament, // TODO from view property
-            .tonic = getCurrentKey(),
+            .tonic = getCurrentRoot(),
             .scaleType = getCurrentScaleType(),
             .chipChoice = selectedChip.get(),
             .chipClock = clockFrequencyMhz.get() * MHz,
@@ -561,7 +569,7 @@ private:
 
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
-            selectedTonic = options.tonic;
+            selectedRoot = options.tonic;
             selectedScale = options.scaleType;
             selectedChip = options.chipChoice;
             clockFrequencyMhz = options.chipClock / MHz; // Convert Hz to MHz

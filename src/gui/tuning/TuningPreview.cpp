@@ -28,19 +28,18 @@ void TuningPreviewGrid::resized() {
 void TuningPreviewGrid::mouseMove(const MouseEvent& event) {
     lastMousePosition = event.getPosition();
 
-    TuningNote foundNote;
-    if (findNoteAtPosition(lastMousePosition, foundNote)) {
-        if (!hasHoveredNote || foundNote.midiNote != hoveredNote.midiNote) {
-            hoveredNote = foundNote;
-            hasHoveredNote = true;
-            // Tooltip content will be provided by getTooltip() override
-            // repaint(); // Optional: repaint if we want visual feedback
-        }
-    } else {
-        if (hasHoveredNote) {
-            hasHoveredNote = false;
-            // repaint(); // Optional: repaint to clear any visual feedback
-        }
+    GridLayout layout(getLocalBounds(), viewModel);
+    GridHitResult newHover = layout.hitTest(lastMousePosition);
+
+    // Check if we're hovering over a different region
+    bool regionChanged = (newHover.regionType != hoveredRegion.regionType ||
+                         newHover.octave != hoveredRegion.octave ||
+                         newHover.noteIndex != hoveredRegion.noteIndex ||
+                         newHover.headerType != hoveredRegion.headerType);
+
+    if (regionChanged) {
+        hoveredRegion = newHover;
+        // repaint(); // Optional: repaint if we want visual feedback
     }
 }
 
@@ -134,144 +133,191 @@ void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<i
 }
 
 void TuningPreviewGrid::paint(juce::Graphics& g) {
-    const int cols = viewModel.getNumColumns();
-
     g.fillAll(Colors::Theme::backgroundAlt);
-    auto bounds = getLocalBounds();
-    bounds.removeFromTop(headerRowHeight / 2);
-    bounds.setWidth(cellWidth * (cols + 1));
 
-    auto gridY = bounds.getY();
-    auto gridBottom = bounds.getBottom();
-
+    GridLayout layout(getLocalBounds(), viewModel);
     const auto columns = viewModel.getColumnNoteNames();
+    const auto headerTypes = TuningViewModel::getHeaderTypes();
+    const auto octaveRange = viewModel.getOctaveRange();
 
     // Draw column headers
-    {
-        auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
-        gridCell.translate(firstCellWidth, 0);
-        for (const auto& column : columns) {
-            paintColumnHeader(g, gridCell, column, NoteGridHeadingType::Tuning);
-            gridCell.translate(cellWidth, 0);
+    for (size_t headerTypeIndex = 0; headerTypeIndex < headerTypes.size(); ++headerTypeIndex) {
+        auto headerType = headerTypes[headerTypeIndex];
+        for (int noteIndex = 0; noteIndex < viewModel.getNumColumns(); ++noteIndex) {
+            auto headerBounds = layout.getColumnHeaderBounds(static_cast<int>(headerTypeIndex), noteIndex);
+            auto& column = columns[static_cast<size_t>(noteIndex)];
+            paintColumnHeader(g, headerBounds, column, headerType);
         }
     }
 
-    {
-        auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
-        gridCell.translate(firstCellWidth, 0);
-        for (const auto& column : columns) {
-            paintColumnHeader(g, gridCell, column, NoteGridHeadingType::Degrees);
-            gridCell.translate(cellWidth, 0);
-        }
-    }
+    // Draw rows (row headers + note cells)
+    for (auto octave = octaveRange.getStart(); octave < octaveRange.getEnd(); ++octave) {
+        // Draw row header
+        auto rowHeaderBounds = layout.getRowHeaderBounds(octave);
+        paintRowHeader(g, rowHeaderBounds, octave);
 
-    {
-        auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
-        gridCell.translate(firstCellWidth, 0);
-        for (const auto& column : columns) {
-            paintColumnHeader(g, gridCell, column, NoteGridHeadingType::Notes);
-            gridCell.translate(cellWidth, 0);
-        }
-    }
-
-    // Draw rows
-    const auto octaves = viewModel.getOctaveRange();
-    for (auto octave = octaves.getStart(); octave < octaves.getEnd(); ++octave) {
-        auto gridCell = bounds.removeFromTop(cellHeight).withSize(cellWidth, cellHeight);
-
-        paintRowHeader(g, gridCell.withWidth(firstCellWidth), octave);
-        gridCell.translate(firstCellWidth, 0);
-
-        for (const auto& note : viewModel.getOctaveNotes(octave)) {
-            paintNoteCell(g, gridCell, note);
-            gridCell.translate(cellWidth, 0);
-        }
-        gridBottom = gridCell.getBottom();
-    }
-
-    // Draw vertical line at the root note column (current key)
-    {
-        const int rootColumnIndex = static_cast<int>(viewModel.getCurrentKey());
-        const int rootColumnX = bounds.getX() + firstCellWidth + rootColumnIndex * cellWidth;
-        g.setColour(Colors::Theme::primary.withAlpha(0.5f));
-        g.fillRect(rootColumnX, gridY, 2, gridBottom - gridY);
-    }
-}
-
-bool TuningPreviewGrid::findNoteAtPosition(Point<int> position, TuningNote& outNote) const {
-    const int cols = viewModel.getNumColumns();
-
-    auto bounds = getLocalBounds();
-    bounds.setWidth(cellWidth * (cols + 1));
-
-    // Skip header row
-    auto headerBounds = bounds.removeFromTop(gridYOffset);
-    if (position.y < headerBounds.getBottom()) {
-        return false; // Mouse is in header area
-    }
-
-    // Calculate which octave row we're in
-    const auto octaves = viewModel.getOctaveRange();
-    const int rowsStartY = headerBounds.getBottom();
-    const int relativeY = position.y - rowsStartY;
-
-    if (relativeY < 0) {
-        return false; // Above the grid
-    }
-
-    const int rowIndex = relativeY / cellHeight;
-    const int octave = octaves.getStart() + rowIndex;
-
-    if (octave >= octaves.getEnd()) {
-        return false; // Below the grid
-    }
-
-    // Calculate which note column we're in
-    const int notesStartX = bounds.getX() + firstCellWidth; // Skip octave label column
-    const int relativeX = position.x - notesStartX;
-
-    if (relativeX < 0) {
-        return false; // In octave label column
-    }
-
-    const int noteIndex = relativeX / cellWidth;
-
-    if (noteIndex >= cols) {
-        return false; // Past the last note column
-    }
-
-    // Verify we're within the actual cell bounds (not in padding)
-    const int cellX = notesStartX + noteIndex * cellWidth;
-    const int cellY = rowsStartY + rowIndex * cellHeight;
-
-    if (position.x >= cellX && position.x < cellX + cellWidth &&
-        position.y >= cellY && position.y < cellY + cellHeight) {
-        // Get the note for this octave and column
+        // Draw note cells
         auto octaveNotes = viewModel.getOctaveNotes(octave);
-        if (noteIndex < static_cast<int>(octaveNotes.size())) {
-            outNote = octaveNotes[(size_t) noteIndex];
-            return true;
+        for (int noteIndex = 0; noteIndex < static_cast<int>(octaveNotes.size()); ++noteIndex) {
+            auto cellBounds = layout.getNoteCellBounds(octave, noteIndex);
+            paintNoteCell(g, cellBounds, octaveNotes[static_cast<size_t>(noteIndex)]);
         }
     }
 
-    return false; // Mouse not over any note cell
+    // Draw vertical line at the root note column (current root)
+    const int rootColumnIndex = static_cast<int>(viewModel.getCurrentRoot());
+    auto firstCellBounds = layout.getNoteCellBounds(octaveRange.getStart(), rootColumnIndex);
+    auto lastCellBounds = layout.getNoteCellBounds(octaveRange.getEnd() - 1, rootColumnIndex);
+
+    int lineX = firstCellBounds.getX();
+    int lineY = layout.gridBounds.getY();
+    int lineHeight = lastCellBounds.getBottom() - lineY;
+
+    g.setColour(Colors::Theme::primary.withAlpha(0.5f));
+    g.fillRect(lineX, lineY, 2, lineHeight);
 }
 
 String TuningPreviewGrid::getTooltip() {
-    return hasHoveredNote ? hoveredNote.getTooltip() : "";
+    if (!hoveredRegion.isValid()) {
+        return "";
+    }
+
+    switch (hoveredRegion.regionType) {
+        case GridRegionType::NoteCell: {
+            // Get the note data and return its tooltip
+            auto octaveNotes = viewModel.getOctaveNotes(hoveredRegion.octave);
+            if (hoveredRegion.noteIndex < static_cast<int>(octaveNotes.size())) {
+                return octaveNotes[static_cast<size_t>(hoveredRegion.noteIndex)].getTooltip();
+            }
+            break;
+        }
+        case GridRegionType::RowHeader:
+            return String::formatted("Octave %d", hoveredRegion.octave);
+
+        case GridRegionType::ColumnHeader: {
+            auto columns = viewModel.getColumnNoteNames();
+            if (hoveredRegion.noteIndex < static_cast<int>(columns.size())) {
+                auto& column = columns[static_cast<size_t>(hoveredRegion.noteIndex)];
+                String headerText = column.getHeadingText(hoveredRegion.headerType);
+                String headerTypeName;
+                switch (hoveredRegion.headerType) {
+                    case NoteGridHeadingType::Tuning: headerTypeName = "Tuning"; break;
+                    case NoteGridHeadingType::Degrees: headerTypeName = "Degree"; break;
+                    case NoteGridHeadingType::Notes: headerTypeName = "Note"; break;
+                }
+                return String::formatted("%s: %s", headerTypeName.toUTF8(), headerText.toUTF8());
+            }
+            break;
+        }
+        case GridRegionType::None:
+            break;
+    }
+
+    return "";
 }
 
 void TuningPreviewGrid::mouseDown(const MouseEvent& event) {
-    TuningNote foundNote;
-    if (findNoteAtPosition(event.getPosition(), foundNote)) {
-        if (foundNote.isInMidiRange()) {
-            tuningPlayer.playNote(foundNote.midiNote);
+    GridLayout layout(getLocalBounds(), viewModel);
+    GridHitResult hitResult = layout.hitTest(event.getPosition());
+
+    if (hitResult.regionType == GridRegionType::NoteCell) {
+        auto octaveNotes = viewModel.getOctaveNotes(hitResult.octave);
+        auto& note = octaveNotes[static_cast<size_t>(hitResult.noteIndex)];
+        if (note.isInMidiRange()) {
+            tuningPlayer.playNote(note.midiNote);
         }
     }
+    // Could add functionality for clicking on headers here (e.g., playing scales, chords)
 }
 
 void TuningPreviewGrid::playingNotesChanges() {
     repaint();
+}
+
+//================================================================================
+// GridLayout Implementation
+
+int TuningPreviewGrid::GridLayout::getHeaderRowsHeight() const {
+    return headerRowHeight * static_cast<int>(TuningViewModel::getHeaderTypes().size());
+}
+
+juce::Rectangle<int> TuningPreviewGrid::GridLayout::getColumnHeaderBounds(int headerTypeIndex, int noteIndex) const {
+    int x = gridBounds.getX() + rowHeaderWidth + noteIndex * cellWidth;
+    int y = gridBounds.getY() + headerTypeIndex * headerRowHeight;
+    return juce::Rectangle<int>(x, y, cellWidth, headerRowHeight);
+}
+
+juce::Rectangle<int> TuningPreviewGrid::GridLayout::getRowHeaderBounds(int octave) const {
+    auto octaveRange = viewModel.getOctaveRange();
+    int rowIndex = octave - octaveRange.getStart();
+    int y = gridBounds.getY() + getHeaderRowsHeight() + rowIndex * cellHeight;
+    return juce::Rectangle<int>(gridBounds.getX(), y, rowHeaderWidth, cellHeight);
+}
+
+juce::Rectangle<int> TuningPreviewGrid::GridLayout::getNoteCellBounds(int octave, int noteIndex) const {
+    auto octaveRange = viewModel.getOctaveRange();
+    int rowIndex = octave - octaveRange.getStart();
+    int x = gridBounds.getX() + rowHeaderWidth + noteIndex * cellWidth;
+    int y = gridBounds.getY() + getHeaderRowsHeight() + rowIndex * cellHeight;
+    return juce::Rectangle<int>(x, y, cellWidth, cellHeight);
+}
+
+TuningPreviewGrid::GridHitResult TuningPreviewGrid::GridLayout::hitTest(juce::Point<int> position) const {
+    GridHitResult result;
+
+    auto octaveRange = viewModel.getOctaveRange();
+    auto headerTypes = TuningViewModel::getHeaderTypes();
+    int headerRowsHeight = getHeaderRowsHeight();
+
+    // Test column headers
+    if (position.y >= gridBounds.getY() && position.y < gridBounds.getY() + headerRowsHeight) {
+        int headerTypeIndex = (position.y - gridBounds.getY()) / headerRowHeight;
+        if (headerTypeIndex >= 0 && headerTypeIndex < static_cast<int>(headerTypes.size())) {
+            int notesStartX = gridBounds.getX() + rowHeaderWidth;
+            if (position.x >= notesStartX) {
+                int noteIndex = (position.x - notesStartX) / cellWidth;
+                if (noteIndex >= 0 && noteIndex < viewModel.getNumColumns()) {
+                    result.regionType = GridRegionType::ColumnHeader;
+                    result.noteIndex = noteIndex;
+                    result.headerType = headerTypes[static_cast<size_t>(headerTypeIndex)];
+                    result.bounds = getColumnHeaderBounds(headerTypeIndex, noteIndex);
+                    return result;
+                }
+            }
+        }
+    }
+
+    // Test row headers and note cells
+    int rowsStartY = gridBounds.getY() + headerRowsHeight;
+    if (position.y >= rowsStartY) {
+        int rowIndex = (position.y - rowsStartY) / cellHeight;
+        int octave = octaveRange.getStart() + rowIndex;
+
+        if (octave >= octaveRange.getStart() && octave < octaveRange.getEnd()) {
+            // Test row header
+            if (position.x >= gridBounds.getX() && position.x < gridBounds.getX() + rowHeaderWidth) {
+                result.regionType = GridRegionType::RowHeader;
+                result.octave = octave;
+                result.bounds = getRowHeaderBounds(octave);
+                return result;
+            }
+
+            // Test note cells
+            int notesStartX = gridBounds.getX() + rowHeaderWidth;
+            if (position.x >= notesStartX) {
+                int noteIndex = (position.x - notesStartX) / cellWidth;
+                if (noteIndex >= 0 && noteIndex < viewModel.getNumColumns()) {
+                    result.regionType = GridRegionType::NoteCell;
+                    result.octave = octave;
+                    result.noteIndex = noteIndex;
+                    result.bounds = getNoteCellBounds(octave, noteIndex);
+                    return result;
+                }
+            }
+        }
+    }
+
+    return result; // GridRegionType::None
 }
 
 //================================================================================

@@ -56,11 +56,11 @@ bool EqualTemperamentTuning::isDefined(int /*midiNote*/) const {
     return true;
 }
 
-void EqualTemperamentTuning::setTonic(Scale::Key) {
+void EqualTemperamentTuning::setRoot(Scale::Key) {
     // not required for equal temperament
 }
 
-Scale::Key EqualTemperamentTuning::getTonic() const {
+Scale::Key EqualTemperamentTuning::getRoot() const {
     return Scale::Key::C; // Default to C for equal temperament
 }
 

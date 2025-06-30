@@ -28,21 +28,54 @@ public:
 
 private:
     static constexpr int cellWidth = 56;
-    static constexpr int firstCellWidth = cellWidth / 2;
+    static constexpr int rowHeaderWidth = cellWidth / 2;
     static constexpr int cellHeight = 32;
     static constexpr int headerRowHeight = 24;
     static constexpr int gridYOffset = static_cast<int>(headerRowHeight * 3.5);
+
+    enum class GridRegionType {
+        None,
+        NoteCell,
+        RowHeader,
+        ColumnHeader
+    };
+
+    struct GridHitResult {
+        GridRegionType regionType = GridRegionType::None;
+        int octave = -1;                     // For note cells and row headers
+        int noteIndex = -1;                  // For note cells and column headers
+        NoteGridHeadingType headerType = NoteGridHeadingType::Tuning; // For column headers
+        juce::Rectangle<int> bounds;         // Bounds of the hit region
+
+        bool isValid() const { return regionType != GridRegionType::None; }
+    };
+
+    struct GridLayout {
+        juce::Rectangle<int> totalBounds;
+        juce::Rectangle<int> gridBounds;
+        const TuningViewModel& viewModel;
+
+        GridLayout(juce::Rectangle<int> bounds, const TuningViewModel& vm)
+            : totalBounds(bounds), viewModel(vm) {
+            gridBounds = bounds;
+            gridBounds.removeFromTop(headerRowHeight / 2);
+            gridBounds.setWidth(cellWidth * (viewModel.getNumColumns() + 1));
+        }
+
+        GridHitResult hitTest(juce::Point<int> position) const;
+        juce::Rectangle<int> getColumnHeaderBounds(int headerTypeIndex, int noteIndex) const;
+        juce::Rectangle<int> getRowHeaderBounds(int octave) const;
+        juce::Rectangle<int> getNoteCellBounds(int octave, int noteIndex) const;
+        int getHeaderRowsHeight() const;
+    };
 
     TuningViewModel& viewModel;
     TuningPlayer& tuningPlayer;
 
     // Mouse tracking for tooltips
     Point<int> lastMousePosition;
-    TuningNote hoveredNote;
-    bool hasHoveredNote = false;
+    GridHitResult hoveredRegion;
 
-    // Helper method to find note at mouse position
-    bool findNoteAtPosition(Point<int> position, TuningNote& outNote) const;
     void playingNotesChanges() override;
 
     // Paint helper methods
@@ -116,7 +149,7 @@ private:
 
     // bindings
     ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
-    ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedTonic };
+    ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedRoot };
     ComboBoxBinding<Scale::ScaleType> scaleSelectBinding { scaleSelect, viewModel.selectedScale };
 
     static constexpr int rowHeight = 28;

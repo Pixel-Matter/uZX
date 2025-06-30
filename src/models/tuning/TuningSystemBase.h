@@ -69,8 +69,8 @@ public:
     double getA4Frequency() const;
     void setClockFrequency(double frequency);
     double getClockFrequency() const;
-    void setTonic(Scale::Key newKey);
-    Scale::Key getTonic() const;
+    void setRoot(Scale::Key newRoot);
+    Scale::Key getRoot() const;
 
     // Serialization
     // virtual juce::ValueTree getState() const = 0;

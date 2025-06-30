@@ -342,11 +342,11 @@ public:
             );
 
             // Change to D major
-            tuning.getReferenceTuning()->setTonic(Scale::Key::D);
+            tuning.getReferenceTuning()->setRoot(Scale::Key::D);
             int dPeriod = tuning.midiNoteToPeriod(60.0);
 
             // Change back to C major
-            tuning.getReferenceTuning()->setTonic(Scale::Key::C);
+            tuning.getReferenceTuning()->setRoot(Scale::Key::C);
             int cPeriod = tuning.midiNoteToPeriod(60.0);
 
             expect(std::abs(cPeriod - dPeriod) > 0, "Periods for C4 in just intonation should differ after changing key");

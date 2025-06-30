@@ -13,7 +13,7 @@ public:
             TuningViewModel viewModel;
 
             // Default should be C Major
-            expectEquals(static_cast<int>(viewModel.getCurrentKey()), static_cast<int>(Scale::Key::C));
+            expectEquals(static_cast<int>(viewModel.getCurrentRoot()), static_cast<int>(Scale::Key::C));
             expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::IonianOrMajor));
             expectEquals(viewModel.getScaleName(), String("C Major (Ionian)"));
 
@@ -41,10 +41,10 @@ public:
             TuningViewModel viewModel;
 
             // Set to A Minor (Natural Minor = Aeolian)
-            viewModel.setCurrentKey(Scale::Key::A);
+            viewModel.setCurrentRoot(Scale::Key::A);
             viewModel.setCurrentScaleType(Scale::ScaleType::AeolianOrMinor);
 
-            expectEquals(static_cast<int>(viewModel.getCurrentKey()), static_cast<int>(Scale::Key::A));
+            expectEquals(static_cast<int>(viewModel.getCurrentRoot()), static_cast<int>(Scale::Key::A));
             expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::AeolianOrMinor));
             expectEquals(viewModel.getScaleName(), String("A Minor (Aeolian)"));
 
@@ -71,10 +71,10 @@ public:
             TuningViewModel viewModel;
 
             // Set to F# Major
-            viewModel.setCurrentKey(Scale::Key::FSharp);
+            viewModel.setCurrentRoot(Scale::Key::FSharp);
             viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
 
-            expectEquals(static_cast<int>(viewModel.getCurrentKey()), static_cast<int>(Scale::Key::FSharp));
+            expectEquals(static_cast<int>(viewModel.getCurrentRoot()), static_cast<int>(Scale::Key::FSharp));
             expectEquals(viewModel.getScaleName(), String::fromUTF8("F♯ Major (Ionian)"));
 
             // Check that F# Major scale notes are in scale
@@ -100,10 +100,10 @@ public:
             TuningViewModel viewModel;
 
             // Set to D Dorian
-            viewModel.setCurrentKey(Scale::Key::D);
+            viewModel.setCurrentRoot(Scale::Key::D);
             viewModel.setCurrentScaleType(Scale::ScaleType::Dorian);
 
-            expectEquals(static_cast<int>(viewModel.getCurrentKey()), static_cast<int>(Scale::Key::D));
+            expectEquals(static_cast<int>(viewModel.getCurrentRoot()), static_cast<int>(Scale::Key::D));
             expectEquals(viewModel.getScaleName(), String("D Dorian"));
 
             // Check that D Dorian scale notes are in scale
@@ -169,7 +169,7 @@ public:
 
             // Set up test configuration
             viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
-            viewModel.setCurrentKey(Scale::Key::C);
+            viewModel.setCurrentRoot(Scale::Key::C);
             viewModel.setA4Frequency(440.0);
 
             // Export to CSV
@@ -224,7 +224,7 @@ public:
 
             // Test with different scale
             viewModel.setCurrentScaleType(Scale::ScaleType::MinorPentatonic);
-            viewModel.setCurrentKey(Scale::Key::A);
+            viewModel.setCurrentRoot(Scale::Key::A);
 
             String csvData2 = viewModel.exportToCSV();
             expect(csvData2.isNotEmpty(), "CSV data should not be empty for different scale");
@@ -256,7 +256,7 @@ public:
 
             // Test default filename with C Major
             viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
-            viewModel.setCurrentKey(Scale::Key::C);
+            viewModel.setCurrentRoot(Scale::Key::C);
             viewModel.setA4Frequency(440.0);
 
             String filename1 = viewModel.getDefaultExportFilename();
@@ -266,7 +266,7 @@ public:
 
             // Test with different scale and non-standard A4
             viewModel.setCurrentScaleType(Scale::ScaleType::MinorPentatonic);
-            viewModel.setCurrentKey(Scale::Key::A);
+            viewModel.setCurrentRoot(Scale::Key::A);
             viewModel.setA4Frequency(442.0);
 
             String filename2 = viewModel.getDefaultExportFilename();

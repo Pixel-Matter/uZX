@@ -59,8 +59,13 @@ void TuningPlayer::playNote(int midiNote) {
     updateTuning();
     track.playGuideNote(midiNote, te::MidiChannel(1), 127, true, false, true);
     playingNotes_.insert(midiNote);
-    // TODO not reliable, need to use a timer to reset the note after a short delay
+    notifyPlayingNotes();
 
+    // Clear the note after a short delay to simulate note release
+    juce::Timer::callAfterDelay(100, [this, midiNote]() {
+        playingNotes_.erase(midiNote);
+        notifyPlayingNotes();
+    });
 
     // Previous MIDI clip approach (commented out):
     // replaceNotes({midiNote});

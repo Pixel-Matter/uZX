@@ -83,7 +83,18 @@ void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<i
         noteTextColor = noteTextColor.interpolatedWith(juce::Colours::red, -offtune * 2);
     }
 
+    // Check if this note is currently playing
+    const auto& playingNotes = tuningPlayer.getCurrentlyPlayingNotes();
+    bool isPlaying = note.isInMidiRange() && playingNotes.count(note.midiNote) > 0;
+
     auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
+    
+    // Use pressed button color for currently playing notes
+    if (isPlaying) {
+        noteBgColor = Colors::Theme::primary;
+        noteTextColor = Colors::Theme::background; // Use contrasting text color
+    }
+    
     if (note.isInScale) {
         g.setColour(noteBgColor);
         g.fillRect(bounds.reduced(2, 2));
@@ -192,19 +203,22 @@ String TuningPreviewGrid::getTooltip() {
             break;
         }
         case GridRegionType::RowHeader:
-            return String::formatted("Octave %d", hoveredRegion.octave);
+            return "Click to play the scale";
 
         case GridRegionType::ColumnHeader: {
+            // TODO display tuning for degree in cents from the root note
+            // use column.getHeadingTooltip(hoveredRegion.headerType);
+
             auto columns = viewModel.getColumnNoteNames();
             if (hoveredRegion.noteIndex < static_cast<int>(columns.size())) {
                 auto& column = columns[static_cast<size_t>(hoveredRegion.noteIndex)];
-                String headerText = column.getHeadingText(hoveredRegion.headerType);
                 String headerTypeName;
                 switch (hoveredRegion.headerType) {
                     case NoteGridHeadingType::Tuning: headerTypeName = "Tuning"; break;
                     case NoteGridHeadingType::Degrees: headerTypeName = "Degree"; break;
                     case NoteGridHeadingType::Notes: headerTypeName = "Note"; break;
                 }
+                String headerText = column.getHeadingText(hoveredRegion.headerType);
                 return String::formatted("%s: %s", headerTypeName.toUTF8(), headerText.toUTF8());
             }
             break;

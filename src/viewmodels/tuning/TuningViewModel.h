@@ -25,6 +25,74 @@ enum class NoteGridHeadingType {
     Notes
 };
 
+struct EnvShapeSimpleEnum {
+    enum Enum {
+        Triangle,
+        Sawtooth1,
+        Sawtooth2
+    };
+
+    static inline constexpr std::string_view longLabels[] {
+        "Triangle",
+        "Sawtooth 1",
+        "Sawtooth 2"
+    };
+
+    static inline constexpr std::string_view shortLabels[] {
+        "Tri",
+        "Saw1",
+        "Saw2"
+    };
+};
+
+using EnvShapeChoice = Util::EnumChoice<EnvShapeSimpleEnum>;
+
+
+struct EnvModeEnum {
+    enum Enum {
+        Unison,
+        OctaveDown,
+        OctaveUp,
+        FifthDown,
+        FifthUp,
+        ForthDown,
+        ForthUp
+    };
+
+    static inline constexpr std::string_view longLabels[] {
+        "Unison",
+        "Octave Down",
+        "Octave Up",
+        "Fifth Down",
+        "Fifth Up",
+        "Forth Down",
+        "Forth Up"
+    };
+
+    static inline constexpr std::string_view shortLabels[] {
+        "0",
+        "-12",
+        "+12",
+        "-7",
+        "+7",
+        "-5",
+        "+5"
+    };
+
+    static inline constexpr int intervals[] {
+        0,
+        -12,
+        +12,
+        -7,
+        +7,
+        -5,
+        +5
+    };
+};
+
+using EnvModeChoice = Util::EnumChoice<EnvModeEnum>;
+
+
 struct TuningNoteName {
     int noteNumber;        // 0-based note number in 12-semitone system, ie C is 0, C# is 1, etc.
     bool isInScale;        // Whether this note is part of the scale
@@ -122,6 +190,10 @@ namespace IDs {
     DECLARE_ID(a4Freq)
     DECLARE_ID(clockFreq)
     DECLARE_ID(playChords)
+    DECLARE_ID(playTone)
+    DECLARE_ID(playEnvelope)
+    DECLARE_ID(envelopeShape)
+    DECLARE_ID(envelopeMode)
 
     #undef DECLARE_ID
 }
@@ -140,7 +212,13 @@ public:
         , selectedScale      (transientState, IDs::scale,                                         um, Scale::ScaleType::IonianOrMajor)
         , a4Frequency        (transientState, IDs::a4Freq,      {220.0, 880.0, 0.1},              um, 440.0)
         , clockFrequencyMhz  (transientState, IDs::clockFreq,   {1.0, 2.0, 0.001},                um, 1.7734) // MHz
+
         , playChords         (transientState, IDs::playChords,                                    um, false)
+        , playTone           (transientState, IDs::playTone,                                      um, true)
+        , playEnvelope       (transientState, IDs::playEnvelope,                                  um, false)
+        , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), um, EnvShapeSimpleEnum::Triangle)
+        , envelopeMode       (transientState, IDs::envelopeMode,  EnvModeChoice::getLongLabels(),  um, EnvModeEnum::Unison)
+
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
         , chipCapabilities {16, Range<int>(1, 4096)}
@@ -535,7 +613,12 @@ public:
     ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
     RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
     RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
+    // Play modes
     ParamAttachment<bool>                    playChords; // Instead of individual notes
+    ParamAttachment<bool>                    playTone;
+    ParamAttachment<bool>                    playEnvelope;
+    ChoiceParamAttachment<EnvShapeChoice>    envelopeShape;
+    ChoiceParamAttachment<EnvModeChoice>     envelopeMode;
 
 private:
     // Cached objects derived from values (performance optimization) - only for complex conversions
@@ -649,3 +732,18 @@ private:
 };
 
 } // namespace MoTool
+
+
+namespace juce {
+
+using namespace MoTool;
+using namespace MoTool::Util;
+
+template <>
+struct VariantConverter<EnvShapeChoice> : public EnumVariantConverter<EnvShapeChoice> {};
+
+template <>
+struct VariantConverter<EnvModeChoice> : public EnumVariantConverter<EnvModeChoice> {};
+
+
+}  // namespace juce

@@ -144,6 +144,9 @@ private:
 
     // Label playModeLabel;
     ToggleButton playModeCheckBox;
+    ToggleButton playToneCheckBox;
+    ToggleButton playEnvelopeCheckBox;
+    ComboBox envelopeShapeSelect;
 
     TextButton exportButton;
 
@@ -154,6 +157,7 @@ private:
     ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
     ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedRoot };
     ComboBoxBinding<Scale::ScaleType> scaleSelectBinding { scaleSelect, viewModel.selectedScale };
+    ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding { envelopeShapeSelect, viewModel.envelopeShape };
 
     static constexpr int rowHeight = 28;
     static constexpr int moduleWidth = 60;

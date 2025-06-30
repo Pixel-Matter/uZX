@@ -399,14 +399,20 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     addAndMakeVisible(tuningNameLabel);
     // addAndMakeVisible(toneEnvSwitchLabel);
 
-    // Set up play mode checkbox
-    // playModeLabel.setText("Play mode:", juce::dontSendNotification);
-    // playModeLabel.setJustificationType(juce::Justification::centredRight);
+    // Set up play mode checkboxes
     playModeCheckBox.setButtonText("Play chords");
     playModeCheckBox.getToggleStateValue().referTo(viewModel.playChords.getValue());
 
-    // addAndMakeVisible(playModeLabel);
+    playToneCheckBox.setButtonText("Tone");
+    playToneCheckBox.getToggleStateValue().referTo(viewModel.playTone.getValue());
+
+    playEnvelopeCheckBox.setButtonText("Envelope");
+    playEnvelopeCheckBox.getToggleStateValue().referTo(viewModel.playEnvelope.getValue());
+
     addAndMakeVisible(playModeCheckBox);
+    addAndMakeVisible(playToneCheckBox);
+    addAndMakeVisible(playEnvelopeCheckBox);
+    addAndMakeVisible(envelopeShapeSelect);
     addAndMakeVisible(tuningGrid);
 
     // Connect tooltip window to grid
@@ -503,10 +509,16 @@ void TuningPreviewComponent::resized() {
     tuningNameLabel.setBounds(rightColumn.removeFromTop(rowHeight));
     // toneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
 
-    // Play mode row
+    // Play mode row with multiple controls
     auto playModeRow = rightColumn.removeFromTop(rowHeight);
     playModeRow.removeFromLeft(labelsColWidth);
-    playModeCheckBox.setBounds(playModeRow.removeFromLeft(moduleWidth * 3));
+    playModeCheckBox.setBounds(playModeRow.removeFromLeft(moduleWidth * 2));
+    playModeRow.removeFromLeft(gap / 2);
+    playToneCheckBox.setBounds(playModeRow.removeFromLeft(moduleWidth * 2));
+    playModeRow.removeFromLeft(gap / 2);
+    playEnvelopeCheckBox.setBounds(playModeRow.removeFromLeft(moduleWidth * 2));
+    playModeRow.removeFromLeft(gap / 2);
+    envelopeShapeSelect.setBounds(playModeRow.removeFromLeft(moduleWidth * 2));
 
     rightColumn.removeFromTop(gap);
 

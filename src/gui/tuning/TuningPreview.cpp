@@ -14,9 +14,11 @@ TuningPreviewGrid::TuningPreviewGrid(TuningViewModel& vm, TuningPlayer& tp)
     : viewModel(vm), tuningPlayer(tp)
 {
     setOpaque(true);
+    tuningPlayer.addListener(this);
 }
 
 TuningPreviewGrid::~TuningPreviewGrid() {
+    tuningPlayer.removeListener(this);
 }
 
 void TuningPreviewGrid::resized() {
@@ -42,29 +44,100 @@ void TuningPreviewGrid::mouseMove(const MouseEvent& event) {
     }
 }
 
+void TuningPreviewGrid::paintColumnHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNoteName& column, NoteGridHeadingType headingType) {
+    // Draw center tick for Degrees and Notes headers
+    if (headingType == NoteGridHeadingType::Degrees || headingType == NoteGridHeadingType::Notes) {
+        g.setColour(Colors::Theme::surfaceAlt);
+        const int cellCenter = bounds.getX() + (bounds.getWidth() - 2) / 2;
+        g.fillRect(cellCenter, bounds.getY() - 2, 2, 4);
+        g.fillRect(cellCenter, bounds.getBottom() - 2, 2, 4);
+    }
+
+    // Get text based on heading type
+    String text = column.getHeadingText(headingType);
+
+    // Set text color
+    auto color = column.isInScale ? Colors::Theme::textPrimary : Colors::Theme::textPrimary.withAlpha(0.5f);
+    if (column.isRootNote) {
+        color = Colors::Theme::primary.interpolatedWith(Colors::Theme::textPrimary, 0.5f);
+    }
+    g.setColour(color);
+    g.drawText(text, bounds, juce::Justification::centred, true);
+}
+
+void TuningPreviewGrid::paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave) {
+    g.setColour(Colors::Theme::textPrimary);
+    g.drawText(
+        String::formatted("%d", octave),
+        bounds.withTrimmedRight(8),
+        juce::Justification::right, true
+    );
+}
+
+void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note) {
+    float offtune = jlimit(-0.5f, 0.5f, (float) note.offtune / 100.0f);
+
+    auto noteTextColor = Colors::Theme::textPrimary;
+    if (offtune > 0.05f) {
+        noteTextColor = noteTextColor.interpolatedWith(juce::Colours::blue, offtune * 2);
+    } else if (offtune < 0.05f) {
+        noteTextColor = noteTextColor.interpolatedWith(juce::Colours::red, -offtune * 2);
+    }
+
+    auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
+    if (note.isInScale) {
+        g.setColour(noteBgColor);
+        g.fillRect(bounds.reduced(2, 2));
+    } else {
+        noteTextColor = noteTextColor.withAlpha(0.5f);
+        g.setColour(noteBgColor.withAlpha(noteBgColor.getFloatAlpha() * 0.5f));
+        g.fillRect(bounds.reduced(2, 2));
+    }
+
+    // Inter-cell reference tuning ticks at the horizontal center of the cell
+    g.setColour(Colors::Theme::surfaceAlt);
+    const int cellCenter = bounds.getX() + (bounds.getWidth() - 2) / 2;
+    g.fillRect(cellCenter, bounds.getY() - 2, 2, 4);
+    g.fillRect(cellCenter, bounds.getBottom() - 2, 2, 4);
+
+    // In-cell tuning ticks and offtune tick
+    auto tickSize = 6;
+    auto calcTickX = [&](const float tick) -> float {
+        return jmap<float>(tick, -0.5f, 0.5f, (float) bounds.getX(), (float) bounds.getRight() - 2.0f);
+    };
+    auto drawTick = [&](const float tickX) -> void {
+        g.fillRect(tickX, (float) bounds.getY() + 2, 2.0f, (float) tickSize);
+        g.fillRect(tickX, (float) bounds.getBottom() - 2.0f - (float) tickSize, 2.0f, (float) tickSize);
+    };
+
+    float offX = calcTickX(offtune);
+    if (note.offtune >= -50 && note.offtune <= 50) {
+        drawTick(offX);
+    }
+
+    // Drawing text
+    auto textCell = bounds;
+    auto text = String::formatted("%d", note.period);
+    int textWidth = static_cast<int>(std::ceil(TextLayout::getStringWidth(g.getCurrentFont(), text)));
+    textCell.setWidth(textWidth);
+    textCell.setCentre((int) offX, (int) textCell.getCentreY());
+    textCell = textCell.constrainedWithin(bounds.reduced(2, 0));
+
+    g.setColour(noteTextColor);
+    g.drawText(text, textCell, juce::Justification::centred, false);
+
+    // Safe for envelope marker
+    if (note.isSafeForEnvelope()) {
+        g.setColour(Colors::Theme::success);
+        g.fillRect(bounds.getRight() - 6, bounds.getY() + 2, 4, 4);
+    }
+}
+
 void TuningPreviewGrid::paint(juce::Graphics& g) {
     const int cols = viewModel.getNumColumns();
 
-    auto drawCenterTick = [&](const juce::Rectangle<int>& cell) -> void {
-        g.setColour(Colors::Theme::surfaceAlt);
-        const int cellCenter = cell.getX() + (cell.getWidth() - 2) / 2;
-        g.fillRect(cellCenter, cell.getY() - 2, 2, 4);
-        g.fillRect(cellCenter, cell.getBottom() - 2, 2, 4);
-    };
-
-    auto drawColumnHeader = [&](const TuningNoteName& column, Rectangle<int>& gridCell, const String& text) {
-        auto color = column.isInScale ? Colors::Theme::textPrimary : Colors::Theme::textPrimary.withAlpha(0.5f);
-        if (column.isRootNote) {
-            color = Colors::Theme::primary.interpolatedWith(Colors::Theme::textPrimary, 0.5f);
-        }
-        g.setColour(color);
-        g.drawText(text, gridCell, juce::Justification::centred, true);
-        gridCell.translate(cellWidth, 0);
-    };
-
     g.fillAll(Colors::Theme::backgroundAlt);
     auto bounds = getLocalBounds();
-    // bounds.setX(0);
     bounds.removeFromTop(headerRowHeight / 2);
     bounds.setWidth(cellWidth * (cols + 1));
 
@@ -73,12 +146,13 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
     const auto columns = viewModel.getColumnNoteNames();
 
+    // Draw column headers
     {
         auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
         gridCell.translate(firstCellWidth, 0);
         for (const auto& column : columns) {
-            // drawCenterTick(gridCell);
-            drawColumnHeader(column, gridCell, column.tuning);
+            paintColumnHeader(g, gridCell, column, NoteGridHeadingType::Tuning);
+            gridCell.translate(cellWidth, 0);
         }
     }
 
@@ -86,8 +160,8 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
         auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
         gridCell.translate(firstCellWidth, 0);
         for (const auto& column : columns) {
-            drawCenterTick(gridCell);
-            drawColumnHeader(column, gridCell, column.degree.toString());
+            paintColumnHeader(g, gridCell, column, NoteGridHeadingType::Degrees);
+            gridCell.translate(cellWidth, 0);
         }
     }
 
@@ -95,95 +169,24 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
         auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
         gridCell.translate(firstCellWidth, 0);
         for (const auto& column : columns) {
-            drawCenterTick(gridCell);
-            drawColumnHeader(column, gridCell, column.name);
+            paintColumnHeader(g, gridCell, column, NoteGridHeadingType::Notes);
+            gridCell.translate(cellWidth, 0);
         }
     }
 
+    // Draw rows
     const auto octaves = viewModel.getOctaveRange();
     for (auto octave = octaves.getStart(); octave < octaves.getEnd(); ++octave) {
         auto gridCell = bounds.removeFromTop(cellHeight).withSize(cellWidth, cellHeight);
 
-        g.setColour(Colors::Theme::textPrimary);
-        g.drawText(
-            String::formatted("%d", octave),
-            gridCell.withWidth(firstCellWidth).withTrimmedRight(8),
-            juce::Justification::right, true
-        );
+        paintRowHeader(g, gridCell.withWidth(firstCellWidth), octave);
         gridCell.translate(firstCellWidth, 0);
 
         for (const auto& note : viewModel.getOctaveNotes(octave)) {
-            float offtune = jlimit(-0.5f, 0.5f, (float) note.offtune / 100.0f); // Normalize offtune to -0.5 to 0.5 range
-
-            auto noteTextColor = Colors::Theme::textPrimary;
-            if (offtune > 0.05f) {
-                noteTextColor = noteTextColor.interpolatedWith(juce::Colours::blue, offtune * 2);
-            } else if (offtune < 0.05f) {
-                noteTextColor = noteTextColor.interpolatedWith(juce::Colours::red, -offtune * 2);
-            }
-
-            auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
-            if (note.isInScale) {
-                g.setColour(noteBgColor);
-                g.fillRect(gridCell.reduced(2, 2));
-            } else {
-                noteTextColor = noteTextColor.withAlpha(0.5f);
-                g.setColour(noteBgColor.withAlpha(noteBgColor.getFloatAlpha() * 0.5f));
-                g.fillRect(gridCell.reduced(2, 2));
-            }
-
-            //=================================================================
-            // tuner ticks
-
-            // 1. Inter-cell reference tuning ticks at the horizontal center of the cell
-            auto tickSize = 6;
-            drawCenterTick(gridCell);
-
-            // 2. In-cell tuning ticks of this specific note
-            auto calcTickX = [&](const float tick) -> float {
-                return jmap<float>(tick, -0.5f, 0.5f, (float) gridCell.getX(), (float) gridCell.getRight() - 2.0f);
-            };
-            auto drawTick = [&](const float tickX) -> void {
-                g.fillRect(tickX, (float) gridCell.getY() + 2, 2.0f, (float) tickSize);
-                g.fillRect(tickX, (float) gridCell.getBottom() - 2.0f - (float) tickSize, 2.0f, (float) tickSize);
-            };
-
-            // for (const auto& tick : viewModel.getTicksAroundNote(note)) {
-            //     drawTick(calcTickX(tick));
-            // }
-
-            // 3. Offtune tick for this specific note
-            float offX = calcTickX(offtune);
-            if (note.offtune >= -50 && note.offtune <= 50) {
-                drawTick(offX);
-            }
-
-            //=================================================================
-            // drawing text
-
-            auto textCell = gridCell;
-            auto text = String::formatted("%d", note.period);
-            int textWidth = static_cast<int>(std::ceil(TextLayout::getStringWidth(g.getCurrentFont(), text)));
-            // auto textWidth = static_cast<int>(std::ceil(g.getCurrentFont().getStringWidthFloat(text)));
-            textCell.setWidth(textWidth);
-            textCell.setCentre((int) offX, (int) textCell.getCentreY());
-            textCell = textCell.constrainedWithin(gridCell.reduced(2, 0));
-
-            g.setColour(noteTextColor);
-            g.drawText(text, textCell, juce::Justification::centred, false);
-
-            // safe for env marker
-            if (note.isSafeForEnvelope()) {
-                g.setColour(Colors::Theme::success);
-                // TODO tiny triangle icon
-                // TODO add a legend below the grid
-                g.fillRect(gridCell.getRight() - 6, gridCell.getY() + 2, 4, 4);
-            }
-
+            paintNoteCell(g, gridCell, note);
             gridCell.translate(cellWidth, 0);
         }
         gridBottom = gridCell.getBottom();
-        // bounds.removeFromTop(1); // Add a line between rows
     }
 
     // Draw vertical line at the root note column (current key)
@@ -265,6 +268,10 @@ void TuningPreviewGrid::mouseDown(const MouseEvent& event) {
             tuningPlayer.playNote(foundNote.midiNote);
         }
     }
+}
+
+void TuningPreviewGrid::playingNotesChanges() {
+    repaint();
 }
 
 //================================================================================

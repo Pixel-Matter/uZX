@@ -18,6 +18,12 @@ namespace MoTool {
 
 using namespace uZX;
 
+enum class NoteGridHeadingType {
+    Tuning,
+    Degrees,
+    Notes
+};
+
 struct TuningNoteName {
     int noteNumber;        // 0-based note number in 12-semitone system, ie C is 0, C# is 1, etc.
     bool isInScale;        // Whether this note is part of the scale
@@ -25,6 +31,18 @@ struct TuningNoteName {
     ScaleDegree degree;    // Scale degree representation
     String tuning;         // Tuning representation
     bool isRootNote;
+
+    String getHeadingText(NoteGridHeadingType headingType) const {
+        switch (headingType) {
+            case NoteGridHeadingType::Tuning:
+                return tuning;
+            case NoteGridHeadingType::Degrees:
+                return degree.toString();
+            case NoteGridHeadingType::Notes:
+                return name;
+        }
+        return String();
+    }
 };
 
 struct TuningNote {

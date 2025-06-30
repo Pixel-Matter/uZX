@@ -58,14 +58,23 @@ void TuningPlayer::playNote(int midiNote) {
     // Use playGuideNote for immediate preview playback
     updateTuning();
     track.playGuideNote(midiNote, te::MidiChannel(1), 127, true, false, true);
+    playingNotes_.insert(midiNote);
+    // TODO not reliable, need to use a timer to reset the note after a short delay
+
 
     // Previous MIDI clip approach (commented out):
     // replaceNotes({midiNote});
     // startPlayback();
 }
 
+
+const std::set<int>& TuningPlayer::getCurrentlyPlayingNotes() const {
+    return playingNotes_;
+}
+
 void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
-    updateTuning();
+    // updateTuning();
+    // notifyPlayingNotes();
     // // Use playGuideNotes for immediate chord preview
     // juce::Array<int> notes(midiNotes.data(), midiNotes.size());
     // juce::Array<int> velocities;
@@ -79,7 +88,8 @@ void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
 }
 
 void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
-    updateTuning();
+    // updateTuning();
+    // notifyPlayingNotes();
     // // For arpeggio, play notes sequentially using guide notes
     // track.turnOffGuideNotes(); // Stop any currently playing notes
 
@@ -98,6 +108,8 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
 void TuningPlayer::stop() {
     // Use turnOffGuideNotes for immediate stop
     track.turnOffGuideNotes();
+    playingNotes_.clear();
+    notifyPlayingNotes();
 
     // Previous transport approach (commented out):
     // transport.stop(false, false);
@@ -126,6 +138,12 @@ void TuningPlayer::startPlayback() {
     updateTuning();
     transport.setPosition(te::TimePosition::fromSeconds(0.0));
     transport.play(false);
+}
+
+void TuningPlayer::notifyPlayingNotes() {
+    listeners_.call([&](Listener& listener) {
+        listener.playingNotesChanges();
+    });
 }
 
 }

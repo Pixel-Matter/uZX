@@ -9,7 +9,9 @@
 
 namespace MoTool {
 
-class TuningPreviewGrid : public juce::Component, public TooltipClient {
+class TuningPreviewGrid : public juce::Component,
+                          public TooltipClient,
+                          private TuningPlayer::Listener {
 public:
     TuningPreviewGrid(TuningViewModel& vm, TuningPlayer& tp);
     ~TuningPreviewGrid() override;
@@ -41,6 +43,12 @@ private:
 
     // Helper method to find note at mouse position
     bool findNoteAtPosition(Point<int> position, TuningNote& outNote) const;
+    void playingNotesChanges() override;
+
+    // Paint helper methods
+    void paintColumnHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNoteName& column, NoteGridHeadingType headingType);
+    void paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave);
+    void paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note);
 
     TooltipWindow* tooltipWindow = nullptr;
 

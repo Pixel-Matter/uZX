@@ -65,6 +65,8 @@ public:
     double getOfftune(double midiNote) const;
 
     // Setters
+    void setChipCapabilities(const ChipCapabilities& capabilities);
+    const ChipCapabilities& getChipCapabilities() const;
     void setA4Frequency(double frequency);
     double getA4Frequency() const;
     void setClockFrequency(double frequency);
@@ -77,7 +79,7 @@ public:
     // virtual void setState(const juce::ValueTree& state) = 0;
 protected:
     // TODO use CachedValues refTo-ed to a state value in a tree
-    const ChipCapabilities& chip;
+    ChipCapabilities chip;
     double clockFrequency;
     std::unique_ptr<TemperamentSystem> referenceTuning;
 

@@ -69,7 +69,7 @@ TuningType TuningTable::getType() const {
     return TuningType::CustomTable;
 }
 
-int TuningTable::midiNoteToPeriod(double midiNote) const {
+int TuningTable::midiNoteToPeriodRaw(double midiNote) const {
     int note = static_cast<int>(std::round(midiNote));
 
     // If exact note is in table, return it
@@ -121,7 +121,16 @@ int TuningTable::midiNoteToPeriod(double midiNote) const {
                        + std::log(static_cast<double>(upper->second)) * ratio;
 
     result = static_cast<int>(std::round(std::exp(logPeriod)));
-    return jlimit(chip.registerRange.getStart(), chip.registerRange.getEnd() - 1, result);
+    return result;
+}
+
+int TuningTable::midiNoteToPeriod(double midiNote) const {
+    constexpr int baseDivider = 16;
+    auto period = midiNoteToPeriodRaw(midiNote);
+    auto addDivider = chip.divider / baseDivider;
+    // divide rounded to addDivider
+    period = (period + addDivider / 2) / addDivider;
+    return jlimit(chip.registerRange.getStart(), chip.registerRange.getEnd() - 1, period);
 }
 
 double TuningTable::periodToMidiNote(int period) const {

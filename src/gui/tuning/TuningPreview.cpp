@@ -136,7 +136,7 @@ void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<i
     g.drawText(text, textCell, juce::Justification::centred, false);
 
     // Safe for envelope marker
-    if (note.isSafeForEnvelope()) {
+    if (!viewModel.isEnvelopePeriodsShown() && note.isSafeForEnvelope()) {
         g.setColour(Colors::Theme::success);
         g.fillRect(bounds.getRight() - 6, bounds.getY() + 2, 4, 4);
     }
@@ -400,8 +400,8 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     // addAndMakeVisible(toneEnvSwitchLabel);
 
     // Set up play mode checkboxes
-    playModeCheckBox.setButtonText("Play chords");
-    playModeCheckBox.getToggleStateValue().referTo(viewModel.playChords.getValue());
+    playChordsCheckBox.setButtonText("Play chords");
+    playChordsCheckBox.getToggleStateValue().referTo(viewModel.playChords.getValue());
 
     playToneCheckBox.setButtonText("Tone");
     playToneCheckBox.getToggleStateValue().referTo(viewModel.playTone.getValue());
@@ -409,7 +409,7 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     playEnvelopeCheckBox.setButtonText("Envelope");
     playEnvelopeCheckBox.getToggleStateValue().referTo(viewModel.playEnvelope.getValue());
 
-    addAndMakeVisible(playModeCheckBox);
+    addAndMakeVisible(playChordsCheckBox);
     addAndMakeVisible(playToneCheckBox);
     addAndMakeVisible(playEnvelopeCheckBox);
     addAndMakeVisible(envelopeShapeSelect);
@@ -475,33 +475,40 @@ void TuningPreviewComponent::resized() {
     // Right column: Other controls and tuning grid
     // Place KeySelect and ScaleSelect on the same row with fixed widths
     auto labelsColWidth = moduleWidth * 2; // Width for labels
-    auto keyScaleRow = rightColumn.removeFromTop(rowHeight);
-    keyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
-    keySelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth));
-    keyScaleRow.removeFromLeft(gap);
-    scaleSelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth * 3 - gap));
+
+    {
+        auto keyScaleRow = rightColumn.removeFromTop(rowHeight);
+        keyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
+        keySelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth));
+        keyScaleRow.removeFromLeft(gap);
+        scaleSelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth * 3 - gap));
+    }
 
     rightColumn.removeFromTop(gap);
 
-    auto chipLabelRow = rightColumn.removeFromTop(rowHeight);
-    chipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
-    chipClockSelect.setBounds(chipLabelRow.removeFromLeft(moduleWidth * 4));
+    {
+        auto chipLabelRow = rightColumn.removeFromTop(rowHeight);
+        chipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
+        chipClockSelect.setBounds(chipLabelRow.removeFromLeft(moduleWidth * 4));
+    }
 
     rightColumn.removeFromTop(gap);
 
-    // Clock frequency slider on its own row
-    auto clockFreqRow = rightColumn.removeFromTop(rowHeight);
-    clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(labelsColWidth));
-    clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(moduleWidth * 8));
-    clockFrequencyUnits.setBounds(clockFreqRow);
+    { // Clock frequency slider on its own row
+        auto clockFreqRow = rightColumn.removeFromTop(rowHeight);
+        clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(labelsColWidth));
+        clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(moduleWidth * 8));
+        clockFrequencyUnits.setBounds(clockFreqRow);
+    }
 
     rightColumn.removeFromTop(gap);
 
-    // A4 frequency slider with label
-    auto a4Row = rightColumn.removeFromTop(rowHeight);
-    a4FrequencyLabel.setBounds(a4Row.removeFromLeft(labelsColWidth));
-    a4FrequencySlider.setBounds(a4Row.removeFromLeft(moduleWidth * 8));
-    a4FrequencyUnits.setBounds(a4Row);
+    { // A4 frequency slider with label
+        auto a4Row = rightColumn.removeFromTop(rowHeight);
+        a4FrequencyLabel.setBounds(a4Row.removeFromLeft(labelsColWidth));
+        a4FrequencySlider.setBounds(a4Row.removeFromLeft(moduleWidth * 8));
+        a4FrequencyUnits.setBounds(a4Row);
+    }
 
     rightColumn.removeFromTop(gap);
 
@@ -509,16 +516,26 @@ void TuningPreviewComponent::resized() {
     tuningNameLabel.setBounds(rightColumn.removeFromTop(rowHeight));
     // toneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
 
-    // Play mode row with multiple controls
-    auto playModeRow = rightColumn.removeFromTop(rowHeight);
-    playModeRow.removeFromLeft(labelsColWidth);
-    playModeCheckBox.setBounds(playModeRow.removeFromLeft(moduleWidth * 2));
-    playModeRow.removeFromLeft(gap / 2);
-    playToneCheckBox.setBounds(playModeRow.removeFromLeft(moduleWidth * 2));
-    playModeRow.removeFromLeft(gap / 2);
-    playEnvelopeCheckBox.setBounds(playModeRow.removeFromLeft(moduleWidth * 2));
-    playModeRow.removeFromLeft(gap / 2);
-    envelopeShapeSelect.setBounds(playModeRow.removeFromLeft(moduleWidth * 2));
+    rightColumn.removeFromTop(gap);
+
+    {   // Play mode row with multiple controls
+        auto playToneRow = rightColumn.removeFromTop(rowHeight);
+        playToneRow.removeFromLeft(labelsColWidth);
+        // playModeRow.removeFromLeft(labelsColWidth);
+        playToneCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
+        playToneRow.removeFromLeft(gap / 2);
+        playChordsCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
+    }
+
+    rightColumn.removeFromTop(gap);
+
+    {
+        auto playEnvRow = rightColumn.removeFromTop(rowHeight);
+        playEnvRow.removeFromLeft(labelsColWidth);
+        playEnvelopeCheckBox.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
+        playEnvRow.removeFromLeft(gap / 2);
+        envelopeShapeSelect.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
+    }
 
     rightColumn.removeFromTop(gap);
 
@@ -600,8 +617,9 @@ void TuningPreviewComponent::updateControlsState() {
     clockFrequencyLabel.setEnabled(isCustom);
 
     // Update envelope controls
-    bool isEnvelopeEnabled = viewModel.isEnvelopeEnabled();
-    envelopeShapeSelect.setEnabled(isEnvelopeEnabled);
+    playChordsCheckBox.setEnabled(!viewModel.isEnvelopePeriodsShown());
+    playEnvelopeCheckBox.setEnabled(!viewModel.playChords.get());
+    envelopeShapeSelect.setEnabled(viewModel.isEnvelopeEnabled());
 }
 
 void TuningPreviewComponent::setupScaleSelectMenu() {

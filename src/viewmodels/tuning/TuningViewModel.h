@@ -221,7 +221,8 @@ public:
 
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
-        , chipCapabilities {16, Range<int>(1, 4096)}
+        , toneCapabilities {16, Range<int>(1, 4096)}
+        , envCapabilities {16 * 16, Range<int>(0, 65535)}
     {
         // Set up Value listeners for bidirectional sync
         selectedTuningTable.addListener(this);
@@ -376,7 +377,7 @@ public:
     }
 
     Range<int> getChipDividerRange() const {
-        return chipCapabilities.registerRange;
+        return toneCapabilities.registerRange;
     }
 
     Scale::ScaleType getCurrentScaleType() const {
@@ -527,6 +528,34 @@ public:
         return playEnvelope.get();
     }
 
+    bool isEnvelopePeriodsShown() const {
+        // Envelope periods are shown only if envelope is enabled and playTone is not
+        return playEnvelope.get() && !playTone.get();
+    }
+
+    const ChipCapabilities& getCurrentChipCapabilities() const {
+        // Return capabilities based on whether envelope is enabled
+        if (isEnvelopePeriodsShown()) {
+            return envCapabilities;
+        } else {
+            return toneCapabilities;
+        }
+    }
+
+    void updatePlayState() {
+        if (playChords.get()) {
+            playTone = true;
+            playEnvelope = false; // Disable envelope playback when chords are played
+        } else if (!playTone.get() && !playEnvelope.get()) {
+            // If both playTone and playEnvelope are false, enable playTone
+            playTone = true;
+        } else if (isEnvelopePeriodsShown()) {
+            playChords = false; // Disable chords playback when envelope periods are shown
+        }
+        tuningSystem->setChipCapabilities(getCurrentChipCapabilities()); // Update tuning system capabilities
+        sendChangeMessage(); // Notify listeners about the state change
+    }
+
     String exportToCSV() const {
         String csv;
 
@@ -636,7 +665,8 @@ public:
 private:
     // Cached objects derived from values (performance optimization) - only for complex conversions
     mutable Scale currentScale;            // Scale object cache
-    ChipCapabilities chipCapabilities; // Chip capabilities for the tuning system
+    ChipCapabilities toneCapabilities; // Chip capabilities for the tuning system
+    ChipCapabilities envCapabilities; // Chip capabilities for the envelope
     std::unique_ptr<TuningSystem> tuningSystem;
 
     // Value::Listener implementation for bidirectional sync
@@ -692,12 +722,17 @@ private:
             recreateTuningSystem(); // Reset to tuning defaults when changing tuning table
             // DBG("Tuning table index changed from valueChanged sendChangeMessage");
             sendChangeMessage();
+        } else if (value.refersToSameSourceAs(playChords.getValue())) {
+            // DBG("playChords changed from valueChanged");
+            updatePlayState();
+            // sendChangeMessage();
         } else if (value.refersToSameSourceAs(playTone.getValue())) {
             // DBG("playTone changed from valueChanged");
+            updatePlayState();
             // sendChangeMessage();
         } else if (value.refersToSameSourceAs(playEnvelope.getValue())) {
             // DBG("playEnvelope changed from valueChanged");
-            sendChangeMessage();
+            updatePlayState();
         }
     }
 
@@ -707,7 +742,7 @@ private:
 
         TuningOptions options {
             .tableType = tuningType,
-            .capabilities = chipCapabilities,
+            .capabilities = getCurrentChipCapabilities(),
             .temperamentType = TemperamentType::EqualTemperament, // TODO from view property
             .tonic = getCurrentRoot(),
             .scaleType = getCurrentScaleType(),
@@ -721,7 +756,6 @@ private:
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
             selectedRoot = options.tonic;
-            DBG("Setting selectedScale to: " << Scale::getNameForType(options.scaleType));
             selectedScale = options.scaleType;
             selectedChip = options.chipChoice;
             clockFrequencyMhz = options.chipClock / MHz; // Convert Hz to MHz

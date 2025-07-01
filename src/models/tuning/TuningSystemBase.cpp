@@ -35,6 +35,14 @@ double TuningSystem::getOfftune(double midiNote) const {
     return 1200.0 * std::log2(freq / refFreq);
 }
 
+void TuningSystem::setChipCapabilities(const ChipCapabilities& capabilities) {
+    chip = capabilities;
+}
+
+const ChipCapabilities& TuningSystem::getChipCapabilities() const {
+    return chip;
+}
+
 void TuningSystem::setA4Frequency(double frequency) {
     jassert(referenceTuning != nullptr);
     referenceTuning->setA4Frequency(frequency);

@@ -55,6 +55,7 @@ private:
     int minDefinedNote_;
     int maxDefinedNote_;
 
+    int midiNoteToPeriodRaw(double midiNote) const;
     int findClosestNoteByPeriod(int period) const;
 };
 

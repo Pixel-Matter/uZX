@@ -143,7 +143,7 @@ private:
     Label toneEnvSwitchLabel;
 
     // Label playModeLabel;
-    ToggleButton playModeCheckBox;
+    ToggleButton playChordsCheckBox;
     ToggleButton playToneCheckBox;
     ToggleButton playEnvelopeCheckBox;
     ComboBox envelopeShapeSelect;

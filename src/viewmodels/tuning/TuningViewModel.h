@@ -206,16 +206,16 @@ public:
         : transientState(IDs::TUNINGVIEWSTATE)
         , undoManager(um)
                                                                  // no undo for this control
-        , selectedTuningTable(transientState, IDs::tuningTable, nullptr, BuiltinTuningType::EqualTemperament)
-        , selectedChip       (transientState, IDs::chipClock,   ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
-        , selectedRoot       (transientState, IDs::key,         Scale::getAllKeyNames(),          um, Scale::Key::C)
-        , selectedScale      (transientState, IDs::scale,                                         um, Scale::ScaleType::IonianOrMajor)
-        , a4Frequency        (transientState, IDs::a4Freq,      {220.0, 880.0, 0.1},              um, 440.0)
-        , clockFrequencyMhz  (transientState, IDs::clockFreq,   {1.0, 2.0, 0.001},                um, 1.7734) // MHz
+        , selectedTuningTable(transientState, IDs::tuningTable,  nullptr, BuiltinTuningType::EqualTemperament)
+        , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
+        , selectedRoot       (transientState, IDs::key,          Scale::getAllKeyNames(),          um, Scale::Key::C)
+        , selectedScale      (transientState, IDs::scale,                                          um, Scale::ScaleType::IonianOrMajor)
+        , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              um, 440.0)
+        , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                um, 1.7734) // MHz
 
-        , playChords         (transientState, IDs::playChords,                                    um, false)
-        , playTone           (transientState, IDs::playTone,                                      um, true)
-        , playEnvelope       (transientState, IDs::playEnvelope,                                  um, false)
+        , playChords         (transientState, IDs::playChords,                                     um, false)
+        , playTone           (transientState, IDs::playTone,                                       um, true)
+        , playEnvelope       (transientState, IDs::playEnvelope,                                   um, false)
         , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), um, EnvShapeSimpleEnum::Triangle)
         , envelopeMode       (transientState, IDs::envelopeMode,  EnvModeChoice::getLongLabels(),  um, EnvModeEnum::Unison)
 
@@ -230,6 +230,15 @@ public:
         selectedScale.addListener(this);
         a4Frequency.addListener(this);
         clockFrequencyMhz.addListener(this);
+        playChords.addListener(this);
+        playTone.addListener(this);
+        playEnvelope.addListener(this);
+
+        // init default values
+        // The problem is that setting initial value in ParamAttachment constructor
+        // before adding listeners results in not calling valueChanged
+        // Or we can not init and bind in the constructor but rather in referTo after addListener
+        playTone = true;
 
         recreateTuningSystem();
     }
@@ -514,6 +523,10 @@ public:
         return getChipChoice() == ChipClockChoice::Custom;
     }
 
+    bool isEnvelopeEnabled() const {
+        return playEnvelope.get();
+    }
+
     String exportToCSV() const {
         String csv;
 
@@ -679,6 +692,12 @@ private:
             recreateTuningSystem(); // Reset to tuning defaults when changing tuning table
             // DBG("Tuning table index changed from valueChanged sendChangeMessage");
             sendChangeMessage();
+        } else if (value.refersToSameSourceAs(playTone.getValue())) {
+            // DBG("playTone changed from valueChanged");
+            // sendChangeMessage();
+        } else if (value.refersToSameSourceAs(playEnvelope.getValue())) {
+            // DBG("playEnvelope changed from valueChanged");
+            sendChangeMessage();
         }
     }
 
@@ -702,6 +721,7 @@ private:
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
             selectedRoot = options.tonic;
+            DBG("Setting selectedScale to: " << Scale::getNameForType(options.scaleType));
             selectedScale = options.scaleType;
             selectedChip = options.chipChoice;
             clockFrequencyMhz = options.chipClock / MHz; // Convert Hz to MHz

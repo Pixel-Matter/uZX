@@ -108,7 +108,7 @@ private:
     // UI setup helpers
     void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
                                      RangedParamAttachment<double>& attachment);
-    void updateClockControlsState();
+    void updateControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();
 

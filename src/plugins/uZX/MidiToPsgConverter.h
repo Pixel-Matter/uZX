@@ -52,8 +52,8 @@ public:
     // State access for testing
     const ChannelState& getChannelState(int channel) const;
     void debugChannelStates() const {
-        for (int i = 0; i < numChannels_; ++i) {
-            DBG("Channel " << (baseChannel_ + i) << ": "
+        for (size_t i = 0; i < static_cast<size_t>(numChannels_); ++i) {
+            DBG("Channel " << (static_cast<size_t>(baseChannel_) + i) << ": "
                 << "Note: " << (channels_[i].currentNote.has_value() ? std::to_string(channels_[i].currentNote.value()) : "none")
                 << ", Velocity: " << channels_[i].velocity
                 << ", Aftertouch: " << channels_[i].aftertouch

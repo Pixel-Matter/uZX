@@ -389,8 +389,8 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 frequency:", a4FrequencyUnits,
                                 viewModel.a4Frequency);
 
-    // Set initial clock controls state
-    updateClockControlsState();
+    // Set initial controls state
+    updateControlsState();
 
     // Register as a change listener to the view model
     viewModel.addChangeListener(this);
@@ -541,7 +541,7 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
         // DBG("TuningPreviewComponent::changeListenerCallback");
         tuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
-        updateClockControlsState();
+        updateControlsState();
         tuningGrid.repaint();
     }
 }
@@ -593,10 +593,15 @@ void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& 
     addAndMakeVisible(unitsLabel);
 }
 
-void TuningPreviewComponent::updateClockControlsState() {
+void TuningPreviewComponent::updateControlsState() {
+    // Update clock controls
     bool isCustom = viewModel.isCustomClockEnabled();
     clockFrequencySlider.setEnabled(isCustom);
     clockFrequencyLabel.setEnabled(isCustom);
+
+    // Update envelope controls
+    bool isEnvelopeEnabled = viewModel.isEnvelopeEnabled();
+    envelopeShapeSelect.setEnabled(isEnvelopeEnabled);
 }
 
 void TuningPreviewComponent::setupScaleSelectMenu() {

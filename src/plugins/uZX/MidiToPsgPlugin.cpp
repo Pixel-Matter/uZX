@@ -6,7 +6,7 @@ const char* MidiToPsgPlugin::xmlTypeName = "midiToPsg";
 
 MidiToPsgPlugin::MidiToPsgPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
-    , converter_(1, 3) // Default: channels 1-3
+    , converter_(1, 4) // Default: channels 1-4
 {
 }
 
@@ -61,7 +61,7 @@ std::unique_ptr<te::Plugin::EditorComponent> MidiToPsgPlugin::createEditor() {
 
 void MidiToPsgPlugin::Params::initialise() {
     baseMidiChannelValue.referTo(IDs::midiBase, "Base MIDI channel", {1, 16, 1}, 1);
-    numChannelsValue.referTo(IDs::midiChans, "Number of channels", {1, 4, 1}, 3);
+    numChannelsValue.referTo(IDs::midiChans, "Number of channels", {1, 4, 1}, 4);
 }
 
 void MidiToPsgPlugin::Params::restoreFromTree(const juce::ValueTree& v) {

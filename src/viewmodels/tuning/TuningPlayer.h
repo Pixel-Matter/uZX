@@ -48,7 +48,7 @@ public:
 
     void playArpeggio(const std::vector<int>& midiNotes);
 
-    void stop();
+    void stop(bool notify = true);
 
     void addListener(Listener* listener) { listeners_.add(listener); }
     void removeListener(Listener* listener) { listeners_.remove(listener); }
@@ -65,7 +65,12 @@ private:
     juce::ListenerList<Listener> listeners_;
     std::map<int, int> playingNotes_;  // Currently playing MIDI notes on which channels
 
+
     // Helper methods
+    int getMonophonicChannel() const;
+    void sendNoteOn(int midiNote, int channel, bool isEnvelope = false);
+    void sendNoteOff(int midiNote, int channel, bool isEnvelope = false);
+    void playEnvelopeNote(int midiNote);
     void updateTuning();
     void replaceNotes(const std::vector<int>& midiNotes, double noteLength = 0.5);
     void startPlayback();

@@ -54,16 +54,40 @@ te::MidiClip::Ptr TuningPlayer::createMIDIClip() {
     return {};
 }
 
-void TuningPlayer::playNote(int midiNote) {
-    // Use playGuideNote for immediate preview playback
+void TuningPlayer::sendNoteOn(int midiNote, int channel, bool isEnvelope) {
+    track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
+    playingNotes_[midiNote] = channel;
+}
+
+void TuningPlayer::sendNoteOff(int midiNote, int channel, bool isEnvelope) {
+    track.injectLiveMidiMessage(juce::MidiMessage::noteOff(channel, midiNote), {});
+    playingNotes_.erase(midiNote);
+}
+
+void TuningPlayer::playEnvelopeNote(int midiNote) {
     updateTuning();
-    track.playGuideNote(midiNote, te::MidiChannel(1), 127, true, false, true);
-    playingNotes_[midiNote] = 1; // Store note with its channel
+    int channel = getMonophonicChannel();
+
+    sendNoteOn(midiNote, channel, true);
     notifyPlayingNotes();
 
     // Clear the note after a short delay to simulate note release
-    juce::Timer::callAfterDelay(100, [this, midiNote]() {
-        playingNotes_.erase(midiNote);
+    juce::Timer::callAfterDelay(200, [this, midiNote, channel]() {
+        sendNoteOff(midiNote, channel, true);
+        notifyPlayingNotes();
+    });
+}
+
+void TuningPlayer::playNote(int midiNote) {
+    // Use playGuideNote for immediate preview playback
+    updateTuning();
+    int channel = getMonophonicChannel();
+    sendNoteOn(midiNote, channel);
+    notifyPlayingNotes();
+
+    // Clear the note after a short delay to simulate note release
+    juce::Timer::callAfterDelay(200, [this, midiNote, channel]() {
+        sendNoteOff(midiNote, channel);
         notifyPlayingNotes();
     });
 
@@ -119,24 +143,24 @@ void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
     constexpr int duration = 600;
     updateTuning();
 
-    playingNotes_.clear();
+    stop(/*notify=*/ false);
+
     // for no more than first 3 notes for chord playback
     for (size_t i = 0; i < std::min(midiNotes.size(), 3ul); ++i) {
-        track.playGuideNote(midiNotes[i], te::MidiChannel((int) i + 1), 127, false);
-        playingNotes_[midiNotes[i]] = (int) i + 1; // Store note with its channel
+        sendNoteOn(midiNotes[i], (int) i + 1, false);
+
+        juce::Timer::callAfterDelay(static_cast<int>(duration), [this, note = midiNotes[i], channel = (int) i + 1]() {
+            sendNoteOff(note, channel);
+            notifyPlayingNotes();
+        });
     }
     notifyPlayingNotes();
 
-    // Clear all notes after chord finishes
-    juce::Timer::callAfterDelay(duration, [this]() {
-        for (auto& [note, channel] : playingNotes_) {
-            track.injectLiveMidiMessage(juce::MidiMessage::noteOff(channel, note), {});
-        }
-        // do not work properly (clears guiding notes array on forst midi channel)
-        track.turnOffGuideNotes();
-        playingNotes_.clear();
-        notifyPlayingNotes();
-    });
+    // // Clear all notes after chord finishes
+    // juce::Timer::callAfterDelay(duration, [this, notesToPlay = playingNotes_]() {
+    //     // TODO stop only initially intended to play notes
+    //     stop();
+    // });
 
     // Previous MIDI clip approach (commented out):
     // replaceNotes(midiNotes);
@@ -148,40 +172,37 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
     updateTuning();
 
     if (midiNotes.empty()) return;
+    int channel = getMonophonicChannel();
+
+    stop(/*notify=*/ false);
 
     // Play first note immediately
-    track.playGuideNote(midiNotes[0], te::MidiChannel(1), 127, false);
-    playingNotes_.clear();
-    playingNotes_[midiNotes[0]] = 1; // Store note with its channel
+    sendNoteOn(midiNotes[0], channel);
     notifyPlayingNotes();
 
     // Add remaining notes with callAfterDelay
     for (size_t i = 1; i < midiNotes.size(); ++i) {
-        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i]]() {
-            track.turnOffGuideNotes();
-            track.playGuideNote(note, te::MidiChannel(1), 127, true, true, false);
-            playingNotes_.clear();
-            playingNotes_[note] = 1; // Store note with its channel
+        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, i, note = midiNotes[i], channel]() {
+            stop(/*notify=*/ false);
+            sendNoteOn(note, channel);
             notifyPlayingNotes();
         });
     }
 
     // Clear all notes after arpeggio finishes
     juce::Timer::callAfterDelay(duration * static_cast<int>(midiNotes.size()), [this]() {
-        track.turnOffGuideNotes();  // works for channel 1 only
-        playingNotes_.clear();
-        notifyPlayingNotes();
+        stop();
     });
 }
 
-void TuningPlayer::stop() {
-    // Use turnOffGuideNotes for immediate stop
-    track.turnOffGuideNotes();
-    playingNotes_.clear();
-    notifyPlayingNotes();
-
-    // Previous transport approach (commented out):
-    // transport.stop(false, false);
+void TuningPlayer::stop(bool notify) {
+    while (!playingNotes_.empty()) {
+        auto [note, channel] = *playingNotes_.begin();
+        sendNoteOff(note, channel); // This will erase the element from the map
+    }
+    if (notify) {
+        notifyPlayingNotes();
+    }
 }
 
 void TuningPlayer::replaceNotes(const std::vector<int>& midiNotes, double noteLength) {
@@ -201,6 +222,13 @@ void TuningPlayer::replaceNotes(const std::vector<int>& midiNotes, double noteLe
             startTime += noteLength;
         }
     }
+}
+
+int TuningPlayer::getMonophonicChannel() const {
+    if (viewModel.isEnvelopePeriodsShown()) {
+        return 4; // Default to channel 4 if envelope periods are shown
+    }
+    return 2; // middle channel for monophonic playback
 }
 
 void TuningPlayer::startPlayback() {

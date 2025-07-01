@@ -116,7 +116,7 @@ void MidiToPsgConverter::emitEnvSwitchCC(int channel, bool on) {
 
 void MidiToPsgConverter::emitCC(int channel, int controller, int value) {
     auto msg = juce::MidiMessage::controllerEvent(channel, controller, value);
-    // DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
+    DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
     // auto& state = getChannelState(channel);
     // DBG("emitCC Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
 

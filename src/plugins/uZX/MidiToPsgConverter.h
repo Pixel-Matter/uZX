@@ -63,7 +63,7 @@ public:
 
 private:
     int baseChannel_ = 1;
-    int numChannels_ = 3;
+    int numChannels_ = 4;
     std::array<ChannelState, 4> channels_;
     const TuningSystem* tuningSystem_ = nullptr;
     std::vector<juce::MidiMessage> outputBuffer_;

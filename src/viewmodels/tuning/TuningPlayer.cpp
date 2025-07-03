@@ -55,45 +55,65 @@ te::MidiClip::Ptr TuningPlayer::createMIDIClip() {
 }
 
 void TuningPlayer::sendNoteOn(int midiNote, int channel, bool isEnvelope) {
-    track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
+    if (isEnvelope) {
+        DBG("Sending envelope note on: " << midiNote << " on channel " << channel);
+        // send MidiCCType::SoundVariation 8
+        // track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
+
+        // env period
+        track.injectLiveMidiMessage(juce::MidiMessage::noteOn(4, midiNote, static_cast<uint8>(127)), {});
+        // env set shape and retriger
+        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(4,
+                                    static_cast<int>(MidiCCType::SoundVariation), 12), {});
+
+        // tone retrigger
+        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
+                                    static_cast<int>(MidiCCType::CC20PeriodCoarse), 0), {});
+        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
+                                    static_cast<int>(MidiCCType::CC52PeriodFine), 0), {});
+        // tone on
+        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
+                                    static_cast<int>(MidiCCType::GPB1ToneSwitch), 127), {});
+        // envelope on
+        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
+                                    static_cast<int>(MidiCCType::GPB3EnvSwitch), 127), {});
+        // track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
+    } else {
+        track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
+        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
+            static_cast<int>(MidiCCType::GPB1ToneSwitch), 127), {});
+    }
     playingNotes_[midiNote] = channel;
 }
 
 void TuningPlayer::sendNoteOff(int midiNote, int channel, bool isEnvelope) {
-    track.injectLiveMidiMessage(juce::MidiMessage::noteOff(channel, midiNote), {});
+    if (isEnvelope) {
+        DBG("Sending envelope note off: " << midiNote << " on channel " << channel);
+        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
+            static_cast<int>(MidiCCType::Volume), 0), {});
+        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
+            static_cast<int>(MidiCCType::GPB3EnvSwitch), 0), {});
+        // note off not needed, but for symmetry
+        track.injectLiveMidiMessage(juce::MidiMessage::noteOff(channel, midiNote), {});
+        track.injectLiveMidiMessage(juce::MidiMessage::noteOff(4, midiNote), {});
+    } else {
+        track.injectLiveMidiMessage(juce::MidiMessage::noteOff(channel, midiNote), {});
+    }
     playingNotes_.erase(midiNote);
 }
 
-void TuningPlayer::playEnvelopeNote(int midiNote) {
-    updateTuning();
-    int channel = getMonophonicChannel();
-
-    sendNoteOn(midiNote, channel, true);
-    notifyPlayingNotes();
-
-    // Clear the note after a short delay to simulate note release
-    juce::Timer::callAfterDelay(200, [this, midiNote, channel]() {
-        sendNoteOff(midiNote, channel, true);
-        notifyPlayingNotes();
-    });
-}
-
 void TuningPlayer::playNote(int midiNote) {
-    // Use playGuideNote for immediate preview playback
     updateTuning();
     int channel = getMonophonicChannel();
-    sendNoteOn(midiNote, channel);
+    bool env = viewModel.isEnvelopeEnabled();
+    sendNoteOn(midiNote, channel, env);
     notifyPlayingNotes();
 
     // Clear the note after a short delay to simulate note release
-    juce::Timer::callAfterDelay(200, [this, midiNote, channel]() {
-        sendNoteOff(midiNote, channel);
+    juce::Timer::callAfterDelay(200, [this, midiNote, channel, env]() {
+        sendNoteOff(midiNote, channel, env);
         notifyPlayingNotes();
     });
-
-    // Previous MIDI clip approach (commented out):
-    // replaceNotes({midiNote});
-    // startPlayback();
 }
 
 bool TuningPlayer::isNotePlaying(int midiNote) const {
@@ -182,7 +202,7 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
 
     // Add remaining notes with callAfterDelay
     for (size_t i = 1; i < midiNotes.size(); ++i) {
-        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, i, note = midiNotes[i], channel]() {
+        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel]() {
             stop(/*notify=*/ false);
             sendNoteOn(note, channel);
             notifyPlayingNotes();
@@ -225,9 +245,6 @@ void TuningPlayer::replaceNotes(const std::vector<int>& midiNotes, double noteLe
 }
 
 int TuningPlayer::getMonophonicChannel() const {
-    if (viewModel.isEnvelopePeriodsShown()) {
-        return 4; // Default to channel 4 if envelope periods are shown
-    }
     return 2; // middle channel for monophonic playback
 }
 

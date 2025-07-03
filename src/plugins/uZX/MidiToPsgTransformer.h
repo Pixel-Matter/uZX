@@ -13,25 +13,27 @@ namespace MoTool::uZX {
  * Core converter class that processes MIDI note events and generates PSG MIDI CC messages.
  * This class is designed to be testable and reusable.
  */
-class MidiToPsgConverter {
+class MidiToPsgTransformer {
 public:
     struct ChannelState {
         std::optional<int> currentNote;
         int velocity = 0;
         int aftertouch = 0;
         int lastVolume = -1;  // Track last emitted volume to avoid redundant updates
-        bool toneOn = false;
+        // bool toneOn = false;
+        // bool noiseOn = false;
+        // bool envOn = true;
 
         void clear() {
             currentNote.reset();
             velocity = 0;
             aftertouch = 0;
             lastVolume = -1;
-            toneOn = false;
+            // do not clear modulation switches, they should stay on until explicitly turned off
         }
     };
 
-    explicit MidiToPsgConverter(int baseChannel = 1, int numChannels = 3);
+    explicit MidiToPsgTransformer(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
     void setTuningSystem(const TuningSystem* tuning) { tuningSystem_ = tuning; }
@@ -57,7 +59,10 @@ public:
                 << "Note: " << (channels_[i].currentNote.has_value() ? std::to_string(channels_[i].currentNote.value()) : "none")
                 << ", Velocity: " << channels_[i].velocity
                 << ", Aftertouch: " << channels_[i].aftertouch
-                << ", Tone On: " << (channels_[i].toneOn ? "Yes" : "No"));
+                // << ", Tone On: " << (channels_[i].toneOn ? "Yes" : "No")
+                // << ", Noise On: " << (channels_[i].noiseOn ? "Yes" : "No")
+                // << ", Env On: " << (channels_[i].envOn ? "Yes" : "No")
+            );
         }
     }
 
@@ -78,7 +83,7 @@ private:
     void emitPeriodCC(int channel, int period);
     void emitCC(int channel, int controller, int value);
     int velocityAndAftertouchToVolume(int velocity, int aftertouch) const;
-    void updateChannelOutput(int channel);
+    void updateNoteVolume(int channel);
 };
 
 } // namespace MoTool::uZX

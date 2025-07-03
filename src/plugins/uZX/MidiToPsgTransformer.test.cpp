@@ -1,5 +1,5 @@
 #include <JuceHeader.h>
-#include "MidiToPsgConverter.h"
+#include "MidiToPsgTransformer.h"
 #include "../../models/tuning/TuningSystemBase.h"
 #include "../../models/tuning/TuningRegistry.h"
 #include "../../models/tuning/TemperamentSystem.h"
@@ -13,7 +13,7 @@ using namespace juce;
 
 class MidiToPsgConverterTests : public UnitTest {
 public:
-    MidiToPsgConverterTests() : UnitTest("MidiToPsgConverter", "MoTool") {}
+    MidiToPsgConverterTests() : UnitTest("MidiToPsgTransformer", "MoTool") {}
 
 private:
     ChipCapabilities testCaps {16, Range<int>(1, 4096)};
@@ -21,7 +21,6 @@ private:
     std::unique_ptr<TuningSystem> createTestTuning() {
         TuningOptions options {
             .tableType = BuiltinTuningEnum::EqualTemperament,
-            .capabilities = testCaps,
             .temperamentType = TemperamentTypeEnum::EqualTemperament,
             .tonic = Scale::Key::C,
             .scaleType = Scale::ScaleType::IonianOrMajor,
@@ -61,8 +60,8 @@ private:
     }
 
     // Helper to check converter state
-    void expectChannelState(const MidiToPsgConverter& converter, int channel, int expectedNote, const String& description) {
-        const auto& constConverter = static_cast<const MidiToPsgConverter&>(converter);
+    void expectChannelState(const MidiToPsgTransformer& converter, int channel, int expectedNote, const String& description) {
+        const auto& constConverter = static_cast<const MidiToPsgTransformer&>(converter);
         const auto& state = constConverter.getChannelState(channel);
         expectEquals(state.currentNote.value_or(-1), expectedNote, description);
     }
@@ -71,7 +70,7 @@ public:
     void runTest() override {
         beginTest("Basic note on/off");
         {
-            MidiToPsgConverter converter(1, 3);
+            MidiToPsgTransformer converter(1, 3);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -97,7 +96,7 @@ public:
 
         beginTest("Channel filtering");
         {
-            MidiToPsgConverter converter(2, 2); // Channels 2-3 only
+            MidiToPsgTransformer converter(2, 2); // Channels 2-3 only
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -120,7 +119,7 @@ public:
 
         beginTest("Monophonic behavior");
         {
-            MidiToPsgConverter converter(1, 1);
+            MidiToPsgTransformer converter(1, 1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -155,7 +154,7 @@ public:
 
         beginTest("Velocity and aftertouch mapping");
         {
-            MidiToPsgConverter converter(1, 1);
+            MidiToPsgTransformer converter(1, 1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -176,7 +175,7 @@ public:
 
         beginTest("CC passthrough");
         {
-            MidiToPsgConverter converter(1, 1);
+            MidiToPsgTransformer converter(1, 1);
 
             // Test random CC passthrough
             converter.controlChange(1, 64, 100); // Sustain pedal
@@ -190,20 +189,20 @@ public:
 
         beginTest("Optimized tone switching");
         {
-            MidiToPsgConverter converter(1, 1);
+            MidiToPsgTransformer xformer(1, 1);
             auto tuning = createTestTuning();
-            converter.setTuningSystem(tuning.get());
+            xformer.setTuningSystem(tuning.get());
 
             // First note - should turn tone ON
-            converter.noteOn(1, 60, 100);
-            auto messages = converter.getOutputMessages();
+            xformer.noteOn(1, 60, 100);
+            auto messages = xformer.getOutputMessages();
 
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 127, "First note should turn tone ON");
 
             // Second note - should NOT send tone switch (already on)
-            converter.clearOutput();
-            converter.noteOn(1, 62, 120);
-            messages = converter.getOutputMessages();
+            xformer.clearOutput();
+            xformer.noteOn(1, 62, 120);
+            messages = xformer.getOutputMessages();
 
             expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Second note should NOT send tone switch");
             expectCC(messages, MidiCCType::Volume, "Second note should send volume");
@@ -211,16 +210,16 @@ public:
             expectCC(messages, MidiCCType::CC52PeriodFine, "Second note should send period fine");
 
             // Note off - should turn tone OFF
-            converter.clearOutput();
-            converter.noteOff(1, 62);
-            messages = converter.getOutputMessages();
+            xformer.clearOutput();
+            xformer.noteOff(1, 62);
+            messages = xformer.getOutputMessages();
 
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 0, "Note off should turn tone OFF");
         }
 
         beginTest("Period encoding correctness");
         {
-            MidiToPsgConverter converter(1, 1);
+            MidiToPsgTransformer converter(1, 1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 

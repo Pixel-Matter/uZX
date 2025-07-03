@@ -6,7 +6,7 @@ const char* MidiToPsgPlugin::xmlTypeName = "midiToPsg";
 
 MidiToPsgPlugin::MidiToPsgPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
-    , converter_(1, 4) // Default: channels 1-4
+    , transformer(1, 4) // Default: channels 1-4
 {
 }
 
@@ -29,7 +29,7 @@ void MidiToPsgPlugin::applyToBuffer(const te::PluginRenderContext& rc) noexcept 
         }
 
         // Get output messages from converter and add to buffer
-        auto outputMessages = converter_.getOutputMessages();
+        auto outputMessages = transformer.getOutputMessages();
         for (const auto& msg : outputMessages) {
             // DBG("out midi message " << msg.getDescription());
             rc.bufferForMidiMessages->addMidiMessage(msg, 0);
@@ -40,13 +40,13 @@ void MidiToPsgPlugin::applyToBuffer(const te::PluginRenderContext& rc) noexcept 
 }
 
 void MidiToPsgPlugin::midiPanic() {
-    converter_.clearOutput();
-    converter_.initPSG();
+    transformer.clearOutput();
+    transformer.initPSG();
 }
 
 void MidiToPsgPlugin::reset() {
-    converter_.clearOutput();
-    converter_.initPSG();
+    transformer.clearOutput();
+    transformer.initPSG();
 }
 
 void MidiToPsgPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
@@ -84,30 +84,30 @@ void MidiToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& i
 }
 
 void MidiToPsgPlugin::updateConverterParams() {
-    converter_.setBaseChannel(staticParams.baseMidiChannelValue.get());
-    converter_.setNumChannels(staticParams.numChannelsValue.get());
-    converter_.initPSG();
+    transformer.setBaseChannel(staticParams.baseMidiChannelValue.get());
+    transformer.setNumChannels(staticParams.numChannelsValue.get());
+    transformer.initPSG();
 }
 
 void MidiToPsgPlugin::setTuningSystem(TuningSystem* tuningSystem) {
-    currentTuningSystem_ = tuningSystem;
-    converter_.setTuningSystem(currentTuningSystem_);
+    currentTuningSystem = tuningSystem;
+    transformer.setTuningSystem(currentTuningSystem);
 }
 
 void MidiToPsgPlugin::processMidiMessageWithSource(const te::MidiMessageWithSource& msg) {
     // DBG("Processing MIDI message: " << msg.getDescription());
     // converter_.debugChannelStates();
     if (msg.isNoteOn()) {
-        converter_.noteOn(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity());
+        transformer.noteOn(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity());
     }
     else if (msg.isNoteOff()) {
-        converter_.noteOff(msg.getChannel(), msg.getNoteNumber());
+        transformer.noteOff(msg.getChannel(), msg.getNoteNumber());
     }
     else if (msg.isAftertouch()) {
-        converter_.aftertouch(msg.getChannel(), msg.getAfterTouchValue());
+        transformer.aftertouch(msg.getChannel(), msg.getAfterTouchValue());
     }
     else if (msg.isController()) {
-        converter_.controlChange(msg.getChannel(), msg.getControllerNumber(), msg.getControllerValue());
+        transformer.controlChange(msg.getChannel(), msg.getControllerNumber(), msg.getControllerValue());
     }
 }
 

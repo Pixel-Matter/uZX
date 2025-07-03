@@ -20,7 +20,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.temperamentType = TemperamentType::EqualTemperament;
 
             return std::make_unique<AutoTuning>(
-                options.capabilities, options.chipClock, std::make_unique<EqualTemperamentTuning>(options.a4Frequency)
+                options.chipClock, std::make_unique<EqualTemperamentTuning>(options.a4Frequency)
             );
 
         case BuiltinTuningType::Just5Limit:
@@ -32,7 +32,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.scaleType = Scale::ScaleType::Phrygian;
             options.temperamentType = TemperamentType::Just5Limit;
             return std::make_unique<AutoTuning>(
-                options.capabilities, options.chipClock, makeTemperamentSystem(
+                options.chipClock, makeTemperamentSystem(
                     options.temperamentType,
                     options.tonic,
                     options.a4Frequency
@@ -48,7 +48,6 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::EqualTemperament;
             return std::make_unique<TuningTable>(
-                options.capabilities,
                 options.chipClock,
                 std::make_unique<EqualTemperamentTuning>(options.a4Frequency),
                 24, // Starting at MIDI note 24 (C1)
@@ -83,7 +82,6 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::EqualTemperament;
             return std::make_unique<TuningTable>(
-                options.capabilities,
                 options.chipClock,
                 std::make_unique<EqualTemperamentTuning>(options.a4Frequency),
                 24, // Starting at MIDI note 24 (C1)
@@ -118,7 +116,6 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::EqualTemperament;
             return std::make_unique<TuningTable>(
-                options.capabilities,
                 options.chipClock,
                 std::make_unique<EqualTemperamentTuning>(options.a4Frequency),
                 24, // Starting at MIDI note 24 (C1)
@@ -153,7 +150,6 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::EqualTemperament;
             return std::make_unique<TuningTable>(
-                options.capabilities,
                 options.chipClock,
                 std::make_unique<EqualTemperamentTuning>(options.a4Frequency),
                 24, // Starting at MIDI note 24 (C1)
@@ -189,7 +185,6 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::Just5Limit;
             return std::make_unique<TuningTable>(
-                options.capabilities,
                 options.chipClock,
                 makeTemperamentSystem(
                     options.temperamentType,

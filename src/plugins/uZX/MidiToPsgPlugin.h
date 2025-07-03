@@ -1,7 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "MidiToPsgConverter.h"
+#include "MidiToPsgTransformer.h"
 #include "../../models/tuning/TuningSystemBase.h"
 #include "../../controllers/ParamAttachments.h"
 
@@ -70,8 +70,8 @@ public:
 
 private:
     //==============================================================================
-    uZX::MidiToPsgConverter converter_;
-    TuningSystem* currentTuningSystem_ = nullptr;
+    uZX::MidiToPsgTransformer transformer;
+    TuningSystem* currentTuningSystem = nullptr;
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;

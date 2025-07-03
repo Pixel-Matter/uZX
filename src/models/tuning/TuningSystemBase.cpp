@@ -2,45 +2,36 @@
 
 namespace MoTool {
 
-double TuningSystem::periodToFrequency(int period) const {
-    if (period <= 0) return 0.0;
-    return clockFrequency / chip.divider / period;
+double TuningSystem::periodToFrequency(int period, PeriodMode mode) const {
+    auto& caps = getPeriodMode(mode);
+    return clockFrequency / caps.divider / period;
 }
 
-int TuningSystem::frequencyToPeriod(double frequency) const {
-    if (frequency <= 0.0) return chip.registerRange.getEnd() - 1;
+int TuningSystem::frequencyToPeriod(double frequency, PeriodMode mode) const {
+    auto& caps = getPeriodMode(mode);
     return jlimit(
-        chip.registerRange.getStart(),
-        chip.registerRange.getEnd() - 1,
-        static_cast<int>(std::round(clockFrequency / chip.divider / frequency))
-    );
+        caps.registerRange.getStart(),
+        caps.registerRange.getEnd() - 1,
+        static_cast<int>(std::round(clockFrequency / caps.divider / frequency))
+    );}
+
+double TuningSystem::midiNoteToFrequency(double midiNote, PeriodMode mode) const {
+    int period = midiNoteToPeriod(midiNote, mode);
+    return periodToFrequency(period, mode);
 }
 
-double TuningSystem::midiNoteToFrequency(double midiNote) const {
-    int period = midiNoteToPeriod(midiNote);
-    return periodToFrequency(period);
+double TuningSystem::frequencyToMidiNote(double frequency, PeriodMode mode) const {
+    int period = frequencyToPeriod(frequency, mode);
+    return periodToMidiNote(period, mode);
 }
 
-double TuningSystem::frequencyToMidiNote(double frequency) const {
-    int period = frequencyToPeriod(frequency);
-    return periodToMidiNote(period);
-}
-
-double TuningSystem::getOfftune(double midiNote) const {
+double TuningSystem::getOfftune(double midiNote, PeriodMode mode) const {
     // Calculate the difference between the custom tuning and equal temperament
-    double freq = midiNoteToFrequency(midiNote);
+    double freq = midiNoteToFrequency(midiNote, mode);
     double refFreq = getReferenceFrequency(midiNote);
 
     // Return difference in cents
     return 1200.0 * std::log2(freq / refFreq);
-}
-
-void TuningSystem::setChipCapabilities(const ChipCapabilities& capabilities) {
-    chip = capabilities;
-}
-
-const ChipCapabilities& TuningSystem::getChipCapabilities() const {
-    return chip;
 }
 
 void TuningSystem::setA4Frequency(double frequency) {

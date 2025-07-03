@@ -70,7 +70,6 @@ private:
     int getMonophonicChannel() const;
     void sendNoteOn(int midiNote, int channel, bool isEnvelope = false);
     void sendNoteOff(int midiNote, int channel, bool isEnvelope = false);
-    void playEnvelopeNote(int midiNote);
     void updateTuning();
     void replaceNotes(const std::vector<int>& midiNotes, double noteLength = 0.5);
     void startPlayback();

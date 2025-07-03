@@ -120,7 +120,8 @@ struct TuningNote {
     bool isDefined;        // If this note period is defined in generated or custom table
     double offtune;        // Offtune in cents (positive or negative)
     double frequency;      // Calculated frequency in Hz
-    int period;            // Chip divider value (for AY-3-8910, etc.)
+    int period;            // Chip period value (for AY-3-8910, etc.)
+    int envPeriod;          //Chip envelope period value
     String name;           // Note name (e.g., "C3", "A#4")
 
     inline static constexpr int trackerNoteOffset = 12; // Tracker note number offset from MIDI number
@@ -168,10 +169,20 @@ struct TuningNote {
             hearableInfo = "Ultrasonic (inaudible)";
         }
 
-        return name + String::formatted(": MIDI %s\nTracker note: %s\nPeriod: %d\nFrequency: %s\n%s\nOfftune: %+.1f cents",
+        String periodInfo;
+        if (envPeriod == -1) {  // period is env
+            periodInfo = String::formatted("Env period: %d", period);
+        } else {
+            periodInfo = String::formatted("Period: %d\nEnv: %d %s",
+                                period, envPeriod,
+                                isSafeForEnvelope() ? "(in sync)" : "(out of sync)"
+                            );
+        }
+
+        return name + String::formatted(": MIDI %s\nTracker note: %s\n%s\nFrequency: %s\n%s\nOfftune: %+.1f cents",
                                 midiInfo.toUTF8(),
                                 trackerInfo.toUTF8(),
-                                period,
+                                periodInfo.toUTF8(),
                                 freqInfo.toUTF8(),
                                 hearableInfo.toUTF8(),
                                 offtune
@@ -221,8 +232,6 @@ public:
 
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
-        , toneCapabilities {16, Range<int>(1, 4096)}
-        , envCapabilities {16 * 16, Range<int>(0, 65535)}
     {
         // Set up Value listeners for bidirectional sync
         selectedTuningTable.addListener(this);
@@ -292,6 +301,7 @@ public:
     std::vector<TuningNote> getOctaveNotes(int octave) const {
         std::vector<TuningNote> notes;
         notes.reserve((size_t) getNumColumns());
+        auto mode = getCurrentPeriodMode();
         for (auto noteName : getColumnNoteNames()) {
             TuningNote note;
             note.midiNote = (octave + 1) * 12 + noteName.noteNumber; // MIDI note number
@@ -301,9 +311,16 @@ public:
                 note.period = 0;
                 note.offtune = 0.0; // Default detune if no tuning system is set
             } else {
-                note.period = tuningSystem->midiNoteToPeriod(note.midiNote); // Calculate period for the chip
-                note.frequency = tuningSystem->periodToFrequency(note.period); // Calculate frequency from period
-                note.offtune = tuningSystem->getOfftune(note.midiNote); // Get detune from tuning system
+                if (mode == TuningSystem::Tone) {
+                    note.period = tuningSystem->midiNoteToPeriod(note.midiNote, TuningSystem::Tone); // Calculate period for the mode
+                    note.envPeriod = tuningSystem->midiNoteToPeriod(note.midiNote, TuningSystem::Envelope); // Calculate period for the mode
+                } else {
+                    note.period = tuningSystem->midiNoteToPeriod(note.midiNote, TuningSystem::Envelope); // Calculate period for the mode
+                    note.envPeriod = -1;   // no env period, for tooltip purposes
+                }
+
+                note.offtune = tuningSystem->getOfftune(note.midiNote, mode); // Get detune from tuning system
+                note.frequency = tuningSystem->periodToFrequency(note.period, mode); // Calculate frequency from period
             }
             // note.detune = 0.0; // Default detune, can be adjusted later
 
@@ -318,21 +335,25 @@ public:
         jassert(tuningSystem != nullptr);
         std::vector<double> ticks;
         auto lowerNote = (double) note.midiNote - 0.5f;
-        auto upperPeriod = tuningSystem->midiNoteToPeriod(lowerNote);
-        auto actualLowerNote = tuningSystem->periodToMidiNote(upperPeriod);
-        if (actualLowerNote > note.midiNote + 0.5f) {
+        auto mode = getCurrentPeriodMode();
+        DBG("Current mode: " << static_cast<size_t>(mode));
+        // TODO use chip capabilities to calc periods
+        auto upperPeriod = tuningSystem->midiNoteToPeriod(lowerNote, mode);
+        auto actualLowerNote = tuningSystem->periodToMidiNote(upperPeriod, mode);
+        if (actualLowerNote > (double) note.midiNote + 0.5f) {
             return ticks; // No ticks available
         }
-        if (actualLowerNote < note.midiNote - 0.5f) {
+        if (actualLowerNote < (double) note.midiNote - 0.5f) {
             --upperPeriod;
         }
         auto upperNote = (double) note.midiNote + 0.5f;
-        auto lowerPeriod = tuningSystem->midiNoteToPeriod(upperNote);
-        auto actualUpperNote = tuningSystem->periodToMidiNote(lowerPeriod);
-        if (actualUpperNote < note.midiNote - 0.5f) {
+        auto lowerPeriod = tuningSystem->midiNoteToPeriod(upperNote, mode);
+
+        auto actualUpperNote = tuningSystem->periodToMidiNote(lowerPeriod, mode);
+        if (actualUpperNote < (double) note.midiNote - 0.5f) {
             return ticks; // No ticks available
         }
-        if (actualUpperNote > note.midiNote + 0.5f) {
+        if (actualUpperNote > (double) note.midiNote + 0.5f) {
             ++lowerPeriod;
         }
         auto ticksNum = upperPeriod - lowerPeriod + 1;
@@ -357,7 +378,7 @@ public:
         ticks.reserve(static_cast<size_t>(ticksNum));
         int intStep = static_cast<int>(step);
         for (int p = upperPeriod; p >= lowerPeriod; p -= intStep) {
-            auto n = tuningSystem->periodToMidiNote(p);
+            auto n = tuningSystem->periodToMidiNote(p, mode);
             ticks.push_back(n - note.midiNote);
             // // DBG("Tick for period " << p << ": note = " << n << ", offtune = " << (n - note.midiNote));
         }
@@ -533,13 +554,8 @@ public:
         return playEnvelope.get() && !playTone.get();
     }
 
-    const ChipCapabilities& getCurrentChipCapabilities() const {
-        // Return capabilities based on whether envelope is enabled
-        if (isEnvelopePeriodsShown()) {
-            return envCapabilities;
-        } else {
-            return toneCapabilities;
-        }
+    TuningSystem::PeriodMode getCurrentPeriodMode() const {
+        return isEnvelopePeriodsShown() ? TuningSystem::Envelope : TuningSystem::Tone;
     }
 
     void updatePlayState() {
@@ -552,7 +568,6 @@ public:
         } else if (isEnvelopePeriodsShown()) {
             playChords = false; // Disable chords playback when envelope periods are shown
         }
-        tuningSystem->setChipCapabilities(getCurrentChipCapabilities()); // Update tuning system capabilities
         sendChangeMessage(); // Notify listeners about the state change
     }
 
@@ -742,7 +757,6 @@ private:
 
         TuningOptions options {
             .tableType = tuningType,
-            .capabilities = getCurrentChipCapabilities(),
             .temperamentType = TemperamentType::EqualTemperament, // TODO from view property
             .tonic = getCurrentRoot(),
             .scaleType = getCurrentScaleType(),

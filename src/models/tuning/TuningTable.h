@@ -11,7 +11,6 @@ namespace MoTool {
 class TuningTable final : public TuningSystem {
 public:
     TuningTable(
-        const ChipCapabilities& caps,
         double chipClock,
         std::unique_ptr<TemperamentSystem> refTuning,
         const std::map<int, int>& periodTable,
@@ -20,7 +19,6 @@ public:
 
     // Constructor for ProTracker-style sequential period tables
     TuningTable(
-        const ChipCapabilities& caps,
         double chipClock,
         std::unique_ptr<TemperamentSystem> refTuning,
         int startingMidiNote,
@@ -30,7 +28,6 @@ public:
 
     // Constructor with initializer list for convenience
     TuningTable(
-        const ChipCapabilities& caps,
         double chipClock,
         std::unique_ptr<TemperamentSystem> refTuning,
         int startingMidiNote,
@@ -40,8 +37,8 @@ public:
 
     String getDescription() const override;
     TuningType getType() const override;
-    int midiNoteToPeriod(double midiNote) const override;
-    double periodToMidiNote(int period) const override;
+    int midiNoteToPeriod(double midiNote, PeriodMode mode = PeriodMode::Tone) const override;
+    double periodToMidiNote(int period, PeriodMode mode = PeriodMode::Tone) const override;
     bool isDefined(int midiNote) const override;
 
     // Additional methods specific to TuningTable

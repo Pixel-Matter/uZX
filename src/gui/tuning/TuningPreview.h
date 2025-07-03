@@ -3,13 +3,17 @@
 #include "JuceHeader.h"
 #include "../../models/tuning/TuningSystemBase.h"
 #include "../../viewmodels/tuning/TuningViewModel.h"
+#include "../../viewmodels/tuning/TuningPlayer.h"
+#include "../../controllers/App.h"
 #include <map>
 
 namespace MoTool {
 
-class TuningPreviewGrid : public juce::Component, public TooltipClient {
+class TuningPreviewGrid : public juce::Component,
+                          public TooltipClient,
+                          private TuningPlayer::Listener {
 public:
-    TuningPreviewGrid(TuningViewModel& vm);
+    TuningPreviewGrid(TuningViewModel& vm, TuningPlayer& tp);
     ~TuningPreviewGrid() override;
 
     void setTooltipWindow(TooltipWindow* window) { tooltipWindow = window; }
@@ -17,26 +21,67 @@ public:
     void resized() override;
     void paint(juce::Graphics& g) override;
     void mouseMove(const MouseEvent& event) override;
+    void mouseDown(const MouseEvent& event) override;
 
     // TooltipClient implementation
     String getTooltip() override;
 
 private:
     static constexpr int cellWidth = 56;
-    static constexpr int firstCellWidth = cellWidth / 2;
+    static constexpr int rowHeaderWidth = cellWidth / 2;
     static constexpr int cellHeight = 32;
     static constexpr int headerRowHeight = 24;
     static constexpr int gridYOffset = static_cast<int>(headerRowHeight * 3.5);
 
+    enum class GridRegionType {
+        None,
+        NoteCell,
+        RowHeader,
+        ColumnHeader
+    };
+
+    struct GridHitResult {
+        GridRegionType regionType = GridRegionType::None;
+        int octave = -1;                     // For note cells and row headers
+        int noteIndex = -1;                  // For note cells and column headers
+        NoteGridHeadingType headerType = NoteGridHeadingType::Tuning; // For column headers
+        juce::Rectangle<int> bounds;         // Bounds of the hit region
+
+        bool isValid() const { return regionType != GridRegionType::None; }
+    };
+
+    struct GridLayout {
+        juce::Rectangle<int> totalBounds;
+        juce::Rectangle<int> gridBounds;
+        const TuningViewModel& viewModel;
+
+        GridLayout(juce::Rectangle<int> bounds, const TuningViewModel& vm)
+            : totalBounds(bounds), viewModel(vm) {
+            gridBounds = bounds;
+            gridBounds.removeFromTop(headerRowHeight / 2);
+            gridBounds.setWidth(cellWidth * (viewModel.getNumColumns() + 1));
+        }
+
+        GridHitResult hitTest(juce::Point<int> position) const;
+        juce::Rectangle<int> getColumnHeaderBounds(int headerTypeIndex, int noteIndex) const;
+        juce::Rectangle<int> getRowHeaderBounds(int octave) const;
+        juce::Rectangle<int> getNoteCellBounds(int octave, int noteIndex) const;
+        int getHeaderRowsHeight() const;
+    };
+
     TuningViewModel& viewModel;
+    TuningPlayer& tuningPlayer;
 
     // Mouse tracking for tooltips
     Point<int> lastMousePosition;
-    TuningNote hoveredNote;
-    bool hasHoveredNote = false;
+    GridHitResult hoveredRegion;
 
-    // Helper method to find note at mouse position
-    bool findNoteAtPosition(Point<int> position, TuningNote& outNote) const;
+    void playingNotesChanges() override;
+
+    // Paint helper methods
+    void paintColumnHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNoteName& column, NoteGridHeadingType headingType);
+    void paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave);
+    void paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note);
 
     TooltipWindow* tooltipWindow = nullptr;
 
@@ -63,7 +108,7 @@ private:
     // UI setup helpers
     void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
                                      RangedParamAttachment<double>& attachment);
-    void updateClockControlsState();
+    void updateControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();
 
@@ -71,6 +116,7 @@ private:
     void valueChanged(Value& value) override;
 
     TuningViewModel viewModel;
+    TuningPlayer tuningPlayer;
 
     // Tuning table selection
     Label tuningTableLabel;
@@ -96,6 +142,12 @@ private:
     Label tuningNameLabel;
     Label toneEnvSwitchLabel;
 
+    // Label playModeLabel;
+    ToggleButton playChordsCheckBox;
+    ToggleButton playToneCheckBox;
+    ToggleButton playEnvelopeCheckBox;
+    ComboBox envelopeShapeSelect;
+
     TextButton exportButton;
 
     TuningPreviewGrid tuningGrid;
@@ -103,8 +155,9 @@ private:
 
     // bindings
     ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
-    ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedTonic };
+    ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedRoot };
     ComboBoxBinding<Scale::ScaleType> scaleSelectBinding { scaleSelect, viewModel.selectedScale };
+    ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding { envelopeShapeSelect, viewModel.envelopeShape };
 
     static constexpr int rowHeight = 28;
     static constexpr int moduleWidth = 60;

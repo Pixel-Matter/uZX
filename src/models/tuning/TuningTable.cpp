@@ -3,13 +3,12 @@
 namespace MoTool {
 
 TuningTable::TuningTable(
-    const ChipCapabilities& caps,
     double chipClock,
     std::unique_ptr<TemperamentSystem> refTuning,
     const std::map<int, int>& periodTable,
     const String& customName
 )
-    : TuningSystem(caps, chipClock, std::move(refTuning))
+    : TuningSystem(chipClock, std::move(refTuning))
     , periodTable_(periodTable)
     , customName_(customName)
 {
@@ -24,14 +23,13 @@ TuningTable::TuningTable(
 }
 
 TuningTable::TuningTable(
-    const ChipCapabilities& caps,
     double chipClock,
     std::unique_ptr<TemperamentSystem> refTuning,
     int startingMidiNote,
     const std::vector<int>& periods,
     const String& customName
 )
-    : TuningSystem(caps, chipClock, std::move(refTuning))
+    : TuningSystem(chipClock, std::move(refTuning))
     , customName_(customName)
 {
     // Build period table from sequential array starting at startingMidiNote
@@ -50,14 +48,13 @@ TuningTable::TuningTable(
 }
 
 TuningTable::TuningTable(
-    const ChipCapabilities& caps,
     double chipClock,
     std::unique_ptr<TemperamentSystem> refTuning,
     int startingMidiNote,
     std::initializer_list<int> periods,
     const String& customName
 )
-    : TuningTable(caps, chipClock, std::move(refTuning), startingMidiNote, std::vector<int>(periods), customName)
+    : TuningTable(chipClock, std::move(refTuning), startingMidiNote, std::vector<int>(periods), customName)
 {}
 
 String TuningTable::getDescription() const {
@@ -69,7 +66,7 @@ TuningType TuningTable::getType() const {
     return TuningType::CustomTable;
 }
 
-int TuningTable::midiNoteToPeriod(double midiNote) const {
+int TuningTable::midiNoteToPeriodRaw(double midiNote) const {
     int note = static_cast<int>(std::round(midiNote));
 
     // If exact note is in table, return it
@@ -89,7 +86,7 @@ int TuningTable::midiNoteToPeriod(double midiNote) const {
         } else {
             result = periodTable_.begin()->second * 2; // Fallback
         }
-        return jlimit(chip.registerRange.getStart(), chip.registerRange.getEnd() - 1, result);
+        return result;
     }
 
     if (note > maxDefinedNote_) {
@@ -101,7 +98,7 @@ int TuningTable::midiNoteToPeriod(double midiNote) const {
         } else {
             result = std::max(1, periodTable_.rbegin()->second / 2); // Fallback
         }
-        return jlimit(chip.registerRange.getStart(), chip.registerRange.getEnd() - 1, result);
+        return result;
     }
 
     // Interpolate between nearest defined notes
@@ -121,10 +118,20 @@ int TuningTable::midiNoteToPeriod(double midiNote) const {
                        + std::log(static_cast<double>(upper->second)) * ratio;
 
     result = static_cast<int>(std::round(std::exp(logPeriod)));
-    return jlimit(chip.registerRange.getStart(), chip.registerRange.getEnd() - 1, result);
+    return result;
 }
 
-double TuningTable::periodToMidiNote(int period) const {
+int TuningTable::midiNoteToPeriod(double midiNote, PeriodMode mode) const {
+    constexpr int baseDivider = getPeriodMode(PeriodMode::Tone).divider;
+    auto period = midiNoteToPeriodRaw(midiNote);
+    auto pmode = getPeriodMode(mode);
+    auto addDivider = pmode.divider / baseDivider;
+    // divide rounded to addDivider
+    period = (period + addDivider / 2) / addDivider;
+    return jlimit(pmode.registerRange.getStart(), pmode.registerRange.getEnd() - 1, period);
+}
+
+double TuningTable::periodToMidiNote(int period, PeriodMode mode) const {
     if (periodTable_.empty()) {
         return 60.0; // Default to middle C
     }
@@ -132,8 +139,8 @@ double TuningTable::periodToMidiNote(int period) const {
     int closestNote = findClosestNoteByPeriod(period);
 
     // Calculate more precise note using frequency relationship
-    double actualFreq = periodToFrequency(period);
-    double targetFreq = periodToFrequency(periodTable_.at(closestNote));
+    double actualFreq = periodToFrequency(period, mode);
+    double targetFreq = periodToFrequency(periodTable_.at(closestNote), mode);
     double noteOffset = 12.0 * std::log2(actualFreq / targetFreq);
 
     return closestNote + noteOffset;

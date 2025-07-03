@@ -30,9 +30,14 @@ struct ChipCapabilities {
 
 class TuningSystem {
 public:
-    TuningSystem(const ChipCapabilities& capabilities, double chipClock, std::unique_ptr<TemperamentSystem> refTuning)
-        : chip(capabilities)
-        , clockFrequency(chipClock)
+    enum PeriodMode : size_t {
+        Tone = 0,
+        Envelope = 1
+    };
+
+
+    TuningSystem(double chipClock, std::unique_ptr<TemperamentSystem> refTuning)
+        : clockFrequency(chipClock)
         , referenceTuning(std::move(refTuning))
     {
         jassert(referenceTuning != nullptr);
@@ -44,8 +49,8 @@ public:
         return getType().getLongLabel().data();
     }
     virtual TuningType getType() const = 0;
-    virtual int midiNoteToPeriod(double midiNote) const = 0;
-    virtual double periodToMidiNote(int period) const = 0;
+    virtual int midiNoteToPeriod(double midiNote, PeriodMode mode = Tone) const = 0;
+    virtual double periodToMidiNote(int period, PeriodMode mode = Tone) const = 0;
     virtual bool isDefined(int midiNote) const = 0;
 
     inline TemperamentSystem* getReferenceTuning() const {
@@ -55,34 +60,44 @@ public:
         this->referenceTuning = std::move(refTuning);
     }
     // Default chip-based period/frequency conversion
-    double periodToFrequency(int period) const;
-    int frequencyToPeriod(double frequency) const;
+    double periodToFrequency(int period, PeriodMode mode = Tone) const;
+    int frequencyToPeriod(double frequency, PeriodMode mode = Tone) const;
 
     // Core conversion functions
     // midiNote is double because we want slides and pitch bends
-    double midiNoteToFrequency(double midiNote) const;
-    double frequencyToMidiNote(double frequency) const;
-    double getOfftune(double midiNote) const;
+    double midiNoteToFrequency(double midiNote, PeriodMode mode = Tone) const;
+    double frequencyToMidiNote(double frequency, PeriodMode mode = Tone) const;
+    double getOfftune(double midiNote, PeriodMode mode = Tone) const;
 
     // Setters
+    // void setChipCapabilities(const ChipCapabilities& capabilities);
+    // const ChipCapabilities& getChipCapabilities() const;
     void setA4Frequency(double frequency);
     double getA4Frequency() const;
     void setClockFrequency(double frequency);
     double getClockFrequency() const;
-    void setTonic(Scale::Key newKey);
-    Scale::Key getTonic() const;
+    void setRoot(Scale::Key newRoot);
+    Scale::Key getRoot() const;
 
     // Serialization
     // virtual juce::ValueTree getState() const = 0;
     // virtual void setState(const juce::ValueTree& state) = 0;
 protected:
     // TODO use CachedValues refTo-ed to a state value in a tree
-    const ChipCapabilities& chip;
+    constexpr static inline std::array<ChipCapabilities, 2> periodModes {{
+        {16,      Range<int>(1, 4096)},  // Tone
+        {16 * 16, Range<int>(0, 65535)}  // Envelope
+    }};
+
     double clockFrequency;
     std::unique_ptr<TemperamentSystem> referenceTuning;
 
     double getReferenceFrequency(int midiNote) const;
     double getReferenceFrequency(double midiNote) const;
+    constexpr static inline const ChipCapabilities& getPeriodMode(PeriodMode mode) {
+        jassert(static_cast<size_t>(mode) < periodModes.size());
+        return periodModes[static_cast<size_t>(mode)];
+    }
 };
 
 }

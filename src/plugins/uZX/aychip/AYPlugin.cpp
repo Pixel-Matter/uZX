@@ -129,9 +129,9 @@ void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
-    if (chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr
-        || !(fc.isPlaying || fc.isScrubbing || fc.isRendering)
-    ) {
+    bool isActive = true;
+    // bool isActive = fc.isPlaying || fc.isScrubbing || fc.isRendering;
+    if (chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr || !isActive ) {
         return;
     }
 
@@ -145,15 +145,14 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     for (auto& m : *fc.bufferForMidiMessages) {
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample > currentSample) {
-            // DBG("---------- " << m.getTimeStamp());
             updateChip();
-            // DBG("---------- processing " << double(currentSample) / sampleRate << "-" << m.getTimeStamp());
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                fc.destBuffer->getWritePointer(1, currentSample),
                                static_cast<size_t>(timeSample - currentSample),
                                staticParams.removeDCValue);
             currentSample = timeSample;
         }
+        // DBG("AY in midi " << m.getDescription());
         readMidi(m);
     }
     // process to the end of the block

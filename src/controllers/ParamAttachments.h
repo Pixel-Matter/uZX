@@ -50,7 +50,17 @@ private:
     // bool updatingFromParam { false };
 };
 
+static inline String toString(bool v) {
+    return v ? "true" : "false";
+}
 
+static inline String toString(auto v) {
+    return String(v);
+}
+
+inline String& operator<< (String& str, bool b) {
+    return str << toString(b);
+}
 
 template <typename Type>
 class ParamAttachment {
@@ -69,7 +79,14 @@ public:
         , cachedValue(tree, id, undoMgr, deflt)
         , value(cachedValue.getPropertyAsValue())
     {
-        // DBG("ParamAttachment::ctor and binding for type " << typeid(Type).name() << " with id " << id.toString());
+        // The problem is that setting initial value in ParamAttachment constructor
+        // before adding listeners results in not calling valueChanged
+        // Or we can not init and bind in the constructor but rather in referTo after addListener
+        // cachedValue = deflt; // Initialize with default value
+
+        // DBG("ParamAttachment::ctor and binding for type " << typeid(Type).name() << " with id " << id.toString()
+            // << ", default " << toString(deflt)
+            // << ", value " << toString(static_cast<Type>(value.getValue())));
     }
 
     ParamAttachment(ValueTree& tree, const Identifier& id, UndoManager* undoMgr, const Type& deflt)

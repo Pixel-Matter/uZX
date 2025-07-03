@@ -228,6 +228,11 @@ void TrackFooterComponent::buildPlugins() {
     plugins.clear();
 
     for (auto plugin : track->pluginList) {
+        if (dynamic_cast<te::VolumeAndPanPlugin*>(plugin) ||
+            dynamic_cast<te::LevelMeterPlugin*>(plugin)) {
+            continue;
+        }
+        
         auto p = new PluginComponent(editViewState, plugin);
         addAndMakeVisible(p);
         plugins.add(p);

@@ -51,6 +51,11 @@ public:
         return te::MidiList::createDefaultPlaybackMidiSequence(list, clip, tb, generateMPE);
     }
 
+    bool shouldPlayMidiGuideNotes() override {
+        // For tuning preview
+        return true;
+    }
+
 };
 
 }  // namespace MoTool

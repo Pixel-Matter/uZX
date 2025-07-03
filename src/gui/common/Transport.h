@@ -6,8 +6,6 @@
 
 #include "../../models/Timecode.h"
 
-namespace te = tracktion;
-
 namespace MoTool {
 
 class TransportBar  : public Component,
@@ -35,10 +33,10 @@ private:
        recordButton_    { "Rec" };
     //    stepRightButton_ { ">" };
 
-Label      bpmLabel_      { "BPM",      "BPM:" },
-       timeSigLabel_  { "TimeSig",  "Sig:" },
-       transportReadout_ { "Position", "Pos:" };
-te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
+    Label bpmLabel_      { "BPM",      "BPM:" },
+          timeSigLabel_  { "TimeSig",  "Sig:" },
+          transportReadout_ { "Position", "Pos:" };
+    te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
 
     void changeListenerCallback(ChangeBroadcaster*) override;
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;

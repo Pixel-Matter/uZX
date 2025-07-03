@@ -455,8 +455,6 @@ public:
     }
 };
 
-
-
 class PsgParamsMidiConverterTests  : public UnitTest {
 public:
     PsgParamsMidiConverterTests() : UnitTest("PsgParamsMidiConverter", "MoTool") {}
@@ -548,19 +546,19 @@ public:
             addEvent(seq, 0.00, 1, MidiCCType::Volume, 3);
             addEvent(seq, 0.00, 1, MidiCCType::CC20PeriodCoarse, 104);
             addEvent(seq, 0.00, 1, MidiCCType::CC52PeriodFine, 18);
-            addEvent(seq, 0.00, 2, MidiCCType::GPB1, 0);
-            addEvent(seq, 0.00, 2, MidiCCType::GPB2, 0);
-            addEvent(seq, 0.00, 3, MidiCCType::GPB1, 0);
-            addEvent(seq, 0.00, 3, MidiCCType::GPB2, 0);
+            addEvent(seq, 0.00, 2, MidiCCType::GPB1ToneSwitch, 0);
+            addEvent(seq, 0.00, 2, MidiCCType::GPB2NoiseSwitch, 0);
+            addEvent(seq, 0.00, 3, MidiCCType::GPB1ToneSwitch, 0);
+            addEvent(seq, 0.00, 3, MidiCCType::GPB2NoiseSwitch, 0);
             addEvent(seq, 0.00, 4, MidiCCType::Breath, 31);
 
             addEvent(seq, 0.02, 1, MidiCCType::Volume, 15);
             addEvent(seq, 0.02, 2, MidiCCType::Volume, 8);
             addEvent(seq, 0.02, 2, MidiCCType::CC20PeriodCoarse, 100);
             addEvent(seq, 0.02, 2, MidiCCType::CC52PeriodFine, 86);
-            addEvent(seq, 0.02, 2, MidiCCType::GPB1, 1);
-            addEvent(seq, 0.02, 1, MidiCCType::GPB2, 0);
-            addEvent(seq, 0.02, 2, MidiCCType::GPB3, 1);
+            addEvent(seq, 0.02, 2, MidiCCType::GPB1ToneSwitch, 1);
+            addEvent(seq, 0.02, 1, MidiCCType::GPB2NoiseSwitch, 0);
+            addEvent(seq, 0.02, 2, MidiCCType::GPB3EnvSwitch, 1);
             addEvent(seq, 0.02, 4, MidiCCType::Breath, 16);
             addEvent(seq, 0.02, 4, MidiCCType::CC20PeriodCoarse, 104);
             addEvent(seq, 0.02, 4, MidiCCType::CC52PeriodFine, 18);

@@ -10,13 +10,15 @@ namespace MoTool {
 
 
 //================================================================================
-TuningPreviewGrid::TuningPreviewGrid(TuningViewModel& vm)
-    : viewModel(vm)
+TuningPreviewGrid::TuningPreviewGrid(TuningViewModel& vm, TuningPlayer& tp)
+    : viewModel(vm), tuningPlayer(tp)
 {
     setOpaque(true);
+    tuningPlayer.addListener(this);
 }
 
 TuningPreviewGrid::~TuningPreviewGrid() {
+    tuningPlayer.removeListener(this);
 }
 
 void TuningPreviewGrid::resized() {
@@ -26,243 +28,329 @@ void TuningPreviewGrid::resized() {
 void TuningPreviewGrid::mouseMove(const MouseEvent& event) {
     lastMousePosition = event.getPosition();
 
-    TuningNote foundNote;
-    if (findNoteAtPosition(lastMousePosition, foundNote)) {
-        if (!hasHoveredNote || foundNote.midiNote != hoveredNote.midiNote) {
-            hoveredNote = foundNote;
-            hasHoveredNote = true;
-            // Tooltip content will be provided by getTooltip() override
-            // repaint(); // Optional: repaint if we want visual feedback
-        }
+    GridLayout layout(getLocalBounds(), viewModel);
+    GridHitResult newHover = layout.hitTest(lastMousePosition);
+
+    // Check if we're hovering over a different region
+    bool regionChanged = (newHover.regionType != hoveredRegion.regionType ||
+                         newHover.octave != hoveredRegion.octave ||
+                         newHover.noteIndex != hoveredRegion.noteIndex ||
+                         newHover.headerType != hoveredRegion.headerType);
+
+    if (regionChanged) {
+        hoveredRegion = newHover;
+        // repaint(); // Optional: repaint if we want visual feedback
+    }
+}
+
+void TuningPreviewGrid::paintColumnHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNoteName& column, NoteGridHeadingType headingType) {
+    // Draw center tick for Degrees and Notes headers
+    if (headingType == NoteGridHeadingType::Degrees || headingType == NoteGridHeadingType::Notes) {
+        g.setColour(Colors::Theme::surfaceAlt);
+        const int cellCenter = bounds.getX() + (bounds.getWidth() - 2) / 2;
+        g.fillRect(cellCenter, bounds.getY() - 2, 2, 4);
+        g.fillRect(cellCenter, bounds.getBottom() - 2, 2, 4);
+    }
+
+    // Get text based on heading type
+    String text = column.getHeadingText(headingType);
+
+    // Set text color
+    auto color = column.isInScale ? Colors::Theme::textPrimary : Colors::Theme::textPrimary.withAlpha(0.5f);
+    if (column.isRootNote) {
+        color = Colors::Theme::primary.interpolatedWith(Colors::Theme::textPrimary, 0.5f);
+    }
+    g.setColour(color);
+    g.drawText(text, bounds, juce::Justification::centred, true);
+}
+
+void TuningPreviewGrid::paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave) {
+    g.setColour(Colors::Theme::textPrimary);
+    g.drawText(
+        String::formatted("%d", octave),
+        bounds.withTrimmedRight(8),
+        juce::Justification::right, true
+    );
+}
+
+void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note) {
+    float offtune = jlimit(-0.5f, 0.5f, (float) note.offtune / 100.0f);
+
+    auto noteTextColor = Colors::Theme::textPrimary;
+    if (offtune > 0.05f) {
+        noteTextColor = noteTextColor.interpolatedWith(juce::Colours::blue, offtune * 2);
+    } else if (offtune < 0.05f) {
+        noteTextColor = noteTextColor.interpolatedWith(juce::Colours::red, -offtune * 2);
+    }
+
+    // Check if this note is currently playing
+    bool isPlaying = note.isInMidiRange() && tuningPlayer.isNotePlaying(note.midiNote);
+
+    auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
+
+    // Use pressed button color for currently playing notes
+    if (isPlaying) {
+        noteBgColor = Colors::Theme::primary;
+        noteTextColor = Colors::Theme::background; // Use contrasting text color
+    }
+
+    if (note.isInScale) {
+        g.setColour(noteBgColor);
+        g.fillRect(bounds.reduced(2, 2));
     } else {
-        if (hasHoveredNote) {
-            hasHoveredNote = false;
-            // repaint(); // Optional: repaint to clear any visual feedback
-        }
+        noteTextColor = noteTextColor.withAlpha(0.5f);
+        g.setColour(noteBgColor.withAlpha(noteBgColor.getFloatAlpha() * 0.5f));
+        g.fillRect(bounds.reduced(2, 2));
+    }
+
+    // Inter-cell reference tuning ticks at the horizontal center of the cell
+    g.setColour(Colors::Theme::surfaceAlt);
+    const int cellCenter = bounds.getX() + (bounds.getWidth() - 2) / 2;
+    g.fillRect(cellCenter, bounds.getY() - 2, 2, 4);
+    g.fillRect(cellCenter, bounds.getBottom() - 2, 2, 4);
+
+    // In-cell tuning ticks and offtune tick
+    auto tickSize = 6;
+    auto calcTickX = [&](const float tick) -> float {
+        return jmap<float>(tick, -0.5f, 0.5f, (float) bounds.getX(), (float) bounds.getRight() - 2.0f);
+    };
+    auto drawTick = [&](const float tickX) -> void {
+        g.fillRect(tickX, (float) bounds.getY() + 2, 2.0f, (float) tickSize);
+        g.fillRect(tickX, (float) bounds.getBottom() - 2.0f - (float) tickSize, 2.0f, (float) tickSize);
+    };
+
+    float offX = calcTickX(offtune);
+    if (note.offtune >= -50 && note.offtune <= 50) {
+        drawTick(offX);
+    }
+
+    // Drawing text
+    auto textCell = bounds;
+    auto text = String::formatted("%d", note.period);
+    int textWidth = static_cast<int>(std::ceil(TextLayout::getStringWidth(g.getCurrentFont(), text)));
+    textCell.setWidth(textWidth);
+    textCell.setCentre((int) offX, (int) textCell.getCentreY());
+    textCell = textCell.constrainedWithin(bounds.reduced(2, 0));
+
+    g.setColour(noteTextColor);
+    g.drawText(text, textCell, juce::Justification::centred, false);
+
+    // Safe for envelope marker
+    if (!viewModel.isEnvelopePeriodsShown() && note.isSafeForEnvelope()) {
+        g.setColour(Colors::Theme::success);
+        g.fillRect(bounds.getRight() - 6, bounds.getY() + 2, 4, 4);
     }
 }
 
 void TuningPreviewGrid::paint(juce::Graphics& g) {
-    const int cols = viewModel.getNumColumns();
-
-    auto drawCenterTick = [&](const juce::Rectangle<int>& cell) -> void {
-        g.setColour(Colors::Theme::surfaceAlt);
-        const int cellCenter = cell.getX() + (cell.getWidth() - 2) / 2;
-        g.fillRect(cellCenter, cell.getY() - 2, 2, 4);
-        g.fillRect(cellCenter, cell.getBottom() - 2, 2, 4);
-    };
-
-    auto drawColumnHeader = [&](const TuningNoteName& column, Rectangle<int>& gridCell, const String& text) {
-        auto color = column.isInScale ? Colors::Theme::textPrimary : Colors::Theme::textPrimary.withAlpha(0.5f);
-        if (column.isRootNote) {
-            color = Colors::Theme::primary.interpolatedWith(Colors::Theme::textPrimary, 0.5f);
-        }
-        g.setColour(color);
-        g.drawText(text, gridCell, juce::Justification::centred, true);
-        gridCell.translate(cellWidth, 0);
-    };
-
     g.fillAll(Colors::Theme::backgroundAlt);
-    auto bounds = getLocalBounds();
-    // bounds.setX(0);
-    bounds.removeFromTop(headerRowHeight / 2);
-    bounds.setWidth(cellWidth * (cols + 1));
 
-    auto gridY = bounds.getY();
-    auto gridBottom = bounds.getBottom();
-
+    GridLayout layout(getLocalBounds(), viewModel);
     const auto columns = viewModel.getColumnNoteNames();
+    const auto headerTypes = TuningViewModel::getHeaderTypes();
+    const auto octaveRange = viewModel.getOctaveRange();
 
-    {
-        auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
-        gridCell.translate(firstCellWidth, 0);
-        for (const auto& column : columns) {
-            // drawCenterTick(gridCell);
-            drawColumnHeader(column, gridCell, column.tuning);
+    // Draw column headers
+    for (size_t headerTypeIndex = 0; headerTypeIndex < headerTypes.size(); ++headerTypeIndex) {
+        auto headerType = headerTypes[headerTypeIndex];
+        for (int noteIndex = 0; noteIndex < viewModel.getNumColumns(); ++noteIndex) {
+            auto headerBounds = layout.getColumnHeaderBounds(static_cast<int>(headerTypeIndex), noteIndex);
+            auto& column = columns[static_cast<size_t>(noteIndex)];
+            paintColumnHeader(g, headerBounds, column, headerType);
         }
     }
 
-    {
-        auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
-        gridCell.translate(firstCellWidth, 0);
-        for (const auto& column : columns) {
-            drawCenterTick(gridCell);
-            drawColumnHeader(column, gridCell, column.degree.toString());
-        }
-    }
+    // Draw rows (row headers + note cells)
+    for (auto octave = octaveRange.getStart(); octave < octaveRange.getEnd(); ++octave) {
+        // Draw row header
+        auto rowHeaderBounds = layout.getRowHeaderBounds(octave);
+        paintRowHeader(g, rowHeaderBounds, octave);
 
-    {
-        auto gridCell = bounds.removeFromTop(headerRowHeight).withSize(cellWidth, headerRowHeight);
-        gridCell.translate(firstCellWidth, 0);
-        for (const auto& column : columns) {
-            drawCenterTick(gridCell);
-            drawColumnHeader(column, gridCell, column.name);
-        }
-    }
-
-    const auto octaves = viewModel.getOctaveRange();
-    for (auto octave = octaves.getStart(); octave < octaves.getEnd(); ++octave) {
-        auto gridCell = bounds.removeFromTop(cellHeight).withSize(cellWidth, cellHeight);
-
-        g.setColour(Colors::Theme::textPrimary);
-        g.drawText(
-            String::formatted("%d", octave),
-            gridCell.withWidth(firstCellWidth).withTrimmedRight(8),
-            juce::Justification::right, true
-        );
-        gridCell.translate(firstCellWidth, 0);
-
-        for (const auto& note : viewModel.getOctaveNotes(octave)) {
-            float offtune = jlimit(-0.5f, 0.5f, (float) note.offtune / 100.0f); // Normalize offtune to -0.5 to 0.5 range
-
-            auto noteTextColor = Colors::Theme::textPrimary;
-            if (offtune > 0.05f) {
-                noteTextColor = noteTextColor.interpolatedWith(juce::Colours::blue, offtune * 2);
-            } else if (offtune < 0.05f) {
-                noteTextColor = noteTextColor.interpolatedWith(juce::Colours::red, -offtune * 2);
-            }
-
-            auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
-            if (note.isInScale) {
-                g.setColour(noteBgColor);
-                g.fillRect(gridCell.reduced(2, 2));
-            } else {
-                noteTextColor = noteTextColor.withAlpha(0.5f);
-                g.setColour(noteBgColor.withAlpha(noteBgColor.getFloatAlpha() * 0.5f));
-                g.fillRect(gridCell.reduced(2, 2));
-            }
-
-            //=================================================================
-            // tuner ticks
-
-            // 1. Inter-cell reference tuning ticks at the horizontal center of the cell
-            auto tickSize = 6;
-            drawCenterTick(gridCell);
-
-            // 2. In-cell tuning ticks of this specific note
-            auto calcTickX = [&](const float tick) -> float {
-                return jmap<float>(tick, -0.5f, 0.5f, (float) gridCell.getX(), (float) gridCell.getRight() - 2.0f);
-            };
-            auto drawTick = [&](const float tickX) -> void {
-                g.fillRect(tickX, (float) gridCell.getY() + 2, 2.0f, (float) tickSize);
-                g.fillRect(tickX, (float) gridCell.getBottom() - 2.0f - (float) tickSize, 2.0f, (float) tickSize);
-            };
-
-            // for (const auto& tick : viewModel.getTicksAroundNote(note)) {
-            //     drawTick(calcTickX(tick));
-            // }
-
-            // 3. Offtune tick for this specific note
-            float offX = calcTickX(offtune);
-            if (note.offtune >= -50 && note.offtune <= 50) {
-                drawTick(offX);
-            }
-
-            //=================================================================
-            // drawing text
-
-            auto textCell = gridCell;
-            auto text = String::formatted("%d", note.period);
-            int textWidth = static_cast<int>(std::ceil(TextLayout::getStringWidth(g.getCurrentFont(), text)));
-            // auto textWidth = static_cast<int>(std::ceil(g.getCurrentFont().getStringWidthFloat(text)));
-            textCell.setWidth(textWidth);
-            textCell.setCentre((int) offX, (int) textCell.getCentreY());
-            textCell = textCell.constrainedWithin(gridCell.reduced(2, 0));
-
-            g.setColour(noteTextColor);
-            g.drawText(text, textCell, juce::Justification::centred, false);
-
-            // safe for env marker
-            if (note.isSafeForEnvelope()) {
-                g.setColour(Colors::Theme::success);
-                // TODO tiny triangle icon
-                // TODO add a legend below the grid
-                g.fillRect(gridCell.getRight() - 6, gridCell.getY() + 2, 4, 4);
-            }
-
-            gridCell.translate(cellWidth, 0);
-        }
-        gridBottom = gridCell.getBottom();
-        // bounds.removeFromTop(1); // Add a line between rows
-    }
-
-    // Draw vertical line at the root note column (current key)
-    {
-        const int rootColumnIndex = static_cast<int>(viewModel.getCurrentKey());
-        const int rootColumnX = bounds.getX() + firstCellWidth + rootColumnIndex * cellWidth;
-        g.setColour(Colors::Theme::primary.withAlpha(0.5f));
-        g.fillRect(rootColumnX, gridY, 2, gridBottom - gridY);
-    }
-}
-
-bool TuningPreviewGrid::findNoteAtPosition(Point<int> position, TuningNote& outNote) const {
-    const int cols = viewModel.getNumColumns();
-
-    auto bounds = getLocalBounds();
-    bounds.setWidth(cellWidth * (cols + 2));
-    bounds.setX((getWidth() - bounds.getWidth()) / 2);
-
-    // Skip header row
-    auto headerBounds = bounds.removeFromTop(gridYOffset);
-    if (position.y < headerBounds.getBottom()) {
-        return false; // Mouse is in header area
-    }
-
-    // Calculate which octave row we're in
-    const auto octaves = viewModel.getOctaveRange();
-    const int rowsStartY = headerBounds.getBottom();
-    const int relativeY = position.y - rowsStartY;
-
-    if (relativeY < 0) {
-        return false; // Above the grid
-    }
-
-    const int rowIndex = relativeY / cellHeight;
-    const int octave = octaves.getStart() + rowIndex;
-
-    if (octave >= octaves.getEnd()) {
-        return false; // Below the grid
-    }
-
-    // Calculate which note column we're in
-    const int notesStartX = bounds.getX() + firstCellWidth; // Skip octave label column
-    const int relativeX = position.x - notesStartX;
-
-    if (relativeX < 0) {
-        return false; // In octave label column
-    }
-
-    const int noteIndex = relativeX / cellWidth;
-
-    if (noteIndex >= cols) {
-        return false; // Past the last note column
-    }
-
-    // Verify we're within the actual cell bounds (not in padding)
-    const int cellX = notesStartX + noteIndex * cellWidth;
-    const int cellY = rowsStartY + rowIndex * cellHeight;
-
-    if (position.x >= cellX && position.x < cellX + cellWidth &&
-        position.y >= cellY && position.y < cellY + cellHeight) {
-        // Get the note for this octave and column
+        // Draw note cells
         auto octaveNotes = viewModel.getOctaveNotes(octave);
-        if (noteIndex < static_cast<int>(octaveNotes.size())) {
-            outNote = octaveNotes[(size_t) noteIndex];
-            return true;
+        for (int noteIndex = 0; noteIndex < static_cast<int>(octaveNotes.size()); ++noteIndex) {
+            auto cellBounds = layout.getNoteCellBounds(octave, noteIndex);
+            paintNoteCell(g, cellBounds, octaveNotes[static_cast<size_t>(noteIndex)]);
         }
     }
 
-    return false; // Mouse not over any note cell
+    // Draw vertical line at the root note column (current root)
+    const int rootColumnIndex = static_cast<int>(viewModel.getCurrentRoot());
+    auto firstCellBounds = layout.getNoteCellBounds(octaveRange.getStart(), rootColumnIndex);
+    auto lastCellBounds = layout.getNoteCellBounds(octaveRange.getEnd() - 1, rootColumnIndex);
+
+    int lineX = firstCellBounds.getX();
+    int lineY = layout.gridBounds.getY();
+    int lineHeight = lastCellBounds.getBottom() - lineY;
+
+    g.setColour(Colors::Theme::primary.withAlpha(0.5f));
+    g.fillRect(lineX, lineY, 2, lineHeight);
 }
 
 String TuningPreviewGrid::getTooltip() {
-    return hasHoveredNote ? hoveredNote.getTooltip() : "";
+    if (!hoveredRegion.isValid()) {
+        return "";
+    }
+
+    switch (hoveredRegion.regionType) {
+        case GridRegionType::NoteCell: {
+            // Get the note data and return its tooltip
+            auto octaveNotes = viewModel.getOctaveNotes(hoveredRegion.octave);
+            if (hoveredRegion.noteIndex < static_cast<int>(octaveNotes.size())) {
+                return octaveNotes[static_cast<size_t>(hoveredRegion.noteIndex)].getTooltip();
+            }
+            break;
+        }
+        case GridRegionType::RowHeader:
+            return "Click to play the scale";
+
+        case GridRegionType::ColumnHeader: {
+            // TODO display tuning for degree in cents from the root note
+            // use column.getHeadingTooltip(hoveredRegion.headerType);
+
+            auto columns = viewModel.getColumnNoteNames();
+            if (hoveredRegion.noteIndex < static_cast<int>(columns.size())) {
+                auto& column = columns[static_cast<size_t>(hoveredRegion.noteIndex)];
+                String headerTypeName;
+                switch (hoveredRegion.headerType) {
+                    case NoteGridHeadingType::Tuning: headerTypeName = "Tuning"; break;
+                    case NoteGridHeadingType::Degrees: headerTypeName = "Degree"; break;
+                    case NoteGridHeadingType::Notes: headerTypeName = "Note"; break;
+                }
+                String headerText = column.getHeadingText(hoveredRegion.headerType);
+                return String::formatted("%s: %s", headerTypeName.toUTF8(), headerText.toUTF8());
+            }
+            break;
+        }
+        case GridRegionType::None:
+            break;
+    }
+
+    return "";
+}
+
+void TuningPreviewGrid::mouseDown(const MouseEvent& event) {
+    GridLayout layout(getLocalBounds(), viewModel);
+    GridHitResult hitResult = layout.hitTest(event.getPosition());
+
+    if (hitResult.regionType == GridRegionType::NoteCell) {
+        auto octaveNotes = viewModel.getOctaveNotes(hitResult.octave);
+        auto& note = octaveNotes[static_cast<size_t>(hitResult.noteIndex)];
+        if (note.isInMidiRange()) {
+            if (viewModel.playChords.get()) {
+                tuningPlayer.playDegreeChord(note.midiNote);
+            } else {
+                tuningPlayer.playNote(note.midiNote);
+            }
+        }
+    } else if (hitResult.regionType == GridRegionType::RowHeader) {
+        // Play scale as arpeggio for the clicked octave
+        auto scaleNotes = viewModel.getScaleNotes(hitResult.octave, true);
+        std::vector<int> notes;
+        for (const auto& note : scaleNotes) {
+            notes.push_back(note);
+        }
+        notes.push_back(scaleNotes.front() + 12); // Add octave note
+        tuningPlayer.playArpeggio(notes);
+    }
+    // Could add functionality for clicking on column headers here
+}
+
+void TuningPreviewGrid::playingNotesChanges() {
+    repaint();
+}
+
+//================================================================================
+// GridLayout Implementation
+
+int TuningPreviewGrid::GridLayout::getHeaderRowsHeight() const {
+    return headerRowHeight * static_cast<int>(TuningViewModel::getHeaderTypes().size());
+}
+
+juce::Rectangle<int> TuningPreviewGrid::GridLayout::getColumnHeaderBounds(int headerTypeIndex, int noteIndex) const {
+    int x = gridBounds.getX() + rowHeaderWidth + noteIndex * cellWidth;
+    int y = gridBounds.getY() + headerTypeIndex * headerRowHeight;
+    return juce::Rectangle<int>(x, y, cellWidth, headerRowHeight);
+}
+
+juce::Rectangle<int> TuningPreviewGrid::GridLayout::getRowHeaderBounds(int octave) const {
+    auto octaveRange = viewModel.getOctaveRange();
+    int rowIndex = octave - octaveRange.getStart();
+    int y = gridBounds.getY() + getHeaderRowsHeight() + rowIndex * cellHeight;
+    return juce::Rectangle<int>(gridBounds.getX(), y, rowHeaderWidth, cellHeight);
+}
+
+juce::Rectangle<int> TuningPreviewGrid::GridLayout::getNoteCellBounds(int octave, int noteIndex) const {
+    auto octaveRange = viewModel.getOctaveRange();
+    int rowIndex = octave - octaveRange.getStart();
+    int x = gridBounds.getX() + rowHeaderWidth + noteIndex * cellWidth;
+    int y = gridBounds.getY() + getHeaderRowsHeight() + rowIndex * cellHeight;
+    return juce::Rectangle<int>(x, y, cellWidth, cellHeight);
+}
+
+TuningPreviewGrid::GridHitResult TuningPreviewGrid::GridLayout::hitTest(juce::Point<int> position) const {
+    GridHitResult result;
+
+    auto octaveRange = viewModel.getOctaveRange();
+    auto headerTypes = TuningViewModel::getHeaderTypes();
+    int headerRowsHeight = getHeaderRowsHeight();
+
+    // Test column headers
+    if (position.y >= gridBounds.getY() && position.y < gridBounds.getY() + headerRowsHeight) {
+        int headerTypeIndex = (position.y - gridBounds.getY()) / headerRowHeight;
+        if (headerTypeIndex >= 0 && headerTypeIndex < static_cast<int>(headerTypes.size())) {
+            int notesStartX = gridBounds.getX() + rowHeaderWidth;
+            if (position.x >= notesStartX) {
+                int noteIndex = (position.x - notesStartX) / cellWidth;
+                if (noteIndex >= 0 && noteIndex < viewModel.getNumColumns()) {
+                    result.regionType = GridRegionType::ColumnHeader;
+                    result.noteIndex = noteIndex;
+                    result.headerType = headerTypes[static_cast<size_t>(headerTypeIndex)];
+                    result.bounds = getColumnHeaderBounds(headerTypeIndex, noteIndex);
+                    return result;
+                }
+            }
+        }
+    }
+
+    // Test row headers and note cells
+    int rowsStartY = gridBounds.getY() + headerRowsHeight;
+    if (position.y >= rowsStartY) {
+        int rowIndex = (position.y - rowsStartY) / cellHeight;
+        int octave = octaveRange.getStart() + rowIndex;
+
+        if (octave >= octaveRange.getStart() && octave < octaveRange.getEnd()) {
+            // Test row header
+            if (position.x >= gridBounds.getX() && position.x < gridBounds.getX() + rowHeaderWidth) {
+                result.regionType = GridRegionType::RowHeader;
+                result.octave = octave;
+                result.bounds = getRowHeaderBounds(octave);
+                return result;
+            }
+
+            // Test note cells
+            int notesStartX = gridBounds.getX() + rowHeaderWidth;
+            if (position.x >= notesStartX) {
+                int noteIndex = (position.x - notesStartX) / cellWidth;
+                if (noteIndex >= 0 && noteIndex < viewModel.getNumColumns()) {
+                    result.regionType = GridRegionType::NoteCell;
+                    result.octave = octave;
+                    result.noteIndex = noteIndex;
+                    result.bounds = getNoteCellBounds(octave, noteIndex);
+                    return result;
+                }
+            }
+        }
+    }
+
+    return result; // GridRegionType::None
 }
 
 //================================================================================
 TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     : viewModel(um)
-    , tuningGrid(viewModel)
+    , tuningPlayer(viewModel, MoToolApp::getController().getEngine())
+    , tuningGrid(viewModel, tuningPlayer)
     , tooltipWindow(nullptr, 750) // ms delay
 {
     setOpaque(true);
@@ -301,15 +389,30 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 frequency:", a4FrequencyUnits,
                                 viewModel.a4Frequency);
 
-    // Set initial clock controls state
-    updateClockControlsState();
+    // Set initial controls state
+    updateControlsState();
 
     // Register as a change listener to the view model
     viewModel.addChangeListener(this);
 
-    tuningNameLabel.setText("Tuning: " + viewModel.getTuningDescription(), juce::dontSendNotification);
+    tuningNameLabel.setText(viewModel.getTuningDescription(), juce::dontSendNotification);
     addAndMakeVisible(tuningNameLabel);
-    addAndMakeVisible(toneEnvSwitchLabel);
+    // addAndMakeVisible(toneEnvSwitchLabel);
+
+    // Set up play mode checkboxes
+    playChordsCheckBox.setButtonText("Play chords");
+    playChordsCheckBox.getToggleStateValue().referTo(viewModel.playChords.getValue());
+
+    playToneCheckBox.setButtonText("Tone");
+    playToneCheckBox.getToggleStateValue().referTo(viewModel.playTone.getValue());
+
+    playEnvelopeCheckBox.setButtonText("Envelope");
+    playEnvelopeCheckBox.getToggleStateValue().referTo(viewModel.playEnvelope.getValue());
+
+    addAndMakeVisible(playChordsCheckBox);
+    addAndMakeVisible(playToneCheckBox);
+    addAndMakeVisible(playEnvelopeCheckBox);
+    addAndMakeVisible(envelopeShapeSelect);
     addAndMakeVisible(tuningGrid);
 
     // Connect tooltip window to grid
@@ -372,39 +475,67 @@ void TuningPreviewComponent::resized() {
     // Right column: Other controls and tuning grid
     // Place KeySelect and ScaleSelect on the same row with fixed widths
     auto labelsColWidth = moduleWidth * 2; // Width for labels
-    auto keyScaleRow = rightColumn.removeFromTop(rowHeight);
-    keyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
-    keySelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth));
-    keyScaleRow.removeFromLeft(gap);
-    scaleSelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth * 3 - gap));
+
+    {
+        auto keyScaleRow = rightColumn.removeFromTop(rowHeight);
+        keyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
+        keySelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth));
+        keyScaleRow.removeFromLeft(gap);
+        scaleSelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth * 3 - gap));
+    }
 
     rightColumn.removeFromTop(gap);
 
-    auto chipLabelRow = rightColumn.removeFromTop(rowHeight);
-    chipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
-    chipClockSelect.setBounds(chipLabelRow.removeFromLeft(moduleWidth * 4));
+    {
+        auto chipLabelRow = rightColumn.removeFromTop(rowHeight);
+        chipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
+        chipClockSelect.setBounds(chipLabelRow.removeFromLeft(moduleWidth * 4));
+    }
 
     rightColumn.removeFromTop(gap);
 
-    // Clock frequency slider on its own row
-    auto clockFreqRow = rightColumn.removeFromTop(rowHeight);
-    clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(labelsColWidth));
-    clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(moduleWidth * 8));
-    clockFrequencyUnits.setBounds(clockFreqRow);
+    { // Clock frequency slider on its own row
+        auto clockFreqRow = rightColumn.removeFromTop(rowHeight);
+        clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(labelsColWidth));
+        clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(moduleWidth * 8));
+        clockFrequencyUnits.setBounds(clockFreqRow);
+    }
 
     rightColumn.removeFromTop(gap);
 
-    // A4 frequency slider with label
-    auto a4Row = rightColumn.removeFromTop(rowHeight);
-    a4FrequencyLabel.setBounds(a4Row.removeFromLeft(labelsColWidth));
-    a4FrequencySlider.setBounds(a4Row.removeFromLeft(moduleWidth * 8));
-    a4FrequencyUnits.setBounds(a4Row);
+    { // A4 frequency slider with label
+        auto a4Row = rightColumn.removeFromTop(rowHeight);
+        a4FrequencyLabel.setBounds(a4Row.removeFromLeft(labelsColWidth));
+        a4FrequencySlider.setBounds(a4Row.removeFromLeft(moduleWidth * 8));
+        a4FrequencyUnits.setBounds(a4Row);
+    }
 
     rightColumn.removeFromTop(gap);
 
     // TuningTypeLabel.setBounds(rightColumn.removeFromTop(controlHeight));
     tuningNameLabel.setBounds(rightColumn.removeFromTop(rowHeight));
-    toneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
+    // toneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
+
+    rightColumn.removeFromTop(gap);
+
+    {   // Play mode row with multiple controls
+        auto playToneRow = rightColumn.removeFromTop(rowHeight);
+        playToneRow.removeFromLeft(labelsColWidth);
+        // playModeRow.removeFromLeft(labelsColWidth);
+        playToneCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
+        playToneRow.removeFromLeft(gap / 2);
+        playChordsCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
+    }
+
+    rightColumn.removeFromTop(gap);
+
+    {
+        auto playEnvRow = rightColumn.removeFromTop(rowHeight);
+        playEnvRow.removeFromLeft(labelsColWidth);
+        playEnvelopeCheckBox.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
+        playEnvRow.removeFromLeft(gap / 2);
+        envelopeShapeSelect.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
+    }
 
     rightColumn.removeFromTop(gap);
 
@@ -427,7 +558,7 @@ void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
         // DBG("TuningPreviewComponent::changeListenerCallback");
         tuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
-        updateClockControlsState();
+        updateControlsState();
         tuningGrid.repaint();
     }
 }
@@ -479,10 +610,16 @@ void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& 
     addAndMakeVisible(unitsLabel);
 }
 
-void TuningPreviewComponent::updateClockControlsState() {
+void TuningPreviewComponent::updateControlsState() {
+    // Update clock controls
     bool isCustom = viewModel.isCustomClockEnabled();
     clockFrequencySlider.setEnabled(isCustom);
     clockFrequencyLabel.setEnabled(isCustom);
+
+    // Update envelope controls
+    playChordsCheckBox.setEnabled(!viewModel.isEnvelopePeriodsShown());
+    playEnvelopeCheckBox.setEnabled(!viewModel.playChords.get());
+    envelopeShapeSelect.setEnabled(viewModel.isEnvelopeEnabled());
 }
 
 void TuningPreviewComponent::setupScaleSelectMenu() {

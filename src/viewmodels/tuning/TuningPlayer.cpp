@@ -55,8 +55,10 @@ te::MidiClip::Ptr TuningPlayer::createMIDIClip() {
 }
 
 void TuningPlayer::sendNoteOn(int midiNote, int channel, bool isEnvelope) {
+    // DBG("Sending note on: " << midiNote << " on channel " << channel
+        // << ", envelope: " << (isEnvelope ? "Yes" : "No"));
     if (isEnvelope) {
-        DBG("Sending envelope note on: " << midiNote << " on channel " << channel);
+        // DBG("Sending envelope note on: " << midiNote << " on channel " << channel);
         // send MidiCCType::SoundVariation 8
         // track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
 
@@ -67,17 +69,19 @@ void TuningPlayer::sendNoteOn(int midiNote, int channel, bool isEnvelope) {
                                     static_cast<int>(MidiCCType::SoundVariation), 12), {});
 
         // tone retrigger
-        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-                                    static_cast<int>(MidiCCType::CC20PeriodCoarse), 0), {});
-        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-                                    static_cast<int>(MidiCCType::CC52PeriodFine), 0), {});
+        // track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
+        //                             static_cast<int>(MidiCCType::CC20PeriodCoarse), 0), {});
+        // track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
+        //                             static_cast<int>(MidiCCType::CC52PeriodFine), 0), {});
+
+        // tone fifth higher
+        // track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote + 7, static_cast<uint8>(127)), {});
         // tone on
         track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-                                    static_cast<int>(MidiCCType::GPB1ToneSwitch), 127), {});
+                                    static_cast<int>(MidiCCType::GPB1ToneSwitch), 0), {});
         // envelope on
         track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
                                     static_cast<int>(MidiCCType::GPB3EnvSwitch), 127), {});
-        // track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
     } else {
         track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
         track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
@@ -88,7 +92,7 @@ void TuningPlayer::sendNoteOn(int midiNote, int channel, bool isEnvelope) {
 
 void TuningPlayer::sendNoteOff(int midiNote, int channel, bool isEnvelope) {
     if (isEnvelope) {
-        DBG("Sending envelope note off: " << midiNote << " on channel " << channel);
+        // DBG("Sending envelope note off: " << midiNote << " on channel " << channel);
         track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
             static_cast<int>(MidiCCType::Volume), 0), {});
         track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
@@ -190,6 +194,7 @@ void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
 void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
     constexpr int duration = 200;
     updateTuning();
+    bool env = viewModel.isEnvelopeEnabled();
 
     if (midiNotes.empty()) return;
     int channel = getMonophonicChannel();
@@ -197,14 +202,14 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
     stop(/*notify=*/ false);
 
     // Play first note immediately
-    sendNoteOn(midiNotes[0], channel);
+    sendNoteOn(midiNotes[0], channel, env);
     notifyPlayingNotes();
 
     // Add remaining notes with callAfterDelay
     for (size_t i = 1; i < midiNotes.size(); ++i) {
-        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel]() {
+        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel, env]() {
             stop(/*notify=*/ false);
-            sendNoteOn(note, channel);
+            sendNoteOn(note, channel, env);
             notifyPlayingNotes();
         });
     }
@@ -219,6 +224,7 @@ void TuningPlayer::stop(bool notify) {
     while (!playingNotes_.empty()) {
         auto [note, channel] = *playingNotes_.begin();
         sendNoteOff(note, channel); // This will erase the element from the map
+        sendNoteOff(note, channel, true);
     }
     if (notify) {
         notifyPlayingNotes();
@@ -245,7 +251,7 @@ void TuningPlayer::replaceNotes(const std::vector<int>& midiNotes, double noteLe
 }
 
 int TuningPlayer::getMonophonicChannel() const {
-    return 2; // middle channel for monophonic playback
+    return 3; // middle channel for monophonic playback
 }
 
 void TuningPlayer::startPlayback() {

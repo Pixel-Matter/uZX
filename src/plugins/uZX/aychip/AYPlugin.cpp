@@ -91,19 +91,21 @@ void AYChipPlugin::reset() {
     chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
     timeFromReset = 0.0;
     midiParamsReader.reset();
-    midiRegsReader.reset();
+    // midiRegsReader.reset();
     registersFrame = {};
 }
-
 void AYChipPlugin::updateRegistersFromMidiParams() noexcept {
-    const auto& params = midiParamsReader.getParams();
+    // DBG("updateRegistersFromMidiParams");
+    auto& params = midiParamsReader.getParams();
     registersFrame.clear();
     params.updateRegisters(registersFrame);
+    params.clear();  // clear params after update
 }
 
 void AYChipPlugin::updateRegistersFromMidiRegs() noexcept {
-    registersFrame = midiRegsReader.getRegisters();
-    midiRegsReader.clear();
+    // DBG("updateRegistersFromMidiRegs");
+    // registersFrame = midiRegsReader.getRegisters();
+    // midiRegsReader.clear();
 }
 
 void AYChipPlugin::updateChip() noexcept {
@@ -115,6 +117,7 @@ void AYChipPlugin::updateChip() noexcept {
 
     for (size_t i = 0; i < registersFrame.size(); ++i) {
         if (registersFrame.isSet(i)) {
+            // DBG("" << i << " = " << registersFrame.getRaw(i));
             chip->setRegister(i, registersFrame.getRaw(i));
         }
     }
@@ -124,7 +127,7 @@ void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
     if (midiReaderMode == MidiReaderMode::Params) {
         midiParamsReader.read(m);
     } else if (midiReaderMode == MidiReaderMode::Regs) {
-        midiRegsReader.read(m);
+        // midiRegsReader.read(m);
     }
 }
 

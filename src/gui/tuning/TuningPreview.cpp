@@ -244,14 +244,7 @@ void TuningPreviewGrid::mouseDown(const MouseEvent& event) {
             }
         }
     } else if (hitResult.regionType == GridRegionType::RowHeader) {
-        // Play scale as arpeggio for the clicked octave
-        auto scaleNotes = viewModel.getScaleNotes(hitResult.octave, true);
-        std::vector<int> notes;
-        for (const auto& note : scaleNotes) {
-            notes.push_back(note);
-        }
-        notes.push_back(scaleNotes.front() + 12); // Add octave note
-        tuningPlayer.playArpeggio(notes);
+        tuningPlayer.playScale(hitResult.octave);
     }
     // Could add functionality for clicking on column headers here
 }

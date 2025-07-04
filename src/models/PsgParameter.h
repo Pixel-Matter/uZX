@@ -140,11 +140,13 @@ public:
             //     regs.setVolumeAndEnvMod(i, 0, values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
             // } else
             if (masks[size_t(PsgParamType::EnvelopeIsOnA) + i] || masks[size_t(PsgParamType::VolumeA) + i]) {
+                // DBG("Setting volume/env chan " << i << ": " << values[size_t(PsgParamType::VolumeA) + i] << ", " << values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
                 regs.setVolumeAndEnvMod(i, uint8(values[size_t(PsgParamType::VolumeA) + i]), values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
             }
         }
         for (size_t i = 0; i < 3; ++i) {
             if (masks[size_t(PsgParamType::TonePeriodA) + i]) {
+                // DBG("Setting tone period chan " << i << ": " << values[size_t(PsgParamType::TonePeriodA) + i]);
                 regs.setTonePeriod(i, values[size_t(PsgParamType::TonePeriodA) + i]);
             }
         }
@@ -155,6 +157,9 @@ public:
         }
         if (mixerSet) {
             for (size_t i = 0; i < 3; ++i) {
+                // DBG("Setting mixer chan " << i << ": t="
+                //     << values[size_t(PsgParamType::ToneIsOnA) + i] << ", n="
+                //     << values[size_t(PsgParamType::NoiseIsOnA) + i]);
                 regs.setToneOn(i, values[size_t(PsgParamType::ToneIsOnA) + i]);
                 regs.setNoiseOn(i, values[size_t(PsgParamType::NoiseIsOnA) + i]);
             }
@@ -162,12 +167,15 @@ public:
         }
         // Noise and env para
         if (masks[size_t(PsgParamType::NoisePeriod)]) {
+            // DBG("Setting noise period: " << values[size_t(PsgParamType::NoisePeriod)]);
             regs.setNoisePeriod(static_cast<uint8>(values[size_t(PsgParamType::NoisePeriod)]));
         }
         if (masks[size_t(PsgParamType::EnvelopePeriod)]) {
+            // DBG("Setting envelope period: " << values[size_t(PsgParamType::EnvelopePeriod)]);
             regs.setEnvelopePeriod(values[size_t(PsgParamType::EnvelopePeriod)]);
         }
         if (masks[size_t(PsgParamType::EnvelopeShape)]) {
+            // DBG("Setting envelope shape: " << values[size_t(PsgParamType::EnvelopeShape)]);
             regs.setEnvelopeShape(static_cast<uint8>(values[size_t(PsgParamType::EnvelopeShape)]));
         }
     }

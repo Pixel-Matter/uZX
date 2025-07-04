@@ -33,21 +33,21 @@ void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
     state.currentNote = note;
     state.velocity = velocity;
 
-    DBG("noteOn " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none")
-        << ", channel " << channel
-        << ", velocity: " << state.velocity
-        // << ", toneOn: " << (state.toneOn ? "Yes" : "No")
-        // << ", noiseOn: " << (state.noiseOn ? "Yes" : "No")
-        // << ", envOn: " << (state.envOn ? "Yes" : "No")
-    );
+    // DBG("noteOn " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none")
+    //     << ", channel " << channel
+    //     << ", velocity: " << state.velocity
+    //     // << ", toneOn: " << (state.toneOn ? "Yes" : "No")
+    //     // << ", noiseOn: " << (state.noiseOn ? "Yes" : "No")
+    //     // << ", envOn: " << (state.envOn ? "Yes" : "No")
+    // );
 
     if (channel - baseChannel_ == 3) {
-        DBG("Note on on channel 4, using envelope period mapping");
+        // DBG("Note on on channel 4, using envelope period mapping");
         // Channel 4 is reserved for envelope periods
         // TODO pass divider or env flag to tuning system
         emitPeriodCC(channel, tuningSystem_->midiNoteToPeriod(note, TuningSystem::Envelope));
     } else {
-        DBG("Note on period on channel " << channel);
+        // DBG("Note on period on channel " << channel);
         emitPeriodCC(channel, tuningSystem_->midiNoteToPeriod(note, TuningSystem::Tone));
 
         // Only emit volume if it changed
@@ -76,7 +76,7 @@ void MidiToPsgTransformer::noteOff(int channel, int note) {
     // DBG("Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
     if (state.currentNote == note) {
         if (channel - baseChannel_ != 3) {
-            DBG("Turning off note on channel " << channel);
+            // DBG("Turning off note on channel " << channel);
             emitVolumeCC(channel, 0);
             // emitEnvSwitchCC(channel, false);
         }
@@ -130,7 +130,7 @@ bool MidiToPsgTransformer::isChannelInRange(int channel) const {
 }
 
 void MidiToPsgTransformer::emitVolumeCC(int channel, int volume) {
-    DBG("Emitting Volume CC: Channel " << channel << ", Volume " << volume);
+    // DBG("Emitting Volume CC: Channel " << channel << ", Volume " << volume);
     auto msg = juce::MidiMessage::controllerEvent(channel, static_cast<int>(MidiCCType::Volume), volume);
     outputBuffer_.push_back(msg);
 }
@@ -140,7 +140,7 @@ void MidiToPsgTransformer::emitPeriodCC(int channel, int period) {
     int coarse = (period >> 7) & 0x7F;  // bits 7-11 -> 0-31 (high 5 bits)
     int fine = period & 0x7F;           // bits 0-6 -> 0-127 (low 7 bits)
 
-    DBG("Emitting Period CC: Channel " << channel << ", period " << period);
+    // DBG("Emitting Period CC: Channel " << channel << ", period " << period);
 
     auto coarseMsg = juce::MidiMessage::controllerEvent(channel, static_cast<int>(MidiCCType::CC20PeriodCoarse), coarse);
     auto fineMsg = juce::MidiMessage::controllerEvent(channel, static_cast<int>(MidiCCType::CC52PeriodFine), fine);
@@ -163,7 +163,7 @@ void MidiToPsgTransformer::emitEnvSwitchCC(int channel, bool on) {
 
 void MidiToPsgTransformer::emitCC(int channel, int controller, int value) {
     auto msg = juce::MidiMessage::controllerEvent(channel, controller, value);
-    DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
+    // DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
     // auto& state = getChannelState(channel);
     // DBG("emitCC Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
 

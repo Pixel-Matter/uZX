@@ -5,12 +5,14 @@
 #include "TuningViewModel.h"
 
 #include "../../plugins/uZX/MidiToPsgPlugin.h"
+#include "../../models/PsgMidi.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
 namespace MoTool {
 
-class TuningPlayer {
+class TuningPlayer : private ChangeListener
+{
 public:
     // TODO maybe actually use converter from plugin for that?
     // because then we can monitor notes from external MIDI devices
@@ -26,6 +28,7 @@ public:
         , engine(e)
     {
         initialize();
+        viewModel.addChangeListener(this);
     }
 
     ~TuningPlayer() = default;
@@ -38,7 +41,7 @@ public:
 
     te::MidiClip::Ptr createMIDIClip();
 
-    void playNote(int midiNote);
+    void playSingleNote(int midiNote);
 
     void playDegreeChord(int midiNote);
 
@@ -65,11 +68,16 @@ private:
     juce::ListenerList<Listener> listeners_;
     std::map<int, int> playingNotes_;  // Currently playing MIDI notes on which channels
 
+    void changeListenerCallback (ChangeBroadcaster* source) override;
 
     // Helper methods
     int getMonophonicChannel() const;
-    void sendNoteOn(int midiNote, int channel, bool isEnvelope = false);
-    void sendNoteOff(int midiNote, int channel, bool isEnvelope = false);
+    void noteOn (int midiNote, int channel, bool isTone = false, bool isEnvelope = false);
+    void noteOnNoRetrigger(int midiNote, int channel, bool isTone, bool isEnvelope = false);
+    void noteOff(int midiNote, int channel, bool isTone = false, bool isEnvelope = false);
+    void sendCC(int channel, MidiCCType ccType, int value);
+    void sendNoteOn(int channel, int midiNote, int velocity = 127);
+    void sendNoteOff(int channel, int midiNote);
     void updateTuning();
     void replaceNotes(const std::vector<int>& midiNotes, double noteLength = 0.5);
     void startPlayback();

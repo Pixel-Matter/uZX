@@ -57,13 +57,6 @@ void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
             state.lastVolume = currentVolume;
         }
     }
-
-    // if (channel - baseChannel_ != 3) {
-    //     DBG("Note modulations on channel " << channel);
-    //     emitToneSwitchCC(channel, state.toneOn);
-    //     emitNoiseSwitchCC(channel, state.noiseOn);
-    //     emitEnvSwitchCC(channel, state.envOn);
-    // }
 }
 
 void MidiToPsgTransformer::noteOff(int channel, int note) {
@@ -78,18 +71,7 @@ void MidiToPsgTransformer::noteOff(int channel, int note) {
         if (channel - baseChannel_ != 3) {
             // DBG("Turning off note on channel " << channel);
             emitVolumeCC(channel, 0);
-            // emitEnvSwitchCC(channel, false);
         }
-
-        // if (state.toneOn) {
-        //     emitToneSwitchCC(channel, false);
-        // }
-        // if (state.envOn) {
-        //     emitEnvSwitchCC(channel, false);
-        // }
-        // if (state.noiseOn) {
-        //     emitNoiseSwitchCC(channel, false);
-        // }
         state.clear();
     }
 }

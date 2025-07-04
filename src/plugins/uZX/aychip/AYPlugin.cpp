@@ -146,6 +146,8 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
     for (auto& m : *fc.bufferForMidiMessages) {
+        // TODO retrigger events with smallest delay
+
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample > currentSample) {
             updateChip();

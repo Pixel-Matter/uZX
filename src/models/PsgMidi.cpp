@@ -197,19 +197,19 @@ void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
                 break;
             case PsgParamType::RetriggerToneA:
                 psgChan = 0;
-                addEvent(time, psgChan, MidiCCType::GPB4, value);
+                addEvent(time, psgChan, MidiCCType::GPB4RetriggerSwitch, value);
                 break;
             case PsgParamType::RetriggerToneB:
                 psgChan = 1;
-                addEvent(time, psgChan, MidiCCType::GPB4, value);
+                addEvent(time, psgChan, MidiCCType::GPB4RetriggerSwitch, value);
                 break;
             case PsgParamType::RetriggerToneC:
                 psgChan = 2;
-                addEvent(time, psgChan, MidiCCType::GPB4, value);
+                addEvent(time, psgChan, MidiCCType::GPB4RetriggerSwitch, value);
                 break;
             case PsgParamType::RetriggerEnvelope:
                 psgChan = 3;
-                addEvent(time, psgChan, MidiCCType::GPB4, value);
+                addEvent(time, psgChan, MidiCCType::GPB4RetriggerSwitch, value);
                 break;
             case PsgParamType::NoisePeriod:
                 psgChan = 3;
@@ -286,7 +286,7 @@ std::optional<PsgParamFrameData> PsgParamsMidiReader::read(const juce::MidiMessa
                 params.set(PsgParamType::NoiseIsOnA + psgChan, val);
             } else if (ctrlNum == MidiCCType::GPB3EnvSwitch) { // Envelope on/off
                 params.set(PsgParamType::EnvelopeIsOnA + psgChan, val);
-            } else if (ctrlNum == MidiCCType::GPB4) { // Retrigger on/off
+            } else if (ctrlNum == MidiCCType::GPB4RetriggerSwitch) { // Retrigger on/off
                 params.set(PsgParamType::RetriggerToneA + psgChan, val);
             }
         }

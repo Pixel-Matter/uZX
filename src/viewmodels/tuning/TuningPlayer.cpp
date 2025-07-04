@@ -1,6 +1,7 @@
 #include "TuningPlayer.h"
 
 #include "../../plugins/uZX/aychip/AYPlugin.h"
+#include "juce_events/juce_events.h"
 
 namespace MoTool {
 
@@ -10,6 +11,13 @@ void TuningPlayer::initialize() {
 
     createPlugins();
     createMIDIClip();
+}
+
+void TuningPlayer::changeListenerCallback(ChangeBroadcaster* source) {
+    if (source == &viewModel) {
+        updateTuning();
+        stop();
+    }
 }
 
 void TuningPlayer::createPlugins() {
@@ -54,68 +62,79 @@ te::MidiClip::Ptr TuningPlayer::createMIDIClip() {
     return {};
 }
 
-void TuningPlayer::sendNoteOn(int midiNote, int channel, bool isEnvelope) {
+void TuningPlayer::sendCC(int channel, MidiCCType ccType, int value) {
+    track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel, static_cast<int>(ccType), value), {});
+}
+
+void TuningPlayer::sendNoteOn(int channel, int midiNote, int velocity) {
+    track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(velocity)), {});
+}
+
+void TuningPlayer::sendNoteOff(int channel, int midiNote) {
+    track.injectLiveMidiMessage(juce::MidiMessage::noteOff(channel, midiNote), {});
+}
+
+void TuningPlayer::noteOn(int midiNote, int channel, bool isTone, bool isEnvelope) {
     // DBG("Sending note on: " << midiNote << " on channel " << channel
         // << ", envelope: " << (isEnvelope ? "Yes" : "No"));
-    if (isEnvelope) {
-        // DBG("Sending envelope note on: " << midiNote << " on channel " << channel);
-        // send MidiCCType::SoundVariation 8
-        // track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
-
-        // env period
-        track.injectLiveMidiMessage(juce::MidiMessage::noteOn(4, midiNote, static_cast<uint8>(127)), {});
-        // env set shape and retriger
-        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(4,
-                                    static_cast<int>(MidiCCType::SoundVariation), viewModel.getEnvelopeShape()), {});
-
-        // tone retrigger
-        // track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-        //                             static_cast<int>(MidiCCType::CC20PeriodCoarse), 0), {});
-        // track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-        //                             static_cast<int>(MidiCCType::CC52PeriodFine), 0), {});
-
-        // tone fifth higher
-        // track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote + 7, static_cast<uint8>(127)), {});
-        // tone on
-        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-                                    static_cast<int>(MidiCCType::GPB1ToneSwitch), 0), {});
-        // envelope on
-        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-                                    static_cast<int>(MidiCCType::GPB3EnvSwitch), 127), {});
+    auto retrigger = viewModel.retriggerTone.get() && isTone;
+    if (retrigger) {
+        sendCC(channel, MidiCCType::CC20PeriodCoarse, 0);
+        sendCC(channel, MidiCCType::CC52PeriodFine, 0);
+        // we should delay everything to allow the note retrigger reset to be sent first
+        Timer::callAfterDelay(5, [this, channel, midiNote, isTone, isEnvelope]() {
+            noteOnNoRetrigger(midiNote, channel, isTone, isEnvelope);
+        });
     } else {
-        track.injectLiveMidiMessage(juce::MidiMessage::noteOn(channel, midiNote, static_cast<uint8>(127)), {});
-        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-            static_cast<int>(MidiCCType::GPB1ToneSwitch), 127), {});
+        noteOnNoRetrigger(midiNote, channel, isTone, isEnvelope);
     }
+
     playingNotes_[midiNote] = channel;
 }
 
-void TuningPlayer::sendNoteOff(int midiNote, int channel, bool isEnvelope) {
+void TuningPlayer::noteOnNoRetrigger(int midiNote, int channel, bool isTone, bool isEnvelope) {
+    // DBG("Sending note on: " << midiNote << " on channel " << channel
+        // << ", envelope: " << (isEnvelope ? "Yes" : "No"));
+    if (isTone) {
+        sendNoteOn(channel, midiNote, 127);
+        sendCC(channel, MidiCCType::GPB1ToneSwitch, 127);
+    }
+    if (isEnvelope) {
+        auto semitones = viewModel.getModulationSemitones();
+        // DBG("Sending envelope note on: " << midiNote << " on channel " << channel);
+        // env period
+        sendNoteOn(4, midiNote + semitones, 127);
+        // env set shape and retriger
+        sendCC(4, MidiCCType::SoundVariation, viewModel.getEnvelopeShape());
+        // envelope on
+        sendCC(channel, MidiCCType::GPB3EnvSwitch, 127);
+    }
+}
+
+void TuningPlayer::noteOff(int midiNote, int channel, bool isTone, bool isEnvelope) {
     if (isEnvelope) {
         // DBG("Sending envelope note off: " << midiNote << " on channel " << channel);
-        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-            static_cast<int>(MidiCCType::Volume), 0), {});
-        track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,
-            static_cast<int>(MidiCCType::GPB3EnvSwitch), 0), {});
-        // note off not needed, but for symmetry
-        track.injectLiveMidiMessage(juce::MidiMessage::noteOff(channel, midiNote), {});
-        track.injectLiveMidiMessage(juce::MidiMessage::noteOff(4, midiNote), {});
-    } else {
-        track.injectLiveMidiMessage(juce::MidiMessage::noteOff(channel, midiNote), {});
+        sendCC(channel, MidiCCType::GPB3EnvSwitch, 0);
+        sendNoteOff(4, midiNote);
+    }
+    if (isTone) {
+        sendCC(channel, MidiCCType::GPB1ToneSwitch, 0);
+        sendNoteOff(channel, midiNote);
     }
     playingNotes_.erase(midiNote);
 }
 
-void TuningPlayer::playNote(int midiNote) {
+void TuningPlayer::playSingleNote(int midiNote) {
     updateTuning();
     int channel = getMonophonicChannel();
+    bool tone = viewModel.isToneEnabled();
     bool env = viewModel.isEnvelopeEnabled();
-    sendNoteOn(midiNote, channel, env);
+    noteOn(midiNote, channel, tone, env);
     notifyPlayingNotes();
 
     // Clear the note after a short delay to simulate note release
-    juce::Timer::callAfterDelay(200, [this, midiNote, channel, env]() {
-        sendNoteOff(midiNote, channel, env);
+    juce::Timer::callAfterDelay(400, [this, midiNote, channel, tone, env]() {
+        noteOff(midiNote, channel, tone, env);
         notifyPlayingNotes();
     });
 }
@@ -166,15 +185,18 @@ void TuningPlayer::playDegreeChord(int midiNote) {
 void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
     constexpr int duration = 600;
     updateTuning();
+    auto tone = viewModel.isToneEnabled();
+    auto env = viewModel.isEnvelopeEnabled();
 
     stop(/*notify=*/ false);
 
     // for no more than first 3 notes for chord playback
+    // TODO first note can be envelope enabled
     for (size_t i = 0; i < std::min(midiNotes.size(), 3ul); ++i) {
-        sendNoteOn(midiNotes[i], (int) i + 1, false);
+        noteOn(midiNotes[i], (int) i + 1, tone, i == 0 ? env : false);
 
-        juce::Timer::callAfterDelay(static_cast<int>(duration), [this, note = midiNotes[i], channel = (int) i + 1]() {
-            sendNoteOff(note, channel);
+        juce::Timer::callAfterDelay(static_cast<int>(duration), [this, note = midiNotes[i], channel = (int) i + 1, tone, env, i]() {
+            noteOff(note, channel, tone, i == 0 ? env : false); // Only turn off tone, not envelope
             notifyPlayingNotes();
         });
     }
@@ -194,7 +216,8 @@ void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
 void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
     constexpr int duration = 200;
     updateTuning();
-    bool env = viewModel.isEnvelopeEnabled();
+    auto tone = viewModel.isToneEnabled();
+    auto env = viewModel.isEnvelopeEnabled();
 
     if (midiNotes.empty()) return;
     int channel = getMonophonicChannel();
@@ -202,14 +225,16 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
     stop(/*notify=*/ false);
 
     // Play first note immediately
-    sendNoteOn(midiNotes[0], channel, env);
+    noteOn(midiNotes[0], channel, tone, env);
     notifyPlayingNotes();
 
     // Add remaining notes with callAfterDelay
     for (size_t i = 1; i < midiNotes.size(); ++i) {
-        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel, env]() {
+        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel, tone, env]() {
             stop(/*notify=*/ false);
-            sendNoteOn(note, channel, env);
+        });
+        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel, tone, env]() {
+            noteOn(note, channel, tone, env);
             notifyPlayingNotes();
         });
     }
@@ -223,8 +248,7 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
 void TuningPlayer::stop(bool notify) {
     while (!playingNotes_.empty()) {
         auto [note, channel] = *playingNotes_.begin();
-        sendNoteOff(note, channel); // This will erase the element from the map
-        sendNoteOff(note, channel, true);
+        noteOff(note, channel, true, true); // This will erase the element from the map
     }
     if (notify) {
         notifyPlayingNotes();

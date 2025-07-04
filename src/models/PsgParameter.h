@@ -178,6 +178,11 @@ public:
             // DBG("Setting envelope shape: " << values[size_t(PsgParamType::EnvelopeShape)]);
             regs.setEnvelopeShape(static_cast<uint8>(values[size_t(PsgParamType::EnvelopeShape)]));
         }
+        // TODO retrigger tone
+        // if (masks[size_t(PsgParamType::RetriggerToneA)]) {
+        //     DBG("Setting retrigger tone A: " << values[size_t(PsgParamType::RetriggerToneA)]);
+        //     regs.setRetriggerTone(0, values[size_t(PsgParamType::RetriggerToneA)]);
+        // }
     }
 
     constexpr uZX::PsgRegsFrame toRegisters() const noexcept {

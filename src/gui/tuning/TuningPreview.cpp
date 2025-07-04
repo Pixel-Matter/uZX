@@ -240,7 +240,7 @@ void TuningPreviewGrid::mouseDown(const MouseEvent& event) {
             if (viewModel.playChords.get()) {
                 tuningPlayer.playDegreeChord(note.midiNote);
             } else {
-                tuningPlayer.playNote(note.midiNote);
+                tuningPlayer.playSingleNote(note.midiNote);
             }
         }
     } else if (hitResult.regionType == GridRegionType::RowHeader) {
@@ -399,13 +399,18 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     playToneCheckBox.setButtonText("Tone");
     playToneCheckBox.getToggleStateValue().referTo(viewModel.playTone.getValue());
 
+    retriggerToneCheckBox.setButtonText("Retrigger");
+    retriggerToneCheckBox.getToggleStateValue().referTo(viewModel.retriggerTone.getValue());
+
     playEnvelopeCheckBox.setButtonText("Envelope");
     playEnvelopeCheckBox.getToggleStateValue().referTo(viewModel.playEnvelope.getValue());
 
     addAndMakeVisible(playChordsCheckBox);
     addAndMakeVisible(playToneCheckBox);
+    // addAndMakeVisible(retriggerToneCheckBox);
     addAndMakeVisible(playEnvelopeCheckBox);
     addAndMakeVisible(envelopeShapeSelect);
+    addAndMakeVisible(modulationModeSelect);
     addAndMakeVisible(tuningGrid);
 
     // Connect tooltip window to grid
@@ -517,6 +522,8 @@ void TuningPreviewComponent::resized() {
         // playModeRow.removeFromLeft(labelsColWidth);
         playToneCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
         playToneRow.removeFromLeft(gap / 2);
+        // retriggerToneCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
+        // playToneRow.removeFromLeft(gap / 2);
         playChordsCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
     }
 
@@ -526,8 +533,10 @@ void TuningPreviewComponent::resized() {
         auto playEnvRow = rightColumn.removeFromTop(rowHeight);
         playEnvRow.removeFromLeft(labelsColWidth);
         playEnvelopeCheckBox.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
-        playEnvRow.removeFromLeft(gap / 2);
-        envelopeShapeSelect.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
+        playEnvRow.removeFromLeft(gap);
+        envelopeShapeSelect.setBounds(playEnvRow.removeFromLeft(moduleWidth * 3));
+        playEnvRow.removeFromLeft(gap);
+        modulationModeSelect.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
     }
 
     rightColumn.removeFromTop(gap);
@@ -610,9 +619,10 @@ void TuningPreviewComponent::updateControlsState() {
     clockFrequencyLabel.setEnabled(isCustom);
 
     // Update envelope controls
-    playChordsCheckBox.setEnabled(!viewModel.isEnvelopePeriodsShown());
-    playEnvelopeCheckBox.setEnabled(!viewModel.playChords.get());
+    playChordsCheckBox.setEnabled(viewModel.isToneEnabled());
+    retriggerToneCheckBox.setEnabled(viewModel.isToneEnabled());
     envelopeShapeSelect.setEnabled(viewModel.isEnvelopeEnabled());
+    modulationModeSelect.setEnabled(viewModel.isModulationEnabled());
 }
 
 void TuningPreviewComponent::setupScaleSelectMenu() {

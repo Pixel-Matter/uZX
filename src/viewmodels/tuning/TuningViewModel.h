@@ -51,7 +51,7 @@ struct EnvShapeSimpleEnum {
 using EnvShapeChoice = Util::EnumChoice<EnvShapeSimpleEnum>;
 
 
-struct EnvModeEnum {
+struct ModulationEnum {
     enum Enum {
         Unison,
         OctaveDown,
@@ -82,7 +82,7 @@ struct EnvModeEnum {
         "+5"
     };
 
-    static inline constexpr int intervals[] {
+    static inline constexpr int semitones[] {
         0,
         -12,
         +12,
@@ -93,7 +93,7 @@ struct EnvModeEnum {
     };
 };
 
-using EnvModeChoice = Util::EnumChoice<EnvModeEnum>;
+using ModulationChoice = Util::EnumChoice<ModulationEnum>;
 
 
 struct TuningNoteName {
@@ -208,17 +208,22 @@ namespace IDs {
     DECLARE_ID(playEnvelope)
     DECLARE_ID(envelopeShape)
     DECLARE_ID(envelopeMode)
+    DECLARE_ID(retriggerTone)
 
     #undef DECLARE_ID
 }
 
-class TuningViewModel : public ChangeBroadcaster, private Value::Listener {
+class TuningViewModel : public ChangeBroadcaster,
+                        private Value::Listener
+{
 public:
     // Any UI component can now listen to tuning system changes by implementing ChangeListener
     // and calling viewModel.addChangeListener(this) in their constructor
     TuningViewModel(UndoManager* um = nullptr)
         : transientState(IDs::TUNINGVIEWSTATE)
         , undoManager(um)
+        // objects
+        , currentScale(Scale::ScaleType::IonianOrMajor)
                                                                  // no undo for this control
         , selectedTuningTable(transientState, IDs::tuningTable,  nullptr, BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
@@ -230,11 +235,10 @@ public:
         , playChords         (transientState, IDs::playChords,                                     um, false)
         , playTone           (transientState, IDs::playTone,                                       um, true)
         , playEnvelope       (transientState, IDs::playEnvelope,                                   um, false)
+        , retriggerTone      (transientState, IDs::retriggerTone,                                  um, false)
         , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), um, EnvShapeSimpleEnum::TriangleUp)
-        , envelopeMode       (transientState, IDs::envelopeMode,  EnvModeChoice::getLongLabels(),  um, EnvModeEnum::Unison)
+        , modulationMode     (transientState, IDs::envelopeMode,  ModulationChoice::getLongLabels(),  um, ModulationEnum::Unison)
 
-        // objects
-        , currentScale(Scale::ScaleType::IonianOrMajor)
     {
         // Set up Value listeners for bidirectional sync
         selectedTuningTable.addListener(this);
@@ -548,6 +552,10 @@ public:
         return getChipChoice() == ChipClockChoice::Custom;
     }
 
+    bool isToneEnabled() const {
+        return playTone.get();
+    }
+
     bool isEnvelopeEnabled() const {
         return playEnvelope.get();
     }
@@ -557,19 +565,30 @@ public:
         return playEnvelope.get() && !playTone.get();
     }
 
+    bool isModulationEnabled() const {
+        // Envelope modulation is enabled when both tone and envelope are enabled
+        return playTone.get() && playEnvelope.get();
+    }
+
+    int getModulationSemitones() const {
+        // Get the modulation semitones based on the current modulation mode
+        if (!isToneEnabled() || !isEnvelopeEnabled()) {
+            return 0; // No modulation if tone or envelope is not enabled
+        }
+        auto mode = modulationMode.get();
+        return ModulationEnum::semitones[static_cast<size_t>(mode)];
+    }
+
     TuningSystem::PeriodMode getCurrentPeriodMode() const {
         return isEnvelopePeriodsShown() ? TuningSystem::Envelope : TuningSystem::Tone;
     }
 
     void updatePlayState() {
-        if (playChords.get()) {
+        if (playChords.get() && !playTone.get()) {
             playTone = true;
-            playEnvelope = false; // Disable envelope playback when chords are played
         } else if (!playTone.get() && !playEnvelope.get()) {
             // If both playTone and playEnvelope are false, enable playTone
             playTone = true;
-        } else if (isEnvelopePeriodsShown()) {
-            playChords = false; // Disable chords playback when envelope periods are shown
         }
         sendChangeMessage(); // Notify listeners about the state change
     }
@@ -673,35 +692,7 @@ public:
         }
     }
 
-    //-------------------------------------------------------------------------
 private:
-    // Transient view state
-    ValueTree transientState;
-    // te::Edit edit;             // Edit for undo/redo support, and for previewing tuning
-    UndoManager* undoManager;
-
-public:
-    // ParamAttachment objects - single source of truth for all persisted types
-    ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
-    ChoiceParamAttachment<ChipClockChoice>   selectedChip;
-    ChoiceParamAttachment<Scale::Key>        selectedRoot;
-    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
-    RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
-    RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
-    // Play modes
-    ParamAttachment<bool>                    playChords; // Instead of individual notes
-    ParamAttachment<bool>                    playTone;
-    ParamAttachment<bool>                    playEnvelope;
-    ChoiceParamAttachment<EnvShapeChoice>    envelopeShape;
-    ChoiceParamAttachment<EnvModeChoice>     envelopeMode;
-
-private:
-    // Cached objects derived from values (performance optimization) - only for complex conversions
-    mutable Scale currentScale;            // Scale object cache
-    ChipCapabilities toneCapabilities; // Chip capabilities for the tuning system
-    ChipCapabilities envCapabilities; // Chip capabilities for the envelope
-    std::unique_ptr<TuningSystem> tuningSystem;
-
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
         if (value.refersToSameSourceAs(selectedScale.getValue())) {
@@ -813,6 +804,34 @@ private:
 
         return bestMatch;
     }
+    //-------------------------------------------------------------------------
+private:
+    // Transient view state
+    ValueTree transientState;
+    // te::Edit edit;             // Edit for undo/redo support, and for previewing tuning
+    UndoManager* undoManager;
+
+    // Cached objects derived from values (performance optimization) - only for complex conversions
+    mutable Scale currentScale;            // Scale object cache
+    ChipCapabilities toneCapabilities; // Chip capabilities for the tuning system
+    ChipCapabilities envCapabilities; // Chip capabilities for the envelope
+    std::unique_ptr<TuningSystem> tuningSystem;
+
+public:
+    // ParamAttachment objects - single source of truth for all persisted types
+    ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
+    ChoiceParamAttachment<ChipClockChoice>   selectedChip;
+    ChoiceParamAttachment<Scale::Key>        selectedRoot;
+    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
+    RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
+    RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
+    // Play modes
+    ParamAttachment<bool>                    playChords; // Instead of individual notes
+    ParamAttachment<bool>                    playTone;
+    ParamAttachment<bool>                    playEnvelope;
+    ParamAttachment<bool>                    retriggerTone;
+    ChoiceParamAttachment<EnvShapeChoice>    envelopeShape;
+    ChoiceParamAttachment<ModulationChoice>     modulationMode;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };
@@ -829,7 +848,7 @@ template <>
 struct VariantConverter<EnvShapeChoice> : public EnumVariantConverter<EnvShapeChoice> {};
 
 template <>
-struct VariantConverter<EnvModeChoice> : public EnumVariantConverter<EnvModeChoice> {};
+struct VariantConverter<ModulationChoice> : public EnumVariantConverter<ModulationChoice> {};
 
 
 }  // namespace juce

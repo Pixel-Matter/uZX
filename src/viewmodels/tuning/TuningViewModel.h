@@ -27,21 +27,24 @@ enum class NoteGridHeadingType {
 
 struct EnvShapeSimpleEnum {
     enum Enum {
-        Triangle,
-        Sawtooth1,
-        Sawtooth2
+        TriangleUp,
+        TriangleDown,
+        SawtoothUp,
+        SawtoothDown
     };
 
     static inline constexpr std::string_view longLabels[] {
-        "Triangle",
-        "Sawtooth 1",
-        "Sawtooth 2"
+        "Triangle Up",
+        "Triangle Down",
+        "Sawtooth Up",
+        "Sawtooth Down"
     };
 
     static inline constexpr std::string_view shortLabels[] {
-        "Tri",
-        "Saw1",
-        "Saw2"
+        "TriU",
+        "TriD",
+        "SawU",
+        "SawD"
     };
 };
 
@@ -227,7 +230,7 @@ public:
         , playChords         (transientState, IDs::playChords,                                     um, false)
         , playTone           (transientState, IDs::playTone,                                       um, true)
         , playEnvelope       (transientState, IDs::playEnvelope,                                   um, false)
-        , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), um, EnvShapeSimpleEnum::Triangle)
+        , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), um, EnvShapeSimpleEnum::TriangleUp)
         , envelopeMode       (transientState, IDs::envelopeMode,  EnvModeChoice::getLongLabels(),  um, EnvModeEnum::Unison)
 
         // objects
@@ -653,6 +656,21 @@ public:
         filename += ".csv";
 
         return filename;
+    }
+
+    EnvShape getEnvelopeShape() const {
+        switch (envelopeShape.get()) {
+            case EnvShapeSimpleEnum::TriangleUp:
+                return EnvShape::UP_DOWN_E;
+            case EnvShapeSimpleEnum::TriangleDown:
+                return EnvShape::DOWN_UP_A;
+            case EnvShapeSimpleEnum::SawtoothUp:
+                return EnvShape::UP_UP_C;
+            case EnvShapeSimpleEnum::SawtoothDown:
+                return EnvShape::DOWN_DOWN_8;
+            default:
+                return EnvShape::UP_DOWN_E; // Default to Triangle if unknown
+        }
     }
 
     //-------------------------------------------------------------------------

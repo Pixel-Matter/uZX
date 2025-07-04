@@ -66,7 +66,7 @@ void TuningPlayer::sendNoteOn(int midiNote, int channel, bool isEnvelope) {
         track.injectLiveMidiMessage(juce::MidiMessage::noteOn(4, midiNote, static_cast<uint8>(127)), {});
         // env set shape and retriger
         track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(4,
-                                    static_cast<int>(MidiCCType::SoundVariation), 12), {});
+                                    static_cast<int>(MidiCCType::SoundVariation), viewModel.getEnvelopeShape()), {});
 
         // tone retrigger
         // track.injectLiveMidiMessage(juce::MidiMessage::controllerEvent(channel,

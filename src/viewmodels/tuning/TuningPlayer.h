@@ -31,8 +31,6 @@ public:
         viewModel.addChangeListener(this);
     }
 
-    ~TuningPlayer() = default;
-
     void initialize();
 
     void createPlugins();
@@ -51,7 +49,7 @@ public:
 
     void playArpeggio(const std::vector<int>& midiNotes);
 
-    void stop(bool notify = true);
+    void stopNotes(bool notify = true);
 
     void addListener(Listener* listener) { listeners_.add(listener); }
     void removeListener(Listener* listener) { listeners_.remove(listener); }

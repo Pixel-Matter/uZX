@@ -457,14 +457,16 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     createTracksAndAssignInputs();
     te::EditFileOperations(*edit_).save(true, true, false);
 
+    edit_->playInStopEnabled = false;  // For not having hanging notes on stopped playback
+
     editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 
     if (true /* start at Tuning mode */) {
         mainWindow_.setContentOwned(new TuningPreviewComponent(&edit_->getUndoManager()), true);
         mainWindow_.setName("Tuning System View");
     } else {
-        // mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
-        // mainWindow_.setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
+        mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
+        mainWindow_.setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
     }
 
     mainWindow_.setSize(w, h);

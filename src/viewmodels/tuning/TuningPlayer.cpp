@@ -6,7 +6,6 @@
 namespace MoTool {
 
 void TuningPlayer::initialize() {
-    // Create edit with 1 track using the main engine
     edit.playInStopEnabled = true;
 
     createPlugins();
@@ -16,7 +15,7 @@ void TuningPlayer::initialize() {
 void TuningPlayer::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
         updateTuning();
-        stop();
+        stopNotes();
     }
 }
 
@@ -188,7 +187,7 @@ void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
     auto tone = viewModel.isToneEnabled();
     auto env = viewModel.isEnvelopeEnabled();
 
-    stop(/*notify=*/ false);
+    stopNotes(/*notify=*/ false);
 
     // for no more than first 3 notes for chord playback
     // TODO first note can be envelope enabled
@@ -222,7 +221,7 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
     if (midiNotes.empty()) return;
     int channel = getMonophonicChannel();
 
-    stop(/*notify=*/ false);
+    stopNotes(/*notify=*/ false);
 
     // Play first note immediately
     noteOn(midiNotes[0], channel, tone, env);
@@ -231,7 +230,7 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
     // Add remaining notes with callAfterDelay
     for (size_t i = 1; i < midiNotes.size(); ++i) {
         juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel, tone, env]() {
-            stop(/*notify=*/ false);
+            stopNotes(/*notify=*/ false);
         });
         juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel, tone, env]() {
             noteOn(note, channel, tone, env);
@@ -241,11 +240,11 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
 
     // Clear all notes after arpeggio finishes
     juce::Timer::callAfterDelay(duration * static_cast<int>(midiNotes.size()), [this]() {
-        stop();
+        stopNotes();
     });
 }
 
-void TuningPlayer::stop(bool notify) {
+void TuningPlayer::stopNotes(bool notify) {
     while (!playingNotes_.empty()) {
         auto [note, channel] = *playingNotes_.begin();
         noteOff(note, channel, true, true); // This will erase the element from the map

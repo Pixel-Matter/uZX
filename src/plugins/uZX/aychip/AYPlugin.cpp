@@ -112,7 +112,7 @@ void AYChipPlugin::updateChip() noexcept {
     if (midiReaderMode == MidiReaderMode::Params) {
         updateRegistersFromMidiParams();
     } else if (midiReaderMode == MidiReaderMode::Regs) {
-        updateRegistersFromMidiRegs();
+        // updateRegistersFromMidiRegs();
     }
 
     for (size_t i = 0; i < registersFrame.size(); ++i) {
@@ -132,9 +132,10 @@ void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
+    // When edit.playInStopEnabled == false plugin is not even called
     bool isActive = true;
     // bool isActive = fc.isPlaying || fc.isScrubbing || fc.isRendering;
-    if (chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr || !isActive ) {
+    if (!isActive || chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr) {
         return;
     }
 

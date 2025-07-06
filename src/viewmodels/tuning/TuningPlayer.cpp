@@ -229,7 +229,7 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
 
     // Add remaining notes with callAfterDelay
     for (size_t i = 1; i < midiNotes.size(); ++i) {
-        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel, tone, env]() {
+        juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i]]() {
             stopNotes(/*notify=*/ false);
         });
         juce::Timer::callAfterDelay(static_cast<int>(i * duration), [this, note = midiNotes[i], channel, tone, env]() {

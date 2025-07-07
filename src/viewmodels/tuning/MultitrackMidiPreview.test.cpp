@@ -17,7 +17,7 @@ public:
             preview.playSingleNote(60, 0.5, true, false, 0, 0);
 
             // Inspect the sequence on track 0
-            auto& clips = preview.getClips();
+            auto& clips = preview.getChannelClips();
             auto& sequence = clips[0]->getSequence();
 
             // Should have 1 CC message (tone switch) and 1 note
@@ -48,7 +48,7 @@ public:
             preview.playSingleNote(60, 0.5, true, true, 5, 12);
 
             // Inspect the sequence on track 0 (main note)
-            auto& clips = preview.getClips();
+            auto& clips = preview.getChannelClips();
             auto& sequence0 = clips[0]->getSequence();
 
             const auto& notes0 = sequence0.getNotes();
@@ -94,7 +94,7 @@ public:
             preview.playChord(chordNotes, 0.5, true, false, 0, 0);
 
             // Check that each track gets one note
-            auto& clips = preview.getClips();
+            auto& clips = preview.getChannelClips();
             for (size_t trackIndex = 0; trackIndex < 3; ++trackIndex) {
                 auto& sequence = clips[trackIndex]->getSequence();
                 const auto& notes = sequence.getNotes();
@@ -121,7 +121,7 @@ public:
             preview.playArpeggio(arpeggioNotes, 0.25, true, false, 0, 0);
 
             // Check that track 0 has all notes at different times
-            auto& clips = preview.getClips();
+            auto& clips = preview.getChannelClips();
             auto& sequence = clips[0]->getSequence();
             const auto& notes = sequence.getNotes();
             const auto& controllers = sequence.getControllerEvents();
@@ -165,9 +165,9 @@ public:
 
             // Test envelope shape on envelope track directly
             std::vector<int> notes = {60};
-            preview.replaceNotesOnTrack(3, notes, 0.5, 0.0, false, true, 7, 0);
+            preview.replaceNotesOnChannel(3, notes, 0.5, 0.0, false, true, 7, 0);
 
-            auto& clips = preview.getClips();
+            auto& clips = preview.getChannelClips();
             auto& sequence = clips[3]->getSequence();
             const auto& controllers = sequence.getControllerEvents();
 
@@ -190,7 +190,7 @@ public:
             // Play a single note with tone enabled
             preview.playSingleNote(60, 0.5, true, false, 0, 0);
 
-            auto& clips = preview.getClips();
+            auto& clips = preview.getChannelClips();
             auto& midiClip = clips[0];
 
             // Get the actual playback MIDI sequence

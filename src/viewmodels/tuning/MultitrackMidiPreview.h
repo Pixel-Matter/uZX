@@ -26,28 +26,28 @@ public:
     void setTuningSystem(TuningSystem* ts);
 
 private:
-    static constexpr int NUM_TRACKS = 4;
+    static constexpr int NUM_CHANNELS = 4;
 
     // Member variables
     tracktion::Engine& engine;
     tracktion::Edit edit;
     tracktion::TransportControl& transport;
-    std::array<tracktion::AudioTrack*, NUM_TRACKS> tracks;
-    std::array<tracktion::MidiClip::Ptr, NUM_TRACKS> clips;
+    tracktion::AudioTrack* track;
+    std::array<tracktion::MidiClip::Ptr, NUM_CHANNELS> channelClips;
     uZX::MidiToPsgPlugin::Ptr midiToPsgPlugin { nullptr };
 
     // Private methods
     void initialize();
     void setupTracksAndPlugins();
-    void setupClips();
-    void clearAllClips();
+    void setupChannelClips();
+    void clearAllChannelClips();
 
-    void replaceNotesOnTrack(int trackIndex, const std::vector<int>& midiNotes, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
+    void replaceNotesOnChannel(int channelIndex, const std::vector<int>& midiNotes, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
 
     // Test access method
     friend class MultitrackMidiPreviewTest;
 
-    const std::array<tracktion::MidiClip::Ptr, NUM_TRACKS>& getClips() const { return clips; }
+    const std::array<tracktion::MidiClip::Ptr, NUM_CHANNELS>& getChannelClips() const { return channelClips; }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MultitrackMidiPreview)
 };

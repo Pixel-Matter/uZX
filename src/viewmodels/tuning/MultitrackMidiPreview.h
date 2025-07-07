@@ -42,7 +42,7 @@ private:
     void setupChannelClips();
     void clearAllChannelClips();
 
-    void replaceNotesOnChannel(int channelIndex, const std::vector<int>& midiNotes, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
+    void replaceNotesOnChannel(int channelIndex, int midiNote, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
 
     // Test access method
     friend class MultitrackMidiPreviewTest;

@@ -12,7 +12,7 @@ MidiToPsgTransformer::MidiToPsgTransformer(int baseChannel, int numChannels)
 
 void MidiToPsgTransformer::initPSG() {
     // Initialize channel states
-    DBG("Initializing PSG with base channel " << baseChannel_ << " and " << numChannels_ << " channels");
+    // DBG("Initializing PSG with base channel " << baseChannel_ << " and " << numChannels_ << " channels");
     for (int i = baseChannel_; i < baseChannel_ + numChannels_; ++i) {
         auto& state = getChannelState(i);
         state.clear();
@@ -25,7 +25,7 @@ void MidiToPsgTransformer::initPSG() {
 }
 
 void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
-    DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
+    // DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
     if (!isChannelInRange(channel) || velocity == 0) return;
     jassert(tuningSystem_ != nullptr);
 
@@ -53,7 +53,7 @@ void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
 }
 
 void MidiToPsgTransformer::noteOff(int channel, int note) {
-    DBG("Note Off: Channel " << channel << ", Note " << note);
+    // DBG("Note Off: Channel " << channel << ", Note " << note);
     if (!isChannelInRange(channel)) return;
 
     auto& state = getChannelState(channel);
@@ -61,21 +61,21 @@ void MidiToPsgTransformer::noteOff(int channel, int note) {
     // Only turn off if this is the currently playing note
     // DBG("Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
     if (channel - baseChannel_ != 3) {
-        DBG("Turning off note on channel " << channel);
+        // DBG("Turning off note on channel " << channel);
         emitVolumeCC(channel, 0);
         state.clear();
     }
 }
 
 void MidiToPsgTransformer::allNotesOff(int channel) {
-    DBG("All Notes Off: Channel " << channel);
+    // DBG("All Notes Off: Channel " << channel);
     if (!isChannelInRange(channel)) return;
 
     auto& state = getChannelState(channel);
-    
+
     if (channel - baseChannel_ == 3) {
         // Channel 4 is reserved for envelope periods, no volume to turn off
-        DBG("All notes off on envelope channel, no volume to emit");
+        // DBG("All notes off on envelope channel, no volume to emit");
     } else {
         emitVolumeCC(channel, 0);
         emitEnvSwitchCC(channel, false); // Ensure all envelopes are off initially  (by default)
@@ -97,7 +97,7 @@ void MidiToPsgTransformer::aftertouch(int channel, int aftertouch) {
 
 void MidiToPsgTransformer::controlChange(int channel, int controller, int value) {
     // Pass through all CC messages unchanged
-    DBG("Control Change: Channel " << channel << ", Controller " << controller << ", Value " << value);
+    // DBG("Control Change: Channel " << channel << ", Controller " << controller << ", Value " << value);
     if (controller == static_cast<int>(MidiCCType::AllNotesOff)) {
         allNotesOff(channel);
     } else {
@@ -133,7 +133,7 @@ void MidiToPsgTransformer::emitPeriodCC(int channel, int period) {
     int coarse = (period >> 7) & 0x7F;  // bits 7-11 -> 0-31 (high 5 bits)
     int fine = period & 0x7F;           // bits 0-6 -> 0-127 (low 7 bits)
 
-    DBG("Emitting Period CC: Channel " << channel << ", period " << period);
+    // DBG("Emitting Period CC: Channel " << channel << ", period " << period);
 
     auto coarseMsg = juce::MidiMessage::controllerEvent(channel, static_cast<int>(MidiCCType::CC20PeriodCoarse), coarse);
     auto fineMsg = juce::MidiMessage::controllerEvent(channel, static_cast<int>(MidiCCType::CC52PeriodFine), fine);
@@ -156,7 +156,7 @@ void MidiToPsgTransformer::emitEnvSwitchCC(int channel, bool on) {
 
 void MidiToPsgTransformer::emitCC(int channel, int controller, int value) {
     auto msg = juce::MidiMessage::controllerEvent(channel, controller, value);
-    DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
+    // DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
 
     outputBuffer_.push_back(msg);
 }

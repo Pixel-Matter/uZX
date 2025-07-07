@@ -29,6 +29,9 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
     // Create plugins on the track
     if (auto ayPlugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {})) {
         track->pluginList.insertPlugin(*ayPlugin, 0, nullptr);
+        auto AYPlugin = dynamic_cast<uZX::AYChipPlugin*>(ayPlugin.get());
+        jassert(AYPlugin != nullptr);
+        AYPlugin->staticParams.channelsLayoutValue = uZX::ChannelsLayout::CAB;
     }
 
     if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiToPsgPlugin::xmlTypeName, {})) {
@@ -39,13 +42,12 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
 
 void MultitrackMidiPreview::setupChannelClips() {
     const tracktion::TimeRange clipTimeRange(0s, edit.tempoSequence.toTime({ 8, {} }));
-    
+
     for (size_t i = 0; i < NUM_CHANNELS; ++i) {
         // Create overlapping clips at the same time position for parallel playback
         track->insertNewClip(tracktion::TrackItem::Type::midi,
                             "Channel " + juce::String(static_cast<int>(i + 1)),
-                            clipTimeRange,
-                            nullptr);
+                            clipTimeRange, nullptr);
 
         // Get the clip we just added (it should be the last one)
         auto trackClips = track->getClips();
@@ -55,7 +57,7 @@ void MultitrackMidiPreview::setupChannelClips() {
             // Set MIDI channel for each clip (PSG uses channels 1-4)
             int midiChannel = static_cast<int>(i + 1);
             midiClip->setMidiChannel(tracktion::MidiChannel(midiChannel));
-            DBG("Setting MIDI channel " << midiChannel << " for channel " << i);
+            // DBG("Setting MIDI channel " << midiChannel << " for channel " << i);
         }
     }
 }
@@ -75,95 +77,87 @@ void MultitrackMidiPreview::clearAllChannelClips() {
     }
 }
 
-void MultitrackMidiPreview::replaceNotesOnChannel(int channelIndex, const std::vector<int>& midiNotes, double noteLength, double startTime, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
+void MultitrackMidiPreview::replaceNotesOnChannel(int channelIndex, int midiNote, double noteLength, double startTime, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
     if (channelIndex < 0 || channelIndex >= static_cast<int>(NUM_CHANNELS) || !channelClips[static_cast<size_t>(channelIndex)]) return;
 
     auto& sequence = channelClips[static_cast<size_t>(channelIndex)]->getSequence();
-    sequence.clear(nullptr);
+    auto& envSequence = channelClips[3]->getSequence();
 
     const int velocity = 127;
     double currentTime = startTime;
 
-    for (int midiNote : midiNotes) {
-        // Add CC messages at the same time as the note
-        // Note: Tracktion Engine uses 14-bit internal CC values that are converted to 7-bit MIDI values
-        if (enableTone) {
-            DBG("Adding tone switch ON for channel " << channelIndex << " at beat " << currentTime);
-            sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
-                                        static_cast<int>(MidiCCType::GPB1ToneSwitch), 127 << 7, nullptr);
-        }
-
-        if (enableEnvelope) {
-            DBG("Adding envelope switch ON for channel " << channelIndex << " at beat " << currentTime);
-            sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
-                                        static_cast<int>(MidiCCType::GPB3EnvSwitch), 127 << 7, nullptr);
-
-            // Add envelope shape on envelope channel (channel 4)
-            if (channelIndex == 3) { // Envelope channel
-                sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
-                                            static_cast<int>(MidiCCType::SoundVariation), envelopeShape << 7, nullptr);
-            }
-        }
-
-        // Add the main note
-        DBG("Adding note " << midiNote << " on channel " << channelIndex << " at beat " << currentTime);
-        sequence.addNote(midiNote,
-                        tracktion::BeatPosition::fromBeats(currentTime),
-                        tracktion::BeatDuration::fromBeats(noteLength),
-                        velocity, 0, nullptr);
-
-        // If envelope is enabled, add envelope note on a separate channel
-        if (enableEnvelope && channelIndex < 3) {
-            // Find envelope channel (channel 3) and add envelope note
-            if (channelClips[3]) {
-                channelClips[3]->getSequence().addNote(midiNote + envInterval,
-                                               tracktion::BeatPosition::fromBeats(currentTime),
-                                               tracktion::BeatDuration::fromBeats(noteLength),
-                                               velocity, 0, nullptr);
-            }
-        }
-
-        // For arpeggio, increment time for each note
-        if (midiNotes.size() > 1 && noteLength < 0.5) {
-            currentTime += noteLength;
-        }
+    // Add CC messages at the same time as the note
+    // Note: Tracktion Engine uses 14-bit internal CC values that are converted to 7-bit MIDI values
+    if (enableTone) {
+        // DBG("Adding tone switch ON for channel " << channelIndex << " at beat " << currentTime);
+        sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
+                                    static_cast<int>(MidiCCType::GPB1ToneSwitch), 127 << 7, nullptr);
+        // no need to add tone off usually
     }
 
-    // print out all notes in the channel
-    auto& seq = channelClips[static_cast<size_t>(channelIndex)]->getSequence();
-    DBG("=== Notes in channel " << channelIndex << " ===");
-    const auto& notes = seq.getNotes();
-    for (auto noteEvent : notes) {
-        DBG("Note: " << noteEvent->getNoteNumber()
-            << " at beat " << noteEvent->getBeatPosition().inBeats()
-            << " duration " << noteEvent->getLengthBeats().inBeats()
-            << " velocity " << noteEvent->getVelocity());
+    if (enableEnvelope) {
+        // DBG("Adding envelope switch ON for channel " << channelIndex << " at beat " << currentTime);
+        sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
+        static_cast<int>(MidiCCType::GPB3EnvSwitch), 127 << 7, nullptr);
+
+        // DBG("Adding envelope switch OFF for channel " << channelIndex << " at beat " << currentTime + noteLength);
+        sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime + noteLength),
+        static_cast<int>(MidiCCType::GPB3EnvSwitch), 0, nullptr);
+
+        // TODO only when env retriggered or if shape changed.
+        // I.e to support legato env notes we need to not add this CC
+        // DBG("Adding envelope shape for channel " << 3 << " at beat " << currentTime);
+        envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
+                                        static_cast<int>(MidiCCType::SoundVariation), envelopeShape << 7, nullptr);
+
+        // DBG("Adding envelope note " << (midiNote + envInterval) << " on channel 3 at beat " << currentTime);
+        envSequence.addNote(midiNote + envInterval,
+                            tracktion::BeatPosition::fromBeats(currentTime),
+                            tracktion::BeatDuration::fromBeats(noteLength),
+                            velocity, 0, nullptr);
     }
-    DBG("=== End of notes ===");
+
+    // Add the main note
+    // DBG("Adding note " << midiNote << " on channel " << channelIndex << " at beat " << currentTime);
+    sequence.addNote(midiNote,
+                    tracktion::BeatPosition::fromBeats(currentTime),
+                    tracktion::BeatDuration::fromBeats(noteLength),
+                    velocity, 0, nullptr);
+
+    // // print out all notes in the channel
+    // auto& seq = channelClips[static_cast<size_t>(channelIndex)]->getSequence();
+    // DBG("=== Notes in channel " << channelIndex << " ===");
+    // const auto& notes = seq.getNotes();
+    // for (auto noteEvent : notes) {
+    //     DBG("Note: " << noteEvent->getNoteNumber()
+    //         << " at beat " << noteEvent->getBeatPosition().inBeats()
+    //         << " duration " << noteEvent->getLengthBeats().inBeats()
+    //         << " velocity " << noteEvent->getVelocity());
+    // }
+    // DBG("=== End of notes ===");
+}
+
+void MultitrackMidiPreview::playSingleNote(int midiNote, double noteLength, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
+    stopPlayback();
+    clearAllChannelClips();
+    // DBG("Playing single note: " << midiNote);
+
+    replaceNotesOnChannel(0, {midiNote}, noteLength, 0.0, enableTone, enableEnvelope, envelopeShape, envInterval);
+
+    startPlayback();
 }
 
 void MultitrackMidiPreview::playChord(const std::vector<int>& midiNotes, double noteLength, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
     stopPlayback();
     clearAllChannelClips();
 
-    // Distribute notes across tracks (max 3 notes for chord, track 3 reserved for envelope)
-    size_t noteCount = std::min(midiNotes.size(), static_cast<size_t>(3));
+    // Distribute notes across channels (max 3 notes for chord, channel 3 reserved for envelope)
+    size_t noteCount = std::min(midiNotes.size(), static_cast<size_t>(NUM_CHANNELS - 1)); // Reserve channel 3 for envelope
 
     for (size_t i = 0; i < noteCount; ++i) {
-        std::vector<int> singleNote = {midiNotes[i]};
         bool envelopeForThisNote = enableEnvelope && (i == 0); // Only first note gets envelope
-        replaceNotesOnChannel(static_cast<int>(i), singleNote, noteLength, 0.0, enableTone, envelopeForThisNote, envelopeShape, envInterval);
+        replaceNotesOnChannel(static_cast<int>(i), midiNotes[i], noteLength, 0.0, enableTone, envelopeForThisNote, envelopeShape, envInterval);
     }
-
-    startPlayback();
-}
-
-void MultitrackMidiPreview::playSingleNote(int midiNote, double noteLength, bool enableTone, bool enableEnvelope, int envelopeShape, int modulationSemitones) {
-    stopPlayback();
-    clearAllChannelClips();
-    DBG("Playing single note: " << midiNote);
-
-    replaceNotesOnChannel(0, {midiNote}, noteLength, 0.0, enableTone, enableEnvelope, envelopeShape, modulationSemitones);
 
     startPlayback();
 }
@@ -172,15 +166,18 @@ void MultitrackMidiPreview::playArpeggio(const std::vector<int>& midiNotes, doub
     stopPlayback();
     clearAllChannelClips();
 
-    // Play arpeggio on first channel
-    replaceNotesOnChannel(0, midiNotes, noteLength, 0.0, enableTone, enableEnvelope, envelopeShape, envInterval);
+    double currentTime = 0.0;
+    for (int midiNote : midiNotes) {
+        replaceNotesOnChannel(0, midiNote, noteLength, currentTime, enableTone, enableEnvelope, envelopeShape, envInterval);
+        currentTime += noteLength;
+    }
 
     startPlayback();
 }
 
 void MultitrackMidiPreview::startPlayback() {
     // transport.setPosition(tracktion::TimePosition::fromSeconds(0.0));
-    DBG("Starting playback from start");
+    // DBG("Starting playback from start");
     transport.playFromStart(false);
 }
 

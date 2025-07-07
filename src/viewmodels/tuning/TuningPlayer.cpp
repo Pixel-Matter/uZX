@@ -30,10 +30,10 @@ void TuningPlayer::playSingleNote(int midiNote) {
     int envelopeShape = viewModel.getEnvelopeShape();
     int envelopeInterval = viewModel.getEnvelopeInterval();
 
-    DBG("========== playSingleNote " << midiNote << " ==========");
-    DBG("Stopping notes");
+    // DBG("========== playSingleNote " << midiNote << " ==========");
+    // DBG("Stopping notes");
     stopNotes(/*notify=*/ false);
-    DBG("Playing single note " << midiNote);
+    // DBG("Playing single note " << midiNote);
     playingNotes_[midiNote] = 1;
     midiPreview.playSingleNote(midiNote, 0.5, tone, env, envelopeShape, envelopeInterval);
     notifyPlayingNotes();

@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "TuningViewModel.h"
+#include "MultitrackMidiPreview.h"
 
 #include "../../plugins/uZX/MidiToPsgPlugin.h"
 #include "../../models/PsgMidi.h"
@@ -26,6 +27,7 @@ public:
     TuningPlayer(TuningViewModel& tvm, tracktion::Engine& e)
         : viewModel(tvm)
         , engine(e)
+        , midiPreview(e)
     {
         initialize();
         viewModel.addChangeListener(this);
@@ -34,10 +36,6 @@ public:
     void initialize();
 
     void createPlugins();
-
-    te::MidiClip::Ptr getClip();
-
-    te::MidiClip::Ptr createMIDIClip();
 
     void playSingleNote(int midiNote);
 
@@ -59,9 +57,7 @@ public:
 private:
     TuningViewModel& viewModel;
     tracktion::Engine& engine;
-    te::Edit edit { engine, te::Edit::EditRole::forEditing };
-    te::TransportControl& transport { edit.getTransport() };
-    te::AudioTrack& track { *EngineHelpers::getOrInsertAudioTrackAt(edit, 0) };
+    MultitrackMidiPreview midiPreview;
     uZX::MidiToPsgPlugin::Ptr midiToPsgPlugin { nullptr };
     juce::ListenerList<Listener> listeners_;
     std::map<int, int> playingNotes_;  // Currently playing MIDI notes on which channels
@@ -69,16 +65,7 @@ private:
     void changeListenerCallback (ChangeBroadcaster* source) override;
 
     // Helper methods
-    int getMonophonicChannel() const;
-    void noteOn (int midiNote, int channel, bool isTone = false, bool isEnvelope = false);
-    void noteOnNoRetrigger(int midiNote, int channel, bool isTone, bool isEnvelope = false);
-    void noteOff(int midiNote, int channel, bool isTone = false, bool isEnvelope = false);
-    void sendCC(int channel, MidiCCType ccType, int value);
-    void sendNoteOn(int channel, int midiNote, int velocity = 127);
-    void sendNoteOff(int channel, int midiNote);
     void updateTuning();
-    void replaceNotes(const std::vector<int>& midiNotes, double noteLength = 0.5);
-    void startPlayback();
     void notifyPlayingNotes();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPlayer)

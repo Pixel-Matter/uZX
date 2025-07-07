@@ -570,7 +570,7 @@ public:
         return playTone.get() && playEnvelope.get();
     }
 
-    int getModulationSemitones() const {
+    int getEnvelopeInterval() const {
         // Get the modulation semitones based on the current modulation mode
         if (!isToneEnabled() || !isEnvelopeEnabled()) {
             return 0; // No modulation if tone or envelope is not enabled

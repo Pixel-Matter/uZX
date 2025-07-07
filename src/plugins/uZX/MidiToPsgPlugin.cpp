@@ -40,8 +40,7 @@ void MidiToPsgPlugin::applyToBuffer(const te::PluginRenderContext& rc) noexcept 
 }
 
 void MidiToPsgPlugin::midiPanic() {
-    transformer.clearOutput();
-    transformer.initPSG();
+    reset();
 }
 
 void MidiToPsgPlugin::reset() {
@@ -86,7 +85,7 @@ void MidiToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& i
 void MidiToPsgPlugin::updateConverterParams() {
     transformer.setBaseChannel(staticParams.baseMidiChannelValue.get());
     transformer.setNumChannels(staticParams.numChannelsValue.get());
-    transformer.initPSG();
+    reset();
 }
 
 void MidiToPsgPlugin::setTuningSystem(TuningSystem* tuningSystem) {

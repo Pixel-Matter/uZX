@@ -4,7 +4,6 @@
 #include <array>
 
 #include <common/Utilities.h>  // from Tracktion
-#include "../../models/PsgMidi.h"
 #include "../../plugins/uZX/MidiToPsgPlugin.h"
 
 namespace MoTool {
@@ -23,7 +22,7 @@ public:
     void stopPlayback();
 
     void setTuningSystem(TuningSystem* ts);
-    
+
     // Access to transport for state monitoring
     tracktion::TransportControl& getTransport() { return transport; }
 

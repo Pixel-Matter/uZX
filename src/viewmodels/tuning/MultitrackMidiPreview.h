@@ -19,11 +19,13 @@ public:
     void playSingleNote(int midiNote, double noteLength = 0.5, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
     void playArpeggio(const std::vector<int>& midiNotes, double noteLength = 0.25, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
 
-    void startPlayback();
+    void startPlayback(double duration);
     void stopPlayback();
 
-
     void setTuningSystem(TuningSystem* ts);
+    
+    // Access to transport for state monitoring
+    tracktion::TransportControl& getTransport() { return transport; }
 
 private:
     static constexpr int NUM_CHANNELS = 4;
@@ -42,7 +44,7 @@ private:
     void setupChannelClips();
     void clearAllChannelClips();
 
-    void replaceNotesOnChannel(int channelIndex, int midiNote, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
+    void placeNote(int channelIndex, int midiNote, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
 
     // Test access method
     friend class MultitrackMidiPreviewTest;

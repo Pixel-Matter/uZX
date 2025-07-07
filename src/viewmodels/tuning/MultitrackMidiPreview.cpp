@@ -1,5 +1,4 @@
 #include "MultitrackMidiPreview.h"
-#include "tracktion_engine/tracktion_engine.h"
 #include "../../plugins/uZX/aychip/AYPlugin.h"
 
 namespace MoTool {
@@ -77,7 +76,7 @@ void MultitrackMidiPreview::clearAllChannelClips() {
     }
 }
 
-void MultitrackMidiPreview::replaceNotesOnChannel(int channelIndex, int midiNote, double noteLength, double startTime, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
+void MultitrackMidiPreview::placeNote(int channelIndex, int midiNote, double noteLength, double startTime, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
     if (channelIndex < 0 || channelIndex >= static_cast<int>(NUM_CHANNELS) || !channelClips[static_cast<size_t>(channelIndex)]) return;
 
     auto& sequence = channelClips[static_cast<size_t>(channelIndex)]->getSequence();
@@ -142,9 +141,9 @@ void MultitrackMidiPreview::playSingleNote(int midiNote, double noteLength, bool
     clearAllChannelClips();
     // DBG("Playing single note: " << midiNote);
 
-    replaceNotesOnChannel(0, {midiNote}, noteLength, 0.0, enableTone, enableEnvelope, envelopeShape, envInterval);
+    placeNote(0, midiNote, noteLength, 0.0, enableTone, enableEnvelope, envelopeShape, envInterval);
 
-    startPlayback();
+    startPlayback(noteLength);
 }
 
 void MultitrackMidiPreview::playChord(const std::vector<int>& midiNotes, double noteLength, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
@@ -156,10 +155,10 @@ void MultitrackMidiPreview::playChord(const std::vector<int>& midiNotes, double 
 
     for (size_t i = 0; i < noteCount; ++i) {
         bool envelopeForThisNote = enableEnvelope && (i == 0); // Only first note gets envelope
-        replaceNotesOnChannel(static_cast<int>(i), midiNotes[i], noteLength, 0.0, enableTone, envelopeForThisNote, envelopeShape, envInterval);
+        placeNote(static_cast<int>(i), midiNotes[i], noteLength, 0.0, enableTone, envelopeForThisNote, envelopeShape, envInterval);
     }
 
-    startPlayback();
+    startPlayback(noteLength);
 }
 
 void MultitrackMidiPreview::playArpeggio(const std::vector<int>& midiNotes, double noteLength, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
@@ -168,28 +167,23 @@ void MultitrackMidiPreview::playArpeggio(const std::vector<int>& midiNotes, doub
 
     double currentTime = 0.0;
     for (int midiNote : midiNotes) {
-        replaceNotesOnChannel(0, midiNote, noteLength, currentTime, enableTone, enableEnvelope, envelopeShape, envInterval);
+        placeNote(0, midiNote, noteLength, currentTime, enableTone, enableEnvelope, envelopeShape, envInterval);
         currentTime += noteLength;
     }
+    auto duration = currentTime; // Total duration of the arpeggio
 
-    startPlayback();
+    startPlayback(duration);
 }
 
-void MultitrackMidiPreview::startPlayback() {
-    // transport.setPosition(tracktion::TimePosition::fromSeconds(0.0));
-    // DBG("Starting playback from start");
-    transport.playFromStart(false);
+void MultitrackMidiPreview::startPlayback(double duration) {
+    // DBG("Starting playback from start to " << duration << " beats");
+    auto beatLastPos = tracktion::BeatPosition::fromBeats(duration);
+    auto timeDuration = edit.tempoSequence.toTime(beatLastPos);
+    transport.playSectionAndReset(tracktion::TimeRange(tracktion::TimePosition(), timeDuration));
 }
 
 void MultitrackMidiPreview::stopPlayback() {
     transport.stop(false, false);
-    // send all notes off
-    // FIXME problem with this is that this message can be injected after first note of next playback
-    // for (size_t i = 0; i < NUM_TRACKS; ++i) {
-    //     auto* track = tracks[i];
-    //     if (!track) continue;
-    //     track->injectLiveMidiMessage(juce::MidiMessage::allNotesOff((int) i + 1), {});
-    // }
 }
 
 }

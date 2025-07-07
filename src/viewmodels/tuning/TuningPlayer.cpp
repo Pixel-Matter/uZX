@@ -5,14 +5,23 @@
 namespace MoTool {
 
 void TuningPlayer::initialize() {
-    // Plugins are now created by MultitrackMidiPreview
     updateTuning();
+
+    midiPreview.getTransport().addChangeListener(this);
 }
 
 void TuningPlayer::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
         updateTuning();
         stopNotes();
+    } else if (source == &midiPreview.getTransport()) {
+        // Transport state changed
+        auto& transport = midiPreview.getTransport();
+        if (!transport.isPlaying()) {
+            // Transport stopped - clear playing notes
+            playingNotes_.clear();
+            notifyPlayingNotes();
+        }
     }
 }
 

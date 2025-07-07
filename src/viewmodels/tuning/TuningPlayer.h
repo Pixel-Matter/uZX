@@ -29,6 +29,12 @@ public:
         initialize();
         viewModel.addChangeListener(this);
     }
+    
+    ~TuningPlayer() override {
+        auto& transport = midiPreview.getTransport();
+        transport.removeChangeListener(this);
+        viewModel.removeChangeListener(this);
+    }
 
     void initialize();
 

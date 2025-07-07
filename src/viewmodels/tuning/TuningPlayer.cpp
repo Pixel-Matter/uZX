@@ -84,13 +84,8 @@ void TuningPlayer::playDegreeChord(int midiNote) {
         return;
     }
 
-    String notesStr;
-    for (const auto& note : scaleNotes) {
-        notesStr += String(note) + " ";
-    }
-
-    jassert(scaleNotes.size() >= 5 && "Scale must have at least 5 notes for degree chord");
-    for (size_t i = 0; i < 5; i += 2) {
+    // jassert(scaleNotes.size() >= 5 && "Scale must have at least 5 notes for degree chord");
+    for (size_t i = 0; i < scaleNotes.size(); i += 2) {
         // take every second note starting from the given note
         notes.push_back(scaleNotes[i]);
     }

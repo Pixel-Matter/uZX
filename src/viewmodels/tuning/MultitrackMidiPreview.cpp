@@ -16,7 +16,6 @@ MultitrackMidiPreview::~MultitrackMidiPreview() {
 }
 
 void MultitrackMidiPreview::initialize() {
-    edit.playInStopEnabled = false;
     setupTracksAndPlugins();
     setupChannelClips();
 }
@@ -30,6 +29,7 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
         track->pluginList.insertPlugin(*ayPlugin, 0, nullptr);
         auto AYPlugin = dynamic_cast<uZX::AYChipPlugin*>(ayPlugin.get());
         jassert(AYPlugin != nullptr);
+        // set CAB because then first channel is the center
         AYPlugin->staticParams.channelsLayoutValue = uZX::ChannelsLayout::CAB;
     }
 

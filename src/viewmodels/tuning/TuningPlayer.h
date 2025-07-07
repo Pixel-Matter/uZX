@@ -5,9 +5,6 @@
 #include "TuningViewModel.h"
 #include "MultitrackMidiPreview.h"
 
-#include "../../plugins/uZX/MidiToPsgPlugin.h"
-#include "../../models/PsgMidi.h"
-
 #include <common/Utilities.h>  // from Tracktion
 
 namespace MoTool {
@@ -35,8 +32,6 @@ public:
 
     void initialize();
 
-    void createPlugins();
-
     void playSingleNote(int midiNote);
 
     void playDegreeChord(int midiNote);
@@ -58,7 +53,6 @@ private:
     TuningViewModel& viewModel;
     tracktion::Engine& engine;
     MultitrackMidiPreview midiPreview;
-    uZX::MidiToPsgPlugin::Ptr midiToPsgPlugin { nullptr };
     juce::ListenerList<Listener> listeners_;
     std::map<int, int> playingNotes_;  // Currently playing MIDI notes on which channels
 

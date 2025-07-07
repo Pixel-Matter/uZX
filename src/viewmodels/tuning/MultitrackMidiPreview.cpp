@@ -1,5 +1,6 @@
 #include "MultitrackMidiPreview.h"
 #include "tracktion_engine/tracktion_engine.h"
+#include "../../plugins/uZX/aychip/AYPlugin.h"
 
 namespace MoTool {
 
@@ -19,6 +20,7 @@ void MultitrackMidiPreview::initialize() {
     edit.playInStopEnabled = false;
     setupTracks();
     setupClips();
+    createPlugins();
 }
 
 void MultitrackMidiPreview::setupTracks() {
@@ -44,6 +46,25 @@ void MultitrackMidiPreview::setupClips() {
             midiClip->setMidiChannel(tracktion::MidiChannel(midiChannel));
             DBG("Setting MIDI channel " << midiChannel << " for track " << i);
         }
+    }
+}
+
+void MultitrackMidiPreview::createPlugins() {
+    auto& track = *EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
+
+    if (auto ayPlugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {})) {
+        track.pluginList.insertPlugin(*ayPlugin, 0, nullptr);
+    }
+
+    if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiToPsgPlugin::xmlTypeName, {})) {
+        track.pluginList.insertPlugin(*plugin, 0, nullptr);
+        midiToPsgPlugin = dynamic_cast<uZX::MidiToPsgPlugin*>(plugin.get());
+    }
+}
+
+void MultitrackMidiPreview::setTuningSystem(TuningSystem* ts) {
+    if (midiToPsgPlugin != nullptr) {
+        midiToPsgPlugin->setTuningSystem(ts);
     }
 }
 

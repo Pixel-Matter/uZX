@@ -1,12 +1,12 @@
 #include "TuningPlayer.h"
 
-#include "../../plugins/uZX/aychip/AYPlugin.h"
 #include "juce_events/juce_events.h"
 
 namespace MoTool {
 
 void TuningPlayer::initialize() {
-    createPlugins();
+    // Plugins are now created by MultitrackMidiPreview
+    updateTuning();
 }
 
 void TuningPlayer::changeListenerCallback(ChangeBroadcaster* source) {
@@ -16,26 +16,8 @@ void TuningPlayer::changeListenerCallback(ChangeBroadcaster* source) {
     }
 }
 
-void TuningPlayer::createPlugins() {
-    // TODO move to MultitrackMidiPreview
-    auto& edit = midiPreview.getEdit();
-    auto& track = *EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
-
-    if (auto ayPlugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {})) {
-        track.pluginList.insertPlugin(*ayPlugin, 0, nullptr);
-    }
-
-    if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiToPsgPlugin::xmlTypeName, {})) {
-        track.pluginList.insertPlugin(*plugin, 0, nullptr);
-        midiToPsgPlugin = dynamic_cast<uZX::MidiToPsgPlugin*>(plugin.get());
-        updateTuning();
-    }
-}
-
 void TuningPlayer::updateTuning() {
-    if (midiToPsgPlugin != nullptr) {
-        midiToPsgPlugin->setTuningSystem(viewModel.getTuningSystem());
-    }
+    midiPreview.setTuningSystem(viewModel.getTuningSystem());
 }
 
 

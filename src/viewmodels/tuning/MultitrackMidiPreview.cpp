@@ -18,14 +18,26 @@ MultitrackMidiPreview::~MultitrackMidiPreview() {
 
 void MultitrackMidiPreview::initialize() {
     edit.playInStopEnabled = false;
-    setupTracks();
+    setupTracksAndPlugins();
     setupClips();
-    createPlugins();
 }
 
-void MultitrackMidiPreview::setupTracks() {
+void MultitrackMidiPreview::setupTracksAndPlugins() {
+    // Setup tracks
     for (size_t i = 0; i < NUM_TRACKS; ++i) {
         tracks[i] = EngineHelpers::getOrInsertAudioTrackAt(edit, static_cast<int>(i));
+    }
+
+    // Create plugins on track 0
+    auto& track = *tracks[0];
+
+    if (auto ayPlugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {})) {
+        track.pluginList.insertPlugin(*ayPlugin, 0, nullptr);
+    }
+
+    if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiToPsgPlugin::xmlTypeName, {})) {
+        track.pluginList.insertPlugin(*plugin, 0, nullptr);
+        midiToPsgPlugin = dynamic_cast<uZX::MidiToPsgPlugin*>(plugin.get());
     }
 }
 
@@ -49,18 +61,6 @@ void MultitrackMidiPreview::setupClips() {
     }
 }
 
-void MultitrackMidiPreview::createPlugins() {
-    auto& track = *EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
-
-    if (auto ayPlugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {})) {
-        track.pluginList.insertPlugin(*ayPlugin, 0, nullptr);
-    }
-
-    if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiToPsgPlugin::xmlTypeName, {})) {
-        track.pluginList.insertPlugin(*plugin, 0, nullptr);
-        midiToPsgPlugin = dynamic_cast<uZX::MidiToPsgPlugin*>(plugin.get());
-    }
-}
 
 void MultitrackMidiPreview::setTuningSystem(TuningSystem* ts) {
     if (midiToPsgPlugin != nullptr) {
@@ -182,14 +182,13 @@ void MultitrackMidiPreview::playArpeggio(const std::vector<int>& midiNotes, doub
 void MultitrackMidiPreview::startPlayback() {
     // transport.setPosition(tracktion::TimePosition::fromSeconds(0.0));
     DBG("Starting playback from start");
-    // TODO postpone to next async event loop iteration?
     transport.playFromStart(false);
 }
 
 void MultitrackMidiPreview::stopPlayback() {
     transport.stop(false, false);
     // send all notes off
-    // FIXME problem that this message can be injected after first note of next playback
+    // FIXME problem with this is that this message can be injected after first note of next playback
     // for (size_t i = 0; i < NUM_TRACKS; ++i) {
     //     auto* track = tracks[i];
     //     if (!track) continue;

@@ -14,11 +14,6 @@ public:
     MultitrackMidiPreview(tracktion::Engine& engine);
     ~MultitrackMidiPreview();
 
-    void initialize();
-    void setupTracks();
-    void setupClips();
-    void createPlugins();
-
     // Playback methods
     void playChord(const std::vector<int>& midiNotes, double noteLength = 0.5, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
     void playSingleNote(int midiNote, double noteLength = 0.5, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
@@ -27,18 +22,13 @@ public:
     void startPlayback();
     void stopPlayback();
 
-    // Access to the edit for plugin management
-    tracktion::Edit& getEdit() { return edit; }
 
     void setTuningSystem(TuningSystem* ts);
 
+private:
     static constexpr int NUM_TRACKS = 4;
 
-    // Test access
-    const std::array<tracktion::MidiClip::Ptr, NUM_TRACKS>& getClips() const { return clips; }
-    void replaceNotesOnTrack(int trackIndex, const std::vector<int>& midiNotes, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
-
-private:
+    // Member variables
     tracktion::Engine& engine;
     tracktion::Edit edit;
     tracktion::TransportControl& transport;
@@ -46,7 +36,18 @@ private:
     std::array<tracktion::MidiClip::Ptr, NUM_TRACKS> clips;
     uZX::MidiToPsgPlugin::Ptr midiToPsgPlugin { nullptr };
 
+    // Private methods
+    void initialize();
+    void setupTracksAndPlugins();
+    void setupClips();
     void clearAllClips();
+
+    void replaceNotesOnTrack(int trackIndex, const std::vector<int>& midiNotes, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
+
+    // Test access method
+    friend class MultitrackMidiPreviewTest;
+
+    const std::array<tracktion::MidiClip::Ptr, NUM_TRACKS>& getClips() const { return clips; }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MultitrackMidiPreview)
 };

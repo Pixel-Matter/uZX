@@ -337,60 +337,60 @@ public:
         return notes;
     }
 
-    // get values in the range -0.5...0.5 representing offtunes of all periods around this note
-    std::vector<double> getTicksAroundNote(const TuningNote& note) const {
-        jassert(tuningSystem != nullptr);
-        std::vector<double> ticks;
-        auto lowerNote = (double) note.midiNote - 0.5f;
-        auto mode = getCurrentPeriodMode();
-        DBG("Current mode: " << static_cast<size_t>(mode));
-        // TODO use chip capabilities to calc periods
-        auto upperPeriod = tuningSystem->midiNoteToPeriod(lowerNote, mode);
-        auto actualLowerNote = tuningSystem->periodToMidiNote(upperPeriod, mode);
-        if (actualLowerNote > (double) note.midiNote + 0.5f) {
-            return ticks; // No ticks available
-        }
-        if (actualLowerNote < (double) note.midiNote - 0.5f) {
-            --upperPeriod;
-        }
-        auto upperNote = (double) note.midiNote + 0.5f;
-        auto lowerPeriod = tuningSystem->midiNoteToPeriod(upperNote, mode);
+    // // get values in the range -0.5...0.5 representing offtunes of all periods around this note
+    // std::vector<double> getTicksAroundNote(const TuningNote& note) const {
+    //     jassert(tuningSystem != nullptr);
+    //     std::vector<double> ticks;
+    //     auto lowerNote = (double) note.midiNote - 0.5f;
+    //     auto mode = getCurrentPeriodMode();
+    //     DBG("Current mode: " << static_cast<size_t>(mode));
+    //     // TODO use chip capabilities to calc periods
+    //     auto upperPeriod = tuningSystem->midiNoteToPeriod(lowerNote, mode);
+    //     auto actualLowerNote = tuningSystem->periodToMidiNote(upperPeriod, mode);
+    //     if (actualLowerNote > (double) note.midiNote + 0.5f) {
+    //         return ticks; // No ticks available
+    //     }
+    //     if (actualLowerNote < (double) note.midiNote - 0.5f) {
+    //         --upperPeriod;
+    //     }
+    //     auto upperNote = (double) note.midiNote + 0.5f;
+    //     auto lowerPeriod = tuningSystem->midiNoteToPeriod(upperNote, mode);
 
-        auto actualUpperNote = tuningSystem->periodToMidiNote(lowerPeriod, mode);
-        if (actualUpperNote < (double) note.midiNote - 0.5f) {
-            return ticks; // No ticks available
-        }
-        if (actualUpperNote > (double) note.midiNote + 0.5f) {
-            ++lowerPeriod;
-        }
-        auto ticksNum = upperPeriod - lowerPeriod + 1;
-        if (ticksNum <= 0) {
-            return ticks; // No ticks available
-        }
-        // find suitable step for power of 10
-        auto step = std::log2(ticksNum);
-        if (step < 0.0) {
-            step = std::pow(10.0, std::ceil(step));
-        } else {
-            step = std::pow(10.0, std::floor(step));
-        }
-        // // DBG("Ticks around note " << note.name
-        //     << ": lowerPeriod = " << lowerPeriod
-        //     << ", upperPeriod = " << upperPeriod
-        //     << ", note = " << note.midiNote
-        //     << ", actualLowerNote = " << actualLowerNote
-        //     << ", actualUpperNote = " << actualUpperNote
-        //     << ", ticksNum = " << ticksNum
-        //     << ", step = " << step);
-        ticks.reserve(static_cast<size_t>(ticksNum));
-        int intStep = static_cast<int>(step);
-        for (int p = upperPeriod; p >= lowerPeriod; p -= intStep) {
-            auto n = tuningSystem->periodToMidiNote(p, mode);
-            ticks.push_back(n - note.midiNote);
-            // // DBG("Tick for period " << p << ": note = " << n << ", offtune = " << (n - note.midiNote));
-        }
-        return ticks;
-    }
+    //     auto actualUpperNote = tuningSystem->periodToMidiNote(lowerPeriod, mode);
+    //     if (actualUpperNote < (double) note.midiNote - 0.5f) {
+    //         return ticks; // No ticks available
+    //     }
+    //     if (actualUpperNote > (double) note.midiNote + 0.5f) {
+    //         ++lowerPeriod;
+    //     }
+    //     auto ticksNum = upperPeriod - lowerPeriod + 1;
+    //     if (ticksNum <= 0) {
+    //         return ticks; // No ticks available
+    //     }
+    //     // find suitable step for power of 10
+    //     auto step = std::log2(ticksNum);
+    //     if (step < 0.0) {
+    //         step = std::pow(10.0, std::ceil(step));
+    //     } else {
+    //         step = std::pow(10.0, std::floor(step));
+    //     }
+    //     // // DBG("Ticks around note " << note.name
+    //     //     << ": lowerPeriod = " << lowerPeriod
+    //     //     << ", upperPeriod = " << upperPeriod
+    //     //     << ", note = " << note.midiNote
+    //     //     << ", actualLowerNote = " << actualLowerNote
+    //     //     << ", actualUpperNote = " << actualUpperNote
+    //     //     << ", ticksNum = " << ticksNum
+    //     //     << ", step = " << step);
+    //     ticks.reserve(static_cast<size_t>(ticksNum));
+    //     int intStep = static_cast<int>(step);
+    //     for (int p = upperPeriod; p >= lowerPeriod; p -= intStep) {
+    //         auto n = tuningSystem->periodToMidiNote(p, mode);
+    //         ticks.push_back(n - note.midiNote);
+    //         // // DBG("Tick for period " << p << ": note = " << n << ", offtune = " << (n - note.midiNote));
+    //     }
+    //     return ticks;
+    // }
 
     String getScaleName() const {
         return Scale::getKeyName(getCurrentRoot()) + " " + Scale(getCurrentScaleType()).getName();
@@ -404,9 +404,6 @@ public:
         return tuningSystem ? tuningSystem->getDescription() : "Default tuning";
     }
 
-    Range<int> getChipDividerRange() const {
-        return toneCapabilities.registerRange;
-    }
 
     Scale::ScaleType getCurrentScaleType() const {
         auto scaleType = selectedScale.get();
@@ -517,14 +514,14 @@ public:
     }
 
     // Not used yet
-    void setChipChoice(ChipClockChoice clockChoice) {
-        // DBG("setChipChoice: " << clockChoice.getLongLabel().data());
-        selectedChip = clockChoice;
-        clockFrequencyMhz = clockChoice.getClockValue() / MHz; // Store as MHz
-        tuningSystem->setClockFrequency(clockChoice.getClockValue()); // Update tuning system clock frequency
-        // DBG("setChipChoice sendChangeMessage");
-        sendChangeMessage();
-    }
+    // void setChipChoice(ChipClockChoice clockChoice) {
+    //     // DBG("setChipChoice: " << clockChoice.getLongLabel().data());
+    //     selectedChip = clockChoice;
+    //     clockFrequencyMhz = clockChoice.getClockValue() / MHz; // Store as MHz
+    //     tuningSystem->setClockFrequency(clockChoice.getClockValue()); // Update tuning system clock frequency
+    //     // DBG("setChipChoice sendChangeMessage");
+    //     sendChangeMessage();
+    // }
 
     // used in tests only
     void setA4Frequency(double frequency) {
@@ -538,15 +535,15 @@ public:
     }
 
     // Not used yet
-    void setClockFrequency(double frequency) {
-        // DBG("setClockFrequencyHz: " << frequency);
-        if (frequency >= 1.0 * MHz && frequency <= 2.0 * MHz) {
-            clockFrequencyMhz = frequency / MHz; // Store as MHz
-            tuningSystem->setClockFrequency(frequency);
-            // DBG("setClockFrequencyHz sendChangeMessage");
-            sendChangeMessage();
-        }
-    }
+    // void setClockFrequency(double frequency) {
+    //     // DBG("setClockFrequencyHz: " << frequency);
+    //     if (frequency >= 1.0 * MHz && frequency <= 2.0 * MHz) {
+    //         clockFrequencyMhz = frequency / MHz; // Store as MHz
+    //         tuningSystem->setClockFrequency(frequency);
+    //         // DBG("setClockFrequencyHz sendChangeMessage");
+    //         sendChangeMessage();
+    //     }
+    // }
 
     bool isCustomClockEnabled() const {
         return getChipChoice() == ChipClockChoice::Custom;
@@ -581,16 +578,6 @@ public:
 
     TuningSystem::PeriodMode getCurrentPeriodMode() const {
         return isEnvelopePeriodsShown() ? TuningSystem::Envelope : TuningSystem::Tone;
-    }
-
-    void updatePlayState() {
-        if (playChords.get() && !playTone.get()) {
-            playTone = true;
-        } else if (!playTone.get() && !playEnvelope.get()) {
-            // If both playTone and playEnvelope are false, enable playTone
-            playTone = true;
-        }
-        sendChangeMessage(); // Notify listeners about the state change
     }
 
     String exportToCSV() const {
@@ -786,24 +773,34 @@ private:
         }
     }
 
+    void updatePlayState() {
+        if (playChords.get() && !playTone.get()) {
+            playTone = true;
+        } else if (!playTone.get() && !playEnvelope.get()) {
+            // If both playTone and playEnvelope are false, enable playTone
+            playTone = true;
+        }
+        sendChangeMessage(); // Notify listeners about the state change
+    }
+
     // Helper methods
     // Helper method for finding best matching clock preset
 
-    int findBestMatchingClockPreset(double frequency) {
-        int bestMatch = static_cast<int>(ChipClockEnum::Custom); // Default to Custom
-        double bestDiff = std::numeric_limits<double>::max();
+    // int findBestMatchingClockPreset(double frequency) {
+    //     int bestMatch = static_cast<int>(ChipClockEnum::Custom); // Default to Custom
+    //     double bestDiff = std::numeric_limits<double>::max();
 
-        for (int i = 0; i < static_cast<int>(ChipClockEnum::Custom); ++i) {
-            double presetFreq = ChipClockEnum::clockValues[i];
-            double diff = std::abs(frequency - presetFreq);
-            if (diff < bestDiff && diff < 1000.0) { // Within 1kHz tolerance
-                bestMatch = i;
-                bestDiff = diff;
-            }
-        }
+    //     for (int i = 0; i < static_cast<int>(ChipClockEnum::Custom); ++i) {
+    //         double presetFreq = ChipClockEnum::clockValues[i];
+    //         double diff = std::abs(frequency - presetFreq);
+    //         if (diff < bestDiff && diff < 1000.0) { // Within 1kHz tolerance
+    //             bestMatch = i;
+    //             bestDiff = diff;
+    //         }
+    //     }
 
-        return bestMatch;
-    }
+    //     return bestMatch;
+    // }
     //-------------------------------------------------------------------------
 private:
     // Transient view state
@@ -813,8 +810,6 @@ private:
 
     // Cached objects derived from values (performance optimization) - only for complex conversions
     mutable Scale currentScale;            // Scale object cache
-    ChipCapabilities toneCapabilities; // Chip capabilities for the tuning system
-    ChipCapabilities envCapabilities; // Chip capabilities for the envelope
     std::unique_ptr<TuningSystem> tuningSystem;
 
 public:

@@ -120,6 +120,24 @@ private:
     void setupScaleSelectMenu();
     void updateScaleSelection();
 
+    // Setup helpers
+    void setupTuningTableControls();
+    void setupScaleControls();
+    void setupChipClockControls();
+    void setupFrequencyControls();
+    void setupPlaybackControls();
+    void setupTuningGrid();
+    void setupExportButton();
+    void handleExportButtonClick();
+
+    // Layout helpers
+    void layoutControlSections(juce::Rectangle<int>& area);
+    void layoutScaleControls(juce::Rectangle<int> area);
+    void layoutChipClockControls(juce::Rectangle<int> area);
+    void layoutA4FrequencyControls(juce::Rectangle<int> area);
+    void layoutPlayControls(juce::Rectangle<int> area);
+    void layoutEnvelopeControls(juce::Rectangle<int> area);
+
     // Value::Listener implementation for ListBox sync
     void valueChanged(Value& value) override;
 

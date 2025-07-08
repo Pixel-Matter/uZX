@@ -5,6 +5,7 @@
 #include "../../viewmodels/tuning/TuningViewModel.h"
 #include "../../viewmodels/tuning/TuningPlayer.h"
 #include "../../controllers/App.h"
+#include "../common/MoTooltipWindow.h"
 #include <map>
 
 namespace MoTool {
@@ -16,7 +17,9 @@ public:
     TuningPreviewGrid(TuningViewModel& vm, TuningPlayer& tp);
     ~TuningPreviewGrid() override;
 
-    void setTooltipWindow(TooltipWindow* window) { tooltipWindow = window; }
+    void recreateTooltipWindow();
+
+    MoTooltipWindow* tooltipWindow = nullptr;
 
     void resized() override;
     void paint(juce::Graphics& g) override;
@@ -83,8 +86,6 @@ private:
     void paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave);
     void paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note);
 
-    TooltipWindow* tooltipWindow = nullptr;
-
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPreviewGrid)
 };
 
@@ -99,6 +100,8 @@ public:
 
     void resized() override;
     void paint(juce::Graphics& g) override;
+
+    std::unique_ptr<MoTooltipWindow> tooltipWindow;
 
     // ListBoxModel implementation
     int getNumRows() override;
@@ -156,7 +159,6 @@ private:
     TextButton exportButton;
 
     TuningPreviewGrid tuningGrid;
-    TooltipWindow tooltipWindow;
 
     // bindings
     ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };

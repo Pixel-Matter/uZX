@@ -21,6 +21,20 @@ TuningPreviewGrid::~TuningPreviewGrid() {
     tuningPlayer.removeListener(this);
 }
 
+void TuningPreviewGrid::recreateTooltipWindow() {
+    // Find the parent component to attach tooltip to
+    auto* parent = getParentComponent();
+    while (parent && !dynamic_cast<TuningPreviewComponent*>(parent)) {
+        parent = parent->getParentComponent();
+    }
+    
+    if (auto* tuningComponent = dynamic_cast<TuningPreviewComponent*>(parent)) {
+        // Reset the tooltip window to restart the show counter
+        tuningComponent->tooltipWindow = std::make_unique<MoTooltipWindow>(nullptr, 750);
+        tooltipWindow = tuningComponent->tooltipWindow.get();
+    }
+}
+
 void TuningPreviewGrid::resized() {
     // Resize logic if needed
 }
@@ -38,6 +52,9 @@ void TuningPreviewGrid::mouseMove(const MouseEvent& event) {
                          newHover.headerType != hoveredRegion.headerType);
 
     if (regionChanged) {
+        // Recreate tooltip window to reset the show counter
+        recreateTooltipWindow();
+        
         hoveredRegion = newHover;
         // repaint(); // Optional: repaint if we want visual feedback
     }
@@ -344,7 +361,6 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     : viewModel(um)
     , tuningPlayer(viewModel, MoToolApp::getController().getEngine())
     , tuningGrid(viewModel, tuningPlayer)
-    , tooltipWindow(nullptr, 750) // ms delay
 {
     setOpaque(true);
 
@@ -413,8 +429,9 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     addAndMakeVisible(modulationModeSelect);
     addAndMakeVisible(tuningGrid);
 
-    // Connect tooltip window to grid
-    tuningGrid.setTooltipWindow(&tooltipWindow);
+    // Connect tooltip window to grid - initial setup
+    tooltipWindow = std::make_unique<MoTooltipWindow>(nullptr, 750);
+    tuningGrid.tooltipWindow = tooltipWindow.get();
 
     // Set up export button
     exportButton.setButtonText("Export to CSV");

@@ -27,7 +27,7 @@ void TuningPreviewGrid::recreateTooltipWindow() {
     while (parent && !dynamic_cast<TuningPreviewComponent*>(parent)) {
         parent = parent->getParentComponent();
     }
-    
+
     if (auto* tuningComponent = dynamic_cast<TuningPreviewComponent*>(parent)) {
         // Reset the tooltip window to restart the show counter
         tuningComponent->tooltipWindow = std::make_unique<MoTooltipWindow>(nullptr, 750);
@@ -54,9 +54,9 @@ void TuningPreviewGrid::mouseMove(const MouseEvent& event) {
     if (regionChanged) {
         // Recreate tooltip window to reset the show counter
         recreateTooltipWindow();
-        
+
         hoveredRegion = newHover;
-        // repaint(); // Optional: repaint if we want visual feedback
+        repaint();  // to update hover effects
     }
 }
 
@@ -81,7 +81,13 @@ void TuningPreviewGrid::paintColumnHeader(juce::Graphics& g, const juce::Rectang
     g.drawText(text, bounds, juce::Justification::centred, true);
 }
 
-void TuningPreviewGrid::paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave) {
+void TuningPreviewGrid::paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave, bool isHovered) {
+    // Add hover background for clickable row headers
+    if (isHovered) {
+        g.setColour(Colors::Theme::surface);
+        g.fillRect(bounds.reduced(1, 1));
+    }
+
     g.setColour(Colors::Theme::textPrimary);
     g.drawText(
         String::formatted("%d", octave),
@@ -90,7 +96,7 @@ void TuningPreviewGrid::paintRowHeader(juce::Graphics& g, const juce::Rectangle<
     );
 }
 
-void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note) {
+void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note, bool isHovered) {
     float offtune = jlimit(-0.5f, 0.5f, (float) note.offtune / 100.0f);
 
     auto noteTextColor = Colors::Theme::textPrimary;
@@ -105,7 +111,12 @@ void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<i
 
     auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
 
-    // Use pressed button color for currently playing notes
+    // Add hover effect for clickable cells (those in MIDI range)
+    if (isHovered && note.isInMidiRange()) {
+        noteBgColor = Colors::Theme::surface;
+    }
+
+    // Use pressed button color for currently playing notes (overrides hover)
     if (isPlaying) {
         noteBgColor = Colors::Theme::primary;
         noteTextColor = Colors::Theme::background; // Use contrasting text color
@@ -179,15 +190,24 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
     // Draw rows (row headers + note cells)
     for (auto octave = octaveRange.getStart(); octave < octaveRange.getEnd(); ++octave) {
+        // Check if this row header is hovered
+        bool rowHeaderHovered = (hoveredRegion.regionType == GridRegionType::RowHeader &&
+                                hoveredRegion.octave == octave);
+
         // Draw row header
         auto rowHeaderBounds = layout.getRowHeaderBounds(octave);
-        paintRowHeader(g, rowHeaderBounds, octave);
+        paintRowHeader(g, rowHeaderBounds, octave, rowHeaderHovered);
 
         // Draw note cells
         auto octaveNotes = viewModel.getOctaveNotes(octave);
         for (int noteIndex = 0; noteIndex < static_cast<int>(octaveNotes.size()); ++noteIndex) {
+            // Check if this note cell is hovered
+            bool noteCellHovered = (hoveredRegion.regionType == GridRegionType::NoteCell &&
+                                   hoveredRegion.octave == octave &&
+                                   hoveredRegion.noteIndex == noteIndex);
+
             auto cellBounds = layout.getNoteCellBounds(octave, noteIndex);
-            paintNoteCell(g, cellBounds, octaveNotes[static_cast<size_t>(noteIndex)]);
+            paintNoteCell(g, cellBounds, octaveNotes[static_cast<size_t>(noteIndex)], noteCellHovered);
         }
     }
 
@@ -376,8 +396,8 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     addAndMakeVisible(tuningsListBox);
 
     // Set up Key selection ComboBox
-    keyScaleLabel.setText("Scale:", juce::dontSendNotification);
-    keyScaleLabel.setJustificationType(juce::Justification::centredRight);
+    keyScaleLabel.setText("Scale", juce::dontSendNotification);
+    keyScaleLabel.setJustificationType(juce::Justification::centredLeft);
     setupScaleSelectMenu();
 
     addAndMakeVisible(keyScaleLabel);
@@ -385,17 +405,16 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     addAndMakeVisible(scaleSelect);
 
     // Set up Chip Clock selection ComboBox
-    chipClockLabel.setText("Chip clock:", juce::dontSendNotification);
-    chipClockLabel.setJustificationType(juce::Justification::centredRight);
+    chipClockLabel.setText("Chip clock", juce::dontSendNotification);
+    chipClockLabel.setJustificationType(juce::Justification::centredLeft);
 
     addAndMakeVisible(chipClockLabel);
     addAndMakeVisible(chipClockSelect);
 
-    // Set up frequency sliders with Value binding
-    setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock frequency:", clockFrequencyUnits,
-                                viewModel.clockFrequencyMhz);
+    // Set up frequency input with Value binding
+    setupTextEditorWithValueBinding(clockFrequencyInput, clockFrequencyUnits, viewModel.clockFrequencyMhz);
 
-    setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 frequency:", a4FrequencyUnits,
+    setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 frequency", a4FrequencyUnits,
                                 viewModel.a4Frequency);
 
     // Set initial controls state
@@ -487,13 +506,12 @@ void TuningPreviewComponent::resized() {
     // leftColumn.removeFromTop(gap / 2);
     tuningsListBox.setBounds(leftColumn); // Take remaining space in left column
 
-    // Right column: Other controls and tuning grid
-    // Place KeySelect and ScaleSelect on the same row with fixed widths
-    auto labelsColWidth = moduleWidth * 2; // Width for labels
-
+    // Right column: Other controls and tuning grid (vertical layout)
+    
+    // Scale section
+    keyScaleLabel.setBounds(rightColumn.removeFromTop(rowHeight));
     {
         auto keyScaleRow = rightColumn.removeFromTop(rowHeight);
-        keyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
         keySelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth));
         keyScaleRow.removeFromLeft(gap);
         scaleSelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth * 3 - gap));
@@ -501,26 +519,22 @@ void TuningPreviewComponent::resized() {
 
     rightColumn.removeFromTop(gap);
 
+    // Chip clock section
+    chipClockLabel.setBounds(rightColumn.removeFromTop(rowHeight));
     {
-        auto chipLabelRow = rightColumn.removeFromTop(rowHeight);
-        chipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
-        chipClockSelect.setBounds(chipLabelRow.removeFromLeft(moduleWidth * 4));
+        auto chipControlsRow = rightColumn.removeFromTop(rowHeight);
+        chipClockSelect.setBounds(chipControlsRow.removeFromLeft(moduleWidth * 4));
+        chipControlsRow.removeFromLeft(gap);
+        clockFrequencyInput.setBounds(chipControlsRow.removeFromLeft(moduleWidth));
+        clockFrequencyUnits.setBounds(chipControlsRow);
     }
 
     rightColumn.removeFromTop(gap);
 
-    { // Clock frequency slider on its own row
-        auto clockFreqRow = rightColumn.removeFromTop(rowHeight);
-        clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(labelsColWidth));
-        clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(moduleWidth * 8));
-        clockFrequencyUnits.setBounds(clockFreqRow);
-    }
-
-    rightColumn.removeFromTop(gap);
-
-    { // A4 frequency slider with label
+    // A4 frequency section
+    a4FrequencyLabel.setBounds(rightColumn.removeFromTop(rowHeight));
+    {
         auto a4Row = rightColumn.removeFromTop(rowHeight);
-        a4FrequencyLabel.setBounds(a4Row.removeFromLeft(labelsColWidth));
         a4FrequencySlider.setBounds(a4Row.removeFromLeft(moduleWidth * 8));
         a4FrequencyUnits.setBounds(a4Row);
     }
@@ -533,14 +547,11 @@ void TuningPreviewComponent::resized() {
 
     rightColumn.removeFromTop(gap);
 
-    {   // Play mode row with multiple controls
+    // Play mode controls (no labels needed - checkboxes are self-describing)
+    {
         auto playToneRow = rightColumn.removeFromTop(rowHeight);
-        playToneRow.removeFromLeft(labelsColWidth);
-        // playModeRow.removeFromLeft(labelsColWidth);
         playToneCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
         playToneRow.removeFromLeft(gap / 2);
-        // retriggerToneCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
-        // playToneRow.removeFromLeft(gap / 2);
         playChordsCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
     }
 
@@ -548,7 +559,6 @@ void TuningPreviewComponent::resized() {
 
     {
         auto playEnvRow = rightColumn.removeFromTop(rowHeight);
-        playEnvRow.removeFromLeft(labelsColWidth);
         playEnvelopeCheckBox.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
         playEnvRow.removeFromLeft(gap);
         envelopeShapeSelect.setBounds(playEnvRow.removeFromLeft(moduleWidth * 3));
@@ -619,7 +629,7 @@ void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& 
     slider.getValueObject().referTo(attachment.getValue());
 
     label.setText(labelText, juce::dontSendNotification);
-    label.setJustificationType(juce::Justification::centredRight);
+    label.setJustificationType(juce::Justification::centredLeft);
 
     unitsLabel.setText(attachment.getUnits(), juce::dontSendNotification);
     unitsLabel.setJustificationType(juce::Justification::centredLeft);
@@ -629,11 +639,56 @@ void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& 
     addAndMakeVisible(unitsLabel);
 }
 
+void TuningPreviewComponent::setupTextEditorWithValueBinding(Label& inputLabel, Label& unitsLabel,
+                                                            RangedParamAttachment<double>& attachment) {
+    const auto range = attachment.getRange();
+
+    // Set up the input label to behave like a text editor
+    inputLabel.setEditable(true);
+    inputLabel.setJustificationType(Justification::centredLeft);
+
+    // Set colors to match Slider's text box appearance
+    inputLabel.setColour(Label::outlineColourId, inputLabel.findColour(Slider::textBoxOutlineColourId));
+    inputLabel.setColour(Label::backgroundColourId, inputLabel.findColour(Slider::textBoxBackgroundColourId));
+    inputLabel.setColour(Label::textColourId, inputLabel.findColour(Slider::textBoxTextColourId));
+    inputLabel.setColour(TextEditor::outlineColourId, inputLabel.findColour(Slider::textBoxOutlineColourId));
+    inputLabel.setColour(TextEditor::backgroundColourId, inputLabel.findColour(Slider::textBoxBackgroundColourId));
+    inputLabel.setColour(TextEditor::textColourId, inputLabel.findColour(Slider::textBoxTextColourId));
+
+    inputLabel.setText(String(attachment.getValue().getValue()), juce::dontSendNotification);
+
+    // Handle text changes
+    inputLabel.onTextChange = [&inputLabel, &attachment, range]() {
+        String text = inputLabel.getText();
+        double value = text.getDoubleValue();
+
+        // Clamp value to valid range
+        value = jlimit(range.start, range.end, value);
+
+        // Update the attachment
+        attachment.getValue().setValue(value);
+
+        // Update label to show clamped value if needed
+        if (std::abs(value - text.getDoubleValue()) > 1e-9) {
+            inputLabel.setText(String(value), juce::dontSendNotification);
+        }
+    };
+
+    // Listen for external value changes
+    attachment.getValue().addListener(this);
+
+    unitsLabel.setText(attachment.getUnits(), juce::dontSendNotification);
+    unitsLabel.setJustificationType(juce::Justification::centredLeft);
+
+    addAndMakeVisible(inputLabel);
+    addAndMakeVisible(unitsLabel);
+}
+
 void TuningPreviewComponent::updateControlsState() {
     // Update clock controls
     bool isCustom = viewModel.isCustomClockEnabled();
-    clockFrequencySlider.setEnabled(isCustom);
-    clockFrequencyLabel.setEnabled(isCustom);
+    clockFrequencyInput.setVisible(isCustom);
+    clockFrequencyUnits.setVisible(isCustom);
 
     // Update envelope controls
     playChordsCheckBox.setEnabled(viewModel.isToneEnabled());
@@ -678,6 +733,11 @@ void TuningPreviewComponent::valueChanged(Value& value) {
     if (value.refersToSameSourceAs(viewModel.selectedTuningTable.getValue())) {
         int newIndex = static_cast<int>(viewModel.selectedTuningTable.get());
         tuningsListBox.selectRow(newIndex, false, false);
+    }
+    else if (value.refersToSameSourceAs(viewModel.clockFrequencyMhz.getValue())) {
+        // Update text editor when value changes externally
+        double newValue = static_cast<double>(viewModel.clockFrequencyMhz.getValue().getValue());
+        clockFrequencyInput.setText(String(newValue), juce::dontSendNotification);
     }
 }
 

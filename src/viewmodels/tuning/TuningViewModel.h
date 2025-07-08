@@ -229,8 +229,8 @@ public:
         , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
         , selectedRoot       (transientState, IDs::key,          Scale::getAllKeyNames(),          um, Scale::Key::C)
         , selectedScale      (transientState, IDs::scale,                                          um, Scale::ScaleType::IonianOrMajor)
-        , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              um, 440.0)
-        , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                um, 1.7734) // MHz
+        , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              um, 440.0, "Hz")
+        , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                um, 1.7734, "MHz")
 
         , playChords         (transientState, IDs::playChords,                                     um, false)
         , playTone           (transientState, IDs::playTone,                                       um, true)

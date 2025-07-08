@@ -75,7 +75,7 @@ private:
     TuningViewModel& viewModel;
     TuningPlayer& tuningPlayer;
 
-    // Mouse tracking for tooltips
+    // Mouse tracking for tooltips and hover effects
     Point<int> lastMousePosition;
     GridHitResult hoveredRegion;
 
@@ -83,8 +83,8 @@ private:
 
     // Paint helper methods
     void paintColumnHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNoteName& column, NoteGridHeadingType headingType);
-    void paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave);
-    void paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note);
+    void paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave, bool isHovered = false);
+    void paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note, bool isHovered = false);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPreviewGrid)
 };
@@ -114,6 +114,8 @@ private:
     // UI setup helpers
     void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
                                      RangedParamAttachment<double>& attachment);
+    void setupTextEditorWithValueBinding(Label& inputLabel, Label& unitsLabel,
+                                        RangedParamAttachment<double>& attachment);
     void updateControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();
@@ -131,8 +133,7 @@ private:
     Label chipClockLabel;
     ComboBox chipClockSelect;
 
-    Slider clockFrequencySlider;
-    Label clockFrequencyLabel;
+    Label clockFrequencyInput;
     Label clockFrequencyUnits;
 
     Slider a4FrequencySlider;

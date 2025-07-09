@@ -306,7 +306,7 @@ public:
     virtual void fillItems() {
         comboBox.clear();
         for (auto [i, item] : choiceParam.getChoices()) {
-            comboBox.addItem(item, i + 1);
+            comboBox.addItem(item, (int) i + 1);
         }
     }
 

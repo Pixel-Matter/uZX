@@ -39,6 +39,38 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
                 )
             );
 
+        case BuiltinTuningType::Just5Limit2:
+            // Implement Just Intonation 5-limit T=45:64 tuning
+            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClock = options.chipChoice.getClockValue();
+            options.a4Frequency = 433.0;
+            options.tonic = Scale::Key::D;
+            options.scaleType = Scale::ScaleType::Phrygian;
+            options.temperamentType = TemperamentType::Just5LimitT45_64;
+            return std::make_unique<AutoTuning>(
+                options.chipClock, makeTemperamentSystem(
+                    options.temperamentType,
+                    options.tonic,
+                    options.a4Frequency
+                )
+            );
+
+        case BuiltinTuningType::Pythagorean:
+            // Implement Pythagorean tuning
+            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClock = options.chipChoice.getClockValue();
+            options.a4Frequency = 433.0;
+            options.tonic = Scale::Key::C;
+            options.scaleType = Scale::ScaleType::IonianOrMajor;
+            options.temperamentType = TemperamentType::Pythagorean;
+            return std::make_unique<AutoTuning>(
+                options.chipClock, makeTemperamentSystem(
+                    options.temperamentType,
+                    options.tonic,
+                    options.a4Frequency
+                )
+            );
+
         case BuiltinTuningType::CustomPT_0_PT: {
             // ProTracker #0 (Original PT3 table)
             options.chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
@@ -177,13 +209,12 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
 
         case BuiltinTuningType::CustomVT_4_NATURAL: {
             // ProTracker #4 (Natural Cmaj/Am)
-            // Based on 1520640 MHz
-            options.chipChoice = uZX::ChipClockChoice::Custom;
-            options.chipClock = 1520640.0;
-            options.a4Frequency = 440.0; // A4 frequency for Natural Cmaj/
+            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClock = options.chipChoice.getClockValue();
+            options.a4Frequency = 513.15; // A4 frequency for Natural Cmaj/Am
             options.tonic = Scale::Key::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
-            options.temperamentType = TemperamentType::Just5Limit;
+            options.temperamentType = TemperamentType::Just5LimitT45_64;
             return std::make_unique<TuningTable>(
                 options.chipClock,
                 makeTemperamentSystem(
@@ -193,7 +224,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
                 ),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
-                    // Octave 1 (C1-B1): Natural tuning based on 1520640 MHz
+                    // Octave 1 (C1-B1)
                     2880, 2700, 2560, 2400, 2304, 2160, 2025, 1920, 1800, 1728, 1620, 1536,
                     // Octave 2 (C2-B2)
                     1440, 1350, 1280, 1200, 1152, 1080, 1013, 960, 900, 864, 810, 768,
@@ -214,57 +245,34 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             );
         }
 
-        // case BuiltinTuningType::CustomNaturalEPhrygian: {
-        //     // Natural E Phrygian tuning
-        //     return std::make_unique<TuningTable>(
-        //         capabilities,
-        //         uZX::ChipClockChoice(uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz).getClockValue(),
-        //         []() {
-        //             auto scale = std::make_unique<Scale>(Scale::ScaleType::Phrygian);
-        //             return std::make_unique<RationalTuning>(
-        //                 std::array<FractionNumber, 12> {
-        //                     FractionNumber {1, 1},   // Unison          C   A
-        //                     FractionNumber {16, 15}, // Minor second    C#  A#
-        //                     FractionNumber {9, 8},   // Major second    D   B
-        //                     FractionNumber {6, 5},   // Minor third     D#  C
-        //                     FractionNumber {5, 4},   // Major third     E   C#
-        //                     FractionNumber {4, 3},   // Perfect fourth  F   D
-        //                     FractionNumber {45, 32}, // Triton          F#  D#
-        //                     FractionNumber {3, 2},   // Perfect fifth   G   E
-        //                     FractionNumber {8, 5},   // Minor sixth     G#  F
-        //                     FractionNumber {5, 3},   // Major sixth     A   F#
-        //                     FractionNumber {16, 9},  // Minor seventh   A#  G
-        //                     FractionNumber {15, 8}   // Major seventh   B   G#
-        //                 },
-        //                 Scale::Key::E,
-        //                 scale.get(),
-        //                 486.0
-        //             );
-        //         }(),
-        //         24, // Starting at MIDI note 24 (C1)
-        //         std::vector<int> {
-        //             // Octave 1 (C1-B1): Natural E Phrygian tuning
-        //             3072, 2880, 2730, 2560, 2458, 2304, 2194, 2048, 1920, 1843, 1728, 1638,
-        //             // Octave 2 (C2-B2)
-        //             1536, 1440, 1365, 1280, 1229, 1152, 1097, 1024, 960, 922, 864, 819,
-        //             // Octave 3 (C3-B3)
-        //             768, 720, 683, 640, 614, 576, 549, 512, 480, 461, 432, 410,
-        //             // Octave 4 (C4-B4)
-        //             384, 360, 341, 320, 307, 288, 274, 256, 240, 230, 216, 205,
-        //             // Octave 5 (C5-B5)
-        //             192, 180, 171, 160, 154, 144, 137, 128, 120, 115, 108, 102,
-        //             // Octave 6 (C6-B6)
-        //             96, 90, 85, 80, 77, 72, 69, 64, 60, 58, 54, 51,
-        //             // Octave 7 (C7-B7)
-        //             48, 45, 43, 40, 38, 36, 34, 32, 30, 29, 27, 26,
-        //             // Octave 8 (C8-B8)
-        //             24, 23, 21, 20, 19, 18, 17, 16, 15, 14, 14, 13,
-        //             // Octave 9 (C9-B9)
-        //             12, 11, 11, 10, 10, 9, 9, 8, 8, 7, 7, 6
-        //         },
-        //         tableType.getLongLabel().data()
-        //     );
-        // }
+        case BuiltinTuningType::RoschinFixed: {
+            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClock = options.chipChoice.getClockValue();
+            options.a4Frequency = 433.0; // A4 frequency for Natural D#maj
+            options.tonic = Scale::Key::DSharp;
+            options.scaleType = Scale::ScaleType::IonianOrMajor;
+            options.temperamentType = TemperamentType::Just5Limit;
+            return std::make_unique<TuningTable>(
+                options.chipClock,
+                makeTemperamentSystem(
+                    options.temperamentType,
+                    options.tonic,
+                    options.a4Frequency
+                ),
+                24, // Starting at MIDI note 24 (C1)
+                std::vector<int> {
+                    3456, 3240, 3072, 2880, 2700, 2560, 2400, 2304, 2160, 2048, 1920, 1800, // Octave 1 (C1-B1)
+                    1728, 1620, 1536, 1440, 1350, 1280, 1200, 1152, 1080, 1024,  960,  900, // Octave 2 (C2-B2)
+                     864,  810,  768,  720,  675,  640,  600,  576,  540,  512,  480,  450, // Octave 3 (C3-B3)
+                     432,  405,  384,  360,  338,  320,  300,  288,  270,  256,  240,  225, // Octave 4 (C4-B4)
+                     216,  203,  192,  180,  169,  160,  150,  144,  135,  128,  120,  113, // Octave 5 (C5-B5)
+                     108,  101,   96,   90,   84,   80,  75,    72,   68,   64,   60,   56, // Octave 6 (C6-B6)
+                      54,   51,   48,   45,   42,   40,  38,    36,   34,   32,   30,   28, // Octave 7 (C7-B7)
+                      27,   25,   24,   23,   21,   20,  19,    18,   17,   16,   15,   14, // Octave 8 (C8-B8)
+                },
+                options.tableType.getLongLabel().data()
+            );
+        }
     }
 
     return nullptr; // Should never reach here

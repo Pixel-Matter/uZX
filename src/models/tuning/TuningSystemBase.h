@@ -35,7 +35,6 @@ public:
         Envelope = 1
     };
 
-
     TuningSystem(double chipClock, std::unique_ptr<TemperamentSystem> refTuning)
         : clockFrequency(chipClock)
         , referenceTuning(std::move(refTuning))

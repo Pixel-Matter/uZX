@@ -152,6 +152,30 @@ private:
     };
     ChipClock chipClock {*this, viewModel};
 
+    // A4 frequency controls
+    struct A4Frequency {
+        A4Frequency(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+        int getHeight() const;
+
+        Label label;
+        Slider slider;
+        Label unitsLabel;
+    };
+    A4Frequency a4Frequency {*this, viewModel};
+
+    // Reference Tuning selection
+    // struct ReferenceTuning {
+    //     ReferenceTuning(TuningPreviewComponent& c, TuningViewModel& vm);
+    //     void layout(juce::Rectangle<int>& area);
+    //     int getHeight() const;
+
+    //     Label label;
+    //     ComboBox select;
+    //     ComboBoxBinding<TemperamentType> binding;
+    // };
+    // ReferenceTuning tuning {*this, viewModel};
+
     // Scale and Key selection
     struct KeyScale {
         KeyScale(TuningPreviewComponent& c, TuningViewModel& vm);
@@ -165,20 +189,6 @@ private:
         ScaleComboBoxBinding scaleSelectBinding;
     };
     KeyScale keyScale {*this, viewModel};
-
-    // A4 frequency controls
-    struct A4Frequency {
-        A4Frequency(TuningPreviewComponent& c, TuningViewModel& vm);
-        void layout(juce::Rectangle<int>& area);
-        int getHeight() const;
-
-        Label label;
-        Slider slider;
-        Label unitsLabel;
-    };
-    A4Frequency a4Frequency {*this, viewModel};
-
-    Label tuningNameLabel;
 
     // Play controls
     struct PlayControls {
@@ -195,6 +205,8 @@ private:
         ComboBoxBinding<ModulationChoice> envelopeModeBinding;
     };
     PlayControls playControls {*this, viewModel};
+
+    Label tuningNameLabel;
 
     TextButton exportButton;
 

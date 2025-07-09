@@ -424,11 +424,25 @@ int TuningPreviewComponent::KeyScale::getHeight() const {
     return rowHeight * 2 + gap; // 1 for label, 1 for controls, plus gap
 }
 
+// TuningPreviewComponent::ReferenceTuning::ReferenceTuning(TuningPreviewComponent& c, TuningViewModel& vm)
+//     : binding(select, vm.selectedTemperament)
+// {
+//     label.setText("Reference tuning", juce::dontSendNotification);
+//     // label.setJustificationType(juce::Justification::centredLeft);
+
+//     // select.setTextWhenNothingSelected("Select tuning");
+//     // select.setJustificationType(juce::Justification::centredLeft);
+//     // select.setColour(juce::ComboBox::ColourIds::backgroundColourId, Colors::Theme::background);
+
+//     c.addAndMakeVisible(label);
+//     c.addAndMakeVisible(select);
+// }
+
 TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
     : binding(select, vm.selectedChip)
 {
     label.setText("Chip clock", juce::dontSendNotification);
-    label.setJustificationType(juce::Justification::centredLeft);
+    // label.setJustificationType(juce::Justification::centredLeft);
 
     // Setup frequency controls by calling the parent class methods
     c.setupTextEditorWithValueBinding(frequencyInput, unitsLabel, vm.clockFrequencyMhz);

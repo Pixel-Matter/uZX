@@ -1,4 +1,5 @@
 #include "MultitrackMidiPreview.h"
+#include "../../models/PsgMidi.h"
 #include <JuceHeader.h>
 
 namespace MoTool {

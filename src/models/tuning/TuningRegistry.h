@@ -15,24 +15,28 @@ namespace MoTool {
 struct BuiltinTuningEnum {
     enum Enum : size_t {
         EqualTemperament = 0, // Standard equal temperament tuning
-        Just5Limit,       // Just Intonation (5-limit)
+        Just5Limit,           // Just Intonation (5-limit)
+        Just5Limit2,          // Just Intonation (5-limit T=45:64)
+        Pythagorean,          // Pythagorean tuning
         CustomPT_0_PT,        // ProTracker #0 (Original PT3 table)
         CustomPT_1_ST,        // ProTracker #1 (SoundTracker)
         CustomPT_2_ASM,       // ProTracker #2 (ASM)
         CustomPT_3_REAL,      // ProTracker #3 (REAL)
         CustomVT_4_NATURAL,   // ProTracker #4 (Natural Cmaj/Am)
-        // CustomNaturalEPhrygian  // Natural E Phrygian
+        RoschinFixed,         // IvanRoschin Fixed (Natural Cmaj/Am)
     };
 
     static inline constexpr std::string_view longLabels[] {
         "Equal Temperament",
-        "Just Intonation (5-limit)",
-        "ProTracker #0",
+        "Just Intonation (5-limit D Phrygian)",
+        "Just Intonation (5-limit T=45:64)",
+        "Pythagorean",
+        "ProTracker #0 (PT)",
         "ProTracker #1 (ST)",
         "ProTracker #2 (ASM)",
         "ProTracker #3 (REAL)",
-        "IvanRochin #4 (NATURAL Cmaj/Am)",
-        // "Natural E Phrygian"
+        "IvanRoschin #4 (NATURAL Cmaj/Am)",
+        "IvanRoschin Fixed (Natural D#maj)",
     };
 };
 

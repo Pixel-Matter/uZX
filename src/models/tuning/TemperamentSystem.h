@@ -19,8 +19,9 @@ struct TemperamentTypeEnum {
         EqualTemperament,
         // WellTemperament,
         Just5Limit,
+        Just5LimitT45_64,
         // Just7Limit,
-        // Pythagorean,
+        Pythagorean,
         CustomRational,
     };
 
@@ -28,8 +29,9 @@ struct TemperamentTypeEnum {
         "Equal Temperament",
         // "Well Temperament",
         "5-Limit Just Intonation",
+        "5-Limit Just Intonation T=45:64",
         // "7-Limit Just Intonation",
-        // "Pythagorean",
+        "Pythagorean",
         "Custom Rational Intonation",
     };
 };
@@ -46,9 +48,8 @@ public:
         NextLower   // Find the next lower defined note
     };
 
-    TemperamentSystem(double a4Frequency = 440.0)
-        : a4Freq(a4Frequency)
-    {}
+    TemperamentSystem(double a4Frequency = 440.0);
+    TemperamentSystem(const juce::ValueTree& state);
 
     virtual ~TemperamentSystem() = default;
 
@@ -77,16 +78,21 @@ public:
     double getA4Frequency() const;
 
     // Serialization
-    // virtual juce::ValueTree getState() const = 0;
-    // virtual void setState(const juce::ValueTree& state) = 0;
+    juce::ValueTree getState() const;
+    void setState(const juce::ValueTree& state);
+
 protected:
-    // TODO use CachedValues refTo-ed to a state value in a tree
-    double a4Freq;
+    static inline const juce::Identifier temperamentSystemType {"type"};
+    static inline const juce::Identifier a4FrequencyProperty {"a4Frequency"};
+
+    juce::ValueTree state;
+    juce::CachedValue<double> a4Frequency;
 };
 
 class EqualTemperamentTuning final : public TemperamentSystem {
 public:
-    using TemperamentSystem::TemperamentSystem;
+    EqualTemperamentTuning(double a4Frequency = 440.0);
+    EqualTemperamentTuning(const juce::ValueTree& state);
 
     TemperamentType getType() const override;
     double midiNoteToFrequency(int midiNote) const override;
@@ -105,9 +111,9 @@ public:
     RationalTuning(
         const std::array<FractionNumber, 12>& rationalIntervals,
         const Scale::Key keyToUse,
-        // const Scale* scaleToUse,
         double a4Frequency = 440.0
     );
+    RationalTuning(const juce::ValueTree& state);
 
     TemperamentType getType() const override;
     double midiNoteToFrequency(int midiNote) const override;
@@ -117,13 +123,8 @@ public:
     bool isDefined(int midiNote) const override;
     String getDegreeRepresentation(int degree) const override;
 
-    void setRoot(Scale::Key newKey) override{
-        tonic = newKey;
-    }
-
-    Scale::Key getRoot() const override{
-        return tonic;
-    }
+    void setRoot(Scale::Key newKey) override;
+    Scale::Key getRoot() const override;
 
     // void setScale(const Scale* newScale) {
     //     scale = newScale;
@@ -135,10 +136,18 @@ public:
 
     double getTonicFrequency(int octave) const;
 
+protected:
+    static inline const juce::Identifier tonicProperty {"tonic"};
+    static inline const juce::Identifier ratiosProperty {"ratios"};
+
+    juce::CachedValue<int> tonic;
+    juce::CachedValue<juce::String> ratiosString;
+
 private:
-    std::array<FractionNumber, 12> ratios;
-    Scale::Key tonic;
-    // const Scale* scale; // Scale to use for this tuning, if applicable
+    std::array<FractionNumber, 12> getRatiosFromString(const juce::String& str) const;
+    juce::String getRatiosAsString(const std::array<FractionNumber, 12>& ratios) const;
+    void updateCachedRatios();
+    std::array<FractionNumber, 12> cachedRatios;
 
 };
 
@@ -147,8 +156,23 @@ class JustIntonation5Limit final : public RationalTuning {
 public:
     JustIntonation5Limit(
         const Scale::Key tonicToUse,
-        double a4Frequency = 440.0
+        double a4Frequency = 440.0,
+        std::array<FractionNumber, 12> ratios = {
+            FractionNumber(1, 1),   // Unison
+            FractionNumber(16, 15), // Minor second
+            FractionNumber(9, 8),   // Major second
+            FractionNumber(6, 5),   // Minor third
+            FractionNumber(5, 4),   // Major third
+            FractionNumber(4, 3),   // Perfect fourth
+            FractionNumber(45, 32), // Augmented fourth / diminished fifth
+            FractionNumber(3, 2),   // Perfect fifth
+            FractionNumber(8, 5),   // Minor sixth
+            FractionNumber(5, 3),   // Major sixth
+            FractionNumber(16, 9),  // Minor seventh
+            FractionNumber(15, 8)   // Major seventh
+        }
     );
+    JustIntonation5Limit(const juce::ValueTree& state);
 
     TemperamentType getType() const override;
 };
@@ -159,4 +183,17 @@ std::unique_ptr<TemperamentSystem> makeTemperamentSystem(
     double a4Frequency = 440.0
 );
 
+std::unique_ptr<TemperamentSystem> makeTemperamentSystemFromState(const juce::ValueTree& state);
+
 } // namespace MoTool
+
+
+namespace juce {
+
+using namespace MoTool;
+using namespace MoTool::Util;
+
+template <>
+struct juce::VariantConverter<TemperamentType> : public EnumVariantConverter<TemperamentType> {};
+
+}

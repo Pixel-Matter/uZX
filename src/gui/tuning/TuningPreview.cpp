@@ -212,7 +212,7 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
     }
 
     // Draw vertical line at the root note column (current root)
-    const int rootColumnIndex = static_cast<int>(viewModel.getCurrentRoot());
+    const int rootColumnIndex = static_cast<int>(viewModel.getCurrentTonic());
     auto firstCellBounds = layout.getNoteCellBounds(octaveRange.getStart(), rootColumnIndex);
     auto lastCellBounds = layout.getNoteCellBounds(octaveRange.getEnd() - 1, rootColumnIndex);
 
@@ -377,67 +377,6 @@ TuningPreviewGrid::GridHitResult TuningPreviewGrid::GridLayout::hitTest(juce::Po
 }
 
 //================================================================================
-TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
-    : viewModel(um)
-    , tuningPlayer(viewModel, MoToolApp::getController().getEngine())
-    , tuningGrid(viewModel, tuningPlayer)
-{
-    setOpaque(true);
-
-    setupTuningTableControls();
-    setupTuningGrid();
-    setupExportButton();
-
-    updateControlsState();
-    viewModel.addChangeListener(this);
-    tuningNameLabel.setText(viewModel.getTuningDescription(), juce::dontSendNotification);
-    addAndMakeVisible(tuningNameLabel);
-}
-
-TuningPreviewComponent::~TuningPreviewComponent() {
-    viewModel.removeChangeListener(this);
-    viewModel.selectedTuningTable.removeListener(this);
-}
-
-TuningPreviewComponent::KeyScale::KeyScale(TuningPreviewComponent& c, TuningViewModel& vm)
-    : keySelectBinding(keySelect, vm.selectedRoot)
-    , scaleSelectBinding(scaleSelect, vm.selectedScale)
-{
-    label.setText("Scale", juce::dontSendNotification);
-    label.setJustificationType(juce::Justification::centredLeft);
-
-    c.addAndMakeVisible(label);
-    c.addAndMakeVisible(keySelect);
-    c.addAndMakeVisible(scaleSelect);
-}
-
-void TuningPreviewComponent::KeyScale::layout(juce::Rectangle<int>& area) {
-    label.setBounds(area.removeFromTop(rowHeight));
-
-    auto row = area.removeFromTop(rowHeight);
-    keySelect.setBounds(row.removeFromLeft(moduleWidth));
-    row.removeFromLeft(gap);
-    scaleSelect.setBounds(row.removeFromLeft(moduleWidth * 3 - gap));
-}
-
-int TuningPreviewComponent::KeyScale::getHeight() const {
-    return rowHeight * 2 + gap; // 1 for label, 1 for controls, plus gap
-}
-
-// TuningPreviewComponent::ReferenceTuning::ReferenceTuning(TuningPreviewComponent& c, TuningViewModel& vm)
-//     : binding(select, vm.selectedTemperament)
-// {
-//     label.setText("Reference tuning", juce::dontSendNotification);
-//     // label.setJustificationType(juce::Justification::centredLeft);
-
-//     // select.setTextWhenNothingSelected("Select tuning");
-//     // select.setJustificationType(juce::Justification::centredLeft);
-//     // select.setColour(juce::ComboBox::ColourIds::backgroundColourId, Colors::Theme::background);
-
-//     c.addAndMakeVisible(label);
-//     c.addAndMakeVisible(select);
-// }
-
 TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
     : binding(select, vm.selectedChip)
 {
@@ -462,12 +401,63 @@ void TuningPreviewComponent::ChipClock::layout(juce::Rectangle<int>& area) {
     unitsLabel.setBounds(row);
 }
 
+int TuningPreviewComponent::ChipClock::getHeight() const {
+    return rowHeight * 2; // 1 for label, 1 for controls
+}
+
+//================================================================================
+TuningPreviewComponent::KeyScale::KeyScale(TuningPreviewComponent& c, TuningViewModel& vm)
+    : keySelectBinding(keySelect, vm.selectedTonic)
+    , scaleSelectBinding(scaleSelect, vm.selectedScale)
+{
+    label.setText("Scale", juce::dontSendNotification);
+    label.setJustificationType(juce::Justification::centredLeft);
+
+    c.addAndMakeVisible(label);
+    c.addAndMakeVisible(keySelect);
+    c.addAndMakeVisible(scaleSelect);
+}
+
+void TuningPreviewComponent::KeyScale::layout(juce::Rectangle<int>& area) {
+    label.setBounds(area.removeFromTop(rowHeight));
+
+    auto row = area.removeFromTop(rowHeight);
+    keySelect.setBounds(row.removeFromLeft(moduleWidth * 1.5));
+    row.removeFromLeft(gap);
+    scaleSelect.setBounds(row.removeFromLeft(moduleWidth * 3.5 - gap));
+}
+
+int TuningPreviewComponent::KeyScale::getHeight() const {
+    return rowHeight * 2; // 1 for label, 1 for controls
+}
+
+//================================================================================
+TuningPreviewComponent::ReferenceTuning::ReferenceTuning(TuningPreviewComponent& c, TuningViewModel& vm)
+    : binding(select, vm.selectedTemperament)
+{
+    label.setText("Reference tuning", juce::dontSendNotification);
+
+    c.addAndMakeVisible(label);
+    c.addAndMakeVisible(select);
+}
+
+void TuningPreviewComponent::ReferenceTuning::layout(juce::Rectangle<int>& area) {
+    label.setBounds(area.removeFromTop(rowHeight));
+    auto row = area.removeFromTop(rowHeight);
+    select.setBounds(row.removeFromLeft(moduleWidth * 5));
+}
+
+int TuningPreviewComponent::ReferenceTuning::getHeight() const {
+    return rowHeight * 2; // 1 for label, 1 for controls
+}
+
+//================================================================================
 TuningPreviewComponent::A4Frequency::A4Frequency(TuningPreviewComponent& c, TuningViewModel& vm) {
     c.setupSliderWithValueBinding(slider, label, "A4 frequency", unitsLabel, vm.a4Frequency);
 }
 
 int TuningPreviewComponent::A4Frequency::getHeight() const {
-    return rowHeight * 2 + gap; // 1 for label, 1 for controls, plus gap
+    return rowHeight * 2; // 1 for label, 1 for controls
 }
 
 void TuningPreviewComponent::A4Frequency::layout(juce::Rectangle<int>& area) {
@@ -478,11 +468,14 @@ void TuningPreviewComponent::A4Frequency::layout(juce::Rectangle<int>& area) {
     unitsLabel.setBounds(row);
 }
 
+//================================================================================
 TuningPreviewComponent::PlayControls::PlayControls(TuningPreviewComponent& c, TuningViewModel& vm)
     : envelopeShapeBinding(envelopeShapeSelect, vm.envelopeShape)
     , envelopeModeBinding(modulationModeSelect, vm.envIntervalChoice)
 {
-    playChordsCheckBox.setButtonText("Play chords");
+    label.setText("Play mode", juce::dontSendNotification);
+
+    playChordsCheckBox.setButtonText("Chords");
     playChordsCheckBox.getToggleStateValue().referTo(vm.playChords.getValue());
 
     playToneCheckBox.setButtonText("Tone");
@@ -494,6 +487,7 @@ TuningPreviewComponent::PlayControls::PlayControls(TuningPreviewComponent& c, Tu
     playEnvelopeCheckBox.setButtonText("Envelope");
     playEnvelopeCheckBox.getToggleStateValue().referTo(vm.playEnvelope.getValue());
 
+    c.addAndMakeVisible(label);
     c.addAndMakeVisible(playChordsCheckBox);
     c.addAndMakeVisible(playToneCheckBox);
     c.addAndMakeVisible(retriggerToneCheckBox);
@@ -504,6 +498,8 @@ TuningPreviewComponent::PlayControls::PlayControls(TuningPreviewComponent& c, Tu
 
 void TuningPreviewComponent::PlayControls::layout(juce::Rectangle<int>& area) {
     // Play controls row
+    label.setBounds(area.removeFromTop(rowHeight));
+
     auto row1 = area.removeFromTop(rowHeight);
     playToneCheckBox.setBounds(row1.removeFromLeft(moduleWidth * 2 - gap));
     row1.removeFromLeft(gap);
@@ -511,20 +507,46 @@ void TuningPreviewComponent::PlayControls::layout(juce::Rectangle<int>& area) {
 
     // Envelope controls row
     area.removeFromTop(gap);
-    auto row2 = area.removeFromTop(rowHeight);
-    playEnvelopeCheckBox.setBounds(row2.removeFromLeft(moduleWidth * 2 - gap));
-    row2.removeFromLeft(gap);
-    envelopeShapeSelect.setBounds(row2.removeFromLeft(moduleWidth * 3 - gap));
-    row2.removeFromLeft(gap);
-    modulationModeSelect.setBounds(row2.removeFromLeft(moduleWidth * 2));
+    playEnvelopeCheckBox.setBounds(area.removeFromTop(rowHeight));
+
+    auto row3 = area.removeFromTop(rowHeight);
+    envelopeShapeSelect.setBounds(row3.removeFromLeft(moduleWidth * 2));
+    row3.removeFromLeft(gap);
+    modulationModeSelect.setBounds(row3.removeFromLeft(moduleWidth * 3));
 }
+
+
+//================================================================================
+TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
+    : viewModel(um)
+    , tuningPlayer(viewModel, MoToolApp::getController().getEngine())
+    , tuningGrid(viewModel, tuningPlayer)
+{
+    setOpaque(true);
+
+    setupTuningTableControls();
+    setupTuningGrid();
+    setupExportButton();
+
+    updateControlsState();
+    viewModel.addChangeListener(this);
+    // tuningNameLabel.setText(viewModel.getTuningDescription(), juce::dontSendNotification);
+    // addAndMakeVisible(tuningNameLabel);
+}
+
+TuningPreviewComponent::~TuningPreviewComponent() {
+    viewModel.removeChangeListener(this);
+    viewModel.selectedTuningTable.removeListener(this);
+}
+
 
 void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds().reduced(20, 20);
+    bounds.removeFromTop(-8);
 
     // Left column: Tuning table selection
     auto leftColumn = bounds.removeFromLeft(moduleWidth * 4);
-    bounds.removeFromLeft(gap);
+    bounds.removeFromLeft(20);
 
     tuningTableLabel.setBounds(leftColumn.removeFromTop(rowHeight));
     tuningsListBox.setBounds(leftColumn);
@@ -541,24 +563,24 @@ void TuningPreviewComponent::resized() {
 }
 
 void TuningPreviewComponent::layoutControlSections(juce::Rectangle<int>& area) {
-    // Chip clock section (moved to top)
-    chipClock.layout(area);
-    area.removeFromTop(gap);
+    auto row1 = area.removeFromTop(jmax(a4Frequency.getHeight(), tuning.getHeight()));
+    auto leftColumn = row1.removeFromLeft(moduleWidth * 6 - gap);
+    tuning.layout(leftColumn);
+    // row1.removeFromLeft(gap);
+    a4Frequency.layout(row1);
 
-    // Scale and A4 frequency sections side by side
-    auto scaleAndA4Row = area.removeFromTop(jmax(keyScale.getHeight(), a4Frequency.getHeight()));
-    auto leftColumn = scaleAndA4Row.removeFromLeft(moduleWidth * 4); // KeyScale column
-    scaleAndA4Row.removeFromLeft(gap);
+    area.removeFromTop(gap);
+    auto row2 = area.removeFromTop(keyScale.getHeight() + chipClock.getHeight() + gap);
+    leftColumn = row2.removeFromLeft(moduleWidth * 6 - gap);
+
     keyScale.layout(leftColumn);
-    a4Frequency.layout(scaleAndA4Row);
-    area.removeFromTop(gap);
+    leftColumn.removeFromTop(gap);
+    chipClock.layout(leftColumn);
 
-    playControls.layout(area);
-    area.removeFromTop(gap);
+    // formArea.removeFromTop(row1.getHeight() + gap);
+    playControls.layout(row2);
 
-    // Tuning info (moved to bottom, just before grid)
-    tuningNameLabel.setBounds(area.removeFromTop(rowHeight));
-    area.removeFromTop(gap);
+    area.removeFromTop(gap * 2);
 }
 
 void TuningPreviewComponent::paint(juce::Graphics& g) {
@@ -568,7 +590,7 @@ void TuningPreviewComponent::paint(juce::Graphics& g) {
 void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
         // DBG("TuningPreviewComponent::changeListenerCallback");
-        tuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
+        // tuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
         updateControlsState();
         tuningGrid.repaint();
     }

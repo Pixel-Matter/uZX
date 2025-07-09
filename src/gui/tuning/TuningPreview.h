@@ -143,6 +143,7 @@ private:
     struct ChipClock {
         ChipClock(TuningPreviewComponent& c, TuningViewModel& vm);
         void layout(juce::Rectangle<int>& area);
+        int getHeight() const;
 
         Label label;
         ComboBox select;
@@ -165,16 +166,16 @@ private:
     A4Frequency a4Frequency {*this, viewModel};
 
     // Reference Tuning selection
-    // struct ReferenceTuning {
-    //     ReferenceTuning(TuningPreviewComponent& c, TuningViewModel& vm);
-    //     void layout(juce::Rectangle<int>& area);
-    //     int getHeight() const;
+    struct ReferenceTuning {
+        ReferenceTuning(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+        int getHeight() const;
 
-    //     Label label;
-    //     ComboBox select;
-    //     ComboBoxBinding<TemperamentType> binding;
-    // };
-    // ReferenceTuning tuning {*this, viewModel};
+        Label label;
+        ComboBox select;
+        ComboBoxBinding<TemperamentType> binding;
+    };
+    ReferenceTuning tuning {*this, viewModel};
 
     // Scale and Key selection
     struct KeyScale {
@@ -195,6 +196,7 @@ private:
         PlayControls(TuningPreviewComponent& c, TuningViewModel& vm);
         void layout(juce::Rectangle<int>& area);
 
+        Label label;
         ToggleButton playChordsCheckBox;
         ToggleButton playToneCheckBox;
         ToggleButton retriggerToneCheckBox;
@@ -206,7 +208,7 @@ private:
     };
     PlayControls playControls {*this, viewModel};
 
-    Label tuningNameLabel;
+    // Label tuningNameLabel;
 
     TextButton exportButton;
 

@@ -310,8 +310,8 @@ public:
     std::array<Degree, 12> getChromaticDegrees() const;
 
     // Key-related static methods
-    static StringArray getAllKeyNames();
-    static String getKeyName(Tonic key);
+    static StringArray getAllNoteNames();
+    static String getTonicName(Tonic key);
 
 private:
     ScaleType type;

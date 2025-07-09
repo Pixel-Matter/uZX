@@ -47,12 +47,6 @@ void TuningPlayer::playSingleNote(int midiNote) {
     midiPreview.playSingleNote(midiNote, 0.5, tone, env, envelopeShape, envelopeInterval);
     notifyPlayingNotes();
 
-    // // Clear the note after a short delay to simulate note release
-    // juce::Timer::callAfterDelay(400, [this, midiNote]() {
-    //     midiPreview.stopPlayback();
-    //     playingNotes_.erase(midiNote);
-    //     notifyPlayingNotes();
-    // });
 }
 
 bool TuningPlayer::isNotePlaying(int midiNote) const {
@@ -110,13 +104,6 @@ void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
         playingNotes_[midiNotes[i]] = static_cast<int>(i + 1);
     }
     notifyPlayingNotes();
-
-    // Clear all notes after chord finishes
-    // juce::Timer::callAfterDelay(duration, [this]() {
-    //     midiPreview.stopPlayback();
-    //     playingNotes_.clear();
-    //     notifyPlayingNotes();
-    // });
 }
 
 void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
@@ -138,13 +125,6 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
         playingNotes_[note] = 1; // Using channel 1 for arpeggio
     }
     notifyPlayingNotes();
-
-    // // Clear all notes after arpeggio finishes
-    // juce::Timer::callAfterDelay(duration * static_cast<int>(midiNotes.size()), [this]() {
-    //     midiPreview.stopPlayback();
-    //     playingNotes_.clear();
-    //     notifyPlayingNotes();
-    // });
 }
 
 void TuningPlayer::stopNotes(bool notify) {

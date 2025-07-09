@@ -185,7 +185,7 @@ private:
         Label label;
         ComboBox keySelect;
         ComboBox scaleSelect;
-        ComboBoxBinding<Scale::Key> keySelectBinding;
+        ComboBoxBinding<Scale::Tonic> keySelectBinding;
         ScaleComboBoxBinding scaleSelectBinding;
     };
     KeyScale keyScale {*this, viewModel};
@@ -202,7 +202,7 @@ private:
         ComboBox envelopeShapeSelect;
         ComboBox modulationModeSelect;
         ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding;
-        ComboBoxBinding<ModulationChoice> envelopeModeBinding;
+        ComboBoxBinding<EnvIntervalChoice> envelopeModeBinding;
     };
     PlayControls playControls {*this, viewModel};
 

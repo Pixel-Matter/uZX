@@ -62,7 +62,7 @@ public:
     using Degree = ScaleDegree;
     using Accidental = Accidental;
 
-    struct KeyEnum {
+    struct TonicEnum {
         enum Enum {
             C = 0, CSharp, D, DSharp, E, F, FSharp, G, GSharp, A, ASharp, B
         };
@@ -74,8 +74,8 @@ public:
         };
     };
 
-    struct Key : public Util::EnumChoice<KeyEnum> {
-        using Util::EnumChoice<KeyEnum>::EnumChoice;
+    struct Tonic : public Util::EnumChoice<TonicEnum> {
+        using Util::EnumChoice<TonicEnum>::EnumChoice;
         inline constexpr auto getName() const { return getLongLabel().data(); }
     };
 
@@ -311,7 +311,7 @@ public:
 
     // Key-related static methods
     static StringArray getAllKeyNames();
-    static String getKeyName(Key key);
+    static String getKeyName(Tonic key);
 
 private:
     ScaleType type;
@@ -342,7 +342,7 @@ using namespace MoTool;
 using namespace MoTool::Util;
 
 template <>
-struct juce::VariantConverter<Scale::Key> : public EnumVariantConverter<Scale::Key> {};
+struct juce::VariantConverter<Scale::Tonic> : public EnumVariantConverter<Scale::Tonic> {};
 
 template <>
 struct juce::VariantConverter<Scale::ScaleType> : public EnumVariantConverter<Scale::ScaleType> {};

@@ -15,7 +15,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 440.0;
-            options.tonic = Scale::Key::C;
+            options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::EqualTemperament;
 
@@ -28,7 +28,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 433.0;
-            options.tonic = Scale::Key::D;
+            options.tonic = Scale::Tonic::D;
             options.scaleType = Scale::ScaleType::Phrygian;
             options.temperamentType = TemperamentType::Just5Limit;
             return std::make_unique<AutoTuning>(
@@ -44,7 +44,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 433.0;
-            options.tonic = Scale::Key::D;
+            options.tonic = Scale::Tonic::D;
             options.scaleType = Scale::ScaleType::Phrygian;
             options.temperamentType = TemperamentType::Just5LimitT45_64;
             return std::make_unique<AutoTuning>(
@@ -60,7 +60,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 433.0;
-            options.tonic = Scale::Key::C;
+            options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::Pythagorean;
             return std::make_unique<AutoTuning>(
@@ -76,7 +76,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 474.0;
-            options.tonic = Scale::Key::C;
+            options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::EqualTemperament;
             return std::make_unique<TuningTable>(
@@ -110,7 +110,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 390.5;
-            options.tonic = Scale::Key::C;
+            options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::EqualTemperament;
             return std::make_unique<TuningTable>(
@@ -144,7 +144,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 440.0;
-            options.tonic = Scale::Key::C;
+            options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::EqualTemperament;
             return std::make_unique<TuningTable>(
@@ -178,7 +178,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 447.0; // A4 frequency for ProTracker #3
-            options.tonic = Scale::Key::C;
+            options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::EqualTemperament;
             return std::make_unique<TuningTable>(
@@ -212,7 +212,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 513.15; // A4 frequency for Natural Cmaj/Am
-            options.tonic = Scale::Key::C;
+            options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::Just5LimitT45_64;
             return std::make_unique<TuningTable>(
@@ -249,7 +249,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
             options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
             options.chipClock = options.chipChoice.getClockValue();
             options.a4Frequency = 433.0; // A4 frequency for Natural D#maj
-            options.tonic = Scale::Key::DSharp;
+            options.tonic = Scale::Tonic::DSharp;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
             options.temperamentType = TemperamentType::Just5Limit;
             return std::make_unique<TuningTable>(

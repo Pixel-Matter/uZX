@@ -480,7 +480,7 @@ void TuningPreviewComponent::A4Frequency::layout(juce::Rectangle<int>& area) {
 
 TuningPreviewComponent::PlayControls::PlayControls(TuningPreviewComponent& c, TuningViewModel& vm)
     : envelopeShapeBinding(envelopeShapeSelect, vm.envelopeShape)
-    , envelopeModeBinding(modulationModeSelect, vm.modulationMode)
+    , envelopeModeBinding(modulationModeSelect, vm.envIntervalChoice)
 {
     playChordsCheckBox.setButtonText("Play chords");
     playChordsCheckBox.getToggleStateValue().referTo(vm.playChords.getValue());

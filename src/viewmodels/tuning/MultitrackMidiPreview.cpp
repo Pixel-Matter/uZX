@@ -91,7 +91,10 @@ void MultitrackMidiPreview::placeNote(int channelIndex, int midiNote, double not
         // DBG("Adding tone switch ON for channel " << channelIndex << " at beat " << currentTime);
         sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
                                     static_cast<int>(MidiCCType::GPB1ToneSwitch), 127 << 7, nullptr);
-        // no need to add tone off usually
+    } else {
+        // DBG("Adding tone switch OFF for channel " << channelIndex << " at beat " << currentTime);
+        sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
+                                    static_cast<int>(MidiCCType::GPB1ToneSwitch), 0, nullptr);
     }
 
     if (enableEnvelope) {
@@ -139,7 +142,11 @@ void MultitrackMidiPreview::placeNote(int channelIndex, int midiNote, double not
 void MultitrackMidiPreview::playSingleNote(int midiNote, double noteLength, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
     stopPlayback();
     clearAllChannelClips();
-    // DBG("Playing single note: " << midiNote);
+    // DBG("Playing single note: " << midiNote
+    //     << " tone " << (enableTone ? "enabled" : "disabled")
+    //     << ", envelope " << (enableEnvelope ? "enabled" : "disabled")
+    //     << ", shape " << envelopeShape
+    //     << ", interval " << envInterval);
 
     placeNote(0, midiNote, noteLength, 0.0, enableTone, enableEnvelope, envelopeShape, envInterval);
 

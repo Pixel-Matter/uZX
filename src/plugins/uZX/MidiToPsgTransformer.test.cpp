@@ -22,7 +22,7 @@ private:
         TuningOptions options {
             .tableType = BuiltinTuningEnum::EqualTemperament,
             .temperamentType = TemperamentTypeEnum::EqualTemperament,
-            .tonic = Scale::Key::C,
+            .tonic = Scale::Tonic::C,
             .scaleType = Scale::ScaleType::IonianOrMajor,
             .chipChoice = ChipClockChoice::Pentagon_1_75_MHz,
             .chipClock = 1750000.0,

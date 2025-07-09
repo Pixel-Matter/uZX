@@ -10,6 +10,17 @@
 
 namespace MoTool {
 
+namespace IDs {
+    #define DECLARE_ID(name)  const Identifier name(#name);
+    DECLARE_ID(TEMPERAMENT)
+    DECLARE_ID(type)
+    DECLARE_ID(a4Frequency)
+    DECLARE_ID(tonic)
+    DECLARE_ID(ratios)
+
+    #undef DECLARE_ID
+}
+
 inline String getMidiNoteName(int note) {
     return juce::MidiMessage::getMidiNoteName(note, true, true, 4);
 }
@@ -60,8 +71,8 @@ public:
 
     virtual TemperamentType getType() const = 0;
 
-    virtual Scale::Key getRoot() const = 0;
-    virtual void setRoot(Scale::Key newRoot) = 0;
+    virtual Scale::Tonic getTonic() const = 0;
+    virtual void setTonic(Scale::Tonic newTonic) = 0;
 
     // Core conversion functions
     // midiNote is double because we want slides and pitch bends
@@ -77,14 +88,11 @@ public:
     void setA4Frequency(double frequency);
     double getA4Frequency() const;
 
-    // Serialization
-    juce::ValueTree getState() const;
-    void setState(const juce::ValueTree& state);
+    // // Serialization
+    // juce::ValueTree getState() const;
+    // void setState(const juce::ValueTree& state);
 
 protected:
-    static inline const juce::Identifier temperamentSystemType {"type"};
-    static inline const juce::Identifier a4FrequencyProperty {"a4Frequency"};
-
     juce::ValueTree state;
     juce::CachedValue<double> a4Frequency;
 };
@@ -98,8 +106,8 @@ public:
     double midiNoteToFrequency(int midiNote) const override;
     double midiNoteToFrequency(double midiNote) const override;
     double frequencyToMidiNote(double frequency) const override;
-    Scale::Key getRoot() const override;
-    void setRoot(Scale::Key newKey) override;
+    Scale::Tonic getTonic() const override;
+    void setTonic(Scale::Tonic newKey) override;
     int frequencyToNearestMidiNote(double frequency, NoteSearch search = NoteSearch::Nearest) const override;
     bool isDefined(int /*midiNote*/) const override;
     String getDegreeRepresentation(int degree) const override;
@@ -110,7 +118,7 @@ class RationalTuning: public TemperamentSystem {
 public:
     RationalTuning(
         const std::array<FractionNumber, 12>& rationalIntervals,
-        const Scale::Key keyToUse,
+        const Scale::Tonic keyToUse,
         double a4Frequency = 440.0
     );
     RationalTuning(const juce::ValueTree& state);
@@ -123,8 +131,8 @@ public:
     bool isDefined(int midiNote) const override;
     String getDegreeRepresentation(int degree) const override;
 
-    void setRoot(Scale::Key newKey) override;
-    Scale::Key getRoot() const override;
+    void setTonic(Scale::Tonic newKey) override;
+    Scale::Tonic getTonic() const override;
 
     // void setScale(const Scale* newScale) {
     //     scale = newScale;
@@ -137,10 +145,7 @@ public:
     double getTonicFrequency(int octave) const;
 
 protected:
-    static inline const juce::Identifier tonicProperty {"tonic"};
-    static inline const juce::Identifier ratiosProperty {"ratios"};
-
-    juce::CachedValue<int> tonic;
+    juce::CachedValue<Scale::Tonic> tonic;
     juce::CachedValue<juce::String> ratiosString;
 
 private:
@@ -155,7 +160,7 @@ private:
 class JustIntonation5Limit final : public RationalTuning {
 public:
     JustIntonation5Limit(
-        const Scale::Key tonicToUse,
+        const Scale::Tonic tonicToUse,
         double a4Frequency = 440.0,
         std::array<FractionNumber, 12> ratios = {
             FractionNumber(1, 1),   // Unison
@@ -179,7 +184,7 @@ public:
 
 std::unique_ptr<TemperamentSystem> makeTemperamentSystem(
     TemperamentType type,
-    const Scale::Key tonic,
+    const Scale::Tonic tonic,
     double a4Frequency = 440.0
 );
 

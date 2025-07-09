@@ -93,7 +93,7 @@ struct ModulationEnum {
     };
 };
 
-using ModulationChoice = Util::EnumChoice<ModulationEnum>;
+using EnvIntervalChoice = Util::EnumChoice<ModulationEnum>;
 
 
 struct TuningNoteName {
@@ -197,6 +197,7 @@ struct TuningNote {
 namespace IDs {
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(TUNINGVIEWSTATE)
+    DECLARE_ID(temperament)
     DECLARE_ID(tuningTable)
     DECLARE_ID(chipClock)
     DECLARE_ID(key)
@@ -225,9 +226,10 @@ public:
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
                                                                  // no undo for this control
+        , selectedTemperament(transientState, IDs::temperament,  nullptr, TemperamentType::EqualTemperament)
         , selectedTuningTable(transientState, IDs::tuningTable,  nullptr, BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
-        , selectedRoot       (transientState, IDs::key,          Scale::getAllKeyNames(),          um, Scale::Key::C)
+        , selectedRoot       (transientState, IDs::key,          Scale::getAllKeyNames(),          um, Scale::Tonic::C)
         , selectedScale      (transientState, IDs::scale,                                          um, Scale::ScaleType::IonianOrMajor)
         , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              um, 440.0, "Hz")
         , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                um, 1.7734, "MHz")
@@ -237,10 +239,11 @@ public:
         , playEnvelope       (transientState, IDs::playEnvelope,                                   um, false)
         , retriggerTone      (transientState, IDs::retriggerTone,                                  um, false)
         , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), um, EnvShapeSimpleEnum::TriangleUp)
-        , modulationMode     (transientState, IDs::envelopeMode,  ModulationChoice::getLongLabels(),  um, ModulationEnum::Unison)
+        , envIntervalChoice  (transientState, IDs::envelopeMode,  EnvIntervalChoice::getLongLabels(),  um, ModulationEnum::Unison)
 
     {
         // Set up Value listeners for bidirectional sync
+        selectedTemperament.addListener(this);
         selectedTuningTable.addListener(this);
         selectedChip.addListener(this);
         selectedRoot.addListener(this);
@@ -277,7 +280,7 @@ public:
                 i,
                 scale.isIntervalInScale(semitonesFromKey),
                 // scaleNotes.count(i) > 0,  // isInScale
-                Scale::getKeyName(Scale::Key(i)),
+                Scale::getKeyName(Scale::Tonic(i)),
                 scaleChromDegrees[(size_t) semitonesFromKey],
                 refTuning ? refTuning->getDegreeRepresentation(semitonesFromKey) : String(),
                 semitonesFromKey == 0 // isRootNote
@@ -473,11 +476,11 @@ public:
         sendChangeMessage();
     }
 
-    Scale::Key getCurrentRoot() const {
+    Scale::Tonic getCurrentRoot() const {
         return selectedRoot.get();
     }
 
-    void setCurrentRoot(Scale::Key root) {
+    void setCurrentRoot(Scale::Tonic root) {
         // DBG("setCurrentKey: " << Scale::getKeyName(key));
         selectedRoot = root;
         // TODO double update after assigning to keyIndex1?
@@ -572,7 +575,7 @@ public:
         if (!isToneEnabled() || !isEnvelopeEnabled()) {
             return 0; // No modulation if tone or envelope is not enabled
         }
-        auto mode = modulationMode.get();
+        auto mode = envIntervalChoice.get();
         return ModulationEnum::semitones[static_cast<size_t>(mode)];
     }
 
@@ -814,9 +817,10 @@ private:
 
 public:
     // ParamAttachment objects - single source of truth for all persisted types
+    ChoiceParamAttachment<TemperamentType>   selectedTemperament; // Equal, Just, Pythagorean, etc.
     ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
     ChoiceParamAttachment<ChipClockChoice>   selectedChip;
-    ChoiceParamAttachment<Scale::Key>        selectedRoot;
+    ChoiceParamAttachment<Scale::Tonic>      selectedRoot;
     ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
     RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
     RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
@@ -826,7 +830,7 @@ public:
     ParamAttachment<bool>                    playEnvelope;
     ParamAttachment<bool>                    retriggerTone;
     ChoiceParamAttachment<EnvShapeChoice>    envelopeShape;
-    ChoiceParamAttachment<ModulationChoice>     modulationMode;
+    ChoiceParamAttachment<EnvIntervalChoice> envIntervalChoice;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };
@@ -843,7 +847,7 @@ template <>
 struct VariantConverter<EnvShapeChoice> : public EnumVariantConverter<EnvShapeChoice> {};
 
 template <>
-struct VariantConverter<ModulationChoice> : public EnumVariantConverter<ModulationChoice> {};
+struct VariantConverter<EnvIntervalChoice> : public EnumVariantConverter<EnvIntervalChoice> {};
 
 
 }  // namespace juce

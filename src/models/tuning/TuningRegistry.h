@@ -46,7 +46,7 @@ using BuiltinTuningType = MoTool::Util::EnumChoice<BuiltinTuningEnum>;
 struct TuningOptions {
     BuiltinTuningType tableType;
     TemperamentType temperamentType;
-    Scale::Key tonic;
+    Scale::Tonic tonic;
     Scale::ScaleType scaleType;
     ChipClockChoice chipChoice;
     double chipClock;

@@ -403,6 +403,28 @@ TuningPreviewComponent::~TuningPreviewComponent() {
     viewModel.selectedTuningTable.removeListener(this);
 }
 
+TuningPreviewComponent::KeyScale::KeyScale(Component& c, TuningViewModel& vm)
+    : keySelectBinding(keySelect, vm.selectedRoot)
+    , scaleSelectBinding(scaleSelect, vm.selectedScale)
+{
+    label.setText("Scale", juce::dontSendNotification);
+    label.setJustificationType(juce::Justification::centredLeft);
+
+    c.addAndMakeVisible(label);
+    c.addAndMakeVisible(keySelect);
+    c.addAndMakeVisible(scaleSelect);
+}
+
+void TuningPreviewComponent::KeyScale::layout(juce::Rectangle<int>& area) {
+    label.setBounds(area.removeFromTop(rowHeight));
+
+    auto row = area.removeFromTop(rowHeight);
+    keySelect.setBounds(row.removeFromLeft(moduleWidth));
+    row.removeFromLeft(gap);
+    scaleSelect.setBounds(row.removeFromLeft(moduleWidth * 3 - gap));
+}
+
+
 void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds().reduced(20, 20);
 
@@ -426,7 +448,7 @@ void TuningPreviewComponent::resized() {
 
 void TuningPreviewComponent::layoutControlSections(juce::Rectangle<int>& area) {
     // Scale section
-    layoutScaleControls(area);
+    keyScale.layout(area);
     area.removeFromTop(gap);
 
     // Chip clock section
@@ -449,14 +471,6 @@ void TuningPreviewComponent::layoutControlSections(juce::Rectangle<int>& area) {
     // Tuning info (moved to bottom, just before grid)
     tuningNameLabel.setBounds(area.removeFromTop(rowHeight));
     area.removeFromTop(gap);
-}
-
-void TuningPreviewComponent::layoutScaleControls(juce::Rectangle<int>& area) {
-    keyScale.label.setBounds(area.removeFromTop(rowHeight));
-    auto row = area.removeFromTop(rowHeight);
-    keyScale.keySelect.setBounds(row.removeFromLeft(moduleWidth));
-    row.removeFromLeft(gap);
-    keyScale.scaleSelect.setBounds(row.removeFromLeft(moduleWidth * 3 - gap));
 }
 
 void TuningPreviewComponent::layoutChipClockControls(juce::Rectangle<int> area) {
@@ -603,28 +617,6 @@ void TuningPreviewComponent::updateControlsState() {
     modulationModeSelect.setEnabled(viewModel.isModulationEnabled());
 }
 
-void TuningPreviewComponent::setupScaleSelectMenu() {
-    // TODO maybe subclass ComboBoxBinding or specialize it?
-    keyScale.scaleSelect.clear();
-    auto categories = Scale::getAllScaleCategories();
-    int menuItemId = 1;
-
-    for (auto category : categories) {
-        if (category == Scale::ScaleCategory::User) continue;
-
-        keyScale.scaleSelect.addSectionHeading(Scale::getNameForCategory(category));
-        auto scalesInCategory = Scale::getAllScaleTypesForCategory(category);
-
-        for (auto scaleType : scalesInCategory) {
-            keyScale.scaleSelect.addItem(Scale::getNameForType(scaleType), menuItemId++);
-        }
-
-        if (category != categories.back() || categories.back() == Scale::ScaleCategory::User) {
-            keyScale.scaleSelect.addSeparator();
-        }
-    }
-}
-
 void TuningPreviewComponent::setupTuningTableControls() {
     tuningTableLabel.setText("Tuning Tables:", juce::dontSendNotification);
     tuningsListBox.setModel(this);
@@ -637,13 +629,6 @@ void TuningPreviewComponent::setupTuningTableControls() {
 }
 
 void TuningPreviewComponent::setupScaleControls() {
-    keyScale.label.setText("Scale", juce::dontSendNotification);
-    keyScale.label.setJustificationType(juce::Justification::centredLeft);
-    setupScaleSelectMenu();
-
-    addAndMakeVisible(keyScale.label);
-    addAndMakeVisible(keyScale.keySelect);
-    addAndMakeVisible(keyScale.scaleSelect);
 }
 
 void TuningPreviewComponent::setupChipClockControls() {

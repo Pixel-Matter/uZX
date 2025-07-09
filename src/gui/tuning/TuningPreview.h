@@ -5,6 +5,7 @@
 #include "../../viewmodels/tuning/TuningViewModel.h"
 #include "../../viewmodels/tuning/TuningPlayer.h"
 #include "../../controllers/App.h"
+#include "../../controllers/ScaleBindings.h"
 #include "../common/MoTooltipWindow.h"
 #include <map>
 
@@ -117,7 +118,6 @@ private:
     void setupTextEditorWithValueBinding(Label& inputLabel, Label& unitsLabel,
                                          RangedParamAttachment<double>& attachment);
     void updateControlsState();
-    void setupScaleSelectMenu();
     void updateScaleSelection();
 
     // Setup helpers
@@ -132,7 +132,6 @@ private:
 
     // Layout helpers
     void layoutControlSections(juce::Rectangle<int>& area);
-    void layoutScaleControls(juce::Rectangle<int>& area);
     void layoutChipClockControls(juce::Rectangle<int> area);
     void layoutA4FrequencyControls(juce::Rectangle<int> area);
     void layoutPlayControls(juce::Rectangle<int> area);
@@ -150,18 +149,16 @@ private:
 
     // Scale and Key selection
     struct KeyScale {
-        KeyScale(TuningViewModel& vm)
-          : keySelectBinding(keySelect, vm.selectedRoot)
-          , scaleSelectBinding(scaleSelect, vm.selectedScale)
-        {}
+        KeyScale(Component& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+
         Label label;
         ComboBox keySelect;
         ComboBox scaleSelect;
-
         ComboBoxBinding<Scale::Key> keySelectBinding;
-        ComboBoxBinding<Scale::ScaleType> scaleSelectBinding;
+        ScaleComboBoxBinding scaleSelectBinding;
     };
-    KeyScale keyScale {viewModel};
+    KeyScale keyScale {*this, viewModel};
 
     Label chipClockLabel;
     ComboBox chipClockSelect;

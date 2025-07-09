@@ -122,20 +122,12 @@ private:
 
     // Setup helpers
     void setupTuningTableControls();
-    void setupScaleControls();
-    void setupChipClockControls();
-    void setupFrequencyControls();
-    void setupPlaybackControls();
     void setupTuningGrid();
     void setupExportButton();
     void handleExportButtonClick();
 
     // Layout helpers
     void layoutControlSections(juce::Rectangle<int>& area);
-    void layoutChipClockControls(juce::Rectangle<int> area);
-    void layoutA4FrequencyControls(juce::Rectangle<int> area);
-    void layoutPlayControls(juce::Rectangle<int> area);
-    void layoutEnvelopeControls(juce::Rectangle<int> area);
 
     // Value::Listener implementation for ListBox sync
     void valueChanged(Value& value) override;
@@ -147,10 +139,24 @@ private:
     Label tuningTableLabel;
     ListBox tuningsListBox;
 
+    // Chip clock controls
+    struct ChipClock {
+        ChipClock(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+
+        Label label;
+        ComboBox select;
+        Label frequencyInput;
+        Label unitsLabel;
+        ComboBoxBinding<ChipClockChoice> binding;
+    };
+    ChipClock chipClock {*this, viewModel};
+
     // Scale and Key selection
     struct KeyScale {
-        KeyScale(Component& c, TuningViewModel& vm);
+        KeyScale(TuningPreviewComponent& c, TuningViewModel& vm);
         void layout(juce::Rectangle<int>& area);
+        int getHeight() const;
 
         Label label;
         ComboBox keySelect;
@@ -160,34 +166,39 @@ private:
     };
     KeyScale keyScale {*this, viewModel};
 
-    Label chipClockLabel;
-    ComboBox chipClockSelect;
-    Label clockFrequencyInput;
-    Label clockFrequencyUnits;
+    // A4 frequency controls
+    struct A4Frequency {
+        A4Frequency(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+        int getHeight() const;
 
-    Slider a4FrequencySlider;
-    Label a4FrequencyLabel;
-    Label a4FrequencyUnits;
+        Label label;
+        Slider slider;
+        Label unitsLabel;
+    };
+    A4Frequency a4Frequency {*this, viewModel};
 
-    Label tuningTypeLabel;  // not used
     Label tuningNameLabel;
 
-    // Label playModeLabel;
-    ToggleButton playChordsCheckBox;
-    ToggleButton playToneCheckBox;
-    ToggleButton retriggerToneCheckBox;
-    ToggleButton playEnvelopeCheckBox;
-    ComboBox envelopeShapeSelect;
-    ComboBox modulationModeSelect;
+    // Play controls
+    struct PlayControls {
+        PlayControls(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+
+        ToggleButton playChordsCheckBox;
+        ToggleButton playToneCheckBox;
+        ToggleButton retriggerToneCheckBox;
+        ToggleButton playEnvelopeCheckBox;
+        ComboBox envelopeShapeSelect;
+        ComboBox modulationModeSelect;
+        ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding;
+        ComboBoxBinding<ModulationChoice> envelopeModeBinding;
+    };
+    PlayControls playControls {*this, viewModel};
 
     TextButton exportButton;
 
     TuningPreviewGrid tuningGrid;
-
-    // bindings
-    ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
-    ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding { envelopeShapeSelect, viewModel.envelopeShape };
-    ComboBoxBinding<ModulationChoice> envelopeModeBinding { modulationModeSelect, viewModel.modulationMode };
 
     static constexpr int rowHeight = 28;
     static constexpr int moduleWidth = 60;

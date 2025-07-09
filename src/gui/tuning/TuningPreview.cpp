@@ -385,10 +385,6 @@ TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
     setOpaque(true);
 
     setupTuningTableControls();
-    setupScaleControls();
-    setupChipClockControls();
-    setupFrequencyControls();
-    setupPlaybackControls();
     setupTuningGrid();
     setupExportButton();
 
@@ -403,7 +399,7 @@ TuningPreviewComponent::~TuningPreviewComponent() {
     viewModel.selectedTuningTable.removeListener(this);
 }
 
-TuningPreviewComponent::KeyScale::KeyScale(Component& c, TuningViewModel& vm)
+TuningPreviewComponent::KeyScale::KeyScale(TuningPreviewComponent& c, TuningViewModel& vm)
     : keySelectBinding(keySelect, vm.selectedRoot)
     , scaleSelectBinding(scaleSelect, vm.selectedScale)
 {
@@ -424,6 +420,90 @@ void TuningPreviewComponent::KeyScale::layout(juce::Rectangle<int>& area) {
     scaleSelect.setBounds(row.removeFromLeft(moduleWidth * 3 - gap));
 }
 
+int TuningPreviewComponent::KeyScale::getHeight() const {
+    return rowHeight * 2 + gap; // 1 for label, 1 for controls, plus gap
+}
+
+TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
+    : binding(select, vm.selectedChip)
+{
+    label.setText("Chip clock", juce::dontSendNotification);
+    label.setJustificationType(juce::Justification::centredLeft);
+
+    // Setup frequency controls by calling the parent class methods
+    c.setupTextEditorWithValueBinding(frequencyInput, unitsLabel, vm.clockFrequencyMhz);
+
+    c.addAndMakeVisible(label);
+    c.addAndMakeVisible(select);
+}
+
+void TuningPreviewComponent::ChipClock::layout(juce::Rectangle<int>& area) {
+    label.setBounds(area.removeFromTop(rowHeight));
+
+    // Chip clock selector and frequency input
+    auto row = area.removeFromTop(rowHeight);
+    select.setBounds(row.removeFromLeft(moduleWidth * 4));
+    row.removeFromLeft(gap);
+    frequencyInput.setBounds(row.removeFromLeft(moduleWidth));
+    unitsLabel.setBounds(row);
+}
+
+TuningPreviewComponent::A4Frequency::A4Frequency(TuningPreviewComponent& c, TuningViewModel& vm) {
+    c.setupSliderWithValueBinding(slider, label, "A4 frequency", unitsLabel, vm.a4Frequency);
+}
+
+int TuningPreviewComponent::A4Frequency::getHeight() const {
+    return rowHeight * 2 + gap; // 1 for label, 1 for controls, plus gap
+}
+
+void TuningPreviewComponent::A4Frequency::layout(juce::Rectangle<int>& area) {
+    label.setBounds(area.removeFromTop(rowHeight));
+
+    auto row = area.removeFromTop(rowHeight);
+    slider.setBounds(row.removeFromLeft(moduleWidth * 7));
+    unitsLabel.setBounds(row);
+}
+
+TuningPreviewComponent::PlayControls::PlayControls(TuningPreviewComponent& c, TuningViewModel& vm)
+    : envelopeShapeBinding(envelopeShapeSelect, vm.envelopeShape)
+    , envelopeModeBinding(modulationModeSelect, vm.modulationMode)
+{
+    playChordsCheckBox.setButtonText("Play chords");
+    playChordsCheckBox.getToggleStateValue().referTo(vm.playChords.getValue());
+
+    playToneCheckBox.setButtonText("Tone");
+    playToneCheckBox.getToggleStateValue().referTo(vm.playTone.getValue());
+
+    retriggerToneCheckBox.setButtonText("Retrigger");
+    retriggerToneCheckBox.getToggleStateValue().referTo(vm.retriggerTone.getValue());
+
+    playEnvelopeCheckBox.setButtonText("Envelope");
+    playEnvelopeCheckBox.getToggleStateValue().referTo(vm.playEnvelope.getValue());
+
+    c.addAndMakeVisible(playChordsCheckBox);
+    c.addAndMakeVisible(playToneCheckBox);
+    c.addAndMakeVisible(retriggerToneCheckBox);
+    c.addAndMakeVisible(playEnvelopeCheckBox);
+    c.addAndMakeVisible(envelopeShapeSelect);
+    c.addAndMakeVisible(modulationModeSelect);
+}
+
+void TuningPreviewComponent::PlayControls::layout(juce::Rectangle<int>& area) {
+    // Play controls row
+    auto row1 = area.removeFromTop(rowHeight);
+    playToneCheckBox.setBounds(row1.removeFromLeft(moduleWidth * 2 - gap));
+    row1.removeFromLeft(gap);
+    playChordsCheckBox.setBounds(row1.removeFromLeft(moduleWidth * 2));
+
+    // Envelope controls row
+    area.removeFromTop(gap);
+    auto row2 = area.removeFromTop(rowHeight);
+    playEnvelopeCheckBox.setBounds(row2.removeFromLeft(moduleWidth * 2 - gap));
+    row2.removeFromLeft(gap);
+    envelopeShapeSelect.setBounds(row2.removeFromLeft(moduleWidth * 3 - gap));
+    row2.removeFromLeft(gap);
+    modulationModeSelect.setBounds(row2.removeFromLeft(moduleWidth * 2));
+}
 
 void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds().reduced(20, 20);
@@ -447,56 +527,24 @@ void TuningPreviewComponent::resized() {
 }
 
 void TuningPreviewComponent::layoutControlSections(juce::Rectangle<int>& area) {
-    // Scale section
-    keyScale.layout(area);
+    // Chip clock section (moved to top)
+    chipClock.layout(area);
     area.removeFromTop(gap);
 
-    // Chip clock section
-    chipClockLabel.setBounds(area.removeFromTop(rowHeight));
-    layoutChipClockControls(area.removeFromTop(rowHeight));
+    // Scale and A4 frequency sections side by side
+    auto scaleAndA4Row = area.removeFromTop(jmax(keyScale.getHeight(), a4Frequency.getHeight()));
+    auto leftColumn = scaleAndA4Row.removeFromLeft(moduleWidth * 4); // KeyScale column
+    scaleAndA4Row.removeFromLeft(gap);
+    keyScale.layout(leftColumn);
+    a4Frequency.layout(scaleAndA4Row);
     area.removeFromTop(gap);
 
-    // A4 frequency section
-    a4FrequencyLabel.setBounds(area.removeFromTop(rowHeight));
-    layoutA4FrequencyControls(area.removeFromTop(rowHeight));
-    area.removeFromTop(gap);
-
-    // Play controls
-    layoutPlayControls(area.removeFromTop(rowHeight));
-    area.removeFromTop(gap);
-
-    layoutEnvelopeControls(area.removeFromTop(rowHeight));
+    playControls.layout(area);
     area.removeFromTop(gap);
 
     // Tuning info (moved to bottom, just before grid)
     tuningNameLabel.setBounds(area.removeFromTop(rowHeight));
     area.removeFromTop(gap);
-}
-
-void TuningPreviewComponent::layoutChipClockControls(juce::Rectangle<int> area) {
-    chipClockSelect.setBounds(area.removeFromLeft(moduleWidth * 4));
-    area.removeFromLeft(gap);
-    clockFrequencyInput.setBounds(area.removeFromLeft(moduleWidth));
-    clockFrequencyUnits.setBounds(area);
-}
-
-void TuningPreviewComponent::layoutA4FrequencyControls(juce::Rectangle<int> area) {
-    a4FrequencySlider.setBounds(area.removeFromLeft(moduleWidth * 7));
-    a4FrequencyUnits.setBounds(area);
-}
-
-void TuningPreviewComponent::layoutPlayControls(juce::Rectangle<int> area) {
-    playToneCheckBox.setBounds(area.removeFromLeft(moduleWidth * 2 - gap));
-    area.removeFromLeft(gap);
-    playChordsCheckBox.setBounds(area.removeFromLeft(moduleWidth * 2));
-}
-
-void TuningPreviewComponent::layoutEnvelopeControls(juce::Rectangle<int> area) {
-    playEnvelopeCheckBox.setBounds(area.removeFromLeft(moduleWidth * 2 - gap));
-    area.removeFromLeft(gap);
-    envelopeShapeSelect.setBounds(area.removeFromLeft(moduleWidth * 3 - gap));
-    area.removeFromLeft(gap);
-    modulationModeSelect.setBounds(area.removeFromLeft(moduleWidth * 2));
 }
 
 void TuningPreviewComponent::paint(juce::Graphics& g) {
@@ -607,14 +655,14 @@ void TuningPreviewComponent::setupTextEditorWithValueBinding(Label& inputLabel, 
 void TuningPreviewComponent::updateControlsState() {
     // Update clock controls
     bool isCustom = viewModel.isCustomClockEnabled();
-    clockFrequencyInput.setVisible(isCustom);
-    clockFrequencyUnits.setVisible(isCustom);
+    chipClock.frequencyInput.setVisible(isCustom);
+    chipClock.unitsLabel.setVisible(isCustom);
 
     // Update envelope controls
-    playChordsCheckBox.setEnabled(viewModel.isToneEnabled());
-    retriggerToneCheckBox.setEnabled(viewModel.isToneEnabled());
-    envelopeShapeSelect.setEnabled(viewModel.isEnvelopeEnabled());
-    modulationModeSelect.setEnabled(viewModel.isModulationEnabled());
+    playControls.playChordsCheckBox.setEnabled(viewModel.isToneEnabled());
+    playControls.retriggerToneCheckBox.setEnabled(viewModel.isToneEnabled());
+    playControls.envelopeShapeSelect.setEnabled(viewModel.isEnvelopeEnabled());
+    playControls.modulationModeSelect.setEnabled(viewModel.isModulationEnabled());
 }
 
 void TuningPreviewComponent::setupTuningTableControls() {
@@ -628,41 +676,6 @@ void TuningPreviewComponent::setupTuningTableControls() {
     addAndMakeVisible(tuningsListBox);
 }
 
-void TuningPreviewComponent::setupScaleControls() {
-}
-
-void TuningPreviewComponent::setupChipClockControls() {
-    chipClockLabel.setText("Chip clock", juce::dontSendNotification);
-    chipClockLabel.setJustificationType(juce::Justification::centredLeft);
-
-    addAndMakeVisible(chipClockLabel);
-    addAndMakeVisible(chipClockSelect);
-}
-
-void TuningPreviewComponent::setupFrequencyControls() {
-    setupTextEditorWithValueBinding(clockFrequencyInput, clockFrequencyUnits, viewModel.clockFrequencyMhz);
-    setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 frequency", a4FrequencyUnits, viewModel.a4Frequency);
-}
-
-void TuningPreviewComponent::setupPlaybackControls() {
-    playChordsCheckBox.setButtonText("Play chords");
-    playChordsCheckBox.getToggleStateValue().referTo(viewModel.playChords.getValue());
-
-    playToneCheckBox.setButtonText("Tone");
-    playToneCheckBox.getToggleStateValue().referTo(viewModel.playTone.getValue());
-
-    retriggerToneCheckBox.setButtonText("Retrigger");
-    retriggerToneCheckBox.getToggleStateValue().referTo(viewModel.retriggerTone.getValue());
-
-    playEnvelopeCheckBox.setButtonText("Envelope");
-    playEnvelopeCheckBox.getToggleStateValue().referTo(viewModel.playEnvelope.getValue());
-
-    addAndMakeVisible(playChordsCheckBox);
-    addAndMakeVisible(playToneCheckBox);
-    addAndMakeVisible(playEnvelopeCheckBox);
-    addAndMakeVisible(envelopeShapeSelect);
-    addAndMakeVisible(modulationModeSelect);
-}
 
 void TuningPreviewComponent::setupTuningGrid() {
     tooltipWindow = std::make_unique<MoTooltipWindow>(nullptr, 750);
@@ -710,7 +723,7 @@ void TuningPreviewComponent::valueChanged(Value& value) {
     else if (value.refersToSameSourceAs(viewModel.clockFrequencyMhz.getValue())) {
         // Update text editor when value changes externally
         double newValue = static_cast<double>(viewModel.clockFrequencyMhz.getValue().getValue());
-        clockFrequencyInput.setText(String(newValue), juce::dontSendNotification);
+        chipClock.frequencyInput.setText(String(newValue), juce::dontSendNotification);
     }
 }
 

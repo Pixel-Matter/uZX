@@ -405,32 +405,31 @@ TuningPreviewComponent::~TuningPreviewComponent() {
 
 void TuningPreviewComponent::resized() {
     auto bounds = getLocalBounds().reduced(20, 20);
-    
+
     // Left column: Tuning table selection
     auto leftColumn = bounds.removeFromLeft(moduleWidth * 4);
     bounds.removeFromLeft(gap);
-    
+
     tuningTableLabel.setBounds(leftColumn.removeFromTop(rowHeight));
     tuningsListBox.setBounds(leftColumn);
 
     // Right column: Controls and grid
     layoutControlSections(bounds);
-    
+
     // Reserve space for export button
     auto exportArea = bounds.removeFromBottom(rowHeight);
     bounds.removeFromBottom(gap);
-    
+
     tuningGrid.setBounds(bounds);
     exportButton.setBounds(exportArea.removeFromLeft(moduleWidth * 2));
 }
 
 void TuningPreviewComponent::layoutControlSections(juce::Rectangle<int>& area) {
     // Scale section
-    keyScaleLabel.setBounds(area.removeFromTop(rowHeight));
-    layoutScaleControls(area.removeFromTop(rowHeight));
+    layoutScaleControls(area);
     area.removeFromTop(gap);
 
-    // Chip clock section  
+    // Chip clock section
     chipClockLabel.setBounds(area.removeFromTop(rowHeight));
     layoutChipClockControls(area.removeFromTop(rowHeight));
     area.removeFromTop(gap);
@@ -443,7 +442,7 @@ void TuningPreviewComponent::layoutControlSections(juce::Rectangle<int>& area) {
     // Play controls
     layoutPlayControls(area.removeFromTop(rowHeight));
     area.removeFromTop(gap);
-    
+
     layoutEnvelopeControls(area.removeFromTop(rowHeight));
     area.removeFromTop(gap);
 
@@ -452,10 +451,12 @@ void TuningPreviewComponent::layoutControlSections(juce::Rectangle<int>& area) {
     area.removeFromTop(gap);
 }
 
-void TuningPreviewComponent::layoutScaleControls(juce::Rectangle<int> area) {
-    keySelect.setBounds(area.removeFromLeft(moduleWidth));
-    area.removeFromLeft(gap);
-    scaleSelect.setBounds(area.removeFromLeft(moduleWidth * 3 - gap));
+void TuningPreviewComponent::layoutScaleControls(juce::Rectangle<int>& area) {
+    keyScale.label.setBounds(area.removeFromTop(rowHeight));
+    auto row = area.removeFromTop(rowHeight);
+    keyScale.keySelect.setBounds(row.removeFromLeft(moduleWidth));
+    row.removeFromLeft(gap);
+    keyScale.scaleSelect.setBounds(row.removeFromLeft(moduleWidth * 3 - gap));
 }
 
 void TuningPreviewComponent::layoutChipClockControls(juce::Rectangle<int> area) {
@@ -466,20 +467,20 @@ void TuningPreviewComponent::layoutChipClockControls(juce::Rectangle<int> area) 
 }
 
 void TuningPreviewComponent::layoutA4FrequencyControls(juce::Rectangle<int> area) {
-    a4FrequencySlider.setBounds(area.removeFromLeft(moduleWidth * 8));
+    a4FrequencySlider.setBounds(area.removeFromLeft(moduleWidth * 7));
     a4FrequencyUnits.setBounds(area);
 }
 
 void TuningPreviewComponent::layoutPlayControls(juce::Rectangle<int> area) {
-    playToneCheckBox.setBounds(area.removeFromLeft(moduleWidth * 2));
-    area.removeFromLeft(gap / 2);
+    playToneCheckBox.setBounds(area.removeFromLeft(moduleWidth * 2 - gap));
+    area.removeFromLeft(gap);
     playChordsCheckBox.setBounds(area.removeFromLeft(moduleWidth * 2));
 }
 
 void TuningPreviewComponent::layoutEnvelopeControls(juce::Rectangle<int> area) {
-    playEnvelopeCheckBox.setBounds(area.removeFromLeft(moduleWidth * 2));
+    playEnvelopeCheckBox.setBounds(area.removeFromLeft(moduleWidth * 2 - gap));
     area.removeFromLeft(gap);
-    envelopeShapeSelect.setBounds(area.removeFromLeft(moduleWidth * 3));
+    envelopeShapeSelect.setBounds(area.removeFromLeft(moduleWidth * 3 - gap));
     area.removeFromLeft(gap);
     modulationModeSelect.setBounds(area.removeFromLeft(moduleWidth * 2));
 }
@@ -603,22 +604,23 @@ void TuningPreviewComponent::updateControlsState() {
 }
 
 void TuningPreviewComponent::setupScaleSelectMenu() {
-    scaleSelect.clear();
+    // TODO maybe subclass ComboBoxBinding or specialize it?
+    keyScale.scaleSelect.clear();
     auto categories = Scale::getAllScaleCategories();
     int menuItemId = 1;
 
     for (auto category : categories) {
         if (category == Scale::ScaleCategory::User) continue;
 
-        scaleSelect.addSectionHeading(Scale::getNameForCategory(category));
+        keyScale.scaleSelect.addSectionHeading(Scale::getNameForCategory(category));
         auto scalesInCategory = Scale::getAllScaleTypesForCategory(category);
-        
+
         for (auto scaleType : scalesInCategory) {
-            scaleSelect.addItem(Scale::getNameForType(scaleType), menuItemId++);
+            keyScale.scaleSelect.addItem(Scale::getNameForType(scaleType), menuItemId++);
         }
 
         if (category != categories.back() || categories.back() == Scale::ScaleCategory::User) {
-            scaleSelect.addSeparator();
+            keyScale.scaleSelect.addSeparator();
         }
     }
 }
@@ -635,13 +637,13 @@ void TuningPreviewComponent::setupTuningTableControls() {
 }
 
 void TuningPreviewComponent::setupScaleControls() {
-    keyScaleLabel.setText("Scale", juce::dontSendNotification);
-    keyScaleLabel.setJustificationType(juce::Justification::centredLeft);
+    keyScale.label.setText("Scale", juce::dontSendNotification);
+    keyScale.label.setJustificationType(juce::Justification::centredLeft);
     setupScaleSelectMenu();
 
-    addAndMakeVisible(keyScaleLabel);
-    addAndMakeVisible(keySelect);
-    addAndMakeVisible(scaleSelect);
+    addAndMakeVisible(keyScale.label);
+    addAndMakeVisible(keyScale.keySelect);
+    addAndMakeVisible(keyScale.scaleSelect);
 }
 
 void TuningPreviewComponent::setupChipClockControls() {

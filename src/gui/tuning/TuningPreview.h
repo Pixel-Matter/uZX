@@ -115,7 +115,7 @@ private:
     void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
                                      RangedParamAttachment<double>& attachment);
     void setupTextEditorWithValueBinding(Label& inputLabel, Label& unitsLabel,
-                                        RangedParamAttachment<double>& attachment);
+                                         RangedParamAttachment<double>& attachment);
     void updateControlsState();
     void setupScaleSelectMenu();
     void updateScaleSelection();
@@ -132,7 +132,7 @@ private:
 
     // Layout helpers
     void layoutControlSections(juce::Rectangle<int>& area);
-    void layoutScaleControls(juce::Rectangle<int> area);
+    void layoutScaleControls(juce::Rectangle<int>& area);
     void layoutChipClockControls(juce::Rectangle<int> area);
     void layoutA4FrequencyControls(juce::Rectangle<int> area);
     void layoutPlayControls(juce::Rectangle<int> area);
@@ -148,9 +148,23 @@ private:
     Label tuningTableLabel;
     ListBox tuningsListBox;
 
+    // Scale and Key selection
+    struct KeyScale {
+        KeyScale(TuningViewModel& vm)
+          : keySelectBinding(keySelect, vm.selectedRoot)
+          , scaleSelectBinding(scaleSelect, vm.selectedScale)
+        {}
+        Label label;
+        ComboBox keySelect;
+        ComboBox scaleSelect;
+
+        ComboBoxBinding<Scale::Key> keySelectBinding;
+        ComboBoxBinding<Scale::ScaleType> scaleSelectBinding;
+    };
+    KeyScale keyScale {viewModel};
+
     Label chipClockLabel;
     ComboBox chipClockSelect;
-
     Label clockFrequencyInput;
     Label clockFrequencyUnits;
 
@@ -158,14 +172,8 @@ private:
     Label a4FrequencyLabel;
     Label a4FrequencyUnits;
 
-    // Scale and Key selection
-    Label keyScaleLabel;
-    ComboBox keySelect;
-    ComboBox scaleSelect;
-
-    Label tuningTypeLabel;
+    Label tuningTypeLabel;  // not used
     Label tuningNameLabel;
-    Label toneEnvSwitchLabel;
 
     // Label playModeLabel;
     ToggleButton playChordsCheckBox;
@@ -181,8 +189,6 @@ private:
 
     // bindings
     ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
-    ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedRoot };
-    ComboBoxBinding<Scale::ScaleType> scaleSelectBinding { scaleSelect, viewModel.selectedScale };
     ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding { envelopeShapeSelect, viewModel.envelopeShape };
     ComboBoxBinding<ModulationChoice> envelopeModeBinding { modulationModeSelect, viewModel.modulationMode };
 

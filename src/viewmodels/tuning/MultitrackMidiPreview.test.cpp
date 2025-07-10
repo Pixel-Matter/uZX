@@ -12,7 +12,8 @@ public:
         beginTest("Single note with tone enabled produces correct sequence");
         {
             tracktion::Engine engine{"MultitrackMidiPreviewTest"};
-            MultitrackMidiPreview preview(engine);
+            te::Edit edit(engine, te::Edit::EditRole::forEditing);
+            MultitrackMidiPreview preview(edit);
 
             // Play a single note with tone enabled
             preview.playSingleNote(60, 0.5, true, false, 0, 0);
@@ -43,7 +44,8 @@ public:
         beginTest("Single note with envelope enabled produces correct sequence");
         {
             tracktion::Engine engine{"MultitrackMidiPreviewTest"};
-            MultitrackMidiPreview preview(engine);
+            te::Edit edit(engine, te::Edit::EditRole::forEditing);
+            MultitrackMidiPreview preview(edit);
 
             // Play a single note with envelope enabled
             preview.playSingleNote(60, 0.5, true, true, 5, 12);
@@ -90,7 +92,8 @@ public:
         beginTest("Chord playback distributes notes across tracks");
         {
             tracktion::Engine engine{"MultitrackMidiPreviewTest"};
-            MultitrackMidiPreview preview(engine);
+            te::Edit edit(engine, te::Edit::EditRole::forEditing);
+            MultitrackMidiPreview preview(edit);
 
             // Play a 3-note chord
             std::vector<int> chordNotes = {60, 64, 67};
@@ -117,7 +120,8 @@ public:
         beginTest("Arpeggio creates sequential notes with synchronized CCs");
         {
             tracktion::Engine engine{"MultitrackMidiPreviewTest"};
-            MultitrackMidiPreview preview(engine);
+            te::Edit edit(engine, te::Edit::EditRole::forEditing);
+            MultitrackMidiPreview preview(edit);
 
             // Play an arpeggio
             std::vector<int> arpeggioNotes = {60, 64, 67, 72};
@@ -164,7 +168,8 @@ public:
         beginTest("Envelope shape CC is added to envelope track");
         {
             tracktion::Engine engine{"MultitrackMidiPreviewTest"};
-            MultitrackMidiPreview preview(engine);
+            te::Edit edit(engine, te::Edit::EditRole::forEditing);
+            MultitrackMidiPreview preview(edit);
 
             // Test envelope shape by playing a single note with envelope enabled
             preview.playSingleNote(60, 0.5, false, true, 7, 0);
@@ -187,7 +192,8 @@ public:
         beginTest("Playback MIDI sequence contains CC messages");
         {
             tracktion::Engine engine{"MultitrackMidiPreviewTest"};
-            MultitrackMidiPreview preview(engine);
+            te::Edit edit(engine, te::Edit::EditRole::forEditing);
+            MultitrackMidiPreview preview(edit);
 
             // Play a single note with tone enabled
             preview.playSingleNote(60, 0.5, true, false, 0, 0);

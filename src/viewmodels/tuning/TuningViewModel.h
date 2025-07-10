@@ -10,6 +10,7 @@
 #include "../../util/convert.h"
 #include "../../controllers/ParamAttachments.h"
 #include "juce_core/system/juce_PlatformDefs.h"
+#include "tracktion_engine/tracktion_engine.h"
 
 #include <cmath>
 #include <array>
@@ -215,26 +216,27 @@ class TuningViewModel : public ChangeBroadcaster,
 public:
     // Any UI component can now listen to tuning system changes by implementing ChangeListener
     // and calling viewModel.addChangeListener(this) in their constructor
-    TuningViewModel(UndoManager* um = nullptr)
+    TuningViewModel(te::Edit& ed)
         : transientState(IDs::TUNINGVIEWSTATE)
-        , undoManager(um)
+        , edit(ed)
+        , undoManager(edit.getUndoManager())
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
                                                                  // no undo for this control
-        , selectedTemperament(transientState, IDs::temperament,  TemperamentType::getLongLabels(), um, TemperamentType::EqualTemperament)
+        , selectedTemperament(transientState, IDs::temperament,  TemperamentType::getLongLabels(), &undoManager, TemperamentType::EqualTemperament)
         , selectedTuningTable(transientState, IDs::tuningTable,                               nullptr, BuiltinTuningType::EqualTemperament)
-        , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
-        , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         um, Scale::Tonic::C)
-        , selectedScale      (transientState, IDs::scale,                                          um, Scale::ScaleType::IonianOrMajor)
-        , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              um, 440.0, "Hz")
-        , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                um, 1.7734, "MHz")
+        , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), &undoManager, ChipClockChoice::ZX_Spectrum_1_77_MHz)
+        , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         &undoManager, Scale::Tonic::C)
+        , selectedScale      (transientState, IDs::scale,                                          &undoManager, Scale::ScaleType::IonianOrMajor)
+        , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              &undoManager, 440.0, "Hz")
+        , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                &undoManager, 1.7734, "MHz")
 
-        , playChords         (transientState, IDs::playChords,                                     um, false)
-        , playTone           (transientState, IDs::playTone,                                       um, true)
-        , playEnvelope       (transientState, IDs::playEnvelope,                                   um, false)
-        , retriggerTone      (transientState, IDs::retriggerTone,                                  um, false)
-        , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), um, EnvShapeSimpleEnum::Triangle)
-        , envIntervalChoice  (transientState, IDs::envelopeMode,  EnvIntervalChoice::getLongLabels(),  um, ModulationEnum::Unison)
+        , playChords         (transientState, IDs::playChords,                                     &undoManager, false)
+        , playTone           (transientState, IDs::playTone,                                       &undoManager, true)
+        , playEnvelope       (transientState, IDs::playEnvelope,                                   &undoManager, false)
+        , retriggerTone      (transientState, IDs::retriggerTone,                                  &undoManager, false)
+        , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), &undoManager, EnvShapeSimpleEnum::Triangle)
+        , envIntervalChoice  (transientState, IDs::envelopeMode,  EnvIntervalChoice::getLongLabels(), &undoManager, ModulationEnum::Unison)
 
     {
         // Set up Value listeners for bidirectional sync
@@ -256,6 +258,10 @@ public:
         playTone = true;
 
         recreateTuningSystem();
+    }
+
+    te::Edit& getEdit() const {
+        return edit;
     }
 
     std::vector<TuningNoteName> getColumnNoteNames() const {
@@ -809,8 +815,8 @@ private:
 private:
     // Transient view state
     ValueTree transientState;
-    // te::Edit edit;             // Edit for undo/redo support, and for previewing tuning
-    UndoManager* undoManager;
+    te::Edit& edit;
+    UndoManager& undoManager; // Undo manager reference for ParamAttachments
 
     // Cached objects derived from values (performance optimization) - only for complex conversions
     mutable Scale currentScale;            // Scale object cache

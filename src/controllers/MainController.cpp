@@ -2,12 +2,11 @@
 
 #include "MainController.h"
 #include "EditState.h"
-#include "Commands.h"
+#include "MainCommands.h"
 #include "UIBehavior.h"
 
 #include "../gui/main/MainWindow.h"
 #include "../gui/main/MainDocument.h"
-#include "../gui/tuning/TuningPreview.h"
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
@@ -23,18 +22,24 @@ using namespace MoTool::Helpers;
 
 namespace MoTool {
 
-MainController::MainController()
+void BaseController::setMainWindowTitle(const String& title) {
+    mainWindow_.setTitle(title);
+}
+
+BaseController::BaseController()
     : engine_ {
         CharPointer_UTF8(ProjectInfo::projectName),
         std::make_unique<ExtUIBehaviour>(),
         std::make_unique<ExtEngineBehaviour>()
     }
-{
+{}
+
+void BaseController::initialize() {
     // DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
     engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
     engine_.getPluginManager().createBuiltInType<uZX::MidiToPsgPlugin>();
 
-    setEdit(createOrLoadEdit(EditFileOps::getStartupEditFile()));
+    setEdit(createOrLoadStartupEdit());
     selectionManager_.addChangeListener(this);
 
     commandManager_.registerAllCommandsForTarget(this);
@@ -53,11 +58,10 @@ MainController::MainController()
     #endif
 }
 
-MainController::~MainController() {
+BaseController::~BaseController() {
     if (edit_ != nullptr) {
         te::EditFileOperations(*edit_).save(true, true, false);
         edit_->getTempDirectory(false).deleteRecursively();
-        Helpers::removeUnusedRenderFiles(*edit_);
     }
     // commandManager_.setFirstCommandTarget(nullptr);
     selectionManager_.deselectAll();
@@ -77,39 +81,75 @@ MainController::~MainController() {
     engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
 }
 
-void MainController::setMainWindowTitle(const String& title) {
-    mainWindow_.setTitle(title);
-}
-
-te::Edit* MainController::getEdit() {
+te::Edit* BaseController::getEdit() {
     return edit_.get();
 }
 
-te::Engine& MainController::getEngine() {
+te::Engine& BaseController::getEngine() {
     return engine_;
 }
 
-EditViewState* MainController::getEditViewState() {
+EditViewState* BaseController::getEditViewState() {
     return editViewState_.get();
 }
 
-te::SelectionManager& MainController::getSelectionManager() {
+te::SelectionManager& BaseController::getSelectionManager() {
     return selectionManager_;
 }
 
-ApplicationCommandManager& MainController::getCommandManager() {
+ApplicationCommandManager& BaseController::getCommandManager() {
     return commandManager_;
+}
+
+void BaseController::changeListenerCallback (ChangeBroadcaster*) {
+    // Called when the selection changes
+    // DBG("Selection changed");
+    commandManager_.commandStatusChanged();
+}
+
+void BaseController::handlePluginManager() {
+    DialogWindow::LaunchOptions o;
+    o.dialogTitle                   = TRANS("Plugins");
+    o.dialogBackgroundColour        = juce::Colours::black;
+    o.escapeKeyTriggersCloseButton  = true;
+    o.useNativeTitleBar             = true;
+    o.resizable                     = true;
+    o.useBottomRightCornerResizer   = true;
+
+    auto v = new PluginListComponent (engine_.getPluginManager().pluginFormatManager,
+                                      engine_.getPluginManager().knownPluginList,
+                                      engine_.getTemporaryFileManager().getTempFile ("PluginScanDeadMansPedal"),
+                                      std::addressof(engine_.getPropertyStorage().getPropertiesFile()));
+    v->setSize(800, 600);
+    o.content.setOwned(v);
+    o.launchAsync();
+}
+
+std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
+    std::unique_ptr<te::Edit> edit;
+    if (editFile.existsAsFile())
+        edit = te::loadEditFromFile(engine_, editFile);
+    else
+        edit = te::createEmptyEdit(engine_, editFile);
+    return edit;
+}
+
+// ================================= MainController =============================================
+MainController::~MainController() {
+    if (edit_ != nullptr) {
+        Helpers::removeUnusedRenderFiles(*edit_);
+    }
 }
 
 // ==============================================================================
 // MenuBarModel
 //==============================================================================
 StringArray MainController::getMenuBarNames() {
-    return AppCommands::getMenuBarNames();
+    return MainAppCommands::getMenuBarNames();
 }
 
 PopupMenu MainController::getMenuForIndex(int /* menuIndex */, const String& menuName) {
-    return AppCommands::createMenu(&commandManager_, menuName);
+    return MainAppCommands::createMenu(&commandManager_, menuName);
 }
 
 void MainController::menuItemSelected(int /* menuItemID */, int /* topLevelMenuIndex*/ ) {
@@ -137,33 +177,33 @@ ApplicationCommandTarget* MainController::getNextCommandTarget() {
 }
 
 void MainController::getAllCommands(Array<CommandID>& commands) {
-    commands.addArray(AppCommands::getCommandIDs());
+    commands.addArray(MainAppCommands::getCommandIDs());
 }
 
 void MainController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) {
     // DBG("MainWindow::getCommandInfo: " << commandID);
     // Get main command info, name, desc, keypresses
-    AppCommands::getCommandInfo(commandID, result);
+    MainAppCommands::getCommandInfo(commandID, result);
 
     // Update command status based on current state
     switch (commandID) {
-        case AppCommands::fileSave:
+        case MainAppCommands::fileSave:
             result.setActive(edit_ != nullptr);
             break;
 
-        case AppCommands::fileSaveAs:
+        case MainAppCommands::fileSaveAs:
             result.setActive(edit_ != nullptr);
             break;
 
-        case AppCommands::fileReveal:
+        case MainAppCommands::fileReveal:
             result.setActive(edit_ != nullptr);
             break;
 
-        case AppCommands::editUndo:
+        case MainAppCommands::editUndo:
             result.setActive(edit_ != nullptr && edit_->getUndoManager().canUndo());
             break;
 
-        case AppCommands::editRedo:
+        case MainAppCommands::editRedo:
             result.setActive(edit_ != nullptr && edit_->getUndoManager().canRedo());
             break;
 
@@ -181,27 +221,27 @@ void MainController::getCommandInfo(CommandID commandID, ApplicationCommandInfo&
         //     result.setActive(false);
         //     break;
 
-        case AppCommands::transportPlay:
+        case MainAppCommands::transportPlay:
             result.setActive(edit_ != nullptr);
             break;
 
-        case AppCommands::transportRecord:
+        case MainAppCommands::transportRecord:
             result.setActive(edit_ != nullptr && !edit_->getTransport().isRecording());
             break;
 
-        case AppCommands::transportRecordStop:
+        case MainAppCommands::transportRecordStop:
             result.setActive(edit_ != nullptr && edit_->getTransport().isRecording());
             break;
 
-        case AppCommands::transportToStart:
+        case MainAppCommands::transportToStart:
             result.setActive(edit_ != nullptr);
             break;
 
-        case AppCommands::transportLoop:
+        case MainAppCommands::transportLoop:
             result.setTicked(edit_ != nullptr && edit_->getTransport().looping);
             break;
 
-        case AppCommands::viewZoomToSelection:
+        case MainAppCommands::viewZoomToSelection:
             result.setActive(edit_ != nullptr && selectionManager_.getSelectedObjects().size() > 0);
             break;
 
@@ -212,81 +252,81 @@ void MainController::getCommandInfo(CommandID commandID, ApplicationCommandInfo&
 bool MainController::perform(const InvocationInfo& info) {
     // DBG("MainWindow::perform: " << info.commandID);
     switch (info.commandID) {
-        case AppCommands::fileNew:
+        case MainAppCommands::fileNew:
             handleNew();
             break;
 
-        case AppCommands::fileOpen:
+        case MainAppCommands::fileOpen:
             handleOpen();
             break;
 
-        case AppCommands::fileSave:
+        case MainAppCommands::fileSave:
             te::AppFunctions::saveEdit();
             break;
 
-        case AppCommands::fileSaveAs:
+        case MainAppCommands::fileSaveAs:
             handleSaveAs();
             break;
 
-        case AppCommands::fileReveal:
+        case MainAppCommands::fileReveal:
             if (edit_ != nullptr) {
                 te::EditFileOperations(*edit_).save(false, true, false);
                 te::EditFileOperations(*edit_).getEditFile().revealToUser();
             }
             break;
 
-        case AppCommands::fileImportPsg:
+        case MainAppCommands::fileImportPsg:
             if (edit_ != nullptr) {
                 importPsgAsClip(*edit_, selectionManager_);
             }
             break;
 
-        case AppCommands::fileQuit:
+        case MainAppCommands::fileQuit:
             JUCEApplication::getInstance()->systemRequestedQuit();
             break;
 
-        case AppCommands::editUndo:
+        case MainAppCommands::editUndo:
             te::AppFunctions::undo();
             break;
 
-        case AppCommands::editRedo:
+        case MainAppCommands::editRedo:
             te::AppFunctions::redo();
             break;
 
-        case AppCommands::editDelete:
+        case MainAppCommands::editDelete:
             te::AppFunctions::deleteSelected();
             break;
         // Transport commands
-        case AppCommands::transportPlay:
+        case MainAppCommands::transportPlay:
             te::AppFunctions::startStopPlay();
             break;
 
-        case AppCommands::transportRecord:
+        case MainAppCommands::transportRecord:
             handleRecord();
             break;
 
-        case AppCommands::transportRecordStop:
+        case MainAppCommands::transportRecordStop:
             handleRecord();
             break;
 
-        case AppCommands::transportToStart:
+        case MainAppCommands::transportToStart:
             te::AppFunctions::goToStart();
             // assuming autoscroll is enabled
             // editViewState_->zoom.scrollToCurrentPosition();
             break;
 
-        case AppCommands::transportToEnd:
+        case MainAppCommands::transportToEnd:
             te::AppFunctions::goToEnd();
             // assuming autoscroll is enabled
             // editViewState_->zoom.scrollToCurrentPosition();
             break;
 
-        case AppCommands::transportLoop:
+        case MainAppCommands::transportLoop:
             te::AppFunctions::toggleLoop();
             break;
 
         // Add commands
-        case AppCommands::addAudioTrack:
+        case MainAppCommands::addAudioTrack:
             if (edit_ != nullptr) {
                 Helpers::addAndSelectAudioTrack(*edit_, selectionManager_);
             }
@@ -299,36 +339,39 @@ bool MainController::perform(const InvocationInfo& info) {
         //     break;
 
         // Track commands
-        case AppCommands::trackRenderToAudio:
+        case MainAppCommands::trackRenderToAudio:
             if (edit_ != nullptr) {
                 Helpers::renderSelectedTracksToAudioTrack(*edit_, selectionManager_);
             }
             break;
 
         // View commands
-        case AppCommands::viewZoomToProject:
+        case MainAppCommands::viewZoomToProject:
+            // TODO maybe invert this, put implementation here
+            // and te::AppFunctions::zoomToFitHorizontally() invokes this command
+            // rationale: what is zoom and how to zoom must be defined by the current controller
             te::AppFunctions::zoomToFitHorizontally();
             break;
 
-        case AppCommands::viewZoomToSelection:
+        case MainAppCommands::viewZoomToSelection:
             te::AppFunctions::zoomToSelection();
             break;
 
-        case AppCommands::viewZoomIn:
+        case MainAppCommands::viewZoomIn:
             te::AppFunctions::zoomIn();
             break;
 
-        case AppCommands::viewZoomOut:
+        case MainAppCommands::viewZoomOut:
             te::AppFunctions::zoomOut();
             break;
 
         // Settings commands
-        case AppCommands::settingsAudioMidi:
+        case MainAppCommands::settingsAudioMidi:
             te::AppFunctions::showSettingsScreen();
             break;
 
-        case AppCommands::settingsPlugins:
-            hanldePluginManager();
+        case MainAppCommands::settingsPlugins:
+            handlePluginManager();
             break;
 
         default:
@@ -406,33 +449,8 @@ void MainController::handleRecord() {
 //     }
 // }
 
-void MainController::hanldePluginManager() {
-    DialogWindow::LaunchOptions o;
-    o.dialogTitle                   = TRANS("Plugins");
-    o.dialogBackgroundColour        = juce::Colours::black;
-    o.escapeKeyTriggersCloseButton  = true;
-    o.useNativeTitleBar             = true;
-    o.resizable                     = true;
-    o.useBottomRightCornerResizer   = true;
-
-    auto v = new PluginListComponent (engine_.getPluginManager().pluginFormatManager,
-                                        engine_.getPluginManager().knownPluginList,
-                                        engine_.getTemporaryFileManager().getTempFile ("PluginScanDeadMansPedal"),
-                                        std::addressof(engine_.getPropertyStorage().getPropertiesFile()));
-    v->setSize(800, 600);
-    o.content.setOwned(v);
-    o.launchAsync();
-}
-
-std::unique_ptr<te::Edit> MainController::createOrLoadEdit(File editFile) {
-    std::unique_ptr<te::Edit> edit;
-    if (editFile.existsAsFile())
-        edit = te::loadEditFromFile(engine_, editFile);
-    else
-        edit = te::createEmptyEdit(engine_, editFile);
-
-    edit->playInStopEnabled = true;
-    return edit;
+std::unique_ptr<te::Edit> MainController::createOrLoadStartupEdit() {
+    return createOrLoadEdit(EditFileOps::getStartupEditFile());
 }
 
 void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
@@ -457,23 +475,16 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     createTracksAndAssignInputs();
     te::EditFileOperations(*edit_).save(true, true, false);
 
-    edit_->playInStopEnabled = false;  // For not having hanging notes on stopped playback
+    edit_->playInStopEnabled = true;
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 
-    if (true /* start at Tuning mode */) {
-        mainWindow_.setContentOwned(new TuningPreviewComponent(&edit_->getUndoManager()), true);
-        mainWindow_.setName("Tuning System View");
-    } else {
-        mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
-        mainWindow_.setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
-    }
-
+    mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
+    mainWindow_.setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
     mainWindow_.setSize(w, h);
     mainWindow_.repaint();
 }
 
-// TODO refactor to EditController
 void MainController::createTracksAndAssignInputs() {
     for (auto& midiIn : engine_.getDeviceManager().getMidiInDevices()) {
         midiIn->setMonitorMode(te::InputDevice::MonitorMode::automatic);
@@ -497,12 +508,6 @@ void MainController::createTracksAndAssignInputs() {
     edit_->restartPlayback();
 }
 
-
-void MainController::changeListenerCallback (ChangeBroadcaster*) {
-    // Called when the selection changes
-    // DBG("Selection changed");
-    commandManager_.commandStatusChanged();
-}
 
 
 }  // namespace MoTool

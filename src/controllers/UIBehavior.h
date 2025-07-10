@@ -167,6 +167,7 @@ public:
 
     void zoomHorizontal(float increment)                        override {
         // DBG("zoomHorizontal: " << increment);
+        // TODO change to use BaseController::getZoomController()
         if (auto* viewState = MoToolApp::getController().getEditViewState()) {
             viewState->zoom.zoomHorizontally(increment);
         }
@@ -175,11 +176,11 @@ public:
 
     void zoomToSelection()                                      override {
         auto& ctrl = MoToolApp::getController();
-        auto viewState = ctrl.getEditViewState();
         auto objects = ctrl.getSelectionManager().getSelectedObjects();
         objects = te::getClipSelectionWithCollectionClipContents(objects);
         auto range = te::getTimeRangeForSelectedItems(objects);
-        if (!range.isEmpty()) {
+        auto viewState = ctrl.getEditViewState();
+        if (viewState != nullptr && !range.isEmpty()) {
             viewState->zoom.setRange(range);
         }
     }
@@ -188,7 +189,7 @@ public:
         auto& ctrl = MoToolApp::getController();
         auto viewState = ctrl.getEditViewState();
         auto range = Helpers::getEffectiveClipsTimeRange(*ctrl.getEdit());
-        if (!range.isEmpty() && viewState != nullptr) {
+        if (viewState != nullptr && !range.isEmpty()) {
             viewState->zoom.setRange(range);
         }
     }

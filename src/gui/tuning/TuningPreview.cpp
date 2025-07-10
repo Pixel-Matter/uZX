@@ -422,9 +422,9 @@ void TuningPreviewComponent::KeyScale::layout(juce::Rectangle<int>& area) {
     label.setBounds(area.removeFromTop(rowHeight));
 
     auto row = area.removeFromTop(rowHeight);
-    keySelect.setBounds(row.removeFromLeft(moduleWidth * 1.5));
+    keySelect.setBounds(row.removeFromLeft(moduleWidth * 3 / 2));
     row.removeFromLeft(gap);
-    scaleSelect.setBounds(row.removeFromLeft(moduleWidth * 3.5 - gap));
+    scaleSelect.setBounds(row.removeFromLeft(moduleWidth * 7 / 2 - gap));
 }
 
 int TuningPreviewComponent::KeyScale::getHeight() const {
@@ -517,9 +517,9 @@ void TuningPreviewComponent::PlayControls::layout(juce::Rectangle<int>& area) {
 
 
 //================================================================================
-TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
-    : viewModel(um)
-    , tuningPlayer(viewModel, MoToolApp::getController().getEngine())
+TuningPreviewComponent::TuningPreviewComponent(TuningViewModel& vm, TuningPlayer& tp)
+    : viewModel(vm)
+    , tuningPlayer(tp)
     , tuningGrid(viewModel, tuningPlayer)
 {
     setOpaque(true);

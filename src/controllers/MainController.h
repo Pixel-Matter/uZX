@@ -9,21 +9,51 @@
 
 namespace MoTool {
 
-class MainController : public MenuBarModel,
-                       public ApplicationCommandTarget,
-                       private ChangeListener {
+class BaseController : private ChangeListener,
+                       public MenuBarModel,
+                       public ApplicationCommandTarget {
 public:
-    MainController();
+    BaseController();
 
-    ~MainController() override;
+    ~BaseController() override;
 
-    void setMainWindowTitle(const String& title);
+    // Two phase initialization becase of virtual functions called in initialization
+    virtual void initialize();
 
     te::Edit* getEdit();
     te::Engine& getEngine();
-    EditViewState* getEditViewState();
     te::SelectionManager& getSelectionManager();
     ApplicationCommandManager& getCommandManager();
+    // FIXME EditViewState is too specific for base controller
+    virtual EditViewState* getEditViewState();
+
+    void setMainWindowTitle(const String& title);
+
+protected:
+    virtual std::unique_ptr<te::Edit> createOrLoadStartupEdit() = 0;
+    virtual std::unique_ptr<te::Edit> createOrLoadEdit(File editFile);
+    virtual void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) = 0;
+    void handlePluginManager();
+
+    te::Engine engine_;
+    ApplicationCommandManager commandManager_;
+    te::SelectionManager selectionManager_ {engine_};
+    MainWindow mainWindow_;
+    std::unique_ptr<te::Edit> edit_;
+    // FIXME EditViewState is too specific for base controller
+    std::unique_ptr<EditViewState> editViewState_;
+
+private:
+    // Called when the selection changes
+    void changeListenerCallback (ChangeBroadcaster*) override;
+};
+
+
+class MainController : public BaseController {
+public:
+    using BaseController::BaseController;
+
+    ~MainController() override;
 
     // ==============================================================================
     // MenuBarModel
@@ -41,29 +71,13 @@ public:
     bool perform(const InvocationInfo& info) override;
 
 private:
-    te::Engine engine_;
-    ApplicationCommandManager commandManager_;
-    te::SelectionManager selectionManager_ {engine_};
-
-    MainWindow mainWindow_;
-
-    // TODO refactor to EditController?
-    std::unique_ptr<te::Edit> edit_;
-    std::unique_ptr<EditViewState> editViewState_;
-
+    std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
+    void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
     void handleNew();
     void handleOpen();
     void handleSaveAs();
     void handleRecord();
-    void hanldePluginManager();
-
-    std::unique_ptr<te::Edit> createOrLoadEdit(File editFile);
-
-    void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false);
     void createTracksAndAssignInputs();
-
-    // Called when the selection changes
-    void changeListenerCallback (ChangeBroadcaster*) override;
 };
 
 

@@ -21,15 +21,14 @@ public:
         virtual void playingNotesChanges() = 0;  // to repaint notes on grid
     };
 
-    TuningPlayer(TuningViewModel& tvm, tracktion::Engine& e)
+    TuningPlayer(TuningViewModel& tvm)
         : viewModel(tvm)
-        , engine(e)
-        , midiPreview(e)
+        , midiPreview(tvm.getEdit())
     {
         initialize();
         viewModel.addChangeListener(this);
     }
-    
+
     ~TuningPlayer() override {
         auto& transport = midiPreview.getTransport();
         transport.removeChangeListener(this);
@@ -57,7 +56,6 @@ public:
 
 private:
     TuningViewModel& viewModel;
-    tracktion::Engine& engine;
     MultitrackMidiPreview midiPreview;
     juce::ListenerList<Listener> listeners_;
     std::map<int, int> playingNotes_;  // Currently playing MIDI notes on which channels

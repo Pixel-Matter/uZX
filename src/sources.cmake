@@ -29,6 +29,7 @@ set(SHARED_SOURCES
 # GUI-specific files
 set(GUI_SOURCES
     controllers/MainController.cpp
+    controllers/TuningController.cpp
     controllers/App.cpp
     controllers/Main.cpp
     controllers/EditState.cpp

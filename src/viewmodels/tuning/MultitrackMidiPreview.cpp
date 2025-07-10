@@ -3,9 +3,8 @@
 
 namespace MoTool {
 
-MultitrackMidiPreview::MultitrackMidiPreview(tracktion::Engine& e)
-    : engine(e)
-    , edit(engine, tracktion::Edit::EditRole::forEditing)
+MultitrackMidiPreview::MultitrackMidiPreview(te::Edit& ed)
+    : edit(ed)
     , transport(edit.getTransport())
 {
     initialize();

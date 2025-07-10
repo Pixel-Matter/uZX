@@ -8,6 +8,12 @@ namespace MoTool {
 
 class MoToolApp : public JUCEApplication {
 public:
+
+    enum Target {
+        Main,
+        Tuning
+    };
+
     MoToolApp();
 
     const String getApplicationName() override;
@@ -26,11 +32,15 @@ public:
 
     static MoToolApp& getApp();
 
-    static MainController& getController();
+    static BaseController& getController();
+
+    static Target getTarget();
 
 private:
+static inline Target target_ = String::fromUTF8(ProjectInfo::projectName) == "μZXTuning" ? Target::Tuning : Target::Main;
     MoLookAndFeel lookAndFeel_;
-    MainController controller_;
+    std::unique_ptr<BaseController> controller_;
+
 };
 
 } // namespace MoTool

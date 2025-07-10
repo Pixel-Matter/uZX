@@ -1,7 +1,6 @@
 #pragma once
 
 #include "JuceHeader.h"
-#include "../../models/tuning/TuningSystemBase.h"
 #include "../../viewmodels/tuning/TuningViewModel.h"
 #include "../../viewmodels/tuning/TuningPlayer.h"
 #include "../../controllers/App.h"
@@ -96,7 +95,7 @@ class TuningPreviewComponent : public juce::Component,
                                private ListBoxModel,
                                private Value::Listener {
 public:
-    TuningPreviewComponent(UndoManager* um = nullptr);
+    TuningPreviewComponent(TuningViewModel& vm, TuningPlayer& tp);
     ~TuningPreviewComponent() override;
 
     void resized() override;
@@ -132,8 +131,8 @@ private:
     // Value::Listener implementation for ListBox sync
     void valueChanged(Value& value) override;
 
-    TuningViewModel viewModel;
-    TuningPlayer tuningPlayer;
+    TuningViewModel& viewModel;
+    TuningPlayer& tuningPlayer;
 
     // Tuning table selection
     Label tuningTableLabel;

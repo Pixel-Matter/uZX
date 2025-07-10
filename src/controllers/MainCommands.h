@@ -8,7 +8,7 @@ namespace MoTool::Commands {
 /**  Application commands and menus
 */
 
-class AppCommands {
+class MainAppCommands {
 public:
     enum CommandIDs {
         // File Menu
@@ -84,47 +84,47 @@ public:
     static PopupMenu createMenu(ApplicationCommandManager* manager, const String& menuName) {
         PopupMenu menu;
         if (menuName == "File") {
-            menu.addCommandItem(manager, AppCommands::fileNew);
-            menu.addCommandItem(manager, AppCommands::fileOpen);
+            menu.addCommandItem(manager, MainAppCommands::fileNew);
+            menu.addCommandItem(manager, MainAppCommands::fileOpen);
             menu.addSeparator();
-            menu.addCommandItem(manager, AppCommands::fileSave);
-            menu.addCommandItem(manager, AppCommands::fileSaveAs);
-            menu.addCommandItem(manager, AppCommands::fileReveal);
+            menu.addCommandItem(manager, MainAppCommands::fileSave);
+            menu.addCommandItem(manager, MainAppCommands::fileSaveAs);
+            menu.addCommandItem(manager, MainAppCommands::fileReveal);
             menu.addSeparator();
-            menu.addCommandItem(manager, AppCommands::fileImportPsg);
+            menu.addCommandItem(manager, MainAppCommands::fileImportPsg);
             menu.addSeparator();
-            menu.addCommandItem(manager, AppCommands::fileQuit);
+            menu.addCommandItem(manager, MainAppCommands::fileQuit);
         } else if (menuName == "Edit") {
-            menu.addCommandItem(manager, AppCommands::editUndo);
-            menu.addCommandItem(manager, AppCommands::editRedo);
+            menu.addCommandItem(manager, MainAppCommands::editUndo);
+            menu.addCommandItem(manager, MainAppCommands::editRedo);
             menu.addSeparator();
-            menu.addCommandItem(manager, AppCommands::editDelete);
-            menu.addCommandItem(manager, AppCommands::editCut);
-            menu.addCommandItem(manager, AppCommands::editCopy);
-            menu.addCommandItem(manager, AppCommands::editPaste);
+            menu.addCommandItem(manager, MainAppCommands::editDelete);
+            menu.addCommandItem(manager, MainAppCommands::editCut);
+            menu.addCommandItem(manager, MainAppCommands::editCopy);
+            menu.addCommandItem(manager, MainAppCommands::editPaste);
         } else if (menuName == "Transport") {
-            menu.addCommandItem(manager, AppCommands::transportPlay);
-            menu.addCommandItem(manager, AppCommands::transportRecord);
-            menu.addCommandItem(manager, AppCommands::transportRecordStop);
-            menu.addCommandItem(manager, AppCommands::transportToStart);
-            menu.addCommandItem(manager, AppCommands::transportToEnd);
+            menu.addCommandItem(manager, MainAppCommands::transportPlay);
+            menu.addCommandItem(manager, MainAppCommands::transportRecord);
+            menu.addCommandItem(manager, MainAppCommands::transportRecordStop);
+            menu.addCommandItem(manager, MainAppCommands::transportToStart);
+            menu.addCommandItem(manager, MainAppCommands::transportToEnd);
             menu.addSeparator();
-            menu.addCommandItem(manager, AppCommands::transportLoop);
+            menu.addCommandItem(manager, MainAppCommands::transportLoop);
         } else if (menuName == "Add") {
-            menu.addCommandItem(manager, AppCommands::addAudioTrack);
+            menu.addCommandItem(manager, MainAppCommands::addAudioTrack);
             // menu.addCommandItem(manager, AppCommands::addAutomationTrack);
         } else if (menuName == "Track") {
-            menu.addCommandItem(manager, AppCommands::trackRenderToAudio);
+            menu.addCommandItem(manager, MainAppCommands::trackRenderToAudio);
         } else if (menuName == "View") {
-            menu.addCommandItem(manager, AppCommands::viewZoomToProject);
-            menu.addCommandItem(manager, AppCommands::viewZoomToSelection);
-            menu.addCommandItem(manager, AppCommands::viewZoomIn);
-            menu.addCommandItem(manager, AppCommands::viewZoomOut);
+            menu.addCommandItem(manager, MainAppCommands::viewZoomToProject);
+            menu.addCommandItem(manager, MainAppCommands::viewZoomToSelection);
+            menu.addCommandItem(manager, MainAppCommands::viewZoomIn);
+            menu.addCommandItem(manager, MainAppCommands::viewZoomOut);
         } else if (menuName == "Settings") {
-            menu.addCommandItem(manager, AppCommands::settingsAudioMidi);
-            menu.addCommandItem(manager, AppCommands::settingsPlugins);
+            menu.addCommandItem(manager, MainAppCommands::settingsAudioMidi);
+            menu.addCommandItem(manager, MainAppCommands::settingsPlugins);
         } else if (menuName == "Help") {
-            menu.addCommandItem(manager, AppCommands::helpAbout);
+            menu.addCommandItem(manager, MainAppCommands::helpAbout);
         }
         return menu;
     }

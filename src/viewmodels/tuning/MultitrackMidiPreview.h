@@ -10,7 +10,7 @@ namespace MoTool {
 
 class MultitrackMidiPreview {
 public:
-    MultitrackMidiPreview(tracktion::Engine& engine);
+    MultitrackMidiPreview(te::Edit& ed);
     ~MultitrackMidiPreview();
 
     // Playback methods
@@ -30,8 +30,7 @@ private:
     static constexpr int NUM_CHANNELS = 4;
 
     // Member variables
-    tracktion::Engine& engine;
-    tracktion::Edit edit;
+    tracktion::Edit& edit;
     tracktion::TransportControl& transport;
     tracktion::AudioTrack* track;
     std::array<tracktion::MidiClip::Ptr, NUM_CHANNELS> channelClips;

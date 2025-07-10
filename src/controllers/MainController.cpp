@@ -475,7 +475,7 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     createTracksAndAssignInputs();
     te::EditFileOperations(*edit_).save(true, true, false);
 
-    edit_->playInStopEnabled = true;
+    edit_->playInStopEnabled = false;
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 

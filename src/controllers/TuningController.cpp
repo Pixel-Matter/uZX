@@ -1,5 +1,7 @@
 #include "TuningController.h"
 #include "App.h"
+#include "TuningCommands.h"
+#include "../gui/tuning/TuningPreview.h"
 
 namespace MoTool {
 

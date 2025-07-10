@@ -3,10 +3,8 @@
 #include <JuceHeader.h>
 
 #include "MainController.h"
-#include "TuningCommands.h"
 #include "../viewmodels/tuning/TuningViewModel.h"
 #include "../viewmodels/tuning/TuningPlayer.h"
-#include "../gui/tuning/TuningPreview.h"
 
 namespace MoTool {
 

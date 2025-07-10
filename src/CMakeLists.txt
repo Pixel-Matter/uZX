@@ -112,6 +112,37 @@ target_link_libraries(${TUNING_TARGET_NAME} PRIVATE
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_compile_options(${MAIN_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TUNING_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
+    
+    # Code Signing Configuration
+    # Set from environment variable or use default
+    if(DEFINED ENV{CODESIGN_IDENTITY})
+        set(CODESIGN_IDENTITY "$ENV{CODESIGN_IDENTITY}")
+        message(STATUS "Code signing with identity: ${CODESIGN_IDENTITY}")
+        
+        # Create codesign script to handle identity with spaces and parentheses
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/codesign.sh.in"
+            "${CMAKE_CURRENT_BINARY_DIR}/codesign.sh"
+            @ONLY
+        )
+        
+        # Make the script executable
+        file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/codesign.sh" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
+        
+        # Add custom command to sign μZX after build
+        add_custom_command(TARGET ${MAIN_TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/codesign.sh $<TARGET_BUNDLE_DIR:${MAIN_TARGET_NAME}>
+            COMMENT "Code signing ${MAIN_TARGET_NAME}"
+        )
+        
+        # Add custom command to sign μZXTuning after build
+        add_custom_command(TARGET ${TUNING_TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/codesign.sh $<TARGET_BUNDLE_DIR:${TUNING_TARGET_NAME}>
+            COMMENT "Code signing ${TUNING_TARGET_NAME}"
+        )
+    else()
+        message(STATUS "Code signing disabled. Set CODESIGN_IDENTITY environment variable to enable.")
+    endif()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

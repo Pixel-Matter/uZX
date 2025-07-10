@@ -1,0 +1,5 @@
+#!/bin/bash
+# Auto-generated codesign script
+# Identity: @CODESIGN_IDENTITY@
+
+codesign --force --sign "@CODESIGN_IDENTITY@" --deep "$1"

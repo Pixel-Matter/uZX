@@ -96,7 +96,6 @@ void TuningController::setEdit(std::unique_ptr<te::Edit> edit, bool /*savePrev*/
 
     auto w = mainWindow_.getWidth(), h = mainWindow_.getHeight();
     mainWindow_.clearContentComponent();
-
     editViewState_.reset();
     edit_ = std::move(edit);
     // te::EditFileOperations(*edit_).save(true, true, false);
@@ -110,27 +109,5 @@ void TuningController::setEdit(std::unique_ptr<te::Edit> edit, bool /*savePrev*/
     mainWindow_.repaint();
 }
 
-void TuningController::createTracksAndAssignInputs() {
-    for (auto& midiIn : engine_.getDeviceManager().getMidiInDevices()) {
-        midiIn->setMonitorMode(te::InputDevice::MonitorMode::automatic);
-        midiIn->setEnabled(true);
-    }
-
-    edit_->getTransport().ensureContextAllocated();
-    if (te::getAudioTracks(*edit_).size() == 0) {
-        int trackNum = 0;
-
-        for (auto instance : edit_->getAllInputDevices()) {
-            if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
-                if (auto t = EngineHelpers::getOrInsertAudioTrackAt(*edit_, trackNum)) {
-                    [[ maybe_unused ]] auto res = instance->setTarget(t->itemID, true, &edit_->getUndoManager(), 0);
-                    instance->setRecordingEnabled(t->itemID, true);
-                    trackNum++;
-                }
-            }
-        }
-    }
-    edit_->restartPlayback();
-}
 
 }  // namespace MoTool

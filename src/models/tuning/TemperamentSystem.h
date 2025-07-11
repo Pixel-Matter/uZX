@@ -92,8 +92,9 @@ public:
     // juce::ValueTree getState() const;
     // void setState(const juce::ValueTree& state);
 
-protected:
     juce::ValueTree state;
+    
+protected:
     juce::CachedValue<double> a4Frequency;
 };
 

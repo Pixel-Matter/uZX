@@ -10,7 +10,9 @@ public:
     void runTest() override {
         beginTest("Scale and Key selection - C Major");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Default should be C Major
             expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::C));
@@ -38,7 +40,9 @@ public:
 
         beginTest("Scale and Key selection - A Minor");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Set to A Minor (Natural Minor = Aeolian)
             viewModel.setCurrentTonic(Scale::Tonic::A);
@@ -68,7 +72,9 @@ public:
 
         beginTest("Scale and Key selection - F# Major");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Set to F# Major
             viewModel.setCurrentTonic(Scale::Tonic::FSharp);
@@ -97,7 +103,9 @@ public:
 
         beginTest("Scale and Key selection - D Dorian");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Set to D Dorian
             viewModel.setCurrentTonic(Scale::Tonic::D);
@@ -126,7 +134,9 @@ public:
 
         beginTest("Key names functionality");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             auto keyNames = Scale::getAllNoteNames();
             expectEquals(static_cast<int>(keyNames.size()), 12);
@@ -142,7 +152,9 @@ public:
 
         beginTest("Scale type names functionality");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             auto scaleNames = viewModel.getScaleTypeNames();
 
@@ -165,7 +177,9 @@ public:
 
         beginTest("CSV export functionality");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Set up test configuration
             viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
@@ -252,7 +266,9 @@ public:
 
         beginTest("Default export filename generation");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Test default filename with C Major
             viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);

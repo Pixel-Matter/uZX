@@ -273,7 +273,7 @@ public:
             // Check that the actual frequency is correctly stored in the object
             expectWithinAbsoluteError(equalTuning->getA4Frequency(), 442.0, 1e-6, "A4 frequency getter should return 442.0");
 
-            auto state = equalTuning->getState();
+            auto state = equalTuning->state;
 
             expectEquals(state.getProperty("type").toString(), juce::String("EqualTemperament"), "Type should be EqualTemperament");
             expectWithinAbsoluteError(static_cast<double>(state.getProperty("a4Frequency")), 442.0, 1e-6, "A4 frequency should be 442.0");
@@ -281,63 +281,63 @@ public:
 
         beginTest("ValueTree state serialization - JustIntonation5Limit");
         {
-            auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Key::D, 434.0);
-            auto state = justTuning->getState();
+            auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Tonic::D, 434.0);
+            auto state = justTuning->state;
 
             expectEquals(state.getProperty("type").toString(), juce::String("Just5Limit"), "Type should be Just5Limit");
             expectWithinAbsoluteError(static_cast<double>(state.getProperty("a4Frequency")), 434.0, 1e-6, "A4 frequency should be 434.0");
-            expectEquals(static_cast<int>(state.getProperty("tonic")), static_cast<int>(Scale::Key::D), "Tonic should be D");
+            expectEquals(static_cast<int>(state.getProperty("tonic")), static_cast<int>(Scale::Tonic::D), "Tonic should be D");
             expect(state.getProperty("ratios").toString().isNotEmpty(), "Ratios should be serialized");
         }
 
         beginTest("ValueTree state serialization - RationalTuning");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::F, 436.0};
-            auto state = tuning.getState();
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::F, 436.0};
+            auto state = tuning.state;
 
             expectEquals(state.getProperty("type").toString(), juce::String("CustomRational"), "Type should be CustomRational");
             expectWithinAbsoluteError(static_cast<double>(state.getProperty("a4Frequency")), 436.0, 1e-6, "A4 frequency should be 436.0");
-            expectEquals(static_cast<int>(state.getProperty("tonic")), static_cast<int>(Scale::Key::F), "Tonic should be F");
+            expectEquals(static_cast<int>(state.getProperty("tonic")), static_cast<int>(Scale::Tonic::F), "Tonic should be F");
             expect(state.getProperty("ratios").toString().isNotEmpty(), "Ratios should be serialized");
         }
 
         beginTest("ValueTree state deserialization - factory function");
         {
-            auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Key::D, 434.0);
-            auto state = justTuning->getState();
+            auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Tonic::D, 434.0);
+            auto state = justTuning->state;
 
             auto recreatedSystem = makeTemperamentSystemFromState(state);
             expect(recreatedSystem != nullptr, "Factory should create system from state");
 
             expectEquals(recreatedSystem->getTypeName(), juce::String("5-Limit Just Intonation"), "Recreated system type should match");
             expectWithinAbsoluteError(recreatedSystem->getA4Frequency(), 434.0, 1e-6, "Recreated A4 frequency should match");
-            expectEquals(static_cast<int>(recreatedSystem->getRoot()), static_cast<int>(Scale::Key::D), "Recreated root should match");
+            expectEquals(static_cast<int>(recreatedSystem->getTonic()), static_cast<int>(Scale::Tonic::D), "Recreated root should match");
         }
 
         beginTest("CachedValue property updates");
         {
-            auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0);
+            auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0);
 
             // Update A4 frequency
             justTuning->setA4Frequency(432.0);
-            auto state = justTuning->getState();
+            auto state = justTuning->state;
             expectWithinAbsoluteError(static_cast<double>(state.getProperty("a4Frequency")), 432.0, 1e-6, "Updated A4 frequency should be reflected in state");
 
             // Update root
-            justTuning->setRoot(Scale::Key::G);
-            state = justTuning->getState();
-            expectEquals(static_cast<int>(state.getProperty("tonic")), static_cast<int>(Scale::Key::G), "Updated tonic should be reflected in state");
+            justTuning->setTonic(Scale::Tonic::G);
+            state = justTuning->state;
+            expectEquals(static_cast<int>(state.getProperty("tonic")), static_cast<int>(Scale::Tonic::G), "Updated tonic should be reflected in state");
         }
 
         beginTest("ValueTree state consistency - round-trip");
         {
             // Create original tuning
-            auto original = std::make_unique<JustIntonation5Limit>(Scale::Key::E, 438.0);
-            auto originalState = original->getState();
+            auto original = std::make_unique<JustIntonation5Limit>(Scale::Tonic::E, 438.0);
+            auto originalState = original->state;
 
             // Create system from state
             auto recreated = makeTemperamentSystemFromState(originalState);
-            auto recreatedState = recreated->getState();
+            auto recreatedState = recreated->state;
 
             // Compare states
             expectEquals(originalState.getProperty("type").toString(), recreatedState.getProperty("type").toString(), "Type should match after round-trip");
@@ -352,7 +352,7 @@ public:
         beginTest("ValueTree state - EqualTemperament deserialization");
         {
             auto original = std::make_unique<EqualTemperamentTuning>(444.0);
-            auto state = original->getState();
+            auto state = original->state;
 
             auto recreated = makeTemperamentSystemFromState(state);
             expect(recreated != nullptr, "Factory should create EqualTemperament from state");

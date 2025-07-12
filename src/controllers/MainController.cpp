@@ -471,11 +471,10 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     // beats per minute = 60 * 50 / 26 = 115.3846153846 bpm
     // need to remap clips to new tempo
     edit_->tempoSequence.getTempoAt(edit_->getTransport().getPosition()).setBpm(115.3846153846);
+    edit_->playInStopEnabled = false;
     setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
     createTracksAndAssignInputs();
     te::EditFileOperations(*edit_).save(true, true, false);
-
-    edit_->playInStopEnabled = false;
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 

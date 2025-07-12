@@ -100,6 +100,7 @@ void TuningController::setEdit(std::unique_ptr<te::Edit> edit, bool /*savePrev*/
     mainWindow_.clearContentComponent();
     editViewState_.reset();
     edit_ = std::move(edit);
+    edit_->playInStopEnabled = true;  // Disable play/stop for tuning edits
     // te::EditFileOperations(*edit_).save(true, true, false);
 
     viewModel_ = std::make_unique<TuningViewModel>(*edit_);
@@ -110,6 +111,5 @@ void TuningController::setEdit(std::unique_ptr<te::Edit> edit, bool /*savePrev*/
     mainWindow_.setSize(w, h);
     mainWindow_.repaint();
 }
-
 
 }  // namespace MoTool

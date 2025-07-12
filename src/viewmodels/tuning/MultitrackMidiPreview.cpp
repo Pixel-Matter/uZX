@@ -8,10 +8,13 @@ MultitrackMidiPreview::MultitrackMidiPreview(te::Edit& ed)
     , transport(edit.getTransport())
 {
     initialize();
+    transport.addChangeListener(this);
+    enableMidiDeviceChangeMonitoring();
 }
 
 MultitrackMidiPreview::~MultitrackMidiPreview() {
     stopPlayback();
+    disableMidiDeviceChangeMonitoring();
 }
 
 void MultitrackMidiPreview::initialize() {
@@ -20,6 +23,7 @@ void MultitrackMidiPreview::initialize() {
 }
 
 void MultitrackMidiPreview::setupTracksAndPlugins() {
+    // DBG("MultitrackMidiPreview::setupTracksAndPlugins");
     // Setup single track
     track = EngineHelpers::getOrInsertAudioTrackAt(edit, 0);
 
@@ -28,7 +32,7 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
         track->pluginList.insertPlugin(*ayPlugin, 0, nullptr);
         auto AYPlugin = dynamic_cast<uZX::AYChipPlugin*>(ayPlugin.get());
         jassert(AYPlugin != nullptr);
-        // set CAB because then first channel is the center
+        // set CAB to first channel be the center
         AYPlugin->staticParams.channelsLayoutValue = uZX::ChannelsLayout::CAB;
     }
 
@@ -36,6 +40,9 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
         track->pluginList.insertPlugin(*plugin, 0, nullptr);
         midiToPsgPlugin = dynamic_cast<uZX::MidiToPsgPlugin*>(plugin.get());
     }
+
+    // Set up MIDI device assignments
+    reassignInputs();
 }
 
 void MultitrackMidiPreview::setupChannelClips() {
@@ -190,6 +197,54 @@ void MultitrackMidiPreview::startPlayback(double duration) {
 
 void MultitrackMidiPreview::stopPlayback() {
     transport.stop(false, false);
+}
+
+void MultitrackMidiPreview::changeListenerCallback(juce::ChangeBroadcaster* source) {
+    if (source == &transport) {
+        // Handle transport changes if needed
+        // DBG("Transport state changed: "
+        //     << (transport.isPlaying() ? "Playing" : "Stopped")
+        //     << (transport.isRecording() ? ", Recording" : "")
+        //     << (transport.isStopping() ? ", Stopping" : "")
+        // );
+    }
+}
+
+void MultitrackMidiPreview::reassignInputs() {
+    // all MIDI inputs are already enabled in the Edit
+    // for (auto& midiIn : edit.engine.getDeviceManager().getMidiInDevices()) {
+    //     DBG("MultitrackMidiPreview::createTracksAndAssignInputs: Enabling MIDI input: " << midiIn->getName());
+    //     midiIn->setMonitorMode(te::InputDevice::MonitorMode::on);
+    //     midiIn->setEnabled(true);
+    // }
+
+    edit.getTransport().ensureContextAllocated();
+
+    // Assign physical MIDI devices to the track
+    for (auto instance : edit.getAllInputDevices()) {
+        if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
+            auto res = instance->setTarget(track->itemID, true, &edit.getUndoManager(), 0);
+            // Recording is not needed for live monitoring
+        }
+    }
+    edit.restartPlayback();
+}
+
+void MultitrackMidiPreview::enableMidiDeviceChangeMonitoring() {
+    if (!deviceListener_) {
+        deviceListener_ = std::make_unique<DeviceChangeListener>();
+        deviceListener_->callback = [this]() {
+            // DBG("MultitrackMidiPreview: MIDI device configuration changed, updating track assignments");
+            reassignInputs();
+        };
+    }
+    edit.engine.getDeviceManager().addChangeListener(deviceListener_.get());
+}
+
+void MultitrackMidiPreview::disableMidiDeviceChangeMonitoring() {
+    if (deviceListener_) {
+        edit.engine.getDeviceManager().removeChangeListener(deviceListener_.get());
+    }
 }
 
 }

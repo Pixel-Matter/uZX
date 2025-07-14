@@ -9,12 +9,11 @@ MultitrackMidiPreview::MultitrackMidiPreview(te::Edit& ed)
 {
     initialize();
     transport.addChangeListener(this);
-    edit.engine.getDeviceManager().addChangeListener(this);
 }
 
 MultitrackMidiPreview::~MultitrackMidiPreview() {
+    transport.removeChangeListener(this);
     stopPlayback();
-    edit.engine.getDeviceManager().removeChangeListener(this);
 }
 
 void MultitrackMidiPreview::initialize() {
@@ -199,7 +198,7 @@ void MultitrackMidiPreview::stopPlayback() {
     transport.stop(false, false);
 }
 
-void MultitrackMidiPreview::changeListenerCallback(juce::ChangeBroadcaster* source) {
+void MultitrackMidiPreview::changeListenerCallback(juce::ChangeBroadcaster* /*source*/) {
     // if (source == &transport) {
     //     // Handle transport changes if needed
     //     // DBG("Transport state changed: "
@@ -208,30 +207,7 @@ void MultitrackMidiPreview::changeListenerCallback(juce::ChangeBroadcaster* sour
     //     //     << (transport.isStopping() ? ", Stopping" : "")
     //     // );
     // }
-    // if (source == &edit.engine.getDeviceManager()) {
-    //     reassignInputs();
-    // }
 }
-
-// void MultitrackMidiPreview::reassignInputs() {
-//     // all MIDI inputs are already enabled in the Edit
-//     // for (auto& midiIn : edit.engine.getDeviceManager().getMidiInDevices()) {
-//     //     DBG("MultitrackMidiPreview::createTracksAndAssignInputs: Enabling MIDI input: " << midiIn->getName());
-//     //     midiIn->setMonitorMode(te::InputDevice::MonitorMode::on);
-//     //     midiIn->setEnabled(true);
-//     // }
-
-//     edit.getTransport().ensureContextAllocated();
-
-//     // Assign physical MIDI devices to the track
-//     for (auto instance : edit.getAllInputDevices()) {
-//         if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
-//             auto res = instance->setTarget(track->itemID, true, &edit.getUndoManager(), 0);
-//             // Recording is not needed for live monitoring
-//         }
-//     }
-//     edit.restartPlayback();
-// }
 
 
 }

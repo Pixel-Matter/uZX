@@ -106,10 +106,11 @@ ApplicationCommandManager& BaseController::getCommandManager() {
 }
 
 void BaseController::devicesChanged() {
-    if (!edit_) return;
+    // if (!edit_) return;
 
-    edit_->getTransport().ensureContextAllocated();
+    // edit_->getTransport().ensureContextAllocated();
 
+    // Do not need this because we can setup this in UI per track
     // if (auto defaultMidiDevice = engine_.getDeviceManager().getDefaultMidiInDevice()) {
     //     // Find the input device instance for the default MIDI device
     //     te::InputDeviceInstance* defaultInstance = nullptr;
@@ -126,7 +127,7 @@ void BaseController::devicesChanged() {
     //         }
     //     }
     // }
-    edit_->restartPlayback();
+    // edit_->restartPlayback();
 }
 
 void BaseController::changeListenerCallback(ChangeBroadcaster* source) {

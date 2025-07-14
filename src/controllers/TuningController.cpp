@@ -101,6 +101,7 @@ void TuningController::setEdit(std::unique_ptr<te::Edit> edit, bool /*savePrev*/
     editViewState_.reset();
     edit_ = std::move(edit);
     edit_->playInStopEnabled = true;  // Disable play/stop for tuning edits
+    edit_->getTransport().ensureContextAllocated();
     // te::EditFileOperations(*edit_).save(true, true, false);
 
     viewModel_ = std::make_unique<TuningViewModel>(*edit_);
@@ -110,6 +111,31 @@ void TuningController::setEdit(std::unique_ptr<te::Edit> edit, bool /*savePrev*/
     mainWindow_.setName(MoToolApp::getApp().getApplicationFancyName());
     mainWindow_.setSize(w, h);
     mainWindow_.repaint();
+}
+
+void TuningController::devicesChanged() {
+    if (!edit_) return;
+    DBG("TuningController::devicesChanged");
+
+    edit_->getTransport().ensureContextAllocated();
+
+    if (auto defaultMidiDevice = engine_.getDeviceManager().getDefaultMidiInDevice()) {
+        // Find the input device instance for the default MIDI device
+        te::InputDeviceInstance* defaultInstance = nullptr;
+        for (auto instance : edit_->getAllInputDevices()) {
+            if (&instance->getInputDevice() == defaultMidiDevice) {
+                defaultInstance = instance;
+                break;
+            }
+        }
+
+        for (auto at : te::getTracksOfType<te::AudioTrack>(*edit_, true)) {
+            if (at) {
+                [[maybe_unused]] auto res = defaultInstance->setTarget(at->itemID, false, &edit_->getUndoManager(), 0);
+            }
+        }
+    }
+    edit_->restartPlayback();
 }
 
 }  // namespace MoTool

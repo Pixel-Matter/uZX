@@ -34,6 +34,7 @@ public:
 private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
+    void devicesChanged() override;
 
     std::unique_ptr<TuningViewModel> viewModel_;
     std::unique_ptr<TuningPlayer> tuningPlayer_;

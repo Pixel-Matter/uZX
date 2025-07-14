@@ -25,13 +25,15 @@ public:
 
 private:
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
+    void valueTreeChildAdded(ValueTree&, ValueTree&) override;
+    void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
 
     EditViewState& editViewState;
     te::Track::Ptr track;
 
     ValueTree inputsState;
     Label trackName;
-    TextButton armButton {"A"}, muteButton {"M"}, soloButton {"S"}, inputButton {"I"};
+    TextButton armButton {"R"}, muteButton {"M"}, soloButton {"S"}, inputButton {"I"};
 };
 
 //==============================================================================

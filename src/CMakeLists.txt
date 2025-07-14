@@ -1,34 +1,52 @@
 # File src/CMakeLists.txt
 
 # Target Definition
-set(TARGET_NAME MoTool)
+set(MAIN_TARGET_NAME uZX)
+set(TUNING_TARGET_NAME uZXTuning)
 
 # IDE and Module Settings
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
 # JUCE Application Setup
-juce_add_gui_app(${TARGET_NAME}
+juce_add_gui_app(${MAIN_TARGET_NAME}
     PRODUCT_NAME "μZX"
-    # PRODUCT_NAME "uZX"
-    # PRODUCT_NAME "${PROJECT_NAME}"
     COMPANY_NAME "Pixel Matter"
-    BUNDLE_ID "org.pixelmatter.${TARGET_NAME}"
+    BUNDLE_ID "org.pixelmatter.${MAIN_TARGET_NAME}"
 )
 
-juce_generate_juce_header(${TARGET_NAME})
+# JUCE Tuning Application Setup
+juce_add_gui_app(${TUNING_TARGET_NAME}
+    PRODUCT_NAME "μZXTuning"
+    COMPANY_NAME "Pixel Matter"
+    BUNDLE_ID "org.pixelmatter.${TUNING_TARGET_NAME}"
+)
+
+juce_generate_juce_header(${MAIN_TARGET_NAME})
+juce_generate_juce_header(${TUNING_TARGET_NAME})
 
 # Compiler and Language Settings
-target_compile_features(${TARGET_NAME} PRIVATE cxx_std_23)
+target_compile_features(${MAIN_TARGET_NAME} PRIVATE cxx_std_23)
+target_compile_features(${TUNING_TARGET_NAME} PRIVATE cxx_std_23)
 
-set_target_properties(${TARGET_NAME} PROPERTIES
+set_target_properties(${MAIN_TARGET_NAME} PROPERTIES
+    C_VISIBILITY_PRESET hidden
+    CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${TUNING_TARGET_NAME} PROPERTIES
     C_VISIBILITY_PRESET hidden
     CXX_VISIBILITY_PRESET hidden
 )
 
 include(sources.cmake)
 
-target_sources(${TARGET_NAME} PRIVATE
+target_sources(${MAIN_TARGET_NAME} PRIVATE
+    ${SHARED_SOURCES}
+    ${GUI_SOURCES}
+)
+
+target_sources(${TUNING_TARGET_NAME} PRIVATE
     ${SHARED_SOURCES}
     ${GUI_SOURCES}
 )
@@ -36,7 +54,12 @@ target_sources(${TARGET_NAME} PRIVATE
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES ${SHARED_SOURCES} ${GUI_SOURCES})
 
 # Include Directories
-target_include_directories(${TARGET_NAME}
+target_include_directories(${MAIN_TARGET_NAME}
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
+)
+
+target_include_directories(${TUNING_TARGET_NAME}
     PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
 )
@@ -57,10 +80,23 @@ set(JUCE_DEFINITIONS
     TRACKTION_ENABLE_TIMESTRETCH_SOUNDTOUCH=1
 )
 
-target_compile_definitions(${TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
+target_compile_definitions(${MAIN_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
+target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 
 # Dependencies
-target_link_libraries(${TARGET_NAME} PRIVATE
+target_link_libraries(${MAIN_TARGET_NAME} PRIVATE
+    ayumi
+    tracktion::tracktion_core
+    tracktion::tracktion_engine
+    tracktion::tracktion_graph
+    juce::juce_audio_devices
+    juce::juce_audio_processors
+    juce::juce_audio_utils
+    juce::juce_gui_extra
+    juce::juce_recommended_warning_flags
+)
+
+target_link_libraries(${TUNING_TARGET_NAME} PRIVATE
     ayumi
     tracktion::tracktion_core
     tracktion::tracktion_engine
@@ -74,13 +110,47 @@ target_link_libraries(${TARGET_NAME} PRIVATE
 
 # Platform-Specific Settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    target_compile_options(${TARGET_NAME} PRIVATE "-fno-aligned-allocation")
+    target_compile_options(${MAIN_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
+    target_compile_options(${TUNING_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
+    
+    # Code Signing Configuration
+    # Set from environment variable or use default
+    if(DEFINED ENV{CODESIGN_IDENTITY})
+        set(CODESIGN_IDENTITY "$ENV{CODESIGN_IDENTITY}")
+        message(STATUS "Code signing with identity: ${CODESIGN_IDENTITY}")
+        
+        # Create codesign script to handle identity with spaces and parentheses
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/codesign.sh.in"
+            "${CMAKE_CURRENT_BINARY_DIR}/codesign.sh"
+            @ONLY
+        )
+        
+        # Make the script executable
+        file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/codesign.sh" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
+        
+        # Add custom command to sign μZX after build
+        add_custom_command(TARGET ${MAIN_TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/codesign.sh $<TARGET_BUNDLE_DIR:${MAIN_TARGET_NAME}>
+            COMMENT "Code signing ${MAIN_TARGET_NAME}"
+        )
+        
+        # Add custom command to sign μZXTuning after build
+        add_custom_command(TARGET ${TUNING_TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/codesign.sh $<TARGET_BUNDLE_DIR:${TUNING_TARGET_NAME}>
+            COMMENT "Code signing ${TUNING_TARGET_NAME}"
+        )
+    else()
+        message(STATUS "Code signing disabled. Set CODESIGN_IDENTITY environment variable to enable.")
+    endif()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(${TARGET_NAME} PRIVATE "-latomic")
+    target_link_libraries(${MAIN_TARGET_NAME} PRIVATE "-latomic")
+    target_link_libraries(${TUNING_TARGET_NAME} PRIVATE "-latomic")
     if (NOT ${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "aarch64")
-        target_link_options(${TARGET_NAME} PRIVATE "-m64")
+        target_link_options(${MAIN_TARGET_NAME} PRIVATE "-m64")
+        target_link_options(${TUNING_TARGET_NAME} PRIVATE "-m64")
     endif()
 endif()
 

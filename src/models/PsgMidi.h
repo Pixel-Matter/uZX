@@ -90,7 +90,7 @@ enum class MidiCCType {
     GPB1ToneSwitch    = 80,  ///< General Purpose Switch #1 (on/off)
     GPB2NoiseSwitch   = 81,  ///< General Purpose Switch #2 (on/off)
     GPB3EnvSwitch     = 82,  ///< General Purpose Switch #3 (on/off)
-    GPB4              = 83,  ///< General Purpose Switch #4 (on/off)
+    GPB4RetriggerSwitch = 83,  ///< General Purpose Switch #4 (on/off)
     PortaControl      = 84,  ///< Portamento Control
 
     // unused         = 85-90 (6)

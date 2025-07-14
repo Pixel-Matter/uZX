@@ -23,9 +23,9 @@
     BP
 
     d88o888ob.      d888888888b             d8b
-    8@@8@@@8@@b ,d888b.`8@8',d888b. ,d888b. B@8       Copyright 2025
-    B@8'B@8'8@8 8@8 8@8 B@8 8@8 8@8 8@8 8@8 B@8    Ruslan Grokhovetski
-    B@8 B@8 B@8 '"" 8@8 B@8 8@b ""' '"" 8@8 B@8    www.pixelmatter.org
+    8@@8@@@8@@b ,d888b.`8@8',d888b. ,d888b. B@8      Copyright 2025
+    B@8'B@8'8@8 8@8 8@8 B@8 8@8 8@8 8@8 8@8 B@8   Ruslan Grokhovetski
+    B@8 B@8 B@8 '"" 8@8 B@8 8@b ""' '"" 8@8 B@8   www.pixelmatter.org
     Y@8 8@8 Y@@88@@@8P' 8@8 `Y@@@88888@@@P' Y8P
 ```
 

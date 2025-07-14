@@ -1,10 +1,11 @@
 #pragma once
 
 #include "JuceHeader.h"
-#include "../../models/tuning/TuningSystemBase.h"
 #include "../../viewmodels/tuning/TuningViewModel.h"
 #include "../../viewmodels/tuning/TuningPlayer.h"
 #include "../../controllers/App.h"
+#include "../../controllers/ScaleBindings.h"
+#include "../common/MoTooltipWindow.h"
 #include <map>
 
 namespace MoTool {
@@ -16,7 +17,9 @@ public:
     TuningPreviewGrid(TuningViewModel& vm, TuningPlayer& tp);
     ~TuningPreviewGrid() override;
 
-    void setTooltipWindow(TooltipWindow* window) { tooltipWindow = window; }
+    void recreateTooltipWindow();
+
+    MoTooltipWindow* tooltipWindow = nullptr;
 
     void resized() override;
     void paint(juce::Graphics& g) override;
@@ -72,7 +75,7 @@ private:
     TuningViewModel& viewModel;
     TuningPlayer& tuningPlayer;
 
-    // Mouse tracking for tooltips
+    // Mouse tracking for tooltips and hover effects
     Point<int> lastMousePosition;
     GridHitResult hoveredRegion;
 
@@ -80,22 +83,25 @@ private:
 
     // Paint helper methods
     void paintColumnHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNoteName& column, NoteGridHeadingType headingType);
-    void paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave);
-    void paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note);
-
-    TooltipWindow* tooltipWindow = nullptr;
+    void paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave, bool isHovered = false);
+    void paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note, bool isHovered = false);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPreviewGrid)
 };
 
 
-class TuningPreviewComponent : public juce::Component, private ChangeListener, private ListBoxModel, private Value::Listener {
+class TuningPreviewComponent : public juce::Component,
+                               private ChangeListener,
+                               private ListBoxModel,
+                               private Value::Listener {
 public:
-    TuningPreviewComponent(UndoManager* um = nullptr);
+    TuningPreviewComponent(TuningViewModel& vm, TuningPlayer& tp);
     ~TuningPreviewComponent() override;
 
     void resized() override;
     void paint(juce::Graphics& g) override;
+
+    std::unique_ptr<MoTooltipWindow> tooltipWindow;
 
     // ListBoxModel implementation
     int getNumRows() override;
@@ -108,56 +114,104 @@ private:
     // UI setup helpers
     void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
                                      RangedParamAttachment<double>& attachment);
+    void setupTextEditorWithValueBinding(Label& inputLabel, Label& unitsLabel,
+                                         RangedParamAttachment<double>& attachment);
     void updateControlsState();
-    void setupScaleSelectMenu();
     void updateScaleSelection();
+
+    // Setup helpers
+    void setupTuningTableControls();
+    void setupTuningGrid();
+    void setupExportButton();
+    void handleExportButtonClick();
+
+    // Layout helpers
+    void layoutControlSections(juce::Rectangle<int>& area);
 
     // Value::Listener implementation for ListBox sync
     void valueChanged(Value& value) override;
 
-    TuningViewModel viewModel;
-    TuningPlayer tuningPlayer;
+    TuningViewModel& viewModel;
+    TuningPlayer& tuningPlayer;
 
     // Tuning table selection
     Label tuningTableLabel;
     ListBox tuningsListBox;
 
-    Label chipClockLabel;
-    ComboBox chipClockSelect;
+    // Chip clock controls
+    struct ChipClock {
+        ChipClock(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+        int getHeight() const;
 
-    Slider clockFrequencySlider;
-    Label clockFrequencyLabel;
-    Label clockFrequencyUnits;
+        Label label;
+        ComboBox select;
+        Label frequencyInput;
+        Label unitsLabel;
+        ComboBoxBinding<ChipClockChoice> binding;
+    };
+    ChipClock chipClock {*this, viewModel};
 
-    Slider a4FrequencySlider;
-    Label a4FrequencyLabel;
-    Label a4FrequencyUnits;
+    // A4 frequency controls
+    struct A4Frequency {
+        A4Frequency(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+        int getHeight() const;
+
+        Label label;
+        Slider slider;
+        Label unitsLabel;
+    };
+    A4Frequency a4Frequency {*this, viewModel};
+
+    // Reference Tuning selection
+    struct ReferenceTuning {
+        ReferenceTuning(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+        int getHeight() const;
+
+        Label label;
+        ComboBox select;
+        ComboBoxBinding<TemperamentType> binding;
+    };
+    ReferenceTuning tuning {*this, viewModel};
 
     // Scale and Key selection
-    Label keyScaleLabel;
-    ComboBox keySelect;
-    ComboBox scaleSelect;
+    struct KeyScale {
+        KeyScale(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+        int getHeight() const;
 
-    Label tuningTypeLabel;
-    Label tuningNameLabel;
-    Label toneEnvSwitchLabel;
+        Label label;
+        ComboBox keySelect;
+        ComboBox scaleSelect;
+        ComboBoxBinding<Scale::Tonic> keySelectBinding;
+        ScaleComboBoxBinding scaleSelectBinding;
+    };
+    KeyScale keyScale {*this, viewModel};
 
-    // Label playModeLabel;
-    ToggleButton playChordsCheckBox;
-    ToggleButton playToneCheckBox;
-    ToggleButton playEnvelopeCheckBox;
-    ComboBox envelopeShapeSelect;
+    // Play controls
+    struct PlayControls {
+        PlayControls(TuningPreviewComponent& c, TuningViewModel& vm);
+        void layout(juce::Rectangle<int>& area);
+
+        Label label;
+        ToggleButton playChordsCheckBox;
+        ToggleButton playToneCheckBox;
+        ToggleButton retriggerToneCheckBox;
+        ToggleButton playEnvelopeCheckBox;
+        ComboBox envelopeShapeSelect;
+        ComboBox modulationModeSelect;
+        ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding;
+        ComboBoxBinding<EnvIntervalChoice> envelopeModeBinding;
+    };
+    PlayControls playControls {*this, viewModel};
+
+    // Label tuningNameLabel;
 
     TextButton exportButton;
 
     TuningPreviewGrid tuningGrid;
-    TooltipWindow tooltipWindow;
-
-    // bindings
-    ComboBoxBinding<ChipClockChoice> chipClockBinding { chipClockSelect, viewModel.selectedChip };
-    ComboBoxBinding<Scale::Key> keySelectBinding { keySelect, viewModel.selectedRoot };
-    ComboBoxBinding<Scale::ScaleType> scaleSelectBinding { scaleSelect, viewModel.selectedScale };
-    ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding { envelopeShapeSelect, viewModel.envelopeShape };
 
     static constexpr int rowHeight = 28;
     static constexpr int moduleWidth = 60;

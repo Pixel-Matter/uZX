@@ -443,11 +443,11 @@ std::array<Scale::Degree, 12> Scale::getChromaticDegrees() const {
 }
 
 // Key-related static methods
-StringArray Scale::getAllKeyNames() {
-    return toStringArray(Key::getLongLabels());
+StringArray Scale::getAllNoteNames() {
+    return toStringArray(Tonic::getLongLabels());
 }
 
-String Scale::getKeyName(Key key) {
+String Scale::getTonicName(Tonic key) {
     return String::fromUTF8(key.getName());
 }
 

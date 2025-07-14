@@ -176,7 +176,7 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     drawWaveforms.referTo(state, IDs::drawWaveforms, um, true);
     showHeaders.referTo(state, IDs::showHeaders, um, true);
     showFooters.referTo(state, IDs::showFooters, um, true);
-    showMidiDevices.referTo(state, IDs::showMidiDevices, um, false);
+    showMidiDevices.referTo(state, IDs::showMidiDevices, um, true);
     showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
 }

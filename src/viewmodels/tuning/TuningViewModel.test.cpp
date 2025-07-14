@@ -10,10 +10,12 @@ public:
     void runTest() override {
         beginTest("Scale and Key selection - C Major");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Default should be C Major
-            expectEquals(static_cast<int>(viewModel.getCurrentRoot()), static_cast<int>(Scale::Key::C));
+            expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::C));
             expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::IonianOrMajor));
             expectEquals(viewModel.getScaleName(), String("C Major (Ionian)"));
 
@@ -38,13 +40,15 @@ public:
 
         beginTest("Scale and Key selection - A Minor");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Set to A Minor (Natural Minor = Aeolian)
-            viewModel.setCurrentRoot(Scale::Key::A);
+            viewModel.setCurrentTonic(Scale::Tonic::A);
             viewModel.setCurrentScaleType(Scale::ScaleType::AeolianOrMinor);
 
-            expectEquals(static_cast<int>(viewModel.getCurrentRoot()), static_cast<int>(Scale::Key::A));
+            expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::A));
             expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::AeolianOrMinor));
             expectEquals(viewModel.getScaleName(), String("A Minor (Aeolian)"));
 
@@ -68,13 +72,15 @@ public:
 
         beginTest("Scale and Key selection - F# Major");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Set to F# Major
-            viewModel.setCurrentRoot(Scale::Key::FSharp);
+            viewModel.setCurrentTonic(Scale::Tonic::FSharp);
             viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
 
-            expectEquals(static_cast<int>(viewModel.getCurrentRoot()), static_cast<int>(Scale::Key::FSharp));
+            expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::FSharp));
             expectEquals(viewModel.getScaleName(), String::fromUTF8("F♯ Major (Ionian)"));
 
             // Check that F# Major scale notes are in scale
@@ -97,13 +103,15 @@ public:
 
         beginTest("Scale and Key selection - D Dorian");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Set to D Dorian
-            viewModel.setCurrentRoot(Scale::Key::D);
+            viewModel.setCurrentTonic(Scale::Tonic::D);
             viewModel.setCurrentScaleType(Scale::ScaleType::Dorian);
 
-            expectEquals(static_cast<int>(viewModel.getCurrentRoot()), static_cast<int>(Scale::Key::D));
+            expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::D));
             expectEquals(viewModel.getScaleName(), String("D Dorian"));
 
             // Check that D Dorian scale notes are in scale
@@ -126,23 +134,27 @@ public:
 
         beginTest("Key names functionality");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
-            auto keyNames = Scale::getAllKeyNames();
+            auto keyNames = Scale::getAllNoteNames();
             expectEquals(static_cast<int>(keyNames.size()), 12);
             expectEquals(keyNames[0], String("C"));
             expectEquals(keyNames[1], String::fromUTF8("C♯"));
             expectEquals(keyNames[9], String("A"));
             expectEquals(keyNames[11], String("B"));
 
-            expectEquals(Scale::getKeyName(Scale::Key::C), String("C"));
-            expectEquals(Scale::getKeyName(Scale::Key::A), String("A"));
-            expectEquals(Scale::getKeyName(Scale::Key::FSharp), String::fromUTF8("F♯"));
+            expectEquals(Scale::getTonicName(Scale::Tonic::C), String("C"));
+            expectEquals(Scale::getTonicName(Scale::Tonic::A), String("A"));
+            expectEquals(Scale::getTonicName(Scale::Tonic::FSharp), String::fromUTF8("F♯"));
         }
 
         beginTest("Scale type names functionality");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             auto scaleNames = viewModel.getScaleTypeNames();
 
@@ -165,11 +177,13 @@ public:
 
         beginTest("CSV export functionality");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Set up test configuration
             viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
-            viewModel.setCurrentRoot(Scale::Key::C);
+            viewModel.setCurrentTonic(Scale::Tonic::C);
             viewModel.setA4Frequency(440.0);
 
             // Export to CSV
@@ -224,7 +238,7 @@ public:
 
             // Test with different scale
             viewModel.setCurrentScaleType(Scale::ScaleType::MinorPentatonic);
-            viewModel.setCurrentRoot(Scale::Key::A);
+            viewModel.setCurrentTonic(Scale::Tonic::A);
 
             String csvData2 = viewModel.exportToCSV();
             expect(csvData2.isNotEmpty(), "CSV data should not be empty for different scale");
@@ -252,11 +266,13 @@ public:
 
         beginTest("Default export filename generation");
         {
-            TuningViewModel viewModel;
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
 
             // Test default filename with C Major
             viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
-            viewModel.setCurrentRoot(Scale::Key::C);
+            viewModel.setCurrentTonic(Scale::Tonic::C);
             viewModel.setA4Frequency(440.0);
 
             String filename1 = viewModel.getDefaultExportFilename();
@@ -266,7 +282,7 @@ public:
 
             // Test with different scale and non-standard A4
             viewModel.setCurrentScaleType(Scale::ScaleType::MinorPentatonic);
-            viewModel.setCurrentRoot(Scale::Key::A);
+            viewModel.setCurrentTonic(Scale::Tonic::A);
             viewModel.setA4Frequency(442.0);
 
             String filename2 = viewModel.getDefaultExportFilename();

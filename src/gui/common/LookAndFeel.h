@@ -33,7 +33,7 @@ struct Theme {
     inline static const juce::Colour background    = Slate::slate900;  // Main app background
     inline static const juce::Colour backgroundAlt = Slate::slate800;  // Elevated surfaces
     inline static const juce::Colour surface       = Slate::slate700;  // UI elements
-    inline static const juce::Colour surfaceAlt    = Slate::slate600;  // Secondary UI elements
+    inline static const juce::Colour surfaceAlt    = Slate::slate400;  // Secondary UI elements
 
     // Text colors
     inline static const juce::Colour textPrimary   = Slate::slate100;  // Main text
@@ -89,18 +89,17 @@ public:
 
     MoLookAndFeel() {
         using namespace Colors;
-
         // Initialize ColourScheme with slate colors
         juce::LookAndFeel_V4::ColourScheme cs(
-            Theme::background,    // windowBackground
-            Theme::surface,       // widgetBackground
-            Theme::backgroundAlt, // menuBackground
-            Theme::primary,       // outline
-            Theme::textPrimary,   // defaultText
-            Theme::surface,       // defaultFill
-            Theme::background,    // highlightedText
-            Theme::primary,       // highlightedFill
-            Theme::textPrimary    // menuText
+            Theme::background,     // windowBackground
+            Theme::surface,        // widgetBackground
+            Theme::backgroundAlt,  // menuBackground
+            Theme::border,         // outline
+            Theme::textPrimary,    // defaultText
+            Theme::primary,        // defaultFill
+            Theme::textPrimary,    // highlightedText
+            Theme::primary,        // highlightedFill
+            Theme::textPrimary     // menuText
         );
 
         setColourScheme(cs);
@@ -118,8 +117,15 @@ public:
         // Text editors
         setColour(juce::TextEditor::backgroundColourId, Theme::surface);
         setColour(juce::TextEditor::textColourId, Theme::textPrimary);
-        setColour(juce::TextEditor::highlightColourId, Theme::primary.withAlpha(0.3f));
-        setColour(juce::TextEditor::highlightedTextColourId, Theme::textPrimary);
+        // setColour(juce::TextEditor::highlightColourId, Theme::backgroundAlt);
+        setColour(juce::TextEditor::highlightColourId, Theme::primary.withAlpha(0.6f));
+        setColour(juce::TextEditor::highlightedTextColourId, Theme::background);
+        setColour(juce::TextEditor::outlineColourId, Theme::border);
+        setColour(juce::TextEditor::focusedOutlineColourId, Theme::primary);
+        setColour(juce::TextEditor::shadowColourId, Theme::background);
+
+        // Text cursor
+        setColour(juce::CaretComponent::caretColourId, Theme::primary);
 
         // Sliders
         setColour(juce::Slider::backgroundColourId, Theme::surfaceAlt);
@@ -130,12 +136,27 @@ public:
         setColour(juce::ComboBox::backgroundColourId, Theme::surface);
         setColour(juce::ComboBox::textColourId, Theme::textPrimary);
         setColour(juce::ComboBox::arrowColourId, Theme::primary);
+        setColour(juce::ComboBox::outlineColourId, Theme::border);
+        setColour(juce::ComboBox::focusedOutlineColourId, Theme::primary);
+
+        // Labels (for editable labels)
+        setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+        setColour(juce::Label::textColourId, Theme::textPrimary);
+        setColour(juce::Label::outlineColourId, juce::Colours::transparentBlack);
+        setColour(juce::Label::backgroundWhenEditingColourId, Theme::surface);
+        setColour(juce::Label::textWhenEditingColourId, Theme::textPrimary);
+        setColour(juce::Label::outlineWhenEditingColourId, Theme::primary);
 
         // PopupMenu
         setColour(juce::PopupMenu::backgroundColourId, Theme::backgroundAlt);
         setColour(juce::PopupMenu::textColourId, Theme::textPrimary);
         setColour(juce::PopupMenu::highlightedBackgroundColourId, Theme::primary);
         setColour(juce::PopupMenu::highlightedTextColourId, Theme::background);
+
+        // TooltipWindow
+        setColour(juce::TooltipWindow::backgroundColourId, Theme::backgroundAlt);
+        setColour(juce::TooltipWindow::textColourId, Theme::textPrimary);
+        setColour(juce::TooltipWindow::outlineColourId, Theme::border);
     }
 
     // Helper method to debug current color scheme
@@ -195,6 +216,53 @@ public:
         // Draw clip border
         g.setColour(isSelected ? Colors::Timeline::clipSelected.brighter() : clipColor.brighter());
         g.drawRoundedRectangle(bounds.toFloat(), cornerSize, 1.0f);
+    }
+
+    static TextLayout layoutTooltipText(TypefaceMetricsKind metrics, const String& text, Colour colour) noexcept {
+        const int maxToolTipWidth = 600;
+        const float tooltipFontSize = 14.0f;
+
+        AttributedString s;
+        s.setJustification(Justification::left);
+        s.setLineSpacing(tooltipFontSize * 0.2f); // 1.2 line spacing
+        s.append(text, FontOptions(tooltipFontSize, Font::plain).withMetricsKind(metrics), colour);
+
+        TextLayout tl;
+        tl.createLayoutWithBalancedLineLengths(s, (float)maxToolTipWidth);
+        return tl;
+    }
+
+    Rectangle<int> getTooltipBounds(const String& tipText, Point<int> screenPos, Rectangle<int> parentArea) override {
+        const TextLayout tl(layoutTooltipText(getDefaultMetricsKind(), tipText, Colours::black));
+
+        auto w = (int) (tl.getWidth() + 14.0f);
+        auto h = (int) (tl.getHeight() + 6.0f);
+
+        return Rectangle<int>(screenPos.x > parentArea.getCentreX() ? screenPos.x - (w + 12) : screenPos.x + 24,
+                              screenPos.y > parentArea.getCentreY() ? screenPos.y - (h + 6)  : screenPos.y + 6,
+                              w, h)
+                .constrainedWithin(parentArea);
+    }
+
+    // Custom tooltip drawing
+    void drawTooltip(juce::Graphics& g, const juce::String& text, int width, int height) override {
+        Rectangle<int> bounds(width, height);
+        int hPad = 7, vPad = 3;
+        auto cornerSize = 5.0f;
+
+        g.setColour(findColour(TooltipWindow::backgroundColourId));
+        g.fillRoundedRectangle(bounds.toFloat(), cornerSize);
+
+        g.setColour(findColour(TooltipWindow::outlineColourId));
+        g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f, 0.5f), cornerSize, 1.0f);
+
+        auto tl = layoutTooltipText(
+            getDefaultMetricsKind(), text, findColour(TooltipWindow::textColourId));
+
+        tl.draw(g, {
+            static_cast<float>(hPad), static_cast<float>(vPad),
+            static_cast<float>(width), static_cast<float>(height)
+        });
     }
 };
 

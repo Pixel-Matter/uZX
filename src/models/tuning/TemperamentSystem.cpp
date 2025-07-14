@@ -8,16 +8,49 @@
 
 namespace MoTool {
 
+// TemperamentSystem base class implementation
+TemperamentSystem::TemperamentSystem(double a4Freq)
+    : state(IDs::TEMPERAMENT)
+{
+    a4Frequency.referTo(state, IDs::a4Frequency, nullptr, a4Freq);
+}
+
+TemperamentSystem::TemperamentSystem(const juce::ValueTree& initialState)
+    : state(initialState)
+{
+    a4Frequency.referTo(state, IDs::a4Frequency, nullptr, 440.0);
+}
+
 String TemperamentSystem::getDescription() const {
     return String(String::formatted("%s tuning, A4 = %.2f Hz", getType().getLongLabel().data(), getA4Frequency()));
 }
 
 void TemperamentSystem::setA4Frequency(double frequency) {
-    a4Freq = frequency;
+    a4Frequency = frequency;
 }
 
 double TemperamentSystem::getA4Frequency() const {
-    return a4Freq;
+    return a4Frequency.get();
+}
+
+// juce::ValueTree TemperamentSystem::getState() const {
+//     return state;
+// }
+
+// void TemperamentSystem::setState(const juce::ValueTree& newState) {
+//     state = newState;
+// }
+
+// EqualTemperamentTuning implementation
+EqualTemperamentTuning::EqualTemperamentTuning(double a4Freq)
+    : TemperamentSystem(a4Freq)
+{
+    state.setProperty(IDs::type, "EqualTemperament", nullptr);
+}
+
+EqualTemperamentTuning::EqualTemperamentTuning(const juce::ValueTree& initialState)
+    : TemperamentSystem(initialState)
+{
 }
 
 TemperamentType EqualTemperamentTuning::getType() const {
@@ -56,12 +89,12 @@ bool EqualTemperamentTuning::isDefined(int /*midiNote*/) const {
     return true;
 }
 
-void EqualTemperamentTuning::setRoot(Scale::Key) {
+void EqualTemperamentTuning::setTonic(Scale::Tonic) {
     // not required for equal temperament
 }
 
-Scale::Key EqualTemperamentTuning::getRoot() const {
-    return Scale::Key::C; // Default to C for equal temperament
+Scale::Tonic EqualTemperamentTuning::getTonic() const {
+    return Scale::Tonic::C; // Default to C for equal temperament
 }
 
 String EqualTemperamentTuning::getDegreeRepresentation(int degree) const {
@@ -73,28 +106,34 @@ String EqualTemperamentTuning::getDegreeRepresentation(int degree) const {
 
 RationalTuning::RationalTuning(
     const std::array<FractionNumber, 12>& rationalIntervals,
-    const Scale::Key keyToUse,
-    // const Scale* scaleToUse,  // TODO remove?
-    double a4Frequency
+    const Scale::Tonic keyToUse,
+    double a4Freq
 )
-    : TemperamentSystem(a4Frequency)
-    , ratios(rationalIntervals)
-    , tonic(keyToUse)
-    // , scale(scaleToUse)
+    : TemperamentSystem(a4Freq)
+    , cachedRatios(rationalIntervals)
 {
-    // jassert(scaleToUse != nullptr && "Scale must not be null for RationalTuning");
-    jassert(ratios.size() == 12 && "RationalTuning must have exactly 12 intervals for the 12 semitones");
+    state.setProperty(IDs::type, "CustomRational", nullptr);
+    tonic.referTo(state, IDs::tonic, nullptr, keyToUse);
+    ratiosString.referTo(state, IDs::ratios, nullptr, getRatiosAsString(rationalIntervals));
+}
+
+RationalTuning::RationalTuning(const juce::ValueTree& initialState)
+    : TemperamentSystem(initialState)
+    , cachedRatios(getRatiosFromString(initialState.getProperty(IDs::ratios, "")))
+{
+    tonic.referTo(state, IDs::tonic, nullptr, Scale::Tonic::C);
+    ratiosString.referTo(state, IDs::ratios, nullptr);
 }
 
 TemperamentType RationalTuning::getType() const {
-    return TemperamentType::CustomRational;
+    return TemperamentType(state.getProperty(IDs::type, "CustomRational").toString().toStdString());
 }
 
 double RationalTuning::midiNoteToFrequency(int midiNote) const {
     // Implement custom rational tuning logic here
     auto octave = static_cast<int>(midiNote / 12 - 1); // MIDI note 0 is C-1, so octave starts at -1
     auto pitchClass = static_cast<int>(midiNote) % 12; // MIDI pitch class is the note within the octave (0-11)
-    auto noteIdx = pitchClass - static_cast<int>(tonic);
+    auto noteIdx = pitchClass - tonic.get();
     /*
     For example the key is C, note is A
     C  C# D  D# E  F  F# G  G# A  A# B
@@ -119,7 +158,7 @@ double RationalTuning::midiNoteToFrequency(int midiNote) const {
         //     << ", note index " << noteIdx
         // );
     }
-    auto ratio = ratios.at(size_t(noteIdx % 12));
+    auto ratio = cachedRatios.at(size_t(noteIdx % 12));
     auto tonicFrequency = getTonicFrequency(octave);
     // DBG("Ratio " << String(ratio)
     //     << ", tonic frequency " << tonicFrequency
@@ -216,10 +255,10 @@ bool RationalTuning::isDefined(int /*midiNote*/) const {
 }
 
 double RationalTuning::getTonicFrequency(int octave) const {
-    auto semitonesFromTonicToA = static_cast<int>(tonic) - static_cast<int>(Scale::Key::A);
-    auto ratio = ratios.at(size_t (std::abs(semitonesFromTonicToA)));
-    // DBG("Tonic " << static_cast<int>(tonic) << " frequency for octave " << octave
-    //     << ": semitones from tonic " << static_cast<int>(tonic) << " to A = " << semitonesFromTonicToA
+    auto semitonesFromTonicToA = tonic.get() - static_cast<int>(Scale::Tonic::A);
+    auto ratio = cachedRatios.at(size_t (std::abs(semitonesFromTonicToA)));
+    // DBG("Tonic " << tonic.get() << " frequency for octave " << octave
+    //     << ": semitones from tonic " << tonic.get() << " to A = " << semitonesFromTonicToA
     // );
     if (semitonesFromTonicToA < 0) {
         ratio.invert();
@@ -230,38 +269,75 @@ double RationalTuning::getTonicFrequency(int octave) const {
 }
 
 String RationalTuning::getDegreeRepresentation(int degree) const {
-    const auto& fraction = ratios.at(size_t(degree % 12));
+    const auto& fraction = cachedRatios.at(size_t(degree % 12));
     return String::formatted("%d:%d", fraction.getDenominator(), fraction.getNumerator());
+}
+
+void RationalTuning::setTonic(Scale::Tonic newKey) {
+    tonic = newKey;
+}
+
+Scale::Tonic RationalTuning::getTonic() const {
+    return tonic.get();
+}
+
+void RationalTuning::updateCachedRatios() {
+    cachedRatios = getRatiosFromString(ratiosString.get());
+}
+
+std::array<FractionNumber, 12> RationalTuning::getRatiosFromString(const juce::String& str) const {
+    std::array<FractionNumber, 12> result = {{
+        FractionNumber(1, 1), FractionNumber(1, 1), FractionNumber(1, 1), FractionNumber(1, 1),
+        FractionNumber(1, 1), FractionNumber(1, 1), FractionNumber(1, 1), FractionNumber(1, 1),
+        FractionNumber(1, 1), FractionNumber(1, 1), FractionNumber(1, 1), FractionNumber(1, 1)
+    }};
+
+    auto tokens = juce::StringArray::fromTokens(str, ",", "");
+
+    for (int i = 0; i < 12 && i < tokens.size(); ++i) {
+        auto parts = juce::StringArray::fromTokens(tokens[i], "/", "");
+        if (parts.size() == 2) {
+            int numerator = parts[0].getIntValue();
+            int denominator = parts[1].getIntValue();
+            result[static_cast<size_t>(i)] = FractionNumber(numerator, denominator);
+        } else {
+            result[static_cast<size_t>(i)] = FractionNumber(1, 1); // Default to unison if parsing fails
+        }
+    }
+
+    return result;
+}
+
+juce::String RationalTuning::getRatiosAsString(const std::array<FractionNumber, 12>& ratios) const {
+    juce::StringArray tokens;
+    for (const auto& ratio : ratios) {
+        tokens.add(String::formatted("%d/%d", ratio.getNumerator(), ratio.getDenominator()));
+    }
+    return tokens.joinIntoString(",");
 }
 
 
 // Just Intonation 5-limit tuning
-JustIntonation5Limit::JustIntonation5Limit(const Scale::Key tonicToUse, double a4Frequency)
-    : RationalTuning({
-        FractionNumber(1, 1),   // Unison
-        FractionNumber(16, 15), // Minor second
-        FractionNumber(9, 8),   // Major second
-        FractionNumber(6, 5),   // Minor third
-        FractionNumber(5, 4),   // Major third
-        FractionNumber(4, 3),   // Perfect fourth
-        FractionNumber(45, 32), // Augmented fourth / diminished fifth
-        FractionNumber(3, 2),   // Perfect fifth
-        FractionNumber(8, 5),   // Minor sixth
-        FractionNumber(5, 3),   // Major sixth
-        FractionNumber(16, 9),  // Minor seventh
-        FractionNumber(15, 8)   // Major seventh
-    }, tonicToUse, a4Frequency)
-{}
+JustIntonation5Limit::JustIntonation5Limit(const Scale::Tonic tonicToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
+    : RationalTuning(ratios, tonicToUse, a4Freq)
+{
+    state.setProperty(IDs::type, "Just5Limit", nullptr);
+}
+
+JustIntonation5Limit::JustIntonation5Limit(const juce::ValueTree& initialState)
+    : RationalTuning(initialState)
+{
+}
 
 TemperamentType JustIntonation5Limit::getType() const {
-    return TemperamentType::Just5Limit;
+    return TemperamentType(state.getProperty(IDs::type, "Just5Limit").toString().toStdString());
 }
 
 
 // standalone functions
 std::unique_ptr<TemperamentSystem> makeTemperamentSystem(
     TemperamentType type,
-    const Scale::Key tonic,
+    const Scale::Tonic tonic,
     double a4Frequency
 ) {
     switch (type) {
@@ -271,12 +347,64 @@ std::unique_ptr<TemperamentSystem> makeTemperamentSystem(
         case TemperamentTypeEnum::Just5Limit:
             return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency);
 
+        case TemperamentTypeEnum::Just5LimitT45_64: {
+            std::array<FractionNumber, 12> ratios = {
+                FractionNumber(1, 1),   // Unison
+                FractionNumber(16, 15), // Minor second
+                FractionNumber(9, 8),   // Major second
+                FractionNumber(6, 5),   // Minor third
+                FractionNumber(5, 4),   // Major third
+                FractionNumber(4, 3),   // Perfect fourth
+                FractionNumber(64, 45), // Diminished fifth
+                FractionNumber(3, 2),   // Perfect fifth
+                FractionNumber(8, 5),   // Minor sixth
+                FractionNumber(5, 3),   // Major sixth
+                FractionNumber(16, 9),  // Minor seventh
+                FractionNumber(15, 8)   // Major seventh
+            };
+            return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency, ratios);
+        }
+
+        case TemperamentTypeEnum::Pythagorean: {
+            std::array<FractionNumber, 12> ratios = {
+                FractionNumber(1, 1),     // Unison
+                FractionNumber(256, 243), // Minor second
+                FractionNumber(9, 8),     // Major second
+                FractionNumber(32, 27),   // Minor third
+                FractionNumber(81, 64),   // Major third
+                FractionNumber(4, 3),     // Perfect fourth
+                FractionNumber(729, 512), // Augmented fourth
+                FractionNumber(3, 2),     // Perfect fifth
+                FractionNumber(128, 81),  // Minor sixth
+                FractionNumber(27, 16),   // Major sixth
+                FractionNumber(16, 9),    // Minor seventh
+                FractionNumber(243, 128)  // Major seventh
+            };
+            return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency, ratios);
+        }
+
         // Add other temperament types here as needed
         case TemperamentTypeEnum::CustomRational:
         default:
             jassertfalse; // Unsupported temperament type
             return nullptr;
     }
+}
+
+std::unique_ptr<TemperamentSystem> makeTemperamentSystemFromState(const juce::ValueTree& state) {
+    auto typeString = state.getProperty(IDs::type, "EqualTemperament").toString();
+    TemperamentType type = TemperamentType(typeString.toStdString());
+
+    if (type == TemperamentType::EqualTemperament) {
+        return std::make_unique<EqualTemperamentTuning>(state);
+    } else if (type == TemperamentType::Just5Limit) {
+        return std::make_unique<JustIntonation5Limit>(state);
+    } else if (type == TemperamentType::CustomRational) {
+        return std::make_unique<RationalTuning>(state);
+    }
+
+    jassertfalse; // Unknown temperament type
+    return nullptr;
 }
 
 }

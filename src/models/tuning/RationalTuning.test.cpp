@@ -28,7 +28,7 @@ public:
 
         beginTest("Constructor with 7-limit tuning numbers");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::C};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::C};
 
             expectEquals(tuning.getA4Frequency(), 440.0, "Default A4 frequency should be 440.0 Hz");
             expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TemperamentType::CustomRational), "Tuning type should be CustomRational, got " + String(tuning.getType().getLabel().data()));
@@ -39,7 +39,7 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 440.0 Hz");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A};
 
             expectWithinAbsoluteError(tuning.getTonicFrequency(4), 440.0, 1e-6, "Tonic should be A4 = 440.0 Hz");
             expectWithinAbsoluteError(tuning.getTonicFrequency(5), 880.0, 1e-6, "Tonic should be A5 = 880.0 Hz");
@@ -48,14 +48,14 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 432.0 Hz");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 432.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 432.0};
 
             expectWithinAbsoluteError(tuning.getTonicFrequency(4), 432.0, 1e-6, "Tonic should be A4 = 432.0 Hz");
         }
 
         beginTest("Tonic to frequency conversion - A4 = 440.0 Hz, tonic is B");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::B};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::B};
 
             auto frequency = tuning.getTonicFrequency(4);
             // A->B is WT, ratio is 9:8, 440 * 9:8 = tonic
@@ -64,7 +64,7 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 440.0 Hz, tonic is C");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::C};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::C};
 
             auto frequency = tuning.getTonicFrequency(4);
             // C->A ratio is 5:3, tonic * 5:3 = 440, tonic = 440 * 3 / 5 = 264.0
@@ -73,7 +73,7 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 440.0 Hz, tonic is D#");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::DSharp};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::DSharp};
 
             auto frequency = tuning.getTonicFrequency(4);
             // ratio is 45:32, tonic * 45:32 = 440, tonic = 440 * 32 / 45 = 312.8888
@@ -82,7 +82,7 @@ public:
 
         beginTest("MIDI note to frequency conversion - A4, tonic is A");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A};
 
             double frequency = tuning.midiNoteToFrequency(69); // A4
             expectWithinAbsoluteError(frequency, 440.0, 1e-6, "A4 (MIDI 69) should be 440.0 Hz, got " + String(frequency));
@@ -90,7 +90,7 @@ public:
 
         beginTest("MIDI note to frequency conversion - C4, tonic is C");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::C};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::C};
 
             double frequency = tuning.midiNoteToFrequency(60); // C4
             // C to A is 3:5
@@ -99,7 +99,7 @@ public:
 
         beginTest("MIDI note to frequency conversion - C3, tonic is C");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::C};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::C};
 
             double frequency = tuning.midiNoteToFrequency(48); // C3
             // C to A is 3:5
@@ -108,7 +108,7 @@ public:
 
         beginTest("MIDI note to frequency conversion - A4, tonic is C");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::C};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::C};
 
             double frequency = tuning.midiNoteToFrequency(69); // A4
             expectWithinAbsoluteError(frequency, 440.0, 1e-6, "A4 (MIDI 69) should be 440.0 Hz, got " + String(frequency));
@@ -117,7 +117,7 @@ public:
         beginTest("MIDI note to frequency conversion - A4, any tonic");
         {
             for (int i = 0; i < 12; i++) {
-                auto tonic = static_cast<Scale::Key>(i);
+                auto tonic = static_cast<Scale::Tonic>(i);
                 RationalTuning tuning {justIntonationRatios, tonic};
                 DBG("\n\n======================== " << i << " =============================");
                 double frequency = tuning.midiNoteToFrequency(69); // A4
@@ -127,7 +127,7 @@ public:
 
         beginTest("MIDI note to frequency conversion - Middle C");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
             double frequency = tuning.midiNoteToFrequency(60); // Middle C
             // In just intonation, C to A is major sixth (5:3), so C = A / (5/3) = A * (3/5)
             double expectedFreq = 440.0 * 3.0 / 5.0;
@@ -136,7 +136,7 @@ public:
 
         beginTest("Fractional MIDI note to frequency conversion - Middle C+");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
             double frequency = tuning.midiNoteToFrequency(60.5); // Middle C plus quarter tone
             // In just intonation, C to A is major sixth (5:3), so C = A / (5/3) = A * (3/5)
             double expectedFreq1 = 440.0 * 3.0 / 5.0;
@@ -147,7 +147,7 @@ public:
 
         beginTest("MIDI note to frequency conversion - octave relationships");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
             double a4_freq = tuning.midiNoteToFrequency(69); // A4
             double a5_freq = tuning.midiNoteToFrequency(81); // A5 (one octave higher)
             double a3_freq = tuning.midiNoteToFrequency(57); // A3 (one octave lower)
@@ -158,7 +158,7 @@ public:
 
         beginTest("Frequency to MIDI note conversion - A4");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
             int a4lower = tuning.frequencyToNearestMidiNote(450.0, TemperamentSystem::NoteSearch::NextLower);
             expectEquals(a4lower, 69, "450.0 Hz should convert to MIDI note 69 (A4)");
 
@@ -174,7 +174,7 @@ public:
 
         beginTest("Frequency to MIDI note conversion - Middle C");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
             double middleCFreq = 440.0 * 3.0 / 5.0; // C to A is 5:3 in just intonation
             double midiNote = tuning.frequencyToMidiNote(middleCFreq);
             expectWithinAbsoluteError(midiNote, 60.0, 1e-3, "Middle C frequency should convert to MIDI note 60");
@@ -182,7 +182,7 @@ public:
 
         beginTest("Frequency to MIDI note conversion - Middle C quarter tone");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
             double middleCFreq = 269.444; // C+ is quarter tone above C
             double midiNote = tuning.frequencyToMidiNote(middleCFreq);
 
@@ -191,7 +191,7 @@ public:
 
         beginTest("Round-trip conversion accuracy");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
             for (double note = 21.0; note <= 108.0; note += 0.25) { // Test from A0 to A8
                 double frequency = tuning.midiNoteToFrequency(note);
                 double roundTripNote = tuning.frequencyToMidiNote(frequency);
@@ -202,7 +202,7 @@ public:
 
         beginTest("isDefined method - all notes should be defined");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
 
             // Test various MIDI note ranges
             expect(tuning.isDefined(0), "MIDI note 0 should be defined");
@@ -213,7 +213,7 @@ public:
 
         beginTest("A4 frequency setter");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
             tuning.setA4Frequency(432.0);
             expectWithinAbsoluteError(tuning.getA4Frequency(), 432.0, 1e-6, "A4 frequency should be updated to 432.0 Hz");
 
@@ -224,7 +224,7 @@ public:
 
         beginTest("getName method");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
             String name = tuning.getDescription();
             expect(name.contains("Rational"), "Name should contain 'Rational'");
             expect(name.contains("440.00"), "Name should contain A4 frequency");
@@ -232,7 +232,7 @@ public:
 
         beginTest("Edge case - very high and low frequencies");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
 
             // Test very low MIDI note
             double lowFreq = tuning.midiNoteToFrequency(0.0);
@@ -251,7 +251,7 @@ public:
 
         beginTest("Fractional MIDI notes");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Key::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
 
             // Test quarter-tone between A4 and A#4
             double quarterToneFreq = tuning.midiNoteToFrequency(69.5);
@@ -264,6 +264,101 @@ public:
             // Test round-trip accuracy for fractional note
             double roundTrip = tuning.frequencyToMidiNote(quarterToneFreq);
             expectWithinAbsoluteError(roundTrip, 69.5, 1e-6, "Round-trip for fractional MIDI note should be accurate");
+        }
+
+        beginTest("ValueTree state serialization - EqualTemperamentTuning");
+        {
+            auto equalTuning = std::make_unique<EqualTemperamentTuning>(442.0);
+
+            // Check that the actual frequency is correctly stored in the object
+            expectWithinAbsoluteError(equalTuning->getA4Frequency(), 442.0, 1e-6, "A4 frequency getter should return 442.0");
+
+            auto state = equalTuning->state;
+
+            expectEquals(state.getProperty("type").toString(), juce::String("EqualTemperament"), "Type should be EqualTemperament");
+            expectWithinAbsoluteError(static_cast<double>(state.getProperty("a4Frequency")), 442.0, 1e-6, "A4 frequency should be 442.0");
+        }
+
+        beginTest("ValueTree state serialization - JustIntonation5Limit");
+        {
+            auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Tonic::D, 434.0);
+            auto state = justTuning->state;
+
+            expectEquals(state.getProperty("type").toString(), juce::String("Just5Limit"), "Type should be Just5Limit");
+            expectWithinAbsoluteError(static_cast<double>(state.getProperty("a4Frequency")), 434.0, 1e-6, "A4 frequency should be 434.0");
+            expectEquals(static_cast<int>(state.getProperty("tonic")), static_cast<int>(Scale::Tonic::D), "Tonic should be D");
+            expect(state.getProperty("ratios").toString().isNotEmpty(), "Ratios should be serialized");
+        }
+
+        beginTest("ValueTree state serialization - RationalTuning");
+        {
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::F, 436.0};
+            auto state = tuning.state;
+
+            expectEquals(state.getProperty("type").toString(), juce::String("CustomRational"), "Type should be CustomRational");
+            expectWithinAbsoluteError(static_cast<double>(state.getProperty("a4Frequency")), 436.0, 1e-6, "A4 frequency should be 436.0");
+            expectEquals(static_cast<int>(state.getProperty("tonic")), static_cast<int>(Scale::Tonic::F), "Tonic should be F");
+            expect(state.getProperty("ratios").toString().isNotEmpty(), "Ratios should be serialized");
+        }
+
+        beginTest("ValueTree state deserialization - factory function");
+        {
+            auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Tonic::D, 434.0);
+            auto state = justTuning->state;
+
+            auto recreatedSystem = makeTemperamentSystemFromState(state);
+            expect(recreatedSystem != nullptr, "Factory should create system from state");
+
+            expectEquals(recreatedSystem->getTypeName(), juce::String("5-Limit Just Intonation"), "Recreated system type should match");
+            expectWithinAbsoluteError(recreatedSystem->getA4Frequency(), 434.0, 1e-6, "Recreated A4 frequency should match");
+            expectEquals(static_cast<int>(recreatedSystem->getTonic()), static_cast<int>(Scale::Tonic::D), "Recreated root should match");
+        }
+
+        beginTest("CachedValue property updates");
+        {
+            auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0);
+
+            // Update A4 frequency
+            justTuning->setA4Frequency(432.0);
+            auto state = justTuning->state;
+            expectWithinAbsoluteError(static_cast<double>(state.getProperty("a4Frequency")), 432.0, 1e-6, "Updated A4 frequency should be reflected in state");
+
+            // Update root
+            justTuning->setTonic(Scale::Tonic::G);
+            state = justTuning->state;
+            expectEquals(static_cast<int>(state.getProperty("tonic")), static_cast<int>(Scale::Tonic::G), "Updated tonic should be reflected in state");
+        }
+
+        beginTest("ValueTree state consistency - round-trip");
+        {
+            // Create original tuning
+            auto original = std::make_unique<JustIntonation5Limit>(Scale::Tonic::E, 438.0);
+            auto originalState = original->state;
+
+            // Create system from state
+            auto recreated = makeTemperamentSystemFromState(originalState);
+            auto recreatedState = recreated->state;
+
+            // Compare states
+            expectEquals(originalState.getProperty("type").toString(), recreatedState.getProperty("type").toString(), "Type should match after round-trip");
+            expectWithinAbsoluteError(static_cast<double>(originalState.getProperty("a4Frequency")),
+                                     static_cast<double>(recreatedState.getProperty("a4Frequency")), 1e-6, "A4 frequency should match after round-trip");
+            expectEquals(static_cast<int>(originalState.getProperty("tonic")),
+                        static_cast<int>(recreatedState.getProperty("tonic")), "Tonic should match after round-trip");
+            expectEquals(originalState.getProperty("ratios").toString(),
+                        recreatedState.getProperty("ratios").toString(), "Ratios should match after round-trip");
+        }
+
+        beginTest("ValueTree state - EqualTemperament deserialization");
+        {
+            auto original = std::make_unique<EqualTemperamentTuning>(444.0);
+            auto state = original->state;
+
+            auto recreated = makeTemperamentSystemFromState(state);
+            expect(recreated != nullptr, "Factory should create EqualTemperament from state");
+
+            expectEquals(recreated->getTypeName(), juce::String("Equal Temperament"), "Recreated system should be EqualTemperament");
+            expectWithinAbsoluteError(recreated->getA4Frequency(), 444.0, 1e-6, "Recreated A4 frequency should match");
         }
     }
 };

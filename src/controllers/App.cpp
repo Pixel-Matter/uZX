@@ -1,14 +1,28 @@
 #include "App.h"
+#include "TuningController.h"
 
 namespace MoTool {
 
 MoToolApp::MoToolApp()
 {
     juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel_);
-    controller_.setMainWindowTitle(getWindowTitle());
+    switch (target_) {
+        case Target::Main:
+            controller_ = std::make_unique<MainController>();
+            break;
+        case Target::Tuning:
+            controller_ = std::make_unique<TuningController>();
+            break;
+    }
+    controller_->initialize();
+    controller_->setMainWindowTitle(getWindowTitle());
 }
 
 const String MoToolApp::getApplicationFancyName() const {
+    // TODO to controller
+    if (getTarget() == Target::Tuning) {
+        return CharPointer_UTF8("Pixel Matter μZX Tuning");
+    }
     return CharPointer_UTF8("Pixel Matter μZX");
 }
 
@@ -43,8 +57,13 @@ MoToolApp& MoToolApp::getApp() {
     return *dynamic_cast<MoToolApp*>(JUCEApplication::getInstance());
 }
 
-MainController& MoToolApp::getController() {
-    return getApp().controller_;
+BaseController& MoToolApp::getController() {
+    return *getApp().controller_;
 }
+
+MoToolApp::Target MoToolApp::getTarget() {
+    return target_;
+}
+
 
 } // namespace MoTool

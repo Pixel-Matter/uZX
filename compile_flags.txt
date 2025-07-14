@@ -1,1 +1,9 @@
--I /Users/ruguevara/projects/MoTool/src/tracktion_juce_all_includes.h
+-std=gnu++2b
+-DDEBUG=1
+-DJUCE_STANDALONE_APPLICATION=1
+-I build/src/uZX_artefacts/JuceLibraryCode
+-I build/src/uZXTuning_artefacts/JuceLibraryCode
+-I third_party/tracktion_engine/modules
+-I third_party/tracktion_engine/modules/juce/modules
+-I third_party/tracktion_engine/examples
+-I third_party/ayumi

@@ -1,6 +1,6 @@
 #include "Transport.h"
 
-#include "../../controllers/Commands.h"
+#include "../../controllers/MainCommands.h"
 #include "../../models/Timecode.h"
 
 #include <common/Utilities.h>
@@ -28,15 +28,15 @@ TransportBar::TransportBar(te::Edit& edit)
         &masterVolumeSlider_
     });
     if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
-        rewindButton_.setCommandToTrigger(mgr, AppCommands::transportToStart, true);
-        playPauseButton_.setCommandToTrigger(mgr, AppCommands::transportPlay, true);
+        rewindButton_.setCommandToTrigger(mgr, MainAppCommands::transportToStart, true);
+        playPauseButton_.setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);
     }
     recordButton_.onClick = [this] {
         bool wasRecording = edit_.getTransport().isRecording();
         if (!wasRecording) {
-            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRecord, false);
+            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(MainAppCommands::transportRecord, false);
         } else {
-            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(AppCommands::transportRecordStop, false);
+            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(MainAppCommands::transportRecordStop, false);
         }
     };
     updatePlayButtonText(transport_.isPlaying());

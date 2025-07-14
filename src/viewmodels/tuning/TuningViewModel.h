@@ -9,6 +9,8 @@
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../../util/convert.h"
 #include "../../controllers/ParamAttachments.h"
+#include "juce_core/system/juce_PlatformDefs.h"
+#include "tracktion_engine/tracktion_engine.h"
 
 #include <cmath>
 #include <array>
@@ -28,27 +30,24 @@ enum class NoteGridHeadingType {
 struct EnvShapeSimpleEnum {
     enum Enum {
         Triangle,
-        Sawtooth1,
-        Sawtooth2
+        Sawtooth,
     };
 
     static inline constexpr std::string_view longLabels[] {
         "Triangle",
-        "Sawtooth 1",
-        "Sawtooth 2"
+        "Sawtooth",
     };
 
     static inline constexpr std::string_view shortLabels[] {
         "Tri",
-        "Saw1",
-        "Saw2"
+        "Saw"
     };
 };
 
 using EnvShapeChoice = Util::EnumChoice<EnvShapeSimpleEnum>;
 
 
-struct EnvModeEnum {
+struct ModulationEnum {
     enum Enum {
         Unison,
         OctaveDown,
@@ -60,13 +59,13 @@ struct EnvModeEnum {
     };
 
     static inline constexpr std::string_view longLabels[] {
-        "Unison",
-        "Octave Down",
-        "Octave Up",
-        "Fifth Down",
-        "Fifth Up",
-        "Forth Down",
-        "Forth Up"
+        "0 Unison",
+        "-12 Octave Down",
+        "+12 Octave Up",
+        "-7 Fifth Down",
+        "+7 Fifth Up",
+        "-5 Forth Down",
+        "+5 Forth Up"
     };
 
     static inline constexpr std::string_view shortLabels[] {
@@ -79,7 +78,7 @@ struct EnvModeEnum {
         "+5"
     };
 
-    static inline constexpr int intervals[] {
+    static inline constexpr int semitones[] {
         0,
         -12,
         +12,
@@ -90,7 +89,7 @@ struct EnvModeEnum {
     };
 };
 
-using EnvModeChoice = Util::EnumChoice<EnvModeEnum>;
+using EnvIntervalChoice = Util::EnumChoice<ModulationEnum>;
 
 
 struct TuningNoteName {
@@ -194,6 +193,7 @@ struct TuningNote {
 namespace IDs {
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(TUNINGVIEWSTATE)
+    DECLARE_ID(temperament)
     DECLARE_ID(tuningTable)
     DECLARE_ID(chipClock)
     DECLARE_ID(key)
@@ -205,38 +205,45 @@ namespace IDs {
     DECLARE_ID(playEnvelope)
     DECLARE_ID(envelopeShape)
     DECLARE_ID(envelopeMode)
+    DECLARE_ID(retriggerTone)
 
     #undef DECLARE_ID
 }
 
-class TuningViewModel : public ChangeBroadcaster, private Value::Listener {
+class TuningViewModel : public ChangeBroadcaster,
+                        private Value::Listener
+{
 public:
     // Any UI component can now listen to tuning system changes by implementing ChangeListener
     // and calling viewModel.addChangeListener(this) in their constructor
-    TuningViewModel(UndoManager* um = nullptr)
+    TuningViewModel(te::Edit& ed)
         : transientState(IDs::TUNINGVIEWSTATE)
-        , undoManager(um)
-                                                                 // no undo for this control
-        , selectedTuningTable(transientState, IDs::tuningTable,  nullptr, BuiltinTuningType::EqualTemperament)
-        , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), um, ChipClockChoice::ZX_Spectrum_1_77_MHz)
-        , selectedRoot       (transientState, IDs::key,          Scale::getAllKeyNames(),          um, Scale::Key::C)
-        , selectedScale      (transientState, IDs::scale,                                          um, Scale::ScaleType::IonianOrMajor)
-        , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              um, 440.0)
-        , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                um, 1.7734) // MHz
-
-        , playChords         (transientState, IDs::playChords,                                     um, false)
-        , playTone           (transientState, IDs::playTone,                                       um, true)
-        , playEnvelope       (transientState, IDs::playEnvelope,                                   um, false)
-        , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), um, EnvShapeSimpleEnum::Triangle)
-        , envelopeMode       (transientState, IDs::envelopeMode,  EnvModeChoice::getLongLabels(),  um, EnvModeEnum::Unison)
-
+        , edit(ed)
+        , undoManager(edit.getUndoManager())
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
+                                                                 // no undo for this control
+        , selectedTemperament(transientState, IDs::temperament,  TemperamentType::getLongLabels(), &undoManager, TemperamentType::EqualTemperament)
+        , selectedTuningTable(transientState, IDs::tuningTable,                               nullptr, BuiltinTuningType::EqualTemperament)
+        , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), &undoManager, ChipClockChoice::ZX_Spectrum_1_77_MHz)
+        , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         &undoManager, Scale::Tonic::C)
+        , selectedScale      (transientState, IDs::scale,                                          &undoManager, Scale::ScaleType::IonianOrMajor)
+        , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              &undoManager, 440.0, "Hz")
+        , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                &undoManager, 1.7734, "MHz")
+
+        , playChords         (transientState, IDs::playChords,                                     &undoManager, false)
+        , playTone           (transientState, IDs::playTone,                                       &undoManager, true)
+        , playEnvelope       (transientState, IDs::playEnvelope,                                   &undoManager, false)
+        , retriggerTone      (transientState, IDs::retriggerTone,                                  &undoManager, false)
+        , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), &undoManager, EnvShapeSimpleEnum::Triangle)
+        , envIntervalChoice  (transientState, IDs::envelopeMode,  EnvIntervalChoice::getLongLabels(), &undoManager, ModulationEnum::Unison)
+
     {
         // Set up Value listeners for bidirectional sync
+        selectedTemperament.addListener(this);
         selectedTuningTable.addListener(this);
         selectedChip.addListener(this);
-        selectedRoot.addListener(this);
+        selectedTonic.addListener(this);
         selectedScale.addListener(this);
         a4Frequency.addListener(this);
         clockFrequencyMhz.addListener(this);
@@ -253,6 +260,10 @@ public:
         recreateTuningSystem();
     }
 
+    te::Edit& getEdit() const {
+        return edit;
+    }
+
     std::vector<TuningNoteName> getColumnNoteNames() const {
         std::vector<TuningNoteName> noteNames;
         noteNames.reserve(12);
@@ -263,14 +274,14 @@ public:
         auto refTuning = tuningSystem ? tuningSystem->getReferenceTuning() : nullptr;
 
         // Build the result
-        const auto keyIdx = static_cast<int>(getCurrentRoot());
+        const auto keyIdx = static_cast<int>(getCurrentTonic());
         for (int i = 0; i < 12; ++i) {
             const int semitonesFromKey = (i - keyIdx + 12) % 12;
             noteNames.emplace_back(
                 i,
                 scale.isIntervalInScale(semitonesFromKey),
                 // scaleNotes.count(i) > 0,  // isInScale
-                Scale::getKeyName(Scale::Key(i)),
+                Scale::getTonicName(Scale::Tonic(i)),
                 scaleChromDegrees[(size_t) semitonesFromKey],
                 refTuning ? refTuning->getDegreeRepresentation(semitonesFromKey) : String(),
                 semitonesFromKey == 0 // isRootNote
@@ -285,7 +296,6 @@ public:
     }
 
     Range<int> getOctaveRange() const {
-        // TODO depends on divider, for envelope use -1, 9
         return Range<int>(0, 10);
     }
 
@@ -330,76 +340,74 @@ public:
         return notes;
     }
 
-    // get values in the range -0.5...0.5 representing offtunes of all periods around this note
-    std::vector<double> getTicksAroundNote(const TuningNote& note) const {
-        jassert(tuningSystem != nullptr);
-        std::vector<double> ticks;
-        auto lowerNote = (double) note.midiNote - 0.5f;
-        auto mode = getCurrentPeriodMode();
-        DBG("Current mode: " << static_cast<size_t>(mode));
-        // TODO use chip capabilities to calc periods
-        auto upperPeriod = tuningSystem->midiNoteToPeriod(lowerNote, mode);
-        auto actualLowerNote = tuningSystem->periodToMidiNote(upperPeriod, mode);
-        if (actualLowerNote > (double) note.midiNote + 0.5f) {
-            return ticks; // No ticks available
-        }
-        if (actualLowerNote < (double) note.midiNote - 0.5f) {
-            --upperPeriod;
-        }
-        auto upperNote = (double) note.midiNote + 0.5f;
-        auto lowerPeriod = tuningSystem->midiNoteToPeriod(upperNote, mode);
+    // // get values in the range -0.5...0.5 representing offtunes of all periods around this note
+    // std::vector<double> getTicksAroundNote(const TuningNote& note) const {
+    //     jassert(tuningSystem != nullptr);
+    //     std::vector<double> ticks;
+    //     auto lowerNote = (double) note.midiNote - 0.5f;
+    //     auto mode = getCurrentPeriodMode();
+    //     DBG("Current mode: " << static_cast<size_t>(mode));
+    //     // TODO use chip capabilities to calc periods
+    //     auto upperPeriod = tuningSystem->midiNoteToPeriod(lowerNote, mode);
+    //     auto actualLowerNote = tuningSystem->periodToMidiNote(upperPeriod, mode);
+    //     if (actualLowerNote > (double) note.midiNote + 0.5f) {
+    //         return ticks; // No ticks available
+    //     }
+    //     if (actualLowerNote < (double) note.midiNote - 0.5f) {
+    //         --upperPeriod;
+    //     }
+    //     auto upperNote = (double) note.midiNote + 0.5f;
+    //     auto lowerPeriod = tuningSystem->midiNoteToPeriod(upperNote, mode);
 
-        auto actualUpperNote = tuningSystem->periodToMidiNote(lowerPeriod, mode);
-        if (actualUpperNote < (double) note.midiNote - 0.5f) {
-            return ticks; // No ticks available
-        }
-        if (actualUpperNote > (double) note.midiNote + 0.5f) {
-            ++lowerPeriod;
-        }
-        auto ticksNum = upperPeriod - lowerPeriod + 1;
-        if (ticksNum <= 0) {
-            return ticks; // No ticks available
-        }
-        // find suitable step for power of 10
-        auto step = std::log2(ticksNum);
-        if (step < 0.0) {
-            step = std::pow(10.0, std::ceil(step));
-        } else {
-            step = std::pow(10.0, std::floor(step));
-        }
-        // // DBG("Ticks around note " << note.name
-        //     << ": lowerPeriod = " << lowerPeriod
-        //     << ", upperPeriod = " << upperPeriod
-        //     << ", note = " << note.midiNote
-        //     << ", actualLowerNote = " << actualLowerNote
-        //     << ", actualUpperNote = " << actualUpperNote
-        //     << ", ticksNum = " << ticksNum
-        //     << ", step = " << step);
-        ticks.reserve(static_cast<size_t>(ticksNum));
-        int intStep = static_cast<int>(step);
-        for (int p = upperPeriod; p >= lowerPeriod; p -= intStep) {
-            auto n = tuningSystem->periodToMidiNote(p, mode);
-            ticks.push_back(n - note.midiNote);
-            // // DBG("Tick for period " << p << ": note = " << n << ", offtune = " << (n - note.midiNote));
-        }
-        return ticks;
-    }
+    //     auto actualUpperNote = tuningSystem->periodToMidiNote(lowerPeriod, mode);
+    //     if (actualUpperNote < (double) note.midiNote - 0.5f) {
+    //         return ticks; // No ticks available
+    //     }
+    //     if (actualUpperNote > (double) note.midiNote + 0.5f) {
+    //         ++lowerPeriod;
+    //     }
+    //     auto ticksNum = upperPeriod - lowerPeriod + 1;
+    //     if (ticksNum <= 0) {
+    //         return ticks; // No ticks available
+    //     }
+    //     // find suitable step for power of 10
+    //     auto step = std::log2(ticksNum);
+    //     if (step < 0.0) {
+    //         step = std::pow(10.0, std::ceil(step));
+    //     } else {
+    //         step = std::pow(10.0, std::floor(step));
+    //     }
+    //     // // DBG("Ticks around note " << note.name
+    //     //     << ": lowerPeriod = " << lowerPeriod
+    //     //     << ", upperPeriod = " << upperPeriod
+    //     //     << ", note = " << note.midiNote
+    //     //     << ", actualLowerNote = " << actualLowerNote
+    //     //     << ", actualUpperNote = " << actualUpperNote
+    //     //     << ", ticksNum = " << ticksNum
+    //     //     << ", step = " << step);
+    //     ticks.reserve(static_cast<size_t>(ticksNum));
+    //     int intStep = static_cast<int>(step);
+    //     for (int p = upperPeriod; p >= lowerPeriod; p -= intStep) {
+    //         auto n = tuningSystem->periodToMidiNote(p, mode);
+    //         ticks.push_back(n - note.midiNote);
+    //         // // DBG("Tick for period " << p << ": note = " << n << ", offtune = " << (n - note.midiNote));
+    //     }
+    //     return ticks;
+    // }
 
+    // used in tests
     String getScaleName() const {
-        return Scale::getKeyName(getCurrentRoot()) + " " + Scale(getCurrentScaleType()).getName();
+        return Scale::getTonicName(getCurrentTonic()) + " " + Scale(getCurrentScaleType()).getName();
     }
 
-    String getTuningTypeName() const {
-        return tuningSystem ? String(std::string(tuningSystem->getType().getLabel())) : "Unknown tuning system type";
-    }
+    // String getTuningTypeName() const {
+    //     return tuningSystem ? String(std::string(tuningSystem->getType().getLabel())) : "Unknown tuning system type";
+    // }
 
     String getTuningDescription() const {
         return tuningSystem ? tuningSystem->getDescription() : "Default tuning";
     }
 
-    Range<int> getChipDividerRange() const {
-        return toneCapabilities.registerRange;
-    }
 
     Scale::ScaleType getCurrentScaleType() const {
         auto scaleType = selectedScale.get();
@@ -419,11 +427,11 @@ public:
         std::vector<int> result;
         result.reserve(scale.getIntervals().size() + (includeOctave ? 1 : 0));
         for (const auto& interval : scale.getIntervals()) {
-            int noteNumber = static_cast<int>(getCurrentRoot()) + interval + (octave + 1) * 12;
+            int noteNumber = static_cast<int>(getCurrentTonic()) + interval + (octave + 1) * 12;
             result.push_back(noteNumber);
         }
         if (includeOctave) {
-            result.push_back(static_cast<int>(getCurrentRoot()) + (octave + 2) * 12);
+            result.push_back(static_cast<int>(getCurrentTonic()) + (octave + 2) * 12);
         }
         return result;
     }
@@ -436,7 +444,7 @@ public:
         // (midiNote % 12) = 2, root = 4
         // startInterval = 10
         // rootMidiNote = E3
-        int root = static_cast<int>(getCurrentRoot());
+        int root = static_cast<int>(getCurrentTonic());
         int startInterval = ((midiNote % 12) - root + 12) % 12;
         int rootMidiNote = midiNote - startInterval;
 
@@ -460,28 +468,25 @@ public:
     }
 
     void setCurrentScaleType(Scale::ScaleType scaleType) {
-        // DBG("setCurrentScaleType: " << Scale::getNameForType(scaleType));
         selectedScale = scaleType;
         // TODO double update after assigning to scaleIndex1?
         currentScale = Scale(scaleType); // Update cache
         // no need to update tuning system scale
-        // DBG("setCurrentScaleType sendChangeMessage");
         sendChangeMessage();
     }
 
-    Scale::Key getCurrentRoot() const {
-        return selectedRoot.get();
+    Scale::Tonic getCurrentTonic() const {
+        return selectedTonic.get();
     }
 
-    void setCurrentRoot(Scale::Key root) {
-        // DBG("setCurrentKey: " << Scale::getKeyName(key));
-        selectedRoot = root;
+    void setCurrentTonic(Scale::Tonic tonic) {
+        selectedTonic = tonic;
         // TODO double update after assigning to keyIndex1?
-        tuningSystem->setRoot(root); // Update tuning system tonic
-        // DBG("setCurrentKey sendChangeMessage");
+        tuningSystem->setRoot(tonic); // Update tuning system tonic
         sendChangeMessage();
     }
 
+    // used in tests only
     static StringArray getScaleTypeNames() {
         StringArray names;
         for (auto scaleType : Scale::getAllScaleTypes()) {
@@ -505,19 +510,19 @@ public:
         return toStringArray(BuiltinTuningType::getLongLabels());
     }
 
-    ChipClockChoice getChipChoice() const {
-        return selectedChip.get();
-    }
+    // ChipClockChoice getChipChoice() const {
+    //     return selectedChip.get();
+    // }
 
     // Not used yet
-    void setChipChoice(ChipClockChoice clockChoice) {
-        // DBG("setChipChoice: " << clockChoice.getLongLabel().data());
-        selectedChip = clockChoice;
-        clockFrequencyMhz = clockChoice.getClockValue() / MHz; // Store as MHz
-        tuningSystem->setClockFrequency(clockChoice.getClockValue()); // Update tuning system clock frequency
-        // DBG("setChipChoice sendChangeMessage");
-        sendChangeMessage();
-    }
+    // void setChipChoice(ChipClockChoice clockChoice) {
+    //     // DBG("setChipChoice: " << clockChoice.getLongLabel().data());
+    //     selectedChip = clockChoice;
+    //     clockFrequencyMhz = clockChoice.getClockValue() / MHz; // Store as MHz
+    //     tuningSystem->setClockFrequency(clockChoice.getClockValue()); // Update tuning system clock frequency
+    //     // DBG("setChipChoice sendChangeMessage");
+    //     sendChangeMessage();
+    // }
 
     // used in tests only
     void setA4Frequency(double frequency) {
@@ -531,18 +536,22 @@ public:
     }
 
     // Not used yet
-    void setClockFrequency(double frequency) {
-        // DBG("setClockFrequencyHz: " << frequency);
-        if (frequency >= 1.0 * MHz && frequency <= 2.0 * MHz) {
-            clockFrequencyMhz = frequency / MHz; // Store as MHz
-            tuningSystem->setClockFrequency(frequency);
-            // DBG("setClockFrequencyHz sendChangeMessage");
-            sendChangeMessage();
-        }
-    }
+    // void setClockFrequency(double frequency) {
+    //     // DBG("setClockFrequencyHz: " << frequency);
+    //     if (frequency >= 1.0 * MHz && frequency <= 2.0 * MHz) {
+    //         clockFrequencyMhz = frequency / MHz; // Store as MHz
+    //         tuningSystem->setClockFrequency(frequency);
+    //         // DBG("setClockFrequencyHz sendChangeMessage");
+    //         sendChangeMessage();
+    //     }
+    // }
 
     bool isCustomClockEnabled() const {
-        return getChipChoice() == ChipClockChoice::Custom;
+        return selectedChip.get() == ChipClockChoice::Custom;
+    }
+
+    bool isToneEnabled() const {
+        return playTone.get();
     }
 
     bool isEnvelopeEnabled() const {
@@ -551,24 +560,24 @@ public:
 
     bool isEnvelopePeriodsShown() const {
         // Envelope periods are shown only if envelope is enabled and playTone is not
-        return playEnvelope.get() && !playTone.get();
+        return playEnvelope.get();
+    }
+
+    bool isModulationEnabled() const {
+        // Envelope modulation is enabled when both tone and envelope are enabled
+        return playTone.get() && playEnvelope.get();
+    }
+
+    int getEnvelopeInterval() const {
+        // Get the modulation semitones based on the current modulation mode
+        if (!isToneEnabled() || !isEnvelopeEnabled()) {
+            return 0; // No modulation if tone or envelope is not enabled
+        }
+        return ModulationEnum::semitones[static_cast<size_t>(envIntervalChoice.get())];
     }
 
     TuningSystem::PeriodMode getCurrentPeriodMode() const {
         return isEnvelopePeriodsShown() ? TuningSystem::Envelope : TuningSystem::Tone;
-    }
-
-    void updatePlayState() {
-        if (playChords.get()) {
-            playTone = true;
-            playEnvelope = false; // Disable envelope playback when chords are played
-        } else if (!playTone.get() && !playEnvelope.get()) {
-            // If both playTone and playEnvelope are false, enable playTone
-            playTone = true;
-        } else if (isEnvelopePeriodsShown()) {
-            playChords = false; // Disable chords playback when envelope periods are shown
-        }
-        sendChangeMessage(); // Notify listeners about the state change
     }
 
     String exportToCSV() const {
@@ -655,35 +664,18 @@ public:
         return filename;
     }
 
-    //-------------------------------------------------------------------------
-private:
-    // Transient view state
-    ValueTree transientState;
-    // te::Edit edit;             // Edit for undo/redo support, and for previewing tuning
-    UndoManager* undoManager;
-
-public:
-    // ParamAttachment objects - single source of truth for all persisted types
-    ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
-    ChoiceParamAttachment<ChipClockChoice>   selectedChip;
-    ChoiceParamAttachment<Scale::Key>        selectedRoot;
-    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
-    RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
-    RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
-    // Play modes
-    ParamAttachment<bool>                    playChords; // Instead of individual notes
-    ParamAttachment<bool>                    playTone;
-    ParamAttachment<bool>                    playEnvelope;
-    ChoiceParamAttachment<EnvShapeChoice>    envelopeShape;
-    ChoiceParamAttachment<EnvModeChoice>     envelopeMode;
+    EnvShape getEnvelopeShape() const {
+        switch (envelopeShape.get()) {
+            case EnvShapeSimpleEnum::Triangle:
+                return EnvShape::UP_DOWN_E;
+            case EnvShapeSimpleEnum::Sawtooth:
+                return EnvShape::UP_UP_C;
+            default:
+                return EnvShape::UP_DOWN_E; // Default to Triangle if unknown
+        }
+    }
 
 private:
-    // Cached objects derived from values (performance optimization) - only for complex conversions
-    mutable Scale currentScale;            // Scale object cache
-    ChipCapabilities toneCapabilities; // Chip capabilities for the tuning system
-    ChipCapabilities envCapabilities; // Chip capabilities for the envelope
-    std::unique_ptr<TuningSystem> tuningSystem;
-
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
         if (value.refersToSameSourceAs(selectedScale.getValue())) {
@@ -697,9 +689,9 @@ private:
                 // DBG("Scale changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        } else if (value.refersToSameSourceAs(selectedRoot.getValue())) {
+        } else if (value.refersToSameSourceAs(selectedTonic.getValue())) {
             // DBG("Root changed from valueChanged");
-            tuningSystem->setRoot(getCurrentRoot());
+            tuningSystem->setRoot(getCurrentTonic());
             // DBG("Root changed from valueChanged sendChangeMessage");
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(a4Frequency.getValue())) {
@@ -732,6 +724,9 @@ private:
             // if chip == ChipClockChoice::Custom we should send change message too
             // DBG("chipIndex0 changed from valueChanged sendChangeMessage");
             sendChangeMessage();
+        } else if (value.refersToSameSourceAs(selectedTemperament.getValue())) {
+            updateReferenceTuning();
+            sendChangeMessage();
         } else if (value.refersToSameSourceAs(selectedTuningTable.getValue())) {
             // DBG("Tuning table index changed from valueChanged: " << static_cast<int>(value.getValue()));
             recreateTuningSystem(); // Reset to tuning defaults when changing tuning table
@@ -757,8 +752,8 @@ private:
 
         TuningOptions options {
             .tableType = tuningType,
-            .temperamentType = TemperamentType::EqualTemperament, // TODO from view property
-            .tonic = getCurrentRoot(),
+            .temperamentType = selectedTemperament.get(),
+            .tonic = getCurrentTonic(),
             .scaleType = getCurrentScaleType(),
             .chipChoice = selectedChip.get(),
             .chipClock = clockFrequencyMhz.get() * MHz,
@@ -769,7 +764,8 @@ private:
 
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
-            selectedRoot = options.tonic;
+            selectedTemperament = tuningSystem->getReferenceTuning()->getType();
+            selectedTonic = options.tonic;
             selectedScale = options.scaleType;
             selectedChip = options.chipChoice;
             clockFrequencyMhz = options.chipClock / MHz; // Convert Hz to MHz
@@ -777,24 +773,71 @@ private:
         }
     }
 
+    void updateReferenceTuning() {
+        if (tuningSystem) {
+            tuningSystem->setReferenceTuning(makeTemperamentSystem(
+                selectedTemperament.get(),
+                getCurrentTonic(),
+                a4Frequency.get()
+        ));
+        }
+    }
+
+    void updatePlayState() {
+        if (playChords.get() && !playTone.get()) {
+            playTone = true;
+        } else if (!playTone.get() && !playEnvelope.get()) {
+            // If both playTone and playEnvelope are false, enable playTone
+            playTone = true;
+        }
+        sendChangeMessage(); // Notify listeners about the state change
+    }
+
     // Helper methods
     // Helper method for finding best matching clock preset
 
-    int findBestMatchingClockPreset(double frequency) {
-        int bestMatch = static_cast<int>(ChipClockEnum::Custom); // Default to Custom
-        double bestDiff = std::numeric_limits<double>::max();
+    // int findBestMatchingClockPreset(double frequency) {
+    //     int bestMatch = static_cast<int>(ChipClockEnum::Custom); // Default to Custom
+    //     double bestDiff = std::numeric_limits<double>::max();
 
-        for (int i = 0; i < static_cast<int>(ChipClockEnum::Custom); ++i) {
-            double presetFreq = ChipClockEnum::clockValues[i];
-            double diff = std::abs(frequency - presetFreq);
-            if (diff < bestDiff && diff < 1000.0) { // Within 1kHz tolerance
-                bestMatch = i;
-                bestDiff = diff;
-            }
-        }
+    //     for (int i = 0; i < static_cast<int>(ChipClockEnum::Custom); ++i) {
+    //         double presetFreq = ChipClockEnum::clockValues[i];
+    //         double diff = std::abs(frequency - presetFreq);
+    //         if (diff < bestDiff && diff < 1000.0) { // Within 1kHz tolerance
+    //             bestMatch = i;
+    //             bestDiff = diff;
+    //         }
+    //     }
 
-        return bestMatch;
-    }
+    //     return bestMatch;
+    // }
+    //-------------------------------------------------------------------------
+private:
+    // Transient view state
+    ValueTree transientState;
+    te::Edit& edit;
+    UndoManager& undoManager; // Undo manager reference for ParamAttachments
+
+    // Cached objects derived from values (performance optimization) - only for complex conversions
+    mutable Scale currentScale;            // Scale object cache
+    std::unique_ptr<TuningSystem> tuningSystem;
+
+public:
+    // ParamAttachment objects - single source of truth for all persisted types
+    ChoiceParamAttachment<TemperamentType>   selectedTemperament; // Equal, Just, Pythagorean, etc.
+    ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
+    ChoiceParamAttachment<ChipClockChoice>   selectedChip;
+    ChoiceParamAttachment<Scale::Tonic>      selectedTonic;
+    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
+    RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
+    RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
+    // Play modes
+    ParamAttachment<bool>                    playChords; // Instead of individual notes
+    ParamAttachment<bool>                    playTone;
+    ParamAttachment<bool>                    playEnvelope;
+    ParamAttachment<bool>                    retriggerTone;
+    ChoiceParamAttachment<EnvShapeChoice>    envelopeShape;
+    ChoiceParamAttachment<EnvIntervalChoice> envIntervalChoice;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };
@@ -811,7 +854,7 @@ template <>
 struct VariantConverter<EnvShapeChoice> : public EnumVariantConverter<EnvShapeChoice> {};
 
 template <>
-struct VariantConverter<EnvModeChoice> : public EnumVariantConverter<EnvModeChoice> {};
+struct VariantConverter<EnvIntervalChoice> : public EnumVariantConverter<EnvIntervalChoice> {};
 
 
 }  // namespace juce

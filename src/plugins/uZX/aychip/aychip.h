@@ -64,7 +64,7 @@ struct ChipClockEnum {
         "Amstrad 1 MHz",
         "Vectrex 1.5 MHz",
         "Atari ST 2 MHz",
-        "Custom (user defined)"
+        "Custom"
     };
 };
 

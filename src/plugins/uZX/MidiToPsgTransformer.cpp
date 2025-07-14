@@ -12,6 +12,7 @@ MidiToPsgTransformer::MidiToPsgTransformer(int baseChannel, int numChannels)
 
 void MidiToPsgTransformer::initPSG() {
     // Initialize channel states
+    // DBG("Initializing PSG with base channel " << baseChannel_ << " and " << numChannels_ << " channels");
     for (int i = baseChannel_; i < baseChannel_ + numChannels_; ++i) {
         auto& state = getChannelState(i);
         state.clear();
@@ -33,21 +34,13 @@ void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
     state.currentNote = note;
     state.velocity = velocity;
 
-    DBG("noteOn " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none")
-        << ", channel " << channel
-        << ", velocity: " << state.velocity
-        // << ", toneOn: " << (state.toneOn ? "Yes" : "No")
-        // << ", noiseOn: " << (state.noiseOn ? "Yes" : "No")
-        // << ", envOn: " << (state.envOn ? "Yes" : "No")
-    );
-
     if (channel - baseChannel_ == 3) {
-        DBG("Note on on channel 4, using envelope period mapping");
+        // DBG("Note on on channel 4, using envelope period mapping");
         // Channel 4 is reserved for envelope periods
         // TODO pass divider or env flag to tuning system
         emitPeriodCC(channel, tuningSystem_->midiNoteToPeriod(note, TuningSystem::Envelope));
     } else {
-        DBG("Note on period on channel " << channel);
+        // DBG("Note on period on channel " << channel);
         emitPeriodCC(channel, tuningSystem_->midiNoteToPeriod(note, TuningSystem::Tone));
 
         // Only emit volume if it changed
@@ -57,13 +50,6 @@ void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
             state.lastVolume = currentVolume;
         }
     }
-
-    // if (channel - baseChannel_ != 3) {
-    //     DBG("Note modulations on channel " << channel);
-    //     emitToneSwitchCC(channel, state.toneOn);
-    //     emitNoiseSwitchCC(channel, state.noiseOn);
-    //     emitEnvSwitchCC(channel, state.envOn);
-    // }
 }
 
 void MidiToPsgTransformer::noteOff(int channel, int note) {
@@ -74,22 +60,25 @@ void MidiToPsgTransformer::noteOff(int channel, int note) {
 
     // Only turn off if this is the currently playing note
     // DBG("Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
-    if (state.currentNote == note) {
-        if (channel - baseChannel_ != 3) {
-            DBG("Turning off note on channel " << channel);
-            emitVolumeCC(channel, 0);
-            // emitEnvSwitchCC(channel, false);
-        }
+    if (channel - baseChannel_ != 3) {
+        // DBG("Turning off note on channel " << channel);
+        emitVolumeCC(channel, 0);
+        state.clear();
+    }
+}
 
-        // if (state.toneOn) {
-        //     emitToneSwitchCC(channel, false);
-        // }
-        // if (state.envOn) {
-        //     emitEnvSwitchCC(channel, false);
-        // }
-        // if (state.noiseOn) {
-        //     emitNoiseSwitchCC(channel, false);
-        // }
+void MidiToPsgTransformer::allNotesOff(int channel) {
+    // DBG("All Notes Off: Channel " << channel);
+    if (!isChannelInRange(channel)) return;
+
+    auto& state = getChannelState(channel);
+
+    if (channel - baseChannel_ == 3) {
+        // Channel 4 is reserved for envelope periods, no volume to turn off
+        // DBG("All notes off on envelope channel, no volume to emit");
+    } else {
+        emitVolumeCC(channel, 0);
+        emitEnvSwitchCC(channel, false); // Ensure all envelopes are off initially  (by default)
         state.clear();
     }
 }
@@ -108,7 +97,12 @@ void MidiToPsgTransformer::aftertouch(int channel, int aftertouch) {
 
 void MidiToPsgTransformer::controlChange(int channel, int controller, int value) {
     // Pass through all CC messages unchanged
-    emitCC(channel, controller, value);
+    // DBG("Control Change: Channel " << channel << ", Controller " << controller << ", Value " << value);
+    if (controller == static_cast<int>(MidiCCType::AllNotesOff)) {
+        allNotesOff(channel);
+    } else {
+        emitCC(channel, controller, value);
+    }
 }
 
 std::vector<juce::MidiMessage> MidiToPsgTransformer::getOutputMessages() {
@@ -130,9 +124,8 @@ bool MidiToPsgTransformer::isChannelInRange(int channel) const {
 }
 
 void MidiToPsgTransformer::emitVolumeCC(int channel, int volume) {
-    DBG("Emitting Volume CC: Channel " << channel << ", Volume " << volume);
-    auto msg = juce::MidiMessage::controllerEvent(channel, static_cast<int>(MidiCCType::Volume), volume);
-    outputBuffer_.push_back(msg);
+    // DBG("Emitting Volume CC: Channel " << channel << ", Volume " << volume);
+    emitCC(channel, static_cast<int>(MidiCCType::Volume), volume);
 }
 
 void MidiToPsgTransformer::emitPeriodCC(int channel, int period) {
@@ -140,7 +133,7 @@ void MidiToPsgTransformer::emitPeriodCC(int channel, int period) {
     int coarse = (period >> 7) & 0x7F;  // bits 7-11 -> 0-31 (high 5 bits)
     int fine = period & 0x7F;           // bits 0-6 -> 0-127 (low 7 bits)
 
-    DBG("Emitting Period CC: Channel " << channel << ", period " << period);
+    // DBG("Emitting Period CC: Channel " << channel << ", period " << period);
 
     auto coarseMsg = juce::MidiMessage::controllerEvent(channel, static_cast<int>(MidiCCType::CC20PeriodCoarse), coarse);
     auto fineMsg = juce::MidiMessage::controllerEvent(channel, static_cast<int>(MidiCCType::CC52PeriodFine), fine);
@@ -163,9 +156,7 @@ void MidiToPsgTransformer::emitEnvSwitchCC(int channel, bool on) {
 
 void MidiToPsgTransformer::emitCC(int channel, int controller, int value) {
     auto msg = juce::MidiMessage::controllerEvent(channel, controller, value);
-    DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
-    // auto& state = getChannelState(channel);
-    // DBG("emitCC Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
+    // DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
 
     outputBuffer_.push_back(msg);
 }

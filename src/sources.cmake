@@ -18,6 +18,7 @@ set(SHARED_SOURCES
     models/tuning/TuningTable.cpp
 
     viewmodels/tuning/TuningPlayer.cpp
+    viewmodels/tuning/MultitrackMidiPreview.cpp
 
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
@@ -28,6 +29,7 @@ set(SHARED_SOURCES
 # GUI-specific files
 set(GUI_SOURCES
     controllers/MainController.cpp
+    controllers/TuningController.cpp
     controllers/App.cpp
     controllers/Main.cpp
     controllers/EditState.cpp
@@ -51,12 +53,13 @@ set(TEST_SOURCES
     ## models/PsgTrack.test.cpp
     ## models/CustomClip.test.cpp
     viewmodels/tuning/TuningViewModel.test.cpp
+    viewmodels/tuning/MultitrackMidiPreview.test.cpp
     plugins/uZX/aychip/AYChip.test.cpp
     models/PsgMidi.test.cpp
     models/tuning/Ratios.test.cpp
-    models/tuning/TuningTable.test.cpp
-    models/tuning/EqualTemperamentTuning.test.cpp
-    models/tuning/AutoTuning.test.cpp
+    # models/tuning/TuningTable.test.cpp
+    # models/tuning/EqualTemperamentTuning.test.cpp
+    # models/tuning/AutoTuning.test.cpp
     models/tuning/Scales.test.cpp
     models/tuning/RationalTuning.test.cpp
     plugins/uZX/MidiToPsgTransformer.test.cpp

@@ -44,6 +44,7 @@ public:
     void initPSG();
     void noteOn(int channel, int note, int velocity);
     void noteOff(int channel, int note);
+    void allNotesOff(int channel);
     void aftertouch(int channel, int aftertouch);
     void controlChange(int channel, int controller, int value);
 

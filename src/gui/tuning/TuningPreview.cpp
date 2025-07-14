@@ -21,6 +21,20 @@ TuningPreviewGrid::~TuningPreviewGrid() {
     tuningPlayer.removeListener(this);
 }
 
+void TuningPreviewGrid::recreateTooltipWindow() {
+    // Find the parent component to attach tooltip to
+    auto* parent = getParentComponent();
+    while (parent && !dynamic_cast<TuningPreviewComponent*>(parent)) {
+        parent = parent->getParentComponent();
+    }
+
+    if (auto* tuningComponent = dynamic_cast<TuningPreviewComponent*>(parent)) {
+        // Reset the tooltip window to restart the show counter
+        tuningComponent->tooltipWindow = std::make_unique<MoTooltipWindow>(nullptr, 750);
+        tooltipWindow = tuningComponent->tooltipWindow.get();
+    }
+}
+
 void TuningPreviewGrid::resized() {
     // Resize logic if needed
 }
@@ -38,8 +52,11 @@ void TuningPreviewGrid::mouseMove(const MouseEvent& event) {
                          newHover.headerType != hoveredRegion.headerType);
 
     if (regionChanged) {
+        // Recreate tooltip window to reset the show counter
+        recreateTooltipWindow();
+
         hoveredRegion = newHover;
-        // repaint(); // Optional: repaint if we want visual feedback
+        repaint();  // to update hover effects
     }
 }
 
@@ -64,7 +81,13 @@ void TuningPreviewGrid::paintColumnHeader(juce::Graphics& g, const juce::Rectang
     g.drawText(text, bounds, juce::Justification::centred, true);
 }
 
-void TuningPreviewGrid::paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave) {
+void TuningPreviewGrid::paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave, bool isHovered) {
+    // Add hover background for clickable row headers
+    if (isHovered) {
+        g.setColour(Colors::Theme::surface);
+        g.fillRect(bounds.reduced(1, 1));
+    }
+
     g.setColour(Colors::Theme::textPrimary);
     g.drawText(
         String::formatted("%d", octave),
@@ -73,7 +96,7 @@ void TuningPreviewGrid::paintRowHeader(juce::Graphics& g, const juce::Rectangle<
     );
 }
 
-void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note) {
+void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note, bool isHovered) {
     float offtune = jlimit(-0.5f, 0.5f, (float) note.offtune / 100.0f);
 
     auto noteTextColor = Colors::Theme::textPrimary;
@@ -88,7 +111,12 @@ void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<i
 
     auto noteBgColor = note.isInMidiRange() ? Colors::Theme::background : Colors::Theme::background.withAlpha(0.33f);
 
-    // Use pressed button color for currently playing notes
+    // Add hover effect for clickable cells (those in MIDI range)
+    if (isHovered && note.isInMidiRange()) {
+        noteBgColor = Colors::Theme::surface;
+    }
+
+    // Use pressed button color for currently playing notes (overrides hover)
     if (isPlaying) {
         noteBgColor = Colors::Theme::primary;
         noteTextColor = Colors::Theme::background; // Use contrasting text color
@@ -162,20 +190,29 @@ void TuningPreviewGrid::paint(juce::Graphics& g) {
 
     // Draw rows (row headers + note cells)
     for (auto octave = octaveRange.getStart(); octave < octaveRange.getEnd(); ++octave) {
+        // Check if this row header is hovered
+        bool rowHeaderHovered = (hoveredRegion.regionType == GridRegionType::RowHeader &&
+                                hoveredRegion.octave == octave);
+
         // Draw row header
         auto rowHeaderBounds = layout.getRowHeaderBounds(octave);
-        paintRowHeader(g, rowHeaderBounds, octave);
+        paintRowHeader(g, rowHeaderBounds, octave, rowHeaderHovered);
 
         // Draw note cells
         auto octaveNotes = viewModel.getOctaveNotes(octave);
         for (int noteIndex = 0; noteIndex < static_cast<int>(octaveNotes.size()); ++noteIndex) {
+            // Check if this note cell is hovered
+            bool noteCellHovered = (hoveredRegion.regionType == GridRegionType::NoteCell &&
+                                   hoveredRegion.octave == octave &&
+                                   hoveredRegion.noteIndex == noteIndex);
+
             auto cellBounds = layout.getNoteCellBounds(octave, noteIndex);
-            paintNoteCell(g, cellBounds, octaveNotes[static_cast<size_t>(noteIndex)]);
+            paintNoteCell(g, cellBounds, octaveNotes[static_cast<size_t>(noteIndex)], noteCellHovered);
         }
     }
 
     // Draw vertical line at the root note column (current root)
-    const int rootColumnIndex = static_cast<int>(viewModel.getCurrentRoot());
+    const int rootColumnIndex = static_cast<int>(viewModel.getCurrentTonic());
     auto firstCellBounds = layout.getNoteCellBounds(octaveRange.getStart(), rootColumnIndex);
     auto lastCellBounds = layout.getNoteCellBounds(octaveRange.getEnd() - 1, rootColumnIndex);
 
@@ -240,18 +277,11 @@ void TuningPreviewGrid::mouseDown(const MouseEvent& event) {
             if (viewModel.playChords.get()) {
                 tuningPlayer.playDegreeChord(note.midiNote);
             } else {
-                tuningPlayer.playNote(note.midiNote);
+                tuningPlayer.playSingleNote(note.midiNote);
             }
         }
     } else if (hitResult.regionType == GridRegionType::RowHeader) {
-        // Play scale as arpeggio for the clicked octave
-        auto scaleNotes = viewModel.getScaleNotes(hitResult.octave, true);
-        std::vector<int> notes;
-        for (const auto& note : scaleNotes) {
-            notes.push_back(note);
-        }
-        notes.push_back(scaleNotes.front() + 12); // Add octave note
-        tuningPlayer.playArpeggio(notes);
+        tuningPlayer.playScale(hitResult.octave);
     }
     // Could add functionality for clicking on column headers here
 }
@@ -347,109 +377,161 @@ TuningPreviewGrid::GridHitResult TuningPreviewGrid::GridLayout::hitTest(juce::Po
 }
 
 //================================================================================
-TuningPreviewComponent::TuningPreviewComponent(UndoManager* um)
-    : viewModel(um)
-    , tuningPlayer(viewModel, MoToolApp::getController().getEngine())
+TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
+    : binding(select, vm.selectedChip)
+{
+    label.setText("Chip clock", juce::dontSendNotification);
+    // label.setJustificationType(juce::Justification::centredLeft);
+
+    // Setup frequency controls by calling the parent class methods
+    c.setupTextEditorWithValueBinding(frequencyInput, unitsLabel, vm.clockFrequencyMhz);
+
+    c.addAndMakeVisible(label);
+    c.addAndMakeVisible(select);
+}
+
+void TuningPreviewComponent::ChipClock::layout(juce::Rectangle<int>& area) {
+    label.setBounds(area.removeFromTop(rowHeight));
+
+    // Chip clock selector and frequency input
+    auto row = area.removeFromTop(rowHeight);
+    select.setBounds(row.removeFromLeft(moduleWidth * 4));
+    row.removeFromLeft(gap);
+    frequencyInput.setBounds(row.removeFromLeft(moduleWidth));
+    unitsLabel.setBounds(row);
+}
+
+int TuningPreviewComponent::ChipClock::getHeight() const {
+    return rowHeight * 2; // 1 for label, 1 for controls
+}
+
+//================================================================================
+TuningPreviewComponent::KeyScale::KeyScale(TuningPreviewComponent& c, TuningViewModel& vm)
+    : keySelectBinding(keySelect, vm.selectedTonic)
+    , scaleSelectBinding(scaleSelect, vm.selectedScale)
+{
+    label.setText("Scale", juce::dontSendNotification);
+    label.setJustificationType(juce::Justification::centredLeft);
+
+    c.addAndMakeVisible(label);
+    c.addAndMakeVisible(keySelect);
+    c.addAndMakeVisible(scaleSelect);
+}
+
+void TuningPreviewComponent::KeyScale::layout(juce::Rectangle<int>& area) {
+    label.setBounds(area.removeFromTop(rowHeight));
+
+    auto row = area.removeFromTop(rowHeight);
+    keySelect.setBounds(row.removeFromLeft(moduleWidth * 3 / 2));
+    row.removeFromLeft(gap);
+    scaleSelect.setBounds(row.removeFromLeft(moduleWidth * 7 / 2 - gap));
+}
+
+int TuningPreviewComponent::KeyScale::getHeight() const {
+    return rowHeight * 2; // 1 for label, 1 for controls
+}
+
+//================================================================================
+TuningPreviewComponent::ReferenceTuning::ReferenceTuning(TuningPreviewComponent& c, TuningViewModel& vm)
+    : binding(select, vm.selectedTemperament)
+{
+    label.setText("Reference tuning", juce::dontSendNotification);
+
+    c.addAndMakeVisible(label);
+    c.addAndMakeVisible(select);
+}
+
+void TuningPreviewComponent::ReferenceTuning::layout(juce::Rectangle<int>& area) {
+    label.setBounds(area.removeFromTop(rowHeight));
+    auto row = area.removeFromTop(rowHeight);
+    select.setBounds(row.removeFromLeft(moduleWidth * 5));
+}
+
+int TuningPreviewComponent::ReferenceTuning::getHeight() const {
+    return rowHeight * 2; // 1 for label, 1 for controls
+}
+
+//================================================================================
+TuningPreviewComponent::A4Frequency::A4Frequency(TuningPreviewComponent& c, TuningViewModel& vm) {
+    c.setupSliderWithValueBinding(slider, label, "A4 frequency", unitsLabel, vm.a4Frequency);
+}
+
+int TuningPreviewComponent::A4Frequency::getHeight() const {
+    return rowHeight * 2; // 1 for label, 1 for controls
+}
+
+void TuningPreviewComponent::A4Frequency::layout(juce::Rectangle<int>& area) {
+    label.setBounds(area.removeFromTop(rowHeight));
+
+    auto row = area.removeFromTop(rowHeight);
+    slider.setBounds(row.removeFromLeft(moduleWidth * 7));
+    unitsLabel.setBounds(row);
+}
+
+//================================================================================
+TuningPreviewComponent::PlayControls::PlayControls(TuningPreviewComponent& c, TuningViewModel& vm)
+    : envelopeShapeBinding(envelopeShapeSelect, vm.envelopeShape)
+    , envelopeModeBinding(modulationModeSelect, vm.envIntervalChoice)
+{
+    label.setText("Play mode", juce::dontSendNotification);
+
+    playChordsCheckBox.setButtonText("Chords");
+    playChordsCheckBox.getToggleStateValue().referTo(vm.playChords.getValue());
+
+    playToneCheckBox.setButtonText("Tone");
+    playToneCheckBox.getToggleStateValue().referTo(vm.playTone.getValue());
+
+    retriggerToneCheckBox.setButtonText("Retrigger");
+    retriggerToneCheckBox.getToggleStateValue().referTo(vm.retriggerTone.getValue());
+
+    playEnvelopeCheckBox.setButtonText("Envelope");
+    playEnvelopeCheckBox.getToggleStateValue().referTo(vm.playEnvelope.getValue());
+
+    c.addAndMakeVisible(label);
+    c.addAndMakeVisible(playChordsCheckBox);
+    c.addAndMakeVisible(playToneCheckBox);
+    c.addAndMakeVisible(retriggerToneCheckBox);
+    c.addAndMakeVisible(playEnvelopeCheckBox);
+    c.addAndMakeVisible(envelopeShapeSelect);
+    c.addAndMakeVisible(modulationModeSelect);
+}
+
+void TuningPreviewComponent::PlayControls::layout(juce::Rectangle<int>& area) {
+    // Play controls row
+    label.setBounds(area.removeFromTop(rowHeight));
+
+    auto row1 = area.removeFromTop(rowHeight);
+    playToneCheckBox.setBounds(row1.removeFromLeft(moduleWidth * 2 - gap));
+    row1.removeFromLeft(gap);
+    playChordsCheckBox.setBounds(row1.removeFromLeft(moduleWidth * 2));
+
+    // Envelope controls row
+    area.removeFromTop(gap);
+    playEnvelopeCheckBox.setBounds(area.removeFromTop(rowHeight));
+
+    auto row3 = area.removeFromTop(rowHeight);
+    envelopeShapeSelect.setBounds(row3.removeFromLeft(moduleWidth * 2));
+    row3.removeFromLeft(gap);
+    modulationModeSelect.setBounds(row3.removeFromLeft(moduleWidth * 3));
+}
+
+
+//================================================================================
+TuningPreviewComponent::TuningPreviewComponent(TuningViewModel& vm, TuningPlayer& tp)
+    : viewModel(vm)
+    , tuningPlayer(tp)
     , tuningGrid(viewModel, tuningPlayer)
-    , tooltipWindow(nullptr, 750) // ms delay
 {
     setOpaque(true);
 
-    // Set up tuning table ListBox with Value binding
-    tuningTableLabel.setText("Tuning Tables:", juce::dontSendNotification);
-    tuningsListBox.setModel(this);
-    tuningsListBox.setMultipleSelectionEnabled(false);
-    tuningsListBox.selectRow(static_cast<int>(viewModel.selectedTuningTable.get()), false, false);
-    // Note: ListBox doesn't have direct Value binding, so we'll use a custom approach
-    viewModel.selectedTuningTable.addListener(this);
+    setupTuningTableControls();
+    setupTuningGrid();
+    setupExportButton();
 
-    addAndMakeVisible(tuningTableLabel);
-    addAndMakeVisible(tuningsListBox);
-
-    // Set up Key selection ComboBox
-    keyScaleLabel.setText("Scale:", juce::dontSendNotification);
-    keyScaleLabel.setJustificationType(juce::Justification::centredRight);
-    setupScaleSelectMenu();
-
-    addAndMakeVisible(keyScaleLabel);
-    addAndMakeVisible(keySelect);
-    addAndMakeVisible(scaleSelect);
-
-    // Set up Chip Clock selection ComboBox
-    chipClockLabel.setText("Chip clock:", juce::dontSendNotification);
-    chipClockLabel.setJustificationType(juce::Justification::centredRight);
-
-    addAndMakeVisible(chipClockLabel);
-    addAndMakeVisible(chipClockSelect);
-
-    // Set up frequency sliders with Value binding
-    setupSliderWithValueBinding(clockFrequencySlider, clockFrequencyLabel, "Clock frequency:", clockFrequencyUnits,
-                                viewModel.clockFrequencyMhz);
-
-    setupSliderWithValueBinding(a4FrequencySlider, a4FrequencyLabel, "A4 frequency:", a4FrequencyUnits,
-                                viewModel.a4Frequency);
-
-    // Set initial controls state
     updateControlsState();
-
-    // Register as a change listener to the view model
     viewModel.addChangeListener(this);
-
-    tuningNameLabel.setText(viewModel.getTuningDescription(), juce::dontSendNotification);
-    addAndMakeVisible(tuningNameLabel);
-    // addAndMakeVisible(toneEnvSwitchLabel);
-
-    // Set up play mode checkboxes
-    playChordsCheckBox.setButtonText("Play chords");
-    playChordsCheckBox.getToggleStateValue().referTo(viewModel.playChords.getValue());
-
-    playToneCheckBox.setButtonText("Tone");
-    playToneCheckBox.getToggleStateValue().referTo(viewModel.playTone.getValue());
-
-    playEnvelopeCheckBox.setButtonText("Envelope");
-    playEnvelopeCheckBox.getToggleStateValue().referTo(viewModel.playEnvelope.getValue());
-
-    addAndMakeVisible(playChordsCheckBox);
-    addAndMakeVisible(playToneCheckBox);
-    addAndMakeVisible(playEnvelopeCheckBox);
-    addAndMakeVisible(envelopeShapeSelect);
-    addAndMakeVisible(tuningGrid);
-
-    // Connect tooltip window to grid
-    tuningGrid.setTooltipWindow(&tooltipWindow);
-
-    // Set up export button
-    exportButton.setButtonText("Export to CSV");
-    exportButton.onClick = [this]() {
-        String defaultFilename = viewModel.getDefaultExportFilename();
-
-        // Get last export directory from utility function
-        File lastExportDir = Helpers::getLastCsvExportDirectory();
-        File defaultFile = lastExportDir.getChildFile(defaultFilename);
-
-        FileChooser fileChooser("Save Tuning Data as CSV",
-                               defaultFile,
-                               "*.csv");
-
-        if (fileChooser.browseForFileToSave(true)) {
-            File selectedFile = fileChooser.getResult();
-            String csvData = viewModel.exportToCSV();
-
-            if (selectedFile.replaceWithText(csvData)) {
-                // Save the directory for next time using utility function
-                Helpers::setLastCsvExportDirectory(selectedFile.getParentDirectory());
-
-                AlertWindow::showMessageBox(AlertWindow::InfoIcon,
-                                            "Export Successful",
-                                            "Tuning data exported to:\n" + selectedFile.getFullPathName());
-            } else {
-                AlertWindow::showMessageBox(AlertWindow::WarningIcon,
-                                            "Export Failed",
-                                            "Failed to save file:\n" + selectedFile.getFullPathName());
-            }
-        }
-    };
-    addAndMakeVisible(exportButton);
+    // tuningNameLabel.setText(viewModel.getTuningDescription(), juce::dontSendNotification);
+    // addAndMakeVisible(tuningNameLabel);
 }
 
 TuningPreviewComponent::~TuningPreviewComponent() {
@@ -457,107 +539,58 @@ TuningPreviewComponent::~TuningPreviewComponent() {
     viewModel.selectedTuningTable.removeListener(this);
 }
 
-void TuningPreviewComponent::resized() {
-    auto bounds = getLocalBounds();
-    auto formBounds = bounds.reduced(20, 20);
 
-    // Create two columns layout
-    auto leftColumnWidth = moduleWidth * 4;  // Width for the left column with tuning table list
-    auto leftColumn = formBounds.removeFromLeft(leftColumnWidth);
-    formBounds.removeFromLeft(gap); // Gap between columns
-    auto rightColumn = formBounds;
+void TuningPreviewComponent::resized() {
+    auto bounds = getLocalBounds().reduced(20, 20);
+    bounds.removeFromTop(-8);
 
     // Left column: Tuning table selection
+    auto leftColumn = bounds.removeFromLeft(moduleWidth * 4);
+    bounds.removeFromLeft(20);
+
     tuningTableLabel.setBounds(leftColumn.removeFromTop(rowHeight));
-    // leftColumn.removeFromTop(gap / 2);
-    tuningsListBox.setBounds(leftColumn); // Take remaining space in left column
+    tuningsListBox.setBounds(leftColumn);
 
-    // Right column: Other controls and tuning grid
-    // Place KeySelect and ScaleSelect on the same row with fixed widths
-    auto labelsColWidth = moduleWidth * 2; // Width for labels
+    // Right column: Controls and grid
+    layoutControlSections(bounds);
 
-    {
-        auto keyScaleRow = rightColumn.removeFromTop(rowHeight);
-        keyScaleLabel.setBounds(keyScaleRow.removeFromLeft(labelsColWidth));
-        keySelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth));
-        keyScaleRow.removeFromLeft(gap);
-        scaleSelect.setBounds(keyScaleRow.removeFromLeft(moduleWidth * 3 - gap));
-    }
+    // Reserve space for export button
+    auto exportArea = bounds.removeFromBottom(rowHeight);
+    bounds.removeFromBottom(gap);
 
-    rightColumn.removeFromTop(gap);
+    tuningGrid.setBounds(bounds);
+    exportButton.setBounds(exportArea.removeFromLeft(moduleWidth * 2));
+}
 
-    {
-        auto chipLabelRow = rightColumn.removeFromTop(rowHeight);
-        chipClockLabel.setBounds(chipLabelRow.removeFromLeft(labelsColWidth));
-        chipClockSelect.setBounds(chipLabelRow.removeFromLeft(moduleWidth * 4));
-    }
+void TuningPreviewComponent::layoutControlSections(juce::Rectangle<int>& area) {
+    auto row1 = area.removeFromTop(jmax(a4Frequency.getHeight(), tuning.getHeight()));
+    auto leftColumn = row1.removeFromLeft(moduleWidth * 6 - gap);
+    tuning.layout(leftColumn);
+    // row1.removeFromLeft(gap);
+    a4Frequency.layout(row1);
 
-    rightColumn.removeFromTop(gap);
+    area.removeFromTop(gap);
+    auto row2 = area.removeFromTop(keyScale.getHeight() + chipClock.getHeight() + gap);
+    leftColumn = row2.removeFromLeft(moduleWidth * 6 - gap);
 
-    { // Clock frequency slider on its own row
-        auto clockFreqRow = rightColumn.removeFromTop(rowHeight);
-        clockFrequencyLabel.setBounds(clockFreqRow.removeFromLeft(labelsColWidth));
-        clockFrequencySlider.setBounds(clockFreqRow.removeFromLeft(moduleWidth * 8));
-        clockFrequencyUnits.setBounds(clockFreqRow);
-    }
+    keyScale.layout(leftColumn);
+    leftColumn.removeFromTop(gap);
+    chipClock.layout(leftColumn);
 
-    rightColumn.removeFromTop(gap);
+    // formArea.removeFromTop(row1.getHeight() + gap);
+    playControls.layout(row2);
 
-    { // A4 frequency slider with label
-        auto a4Row = rightColumn.removeFromTop(rowHeight);
-        a4FrequencyLabel.setBounds(a4Row.removeFromLeft(labelsColWidth));
-        a4FrequencySlider.setBounds(a4Row.removeFromLeft(moduleWidth * 8));
-        a4FrequencyUnits.setBounds(a4Row);
-    }
-
-    rightColumn.removeFromTop(gap);
-
-    // TuningTypeLabel.setBounds(rightColumn.removeFromTop(controlHeight));
-    tuningNameLabel.setBounds(rightColumn.removeFromTop(rowHeight));
-    // toneEnvSwitchLabel.setBounds(rightColumn.removeFromTop(rowHeight));
-
-    rightColumn.removeFromTop(gap);
-
-    {   // Play mode row with multiple controls
-        auto playToneRow = rightColumn.removeFromTop(rowHeight);
-        playToneRow.removeFromLeft(labelsColWidth);
-        // playModeRow.removeFromLeft(labelsColWidth);
-        playToneCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
-        playToneRow.removeFromLeft(gap / 2);
-        playChordsCheckBox.setBounds(playToneRow.removeFromLeft(moduleWidth * 2));
-    }
-
-    rightColumn.removeFromTop(gap);
-
-    {
-        auto playEnvRow = rightColumn.removeFromTop(rowHeight);
-        playEnvRow.removeFromLeft(labelsColWidth);
-        playEnvelopeCheckBox.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
-        playEnvRow.removeFromLeft(gap / 2);
-        envelopeShapeSelect.setBounds(playEnvRow.removeFromLeft(moduleWidth * 2));
-    }
-
-    rightColumn.removeFromTop(gap);
-
-    // Reserve space for export button at bottom
-    auto exportButtonArea = rightColumn.removeFromBottom(rowHeight);
-    rightColumn.removeFromBottom(gap);
-
-    tuningGrid.setBounds(rightColumn);
-
-    // Export button below the grid
-    exportButton.setBounds(exportButtonArea.removeFromLeft(moduleWidth * 2));
+    area.removeFromTop(gap * 2);
 }
 
 void TuningPreviewComponent::paint(juce::Graphics& g) {
     g.fillAll(Colors::Theme::background);
-    g.setColour(juce::Colours::white);
 }
 
 void TuningPreviewComponent::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &viewModel) {
         // DBG("TuningPreviewComponent::changeListenerCallback");
-        tuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
+        // tuningNameLabel.setText("Tuning Name: " + viewModel.getTuningDescription(), juce::dontSendNotification);
         updateControlsState();
         tuningGrid.repaint();
     }
@@ -600,7 +633,7 @@ void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& 
     slider.getValueObject().referTo(attachment.getValue());
 
     label.setText(labelText, juce::dontSendNotification);
-    label.setJustificationType(juce::Justification::centredRight);
+    label.setJustificationType(juce::Justification::centredLeft);
 
     unitsLabel.setText(attachment.getUnits(), juce::dontSendNotification);
     unitsLabel.setJustificationType(juce::Justification::centredLeft);
@@ -610,44 +643,108 @@ void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& 
     addAndMakeVisible(unitsLabel);
 }
 
+void TuningPreviewComponent::setupTextEditorWithValueBinding(Label& inputLabel, Label& unitsLabel,
+                                                            RangedParamAttachment<double>& attachment) {
+    const auto range = attachment.getRange();
+
+    // Set up the input label to behave like a text editor
+    inputLabel.setEditable(true);
+    inputLabel.setJustificationType(Justification::centredLeft);
+
+    // Set colors to match Slider's text box appearance
+    inputLabel.setColour(Label::outlineColourId, inputLabel.findColour(Slider::textBoxOutlineColourId));
+    inputLabel.setColour(Label::backgroundColourId, inputLabel.findColour(Slider::textBoxBackgroundColourId));
+    inputLabel.setColour(Label::textColourId, inputLabel.findColour(Slider::textBoxTextColourId));
+    inputLabel.setColour(TextEditor::outlineColourId, inputLabel.findColour(Slider::textBoxOutlineColourId));
+    inputLabel.setColour(TextEditor::backgroundColourId, inputLabel.findColour(Slider::textBoxBackgroundColourId));
+    inputLabel.setColour(TextEditor::textColourId, inputLabel.findColour(Slider::textBoxTextColourId));
+
+    inputLabel.setText(String(attachment.getValue().getValue()), juce::dontSendNotification);
+
+    // Handle text changes
+    inputLabel.onTextChange = [&inputLabel, &attachment, range]() {
+        String text = inputLabel.getText();
+        double value = text.getDoubleValue();
+
+        // Clamp value to valid range
+        value = jlimit(range.start, range.end, value);
+
+        // Update the attachment
+        attachment.getValue().setValue(value);
+
+        // Update label to show clamped value if needed
+        if (std::abs(value - text.getDoubleValue()) > 1e-9) {
+            inputLabel.setText(String(value), juce::dontSendNotification);
+        }
+    };
+
+    // Listen for external value changes
+    attachment.getValue().addListener(this);
+
+    unitsLabel.setText(attachment.getUnits(), juce::dontSendNotification);
+    unitsLabel.setJustificationType(juce::Justification::centredLeft);
+
+    addAndMakeVisible(inputLabel);
+    addAndMakeVisible(unitsLabel);
+}
+
 void TuningPreviewComponent::updateControlsState() {
     // Update clock controls
     bool isCustom = viewModel.isCustomClockEnabled();
-    clockFrequencySlider.setEnabled(isCustom);
-    clockFrequencyLabel.setEnabled(isCustom);
+    chipClock.frequencyInput.setVisible(isCustom);
+    chipClock.unitsLabel.setVisible(isCustom);
 
     // Update envelope controls
-    playChordsCheckBox.setEnabled(!viewModel.isEnvelopePeriodsShown());
-    playEnvelopeCheckBox.setEnabled(!viewModel.playChords.get());
-    envelopeShapeSelect.setEnabled(viewModel.isEnvelopeEnabled());
+    playControls.playChordsCheckBox.setEnabled(viewModel.isToneEnabled());
+    playControls.retriggerToneCheckBox.setEnabled(viewModel.isToneEnabled());
+    playControls.envelopeShapeSelect.setEnabled(viewModel.isEnvelopeEnabled());
+    playControls.modulationModeSelect.setEnabled(viewModel.isModulationEnabled());
 }
 
-void TuningPreviewComponent::setupScaleSelectMenu() {
-    // Clear any existing items and mapping
-    scaleSelect.clear();
+void TuningPreviewComponent::setupTuningTableControls() {
+    tuningTableLabel.setText("Tuning Tables:", juce::dontSendNotification);
+    tuningsListBox.setModel(this);
+    tuningsListBox.setMultipleSelectionEnabled(false);
+    tuningsListBox.selectRow(static_cast<int>(viewModel.selectedTuningTable.get()), false, false);
+    viewModel.selectedTuningTable.addListener(this);
 
-    // Get all scale categories
-    auto categories = Scale::getAllScaleCategories();
-    int menuItemId = 1;
+    addAndMakeVisible(tuningTableLabel);
+    addAndMakeVisible(tuningsListBox);
+}
 
-    for (auto category : categories) {
-        if (category == Scale::ScaleCategory::User) {
-            continue; // Skip user defined for now
-        }
 
-        scaleSelect.addSectionHeading(Scale::getNameForCategory(category));
+void TuningPreviewComponent::setupTuningGrid() {
+    tooltipWindow = std::make_unique<MoTooltipWindow>(nullptr, 750);
+    tuningGrid.tooltipWindow = tooltipWindow.get();
+    addAndMakeVisible(tuningGrid);
+}
 
-        // Add scales in this category
-        auto scalesInCategory = Scale::getAllScaleTypesForCategory(category);
-        for (auto scaleType : scalesInCategory) {
-            String scaleName = Scale::getNameForType(scaleType);
-            scaleSelect.addItem(scaleName, menuItemId);
-            menuItemId++;
-        }
+void TuningPreviewComponent::setupExportButton() {
+    exportButton.setButtonText("Export to CSV");
+    exportButton.onClick = [this]() { handleExportButtonClick(); };
+    addAndMakeVisible(exportButton);
+}
 
-        // Add separator after each category (except the last one)
-        if (category != categories.back() || categories.back() == Scale::ScaleCategory::User) {
-            scaleSelect.addSeparator();
+void TuningPreviewComponent::handleExportButtonClick() {
+    String defaultFilename = viewModel.getDefaultExportFilename();
+    File lastExportDir = Helpers::getLastCsvExportDirectory();
+    File defaultFile = lastExportDir.getChildFile(defaultFilename);
+
+    FileChooser fileChooser("Save Tuning Data as CSV", defaultFile, "*.csv");
+
+    if (fileChooser.browseForFileToSave(true)) {
+        File selectedFile = fileChooser.getResult();
+        String csvData = viewModel.exportToCSV();
+
+        if (selectedFile.replaceWithText(csvData)) {
+            Helpers::setLastCsvExportDirectory(selectedFile.getParentDirectory());
+            AlertWindow::showMessageBox(AlertWindow::InfoIcon,
+                                        "Export Successful",
+                                        "Tuning data exported to:\n" + selectedFile.getFullPathName());
+        } else {
+            AlertWindow::showMessageBox(AlertWindow::WarningIcon,
+                                        "Export Failed",
+                                        "Failed to save file:\n" + selectedFile.getFullPathName());
         }
     }
 }
@@ -658,6 +755,11 @@ void TuningPreviewComponent::valueChanged(Value& value) {
     if (value.refersToSameSourceAs(viewModel.selectedTuningTable.getValue())) {
         int newIndex = static_cast<int>(viewModel.selectedTuningTable.get());
         tuningsListBox.selectRow(newIndex, false, false);
+    }
+    else if (value.refersToSameSourceAs(viewModel.clockFrequencyMhz.getValue())) {
+        // Update text editor when value changes externally
+        double newValue = static_cast<double>(viewModel.clockFrequencyMhz.getValue().getValue());
+        chipClock.frequencyInput.setText(String(newValue), juce::dontSendNotification);
     }
 }
 

@@ -25,19 +25,19 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
         inputButton.onClick = [this, at] {
             PopupMenu m;
 
-            if (EngineHelpers::trackHasInput(*at)) {
-                bool ticked = EngineHelpers::isInputMonitoringEnabled(*at);
-                m.addItem(1000, "Input Monitoring", true, ticked);
-                m.addSeparator();
-            }
+            // if (EngineHelpers::trackHasInput(*at)) {
+            //     bool ticked = EngineHelpers::isInputMonitoringEnabled(*at);
+            //     m.addItem(1000, "Input Monitoring", true, ticked);
+            //     m.addSeparator();
+            // }
 
             if (editViewState.showWaveDevices) {
                 int id = 1;
                 for (auto instance : at->edit.getAllInputDevices()) {
                     if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice)
                     {
-                        bool ticked = instance->getTargets().getFirst() == at->itemID;
-                        m.addItem (id++, instance->getInputDevice().getName(), true, ticked);
+                        bool ticked = instance->getTargets().contains(at->itemID);
+                        m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
                     }
                 }
             }
@@ -47,34 +47,51 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
 
                 int id = 100;
                 for (auto instance : at->edit.getAllInputDevices()) {
-                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
-                        bool ticked = instance->getTargets().getFirst() == at->itemID;
-                        m.addItem (id++, instance->getInputDevice().getName(), true, ticked);
+                    if (instance->getInputDevice().isMidi()) {
+                        bool ticked = instance->getTargets().contains(at->itemID);
+                        m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
                     }
                 }
             }
 
             int res = m.show();
 
-            if (res == 1000) {
-                EngineHelpers::enableInputMonitoring (*at, ! EngineHelpers::isInputMonitoringEnabled (*at));
-            } else if (res >= 100) {
+            // if (res == 1000) {
+                // TODO not working because it toggles only on <-> off, but not automatic monitoring mode
+                // DBG("TrackHeaderComponent::inputButton: toggling input monitoring for track " << at->getName()
+                //     << ", before =" << (EngineHelpers::isInputMonitoringEnabled(*at)? "enabled" : "disabled"));
+                // EngineHelpers::enableInputMonitoring(*at, !EngineHelpers::isInputMonitoringEnabled(*at));
+                // DBG("TrackHeaderComponent::inputButton: after =" << (EngineHelpers::isInputMonitoringEnabled(*at)? "enabled" : "disabled"));
+
+                // armButton.setToggleState(EngineHelpers::isTrackArmed(*at), dontSendNotification);
+            // } else
+            if (res >= 100) {  // midi devices
                 int id = 100;
                 for (auto instance : at->edit.getAllInputDevices()) {
-                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
-                        if (id == res)
-                            [[ maybe_unused ]] auto result = instance->setTarget (at->itemID, true, &at->edit.getUndoManager(), 0);
-
+                    if (instance->getInputDevice().isMidi()) {
+                        if (id == res) {
+                            // Toggle: if already assigned, remove it; otherwise, set it
+                            if (instance->getTargets().contains(at->itemID)) {
+                                [[ maybe_unused ]] auto result = instance->removeTarget(at->itemID, &at->edit.getUndoManager());
+                            } else {
+                                [[ maybe_unused ]] auto result = instance->setTarget(at->itemID, false, &at->edit.getUndoManager(), 0);
+                            }
+                        }
                         id++;
                     }
                 }
-            } else if (res >= 1) {
+            } else if (res >= 1) {  // wave devices
                 int id = 1;
                 for (auto instance : at->edit.getAllInputDevices()) {
                     if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice) {
-                        if (id == res)
-                            [[ maybe_unused ]] auto result = instance->setTarget (at->itemID, true, &at->edit.getUndoManager(), 0);
-
+                        if (id == res) {
+                            // Toggle: if already assigned, remove it; otherwise, set it
+                            if (instance->getTargets().contains(at->itemID)) {
+                                [[ maybe_unused ]] auto result = instance->removeTarget(at->itemID, &at->edit.getUndoManager());
+                            } else {
+                                [[ maybe_unused ]] auto result = instance->setTarget(at->itemID, false, &at->edit.getUndoManager(), 0);
+                            }
+                        }
                         id++;
                     }
                 }
@@ -121,6 +138,28 @@ void TrackHeaderComponent::valueTreePropertyChanged(juce::ValueTree& v, const ju
         if (auto at = dynamic_cast<te::AudioTrack*>(track.get())) {
             armButton.setEnabled (EngineHelpers::trackHasInput(*at));
             armButton.setToggleState (EngineHelpers::isTrackArmed(*at), dontSendNotification);
+        }
+    }
+}
+
+void TrackHeaderComponent::valueTreeChildAdded(ValueTree&, ValueTree& c) {
+    if (c.hasType(te::IDs::INPUTDEVICEDESTINATION)) {
+        if (auto at = dynamic_cast<te::AudioTrack*>(track.get())) {
+            if (c.getProperty(te::IDs::targetID) == at->itemID) {
+                armButton.setEnabled(EngineHelpers::trackHasInput(*at));
+                armButton.setToggleState(EngineHelpers::isTrackArmed(*at), dontSendNotification);
+            }
+        }
+    }
+}
+
+void TrackHeaderComponent::valueTreeChildRemoved(ValueTree&, ValueTree& c, int) {
+    if (c.hasType(te::IDs::INPUTDEVICEDESTINATION)) {
+        if (auto at = dynamic_cast<te::AudioTrack*>(track.get())) {
+            if (c.getProperty(te::IDs::targetID) == at->itemID) {
+                armButton.setEnabled(EngineHelpers::trackHasInput(*at));
+                armButton.setToggleState(EngineHelpers::isTrackArmed(*at), dontSendNotification);
+            }
         }
     }
 }
@@ -232,7 +271,7 @@ void TrackFooterComponent::buildPlugins() {
             dynamic_cast<te::LevelMeterPlugin*>(plugin)) {
             continue;
         }
-        
+
         auto p = new PluginComponent(editViewState, plugin);
         addAndMakeVisible(p);
         plugins.add(p);

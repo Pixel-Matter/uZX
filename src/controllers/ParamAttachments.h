@@ -292,22 +292,32 @@ public:
     {
         comboBox.addListener(this);
         choiceParam.addListener(this);
-        fillItems();
-        updateComboBox();
-        // DBG("ComboBoxBinding::ComboBoxBinding");
-    }
-
-    void fillItems() {
-        comboBox.clear();
-        for (auto [i, item] : choiceParam.getChoices()) {
-            comboBox.addItem(item, i + 1);
+        // For non-derived classes, call init() directly since virtual functions work
+        if (typeid(*this) == typeid(ComboBoxBinding<ChoiceType>)) {
+            init();
         }
     }
 
-    ~ComboBoxBinding() override {
+    void init() {
+        fillItems();
+        updateComboBox();
+    }
+
+    virtual void fillItems() {
+        comboBox.clear();
+        for (auto [i, item] : choiceParam.getChoices()) {
+            comboBox.addItem(item, (int) i + 1);
+        }
+    }
+
+    virtual ~ComboBoxBinding() override {
         comboBox.removeListener(this);
         choiceParam.removeListener(this);
     }
+
+protected:
+    ComboBox& comboBox;
+    ChoiceParamAttachment<ChoiceType>& choiceParam;
 
 private:
     void valueChanged(Value& v) override {
@@ -332,9 +342,6 @@ private:
             comboBox.setSelectedId(0, dontSendNotification);
         }
     }
-
-    ComboBox& comboBox;
-    ChoiceParamAttachment<ChoiceType>& choiceParam;
 };
 
 }  // namespace MoTool

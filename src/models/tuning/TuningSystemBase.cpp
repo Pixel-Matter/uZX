@@ -52,14 +52,14 @@ double TuningSystem::getClockFrequency() const {
     return clockFrequency;
 }
 
-void TuningSystem::setRoot(Scale::Key newRoot) {
+void TuningSystem::setRoot(Scale::Tonic newRoot) {
     jassert(referenceTuning != nullptr);
-    referenceTuning->setRoot(newRoot);
+    referenceTuning->setTonic(newRoot);
 }
 
-Scale::Key TuningSystem::getRoot() const {
+Scale::Tonic TuningSystem::getRoot() const {
     jassert(referenceTuning != nullptr);
-    return referenceTuning->getRoot();
+    return referenceTuning->getTonic();
 }
 
 double TuningSystem::getReferenceFrequency(double midiNote) const {

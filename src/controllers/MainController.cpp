@@ -38,6 +38,7 @@ void BaseController::initialize() {
     // DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
     engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
     engine_.getPluginManager().createBuiltInType<uZX::MidiToPsgPlugin>();
+    engine_.getDeviceManager().addChangeListener(this);
 
     setEdit(createOrLoadStartupEdit());
     selectionManager_.addChangeListener(this);
@@ -59,10 +60,8 @@ void BaseController::initialize() {
 }
 
 BaseController::~BaseController() {
-    if (edit_ != nullptr) {
-        te::EditFileOperations(*edit_).save(true, true, false);
-        edit_->getTempDirectory(false).deleteRecursively();
-    }
+    engine_.getDeviceManager().removeChangeListener(this);
+
     // commandManager_.setFirstCommandTarget(nullptr);
     selectionManager_.deselectAll();
     selectionManager_.removeChangeListener(this);
@@ -70,13 +69,18 @@ BaseController::~BaseController() {
     commandManager_.setFirstCommandTarget(nullptr);
     setApplicationCommandManagerToWatch(nullptr);
 
-    mainWindow_.removeKeyListener(commandManager_.getKeyMappings());
     #if JUCE_MAC
         setMacMainMenu(nullptr);
     #else
         setMenuBar(nullptr);
     #endif
+    mainWindow_.removeKeyListener(commandManager_.getKeyMappings());
     mainWindow_.clearContentComponent();
+
+    if (edit_ != nullptr) {
+        te::EditFileOperations(*edit_).save(true, true, false);
+        edit_->getTempDirectory(false).deleteRecursively();
+    }
 
     engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
 }
@@ -101,10 +105,37 @@ ApplicationCommandManager& BaseController::getCommandManager() {
     return commandManager_;
 }
 
-void BaseController::changeListenerCallback (ChangeBroadcaster*) {
-    // Called when the selection changes
-    // DBG("Selection changed");
-    commandManager_.commandStatusChanged();
+void BaseController::devicesChanged() {
+    if (!edit_) return;
+
+    edit_->getTransport().ensureContextAllocated();
+
+    // if (auto defaultMidiDevice = engine_.getDeviceManager().getDefaultMidiInDevice()) {
+    //     // Find the input device instance for the default MIDI device
+    //     te::InputDeviceInstance* defaultInstance = nullptr;
+    //     for (auto instance : edit_->getAllInputDevices()) {
+    //         if (&instance->getInputDevice() == defaultMidiDevice) {
+    //             defaultInstance = instance;
+    //             break;
+    //         }
+    //     }
+
+    //     for (auto at : te::getTracksOfType<te::AudioTrack>(*edit_, true)) {
+    //         if (at) {
+    //             [[maybe_unused]] auto res = defaultInstance->setTarget(at->itemID, false, &edit_->getUndoManager(), 0);
+    //         }
+    //     }
+    // }
+    edit_->restartPlayback();
+}
+
+void BaseController::changeListenerCallback(ChangeBroadcaster* source) {
+    if (source == &selectionManager_) {
+        // Selection changed, update command status
+        commandManager_.commandStatusChanged();
+    } else if (source == &engine_.getDeviceManager()) {
+        devicesChanged();
+    }
 }
 
 void BaseController::handlePluginManager() {
@@ -465,6 +496,7 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 
     editViewState_.reset();
     edit_ = std::move(edit);
+
     // FIXME implement BPM editing with clips remapping
     // 8 * 13f = 104f — one bar
     // one beat - 104f / 4 = 26f = 1s / 50f * 26f = 0.52s
@@ -473,6 +505,7 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     edit_->tempoSequence.getTempoAt(edit_->getTransport().getPosition()).setBpm(115.3846153846);
     edit_->playInStopEnabled = false;
     setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
+
     createTracksAndAssignInputs();
     te::EditFileOperations(*edit_).save(true, true, false);
 
@@ -482,29 +515,64 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     mainWindow_.setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
     mainWindow_.setSize(w, h);
     mainWindow_.repaint();
+
 }
 
+// void MainController::devicesChanged() {
+//     if (!edit_ || !editViewState_) return;
+
+//     // // Enable all MIDI devices
+//     // for (auto& midiIn : engine_.getDeviceManager().getMidiInDevices()) {
+//     //     midiIn->setMonitorMode(te::InputDevice::MonitorMode::automatic);
+//     //     midiIn->setEnabled(true);
+//     //     midiIn->recordingEnabled = true;
+//     // }
+
+//     edit_->getTransport().ensureContextAllocated();
+
+//     if (auto defaultMidiDevice = engine_.getDeviceManager().getDefaultMidiInDevice()) {
+//         DBG("MainController::reassignInputDevices: Default MIDI device: " << defaultMidiDevice->getName());
+//         // Find the input device instance for the default MIDI device
+//         te::InputDeviceInstance* defaultInstance = nullptr;
+//         for (auto instance : edit_->getAllInputDevices()) {
+//             DBG("MainController::reassignInputDevices: Checking instance: " << instance->getInputDevice().getName());
+//             if (&instance->getInputDevice() == defaultMidiDevice) {
+//                 DBG("MainController::reassignInputDevices: Found default MIDI device: " << defaultMidiDevice->getName());
+//                 defaultInstance = instance;
+//                 break;
+//             }
+//         }
+
+//     //     for (auto at : te::getTracksOfType<te::AudioTrack>(*edit_, true)) {
+//     //         if (at) {
+//     //             auto res = defaultMidiDevice->setTarget(at->itemID, true, &edit_->getUndoManager(), 0);
+//     //             if (res) {
+//     //                 defaultMidiDevice->setRecordingEnabled(at->itemID, true);
+//     //             }
+//     //         }
+//     //     }
+
+//     //     // // Assign default MIDI device to all tracks
+//     //     // if (defaultInstance) {
+//     //     //     for (int trackNum = 0; trackNum < 4; ++trackNum) {
+//     //     //         if (auto t = EngineHelpers::getOrInsertAudioTrackAt(*edit_, trackNum)) {
+//     //     //             auto res = defaultInstance->setTarget(t->itemID, true, &edit_->getUndoManager(), 0);
+//     //     //             if (res) {
+//     //     //                 defaultInstance->setRecordingEnabled(t->itemID, true);
+//     //     //             }
+//     //     //         }
+//     //     //     }
+//     //     // }
+//     } else {
+//         DBG("MainController::reassignInputDevices: No default MIDI device found.");
+//     }
+
+//     edit_->restartPlayback();
+// }
+
 void MainController::createTracksAndAssignInputs() {
-    for (auto& midiIn : engine_.getDeviceManager().getMidiInDevices()) {
-        midiIn->setMonitorMode(te::InputDevice::MonitorMode::automatic);
-        midiIn->setEnabled(true);
-    }
-
-    edit_->getTransport().ensureContextAllocated();
-    if (te::getAudioTracks(*edit_).size() == 0) {
-        int trackNum = 0;
-
-        for (auto instance : edit_->getAllInputDevices()) {
-            if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
-                if (auto t = EngineHelpers::getOrInsertAudioTrackAt(*edit_, trackNum)) {
-                    [[ maybe_unused ]] auto res = instance->setTarget(t->itemID, true, &edit_->getUndoManager(), 0);
-                    instance->setRecordingEnabled(t->itemID, true);
-                    trackNum++;
-                }
-            }
-        }
-    }
-    edit_->restartPlayback();
+    edit_->ensureNumberOfAudioTracks(1);
+    devicesChanged();
 }
 
 

@@ -9,12 +9,12 @@ MultitrackMidiPreview::MultitrackMidiPreview(te::Edit& ed)
 {
     initialize();
     transport.addChangeListener(this);
-    enableMidiDeviceChangeMonitoring();
+    edit.engine.getDeviceManager().addChangeListener(this);
 }
 
 MultitrackMidiPreview::~MultitrackMidiPreview() {
     stopPlayback();
-    disableMidiDeviceChangeMonitoring();
+    edit.engine.getDeviceManager().removeChangeListener(this);
 }
 
 void MultitrackMidiPreview::initialize() {
@@ -42,7 +42,7 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
     }
 
     // Set up MIDI device assignments
-    reassignInputs();
+    // reassignInputs();
 }
 
 void MultitrackMidiPreview::setupChannelClips() {
@@ -200,51 +200,38 @@ void MultitrackMidiPreview::stopPlayback() {
 }
 
 void MultitrackMidiPreview::changeListenerCallback(juce::ChangeBroadcaster* source) {
-    if (source == &transport) {
-        // Handle transport changes if needed
-        // DBG("Transport state changed: "
-        //     << (transport.isPlaying() ? "Playing" : "Stopped")
-        //     << (transport.isRecording() ? ", Recording" : "")
-        //     << (transport.isStopping() ? ", Stopping" : "")
-        // );
-    }
-}
-
-void MultitrackMidiPreview::reassignInputs() {
-    // all MIDI inputs are already enabled in the Edit
-    // for (auto& midiIn : edit.engine.getDeviceManager().getMidiInDevices()) {
-    //     DBG("MultitrackMidiPreview::createTracksAndAssignInputs: Enabling MIDI input: " << midiIn->getName());
-    //     midiIn->setMonitorMode(te::InputDevice::MonitorMode::on);
-    //     midiIn->setEnabled(true);
+    // if (source == &transport) {
+    //     // Handle transport changes if needed
+    //     // DBG("Transport state changed: "
+    //     //     << (transport.isPlaying() ? "Playing" : "Stopped")
+    //     //     << (transport.isRecording() ? ", Recording" : "")
+    //     //     << (transport.isStopping() ? ", Stopping" : "")
+    //     // );
     // }
-
-    edit.getTransport().ensureContextAllocated();
-
-    // Assign physical MIDI devices to the track
-    for (auto instance : edit.getAllInputDevices()) {
-        if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
-            auto res = instance->setTarget(track->itemID, true, &edit.getUndoManager(), 0);
-            // Recording is not needed for live monitoring
-        }
-    }
-    edit.restartPlayback();
+    // if (source == &edit.engine.getDeviceManager()) {
+    //     reassignInputs();
+    // }
 }
 
-void MultitrackMidiPreview::enableMidiDeviceChangeMonitoring() {
-    if (!deviceListener_) {
-        deviceListener_ = std::make_unique<DeviceChangeListener>();
-        deviceListener_->callback = [this]() {
-            // DBG("MultitrackMidiPreview: MIDI device configuration changed, updating track assignments");
-            reassignInputs();
-        };
-    }
-    edit.engine.getDeviceManager().addChangeListener(deviceListener_.get());
-}
+// void MultitrackMidiPreview::reassignInputs() {
+//     // all MIDI inputs are already enabled in the Edit
+//     // for (auto& midiIn : edit.engine.getDeviceManager().getMidiInDevices()) {
+//     //     DBG("MultitrackMidiPreview::createTracksAndAssignInputs: Enabling MIDI input: " << midiIn->getName());
+//     //     midiIn->setMonitorMode(te::InputDevice::MonitorMode::on);
+//     //     midiIn->setEnabled(true);
+//     // }
 
-void MultitrackMidiPreview::disableMidiDeviceChangeMonitoring() {
-    if (deviceListener_) {
-        edit.engine.getDeviceManager().removeChangeListener(deviceListener_.get());
-    }
-}
+//     edit.getTransport().ensureContextAllocated();
+
+//     // Assign physical MIDI devices to the track
+//     for (auto instance : edit.getAllInputDevices()) {
+//         if (instance->getInputDevice().getDeviceType() == te::InputDevice::physicalMidiDevice) {
+//             auto res = instance->setTarget(track->itemID, true, &edit.getUndoManager(), 0);
+//             // Recording is not needed for live monitoring
+//         }
+//     }
+//     edit.restartPlayback();
+// }
+
 
 }

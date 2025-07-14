@@ -33,7 +33,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/src)
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
 # Add option to build examples
-option(BUILD_TRACKTION_EXAMPLES "Build Tracktion Engine examples" OFF)
+option(BUILD_TRACKTION_EXAMPLES "Build Tracktion Engine examples" ON)
 if(BUILD_TRACKTION_EXAMPLES)
     add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples)
 endif()

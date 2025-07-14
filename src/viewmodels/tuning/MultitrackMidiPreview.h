@@ -26,19 +26,12 @@ public:
     // Access to transport for state monitoring
     tracktion::TransportControl& getTransport() { return transport; }
 
-    // MIDI device management
-    void reassignInputs();
-    void enableMidiDeviceChangeMonitoring();
-    void disableMidiDeviceChangeMonitoring();
+    // // MIDI device management
+    // void reassignInputs();
 
 private:
     static constexpr int NUM_CHANNELS = 4;
 
-    // Device change listener helper
-    struct DeviceChangeListener : juce::ChangeListener {
-        std::function<void()> callback;
-        void changeListenerCallback(juce::ChangeBroadcaster*) override { if (callback) callback(); }
-    };
 
     // Member variables
     tracktion::Edit& edit;
@@ -46,7 +39,6 @@ private:
     tracktion::AudioTrack* track;
     std::array<tracktion::MidiClip::Ptr, NUM_CHANNELS> channelClips;
     uZX::MidiToPsgPlugin::Ptr midiToPsgPlugin { nullptr };
-    std::unique_ptr<DeviceChangeListener> deviceListener_;
 
     // ChangeListener overrides
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;

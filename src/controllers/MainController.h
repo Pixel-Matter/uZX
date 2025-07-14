@@ -33,6 +33,7 @@ protected:
     virtual std::unique_ptr<te::Edit> createOrLoadStartupEdit() = 0;
     virtual std::unique_ptr<te::Edit> createOrLoadEdit(File editFile);
     virtual void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) = 0;
+    virtual void devicesChanged();
     void handlePluginManager();
 
     te::Engine engine_;
@@ -78,6 +79,7 @@ private:
     void handleSaveAs();
     void handleRecord();
     void createTracksAndAssignInputs();
+    // void devicesChanged() override;
 };
 
 

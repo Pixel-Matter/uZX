@@ -519,61 +519,9 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 
 }
 
-// void MainController::devicesChanged() {
-//     if (!edit_ || !editViewState_) return;
-
-//     // // Enable all MIDI devices
-//     // for (auto& midiIn : engine_.getDeviceManager().getMidiInDevices()) {
-//     //     midiIn->setMonitorMode(te::InputDevice::MonitorMode::automatic);
-//     //     midiIn->setEnabled(true);
-//     //     midiIn->recordingEnabled = true;
-//     // }
-
-//     edit_->getTransport().ensureContextAllocated();
-
-//     if (auto defaultMidiDevice = engine_.getDeviceManager().getDefaultMidiInDevice()) {
-//         DBG("MainController::reassignInputDevices: Default MIDI device: " << defaultMidiDevice->getName());
-//         // Find the input device instance for the default MIDI device
-//         te::InputDeviceInstance* defaultInstance = nullptr;
-//         for (auto instance : edit_->getAllInputDevices()) {
-//             DBG("MainController::reassignInputDevices: Checking instance: " << instance->getInputDevice().getName());
-//             if (&instance->getInputDevice() == defaultMidiDevice) {
-//                 DBG("MainController::reassignInputDevices: Found default MIDI device: " << defaultMidiDevice->getName());
-//                 defaultInstance = instance;
-//                 break;
-//             }
-//         }
-
-//     //     for (auto at : te::getTracksOfType<te::AudioTrack>(*edit_, true)) {
-//     //         if (at) {
-//     //             auto res = defaultMidiDevice->setTarget(at->itemID, true, &edit_->getUndoManager(), 0);
-//     //             if (res) {
-//     //                 defaultMidiDevice->setRecordingEnabled(at->itemID, true);
-//     //             }
-//     //         }
-//     //     }
-
-//     //     // // Assign default MIDI device to all tracks
-//     //     // if (defaultInstance) {
-//     //     //     for (int trackNum = 0; trackNum < 4; ++trackNum) {
-//     //     //         if (auto t = EngineHelpers::getOrInsertAudioTrackAt(*edit_, trackNum)) {
-//     //     //             auto res = defaultInstance->setTarget(t->itemID, true, &edit_->getUndoManager(), 0);
-//     //     //             if (res) {
-//     //     //                 defaultInstance->setRecordingEnabled(t->itemID, true);
-//     //     //             }
-//     //     //         }
-//     //     //     }
-//     //     // }
-//     } else {
-//         DBG("MainController::reassignInputDevices: No default MIDI device found.");
-//     }
-
-//     edit_->restartPlayback();
-// }
-
 void MainController::createTracksAndAssignInputs() {
+    edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
-    devicesChanged();
 }
 
 

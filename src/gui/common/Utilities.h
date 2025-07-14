@@ -11,6 +11,7 @@ void browseForAudioFile(te::Engine& engine, std::function<void (const File&)> fi
 void browseForMidiFile(te::Engine& engine, std::function<void (const File&)> fileChosenCallback);
 void browseForPSGFile(te::Engine& engine, std::function<void (const File&)> fileChosenCallback);
 
+// TODO move all below to different folder /src/util/Helpers.h
 te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit);
 
 te::AudioTrack* addAudioTrackAfter(te::Edit& edit, te::Track* track);

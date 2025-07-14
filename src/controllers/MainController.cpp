@@ -11,9 +11,10 @@
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
-#include "../plugins/uZX/MidiToPsgPlugin.h"
+#include "../plugins/uZX/NotesToPsgPlugin.h"
 
 #include "../util/FileOps.h"
+#include "../util/Helpers.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
@@ -37,7 +38,7 @@ BaseController::BaseController()
 void BaseController::initialize() {
     // DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
     engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
-    engine_.getPluginManager().createBuiltInType<uZX::MidiToPsgPlugin>();
+    engine_.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
     engine_.getDeviceManager().addChangeListener(this);
 
     setEdit(createOrLoadStartupEdit());

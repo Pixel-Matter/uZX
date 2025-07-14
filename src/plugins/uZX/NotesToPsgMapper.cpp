@@ -1,16 +1,16 @@
-#include "MidiToPsgTransformer.h"
+#include "NotesToPsgMapper.h"
 #include "../../models/PsgMidi.h"
 #include <cstddef>
 
 namespace MoTool::uZX {
 
-MidiToPsgTransformer::MidiToPsgTransformer(int baseChannel, int numChannels)
+NotesToPsgMapper::NotesToPsgMapper(int baseChannel, int numChannels)
     : baseChannel_(baseChannel)
     , numChannels_(juce::jlimit(1, 4, numChannels))
 {
 }
 
-void MidiToPsgTransformer::initPSG() {
+void NotesToPsgMapper::initPSG() {
     // Initialize channel states
     // DBG("Initializing PSG with base channel " << baseChannel_ << " and " << numChannels_ << " channels");
     for (int i = baseChannel_; i < baseChannel_ + numChannels_; ++i) {
@@ -24,7 +24,7 @@ void MidiToPsgTransformer::initPSG() {
     }
 }
 
-void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
+void NotesToPsgMapper::noteOn(int channel, int note, int velocity) {
     // DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
     if (!isChannelInRange(channel) || velocity == 0) return;
     jassert(tuningSystem_ != nullptr);
@@ -52,7 +52,7 @@ void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
     }
 }
 
-void MidiToPsgTransformer::noteOff(int channel, int note) {
+void NotesToPsgMapper::noteOff(int channel, int note) {
     // DBG("Note Off: Channel " << channel << ", Note " << note);
     if (!isChannelInRange(channel)) return;
 
@@ -67,7 +67,7 @@ void MidiToPsgTransformer::noteOff(int channel, int note) {
     }
 }
 
-void MidiToPsgTransformer::allNotesOff(int channel) {
+void NotesToPsgMapper::allNotesOff(int channel) {
     // DBG("All Notes Off: Channel " << channel);
     if (!isChannelInRange(channel)) return;
 
@@ -83,7 +83,7 @@ void MidiToPsgTransformer::allNotesOff(int channel) {
     }
 }
 
-void MidiToPsgTransformer::aftertouch(int channel, int aftertouch) {
+void NotesToPsgMapper::aftertouch(int channel, int aftertouch) {
     if (!isChannelInRange(channel)) return;
 
     auto& state = getChannelState(channel);
@@ -95,7 +95,7 @@ void MidiToPsgTransformer::aftertouch(int channel, int aftertouch) {
     }
 }
 
-void MidiToPsgTransformer::controlChange(int channel, int controller, int value) {
+void NotesToPsgMapper::controlChange(int channel, int controller, int value) {
     // Pass through all CC messages unchanged
     // DBG("Control Change: Channel " << channel << ", Controller " << controller << ", Value " << value);
     if (controller == static_cast<int>(MidiCCType::AllNotesOff)) {
@@ -105,30 +105,30 @@ void MidiToPsgTransformer::controlChange(int channel, int controller, int value)
     }
 }
 
-std::vector<juce::MidiMessage> MidiToPsgTransformer::getOutputMessages() {
+std::vector<juce::MidiMessage> NotesToPsgMapper::getOutputMessages() {
     auto result = std::move(outputBuffer_);
     outputBuffer_.clear();
     return result;
 }
 
-const MidiToPsgTransformer::ChannelState& MidiToPsgTransformer::getChannelState(int channel) const {
+const NotesToPsgMapper::ChannelState& NotesToPsgMapper::getChannelState(int channel) const {
     return channels_[static_cast<size_t>(channel - baseChannel_)];
 }
 
-MidiToPsgTransformer::ChannelState& MidiToPsgTransformer::getChannelState(int channel) {
+NotesToPsgMapper::ChannelState& NotesToPsgMapper::getChannelState(int channel) {
     return channels_[static_cast<size_t>(channel - baseChannel_)];
 }
 
-bool MidiToPsgTransformer::isChannelInRange(int channel) const {
+bool NotesToPsgMapper::isChannelInRange(int channel) const {
     return channel >= baseChannel_ && channel < baseChannel_ + numChannels_;
 }
 
-void MidiToPsgTransformer::emitVolumeCC(int channel, int volume) {
+void NotesToPsgMapper::emitVolumeCC(int channel, int volume) {
     // DBG("Emitting Volume CC: Channel " << channel << ", Volume " << volume);
     emitCC(channel, static_cast<int>(MidiCCType::Volume), volume);
 }
 
-void MidiToPsgTransformer::emitPeriodCC(int channel, int period) {
+void NotesToPsgMapper::emitPeriodCC(int channel, int period) {
     // Split 12-bit period into coarse (high 5 bits) and fine (low 7 bits)
     int coarse = (period >> 7) & 0x7F;  // bits 7-11 -> 0-31 (high 5 bits)
     int fine = period & 0x7F;           // bits 0-6 -> 0-127 (low 7 bits)
@@ -142,32 +142,32 @@ void MidiToPsgTransformer::emitPeriodCC(int channel, int period) {
     outputBuffer_.push_back(fineMsg);
 }
 
-void MidiToPsgTransformer::emitToneSwitchCC(int channel, bool on) {
+void NotesToPsgMapper::emitToneSwitchCC(int channel, bool on) {
     emitCC(channel, static_cast<int>(MidiCCType::GPB1ToneSwitch), on ? 127 : 0);
 }
 
-void MidiToPsgTransformer::emitNoiseSwitchCC(int channel, bool on) {
+void NotesToPsgMapper::emitNoiseSwitchCC(int channel, bool on) {
     emitCC(channel, static_cast<int>(MidiCCType::GPB2NoiseSwitch), on ? 127 : 0);
 }
 
-void MidiToPsgTransformer::emitEnvSwitchCC(int channel, bool on) {
+void NotesToPsgMapper::emitEnvSwitchCC(int channel, bool on) {
     emitCC(channel, static_cast<int>(MidiCCType::GPB3EnvSwitch), on ? 127 : 0);
 }
 
-void MidiToPsgTransformer::emitCC(int channel, int controller, int value) {
+void NotesToPsgMapper::emitCC(int channel, int controller, int value) {
     auto msg = juce::MidiMessage::controllerEvent(channel, controller, value);
     // DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
 
     outputBuffer_.push_back(msg);
 }
 
-int MidiToPsgTransformer::velocityAndAftertouchToVolume(int velocity, int aftertouch) const {
+int NotesToPsgMapper::velocityAndAftertouchToVolume(int velocity, int aftertouch) const {
     // Combine velocity and aftertouch, map from 0-127 to 0-15
     int combined = juce::jlimit(0, 127, velocity + aftertouch);
     return (combined * 15) / 127;
 }
 
-void MidiToPsgTransformer::updateNoteVolume(int channel) {
+void NotesToPsgMapper::updateNoteVolume(int channel) {
     auto& state = getChannelState(channel);
     // DBG("updateChannelOutput Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
     if (!state.currentNote.has_value()) return;

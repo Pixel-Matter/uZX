@@ -13,7 +13,7 @@ namespace MoTool::uZX {
  * Core converter class that processes MIDI note events and generates PSG MIDI CC messages.
  * This class is designed to be testable and reusable.
  */
-class MidiToPsgTransformer {
+class NotesToPsgMapper {
 public:
     struct ChannelState {
         std::optional<int> currentNote;
@@ -33,7 +33,7 @@ public:
         }
     };
 
-    explicit MidiToPsgTransformer(int baseChannel = 1, int numChannels = 3);
+    explicit NotesToPsgMapper(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
     void setTuningSystem(const TuningSystem* tuning) { tuningSystem_ = tuning; }

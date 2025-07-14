@@ -3,7 +3,7 @@
 #include "PluginComponent.h"
 
 #include "../../plugins/uZX/aychip/AYPlugin.h"
-#include "../../plugins/uZX/MidiToPsgPlugin.h"
+#include "../../plugins/uZX/NotesToPsgPlugin.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
@@ -152,7 +152,7 @@ void addInternalPlugin(PluginTreeBase& item, int& num, bool synth = false) {
 
 void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
     addInternalPlugin<uZX::AYChipPlugin>(*this, num);
-    addInternalPlugin<uZX::MidiToPsgPlugin>(*this, num);
+    addInternalPlugin<uZX::NotesToPsgPlugin>(*this, num);
     // addInternalPlugin<te::VolumeAndPanPlugin>(*this, num);
     // addInternalPlugin<te::LevelMeterPlugin>(*this, num);
     addInternalPlugin<te::EqualiserPlugin>(*this, num);

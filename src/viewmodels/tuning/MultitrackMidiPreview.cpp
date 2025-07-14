@@ -35,9 +35,9 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
         AYPlugin->staticParams.channelsLayoutValue = uZX::ChannelsLayout::CAB;
     }
 
-    if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiToPsgPlugin::xmlTypeName, {})) {
+    if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::NotesToPsgPlugin::xmlTypeName, {})) {
         track->pluginList.insertPlugin(*plugin, 0, nullptr);
-        midiToPsgPlugin = dynamic_cast<uZX::MidiToPsgPlugin*>(plugin.get());
+        NotesToPsgPlugin = dynamic_cast<uZX::NotesToPsgPlugin*>(plugin.get());
     }
 
     // Set up MIDI device assignments
@@ -68,8 +68,8 @@ void MultitrackMidiPreview::setupChannelClips() {
 
 
 void MultitrackMidiPreview::setTuningSystem(TuningSystem* ts) {
-    if (midiToPsgPlugin != nullptr) {
-        midiToPsgPlugin->setTuningSystem(ts);
+    if (NotesToPsgPlugin != nullptr) {
+        NotesToPsgPlugin->setTuningSystem(ts);
     }
 }
 

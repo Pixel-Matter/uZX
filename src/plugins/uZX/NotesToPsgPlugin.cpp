@@ -1,26 +1,26 @@
-#include "MidiToPsgPlugin.h"
+#include "NotesToPsgPlugin.h"
 
 namespace MoTool::uZX {
 
-const char* MidiToPsgPlugin::xmlTypeName = "midiToPsg";
+const char* NotesToPsgPlugin::xmlTypeName = "midiToPsg";
 
-MidiToPsgPlugin::MidiToPsgPlugin(te::PluginCreationInfo info)
+NotesToPsgPlugin::NotesToPsgPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
     , transformer(1, 4) // Default: channels 1-4
 {
 }
 
-MidiToPsgPlugin::~MidiToPsgPlugin() {
+NotesToPsgPlugin::~NotesToPsgPlugin() {
 }
 
-void MidiToPsgPlugin::initialise(const te::PluginInitialisationInfo&) {
+void NotesToPsgPlugin::initialise(const te::PluginInitialisationInfo&) {
     updateConverterParams();
 }
 
-void MidiToPsgPlugin::deinitialise() {
+void NotesToPsgPlugin::deinitialise() {
 }
 
-void MidiToPsgPlugin::applyToBuffer(const te::PluginRenderContext& rc) noexcept {
+void NotesToPsgPlugin::applyToBuffer(const te::PluginRenderContext& rc) noexcept {
     // Process MIDI input
     if (rc.bufferForMidiMessages != nullptr) {
         for (auto& m : *rc.bufferForMidiMessages) {
@@ -39,42 +39,42 @@ void MidiToPsgPlugin::applyToBuffer(const te::PluginRenderContext& rc) noexcept 
     // This plugin is MIDI-only, no audio processing needed
 }
 
-void MidiToPsgPlugin::midiPanic() {
+void NotesToPsgPlugin::midiPanic() {
     reset();
 }
 
-void MidiToPsgPlugin::reset() {
+void NotesToPsgPlugin::reset() {
     transformer.clearOutput();
     transformer.initPSG();
 }
 
-void MidiToPsgPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
+void NotesToPsgPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
     staticParams.restoreFromTree(v);
     updateConverterParams();
 }
 
-std::unique_ptr<te::Plugin::EditorComponent> MidiToPsgPlugin::createEditor() {
+std::unique_ptr<te::Plugin::EditorComponent> NotesToPsgPlugin::createEditor() {
     // Return nullptr for now - no GUI needed for basic functionality
     return nullptr;
 }
 
-void MidiToPsgPlugin::Params::initialise() {
+void NotesToPsgPlugin::Params::initialise() {
     baseMidiChannelValue.referTo(IDs::midiBase, "Base MIDI channel", {1, 16, 1}, 1);
     numChannelsValue.referTo(IDs::midiChans, "Number of channels", {1, 4, 1}, 4);
 }
 
-void MidiToPsgPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
+void NotesToPsgPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
     te::copyPropertiesToCachedValues(v,
         baseMidiChannelValue.cachedValue,
         numChannelsValue.cachedValue
     );
 }
 
-void MidiToPsgPlugin::valueTreeChanged() {
+void NotesToPsgPlugin::valueTreeChanged() {
     updateConverterParams();
 }
 
-void MidiToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
+void NotesToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
     juce::ignoreUnused(v);
 
     if (id == IDs::midiBase || id == IDs::midiChans) {
@@ -82,30 +82,27 @@ void MidiToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& i
     }
 }
 
-void MidiToPsgPlugin::updateConverterParams() {
+void NotesToPsgPlugin::updateConverterParams() {
     transformer.setBaseChannel(staticParams.baseMidiChannelValue.get());
     transformer.setNumChannels(staticParams.numChannelsValue.get());
     reset();
 }
 
-void MidiToPsgPlugin::setTuningSystem(TuningSystem* tuningSystem) {
+void NotesToPsgPlugin::setTuningSystem(TuningSystem* tuningSystem) {
     currentTuningSystem = tuningSystem;
     transformer.setTuningSystem(currentTuningSystem);
 }
 
-void MidiToPsgPlugin::processMidiMessageWithSource(const te::MidiMessageWithSource& msg) {
+void NotesToPsgPlugin::processMidiMessageWithSource(const te::MidiMessageWithSource& msg) {
     // DBG("Processing MIDI message: " << msg.getDescription());
     // converter_.debugChannelStates();
     if (msg.isNoteOn()) {
         transformer.noteOn(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity());
-    }
-    else if (msg.isNoteOff()) {
+    } else if (msg.isNoteOff()) {
         transformer.noteOff(msg.getChannel(), msg.getNoteNumber());
-    }
-    else if (msg.isAftertouch()) {
+    } else if (msg.isAftertouch()) {
         transformer.aftertouch(msg.getChannel(), msg.getAfterTouchValue());
-    }
-    else if (msg.isController()) {
+    } else if (msg.isController()) {
         transformer.controlChange(msg.getChannel(), msg.getControllerNumber(), msg.getControllerValue());
     }
 }

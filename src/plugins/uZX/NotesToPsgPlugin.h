@@ -1,7 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "MidiToPsgTransformer.h"
+#include "NotesToPsgMapper.h"
 #include "../../models/tuning/TuningSystemBase.h"
 #include "../../controllers/ParamAttachments.h"
 
@@ -18,11 +18,11 @@ namespace IDs {
 
 namespace uZX {
 
-class MidiToPsgPlugin : public te::Plugin {
+class NotesToPsgPlugin : public te::Plugin {
 public:
-    using Ptr = ReferenceCountedObjectPtr<MidiToPsgPlugin>;
-    MidiToPsgPlugin(te::PluginCreationInfo);
-    ~MidiToPsgPlugin() override;
+    using Ptr = ReferenceCountedObjectPtr<NotesToPsgPlugin>;
+    NotesToPsgPlugin(te::PluginCreationInfo);
+    ~NotesToPsgPlugin() override;
 
     //==============================================================================
     static const char* getPluginName() { return "MIDI to PSG"; }
@@ -70,7 +70,7 @@ public:
 
 private:
     //==============================================================================
-    uZX::MidiToPsgTransformer transformer;
+    uZX::NotesToPsgMapper transformer;
     TuningSystem* currentTuningSystem = nullptr;
 
     void valueTreeChanged() override;
@@ -78,7 +78,7 @@ private:
     void updateConverterParams();
     void processMidiMessageWithSource(const te::MidiMessageWithSource& msg);
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiToPsgPlugin)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgPlugin)
 };
 
 } // namespace MoTool::uZX

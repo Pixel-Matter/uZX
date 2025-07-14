@@ -1,5 +1,5 @@
 #include <JuceHeader.h>
-#include "MidiToPsgTransformer.h"
+#include "NotesToPsgMapper.h"
 #include "../../models/tuning/TuningSystemBase.h"
 #include "../../models/tuning/TuningRegistry.h"
 #include "../../models/tuning/TemperamentSystem.h"
@@ -13,7 +13,7 @@ using namespace juce;
 
 class MidiToPsgConverterTests : public UnitTest {
 public:
-    MidiToPsgConverterTests() : UnitTest("MidiToPsgTransformer", "MoTool") {}
+    MidiToPsgConverterTests() : UnitTest("NotesToPsgMapper", "MoTool") {}
 
 private:
     ChipCapabilities testCaps {16, Range<int>(1, 4096)};
@@ -60,8 +60,8 @@ private:
     }
 
     // Helper to check converter state
-    void expectChannelState(const MidiToPsgTransformer& converter, int channel, int expectedNote, const String& description) {
-        const auto& constConverter = static_cast<const MidiToPsgTransformer&>(converter);
+    void expectChannelState(const NotesToPsgMapper& converter, int channel, int expectedNote, const String& description) {
+        const auto& constConverter = static_cast<const NotesToPsgMapper&>(converter);
         const auto& state = constConverter.getChannelState(channel);
         expectEquals(state.currentNote.value_or(-1), expectedNote, description);
     }
@@ -70,7 +70,7 @@ public:
     void runTest() override {
         beginTest("Basic note on/off");
         {
-            MidiToPsgTransformer converter(1, 3);
+            NotesToPsgMapper converter(1, 3);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -96,7 +96,7 @@ public:
 
         beginTest("Channel filtering");
         {
-            MidiToPsgTransformer converter(2, 2); // Channels 2-3 only
+            NotesToPsgMapper converter(2, 2); // Channels 2-3 only
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -119,7 +119,7 @@ public:
 
         beginTest("Monophonic behavior");
         {
-            MidiToPsgTransformer converter(1, 1);
+            NotesToPsgMapper converter(1, 1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -154,7 +154,7 @@ public:
 
         beginTest("Velocity and aftertouch mapping");
         {
-            MidiToPsgTransformer converter(1, 1);
+            NotesToPsgMapper converter(1, 1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -175,7 +175,7 @@ public:
 
         beginTest("CC passthrough");
         {
-            MidiToPsgTransformer converter(1, 1);
+            NotesToPsgMapper converter(1, 1);
 
             // Test random CC passthrough
             converter.controlChange(1, 64, 100); // Sustain pedal
@@ -189,7 +189,7 @@ public:
 
         beginTest("Optimized tone switching");
         {
-            MidiToPsgTransformer xformer(1, 1);
+            NotesToPsgMapper xformer(1, 1);
             auto tuning = createTestTuning();
             xformer.setTuningSystem(tuning.get());
 
@@ -219,7 +219,7 @@ public:
 
         beginTest("Period encoding correctness");
         {
-            MidiToPsgTransformer converter(1, 1);
+            NotesToPsgMapper converter(1, 1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 

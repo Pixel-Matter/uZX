@@ -1,5 +1,5 @@
  Complex task:
- Create in /Users/ruguevara/projects/MoTool/src/plugins/uZX MidiToPsgPlugin code
+ Create in /Users/ruguevara/projects/MoTool/src/plugins/uZX NotesToPsgPlugin code
  - that processes only midi messages
  - tracks all midi channels
  – listens note on and off messages
@@ -13,7 +13,7 @@
 
  You can see
  - src/plugins/uZX/aychip/AYPlugin.h as an example, but that plugin generates audio. I need
- MidiToPsgPlugin plugin to complement it and generate midi CC messages for AYChipPlugin from midi
+ NotesToPsgPlugin plugin to complement it and generate midi CC messages for AYChipPlugin from midi
  notes first.
  - src/models/PsgMidi.test.cpp - test on PSG params write and read. You should read it to learn what
  PSG params are because plugin must generate them from midi notes

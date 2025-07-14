@@ -6,6 +6,7 @@
 
 #include "../gui/common/ProgressDialog.h"
 #include "../gui/common/Utilities.h"
+#include "../util/Helpers.h"
 
 #include <common/PluginWindow.h>  // from JUCE
 #include <memory>

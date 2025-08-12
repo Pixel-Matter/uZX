@@ -2,26 +2,28 @@
 
 #include <JuceHeader.h>
 
-namespace uZX {
+namespace MoTool::uZX {
+
 //==============================================================================
 /**
-    Represents an MPE voice that an MPEInstrument can use to play a sound.
+    Represents an MPE voice that an ChipInstrument can use
+    to output MPE MIDI messages emulating chiptune instrument.
 
     A voice plays a single sound at a time, and a synthesiser holds an array of
     voices so that it can play polyphonically.
 
-    @see MPEInstrument, MPENote
+    @see ChipInstrument, MPENote
 
     @tags{Audio}
 */
-class JUCE_API MPEChipInstrumentVoice {
+class JUCE_API MPEEffectVoice {
 public:
     //==============================================================================
     /** Constructor. */
-    MPEChipInstrumentVoice();
+    MPEEffectVoice();
 
     /** Destructor. */
-    virtual ~MPEChipInstrumentVoice();
+    virtual ~MPEEffectVoice();
 
     /** Returns the MPENote that this voice is currently playing.
         Returns an invalid MPENote if no note is playing
@@ -43,12 +45,12 @@ public:
     /** Returns true if a voice is sounding in its release phase. **/
     bool isPlayingButReleased() const noexcept;
 
-    /** Called by the MPEInstrument to let the voice know that a new note has started on it.
+    /** Called by the ChipInstrument to let the voice know that a new note has started on it.
         This will be called during the rendering callback, so must be fast and thread-safe.
     */
     virtual void noteStarted() = 0;
 
-    /** Called by the MPEInstrument to let the voice know that its currently playing note has stopped.
+    /** Called by the ChipInstrument to let the voice know that its currently playing note has stopped.
         This will be called during the rendering callback, so must be fast and thread-safe.
 
         If allowTailOff is false or the voice doesn't want to tail-off, then it must stop all
@@ -62,13 +64,13 @@ public:
     */
     virtual void noteStopped(bool allowTailOff) = 0;
 
-    /** Called by the MPEInstrument to let the voice know that its currently playing note
+    /** Called by the ChipInstrument to let the voice know that its currently playing note
         has changed its pressure value.
         This will be called during the rendering callback, so must be fast and thread-safe.
     */
     virtual void notePressureChanged() = 0;
 
-    /** Called by the MPEInstrument to let the voice know that its currently playing note
+    /** Called by the ChipInstrument to let the voice know that its currently playing note
         has changed its pitchbend value.
         This will be called during the rendering callback, so must be fast and thread-safe.
 
@@ -77,13 +79,13 @@ public:
     */
     virtual void notePitchbendChanged() = 0;
 
-    /** Called by the MPEInstrument to let the voice know that its currently playing note
+    /** Called by the ChipInstrument to let the voice know that its currently playing note
         has changed its timbre value.
         This will be called during the rendering callback, so must be fast and thread-safe.
     */
     virtual void noteTimbreChanged() = 0;
 
-    /** Called by the MPEInstrument to let the voice know that its currently playing note
+    /** Called by the ChipInstrument to let the voice know that its currently playing note
         has changed its key state.
         This typically happens when a sustain or sostenuto pedal is pressed or released (on
         an MPE channel relevant for this note), or if the note key is lifted while the sustained
@@ -106,7 +108,7 @@ public:
         The size of the blocks that are rendered can change each time it is called, and may
         involve rendering as little as 1 sample at a time. In between rendering callbacks,
         the voice's methods will be called to tell it about note and controller events.
-        
+
         @param midiBuffer The MIDI buffer to write MPE MIDI messages to
         @param startSample The sample offset within the buffer to start writing
         @param numSamples The number of samples in this rendering block
@@ -125,7 +127,7 @@ public:
     */
     double getPlayRate() const noexcept { return currentPlayRate; }
 
-    /** This will be set to an incrementing counter value in MPEInstrument::startVoice()
+    /** This will be set to an incrementing counter value in ChipInstrument::startVoice()
         and can be used to determine the order in which voices started.
     */
     uint32 noteOnTime = 0;
@@ -152,9 +154,9 @@ protected:
 
 private:
     //==============================================================================
-    friend class MPEInstrument;
+    friend class MPEEffect;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MPEChipInstrumentVoice)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MPEEffectVoice)
 };
 
-}  // namespace uZX
+}  // namespace MoTool::uZX

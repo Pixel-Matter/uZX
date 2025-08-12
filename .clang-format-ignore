@@ -1,0 +1,13 @@
+# Ignore third-party code
+third_party/
+build/
+
+# Ignore generated files
+*.generated.*
+*_generated.*
+
+# CMake generated files
+CMakeFiles/
+cmake_install.cmake
+CMakeCache.txt
+compile_commands.json

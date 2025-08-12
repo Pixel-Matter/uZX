@@ -90,7 +90,7 @@ void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, boo
             track->changed();
             // make sure AYChipPlugin is added to the track
             for (auto& p : track->pluginList) {
-                if (auto ay = dynamic_cast<uZX::AYChipPlugin*>(p)) {
+                if (dynamic_cast<uZX::AYChipPlugin*>(p)) {
                     return;
                 }
             }
@@ -244,17 +244,17 @@ File getLastCsvExportDirectory() {
     options.applicationName = CharPointer_UTF8(ProjectInfo::projectName);
     options.filenameSuffix = ".settings";
     options.osxLibrarySubFolder = "Application Support";
-    
+
     PropertiesFile settings(options);
-    String lastExportPath = settings.getValue("lastCsvExportDirectory", 
+    String lastExportPath = settings.getValue("lastCsvExportDirectory",
                                              File::getSpecialLocation(File::userDesktopDirectory).getFullPathName());
     File lastExportDir(lastExportPath);
-    
+
     // If the saved directory doesn't exist anymore, fallback to desktop
     if (!lastExportDir.exists() || !lastExportDir.isDirectory()) {
         return File::getSpecialLocation(File::userDesktopDirectory);
     }
-    
+
     return lastExportDir;
 }
 
@@ -263,7 +263,7 @@ void setLastCsvExportDirectory(const File& directory) {
     options.applicationName = CharPointer_UTF8(ProjectInfo::projectName);
     options.filenameSuffix = ".settings";
     options.osxLibrarySubFolder = "Application Support";
-    
+
     PropertiesFile settings(options);
     settings.setValue("lastCsvExportDirectory", directory.getFullPathName());
     settings.saveIfNeeded();

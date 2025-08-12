@@ -342,9 +342,9 @@ using namespace MoTool;
 using namespace MoTool::Util;
 
 template <>
-struct juce::VariantConverter<Scale::Tonic> : public EnumVariantConverter<Scale::Tonic> {};
+struct VariantConverter<Scale::Tonic> : public EnumVariantConverter<Scale::Tonic> {};
 
 template <>
-struct juce::VariantConverter<Scale::ScaleType> : public EnumVariantConverter<Scale::ScaleType> {};
+struct VariantConverter<Scale::ScaleType> : public EnumVariantConverter<Scale::ScaleType> {};
 
 }

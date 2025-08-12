@@ -93,7 +93,7 @@ public:
     // void setState(const juce::ValueTree& state);
 
     juce::ValueTree state;
-    
+
 protected:
     juce::CachedValue<double> a4Frequency;
 };
@@ -200,6 +200,6 @@ using namespace MoTool;
 using namespace MoTool::Util;
 
 template <>
-struct juce::VariantConverter<TemperamentType> : public EnumVariantConverter<TemperamentType> {};
+struct VariantConverter<TemperamentType> : public EnumVariantConverter<TemperamentType> {};
 
 }

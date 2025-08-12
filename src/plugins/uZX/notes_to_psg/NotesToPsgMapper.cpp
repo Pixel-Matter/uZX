@@ -1,5 +1,6 @@
 #include "NotesToPsgMapper.h"
-#include "../../models/PsgMidi.h"
+#include "../../../models/PsgMidi.h"
+
 #include <cstddef>
 
 namespace MoTool::uZX {
@@ -52,7 +53,7 @@ void NotesToPsgMapper::noteOn(int channel, int note, int velocity) {
     }
 }
 
-void NotesToPsgMapper::noteOff(int channel, int note) {
+void NotesToPsgMapper::noteOff(int channel, int /*note*/) {
     // DBG("Note Off: Channel " << channel << ", Note " << note);
     if (!isChannelInRange(channel)) return;
 

@@ -11,7 +11,7 @@
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
-#include "../plugins/uZX/NotesToPsgPlugin.h"
+#include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 
 #include "../util/FileOps.h"
 #include "../util/Helpers.h"

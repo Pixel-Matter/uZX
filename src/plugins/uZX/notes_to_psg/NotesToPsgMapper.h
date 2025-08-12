@@ -1,7 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "../../models/tuning/TuningSystemBase.h"
+#include "../../../models/tuning/TuningSystemBase.h"
 
 #include <array>
 #include <vector>

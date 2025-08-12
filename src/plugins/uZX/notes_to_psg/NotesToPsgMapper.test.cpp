@@ -1,10 +1,12 @@
 #include <JuceHeader.h>
+
 #include "NotesToPsgMapper.h"
-#include "../../models/tuning/TuningSystemBase.h"
-#include "../../models/tuning/TuningRegistry.h"
-#include "../../models/tuning/TemperamentSystem.h"
-#include "../../models/tuning/Scales.h"
-#include "../../models/PsgMidi.h"
+
+#include "../../../models/tuning/TuningSystemBase.h"
+#include "../../../models/tuning/TuningRegistry.h"
+#include "../../../models/tuning/TemperamentSystem.h"
+#include "../../../models/tuning/Scales.h"
+#include "../../../models/PsgMidi.h"
 
 namespace MoTool::Tests {
 

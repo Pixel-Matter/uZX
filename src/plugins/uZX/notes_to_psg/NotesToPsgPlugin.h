@@ -1,9 +1,11 @@
 #pragma once
 
 #include <JuceHeader.h>
+
 #include "NotesToPsgMapper.h"
-#include "../../models/tuning/TuningSystemBase.h"
-#include "../../controllers/ParamAttachments.h"
+
+#include "../../../models/tuning/TuningSystemBase.h"
+#include "../../../controllers/ParamAttachments.h"
 
 namespace te = tracktion;
 

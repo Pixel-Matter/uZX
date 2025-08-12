@@ -23,8 +23,8 @@ set(SHARED_SOURCES
 
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
-    plugins/uZX/NotesToPsgMapper.cpp
-    plugins/uZX/NotesToPsgPlugin.cpp
+    plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
+    plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp
 )
 
 # GUI-specific files
@@ -53,15 +53,15 @@ set(GUI_SOURCES
 set(TEST_SOURCES
     ## models/PsgTrack.test.cpp
     ## models/CustomClip.test.cpp
+    models/PsgMidi.test.cpp
+    models/tuning/Ratios.test.cpp
+    models/tuning/TuningTable.test.cpp
+    models/tuning/EqualTemperamentTuning.test.cpp
+    models/tuning/AutoTuning.test.cpp
+    models/tuning/Scales.test.cpp
+    models/tuning/RationalTuning.test.cpp
     viewmodels/tuning/TuningViewModel.test.cpp
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
     plugins/uZX/aychip/AYChip.test.cpp
-    models/PsgMidi.test.cpp
-    models/tuning/Ratios.test.cpp
-    # models/tuning/TuningTable.test.cpp
-    # models/tuning/EqualTemperamentTuning.test.cpp
-    # models/tuning/AutoTuning.test.cpp
-    models/tuning/Scales.test.cpp
-    models/tuning/RationalTuning.test.cpp
-    plugins/uZX/NotesToPsgMapper.test.cpp
+    plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
 )

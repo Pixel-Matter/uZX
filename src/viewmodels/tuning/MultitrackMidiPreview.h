@@ -4,7 +4,7 @@
 #include <array>
 
 #include <common/Utilities.h>  // from Tracktion
-#include "../../plugins/uZX/NotesToPsgPlugin.h"
+#include "../../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 
 namespace MoTool {
 

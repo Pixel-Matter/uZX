@@ -6,7 +6,10 @@ namespace te = tracktion;
 
 const char* ChipInstrumentPlugin::xmlTypeName = "uzxtrmnt";
 
-ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info) : Plugin(info) {
+ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
+    : Plugin(info)
+    , instrument(edit)
+{
     levelMeasurer.addClient(*this);
 
     // TODO add all params from instrument
@@ -135,12 +138,9 @@ void ChipInstrumentPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
     if (fc.bufferForMidiMessages->isAllNotesOff) {
         instrument.turnOffAllVoices(true);
     }
-    // TODO iterate buffer by blocks designated by midi message timestamps
-    // TODO see 4OSC plugin and MPESynth
-
-    // te::MidiMessageArray midiOut;
-    // instrument.applyToBuffer(&fc.bufferForMidiMessages, midiOut);  // also update modulation phases and update params
-    // // TODO copy midi to output buffer
+    fc.bufferForMidiMessages->sortByTimestamp();
+    // instrument.applyToBuffer also updates modulation phases and update params
+    instrument.applyToBuffer(*fc.bufferForMidiMessages, fc.bufferStartSample, fc.bufferNumSamples, fc.midiBufferOffset);
 }
 
 //==============================================================================

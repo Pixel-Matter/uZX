@@ -11,6 +11,7 @@
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
+#include "../plugins/uZX/instrument/ChipInstrumentPlugin.h"
 #include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 
 #include "../util/FileOps.h"
@@ -38,6 +39,7 @@ BaseController::BaseController()
 void BaseController::initialize() {
     // DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
     engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
+    engine_.getPluginManager().createBuiltInType<uZX::ChipInstrumentPlugin>();
     engine_.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
     engine_.getDeviceManager().addChangeListener(this);
 

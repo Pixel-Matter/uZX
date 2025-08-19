@@ -100,7 +100,7 @@ public:
     // MIDI Handling
 
     /** Handles incoming MIDI events. */
-    void handleMidiEvent(const MidiMessage& message) {
+    void handleMidiEvent(const tracktion::MidiMessageWithSource& message) {
         mpeInstrument.processNextMidiEvent(message);
     }
 

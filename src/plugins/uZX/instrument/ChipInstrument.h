@@ -13,20 +13,22 @@ namespace MoTool::uZX {
 */
 class ChipInstrument : public MPEEffect<ChipInstrumentVoice> {
 public:
-    ChipInstrument();
+    ChipInstrument(tracktion::Edit& e);
 
     ~ChipInstrument();
 
     void reset();
-    // void applyToBuffer(const tracktion::MidiMessageArray& midiIn, tracktion::MidiMessageArray& midiOut);
     double getTailLength() const;
     void setCurrentTempo(float newTempo);
+    void applyToBuffer(tracktion::MidiMessageArray& midi, int startSample, int numSamples, double midiOffset);
+    void renderFrame(tracktion::MidiMessageArray& midiBuffer, int startSample, int numSamples);
 
     CriticalSection& getVoiceLock();
 
     void restoreStateFromValueTree(const ValueTree& state);
 
 private:
+    tracktion::Edit& edit;
     CriticalSection voiceLock;
     float currentTempo;
 };

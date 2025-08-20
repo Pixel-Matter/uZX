@@ -1,4 +1,5 @@
 #include "ChipInstrumentPlugin.h"
+#include "tracktion_core/utilities/tracktion_Time.h"
 
 namespace MoTool::uZX {
 
@@ -7,8 +8,9 @@ namespace te = tracktion;
 const char* ChipInstrumentPlugin::xmlTypeName = "uzxtrmnt";
 
 ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
-    : Plugin(info)
-    , instrument(edit)
+    : MidiFxPluginBase<ChipInstrumentFx>(info)
+    // : Plugin(info)
+    // , instrument(edit)
 {
     levelMeasurer.addClient(*this);
 
@@ -108,44 +110,52 @@ void ChipInstrumentPlugin::flushPluginStateToValueTree() {
 void ChipInstrumentPlugin::initialise(const te::PluginInitialisationInfo& /*info*/) {
     // setCurrentPlaybackSampleRate(info.sampleRate);
 
-    instrument.reset();
+    // instrument.reset();
 }
 
 void ChipInstrumentPlugin::deinitialise() {}
 
 //==============================================================================
 void ChipInstrumentPlugin::reset() {
-    instrument.reset();
+    // instrument.reset();
 }
 
 void ChipInstrumentPlugin::midiPanic() {
-    instrument.reset();
+    // instrument.reset();
 }
 
-void ChipInstrumentPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
-    if (fc.bufferForMidiMessages == nullptr) {
-        return;
-    }
+// void ChipInstrumentPlugin::applyToBuffer(const te::PluginRenderContext& fc) {
 
-    SCOPED_REALTIME_CHECK
+//     // EVERYTHING IS WRONG !!!
 
-    // find the tempo
-    currentPos.set(fc.editTime.getStart());
-    instrument.setCurrentTempo(float(currentPos.getTempo()));
+//     if (fc.bufferForMidiMessages == nullptr) {
+//         return;
+//     }
+//     jassert(fc.bufferStartSample == 0); // This assumes bufferStartSample is always 0 which should be the case
+//     jassert(fc.midiBufferOffset == 0.0);
 
-    ScopedLock sl(instrument.getVoiceLock());
-    // Handle all notes off first
-    if (fc.bufferForMidiMessages->isAllNotesOff) {
-        instrument.turnOffAllVoices(true);
-    }
-    fc.bufferForMidiMessages->sortByTimestamp();
-    // instrument.applyToBuffer also updates modulation phases and update params
-    instrument.applyToBuffer(*fc.bufferForMidiMessages, fc.bufferStartSample, fc.bufferNumSamples, fc.midiBufferOffset);
-}
+//     SCOPED_REALTIME_CHECK
+
+//     // find the tempo
+//     // currentPos.set(fc.editTime.getStart());
+//     // instrument.setCurrentTempo(float(currentPos.getTempo()));
+
+//     ScopedLock sl(instrument.getVoiceLock());
+//     // Handle all notes off first
+//     if (fc.bufferForMidiMessages->isAllNotesOff) {
+//         instrument.turnOffAllVoices(true);
+//     }
+//     fc.bufferForMidiMessages->sortByTimestamp();
+//     // DBG("fc.editTime = " << fc.editTime.getStart() << " - " << fc.editTime.getEnd());
+//     // instrument.applyToBuffer also updates modulation phases and update params
+//     instrument.applyToBuffer(*fc.bufferForMidiMessages,
+//                              fc.bufferNumSamples / sampleRate,
+//                              fc.editTime.getStart().inSeconds());
+// }
 
 //==============================================================================
 void ChipInstrumentPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
-    instrument.restoreStateFromValueTree(v);
+    // instrument.restoreStateFromValueTree(v);
 
     for (auto p : getAutomatableParameters())
         p->updateFromAttachedValue();

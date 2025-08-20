@@ -114,7 +114,7 @@ private:
     void updateRegistersFromMidiParams() noexcept;
     void updateRegistersFromMidiRegs() noexcept;
     void updateChip() noexcept;
-    void readMidi(const te::MidiMessageWithSource& m) noexcept;
+    void handleMidiEvent(const te::MidiMessageWithSource& m) noexcept;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };

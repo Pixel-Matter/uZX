@@ -40,21 +40,19 @@ public:
     /** Returns true if the voice is currently playing the given MPENote
         (as identified by the note's initial note number and MIDI channel).
     */
-    bool isCurrentlyPlayingNote(MPENote note) const noexcept;
+    bool isCurrentlyPlayingNote(MPENote note) const noexcept {
+        return isActive() && currentlyPlayingNote.noteID == note.noteID;
+    }
+
+    bool isPlayingButReleased() const noexcept {
+        return isActive() && currentlyPlayingNote.keyState == MPENote::off;
+    }
 
     /** Returns true if this voice is currently busy playing a sound.
         By default this just checks whether getCurrentlyPlayingNote()
-        returns a valid MPE note, but can be overridden for more advanced checking.
+        returns a valid MPE note
     */
-    bool isActive() const { 
-        return static_cast<const Derived*>(this)->isActiveImpl();
-    }
-    
-    /** Default implementation for isActive. Override isActiveImpl in derived class for custom behavior. */
-    bool isActiveImpl() const { return currentlyPlayingNote.isValid(); }
-
-    /** Returns true if a voice is sounding in its release phase. **/
-    bool isPlayingButReleased() const noexcept;
+    bool isActive() const { return currentlyPlayingNote.isValid(); }
 
     /** Called by the MPEEffect to let the voice know that a new note has started on it.
         This will be called during the rendering callback, so must be fast and thread-safe.
@@ -62,7 +60,6 @@ public:
     void noteStarted() {
         static_cast<Derived*>(this)->noteStartedImpl();
     }
-    virtual void noteStartedImpl() = 0;
 
     /** Called by the MPEEffect to let the voice know that its currently playing note has stopped.
         This will be called during the rendering callback, so must be fast and thread-safe.
@@ -79,7 +76,6 @@ public:
     void noteStopped(bool allowTailOff) {
         static_cast<Derived*>(this)->noteStoppedImpl(allowTailOff);
     }
-    virtual void noteStoppedImpl(bool allowTailOff) = 0;
 
     /** Called by the MPEEffect to let the voice know that its currently playing note
         has changed its pressure value.
@@ -88,7 +84,6 @@ public:
     void notePressureChanged() {
         static_cast<Derived*>(this)->notePressureChangedImpl();
     }
-    virtual void notePressureChangedImpl() = 0;
 
     /** Called by the MPEEffect to let the voice know that its currently playing note
         has changed its pitchbend value.
@@ -100,7 +95,6 @@ public:
     void notePitchbendChanged() {
         static_cast<Derived*>(this)->notePitchbendChangedImpl();
     }
-    virtual void notePitchbendChangedImpl() = 0;
 
     /** Called by the MPEEffect to let the voice know that its currently playing note
         has changed its timbre value.
@@ -109,7 +103,6 @@ public:
     void noteTimbreChanged() {
         static_cast<Derived*>(this)->noteTimbreChangedImpl();
     }
-    virtual void noteTimbreChangedImpl() = 0;
 
     /** Called by the MPEEffect to let the voice know that its currently playing note
         has changed its key state.
@@ -121,7 +114,6 @@ public:
     void noteKeyStateChanged() {
         static_cast<Derived*>(this)->noteKeyStateChangedImpl();
     }
-    virtual void noteKeyStateChangedImpl() = 0;
 
     /** Renders the next block of MPE MIDI data for this voice.
 
@@ -137,28 +129,19 @@ public:
         The size of the blocks that are rendered can change each time it is called, and may
         involve rendering as little as 1 sample at a time. In between rendering callbacks,
         the voice's methods will be called to tell it about note and controller events.
-
-        @param midiBuffer The MIDI buffer to write MPE MIDI messages to
-        @param startSample The sample offset within the buffer to start writing
-        @param numSamples The number of samples in this rendering block
     */
     void renderNextBlock(MidiBuffer& midiBuffer, int startSample, int numSamples) {
         static_cast<Derived*>(this)->renderNextBlockImpl(midiBuffer, startSample, numSamples);
     }
-    virtual void renderNextBlockImpl(MidiBuffer& midiBuffer, int startSample, int numSamples) = 0;
 
     /** Changes the voice's play rate in seconds
 
         This method is called by the synth, and subclasses can access the current rate with
         the currentPlayRate member.
     */
-    void setCurrentPlayRate(double newRate) { 
+    void setCurrentPlayRate(double newRate) {
         currentPlayRate = newRate;
-        static_cast<Derived*>(this)->setCurrentPlayRateImpl(newRate);
     }
-    
-    /** Override this in derived class for custom play rate handling. Default does nothing. */
-    virtual void setCurrentPlayRateImpl(double newRate) { (void)newRate; }
 
     /** Returns the current target play rate at which rendering is being done.
         Subclasses may need to know this so that they can do things correctly.
@@ -193,26 +176,10 @@ protected:
 private:
     //==============================================================================
     template <class Voice>
-    friend class MPEEffect;
-    
-    template <class Voice>
     friend class VoiceManager;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MPEEffectVoice)
 };
 
-//==============================================================================
-// Template Implementation
-//==============================================================================
-
-template <class Derived>
-bool MPEEffectVoice<Derived>::isCurrentlyPlayingNote(MPENote note) const noexcept {
-    return isActive() && currentlyPlayingNote.noteID == note.noteID;
-}
-
-template <class Derived>
-bool MPEEffectVoice<Derived>::isPlayingButReleased() const noexcept {
-    return isActive() && currentlyPlayingNote.keyState == MPENote::off;
-}
 
 }  // namespace MoTool::uZX

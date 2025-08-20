@@ -123,7 +123,7 @@ void AYChipPlugin::updateChip() noexcept {
     }
 }
 
-void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
+void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept {
     if (midiReaderMode == MidiReaderMode::Params) {
         midiParamsReader.read(m);
     } else if (midiReaderMode == MidiReaderMode::Regs) {
@@ -159,7 +159,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
             currentSample = timeSample;
         }
         // DBG("AY in midi " << m.getDescription());
-        readMidi(m);
+        handleMidiEvent(m);
     }
     // process to the end of the block
     updateChip();

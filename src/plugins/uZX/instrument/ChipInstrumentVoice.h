@@ -3,6 +3,7 @@
 #include <cmath>
 #include "MPEEffectVoice.h"
 #include "MidiEffect.h"
+#include "juce_core/juce_core.h"
 
 namespace MoTool::uZX {
 
@@ -24,11 +25,13 @@ class ChipInstrumentVoice
 public:
     ChipInstrumentVoice() {
         // FIXME hardcoded parameters
-        ampAdsr.setSampleRate(50);
-        pitchAdsr.setSampleRate(50);
+        ampAdsr.setSampleRate(playRate);
+        pitchAdsr.setSampleRate(playRate);
 
-        ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
-        pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
+        ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 1.0f });
+        pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 1.0f });
+
+        lastAftertouch = -1;
     }
 
     //==============================================================================
@@ -79,7 +82,7 @@ public:
     void renderNextStep(MidiBufferContext& c, double timeOffset) {
         // 1. First check for noteOff state
         if (ampAdsr.getState() == te::LinEnvelope::State::idle && !firstStep) {
-            // DBG("NoteOff " << currentlyPlayingNote.initialNote << " time = " << time);
+            DBG("NoteOff " << currentlyPlayingNote.initialNote << " time = " << c.playPosition.inSeconds() + timeOffset);
             c.buffer.addMidiMessage(
                 MidiMessage::noteOff(
                     currentlyPlayingNote.midiChannel,
@@ -92,19 +95,15 @@ public:
             ampAdsr.reset();
             pitchAdsr.reset();
             clearCurrentNote();
+            return;
         }
 
-        // 2. get state and advance parameters
-        // TODO update parameters, adsrs, lfos, steps, mods
-        auto aftertouch = ampAdsr.getNextSample();
-        auto pitchOffset = pitchAdsr.getNextSample();
-        ignoreUnused(aftertouch, pitchOffset);
+        jassert(isActive());
 
-        // 3. Not on if firstStep
+        // 2. Not on if firstStep
         if (firstStep) {
-            jassert(isActive());
             firstStep = false;
-            // DBG("NoteOn " << currentlyPlayingNote.initialNote << " time = " << time);
+            DBG("NoteOn " << currentlyPlayingNote.initialNote << " time = " << c.playPosition.inSeconds() + timeOffset);
             c.buffer.addMidiMessage(
                 MidiMessage::noteOn(
                     currentlyPlayingNote.midiChannel,
@@ -115,12 +114,28 @@ public:
             );
         }
 
-        // 4. TODO output note MPE params if they are changed from the last step
+        // 3. get state and advance parameters
+        // TODO update parameters, adsrs, lfos, steps, mods
+        auto aftertouch = roundToInt(ampAdsr.getNextSample() * 127.0f);
+        auto pitchOffset = pitchAdsr.getNextSample();
+        ignoreUnused(pitchOffset);
 
-        // DBG("Note AT " << currentlyPlayingNote.initialNote
-        //     << ", vol = " << aftertouch
-        //     << ", time = " << time
+        // 4. TODO output note MPE params if they are changed from the last step
+        // DBG("Note " << currentlyPlayingNote.initialNote
+        //     << ", AT = " << aftertouch
+        //     << ", time = " << c.playPosition.inSeconds() + timeOffset
         // );
+        if (aftertouch != lastAftertouch) {
+            lastAftertouch = aftertouch;
+            c.buffer.addMidiMessage(
+                MidiMessage::aftertouchChange(
+                    currentlyPlayingNote.midiChannel,
+                    currentlyPlayingNote.initialNote,
+                    aftertouch
+                ),
+                timeOffset, 0
+            );
+        }
     }
 
     /** Renders the next block of MIDI output for this voice. */
@@ -157,6 +172,8 @@ private:
     bool firstStep = false;
     te::LinEnvelope ampAdsr;
     te::LinEnvelope pitchAdsr;
+
+    int lastAftertouch = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChipInstrumentVoice)
 };

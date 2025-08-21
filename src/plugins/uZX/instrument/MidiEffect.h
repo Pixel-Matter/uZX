@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "juce_core/juce_core.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 
 namespace MoTool::uZX {
 
@@ -14,8 +15,8 @@ namespace MoTool::uZX {
 */
 struct MidiBufferContext {
     tracktion::MidiMessageArray& buffer;
-    tracktion::TimeDuration length { };
-    tracktion::TimePosition editPos { };
+    tracktion::TimeDuration duration { };
+    tracktion::TimePosition playPosition { };
 
     bool isAllNotesOff() const noexcept {
         return buffer.isAllNotesOff;
@@ -142,6 +143,12 @@ private:
 template <MidiEffectConcept MIDIFX>
 class MidiFxPluginBase : public tracktion::Plugin {
 public:
+
+    enum class PositionSource {
+        Edit,
+        Emulated
+    };
+
     using tracktion::Plugin::Plugin;
 
     double getLatencySeconds() override { return 0.0; }
@@ -156,17 +163,41 @@ public:
         if (fc.bufferForMidiMessages == nullptr)
             return;
 
+        if (!fc.editTime.isEmpty()) {
+            positionSource = PositionSource::Edit;
+            playPosition = fc.editTime.getStart();
+        } else {  // not playing along Edit
+            if (positionSource != PositionSource::Emulated) {
+                positionSource = PositionSource::Emulated;
+                // restart position to be emulated
+                playPosition = fc.editTime.getStart();
+            }
+        }
+
+        // TODO add current tempo to that because when playingWhileStopped == true
+        //      we can not deterime tempo from tempoSequence
+        // DBG("Playing at " << playPosition.inSeconds() << "s");
         MidiBufferContext context {
             *fc.bufferForMidiMessages,
             tracktion::TimeDuration::fromSeconds(fc.bufferNumSamples / sampleRate),
-            fc.editTime.getStart()
+            playPosition
         };
 
         midiEffect(context);
+
+        if (positionSource == PositionSource::Emulated) {
+            playPosition = playPosition + context.duration;
+        }
     }
 
 protected:
     MIDIFX midiEffect;
+
+private:
+    PositionSource positionSource = PositionSource::Emulated;
+    tracktion::TimePosition playPosition {};
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiFxPluginBase)
 };
 
 }  // namespace MoTool::uZX

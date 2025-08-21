@@ -29,7 +29,15 @@ public:
     MPEEffectVoice() = default;
 
     /** Destructor. */
-    virtual ~MPEEffectVoice() = default;
+    ~MPEEffectVoice() = default;
+
+    inline Derived& self() {
+        return static_cast<Derived&>(*this);
+    }
+
+    inline const Derived& self() const {
+        return static_cast<const Derived&>(*this);
+    }
 
     /** Returns the MPENote that this voice is currently playing.
         Returns an invalid MPENote if no note is playing
@@ -54,99 +62,99 @@ public:
     */
     bool isActive() const { return currentlyPlayingNote.isValid(); }
 
-    /** Called by the MPEEffect to let the voice know that a new note has started on it.
-        This will be called during the rendering callback, so must be fast and thread-safe.
-    */
-    void noteStarted() {
-        static_cast<Derived*>(this)->noteStartedImpl();
-    }
+    // /** Called by the MPEEffect to let the voice know that a new note has started on it.
+    //     This will be called during the rendering callback, so must be fast and thread-safe.
+    // */
+    // void noteStarted() {
+    //     self().noteStartedImpl();
+    // }
 
-    /** Called by the MPEEffect to let the voice know that its currently playing note has stopped.
-        This will be called during the rendering callback, so must be fast and thread-safe.
+    // /** Called by the MPEEffect to let the voice know that its currently playing note has stopped.
+    //     This will be called during the rendering callback, so must be fast and thread-safe.
 
-        If allowTailOff is false or the voice doesn't want to tail-off, then it must stop all
-        sound immediately, and must call clearCurrentNote() to reset the state of this voice
-        and allow the synth to reassign it another sound.
+    //     If allowTailOff is false or the voice doesn't want to tail-off, then it must stop all
+    //     sound immediately, and must call clearCurrentNote() to reset the state of this voice
+    //     and allow the synth to reassign it another sound.
 
-        If allowTailOff is true and the voice decides to do a tail-off, then it's allowed to
-        begin fading out its sound, and it can stop playing until it's finished. As soon as it
-        finishes playing (during the rendering callback), it must make sure that it calls
-        clearCurrentNote().
-    */
-    void noteStopped(bool allowTailOff) {
-        static_cast<Derived*>(this)->noteStoppedImpl(allowTailOff);
-    }
+    //     If allowTailOff is true and the voice decides to do a tail-off, then it's allowed to
+    //     begin fading out its sound, and it can stop playing until it's finished. As soon as it
+    //     finishes playing (during the rendering callback), it must make sure that it calls
+    //     clearCurrentNote().
+    // */
+    // void noteStopped(bool allowTailOff) {
+    //     self().noteStoppedImpl(allowTailOff);
+    // }
 
-    /** Called by the MPEEffect to let the voice know that its currently playing note
-        has changed its pressure value.
-        This will be called during the rendering callback, so must be fast and thread-safe.
-    */
-    void notePressureChanged() {
-        static_cast<Derived*>(this)->notePressureChangedImpl();
-    }
+    // /** Called by the MPEEffect to let the voice know that its currently playing note
+    //     has changed its pressure value.
+    //     This will be called during the rendering callback, so must be fast and thread-safe.
+    // */
+    // void notePressureChanged() {
+    //     self().notePressureChangedImpl();
+    // }
 
-    /** Called by the MPEEffect to let the voice know that its currently playing note
-        has changed its pitchbend value.
-        This will be called during the rendering callback, so must be fast and thread-safe.
+    // /** Called by the MPEEffect to let the voice know that its currently playing note
+    //     has changed its pitchbend value.
+    //     This will be called during the rendering callback, so must be fast and thread-safe.
 
-        Note: You can call currentlyPlayingNote.getFrequencyInHertz() to find out the effective frequency
-        of the note, as a sum of the initial note number, the per-note pitchbend and the master pitchbend.
-    */
-    void notePitchbendChanged() {
-        static_cast<Derived*>(this)->notePitchbendChangedImpl();
-    }
+    //     Note: You can call currentlyPlayingNote.getFrequencyInHertz() to find out the effective frequency
+    //     of the note, as a sum of the initial note number, the per-note pitchbend and the master pitchbend.
+    // */
+    // void notePitchbendChanged() {
+    //     self().notePitchbendChangedImpl();
+    // }
 
-    /** Called by the MPEEffect to let the voice know that its currently playing note
-        has changed its timbre value.
-        This will be called during the rendering callback, so must be fast and thread-safe.
-    */
-    void noteTimbreChanged() {
-        static_cast<Derived*>(this)->noteTimbreChangedImpl();
-    }
+    // /** Called by the MPEEffect to let the voice know that its currently playing note
+    //     has changed its timbre value.
+    //     This will be called during the rendering callback, so must be fast and thread-safe.
+    // */
+    // void noteTimbreChanged() {
+    //     self().noteTimbreChangedImpl();
+    // }
 
-    /** Called by the MPEEffect to let the voice know that its currently playing note
-        has changed its key state.
-        This typically happens when a sustain or sostenuto pedal is pressed or released (on
-        an MPE channel relevant for this note), or if the note key is lifted while the sustained
-        or sostenuto pedal is still held down.
-        This will be called during the rendering callback, so must be fast and thread-safe.
-    */
-    void noteKeyStateChanged() {
-        static_cast<Derived*>(this)->noteKeyStateChangedImpl();
-    }
+    // /** Called by the MPEEffect to let the voice know that its currently playing note
+    //     has changed its key state.
+    //     This typically happens when a sustain or sostenuto pedal is pressed or released (on
+    //     an MPE channel relevant for this note), or if the note key is lifted while the sustained
+    //     or sostenuto pedal is still held down.
+    //     This will be called during the rendering callback, so must be fast and thread-safe.
+    // */
+    // void noteKeyStateChanged() {
+    //     self().noteKeyStateChangedImpl();
+    // }
 
-    /** Renders the next block of MPE MIDI data for this voice.
+    // /** Renders the next block of MPE MIDI data for this voice.
 
-        The output MIDI data must be added to the current contents of the buffer provided.
-        Only the region of the buffer between startSample and (startSample + numSamples)
-        should be altered by this method.
+    //     The output MIDI data must be added to the current contents of the buffer provided.
+    //     Only the region of the buffer between startSample and (startSample + numSamples)
+    //     should be altered by this method.
 
-        If the voice is currently silent, it should just return without doing anything.
+    //     If the voice is currently silent, it should just return without doing anything.
 
-        If the sound that the voice is playing finishes during the course of this rendered
-        block, it must call clearCurrentNote(), to tell the synthesiser that it has finished.
+    //     If the sound that the voice is playing finishes during the course of this rendered
+    //     block, it must call clearCurrentNote(), to tell the synthesiser that it has finished.
 
-        The size of the blocks that are rendered can change each time it is called, and may
-        involve rendering as little as 1 sample at a time. In between rendering callbacks,
-        the voice's methods will be called to tell it about note and controller events.
-    */
-    void renderNextBlock(MidiBuffer& midiBuffer, int startSample, int numSamples) {
-        static_cast<Derived*>(this)->renderNextBlockImpl(midiBuffer, startSample, numSamples);
-    }
+    //     The size of the blocks that are rendered can change each time it is called, and may
+    //     involve rendering as little as 1 sample at a time. In between rendering callbacks,
+    //     the voice's methods will be called to tell it about note and controller events.
+    // */
+    // void renderNextBlock(MidiBuffer& midiBuffer, int startSample, int numSamples) {
+    //     self().renderNextBlockImpl(midiBuffer, startSample, numSamples);
+    // }
 
-    /** Changes the voice's play rate in seconds
+    // /** Changes the voice's play rate in seconds
 
-        This method is called by the synth, and subclasses can access the current rate with
-        the currentPlayRate member.
-    */
-    void setCurrentPlayRate(double newRate) {
-        currentPlayRate = newRate;
-    }
+    //     This method is called by the synth, and subclasses can access the current rate with
+    //     the currentPlayRate member.
+    // */
+    // void setCurrentPlayRate(double newRate) {
+    //     currentPlayRate = newRate;
+    // }
 
-    /** Returns the current target play rate at which rendering is being done.
-        Subclasses may need to know this so that they can do things correctly.
-    */
-    double getPlayRate() const noexcept { return currentPlayRate; }
+    // /** Returns the current target play rate at which rendering is being done.
+    //     Subclasses may need to know this so that they can do things correctly.
+    // */
+    // double getPlayRate() const noexcept { return currentPlayRate; }
 
     /** This will be set to an incrementing counter value in MPEEffect::startVoice()
         and can be used to determine the order in which voices started.
@@ -167,7 +175,9 @@ protected:
         It can also be called at any time during the render callback if the sound happens
         to have finished, e.g. if it's playing a sample and the sample finishes.
     */
-    void clearCurrentNote() noexcept { currentlyPlayingNote = MPENote(); }
+    void clearCurrentNote() noexcept {
+        currentlyPlayingNote = MPENote();
+    }
 
     //==============================================================================
     double currentPlayRate = 0.0;

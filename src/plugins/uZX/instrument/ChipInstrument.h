@@ -20,19 +20,8 @@ public:
 
     // TODO parameters?
 
-private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChipInstrumentFx)
-};
-
-// class ChipInstrument : public MPEEffect<ChipInstrumentVoice, ChipInstrument> {
-// public:
-//     ChipInstrument(tracktion::Edit& e);
-
-//     ~ChipInstrument();
-
 //     void reset();
 //     double getTailLength() const;
-//     void setCurrentTempo(float newTempo);
 //     void setPlayRate(double newRate);
 //     void renderNextBlock(tracktion::MidiMessageArray& midi, double time, double len, double editPos = 0.0);
 
@@ -40,11 +29,11 @@ private:
 
 //     void restoreStateFromValueTree(const ValueTree& state);
 
-// private:
+private:
 //     tracktion::Edit& edit;
-//     CriticalSection voiceLock;
 //     float currentTempo;
 //     double playRate { 50.0 };
-// };
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChipInstrumentFx)
+};
 
 }  // namespace MoTool::uZX

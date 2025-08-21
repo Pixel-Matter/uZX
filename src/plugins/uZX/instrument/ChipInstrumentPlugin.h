@@ -11,7 +11,6 @@ namespace MoTool::uZX {
 //==============================================================================
 class ChipInstrumentPlugin :
                              public MidiFxPluginBase<ChipInstrumentFx>,
-                            //  public tracktion::Plugin,
                              private tracktion::LevelMeasurer::Client
 {
 public:

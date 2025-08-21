@@ -3,8 +3,6 @@
 #include <cmath>
 #include "MPEEffectVoice.h"
 #include "MidiEffect.h"
-#include "juce_core/system/juce_PlatformDefs.h"
-#include "tracktion_core/utilities/tracktion_Time.h"
 
 namespace MoTool::uZX {
 
@@ -134,14 +132,15 @@ public:
         const auto quantizedStart = tracktion::TimePosition::fromSeconds(
             std::ceil(c.processStartTime().inSeconds() * playRate) / playRate
         );
-        const auto end = c.processEndTime();
-        const auto step = tracktion::TimeDuration::fromSeconds(1.0 / playRate);
+        const auto startSampleQuant = c.getSampleForTimeRel(quantizedStart - c.playPosition);
+        // const auto end = c.processEndTime();
+        const auto step = roundToInt(c.sampleRate / playRate);
 
         // DBG("voice block " << c.processStartTime()
         //     << " - " << end << " quant -> " << quantizedStart);
 
-        for (auto time = quantizedStart; time < end; time = time + step) {
-            auto timeOffset = c.toOffset(time);
+        for (auto s = startSampleQuant; s < c.start + c.length; s += step) {
+            auto timeOffset = s / c.sampleRate;
             // DBG("rendering step at time: " << time.inSeconds() << " offset: " << timeOffset);
             renderNextStep(c, timeOffset);
         }

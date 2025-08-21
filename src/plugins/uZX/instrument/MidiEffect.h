@@ -1,8 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "juce_core/juce_core.h"
-#include "juce_core/system/juce_PlatformDefs.h"
+
 
 namespace MoTool::uZX {
 
@@ -50,6 +49,10 @@ struct MidiBufferContext {
         return getSampleForTimeRel(time.inSeconds());
     }
 
+    inline int getSampleForTimeRel(tracktion::TimeDuration time) const noexcept {
+        return getSampleForTimeRel(time.inSeconds());
+    }
+
     // Start time to process, relative to the start of the whole buffer in seconds
     inline tracktion::TimeDuration processStartTimeRel() const noexcept {
         return tracktion::TimeDuration::fromSeconds(start / sampleRate);
@@ -73,9 +76,16 @@ struct MidiBufferContext {
 
     void debugMidiBuffer() const {
         for (const auto& m : buffer) {
-            DBG(m.getDescription()
-                << " at " << m.getTimeStamp() + playPosition.inSeconds()
-                << " local " << m.getTimeStamp());
+            auto sample = getSampleForTimeRel(m.getTimeStamp());
+            if (sample < start || sample >= start + length) {
+                DBG("Midi message out of range: " << m.getDescription()
+                    << " at " << m.getTimeStamp() + playPosition.inSeconds()
+                    << " local " << m.getTimeStamp());
+            } else {
+                DBG(m.getDescription()
+                    << " at " << m.getTimeStamp() + playPosition.inSeconds()
+                    << " local " << m.getTimeStamp());
+            }
         }
     }
 

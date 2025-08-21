@@ -25,21 +25,23 @@ public:
         mpeInstrument.removeListener(this);
     }
 
+    // Handle all notes off
     void turnOffAllVoices(bool allowTailOff = false) {
-        // Handle all notes off
-        // 1. reset voices voiceManager.turnOffAllVoices(allowTailOff);
+        voices.turnOffAllVoices(allowTailOff);
         mpeInstrument.releaseAllNotes();
     }
 
     //==========================================================================
     // Render
 
-    void renderNextBlock(MidiBufferContext& c) {
-        // render all voices and merge output
+    // render all voices and merge output
+    void renderNextSubBlock(MidiBufferContext& c) {
+        // if (c.buffer.isNotEmpty()) {
+        //     DBG("Rendering sub-block " << c.processStartTime() << " - " << c.processEndTime());
+        // }
         voices.forEachActiveVoice([&c](auto* voice) {
             voice->renderNextBlock(c);
         });
-        c.buffer.sortByTimestamp();
     }
 
     void handleMidiEvent(const MidiMessage& m) {
@@ -52,28 +54,57 @@ public:
     }
 
     void operator()(MidiBufferContext& c) {
-        te::TimeDuration time {};
+        int currentSample = c.start;
 
         if (c.isAllNotesOff()) {
             turnOffAllVoices(false);
         }
 
+        // if (c.buffer.isNotEmpty()) {
+        //     DBG("\n> --- " << c.processStartTime() << " - " << c.processEndTime() << " --- (" << c.duration() << " duration) ---");
+        // }
+
         te::MidiMessageArray midiOut;
+        MidiBufferContext outBlock {
+            midiOut,
+            c.start,
+            c.length,
+            c.playPosition,
+            c.sampleRate
+        };
+
         for (auto& m : c.buffer) {
-            if (m.getTimeStamp() >= c.duration.inSeconds()) {
+            auto eventSample = c.getSampleForTimeRel(m.getTimeStamp());
+            if (eventSample < currentSample) {
+                continue;
+            }
+            if (eventSample >= c.length) {
                 break;
             }
-            if (m.getTimeStamp() > time.inSeconds()) {
-                MidiBufferContext subCtx {midiOut, te::TimeDuration::fromSeconds(m.getTimeStamp()) - time, c.playPosition + time};
-                renderNextBlock(subCtx);
-                time = te::TimeDuration::fromSeconds(m.getTimeStamp());
+            // if (m.getTimeStamp() > time.inSeconds()) {
+            if (eventSample > currentSample) {
+                // render block from last time to current event
+                auto subBlock = outBlock.sliced(currentSample, eventSample - currentSample);
+                renderNextSubBlock(subBlock);
+                currentSample = eventSample;
             }
             handleMidiEvent(m);
+            // DBG("> " << m.getDescription()
+            //     << " at " << m.getTimeStamp() + c.playPosition.inSeconds()
+            //     << " local " << m.getTimeStamp());
         }
-        MidiBufferContext subCtx {midiOut, c.duration - time, c.playPosition + time};
-        renderNextBlock(subCtx);
+        // render block from last time to end of buffer
+        auto subBlock = outBlock.sliced(currentSample, c.length - currentSample);
+        renderNextSubBlock(subBlock);
+
         midiOut.sortByTimestamp();
-        // midiBuffer.swapWith(midiOut);
+
+        c.buffer.swapWith(midiOut);
+
+        // if (c.buffer.isNotEmpty()) {
+        //     DBG("\n--- " << c.processStartTime() << " - " << c.processEndTime() << " --- (" << c.duration() << " duration) --- >");
+        //     c.debugMidiBuffer();
+        // }
     }
 
 protected:
@@ -92,6 +123,7 @@ protected:
 
     /** Called when an MPE note's pressure changes. */
     void notePressureChanged(MPENote changedNote) override {
+        ignoreUnused(changedNote);
         // DBG("Note pressure changed: " << changedNote.initialNote);
         // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
         //     voice->currentlyPlayingNote = changedNote;
@@ -101,6 +133,7 @@ protected:
 
     /** Called when an MPE note's pitchbend changes. */
     void notePitchbendChanged(MPENote changedNote) override {
+        ignoreUnused(changedNote);
         // DBG("Note pitchbend changed: " << changedNote.initialNote);
         // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
         //     voice->currentlyPlayingNote = changedNote;
@@ -110,6 +143,7 @@ protected:
 
     /** Called when an MPE note's timbre changes. */
     void noteTimbreChanged(MPENote changedNote) override {
+        ignoreUnused(changedNote);
         // DBG("Note timbre changed: " << changedNote.initialNote);
         // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
         //     voice->currentlyPlayingNote = changedNote;
@@ -119,6 +153,7 @@ protected:
 
     /** Called when an MPE note's key state changes. */
     void noteKeyStateChanged(MPENote changedNote) override {
+        ignoreUnused(changedNote);
         // DBG("Note key state changed: " << changedNote.initialNote);
         // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
         //     voice->currentlyPlayingNote = changedNote;
@@ -128,11 +163,13 @@ protected:
 
     /** Called when a MIDI controller changes. */
     void handleController(int midiChannel, int controllerNumber, int controllerValue) {
+        ignoreUnused(midiChannel);
         DBG("Controller changed: " << controllerNumber << " = " << controllerValue);
         // Implement controller handling logic here
     }
 
     void handleProgramChange(int midiChannel, int programNumber) {
+        ignoreUnused(midiChannel);
         DBG("Program change: " << programNumber);
         // Implement program change handling logic here
     }

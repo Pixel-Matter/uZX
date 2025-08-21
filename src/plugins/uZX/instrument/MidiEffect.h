@@ -14,13 +14,71 @@ namespace MoTool::uZX {
     Just call it with a MidiBufferContext object as a functor.
 */
 struct MidiBufferContext {
+    // MIDI buffer to process or output.
     tracktion::MidiMessageArray& buffer;
-    tracktion::TimeDuration duration { };
-    tracktion::TimePosition playPosition { };
 
-    bool isAllNotesOff() const noexcept {
+    // Start sample of the buffer to process.
+    // MIDI buffer can contain events prior to this sample, ignore them.
+    const int start = 0;
+
+    // Length of the buffer to process in samples.
+    // MIDI buffer can contain events beyond this length, ignore them.
+    const int length;
+
+    // Position in the edit (or just a free running time) of the buffer start
+    const tracktion::TimePosition playPosition { };
+
+    // Sample rate for converting time to sample numbers and back
+    const double sampleRate = 0.0f;
+
+    inline bool isAllNotesOff() const noexcept {
         return buffer.isAllNotesOff;
     }
+
+    // Create a new context with the same buffer but sliced to the given range
+    inline MidiBufferContext sliced(int startSample, int numSamples) const {
+        return { buffer, startSample, numSamples, playPosition, sampleRate };
+    }
+
+    // Conver time in seconds relative to the start of the buffer to samples
+    inline int getSampleForTimeRel(double time) const noexcept {
+        jassert(sampleRate > 0.0);
+        return juce::roundToInt(time * sampleRate);
+    }
+
+    inline int getSampleForTimeRel(tracktion::TimePosition time) const noexcept {
+        return getSampleForTimeRel(time.inSeconds());
+    }
+
+    // Start time to process, relative to the start of the whole buffer in seconds
+    inline tracktion::TimeDuration processStartTimeRel() const noexcept {
+        return tracktion::TimeDuration::fromSeconds(start / sampleRate);
+    }
+
+    inline tracktion::TimePosition processStartTime() const noexcept {
+        return playPosition + processStartTimeRel();
+    }
+
+    inline tracktion::TimeDuration duration() const noexcept {
+        return tracktion::TimeDuration::fromSeconds(length / sampleRate);
+    }
+
+    inline tracktion::TimePosition processEndTime() const noexcept {
+        return processStartTime() + duration();
+    }
+
+    inline double toOffset(tracktion::TimePosition time) const noexcept {
+        return (time - playPosition).inSeconds();
+    }
+
+    void debugMidiBuffer() const {
+        for (const auto& m : buffer) {
+            DBG(m.getDescription()
+                << " at " << m.getTimeStamp() + playPosition.inSeconds()
+                << " local " << m.getTimeStamp());
+        }
+    }
+
 };
 
 //==============================================================================
@@ -163,6 +221,8 @@ public:
         if (fc.bufferForMidiMessages == nullptr)
             return;
 
+        jassert(fc.bufferStartSample == 0);
+
         if (!fc.editTime.isEmpty()) {
             positionSource = PositionSource::Edit;
             playPosition = fc.editTime.getStart();
@@ -178,15 +238,17 @@ public:
         //      we can not deterime tempo from tempoSequence
         // DBG("Playing at " << playPosition.inSeconds() << "s");
         MidiBufferContext context {
-            *fc.bufferForMidiMessages,
-            tracktion::TimeDuration::fromSeconds(fc.bufferNumSamples / sampleRate),
-            playPosition
+            .buffer = *fc.bufferForMidiMessages,
+            .start = fc.bufferStartSample,
+            .length = fc.bufferNumSamples,
+            .playPosition = playPosition,
+            .sampleRate = sampleRate
         };
 
         midiEffect(context);
 
         if (positionSource == PositionSource::Emulated) {
-            playPosition = playPosition + context.duration;
+            playPosition = playPosition + context.duration();
         }
     }
 

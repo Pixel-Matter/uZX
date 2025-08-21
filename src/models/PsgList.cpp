@@ -376,7 +376,7 @@ double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::Mid
 }
 
 [[nodiscard]] juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, te::MidiList::TimeBase timeBase) const {
-    DBG("Exporting PSG to MIDI sequence, channel " << getMidiChannel().getChannelNumber() << ", timebase " << (timeBase == te::MidiList::TimeBase::beats ? "beats" : "seconds"));
+    // DBG("Exporting PSG to MIDI sequence, channel " << getMidiChannel().getChannelNumber() << ", timebase " << (timeBase == te::MidiList::TimeBase::beats ? "beats" : "seconds"));
     PsgParamsMidiWriter writer {getMidiChannel().getChannelNumber()};
     for (auto f : getFrames()) {
         writer.write(getTimeInBase(*f, clip, timeBase), f->getData());

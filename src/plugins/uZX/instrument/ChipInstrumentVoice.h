@@ -36,28 +36,25 @@ public:
     //==============================================================================
     /** Called when a new note starts on this voice. */
     void noteStarted() {
-        DBG("Note started " << currentlyPlayingNote.initialNote);
+        // DBG("Note started " << currentlyPlayingNote.initialNote);
         activeNote.setCurrentAndTargetValue(currentlyPlayingNote.initialNote);
         ampAdsr.noteOn();
         pitchAdsr.noteOn();
+        firstStep = true;
     }
 
     /** Called when the currently playing note stops. */
     void noteStopped(bool allowTailOff) {
-        DBG("Note stopped " << currentlyPlayingNote.initialNote);
-        // if (allowTailOff)
-        // {
-        //     ampAdsr.noteOff();
-        //     pitchAdsr.noteOff();
-        // }
-        // else
-        // {
+        // DBG("Note stopped " << currentlyPlayingNote.initialNote);
+        if (allowTailOff) {
+            ampAdsr.noteOff();
+            pitchAdsr.noteOff();
+        } else {
             ampAdsr.reset();
             pitchAdsr.reset();
-            clearCurrentNote();
-            // isPlaying = false;
-            // isQuickStop = false;
-        // }
+            // we can not call clearCurrentNote() here because we should emit NoteOff in renderNextStep after that
+            // clearCurrentNote();
+        }
     }
 
     /** Called when note pressure changes (MPE). */
@@ -81,12 +78,51 @@ public:
 //         // TODO: Implement key state change logic
 //     }
 
-    void renderNextStep(tracktion::MidiMessageArray& midi, te::TimePosition time) {
+    void renderNextStep(MidiBufferContext& c, double timeOffset) {
+        // 1. First check for noteOff state
+        if (ampAdsr.getState() == te::LinEnvelope::State::idle && !firstStep) {
+            // DBG("NoteOff " << currentlyPlayingNote.initialNote << " time = " << time);
+            c.buffer.addMidiMessage(
+                MidiMessage::noteOff(
+                    currentlyPlayingNote.midiChannel,
+                    currentlyPlayingNote.initialNote,
+                    0.0f
+                ),
+                timeOffset, 0
+            );
+
+            ampAdsr.reset();
+            pitchAdsr.reset();
+            clearCurrentNote();
+        }
+
+        // 2. get state and advance parameters
         // TODO update parameters, adsrs, lfos, steps, mods
-        // TODO output note on / off
-        // output note pressure while active
-        DBG("renderNextStep for note " << currentlyPlayingNote.initialNote << ", " << (isActive() ? "active " : "inactive")
-            << ", time = " << time.inSeconds());
+        auto aftertouch = ampAdsr.getNextSample();
+        auto pitchOffset = pitchAdsr.getNextSample();
+        ignoreUnused(aftertouch, pitchOffset);
+
+        // 3. Not on if firstStep
+        if (firstStep) {
+            jassert(isActive());
+            firstStep = false;
+            // DBG("NoteOn " << currentlyPlayingNote.initialNote << " time = " << time);
+            c.buffer.addMidiMessage(
+                MidiMessage::noteOn(
+                    currentlyPlayingNote.midiChannel,
+                    currentlyPlayingNote.initialNote,
+                    currentlyPlayingNote.noteOnVelocity.asUnsignedFloat()
+                ),
+                timeOffset, 0
+            );
+        }
+
+        // 4. TODO output note MPE params if they are changed from the last step
+
+        // DBG("Note AT " << currentlyPlayingNote.initialNote
+        //     << ", vol = " << aftertouch
+        //     << ", time = " << time
+        // );
     }
 
     /** Renders the next block of MIDI output for this voice. */
@@ -96,20 +132,30 @@ public:
         // below is placeholder implementation
 
         const auto quantizedStart = tracktion::TimePosition::fromSeconds(
-            std::ceil(c.playPosition.inSeconds() * playRate) / playRate
+            std::ceil(c.processStartTime().inSeconds() * playRate) / playRate
         );
-        const auto end = c.playPosition + c.duration;
+        const auto end = c.processEndTime();
         const auto step = tracktion::TimeDuration::fromSeconds(1.0 / playRate);
 
+        // DBG("voice block " << c.processStartTime()
+        //     << " - " << end << " quant -> " << quantizedStart);
+
         for (auto time = quantizedStart; time < end; time = time + step) {
-            renderNextStep(c.buffer, time);
+            auto timeOffset = c.toOffset(time);
+            // DBG("rendering step at time: " << time.inSeconds() << " offset: " << timeOffset);
+            renderNextStep(c, timeOffset);
         }
+        // if (c.buffer.isNotEmpty()) {
+        //     DBG("-->");
+        //     c.debugMidiBuffer();
+        //     DBG("/--");
+        // }
     }
 
 private:
     constexpr inline static double playRate = 50.0;
     juce::LinearSmoothedValue<float> activeNote;
-    bool isPlaying = false;
+    bool firstStep = false;
     te::LinEnvelope ampAdsr;
     te::LinEnvelope pitchAdsr;
 

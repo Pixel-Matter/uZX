@@ -208,6 +208,7 @@ public:
 
     /** Stops a voice playing the given note. */
     void stopVoice(Voice* voice, MPENote noteToStop, bool allowTailOff) {
+        // DBG("stopVoice " << noteToStop.initialNote << (allowTailOff ? " tail off" : " no tail off"));
         jassert(voice != nullptr);
 
         voice->currentlyPlayingNote = noteToStop;
@@ -219,6 +220,7 @@ public:
 
     /** Turns off all voices. */
     void turnOffAllVoices(bool allowTailOff) {
+        // DBG("turnOffAllVoices " << (allowTailOff ? " tail off" : " no tail off"));
         const ScopedLock sl(voicesLock);
 
         for (auto* voice : voices) {

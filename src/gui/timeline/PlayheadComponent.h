@@ -3,7 +3,6 @@
 #include <JuceHeader.h>
 
 #include "../../controllers/EditState.h"
-#include "juce_events/juce_events.h"
 
 namespace MoTool {
 

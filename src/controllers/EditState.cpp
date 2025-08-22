@@ -121,8 +121,11 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
     //         markAndUpdate(updateZoom);
     //     }
     // } else
-    if (tree == edit.getTransport().state && prop == te::IDs::position) {
-        // DBG("ZoomViewState::valueTreePropertyChanged, position: " << edit.getTransport().getPosition().inSeconds());
+    if (auto& tc = edit.getTransport(); tree == tc.state && prop == te::IDs::position) {
+        if (double(tc.state[te::IDs::position]) != tc.getPosition().inSeconds()) {
+            // because this callback could be called before tc.position is updated from state
+            tc.position.forceUpdateOfCachedValue();
+        }
         handlePlaybackScrolling();
         markAndUpdate(updatePos);
     }
@@ -131,6 +134,21 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
 
 void ZoomViewState::handlePlaybackScrolling() {
     if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
+        // TODO Proposed future change:
+        // get position from audible time in playback context
+        // because there can be latency in audio output
+
+        // te::TimePosition pos;
+        // auto pbc = edit.getCurrentPlaybackContext();
+        // if (pbc != nullptr) {
+        //     pos = pbc->getAudibleTimelineTime();
+        //     DBG("ZoomViewState::handlePlaybackScrolling, "
+        //         << " pos from context: " << pos
+        //         << " edit pos: " << edit.getTransport().getPosition()
+        //     );
+        // } else {
+        //     pos = edit.getTransport().getPosition();
+        // }
         auto pos = edit.getTransport().getPosition();
         // DBG("ZoomViewState::handlePlaybackScrolling, pos: " << pos.inSeconds());
         auto range = getRange();

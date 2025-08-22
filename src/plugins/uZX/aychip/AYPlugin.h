@@ -100,13 +100,13 @@ private:
     PsgRegsFrame registersFrame;
     std::unique_ptr<AYInterface> chip;
 
-    double timeFromReset;
+    // double timeFromReset;
 
-    struct PendingChanges {
-        std::unique_ptr<AYInterface> chip;
-    };
+    // struct PendingChanges {
+    //     std::unique_ptr<AYInterface> chip;
+    // };
 
-    PendingChanges pendingChanges;
+    // PendingChanges pendingChanges;
     std::atomic<bool> isProcessing {false};
 
     void valueTreeChanged() override;

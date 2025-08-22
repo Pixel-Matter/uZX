@@ -73,11 +73,11 @@ void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
 }
 
 void AYChipPlugin::deinitialise() {
-    chip = nullptr;
+    chip.reset();
 }
 
 void AYChipPlugin::midiPanic() {
-    reset();
+    chip->muteSound();
 }
 
 void AYChipPlugin::reset() {
@@ -89,7 +89,7 @@ void AYChipPlugin::reset() {
     }
     chip->setMasterVolume(0.5f);
     chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
-    timeFromReset = 0.0;
+    // timeFromReset = 0.0;  // not used now
     midiParamsReader.reset();
     // midiRegsReader.reset();
     registersFrame = {};
@@ -132,15 +132,17 @@ void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept 
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
-    // When edit.playInStopEnabled == false plugin is not even called
-    bool isActive = true;
-    // bool isActive = fc.isPlaying || fc.isScrubbing || fc.isRendering;
-    if (!isActive || chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr) {
+    if (chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr) {
         return;
     }
 
     SCOPED_REALTIME_CHECK
     const ScopedLock sl(lock);
+
+    if (fc.bufferForMidiMessages->isAllNotesOff) {
+        chip->muteSound();
+        return;
+    }
 
     te::clearChannels(*fc.destBuffer, 2, -1, fc.bufferStartSample, fc.bufferNumSamples);
     // DBG("======== applyToBuffer");
@@ -169,7 +171,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
                            static_cast<size_t>(fc.bufferNumSamples - currentSample),
                            staticParams.removeDCValue);
     }
-    timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;
+    // timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;
     // DBG("timeFromReset = " << timeFromReset);
 }
 

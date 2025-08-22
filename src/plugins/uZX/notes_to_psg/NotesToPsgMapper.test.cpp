@@ -72,7 +72,9 @@ public:
     void runTest() override {
         beginTest("Basic note on/off");
         {
-            NotesToPsgMapper converter(1, 3);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(3);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -98,7 +100,9 @@ public:
 
         beginTest("Channel filtering");
         {
-            NotesToPsgMapper converter(2, 2); // Channels 2-3 only
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(2);
+            converter.setNumChannels(2);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -121,7 +125,9 @@ public:
 
         beginTest("Monophonic behavior");
         {
-            NotesToPsgMapper converter(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -156,7 +162,9 @@ public:
 
         beginTest("Velocity and aftertouch mapping");
         {
-            NotesToPsgMapper converter(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -177,7 +185,9 @@ public:
 
         beginTest("CC passthrough");
         {
-            NotesToPsgMapper converter(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(1);
 
             // Test random CC passthrough
             converter.controlChange(1, 64, 100); // Sustain pedal
@@ -191,20 +201,22 @@ public:
 
         beginTest("Optimized tone switching");
         {
-            NotesToPsgMapper xformer(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(3);
             auto tuning = createTestTuning();
-            xformer.setTuningSystem(tuning.get());
+            converter.setTuningSystem(tuning.get());
 
             // First note - should turn tone ON
-            xformer.noteOn(1, 60, 100);
-            auto messages = xformer.getOutputMessages();
+            converter.noteOn(1, 60, 100);
+            auto messages = converter.getOutputMessages();
 
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 127, "First note should turn tone ON");
 
             // Second note - should NOT send tone switch (already on)
-            xformer.clearOutput();
-            xformer.noteOn(1, 62, 120);
-            messages = xformer.getOutputMessages();
+            converter.clearOutput();
+            converter.noteOn(1, 62, 120);
+            messages = converter.getOutputMessages();
 
             expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Second note should NOT send tone switch");
             expectCC(messages, MidiCCType::Volume, "Second note should send volume");
@@ -212,16 +224,18 @@ public:
             expectCC(messages, MidiCCType::CC52PeriodFine, "Second note should send period fine");
 
             // Note off - should turn tone OFF
-            xformer.clearOutput();
-            xformer.noteOff(1, 62);
-            messages = xformer.getOutputMessages();
+            converter.clearOutput();
+            converter.noteOff(1, 62);
+            messages = converter.getOutputMessages();
 
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 0, "Note off should turn tone OFF");
         }
 
         beginTest("Period encoding correctness");
         {
-            NotesToPsgMapper converter(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 

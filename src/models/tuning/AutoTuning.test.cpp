@@ -16,7 +16,7 @@ public:
 
         beginTest("Constructor with equal temperament reference");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
             expectEquals(tuning.getA4Frequency(), 440.0, "A4 frequency should be 440.0 Hz");
             expectEquals(tuning.getClockFrequency(), testClockFreq, "Clock frequency should be set correctly");
             expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TuningType::AutoTuning));
@@ -24,7 +24,7 @@ public:
 
         beginTest("getName method");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
             String name = tuning.getDescription();
             expect(name.contains("Equal Temperament"), "Name should contain reference tuning type");
             expect(name.contains("auto tuning"), "Name should contain 'auto tuning'");
@@ -34,7 +34,7 @@ public:
 
         beginTest("MIDI note to period conversion - A4");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
             int period = tuning.midiNoteToPeriod(69.0); // A4 = 440 Hz
 
             // Expected period: clockFreq / (divider * frequency) = 1773400 / (16 * 440) ≈ 252
@@ -44,7 +44,7 @@ public:
 
         beginTest("MIDI note to period conversion - Middle C");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
             int period = tuning.midiNoteToPeriod(60.0); // Middle C
 
             // Calculate expected frequency for Middle C
@@ -55,7 +55,7 @@ public:
 
         beginTest("Period to MIDI note conversion");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
 
             // Test with A4 period
             expect(tuning.getReferenceTuning() != nullptr, "Reference tuning should not be null");
@@ -66,7 +66,7 @@ public:
 
         beginTest("Octave relationships in periods");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
 
             int a4Period = tuning.midiNoteToPeriod(69.0); // A4
             int a5Period = tuning.midiNoteToPeriod(81.0); // A5 (one octave higher)
@@ -81,7 +81,7 @@ public:
 
         beginTest("Period range limiting");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
 
             // Test very low note that might exceed max period
             int lowPeriod = tuning.midiNoteToPeriod(0.0); // Very low C
@@ -96,7 +96,7 @@ public:
 
         beginTest("Frequency conversion methods");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
 
             // Test midiNoteToFrequency
             double a4Freq = tuning.midiNoteToFrequency(69.0);
@@ -109,7 +109,7 @@ public:
 
         beginTest("isDefined method - delegates to reference tuning");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
 
             // Equal temperament defines all notes
             expect(tuning.isDefined(0), "MIDI note 0 should be defined");
@@ -120,7 +120,7 @@ public:
 
         beginTest("A4 frequency setter");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
             tuning.setA4Frequency(432.0);
             expectEquals(tuning.getA4Frequency(), 432.0, "A4 frequency should be updated");
 
@@ -132,7 +132,7 @@ public:
 
         beginTest("Clock frequency setter");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
             double newClockFreq = 1750000.0;
             tuning.setClockFrequency(newClockFreq);
             expectEquals(tuning.getClockFrequency(), newClockFreq, "Clock frequency should be updated");
@@ -145,7 +145,7 @@ public:
 
         beginTest("Offtune calculation");
         {
-            AutoTuning tuning(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
 
             // For auto tuning with equal temperament reference, offtune should be minimal
             double offtune = tuning.getOfftune(69.0); // A4
@@ -159,11 +159,11 @@ public:
         beginTest("Different reference tuning A4 frequencies");
         {
             // Test with A4 = 432 Hz
-            AutoTuning tuning432(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(432.0));
+            AutoTuning tuning432(testClockFreq, std::make_unique<EqualTemperamentTuning>(432.0));
             int period432 = tuning432.midiNoteToPeriod(69.0);
 
             // Test with A4 = 440 Hz
-            AutoTuning tuning440(testCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning tuning440(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
             int period440 = tuning440.midiNoteToPeriod(69.0);
 
             expect(period432 > period440, "A4 at 432 Hz should have larger period than at 440 Hz");
@@ -173,7 +173,7 @@ public:
         {
             // Test with different chip capabilities
             ChipCapabilities narrowCaps {8, Range<int>(10, 1000)};
-            AutoTuning narrowTuning(narrowCaps, testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
+            AutoTuning narrowTuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
 
             int period = narrowTuning.midiNoteToPeriod(69.0);
             expect(period >= narrowCaps.registerRange.getStart(), "Period should respect minimum range");
@@ -207,8 +207,8 @@ public:
 
         beginTest("getName method");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
             String name = tuning.getDescription();
 
@@ -220,8 +220,8 @@ public:
 
         beginTest("MIDI note to period conversion - A4");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
             int period = tuning.midiNoteToPeriod(69.0); // A4 = 440 Hz
             DBG("A4 period = " << period);
@@ -233,8 +233,8 @@ public:
 
         beginTest("MIDI note to period conversion - Middle C");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
             int period = tuning.midiNoteToPeriod(60.0); // Middle C
 
@@ -246,8 +246,8 @@ public:
 
         beginTest("Period to MIDI note conversion");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
             // Test with A4 period
             expect(tuning.getReferenceTuning() != nullptr, "Reference tuning should not be null");
@@ -258,8 +258,8 @@ public:
 
         beginTest("Octave relationships in periods");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
 
             int a4Period = tuning.midiNoteToPeriod(69.0); // A4
@@ -275,8 +275,8 @@ public:
 
         beginTest("Frequency conversion methods");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
 
             // Test midiNoteToFrequency
@@ -290,8 +290,8 @@ public:
 
         beginTest("isDefined method - delegates to reference tuning");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
 
             // Equal temperament defines all notes
@@ -303,8 +303,8 @@ public:
 
         beginTest("Offtune calculation");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
 
             // For auto tuning with equal temperament reference, offtune should be minimal
@@ -321,14 +321,14 @@ public:
         beginTest("Different reference tuning A4 frequencies");
         {
             // Test with A4 = 432 Hz
-            AutoTuning tuning432(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 432.0)
+            AutoTuning tuning432(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 432.0)
             );
             int period432 = tuning432.midiNoteToPeriod(69.0);
 
             // Test with A4 = 440 Hz
-            AutoTuning tuning440(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning440(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
             int period440 = tuning440.midiNoteToPeriod(69.0);
 
@@ -337,16 +337,16 @@ public:
 
         beginTest("Changing the key");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::C, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
             );
 
             // Change to D major
-            tuning.getReferenceTuning()->setRoot(Scale::Key::D);
+            tuning.getReferenceTuning()->setTonic(Scale::Tonic::D);
             int dPeriod = tuning.midiNoteToPeriod(60.0);
 
             // Change back to C major
-            tuning.getReferenceTuning()->setRoot(Scale::Key::C);
+            tuning.getReferenceTuning()->setTonic(Scale::Tonic::C);
             int cPeriod = tuning.midiNoteToPeriod(60.0);
 
             expect(std::abs(cPeriod - dPeriod) > 0, "Periods for C4 in just intonation should differ after changing key");
@@ -354,8 +354,8 @@ public:
 
         beginTest("Changing reference tuning");
         {
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::D, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::D, 440.0)
             );
             int justPeriod = tuning.midiNoteToPeriod(60.0);
 
@@ -370,8 +370,8 @@ public:
             // given periods are multiplies of 3 and 2 respectively
             // but first we should tune A4 to some frequency, so notes should be A-E with A key
             // calculate frequency for A4 and D4 in just intonation
-            AutoTuning tuning(testCaps, testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Key::A, 440.0)
+            AutoTuning tuning(testClockFreq,
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::A, 440.0)
             );
             double targetA4Freq = tuning.periodToFrequency(252);  //  439.831
             DBG("Target A4 frequency: " << targetA4Freq);

@@ -188,9 +188,9 @@ void MultitrackMidiPreview::playArpeggio(const std::vector<int>& midiNotes, doub
 }
 
 void MultitrackMidiPreview::startPlayback(double duration) {
-    // DBG("Starting playback from start to " << duration << " beats");
     auto beatLastPos = tracktion::BeatPosition::fromBeats(duration);
     auto timeDuration = edit.tempoSequence.toTime(beatLastPos);
+    // DBG("Starting playback from start to " << timeDuration << "s");
     transport.playSectionAndReset(tracktion::TimeRange(tracktion::TimePosition(), timeDuration));
 }
 

@@ -140,14 +140,17 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     const ScopedLock sl(lock);
 
     if (fc.bufferForMidiMessages->isAllNotesOff) {
+        // DBG("AYChipPlugin: all notes off");
         chip->muteSound();
-        return;
+        // do not return here!
     }
 
     te::clearChannels(*fc.destBuffer, 2, -1, fc.bufferStartSample, fc.bufferNumSamples);
-    // DBG("======== applyToBuffer");
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
+    // if (fc.bufferForMidiMessages->isNotEmpty()) {
+    //     DBG("AYChipPlugin: processing " << fc.bufferForMidiMessages->size() << " midi messages");
+    // }
     for (auto& m : *fc.bufferForMidiMessages) {
         // TODO retrigger events with smallest delay
 

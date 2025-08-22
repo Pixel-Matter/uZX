@@ -58,6 +58,7 @@ public:
 
         if (c.isAllNotesOff()) {
             turnOffAllVoices(false);
+            // but do not return, there may be messages after all notes off
         }
 
         // if (c.buffer.isNotEmpty()) {

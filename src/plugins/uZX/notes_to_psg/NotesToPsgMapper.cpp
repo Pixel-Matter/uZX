@@ -196,8 +196,14 @@ void NotesToPsgMapper::processMidiMessageWithSource(const te::MidiMessageWithSou
 
 void NotesToPsgMapper::operator()(MidiBufferContext& c) {
     // Process MIDI input
+    if (c.buffer.isEmpty())
+        return;
+
+    // DBG("\n--- " << c.processStartTime() << " - " << c.processEndTime() << " --- (" << c.duration() << " duration) ---");
+    // DBG(">---");
+    // c.debugMidiBuffer();
+
     for (auto& m : c.buffer) {
-        DBG("in midi message " << m.getDescription());
         processMidiMessageWithSource(m);
     }
 
@@ -205,9 +211,10 @@ void NotesToPsgMapper::operator()(MidiBufferContext& c) {
     auto outputMessages = getOutputMessages();
     c.buffer.clear();
     for (auto& msg : outputMessages) {
-        DBG("out midi message " << msg.getDescription());
         c.buffer.addMidiMessage(std::move(msg), 0);
     }
+    // DBG("--->");
+    // c.debugMidiBuffer();
 }
 
 } // namespace MoTool::uZX

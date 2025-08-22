@@ -21,10 +21,10 @@ int value = myParam.get();  // Gets current value
 Specialized for enum/choice parameters with string labels.
 
 ```cpp
-ChoiceParamAttachment<Scale::Key> keyParam(
-    valueTree, "key", "Key Selection", 
+ChoiceParamAttachment<Scale::Tonic> keyParam(
+    valueTree, "key", "Key Selection",
     {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"},
-    undoManager, Scale::Key::C
+    undoManager, Scale::Tonic::C
 );
 ```
 

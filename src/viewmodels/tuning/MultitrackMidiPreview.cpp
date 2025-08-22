@@ -191,7 +191,13 @@ void MultitrackMidiPreview::startPlayback(double duration) {
     auto beatLastPos = tracktion::BeatPosition::fromBeats(duration);
     auto timeDuration = edit.tempoSequence.toTime(beatLastPos);
     // DBG("Starting playback from start to " << timeDuration << "s");
-    transport.playSectionAndReset(tracktion::TimeRange(tracktion::TimePosition(), timeDuration));
+
+    // Defer playback preparing and start to release GUI thread
+    juce::MessageManager::callAsync([this, timeDuration]() {
+        // to recreate nodes with new clips
+        edit.dispatchPendingUpdatesSynchronously();
+        transport.playSectionAndReset(tracktion::TimeRange(tracktion::TimePosition(), timeDuration));
+    });
 }
 
 void MultitrackMidiPreview::stopPlayback() {

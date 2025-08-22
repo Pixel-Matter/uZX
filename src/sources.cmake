@@ -28,6 +28,8 @@ set(SHARED_SOURCES
     # plugins/uZX/instrument/MPEInstrumentManager.cpp
     plugins/uZX/instrument/ChipInstrument.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
+
+    gui/common/Utilities.cpp
 )
 
 # GUI-specific files
@@ -39,7 +41,6 @@ set(GUI_SOURCES
     controllers/EditState.cpp
 
     # gui/nodes/GraphEditorPanel.cpp
-    gui/common/Utilities.cpp
     gui/common/Transport.cpp
 
     gui/timeline/PlayheadComponent.cpp

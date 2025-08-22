@@ -2,6 +2,20 @@
 
 namespace MoTool {
 
+TuningPlayer::TuningPlayer(TuningViewModel& tvm)
+    : viewModel(tvm)
+    , midiPreview(tvm.getEdit())
+{
+    initialize();
+    viewModel.addChangeListener(this);
+}
+
+TuningPlayer::~TuningPlayer() {
+    auto& transport = midiPreview.getTransport();
+    transport.removeChangeListener(this);
+    viewModel.removeChangeListener(this);
+}
+
 void TuningPlayer::initialize() {
     updateTuning();
 

@@ -12,13 +12,14 @@ namespace MoTool::uZX {
 
 void NotesToPsgMapper::initPSG() {
     // Initialize channel states
-    DBG("Initializing PSG with base channel " << baseChannel_ << " and " << numChannels_ << " channels");
+    // DBG("Initializing PSG with base channel " << baseChannel_ << " and " << numChannels_ << " channels");
     for (int i = baseChannel_; i < baseChannel_ + numChannels_; ++i) {
         auto& state = getChannelState(i);
         state.clear();
         // emitVolumeCC(i, 0); // Ensure all volumes are off initially (by default)
         // Contrary to that, AY on reset has all flags set
-        emitToneSwitchCC(i, false); // Ensure all tones are off initially
+        // emitToneSwitchCC(i, false); // Ensure all tones are off initially
+        emitToneSwitchCC(i, true); // Ensure all tones are on initially
         emitNoiseSwitchCC(i, false); // Ensure all noise is off initially
         // emitEnvSwitchCC(i, false); // Ensure all envelopes are off initially  (by default)
     }

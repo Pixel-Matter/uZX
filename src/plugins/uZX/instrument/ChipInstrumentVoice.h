@@ -64,17 +64,17 @@ public:
     }
 
 //     /** Called when note pitchbend changes (MPE). */
-//     void notePitchbendChangedImpl() {
+//     void notePitchbendChangedl() {
 //         // TODO: Implement pitchbend change logic
 //     }
 
 //     /** Called when note timbre changes (MPE). */
-//     void noteTimbreChangedImpl() {
+//     void noteTimbreChanged() {
 //         // TODO: Implement timbre change logic
 //     }
 
 //     /** Called when note key state changes (sustain pedal etc). */
-//     void noteKeyStateChangedImpl() {
+//     void noteKeyStateChanged() {
 //         // TODO: Implement key state change logic
 //     }
 

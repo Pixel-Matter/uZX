@@ -5,15 +5,14 @@
 
 namespace MoTool::uZX {
 
-NotesToPsgMapper::NotesToPsgMapper(int baseChannel, int numChannels)
-    : baseChannel_(baseChannel)
-    , numChannels_(juce::jlimit(1, 4, numChannels))
-{
-}
+// NotesToPsgMapper::NotesToPsgMapper(int baseChannel, int numChannels)
+//     : baseChannel_(baseChannel)
+//     , numChannels_(juce::jlimit(1, 4, numChannels))
+// {}
 
 void NotesToPsgMapper::initPSG() {
     // Initialize channel states
-    // DBG("Initializing PSG with base channel " << baseChannel_ << " and " << numChannels_ << " channels");
+    DBG("Initializing PSG with base channel " << baseChannel_ << " and " << numChannels_ << " channels");
     for (int i = baseChannel_; i < baseChannel_ + numChannels_; ++i) {
         auto& state = getChannelState(i);
         state.clear();
@@ -107,9 +106,7 @@ void NotesToPsgMapper::controlChange(int channel, int controller, int value) {
 }
 
 std::vector<juce::MidiMessage> NotesToPsgMapper::getOutputMessages() {
-    auto result = std::move(outputBuffer_);
-    outputBuffer_.clear();
-    return result;
+    return std::move(outputBuffer_);
 }
 
 const NotesToPsgMapper::ChannelState& NotesToPsgMapper::getChannelState(int channel) const {
@@ -178,6 +175,38 @@ void NotesToPsgMapper::updateNoteVolume(int channel) {
     if (currentVolume != state.lastVolume) {
         emitVolumeCC(channel, currentVolume);
         state.lastVolume = currentVolume;
+    }
+}
+
+
+void NotesToPsgMapper::processMidiMessageWithSource(const te::MidiMessageWithSource& msg) {
+    // DBG("Processing MIDI message: " << msg.getDescription());
+    // converter_.debugChannelStates();
+    if (msg.isNoteOn()) {
+        noteOn(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity());
+    } else if (msg.isNoteOff()) {
+        noteOff(msg.getChannel(), msg.getNoteNumber());
+    } else if (msg.isAftertouch()) {
+        aftertouch(msg.getChannel(), msg.getAfterTouchValue());
+    } else if (msg.isController()) {
+        controlChange(msg.getChannel(), msg.getControllerNumber(), msg.getControllerValue());
+    }
+}
+
+
+void NotesToPsgMapper::operator()(MidiBufferContext& c) {
+    // Process MIDI input
+    for (auto& m : c.buffer) {
+        DBG("in midi message " << m.getDescription());
+        processMidiMessageWithSource(m);
+    }
+
+    // Get output messages from converter and add to buffer
+    auto outputMessages = getOutputMessages();
+    c.buffer.clear();
+    for (auto& msg : outputMessages) {
+        DBG("out midi message " << msg.getDescription());
+        c.buffer.addMidiMessage(std::move(msg), 0);
     }
 }
 

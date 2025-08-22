@@ -4,6 +4,7 @@
 
 #include "NotesToPsgMapper.h"
 
+#include "../midi_effects/MidiEffect.h"
 #include "../../../models/tuning/TuningSystemBase.h"
 #include "../../../controllers/ParamAttachments.h"
 
@@ -20,7 +21,9 @@ namespace IDs {
 
 namespace uZX {
 
-class NotesToPsgPlugin : public te::Plugin {
+
+class NotesToPsgPlugin : public MidiFxPluginBase<NotesToPsgMapper>
+{
 public:
     using Ptr = ReferenceCountedObjectPtr<NotesToPsgPlugin>;
     NotesToPsgPlugin(te::PluginCreationInfo);
@@ -32,21 +35,15 @@ public:
 
     String getName() const override { return "MIDI to PSG"; }
     String getPluginType() override { return xmlTypeName; }
-    String getShortName(int) override { return "M2PSG"; }
+    String getShortName(int) override { return "midi2psg"; }
     String getSelectableDescription() override { return "Converts MIDI notes to PSG MIDI CC messages"; }
-    bool isSynth() override { return false; }
 
-    int getNumOutputChannelsGivenInputs(int) override { return 0; }
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;
-    void applyToBuffer(const te::PluginRenderContext&) noexcept override;
     void midiPanic() override;
     void reset() override;
 
     //==============================================================================
-    bool takesMidiInput() override { return true; }
-    bool takesAudioInput() override { return false; }
-    bool producesAudioWhenNoAudioInput() override { return false; }
     void restorePluginStateFromValueTree(const ValueTree&) override;
     std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
 
@@ -68,11 +65,11 @@ public:
     // specific for MidiToPsg methods
     void setTuningSystem(TuningSystem* tuningSystem);
 
-    Params staticParams{*this};
+    Params staticParams {*this};
 
 private:
     //==============================================================================
-    uZX::NotesToPsgMapper transformer;
+    // uZX::NotesToPsgMapper transformer;
     TuningSystem* currentTuningSystem = nullptr;
 
     void valueTreeChanged() override;

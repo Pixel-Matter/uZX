@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 #include "../../../models/tuning/TuningSystemBase.h"
+#include "../midi_effects/MidiEffect.h"
+
 
 #include <array>
 #include <vector>
@@ -33,7 +35,8 @@ public:
         }
     };
 
-    explicit NotesToPsgMapper(int baseChannel = 1, int numChannels = 3);
+    NotesToPsgMapper() = default;
+    // explicit NotesToPsgMapper(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
     void setTuningSystem(const TuningSystem* tuning) { tuningSystem_ = tuning; }
@@ -51,6 +54,11 @@ public:
     // Output retrieval
     std::vector<juce::MidiMessage> getOutputMessages();
     void clearOutput() { outputBuffer_.clear(); }
+
+    void processMidiMessageWithSource(const tracktion::MidiMessageWithSource& msg);
+
+    // MIDI fx processor callback
+    void operator()(MidiBufferContext& c);
 
     // State access for testing
     const ChannelState& getChannelState(int channel) const;

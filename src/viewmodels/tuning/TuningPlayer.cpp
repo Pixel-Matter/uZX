@@ -1,7 +1,5 @@
 #include "TuningPlayer.h"
 
-#include "juce_events/juce_events.h"
-
 namespace MoTool {
 
 void TuningPlayer::initialize() {

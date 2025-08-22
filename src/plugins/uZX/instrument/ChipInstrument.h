@@ -2,8 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "MidiEffect.h"
-#include "MPEInstrumentFx.h"
+#include "../midi_effects/MPEInstrumentFx.h"
 #include "ChipInstrumentVoice.h"
 
 namespace MoTool::uZX {

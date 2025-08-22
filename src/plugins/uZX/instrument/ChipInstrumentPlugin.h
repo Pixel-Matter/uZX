@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "MidiEffect.h"
+#include "../midi_effects/MidiEffect.h"
 #include "ChipInstrument.h"
 
 

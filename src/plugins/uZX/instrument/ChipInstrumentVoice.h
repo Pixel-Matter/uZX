@@ -1,9 +1,8 @@
 #pragma once
 
 #include <cmath>
-#include "MPEEffectVoice.h"
-#include "MidiEffect.h"
-#include "juce_core/juce_core.h"
+#include "../midi_effects/MPEEffectVoice.h"
+#include "../midi_effects/MidiEffect.h"
 
 namespace MoTool::uZX {
 

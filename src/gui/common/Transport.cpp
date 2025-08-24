@@ -88,7 +88,8 @@ void TransportBar::updateRecordButtonText(bool isRecording) {
 }
 
 String TransportBar::getTimecode(te::TimePosition pos) const {
-    return timecodeFormat->getString(edit_.tempoSequence, pos, true);
+    return timecodeFormat->toFullTimecode(pos, 100, true);
+    // return timecodeFormat->getString(edit_.tempoSequence, pos, true);
 }
 
 void TransportBar::updateTimeLabels(te::TimePosition pos) {

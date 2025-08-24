@@ -1,9 +1,12 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "MidiToPsgTransformer.h"
-#include "../../models/tuning/TuningSystemBase.h"
-#include "../../controllers/ParamAttachments.h"
+
+#include "NotesToPsgMapper.h"
+
+#include "../midi_effects/MidiEffect.h"
+#include "../../../models/tuning/TuningSystemBase.h"
+#include "../../../controllers/ParamAttachments.h"
 
 namespace te = tracktion;
 
@@ -18,33 +21,29 @@ namespace IDs {
 
 namespace uZX {
 
-class MidiToPsgPlugin : public te::Plugin {
+
+class NotesToPsgPlugin : public MidiFxPluginBase<NotesToPsgMapper>
+{
 public:
-    using Ptr = ReferenceCountedObjectPtr<MidiToPsgPlugin>;
-    MidiToPsgPlugin(te::PluginCreationInfo);
-    ~MidiToPsgPlugin() override;
+    using Ptr = ReferenceCountedObjectPtr<NotesToPsgPlugin>;
+    NotesToPsgPlugin(te::PluginCreationInfo);
+    ~NotesToPsgPlugin() override;
 
     //==============================================================================
-    static const char* getPluginName() { return "MIDI to PSG"; }
+    static const char* getPluginName() { return "μZX MIDI to PSG"; }
     static const char* xmlTypeName;
 
-    String getName() const override { return "MIDI to PSG"; }
+    String getName() const override { return String::fromUTF8(getPluginName()); }
     String getPluginType() override { return xmlTypeName; }
-    String getShortName(int) override { return "M2PSG"; }
+    String getShortName(int) override { return "MIDI-PSG"; }
     String getSelectableDescription() override { return "Converts MIDI notes to PSG MIDI CC messages"; }
-    bool isSynth() override { return false; }
 
-    int getNumOutputChannelsGivenInputs(int) override { return 0; }
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;
-    void applyToBuffer(const te::PluginRenderContext&) noexcept override;
     void midiPanic() override;
     void reset() override;
 
     //==============================================================================
-    bool takesMidiInput() override { return true; }
-    bool takesAudioInput() override { return false; }
-    bool producesAudioWhenNoAudioInput() override { return false; }
     void restorePluginStateFromValueTree(const ValueTree&) override;
     std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
 
@@ -66,11 +65,11 @@ public:
     // specific for MidiToPsg methods
     void setTuningSystem(TuningSystem* tuningSystem);
 
-    Params staticParams{*this};
+    Params staticParams {*this};
 
 private:
     //==============================================================================
-    uZX::MidiToPsgTransformer transformer;
+    // uZX::NotesToPsgMapper transformer;
     TuningSystem* currentTuningSystem = nullptr;
 
     void valueTreeChanged() override;
@@ -78,7 +77,7 @@ private:
     void updateConverterParams();
     void processMidiMessageWithSource(const te::MidiMessageWithSource& msg);
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiToPsgPlugin)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgPlugin)
 };
 
 } // namespace MoTool::uZX

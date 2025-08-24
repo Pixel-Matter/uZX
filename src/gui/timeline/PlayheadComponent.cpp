@@ -59,13 +59,12 @@ void PlayheadComponent::mouseDrag(const MouseEvent& e) {
 }
 
 void PlayheadComponent::zoomOrPosChanged() {
-    // DBG("PlayheadComponent::zoomOrPosChanged");
     checkRepaint();
 }
 
 void PlayheadComponent::zoomChanged() {
-    // DBG("PlayheadComponent::zoomChanged");
-    // checkRepaint();
+    // needed to redraw playhead position if zooming out/in
+    checkRepaint();
 }
 
 void PlayheadComponent::checkRepaint() {

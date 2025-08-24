@@ -54,9 +54,9 @@ struct TuningOptions {
 };
 
 // Factory functions for ProTracker-style custom table tunings
-std::unique_ptr<TuningSystem> makeBuiltinTuning(
-    TuningOptions& options
-);
+std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options);
+
+std::unique_ptr<TuningSystem> makeBuiltinTuning(BuiltinTuningType type);
 
 // Get descriptive name for tuning table
 const std::string_view getTuningTableName(BuiltinTuningType tableType);

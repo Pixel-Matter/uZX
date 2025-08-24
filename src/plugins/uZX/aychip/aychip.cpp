@@ -43,8 +43,14 @@ AyumiEmulator::~AyumiEmulator() {
 
 }
 
-auto AyumiEmulator::resetSound() -> void {
-    reset(SampleRate_, ClockRate_, Type_);
+// Mute all notes, used in pause mode
+auto AyumiEmulator::muteSound() -> void {
+    // set volume and envelope off for all channels
+    // no not set mixer to all bits off, because it also disables tone and noise generators
+    // we want only to set volume to 0 for tone and env to off
+    setRegister(8, 0);
+    setRegister(9, 0);
+    setRegister(10, 0);
 }
 
 auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {

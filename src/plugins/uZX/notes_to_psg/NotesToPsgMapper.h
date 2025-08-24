@@ -1,7 +1,9 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "../../models/tuning/TuningSystemBase.h"
+#include "../../../models/tuning/TuningSystemBase.h"
+#include "../../../models/tuning/TuningRegistry.h"
+#include "../midi_effects/MidiEffect.h"
 
 #include <array>
 #include <vector>
@@ -13,10 +15,11 @@ namespace MoTool::uZX {
  * Core converter class that processes MIDI note events and generates PSG MIDI CC messages.
  * This class is designed to be testable and reusable.
  */
-class MidiToPsgTransformer {
+class NotesToPsgMapper {
 public:
     struct ChannelState {
         std::optional<int> currentNote;
+        // in range 0-127
         int velocity = 0;
         int aftertouch = 0;
         int lastVolume = -1;  // Track last emitted volume to avoid redundant updates
@@ -27,13 +30,14 @@ public:
         void clear() {
             currentNote.reset();
             velocity = 0;
-            aftertouch = 0;
+            aftertouch = 127;
             lastVolume = -1;
             // do not clear modulation switches, they should stay on until explicitly turned off
         }
     };
 
-    explicit MidiToPsgTransformer(int baseChannel = 1, int numChannels = 3);
+    NotesToPsgMapper();
+    // explicit NotesToPsgMapper(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
     void setTuningSystem(const TuningSystem* tuning) { tuningSystem_ = tuning; }
@@ -45,12 +49,17 @@ public:
     void noteOn(int channel, int note, int velocity);
     void noteOff(int channel, int note);
     void allNotesOff(int channel);
-    void aftertouch(int channel, int aftertouch);
+    void aftertouch(int channel, int note, int aftertouch);
     void controlChange(int channel, int controller, int value);
 
     // Output retrieval
     std::vector<juce::MidiMessage> getOutputMessages();
     void clearOutput() { outputBuffer_.clear(); }
+
+    void processMidiMessageWithSource(const tracktion::MidiMessageWithSource& msg);
+
+    // MIDI fx processor callback
+    void operator()(MidiBufferContext& c);
 
     // State access for testing
     const ChannelState& getChannelState(int channel) const;
@@ -73,6 +82,7 @@ private:
     std::array<ChannelState, 4> channels_;
     const TuningSystem* tuningSystem_ = nullptr;
     std::vector<juce::MidiMessage> outputBuffer_;
+    std::unique_ptr<TuningSystem> defaultTuningSystem_ = makeBuiltinTuning(BuiltinTuningType::EqualTemperament);
 
     // Helper methods
     bool isChannelInRange(int channel) const;

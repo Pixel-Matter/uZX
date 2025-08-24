@@ -3,7 +3,8 @@
 #include "PluginComponent.h"
 
 #include "../../plugins/uZX/aychip/AYPlugin.h"
-#include "../../plugins/uZX/MidiToPsgPlugin.h"
+#include "../../plugins/uZX/instrument/ChipInstrumentPlugin.h"
+#include "../../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
@@ -146,13 +147,14 @@ void PluginTreeGroup::populateFrom(KnownPluginList::PluginTree& tree) {
 template<class FilterClass>
 void addInternalPlugin(PluginTreeBase& item, int& num, bool synth = false) {
     item.addSubItem(new PluginTreeItem(String(num++) + "_trkbuiltin",
-                                       TRANS(FilterClass::getPluginName()),
+                                       String::fromUTF8(FilterClass::getPluginName()),
                                        FilterClass::xmlTypeName, synth, false));
 }
 
 void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
     addInternalPlugin<uZX::AYChipPlugin>(*this, num);
-    addInternalPlugin<uZX::MidiToPsgPlugin>(*this, num);
+    addInternalPlugin<uZX::ChipInstrumentPlugin>(*this, num);
+    addInternalPlugin<uZX::NotesToPsgPlugin>(*this, num);
     // addInternalPlugin<te::VolumeAndPanPlugin>(*this, num);
     // addInternalPlugin<te::LevelMeterPlugin>(*this, num);
     addInternalPlugin<te::EqualiserPlugin>(*this, num);
@@ -241,14 +243,14 @@ te::Plugin::Ptr showMenuAndCreatePlugin(te::Edit& edit) {
 }
 
 //==============================================================================
-PluginComponent::PluginComponent (EditViewState& evs, te::Plugin::Ptr p)
-    : editViewState (evs), plugin (p)
+PluginComponent::PluginComponent(EditViewState& evs, te::Plugin::Ptr p)
+    : editViewState(evs)
+    , plugin(p)
 {
-    setButtonText (plugin->getName().substring (0, 1));
+    setButtonText(plugin->getShortName(1).substring(0, 1));
 }
 
-PluginComponent::~PluginComponent()
-{}
+PluginComponent::~PluginComponent() {}
 
 void PluginComponent::clicked(const ModifierKeys& modifiers) {
     editViewState.selectionManager.selectOnly(plugin.get());

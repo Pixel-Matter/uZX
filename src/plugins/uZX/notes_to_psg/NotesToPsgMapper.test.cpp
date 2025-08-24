@@ -1,10 +1,12 @@
 #include <JuceHeader.h>
-#include "MidiToPsgTransformer.h"
-#include "../../models/tuning/TuningSystemBase.h"
-#include "../../models/tuning/TuningRegistry.h"
-#include "../../models/tuning/TemperamentSystem.h"
-#include "../../models/tuning/Scales.h"
-#include "../../models/PsgMidi.h"
+
+#include "NotesToPsgMapper.h"
+
+#include "../../../models/tuning/TuningSystemBase.h"
+#include "../../../models/tuning/TuningRegistry.h"
+#include "../../../models/tuning/TemperamentSystem.h"
+#include "../../../models/tuning/Scales.h"
+#include "../../../models/PsgMidi.h"
 
 namespace MoTool::Tests {
 
@@ -13,7 +15,7 @@ using namespace juce;
 
 class MidiToPsgConverterTests : public UnitTest {
 public:
-    MidiToPsgConverterTests() : UnitTest("MidiToPsgTransformer", "MoTool") {}
+    MidiToPsgConverterTests() : UnitTest("NotesToPsgMapper", "MoTool") {}
 
 private:
     ChipCapabilities testCaps {16, Range<int>(1, 4096)};
@@ -21,12 +23,6 @@ private:
     std::unique_ptr<TuningSystem> createTestTuning() {
         TuningOptions options {
             .tableType = BuiltinTuningEnum::EqualTemperament,
-            .temperamentType = TemperamentTypeEnum::EqualTemperament,
-            .tonic = Scale::Tonic::C,
-            .scaleType = Scale::ScaleType::IonianOrMajor,
-            .chipChoice = ChipClockChoice::Pentagon_1_75_MHz,
-            .chipClock = 1750000.0,
-            .a4Frequency = 440.0
         };
         return makeBuiltinTuning(options);
     }
@@ -60,8 +56,8 @@ private:
     }
 
     // Helper to check converter state
-    void expectChannelState(const MidiToPsgTransformer& converter, int channel, int expectedNote, const String& description) {
-        const auto& constConverter = static_cast<const MidiToPsgTransformer&>(converter);
+    void expectChannelState(const NotesToPsgMapper& converter, int channel, int expectedNote, const String& description) {
+        const auto& constConverter = static_cast<const NotesToPsgMapper&>(converter);
         const auto& state = constConverter.getChannelState(channel);
         expectEquals(state.currentNote.value_or(-1), expectedNote, description);
     }
@@ -70,7 +66,9 @@ public:
     void runTest() override {
         beginTest("Basic note on/off");
         {
-            MidiToPsgTransformer converter(1, 3);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(3);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -96,7 +94,9 @@ public:
 
         beginTest("Channel filtering");
         {
-            MidiToPsgTransformer converter(2, 2); // Channels 2-3 only
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(2);
+            converter.setNumChannels(2);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -119,7 +119,9 @@ public:
 
         beginTest("Monophonic behavior");
         {
-            MidiToPsgTransformer converter(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -154,7 +156,9 @@ public:
 
         beginTest("Velocity and aftertouch mapping");
         {
-            MidiToPsgTransformer converter(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -175,7 +179,9 @@ public:
 
         beginTest("CC passthrough");
         {
-            MidiToPsgTransformer converter(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(1);
 
             // Test random CC passthrough
             converter.controlChange(1, 64, 100); // Sustain pedal
@@ -189,20 +195,22 @@ public:
 
         beginTest("Optimized tone switching");
         {
-            MidiToPsgTransformer xformer(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(3);
             auto tuning = createTestTuning();
-            xformer.setTuningSystem(tuning.get());
+            converter.setTuningSystem(tuning.get());
 
             // First note - should turn tone ON
-            xformer.noteOn(1, 60, 100);
-            auto messages = xformer.getOutputMessages();
+            converter.noteOn(1, 60, 100);
+            auto messages = converter.getOutputMessages();
 
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 127, "First note should turn tone ON");
 
             // Second note - should NOT send tone switch (already on)
-            xformer.clearOutput();
-            xformer.noteOn(1, 62, 120);
-            messages = xformer.getOutputMessages();
+            converter.clearOutput();
+            converter.noteOn(1, 62, 120);
+            messages = converter.getOutputMessages();
 
             expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Second note should NOT send tone switch");
             expectCC(messages, MidiCCType::Volume, "Second note should send volume");
@@ -210,16 +218,18 @@ public:
             expectCC(messages, MidiCCType::CC52PeriodFine, "Second note should send period fine");
 
             // Note off - should turn tone OFF
-            xformer.clearOutput();
-            xformer.noteOff(1, 62);
-            messages = xformer.getOutputMessages();
+            converter.clearOutput();
+            converter.noteOff(1, 62);
+            messages = converter.getOutputMessages();
 
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 0, "Note off should turn tone OFF");
         }
 
         beginTest("Period encoding correctness");
         {
-            MidiToPsgTransformer converter(1, 1);
+            NotesToPsgMapper converter;
+            converter.setBaseChannel(1);
+            converter.setNumChannels(1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 

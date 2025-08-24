@@ -25,17 +25,25 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
         inputButton.onClick = [this, at] {
             PopupMenu m;
 
-            // if (EngineHelpers::trackHasInput(*at)) {
-            //     bool ticked = EngineHelpers::isInputMonitoringEnabled(*at);
-            //     m.addItem(1000, "Input Monitoring", true, ticked);
-            //     m.addSeparator();
-            // }
+            if (EngineHelpers::trackHasInput(*at)) {
+                // Add monitor mode submenu
+                for (auto instance : at->edit.getAllInputDevices()) {
+                    if (instance->getTargets().contains(at->itemID)) {
+                        auto currentMode = instance->getInputDevice().getMonitorMode();
+                        m.addItem(1000, "Monitoring off", true, currentMode == te::InputDevice::MonitorMode::off);
+                        m.addItem(1001, "Monitoring auto", true, currentMode == te::InputDevice::MonitorMode::automatic);
+                        m.addItem(1002, "Monitoring on", true, currentMode == te::InputDevice::MonitorMode::on);
+
+                        m.addSeparator();
+                        break;
+                    }
+                }
+            }
 
             if (editViewState.showWaveDevices) {
                 int id = 1;
                 for (auto instance : at->edit.getAllInputDevices()) {
-                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice)
-                    {
+                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice) {
                         bool ticked = instance->getTargets().contains(at->itemID);
                         m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
                     }
@@ -56,16 +64,22 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
 
             int res = m.show();
 
-            // if (res == 1000) {
-                // TODO not working because it toggles only on <-> off, but not automatic monitoring mode
-                // DBG("TrackHeaderComponent::inputButton: toggling input monitoring for track " << at->getName()
-                //     << ", before =" << (EngineHelpers::isInputMonitoringEnabled(*at)? "enabled" : "disabled"));
-                // EngineHelpers::enableInputMonitoring(*at, !EngineHelpers::isInputMonitoringEnabled(*at));
-                // DBG("TrackHeaderComponent::inputButton: after =" << (EngineHelpers::isInputMonitoringEnabled(*at)? "enabled" : "disabled"));
+            if (res >= 1000) {  // Handle monitor mode selection
+                te::InputDevice::MonitorMode newMode;
+                switch (res) {
+                    case 1000: newMode = te::InputDevice::MonitorMode::off; break;
+                    case 1001: newMode = te::InputDevice::MonitorMode::automatic; break;
+                    case 1002: newMode = te::InputDevice::MonitorMode::on; break;
+                    default: newMode = te::InputDevice::MonitorMode::automatic; break;
+                }
 
-                // armButton.setToggleState(EngineHelpers::isTrackArmed(*at), dontSendNotification);
-            // } else
-            if (res >= 100) {  // midi devices
+                // Set monitor mode for all input devices assigned to this track
+                for (auto instance : at->edit.getAllInputDevices()) {
+                    if (instance->getTargets().contains(at->itemID)) {
+                        instance->getInputDevice().setMonitorMode(newMode);
+                    }
+                }
+            } else if (res >= 100) {  // midi devices
                 int id = 100;
                 for (auto instance : at->edit.getAllInputDevices()) {
                     if (instance->getInputDevice().isMidi()) {
@@ -235,7 +249,7 @@ void TrackFooterComponent::paint(Graphics& g) {
     g.setColour(Colors::Theme::backgroundAlt);
     g.fillRect(getLocalBounds().withTrimmedLeft(2));
 
-    if (editViewState.selectionManager.isSelected (track.get())) {
+    if (editViewState.selectionManager.isSelected(track.get())) {
         g.setColour(Colors::Theme::primary);
         g.drawRect(getLocalBounds().withTrimmedLeft(-4), 2);
     }

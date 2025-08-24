@@ -7,9 +7,7 @@
 
 namespace MoTool {
 
-std::unique_ptr<TuningSystem> makeBuiltinTuning(
-    TuningOptions& options
-) {
+std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
     switch (options.tableType) {
         case BuiltinTuningType::EqualTemperament:
             options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
@@ -276,6 +274,11 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(
     }
 
     return nullptr; // Should never reach here
+}
+
+std::unique_ptr<TuningSystem> makeBuiltinTuning(BuiltinTuningType type) {
+    TuningOptions options {.tableType = type};
+    return makeBuiltinTuning(options);
 }
 
 const std::string_view getTuningTableName(BuiltinTuningType tableType) {

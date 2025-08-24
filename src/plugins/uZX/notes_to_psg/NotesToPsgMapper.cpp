@@ -1,16 +1,25 @@
-#include "MidiToPsgTransformer.h"
-#include "../../models/PsgMidi.h"
+#include "NotesToPsgMapper.h"
+#include "../../../models/PsgMidi.h"
+#include "../../../models/tuning/TuningRegistry.h"
+#include "juce_core/juce_core.h"
+
 #include <cstddef>
+#include <memory>
 
 namespace MoTool::uZX {
 
-MidiToPsgTransformer::MidiToPsgTransformer(int baseChannel, int numChannels)
-    : baseChannel_(baseChannel)
-    , numChannels_(juce::jlimit(1, 4, numChannels))
+NotesToPsgMapper::NotesToPsgMapper()
 {
+    // Default to standard 12-TET tuning
+    setTuningSystem(defaultTuningSystem_.get());
 }
 
-void MidiToPsgTransformer::initPSG() {
+// NotesToPsgMapper::NotesToPsgMapper(int baseChannel, int numChannels)
+//     : baseChannel_(baseChannel)
+//     , numChannels_(juce::jlimit(1, 4, numChannels))
+// {}
+
+void NotesToPsgMapper::initPSG() {
     // Initialize channel states
     // DBG("Initializing PSG with base channel " << baseChannel_ << " and " << numChannels_ << " channels");
     for (int i = baseChannel_; i < baseChannel_ + numChannels_; ++i) {
@@ -18,19 +27,22 @@ void MidiToPsgTransformer::initPSG() {
         state.clear();
         // emitVolumeCC(i, 0); // Ensure all volumes are off initially (by default)
         // Contrary to that, AY on reset has all flags set
-        emitToneSwitchCC(i, false); // Ensure all tones are off initially
+        // emitToneSwitchCC(i, false); // Ensure all tones are off initially
+        emitToneSwitchCC(i, true); // Ensure all tones are on initially
         emitNoiseSwitchCC(i, false); // Ensure all noise is off initially
         // emitEnvSwitchCC(i, false); // Ensure all envelopes are off initially  (by default)
     }
 }
 
-void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
-    // DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
+void NotesToPsgMapper::noteOn(int channel, int note, int velocity) {
+    DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
     if (!isChannelInRange(channel) || velocity == 0) return;
     jassert(tuningSystem_ != nullptr);
 
     auto& state = getChannelState(channel);
 
+    // if note is playing, stop it
+    state.clear();
     state.currentNote = note;
     state.velocity = velocity;
 
@@ -47,16 +59,43 @@ void MidiToPsgTransformer::noteOn(int channel, int note, int velocity) {
         int currentVolume = velocityAndAftertouchToVolume(state.velocity, state.aftertouch);
         if (currentVolume != state.lastVolume) {
             emitVolumeCC(channel, currentVolume);
+            DBG("Setting volume to " << currentVolume << " for note " << note << " on channel " << channel
+                << " (velocity " << velocity << ", aftertouch " << state.aftertouch << ")");
             state.lastVolume = currentVolume;
         }
     }
 }
 
-void MidiToPsgTransformer::noteOff(int channel, int note) {
-    // DBG("Note Off: Channel " << channel << ", Note " << note);
+void NotesToPsgMapper::aftertouch(int channel, int note, int aftertouch) {
     if (!isChannelInRange(channel)) return;
 
     auto& state = getChannelState(channel);
+    // DBG("Aftertouch: Channel " << channel << ", Note " << note << ", Aftertouch " << aftertouch);
+    if (!state.currentNote.has_value() || state.currentNote != note) {
+        // Ignore aftertouch for notes that are not currently playing
+        // DBG("Ignoring aftertouch for non-playing note: Channel " << channel << ", Note " << note);
+        return;
+    }
+    state.aftertouch = aftertouch;
+    // DBG("Aftertouch: Channel " << channel << ", Note " << note << ", Aftertouch " << aftertouch);
+
+    // Update output if note is playing
+    if (state.currentNote.has_value()) {
+        updateNoteVolume(channel);
+    }
+}
+
+void NotesToPsgMapper::noteOff(int channel, int note) {
+    if (!isChannelInRange(channel)) return;
+
+    auto& state = getChannelState(channel);
+    if (!state.currentNote.has_value() || state.currentNote != note) {
+        // Ignore note off for notes that are not currently playing
+        // DBG("Ignoring note off for non-playing note: Channel " << channel << ", Note " << note);
+        return;
+    }
+
+    DBG("Note Off: Channel " << channel << ", Note " << note);
 
     // Only turn off if this is the currently playing note
     // DBG("Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
@@ -67,7 +106,7 @@ void MidiToPsgTransformer::noteOff(int channel, int note) {
     }
 }
 
-void MidiToPsgTransformer::allNotesOff(int channel) {
+void NotesToPsgMapper::allNotesOff(int channel) {
     // DBG("All Notes Off: Channel " << channel);
     if (!isChannelInRange(channel)) return;
 
@@ -83,52 +122,39 @@ void MidiToPsgTransformer::allNotesOff(int channel) {
     }
 }
 
-void MidiToPsgTransformer::aftertouch(int channel, int aftertouch) {
-    if (!isChannelInRange(channel)) return;
-
-    auto& state = getChannelState(channel);
-    state.aftertouch = aftertouch;
-
-    // Update output if note is playing
-    if (state.currentNote.has_value()) {
-        updateNoteVolume(channel);
-    }
-}
-
-void MidiToPsgTransformer::controlChange(int channel, int controller, int value) {
+void NotesToPsgMapper::controlChange(int channel, int controller, int value) {
     // Pass through all CC messages unchanged
     // DBG("Control Change: Channel " << channel << ", Controller " << controller << ", Value " << value);
     if (controller == static_cast<int>(MidiCCType::AllNotesOff)) {
+        DBG("All Notes Off CC received on channel " << channel);
         allNotesOff(channel);
     } else {
         emitCC(channel, controller, value);
     }
 }
 
-std::vector<juce::MidiMessage> MidiToPsgTransformer::getOutputMessages() {
-    auto result = std::move(outputBuffer_);
-    outputBuffer_.clear();
-    return result;
+std::vector<juce::MidiMessage> NotesToPsgMapper::getOutputMessages() {
+    return std::move(outputBuffer_);
 }
 
-const MidiToPsgTransformer::ChannelState& MidiToPsgTransformer::getChannelState(int channel) const {
+const NotesToPsgMapper::ChannelState& NotesToPsgMapper::getChannelState(int channel) const {
     return channels_[static_cast<size_t>(channel - baseChannel_)];
 }
 
-MidiToPsgTransformer::ChannelState& MidiToPsgTransformer::getChannelState(int channel) {
+NotesToPsgMapper::ChannelState& NotesToPsgMapper::getChannelState(int channel) {
     return channels_[static_cast<size_t>(channel - baseChannel_)];
 }
 
-bool MidiToPsgTransformer::isChannelInRange(int channel) const {
+bool NotesToPsgMapper::isChannelInRange(int channel) const {
     return channel >= baseChannel_ && channel < baseChannel_ + numChannels_;
 }
 
-void MidiToPsgTransformer::emitVolumeCC(int channel, int volume) {
+void NotesToPsgMapper::emitVolumeCC(int channel, int volume) {
     // DBG("Emitting Volume CC: Channel " << channel << ", Volume " << volume);
     emitCC(channel, static_cast<int>(MidiCCType::Volume), volume);
 }
 
-void MidiToPsgTransformer::emitPeriodCC(int channel, int period) {
+void NotesToPsgMapper::emitPeriodCC(int channel, int period) {
     // Split 12-bit period into coarse (high 5 bits) and fine (low 7 bits)
     int coarse = (period >> 7) & 0x7F;  // bits 7-11 -> 0-31 (high 5 bits)
     int fine = period & 0x7F;           // bits 0-6 -> 0-127 (low 7 bits)
@@ -142,32 +168,33 @@ void MidiToPsgTransformer::emitPeriodCC(int channel, int period) {
     outputBuffer_.push_back(fineMsg);
 }
 
-void MidiToPsgTransformer::emitToneSwitchCC(int channel, bool on) {
+void NotesToPsgMapper::emitToneSwitchCC(int channel, bool on) {
     emitCC(channel, static_cast<int>(MidiCCType::GPB1ToneSwitch), on ? 127 : 0);
 }
 
-void MidiToPsgTransformer::emitNoiseSwitchCC(int channel, bool on) {
+void NotesToPsgMapper::emitNoiseSwitchCC(int channel, bool on) {
     emitCC(channel, static_cast<int>(MidiCCType::GPB2NoiseSwitch), on ? 127 : 0);
 }
 
-void MidiToPsgTransformer::emitEnvSwitchCC(int channel, bool on) {
+void NotesToPsgMapper::emitEnvSwitchCC(int channel, bool on) {
     emitCC(channel, static_cast<int>(MidiCCType::GPB3EnvSwitch), on ? 127 : 0);
 }
 
-void MidiToPsgTransformer::emitCC(int channel, int controller, int value) {
+void NotesToPsgMapper::emitCC(int channel, int controller, int value) {
     auto msg = juce::MidiMessage::controllerEvent(channel, controller, value);
     // DBG("Emitting CC: Channel " << channel << ", Controller " << controller << ", Value " << value);
 
     outputBuffer_.push_back(msg);
 }
 
-int MidiToPsgTransformer::velocityAndAftertouchToVolume(int velocity, int aftertouch) const {
+int NotesToPsgMapper::velocityAndAftertouchToVolume(int velocity, int aftertouch) const {
     // Combine velocity and aftertouch, map from 0-127 to 0-15
-    int combined = juce::jlimit(0, 127, velocity + aftertouch);
-    return (combined * 15) / 127;
+    double combined = (double) velocity * aftertouch / 127.0 / 127.0;
+    // DBG("Combined velocity " << velocity << " and aftertouch " << aftertouch << " to " << combined);
+    return roundToInt(combined * 15.0);
 }
 
-void MidiToPsgTransformer::updateNoteVolume(int channel) {
+void NotesToPsgMapper::updateNoteVolume(int channel) {
     auto& state = getChannelState(channel);
     // DBG("updateChannelOutput Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
     if (!state.currentNote.has_value()) return;
@@ -178,6 +205,45 @@ void MidiToPsgTransformer::updateNoteVolume(int channel) {
         emitVolumeCC(channel, currentVolume);
         state.lastVolume = currentVolume;
     }
+}
+
+
+void NotesToPsgMapper::processMidiMessageWithSource(const te::MidiMessageWithSource& msg) {
+    // DBG("Processing MIDI message: " << msg.getDescription());
+    // converter_.debugChannelStates();
+    if (msg.isNoteOn()) {
+        noteOn(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity());
+    } else if (msg.isNoteOff()) {
+        noteOff(msg.getChannel(), msg.getNoteNumber());
+    } else if (msg.isAftertouch()) {
+        aftertouch(msg.getChannel(), msg.getNoteNumber(), msg.getAfterTouchValue());
+    } else if (msg.isController()) {
+        controlChange(msg.getChannel(), msg.getControllerNumber(), msg.getControllerValue());
+    }
+}
+
+
+void NotesToPsgMapper::operator()(MidiBufferContext& c) {
+    // Process MIDI input
+    if (c.buffer.isEmpty())
+        return;
+
+    // DBG("\n--- " << c.processStartTime() << " - " << c.processEndTime() << " --- (" << c.duration() << " duration) ---");
+    // DBG(">---");
+    // c.debugMidiBuffer();
+
+    for (auto& m : c.buffer) {
+        processMidiMessageWithSource(m);
+    }
+
+    // Get output messages from converter and add to buffer
+    auto outputMessages = getOutputMessages();
+    c.buffer.clear();
+    for (auto& msg : outputMessages) {
+        c.buffer.addMidiMessage(std::move(msg), 0);
+    }
+    // DBG("--->");
+    // c.debugMidiBuffer();
 }
 
 } // namespace MoTool::uZX

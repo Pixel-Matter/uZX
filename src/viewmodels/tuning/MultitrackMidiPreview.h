@@ -4,7 +4,7 @@
 #include <array>
 
 #include <common/Utilities.h>  // from Tracktion
-#include "../../plugins/uZX/MidiToPsgPlugin.h"
+#include "../../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 
 namespace MoTool {
 
@@ -38,7 +38,7 @@ private:
     tracktion::TransportControl& transport;
     tracktion::AudioTrack* track;
     std::array<tracktion::MidiClip::Ptr, NUM_CHANNELS> channelClips;
-    uZX::MidiToPsgPlugin::Ptr midiToPsgPlugin { nullptr };
+    uZX::NotesToPsgPlugin::Ptr NotesToPsgPlugin { nullptr };
 
     // ChangeListener overrides
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;

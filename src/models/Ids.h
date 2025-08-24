@@ -2,8 +2,6 @@
 
 #include <JuceHeader.h>
 
-namespace te = tracktion;
-
 namespace MoTool {
 
 /*

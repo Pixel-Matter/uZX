@@ -44,11 +44,16 @@ public:
     }
 
     MidiMessageSequence createPlaybackMidiSequence(const te::MidiList& list, te::MidiClip& clip, te::MidiList::TimeBase tb, bool generateMPE) override {
+        // DBG("ExtEngineBehaviour::createPlaybackMidiSequence for clip " << clip.getName());
         if (auto psgClip = dynamic_cast<PsgClip*>(&clip)) {
             return psgClip->getPsg().exportToPlaybackMidiSequence(*psgClip, tb);
             // return createPsgPlaybackMidiSequence(list, clip, tb);
         }
-        return te::MidiList::createDefaultPlaybackMidiSequence(list, clip, tb, generateMPE);
+        auto seq = te::MidiList::createDefaultPlaybackMidiSequence(list, clip, tb, generateMPE);
+        // for (auto& msg : seq) {
+        //     DBG(msg->message.getDescription());
+        // }
+        return seq;
     }
 
     bool shouldPlayMidiGuideNotes() override {

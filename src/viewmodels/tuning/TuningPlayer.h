@@ -21,19 +21,9 @@ public:
         virtual void playingNotesChanges() = 0;  // to repaint notes on grid
     };
 
-    TuningPlayer(TuningViewModel& tvm)
-        : viewModel(tvm)
-        , midiPreview(tvm.getEdit())
-    {
-        initialize();
-        viewModel.addChangeListener(this);
-    }
+    TuningPlayer(TuningViewModel& tvm);
 
-    ~TuningPlayer() override {
-        auto& transport = midiPreview.getTransport();
-        transport.removeChangeListener(this);
-        viewModel.removeChangeListener(this);
-    }
+    ~TuningPlayer() override;
 
     void initialize();
 

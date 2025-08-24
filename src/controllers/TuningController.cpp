@@ -115,7 +115,7 @@ void TuningController::setEdit(std::unique_ptr<te::Edit> edit, bool /*savePrev*/
 
 void TuningController::devicesChanged() {
     if (!edit_) return;
-    DBG("TuningController::devicesChanged");
+    // DBG("TuningController::devicesChanged");
 
     edit_->getTransport().ensureContextAllocated();
 

@@ -34,10 +34,10 @@ public:
     ~AYChipPlugin() override;
 
     //==============================================================================
-    static const char* getPluginName()                  { return "AY Chip"; }
+    static const char* getPluginName()                  { return "μZX AY Emulator"; }
     static const char* xmlTypeName;
 
-    String getName() const override               { return "AY Chip"; }
+    String getName() const override               { return String::fromUTF8(getPluginName()); }
     String getPluginType() override               { return xmlTypeName; }
     String getShortName (int) override            { return "AY"; }
     String getSelectableDescription() override    { return "AY Chip plugin based on Ayumi emulator"; }
@@ -100,13 +100,13 @@ private:
     PsgRegsFrame registersFrame;
     std::unique_ptr<AYInterface> chip;
 
-    double timeFromReset;
+    // double timeFromReset;
 
-    struct PendingChanges {
-        std::unique_ptr<AYInterface> chip;
-    };
+    // struct PendingChanges {
+    //     std::unique_ptr<AYInterface> chip;
+    // };
 
-    PendingChanges pendingChanges;
+    // PendingChanges pendingChanges;
     std::atomic<bool> isProcessing {false};
 
     void valueTreeChanged() override;
@@ -114,7 +114,7 @@ private:
     void updateRegistersFromMidiParams() noexcept;
     void updateRegistersFromMidiRegs() noexcept;
     void updateChip() noexcept;
-    void readMidi(const te::MidiMessageWithSource& m) noexcept;
+    void handleMidiEvent(const te::MidiMessageWithSource& m) noexcept;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };

@@ -190,9 +190,7 @@ public:
         clockParameter.setBounds(r.removeFromTop(itemHeight * 2));
         channelsParameter.setBounds(r.removeFromTop(itemHeight * 2));
         stereoParameter.setBounds(r.removeFromTop(itemHeight * 2));
-        DBG("removeDCParameter height is " << removeDCParameter.getHeight());
         removeDCParameter.setBounds(r.removeFromTop(itemHeight));
-        DBG("removeDCParameter height is " << removeDCParameter.getHeight());
         midiParameter.setBounds(r.removeFromTop(itemHeight * 2));
     }
 

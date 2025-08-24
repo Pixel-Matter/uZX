@@ -73,11 +73,11 @@ void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
 }
 
 void AYChipPlugin::deinitialise() {
-    chip = nullptr;
+    chip.reset();
 }
 
 void AYChipPlugin::midiPanic() {
-    reset();
+    chip->muteSound();
 }
 
 void AYChipPlugin::reset() {
@@ -89,7 +89,7 @@ void AYChipPlugin::reset() {
     }
     chip->setMasterVolume(0.5f);
     chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
-    timeFromReset = 0.0;
+    // timeFromReset = 0.0;  // not used now
     midiParamsReader.reset();
     // midiRegsReader.reset();
     registersFrame = {};
@@ -123,7 +123,7 @@ void AYChipPlugin::updateChip() noexcept {
     }
 }
 
-void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
+void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept {
     if (midiReaderMode == MidiReaderMode::Params) {
         midiParamsReader.read(m);
     } else if (midiReaderMode == MidiReaderMode::Regs) {
@@ -132,20 +132,25 @@ void AYChipPlugin::readMidi(const te::MidiMessageWithSource& m) noexcept {
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
-    // When edit.playInStopEnabled == false plugin is not even called
-    bool isActive = true;
-    // bool isActive = fc.isPlaying || fc.isScrubbing || fc.isRendering;
-    if (!isActive || chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr) {
+    if (chip == nullptr || fc.destBuffer == nullptr || fc.bufferForMidiMessages == nullptr) {
         return;
     }
 
     SCOPED_REALTIME_CHECK
     const ScopedLock sl(lock);
 
+    if (fc.bufferForMidiMessages->isAllNotesOff) {
+        // DBG("AYChipPlugin: all notes off");
+        chip->muteSound();
+        // do not return here!
+    }
+
     te::clearChannels(*fc.destBuffer, 2, -1, fc.bufferStartSample, fc.bufferNumSamples);
-    // DBG("======== applyToBuffer");
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
+    // if (fc.bufferForMidiMessages->isNotEmpty()) {
+    //     DBG("AYChipPlugin: processing " << fc.bufferForMidiMessages->size() << " midi messages");
+    // }
     for (auto& m : *fc.bufferForMidiMessages) {
         // TODO retrigger events with smallest delay
 
@@ -159,7 +164,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
             currentSample = timeSample;
         }
         // DBG("AY in midi " << m.getDescription());
-        readMidi(m);
+        handleMidiEvent(m);
     }
     // process to the end of the block
     updateChip();
@@ -169,7 +174,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
                            static_cast<size_t>(fc.bufferNumSamples - currentSample),
                            staticParams.removeDCValue);
     }
-    timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;
+    // timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;
     // DBG("timeFromReset = " << timeFromReset);
 }
 

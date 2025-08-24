@@ -2,7 +2,7 @@
 
 namespace MoTool::uZX {
 
-const char* NotesToPsgPlugin::xmlTypeName = "midiToPsg";
+const char* NotesToPsgPlugin::xmlTypeName = "uzxmidi2psg";
 
 NotesToPsgPlugin::NotesToPsgPlugin(te::PluginCreationInfo info)
     : MidiFxPluginBase<NotesToPsgMapper>(info)

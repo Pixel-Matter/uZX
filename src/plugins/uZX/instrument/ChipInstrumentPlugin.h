@@ -18,13 +18,13 @@ public:
     ~ChipInstrumentPlugin() override;
 
     //==============================================================================
-    static const char* getPluginName() { return "uZX Instrument"; }
+    static const char* getPluginName() { return "μZX Instrument"; }
     static const char* xmlTypeName;
 
-    String getName() const override { return "uZX Instrument"; }
+    String getName() const override { return String::fromUTF8(getPluginName()); }
     String getPluginType() override { return xmlTypeName; }
-    String getShortName(int) override { return "uZXinst"; }
-    String getSelectableDescription() override { return "uZX Instrument Plugin"; }
+    String getShortName(int) override { return "Instr"; }
+    String getSelectableDescription() override { return "Chiptune Instrument Plugin"; }
 
     void initialise(const tracktion::PluginInitialisationInfo&) override;
     void deinitialise() override;

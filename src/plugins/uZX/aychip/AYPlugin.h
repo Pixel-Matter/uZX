@@ -34,10 +34,10 @@ public:
     ~AYChipPlugin() override;
 
     //==============================================================================
-    static const char* getPluginName()                  { return "AY Chip"; }
+    static const char* getPluginName()                  { return "μZX AY Emulator"; }
     static const char* xmlTypeName;
 
-    String getName() const override               { return "AY Chip"; }
+    String getName() const override               { return String::fromUTF8(getPluginName()); }
     String getPluginType() override               { return xmlTypeName; }
     String getShortName (int) override            { return "AY"; }
     String getSelectableDescription() override    { return "AY Chip plugin based on Ayumi emulator"; }

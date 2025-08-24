@@ -30,12 +30,12 @@ public:
     ~NotesToPsgPlugin() override;
 
     //==============================================================================
-    static const char* getPluginName() { return "MIDI to PSG"; }
+    static const char* getPluginName() { return "μZX MIDI to PSG"; }
     static const char* xmlTypeName;
 
-    String getName() const override { return "MIDI to PSG"; }
+    String getName() const override { return String::fromUTF8(getPluginName()); }
     String getPluginType() override { return xmlTypeName; }
-    String getShortName(int) override { return "midi2psg"; }
+    String getShortName(int) override { return "MIDI-PSG"; }
     String getSelectableDescription() override { return "Converts MIDI notes to PSG MIDI CC messages"; }
 
     void initialise(const te::PluginInitialisationInfo&) override;

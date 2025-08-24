@@ -2,8 +2,8 @@
 
 #include <JuceHeader.h>
 #include "../../../models/tuning/TuningSystemBase.h"
+#include "../../../models/tuning/TuningRegistry.h"
 #include "../midi_effects/MidiEffect.h"
-
 
 #include <array>
 #include <vector>
@@ -29,13 +29,13 @@ public:
         void clear() {
             currentNote.reset();
             velocity = 0;
-            aftertouch = 0;
+            aftertouch = 1.0;
             lastVolume = -1;
             // do not clear modulation switches, they should stay on until explicitly turned off
         }
     };
 
-    NotesToPsgMapper() = default;
+    NotesToPsgMapper();
     // explicit NotesToPsgMapper(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
@@ -48,7 +48,7 @@ public:
     void noteOn(int channel, int note, int velocity);
     void noteOff(int channel, int note);
     void allNotesOff(int channel);
-    void aftertouch(int channel, int aftertouch);
+    void aftertouch(int channel, int note, int aftertouch);
     void controlChange(int channel, int controller, int value);
 
     // Output retrieval
@@ -81,6 +81,7 @@ private:
     std::array<ChannelState, 4> channels_;
     const TuningSystem* tuningSystem_ = nullptr;
     std::vector<juce::MidiMessage> outputBuffer_;
+    std::unique_ptr<TuningSystem> defaultTuningSystem_ = makeBuiltinTuning(BuiltinTuningType::EqualTemperament);
 
     // Helper methods
     bool isChannelInRange(int channel) const;

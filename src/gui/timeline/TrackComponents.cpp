@@ -249,7 +249,7 @@ void TrackFooterComponent::paint(Graphics& g) {
     g.setColour(Colors::Theme::backgroundAlt);
     g.fillRect(getLocalBounds().withTrimmedLeft(2));
 
-    if (editViewState.selectionManager.isSelected (track.get())) {
+    if (editViewState.selectionManager.isSelected(track.get())) {
         g.setColour(Colors::Theme::primary);
         g.drawRect(getLocalBounds().withTrimmedLeft(-4), 2);
     }

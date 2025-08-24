@@ -1,9 +1,18 @@
 #include "NotesToPsgMapper.h"
 #include "../../../models/PsgMidi.h"
+#include "../../../models/tuning/TuningRegistry.h"
+#include "juce_core/juce_core.h"
 
 #include <cstddef>
+#include <memory>
 
 namespace MoTool::uZX {
+
+NotesToPsgMapper::NotesToPsgMapper()
+{
+    // Default to standard 12-TET tuning
+    setTuningSystem(defaultTuningSystem_.get());
+}
 
 // NotesToPsgMapper::NotesToPsgMapper(int baseChannel, int numChannels)
 //     : baseChannel_(baseChannel)
@@ -26,12 +35,14 @@ void NotesToPsgMapper::initPSG() {
 }
 
 void NotesToPsgMapper::noteOn(int channel, int note, int velocity) {
-    // DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
+    DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
     if (!isChannelInRange(channel) || velocity == 0) return;
     jassert(tuningSystem_ != nullptr);
 
     auto& state = getChannelState(channel);
 
+    // if note is playing, stop it
+    state.clear();
     state.currentNote = note;
     state.velocity = velocity;
 
@@ -53,11 +64,36 @@ void NotesToPsgMapper::noteOn(int channel, int note, int velocity) {
     }
 }
 
-void NotesToPsgMapper::noteOff(int channel, int /*note*/) {
-    // DBG("Note Off: Channel " << channel << ", Note " << note);
+void NotesToPsgMapper::aftertouch(int channel, int note, int aftertouch) {
     if (!isChannelInRange(channel)) return;
 
     auto& state = getChannelState(channel);
+    // DBG("Aftertouch: Channel " << channel << ", Note " << note << ", Aftertouch " << aftertouch);
+    if (!state.currentNote.has_value() || state.currentNote != note) {
+        // Ignore aftertouch for notes that are not currently playing
+        // DBG("Ignoring aftertouch for non-playing note: Channel " << channel << ", Note " << note);
+        return;
+    }
+    state.aftertouch = aftertouch;
+    // DBG("Aftertouch: Channel " << channel << ", Note " << note << ", Aftertouch " << aftertouch);
+
+    // Update output if note is playing
+    if (state.currentNote.has_value()) {
+        updateNoteVolume(channel);
+    }
+}
+
+void NotesToPsgMapper::noteOff(int channel, int note) {
+    if (!isChannelInRange(channel)) return;
+
+    auto& state = getChannelState(channel);
+    if (!state.currentNote.has_value() || state.currentNote != note) {
+        // Ignore note off for notes that are not currently playing
+        // DBG("Ignoring note off for non-playing note: Channel " << channel << ", Note " << note);
+        return;
+    }
+
+    DBG("Note Off: Channel " << channel << ", Note " << note);
 
     // Only turn off if this is the currently playing note
     // DBG("Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
@@ -84,22 +120,11 @@ void NotesToPsgMapper::allNotesOff(int channel) {
     }
 }
 
-void NotesToPsgMapper::aftertouch(int channel, int aftertouch) {
-    if (!isChannelInRange(channel)) return;
-
-    auto& state = getChannelState(channel);
-    state.aftertouch = aftertouch;
-
-    // Update output if note is playing
-    if (state.currentNote.has_value()) {
-        updateNoteVolume(channel);
-    }
-}
-
 void NotesToPsgMapper::controlChange(int channel, int controller, int value) {
     // Pass through all CC messages unchanged
     // DBG("Control Change: Channel " << channel << ", Controller " << controller << ", Value " << value);
     if (controller == static_cast<int>(MidiCCType::AllNotesOff)) {
+        DBG("All Notes Off CC received on channel " << channel);
         allNotesOff(channel);
     } else {
         emitCC(channel, controller, value);
@@ -162,8 +187,9 @@ void NotesToPsgMapper::emitCC(int channel, int controller, int value) {
 
 int NotesToPsgMapper::velocityAndAftertouchToVolume(int velocity, int aftertouch) const {
     // Combine velocity and aftertouch, map from 0-127 to 0-15
-    int combined = juce::jlimit(0, 127, velocity + aftertouch);
-    return (combined * 15) / 127;
+    double combined = (double) velocity * aftertouch / 127.0 / 127.0;
+    // DBG("Combined velocity " << velocity << " and aftertouch " << aftertouch << " to " << combined);
+    return roundToInt(combined * 15.0);
 }
 
 void NotesToPsgMapper::updateNoteVolume(int channel) {
@@ -188,7 +214,7 @@ void NotesToPsgMapper::processMidiMessageWithSource(const te::MidiMessageWithSou
     } else if (msg.isNoteOff()) {
         noteOff(msg.getChannel(), msg.getNoteNumber());
     } else if (msg.isAftertouch()) {
-        aftertouch(msg.getChannel(), msg.getAfterTouchValue());
+        aftertouch(msg.getChannel(), msg.getNoteNumber(), msg.getAfterTouchValue());
     } else if (msg.isController()) {
         controlChange(msg.getChannel(), msg.getControllerNumber(), msg.getControllerValue());
     }

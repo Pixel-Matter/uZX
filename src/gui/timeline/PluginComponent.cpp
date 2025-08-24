@@ -147,7 +147,7 @@ void PluginTreeGroup::populateFrom(KnownPluginList::PluginTree& tree) {
 template<class FilterClass>
 void addInternalPlugin(PluginTreeBase& item, int& num, bool synth = false) {
     item.addSubItem(new PluginTreeItem(String(num++) + "_trkbuiltin",
-                                       TRANS(FilterClass::getPluginName()),
+                                       String::fromUTF8(FilterClass::getPluginName()),
                                        FilterClass::xmlTypeName, synth, false));
 }
 
@@ -243,14 +243,14 @@ te::Plugin::Ptr showMenuAndCreatePlugin(te::Edit& edit) {
 }
 
 //==============================================================================
-PluginComponent::PluginComponent (EditViewState& evs, te::Plugin::Ptr p)
-    : editViewState (evs), plugin (p)
+PluginComponent::PluginComponent(EditViewState& evs, te::Plugin::Ptr p)
+    : editViewState(evs)
+    , plugin(p)
 {
-    setButtonText (plugin->getName().substring (0, 1));
+    setButtonText(plugin->getShortName(1).substring(0, 1));
 }
 
-PluginComponent::~PluginComponent()
-{}
+PluginComponent::~PluginComponent() {}
 
 void PluginComponent::clicked(const ModifierKeys& modifiers) {
     editViewState.selectionManager.selectOnly(plugin.get());

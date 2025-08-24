@@ -81,7 +81,7 @@ public:
     void renderNextStep(MidiBufferContext& c, double timeOffset) {
         // 1. First check for noteOff state
         if (ampAdsr.getState() == te::LinEnvelope::State::idle && !firstStep) {
-            // DBG("NoteOff " << currentlyPlayingNote.initialNote << " time = " << c.playPosition.inSeconds() + timeOffset);
+            DBG("NoteOff " << currentlyPlayingNote.initialNote << " time = " << c.playPosition.inSeconds() + timeOffset);
             c.buffer.addMidiMessage(
                 MidiMessage::noteOff(
                     currentlyPlayingNote.midiChannel,
@@ -102,7 +102,7 @@ public:
         // 2. Not on if firstStep
         if (firstStep) {
             firstStep = false;
-            // DBG("NoteOn " << currentlyPlayingNote.initialNote << " time = " << c.playPosition.inSeconds() + timeOffset);
+            DBG("NoteOn " << currentlyPlayingNote.initialNote << " time = " << c.playPosition.inSeconds() + timeOffset);
             c.buffer.addMidiMessage(
                 MidiMessage::noteOn(
                     currentlyPlayingNote.midiChannel,

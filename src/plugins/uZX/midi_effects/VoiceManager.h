@@ -25,7 +25,7 @@ class VoiceManager {
 public:
     //==============================================================================
     VoiceManager() {
-        ensureNumVoices(8);
+        ensureNumVoices(3);
     }
 
     ~VoiceManager() = default;
@@ -192,6 +192,8 @@ public:
         const ScopedLock sl(voicesLock);
         if (auto* voice = findFreeVoice(newNote, isVoiceStealingEnabled())) {
             startVoice(voice, newNote);
+        } else {
+            DBG("No voice available to play note " << newNote.initialNote);
         }
     }
 
@@ -306,7 +308,7 @@ private:
     OwnedArray<Voice> voices;
     mutable CriticalSection voicesLock;
 
-    std::atomic<bool> shouldStealVoices{false};
+    std::atomic<bool> shouldStealVoices {true};
     uint32 lastNoteOnCounter = 0;
     double currentPlayRate = 0.0;
 

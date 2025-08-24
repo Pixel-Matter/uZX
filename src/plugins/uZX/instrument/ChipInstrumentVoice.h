@@ -27,6 +27,8 @@ public:
         ampAdsr.setSampleRate(playRate);
         pitchAdsr.setSampleRate(playRate);
 
+        // ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
+        // pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
         ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 1.0f });
         pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 1.0f });
 
@@ -143,19 +145,23 @@ public:
         // I do not sure if we should chop it here but not in parent midi instrument
         // below is placeholder implementation
 
-        const auto quantizedStart = tracktion::TimePosition::fromSeconds(
-            std::ceil(c.processStartTime().inSeconds() * playRate) / playRate
-        );
-        const auto startSampleQuant = c.getSampleForTimeRel(quantizedStart - c.playPosition);
-        // const auto end = c.processEndTime();
+        // We shouldn't quantize in floats!
         const auto step = roundToInt(c.sampleRate / playRate);
+        const auto timeSamples = roundToInt(c.playPosition.inSeconds() * c.sampleRate);
+        const int remainder = timeSamples % step;
+        const auto sampleQuant = (remainder == 0) ? timeSamples : timeSamples + (step - remainder);
+        const auto startSampleQuant = sampleQuant - timeSamples;
 
-        // DBG("voice block " << c.processStartTime()
-        //     << " - " << end << " quant -> " << quantizedStart);
+        // DBG("voice block " << currentlyPlayingNote.initialNote << "(" << (int) noteOnOrder << ")"
+        //     << c.processStartTime() << " - " << c.processEndTime()
+        //     << " / " << startSampleQuant << " - " << c.start + c.length
+        // );
 
         for (auto s = startSampleQuant; s < c.start + c.length; s += step) {
+            if (s < c.start)
+                continue;
             auto timeOffset = s / c.sampleRate;
-            // DBG("rendering step at time: " << time.inSeconds() << " offset: " << timeOffset);
+            // DBG("rendering step at sample: " << s << " timeOffset: " << timeOffset);
             renderNextStep(c, timeOffset);
         }
         // if (c.buffer.isNotEmpty()) {

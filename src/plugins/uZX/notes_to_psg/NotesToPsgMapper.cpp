@@ -59,6 +59,8 @@ void NotesToPsgMapper::noteOn(int channel, int note, int velocity) {
         int currentVolume = velocityAndAftertouchToVolume(state.velocity, state.aftertouch);
         if (currentVolume != state.lastVolume) {
             emitVolumeCC(channel, currentVolume);
+            DBG("Setting volume to " << currentVolume << " for note " << note << " on channel " << channel
+                << " (velocity " << velocity << ", aftertouch " << state.aftertouch << ")");
             state.lastVolume = currentVolume;
         }
     }

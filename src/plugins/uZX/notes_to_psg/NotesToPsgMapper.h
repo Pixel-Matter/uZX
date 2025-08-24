@@ -19,6 +19,7 @@ class NotesToPsgMapper {
 public:
     struct ChannelState {
         std::optional<int> currentNote;
+        // in range 0-127
         int velocity = 0;
         int aftertouch = 0;
         int lastVolume = -1;  // Track last emitted volume to avoid redundant updates
@@ -29,7 +30,7 @@ public:
         void clear() {
             currentNote.reset();
             velocity = 0;
-            aftertouch = 1.0;
+            aftertouch = 127;
             lastVolume = -1;
             // do not clear modulation switches, they should stay on until explicitly turned off
         }

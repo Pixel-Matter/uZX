@@ -49,11 +49,11 @@ public:
 
     struct Params {
         RangedParamAttachment<int> baseMidiChannelValue;
-        RangedParamAttachment<int> numChannelsValue;
+        // RangedParamAttachment<int> numChannelsValue;
 
         Params(te::Plugin& p)
             : baseMidiChannelValue(p.state, p.getUndoManager())
-            , numChannelsValue(p.state, p.getUndoManager())
+            // , numChannelsValue(p.state, p.getUndoManager())
         {
             initialise();
         }
@@ -74,7 +74,7 @@ private:
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
-    void updateConverterParams();
+    void updateParams();
     void processMidiMessageWithSource(const te::MidiMessageWithSource& msg);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgPlugin)

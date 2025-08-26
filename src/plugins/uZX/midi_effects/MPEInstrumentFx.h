@@ -15,7 +15,6 @@ template <class Voice>
 class MPEInstrumentFx : public MPEInstrument::Listener {
 public:
     MPEInstrumentFx()
-        : mpeInstrument(defaultMpeInstrument)
     {
         mpeInstrument.enableLegacyMode();
         mpeInstrument.addListener(this);
@@ -175,11 +174,10 @@ protected:
         // Implement program change handling logic here
     }
 
-    MPEInstrument& mpeInstrument;
     VoiceManager<Voice> voices;  // Pure voice management
 
 private:
-    MPEInstrument defaultMpeInstrument;
+    MPEInstrument mpeInstrument;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MPEInstrumentFx)
 };

@@ -26,7 +26,6 @@ set(SHARED_SOURCES
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp
     # plugins/uZX/instrument/MPEInstrumentManager.cpp
-    plugins/uZX/instrument/ChipInstrument.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
 
     gui/common/Utilities.cpp

@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "../../../models/tuning/TuningSystemBase.h"
 #include "../../../models/tuning/TuningRegistry.h"
+#include "../../../models/PsgMidi.h"
 #include "../midi_effects/MidiEffect.h"
 
 #include <array>
@@ -11,64 +12,80 @@
 
 namespace MoTool::uZX {
 
+using namespace MoTool;
+
 /**
  * Core converter class that processes MIDI note events and generates PSG MIDI CC messages.
  * This class is designed to be testable and reusable.
  */
 class NotesToPsgMapper {
 public:
-    struct ChannelState {
-        std::optional<int> currentNote;
-        // in range 0-127
-        int velocity = 0;
-        int aftertouch = 0;
-        int lastVolume = -1;  // Track last emitted volume to avoid redundant updates
-        // bool toneOn = false;
-        // bool noiseOn = false;
-        // bool envOn = true;
+    struct ChannelVoice {
+    private:
+        tracktion::MidiMessageArray& midiBuffer_;
+    public:
+        int midiChannel;
+        bool isEnvChannel = false;
 
-        void clear() {
-            currentNote.reset();
-            velocity = 0;
-            aftertouch = 127;
-            lastVolume = -1;
-            // do not clear modulation switches, they should stay on until explicitly turned off
-        }
+        std::optional<int> initialNote;
+        float actualNote = -1.0f; // float for bends
+        int velocity;         // 0-127
+        int aftertouchValue;  // 0-127
+        int chipVolume = -1;  // 0-15, Track last emitted volume to avoid redundant updates
+        bool toneOn = false;
+        bool noiseOn = false;
+        bool envOn = true;
+        tracktion::MPESourceID mpeSourceId_ = 0;
+
+        ChannelVoice(tracktion::MidiMessageArray& buffer, int chan, bool isEnv = false);
+
+        void reset();
+        bool isActive() const;
+        int getEffectiveChipVolume();
+
+        void noteOn(int note, int vel, const TuningSystem& tuning);
+        void noteOff(int note);
+        void aftertouch(int note, int value);
+        void controllerChange(MidiCCType controller, int value);
+
+        void emitControllerChange(MidiCCType controller, int value);
+        void emitVolume(int volume);
+        void emitPeriod(int period);
+        void emitToneSwitch(bool on);
+        void emitNoiseSwitch(bool on);
+        void emitEnvSwitch(bool on);
+        void updateVolume();
+
+        void debug() const;
     };
 
     NotesToPsgMapper();
+    ~NotesToPsgMapper();
+
     // explicit NotesToPsgMapper(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
     void setTuningSystem(const TuningSystem* tuning) { tuningSystem_ = tuning; }
-    void setBaseChannel(int channel) { baseChannel_ = channel; }
-    void setNumChannels(int channels) { numChannels_ = juce::jlimit(1, 4, channels); }
-
-    // MIDI input processing
-    void initPSG();
-    void noteOn(int channel, int note, int velocity);
-    void noteOff(int channel, int note);
-    void allNotesOff(int channel);
-    void aftertouch(int channel, int note, int aftertouch);
-    void controlChange(int channel, int controller, int value);
+    void setBaseChannel(int channel);
+    void reset();
 
     // Output retrieval
-    std::vector<juce::MidiMessage> getOutputMessages();
-    void clearOutput() { outputBuffer_.clear(); }
+    tracktion::MidiMessageArray takeOutputMessages();
+    void clearOutput() { midiBuffer_.clear(); }
 
-    void processMidiMessageWithSource(const tracktion::MidiMessageWithSource& msg);
+    void handleMidiMessage(const tracktion::MidiMessageWithSource& msg);
 
     // MIDI fx processor callback
     void operator()(MidiBufferContext& c);
 
     // State access for testing
-    const ChannelState& getChannelState(int channel) const;
-    void debugChannelStates() const {
+    const ChannelVoice& getChannelVoice(int channel) const;
+    void debugChannelVoices() const {
         for (size_t i = 0; i < static_cast<size_t>(numChannels_); ++i) {
             DBG("Channel " << (static_cast<size_t>(baseChannel_) + i) << ": "
-                << "Note: " << (channels_[i].currentNote.has_value() ? std::to_string(channels_[i].currentNote.value()) : "none")
-                << ", Velocity: " << channels_[i].velocity
-                << ", Aftertouch: " << channels_[i].aftertouch
+                << "Note: " << (voices_[i].initialNote.has_value() ? std::to_string(voices_[i].initialNote.value()) : "none")
+                << ", Velocity: " << voices_[i].velocity
+                << ", Aftertouch: " << voices_[i].aftertouchValue
                 // << ", Tone On: " << (channels_[i].toneOn ? "Yes" : "No")
                 // << ", Noise On: " << (channels_[i].noiseOn ? "Yes" : "No")
                 // << ", Env On: " << (channels_[i].envOn ? "Yes" : "No")
@@ -76,25 +93,25 @@ public:
         }
     }
 
+    friend struct ChannelVoice;
+
 private:
+    MPEInstrument mpeInstrument_;
+
     int baseChannel_ = 1;
-    int numChannels_ = 4;
-    std::array<ChannelState, 4> channels_;
+    tracktion::MPESourceID mpeSourceId_ = 0;
+    inline static constexpr int numChannels_ = 4;
+    std::array<ChannelVoice, numChannels_> voices_;
     const TuningSystem* tuningSystem_ = nullptr;
-    std::vector<juce::MidiMessage> outputBuffer_;
+    tracktion::MidiMessageArray midiBuffer_;
+    bool passthruOutsideChannels_ = true;
+    bool passthruUnprocessedMIDI_ = false;
     std::unique_ptr<TuningSystem> defaultTuningSystem_ = makeBuiltinTuning(BuiltinTuningType::EqualTemperament);
 
     // Helper methods
     bool isChannelInRange(int channel) const;
-    ChannelState& getChannelState(int channel);
-    void emitToneSwitchCC(int channel, bool on);
-    void emitNoiseSwitchCC(int channel, bool on);
-    void emitEnvSwitchCC(int channel, bool on);
-    void emitVolumeCC(int channel, int volume);
-    void emitPeriodCC(int channel, int period);
-    void emitCC(int channel, int controller, int value);
-    int velocityAndAftertouchToVolume(int velocity, int aftertouch) const;
-    void updateNoteVolume(int channel);
+    const ChannelVoice& getVoice(int channel) const;
+    ChannelVoice& getVoice(int channel);
 };
 
 } // namespace MoTool::uZX

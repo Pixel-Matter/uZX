@@ -21,6 +21,7 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
 
     trackName.setText(t->getName(), dontSendNotification);
 
+    // TODO move all the logic to TrackViewModel
     if (auto at = dynamic_cast<te::AudioTrack*>(track.get())) {
         inputButton.onClick = [this, at] {
             PopupMenu m;
@@ -87,7 +88,19 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
                             // Toggle: if already assigned, remove it; otherwise, set it
                             if (instance->getTargets().contains(at->itemID)) {
                                 [[ maybe_unused ]] auto result = instance->removeTarget(at->itemID, &at->edit.getUndoManager());
-                            } else {
+                            } else {  // set it
+                                // Remove any existing MIDI device assignments except all_midi_in
+                                for (auto existingInstance : at->edit.getAllInputDevices()) {
+                                    if (existingInstance->getInputDevice().isMidi() &&
+                                        existingInstance->getTargets().contains(at->itemID) &&
+                                        (
+                                            existingInstance->getInputDevice().getDeviceID() == "all_midi_in" ||
+                                            instance->getInputDevice().getDeviceID() == "all_midi_in"
+                                        ))
+                                    {
+                                        [[ maybe_unused ]] auto result = existingInstance->removeTarget(at->itemID, &at->edit.getUndoManager());
+                                    }
+                                }
                                 [[ maybe_unused ]] auto result = instance->setTarget(at->itemID, false, &at->edit.getUndoManager(), 0);
                             }
                         }

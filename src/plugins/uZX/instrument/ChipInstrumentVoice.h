@@ -6,7 +6,24 @@
 
 namespace MoTool::uZX {
 
-    namespace te = tracktion;
+namespace te = tracktion;
+
+static String toString(te::LinEnvelope adsr) {
+    String result;
+    switch (adsr.getState()) {
+        case te::LinEnvelope::State::idle:    result = result + " idle";    break;
+        case te::LinEnvelope::State::attack:  result = result + " attack";  break;
+        case te::LinEnvelope::State::decay:   result = result + " decay";   break;
+        case te::LinEnvelope::State::sustain: result = result + " sustain"; break;
+        case te::LinEnvelope::State::release: result = result + " release"; break;
+        default:                          result = result + " unknown"; break;
+    }
+    return result + " " + String(adsr.getEnvelopeValue());
+}
+
+inline static String& operator<< (String& string1, const te::LinEnvelope& adsr) {
+    return string1 += toString(adsr);
+}
 
 //==============================================================================
 /**
@@ -29,8 +46,8 @@ public:
 
         // ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
         // pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
-        ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 1.0f });
-        pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 1.0f });
+        ampAdsr.setParameters({ 0.0f, 0.1f, 0.8f, 1.0f });
+        pitchAdsr.setParameters({ 0.0f, 0.1f, 0.8f, 1.0f });
 
         lastAftertouch = -1;
     }
@@ -38,31 +55,37 @@ public:
     //==============================================================================
     /** Called when a new note starts on this voice. */
     void noteStarted() {
-        // DBG("Note started " << currentlyPlayingNote.initialNote);
+        // DBG("Note started " << currentlyPlayingNote.initialNote << " (" << (int) noteOnOrder << ") ---------------------------");
         activeNote.setCurrentAndTargetValue(currentlyPlayingNote.initialNote);
         ampAdsr.noteOn();
         pitchAdsr.noteOn();
+        lastAftertouch = 127;
+        // DBG("ADSR: " << ampAdsr);
         firstStep = true;
     }
 
     /** Called when the currently playing note stops. */
     void noteStopped(bool allowTailOff) {
-        // DBG("Note stopped " << currentlyPlayingNote.initialNote);
         if (allowTailOff) {
             ampAdsr.noteOff();
             pitchAdsr.noteOff();
+            // DBG("noteStopped+tail " << currentlyPlayingNote.initialNote << " (" << (int) noteOnOrder << ") ---------------------------");
         } else {
             ampAdsr.reset();
             pitchAdsr.reset();
+            // DBG("noteStopped-tail " << currentlyPlayingNote.initialNote << " (" << (int) noteOnOrder << ") ---------------------------");
             // we can not call clearCurrentNote() here because we should emit NoteOff in renderNextStep after that
             // clearCurrentNote();
         }
+        // DBG("ADSR: " << ampAdsr);
     }
 
     /** Called when note pressure changes (MPE). */
     void notePressureChanged() {
         // TODO: Implement pressure change logic
-        DBG("ChipInstrumentVoice Note pressure changed");
+        // DBG("Note pressure changed " << currentlyPlayingNote.initialNote
+        //     << " to " << currentlyPlayingNote.pressure.asUnsignedFloat()
+        // );
     }
 
 //     /** Called when note pitchbend changes (MPE). */
@@ -82,8 +105,17 @@ public:
 
     void renderNextStep(MidiBufferContext& c, double timeOffset) {
         // 1. First check for noteOff state
+
+        // DBG("renderNextStep for note " << currentlyPlayingNote.initialNote
+        //     << "(" << (int) noteOnOrder << ")"
+        //     << " at time = " << c.playPosition.inSeconds() + timeOffset
+        //     << (firstStep ? " (first step)" : "")
+        // );
+        // DBG("ADSR: " << ampAdsr);
+
         if (ampAdsr.getState() == te::LinEnvelope::State::idle && !firstStep) {
-            DBG("NoteOff " << currentlyPlayingNote.initialNote << " time = " << c.playPosition.inSeconds() + timeOffset);
+            // DBG("Emit NoteOff " << currentlyPlayingNote.initialNote
+            //     << " time = " << c.playPosition.inSeconds() + timeOffset);
             c.buffer.addMidiMessage(
                 MidiMessage::noteOff(
                     currentlyPlayingNote.midiChannel,
@@ -104,7 +136,9 @@ public:
         // 2. Not on if firstStep
         if (firstStep) {
             firstStep = false;
-            DBG("NoteOn " << currentlyPlayingNote.initialNote << " time = " << c.playPosition.inSeconds() + timeOffset);
+            // DBG("Emit NoteOn " << currentlyPlayingNote.initialNote
+            //     << "(" << (int) noteOnOrder << ")"
+            //     << " time = " << c.playPosition.inSeconds() + timeOffset);
             c.buffer.addMidiMessage(
                 MidiMessage::noteOn(
                     currentlyPlayingNote.midiChannel,
@@ -127,6 +161,11 @@ public:
         //     << ", time = " << c.playPosition.inSeconds() + timeOffset
         // );
         if (aftertouch != lastAftertouch) {
+            // DBG("Emit Aftertouch " << currentlyPlayingNote.initialNote
+            //     << "(" << (int) noteOnOrder << ")"
+            //     << " AT = " << aftertouch
+            //     << ", time = " << c.playPosition.inSeconds() + timeOffset
+            // );
             lastAftertouch = aftertouch;
             c.buffer.addMidiMessage(
                 MidiMessage::aftertouchChange(
@@ -152,7 +191,7 @@ public:
         const auto sampleQuant = (remainder == 0) ? timeSamples : timeSamples + (step - remainder);
         const auto startSampleQuant = sampleQuant - timeSamples;
 
-        // DBG("voice block " << currentlyPlayingNote.initialNote << "(" << (int) noteOnOrder << ")"
+        // DBG("voice block " << currentlyPlayingNote.initialNote << "(" << (int) noteOnOrder << ") "
         //     << c.processStartTime() << " - " << c.processEndTime()
         //     << " / " << startSampleQuant << " - " << c.start + c.length
         // );
@@ -165,7 +204,7 @@ public:
             renderNextStep(c, timeOffset);
         }
         // if (c.buffer.isNotEmpty()) {
-        //     DBG("-->");
+        //     DBG("-->" << currentlyPlayingNote.initialNote << "(" << (int) noteOnOrder << ")");
         //     c.debugMidiBuffer();
         //     DBG("/--");
         // }

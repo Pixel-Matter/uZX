@@ -35,7 +35,7 @@ void NotesToPsgMapper::initPSG() {
 }
 
 void NotesToPsgMapper::noteOn(int channel, int note, int velocity) {
-    DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
+    // DBG("Note On: Channel " << channel << ", Note " << note << ", Velocity " << velocity);
     if (!isChannelInRange(channel) || velocity == 0) return;
     jassert(tuningSystem_ != nullptr);
 
@@ -59,8 +59,8 @@ void NotesToPsgMapper::noteOn(int channel, int note, int velocity) {
         int currentVolume = velocityAndAftertouchToVolume(state.velocity, state.aftertouch);
         if (currentVolume != state.lastVolume) {
             emitVolumeCC(channel, currentVolume);
-            DBG("Setting volume to " << currentVolume << " for note " << note << " on channel " << channel
-                << " (velocity " << velocity << ", aftertouch " << state.aftertouch << ")");
+            // DBG("Setting volume to " << currentVolume << " for note " << note << " on channel " << channel
+            //     << " (velocity " << velocity << ", aftertouch " << state.aftertouch << ")");
             state.lastVolume = currentVolume;
         }
     }
@@ -95,7 +95,7 @@ void NotesToPsgMapper::noteOff(int channel, int note) {
         return;
     }
 
-    DBG("Note Off: Channel " << channel << ", Note " << note);
+    // DBG("Note Off: Channel " << channel << ", Note " << note);
 
     // Only turn off if this is the currently playing note
     // DBG("Current note: " << (state.currentNote.has_value() ? std::to_string(state.currentNote.value()) : "none"));
@@ -202,8 +202,11 @@ void NotesToPsgMapper::updateNoteVolume(int channel) {
     // Only emit volume if it changed
     int currentVolume = velocityAndAftertouchToVolume(state.velocity, state.aftertouch);
     if (currentVolume != state.lastVolume) {
+        // DBG("Updating volume to " << currentVolume << " for note " << state.currentNote.value() << " on channel " << channel);
         emitVolumeCC(channel, currentVolume);
         state.lastVolume = currentVolume;
+    } else {
+        // DBG("Volume unchanged at " << currentVolume << " for note " << state.currentNote.value() << " on channel " << channel);
     }
 }
 

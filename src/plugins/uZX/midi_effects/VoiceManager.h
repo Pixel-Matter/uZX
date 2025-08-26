@@ -26,9 +26,18 @@ public:
     //==============================================================================
     VoiceManager() {
         ensureNumVoices(3);
+        setReuseSameVoiceForSameNote(true);
     }
 
     ~VoiceManager() = default;
+
+    void setReuseSameVoiceForSameNote(bool reuse) noexcept {
+        reuseSameVoiceForSameNote = reuse;
+    }
+
+    bool shouldReuseSameVoiceForSameNote() const noexcept {
+        return reuseSameVoiceForSameNote;
+    }
 
     //==============================================================================
     // Voice Collection Management
@@ -103,6 +112,13 @@ public:
     /** Finds a free voice for the given note. */
     Voice* findFreeVoice(MPENote noteToFindVoiceFor, bool stealIfNoneAvailable) const {
         const ScopedLock sl(voicesLock);
+
+        if (shouldReuseSameVoiceForSameNote()) {
+            for (auto* voice : voices) {
+                if (voice->isCurrentlyPlayingNote(noteToFindVoiceFor))
+                    return voice;
+            }
+        }
 
         for (auto* voice : voices) {
             if (!voice->isActive())
@@ -210,7 +226,7 @@ public:
 
     /** Stops a voice playing the given note. */
     void stopVoice(Voice* voice, MPENote noteToStop, bool allowTailOff) {
-        // DBG("stopVoice " << noteToStop.initialNote << (allowTailOff ? " tail off" : " no tail off"));
+        // DBG("stopVoice " << noteToStop.initialNote << (allowTailOff ? " tail" : " no tail"));
         jassert(voice != nullptr);
 
         voice->currentlyPlayingNote = noteToStop;
@@ -222,7 +238,7 @@ public:
 
     /** Turns off all voices. */
     void turnOffAllVoices(bool allowTailOff) {
-        // DBG("turnOffAllVoices " << (allowTailOff ? " tail off" : " no tail off"));
+        // DBG("turnOffAllVoices " << (allowTailOff ? " tail off" : " no tail off") << " ===================");
         const ScopedLock sl(voicesLock);
 
         for (auto* voice : voices) {
@@ -309,6 +325,7 @@ private:
     mutable CriticalSection voicesLock;
 
     std::atomic<bool> shouldStealVoices {true};
+    std::atomic<bool> reuseSameVoiceForSameNote {true};
     uint32 lastNoteOnCounter = 0;
     double currentPlayRate = 0.0;
 

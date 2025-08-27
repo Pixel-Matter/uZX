@@ -10,6 +10,39 @@ namespace te = tracktion;
 
 namespace MoTool::Helpers {
 
+void visitAllMidiClips(te::Edit& edit, std::function<bool (te::MidiClip&)> func) {
+    for (auto track : getClipTracks(edit)) {
+        for (auto clip : track->getClips()) {
+            if (dynamic_cast<te::MidiClip*>(clip)) {
+                if (!func(*static_cast<te::MidiClip*>(clip))) {
+                    return;
+                }
+            }
+        }
+    }
+}
+
+static void rescaleClipToFit(te::MidiClip& clip) {
+    int maxNote = 0;
+    int minNote = 256;
+
+    for (auto n : clip.getSequence().getNotes()) {
+        maxNote = std::max(maxNote, n->getNoteNumber() + 3);
+        minNote = std::min(minNote, n->getNoteNumber() - 3);
+    }
+    if (minNote < maxNote) {
+        const double newVisProp = (maxNote - minNote) / 128.0;
+        clip.getAudioTrack()->setMidiVerticalPos(newVisProp, 1.0 - (maxNote / 128.0));
+    }
+}
+
+void rescaleAllMidiClipsToFit(te::Edit& edit) {
+    visitAllMidiClips(edit, [] (te::MidiClip& clip) {
+        rescaleClipToFit(clip);
+        return true; // continue
+    });
+}
+
 // TODO see Edit::something for implementation
 te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
     te::TimeRange result;

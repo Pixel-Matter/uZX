@@ -1,4 +1,5 @@
 #include "ClipComponents.h"
+#include "juce_core/juce_core.h"
 
 
 namespace te = tracktion;
@@ -151,16 +152,15 @@ void MidiClipComponent::paint(Graphics& g) {
     auto track = dynamic_cast<te::AudioTrack*>(mc->getTrack());
     if (!track) return;
 
-    const int midiRange = 128;
-
     // Calculate visible range based on track settings
-    int visibleRange = int(midiRange * track->getMidiVisibleProportion());
-    int lowestNote = int(midiRange * track->getMidiVerticalOffset());
-    int highestNote = lowestNote + visibleRange;
+    const auto visibleProportion = track->getMidiVisibleProportion();  // (maxNote - minNote) / 128.0;
+    const auto verticalOffset = track->getMidiVerticalOffset();        // 1.0 - (maxNote / 128.0)
+    const int visibleRange = roundToInt(visibleProportion * 128.0);
+    const int maxNote = roundToInt((1.0 - verticalOffset) * 128.0);
+    const int minNote = maxNote - visibleRange;
 
     // Calculate height of one note
     float noteH = static_cast<float>(r.getHeight()) / visibleRange;
-
     const auto rangeStartSec = tr.getStart().inSeconds();
     const auto rangeEndSec = tr.getEnd().inSeconds();
     const float left = static_cast<float>(r.getX());
@@ -168,7 +168,7 @@ void MidiClipComponent::paint(Graphics& g) {
     for (auto n : notes) {
         // Only process notes within the visible vertical range
         int noteNumber = n->getNoteNumber();
-        if (noteNumber < lowestNote || noteNumber >= highestNote)
+        if (noteNumber < minNote || noteNumber > maxNote)
             continue;
 
         // Calculate time range for this note
@@ -184,7 +184,7 @@ void MidiClipComponent::paint(Graphics& g) {
         float t2 = (float) timeToX(e) - left;
 
         // Map note position in the visible range (inverted since y=0 is at top)
-        float y1 = (1.0f - (noteNumber - lowestNote) / float(visibleRange)) * r.getHeight();
+        float y1 = (r.getHeight() - (noteNumber - minNote) * noteH);
 
         g.setColour(Colours::white.withAlpha(static_cast<float>(n->getVelocity()) / 127.0f));
         g.fillRect(t1, y1, t2 - t1, noteH);

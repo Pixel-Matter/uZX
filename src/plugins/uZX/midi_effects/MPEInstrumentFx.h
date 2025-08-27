@@ -151,7 +151,7 @@ protected:
 
     /** Called when a MIDI controller changes. */
     void handleController(int midiChannel, int controllerNumber, int controllerValue) {
-        ignoreUnused(midiChannel);
+        ignoreUnused(midiChannel, controllerNumber, controllerValue);
         // DBG("Controller changed: " << controllerNumber << " = " << controllerValue);
         // Implement controller handling logic here
     }

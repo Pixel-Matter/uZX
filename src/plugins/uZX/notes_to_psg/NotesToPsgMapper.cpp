@@ -16,26 +16,8 @@ NotesToPsgMapper::ChannelVoice::ChannelVoice(tracktion::MidiMessageArray& buffer
         reset();
     }
 
-// TODO a way to switch note pitch when a chip channel do not stop a note: glissando or portamento or deep bends
-// for this to work we should separate midi event callbacks and midi rendering
-// midi callbacks modify the state
-// midi rendering reads the state and emits midi messages ONLY for changed parameters
-// so voice should keep two states: current and last emitted
-
-// TODO if called always after ChannelVoice::reset(), render() should do the thing
-void NotesToPsgMapper::ChannelVoice::emitSoundStop() {
-    if (!isEnvChannel) {
-        emitVolume(0);
-        emitEnvSwitch(false); // Ensure envelope are off initially  (by default)
-        emitToneSwitch(true); // Ensure tone are on initially
-        emitNoiseSwitch(false); // Ensure noise is off initially
-    }
-}
-
 void NotesToPsgMapper::ChannelVoice::reset() {
     mpeNote = MPENote();
-    notePitch = -1.0f;
-    aftertouchValue = -1;
 
     state.volume = 0;
     state.envOn = false;
@@ -45,80 +27,90 @@ bool NotesToPsgMapper::ChannelVoice::isActive() const {
     return mpeNote.isValid();
 }
 
-int NotesToPsgMapper::ChannelVoice::getEffectiveChipVolume() {
+int NotesToPsgMapper::ChannelVoice::getEffectiveChipVolume() const {
     if (!isActive() || isEnvChannel)
         return 0;
     // Volume calculation based on velocity and aftertouch
     // Simple linear scaling for demonstration purposes
-    // Combine velocity and aftertouch, map from 0-127 to 0-15
-    auto vol = (double) mpeNote.noteOnVelocity.asUnsignedFloat() * aftertouchValue / 127.0;
+    // Combine velocity and aftertouch, map from 0.0-1.0 to 0-15
+    auto vol = (double) mpeNote.noteOnVelocity.asUnsignedFloat() * mpeNote.pressure.asUnsignedFloat();
     // DBG("Resulting velocity " << velocity << " and aftertouch " << aftertouch << " to " << combined);
     return roundToInt(vol * 15.0);
 }
 
-// TODO pass MPENote here
-void NotesToPsgMapper::ChannelVoice::noteOn(MPENote newNote, const TuningSystem& tuning) {
+int NotesToPsgMapper::ChannelVoice::getEffectiveChipPeriod() const {
+    if (!isActive())
+        return 0;
+    auto notePitch = static_cast<double>(mpeNote.initialNote) + mpeNote.totalPitchbendInSemitones;
+    // DBG("Resulting velocity " << velocity << " and aftertouch " << aftertouch << " to " << combined);
+    jassert(tuning_ != nullptr);
+    return tuning_->midiNoteToPeriod(notePitch, isEnvChannel ? TuningSystem::Envelope: TuningSystem::Tone);
+}
+
+void NotesToPsgMapper::ChannelVoice::noteOn(MPENote newNote) {
     mpeNote = newNote;
     mpeNote.pressure = MPEValue::fromUnsignedFloat(1.0f); // Ensure pressure is set to max on note on
-    notePitch = static_cast<double>(mpeNote.initialNote) + mpeNote.totalPitchbendInSemitones;
-    aftertouchValue = 127; // Default to max aftertouch on note on
 
-    state.volume = getEffectiveChipVolume();
-    state.period = tuning.midiNoteToPeriod(notePitch, isEnvChannel ? TuningSystem::Envelope: TuningSystem::Tone);
-    // DBG("NoteOn: " << mpeNote.initialNote << " vel: " << mpeNote.noteOnVelocity.asUnsignedFloat() << " pitch: " << notePitch
+    // called in render()
+    state.toneOn = true;   // TODO use mpeNote.timbre and calc in render()
+    state.noiseOn = false; // TODO use mpeNote.timbre and calc in render()
+    state.envOn = false;
+
+    // DBG("NoteOn: " << mpeNote.initialNote << " vel: " << mpeNote.noteOnVelocity.asUnsignedFloat()
+    //     << " pitch: " << mpeNote.initialNote + mpeNote.totalPitchbendInSemitones
     //     << " period: " << state.period
     //     << " volume: " << state.volume
+    //     << " tone: " << (state.toneOn ? "on" : "off")
     //     << " last period: " << lastState.period
+    //     << " last volume: " << lastState.volume
+    //     << " last tone: " << (lastState.toneOn ? "on" : "off")
     // );
 }
 
 void NotesToPsgMapper::ChannelVoice::noteOff(MPENote offNote) {
-    // TODO Note off means set volume to 0 and env to off (if set) ONLY?
-    DBG("NoteOff: " << offNote.initialNote << ", current note: "
-        << (mpeNote.isValid() ? std::to_string(mpeNote.initialNote) : "none")
-    );
     if (!isActive() || mpeNote.initialNote != offNote.initialNote) {
-        DBG("NoteOff for non-active note " << offNote.initialNote);
+        // DBG("NoteOff for non-active note " << offNote.initialNote);
         // Ignore note off for notes that are not currently playing (polyphony on chip channel not supported)
         return;
     }
+    // DBG("NoteOff: " << offNote.initialNote << ", note: "
+    //     << (offNote.isValid() ? std::to_string(offNote.initialNote) : "none")
+    // );
     reset();
 }
 
-void NotesToPsgMapper::ChannelVoice::aftertouch(int note, int value) {
-    if (!isActive() || mpeNote.initialNote != note) {
+void NotesToPsgMapper::ChannelVoice::aftertouch(MPENote changedNote) {
+    if (!isActive() || mpeNote.initialNote != changedNote.initialNote) {
         // Ignore aftertouch for notes that are not currently playing
         return;
     }
-    aftertouchValue = value;
+    mpeNote.pressure = changedNote.pressure;
+    state.volume = getEffectiveChipVolume();
 }
 
-void NotesToPsgMapper::ChannelVoice::pitchbendChange(MPENote changedNote, const TuningSystem& tuning) {
+void NotesToPsgMapper::ChannelVoice::pitchbendChange(MPENote changedNote) {
     if (!isActive() || mpeNote.initialNote != changedNote.initialNote) {
         // Ignore pitch bend for notes that are not currently playing
         return;
     }
     mpeNote.totalPitchbendInSemitones = changedNote.totalPitchbendInSemitones;
-    // TODO updateNotePitchState()
-    notePitch = static_cast<double>(mpeNote.initialNote) + mpeNote.totalPitchbendInSemitones;
-    state.period = tuning.midiNoteToPeriod(notePitch, isEnvChannel ? TuningSystem::Envelope: TuningSystem::Tone);
+    state.period = getEffectiveChipPeriod();
 
-    DBG("PitchBend: " << changedNote.initialNote
-        << ", pitch: " << notePitch
-        << ", period: " << state.period
-    );
+    // DBG("PitchBend: " << changedNote.initialNote
+    //     << ", pitch: " << mpeNote.initialNote + mpeNote.totalPitchbendInSemitones
+    //     << ", period: " << state.period
+    // );
 }
 
 void NotesToPsgMapper::ChannelVoice::controllerChange(MidiCCType controller, int value) {
     if (controller == MidiCCType::AllNotesOff) {
         reset();
-    } else {  // passthru
-        // TODO handle envelope shape,
+    } else {  // passthru: envelope shape etc
+        // TODO handle tone / noise / env switches to keep state in sync
         emitControllerChange(controller, value);
     }
 }
 
-// TODO this emit methods have nothing to do with channel itself, move them out to unitily functions
 void NotesToPsgMapper::ChannelVoice::emitControllerChange(MidiCCType controller, int value) {
     auto msg = juce::MidiMessage::controllerEvent(midiChannel, static_cast<int>(controller), value);
     // DBG("Emitting: " << msg.getDescription());
@@ -169,29 +161,59 @@ void NotesToPsgMapper::ChannelVoice::updateVolume() {
 }
 
 void NotesToPsgMapper::ChannelVoice::updatePeriod() {
+    state.period = getEffectiveChipPeriod();
     if (lastState.period != state.period) {
+        // DBG("UpdatePeriod: Channel " << midiChannel
+        //     << ", note: " << (isActive() ? std::to_string(mpeNote.initialNote) : "none")
+        //     << ", pitch: " << (isActive() ? std::to_string(mpeNote.initialNote + mpeNote.totalPitchbendInSemitones) : "none")
+        //     << ", last period: " << lastState.period
+        //     << ", current period: " << state.period
+        // );
         emitPeriod(state.period);
+    }
+}
+
+void  NotesToPsgMapper::ChannelVoice::updateModulation() {
+    if (isEnvChannel) {
+        return;  // No modulation for env channel
+    }
+    if (state.toneOn != lastState.toneOn) {
+        emitToneSwitch(state.toneOn);
+    }
+    if (state.noiseOn != lastState.noiseOn) {
+        emitNoiseSwitch(state.noiseOn);
+    }
+    if (state.envOn != lastState.envOn) {
+        emitEnvSwitch(state.envOn);
     }
 }
 
 void NotesToPsgMapper::ChannelVoice::render() {
     updatePeriod();
     updateVolume();
-    // updateModulation();
+    updateModulation();
 }
 
 
 void NotesToPsgMapper::ChannelVoice::debug() const {
-    DBG("ChannelVoice {"
-        << " midiChannel: " << midiChannel
-        << ", initialNote: " << (mpeNote.isValid() ? String(mpeNote.initialNote) : "none")
-        << ", velocity: " << (mpeNote.isValid() ? String(mpeNote.noteOnVelocity.asUnsignedFloat()) : "none")
-        << ", actualNote: " << notePitch
-        << ", aftertouch: " << aftertouchValue
+    if (!isActive()) {
+        DBG("ChannelVoice { inactive }");
+        return;
+    } else {
+        DBG("ChannelVoice {"
+            << " midiChannel: " << midiChannel
+            << ", initialNote: " << mpeNote.initialNote
+            << ", actualNote: " << (float) mpeNote.initialNote + mpeNote.totalPitchbendInSemitones
+            << ", velocity: " << mpeNote.noteOnVelocity.asUnsignedFloat()
+            << ", aftertouch: " << mpeNote.pressure.asUnsignedFloat()
+            << " }");
+    }
+    DBG("ChannelSate {"
+        << ", period: " << state.period
         << ", volume: " << state.volume
-        // << ", toneOn: " << (toneOn ? "true" : "false")
-        // << ", noiseOn: " << (noiseOn ? "true" : "false")
-        // << ", envOn: " << (envOn ? "true" : "false")
+        << ", tone:   " << (state.toneOn  ? "on" : "off")
+        << ", noise:  " << (state.noiseOn ? "on" : "off")
+        << ", env:    " << (state.envOn   ? "on" : "off")
         << " }");
 }
 
@@ -217,6 +239,14 @@ NotesToPsgMapper::~NotesToPsgMapper() {
     setTuningSystem(nullptr);
 }
 
+void NotesToPsgMapper::setTuningSystem(const TuningSystem* tuning) {
+    // TODO locking for thread safety
+    tuningSystem_ = tuning;
+    for (auto& voice : voices_) {
+        voice.setTuningSystem(tuningSystem_);
+    }
+}
+
 void NotesToPsgMapper::setBaseChannel(int channel) {
     baseChannel_ = juce::jlimit(1, 16, channel);
     // Update midiChannel in voices
@@ -229,7 +259,7 @@ void NotesToPsgMapper::setBaseChannel(int channel) {
 void NotesToPsgMapper::reset() {
     for (auto& voice : voices_) {
         voice.reset();
-        voice.emitSoundStop();
+        voice.render();
     }
     mpeInstrument_.releaseAllNotes();
 }
@@ -261,21 +291,17 @@ void NotesToPsgMapper::handleMidiMessage(const te::MidiMessageWithSource& msg) {
         }
     }
     mpeInstrument_.processNextMidiEvent(msg);
-
     // Process note on/off and other messages via mpeInstrument_
-    auto& voice = getVoice(channel);
-    // TODO use callbacks from MPEInstrument::Listener instead of handling here?
     if (msg.isAftertouch()) {
         // workaround to MPEInstrument not handling poly aftertouch on key channels
         mpeInstrument_.polyAftertouch(msg.getChannel(), msg.getNoteNumber(), MPEValue::from7BitInt(msg.getAfterTouchValue()));
-        // TODO use callback?
-        voice.aftertouch(msg.getNoteNumber(), msg.getAfterTouchValue());
     } else if (msg.isController()) {
+        auto& voice = getVoice(channel);
         voice.controllerChange(static_cast<MidiCCType>(msg.getControllerNumber()), msg.getControllerValue());
     } else if (passthruUnprocessedMIDI_) {
         midiBuffer_.addMidiMessage(msg, msg.mpeSourceID);
     }
-    // TODO other mesages: pitchBend, tuning, channel aftertouch...
+    // Other mesages can be handled here if needed
 }
 
 te::MidiMessageArray NotesToPsgMapper::renderVoices() {
@@ -287,8 +313,11 @@ te::MidiMessageArray NotesToPsgMapper::renderVoices() {
 
 // Process MIDI input
 void NotesToPsgMapper::operator()(MidiBufferContext& c) {
+    te::MidiMessageArray tempBuffer;
+
     if (c.isAllNotesOff()) {
         reset();
+        // tempBuffer.mergeFromWithOffset(renderVoices(), 0.0f);
     }
 
     if (c.buffer.isEmpty()) {
@@ -298,7 +327,6 @@ void NotesToPsgMapper::operator()(MidiBufferContext& c) {
     // DBG("\n--- " << c.processStartTime() << " - " << c.processEndTime() << " --- (" << c.duration() << " duration) ---");
     // DBG(">---");
     // c.debugMidiBuffer();
-    te::MidiMessageArray tempBuffer;
 
     double lastTimestamp = 0.0f;
     for (const auto& m : c.buffer) {
@@ -324,7 +352,7 @@ void NotesToPsgMapper::operator()(MidiBufferContext& c) {
 /** Called when a new MPE note is added. */
 void NotesToPsgMapper::noteAdded(MPENote newNote) {
     auto& voice = getVoice(newNote.midiChannel);
-    voice.noteOn(newNote, *tuningSystem_);
+    voice.noteOn(newNote);
 }
 
 /** Called when an MPE note is released. */
@@ -335,9 +363,10 @@ void NotesToPsgMapper::noteReleased(MPENote finishedNote) {
 
 /** Called when an MPE note's pressure changes. */
 void NotesToPsgMapper::notePressureChanged(MPENote changedNote) {
-    // TODO
-    ignoreUnused(changedNote);
-    DBG("Note pressure changed: " << changedNote.initialNote << " to " << changedNote.pressure.as7BitInt());
+    auto& voice = getVoice(changedNote.midiChannel);
+    voice.aftertouch(changedNote);
+
+    // DBG("Note pressure changed: " << changedNote.initialNote << " to " << changedNote.pressure.as7BitInt());
 }
 
 /** Called when an MPE note's pitchbend changes. */
@@ -346,7 +375,7 @@ void NotesToPsgMapper::notePitchbendChanged(MPENote changedNote) {
 
     jassert(tuningSystem_ != nullptr);
     auto& voice = getVoice(changedNote.midiChannel);
-    voice.pitchbendChange(changedNote, *tuningSystem_);
+    voice.pitchbendChange(changedNote);
 }
 
 /** Called when an MPE note's timbre changes. */

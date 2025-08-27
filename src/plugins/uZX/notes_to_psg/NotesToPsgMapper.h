@@ -24,8 +24,8 @@ public:
     struct ChannelState {
         int period = 0;       // Period value for tone/noise
         int volume = 0;       // Volume level 0-15
-        bool toneOn = false;   // Tone is on by default
-        bool noiseOn = false;  // Noise is on by default
+        bool toneOn = false;
+        bool noiseOn = true;
         bool envOn = false;   // Envelope is off by default
         EnvShape envShape = EnvShape::DOWN_HOLD_BOTTOM_0;
     };
@@ -33,35 +33,30 @@ public:
     struct ChannelVoice {
     private:
         tracktion::MidiMessageArray& midiBuffer_;
+        const TuningSystem* tuning_ = nullptr;
     public:
         int midiChannel;
         bool isEnvChannel = false;
-
-        // current note state
-        // TODO use MPEValue instead
-        // std::optional<int> initialNote;
-        // int velocity;         // 0-127
-        int aftertouchValue;  // 0-127
+        tracktion::MPESourceID mpeSourceId_ = 0;
 
         MPENote mpeNote;
-        double notePitch = -1.0; // float for bends
-
         ChannelState state;
         ChannelState lastState;
-
-        tracktion::MPESourceID mpeSourceId_ = 0;
 
         ChannelVoice(tracktion::MidiMessageArray& buffer, int chan, bool isEnv = false);
 
         void reset();
-        bool isActive() const;
-        int getEffectiveChipVolume();
+        void setTuningSystem(const TuningSystem* tuning) { tuning_ = tuning; }
 
-        void noteOn(MPENote newNote, const TuningSystem& tuning);
+        bool isActive() const;
+        int getEffectiveChipVolume() const;
+        int getEffectiveChipPeriod() const;
+
+        void noteOn(MPENote newNote);
         void noteOff(MPENote offNote);
-        void aftertouch(int note, int value);
+        void aftertouch(MPENote changedNote);
         void controllerChange(MidiCCType controller, int value);
-        void pitchbendChange(MPENote changedNote, const TuningSystem& tuning);
+        void pitchbendChange(MPENote changedNote);
 
         void emitControllerChange(MidiCCType controller, int value);
         void emitVolume(int volume);
@@ -69,12 +64,12 @@ public:
         void emitToneSwitch(bool on);
         void emitNoiseSwitch(bool on);
         void emitEnvSwitch(bool on);
-        void emitSoundStop();
 
         //==============================================================================
         // Rendering
         void updatePeriod();
         void updateVolume();
+        void updateModulation();
         void render();
 
         void debug() const;
@@ -86,7 +81,7 @@ public:
     // explicit NotesToPsgMapper(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
-    void setTuningSystem(const TuningSystem* tuning) { tuningSystem_ = tuning; }
+    void setTuningSystem(const TuningSystem* tuning);
     void setBaseChannel(int channel);
     void reset();
 

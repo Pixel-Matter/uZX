@@ -61,7 +61,7 @@ public:
         activeNote.setCurrentAndTargetValue(currentlyPlayingNote.initialNote);
         ampAdsr.noteOn();
         pitchAdsr.noteOn();
-        lastLevel = 127;
+        lastLevel = currentlyPlayingNote.noteOnVelocity.as7BitInt();
         lastNotePitch = currentlyPlayingNote.initialNote;
         // DBG("ADSR: " << ampAdsr);
         firstStep = true;
@@ -99,10 +99,10 @@ public:
         // );
     }
 
-//     /** Called when note timbre changes (MPE). */
-//     void noteTimbreChanged() {
-//         // TODO: Implement timbre change logic
-//     }
+    /** Called when note timbre changes (MPE). */
+    void noteTimbreChanged() {
+        // TODO: Implement timbre change logic
+    }
 
 //     /** Called when note key state changes (sustain pedal etc). */
 //     void noteKeyStateChanged() {
@@ -191,7 +191,17 @@ public:
         //     << ", AT = " << aftertouch
         //     << ", time = " << c.playPosition.inSeconds() + timeOffset
         // );
-        auto level = roundToInt(ampAdsr.getNextSample() * 127.0f);
+        auto modLevel = ampAdsr.getNextSample();
+        auto velocity = currentlyPlayingNote.noteOnVelocity.asUnsignedFloat();
+        auto pressure = currentlyPlayingNote.pressure.asUnsignedFloat();
+        auto level = roundToInt(jlimit(0.0f, 1.0f, modLevel * velocity + pressure) * 127.0f);
+        // DBG("Note " << currentlyPlayingNote.initialNote
+        //     << "(" << (int) noteOnOrder << ")"
+        //     << ", modLevel = " << modLevel
+        //     << ", pressure = " << pressure
+        //     << ", level = " << level
+        // );
+
         if (level != lastLevel) {
             // DBG("Emit Aftertouch " << currentlyPlayingNote.initialNote
             //     << "(" << (int) noteOnOrder << ")"

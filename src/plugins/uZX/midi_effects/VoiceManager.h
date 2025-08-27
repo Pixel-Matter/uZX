@@ -236,6 +236,30 @@ public:
         }
     }
 
+    void pressureNote(MPENote pressureNote) {
+        const ScopedLock sl(voicesLock);
+
+        for (auto i = voices.size(); --i >= 0;) {
+            auto* voice = voices.getUnchecked(i);
+
+            if (voice->isCurrentlyPlayingNote(pressureNote))
+                voice->currentlyPlayingNote = pressureNote;
+                voice->notePressureChanged();
+        }
+    }
+
+    void timbreNote(MPENote timbreNote) {
+        const ScopedLock sl(voicesLock);
+
+        for (auto i = voices.size(); --i >= 0;) {
+            auto* voice = voices.getUnchecked(i);
+
+            if (voice->isCurrentlyPlayingNote(timbreNote))
+                voice->currentlyPlayingNote = timbreNote;
+                voice->noteTimbreChanged();
+        }
+    }
+
     /** Stops a voice playing the given note. */
     void stopVoice(Voice* voice, MPENote noteToStop, bool allowTailOff) {
         // DBG("stopVoice " << noteToStop.initialNote << (allowTailOff ? " tail" : " no tail"));

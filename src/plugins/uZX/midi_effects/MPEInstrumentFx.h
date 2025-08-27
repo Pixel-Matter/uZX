@@ -44,12 +44,15 @@ public:
     }
 
     void handleMidiEvent(const MidiMessage& m) {
+        // DBG("MPEInstrumentFx::handleMidiEvent: " << m.getDescription()
+        //     << " at " << m.getTimeStamp()
+        // );
+        mpeInstrument.processNextMidiEvent(m);
+
         if (m.isController())
             handleController(m.getChannel(), m.getControllerNumber(), m.getControllerValue());
         else if (m.isProgramChange())
             handleProgramChange(m.getChannel(), m.getProgramChangeNumber());
-
-        mpeInstrument.processNextMidiEvent(m);
     }
 
     void operator()(MidiBufferContext& c) {
@@ -123,33 +126,33 @@ protected:
 
     // /** Called when an MPE note's pressure changes. */
     void notePressureChanged(MPENote changedNote) override {
-        ignoreUnused(changedNote);
         // DBG("Note pressure changed: " << changedNote.initialNote << " to " << changedNote.pressure.as7BitInt());
+        voices.pressureNote(changedNote);
     }
 
     // /** Called when an MPE note's pitchbend changes. */
     void notePitchbendChanged(MPENote changedNote) override {
-        ignoreUnused(changedNote);
         voices.pitchbendNote(changedNote);
         // DBG("Note pitchbend changed: " << changedNote.initialNote << " to " << changedNote.pitchbend.asSignedFloat());
     }
 
     // /** Called when an MPE note's timbre changes. */
     void noteTimbreChanged(MPENote changedNote) override {
-        ignoreUnused(changedNote);
+        voices.timbreNote(changedNote);
         // DBG("Note timbre changed: " << changedNote.initialNote << " to " << changedNote.timbre.asUnsignedFloat());
     }
 
     // /** Called when an MPE note's key state changes. */
     void noteKeyStateChanged(MPENote changedNote) override {
         ignoreUnused(changedNote);
+        // TODO implement key state change handling if needed
         // DBG("Note key state changed: " << changedNote.initialNote);
     }
 
     /** Called when a MIDI controller changes. */
     void handleController(int midiChannel, int controllerNumber, int controllerValue) {
         ignoreUnused(midiChannel);
-        DBG("Controller changed: " << controllerNumber << " = " << controllerValue);
+        // DBG("Controller changed: " << controllerNumber << " = " << controllerValue);
         // Implement controller handling logic here
     }
 

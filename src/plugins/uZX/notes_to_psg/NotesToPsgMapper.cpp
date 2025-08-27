@@ -33,7 +33,8 @@ int NotesToPsgMapper::ChannelVoice::getEffectiveChipVolume() const {
     // Volume calculation based on velocity and aftertouch
     // Simple linear scaling for demonstration purposes
     // Combine velocity and aftertouch, map from 0.0-1.0 to 0-15
-    auto vol = (double) mpeNote.noteOnVelocity.asUnsignedFloat() * mpeNote.pressure.asUnsignedFloat();
+    auto vol = mpeNote.pressure.asUnsignedFloat();
+    // auto vol = (double) mpeNote.noteOnVelocity.asUnsignedFloat() * mpeNote.pressure.asUnsignedFloat();
     // DBG("Resulting velocity " << velocity << " and aftertouch " << aftertouch << " to " << combined);
     return roundToInt(vol * 15.0);
 }
@@ -49,7 +50,8 @@ int NotesToPsgMapper::ChannelVoice::getEffectiveChipPeriod() const {
 
 void NotesToPsgMapper::ChannelVoice::noteOn(MPENote newNote) {
     mpeNote = newNote;
-    mpeNote.pressure = MPEValue::fromUnsignedFloat(1.0f); // Ensure pressure is set to max on note on
+    mpeNote.pressure = mpeNote.noteOnVelocity;
+    // mpeNote.pressure = MPEValue::fromUnsignedFloat(1.0f); // Ensure pressure is set to max on note on
 
     // called in render()
     state.toneOn = true;   // TODO use mpeNote.timbre and calc in render()
@@ -291,6 +293,7 @@ void NotesToPsgMapper::handleMidiMessage(const te::MidiMessageWithSource& msg) {
         }
     }
     mpeInstrument_.processNextMidiEvent(msg);
+
     // Process note on/off and other messages via mpeInstrument_
     if (msg.isAftertouch()) {
         // workaround to MPEInstrument not handling poly aftertouch on key channels

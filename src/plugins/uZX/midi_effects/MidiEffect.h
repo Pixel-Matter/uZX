@@ -232,6 +232,7 @@ public:
             return;
 
         jassert(fc.bufferStartSample == 0);
+        jassert(fc.midiBufferOffset == 0.0);
 
         if (!fc.editTime.isEmpty()) {
             positionSource = PositionSource::Edit;

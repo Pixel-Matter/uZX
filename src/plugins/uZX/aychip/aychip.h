@@ -104,7 +104,7 @@ struct LayoutEnum {
 
 struct EnvShapeEnum {
     enum Enum : uint8_t {
-        DOWN_HOLD_BOTTOM_0,
+        DOWN_HOLD_BOTTOM_0 = 0,
         DOWN_HOLD_BOTTOM_1,
         DOWN_HOLD_BOTTOM_2,
         DOWN_HOLD_BOTTOM_3,

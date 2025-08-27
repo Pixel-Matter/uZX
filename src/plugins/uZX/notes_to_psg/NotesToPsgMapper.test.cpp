@@ -96,7 +96,6 @@ public:
         {
             NotesToPsgMapper converter;
             converter.setBaseChannel(2);
-            converter.setNumChannels(2);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -110,9 +109,9 @@ public:
             messages = converter.takeOutputMessages();
             expect(messages.size() > 0, "Channel 2 should work");
 
-            // Test channel 4 (should be ignored)
+            // Test channel 5 (should be ignored)
             converter.clearOutput();
-            converter.noteOn(4, 60, 100);
+            converter.noteOn(5, 60, 100);
             messages = converter.takeOutputMessages();
             expectEquals(messages.size(), 0ul, "Channel 4 should be ignored");
         }
@@ -121,7 +120,6 @@ public:
         {
             NotesToPsgMapper converter;
             converter.setBaseChannel(1);
-            converter.setNumChannels(1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 

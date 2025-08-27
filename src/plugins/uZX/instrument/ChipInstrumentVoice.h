@@ -3,6 +3,7 @@
 #include <cmath>
 #include "../midi_effects/MPEEffectVoice.h"
 #include "../midi_effects/MidiEffect.h"
+#include "juce_audio_basics/juce_audio_basics.h"
 
 namespace MoTool::uZX {
 
@@ -46,10 +47,11 @@ public:
 
         // ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
         // pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
-        ampAdsr.setParameters({ 0.0f, 0.1f, 0.8f, 1.0f });
-        pitchAdsr.setParameters({ 0.0f, 0.1f, 0.8f, 1.0f });
+        ampAdsr.setParameters({ 0.0f, 0.5f, 0.8f, 1.0f });
+        pitchAdsr.setParameters({ 0.0f, 0.0f, 0.0f, 0.0f });
 
-        lastAftertouch = -1;
+        lastLevel = -1;
+        lastNotePitch = -1.0f;
     }
 
     //==============================================================================
@@ -59,7 +61,8 @@ public:
         activeNote.setCurrentAndTargetValue(currentlyPlayingNote.initialNote);
         ampAdsr.noteOn();
         pitchAdsr.noteOn();
-        lastAftertouch = 127;
+        lastLevel = 127;
+        lastNotePitch = currentlyPlayingNote.initialNote;
         // DBG("ADSR: " << ampAdsr);
         firstStep = true;
     }
@@ -88,10 +91,13 @@ public:
         // );
     }
 
-//     /** Called when note pitchbend changes (MPE). */
-//     void notePitchbendChangedl() {
-//         // TODO: Implement pitchbend change logic
-//     }
+    /** Called when note pitchbend changes (MPE). */
+    void notePitchbendChanged() {
+        // TODO: Implement pitchbend change logic
+        // DBG("Note pitchbend changed " << currentlyPlayingNote.initialNote
+        //     << " to " << currentlyPlayingNote.pitchbend.asSignedFloat()
+        // );
+    }
 
 //     /** Called when note timbre changes (MPE). */
 //     void noteTimbreChanged() {
@@ -151,27 +157,53 @@ public:
 
         // 3. get state and advance parameters
         // TODO update parameters, adsrs, lfos, steps, mods
-        auto aftertouch = roundToInt(ampAdsr.getNextSample() * 127.0f);
+        // TODO learn how pitch management is done in FourOSC
         auto pitchOffset = pitchAdsr.getNextSample();
-        ignoreUnused(pitchOffset);
+        auto totalPitchBend = currentlyPlayingNote.totalPitchbendInSemitones + pitchOffset;
+
+        ignoreUnused(totalPitchBend);
+        // DBG("Note " << currentlyPlayingNote.initialNote
+        //     << "(" << (int) noteOnOrder << ")"
+        //     << ", pitch bend = " << totalPitchBend
+        // );
+        // TODO fix comparison of floats
+        if (lastNotePitch != (currentlyPlayingNote.initialNote + totalPitchBend)) {
+            lastNotePitch = (double) currentlyPlayingNote.initialNote + totalPitchBend;
+            // DBG("Emit PitchBend " << currentlyPlayingNote.initialNote
+            //     << "(" << (int) noteOnOrder << ")"
+            //     << " to " << totalPitchBend
+            //     << ", time = " << c.playPosition.inSeconds() + timeOffset
+            // );
+            auto pitchBendValue = juce::jlimit(0, 16383,
+                8192 + roundToInt((totalPitchBend / pitchBendRange.getEnd()) * 8191.0f)
+            );
+            c.buffer.addMidiMessage(
+                MidiMessage::pitchWheel(
+                    currentlyPlayingNote.midiChannel,
+                    pitchBendValue
+                ),
+                timeOffset, 0
+            );
+        }
 
         // 4. TODO output note MPE params if they are changed from the last step
         // DBG("Note " << currentlyPlayingNote.initialNote
         //     << ", AT = " << aftertouch
         //     << ", time = " << c.playPosition.inSeconds() + timeOffset
         // );
-        if (aftertouch != lastAftertouch) {
+        auto level = roundToInt(ampAdsr.getNextSample() * 127.0f);
+        if (level != lastLevel) {
             // DBG("Emit Aftertouch " << currentlyPlayingNote.initialNote
             //     << "(" << (int) noteOnOrder << ")"
             //     << " AT = " << aftertouch
             //     << ", time = " << c.playPosition.inSeconds() + timeOffset
             // );
-            lastAftertouch = aftertouch;
+            lastLevel = level;
             c.buffer.addMidiMessage(
                 MidiMessage::aftertouchChange(
                     currentlyPlayingNote.midiChannel,
                     currentlyPlayingNote.initialNote,
-                    aftertouch
+                    level
                 ),
                 timeOffset, 0
             );
@@ -217,7 +249,10 @@ private:
     te::LinEnvelope ampAdsr;
     te::LinEnvelope pitchAdsr;
 
-    int lastAftertouch = -1;
+    Range<float> pitchBendRange = {-2.0, 2.0}; // in semitones
+
+    int lastLevel = -1;
+    double lastNotePitch = -1.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChipInstrumentVoice)
 };

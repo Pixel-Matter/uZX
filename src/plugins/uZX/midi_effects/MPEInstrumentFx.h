@@ -121,44 +121,29 @@ protected:
         voices.releaseNote(finishedNote);
     }
 
-    /** Called when an MPE note's pressure changes. */
+    // /** Called when an MPE note's pressure changes. */
     void notePressureChanged(MPENote changedNote) override {
         ignoreUnused(changedNote);
-        // DBG("Note pressure changed: " << changedNote.initialNote);
-        // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
-        //     voice->currentlyPlayingNote = changedNote;
-        //     voice->notePressureChanged();
-        // });
+        // DBG("Note pressure changed: " << changedNote.initialNote << " to " << changedNote.pressure.as7BitInt());
     }
 
-    /** Called when an MPE note's pitchbend changes. */
+    // /** Called when an MPE note's pitchbend changes. */
     void notePitchbendChanged(MPENote changedNote) override {
         ignoreUnused(changedNote);
-        // DBG("Note pitchbend changed: " << changedNote.initialNote);
-        // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
-        //     voice->currentlyPlayingNote = changedNote;
-        //     voice->notePitchbendChanged();
-        // });
+        voices.pitchbendNote(changedNote);
+        // DBG("Note pitchbend changed: " << changedNote.initialNote << " to " << changedNote.pitchbend.asSignedFloat());
     }
 
-    /** Called when an MPE note's timbre changes. */
+    // /** Called when an MPE note's timbre changes. */
     void noteTimbreChanged(MPENote changedNote) override {
         ignoreUnused(changedNote);
-        // DBG("Note timbre changed: " << changedNote.initialNote);
-        // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
-        //     voice->currentlyPlayingNote = changedNote;
-        //     voice->noteTimbreChanged();
-        // });
+        // DBG("Note timbre changed: " << changedNote.initialNote << " to " << changedNote.timbre.asUnsignedFloat());
     }
 
-    /** Called when an MPE note's key state changes. */
+    // /** Called when an MPE note's key state changes. */
     void noteKeyStateChanged(MPENote changedNote) override {
         ignoreUnused(changedNote);
         // DBG("Note key state changed: " << changedNote.initialNote);
-        // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
-        //     voice->currentlyPlayingNote = changedNote;
-        //     voice->noteKeyStateChanged();
-        // });
     }
 
     /** Called when a MIDI controller changes. */

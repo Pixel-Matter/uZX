@@ -224,6 +224,18 @@ public:
         }
     }
 
+    void pitchbendNote(MPENote bendNote) {
+        const ScopedLock sl(voicesLock);
+
+        for (auto i = voices.size(); --i >= 0;) {
+            auto* voice = voices.getUnchecked(i);
+
+            if (voice->isCurrentlyPlayingNote(bendNote))
+                voice->currentlyPlayingNote = bendNote;
+                voice->notePitchbendChanged();
+        }
+    }
+
     /** Stops a voice playing the given note. */
     void stopVoice(Voice* voice, MPENote noteToStop, bool allowTailOff) {
         // DBG("stopVoice " << noteToStop.initialNote << (allowTailOff ? " tail" : " no tail"));

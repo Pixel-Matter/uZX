@@ -47,8 +47,10 @@ public:
 
         // ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
         // pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
-        ampAdsr.setParameters({ 0.0f, 0.5f, 0.8f, 1.0f });
-        pitchAdsr.setParameters({ 0.0f, 0.0f, 0.0f, 0.0f });
+        ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 1.0f });
+        // TODO learn how this works in FourOSC
+        pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 1.0f });
+        pitchDepth = 0.0; // in semitones
 
         lastLevel = -1;
         lastNotePitch = -1.0f;
@@ -144,6 +146,7 @@ public:
             firstStep = false;
             // DBG("Emit NoteOn " << currentlyPlayingNote.initialNote
             //     << "(" << (int) noteOnOrder << ")"
+            //     << " velocity = " << currentlyPlayingNote.noteOnVelocity.asUnsignedFloat()
             //     << " time = " << c.playPosition.inSeconds() + timeOffset);
             c.buffer.addMidiMessage(
                 MidiMessage::noteOn(
@@ -157,11 +160,9 @@ public:
 
         // 3. get state and advance parameters
         // TODO update parameters, adsrs, lfos, steps, mods
-        // TODO learn how pitch management is done in FourOSC
-        auto pitchOffset = pitchAdsr.getNextSample();
+        auto pitchOffset = pitchAdsr.getNextSample() * pitchDepth;
         auto totalPitchBend = currentlyPlayingNote.totalPitchbendInSemitones + pitchOffset;
 
-        ignoreUnused(totalPitchBend);
         // DBG("Note " << currentlyPlayingNote.initialNote
         //     << "(" << (int) noteOnOrder << ")"
         //     << ", pitch bend = " << totalPitchBend
@@ -205,7 +206,7 @@ public:
         if (level != lastLevel) {
             // DBG("Emit Aftertouch " << currentlyPlayingNote.initialNote
             //     << "(" << (int) noteOnOrder << ")"
-            //     << " AT = " << aftertouch
+            //     << " level = " << level
             //     << ", time = " << c.playPosition.inSeconds() + timeOffset
             // );
             lastLevel = level;
@@ -258,6 +259,7 @@ private:
     bool firstStep = false;
     te::LinEnvelope ampAdsr;
     te::LinEnvelope pitchAdsr;
+    double pitchDepth;  // for pitchAdsr, in semitones
 
     Range<float> pitchBendRange = {-2.0, 2.0}; // in semitones
 

@@ -121,7 +121,7 @@ void NotesToPsgMapper::ChannelVoice::emitControllerChange(MidiCCType controller,
 }
 
 void NotesToPsgMapper::ChannelVoice::emitVolume(int volume) {
-    // DBG("Emitting Volume CC: Channel " << channel << ", Volume " << volume);
+    // DBG("Emitting Volume CC: Channel " << midiChannel << ", Volume " << volume);
     emitControllerChange(MidiCCType::Volume, volume);
     lastState.volume = volume;
 }

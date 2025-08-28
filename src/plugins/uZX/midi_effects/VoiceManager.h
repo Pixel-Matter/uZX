@@ -262,7 +262,9 @@ public:
 
     /** Stops a voice playing the given note. */
     void stopVoice(Voice* voice, MPENote noteToStop, bool allowTailOff) {
-        // DBG("stopVoice " << noteToStop.initialNote << (allowTailOff ? " tail" : " no tail"));
+        DBG("stopVoice " << noteToStop.initialNote << (allowTailOff ? " tail" : " no tail")
+            << " state = " << noteToStop.keyState
+        );
         jassert(voice != nullptr);
 
         voice->currentlyPlayingNote = noteToStop;

@@ -20,6 +20,12 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
     soloButton.setColour(TextButton::buttonOnColourId, Colours::green);
 
     trackName.setText(t->getName(), dontSendNotification);
+    trackName.setEditable(false, true, true);
+    trackName.onTextChange = [this] {
+        if (trackName.getText() != track->getName()) {
+            track->setName(trackName.getText());
+        }
+    };
 
     // TODO move all the logic to TrackViewModel
     if (auto at = dynamic_cast<te::AudioTrack*>(track.get())) {

@@ -16,7 +16,7 @@ class MainDocumentComponent: public Component {
 public:
 
     explicit MainDocumentComponent(te::Edit& edit, EditViewState& evs)
-        : transportBar_ {edit}
+        : transportBar_ {evs}
         , editComponent_ {edit, evs}
         // , footer_        {edit_.engine,}
     {

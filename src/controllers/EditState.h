@@ -111,6 +111,12 @@ public:
     te::SelectionManager& selectionManager;
     te::Edit& edit;
 
+    double nearestBPMConstrainedToFps(double bpm);
+    double setBPMConstrainedToFps(double bpm);
+    double getFramesPerBeat() const;
+    // for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
+    double getFramesPerNote(size_t divider) const;
+
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditViewState)
 };

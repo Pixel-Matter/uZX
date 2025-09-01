@@ -227,7 +227,7 @@ public:
     bool takesMidiInput() override { return true; }
     bool producesAudioWhenNoAudioInput() override { return false; }
 
-    void initialise(const tracktion::PluginInitialisationInfo& info) override {
+    void initialise(const tracktion::PluginInitialisationInfo& /*info*/) override {
         // setCurrentPlaybackSampleRate(info.sampleRate);
     }
 

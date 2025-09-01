@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../../controllers/ParamAttachments.h"
+#include "../../controllers/EditState.h"
 
 #include "../../models/Timecode.h"
 
@@ -13,14 +14,16 @@ class TransportBar  : public Component,
                       private ChangeListener
 {
 public:
-    explicit TransportBar(te::Edit& edit);
+    explicit TransportBar(EditViewState& evs);
     ~TransportBar() override;
 
     void paint(Graphics& g) override;
     void resized() override;
 
 private:
+    EditViewState& viewState_;
     te::Edit& edit_;
+
     te::TransportControl& transport_;
     CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
 
@@ -33,9 +36,11 @@ private:
        recordButton_    { "Rec" };
     //    stepRightButton_ { ">" };
 
-    Label bpmLabel_      { "BPM",      "BPM:" },
-          timeSigLabel_  { "TimeSig",  "Sig:" },
-          transportReadout_ { "Position", "Pos:" };
+    Label
+        bpmValueText_     { "BPMValue",   "120" },
+        beatFramesLabel_  { "BeatFrames", "26 frames/beat" },
+        timeSigLabel_     { "TimeSig",    "Sig:" },
+        transportReadout_ { "Position",   "Pos:" };
     te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
 
     void changeListenerCallback(ChangeBroadcaster*) override;

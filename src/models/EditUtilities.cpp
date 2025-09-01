@@ -6,6 +6,7 @@ namespace te = tracktion;
 namespace MoTool::Helpers {
 
 TimecodeDisplayFormatExt getEditTimecodeFormat(te::Edit& edit) {
+    // TODO use Cached value in EditViewState?
     auto value = edit.state.getPropertyAsValue(te::IDs::timecodeFormat, nullptr);
     return VariantConverter<TimecodeDisplayFormatExt>::fromVar(value);
 }

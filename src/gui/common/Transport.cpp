@@ -10,19 +10,21 @@ namespace MoTool {
 
 using namespace Commands;
 
-TransportBar::TransportBar(te::Edit& edit)
-    : edit_{edit}
+TransportBar::TransportBar(EditViewState& evs)
+    : viewState_{evs}
+    , edit_{evs.edit}
     , transport_{edit_.getTransport()}
 {
     transport_.addChangeListener(this);
     transport_.state.addListener(this);
-    timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
+    timecodeFormat.referTo(edit_.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
 
     ::Helpers::addAndMakeVisible (*this, {
         &rewindButton_,
         &playPauseButton_,
         &recordButton_,
-        &bpmLabel_,
+        &beatFramesLabel_,
+        &bpmValueText_,
         &timeSigLabel_,
         &transportReadout_,
         &masterVolumeSlider_
@@ -56,12 +58,13 @@ void TransportBar::paint(Graphics& g) {
 void TransportBar::resized() {
     auto b = getLocalBounds();
     int w = 60;
-    bpmLabel_.setBounds(b.removeFromLeft(w * 2).reduced(2));
-    timeSigLabel_.setBounds(b.removeFromLeft(w * 2).reduced(2));
-    transportReadout_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+    bpmValueText_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+    timeSigLabel_.setBounds(b.removeFromLeft(w).reduced(2));
+    beatFramesLabel_.setBounds(b.removeFromLeft(w * 2).reduced(2));
     rewindButton_.setBounds(b.removeFromLeft(w).reduced(2));
     playPauseButton_.setBounds(b.removeFromLeft(w).reduced(2));
     recordButton_.setBounds(b.removeFromLeft(w).reduced(2));
+    transportReadout_.setBounds(b.removeFromLeft(w * 2).reduced(2));
     masterVolumeSlider_.setBounds(b.removeFromRight(w).expanded(4, 4));
 }
 
@@ -99,8 +102,14 @@ void TransportBar::updateTimeLabels(te::TimePosition pos) {
     auto& ts = edit_.tempoSequence;
     auto t = getTimecode(pos);
     transportReadout_.setText("Pos: " + t, dontSendNotification);
-    bpmLabel_.setText(String::formatted("BPM: %.2f", ts.getBpmAt(pos)), dontSendNotification);
-    timeSigLabel_.setText(String::formatted("Sig: " + ts.getTimeSigAt(pos).getStringTimeSig()), dontSendNotification);
+
+    // TODO FPS control
+
+    bpmValueText_.setText(String::formatted("%.2f BPM", ts.getBpmAt(pos)), dontSendNotification);
+    timeSigLabel_.setText(ts.getTimeSigAt(pos).getStringTimeSig(), dontSendNotification);
+    // TODO beat=%.f frames as a separate control
+    beatFramesLabel_.setText(String::formatted("%.f frames/beat", viewState_.getFramesPerBeat()), dontSendNotification);
+
 }
 
 } // namespace MoTool

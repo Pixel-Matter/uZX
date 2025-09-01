@@ -1,5 +1,6 @@
 #include "EditState.h"
-#include "juce_core/system/juce_PlatformDefs.h"
+#include "../models/EditUtilities.h"
+#include "juce_core/juce_core.h"
 
 using namespace std::literals;
 
@@ -198,6 +199,34 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
 }
+
+double EditViewState::nearestBPMConstrainedToFps(double bpm) {
+    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+    auto nearest = roundToInt((bpm * fps) / 60.0) * (60.0 / fps);
+    return nearest;
+}
+
+double EditViewState::setBPMConstrainedToFps(double bpm) {
+    auto nearest = nearestBPMConstrainedToFps(bpm);
+    nearest = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, nearest);
+    edit.tempoSequence.getTempoAt(edit.getTransport().getPosition()).setBpm(nearest);
+    return nearest;
+}
+
+double EditViewState::getFramesPerBeat() const {
+    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+    const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
+    const auto beatLen = ts.getApproxBeatLength();
+    return fps * beatLen.inSeconds();
+}
+
+// for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
+double EditViewState::getFramesPerNote(size_t divider) const {
+    // Quarter note is always one beat
+    jassert(divider > 0);
+    return getFramesPerBeat() / ((double) divider / 4.0);
+}
+
 
 //==============================================================================
 // TrackViewState

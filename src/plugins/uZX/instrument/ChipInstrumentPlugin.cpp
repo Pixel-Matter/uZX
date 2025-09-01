@@ -106,14 +106,6 @@ void ChipInstrumentPlugin::flushPluginStateToValueTree() {
                                             // being modified
 }
 
-void ChipInstrumentPlugin::initialise(const te::PluginInitialisationInfo& /*info*/) {
-    // setCurrentPlaybackSampleRate(info.sampleRate);
-
-    // instrument.reset();
-}
-
-void ChipInstrumentPlugin::deinitialise() {}
-
 //==============================================================================
 void ChipInstrumentPlugin::reset() {
     // instrument.reset();

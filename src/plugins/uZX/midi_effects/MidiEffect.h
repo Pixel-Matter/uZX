@@ -227,6 +227,12 @@ public:
     bool takesMidiInput() override { return true; }
     bool producesAudioWhenNoAudioInput() override { return false; }
 
+    void initialise(const tracktion::PluginInitialisationInfo& info) override {
+        // setCurrentPlaybackSampleRate(info.sampleRate);
+    }
+
+    void deinitialise() override {}
+
     void applyToBuffer(const tracktion::PluginRenderContext& fc) override {
         if (fc.bufferForMidiMessages == nullptr)
             return;

@@ -26,8 +26,6 @@ public:
     String getShortName(int) override { return "Instr"; }
     String getSelectableDescription() override { return "Chiptune Instrument Plugin"; }
 
-    void initialise(const tracktion::PluginInitialisationInfo&) override;
-    void deinitialise() override;
     void reset() override;
     void midiPanic() override;
 

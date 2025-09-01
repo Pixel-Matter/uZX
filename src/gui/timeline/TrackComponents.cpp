@@ -26,6 +26,8 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
             track->setName(trackName.getText());
         }
     };
+    trackName.setTooltip("Double-click to rename track");
+    trackName.addMouseListener(this, false);
 
     // TODO move all the logic to TrackViewModel
     if (auto at = dynamic_cast<te::AudioTrack*>(track.get())) {
@@ -155,6 +157,7 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
 
 TrackHeaderComponent::~TrackHeaderComponent() {
     track->state.removeListener(this);
+    trackName.removeMouseListener(this);
 }
 
 void TrackHeaderComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {

@@ -117,6 +117,9 @@ public:
     // for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
     double getFramesPerNote(size_t divider) const;
 
+    void setBeatLength(te::TimeDuration beatLen);
+    void setFramesPerBeat(int fpb);
+
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditViewState)
 };

@@ -2,6 +2,7 @@
 
 #include "../../controllers/MainCommands.h"
 #include "../../models/Timecode.h"
+#include "juce_gui_basics/juce_gui_basics.h"
 
 #include <common/Utilities.h>
 
@@ -17,13 +18,14 @@ TransportBar::TransportBar(EditViewState& evs)
 {
     transport_.addChangeListener(this);
     transport_.state.addListener(this);
+    edit_.state.addListener(this);
     timecodeFormat.referTo(edit_.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
 
     ::Helpers::addAndMakeVisible (*this, {
         &rewindButton_,
         &playPauseButton_,
         &recordButton_,
-        &beatFramesLabel_,
+        &beatFramesSlider_,
         &bpmValueText_,
         &timeSigLabel_,
         &transportReadout_,
@@ -43,12 +45,20 @@ TransportBar::TransportBar(EditViewState& evs)
     };
     updatePlayButtonText(transport_.isPlaying());
     updateRecordButtonText(transport_.isRecording());
+
+    beatFramesSlider_.setRange(4, 150, 1);
+    beatFramesSlider_.onValueChange = [this] {
+        viewState_.setFramesPerBeat((int)beatFramesSlider_.getValue());
+    };
+    beatFramesSlider_.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
+
     updateTimeLabels(transport_.getPosition());
 }
 
 TransportBar::~TransportBar() {
     transport_.removeChangeListener(this);
     transport_.state.removeListener(this);
+    edit_.state.removeListener(this);
 }
 
 void TransportBar::paint(Graphics& g) {
@@ -58,9 +68,15 @@ void TransportBar::paint(Graphics& g) {
 void TransportBar::resized() {
     auto b = getLocalBounds();
     int w = 60;
-    bpmValueText_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+    bpmValueText_.setBounds(b.removeFromLeft(w * 3 / 2).reduced(2));
     timeSigLabel_.setBounds(b.removeFromLeft(w).reduced(2));
-    beatFramesLabel_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+
+    beatFramesSlider_.setBounds(b.removeFromLeft(w * 3).reduced(2));
+    beatFramesSlider_.setTextBoxStyle(Slider::TextBoxLeft, false,
+        beatFramesSlider_.getWidth() - w - 4,
+        beatFramesSlider_.getTextBoxHeight()
+    );
+
     rewindButton_.setBounds(b.removeFromLeft(w).reduced(2));
     playPauseButton_.setBounds(b.removeFromLeft(w).reduced(2));
     recordButton_.setBounds(b.removeFromLeft(w).reduced(2));
@@ -69,15 +85,30 @@ void TransportBar::resized() {
 }
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
+    // TODO use flagged async updater to avoid too many updates
     updatePlayButtonText(transport_.isPlaying());
     updateRecordButtonText(transport_.isRecording());
     updateTimeLabels(transport_.getPosition());
 }
 
 void TransportBar::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
-    if (tree == edit_.state && prop == te::IDs::timecodeFormat) {
-        // timecodeFormat = TimecodeDisplayFormatExt::fromString(edit_.state[te::IDs::timecodeFormat].toString());
+    if (tree.hasType(te::IDs::TEMPO) || tree.hasType(te::IDs::TIMESIG)) {
+        updateTimeLabels(transport_.getPosition());
     } else if (tree == transport_.state && prop == te::IDs::position) {
+        updateTimeLabels(transport_.getPosition());
+    } else if (tree == edit_.state && prop == te::IDs::timecodeFormat) {
+        // timecodeFormat = TimecodeDisplayFormatExt::fromString(edit_.state[te::IDs::timecodeFormat].toString());
+    }
+}
+
+void TransportBar::valueTreeChildAdded(ValueTree&, ValueTree& child) {
+    if (child.hasType(te::IDs::TEMPO) || child.hasType(te::IDs::TIMESIG)) {
+        updateTimeLabels(transport_.getPosition());
+    }
+}
+
+void TransportBar::valueTreeChildRemoved(ValueTree&, ValueTree& child, int) {
+    if (child.hasType(te::IDs::TEMPO) || child.hasType(te::IDs::TIMESIG)) {
         updateTimeLabels(transport_.getPosition());
     }
 }
@@ -96,20 +127,16 @@ String TransportBar::getTimecode(te::TimePosition pos) const {
 }
 
 void TransportBar::updateTimeLabels(te::TimePosition pos) {
-    static te::TimePosition lastPosition = te::TimePosition::fromSeconds(-1.0);
-    if (lastPosition == pos) return;
-    lastPosition = pos;
     auto& ts = edit_.tempoSequence;
-    auto t = getTimecode(pos);
-    transportReadout_.setText("Pos: " + t, dontSendNotification);
+    auto timecode = getTimecode(pos);
+    transportReadout_.setText("Pos: " + timecode, dontSendNotification);
 
     // TODO FPS control
 
     bpmValueText_.setText(String::formatted("%.2f BPM", ts.getBpmAt(pos)), dontSendNotification);
     timeSigLabel_.setText(ts.getTimeSigAt(pos).getStringTimeSig(), dontSendNotification);
-    // TODO beat=%.f frames as a separate control
-    beatFramesLabel_.setText(String::formatted("%.f frames/beat", viewState_.getFramesPerBeat()), dontSendNotification);
-
+    beatFramesSlider_.setValue(viewState_.getFramesPerBeat(), dontSendNotification);
+    beatFramesSlider_.setTextValueSuffix(" frames/beat");
 }
 
 } // namespace MoTool

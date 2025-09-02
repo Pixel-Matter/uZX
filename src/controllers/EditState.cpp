@@ -1,6 +1,7 @@
 #include "EditState.h"
 #include "../models/EditUtilities.h"
 #include "juce_core/juce_core.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 
 using namespace std::literals;
 
@@ -200,6 +201,8 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
 }
 
+
+// TODO move to utilities
 double EditViewState::nearestBPMConstrainedToFps(double bpm) {
     const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
     auto nearest = roundToInt((bpm * fps) / 60.0) * (60.0 / fps);
@@ -218,6 +221,20 @@ double EditViewState::getFramesPerBeat() const {
     const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
     const auto beatLen = ts.getApproxBeatLength();
     return fps * beatLen.inSeconds();
+}
+
+void EditViewState::setBeatLength(te::TimeDuration beatLen) {
+    jassert(beatLen > 0s);
+    auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
+    auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
+    bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm);
+    ts.setBpm(bpm);
+}
+
+void EditViewState::setFramesPerBeat(int fpb) {
+    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+    auto targetBeatLen = te::TimeDuration::fromSeconds((double)fpb / fps);
+    setBeatLength(targetBeatLen);
 }
 
 // for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.

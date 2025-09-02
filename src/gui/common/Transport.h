@@ -38,13 +38,16 @@ private:
 
     Label
         bpmValueText_     { "BPMValue",   "120" },
-        beatFramesLabel_  { "BeatFrames", "26 frames/beat" },
         timeSigLabel_     { "TimeSig",    "Sig:" },
         transportReadout_ { "Position",   "Pos:" };
+    
+    Slider beatFramesSlider_ { Slider::SliderStyle::IncDecButtons, Slider::TextEntryBoxPosition::TextBoxLeft };
     te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
 
     void changeListenerCallback(ChangeBroadcaster*) override;
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
+    void valueTreeChildAdded(ValueTree&, ValueTree&) override;
+    void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
 
     void updatePlayButtonText(bool isPlaying);
     void updateRecordButtonText(bool isRecording);

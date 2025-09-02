@@ -2,6 +2,7 @@
 
 #include "../../controllers/MainCommands.h"
 #include "../../models/Timecode.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 #include "juce_gui_basics/juce_gui_basics.h"
 
 #include <common/Utilities.h>
@@ -10,6 +11,13 @@
 namespace MoTool {
 
 using namespace Commands;
+
+
+double BpmControl::snapValue(double attemptedValue, DragMode) {
+    auto bpm = viewState_.getBpmSnappedToFps(attemptedValue);
+    return bpm;
+}
+
 
 TransportBar::TransportBar(EditViewState& evs)
     : viewState_{evs}
@@ -25,8 +33,8 @@ TransportBar::TransportBar(EditViewState& evs)
         &rewindButton_,
         &playPauseButton_,
         &recordButton_,
+        &bpmSlider_,
         &beatFramesSlider_,
-        &bpmValueText_,
         &timeSigLabel_,
         &transportReadout_,
         &masterVolumeSlider_
@@ -46,11 +54,19 @@ TransportBar::TransportBar(EditViewState& evs)
     updatePlayButtonText(transport_.isPlaying());
     updateRecordButtonText(transport_.isRecording());
 
+    bpmSlider_.onValueChange = [this] {
+        auto bpm = bpmSlider_.getValue();
+        viewState_.setBpmSnappedToFps(bpm);
+    };
+    bpmSlider_.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
+    bpmSlider_.setTextValueSuffix(" BPM");
+
     beatFramesSlider_.setRange(4, 150, 1);
     beatFramesSlider_.onValueChange = [this] {
         viewState_.setFramesPerBeat((int)beatFramesSlider_.getValue());
     };
     beatFramesSlider_.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
+    beatFramesSlider_.setTextValueSuffix(" frames/beat");
 
     updateTimeLabels(transport_.getPosition());
 }
@@ -65,29 +81,42 @@ void TransportBar::paint(Graphics& g) {
     g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
 }
 
+static void setIncDecSliderStyle(Slider& s) {
+    s.setSliderStyle(Slider::SliderStyle::IncDecButtons);
+    s.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
+    s.setTextBoxStyle(Slider::TextBoxLeft, false,
+        s.getWidth() - s.getTextBoxHeight() / 2,
+        s.getTextBoxHeight()
+    );
+}
+
 void TransportBar::resized() {
     auto b = getLocalBounds();
     int w = 60;
-    bpmValueText_.setBounds(b.removeFromLeft(w * 3 / 2).reduced(2));
+    b.removeFromLeft(4);
+
+    bpmSlider_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+    setIncDecSliderStyle(bpmSlider_);
+
     timeSigLabel_.setBounds(b.removeFromLeft(w).reduced(2));
 
     beatFramesSlider_.setBounds(b.removeFromLeft(w * 3).reduced(2));
-    beatFramesSlider_.setTextBoxStyle(Slider::TextBoxLeft, false,
-        beatFramesSlider_.getWidth() - w - 4,
-        beatFramesSlider_.getTextBoxHeight()
-    );
+    setIncDecSliderStyle(beatFramesSlider_);
+
+    b.removeFromLeft(w / 2);
 
     rewindButton_.setBounds(b.removeFromLeft(w).reduced(2));
     playPauseButton_.setBounds(b.removeFromLeft(w).reduced(2));
     recordButton_.setBounds(b.removeFromLeft(w).reduced(2));
     transportReadout_.setBounds(b.removeFromLeft(w * 2).reduced(2));
-    masterVolumeSlider_.setBounds(b.removeFromRight(w).expanded(4, 4));
+    masterVolumeSlider_.setBounds(b.removeFromRight(w / 2 + 4).expanded(4, 4));
 }
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
     // TODO use flagged async updater to avoid too many updates
     updatePlayButtonText(transport_.isPlaying());
     updateRecordButtonText(transport_.isRecording());
+    // TODO separate updating of tempo, timsig and fps controls
     updateTimeLabels(transport_.getPosition());
 }
 
@@ -133,10 +162,9 @@ void TransportBar::updateTimeLabels(te::TimePosition pos) {
 
     // TODO FPS control
 
-    bpmValueText_.setText(String::formatted("%.2f BPM", ts.getBpmAt(pos)), dontSendNotification);
+    bpmSlider_.setValue(ts.getBpmAt(pos), dontSendNotification);
     timeSigLabel_.setText(ts.getTimeSigAt(pos).getStringTimeSig(), dontSendNotification);
-    beatFramesSlider_.setValue(viewState_.getFramesPerBeat(), dontSendNotification);
-    beatFramesSlider_.setTextValueSuffix(" frames/beat");
+    beatFramesSlider_.setValue(viewState_.getCurrentFramesPerBeat(), dontSendNotification);
 }
 
 } // namespace MoTool

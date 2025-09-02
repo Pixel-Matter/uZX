@@ -201,30 +201,38 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
 }
 
-
-// TODO move to utilities
-double EditViewState::nearestBPMConstrainedToFps(double bpm) {
-    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
-    auto nearest = roundToInt((bpm * fps) / 60.0) * (60.0 / fps);
-    return nearest;
-}
-
-double EditViewState::setBPMConstrainedToFps(double bpm) {
-    auto nearest = nearestBPMConstrainedToFps(bpm);
-    nearest = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, nearest);
-    edit.tempoSequence.getTempoAt(edit.getTransport().getPosition()).setBpm(nearest);
-    return nearest;
-}
-
-double EditViewState::getFramesPerBeat() const {
-    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+te::TimeDuration EditViewState::getBeatLengthFor(double bpm) const {
     const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    const auto beatLen = ts.getApproxBeatLength();
-    return fps * beatLen.inSeconds();
+    const auto beatLen = te::TimeDuration::fromSeconds(240.0 / (bpm * ts.getMatchingTimeSig().denominator));
+    return beatLen;
+}
+
+double EditViewState::getBpmForBeatLength(te::TimeDuration beatLen) const {
+    const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
+    const auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
+    return bpm;
+}
+
+double EditViewState::getFramesPerBeatFor(double bpm) const {
+    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+    return fps * getBeatLengthFor(bpm).inSeconds();
+}
+
+double EditViewState::getCurrentFramesPerBeat() const {
+    const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
+    return getFramesPerBeatFor(ts.getBpm());
+}
+
+// for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
+double EditViewState::getFramesPerNote(size_t divider) const {
+    // Quarter note is always one beat
+    jassert(divider > 0);
+    return getCurrentFramesPerBeat() / ((double) divider / 4.0);
 }
 
 void EditViewState::setBeatLength(te::TimeDuration beatLen) {
     jassert(beatLen > 0s);
+    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
     auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
     auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
     bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm);
@@ -237,12 +245,20 @@ void EditViewState::setFramesPerBeat(int fpb) {
     setBeatLength(targetBeatLen);
 }
 
-// for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
-double EditViewState::getFramesPerNote(size_t divider) const {
-    // Quarter note is always one beat
-    jassert(divider > 0);
-    return getFramesPerBeat() / ((double) divider / 4.0);
+double EditViewState::getBpmSnappedToFps(double bpm) const {
+    int fpb = roundToInt(getFramesPerBeatFor(bpm));
+    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+    auto targetBeatLen = te::TimeDuration::fromSeconds((double)fpb / fps);
+    return getBpmForBeatLength(targetBeatLen);
 }
+
+double EditViewState::setBpmSnappedToFps(double bpm) {
+    auto snappedBpm = getBpmSnappedToFps(bpm);
+    auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
+    ts.setBpm(snappedBpm);
+    return snappedBpm;
+}
+
 
 
 //==============================================================================

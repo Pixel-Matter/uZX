@@ -9,6 +9,29 @@
 
 namespace MoTool {
 
+
+class BpmControl : public Slider {
+public:
+    using Slider::Slider;
+
+    BpmControl(EditViewState& evs)
+        : Slider(Slider::SliderStyle::IncDecButtons, Slider::TextEntryBoxPosition::TextBoxLeft)
+        , viewState_(evs)
+    {
+        setTextValueSuffix(" BPM");
+        setNumDecimalPlacesToDisplay(2);
+        setTextBoxIsEditable(true);
+        setRange(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, 0.01);
+    }
+
+    double snapValue (double attemptedValue, DragMode dragMode) override;
+
+private:
+    EditViewState& viewState_;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BpmControl)
+};
+
+
 class TransportBar  : public Component,
                       private ValueTree::Listener,
                       private ChangeListener
@@ -37,10 +60,11 @@ private:
     //    stepRightButton_ { ">" };
 
     Label
-        bpmValueText_     { "BPMValue",   "120" },
+        // bpmValueText_     { "BPMValue",   "120" },
         timeSigLabel_     { "TimeSig",    "Sig:" },
         transportReadout_ { "Position",   "Pos:" };
-    
+
+    BpmControl bpmSlider_ { viewState_ };
     Slider beatFramesSlider_ { Slider::SliderStyle::IncDecButtons, Slider::TextEntryBoxPosition::TextBoxLeft };
     te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
 

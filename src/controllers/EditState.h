@@ -111,11 +111,14 @@ public:
     te::SelectionManager& selectionManager;
     te::Edit& edit;
 
-    double nearestBPMConstrainedToFps(double bpm);
-    double setBPMConstrainedToFps(double bpm);
-    double getFramesPerBeat() const;
+    te::TimeDuration getBeatLengthFor(double bpm) const;
+    double getFramesPerBeatFor(double bpm) const;
+    double getCurrentFramesPerBeat() const;
     // for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
     double getFramesPerNote(size_t divider) const;
+    double getBpmForBeatLength(te::TimeDuration beatLen) const;
+    double getBpmSnappedToFps(double bpm) const;
+    double setBpmSnappedToFps(double bpm);
 
     void setBeatLength(te::TimeDuration beatLen);
     void setFramesPerBeat(int fpb);

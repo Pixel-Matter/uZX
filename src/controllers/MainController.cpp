@@ -501,15 +501,8 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     editViewState_.reset();
     edit_ = std::move(edit);
 
-    // FIXME implement BPM editing with clips remapping
-    // 8 * 13f = 104f — one bar
-    // one beat - 104f / 4 = 26f = 1s / 50f * 26f = 0.52s
-    // beats per minute = 60 * 50 / 26 = 115.3846153846 bpm
-    // need to remap clips to new tempo
-
     rescaleAllMidiClipsToFit(*edit_);
 
-    edit_->tempoSequence.getTempoAt(edit_->getTransport().getPosition()).setBpm(115.3846153846);
     edit_->playInStopEnabled = true;
     setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
 

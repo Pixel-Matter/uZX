@@ -271,8 +271,8 @@ bool RecordingClipComponent::getBoundsAndTime(Rectangle<int>& bounds, tracktion:
             t1 = jmin(t1, epc->getLoopTimes().getStart());
             t2 = epc->getPosition();
 
-            t1 = jmax(editViewState.zoom.getRangeStart(), t1);
-            t2 = jmin(editViewState.zoom.getRangeEnd(), t2);
+            t1 = jmax(editViewState.zoom.getRange().getStart(), t1);
+            t2 = jmin(editViewState.zoom.getRange().getEnd(), t2);
         } else if (edit.recordingPunchInOut) {
             const auto in  = thumbnail->punchInTime;
             const auto out = edit.getTransport().getLoopRange().getEnd();
@@ -324,8 +324,8 @@ void RecordingClipComponent::updatePosition() {
             t2 = jlimit(in, out, t2);
         }
 
-        t1 = jmax(t1, editViewState.zoom.getRangeStart());
-        t2 = jmin(t2, editViewState.zoom.getRangeEnd());
+        t1 = jmax(t1, editViewState.zoom.getRange().getStart());
+        t2 = jmin(t2, editViewState.zoom.getRange().getEnd());
 
         if (auto p = getParentComponent()) {
             int x1 = editViewState.zoom.timeToX(t1, p->getWidth());

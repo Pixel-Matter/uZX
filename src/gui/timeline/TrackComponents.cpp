@@ -343,6 +343,8 @@ TrackBodyComponent::~TrackBodyComponent() {
 void TrackBodyComponent::paint(Graphics& g) {
     g.fillAll(Colors::Theme::backgroundAlt);
 
+    // TODO draw a grid
+
     if (editViewState.selectionManager.isSelected(track.get())) {
         g.setColour(Colors::Theme::primary);
 
@@ -352,8 +354,6 @@ void TrackBodyComponent::paint(Graphics& g) {
 
         g.drawRect(rc, 2);
     }
-
-    // TODO draw a grid
 }
 
 void TrackBodyComponent::mouseDown(const MouseEvent&) {

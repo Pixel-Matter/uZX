@@ -23,7 +23,7 @@ namespace IDs
     DECLARE_ID(headersWidth)
     DECLARE_ID(ZOOMVIEWSTATE)
     DECLARE_ID(viewX1)
-    DECLARE_ID(viewX2)
+    DECLARE_ID(viewSpan)
     DECLARE_ID(viewY)
 
     DECLARE_ID(VIEWSTATE)
@@ -55,37 +55,26 @@ public:
     void addListener(Listener* l);
     void removeListener(Listener* l);
 
+    bool jumpToPosition(te::TimePosition pos);
+    bool jumpToCurrentPosition();
+    void zoomHorizontally(double factor);
+
     te::TimeRange getRange() const;
     void setRange(te::TimeRange range);
 
-    void setStart(te::TimePosition start);
-
-    te::TimePosition getRangeStart() const;
-    te::TimePosition getRangeEnd() const;
-
-    double getViewY() const;
-
-    te::TimeDuration viewLength() const;
-
-    te::TimePosition beatToTime(te::BeatPosition b) const;
-
     int timeToX(te::TimePosition time, int width) const;
     te::TimePosition xToTime(int x, int width) const;
-
     float durationToPixels(te::TimeDuration duration, int width) const;
+    double getViewY() const;
 
-    float pixelsPerBeat(te::TimeDuration beatDur, int width) const;
-    float pixelsPerBeat(double beatDur, int width) const;
-
-    bool jumpToPosition(te::TimePosition pos);
-    bool jumpToCurrentPosition();
-
-    void zoomHorizontally(double factor);
+    static bool isZoomProperty(const juce::Identifier& id);
 
     te::Edit& edit;
+
 private:
     ValueTree state;
-    CachedValue<te::TimePosition> viewX1, viewX2;
+    CachedValue<te::TimePosition> viewX1;
+    CachedValue<te::TimeDuration> viewSpan;
     CachedValue<double> viewY;
     ListenerList<Listener> listeners;
 
@@ -93,8 +82,10 @@ private:
 
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
     void handleAsyncUpdate() override;
-
     void handlePlaybackScrolling();
+
+    te::TimeDuration getViewSpan() const;
+    void setStart(te::TimePosition start);
 };
 
 

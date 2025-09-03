@@ -61,7 +61,7 @@ public:
 
         // DBG("RulerComponent::paint: " << zoomState.getRangeStart().inSeconds() << " - " << zoomState.getRangeEnd().inSeconds());
 
-        auto startBar = ts.toBarsAndBeats(zoomState.getRangeStart());
+        auto startBar = ts.toBarsAndBeats(zoomState.getRange().getStart());
         startBar = te::tempo::BarsAndBeats(startBar.bars, te::BeatDuration::fromBeats(startBar.getWholeBeats()), startBar.numerator);
         const auto startTime = ts.toTime(startBar);
 
@@ -73,7 +73,8 @@ public:
             pixelsPerFrameTick *= 2;
         }
 
-        while (currentTime <= zoomState.getRangeEnd()) {
+        const auto end = zoomState.getRange().getEnd();
+        while (currentTime <= end) {
             auto barBeats = ts.toBarsAndBeats(currentTime);
 
             auto nextDiv = BarsAndBeats { barBeats.bars, barBeats.beats + beatStep };
@@ -172,11 +173,6 @@ private:
         repaint();
     }
 
-    void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override {
-        if (prop == IDs::viewX1 || prop == IDs::viewX2) {
-            repaint();
-        }
-    }
 };
 
 } // namespace MoTool

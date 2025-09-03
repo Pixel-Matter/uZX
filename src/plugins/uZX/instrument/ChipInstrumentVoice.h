@@ -153,8 +153,7 @@ public:
 
         jassert(isActive());
 
-        // TODO fix comparison of floats
-        if (lastNotePitch != notePitch) {
+        if (!approximatelyEqual(lastNotePitch, notePitch)) {
             // DBG("Emit PitchBend " << currentlyPlayingNote.initialNote
             //     << "(" << (int) noteOnOrder << ")"
             //     << " to " << notePitch - currentlyPlayingNote.initialNote
@@ -192,7 +191,7 @@ public:
             lastLevel = level;
         } else {
             // TODO fix comparison of floats
-            if (level != lastLevel) {
+            if (!approximatelyEqual(level, lastLevel)) {
                 // DBG("Emit Aftertouch " << currentlyPlayingNote.initialNote << " (" << (int) noteOnOrder << ")"
                 //     << " level = " << level
                 //     << " state = " << currentlyPlayingNote.keyState

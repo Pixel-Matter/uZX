@@ -1,7 +1,5 @@
 #include "EditState.h"
 #include "../models/EditUtilities.h"
-#include "juce_core/juce_core.h"
-#include "juce_core/system/juce_PlatformDefs.h"
 
 using namespace std::literals;
 
@@ -16,80 +14,70 @@ ZoomViewState::ZoomViewState(te::Edit& e, ValueTree& st)
     state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
     auto um = &edit.getUndoManager();
     viewX1.referTo(state, IDs::viewX1, um, 0s);
-    viewX2.referTo(state, IDs::viewX2, um, 60s);
+    // viewX2.referTo(state, IDs::viewX2, um, 60s);
+    viewSpan.referTo(state, IDs::viewSpan, um, 60s);
     viewY.referTo(state, IDs::viewY, um, 0);
     edit.getTransport().state.addListener(this);
+    state.addListener(this);
 }
 
 ZoomViewState::~ZoomViewState() {
+    state.removeListener(this);
     edit.getTransport().state.removeListener(this);
 }
 
-void ZoomViewState::addListener(Listener* l) { listeners.add(l); }
-void ZoomViewState::removeListener(Listener* l) { listeners.remove(l); }
+void ZoomViewState::addListener(Listener* l) {
+    listeners.add(l);
+}
+
+void ZoomViewState::removeListener(Listener* l) {
+    listeners.remove(l);
+}
+
+bool ZoomViewState::isZoomProperty(const juce::Identifier& id) {
+    return id == IDs::viewX1 || id == IDs::viewSpan;
+}
 
 te::TimeRange ZoomViewState::getRange() const {
-    return { viewX1, viewX2 };
+    return { viewX1, viewSpan };
 }
 
 void ZoomViewState::setRange(te::TimeRange range) {
     // DBG("ZoomViewState::setRange, range: " << range.getStart().inSeconds() << " - " << range.getEnd().inSeconds());
     viewX1 = range.getStart();
-    viewX2 = range.getEnd();
+    viewSpan = range.getLength();
     // DBG("ZoomViewState::setRange, calling markAndUpdate(updateZoom)");
     markAndUpdate(updateZoom);
 }
 
 void ZoomViewState::setStart(te::TimePosition start) {
-    setRange({ start, start + viewLength() });
-}
-
-te::TimePosition ZoomViewState::getRangeStart() const {
-    return viewX1;
-}
-
-te::TimePosition ZoomViewState::getRangeEnd() const {
-    return viewX2;
+    setRange({ start, start + getViewSpan() });
 }
 
 double ZoomViewState::getViewY() const {
     return viewY;
 }
 
-te::TimeDuration ZoomViewState::viewLength() const {
-    return viewX2 - viewX1;
-}
-
-te::TimePosition ZoomViewState::beatToTime(te::BeatPosition b) const {
-    auto& ts = edit.tempoSequence;
-    return ts.toTime(b);
+te::TimeDuration ZoomViewState::getViewSpan() const {
+    return viewSpan;
 }
 
 int ZoomViewState::timeToX(te::TimePosition time, int width) const {
-    return roundToInt(((time - viewX1) * width) / viewLength());
+    return roundToInt(((time - viewX1) * width) / getViewSpan());
 }
 
 te::TimePosition ZoomViewState::xToTime(int x, int width) const {
-    return toPosition(viewLength() * (double(x) / width)) + toDuration(viewX1.get());
+    return toPosition(getViewSpan() * (double(x) / width)) + toDuration(viewX1.get());
 }
 
 float ZoomViewState::durationToPixels(te::TimeDuration duration, int width) const {
-    return (float)(duration * width / viewLength());
-}
-
-float ZoomViewState::pixelsPerBeat(te::TimeDuration beatDur, int width) const {
-    return durationToPixels(beatDur, width);
-}
-
-float ZoomViewState::pixelsPerBeat(double beatDur, int width) const {
-    return durationToPixels(te::TimeDuration::fromSeconds(beatDur), width);
+    return (float)(duration * width / getViewSpan());
 }
 
 bool ZoomViewState::jumpToPosition(te::TimePosition pos) {
     // DBG("ZoomViewState::scrollToPosition pos: " << pos.inSeconds());
-    if (pos < viewX1 || pos > viewX2) {
-        auto range = viewLength();
-        auto newViewX1 = jmax(te::TimePosition(), pos - range / 2.0);
+    if (!getRange().containsInclusive(pos)) {
+        auto newViewX1 = jmax(te::TimePosition(), pos - getViewSpan() / 2.0);
         setStart(newViewX1);
         return true;
     }
@@ -106,11 +94,13 @@ void ZoomViewState::zoomHorizontally(double factor) {
     // DBG("ZoomViewState::zoomHorizontally, factor: " << factor);
     double scaleFactor = std::pow(2.0, -factor * 5.0);
     auto pos = edit.getTransport().getPosition();
-    auto range = viewLength();
+    auto range = getViewSpan();
     auto newHalfRange = range * scaleFactor / 2.0;
     if (newHalfRange > 0.5s && newHalfRange < 600s) {
-        viewX1 = jmax(te::TimePosition(), pos - newHalfRange);
-        viewX2 = viewX1 + newHalfRange * 2.0;
+        setRange({
+            jmax(te::TimePosition(), pos - newHalfRange),
+            newHalfRange * 2.0
+        });
         // DBG("ZoomViewState::zoomHorizontally zoomChanged, new range: " << viewX1->inSeconds() << " - " << viewX2->inSeconds());
         handlePlaybackScrolling();
         markAndUpdate(updateZoom);
@@ -118,13 +108,13 @@ void ZoomViewState::zoomHorizontally(double factor) {
 }
 
 void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
-    // if (tree == state) {
-    //     if (prop == IDs::viewX1 || prop == IDs::viewX2 || prop == IDs::viewY) {
-    //         markAndUpdate(updateZoom);
-    //     }
-    // } else
-    if (auto& tc = edit.getTransport(); tree == tc.state && prop == te::IDs::position) {
-        if (double(tc.state[te::IDs::position]) != tc.getPosition().inSeconds()) {
+    if (tree == state) {
+        if (isZoomProperty(prop)) {
+            DBG("ZoomViewState::valueTreePropertyChanged zoomChanged, range: " << getRange().getStart() << " - " << getRange().getEnd());
+            markAndUpdate(updateZoom);
+        }
+    } else if (auto& tc = edit.getTransport(); tree == tc.state && prop == te::IDs::position) {
+        if (!approximatelyEqual((double) tc.state[te::IDs::position], tc.getPosition().inSeconds())) {
             // because this callback could be called before tc.position is updated from state
             tc.position.forceUpdateOfCachedValue();
         }
@@ -232,7 +222,6 @@ double EditViewState::getFramesPerNote(size_t divider) const {
 
 void EditViewState::setBeatLength(te::TimeDuration beatLen) {
     jassert(beatLen > 0s);
-    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
     auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
     auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
     bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm);

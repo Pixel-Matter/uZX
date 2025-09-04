@@ -36,7 +36,8 @@ public:
 
 private:
     void updateThumbnail();
-    void drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour);
+    void drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour,
+                      int left, int right, int y, int h, int xOffset);
     void drawChannels(Graphics& g, te::SmartThumbnail& thumb, Rectangle<int> area,
                       te::TimeRange time, bool useLeft, bool useRight,
                       float leftGain, float rightGain);

@@ -54,6 +54,7 @@ void EditComponent::resized() {
     const auto headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
     auto r = getLocalBounds();
 
+    editViewState.zoom.setViewWidthPx(r.getWidth() - headerWidth - footerWidth);
     detailsPanel.setBounds(r.removeFromBottom(300));
     detailsPanel.resized();  // for internal components
     playhead.setBounds(r.withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));

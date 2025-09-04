@@ -418,8 +418,8 @@ void TrackBodyComponent::resized() {
     for (auto cc : clips) {
         auto& c = cc->getClip();
         auto pos = c.getPosition();
-        int x1 = editViewState.zoom.timeToX(pos.getStart(), getWidth());
-        int x2 = editViewState.zoom.timeToX(pos.getEnd(), getWidth());
+        int x1 = roundToInt(editViewState.zoom.timeToX(pos.getStart()));
+        int x2 = roundToInt(editViewState.zoom.timeToX(pos.getEnd()));
 
         cc->setBounds(x1, 0, x2 - x1, getHeight());
     }

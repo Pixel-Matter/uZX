@@ -1,5 +1,4 @@
 #include "ClipComponents.h"
-#include "juce_core/juce_core.h"
 
 
 namespace te = tracktion;
@@ -41,18 +40,28 @@ void AudioClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
 
     if (editViewState.drawWaveforms && thumbnail != nullptr)
-        drawWaveform(g, *getWaveAudioClip(), *thumbnail, Colours::white.withAlpha(0.5f));
+        drawWaveform(
+            g, *getWaveAudioClip(), *thumbnail, Colours::white.withAlpha(0.5f), getX(), getRight(), 0, getHeight(), 0);
 }
 
-void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour) {
-    const auto rect = getLocalBounds();
-    const auto clipRange = c.getEditTimeRange();
+void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour,
+                                      int left, int right, int y, int h, int xOffset) {
+    // left and right are in local coordinates of the clip component, simetimes wider than parent window
+    auto p = getParentComponent();
+    if (p == nullptr)
+        return;
 
-    auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
-        return roundToInt(((time - clipRange.getStart()) * width) / l);
-    };
-    auto region = editViewState.zoom.getRange();
+    auto localBounds = p->getLocalBounds();
+    // draw bounds is intersection of clip component and parent component
+    left = jmax(left, localBounds.getX());
+    right = jmin(right, localBounds.getRight());
 
+    auto t1 = editViewState.zoom.xToTime(left);
+    auto t2 = editViewState.zoom.xToTime(right);
+
+    tracktion::TimeRange region {t1, t2};
+
+    jassert(left <= right);
     const auto gain = c.getGain();
     const auto pan = thumb.getNumChannels() == 1 ? 0.0f : c.getPan();
 
@@ -66,30 +75,34 @@ void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::Sma
     auto offset = clipPos.getOffset();
     auto speedRatio = c.getSpeedRatio();
 
-    int left = timeToX(region.getStart());
-    int right = timeToX(region.getEnd());
-    int xOffset = 0;
-    // int xOffset = timeToX(offset);
-    int h = rect.getHeight();
-    int y = rect.getY();
-    const Rectangle<int> area(left + xOffset, y, right - left, h);
-
     g.setColour(colour);
+
+    // where to draw channles relative to clip component coordinates
+    const Rectangle<int> area(-getX() + xOffset, y, right - left, h);
 
     if (usesTimeStretchedProxy) {
         if (!thumb.isOutOfDate()) {
-            drawChannels(g, thumb, area, region,
-                         c.isLeftChannelActive(), c.isRightChannelActive(),
-                         gainL, gainR);
+            drawChannels(g,
+                         thumb,
+                         area,
+                         region,
+                         c.isLeftChannelActive(),
+                         c.isRightChannelActive(),
+                         gainL,
+                         gainR);
         }
     } else if (c.getLoopLength() == 0s) {
+        t1 = (region.getStart() + offset) * speedRatio;
+        t2 = (region.getEnd() + offset) * speedRatio;
 
-        auto t1 = (region.getStart() + offset) * speedRatio;
-        auto t2 = (region.getEnd()   + offset) * speedRatio;
-
-        drawChannels(g, thumb, area, { t1, t2 },
-                     c.isLeftChannelActive(), c.isRightChannelActive(),
-                     gainL, gainR);
+        drawChannels(g,
+                     thumb,
+                     area,
+                     {t1, t2},
+                     c.isLeftChannelActive(),
+                     c.isRightChannelActive(),
+                     gainL,
+                     gainR);
     }
 }
 
@@ -239,18 +252,13 @@ void RecordingClipComponent::drawThumbnail(Graphics& g, Colour waveformColour) c
 }
 
 bool RecordingClipComponent::getBoundsAndTime(Rectangle<int>& bounds, tracktion::TimeRange& times) const {
+    jassert(getParentComponent());
     auto editTimeToX = [this] (te::TimePosition t) {
-        if (auto p = getParentComponent())
-            return editViewState.zoom.timeToX(t, p->getWidth()) - getX();
-
-        return 0;
+        return roundToInt(editViewState.zoom.timeToX(t)) - getX();
     };
 
     auto xToEditTime = [this] (int x) {
-        if (auto p = getParentComponent())
-            return editViewState.zoom.xToTime(x + getX(), p->getWidth());
-
-        return te::TimePosition();
+        return editViewState.zoom.xToTime(x + getX());
     };
 
     bool hasLooped = false;
@@ -271,8 +279,9 @@ bool RecordingClipComponent::getBoundsAndTime(Rectangle<int>& bounds, tracktion:
             t1 = jmin(t1, epc->getLoopTimes().getStart());
             t2 = epc->getPosition();
 
-            t1 = jmax(editViewState.zoom.getRange().getStart(), t1);
-            t2 = jmin(editViewState.zoom.getRange().getEnd(), t2);
+            t1 = jmax(xToEditTime(0), t1);
+            t2 = jmin(xToEditTime(getParentComponent()->getWidth()), t2);
+
         } else if (edit.recordingPunchInOut) {
             const auto in  = thumbnail->punchInTime;
             const auto out = edit.getTransport().getLoopRange().getEnd();
@@ -324,13 +333,11 @@ void RecordingClipComponent::updatePosition() {
             t2 = jlimit(in, out, t2);
         }
 
-        t1 = jmax(t1, editViewState.zoom.getRange().getStart());
-        t2 = jmin(t2, editViewState.zoom.getRange().getEnd());
-
         if (auto p = getParentComponent()) {
-            int x1 = editViewState.zoom.timeToX(t1, p->getWidth());
-            int x2 = editViewState.zoom.timeToX(t2, p->getWidth());
-
+            auto x1 = roundToInt(editViewState.zoom.timeToX(t1));
+            auto x2 = roundToInt(editViewState.zoom.timeToX(t2));
+            x1 = jmax(x1, 0);
+            x2 = jmin(x2, p->getWidth());
             setBounds(x1, 0, x2 - x1, p->getHeight());
             return;
         }

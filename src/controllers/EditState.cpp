@@ -13,9 +13,9 @@ ZoomViewState::ZoomViewState(te::Edit& e, ValueTree& st)
 {
     state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
     auto um = &edit.getUndoManager();
-    viewX1.referTo(state, IDs::viewX1, um, 0s);
-    // viewX2.referTo(state, IDs::viewX2, um, 60s);
-    viewSpan.referTo(state, IDs::viewSpan, um, 60s);
+    viewStartTime.referTo(state, IDs::viewStartTime, um, 0s);
+    viewTimePerPixel.referTo(state, IDs::viewTimePerPixel, um, 60s / (double) viewWidthPx.load());
+
     viewY.referTo(state, IDs::viewY, um, 0);
     edit.getTransport().state.addListener(this);
     state.addListener(this);
@@ -35,23 +35,31 @@ void ZoomViewState::removeListener(Listener* l) {
 }
 
 bool ZoomViewState::isZoomProperty(const juce::Identifier& id) {
-    return id == IDs::viewX1 || id == IDs::viewSpan;
+    return id == IDs::viewStartTime || id == IDs::viewTimePerPixel;
 }
 
 te::TimeRange ZoomViewState::getRange() const {
-    return { viewX1, viewSpan };
+    return { viewStartTime, getViewSpan() };
 }
 
 void ZoomViewState::setRange(te::TimeRange range) {
-    // DBG("ZoomViewState::setRange, range: " << range.getStart().inSeconds() << " - " << range.getEnd().inSeconds());
-    viewX1 = range.getStart();
-    viewSpan = range.getLength();
-    // DBG("ZoomViewState::setRange, calling markAndUpdate(updateZoom)");
+    viewStartTime = range.getStart();
+    viewTimePerPixel = range.getLength() / getViewWidthPx();
+    // DBG("viewTimePerPixel == " << viewTimePerPixel);
     markAndUpdate(updateZoom);
 }
 
+inline int ZoomViewState::getViewWidthPx() const noexcept {
+    return viewWidthPx.load();
+}
+void ZoomViewState::setViewWidthPx(int w) noexcept {
+    if (w <= 0)
+        return;
+    viewWidthPx.store(w);
+}
+
 void ZoomViewState::setStart(te::TimePosition start) {
-    setRange({ start, start + getViewSpan() });
+    viewStartTime = start;
 }
 
 double ZoomViewState::getViewY() const {
@@ -59,23 +67,22 @@ double ZoomViewState::getViewY() const {
 }
 
 te::TimeDuration ZoomViewState::getViewSpan() const {
-    return viewSpan;
+    return viewTimePerPixel.get() * getViewWidthPx();
 }
 
-int ZoomViewState::timeToX(te::TimePosition time, int width) const {
-    return roundToInt(((time - viewX1) * width) / getViewSpan());
+float ZoomViewState::timeToX(te::TimePosition time) const {
+    return (float) ((time - viewStartTime) / viewTimePerPixel);
 }
 
-te::TimePosition ZoomViewState::xToTime(int x, int width) const {
-    return toPosition(getViewSpan() * (double(x) / width)) + toDuration(viewX1.get());
+te::TimePosition ZoomViewState::xToTime(int x) const {
+    return viewStartTime + viewTimePerPixel.get() * (double) x;
 }
 
-float ZoomViewState::durationToPixels(te::TimeDuration duration, int width) const {
-    return (float)(duration * width / getViewSpan());
+float ZoomViewState::durationToPixels(te::TimeDuration duration) const {
+    return (float)(duration / viewTimePerPixel.get());
 }
 
 bool ZoomViewState::jumpToPosition(te::TimePosition pos) {
-    // DBG("ZoomViewState::scrollToPosition pos: " << pos.inSeconds());
     if (!getRange().containsInclusive(pos)) {
         auto newViewX1 = jmax(te::TimePosition(), pos - getViewSpan() / 2.0);
         setStart(newViewX1);
@@ -86,33 +93,29 @@ bool ZoomViewState::jumpToPosition(te::TimePosition pos) {
 
 bool ZoomViewState::jumpToCurrentPosition() {
     auto pos = edit.getTransport().getPosition();
-    // DBG("ZoomViewState::jumpToCurrentPosition pos: " << pos.inSeconds());
     return jumpToPosition(pos);
 }
 
 void ZoomViewState::zoomHorizontally(double factor) {
-    // DBG("ZoomViewState::zoomHorizontally, factor: " << factor);
     double scaleFactor = std::pow(2.0, -factor * 5.0);
     auto pos = edit.getTransport().getPosition();
-    auto range = getViewSpan();
-    auto newHalfRange = range * scaleFactor / 2.0;
-    if (newHalfRange > 0.5s && newHalfRange < 600s) {
+    auto span = getViewSpan();
+    auto newRange = span * scaleFactor;
+
+    if (auto newTimePerPixel = newRange / getViewWidthPx(); newTimePerPixel > 0.001s && newTimePerPixel < 1s) {
         setRange({
-            jmax(te::TimePosition(), pos - newHalfRange),
-            newHalfRange * 2.0
+            jmax(te::TimePosition(), pos - newRange / 2.0),
+            newRange
         });
-        // DBG("ZoomViewState::zoomHorizontally zoomChanged, new range: " << viewX1->inSeconds() << " - " << viewX2->inSeconds());
         handlePlaybackScrolling();
         markAndUpdate(updateZoom);
     }
+    handleUpdateNowIfNeeded();
 }
 
 void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
-    if (tree == state) {
-        if (isZoomProperty(prop)) {
-            DBG("ZoomViewState::valueTreePropertyChanged zoomChanged, range: " << getRange().getStart() << " - " << getRange().getEnd());
-            markAndUpdate(updateZoom);
-        }
+    if (tree == state && isZoomProperty(prop)) {
+        markAndUpdate(updateZoom);
     } else if (auto& tc = edit.getTransport(); tree == tc.state && prop == te::IDs::position) {
         if (!approximatelyEqual((double) tc.state[te::IDs::position], tc.getPosition().inSeconds())) {
             // because this callback could be called before tc.position is updated from state
@@ -145,10 +148,10 @@ void ZoomViewState::handlePlaybackScrolling() {
         // DBG("ZoomViewState::handlePlaybackScrolling, pos: " << pos.inSeconds());
         auto range = getRange();
         auto leftRange = range.getLength() / 3.0;
-        if (pos < viewX1 || pos > viewX1 + leftRange) {
+        if (pos < viewStartTime || pos > viewStartTime + leftRange) {
             auto newX1 = jmax(te::TimePosition(), pos - leftRange);
-            if (newX1 != viewX1) {
-                setRange({ newX1, range.getLength() });
+            if (newX1 != viewStartTime) {
+                setStart(newX1);
             }
         }
     } else {
@@ -158,13 +161,10 @@ void ZoomViewState::handlePlaybackScrolling() {
 }
 
 void ZoomViewState::handleAsyncUpdate() {
-    // DBG("ZoomViewState::handleAsyncUpdate, pos : " << edit.getTransport().getPosition().inSeconds());
     if (compareAndReset(updatePos)) {
-        // DBG("ZoomViewState::handleAsyncUpdate, calling zoomOrPosChanged");
         listeners.call(&Listener::zoomOrPosChanged);
     }
     if (compareAndReset(updateZoom)) {
-        // DBG("ZoomViewState::handleAsyncUpdate, calling zoomChanged");
         listeners.call(&Listener::zoomChanged);
     }
 }

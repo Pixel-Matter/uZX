@@ -21,9 +21,10 @@ namespace IDs
     DECLARE_ID(showFooters)
     DECLARE_ID(showArranger)
     DECLARE_ID(headersWidth)
+
     DECLARE_ID(ZOOMVIEWSTATE)
-    DECLARE_ID(viewX1)
-    DECLARE_ID(viewSpan)
+    DECLARE_ID(viewStartTime)
+    DECLARE_ID(viewTimePerPixel)
     DECLARE_ID(viewY)
 
     DECLARE_ID(VIEWSTATE)
@@ -55,16 +56,20 @@ public:
     void addListener(Listener* l);
     void removeListener(Listener* l);
 
-    bool jumpToPosition(te::TimePosition pos);
-    bool jumpToCurrentPosition();
     void zoomHorizontally(double factor);
 
+    int getViewWidthPx() const noexcept;
+    void setViewWidthPx(int w) noexcept;
+
+    te::TimeDuration getViewSpan() const;
     te::TimeRange getRange() const;
     void setRange(te::TimeRange range);
+    void setStart(te::TimePosition start);
 
-    int timeToX(te::TimePosition time, int width) const;
-    te::TimePosition xToTime(int x, int width) const;
-    float durationToPixels(te::TimeDuration duration, int width) const;
+    float timeToX(te::TimePosition time) const;
+    te::TimePosition xToTime(int x) const;
+
+    float durationToPixels(te::TimeDuration duration) const;
     double getViewY() const;
 
     static bool isZoomProperty(const juce::Identifier& id);
@@ -73,19 +78,21 @@ public:
 
 private:
     ValueTree state;
-    CachedValue<te::TimePosition> viewX1;
-    CachedValue<te::TimeDuration> viewSpan;
+    CachedValue<te::TimePosition> viewStartTime;
+    CachedValue<te::TimeDuration> viewTimePerPixel;
     CachedValue<double> viewY;
     ListenerList<Listener> listeners;
+
+    // transient state
+    std::atomic<int> viewWidthPx = 1024;  // not stored in ValueTree
 
     bool updateZoom = false, updatePos = false;
 
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
     void handleAsyncUpdate() override;
     void handlePlaybackScrolling();
-
-    te::TimeDuration getViewSpan() const;
-    void setStart(te::TimePosition start);
+    bool jumpToPosition(te::TimePosition pos);
+    bool jumpToCurrentPosition();
 };
 
 

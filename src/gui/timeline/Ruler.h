@@ -61,31 +61,31 @@ public:
 
         // DBG("RulerComponent::paint: " << zoomState.getRangeStart().inSeconds() << " - " << zoomState.getRangeEnd().inSeconds());
 
-        auto startBar = ts.toBarsAndBeats(zoomState.getRange().getStart());
+        auto startBar = ts.toBarsAndBeats(zoomState.xToTime(0));
         startBar = te::tempo::BarsAndBeats(startBar.bars, te::BeatDuration::fromBeats(startBar.getWholeBeats()), startBar.numerator);
         const auto startTime = ts.toTime(startBar);
 
         auto currentTime = startTime;
         auto prevBarX = -20.0;
-        auto pixelsPerFrame = zoomState.durationToPixels(te::TimeDuration::fromSeconds(1.0 / fps), width);
+        auto pixelsPerFrame = zoomState.durationToPixels(te::TimeDuration::fromSeconds(1.0 / fps));
         auto pixelsPerFrameTick = pixelsPerFrame;
         while (pixelsPerFrameTick < minPxPerDev) {
             pixelsPerFrameTick *= 2;
         }
 
-        const auto end = zoomState.getRange().getEnd();
+        const auto end = zoomState.xToTime(width);
         while (currentTime <= end) {
             auto barBeats = ts.toBarsAndBeats(currentTime);
 
             auto nextDiv = BarsAndBeats { barBeats.bars, barBeats.beats + beatStep };
             auto nextTime = ts.toTime(nextDiv);
-            auto pixelsPerDiv = zoomState.durationToPixels(nextTime - currentTime, width);
+            auto pixelsPerDiv = zoomState.durationToPixels(nextTime - currentTime);
             if (pixelsPerDiv < minPxPerDev) {
                 beatStep = beatStep * 2.0;
                 continue;
             }
 
-            auto x = static_cast<float>(zoomState.timeToX(currentTime, width));
+            auto x = static_cast<float>(zoomState.timeToX(currentTime));
 
             if (x >= 0) {
                 if (barBeats.beats < te::BeatDuration::fromBeats(0.001)) {
@@ -112,10 +112,10 @@ public:
                 }
             }
             // draw frame ticks
-            if (exactlyEqual(pixelsPerFrame, pixelsPerFrameTick)) {
+            if (approximatelyEqual(pixelsPerFrame, pixelsPerFrameTick)) {
                 auto frameTime = te::TimePosition::fromSeconds(std::ceil(currentTime.inSeconds() * fps) / fps);
-                auto frameX = static_cast<float>(zoomState.timeToX(frameTime, width));
-                auto nextX = static_cast<float>(zoomState.timeToX(nextTime, width));
+                auto frameX = zoomState.timeToX(frameTime);
+                auto nextX = zoomState.timeToX(nextTime);
 
                 g.setColour(Colors::Theme::border.withAlpha(0.5f));
                 for (float f = frameX; f < nextX; f += pixelsPerFrameTick) {
@@ -155,7 +155,7 @@ public:
     }
 
     void repositionTransportToX(int x) {
-        auto pos = editViewState.zoom.xToTime(x, getWidth());
+        auto pos = editViewState.zoom.xToTime(x);
         edit.getTransport().setPosition(pos);
     }
 

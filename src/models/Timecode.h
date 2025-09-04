@@ -126,6 +126,85 @@ struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
         return "UNSUPPORTED TimecodeDisplayFormatExt";
     }
 
+    /*
+    BarBeat snap levels  |   |   |   |   |   |   |   |   |   |
+    level  0 | 1 tick    |   |   |   |   |   |   |   |   |   |
+    level  1 | 2 ticks   |   |   |   |   |   |   |   |   |   |
+    level  2 | 5 ticks   |   |   |   |   |   |   |   |   |   |
+    level  3 | 1/64 beat |   |   |   |   |   |   |   |   |   |
+    level  4 | 1/32 beat | 0 |   |   |   |   |   |   |   |   |
+    level  5 | 1/16 beat | . |   |   |   |   |   |   |   |   |
+    level  6 | 1/8 beat  | . |   |   |   |   |   |   |   |   |
+    level  7 | 1/4 beat  | . | x |   |   |   |   |   |   |   |
+    level  8 | 1/2 beat  |   | 0 |   |   |   |   |   |   |   |
+    level  9 | Beat      | 1 | 1 | 0 |   |   |   |   |   |   |
+    level 10 | Bar       | 2 | 2 | 1 | 0 |   |   |   |   |   |
+    level 11 | 2 bars    |   |   |   |   | 0 |   |   |   |   |
+    level 12 | 4 bars    |   |   | 2 | 1 |   | 0 |   |   |   |
+    level 13 | 8 bars    |   |   |   |   | 1 |   | 0 |   |   |
+    level 14 | 16 bars   |   |   |   | 2 | 2 | 1 |   | 0 |   |
+    level 15 | 64 bars   |   |   |   |   |   | 2 | 1 | 1 | 0 |
+    level 16 | 128 bars  |   |   |   |   |   |   | 2 | 2 |   | 0 |
+    level 17 | 256 bars  |   |   |   |   |   |   |   |   | 1 |   |
+    level 18 | 1024 bars |   |   |   |   |   |   |   |   | 2 | 1 |
+    */
+
+    std::vector<te::TimecodeSnapType> getOptimalSnapTypes(const te::TempoSetting& tempo,
+                                                         te::TimeDuration onScreenTimePerPixel,
+                                                         bool isTripletOverride) {
+        std::vector<te::TimecodeSnapType> snaps;
+        snaps.reserve(3);
+        snaps.push_back(getBestSnapType(tempo, onScreenTimePerPixel, isTripletOverride));
+        auto level = snaps.back().getLevel();
+        static constexpr int beat = 9, bar = 10;
+
+        switch (level) {
+            case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+                snaps.push_back(getSnapType(beat));
+                snaps.push_back(getSnapType(bar));
+                break;
+            case 8: case 9:
+                snaps.back() = getSnapType(beat);      // Beat
+                snaps.push_back(getSnapType(bar));     // 1 bar
+                snaps.push_back(getSnapType(bar + 2)); // 4 bars
+                break;
+            case 10:                               //  1 bar
+                snaps.push_back(getSnapType(12));  //  4 bars
+                snaps.push_back(getSnapType(14));  // 16 bars
+                break;
+            case 11:                               //  2 bars
+                snaps.push_back(getSnapType(13));  //  8 bars
+                snaps.push_back(getSnapType(14));  // 16 bars
+                break;
+            case 12:                               //  4 bars
+                snaps.push_back(getSnapType(14));  // 16 bars
+                snaps.push_back(getSnapType(15));  // 64 bars
+                break;
+            case 13:                               //  8 bars
+                snaps.push_back(getSnapType(15));  // 64 bars
+                snaps.push_back(getSnapType(16));  // 128 bars
+                break;
+            case 14:                               // 16 bars
+                snaps.push_back(getSnapType(15));  // 64 bars
+                snaps.push_back(getSnapType(16));  // 128 bars
+                break;
+            case 15:                               // 64 bars
+                snaps.push_back(getSnapType(17));  // 256 bars
+                snaps.push_back(getSnapType(18));  // 1024 bars
+                break;
+            case 16:                               // 128 bars
+                snaps.push_back(getSnapType(18));  // 1024 bars
+                break;
+            case 17:                               // 256 bars
+                snaps.push_back(getSnapType(18));  // 1024 bars
+                break;
+            case 18: default:
+                break;
+        }
+
+        snaps.shrink_to_fit();
+        return snaps;
+    }
 
 };
 

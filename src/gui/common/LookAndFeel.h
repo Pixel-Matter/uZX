@@ -34,6 +34,7 @@ struct Palette {
 // Main theme colors using slate
 struct Theme {
     // Base colors
+    inline static const juce::Colour backgroundDark= Palette::slate950;  // Even darker background
     inline static const juce::Colour background    = Palette::slate900;  // Main app background
     inline static const juce::Colour backgroundAlt = Palette::slate850;  // Elevated surfaces
     inline static const juce::Colour backgroundSel = Palette::slate800;  // Selected items background
@@ -75,6 +76,13 @@ struct Timeline {
         Palette::cyan500,
         Palette::lime500,
         Palette::orange500,
+    };
+
+    // Track grid tick colors array on background Palette::slate850 or Palette::slate800
+    static inline const std::array<juce::Colour, 3> trackGridTickColors = {
+        Palette::slate950,  // darker than bg
+        Palette::slate700,  // brighter
+        Palette::slate500,  // brightest
     };
 };
 

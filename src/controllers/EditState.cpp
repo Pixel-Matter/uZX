@@ -52,10 +52,15 @@ void ZoomViewState::setRange(te::TimeRange range) {
 inline int ZoomViewState::getViewWidthPx() const noexcept {
     return viewWidthPx.load();
 }
+
 void ZoomViewState::setViewWidthPx(int w) noexcept {
     if (w <= 0)
         return;
     viewWidthPx.store(w);
+}
+
+te::TimePosition ZoomViewState::getStart() const noexcept {
+    return viewStartTime;
 }
 
 void ZoomViewState::setStart(te::TimePosition start) {
@@ -68,6 +73,10 @@ double ZoomViewState::getViewY() const {
 
 te::TimeDuration ZoomViewState::getViewSpan() const {
     return viewTimePerPixel.get() * getViewWidthPx();
+}
+
+te::TimeDuration ZoomViewState::getTimePerPixel() const {
+    return viewTimePerPixel.get();
 }
 
 float ZoomViewState::timeToX(te::TimePosition time) const {
@@ -102,7 +111,7 @@ void ZoomViewState::zoomHorizontally(double factor) {
     auto span = getViewSpan();
     auto newRange = span * scaleFactor;
 
-    if (auto newTimePerPixel = newRange / getViewWidthPx(); newTimePerPixel > 0.001s && newTimePerPixel < 1s) {
+    if (auto newTimePerPixel = newRange / getViewWidthPx(); newTimePerPixel > 0.0005s && newTimePerPixel < 4s) {
         setRange({
             jmax(te::TimePosition(), pos - newRange / 2.0),
             newRange

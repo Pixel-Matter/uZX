@@ -2,6 +2,7 @@
 #include "PsgClipComponent.h"
 
 #include "../common/LookAndFeel.h"
+#include "../../models/EditUtilities.h"
 
 namespace te = tracktion;
 using namespace std::literals;
@@ -342,7 +343,42 @@ void TrackBodyComponent::paint(Graphics& g) {
 
     g.fillAll(bgColor);
 
-    // TODO draw a grid
+    auto tcf = Helpers::getEditTimecodeFormat(track->edit);
+    auto time = editViewState.zoom.getStart();
+    auto endTime = editViewState.zoom.xToTime(getWidth());
+
+    // TODO make it a separate drawTimelineGrid function in LookAndFeel
+    // TODO make it a separate class that listens to zoom changes
+    // TODO iterate tempo setting along the whole time span and regular grid inbetween
+    const auto& ts = track->edit.tempoSequence;
+    const auto& tempo = ts.getTempoAt(editViewState.edit.getTransport().getPosition());
+
+    auto snaps = tcf.getOptimalSnapTypes(tempo, editViewState.zoom.getTimePerPixel(), ts.isTripletsAtTime(time));
+    // for (auto& snap : snaps) {
+    //     DBG("Snap " << snap.getLevel()
+    //         << ": " << snap.getDescription(tempo, ts.isTripletsAtTime(time))
+    //         << ", tc " << snap.getTimecodeString(0s, ts, false)
+    //     );
+    // }
+
+    // draw up to 3 levels of snap if available: finest then coarse and coarser
+    while (time < endTime) {
+        size_t tickLevel = 0;
+        time = snaps[tickLevel].roundTimeUp(time, ts);
+        auto halfStep = snaps[tickLevel].getApproxIntervalTime(tempo, ts.isTripletsAtTime(time)) / 2.0;
+
+        for (size_t i = 1; i < snaps.size(); ++i) {
+            if (approximatelyEqual(time, snaps[i].roundTimeNearest(time, ts))) {
+                tickLevel = i;
+            }
+        }
+
+        auto x = roundToInt(editViewState.zoom.timeToX(time));
+        g.setColour(Colors::Timeline::trackGridTickColors[tickLevel]);
+        g.drawVerticalLine(x, 0.0f, (float)getHeight());
+
+        time = time + halfStep;
+    }
 }
 
 void TrackBodyComponent::mouseDown(const MouseEvent&) {
@@ -395,8 +431,10 @@ void TrackBodyComponent::handleAsyncUpdate() {
         buildClips();
     if (compareAndReset(updatePositions))
         resized();
-    if (compareAndReset(updateZoom))
+    if (compareAndReset(updateZoom)) {
         resized();
+        repaint();
+    }
     if (compareAndReset(updateRecordClips))
         buildRecordClips();
     if (compareAndReset(updateSelection))

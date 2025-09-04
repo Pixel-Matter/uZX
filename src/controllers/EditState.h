@@ -64,11 +64,13 @@ public:
     te::TimeDuration getViewSpan() const;
     te::TimeRange getRange() const;
     void setRange(te::TimeRange range);
+    te::TimePosition getStart() const noexcept;
     void setStart(te::TimePosition start);
 
     float timeToX(te::TimePosition time) const;
     te::TimePosition xToTime(int x) const;
 
+    te::TimeDuration getTimePerPixel() const;
     float durationToPixels(te::TimeDuration duration) const;
     double getViewY() const;
 

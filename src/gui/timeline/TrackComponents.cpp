@@ -201,13 +201,11 @@ void TrackHeaderComponent::valueTreeChildRemoved(ValueTree&, ValueTree& c, int) 
 }
 
 void TrackHeaderComponent::paint(Graphics& g) {
-    g.setColour(Colors::Theme::backgroundAlt);
-    g.fillRect(getLocalBounds().withTrimmedRight(2));
+    bool isSelected = editViewState.selectionManager.isSelected(track.get());
+    auto bgColor = isSelected ? Colors::Theme::backgroundSel : Colors::Theme::backgroundAlt;
 
-    if (editViewState.selectionManager.isSelected(track.get())) {
-        g.setColour(Colors::Theme::primary);
-        g.drawRect(getLocalBounds().withTrimmedRight(-4), 2);
-    }
+    g.setColour(bgColor);
+    g.fillRect(getLocalBounds().withTrimmedRight(2));
 }
 
 void TrackHeaderComponent::mouseDown (const MouseEvent&) {
@@ -268,13 +266,11 @@ void TrackFooterComponent::valueTreeChildOrderChanged(juce::ValueTree&, int, int
 }
 
 void TrackFooterComponent::paint(Graphics& g) {
-    g.setColour(Colors::Theme::backgroundAlt);
-    g.fillRect(getLocalBounds().withTrimmedLeft(2));
+    bool isSelected = editViewState.selectionManager.isSelected(track.get());
+    auto bgColor = isSelected ? Colors::Theme::backgroundSel : Colors::Theme::backgroundAlt;
 
-    if (editViewState.selectionManager.isSelected(track.get())) {
-        g.setColour(Colors::Theme::primary);
-        g.drawRect(getLocalBounds().withTrimmedLeft(-4), 2);
-    }
+    g.setColour(bgColor);
+    g.fillRect(getLocalBounds().withTrimmedLeft(2));
 }
 
 void TrackFooterComponent::mouseDown (const MouseEvent&) {
@@ -341,19 +337,12 @@ TrackBodyComponent::~TrackBodyComponent() {
 }
 
 void TrackBodyComponent::paint(Graphics& g) {
-    g.fillAll(Colors::Theme::backgroundAlt);
+    bool isSelected = editViewState.selectionManager.isSelected(track.get());
+    auto bgColor = isSelected ? Colors::Theme::backgroundSel : Colors::Theme::backgroundAlt;
+
+    g.fillAll(bgColor);
 
     // TODO draw a grid
-
-    if (editViewState.selectionManager.isSelected(track.get())) {
-        g.setColour(Colors::Theme::primary);
-
-        auto rc = getLocalBounds();
-        if (editViewState.showHeaders) rc = rc.withTrimmedLeft(-4);
-        if (editViewState.showFooters) rc = rc.withTrimmedRight(-4);
-
-        g.drawRect(rc, 2);
-    }
 }
 
 void TrackBodyComponent::mouseDown(const MouseEvent&) {

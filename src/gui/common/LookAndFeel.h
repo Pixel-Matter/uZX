@@ -4,18 +4,22 @@
 namespace MoTool {
 
 namespace Colors {
-struct Slate {
-    inline static const juce::Colour slate50  = juce::Colour::fromString("#FFF8FAFC");
-    inline static const juce::Colour slate100 = juce::Colour::fromString("#FFF1F5F9");
-    inline static const juce::Colour slate200 = juce::Colour::fromString("#FFE2E8F0");
-    inline static const juce::Colour slate300 = juce::Colour::fromString("#FFCBD5E1");
-    inline static const juce::Colour slate400 = juce::Colour::fromString("#FF94A3B8");
-    inline static const juce::Colour slate500 = juce::Colour::fromString("#FF64748B");
-    inline static const juce::Colour slate600 = juce::Colour::fromString("#FF475569");
-    inline static const juce::Colour slate700 = juce::Colour::fromString("#FF334155");
-    inline static const juce::Colour slate800 = juce::Colour::fromString("#FF1E293B");
-    inline static const juce::Colour slate900 = juce::Colour::fromString("#FF0F172A");
-    inline static const juce::Colour slate950 = juce::Colour::fromString("#FF020617");
+
+// Tailwind CSS color palette
+// https://tailwindcss.com/docs/customizing-colors
+struct Palette {
+    inline static const juce::Colour slate50    = juce::Colour::fromString("#0xFFF8FAFC");
+    inline static const juce::Colour slate100   = juce::Colour::fromString("#0xFFF1F5F9");
+    inline static const juce::Colour slate200   = juce::Colour::fromString("#0xFFE2E8F0");
+    inline static const juce::Colour slate300   = juce::Colour::fromString("#0xFFCBD5E1");
+    inline static const juce::Colour slate400   = juce::Colour::fromString("#0xFF94A3B8");
+    inline static const juce::Colour slate500   = juce::Colour::fromString("#0xFF64748B");
+    inline static const juce::Colour slate600   = juce::Colour::fromString("#0xFF475569");
+    inline static const juce::Colour slate700   = juce::Colour::fromString("#0xFF334155");
+    inline static const juce::Colour slate800   = juce::Colour::fromString("#0xFF1E293B");
+    inline static const juce::Colour slate850   = juce::Colour::fromString("#0xFF162032");
+    inline static const juce::Colour slate900   = juce::Colour::fromString("#0xFF0F172A");
+    inline static const juce::Colour slate950   = juce::Colour::fromString("#0xFF020617");
 
     inline static const juce::Colour blue500    = juce::Colour::fromString("#0xFF3B82F6");
     inline static const juce::Colour emerald500 = juce::Colour::fromString("#0xFF10B981");
@@ -30,20 +34,21 @@ struct Slate {
 // Main theme colors using slate
 struct Theme {
     // Base colors
-    inline static const juce::Colour background    = Slate::slate900;  // Main app background
-    inline static const juce::Colour backgroundAlt = Slate::slate800;  // Elevated surfaces
-    inline static const juce::Colour surface       = Slate::slate700;  // UI elements
-    inline static const juce::Colour surfaceAlt    = Slate::slate400;  // Secondary UI elements
+    inline static const juce::Colour background    = Palette::slate900;  // Main app background
+    inline static const juce::Colour backgroundAlt = Palette::slate850;  // Elevated surfaces
+    inline static const juce::Colour backgroundSel = Palette::slate800;  // Selected items background
+    inline static const juce::Colour surface       = Palette::slate700;  // UI elements
+    inline static const juce::Colour surfaceAlt    = Palette::slate400;  // Secondary UI elements
 
     // Text colors
-    inline static const juce::Colour textPrimary   = Slate::slate100;  // Main text
-    inline static const juce::Colour textSecondary = Slate::slate400;  // Secondary text
-    inline static const juce::Colour textDisabled  = Slate::slate500;  // Disabled text
+    inline static const juce::Colour textPrimary   = Palette::slate100;  // Main text
+    inline static const juce::Colour textSecondary = Palette::slate400;  // Secondary text
+    inline static const juce::Colour textDisabled  = Palette::slate500;  // Disabled text
 
     // Border and separator colors
-    inline static const juce::Colour border        = Slate::slate600;  // Normal borders
-    inline static const juce::Colour borderLight   = Slate::slate500;  // Lighter borders
-    inline static const juce::Colour borderDark    = Slate::slate700;  // Darker borders
+    inline static const juce::Colour borderLight   = Palette::slate500;  // Lighter borders
+    inline static const juce::Colour border        = Palette::slate600;  // Normal borders
+    inline static const juce::Colour borderDark    = Palette::slate700;  // Darker borders
 
     // Other UI colors
     inline static const juce::Colour primary       = juce::Colour::fromString("#FF0EA5E9"); // sky-500
@@ -55,31 +60,31 @@ struct Theme {
 
 // Timeline specific colors
 struct Timeline {
-    inline static const juce::Colour grid         = Slate::slate600;
+    inline static const juce::Colour grid         = Palette::slate600;
     inline static const juce::Colour cursor       = Theme::primary;
     inline static const juce::Colour clipBg       = juce::Colour::fromString("#FF3B82F6"); // blue-500
     inline static const juce::Colour clipSelected = juce::Colour::fromString("#FF2563EB"); // blue-600
 
     // Track colors array
     static inline const std::array<juce::Colour, 8> trackColors = {
-        Slate::blue500,
-        Slate::emerald500,
-        Slate::violet500,
-        Slate::amber500,
-        Slate::pink500,
-        Slate::cyan500,
-        Slate::lime500,
-        Slate::orange500,
+        Palette::blue500,
+        Palette::emerald500,
+        Palette::violet500,
+        Palette::amber500,
+        Palette::pink500,
+        Palette::cyan500,
+        Palette::lime500,
+        Palette::orange500,
     };
 };
 
 // PSG specific colors
 struct PSG {
-    inline static const auto A   = Slate::blue500;
-    inline static const auto B   = Slate::emerald500;
-    inline static const auto C   = Slate::amber500;
-    inline static const auto Mix = Slate::cyan500;
-    inline static const auto Env = Slate::violet500;
+    inline static const auto A   = Palette::blue500;
+    inline static const auto B   = Palette::emerald500;
+    inline static const auto C   = Palette::amber500;
+    inline static const auto Mix = Palette::cyan500;
+    inline static const auto Env = Palette::violet500;
 };
 
 } // namespace Colors

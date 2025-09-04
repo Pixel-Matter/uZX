@@ -100,6 +100,11 @@ struct PSG {
 class MoLookAndFeel : public juce::LookAndFeel_V4 {
 public:
 
+    struct TimelineGridTick {
+        int x;
+        size_t level; // 0: finest, 1: coarse, 2: coarser
+    };
+
     MoLookAndFeel() {
         using namespace Colors;
         // Initialize ColourScheme with slate colors
@@ -276,6 +281,14 @@ public:
             static_cast<float>(hPad), static_cast<float>(vPad),
             static_cast<float>(width), static_cast<float>(height)
         });
+    }
+
+    void drawTimelineGrid(juce::Graphics& g, const juce::Rectangle<int>& bounds,
+                          const std::vector<TimelineGridTick>& ticks) const {
+        for (const auto& tick : ticks) {
+            g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
+            g.drawVerticalLine(bounds.getX() + tick.x, (float)bounds.getY(), (float)bounds.getHeight());
+        }
     }
 };
 

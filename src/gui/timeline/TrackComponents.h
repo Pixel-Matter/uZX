@@ -67,13 +67,32 @@ private:
 };
 
 //==============================================================================
+class TimelineGrid : private ZoomViewState::Listener {
+public:
+    TimelineGrid(EditViewState& evs);
+
+    ~TimelineGrid() override;
+
+    std::vector<MoLookAndFeel::TimelineGridTick> getTicks();
+
+private:
+    std::vector<MoLookAndFeel::TimelineGridTick> makeTicks();
+
+    void zoomChanged() override;
+
+    std::atomic<bool> ticksCacheValid { false };
+    std::vector<MoLookAndFeel::TimelineGridTick> ticksCache;
+    EditViewState& editViewState;
+};
+
+//==============================================================================
 class TrackBodyComponent : public Component,
                        private ValueTree::Listener,
                        private FlaggedAsyncUpdater,
                        private ZoomViewState::Listener,
                        private ChangeListener {
 public:
-    TrackBodyComponent(EditViewState&, te::Track::Ptr);
+    TrackBodyComponent(EditViewState&, TimelineGrid& g, te::Track::Ptr);
     ~TrackBodyComponent() override;
 
     void paint(Graphics& g) override;
@@ -96,12 +115,14 @@ private:
 
     EditViewState& editViewState;
     te::Track::Ptr track;
+    TimelineGrid& grid;
 
     OwnedArray<ClipComponent> clips;
     std::unique_ptr<RecordingClipComponent> recordingClip;
 
     bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false, updateZoom = false;
 };
+
 
 //==============================================================================
 // Its function is to only resize the track row as a whole
@@ -110,7 +131,7 @@ private:
 class TrackRowComponent : public Component,
                           private TrackViewState::Listener {
 public:
-    TrackRowComponent(EditViewState&, te::Track::Ptr);
+    TrackRowComponent(EditViewState&, TimelineGrid& g, te::Track::Ptr);
     ~TrackRowComponent() override;
 
     void mouseDown(const MouseEvent& e) override;
@@ -148,7 +169,6 @@ private:
     ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::rightEdge};
 };
 
-
 //==============================================================================
 class TracksContainerComponent : public Component,
                                  private FlaggedAsyncUpdater,
@@ -174,6 +194,8 @@ private:
     OwnedArray<TrackRowComponent> trackRows;
     TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
     bool updateTracks = false, updateZoom = false;
+    Rectangle<int> gridSpace;
+    TimelineGrid grid {editViewState};
 
     void valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) override;
     void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) override;

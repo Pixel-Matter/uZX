@@ -3,9 +3,11 @@
 
 #include "../common/LookAndFeel.h"
 #include "../../models/EditUtilities.h"
+#include "../../controllers/App.h"
 
 namespace te = tracktion;
 using namespace std::literals;
+using namespace juce;
 
 namespace MoTool {
 
@@ -312,10 +314,84 @@ void TrackFooterComponent::buildPlugins() {
     resized();
 }
 
+
 //==============================================================================
-TrackBodyComponent::TrackBodyComponent(EditViewState& evs, te::Track::Ptr t)
-    : editViewState (evs)
-    , track (t)
+// TimelineGridTick
+//==============================================================================
+TimelineGrid::TimelineGrid(EditViewState& evs)
+    : editViewState(evs)
+{
+    editViewState.zoom.addListener(this);
+}
+
+TimelineGrid::~TimelineGrid() {
+    editViewState.zoom.removeListener(this);
+}
+
+std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::getTicks() {
+    if (ticksCacheValid)
+        return ticksCache;
+
+    auto newTicks = makeTicks();
+    ticksCache.swap(newTicks);
+    ticksCacheValid = true;
+    return ticksCache;
+}
+
+std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
+    std::vector<MoLookAndFeel::TimelineGridTick> ticks;
+
+    auto tcf = Helpers::getEditTimecodeFormat(editViewState.edit);
+    auto range = editViewState.zoom.getRange();
+    auto time = range.getStart();
+    auto endTime = range.getEnd();
+
+    // TODO iterate tempo setting along the whole time span and regular grid inbetween
+    const auto& ts = editViewState.edit.tempoSequence;
+    const auto& tempo = ts.getTempoAt(editViewState.edit.getTransport().getPosition());
+
+    auto snaps = tcf.getOptimalSnapTypes(tempo, editViewState.zoom.getTimePerPixel(), ts.isTripletsAtTime(time));
+    // for (auto& snap : snaps) {
+    //     DBG("Snap " << snap.getLevel()
+    //         << ": " << snap.getDescription(tempo, ts.isTripletsAtTime(time))
+    //         << ", tc " << snap.getTimecodeString(0s, ts, false)
+    //     );
+    // }
+
+    // prepare up to 3 levels of snap if available: finest then coarse and coarser
+    auto colorOffset = 3 - snaps.size();
+    while (time < endTime) {
+        size_t tickLevel = 0;
+        time = snaps[tickLevel].roundTimeUp(time, ts);
+        auto halfStep = snaps[tickLevel].getApproxIntervalTime(tempo, ts.isTripletsAtTime(time)) / 2.0;
+
+        for (size_t i = 1; i < snaps.size(); ++i) {
+            if (approximatelyEqual(time, snaps[i].roundTimeNearest(time, ts))) {
+                tickLevel = i;
+            }
+        }
+
+        auto x = roundToInt(editViewState.zoom.timeToX(time));
+        ticks.push_back({ x, colorOffset + tickLevel });
+
+        time = time + halfStep;
+    }
+    return ticks;
+}
+
+void TimelineGrid::zoomChanged() {
+    ticksCacheValid = false;
+}
+
+//==============================================================================
+// TrackBodyComponent
+//==============================================================================
+
+//==============================================================================
+TrackBodyComponent::TrackBodyComponent(EditViewState& evs, TimelineGrid& g, te::Track::Ptr t)
+    : editViewState(evs)
+    , track(t)
+    , grid(g)
 {
     track->state.addListener(this);
     editViewState.state.addListener(this);
@@ -343,42 +419,8 @@ void TrackBodyComponent::paint(Graphics& g) {
 
     g.fillAll(bgColor);
 
-    auto tcf = Helpers::getEditTimecodeFormat(track->edit);
-    auto time = editViewState.zoom.getStart();
-    auto endTime = editViewState.zoom.xToTime(getWidth());
-
-    // TODO make it a separate drawTimelineGrid function in LookAndFeel
-    // TODO make it a separate class that listens to zoom changes
-    // TODO iterate tempo setting along the whole time span and regular grid inbetween
-    const auto& ts = track->edit.tempoSequence;
-    const auto& tempo = ts.getTempoAt(editViewState.edit.getTransport().getPosition());
-
-    auto snaps = tcf.getOptimalSnapTypes(tempo, editViewState.zoom.getTimePerPixel(), ts.isTripletsAtTime(time));
-    // for (auto& snap : snaps) {
-    //     DBG("Snap " << snap.getLevel()
-    //         << ": " << snap.getDescription(tempo, ts.isTripletsAtTime(time))
-    //         << ", tc " << snap.getTimecodeString(0s, ts, false)
-    //     );
-    // }
-
-    // draw up to 3 levels of snap if available: finest then coarse and coarser
-    while (time < endTime) {
-        size_t tickLevel = 0;
-        time = snaps[tickLevel].roundTimeUp(time, ts);
-        auto halfStep = snaps[tickLevel].getApproxIntervalTime(tempo, ts.isTripletsAtTime(time)) / 2.0;
-
-        for (size_t i = 1; i < snaps.size(); ++i) {
-            if (approximatelyEqual(time, snaps[i].roundTimeNearest(time, ts))) {
-                tickLevel = i;
-            }
-        }
-
-        auto x = roundToInt(editViewState.zoom.timeToX(time));
-        g.setColour(Colors::Timeline::trackGridTickColors[tickLevel]);
-        g.drawVerticalLine(x, 0.0f, (float)getHeight());
-
-        time = time + halfStep;
-    }
+    auto ticks = grid.getTicks();
+    MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, getLocalBounds(), ticks);
 }
 
 void TrackBodyComponent::mouseDown(const MouseEvent&) {
@@ -500,9 +542,9 @@ void TrackBodyComponent::buildRecordClips() {
 }
 
 //==============================================================================
-TrackRowComponent::TrackRowComponent(EditViewState& evs, te::Track::Ptr t)
+TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Track::Ptr t)
     : header(evs, t)
-    , body(evs, t)
+    , body(evs, g, t)
     , footer(evs, t)
     , editViewState(evs)
     , track(t)
@@ -641,10 +683,14 @@ void TracksContainerComponent::resized() {
         t->resized();
         y += t->getTrackHeight() + trackGap;
     }
+
+    gridSpace = Rectangle<int>(headerWidth, y, getWidth(), getHeight());
 }
 
-void TracksContainerComponent::paint(Graphics& /*g*/) {
+void TracksContainerComponent::paint(Graphics& g) {
     // g.fillAll(Colors::Theme::backgroundAlt);
+    auto ticks = grid.getTicks();
+    MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, gridSpace, ticks);
 }
 
 void TracksContainerComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
@@ -697,27 +743,21 @@ void TracksContainerComponent::buildTracks() {
 
     for (auto t : getAllTracks(edit)) {
         TrackRowComponent* c = nullptr;
-
+        bool show = true;
         if (t->isMasterTrack()) {
-            if (editViewState.showMasterTrack)
-                c = new TrackRowComponent(editViewState, t);
+            show = editViewState.showMasterTrack;
         } else if (t->isTempoTrack()) {
-            if (editViewState.showGlobalTrack)
-                c = new TrackRowComponent(editViewState, t);
+            show = editViewState.showGlobalTrack;
         } else if (t->isMarkerTrack()) {
-            if (editViewState.showMarkerTrack)
-                c = new TrackRowComponent(editViewState, t);
+            show = editViewState.showMarkerTrack;
         } else if (t->isChordTrack()) {
-            if (editViewState.showChordTrack)
-                c = new TrackRowComponent(editViewState, t);
+            show = editViewState.showChordTrack;
         } else if (t->isArrangerTrack()) {
-            if (editViewState.showArrangerTrack)
-                c = new TrackRowComponent(editViewState, t);
-        } else {
-            c = new TrackRowComponent(editViewState, t);
+            show = editViewState.showArrangerTrack;
         }
 
-        if (c != nullptr) {
+        if (show) {
+            c = new TrackRowComponent(editViewState, grid, t);
             trackRows.add(c);
             c->addComponentListener(this);
             addAndMakeVisible(c);
@@ -732,6 +772,7 @@ void TracksContainerComponent::handleAsyncUpdate() {
     }
     if (compareAndReset(updateZoom)) {
         resized();
+        repaint();
     }
 }
 

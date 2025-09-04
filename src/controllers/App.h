@@ -36,6 +36,8 @@ public:
 
     static Target getTarget();
 
+    const MoLookAndFeel& getLookAndFeel() const { return lookAndFeel_; }
+
 private:
 static inline Target target_ = String::fromUTF8(ProjectInfo::projectName) == "μZXTuning" ? Target::Tuning : Target::Main;
     MoLookAndFeel lookAndFeel_;

@@ -21,8 +21,8 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
 
     addAndMakeVisible(playhead);
     addAndMakeVisible(ruler);
-    addAndMakeVisible(detailsPanel);
     addAndMakeVisible(trackViewport);
+    addAndMakeVisible(detailsPanel);
 }
 
 EditComponent::~EditComponent() {

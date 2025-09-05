@@ -43,6 +43,7 @@ set(GUI_SOURCES
     gui/common/Transport.cpp
 
     gui/timeline/PlayheadComponent.cpp
+    gui/timeline/TimelineGrid.cpp
     gui/timeline/PluginComponent.cpp
     gui/timeline/ClipComponents.cpp
     gui/timeline/TrackComponents.cpp

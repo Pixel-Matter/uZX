@@ -103,6 +103,7 @@ public:
     struct TimelineGridTick {
         int x;
         size_t level; // 0: finest, 1: coarse, 2: coarser
+        String label;
     };
 
     MoLookAndFeel() {
@@ -286,8 +287,10 @@ public:
     void drawTimelineGrid(juce::Graphics& g, const juce::Rectangle<int>& bounds,
                           const std::vector<TimelineGridTick>& ticks) const {
         for (const auto& tick : ticks) {
+            if (tick.x > bounds.getWidth())
+                continue;
             g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
-            g.drawVerticalLine(bounds.getX() + tick.x, (float)bounds.getY(), (float)bounds.getHeight());
+            g.drawVerticalLine(bounds.getX() + tick.x, (float)bounds.getY(), (float)bounds.getBottom());
         }
     }
 };

@@ -57,6 +57,8 @@ void ZoomViewState::setViewWidthPx(int w) noexcept {
     if (w <= 0)
         return;
     viewWidthPx.store(w);
+    markAndUpdate(updateZoom);
+    handleUpdateNowIfNeeded();
 }
 
 te::TimePosition ZoomViewState::getStart() const noexcept {

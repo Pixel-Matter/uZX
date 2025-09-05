@@ -2,9 +2,9 @@
 
 #include <JuceHeader.h>
 
-#include "Ruler.h"
 #include "ClipComponents.h"
 #include "PluginComponent.h"
+#include "TimelineGrid.h"
 
 #include "../../controllers/EditState.h"
 
@@ -66,24 +66,6 @@ private:
     bool updatePlugins = false;
 };
 
-//==============================================================================
-class TimelineGrid : private ZoomViewState::Listener {
-public:
-    TimelineGrid(EditViewState& evs);
-
-    ~TimelineGrid() override;
-
-    std::vector<MoLookAndFeel::TimelineGridTick> getTicks();
-
-private:
-    std::vector<MoLookAndFeel::TimelineGridTick> makeTicks();
-
-    void zoomChanged() override;
-
-    std::atomic<bool> ticksCacheValid { false };
-    std::vector<MoLookAndFeel::TimelineGridTick> ticksCache;
-    EditViewState& editViewState;
-};
 
 //==============================================================================
 class TrackBodyComponent : public Component,
@@ -178,7 +160,7 @@ class TracksContainerComponent : public Component,
                                  private ZoomViewState::Listener
 {
 public:
-    TracksContainerComponent(te::Edit& e, EditViewState& evs, RulerComponent& r);
+    TracksContainerComponent(te::Edit& e, EditViewState& evs, TimelineGrid& g);
 
     ~TracksContainerComponent() override;
 
@@ -190,12 +172,11 @@ public:
 private:
     te::Edit& edit;
     EditViewState& editViewState;
-    RulerComponent& ruler;
     OwnedArray<TrackRowComponent> trackRows;
     TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
     bool updateTracks = false, updateZoom = false;
-    Rectangle<int> gridSpace;
-    TimelineGrid grid {editViewState};
+    Rectangle<int> gridRect;
+    TimelineGrid& grid;
 
     void valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) override;
     void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) override;

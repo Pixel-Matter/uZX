@@ -5,6 +5,7 @@
 #include "../../controllers/EditState.h"
 #include "../common/LookAndFeel.h"
 #include "../../models/Timecode.h"
+#include "TimelineGrid.h"
 
 
 namespace MoTool {
@@ -16,10 +17,11 @@ class RulerComponent : public Component,
                        private ZoomViewState::Listener
 {
 public:
-    RulerComponent(te::Edit& ed, EditViewState& evs)
+    RulerComponent(te::Edit& ed, EditViewState& evs, TimelineGrid& g)
         : te::TempoSequence::Listener {ed.tempoSequence}
         , edit {ed}
         , editViewState {evs}
+        , grid {g}
     {
         edit.tempoSequence.addListener(this);
         editViewState.state.addListener(this);
@@ -38,93 +40,22 @@ public:
         repaint();
     }
 
+
     void paint(Graphics& g) override {
-        // DBG("RulerComponent::paint");
-        using namespace te::tempo;
-
-        double fps = timecodeFormat->getFPS();
-        constexpr float minPxPerDev = 6.0f;
-
-        auto& zoomState = editViewState.zoom;
+        auto ticks = grid.getTicks();
         auto bounds = getLocalBounds();
-        auto &lf = getLookAndFeel();
-        auto& ts = edit.tempoSequence;
-
-        const int width = bounds.getWidth();
-        const float height = (float)bounds.getHeight();
-        // auto beatStep = te::BeatDuration::fromBeats(1.0 / 26);  // Tiratok
-        auto beatStep = te::BeatDuration::fromBeats(1.0 / 2);  // max 64 subdivs in beat
-
-        g.setColour(lf.findColour(ResizableWindow::backgroundColourId));
-        g.fillRect(bounds);
+        g.fillAll(Colors::Theme::background);
         g.setFont(12.0f);
 
-        // DBG("RulerComponent::paint: " << zoomState.getRangeStart().inSeconds() << " - " << zoomState.getRangeEnd().inSeconds());
-
-        auto startBar = ts.toBarsAndBeats(zoomState.xToTime(0));
-        startBar = te::tempo::BarsAndBeats(startBar.bars, te::BeatDuration::fromBeats(startBar.getWholeBeats()), startBar.numerator);
-        const auto startTime = ts.toTime(startBar);
-
-        auto currentTime = startTime;
-        auto prevBarX = -20.0;
-        auto pixelsPerFrame = zoomState.durationToPixels(te::TimeDuration::fromSeconds(1.0 / fps));
-        auto pixelsPerFrameTick = pixelsPerFrame;
-        while (pixelsPerFrameTick < minPxPerDev) {
-            pixelsPerFrameTick *= 2;
-        }
-
-        const auto end = zoomState.xToTime(width);
-        while (currentTime <= end) {
-            auto barBeats = ts.toBarsAndBeats(currentTime);
-
-            auto nextDiv = BarsAndBeats { barBeats.bars, barBeats.beats + beatStep };
-            auto nextTime = ts.toTime(nextDiv);
-            auto pixelsPerDiv = zoomState.durationToPixels(nextTime - currentTime);
-            if (pixelsPerDiv < minPxPerDev) {
-                beatStep = beatStep * 2.0;
+        for (const auto& tick : ticks) {
+            if (tick.x > bounds.getWidth())
                 continue;
+            g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
+            auto y = (float) bounds.getHeight() - (float) bounds.getHeight() / (float) (3 - tick.level);
+            g.drawVerticalLine(tick.x, y, (float)bounds.getHeight());
+            if (tick.label.isNotEmpty()) {
+                g.drawSingleLineText(tick.label, tick.x + 2, 10, Justification::left);
             }
-
-            auto x = static_cast<float>(zoomState.timeToX(currentTime));
-
-            if (x >= 0) {
-                if (barBeats.beats < te::BeatDuration::fromBeats(0.001)) {
-                    g.setColour(Colors::Theme::borderLight);
-                    if (x - prevBarX >= 20) {
-                        // Bar line
-                        g.drawLine(x, 0, x, height, 1.0f);
-                        // Draw bar number
-                        String barText = String(barBeats.bars + 1);
-                        g.drawText(barText, Rectangle<float>(x + 2, -4, 20, 20), Justification::left);
-                        prevBarX = x;
-                    } else {
-                        // smaller bar line
-                        g.drawLine(x, 14, x, height, 1.0f);
-                    }
-                } else if (barBeats.getFractionalBeats() < te::BeatDuration::fromBeats(0.001)) {
-                    // Beat line
-                    g.setColour(Colors::Theme::border);
-                    g.drawLine(x, height * 0.5f, x, height, 1.0f);
-                } else {
-                    // subdiv line
-                    g.setColour(Colors::Theme::border);
-                    g.drawLine(x, height * 0.66f, x, height, 1.0f);
-                }
-            }
-            // draw frame ticks
-            if (approximatelyEqual(pixelsPerFrame, pixelsPerFrameTick)) {
-                auto frameTime = te::TimePosition::fromSeconds(std::ceil(currentTime.inSeconds() * fps) / fps);
-                auto frameX = zoomState.timeToX(frameTime);
-                auto nextX = zoomState.timeToX(nextTime);
-
-                g.setColour(Colors::Theme::border.withAlpha(0.5f));
-                for (float f = frameX; f < nextX; f += pixelsPerFrameTick) {
-                    if (f > 0) {
-                        g.drawLine(f, height * 0.75f, f, height, 1.0f);
-                    }
-                }
-            }
-            currentTime = nextTime;
         }
     }
 
@@ -154,15 +85,16 @@ public:
         }
     }
 
+private:
     void repositionTransportToX(int x) {
         auto pos = editViewState.zoom.xToTime(x);
         edit.getTransport().setPosition(pos);
     }
 
-private:
     te::Edit& edit;
     EditViewState& editViewState;
     juce::CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
+    TimelineGrid& grid;
 
     void timerCallback() override {
         repaint();

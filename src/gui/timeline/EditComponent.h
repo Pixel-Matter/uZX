@@ -6,6 +6,7 @@
 #include "DetailsPanelComponent.h"
 #include "Ruler.h"
 #include "PlayheadComponent.h"
+#include "TimelineGrid.h"
 
 namespace MoTool {
 
@@ -27,10 +28,11 @@ private:
 
     te::Edit& edit;
     EditViewState& editViewState;
+    TimelineGrid grid {editViewState};
 
     PlayheadComponent playhead {edit, editViewState};
-    RulerComponent ruler {edit, editViewState};
-    TracksContainerComponent tracksContainer {edit, editViewState, ruler};
+    RulerComponent ruler {edit, editViewState, grid};
+    TracksContainerComponent tracksContainer {edit, editViewState, grid};
     Viewport trackViewport;
     DetailsPanelComponent detailsPanel {editViewState};
 

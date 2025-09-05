@@ -105,6 +105,7 @@ public:
     CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,
                       drawWaveforms, showHeaders, showFooters, showMidiDevices, showWaveDevices;
     CachedValue<int> headersWidth;
+    static inline constexpr int footerWidth = 100;
 
     ValueTree state;
     ZoomViewState zoom;

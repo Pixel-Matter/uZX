@@ -1,24 +1,25 @@
 #pragma once
 
 #include <JuceHeader.h>
-// #include <common/Utilities.h>  // from Tracktion
 
 #include "../../controllers/EditState.h"
+#include "PluginDeviceUI.h"
 
 namespace MoTool {
-    
-//==============================================================================
-class PluginComponent : public TextButton {
-public:
-    PluginComponent (EditViewState&, te::Plugin::Ptr);
-    ~PluginComponent() override;
 
-    using TextButton::clicked;
-    void clicked(const ModifierKeys& modifiers) override;
+//==============================================================================
+class PluginPlaceholderComponent : public PluginDeviceUI
+{
+public:
+    PluginPlaceholderComponent(EditViewState&, te::Plugin::Ptr);
+    ~PluginPlaceholderComponent() override;
+
+    void resized() override;
 
 private:
-    EditViewState& editViewState;
-    te::Plugin::Ptr plugin;
+    TextButton button;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginPlaceholderComponent)
 };
 
 te::Plugin::Ptr showMenuAndCreatePlugin(te::Edit& edit);

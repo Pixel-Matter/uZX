@@ -47,7 +47,7 @@ void TrackDevicesComponent::setCurrentTrack(tracktion::Track* track) {
     if (currentTrack.get())
         currentTrack.get()->state.addListener(this);
 
-    markAndUpdate(updatePlugins);
+    markAndUpdate(updateDevices);
 }
 
 void TrackDevicesComponent::changeListenerCallback(juce::ChangeBroadcaster* source) {
@@ -61,35 +61,40 @@ void TrackDevicesComponent::changeListenerCallback(juce::ChangeBroadcaster* sour
     }
 }
 
+bool TrackDevicesComponent::shouldBeShown(tracktion::Plugin* p) {
+    // Skip VolumeAndPanPlugin only (we now show LevelMeterPlugin)
+    if (dynamic_cast<tracktion::VolumeAndPanPlugin*>(p))
+        return false;
+
+    return true;
+}
+
 void TrackDevicesComponent::buildPlugins() {
-    plugins.clear();
-    deviceUIs.clear();
+    devices.clear();
 
     contentComponent.removeAllChildren();
 
-    // Always add the "+" button first
-    contentComponent.addAndMakeVisible(addButton);
-
-    const int addButtonWidth = 32;
-    const int pluginWidth = 200;
+    const int addButtonWidth = 16;
     const int deviceUIWidth = 16;  // Width for device UIs like level meters
+    const int pluginWidth = 200;
     const int spacing = 8;
     const int yMargin = spacing;
     const int containerHeight = getHeight();
-    const int buttonHeight = containerHeight - (2 * yMargin);
+    const int deviceUIHeight = containerHeight - (2 * yMargin);
+    int xPos = spacing;
+
+    // Always add the "+" button first
+    contentComponent.addAndMakeVisible(addButton);
+    addButton.setBounds(xPos, yMargin, addButtonWidth, deviceUIHeight);
+    addButton.setEnabled(true);
+
+    // Position the "+" button and enable it
+    xPos += addButtonWidth + spacing;
 
     if (auto* track = currentTrack.get()) {
-        int xPos = spacing;
-
-        // Position the "+" button and enable it
-        addButton.setBounds(xPos, yMargin, addButtonWidth, buttonHeight);
-        addButton.setEnabled(true);
-        xPos += addButtonWidth + spacing;
-
-        // Get the plugin list for this track
         for (auto plugin : track->pluginList) {
             // Skip VolumeAndPanPlugin only (we now show LevelMeterPlugin)
-            if (dynamic_cast<tracktion::VolumeAndPanPlugin*>(plugin)) {
+            if (!shouldBeShown(plugin)) {
                 continue;
             }
 
@@ -97,29 +102,29 @@ void TrackDevicesComponent::buildPlugins() {
             if (PluginDeviceUI::hasCustomDeviceUI(plugin)) {
                 auto deviceUI = PluginDeviceUI::createForPlugin(editViewState, plugin);
                 if (deviceUI) {
-                    deviceUI->setBounds(xPos, yMargin, deviceUIWidth, buttonHeight);
+                    deviceUI->setBounds(xPos, yMargin, deviceUI->getWidth(), deviceUIHeight);
                     contentComponent.addAndMakeVisible(deviceUI.get());
-                    deviceUIs.add(deviceUI.release());
+                    devices.add(deviceUI.release());
                     xPos += deviceUIWidth + spacing;
                 }
+            } else if (auto deviceUI = plugin->createEditor(); deviceUI != nullptr) {
+                // If plugin has an editor, show it istead of a simple button
+                deviceUI->setBounds(xPos, yMargin, pluginWidth, deviceUIHeight);
+                contentComponent.addAndMakeVisible(deviceUI.get());
+                devices.add(deviceUI.release());
+                xPos += pluginWidth + spacing;
             } else {
                 // Regular plugin button
-                auto* p = new PluginComponent(editViewState, plugin);
-                p->setBounds(xPos, yMargin, pluginWidth, buttonHeight);
-                contentComponent.addAndMakeVisible(p);
-                plugins.add(p);
+                auto* c = new PluginPlaceholderComponent(editViewState, plugin);
+                c->setBounds(xPos, yMargin, pluginWidth, deviceUIHeight);
+                contentComponent.addAndMakeVisible(c);
+                devices.add(c);
                 xPos += pluginWidth + spacing;
             }
         }
-
-        // Update content size - width based on plugins + add button, height matches container
-        contentComponent.setSize(juce::jmax(320, xPos), containerHeight);
-    } else {
-        // If no track selected, still show the "+" button but disabled
-        addButton.setBounds(10, yMargin, addButtonWidth, buttonHeight);
-        addButton.setEnabled(false);
-        contentComponent.setSize(320, containerHeight);
     }
+    // Update content size - width based on plugins + add button, height matches container
+    contentComponent.setSize(juce::jmax(320, xPos), containerHeight);
 
     viewport.getViewedComponent()->repaint();
     repaint();
@@ -142,21 +147,21 @@ void TrackDevicesComponent::resized() {
 // ValueTree::Listener methods
 void TrackDevicesComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {
     if (c.hasType(tracktion::IDs::PLUGIN))
-        markAndUpdate(updatePlugins);
+        markAndUpdate(updateDevices);
 }
 
 void TrackDevicesComponent::valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) {
     if (c.hasType(tracktion::IDs::PLUGIN))
-        markAndUpdate(updatePlugins);
+        markAndUpdate(updateDevices);
 }
 
 void TrackDevicesComponent::valueTreeChildOrderChanged(juce::ValueTree&, int, int) {
-    markAndUpdate(updatePlugins);
+    markAndUpdate(updateDevices);
 }
 
 // FlaggedAsyncUpdater method
 void TrackDevicesComponent::handleAsyncUpdate() {
-    if (compareAndReset(updatePlugins))
+    if (compareAndReset(updateDevices))
         buildPlugins();
 }
 

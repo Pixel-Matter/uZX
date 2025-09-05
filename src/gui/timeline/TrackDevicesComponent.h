@@ -38,15 +38,15 @@ private:
     EditViewState& editViewState;
     tracktion::SafeSelectable<tracktion::Track> currentTrack;
 
+    static bool shouldBeShown(tracktion::Plugin* p);
     void buildPlugins();
 
     Viewport viewport;
     Component contentComponent;
 
     TextButton addButton {"+"};
-    OwnedArray<PluginComponent> plugins;
-    OwnedArray<PluginDeviceUI> deviceUIs;
-    bool updatePlugins = false;
+    OwnedArray<Component> devices;
+    bool updateDevices = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackDevicesComponent)
 };

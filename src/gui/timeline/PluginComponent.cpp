@@ -243,24 +243,23 @@ te::Plugin::Ptr showMenuAndCreatePlugin(te::Edit& edit) {
 }
 
 //==============================================================================
-PluginComponent::PluginComponent(EditViewState& evs, te::Plugin::Ptr p)
-    : editViewState(evs)
-    , plugin(p)
+// PluginComponent
+//==============================================================================
+PluginPlaceholderComponent::PluginPlaceholderComponent(EditViewState& evs, te::Plugin::Ptr p)
+    : PluginDeviceUI(evs, p)
 {
-    setButtonText(plugin->getName());
+    jassert(plugin != nullptr);
+    addAndMakeVisible(button);
+    button.setButtonText(plugin->getName());
+    button.onClick = [this] () {
+        pluginClicked(ModifierKeys::getCurrentModifiers());
+    };
 }
 
-PluginComponent::~PluginComponent() {}
+PluginPlaceholderComponent::~PluginPlaceholderComponent() {}
 
-void PluginComponent::clicked(const ModifierKeys& modifiers) {
-    editViewState.selectionManager.selectOnly(plugin.get());
-    if (modifiers.isPopupMenu()) {
-        PopupMenu m;
-        m.addItem("Delete", [this] { plugin->deleteFromParent(); });
-        m.showAt(this);
-    } else {
-        plugin->showWindowExplicitly();
-    }
+void PluginPlaceholderComponent::resized() {
+    button.setBounds(getLocalBounds());
 }
 
 }  // namespace MoTool

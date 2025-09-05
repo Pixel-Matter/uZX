@@ -37,37 +37,6 @@ private:
 };
 
 //==============================================================================
-class TrackFooterComponent : public Component,
-                             private FlaggedAsyncUpdater,
-                             private ValueTree::Listener {
-public:
-    TrackFooterComponent(EditViewState&, te::Track::Ptr);
-    ~TrackFooterComponent() override;
-
-    void paint(Graphics&) override;
-    void mouseDown(const MouseEvent&) override;
-    void resized() override;
-
-private:
-    void valueTreeChildAdded(ValueTree&, ValueTree&) override;
-    void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
-    void valueTreeChildOrderChanged(ValueTree&, int, int) override;
-
-    void handleAsyncUpdate() override;
-
-    void buildPlugins();
-
-    EditViewState& editViewState;
-    te::Track::Ptr track;
-
-    TextButton addButton {"+"};
-    OwnedArray<PluginComponent> plugins;
-
-    bool updatePlugins = false;
-};
-
-
-//==============================================================================
 class TrackBodyComponent : public Component,
                        private ValueTree::Listener,
                        private FlaggedAsyncUpdater,

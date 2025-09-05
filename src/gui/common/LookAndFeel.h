@@ -208,22 +208,33 @@ public:
         g.fillRoundedRectangle(bounds, cornerSize);
     }
 
-    // Timeline specific drawing methods
-    void drawTimelineBackground(juce::Graphics& g, const juce::Rectangle<int>& bounds) {
-        // NOTE example code, not actual implementation
-        g.fillAll(Colors::Theme::background);
+    void drawButtonText(Graphics& g,
+                        TextButton& button,
+                        bool /*shouldDrawButtonAsHighlighted*/,
+                        bool /*shouldDrawButtonAsDown*/) override {
+        Font font(getTextButtonFont(button, button.getHeight()));
+        g.setFont(font);
+        g.setColour(
+            button.findColour(button.getToggleState() ? TextButton::textColourOnId : TextButton::textColourOffId)
+                .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
 
-        // Draw vertical grid lines
-        g.setColour(Colors::Timeline::grid);
-        auto gridSize = 60; // pixels between grid lines
-        for (int x = 0; x < bounds.getWidth(); x += gridSize) {
-            g.drawVerticalLine(x, 0.0f, (float)bounds.getHeight());
-        }
-    }
+        const int yIndent = jmin(2, button.proportionOfHeight(0.3f));
+        const int cornerSize = 4.0f;
+        // const int cornerSize = jmin(button.getHeight(), button.getWidth()) / 2;
 
-    void drawTimelineCursor(juce::Graphics& g, float position, int height) {
-        g.setColour(Colors::Timeline::cursor);
-        g.drawVerticalLine((int)position, 0.0f, (float)height);
+        const int fontHeight = roundToInt(font.getHeight() * 0.6f);
+        const int leftIndent = jmin(fontHeight / 2, 2 + cornerSize / (button.isConnectedOnLeft() ? 4 : 2));
+        const int rightIndent = jmin(fontHeight / 2, 2 + cornerSize / (button.isConnectedOnRight() ? 4 : 2));
+        const int textWidth = button.getWidth() - leftIndent - rightIndent;
+
+        if (textWidth > 0)
+            g.drawFittedText(button.getButtonText(),
+                             leftIndent,
+                             yIndent,
+                             textWidth,
+                             button.getHeight() - yIndent * 2,
+                             Justification::centred,
+                             2);
     }
 
     void drawClip(juce::Graphics& g, const juce::Rectangle<int>& bounds,
@@ -282,6 +293,12 @@ public:
             static_cast<float>(hPad), static_cast<float>(vPad),
             static_cast<float>(width), static_cast<float>(height)
         });
+    }
+
+    // Timeline specific drawing methods
+    void drawTimelineCursor(juce::Graphics& g, float position, int height) {
+        g.setColour(Colors::Timeline::cursor);
+        g.drawVerticalLine((int)position, 0.0f, (float)height);
     }
 
     void drawTimelineGrid(juce::Graphics& g, const juce::Rectangle<int>& bounds,

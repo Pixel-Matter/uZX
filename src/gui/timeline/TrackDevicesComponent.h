@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "../../controllers/EditState.h"
 #include "PluginComponent.h"
+#include "PluginDeviceUI.h"
 #include <common/Utilities.h>  // from Tracktion, for FlaggedAsyncUpdater
 
 namespace MoTool {
@@ -24,12 +25,12 @@ public:
 
     // ChangeListener override
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
-    
+
     // ValueTree::Listener overrides
     void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) override;
     void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) override;
     void valueTreeChildOrderChanged(juce::ValueTree&, int, int) override;
-    
+
     // FlaggedAsyncUpdater override
     void handleAsyncUpdate() override;
 
@@ -40,10 +41,11 @@ private:
     void buildPlugins();
 
     Viewport viewport;
-    std::unique_ptr<juce::Component> contentComponent;
-    
-    juce::TextButton addButton {"+"};
-    juce::OwnedArray<PluginComponent> plugins;
+    Component contentComponent;
+
+    TextButton addButton {"+"};
+    OwnedArray<PluginComponent> plugins;
+    OwnedArray<PluginDeviceUI> deviceUIs;
     bool updatePlugins = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackDevicesComponent)

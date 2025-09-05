@@ -7,15 +7,13 @@ namespace MoTool {
 TrackDevicesComponent::TrackDevicesComponent(EditViewState& evs)
     : editViewState(evs)
 {
-    contentComponent = std::make_unique<juce::Component>();
-
-    viewport.setViewedComponent(contentComponent.get(), false);
+    viewport.setViewedComponent(&contentComponent, false);
     viewport.setScrollBarsShown(false, true);
 
     addAndMakeVisible(viewport);
 
     // Set up the add button - add it to contentComponent so it scrolls with plugins
-    contentComponent->addAndMakeVisible(addButton);
+    contentComponent.addAndMakeVisible(addButton);
 
     addButton.onClick = [this] {
         if (auto* track = currentTrack.get()) {
@@ -65,58 +63,62 @@ void TrackDevicesComponent::changeListenerCallback(juce::ChangeBroadcaster* sour
 
 void TrackDevicesComponent::buildPlugins() {
     plugins.clear();
+    deviceUIs.clear();
 
-    if (contentComponent)
-        contentComponent->removeAllChildren();
+    contentComponent.removeAllChildren();
 
     // Always add the "+" button first
-    contentComponent->addAndMakeVisible(addButton);
+    contentComponent.addAndMakeVisible(addButton);
+
+    const int addButtonWidth = 32;
+    const int pluginWidth = 200;
+    const int deviceUIWidth = 16;  // Width for device UIs like level meters
+    const int spacing = 8;
+    const int yMargin = spacing;
+    const int containerHeight = getHeight();
+    const int buttonHeight = containerHeight - (2 * yMargin);
 
     if (auto* track = currentTrack.get()) {
-        // Get the plugin list for this track
-        auto& pluginList = track->pluginList;
-        int xPos = 10;
-        const int addButtonWidth = 32;
-        const int pluginWidth = 200;
-        const int spacing = 10;
-        const int containerHeight = getHeight();
-        const int yMargin = 10;
-        const int buttonHeight = containerHeight - (2 * yMargin);
+        int xPos = spacing;
 
         // Position the "+" button and enable it
         addButton.setBounds(xPos, yMargin, addButtonWidth, buttonHeight);
         addButton.setEnabled(true);
         xPos += addButtonWidth + spacing;
 
-        for (auto plugin : pluginList) {
-            // Skip built-in plugins like VolumeAndPan and LevelMeter
-            if (dynamic_cast<tracktion::VolumeAndPanPlugin*>(plugin) ||
-                dynamic_cast<tracktion::LevelMeterPlugin*>(plugin)) {
+        // Get the plugin list for this track
+        for (auto plugin : track->pluginList) {
+            // Skip VolumeAndPanPlugin only (we now show LevelMeterPlugin)
+            if (dynamic_cast<tracktion::VolumeAndPanPlugin*>(plugin)) {
                 continue;
             }
 
-            auto* p = new PluginComponent(editViewState, plugin);
-            p->setBounds(xPos, yMargin, pluginWidth, buttonHeight);
-
-            contentComponent->addAndMakeVisible(p);
-            plugins.add(p);
-
-            xPos += pluginWidth + spacing;
+            // Check if plugin has a custom device UI
+            if (PluginDeviceUI::hasCustomDeviceUI(plugin)) {
+                auto deviceUI = PluginDeviceUI::createForPlugin(editViewState, plugin);
+                if (deviceUI) {
+                    deviceUI->setBounds(xPos, yMargin, deviceUIWidth, buttonHeight);
+                    contentComponent.addAndMakeVisible(deviceUI.get());
+                    deviceUIs.add(deviceUI.release());
+                    xPos += deviceUIWidth + spacing;
+                }
+            } else {
+                // Regular plugin button
+                auto* p = new PluginComponent(editViewState, plugin);
+                p->setBounds(xPos, yMargin, pluginWidth, buttonHeight);
+                contentComponent.addAndMakeVisible(p);
+                plugins.add(p);
+                xPos += pluginWidth + spacing;
+            }
         }
 
         // Update content size - width based on plugins + add button, height matches container
-        contentComponent->setSize(juce::jmax(320, xPos), containerHeight);
+        contentComponent.setSize(juce::jmax(320, xPos), containerHeight);
     } else {
         // If no track selected, still show the "+" button but disabled
-        const int addButtonWidth = 32;
-        const int containerHeight = getHeight();
-        const int yMargin = 10;
-        const int buttonHeight = containerHeight - (2 * yMargin);
-
         addButton.setBounds(10, yMargin, addButtonWidth, buttonHeight);
         addButton.setEnabled(false);
-
-        contentComponent->setSize(320, containerHeight);
+        contentComponent.setSize(320, containerHeight);
     }
 
     viewport.getViewedComponent()->repaint();

@@ -3,11 +3,13 @@
 #include <JuceHeader.h>
 
 #include "../../controllers/EditState.h"
-#include "PsgParamEditorComponent.h"
 
 namespace MoTool {
 
-class DetailsPanelComponent: public Component {
+class TimelineGrid;
+
+class DetailsPanelComponent: public Component,
+                             public juce::ChangeListener {
 public:
     DetailsPanelComponent(EditViewState& evs, TimelineGrid& g);
     ~DetailsPanelComponent() override;
@@ -15,9 +17,15 @@ public:
     void paint(Graphics& g) override;
     void resized() override;
 
+    // ChangeListener override
+    void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+
 private:
     EditViewState& editViewState;
-    PsgParamEditorComponent psgEditor;
+
+    TabbedComponent tabbedComponent {TabbedButtonBar::TabsAtLeft};
+
+    void updateTabVisibility();
 };
 
 }  // namespace MoTool

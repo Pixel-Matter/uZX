@@ -247,7 +247,7 @@ PluginComponent::PluginComponent(EditViewState& evs, te::Plugin::Ptr p)
     : editViewState(evs)
     , plugin(p)
 {
-    setButtonText(plugin->getShortName(1).substring(0, 1));
+    setButtonText(plugin->getName());
 }
 
 PluginComponent::~PluginComponent() {}

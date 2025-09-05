@@ -50,6 +50,7 @@ set(GUI_SOURCES
     gui/timeline/EditComponent.cpp
     gui/timeline/PsgClipComponent.cpp
     gui/timeline/PsgParamEditorComponent.cpp
+    gui/timeline/TrackDevicesComponent.cpp
     gui/timeline/Ruler.cpp
     gui/timeline/DetailsPanelComponent.cpp
 

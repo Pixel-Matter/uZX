@@ -125,7 +125,6 @@ public:
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
-    TrackFooterComponent footer;
 
 private:
     EditViewState& editViewState;

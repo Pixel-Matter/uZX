@@ -477,7 +477,6 @@ void TrackBodyComponent::buildRecordClips() {
 TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Track::Ptr t)
     : header(evs, t)
     , body(evs, g, t)
-    , footer(evs, t)
     , editViewState(evs)
     , track(t)
     , trackViewState(t->state, &editViewState.edit.getUndoManager())
@@ -485,7 +484,6 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Tr
 {
     addAndMakeVisible(header);
     addAndMakeVisible(body);
-    addAndMakeVisible(footer);
     addAndMakeVisible(resizer);
 
     trackViewState.addListener(this);
@@ -511,12 +509,10 @@ void TrackRowComponent::resized() {
     trackViewState.setTrackHeight(getHeight());
 
     const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
-    const int footerWidth = editViewState.showFooters ? editViewState.footerWidth : 0;
     auto r = getLocalBounds();
     resizer.setBounds(r.removeFromBottom(2));
 
     header.setBounds(r.removeFromLeft(headerWidth));
-    footer.setBounds(r.removeFromRight(footerWidth));
     body.setBounds(r);
 
     // do not remove
@@ -603,7 +599,6 @@ void TracksContainerComponent::resized() {
     // also get called on updated zoom
     const int trackGap = 0;
     const auto headerWidth = trackHeaderOverlay.getWidth();
-    const int footerWidth = editViewState.showFooters ? editViewState.footerWidth : 0;
     auto r = getLocalBounds();
     setSize(r.getWidth(), getHeight());
     r = getLocalBounds();
@@ -621,7 +616,7 @@ void TracksContainerComponent::resized() {
 
     gridRect = Rectangle<int>(
         headerWidth, y,
-        getWidth() - footerWidth - headerWidth,
+        getWidth() - headerWidth,
         getHeight() - y
     );
 }
@@ -635,7 +630,7 @@ void TracksContainerComponent::paint(Graphics& g) {
 
 void TracksContainerComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
     if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::showHeaders || i == IDs::showFooters) {
+        if (i == IDs::showHeaders) {
             markAndUpdate(updateZoom);
         } else if (i == IDs::drawWaveforms) {
             // TODO move to track body?

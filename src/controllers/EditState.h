@@ -18,7 +18,6 @@ namespace IDs
     DECLARE_ID(showWaveDevices)
     DECLARE_ID(drawWaveforms)
     DECLARE_ID(showHeaders)
-    DECLARE_ID(showFooters)
     DECLARE_ID(showArranger)
     DECLARE_ID(headersWidth)
 
@@ -103,9 +102,8 @@ public:
     EditViewState(te::Edit& e, te::SelectionManager& s);
 
     CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,
-                      drawWaveforms, showHeaders, showFooters, showMidiDevices, showWaveDevices;
+                      drawWaveforms, showHeaders, showMidiDevices, showWaveDevices;
     CachedValue<int> headersWidth;
-    static inline constexpr int footerWidth = 100;
 
     ValueTree state;
     ZoomViewState zoom;

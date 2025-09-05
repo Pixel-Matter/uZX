@@ -49,6 +49,8 @@ set(GUI_SOURCES
     gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
     gui/timeline/PsgClipComponent.cpp
+    gui/timeline/PsgParamEditorComponent.cpp
+    gui/timeline/Ruler.cpp
 
     gui/tuning/TuningPreview.cpp
 )

@@ -94,7 +94,7 @@ void PsgParamEditorComponent::zoomChanged() {
 
 void PsgParamEditorComponent::setCurrentClip(PsgClip* c) {
     currentClip = c;
-    if (currentClip != nullptr) {
+    if (currentClip.get() != nullptr) {
         paramList.emplace(*currentClip, currentParam);
     } else {
         paramList.reset();
@@ -202,7 +202,7 @@ int PsgParamEditorComponent::curvePoint(int /*index*/, float /*newCurve*/) {
 }
 
 juce::String PsgParamEditorComponent::getCurveName() {
-    if (currentClip != nullptr) {
+    if (currentClip.get() != nullptr) {
         return std::string(currentParam.getLabel());
     }
     return {};
@@ -213,11 +213,11 @@ int PsgParamEditorComponent::getCurveNameOffset() {
 }
 
 te::Selectable* PsgParamEditorComponent::getItem() {
-    return currentClip;
+    return currentClip.get();
 }
 
 bool PsgParamEditorComponent::isShowingCurve() const {
-    return currentClip != nullptr;
+    return currentClip.get() != nullptr;
 }
 
 void PsgParamEditorComponent::updateFromTrack() {
@@ -269,8 +269,6 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
     using namespace tracktion;
     CRASH_TRACER
 
-    paintGrid(g);
-
     if ((rightTime - leftTime) == TimeDuration())
         return;
 
@@ -278,6 +276,8 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
     if (numPoints == 0) {
         return;
     }
+
+    paintGrid(g);
 
     const bool isOver = isMouseOverOrDragging();
     // auto curveColour = getCurrentLineColour();
@@ -444,7 +444,7 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
 }
 
 bool PsgParamEditorComponent::hitTest(int x, int y) {
-    if (currentClip == nullptr)
+    if (currentClip.get() == nullptr)
         return false;
     auto py1 = valueToY(getValueAt(xToTime(x - 3.0f)));
     auto py2 = valueToY(getValueAt(xToTime(x + 3.0f)));

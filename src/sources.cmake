@@ -51,8 +51,10 @@ set(GUI_SOURCES
     gui/timeline/PsgClipComponent.cpp
     gui/timeline/PsgParamEditorComponent.cpp
     gui/timeline/Ruler.cpp
+    gui/timeline/DetailsPanelComponent.cpp
 
     gui/tuning/TuningPreview.cpp
+    gui/main/Footer.cpp
 )
 
 # Test-specific files to include in the test target

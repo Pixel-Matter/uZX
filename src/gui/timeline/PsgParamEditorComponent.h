@@ -78,18 +78,18 @@ public:
     juce::Colour getCurveNameTextBackgroundColour() const override;
     juce::Colour getPointOutlineColour() const override;
     double timeScale() const;
-    void paintGrid(juce::Graphics& g);
     void paint(juce::Graphics& g) override;
     bool hitTest(int x, int y) override;
 
 protected:
+    void paintGrid(juce::Graphics& g);
     void showBubbleForPointUnderMouse() override;
     void hideBubble() override;
 
 private:
     EditViewState& editViewState;
     TimelineGrid& grid;
-    PsgClip* currentClip = nullptr;
+    tracktion::SafeSelectable<PsgClip> currentClip;
     PsgParamType currentParam;
     std::optional<PsgParamList> paramList;
 

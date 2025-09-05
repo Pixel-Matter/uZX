@@ -113,7 +113,7 @@ void ZoomViewState::zoomHorizontally(double factor) {
     auto span = getViewSpan();
     auto newRange = span * scaleFactor;
 
-    if (auto newTimePerPixel = newRange / getViewWidthPx(); newTimePerPixel > 0.0005s && newTimePerPixel < 32s) {
+    if (auto newTimePerPixel = newRange / getViewWidthPx(); newTimePerPixel > 0.0005s && newTimePerPixel < 2s) {
         setRange({
             jmax(te::TimePosition(), pos - newRange / 2.0),
             newRange

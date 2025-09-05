@@ -3,6 +3,7 @@
 #include "EditComponent.h"
 #include "TrackComponents.h"
 #include "PlayheadComponent.h"
+#include "../../controllers/App.h"
 
 namespace MoTool {
 
@@ -49,8 +50,8 @@ void EditComponent::paint(Graphics& g) {
 
 void EditComponent::resized() {
     // also get called on updated zoom
-    const int rulerHeight = 32;
-    const int footerWidth = editViewState.showFooters ? 100 : 0;
+    const int rulerHeight = 24;
+    const int footerWidth = editViewState.showFooters ? editViewState.footerWidth : 0;
     const auto headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
     auto r = getLocalBounds();
 

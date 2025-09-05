@@ -4,11 +4,10 @@
 #include <memory>
 #include <optional>
 
+#include "TimelineGrid.h"
 #include "../../controllers/EditState.h"
 #include "../../models/PsgClip.h"
-#include "juce_core/juce_core.h"
-#include "juce_core/system/juce_PlatformDefs.h"
-#include "tracktion_engine/tracktion_engine.h"
+#include "../../controllers/App.h"
 
 
 namespace MoTool {
@@ -110,9 +109,10 @@ class PsgParamEditorComponent: public te::CurveEditor,
                                public ZoomViewState::Listener
 {
 public:
-    PsgParamEditorComponent(EditViewState& evs)
+    PsgParamEditorComponent(EditViewState& evs, TimelineGrid& g)
         : CurveEditor(evs.edit, evs.selectionManager)
         , editViewState(evs)
+        , grid(g)
     {
         setTimes(editViewState.zoom.getRange().getStart(), editViewState.zoom.getRange().getEnd());
         evs.zoom.addListener(this);
@@ -294,9 +294,19 @@ public:
         return (rightTime - leftTime).inSeconds() / getWidth();
     }
 
+    void paintGrid(juce::Graphics& g) {
+        g.fillAll(LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+
+        if (auto ticks = grid.getTicks(); !ticks.empty()) {
+            MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, getLocalBounds(), ticks);
+        }
+    }
+
     void paint(juce::Graphics& g) override {
         using namespace tracktion;
         CRASH_TRACER
+
+        paintGrid(g);
 
         if ((rightTime - leftTime) == TimeDuration())
             return;
@@ -309,8 +319,6 @@ public:
         const bool isOver = isMouseOverOrDragging();
         // auto curveColour = getCurrentLineColour();
         auto backgroundColour = getBackgroundColour();
-
-        g.fillAll(LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId));
 
         // draw the name of the curve
         if (isOver || isCurveSelected) {
@@ -509,6 +517,7 @@ protected:
 
 private:
     EditViewState& editViewState;
+    TimelineGrid& grid;
     PsgClip* currentClip = nullptr;
     PsgParamType currentParam;
     std::optional<PsgParamList> paramList;

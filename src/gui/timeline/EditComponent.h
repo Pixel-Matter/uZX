@@ -34,7 +34,7 @@ private:
     RulerComponent ruler {edit, editViewState, grid};
     TracksContainerComponent tracksContainer {edit, editViewState, grid};
     Viewport trackViewport;
-    DetailsPanelComponent detailsPanel {editViewState};
+    DetailsPanelComponent detailsPanel {editViewState, grid};
 
     bool updateSizes = false;
 };

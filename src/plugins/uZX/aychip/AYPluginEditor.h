@@ -171,9 +171,9 @@ public:
         addAndMakeVisible(chipParameter);
         addAndMakeVisible(clockParameter);
         addAndMakeVisible(channelsParameter);
-        addAndMakeVisible(stereoParameter);
         addAndMakeVisible(removeDCParameter);
         addAndMakeVisible(midiParameter);
+        addAndMakeVisible(stereoParameter);
     }
 
     bool allowWindowResizing() override {
@@ -189,9 +189,9 @@ public:
         chipParameter.setBounds(r.removeFromTop(itemHeight * 2));
         clockParameter.setBounds(r.removeFromTop(itemHeight * 2));
         channelsParameter.setBounds(r.removeFromTop(itemHeight * 2));
-        stereoParameter.setBounds(r.removeFromTop(itemHeight * 2));
         removeDCParameter.setBounds(r.removeFromTop(itemHeight));
         midiParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        stereoParameter.setBounds(r.removeFromTop(itemHeight * 2));
     }
 
     ComponentBoundsConstrainer* getBoundsConstrainer() override {
@@ -208,9 +208,10 @@ private:
     ComboParameterComponent<ChipType>       chipParameter     { plugin_.staticParams.chipTypeValue };
     SliderParameterComponent<double>        clockParameter    { plugin_.staticParams.clockValue };
     ComboParameterComponent<ChannelsLayout> channelsParameter { plugin_.staticParams.channelsLayoutValue };
-    SliderParameterComponent<double>        stereoParameter   { plugin_.staticParams.stereoWidthValue };
     ToggleParameterComponent                removeDCParameter { plugin_.staticParams.removeDCValue };
     SliderParameterComponent<int>           midiParameter     { plugin_.staticParams.baseMidiChannelValue };
+    // TODO can be automated
+    SliderParameterComponent<double>        stereoParameter   { plugin_.staticParams.stereoWidthValue };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginEditor)
 };

@@ -14,7 +14,7 @@ class LevelMeterUI : public PluginDeviceUI,
                      public juce::Timer
 {
 public:
-    LevelMeterUI(EditViewState& evs, tracktion::Plugin::Ptr plugin);
+    LevelMeterUI(EditViewState& evs, tracktion::LevelMeterPlugin* plugin);
     ~LevelMeterUI() override;
 
     // Component overrides
@@ -26,7 +26,7 @@ public:
 
 private:
     void updateLevels();
-    void drawLevelMeter(juce::Graphics& g, juce::Rectangle<int> area, float level, bool isMidi = false);
+    void drawLevelMeter(juce::Graphics& g, juce::Rectangle<int> area, int ledHeight, float level, bool isMidi = false);
     juce::Colour getLevelColour(float level, bool isMidi = false) const;
 
     // Audio level tracking
@@ -38,7 +38,8 @@ private:
     static constexpr int METER_WIDTH = 16;
     static constexpr int LED_HEIGHT = 2;
     static constexpr int LED_GAP = 1;
-    static constexpr int MIDI_SECTION_HEIGHT = 32;
+    static constexpr int MIDI_LED_HEIGHT = 2;
+    static constexpr int MIDI_SECTION_HEIGHT = 64;
 
     tracktion::LevelMeterPlugin* levelMeterPlugin = nullptr;
     tracktion::LevelMeasurer::Client measurerClient;

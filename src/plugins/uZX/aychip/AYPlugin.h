@@ -61,17 +61,17 @@ public:
         ChoiceParamAttachment<ChipType> chipTypeValue;
         RangedParamAttachment<double> clockValue;
         ChoiceParamAttachment<ChannelsLayout> channelsLayoutValue;
-        RangedParamAttachment<double> stereoWidthValue;
         ParamAttachment<bool> removeDCValue;
         RangedParamAttachment<int> baseMidiChannelValue;
+        RangedParamAttachment<double> stereoWidthValue;
 
         Params(te::Plugin& p)
             : chipTypeValue(p.state, p.getUndoManager())
             , clockValue(p.state, p.getUndoManager())
             , channelsLayoutValue(p.state, p.getUndoManager())
-            , stereoWidthValue(p.state, p.getUndoManager())
             , removeDCValue(p.state, p.getUndoManager())
             , baseMidiChannelValue(p.state, p.getUndoManager())
+            , stereoWidthValue(p.state, p.getUndoManager())
         {
             initialise();
         }

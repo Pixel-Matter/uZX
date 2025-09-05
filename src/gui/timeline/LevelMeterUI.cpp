@@ -4,24 +4,23 @@
 
 namespace MoTool {
 
-LevelMeterUI::LevelMeterUI(EditViewState& evs, tracktion::Plugin::Ptr p) : PluginDeviceUI(evs, p) {
-    levelMeterPlugin = dynamic_cast<tracktion::LevelMeterPlugin*>(p.get());
+LevelMeterUI::LevelMeterUI(EditViewState& evs, te::LevelMeterPlugin* p) : PluginDeviceUI(evs, p) {
+    levelMeterPlugin = p;
     jassert(levelMeterPlugin != nullptr);
 
     setSize(METER_WIDTH, 100);  // Height will be adjusted by parent
 
-    // Register as a client with the level measurer
-    if (levelMeterPlugin)
+    if (levelMeterPlugin) {
+        levelMeterPlugin->showMidiActivity = true;
         levelMeterPlugin->measurer.addClient(measurerClient);
+    }
 
-    // Start timer for level updates (30 FPS)
     startTimerHz(30);
 }
 
 LevelMeterUI::~LevelMeterUI() {
     stopTimer();
 
-    // Remove client from level measurer
     if (levelMeterPlugin)
         levelMeterPlugin->measurer.removeClient(measurerClient);
 }
@@ -58,45 +57,45 @@ void LevelMeterUI::updateLevels() {
 }
 
 void LevelMeterUI::paint(juce::Graphics& g) {
-    g.fillAll(juce::Colours::black);
+    // g.fillAll(juce::Colours::black);
 
     auto bounds = getLocalBounds();
 
     // MIDI activity section at top
     auto midiArea = bounds.removeFromTop(MIDI_SECTION_HEIGHT);
-    drawLevelMeter(g, midiArea, midiActivity, true);
+    drawLevelMeter(g, midiArea, MIDI_LED_HEIGHT, midiActivity, true);
 
-    bounds.removeFromTop(2);  // Small gap
+    bounds.removeFromTop(8);  // gap
 
     // Audio level meters at bottom
-    int halfWidth = bounds.getWidth() / 2;
+    int halfWidth = (bounds.getWidth() - LED_GAP) / 2;
 
     // Left channel
     auto leftArea = bounds.removeFromLeft(halfWidth);
-    drawLevelMeter(g, leftArea, leftLevel, false);
+    drawLevelMeter(g, leftArea, LED_HEIGHT, leftLevel, false);
 
     // Right channel
-    auto rightArea = bounds;
-    drawLevelMeter(g, rightArea, rightLevel, false);
+    auto rightArea = bounds.removeFromRight(halfWidth);
+    drawLevelMeter(g, rightArea, LED_HEIGHT, rightLevel, false);
 
     // Draw center separator line
-    g.setColour(juce::Colours::darkgrey);
-    g.drawVerticalLine(halfWidth, 0.0f, static_cast<float>(getHeight()));
+    // g.setColour(juce::Colours::darkgrey);
+    // g.drawVerticalLine(halfWidth, 0.0f, static_cast<float>(getHeight()));
 }
 
-void LevelMeterUI::drawLevelMeter(juce::Graphics& g, juce::Rectangle<int> area, float level, bool isMidi) {
+void LevelMeterUI::drawLevelMeter(juce::Graphics& g, juce::Rectangle<int> area, int ledHeight, float level, bool isMidi) {
     if (area.isEmpty())
         return;
 
     level = juce::jlimit(0.0f, 1.0f, level);
 
     int meterHeight = area.getHeight();
-    int ledCount = meterHeight / (LED_HEIGHT + LED_GAP);
+    int ledCount = meterHeight / (ledHeight + LED_GAP);
     int activeLeds = static_cast<int>(level * static_cast<float>(ledCount));
 
     for (int i = 0; i < ledCount; ++i) {
-        int y = area.getBottom() - (i + 1) * (LED_HEIGHT + LED_GAP);
-        juce::Rectangle<int> ledRect(area.getX(), y, area.getWidth(), LED_HEIGHT);
+        int y = area.getBottom() - (i + 1) * (ledHeight + LED_GAP);
+        juce::Rectangle<int> ledRect(area.getX(), y, area.getWidth(), ledHeight);
 
         bool isActive = i < activeLeds;
         float ledLevel = static_cast<float>(i) / static_cast<float>(ledCount);
@@ -119,13 +118,10 @@ juce::Colour LevelMeterUI::getLevelColour(float level, bool isMidi) const {
     } else {
         // Audio levels: green -> yellow -> red (like Ableton)
         if (level < 0.6f) {
-            // Green zone
             return juce::Colours::green;
         } else if (level < 0.85f) {
-            // Yellow zone
             return juce::Colours::yellow;
         } else {
-            // Red zone (clipping)
             return juce::Colours::red;
         }
     }

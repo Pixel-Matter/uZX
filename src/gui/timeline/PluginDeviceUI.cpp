@@ -1,65 +1,53 @@
 #include "PluginDeviceUI.h"
+
 #include "LevelMeterUI.h"
 
 namespace MoTool {
 
-PluginDeviceUI::PluginDeviceUI(EditViewState& evs, tracktion::Plugin::Ptr p)
-    : editViewState(evs), plugin(p)
-{
-}
+PluginDeviceUI::PluginDeviceUI(EditViewState& evs, tracktion::Plugin::Ptr p) : editViewState(evs), plugin(p) {}
 
-PluginDeviceUI::~PluginDeviceUI()
-{
-}
+PluginDeviceUI::~PluginDeviceUI() {}
 
-void PluginDeviceUI::mouseDown(const juce::MouseEvent& e)
-{
+void PluginDeviceUI::mouseDown(const juce::MouseEvent& e) {
     pluginClicked(e.mods);
 }
 
-void PluginDeviceUI::pluginClicked(const juce::ModifierKeys& modifiers)
-{
-    if (plugin)
-    {
+void PluginDeviceUI::pluginClicked(const juce::ModifierKeys& modifiers) {
+    if (plugin) {
         editViewState.selectionManager.selectOnly(plugin.get());
-        
-        if (modifiers.isPopupMenu())
-        {
+
+        if (modifiers.isPopupMenu()) {
             juce::PopupMenu m;
             m.addItem("Delete", [this] { plugin->deleteFromParent(); });
             m.showAt(this);
-        }
-        else
-        {
+        } else {
             plugin->showWindowExplicitly();
         }
     }
 }
 
-std::unique_ptr<PluginDeviceUI> PluginDeviceUI::createForPlugin(EditViewState& evs, tracktion::Plugin::Ptr plugin)
-{
+std::unique_ptr<PluginDeviceUI> PluginDeviceUI::createForPlugin(EditViewState& evs, tracktion::Plugin::Ptr plugin) {
     if (!plugin)
         return nullptr;
-        
+
     // Check for specific plugin types that need custom UIs
-    if (dynamic_cast<tracktion::LevelMeterPlugin*>(plugin.get()))
-    {
-        return std::make_unique<LevelMeterUI>(evs, plugin);
+    if (dynamic_cast<tracktion::LevelMeterPlugin*>(plugin.get())) {
+        return std::make_unique<LevelMeterUI>(evs, dynamic_cast<tracktion::LevelMeterPlugin*>(plugin.get()));
     }
-    
+
+    // TODO check for Plugin getEditor()
     // Default: no custom UI
     return nullptr;
 }
 
-bool PluginDeviceUI::hasCustomDeviceUI(tracktion::Plugin::Ptr plugin)
-{
+bool PluginDeviceUI::hasCustomDeviceUI(tracktion::Plugin::Ptr plugin) {
     if (!plugin)
         return false;
-        
+
     // Check for plugins that have custom device UIs
     if (dynamic_cast<tracktion::LevelMeterPlugin*>(plugin.get()))
         return true;
-        
+
     return false;
 }
 

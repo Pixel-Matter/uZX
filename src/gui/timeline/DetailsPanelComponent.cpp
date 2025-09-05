@@ -10,8 +10,8 @@ namespace MoTool {
 DetailsPanelComponent::DetailsPanelComponent(EditViewState& evs, TimelineGrid& g)
     : editViewState(evs)
 {
-    tabbedComponent.addTab("Parameters", Colors::Theme::backgroundAlt, new PsgParamEditorComponent(evs, g), true);
-    tabbedComponent.addTab("Devices", Colors::Theme::backgroundAlt, new TrackDevicesComponent(evs), true);
+    tabbedComponent.addTab("Clip Parameters", Colors::Theme::backgroundAlt, new PsgParamEditorComponent(evs, g), true);
+    tabbedComponent.addTab("Track Devices", Colors::Theme::backgroundAlt, new TrackDevicesComponent(evs), true);
 
     addAndMakeVisible(tabbedComponent);
 
@@ -43,15 +43,18 @@ void DetailsPanelComponent::changeListenerCallback(juce::ChangeBroadcaster* sour
 }
 
 void DetailsPanelComponent::updateTabVisibility() {
-    bool hasPsgClipSelected = editViewState.selectionManager.getFirstItemOfType<PsgClip>() != nullptr;
-    bool hasTrackSelected = editViewState.selectionManager.getFirstItemOfType<tracktion::Track>() != nullptr;
+    auto* psgClip = editViewState.selectionManager.getFirstItemOfType<PsgClip>();
+    auto* track = editViewState.selectionManager.getFirstItemOfType<tracktion::Track>();
 
-    if (hasPsgClipSelected) {
+    if (psgClip) {
+        auto parametersTabName = psgClip->getName().isNotEmpty() ? psgClip->getName() : "Clip Parameters";
+        tabbedComponent.setTabName(0, parametersTabName);
         tabbedComponent.setCurrentTabIndex(0, true);
-    } else if (hasTrackSelected) {
+    } else if (track) {
+        auto devicesTabName = track->getName().isNotEmpty() ? track->getName() : "Track Devices";
+        tabbedComponent.setTabName(1, devicesTabName);
         tabbedComponent.setCurrentTabIndex(1, true);
     }
-    // If nothing is selected, keep the current tab visible
 }
 
 }  // namespace MoTool

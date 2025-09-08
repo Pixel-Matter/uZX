@@ -17,14 +17,30 @@ class PluginTreeBase {
 public:
     virtual ~PluginTreeBase() = default;
     virtual String getUniqueName() const = 0;
+    virtual String getName() const = 0;
 
     void addSubItem (PluginTreeBase* itm)   { subitems.add (itm);       }
     int getNumSubItems()                    { return subitems.size();   }
     PluginTreeBase* getSubItem (int idx)    { return subitems[idx];     }
 
+    void display(int indent = 0) const;
+
 private:
     OwnedArray<PluginTreeBase> subitems;
 };
+
+void PluginTreeBase::display(int indent) const {
+    for (int i = 0; i < subitems.size(); ++i) {
+        auto* itm = subitems[i];
+        String s = " ";
+        for (int j = 0; j < indent; ++j)
+            s += "  ";
+        s += itm->getName();
+        DBG(s);
+
+        itm->display(indent + 1);
+    }
+}
 
 //==============================================================================
 class PluginTreeItem : public PluginTreeBase {
@@ -39,6 +55,10 @@ public:
             return desc.fileOrIdentifier;
 
         return desc.createIdentifierString();
+    }
+
+    String getName() const override {
+        return desc.name;
     }
 
     PluginDescription desc;
@@ -56,10 +76,17 @@ public:
 
     String getUniqueName() const override           { return name; }
 
+    String getName() const override {
+        return hasDividerAbove? ("--- " + name) : name;
+    }
+
     String name;
+    bool hasDividerAbove = false;
+
 
 private:
     void populateFrom(KnownPluginList::PluginTree&);
+    void createUZXItems(int& num, te::Plugin::Type);
     void createBuiltInItems(int& num, te::Plugin::Type);
 
     JUCE_LEAK_DETECTOR(PluginTreeGroup)
@@ -93,54 +120,61 @@ te::Plugin::Ptr PluginTreeItem::create(te::Edit& ed) {
 }
 
 //==============================================================================
-PluginTreeGroup::PluginTreeGroup (te::Edit& edit, KnownPluginList::PluginTree& tree, te::Plugin::Type types)
-    : name ("Plugins")
-{
+PluginTreeGroup::PluginTreeGroup(te::Edit& edit, KnownPluginList::PluginTree& tree, te::Plugin::Type types)
+    : name("Plugins") {
     {
         int num = 1;
 
-        auto builtinFolder = new PluginTreeGroup (TRANS("Builtin Plugins"));
-        addSubItem (builtinFolder);
-        builtinFolder->createBuiltInItems (num, types);
+        auto uZXFolder = new PluginTreeGroup(TRANS("uZX Plugins"));
+        addSubItem(uZXFolder);
+        uZXFolder->createUZXItems(num, types);
+
+        auto builtinFolder = new PluginTreeGroup(TRANS("Builtin Plugins"));
+        addSubItem(builtinFolder);
+        builtinFolder->createBuiltInItems(num, types);
     }
 
     {
-        auto racksFolder = new PluginTreeGroup (TRANS("Plugin Racks"));
-        addSubItem (racksFolder);
+        auto racksFolder = new PluginTreeGroup(TRANS("Plugin Racks"));
+        addSubItem(racksFolder);
 
-        racksFolder->addSubItem (new PluginTreeItem (String (te::RackType::getRackPresetPrefix()) + "-1",
-                                                     TRANS("Create New Empty Rack"),
-                                                     te::RackInstance::xmlTypeName, false, false));
+        racksFolder->addSubItem(new PluginTreeItem(String(te::RackType::getRackPresetPrefix()) + "-1",
+                                                   TRANS("Create New Empty Rack"),
+                                                   te::RackInstance::xmlTypeName,
+                                                   false,
+                                                   false));
 
         int i = 0;
         for (auto rf : edit.getRackList().getTypes())
-            racksFolder->addSubItem (new PluginTreeItem ("RACK__" + String (i++), rf->rackName,
-                                                         te::RackInstance::xmlTypeName, false, false));
+            racksFolder->addSubItem(
+                new PluginTreeItem("RACK__" + String(i++), rf->rackName, te::RackInstance::xmlTypeName, false, false));
     }
 
-    populateFrom (tree);
+    populateFrom(tree);
+
+    display();
 }
 
-PluginTreeGroup::PluginTreeGroup(const String& s)
-    : name (s)
-{
-    jassert (name.isNotEmpty());
+PluginTreeGroup::PluginTreeGroup(const String& s) : name(s) {
+    jassert(name.isNotEmpty());
 }
 
 void PluginTreeGroup::populateFrom(KnownPluginList::PluginTree& tree) {
-    for (auto subTree : tree.subFolders)
-    {
-        if (subTree->plugins.size() > 0 || subTree->subFolders.size() > 0)
-        {
-            auto fs = new PluginTreeGroup (subTree->folder);
-            addSubItem (fs);
+    bool first = true;
+    for (auto subTree : tree.subFolders) {
+        if (subTree->plugins.size() > 0 || subTree->subFolders.size() > 0) {
+            auto fs = new PluginTreeGroup(subTree->folder);
+            fs->hasDividerAbove = first;
+            addSubItem(fs);
+            first = false;
 
-            fs->populateFrom (*subTree);
+            fs->populateFrom(*subTree);
         }
     }
 
-    for (const auto& pd : tree.plugins)
-        addSubItem (new PluginTreeItem (pd));
+    for (const auto& pd : tree.plugins) {
+        addSubItem(new PluginTreeItem(pd));
+    }
 }
 
 
@@ -151,12 +185,8 @@ void addInternalPlugin(PluginTreeBase& item, int& num, bool synth = false) {
                                        FilterClass::xmlTypeName, synth, false));
 }
 
+// TODO split to categories: synths, audio effects, midi effects, utilities
 void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
-    addInternalPlugin<uZX::AYChipPlugin>(*this, num);
-    addInternalPlugin<uZX::ChipInstrumentPlugin>(*this, num);
-    addInternalPlugin<uZX::NotesToPsgPlugin>(*this, num);
-    // addInternalPlugin<te::VolumeAndPanPlugin>(*this, num);
-    // addInternalPlugin<te::LevelMeterPlugin>(*this, num);
     addInternalPlugin<te::EqualiserPlugin>(*this, num);
     addInternalPlugin<te::ReverbPlugin>(*this, num);
     addInternalPlugin<te::DelayPlugin>(*this, num);
@@ -170,8 +200,10 @@ void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
     addInternalPlugin<te::PatchBayPlugin>(*this, num);
     // addInternalPlugin<te::AuxSendPlugin>(*this, num);
     // addInternalPlugin<te::AuxReturnPlugin>(*this, num);
-    addInternalPlugin<te::TextPlugin>(*this, num);
+    // addInternalPlugin<te::TextPlugin>(*this, num);
     // addInternalPlugin<te::FreezePointPlugin>(*this, num);
+    // addInternalPlugin<te::VolumeAndPanPlugin>(*this, num);
+    // addInternalPlugin<te::LevelMeterPlugin>(*this, num);
 
    #if TRACKTION_ENABLE_REWIRE
     addInternalPlugin<te::ReWirePlugin> (*this, num, true);
@@ -191,29 +223,41 @@ void PluginTreeGroup::createBuiltInItems(int& num, te::Plugin::Type types) {
    #endif
 }
 
+void PluginTreeGroup::createUZXItems(int& num, te::Plugin::Type /*types*/) {
+    addInternalPlugin<uZX::AYChipPlugin>(*this, num);
+    addInternalPlugin<uZX::ChipInstrumentPlugin>(*this, num);
+    addInternalPlugin<uZX::NotesToPsgPlugin>(*this, num);
+}
+
 //==============================================================================
-class PluginMenu : public PopupMenu {
+class PluginMenu : public PopupMenu
+{
 public:
     PluginMenu() = default;
 
     PluginMenu(PluginTreeGroup& node) {
         for (int i = 0; i < node.getNumSubItems(); ++i)
-            if (auto subNode = dynamic_cast<PluginTreeGroup*> (node.getSubItem (i)))
-                addSubMenu (subNode->name, PluginMenu (*subNode), true);
+            if (auto subNode = dynamic_cast<PluginTreeGroup*>(node.getSubItem(i))) {
+                if (subNode->hasDividerAbove) {
+                    addSeparator();
+                }
+                addSubMenu(subNode->name, PluginMenu(*subNode), true);
+            }
 
         for (int i = 0; i < node.getNumSubItems(); ++i)
-            if (auto subType = dynamic_cast<PluginTreeItem*> (node.getSubItem (i)))
-                addItem (subType->getUniqueName().hashCode(), subType->desc.name, true, false);
+            if (auto subType = dynamic_cast<PluginTreeItem*>(node.getSubItem(i))) {
+                addItem(subType->getUniqueName().hashCode(), subType->desc.name, true, false);
+            }
     }
 
     static PluginTreeItem* findType(PluginTreeGroup& node, int hash) {
         for (int i = 0; i < node.getNumSubItems(); ++i)
-            if (auto subNode = dynamic_cast<PluginTreeGroup*>(node.getSubItem (i)))
+            if (auto subNode = dynamic_cast<PluginTreeGroup*>(node.getSubItem(i)))
                 if (auto* t = findType(*subNode, hash))
                     return t;
 
         for (int i = 0; i < node.getNumSubItems(); ++i)
-            if (auto t = dynamic_cast<PluginTreeItem*>(node.getSubItem (i)))
+            if (auto t = dynamic_cast<PluginTreeItem*>(node.getSubItem(i)))
                 if (t->getUniqueName().hashCode() == hash)
                     return t;
 
@@ -254,6 +298,7 @@ PluginPlaceholderComponent::PluginPlaceholderComponent(EditViewState& evs, te::P
     button.onClick = [this] () {
         pluginClicked(ModifierKeys::getCurrentModifiers());
     };
+    setSize(200, 400);
 }
 
 PluginPlaceholderComponent::~PluginPlaceholderComponent() {}

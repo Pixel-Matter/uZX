@@ -37,6 +37,7 @@ public:
     static const char* getPluginName()                  { return "μZX AY Emulator"; }
     static const char* xmlTypeName;
 
+    String getVendor() override                   { return "PixelMatter"; }
     String getName() const override               { return String::fromUTF8(getPluginName()); }
     String getPluginType() override               { return xmlTypeName; }
     String getShortName (int) override            { return "AY"; }

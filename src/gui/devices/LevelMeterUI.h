@@ -14,7 +14,7 @@ class LevelMeterUI : public PluginDeviceUI,
                      public juce::Timer
 {
 public:
-    LevelMeterUI(EditViewState& evs, tracktion::LevelMeterPlugin* plugin);
+    LevelMeterUI(EditViewState& evs, tracktion::Plugin::Ptr plugin);
     ~LevelMeterUI() override;
 
     // Component overrides
@@ -41,7 +41,6 @@ private:
     static constexpr int MIDI_LED_HEIGHT = 2;
     static constexpr int MIDI_SECTION_HEIGHT = 64;
 
-    tracktion::LevelMeterPlugin* levelMeterPlugin = nullptr;
     tracktion::LevelMeasurer::Client measurerClient;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LevelMeterUI)

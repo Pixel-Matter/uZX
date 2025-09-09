@@ -1,11 +1,15 @@
 #include "LevelMeterUI.h"
 
 #include "../common/LookAndFeel.h"
+#include "PluginUIAdapterRegistry.h"
+
 
 namespace MoTool {
 
-LevelMeterUI::LevelMeterUI(EditViewState& evs, te::LevelMeterPlugin* p) : PluginDeviceUI(evs, p) {
-    levelMeterPlugin = p;
+LevelMeterUI::LevelMeterUI(EditViewState& evs, tracktion::Plugin::Ptr p)
+    : PluginDeviceUI(evs, p)
+{
+    te::LevelMeterPlugin* levelMeterPlugin = dynamic_cast<te::LevelMeterPlugin*>(plugin.get());
     jassert(levelMeterPlugin != nullptr);
 
     setSize(METER_WIDTH, 100);  // Height will be adjusted by parent
@@ -21,6 +25,7 @@ LevelMeterUI::LevelMeterUI(EditViewState& evs, te::LevelMeterPlugin* p) : Plugin
 LevelMeterUI::~LevelMeterUI() {
     stopTimer();
 
+    te::LevelMeterPlugin* levelMeterPlugin = dynamic_cast<te::LevelMeterPlugin*>(plugin.get());
     if (levelMeterPlugin)
         levelMeterPlugin->measurer.removeClient(measurerClient);
 }
@@ -35,9 +40,6 @@ void LevelMeterUI::timerCallback() {
 }
 
 void LevelMeterUI::updateLevels() {
-    if (!levelMeterPlugin)
-        return;
-
     // Get real audio levels from the level measurer using the client API
     auto leftDbTime = measurerClient.getAndClearAudioLevel(0);
     auto rightDbTime = measurerClient.getAndClearAudioLevel(1);
@@ -126,5 +128,8 @@ juce::Colour LevelMeterUI::getLevelColour(float level, bool isMidi) const {
         }
     }
 }
+
+// Auto-register tracktion plugin adapters
+REGISTER_PLUGIN_UI_ADAPTER(te::LevelMeterPlugin, LevelMeterUI, true, false)
 
 }  // namespace MoTool

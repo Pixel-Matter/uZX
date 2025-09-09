@@ -219,6 +219,7 @@ public:
 
     using tracktion::Plugin::Plugin;
 
+    String getVendor() override { return "PixelMatter"; }
     double getLatencySeconds() override { return 0.0; }
     int getNumOutputChannelsGivenInputs(int) override { return 0; }
     void getChannelNames(juce::StringArray*, juce::StringArray*) override {}

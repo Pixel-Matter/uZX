@@ -13,7 +13,8 @@ namespace MoTool {
 class PluginDeviceUI: public juce::Component
 {
 public:
-    PluginDeviceUI(EditViewState& evs, tracktion::Plugin::Ptr plugin);
+    PluginDeviceUI(tracktion::Plugin::Ptr plugin);
+    // PluginDeviceUI(EditViewState& evs, tracktion::Plugin::Ptr plugin);
     ~PluginDeviceUI() override;
 
     // Get the plugin this UI represents
@@ -22,7 +23,9 @@ public:
     // Component overrides
     // void mouseDown(const juce::MouseEvent& e) override;
 
-    // These methods now delegate to the adapter registry for backward compatibility
+    // // Factory method to create appropriate UI for a plugin
+    // static std::unique_ptr<PluginDeviceUI> createForPlugin(EditViewState& evs, tracktion::Plugin::Ptr plugin);
+
     static bool hasCustomDeviceUI(tracktion::Plugin::Ptr plugin);
     static bool canHasPlusButtonAfter(tracktion::Plugin::Ptr plugin);
 
@@ -36,19 +39,6 @@ protected:
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginDeviceUI)
 };
-
-/**
-* Template for creating specialized PluginDeviceUI for specific plugin types.
-* Specialize this template for each plugin type that requires a custom UI.
-*/
-template <class Plugin>
-struct PluginDeviceUIFactory {
-    static std::unique_ptr<PluginDeviceUI> create(EditViewState& /*evs*/, Plugin::Ptr /*plugin*/) {
-        // TODO create generic UI with plugin params and editor launcher button?
-        return {};
-    }
-};
-
 
 /**
  * DeviceContainer wraps a PluginDeviceUI to provide a title bar with plugin name,

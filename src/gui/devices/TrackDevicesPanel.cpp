@@ -2,6 +2,8 @@
 
 #include "../common/LookAndFeel.h"
 #include "PluginComponent.h"
+#include "DevicePluginUIAdapter.h"
+#include "TracktionPluginAdapters.h"
 
 namespace MoTool {
 
@@ -114,43 +116,30 @@ void TrackDevicesPanel::buildPlugins() {
             continue;
         }
 
-        // Check if plugin has a custom device UI
-        // TODO levelmeterplugin is a special case, do not place "+"" button after it
-        bool canHasPlusButtonAfter = PluginDeviceUI::canHasPlusButtonAfter(plugin);
-        // if (dynamic_cast<tracktion::LevelMeterPlugin*>(plugin)) {
-        //     if (auto levelUI = PluginDeviceUI::createForPlugin(editViewState, plugin); levelUI != nullptr) {
-        //         levelUI->setBounds(area.removeFromLeft(levelUI->getWidth()));
-        //         content.addAndMakeVisible(levelUI.get());
-        //         devices.add(levelUI.release());
-        //         area.removeFromLeft(spacing);
-        //     }
-        // } else {
-            // TODO no DeviceUIFrame for hasCustomDeviceUI == true
-            // if (PluginDeviceUI::hasCustomDeviceUI(plugin)) {
-            //     auto customUI = PluginDeviceUI::createForPlugin(editViewState, plugin);
-            //     if (customUI) {
-            //         customUI->setBounds(area.removeFromLeft(customUI->getWidth()));
-            //         content.addAndMakeVisible(customUI.get());
-            //         devices.add(customUI.release());
-            //     }
-            // }
-            // else if (auto editor = plugin->createEditor();
-            //            editor != nullptr && dynamic_cast<PluginDeviceUI*>(plugin)) {
-            //     // If plugin has an editor AND editor is PluginDeviceUI, show it istead of a simple button
-            //     // TODO maybe do not use Plugin::EditorComponent as a base class for device UIs
-            //     editor->setBounds(area.removeFromLeft(editor->getWidth()));
-            //     content.addAndMakeVisible(editor.get());
-            //     devices.add(editor.release());
-            // }
-            // else {
-                // Placeholder plugin button
+        // Try to create device UI using adapter registry
+        auto& registry = PluginUIAdapterRegistry::getInstance();
+        bool canHasPlusButtonAfter = registry.canHasPlusButtonAfter(plugin);
+        
+        if (auto deviceUI = registry.createDeviceUI(editViewState, plugin)) {
+            // Custom device UI from registry
+            deviceUI->setBounds(area.removeFromLeft(deviceUI->getWidth()));
+            content.addAndMakeVisible(deviceUI.get());
+            devices.add(deviceUI.release());
+        } else {
+            // Fallback: create generic UI for unknown plugins
+            auto genericUI = TracktionPluginUIFactory::createGenericUI(editViewState, plugin);
+            if (genericUI) {
+                genericUI->setBounds(area.removeFromLeft(genericUI->getWidth()));
+                content.addAndMakeVisible(genericUI.get());
+                devices.add(genericUI.release());
+            } else {
+                // Ultimate fallback: placeholder
                 auto* placeholder = new PluginPlaceholderComponent(editViewState, plugin);
                 placeholder->setBounds(area.removeFromLeft(placeholder->getWidth()));
                 content.addAndMakeVisible(placeholder);
                 devices.add(placeholder);
-            // }
-        // }
-    // }
+            }
+        }
         area.removeFromLeft(spacing);
         if (canHasPlusButtonAfter) {
             createAndAddNewPluginButton(index, area);

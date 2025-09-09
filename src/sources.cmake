@@ -44,15 +44,19 @@ set(GUI_SOURCES
 
     gui/timeline/PlayheadComponent.cpp
     gui/timeline/TimelineGrid.cpp
-    gui/timeline/PluginComponent.cpp
+    gui/devices/PluginComponent.cpp
+    gui/devices/PluginTree.cpp
     gui/timeline/ClipComponents.cpp
     gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
     gui/timeline/PsgClipComponent.cpp
     gui/timeline/PsgParamEditorComponent.cpp
-    gui/timeline/TrackDevicesComponent.cpp
-    gui/timeline/PluginDeviceUI.cpp
-    gui/timeline/LevelMeterUI.cpp
+    gui/devices/TrackDevicesPanel.cpp
+    gui/devices/PluginDeviceUI.cpp
+    gui/devices/PluginUIAdapterRegistry.cpp
+    gui/devices/DevicePluginUIAdapter.cpp
+    gui/devices/TracktionPluginAdapters.cpp
+    gui/devices/LevelMeterUI.cpp
     gui/timeline/Ruler.cpp
     gui/timeline/DetailsPanelComponent.cpp
 

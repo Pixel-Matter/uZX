@@ -3,7 +3,7 @@
 #include "../common/LookAndFeel.h"
 #include "PsgParamEditorComponent.h"
 #include "TimelineGrid.h"
-#include "TrackDevicesComponent.h"
+#include "../devices/TrackDevicesPanel.h"
 
 namespace MoTool {
 
@@ -11,7 +11,7 @@ DetailsPanelComponent::DetailsPanelComponent(EditViewState& evs, TimelineGrid& g
     : editViewState(evs)
 {
     tabbedComponent.addTab("Clip Parameters", Colors::Theme::backgroundAlt, new PsgParamEditorComponent(evs, g), true);
-    tabbedComponent.addTab("Track Devices", Colors::Theme::backgroundAlt, new TrackDevicesComponent(evs), true);
+    tabbedComponent.addTab("Track Devices", Colors::Theme::backgroundAlt, new TrackDevicesPanel(evs), true);
 
     addAndMakeVisible(tabbedComponent);
 

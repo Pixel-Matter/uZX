@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "PluginDeviceUI.h"
+#include "PluginUIAdapterRegistry.h"
 #include "../../controllers/EditState.h"
 #include <common/Utilities.h>  // from Tracktion, for FlaggedAsyncUpdater
 

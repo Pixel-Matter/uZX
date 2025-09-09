@@ -2,8 +2,7 @@
 
 #include "../common/LookAndFeel.h"
 #include "PluginComponent.h"
-#include "DevicePluginUIAdapter.h"
-#include "TracktionPluginAdapters.h"
+#include "GenereicPluginAdapters.h"
 
 namespace MoTool {
 
@@ -95,14 +94,7 @@ void TrackDevicesPanel::buildPlugins() {
         return;
     }
 
-    // static constexpr int levelMeterWidth = 16;  // Width for device UIs like level meters
-    // static constexpr int pluginWidth = 200;
     static constexpr int spacing = 8;
-    // const int yMargin = spacing;
-    // const int containerHeight = getHeight();
-    // const int deviceUIHeight = containerHeight - (2 * yMargin);
-    // int xPos = spacing;
-
     Rectangle<int> area(spacing, spacing, 65535, getHeight() - (2 * spacing));
 
     int index = 0;
@@ -118,27 +110,20 @@ void TrackDevicesPanel::buildPlugins() {
 
         // Try to create device UI using adapter registry
         auto& registry = PluginUIAdapterRegistry::getInstance();
-        bool canHasPlusButtonAfter = registry.canHasPlusButtonAfter(plugin);
-        
+        bool canHasPlusButtonAfter = true;
         if (auto deviceUI = registry.createDeviceUI(editViewState, plugin)) {
             // Custom device UI from registry
+            canHasPlusButtonAfter = deviceUI->canHasPlusButtonAfter();
             deviceUI->setBounds(area.removeFromLeft(deviceUI->getWidth()));
             content.addAndMakeVisible(deviceUI.get());
             devices.add(deviceUI.release());
         } else {
             // Fallback: create generic UI for unknown plugins
-            auto genericUI = TracktionPluginUIFactory::createGenericUI(editViewState, plugin);
-            if (genericUI) {
-                genericUI->setBounds(area.removeFromLeft(genericUI->getWidth()));
-                content.addAndMakeVisible(genericUI.get());
-                devices.add(genericUI.release());
-            } else {
-                // Ultimate fallback: placeholder
-                auto* placeholder = new PluginPlaceholderComponent(editViewState, plugin);
-                placeholder->setBounds(area.removeFromLeft(placeholder->getWidth()));
-                content.addAndMakeVisible(placeholder);
-                devices.add(placeholder);
-            }
+            auto* placeholder = new GenericPluginUIAdapter(editViewState, plugin);
+            placeholder->setBounds(area.removeFromLeft(placeholder->getWidth()));
+            canHasPlusButtonAfter = placeholder->canHasPlusButtonAfter();
+            content.addAndMakeVisible(placeholder);
+            devices.add(placeholder);
         }
         area.removeFromLeft(spacing);
         if (canHasPlusButtonAfter) {

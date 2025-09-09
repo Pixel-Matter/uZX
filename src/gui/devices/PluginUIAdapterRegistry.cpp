@@ -12,47 +12,25 @@ void PluginUIAdapterRegistry::registerAdapter(std::type_index pluginType, const 
     adapters_[pluginType] = adapter;
 }
 
-const PluginUIAdapterRegistry::AdapterInfo* PluginUIAdapterRegistry::findAdapterInfo(tracktion::Plugin::Ptr plugin) const {
-    if (!plugin) return nullptr;
-
-    auto it = adapters_.find(std::type_index(typeid(*plugin)));
+const PluginUIAdapterRegistry::AdapterInfo* PluginUIAdapterRegistry::findAdapterInfo(const std::type_info& typeInfo) const {
+    auto it = adapters_.find(std::type_index(typeInfo));
     if (it != adapters_.end() && it->second.factory) {
         return &it->second;
     }
-
     return nullptr;
+}
+
+const PluginUIAdapterRegistry::AdapterInfo* PluginUIAdapterRegistry::findAdapterInfo(const tracktion::Plugin* plugin) const {
+    if (!plugin) return nullptr;
+    return findAdapterInfo(typeid(*plugin));
 }
 
 std::unique_ptr<PluginDeviceUI> PluginUIAdapterRegistry::createDeviceUI(EditViewState& evs, tracktion::Plugin::Ptr plugin) const {
-    if (!plugin) return nullptr;
-
-    if (auto info = findAdapterInfo(plugin); info != nullptr) {
+    if (auto info = findAdapterInfo(plugin.get()); info != nullptr) {
+        jassert(info->factory != nullptr);
         return info->factory(evs, plugin);
     }
-
     return nullptr;
-}
-
-bool PluginUIAdapterRegistry::hasCustomDeviceUI(tracktion::Plugin::Ptr plugin) const {
-    if (!plugin) return false;
-
-    auto it = adapters_.find(std::type_index(typeid(*plugin)));
-    if (it != adapters_.end()) {
-        return it->second.hasCustomUI;
-    }
-
-    return false;
-}
-
-bool PluginUIAdapterRegistry::canHasPlusButtonAfter(tracktion::Plugin::Ptr plugin) const {
-    if (!plugin) return true;  // Default: allow plus button
-
-    auto it = adapters_.find(std::type_index(typeid(*plugin)));
-    if (it != adapters_.end()) {
-        return it->second.canHasPlusButton;
-    }
-
-    return true;  // Default: allow plus button
 }
 
 }  // namespace MoTool

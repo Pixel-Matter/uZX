@@ -130,6 +130,6 @@ juce::Colour LevelMeterUI::getLevelColour(float level, bool isMidi) const {
 }
 
 // Auto-register tracktion plugin adapters
-REGISTER_PLUGIN_UI_ADAPTER(te::LevelMeterPlugin, LevelMeterUI, true, false)
+REGISTER_PLUGIN_UI_ADAPTER(te::LevelMeterPlugin, LevelMeterUI)
 
 }  // namespace MoTool

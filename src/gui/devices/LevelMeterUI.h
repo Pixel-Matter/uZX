@@ -17,6 +17,9 @@ public:
     LevelMeterUI(EditViewState& evs, tracktion::Plugin::Ptr plugin);
     ~LevelMeterUI() override;
 
+    // PluginDeviceUI overrides
+    bool canHasPlusButtonAfter() override { return false; }
+
     // Component overrides
     void paint(juce::Graphics& g) override;
     void resized() override;

@@ -21,20 +21,8 @@ public:
     // Factory function type for creating device UIs
     using UIFactory = std::function<std::unique_ptr<PluginDeviceUI>(EditViewState&, tracktion::Plugin::Ptr)>;
 
-    // Capability check functions
-    // using HasCustomUIFunc = std::function<bool(tracktion::Plugin::Ptr)>;
-    // using CanHasPlusButtonFunc = std::function<bool(tracktion::Plugin::Ptr)>;
-
-    // struct AdapterInfo {
-    //     UIFactory factory;
-    //     HasCustomUIFunc hasCustomUI;
-    //     CanHasPlusButtonFunc canHasPlusButton;
-    // };
-
     struct AdapterInfo {
         UIFactory factory;
-        bool hasCustomUI;
-        bool canHasPlusButton;
     };
 
     static PluginUIAdapterRegistry& getInstance();
@@ -42,35 +30,23 @@ public:
     // Register adapter for specific plugin type by type_index
     void registerAdapter(std::type_index pluginType, const AdapterInfo& adapter);
 
-    // Register adapter for specific plugin type by type (template convenience method)
-    // template<typename PluginType>
-    // void registerAdapter(const AdapterInfo& adapter) {
-    //     registerAdapter(std::type_index(typeid(PluginType)), adapter);
-    // }
-
     template<typename PluginType, typename UIType>
-    void registerAdapter(bool hasCustomUI, bool canHasPlusButton) {
+    void registerAdapter() {
         registerAdapter(std::type_index(typeid(PluginType)), {
             [](EditViewState& evs, tracktion::Plugin::Ptr plugin) -> std::unique_ptr<PluginDeviceUI> {
                 return std::make_unique<UIType>(evs, plugin);
             },
-            hasCustomUI,
-            canHasPlusButton
         });
     }
 
     // Create device UI for plugin (returns nullptr if no adapter registered)
     std::unique_ptr<PluginDeviceUI> createDeviceUI(EditViewState& evs, tracktion::Plugin::Ptr plugin) const;
 
-    // Check if plugin has custom device UI
-    bool hasCustomDeviceUI(tracktion::Plugin::Ptr plugin) const;
-
-    // Check if plugin can have plus button after it
-    bool canHasPlusButtonAfter(tracktion::Plugin::Ptr plugin) const;
 
 private:
 
-    const PluginUIAdapterRegistry::AdapterInfo* findAdapterInfo(tracktion::Plugin::Ptr plugin) const;
+    const PluginUIAdapterRegistry::AdapterInfo* findAdapterInfo(const std::type_info& typeInfo) const;
+    const PluginUIAdapterRegistry::AdapterInfo* findAdapterInfo(const tracktion::Plugin* plugin) const;
 
     PluginUIAdapterRegistry() = default;
     std::unordered_map<std::type_index, AdapterInfo> adapters_;
@@ -85,23 +61,17 @@ private:
 template<typename PluginType, typename UIType>
 class PluginUIAdapterRegistrar {
 public:
-    PluginUIAdapterRegistrar(bool hasCustomUI, bool canHasPlusButton) {
-        PluginUIAdapterRegistry::getInstance().registerAdapter<PluginType, UIType>(hasCustomUI, canHasPlusButton);
+    PluginUIAdapterRegistrar() {
+        PluginUIAdapterRegistry::getInstance().registerAdapter<PluginType, UIType>();
     }
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginUIAdapterRegistrar)
 };
 
 // Macro to make registration more convenient
-#define REGISTER_PLUGIN_UI_ADAPTER(PluginType, UIType, hasCustomUI, canHasPlusButton) \
+#define REGISTER_PLUGIN_UI_ADAPTER(PluginType, UIType) \
     namespace { \
-        static const PluginUIAdapterRegistrar<PluginType, UIType> plugin_ui_adapter_registrar(hasCustomUI, canHasPlusButton); \
+        static const PluginUIAdapterRegistrar<PluginType, UIType> plugin_ui_adapter_registrar {}; \
     }
-
-// // Macro to make registration more convenient
-// #define REGISTER_PLUGIN_UI_ADAPTER(PluginType, factory, hasCustomUI, canHasPlusButton) \
-//     static const PluginUIAdapterRegistrar<PluginType> __plugin_ui_adapter_registrar_##PluginType({ \
-//         factory, hasCustomUI, canHasPlusButton \
-//     });
 
 }  // namespace MoTool

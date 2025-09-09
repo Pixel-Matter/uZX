@@ -23,8 +23,8 @@ public:
     // void mouseDown(const juce::MouseEvent& e) override;
 
     // These methods now delegate to the adapter registry for backward compatibility
-    static bool hasCustomDeviceUI(tracktion::Plugin::Ptr plugin);
-    static bool canHasPlusButtonAfter(tracktion::Plugin::Ptr plugin);
+    virtual bool hasCustomDeviceUI() { return false; }
+    virtual bool canHasPlusButtonAfter() { return true; }
 
 protected:
     // EditViewState& editViewState;  // for selection management
@@ -38,20 +38,7 @@ private:
 };
 
 /**
-* Template for creating specialized PluginDeviceUI for specific plugin types.
-* Specialize this template for each plugin type that requires a custom UI.
-*/
-template <class Plugin>
-struct PluginDeviceUIFactory {
-    static std::unique_ptr<PluginDeviceUI> create(EditViewState& /*evs*/, Plugin::Ptr /*plugin*/) {
-        // TODO create generic UI with plugin params and editor launcher button?
-        return {};
-    }
-};
-
-
-/**
- * DeviceContainer wraps a PluginDeviceUI to provide a title bar with plugin name,
+ * DeviceUIFrame wraps a PluginDeviceUI to provide a title bar with plugin name,
  * bypass button, and menu button.
  */
 class DeviceUIFrame : public Component
@@ -68,7 +55,7 @@ public:
 
 protected:
     EditViewState& editViewState;
-    te::Plugin::EditorComponent& pluginEditor;
+    PluginDeviceUI& pluginUI;
     tracktion::Plugin::Ptr plugin;
 
 private:

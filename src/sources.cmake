@@ -54,8 +54,7 @@ set(GUI_SOURCES
     gui/devices/TrackDevicesPanel.cpp
     gui/devices/PluginDeviceUI.cpp
     gui/devices/PluginUIAdapterRegistry.cpp
-    gui/devices/DevicePluginUIAdapter.cpp
-    gui/devices/TracktionPluginAdapters.cpp
+    gui/devices/GenereicPluginAdapters.cpp
     gui/devices/LevelMeterUI.cpp
     gui/timeline/Ruler.cpp
     gui/timeline/DetailsPanelComponent.cpp

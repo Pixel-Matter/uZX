@@ -16,6 +16,7 @@ struct Palette {
     inline static const juce::Colour slate500   = juce::Colour::fromString("#0xFF64748B");
     inline static const juce::Colour slate600   = juce::Colour::fromString("#0xFF475569");
     inline static const juce::Colour slate700   = juce::Colour::fromString("#0xFF334155");
+    inline static const juce::Colour slate750   = juce::Colour::fromString("#0xFF283548");
     inline static const juce::Colour slate800   = juce::Colour::fromString("#0xFF1E293B");
     inline static const juce::Colour slate850   = juce::Colour::fromString("#0xFF162032");
     inline static const juce::Colour slate900   = juce::Colour::fromString("#0xFF0F172A");
@@ -36,8 +37,8 @@ struct Theme {
     // Base colors
     inline static const juce::Colour backgroundDark= Palette::slate950;  // Even darker background
     inline static const juce::Colour background    = Palette::slate900;  // Main app background
-    inline static const juce::Colour backgroundAlt = Palette::slate850;  // Elevated surfaces
-    inline static const juce::Colour backgroundSel = Palette::slate800;  // Selected items background
+    inline static const juce::Colour backgroundAlt = Palette::slate800;  // Elevated surfaces
+    inline static const juce::Colour backgroundSel = Palette::slate750;  // Selected items background
     inline static const juce::Colour surface       = Palette::slate700;  // UI elements
     inline static const juce::Colour surfaceAlt    = Palette::slate400;  // Secondary UI elements
 

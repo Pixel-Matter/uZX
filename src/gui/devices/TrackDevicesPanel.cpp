@@ -2,7 +2,8 @@
 
 #include "../common/LookAndFeel.h"
 #include "PluginComponent.h"
-#include "GenereicPluginAdapters.h"
+#include "GenericPluginAdapters.h"
+#include "DevicePanelItem.h"
 
 namespace MoTool {
 
@@ -75,7 +76,7 @@ int TrackDevicesPanel::createAndAddNewPluginButton(int index, Rectangle<int>& ar
     addButton->setBounds(area.removeFromLeft(addButtonWidth));
 
     addButton->onClick = [this, index] {
-            addButtonClicked(index);
+        addButtonClicked(index);
     };
     addButtons.add(addButton);
     content.addAndMakeVisible(addButton);
@@ -110,20 +111,32 @@ void TrackDevicesPanel::buildPlugins() {
 
         // Try to create device UI using adapter registry
         auto& registry = PluginUIAdapterRegistry::getInstance();
+        std::unique_ptr<DevicePanelItem> item;
         bool canHasPlusButtonAfter = true;
+
         if (auto deviceUI = registry.createDeviceUI(editViewState, plugin)) {
-            // Custom device UI from registry
-            canHasPlusButtonAfter = deviceUI->canHasPlusButtonAfter();
-            deviceUI->setBounds(area.removeFromLeft(deviceUI->getWidth()));
-            content.addAndMakeVisible(deviceUI.get());
-            devices.add(deviceUI.release());
+            // Custom device UI from registry - check if it needs framing
+            if (deviceUI->hasCustomDeviceUI()) {
+                // Frameless for custom UIs like LevelMeter
+                item = std::make_unique<FramelessDeviceItem>(std::move(deviceUI));
+            } else {
+                // Framed for regular plugins
+                item = std::make_unique<FramedDeviceItem>(editViewState, std::move(deviceUI));
+            }
+            canHasPlusButtonAfter = item->getDeviceUI()->canHasPlusButtonAfter();
         } else {
             // Fallback: create generic UI for unknown plugins
-            auto* placeholder = new GenericPluginUIAdapter(editViewState, plugin);
-            placeholder->setBounds(area.removeFromLeft(placeholder->getWidth()));
-            canHasPlusButtonAfter = placeholder->canHasPlusButtonAfter();
-            content.addAndMakeVisible(placeholder);
-            devices.add(placeholder);
+            auto genericUI = GenericPluginUIFactory::createGenericUI(editViewState, plugin);
+            if (genericUI) {
+                item = std::make_unique<FramedDeviceItem>(editViewState, std::move(genericUI));
+                canHasPlusButtonAfter = item->getDeviceUI()->canHasPlusButtonAfter();
+            }
+        }
+
+        if (item) {
+            item->setBounds(area.removeFromLeft(item->getWidth()));
+            content.addAndMakeVisible(item.get());
+            devices.add(item.release());
         }
         area.removeFromLeft(spacing);
         if (canHasPlusButtonAfter) {
@@ -139,7 +152,7 @@ void TrackDevicesPanel::buildPlugins() {
 }
 
 void TrackDevicesPanel::paint(juce::Graphics& g) {
-    g.fillAll(Colors::Theme::backgroundAlt);
+    g.fillAll(Colors::Theme::background);
 
     if (!currentTrack.get()) {
         g.setColour(juce::Colours::white.withAlpha(0.6f));

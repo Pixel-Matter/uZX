@@ -18,6 +18,7 @@ public:
     ~LevelMeterUI() override;
 
     // PluginDeviceUI overrides
+    bool hasCustomDeviceUI() override { return true; }
     bool canHasPlusButtonAfter() override { return false; }
 
     // Component overrides

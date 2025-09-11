@@ -25,7 +25,6 @@ set(SHARED_SOURCES
     plugins/uZX/aychip/AYPlugin.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp
-    # plugins/uZX/instrument/MPEInstrumentManager.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
 
     gui/common/Utilities.cpp
@@ -57,7 +56,6 @@ set(GUI_SOURCES
     gui/devices/PluginUIAdapterRegistry.cpp
     gui/devices/DevicePanelItem.cpp
     gui/devices/GenericPluginAdapters.cpp
-    gui/devices/TracktionPluginAdapters.cpp
     gui/devices/DeviceUIFrame.cpp
     gui/devices/LevelMeterUI.cpp
     gui/timeline/Ruler.cpp

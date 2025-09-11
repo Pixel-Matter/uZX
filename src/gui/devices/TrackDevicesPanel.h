@@ -3,14 +3,12 @@
 #include <JuceHeader.h>
 #include "PluginDeviceUI.h"
 #include "PluginUIAdapterRegistry.h"
+#include "DevicePanelItem.h"
 #include "../../controllers/EditState.h"
 #include <common/Utilities.h>  // from Tracktion, for FlaggedAsyncUpdater
 
 namespace MoTool {
 
-class DevicePanelItem {
-public:
-};
 
 class TrackDevicesPanel : public juce::Component,
                           public juce::ChangeListener,
@@ -52,7 +50,7 @@ private:
     Component content;
 
     OwnedArray<TextButton> addButtons;
-    OwnedArray<PluginDeviceUI> devices;
+    OwnedArray<DevicePanelItem> devices;
     bool updateDevices = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackDevicesPanel)

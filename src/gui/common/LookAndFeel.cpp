@@ -10,6 +10,8 @@ MoLookAndFeel::MoLookAndFeel() {
     // setDefaultSansSerifTypefaceName("Iosevka Aile");  // Very-very good, crisp and squary, programmer's 0
     setDefaultSansSerifTypefaceName("Inter");  // Very good
 
+    setUsingNativeAlertWindows(true);
+
     // Initialize ColourScheme with slate colors
     juce::LookAndFeel_V4::ColourScheme cs(
         Theme::background,     // windowBackground

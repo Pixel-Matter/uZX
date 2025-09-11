@@ -1,12 +1,12 @@
 #pragma once
 
-#include "PluginUIAdapterRegistry.h"
 #include "PluginDeviceUI.h"
+#include "PluginUIAdapterRegistry.h"
 
 namespace MoTool {
 
 /**
- * Generic UI Adapter for tracktion plugins that don't have specific custom UIs.
+ * Generic UI Adapter for any tracktion plugin that doesn't have a specific adapter.
  * Shows plugin name and provides click-to-open-editor functionality.
  */
 class GenericPluginUIAdapter : public PluginDeviceUI {
@@ -20,7 +20,16 @@ public:
     void mouseDown(const juce::MouseEvent& e) override;
 
 private:
+    juce::String pluginName_;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GenericPluginUIAdapter)
 };
+
+/**
+ * Factory functions for generic plugin UI creation
+ */
+namespace GenericPluginUIFactory {
+    std::unique_ptr<PluginDeviceUI> createGenericUI(EditViewState& evs, tracktion::Plugin::Ptr plugin);
+}
 
 }  // namespace MoTool

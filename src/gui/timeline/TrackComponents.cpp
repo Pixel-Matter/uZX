@@ -215,8 +215,9 @@ void TrackHeaderComponent::mouseDown (const MouseEvent&) {
 }
 
 void TrackHeaderComponent::resized() {
-    auto r = getLocalBounds().reduced(4);
-    trackName.setBounds(r.removeFromTop(20));
+    auto r = getLocalBounds().reduced(4, 0);
+    DBG("font height is " << trackName.getFont().getHeight());
+    trackName.setBounds(r.removeFromTop(8 + roundToInt(trackName.getFont().getHeight())));
     int w = 24;
     r.setHeight(w);
     inputButton.setBounds(r.removeFromLeft(w));

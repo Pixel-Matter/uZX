@@ -29,7 +29,7 @@ void RulerComponent::paint(Graphics& g) {
     auto ticks = grid.getTicks();
     auto bounds = getLocalBounds();
     g.fillAll(Colors::Theme::background);
-    g.setFont(12.0f);
+    g.setFont(13.0f);
 
     for (const auto& tick : ticks) {
         if (tick.x > bounds.getWidth())

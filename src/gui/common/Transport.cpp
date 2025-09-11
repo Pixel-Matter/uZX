@@ -120,7 +120,7 @@ void TransportBar::resized() {
 
     transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 2.5)));
 
-    masterVolumeSlider_.setBounds(b.removeFromRight(w / 2 + 4).expanded(4, 4));
+    masterVolumeSlider_.setBounds(b.removeFromRight(w / 2 + 4).expanded(8, 8));
 }
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {

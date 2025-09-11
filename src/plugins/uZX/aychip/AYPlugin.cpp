@@ -57,6 +57,9 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 chip->setLayoutAndStereoWidth(staticParams.channelsLayoutValue, staticParams.stereoWidthValue);
             }
         } else if (id == IDs::midi) {
+            const ScopedLock sl(lock);
+            // it a static params, so it is ok to mute sounds
+            chip->muteSound();
             midiParamsReader.setBaseChannel(staticParams.baseMidiChannelValue);
         }
         // no need to do anything
@@ -73,10 +76,12 @@ void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
 }
 
 void AYChipPlugin::deinitialise() {
+    const ScopedLock sl(lock);
     chip.reset();
 }
 
 void AYChipPlugin::midiPanic() {
+    const ScopedLock sl(lock);
     chip->muteSound();
 }
 
@@ -108,6 +113,7 @@ void AYChipPlugin::updateRegistersFromMidiRegs() noexcept {
     // midiRegsReader.clear();
 }
 
+// called under lock
 void AYChipPlugin::updateChip() noexcept {
     if (midiReaderMode == MidiReaderMode::Params) {
         updateRegistersFromMidiParams();
@@ -149,7 +155,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
     // if (fc.bufferForMidiMessages->isNotEmpty()) {
-    //     DBG("AYChipPlugin: processing " << fc.bufferForMidiMessages->size() << " midi messages");
+        // DBG("AYChipPlugin: processing " << fc.bufferForMidiMessages->size() << " midi messages");
     // }
     for (auto& m : *fc.bufferForMidiMessages) {
         // TODO retrigger events with smallest delay
@@ -186,7 +192,7 @@ void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
 }
 
 std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {
-    return std::make_unique<AYPluginEditor>(*this);
+    return std::make_unique<AYPluginEditor>(AYChipPlugin::Ptr(this));
 }
 
 //==============================================================================

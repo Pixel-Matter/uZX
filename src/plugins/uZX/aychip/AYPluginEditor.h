@@ -4,6 +4,9 @@
 
 #include "AYPlugin.h"
 #include "../../../gui/common/LookAndFeel.h"
+#include "../../../gui/devices/PluginDeviceUI.h"
+#include "../../../gui/devices/PluginUIAdapterRegistry.h"
+
 
 namespace te = tracktion;
 
@@ -27,9 +30,10 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        if (useLabel)
-            label.setBounds(r.removeFromTop(30));
-        widget.setBounds(r.removeFromTop(30));
+        if (useLabel) {
+            label.setBounds(r.removeFromTop(label.getFont().getHeight() + 4));
+        }
+        widget.setBounds(r);
     }
 
 protected:
@@ -162,70 +166,14 @@ private:
 //==============================================================================
 // Editor for AYChipPlugin
 //==============================================================================
-// class AYPluginEditor : public te::Plugin::EditorComponent {
-// public:
-//     AYPluginEditor(AYChipPlugin& p)
-//       : plugin_(p)
-//     {
-//         constrainer_.setMinimumWidth(160);
-//         setSize(160, 350);
-
-//         addAndMakeVisible(chipParameter);
-//         addAndMakeVisible(clockParameter);
-//         addAndMakeVisible(channelsParameter);
-//         addAndMakeVisible(removeDCParameter);
-//         addAndMakeVisible(midiParameter);
-//         addAndMakeVisible(stereoParameter);
-//     }
-
-//     bool allowWindowResizing() override {
-//         return true;
-//     }
-
-//     void paint(Graphics& g) override {
-//         g.fillAll(Colors::Theme::backgroundAlt);
-//     }
-
-//     void resized() override {
-//         auto r = getLocalBounds().reduced(8);
-//         chipParameter.setBounds(r.removeFromTop(itemHeight * 2));
-//         clockParameter.setBounds(r.removeFromTop(itemHeight * 2));
-//         channelsParameter.setBounds(r.removeFromTop(itemHeight * 2));
-//         removeDCParameter.setBounds(r.removeFromTop(itemHeight));
-//         midiParameter.setBounds(r.removeFromTop(itemHeight * 2));
-//         stereoParameter.setBounds(r.removeFromTop(itemHeight * 2));
-//     }
-
-//     ComponentBoundsConstrainer* getBoundsConstrainer() override {
-//         return &constrainer_;
-//     }
-
-//     static constexpr int itemHeight = 24;
-//     static constexpr int itemSpacing = 4;
-
-// private:
-//     AYChipPlugin& plugin_;
-//     ComponentBoundsConstrainer constrainer_;
-
-//     ComboParameterComponent<ChipType>       chipParameter     { plugin_.staticParams.chipTypeValue };
-//     SliderParameterComponent<double>        clockParameter    { plugin_.staticParams.clockValue };
-//     ComboParameterComponent<ChannelsLayout> channelsParameter { plugin_.staticParams.channelsLayoutValue };
-//     ToggleParameterComponent                removeDCParameter { plugin_.staticParams.removeDCValue };
-//     SliderParameterComponent<int>           midiParameter     { plugin_.staticParams.baseMidiChannelValue };
-//     // TODO can be automated
-//     SliderParameterComponent<double>        stereoParameter   { plugin_.staticParams.stereoWidthValue };
-
-//     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginEditor)
-// };
-
-
-class AYPluginEditor : public te::Plugin::EditorComponent {
+class AYPluginUI : public PluginDeviceUI {
 public:
-    AYPluginEditor(AYChipPlugin& p)
-      : plugin_(p)
+    AYPluginUI(tracktion::Plugin::Ptr pluginPtr)
+       : PluginDeviceUI(pluginPtr)
+       , plugin_(*dynamic_cast<AYChipPlugin*>(pluginPtr.get()))
     {
         constrainer_.setMinimumWidth(160);
-        setSize(160, 350);
+        setSize(160, 320);
 
         addAndMakeVisible(chipParameter);
         addAndMakeVisible(clockParameter);
@@ -235,29 +183,30 @@ public:
         addAndMakeVisible(stereoParameter);
     }
 
-    bool allowWindowResizing() override {
-        return true;
-    }
-
     void paint(Graphics& g) override {
         g.fillAll(Colors::Theme::backgroundAlt);
     }
 
     void resized() override {
-        auto r = getLocalBounds().reduced(8);
+        auto r = getLocalBounds().reduced(8, 0);
         chipParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        r.removeFromTop(itemSpacing);
         clockParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        r.removeFromTop(itemSpacing);
         channelsParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        r.removeFromTop(itemSpacing * 2);
         removeDCParameter.setBounds(r.removeFromTop(itemHeight));
+        r.removeFromTop(itemSpacing);
         midiParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        r.removeFromTop(itemSpacing);
         stereoParameter.setBounds(r.removeFromTop(itemHeight * 2));
     }
 
-    ComponentBoundsConstrainer* getBoundsConstrainer() override {
+    ComponentBoundsConstrainer* getBoundsConstrainer() {
         return &constrainer_;
     }
 
-    static constexpr int itemHeight = 24;
+    static constexpr int itemHeight = 20;
     static constexpr int itemSpacing = 4;
 
 private:
@@ -271,6 +220,31 @@ private:
     SliderParameterComponent<int>           midiParameter     { plugin_.staticParams.baseMidiChannelValue };
     // TODO can be automated
     SliderParameterComponent<double>        stereoParameter   { plugin_.staticParams.stereoWidthValue };
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginUI)
+};
+
+REGISTER_PLUGIN_UI_ADAPTER(AYChipPlugin, AYPluginUI)
+
+
+//==============================================================================
+// Editor component for AYChipPlugin is a simple wrapper around AYPluginUI
+//==============================================================================
+class AYPluginEditor : public te::Plugin::EditorComponent,
+                       private AYPluginUI
+{
+public:
+    AYPluginEditor(te::Plugin::Ptr p)
+      : AYPluginUI(p)
+    {}
+
+    bool allowWindowResizing() override {
+        return true;
+    }
+
+    ComponentBoundsConstrainer* getBoundsConstrainer() override {
+        return AYPluginUI::getBoundsConstrainer();
+    }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginEditor)
 };

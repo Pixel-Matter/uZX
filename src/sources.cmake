@@ -29,6 +29,7 @@ set(SHARED_SOURCES
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
 
     gui/common/Utilities.cpp
+    gui/common/LookAndFeel.cpp
 )
 
 # GUI-specific files
@@ -54,7 +55,10 @@ set(GUI_SOURCES
     gui/devices/TrackDevicesPanel.cpp
     gui/devices/PluginDeviceUI.cpp
     gui/devices/PluginUIAdapterRegistry.cpp
-    gui/devices/GenereicPluginAdapters.cpp
+    gui/devices/DevicePanelItem.cpp
+    gui/devices/GenericPluginAdapters.cpp
+    gui/devices/TracktionPluginAdapters.cpp
+    gui/devices/DeviceUIFrame.cpp
     gui/devices/LevelMeterUI.cpp
     gui/timeline/Ruler.cpp
     gui/timeline/DetailsPanelComponent.cpp

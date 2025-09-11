@@ -1,9 +1,9 @@
 #include "Transport.h"
 
 #include "../../controllers/MainCommands.h"
+#include "../../controllers/App.h"
 #include "../../models/Timecode.h"
-#include "juce_core/system/juce_PlatformDefs.h"
-#include "juce_gui_basics/juce_gui_basics.h"
+#include "LookAndFeel.h"
 
 #include <common/Utilities.h>
 
@@ -68,6 +68,10 @@ TransportBar::TransportBar(EditViewState& evs)
     beatFramesSlider_.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
     beatFramesSlider_.setTextValueSuffix(" frames/beat");
 
+    const auto& lookAndFeel = MoToolApp::getApp().getLookAndFeel();
+    lookAndFeel.setupNumericTextEditor(timeSigLabel_);
+    lookAndFeel.setupNumericTextEditor(transportReadout_);
+
     updateTimeLabels(transport_.getPosition());
 }
 
@@ -81,34 +85,41 @@ void TransportBar::paint(Graphics& g) {
     g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
 }
 
-static void setIncDecSliderStyle(Slider& s) {
+static void setIncDecSliderStyleWithHeight(Slider& s) {
     s.setSliderStyle(Slider::SliderStyle::IncDecButtons);
     s.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
     s.setTextBoxStyle(Slider::TextBoxLeft, false,
-        s.getWidth() - s.getTextBoxHeight() / 2,
-        s.getTextBoxHeight()
+        s.getWidth() - s.getHeight(),
+        s.getHeight()
     );
 }
 
 void TransportBar::resized() {
     auto b = getLocalBounds();
     int w = 60;
+    b.reduce(4, 4);
+
+    bpmSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 2.5)));
     b.removeFromLeft(4);
+    timeSigLabel_.setBounds(b.removeFromLeft(w));
+    b.removeFromLeft(4);
+    beatFramesSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 3)));
 
-    bpmSlider_.setBounds(b.removeFromLeft(w * 2).reduced(2));
-    setIncDecSliderStyle(bpmSlider_);
-
-    timeSigLabel_.setBounds(b.removeFromLeft(w).reduced(2));
-
-    beatFramesSlider_.setBounds(b.removeFromLeft(w * 3).reduced(2));
-    setIncDecSliderStyle(beatFramesSlider_);
+    setIncDecSliderStyleWithHeight(bpmSlider_);
+    setIncDecSliderStyleWithHeight(beatFramesSlider_);
 
     b.removeFromLeft(w / 2);
 
-    rewindButton_.setBounds(b.removeFromLeft(w).reduced(2));
-    playPauseButton_.setBounds(b.removeFromLeft(w).reduced(2));
-    recordButton_.setBounds(b.removeFromLeft(w).reduced(2));
-    transportReadout_.setBounds(b.removeFromLeft(w * 2).reduced(2));
+    rewindButton_.setBounds(b.removeFromLeft(w));
+    b.removeFromLeft(4);
+    playPauseButton_.setBounds(b.removeFromLeft(w));
+    b.removeFromLeft(4);
+    recordButton_.setBounds(b.removeFromLeft(w));
+
+    b.removeFromLeft(w / 2);
+
+    transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 2.5)));
+
     masterVolumeSlider_.setBounds(b.removeFromRight(w / 2 + 4).expanded(4, 4));
 }
 

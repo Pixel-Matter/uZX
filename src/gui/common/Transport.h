@@ -59,10 +59,8 @@ private:
        recordButton_    { "Rec" };
     //    stepRightButton_ { ">" };
 
-    Label
-        // bpmValueText_     { "BPMValue",   "120" },
-        timeSigLabel_     { "TimeSig",    "Sig:" },
-        transportReadout_ { "Position",   "Pos:" };
+    TextEditor timeSigLabel_;
+    TextEditor transportReadout_;
 
     BpmControl bpmSlider_ { viewState_ };
     Slider beatFramesSlider_ { Slider::SliderStyle::IncDecButtons, Slider::TextEntryBoxPosition::TextBoxLeft };

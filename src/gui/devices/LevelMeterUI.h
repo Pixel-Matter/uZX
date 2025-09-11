@@ -1,7 +1,7 @@
 #pragma once
 
-#include "PluginDeviceUI.h"
 #include <JuceHeader.h>
+#include "PluginDeviceUI.h"
 
 namespace MoTool {
 
@@ -14,7 +14,7 @@ class LevelMeterUI : public PluginDeviceUI,
                      public juce::Timer
 {
 public:
-    LevelMeterUI(EditViewState& evs, tracktion::Plugin::Ptr plugin);
+    LevelMeterUI(tracktion::Plugin::Ptr plugin);
     ~LevelMeterUI() override;
 
     // PluginDeviceUI overrides

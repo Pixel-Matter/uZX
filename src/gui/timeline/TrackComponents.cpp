@@ -21,6 +21,9 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
     muteButton.setColour(TextButton::buttonOnColourId, Colours::red);
     soloButton.setColour(TextButton::buttonOnColourId, Colours::green);
 
+    // TODO move to L&f for Label font
+    trackName.setFont(trackName.getFont().withPointHeight(12.0f).withExtraKerningFactor(0.03f));
+
     trackName.setText(t->getName(), dontSendNotification);
     trackName.setEditable(false, true, true);
     trackName.onTextChange = [this] {
@@ -216,9 +219,8 @@ void TrackHeaderComponent::mouseDown (const MouseEvent&) {
 
 void TrackHeaderComponent::resized() {
     auto r = getLocalBounds().reduced(4, 0);
-    DBG("font height is " << trackName.getFont().getHeight());
     trackName.setBounds(r.removeFromTop(8 + roundToInt(trackName.getFont().getHeight())));
-    int w = 24;
+    int w = 20;
     r.setHeight(w);
     inputButton.setBounds(r.removeFromLeft(w));
     r.removeFromLeft(2);

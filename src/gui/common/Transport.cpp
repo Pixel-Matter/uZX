@@ -96,31 +96,43 @@ static void setIncDecSliderStyleWithHeight(Slider& s) {
 
 void TransportBar::resized() {
     auto b = getLocalBounds();
-    int w = 60;
     b.reduce(4, 4);
+    int w = b.getHeight();
 
-    bpmSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 2.5)));
+    bpmSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
     b.removeFromLeft(4);
-    timeSigLabel_.setBounds(b.removeFromLeft(w));
+    timeSigLabel_.setBounds(b.removeFromLeft(w * 2));
     b.removeFromLeft(4);
-    beatFramesSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 3)));
+    beatFramesSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
 
     setIncDecSliderStyleWithHeight(bpmSlider_);
     setIncDecSliderStyleWithHeight(beatFramesSlider_);
 
-    b.removeFromLeft(w / 2);
+    b.removeFromLeft(w);
 
-    rewindButton_.setBounds(b.removeFromLeft(w));
+    rewindButton_.setBounds(b.removeFromLeft(w * 2));
     b.removeFromLeft(4);
-    playPauseButton_.setBounds(b.removeFromLeft(w));
+    playPauseButton_.setBounds(b.removeFromLeft(w * 2));
     b.removeFromLeft(4);
-    recordButton_.setBounds(b.removeFromLeft(w));
+    recordButton_.setBounds(b.removeFromLeft(w * 2));
 
-    b.removeFromLeft(w / 2);
+    b.removeFromLeft(w);
 
-    transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 2.5)));
+    transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
 
-    masterVolumeSlider_.setBounds(b.removeFromRight(w / 2 + 4).expanded(8, 8));
+    //----------------------------------------------------------------------
+    // shift everything to the center
+    auto shiftBy = b.getWidth() / 2;
+    bpmSlider_.setBounds(bpmSlider_.getBounds().withX(bpmSlider_.getX() + shiftBy));
+    beatFramesSlider_.setBounds(beatFramesSlider_.getBounds().withX(beatFramesSlider_.getX() + shiftBy));
+    timeSigLabel_.setBounds(timeSigLabel_.getBounds().withX(timeSigLabel_.getX() + shiftBy));
+    rewindButton_.setBounds(rewindButton_.getBounds().withX(rewindButton_.getX() + shiftBy));
+    playPauseButton_.setBounds(playPauseButton_.getBounds().withX(playPauseButton_.getX() + shiftBy));
+    recordButton_.setBounds(recordButton_.getBounds().withX(recordButton_.getX() + shiftBy));
+    transportReadout_.setBounds(transportReadout_.getBounds().withX(transportReadout_.getX() + shiftBy));
+
+    masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(8, 8));
+
 }
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {

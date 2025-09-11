@@ -56,7 +56,6 @@ set(GUI_SOURCES
     gui/devices/PluginUIAdapterRegistry.cpp
     gui/devices/DevicePanelItem.cpp
     gui/devices/GenericPluginAdapters.cpp
-    gui/devices/DeviceUIFrame.cpp
     gui/devices/LevelMeterUI.cpp
     gui/timeline/Ruler.cpp
     gui/timeline/DetailsPanelComponent.cpp

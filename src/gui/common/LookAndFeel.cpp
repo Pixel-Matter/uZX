@@ -94,14 +94,62 @@ void MoLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button
                         const juce::Colour& backgroundColour,
                         bool shouldDrawButtonAsHighlighted,
                         bool shouldDrawButtonAsDown) {
-    auto bounds = button.getLocalBounds().toFloat();
+    // auto cornerSize = 6.0f;
     auto cornerSize = 4.0f;
+    // auto bounds = button.getLocalBounds().toFloat().reduced(0.5f, 0.5f);
+    auto bounds = button.getLocalBounds().toFloat();
 
+    // auto baseColour = backgroundColour.withMultipliedSaturation(button.hasKeyboardFocus(true) ? 1.3f : 0.9f)
+    //                                   .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f);
+
+    // if (shouldDrawButtonAsDown || shouldDrawButtonAsHighlighted)
+    //     baseColour = baseColour.contrasting(shouldDrawButtonAsDown ? 0.2f : 0.05f);
+    // g.setColour(baseColour);
     g.setColour(shouldDrawButtonAsDown ? backgroundColour.darker(0.2f) :
                 shouldDrawButtonAsHighlighted ? backgroundColour.brighter(0.1f) :
                 backgroundColour);
 
-    g.fillRoundedRectangle(bounds, cornerSize);
+    auto flatOnLeft = button.isConnectedOnLeft();
+    auto flatOnRight = button.isConnectedOnRight();
+    auto flatOnTop = button.isConnectedOnTop();
+    auto flatOnBottom = button.isConnectedOnBottom();
+
+    if (flatOnLeft) {
+        bounds.removeFromLeft(1);
+    }
+    if (flatOnRight) {
+        bounds.removeFromRight(1);
+    }
+    if (flatOnTop) {
+        bounds.removeFromTop(1);
+    }
+    if (flatOnBottom) {
+        bounds.removeFromBottom(1);
+    }
+
+    if (flatOnLeft || flatOnRight || flatOnTop || flatOnBottom) {
+        Path path;
+        path.addRoundedRectangle(bounds.getX(),
+                                 bounds.getY(),
+                                 bounds.getWidth(),
+                                 bounds.getHeight(),
+                                 cornerSize,
+                                 cornerSize,
+                                 !(flatOnLeft || flatOnTop),
+                                 !(flatOnRight || flatOnTop),
+                                 !(flatOnLeft || flatOnBottom),
+                                 !(flatOnRight || flatOnBottom));
+
+        g.fillPath(path);
+
+        // g.setColour(button.findColour(ComboBox::outlineColourId));
+        // g.strokePath(path, PathStrokeType(1.0f));
+    } else {
+        g.fillRoundedRectangle(bounds, cornerSize);
+
+        // g.setColour(button.findColour(ComboBox::outlineColourId));
+        // g.drawRoundedRectangle(bounds, cornerSize, 1.0f);
+    }
 }
 
 void MoLookAndFeel::drawButtonText(juce::Graphics& g,
@@ -231,8 +279,8 @@ juce::Label* MoLookAndFeel::createSliderTextBox(juce::Slider& slider) {
 void MoLookAndFeel::setupNumericTextEditor(juce::TextEditor& editor) const {
     using namespace Colors;
 
+    // TODO see how textbox is made in Slider and make it similar
     editor.setFont(getNumericReadoutFont());
-    // TODO see how textbox is made in Slider
     editor.setMultiLine(false);
     editor.setReturnKeyStartsNewLine(false);
     editor.setReadOnly(false);

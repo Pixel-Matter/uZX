@@ -2,9 +2,13 @@
 
 #include <JuceHeader.h>
 #include <memory>
-#include "DeviceUIFrame.h"
+#include "../../controllers/EditState.h"
+#include "../common/LookAndFeel.h"
 
 namespace MoTool {
+
+// Forward declaration
+class PluginDeviceUI;
 
 /**
  * Base class for all device panel items.
@@ -45,20 +49,36 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FramelessDeviceItem)
 };
 
+
+//==============================================================================
+// TitleBar - Internal component for handling title bar functionality
+class TitleBar : public juce::Button {
+public:
+    TitleBar(tracktion::Plugin::Ptr plugin);
+
+    void paintButton(juce::Graphics& g, bool, bool) override;
+    void clicked(const juce::ModifierKeys& modifiers) override;
+
+private:
+    tracktion::Plugin::Ptr plugin_;
+    static constexpr int titleBarHeight = 16;
+};
+
 /**
  * Framed wrapper for regular device UIs.
- * Wraps the PluginDeviceUI with a DeviceUIFrame that provides title bar, etc.
+ * Provides a title bar with plugin name and wraps the PluginDeviceUI directly.
  */
 class FramedDeviceItem : public DevicePanelItem {
 public:
-    FramedDeviceItem(EditViewState& evs, std::unique_ptr<PluginDeviceUI> ui);
+    FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui);
 
     // Component overrides
     void resized() override;
     void paint(juce::Graphics& g) override;
 
+    static constexpr float cornerSize = 4.0f;
 private:
-    std::unique_ptr<DeviceUIFrame> frame_;
+    TitleBar titleBar_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FramedDeviceItem)
 };

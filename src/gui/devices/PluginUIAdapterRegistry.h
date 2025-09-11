@@ -19,7 +19,7 @@ class EditViewState;
 class PluginUIAdapterRegistry {
 public:
     // Factory function type for creating device UIs
-    using UIFactory = std::function<std::unique_ptr<PluginDeviceUI>(EditViewState&, tracktion::Plugin::Ptr)>;
+    using UIFactory = std::function<std::unique_ptr<PluginDeviceUI>(tracktion::Plugin::Ptr)>;
 
     struct AdapterInfo {
         UIFactory factory;
@@ -33,14 +33,14 @@ public:
     template<typename PluginType, typename UIType>
     void registerAdapter() {
         registerAdapter(std::type_index(typeid(PluginType)), {
-            [](EditViewState& evs, tracktion::Plugin::Ptr plugin) -> std::unique_ptr<PluginDeviceUI> {
-                return std::make_unique<UIType>(evs, plugin);
+            [](tracktion::Plugin::Ptr plugin) -> std::unique_ptr<PluginDeviceUI> {
+                return std::make_unique<UIType>(plugin);
             },
         });
     }
 
     // Create device UI for plugin (returns nullptr if no adapter registered)
-    std::unique_ptr<PluginDeviceUI> createDeviceUI(EditViewState& evs, tracktion::Plugin::Ptr plugin) const;
+    std::unique_ptr<PluginDeviceUI> createDeviceUI(tracktion::Plugin::Ptr plugin) const;
 
 
 private:

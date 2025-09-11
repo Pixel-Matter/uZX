@@ -25,10 +25,10 @@ const PluginUIAdapterRegistry::AdapterInfo* PluginUIAdapterRegistry::findAdapter
     return findAdapterInfo(typeid(*plugin));
 }
 
-std::unique_ptr<PluginDeviceUI> PluginUIAdapterRegistry::createDeviceUI(EditViewState& evs, tracktion::Plugin::Ptr plugin) const {
+std::unique_ptr<PluginDeviceUI> PluginUIAdapterRegistry::createDeviceUI(tracktion::Plugin::Ptr plugin) const {
     if (auto info = findAdapterInfo(plugin.get()); info != nullptr) {
         jassert(info->factory != nullptr);
-        return info->factory(evs, plugin);
+        return info->factory(plugin);
     }
     return nullptr;
 }

@@ -6,8 +6,10 @@
 
 namespace MoTool {
 
-LevelMeterUI::LevelMeterUI(EditViewState& evs, tracktion::Plugin::Ptr p)
-    : PluginDeviceUI(evs, p)
+namespace te = tracktion;
+
+LevelMeterUI::LevelMeterUI(tracktion::Plugin::Ptr p)
+    : PluginDeviceUI(p)
 {
     te::LevelMeterPlugin* levelMeterPlugin = dynamic_cast<te::LevelMeterPlugin*>(plugin.get());
     jassert(levelMeterPlugin != nullptr);

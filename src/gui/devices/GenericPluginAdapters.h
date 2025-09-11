@@ -11,7 +11,7 @@ namespace MoTool {
  */
 class GenericPluginUIAdapter : public PluginDeviceUI {
 public:
-    GenericPluginUIAdapter(EditViewState& evs, tracktion::Plugin::Ptr pluginPtr);
+    GenericPluginUIAdapter(tracktion::Plugin::Ptr pluginPtr);
     ~GenericPluginUIAdapter() override = default;
 
     // Component overrides
@@ -21,7 +21,7 @@ public:
 
 private:
     juce::String pluginName_;
-    
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GenericPluginUIAdapter)
 };
 
@@ -29,7 +29,7 @@ private:
  * Factory functions for generic plugin UI creation
  */
 namespace GenericPluginUIFactory {
-    std::unique_ptr<PluginDeviceUI> createGenericUI(EditViewState& evs, tracktion::Plugin::Ptr plugin);
+    std::unique_ptr<PluginDeviceUI> createGenericUI(tracktion::Plugin::Ptr plugin);
 }
 
 }  // namespace MoTool

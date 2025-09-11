@@ -114,21 +114,22 @@ void TrackDevicesPanel::buildPlugins() {
         std::unique_ptr<DevicePanelItem> item;
         bool canHasPlusButtonAfter = true;
 
-        if (auto deviceUI = registry.createDeviceUI(editViewState, plugin)) {
+        if (auto deviceUI = registry.createDeviceUI(plugin)) {
             // Custom device UI from registry - check if it needs framing
             if (deviceUI->hasCustomDeviceUI()) {
                 // Frameless for custom UIs like LevelMeter
                 item = std::make_unique<FramelessDeviceItem>(std::move(deviceUI));
             } else {
                 // Framed for regular plugins
-                item = std::make_unique<FramedDeviceItem>(editViewState, std::move(deviceUI));
+                item = std::make_unique<FramedDeviceItem>(std::move(deviceUI));
             }
             canHasPlusButtonAfter = item->getDeviceUI()->canHasPlusButtonAfter();
         } else {
             // Fallback: create generic UI for unknown plugins
-            auto genericUI = GenericPluginUIFactory::createGenericUI(editViewState, plugin);
+            // TODO move fallback to registry.createDeviceUI method?
+            auto genericUI = GenericPluginUIFactory::createGenericUI(plugin);
             if (genericUI) {
-                item = std::make_unique<FramedDeviceItem>(editViewState, std::move(genericUI));
+                item = std::make_unique<FramedDeviceItem>(std::move(genericUI));
                 canHasPlusButtonAfter = item->getDeviceUI()->canHasPlusButtonAfter();
             }
         }

@@ -3,11 +3,11 @@
 
 namespace MoTool {
 
-GenericPluginUIAdapter::GenericPluginUIAdapter(EditViewState& evs, tracktion::Plugin::Ptr pluginPtr)
-    : PluginDeviceUI(evs, pluginPtr)
+GenericPluginUIAdapter::GenericPluginUIAdapter(tracktion::Plugin::Ptr pluginPtr)
+    : PluginDeviceUI(pluginPtr)
 {
-    if (pluginPtr) {
-        pluginName_ = pluginPtr->getName().substring(0, 8);  // Truncate for compact display
+    if (plugin) {
+        pluginName_ = plugin->getName();
     }
     setSize(160, 200);  // Compact plugin button size
 }
@@ -17,29 +17,30 @@ void GenericPluginUIAdapter::resized() {
 }
 
 void GenericPluginUIAdapter::paint(juce::Graphics& g) {
-    g.fillAll(Colors::Theme::backgroundAlt);
-    // g.setColour(Colors::Theme::border);
-    // g.drawRect(getLocalBounds(), 1);
+    // g.fillAll(Colors::Theme::backgroundAlt);
+    if (!plugin) {
+        return;
+    }
+
+    String pluginInfo = plugin->getVendor();
+    pluginInfo += "\n - \n";
+    pluginInfo += plugin->getSelectableDescription();
 
     g.setColour(Colors::Theme::textPrimary);
     g.setFont(14.0f);
-    g.drawText(pluginName_, getLocalBounds(), juce::Justification::centred);
+    g.drawText(pluginInfo, getLocalBounds(), juce::Justification::centred);
 }
 
 void GenericPluginUIAdapter::mouseDown(const juce::MouseEvent& e) {
     if (e.mods.isLeftButtonDown() && plugin) {
-        DBG("GenericPluginUIAdapter: Opening editor for plugin " << plugin->getName());
-        // Open plugin editor when clicked
-        if (auto editor = plugin->createEditor()) {
-            editor->setVisible(true);
-        }
+        plugin->showWindowExplicitly();
     }
 }
 
 namespace GenericPluginUIFactory {
 
-std::unique_ptr<PluginDeviceUI> createGenericUI(EditViewState& evs, tracktion::Plugin::Ptr plugin) {
-    return std::make_unique<GenericPluginUIAdapter>(evs, plugin);
+std::unique_ptr<PluginDeviceUI> createGenericUI(tracktion::Plugin::Ptr plugin) {
+    return std::make_unique<GenericPluginUIAdapter>(plugin);
 }
 
 }  // namespace GenericPluginUIFactory

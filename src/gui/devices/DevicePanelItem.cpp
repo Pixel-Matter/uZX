@@ -1,8 +1,47 @@
 #include "DevicePanelItem.h"
 #include "PluginDeviceUI.h"
-#include "DeviceUIFrame.h"
+
 
 namespace MoTool {
+
+//==============================================================================
+TitleBar::TitleBar(tracktion::Plugin::Ptr plugin)
+    : juce::Button("TitleBar"), plugin_(plugin)
+{
+    setSize(getWidth(), titleBarHeight);
+    setConnectedEdges(juce::Button::ConnectedOnBottom);  // for flat bottom edge look
+}
+
+void TitleBar::paintButton(juce::Graphics& g, bool, bool) {
+    auto bounds = getLocalBounds().toFloat();
+    Path path;
+    path.addRoundedRectangle(
+        bounds.getX(), bounds.getY(),
+        bounds.getWidth(), bounds.getHeight(),
+        FramedDeviceItem::cornerSize, FramedDeviceItem::cornerSize,
+        true, true, false, false
+    );
+    g.setColour(findColour(getToggleState() ? TextButton::buttonOnColourId : TextButton::buttonColourId));
+    g.fillPath(path);
+
+    if (plugin_) {
+        g.setColour(Colors::Theme::textPrimary);
+        auto font = g.getCurrentFont();
+        g.setFont(font.withPointHeight(11.0f).withExtraKerningFactor(0.03f).withStyle(juce::Font::bold));
+        g.drawSingleLineText(
+            plugin_->getName(),
+            4, getHeight() - 4
+        );
+    }
+}
+
+void TitleBar::clicked(const juce::ModifierKeys& modifiers) {
+    if (modifiers.isPopupMenu()) {
+        juce::PopupMenu m;
+        m.addItem("Delete", [this] { plugin_->deleteFromParent(); });
+        m.showAt(this);
+    }
+}
 
 //==============================================================================
 // DevicePanelItem
@@ -38,24 +77,43 @@ void FramelessDeviceItem::paint(juce::Graphics&) {
 //==============================================================================
 // FramedDeviceItem
 
-FramedDeviceItem::FramedDeviceItem(EditViewState& evs, std::unique_ptr<PluginDeviceUI> ui)
+FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
     : DevicePanelItem(std::move(ui))
+    , titleBar_(plugin_)
 {
     if (ui_) {
-        frame_ = std::make_unique<DeviceUIFrame>(evs, plugin_, *ui_);
-        addAndMakeVisible(frame_.get());
-        setSize(frame_->getWidth(), frame_->getHeight());
+        // Create and add title bar
+        addAndMakeVisible(titleBar_);
+        addAndMakeVisible(ui_.get());
+
+        // Size the frame to accommodate the plugin UI plus title bar
+        static constexpr int frameWidth = 0;  // 2px border on each side
+        setSize(ui_->getWidth() + frameWidth,
+                ui_->getHeight() + titleBar_.getHeight() + frameWidth);
     }
 }
 
 void FramedDeviceItem::resized() {
-    if (frame_) {
-        frame_->setBounds(getLocalBounds());
+    auto bounds = getLocalBounds();
+    auto titleBarBounds = bounds.removeFromTop(titleBar_.getHeight());
+    titleBar_.setBounds(titleBarBounds);
+    if (ui_) {
+        ui_->setBounds(bounds);
     }
 }
 
-void FramedDeviceItem::paint(juce::Graphics&) {
-    // Frame handles all painting
+void FramedDeviceItem::paint(juce::Graphics& g) {
+    auto bounds = getLocalBounds().toFloat();
+    bounds.removeFromTop((float) titleBar_.getHeight());
+    Path path;
+    path.addRoundedRectangle(
+        bounds.getX(), bounds.getY(),
+        bounds.getWidth(), bounds.getHeight(),
+        cornerSize, cornerSize,
+        false, false, true, true
+    );
+    g.setColour(Colors::Theme::backgroundAlt);
+    g.fillPath(path);
 }
 
 }  // namespace MoTool

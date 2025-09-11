@@ -159,14 +159,73 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ComboParameterComponent)
 };
 
+//==============================================================================
+// Editor for AYChipPlugin
+//==============================================================================
+// class AYPluginEditor : public te::Plugin::EditorComponent {
+// public:
+//     AYPluginEditor(AYChipPlugin& p)
+//       : plugin_(p)
+//     {
+//         constrainer_.setMinimumWidth(160);
+//         setSize(160, 350);
+
+//         addAndMakeVisible(chipParameter);
+//         addAndMakeVisible(clockParameter);
+//         addAndMakeVisible(channelsParameter);
+//         addAndMakeVisible(removeDCParameter);
+//         addAndMakeVisible(midiParameter);
+//         addAndMakeVisible(stereoParameter);
+//     }
+
+//     bool allowWindowResizing() override {
+//         return true;
+//     }
+
+//     void paint(Graphics& g) override {
+//         g.fillAll(Colors::Theme::backgroundAlt);
+//     }
+
+//     void resized() override {
+//         auto r = getLocalBounds().reduced(8);
+//         chipParameter.setBounds(r.removeFromTop(itemHeight * 2));
+//         clockParameter.setBounds(r.removeFromTop(itemHeight * 2));
+//         channelsParameter.setBounds(r.removeFromTop(itemHeight * 2));
+//         removeDCParameter.setBounds(r.removeFromTop(itemHeight));
+//         midiParameter.setBounds(r.removeFromTop(itemHeight * 2));
+//         stereoParameter.setBounds(r.removeFromTop(itemHeight * 2));
+//     }
+
+//     ComponentBoundsConstrainer* getBoundsConstrainer() override {
+//         return &constrainer_;
+//     }
+
+//     static constexpr int itemHeight = 24;
+//     static constexpr int itemSpacing = 4;
+
+// private:
+//     AYChipPlugin& plugin_;
+//     ComponentBoundsConstrainer constrainer_;
+
+//     ComboParameterComponent<ChipType>       chipParameter     { plugin_.staticParams.chipTypeValue };
+//     SliderParameterComponent<double>        clockParameter    { plugin_.staticParams.clockValue };
+//     ComboParameterComponent<ChannelsLayout> channelsParameter { plugin_.staticParams.channelsLayoutValue };
+//     ToggleParameterComponent                removeDCParameter { plugin_.staticParams.removeDCValue };
+//     SliderParameterComponent<int>           midiParameter     { plugin_.staticParams.baseMidiChannelValue };
+//     // TODO can be automated
+//     SliderParameterComponent<double>        stereoParameter   { plugin_.staticParams.stereoWidthValue };
+
+//     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginEditor)
+// };
+
 
 class AYPluginEditor : public te::Plugin::EditorComponent {
 public:
     AYPluginEditor(AYChipPlugin& p)
       : plugin_(p)
     {
-        constrainer_.setMinimumWidth(200);
-        setSize(200, 350);
+        constrainer_.setMinimumWidth(160);
+        setSize(160, 350);
 
         addAndMakeVisible(chipParameter);
         addAndMakeVisible(clockParameter);
@@ -198,8 +257,8 @@ public:
         return &constrainer_;
     }
 
-    static constexpr int itemHeight = 30;
-    static constexpr int itemSpacing = 7;
+    static constexpr int itemHeight = 24;
+    static constexpr int itemSpacing = 4;
 
 private:
     AYChipPlugin& plugin_;

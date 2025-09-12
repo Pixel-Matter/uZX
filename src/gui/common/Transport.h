@@ -6,6 +6,7 @@
 #include "../../controllers/EditState.h"
 
 #include "../../models/Timecode.h"
+#include "LookAndFeel.h"
 
 namespace MoTool {
 
@@ -59,8 +60,8 @@ private:
        recordButton_    { "Rec" };
     //    stepRightButton_ { ">" };
 
-    TextEditor timeSigLabel_;
-    TextEditor transportReadout_;
+    Label timeSigLabel_;
+    Label transportReadout_;
 
     BpmControl bpmSlider_ { viewState_ };
     Slider beatFramesSlider_ { Slider::SliderStyle::IncDecButtons, Slider::TextEntryBoxPosition::TextBoxLeft };
@@ -75,6 +76,8 @@ private:
     void updateRecordButtonText(bool isRecording);
     String getTimecode(te::TimePosition pos) const;
     void updateTimeLabels(te::TimePosition pos);
+
+    ReadoutLookAndFeel readoutLookAndFeel_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TransportBar)
 };

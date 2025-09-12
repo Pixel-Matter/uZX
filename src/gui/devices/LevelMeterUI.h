@@ -11,7 +11,7 @@ namespace MoTool {
  * Width: 16px, shows stereo L/R levels with LED-style visualization.
  */
 class LevelMeterUI : public PluginDeviceUI,
-                     public juce::Timer
+                     private juce::Timer
 {
 public:
     LevelMeterUI(tracktion::Plugin::Ptr plugin);
@@ -25,10 +25,10 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
 
+private:
     // Timer override for level updates
     void timerCallback() override;
 
-private:
     void updateLevels();
     void drawLevelMeter(juce::Graphics& g, juce::Rectangle<int> area, int ledHeight, float level, bool isMidi = false);
     juce::Colour getLevelColour(float level, bool isMidi = false) const;

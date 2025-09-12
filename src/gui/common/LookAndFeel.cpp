@@ -13,7 +13,7 @@ MoLookAndFeel::MoLookAndFeel() {
     setUsingNativeAlertWindows(true);
 
     // Initialize ColourScheme with slate colors
-    juce::LookAndFeel_V4::ColourScheme cs(
+    LookAndFeel_V4::ColourScheme cs(
         Theme::background,     // windowBackground
         Theme::surface,        // widgetBackground
         Theme::backgroundAlt,  // menuBackground
@@ -28,52 +28,52 @@ MoLookAndFeel::MoLookAndFeel() {
     setColourScheme(cs);
 
     // Set component-specific colors
-    setColour(juce::ResizableWindow::backgroundColourId, Theme::background);
-    setColour(juce::DocumentWindow::backgroundColourId, Theme::background);
+    setColour(ResizableWindow::backgroundColourId, Theme::background);
+    setColour(DocumentWindow::backgroundColourId, Theme::background);
 
     // Buttons
-    setColour(juce::TextButton::buttonColourId, Theme::surface);
-    setColour(juce::TextButton::buttonOnColourId, Theme::primary);
-    setColour(juce::TextButton::textColourOffId, Theme::textPrimary);
-    setColour(juce::TextButton::textColourOnId, Theme::background);
+    setColour(TextButton::buttonColourId, Theme::surface);
+    setColour(TextButton::buttonOnColourId, Theme::primary);
+    setColour(TextButton::textColourOffId, Theme::textPrimary);
+    setColour(TextButton::textColourOnId, Theme::background);
 
     // Text editors
-    setColour(juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
-    // setColour(juce::TextEditor::backgroundColourId, Theme::background);
-    setColour(juce::TextEditor::textColourId, Theme::primary);
-    // setColour(juce::TextEditor::textColourId, Theme::textPrimary);
-    // setColour(juce::TextEditor::highlightColourId, Theme::backgroundAlt);
-    setColour(juce::TextEditor::highlightColourId, Theme::primary);
-    setColour(juce::TextEditor::highlightedTextColourId, Theme::background);
-    setColour(juce::TextEditor::outlineColourId, Theme::border);
-    setColour(juce::TextEditor::focusedOutlineColourId, Theme::border);
-    setColour(juce::TextEditor::shadowColourId, Theme::background);
+    setColour(TextEditor::backgroundColourId, Colours::transparentBlack);
+    // setColour(TextEditor::backgroundColourId, Theme::background);
+    setColour(TextEditor::textColourId, Theme::primary);
+    // setColour(TextEditor::textColourId, Theme::textPrimary);
+    // setColour(TextEditor::highlightColourId, Theme::backgroundAlt);
+    setColour(TextEditor::highlightColourId, Theme::primary);
+    setColour(TextEditor::highlightedTextColourId, Theme::background);
+    setColour(TextEditor::outlineColourId, Theme::border);
+    setColour(TextEditor::focusedOutlineColourId, Theme::border);
+    setColour(TextEditor::shadowColourId, Theme::background);
 
     // Text cursor
-    setColour(juce::CaretComponent::caretColourId, Theme::primary);
+    setColour(CaretComponent::caretColourId, Theme::primary);
 
     // Sliders
-    setColour(juce::Slider::backgroundColourId, Theme::surfaceAlt);
-    setColour(juce::Slider::trackColourId, Theme::primary);
-    setColour(juce::Slider::thumbColourId, Theme::textPrimary);
+    setColour(Slider::backgroundColourId, Theme::surfaceAlt);
+    setColour(Slider::trackColourId, Theme::primary);
+    setColour(Slider::thumbColourId, Theme::textPrimary);
 
     // ComboBox
-    setColour(juce::ComboBox::backgroundColourId, Theme::surface);
-    setColour(juce::ComboBox::textColourId, Theme::textPrimary);
-    setColour(juce::ComboBox::arrowColourId, Theme::primary);
-    setColour(juce::ComboBox::outlineColourId, Theme::border);
-    setColour(juce::ComboBox::focusedOutlineColourId, Theme::primary);
+    setColour(ComboBox::backgroundColourId, Theme::surface);
+    setColour(ComboBox::textColourId, Theme::textPrimary);
+    setColour(ComboBox::arrowColourId, Theme::primary);
+    setColour(ComboBox::outlineColourId, Theme::border);
+    setColour(ComboBox::focusedOutlineColourId, Theme::primary);
 
     // PopupMenu
-    setColour(juce::PopupMenu::backgroundColourId, Theme::backgroundAlt);
-    setColour(juce::PopupMenu::textColourId, Theme::textPrimary);
-    setColour(juce::PopupMenu::highlightedBackgroundColourId, Theme::primary);
-    setColour(juce::PopupMenu::highlightedTextColourId, Theme::background);
+    setColour(PopupMenu::backgroundColourId, Theme::backgroundAlt);
+    setColour(PopupMenu::textColourId, Theme::textPrimary);
+    setColour(PopupMenu::highlightedBackgroundColourId, Theme::primary);
+    setColour(PopupMenu::highlightedTextColourId, Theme::background);
 
     // TooltipWindow
-    setColour(juce::TooltipWindow::backgroundColourId, Theme::backgroundAlt);
-    setColour(juce::TooltipWindow::textColourId, Theme::textPrimary);
-    setColour(juce::TooltipWindow::outlineColourId, Theme::border);
+    setColour(TooltipWindow::backgroundColourId, Theme::backgroundAlt);
+    setColour(TooltipWindow::textColourId, Theme::textPrimary);
+    setColour(TooltipWindow::outlineColourId, Theme::border);
 }
 
 void MoLookAndFeel::debugColourScheme() {
@@ -90,8 +90,8 @@ void MoLookAndFeel::debugColourScheme() {
     DBG("menuText: " + cs.getUIColour(ColourScheme::menuText).toString());
 }
 
-void MoLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
-                        const juce::Colour& backgroundColour,
+void MoLookAndFeel::drawButtonBackground(Graphics& g, Button& button,
+                        const Colour& backgroundColour,
                         bool shouldDrawButtonAsHighlighted,
                         bool shouldDrawButtonAsDown) {
     // auto cornerSize = 6.0f;
@@ -152,18 +152,18 @@ void MoLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button
     }
 }
 
-void MoLookAndFeel::drawButtonText(juce::Graphics& g,
-                    juce::TextButton& button,
+void MoLookAndFeel::drawButtonText(Graphics& g,
+                    TextButton& button,
                     bool /*shouldDrawButtonAsHighlighted*/,
                     bool /*shouldDrawButtonAsDown*/) {
-    juce::Font font(getTextButtonFont(button, button.getHeight()));
+    Font font(getTextButtonFont(button, button.getHeight()));
     g.setFont(font);
     g.setColour(
-        button.findColour(button.getToggleState() ? juce::TextButton::textColourOnId : juce::TextButton::textColourOffId)
+        button.findColour(button.getToggleState() ? TextButton::textColourOnId : TextButton::textColourOffId)
             .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f)
     );
 
-    // const int yIndent = juce::jmin(2, button.proportionOfHeight(0.3f));
+    // const int yIndent = jmin(2, button.proportionOfHeight(0.3f));
     const int yIndent = 1;
 
     // const int fontHeight = roundToInt(font.getHeight() * 0.6f);
@@ -177,19 +177,19 @@ void MoLookAndFeel::drawButtonText(juce::Graphics& g,
         // g.drawText(button.getButtonText(),
         //            leftIndent, yIndent,
         //            textWidth, button.getHeight() - yIndent * 2,
-        //            juce::Justification::centred, false);
+        //            Justification::centred, false);
 
         g.drawFittedText(
             button.getButtonText(),
             leftIndent, yIndent,
             textWidth, button.getHeight() - yIndent * 2,
-            juce::Justification::centred, 2
+            Justification::centred, 2
         );
     }
 }
 
-void MoLookAndFeel::drawClip(juce::Graphics& g, const juce::Rectangle<int>& bounds,
-             bool isSelected, const juce::Colour& clipColor) {
+void MoLookAndFeel::drawClip(Graphics& g, const Rectangle<int>& bounds,
+             bool isSelected, const Colour& clipColor) {
     auto cornerSize = 3.0f;
     g.setColour(isSelected ? Colors::Timeline::clipSelected : clipColor);
     g.fillRoundedRectangle(bounds.toFloat(), cornerSize);
@@ -199,45 +199,45 @@ void MoLookAndFeel::drawClip(juce::Graphics& g, const juce::Rectangle<int>& boun
     g.drawRoundedRectangle(bounds.toFloat(), cornerSize, 1.0f);
 }
 
-juce::TextLayout MoLookAndFeel::layoutTooltipText(juce::TypefaceMetricsKind metrics, const juce::String& text, juce::Colour colour) noexcept {
+TextLayout MoLookAndFeel::layoutTooltipText(TypefaceMetricsKind metrics, const String& text, Colour colour) noexcept {
     const int maxToolTipWidth = 600;
     const float tooltipFontSize = 14.0f;
 
-    juce::AttributedString s;
-    s.setJustification(juce::Justification::left);
+    AttributedString s;
+    s.setJustification(Justification::left);
     s.setLineSpacing(tooltipFontSize * 0.2f); // 1.2 line spacing
-    s.append(text, juce::FontOptions(tooltipFontSize, juce::Font::plain).withMetricsKind(metrics), colour);
+    s.append(text, FontOptions(tooltipFontSize, Font::plain).withMetricsKind(metrics), colour);
 
-    juce::TextLayout tl;
+    TextLayout tl;
     tl.createLayoutWithBalancedLineLengths(s, (float)maxToolTipWidth);
     return tl;
 }
 
-juce::Rectangle<int> MoLookAndFeel::getTooltipBounds(const juce::String& tipText, juce::Point<int> screenPos, juce::Rectangle<int> parentArea) {
-    const juce::TextLayout tl(layoutTooltipText(getDefaultMetricsKind(), tipText, juce::Colours::black));
+Rectangle<int> MoLookAndFeel::getTooltipBounds(const String& tipText, Point<int> screenPos, Rectangle<int> parentArea) {
+    const TextLayout tl(layoutTooltipText(getDefaultMetricsKind(), tipText, Colours::black));
 
     auto w = (int) (tl.getWidth() + 14.0f);
     auto h = (int) (tl.getHeight() + 6.0f);
 
-    return juce::Rectangle<int>(screenPos.x > parentArea.getCentreX() ? screenPos.x - (w + 12) : screenPos.x + 24,
+    return Rectangle<int>(screenPos.x > parentArea.getCentreX() ? screenPos.x - (w + 12) : screenPos.x + 24,
                           screenPos.y > parentArea.getCentreY() ? screenPos.y - (h + 6)  : screenPos.y + 6,
                           w, h)
             .constrainedWithin(parentArea);
 }
 
-void MoLookAndFeel::drawTooltip(juce::Graphics& g, const juce::String& text, int width, int height) {
-    juce::Rectangle<int> bounds(width, height);
+void MoLookAndFeel::drawTooltip(Graphics& g, const String& text, int width, int height) {
+    Rectangle<int> bounds(width, height);
     int hPad = 7, vPad = 3;
     auto cornerSize = 5.0f;
 
-    g.setColour(findColour(juce::TooltipWindow::backgroundColourId));
+    g.setColour(findColour(TooltipWindow::backgroundColourId));
     g.fillRoundedRectangle(bounds.toFloat(), cornerSize);
 
-    g.setColour(findColour(juce::TooltipWindow::outlineColourId));
+    g.setColour(findColour(TooltipWindow::outlineColourId));
     g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f, 0.5f), cornerSize, 1.0f);
 
     auto tl = layoutTooltipText(
-        getDefaultMetricsKind(), text, findColour(juce::TooltipWindow::textColourId));
+        getDefaultMetricsKind(), text, findColour(TooltipWindow::textColourId));
 
     tl.draw(g, {
         static_cast<float>(hPad), static_cast<float>(vPad),
@@ -245,12 +245,12 @@ void MoLookAndFeel::drawTooltip(juce::Graphics& g, const juce::String& text, int
     });
 }
 
-void MoLookAndFeel::drawTimelineCursor(juce::Graphics& g, float position, int height) {
+void MoLookAndFeel::drawTimelineCursor(Graphics& g, float position, int height) {
     g.setColour(Colors::Timeline::cursor);
     g.drawVerticalLine((int)position, 0.0f, (float)height);
 }
 
-void MoLookAndFeel::drawTimelineGrid(juce::Graphics& g, const juce::Rectangle<int>& bounds,
+void MoLookAndFeel::drawTimelineGrid(Graphics& g, const Rectangle<int>& bounds,
                       const std::vector<TimelineGridTick>& ticks) const {
     for (const auto& tick : ticks) {
         if (tick.x > bounds.getWidth())
@@ -260,23 +260,46 @@ void MoLookAndFeel::drawTimelineGrid(juce::Graphics& g, const juce::Rectangle<in
     }
 }
 
-juce::Font MoLookAndFeel::getNumericReadoutFont() const {
-    return juce::FontOptions("Iosevka Aile", "Semibold", 20.0f).withKerningFactor(-0.05f);
+//==============================================================================
+// Readout specific LookAndFeel subclass
+//==============================================================================
+ReadoutLookAndFeel::ReadoutLookAndFeel() = default;
+
+Font ReadoutLookAndFeel::getNumericReadoutFont() const {
+    return FontOptions("Iosevka Aile", "Semibold", 20.0f).withKerningFactor(-0.05f);
 }
 
-juce::Font MoLookAndFeel::getSliderPopupFont(juce::Slider& /*slider*/) {
+Font ReadoutLookAndFeel::getSliderPopupFont(Slider& /*slider*/) {
     return getNumericReadoutFont();
 }
 
-juce::Label* MoLookAndFeel::createSliderTextBox(juce::Slider& slider) {
-    auto* label = juce::LookAndFeel_V4::createSliderTextBox(slider);
+// TODO create different L&F mixin class for readout labels and sliders
+void ReadoutLookAndFeel::setupReadoutLabel(Label& label) {
+    label.setJustificationType(Justification::left);
+    label.setKeyboardType(TextInputTarget::decimalKeyboard);
+    label.setFont(getNumericReadoutFont());
+    label.setEditable(true, true, false);  // editable on single click, double click, no loss of focus
+
+    label.setColour(Label::textColourId, Colors::Theme::primary);
+    label.setColour(Label::backgroundColourId, Colors::Theme::backgroundDark);
+    label.setColour(Label::outlineColourId, Colors::Theme::border);
+
+    label.setColour(TextEditor::textColourId, Colors::Theme::primary);
+    label.setColour(TextEditor::backgroundColourId, Colors::Theme::backgroundDark);
+    label.setColour(TextEditor::outlineColourId, Colors::Theme::border);
+    label.setColour(TextEditor::highlightColourId, Colors::Theme::primary);
+    label.setColour(TextEditor::highlightedTextColourId, Colors::Theme::background);
+}
+
+Label* ReadoutLookAndFeel::createSliderTextBox(Slider& slider) {
+    auto* label = LookAndFeel_V4::createSliderTextBox(slider);
     label->setFont(getNumericReadoutFont());
-    label->setColour(juce::Label::textColourId, Colors::Theme::primary);
-    label->setJustificationType(juce::Justification::left);
+    label->setColour(Label::textColourId, Colors::Theme::primary);
+    label->setJustificationType(Justification::left);
     return label;
 }
 
-void MoLookAndFeel::setupNumericTextEditor(juce::TextEditor& editor) const {
+void ReadoutLookAndFeel::setupNumericTextEditor(TextEditor& editor) const {
     using namespace Colors;
 
     // TODO see how textbox is made in Slider and make it similar

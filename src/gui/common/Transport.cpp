@@ -68,9 +68,11 @@ TransportBar::TransportBar(EditViewState& evs)
     beatFramesSlider_.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
     beatFramesSlider_.setTextValueSuffix(" frames/beat");
 
-    const auto& lookAndFeel = MoToolApp::getApp().getLookAndFeel();
-    lookAndFeel.setupNumericTextEditor(timeSigLabel_);
-    lookAndFeel.setupNumericTextEditor(transportReadout_);
+    // Apply ReadoutLookAndFeel to all numeric controls
+    bpmSlider_.setLookAndFeel(&readoutLookAndFeel_);
+    beatFramesSlider_.setLookAndFeel(&readoutLookAndFeel_);
+    readoutLookAndFeel_.setupReadoutLabel(timeSigLabel_);
+    readoutLookAndFeel_.setupReadoutLabel(transportReadout_);
 
     updateTimeLabels(transport_.getPosition());
 }

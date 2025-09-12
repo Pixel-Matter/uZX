@@ -22,13 +22,15 @@ void GenericPluginUIAdapter::paint(juce::Graphics& g) {
         return;
     }
 
-    String pluginInfo = plugin->getVendor();
-    pluginInfo += "\n - \n";
-    pluginInfo += plugin->getSelectableDescription();
+    String pluginInfo = pluginName_ + "\n";
+    pluginInfo += "by " + plugin->getVendor() + "\n";
+    pluginInfo += plugin->getSelectableDescription() + "\n";
+    pluginInfo += plugin->takesMidiInput() ? "takes MIDI\n" : "";
+    pluginInfo += "(click to open)";
 
     g.setColour(Colors::Theme::textPrimary);
     g.setFont(14.0f);
-    g.drawText(pluginInfo, getLocalBounds(), juce::Justification::centred);
+    g.drawFittedText(pluginInfo, getLocalBounds(), juce::Justification::centred, 5);
 }
 
 void GenericPluginUIAdapter::mouseDown(const juce::MouseEvent& e) {

@@ -293,9 +293,12 @@ void ReadoutLookAndFeel::setupReadoutLabel(Label& label) {
 
 Label* ReadoutLookAndFeel::createSliderTextBox(Slider& slider) {
     auto* label = LookAndFeel_V4::createSliderTextBox(slider);
-    label->setFont(getNumericReadoutFont());
-    label->setColour(Label::textColourId, Colors::Theme::primary);
-    label->setJustificationType(Justification::left);
+    setupReadoutLabel(*label);
+    // label->setJustificationType(Justification::left);
+    // label->setFont(getNumericReadoutFont());
+    // label->setColour(Label::textColourId, Colors::Theme::primary);
+    // label->setColour(Label::backgroundColourId, Colors::Theme::backgroundDark);
+    // label->setColour(Label::outlineColourId, Colors::Theme::border);
     return label;
 }
 

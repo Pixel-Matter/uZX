@@ -21,6 +21,8 @@ public:
 
 private:
     juce::String pluginName_;
+    bool isExternal_ = false;
+    bool hasEditor_ = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GenericPluginUIAdapter)
 };

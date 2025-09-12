@@ -31,7 +31,7 @@ public:
     void resized() override {
         auto r = getLocalBounds();
         if (useLabel) {
-            label.setBounds(r.removeFromTop(label.getFont().getHeight() + 4));
+            label.setBounds(r.removeFromTop(roundToInt(label.getFont().getHeight()) + 4));
         }
         widget.setBounds(r);
     }

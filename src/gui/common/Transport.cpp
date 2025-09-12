@@ -84,7 +84,7 @@ TransportBar::~TransportBar() {
 }
 
 void TransportBar::paint(Graphics& g) {
-    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+    g.fillAll(Colors::Theme::backgroundAlt);
 }
 
 static void setIncDecSliderStyleWithHeight(Slider& s) {
@@ -98,27 +98,28 @@ static void setIncDecSliderStyleWithHeight(Slider& s) {
 
 void TransportBar::resized() {
     auto b = getLocalBounds();
-    b.reduce(4, 4);
+    static constexpr int spacing = 8;
+    b.reduce(spacing, spacing);
     int w = b.getHeight();
 
     bpmSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
-    b.removeFromLeft(4);
+    b.removeFromLeft(spacing);
     timeSigLabel_.setBounds(b.removeFromLeft(w * 2));
-    b.removeFromLeft(4);
-    beatFramesSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
+    b.removeFromLeft(spacing);
+    beatFramesSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 7)));
 
     setIncDecSliderStyleWithHeight(bpmSlider_);
     setIncDecSliderStyleWithHeight(beatFramesSlider_);
 
-    b.removeFromLeft(w);
+    b.removeFromLeft(spacing);
 
     rewindButton_.setBounds(b.removeFromLeft(w * 2));
-    b.removeFromLeft(4);
+    b.removeFromLeft(spacing);
     playPauseButton_.setBounds(b.removeFromLeft(w * 2));
-    b.removeFromLeft(4);
+    b.removeFromLeft(spacing);
     recordButton_.setBounds(b.removeFromLeft(w * 2));
 
-    b.removeFromLeft(w);
+    b.removeFromLeft(spacing);
 
     transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
 

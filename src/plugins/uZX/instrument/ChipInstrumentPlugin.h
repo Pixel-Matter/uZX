@@ -63,7 +63,7 @@ private:
     tracktion::AutomatableParameter* addParam(const juce::String& paramID,
                                               const juce::String& name,
                                               juce::NormalisableRange<float> valueRange,
-                                              juce::String label);
+                                              juce::String label = {});
 
     // ChipInstrument instrument;
     // tracktion::tempo::Sequence::Position currentPos{createPosition(edit.tempoSequence)};
@@ -71,6 +71,18 @@ private:
     std::unordered_map<String, String> paramLabels;
     tracktion::LevelMeasurer levelMeasurer;
     tracktion::DbTimePair levels[2];
+
+    //==============================================================================
+    // Amplitude envelope cached values - attack, decay, sustain, release times and velocity sensitivity
+    juce::CachedValue<float> ampAttackValue, ampDecayValue, ampSustainValue, ampReleaseValue, ampVelocityValue;
+
+    // Pitch envelope and parameters - ADSR times
+    juce::CachedValue<float> pitchAttackValue, pitchDecayValue, pitchSustainValue, pitchReleaseValue;
+
+    // Amplitude envelope automatable parameters
+    tracktion::AutomatableParameter::Ptr ampAttack, ampDecay, ampSustain, ampRelease, ampVelocity;
+    // pitch envelope automatable parameters
+    tracktion::AutomatableParameter::Ptr pitchAttack, pitchDecay, pitchSustain, pitchRelease;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChipInstrumentPlugin)
 };

@@ -1,4 +1,5 @@
 #include "LookAndFeel.h"
+#include "juce_core/juce_core.h"
 #include "juce_gui_basics/juce_gui_basics.h"
 
 namespace MoTool {
@@ -197,6 +198,56 @@ void MoLookAndFeel::drawClip(Graphics& g, const Rectangle<int>& bounds,
     // Draw clip border
     g.setColour(isSelected ? Colors::Timeline::clipSelected.brighter() : clipColor.brighter());
     g.drawRoundedRectangle(bounds.toFloat(), cornerSize, 1.0f);
+}
+
+void MoLookAndFeel::drawRotarySlider(Graphics& g,
+                                     int x, int y, int width, int height, float sliderPos,
+                                     const float rotaryStartAngle, const float rotaryEndAngle,
+                                     Slider& slider) {
+    auto outline = slider.findColour(Slider::rotarySliderOutlineColourId);
+    auto fill = slider.findColour(Slider::rotarySliderFillColourId);
+
+    auto bounds = Rectangle<int>(x, y, width, height).toFloat().reduced(0);
+
+    auto radius = jmin(bounds.getWidth(), bounds.getHeight()) / 2.0f;
+    auto toAngle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+    auto lineW = jmax(2.0f, radius * 0.15f);
+    auto arcRadius = radius - lineW * 0.5f;
+
+    Path backgroundArc;
+    backgroundArc.addCentredArc(
+        bounds.getCentreX(), bounds.getCentreY(), arcRadius, arcRadius, 0.0f, rotaryStartAngle, rotaryEndAngle, true);
+
+    g.setColour(outline);
+    g.strokePath(backgroundArc, PathStrokeType(lineW, PathStrokeType::curved, PathStrokeType::rounded));
+
+    // knob body
+    // TODO decoration?
+    auto bodyRadius = arcRadius - lineW * 1.5f;
+    g.setColour(Colors::Theme::surfaceElevated);
+    g.fillEllipse(bounds.getCentreX() - bodyRadius, bounds.getCentreY() - bodyRadius,
+                  bodyRadius * 2.0f, bodyRadius * 2.0f);
+
+    // knob tick line
+    auto thumbLineLength = bodyRadius;
+    // auto thumbLineLength = arcRadius;
+    Point<float> centre(bounds.getCentreX(), bounds.getCentreY());
+    Point<float> thumbEnd(centre.x + thumbLineLength * std::cos(toAngle - MathConstants<float>::halfPi),
+                         centre.y + thumbLineLength * std::sin(toAngle - MathConstants<float>::halfPi));
+
+    g.setColour(slider.findColour(Slider::thumbColourId));
+    g.drawLine(centre.x, centre.y, thumbEnd.x, thumbEnd.y, lineW * 0.75f);
+
+    // arc indicating current value
+    if (slider.isEnabled()) {
+        Path valueArc;
+        valueArc.addCentredArc(
+            bounds.getCentreX(), bounds.getCentreY(), arcRadius, arcRadius, 0.0f, rotaryStartAngle, toAngle, true);
+
+        g.setColour(fill);
+        g.strokePath(valueArc, PathStrokeType(lineW, PathStrokeType::curved, PathStrokeType::rounded));
+    }
+
 }
 
 TextLayout MoLookAndFeel::layoutTooltipText(TypefaceMetricsKind metrics, const String& text, Colour colour) noexcept {

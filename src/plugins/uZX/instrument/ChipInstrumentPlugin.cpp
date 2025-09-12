@@ -1,5 +1,4 @@
 #include "ChipInstrumentPlugin.h"
-#include "tracktion_core/utilities/tracktion_Time.h"
 
 namespace MoTool::uZX {
 
@@ -9,15 +8,36 @@ const char* ChipInstrumentPlugin::xmlTypeName = "uzxtrmnt";
 
 ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
     : MidiFxPluginBase<ChipInstrumentFx>(info)
-    // , instrument(edit)
 {
     levelMeasurer.addClient(*this);
 
-    // TODO add all params from instrument
-    // auto um = getUndoManager();
+    // TODO add all automated params from instrument
+    // see te::Plugin::addParam, FourOSC
+
+    auto um = getUndoManager();
     // paramValue.referTo(state, paramDef.Id, um, paramDef.defaultValue)
     // addedParam = addParam(paramDef, paramValue);
     // addedParam->attachToCurrentValue(paramValue);
+
+    // Amp
+    // TODO reuse Params utility from AYPlugin
+    ampAttackValue  .referTo(state, te::IDs::ampAttack,   um, 0.1f);
+    ampDecayValue   .referTo(state, te::IDs::ampDecay,    um, 0.1f);
+    ampSustainValue .referTo(state, te::IDs::ampSustain,  um, 80.0f);
+    ampReleaseValue .referTo(state, te::IDs::ampRelease,  um, 0.1f);
+    ampVelocityValue.referTo(state, te::IDs::ampVelocity, um, 100.0f);
+
+    ampAttack   = addParam("ampAttack",   "Amp Attack",   {0.001f, 60.0f, 0.0f, 0.2f});
+    ampDecay    = addParam("ampDecay",    "Amp Decay",    {0.001f, 60.0f, 0.0f, 0.2f});
+    ampSustain  = addParam("ampSustain",  "Amp Sustain",  {0.0f, 100.0f}, "%");
+    ampRelease  = addParam("ampRelease",  "Amp Release",  {0.001f, 60.0f, 0.0f, 0.2f});
+    ampVelocity = addParam("ampVelocity", "Amp Velocity", {0.0f, 100.0f}, "%");
+
+    ampAttack->attachToCurrentValue(ampAttackValue);
+    ampDecay->attachToCurrentValue(ampDecayValue);
+    ampSustain->attachToCurrentValue(ampSustainValue);
+    ampRelease->attachToCurrentValue(ampReleaseValue);
+    ampVelocity->attachToCurrentValue(ampVelocityValue);
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);
     valueTreePropertyChanged(state, te::IDs::mpe);

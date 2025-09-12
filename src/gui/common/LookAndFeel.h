@@ -40,10 +40,11 @@ struct Theme {
     inline static const Colour backgroundAlt = Palette::slate800;  // Elevated surfaces
     inline static const Colour backgroundSel = Palette::slate750;  // Selected items background
     inline static const Colour surface       = Palette::slate700;  // UI elements
+    inline static const Colour surfaceElevated= Palette::slate500; // Elevated UI elements
     inline static const Colour surfaceAlt    = Palette::slate400;  // Secondary UI elements
 
     // Text colors
-    inline static const Colour textPrimary   = Palette::slate100;  // Main text
+    inline static const Colour textPrimary   = Palette::slate200;  // Main text
     inline static const Colour textSecondary = Palette::slate400;  // Secondary text
     inline static const Colour textDisabled  = Palette::slate500;  // Disabled text
 
@@ -130,6 +131,11 @@ public:
     static TextLayout layoutTooltipText(TypefaceMetricsKind metrics, const String& text, Colour colour) noexcept;
 
     Rectangle<int> getTooltipBounds(const String& tipText, Point<int> screenPos, Rectangle<int> parentArea) override;
+
+    // Slider specific LookAndFeel overrides
+    void drawRotarySlider(Graphics& g, int x, int y, int width, int height,
+                          float sliderPosProportional, float rotaryStartAngle,
+                          float rotaryEndAngle, Slider& slider) override;
 
     // Custom tooltip drawing
     void drawTooltip(Graphics& g, const String& text, int width, int height) override;

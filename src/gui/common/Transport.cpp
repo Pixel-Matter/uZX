@@ -134,7 +134,7 @@ void TransportBar::resized() {
     recordButton_.setBounds(recordButton_.getBounds().withX(recordButton_.getX() + shiftBy));
     transportReadout_.setBounds(transportReadout_.getBounds().withX(transportReadout_.getX() + shiftBy));
 
-    masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(8, 8));
+    masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
 
 }
 

@@ -3,8 +3,6 @@
 #include <cmath>
 #include "../midi_effects/MPEEffectVoice.h"
 #include "../midi_effects/MidiEffect.h"
-#include "juce_audio_basics/juce_audio_basics.h"
-#include "juce_core/juce_core.h"
 
 namespace MoTool::uZX {
 
@@ -111,6 +109,17 @@ public:
     /** Called when note timbre changes (MPE). */
     void noteTimbreChanged() {
         // TODO: Implement timbre change logic
+    }
+
+    void updateParams() {
+        // TODO get params from automatable parameters, but AutomatableParameter is tracktion specific
+        DBG("ChipInstrumentVoice Update params");
+        // ampAdsr.setParameters ({
+        //     paramValue(synth.ampAttack),
+        //     paramValue(synth.ampDecay),
+        //     paramValue(synth.ampSustain) / 100.0f,
+        //     paramValue(synth.ampRelease)
+        // });
     }
 
     void renderNextStep(MidiBufferContext& c, double timeOffset) {

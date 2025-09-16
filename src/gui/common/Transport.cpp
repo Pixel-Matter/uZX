@@ -1,7 +1,6 @@
 #include "Transport.h"
 
 #include "../../controllers/MainCommands.h"
-#include "../../controllers/App.h"
 #include "../../models/Timecode.h"
 #include "LookAndFeel.h"
 
@@ -39,6 +38,9 @@ TransportBar::TransportBar(EditViewState& evs)
         &transportReadout_,
         &masterVolumeSlider_
     });
+    masterVolumeSlider_.setPopupDisplayEnabled(true, true, nullptr);
+    masterVolumeSlider_.setNumDecimalPlacesToDisplay(2);
+
     if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
         rewindButton_.setCommandToTrigger(mgr, MainAppCommands::transportToStart, true);
         playPauseButton_.setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);

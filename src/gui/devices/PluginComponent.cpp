@@ -24,7 +24,7 @@ te::Plugin::Ptr showMenuAndCreatePlugin(te::Edit& edit) {
 //==============================================================================
 // PluginComponent
 //==============================================================================
-PluginPlaceholderComponent::PluginPlaceholderComponent(EditViewState& evs, te::Plugin::Ptr p)
+PluginPlaceholderComponent::PluginPlaceholderComponent(te::Plugin::Ptr p)
     : PluginDeviceUI(p)
 {
     jassert(plugin != nullptr);

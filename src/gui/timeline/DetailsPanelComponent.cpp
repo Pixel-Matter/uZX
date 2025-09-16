@@ -10,8 +10,9 @@ namespace MoTool {
 DetailsPanelComponent::DetailsPanelComponent(EditViewState& evs, TimelineGrid& g)
     : editViewState(evs)
 {
-    tabbedComponent.addTab("Clip Parameters", Colors::Theme::backgroundAlt, new PsgParamEditorComponent(evs, g), true);
-    tabbedComponent.addTab("Track Devices", Colors::Theme::backgroundAlt, new TrackDevicesPanel(evs), true);
+    tabbedComponent.setOutline(0);
+    tabbedComponent.addTab("Clip Parameters", Colors::Theme::background, new PsgParamEditorComponent(evs, g), true);
+    tabbedComponent.addTab("Track Devices", Colors::Theme::background, new TrackDevicesPanel(evs), true);
 
     addAndMakeVisible(tabbedComponent);
 

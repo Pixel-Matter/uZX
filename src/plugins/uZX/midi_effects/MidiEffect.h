@@ -212,6 +212,11 @@ template <MidiEffectConcept MIDIFX>
 class MidiFxPluginBase : public tracktion::Plugin {
 public:
 
+    MidiFxPluginBase(tracktion::PluginCreationInfo info, MIDIFX& fx)
+        : tracktion::Plugin(info)
+        , midiEffect(fx)
+    {}
+
     enum class PositionSource {
         Edit,
         Emulated
@@ -271,7 +276,7 @@ public:
     }
 
 protected:
-    MIDIFX midiEffect;
+    MIDIFX& midiEffect;
 
 private:
     PositionSource positionSource = PositionSource::Emulated;

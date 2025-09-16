@@ -49,7 +49,7 @@ public:
         virtual void zoomOrPosChanged() {}
     };
 
-    ZoomViewState(te::Edit& e, ValueTree& st);
+    ZoomViewState(te::Edit& e);
     ~ZoomViewState() override;
 
     void addListener(Listener* l);

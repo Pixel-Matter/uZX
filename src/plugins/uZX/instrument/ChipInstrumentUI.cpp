@@ -1,5 +1,4 @@
 #include "ChipInstrumentUI.h"
-#include "ChipInstrumentPlugin.h"
 #include "../../../gui/common/LookAndFeel.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 
@@ -7,64 +6,63 @@ namespace te = tracktion;
 
 namespace MoTool::uZX {
 
-static void setupRotarySlider(Slider& s, const String& tooltip, const String& name) {
-    s.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-    s.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    s.setTooltip(tooltip);
-    s.setName(name);
+LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const String& labelText, const String& tooltip)
+    : attachment(slider, *parameter)
+{
+    slider.setSliderStyle(Slider::RotaryVerticalDrag);
+    slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+    slider.setTooltip(tooltip);
+    slider.setPopupDisplayEnabled(true, true, nullptr);
+    slider.setNumDecimalPlacesToDisplay(2);
+    addAndMakeVisible(slider);
+
+    label.setText(labelText, dontSendNotification);
+    label.setJustificationType(Justification::centred);
+    label.setFont(label.getFont().withPointHeight((float) labelHeight));
+    addAndMakeVisible(label);
 }
 
+void LabeledRotarySlider::resized() {
+    auto bounds = getLocalBounds();
+    auto sliderHeight = bounds.getHeight() - labelHeight;
+
+    slider.setBounds(bounds.removeFromTop(sliderHeight));
+    bounds.translate(0, -labelOverlap);
+    label.setBounds(bounds);
+}
+
+//==============================================================================
+// ChipInstrumentUI
+//==============================================================================
 ChipInstrumentUI::ChipInstrumentUI(tracktion::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
-{
-    setSize(200, 320);
+    , adsrAttackSlider  (dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampAttack,   "A", "Amp Attack Time")
+    , adsrDecaySlider   (dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampDecay,    "D", "Amp Decay Time")
+    , adsrSustainSlider (dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampSustain,  "S", "Amp Sustain Level")
+    , adsrReleaseSlider (dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampRelease,  "R", "Amp Release Time")
+    , adsrVelocitySlider(dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampVelocity, "V", "Amp Velocity Sensitivity")
 
-    setupRotarySlider(adsrAttackSlider,   "Amp Attack Time",          "Attack");
-    setupRotarySlider(adsrDecaySlider,    "Amp Decay Time",           "Decay");
-    setupRotarySlider(adsrSustainSlider,  "Amp Sustain Level",        "Sustain");
-    setupRotarySlider(adsrReleaseSlider,  "Amp Release Time",         "Release");
-    setupRotarySlider(adsrVelocitySlider, "Amp Velocity Sensitivity", "Velocity");
+{
+    jassert(pluginPtr != nullptr);
+
+    setSize(168, 320);
 
     addAndMakeVisible(adsrAttackSlider);
     addAndMakeVisible(adsrDecaySlider);
     addAndMakeVisible(adsrSustainSlider);
     addAndMakeVisible(adsrReleaseSlider);
-    // addAndMakeVisible(adsrVelocitySlider);
-
-    adsrAttackLabel.setText("A", dontSendNotification);
-    adsrDecayLabel.setText("D", dontSendNotification);
-    adsrSustainLabel.setText("S", dontSendNotification);
-    adsrReleaseLabel.setText("R", dontSendNotification);
-    adsrVelocityLabel.setText("V", dontSendNotification);
-    adsrAttackLabel.setJustificationType(Justification::centred);
-    adsrDecayLabel.setJustificationType(Justification::centred);
-    adsrSustainLabel.setJustificationType(Justification::centred);
-    adsrReleaseLabel.setJustificationType(Justification::centred);
-    adsrVelocityLabel.setJustificationType(Justification::centred);
-
-    auto font = adsrAttackLabel.getFont().withPointHeight(10.0f);
-    adsrAttackLabel.setFont(font);
-    adsrDecayLabel.setFont(font);
-    adsrSustainLabel.setFont(font);
-    adsrReleaseLabel.setFont(font);
-    adsrVelocityLabel.setFont(font);
-
-    addAndMakeVisible(adsrAttackLabel);
-    addAndMakeVisible(adsrDecayLabel);
-    addAndMakeVisible(adsrSustainLabel);
-    addAndMakeVisible(adsrReleaseLabel);
 }
 
-void ChipInstrumentUI::paint(Graphics& g) {
+void ChipInstrumentUI::paint(Graphics&) {
     // g.fillAll(Colors::Theme::backgroundAlt);
 }
 
 void ChipInstrumentUI::resized() {
     auto r = getLocalBounds().reduced(8);
-    static constexpr int knobSize = 40;
+    static constexpr int knobSize = 32;
     static constexpr int spacing = 8;
 
-    auto row = r.removeFromTop(knobSize);
+    auto row = r.removeFromTop(knobSize + adsrAttackSlider.getLabelHeight());
 
     adsrAttackSlider.setBounds(row.removeFromLeft(knobSize));
     row.removeFromLeft(spacing);
@@ -73,16 +71,6 @@ void ChipInstrumentUI::resized() {
     adsrSustainSlider.setBounds(row.removeFromLeft(knobSize));
     row.removeFromLeft(spacing);
     adsrReleaseSlider.setBounds(row.removeFromLeft(knobSize));
-    // r.removeFromTop(spacing);
-    // adsrVelocitySlider.setBounds(r.removeFromTop(knobSize));
-
-    r.removeFromTop(0);
-    row = r.removeFromTop(12);
-    adsrAttackLabel.setBounds(adsrAttackSlider.getX(), row.getY(), knobSize, row.getHeight());
-    adsrDecayLabel.setBounds(adsrDecaySlider.getX(), row.getY(), knobSize, row.getHeight());
-    adsrSustainLabel.setBounds(adsrSustainSlider.getX(), row.getY(), knobSize, row.getHeight());
-    adsrReleaseLabel.setBounds(adsrReleaseSlider.getX(), row.getY(), knobSize, row.getHeight());
-    // adsrVelocityLabel.setBounds(adsrVelocitySlider.getX(), row.getY
 }
 
 REGISTER_PLUGIN_UI_ADAPTER(ChipInstrumentPlugin, ChipInstrumentUI)

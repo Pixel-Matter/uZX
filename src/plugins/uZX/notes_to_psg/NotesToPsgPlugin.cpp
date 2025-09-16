@@ -5,7 +5,7 @@ namespace MoTool::uZX {
 const char* NotesToPsgPlugin::xmlTypeName = "uzxmidi2psg";
 
 NotesToPsgPlugin::NotesToPsgPlugin(te::PluginCreationInfo info)
-    : MidiFxPluginBase<NotesToPsgMapper>(info)
+    : MidiFxPluginBase<NotesToPsgMapper>(info, transformer)
 {
     midiEffect.setBaseChannel(1);
 }
@@ -68,7 +68,7 @@ void NotesToPsgPlugin::updateParams() {
     reset();
     midiEffect.setBaseChannel(staticParams.baseMidiChannelValue.get());
     // midiEffect.setNumChannels(staticParams.numChannelsValue.get());
-    // then reset again to init 
+    // then reset again to init
     reset();
 }
 

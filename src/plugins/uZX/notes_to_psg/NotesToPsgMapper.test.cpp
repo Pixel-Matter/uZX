@@ -68,12 +68,11 @@ public:
         {
             NotesToPsgMapper converter;
             converter.setBaseChannel(1);
-            converter.setNumChannels(3);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
             // Test note on
-            converter.noteOn(1, 60, 100);
+            converter.noteOn(MPENote{1, 60, 100, 0, 0, 0});
             auto messages = converter.takeOutputMessages();
 
             expectEquals(messages.size(), 4ul); // Volume, PeriodCoarse, PeriodFine, ToneSwitch

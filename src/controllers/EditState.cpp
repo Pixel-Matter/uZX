@@ -7,9 +7,8 @@ namespace MoTool {
 
 // ZoomViewState
 
-ZoomViewState::ZoomViewState(te::Edit& e, ValueTree& st)
+ZoomViewState::ZoomViewState(te::Edit& e)
   : edit(e)
-  , state(st)
 {
     state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
     auto um = &edit.getUndoManager();
@@ -185,7 +184,7 @@ void ZoomViewState::handleAsyncUpdate() {
 
 EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
   : state(e.state.getOrCreateChildWithName(IDs::EDITVIEWSTATE, nullptr))
-  , zoom(e, state)
+  , zoom(e)
   , selectionManager(s), edit(e)
 {
     auto um = &edit.getUndoManager();

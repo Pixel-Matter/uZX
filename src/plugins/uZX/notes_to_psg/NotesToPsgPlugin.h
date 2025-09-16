@@ -70,7 +70,7 @@ public:
 
 private:
     //==============================================================================
-    // uZX::NotesToPsgMapper transformer;
+    NotesToPsgMapper transformer;
     TuningSystem* currentTuningSystem = nullptr;
 
     void valueTreeChanged() override;

@@ -23,7 +23,6 @@ public:
             juce::ScopedValueSetter<bool> svs(updatingSlider, true);
             param.setParameter((float)slider.getValue(), juce::sendNotification);
         };
-        slider.setPopupDisplayEnabled(true, false, nullptr);
         slider.onDragStart = [&]{ param.parameterChangeGestureBegin(); };
         slider.onDragEnd   = [&]{ param.parameterChangeGestureEnd(); };
 

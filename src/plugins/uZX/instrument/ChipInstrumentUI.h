@@ -1,10 +1,33 @@
 #pragma once
 
 #include <JuceHeader.h>
-
+#include "ChipInstrumentPlugin.h"
+#include "../../../controllers/ParamAttachments.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
 
 namespace MoTool::uZX {
+
+class LabeledRotarySlider : public Component {
+public:
+    LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const String& labelText = "", const String& tooltip = "");
+
+    void resized() override;
+
+    Slider& getSlider() { return slider; }
+    Label& getLabel() { return label; }
+
+    inline static constexpr int labelHeight = 10;
+    inline static constexpr int labelOverlap = 2;
+
+    int getLabelHeight() const { return labelHeight - labelOverlap; }
+
+private:
+    Slider slider;
+    Label label;
+    SliderAttachment attachment;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledRotarySlider)
+};
 
 class ChipInstrumentUI : public PluginDeviceUI {
 public:
@@ -13,12 +36,8 @@ public:
     void paint(Graphics& g) override;
     void resized() override;
 
-    static constexpr int itemHeight = 20;
-    static constexpr int itemSpacing = 4;
-
 private:
-    Slider adsrAttackSlider, adsrDecaySlider, adsrSustainSlider, adsrReleaseSlider, adsrVelocitySlider;
-    Label adsrAttackLabel, adsrDecayLabel, adsrSustainLabel, adsrReleaseLabel, adsrVelocityLabel;
+    LabeledRotarySlider adsrAttackSlider, adsrDecaySlider, adsrSustainSlider, adsrReleaseSlider, adsrVelocitySlider;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChipInstrumentUI)
 };

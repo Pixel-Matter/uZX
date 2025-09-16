@@ -11,7 +11,7 @@ namespace MoTool {
 class PluginPlaceholderComponent : public PluginDeviceUI
 {
 public:
-    PluginPlaceholderComponent(EditViewState&, te::Plugin::Ptr);
+    PluginPlaceholderComponent(te::Plugin::Ptr);
     ~PluginPlaceholderComponent() override;
 
     void resized() override;

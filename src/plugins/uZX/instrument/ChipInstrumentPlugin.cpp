@@ -7,37 +7,22 @@ namespace te = tracktion;
 const char* ChipInstrumentPlugin::xmlTypeName = "uzxtrmnt";
 
 ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
-    : MidiFxPluginBase<ChipInstrumentFx>(info)
+    : MidiFxPluginBase<ChipInstrumentFx>(info, instrument)
+    , instrument(state)
 {
     levelMeasurer.addClient(*this);
 
-    // TODO add all automated params from instrument
-    // see te::Plugin::addParam, FourOSC
-
-    auto um = getUndoManager();
-    // paramValue.referTo(state, paramDef.Id, um, paramDef.defaultValue)
-    // addedParam = addParam(paramDef, paramValue);
-    // addedParam->attachToCurrentValue(paramValue);
-
     // Amp
-    // TODO reuse Params utility from AYPlugin
-    ampAttackValue  .referTo(state, te::IDs::ampAttack,   um, 0.1f);
-    ampDecayValue   .referTo(state, te::IDs::ampDecay,    um, 0.1f);
-    ampSustainValue .referTo(state, te::IDs::ampSustain,  um, 80.0f);
-    ampReleaseValue .referTo(state, te::IDs::ampRelease,  um, 0.1f);
-    ampVelocityValue.referTo(state, te::IDs::ampVelocity, um, 100.0f);
+    auto& ampParams = instrument.oscParams;
 
-    ampAttack   = addParam("ampAttack",   "Amp Attack",   {0.001f, 60.0f, 0.0f, 0.2f});
-    ampDecay    = addParam("ampDecay",    "Amp Decay",    {0.001f, 60.0f, 0.0f, 0.2f});
-    ampSustain  = addParam("ampSustain",  "Amp Sustain",  {0.0f, 100.0f}, "%");
-    ampRelease  = addParam("ampRelease",  "Amp Release",  {0.001f, 60.0f, 0.0f, 0.2f});
-    ampVelocity = addParam("ampVelocity", "Amp Velocity", {0.0f, 100.0f}, "%");
-
-    ampAttack->attachToCurrentValue(ampAttackValue);
-    ampDecay->attachToCurrentValue(ampDecayValue);
-    ampSustain->attachToCurrentValue(ampSustainValue);
-    ampRelease->attachToCurrentValue(ampReleaseValue);
-    ampVelocity->attachToCurrentValue(ampVelocityValue);
+    // TODO call ampParams.forEach( (auto& v) { addReferAttachParam(v); })
+    // but how to return the created param ptrs to store in members?
+    // maybe store in a map<string, AutomatableParameter::Ptr> inside OscParameters?
+    ampAttack = addReferAttachParam(ampParams.ampAttack);
+    ampDecay = addReferAttachParam(ampParams.ampDecay);
+    ampSustain = addReferAttachParam(ampParams.ampSustain);
+    ampRelease = addReferAttachParam(ampParams.ampRelease);
+    ampVelocity = addReferAttachParam(ampParams.ampVelocity);
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);
     valueTreePropertyChanged(state, te::IDs::mpe);
@@ -66,9 +51,10 @@ bool ChipInstrumentPlugin::hasNameForMidiNoteNumber(int /*note*/, int /*midiChan
     return false;
 }
 
+template <typename Type>
 te::AutomatableParameter* ChipInstrumentPlugin::addParam(const String& paramID,
                                                          const String& name,
-                                                         NormalisableRange<float> valueRange,
+                                                         NormalisableRange<Type> valueRange,
                                                          String label) {
     auto p = Plugin::addParam(paramID, name, valueRange);
 
@@ -78,6 +64,18 @@ te::AutomatableParameter* ChipInstrumentPlugin::addParam(const String& paramID,
     return p;
 }
 
+// // Update all voice parameters
+// void ChipInstrumentPlugin::updateParams() {
+
+//     ampAdsr.setParameters ({
+//         paramValue (synth.ampAttack),
+//         paramValue (synth.ampDecay),
+//         paramValue (synth.ampSustain) / 100.0f,
+//         paramValue (synth.ampRelease)
+//     });
+// }
+
+// LevelMeasurer::Client implementation - called periodically to get the current audio level for a channel
 float ChipInstrumentPlugin::getLevel(int channel) {
     auto& peak = levels[channel];
 
@@ -137,10 +135,13 @@ void ChipInstrumentPlugin::midiPanic() {
 
 //==============================================================================
 void ChipInstrumentPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
-    // instrument.restoreStateFromValueTree(v);
+    instrument.restoreStateFromValueTree(v);
 
-    for (auto p : getAutomatableParameters())
+    // valueTreePropertyChanged(state, te::IDs::voiceMode);
+
+    for (auto p : getAutomatableParameters()) {
         p->updateFromAttachedValue();
+    }
 }
 
 // Array<float> ChipInstrumentPlugin::getLiveModulationPositions(te::AutomatableParameter::Ptr param) {

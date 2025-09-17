@@ -15,12 +15,13 @@ namespace MoTool::uZX {
     Represents a chiptune-style instrument that uses MPE.
     Used by ChipInstrumentPlugin
 */
-class ChipInstrumentFx : public MPEInstrumentFx<ChipInstrumentVoice>,
+class ChipInstrumentFx : public MPEInstrumentFx<ChipInstrumentVoice<ChipInstrumentFx>, ChipInstrumentFx>,
                          public ValueTree::Listener
 {
 public:
     ChipInstrumentFx(const ValueTree& vt, UndoManager* um = nullptr)
-        : state(vt)
+        : MPEInstrumentFx<ChipInstrumentVoice<ChipInstrumentFx>, ChipInstrumentFx>(*this)
+        , state(vt)
         , undoManager(um)
         , oscParams(*this, 0)  // TODO multi-oscillator support
     {

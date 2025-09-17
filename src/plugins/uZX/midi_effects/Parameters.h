@@ -122,7 +122,6 @@ struct ValueWithSource {
         detachSource();
     }
 
-
     inline void referTo(ValueTree& v, UndoManager* um) {
         value.referTo(v, definition.propertyName, um, definition.defaultValue);
     }
@@ -135,10 +134,16 @@ struct ValueWithSource {
     }
 
     void detachSource() {
-        if (source) {
+        if (isSourceAttached()) {
             source->detachFromCurrentValue();
         }
         source.reset();
+    }
+
+    Type getCurrentValue() const {
+        if (isSourceAttached()) {
+            return source->getValue();
+        }
     }
 
     bool isSourceAttached() const { return source != nullptr; }

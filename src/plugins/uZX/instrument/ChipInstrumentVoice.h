@@ -35,11 +35,13 @@ inline static String& operator<< (String& string1, const te::LinEnvelope& adsr) 
 
     @see MPEEffectVoice, ChipInstrument
 */
+template <class OwnerMidiFx>
 class ChipInstrumentVoice
-    : public MPEEffectVoice<ChipInstrumentVoice>
+    : public MPEEffectVoice<ChipInstrumentVoice<OwnerMidiFx>, OwnerMidiFx>
 {
 public:
-    ChipInstrumentVoice() {
+    ChipInstrumentVoice(OwnerMidiFx& owner)
+        : MPEEffectVoice<ChipInstrumentVoice<OwnerMidiFx>, OwnerMidiFx>(owner) {
         // FIXME hardcoded parameters
         ampAdsr.setSampleRate(playRate);
         pitchAdsr.setSampleRate(playRate);
@@ -62,7 +64,11 @@ public:
         //     << " state = " << currentlyPlayingNote.keyState
         //     << "\n---------------------------"
         // );
-        activeNote.setCurrentAndTargetValue(currentlyPlayingNote.initialNote);
+
+        // updating params only once at the start of the note
+        updateParams();
+
+        activeNote.setCurrentAndTargetValue(this->currentlyPlayingNote.initialNote);
         ampAdsr.noteOn();
         pitchAdsr.noteOn();
         // DBG("ADSR: " << ampAdsr);
@@ -114,12 +120,13 @@ public:
     void updateParams() {
         // TODO get params from automatable parameters, but AutomatableParameter is tracktion specific
         DBG("ChipInstrumentVoice Update params");
-        // ampAdsr.setParameters ({
-        //     paramValue(synth.ampAttack),
-        //     paramValue(synth.ampDecay),
-        //     paramValue(synth.ampSustain) / 100.0f,
-        //     paramValue(synth.ampRelease)
-        // });
+        auto& params = this->midiFx.oscParams;
+        ampAdsr.setParameters({
+            params.ampAttack.getCurrentValue(),
+            params.ampDecay.getCurrentValue(),
+            params.ampSustain.getCurrentValue() / 100.0f,
+            params.ampRelease.getCurrentValue()
+        });
     }
 
     void renderNextStep(MidiBufferContext& c, double timeOffset) {
@@ -149,8 +156,8 @@ public:
             // );
             c.buffer.addMidiMessage(
                 MidiMessage::noteOff(
-                    currentlyPlayingNote.midiChannel,
-                    currentlyPlayingNote.initialNote,
+                    this->currentlyPlayingNote.midiChannel,
+                    this->currentlyPlayingNote.initialNote,
                     0.0f
                 ),
                 timeOffset, 0
@@ -160,7 +167,7 @@ public:
             return;
         }
 
-        jassert(isActive());
+        jassert(this->isActive());
 
         if (!approximatelyEqual(lastNotePitch, notePitch)) {
             // DBG("Emit PitchBend " << currentlyPlayingNote.initialNote
@@ -169,14 +176,14 @@ public:
             //     << ", time = " << c.playPosition.inSeconds() + timeOffset
             // );
             auto pitchBendValue = juce::jlimit(0, 16383,
-                8192 + roundToInt(((notePitch - currentlyPlayingNote.initialNote) / pitchBendRange) * 8191.0f)
+                8192 + roundToInt(((notePitch - this->currentlyPlayingNote.initialNote) / pitchBendRange) * 8191.0f)
             );
             // TODO we SHOULD use MPE on MIDI output, so we should send pitch bend on note channel
             // so for example modify output MPENote and then send it to MPEChannelAssigner
             // See MidiClip MIDI MPE output for example tracktion_MidiList.cpp:1981
             c.buffer.addMidiMessage(
                 MidiMessage::pitchWheel(
-                    currentlyPlayingNote.midiChannel,
+                    this->currentlyPlayingNote.midiChannel,
                     pitchBendValue
                 ),
                 timeOffset, 0
@@ -191,8 +198,8 @@ public:
             //     << " time = " << c.playPosition.inSeconds() + timeOffset);
             c.buffer.addMidiMessage(
                 MidiMessage::noteOn(
-                    currentlyPlayingNote.midiChannel,
-                    currentlyPlayingNote.initialNote,
+                    this->currentlyPlayingNote.midiChannel,
+                    this->currentlyPlayingNote.initialNote,
                     level
                 ),
                 timeOffset, 0
@@ -209,8 +216,8 @@ public:
                 // );
                 c.buffer.addMidiMessage(
                     MidiMessage::aftertouchChange(
-                        currentlyPlayingNote.midiChannel,
-                        currentlyPlayingNote.initialNote,
+                        this->currentlyPlayingNote.midiChannel,
+                        this->currentlyPlayingNote.initialNote,
                         roundToInt(level * 127.0f)
                     ),
                     timeOffset, 0
@@ -262,13 +269,13 @@ private:
         pitchAdsr.reset();
         lastLevel = -1;
         lastNotePitch = -1.0f;
-        clearCurrentNote();
+        this->clearCurrentNote();
     }
 
     float computeCurrentLevel() const {
         auto modLevel = ampAdsr.getEnvelopeValue();
-        auto velocity = currentlyPlayingNote.noteOnVelocity.asUnsignedFloat();
-        auto pressure = currentlyPlayingNote.pressure.asUnsignedFloat();
+        auto velocity = this->currentlyPlayingNote.noteOnVelocity.asUnsignedFloat();
+        auto pressure = this->currentlyPlayingNote.pressure.asUnsignedFloat();
         return jlimit(0.0f, 1.0f, modLevel * velocity + pressure);
     }
 
@@ -277,7 +284,7 @@ private:
         // then after noteOff on release pitch offset will be pitchDepth
         // Should read some synth manual, for example Roland SH-201
         auto pitchOffset = pitchAdsr.getEnvelopeValue() * pitchDepth;
-        return currentlyPlayingNote.initialNote + currentlyPlayingNote.totalPitchbendInSemitones + pitchOffset;
+        return this->currentlyPlayingNote.initialNote + this->currentlyPlayingNote.totalPitchbendInSemitones + pitchOffset;
     }
 
     //==============================================================================

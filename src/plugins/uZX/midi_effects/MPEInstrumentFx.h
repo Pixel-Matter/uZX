@@ -11,10 +11,10 @@ namespace MoTool::uZX {
 
 namespace te = tracktion;
 
-template <class Voice>
+template <class Voice, class OwnerMidiFx>
 class MPEInstrumentFx : public MPEInstrument::Listener {
 public:
-    MPEInstrumentFx()
+    MPEInstrumentFx(OwnerMidiFx& owner) : voices(owner)
     {
         mpeInstrument.enableLegacyMode();
         mpeInstrument.addListener(this);
@@ -162,7 +162,7 @@ protected:
         // Implement program change handling logic here
     }
 
-    VoiceManager<Voice> voices;  // Pure voice management
+    VoiceManager<Voice, OwnerMidiFx> voices;  // Pure voice management
 
 private:
     MPEInstrument mpeInstrument;

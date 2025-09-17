@@ -20,11 +20,11 @@ namespace MoTool::uZX {
 
     @see MPEEffect, MPEInstrumentManager
 */
-template <class Voice>
+template <class Voice, class OwnerMidiFx>
 class VoiceManager {
 public:
     //==============================================================================
-    VoiceManager() {
+    VoiceManager(OwnerMidiFx& owner) : midiFx(owner) {
         ensureNumVoices(3);
         setReuseSameVoiceForSameNote(true);
     }
@@ -79,7 +79,7 @@ public:
         }
 
         while (voices.size() < newNumVoices) {
-            addVoice(new Voice());
+            addVoice(new Voice(midiFx));
         }
     }
 
@@ -361,6 +361,7 @@ private:
     //==============================================================================
     OwnedArray<Voice> voices;
     mutable CriticalSection voicesLock;
+    OwnerMidiFx& midiFx;
 
     std::atomic<bool> shouldStealVoices {true};
     std::atomic<bool> reuseSameVoiceForSameNote {true};

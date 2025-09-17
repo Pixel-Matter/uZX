@@ -57,13 +57,15 @@ public:
     float getLevel(int channel);
 
     ChipInstrumentFx instrument;
+
+private:
     // Amplitude envelope automatable parameters
-    tracktion::AutomatableParameter::Ptr ampAttack, ampDecay, ampSustain, ampRelease, ampVelocity;
+    // do not need to store it there
+    // tracktion::AutomatableParameter::Ptr ampAttack, ampDecay, ampSustain, ampRelease, ampVelocity;
     // pitch envelope automatable parameters
     // tracktion::AutomatableParameter::Ptr pitchAttack, pitchDecay, pitchSustain, pitchRelease;
     //==============================================================================
 
-private:
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;
@@ -84,20 +86,20 @@ private:
     }
 
     template <typename Type>
-    std::unique_ptr<TracktionParamSource> addParamSource(ValueWithDef<Type>& vd) {
+    std::unique_ptr<TracktionParamSource> addParamSource(ValueWithSource<Type>& vd) {
         return std::make_unique<TracktionParamSource>(addParam(vd.definition));
     }
 
     template <typename Type>
-    tracktion::AutomatableParameter::Ptr addAttachParamSource(ValueWithDef<Type>& vd) {
+    tracktion::AutomatableParameter::Ptr addAttachParamSource(ValueWithSource<Type>& vd) {
         auto source = addParamSource(vd);
         vd.attachSource(std::move(source));
         return vd.source->parameter;
     }
 
     // Source factory
-    std::function<std::unique_ptr<TracktionParamSource>(ValueWithDef<float>&)> paramSourceFactory =
-        [this](ValueWithDef<float>& vd) {
+    std::function<std::unique_ptr<TracktionParamSource>(ValueWithSource<float>&)> paramSourceFactory =
+        [this](ValueWithSource<float>& vd) {
             return std::make_unique<TracktionParamSource>(addParam(vd.definition));
         };
 

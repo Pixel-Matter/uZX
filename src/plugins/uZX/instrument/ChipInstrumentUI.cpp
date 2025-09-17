@@ -23,11 +23,11 @@ LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter
     addAndMakeVisible(label);
 }
 
-LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const ValueWithDef<float>& value)
+LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const ValueWithSource<float>& value)
     : LabeledRotarySlider(parameter, value.definition.shortLabel, value.definition.description, value.definition.units)
 {}
 
-LabeledRotarySlider::LabeledRotarySlider(const ValueWithDef<float>& value)
+LabeledRotarySlider::LabeledRotarySlider(const ValueWithSource<float>& value)
     : LabeledRotarySlider(*value.source->parameter, value.definition.shortLabel, value.definition.description, value.definition.units)
 {
     jassert(value.source != nullptr);

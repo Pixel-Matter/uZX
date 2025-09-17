@@ -2,7 +2,6 @@
 
 #include <JuceHeader.h>
 #include <concepts>
-#include "juce_core/system/juce_PlatformDefs.h"
 
 
 namespace MoTool::uZX {
@@ -105,21 +104,21 @@ struct ParameterDef {
 // Value with definition, CachedValue and optionally a parameter source
 //==============================================================================
 template <typename Type, typename Source = TracktionParamSource>
-struct ValueWithDef {
-    explicit ValueWithDef(const ParameterDef<Type>& def)
+struct ValueWithSource {
+    explicit ValueWithSource(const ParameterDef<Type>& def)
         : definition(def)
     {}
 
-    ValueWithDef(ValueWithDef&&) = default;
-    ValueWithDef& operator= (ValueWithDef&&) = default;
+    ValueWithSource(ValueWithSource&&) = default;
+    ValueWithSource& operator= (ValueWithSource&&) = default;
 
     // TODO variadic args passthru to ParameterDef<Type> ctor
-    ValueWithDef(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
+    ValueWithSource(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
         : definition(def)
         , value(state, def.propertyName, undoMgr, def.defaultValue)
     {}
 
-    ~ValueWithDef() {
+    ~ValueWithSource() {
         detachSource();
     }
 
@@ -128,10 +127,11 @@ struct ValueWithDef {
         value.referTo(v, definition.propertyName, um, definition.defaultValue);
     }
 
-    void attachSource(std::unique_ptr<Source> s) {
+    Source* attachSource(std::unique_ptr<Source> s) {
         jassert(s != nullptr);
         source = std::move(s);
         source->attachToCurrentValue(value);
+        return source.get();
     }
 
     void detachSource() {
@@ -148,7 +148,16 @@ struct ValueWithDef {
     std::unique_ptr<Source> source;
 
 private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ValueWithDef)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ValueWithSource)
 };
+
+//==============================================================================
+// Source factory concept
+//==============================================================================
+template<typename T>
+concept ParameterSourceFactory = requires(T& t) {
+    { t.createSource() } -> std::convertible_to<float>;
+};
+
 
 }  // namespace MoTool::uZX

@@ -11,9 +11,9 @@ class LabeledRotarySlider : public Component {
 public:
     LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const String& labelText = {}, const String& tooltip = {}, const String& valueSuffix = {});
 
-    LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const ValueWithDef<float>& value);
+    LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const ValueWithSource<float>& value);
 
-    LabeledRotarySlider(const ValueWithDef<float>& value);
+    LabeledRotarySlider(const ValueWithSource<float>& value);
 
     void resized() override;
 

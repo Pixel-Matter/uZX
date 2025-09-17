@@ -46,10 +46,14 @@ public:
             referToState();
         }
 
-        // void attach();  // to what?
-        // void detach();
-
-        // TODO see ParameterWithStateValue, but without explicit dependency on te::AutomatableParameter
+        template<typename Visitor>
+        void visit(Visitor&& visitor) {
+            visitor(ampAttack);
+            visitor(ampDecay);
+            visitor(ampSustain);
+            visitor(ampRelease);
+            visitor(ampVelocity);
+        }
 
         void referToState() {
             ampAttack.referTo(instrument.state, instrument.undoManager);
@@ -84,11 +88,11 @@ public:
         ChipInstrumentFx& instrument;
 
     public:
-        ValueWithDef<float> ampAttack;
-        ValueWithDef<float> ampDecay;
-        ValueWithDef<float> ampSustain;
-        ValueWithDef<float> ampRelease;
-        ValueWithDef<float> ampVelocity;
+        ValueWithSource<float> ampAttack;
+        ValueWithSource<float> ampDecay;
+        ValueWithSource<float> ampSustain;
+        ValueWithSource<float> ampRelease;
+        ValueWithSource<float> ampVelocity;
     };
 
     // Voices do not store ValueTree state, so we need to update them manually

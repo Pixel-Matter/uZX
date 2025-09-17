@@ -12,22 +12,9 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
 {
     levelMeasurer.addClient(*this);
 
-    // Amp
-    auto& ampParams = instrument.oscParams;
-
-    // TODO call ampParams.forEach( (auto& v) { addReferAttachParam(v); })
-    // but how to return the created param ptrs to store in members?
-    // maybe store in ParameterSource inside OscParameters?
-    // maybe store callbacks — functions to attach/detach? Practically the same as ParameterSource.
-
-    ampParams.ampAttack.attachSource(addParamSource(ampParams.ampAttack));
-    ampAttack = ampParams.ampAttack.source->parameter;
-
-    // ampAttack = addAttachParamSource(ampParams.ampDecay);
-    ampDecay = addAttachParamSource(ampParams.ampDecay);
-    ampSustain = addAttachParamSource(ampParams.ampSustain);
-    ampRelease = addAttachParamSource(ampParams.ampRelease);
-    ampVelocity = addAttachParamSource(ampParams.ampVelocity);
+    instrument.oscParams.visit([this](auto& p) {
+        addAttachParamSource(p);
+    });
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);
     valueTreePropertyChanged(state, te::IDs::mpe);

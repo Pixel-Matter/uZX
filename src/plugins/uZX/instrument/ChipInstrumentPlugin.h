@@ -78,31 +78,6 @@ private:
                                                   NormalisableRange<float> valueRange,
                                                   String label = {});
 
-    template <typename Type>
-    tracktion::AutomatableParameter::Ptr addParam(ParameterDef<Type> def) {
-        static_assert(std::is_same<Type, float>::value, "Only float parameters are supported");
-        // TODO but any Range can be converted to float
-        return addParam(def.paramID, def.description, def.valueRange, def.paramID);
-    }
-
-    template <typename Type>
-    std::unique_ptr<TracktionParamSource> addParamSource(ValueWithSource<Type>& vd) {
-        return std::make_unique<TracktionParamSource>(addParam(vd.definition));
-    }
-
-    template <typename Type>
-    tracktion::AutomatableParameter::Ptr addAttachParamSource(ValueWithSource<Type>& vd) {
-        auto source = addParamSource(vd);
-        vd.attachSource(std::move(source));
-        return vd.source->parameter;
-    }
-
-    // Source factory
-    std::function<std::unique_ptr<TracktionParamSource>(ValueWithSource<float>&)> paramSourceFactory =
-        [this](ValueWithSource<float>& vd) {
-            return std::make_unique<TracktionParamSource>(addParam(vd.definition));
-        };
-
     //==============================================================================
     bool flushingState = false;
     std::unordered_map<String, String> paramLabels;

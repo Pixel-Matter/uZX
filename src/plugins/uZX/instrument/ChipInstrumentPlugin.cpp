@@ -12,8 +12,10 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
 {
     levelMeasurer.addClient(*this);
 
-    instrument.oscParams.visit([this](auto& p) {
-        addAttachParamSource(p);
+    instrument.oscParams.visit([this](auto& vd) {
+        auto& def = vd.definition;
+        auto param = addParam(def.paramID, def.description, def.valueRange, def.paramID);
+        vd.attachSource(std::move(std::make_unique<TracktionParamSource>(param)));
     });
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);

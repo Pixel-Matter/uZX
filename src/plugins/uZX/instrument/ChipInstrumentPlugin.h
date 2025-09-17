@@ -1,9 +1,12 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <functional>
+#include <memory>
 
-#include "../midi_effects/MidiEffect.h"
 #include "ChipInstrument.h"
+#include "../midi_effects/MidiEffect.h"
+#include "../midi_effects/Parameters.h"
 
 
 namespace MoTool::uZX {
@@ -53,10 +56,13 @@ public:
 
     float getLevel(int channel);
 
+
     // Amplitude envelope automatable parameters
     tracktion::AutomatableParameter::Ptr ampAttack, ampDecay, ampSustain, ampRelease, ampVelocity;
     // pitch envelope automatable parameters
     // tracktion::AutomatableParameter::Ptr pitchAttack, pitchDecay, pitchSustain, pitchRelease;
+
+    ChipInstrumentFx instrument;
 
 private:
     //==============================================================================
@@ -79,19 +85,24 @@ private:
     }
 
     template <typename Type>
-    tracktion::AutomatableParameter* addReferAttachParam(ValueWithDef<Type>& vd) {
-        vd.referTo(state, getUndoManager());
+    tracktion::AutomatableParameter* addAttachParam(ValueWithDef<Type>& vd) {
         auto ap = addParam(vd.definition);
         ap->attachToCurrentValue(vd.value);
         return ap;
     }
 
-    // template <typename Type>
-    // tracktion::AutomatableParameter* addParam(ParameterDef<Type>);
+    template <typename Type>
+    std::unique_ptr<TracktionParamSource> addAttachParamSource(ValueWithDef<Type>& vd) {
+        return std::make_unique(addAttachParam(vd));
+    }
+
+    // Parameter factory
+    std::function<tracktion::AutomatableParameter*(ValueWithDef<float>&)> paramSourceFactory =
+        [this](ValueWithDef<float>& vd) {
+            return addAttachParam(vd);
+        };
 
     //==============================================================================
-    ChipInstrumentFx instrument;
-
     bool flushingState = false;
     std::unordered_map<String, String> paramLabels;
     tracktion::LevelMeasurer levelMeasurer;

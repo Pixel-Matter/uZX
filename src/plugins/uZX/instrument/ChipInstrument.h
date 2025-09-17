@@ -1,72 +1,13 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <memory>
 
-#include "../midi_effects/MPEInstrumentFx.h"
 #include "ChipInstrumentVoice.h"
+#include "../midi_effects/MPEInstrumentFx.h"
+#include "../midi_effects/Parameters.h"
 
 namespace MoTool::uZX {
-
-//==============================================================================
-
-// TODO ChoiceParameterDef
-
-template <typename Type>
-struct ParameterDef {
-    String paramID;
-    Identifier propertyName;
-    String description;
-    Type defaultValue;
-    NormalisableRange<Type> valueRange;
-    String units = {};
-    std::function<String(Type)> valueToStringFunction = {};
-    std::function<Type(const String&)> stringToValueFunction = {};
-
-    String toString() const {
-        // output definition to string for output/debugging
-        String s = paramID + ": " + description + " [" + String(valueRange.start)
-                   + " - " + String(valueRange.end) + "]";
-        if (units.isNotEmpty())
-            s += " " + units;
-        s += " (default " + String(defaultValue) + ")";
-        return s;
-    }
-
-};
-
-//==============================================================================
-template <typename Type>
-struct ValueWithDef {
-    explicit ValueWithDef(const ParameterDef<Type>& def)
-        : definition(def)
-    {}
-
-    // TODO variadic args passthru to ParameterDef<Type> ctor
-    ValueWithDef(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
-        : definition(def)
-        , value(state, def.propertyName, undoMgr, def.defaultValue)
-    {}
-
-    ValueWithDef (ValueWithDef&&) = default;
-    ValueWithDef& operator= (ValueWithDef&&) = default;
-
-    // TODO pass ValueTree to ctor?
-    inline void referTo(ValueTree& v, UndoManager* um) {
-        value.referTo(v, definition.propertyName, um, definition.defaultValue);
-    }
-
-    // /// Sets a new value via the AutomatableParameter
-    // void setParameter (Type newValue, NotificationType);
-
-    // /// Releases the parameter and CachedValue
-    // void reset();
-
-    // /// Copies the matching property from the given ValueTree to this parameter
-    // void setFromValueTree (const ValueTree&);
-
-    ParameterDef<Type> definition;
-    CachedValue<Type> value;
-};
 
 
 //==============================================================================
@@ -78,13 +19,10 @@ class ChipInstrumentFx : public MPEInstrumentFx<ChipInstrumentVoice>,
                          public ValueTree::Listener
 {
 public:
-    ChipInstrumentFx()
-        : ChipInstrumentFx(ValueTree(te::IDs::PLUGIN))
-    {}
-
-    explicit ChipInstrumentFx(const ValueTree& vt)
-        : oscParams(*this, 0)  // TODO multi-oscillator support
-        , state(vt)
+    ChipInstrumentFx(const ValueTree& vt, UndoManager* um = nullptr)
+        : state(vt)
+        , undoManager(um)
+        , oscParams(*this, 0)  // TODO multi-oscillator support
     {
         state.addListener(this);
         restoreStateFromValueTree(state);
@@ -95,15 +33,43 @@ public:
     }
 
     struct OscParameters {
-        OscParameters() = default;
+        OscParameters(ChipInstrumentFx& inst, int oscNum)
+            : instrument(inst)
+            // TODO change te::IDs::* with own IDs
+            , ampAttack   {{"ampAttack",   te::IDs::ampAttack,   "A", "Amp Attack Time",   0.0f,   {0.0f, 60.0f, 0.0f, 0.2f}}}
+            , ampDecay    {{"ampDecay",    te::IDs::ampDecay,    "D", "Amp Decay Time",    0.0f,   {0.0f, 60.0f, 0.0f, 0.2f}}}
+            , ampSustain  {{"ampSustain",  te::IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}}
+            , ampRelease  {{"ampRelease",  te::IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 60.0f, 0.0f, 0.2f}}}
+            , ampVelocity {{"ampVelocity", te::IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}}
+        {
+            ignoreUnused(oscNum);
 
-        OscParameters(ChipInstrumentFx& instrument, int oscNum) {
-            ignoreUnused(instrument, oscNum);
+            referToState();
         }
 
-        // void attach();
+        // void attach();  // to what?
         // void detach();
 
+        // TODO see ParameterWithStateValue, but without explicit dependency on te::AutomatableParameter
+
+        void referToState() {
+            ampAttack.referTo(instrument.state, instrument.undoManager);
+            ampDecay.referTo(instrument.state, instrument.undoManager);
+            ampSustain.referTo(instrument.state, instrument.undoManager);
+            ampRelease.referTo(instrument.state, instrument.undoManager);
+            ampVelocity.referTo(instrument.state, instrument.undoManager);
+        }
+
+        void restoreStateFromValueTree(const ValueTree& v) {
+            te::copyPropertiesToCachedValues(v,
+                ampAttack  .value,
+                ampDecay   .value,
+                ampSustain .value,
+                ampRelease .value,
+                ampVelocity.value
+            );
+        }
+        //=======================================================================================
         // TODO
         // shape (square, saw, triangle, noise)
         // amp level,
@@ -115,24 +81,16 @@ public:
         // AY env shape, retrigger
         // unison voices, detune
 
-        ValueWithDef<float> ampAttack   {{"ampAttack",   te::IDs::ampAttack,   "Amp Attack",   0.0f,   {0.0f, 60.0f, 0.0f, 0.2f}}};
-        ValueWithDef<float> ampDecay    {{"ampDecay",    te::IDs::ampDecay,    "Amp Decay",    0.0f,   {0.0f, 60.0f, 0.0f, 0.2f}}};
-        ValueWithDef<float> ampSustain  {{"ampSustain",  te::IDs::ampSustain,  "Amp Sustain",  100.0f, {0.0f, 100.0f}, "%"}};
-        ValueWithDef<float> ampRelease  {{"ampRelease",  te::IDs::ampRelease,  "Amp Release",  0.0f,   {0.0f, 60.0f, 0.0f, 0.2f}}};
-        ValueWithDef<float> ampVelocity {{"ampVelocity", te::IDs::ampVelocity, "Amp Velocity", 100.0f, {0.0f, 100.0f}, "%"}};
+    private:
+        ChipInstrumentFx& instrument;
 
-        // TODO see ParameterWithStateValue
-        // te::AutomatableParameter::Ptr tune, fineTune, level, pulseWidth, detune, spread, pan;
+    public:
+        ValueWithDef<float> ampAttack;
+        ValueWithDef<float> ampDecay;
+        ValueWithDef<float> ampSustain;
+        ValueWithDef<float> ampRelease;
+        ValueWithDef<float> ampVelocity;
 
-        void restoreStateFromValueTree(const ValueTree& v) {
-            te::copyPropertiesToCachedValues(v,
-                ampAttack  .value,
-                ampDecay   .value,
-                ampSustain .value,
-                ampRelease .value,
-                ampVelocity.value
-            );
-        }
     };
 
     // Voices do not store ValueTree state, so we need to update them manually
@@ -146,13 +104,15 @@ public:
         oscParams.restoreStateFromValueTree(v);
     }
 
-    OscParameters oscParams {};
+public:
+    ValueTree state;
+    UndoManager* undoManager = nullptr;
+    OscParameters oscParams;
 
     // TODO multi-oscillator support
     // OwnedArray<OscParameters> oscParams; // Parameter sets for all four oscillators, indexed 0-3
 
 private:
-    ValueTree state;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChipInstrumentFx)
 };

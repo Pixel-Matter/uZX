@@ -8,7 +8,7 @@ const char* ChipInstrumentPlugin::xmlTypeName = "uzxtrmnt";
 
 ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
     : MidiFxPluginBase<ChipInstrumentFx>(info, instrument)
-    , instrument(state)
+    , instrument(state, getUndoManager())
 {
     levelMeasurer.addClient(*this);
 
@@ -17,12 +17,13 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
 
     // TODO call ampParams.forEach( (auto& v) { addReferAttachParam(v); })
     // but how to return the created param ptrs to store in members?
-    // maybe store in a map<string, AutomatableParameter::Ptr> inside OscParameters?
-    ampAttack = addReferAttachParam(ampParams.ampAttack);
-    ampDecay = addReferAttachParam(ampParams.ampDecay);
-    ampSustain = addReferAttachParam(ampParams.ampSustain);
-    ampRelease = addReferAttachParam(ampParams.ampRelease);
-    ampVelocity = addReferAttachParam(ampParams.ampVelocity);
+    // maybe store in ParameterSource inside OscParameters?
+    // maybe store callbacks — functions to attach/detach? Practically the same as ParameterSource.
+    ampAttack = addAttachParam(ampParams.ampAttack);
+    ampDecay = addAttachParam(ampParams.ampDecay);
+    ampSustain = addAttachParam(ampParams.ampSustain);
+    ampRelease = addAttachParam(ampParams.ampRelease);
+    ampVelocity = addAttachParam(ampParams.ampVelocity);
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);
     valueTreePropertyChanged(state, te::IDs::mpe);
@@ -34,8 +35,12 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
 ChipInstrumentPlugin::~ChipInstrumentPlugin() {
     notifyListenersOfDeletion();
 
-    // TODO detach all instrument parameters
-    // param.detachFromCurrentValue()
+    // TODO instrument.oscParams should do this but it should not depend on tracktion::AutomatableParameter
+    ampAttack->detachFromCurrentValue();
+    ampDecay->detachFromCurrentValue();
+    ampSustain->detachFromCurrentValue();
+    ampRelease->detachFromCurrentValue();
+    ampVelocity->detachFromCurrentValue();
 }
 
 bool ChipInstrumentPlugin::hasNameForMidiBank(int /* num */, juce::String& /* name */) {

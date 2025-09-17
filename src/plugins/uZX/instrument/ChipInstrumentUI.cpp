@@ -6,7 +6,7 @@ namespace te = tracktion;
 
 namespace MoTool::uZX {
 
-LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const String& labelText, const String& tooltip)
+LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const String& labelText, const String& tooltip, const String& valueSuffix)
     : attachment(slider, *parameter)
 {
     slider.setSliderStyle(Slider::RotaryVerticalDrag);
@@ -14,6 +14,7 @@ LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter
     slider.setTooltip(tooltip);
     slider.setPopupDisplayEnabled(true, true, nullptr);
     slider.setNumDecimalPlacesToDisplay(2);
+    slider.setTextValueSuffix(valueSuffix);
     addAndMakeVisible(slider);
 
     label.setText(labelText, dontSendNotification);
@@ -21,6 +22,10 @@ LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter
     label.setFont(label.getFont().withPointHeight((float) labelHeight));
     addAndMakeVisible(label);
 }
+
+LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const ValueWithDef<float>& value)
+    : LabeledRotarySlider(parameter, value.definition.shortLabel, value.definition.description, value.definition.units)
+{}
 
 void LabeledRotarySlider::resized() {
     auto bounds = getLocalBounds();
@@ -36,12 +41,13 @@ void LabeledRotarySlider::resized() {
 //==============================================================================
 ChipInstrumentUI::ChipInstrumentUI(tracktion::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
-    , adsrAttackSlider  (dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampAttack,   "A", "Amp Attack Time")
-    , adsrDecaySlider   (dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampDecay,    "D", "Amp Decay Time")
-    , adsrSustainSlider (dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampSustain,  "S", "Amp Sustain Level")
-    , adsrReleaseSlider (dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampRelease,  "R", "Amp Release Time")
-    , adsrVelocitySlider(dynamic_cast<ChipInstrumentPlugin*>(pluginPtr.get())->ampVelocity, "V", "Amp Velocity Sensitivity")
-
+    , instrument(instrumentPlugin()->instrument)
+    // TODO should we initialize these params later?
+    , adsrAttackSlider  (instrumentPlugin()->ampAttack,   instrument.oscParams.ampAttack)
+    , adsrDecaySlider   (instrumentPlugin()->ampDecay,    instrument.oscParams.ampDecay)
+    , adsrSustainSlider (instrumentPlugin()->ampSustain,  instrument.oscParams.ampSustain)
+    , adsrReleaseSlider (instrumentPlugin()->ampRelease,  instrument.oscParams.ampRelease)
+    , adsrVelocitySlider(instrumentPlugin()->ampVelocity, instrument.oscParams.ampVelocity)
 {
     jassert(pluginPtr != nullptr);
 
@@ -51,6 +57,10 @@ ChipInstrumentUI::ChipInstrumentUI(tracktion::Plugin::Ptr pluginPtr)
     addAndMakeVisible(adsrDecaySlider);
     addAndMakeVisible(adsrSustainSlider);
     addAndMakeVisible(adsrReleaseSlider);
+}
+
+ChipInstrumentPlugin* ChipInstrumentUI::instrumentPlugin() {
+    return dynamic_cast<ChipInstrumentPlugin*>(plugin.get());
 }
 
 void ChipInstrumentUI::paint(Graphics&) {

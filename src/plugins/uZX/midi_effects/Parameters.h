@@ -2,71 +2,130 @@
 
 #include <JuceHeader.h>
 #include <concepts>
+#include "juce_core/system/juce_PlatformDefs.h"
+
 
 namespace MoTool::uZX {
 
+//==============================================================================
 // C++20 concept for parameter sources
 template<typename T>
 concept ParameterSource = requires(const T& t) {
     { t.getValue() } -> std::convertible_to<float>;
-    { t.hasChanged() } -> std::convertible_to<bool>;
+    { t.attachToCurrentValue(std::declval<juce::CachedValue<float>&>()) } -> std::same_as<void>;
+    { t.detachFromCurrentValue() } -> std::same_as<void>;
 };
 
+//==============================================================================
 // Template-based parameter sources - zero runtime overhead
-struct TracktionParameterSource {
-    tracktion::AutomatableParameter& param_;
+//==============================================================================
+struct TracktionParamSource {
+    tracktion::AutomatableParameter* param_;
 
-    TracktionParameterSource(tracktion::AutomatableParameter& p) : param_(p) {}
-    float getValue() const { return param_.getCurrentValue(); }
-    bool hasChanged() const { return false; } // Can implement if needed
-};
+    TracktionParamSource(tracktion::AutomatableParameter* p) : param_(p) {}
 
-struct JuceParameterSource {
-    std::atomic<float>* valuePtr_;
+    float getValue() const {
+        jassert(param_ != nullptr);
+        return param_->getCurrentValue();
+    }
 
-    JuceParameterSource(std::atomic<float>& value) : valuePtr_(&value) {}
-    float getValue() const { return valuePtr_->load(); }
-    bool hasChanged() const { return false; } // Can implement if needed
-};
+    void attachToCurrentValue(juce::CachedValue<float>& v) {
+        jassert(param_ != nullptr);
+        param_->attachToCurrentValue(v);
+    }
 
-// Static assertions to verify our types satisfy the concept
-static_assert(ParameterSource<TracktionParameterSource>);
-static_assert(ParameterSource<JuceParameterSource>);
-
-// Parameter bundle concept - allows instruments to define their parameter sets
-template<typename T>
-concept ParameterBundle = requires(const T& bundle) {
-    typename T::ParameterSourceType;
-    requires ParameterSource<typename T::ParameterSourceType>;
-};
-
-// Base template for parameter bundles
-template<ParameterSource ParamType>
-struct ParameterBundleBase {
-    using ParameterSourceType = ParamType;
-};
-
-// Template-based voice class
-template<ParameterSource ParamSourceType>
-class ChipInstrumentVoiceTemplate {
-public:
-    using ParameterSourceType = ParamSourceType;
-
-protected:
-    // Voice classes will be specialized with specific parameter sets
-    virtual void updateParametersFromBundle() = 0;
-
-public:
-    virtual ~ChipInstrumentVoiceTemplate() = default;
-
-    void renderNextBlock() {
-        updateParametersFromBundle();
-        // Rendering logic uses updated parameters
+    void detachFromCurrentValue() {
+        if (param_ != nullptr)
+            param_->detachFromCurrentValue();
     }
 };
+// Static assertions to verify our types satisfy the concept
+static_assert(ParameterSource<TracktionParamSource>);
 
-// Type aliases for convenience
-using TracktionChipVoice = ChipInstrumentVoiceTemplate<TracktionParameterSource>;
-using JuceChipVoice = ChipInstrumentVoiceTemplate<JuceParameterSource>;
+struct JuceParamSource {
+    std::atomic<float>* valuePtr_;
+
+    JuceParamSource(std::atomic<float>& value) : valuePtr_(&value) {}
+
+    float getValue() const { return valuePtr_->load(); }
+};
+// Static assertions to verify our types satisfy the concept
+static_assert(ParameterSource<JuceParamSource>);
+
+
+
+// TODO ChoiceParameterDef
+
+//==============================================================================
+// Parameter definition
+//=============================================================================
+template <typename Type>
+struct ParameterDef {
+    String paramID;
+    Identifier propertyName;
+    String shortLabel;
+    String description;
+    Type defaultValue;
+    NormalisableRange<Type> valueRange;
+    String units = {};
+    std::function<String(Type)> valueToStringFunction = {};
+    std::function<Type(const String&)> stringToValueFunction = {};
+
+    String toString() const {
+        // output definition to string for output/debugging
+        String s = paramID + ": " + description + " [" + String(valueRange.start)
+                   + " - " + String(valueRange.end) + "]";
+        if (units.isNotEmpty())
+            s += " " + units;
+        s += " (default " + String(defaultValue) + ")";
+        return s;
+    }
+
+};
+
+//==============================================================================
+// Value with definition, CachedValue and optionally a parameter source
+//==============================================================================
+template <typename Type, typename Source = TracktionParamSource>
+struct ValueWithDef {
+    explicit ValueWithDef(const ParameterDef<Type>& def)
+        : definition(def)
+    {}
+
+    // TODO variadic args passthru to ParameterDef<Type> ctor
+    ValueWithDef(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
+        : definition(def)
+        , value(state, def.propertyName, undoMgr, def.defaultValue)
+    {}
+
+    ~ValueWithDef() {
+        detachSource();
+    }
+
+    ValueWithDef(ValueWithDef&&) = default;
+    ValueWithDef& operator= (ValueWithDef&&) = default;
+
+    inline void referTo(ValueTree& v, UndoManager* um) {
+        value.referTo(v, definition.propertyName, um, definition.defaultValue);
+    }
+
+    void attachSource(std::unique_ptr<Source> s) {
+        jassert(s != nullptr);
+        source = std::move(s);
+        source->attachToCurrentValue(value);
+    }
+
+    void detachSource() {
+        if (source)
+            source->detachFromCurrentValue();
+        source.reset();
+    }
+
+    bool isSourceAttached() const { return source != nullptr; }
+
+    ParameterDef<Type> definition;
+    CachedValue<Type> value;
+    std::unique_ptr<Source> source;
+};
 
 }  // namespace MoTool::uZX

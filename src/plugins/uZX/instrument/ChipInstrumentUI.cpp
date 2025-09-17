@@ -27,6 +27,13 @@ LabeledRotarySlider::LabeledRotarySlider(te::AutomatableParameter::Ptr parameter
     : LabeledRotarySlider(parameter, value.definition.shortLabel, value.definition.description, value.definition.units)
 {}
 
+LabeledRotarySlider::LabeledRotarySlider(const ValueWithDef<float>& value)
+    : LabeledRotarySlider(*value.source->parameter, value.definition.shortLabel, value.definition.description, value.definition.units)
+{
+    jassert(value.source != nullptr);
+}
+
+
 void LabeledRotarySlider::resized() {
     auto bounds = getLocalBounds();
     auto sliderHeight = bounds.getHeight() - labelHeight;
@@ -42,12 +49,11 @@ void LabeledRotarySlider::resized() {
 ChipInstrumentUI::ChipInstrumentUI(tracktion::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
     , instrument(instrumentPlugin()->instrument)
-    // TODO should we initialize these params later?
-    , adsrAttackSlider  (instrumentPlugin()->ampAttack,   instrument.oscParams.ampAttack)
-    , adsrDecaySlider   (instrumentPlugin()->ampDecay,    instrument.oscParams.ampDecay)
-    , adsrSustainSlider (instrumentPlugin()->ampSustain,  instrument.oscParams.ampSustain)
-    , adsrReleaseSlider (instrumentPlugin()->ampRelease,  instrument.oscParams.ampRelease)
-    , adsrVelocitySlider(instrumentPlugin()->ampVelocity, instrument.oscParams.ampVelocity)
+    , adsrAttackSlider  (instrument.oscParams.ampAttack)
+    , adsrDecaySlider   (instrument.oscParams.ampDecay)
+    , adsrSustainSlider (instrument.oscParams.ampSustain)
+    , adsrReleaseSlider (instrument.oscParams.ampRelease)
+    , adsrVelocitySlider(instrument.oscParams.ampVelocity)
 {
     jassert(pluginPtr != nullptr);
 

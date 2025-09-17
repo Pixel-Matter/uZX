@@ -19,11 +19,15 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
     // but how to return the created param ptrs to store in members?
     // maybe store in ParameterSource inside OscParameters?
     // maybe store callbacks — functions to attach/detach? Practically the same as ParameterSource.
-    ampAttack = addAttachParam(ampParams.ampAttack);
-    ampDecay = addAttachParam(ampParams.ampDecay);
-    ampSustain = addAttachParam(ampParams.ampSustain);
-    ampRelease = addAttachParam(ampParams.ampRelease);
-    ampVelocity = addAttachParam(ampParams.ampVelocity);
+
+    ampParams.ampAttack.attachSource(addParamSource(ampParams.ampAttack));
+    ampAttack = ampParams.ampAttack.source->parameter;
+
+    // ampAttack = addAttachParamSource(ampParams.ampDecay);
+    ampDecay = addAttachParamSource(ampParams.ampDecay);
+    ampSustain = addAttachParamSource(ampParams.ampSustain);
+    ampRelease = addAttachParamSource(ampParams.ampRelease);
+    ampVelocity = addAttachParamSource(ampParams.ampVelocity);
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);
     valueTreePropertyChanged(state, te::IDs::mpe);
@@ -34,13 +38,6 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
 
 ChipInstrumentPlugin::~ChipInstrumentPlugin() {
     notifyListenersOfDeletion();
-
-    // TODO instrument.oscParams should do this but it should not depend on tracktion::AutomatableParameter
-    ampAttack->detachFromCurrentValue();
-    ampDecay->detachFromCurrentValue();
-    ampSustain->detachFromCurrentValue();
-    ampRelease->detachFromCurrentValue();
-    ampVelocity->detachFromCurrentValue();
 }
 
 bool ChipInstrumentPlugin::hasNameForMidiBank(int /* num */, juce::String& /* name */) {
@@ -56,11 +53,10 @@ bool ChipInstrumentPlugin::hasNameForMidiNoteNumber(int /*note*/, int /*midiChan
     return false;
 }
 
-template <typename Type>
-te::AutomatableParameter* ChipInstrumentPlugin::addParam(const String& paramID,
-                                                         const String& name,
-                                                         NormalisableRange<Type> valueRange,
-                                                         String label) {
+te::AutomatableParameter::Ptr ChipInstrumentPlugin::addParam(const String& paramID,
+                                                             const String& name,
+                                                             NormalisableRange<float> valueRange,
+                                                             String label) {
     auto p = Plugin::addParam(paramID, name, valueRange);
 
     if (label.isNotEmpty())

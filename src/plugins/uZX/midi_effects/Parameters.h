@@ -10,48 +10,66 @@ namespace MoTool::uZX {
 //==============================================================================
 // C++20 concept for parameter sources
 template<typename T>
-concept ParameterSource = requires(const T& t) {
+concept ParameterSource = requires(T& t) {
     { t.getValue() } -> std::convertible_to<float>;
     { t.attachToCurrentValue(std::declval<juce::CachedValue<float>&>()) } -> std::same_as<void>;
     { t.detachFromCurrentValue() } -> std::same_as<void>;
+    { t.getName() } -> std::convertible_to<juce::String>;
 };
 
 //==============================================================================
 // Template-based parameter sources - zero runtime overhead
 //==============================================================================
 struct TracktionParamSource {
-    tracktion::AutomatableParameter* param_;
+    tracktion::AutomatableParameter::Ptr parameter;
 
-    TracktionParamSource(tracktion::AutomatableParameter* p) : param_(p) {}
+    TracktionParamSource(tracktion::AutomatableParameter::Ptr p) : parameter(std::move(p)) {}
+
+    ~TracktionParamSource() {
+        detachFromCurrentValue();
+    }
 
     float getValue() const {
-        jassert(param_ != nullptr);
-        return param_->getCurrentValue();
+        jassert(parameter != nullptr);
+        return parameter->getCurrentValue();
     }
 
     void attachToCurrentValue(juce::CachedValue<float>& v) {
-        jassert(param_ != nullptr);
-        param_->attachToCurrentValue(v);
+        jassert(parameter != nullptr);
+        parameter->attachToCurrentValue(v);
     }
 
     void detachFromCurrentValue() {
-        if (param_ != nullptr)
-            param_->detachFromCurrentValue();
+        if (parameter != nullptr) {
+            parameter->detachFromCurrentValue();
+        }
+    }
+
+    String getName() const {
+        if (parameter != nullptr)
+            return parameter->getParameterName();
+        return juce::String();
     }
 };
 // Static assertions to verify our types satisfy the concept
 static_assert(ParameterSource<TracktionParamSource>);
 
+//==============================================================================
 struct JuceParamSource {
     std::atomic<float>* valuePtr_;
 
     JuceParamSource(std::atomic<float>& value) : valuePtr_(&value) {}
 
     float getValue() const { return valuePtr_->load(); }
+
+    void attachToCurrentValue(juce::CachedValue<float>&) {}
+
+    void detachFromCurrentValue() {}
+
+    String getName() const { return {}; }
 };
 // Static assertions to verify our types satisfy the concept
 static_assert(ParameterSource<JuceParamSource>);
-
 
 
 // TODO ChoiceParameterDef
@@ -92,6 +110,9 @@ struct ValueWithDef {
         : definition(def)
     {}
 
+    ValueWithDef(ValueWithDef&&) = default;
+    ValueWithDef& operator= (ValueWithDef&&) = default;
+
     // TODO variadic args passthru to ParameterDef<Type> ctor
     ValueWithDef(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
         : definition(def)
@@ -102,8 +123,6 @@ struct ValueWithDef {
         detachSource();
     }
 
-    ValueWithDef(ValueWithDef&&) = default;
-    ValueWithDef& operator= (ValueWithDef&&) = default;
 
     inline void referTo(ValueTree& v, UndoManager* um) {
         value.referTo(v, definition.propertyName, um, definition.defaultValue);
@@ -116,8 +135,9 @@ struct ValueWithDef {
     }
 
     void detachSource() {
-        if (source)
+        if (source) {
             source->detachFromCurrentValue();
+        }
         source.reset();
     }
 
@@ -126,6 +146,9 @@ struct ValueWithDef {
     ParameterDef<Type> definition;
     CachedValue<Type> value;
     std::unique_ptr<Source> source;
+
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ValueWithDef)
 };
 
 }  // namespace MoTool::uZX

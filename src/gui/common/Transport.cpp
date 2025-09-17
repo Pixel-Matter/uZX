@@ -80,6 +80,9 @@ TransportBar::TransportBar(EditViewState& evs)
 }
 
 TransportBar::~TransportBar() {
+    bpmSlider_.setLookAndFeel(nullptr);
+    beatFramesSlider_.setLookAndFeel(nullptr);
+
     transport_.removeChangeListener(this);
     transport_.state.removeListener(this);
     edit_.state.removeListener(this);

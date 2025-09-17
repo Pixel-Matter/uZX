@@ -13,6 +13,8 @@ public:
 
     LabeledRotarySlider(te::AutomatableParameter::Ptr parameter, const ValueWithDef<float>& value);
 
+    LabeledRotarySlider(const ValueWithDef<float>& value);
+
     void resized() override;
 
     Slider& getSlider() { return slider; }
@@ -22,10 +24,6 @@ public:
     inline static constexpr int labelOverlap = 2;
 
     int getLabelHeight() const { return labelHeight - labelOverlap; }
-
-    void attach(te::AutomatableParameter::Ptr parameter) {
-        // attachment is initialized in ctor
-    }
 
 private:
     Slider slider;

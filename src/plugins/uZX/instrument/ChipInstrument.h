@@ -43,7 +43,6 @@ public:
             , ampVelocity {{"ampVelocity", te::IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}}
         {
             ignoreUnused(oscNum);
-
             referToState();
         }
 
@@ -90,7 +89,6 @@ public:
         ValueWithDef<float> ampSustain;
         ValueWithDef<float> ampRelease;
         ValueWithDef<float> ampVelocity;
-
     };
 
     // Voices do not store ValueTree state, so we need to update them manually

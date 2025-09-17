@@ -56,16 +56,14 @@ public:
 
     float getLevel(int channel);
 
-
+    ChipInstrumentFx instrument;
     // Amplitude envelope automatable parameters
     tracktion::AutomatableParameter::Ptr ampAttack, ampDecay, ampSustain, ampRelease, ampVelocity;
     // pitch envelope automatable parameters
     // tracktion::AutomatableParameter::Ptr pitchAttack, pitchDecay, pitchSustain, pitchRelease;
-
-    ChipInstrumentFx instrument;
+    //==============================================================================
 
 private:
-    //==============================================================================
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;
@@ -73,33 +71,34 @@ private:
     void flushPluginStateToValueTree() override;
 
     // Params
-    template <typename Type>
-    tracktion::AutomatableParameter* addParam(const String& paramID,
-                                              const String& name,
-                                              NormalisableRange<Type> valueRange,
-                                              String label = {});
+    tracktion::AutomatableParameter::Ptr addParam(const String& paramID,
+                                                  const String& name,
+                                                  NormalisableRange<float> valueRange,
+                                                  String label = {});
 
     template <typename Type>
-    tracktion::AutomatableParameter* addParam(ParameterDef<Type> def) {
-        return addParam<Type>(def.paramID, def.description, def.valueRange, def.paramID);
+    tracktion::AutomatableParameter::Ptr addParam(ParameterDef<Type> def) {
+        static_assert(std::is_same<Type, float>::value, "Only float parameters are supported");
+        // TODO but any Range can be converted to float
+        return addParam(def.paramID, def.description, def.valueRange, def.paramID);
     }
 
     template <typename Type>
-    tracktion::AutomatableParameter* addAttachParam(ValueWithDef<Type>& vd) {
-        auto ap = addParam(vd.definition);
-        ap->attachToCurrentValue(vd.value);
-        return ap;
+    std::unique_ptr<TracktionParamSource> addParamSource(ValueWithDef<Type>& vd) {
+        return std::make_unique<TracktionParamSource>(addParam(vd.definition));
     }
 
     template <typename Type>
-    std::unique_ptr<TracktionParamSource> addAttachParamSource(ValueWithDef<Type>& vd) {
-        return std::make_unique(addAttachParam(vd));
+    tracktion::AutomatableParameter::Ptr addAttachParamSource(ValueWithDef<Type>& vd) {
+        auto source = addParamSource(vd);
+        vd.attachSource(std::move(source));
+        return vd.source->parameter;
     }
 
-    // Parameter factory
-    std::function<tracktion::AutomatableParameter*(ValueWithDef<float>&)> paramSourceFactory =
+    // Source factory
+    std::function<std::unique_ptr<TracktionParamSource>(ValueWithDef<float>&)> paramSourceFactory =
         [this](ValueWithDef<float>& vd) {
-            return addAttachParam(vd);
+            return std::make_unique<TracktionParamSource>(addParam(vd.definition));
         };
 
     //==============================================================================

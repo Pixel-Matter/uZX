@@ -143,6 +143,8 @@ struct ValueWithSource {
     Type getCurrentValue() const {
         if (isSourceAttached()) {
             return source->getValue();
+        } else {
+            return value.get();
         }
     }
 

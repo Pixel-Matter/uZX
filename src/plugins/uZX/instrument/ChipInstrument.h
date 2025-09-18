@@ -37,10 +37,10 @@ public:
         OscParameters(ChipInstrumentFx& inst, int oscNum)
             : instrument(inst)
             // TODO change te::IDs::* with own IDs
-            , ampAttack   {{"ampAttack",   te::IDs::ampAttack,   "A", "Amp Attack Time",   0.0f,   {0.0f, 60.0f, 0.0f, 0.2f}}}
-            , ampDecay    {{"ampDecay",    te::IDs::ampDecay,    "D", "Amp Decay Time",    0.0f,   {0.0f, 60.0f, 0.0f, 0.2f}}}
+            , ampAttack   {{"ampAttack",   te::IDs::ampAttack,   "A", "Amp Attack Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+            , ampDecay    {{"ampDecay",    te::IDs::ampDecay,    "D", "Amp Decay Time",    0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
             , ampSustain  {{"ampSustain",  te::IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}}
-            , ampRelease  {{"ampRelease",  te::IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 60.0f, 0.0f, 0.2f}}}
+            , ampRelease  {{"ampRelease",  te::IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
             , ampVelocity {{"ampVelocity", te::IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}}
         {
             ignoreUnused(oscNum);

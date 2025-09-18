@@ -51,7 +51,7 @@ private:
     te::TransportControl& transport_;
     CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
 
-    Slider masterVolumeSlider_ { Slider::SliderStyle::Rotary, Slider::TextEntryBoxPosition::NoTextBox };
+    Slider masterVolumeSlider_ { Slider::SliderStyle::RotaryVerticalDrag, Slider::TextEntryBoxPosition::NoTextBox };
     SliderAttachment masterAttachment_ {masterVolumeSlider_, *edit_.getMasterSliderPosParameter()};
 
     TextButton rewindButton_    { "|<<" },

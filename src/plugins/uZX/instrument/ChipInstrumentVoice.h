@@ -118,8 +118,6 @@ public:
     }
 
     void updateParams() {
-        // TODO get params from automatable parameters, but AutomatableParameter is tracktion specific
-        DBG("ChipInstrumentVoice Update params");
         auto& params = this->midiFx.oscParams;
         ampAdsr.setParameters({
             params.ampAttack.getCurrentValue(),

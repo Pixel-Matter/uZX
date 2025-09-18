@@ -25,6 +25,8 @@ set(SHARED_SOURCES
     plugins/uZX/aychip/AYPlugin.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp
+    plugins/uZX/instrument/ChipInstrument.cpp
+    plugins/uZX/instrument/ChipInstrumentVoice.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
 
     gui/common/Utilities.cpp

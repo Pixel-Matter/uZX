@@ -37,10 +37,10 @@ BaseController::BaseController()
 {}
 
 void BaseController::initialize() {
-    // DBG("Engine properties storage is " << engine_.getPropertyStorage().getPropertiesFile().getFile().getFullPathName());
     engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
     engine_.getPluginManager().createBuiltInType<uZX::ChipInstrumentPlugin>();
     engine_.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
+
     engine_.getDeviceManager().addChangeListener(this);
 
     setEdit(createOrLoadStartupEdit());
@@ -145,7 +145,7 @@ void BaseController::changeListenerCallback(ChangeBroadcaster* source) {
 void BaseController::handlePluginManager() {
     DialogWindow::LaunchOptions o;
     o.dialogTitle                   = TRANS("Plugins");
-    o.dialogBackgroundColour        = juce::Colours::black;
+    o.dialogBackgroundColour        = Colors::Theme::background;
     o.escapeKeyTriggersCloseButton  = true;
     o.useNativeTitleBar             = true;
     o.resizable                     = true;

@@ -153,6 +153,13 @@ void MoLookAndFeel::drawButtonBackground(Graphics& g, Button& button,
     }
 }
 
+//==============================================================================
+Font MoLookAndFeel::getTextButtonFont(TextButton&, int buttonHeight) {
+    return withDefaultMetrics(
+        FontOptions().withPointHeight(jmin(16.0f, (float) roundToInt((float) buttonHeight * 0.6f)))
+    );
+}
+
 void MoLookAndFeel::drawButtonText(Graphics& g,
                     TextButton& button,
                     bool /*shouldDrawButtonAsHighlighted*/,

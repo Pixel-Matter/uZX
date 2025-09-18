@@ -56,9 +56,16 @@ private:
 /**
  * BackgroundlessButton - Button that draws only text, no background
  */
-class BackgroundlessToggleButton : public TextButton {
+class BackgroundlessTextButton : public TextButton {
 public:
+    BackgroundlessTextButton();
+    explicit BackgroundlessTextButton(const String& buttonText);
     void paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
+    virtual Colour getHighlightedTextColor(Colour textColor) const;
+
+protected:
+    virtual void setupColors();
 };
 
 //==============================================================================
@@ -75,7 +82,7 @@ public:
 
 private:
     tracktion::Plugin::Ptr plugin_;
-    BackgroundlessToggleButton enableButton_;
+    BackgroundlessTextButton enableButton_;
     static constexpr int titleBarHeight = 16;
     static constexpr int buttonMargin = 0;
     static constexpr int buttonWidth = titleBarHeight - buttonMargin * 2;

@@ -120,6 +120,8 @@ public:
                             bool shouldDrawButtonAsHighlighted,
                             bool shouldDrawButtonAsDown) override;
 
+    Font getTextButtonFont(TextButton&, int buttonHeight) override;
+
     void drawButtonText(Graphics& g,
                         TextButton& button,
                         bool shouldDrawButtonAsHighlighted,

@@ -21,6 +21,41 @@ static te::Plugin::Ptr showMenuAndCreatePlugin(te::Edit& edit) {
 }
 
 //==============================================================================
+// AddButton implementation
+AddButton::AddButton()
+    : BackgroundlessTextButton("+")
+{
+    setTooltip("Add Plugin");
+}
+
+AddButtonComponent::AddButtonComponent() {
+    addChildComponent(button);
+}
+
+void AddButtonComponent::resized() {
+    auto width = getWidth();
+    auto height = getHeight();
+    // set a square button, centered vertically
+    auto buttonSize = jmin(width, height);
+    // auto y = (height - buttonSize) / 2;
+    button.setBounds(0, 0, width, buttonSize);
+}
+
+void AddButtonComponent::mouseEnter(const MouseEvent&) {
+    button.setVisible(true);
+    startTimer(100); // Check every 100ms
+}
+
+
+void AddButtonComponent::timerCallback() {
+    auto mousePos = getMouseXYRelative();
+    if (!getLocalBounds().contains(mousePos)) {
+        button.setVisible(false);
+        stopTimer();
+    }
+}
+
+//==============================================================================
 TrackDevicesPanel::TrackDevicesPanel(EditViewState& evs)
     : editViewState(evs)
 {
@@ -86,10 +121,10 @@ bool TrackDevicesPanel::shouldBeShown(tracktion::Plugin* p) {
 int TrackDevicesPanel::createAndAddNewPluginButton(int index, Rectangle<int>& area) {
     static constexpr int addButtonWidth = 16;
 
-    auto addButton = new TextButton{"+"};
+    auto addButton = new AddButtonComponent{};
     addButton->setBounds(area.removeFromLeft(addButtonWidth));
 
-    addButton->onClick = [this, index] {
+    addButton->button.onClick = [this, index] {
         addButtonClicked(index);
     };
     addButtons.add(addButton);
@@ -110,11 +145,11 @@ void TrackDevicesPanel::buildPlugins() {
     }
 
     static constexpr int spacing = 8;
-    Rectangle<int> area(spacing, spacing, 65535, getHeight() - (2 * spacing));
+    Rectangle<int> area(0, spacing, 65535, getHeight() - (2 * spacing));
 
     int index = 0;
     createAndAddNewPluginButton(index, area);
-    area.removeFromLeft(spacing);
+    // area.removeFromLeft(spacing);
 
     for (auto plugin : track->pluginList) {
         ++index;
@@ -153,9 +188,11 @@ void TrackDevicesPanel::buildPlugins() {
             content.addAndMakeVisible(item.get());
             devices.add(item.release());
         }
-        area.removeFromLeft(spacing);
+        // area.removeFromLeft(spacing);
         if (canHasPlusButtonAfter) {
             createAndAddNewPluginButton(index, area);
+            // area.removeFromLeft(spacing);
+        } else {
             area.removeFromLeft(spacing);
         }
     }

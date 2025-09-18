@@ -4,12 +4,40 @@
 #include "PluginDeviceUI.h"
 #include "PluginUIAdapterRegistry.h"
 #include "DevicePanelItem.h"
+
 #include "../../controllers/EditState.h"
+
 #include <common/Utilities.h>  // from Tracktion, for FlaggedAsyncUpdater
 
 namespace MoTool {
 
 
+//==============================================================================
+/**
+ * AddButton - Button that draws only text, no background
+ */
+class AddButton : public BackgroundlessTextButton {
+public:
+    AddButton();
+};
+
+class AddButtonComponent : public Component, private Timer {
+public:
+    AddButtonComponent();
+    void resized() override;
+    void mouseEnter(const MouseEvent& event) override;
+
+    AddButton button;
+
+private:
+    void timerCallback() override;
+};
+
+//==============================================================================
+/**
+ * TrackDevicesPanel - Panel that displays the list of devices (plugins)
+ * on the currently selected track and "+" buttons between them to add new plugins.
+ */
 class TrackDevicesPanel : public juce::Component,
                           public juce::ChangeListener,
                           private FlaggedAsyncUpdater,
@@ -49,7 +77,7 @@ private:
     Viewport viewport;
     Component content;
 
-    OwnedArray<TextButton> addButtons;
+    OwnedArray<AddButtonComponent> addButtons;
     OwnedArray<DevicePanelItem> devices;
     bool updateDevices = false;
 

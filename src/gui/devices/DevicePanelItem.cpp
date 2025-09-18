@@ -5,26 +5,51 @@
 namespace MoTool {
 
 //==============================================================================
-// BackgroundlessToggleButton implementation
-void BackgroundlessToggleButton::paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) {
+// BackgroundlessTextButton implementation
+
+BackgroundlessTextButton::BackgroundlessTextButton() {
+    setupColors();
+}
+
+BackgroundlessTextButton::BackgroundlessTextButton(const String& buttonText)
+    : TextButton(buttonText)
+{
+    setupColors();
+}
+
+void BackgroundlessTextButton::setupColors() {
+    setColour(TextButton::buttonColourId, Colours::transparentBlack);
+    setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
+    setColour(TextButton::textColourOffId, Colors::Theme::textDisabled);
+    setColour(TextButton::textColourOnId, Colors::Theme::primary);
+}
+
+Colour BackgroundlessTextButton::getHighlightedTextColor(Colour textColor) const {
+    return textColor.brighter(0.4f);
+}
+
+void BackgroundlessTextButton::paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) {
     // Only draw the text, no background
     Colour textColour;
     if (getToggleState()) {
-        textColour = findColour(TextButton::buttonOnColourId);
+        textColour = findColour(TextButton::textColourOnId);
     } else {
-        textColour = Colors::Theme::textDisabled;
+        textColour = findColour(TextButton::textColourOffId);
     }
 
     if (shouldDrawButtonAsHighlighted)
-        textColour = textColour.brighter(0.4f);
+        textColour = getHighlightedTextColor(textColour);
 
     if (shouldDrawButtonAsDown)
         textColour = textColour.darker(0.3f);
 
     g.setColour(textColour);
-    auto font = getLookAndFeel().withDefaultMetrics(FontOptions().withPointHeight(jmin(16.0f, (float) getHeight())));
+    auto font = getLookAndFeel().withDefaultMetrics(
+        FontOptions(-1, Font::bold).withPointHeight(jmin(16.0f, (float) getHeight()))
+    );
     g.setFont(font);
     g.drawText(getButtonText(), getLocalBounds(), Justification::centred, true);
+    // g.drawSingleLineText(getButtonText(), 2, getHeight() - 2, Justification::left);
 }
 
 //==============================================================================

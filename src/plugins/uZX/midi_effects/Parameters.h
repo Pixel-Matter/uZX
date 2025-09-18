@@ -9,7 +9,7 @@ namespace MoTool::uZX {
 //==============================================================================
 // C++20 concept for parameter sources
 template<typename T>
-concept ParameterSource = requires(T& t) {
+concept ParameterSourceConcept = requires(T& t) {
     { t.getValue() } -> std::convertible_to<float>;
     { t.attachToCurrentValue(std::declval<juce::CachedValue<float>&>()) } -> std::same_as<void>;
     { t.detachFromCurrentValue() } -> std::same_as<void>;
@@ -51,7 +51,7 @@ struct TracktionParamSource {
     }
 };
 // Static assertions to verify our types satisfy the concept
-static_assert(ParameterSource<TracktionParamSource>);
+static_assert(ParameterSourceConcept<TracktionParamSource>);
 
 //==============================================================================
 struct JuceParamSource {
@@ -68,7 +68,7 @@ struct JuceParamSource {
     String getName() const { return {}; }
 };
 // Static assertions to verify our types satisfy the concept
-static_assert(ParameterSource<JuceParamSource>);
+static_assert(ParameterSourceConcept<JuceParamSource>);
 
 
 // TODO ChoiceParameterDef
@@ -103,7 +103,7 @@ struct ParameterDef {
 //==============================================================================
 // Value with definition, CachedValue and optionally a parameter source
 //==============================================================================
-template <typename Type, typename Source = TracktionParamSource>
+template <typename Type, ParameterSourceConcept Source = TracktionParamSource>
 struct ValueWithSource {
     explicit ValueWithSource(const ParameterDef<Type>& def)
         : definition(def)
@@ -156,14 +156,6 @@ struct ValueWithSource {
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ValueWithSource)
-};
-
-//==============================================================================
-// Source factory concept
-//==============================================================================
-template<typename T>
-concept ParameterSourceFactory = requires(T& t) {
-    { t.createSource() } -> std::convertible_to<float>;
 };
 
 

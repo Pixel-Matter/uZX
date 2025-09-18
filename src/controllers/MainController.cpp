@@ -30,7 +30,7 @@ void BaseController::setMainWindowTitle(const String& title) {
 
 BaseController::BaseController()
     : engine_ {
-        CharPointer_UTF8(ProjectInfo::projectName),
+        std::make_unique<PropertyStorage>(CharPointer_UTF8(ProjectInfo::projectName)),
         std::make_unique<ExtUIBehaviour>(),
         std::make_unique<ExtEngineBehaviour>()
     }
@@ -153,7 +153,7 @@ void BaseController::handlePluginManager() {
 
     auto v = new PluginListComponent (engine_.getPluginManager().pluginFormatManager,
                                       engine_.getPluginManager().knownPluginList,
-                                      engine_.getTemporaryFileManager().getTempFile ("PluginScanDeadMansPedal"),
+                                      engine_.getTemporaryFileManager().getTempFile("PluginScanDeadMansPedal"),
                                       std::addressof(engine_.getPropertyStorage().getPropertiesFile()));
     v->setSize(800, 600);
     o.content.setOwned(v);

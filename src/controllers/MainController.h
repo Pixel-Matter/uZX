@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "EditState.h"
+#include "PropertyStorage.h"
 
 #include "../gui/main/MainWindow.h"
 
@@ -39,7 +40,7 @@ protected:
     te::Engine engine_;
     ApplicationCommandManager commandManager_;
     te::SelectionManager selectionManager_ {engine_};
-    MainWindow mainWindow_;
+    MainWindow mainWindow_ {engine_};
     std::unique_ptr<te::Edit> edit_;
     // FIXME EditViewState is too specific for base controller
     std::unique_ptr<EditViewState> editViewState_;

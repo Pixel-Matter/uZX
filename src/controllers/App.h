@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "MainController.h"
+#include "../gui/common/LookAndFeel.h"
 
 namespace MoTool {
 

@@ -43,6 +43,7 @@ set(GUI_SOURCES
 
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Transport.cpp
+    gui/main/MainWindow.cpp
     gui/main/Footer.cpp
     gui/tuning/TuningPreview.cpp
 

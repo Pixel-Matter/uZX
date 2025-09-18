@@ -31,7 +31,7 @@ public:
             visitor(ampDecay);
             visitor(ampSustain);
             visitor(ampRelease);
-            visitor(ampVelocity);
+            // visitor(ampVelocity);
             visitor(pitchAttack);
             visitor(pitchDecay);
             visitor(pitchSustain);
@@ -44,12 +44,14 @@ public:
         //=======================================================================================
         // TODO
         // shape (square, saw, triangle, noise)
-        // amp level,
-        // [x] amp adsr,
+        // [x] amp adsr
         // amp lfo, steps, etc
+        // amp level
         // pan, adsr, lfo, steps
         // coarse and fine tune
-        // pitch envelope, lfo
+        // snap to envelope period
+        // [x] pitch envelope
+        // pitch lfo
         // AY env shape, retrigger
         // unison voices, detune
 
@@ -61,7 +63,7 @@ public:
         ValueWithSource<float> ampDecay;
         ValueWithSource<float> ampSustain;
         ValueWithSource<float> ampRelease;
-        ValueWithSource<float> ampVelocity;
+        // ValueWithSource<float> ampVelocity;
         ValueWithSource<float> pitchAttack;
         ValueWithSource<float> pitchDecay;
         ValueWithSource<float> pitchSustain;

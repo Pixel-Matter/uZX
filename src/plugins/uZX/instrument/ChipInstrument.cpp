@@ -27,19 +27,33 @@ void ChipInstrumentFx::restoreStateFromValueTree(const ValueTree& v) {
     oscParams.restoreStateFromValueTree(v);
 }
 
+namespace IDs {
+    #define DECLARE_ID(name)  const Identifier name(#name);
+    DECLARE_ID(ampAttack)
+    DECLARE_ID(ampDecay)
+    DECLARE_ID(ampSustain)
+    DECLARE_ID(ampRelease)
+    DECLARE_ID(ampVelocity)
+    DECLARE_ID(pitchAttack)
+    DECLARE_ID(pitchDecay)
+    DECLARE_ID(pitchSustain)
+    DECLARE_ID(pitchRelease)
+    DECLARE_ID(pitchDepth)
+    #undef DECLARE_ID
+}
+
 ChipInstrumentFx::OscParameters::OscParameters(ChipInstrumentFx& inst, int oscNum)
     : instrument(inst)
-    // TODO change te::IDs::* with own IDs
-    , ampAttack   {{"ampAttack",   te::IDs::ampAttack,   "A", "Amp Attack Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
-    , ampDecay    {{"ampDecay",    te::IDs::ampDecay,    "D", "Amp Decay Time",    0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
-    , ampSustain  {{"ampSustain",  te::IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}}
-    , ampRelease  {{"ampRelease",  te::IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
-    , ampVelocity {{"ampVelocity", te::IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}}
-    , pitchAttack {{"pitchAttack", Identifier("pitchAttack"), "pA", "Pitch Attack Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
-    , pitchDecay  {{"pitchDecay",  Identifier("pitchDecay"),  "pD", "Pitch Decay Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
-    , pitchSustain{{"pitchSustain",Identifier("pitchSustain"),"pS", "Pitch Sustain Level",0.0f,   {0.0f, 100.0f}, "%"}}
-    , pitchRelease{{"pitchRelease",Identifier("pitchRelease"),"pR", "Pitch Release Time", 0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
-    , pitchDepth  {{"pitchDepth",  Identifier("pitchDepth"), "pDp", "Pitch Depth",       0.0f,   {-24.0f, 24.0f}, "st"}}
+    , ampAttack   {{"ampAttack",   IDs::ampAttack,   "A", "Amp Attack Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , ampDecay    {{"ampDecay",    IDs::ampDecay,    "D", "Amp Decay Time",    0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , ampSustain  {{"ampSustain",  IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}}
+    , ampRelease  {{"ampRelease",  IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    // , ampVelocity {{"ampVelocity", IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}}
+    , pitchAttack {{"pitchAttack", IDs::pitchAttack, "pA", "Pitch Attack Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchDecay  {{"pitchDecay",  IDs::pitchDecay,  "pD", "Pitch Decay Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchSustain{{"pitchSustain",IDs::pitchSustain,"pS", "Pitch Sustain Level",0.0f,   {0.0f, 100.0f}, "%"}}
+    , pitchRelease{{"pitchRelease",IDs::pitchRelease,"pR", "Pitch Release Time", 0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchDepth  {{"pitchDepth",  IDs::pitchDepth,  "pDp", "Pitch Depth",       0.0f,   {-48.0f, 48.0f}, "st"}}
 {
     ignoreUnused(oscNum);
     referToState();
@@ -50,7 +64,7 @@ void ChipInstrumentFx::OscParameters::referToState() {
     ampDecay.referTo(instrument.state, instrument.undoManager);
     ampSustain.referTo(instrument.state, instrument.undoManager);
     ampRelease.referTo(instrument.state, instrument.undoManager);
-    ampVelocity.referTo(instrument.state, instrument.undoManager);
+    // ampVelocity.referTo(instrument.state, instrument.undoManager);
     pitchAttack.referTo(instrument.state, instrument.undoManager);
     pitchDecay.referTo(instrument.state, instrument.undoManager);
     pitchSustain.referTo(instrument.state, instrument.undoManager);
@@ -64,7 +78,7 @@ void ChipInstrumentFx::OscParameters::restoreStateFromValueTree(const ValueTree&
         ampDecay   .value,
         ampSustain .value,
         ampRelease .value,
-        ampVelocity.value,
+        // ampVelocity.value,
         pitchAttack .value,
         pitchDecay  .value,
         pitchSustain.value,

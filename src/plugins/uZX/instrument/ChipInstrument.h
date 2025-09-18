@@ -32,6 +32,11 @@ public:
             visitor(ampSustain);
             visitor(ampRelease);
             visitor(ampVelocity);
+            visitor(pitchAttack);
+            visitor(pitchDecay);
+            visitor(pitchSustain);
+            visitor(pitchRelease);
+            visitor(pitchDepth);
         }
 
         void referToState();
@@ -57,6 +62,11 @@ public:
         ValueWithSource<float> ampSustain;
         ValueWithSource<float> ampRelease;
         ValueWithSource<float> ampVelocity;
+        ValueWithSource<float> pitchAttack;
+        ValueWithSource<float> pitchDecay;
+        ValueWithSource<float> pitchSustain;
+        ValueWithSource<float> pitchRelease;
+        ValueWithSource<float> pitchDepth;
     };
 
     void updateParams();

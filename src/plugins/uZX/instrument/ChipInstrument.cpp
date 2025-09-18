@@ -35,6 +35,11 @@ ChipInstrumentFx::OscParameters::OscParameters(ChipInstrumentFx& inst, int oscNu
     , ampSustain  {{"ampSustain",  te::IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}}
     , ampRelease  {{"ampRelease",  te::IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
     , ampVelocity {{"ampVelocity", te::IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}}
+    , pitchAttack {{"pitchAttack", Identifier("pitchAttack"), "pA", "Pitch Attack Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchDecay  {{"pitchDecay",  Identifier("pitchDecay"),  "pD", "Pitch Decay Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchSustain{{"pitchSustain",Identifier("pitchSustain"),"pS", "Pitch Sustain Level",0.0f,   {0.0f, 100.0f}, "%"}}
+    , pitchRelease{{"pitchRelease",Identifier("pitchRelease"),"pR", "Pitch Release Time", 0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchDepth  {{"pitchDepth",  Identifier("pitchDepth"), "pDp", "Pitch Depth",       0.0f,   {-24.0f, 24.0f}, "st"}}
 {
     ignoreUnused(oscNum);
     referToState();
@@ -46,6 +51,11 @@ void ChipInstrumentFx::OscParameters::referToState() {
     ampSustain.referTo(instrument.state, instrument.undoManager);
     ampRelease.referTo(instrument.state, instrument.undoManager);
     ampVelocity.referTo(instrument.state, instrument.undoManager);
+    pitchAttack.referTo(instrument.state, instrument.undoManager);
+    pitchDecay.referTo(instrument.state, instrument.undoManager);
+    pitchSustain.referTo(instrument.state, instrument.undoManager);
+    pitchRelease.referTo(instrument.state, instrument.undoManager);
+    pitchDepth.referTo(instrument.state, instrument.undoManager);
 }
 
 void ChipInstrumentFx::OscParameters::restoreStateFromValueTree(const ValueTree& v) {
@@ -54,7 +64,12 @@ void ChipInstrumentFx::OscParameters::restoreStateFromValueTree(const ValueTree&
         ampDecay   .value,
         ampSustain .value,
         ampRelease .value,
-        ampVelocity.value
+        ampVelocity.value,
+        pitchAttack .value,
+        pitchDecay  .value,
+        pitchSustain.value,
+        pitchRelease.value,
+        pitchDepth  .value
     );
 }
 

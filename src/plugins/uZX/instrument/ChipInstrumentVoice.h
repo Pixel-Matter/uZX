@@ -35,9 +35,6 @@ public:
         ampAdsr.setSampleRate(playRate);
         pitchAdsr.setSampleRate(playRate);
 
-        // ampAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.0f });
-        ampAdsr.setParameters({ 0.02f, 0.0f, 1.0f, 0.5f });
-
         // pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.5f });
         pitchAdsr.setParameters({ 0.0f, 0.0f, 0.0f, 0.0f });
         pitchDepth = 0.0; // in semitones
@@ -114,6 +111,13 @@ public:
             params.ampSustain.getCurrentValue() / 100.0f,
             params.ampRelease.getCurrentValue()
         });
+        pitchAdsr.setParameters({
+            params.pitchAttack.getCurrentValue(),
+            params.pitchDecay.getCurrentValue(),
+            params.pitchSustain.getCurrentValue() / 100.0f,
+            params.pitchRelease.getCurrentValue()
+        });
+        pitchDepth = params.pitchDepth.getCurrentValue();
     }
 
     void renderNextStep(MidiBufferContext& c, double timeOffset) {

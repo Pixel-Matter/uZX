@@ -54,6 +54,11 @@ ChipInstrumentUI::ChipInstrumentUI(tracktion::Plugin::Ptr pluginPtr)
     , adsrSustainSlider (instrument.oscParams.ampSustain)
     , adsrReleaseSlider (instrument.oscParams.ampRelease)
     , adsrVelocitySlider(instrument.oscParams.ampVelocity)
+    , pitchAttackSlider  (instrument.oscParams.pitchAttack)
+    , pitchDecaySlider   (instrument.oscParams.pitchDecay)
+    , pitchSustainSlider (instrument.oscParams.pitchSustain)
+    , pitchReleaseSlider (instrument.oscParams.pitchRelease)
+    , pitchDepthSlider   (instrument.oscParams.pitchDepth)
 {
     jassert(pluginPtr != nullptr);
 
@@ -63,6 +68,12 @@ ChipInstrumentUI::ChipInstrumentUI(tracktion::Plugin::Ptr pluginPtr)
     addAndMakeVisible(adsrDecaySlider);
     addAndMakeVisible(adsrSustainSlider);
     addAndMakeVisible(adsrReleaseSlider);
+
+    addAndMakeVisible(pitchAttackSlider);
+    addAndMakeVisible(pitchDecaySlider);
+    addAndMakeVisible(pitchSustainSlider);
+    addAndMakeVisible(pitchReleaseSlider);
+    addAndMakeVisible(pitchDepthSlider);
 }
 
 ChipInstrumentPlugin* ChipInstrumentUI::instrumentPlugin() {
@@ -78,15 +89,33 @@ void ChipInstrumentUI::resized() {
     static constexpr int knobSize = 32;
     static constexpr int spacing = 8;
 
-    auto row = r.removeFromTop(knobSize + adsrAttackSlider.getLabelHeight());
+    // Amp ADSR row
+    auto ampRow = r.removeFromTop(knobSize + adsrAttackSlider.getLabelHeight());
+    adsrAttackSlider.setBounds(ampRow.removeFromLeft(knobSize));
+    ampRow.removeFromLeft(spacing);
+    adsrDecaySlider.setBounds(ampRow.removeFromLeft(knobSize));
+    ampRow.removeFromLeft(spacing);
+    adsrSustainSlider.setBounds(ampRow.removeFromLeft(knobSize));
+    ampRow.removeFromLeft(spacing);
+    adsrReleaseSlider.setBounds(ampRow.removeFromLeft(knobSize));
 
-    adsrAttackSlider.setBounds(row.removeFromLeft(knobSize));
-    row.removeFromLeft(spacing);
-    adsrDecaySlider.setBounds(row.removeFromLeft(knobSize));
-    row.removeFromLeft(spacing);
-    adsrSustainSlider.setBounds(row.removeFromLeft(knobSize));
-    row.removeFromLeft(spacing);
-    adsrReleaseSlider.setBounds(row.removeFromLeft(knobSize));
+    r.removeFromTop(spacing); // Space between rows
+
+    // Pitch ADSR row
+    auto pitchRow = r.removeFromTop(knobSize + pitchAttackSlider.getLabelHeight());
+    pitchAttackSlider.setBounds(pitchRow.removeFromLeft(knobSize));
+    pitchRow.removeFromLeft(spacing);
+    pitchDecaySlider.setBounds(pitchRow.removeFromLeft(knobSize));
+    pitchRow.removeFromLeft(spacing);
+    pitchSustainSlider.setBounds(pitchRow.removeFromLeft(knobSize));
+    pitchRow.removeFromLeft(spacing);
+    pitchReleaseSlider.setBounds(pitchRow.removeFromLeft(knobSize));
+
+    r.removeFromTop(spacing); // Space between rows
+
+    // Pitch Depth knob (separate row)
+    auto depthRow = r.removeFromTop(knobSize + pitchDepthSlider.getLabelHeight());
+    pitchDepthSlider.setBounds(depthRow.removeFromLeft(knobSize));
 }
 
 REGISTER_PLUGIN_UI_ADAPTER(ChipInstrumentPlugin, ChipInstrumentUI)

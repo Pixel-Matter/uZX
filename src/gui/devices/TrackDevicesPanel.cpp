@@ -1,12 +1,26 @@
 #include "TrackDevicesPanel.h"
-
-#include "../common/LookAndFeel.h"
-#include "PluginComponent.h"
+#include "PluginTree.h"
 #include "GenericPluginAdapters.h"
 #include "DevicePanelItem.h"
+#include "../common/LookAndFeel.h"
+
+#include <common/Utilities.h>  // from Tracktion
 
 namespace MoTool {
 
+//==============================================================================
+static te::Plugin::Ptr showMenuAndCreatePlugin(te::Edit& edit) {
+    if (auto tree = EngineHelpers::createPluginTree(edit.engine)) {
+        PluginTreeGroup root(edit, *tree, te::Plugin::Type::allPlugins);
+        PluginMenu m(root);
+
+        if (auto type = m.runMenu(root))
+            return type->create(edit);
+    }
+    return {};
+}
+
+//==============================================================================
 TrackDevicesPanel::TrackDevicesPanel(EditViewState& evs)
     : editViewState(evs)
 {

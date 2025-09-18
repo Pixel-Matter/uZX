@@ -3,7 +3,6 @@
 #include <JuceHeader.h>
 
 #include "ClipComponents.h"
-#include "../devices/PluginComponent.h"
 #include "TimelineGrid.h"
 
 #include "../../controllers/EditState.h"

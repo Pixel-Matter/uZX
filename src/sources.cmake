@@ -56,7 +56,6 @@ set(GUI_SOURCES
     gui/timeline/Ruler.cpp
     gui/timeline/DetailsPanelComponent.cpp
 
-    gui/devices/PluginComponent.cpp
     gui/devices/PluginTree.cpp
     gui/devices/TrackDevicesPanel.cpp
     gui/devices/PluginDeviceUI.cpp

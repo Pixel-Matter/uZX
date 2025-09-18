@@ -14,7 +14,7 @@ class PluginDeviceUI;
  * Base class for all device panel items.
  * Provides a common interface for both framed and frameless device UIs.
  */
-class DevicePanelItem : public juce::Component {
+class DevicePanelItem : public Component {
 public:
     DevicePanelItem(std::unique_ptr<PluginDeviceUI> ui);
     virtual ~DevicePanelItem() = default;
@@ -42,7 +42,7 @@ public:
 
     // Component overrides
     void resized() override;
-    void paint(juce::Graphics& g) override;
+    void paint(Graphics& g) override;
 
 private:
 
@@ -51,17 +51,28 @@ private:
 
 
 //==============================================================================
+// BackgroundlessButton - Button that draws only text, no background
+class BackgroundlessButton : public TextButton {
+public:
+    void paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+};
+
+//==============================================================================
 // TitleBar - Internal component for handling title bar functionality
-class TitleBar : public juce::Button {
+class TitleBar : public Component {
 public:
     TitleBar(tracktion::Plugin::Ptr plugin);
 
-    void paintButton(juce::Graphics& g, bool, bool) override;
-    void clicked(const juce::ModifierKeys& modifiers) override;
+    void paint(Graphics& g) override;
+    void resized() override;
+    void mouseUp(const MouseEvent& event) override;
 
 private:
     tracktion::Plugin::Ptr plugin_;
+    BackgroundlessButton enableButton_;
     static constexpr int titleBarHeight = 16;
+    static constexpr int buttonMargin = 0;
+    static constexpr int buttonWidth = titleBarHeight - buttonMargin * 2;
 };
 
 /**
@@ -74,7 +85,7 @@ public:
 
     // Component overrides
     void resized() override;
-    void paint(juce::Graphics& g) override;
+    void paint(Graphics& g) override;
 
     static constexpr float cornerSize = 4.0f;
 private:

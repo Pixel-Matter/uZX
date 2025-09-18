@@ -5,14 +5,47 @@
 namespace MoTool {
 
 //==============================================================================
-TitleBar::TitleBar(tracktion::Plugin::Ptr plugin)
-    : juce::Button("TitleBar"), plugin_(plugin)
-{
-    setSize(getWidth(), titleBarHeight);
-    setConnectedEdges(juce::Button::ConnectedOnBottom);  // for flat bottom edge look
+void BackgroundlessButton::paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) {
+    // Only draw the text, no background
+    Colour textColour;
+    if (getToggleState()) {
+        textColour = findColour(TextButton::buttonOnColourId);
+    } else {
+        textColour = Colors::Theme::textDisabled;
+    }
+
+    if (shouldDrawButtonAsHighlighted)
+        textColour = textColour.brighter(0.4f);
+
+    if (shouldDrawButtonAsDown)
+        textColour = textColour.darker(0.3f);
+
+    g.setColour(textColour);
+    auto font = getLookAndFeel().withDefaultMetrics(FontOptions { jmin (16.0f, (float) getHeight()) });
+    g.setFont(font);
+    g.drawText(getButtonText(), getLocalBounds(), Justification::centred, true);
 }
 
-void TitleBar::paintButton(juce::Graphics& g, bool, bool) {
+//==============================================================================
+TitleBar::TitleBar(tracktion::Plugin::Ptr plugin)
+    : plugin_(plugin)
+{
+    setSize(getWidth(), titleBarHeight);
+
+    // Setup enable/disable button
+    enableButton_.setButtonText(String::fromUTF8("⏻"));
+    // enableButton_.setButtonText(String::fromUTF8("●"));
+    enableButton_.setSize(buttonWidth, buttonWidth);
+    enableButton_.setToggleable(true);
+    enableButton_.setToggleState(plugin->isEnabled(), juce::dontSendNotification);
+    enableButton_.onClick = [this]() {
+        plugin_->setEnabled(!enableButton_.getToggleState());
+        enableButton_.setToggleState(plugin_->isEnabled(), juce::dontSendNotification);
+    };
+    addAndMakeVisible(enableButton_);
+}
+
+void TitleBar::paint(juce::Graphics& g) {
     auto bounds = getLocalBounds().toFloat();
     Path path;
     path.addRoundedRectangle(
@@ -21,22 +54,29 @@ void TitleBar::paintButton(juce::Graphics& g, bool, bool) {
         FramedDeviceItem::cornerSize, FramedDeviceItem::cornerSize,
         true, true, false, false
     );
-    g.setColour(findColour(getToggleState() ? TextButton::buttonOnColourId : TextButton::buttonColourId));
+    g.setColour(findColour(juce::TextButton::buttonColourId));
     g.fillPath(path);
 
     if (plugin_) {
         g.setColour(Colors::Theme::textPrimary);
         auto font = g.getCurrentFont();
         g.setFont(font.withPointHeight(11.0f).withExtraKerningFactor(0.03f).withStyle(juce::Font::bold));
+
+        // Draw plugin name, accounting for button space
+        int textX = buttonWidth + buttonMargin * 2 + 4;
         g.drawSingleLineText(
             plugin_->getName(),
-            4, getHeight() - 4
+            textX, getHeight() - 4
         );
     }
 }
 
-void TitleBar::clicked(const juce::ModifierKeys& modifiers) {
-    if (modifiers.isPopupMenu()) {
+void TitleBar::resized() {
+    enableButton_.setBounds(buttonMargin, buttonMargin, buttonWidth, getHeight() - buttonMargin * 2);
+}
+
+void TitleBar::mouseUp(const juce::MouseEvent& event) {
+    if (event.mods.isPopupMenu()) {
         juce::PopupMenu m;
         m.addItem("Delete", [this] { plugin_->deleteFromParent(); });
         m.showAt(this);

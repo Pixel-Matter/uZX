@@ -34,6 +34,9 @@ namespace IDs
 namespace te = tracktion;
 
 //==============================================================================
+/**
+ * ZoomViewState manages the zoom and pan state for the timeline view
+ */
 class ZoomViewState :
         private FlaggedAsyncUpdater,
         private ValueTree::Listener {
@@ -129,10 +132,9 @@ private:
 
 //==============================================================================
 /**
-    Wrapper for storing the view state of a single track,
-    similar to EditViewState, but tied to a specific track's ValueTree.
-*/
-//==============================================================================
+ * Wrapper for storing the view state of a single track,
+ * similar to EditViewState, but tied to a specific track's ValueTree.
+ */
 class TrackViewState : private ValueTree::Listener {
 public:
     /**

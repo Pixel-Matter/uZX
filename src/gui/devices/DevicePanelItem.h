@@ -10,6 +10,7 @@ namespace MoTool {
 // Forward declaration
 class PluginDeviceUI;
 
+//==============================================================================
 /**
  * Base class for all device panel items.
  * Provides a common interface for both framed and frameless device UIs.
@@ -32,6 +33,7 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DevicePanelItem)
 };
 
+//==============================================================================
 /**
  * Frameless wrapper for custom device UIs (like LevelMeter).
  * Directly displays the PluginDeviceUI without additional framing.
@@ -51,16 +53,18 @@ private:
 
 
 //==============================================================================
-// BackgroundlessButton - Button that draws only text, no background
-//==============================================================================
+/**
+ * BackgroundlessButton - Button that draws only text, no background
+ */
 class BackgroundlessToggleButton : public TextButton {
 public:
     void paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
 };
 
 //==============================================================================
-// TitleBar - Internal component for handling title bar functionality
-//==============================================================================
+/**
+ * TitleBar - Internal component for handling title bar functionality
+ */
 class TitleBar : public Component {
 public:
     TitleBar(tracktion::Plugin::Ptr plugin);
@@ -78,9 +82,10 @@ private:
 };
 
 //==============================================================================
-// Framed wrapper for regular device UIs.
-// Provides a title bar with plugin name and wraps the PluginDeviceUI directly.
-//==============================================================================
+/**
+ * Framed wrapper for regular device UIs.
+ * Provides a title bar with plugin name and wraps the PluginDeviceUI directly.
+ */
 class FramedDeviceItem : public DevicePanelItem {
 public:
     FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui);

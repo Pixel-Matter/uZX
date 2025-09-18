@@ -32,7 +32,6 @@ enum class TimecodeTypeExt {
 };
 
 struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
-    //==============================================================================
     TimecodeTypeExt typeExt;
 
     TimecodeDisplayFormatExt() noexcept
@@ -44,8 +43,6 @@ struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
         : te::TimecodeDisplayFormat(t <= TimecodeTypeExt::fps30 ? static_cast<te::TimecodeType>(t) : te::TimecodeType::barsBeats)
         , typeExt(t)
     {}
-
-    //==============================================================================
 
     using te::TimecodeDisplayFormat::TimecodeDisplayFormat;
 

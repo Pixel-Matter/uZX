@@ -12,6 +12,9 @@
 namespace MoTool::uZX {
 
 //==============================================================================
+/**
+ * μZX Chip Instrument Plugin - Main instrument plugin implementation
+ */
 class ChipInstrumentPlugin :
                              public MidiFxPluginBase<ChipInstrumentFx>,
                              private tracktion::LevelMeasurer::Client
@@ -22,7 +25,6 @@ public:
     ChipInstrumentPlugin(tracktion::PluginCreationInfo);
     ~ChipInstrumentPlugin() override;
 
-    //==============================================================================
     static const char* getPluginName() { return "μZX Instrument"; }
     static const char* xmlTypeName;
 

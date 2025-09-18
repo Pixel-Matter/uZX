@@ -5,6 +5,7 @@
 namespace MoTool {
 
 //==============================================================================
+// BackgroundlessToggleButton implementation
 void BackgroundlessToggleButton::paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) {
     // Only draw the text, no background
     Colour textColour;
@@ -27,6 +28,7 @@ void BackgroundlessToggleButton::paintButton(Graphics& g, bool shouldDrawButtonA
 }
 
 //==============================================================================
+// TitleBar implementation
 TitleBar::TitleBar(tracktion::Plugin::Ptr plugin)
     : plugin_(plugin)
 {
@@ -84,7 +86,7 @@ void TitleBar::mouseUp(const juce::MouseEvent& event) {
 }
 
 //==============================================================================
-// DevicePanelItem
+// DevicePanelItem implementation
 
 DevicePanelItem::DevicePanelItem(std::unique_ptr<PluginDeviceUI> ui)
     : plugin_(ui->getPlugin())
@@ -93,7 +95,7 @@ DevicePanelItem::DevicePanelItem(std::unique_ptr<PluginDeviceUI> ui)
 }
 
 //==============================================================================
-// FramelessDeviceItem
+// FramelessDeviceItem implementation
 
 FramelessDeviceItem::FramelessDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
     : DevicePanelItem(std::move(ui))
@@ -115,7 +117,7 @@ void FramelessDeviceItem::paint(juce::Graphics&) {
 }
 
 //==============================================================================
-// FramedDeviceItem
+// FramedDeviceItem implementation
 
 FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
     : DevicePanelItem(std::move(ui))

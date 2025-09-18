@@ -12,6 +12,9 @@
 namespace MoTool {
 
 //==============================================================================
+/**
+ * Component for track header containing track name and controls
+ */
 class TrackHeaderComponent : public Component,
                              private ValueTree::Listener {
 public:
@@ -36,6 +39,9 @@ private:
 };
 
 //==============================================================================
+/**
+ * Component for track body containing clips and timeline content
+ */
 class TrackBodyComponent : public Component,
                        private ValueTree::Listener,
                        private FlaggedAsyncUpdater,
@@ -75,9 +81,11 @@ private:
 
 
 //==============================================================================
-// Its function is to only resize the track row as a whole
-// and to sync track height with a view state
-//==============================================================================
+/**
+ * Container component for track row, handling resizing and height synchronization
+ * Its function is to only resize the track row as a whole
+ * and to sync track height with a view state
+ */
 class TrackRowComponent : public Component,
                           private TrackViewState::Listener {
 public:
@@ -119,6 +127,9 @@ private:
 };
 
 //==============================================================================
+/**
+ * Container component that holds all track rows and manages track layout
+ */
 class TracksContainerComponent : public Component,
                                  private FlaggedAsyncUpdater,
                                  private ChangeListener,

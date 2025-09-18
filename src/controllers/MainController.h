@@ -56,16 +56,18 @@ public:
 
     ~MainController() override;
 
-    // ==============================================================================
-    // MenuBarModel
     //==============================================================================
+    /**
+     * MenuBarModel implementation
+     */
     StringArray getMenuBarNames() override;
     PopupMenu getMenuForIndex(int /* menuIndex */, const String& menuName) override;
     void menuItemSelected(int /* menuItemID */, int /* topLevelMenuIndex*/ ) override;
 
-    // ==============================================================================
-    // ApplicationCommandTarget
     //==============================================================================
+    /**
+     * ApplicationCommandTarget implementation
+     */
     ApplicationCommandTarget* getNextCommandTarget() override;
     void getAllCommands(Array<CommandID>& commands) override;
     void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) override;

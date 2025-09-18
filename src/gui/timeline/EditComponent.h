@@ -11,6 +11,9 @@
 namespace MoTool {
 
 //==============================================================================
+/**
+ * Main component for the timeline edit view, containing tracks, ruler, and playhead
+ */
 class EditComponent final : public Component,
                       private FlaggedAsyncUpdater,  // for marking and updating asynchronously
                       private ValueTree::Listener

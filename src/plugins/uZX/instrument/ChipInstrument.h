@@ -41,8 +41,12 @@ public:
 
         void referToState();
         void restoreStateFromValueTree(const ValueTree& v);
-        //=======================================================================================
-        // TODO
+
+        //==============================================================================
+        /**
+         * TODO: Parameters to implement
+         * - shape (square, saw, triangle, noise)
+         */
         // shape (square, saw, triangle, noise)
         // [x] amp adsr
         // amp lfo, steps, etc

@@ -52,13 +52,15 @@ private:
 
 //==============================================================================
 // BackgroundlessButton - Button that draws only text, no background
-class BackgroundlessButton : public TextButton {
+//==============================================================================
+class BackgroundlessToggleButton : public TextButton {
 public:
     void paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
 };
 
 //==============================================================================
 // TitleBar - Internal component for handling title bar functionality
+//==============================================================================
 class TitleBar : public Component {
 public:
     TitleBar(tracktion::Plugin::Ptr plugin);
@@ -69,16 +71,16 @@ public:
 
 private:
     tracktion::Plugin::Ptr plugin_;
-    BackgroundlessButton enableButton_;
+    BackgroundlessToggleButton enableButton_;
     static constexpr int titleBarHeight = 16;
     static constexpr int buttonMargin = 0;
     static constexpr int buttonWidth = titleBarHeight - buttonMargin * 2;
 };
 
-/**
- * Framed wrapper for regular device UIs.
- * Provides a title bar with plugin name and wraps the PluginDeviceUI directly.
- */
+//==============================================================================
+// Framed wrapper for regular device UIs.
+// Provides a title bar with plugin name and wraps the PluginDeviceUI directly.
+//==============================================================================
 class FramedDeviceItem : public DevicePanelItem {
 public:
     FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui);

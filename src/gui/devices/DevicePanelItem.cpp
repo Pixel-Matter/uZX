@@ -5,7 +5,7 @@
 namespace MoTool {
 
 //==============================================================================
-void BackgroundlessButton::paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) {
+void BackgroundlessToggleButton::paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) {
     // Only draw the text, no background
     Colour textColour;
     if (getToggleState()) {
@@ -21,7 +21,7 @@ void BackgroundlessButton::paintButton(Graphics& g, bool shouldDrawButtonAsHighl
         textColour = textColour.darker(0.3f);
 
     g.setColour(textColour);
-    auto font = getLookAndFeel().withDefaultMetrics(FontOptions { jmin (16.0f, (float) getHeight()) });
+    auto font = getLookAndFeel().withDefaultMetrics(FontOptions().withPointHeight(jmin(16.0f, (float) getHeight())));
     g.setFont(font);
     g.drawText(getButtonText(), getLocalBounds(), Justification::centred, true);
 }

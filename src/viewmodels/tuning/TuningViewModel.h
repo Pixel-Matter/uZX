@@ -9,8 +9,6 @@
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../../util/convert.h"
 #include "../../controllers/ParamAttachments.h"
-#include "juce_core/system/juce_PlatformDefs.h"
-#include "tracktion_engine/tracktion_engine.h"
 
 #include <cmath>
 #include <array>

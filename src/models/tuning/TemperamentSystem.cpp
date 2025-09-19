@@ -2,7 +2,6 @@
 #include "TemperamentSystem.h"
 #include "Ratios.h"
 #include "Scales.h"
-#include "juce_core/system/juce_PlatformDefs.h"
 #include <cmath>
 #include <limits>
 

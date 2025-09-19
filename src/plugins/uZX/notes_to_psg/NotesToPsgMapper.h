@@ -5,7 +5,6 @@
 #include "../../../models/tuning/TuningRegistry.h"
 #include "../../../models/PsgMidi.h"
 #include "../midi_effects/MidiEffect.h"
-#include "juce_audio_basics/juce_audio_basics.h"
 
 #include <array>
 #include <vector>

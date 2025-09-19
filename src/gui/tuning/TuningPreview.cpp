@@ -3,9 +3,6 @@
 #include "../common/LookAndFeel.h"
 #include "../common/Utilities.h"
 #include "../../util/Helpers.h"
-#include "juce_core/juce_core.h"
-#include "juce_graphics/juce_graphics.h"
-#include "juce_gui_extra/juce_gui_extra.h"
 
 namespace MoTool {
 

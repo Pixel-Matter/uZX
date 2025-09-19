@@ -2,7 +2,6 @@
 #include "../common/LookAndFeel.h"
 #include "../../models/EditUtilities.h"
 #include "../../controllers/App.h"
-#include "juce_core/juce_core.h"
 
 using namespace std::literals;
 using namespace juce;

@@ -1,6 +1,5 @@
 #include "NotesToPsgMapper.h"
 #include "../../../models/tuning/TuningRegistry.h"
-#include "juce_core/system/juce_PlatformDefs.h"
 
 #include <cstddef>
 #include <memory>

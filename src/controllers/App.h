@@ -11,8 +11,9 @@ class MoToolApp : public JUCEApplication {
 public:
 
     enum Target {
-        Main,
-        Tuning
+        uZXMain,
+        uZXTuning,
+        MoTool
     };
 
     MoToolApp();
@@ -40,7 +41,7 @@ public:
     const MoLookAndFeel& getLookAndFeel() const { return lookAndFeel_; }
 
 private:
-static inline Target target_ = String::fromUTF8(ProjectInfo::projectName) == "μZXTuning" ? Target::Tuning : Target::Main;
+static inline Target target_ = String::fromUTF8(ProjectInfo::projectName) == "μZXTuning" ? Target::uZXTuning : Target::uZXMain;
     MoLookAndFeel lookAndFeel_;
     std::unique_ptr<BaseController> controller_;
 

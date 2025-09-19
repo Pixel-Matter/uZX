@@ -14,7 +14,16 @@ public:
         // File Menu
         fileNew             = 1,
         fileOpen,
-        fileSave,
+        fileOpenRecent1     = 10,
+        fileOpenRecent2,
+        fileOpenRecent3,
+        fileOpenRecent4,
+        fileOpenRecent5,
+        fileOpenRecent6,
+        fileOpenRecent7,
+        fileOpenRecent8,
+        fileClearRecentFiles = 19,
+        fileSave            = 20,
         fileSaveAs,
         fileReveal,
         fileImportPsg,
@@ -67,7 +76,11 @@ public:
     // Get all commands
     static Array<CommandID> getCommandIDs() {
         CommandID ids[] = {
-            fileNew, fileOpen, fileSave, fileSaveAs, fileReveal, fileImportPsg, fileQuit,
+            fileNew, fileOpen,
+            fileOpenRecent1, fileOpenRecent2, fileOpenRecent3, fileOpenRecent4,
+            fileOpenRecent5, fileOpenRecent6, fileOpenRecent7, fileOpenRecent8,
+            fileClearRecentFiles,
+            fileSave, fileSaveAs, fileReveal, fileImportPsg, fileQuit,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
             addAudioTrack,
@@ -86,6 +99,21 @@ public:
         if (menuName == "File") {
             menu.addCommandItem(manager, MainAppCommands::fileNew);
             menu.addCommandItem(manager, MainAppCommands::fileOpen);
+
+            // Recent files submenu
+            PopupMenu recentMenu;
+            recentMenu.addCommandItem(manager, MainAppCommands::fileOpenRecent1);
+            recentMenu.addCommandItem(manager, MainAppCommands::fileOpenRecent2);
+            recentMenu.addCommandItem(manager, MainAppCommands::fileOpenRecent3);
+            recentMenu.addCommandItem(manager, MainAppCommands::fileOpenRecent4);
+            recentMenu.addCommandItem(manager, MainAppCommands::fileOpenRecent5);
+            recentMenu.addCommandItem(manager, MainAppCommands::fileOpenRecent6);
+            recentMenu.addCommandItem(manager, MainAppCommands::fileOpenRecent7);
+            recentMenu.addCommandItem(manager, MainAppCommands::fileOpenRecent8);
+            recentMenu.addSeparator();
+            recentMenu.addCommandItem(manager, MainAppCommands::fileClearRecentFiles);
+            menu.addSubMenu("Open Recent", recentMenu);
+
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::fileSave);
             menu.addCommandItem(manager, MainAppCommands::fileSaveAs);
@@ -141,6 +169,42 @@ public:
             case fileOpen:
                 result.setInfo("Open...", "Open an existing edit", "File", 0);
                 result.addDefaultKeypress('o', ModifierKeys::commandModifier);
+                break;
+
+            case fileOpenRecent1:
+                result.setInfo("Recent File 1", "Open recent file 1", "File", 0);
+                break;
+
+            case fileOpenRecent2:
+                result.setInfo("Recent File 2", "Open recent file 2", "File", 0);
+                break;
+
+            case fileOpenRecent3:
+                result.setInfo("Recent File 3", "Open recent file 3", "File", 0);
+                break;
+
+            case fileOpenRecent4:
+                result.setInfo("Recent File 4", "Open recent file 4", "File", 0);
+                break;
+
+            case fileOpenRecent5:
+                result.setInfo("Recent File 5", "Open recent file 5", "File", 0);
+                break;
+
+            case fileOpenRecent6:
+                result.setInfo("Recent File 6", "Open recent file 6", "File", 0);
+                break;
+
+            case fileOpenRecent7:
+                result.setInfo("Recent File 7", "Open recent file 7", "File", 0);
+                break;
+
+            case fileOpenRecent8:
+                result.setInfo("Recent File 8", "Open recent file 8", "File", 0);
+                break;
+
+            case fileClearRecentFiles:
+                result.setInfo("Clear Recent Files", "Clear recent files list", "File", 0);
                 break;
 
             case fileSave:

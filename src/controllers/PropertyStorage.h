@@ -30,10 +30,10 @@ public:
 
         return *propertiesFile;
     }
-    
+
     //==============================================================================
     File getDefaultLoadSaveDirectory(StringRef category) override {
-        auto defaultLoc = File::getSpecialLocation(File::userDocumentsDirectory);
+        auto defaultLoc = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile(getApplicationName());
         return getCustomProperty("loadSaveDirectory " + category, defaultLoc.getFullPathName()).toString();
     }
 

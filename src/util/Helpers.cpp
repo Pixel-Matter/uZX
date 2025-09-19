@@ -3,6 +3,7 @@
 #include "../models/PsgClip.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../gui/common/Utilities.h"
+#include "../util/FileOps.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
@@ -133,20 +134,9 @@ void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, boo
     });
 }
 
-File getRendersDirectory(te::Edit& edit) {
-    auto editFile = edit.editFileRetriever();
-    File rendersDir = editFile.existsAsFile()
-        ? editFile.getParentDirectory().getChildFile(editFile.getFileNameWithoutExtension()).withFileExtension("Renders")
-        : File::getSpecialLocation(File::userMusicDirectory)
-            .getChildFile(CharPointer_UTF8(ProjectInfo::projectName)).getChildFile("Renders");
-
-    rendersDir.createDirectory();
-    return rendersDir;
-}
-
 void removeUnusedRenderFiles(te::Edit& edit) {
-    auto rendersDir = getRendersDirectory(edit);
-    DBG("Cleaning renders directory " << rendersDir.getFullPathName());
+    auto rendersDir = EditFileOps::getRendersDirectory(edit);
+    TRACKTION_LOG("Cleaning renders directory " + rendersDir.getFullPathName());
 
     Array<File> usedFiles;
     for (auto audioTrack : getAudioTracks(edit))
@@ -163,7 +153,8 @@ void removeUnusedRenderFiles(te::Edit& edit) {
 }
 
 File getFreezeFileForTrack(const te::AudioTrack& track) {
-    auto location = getRendersDirectory(track.edit);
+    auto location = EditFileOps::getRendersDirectory(track.edit);
+    location.createDirectory();
     auto file = location.getChildFile("0_" + track.itemID.toString() + ".wav");
 
     // TODO on exit, remove all unused files in Renders directory

@@ -19,7 +19,6 @@ void browseForFile(te::Engine& engine,
                    const String& name, const String& category, const String& wildcard,
                    std::function<void(const File&)> fileChosenCallback) {
     auto location = engine.getPropertyStorage().getDefaultLoadSaveDirectory(category);
-    DBG("Default save location is " << location.getFullPathName());
     auto fc = std::make_shared<FileChooser>("Please select " + name + " file to load...", location, wildcard);
 
     fc->launchAsync(FileBrowserComponent::openMode + FileBrowserComponent::canSelectFiles,

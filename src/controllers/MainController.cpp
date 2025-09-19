@@ -26,6 +26,7 @@ namespace MoTool {
 
 void BaseController::setMainWindowTitle(const String& title) {
     mainWindow_.setTitle(title);
+    mainWindow_.setName(title);
 }
 
 BaseController::BaseController()
@@ -81,7 +82,7 @@ BaseController::~BaseController() {
     mainWindow_.clearContentComponent();
 
     if (edit_ != nullptr) {
-        te::EditFileOperations(*edit_).save(true, true, false);
+        EditFileOps::saveEdit(*edit_, true, true, false);
         edit_->getTempDirectory(false).deleteRecursively();
     }
 
@@ -171,6 +172,8 @@ std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
 
 // ================================= MainController =============================================
 MainController::~MainController() {
+    // TODO actually we should clean up the render files when closing/destroying an edit, not when closing the app
+    // We can subclass the edit and override destructor to do this
     if (edit_ != nullptr) {
         Helpers::removeUnusedRenderFiles(*edit_);
     }
@@ -184,30 +187,46 @@ StringArray MainController::getMenuBarNames() {
 }
 
 PopupMenu MainController::getMenuForIndex(int /* menuIndex */, const String& menuName) {
+    if (menuName == "File") {
+        PopupMenu menu;
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileNew);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileOpen);
+
+        // Recent files submenu - populate dynamically
+        auto recentFiles = EditFileOps::getRecentEdits();
+        if (recentFiles.size() > 0) {
+            PopupMenu recentMenu;
+
+            for (int i = 0; i < recentFiles.size() && i < 8; ++i) {
+                File recentFile(recentFiles[i]);
+                recentMenu.addCommandItem(&commandManager_, MainAppCommands::fileOpenRecent1 + i);
+            }
+
+            recentMenu.addSeparator();
+            recentMenu.addCommandItem(&commandManager_, MainAppCommands::fileClearRecentFiles);
+            menu.addSubMenu("Open Recent", recentMenu);
+        }
+
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileSave);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileSaveAs);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileReveal);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileImportPsg);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileQuit);
+
+        return menu;
+    }
+
     return MainAppCommands::createMenu(&commandManager_, menuName);
 }
 
 void MainController::menuItemSelected(int /* menuItemID */, int /* topLevelMenuIndex*/ ) {
-    // hadled by CommandManager
+    // handled by CommandManager
 }
 
 ApplicationCommandTarget* MainController::getNextCommandTarget() {
-    // DBG("MainWindow::getNextCommandTarget");
-    // find in children
-    // for (auto* c : getChildren()) {
-    //     if (auto* main = dynamic_cast<MainDocumentComponent*>(c)) {
-    //         DBG("MainWindow::getNextCommandTarget: MainDocumentComponent found");
-    //         for (auto* d : main->getChildren()) {
-    //             if (auto* target = dynamic_cast<ApplicationCommandTarget*>(d)) {
-    //                 DBG("MainWindow::getNextCommandTarget: found");
-    //                 return target;
-    //             }
-    //         }
-    //     } else {
-    //         DBG("MainWindow::getNextCommandTarget: MainDocumentComponent not found");
-    //     }
-    // }
-    // DBG("MainWindow::getNextCommandTarget: not found");
     return nullptr;
 }
 
@@ -233,6 +252,33 @@ void MainController::getCommandInfo(CommandID commandID, ApplicationCommandInfo&
         case MainAppCommands::fileReveal:
             result.setActive(edit_ != nullptr);
             break;
+
+        case MainAppCommands::fileOpenRecent1:
+        case MainAppCommands::fileOpenRecent2:
+        case MainAppCommands::fileOpenRecent3:
+        case MainAppCommands::fileOpenRecent4:
+        case MainAppCommands::fileOpenRecent5:
+        case MainAppCommands::fileOpenRecent6:
+        case MainAppCommands::fileOpenRecent7:
+        case MainAppCommands::fileOpenRecent8: {
+            auto recentFiles = EditFileOps::getRecentEdits();
+            int fileIndex = commandID - MainAppCommands::fileOpenRecent1;
+            if (fileIndex < recentFiles.size()) {
+                File recentFile(recentFiles[fileIndex]);
+                result.setInfo(recentFile.getFileNameWithoutExtension(),
+                             "Open " + recentFile.getFullPathName(), "File", 0);
+                result.setActive(true);
+            } else {
+                result.setActive(false);
+            }
+            break;
+        }
+
+        case MainAppCommands::fileClearRecentFiles: {
+            auto recentFiles = EditFileOps::getRecentEdits();
+            result.setActive(recentFiles.size() > 0);
+            break;
+        }
 
         case MainAppCommands::editUndo:
             result.setActive(edit_ != nullptr && edit_->getUndoManager().canUndo());
@@ -295,6 +341,21 @@ bool MainController::perform(const InvocationInfo& info) {
             handleOpen();
             break;
 
+        case MainAppCommands::fileOpenRecent1:
+        case MainAppCommands::fileOpenRecent2:
+        case MainAppCommands::fileOpenRecent3:
+        case MainAppCommands::fileOpenRecent4:
+        case MainAppCommands::fileOpenRecent5:
+        case MainAppCommands::fileOpenRecent6:
+        case MainAppCommands::fileOpenRecent7:
+        case MainAppCommands::fileOpenRecent8:
+            handleOpenRecent(info.commandID - MainAppCommands::fileOpenRecent1);
+            break;
+
+        case MainAppCommands::fileClearRecentFiles:
+            handleClearRecentFiles();
+            break;
+
         case MainAppCommands::fileSave:
             te::AppFunctions::saveEdit();
             break;
@@ -305,7 +366,7 @@ bool MainController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::fileReveal:
             if (edit_ != nullptr) {
-                te::EditFileOperations(*edit_).save(false, true, false);
+                EditFileOps::saveEdit(*edit_, false, true, false);
                 te::EditFileOperations(*edit_).getEditFile().revealToUser();
             }
             break;
@@ -346,14 +407,10 @@ bool MainController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::transportToStart:
             te::AppFunctions::goToStart();
-            // assuming autoscroll is enabled
-            // editViewState_->zoom.scrollToCurrentPosition();
             break;
 
         case MainAppCommands::transportToEnd:
             te::AppFunctions::goToEnd();
-            // assuming autoscroll is enabled
-            // editViewState_->zoom.scrollToCurrentPosition();
             break;
 
         case MainAppCommands::transportLoop:
@@ -422,22 +479,50 @@ void MainController::handleNew() {
 }
 
 void MainController::handleOpen() {
-    FileChooser fc("Open file", File::getSpecialLocation(File::userDocumentsDirectory), EditFileOps::getAppFileGlob());
+    auto location = EditFileOps::getRecentEditsDirectory();
+    FileChooser fc("Open file", location, EditFileOps::getAppFileGlob());
     if (fc.browseForFileToOpen()) {
-        auto newEdit = createOrLoadEdit(fc.getResult());
+        auto selectedFile = fc.getResult();
+        if (selectedFile.existsAsFile()) {
+            EditFileOps::setRecentEditsDirectory(selectedFile);
+        }
+        auto newEdit = createOrLoadEdit(selectedFile);
         setEdit(std::move(newEdit), true);
     }
+}
+
+void MainController::handleOpenRecent(int fileIndex) {
+    auto recentFiles = EditFileOps::getRecentEdits();
+    if (fileIndex >= 0 && fileIndex < recentFiles.size()) {
+        File selectedFile(recentFiles[fileIndex]);
+        if (selectedFile.existsAsFile()) {
+            auto newEdit = createOrLoadEdit(selectedFile);
+            setEdit(std::move(newEdit), true);
+        } else {
+            // File no longer exists, remove from recent files
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+                "File Not Found",
+                "The file '" + selectedFile.getFileName() + "' could not be found.",
+                "OK");
+            // The file will be automatically removed next time getRecentEdits() is called
+            commandManager_.commandStatusChanged(); // Refresh menu
+        }
+    }
+}
+
+void MainController::handleClearRecentFiles() {
+    auto& storage = dynamic_cast<PropertyStorage&>(engine_.getPropertyStorage());
+    storage.setCustomProperty("recentEdits", "");
+    commandManager_.commandStatusChanged(); // Refresh menu to show empty state
 }
 
 void MainController::handleSaveAs() {
     if (edit_ == nullptr) return;
 
-    auto efo = te::EditFileOperations(*edit_);
-    auto newEditName = te::getNonExistentSiblingWithIncrementedNumberSuffix(efo.getEditFile(), false);
-    juce::FileChooser fc("Save As...", newEditName, EditFileOps::getAppFileGlob());
-
-    if (fc.browseForFileToSave(false)) {
-        efo.saveAs(fc.getResult().withFileExtension(EditFileOps::EDIT_FILE_SUFFIX));
+    if (EditFileOps::saveEditAsWithDialog(*edit_)) {
+        // TODO use listener or callback to update title when edit file changes
+        auto name = te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension();
+        setMainWindowTitle(name);
     }
 }
 
@@ -492,13 +577,26 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     jassert(edit != nullptr);
 
     if (savePrev && edit_ != nullptr) {
-        te::EditFileOperations(*edit_).save(true, true, false);
+        EditFileOps::saveEdit(*edit_, true, true, false);
     }
 
     auto w = mainWindow_.getWidth(), h = mainWindow_.getHeight();
+
+    // Clear UI components first to release any references to the old edit
     mainWindow_.clearContentComponent();
 
+    // Clear selection manager references to old edit objects
+    selectionManager_.deselectAll();
+
+    // Reset view state before replacing edit
     editViewState_.reset();
+
+    // Clean up old edit temp directory if it exists
+    if (edit_ != nullptr) {
+        edit_->getTempDirectory(false).deleteRecursively();
+    }
+
+    // Replace the edit
     edit_ = std::move(edit);
 
     rescaleAllMidiClipsToFit(*edit_);
@@ -507,15 +605,14 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
 
     createTracksAndAssignInputs();
-    te::EditFileOperations(*edit_).save(true, true, false);
+    EditFileOps::saveEdit(*edit_, true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
 
     mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
-    mainWindow_.setName(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
+    setMainWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
     mainWindow_.setSize(w, h);
     mainWindow_.repaint();
-
 }
 
 void MainController::createTracksAndAssignInputs() {

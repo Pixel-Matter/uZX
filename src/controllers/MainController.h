@@ -79,6 +79,8 @@ private:
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
     void handleNew();
     void handleOpen();
+    void handleOpenRecent(int fileIndex);
+    void handleClearRecentFiles();
     void handleSaveAs();
     void handleRecord();
     void createTracksAndAssignInputs();

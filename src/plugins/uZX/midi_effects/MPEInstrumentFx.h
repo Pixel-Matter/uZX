@@ -157,7 +157,7 @@ protected:
     }
 
     void handleProgramChange(int midiChannel, int programNumber) {
-        ignoreUnused(midiChannel);
+        ignoreUnused(midiChannel, programNumber);
         DBG("Program change: " << programNumber);
         // Implement program change handling logic here
     }

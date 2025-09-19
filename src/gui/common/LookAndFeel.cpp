@@ -77,6 +77,7 @@ MoLookAndFeel::MoLookAndFeel() {
 
 void MoLookAndFeel::debugColourScheme() {
     const auto& cs = getCurrentColourScheme();
+    ignoreUnused(cs);
     DBG("Current Colour Scheme:");
     DBG("windowBackground: " + cs.getUIColour(ColourScheme::windowBackground).toString());
     DBG("widgetBackground: " + cs.getUIColour(ColourScheme::widgetBackground).toString());

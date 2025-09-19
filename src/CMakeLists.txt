@@ -70,14 +70,35 @@ target_include_directories(${TUNING_TARGET_NAME}
 
 # Compile Definitions
 set(JUCE_DEFINITIONS
-    JUCE_PLUGINHOST_AU=1
-    JUCE_PLUGINHOST_LADSPA=1
-    JUCE_PLUGINHOST_VST3=1
+    JUCE_USE_FLAC=1       # Needed for Tracktion
+    JUCE_USE_OGGVORBIS=1  # Needed for Tracktion
+
+    JUCE_PLUGINHOST_AU=0
+    JUCE_PLUGINHOST_LADSPA=0
+    JUCE_PLUGINHOST_VST3=0
     JUCE_USE_CURL=0
     JUCE_WEB_BROWSER=0
+    JUCE_USE_LAME_AUDIO_FORMAT=0
+    JUCE_USE_CDBURNER=0
+    JUCE_USE_CDREADER=0
+    JUCE_USE_CAMERA=0
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_STRICT_REFCOUNTEDPOINTER=1
-    TRACKTION_ENABLE_TIMESTRETCH_SOUNDTOUCH=1
+
+    TRACKTION_ENABLE_CONTROL_SURFACES=0
+    TRACKTION_ENABLE_VIDEO=0
+    TRACKTION_ENABLE_ARA=0
+    TRACKTION_ENABLE_REWIRE=0
+    TRACKTION_ENABLE_AUTOMAP=0
+    TRACKTION_ENABLE_REX=0
+    TRACKTION_ENABLE_CMAJOR=0
+    TRACKTION_ENABLE_ABLETON_LINK=0
+    TRACKTION_ENABLE_TIMESTRETCH_SOUNDTOUCH=0
+    TRACKTION_ENABLE_TIMESTRETCH_ELASTIQUE=0
+    TRACKTION_ENABLE_TIMESTRETCH_RUBBERBAND=0
+    TRACKTION_ENABLE_FFMPEG=0
+    TRACKTION_ENABLE_CONTROL_SURFACE_MACKIEC4=0
+    TRACKTION_ENABLE_SINGLETONS=0
 )
 
 target_compile_definitions(${MAIN_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
@@ -112,29 +133,29 @@ target_link_libraries(${TUNING_TARGET_NAME} PRIVATE
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_compile_options(${MAIN_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TUNING_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
-    
+
     # Code Signing Configuration
     # Set from environment variable or use default
     if(DEFINED ENV{CODESIGN_IDENTITY})
         set(CODESIGN_IDENTITY "$ENV{CODESIGN_IDENTITY}")
         message(STATUS "Code signing with identity: ${CODESIGN_IDENTITY}")
-        
+
         # Create codesign script to handle identity with spaces and parentheses
         configure_file(
             "${CMAKE_CURRENT_SOURCE_DIR}/codesign.sh.in"
             "${CMAKE_CURRENT_BINARY_DIR}/codesign.sh"
             @ONLY
         )
-        
+
         # Make the script executable
         file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/codesign.sh" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
-        
+
         # Add custom command to sign μZX after build
         add_custom_command(TARGET ${MAIN_TARGET_NAME} POST_BUILD
             COMMAND ${CMAKE_CURRENT_BINARY_DIR}/codesign.sh $<TARGET_BUNDLE_DIR:${MAIN_TARGET_NAME}>
             COMMENT "Code signing ${MAIN_TARGET_NAME}"
         )
-        
+
         # Add custom command to sign μZXTuning after build
         add_custom_command(TARGET ${TUNING_TARGET_NAME} POST_BUILD
             COMMAND ${CMAKE_CURRENT_BINARY_DIR}/codesign.sh $<TARGET_BUNDLE_DIR:${TUNING_TARGET_NAME}>

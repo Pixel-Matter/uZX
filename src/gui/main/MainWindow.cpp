@@ -14,7 +14,7 @@ MainWindow::MainWindow(tracktion::Engine& engine)
     setResizable(true, true);
 
     // Set up minimum size constraints
-    constrainer_.setMinimumSize(800, 600);
+    constrainer_.setMinimumSize(800, 480);
     setConstrainer(&constrainer_);
 
     restoreWindowBounds();

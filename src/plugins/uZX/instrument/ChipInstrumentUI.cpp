@@ -119,6 +119,8 @@ void LabeledRotarySlider::learnMidiCC() {
         "Move a MIDI controller now to assign it to \"" + parameter->getFullName() + "\".\\n\\nPress any key or click OK to cancel.",
         "OK"
     );
+    mappings.setLearntParam(false);
+    mappings.saveToEdit();
 }
 
 void LabeledRotarySlider::clearMidiMapping() {

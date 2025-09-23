@@ -35,7 +35,8 @@ private:
 
 class TransportBar  : public Component,
                       private ValueTree::Listener,
-                      private ChangeListener
+                      private ChangeListener,
+                      private tracktion::AutomationRecordManager::Listener
 {
 public:
     explicit TransportBar(EditViewState& evs);
@@ -57,11 +58,14 @@ private:
     TextButton rewindButton_    { "|<<" },
     //    stepLeftButton_  { "<" },
        playPauseButton_ { "Play" },
-       recordButton_    { "Rec" };
+       recordButton_    { "Rec" },
+       autoReadButton_  { "Read" },
+       autoWriteButton_ { "Write" };
     //    stepRightButton_ { ">" };
 
     Label timeSigLabel_;
     Label transportReadout_;
+    Label automationLabel_;
 
     BpmControl bpmSlider_ { viewState_ };
     Slider beatFramesSlider_ { Slider::SliderStyle::IncDecButtons, Slider::TextEntryBoxPosition::TextBoxLeft };
@@ -71,9 +75,11 @@ private:
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;
     void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
+    void automationModeChanged() override;
 
     void updatePlayButtonText(bool isPlaying);
     void updateRecordButtonText(bool isRecording);
+    void updateAutomationButtons();
     String getTimecode(te::TimePosition pos) const;
     void updateTimeLabels(te::TimePosition pos);
 

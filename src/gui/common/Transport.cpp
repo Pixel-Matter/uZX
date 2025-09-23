@@ -26,12 +26,16 @@ TransportBar::TransportBar(EditViewState& evs)
     transport_.addChangeListener(this);
     transport_.state.addListener(this);
     edit_.state.addListener(this);
+    edit_.getAutomationRecordManager().addListener(this);
     timecodeFormat.referTo(edit_.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
 
     ::Helpers::addAndMakeVisible (*this, {
         &rewindButton_,
         &playPauseButton_,
         &recordButton_,
+        &automationLabel_,
+        &autoReadButton_,
+        &autoWriteButton_,
         &bpmSlider_,
         &beatFramesSlider_,
         &timeSigLabel_,
@@ -53,8 +57,23 @@ TransportBar::TransportBar(EditViewState& evs)
             edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(MainAppCommands::transportRecordStop, false);
         }
     };
+
+    autoReadButton_.setClickingTogglesState(true);
+    autoReadButton_.onClick = [this] {
+        auto& arm = edit_.getAutomationRecordManager();
+        arm.setReadingAutomation(!arm.isReadingAutomation());
+    };
+
+    autoWriteButton_.setClickingTogglesState(true);
+    autoWriteButton_.setColour(TextButton::buttonOnColourId, Colours::red);
+    autoWriteButton_.onClick = [this] {
+        auto& arm = edit_.getAutomationRecordManager();
+        arm.setWritingAutomation(!arm.isWritingAutomation());
+    };
+
     updatePlayButtonText(transport_.isPlaying());
     updateRecordButtonText(transport_.isRecording());
+    updateAutomationButtons();
 
     bpmSlider_.onValueChange = [this] {
         auto bpm = bpmSlider_.getValue();
@@ -76,6 +95,9 @@ TransportBar::TransportBar(EditViewState& evs)
     readoutLookAndFeel_.setupReadoutLabel(timeSigLabel_);
     readoutLookAndFeel_.setupReadoutLabel(transportReadout_);
 
+    automationLabel_.setText("Automation:", dontSendNotification);
+    automationLabel_.setJustificationType(Justification::centredRight);
+
     updateTimeLabels(transport_.getPosition());
 }
 
@@ -86,6 +108,7 @@ TransportBar::~TransportBar() {
     transport_.removeChangeListener(this);
     transport_.state.removeListener(this);
     edit_.state.removeListener(this);
+    edit_.getAutomationRecordManager().removeListener(this);
 }
 
 void TransportBar::paint(Graphics& g) {
@@ -127,6 +150,12 @@ void TransportBar::resized() {
     b.removeFromLeft(spacing);
 
     transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
+    b.removeFromLeft(spacing);
+    automationLabel_.setBounds(b.removeFromLeft(w * 3));
+    b.removeFromLeft(spacing);
+    autoReadButton_.setBounds(b.removeFromLeft(w * 2));
+    b.removeFromLeft(spacing);
+    autoWriteButton_.setBounds(b.removeFromLeft(w * 2));
 
     //----------------------------------------------------------------------
     // shift everything to the center
@@ -138,6 +167,9 @@ void TransportBar::resized() {
     playPauseButton_.setBounds(playPauseButton_.getBounds().withX(playPauseButton_.getX() + shiftBy));
     recordButton_.setBounds(recordButton_.getBounds().withX(recordButton_.getX() + shiftBy));
     transportReadout_.setBounds(transportReadout_.getBounds().withX(transportReadout_.getX() + shiftBy));
+    automationLabel_.setBounds(automationLabel_.getBounds().withX(automationLabel_.getX() + shiftBy));
+    autoReadButton_.setBounds(autoReadButton_.getBounds().withX(autoReadButton_.getX() + shiftBy));
+    autoWriteButton_.setBounds(autoWriteButton_.getBounds().withX(autoWriteButton_.getX() + shiftBy));
 
     masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
 
@@ -173,12 +205,22 @@ void TransportBar::valueTreeChildRemoved(ValueTree&, ValueTree& child, int) {
     }
 }
 
+void TransportBar::automationModeChanged() {
+    updateAutomationButtons();
+}
+
 void TransportBar::updatePlayButtonText(bool isPlaying) {
     playPauseButton_.setButtonText(isPlaying ? "||" : "[>]");
 }
 
 void TransportBar::updateRecordButtonText(bool isRecording) {
     recordButton_.setButtonText(isRecording ? "Stop" : "Rec");
+}
+
+void TransportBar::updateAutomationButtons() {
+    auto& arm = edit_.getAutomationRecordManager();
+    autoReadButton_.setToggleState(arm.isReadingAutomation(), dontSendNotification);
+    autoWriteButton_.setToggleState(arm.isWritingAutomation(), dontSendNotification);
 }
 
 String TransportBar::getTimecode(te::TimePosition pos) const {

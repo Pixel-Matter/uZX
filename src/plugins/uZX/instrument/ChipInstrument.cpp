@@ -49,11 +49,11 @@ ChipInstrumentFx::OscParameters::OscParameters(ChipInstrumentFx& inst, int oscNu
     , ampSustain  {{"ampSustain",  IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}}
     , ampRelease  {{"ampRelease",  IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
     // , ampVelocity {{"ampVelocity", IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}}
-    , pitchAttack {{"pitchAttack", IDs::pitchAttack, "pA", "Pitch Attack Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
-    , pitchDecay  {{"pitchDecay",  IDs::pitchDecay,  "pD", "Pitch Decay Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
-    , pitchSustain{{"pitchSustain",IDs::pitchSustain,"pS", "Pitch Sustain Level",0.0f,   {0.0f, 100.0f}, "%"}}
-    , pitchRelease{{"pitchRelease",IDs::pitchRelease,"pR", "Pitch Release Time", 0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
-    , pitchDepth  {{"pitchDepth",  IDs::pitchDepth,  "pDp", "Pitch Depth",       0.0f,   {-48.0f, 48.0f}, "st"}}
+    , pitchAttack {{"pitchAttack", IDs::pitchAttack, "A", "Pitch Attack Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchDecay  {{"pitchDecay",  IDs::pitchDecay,  "D", "Pitch Decay Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchSustain{{"pitchSustain",IDs::pitchSustain,"S", "Pitch Sustain Level",0.0f,   {0.0f, 100.0f}, "%"}}
+    , pitchRelease{{"pitchRelease",IDs::pitchRelease,"R", "Pitch Release Time", 0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchDepth  {{"pitchDepth",  IDs::pitchDepth,  "Depth", "Pitch Depth",       0.0f,   {-48.0f, 48.0f}, "st"}}
 {
     ignoreUnused(oscNum);
     referToState();

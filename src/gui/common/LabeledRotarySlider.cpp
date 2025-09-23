@@ -42,7 +42,7 @@ void LabeledRotarySlider::resized() {
 
     slider.setBounds(bounds.removeFromTop(sliderHeight));
     bounds.translate(0, -labelOverlap);
-    label.setBounds(bounds);
+    label.setBounds(bounds.expanded(4, 0));
 }
 
 void LabeledRotarySlider::paint(Graphics& g) {

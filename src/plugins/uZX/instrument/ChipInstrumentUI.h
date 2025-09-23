@@ -29,6 +29,9 @@ public:
 private:
     ChipInstrumentFx& instrument;
 
+    GroupComponent ampGroup;
+    GroupComponent pitchGroup;
+
     MoTool::LabeledRotarySlider adsrAttackSlider, adsrDecaySlider, adsrSustainSlider, adsrReleaseSlider;
     // MoTool::LabeledRotarySlider adsrVelocitySlider;
     MoTool::LabeledRotarySlider pitchAttackSlider, pitchDecaySlider, pitchSustainSlider, pitchReleaseSlider, pitchDepthSlider;

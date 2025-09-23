@@ -73,6 +73,10 @@ MoLookAndFeel::MoLookAndFeel() {
     setColour(TooltipWindow::backgroundColourId, Theme::backgroundAlt);
     setColour(TooltipWindow::textColourId, Theme::textPrimary);
     setColour(TooltipWindow::outlineColourId, Theme::border);
+
+    // GroupComponent
+    setColour(GroupComponent::outlineColourId, Theme::border);
+    setColour(GroupComponent::textColourId, Theme::textSecondary);
 }
 
 void MoLookAndFeel::debugColourScheme() {

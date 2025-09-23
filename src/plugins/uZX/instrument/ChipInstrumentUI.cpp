@@ -12,6 +12,8 @@ namespace MoTool::uZX {
 ChipInstrumentUI::ChipInstrumentUI(tracktion::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
     , instrument(instrumentPlugin()->instrument)
+    , ampGroup("ampGroup", "Amp")
+    , pitchGroup("pitchGroup", "Pitch")
     , adsrAttackSlider  (instrument.oscParams.ampAttack)
     , adsrDecaySlider   (instrument.oscParams.ampDecay)
     , adsrSustainSlider (instrument.oscParams.ampSustain)
@@ -25,7 +27,10 @@ ChipInstrumentUI::ChipInstrumentUI(tracktion::Plugin::Ptr pluginPtr)
 {
     jassert(pluginPtr != nullptr);
 
-    setSize(168, 320);
+    setSize(32 * 4 + 8 * 7, 360);
+
+    addAndMakeVisible(ampGroup);
+    addAndMakeVisible(pitchGroup);
 
     addAndMakeVisible(adsrAttackSlider);
     addAndMakeVisible(adsrDecaySlider);
@@ -48,36 +53,54 @@ void ChipInstrumentUI::paint(Graphics&) {
 }
 
 void ChipInstrumentUI::resized() {
-    auto r = getLocalBounds().reduced(8);
+    auto r = getLocalBounds().reduced(8, 4);
     static constexpr int knobSize = 32;
     static constexpr int spacing = 8;
+    static constexpr int groupSpacing = 2;
+    static constexpr int groupPadding = 8;
+    static constexpr int groupHeaderHeight = spacing;
 
-    // Amp ADSR row
-    auto ampRow = r.removeFromTop(knobSize + adsrAttackSlider.getLabelHeight());
-    adsrAttackSlider.setBounds(ampRow.removeFromLeft(knobSize));
-    ampRow.removeFromLeft(spacing);
-    adsrDecaySlider.setBounds(ampRow.removeFromLeft(knobSize));
-    ampRow.removeFromLeft(spacing);
-    adsrSustainSlider.setBounds(ampRow.removeFromLeft(knobSize));
-    ampRow.removeFromLeft(spacing);
-    adsrReleaseSlider.setBounds(ampRow.removeFromLeft(knobSize));
+    // Amplitude group
+    auto ampGroupHeight = groupHeaderHeight + groupPadding + knobSize + adsrAttackSlider.getLabelHeight() + groupPadding;
+    auto ampGroupBounds = r.removeFromTop(ampGroupHeight);
+    ampGroup.setBounds(ampGroupBounds);
 
-    r.removeFromTop(spacing); // Space between rows
+    // Position amp controls within the group
+    auto ampArea = ampGroupBounds.reduced(groupPadding, groupPadding);
+    ampArea.removeFromTop(groupHeaderHeight);
+    adsrAttackSlider.setBounds(ampArea.removeFromLeft(knobSize));
+    ampArea.removeFromLeft(spacing);
+    adsrDecaySlider.setBounds(ampArea.removeFromLeft(knobSize));
+    ampArea.removeFromLeft(spacing);
+    adsrSustainSlider.setBounds(ampArea.removeFromLeft(knobSize));
+    ampArea.removeFromLeft(spacing);
+    adsrReleaseSlider.setBounds(ampArea.removeFromLeft(knobSize));
+
+    r.removeFromTop(groupSpacing);
+
+    // Pitch group
+    auto pitchGroupHeight = groupHeaderHeight + groupPadding + (knobSize + pitchAttackSlider.getLabelHeight()) * 2 + spacing + groupPadding - 4;
+    auto pitchGroupBounds = r.removeFromTop(pitchGroupHeight);
+    pitchGroup.setBounds(pitchGroupBounds);
+
+    // Position pitch controls within the group
+    auto pitchArea = pitchGroupBounds.reduced(groupPadding, groupPadding);
+    pitchArea.removeFromTop(groupHeaderHeight);
 
     // Pitch ADSR row
-    auto pitchRow = r.removeFromTop(knobSize + pitchAttackSlider.getLabelHeight());
-    pitchAttackSlider.setBounds(pitchRow.removeFromLeft(knobSize));
-    pitchRow.removeFromLeft(spacing);
-    pitchDecaySlider.setBounds(pitchRow.removeFromLeft(knobSize));
-    pitchRow.removeFromLeft(spacing);
-    pitchSustainSlider.setBounds(pitchRow.removeFromLeft(knobSize));
-    pitchRow.removeFromLeft(spacing);
-    pitchReleaseSlider.setBounds(pitchRow.removeFromLeft(knobSize));
+    auto pitchAdsrRow = pitchArea.removeFromTop(knobSize + pitchAttackSlider.getLabelHeight());
+    pitchAttackSlider.setBounds(pitchAdsrRow.removeFromLeft(knobSize));
+    pitchAdsrRow.removeFromLeft(spacing);
+    pitchDecaySlider.setBounds(pitchAdsrRow.removeFromLeft(knobSize));
+    pitchAdsrRow.removeFromLeft(spacing);
+    pitchSustainSlider.setBounds(pitchAdsrRow.removeFromLeft(knobSize));
+    pitchAdsrRow.removeFromLeft(spacing);
+    pitchReleaseSlider.setBounds(pitchAdsrRow.removeFromLeft(knobSize));
 
-    r.removeFromTop(spacing); // Space between rows
+    pitchArea.removeFromTop(spacing - 4);
 
-    // Pitch Depth knob (separate row)
-    auto depthRow = r.removeFromTop(knobSize + pitchDepthSlider.getLabelHeight());
+    // Pitch Depth row
+    auto depthRow = pitchArea.removeFromTop(knobSize + pitchDepthSlider.getLabelHeight());
     pitchDepthSlider.setBounds(depthRow.removeFromLeft(knobSize));
 }
 

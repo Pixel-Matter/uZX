@@ -6,10 +6,14 @@
 #include "DetailsPanelComponent.h"
 #include "Ruler.h"
 #include "PlayheadComponent.h"
+#include "TimelineGrid.h"
 
 namespace MoTool {
 
 //==============================================================================
+/**
+ * Main component for the timeline edit view, containing tracks, ruler, and playhead
+ */
 class EditComponent final : public Component,
                       private FlaggedAsyncUpdater,  // for marking and updating asynchronously
                       private ValueTree::Listener
@@ -27,12 +31,13 @@ private:
 
     te::Edit& edit;
     EditViewState& editViewState;
+    TimelineGrid grid {editViewState};
 
     PlayheadComponent playhead {edit, editViewState};
-    RulerComponent ruler {edit, editViewState};
-    TracksContainerComponent tracksContainer {edit, editViewState, ruler};
+    RulerComponent ruler {edit, editViewState, grid};
+    TracksContainerComponent tracksContainer {edit, editViewState, grid};
     Viewport trackViewport;
-    DetailsPanelComponent detailsPanel {editViewState};
+    DetailsPanelComponent detailsPanel {editViewState, grid};
 
     bool updateSizes = false;
 };

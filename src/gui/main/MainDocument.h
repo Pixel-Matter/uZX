@@ -16,7 +16,7 @@ class MainDocumentComponent: public Component {
 public:
 
     explicit MainDocumentComponent(te::Edit& edit, EditViewState& evs)
-        : transportBar_ {edit}
+        : transportBar_ {evs}
         , editComponent_ {edit, evs}
         // , footer_        {edit_.engine,}
     {
@@ -29,7 +29,7 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        auto transportBarHeight = 32;
+        auto transportBarHeight = 40;
         transportBar_.setBounds(r.removeFromTop(transportBarHeight));
         editComponent_.setBounds(r);
     }

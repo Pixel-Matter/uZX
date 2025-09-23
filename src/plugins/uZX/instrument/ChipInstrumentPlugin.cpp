@@ -1,5 +1,4 @@
 #include "ChipInstrumentPlugin.h"
-#include "tracktion_core/utilities/tracktion_Time.h"
 
 namespace MoTool::uZX {
 
@@ -8,16 +7,16 @@ namespace te = tracktion;
 const char* ChipInstrumentPlugin::xmlTypeName = "uzxtrmnt";
 
 ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
-    : MidiFxPluginBase<ChipInstrumentFx>(info)
-    // , instrument(edit)
+    : MidiFxPluginBase<ChipInstrumentFx>(info, instrument)
+    , instrument(state, getUndoManager())
 {
     levelMeasurer.addClient(*this);
 
-    // TODO add all params from instrument
-    // auto um = getUndoManager();
-    // paramValue.referTo(state, paramDef.Id, um, paramDef.defaultValue)
-    // addedParam = addParam(paramDef, paramValue);
-    // addedParam->attachToCurrentValue(paramValue);
+    instrument.oscParams.visit([this](auto& vd) {
+        auto& def = vd.definition;
+        auto param = addParam(def.paramID, def.description, def.valueRange, def.paramID);
+        vd.attachSource(std::move(std::make_unique<TracktionParamSource>(param)));
+    });
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);
     valueTreePropertyChanged(state, te::IDs::mpe);
@@ -28,9 +27,6 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
 
 ChipInstrumentPlugin::~ChipInstrumentPlugin() {
     notifyListenersOfDeletion();
-
-    // TODO detach all instrument parameters
-    // param.detachFromCurrentValue()
 }
 
 bool ChipInstrumentPlugin::hasNameForMidiBank(int /* num */, juce::String& /* name */) {
@@ -46,10 +42,10 @@ bool ChipInstrumentPlugin::hasNameForMidiNoteNumber(int /*note*/, int /*midiChan
     return false;
 }
 
-te::AutomatableParameter* ChipInstrumentPlugin::addParam(const String& paramID,
-                                                         const String& name,
-                                                         NormalisableRange<float> valueRange,
-                                                         String label) {
+te::AutomatableParameter::Ptr ChipInstrumentPlugin::addParam(const String& paramID,
+                                                             const String& name,
+                                                             NormalisableRange<float> valueRange,
+                                                             String label) {
     auto p = Plugin::addParam(paramID, name, valueRange);
 
     if (label.isNotEmpty())
@@ -58,6 +54,18 @@ te::AutomatableParameter* ChipInstrumentPlugin::addParam(const String& paramID,
     return p;
 }
 
+// // Update all voice parameters
+// void ChipInstrumentPlugin::updateParams() {
+
+//     ampAdsr.setParameters ({
+//         paramValue (synth.ampAttack),
+//         paramValue (synth.ampDecay),
+//         paramValue (synth.ampSustain) / 100.0f,
+//         paramValue (synth.ampRelease)
+//     });
+// }
+
+// LevelMeasurer::Client implementation - called periodically to get the current audio level for a channel
 float ChipInstrumentPlugin::getLevel(int channel) {
     auto& peak = levels[channel];
 
@@ -106,14 +114,6 @@ void ChipInstrumentPlugin::flushPluginStateToValueTree() {
                                             // being modified
 }
 
-void ChipInstrumentPlugin::initialise(const te::PluginInitialisationInfo& /*info*/) {
-    // setCurrentPlaybackSampleRate(info.sampleRate);
-
-    // instrument.reset();
-}
-
-void ChipInstrumentPlugin::deinitialise() {}
-
 //==============================================================================
 void ChipInstrumentPlugin::reset() {
     // instrument.reset();
@@ -125,10 +125,13 @@ void ChipInstrumentPlugin::midiPanic() {
 
 //==============================================================================
 void ChipInstrumentPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
-    // instrument.restoreStateFromValueTree(v);
+    instrument.restoreStateFromValueTree(v);
 
-    for (auto p : getAutomatableParameters())
+    // valueTreePropertyChanged(state, te::IDs::voiceMode);
+
+    for (auto p : getAutomatableParameters()) {
         p->updateFromAttachedValue();
+    }
 }
 
 // Array<float> ChipInstrumentPlugin::getLiveModulationPositions(te::AutomatableParameter::Ptr param) {

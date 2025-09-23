@@ -25,11 +25,14 @@ set(SHARED_SOURCES
     plugins/uZX/aychip/AYPlugin.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp
-    # plugins/uZX/instrument/MPEInstrumentManager.cpp
     plugins/uZX/instrument/ChipInstrument.cpp
+    plugins/uZX/instrument/ChipInstrumentVoice.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
 
     gui/common/Utilities.cpp
+    gui/common/LookAndFeel.cpp
+    gui/common/LabeledRotarySlider.cpp
+    gui/common/MidiParameterMapping.cpp
 )
 
 # GUI-specific files
@@ -42,15 +45,29 @@ set(GUI_SOURCES
 
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Transport.cpp
+    gui/main/MainWindow.cpp
+    gui/main/Footer.cpp
+    gui/tuning/TuningPreview.cpp
 
     gui/timeline/PlayheadComponent.cpp
-    gui/timeline/PluginComponent.cpp
+    gui/timeline/TimelineGrid.cpp
     gui/timeline/ClipComponents.cpp
     gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
     gui/timeline/PsgClipComponent.cpp
+    gui/timeline/PsgParamEditorComponent.cpp
+    gui/timeline/Ruler.cpp
+    gui/timeline/DetailsPanelComponent.cpp
 
-    gui/tuning/TuningPreview.cpp
+    gui/devices/PluginTree.cpp
+    gui/devices/TrackDevicesPanel.cpp
+    gui/devices/PluginDeviceUI.cpp
+    gui/devices/PluginUIAdapterRegistry.cpp
+    gui/devices/DevicePanelItem.cpp
+    gui/devices/GenericPluginAdapters.cpp
+    gui/devices/LevelMeterUI.cpp
+
+    plugins/uZX/instrument/ChipInstrumentUI.cpp
 )
 
 # Test-specific files to include in the test target

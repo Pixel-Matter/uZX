@@ -68,13 +68,12 @@ public:
         {
             NotesToPsgMapper converter;
             converter.setBaseChannel(1);
-            converter.setNumChannels(3);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
             // Test note on
-            converter.noteOn(1, 60, 100);
-            auto messages = converter.getOutputMessages();
+            converter.noteOn(MPENote{1, 60, 100, 0, 0, 0});
+            auto messages = converter.takeOutputMessages();
 
             expectEquals(messages.size(), 4ul); // Volume, PeriodCoarse, PeriodFine, ToneSwitch
 
@@ -86,7 +85,7 @@ public:
             // Test note off
             converter.clearOutput();
             converter.noteOff(1, 60);
-            messages = converter.getOutputMessages();
+            messages = converter.takeOutputMessages();
 
             expectEquals(messages.size(), 1ul); // Just tone switch off
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 0, "Tone switch should be 0 for note off");
@@ -96,24 +95,23 @@ public:
         {
             NotesToPsgMapper converter;
             converter.setBaseChannel(2);
-            converter.setNumChannels(2);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
             // Test channel 1 (should be ignored)
             converter.noteOn(1, 60, 100);
-            auto messages = converter.getOutputMessages();
+            auto messages = converter.takeOutputMessages();
             expectEquals(messages.size(), 0ul, "Channel 1 should be ignored");
 
             // Test channel 2 (should work)
             converter.noteOn(2, 60, 100);
-            messages = converter.getOutputMessages();
+            messages = converter.takeOutputMessages();
             expect(messages.size() > 0, "Channel 2 should work");
 
-            // Test channel 4 (should be ignored)
+            // Test channel 5 (should be ignored)
             converter.clearOutput();
-            converter.noteOn(4, 60, 100);
-            messages = converter.getOutputMessages();
+            converter.noteOn(5, 60, 100);
+            messages = converter.takeOutputMessages();
             expectEquals(messages.size(), 0ul, "Channel 4 should be ignored");
         }
 
@@ -121,7 +119,6 @@ public:
         {
             NotesToPsgMapper converter;
             converter.setBaseChannel(1);
-            converter.setNumChannels(1);
             auto tuning = createTestTuning();
             converter.setTuningSystem(tuning.get());
 
@@ -134,7 +131,7 @@ public:
             converter.noteOn(1, 62, 120);
             expectChannelState(converter, 1, 62, "Should track second note");
 
-            auto messages = converter.getOutputMessages();
+            auto messages = converter.takeOutputMessages();
 
             // Should NOT have tone switch messages - tone is already on
             expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Should NOT have tone switch messages when switching notes");
@@ -147,7 +144,7 @@ public:
             converter.noteOn(1, 64, 120);
             expectChannelState(converter, 1, 64, "Should track third note");
 
-            auto messages2 = converter.getOutputMessages();
+            auto messages2 = converter.takeOutputMessages();
             expectNoCC(messages2, MidiCCType::Volume, "Should NOT emit volume CC when velocity stays the same");
             expectNoCC(messages2, MidiCCType::GPB1ToneSwitch, "Should NOT emit tone switch for third note");
             expectCC(messages2, MidiCCType::CC20PeriodCoarse, "Should emit period coarse for third note");
@@ -164,14 +161,14 @@ public:
 
             // Test velocity mapping
             converter.noteOn(1, 60, 100); // Moderate velocity
-            auto messages = converter.getOutputMessages();
+            auto messages = converter.takeOutputMessages();
 
             expectCC(messages, MidiCCType::Volume, "Volume should be present for note on");
 
             // Test aftertouch affecting volume
             converter.clearOutput();
             converter.aftertouch(1, 20); // Aftertouch will change combined volume (100+20=120 vs original 100)
-            messages = converter.getOutputMessages();
+            messages = converter.takeOutputMessages();
 
             // Should re-emit volume with updated value
             expectCC(messages, MidiCCType::Volume, "Aftertouch should update volume");
@@ -185,7 +182,7 @@ public:
 
             // Test random CC passthrough
             converter.controlChange(1, 64, 100); // Sustain pedal
-            auto messages = converter.getOutputMessages();
+            auto messages = converter.takeOutputMessages();
 
             expectEquals(messages.size(), 1ul, "Should pass through CC");
             expect(messages[0].isController(), "Should be controller message");
@@ -203,14 +200,14 @@ public:
 
             // First note - should turn tone ON
             converter.noteOn(1, 60, 100);
-            auto messages = converter.getOutputMessages();
+            auto messages = converter.takeOutputMessages();
 
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 127, "First note should turn tone ON");
 
             // Second note - should NOT send tone switch (already on)
             converter.clearOutput();
             converter.noteOn(1, 62, 120);
-            messages = converter.getOutputMessages();
+            messages = converter.takeOutputMessages();
 
             expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Second note should NOT send tone switch");
             expectCC(messages, MidiCCType::Volume, "Second note should send volume");
@@ -220,7 +217,7 @@ public:
             // Note off - should turn tone OFF
             converter.clearOutput();
             converter.noteOff(1, 62);
-            messages = converter.getOutputMessages();
+            messages = converter.takeOutputMessages();
 
             expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 0, "Note off should turn tone OFF");
         }
@@ -235,7 +232,7 @@ public:
 
             // Test a specific period value
             converter.noteOn(1, 60, 100); // Middle C
-            auto messages = converter.getOutputMessages();
+            auto messages = converter.takeOutputMessages();
 
             expectCC(messages, MidiCCType::CC20PeriodCoarse, "Should find coarse period value");
             expectCC(messages, MidiCCType::CC52PeriodFine, "Should find fine period value");

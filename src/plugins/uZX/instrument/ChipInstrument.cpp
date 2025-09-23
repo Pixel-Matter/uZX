@@ -1,63 +1,90 @@
-// #include "ChipInstrument.h"
-// #include "tracktion_core/utilities/tracktion_Time.h"
-// #include "tracktion_engine/tracktion_engine.h"
+#include "ChipInstrument.h"
 
-// namespace MoTool::uZX {
+namespace MoTool::uZX {
 
-// namespace te = tracktion;
+ChipInstrumentFx::ChipInstrumentFx(const ValueTree& vt, UndoManager* um)
+    : MPEInstrumentFx<ChipInstrumentVoice<ChipInstrumentFx>, ChipInstrumentFx>(*this)
+    , state(vt)
+    , undoManager(um)
+    , oscParams(*this, 0)
+{
+    state.addListener(this);
+    restoreStateFromValueTree(state);
+}
 
-// ChipInstrument::ChipInstrument(te::Edit& e)
-//     : MPEEffect<ChipInstrumentVoice, ChipInstrument>()
-//     , edit(e)
-// {
-//     mpeInstrument.enableLegacyMode();
-//     mpeInstrument.setPitchbendTrackingMode(juce::MPEInstrument::allNotesOnChannel);
-//     // voiceManager.setVoiceStealingEnabled(true);
-// }
+ChipInstrumentFx::~ChipInstrumentFx() {
+    state.removeListener(this);
+}
 
-// ChipInstrument::~ChipInstrument() = default;
+void ChipInstrumentFx::updateParams() {
+    // TODO update global instrument parameters to all voices
+    // TODO thread safety
+    // not used because voices read parameters themselves from instrument reference
+}
 
-// void ChipInstrument::reset() {
-//     currentTempo = 120.0f;  // Reset to default tempo
-//     mpeInstrument.releaseAllNotes();
-//     // voiceManager.reset();
-//     // TODO see 4OSC code
-// }
+void ChipInstrumentFx::restoreStateFromValueTree(const ValueTree& v) {
+    // TODO for every oscillator
+    oscParams.restoreStateFromValueTree(v);
+}
 
-// CriticalSection& ChipInstrument::getVoiceLock() {
-//     return voiceLock;
-// }
+namespace IDs {
+    #define DECLARE_ID(name)  const Identifier name(#name);
+    DECLARE_ID(ampAttack)
+    DECLARE_ID(ampDecay)
+    DECLARE_ID(ampSustain)
+    DECLARE_ID(ampRelease)
+    DECLARE_ID(ampVelocity)
+    DECLARE_ID(pitchAttack)
+    DECLARE_ID(pitchDecay)
+    DECLARE_ID(pitchSustain)
+    DECLARE_ID(pitchRelease)
+    DECLARE_ID(pitchDepth)
+    #undef DECLARE_ID
+}
 
-// double ChipInstrument::getTailLength() const {
-//     // TODO
-//     return 0.0;
-// }
+ChipInstrumentFx::OscParameters::OscParameters(ChipInstrumentFx& inst, int oscNum)
+    : instrument(inst)
+    , ampAttack   {{"ampAttack",   IDs::ampAttack,   "A", "Amp Attack Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , ampDecay    {{"ampDecay",    IDs::ampDecay,    "D", "Amp Decay Time",    0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , ampSustain  {{"ampSustain",  IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}}
+    , ampRelease  {{"ampRelease",  IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    // , ampVelocity {{"ampVelocity", IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}}
+    , pitchAttack {{"pitchAttack", IDs::pitchAttack, "A", "Pitch Attack Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchDecay  {{"pitchDecay",  IDs::pitchDecay,  "D", "Pitch Decay Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchSustain{{"pitchSustain",IDs::pitchSustain,"S", "Pitch Sustain Level",0.0f,   {0.0f, 100.0f}, "%"}}
+    , pitchRelease{{"pitchRelease",IDs::pitchRelease,"R", "Pitch Release Time", 0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}}
+    , pitchDepth  {{"pitchDepth",  IDs::pitchDepth,  "Depth", "Pitch Depth",       0.0f,   {-48.0f, 48.0f}, "st"}}
+{
+    ignoreUnused(oscNum);
+    referToState();
+}
 
-// void ChipInstrument::setCurrentTempo(float newTempo) {
-//     currentTempo = newTempo;
-// }
+void ChipInstrumentFx::OscParameters::referToState() {
+    ampAttack.referTo(instrument.state, instrument.undoManager);
+    ampDecay.referTo(instrument.state, instrument.undoManager);
+    ampSustain.referTo(instrument.state, instrument.undoManager);
+    ampRelease.referTo(instrument.state, instrument.undoManager);
+    // ampVelocity.referTo(instrument.state, instrument.undoManager);
+    pitchAttack.referTo(instrument.state, instrument.undoManager);
+    pitchDecay.referTo(instrument.state, instrument.undoManager);
+    pitchSustain.referTo(instrument.state, instrument.undoManager);
+    pitchRelease.referTo(instrument.state, instrument.undoManager);
+    pitchDepth.referTo(instrument.state, instrument.undoManager);
+}
 
-// void ChipInstrument::setPlayRate(double newRate) {
-//     playRate = newRate;
-// }
+void ChipInstrumentFx::OscParameters::restoreStateFromValueTree(const ValueTree& v) {
+    te::copyPropertiesToCachedValues(v,
+        ampAttack  .value,
+        ampDecay   .value,
+        ampSustain .value,
+        ampRelease .value,
+        // ampVelocity.value,
+        pitchAttack .value,
+        pitchDecay  .value,
+        pitchSustain.value,
+        pitchRelease.value,
+        pitchDepth  .value
+    );
+}
 
-// void ChipInstrument::restoreStateFromValueTree(const ValueTree& state) {
-//     // TODO: Implement state restoration from ValueTree
-// }
-
-// void ChipInstrument::renderNextBlock(te::MidiMessageArray& midiBuffer, double time, double len, double editPos) {
-
-//     // EVERYTHING IS WRONG !!!
-
-//     // DBG("ChipInstrument::renderNextBlock " << editPos << " - " << editPos + len << " (" << len << "s)");
-//     // TODO calculate where is starting point of frames with respect to this block
-//     // while (todo > 0) {
-//     //     const auto size = std::min(frameSize, todo);
-//     //     updateParams()  // like from param->getCurrentValue();  if needed
-//     //     renderNextFrame(midiOut, time, size);
-//     //     todo -= size;
-//     //     time += size;
-//     // }
-// }
-
-// }  // namespace MoTool::uZX
+}  // namespace MoTool::uZX

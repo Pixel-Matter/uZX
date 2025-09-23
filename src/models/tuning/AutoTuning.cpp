@@ -1,5 +1,4 @@
 #include "AutoTuning.h"
-#include "juce_core/system/juce_PlatformDefs.h"
 
 namespace MoTool {
 

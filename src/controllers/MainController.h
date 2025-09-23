@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "EditState.h"
+#include "PropertyStorage.h"
 
 #include "../gui/main/MainWindow.h"
 
@@ -39,7 +40,7 @@ protected:
     te::Engine engine_;
     ApplicationCommandManager commandManager_;
     te::SelectionManager selectionManager_ {engine_};
-    MainWindow mainWindow_;
+    MainWindow mainWindow_ {engine_};
     std::unique_ptr<te::Edit> edit_;
     // FIXME EditViewState is too specific for base controller
     std::unique_ptr<EditViewState> editViewState_;
@@ -56,16 +57,18 @@ public:
 
     ~MainController() override;
 
-    // ==============================================================================
-    // MenuBarModel
     //==============================================================================
+    /**
+     * MenuBarModel implementation
+     */
     StringArray getMenuBarNames() override;
     PopupMenu getMenuForIndex(int /* menuIndex */, const String& menuName) override;
     void menuItemSelected(int /* menuItemID */, int /* topLevelMenuIndex*/ ) override;
 
-    // ==============================================================================
-    // ApplicationCommandTarget
     //==============================================================================
+    /**
+     * ApplicationCommandTarget implementation
+     */
     ApplicationCommandTarget* getNextCommandTarget() override;
     void getAllCommands(Array<CommandID>& commands) override;
     void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) override;
@@ -76,6 +79,8 @@ private:
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
     void handleNew();
     void handleOpen();
+    void handleOpenRecent(int fileIndex);
+    void handleClearRecentFiles();
     void handleSaveAs();
     void handleRecord();
     void createTracksAndAssignInputs();

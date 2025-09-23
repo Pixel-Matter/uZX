@@ -2,9 +2,8 @@
 
 #include <JuceHeader.h>
 
-#include "Ruler.h"
 #include "ClipComponents.h"
-#include "PluginComponent.h"
+#include "TimelineGrid.h"
 
 #include "../../controllers/EditState.h"
 
@@ -13,6 +12,9 @@
 namespace MoTool {
 
 //==============================================================================
+/**
+ * Component for track header containing track name and controls
+ */
 class TrackHeaderComponent : public Component,
                              private ValueTree::Listener {
 public:
@@ -37,43 +39,16 @@ private:
 };
 
 //==============================================================================
-class TrackFooterComponent : public Component,
-                             private FlaggedAsyncUpdater,
-                             private ValueTree::Listener {
-public:
-    TrackFooterComponent(EditViewState&, te::Track::Ptr);
-    ~TrackFooterComponent() override;
-
-    void paint(Graphics&) override;
-    void mouseDown(const MouseEvent&) override;
-    void resized() override;
-
-private:
-    void valueTreeChildAdded(ValueTree&, ValueTree&) override;
-    void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
-    void valueTreeChildOrderChanged(ValueTree&, int, int) override;
-
-    void handleAsyncUpdate() override;
-
-    void buildPlugins();
-
-    EditViewState& editViewState;
-    te::Track::Ptr track;
-
-    TextButton addButton {"+"};
-    OwnedArray<PluginComponent> plugins;
-
-    bool updatePlugins = false;
-};
-
-//==============================================================================
+/**
+ * Component for track body containing clips and timeline content
+ */
 class TrackBodyComponent : public Component,
                        private ValueTree::Listener,
                        private FlaggedAsyncUpdater,
                        private ZoomViewState::Listener,
                        private ChangeListener {
 public:
-    TrackBodyComponent(EditViewState&, te::Track::Ptr);
+    TrackBodyComponent(EditViewState&, TimelineGrid& g, te::Track::Ptr);
     ~TrackBodyComponent() override;
 
     void paint(Graphics& g) override;
@@ -96,6 +71,7 @@ private:
 
     EditViewState& editViewState;
     te::Track::Ptr track;
+    TimelineGrid& grid;
 
     OwnedArray<ClipComponent> clips;
     std::unique_ptr<RecordingClipComponent> recordingClip;
@@ -103,14 +79,17 @@ private:
     bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false, updateZoom = false;
 };
 
+
 //==============================================================================
-// Its function is to only resize the track row as a whole
-// and to sync track height with a view state
-//==============================================================================
+/**
+ * Container component for track row, handling resizing and height synchronization
+ * Its function is to only resize the track row as a whole
+ * and to sync track height with a view state
+ */
 class TrackRowComponent : public Component,
                           private TrackViewState::Listener {
 public:
-    TrackRowComponent(EditViewState&, te::Track::Ptr);
+    TrackRowComponent(EditViewState&, TimelineGrid& g, te::Track::Ptr);
     ~TrackRowComponent() override;
 
     void mouseDown(const MouseEvent& e) override;
@@ -122,7 +101,6 @@ public:
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
-    TrackFooterComponent footer;
 
 private:
     EditViewState& editViewState;
@@ -148,8 +126,10 @@ private:
     ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::rightEdge};
 };
 
-
 //==============================================================================
+/**
+ * Container component that holds all track rows and manages track layout
+ */
 class TracksContainerComponent : public Component,
                                  private FlaggedAsyncUpdater,
                                  private ChangeListener,
@@ -158,7 +138,7 @@ class TracksContainerComponent : public Component,
                                  private ZoomViewState::Listener
 {
 public:
-    TracksContainerComponent(te::Edit& e, EditViewState& evs, RulerComponent& r);
+    TracksContainerComponent(te::Edit& e, EditViewState& evs, TimelineGrid& g);
 
     ~TracksContainerComponent() override;
 
@@ -170,10 +150,11 @@ public:
 private:
     te::Edit& edit;
     EditViewState& editViewState;
-    RulerComponent& ruler;
     OwnedArray<TrackRowComponent> trackRows;
     TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
     bool updateTracks = false, updateZoom = false;
+    Rectangle<int> gridRect;
+    TimelineGrid& grid;
 
     void valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) override;
     void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) override;

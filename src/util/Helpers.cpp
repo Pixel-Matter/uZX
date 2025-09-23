@@ -3,12 +3,46 @@
 #include "../models/PsgClip.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../gui/common/Utilities.h"
+#include "../util/FileOps.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
 namespace te = tracktion;
 
 namespace MoTool::Helpers {
+
+void visitAllMidiClips(te::Edit& edit, std::function<bool (te::MidiClip&)> func) {
+    for (auto track : getClipTracks(edit)) {
+        for (auto clip : track->getClips()) {
+            if (dynamic_cast<te::MidiClip*>(clip)) {
+                if (!func(*static_cast<te::MidiClip*>(clip))) {
+                    return;
+                }
+            }
+        }
+    }
+}
+
+static void rescaleClipToFit(te::MidiClip& clip) {
+    int maxNote = 0;
+    int minNote = 256;
+
+    for (auto n : clip.getSequence().getNotes()) {
+        maxNote = std::max(maxNote, n->getNoteNumber() + 3);
+        minNote = std::min(minNote, n->getNoteNumber() - 3);
+    }
+    if (minNote < maxNote) {
+        const double newVisProp = (maxNote - minNote) / 128.0;
+        clip.getAudioTrack()->setMidiVerticalPos(newVisProp, 1.0 - (maxNote / 128.0));
+    }
+}
+
+void rescaleAllMidiClipsToFit(te::Edit& edit) {
+    visitAllMidiClips(edit, [] (te::MidiClip& clip) {
+        rescaleClipToFit(clip);
+        return true; // continue
+    });
+}
 
 // TODO see Edit::something for implementation
 te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
@@ -100,20 +134,9 @@ void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, boo
     });
 }
 
-File getRendersDirectory(te::Edit& edit) {
-    auto editFile = edit.editFileRetriever();
-    File rendersDir = editFile.existsAsFile()
-        ? editFile.getParentDirectory().getChildFile(editFile.getFileNameWithoutExtension()).withFileExtension("Renders")
-        : File::getSpecialLocation(File::userMusicDirectory)
-            .getChildFile(CharPointer_UTF8(ProjectInfo::projectName)).getChildFile("Renders");
-
-    rendersDir.createDirectory();
-    return rendersDir;
-}
-
 void removeUnusedRenderFiles(te::Edit& edit) {
-    auto rendersDir = getRendersDirectory(edit);
-    DBG("Cleaning renders directory " << rendersDir.getFullPathName());
+    auto rendersDir = EditFileOps::getRendersDirectory(edit);
+    TRACKTION_LOG("Cleaning renders directory " + rendersDir.getFullPathName());
 
     Array<File> usedFiles;
     for (auto audioTrack : getAudioTracks(edit))
@@ -130,7 +153,8 @@ void removeUnusedRenderFiles(te::Edit& edit) {
 }
 
 File getFreezeFileForTrack(const te::AudioTrack& track) {
-    auto location = getRendersDirectory(track.edit);
+    auto location = EditFileOps::getRendersDirectory(track.edit);
+    location.createDirectory();
     auto file = location.getChildFile("0_" + track.itemID.toString() + ".wav");
 
     // TODO on exit, remove all unused files in Renders directory

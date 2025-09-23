@@ -3,6 +3,7 @@
 #include "EditComponent.h"
 #include "TrackComponents.h"
 #include "PlayheadComponent.h"
+#include "../../controllers/App.h"
 
 namespace MoTool {
 
@@ -21,8 +22,8 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
 
     addAndMakeVisible(playhead);
     addAndMakeVisible(ruler);
-    addAndMakeVisible(detailsPanel);
     addAndMakeVisible(trackViewport);
+    addAndMakeVisible(detailsPanel);
 }
 
 EditComponent::~EditComponent() {
@@ -31,7 +32,7 @@ EditComponent::~EditComponent() {
 
 void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
     if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::showHeaders || i == IDs::showFooters || i == IDs::headersWidth) {
+        if (i == IDs::showHeaders || i == IDs::headersWidth) {
             markAndUpdate(updateSizes);
         }
     }
@@ -49,15 +50,15 @@ void EditComponent::paint(Graphics& g) {
 
 void EditComponent::resized() {
     // also get called on updated zoom
-    const int rulerHeight = 32;
-    const int footerWidth = editViewState.showFooters ? 100 : 0;
+    const int rulerHeight = 24;
     const auto headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
     auto r = getLocalBounds();
 
+    editViewState.zoom.setViewWidthPx(r.getWidth() - headerWidth);
     detailsPanel.setBounds(r.removeFromBottom(300));
     detailsPanel.resized();  // for internal components
-    playhead.setBounds(r.withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
-    ruler.setBounds(r.removeFromTop(rulerHeight).withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth));
+    playhead.setBounds(r.withTrimmedLeft(headerWidth));
+    ruler.setBounds(r.removeFromTop(rulerHeight).withTrimmedLeft(headerWidth));
     trackViewport.setBounds(r);
     tracksContainer.setBounds(r.withHeight(jmax(tracksContainer.getIdealHeight(), r.getHeight())));
 }

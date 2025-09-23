@@ -33,6 +33,7 @@ public:
     static const char* getPluginName() { return "μZX MIDI to PSG"; }
     static const char* xmlTypeName;
 
+    String getVendor() override { return "PixelMatter"; }
     String getName() const override { return String::fromUTF8(getPluginName()); }
     String getPluginType() override { return xmlTypeName; }
     String getShortName(int) override { return "MIDI-PSG"; }
@@ -49,11 +50,11 @@ public:
 
     struct Params {
         RangedParamAttachment<int> baseMidiChannelValue;
-        RangedParamAttachment<int> numChannelsValue;
+        // RangedParamAttachment<int> numChannelsValue;
 
         Params(te::Plugin& p)
             : baseMidiChannelValue(p.state, p.getUndoManager())
-            , numChannelsValue(p.state, p.getUndoManager())
+            // , numChannelsValue(p.state, p.getUndoManager())
         {
             initialise();
         }
@@ -69,12 +70,12 @@ public:
 
 private:
     //==============================================================================
-    // uZX::NotesToPsgMapper transformer;
+    NotesToPsgMapper transformer;
     TuningSystem* currentTuningSystem = nullptr;
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
-    void updateConverterParams();
+    void updateParams();
     void processMidiMessageWithSource(const te::MidiMessageWithSource& msg);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgPlugin)

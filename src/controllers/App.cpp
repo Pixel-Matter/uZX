@@ -3,24 +3,26 @@
 
 namespace MoTool {
 
-MoToolApp::MoToolApp()
-{
+MoToolApp::MoToolApp() {
     juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel_);
     switch (target_) {
-        case Target::Main:
+        case Target::uZXMain:
             controller_ = std::make_unique<MainController>();
             break;
-        case Target::Tuning:
+        case Target::uZXTuning:
             controller_ = std::make_unique<TuningController>();
             break;
+        case Target::MoTool:
+            jassertfalse;
+            break;
     }
-    controller_->initialize();
     controller_->setMainWindowTitle(getWindowTitle());
+    controller_->initialize();
 }
 
 const String MoToolApp::getApplicationFancyName() const {
     // TODO to controller
-    if (getTarget() == Target::Tuning) {
+    if (getTarget() == Target::uZXTuning) {
         return CharPointer_UTF8("Pixel Matter μZX Tuning");
     }
     return CharPointer_UTF8("Pixel Matter μZX");

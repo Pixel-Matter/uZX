@@ -1,23 +1,30 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <functional>
+#include <memory>
 
-#include "../midi_effects/MidiEffect.h"
 #include "ChipInstrument.h"
+#include "../midi_effects/MidiEffect.h"
+#include "../midi_effects/Parameters.h"
 
 
 namespace MoTool::uZX {
 
 //==============================================================================
+/**
+ * μZX Chip Instrument Plugin - Main instrument plugin implementation
+ */
 class ChipInstrumentPlugin :
                              public MidiFxPluginBase<ChipInstrumentFx>,
                              private tracktion::LevelMeasurer::Client
 {
 public:
+    using Ptr = ReferenceCountedObjectPtr<ChipInstrumentPlugin>;
+
     ChipInstrumentPlugin(tracktion::PluginCreationInfo);
     ~ChipInstrumentPlugin() override;
 
-    //==============================================================================
     static const char* getPluginName() { return "μZX Instrument"; }
     static const char* xmlTypeName;
 
@@ -26,8 +33,6 @@ public:
     String getShortName(int) override { return "Instr"; }
     String getSelectableDescription() override { return "Chiptune Instrument Plugin"; }
 
-    void initialise(const tracktion::PluginInitialisationInfo&) override;
-    void deinitialise() override;
     void reset() override;
     void midiPanic() override;
 
@@ -43,18 +48,26 @@ public:
     /** If it's a synth that names its notes, this can return the name it uses for this note 0-127.
         Midi channel is 1-16
     */
-    bool hasNameForMidiNoteNumber(int note, int midiChannel, juce::String& name) override;
+    bool hasNameForMidiNoteNumber(int note, int midiChannel, String& name) override;
 
     /** Returns the name for a midi program, if there is one.
         programNum = 0 to 127.
     */
-    bool hasNameForMidiProgram(int programNum, int bank, juce::String& name) override;
-    bool hasNameForMidiBank(int bank, juce::String& name) override;
+    bool hasNameForMidiProgram(int programNum, int bank, String& name) override;
+    bool hasNameForMidiBank(int bank, String& name) override;
 
     float getLevel(int channel);
 
+    ChipInstrumentFx instrument;
+
 private:
+    // Amplitude envelope automatable parameters
+    // do not need to store it there
+    // tracktion::AutomatableParameter::Ptr ampAttack, ampDecay, ampSustain, ampRelease, ampVelocity;
+    // pitch envelope automatable parameters
+    // tracktion::AutomatableParameter::Ptr pitchAttack, pitchDecay, pitchSustain, pitchRelease;
     //==============================================================================
+
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;
@@ -62,13 +75,12 @@ private:
     void flushPluginStateToValueTree() override;
 
     // Params
-    tracktion::AutomatableParameter* addParam(const juce::String& paramID,
-                                              const juce::String& name,
-                                              juce::NormalisableRange<float> valueRange,
-                                              juce::String label);
+    tracktion::AutomatableParameter::Ptr addParam(const String& paramID,
+                                                  const String& name,
+                                                  NormalisableRange<float> valueRange,
+                                                  String label = {});
 
-    // ChipInstrument instrument;
-    // tracktion::tempo::Sequence::Position currentPos{createPosition(edit.tempoSequence)};
+    //==============================================================================
     bool flushingState = false;
     std::unordered_map<String, String> paramLabels;
     tracktion::LevelMeasurer levelMeasurer;

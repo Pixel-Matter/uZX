@@ -11,11 +11,10 @@ namespace MoTool::uZX {
 
 namespace te = tracktion;
 
-template <class Voice>
+template <class Voice, class OwnerMidiFx>
 class MPEInstrumentFx : public MPEInstrument::Listener {
 public:
-    MPEInstrumentFx()
-        : mpeInstrument(defaultMpeInstrument)
+    MPEInstrumentFx(OwnerMidiFx& owner) : voices(owner)
     {
         mpeInstrument.enableLegacyMode();
         mpeInstrument.addListener(this);
@@ -45,12 +44,15 @@ public:
     }
 
     void handleMidiEvent(const MidiMessage& m) {
+        // DBG("MPEInstrumentFx::handleMidiEvent: " << m.getDescription()
+        //     << " at " << m.getTimeStamp()
+        // );
+        mpeInstrument.processNextMidiEvent(m);
+
         if (m.isController())
             handleController(m.getChannel(), m.getControllerNumber(), m.getControllerValue());
         else if (m.isProgramChange())
             handleProgramChange(m.getChannel(), m.getProgramChangeNumber());
-
-        mpeInstrument.processNextMidiEvent(m);
     }
 
     void operator()(MidiBufferContext& c) {
@@ -122,64 +124,48 @@ protected:
         voices.releaseNote(finishedNote);
     }
 
-    /** Called when an MPE note's pressure changes. */
+    // /** Called when an MPE note's pressure changes. */
     void notePressureChanged(MPENote changedNote) override {
-        ignoreUnused(changedNote);
-        // DBG("Note pressure changed: " << changedNote.initialNote);
-        // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
-        //     voice->currentlyPlayingNote = changedNote;
-        //     voice->notePressureChanged();
-        // });
+        // DBG("Note pressure changed: " << changedNote.initialNote << " to " << changedNote.pressure.as7BitInt());
+        voices.pressureNote(changedNote);
     }
 
-    /** Called when an MPE note's pitchbend changes. */
+    // /** Called when an MPE note's pitchbend changes. */
     void notePitchbendChanged(MPENote changedNote) override {
-        ignoreUnused(changedNote);
-        // DBG("Note pitchbend changed: " << changedNote.initialNote);
-        // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
-        //     voice->currentlyPlayingNote = changedNote;
-        //     voice->notePitchbendChanged();
-        // });
+        voices.pitchbendNote(changedNote);
+        // DBG("Note pitchbend changed: " << changedNote.initialNote << " to " << changedNote.pitchbend.asSignedFloat());
     }
 
-    /** Called when an MPE note's timbre changes. */
+    // /** Called when an MPE note's timbre changes. */
     void noteTimbreChanged(MPENote changedNote) override {
-        ignoreUnused(changedNote);
-        // DBG("Note timbre changed: " << changedNote.initialNote);
-        // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
-        //     voice->currentlyPlayingNote = changedNote;
-        //     voice->noteTimbreChanged();
-        // });
+        voices.timbreNote(changedNote);
+        // DBG("Note timbre changed: " << changedNote.initialNote << " to " << changedNote.timbre.asUnsignedFloat());
     }
 
-    /** Called when an MPE note's key state changes. */
+    // /** Called when an MPE note's key state changes. */
     void noteKeyStateChanged(MPENote changedNote) override {
         ignoreUnused(changedNote);
+        // TODO implement key state change handling if needed
         // DBG("Note key state changed: " << changedNote.initialNote);
-        // voiceManager.forEachVoicePlayingNote(changedNote, [changedNote](Voice* voice) {
-        //     voice->currentlyPlayingNote = changedNote;
-        //     voice->noteKeyStateChanged();
-        // });
     }
 
     /** Called when a MIDI controller changes. */
     void handleController(int midiChannel, int controllerNumber, int controllerValue) {
-        ignoreUnused(midiChannel);
-        DBG("Controller changed: " << controllerNumber << " = " << controllerValue);
+        ignoreUnused(midiChannel, controllerNumber, controllerValue);
+        // DBG("Controller changed: " << controllerNumber << " = " << controllerValue);
         // Implement controller handling logic here
     }
 
     void handleProgramChange(int midiChannel, int programNumber) {
-        ignoreUnused(midiChannel);
+        ignoreUnused(midiChannel, programNumber);
         DBG("Program change: " << programNumber);
         // Implement program change handling logic here
     }
 
-    MPEInstrument& mpeInstrument;
-    VoiceManager<Voice> voices;  // Pure voice management
+    VoiceManager<Voice, OwnerMidiFx> voices;  // Pure voice management
 
 private:
-    MPEInstrument defaultMpeInstrument;
+    MPEInstrument mpeInstrument;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MPEInstrumentFx)
 };

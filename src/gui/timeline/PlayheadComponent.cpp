@@ -53,7 +53,7 @@ void PlayheadComponent::mouseDrag(const MouseEvent& e) {
     // limit x to LocalBounds
     auto r = getLocalBounds();
     auto x = jmax(jmin(e.x, r.getRight() - 1), r.getX());
-    auto t = jmax(0_tp, editViewState.zoom.xToTime(x, getWidth()));
+    auto t = jmax(0_tp, editViewState.zoom.xToTime(x));
     edit.getTransport().setPosition(t);
     // checkRepaint();
 }
@@ -68,7 +68,7 @@ void PlayheadComponent::zoomChanged() {
 }
 
 void PlayheadComponent::checkRepaint() {
-    int newX = editViewState.zoom.timeToX(edit.getTransport().getPosition(), getWidth());
+    int newX = roundToInt(editViewState.zoom.timeToX(edit.getTransport().getPosition()));
     // DBG("PlayheadComponent::checkRepaint, pos: " << edit.getTransport().getPosition().inSeconds());
     if (newX != xPosition) {
         // DBG("PlayheadComponent::checkRepaint, repainting at x: " << newX);

@@ -16,14 +16,14 @@ public:
         : slider (s)
         , param (p)
     {
-        slider.setRange(static_cast<double>(p.getValueRange().getStart()), static_cast<double>(p.getValueRange().getEnd()), 0.0);
+        slider.setRange(static_cast<double>(p.getValueRange().getStart()), static_cast<double>(p.getValueRange().getEnd()), static_cast<double>(p.valueRange.interval));
+        slider.setSkewFactor(static_cast<double>(p.valueRange.skew));
         slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
 
         slider.onValueChange = [this] {
             juce::ScopedValueSetter<bool> svs(updatingSlider, true);
             param.setParameter((float)slider.getValue(), juce::sendNotification);
         };
-        slider.setPopupDisplayEnabled(true, false, nullptr);
         slider.onDragStart = [&]{ param.parameterChangeGestureBegin(); };
         slider.onDragEnd   = [&]{ param.parameterChangeGestureEnd(); };
 

@@ -37,6 +37,7 @@ public:
     static const char* getPluginName()                  { return "μZX AY Emulator"; }
     static const char* xmlTypeName;
 
+    String getVendor() override                   { return "PixelMatter"; }
     String getName() const override               { return String::fromUTF8(getPluginName()); }
     String getPluginType() override               { return xmlTypeName; }
     String getShortName (int) override            { return "AY"; }
@@ -61,17 +62,17 @@ public:
         ChoiceParamAttachment<ChipType> chipTypeValue;
         RangedParamAttachment<double> clockValue;
         ChoiceParamAttachment<ChannelsLayout> channelsLayoutValue;
-        RangedParamAttachment<double> stereoWidthValue;
         ParamAttachment<bool> removeDCValue;
         RangedParamAttachment<int> baseMidiChannelValue;
+        RangedParamAttachment<double> stereoWidthValue;
 
         Params(te::Plugin& p)
             : chipTypeValue(p.state, p.getUndoManager())
             , clockValue(p.state, p.getUndoManager())
             , channelsLayoutValue(p.state, p.getUndoManager())
-            , stereoWidthValue(p.state, p.getUndoManager())
             , removeDCValue(p.state, p.getUndoManager())
             , baseMidiChannelValue(p.state, p.getUndoManager())
+            , stereoWidthValue(p.state, p.getUndoManager())
         {
             initialise();
         }

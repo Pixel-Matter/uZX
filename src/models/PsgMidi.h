@@ -11,8 +11,11 @@ namespace te = tracktion;
 
 namespace MoTool {
 
-//===================================================================
-// TODO use ChoiceEnum<> CRTP
+//==============================================================================
+/**
+ * MIDI CC types used for PSG parameter control
+ * TODO: use ChoiceEnum<> CRTP
+ */
 enum class MidiCCType {
     BankSelectMSB     = 0,   ///< Bank Select MSB
     ModWheel          = 1,   ///< Modulation Wheel (Coarse)
@@ -155,13 +158,17 @@ enum class MidiCCType {
 };
 
 
-//===================================================================
-
+//==============================================================================
+/**
+ * Forward declarations
+ */
 class PsgClip;
 class PsgParamFrame;
 
 //==============================================================================
-
+/**
+ * Utility functions for PSG MIDI conversion
+ */
 void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgData& data);
 
 //==============================================================================
@@ -184,7 +191,10 @@ private:
 
 juce::MidiMessageSequence createPsgPlaybackMidiSequence(const te::MidiList& list, const te::MidiClip& clip, te::MidiList::TimeBase timeBase);
 
-//===================================================================
+//==============================================================================
+/**
+ * Reads PSG register data from MIDI messages
+ */
 class PsgRegsMidiReader {
 public:
     struct MaybeRegPair {
@@ -213,7 +223,10 @@ private:
     uZX::PsgRegsFrame registers = {};
 };
 
-//===================================================================
+//==============================================================================
+/**
+ * Writes PSG parameters to MIDI messages
+ */
 class PsgParamsMidiWriter {
 public:
     PsgParamsMidiWriter(int chan) noexcept
@@ -232,7 +245,10 @@ private:
 
 };
 
-//===================================================================
+//==============================================================================
+/**
+ * Reads PSG parameters from MIDI messages
+ */
 class PsgParamsMidiReader {
 public:
     PsgParamsMidiReader(int chan) noexcept

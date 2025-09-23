@@ -20,15 +20,24 @@ namespace MoTool::uZX {
 
     @see MPEEffect, MPEInstrumentManager
 */
-template <class Voice>
+template <class Voice, class OwnerMidiFx>
 class VoiceManager {
 public:
     //==============================================================================
-    VoiceManager() {
+    VoiceManager(OwnerMidiFx& owner) : midiFx(owner) {
         ensureNumVoices(3);
+        setReuseSameVoiceForSameNote(true);
     }
 
     ~VoiceManager() = default;
+
+    void setReuseSameVoiceForSameNote(bool reuse) noexcept {
+        reuseSameVoiceForSameNote = reuse;
+    }
+
+    bool shouldReuseSameVoiceForSameNote() const noexcept {
+        return reuseSameVoiceForSameNote;
+    }
 
     //==============================================================================
     // Voice Collection Management
@@ -70,7 +79,7 @@ public:
         }
 
         while (voices.size() < newNumVoices) {
-            addVoice(new Voice());
+            addVoice(new Voice(midiFx));
         }
     }
 
@@ -103,6 +112,13 @@ public:
     /** Finds a free voice for the given note. */
     Voice* findFreeVoice(MPENote noteToFindVoiceFor, bool stealIfNoneAvailable) const {
         const ScopedLock sl(voicesLock);
+
+        if (shouldReuseSameVoiceForSameNote()) {
+            for (auto* voice : voices) {
+                if (voice->isCurrentlyPlayingNote(noteToFindVoiceFor))
+                    return voice;
+            }
+        }
 
         for (auto* voice : voices) {
             if (!voice->isActive())
@@ -208,9 +224,47 @@ public:
         }
     }
 
+    void pitchbendNote(MPENote bendNote) {
+        const ScopedLock sl(voicesLock);
+
+        for (auto i = voices.size(); --i >= 0;) {
+            auto* voice = voices.getUnchecked(i);
+
+            if (voice->isCurrentlyPlayingNote(bendNote))
+                voice->currentlyPlayingNote = bendNote;
+                voice->notePitchbendChanged();
+        }
+    }
+
+    void pressureNote(MPENote pressureNote) {
+        const ScopedLock sl(voicesLock);
+
+        for (auto i = voices.size(); --i >= 0;) {
+            auto* voice = voices.getUnchecked(i);
+
+            if (voice->isCurrentlyPlayingNote(pressureNote))
+                voice->currentlyPlayingNote = pressureNote;
+                voice->notePressureChanged();
+        }
+    }
+
+    void timbreNote(MPENote timbreNote) {
+        const ScopedLock sl(voicesLock);
+
+        for (auto i = voices.size(); --i >= 0;) {
+            auto* voice = voices.getUnchecked(i);
+
+            if (voice->isCurrentlyPlayingNote(timbreNote))
+                voice->currentlyPlayingNote = timbreNote;
+                voice->noteTimbreChanged();
+        }
+    }
+
     /** Stops a voice playing the given note. */
     void stopVoice(Voice* voice, MPENote noteToStop, bool allowTailOff) {
-        // DBG("stopVoice " << noteToStop.initialNote << (allowTailOff ? " tail off" : " no tail off"));
+        // DBG("stopVoice " << noteToStop.initialNote << (allowTailOff ? " tail" : " no tail")
+        //     << " state = " << noteToStop.keyState
+        // );
         jassert(voice != nullptr);
 
         voice->currentlyPlayingNote = noteToStop;
@@ -222,7 +276,7 @@ public:
 
     /** Turns off all voices. */
     void turnOffAllVoices(bool allowTailOff) {
-        // DBG("turnOffAllVoices " << (allowTailOff ? " tail off" : " no tail off"));
+        // DBG("turnOffAllVoices " << (allowTailOff ? " tail off" : " no tail off") << " ===================");
         const ScopedLock sl(voicesLock);
 
         for (auto* voice : voices) {
@@ -307,8 +361,10 @@ private:
     //==============================================================================
     OwnedArray<Voice> voices;
     mutable CriticalSection voicesLock;
+    OwnerMidiFx& midiFx;
 
     std::atomic<bool> shouldStealVoices {true};
+    std::atomic<bool> reuseSameVoiceForSameNote {true};
     uint32 lastNoteOnCounter = 0;
     double currentPlayRate = 0.0;
 

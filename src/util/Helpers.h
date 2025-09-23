@@ -6,6 +6,9 @@ namespace te = tracktion;
 
 namespace MoTool::Helpers {
 
+void visitAllMidiClips(te::Edit& edit, std::function<bool (te::MidiClip&)> func);
+void rescaleAllMidiClipsToFit(te::Edit& edit);
+
 te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit);
 
 te::AudioTrack* addAudioTrackAfter(te::Edit& edit, te::Track* track);
@@ -17,7 +20,6 @@ te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& sel
 
 void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor = false);
 
-File getRendersDirectory(te::Edit& edit);
 void removeUnusedRenderFiles(te::Edit& edit);
 File getFreezeFileForTrack(const te::AudioTrack& track);
 te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager);

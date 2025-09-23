@@ -59,6 +59,7 @@ auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {
     Type_ = type;
     auto result = ayumi_configure(&Ayumi_, type, clock, sampleRate);
     jassert(result == 1);
+    ignoreUnused(result);
     for (int i = 0; i < TONE_CHANNELS; ++i) {
         setChannelPan(i, Pan_[i]);
         setMixer(i, false, false, false);

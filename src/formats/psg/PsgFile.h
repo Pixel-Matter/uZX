@@ -134,15 +134,14 @@ static Optional<PsgRegsFrame> readNextFrame(const uint8*& data, size_t& remainin
 }
 
 //==============================================================================
-
+/**
+ * PsgFile - Reader for PSG (Programmable Sound Generator) files
+ */
 class PsgFile {
 public:
-    //==============================================================================
     PsgFile(const juce::File& file) noexcept
         : file_(file)
     {}
-
-    //==============================================================================
 
     const juce::File& getFile() const noexcept {
         return file_;
@@ -162,11 +161,9 @@ public:
     }
 
 private:
-    //==============================================================================
     juce::File file_;
     PsgData psgData_;
 
-    //==============================================================================
     /** Reads a PSG file format stream.
 
         After calling this, you can get the data that were read from the file by using the

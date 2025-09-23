@@ -21,12 +21,15 @@ namespace MoTool::uZX {
 
     @tags{Audio}
 */
-template <class Derived>
+template <class Derived, class OwnerMidiFx>
 class MPEEffectVoice {
 public:
     //==============================================================================
     /** Constructor. */
-    MPEEffectVoice() = default;
+    MPEEffectVoice(OwnerMidiFx& owner) : midiFx(owner) {}
+
+    /** Default constructor for compatibility. */
+    MPEEffectVoice() = delete;
 
     /** Destructor. */
     ~MPEEffectVoice() = default;
@@ -182,10 +185,11 @@ protected:
     //==============================================================================
     double currentPlayRate = 0.0;
     MPENote currentlyPlayingNote;
+    OwnerMidiFx& midiFx;
 
 private:
     //==============================================================================
-    template <class Voice>
+    template <class Voice, class OwnerMidiFxType>
     friend class VoiceManager;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MPEEffectVoice)

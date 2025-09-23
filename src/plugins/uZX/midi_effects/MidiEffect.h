@@ -212,6 +212,11 @@ template <MidiEffectConcept MIDIFX>
 class MidiFxPluginBase : public tracktion::Plugin {
 public:
 
+    MidiFxPluginBase(tracktion::PluginCreationInfo info, MIDIFX& fx)
+        : tracktion::Plugin(info)
+        , midiEffect(fx)
+    {}
+
     enum class PositionSource {
         Edit,
         Emulated
@@ -219,6 +224,7 @@ public:
 
     using tracktion::Plugin::Plugin;
 
+    String getVendor() override { return "PixelMatter"; }
     double getLatencySeconds() override { return 0.0; }
     int getNumOutputChannelsGivenInputs(int) override { return 0; }
     void getChannelNames(juce::StringArray*, juce::StringArray*) override {}
@@ -227,11 +233,18 @@ public:
     bool takesMidiInput() override { return true; }
     bool producesAudioWhenNoAudioInput() override { return false; }
 
+    void initialise(const tracktion::PluginInitialisationInfo& /*info*/) override {
+        // setCurrentPlaybackSampleRate(info.sampleRate);
+    }
+
+    void deinitialise() override {}
+
     void applyToBuffer(const tracktion::PluginRenderContext& fc) override {
         if (fc.bufferForMidiMessages == nullptr)
             return;
 
         jassert(fc.bufferStartSample == 0);
+        jassert(fc.midiBufferOffset == 0.0);
 
         if (!fc.editTime.isEmpty()) {
             positionSource = PositionSource::Edit;
@@ -263,7 +276,7 @@ public:
     }
 
 protected:
-    MIDIFX midiEffect;
+    MIDIFX& midiEffect;
 
 private:
     PositionSource positionSource = PositionSource::Emulated;

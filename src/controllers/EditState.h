@@ -18,12 +18,12 @@ namespace IDs
     DECLARE_ID(showWaveDevices)
     DECLARE_ID(drawWaveforms)
     DECLARE_ID(showHeaders)
-    DECLARE_ID(showFooters)
     DECLARE_ID(showArranger)
     DECLARE_ID(headersWidth)
+
     DECLARE_ID(ZOOMVIEWSTATE)
-    DECLARE_ID(viewX1)
-    DECLARE_ID(viewX2)
+    DECLARE_ID(viewStartTime)
+    DECLARE_ID(viewTimePerPixel)
     DECLARE_ID(viewY)
 
     DECLARE_ID(VIEWSTATE)
@@ -34,6 +34,9 @@ namespace IDs
 namespace te = tracktion;
 
 //==============================================================================
+/**
+ * ZoomViewState manages the zoom and pan state for the timeline view
+ */
 class ZoomViewState :
         private FlaggedAsyncUpdater,
         private ValueTree::Listener {
@@ -49,52 +52,51 @@ public:
         virtual void zoomOrPosChanged() {}
     };
 
-    ZoomViewState(te::Edit& e, ValueTree& st);
+    ZoomViewState(te::Edit& e);
     ~ZoomViewState() override;
 
     void addListener(Listener* l);
     void removeListener(Listener* l);
 
-    te::TimeRange getRange() const;
-    void setRange(te::TimeRange range);
-
-    void setStart(te::TimePosition start);
-
-    te::TimePosition getRangeStart() const;
-    te::TimePosition getRangeEnd() const;
-
-    double getViewY() const;
-
-    te::TimeDuration viewLength() const;
-
-    te::TimePosition beatToTime(te::BeatPosition b) const;
-
-    int timeToX(te::TimePosition time, int width) const;
-    te::TimePosition xToTime(int x, int width) const;
-
-    float durationToPixels(te::TimeDuration duration, int width) const;
-
-    float pixelsPerBeat(te::TimeDuration beatDur, int width) const;
-    float pixelsPerBeat(double beatDur, int width) const;
-
-    bool jumpToPosition(te::TimePosition pos);
-    bool jumpToCurrentPosition();
-
     void zoomHorizontally(double factor);
 
+    int getViewWidthPx() const noexcept;
+    void setViewWidthPx(int w) noexcept;
+
+    te::TimeDuration getViewSpan() const;
+    te::TimeRange getRange() const;
+    void setRange(te::TimeRange range);
+    te::TimePosition getStart() const noexcept;
+    void setStart(te::TimePosition start);
+
+    float timeToX(te::TimePosition time) const;
+    te::TimePosition xToTime(int x) const;
+
+    te::TimeDuration getTimePerPixel() const;
+    float durationToPixels(te::TimeDuration duration) const;
+    double getViewY() const;
+
+    static bool isZoomProperty(const juce::Identifier& id);
+
     te::Edit& edit;
+
 private:
     ValueTree state;
-    CachedValue<te::TimePosition> viewX1, viewX2;
+    CachedValue<te::TimePosition> viewStartTime;
+    CachedValue<te::TimeDuration> viewTimePerPixel;
     CachedValue<double> viewY;
     ListenerList<Listener> listeners;
+
+    // transient state
+    std::atomic<int> viewWidthPx = 1024;  // not stored in ValueTree
 
     bool updateZoom = false, updatePos = false;
 
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
     void handleAsyncUpdate() override;
-
     void handlePlaybackScrolling();
+    bool jumpToPosition(te::TimePosition pos);
+    bool jumpToCurrentPosition();
 };
 
 
@@ -103,13 +105,25 @@ public:
     EditViewState(te::Edit& e, te::SelectionManager& s);
 
     CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,
-                      drawWaveforms, showHeaders, showFooters, showMidiDevices, showWaveDevices;
+                      drawWaveforms, showHeaders, showMidiDevices, showWaveDevices;
     CachedValue<int> headersWidth;
 
     ValueTree state;
     ZoomViewState zoom;
     te::SelectionManager& selectionManager;
     te::Edit& edit;
+
+    te::TimeDuration getBeatLengthFor(double bpm) const;
+    double getFramesPerBeatFor(double bpm) const;
+    double getCurrentFramesPerBeat() const;
+    // for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
+    double getFramesPerNote(size_t divider) const;
+    double getBpmForBeatLength(te::TimeDuration beatLen) const;
+    double getBpmSnappedToFps(double bpm) const;
+    double setBpmSnappedToFps(double bpm);
+
+    void setBeatLength(te::TimeDuration beatLen);
+    void setFramesPerBeat(int fpb);
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditViewState)
@@ -118,10 +132,9 @@ private:
 
 //==============================================================================
 /**
-    Wrapper for storing the view state of a single track,
-    similar to EditViewState, but tied to a specific track's ValueTree.
-*/
-//==============================================================================
+ * Wrapper for storing the view state of a single track,
+ * similar to EditViewState, but tied to a specific track's ValueTree.
+ */
 class TrackViewState : private ValueTree::Listener {
 public:
     /**

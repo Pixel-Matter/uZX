@@ -40,18 +40,28 @@ void AudioClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
 
     if (editViewState.drawWaveforms && thumbnail != nullptr)
-        drawWaveform(g, *getWaveAudioClip(), *thumbnail, Colours::white.withAlpha(0.5f));
+        drawWaveform(
+            g, *getWaveAudioClip(), *thumbnail, Colours::white.withAlpha(0.5f), getX(), getRight(), 0, getHeight(), 0);
 }
 
-void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour) {
-    const auto rect = getLocalBounds();
-    const auto clipRange = c.getEditTimeRange();
+void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour,
+                                      int left, int right, int y, int h, int xOffset) {
+    // left and right are in local coordinates of the clip component, simetimes wider than parent window
+    auto p = getParentComponent();
+    if (p == nullptr)
+        return;
 
-    auto timeToX = [width = rect.getWidth(), clipRange, l = clipRange.getLength()] (auto time) {
-        return roundToInt(((time - clipRange.getStart()) * width) / l);
-    };
-    auto region = editViewState.zoom.getRange();
+    auto localBounds = p->getLocalBounds();
+    // draw bounds is intersection of clip component and parent component
+    left = jmax(left, localBounds.getX());
+    right = jmin(right, localBounds.getRight());
 
+    auto t1 = editViewState.zoom.xToTime(left);
+    auto t2 = editViewState.zoom.xToTime(right);
+
+    tracktion::TimeRange region {t1, t2};
+
+    jassert(left <= right);
     const auto gain = c.getGain();
     const auto pan = thumb.getNumChannels() == 1 ? 0.0f : c.getPan();
 
@@ -65,30 +75,34 @@ void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::Sma
     auto offset = clipPos.getOffset();
     auto speedRatio = c.getSpeedRatio();
 
-    int left = timeToX(region.getStart());
-    int right = timeToX(region.getEnd());
-    int xOffset = 0;
-    // int xOffset = timeToX(offset);
-    int h = rect.getHeight();
-    int y = rect.getY();
-    const Rectangle<int> area(left + xOffset, y, right - left, h);
-
     g.setColour(colour);
+
+    // where to draw channles relative to clip component coordinates
+    const Rectangle<int> area(-getX() + xOffset, y, right - left, h);
 
     if (usesTimeStretchedProxy) {
         if (!thumb.isOutOfDate()) {
-            drawChannels(g, thumb, area, region,
-                         c.isLeftChannelActive(), c.isRightChannelActive(),
-                         gainL, gainR);
+            drawChannels(g,
+                         thumb,
+                         area,
+                         region,
+                         c.isLeftChannelActive(),
+                         c.isRightChannelActive(),
+                         gainL,
+                         gainR);
         }
     } else if (c.getLoopLength() == 0s) {
+        t1 = (region.getStart() + offset) * speedRatio;
+        t2 = (region.getEnd() + offset) * speedRatio;
 
-        auto t1 = (region.getStart() + offset) * speedRatio;
-        auto t2 = (region.getEnd()   + offset) * speedRatio;
-
-        drawChannels(g, thumb, area, { t1, t2 },
-                     c.isLeftChannelActive(), c.isRightChannelActive(),
-                     gainL, gainR);
+        drawChannels(g,
+                     thumb,
+                     area,
+                     {t1, t2},
+                     c.isLeftChannelActive(),
+                     c.isRightChannelActive(),
+                     gainL,
+                     gainR);
     }
 }
 
@@ -151,16 +165,15 @@ void MidiClipComponent::paint(Graphics& g) {
     auto track = dynamic_cast<te::AudioTrack*>(mc->getTrack());
     if (!track) return;
 
-    const int midiRange = 128;
-
     // Calculate visible range based on track settings
-    int visibleRange = int(midiRange * track->getMidiVisibleProportion());
-    int lowestNote = int(midiRange * track->getMidiVerticalOffset());
-    int highestNote = lowestNote + visibleRange;
+    const auto visibleProportion = track->getMidiVisibleProportion();  // (maxNote - minNote) / 128.0;
+    const auto verticalOffset = track->getMidiVerticalOffset();        // 1.0 - (maxNote / 128.0)
+    const int visibleRange = roundToInt(visibleProportion * 128.0);
+    const int maxNote = roundToInt((1.0 - verticalOffset) * 128.0);
+    const int minNote = maxNote - visibleRange;
 
     // Calculate height of one note
     float noteH = static_cast<float>(r.getHeight()) / visibleRange;
-
     const auto rangeStartSec = tr.getStart().inSeconds();
     const auto rangeEndSec = tr.getEnd().inSeconds();
     const float left = static_cast<float>(r.getX());
@@ -168,7 +181,7 @@ void MidiClipComponent::paint(Graphics& g) {
     for (auto n : notes) {
         // Only process notes within the visible vertical range
         int noteNumber = n->getNoteNumber();
-        if (noteNumber < lowestNote || noteNumber >= highestNote)
+        if (noteNumber < minNote || noteNumber > maxNote)
             continue;
 
         // Calculate time range for this note
@@ -184,7 +197,7 @@ void MidiClipComponent::paint(Graphics& g) {
         float t2 = (float) timeToX(e) - left;
 
         // Map note position in the visible range (inverted since y=0 is at top)
-        float y1 = (1.0f - (noteNumber - lowestNote) / float(visibleRange)) * r.getHeight();
+        float y1 = (r.getHeight() - (noteNumber - minNote) * noteH);
 
         g.setColour(Colours::white.withAlpha(static_cast<float>(n->getVelocity()) / 127.0f));
         g.fillRect(t1, y1, t2 - t1, noteH);
@@ -239,18 +252,13 @@ void RecordingClipComponent::drawThumbnail(Graphics& g, Colour waveformColour) c
 }
 
 bool RecordingClipComponent::getBoundsAndTime(Rectangle<int>& bounds, tracktion::TimeRange& times) const {
+    jassert(getParentComponent());
     auto editTimeToX = [this] (te::TimePosition t) {
-        if (auto p = getParentComponent())
-            return editViewState.zoom.timeToX(t, p->getWidth()) - getX();
-
-        return 0;
+        return roundToInt(editViewState.zoom.timeToX(t)) - getX();
     };
 
     auto xToEditTime = [this] (int x) {
-        if (auto p = getParentComponent())
-            return editViewState.zoom.xToTime(x + getX(), p->getWidth());
-
-        return te::TimePosition();
+        return editViewState.zoom.xToTime(x + getX());
     };
 
     bool hasLooped = false;
@@ -271,8 +279,9 @@ bool RecordingClipComponent::getBoundsAndTime(Rectangle<int>& bounds, tracktion:
             t1 = jmin(t1, epc->getLoopTimes().getStart());
             t2 = epc->getPosition();
 
-            t1 = jmax(editViewState.zoom.getRangeStart(), t1);
-            t2 = jmin(editViewState.zoom.getRangeEnd(), t2);
+            t1 = jmax(xToEditTime(0), t1);
+            t2 = jmin(xToEditTime(getParentComponent()->getWidth()), t2);
+
         } else if (edit.recordingPunchInOut) {
             const auto in  = thumbnail->punchInTime;
             const auto out = edit.getTransport().getLoopRange().getEnd();
@@ -324,13 +333,11 @@ void RecordingClipComponent::updatePosition() {
             t2 = jlimit(in, out, t2);
         }
 
-        t1 = jmax(t1, editViewState.zoom.getRangeStart());
-        t2 = jmin(t2, editViewState.zoom.getRangeEnd());
-
         if (auto p = getParentComponent()) {
-            int x1 = editViewState.zoom.timeToX(t1, p->getWidth());
-            int x2 = editViewState.zoom.timeToX(t2, p->getWidth());
-
+            auto x1 = roundToInt(editViewState.zoom.timeToX(t1));
+            auto x2 = roundToInt(editViewState.zoom.timeToX(t2));
+            x1 = jmax(x1, 0);
+            x2 = jmin(x2, p->getWidth());
             setBounds(x1, 0, x2 - x1, p->getHeight());
             return;
         }

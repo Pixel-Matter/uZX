@@ -49,14 +49,10 @@ void LabeledRotarySlider::resized() {
 }
 
 void LabeledRotarySlider::paint(Graphics& g) {
-    // Draw a subtle indicator if parameter is mapped to MIDI CC
+    // Draw a small indicator in top-left corner if parameter is mapped to MIDI CC
     if (isParameterMapped()) {
-        DBG("Parameter " + parameter->getParameterName() + " is mapped to MIDI CC");
-        g.setColour(Colours::orange.withAlpha(0.3f));
-        g.fillRoundedRectangle(getLocalBounds().toFloat(), 2.0f);
-
         g.setColour(Colours::orange);
-        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 2.0f, 1.0f);
+        g.fillRect(0, 0, 4, 4);
     }
 }
 
@@ -69,21 +65,22 @@ void LabeledRotarySlider::showParameterMenu() {
     // Check if parameter is currently mapped
     bool isMapped = isParameterMapped();
 
-    if (isMapped) {
-        // Show current mapping as submenu with clear option
-        PopupMenu currentMappingSubmenu;
-        currentMappingSubmenu.addItem(1, "Clear mapping");
+    menu.addSectionHeader("MIDI mapping");
+    menu.addSeparator();
 
-        menu.addSubMenu("Currently mapped: " + getMappingDescription() + " >", currentMappingSubmenu);
+    if (isMapped) {
+        // Show current mapping as inactive item
+        menu.addItem(0, getMappingDescription(), false); // inactive
+        menu.addItem(1, "Clear");
         menu.addSeparator();
     }
 
-    menu.addItem(2, "Learn MIDI...");
+    menu.addItem(2, "Learn...");
     menu.addSeparator();
 
     // Add "Map MIDI >" submenu
     PopupMenu midiSubmenu = createMidiMappingSubmenu();
-    menu.addSubMenu("Map MIDI >", midiSubmenu);
+    menu.addSubMenu("Map to >", midiSubmenu);
 
     auto result = menu.show();
 
@@ -156,30 +153,33 @@ String LabeledRotarySlider::getMappingDescription() const {
 void LabeledRotarySlider::mapMidiCC(int controllerID, int channel) {
     if (!parameter) return;
 
-    DBG("Mapping parameter " + parameter->getParameterName() + " to controller ID " + String(controllerID) + " on channel " + String(channel));
-
     auto& edit = parameter->getEdit();
     auto& mappings = edit.getParameterControlMappings();
 
     // Remove existing mapping first
     mappings.removeParameterMapping(*parameter);
 
-    // Start learning mode - put the mappings in listen mode
-    int rowIndex = mappings.getNumControllerIDs();
-    mappings.listenToRow(rowIndex);
+    // Manually craft the ValueTree state for MIDI mapping
+    // Based on ParameterControlMappings::saveToEdit() structure
+    auto um = &edit.getUndoManager();
+    auto state = edit.state.getOrCreateChildWithName(tracktion::IDs::CONTROLLERMAPPINGS, um);
 
-    // Simulate a MIDI controller change to trigger the mapping
-    // This will cause the parameter to be mapped to the specified controller
-    mappings.sendChange(controllerID, 0.5f, channel); // Send a dummy value to trigger mapping
+    // Create mapping entry using Tracktion's format
+    auto mappingNode = tracktion::createValueTree(tracktion::IDs::MAP,
+                                                  tracktion::IDs::id, controllerID,
+                                                  tracktion::IDs::channel, channel,
+                                                  tracktion::IDs::param, parameter->getFullName(),
+                                                  tracktion::IDs::pluginID, parameter->getOwnerID());
 
-    // The learning system should now have created the mapping
-    // Force an update to ensure the mapping is active
-    edit.getParameterChangeHandler().parameterChanged(*parameter, false);
+    // Add the mapping to the state
+    state.addChild(mappingNode, -1, um);
 
-    mappings.setLearntParam(false);
-    mappings.saveToEdit();
+    // Force reload from the state to activate the mapping
+    mappings.loadFromEdit();
 
-    DBG("Mapping complete: " + getMappingDescription());
+    DBG("Manually mapped " << parameter->getParameterName()
+        << " to controller " << controllerID << " on channel " << channel
+        << " - " << getMappingDescription());
 }
 
 // Helper function to format CC names using JUCE's built-in names

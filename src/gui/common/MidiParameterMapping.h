@@ -20,7 +20,7 @@ public:
 
     // Menu creation
     void showMappingMenu(std::function<void()> onMappingChanged = nullptr);
-    static PopupMenu createMidiMappingSubmenu();
+    static PopupMenu addMidiMappingSubmenusToMenu(PopupMenu& menu);
 
     // Static utility functions for MIDI controller formatting
     static String formatCCName(int ccNumber);

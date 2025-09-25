@@ -3,6 +3,7 @@
 #include "../../controllers/MainCommands.h"
 #include "../../models/Timecode.h"
 #include "LookAndFeel.h"
+#include "../../utils/StringLiterals.h"
 
 #include <common/Utilities.h>
 
@@ -88,6 +89,8 @@ TransportBar::TransportBar(EditViewState& evs)
     };
     beatFramesSlider_.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
     beatFramesSlider_.setTextValueSuffix(" frames/beat");
+
+    recordButton_.setColour(TextButton::textColourOnId, Colours::red);
 
     // Apply ReadoutLookAndFeel to all numeric controls
     bpmSlider_.setLookAndFeel(&readoutLookAndFeel_);
@@ -210,11 +213,15 @@ void TransportBar::automationModeChanged() {
 }
 
 void TransportBar::updatePlayButtonText(bool isPlaying) {
-    playPauseButton_.setButtonText(isPlaying ? "||" : "[>]");
+    playPauseButton_.setButtonText(isPlaying ? "⏸"_u : "▶"_u);
 }
 
 void TransportBar::updateRecordButtonText(bool isRecording) {
-    recordButton_.setButtonText(isRecording ? "Stop" : "Rec");
+    recordButton_.setButtonText(isRecording ? "⏹"_u : "⏺"_u);
+    recordButton_.setColour(TextButton::buttonOnColourId, Colours::red);
+    // recordButton_.setColour(TextButton::buttonOnColourId, isRecording ?
+    //                         recordButton_.findColour(TextButton::textColourOnId)
+    //                         : Colours::red);
 }
 
 void TransportBar::updateAutomationButtons() {

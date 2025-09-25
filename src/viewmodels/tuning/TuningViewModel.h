@@ -9,6 +9,7 @@
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../../util/convert.h"
 #include "../../controllers/ParamAttachments.h"
+#include "../../utils/StringLiterals.h"
 
 #include <cmath>
 #include <array>
@@ -608,8 +609,8 @@ public:
 
                 // Note name - convert to ASCII compatible format
                 String asciiNoteName = note.name;
-                asciiNoteName = asciiNoteName.replace(String::fromUTF8("♯"), "#");
-                asciiNoteName = asciiNoteName.replace(String::fromUTF8("♭"), "b");
+                asciiNoteName = asciiNoteName.replace("♯"_u, "#");
+                asciiNoteName = asciiNoteName.replace("♭"_u, "b");
                 if (asciiNoteName.length() == 2) {
                     // insert dash between 0th and 1st character for compatibility
                     asciiNoteName = asciiNoteName.substring(0, 1) + "-" + asciiNoteName.substring(1);

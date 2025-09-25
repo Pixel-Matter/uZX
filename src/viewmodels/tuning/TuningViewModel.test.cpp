@@ -1,5 +1,6 @@
 #include <JuceHeader.h>
 #include "TuningViewModel.h"
+#include "../../utils/StringLiterals.h"
 
 using namespace MoTool;
 
@@ -77,11 +78,11 @@ public:
             TuningViewModel viewModel(*edit);
 
             // Set to F# Major
-            viewModel.setCurrentTonic(Scale::Tonic::FSharp);
+            viewModel.setCurrentTonic(Scale::Tonic::Enum::FSharp);
             viewModel.setCurrentScaleType(Scale::ScaleType::IonianOrMajor);
 
-            expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::FSharp));
-            expectEquals(viewModel.getScaleName(), String::fromUTF8("F♯ Major (Ionian)"));
+            expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::Enum::FSharp));
+            expectEquals(viewModel.getScaleName(), "F♯ Major (Ionian)"_u);
 
             // Check that F# Major scale notes are in scale
             auto noteNames = viewModel.getColumnNoteNames();
@@ -141,13 +142,13 @@ public:
             auto keyNames = Scale::getAllNoteNames();
             expectEquals(static_cast<int>(keyNames.size()), 12);
             expectEquals(keyNames[0], String("C"));
-            expectEquals(keyNames[1], String::fromUTF8("C♯"));
+            expectEquals(keyNames[1], "C♯"_u);
             expectEquals(keyNames[9], String("A"));
             expectEquals(keyNames[11], String("B"));
 
-            expectEquals(Scale::getTonicName(Scale::Tonic::C), String("C"));
-            expectEquals(Scale::getTonicName(Scale::Tonic::A), String("A"));
-            expectEquals(Scale::getTonicName(Scale::Tonic::FSharp), String::fromUTF8("F♯"));
+            expectEquals(Scale::getTonicName(Scale::Tonic::Enum::C), String("C"));
+            expectEquals(Scale::getTonicName(Scale::Tonic::Enum::A), String("A"));
+            expectEquals(Scale::getTonicName(Scale::Tonic::Enum::FSharp), "F♯"_u);
         }
 
         beginTest("Scale type names functionality");
@@ -232,8 +233,8 @@ public:
                 expect(fields[1].contains("C0"), "Second field should contain note name C0");
 
                 // Check that note names use ASCII characters
-                expect(!firstDataRow.contains(String::fromUTF8("♯")), "Should not contain Unicode sharp");
-                expect(!firstDataRow.contains(String::fromUTF8("♭")), "Should not contain Unicode flat");
+                expect(!firstDataRow.contains("♯"_u), "Should not contain Unicode sharp");
+                expect(!firstDataRow.contains("♭"_u), "Should not contain Unicode flat");
             }
 
             // Test with different scale
@@ -245,8 +246,8 @@ public:
 
             // Test ASCII character conversion - should only use sharps, no flats
             String csvData3 = viewModel.exportToCSV();
-            expect(!csvData3.contains(String::fromUTF8("♯")), "Should not contain Unicode sharp character");
-            expect(!csvData3.contains(String::fromUTF8("♭")), "Should not contain Unicode flat character");
+            expect(!csvData3.contains("♯"_u), "Should not contain Unicode sharp character");
+            expect(!csvData3.contains("♭"_u), "Should not contain Unicode flat character");
             expect(csvData3.contains("#"), "Should contain ASCII sharp character");
 
             // Verify only sharps are used, no flats

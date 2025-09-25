@@ -7,6 +7,7 @@
 
 #include "../../models/Timecode.h"
 #include "LookAndFeel.h"
+#include "../../utils/StringLiterals.h"
 
 namespace MoTool {
 
@@ -55,10 +56,10 @@ private:
     Slider masterVolumeSlider_ { Slider::SliderStyle::RotaryVerticalDrag, Slider::TextEntryBoxPosition::NoTextBox };
     SliderAttachment masterAttachment_ {masterVolumeSlider_, *edit_.getMasterSliderPosParameter()};
 
-    TextButton rewindButton_    { "|<<" },
+    TextButton rewindButton_    { "⏮"_u },
     //    stepLeftButton_  { "<" },
-       playPauseButton_ { "Play" },
-       recordButton_    { "Rec" },
+       playPauseButton_ { "▶"_u },
+       recordButton_    { "⏺"_u },
        autoReadButton_  { "Read" },
        autoWriteButton_ { "Write" };
     //    stepRightButton_ { ">" };

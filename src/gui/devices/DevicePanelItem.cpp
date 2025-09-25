@@ -1,5 +1,6 @@
 #include "DevicePanelItem.h"
 #include "PluginDeviceUI.h"
+#include "../../utils/StringLiterals.h"
 
 
 namespace MoTool {
@@ -60,8 +61,8 @@ TitleBar::TitleBar(tracktion::Plugin::Ptr plugin)
     setSize(getWidth(), titleBarHeight);
 
     // Setup enable/disable button
-    enableButton_.setButtonText(String::fromUTF8("⏻"));
-    // enableButton_.setButtonText(String::fromUTF8("●"));
+    enableButton_.setButtonText("⏻"_u);
+    // enableButton_.setButtonText("●"_u);
     enableButton_.setSize(buttonWidth, buttonWidth);
     enableButton_.setToggleable(true);
     enableButton_.setToggleState(plugin->isEnabled(), juce::dontSendNotification);

@@ -120,6 +120,8 @@ public:
                             bool shouldDrawButtonAsHighlighted,
                             bool shouldDrawButtonAsDown) override;
 
+    Font getSmallFont(float pointHeigth);
+    
     Font getTextButtonFont(TextButton&, int buttonHeight) override;
 
     void drawButtonText(Graphics& g,
@@ -138,6 +140,9 @@ public:
     void drawRotarySlider(Graphics& g, int x, int y, int width, int height,
                           float sliderPosProportional, float rotaryStartAngle,
                           float rotaryEndAngle, Slider& slider) override;
+
+    void drawGroupComponentOutline(Graphics& g, int width, int height,
+                                   const String& text, const Justification& position, GroupComponent& group) override;
 
     // Custom tooltip drawing
     void drawTooltip(Graphics& g, const String& text, int width, int height) override;

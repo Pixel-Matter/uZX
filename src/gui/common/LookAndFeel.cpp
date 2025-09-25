@@ -157,10 +157,14 @@ void MoLookAndFeel::drawButtonBackground(Graphics& g, Button& button,
 }
 
 //==============================================================================
+Font MoLookAndFeel::getSmallFont(float pointHeigth) {
+    return withDefaultMetrics(FontOptions().withPointHeight(jmin(16.0f, pointHeigth)));
+}
+
 Font MoLookAndFeel::getTextButtonFont(TextButton&, int buttonHeight) {
-    return withDefaultMetrics(
-        FontOptions().withPointHeight(jmin(16.0f, (float) roundToInt((float) buttonHeight * 0.6f)))
-    );
+    const int capHeight = buttonHeight - 10;
+    const float pointHeight = (float) capHeight / 0.75f; // approx cap height to point size
+    return getSmallFont(pointHeight);
 }
 
 void MoLookAndFeel::drawButtonText(Graphics& g,
@@ -168,34 +172,19 @@ void MoLookAndFeel::drawButtonText(Graphics& g,
                     bool /*shouldDrawButtonAsHighlighted*/,
                     bool /*shouldDrawButtonAsDown*/) {
     Font font(getTextButtonFont(button, button.getHeight()));
+
     g.setFont(font);
-    g.setColour(
-        button.findColour(button.getToggleState() ? TextButton::textColourOnId : TextButton::textColourOffId)
-            .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f)
-    );
-
+    auto color = button.findColour(button.getToggleState() ? TextButton::textColourOnId : TextButton::textColourOffId)
+                       .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f);
+    g.setColour(color);
     // const int yIndent = jmin(2, button.proportionOfHeight(0.3f));
-    const int yIndent = 1;
+    const int xIndent = 1;
+    const int yIndent = roundToInt(((float) button.getHeight() - font.getHeightInPoints() * 0.75) / 2.0f);
 
-    // const int fontHeight = roundToInt(font.getHeight() * 0.6f);
-    // const int leftIndent = jmin(fontHeight / 2, 2 + cornerSize / (button.isConnectedOnLeft() ? 4 : 2));
-    // const int rightIndent = jmin(fontHeight / 2, 2 + cornerSize / (button.isConnectedOnRight() ? 4 : 2));
-    const int leftIndent = 1;
-    const int rightIndent = 1;
-    const int textWidth = button.getWidth() - leftIndent - rightIndent;
+    auto textRect = button.getLocalBounds().reduced(xIndent, yIndent);
 
-    if (textWidth > 0) {
-        // g.drawText(button.getButtonText(),
-        //            leftIndent, yIndent,
-        //            textWidth, button.getHeight() - yIndent * 2,
-        //            Justification::centred, false);
-
-        g.drawFittedText(
-            button.getButtonText(),
-            leftIndent, yIndent,
-            textWidth, button.getHeight() - yIndent * 2,
-            Justification::centred, 2
-        );
+    if (button.getWidth() > xIndent * 2) {
+        g.drawFittedText(button.getButtonText(), textRect, Justification::centred, 1);
     }
 }
 
@@ -267,7 +256,7 @@ TextLayout MoLookAndFeel::layoutTooltipText(TypefaceMetricsKind metrics, const S
     AttributedString s;
     s.setJustification(Justification::left);
     s.setLineSpacing(tooltipFontSize * 0.2f); // 1.2 line spacing
-    s.append(text, FontOptions(tooltipFontSize, Font::plain).withMetricsKind(metrics), colour);
+    s.append(text, FontOptions(tooltipFontSize).withMetricsKind(metrics), colour);
 
     TextLayout tl;
     tl.createLayoutWithBalancedLineLengths(s, (float)maxToolTipWidth);
@@ -306,6 +295,64 @@ void MoLookAndFeel::drawTooltip(Graphics& g, const String& text, int width, int 
     });
 }
 
+void MoLookAndFeel::drawGroupComponentOutline(Graphics& g, int width, int height,
+                                              const String& text, const Justification& position,
+                                              GroupComponent& group) {
+    const float textH = 11.0f;
+    const float fontPtSize = textH;
+    const float indent = 3.0f;
+    const float textEdgeGap = 4.0f;
+    auto cs = 5.0f;
+
+    Font f = getSmallFont(fontPtSize);
+
+    Path p;
+    auto x = indent;
+    auto y = f.getAscent() - 3.0f;
+    auto w = jmax(0.0f, (float) width - x * 2.0f);
+    auto h = jmax(0.0f, (float) height - y - indent);
+    cs = jmin(cs, w * 0.5f, h * 0.5f);
+    auto cs2 = 2.0f * cs;
+
+    auto textW = text.isEmpty() ? 0 : jlimit(0.0f, jmax(0.0f, w - cs2 - textEdgeGap * 2),
+                                             (float) GlyphArrangement::getStringWidthInt(f, text) + textEdgeGap * 2.0f);
+    auto textX = cs + textEdgeGap;
+
+    if (position.testFlags(Justification::horizontallyCentred)) {
+        textX = cs + (w - cs2 - textW) * 0.5f;
+    } else if (position.testFlags(Justification::right)) {
+        textX = w - cs - textW - textEdgeGap;
+    }
+
+    p.startNewSubPath(x + textX + textW, y);
+    p.lineTo(x + w - cs, y);
+
+    p.addArc(x + w - cs2, y, cs2, cs2, 0, MathConstants<float>::halfPi);
+    p.lineTo(x + w, y + h - cs);
+
+    p.addArc(x + w - cs2, y + h - cs2, cs2, cs2, MathConstants<float>::halfPi, MathConstants<float>::pi);
+    p.lineTo(x + cs, y + h);
+
+    p.addArc(x, y + h - cs2, cs2, cs2, MathConstants<float>::pi, MathConstants<float>::pi * 1.5f);
+    p.lineTo(x, y + cs);
+
+    p.addArc(x, y, cs2, cs2, MathConstants<float>::pi * 1.5f, MathConstants<float>::twoPi);
+    p.lineTo(x + textX, y);
+
+    auto alpha = group.isEnabled() ? 1.0f : 0.5f;
+
+    g.setColour(group.findColour(GroupComponent::outlineColourId).withMultipliedAlpha(alpha));
+
+    g.strokePath(p, PathStrokeType(2.0f));
+
+    g.setColour(group.findColour(GroupComponent::textColourId).withMultipliedAlpha(alpha));
+    g.setFont(f);
+    g.drawText(text, roundToInt(x + textX), 0, roundToInt(textW), roundToInt(textH), Justification::centred, true);
+}
+
+//==============================================================================
+// Timeline specific LookAndFeel subclass
+//==============================================================================
 void MoLookAndFeel::drawTimelineCursor(Graphics& g, float position, int height) {
     g.setColour(Colors::Timeline::cursor);
     g.drawVerticalLine((int)position, 0.0f, (float)height);

@@ -121,7 +121,7 @@ public:
                             bool shouldDrawButtonAsDown) override;
 
     Font getSmallFont(float pointHeigth);
-    
+
     Font getTextButtonFont(TextButton&, int buttonHeight) override;
 
     void drawButtonText(Graphics& g,
@@ -140,6 +140,12 @@ public:
     void drawRotarySlider(Graphics& g, int x, int y, int width, int height,
                           float sliderPosProportional, float rotaryStartAngle,
                           float rotaryEndAngle, Slider& slider) override;
+
+    int getSliderThumbRadius(Slider& slider) override;
+
+    // void drawLinearSlider(Graphics& g, int x, int y, int width, int height,
+    //                       float sliderPos, float minSliderPos, float maxSliderPos,
+    //                       const Slider::SliderStyle style, Slider& slider) override;
 
     void drawGroupComponentOutline(Graphics& g, int width, int height,
                                    const String& text, const Justification& position, GroupComponent& group) override;

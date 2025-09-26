@@ -9,6 +9,20 @@
 
 namespace MoTool::uZX {
 
+namespace IDs {
+    #define DECLARE_ID(name)  inline const Identifier name(#name);
+    DECLARE_ID(ampAttack)
+    DECLARE_ID(ampDecay)
+    DECLARE_ID(ampSustain)
+    DECLARE_ID(ampRelease)
+    DECLARE_ID(ampVelocity)
+    DECLARE_ID(pitchAttack)
+    DECLARE_ID(pitchDecay)
+    DECLARE_ID(pitchSustain)
+    DECLARE_ID(pitchRelease)
+    DECLARE_ID(pitchDepth)
+    #undef DECLARE_ID
+}
 
 //==============================================================================
 /**
@@ -22,25 +36,9 @@ public:
     ChipInstrumentFx(const ValueTree& vt, UndoManager* um = nullptr);
     ~ChipInstrumentFx() override;
 
-    struct OscParameters {
+    class OscParameters : public ParamsBase<OscParameters> {
+    public:
         OscParameters(ChipInstrumentFx& inst, int oscNum);
-
-        template<typename Visitor>
-        void visit(Visitor&& visitor) {
-            visitor(ampAttack);
-            visitor(ampDecay);
-            visitor(ampSustain);
-            visitor(ampRelease);
-            // visitor(ampVelocity);
-            visitor(pitchAttack);
-            visitor(pitchDecay);
-            visitor(pitchSustain);
-            visitor(pitchRelease);
-            visitor(pitchDepth);
-        }
-
-        void referToState();
-        void restoreStateFromValueTree(const ValueTree& v);
 
         //==============================================================================
         /**
@@ -59,23 +57,33 @@ public:
         // AY env shape, retrigger
         // unison voices, detune
 
-    private:
-        ChipInstrumentFx& instrument;
+        ValueWithSource<float> ampAttack    {{"ampAttack",   IDs::ampAttack,   "A", "Amp Attack Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ValueWithSource<float> ampDecay     {{"ampDecay",    IDs::ampDecay,    "D", "Amp Decay Time",    0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ValueWithSource<float> ampSustain   {{"ampSustain",  IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}};
+        ValueWithSource<float> ampRelease   {{"ampRelease",  IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+     // ValueWithSource<float> ampVelocity  {{"ampVelocity", IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}};
+        ValueWithSource<float> pitchAttack  {{"pitchAttack", IDs::pitchAttack, "A", "Pitch Attack Time",  0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ValueWithSource<float> pitchDecay   {{"pitchDecay",  IDs::pitchDecay,  "D", "Pitch Decay Time",   0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ValueWithSource<float> pitchSustain {{"pitchSustain",IDs::pitchSustain,"S", "Pitch Sustain Level",0.0f,  {0.0f, 100.0f}, "%"}};
+        ValueWithSource<float> pitchRelease {{"pitchRelease",IDs::pitchRelease,"R", "Pitch Release Time", 0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ValueWithSource<float> pitchDepth   {{"pitchDepth",  IDs::pitchDepth,  "Depth", "Pitch Depth",    0.0f,  {-48.0f, 48.0f}, "st"}};
 
-    public:
-        ValueWithSource<float> ampAttack;
-        ValueWithSource<float> ampDecay;
-        ValueWithSource<float> ampSustain;
-        ValueWithSource<float> ampRelease;
-        // ValueWithSource<float> ampVelocity;
-        ValueWithSource<float> pitchAttack;
-        ValueWithSource<float> pitchDecay;
-        ValueWithSource<float> pitchSustain;
-        ValueWithSource<float> pitchRelease;
-        ValueWithSource<float> pitchDepth;
+        template<typename Visitor>
+        void visit(Visitor&& visitor) {
+            visitor(ampAttack);
+            visitor(ampDecay);
+            visitor(ampSustain);
+            visitor(ampRelease);
+            // visitor(ampVelocity);
+            visitor(pitchAttack);
+            visitor(pitchDecay);
+            visitor(pitchSustain);
+            visitor(pitchRelease);
+            visitor(pitchDepth);
+        }
     };
 
-    void updateParams();
+    // void updateParams();
     void restoreStateFromValueTree(const ValueTree& v);
 
 public:

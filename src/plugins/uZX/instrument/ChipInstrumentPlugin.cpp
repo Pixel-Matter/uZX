@@ -15,7 +15,7 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
     instrument.oscParams.visit([this](auto& vd) {
         auto& def = vd.definition;
         auto param = addParam(def.paramID, def.description, def.valueRange, def.paramID);
-        vd.attachSource(std::move(std::make_unique<TracktionParamSource>(param)));
+        vd.attachSource(param);
     });
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);
@@ -53,17 +53,6 @@ te::AutomatableParameter::Ptr ChipInstrumentPlugin::addParam(const String& param
 
     return p;
 }
-
-// // Update all voice parameters
-// void ChipInstrumentPlugin::updateParams() {
-
-//     ampAdsr.setParameters ({
-//         paramValue (synth.ampAttack),
-//         paramValue (synth.ampDecay),
-//         paramValue (synth.ampSustain) / 100.0f,
-//         paramValue (synth.ampRelease)
-//     });
-// }
 
 // LevelMeasurer::Client implementation - called periodically to get the current audio level for a channel
 float ChipInstrumentPlugin::getLevel(int channel) {

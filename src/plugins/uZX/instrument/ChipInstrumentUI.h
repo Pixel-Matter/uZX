@@ -4,7 +4,7 @@
 #include "ChipInstrumentPlugin.h"
 #include "../../../controllers/ParamAttachments.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
-#include "../../../gui/common/LabeledRotarySlider.h"
+#include "../../../gui/common/LabeledKnob.h"
 
 namespace MoTool::uZX {
 
@@ -32,9 +32,9 @@ private:
     GroupComponent ampGroup;
     GroupComponent pitchGroup;
 
-    MoTool::LabeledRotarySlider adsrAttackSlider, adsrDecaySlider, adsrSustainSlider, adsrReleaseSlider;
-    // MoTool::LabeledRotarySlider adsrVelocitySlider;
-    MoTool::LabeledRotarySlider pitchAttackSlider, pitchDecaySlider, pitchSustainSlider, pitchReleaseSlider, pitchDepthSlider;
+    LabeledKnob adsrAttackSlider, adsrDecaySlider, adsrSustainSlider, adsrReleaseSlider;
+    // LabeledKnob adsrVelocitySlider;
+    LabeledKnob pitchAttackSlider, pitchDecaySlider, pitchSustainSlider, pitchReleaseSlider, pitchDepthSlider;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChipInstrumentUI)
 };

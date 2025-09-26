@@ -31,7 +31,7 @@ set(SHARED_SOURCES
 
     gui/common/Utilities.cpp
     gui/common/LookAndFeel.cpp
-    gui/common/LabeledRotarySlider.cpp
+    gui/common/LabeledKnob.cpp
     gui/common/MidiParameterMapping.cpp
 )
 

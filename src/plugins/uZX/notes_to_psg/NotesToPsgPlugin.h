@@ -52,6 +52,8 @@ public:
         RangedParamAttachment<int> baseMidiChannelValue;
         // RangedParamAttachment<int> numChannelsValue;
 
+        // TODO Tuning system parameter, choice
+
         Params(te::Plugin& p)
             : baseMidiChannelValue(p.state, p.getUndoManager())
             // , numChannelsValue(p.state, p.getUndoManager())

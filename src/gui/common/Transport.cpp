@@ -218,7 +218,7 @@ void TransportBar::updatePlayButtonText(bool isPlaying) {
 
 void TransportBar::updateRecordButtonText(bool isRecording) {
     recordButton_.setButtonText(isRecording ? "⏹"_u : "⏺"_u);
-    recordButton_.setColour(TextButton::buttonOnColourId, Colours::red);
+    recordButton_.setColour(TextButton::textColourOnId, Colours::red);
     // recordButton_.setColour(TextButton::buttonOnColourId, isRecording ?
     //                         recordButton_.findColour(TextButton::textColourOnId)
     //                         : Colours::red);

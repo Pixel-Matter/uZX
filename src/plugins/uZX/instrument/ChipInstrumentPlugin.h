@@ -61,13 +61,6 @@ public:
     ChipInstrumentFx instrument;
 
 private:
-    // Amplitude envelope automatable parameters
-    // do not need to store it there
-    // tracktion::AutomatableParameter::Ptr ampAttack, ampDecay, ampSustain, ampRelease, ampVelocity;
-    // pitch envelope automatable parameters
-    // tracktion::AutomatableParameter::Ptr pitchAttack, pitchDecay, pitchSustain, pitchRelease;
-    //==============================================================================
-
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;

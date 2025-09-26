@@ -29,6 +29,7 @@ ChipInstrumentUI::ChipInstrumentUI(tracktion::Plugin::Ptr pluginPtr)
 
     setSize(32 * 4 + 8 * 7, 360);
 
+    // TODO set font size
     addAndMakeVisible(ampGroup);
     addAndMakeVisible(pitchGroup);
 

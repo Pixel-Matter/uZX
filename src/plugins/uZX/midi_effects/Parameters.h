@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include <concepts>
+#include <optional>
 
 
 namespace MoTool::uZX {
@@ -23,6 +24,13 @@ struct TracktionParamSource {
     tracktion::AutomatableParameter::Ptr parameter;
 
     TracktionParamSource(tracktion::AutomatableParameter::Ptr p) : parameter(std::move(p)) {}
+
+    // Rule of Five: make it move-only
+    TracktionParamSource(const TracktionParamSource&) = delete;
+    TracktionParamSource& operator=(const TracktionParamSource&) = delete;
+
+    TracktionParamSource(TracktionParamSource&&) = default;
+    TracktionParamSource& operator=(TracktionParamSource&&) = default;
 
     ~TracktionParamSource() {
         detachFromCurrentValue();
@@ -126,11 +134,9 @@ struct ValueWithSource {
         value.referTo(v, definition.propertyName, um, definition.defaultValue);
     }
 
-    Source* attachSource(std::unique_ptr<Source> s) {
-        jassert(s != nullptr);
+    void attachSource(Source&& s) {
         source = std::move(s);
         source->attachToCurrentValue(value);
-        return source.get();
     }
 
     void detachSource() {
@@ -148,14 +154,44 @@ struct ValueWithSource {
         }
     }
 
-    bool isSourceAttached() const { return source != nullptr; }
+    bool isSourceAttached() const { return source.has_value(); }
 
     ParameterDef<Type> definition;
     CachedValue<Type> value;
-    std::unique_ptr<Source> source;
+    // If no source is attached, ValueWithSource instance still can be used as a static parameter
+    std::optional<Source> source;
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ValueWithSource)
+};
+
+//==============================================================================
+// CRTP base class for parameter widgets in plugins
+template <typename Derived>
+class ParamsBase {
+public:
+    // static_assert(std::is_base_of<ParamsBase, Derived>::value, "Derived must inherit from ParamsBase");
+
+    void referTo(ValueTree& v, UndoManager* um) {
+        static_cast<Derived*>(this)->visit([&v, um] (auto& value) { value.referTo(v, um); });
+    }
+
+    void restoreStateFromValueTree(const ValueTree& v) {
+        static_cast<Derived*>(this)->visit([&v] (auto& value) { tracktion::copyPropertiesToCachedValues(v, value.value ); });
+    }
+
+    // Derived classes must implement
+    /**
+
+    template<typename Visitor>
+    void visit(Visitor&& visitor) {
+        visitor(someParam);
+        visitor(anotherParam);
+    }
+
+    ValueWithSource<float> someParam;
+    ValueWithSource<float> anotherParam;
+    */
 };
 
 

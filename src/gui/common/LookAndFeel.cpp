@@ -246,8 +246,118 @@ void MoLookAndFeel::drawRotarySlider(Graphics& g,
         g.setColour(fill);
         g.strokePath(valueArc, PathStrokeType(lineW, PathStrokeType::curved, PathStrokeType::rounded));
     }
-
 }
+
+int MoLookAndFeel::getSliderThumbRadius(Slider& slider) {
+    return jmin(10, slider.isHorizontal() ? static_cast<int>((float) slider.getHeight() * 0.5f)
+                                         : static_cast<int>((float) slider.getWidth() * 0.5f));
+}
+
+// void MoLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, int height,
+//                                      float sliderPos, float minSliderPos, float maxSliderPos,
+//                                      const Slider::SliderStyle style, Slider& slider) {
+
+//     g.setColour(slider.findColour(Slider::trackColourId).withAlpha(0.2f));
+//     g.fillRect(x, y, width, height); // clear background
+
+//     if (slider.isBar()) {
+//         g.setColour(slider.findColour(Slider::trackColourId));
+//         g.fillRect(
+//             slider.isHorizontal()
+//                 ? Rectangle<float>(
+//                       static_cast<float>(x), (float) y + 0.5f, sliderPos - (float) x, (float) height - 1.0f)
+//                 : Rectangle<float>(
+//                       (float) x + 0.5f, sliderPos, (float) width - 1.0f, (float) y + ((float) height - sliderPos)));
+
+//         drawLinearSliderOutline(g, x, y, width, height, style, slider);
+//     } else {
+//         auto isTwoVal =
+//             (style == Slider::SliderStyle::TwoValueVertical || style == Slider::SliderStyle::TwoValueHorizontal);
+//         auto isThreeVal =
+//             (style == Slider::SliderStyle::ThreeValueVertical || style == Slider::SliderStyle::ThreeValueHorizontal);
+
+//         auto trackWidth = jmin(4.0f, slider.isHorizontal() ? (float) height * 0.2f : (float) width * 0.2f);
+
+//         Point<float> startPoint(slider.isHorizontal() ? (float) x : (float) x + (float) width * 0.5f,
+//                                 slider.isHorizontal() ? (float) y + (float) height * 0.5f : (float) (height + y));
+
+//         Point<float> endPoint(slider.isHorizontal() ? (float) (width + x) : startPoint.x,
+//                               slider.isHorizontal() ? startPoint.y : (float) y);
+
+//         Path backgroundTrack;
+//         backgroundTrack.startNewSubPath(startPoint);
+//         backgroundTrack.lineTo(endPoint);
+//         g.setColour(slider.findColour(Slider::backgroundColourId));
+//         g.strokePath(backgroundTrack, {trackWidth, PathStrokeType::curved, PathStrokeType::rounded});
+
+//         Path valueTrack;
+//         Point<float> minPoint, maxPoint, thumbPoint;
+
+//         if (isTwoVal || isThreeVal) {
+//             minPoint = {slider.isHorizontal() ? minSliderPos : (float) width * 0.5f,
+//                         slider.isHorizontal() ? (float) height * 0.5f : minSliderPos};
+
+//             if (isThreeVal)
+//                 thumbPoint = {slider.isHorizontal() ? sliderPos : (float) width * 0.5f,
+//                               slider.isHorizontal() ? (float) height * 0.5f : sliderPos};
+
+//             maxPoint = {slider.isHorizontal() ? maxSliderPos : (float) width * 0.5f,
+//                         slider.isHorizontal() ? (float) height * 0.5f : maxSliderPos};
+//         } else {
+//             auto kx = slider.isHorizontal() ? sliderPos : ((float) x + (float) width * 0.5f);
+//             auto ky = slider.isHorizontal() ? ((float) y + (float) height * 0.5f) : sliderPos;
+
+//             minPoint = startPoint;
+//             maxPoint = {kx, ky};
+//         }
+
+//         auto thumbWidth = getSliderThumbRadius(slider);
+//         auto thumbHeight = jmin(16, slider.isHorizontal() ? static_cast<int>((float) slider.getHeight())
+//                                                           : static_cast<int>((float) slider.getWidth()));
+
+//         valueTrack.startNewSubPath(minPoint);
+//         valueTrack.lineTo(isThreeVal ? thumbPoint : maxPoint);
+//         g.setColour(slider.findColour(Slider::trackColourId));
+//         g.strokePath(valueTrack, {trackWidth, PathStrokeType::curved, PathStrokeType::rounded});
+
+//         if (!isTwoVal) {
+//             g.setColour(slider.findColour(Slider::thumbColourId));
+//             g.fillRoundedRectangle(
+//                 Rectangle<float>(static_cast<float>(thumbWidth * 2), static_cast<float>(thumbHeight))
+//                                  .withCentre(isThreeVal ? thumbPoint : maxPoint),
+//                 trackWidth
+//             );
+//             // g.fillEllipse(Rectangle<float>(static_cast<float>(thumbWidth), static_cast<float>(thumbWidth))
+//             //                   .withCentre(isThreeVal ? thumbPoint : maxPoint));
+//         }
+
+//         if (isTwoVal || isThreeVal) {
+//             auto sr = jmin(trackWidth, (slider.isHorizontal() ? (float) height : (float) width) * 0.4f);
+//             auto pointerColour = slider.findColour(Slider::thumbColourId);
+
+//             if (slider.isHorizontal()) {
+//                 drawPointer(g, minSliderPos - sr,
+//                             jmax(0.0f, (float) y + (float) height * 0.5f - trackWidth * 2.0f),
+//                             trackWidth * 2.0f, pointerColour, 2);
+
+//                 drawPointer(g, maxSliderPos - trackWidth,
+//                             jmin((float) (y + height) - trackWidth * 2.0f, (float) y + (float) height * 0.5f),
+//                             trackWidth * 2.0f, pointerColour, 4);
+//             } else {
+//                 drawPointer(g, jmax(0.0f, (float) x + (float) width * 0.5f - trackWidth * 2.0f),
+//                             minSliderPos - trackWidth,
+//                             trackWidth * 2.0f, pointerColour, 1);
+
+//                 drawPointer(g, jmin((float) (x + width) - trackWidth * 2.0f, (float) x + (float) width * 0.5f),
+//                             maxSliderPos - sr,
+//                             trackWidth * 2.0f, pointerColour, 3);
+//             }
+//         }
+//         // can not be reached
+//         // if (slider.isBar())
+//         //     drawLinearSliderOutline(g, x, y, width, height, style, slider);
+//     }
+// }
 
 TextLayout MoLookAndFeel::layoutTooltipText(TypefaceMetricsKind metrics, const String& text, Colour colour) noexcept {
     const int maxToolTipWidth = 600;

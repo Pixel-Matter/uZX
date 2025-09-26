@@ -9,13 +9,9 @@ namespace MoTool {
 
 namespace te = tracktion;
 
-class LabeledRotarySlider : public Component {
+class LabeledKnob : public Component {
 public:
-    LabeledRotarySlider(te::AutomatableParameter::Ptr param, const String& labelText = {}, const String& tooltip = {}, const String& valueSuffix = {});
-
-    LabeledRotarySlider(te::AutomatableParameter::Ptr param, const uZX::ValueWithSource<float>& value);
-
-    LabeledRotarySlider(const uZX::ValueWithSource<float>& value);
+    LabeledKnob(const uZX::ValueWithSource<float>& value);
 
     void resized() override;
     void paint(Graphics& g) override;
@@ -33,24 +29,24 @@ private:
 
     class SliderMouseListener : public MouseListener {
     public:
-        SliderMouseListener(LabeledRotarySlider& ownerRef) : owner(ownerRef) {}
+        SliderMouseListener(LabeledKnob& ownerRef) : owner(ownerRef) {}
         void mouseDown(const MouseEvent& e) override {
             if (e.mods.isRightButtonDown()) {
                 owner.showParameterMenu();
             }
         }
     private:
-        LabeledRotarySlider& owner;
+        LabeledKnob& owner;
     };
 
     Slider slider;
     Label label;
-    SliderAttachment attachment;
-    te::AutomatableParameter::Ptr parameter;
-    SliderMouseListener mouseListener;
-    MidiParameterMapping midiMapping;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledRotarySlider)
+    SliderAttachment attachment;
+    MidiParameterMapping midiMapping;
+    SliderMouseListener mouseListener;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledKnob)
 };
 
 }  // namespace MoTool

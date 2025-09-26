@@ -4,6 +4,7 @@
 
 #include "AYPlugin.h"
 #include "../../../gui/common/LookAndFeel.h"
+#include "../../../gui/common/LabeledKnob.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 
@@ -12,8 +13,9 @@ namespace te = tracktion;
 
 namespace MoTool::uZX {
 
-
-// Base class for parameter widgets
+//==============================================================================
+// Base CRTP class for parameter widgets
+// Depracated
 template <typename Att, typename WidgetType>
 class ParameterComponent : public Component {
 public:
@@ -43,6 +45,7 @@ protected:
     WidgetType widget;
 };
 
+//==============================================================================
 template <typename Type>
 class SliderParameterComponent : public ParameterComponent<RangedParamAttachment<Type>, Slider>,
                                  private Slider::Listener,
@@ -85,6 +88,7 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParameterComponent)
 };
 
+//==============================================================================
 class ToggleParameterComponent : public ParameterComponent<ParamAttachment<bool>, ToggleButton>,
                                  private Button::Listener,
                                  private Value::Listener
@@ -115,7 +119,7 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ToggleParameterComponent)
 };
 
-
+//==============================================================================
 template <typename Type>
 class ComboParameterComponent : public ParameterComponent<ChoiceParamAttachment<Type>, ComboBox>,
                                 private ComboBox::Listener,
@@ -175,12 +179,14 @@ public:
         constrainer_.setMinimumWidth(160);
         setSize(160, 320);
 
-        addAndMakeVisible(chipParameter);
-        addAndMakeVisible(clockParameter);
-        addAndMakeVisible(channelsParameter);
-        addAndMakeVisible(removeDCParameter);
-        addAndMakeVisible(midiParameter);
-        addAndMakeVisible(stereoParameter);
+        addAndMakeVisible(volumeSlider);
+        addAndMakeVisible(stereoWidthControl);
+
+        addAndMakeVisible(midiControl);
+        addAndMakeVisible(clockControl);
+        addAndMakeVisible(chipTypeControl);
+        addAndMakeVisible(DCControl);
+        addAndMakeVisible(channelsLayoutControl);
     }
 
     void paint(Graphics& g) override {
@@ -189,17 +195,27 @@ public:
 
     void resized() override {
         auto r = getLocalBounds().reduced(8, 0);
-        chipParameter.setBounds(r.removeFromTop(itemHeight * 2));
+
+        // automatable
+        r.removeFromTop(8);
+        auto knobsRow = r.removeFromTop(itemHeight * 2);
+
+        stereoWidthControl.setBounds(knobsRow.removeFromLeft(knobsRow.getWidth() / 2));
+        volumeSlider.setBounds(knobsRow);
+
+        // static
         r.removeFromTop(itemSpacing);
-        clockParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        midiControl.setBounds(r.removeFromTop(itemHeight * 2));
         r.removeFromTop(itemSpacing);
-        channelsParameter.setBounds(r.removeFromTop(itemHeight * 2));
-        r.removeFromTop(itemSpacing * 2);
-        removeDCParameter.setBounds(r.removeFromTop(itemHeight));
+        clockControl.setBounds(r.removeFromTop(itemHeight * 2));
         r.removeFromTop(itemSpacing);
-        midiParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        chipTypeControl.setBounds(r.removeFromTop(itemHeight * 2));
         r.removeFromTop(itemSpacing);
-        stereoParameter.setBounds(r.removeFromTop(itemHeight * 2));
+        DCControl.setBounds(r.removeFromTop(itemHeight));
+        r.removeFromTop(itemSpacing);
+
+        // TODO automatable
+        channelsLayoutControl.setBounds(r.removeFromTop(itemHeight * 2));
     }
 
     ComponentBoundsConstrainer* getBoundsConstrainer() {
@@ -213,13 +229,19 @@ private:
     AYChipPlugin& plugin_;
     ComponentBoundsConstrainer constrainer_;
 
-    ComboParameterComponent<ChipType>       chipParameter     { plugin_.staticParams.chipTypeValue };
-    SliderParameterComponent<double>        clockParameter    { plugin_.staticParams.clockValue };
-    ComboParameterComponent<ChannelsLayout> channelsParameter { plugin_.staticParams.channelsLayoutValue };
-    ToggleParameterComponent                removeDCParameter { plugin_.staticParams.removeDCValue };
-    SliderParameterComponent<int>           midiParameter     { plugin_.staticParams.baseMidiChannelValue };
+    // dynamic, can be automated
+    LabeledKnob volumeSlider { plugin_.dynamicParams.volume };
+    LabeledKnob stereoWidthControl { plugin_.dynamicParams.stereoWidth };
+
+    // legacy static
+    SliderParameterComponent<int>     midiControl     { plugin_.legacyParams.baseMidiChannel };
+    SliderParameterComponent<double>  clockControl    { plugin_.legacyParams.clock };
+    ComboParameterComponent<ChipType> chipTypeControl { plugin_.legacyParams.chipType };
+    ToggleParameterComponent          DCControl       { plugin_.legacyParams.removeDC };
+
     // TODO can be automated
-    SliderParameterComponent<double>        stereoParameter   { plugin_.staticParams.stereoWidthValue };
+    ComboParameterComponent<ChannelsLayout> channelsLayoutControl { plugin_.legacyParams.channelsLayoutValue };
+    // SliderParameterComponent<double>        stereoWidthControl   { plugin_.legacyParams.stereoWidthValue };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginUI)
 };

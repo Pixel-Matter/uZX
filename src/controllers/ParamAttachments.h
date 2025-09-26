@@ -12,26 +12,31 @@ namespace MoTool {
 
 class SliderAttachment : private te::AutomatableParameter::Listener {
 public:
-    SliderAttachment (Slider& s, te::AutomatableParameter& p)
-        : slider (s)
-        , param (p)
+    SliderAttachment (Slider& s, te::AutomatableParameter::Ptr p)
+        : slider(s)
+        , param(std::move(p))
     {
-        slider.setRange(static_cast<double>(p.getValueRange().getStart()), static_cast<double>(p.getValueRange().getEnd()), static_cast<double>(p.valueRange.interval));
-        slider.setSkewFactor(static_cast<double>(p.valueRange.skew));
-        slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
-
+        if (param == nullptr)
+            return;
+        
         slider.onValueChange = [this] {
             juce::ScopedValueSetter<bool> svs(updatingSlider, true);
-            param.setParameter((float)slider.getValue(), juce::sendNotification);
+            param->setParameter((float)slider.getValue(), juce::sendNotification);
         };
-        slider.onDragStart = [&]{ param.parameterChangeGestureBegin(); };
-        slider.onDragEnd   = [&]{ param.parameterChangeGestureEnd(); };
+        slider.onDragStart = [&]{ param->parameterChangeGestureBegin(); };
+        slider.onDragEnd   = [&]{ param->parameterChangeGestureEnd(); };
 
-        param.addListener(this);
+        param->addListener(this);
     }
 
     ~SliderAttachment() override {
-        param.removeListener(this);
+        if (isAttached()) {
+            param->removeListener(this);
+        }
+    }
+
+    bool isAttached() const noexcept {
+        return param != nullptr;
     }
 
 private:
@@ -45,11 +50,13 @@ private:
     void curveHasChanged(te::AutomatableParameter&) override {}
 
     Slider& slider;
-    te::AutomatableParameter& param;
+    te::AutomatableParameter::Ptr param;
     bool updatingSlider { false };
     // bool updatingFromParam { false };
 };
 
+
+//==============================================================================
 static inline String toString(bool v) {
     return v ? "true" : "false";
 }
@@ -62,6 +69,10 @@ inline String& operator<< (String& str, bool b) {
     return str << toString(b);
 }
 
+//==============================================================================
+/**
+* Legacy ParamAttachment class to bind ValueTree properties to CachedValue and Value
+*/
 template <typename Type>
 class ParamAttachment {
 public:

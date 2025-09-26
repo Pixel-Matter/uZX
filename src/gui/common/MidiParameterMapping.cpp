@@ -6,8 +6,7 @@ namespace te = tracktion;
 
 MidiParameterMapping::MidiParameterMapping(te::AutomatableParameter::Ptr param)
     : parameter(param)
-{
-}
+{}
 
 void MidiParameterMapping::learnMidiCC() {
     if (!parameter) return;

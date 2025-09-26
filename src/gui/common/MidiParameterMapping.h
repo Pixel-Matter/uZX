@@ -2,12 +2,13 @@
 
 #include <JuceHeader.h>
 #include <functional>
+#include "juce_events/juce_events.h"
 
 namespace MoTool {
 
 namespace te = tracktion;
 
-class MidiParameterMapping {
+class MidiParameterMapping : public ChangeBroadcaster {
 public:
     explicit MidiParameterMapping(te::AutomatableParameter::Ptr param);
 
@@ -19,7 +20,7 @@ public:
     String getMappingDescription() const;
 
     // Menu creation
-    void showMappingMenu(std::function<void()> onMappingChanged = nullptr);
+    void showMappingMenu();
     static PopupMenu addMidiMappingSubmenusToMenu(PopupMenu& menu);
 
     // Static utility functions for MIDI controller formatting
@@ -30,7 +31,6 @@ public:
 
 private:
     te::AutomatableParameter::Ptr parameter;
-    std::function<void()> mappingChangedCallback;
 
     void handleMenuResult(int result);
 };

@@ -10,7 +10,23 @@ namespace te = tracktion;
 
 namespace MoTool {
 
+class MouseListenerWithCallback : public MouseListener {
+public:
+    void setRmbCallback(std::function<void()> cb) {
+        rmbCallback = std::move(cb);
+    }
 
+    void mouseDown(const MouseEvent& e) override {
+        if (rmbCallback && e.mods.isRightButtonDown()) {
+            rmbCallback();
+        }
+    }
+private:
+    std::function<void()> rmbCallback;
+};
+
+
+//==============================================================================
 class SliderAutoParamAttachment : private te::AutomatableParameter::Listener {
 public:
     template <typename Type>

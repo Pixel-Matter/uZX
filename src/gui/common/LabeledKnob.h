@@ -4,18 +4,20 @@
 #include "../../controllers/ParamAttachments.h"
 #include "../../controllers/Parameters.h"
 #include "MidiParameterMapping.h"
+#include "juce_events/juce_events.h"
 
 namespace MoTool {
 
 namespace te = tracktion;
 
-class LabeledKnob : public Component {
+class LabeledKnob : public Component,
+                    private ChangeListener  // MidiMapping change listener
+{
 public:
     template <typename Type = float>
     LabeledKnob(ValueWithSource<Type>& value)
         : attachment(slider, value)
         , midiMapping(value.source->parameter)
-        , mouseListener(*this)
     {
         const auto& def = value.definition;
 
@@ -42,6 +44,13 @@ public:
         slider.setPopupMenuEnabled(false);
         slider.addMouseListener(&mouseListener, false);
 
+        // TODO refactor to attachment
+        mouseListener.setRmbCallback([this]() {
+            midiMapping.showMappingMenu();
+        });
+
+        midiMapping.addChangeListener(this);
+
         label.setText(def.shortLabel, dontSendNotification);
         label.setJustificationType(Justification::centred);
         label.setFont(label.getFont().withPointHeight((float) labelHeight));
@@ -62,23 +71,11 @@ public:
     int getLabelHeight() const { return labelHeight - labelOverlap; }
 
 private:
-    void showParameterMenu() {
-        midiMapping.showMappingMenu([this]() {
-            repaint(); // Update visual feedback when mapping changes
-        });
-    }
-
-    class SliderMouseListener : public MouseListener {
-    public:
-        SliderMouseListener(LabeledKnob& ownerRef) : owner(ownerRef) {}
-        void mouseDown(const MouseEvent& e) override {
-            if (e.mods.isRightButtonDown()) {
-                owner.showParameterMenu();
-            }
+    void changeListenerCallback(ChangeBroadcaster* source) override {
+        if (source == &midiMapping) {
+            repaint();
         }
-    private:
-        LabeledKnob& owner;
-    };
+    }
 
     Slider slider;
     Label label;
@@ -86,7 +83,7 @@ private:
     SliderAutoParamAttachment attachment;
     // TODO refactor to SliderAutoParamAttachment
     MidiParameterMapping midiMapping;
-    SliderMouseListener mouseListener;
+    MouseListenerWithCallback mouseListener;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledKnob)
 };

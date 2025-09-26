@@ -90,10 +90,8 @@ void MidiParameterMapping::mapToMidiCC(int controllerID, int channel) {
     mappings.loadFromEdit();
 }
 
-void MidiParameterMapping::showMappingMenu(std::function<void()> onMappingChanged) {
+void MidiParameterMapping::showMappingMenu() {
     if (!parameter) return;
-
-    mappingChangedCallback = onMappingChanged;
 
     PopupMenu menu;
 
@@ -124,14 +122,16 @@ void MidiParameterMapping::showMappingMenu(std::function<void()> onMappingChange
 void MidiParameterMapping::handleMenuResult(int result) {
     if (result == 1) {
         clearMapping();
-        if (mappingChangedCallback) mappingChangedCallback();
+        DBG("MidiParameterMapping: Cleared mapping for parameter " << parameter->getFullName());
+        sendChangeMessage();
     } else if (result == 2) {
         learnMidiCC();
     } else if (result >= 1000) {
         // Handle direct MIDI CC mapping (result IDs start from 1000)
         int controllerID = result - 1000;
         mapToMidiCC(controllerID);
-        if (mappingChangedCallback) mappingChangedCallback();
+        DBG("MidiParameterMapping: Mapped parameter " << parameter->getFullName() << " to controller ID " << controllerID);
+        sendChangeMessage();
     }
 }
 

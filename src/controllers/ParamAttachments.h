@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "../util/convert.h"
+#include "Parameters.h"
 
 
 using namespace juce;
@@ -10,15 +11,21 @@ namespace te = tracktion;
 namespace MoTool {
 
 
-class SliderAttachment : private te::AutomatableParameter::Listener {
+class SliderAutoParamAttachment : private te::AutomatableParameter::Listener {
 public:
-    SliderAttachment (Slider& s, te::AutomatableParameter::Ptr p)
+    template <typename Type>
+    SliderAutoParamAttachment(Slider& s, ValueWithSource<Type>& value)
+        : SliderAutoParamAttachment(s, value.source->parameter)
+    {}
+
+    SliderAutoParamAttachment(Slider& s, te::AutomatableParameter::Ptr p)
         : slider(s)
         , param(std::move(p))
     {
-        if (param == nullptr)
+        if (param == nullptr) {
             return;
-        
+        }
+
         slider.onValueChange = [this] {
             juce::ScopedValueSetter<bool> svs(updatingSlider, true);
             param->setParameter((float)slider.getValue(), juce::sendNotification);
@@ -29,7 +36,7 @@ public:
         param->addListener(this);
     }
 
-    ~SliderAttachment() override {
+    ~SliderAutoParamAttachment() override {
         if (isAttached()) {
             param->removeListener(this);
         }
@@ -53,6 +60,20 @@ private:
     te::AutomatableParameter::Ptr param;
     bool updatingSlider { false };
     // bool updatingFromParam { false };
+};
+
+//==============================================================================
+template <typename Type>
+class SliderValueAttachment {
+public:
+    SliderValueAttachment(Slider& slider, ValueWithSource<Type>& value)
+        // : slider(s)
+    {
+        slider.getValueObject().referTo(value.getPropertyAsValue());
+    }
+
+private:
+    // Slider& slider;
 };
 
 

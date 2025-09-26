@@ -5,7 +5,7 @@
 #include <optional>
 
 
-namespace MoTool::uZX {
+namespace MoTool {
 
 //==============================================================================
 // C++20 concept for parameter sources
@@ -148,7 +148,7 @@ struct ValueWithSource {
 
     Type getCurrentValue() const {
         if (isSourceAttached()) {
-            return source->getValue();
+            return static_cast<Type>(source->getValue());
         } else {
             return value.get();
         }
@@ -195,4 +195,4 @@ public:
 };
 
 
-}  // namespace MoTool::uZX
+}  // namespace MoTool

@@ -95,10 +95,7 @@ struct LayoutEnum {
     enum Enum : uint8_t {
         ABC,
         ACB,
-        BAC,
-        BCA,
-        CAB,
-        CBA
+        BAC
     };
 };
 
@@ -339,10 +336,7 @@ private:
     ChannelPans_ = {{
         {{0.0, 0.5, 1.0}},  // ABC
         {{0.0, 1.0, 0.5}},  // ACB
-        {{0.5, 0.0, 1.0}},  // BAC
-        {{1.0, 0.0, 0.5}},  // BCA
-        {{0.5, 1.0, 0.0}},  // CAB
-        {{1.0, 0.5, 0.0}}   // CBA
+        {{0.5, 0.0, 1.0}}   // BAC
     }};
 
 };

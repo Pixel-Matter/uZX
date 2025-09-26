@@ -6,20 +6,18 @@
 
 #include "../midi_effects/MidiEffect.h"
 #include "../../../models/tuning/TuningSystemBase.h"
-#include "../../../controllers/ParamAttachments.h"
+#include "../../../controllers/Parameters.h"
 
 namespace te = tracktion;
 
-namespace MoTool {
+namespace MoTool::uZX {
 
 namespace IDs {
-    #define DECLARE_ID(name)  const juce::Identifier name(#name);
+    #define DECLARE_ID(name)  inline const juce::Identifier name(#name);
     DECLARE_ID(midiBase)
     DECLARE_ID(midiChans)
     #undef DECLARE_ID
 }
-
-namespace uZX {
 
 
 class NotesToPsgPlugin : public MidiFxPluginBase<NotesToPsgMapper>
@@ -48,27 +46,24 @@ public:
     void restorePluginStateFromValueTree(const ValueTree&) override;
     std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
 
-    struct Params {
-        RangedParamAttachment<int> baseMidiChannelValue;
-        // RangedParamAttachment<int> numChannelsValue;
+    class StaticParams : public ParamsBase<StaticParams> {
+    public:
+        using ParamsBase<StaticParams>::ParamsBase;
 
+        ValueWithSource<int> baseMidiChannel {{"midiBase", IDs::midiBase, "MIDI", "Base MIDI Channel", 1, {1, 16 - 3, 1}}};
         // TODO Tuning system parameter, choice
 
-        Params(te::Plugin& p)
-            : baseMidiChannelValue(p.state, p.getUndoManager())
-            // , numChannelsValue(p.state, p.getUndoManager())
-        {
-            initialise();
+        template<typename Visitor>
+        void visit(Visitor&& visitor) {
+            visitor(baseMidiChannel);
         }
-
-        void initialise();
-        void restoreFromTree(const juce::ValueTree& v);
     };
 
     // specific for MidiToPsg methods
+    // TODO make this static parameter
     void setTuningSystem(TuningSystem* tuningSystem);
 
-    Params staticParams {*this};
+    StaticParams staticParams;
 
 private:
     //==============================================================================
@@ -84,5 +79,3 @@ private:
 };
 
 } // namespace MoTool::uZX
-
-} // namespace MoTool

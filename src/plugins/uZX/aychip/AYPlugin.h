@@ -5,7 +5,7 @@
 #include "../../../formats/psg/PsgData.h"
 #include "../../../models/PsgMidi.h"
 #include "../../../controllers/ParamAttachments.h"
-#include "../midi_effects/Parameters.h"
+#include "../../../controllers/Parameters.h"
 #include "aychip.h"
 
 #include <atomic>

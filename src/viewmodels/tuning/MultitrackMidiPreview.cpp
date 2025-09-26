@@ -31,8 +31,8 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
         track->pluginList.insertPlugin(*ayPlugin, 0, nullptr);
         auto AYPlugin = dynamic_cast<uZX::AYChipPlugin*>(ayPlugin.get());
         jassert(AYPlugin != nullptr);
-        // set CAB to first channel be the center
-        AYPlugin->legacyParams.channelsLayoutValue = uZX::ChannelsLayout::CAB;
+        // set BAC to first channel be the center
+        AYPlugin->legacyParams.channelsLayoutValue = uZX::ChannelsLayout::BAC;
     }
 
     if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::NotesToPsgPlugin::xmlTypeName, {})) {

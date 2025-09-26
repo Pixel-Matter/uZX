@@ -6,7 +6,7 @@
 
 #include "ChipInstrument.h"
 #include "../midi_effects/MidiEffect.h"
-#include "../midi_effects/Parameters.h"
+#include "../../../controllers/Parameters.h"
 
 
 namespace MoTool::uZX {

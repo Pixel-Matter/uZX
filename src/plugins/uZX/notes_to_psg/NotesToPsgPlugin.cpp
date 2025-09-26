@@ -2,12 +2,16 @@
 
 namespace MoTool::uZX {
 
+
+//==============================================================================
 const char* NotesToPsgPlugin::xmlTypeName = "uzxmidi2psg";
 
 NotesToPsgPlugin::NotesToPsgPlugin(te::PluginCreationInfo info)
     : MidiFxPluginBase<NotesToPsgMapper>(info, transformer)
 {
-    midiEffect.setBaseChannel(1);
+    staticParams.referTo(state, getUndoManager());
+
+    midiEffect.setBaseChannel(staticParams.baseMidiChannel.getCurrentValue());
 }
 
 NotesToPsgPlugin::~NotesToPsgPlugin() {
@@ -30,28 +34,18 @@ void NotesToPsgPlugin::reset() {
 }
 
 void NotesToPsgPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
-    staticParams.restoreFromTree(v);
+    staticParams.restoreStateFromValueTree(v);
+
     updateParams();
 }
 
 std::unique_ptr<te::Plugin::EditorComponent> NotesToPsgPlugin::createEditor() {
-    // Return nullptr for now - no GUI needed for basic functionality
     return nullptr;
-}
-
-void NotesToPsgPlugin::Params::initialise() {
-    baseMidiChannelValue.referTo(IDs::midiBase, "Base MIDI channel", {1, 16, 1}, 1);
-    // numChannelsValue.referTo(IDs::midiChans, "Number of channels", {1, 4, 1}, 4);
-}
-
-void NotesToPsgPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
-    te::copyPropertiesToCachedValues(v,
-        baseMidiChannelValue.cachedValue
-        // numChannelsValue.cachedValue
-    );
+    // return std::make_unique<NotesToPsgPluginEditor>(NotesToPsgPlugin::Ptr(this));
 }
 
 void NotesToPsgPlugin::valueTreeChanged() {
+    DBG("NotesToPsgPlugin::valueTreeChanged");
     updateParams();
 }
 
@@ -59,6 +53,7 @@ void NotesToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& 
     juce::ignoreUnused(v);
 
     if (id == IDs::midiBase || id == IDs::midiChans) {
+        staticParams.baseMidiChannel.value.forceUpdateOfCachedValue();
         updateParams();
     }
 }
@@ -66,8 +61,7 @@ void NotesToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& 
 void NotesToPsgPlugin::updateParams() {
     // first reset to clear state and to silence any hanging notes
     reset();
-    midiEffect.setBaseChannel(staticParams.baseMidiChannelValue.get());
-    // midiEffect.setNumChannels(staticParams.numChannelsValue.get());
+    midiEffect.setBaseChannel(staticParams.baseMidiChannel.getCurrentValue());
     // then reset again to init
     reset();
 }

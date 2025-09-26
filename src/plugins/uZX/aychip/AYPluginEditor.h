@@ -179,8 +179,8 @@ public:
         constrainer_.setMinimumWidth(160);
         setSize(160, 320);
 
-        addAndMakeVisible(volumeSlider);
-        addAndMakeVisible(stereoWidthControl);
+        addAndMakeVisible(volumeKnob);
+        addAndMakeVisible(stereoKnob);
 
         addAndMakeVisible(midiControl);
         addAndMakeVisible(clockControl);
@@ -200,8 +200,8 @@ public:
         r.removeFromTop(8);
         auto knobsRow = r.removeFromTop(itemHeight * 2);
 
-        stereoWidthControl.setBounds(knobsRow.removeFromLeft(knobsRow.getWidth() / 2));
-        volumeSlider.setBounds(knobsRow);
+        stereoKnob.setBounds(knobsRow.removeFromLeft(knobsRow.getWidth() / 2));
+        volumeKnob.setBounds(knobsRow);
 
         // static
         r.removeFromTop(itemSpacing);
@@ -230,8 +230,8 @@ private:
     ComponentBoundsConstrainer constrainer_;
 
     // dynamic, can be automated
-    LabeledKnob volumeSlider { plugin_.dynamicParams.volume };
-    LabeledKnob stereoWidthControl { plugin_.dynamicParams.stereoWidth };
+    LabeledKnob volumeKnob { plugin_.dynamicParams.volume };
+    LabeledKnob stereoKnob { plugin_.dynamicParams.stereoWidth };
 
     // legacy static
     SliderParameterComponent<int>     midiControl     { plugin_.legacyParams.baseMidiChannel };

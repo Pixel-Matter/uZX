@@ -68,6 +68,7 @@ set(GUI_SOURCES
     gui/devices/LevelMeterUI.cpp
 
     plugins/uZX/instrument/ChipInstrumentUI.cpp
+    plugins/uZX/notes_to_psg/NotesToPsgPluginUI.cpp
 )
 
 # Test-specific files to include in the test target

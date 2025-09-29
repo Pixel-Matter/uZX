@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "../util/convert.h"
+#include "../util/enumchoice.h"
 #include "Parameters.h"
 
 
@@ -205,7 +206,7 @@ private:
 };
 
 
-template <typename Type>
+template <Util::EnumChoiceConcept Type>
 class ChoiceParamAttachment : public ParamAttachment<Type> {
 public:
     using type = Type;
@@ -331,7 +332,7 @@ private:
 
 
 // Bind ComboBox to a EnumChoice parameter with shift to 1-based ComboBox index
-template <typename ChoiceType>
+template <Util::EnumChoiceConcept ChoiceType>
 class ComboBoxBinding : private Value::Listener,
                         private ComboBox::Listener
 {

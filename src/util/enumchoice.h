@@ -18,8 +18,31 @@ constexpr auto to_array(const T (&arr)[N]) -> std::array<T, N> {
     return result;
 }
 
-// Base class for enumerated choices
+// C++20 concept to enforce requirements on enum types used with EnumChoice
+template <typename E>
+concept EnumChoiceConcept = requires {
+    // Must have a nested enum type called Enum
+    typename E::Enum;
+    typename E::UnderlyingType;
 
+    // Enum must be an actual enum type
+    requires std::is_enum_v<typename E::Enum>;
+
+    // Must have a static getLabels() method that returns an array of string_view
+    { E::getLabels() };
+
+    // Labels must be indexable with enum values
+    requires requires(typename E::Enum value) {
+        E::getLabels()[static_cast<std::size_t>(value)];
+    };
+
+    requires requires(E value) {
+        value.getLabel();
+    };
+};
+
+//==============================================================================
+// Base class for enumerated choices
 template <class E>
 class EnumChoice : public E {
 public:
@@ -99,19 +122,35 @@ public:
     }
 
     constexpr auto getLongLabel() const noexcept {
-        return E::longLabels[value];
+        if constexpr (requires { E::longLabels[value]; }) {
+            return E::longLabels[value];
+        } else {
+            return magic_enum::enum_name<Enum>(value);
+        }
     }
 
     constexpr static auto getLongLabels() noexcept {
-        return to_array(E::longLabels);
+        if constexpr (requires { E::longLabels; }) {
+            return to_array(E::longLabels);
+        } else {
+            return magic_enum::enum_names<Enum>();
+        }
     }
 
     constexpr auto getShortLabel() const noexcept {
-        return E::shortLabels[value];
+        if constexpr (requires { E::shortLabels[value]; }) {
+            return E::shortLabels[value];
+        } else {
+            return magic_enum::enum_name<Enum>(value);
+        }
     }
 
     constexpr static auto getShortLabels() noexcept {
-        return E::shortLabels;
+        if constexpr (requires { E::shortLabels; }) {
+            return E::shortLabels;
+        } else {
+            return magic_enum::enum_names<Enum>();
+        }
     }
 
     constexpr static size_t size() noexcept {
@@ -128,9 +167,13 @@ public:
     }
 
     inline constexpr magic_enum::customize::customize_t enumNameCustom() noexcept {
-        if (value < 0 || value >= std::size(E::labels))
+        if constexpr (requires { E::labels; }) {
+            if (value < 0 || value >= std::size(E::labels))
+                return magic_enum::customize::default_tag;
+            return E::labels[value];
+        } else {
             return magic_enum::customize::default_tag;
-        return E::labels[value];
+        }
     }
 };
 

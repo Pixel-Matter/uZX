@@ -49,6 +49,8 @@ public:
         slider.onDragStart = [&]{ param->parameterChangeGestureBegin(); };
         slider.onDragEnd   = [&]{ param->parameterChangeGestureEnd(); };
 
+        slider.setValue((double)param->getCurrentValue(), juce::dontSendNotification);
+
         param->addListener(this);
     }
 

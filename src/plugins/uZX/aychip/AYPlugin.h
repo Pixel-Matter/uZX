@@ -109,7 +109,6 @@ public:
             , chipType(p.state, p.getUndoManager())
             , removeDC(p.state, p.getUndoManager())
             , channelsLayoutValue(p.state, p.getUndoManager())
-            // , stereoWidth(p.state, p.getUndoManager())
         {
             initialise();
         }

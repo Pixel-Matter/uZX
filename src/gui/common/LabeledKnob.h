@@ -17,8 +17,13 @@ public:
     template <typename Type = float>
     LabeledKnob(ValueWithSource<Type>& value)
         : attachment(slider, value)
-        , midiMapping(value.source->parameter)
+        , midiMapping(value.source ? value.source->parameter : nullptr)
     {
+        // Debug assertion - this should not happen in a properly initialized plugin
+        if (!value.source || !value.source->parameter) {
+            DBG("Warning: LabeledKnob created with null parameter source for " + value.definition.paramID);
+        }
+
         const auto& def = value.definition;
 
         slider.setRange(static_cast<double>(def.valueRange.start), static_cast<double>(def.valueRange.end), static_cast<double>(def.valueRange.interval));

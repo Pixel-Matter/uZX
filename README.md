@@ -18,7 +18,7 @@
              / / / \ ' / /     Copyright 2025
     B8   88 / / /   / / /    Ruslan Grokhovetski
     B8   88  / /   / / . \   www.pixelmatter.org
-    B8,  88.  /---/ / / \ \
+    B8.  88.  /---/ / / \ \
     B8"oo""8o ---'---'   `-'
     BP
 

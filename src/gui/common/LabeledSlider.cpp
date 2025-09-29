@@ -1,10 +1,10 @@
-#include "LabeledKnob.h"
+#include "LabeledSlider.h"
 
 namespace MoTool {
 
 namespace te = tracktion;
 
-void LabeledKnob::resized() {
+void LabeledSlider::resized() {
     auto bounds = getLocalBounds();
     auto sliderHeight = bounds.getHeight() - labelHeight;
 
@@ -13,7 +13,7 @@ void LabeledKnob::resized() {
     label.setBounds(bounds.expanded(4, 0));
 }
 
-void LabeledKnob::paint(Graphics& g) {
+void LabeledSlider::paint(Graphics& g) {
     // Draw a small indicator in top-left corner if parameter is mapped to MIDI CC
     if (midiMapping.isParameterMapped()) {
         g.setColour(Colours::orange);

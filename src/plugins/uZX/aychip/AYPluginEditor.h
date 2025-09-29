@@ -4,7 +4,7 @@
 
 #include "AYPlugin.h"
 #include "../../../gui/common/LookAndFeel.h"
-#include "../../../gui/common/LabeledKnob.h"
+#include "../../../gui/common/LabeledSlider.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 
@@ -180,6 +180,7 @@ public:
         setSize(160, 320);
 
         addAndMakeVisible(volumeKnob);
+        addAndMakeVisible(layoutSlider);
         addAndMakeVisible(stereoKnob);
 
         addAndMakeVisible(midiControl);
@@ -197,7 +198,10 @@ public:
         auto r = getLocalBounds().reduced(8, 0);
 
         // automatable
-        r.removeFromTop(8);
+        r.removeFromTop(itemSpacing);
+        layoutSlider.setBounds(r.removeFromTop(itemHeight));
+
+        r.removeFromTop(itemSpacing);
         auto knobsRow = r.removeFromTop(itemHeight * 2);
 
         stereoKnob.setBounds(knobsRow.removeFromLeft(knobsRow.getWidth() / 2));
@@ -230,8 +234,9 @@ private:
     ComponentBoundsConstrainer constrainer_;
 
     // dynamic, can be automated
-    LabeledKnob volumeKnob { plugin_.dynamicParams.volume };
-    LabeledKnob stereoKnob { plugin_.dynamicParams.stereoWidth };
+    LabeledSlider volumeKnob   { plugin_.dynamicParams.volume };
+    LabeledSlider layoutSlider { plugin_.dynamicParams.layout, Slider::LinearHorizontal };
+    LabeledSlider stereoKnob   { plugin_.dynamicParams.stereoWidth };
 
     // legacy static
     SliderParameterComponent<int>     midiControl     { plugin_.legacyParams.baseMidiChannel };

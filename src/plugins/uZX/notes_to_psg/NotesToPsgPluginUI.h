@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 #include "NotesToPsgPlugin.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
-#include "../../../gui/common/LabeledKnob.h"
+#include "../../../gui/common/LabeledSlider.h"
 
 namespace MoTool::uZX {
 
@@ -24,7 +24,7 @@ public:
 private:
     NotesToPsgPlugin::StaticParams& baseParams;
 
-    LabeledKnob baseMidiKnob;
+    LabeledSlider baseMidiKnob;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgPluginUI)
 };

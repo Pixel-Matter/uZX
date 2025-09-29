@@ -4,24 +4,23 @@
 #include "../../controllers/ParamAttachments.h"
 #include "../../controllers/Parameters.h"
 #include "MidiParameterMapping.h"
-#include "juce_events/juce_events.h"
 
 namespace MoTool {
 
 namespace te = tracktion;
 
-class LabeledKnob : public Component,
-                    private ChangeListener  // MidiMapping change listener
+class LabeledSlider : public Component,
+                      private ChangeListener  // MidiMapping change listener
 {
 public:
     template <typename Type = float>
-    LabeledKnob(ValueWithSource<Type>& value)
+    LabeledSlider(ValueWithSource<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
         : attachment(slider, value)
         , midiMapping(value.source ? value.source->parameter : nullptr)
     {
         // Debug assertion - this should not happen in a properly initialized plugin
         if (!value.source || !value.source->parameter) {
-            DBG("Warning: LabeledKnob created with null parameter source for " + value.definition.paramID);
+            DBG("Warning: LabeledSlider created with null parameter source for " + value.definition.paramID);
         }
 
         const auto& def = value.definition;
@@ -30,11 +29,21 @@ public:
         slider.setSkewFactor(static_cast<double>(def.valueRange.skew));
         slider.setValue(static_cast<double>(value.getCurrentValue()), dontSendNotification);
 
-        // slider.setSliderStyle(Slider::LinearHorizontal);
-        slider.setSliderStyle(Slider::RotaryVerticalDrag);
+        slider.setSliderStyle(style);
         slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         slider.setTooltip(def.description);
         slider.setPopupDisplayEnabled(true, true, nullptr);
+
+        if (def.valueToStringFunction) {
+            slider.textFromValueFunction = [def](double v) {
+                return def.valueToStringFunction(static_cast<Type>(v));
+            };
+        };
+        if (def.stringToValueFunction) {
+            slider.valueFromTextFunction = [def](const String& str) {
+                return static_cast<double>(def.stringToValueFunction(str));
+            };
+        };
 
         if constexpr (std::is_same_v<Type, int>)
             slider.setNumDecimalPlacesToDisplay(0);
@@ -90,7 +99,7 @@ private:
     MidiParameterMapping midiMapping;
     MouseListenerWithCallback mouseListener;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledKnob)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledSlider)
 };
 
 }  // namespace MoTool

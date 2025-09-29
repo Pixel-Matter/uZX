@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <concepts>
 #include <optional>
+#include "../util/enumchoice.h"
 
 
 namespace MoTool {
@@ -105,7 +106,42 @@ struct ParameterDef {
         s += " (default " + String(defaultValue) + ")";
         return s;
     }
+};
 
+template <Util::EnumChoiceConcept E>
+struct ParameterDef<E> {
+    String paramID;
+    Identifier propertyName;
+    String shortLabel;
+    String description;
+    E defaultValue;
+
+    // Auto-initialized from enum size
+    NormalisableRange<E> valueRange = NormalisableRange<E>(E(0), E(E::size() - 1), 1);
+
+    String units = {};
+
+    // Auto-initialized label conversion functions
+    std::function<String(E)> valueToStringFunction = [](E value) { return String(std::string(value.getLabel())); };
+
+    std::function<E(const String&)> stringToValueFunction = [](const String& str) {
+        return E(str.toStdString());
+    };
+
+    // Keep the existing toString() method
+    String toString() const {
+        String s = paramID + ": " + description;
+        s += " (choices: ";
+        auto labels = E::getLabels();
+        for (size_t i = 0; i < labels.size(); ++i) {
+            if (i > 0)
+                s += ", ";
+            s += String(labels[i]);
+        }
+        s += ")";
+        s += " (default " + String(defaultValue.getLabel()) + ")";
+        return s;
+    }
 };
 
 //==============================================================================

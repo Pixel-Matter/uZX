@@ -85,8 +85,9 @@ public:
             visitor(stereoWidth);
         }
 
-        ValueWithSource<float> volume      {{"volume", IDs::volume,  "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
-        ValueWithSource<float> stereoWidth {{"stereo", IDs::stereo, "Stereo", "Stereo width", 0.5f, {0.f, 1.0f}}};
+        ValueWithSource<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
+        ValueWithSource<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", ChannelsLayout::ACB}};
+        ValueWithSource<float> stereoWidth     {{"stereo", IDs::stereo, "Width",  "Stereo width",  0.5f, {0.f, 1.0f}}};
     };
 
     DynamicParams dynamicParams;

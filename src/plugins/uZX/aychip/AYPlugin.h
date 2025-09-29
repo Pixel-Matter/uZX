@@ -82,6 +82,7 @@ public:
         template<typename Visitor>
         void visit(Visitor&& visitor) {
             visitor(volume);
+            visitor(layout);
             visitor(stereoWidth);
         }
 
@@ -100,16 +101,11 @@ public:
         ChoiceParamAttachment<ChipType> chipType;
         ParamAttachment<bool> removeDC;
 
-        // automatable
-        ChoiceParamAttachment<ChannelsLayout> channelsLayoutValue;
-        // RangedParamAttachment<double> stereoWidth;
-
         Params(te::Plugin& p)
             : baseMidiChannel(p.state, p.getUndoManager())
             , clock(p.state, p.getUndoManager())
             , chipType(p.state, p.getUndoManager())
             , removeDC(p.state, p.getUndoManager())
-            , channelsLayoutValue(p.state, p.getUndoManager())
         {
             initialise();
         }

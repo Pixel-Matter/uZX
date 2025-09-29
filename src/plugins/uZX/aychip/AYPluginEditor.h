@@ -187,7 +187,6 @@ public:
         addAndMakeVisible(clockControl);
         addAndMakeVisible(chipTypeControl);
         addAndMakeVisible(DCControl);
-        addAndMakeVisible(channelsLayoutControl);
     }
 
     void paint(Graphics& g) override {
@@ -199,7 +198,7 @@ public:
 
         // automatable
         r.removeFromTop(itemSpacing);
-        layoutSlider.setBounds(r.removeFromTop(itemHeight));
+        layoutSlider.setBounds(r.removeFromTop(itemHeight * 2));
 
         r.removeFromTop(itemSpacing);
         auto knobsRow = r.removeFromTop(itemHeight * 2);
@@ -217,9 +216,6 @@ public:
         r.removeFromTop(itemSpacing);
         DCControl.setBounds(r.removeFromTop(itemHeight));
         r.removeFromTop(itemSpacing);
-
-        // TODO automatable
-        channelsLayoutControl.setBounds(r.removeFromTop(itemHeight * 2));
     }
 
     ComponentBoundsConstrainer* getBoundsConstrainer() {
@@ -243,10 +239,6 @@ private:
     SliderParameterComponent<double>  clockControl    { plugin_.legacyParams.clock };
     ComboParameterComponent<ChipType> chipTypeControl { plugin_.legacyParams.chipType };
     ToggleParameterComponent          DCControl       { plugin_.legacyParams.removeDC };
-
-    // TODO can be automated
-    ComboParameterComponent<ChannelsLayout> channelsLayoutControl { plugin_.legacyParams.channelsLayoutValue };
-    // SliderParameterComponent<double>        stereoWidthControl   { plugin_.legacyParams.stereoWidthValue };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginUI)
 };

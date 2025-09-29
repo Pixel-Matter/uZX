@@ -12,7 +12,7 @@ void AYChipPlugin::Params::initialise() {
     clock          .referTo(IDs::clock,  "Clock frequncy",    {0.894887, 2.0, 0.01},  1.7734, "MHz");
     chipType       .referTo(IDs::chip,   "Chip type",         ChipType::getLabels(),       ChipType::AY);
     removeDC       .referTo(IDs::noDC,   "Remove DC",                                 true);
-    channelsLayoutValue .referTo(IDs::layout, "Channels layout",   ChannelsLayout::getLabels(), ChannelsLayout::ACB);
+    // channelsLayoutValue .referTo(IDs::layout, "Channels layout",   ChannelsLayout::getLabels(), ChannelsLayout::ACB);
 }
 
 //==============================================================================
@@ -21,8 +21,8 @@ void AYChipPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
         baseMidiChannel.cachedValue,
         clock.cachedValue,
         chipType.cachedValue,
-        removeDC.cachedValue,
-        channelsLayoutValue.cachedValue
+        removeDC.cachedValue
+        // channelsLayoutValue.cachedValue
     );
 }
 
@@ -38,7 +38,7 @@ AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
 
     dynamicParams.visit([this](auto& vd) {
         auto& def = vd.definition;
-        auto param = addParam(def.paramID, def.description, def.valueRange);
+        auto param = addParam(def.paramID, def.description, def.getFloatValueRange());
         // auto param = addParam(def.paramID, def.description, def.valueRange, def.paramID);
         vd.attachSource(te::AutomatableParameter::Ptr(param));
     });
@@ -75,7 +75,7 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
         } else if (id == IDs::stereo || id == IDs::layout) {
             if (chip != nullptr) {
                 const ScopedLock sl(lock);
-                chip->setLayoutAndStereoWidth(legacyParams.channelsLayoutValue, dynamicParams.stereoWidth.getCurrentValue());
+                chip->setLayoutAndStereoWidth(dynamicParams.layout.getCurrentValue(), dynamicParams.stereoWidth.getCurrentValue());
             }
         } else if (id == IDs::midi) {
             if (chip != nullptr) {
@@ -116,7 +116,7 @@ void AYChipPlugin::reset() {
         chip->reset(static_cast<int>(sampleRate), legacyParams.clock * MHz, legacyParams.chipType);
     }
     chip->setMasterVolume(dynamicParams.volume.getCurrentValue());
-    chip->setLayoutAndStereoWidth(legacyParams.channelsLayoutValue, dynamicParams.stereoWidth.getCurrentValue());
+    chip->setLayoutAndStereoWidth(dynamicParams.layout.getCurrentValue(), dynamicParams.stereoWidth.getCurrentValue());
     // timeFromReset = 0.0;  // not used now
     midiParamsReader.reset();
     // midiRegsReader.reset();

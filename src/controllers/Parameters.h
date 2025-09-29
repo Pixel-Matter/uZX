@@ -42,7 +42,10 @@ struct TracktionParamSource {
         return parameter->getCurrentValue();
     }
 
-    void attachToCurrentValue(juce::CachedValue<float>& v) {
+    template <typename Type>
+    void attachToCurrentValue(CachedValue<Type>& v) {
+        static_assert(std::is_same_v<Type, float> || std::is_same_v<Type, int> || std::is_same_v<Type, bool>,
+                      "TracktionParamSource can only be attached to CachedValue<float>, CachedValue<int> or CachedValue<bool>");
         jassert(parameter != nullptr);
         parameter->attachToCurrentValue(v);
     }
@@ -63,21 +66,19 @@ struct TracktionParamSource {
 static_assert(ParameterSourceConcept<TracktionParamSource>);
 
 //==============================================================================
-struct JuceParamSource {
-    std::atomic<float>* valuePtr_;
+struct EmptyParamSource {
+    float getValue() const { return 0.0; }
 
-    JuceParamSource(std::atomic<float>& value) : valuePtr_(&value) {}
-
-    float getValue() const { return valuePtr_->load(); }
-
-    void attachToCurrentValue(juce::CachedValue<float>&) {}
-
+    template <typename Type>
+    void attachToCurrentValue(juce::CachedValue<Type>&) {
+       static_assert(std::is_same_v<Type, float> || std::is_same_v<Type, int> || std::is_same_v<Type, bool>,
+                    "EmptyParamSource can only be attached to CachedValue<float>, CachedValue<int> or CachedValue<bool>");
+}
     void detachFromCurrentValue() {}
-
     String getName() const { return {}; }
 };
 // Static assertions to verify our types satisfy the concept
-static_assert(ParameterSourceConcept<JuceParamSource>);
+static_assert(ParameterSourceConcept<EmptyParamSource>);
 
 
 // TODO ChoiceParameterDef
@@ -96,6 +97,13 @@ struct ParameterDef {
     String units = {};
     std::function<String(Type)> valueToStringFunction = {};
     std::function<Type(const String&)> stringToValueFunction = {};
+
+    NormalisableRange<float> getFloatValueRange() const {
+        return {static_cast<float>(valueRange.start),
+                static_cast<float>(valueRange.end),
+                static_cast<float>(valueRange.interval),
+                valueRange.skew};
+    }
 
     String toString() const {
         // output definition to string for output/debugging
@@ -128,6 +136,12 @@ struct ParameterDef<E> {
         return E(str.toStdString());
     };
 
+    NormalisableRange<float> getFloatValueRange() const {
+        return {static_cast<float>(valueRange.start),
+                static_cast<float>(valueRange.end),
+                static_cast<float>(valueRange.interval)};
+    }
+
     // Keep the existing toString() method
     String toString() const {
         String s = paramID + ": " + description;
@@ -147,8 +161,11 @@ struct ParameterDef<E> {
 //==============================================================================
 // Value with definition, CachedValue and optionally a parameter source
 //==============================================================================
-template <typename Type, ParameterSourceConcept Source = TracktionParamSource>
+template <typename T, ParameterSourceConcept Source = TracktionParamSource>
 struct ValueWithSource {
+    using Type = T;
+    using ValueType = std::conditional_t<std::is_same_v<Type, float>, float, int>;
+
     explicit ValueWithSource(const ParameterDef<Type>& def)
         : definition(def)
     {}
@@ -193,7 +210,7 @@ struct ValueWithSource {
     bool isSourceAttached() const { return source.has_value(); }
 
     ParameterDef<Type> definition;
-    CachedValue<Type> value;
+    CachedValue<ValueType> value;
     // If no source is attached, ValueWithSource instance still can be used as a static parameter
     std::optional<Source> source;
 

@@ -4,6 +4,7 @@
 #include "../util/convert.h"
 #include "../util/enumchoice.h"
 #include "Parameters.h"
+#include "juce_gui_basics/juce_gui_basics.h"
 
 
 using namespace juce;
@@ -28,34 +29,17 @@ private:
 
 
 //==============================================================================
-class SliderAutoParamAttachment : private te::AutomatableParameter::Listener {
+class AutoParamAttachment : private te::AutomatableParameter::Listener {
 public:
-    template <typename Type>
-    SliderAutoParamAttachment(Slider& s, ValueWithSource<Type>& value)
-        : SliderAutoParamAttachment(s, value.source->parameter)
-    {}
-
-    SliderAutoParamAttachment(Slider& s, te::AutomatableParameter::Ptr p)
-        : slider(s)
-        , param(std::move(p))
+    AutoParamAttachment(te::AutomatableParameter::Ptr p)
+        : param(std::move(p))
     {
-        if (param == nullptr) {
-            return;
+        if (param != nullptr) {
+            param->addListener(this);
         }
-
-        slider.onValueChange = [this] {
-            juce::ScopedValueSetter<bool> svs(updatingSlider, true);
-            param->setParameter((float)slider.getValue(), juce::sendNotification);
-        };
-        slider.onDragStart = [&]{ param->parameterChangeGestureBegin(); };
-        slider.onDragEnd   = [&]{ param->parameterChangeGestureEnd(); };
-
-        slider.setValue((double)param->getCurrentValue(), juce::dontSendNotification);
-
-        param->addListener(this);
     }
 
-    ~SliderAutoParamAttachment() override {
+    ~AutoParamAttachment() override {
         if (isAttached()) {
             param->removeListener(this);
         }
@@ -65,35 +49,101 @@ public:
         return param != nullptr;
     }
 
+protected:
+    void curveHasChanged(te::AutomatableParameter&) override {}
+
+    te::AutomatableParameter::Ptr param;
+};
+
+//==============================================================================
+class SliderAutoParamAttachment : public AutoParamAttachment {
+public:
+    template <typename Type>
+    SliderAutoParamAttachment(Slider& s, ValueWithSource<Type>& value)
+        : SliderAutoParamAttachment(s, value.isSourceAttached() ? value.source->parameter : nullptr)
+    {}
+
+    SliderAutoParamAttachment(Slider& s, te::AutomatableParameter::Ptr p)
+        : AutoParamAttachment(std::move(p))
+        , slider(s)
+    {
+        if (param == nullptr) {
+            return;
+        }
+
+        slider.onValueChange = [this] {
+            juce::ScopedValueSetter<bool> svs(updating, true);
+            param->setParameter((float)slider.getValue(), juce::sendNotification);
+        };
+        slider.onDragStart = [&]{ param->parameterChangeGestureBegin(); };
+        slider.onDragEnd   = [&]{ param->parameterChangeGestureEnd(); };
+
+        slider.setValue((double)param->getCurrentValue(), juce::dontSendNotification);
+    }
+
 private:
     // called from MessageThread (see AsyncCaller)
     void currentValueChanged(te::AutomatableParameter& p) override {
-        if (updatingSlider)
+        if (updating)
             return;  // don't update the parameter if we're already updating it
         slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
     }
 
-    void curveHasChanged(te::AutomatableParameter&) override {}
-
     Slider& slider;
-    te::AutomatableParameter::Ptr param;
-    bool updatingSlider { false };
-    // bool updatingFromParam { false };
+    bool updating { false };
 };
 
-//==============================================================================
-template <typename Type>
-class SliderValueAttachment {
-public:
-    SliderValueAttachment(Slider& slider, ValueWithSource<Type>& value)
-        // : slider(s)
-    {
-        slider.getValueObject().referTo(value.getPropertyAsValue());
-    }
+// //==============================================================================
+// class ButtonAutoParamAttachment : public AutoParamAttachment {
+// public:
+//     template <typename Type>
+//     ButtonAutoParamAttachment(TextButton& b, ValueWithSource<Type>& value)
+//         : SliderAutoParamAttachment(b, value.isSourceAttached() ? value.source->parameter : nullptr)
+//     {}
 
-private:
-    // Slider& slider;
-};
+//     ButtonAutoParamAttachment(TextButton& b, te::AutomatableParameter::Ptr p)
+//         : AutoParamAttachment(std::move(p))
+//         , button(b)
+//     {
+//         if (param == nullptr) {
+//             return;
+//         }
+
+//         button.onValueChange = [this] {
+//             juce::ScopedValueSetter<bool> svs(updatingSlider, true);
+//             param->setParameter((float)slider.getValue(), juce::sendNotification);
+//         };
+//         slider.onDragStart = [&]{ param->parameterChangeGestureBegin(); };
+//         slider.onDragEnd   = [&]{ param->parameterChangeGestureEnd(); };
+
+//         slider.setValue((double)param->getCurrentValue(), juce::dontSendNotification);
+//     }
+
+// private:
+//     // called from MessageThread (see AsyncCaller)
+//     void currentValueChanged(te::AutomatableParameter& p) override {
+//         if (updatingSlider)
+//             return;  // don't update the parameter if we're already updating it
+//         slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
+//     }
+
+//     TextButton& button;
+//     bool updatingSlider { false };
+// };
+
+// //==============================================================================
+// template <typename Type>
+// class SliderValueAttachment {
+// public:
+//     SliderValueAttachment(Slider& slider, ValueWithSource<Type>& value)
+//         // : slider(s)
+//     {
+//         slider.getValueObject().referTo(value.getPropertyAsValue());
+//     }
+
+// private:
+//     // Slider& slider;
+// };
 
 
 //==============================================================================

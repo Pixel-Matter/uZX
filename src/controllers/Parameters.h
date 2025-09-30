@@ -12,7 +12,7 @@ namespace MoTool {
 // C++20 concept for parameter sources
 template<typename T>
 concept ParameterSourceConcept = requires(T& t) {
-    { t.getValue() } -> std::convertible_to<float>;
+    { t.getCurrentValue() } -> std::convertible_to<float>;
     { t.attachToCurrentValue(std::declval<juce::CachedValue<float>&>()) } -> std::same_as<void>;
     { t.detachFromCurrentValue() } -> std::same_as<void>;
     { t.getName() } -> std::convertible_to<juce::String>;
@@ -37,7 +37,7 @@ struct TracktionParamSource {
         detachFromCurrentValue();
     }
 
-    float getValue() const {
+    float getCurrentValue() const {
         jassert(parameter != nullptr);
         return parameter->getCurrentValue();
     }
@@ -67,7 +67,7 @@ static_assert(ParameterSourceConcept<TracktionParamSource>);
 
 //==============================================================================
 struct EmptyParamSource {
-    float getValue() const { return 0.0; }
+    float getCurrentValue() const { return 0.0; }
 
     template <typename Type>
     void attachToCurrentValue(juce::CachedValue<Type>&) {
@@ -80,8 +80,6 @@ struct EmptyParamSource {
 // Static assertions to verify our types satisfy the concept
 static_assert(ParameterSourceConcept<EmptyParamSource>);
 
-
-// TODO ChoiceParameterDef
 
 //==============================================================================
 // Parameter definition
@@ -101,8 +99,7 @@ struct ParameterDef {
     NormalisableRange<float> getFloatValueRange() const {
         return {static_cast<float>(valueRange.start),
                 static_cast<float>(valueRange.end),
-                static_cast<float>(valueRange.interval),
-                valueRange.skew};
+                static_cast<float>(valueRange.interval)};
     }
 
     String toString() const {
@@ -130,9 +127,13 @@ struct ParameterDef<E> {
     String units = {};
 
     // Auto-initialized label conversion functions
-    std::function<String(E)> valueToStringFunction = [](E value) { return String(std::string(value.getLabel())); };
+    std::function<String(E)> valueToStringFunction = [](E value) {
+        // DBG("valueToStringFunction called for enum with value " << static_cast<int>(value));
+        return String(std::string(value.getLabel()));
+    };
 
     std::function<E(const String&)> stringToValueFunction = [](const String& str) {
+        // DBG("stringToValueFunction called for enum with string " << str);
         return E(str.toStdString());
     };
 
@@ -141,6 +142,8 @@ struct ParameterDef<E> {
                 static_cast<float>(valueRange.end),
                 static_cast<float>(valueRange.interval)};
     }
+
+    // TODO handle serialization of EnumChoice separately
 
     // Keep the existing toString() method
     String toString() const {
@@ -161,10 +164,19 @@ struct ParameterDef<E> {
 //==============================================================================
 // Value with definition, CachedValue and optionally a parameter source
 //==============================================================================
+// TODO rename to ParameterValue
 template <typename T, ParameterSourceConcept Source = TracktionParamSource>
 struct ValueWithSource {
     using Type = T;
-    using ValueType = std::conditional_t<std::is_same_v<Type, float>, float, int>;
+    using ValueType = std::conditional_t<
+        std::is_same_v<Type, float>,
+        float,
+        std::conditional_t<
+            std::is_same_v<Type, bool>,
+            bool,
+            int  // default to int for other types (including EnumChoice)
+        >
+    >;
 
     explicit ValueWithSource(const ParameterDef<Type>& def)
         : definition(def)
@@ -173,7 +185,6 @@ struct ValueWithSource {
     ValueWithSource(ValueWithSource&&) = default;
     ValueWithSource& operator= (ValueWithSource&&) = default;
 
-    // TODO variadic args passthru to ParameterDef<Type> ctor
     ValueWithSource(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
         : definition(def)
         , value(state, def.propertyName, undoMgr, def.defaultValue)
@@ -201,7 +212,7 @@ struct ValueWithSource {
 
     Type getCurrentValue() const {
         if (isSourceAttached()) {
-            return static_cast<Type>(source->getValue());
+            return static_cast<Type>(source->getCurrentValue());
         } else {
             return value.get();
         }
@@ -210,7 +221,12 @@ struct ValueWithSource {
     bool isSourceAttached() const { return source.has_value(); }
 
     ParameterDef<Type> definition;
+
+    // TODO If used for EnumChoice<Type>
+    // EnumChoice<Type> value is for serialization, uses strings in ValueTree
+    // EnumChoice<ValueType> value is for sync with AutomatableParameter, uses int in ValueTree
     CachedValue<ValueType> value;
+
     // If no source is attached, ValueWithSource instance still can be used as a static parameter
     std::optional<Source> source;
 
@@ -219,13 +235,12 @@ private:
 };
 
 //==============================================================================
-// CRTP base class for parameter widgets in plugins
+// CRTP base class for parameter structs in plugins
 template <typename Derived>
 class ParamsBase {
 public:
-    // static_assert(std::is_base_of<ParamsBase, Derived>::value, "Derived must inherit from ParamsBase");
-
     void referTo(ValueTree& v, UndoManager* um) {
+        static_assert(std::is_base_of<ParamsBase, Derived>::value, "Derived must inherit from ParamsBase");
         static_cast<Derived*>(this)->visit([&v, um] (auto& value) { value.referTo(v, um); });
     }
 

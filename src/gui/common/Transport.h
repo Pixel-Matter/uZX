@@ -2,12 +2,12 @@
 
 #include <JuceHeader.h>
 
-#include "../../controllers/ParamAttachments.h"
 #include "../../controllers/EditState.h"
-
 #include "../../models/Timecode.h"
-#include "LookAndFeel.h"
 #include "../../utils/StringLiterals.h"
+
+#include "ParamAttachments.h"
+#include "LookAndFeel.h"
 
 namespace MoTool {
 

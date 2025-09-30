@@ -41,6 +41,13 @@ concept EnumChoiceConcept = requires {
     };
 };
 
+template<typename T>
+struct is_enum_choice : std::false_type {};
+
+template<typename E>
+    requires EnumChoiceConcept<E>
+struct is_enum_choice<E> : std::true_type {};
+
 //==============================================================================
 // Base class for enumerated choices
 template <class E>

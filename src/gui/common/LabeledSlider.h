@@ -1,8 +1,10 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "../../controllers/ParamAttachments.h"
 #include "../../controllers/Parameters.h"
+
+#include "ParamAttachments.h"
+#include "MouseListener.h"
 #include "MidiParameterMapping.h"
 
 namespace MoTool {
@@ -15,63 +17,32 @@ class LabeledSlider : public Component,
 public:
     template <typename Type = float>
     LabeledSlider(ValueWithSource<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : attachment(slider, value)
-        , midiMapping(value.source ? value.source->parameter : nullptr)
+        : LabeledSlider(
+            value.source ? value.source->parameter : nullptr,
+            value.definition.shortLabel, value.definition.description,
+            static_cast<float>(value.getCurrentValue()),
+            value.definition.getFloatValueRange(),
+            value.definition.units, (std::is_same_v<Type, int> ? 0 : 2),
+            value.definition.valueToStringFunction,
+            value.definition.stringToValueFunction,
+            style
+        )
     {
         // Debug assertion - this should not happen in a properly initialized plugin
         if (!value.source || !value.source->parameter) {
             DBG("Warning: LabeledSlider created with null parameter source for " + value.definition.paramID);
         }
-
-        const auto& def = value.definition;
-
-        slider.setRange(static_cast<double>(def.valueRange.start), static_cast<double>(def.valueRange.end), static_cast<double>(def.valueRange.interval));
-        slider.setSkewFactor(static_cast<double>(def.valueRange.skew));
-        slider.setValue(static_cast<double>(value.getCurrentValue()), dontSendNotification);
-
-        slider.setSliderStyle(style);
-        slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-        slider.setTooltip(def.description);
-        slider.setPopupDisplayEnabled(true, true, nullptr);
-
-        if (def.valueToStringFunction) {
-            slider.textFromValueFunction = [def](double v) {
-                return def.valueToStringFunction(static_cast<Type>(v));
-            };
-        };
-        if (def.stringToValueFunction) {
-            slider.valueFromTextFunction = [def](const String& str) {
-                return static_cast<double>(def.stringToValueFunction(str));
-            };
-        };
-
-        if constexpr (std::is_same_v<Type, int>)
-            slider.setNumDecimalPlacesToDisplay(0);
-        else
-            slider.setNumDecimalPlacesToDisplay(2);
-
-        if (def.units.isNotEmpty()) {
-            slider.setTextValueSuffix(def.units);
-        }
-
-        // Disable default popup menu and add custom mouse listener for right-click
-        slider.setPopupMenuEnabled(false);
-        slider.addMouseListener(&mouseListener, false);
-
-        // TODO refactor to attachment
-        mouseListener.setRmbCallback([this]() {
-            midiMapping.showMappingMenu();
-        });
-
-        midiMapping.addChangeListener(this);
-
-        label.setText(def.shortLabel, dontSendNotification);
-        label.setJustificationType(Justification::centred);
-        label.setFont(label.getFont().withPointHeight((float) labelHeight));
-
-        addAndMakeVisible(slider);
-        addAndMakeVisible(label);
     }
+
+    LabeledSlider(
+        te::AutomatableParameter::Ptr param,
+        const String& shortLabel, const String& description,
+        float initial, NormalisableRange<float> floatRange,
+        const String& units, int numDecimalPlaces,
+        std::function<String (double)> textFromValueFunction,
+        std::function<double (const String&)> valueFromTextFunction,
+        Slider::SliderStyle style
+    );
 
     Slider& getSlider() { return slider; }
     Label& getLabel() { return label; }
@@ -95,7 +66,7 @@ private:
     Label label;
 
     SliderAutoParamAttachment attachment;
-    // TODO refactor to SliderAutoParamAttachment
+    // TODO refactor to somewhere who owns AutomatableParameter attachment
     MidiParameterMapping midiMapping;
     MouseListenerWithCallback mouseListener;
 

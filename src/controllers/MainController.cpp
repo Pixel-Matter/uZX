@@ -35,7 +35,10 @@ BaseController::BaseController()
         std::make_unique<ExtUIBehaviour>(),
         std::make_unique<ExtEngineBehaviour>()
     }
-{}
+{
+    // Workaround for JUCE CoreAudio buffer overflow bug at low sample rates
+    ensureMinimumSampleRate();
+}
 
 void BaseController::initialize() {
     engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
@@ -87,6 +90,31 @@ BaseController::~BaseController() {
     }
 
     engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
+}
+
+
+void BaseController::ensureMinimumSampleRate() {
+    constexpr double MIN_SAMPLE_RATE = 44100.0;
+
+    auto& deviceManager = engine_.getDeviceManager().deviceManager;
+    auto* currentDevice = deviceManager.getCurrentAudioDevice();
+
+    bool audioOk = false;
+
+    if (currentDevice != nullptr) {
+        auto currentSampleRate = currentDevice->getCurrentSampleRate();
+        if (currentSampleRate < MIN_SAMPLE_RATE) {
+            DBG("WARNING: Sample rate " << currentSampleRate << " Hz is below minimum " << MIN_SAMPLE_RATE << " Hz");
+            deviceManager.closeAudioDevice();
+        } else {
+            audioOk = true;
+        }
+    }
+    if (!audioOk) {
+        MessageManager::callAsync([] {
+            te::AppFunctions::showSettingsScreen();
+        });
+    }
 }
 
 te::Edit* BaseController::getEdit() {
@@ -619,7 +647,5 @@ void MainController::createTracksAndAssignInputs() {
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
 }
-
-
 
 }  // namespace MoTool

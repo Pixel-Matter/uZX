@@ -36,6 +36,7 @@ protected:
     virtual void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) = 0;
     virtual void devicesChanged();
     void handlePluginManager();
+    void ensureMinimumSampleRate();
 
     te::Engine engine_;
     ApplicationCommandManager commandManager_;

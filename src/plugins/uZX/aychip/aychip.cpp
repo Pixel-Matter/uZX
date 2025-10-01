@@ -58,7 +58,17 @@ auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {
     ClockRate_ = clock;
     Type_ = type;
     auto result = ayumi_configure(&Ayumi_, type, clock, sampleRate);
-    jassert(result == 1);
+    if (result != 1) {
+        std::cerr << "ayumi_configure with sample rate " << sampleRate
+                  << " and clock rate " << clock
+                  << " failed with code " << result
+                  << std::endl;
+        jassertfalse;  // configuration failed
+    } else {
+        // std::cerr << "ayumi_configure with sample rate " << sampleRate
+        //           << " and clock rate " << clock
+        //           << " succeeded" << std::endl;
+    }
     ignoreUnused(result);
     for (int i = 0; i < TONE_CHANNELS; ++i) {
         setChannelPan(i, Pan_[i]);

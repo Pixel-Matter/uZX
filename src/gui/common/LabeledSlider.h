@@ -18,9 +18,9 @@ public:
     template <typename Type = float>
     LabeledSlider(ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
         : LabeledSlider(
-            value.source ? value.source->parameter : nullptr,
+            value.getAutomatableParameter(),
             value.definition.shortLabel, value.definition.description,
-            static_cast<float>(value.getCurrentValue()),
+            static_cast<float>(value.getStoredValue()),
             value.definition.getFloatValueRange(),
             value.definition.units, (std::is_same_v<Type, int> ? 0 : 2),
             value.definition.valueToStringFunction,
@@ -29,7 +29,7 @@ public:
         )
     {
         // Debug assertion - this should not happen in a properly initialized plugin
-        if (!value.source || !value.source->parameter) {
+        if (value.getAutomatableParameter() == nullptr) {
             DBG("Warning: LabeledSlider created with null parameter source for " + value.definition.paramID);
         }
     }

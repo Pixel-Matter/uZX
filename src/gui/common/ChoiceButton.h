@@ -17,10 +17,10 @@ public:
     template <Util::EnumChoiceConcept Type>
     ChoiceButton(ParameterValue<Type>& value)
         : attachment(slider, value)
-        , midiMapping(value.source ? value.source->parameter : nullptr)
+        , midiMapping(value.getAutomatableParameter())
     {
         // Debug assertion - this should not happen in a properly initialized plugin
-        if (!value.source || !value.source->parameter) {
+        if (value.getAutomatableParameter() == nullptr) {
             DBG("Warning: LabeledSlider created with null parameter source for " + value.definition.paramID);
         }
 
@@ -28,7 +28,7 @@ public:
 
         slider.setRange(static_cast<double>(def.valueRange.start), static_cast<double>(def.valueRange.end), static_cast<double>(def.valueRange.interval));
         slider.setSkewFactor(static_cast<double>(def.valueRange.skew));
-        slider.setValue(static_cast<double>(value.getCurrentValue()), dontSendNotification);
+        slider.setValue(static_cast<double>(value.getStoredValue()), dontSendNotification);
 
         slider.setSliderStyle(style);
         slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);

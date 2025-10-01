@@ -39,8 +39,8 @@ AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     dynamicParams.visit([this](auto& vd) {
         auto& def = vd.definition;
         auto param = addParam(def.paramID, def.description, def.getFloatValueRange());
-        // auto param = addParam(def.paramID, def.description, def.valueRange, def.paramID);
-        vd.attachSource(te::AutomatableParameter::Ptr(param));
+        using ValueType = std::decay_t<decltype(vd)>;
+        dynamicParamBindings.emplace_back(std::make_unique<ParameterAutomationBinding<ValueType>>(vd, te::AutomatableParameter::Ptr(param)));
     });
 }
 
@@ -70,12 +70,12 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
         } else if (id == IDs::volume) {
             if (chip != nullptr) {
                 const ScopedLock sl(lock);
-                chip->setMasterVolume(dynamicParams.volume.getCurrentValue());
+                chip->setMasterVolume(dynamicParams.volume.getLiveValue());
             }
         } else if (id == IDs::stereo || id == IDs::layout) {
             if (chip != nullptr) {
                 const ScopedLock sl(lock);
-                chip->setLayoutAndStereoWidth(dynamicParams.layout.getCurrentValue(), dynamicParams.stereoWidth.getCurrentValue());
+                chip->setLayoutAndStereoWidth(dynamicParams.layout.getLiveValue(), dynamicParams.stereoWidth.getLiveValue());
             }
         } else if (id == IDs::midi) {
             if (chip != nullptr) {
@@ -115,8 +115,8 @@ void AYChipPlugin::reset() {
     } else {
         chip->reset(static_cast<int>(sampleRate), legacyParams.clock * MHz, legacyParams.chipType);
     }
-    chip->setMasterVolume(dynamicParams.volume.getCurrentValue());
-    chip->setLayoutAndStereoWidth(dynamicParams.layout.getCurrentValue(), dynamicParams.stereoWidth.getCurrentValue());
+    chip->setMasterVolume(dynamicParams.volume.getStoredValue());
+    chip->setLayoutAndStereoWidth(dynamicParams.layout.getStoredValue(), dynamicParams.stereoWidth.getStoredValue());
     // timeFromReset = 0.0;  // not used now
     midiParamsReader.reset();
     // midiRegsReader.reset();

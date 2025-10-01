@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include "ChipInstrument.h"
 #include "../midi_effects/MidiEffect.h"
@@ -59,6 +60,7 @@ public:
     float getLevel(int channel);
 
     ChipInstrumentFx instrument;
+    std::vector<std::unique_ptr<ParameterAutomationBindingBase>> parameterBindings;
 
 private:
     void valueTreeChanged() override;

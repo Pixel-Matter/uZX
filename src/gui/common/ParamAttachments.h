@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <concepts>
 #include "../../util/convert.h"
 #include "../../util/enumchoice.h"
 #include "../../controllers/Parameters.h"
@@ -9,6 +10,15 @@ using namespace juce;
 namespace te = tracktion;
 
 namespace MoTool {
+
+template <typename T>
+concept ParameterValueLike = requires(T& t) {
+    typename T::Type;
+    { t.getAutomatableParameter() };
+    { t.getStoredValue() };
+    { t.setStoredValue(typename T::Type{}) };
+    { t.getPropertyAsValue() };
+};
 
 //==============================================================================
 class AutoParamAttachment : private te::AutomatableParameter::Listener {
@@ -38,20 +48,13 @@ protected:
 };
 
 //==============================================================================
-class SliderAutoParamAttachment : public AutoParamAttachment {
+class SliderAutoParamAttachment : public AutoParamAttachment, private Value::Listener {
 public:
-    // TODO maybe pass TracktionParamSource instead of ParameterValue<Type>?
-    // template <typename Type>
-    // SliderAutoParamAttachment(Slider& s, ParameterValue<Type>& value)
-    //     : SliderAutoParamAttachment(s, value.isSourceAttached() ? value.source->parameter : nullptr)
-    // {}
-
     SliderAutoParamAttachment(Slider& s, te::AutomatableParameter::Ptr p)
         : AutoParamAttachment(std::move(p))
         , slider(s)
     {
         if (param == nullptr) {
-            // slider.getValueObject().referTo(value.value);
             return;
         }
 
@@ -69,6 +72,31 @@ public:
         slider.setValue((double)param->getCurrentValue(), juce::dontSendNotification);
     }
 
+    template <typename ParameterValueType>
+        requires ParameterValueLike<ParameterValueType>
+    SliderAutoParamAttachment(Slider& s, ParameterValueType& parameterValue)
+        : SliderAutoParamAttachment(s, parameterValue.getAutomatableParameter())
+    {
+        using StoredType = typename ParameterValueType::Type;
+
+        if (param == nullptr) {
+            listensToValue = true;
+            storedValue = parameterValue.getPropertyAsValue();
+            storedValue.addListener(this);
+
+            slider.setValue(static_cast<double>(parameterValue.getStoredValue()), dontSendNotification);
+            slider.onValueChange = [this, &parameterValue]() {
+                juce::ScopedValueSetter<bool> svs(updating, true);
+                parameterValue.setStoredValue(static_cast<StoredType>(slider.getValue()));
+            };
+        }
+    }
+
+    ~SliderAutoParamAttachment() override {
+        if (listensToValue)
+            storedValue.removeListener(this);
+    }
+
 private:
     // called from MessageThread (see AsyncCaller)
     void currentValueChanged(te::AutomatableParameter& p) override {
@@ -77,8 +105,18 @@ private:
         slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
     }
 
+    void valueChanged(Value& v) override {
+        if (updating)
+            return;
+
+        juce::ScopedValueSetter<bool> svs(updating, true);
+        slider.setValue(static_cast<double>(v.getValue()), dontSendNotification);
+    }
+
     Slider& slider;
     bool updating { false };
+    Value storedValue;
+    bool listensToValue { false };
 };
 
 // //==============================================================================

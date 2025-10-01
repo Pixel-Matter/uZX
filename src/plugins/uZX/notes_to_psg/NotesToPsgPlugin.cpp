@@ -11,7 +11,7 @@ NotesToPsgPlugin::NotesToPsgPlugin(te::PluginCreationInfo info)
 {
     staticParams.referTo(state, getUndoManager());
 
-    midiEffect.setBaseChannel(staticParams.baseMidiChannel.getCurrentValue());
+    midiEffect.setBaseChannel(static_cast<int>(staticParams.baseMidiChannel.getStoredValue()));
 }
 
 NotesToPsgPlugin::~NotesToPsgPlugin() {
@@ -61,7 +61,7 @@ void NotesToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& 
 void NotesToPsgPlugin::updateParams() {
     // first reset to clear state and to silence any hanging notes
     reset();
-    midiEffect.setBaseChannel(staticParams.baseMidiChannel.getCurrentValue());
+    midiEffect.setBaseChannel(static_cast<int>(staticParams.baseMidiChannel.getStoredValue()));
     // then reset again to init
     reset();
 }

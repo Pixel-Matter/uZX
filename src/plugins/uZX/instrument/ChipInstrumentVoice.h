@@ -106,18 +106,18 @@ public:
     void updateParams() {
         auto& params = this->midiFx.oscParams;
         ampAdsr.setParameters({
-            params.ampAttack.getCurrentValue(),
-            params.ampDecay.getCurrentValue(),
-            params.ampSustain.getCurrentValue() / 100.0f,
-            params.ampRelease.getCurrentValue()
+            params.ampAttack.getLiveValue(),
+            params.ampDecay.getLiveValue(),
+            params.ampSustain.getLiveValue() / 100.0f,
+            params.ampRelease.getLiveValue()
         });
         pitchAdsr.setParameters({
-            params.pitchAttack.getCurrentValue(),
-            params.pitchDecay.getCurrentValue(),
-            params.pitchSustain.getCurrentValue() / 100.0f,
-            params.pitchRelease.getCurrentValue()
+            params.pitchAttack.getLiveValue(),
+            params.pitchDecay.getLiveValue(),
+            params.pitchSustain.getLiveValue() / 100.0f,
+            params.pitchRelease.getLiveValue()
         });
-        pitchDepth = params.pitchDepth.getCurrentValue();
+        pitchDepth = params.pitchDepth.getLiveValue();
     }
 
     void renderNextStep(MidiBufferContext& c, double timeOffset) {

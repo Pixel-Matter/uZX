@@ -11,6 +11,7 @@
 #include <atomic>
 #include <array>
 #include <cstddef>
+#include <vector>
 
 namespace te = tracktion;
 
@@ -92,6 +93,7 @@ public:
     };
 
     DynamicParams dynamicParams;
+    std::vector<std::unique_ptr<ParameterAutomationBindingBase>> dynamicParamBindings;
 
     // legacy
     struct Params {

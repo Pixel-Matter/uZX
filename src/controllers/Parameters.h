@@ -1,85 +1,13 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include <concepts>
-#include <optional>
 #include "../util/enumchoice.h"
+
+#include <memory>
+#include <vector>
 
 
 namespace MoTool {
-
-//==============================================================================
-// C++20 concept for parameter sources
-template<typename T>
-concept ParameterSourceConcept = requires(T& t) {
-    { t.getCurrentValue() } -> std::convertible_to<float>;
-    { t.attachToCurrentValue(std::declval<juce::CachedValue<float>&>()) } -> std::same_as<void>;
-    { t.detachFromCurrentValue() } -> std::same_as<void>;
-    { t.getName() } -> std::convertible_to<juce::String>;
-};
-
-//==============================================================================
-// Template-based parameter sources - zero runtime overhead
-//==============================================================================
-struct TracktionParamSource {
-    tracktion::AutomatableParameter::Ptr parameter;
-
-    TracktionParamSource(tracktion::AutomatableParameter::Ptr p) : parameter(std::move(p)) {}
-
-    // Rule of Five: make it move-only
-    TracktionParamSource(const TracktionParamSource&) = delete;
-    TracktionParamSource& operator=(const TracktionParamSource&) = delete;
-
-    TracktionParamSource(TracktionParamSource&&) = default;
-    TracktionParamSource& operator=(TracktionParamSource&&) = default;
-
-    ~TracktionParamSource() {
-        detachFromCurrentValue();
-    }
-
-    float getCurrentValue() const {
-        jassert(parameter != nullptr);
-        return parameter->getCurrentValue();
-    }
-
-    template <typename Type>
-    void attachToCurrentValue(CachedValue<Type>& v) {
-        static_assert(std::is_same_v<Type, float> || std::is_same_v<Type, int> || std::is_same_v<Type, bool>,
-                      "TracktionParamSource can only be attached to CachedValue<float>, CachedValue<int> or CachedValue<bool>");
-        jassert(parameter != nullptr);
-        parameter->attachToCurrentValue(v);
-    }
-
-    void detachFromCurrentValue() {
-        if (parameter != nullptr) {
-            parameter->detachFromCurrentValue();
-        }
-    }
-
-    String getName() const {
-        if (parameter != nullptr)
-            return parameter->getParameterName();
-        return juce::String();
-    }
-};
-// Static assertions to verify our types satisfy the concept
-static_assert(ParameterSourceConcept<TracktionParamSource>);
-
-//==============================================================================
-struct EmptyParamSource {
-    float getCurrentValue() const { return 0.0; }
-
-    template <typename Type>
-    void attachToCurrentValue(juce::CachedValue<Type>&) {
-       static_assert(std::is_same_v<Type, float> || std::is_same_v<Type, int> || std::is_same_v<Type, bool>,
-                    "EmptyParamSource can only be attached to CachedValue<float>, CachedValue<int> or CachedValue<bool>");
-}
-    void detachFromCurrentValue() {}
-    String getName() const { return {}; }
-};
-// Static assertions to verify our types satisfy the concept
-static_assert(ParameterSourceConcept<EmptyParamSource>);
-
 
 //==============================================================================
 // Parameter definition
@@ -162,9 +90,9 @@ struct ParameterDef<E> {
 };
 
 //==============================================================================
-// Value with definition, CachedValue and optionally a parameter source
+// Value with definition, CachedValue and optional AutomatableParameter binding
 //==============================================================================
-template <typename T, ParameterSourceConcept Source = TracktionParamSource>
+template <typename T>
 struct ParameterValue {
     using Type = T;
     using ValueType = std::conditional_t<
@@ -176,6 +104,32 @@ struct ParameterValue {
             int  // default to int for other types (including EnumChoice)
         >
     >;
+
+    struct LiveAccessor {
+        using Reader = Type(*)(void*);
+
+        void set(Reader r, void* ctx) {
+            reader = r;
+            context = ctx;
+        }
+
+        void reset() {
+            reader = nullptr;
+            context = nullptr;
+        }
+
+        auto hasReader() const -> bool { return reader != nullptr; }
+
+        auto readOr(const Type& fallback) const -> Type {
+            if (reader != nullptr)
+                return reader(context);
+            return fallback;
+        }
+
+    private:
+        Reader reader { nullptr };
+        void* context { nullptr };
+    };
 
     explicit ParameterValue(const ParameterDef<Type>& def)
         : definition(def)
@@ -197,27 +151,51 @@ struct ParameterValue {
         value.referTo(v, definition.propertyName, um, definition.defaultValue);
     }
 
-    void attachSource(Source&& s) {
-        source = std::move(s);
-        source->attachToCurrentValue(value);
+    void attachSource(tracktion::AutomatableParameter::Ptr paramPtr) {
+        detachSource();
+        automatableParameter = std::move(paramPtr);
+        if (automatableParameter != nullptr) {
+            automatableParameter->attachToCurrentValue(value);
+            liveAccessor.set([](void* ctx) -> Type {
+                auto* param = static_cast<tracktion::AutomatableParameter*>(ctx);
+                jassert(param != nullptr);
+                if (param == nullptr)
+                    return {};
+                auto liveValue = static_cast<ValueType>(param->getCurrentValue());
+                return static_cast<Type>(liveValue);
+            }, automatableParameter.get());
+        }
     }
 
     void detachSource() {
-        if (isSourceAttached()) {
-            source->detachFromCurrentValue();
+        if (automatableParameter != nullptr) {
+            automatableParameter->detachFromCurrentValue();
+            automatableParameter.reset();
         }
-        source.reset();
+        liveAccessor.reset();
     }
 
-    Type getCurrentValue() const {
-        if (isSourceAttached()) {
-            return static_cast<Type>(source->getCurrentValue());
-        } else {
-            return value.get();
-        }
+    Type getStoredValue() const {
+        return static_cast<Type>(value.get());
     }
 
-    bool isSourceAttached() const { return source.has_value(); }
+    Type getLiveValue() const {
+        return liveAccessor.readOr(getStoredValue());
+    }
+
+    bool hasLiveReader() const { return liveAccessor.hasReader(); }
+
+    void setStoredValue(Type newValue) {
+        value = static_cast<ValueType>(newValue);
+    }
+
+    juce::Value getPropertyAsValue() { return value.getPropertyAsValue(); }
+
+    Type getCurrentValue() const { return getLiveValue(); }
+
+    bool isSourceAttached() const { return automatableParameter != nullptr; }
+
+    tracktion::AutomatableParameter* getAutomatableParameter() const { return automatableParameter.get(); }
 
     ParameterDef<Type> definition;
 
@@ -227,10 +205,32 @@ struct ParameterValue {
     CachedValue<ValueType> value;
 
     // If no source is attached, ParameterValue instance still can be used as a static parameter
-    std::optional<Source> source;
+    tracktion::AutomatableParameter::Ptr automatableParameter;
+    LiveAccessor liveAccessor;
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterValue)
+};
+
+struct ParameterAutomationBindingBase {
+    virtual ~ParameterAutomationBindingBase() = default;
+};
+
+template <typename ParameterValueType>
+struct ParameterAutomationBinding : ParameterAutomationBindingBase {
+    ParameterAutomationBinding(ParameterValueType& v, tracktion::AutomatableParameter::Ptr param)
+        : value(v)
+        , parameter(std::move(param))
+    {
+        value.attachSource(parameter);
+    }
+
+    ~ParameterAutomationBinding() override {
+        value.detachSource();
+    }
+
+    ParameterValueType& value;
+    tracktion::AutomatableParameter::Ptr parameter;
 };
 
 //==============================================================================

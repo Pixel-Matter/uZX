@@ -40,9 +40,9 @@ protected:
 //==============================================================================
 class SliderAutoParamAttachment : public AutoParamAttachment {
 public:
-    // TODO maybe pass TracktionParamSource instead of ValueWithSource<Type>?
+    // TODO maybe pass TracktionParamSource instead of ParameterValue<Type>?
     // template <typename Type>
-    // SliderAutoParamAttachment(Slider& s, ValueWithSource<Type>& value)
+    // SliderAutoParamAttachment(Slider& s, ParameterValue<Type>& value)
     //     : SliderAutoParamAttachment(s, value.isSourceAttached() ? value.source->parameter : nullptr)
     // {}
 
@@ -85,7 +85,7 @@ private:
 // class SliderValueAttachment {
 // public:
 //     template <typename Type>
-//     SliderValueAttachment(Slider& slider, ValueWithSource<Type>& value)
+//     SliderValueAttachment(Slider& slider, ParameterValue<Type>& value)
 //         : slider(s)
 //     {
 //         slider.getValueObject().referTo(value.getPropertyAsValue());
@@ -99,7 +99,7 @@ private:
 // class ButtonAutoParamAttachment : public AutoParamAttachment {
 // public:
 //     template <Util::EnumChoiceConcept Type>
-//     ButtonAutoParamAttachment(TextButton& b, ValueWithSource<Type>& value)
+//     ButtonAutoParamAttachment(TextButton& b, ParameterValue<Type>& value)
 //         : ButtonAutoParamAttachment(b, value.isSourceAttached() ? value.source->parameter : nullptr)
 //     {}
 

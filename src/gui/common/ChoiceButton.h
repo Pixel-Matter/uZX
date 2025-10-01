@@ -15,7 +15,7 @@ class ChoiceButton : public TextButton,
 {
 public:
     template <Util::EnumChoiceConcept Type>
-    ChoiceButton(ValueWithSource<Type>& value)
+    ChoiceButton(ParameterValue<Type>& value)
         : attachment(slider, value)
         , midiMapping(value.source ? value.source->parameter : nullptr)
     {

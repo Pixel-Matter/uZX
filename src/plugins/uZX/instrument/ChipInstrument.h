@@ -57,16 +57,16 @@ public:
         // AY env shape, retrigger
         // unison voices, detune
 
-        ValueWithSource<float> ampAttack    {{"ampAttack",   IDs::ampAttack,   "A", "Amp Attack Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
-        ValueWithSource<float> ampDecay     {{"ampDecay",    IDs::ampDecay,    "D", "Amp Decay Time",    0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
-        ValueWithSource<float> ampSustain   {{"ampSustain",  IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}};
-        ValueWithSource<float> ampRelease   {{"ampRelease",  IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
-     // ValueWithSource<float> ampVelocity  {{"ampVelocity", IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}};
-        ValueWithSource<float> pitchAttack  {{"pitchAttack", IDs::pitchAttack, "A", "Pitch Attack Time",  0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
-        ValueWithSource<float> pitchDecay   {{"pitchDecay",  IDs::pitchDecay,  "D", "Pitch Decay Time",   0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
-        ValueWithSource<float> pitchSustain {{"pitchSustain",IDs::pitchSustain,"S", "Pitch Sustain Level",0.0f,  {0.0f, 100.0f}, "%"}};
-        ValueWithSource<float> pitchRelease {{"pitchRelease",IDs::pitchRelease,"R", "Pitch Release Time", 0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
-        ValueWithSource<float> pitchDepth   {{"pitchDepth",  IDs::pitchDepth,  "Depth", "Pitch Depth",    0.0f,  {-48.0f, 48.0f}, "st"}};
+        ParameterValue<float> ampAttack    {{"ampAttack",   IDs::ampAttack,   "A", "Amp Attack Time",   0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ParameterValue<float> ampDecay     {{"ampDecay",    IDs::ampDecay,    "D", "Amp Decay Time",    0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ParameterValue<float> ampSustain   {{"ampSustain",  IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}};
+        ParameterValue<float> ampRelease   {{"ampRelease",  IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+     // ParameterValue<float> ampVelocity  {{"ampVelocity", IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}};
+        ParameterValue<float> pitchAttack  {{"pitchAttack", IDs::pitchAttack, "A", "Pitch Attack Time",  0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ParameterValue<float> pitchDecay   {{"pitchDecay",  IDs::pitchDecay,  "D", "Pitch Decay Time",   0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ParameterValue<float> pitchSustain {{"pitchSustain",IDs::pitchSustain,"S", "Pitch Sustain Level",0.0f,  {0.0f, 100.0f}, "%"}};
+        ParameterValue<float> pitchRelease {{"pitchRelease",IDs::pitchRelease,"R", "Pitch Release Time", 0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
+        ParameterValue<float> pitchDepth   {{"pitchDepth",  IDs::pitchDepth,  "Depth", "Pitch Depth",    0.0f,  {-48.0f, 48.0f}, "st"}};
 
         template<typename Visitor>
         void visit(Visitor&& visitor) {

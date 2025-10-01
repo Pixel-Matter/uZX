@@ -164,9 +164,8 @@ struct ParameterDef<E> {
 //==============================================================================
 // Value with definition, CachedValue and optionally a parameter source
 //==============================================================================
-// TODO rename to ParameterValue
 template <typename T, ParameterSourceConcept Source = TracktionParamSource>
-struct ValueWithSource {
+struct ParameterValue {
     using Type = T;
     using ValueType = std::conditional_t<
         std::is_same_v<Type, float>,
@@ -178,19 +177,19 @@ struct ValueWithSource {
         >
     >;
 
-    explicit ValueWithSource(const ParameterDef<Type>& def)
+    explicit ParameterValue(const ParameterDef<Type>& def)
         : definition(def)
     {}
 
-    ValueWithSource(ValueWithSource&&) = default;
-    ValueWithSource& operator= (ValueWithSource&&) = default;
+    ParameterValue(ParameterValue&&) = default;
+    ParameterValue& operator= (ParameterValue&&) = default;
 
-    ValueWithSource(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
+    ParameterValue(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
         : definition(def)
         , value(state, def.propertyName, undoMgr, def.defaultValue)
     {}
 
-    ~ValueWithSource() {
+    ~ParameterValue() {
         detachSource();
     }
 
@@ -227,11 +226,11 @@ struct ValueWithSource {
     // EnumChoice<ValueType> value is for sync with AutomatableParameter, uses int in ValueTree
     CachedValue<ValueType> value;
 
-    // If no source is attached, ValueWithSource instance still can be used as a static parameter
+    // If no source is attached, ParameterValue instance still can be used as a static parameter
     std::optional<Source> source;
 
 private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ValueWithSource)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterValue)
 };
 
 //==============================================================================
@@ -257,8 +256,8 @@ public:
         visitor(anotherParam);
     }
 
-    ValueWithSource<float> someParam;
-    ValueWithSource<float> anotherParam;
+    ParameterValue<float> someParam;
+    ParameterValue<float> anotherParam;
     */
 };
 

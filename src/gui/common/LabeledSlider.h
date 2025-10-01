@@ -16,7 +16,7 @@ class LabeledSlider : public Component,
 {
 public:
     template <typename Type = float>
-    LabeledSlider(ValueWithSource<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
+    LabeledSlider(ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
         : LabeledSlider(
             value.source ? value.source->parameter : nullptr,
             value.definition.shortLabel, value.definition.description,

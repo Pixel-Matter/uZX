@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 #include <concepts>
+#include <utility>
+#include <functional>
 #include "../../util/convert.h"
 #include "../../util/enumchoice.h"
 #include "../../controllers/Parameters.h"
@@ -14,9 +16,9 @@ namespace MoTool {
 template <typename T>
 concept ParameterValueLike = requires(T& t) {
     typename T::Type;
-    { t.getAutomatableParameter() };
+    typename ParameterStorageTraits<typename T::Type>;
     { t.getStoredValue() };
-    { t.setStoredValue(typename T::Type{}) };
+    { t.setStoredValue(std::declval<typename T::Type>()) };
     { t.getPropertyAsValue() };
 };
 
@@ -54,42 +56,28 @@ public:
         : AutoParamAttachment(std::move(p))
         , slider(s)
     {
-        if (param == nullptr) {
-            return;
-        }
+        if (param != nullptr)
+            configureAutomationCallbacks();
 
-        slider.onValueChange = [this] {
-            juce::ScopedValueSetter<bool> svs(updating, true);
-            // TODO value.setParameter((Type)slider.getValue());
-            param->setParameter((float)slider.getValue(), juce::sendNotification);
-        };
-        slider.onDragStart = [&]{
-            // TODO value.changeGestureBegin();
-            param->parameterChangeGestureBegin();
-        };
-        slider.onDragEnd   = [&]{ param->parameterChangeGestureEnd(); };
-
-        slider.setValue((double)param->getCurrentValue(), juce::dontSendNotification);
+        configureSliderHandlers();
     }
+
+    SliderAutoParamAttachment(Slider& s, te::AutomatableParameter& p)
+        : SliderAutoParamAttachment(s, te::AutomatableParameter::Ptr(&p))
+    {}
 
     template <typename ParameterValueType>
         requires ParameterValueLike<ParameterValueType>
-    SliderAutoParamAttachment(Slider& s, ParameterValueType& parameterValue)
-        : SliderAutoParamAttachment(s, parameterValue.getAutomatableParameter())
+    SliderAutoParamAttachment(Slider& s, ParameterValueType& parameterValue, te::AutomatableParameter::Ptr automationParam = {})
+        : AutoParamAttachment(std::move(automationParam))
+        , slider(s)
     {
-        using StoredType = typename ParameterValueType::Type;
+        if (param != nullptr)
+            configureAutomationCallbacks();
+        else
+            configureStoredValueCallbacks(parameterValue);
 
-        if (param == nullptr) {
-            listensToValue = true;
-            storedValue = parameterValue.getPropertyAsValue();
-            storedValue.addListener(this);
-
-            slider.setValue(static_cast<double>(parameterValue.getStoredValue()), dontSendNotification);
-            slider.onValueChange = [this, &parameterValue]() {
-                juce::ScopedValueSetter<bool> svs(updating, true);
-                parameterValue.setStoredValue(static_cast<StoredType>(slider.getValue()));
-            };
-        }
+        configureSliderHandlers();
     }
 
     ~SliderAutoParamAttachment() override {
@@ -98,25 +86,85 @@ public:
     }
 
 private:
-    // called from MessageThread (see AsyncCaller)
-    void currentValueChanged(te::AutomatableParameter& p) override {
-        if (updating)
-            return;  // don't update the parameter if we're already updating it
-        slider.setValue(static_cast<double>(p.getCurrentValue()), dontSendNotification);
+    void configureAutomationCallbacks() {
+        fetchSliderValue = [this]() { return static_cast<double>(param->getCurrentValue()); };
+        applySliderValue = [this](double sliderValue) {
+            param->setParameter(static_cast<float>(sliderValue), juce::sendNotification);
+        };
+        beginGesture = [this]() { param->parameterChangeGestureBegin(); };
+        endGesture   = [this]() { param->parameterChangeGestureEnd(); };
     }
 
-    void valueChanged(Value& v) override {
-        if (updating)
+    template <typename ParameterValueType>
+    void configureStoredValueCallbacks(ParameterValueType& parameterValue) {
+        listensToValue = true;
+        storedValue = parameterValue.getPropertyAsValue();
+        storedValue.addListener(this);
+
+        fetchSliderValue = [&parameterValue]() {
+            using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
+            return static_cast<double>(LocalTraits::toSliderValue(parameterValue.getStoredValue()));
+        };
+
+        applySliderValue = [&parameterValue](double sliderValue) {
+            using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
+            parameterValue.setStoredValue(LocalTraits::fromSliderValue(sliderValue));
+        };
+    }
+
+    void configureSliderHandlers() {
+        refreshFromSource();
+
+        slider.onValueChange = [this]() {
+            if (updating || !applySliderValue)
+                return;
+
+            juce::ScopedValueSetter<bool> svs(updating, true);
+            applySliderValue(slider.getValue());
+        };
+
+        slider.onDragStart = [this]() {
+            if (beginGesture)
+                beginGesture();
+        };
+
+        slider.onDragEnd = [this]() {
+            if (endGesture)
+                endGesture();
+        };
+    }
+
+    void refreshFromSource() {
+        if (!fetchSliderValue)
             return;
 
         juce::ScopedValueSetter<bool> svs(updating, true);
-        slider.setValue(static_cast<double>(v.getValue()), dontSendNotification);
+        slider.setValue(fetchSliderValue(), dontSendNotification);
+    }
+
+    void currentValueChanged(te::AutomatableParameter&) override {
+        if (updating)
+            return;
+
+        refreshFromSource();
+    }
+
+    void valueChanged(Value&) override {
+        if (updating)
+            return;
+
+        refreshFromSource();
     }
 
     Slider& slider;
     bool updating { false };
     Value storedValue;
     bool listensToValue { false };
+
+    std::function<double()> fetchSliderValue;
+    std::function<void(double)> applySliderValue;
+    std::function<void()> beginGesture;
+    std::function<void()> endGesture;
 };
 
 // //==============================================================================

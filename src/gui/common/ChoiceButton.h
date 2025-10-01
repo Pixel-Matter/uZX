@@ -5,6 +5,7 @@
 #include "../../controllers/Parameters.h"
 #include "../../util/enumchoice.h"
 #include "MidiParameterMapping.h"
+#include "ParameterSliderHelpers.h"
 
 namespace MoTool {
 
@@ -15,47 +16,14 @@ class ChoiceButton : public TextButton,
 {
 public:
     template <Util::EnumChoiceConcept Type>
-    ChoiceButton(ParameterValue<Type>& value)
-        : attachment(slider, value)
-        , midiMapping(value.getAutomatableParameter())
+    ChoiceButton(te::Plugin& plugin, ParameterValue<Type>& value)
+        : attachment(slider, value, plugin.getAutomatableParameterByID(value.definition.paramID))
+        , midiMapping(plugin.getAutomatableParameterByID(value.definition.paramID))
     {
-        // Debug assertion - this should not happen in a properly initialized plugin
-        if (value.getAutomatableParameter() == nullptr) {
-            DBG("Warning: LabeledSlider created with null parameter source for " + value.definition.paramID);
-        }
-
         const auto& def = value.definition;
 
-        slider.setRange(static_cast<double>(def.valueRange.start), static_cast<double>(def.valueRange.end), static_cast<double>(def.valueRange.interval));
-        slider.setSkewFactor(static_cast<double>(def.valueRange.skew));
-        slider.setValue(static_cast<double>(value.getStoredValue()), dontSendNotification);
+        ParameterUIHelpers::configureSliderForParameter(slider, def, value, sliderStyle);
 
-        slider.setSliderStyle(style);
-        slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-        slider.setTooltip(def.description);
-        slider.setPopupDisplayEnabled(true, true, nullptr);
-
-        if (def.valueToStringFunction) {
-            slider.textFromValueFunction = [def](double v) {
-                return def.valueToStringFunction(static_cast<Type>(v));
-            };
-        };
-        if (def.stringToValueFunction) {
-            slider.valueFromTextFunction = [def](const String& str) {
-                return static_cast<double>(def.stringToValueFunction(str));
-            };
-        };
-
-        if constexpr (std::is_same_v<Type, int>)
-            slider.setNumDecimalPlacesToDisplay(0);
-        else
-            slider.setNumDecimalPlacesToDisplay(2);
-
-        if (def.units.isNotEmpty()) {
-            slider.setTextValueSuffix(def.units);
-        }
-
-        // Disable default popup menu and add custom mouse listener for right-click
         slider.setPopupMenuEnabled(false);
         slider.addMouseListener(&mouseListener, false);
 
@@ -99,6 +67,8 @@ private:
     // TODO refactor to SliderAutoParamAttachment
     MidiParameterMapping midiMapping;
     MouseListenerWithCallback mouseListener;
+
+    inline static constexpr Slider::SliderStyle sliderStyle = Slider::SliderStyle::LinearHorizontal;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledSlider)
 };

@@ -6,6 +6,7 @@
 #include "ParamAttachments.h"
 #include "MouseListener.h"
 #include "MidiParameterMapping.h"
+#include "ParameterSliderHelpers.h"
 
 namespace MoTool {
 
@@ -16,22 +17,29 @@ class LabeledSlider : public Component,
 {
 public:
     template <typename Type = float>
-    LabeledSlider(ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : LabeledSlider(
-            value.getAutomatableParameter(),
-            value.definition.shortLabel, value.definition.description,
-            static_cast<float>(value.getStoredValue()),
-            value.definition.getFloatValueRange(),
-            value.definition.units, (std::is_same_v<Type, int> ? 0 : 2),
-            value.definition.valueToStringFunction,
-            value.definition.stringToValueFunction,
-            style
-        )
+    LabeledSlider(te::Plugin& plugin, ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
+        : attachment(slider, value, plugin.getAutomatableParameterByID(value.definition.paramID))
+        , midiMapping(plugin.getAutomatableParameterByID(value.definition.paramID))
     {
-        // Debug assertion - this should not happen in a properly initialized plugin
-        if (value.getAutomatableParameter() == nullptr) {
-            DBG("Warning: LabeledSlider created with null parameter source for " + value.definition.paramID);
-        }
+        const auto& def = value.definition;
+
+        ParameterUIHelpers::configureSliderForParameter(slider, def, value, style);
+
+        slider.setPopupMenuEnabled(false);
+        slider.addMouseListener(&mouseListener, false);
+
+        mouseListener.setRmbCallback([this]() {
+            midiMapping.showMappingMenu();
+        });
+
+        midiMapping.addChangeListener(this);
+
+        label.setText(def.shortLabel, dontSendNotification);
+        label.setJustificationType(Justification::centred);
+        label.setFont(label.getFont().withPointHeight((float) labelHeight));
+
+        addAndMakeVisible(slider);
+        addAndMakeVisible(label);
     }
 
     LabeledSlider(

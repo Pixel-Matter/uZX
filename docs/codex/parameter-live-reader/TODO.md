@@ -14,6 +14,11 @@
 - [x] Design follow-up binding class that owns the Tracktion parameter pointer and feeds the live accessor.
 - [x] Prepare GUI attachment refactor to switch from direct `AutomatableParameter` awareness to the new binding.
 
+### Work in Progress
+- [x] Move `tracktion::AutomatableParameter::Ptr` ownership entirely into the binding layer so `ParameterValue` keeps only metadata, cached storage, and the live accessor hook.
+- [x] Introduce `ParameterStorageTraits` (float/bool/int/EnumChoice) with `toSliderValue`/`fromSliderValue` helpers to unify UI scaling without leaking type knowledge.
+- [x] Rework slider/choice attachments to use the traits and drop direct `AutomatableParameter` assertions/warnings.
+
 ---
 
 ## Context

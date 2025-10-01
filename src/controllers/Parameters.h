@@ -3,15 +3,83 @@
 #include <JuceHeader.h>
 #include "../util/enumchoice.h"
 
+#include <cmath>
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 
 namespace MoTool {
 
 //==============================================================================
+// Parameter storage traits
+//==============================================================================
+template <typename T, typename Enable = void>
+struct ParameterStorageTraits;
+
+template <typename T>
+struct ParameterStorageTraits<T, std::enable_if_t<std::is_floating_point_v<T>>> {
+    using StorageType = T;
+    using SliderValue = double;
+
+    static auto toStorage(T value) -> StorageType { return value; }
+    static auto fromStorage(StorageType value) -> T { return value; }
+
+    static auto toSliderValue(T value) -> SliderValue { return static_cast<SliderValue>(value); }
+    static auto fromSliderValue(SliderValue value) -> T { return static_cast<T>(value); }
+};
+
+template <typename T>
+struct ParameterStorageTraits<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool>>> {
+    using StorageType = T;
+    using SliderValue = double;
+
+    static auto toStorage(T value) -> StorageType { return value; }
+    static auto fromStorage(StorageType value) -> T { return value; }
+
+    static auto toSliderValue(T value) -> SliderValue { return static_cast<SliderValue>(value); }
+    static auto fromSliderValue(SliderValue value) -> T { return static_cast<T>(std::llround(value)); }
+};
+
+template <>
+struct ParameterStorageTraits<bool> {
+    using StorageType = bool;
+    using SliderValue = double;
+
+    static auto toStorage(bool value) -> StorageType { return value; }
+    static auto fromStorage(StorageType value) -> bool { return value; }
+
+    static auto toSliderValue(bool value) -> SliderValue { return value ? 1.0 : 0.0; }
+    static auto fromSliderValue(SliderValue value) -> bool { return value >= 0.5; }
+};
+
+template <Util::EnumChoiceConcept E>
+struct ParameterStorageTraits<E> {
+    using StorageType = int;
+    using SliderValue = double;
+
+    static auto toStorage(E value) -> StorageType {
+        using EnumType = typename E::Enum;
+        using Underlying = typename E::UnderlyingType;
+        return static_cast<StorageType>(static_cast<Underlying>(static_cast<EnumType>(value)));
+    }
+
+    static auto fromStorage(StorageType value) -> E { return E(value); }
+
+    static auto toSliderValue(E value) -> SliderValue {
+        using EnumType = typename E::Enum;
+        using Underlying = typename E::UnderlyingType;
+        return static_cast<SliderValue>(static_cast<Underlying>(static_cast<EnumType>(value)));
+    }
+
+    static auto fromSliderValue(SliderValue value) -> E {
+        return E(static_cast<int>(std::llround(value)));
+    }
+};
+
+//==============================================================================
 // Parameter definition
-//=============================================================================
+//==============================================================================
 template <typename Type>
 struct ParameterDef {
     String paramID;
@@ -95,15 +163,9 @@ struct ParameterDef<E> {
 template <typename T>
 struct ParameterValue {
     using Type = T;
-    using ValueType = std::conditional_t<
-        std::is_same_v<Type, float>,
-        float,
-        std::conditional_t<
-            std::is_same_v<Type, bool>,
-            bool,
-            int  // default to int for other types (including EnumChoice)
-        >
-    >;
+    using Traits = ParameterStorageTraits<Type>;
+    using StorageType = typename Traits::StorageType;
+    using SliderValue = typename Traits::SliderValue;
 
     struct LiveAccessor {
         using Reader = Type(*)(void*);
@@ -140,43 +202,19 @@ struct ParameterValue {
 
     ParameterValue(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
         : definition(def)
-        , value(state, def.propertyName, undoMgr, def.defaultValue)
+        , value(state, def.propertyName, undoMgr, Traits::toStorage(def.defaultValue))
     {}
 
     ~ParameterValue() {
-        detachSource();
-    }
-
-    inline void referTo(ValueTree& v, UndoManager* um) {
-        value.referTo(v, definition.propertyName, um, definition.defaultValue);
-    }
-
-    void attachSource(tracktion::AutomatableParameter::Ptr paramPtr) {
-        detachSource();
-        automatableParameter = std::move(paramPtr);
-        if (automatableParameter != nullptr) {
-            automatableParameter->attachToCurrentValue(value);
-            liveAccessor.set([](void* ctx) -> Type {
-                auto* param = static_cast<tracktion::AutomatableParameter*>(ctx);
-                jassert(param != nullptr);
-                if (param == nullptr)
-                    return {};
-                auto liveValue = static_cast<ValueType>(param->getCurrentValue());
-                return static_cast<Type>(liveValue);
-            }, automatableParameter.get());
-        }
-    }
-
-    void detachSource() {
-        if (automatableParameter != nullptr) {
-            automatableParameter->detachFromCurrentValue();
-            automatableParameter.reset();
-        }
         liveAccessor.reset();
     }
 
+    inline void referTo(ValueTree& v, UndoManager* um) {
+        value.referTo(v, definition.propertyName, um, Traits::toStorage(definition.defaultValue));
+    }
+
     Type getStoredValue() const {
-        return static_cast<Type>(value.get());
+        return Traits::fromStorage(value.get());
     }
 
     Type getLiveValue() const {
@@ -186,29 +224,31 @@ struct ParameterValue {
     bool hasLiveReader() const { return liveAccessor.hasReader(); }
 
     void setStoredValue(Type newValue) {
-        value = static_cast<ValueType>(newValue);
+        value = Traits::toStorage(newValue);
     }
 
     juce::Value getPropertyAsValue() { return value.getPropertyAsValue(); }
 
     Type getCurrentValue() const { return getLiveValue(); }
 
-    bool isSourceAttached() const { return automatableParameter != nullptr; }
+    void setLiveReader(typename LiveAccessor::Reader reader, void* context) {
+        liveAccessor.set(reader, context);
+    }
 
-    tracktion::AutomatableParameter* getAutomatableParameter() const { return automatableParameter.get(); }
+    void clearLiveReader() {
+        liveAccessor.reset();
+    }
 
     ParameterDef<Type> definition;
 
     // TODO If used for EnumChoice<Type>
     // EnumChoice<Type> value is for serialization, uses strings in ValueTree
     // EnumChoice<ValueType> value is for sync with AutomatableParameter, uses int in ValueTree
-    CachedValue<ValueType> value;
-
-    // If no source is attached, ParameterValue instance still can be used as a static parameter
-    tracktion::AutomatableParameter::Ptr automatableParameter;
-    LiveAccessor liveAccessor;
+    CachedValue<StorageType> value;
 
 private:
+    LiveAccessor liveAccessor;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterValue)
 };
 
@@ -222,15 +262,48 @@ struct ParameterAutomationBinding : ParameterAutomationBindingBase {
         : value(v)
         , parameter(std::move(param))
     {
-        value.attachSource(parameter);
+        if (parameter != nullptr) {
+            parameter->attachToCurrentValue(value.value);
+            value.setLiveReader(&ParameterAutomationBinding::readLiveValue, parameter.get());
+
+            if (value.definition.valueToStringFunction) {
+                auto fn = value.definition.valueToStringFunction;
+                parameter->valueToStringFunction = [fn](float sliderValue) {
+                    using Traits = ParameterStorageTraits<typename ParameterValueType::Type>;
+                    return fn(Traits::fromSliderValue(static_cast<typename Traits::SliderValue>(sliderValue)));
+                };
+            }
+
+            if (value.definition.stringToValueFunction) {
+                auto fn = value.definition.stringToValueFunction;
+                parameter->stringToValueFunction = [fn](const juce::String& text) {
+                    using Traits = ParameterStorageTraits<typename ParameterValueType::Type>;
+                    auto typedValue = fn(text);
+                    return static_cast<float>(Traits::toSliderValue(typedValue));
+                };
+            }
+        }
     }
 
     ~ParameterAutomationBinding() override {
-        value.detachSource();
+        if (parameter != nullptr)
+            parameter->detachFromCurrentValue();
+        value.clearLiveReader();
     }
 
     ParameterValueType& value;
     tracktion::AutomatableParameter::Ptr parameter;
+
+private:
+    static auto readLiveValue(void* context) -> typename ParameterValueType::Type {
+        auto* param = static_cast<tracktion::AutomatableParameter*>(context);
+        jassert(param != nullptr);
+        if (param == nullptr)
+            return {};
+
+        using Traits = ParameterStorageTraits<typename ParameterValueType::Type>;
+        return Traits::fromSliderValue(static_cast<typename Traits::SliderValue>(param->getCurrentValue()));
+    }
 };
 
 //==============================================================================

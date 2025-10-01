@@ -9,7 +9,7 @@ namespace MoTool::uZX {
 NotesToPsgPluginUI::NotesToPsgPluginUI(tracktion::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
     , baseParams(notesToPsgPlugin()->staticParams)
-    , baseMidiKnob(baseParams.baseMidiChannel)
+    , baseMidiKnob(*pluginPtr, baseParams.baseMidiChannel)
 {
     jassert(pluginPtr != nullptr);
 

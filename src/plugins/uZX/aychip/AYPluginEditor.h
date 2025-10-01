@@ -230,9 +230,9 @@ private:
     ComponentBoundsConstrainer constrainer_;
 
     // dynamic, can be automated
-    LabeledSlider volumeKnob   { plugin_.dynamicParams.volume };
-    LabeledSlider layoutSlider { plugin_.dynamicParams.layout, Slider::LinearHorizontal };
-    LabeledSlider stereoKnob   { plugin_.dynamicParams.stereoWidth };
+    LabeledSlider volumeKnob   { plugin_, plugin_.dynamicParams.volume };
+    LabeledSlider layoutSlider { plugin_, plugin_.dynamicParams.layout, Slider::LinearHorizontal };
+    LabeledSlider stereoKnob   { plugin_, plugin_.dynamicParams.stereoWidth };
 
     // legacy static
     SliderParameterComponent<int>     midiControl     { plugin_.legacyParams.baseMidiChannel };

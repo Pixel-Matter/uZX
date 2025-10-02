@@ -29,23 +29,10 @@ void ParamBindingBase::configureAutomationCallbacks() {
     endGesture   = [this]() { param->parameterChangeGestureEnd(); };
 }
 
-// Explicit instantiations aren't strictly necessary because this is a private template
-// used only by header templates; keep definition here for linkage separation.
-
-SliderParamBinding::SliderParamBinding(Slider& s, te::AutomatableParameter::Ptr p)
-    : ParamBindingBase(std::move(p))
-    , midiMapping(param)
-    , mouseListener(s)
-    , slider(s) {
-    configureSliderHandlers();
-    configureMouseListener();
-}
 
 SliderParamBinding::~SliderParamBinding() = default;
 
 void SliderParamBinding::configureSliderHandlers() {
-    refreshFromSource();
-
     slider.onValueChange = [this]() {
         if (updating || !applyValue)
             return;
@@ -122,7 +109,7 @@ void ButtonParamBinding::refreshFromSource() {
     textButton.setButtonText(indexToLabel(index));
 }
 
-void ButtonParamBinding::currentValueChanged(te::AutomatableParameter& p) {
+void ButtonParamBinding::currentValueChanged(te::AutomatableParameter&) {
     if (updating)
         return;
     refreshFromSource();

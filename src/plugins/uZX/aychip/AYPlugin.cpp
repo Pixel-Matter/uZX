@@ -1,41 +1,19 @@
 #include "AYPlugin.h"
 #include "AYPluginEditor.h"
 
-namespace te = tracktion;
 
 namespace MoTool::uZX {
-
-//==============================================================================
-void AYChipPlugin::Params::initialise() {
-    baseMidiChannel.referTo(IDs::midi,   "Base MIDI channel", {1,        15 - 4, 1},         1);
-    // TODO replace by choice + user, see Tuning
-    clock          .referTo(IDs::clock,  "Clock frequncy",    {0.894887, 2.0, 0.01},  1.7734, "MHz");
-    chipType       .referTo(IDs::chip,   "Chip type",         ChipType::getLabels(),       ChipType::AY);
-    removeDC       .referTo(IDs::noDC,   "Remove DC",                                 true);
-    // channelsLayoutValue .referTo(IDs::layout, "Channels layout",   ChannelsLayout::getLabels(), ChannelsLayout::ACB);
-}
-
-//==============================================================================
-void AYChipPlugin::Params::restoreFromTree(const juce::ValueTree& v) {
-    te::copyPropertiesToCachedValues(v,
-        baseMidiChannel.cachedValue,
-        clock.cachedValue,
-        chipType.cachedValue,
-        removeDC.cachedValue
-        // channelsLayoutValue.cachedValue
-    );
-}
 
 //==============================================================================
 const char* AYChipPlugin::xmlTypeName = "aychip";
 
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     : te::Plugin(info)
-    , legacyParams(*this)
-    , midiParamsReader(legacyParams.baseMidiChannel)
+    , midiParamsReader(staticParams.baseMidiChannel.getStoredValue())
 {
-    dynamicParams.referTo(state, getUndoManager());
+    staticParams.referTo(state, getUndoManager());
 
+    dynamicParams.referTo(state, getUndoManager());
     dynamicParams.visit([this](auto& vd) {
         auto& def = vd.definition;
         auto param = addParam(def.paramID, def.description, def.getFloatValueRange());
@@ -48,16 +26,6 @@ AYChipPlugin::~AYChipPlugin() {
     notifyListenersOfDeletion();
 }
 
-// te::AutomatableParameter::Ptr AYChipPlugin::addParam(const String& paramID,
-//                                                      const String& name,
-//                                                      NormalisableRange<float> valueRange,
-//                                                      String label) {
-//     auto p = Plugin::addParam(paramID, name, valueRange);
-//     // if (label.isNotEmpty())
-//     //     paramLabels[paramID] = label;
-//     return p;
-// }
-
 void AYChipPlugin::valueTreeChanged() {
     te::Plugin::valueTreeChanged();
 }
@@ -66,6 +34,7 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
     // TODO staticParams.isParamProperty(id);
     if (v == state) {
         if (id == IDs::clock || id == IDs::chip) {
+            DBG("id " << id << " changed to " << state.getProperty(id).toString());
             reset();
         } else if (id == IDs::volume) {
             if (chip != nullptr) {
@@ -75,6 +44,7 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
         } else if (id == IDs::stereo || id == IDs::layout) {
             if (chip != nullptr) {
                 const ScopedLock sl(lock);
+                dynamicParams.layout.value.forceUpdateOfCachedValue();
                 chip->setLayoutAndStereoWidth(dynamicParams.layout.getLiveValue(), dynamicParams.stereoWidth.getLiveValue());
             }
         } else if (id == IDs::midi) {
@@ -82,7 +52,8 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 const ScopedLock sl(lock);
                 // it a static params, so it is ok to mute sounds
                 chip->muteSound();
-                midiParamsReader.setBaseChannel(legacyParams.baseMidiChannel);
+                staticParams.baseMidiChannel.value.forceUpdateOfCachedValue();
+                midiParamsReader.setBaseChannel(staticParams.baseMidiChannel.getStoredValue());
             }
         }
         // no need to do anything
@@ -111,12 +82,14 @@ void AYChipPlugin::midiPanic() {
 void AYChipPlugin::reset() {
     const ScopedLock sl(lock);
     if (chip == nullptr) {
-        chip = std::make_unique<AyumiEmulator>(sampleRate, legacyParams.clock * MHz, legacyParams.chipType);
+        chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.chipClock.getStoredValue() * MHz,
+                                               staticParams.chipType.getStoredValue());
     } else {
-        chip->reset(static_cast<int>(sampleRate), legacyParams.clock * MHz, legacyParams.chipType);
+        chip->reset(static_cast<int>(sampleRate), staticParams.chipClock.getStoredValue() * MHz,
+                                                  staticParams.chipType.getStoredValue());
     }
-    chip->setMasterVolume(dynamicParams.volume.getStoredValue());
-    chip->setLayoutAndStereoWidth(dynamicParams.layout.getStoredValue(), dynamicParams.stereoWidth.getStoredValue());
+    chip->setMasterVolume(dynamicParams.volume.getLiveValue());
+    chip->setLayoutAndStereoWidth(dynamicParams.layout.getLiveValue(), dynamicParams.stereoWidth.getLiveValue());
     // timeFromReset = 0.0;  // not used now
     midiParamsReader.reset();
     // midiRegsReader.reset();
@@ -189,7 +162,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                fc.destBuffer->getWritePointer(1, currentSample),
                                static_cast<size_t>(timeSample - currentSample),
-                               legacyParams.removeDC);
+                               staticParams.removeDC.getStoredValue());
             currentSample = timeSample;
         }
         // DBG("AY in midi " << m.getDescription());
@@ -201,14 +174,15 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                            fc.destBuffer->getWritePointer(1, currentSample),
                            static_cast<size_t>(fc.bufferNumSamples - currentSample),
-                           legacyParams.removeDC);
+                           staticParams.removeDC.getStoredValue());
     }
     // timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;
     // DBG("timeFromReset = " << timeFromReset);
 }
 
 void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
-    legacyParams.restoreFromTree(v);
+    staticParams.restoreStateFromValueTree(v);
+    dynamicParams.restoreStateFromValueTree(v);
 
     for (auto p : getAutomatableParameters())
         p->updateFromAttachedValue();

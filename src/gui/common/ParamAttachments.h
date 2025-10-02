@@ -79,13 +79,28 @@ void ParamBindingBase::configureStoredValueCallbacks(ParameterValueType& paramet
 class SliderParamBinding : public ParamBindingBase
 {
 public:
-    SliderParamBinding(Slider& s, te::AutomatableParameter::Ptr p);
+    SliderParamBinding(Slider& s, te::AutomatableParameter::Ptr p)
+        : ParamBindingBase(std::move(p))
+        , midiMapping(param)
+        , mouseListener(s)
+        , slider(s)
+    {
+        configureSliderHandlers();
+        configureMouseListener();
+        refreshFromSource();
+    }
 
     template <typename Type>
     SliderParamBinding(Slider& s, te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
-        : SliderParamBinding(s, p)
+        : ParamBindingBase(std::move(p), value)
+        , midiMapping(param)
+        , mouseListener(s)
+        , slider(s)
     {
         ParameterUIHelpers::configureSliderForParameterValue(slider, value);
+        configureSliderHandlers();
+        configureMouseListener();
+        refreshFromSource();
     }
 
     ~SliderParamBinding() override;
@@ -108,6 +123,18 @@ private:
 class ButtonParamBinding : public ParamBindingBase
 {
 public:
+    ButtonParamBinding(TextButton& button,
+                       te::AutomatableParameter::Ptr p)
+        : ParamBindingBase(std::move(p))
+        , midiMapping(param)
+        , textButton(button)
+        , mouseListener(std::make_unique<MouseListenerWithCallback>(button))
+    {
+        configureMouseListener();
+        configureButtonHandlers();
+        refreshFromSource();
+    }
+
     template <Util::EnumChoiceConcept Type>
     ButtonParamBinding(TextButton& button,
                        te::AutomatableParameter::Ptr p,
@@ -153,6 +180,7 @@ private:
 
 template <Util::EnumChoiceConcept Type>
 void ButtonParamBinding::configureFromParameterValue(ParameterValue<Type>& value) {
+    DBG("ButtonParamBinding::configureFromParameterValue for " << value.definition.paramID);
     choiceCount = static_cast<int>(Type::size());
 
     textButton.setTooltip(value.definition.description);

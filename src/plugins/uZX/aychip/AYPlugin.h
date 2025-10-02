@@ -62,20 +62,26 @@ public:
     void restorePluginStateFromValueTree (const ValueTree&) override;
     std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
 
-    // // New struct to migrate to
-    // struct StaticParams : public ParamsBase<StaticParams> {
-    //     template<typename Visitor>
-    //     void visit(Visitor&& visitor) {
-    //         visitor(baseMidiChannel);
-    //     }
+    class StaticParams : public ParamsBase<StaticParams> {
+    public:
+        using ParamsBase<StaticParams>::ParamsBase;
 
-    //     // 0-16, 0 = omni
-    //     ParameterValue<int> baseMidiChannel {{"baseMidi", IDs::midi, "MIDI", "Base MIDI channel", 1, {0, 15 - 4, 1}}};
-    // };
+        template<typename Visitor>
+        void visit(Visitor&& visitor) {
+            visitor(baseMidiChannel);
+            visitor(chipType);
+            visitor(chipClock);
+            visitor(removeDC);
+        }
 
-    // StaticParams staticParams {*this};
+        ParameterValue<int> baseMidiChannel {{"midi",  IDs::midi,  "MIDI",  "Base MIDI channel", 1,   {1, 15 - 4, 1}}};
+        ParameterValue<ChipType> chipType   {{"chip",  IDs::chip,  "Chip",  "Chip type",      ChipType::AY}};
+        ParameterValue<double> chipClock    {{"clock", IDs::clock, "Clock", "Clock frequncy", 1.7734, {0.894887, 2.0, 0.01}, "MHz"}};
+        ParameterValue<bool> removeDC       {{"noDC",  IDs::noDC,  "Remove DC", "Remove DC from output", true}};
+    };
 
-    // New struct to migrate to
+    StaticParams staticParams;
+
     class DynamicParams : public ParamsBase<DynamicParams> {
     public:
         using ParamsBase<DynamicParams>::ParamsBase;
@@ -94,29 +100,6 @@ public:
 
     DynamicParams dynamicParams;
     std::vector<std::unique_ptr<ParameterAutomationBindingBase>> dynamicParamBindings;
-
-    // legacy
-    struct Params {
-        // static
-        RangedParamAttachment<int> baseMidiChannel;
-        RangedParamAttachment<double> clock;
-        ChoiceParamAttachment<ChipType> chipType;
-        ParamAttachment<bool> removeDC;
-
-        Params(te::Plugin& p)
-            : baseMidiChannel(p.state, p.getUndoManager())
-            , clock(p.state, p.getUndoManager())
-            , chipType(p.state, p.getUndoManager())
-            , removeDC(p.state, p.getUndoManager())
-        {
-            initialise();
-        }
-
-        void initialise();
-        void restoreFromTree(const juce::ValueTree& v);
-    };
-
-    Params legacyParams {*this};
 
     enum class MidiReaderMode {
         Params,

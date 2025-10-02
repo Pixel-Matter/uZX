@@ -103,6 +103,27 @@ struct ParameterDef {
     }
 };
 
+template <>
+struct ParameterDef<bool> {
+    String paramID;
+    Identifier propertyName;
+    String shortLabel;
+    String description;
+    bool defaultValue;
+
+    NormalisableRange<float> getFloatValueRange() const {
+        return {0.0f, 1.0f, 1.0f};
+    }
+
+    // Keep the existing toString() method
+    String toString() const {
+        String s = paramID + ": " + description;
+        s += " (default " + String(defaultValue ? "true" : "false") + ")";
+        return s;
+    }
+};
+
+
 template <Util::EnumChoiceConcept E>
 struct ParameterDef<E> {
     String paramID;
@@ -315,7 +336,9 @@ public:
     }
 
     void restoreStateFromValueTree(const ValueTree& v) {
-        static_cast<Derived*>(this)->visit([&v] (auto& value) { tracktion::copyPropertiesToCachedValues(v, value.value ); });
+        static_cast<Derived*>(this)->visit([&v] (auto& value) {
+            tracktion::copyPropertiesToCachedValues(v, value.value );
+        });
     }
 
     // Derived classes must implement

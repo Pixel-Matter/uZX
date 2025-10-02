@@ -118,14 +118,16 @@ public:
 
     void showProjectScreen()                                    override {}
 
-    void showSettingsScreen()                                   override {
+    void showSettingsScreen() override {
         DialogWindow::LaunchOptions o;
         o.dialogTitle = TRANS("Audio Settings");
         o.dialogBackgroundColour = LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId);
-        o.content.setOwned(new AudioDeviceSelectorComponent(MoToolApp::getController().getEngine().getDeviceManager().deviceManager,
-                                                            0, 512, 1, 512, true, true, true, false));
+        o.content.setOwned(
+            new AudioDeviceSelectorComponent(MoToolApp::getController().getEngine().getDeviceManager().deviceManager,
+                                             0, 512, 1, 512,
+                                             true, true, true, false));
         o.useNativeTitleBar = true;
-        o.escapeKeyTriggersCloseButton  = true;
+        o.escapeKeyTriggersCloseButton = true;
         o.resizable = true;
         o.content->setSize(500, 600);
         o.launchAsync();

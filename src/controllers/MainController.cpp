@@ -36,6 +36,9 @@ BaseController::BaseController()
         std::make_unique<ExtEngineBehaviour>()
     }
 {
+    // engine_.getDeviceManager().initialise(engine_.getEngineBehaviour().shouldOpenAudioInputByDefault()
+    //     ? te::DeviceManager::defaultNumChannelsToOpen : 0, te::DeviceManager::defaultNumChannelsToOpen);
+
     // Workaround for JUCE CoreAudio buffer overflow bug at low sample rates
     ensureMinimumSampleRate();
 }
@@ -95,6 +98,7 @@ BaseController::~BaseController() {
 
 void BaseController::ensureMinimumSampleRate() {
     constexpr double MIN_SAMPLE_RATE = 44100.0;
+    constexpr int MAX_BLOCK_SIZE = 256;
 
     auto& deviceManager = engine_.getDeviceManager().deviceManager;
     auto* currentDevice = deviceManager.getCurrentAudioDevice();
@@ -104,8 +108,35 @@ void BaseController::ensureMinimumSampleRate() {
     if (currentDevice != nullptr) {
         auto currentSampleRate = currentDevice->getCurrentSampleRate();
         if (currentSampleRate < MIN_SAMPLE_RATE) {
-            DBG("WARNING: Sample rate " << currentSampleRate << " Hz is below minimum " << MIN_SAMPLE_RATE << " Hz");
-            deviceManager.closeAudioDevice();
+            const auto currentBufferSize = currentDevice->getCurrentBufferSizeSamples();
+            DBG("WARNING: Sample rate " << currentSampleRate << " Hz is below minimum " << MIN_SAMPLE_RATE << " Hz"
+                << ", buffer size: " << currentBufferSize);
+            auto desiredBlockSize = juce::jmin(currentBufferSize, MAX_BLOCK_SIZE);
+
+            auto availableSizes = currentDevice->getAvailableBufferSizes();
+            if (!availableSizes.isEmpty()) {
+                int candidateSize = availableSizes.getLast();
+                for (auto size : availableSizes) {
+                    if (size >= MAX_BLOCK_SIZE) {
+                        candidateSize = size;
+                        break;
+                    }
+                }
+                desiredBlockSize = juce::jmin(currentBufferSize, candidateSize);
+            }
+
+            if (currentBufferSize > desiredBlockSize) {
+                juce::AudioDeviceManager::AudioDeviceSetup setup;
+                deviceManager.getAudioDeviceSetup(setup);
+                setup.bufferSize = desiredBlockSize;
+                DBG("  Current buffer size: " << currentBufferSize << ", setting to " << desiredBlockSize);
+                if (auto error = deviceManager.setAudioDeviceSetup(setup, false); error.isNotEmpty())
+                    DBG("Failed to set audio block size: " << error);
+            }
+
+            deviceManager.restartLastAudioDevice();
+            const auto newBufferSize = currentDevice->getCurrentBufferSizeSamples();
+            DBG("  New buffer size: " << newBufferSize);
         } else {
             audioOk = true;
         }

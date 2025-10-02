@@ -4,8 +4,6 @@
 #include "../../controllers/ParamAttachments.h"
 #include "../../controllers/Parameters.h"
 #include "../../util/enumchoice.h"
-#include "MidiParameterMapping.h"
-#include "ParameterSliderHelpers.h"
 
 namespace MoTool {
 

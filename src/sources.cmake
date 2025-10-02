@@ -30,9 +30,12 @@ set(SHARED_SOURCES
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
 
     gui/common/Utilities.cpp
+    gui/common/ProgressDialog.cpp
+    gui/common/ParamAttachments.cpp
     gui/common/LookAndFeel.cpp
     gui/common/LabeledSlider.cpp
     gui/common/MidiParameterMapping.cpp
+    gui/common/MouseListener.cpp
 )
 
 # GUI-specific files

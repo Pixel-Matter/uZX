@@ -4,9 +4,7 @@
 #include "../../controllers/Parameters.h"
 
 #include "ParamAttachments.h"
-#include "MouseListener.h"
 #include "MidiParameterMapping.h"
-#include "ParameterSliderHelpers.h"
 
 namespace MoTool {
 

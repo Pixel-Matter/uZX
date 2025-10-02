@@ -20,14 +20,7 @@ class AutoParamAttachment : private te::AutomatableParameter::Listener,
                             private Value::Listener
 {
 public:
-    AutoParamAttachment(te::AutomatableParameter::Ptr p)
-        : param(std::move(p))
-    {
-        if (param != nullptr) {
-            param->addListener(this);
-            configureAutomationCallbacks();
-        }
-    }
+    AutoParamAttachment(te::AutomatableParameter::Ptr p);
 
     template <typename Type>
     AutoParamAttachment(te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
@@ -37,13 +30,7 @@ public:
             configureStoredValueCallbacks(value);
     }
 
-    ~AutoParamAttachment() override {
-        if (isAttached()) {
-            param->removeListener(this);
-        }
-        if (listensToValue)
-            storedValue.removeListener(this);
-    }
+    ~AutoParamAttachment() override;
 
     bool isAttached() const noexcept {
         return param != nullptr;
@@ -60,31 +47,10 @@ protected:
     bool updating { false };
 
 private:
-    void configureAutomationCallbacks() {
-        fetchValue = [this]() { return static_cast<double>(param->getCurrentValue()); };
-        applyValue = [this](double sliderValue) {
-            param->setParameter(static_cast<float>(sliderValue), juce::sendNotification);
-        };
-        beginGesture = [this]() { param->parameterChangeGestureBegin(); };
-        endGesture   = [this]() { param->parameterChangeGestureEnd(); };
-    }
+    void configureAutomationCallbacks();
 
     template <typename ParameterValueType>
-    void configureStoredValueCallbacks(ParameterValueType& parameterValue) {
-        listensToValue = true;
-        storedValue = parameterValue.getPropertyAsValue();
-        storedValue.addListener(this);
-
-        fetchValue = [&parameterValue]() {
-            using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
-            return static_cast<double>(LocalTraits::toSliderValue(parameterValue.getStoredValue()));
-        };
-
-        applyValue = [&parameterValue](double sliderValue) {
-            using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
-            parameterValue.setStoredValue(LocalTraits::fromSliderValue(sliderValue));
-        };
-    }
+    void configureStoredValueCallbacks(ParameterValueType& parameterValue);
 
     Value storedValue;
     bool listensToValue { false };
@@ -94,15 +60,7 @@ private:
 class SliderAutoParamAttachment : public AutoParamAttachment
 {
 public:
-    SliderAutoParamAttachment(Slider& s, te::AutomatableParameter::Ptr p)
-        : AutoParamAttachment(std::move(p))
-        , midiMapping(param)
-        , mouseListener(s)
-        , slider(s)
-    {
-        configureSliderHandlers();
-        configureMouseListener();
-    }
+    SliderAutoParamAttachment(Slider& s, te::AutomatableParameter::Ptr p);
 
     template <typename Type>
     SliderAutoParamAttachment(Slider& s, te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
@@ -111,63 +69,17 @@ public:
         ParameterUIHelpers::configureSliderForParameterValue(slider, value);
     }
 
-    ~SliderAutoParamAttachment() override {
-    }
+    ~SliderAutoParamAttachment() override;
 
     MidiParameterMapping midiMapping;
 
 private:
-    void configureSliderHandlers() {
-        refreshFromSource();
+    void configureSliderHandlers();
+    void configureMouseListener();
+    void refreshFromSource();
 
-        slider.onValueChange = [this]() {
-            if (updating || !applyValue)
-                return;
-
-            juce::ScopedValueSetter<bool> svs(updating, true);
-            applyValue(slider.getValue());
-        };
-
-        slider.onDragStart = [this]() {
-            if (beginGesture)
-                beginGesture();
-        };
-
-        slider.onDragEnd = [this]() {
-            if (endGesture)
-                endGesture();
-        };
-
-        slider.setPopupMenuEnabled(false);
-    }
-
-    void configureMouseListener() {
-        mouseListener.setRmbCallback([this]() {
-            midiMapping.showMappingMenu();
-        });
-    }
-
-    void refreshFromSource() {
-        if (!fetchValue)
-            return;
-
-        juce::ScopedValueSetter<bool> svs(updating, true);
-        slider.setValue(fetchValue(), dontSendNotification);
-    }
-
-    void currentValueChanged(te::AutomatableParameter&) override {
-        if (updating)
-            return;
-
-        refreshFromSource();
-    }
-
-    void valueChanged(Value&) override {
-        if (updating)
-            return;
-
-        refreshFromSource();
-    }
+    void currentValueChanged(te::AutomatableParameter&) override;
+    void valueChanged(Value&) override;
 
     MouseListenerWithCallback mouseListener;
     Slider& slider;

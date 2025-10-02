@@ -1,28 +1,16 @@
 #pragma once
 
+#include <functional>
+
 #include <JuceHeader.h>
 
 class MouseListenerWithCallback : public MouseListener {
 public:
-    explicit MouseListenerWithCallback(Component& c)
-        : component(c)
-    {
-        component.addMouseListener(this, false);
-    }
+    explicit MouseListenerWithCallback(Component& c);
+    ~MouseListenerWithCallback() override;
 
-    ~MouseListenerWithCallback() override {
-        component.removeMouseListener(this);
-    }
-
-    void setRmbCallback(std::function<void()> cb) {
-        rmbCallback = std::move(cb);
-    }
-
-    void mouseDown(const MouseEvent& e) override {
-        if (rmbCallback && e.mods.isRightButtonDown()) {
-            rmbCallback();
-        }
-    }
+    void setRmbCallback(std::function<void()> cb);
+    void mouseDown(const MouseEvent& e) override;
 
 private:
     Component& component;

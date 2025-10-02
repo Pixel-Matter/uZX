@@ -16,7 +16,7 @@ class LabeledSlider : public Component,
 public:
     template <typename Type = float>
     LabeledSlider(te::Plugin& plugin, ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : attachment(slider, plugin.getAutomatableParameterByID(value.definition.paramID), value)
+        : binding(slider, plugin.getAutomatableParameterByID(value.definition.paramID), value)
     {
         slider.setSliderStyle(style);
         slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
@@ -29,11 +29,11 @@ public:
         addAndMakeVisible(slider);
         addAndMakeVisible(label);
 
-        attachment.midiMapping.addChangeListener(this);
+        binding.midiMapping.addChangeListener(this);
     }
 
     ~LabeledSlider() override {
-        attachment.midiMapping.removeChangeListener(this);
+        binding.midiMapping.removeChangeListener(this);
     }
 
     void resized() override;
@@ -47,7 +47,7 @@ public:
 private:
     // listener to update on mapping changes
     void changeListenerCallback(ChangeBroadcaster* source) override {
-        if (source == &attachment.midiMapping) {
+        if (source == &binding.midiMapping) {
             repaint();
         }
     }
@@ -55,7 +55,7 @@ private:
     Slider slider;
     Label label;
 
-    SliderAutoParamAttachment attachment;
+    SliderParamBinding binding;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledSlider)
 };

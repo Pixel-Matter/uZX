@@ -16,7 +16,7 @@ void LabeledSlider::resized() {
 void LabeledSlider::paint(Graphics& g) {
     // Draw a small indicator in top-left corner if parameter is mapped to MIDI CC
     // TODO indicator for automation as well?
-    if (attachment.midiMapping.isParameterMapped()) {
+    if (binding.midiMapping.isParameterMapped()) {
         g.setColour(Colours::orange);
         g.fillRect(0, 0, 4, 4);
     }

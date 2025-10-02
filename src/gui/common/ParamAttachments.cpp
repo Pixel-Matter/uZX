@@ -5,7 +5,7 @@ namespace te = tracktion;
 
 namespace MoTool {
 
-AutoParamAttachment::AutoParamAttachment(te::AutomatableParameter::Ptr p)
+ParamBindingBase::ParamBindingBase(te::AutomatableParameter::Ptr p)
     : param(std::move(p)) {
     if (param != nullptr) {
         param->addListener(this);
@@ -13,7 +13,7 @@ AutoParamAttachment::AutoParamAttachment(te::AutomatableParameter::Ptr p)
     }
 }
 
-AutoParamAttachment::~AutoParamAttachment() {
+ParamBindingBase::~ParamBindingBase() {
     if (isAttached()) {
         param->removeListener(this);
     }
@@ -21,7 +21,7 @@ AutoParamAttachment::~AutoParamAttachment() {
         storedValue.removeListener(this);
 }
 
-void AutoParamAttachment::configureAutomationCallbacks() {
+void ParamBindingBase::configureAutomationCallbacks() {
     fetchValue = [this]() { return static_cast<double>(param->getCurrentValue()); };
     applyValue = [this](double sliderValue) {
         param->setParameter(static_cast<float>(sliderValue), juce::sendNotification);
@@ -31,27 +31,27 @@ void AutoParamAttachment::configureAutomationCallbacks() {
 }
 
 template <typename ParameterValueType>
-void AutoParamAttachment::configureStoredValueCallbacks(ParameterValueType& parameterValue) {
+void ParamBindingBase::configureStoredValueCallbacks(ParameterValueType& parameterValue) {
     listensToValue = true;
     storedValue = parameterValue.getPropertyAsValue();
     storedValue.addListener(this);
 
     fetchValue = [&parameterValue]() {
         using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
-        return static_cast<double>(LocalTraits::toSliderValue(parameterValue.getStoredValue()));
+        return static_cast<double>(LocalTraits::toFloatValue(parameterValue.getStoredValue()));
     };
 
     applyValue = [&parameterValue](double sliderValue) {
         using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
-        parameterValue.setStoredValue(LocalTraits::fromSliderValue(sliderValue));
+        parameterValue.setStoredValue(LocalTraits::fromFloatValue(sliderValue));
     };
 }
 
 // Explicit instantiations aren't strictly necessary because this is a private template
 // used only by header templates; keep definition here for linkage separation.
 
-SliderAutoParamAttachment::SliderAutoParamAttachment(Slider& s, te::AutomatableParameter::Ptr p)
-    : AutoParamAttachment(std::move(p))
+SliderParamBinding::SliderParamBinding(Slider& s, te::AutomatableParameter::Ptr p)
+    : ParamBindingBase(std::move(p))
     , midiMapping(param)
     , mouseListener(s)
     , slider(s) {
@@ -59,9 +59,9 @@ SliderAutoParamAttachment::SliderAutoParamAttachment(Slider& s, te::AutomatableP
     configureMouseListener();
 }
 
-SliderAutoParamAttachment::~SliderAutoParamAttachment() = default;
+SliderParamBinding::~SliderParamBinding() = default;
 
-void SliderAutoParamAttachment::configureSliderHandlers() {
+void SliderParamBinding::configureSliderHandlers() {
     refreshFromSource();
 
     slider.onValueChange = [this]() {
@@ -85,13 +85,13 @@ void SliderAutoParamAttachment::configureSliderHandlers() {
     slider.setPopupMenuEnabled(false);
 }
 
-void SliderAutoParamAttachment::configureMouseListener() {
+void SliderParamBinding::configureMouseListener() {
     mouseListener.setRmbCallback([this]() {
         midiMapping.showMappingMenu();
     });
 }
 
-void SliderAutoParamAttachment::refreshFromSource() {
+void SliderParamBinding::refreshFromSource() {
     if (!fetchValue)
         return;
 
@@ -99,19 +99,96 @@ void SliderAutoParamAttachment::refreshFromSource() {
     slider.setValue(fetchValue(), dontSendNotification);
 }
 
-void SliderAutoParamAttachment::currentValueChanged(te::AutomatableParameter&) {
+void SliderParamBinding::currentValueChanged(te::AutomatableParameter&) {
     if (updating)
         return;
 
     refreshFromSource();
 }
 
-void SliderAutoParamAttachment::valueChanged(Value&) {
+void SliderParamBinding::valueChanged(Value&) {
     if (updating)
         return;
 
     refreshFromSource();
+}
+
+ButtonParamBinding::~ButtonParamBinding() {
+    textButton.onClick = nullptr;
+}
+
+void ButtonParamBinding::configureButtonHandlers() {
+    textButton.onClick = [this]() { handleClick(); };
+}
+
+void ButtonParamBinding::configureMouseListener() {
+    if (mouseListener != nullptr) {
+        mouseListener->setRmbCallback([this]() {
+            midiMapping.showMappingMenu();
+        });
+    }
+}
+
+void ButtonParamBinding::refreshFromSource() {
+    if (!fetchValue || !sliderValueToIndex || !indexToLabel || choiceCount <= 0)
+        return;
+
+    juce::ScopedValueSetter<bool> svs(updating, true);
+    const auto sliderValue = fetchValue();
+    const auto index = wrapIndex(sliderValueToIndex(sliderValue));
+    textButton.setButtonText(indexToLabel(index));
+}
+
+void ButtonParamBinding::currentValueChanged(te::AutomatableParameter&) {
+    if (updating)
+        return;
+
+    refreshFromSource();
+}
+
+void ButtonParamBinding::valueChanged(Value&) {
+    if (updating)
+        return;
+
+    refreshFromSource();
+}
+
+void ButtonParamBinding::handleClick() {
+    if (!applyValue || !indexToSliderValue || choiceCount <= 0)
+        return;
+
+    const auto currentIndex = getCurrentIndex();
+    const auto nextIndex = wrapIndex(currentIndex + 1);
+    const auto sliderValue = indexToSliderValue(nextIndex);
+
+    if (beginGesture)
+        beginGesture();
+
+    {
+        juce::ScopedValueSetter<bool> svs(updating, true);
+        applyValue(sliderValue);
+        refreshFromSource();
+    }
+
+    if (endGesture)
+        endGesture();
+}
+
+int ButtonParamBinding::getCurrentIndex() const {
+    if (!fetchValue || !sliderValueToIndex || choiceCount <= 0)
+        return 0;
+
+    return wrapIndex(sliderValueToIndex(fetchValue()));
+}
+
+int ButtonParamBinding::wrapIndex(int index) const {
+    if (choiceCount <= 0)
+        return 0;
+
+    index %= choiceCount;
+    if (index < 0)
+        index += choiceCount;
+    return index;
 }
 
 } // namespace MoTool
-

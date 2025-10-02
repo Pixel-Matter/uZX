@@ -19,25 +19,25 @@ constexpr int decimalPlacesFor() {
 }
 
 template <typename Type>
-inline std::function<juce::String(double)> wrapValueToString(const std::function<juce::String(Type)>& fn) {
+inline std::function<juce::String(float)> wrapValueToString(const std::function<juce::String(Type)>& fn) {
     if (!fn)
         return {};
 
-    return [fn](double sliderValue) {
+    return [fn](float sliderValue) {
         using Traits = ParameterStorageTraits<Type>;
-        return fn(Traits::fromSliderValue(sliderValue));
+        return fn(Traits::fromFloatValue(sliderValue));
     };
 }
 
 template <typename Type>
-inline std::function<double(const juce::String&)> wrapStringToValue(const std::function<Type(const juce::String&)>& fn) {
+inline std::function<float(const juce::String&)> wrapStringToValue(const std::function<Type(const juce::String&)>& fn) {
     if (!fn)
         return {};
 
     return [fn](const juce::String& text) {
         using Traits = ParameterStorageTraits<Type>;
         auto typedValue = fn(text);
-        return Traits::toSliderValue(typedValue);
+        return Traits::toFloatValue(typedValue);
     };
 }
 
@@ -66,7 +66,7 @@ inline void configureSliderForParameterValue(
     if (def.units.isNotEmpty())
         slider.setTextValueSuffix(def.units);
 
-    slider.setValue(static_cast<double>(Traits::toSliderValue(value.getStoredValue())), juce::dontSendNotification);
+    slider.setValue(static_cast<double>(Traits::toFloatValue(value.getStoredValue())), juce::dontSendNotification);
 }
 
 } // namespace MoTool::ParameterUIHelpers

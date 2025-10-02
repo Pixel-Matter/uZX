@@ -5,6 +5,7 @@
 #include "AYPlugin.h"
 #include "../../../gui/common/LookAndFeel.h"
 #include "../../../gui/common/LabeledSlider.h"
+#include "../../../gui/common/ChoiceButton.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 

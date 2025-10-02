@@ -42,21 +42,21 @@ inline std::function<double(const juce::String&)> wrapStringToValue(const std::f
 }
 
 template <typename Type>
-inline void configureSliderForParameter(
+inline void configureSliderForParameterValue(
     juce::Slider& slider,
-    const ParameterDef<Type>& def,
-    const ParameterValue<Type>& value,
-    juce::Slider::SliderStyle style
+    const ParameterValue<Type>& value
 ) {
     using Traits = ParameterStorageTraits<Type>;
 
-    slider.setSliderStyle(style);
-    slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    const auto& def = value.definition;
+
     slider.setTooltip(def.description);
     slider.setPopupDisplayEnabled(true, true, nullptr);
 
     const auto floatRange = def.getFloatValueRange();
-    slider.setRange(static_cast<double>(floatRange.start), static_cast<double>(floatRange.end), static_cast<double>(floatRange.interval));
+    slider.setRange(static_cast<double>(floatRange.start),
+                    static_cast<double>(floatRange.end),
+                    static_cast<double>(floatRange.interval));
     slider.setSkewFactor(static_cast<double>(floatRange.skew));
 
     slider.setNumDecimalPlacesToDisplay(decimalPlacesFor<Type>());

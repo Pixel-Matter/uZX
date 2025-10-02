@@ -158,7 +158,17 @@ struct ParameterDef<E> {
 };
 
 //==============================================================================
-// Value with definition, CachedValue and optional AutomatableParameter binding
+template <typename T>
+concept ParameterValueConcept = requires(T& t) {
+    typename T::Type;
+    typename ParameterStorageTraits<typename T::Type>;
+    { t.getStoredValue() } -> std::same_as<typename T::Type>;
+    { t.setStoredValue(std::declval<typename T::Type>()) } -> std::same_as<void>;
+    { t.getPropertyAsValue() } -> std::same_as<Value>;
+};
+
+//==============================================================================
+// Value with definition, CachedValue and LiveAccessor
 //==============================================================================
 template <typename T>
 struct ParameterValue {

@@ -54,7 +54,7 @@ private:
     CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
 
     Slider masterVolumeSlider_ { Slider::SliderStyle::RotaryVerticalDrag, Slider::TextEntryBoxPosition::NoTextBox };
-    SliderAutoParamAttachment masterAttachment_ {masterVolumeSlider_, *edit_.getMasterSliderPosParameter()};
+    SliderAutoParamAttachment masterAttachment_ {masterVolumeSlider_, edit_.getMasterSliderPosParameter()};
 
     TextButton rewindButton_    { "⏮"_u },
     //    stepLeftButton_  { "<" },

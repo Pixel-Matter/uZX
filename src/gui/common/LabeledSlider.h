@@ -18,42 +18,25 @@ class LabeledSlider : public Component,
 public:
     template <typename Type = float>
     LabeledSlider(te::Plugin& plugin, ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : attachment(slider, value, plugin.getAutomatableParameterByID(value.definition.paramID))
-        , midiMapping(plugin.getAutomatableParameterByID(value.definition.paramID))
+        : attachment(slider, plugin.getAutomatableParameterByID(value.definition.paramID), value)
     {
-        const auto& def = value.definition;
+        slider.setSliderStyle(style);
+        slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
 
-        ParameterUIHelpers::configureSliderForParameter(slider, def, value, style);
-
-        slider.setPopupMenuEnabled(false);
-        slider.addMouseListener(&mouseListener, false);
-
-        mouseListener.setRmbCallback([this]() {
-            midiMapping.showMappingMenu();
-        });
-
-        midiMapping.addChangeListener(this);
-
-        label.setText(def.shortLabel, dontSendNotification);
+        // TODO pass label into ctor?
+        label.setText(value.definition.shortLabel, dontSendNotification);
         label.setJustificationType(Justification::centred);
         label.setFont(label.getFont().withPointHeight((float) labelHeight));
 
         addAndMakeVisible(slider);
         addAndMakeVisible(label);
+
+        attachment.midiMapping.addChangeListener(this);
     }
 
-    LabeledSlider(
-        te::AutomatableParameter::Ptr param,
-        const String& shortLabel, const String& description,
-        float initial, NormalisableRange<float> floatRange,
-        const String& units, int numDecimalPlaces,
-        std::function<String (double)> textFromValueFunction,
-        std::function<double (const String&)> valueFromTextFunction,
-        Slider::SliderStyle style
-    );
-
-    Slider& getSlider() { return slider; }
-    Label& getLabel() { return label; }
+    ~LabeledSlider() override {
+        attachment.midiMapping.removeChangeListener(this);
+    }
 
     void resized() override;
     void paint(Graphics& g) override;
@@ -64,8 +47,9 @@ public:
     int getLabelHeight() const { return labelHeight - labelOverlap; }
 
 private:
+    // listener to update on mapping changes
     void changeListenerCallback(ChangeBroadcaster* source) override {
-        if (source == &midiMapping) {
+        if (source == &attachment.midiMapping) {
             repaint();
         }
     }
@@ -74,9 +58,6 @@ private:
     Label label;
 
     SliderAutoParamAttachment attachment;
-    // TODO refactor to somewhere who owns AutomatableParameter attachment
-    MidiParameterMapping midiMapping;
-    MouseListenerWithCallback mouseListener;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledSlider)
 };

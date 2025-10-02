@@ -2,7 +2,6 @@
 
 #include <JuceHeader.h>
 #include <functional>
-#include "juce_events/juce_events.h"
 
 namespace MoTool {
 

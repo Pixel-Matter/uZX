@@ -40,7 +40,7 @@ public:
     void paint(Graphics& g) override;
 
     inline static constexpr int labelHeight = 10;
-    inline static constexpr int labelOverlap = 2;
+    inline static constexpr int labelOverlap = 1;
 
     int getLabelHeight() const { return labelHeight - labelOverlap; }
 

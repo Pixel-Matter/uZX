@@ -117,22 +117,20 @@ void ButtonParamBinding::refreshFromSource() {
         return;
 
     juce::ScopedValueSetter<bool> svs(updating, true);
-    const auto sliderValue = fetchValue();
-    const auto index = wrapIndex(floatValueToIndex(static_cast<float>(sliderValue)));
+    const auto floatValue = fetchValue();
+    const auto index = wrapIndex(floatValueToIndex(static_cast<float>(floatValue)));
     textButton.setButtonText(indexToLabel(index));
 }
 
-void ButtonParamBinding::currentValueChanged(te::AutomatableParameter&) {
+void ButtonParamBinding::currentValueChanged(te::AutomatableParameter& p) {
     if (updating)
         return;
-
     refreshFromSource();
 }
 
 void ButtonParamBinding::valueChanged(Value&) {
     if (updating)
         return;
-
     refreshFromSource();
 }
 
@@ -142,15 +140,15 @@ void ButtonParamBinding::handleClick() {
 
     const auto currentIndex = getCurrentIndex();
     const auto nextIndex = wrapIndex(currentIndex + 1);
-    const auto sliderValue = indexToFloatValue(nextIndex);
+    const auto floatValue = indexToFloatValue(nextIndex);
 
     if (beginGesture)
         beginGesture();
 
     {
         juce::ScopedValueSetter<bool> svs(updating, true);
-        applyValue(sliderValue);
-        refreshFromSource();
+        // apply to parameter source or value
+        applyValue(floatValue);
     }
 
     if (endGesture)

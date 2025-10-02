@@ -198,13 +198,11 @@ public:
 
         // automatable
         r.removeFromTop(itemSpacing);
-        layoutButton.setBounds(r.removeFromTop(itemHeight * 2));
-        // layoutSlider.setBounds(r.removeFromTop(itemHeight * 2));
-
-        r.removeFromTop(itemSpacing);
         auto knobsRow = r.removeFromTop(itemHeight * 2);
 
-        stereoKnob.setBounds(knobsRow.removeFromLeft(knobsRow.getWidth() / 2));
+        auto width = knobsRow.getWidth() / 3;
+        layoutButton.setBounds(knobsRow.removeFromLeft(width).withSizeKeepingCentre(width, 20));
+        stereoKnob.setBounds(knobsRow.removeFromLeft(width));
         volumeKnob.setBounds(knobsRow);
 
         // static
@@ -233,7 +231,6 @@ private:
     // dynamic, can be automated
     LabeledSlider volumeKnob   { plugin_, plugin_.dynamicParams.volume };
     ChoiceButton layoutButton  { plugin_, plugin_.dynamicParams.layout };
-    // LabeledSlider layoutSlider { plugin_, plugin_.dynamicParams.layout, Slider::LinearHorizontal };
     LabeledSlider stereoKnob   { plugin_, plugin_.dynamicParams.stereoWidth };
 
     // legacy static

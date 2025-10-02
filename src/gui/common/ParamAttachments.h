@@ -110,8 +110,8 @@ class ButtonParamBinding : public ParamBindingBase
 public:
     template <Util::EnumChoiceConcept Type>
     ButtonParamBinding(TextButton& button,
-                              te::AutomatableParameter::Ptr p,
-                              ParameterValue<Type>& value)
+                       te::AutomatableParameter::Ptr p,
+                       ParameterValue<Type>& value)
         : ParamBindingBase(std::move(p), value)
         , midiMapping(param)
         , textButton(button)

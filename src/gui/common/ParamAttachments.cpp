@@ -1,7 +1,6 @@
 #include "ParamAttachments.h"
 
 using namespace juce;
-namespace te = tracktion;
 
 namespace MoTool {
 
@@ -28,23 +27,6 @@ void ParamBindingBase::configureAutomationCallbacks() {
     };
     beginGesture = [this]() { param->parameterChangeGestureBegin(); };
     endGesture   = [this]() { param->parameterChangeGestureEnd(); };
-}
-
-template <typename ParameterValueType>
-void ParamBindingBase::configureStoredValueCallbacks(ParameterValueType& parameterValue) {
-    listensToValue = true;
-    storedValue = parameterValue.getPropertyAsValue();
-    storedValue.addListener(this);
-
-    fetchValue = [&parameterValue]() {
-        using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
-        return static_cast<double>(LocalTraits::toFloatValue(parameterValue.getStoredValue()));
-    };
-
-    applyValue = [&parameterValue](double sliderValue) {
-        using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
-        parameterValue.setStoredValue(LocalTraits::fromFloatValue(sliderValue));
-    };
 }
 
 // Explicit instantiations aren't strictly necessary because this is a private template
@@ -113,6 +95,7 @@ void SliderParamBinding::valueChanged(Value&) {
     refreshFromSource();
 }
 
+//==============================================================================
 ButtonParamBinding::~ButtonParamBinding() {
     textButton.onClick = nullptr;
 }
@@ -130,12 +113,12 @@ void ButtonParamBinding::configureMouseListener() {
 }
 
 void ButtonParamBinding::refreshFromSource() {
-    if (!fetchValue || !sliderValueToIndex || !indexToLabel || choiceCount <= 0)
+    if (!fetchValue || !floatValueToIndex || !indexToLabel || choiceCount <= 0)
         return;
 
     juce::ScopedValueSetter<bool> svs(updating, true);
     const auto sliderValue = fetchValue();
-    const auto index = wrapIndex(sliderValueToIndex(sliderValue));
+    const auto index = wrapIndex(floatValueToIndex(static_cast<float>(sliderValue)));
     textButton.setButtonText(indexToLabel(index));
 }
 
@@ -154,12 +137,12 @@ void ButtonParamBinding::valueChanged(Value&) {
 }
 
 void ButtonParamBinding::handleClick() {
-    if (!applyValue || !indexToSliderValue || choiceCount <= 0)
+    if (!applyValue || !indexToFloatValue || choiceCount <= 0)
         return;
 
     const auto currentIndex = getCurrentIndex();
     const auto nextIndex = wrapIndex(currentIndex + 1);
-    const auto sliderValue = indexToSliderValue(nextIndex);
+    const auto sliderValue = indexToFloatValue(nextIndex);
 
     if (beginGesture)
         beginGesture();
@@ -175,10 +158,10 @@ void ButtonParamBinding::handleClick() {
 }
 
 int ButtonParamBinding::getCurrentIndex() const {
-    if (!fetchValue || !sliderValueToIndex || choiceCount <= 0)
+    if (!fetchValue || !floatValueToIndex || choiceCount <= 0)
         return 0;
 
-    return wrapIndex(sliderValueToIndex(fetchValue()));
+    return wrapIndex(floatValueToIndex(static_cast<float>(fetchValue())));
 }
 
 int ButtonParamBinding::wrapIndex(int index) const {

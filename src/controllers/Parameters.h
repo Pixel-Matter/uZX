@@ -3,10 +3,7 @@
 #include <JuceHeader.h>
 #include "../util/enumchoice.h"
 
-#include <cmath>
-#include <memory>
 #include <type_traits>
-#include <vector>
 
 
 namespace MoTool {
@@ -21,33 +18,33 @@ template <typename T>
 struct ParameterStorageTraits<T, std::enable_if_t<std::is_floating_point_v<T>>> {
     using StorageType = T;
 
-    static auto toStorage(T value) -> StorageType { return value; }
-    static auto fromStorage(StorageType value) -> T { return value; }
+    static constexpr auto toStorage(T value) noexcept -> StorageType { return value; }
+    static constexpr auto fromStorage(StorageType value) noexcept -> T { return value; }
 
-    static auto toFloatValue(T value) -> float { return static_cast<float>(value); }
-    static auto fromFloatValue(float value) -> T { return static_cast<T>(value); }
+    static constexpr auto toFloatValue(T value) noexcept -> float { return static_cast<float>(value); }
+    static constexpr auto fromFloatValue(float value) noexcept -> T { return static_cast<T>(value); }
 };
 
 template <typename T>
 struct ParameterStorageTraits<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool>>> {
     using StorageType = T;
 
-    static auto toStorage(T value) -> StorageType { return value; }
-    static auto fromStorage(StorageType value) -> T { return value; }
+    static constexpr auto toStorage(T value) noexcept -> StorageType { return value; }
+    static constexpr auto fromStorage(StorageType value) noexcept -> T { return value; }
 
-    static auto toFloatValue(T value) -> float { return static_cast<float>(value); }
-    static auto fromFloatValue(float value) -> T { return static_cast<T>(std::llround(value)); }
+    static constexpr auto toFloatValue(T value) noexcept -> float { return static_cast<float>(value); }
+    static constexpr auto fromFloatValue(float value) noexcept -> T { return static_cast<T>(roundToInt(value)); }
 };
 
 template <>
 struct ParameterStorageTraits<bool> {
     using StorageType = bool;
 
-    static auto toStorage(bool value) -> StorageType { return value; }
-    static auto fromStorage(StorageType value) -> bool { return value; }
+    static constexpr auto toStorage(bool value) noexcept -> StorageType { return value; }
+    static constexpr auto fromStorage(StorageType value) noexcept -> bool { return value; }
 
-    static auto toFloatValue(bool value) -> float { return value ? 1.0 : 0.0; }
-    static auto fromFloatValue(float value) -> bool { return value >= 0.5; }
+    static constexpr auto toFloatValue(bool value) noexcept -> float { return value ? 1.0f : 0.0f; }
+    static constexpr auto fromFloatValue(float value) noexcept -> bool { return value >= 0.5f; }
 };
 
 template <Util::EnumChoiceConcept E>
@@ -55,21 +52,21 @@ struct ParameterStorageTraits<E> {
     //TODO String?
     using StorageType = int;
 
-    static auto toStorage(E value) -> StorageType {
+    static constexpr auto toStorage(E value) noexcept -> StorageType {
         using EnumType = typename E::Enum;
         using Underlying = typename E::UnderlyingType;
         return static_cast<StorageType>(static_cast<Underlying>(static_cast<EnumType>(value)));
     }
 
-    static auto fromStorage(StorageType value) -> E { return E(value); }
+    static constexpr auto fromStorage(StorageType value) noexcept -> E { return E(value); }
 
-    static auto toFloatValue(E value) -> float {
+    static constexpr auto toFloatValue(E value) noexcept -> float {
         using EnumType = typename E::Enum;
         using Underlying = typename E::UnderlyingType;
         return static_cast<float>(static_cast<Underlying>(static_cast<EnumType>(value)));
     }
 
-    static auto fromFloatValue(float value) -> E {
+    static auto fromFloatValue(float value) noexcept -> E {
         return E(roundToInt(value));
     }
 };
@@ -136,8 +133,6 @@ struct ParameterDef<E> {
                 static_cast<float>(valueRange.interval)};
     }
 
-    // TODO handle serialization of EnumChoice separately
-
     // Keep the existing toString() method
     String toString() const {
         String s = paramID + ": " + description;
@@ -176,17 +171,17 @@ struct ParameterValue {
     struct LiveAccessor {
         using Reader = Type(*)(void*);
 
-        void set(Reader r, void* ctx) {
+        void set(Reader r, void* ctx) noexcept {
             reader = r;
             context = ctx;
         }
 
-        void reset() {
+        void reset() noexcept {
             reader = nullptr;
             context = nullptr;
         }
 
-        auto hasReader() const -> bool { return reader != nullptr; }
+        constexpr auto hasReader() const noexcept -> bool { return reader != nullptr; }
 
         auto readOr(const Type& fallback) const -> Type {
             if (reader != nullptr)
@@ -227,7 +222,7 @@ struct ParameterValue {
         return liveAccessor.readOr(getStoredValue());
     }
 
-    bool hasLiveReader() const { return liveAccessor.hasReader(); }
+    bool hasLiveReader() const noexcept { return liveAccessor.hasReader(); }
 
     void setStoredValue(Type newValue) {
         value = Traits::toStorage(newValue);
@@ -237,15 +232,15 @@ struct ParameterValue {
 
     Type getCurrentValue() const { return getLiveValue(); }
 
-    void setLiveReader(typename LiveAccessor::Reader reader, void* context) {
+    void setLiveReader(typename LiveAccessor::Reader reader, void* context) noexcept {
         liveAccessor.set(reader, context);
     }
 
-    void clearLiveReader() {
+    void clearLiveReader() noexcept {
         liveAccessor.reset();
     }
 
-    ParameterDef<Type> definition;
+    const ParameterDef<Type> definition;
     CachedValue<StorageType> value;
 
 private:
@@ -254,6 +249,7 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterValue)
 };
 
+//==============================================================================
 struct ParameterAutomationBindingBase {
     virtual ~ParameterAutomationBindingBase() = default;
 };
@@ -297,7 +293,7 @@ struct ParameterAutomationBinding : ParameterAutomationBindingBase {
     tracktion::AutomatableParameter::Ptr parameter;
 
 private:
-    static auto readLiveValue(void* context) -> typename ParameterValueType::Type {
+    static auto readLiveValue(void* context) noexcept -> typename ParameterValueType::Type {
         auto* param = static_cast<tracktion::AutomatableParameter*>(context);
         jassert(param != nullptr);
         if (param == nullptr)

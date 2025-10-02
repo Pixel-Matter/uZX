@@ -10,8 +10,6 @@
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 
 
-namespace te = tracktion;
-
 namespace MoTool::uZX {
 
 //==============================================================================
@@ -181,7 +179,8 @@ public:
         setSize(160, 320);
 
         addAndMakeVisible(volumeKnob);
-        addAndMakeVisible(layoutSlider);
+        addAndMakeVisible(layoutButton);
+        // addAndMakeVisible(layoutSlider);
         addAndMakeVisible(stereoKnob);
 
         addAndMakeVisible(midiControl);
@@ -199,7 +198,8 @@ public:
 
         // automatable
         r.removeFromTop(itemSpacing);
-        layoutSlider.setBounds(r.removeFromTop(itemHeight * 2));
+        layoutButton.setBounds(r.removeFromTop(itemHeight * 2));
+        // layoutSlider.setBounds(r.removeFromTop(itemHeight * 2));
 
         r.removeFromTop(itemSpacing);
         auto knobsRow = r.removeFromTop(itemHeight * 2);
@@ -232,7 +232,8 @@ private:
 
     // dynamic, can be automated
     LabeledSlider volumeKnob   { plugin_, plugin_.dynamicParams.volume };
-    LabeledSlider layoutSlider { plugin_, plugin_.dynamicParams.layout, Slider::LinearHorizontal };
+    ChoiceButton layoutButton  { plugin_, plugin_.dynamicParams.layout };
+    // LabeledSlider layoutSlider { plugin_, plugin_.dynamicParams.layout, Slider::LinearHorizontal };
     LabeledSlider stereoKnob   { plugin_, plugin_.dynamicParams.stereoWidth };
 
     // legacy static
@@ -250,11 +251,11 @@ REGISTER_PLUGIN_UI_ADAPTER(AYChipPlugin, AYPluginUI)
 //==============================================================================
 // Editor component for AYChipPlugin is a simple wrapper around AYPluginUI
 //==============================================================================
-class AYPluginEditor : public te::Plugin::EditorComponent,
+class AYPluginEditor : public tracktion::Plugin::EditorComponent,
                        private AYPluginUI
 {
 public:
-    AYPluginEditor(te::Plugin::Ptr p)
+    AYPluginEditor(tracktion::Plugin::Ptr p)
       : AYPluginUI(p)
     {}
 

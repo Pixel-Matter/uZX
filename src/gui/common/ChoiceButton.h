@@ -17,21 +17,19 @@ public:
     ChoiceButton(te::Plugin& plugin, ParameterValue<Type>& value)
         : binding(*this, plugin.getAutomatableParameterByID(value.definition.paramID), value)
     {
-        const auto& def = value.definition;
-
-        setText(def.shortLabel, dontSendNotification);
-
         binding.midiMapping.addChangeListener(this);
     }
 
     ~ChoiceButton() override {
         binding.midiMapping.removeChangeListener(this);
     }
+    
 private:
-    void changeListenerCallback(ChangeBroadcaster* source) override {
-        if (source == &binding.midiMapping) {
-            repaint();
-        }
+    void changeListenerCallback(ChangeBroadcaster* /*source*/) override {
+        // TODO if mapped button should show different state
+        // if (source == &binding.midiMapping) {
+        //     repaint();
+        // }
     }
 
     ButtonParamBinding binding;

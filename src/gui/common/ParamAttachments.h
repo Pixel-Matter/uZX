@@ -11,7 +11,6 @@
 #include "MouseListener.h"
 
 using namespace juce;
-namespace te = tracktion;
 
 namespace MoTool {
 
@@ -56,6 +55,25 @@ private:
     Value storedValue;
     bool listensToValue { false };
 };
+
+template <typename ParameterValueType>
+void ParamBindingBase::configureStoredValueCallbacks(ParameterValueType& parameterValue) {
+    listensToValue = true;
+    storedValue = parameterValue.getPropertyAsValue();
+    storedValue.addListener(this);
+
+    fetchValue = [&parameterValue]() {
+        using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
+        return static_cast<double>(LocalTraits::toFloatValue(parameterValue.getStoredValue()));
+    };
+
+    applyValue = [&parameterValue](double sliderValue) {
+        using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
+        parameterValue.setStoredValue(LocalTraits::fromFloatValue(static_cast<float>(sliderValue)));
+    };
+}
+
+
 
 //==============================================================================
 class SliderParamBinding : public ParamBindingBase
@@ -124,8 +142,8 @@ private:
     TextButton& textButton;
     std::unique_ptr<MouseListenerWithCallback> mouseListener;
     std::function<String(int)> indexToLabel;
-    std::function<double(int)> indexToSliderValue;
-    std::function<int(double)> sliderValueToIndex;
+    std::function<float(int)> indexToFloatValue;
+    std::function<int(float)> floatValueToIndex;
 
     int choiceCount { 0 };
 
@@ -141,12 +159,12 @@ void ButtonParamBinding::configureFromParameterValue(ParameterValue<Type>& value
 
     using Traits = ParameterStorageTraits<Type>;
 
-    indexToSliderValue = [](int index) -> double {
+    indexToFloatValue = [](int index) -> float {
         auto typedValue = Type(index);
-        return static_cast<double>(Traits::toFloatValue(typedValue));
+        return static_cast<float>(Traits::toFloatValue(typedValue));
     };
 
-    sliderValueToIndex = [](double sliderValue) -> int {
+    floatValueToIndex = [](float sliderValue) -> int {
         auto typedValue = Traits::fromFloatValue(sliderValue);
         return static_cast<int>(Traits::toStorage(typedValue));
     };
@@ -154,7 +172,7 @@ void ButtonParamBinding::configureFromParameterValue(ParameterValue<Type>& value
     if (auto valueToString = value.definition.valueToStringFunction) {
         indexToLabel = [valueToString](int index) -> String {
             using LocalTraits = ParameterStorageTraits<Type>;
-            auto typedValue = LocalTraits::fromFloatValue(static_cast<typename LocalTraits::SliderValue>(index));
+            auto typedValue = LocalTraits::fromFloatValue(static_cast<float>(index));
             return valueToString(typedValue);
         };
     } else {

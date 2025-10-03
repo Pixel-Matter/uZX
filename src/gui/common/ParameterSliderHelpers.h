@@ -5,6 +5,7 @@
 #include <type_traits>
 
 #include "../../controllers/Parameters.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 
 namespace MoTool::ParameterUIHelpers {
 
@@ -24,8 +25,8 @@ inline std::function<juce::String(float)> wrapValueToString(const std::function<
         return {};
 
     return [fn](float sliderValue) {
-        using Traits = ParameterStorageTraits<Type>;
-        return fn(Traits::fromFloatValue(sliderValue));
+        using Traits = ParameterConversionTraits<Type>;
+        return fn(Traits::fromFloat(sliderValue));
     };
 }
 
@@ -35,20 +36,18 @@ inline std::function<float(const juce::String&)> wrapStringToValue(const std::fu
         return {};
 
     return [fn](const juce::String& text) {
-        using Traits = ParameterStorageTraits<Type>;
+        using Traits = ParameterConversionTraits<Type>;
         auto typedValue = fn(text);
-        return Traits::toFloatValue(typedValue);
+        return Traits::toFloat(typedValue);
     };
 }
 
 template <typename Type>
-inline void configureSliderForParameterValue(
+inline void configureSliderForParameterDef(
     juce::Slider& slider,
-    const ParameterValue<Type>& value
+    const ParameterDef<Type>& def
 ) {
-    using Traits = ParameterStorageTraits<Type>;
-
-    const auto& def = value.definition;
+    // using Traits = ParameterConversionTraits<Type>;
 
     slider.setTooltip(def.description);
     slider.setPopupDisplayEnabled(true, true, nullptr);
@@ -66,7 +65,30 @@ inline void configureSliderForParameterValue(
     if (def.units.isNotEmpty())
         slider.setTextValueSuffix(def.units);
 
-    slider.setValue(static_cast<double>(Traits::toFloatValue(value.getStoredValue())), juce::dontSendNotification);
+    // slider.setValue(static_cast<double>(Traits::toFloat(value.getStoredValue())), juce::dontSendNotification);
+}
+
+inline void configureSliderForAutomationParameter(
+    juce::Slider& slider,
+    tracktion::AutomatableParameter* parameter
+) {
+    jassert(parameter != nullptr);
+    if (parameter == nullptr)
+        return;
+
+    slider.setTooltip(parameter->getParameterName());
+    slider.setPopupDisplayEnabled(true, true, nullptr);
+
+    slider.setRange(parameter->getValueRange().getStart(),
+                    parameter->getValueRange().getEnd(),
+                    parameter->valueRange.interval);
+    slider.setSkewFactor(parameter->valueRange.skew);
+
+    slider.setNumDecimalPlacesToDisplay(2);
+    slider.textFromValueFunction = parameter->valueToStringFunction;
+    slider.valueFromTextFunction = parameter->stringToValueFunction;
+
+    slider.setValue(parameter->getCurrentValue(), juce::dontSendNotification);
 }
 
 } // namespace MoTool::ParameterUIHelpers

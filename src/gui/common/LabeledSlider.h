@@ -3,23 +3,27 @@
 #include <JuceHeader.h>
 #include "../../controllers/Parameters.h"
 
-#include "ParamAttachments.h"
+#include "ParamBindings.h"
 #include "MidiParameterMapping.h"
 
 namespace MoTool {
 
 namespace te = tracktion;
 
+/**
+    Compound control that displays a `Slider` with a caption and keeps it bound
+    to a plugin parameter, repainting when MIDI learn mappings change.
+*/
 class LabeledSlider : public Component,
                       private ChangeListener  // MidiMapping change listener
 {
 public:
     template <typename Type = float>
     LabeledSlider(te::Plugin& plugin, ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : binding(slider, plugin.getAutomatableParameterByID(value.definition.paramID), value)
+        : binding(slider, plugin.getAutomatableParameterByID(value.definition.identifier), value)
     {
         slider.setSliderStyle(style);
-        slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
 
         // TODO pass label into ctor?
         label.setText(value.definition.shortLabel, dontSendNotification);

@@ -6,7 +6,7 @@
 #include "../../models/Timecode.h"
 #include "../../utils/StringLiterals.h"
 
-#include "ParamAttachments.h"
+#include "ParamBindings.h"
 #include "LookAndFeel.h"
 
 namespace MoTool {

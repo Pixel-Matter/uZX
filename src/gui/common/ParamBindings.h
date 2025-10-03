@@ -16,6 +16,13 @@ namespace MoTool {
 
 
 //==============================================================================
+/**
+    Base bridge between a UI control and a tracktion `AutomatableParameter`.
+
+    The binding keeps the control and automation parameter in sync, dispatching
+    gesture callbacks and optionally falling back to a stored `ParameterValue`
+    when the plugin doesn't expose a live parameter.
+*/
 class ParamBindingBase : private te::AutomatableParameter::Listener,
                          private Value::Listener
 {
@@ -40,8 +47,8 @@ protected:
     void curveHasChanged(te::AutomatableParameter&) override {}
 
     te::AutomatableParameter::Ptr param;
-    std::function<double()> fetchValue;
-    std::function<void(double)> applyValue;
+    std::function<float()> fetchValue;
+    std::function<void(float)> applyValue;
     std::function<void()> beginGesture;
     std::function<void()> endGesture;
     bool updating { false };
@@ -63,19 +70,23 @@ void ParamBindingBase::configureStoredValueCallbacks(ParameterValueType& paramet
     storedValue.addListener(this);
 
     fetchValue = [&parameterValue]() {
-        using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
-        return static_cast<double>(LocalTraits::toFloatValue(parameterValue.getStoredValue()));
+        using LocalTraits = ParameterConversionTraits<typename ParameterValueType::Type>;
+        return static_cast<float>(LocalTraits::toFloat(parameterValue.getStoredValue()));
     };
 
-    applyValue = [&parameterValue](double sliderValue) {
-        using LocalTraits = ParameterStorageTraits<typename ParameterValueType::Type>;
-        parameterValue.setStoredValue(LocalTraits::fromFloatValue(static_cast<float>(sliderValue)));
+    applyValue = [&parameterValue](float value) {
+        using LocalTraits = ParameterConversionTraits<typename ParameterValueType::Type>;
+        parameterValue.setStoredValue(LocalTraits::fromFloat(value));
     };
 }
 
 
 
 //==============================================================================
+/**
+    Attaches a `juce::Slider` to either an automation parameter or a
+    `ParameterValue`, keeping MIDI learn and mouse gesture support wired up.
+*/
 class SliderParamBinding : public ParamBindingBase
 {
 public:
@@ -85,6 +96,7 @@ public:
         , mouseListener(s)
         , slider(s)
     {
+        ParameterUIHelpers::configureSliderForAutomationParameter(slider, param.get());
         configureSliderHandlers();
         configureMouseListener();
         refreshFromSource();
@@ -97,7 +109,7 @@ public:
         , mouseListener(s)
         , slider(s)
     {
-        ParameterUIHelpers::configureSliderForParameterValue(slider, value);
+        ParameterUIHelpers::configureSliderForParameterDef(slider, value.definition);
         configureSliderHandlers();
         configureMouseListener();
         refreshFromSource();
@@ -120,6 +132,11 @@ private:
 };
 
 //==============================================================================
+/**
+    Attaches a `TextButton` to a parameter. When used with enum parameters the
+    binding cycles through the available choices while honouring optional custom
+    string converters from the parameter definition.
+*/
 class ButtonParamBinding : public ParamBindingBase
 {
 public:
@@ -180,27 +197,27 @@ private:
 
 template <Util::EnumChoiceConcept Type>
 void ButtonParamBinding::configureFromParameterValue(ParameterValue<Type>& value) {
-    DBG("ButtonParamBinding::configureFromParameterValue for " << value.definition.paramID);
+    DBG("ButtonParamBinding::configureFromParameterValue for " << value.definition.identifier);
     choiceCount = static_cast<int>(Type::size());
 
     textButton.setTooltip(value.definition.description);
 
-    using Traits = ParameterStorageTraits<Type>;
+    using Traits = ParameterConversionTraits<Type>;
 
     indexToFloatValue = [](int index) -> float {
         auto typedValue = Type(index);
-        return static_cast<float>(Traits::toFloatValue(typedValue));
+        return static_cast<float>(Traits::toFloat(typedValue));
     };
 
     floatValueToIndex = [](float sliderValue) -> int {
-        auto typedValue = Traits::fromFloatValue(sliderValue);
+        auto typedValue = Traits::fromFloat(sliderValue);
         return static_cast<int>(Traits::toStorage(typedValue));
     };
 
     if (auto valueToString = value.definition.valueToStringFunction) {
         indexToLabel = [valueToString](int index) -> String {
-            using LocalTraits = ParameterStorageTraits<Type>;
-            auto typedValue = LocalTraits::fromFloatValue(static_cast<float>(index));
+            using LocalTraits = ParameterConversionTraits<Type>;
+            auto typedValue = LocalTraits::fromFloat(static_cast<float>(index));
             return valueToString(typedValue);
         };
     } else {

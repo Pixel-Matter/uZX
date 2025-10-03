@@ -14,7 +14,7 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
 
     instrument.oscParams.visit([this](auto& vd) {
         auto& def = vd.definition;
-        auto param = addParam(def.paramID, def.description, def.valueRange, def.paramID);
+        auto param = addParam(def.identifier, def.description, def.valueRange, def.identifier);
         using ValueType = std::decay_t<decltype(vd)>;
         parameterBindings.emplace_back(std::make_unique<ParameterAutomationBinding<ValueType>>(vd, param));
     });

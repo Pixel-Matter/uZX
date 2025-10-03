@@ -11,44 +11,51 @@ namespace MoTool {
 //==============================================================================
 // Parameter storage traits
 //==============================================================================
+/**
+    Converts between the strongly typed values we expose to the UI layer and the
+    lightweight types we persist inside state trees or JUCE dynamic values.
+
+    Each specialisation also knows how to map the underlying type to a
+    floating-point representation which the automation layer expects.
+*/
 template <typename T, typename Enable = void>
-struct ParameterStorageTraits;
+struct ParameterConversionTraits;
 
 template <typename T>
-struct ParameterStorageTraits<T, std::enable_if_t<std::is_floating_point_v<T>>> {
+struct ParameterConversionTraits<T, std::enable_if_t<std::is_floating_point_v<T>>> {
     using StorageType = T;
 
     static constexpr auto toStorage(T value) noexcept -> StorageType { return value; }
     static constexpr auto fromStorage(StorageType value) noexcept -> T { return value; }
 
-    static constexpr auto toFloatValue(T value) noexcept -> float { return static_cast<float>(value); }
-    static constexpr auto fromFloatValue(float value) noexcept -> T { return static_cast<T>(value); }
+    static constexpr auto toFloat(T value) noexcept -> float { return static_cast<float>(value); }
+    static constexpr auto fromFloat(float value) noexcept -> T { return static_cast<T>(value); }
 };
 
 template <typename T>
-struct ParameterStorageTraits<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool>>> {
+struct ParameterConversionTraits<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool>>> {
     using StorageType = T;
 
     static constexpr auto toStorage(T value) noexcept -> StorageType { return value; }
     static constexpr auto fromStorage(StorageType value) noexcept -> T { return value; }
 
-    static constexpr auto toFloatValue(T value) noexcept -> float { return static_cast<float>(value); }
-    static constexpr auto fromFloatValue(float value) noexcept -> T { return static_cast<T>(roundToInt(value)); }
+    static constexpr auto toFloat(T value) noexcept -> float { return static_cast<float>(value); }
+    static constexpr auto fromFloat(float value) noexcept -> T { return static_cast<T>(roundToInt(value)); }
 };
 
 template <>
-struct ParameterStorageTraits<bool> {
+struct ParameterConversionTraits<bool> {
     using StorageType = bool;
 
     static constexpr auto toStorage(bool value) noexcept -> StorageType { return value; }
     static constexpr auto fromStorage(StorageType value) noexcept -> bool { return value; }
 
-    static constexpr auto toFloatValue(bool value) noexcept -> float { return value ? 1.0f : 0.0f; }
-    static constexpr auto fromFloatValue(float value) noexcept -> bool { return value >= 0.5f; }
+    static constexpr auto toFloat(bool value) noexcept -> float { return value ? 1.0f : 0.0f; }
+    static constexpr auto fromFloat(float value) noexcept -> bool { return value >= 0.5f; }
 };
 
 template <Util::EnumChoiceConcept E>
-struct ParameterStorageTraits<E> {
+struct ParameterConversionTraits<E> {
     //TODO String?
     using StorageType = int;
 
@@ -60,13 +67,13 @@ struct ParameterStorageTraits<E> {
 
     static constexpr auto fromStorage(StorageType value) noexcept -> E { return E(value); }
 
-    static constexpr auto toFloatValue(E value) noexcept -> float {
+    static constexpr auto toFloat(E value) noexcept -> float {
         using EnumType = typename E::Enum;
         using Underlying = typename E::UnderlyingType;
         return static_cast<float>(static_cast<Underlying>(static_cast<EnumType>(value)));
     }
 
-    static auto fromFloatValue(float value) noexcept -> E {
+    static auto fromFloat(float value) noexcept -> E {
         return E(roundToInt(value));
     }
 };
@@ -74,10 +81,14 @@ struct ParameterStorageTraits<E> {
 //==============================================================================
 // Parameter definition
 //==============================================================================
+/**
+    Describes a parameter exposed by a controller or plugin, including metadata
+    for labelling and converting values to text for the UI.
+*/
 template <typename Type>
 struct ParameterDef {
-    String paramID;
-    Identifier propertyName;
+    String identifier;
+    Identifier propertyID;
     String shortLabel;
     String description;
     Type defaultValue;
@@ -94,7 +105,7 @@ struct ParameterDef {
 
     String toString() const {
         // output definition to string for output/debugging
-        String s = paramID + ": " + description + " [" + String(valueRange.start)
+        String s = identifier + ": " + description + " [" + String(valueRange.start)
                    + " - " + String(valueRange.end) + "]";
         if (units.isNotEmpty())
             s += " " + units;
@@ -105,8 +116,8 @@ struct ParameterDef {
 
 template <>
 struct ParameterDef<bool> {
-    String paramID;
-    Identifier propertyName;
+    String identifier;
+    Identifier propertyID;
     String shortLabel;
     String description;
     bool defaultValue;
@@ -117,7 +128,7 @@ struct ParameterDef<bool> {
 
     // Keep the existing toString() method
     String toString() const {
-        String s = paramID + ": " + description;
+        String s = identifier + ": " + description;
         s += " (default " + String(defaultValue ? "true" : "false") + ")";
         return s;
     }
@@ -126,8 +137,8 @@ struct ParameterDef<bool> {
 
 template <Util::EnumChoiceConcept E>
 struct ParameterDef<E> {
-    String paramID;
-    Identifier propertyName;
+    String identifier;
+    Identifier propertyID;
     String shortLabel;
     String description;
     E defaultValue;
@@ -156,7 +167,7 @@ struct ParameterDef<E> {
 
     // Keep the existing toString() method
     String toString() const {
-        String s = paramID + ": " + description;
+        String s = identifier + ": " + description;
         s += " (choices: ";
         auto labels = E::getLabels();
         for (size_t i = 0; i < labels.size(); ++i) {
@@ -174,7 +185,7 @@ struct ParameterDef<E> {
 template <typename T>
 concept ParameterValueConcept = requires(T& t) {
     typename T::Type;
-    typename ParameterStorageTraits<typename T::Type>;
+    typename ParameterConversionTraits<typename T::Type>;
     { t.getStoredValue() } -> std::same_as<typename T::Type>;
     { t.setStoredValue(std::declval<typename T::Type>()) } -> std::same_as<void>;
     { t.getPropertyAsValue() } -> std::same_as<Value>;
@@ -183,12 +194,23 @@ concept ParameterValueConcept = requires(T& t) {
 //==============================================================================
 // Value with definition, CachedValue and LiveAccessor
 //==============================================================================
+/**
+    Wraps a parameter definition with accessors to the underlying storage and
+    optional runtime readers.
+
+    The stored value typically mirrors a `juce::ValueTree` property while the
+    live accessor can be hooked up to engine state that updates in real time.
+*/
 template <typename T>
 struct ParameterValue {
     using Type = T;
-    using Traits = ParameterStorageTraits<Type>;
+    using Traits = ParameterConversionTraits<Type>;
     using StorageType = typename Traits::StorageType;
 
+    /**
+        Lightweight functor used by UI controls to query the most up-to-date
+        runtime value without touching the persistent store.
+    */
     struct LiveAccessor {
         using Reader = Type(*)(void*);
 
@@ -224,7 +246,7 @@ struct ParameterValue {
 
     ParameterValue(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
         : definition(def)
-        , value(state, def.propertyName, undoMgr, Traits::toStorage(def.defaultValue))
+        , value(state, def.identifier, undoMgr, Traits::toStorage(def.defaultValue))
     {}
 
     ~ParameterValue() {
@@ -232,7 +254,7 @@ struct ParameterValue {
     }
 
     inline void referTo(ValueTree& v, UndoManager* um) {
-        value.referTo(v, definition.propertyName, um, Traits::toStorage(definition.defaultValue));
+        value.referTo(v, definition.propertyID, um, Traits::toStorage(definition.defaultValue));
     }
 
     Type getStoredValue() const {
@@ -250,8 +272,6 @@ struct ParameterValue {
     }
 
     juce::Value getPropertyAsValue() { return value.getPropertyAsValue(); }
-
-    Type getCurrentValue() const { return getLiveValue(); }
 
     void setLiveReader(typename LiveAccessor::Reader reader, void* context) noexcept {
         liveAccessor.set(reader, context);
@@ -285,20 +305,18 @@ struct ParameterAutomationBinding : ParameterAutomationBindingBase {
             parameter->attachToCurrentValue(value.value);
             value.setLiveReader(&ParameterAutomationBinding::readLiveValue, parameter.get());
 
-            if (value.definition.valueToStringFunction) {
-                auto fn = value.definition.valueToStringFunction;
+            using Traits = ParameterConversionTraits<typename ParameterValueType::Type>;
+
+            if (auto fn = value.definition.valueToStringFunction; fn) {
                 parameter->valueToStringFunction = [fn](float paramValue) {
-                    using Traits = ParameterStorageTraits<typename ParameterValueType::Type>;
-                    return fn(Traits::fromFloatValue(paramValue));
+                    return fn(Traits::fromFloat(paramValue));
                 };
             }
 
-            if (value.definition.stringToValueFunction) {
-                auto fn = value.definition.stringToValueFunction;
+            if (auto fn = value.definition.stringToValueFunction; fn) {
                 parameter->stringToValueFunction = [fn](const juce::String& text) {
-                    using Traits = ParameterStorageTraits<typename ParameterValueType::Type>;
                     auto typedValue = fn(text);
-                    return Traits::toFloatValue(typedValue);
+                    return Traits::toFloat(typedValue);
                 };
             }
         }
@@ -320,8 +338,8 @@ private:
         if (param == nullptr)
             return {};
 
-        using Traits = ParameterStorageTraits<typename ParameterValueType::Type>;
-        return Traits::fromFloatValue(param->getCurrentValue());
+        using Traits = ParameterConversionTraits<typename ParameterValueType::Type>;
+        return Traits::fromFloat(param->getCurrentValue());
     }
 };
 
@@ -332,7 +350,9 @@ class ParamsBase {
 public:
     void referTo(ValueTree& v, UndoManager* um) {
         static_assert(std::is_base_of<ParamsBase, Derived>::value, "Derived must inherit from ParamsBase");
-        static_cast<Derived*>(this)->visit([&v, um] (auto& value) { value.referTo(v, um); });
+        static_cast<Derived*>(this)->visit([&v, um] (auto& value) {
+            value.referTo(v, um);
+        });
     }
 
     void restoreStateFromValueTree(const ValueTree& v) {

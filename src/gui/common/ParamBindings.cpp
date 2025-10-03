@@ -1,4 +1,4 @@
-#include "ParamAttachments.h"
+#include "ParamBindings.h"
 
 using namespace juce;
 
@@ -38,7 +38,7 @@ void SliderParamBinding::configureSliderHandlers() {
             return;
 
         juce::ScopedValueSetter<bool> svs(updating, true);
-        applyValue(slider.getValue());
+        applyValue(static_cast<float>(slider.getValue()));
     };
 
     slider.onDragStart = [this]() {

@@ -31,7 +31,7 @@ set(SHARED_SOURCES
 
     gui/common/Utilities.cpp
     gui/common/ProgressDialog.cpp
-    gui/common/ParamAttachments.cpp
+    gui/common/ParamBindings.cpp
     gui/common/LookAndFeel.cpp
     gui/common/LabeledSlider.cpp
     gui/common/MidiParameterMapping.cpp

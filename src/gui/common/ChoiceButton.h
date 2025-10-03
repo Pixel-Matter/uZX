@@ -1,7 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "ParamAttachments.h"
+#include "ParamBindings.h"
 #include "../../controllers/Parameters.h"
 #include "../../util/enumchoice.h"
 
@@ -15,7 +15,7 @@ class ChoiceButton : public TextButton,
 public:
     template <Util::EnumChoiceConcept Type>
     ChoiceButton(te::Plugin& plugin, ParameterValue<Type>& value)
-        : binding(*this, plugin.getAutomatableParameterByID(value.definition.paramID), value)
+        : binding(*this, plugin.getAutomatableParameterByID(value.definition.identifier), value)
     {
         binding.midiMapping.addChangeListener(this);
     }
@@ -23,7 +23,7 @@ public:
     ~ChoiceButton() override {
         binding.midiMapping.removeChangeListener(this);
     }
-    
+
 private:
     void changeListenerCallback(ChangeBroadcaster* /*source*/) override {
         // TODO if mapped button should show different state

@@ -16,7 +16,7 @@
 
 ### Work in Progress
 - [x] Move `tracktion::AutomatableParameter::Ptr` ownership entirely into the binding layer so `ParameterValue` keeps only metadata, cached storage, and the live accessor hook.
-- [x] Introduce `ParameterStorageTraits` (float/bool/int/EnumChoice) with `toSliderValue`/`fromSliderValue` helpers to unify UI scaling without leaking type knowledge.
+- [x] Introduce `ParameterConversionTraits` (float/bool/int/EnumChoice) with `toSliderValue`/`fromSliderValue` helpers to unify UI scaling without leaking type knowledge.
 - [x] Rework slider/choice attachments to use the traits and drop direct `AutomatableParameter` assertions/warnings.
 
 ---

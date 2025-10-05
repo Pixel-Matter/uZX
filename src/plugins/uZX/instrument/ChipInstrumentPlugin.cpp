@@ -13,10 +13,7 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
     levelMeasurer.addClient(*this);
 
     instrument.oscParams.visit([this](auto& vd) {
-        auto& def = vd.definition;
-        auto param = addParam(def.identifier, def.description, def.valueRange, def.identifier);
-        using ValueType = std::decay_t<decltype(vd)>;
-        parameterBindings.emplace_back(std::make_unique<ParameterAutomationBinding<ValueType>>(vd, param));
+        addParam(vd);
     });
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);
@@ -41,18 +38,6 @@ bool ChipInstrumentPlugin::hasNameForMidiProgram(int /*programNum*/, int /*bank*
 bool ChipInstrumentPlugin::hasNameForMidiNoteNumber(int /*note*/, int /*midiChannel*/, juce::String& /*name*/) {
     // TODO implement for drum pads or for microtonal scales
     return false;
-}
-
-te::AutomatableParameter::Ptr ChipInstrumentPlugin::addParam(const String& paramID,
-                                                             const String& name,
-                                                             NormalisableRange<float> valueRange,
-                                                             String label) {
-    auto p = Plugin::addParam(paramID, name, valueRange);
-
-    if (label.isNotEmpty())
-        paramLabels[paramID] = label;
-
-    return p;
 }
 
 // LevelMeasurer::Client implementation - called periodically to get the current audio level for a channel

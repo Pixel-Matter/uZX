@@ -21,19 +21,22 @@ ParamBindingBase::~ParamBindingBase() {
 }
 
 void ParamBindingBase::configureAutomationCallbacks() {
-    fetchValue = [this]() { return static_cast<double>(param->getCurrentValue()); };
-    applyValue = [this](double sliderValue) {
-        param->setParameter(static_cast<float>(sliderValue), juce::sendNotification);
+    fetchValue = [this] {
+        return static_cast<double>(param->getCurrentValue());
     };
-    beginGesture = [this]() { param->parameterChangeGestureBegin(); };
-    endGesture   = [this]() { param->parameterChangeGestureEnd(); };
+    applyValue = [this](double widgetValue) {
+        // TODO what if widgetValue is not float? String, int...
+        param->setParameter(static_cast<float>(widgetValue), juce::sendNotification);
+    };
+    beginGesture = [this] { param->parameterChangeGestureBegin(); };
+    endGesture   = [this] { param->parameterChangeGestureEnd(); };
 }
 
 
 SliderParamBinding::~SliderParamBinding() = default;
 
 void SliderParamBinding::configureSliderHandlers() {
-    slider.onValueChange = [this]() {
+    slider.onValueChange = [this] {
         if (updating || !applyValue)
             return;
 
@@ -41,12 +44,12 @@ void SliderParamBinding::configureSliderHandlers() {
         applyValue(static_cast<float>(slider.getValue()));
     };
 
-    slider.onDragStart = [this]() {
+    slider.onDragStart = [this] {
         if (beginGesture)
             beginGesture();
     };
 
-    slider.onDragEnd = [this]() {
+    slider.onDragEnd = [this] {
         if (endGesture)
             endGesture();
     };

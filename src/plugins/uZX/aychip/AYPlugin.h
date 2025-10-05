@@ -32,7 +32,7 @@ namespace IDs {
 }  // namespace IDs
 
 
-class AYChipPlugin : public te::Plugin {
+class AYChipPlugin : public PluginBase {
 public:
     AYChipPlugin (te::PluginCreationInfo);
     ~AYChipPlugin() override;
@@ -99,7 +99,6 @@ public:
     };
 
     DynamicParams dynamicParams;
-    std::vector<std::unique_ptr<ParameterAutomationBindingBase>> dynamicParamBindings;
 
     enum class MidiReaderMode {
         Params,
@@ -137,6 +136,7 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };
+
 
 } // namespace MoTool::uZX
 

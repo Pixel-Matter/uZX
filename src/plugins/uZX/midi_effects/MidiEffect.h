@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "../../../controllers/Parameters.h"
 
 
 namespace MoTool::uZX {
@@ -209,11 +210,12 @@ private:
     - mechanism for static and dynamic parameter bindings and registration.
 */
 template <MidiEffectConcept MIDIFX>
-class MidiFxPluginBase : public tracktion::Plugin {
+class MidiFxPluginBase : public PluginBase {
 public:
+    using PluginBase::PluginBase;
 
     MidiFxPluginBase(tracktion::PluginCreationInfo info, MIDIFX& fx)
-        : tracktion::Plugin(info)
+        : PluginBase(info)
         , midiEffect(fx)
     {}
 
@@ -221,8 +223,6 @@ public:
         Edit,
         Emulated
     };
-
-    using tracktion::Plugin::Plugin;
 
     String getVendor() override { return "PixelMatter"; }
     double getLatencySeconds() override { return 0.0; }

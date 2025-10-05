@@ -291,57 +291,84 @@ private:
 };
 
 //==============================================================================
-struct ParameterAutomationBindingBase {
-    virtual ~ParameterAutomationBindingBase() = default;
-};
+// Base for automatable parameters with binding to ParameterValue
+template <typename Type>
+class BindedAutoParameter : public tracktion::AutomatableParameter {
+public:
+    using tracktion::AutomatableParameter::AutomatableParameter;
+    using TypeTraits = ParameterConversionTraits<Type>;
 
-template <typename ParameterValueType>
-struct ParameterAutomationBinding : ParameterAutomationBindingBase {
-    ParameterAutomationBinding(ParameterValueType& v, tracktion::AutomatableParameter::Ptr param)
-        : value(v)
-        , parameter(std::move(param))
+    BindedAutoParameter(tracktion::AutomatableEditItem& editItem, ParameterValue<Type>& paramValue)
+        : tracktion::AutomatableParameter(paramValue.definition.identifier, paramValue.definition.shortLabel, editItem, paramValue.definition.getFloatValueRange())
+        , definition(paramValue.definition)
+        , value(paramValue)
     {
-        if (parameter != nullptr) {
-            parameter->attachToCurrentValue(value.value);
-            value.setLiveReader(&ParameterAutomationBinding::readLiveValue, parameter.get());
+        attachToCurrentValue(value.value);
+        value.setLiveReader(&readLiveValue, this);
 
-            using Traits = ParameterConversionTraits<typename ParameterValueType::Type>;
+        if (auto fn = value.definition.valueToStringFunction; fn) {
+            valueToStringFunction = [fn](float v) {
+                return fn(TypeTraits::fromFloat(v));
+            };
+        }
 
-            if (auto fn = value.definition.valueToStringFunction; fn) {
-                parameter->valueToStringFunction = [fn](float paramValue) {
-                    return fn(Traits::fromFloat(paramValue));
-                };
-            }
-
-            if (auto fn = value.definition.stringToValueFunction; fn) {
-                parameter->stringToValueFunction = [fn](const juce::String& text) {
-                    auto typedValue = fn(text);
-                    return Traits::toFloat(typedValue);
-                };
-            }
+        if (auto fn = value.definition.stringToValueFunction; fn) {
+            stringToValueFunction = [fn](const juce::String& text) {
+                auto typedValue = fn(text);
+                return TypeTraits::toFloat(typedValue);
+            };
         }
     }
 
-    ~ParameterAutomationBinding() override {
-        if (parameter != nullptr)
-            parameter->detachFromCurrentValue();
+    ~BindedAutoParameter () override {
+        detachFromCurrentValue();
         value.clearLiveReader();
     }
 
-    ParameterValueType& value;
-    tracktion::AutomatableParameter::Ptr parameter;
+    // TODO
+    String getParameterName() const          override { return definition.identifier; }
+    String getParameterShortName (int) const override { return definition.shortLabel; }
+    String getLabel()                        override { return definition.units; }
+
 
 private:
-    static auto readLiveValue(void* context) noexcept -> typename ParameterValueType::Type {
+    static auto readLiveValue(void* context) noexcept -> Type {
         auto* param = static_cast<tracktion::AutomatableParameter*>(context);
         jassert(param != nullptr);
         if (param == nullptr)
             return {};
 
-        using Traits = ParameterConversionTraits<typename ParameterValueType::Type>;
-        return Traits::fromFloat(param->getCurrentValue());
+        return TypeTraits::fromFloat(param->getCurrentValue());
     }
+
+    const ParameterDef<Type>& definition;
+    ParameterValue<Type>& value;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BindedAutoParameter)
 };
+
+//==============================================================================
+// Base for plugins using ParameterValues
+class PluginBase: public tracktion::Plugin {
+public:
+    using tracktion::Plugin::Plugin;
+
+    template <typename Type>
+    tracktion::AutomatableParameter* addParam(ParameterValue<Type>& paramValue){
+        auto p = new BindedAutoParameter<Type>(*this, paramValue);
+        addAutomatableParameter(*p);
+        return p;
+    }
+
+    // //==============================================================================
+    // void restorePluginStateFromValueTree(const ValueTree&) {
+    //     for (auto p : getAutomatableParameters()) {
+    //         p->updateFromAttachedValue();
+    //     }
+    // }
+
+};
+
 
 //==============================================================================
 // CRTP base class for parameter structs in plugins

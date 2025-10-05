@@ -8,17 +8,13 @@ namespace MoTool::uZX {
 const char* AYChipPlugin::xmlTypeName = "aychip";
 
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
-    : te::Plugin(info)
+    : PluginBase(info)
     , midiParamsReader(staticParams.baseMidiChannel.getStoredValue())
 {
     staticParams.referTo(state, getUndoManager());
-
     dynamicParams.referTo(state, getUndoManager());
     dynamicParams.visit([this](auto& vd) {
-        auto& def = vd.definition;
-        auto param = addParam(def.identifier, def.description, def.getFloatValueRange());
-        using ValueType = std::decay_t<decltype(vd)>;
-        dynamicParamBindings.emplace_back(std::make_unique<ParameterAutomationBinding<ValueType>>(vd, te::AutomatableParameter::Ptr(param)));
+        addParam(vd);
     });
 }
 

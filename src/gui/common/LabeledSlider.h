@@ -19,8 +19,8 @@ class LabeledSlider : public Component,
 {
 public:
     template <typename Type = float>
-    LabeledSlider(te::Plugin& plugin, ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : binding(slider, plugin.getAutomatableParameterByID(value.definition.identifier), value)
+    LabeledSlider(te::AutomatableEditItem& editItem, ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
+        : binding(slider, editItem.getAutomatableParameterByID(value.definition.identifier), value)
     {
         slider.setSliderStyle(style);
         slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);

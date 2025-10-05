@@ -7,7 +7,6 @@
 
 #include "ChipInstrument.h"
 #include "../midi_effects/MidiEffect.h"
-#include "../../../controllers/Parameters.h"
 
 
 namespace MoTool::uZX {
@@ -16,8 +15,7 @@ namespace MoTool::uZX {
 /**
  * μZX Chip Instrument Plugin - Main instrument plugin implementation
  */
-class ChipInstrumentPlugin :
-                             public MidiFxPluginBase<ChipInstrumentFx>,
+class ChipInstrumentPlugin : public MidiFxPluginBase<ChipInstrumentFx>,
                              private tracktion::LevelMeasurer::Client
 {
 public:
@@ -60,7 +58,6 @@ public:
     float getLevel(int channel);
 
     ChipInstrumentFx instrument;
-    std::vector<std::unique_ptr<ParameterAutomationBindingBase>> parameterBindings;
 
 private:
     void valueTreeChanged() override;
@@ -69,15 +66,8 @@ private:
     void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
     void flushPluginStateToValueTree() override;
 
-    // Params
-    tracktion::AutomatableParameter::Ptr addParam(const String& paramID,
-                                                  const String& name,
-                                                  NormalisableRange<float> valueRange,
-                                                  String label = {});
-
     //==============================================================================
     bool flushingState = false;
-    std::unordered_map<String, String> paramLabels;
     tracktion::LevelMeasurer levelMeasurer;
     tracktion::DbTimePair levels[2];
 

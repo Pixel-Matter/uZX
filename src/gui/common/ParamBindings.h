@@ -59,6 +59,7 @@ private:
     template <typename ParameterValueType>
     void configureStoredValueCallbacks(ParameterValueType& parameterValue);
 
+    // To be able to listen to it
     Value storedValue;
     bool listensToValue { false };
 };
@@ -68,18 +69,20 @@ void ParamBindingBase::configureStoredValueCallbacks(ParameterValueType& paramet
     listensToValue = true;
     storedValue = parameterValue.getPropertyAsValue();
     storedValue.addListener(this);
+    using Traits = ParameterConversionTraits<typename ParameterValueType::Type>;
+
+    // TODO invert control?
+    // fetchValue = parameterValue.getFetcher()
+    // applyValue = parameterValue.getApplier()
 
     fetchValue = [&parameterValue]() {
-        using LocalTraits = ParameterConversionTraits<typename ParameterValueType::Type>;
-        return static_cast<float>(LocalTraits::toFloat(parameterValue.getStoredValue()));
+        return static_cast<float>(Traits::toFloat(parameterValue.getStoredValue()));
     };
 
     applyValue = [&parameterValue](float value) {
-        using LocalTraits = ParameterConversionTraits<typename ParameterValueType::Type>;
-        parameterValue.setStoredValue(LocalTraits::fromFloat(value));
+        parameterValue.setStoredValue(Traits::fromFloat(value));
     };
 }
-
 
 
 //==============================================================================
@@ -117,6 +120,7 @@ public:
 
     ~SliderParamBinding() override;
 
+    // TODO only for values attached to automatable parameters?
     MidiParameterMapping midiMapping;
 
 private:

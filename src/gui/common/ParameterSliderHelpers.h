@@ -59,8 +59,12 @@ inline void configureSliderForParameterDef(
     slider.setSkewFactor(static_cast<double>(floatRange.skew));
 
     slider.setNumDecimalPlacesToDisplay(decimalPlacesFor<Type>());
-    slider.textFromValueFunction = wrapValueToString<Type>(def.valueToStringFunction);
-    slider.valueFromTextFunction = wrapStringToValue<Type>(def.stringToValueFunction);
+
+    if (def.valueToStringFunction)
+        slider.textFromValueFunction = wrapValueToString<Type>(def.valueToStringFunction);
+
+    if (def.stringToValueFunction)
+        slider.valueFromTextFunction = wrapStringToValue<Type>(def.stringToValueFunction);
 
     if (def.units.isNotEmpty())
         slider.setTextValueSuffix(def.units);

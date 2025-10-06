@@ -15,6 +15,7 @@ using namespace std::literals;
 namespace te = tracktion;
 
 //==============================================================================
+template <typename WidgetValueType>
 class WidgetStaticParamBinding : private Value::Listener {
 public:
     template <typename Type>
@@ -29,15 +30,13 @@ public:
     }
 
 protected:
-    std::function<float()> fetchFloatValue;
-    std::function<void(float)> applyFloatValue;
+    std::function<WidgetValueType()> fetchValue;
+    std::function<void(WidgetValueType)> applyValue;
     // std::function<void()> beginGesture;
     // std::function<void()> endGesture;
     bool updating { false };
 
 private:
-    void configureAutomationCallbacks();
-
     template <typename Type>
     void configureStoredValueCallbacks(ParameterValue<Type>& parameterValue) {
         using Traits = ParameterConversionTraits<Type>;
@@ -46,14 +45,14 @@ private:
         // fetchValue = parameterValue.getFetcher()
         // applyValue = parameterValue.getApplier()
 
-        fetchFloatValue = [&parameterValue]() {
+        fetchValue = [&parameterValue]() {
             parameterValue.value.forceUpdateOfCachedValue();
-            return static_cast<float>(Traits::toFloat(parameterValue.getStoredValue()));
+            return Traits::template to<WidgetValueType>(parameterValue.getStoredValue());
         };
 
         // because applier of float value can be not not templated
-        applyFloatValue = [&parameterValue](float value) {
-            parameterValue.setStoredValue(Traits::fromFloat(value));
+        applyValue = [&parameterValue](WidgetValueType value) {
+            parameterValue.setStoredValue(Traits::template from<WidgetValueType>(value));
         };
     }
 
@@ -63,7 +62,7 @@ private:
     friend class WidgetBindingTests;
 };
 
-class SliderStaticParamBinding : public WidgetStaticParamBinding {
+class SliderStaticParamBinding : public WidgetStaticParamBinding<float> {
 public:
     template <typename Type>
     SliderStaticParamBinding(Slider& s, ParameterValue<Type>& value)
@@ -82,7 +81,7 @@ private:
                 return;
 
             juce::ScopedValueSetter<bool> svs(updating, true);
-            applyFloatValue(static_cast<float>(slider.getValue()));
+            applyValue(static_cast<float>(slider.getValue()));
         };
 
         slider.onDragStart = [/*this*/] {
@@ -99,14 +98,14 @@ private:
     }
 
     void refreshFromSource() {
-        if (!fetchFloatValue)
+        if (!fetchValue)
             return;
 
         if (updating)
             return;
 
         juce::ScopedValueSetter<bool> svs(updating, true);
-        slider.setValue(fetchFloatValue(), dontSendNotification);
+        slider.setValue(fetchValue(), dontSendNotification);
     }
 
     void valueChanged(Value&) override {
@@ -117,7 +116,7 @@ private:
 };
 
 //============================================================================
-class ButtonStaticParamBinding : public WidgetStaticParamBinding {
+class ButtonStaticParamBinding : public WidgetStaticParamBinding<int> {
 public:
     template <typename Type>
     ButtonStaticParamBinding(Button& b, ParameterValue<Type>& value)
@@ -130,11 +129,74 @@ public:
     }
 
 private:
+    template <Util::EnumChoiceConcept Type>
+    void configureForParameterDef(const ParameterDef<Type>& def) {
+        choiceCount = static_cast<int>(Type::size());
+
+        button.setTooltip(def.description);
+
+        using Traits = ParameterConversionTraits<Type>;
+
+        // valueToStringFunction overrides getLabel()
+        if (auto valueToString = def.valueToStringFunction) {
+            indexToLabel = [valueToString](int index) -> String {
+                return valueToString(Traits::fromFloat(static_cast<float>(index)));
+            };
+        } else {
+            indexToLabel = [](int index) -> String {
+                auto label = Type(index).getLabel();
+                return String(label.data());
+            };
+        }
+    }
+
+    void configureWidgetHandlers() {
+        button.onClick = [this] {
+            handleClick();
+        };
+    }
+
+    void handleClick() {
+        if (!applyValue || choiceCount <= 0)
+            return;
+
+        const auto currentIndex = getCurrentIndex();
+        const auto nextIndex = wrapIndex(currentIndex + 1);
+
+        // if (beginGesture)
+        //     beginGesture();
+
+        {
+            juce::ScopedValueSetter<bool> svs(updating, true);
+            applyValue(nextIndex);
+        }
+
+        // if (endGesture)
+        //     endGesture();
+    }
+
+    void refreshFromSource() {
+        if (updating)
+            return;
+
+        if (!fetchValue || !indexToLabel || choiceCount <= 0)
+            return;
+
+        juce::ScopedValueSetter<bool> svs(updating, true);
+        const auto intValue = fetchValue();
+        const auto index = wrapIndex(intValue);
+        button.setButtonText(indexToLabel(index));
+    }
+
+    void valueChanged(Value&) override {
+        refreshFromSource();
+    }
+
     int getCurrentIndex() const {
-        if (!floatValueToIndex || choiceCount <= 0)
+        if (choiceCount <= 0)
             return 0;
 
-        return wrapIndex(floatValueToIndex(fetchFloatValue()));
+        return wrapIndex(fetchValue());
     }
 
     int wrapIndex(int index) const {
@@ -148,85 +210,8 @@ private:
     }
 
     std::function<String(int)> indexToLabel;
-    std::function<float(int)> indexToFloatValue;
-    std::function<int(float)> floatValueToIndex;
 
     int choiceCount { 0 };
-
-    template <Util::EnumChoiceConcept Type>
-    void configureForParameterDef(const ParameterDef<Type>& def) {
-        choiceCount = static_cast<int>(Type::size());
-
-        button.setTooltip(def.description);
-
-        using Traits = ParameterConversionTraits<Type>;
-
-        indexToFloatValue = [](int index) -> float {
-            auto typedValue = Type(index);
-            return static_cast<float>(Traits::toFloat(typedValue));
-        };
-
-        floatValueToIndex = [](float sliderValue) -> int {
-            auto typedValue = Traits::fromFloat(sliderValue);
-            return static_cast<int>(Traits::toStorage(typedValue));
-        };
-
-        // valueToStringFunction overrides getLabel()
-        if (auto valueToString = def.valueToStringFunction) {
-            indexToLabel = [valueToString](int index) -> String {
-                auto typedValue = Traits::fromFloat(static_cast<float>(index));
-                return valueToString(typedValue);
-            };
-        } else {
-            indexToLabel = [](int index) -> String {
-                auto label = Type(index).getLabel();
-                return String(label.data());
-            };
-        }
-    }
-
-    void configureWidgetHandlers() {
-        button.onClick = [this]() {
-            handleClick();
-        };
-    }
-
-    void handleClick() {
-        if (!applyFloatValue || !indexToFloatValue || choiceCount <= 0)
-            return;
-
-        const auto currentIndex = getCurrentIndex();
-        const auto nextIndex = wrapIndex(currentIndex + 1);
-        const auto floatValue = indexToFloatValue(nextIndex);
-
-        // if (beginGesture)
-        //     beginGesture();
-
-        {
-            juce::ScopedValueSetter<bool> svs(updating, true);
-            applyFloatValue(floatValue);
-        }
-
-        // if (endGesture)
-        //     endGesture();
-    }
-
-    void refreshFromSource() {
-        if (updating)
-            return;
-
-        if (!fetchFloatValue || !indexToLabel || choiceCount <= 0)
-            return;
-
-        juce::ScopedValueSetter<bool> svs(updating, true);
-        const auto floatValue = fetchFloatValue();
-        const auto index = wrapIndex(floatValueToIndex(static_cast<float>(floatValue)));
-        button.setButtonText(indexToLabel(index));
-    }
-
-    void valueChanged(Value&) override {
-        refreshFromSource();
-    }
 
     Button& button;
 };
@@ -308,29 +293,29 @@ public:
         {
             ValueTree state {te::IDs::PLUGIN};
 
-            ParameterValue<ChipType> value {{"chip", "chip", "Chip", "Chip type", ChipType::YM}};
+            ParameterValue<ChipType> value {{"chip", "chip", "Chip", "Chip type", ChipType::AY}};
             value.referTo(state, nullptr);
 
             // TODO make value store Enum type directly
-            expectEquals((double) value.getStoredValue(), 1.0, "Initial value from ParameterValue");
+            expectEquals((double) value.getStoredValue(), 0.0, "Initial value from ParameterValue");
 
             TextButton button;
             ButtonStaticParamBinding binding(button, value);
 
-            expectEquals(button.getButtonText(), String("YM"), "Initial button text");
+            expectEquals(button.getButtonText(), String("AY"), "Initial button text");
 
-            value.setStoredValue(ChipType::AY);
+            value.setStoredValue(ChipType::YM);
 
             // Stored value listeners fire asynchronously on the message thread.
             juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
 
-            expectEquals(button.getButtonText(), String("AY"), "Button text updated from ParameterValue");
+            expectEquals(button.getButtonText(), String("YM"), "Button text updated from ParameterValue");
 
             button.triggerClick();
             juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
 
             using Traits = ParameterConversionTraits<ChipType>;
-            expectEquals(Traits::fromStorage(value.getStoredValue()), ChipType(ChipType::YM),
+            expectEquals(Traits::fromStorage(value.getStoredValue()), ChipType(ChipType::AY),
                          "ParameterValue updated from button click");
         }
 

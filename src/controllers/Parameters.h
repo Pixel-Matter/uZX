@@ -30,6 +30,12 @@ struct ParameterConversionTraits<T, std::enable_if_t<std::is_floating_point_v<T>
 
     static constexpr auto toFloat(T value) noexcept -> float { return static_cast<float>(value); }
     static constexpr auto fromFloat(float value) noexcept -> T { return static_cast<T>(value); }
+
+    template <typename ConvType>
+    static constexpr auto to(T value) noexcept -> ConvType { return static_cast<ConvType>(value); }
+
+    template <typename ConvType>
+    static constexpr auto from(ConvType value) noexcept -> T { return static_cast<T>(value); }
 };
 
 template <typename T>
@@ -41,6 +47,12 @@ struct ParameterConversionTraits<T, std::enable_if_t<std::is_integral_v<T> && !s
 
     static constexpr auto toFloat(T value) noexcept -> float { return static_cast<float>(value); }
     static constexpr auto fromFloat(float value) noexcept -> T { return static_cast<T>(roundToInt(value)); }
+
+    template <typename ConvType>
+    static constexpr auto to(T value) noexcept -> ConvType { return static_cast<ConvType>(value); }
+
+    template <typename ConvType>
+    static constexpr auto from(ConvType value) noexcept -> T { return static_cast<T>(value); }
 };
 
 template <>
@@ -52,6 +64,15 @@ struct ParameterConversionTraits<bool> {
 
     static constexpr auto toFloat(bool value) noexcept -> float { return value ? 1.0f : 0.0f; }
     static constexpr auto fromFloat(float value) noexcept -> bool { return value >= 0.5f; }
+
+    static constexpr auto toInt(bool value) noexcept -> int { return value ? 1 : 0; }
+    static constexpr auto fromInt(int value) noexcept -> bool { return value != 0; }
+
+    template <typename ConvType>
+    static constexpr auto to(bool value) noexcept -> ConvType { return static_cast<ConvType>(toInt(value)); }
+
+    template <typename ConvType>
+    static constexpr auto from(ConvType value) noexcept -> bool { return fromInt(static_cast<int>(value)); }
 };
 
 template <Util::EnumChoiceConcept E>
@@ -59,23 +80,36 @@ struct ParameterConversionTraits<E> {
     //TODO String?
     using StorageType = int;
 
-    static constexpr auto toStorage(E value) noexcept -> StorageType {
+
+    static constexpr auto toInt(E value) noexcept -> int {
         using EnumType = typename E::Enum;
         using Underlying = typename E::UnderlyingType;
-        return static_cast<StorageType>(static_cast<Underlying>(static_cast<EnumType>(value)));
+        return static_cast<int>(static_cast<Underlying>(static_cast<EnumType>(value)));
     }
 
-    static constexpr auto fromStorage(StorageType value) noexcept -> E { return E(value); }
+    static constexpr auto fromInt(int value) noexcept -> E { return E(value); }
+
+    static constexpr auto toStorage(E value) noexcept -> StorageType {
+        return toInt(value);
+    }
+
+    static constexpr auto fromStorage(StorageType value) noexcept -> E { return fromInt(value); }
 
     static constexpr auto toFloat(E value) noexcept -> float {
-        using EnumType = typename E::Enum;
-        using Underlying = typename E::UnderlyingType;
-        return static_cast<float>(static_cast<Underlying>(static_cast<EnumType>(value)));
+        return static_cast<float>(toInt(value));
     }
 
     static auto fromFloat(float value) noexcept -> E {
-        return E(roundToInt(value));
+        return fromInt(roundToInt(value));
     }
+
+    template <typename ConvType>
+    static constexpr auto to(E value) noexcept -> ConvType { return static_cast<ConvType>(toInt(value)); }
+
+    template <typename ConvType>
+    static constexpr auto from(ConvType value) noexcept -> E { return fromInt(static_cast<int>(value)); }
+
+    // TODO from/to String?
 };
 
 //==============================================================================

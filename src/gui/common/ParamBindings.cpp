@@ -4,7 +4,7 @@ using namespace juce;
 
 namespace MoTool {
 
-ParamBindingBase::ParamBindingBase(te::AutomatableParameter::Ptr p)
+WidgetParamBindingBase::WidgetParamBindingBase(te::AutomatableParameter::Ptr p)
     : param(std::move(p)) {
     if (param != nullptr) {
         param->addListener(this);
@@ -12,7 +12,7 @@ ParamBindingBase::ParamBindingBase(te::AutomatableParameter::Ptr p)
     }
 }
 
-ParamBindingBase::~ParamBindingBase() {
+WidgetParamBindingBase::~WidgetParamBindingBase() {
     if (isAttached()) {
         param->removeListener(this);
     }
@@ -20,7 +20,7 @@ ParamBindingBase::~ParamBindingBase() {
         storedValue.removeListener(this);
 }
 
-void ParamBindingBase::configureAutomationCallbacks() {
+void WidgetParamBindingBase::configureAutomationCallbacks() {
     fetchValue = [this] {
         return static_cast<double>(param->getCurrentValue());
     };
@@ -32,8 +32,25 @@ void ParamBindingBase::configureAutomationCallbacks() {
     endGesture   = [this] { param->parameterChangeGestureEnd(); };
 }
 
+void SliderParamBinding::configureSliderForAutomationParameter() {
+    jassert(param != nullptr);
+    if (param == nullptr)
+        return;
 
-SliderParamBinding::~SliderParamBinding() = default;
+    slider.setTooltip(param->getParameterName());
+    slider.setPopupDisplayEnabled(true, true, nullptr);
+
+    slider.setRange(param->getValueRange().getStart(),
+                    param->getValueRange().getEnd(),
+                    param->valueRange.interval);
+    slider.setSkewFactor(param->valueRange.skew);
+
+    slider.setNumDecimalPlacesToDisplay(2);
+    slider.textFromValueFunction = param->valueToStringFunction;
+    slider.valueFromTextFunction = param->stringToValueFunction;
+
+    slider.setValue(param->getCurrentValue(), juce::dontSendNotification);
+}
 
 void SliderParamBinding::configureSliderHandlers() {
     slider.onValueChange = [this] {

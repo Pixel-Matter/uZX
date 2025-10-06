@@ -72,27 +72,4 @@ inline void configureSliderForParameterDef(
     // slider.setValue(static_cast<double>(Traits::toFloat(value.getStoredValue())), juce::dontSendNotification);
 }
 
-inline void configureSliderForAutomationParameter(
-    juce::Slider& slider,
-    tracktion::AutomatableParameter* parameter
-) {
-    jassert(parameter != nullptr);
-    if (parameter == nullptr)
-        return;
-
-    slider.setTooltip(parameter->getParameterName());
-    slider.setPopupDisplayEnabled(true, true, nullptr);
-
-    slider.setRange(parameter->getValueRange().getStart(),
-                    parameter->getValueRange().getEnd(),
-                    parameter->valueRange.interval);
-    slider.setSkewFactor(parameter->valueRange.skew);
-
-    slider.setNumDecimalPlacesToDisplay(2);
-    slider.textFromValueFunction = parameter->valueToStringFunction;
-    slider.valueFromTextFunction = parameter->stringToValueFunction;
-
-    slider.setValue(parameter->getCurrentValue(), juce::dontSendNotification);
-}
-
 } // namespace MoTool::ParameterUIHelpers

@@ -23,21 +23,21 @@ namespace MoTool {
     gesture callbacks and optionally falling back to a stored `ParameterValue`
     when the plugin doesn't expose a live parameter.
 */
-class ParamBindingBase : private te::AutomatableParameter::Listener,
-                         private Value::Listener
+class WidgetParamBindingBase : private te::AutomatableParameter::Listener,
+                               private Value::Listener
 {
 public:
-    ParamBindingBase(te::AutomatableParameter::Ptr p);
+    WidgetParamBindingBase(te::AutomatableParameter::Ptr p);
 
     template <typename Type>
-    ParamBindingBase(te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
-        : ParamBindingBase(std::move(p))
+    WidgetParamBindingBase(te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
+        : WidgetParamBindingBase(std::move(p))
     {
         if (param == nullptr)
             configureStoredValueCallbacks(value);
     }
 
-    ~ParamBindingBase() override;
+    ~WidgetParamBindingBase() override;
 
     bool isAttached() const noexcept {
         return param != nullptr;
@@ -65,7 +65,7 @@ private:
 };
 
 template <typename ParameterValueType>
-void ParamBindingBase::configureStoredValueCallbacks(ParameterValueType& parameterValue) {
+void WidgetParamBindingBase::configureStoredValueCallbacks(ParameterValueType& parameterValue) {
     listensToValue = true;
     storedValue = parameterValue.getPropertyAsValue();
     storedValue.addListener(this);
@@ -90,16 +90,16 @@ void ParamBindingBase::configureStoredValueCallbacks(ParameterValueType& paramet
     Attaches a `juce::Slider` to either an automation parameter or a
     `ParameterValue`, keeping MIDI learn and mouse gesture support wired up.
 */
-class SliderParamBinding : public ParamBindingBase
+class SliderParamBinding : public WidgetParamBindingBase
 {
 public:
     SliderParamBinding(Slider& s, te::AutomatableParameter::Ptr p)
-        : ParamBindingBase(std::move(p))
+        : WidgetParamBindingBase(std::move(p))
         , midiMapping(param)
         , mouseListener(s)
         , slider(s)
     {
-        ParameterUIHelpers::configureSliderForAutomationParameter(slider, param.get());
+        configureSliderForAutomationParameter();
         configureSliderHandlers();
         configureMouseListener();
         refreshFromSource();
@@ -107,7 +107,7 @@ public:
 
     template <typename Type>
     SliderParamBinding(Slider& s, te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
-        : ParamBindingBase(std::move(p), value)
+        : WidgetParamBindingBase(std::move(p), value)
         , midiMapping(param)
         , mouseListener(s)
         , slider(s)
@@ -118,12 +118,11 @@ public:
         refreshFromSource();
     }
 
-    ~SliderParamBinding() override;
-
     // TODO only for values attached to automatable parameters?
     MidiParameterMapping midiMapping;
 
 private:
+    void configureSliderForAutomationParameter();
     void configureSliderHandlers();
     void configureMouseListener();
     void refreshFromSource();
@@ -141,12 +140,12 @@ private:
     binding cycles through the available choices while honouring optional custom
     string converters from the parameter definition.
 */
-class ButtonParamBinding : public ParamBindingBase
+class ButtonParamBinding : public WidgetParamBindingBase
 {
 public:
     ButtonParamBinding(TextButton& button,
                        te::AutomatableParameter::Ptr p)
-        : ParamBindingBase(std::move(p))
+        : WidgetParamBindingBase(std::move(p))
         , midiMapping(param)
         , textButton(button)
         , mouseListener(std::make_unique<MouseListenerWithCallback>(button))
@@ -160,7 +159,7 @@ public:
     ButtonParamBinding(TextButton& button,
                        te::AutomatableParameter::Ptr p,
                        ParameterValue<Type>& value)
-        : ParamBindingBase(std::move(p), value)
+        : WidgetParamBindingBase(std::move(p), value)
         , midiMapping(param)
         , textButton(button)
         , mouseListener(std::make_unique<MouseListenerWithCallback>(button))

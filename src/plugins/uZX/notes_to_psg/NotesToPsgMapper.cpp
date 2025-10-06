@@ -162,8 +162,9 @@ void NotesToPsgMapper::ChannelVoice::updateVolume() {
 }
 
 void NotesToPsgMapper::ChannelVoice::updatePeriod() {
-    state.period = getEffectiveChipPeriod();
-    if (lastState.period != state.period) {
+    auto period = getEffectiveChipPeriod();
+    if (period != 0 && lastState.period != period) {
+        state.period = period;
         // DBG("UpdatePeriod: Channel " << midiChannel
         //     << ", note: " << (isActive() ? std::to_string(mpeNote.initialNote) : "none")
         //     << ", pitch: " << (isActive() ? std::to_string(mpeNote.initialNote + mpeNote.totalPitchbendInSemitones) : "none")
@@ -287,9 +288,8 @@ void NotesToPsgMapper::handleMidiMessage(const te::MidiMessageWithSource& msg) {
     if (!isChannelInRange(channel)) {
         if (passthruOutsideChannels_) {
             midiBuffer_.addMidiMessage(msg, msg.mpeSourceID);
-        } else {
-            return;
         }
+        return;
     }
     mpeInstrument_.processNextMidiEvent(msg);
 
@@ -306,7 +306,7 @@ void NotesToPsgMapper::handleMidiMessage(const te::MidiMessageWithSource& msg) {
     // Other mesages can be handled here if needed
 }
 
-te::MidiMessageArray NotesToPsgMapper::renderVoices() {
+[[nodiscard]] te::MidiMessageArray NotesToPsgMapper::renderVoices() {
     for (auto& voice : voices_) {
         voice.render();
     }

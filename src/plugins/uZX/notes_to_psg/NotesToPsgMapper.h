@@ -10,6 +10,10 @@
 #include <vector>
 #include <optional>
 
+namespace MoTool::Tests {
+class MidiToPsgConverterTests;
+}
+
 namespace MoTool::uZX {
 
 using namespace MoTool;
@@ -96,16 +100,18 @@ public:
     void debugChannelVoices() const;
 
     friend struct ChannelVoice;
+    friend class MoTool::Tests::MidiToPsgConverterTests;
 
 private:
-    // State access for testing
-    const ChannelVoice& getChannelVoice(int channel) const;
+    void setPassthruOutsideChannels(bool enable) { passthruOutsideChannels_ = enable; }
+    void setPassthruUnprocessedMIDI(bool enable) { passthruUnprocessedMIDI_ = enable; }
+
     // Helper methods
     bool isChannelInRange(int channel) const;
     const ChannelVoice& getVoice(int channel) const;
     ChannelVoice& getVoice(int channel);
 
-    te::MidiMessageArray renderVoices();
+    [[nodiscard]] te::MidiMessageArray renderVoices();
 
     //==============================================================================
     // MPEInstrument::Listener callbacks (connect MPE events to voice management)

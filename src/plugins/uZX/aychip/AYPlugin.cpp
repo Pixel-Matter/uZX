@@ -1,5 +1,5 @@
 #include "AYPlugin.h"
-#include "AYPluginEditor.h"
+// #include "AYPluginEditor.h"
 
 
 namespace MoTool::uZX {
@@ -185,7 +185,8 @@ void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
 }
 
 std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {
-    return std::make_unique<AYPluginEditor>(AYChipPlugin::Ptr(this));
+    return nullptr;
+    // return std::make_unique<AYPluginEditor>(AYChipPlugin::Ptr(this));
 }
 
 //==============================================================================

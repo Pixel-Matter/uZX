@@ -32,6 +32,7 @@ void WidgetParamBindingBase::configureAutomationCallbacks() {
     endGesture   = [this] { param->parameterChangeGestureEnd(); };
 }
 
+//==============================================================================
 void SliderParamBinding::configureSliderForAutomationParameter() {
     jassert(param != nullptr);
     if (param == nullptr)

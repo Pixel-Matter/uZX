@@ -219,15 +219,13 @@ void ButtonParamBinding::configureFromParameterValue(ParameterValue<Type>& value
 
     if (auto valueToString = value.definition.valueToStringFunction) {
         indexToLabel = [valueToString](int index) -> String {
-            using LocalTraits = ParameterConversionTraits<Type>;
-            auto typedValue = LocalTraits::fromFloat(static_cast<float>(index));
+            auto typedValue = Traits::fromFloat(static_cast<float>(index));
             return valueToString(typedValue);
         };
     } else {
         indexToLabel = [](int index) -> String {
-            Type typedValue(index);
-            auto label = typedValue.getLabel();
-            return String(label.data(), static_cast<size_t>(label.size()));
+            auto label = Type(index).getLabel();
+            return String(label.data());
         };
     }
 }

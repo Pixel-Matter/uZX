@@ -28,6 +28,7 @@ get_full_paths(GUI_SOURCES ${CMAKE_SOURCE_DIR}/src ${GUI_SOURCES})
 # Include the same source files as the main app
 target_sources(${TARGET_NAME} PRIVATE
     ${SHARED_SOURCES}
+    ${GUI_SOURCES}
     ${TEST_SOURCES}
     main.cpp
 )

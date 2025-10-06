@@ -45,7 +45,6 @@ set(GUI_SOURCES
     controllers/MainController.cpp
     controllers/TuningController.cpp
     controllers/App.cpp
-    controllers/Main.cpp
     controllers/EditState.cpp
 
     # gui/nodes/GraphEditorPanel.cpp
@@ -72,6 +71,7 @@ set(GUI_SOURCES
     gui/devices/GenericPluginAdapters.cpp
     gui/devices/LevelMeterUI.cpp
 
+    plugins/uZX/aychip/AYPluginEditor.cpp
     plugins/uZX/instrument/ChipInstrumentUI.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPluginUI.cpp
 )
@@ -94,4 +94,6 @@ set(TEST_SOURCES
 
     # plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
+
+    gui/common/ParamBindings.test.cpp
 )

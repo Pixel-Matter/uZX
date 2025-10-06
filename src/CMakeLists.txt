@@ -44,11 +44,15 @@ include(sources.cmake)
 target_sources(${MAIN_TARGET_NAME} PRIVATE
     ${SHARED_SOURCES}
     ${GUI_SOURCES}
+    ${TEST_SOURCES}  # We want tests compiled into the main app for control
+    controllers/Main.cpp
 )
 
 target_sources(${TUNING_TARGET_NAME} PRIVATE
     ${SHARED_SOURCES}
     ${GUI_SOURCES}
+    ${TEST_SOURCES}  # We want tests compiled into the main app for control
+    controllers/Main.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES ${SHARED_SOURCES} ${GUI_SOURCES})

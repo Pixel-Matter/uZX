@@ -51,6 +51,10 @@ public:
     bool autoInitialiseDeviceManager() override {
         return false;
     }
+
+    bool addSystemAudioIODeviceTypes() override {
+        return false;
+    }
 };
 
 
@@ -102,13 +106,13 @@ struct CoutLogger : public Logger {
 
 static Array<UnitTest*> filterTestsByName(const Array<UnitTest*>& allTests, const String& testNameFilter) {
     Array<UnitTest*> filteredTests;
-    
+
     for (auto* test : allTests) {
         if (test->getName().containsIgnoreCase(testNameFilter)) {
             filteredTests.add(test);
         }
     }
-    
+
     return filteredTests;
 }
 
@@ -133,22 +137,30 @@ int main(int argc, char* argv[]) {
         std::make_unique<TestUIBehaviour>(),
         std::make_unique<TestEngineBehaviour>()
     };
+    auto& deviceManager = engine.getDeviceManager();
+    auto& hostedInterface = deviceManager.getHostedAudioDeviceInterface();
+
+    tracktion_engine::HostedAudioDeviceInterface::Parameters hostedParams;
+    hostedParams.useMidiDevices = false;
+    hostedInterface.initialise(hostedParams);
+
+    deviceManager.setMidiDeviceScanIntervalSeconds(0);
     engine.getTemporaryFileManager().getTempDirectory().deleteRecursively (false);
 
     juce::UnitTestRunner testRunner;
-    
+
     if (argc > 1) {
         String arg = String(argv[1]);
-        
+
         if (arg == "--help" || arg == "-h") {
             printUsage();
             return 0;
         }
-        
+
         String testNameFilter = arg;
         auto allTests = UnitTest::getTestsInCategory("MoTool");
         auto filteredTests = filterTestsByName(allTests, testNameFilter);
-        
+
         if (filteredTests.isEmpty()) {
             std::cout << "No tests found matching filter: '" << testNameFilter << "'\n";
             std::cout << "\nAvailable tests:\n";
@@ -157,13 +169,13 @@ int main(int argc, char* argv[]) {
             }
             return 1;
         }
-        
+
         std::cout << "Running " << filteredTests.size() << " test(s) matching filter: '" << testNameFilter << "'\n";
         for (auto* test : filteredTests) {
             std::cout << "  " << test->getName() << "\n";
         }
         std::cout << "\n";
-        
+
         testRunner.runTests(filteredTests);
     } else {
         testRunner.runTestsInCategory("MoTool");

@@ -41,6 +41,7 @@ void GenericPluginUIAdapter::paint(juce::Graphics& g) {
     }
 
     plugin->visitAllAutomatableParams([&](tracktion::AutomatableParameter& param) {
+        // TODO create Sliders with labels for each param
         pluginInfo += param.getParameterName() + ": " + String(param.getCurrentValue(), 2) + "\n";
     });
 

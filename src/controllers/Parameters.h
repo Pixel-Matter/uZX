@@ -255,6 +255,9 @@ struct ParameterValue {
 
     inline void referTo(ValueTree& v, UndoManager* um) {
         value.referTo(v, definition.propertyID, um, Traits::toStorage(definition.defaultValue));
+
+        if (value.isUsingDefault())
+            value = Traits::toStorage(definition.defaultValue);
     }
 
     Type getStoredValue() const {
@@ -265,13 +268,17 @@ struct ParameterValue {
         return liveAccessor.readOr(getStoredValue());
     }
 
-    bool hasLiveReader() const noexcept { return liveAccessor.hasReader(); }
+    bool hasLiveReader() const noexcept {
+        return liveAccessor.hasReader();
+    }
 
     void setStoredValue(Type newValue) {
         value = Traits::toStorage(newValue);
     }
 
-    juce::Value getPropertyAsValue() { return value.getPropertyAsValue(); }
+    juce::Value getPropertyAsValue() {
+        return value.getPropertyAsValue();
+    }
 
     void setLiveReader(typename LiveAccessor::Reader reader, void* context) noexcept {
         liveAccessor.set(reader, context);

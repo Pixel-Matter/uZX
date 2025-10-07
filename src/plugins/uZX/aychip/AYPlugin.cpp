@@ -26,23 +26,16 @@ void AYChipPlugin::valueTreeChanged() {
     te::Plugin::valueTreeChanged();
 }
 
+void AYChipPlugin::updateDynamicParams() {
+    chip->setMasterVolume(dynamicParams.volume.getLiveValue());
+    chip->setLayoutAndStereoWidth(dynamicParams.layout.getLiveValue(), dynamicParams.stereoWidth.getLiveValue());
+}
+
 void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
     // TODO staticParams.isParamProperty(id);
     if (v == state) {
         if (id == IDs::clock || id == IDs::chip) {
-            DBG("id " << id << " changed to " << state.getProperty(id).toString());
             reset();
-        } else if (id == IDs::volume) {
-            if (chip != nullptr) {
-                const ScopedLock sl(lock);
-                chip->setMasterVolume(dynamicParams.volume.getLiveValue());
-            }
-        } else if (id == IDs::stereo || id == IDs::layout) {
-            if (chip != nullptr) {
-                const ScopedLock sl(lock);
-                dynamicParams.layout.value.forceUpdateOfCachedValue();
-                chip->setLayoutAndStereoWidth(dynamicParams.layout.getLiveValue(), dynamicParams.stereoWidth.getLiveValue());
-            }
         } else if (id == IDs::midi) {
             if (chip != nullptr) {
                 const ScopedLock sl(lock);
@@ -52,6 +45,20 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 midiParamsReader.setBaseChannel(staticParams.baseMidiChannel.getStoredValue());
             }
         }
+        // Commented out because updateFromDynamicParams is called in applyToBuffer
+        // else if (id == IDs::volume) {
+        //     if (chip != nullptr) {
+        //         const ScopedLock sl(lock);
+        //         chip->setMasterVolume(dynamicParams.volume.getLiveValue());
+        //     }
+        // } else if (id == IDs::stereo || id == IDs::layout) {
+        //     if (chip != nullptr) {
+        //         const ScopedLock sl(lock);
+        //         dynamicParams.layout.value.forceUpdateOfCachedValue();
+        //         chip->setLayoutAndStereoWidth(dynamicParams.layout.getLiveValue(), dynamicParams.stereoWidth.getLiveValue());
+        //     }
+        // }
+
         // no need to do anything
         // else if (id == IDs::noDC) {
         //     // DBG("removeDC = " << (staticParams.removeDCValue ? "true" : "false"));
@@ -84,13 +91,13 @@ void AYChipPlugin::reset() {
         chip->reset(static_cast<int>(sampleRate), staticParams.chipClock.getStoredValue() * MHz,
                                                   staticParams.chipType.getStoredValue());
     }
-    chip->setMasterVolume(dynamicParams.volume.getLiveValue());
-    chip->setLayoutAndStereoWidth(dynamicParams.layout.getLiveValue(), dynamicParams.stereoWidth.getLiveValue());
+    updateDynamicParams();
     // timeFromReset = 0.0;  // not used now
     midiParamsReader.reset();
     // midiRegsReader.reset();
     registersFrame = {};
 }
+
 void AYChipPlugin::updateRegistersFromMidiParams() noexcept {
     // DBG("updateRegistersFromMidiParams");
     auto& params = midiParamsReader.getParams();
@@ -150,6 +157,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         // DBG("AYChipPlugin: processing " << fc.bufferForMidiMessages->size() << " midi messages");
     // }
     for (auto& m : *fc.bufferForMidiMessages) {
+        updateDynamicParams();
         // TODO retrigger events with smallest delay
 
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
@@ -164,6 +172,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         // DBG("AY in midi " << m.getDescription());
         handleMidiEvent(m);
     }
+    updateDynamicParams();
     // process to the end of the block
     updateChip();
     if (currentSample < fc.destBuffer->getNumSamples()) {
@@ -180,8 +189,8 @@ void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
     staticParams.restoreStateFromValueTree(v);
     dynamicParams.restoreStateFromValueTree(v);
 
-    for (auto p : getAutomatableParameters())
-        p->updateFromAttachedValue();
+    // IMPOTANT! To restore automated parameters properly
+    PluginBase::restorePluginStateFromValueTree(v);
 }
 
 std::unique_ptr<te::Plugin::EditorComponent> AYChipPlugin::createEditor() {

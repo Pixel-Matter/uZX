@@ -37,6 +37,9 @@ void NotesToPsgPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
     staticParams.restoreStateFromValueTree(v);
 
     updateParams();
+    
+    // IMPOTANT! To restore automated parameters properly
+    PluginBase::restorePluginStateFromValueTree(v);
 }
 
 std::unique_ptr<te::Plugin::EditorComponent> NotesToPsgPlugin::createEditor() {

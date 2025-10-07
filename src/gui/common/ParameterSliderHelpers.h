@@ -25,7 +25,7 @@ inline std::function<juce::String(float)> wrapValueToString(const std::function<
 
     return [fn](float sliderValue) {
         using Traits = ParameterConversionTraits<Type>;
-        return fn(Traits::fromFloat(sliderValue));
+        return fn(Traits::from(sliderValue));
     };
 }
 
@@ -37,7 +37,7 @@ inline std::function<float(const juce::String&)> wrapStringToValue(const std::fu
     return [fn](const juce::String& text) {
         using Traits = ParameterConversionTraits<Type>;
         auto typedValue = fn(text);
-        return Traits::toFloat(typedValue);
+        return Traits::template to<float>(typedValue);
     };
 }
 

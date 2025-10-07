@@ -104,9 +104,8 @@ void ChipInstrumentPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
 
     // valueTreePropertyChanged(state, te::IDs::voiceMode);
 
-    for (auto p : getAutomatableParameters()) {
-        p->updateFromAttachedValue();
-    }
+    // IMPOTANT! To restore automated parameters properly
+    PluginBase::restorePluginStateFromValueTree(v);
 }
 
 // Array<float> ChipInstrumentPlugin::getLiveModulationPositions(te::AutomatableParameter::Ptr param) {

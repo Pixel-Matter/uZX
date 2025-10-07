@@ -121,12 +121,11 @@ void ButtonParamBinding::configureMouseListener() {
 }
 
 void ButtonParamBinding::refreshFromSource() {
-    if (!fetchValue || !floatValueToIndex || !indexToLabel || choiceCount <= 0)
+    if (!fetchValue || !indexToLabel || choiceCount <= 0)
         return;
 
     juce::ScopedValueSetter<bool> svs(updating, true);
-    const auto floatValue = fetchValue();
-    const auto index = wrapIndex(floatValueToIndex(static_cast<float>(floatValue)));
+    const auto index = wrapIndex(roundToInt(fetchValue()));
     textButton.setButtonText(indexToLabel(index));
 }
 
@@ -143,12 +142,11 @@ void ButtonParamBinding::valueChanged(Value&) {
 }
 
 void ButtonParamBinding::handleClick() {
-    if (!applyValue || !indexToFloatValue || choiceCount <= 0)
+    if (!applyValue || choiceCount <= 0)
         return;
 
     const auto currentIndex = getCurrentIndex();
     const auto nextIndex = wrapIndex(currentIndex + 1);
-    const auto floatValue = indexToFloatValue(nextIndex);
 
     if (beginGesture)
         beginGesture();
@@ -156,7 +154,7 @@ void ButtonParamBinding::handleClick() {
     {
         juce::ScopedValueSetter<bool> svs(updating, true);
         // apply to parameter source or value
-        applyValue(floatValue);
+        applyValue(static_cast<float>(nextIndex));
     }
 
     if (endGesture)
@@ -164,10 +162,10 @@ void ButtonParamBinding::handleClick() {
 }
 
 int ButtonParamBinding::getCurrentIndex() const {
-    if (!fetchValue || !floatValueToIndex || choiceCount <= 0)
+    if (!fetchValue || choiceCount <= 0)
         return 0;
 
-    return wrapIndex(floatValueToIndex(static_cast<float>(fetchValue())));
+    return wrapIndex(roundToInt(fetchValue()));
 }
 
 int ButtonParamBinding::wrapIndex(int index) const {

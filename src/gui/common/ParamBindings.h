@@ -76,11 +76,11 @@ void WidgetParamBindingBase::configureStoredValueCallbacks(ParameterValueType& p
     // applyValue = parameterValue.getApplier()
 
     fetchValue = [&parameterValue]() {
-        return static_cast<float>(Traits::toFloat(parameterValue.getStoredValue()));
+        return static_cast<float>(Traits::template to<float>(parameterValue.getStoredValue()));
     };
 
     applyValue = [&parameterValue](float value) {
-        parameterValue.setStoredValue(Traits::fromFloat(value));
+        parameterValue.setStoredValue(Traits::from(value));
     };
 }
 
@@ -189,8 +189,6 @@ private:
     TextButton& textButton;
     std::unique_ptr<MouseListenerWithCallback> mouseListener;
     std::function<String(int)> indexToLabel;
-    std::function<float(int)> indexToFloatValue;
-    std::function<int(float)> floatValueToIndex;
 
     int choiceCount { 0 };
 
@@ -200,26 +198,15 @@ private:
 
 template <Util::EnumChoiceConcept Type>
 void ButtonParamBinding::configureFromParameterValue(ParameterValue<Type>& value) {
-    DBG("ButtonParamBinding::configureFromParameterValue for " << value.definition.identifier);
     choiceCount = static_cast<int>(Type::size());
 
     textButton.setTooltip(value.definition.description);
 
     using Traits = ParameterConversionTraits<Type>;
 
-    indexToFloatValue = [](int index) -> float {
-        auto typedValue = Type(index);
-        return static_cast<float>(Traits::toFloat(typedValue));
-    };
-
-    floatValueToIndex = [](float sliderValue) -> int {
-        auto typedValue = Traits::fromFloat(sliderValue);
-        return static_cast<int>(Traits::toStorage(typedValue));
-    };
-
     if (auto valueToString = value.definition.valueToStringFunction) {
         indexToLabel = [valueToString](int index) -> String {
-            auto typedValue = Traits::fromFloat(static_cast<float>(index));
+            auto typedValue = Traits::from(index);
             return valueToString(typedValue);
         };
     } else {

@@ -85,6 +85,11 @@ public:
     constexpr EnumChoice& operator=(EnumChoice&&) noexcept = default;
 
     constexpr operator Enum() const noexcept { return value; }
+
+    // constexpr operator juce::String() const noexcept { return juce::String(std::string(getLabel())); }
+
+    // constexpr operator juce::StringRef() const noexcept { return juce::StringRef(getLabel().data()); }
+
     // constexpr operator UnderlyingType() const noexcept { return magic_enum::enum_underlying(value); }
 
     template <typename T>
@@ -118,6 +123,10 @@ public:
 
     constexpr std::string_view getLabel() const noexcept {
         return magic_enum::enum_name<Enum>(value);
+    }
+
+    constexpr juce::StringRef getLabelStringRef() const noexcept {
+        return juce::StringRef(getLabel().data());
     }
 
     constexpr static std::string_view getLabel(size_t i) noexcept {
@@ -204,12 +213,17 @@ inline std::ostream& operator<<(std::ostream& out, EnumChoice<E> choice) {
 template<class E>
 struct EnumVariantConverter {
     static E fromVar(const juce::var& v) {
-        return E(v.toString().toStdString());
+        if (v.isString()) {
+            return E(v.toString().toStdString());
+        } else if (v.isInt() || v.isInt64() || v.isDouble()) {
+            return E(static_cast<int>(v));
+        }
+        return E();
     }
 
     static juce::var toVar(E choice) {
-        const std::string_view label = choice.getLabel();
-        return juce::String {label.data(), label.size()};
+        const std::string_view label = choice.getShortLabel();
+        return juce::String {label.data()};
     }
 };
 

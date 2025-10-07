@@ -140,7 +140,7 @@ private:
         // valueToStringFunction overrides getLabel()
         if (auto valueToString = def.valueToStringFunction) {
             indexToLabel = [valueToString](int index) -> String {
-                return valueToString(Traits::fromFloat(static_cast<float>(index)));
+                return valueToString(Traits::from(index));
             };
         } else {
             indexToLabel = [](int index) -> String {
@@ -240,6 +240,34 @@ public:
         auto& engine = *te::Engine::getEngines()[0];
         auto edit = te::Edit::createSingleTrackEdit(engine);
 
+        beginTest("CachedValue conversions sharing a property");
+        {
+            ValueTree state {te::IDs::PLUGIN};
+
+            CachedValue<int> intValue;
+            CachedValue<ChipType> enumValue;
+
+            intValue.referTo(state, "value", nullptr);
+            enumValue.referTo(state, "value", nullptr);
+
+            intValue = 1;
+            expectEquals(intValue.get(), 1, "intValue set to 1");
+            expectEquals(enumValue.get(), ChipType(ChipType::YM), "enumValue reads 1");
+            expect(state.getProperty("value").isInt(), "Property stored as int after automation write");
+
+            intValue = 0;
+            expectEquals(intValue.get(), 0, "intValue set to 0");
+            expectEquals(enumValue.get(), ChipType(ChipType::AY), "enumValue reads 'AY'");
+            expect(state.getProperty("value").isInt(), "Property stored as int after automation reset");
+
+            enumValue = ChipType::YM;
+            expectEquals(enumValue.get(), ChipType(ChipType::YM), "enumValue reads 'YM'");
+            expect(state.getProperty("value").isString(), "Enum write stores short label as string");
+            expectEquals(state.getProperty("value").toString(), String("YM"),
+                         "Property string matches enum label");
+            expectEquals(intValue.get(), 0, "Automation CachedValue can no longer parse string label");
+        }
+
         beginTest("ParameterValue construction and basic usage");
         {
             ValueTree state {te::IDs::PLUGIN};
@@ -276,7 +304,8 @@ public:
         {
             ValueTree state {te::IDs::PLUGIN};
 
-            ParameterValue<float> value {{"testParam", "testParam", "Test Param", "A parameter for testing", 0.5f, {0.f, 1.0f}}};
+            ParameterValue<float> value{
+                {"testParam", "testParam", "Test Param", "A parameter for testing", 0.5f, {0.f, 1.0f}}};
             value.referTo(state, nullptr);
             Slider slider;
             SliderStaticParamBinding binding(slider, value);
@@ -296,8 +325,7 @@ public:
             ParameterValue<ChipType> value {{"chip", "chip", "Chip", "Chip type", ChipType::AY}};
             value.referTo(state, nullptr);
 
-            // TODO make value store Enum type directly
-            expectEquals((double) value.getStoredValue(), 0.0, "Initial value from ParameterValue");
+            expectEquals(value.getStoredValue(), ChipType(ChipType::AY), "Initial value from ParameterValue");
 
             TextButton button;
             ButtonStaticParamBinding binding(button, value);
@@ -314,11 +342,45 @@ public:
             button.triggerClick();
             juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
 
-            using Traits = ParameterConversionTraits<ChipType>;
-            expectEquals(Traits::fromStorage(value.getStoredValue()), ChipType(ChipType::AY),
+            expectEquals(value.getStoredValue(), ChipType(ChipType::AY),
                          "ParameterValue updated from button click");
         }
 
+        beginTest("BindedAutoParameter uses automation CachedValue");
+        {
+            ValueTree pluginState {te::IDs::PLUGIN};
+            pluginState.setProperty(te::IDs::type, "TestPlugin", nullptr);
+
+            ParameterValue<ChipType> parameter {{"chip", "chip", "Chip", "Chip type", ChipType::AY}};
+            parameter.referTo(pluginState, nullptr);
+
+            expectEquals(parameter.getStoredValue(), ChipType(ChipType::AY),
+                         "Stored value initialised to default");
+            expect(pluginState[parameter.definition.propertyID].isString(),
+                   "Stored property holds string label");
+
+            TestPlugin plugin({*edit, pluginState, true});
+
+            {
+                BindedAutoParameter<ChipType> autoParam(plugin, parameter);
+
+                expectEquals(parameter.getLiveValue(), ChipType(ChipType::AY),
+                             "Live reader initialises to default");
+
+                autoParam.setParameter(1.0f, juce::dontSendNotification);
+
+                expectEquals(parameter.getLiveValue(), ChipType(ChipType::YM),
+                             "Live reader reflects automation value");
+                expectEquals(parameter.getStoredValue(), ChipType(ChipType::AY),
+                             "Stored value remains unchanged");
+                expectEquals(pluginState[parameter.definition.propertyID].toString(), String("AY"),
+                             "Stored property stays string label");
+
+                autoParam.updateFromAttachedParamValue();
+                expectEquals(parameter.getLiveValue(), ChipType(ChipType::AY),
+                             "Live reader updates from ValueTree change");
+            }
+        }
     }
 };
 

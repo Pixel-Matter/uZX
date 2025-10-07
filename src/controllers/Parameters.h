@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "../util/enumchoice.h"
 
+#include <memory>
 #include <type_traits>
 
 
@@ -23,47 +24,36 @@ struct ParameterConversionTraits;
 
 template <typename T>
 struct ParameterConversionTraits<T, std::enable_if_t<std::is_floating_point_v<T>>> {
-    using StorageType = T;
-
-    static constexpr auto toStorage(T value) noexcept -> StorageType { return value; }
-    static constexpr auto fromStorage(StorageType value) noexcept -> T { return value; }
-
-    static constexpr auto toFloat(T value) noexcept -> float { return static_cast<float>(value); }
-    static constexpr auto fromFloat(float value) noexcept -> T { return static_cast<T>(value); }
+    using LiveType = T;
 
     template <typename ConvType>
     static constexpr auto to(T value) noexcept -> ConvType { return static_cast<ConvType>(value); }
 
     template <typename ConvType>
     static constexpr auto from(ConvType value) noexcept -> T { return static_cast<T>(value); }
+
 };
 
 template <typename T>
 struct ParameterConversionTraits<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool>>> {
-    using StorageType = T;
-
-    static constexpr auto toStorage(T value) noexcept -> StorageType { return value; }
-    static constexpr auto fromStorage(StorageType value) noexcept -> T { return value; }
-
-    static constexpr auto toFloat(T value) noexcept -> float { return static_cast<float>(value); }
-    static constexpr auto fromFloat(float value) noexcept -> T { return static_cast<T>(roundToInt(value)); }
+    using LiveType = T;
 
     template <typename ConvType>
     static constexpr auto to(T value) noexcept -> ConvType { return static_cast<ConvType>(value); }
 
     template <typename ConvType>
-    static constexpr auto from(ConvType value) noexcept -> T { return static_cast<T>(value); }
+    static constexpr auto from(ConvType value) noexcept -> T {
+        if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<ConvType>>, float>)
+            return static_cast<T>(roundToInt(value));
+        else
+            return static_cast<T>(value);
+    }
+
 };
 
 template <>
 struct ParameterConversionTraits<bool> {
-    using StorageType = bool;
-
-    static constexpr auto toStorage(bool value) noexcept -> StorageType { return value; }
-    static constexpr auto fromStorage(StorageType value) noexcept -> bool { return value; }
-
-    static constexpr auto toFloat(bool value) noexcept -> float { return value ? 1.0f : 0.0f; }
-    static constexpr auto fromFloat(float value) noexcept -> bool { return value >= 0.5f; }
+    using LiveType = bool;
 
     static constexpr auto toInt(bool value) noexcept -> int { return value ? 1 : 0; }
     static constexpr auto fromInt(int value) noexcept -> bool { return value != 0; }
@@ -72,14 +62,18 @@ struct ParameterConversionTraits<bool> {
     static constexpr auto to(bool value) noexcept -> ConvType { return static_cast<ConvType>(toInt(value)); }
 
     template <typename ConvType>
-    static constexpr auto from(ConvType value) noexcept -> bool { return fromInt(static_cast<int>(value)); }
+    static constexpr auto from(ConvType value) noexcept -> bool {
+        if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<ConvType>>, float>)
+            return value >= 0.5f;
+        else
+            return fromInt(static_cast<int>(value));
+    }
+
 };
 
 template <Util::EnumChoiceConcept E>
 struct ParameterConversionTraits<E> {
-    //TODO String?
-    using StorageType = int;
-
+    using LiveType = int;
 
     static constexpr auto toInt(E value) noexcept -> int {
         using EnumType = typename E::Enum;
@@ -89,27 +83,17 @@ struct ParameterConversionTraits<E> {
 
     static constexpr auto fromInt(int value) noexcept -> E { return E(value); }
 
-    static constexpr auto toStorage(E value) noexcept -> StorageType {
-        return toInt(value);
-    }
-
-    static constexpr auto fromStorage(StorageType value) noexcept -> E { return fromInt(value); }
-
-    static constexpr auto toFloat(E value) noexcept -> float {
-        return static_cast<float>(toInt(value));
-    }
-
-    static auto fromFloat(float value) noexcept -> E {
-        return fromInt(roundToInt(value));
-    }
-
     template <typename ConvType>
     static constexpr auto to(E value) noexcept -> ConvType { return static_cast<ConvType>(toInt(value)); }
 
     template <typename ConvType>
-    static constexpr auto from(ConvType value) noexcept -> E { return fromInt(static_cast<int>(value)); }
+    static constexpr auto from(ConvType value) noexcept -> E {
+        if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<ConvType>>, float>)
+            return fromInt(roundToInt(value));
+        else
+            return fromInt(static_cast<int>(value));
+    }
 
-    // TODO from/to String?
 };
 
 //==============================================================================
@@ -232,14 +216,13 @@ concept ParameterValueConcept = requires(T& t) {
     Wraps a parameter definition with accessors to the underlying storage and
     optional runtime readers.
 
-    The stored value typically mirrors a `juce::ValueTree` property while the
+    The stored value typically mirrors a `ValueTree` property while the
     live accessor can be hooked up to engine state that updates in real time.
 */
 template <typename T>
 struct ParameterValue {
     using Type = T;
-    using Traits = ParameterConversionTraits<Type>;
-    using StorageType = typename Traits::StorageType;
+    using TypeTraits = ParameterConversionTraits<Type>;
 
     /**
         Lightweight functor used by UI controls to query the most up-to-date
@@ -248,27 +231,42 @@ struct ParameterValue {
     struct LiveAccessor {
         using Reader = Type(*)(void*);
 
-        void set(Reader r, void* ctx) noexcept {
-            reader = r;
-            context = ctx;
+        LiveAccessor(Reader r, void* ctx) noexcept
+            : reader(r)
+            , context(ctx)
+        {}
+
+        auto get() const -> Type {
+            jassert(reader != nullptr);
+            return reader(context);
         }
 
-        void reset() noexcept {
-            reader = nullptr;
-            context = nullptr;
+        auto getContext() const noexcept -> void* {
+            return context;
         }
 
-        constexpr auto hasReader() const noexcept -> bool { return reader != nullptr; }
+        // void set(Reader r, void* ctx) noexcept {
+        //     reader = r;
+        //     context = ctx;
+        // }
 
-        auto readOr(const Type& fallback) const -> Type {
-            if (reader != nullptr)
-                return reader(context);
-            return fallback;
-        }
+        // void reset() noexcept {
+        //     reader = nullptr;
+        //     context = nullptr;
+        // }
+
+        // constexpr auto hasReader() const noexcept -> bool { return reader != nullptr; }
+
+        // auto readOr(const Type& fallback) const -> Type {
+        //     if (reader != nullptr)
+        //         return reader(context);
+        //     return fallback;
+        // }
 
     private:
         Reader reader { nullptr };
         void* context { nullptr };
+        // CachedValue<LiveType> liveValue;  // for attaching automation
     };
 
     explicit ParameterValue(const ParameterDef<Type>& def)
@@ -280,42 +278,61 @@ struct ParameterValue {
 
     ParameterValue(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
         : definition(def)
-        , value(state, def.identifier, undoMgr, Traits::toStorage(def.defaultValue))
+        , value(state, def.identifier, undoMgr, def.defaultValue)
     {}
 
-    ~ParameterValue() {
-        liveAccessor.reset();
-    }
-
     inline void referTo(ValueTree& v, UndoManager* um) {
-        value.referTo(v, definition.propertyID, um, Traits::toStorage(definition.defaultValue));
+        value.referTo(v, definition.propertyID, um, definition.defaultValue);
 
-        if (value.isUsingDefault())
-            value = Traits::toStorage(definition.defaultValue);
+        if (value.isUsingDefault()) {
+            // ensure the default value is written to the state tree
+            value = definition.defaultValue;
+        }
     }
 
     Type getStoredValue() const {
-        return Traits::fromStorage(value.get());
+        return value.get();
+    }
+
+    template <typename U>
+    U getStoredValueAs() const {
+        using Traits = ParameterConversionTraits<Type>;
+        return Traits::template to<U>(getStoredValue());
     }
 
     Type getLiveValue() const {
-        return liveAccessor.readOr(getStoredValue());
+        if (liveAccessor != nullptr)
+            return liveAccessor->get();
+        else
+            return getStoredValue();
+    }
+
+    void* getLiveContext() const noexcept {
+        if (liveAccessor != nullptr)
+            return liveAccessor->getContext();
+        else
+            return nullptr;
     }
 
     bool hasLiveReader() const noexcept {
-        return liveAccessor.hasReader();
+        return liveAccessor != nullptr;
     }
 
     void setStoredValue(Type newValue) {
-        value = Traits::toStorage(newValue);
+        value = newValue;
     }
 
-    juce::Value getPropertyAsValue() {
+    void setStoredValueAs(auto newValue) {
+        using Traits = ParameterConversionTraits<Type>;
+        value = Traits::from(newValue);
+    }
+
+    Value getPropertyAsValue() {
         return value.getPropertyAsValue();
     }
 
     void setLiveReader(typename LiveAccessor::Reader reader, void* context) noexcept {
-        liveAccessor.set(reader, context);
+        liveAccessor = std::make_unique<LiveAccessor>(reader, context);
     }
 
     void clearLiveReader() noexcept {
@@ -323,54 +340,82 @@ struct ParameterValue {
     }
 
     const ParameterDef<Type> definition;
-    CachedValue<StorageType> value;
+    CachedValue<Type> value;
 
 private:
-    LiveAccessor liveAccessor;
+    std::unique_ptr<LiveAccessor> liveAccessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterValue)
 };
 
 //==============================================================================
-// Base for automatable parameters with binding to ParameterValue
-template <typename Type>
-class BindedAutoParameter : public tracktion::AutomatableParameter {
+// Type-erased base for automatable parameters with updateFromAttachedParamValue
+// To be used within PluginBase::restorePluginStateFromValueTree
+class BindedAutoParameterBase : public tracktion::AutomatableParameter {
 public:
     using tracktion::AutomatableParameter::AutomatableParameter;
+
+    virtual void updateFromAttachedParamValue() = 0;
+};
+
+//==============================================================================
+// Base for automatable parameters with binding to ParameterValue
+template <typename Type>
+class BindedAutoParameter : public BindedAutoParameterBase,
+                            public AsyncUpdater {
+public:
+    using BindedAutoParameterBase::BindedAutoParameterBase;
     using TypeTraits = ParameterConversionTraits<Type>;
 
     BindedAutoParameter(tracktion::AutomatableEditItem& editItem, ParameterValue<Type>& paramValue)
-        : tracktion::AutomatableParameter(paramValue.definition.identifier, paramValue.definition.shortLabel, editItem, paramValue.definition.getFloatValueRange())
+        : BindedAutoParameterBase(paramValue.definition.identifier, paramValue.definition.shortLabel, editItem, paramValue.definition.getFloatValueRange())
         , definition(paramValue.definition)
-        , value(paramValue)
+        , parameterValue(paramValue)
     {
-        attachToCurrentValue(value.value);
-        value.setLiveReader(&readLiveValue, this);
+        // TODO while value is not attached, we can not restore from it
+        // attachToCurrentValue(value.value);
+        // updateFromAttachedValue();
+        updateFromAttachedParamValue();
 
-        if (auto fn = value.definition.valueToStringFunction; fn) {
+        parameterValue.setLiveReader(&readLiveValue, this);
+
+        if (auto fn = parameterValue.definition.valueToStringFunction; fn) {
             valueToStringFunction = [fn](float v) {
-                return fn(TypeTraits::fromFloat(v));
+                return fn(TypeTraits::from(v));
             };
         }
 
-        if (auto fn = value.definition.stringToValueFunction; fn) {
-            stringToValueFunction = [fn](const juce::String& text) {
-                auto typedValue = fn(text);
-                return TypeTraits::toFloat(typedValue);
+        if (auto fn = parameterValue.definition.stringToValueFunction; fn) {
+            stringToValueFunction = [fn](const String& text) {
+                return TypeTraits::template to<float>(fn(text));
             };
         }
     }
 
     ~BindedAutoParameter () override {
+        cancelPendingUpdate();
         detachFromCurrentValue();
-        value.clearLiveReader();
+        parameterValue.clearLiveReader();
     }
 
-    // TODO
     String getParameterName() const          override { return definition.identifier; }
     String getParameterShortName (int) const override { return definition.shortLabel; }
     String getLabel()                        override { return definition.units; }
 
+    void updateFromAttachedParamValue() override {
+        auto stored = parameterValue.template getStoredValueAs<float>();
+        setParameter(stored, dontSendNotification);
+    }
+
+    void handleAsyncUpdate() override {
+        parameterValue.setStoredValueAs(getCurrentValue());
+    }
+
+    void parameterChanged(float, bool byAutomation) override {
+        if (!byAutomation) {
+            triggerAsyncUpdate();
+        }
+    }
 
 private:
     static auto readLiveValue(void* context) noexcept -> Type {
@@ -379,11 +424,11 @@ private:
         if (param == nullptr)
             return {};
 
-        return TypeTraits::fromFloat(param->getCurrentValue());
+        return TypeTraits::from(param->getCurrentValue());
     }
 
     const ParameterDef<Type>& definition;
-    ParameterValue<Type>& value;
+    ParameterValue<Type>& parameterValue;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BindedAutoParameter)
 };
@@ -401,12 +446,15 @@ public:
         return p;
     }
 
-    // //==============================================================================
-    // void restorePluginStateFromValueTree(const ValueTree&) {
-    //     for (auto p : getAutomatableParameters()) {
-    //         p->updateFromAttachedValue();
-    //     }
-    // }
+    //==============================================================================
+    void restorePluginStateFromValueTree(const ValueTree&) {
+        for (auto p : getAutomatableParameters()) {
+            if (auto bindedParam = dynamic_cast<BindedAutoParameterBase*>(p))
+                bindedParam->updateFromAttachedParamValue();
+            else
+                p->updateFromAttachedValue();
+        }
+    }
 
 };
 

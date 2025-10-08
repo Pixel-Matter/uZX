@@ -84,12 +84,19 @@ struct ParameterConversionTraits<E> {
     static constexpr auto fromInt(int value) noexcept -> E { return E(value); }
 
     template <typename ConvType>
-    static constexpr auto to(E value) noexcept -> ConvType { return static_cast<ConvType>(toInt(value)); }
+    static constexpr auto to(E value) noexcept -> ConvType {
+        if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<ConvType>>, String>)
+            return String(std::string(value.getLabel()));
+        else
+            return static_cast<ConvType>(toInt(value));
+    }
 
     template <typename ConvType>
     static constexpr auto from(ConvType value) noexcept -> E {
         if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<ConvType>>, float>)
             return fromInt(roundToInt(value));
+        else if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<ConvType>>, String>)
+            return E(value.toStdString());
         else
             return fromInt(static_cast<int>(value));
     }
@@ -372,7 +379,7 @@ public:
         , definition(paramValue.definition)
         , parameterValue(paramValue)
     {
-        // TODO while value is not attached, we can not restore from it
+        // NOTE while value is not attached, we can not restore from it
         // attachToCurrentValue(value.value);
         // updateFromAttachedValue();
         updateFromAttachedParamValue();
@@ -394,7 +401,7 @@ public:
 
     ~BindedAutoParameter () override {
         cancelPendingUpdate();
-        detachFromCurrentValue();
+        // detachFromCurrentValue();  // currently not attached
         parameterValue.clearLiveReader();
     }
 
@@ -402,6 +409,66 @@ public:
     String getParameterShortName (int) const override { return definition.shortLabel; }
     String getLabel()                        override { return definition.units; }
 
+    bool isDiscrete() const override { return definition.valueRange.interval >= 1; }
+
+    int getNumberOfStates() const override {
+        if (isDiscrete())
+            return static_cast<int>(definition.valueRange.end - definition.valueRange.start + 1);
+        return 0;
+    }
+
+    float getValueForState(int i) const override {
+        if (!isDiscrete())
+            return 0.0;
+
+        return static_cast<float>(i);
+    }
+
+    int getStateForValue(float value) const override {
+        if (!isDiscrete())
+            return 0.0;
+
+        // clamp to valid range definition.valueRange
+        auto start = TypeTraits::template to<float>(definition.valueRange.start);
+        auto end = TypeTraits::template to<float>(definition.valueRange.end);
+        return roundToInt(jlimit(start, end, value));
+    }
+
+    float snapToState(float val) const override {
+        return getValueForState(getStateForValue(val));
+    }
+
+    std::optional<float> getDefaultValue() const override {
+        return TypeTraits::template to<float>(definition.defaultValue);
+    }
+
+    bool hasLabels() const override {
+        if constexpr (Util::EnumChoiceConcept<Type>)
+            return true;
+        else
+            return false;
+    }
+
+    StringArray getAllLabels() const override {
+        if constexpr (Util::EnumChoiceConcept<Type>) {
+            StringArray labels;
+            for (const auto& label : Type::getLabels())
+                labels.add(String(std::string(label)));
+            return labels;
+        }
+        return {};
+    }
+
+    String getLabelForValue(float val) const override {
+        if constexpr (Util::EnumChoiceConcept<Type>) {
+            int s = getStateForValue(val);
+            if (isPositiveAndBelow(s, getNumberOfStates()))
+                return TypeTraits::template to<String>(TypeTraits::from(s));
+        }
+        return {};
+    }
+
+    //--------------------------------------------------------------
     void updateFromAttachedParamValue() override {
         auto stored = parameterValue.template getStoredValueAs<float>();
         setParameter(stored, dontSendNotification);

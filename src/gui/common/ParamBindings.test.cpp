@@ -144,8 +144,7 @@ private:
             };
         } else {
             indexToLabel = [](int index) -> String {
-                auto label = Type(index).getLabel();
-                return String(label.data());
+                return Traits::template to<String>(Traits::from(index+1));
             };
         }
     }
@@ -344,6 +343,38 @@ public:
 
             expectEquals(value.getStoredValue(), ChipType(ChipType::AY),
                          "ParameterValue updated from button click");
+        }
+
+        beginTest("BindedAutoParameter discreteness");
+        {
+            ValueTree pluginState {te::IDs::PLUGIN};
+            pluginState.setProperty(te::IDs::type, "TestPlugin", nullptr);
+
+            ParameterValue<ChipType> parameter {{"chip", "chip", "Chip", "Chip type", ChipType::YM}};
+            parameter.referTo(pluginState, nullptr);
+
+            TestPlugin plugin({*edit, pluginState, true});
+
+            BindedAutoParameter<ChipType> autoParam(plugin, parameter);
+
+            expect(autoParam.getDefaultValue().has_value(), "Default value from enum default");
+            expectEquals(autoParam.getDefaultValue().value_or(-1), 1.0f, "Default value from enum default");
+
+            expect(autoParam.isDiscrete(), "isDiscrete() reflects parameter definition");
+            expectEquals(autoParam.getNumberOfStates(), 2, "Number of states from enum size");
+            expectEquals(autoParam.getValueForState(1), 1.0f, "Value for state reflects enum index");
+            expectEquals(autoParam.getStateForValue(1.0f), 1, "State for value reflects enum index");
+            expectEquals(autoParam.snapToState(0.3f), 0.0f, "snapToState snaps to nearest enum index");
+            expectEquals(autoParam.snapToState(1.1f), 1.0f, "snapToState clamps to valid range");
+
+            expect(autoParam.hasLabels(), "hasLabels() true for enum parameter");
+            expectEquals(autoParam.getLabelForValue(0.0f), String("AY"), "Label for value reflects enum label");
+            expectEquals(autoParam.getLabelForValue(1.0f), String("YM"), "Label for value reflects enum label");
+            expectEquals(autoParam.getLabelForValue(0.51f), String("YM"), "Label for val snaps to nearest enum label");
+
+            expectEquals(autoParam.getAllLabels().size(), 2, "All labels from enum labels");
+            expectEquals(autoParam.getAllLabels()[0], String("AY"), "All labels from enum labels");
+            expectEquals(autoParam.getAllLabels()[1], String("YM"), "All labels from enum labels");
         }
 
         beginTest("BindedAutoParameter uses automation CachedValue");

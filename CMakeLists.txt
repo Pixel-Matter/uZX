@@ -38,6 +38,17 @@ message ("Project name: ${PROJECT_NAME}, version: ${CURRENT_VERSION}")
 enable_testing()
 set(BUILD_TESTING ON CACHE BOOL "Enable CTest" FORCE)
 
+# Enable LTO/IPO for optimized builds when supported
+include(CheckIPOSupported)
+check_ipo_supported(RESULT motool_ipo_supported OUTPUT motool_ipo_error)
+if(motool_ipo_supported)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ON)
+else()
+    message(STATUS "IPO/LTO not enabled: ${motool_ipo_error}")
+endif()
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/ayumi)
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce ./cmake_build_juce)
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules ./cmake_build_tracktion)

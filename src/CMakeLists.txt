@@ -215,6 +215,7 @@ set(JUCE_DEFINITIONS
     TRACKTION_ENABLE_TIMESTRETCH_RUBBERBAND=0
     TRACKTION_ENABLE_FFMPEG=0
     TRACKTION_ENABLE_CONTROL_SURFACE_MACKIEC4=0
+    # Object libraries bypass juce_add_gui_app's generated flags, so keep the module availability macros explicit.
     JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
     JUCE_MODULE_AVAILABLE_juce_audio_basics=1
     JUCE_MODULE_AVAILABLE_juce_audio_devices=1
@@ -240,6 +241,7 @@ target_compile_definitions(motool_common PUBLIC
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:_DEBUG=1>
 )
+# keep JUCE module flags on the final binaries (object libs don't re-export them automatically)
 target_compile_definitions(motool_test_sources PUBLIC
     ${JUCE_DEFINITIONS}
     $<$<CONFIG:Debug>:DEBUG=1>
@@ -250,18 +252,22 @@ target_compile_definitions(${MAIN_TARGET_NAME} PRIVATE
     ${JUCE_DEFINITIONS}
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:_DEBUG=1>
+    # `controllers/Main.cpp` (and friends) are built via this target, not juce_add_gui_app,
+    # so we restate the JUCE module switches here instead of relying on the generated Makefile magic.
 )
 
 target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE
     ${JUCE_DEFINITIONS}
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:_DEBUG=1>
+    # Same reason as above—make sure the JUCE module macros are visible when the object library TUs compile.
 )
 
 target_compile_definitions(${TEST_TARGET_NAME} PRIVATE
     ${JUCE_DEFINITIONS}
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:_DEBUG=1>
+    # Tests link the same object files, so keep the module flags in sync.
 )
 
 # Dependencies

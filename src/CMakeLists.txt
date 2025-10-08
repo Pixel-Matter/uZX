@@ -103,7 +103,6 @@ target_include_directories(motool_test_sources
         ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode
         ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode
 )
-add_dependencies(motool_test_sources motool_common)
 
 target_sources(${MAIN_TARGET_NAME} PRIVATE
     $<TARGET_OBJECTS:motool_common>
@@ -163,6 +162,27 @@ set(MOTOOL_INCLUDE_DIRS
 target_include_directories(${MAIN_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
 target_include_directories(${TUNING_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
 target_include_directories(${TEST_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
+
+# Ensure JUCE headers exist before building object libraries
+set(MOTOOL_JUCE_HEADER_MAIN
+    ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode/JuceHeader.h
+)
+set(MOTOOL_JUCE_HEADER_TUNING
+    ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode/JuceHeader.h
+)
+set(MOTOOL_JUCE_HEADER_TESTS
+    ${CMAKE_BINARY_DIR}/tests/MoToolTests_artefacts/JuceLibraryCode/JuceHeader.h
+)
+
+add_custom_target(motool_generate_juce_headers
+    DEPENDS
+        ${MOTOOL_JUCE_HEADER_MAIN}
+        ${MOTOOL_JUCE_HEADER_TUNING}
+        ${MOTOOL_JUCE_HEADER_TESTS}
+)
+
+add_dependencies(motool_common motool_generate_juce_headers)
+add_dependencies(motool_test_sources motool_generate_juce_headers)
 
 # Tracktion Utils
 # include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")

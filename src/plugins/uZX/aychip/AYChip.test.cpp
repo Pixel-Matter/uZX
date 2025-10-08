@@ -17,7 +17,7 @@ namespace {
 
     void bypassBlock(AyumiEmulator& ay, double duration_s = 0.03) {
         const auto sampleRate = ay.getSampleRate();
-        const size_t samples = int(std::ceil(duration_s * sampleRate));
+        const size_t samples = (size_t) std::ceil(duration_s * sampleRate);
         bypassBlock(ay, samples);
     }
 

@@ -51,24 +51,75 @@ set_target_properties(${TEST_TARGET_NAME} PROPERTIES
 
 include(sources.cmake)
 
-target_sources(${MAIN_TARGET_NAME} PRIVATE
+add_library(motool_common OBJECT)
+target_sources(motool_common PRIVATE
     ${SHARED_SOURCES}
     ${GUI_SOURCES}
-    ${TEST_SOURCES}  # We want tests compiled into the main app for control
+)
+target_compile_features(motool_common PUBLIC cxx_std_23)
+target_include_directories(motool_common
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/third_party/ayumi
+        ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
+        ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules
+        ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/VST3_SDK
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lv2
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/serd
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sord
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sord/src
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sratom
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv/src
+        ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode
+        ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode
+        ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode
+)
+
+add_library(motool_test_sources OBJECT)
+target_sources(motool_test_sources PRIVATE
+    ${TEST_SOURCES}
+)
+target_compile_features(motool_test_sources PUBLIC cxx_std_23)
+target_include_directories(motool_test_sources
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/third_party/ayumi
+        ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
+        ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules
+        ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/VST3_SDK
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lv2
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/serd
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sord
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sord/src
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sratom
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv
+        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv/src
+        ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode
+        ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode
+        ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode
+)
+add_dependencies(motool_test_sources motool_common)
+
+target_sources(${MAIN_TARGET_NAME} PRIVATE
+    $<TARGET_OBJECTS:motool_common>
+    # $<TARGET_OBJECTS:motool_test_sources>
     controllers/Main.cpp
 )
 
 target_sources(${TUNING_TARGET_NAME} PRIVATE
-    ${SHARED_SOURCES}
-    ${GUI_SOURCES}
-    ${TEST_SOURCES}  # We want tests compiled into the main app for control
+    $<TARGET_OBJECTS:motool_common>
+    # $<TARGET_OBJECTS:motool_test_sources>
     controllers/Main.cpp
 )
 
 target_sources(${TEST_TARGET_NAME} PRIVATE
-    ${SHARED_SOURCES}
-    ${GUI_SOURCES}
-    ${TEST_SOURCES}
+    $<TARGET_OBJECTS:motool_common>
+    $<TARGET_OBJECTS:motool_test_sources>
     ${CMAKE_SOURCE_DIR}/tests/main.cpp
 )
 
@@ -82,25 +133,36 @@ endif()
 
 set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES "${MOTOOL_DISCOVERY_FILE}")
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES ${SHARED_SOURCES} ${GUI_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES
+    ${SHARED_SOURCES}
+    ${GUI_SOURCES}
+    ${TEST_SOURCES}
+)
 
 # Include Directories
-target_include_directories(${MAIN_TARGET_NAME}
-    PRIVATE
-    ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
-)
-
-target_include_directories(${TUNING_TARGET_NAME}
-    PRIVATE
-    ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
-)
-
-target_include_directories(${TEST_TARGET_NAME}
-    PRIVATE
+set(MOTOOL_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/third_party/ayumi
     ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
+    ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules
+    ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules
+    # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/VST3_SDK
+    # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK
+    # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lv2
+    # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/serd
+    # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sord
+    # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sord/src
+    # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sratom
+    # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv
+    # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv/src
+    ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode
+    ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode
+    ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode
 )
+
+target_include_directories(${MAIN_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
+target_include_directories(${TUNING_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
+target_include_directories(${TEST_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
 
 # Tracktion Utils
 # include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
@@ -133,20 +195,57 @@ set(JUCE_DEFINITIONS
     TRACKTION_ENABLE_TIMESTRETCH_RUBBERBAND=0
     TRACKTION_ENABLE_FFMPEG=0
     TRACKTION_ENABLE_CONTROL_SURFACE_MACKIEC4=0
+    JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
+    JUCE_MODULE_AVAILABLE_juce_audio_basics=1
+    JUCE_MODULE_AVAILABLE_juce_audio_devices=1
+    JUCE_MODULE_AVAILABLE_juce_audio_formats=1
+    JUCE_MODULE_AVAILABLE_juce_audio_processors=1
+    JUCE_MODULE_AVAILABLE_juce_audio_utils=1
+    JUCE_MODULE_AVAILABLE_juce_core=1
+    JUCE_MODULE_AVAILABLE_juce_data_structures=1
+    JUCE_MODULE_AVAILABLE_juce_dsp=1
+    JUCE_MODULE_AVAILABLE_juce_events=1
+    JUCE_MODULE_AVAILABLE_juce_graphics=1
+    JUCE_MODULE_AVAILABLE_juce_gui_basics=1
+    JUCE_MODULE_AVAILABLE_juce_gui_extra=1
+    JUCE_MODULE_AVAILABLE_juce_osc=1
+    JUCE_MODULE_AVAILABLE_tracktion_core=1
+    JUCE_MODULE_AVAILABLE_tracktion_engine=1
+    JUCE_MODULE_AVAILABLE_tracktion_graph=1
+    JUCE_STANDALONE_APPLICATION=1
 )
 
-target_compile_definitions(${MAIN_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
-target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
-
-# Compile Definitions for Tests copyd from JUCE_DEFINITIONS
-set(JUCE_TEST_DEFINITIONS
+target_compile_definitions(motool_common PUBLIC ${JUCE_DEFINITIONS})
+target_compile_definitions(motool_common PUBLIC
+    $<$<CONFIG:Debug>:DEBUG=1>
+    $<$<CONFIG:Debug>:_DEBUG=1>
+)
+target_compile_definitions(motool_test_sources PUBLIC
     ${JUCE_DEFINITIONS}
+    $<$<CONFIG:Debug>:DEBUG=1>
+    $<$<CONFIG:Debug>:_DEBUG=1>
 )
 
-target_compile_definitions(${TEST_TARGET_NAME} PRIVATE ${JUCE_TEST_DEFINITIONS})
+target_compile_definitions(${MAIN_TARGET_NAME} PRIVATE
+    ${JUCE_DEFINITIONS}
+    $<$<CONFIG:Debug>:DEBUG=1>
+    $<$<CONFIG:Debug>:_DEBUG=1>
+)
+
+target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE
+    ${JUCE_DEFINITIONS}
+    $<$<CONFIG:Debug>:DEBUG=1>
+    $<$<CONFIG:Debug>:_DEBUG=1>
+)
+
+target_compile_definitions(${TEST_TARGET_NAME} PRIVATE
+    ${JUCE_DEFINITIONS}
+    $<$<CONFIG:Debug>:DEBUG=1>
+    $<$<CONFIG:Debug>:_DEBUG=1>
+)
 
 # Dependencies
-target_link_libraries(${MAIN_TARGET_NAME} PRIVATE
+set(MOTOOL_APP_LINK_LIBS
     ayumi
     tracktion::tracktion_core
     tracktion::tracktion_engine
@@ -156,33 +255,24 @@ target_link_libraries(${MAIN_TARGET_NAME} PRIVATE
     juce::juce_audio_utils
     juce::juce_gui_extra
     juce::juce_recommended_warning_flags
+)
+
+target_link_libraries(${MAIN_TARGET_NAME} PRIVATE
+    ${MOTOOL_APP_LINK_LIBS}
 )
 
 target_link_libraries(${TUNING_TARGET_NAME} PRIVATE
-    ayumi
-    tracktion::tracktion_core
-    tracktion::tracktion_engine
-    tracktion::tracktion_graph
-    juce::juce_audio_devices
-    juce::juce_audio_processors
-    juce::juce_audio_utils
-    juce::juce_gui_extra
-    juce::juce_recommended_warning_flags
+    ${MOTOOL_APP_LINK_LIBS}
 )
 
 target_link_libraries(${TEST_TARGET_NAME} PRIVATE
-    ayumi
-    tracktion::tracktion_core
-    tracktion::tracktion_engine
-    tracktion::tracktion_graph
-    juce::juce_audio_devices
-    juce::juce_audio_processors
-    juce::juce_audio_utils
-    juce::juce_recommended_warning_flags
+    ${MOTOOL_APP_LINK_LIBS}
 )
 
 # Platform-Specific Settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    target_compile_options(motool_common PRIVATE "-fno-aligned-allocation")
+    target_compile_options(motool_test_sources PRIVATE "-fno-aligned-allocation")
     target_compile_options(${MAIN_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TUNING_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TEST_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
@@ -230,7 +320,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
 endif()
 
-add_test(NAME AllTests COMMAND ${TEST_TARGET_NAME})
+# add_test(NAME AllTests COMMAND ${TEST_TARGET_NAME})
 
 add_custom_command(TARGET ${TEST_TARGET_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND}

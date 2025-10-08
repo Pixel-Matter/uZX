@@ -26,7 +26,6 @@ set(SHARED_SOURCES
     plugins/uZX/instrument/ChipInstrument.cpp
     plugins/uZX/instrument/ChipInstrumentVoice.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
-
 )
 
 # GUI-specific files
@@ -92,7 +91,7 @@ set(TEST_SOURCES
     # viewmodels/tuning/TuningViewModel.test.cpp
     # viewmodels/tuning/MultitrackMidiPreview.test.cpp
 
-    # plugins/uZX/aychip/AYChip.test.cpp
+    plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
 
     gui/common/ParamBindings.test.cpp

@@ -35,15 +35,19 @@ file(READ VERSION.md CURRENT_VERSION)
 project(MoTool VERSION ${CURRENT_VERSION})
 message ("Project name: ${PROJECT_NAME}, version: ${CURRENT_VERSION}")
 
+enable_testing()
+set(BUILD_TESTING ON CACHE BOOL "Enable CTest" FORCE)
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/ayumi)
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce ./cmake_build_juce)
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules ./cmake_build_tracktion)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src)
-add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
 # Add option to build examples
 option(BUILD_TRACKTION_EXAMPLES "Build Tracktion Engine examples" ON)
 if(BUILD_TRACKTION_EXAMPLES)
     add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples)
+    file(WRITE ${CMAKE_BINARY_DIR}/CTestCustom.cmake
+        "set(CTEST_CUSTOM_TESTS_IGNORE Benchmarks TestRunner)\n")
 endif()

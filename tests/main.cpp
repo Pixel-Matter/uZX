@@ -117,13 +117,13 @@ static Array<UnitTest*> filterTestsByName(const Array<UnitTest*>& allTests, cons
 }
 
 static void printUsage() {
-    std::cout << "Usage: MoToolTests [test_name_filter]\n";
+    std::cout << "Usage: uZXTests [test_name_filter]\n";
     std::cout << "  test_name_filter: Optional partial test name to filter tests (case-insensitive)\n";
     std::cout << "  If no filter provided, runs all tests in MoTool category\n";
     std::cout << "\nExamples:\n";
-    std::cout << "  MoToolTests                    # Run all tests\n";
-    std::cout << "  MoToolTests TuningViewModel    # Run tests containing 'TuningViewModel'\n";
-    std::cout << "  MoToolTests AYChip             # Run tests containing 'AYChip'\n";
+    std::cout << "  uZXTests                    # Run all tests\n";
+    std::cout << "  uZXTests TuningViewModel    # Run tests containing 'TuningViewModel'\n";
+    std::cout << "  uZXTests AYChip             # Run tests containing 'AYChip'\n";
 }
 
 int main(int argc, char* argv[]) {

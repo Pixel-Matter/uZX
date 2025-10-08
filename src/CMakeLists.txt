@@ -3,6 +3,7 @@
 # Target Definition
 set(MAIN_TARGET_NAME uZX)
 set(TUNING_TARGET_NAME uZXTuning)
+set(TEST_TARGET_NAME uZXTests)
 
 # IDE and Module Settings
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
@@ -22,12 +23,16 @@ juce_add_gui_app(${TUNING_TARGET_NAME}
     BUNDLE_ID "org.pixelmatter.${TUNING_TARGET_NAME}"
 )
 
+juce_add_console_app(${TEST_TARGET_NAME})
+
 juce_generate_juce_header(${MAIN_TARGET_NAME})
 juce_generate_juce_header(${TUNING_TARGET_NAME})
+juce_generate_juce_header(${TEST_TARGET_NAME})
 
 # Compiler and Language Settings
 target_compile_features(${MAIN_TARGET_NAME} PRIVATE cxx_std_23)
 target_compile_features(${TUNING_TARGET_NAME} PRIVATE cxx_std_23)
+target_compile_features(${TEST_TARGET_NAME} PRIVATE cxx_std_23)
 
 set_target_properties(${MAIN_TARGET_NAME} PROPERTIES
     C_VISIBILITY_PRESET hidden
@@ -35,6 +40,11 @@ set_target_properties(${MAIN_TARGET_NAME} PROPERTIES
 )
 
 set_target_properties(${TUNING_TARGET_NAME} PROPERTIES
+    C_VISIBILITY_PRESET hidden
+    CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${TEST_TARGET_NAME} PROPERTIES
     C_VISIBILITY_PRESET hidden
     CXX_VISIBILITY_PRESET hidden
 )
@@ -55,6 +65,13 @@ target_sources(${TUNING_TARGET_NAME} PRIVATE
     controllers/Main.cpp
 )
 
+target_sources(${TEST_TARGET_NAME} PRIVATE
+    ${SHARED_SOURCES}
+    ${GUI_SOURCES}
+    ${TEST_SOURCES}
+    ${CMAKE_SOURCE_DIR}/tests/main.cpp
+)
+
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/.. PREFIX Source FILES ${SHARED_SOURCES} ${GUI_SOURCES})
 
 # Include Directories
@@ -68,15 +85,19 @@ target_include_directories(${TUNING_TARGET_NAME}
     ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
 )
 
+target_include_directories(${TEST_TARGET_NAME}
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/third_party/ayumi
+    ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
+)
+
 # Tracktion Utils
 # include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
 # addModuleSourceTarget()
 
 # Compile Definitions
 set(JUCE_DEFINITIONS
-    JUCE_USE_FLAC=1       # Needed for Tracktion
-    JUCE_USE_OGGVORBIS=1  # Needed for Tracktion
-
     JUCE_PLUGINHOST_AU=0
     JUCE_PLUGINHOST_LADSPA=0
     JUCE_PLUGINHOST_VST3=0
@@ -108,6 +129,16 @@ set(JUCE_DEFINITIONS
 target_compile_definitions(${MAIN_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 
+# Compile Definitions for Tests copyd from JUCE_DEFINITIONS
+set(JUCE_TEST_DEFINITIONS
+    ${JUCE_DEFINITIONS}
+    # JUCE_UNIT_TESTS=1
+    # TRACKTION_ENABLE_TESTS=1
+    # TRACKTION_ENABLE_SINGLETONS=1
+)
+
+target_compile_definitions(${TEST_TARGET_NAME} PRIVATE ${JUCE_TEST_DEFINITIONS})
+
 # Dependencies
 target_link_libraries(${MAIN_TARGET_NAME} PRIVATE
     ayumi
@@ -133,10 +164,22 @@ target_link_libraries(${TUNING_TARGET_NAME} PRIVATE
     juce::juce_recommended_warning_flags
 )
 
+target_link_libraries(${TEST_TARGET_NAME} PRIVATE
+    ayumi
+    tracktion::tracktion_core
+    tracktion::tracktion_engine
+    tracktion::tracktion_graph
+    juce::juce_audio_devices
+    juce::juce_audio_processors
+    juce::juce_audio_utils
+    juce::juce_recommended_warning_flags
+)
+
 # Platform-Specific Settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_compile_options(${MAIN_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TUNING_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
+    target_compile_options(${TEST_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
 
     # Code Signing Configuration
     # Set from environment variable or use default
@@ -173,11 +216,15 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(${MAIN_TARGET_NAME} PRIVATE "-latomic")
     target_link_libraries(${TUNING_TARGET_NAME} PRIVATE "-latomic")
+    target_link_libraries(${TEST_TARGET_NAME} PRIVATE "-latomic")
     if (NOT ${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "aarch64")
         target_link_options(${MAIN_TARGET_NAME} PRIVATE "-m64")
         target_link_options(${TUNING_TARGET_NAME} PRIVATE "-m64")
+        target_link_options(${TEST_TARGET_NAME} PRIVATE "-m64")
     endif()
 endif()
+
+add_test(NAME AllTests COMMAND ${TEST_TARGET_NAME})
 
 # Commented sections moved to bottom for reference
 # # VST2 SDK Configuration

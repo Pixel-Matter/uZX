@@ -80,16 +80,16 @@ set(TEST_SOURCES
     ## models/PsgTrack.test.cpp
     ## models/CustomClip.test.cpp
 
-    # models/PsgMidi.test.cpp
-    # models/tuning/Ratios.test.cpp
-    # models/tuning/TuningTable.test.cpp
-    # models/tuning/EqualTemperamentTuning.test.cpp
-    # models/tuning/AutoTuning.test.cpp
-    # models/tuning/Scales.test.cpp
-    # models/tuning/RationalTuning.test.cpp
+    models/PsgMidi.test.cpp
+    models/tuning/Ratios.test.cpp
+    models/tuning/TuningTable.test.cpp
+    models/tuning/EqualTemperamentTuning.test.cpp
+    models/tuning/AutoTuning.test.cpp
+    models/tuning/Scales.test.cpp
+    models/tuning/RationalTuning.test.cpp
 
-    # viewmodels/tuning/TuningViewModel.test.cpp
-    # viewmodels/tuning/MultitrackMidiPreview.test.cpp
+    viewmodels/tuning/TuningViewModel.test.cpp
+    viewmodels/tuning/MultitrackMidiPreview.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp

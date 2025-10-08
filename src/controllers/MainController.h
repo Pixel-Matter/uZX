@@ -37,6 +37,7 @@ protected:
     virtual void devicesChanged();
     void handlePluginManager();
     void ensureMinimumSampleRate();
+    void showAboutDialog();
 
     te::Engine engine_;
     ApplicationCommandManager commandManager_;

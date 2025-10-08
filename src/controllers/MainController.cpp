@@ -7,6 +7,7 @@
 
 #include "../gui/main/MainWindow.h"
 #include "../gui/main/MainDocument.h"
+#include "../gui/main/AboutDialog.h"
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
@@ -218,6 +219,19 @@ void BaseController::handlePluginManager() {
     v->setSize(800, 600);
     o.content.setOwned(v);
     o.launchAsync();
+}
+
+void BaseController::showAboutDialog() {
+    DialogWindow::LaunchOptions options;
+    options.dialogTitle                  = "About " + JUCEApplication::getInstance()->getApplicationName();
+    options.dialogBackgroundColour       = Colors::Theme::backgroundAlt;
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar            = true;
+    options.resizable                    = false;
+    options.useBottomRightCornerResizer  = false;
+    options.componentToCentreAround      = &mainWindow_;
+    options.content.setOwned(new AboutDialogComponent());
+    options.runModal();
 }
 
 std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
@@ -523,6 +537,10 @@ bool MainController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::settingsPlugins:
             handlePluginManager();
+            break;
+
+        case MainAppCommands::helpAbout:
+            showAboutDialog();
             break;
 
         default:

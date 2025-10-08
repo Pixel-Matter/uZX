@@ -38,15 +38,18 @@ message ("Project name: ${PROJECT_NAME}, version: ${CURRENT_VERSION}")
 enable_testing()
 set(BUILD_TESTING ON CACHE BOOL "Enable CTest" FORCE)
 
-# Enable LTO/IPO for optimized builds when supported
-include(CheckIPOSupported)
-check_ipo_supported(RESULT motool_ipo_supported OUTPUT motool_ipo_error)
-if(motool_ipo_supported)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ON)
-else()
-    message(STATUS "IPO/LTO not enabled: ${motool_ipo_error}")
+option(ENABLE_LTO "Enable Link Time Optimisation (IPO) for optimized configs" ON)
+if(ENABLE_LTO)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT motool_ipo_supported OUTPUT motool_ipo_error)
+    if(motool_ipo_supported)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ON)
+        message(STATUS "IPO/LTO enabled for optimized configurations")
+    else()
+        message(WARNING "IPO/LTO requested but not supported: ${motool_ipo_error}")
+    endif()
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/ayumi)
@@ -56,7 +59,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules ./cmak
 add_subdirectory(${CMAKE_SOURCE_DIR}/src)
 
 # Add option to build examples
-option(BUILD_TRACKTION_EXAMPLES "Build Tracktion Engine examples" ON)
+option(BUILD_TRACKTION_EXAMPLES "Build Tracktion Engine examples" OFF)
 if(BUILD_TRACKTION_EXAMPLES)
     add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples)
     file(WRITE ${CMAKE_BINARY_DIR}/CTestCustom.cmake

@@ -103,6 +103,10 @@ struct CoutLogger : public Logger {
     }
 };
 
+struct NullLogger : public Logger {
+    void logMessage (const String&) override {}
+};
+
 
 static Array<UnitTest*> filterTestsByName(const Array<UnitTest*>& allTests, const String& testNameFilter) {
     Array<UnitTest*> filteredTests;
@@ -127,7 +131,33 @@ static void printUsage() {
 }
 
 int main(int argc, char* argv[]) {
+    if (argc > 1) {
+        String arg = String(argv[1]);
+
+        if (arg == "--list-tests") {
+            NullLogger nullLogger;
+            Logger::setCurrentLogger(&nullLogger);
+
+            Array<UnitTest*> listedTests = UnitTest::getTestsInCategory("MoTool");
+
+            for (auto* test : listedTests) {
+                if (test != nullptr)
+                    std::cout << "TEST:" << test->getName() << "\n";
+            }
+
+            Logger::setCurrentLogger(nullptr);
+            return 0;
+        }
+
+        if (arg == "--help" || arg == "-h") {
+            printUsage();
+            return 0;
+        }
+    }
+
     ScopedJuceInitialiser_GUI init;
+
+    Array<UnitTest*> allTests = UnitTest::getTestsInCategory("MoTool");
 
     CoutLogger logger;
     Logger::setCurrentLogger (&logger);
@@ -150,15 +180,7 @@ int main(int argc, char* argv[]) {
     juce::UnitTestRunner testRunner;
 
     if (argc > 1) {
-        String arg = String(argv[1]);
-
-        if (arg == "--help" || arg == "-h") {
-            printUsage();
-            return 0;
-        }
-
-        String testNameFilter = arg;
-        auto allTests = UnitTest::getTestsInCategory("MoTool");
+        String testNameFilter = String(argv[1]);
         auto filteredTests = filterTestsByName(allTests, testNameFilter);
 
         if (filteredTests.isEmpty()) {

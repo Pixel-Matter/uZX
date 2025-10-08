@@ -5,7 +5,7 @@
 #include "../../../formats/psg/PsgData.h"
 #include "../../../models/PsgMidi.h"
 #include "../../../controllers/ParamAttachments.h"
-#include "../../../controllers/Parameters.h"
+#include "../../../controllers/BindedAutoParameter.h"
 #include "aychip.h"
 
 #include <atomic>

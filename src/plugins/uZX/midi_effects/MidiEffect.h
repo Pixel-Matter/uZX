@@ -1,7 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "../../../controllers/Parameters.h"
+#include "../../../controllers/BindedAutoParameter.h"
 
 
 namespace MoTool::uZX {

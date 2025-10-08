@@ -1,7 +1,7 @@
 #include <JuceHeader.h>
 #include <memory>
 
-#include "../../controllers/Parameters.h"
+#include "../../controllers/BindedAutoParameter.h"
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "juce_core/juce_core.h"
 #include "ParamBindings.h"

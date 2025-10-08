@@ -345,6 +345,31 @@ public:
                          "ParameterValue updated from button click");
         }
 
+        beginTest("BindedAutoParameter no discreteness");
+        {
+            ValueTree pluginState {te::IDs::PLUGIN};
+            pluginState.setProperty(te::IDs::type, "TestPlugin", nullptr);
+
+            ParameterValue<float> parameter {{"volume", "volume", "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
+            parameter.referTo(pluginState, nullptr);
+
+            TestPlugin plugin({*edit, pluginState, true});
+
+            BindedAutoParameter<float> autoParam(plugin, parameter);
+
+            expect(autoParam.getDefaultValue().has_value(), "Default value for float param");
+            expectEquals(autoParam.getDefaultValue().value_or(-1), 0.5f, "Default value for float param");
+
+            expect(!autoParam.isDiscrete(), "isDiscrete() reflects parameter definition");
+            expectEquals(autoParam.getNumberOfStates(), 0, "No states for float param");
+            expectEquals(autoParam.getValueForState(1), 0.f, "Value for state is 0 for float param");
+            expectEquals(autoParam.snapToState(0.3f), 0.3f, "snapToState do not snap for float param");
+
+            expect(!autoParam.hasLabels(), "hasLabels() false for enum parameter");
+            expectEquals(autoParam.getLabelForValue(0.0f), String(), "No label for float param");
+            expectEquals(autoParam.getAllLabels().size(), 0, "No labels for float param");
+        }
+
         beginTest("BindedAutoParameter discreteness");
         {
             ValueTree pluginState {te::IDs::PLUGIN};

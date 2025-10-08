@@ -435,7 +435,10 @@ public:
     }
 
     float snapToState(float val) const override {
-        return getValueForState(getStateForValue(val));
+        if (isDiscrete())
+            return getValueForState(getStateForValue(val));
+        else
+            return val;
     }
 
     std::optional<float> getDefaultValue() const override {

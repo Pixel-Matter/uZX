@@ -7,6 +7,132 @@ namespace te = tracktion;
 
 namespace MoTool {
 
+MultiLineTextComponent::MultiLineTextComponent() {
+    setInterceptsMouseClicks(false, false);
+    setWantsKeyboardFocus(false);
+    setOpaque(false);
+}
+
+void MultiLineTextComponent::setText(const String& text) {
+    if (text_ == text) {
+        return;
+    }
+
+    text_ = text;
+    invalidateLayout();
+    repaint();
+}
+
+void MultiLineTextComponent::setFont(Font font) {
+    if (font_ == font) {
+        return;
+    }
+
+    font_ = font;
+    invalidateLayout();
+    repaint();
+}
+
+void MultiLineTextComponent::setColour(Colour colour) {
+    if (colour_ == colour) {
+        return;
+    }
+
+    colour_ = colour;
+    repaint();
+}
+
+void MultiLineTextComponent::setJustification(Justification justification) {
+    if (justification_ == justification) {
+        return;
+    }
+
+    justification_ = justification;
+    invalidateLayout();
+    repaint();
+}
+
+void MultiLineTextComponent::setLineSpacing(float lineSpacing) {
+    if (lineSpacingFactor_ == lineSpacing) {
+        return;
+    }
+
+    lineSpacingFactor_ = lineSpacing;
+    invalidateLayout();
+    repaint();
+}
+
+void MultiLineTextComponent::setPadding(BorderSize<int> padding) {
+    if (contentPadding_ == padding) {
+        return;
+    }
+
+    contentPadding_ = padding;
+    invalidateLayout();
+    repaint();
+}
+
+int MultiLineTextComponent::getPreferredHeight(int width) {
+    refreshLayout(width);
+
+    const auto contentHeight = layout_.getNumLines() > 0
+        ? layout_.getHeight()
+        : 0.0f;
+
+    return contentPadding_.getTopAndBottom() + static_cast<int>(std::ceil(contentHeight));
+}
+
+void MultiLineTextComponent::paint(Graphics& g) {
+    refreshLayout(getWidth());
+
+    if (layout_.getNumLines() == 0) {
+        return;
+    }
+
+    auto area = contentPadding_.subtractedFrom(getLocalBounds()).toFloat();
+    layout_.draw(g, area);
+}
+
+void MultiLineTextComponent::resized() {
+    refreshLayout(getWidth());
+}
+
+void MultiLineTextComponent::refreshLayout(int width) {
+    if (width <= 0) {
+        layout_ = TextLayout {};
+        layoutWidth_ = width;
+        return;
+    }
+
+    if (width == layoutWidth_) {
+        return;
+    }
+
+    layoutWidth_ = width;
+
+    const auto availableWidth = jmax(0, width - contentPadding_.getLeftAndRight());
+
+    if (availableWidth <= 0 || text_.isEmpty()) {
+        layout_ = TextLayout {};
+        return;
+    }
+
+    AttributedString attributed;
+    attributed.setJustification(justification_);
+    const auto extraSpacing = lineSpacingFactor_ > 0.0f
+        ? jmax(0.0f, (lineSpacingFactor_ - 1.0f) * font_.getHeight())
+        : 0.0f;
+    attributed.setLineSpacing(extraSpacing);
+    attributed.append(text_, font_, colour_);
+
+    layout_.createLayout(attributed, static_cast<float>(availableWidth));
+}
+
+void MultiLineTextComponent::invalidateLayout() {
+    layoutWidth_ = -1;
+    layout_ = TextLayout {};
+}
+
 AboutDialogComponent::AboutDialogComponent() {
     setOpaque(true);
 
@@ -45,25 +171,13 @@ AboutDialogComponent::AboutDialogComponent() {
                   + " and " + te::Engine::getVersion());
     infoLines.add("Includes ayumi library by Peter Sovietov (true-grue)");
 
-    infoText_.setReadOnly(true);
-    infoText_.setMultiLine(true, true);
-    infoText_.setScrollbarsShown(false);
-    infoText_.setCaretVisible(false);
-    infoText_.setPopupMenuEnabled(false);
-    infoText_.setInterceptsMouseClicks(false, false);
-    infoText_.setJustification(Justification::centred);
-    infoText_.setOpaque(false);
-    infoText_.setWantsKeyboardFocus(false);
-    infoText_.setIndents(0, 2);
-    infoText_.setBorder({});
-    infoText_.setColour(TextEditor::textColourId, Colors::Theme::textSecondary);
-    infoText_.setColour(TextEditor::backgroundColourId, Colours::transparentBlack);
-    infoText_.setColour(TextEditor::outlineColourId, Colours::transparentBlack);
-    infoText_.setColour(TextEditor::focusedOutlineColourId, Colours::transparentBlack);
     infoText_.setFont(Font(FontOptions(14.0f, Font::plain)));
+    infoText_.setColour(Colors::Theme::textPrimary);
+    infoText_.setJustification(Justification::centred);
     infoText_.setLineSpacing(1.5f);
+    infoText_.setPadding(BorderSize<int>(2, 0, 0, 0));
     auto infoContent = infoLines.joinIntoString("\n");
-    infoText_.setText(infoContent, false);
+    infoText_.setText(infoContent);
     addAndMakeVisible(infoText_);
 
     auto year = String(Time::getCurrentTime().getYear());
@@ -105,18 +219,9 @@ void AboutDialogComponent::resized() {
     websiteLink_.setBounds(bounds.removeFromTop(24));
 
     bounds.removeFromTop(24);
-    const auto infoLinesText = infoText_.getText();
-    StringArray lines;
-    lines.addLines(infoLinesText);
-    auto infoLinesCount = jmax(1, lines.size());
-
-    auto fontHeight = infoText_.getFont().getHeight();
-    auto spacing = infoText_.getLineSpacing();
-    auto contentHeight = static_cast<int>(std::ceil(fontHeight * spacing * infoLinesCount));
-    contentHeight = jmax(contentHeight, (int) std::ceil(fontHeight));
-    contentHeight += infoText_.getTopIndent();
-    contentHeight += infoText_.getBorder().getTopAndBottom();
-    infoText_.setBounds(bounds.removeFromTop(contentHeight));
+    auto infoHeight = infoText_.getPreferredHeight(bounds.getWidth());
+    infoHeight = jmax(infoHeight, 0);
+    infoText_.setBounds(bounds.removeFromTop(infoHeight));
 
     bounds.removeFromTop(12);
     auto buttonArea = bounds.removeFromBottom(44);

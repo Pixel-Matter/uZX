@@ -41,7 +41,7 @@ public:
     const MoLookAndFeel& getLookAndFeel() const { return lookAndFeel_; }
 
 private:
-static inline Target target_ = String::fromUTF8(ProjectInfo::projectName) == "μZXTuning" ? Target::uZXTuning : Target::uZXMain;
+static inline Target target_ = String::fromUTF8(ProjectInfo::projectName) == "μZX Tuning" ? Target::uZXTuning : Target::uZXMain;
     MoLookAndFeel lookAndFeel_;
     std::unique_ptr<BaseController> controller_;
 

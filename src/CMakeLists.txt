@@ -11,14 +11,14 @@ option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
 # JUCE Application Setup
 juce_add_gui_app(${MAIN_TARGET_NAME}
-    PRODUCT_NAME "μZX"
+    PRODUCT_NAME "μZX Studio"
     COMPANY_NAME "Pixel Matter"
     BUNDLE_ID "org.pixelmatter.${MAIN_TARGET_NAME}"
 )
 
 # JUCE Tuning Application Setup
 juce_add_gui_app(${TUNING_TARGET_NAME}
-    PRODUCT_NAME "μZXTuning"
+    PRODUCT_NAME "μZX Tuning"
     COMPANY_NAME "Pixel Matter"
     BUNDLE_ID "org.pixelmatter.${TUNING_TARGET_NAME}"
 )
@@ -128,10 +128,11 @@ set(MOTOOL_INCLUDE_DIRS
     ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode
 )
 
-target_include_directories(${MAIN_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
+target_include_directories(${MAIN_TARGET_NAME}   PRIVATE ${MOTOOL_INCLUDE_DIRS})
 target_include_directories(${TUNING_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
-target_include_directories(${TEST_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
+target_include_directories(${TEST_TARGET_NAME}   PRIVATE ${MOTOOL_INCLUDE_DIRS})
 
+# TODO maybe we should make this motool_common library juce modules?
 # Ensure JUCE headers exist before building our common static library
 set(MOTOOL_JUCE_HEADER_MAIN
     ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode/JuceHeader.h
@@ -184,7 +185,27 @@ set(JUCE_DEFINITIONS
     TRACKTION_ENABLE_TIMESTRETCH_RUBBERBAND=0
     TRACKTION_ENABLE_FFMPEG=0
     TRACKTION_ENABLE_CONTROL_SURFACE_MACKIEC4=0
-    # Object libraries bypass juce_add_gui_app's generated flags, so keep the module availability macros explicit.
+)
+
+# Dependencies
+set(MOTOOL_APP_LINK_LIBS
+    ayumi
+    tracktion::tracktion_core
+    tracktion::tracktion_engine
+    tracktion::tracktion_graph
+    juce::juce_audio_devices
+    juce::juce_audio_processors
+    juce::juce_audio_utils
+    juce::juce_gui_extra
+    juce::juce_recommended_warning_flags
+)
+
+target_compile_definitions(motool_common PUBLIC
+    ${JUCE_DEFINITIONS}
+
+    # libraries bypass juce_add_gui_app's generated flags, so keep the module availability macros explicit.
+    $<$<CONFIG:Debug>:DEBUG=1>
+    $<$<CONFIG:Debug>:_DEBUG=1>
     JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
     JUCE_MODULE_AVAILABLE_juce_audio_basics=1
     JUCE_MODULE_AVAILABLE_juce_audio_devices=1
@@ -205,73 +226,23 @@ set(JUCE_DEFINITIONS
     JUCE_STANDALONE_APPLICATION=1
 )
 
-target_compile_definitions(motool_common PUBLIC ${JUCE_DEFINITIONS})
-target_compile_definitions(motool_common PUBLIC
-    $<$<CONFIG:Debug>:DEBUG=1>
-    $<$<CONFIG:Debug>:_DEBUG=1>
-)
+target_compile_definitions(${MAIN_TARGET_NAME}   PRIVATE ${JUCE_DEFINITIONS})
+target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
+target_compile_definitions(${TEST_TARGET_NAME}   PRIVATE ${JUCE_DEFINITIONS})
 
-target_compile_definitions(${MAIN_TARGET_NAME} PRIVATE
-    ${JUCE_DEFINITIONS}
-    $<$<CONFIG:Debug>:DEBUG=1>
-    $<$<CONFIG:Debug>:_DEBUG=1>
-    # Keep JUCE module switches visible for sources (controllers/Main.cpp, etc.) that stay on this target.
-)
-
-target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE
-    ${JUCE_DEFINITIONS}
-    $<$<CONFIG:Debug>:DEBUG=1>
-    $<$<CONFIG:Debug>:_DEBUG=1>
-    # Same treatment for the tuning shell.
-)
-
-target_compile_definitions(${TEST_TARGET_NAME} PRIVATE
-    ${JUCE_DEFINITIONS}
-    $<$<CONFIG:Debug>:DEBUG=1>
-    $<$<CONFIG:Debug>:_DEBUG=1>
-    # Tests rely on identical module settings so assertions stay consistent.
-)
-
-# Dependencies
-set(MOTOOL_APP_LINK_LIBS
-    ayumi
-    tracktion::tracktion_core
-    tracktion::tracktion_engine
-    tracktion::tracktion_graph
-    juce::juce_audio_devices
-    juce::juce_audio_processors
-    juce::juce_audio_utils
-    juce::juce_gui_extra
-    juce::juce_recommended_warning_flags
-)
-
-target_link_libraries(${MAIN_TARGET_NAME} PRIVATE
-    motool_common
-    ${MOTOOL_APP_LINK_LIBS}
-)
-
-target_link_libraries(${TUNING_TARGET_NAME} PRIVATE
-    motool_common
-    ${MOTOOL_APP_LINK_LIBS}
-)
-
-target_link_libraries(${TEST_TARGET_NAME} PRIVATE
-    motool_common
-    ${MOTOOL_APP_LINK_LIBS}
-)
-
-if(APPLE)
-    foreach(target_name IN LISTS MAIN_TARGET_NAME TUNING_TARGET_NAME TEST_TARGET_NAME)
-        target_link_options(${target_name} PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
-    endforeach()
-endif()
+target_link_libraries(${MAIN_TARGET_NAME}   PRIVATE motool_common ${MOTOOL_APP_LINK_LIBS})
+target_link_libraries(${TUNING_TARGET_NAME} PRIVATE motool_common ${MOTOOL_APP_LINK_LIBS})
+target_link_libraries(${TEST_TARGET_NAME}   PRIVATE motool_common ${MOTOOL_APP_LINK_LIBS})
 
 # Platform-Specific Settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    target_compile_options(motool_common PRIVATE "-fno-aligned-allocation")
-    target_compile_options(${MAIN_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
+    target_compile_options(motool_common         PRIVATE "-fno-aligned-allocation")
+    target_compile_options(${MAIN_TARGET_NAME}   PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TUNING_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
-    target_compile_options(${TEST_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
+    target_compile_options(${TEST_TARGET_NAME}   PRIVATE "-fno-aligned-allocation")
+    target_link_options(${MAIN_TARGET_NAME}   PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
+    target_link_options(${TUNING_TARGET_NAME} PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
+    target_link_options(${TEST_TARGET_NAME}   PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
 
     # Code Signing Configuration
     # Set from environment variable or use default
@@ -306,13 +277,13 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(${MAIN_TARGET_NAME} PRIVATE "-latomic")
+    target_link_libraries(${MAIN_TARGET_NAME}   PRIVATE "-latomic")
     target_link_libraries(${TUNING_TARGET_NAME} PRIVATE "-latomic")
-    target_link_libraries(${TEST_TARGET_NAME} PRIVATE "-latomic")
+    target_link_libraries(${TEST_TARGET_NAME}   PRIVATE "-latomic")
     if (NOT ${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "aarch64")
-        target_link_options(${MAIN_TARGET_NAME} PRIVATE "-m64")
+        target_link_options(${MAIN_TARGET_NAME}   PRIVATE "-m64")
         target_link_options(${TUNING_TARGET_NAME} PRIVATE "-m64")
-        target_link_options(${TEST_TARGET_NAME} PRIVATE "-m64")
+        target_link_options(${TEST_TARGET_NAME}   PRIVATE "-m64")
     endif()
 endif()
 

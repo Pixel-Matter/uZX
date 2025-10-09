@@ -3,6 +3,7 @@
 
 #include "../../controllers/BindedAutoParameter.h"
 #include "../../plugins/uZX/aychip/aychip.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 #include "juce_events/juce_events.h"
 #include "tracktion_engine/tracktion_engine.h"
 #include "ParamBindings.h"
@@ -257,6 +258,7 @@ private:
         };
         applyValue = [this](double widgetValue) {
             // TODO what if widgetValue is not float? String, int...
+            // Notification needed for attachedValue, for example
             parameter->setParameter(static_cast<float>(widgetValue), juce::sendNotification);
         };
         beginGesture = [this] { parameter->parameterChangeGestureBegin(); };
@@ -331,14 +333,21 @@ private:
     }
 
     void currentValueChanged(te::AutomatableParameter&) override {
-        DBG("SliderAutoParamBinding::currentValueChanged");
         if (updating)
             return;
-        // TODO async!
         refreshFromSource();
     }
 
+    void parameterChanged(te::AutomatableParameter&, float newValue) override {
+        if (updating)
+            return;
+        juce::ScopedValueSetter<bool> svs(updating, true);
+        slider.setValue(newValue, dontSendNotification);
+    }
+
     Slider& slider;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderAutoParamBinding)
 };
 
 
@@ -438,22 +447,34 @@ public:
             pluginState.setProperty(te::IDs::type, "TestPlugin", nullptr);
             TestPlugin plugin({*edit, pluginState, true});
 
-            te::AutomatableParameter param("volume", "Volume", plugin, {0.f, 1.0f});
+            auto param = te::AutomatableParameter::Ptr(
+                new te::AutomatableParameter("volume", "Volume", plugin, {0.f, 1.0f}));
 
             Slider slider;
             SliderAutoParamBinding binding(slider, param);
 
-            param.setParameter(0.3f, juce::sendNotification);
-            // TODO check async
+            param->setParameter(0.3f, sendNotification);
+
             expectWithinAbsoluteError(static_cast<double>(slider.getValue()), 0.3, 1e-6,
                                       "Slider updated from AutomatableParameter");
 
-            // slider.setValue(0.3, sendNotificationSync);
+            slider.setValue(0.8, sendNotificationSync);
 
-            // expectWithinAbsoluteError(static_cast<double>(binding.storedValue.getValue()), 0.3, 1e-6,
-            //                           "Stored value updated from slider");
-            // expectWithinAbsoluteError((double) value.getStoredValue(), 0.3, 1e-6,
-            //                           "ParameterValue updated from slider");
+            expectWithinAbsoluteError(static_cast<double>(param->getCurrentValue()), 0.8, 1e-6,
+                                      "AutomatableParameter updated from slider sync");
+
+            // should wait to async backsync to slider
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+
+            slider.setValue(0.5, sendNotificationAsync);
+            expectWithinAbsoluteError(static_cast<double>(param->getCurrentValue()), 0.8, 1e-6,
+                                      "AutomatableParameter should stay the same after async slider set");
+
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+
+            expectWithinAbsoluteError(static_cast<double>(param->getCurrentValue()), 0.5, 1e-6,
+                                      "AutomatableParameter should stay the same after async slider set");
+
         }
     }
 };

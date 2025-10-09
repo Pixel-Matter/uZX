@@ -1,5 +1,6 @@
 #include "AboutDialog.h"
 #include "version.h"
+#include <cmath>
 
 using namespace juce;
 namespace te = tracktion;
@@ -25,6 +26,7 @@ AboutDialogComponent::AboutDialogComponent() {
     websiteLink_.setColour(HyperlinkButton::textColourId, Colors::Theme::primary);
     addAndMakeVisible(websiteLink_);
 
+    StringArray infoLines;
     const auto versionBase = String::fromUTF8(ProjectInfo::versionString);
     auto version = String("Version ") + versionBase;
 
@@ -32,34 +34,37 @@ AboutDialogComponent::AboutDialogComponent() {
     if (suffix.isNotEmpty()) {
         version += suffix;
     }
-    versionLabel_.setText(version, dontSendNotification);
-    versionLabel_.setJustificationType(Justification::centred);
-    versionLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
-    addAndMakeVisible(versionLabel_);
+    infoLines.add(version);
 
     const auto buildTimestamp = String::fromUTF8(MoTool::Build::buildTimestamp);
-
-    StringArray buildMeta;
-    if (suffix.isNotEmpty() && buildTimestamp.isNotEmpty())
-        buildMeta.add("Built at " + buildTimestamp);
-
-    if (!buildMeta.isEmpty()) {
-        buildTimeLabel_.setText(buildMeta.joinIntoString(" · "), dontSendNotification);
-        buildTimeLabel_.setJustificationType(Justification::centred);
-        buildTimeLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
-        addAndMakeVisible(buildTimeLabel_);
+    if (suffix.isNotEmpty() && buildTimestamp.isNotEmpty()) {
+        infoLines.add("Built at " + buildTimestamp);
     }
 
-    juceVersionLabel_.setText(String("Powered by ") + SystemStats::getJUCEVersion()
-                              + " and " + te::Engine::getVersion(), dontSendNotification);
-    juceVersionLabel_.setJustificationType(Justification::centred);
-    juceVersionLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
-    addAndMakeVisible(juceVersionLabel_);
+    infoLines.add(String("Powered by ") + SystemStats::getJUCEVersion()
+                  + " and " + te::Engine::getVersion());
+    infoLines.add("Includes ayumi library by Peter Sovietov (true-grue)");
 
-    ayumiLabel_.setText("Includes ayumi library by Peter Sovietov (true-grue)", dontSendNotification);
-    ayumiLabel_.setJustificationType(Justification::centred);
-    ayumiLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
-    addAndMakeVisible(ayumiLabel_);
+    infoText_.setReadOnly(true);
+    infoText_.setMultiLine(true, true);
+    infoText_.setScrollbarsShown(false);
+    infoText_.setCaretVisible(false);
+    infoText_.setPopupMenuEnabled(false);
+    infoText_.setInterceptsMouseClicks(false, false);
+    infoText_.setJustification(Justification::centred);
+    infoText_.setOpaque(false);
+    infoText_.setWantsKeyboardFocus(false);
+    infoText_.setIndents(0, 2);
+    infoText_.setBorder({});
+    infoText_.setColour(TextEditor::textColourId, Colors::Theme::textSecondary);
+    infoText_.setColour(TextEditor::backgroundColourId, Colours::transparentBlack);
+    infoText_.setColour(TextEditor::outlineColourId, Colours::transparentBlack);
+    infoText_.setColour(TextEditor::focusedOutlineColourId, Colours::transparentBlack);
+    infoText_.setFont(Font(FontOptions(14.0f, Font::plain)));
+    infoText_.setLineSpacing(1.5f);
+    auto infoContent = infoLines.joinIntoString("\n");
+    infoText_.setText(infoContent, false);
+    addAndMakeVisible(infoText_);
 
     auto year = String(Time::getCurrentTime().getYear());
     copyrightLabel_.setText(String::fromUTF8("© ") + year + " "
@@ -100,14 +105,18 @@ void AboutDialogComponent::resized() {
     websiteLink_.setBounds(bounds.removeFromTop(24));
 
     bounds.removeFromTop(24);
-    versionLabel_.setBounds(bounds.removeFromTop(24));
+    const auto infoLinesText = infoText_.getText();
+    StringArray lines;
+    lines.addLines(infoLinesText);
+    auto infoLinesCount = jmax(1, lines.size());
 
-    if (buildTimeLabel_.isVisible()) {
-        buildTimeLabel_.setBounds(bounds.removeFromTop(24));
-    }
-
-    juceVersionLabel_.setBounds(bounds.removeFromTop(24));
-    ayumiLabel_.setBounds(bounds.removeFromTop(24));
+    auto fontHeight = infoText_.getFont().getHeight();
+    auto spacing = infoText_.getLineSpacing();
+    auto contentHeight = static_cast<int>(std::ceil(fontHeight * spacing * infoLinesCount));
+    contentHeight = jmax(contentHeight, (int) std::ceil(fontHeight));
+    contentHeight += infoText_.getTopIndent();
+    contentHeight += infoText_.getBorder().getTopAndBottom();
+    infoText_.setBounds(bounds.removeFromTop(contentHeight));
 
     bounds.removeFromTop(12);
     auto buttonArea = bounds.removeFromBottom(44);

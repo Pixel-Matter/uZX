@@ -51,7 +51,7 @@ set_target_properties(${TEST_TARGET_NAME} PROPERTIES
 
 include(sources.cmake)
 
-add_library(motool_common OBJECT)
+add_library(motool_common STATIC)
 target_sources(motool_common PRIVATE
     ${SHARED_SOURCES}
     ${GUI_SOURCES}
@@ -78,47 +78,16 @@ target_include_directories(motool_common
         ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode
 )
 
-add_library(motool_test_sources OBJECT)
-target_sources(motool_test_sources PRIVATE
-    ${TEST_SOURCES}
-)
-target_compile_features(motool_test_sources PUBLIC cxx_std_23)
-target_include_directories(motool_test_sources
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/third_party/ayumi
-        ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/examples
-        ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules
-        ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules
-        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/VST3_SDK
-        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK
-        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lv2
-        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/serd
-        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sord
-        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sord/src
-        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sratom
-        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv
-        # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv/src
-        ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode
-        ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode
-        ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode
-)
-
 target_sources(${MAIN_TARGET_NAME} PRIVATE
-    $<TARGET_OBJECTS:motool_common>
-    # $<TARGET_OBJECTS:motool_test_sources>
     controllers/Main.cpp
 )
 
 target_sources(${TUNING_TARGET_NAME} PRIVATE
-    $<TARGET_OBJECTS:motool_common>
-    # $<TARGET_OBJECTS:motool_test_sources>
     controllers/Main.cpp
 )
 
 target_sources(${TEST_TARGET_NAME} PRIVATE
-    $<TARGET_OBJECTS:motool_common>
-    $<TARGET_OBJECTS:motool_test_sources>
+    ${TEST_SOURCES}
     ${CMAKE_SOURCE_DIR}/tests/main.cpp
 )
 
@@ -163,7 +132,7 @@ target_include_directories(${MAIN_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
 target_include_directories(${TUNING_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
 target_include_directories(${TEST_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
 
-# Ensure JUCE headers exist before building object libraries
+# Ensure JUCE headers exist before building our common static library
 set(MOTOOL_JUCE_HEADER_MAIN
     ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode/JuceHeader.h
 )
@@ -182,7 +151,6 @@ add_custom_target(motool_generate_juce_headers
 )
 
 add_dependencies(motool_common motool_generate_juce_headers)
-add_dependencies(motool_test_sources motool_generate_juce_headers)
 
 # Tracktion Utils
 # include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
@@ -241,33 +209,26 @@ target_compile_definitions(motool_common PUBLIC
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:_DEBUG=1>
 )
-# keep JUCE module flags on the final binaries (object libs don't re-export them automatically)
-target_compile_definitions(motool_test_sources PUBLIC
-    ${JUCE_DEFINITIONS}
-    $<$<CONFIG:Debug>:DEBUG=1>
-    $<$<CONFIG:Debug>:_DEBUG=1>
-)
 
 target_compile_definitions(${MAIN_TARGET_NAME} PRIVATE
     ${JUCE_DEFINITIONS}
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:_DEBUG=1>
-    # `controllers/Main.cpp` (and friends) are built via this target, not juce_add_gui_app,
-    # so we restate the JUCE module switches here instead of relying on the generated Makefile magic.
+    # Keep JUCE module switches visible for sources (controllers/Main.cpp, etc.) that stay on this target.
 )
 
 target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE
     ${JUCE_DEFINITIONS}
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:_DEBUG=1>
-    # Same reason as above—make sure the JUCE module macros are visible when the object library TUs compile.
+    # Same treatment for the tuning shell.
 )
 
 target_compile_definitions(${TEST_TARGET_NAME} PRIVATE
     ${JUCE_DEFINITIONS}
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:_DEBUG=1>
-    # Tests link the same object files, so keep the module flags in sync.
+    # Tests rely on identical module settings so assertions stay consistent.
 )
 
 # Dependencies
@@ -284,21 +245,29 @@ set(MOTOOL_APP_LINK_LIBS
 )
 
 target_link_libraries(${MAIN_TARGET_NAME} PRIVATE
+    motool_common
     ${MOTOOL_APP_LINK_LIBS}
 )
 
 target_link_libraries(${TUNING_TARGET_NAME} PRIVATE
+    motool_common
     ${MOTOOL_APP_LINK_LIBS}
 )
 
 target_link_libraries(${TEST_TARGET_NAME} PRIVATE
+    motool_common
     ${MOTOOL_APP_LINK_LIBS}
 )
+
+if(APPLE)
+    foreach(target_name IN LISTS MAIN_TARGET_NAME TUNING_TARGET_NAME TEST_TARGET_NAME)
+        target_link_options(${target_name} PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
+    endforeach()
+endif()
 
 # Platform-Specific Settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_compile_options(motool_common PRIVATE "-fno-aligned-allocation")
-    target_compile_options(motool_test_sources PRIVATE "-fno-aligned-allocation")
     target_compile_options(${MAIN_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TUNING_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TEST_TARGET_NAME} PRIVATE "-fno-aligned-allocation")

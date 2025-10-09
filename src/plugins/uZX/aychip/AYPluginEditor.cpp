@@ -35,11 +35,11 @@ void AYPluginUI::resized() {
     auto staticRow = r.removeFromTop(itemHeight * 2);
     auto width = staticRow.getWidth() / 3;
     midiChannelKnob.setBounds(staticRow.removeFromLeft(width));
-    chipTypeButton.setBounds(staticRow.removeFromLeft(width));
+    chipTypeButton.setBounds(staticRow.removeFromLeft(width).withSizeKeepingCentre(width, 20));
     clockKnob.setBounds(staticRow);
 
     // automatable
-    r.removeFromTop(itemSpacing);
+    r.removeFromTop(itemSpacing * 2);
     auto knobsRow = r.removeFromTop(itemHeight * 2);
 
     width = knobsRow.getWidth() / 3;

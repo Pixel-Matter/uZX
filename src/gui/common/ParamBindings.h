@@ -27,11 +27,11 @@ class WidgetParamBindingBase : private te::AutomatableParameter::Listener,
                                private Value::Listener
 {
 public:
-    WidgetParamBindingBase(te::AutomatableParameter::Ptr p);
+    WidgetParamBindingBase(Component &c, te::AutomatableParameter::Ptr p);
 
     template <typename Type>
-    WidgetParamBindingBase(te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
-        : WidgetParamBindingBase(std::move(p))
+    WidgetParamBindingBase(Component &c, te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
+        : WidgetParamBindingBase(c, std::move(p))
     {
         if (param == nullptr)
             configureStoredValueCallbacks(value);
@@ -50,6 +50,11 @@ protected:
     std::function<void()> beginGesture;
     std::function<void()> endGesture;
     bool updating { false };
+
+public:
+    // TODO only for values attached to automatable parameters?
+    MidiParameterMapping midiMapping;
+    MouseListenerWithCallback mouseListener;
 
 private:
     void configureAutomationCallbacks();
@@ -92,9 +97,7 @@ class SliderParamBinding : public WidgetParamBindingBase
 {
 public:
     SliderParamBinding(Slider& s, te::AutomatableParameter::Ptr p)
-        : WidgetParamBindingBase(std::move(p))
-        , midiMapping(param)
-        , mouseListener(s)
+        : WidgetParamBindingBase(s, std::move(p))
         , slider(s)
     {
         configureSliderForAutomationParameter();
@@ -105,9 +108,7 @@ public:
 
     template <typename Type>
     SliderParamBinding(Slider& s, te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
-        : WidgetParamBindingBase(std::move(p), value)
-        , midiMapping(param)
-        , mouseListener(s)
+        : WidgetParamBindingBase(s, std::move(p), value)
         , slider(s)
     {
         ParameterUIHelpers::configureSliderForParameterDef(slider, value.definition);
@@ -116,8 +117,6 @@ public:
         refreshFromSource();
     }
 
-    // TODO only for values attached to automatable parameters?
-    MidiParameterMapping midiMapping;
 
 private:
     void configureSliderForAutomationParameter();
@@ -128,7 +127,6 @@ private:
     void currentValueChanged(te::AutomatableParameter&) override;
     void valueChanged(Value&) override;
 
-    MouseListenerWithCallback mouseListener;
     Slider& slider;
 };
 
@@ -143,10 +141,8 @@ class ButtonParamBinding : public WidgetParamBindingBase
 public:
     ButtonParamBinding(TextButton& button,
                        te::AutomatableParameter::Ptr p)
-        : WidgetParamBindingBase(std::move(p))
-        , midiMapping(param)
+        : WidgetParamBindingBase(button, std::move(p))
         , textButton(button)
-        , mouseListener(std::make_unique<MouseListenerWithCallback>(button))
     {
         configureMouseListener();
         configureButtonHandlers();
@@ -157,10 +153,8 @@ public:
     ButtonParamBinding(TextButton& button,
                        te::AutomatableParameter::Ptr p,
                        ParameterValue<Type>& value)
-        : WidgetParamBindingBase(std::move(p), value)
-        , midiMapping(param)
+        : WidgetParamBindingBase(button, std::move(p), value)
         , textButton(button)
-        , mouseListener(std::make_unique<MouseListenerWithCallback>(button))
     {
         configureFromParameterValue(value);
         configureMouseListener();
@@ -169,8 +163,6 @@ public:
     }
 
     ~ButtonParamBinding() override;
-
-    MidiParameterMapping midiMapping;
 
 private:
     void configureButtonHandlers();
@@ -185,7 +177,6 @@ private:
     int wrapIndex(int index) const;
 
     TextButton& textButton;
-    std::unique_ptr<MouseListenerWithCallback> mouseListener;
     std::function<String(int)> indexToLabel;
 
     int choiceCount { 0 };

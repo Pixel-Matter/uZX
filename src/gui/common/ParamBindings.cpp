@@ -1,11 +1,15 @@
 #include "ParamBindings.h"
+#include "gui/common/MouseListener.h"
 
 using namespace juce;
 
 namespace MoTool {
 
-WidgetParamBindingBase::WidgetParamBindingBase(te::AutomatableParameter::Ptr p)
-    : param(std::move(p)) {
+WidgetParamBindingBase::WidgetParamBindingBase(Component &c, te::AutomatableParameter::Ptr p)
+    : midiMapping(param)
+    , param(std::move(p))
+    , mouseListener(c)
+{
     if (param != nullptr) {
         param->addListener(this);
         configureAutomationCallbacks();
@@ -117,11 +121,9 @@ void ButtonParamBinding::configureButtonHandlers() {
 }
 
 void ButtonParamBinding::configureMouseListener() {
-    if (mouseListener != nullptr) {
-        mouseListener->setRmbCallback([this]() {
-            midiMapping.showMappingMenu();
-        });
-    }
+    mouseListener.setRmbCallback([this]() {
+        midiMapping.showMappingMenu();
+    });
 }
 
 void ButtonParamBinding::refreshFromSource() {

@@ -56,6 +56,11 @@ AboutDialogComponent::AboutDialogComponent() {
     juceVersionLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
     addAndMakeVisible(juceVersionLabel_);
 
+    ayumiLabel_.setText("Includes ayumi library by Peter Sovietov (true-grue)", dontSendNotification);
+    ayumiLabel_.setJustificationType(Justification::centred);
+    ayumiLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
+    addAndMakeVisible(ayumiLabel_);
+
     auto year = String(Time::getCurrentTime().getYear());
     copyrightLabel_.setText(String::fromUTF8("© ") + year + " "
                             + String::fromUTF8(ProjectInfo::companyName), dontSendNotification);
@@ -102,6 +107,7 @@ void AboutDialogComponent::resized() {
     }
 
     juceVersionLabel_.setBounds(bounds.removeFromTop(24));
+    ayumiLabel_.setBounds(bounds.removeFromTop(24));
 
     bounds.removeFromTop(12);
     auto buttonArea = bounds.removeFromBottom(44);

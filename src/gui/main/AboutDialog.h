@@ -19,6 +19,7 @@ private:
     juce::Label buildTimeLabel_;
     juce::Label companyLabel_;
     juce::Label juceVersionLabel_;
+    juce::Label ayumiLabel_;
     juce::HyperlinkButton websiteLink_ { "pixelmatter.org", juce::URL("https://pixelmatter.org") };
     juce::Label copyrightLabel_;
     juce::TextButton closeButton_;

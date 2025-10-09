@@ -39,9 +39,7 @@ public:
 
     ~WidgetParamBindingBase() override;
 
-    bool isAttached() const noexcept {
-        return param != nullptr;
-    }
+    bool isAttached() const noexcept;
 
 protected:
     void curveHasChanged(te::AutomatableParameter&) override {}

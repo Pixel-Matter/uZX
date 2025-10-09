@@ -20,6 +20,10 @@ WidgetParamBindingBase::~WidgetParamBindingBase() {
         storedValue.removeListener(this);
 }
 
+bool WidgetParamBindingBase::isAttached() const noexcept {
+    return param != nullptr;
+}
+
 void WidgetParamBindingBase::configureAutomationCallbacks() {
     fetchValue = [this] {
         return static_cast<double>(param->getCurrentValue());

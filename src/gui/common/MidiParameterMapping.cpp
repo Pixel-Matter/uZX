@@ -5,7 +5,7 @@ namespace MoTool {
 namespace te = tracktion;
 
 MidiParameterMapping::MidiParameterMapping(te::AutomatableParameter::Ptr param)
-    : parameter(param)
+    : parameter(std::move(param))
 {}
 
 void MidiParameterMapping::learnMidiCC() {

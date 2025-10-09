@@ -3,6 +3,8 @@
 
 #include "../../controllers/BindedAutoParameter.h"
 #include "../../plugins/uZX/aychip/aychip.h"
+#include "juce_events/juce_events.h"
+#include "tracktion_engine/tracktion_engine.h"
 #include "ParamBindings.h"
 
 
@@ -215,6 +217,132 @@ private:
 };
 
 //==============================================================================
+// For parameters without ParameterValue<T>, for example vanilla tracktion AutomatableParameters
+class WidgetAutoParamBinding : private te::AutomatableParameter::Listener
+{
+public:
+    WidgetAutoParamBinding(te::AutomatableParameter::Ptr p)
+        : parameter(std::move(p))
+    {
+        if (isAttached()) {
+            configureParameterCallbacks();
+            parameter->addListener(this);
+        }
+    }
+
+    ~WidgetAutoParamBinding() override {
+        if (isAttached()) {
+            parameter->removeListener(this);
+        }
+    }
+
+    bool isAttached() const noexcept {
+        return parameter != nullptr;
+    }
+
+protected:
+    void curveHasChanged(te::AutomatableParameter&) override {}
+
+    te::AutomatableParameter::Ptr parameter;
+    std::function<float()> fetchValue;
+    std::function<void(float)> applyValue;
+    std::function<void()> beginGesture;
+    std::function<void()> endGesture;
+    bool updating { false };
+
+private:
+    void configureParameterCallbacks() {
+        fetchValue = [this] {
+            return static_cast<double>(parameter->getCurrentValue());
+        };
+        applyValue = [this](double widgetValue) {
+            // TODO what if widgetValue is not float? String, int...
+            parameter->setParameter(static_cast<float>(widgetValue), juce::sendNotification);
+        };
+        beginGesture = [this] { parameter->parameterChangeGestureBegin(); };
+        endGesture   = [this] { parameter->parameterChangeGestureEnd(); };
+    }
+
+    friend class WidgetBindingTests;
+};
+
+//==============================================================================
+class SliderAutoParamBinding : public WidgetAutoParamBinding {
+public:
+    SliderAutoParamBinding(Slider& s, te::AutomatableParameter::Ptr p)
+        : WidgetAutoParamBinding(std::move(p))
+        , slider(s)
+    {
+        configureWidget();
+        configureWidgetHandlers();
+        refreshFromSource();
+    }
+
+private:
+    void configureWidget() {
+        // depends on param
+        jassert(isAttached());
+        if (!isAttached())
+            return;
+
+        slider.setTooltip(parameter->getParameterName());
+        slider.setPopupDisplayEnabled(true, true, nullptr);
+        slider.setPopupMenuEnabled(false);
+
+        slider.setRange(parameter->getValueRange().getStart(),
+                        parameter->getValueRange().getEnd(),
+                        parameter->valueRange.interval);
+        slider.setSkewFactor(parameter->valueRange.skew);
+
+        // TODO deduce from interval
+        slider.setNumDecimalPlacesToDisplay(2);
+        slider.textFromValueFunction = parameter->valueToStringFunction;
+        slider.valueFromTextFunction = parameter->stringToValueFunction;
+
+        slider.setValue(parameter->getCurrentValue(), juce::dontSendNotification);
+    }
+
+    void configureWidgetHandlers() {
+        slider.onValueChange = [this] {
+            if (updating || !applyValue)
+                return;
+
+            juce::ScopedValueSetter<bool> svs(updating, true);
+            applyValue(static_cast<float>(slider.getValue()));
+        };
+
+        slider.onDragStart = [this] {
+            if (beginGesture)
+                beginGesture();
+        };
+
+        slider.onDragEnd = [this] {
+            if (endGesture)
+                endGesture();
+        };
+    }
+
+    void refreshFromSource() {
+        if (!fetchValue)
+            return;
+
+        juce::ScopedValueSetter<bool> svs(updating, true);
+        slider.setValue(fetchValue(), dontSendNotification);
+    }
+
+    void currentValueChanged(te::AutomatableParameter&) override {
+        DBG("SliderAutoParamBinding::currentValueChanged");
+        if (updating)
+            return;
+        // TODO async!
+        refreshFromSource();
+    }
+
+    Slider& slider;
+};
+
+
+//==============================================================================
 class WidgetBindingTests  : public UnitTest {
     class TestPlugin : public te::Plugin {
     public:
@@ -302,6 +430,30 @@ public:
 
             expectEquals(value.getStoredValue(), ChipType(ChipType::AY),
                          "ParameterValue updated from button click");
+        }
+
+        beginTest("WidgetAutoBinding from slider");
+        {
+            ValueTree pluginState {te::IDs::PLUGIN};
+            pluginState.setProperty(te::IDs::type, "TestPlugin", nullptr);
+            TestPlugin plugin({*edit, pluginState, true});
+
+            te::AutomatableParameter param("volume", "Volume", plugin, {0.f, 1.0f});
+
+            Slider slider;
+            SliderAutoParamBinding binding(slider, param);
+
+            param.setParameter(0.3f, juce::sendNotification);
+            // TODO check async
+            expectWithinAbsoluteError(static_cast<double>(slider.getValue()), 0.3, 1e-6,
+                                      "Slider updated from AutomatableParameter");
+
+            // slider.setValue(0.3, sendNotificationSync);
+
+            // expectWithinAbsoluteError(static_cast<double>(binding.storedValue.getValue()), 0.3, 1e-6,
+            //                           "Stored value updated from slider");
+            // expectWithinAbsoluteError((double) value.getStoredValue(), 0.3, 1e-6,
+            //                           "ParameterValue updated from slider");
         }
     }
 };

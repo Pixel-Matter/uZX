@@ -16,6 +16,7 @@ public:
 private:
     juce::Label titleLabel_;
     juce::Label versionLabel_;
+    juce::Label buildTimeLabel_;
     juce::Label companyLabel_;
     juce::Label juceVersionLabel_;
     juce::HyperlinkButton websiteLink_ { "pixelmatter.org", juce::URL("https://pixelmatter.org") };

@@ -47,3 +47,4 @@ Testing/
 .DS_Store
 
 .claude/
+src/version.h

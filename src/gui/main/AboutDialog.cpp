@@ -1,8 +1,10 @@
 #include "AboutDialog.h"
+#include "version.h"
 
 #include <tracktion_engine/tracktion_engine.h>
 
 using namespace juce;
+namespace te = tracktion;
 
 namespace MoTool {
 
@@ -15,24 +17,43 @@ AboutDialogComponent::AboutDialogComponent() {
     companyLabel_.setFont(FontOptions(16.0f, Font::plain));
     addAndMakeVisible(companyLabel_);
 
-    websiteLink_.setTooltip("https://pixelmatter.org");
-    websiteLink_.setColour(HyperlinkButton::textColourId, Colors::Theme::primary);
-    addAndMakeVisible(websiteLink_);
-
     titleLabel_.setText(String::fromUTF8(ProjectInfo::projectName), dontSendNotification);
-    titleLabel_.setFont(FontOptions(28.0f, Font::bold));
+    titleLabel_.setFont(FontOptions(48.0f, Font::bold));
     titleLabel_.setJustificationType(Justification::centred);
     titleLabel_.setColour(Label::textColourId, Colors::Theme::textPrimary);
     addAndMakeVisible(titleLabel_);
 
-    auto version = String("Version ") + String::fromUTF8(ProjectInfo::versionString);
+    websiteLink_.setTooltip("https://pixelmatter.org");
+    websiteLink_.setColour(HyperlinkButton::textColourId, Colors::Theme::primary);
+    addAndMakeVisible(websiteLink_);
+
+    const auto versionBase = String::fromUTF8(ProjectInfo::versionString);
+    auto version = String("Version ") + versionBase;
+
+    auto suffix = String::fromUTF8(MoTool::Build::versionSuffix);
+    if (suffix.isNotEmpty()) {
+        version += suffix;
+    }
     versionLabel_.setText(version, dontSendNotification);
     versionLabel_.setJustificationType(Justification::centred);
     versionLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
     addAndMakeVisible(versionLabel_);
 
-    juceVersionLabel_.setText(String("Built with JUCE ") + SystemStats::getJUCEVersion()
-                              + " | Tracktion Engine " + tracktion::engine::Engine::getVersion(), dontSendNotification);
+    const auto buildTimestamp = String::fromUTF8(MoTool::Build::buildTimestamp);
+
+    StringArray buildMeta;
+    if (suffix.isNotEmpty() && buildTimestamp.isNotEmpty())
+        buildMeta.add("Built at " + buildTimestamp);
+
+    if (!buildMeta.isEmpty()) {
+        buildTimeLabel_.setText(buildMeta.joinIntoString(" · "), dontSendNotification);
+        buildTimeLabel_.setJustificationType(Justification::centred);
+        buildTimeLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
+        addAndMakeVisible(buildTimeLabel_);
+    }
+
+    juceVersionLabel_.setText(String("Powered by ") + SystemStats::getJUCEVersion()
+                              + " and " + te::Engine::getVersion(), dontSendNotification);
     juceVersionLabel_.setJustificationType(Justification::centred);
     juceVersionLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
     addAndMakeVisible(juceVersionLabel_);
@@ -44,7 +65,7 @@ AboutDialogComponent::AboutDialogComponent() {
     copyrightLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);
     addAndMakeVisible(copyrightLabel_);
 
-    closeButton_.setButtonText("Close");
+    closeButton_.setButtonText("Cool");
     closeButton_.onClick = [this] {
         if (auto* window = findParentComponentOfClass<DialogWindow>())
             window->exitModalState(0);
@@ -70,15 +91,18 @@ void AboutDialogComponent::resized() {
     companyLabel_.setBounds(bounds.removeFromTop(24));
 
     bounds.removeFromTop(4);
-    websiteLink_.setBounds(bounds.removeFromTop(24));
-
-    bounds.removeFromTop(6);
     titleLabel_.setBounds(bounds.removeFromTop(48));
 
-    bounds.removeFromTop(8);
+    bounds.removeFromTop(4);
+    websiteLink_.setBounds(bounds.removeFromTop(24));
+
+    bounds.removeFromTop(24);
     versionLabel_.setBounds(bounds.removeFromTop(24));
 
-    bounds.removeFromTop(4);
+    if (buildTimeLabel_.isVisible()) {
+        buildTimeLabel_.setBounds(bounds.removeFromTop(24));
+    }
+
     juceVersionLabel_.setBounds(bounds.removeFromTop(24));
 
     bounds.removeFromTop(12);
@@ -88,8 +112,7 @@ void AboutDialogComponent::resized() {
 
     const auto buttonWidth = 120;
     const auto buttonHeight = 32;
-    closeButton_.setBounds(Rectangle<int>(buttonWidth, buttonHeight)
-                               .withCentre(buttonArea.getCentre()));
+    closeButton_.setBounds(Rectangle<int>(buttonWidth, buttonHeight).withCentre(buttonArea.getCentre()));
     copyrightLabel_.setBounds(copyrightArea);
 }
 

@@ -31,9 +31,82 @@ endif()
 
 # Global project settings
 
-file(READ VERSION.md CURRENT_VERSION)
-project(MoTool VERSION ${CURRENT_VERSION})
-message ("Project name: ${PROJECT_NAME}, version: ${CURRENT_VERSION}")
+file(READ VERSION.md CURRENT_VERSION_RAW)
+string(STRIP "${CURRENT_VERSION_RAW}" CURRENT_VERSION)
+
+set(MOTOOL_VERSION_BASE "${CURRENT_VERSION}")
+set(MOTOOL_VERSION_SUFFIX "")
+set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}")
+set(MOTOOL_GIT_COMMIT "")
+set(MOTOOL_GIT_DIRTY 0)
+set(MOTOOL_CHANNEL "dev" CACHE STRING "Release channel")
+set_property(CACHE MOTOOL_CHANNEL PROPERTY STRINGS alpha beta rc demo dev)
+string(TOLOWER "${MOTOOL_CHANNEL}" MOTOOL_CHANNEL_LOWER)
+set(_motool_valid_channels alpha beta rc demo dev)
+list(FIND _motool_valid_channels "${MOTOOL_CHANNEL_LOWER}" _motool_channel_index)
+if(_motool_channel_index EQUAL -1)
+    message(FATAL_ERROR "Invalid MoTool release channel: ${MOTOOL_CHANNEL}. Allowed values: alpha, beta, rc, demo, dev")
+endif()
+set(MOTOOL_CHANNEL "${MOTOOL_CHANNEL_LOWER}" CACHE STRING "Release channel" FORCE)
+unset(_motool_valid_channels)
+unset(_motool_channel_index)
+string(TIMESTAMP MOTOOL_BUILD_TIME "%Y-%m-%dT%H:%M:%SZ" UTC)
+
+if(MOTOOL_CHANNEL)
+    string(APPEND MOTOOL_VERSION_SUFFIX "-${MOTOOL_CHANNEL}")
+    set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}${MOTOOL_VERSION_SUFFIX}")
+endif()
+
+find_package(Git QUIET)
+if(Git_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE MOTOOL_GIT_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+        RESULT_VARIABLE MOTOOL_GIT_COMMIT_RESULT)
+
+    if(MOTOOL_GIT_COMMIT_RESULT EQUAL 0 AND MOTOOL_GIT_COMMIT)
+        if(MOTOOL_VERSION_SUFFIX)
+            string(APPEND MOTOOL_VERSION_SUFFIX "+g${MOTOOL_GIT_COMMIT}")
+        else()
+            set(MOTOOL_VERSION_SUFFIX "+g${MOTOOL_GIT_COMMIT}")
+        endif()
+        set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}${MOTOOL_VERSION_SUFFIX}")
+        set(MOTOOL_GIT_COMMIT "${MOTOOL_GIT_COMMIT}")
+
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} status --porcelain
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            OUTPUT_VARIABLE MOTOOL_GIT_STATUS_OUTPUT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            RESULT_VARIABLE MOTOOL_GIT_STATUS_RESULT)
+
+        if(MOTOOL_GIT_STATUS_RESULT EQUAL 0 AND MOTOOL_GIT_STATUS_OUTPUT)
+            string(APPEND MOTOOL_VERSION_SUFFIX "-dirty")
+            set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}${MOTOOL_VERSION_SUFFIX}")
+            set(MOTOOL_GIT_DIRTY 1)
+        endif()
+    elseif(NOT MOTOOL_GIT_COMMIT_RESULT EQUAL 0)
+        set(MOTOOL_GIT_COMMIT "unknown")
+    endif()
+endif()
+
+project(MoTool VERSION ${MOTOOL_VERSION_BASE})
+message("Project name: ${PROJECT_NAME}, version: ${PROJECT_VERSION}")
+if(NOT MOTOOL_VERSION_DISPLAY STREQUAL PROJECT_VERSION)
+    message(STATUS "Project build metadata version: ${MOTOOL_VERSION_DISPLAY}")
+endif()
+
+set(MOTOOL_VERSION_HEADER "${CMAKE_SOURCE_DIR}/src/version.h")
+configure_file(
+    ${CMAKE_SOURCE_DIR}/cmake/version.h.in
+    ${MOTOOL_VERSION_HEADER}
+    @ONLY
+)
+set_source_files_properties(${MOTOOL_VERSION_HEADER} PROPERTIES GENERATED TRUE)
 
 enable_testing()
 set(BUILD_TESTING ON CACHE BOOL "Enable CTest" FORCE)

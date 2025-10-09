@@ -100,13 +100,34 @@ if(NOT MOTOOL_VERSION_DISPLAY STREQUAL PROJECT_VERSION)
     message(STATUS "Project build metadata version: ${MOTOOL_VERSION_DISPLAY}")
 endif()
 
+set(MOTOOL_VERSION_TEMPLATE "${CMAKE_SOURCE_DIR}/cmake/version.h.in")
 set(MOTOOL_VERSION_HEADER "${CMAKE_SOURCE_DIR}/src/version.h")
-configure_file(
-    ${CMAKE_SOURCE_DIR}/cmake/version.h.in
-    ${MOTOOL_VERSION_HEADER}
-    @ONLY
+set(_motool_version_command
+    ${CMAKE_COMMAND}
+    "-DMOTOOL_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+    "-DINPUT_TEMPLATE=${MOTOOL_VERSION_TEMPLATE}"
+    "-DOUTPUT_FILE=${MOTOOL_VERSION_HEADER}"
+    "-DMOTOOL_VERSION_BASE=${MOTOOL_VERSION_BASE}"
+    "-DMOTOOL_CHANNEL=${MOTOOL_CHANNEL}"
+    "-DVERSION_FILE=${CMAKE_SOURCE_DIR}/VERSION.md"
 )
-set_source_files_properties(${MOTOOL_VERSION_HEADER} PROPERTIES GENERATED TRUE)
+if(GIT_EXECUTABLE)
+    list(APPEND _motool_version_command "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}")
+endif()
+list(APPEND _motool_version_command "-P" "${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake")
+
+add_custom_target(motool_generate_version_header
+    COMMAND ${_motool_version_command}
+    BYPRODUCTS ${MOTOOL_VERSION_HEADER}
+    DEPENDS
+        ${MOTOOL_VERSION_TEMPLATE}
+        ${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
+        ${CMAKE_SOURCE_DIR}/VERSION.md
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Generating version header"
+    VERBATIM
+)
+unset(_motool_version_command)
 
 enable_testing()
 set(BUILD_TESTING ON CACHE BOOL "Enable CTest" FORCE)

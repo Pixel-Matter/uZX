@@ -1,8 +1,6 @@
 #include "AboutDialog.h"
 #include "version.h"
 
-#include <tracktion_engine/tracktion_engine.h>
-
 using namespace juce;
 namespace te = tracktion;
 

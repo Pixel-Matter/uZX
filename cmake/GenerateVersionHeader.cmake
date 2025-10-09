@@ -61,12 +61,14 @@ if(GIT_EXECUTABLE AND EXISTS "${MOTOOL_SOURCE_DIR}")
     )
 
     if(_motool_git_commit_result EQUAL 0 AND MOTOOL_GIT_COMMIT)
-        if(MOTOOL_VERSION_SUFFIX)
-            string(APPEND MOTOOL_VERSION_SUFFIX "+g${MOTOOL_GIT_COMMIT}")
-        else()
-            set(MOTOOL_VERSION_SUFFIX "+g${MOTOOL_GIT_COMMIT}")
+        if(MOTOOL_CHANNEL_LOWER STREQUAL "dev")
+            if(MOTOOL_VERSION_SUFFIX)
+                string(APPEND MOTOOL_VERSION_SUFFIX "+g${MOTOOL_GIT_COMMIT}")
+            else()
+                set(MOTOOL_VERSION_SUFFIX "+g${MOTOOL_GIT_COMMIT}")
+            endif()
+            set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}${MOTOOL_VERSION_SUFFIX}")
         endif()
-        set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}${MOTOOL_VERSION_SUFFIX}")
 
         execute_process(
             COMMAND ${GIT_EXECUTABLE} status --porcelain

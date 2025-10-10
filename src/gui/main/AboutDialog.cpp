@@ -170,6 +170,10 @@ AboutDialogComponent::AboutDialogComponent() {
     infoLines.add(String("Powered by ") + SystemStats::getJUCEVersion()
                   + " and " + te::Engine::getVersion());
     infoLines.add("Includes ayumi library by Peter Sovietov (true-grue)");
+    infoLines.add("");
+    infoLines.add("Greets to:");
+    infoLines.add("diver, spke, n1k-o, bfox, wbcbz7, Pator, Megus");
+    infoLines.add("and all ZX Spectrum musicians and demosceners!");
 
     infoText_.setFont(Font(FontOptions(14.0f, Font::plain)));
     infoText_.setColour(Colors::Theme::textPrimary);
@@ -196,7 +200,7 @@ AboutDialogComponent::AboutDialogComponent() {
     closeButton_.setColour(TextButton::textColourOffId, Colors::Theme::background);
     addAndMakeVisible(closeButton_);
 
-    setSize(420, 320);
+    setSize(420, 416);
 }
 
 void AboutDialogComponent::paint(Graphics& g) {

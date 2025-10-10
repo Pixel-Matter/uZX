@@ -3,9 +3,6 @@
 
 #include "../../controllers/BindedAutoParameter.h"
 #include "../../plugins/uZX/aychip/aychip.h"
-#include "juce_core/system/juce_PlatformDefs.h"
-#include "juce_events/juce_events.h"
-#include "tracktion_engine/tracktion_engine.h"
 #include "ParamBindings.h"
 
 
@@ -17,6 +14,7 @@ using namespace std::literals;
 namespace te = tracktion;
 
 //==============================================================================
+// For binding vanilla tracktion AutomatableParameters to widgets
 template <typename WidgetValueType>
 class WidgetStaticParamBinding : private Value::Listener {
 public:
@@ -350,6 +348,102 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderAutoParamBinding)
 };
 
+//==============================================================================
+class ButtonAutoParamBinding : public WidgetAutoParamBinding {
+public:
+    ButtonAutoParamBinding(TextButton& button, te::AutomatableParameter::Ptr p)
+        : WidgetAutoParamBinding(std::move(p))
+        , textButton(button)
+    {
+        configureWidgetHandlers();
+        configureLabelCallbacks();
+        refreshFromSource();
+    }
+
+    ~ButtonAutoParamBinding() override {
+        textButton.onClick = nullptr;
+    }
+
+private:
+    void configureLabelCallbacks() {
+        jassert(isAttached());
+
+        if (!isAttached() || !parameter->isDiscrete() || parameter->getNumberOfStates() <= 0)
+            return;
+
+        choiceCount = parameter->getNumberOfStates();
+
+        // indexToLabel = [](int index) -> String {
+        //     return getLabelForValue(static_cast)
+        // };
+    }
+
+    void configureWidgetHandlers() {
+        textButton.onClick = [this]() { handleClick(); };
+    }
+
+    void refreshFromSource() {
+        if (!isAttached() || !fetchValue || choiceCount <= 0)
+            return;
+
+        juce::ScopedValueSetter<bool> svs(updating, true);
+        textButton.setButtonText(parameter->getLabelForValue(fetchValue()));
+    }
+
+    void currentValueChanged(te::AutomatableParameter&) override {
+        if (updating)
+            return;
+        refreshFromSource();
+    }
+
+    void parameterChanged(te::AutomatableParameter&, float value) override {
+        if (updating)
+            return;
+        refreshFromSource();
+    }
+
+    void handleClick() {
+        if (!isAttached() || !applyValue || choiceCount <= 0)
+            return;
+
+        const auto currentIndex = getCurrentIndex();
+        const auto nextIndex = wrapIndex(currentIndex + 1);
+
+        if (beginGesture)
+            beginGesture();
+
+        {
+            juce::ScopedValueSetter<bool> svs(updating, true);
+            // apply to parameter source or value
+            applyValue(parameter->getValueForState(nextIndex));
+        }
+
+        if (endGesture)
+            endGesture();
+    }
+
+    int getCurrentIndex() const {
+        if (!isAttached() || !fetchValue || choiceCount <= 0)
+            return 0;
+
+        return wrapIndex(parameter->getStateForValue(fetchValue()));
+    }
+
+    int wrapIndex(int index) const {
+        if (choiceCount <= 0)
+            return 0;
+
+        index %= choiceCount;
+        if (index < 0)
+            index += choiceCount;
+        return index;
+    }
+
+    // std::function<String(int)> indexToLabel;
+    int choiceCount { 0 };
+
+    TextButton& textButton;
+};
 
 //==============================================================================
 class WidgetBindingTests  : public UnitTest {
@@ -475,6 +569,40 @@ public:
             expectWithinAbsoluteError(static_cast<double>(param->getCurrentValue()), 0.5, 1e-6,
                                       "AutomatableParameter should stay the same after async slider set");
 
+        }
+        beginTest("WidgetAutoBinding from button");
+        {
+            ValueTree pluginState {te::IDs::PLUGIN};
+            pluginState.setProperty(te::IDs::type, "TestPlugin", nullptr);
+            TestPlugin plugin({*edit, pluginState, true});
+
+            auto param = te::AutomatableParameter::Ptr(
+                new te::DiscreteLabelledParameter("mode", "Mode", plugin,
+                                                  {0.0f, 2.0f}, 3, {"One", "Two", "Three"}));
+
+            TextButton button;
+            ButtonAutoParamBinding binding(button, param);
+
+            expect(param->isDiscrete(), "Parameter is discrete");
+            expectEquals(param->getNumberOfStates(), 3, "Parameter has 3 states");
+            expectEquals(param->getValueForState(0), 0.f, "Value to state 0");
+            expectEquals(param->getValueForState(1), 1.f, "Value to state 1");
+            expectEquals(param->getValueForState(2), 2.f, "Value to state 2");
+
+            expectEquals(param->getStateForValue(1.f), 1, "State for value 1");
+            expectEquals(param->snapToState(1.1f), 1.f, "To state 1");
+
+            expectEquals(button.getButtonText(), String("One"), "Button initial updated from AutomatableParameter");
+
+            param->setParameter(2.f, sendNotification);
+
+            expectEquals(button.getButtonText(), String("Three"), "Button updated from AutomatableParameter");
+
+            button.triggerClick();
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+
+            expectEquals(param->getCurrentValue(), 0.f, "AutomatableParameter updated from button click");
+            expectEquals(button.getButtonText(), String("One"), "Button updated from AutomatableParameter");
         }
     }
 };

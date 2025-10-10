@@ -40,6 +40,12 @@ void WidgetParamBindingBase::configureAutomationCallbacks() {
     endGesture   = [this] { param->parameterChangeGestureEnd(); };
 }
 
+void WidgetParamBindingBase::configureMouseListener() {
+    mouseListener.setRmbCallback([this]() {
+        midiMapping.showMappingMenu();
+    });
+}
+
 //==============================================================================
 void SliderParamBinding::configureSliderForAutomationParameter() {
     jassert(param != nullptr);
@@ -59,6 +65,12 @@ void SliderParamBinding::configureSliderForAutomationParameter() {
     slider.valueFromTextFunction = param->stringToValueFunction;
 
     slider.setValue(param->getCurrentValue(), juce::dontSendNotification);
+}
+
+SliderParamBinding::~SliderParamBinding() {
+    slider.onValueChange = nullptr;
+    slider.onDragStart = nullptr;
+    slider.onDragEnd = nullptr;
 }
 
 void SliderParamBinding::configureSliderHandlers() {
@@ -81,12 +93,6 @@ void SliderParamBinding::configureSliderHandlers() {
     };
 
     slider.setPopupMenuEnabled(false);
-}
-
-void SliderParamBinding::configureMouseListener() {
-    mouseListener.setRmbCallback([this]() {
-        midiMapping.showMappingMenu();
-    });
 }
 
 void SliderParamBinding::refreshFromSource() {
@@ -118,12 +124,6 @@ ButtonParamBinding::~ButtonParamBinding() {
 
 void ButtonParamBinding::configureButtonHandlers() {
     textButton.onClick = [this]() { handleClick(); };
-}
-
-void ButtonParamBinding::configureMouseListener() {
-    mouseListener.setRmbCallback([this]() {
-        midiMapping.showMappingMenu();
-    });
 }
 
 void ButtonParamBinding::refreshFromSource() {

@@ -35,6 +35,7 @@ public:
     {
         if (param == nullptr)
             configureStoredValueCallbacks(value);
+        configureMouseListener();
     }
 
     ~WidgetParamBindingBase() override;
@@ -43,6 +44,7 @@ public:
 
 protected:
     void curveHasChanged(te::AutomatableParameter&) override {}
+    void configureMouseListener();
 
     te::AutomatableParameter::Ptr param;
     std::function<float()> fetchValue;
@@ -102,7 +104,6 @@ public:
     {
         configureSliderForAutomationParameter();
         configureSliderHandlers();
-        configureMouseListener();
         refreshFromSource();
     }
 
@@ -113,15 +114,14 @@ public:
     {
         ParameterUIHelpers::configureSliderForParameterDef(slider, value.definition);
         configureSliderHandlers();
-        configureMouseListener();
         refreshFromSource();
     }
 
+    ~SliderParamBinding() override;
 
 private:
     void configureSliderForAutomationParameter();
     void configureSliderHandlers();
-    void configureMouseListener();
     void refreshFromSource();
 
     void currentValueChanged(te::AutomatableParameter&) override;
@@ -144,7 +144,6 @@ public:
         : WidgetParamBindingBase(button, std::move(p))
         , textButton(button)
     {
-        configureMouseListener();
         configureButtonHandlers();
         refreshFromSource();
     }
@@ -157,7 +156,6 @@ public:
         , textButton(button)
     {
         configureFromParameterValue(value);
-        configureMouseListener();
         configureButtonHandlers();
         refreshFromSource();
     }
@@ -166,7 +164,6 @@ public:
 
 private:
     void configureButtonHandlers();
-    void configureMouseListener();
     void refreshFromSource();
 
     void currentValueChanged(te::AutomatableParameter&) override;

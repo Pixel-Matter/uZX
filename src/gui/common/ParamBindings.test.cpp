@@ -14,6 +14,30 @@ using namespace std::literals;
 namespace te = tracktion;
 
 //==============================================================================
+/**
+    Maybe we should have
+
+    WidgetHandlerAdapter <=> ParamEndpoint
+
+    - WidgetHandlerAdapter
+        - Has handlers, but different for each widget type
+        - Can call
+        - Has MidiParameterMapping, MouseListenerWithCallback
+
+        - SliderHandlerAdapter: WidgetHandlerAdapter
+        - ButtonHandlerAdapter: WidgetHandlerAdapter
+
+    - ParamEndpoint
+        - Has listeners, but different for each parameter type
+        - Has setters and getters
+        - Can call
+        - AutoParamEndpoint: ParamEndpoint
+        - ParamValueEndpoint: ParamEndpoint
+
+    And construct WidgetParamBinding<SliderHandlerAdapter, ParamValueEndpoint>?
+*/
+
+//==============================================================================
 // For binding vanilla tracktion AutomatableParameters to widgets
 template <typename WidgetValueType>
 class WidgetStaticParamBinding : private Value::Listener {
@@ -30,8 +54,11 @@ public:
     }
 
 protected:
+    // Called by Value listener to refresh widget from ParameterValue
     std::function<WidgetValueType()> fetchValue;
+    // Called by widget handlers to apply value to ParameterValue
     std::function<void(WidgetValueType)> applyValue;
+
     // std::function<void()> beginGesture;
     // std::function<void()> endGesture;
     bool updating { false };
@@ -41,10 +68,7 @@ private:
     void configureStoredValueCallbacks(ParameterValue<Type>& parameterValue) {
         using Traits = ParameterConversionTraits<Type>;
 
-        // TODO invert control?
-        // fetchValue = parameterValue.getFetcher()
-        // applyValue = parameterValue.getApplier()
-
+        // Called by widget handlers
         fetchValue = [&parameterValue]() {
             parameterValue.value.forceUpdateOfCachedValue();
             return Traits::template to<WidgetValueType>(parameterValue.getStoredValue());
@@ -84,15 +108,15 @@ private:
             applyValue(static_cast<float>(slider.getValue()));
         };
 
-        slider.onDragStart = [/*this*/] {
-            // if (beginGesture)
-            //     beginGesture();
-        };
+        // slider.onDragStart = [/*this*/] {
+        //     // if (beginGesture)
+        //     //     beginGesture();
+        // };
 
-        slider.onDragEnd = [/*this*/] {
-            // if (endGesture)
-            //     endGesture();
-        };
+        // slider.onDragEnd = [/*this*/] {
+        //     // if (endGesture)
+        //     //     endGesture();
+        // };
 
         slider.setPopupMenuEnabled(false);
     }
@@ -240,16 +264,20 @@ public:
     }
 
 protected:
-    void curveHasChanged(te::AutomatableParameter&) override {}
-
     te::AutomatableParameter::Ptr parameter;
+
+    // Called by AutomatableParameter listener to refresh widget from ParameterValue
     std::function<float()> fetchValue;
+    // Called by widget handlers to apply value to AutomatableParameter
     std::function<void(float)> applyValue;
+
     std::function<void()> beginGesture;
     std::function<void()> endGesture;
     bool updating { false };
 
 private:
+    void curveHasChanged(te::AutomatableParameter&) override {}
+
     void configureParameterCallbacks() {
         fetchValue = [this] {
             return static_cast<double>(parameter->getCurrentValue());
@@ -443,13 +471,15 @@ private:
     int choiceCount { 0 };
 
     TextButton& textButton;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ButtonAutoParamBinding)
 };
 
 //==============================================================================
 class WidgetBindingTests  : public UnitTest {
-    class TestPlugin : public te::Plugin {
+    class TestPlugin : public PluginBase {
     public:
-        using te::Plugin::Plugin;
+        using PluginBase::PluginBase;
 
         String getName() const override { return "TestPlugin"; }
         String getSelectableDescription() override { return "Test Plugin for unit tests"; }
@@ -462,21 +492,14 @@ class WidgetBindingTests  : public UnitTest {
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TestPlugin)
     };
 
-    class TestBindedPlugin : public PluginBase {
+    class TestBindedPlugin : public TestPlugin {
     public:
         TestBindedPlugin(ParameterValue<float>& value, te::PluginCreationInfo info)
-            : PluginBase(info)
+            : TestPlugin(info)
             , parameterValue(value)
         {
             addParam(parameterValue);
         }
-
-        String getName() const override { return "TestBindedPlugin"; }
-        String getSelectableDescription() override { return "Test Plugin with binded parameter"; }
-        String getPluginType() override { return "TestBindedPlugin"; }
-        void initialise(const te::PluginInitialisationInfo&) override {}
-        void deinitialise() override {}
-        void applyToBuffer(const te::PluginRenderContext&) noexcept override {}
 
     private:
         ParameterValue<float>& parameterValue;
@@ -660,11 +683,20 @@ public:
                                       "Slider reflects automatable parameter updates");
 
             slider.setValue(0.2, sendNotificationSync);
+            expectWithinAbsoluteError(static_cast<double>(liveParam->getCurrentValue()), 0.2, 1e-6,
+                                      "Live param value updated from slider through binded parameter");
+
             juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
             expectWithinAbsoluteError(static_cast<double>(value.getStoredValue()), 0.2, 1e-6,
                                       "ParameterValue updated from slider through binded parameter");
 
             value.setStoredValue(0.65f);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            expectWithinAbsoluteError(static_cast<double>(liveParam->getCurrentValue()), 0.2, 1e-6,
+                                      "Live param value not updated from ParameterValue state change");
+            expectWithinAbsoluteError(slider.getValue(), 0.2, 1e-6,
+                                      "Slider not refreshed after ParameterValue state change");
+
             plugin.restorePluginStateFromValueTree(pluginState);
             juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
             expectWithinAbsoluteError(slider.getValue(), 0.65, 1e-6,

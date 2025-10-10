@@ -8,6 +8,14 @@ MidiParameterMapping::MidiParameterMapping(te::AutomatableParameter::Ptr param)
     : parameter(std::move(param))
 {}
 
+void MidiParameterMapping::setParameter(te::AutomatableParameter::Ptr paramIn) {
+    parameter = std::move(paramIn);
+}
+
+void MidiParameterMapping::reset() {
+    parameter.reset();
+}
+
 void MidiParameterMapping::learnMidiCC() {
     if (!parameter) return;
     // TODO make it really work

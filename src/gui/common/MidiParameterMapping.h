@@ -8,7 +8,11 @@ namespace te = tracktion;
 
 class MidiParameterMapping : public ChangeBroadcaster {
 public:
+    MidiParameterMapping() = default;
     explicit MidiParameterMapping(te::AutomatableParameter::Ptr param);
+
+    void setParameter(te::AutomatableParameter::Ptr param);
+    void reset();
 
     // Core mapping functionality
     void learnMidiCC();

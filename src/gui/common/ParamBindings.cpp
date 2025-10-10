@@ -6,20 +6,13 @@ using namespace juce;
 namespace MoTool {
 
 WidgetParamBindingBase::WidgetParamBindingBase(Component &c, te::AutomatableParameter::Ptr p)
-    : midiMapping(param)
-    , param(std::move(p))
-    , mouseListener(c)
+    : mouseListener(c)
 {
-    if (param != nullptr) {
-        param->addListener(this);
-        configureAutomationCallbacks();
-    }
+    attachParameter(std::move(p));
 }
 
 WidgetParamBindingBase::~WidgetParamBindingBase() {
-    if (isAttached()) {
-        param->removeListener(this);
-    }
+    detachParameter();
     if (listensToValue)
         storedValue.removeListener(this);
 }
@@ -44,6 +37,40 @@ void WidgetParamBindingBase::configureMouseListener() {
     mouseListener.setRmbCallback([this]() {
         midiMapping.showMappingMenu();
     });
+}
+
+void WidgetParamBindingBase::attachParameter(te::AutomatableParameter::Ptr newParam) {
+    if (param == newParam)
+        return;
+
+    if (param != nullptr)
+        param->removeListener(this);
+
+    param = std::move(newParam);
+    midiMapping.setParameter(param);
+
+    if (param != nullptr) {
+        param->addListener(this);
+        configureAutomationCallbacks();
+    } else {
+        fetchValue = {};
+        applyValue = {};
+        beginGesture = {};
+        endGesture = {};
+    }
+}
+
+void WidgetParamBindingBase::detachParameter() {
+    if (param == nullptr)
+        return;
+
+    param->removeListener(this);
+    midiMapping.reset();
+    param.reset();
+    fetchValue = {};
+    applyValue = {};
+    beginGesture = {};
+    endGesture = {};
 }
 
 //==============================================================================

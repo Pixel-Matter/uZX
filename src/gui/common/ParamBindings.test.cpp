@@ -396,7 +396,7 @@ private:
         refreshFromSource();
     }
 
-    void parameterChanged(te::AutomatableParameter&, float value) override {
+    void parameterChanged(te::AutomatableParameter&, float) override {
         if (updating)
             return;
         refreshFromSource();
@@ -460,6 +460,27 @@ class WidgetBindingTests  : public UnitTest {
 
     private:
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TestPlugin)
+    };
+
+    class TestBindedPlugin : public PluginBase {
+    public:
+        TestBindedPlugin(ParameterValue<float>& value, te::PluginCreationInfo info)
+            : PluginBase(info)
+            , parameterValue(value)
+        {
+            addParam(parameterValue);
+        }
+
+        String getName() const override { return "TestBindedPlugin"; }
+        String getSelectableDescription() override { return "Test Plugin with binded parameter"; }
+        String getPluginType() override { return "TestBindedPlugin"; }
+        void initialise(const te::PluginInitialisationInfo&) override {}
+        void deinitialise() override {}
+        void applyToBuffer(const te::PluginRenderContext&) noexcept override {}
+
+    private:
+        ParameterValue<float>& parameterValue;
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TestBindedPlugin)
     };
 
 public:
@@ -603,6 +624,51 @@ public:
 
             expectEquals(param->getCurrentValue(), 0.f, "AutomatableParameter updated from button click");
             expectEquals(button.getButtonText(), String("One"), "Button updated from AutomatableParameter");
+        }
+
+        beginTest("Slider binding with BindedAutoParameter from ParameterValue");
+        {
+            ValueTree pluginState {te::IDs::PLUGIN};
+            pluginState.setProperty(te::IDs::type, "TestBindedPlugin", nullptr);
+
+            ParameterDef<float> def {
+                "bindedParam",
+                "bindedParam",
+                "Binded",
+                "Binded parameter",
+                0.5f,
+                {0.0f, 1.0f}
+            };
+
+            ParameterValue<float> value { def };
+            value.referTo(pluginState, nullptr);
+
+            TestBindedPlugin plugin(value, {*edit, pluginState, true});
+
+            auto liveParam = detail::resolveParamFromValue(value);
+            expect(liveParam != nullptr, "Live automatable parameter is attached");
+
+            Slider slider;
+            SliderParamBinding binding(slider, te::AutomatableParameter::Ptr(), value);
+
+            expectWithinAbsoluteError(slider.getValue(), 0.5, 1e-6,
+                                      "Slider initialised from binded parameter");
+
+            liveParam->setParameter(0.8f, sendNotification);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            expectWithinAbsoluteError(slider.getValue(), 0.8, 1e-6,
+                                      "Slider reflects automatable parameter updates");
+
+            slider.setValue(0.2, sendNotificationSync);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            expectWithinAbsoluteError(static_cast<double>(value.getStoredValue()), 0.2, 1e-6,
+                                      "ParameterValue updated from slider through binded parameter");
+
+            value.setStoredValue(0.65f);
+            plugin.restorePluginStateFromValueTree(pluginState);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            expectWithinAbsoluteError(slider.getValue(), 0.65, 1e-6,
+                                      "Slider refreshed after restoring ParameterValue state");
         }
     }
 };

@@ -48,10 +48,9 @@ public:
 
     template <typename Type>
     WidgetParamBindingBase(Component &c, te::AutomatableParameter::Ptr p, ParameterValue<Type>& value)
-        : WidgetParamBindingBase(c, std::move(p))
+        : WidgetParamBindingBase(c, detail::resolveParamFromValue(value, std::move(p)))
     {
-        if (param == nullptr)
-            configureStoredValueCallbacks(value);
+        configureStoredValueCallbacks(value);
         configureMouseListener();
     }
 
@@ -84,6 +83,10 @@ private:
     // To be able to listen to it
     Value storedValue;
     bool listensToValue { false };
+
+    void attachParameter(te::AutomatableParameter::Ptr newParam);
+
+    void detachParameter();
 };
 
 template <typename ParameterValueType>
@@ -93,19 +96,16 @@ void WidgetParamBindingBase::configureStoredValueCallbacks(ParameterValueType& p
     storedValue.addListener(this);
     using Traits = ParameterConversionTraits<typename ParameterValueType::Type>;
 
-    // TODO invert control?
-    // fetchValue = parameterValue.getFetcher()
-    // applyValue = parameterValue.getApplier()
+    if (!isAttached()) {
+        fetchValue = [&parameterValue]() {
+            return static_cast<float>(Traits::template to<float>(parameterValue.getStoredValue()));
+        };
 
-    fetchValue = [&parameterValue]() {
-        return static_cast<float>(Traits::template to<float>(parameterValue.getStoredValue()));
-    };
-
-    applyValue = [&parameterValue](float value) {
-        parameterValue.setStoredValue(Traits::from(value));
-    };
+        applyValue = [&parameterValue](float value) {
+            parameterValue.setStoredValue(Traits::from(value));
+        };
+    }
 }
-
 
 //==============================================================================
 /**

@@ -16,6 +16,23 @@ namespace MoTool {
 
 
 //==============================================================================
+namespace detail {
+template <ParameterValueConcept ParameterValueType>
+inline te::AutomatableParameter::Ptr resolveParamFromValue(ParameterValueType& value,
+                                                           te::AutomatableParameter::Ptr param = {})
+{
+    if (param != nullptr)
+        return param;
+
+    if (auto* context = value.getLiveContext())
+        if (auto* liveParam = dynamic_cast<te::AutomatableParameter*>(static_cast<te::AutomatableParameter*>(context)))
+            return te::AutomatableParameter::Ptr(liveParam);
+
+    return {};
+}
+} // namespace detail
+
+//==============================================================================
 /**
     Base bridge between a UI control and a tracktion `AutomatableParameter`.
 

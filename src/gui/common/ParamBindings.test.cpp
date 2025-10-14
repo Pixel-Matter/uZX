@@ -1,6 +1,4 @@
 #include <JuceHeader.h>
-#include <cmath>
-#include <limits>
 #include <memory>
 #include <type_traits>
 
@@ -132,14 +130,11 @@ public:
     }
 
     float getLiveFloatValue() const override {
-        using Traits = ParameterConversionTraits<Type>;
-        return Traits::template to<float>(parameterValue.getLiveValue());
+        return parameterValue.template getLiveValueAs<float>();
     }
 
     float getStoredFloatValue() const override {
-        using Traits = ParameterConversionTraits<Type>;
-        parameterValue.value.forceUpdateOfCachedValue();
-        return Traits::template to<float>(parameterValue.getStoredValue());
+        return parameterValue.template getStoredValueAs<float>();
     }
 
     void setStoredFloatValue(float value) override {
@@ -151,93 +146,23 @@ public:
     void endGesture() override {}
 
     bool isDiscrete() const noexcept override {
-        if constexpr (std::is_floating_point_v<Type>)
-            return parameterValue.definition.getFloatValueRange().interval != 0.0f;
-        else
-            return true;
+        return parameterValue.definition.isDiscrete();
     }
 
     int numberOfStates() const noexcept override {
-        if (!isDiscrete())
-            return 0;
-
-        if constexpr (std::is_same_v<Type, bool>) {
-            return 2;
-        } else if constexpr (Util::EnumChoiceConcept<Type>) {
-            return static_cast<int>(Type::size());
-        } else {
-            const auto floatRange = parameterValue.definition.getFloatValueRange();
-            if (floatRange.interval <= 0.0f)
-                return 0;
-            const auto steps = (floatRange.end - floatRange.start) / floatRange.interval;
-            return jmax(0, static_cast<int>(std::floor(steps + 0.5f)) + 1);
-        }
+        return parameterValue.definition.numberOfStates();
     }
 
     int floatToState(float value) const override {
-        const auto stateCount = numberOfStates();
-        if (stateCount <= 0)
-            return 0;
-
-        if constexpr (std::is_same_v<Type, bool>) {
-            return value >= 0.5f ? 1 : 0;
-        } else if constexpr (Util::EnumChoiceConcept<Type>) {
-            return jlimit(0, stateCount - 1, roundToInt(value));
-        } else {
-            const auto floatRange = parameterValue.definition.getFloatValueRange();
-            auto interval = floatRange.interval;
-            if (interval == 0.0f)
-                interval = 1.0f;
-            const auto index = roundToInt((value - floatRange.start) / interval);
-            return jlimit(0, stateCount - 1, index);
-        }
+        return parameterValue.definition.floatToState(value);
     }
 
     float stateToFloat(int state) const override {
-        const auto stateCount = numberOfStates();
-        if (stateCount <= 0)
-            return getStoredFloatValue();
-
-        state = jlimit(0, stateCount - 1, state);
-
-        if constexpr (std::is_same_v<Type, bool>) {
-            return state != 0 ? 1.0f : 0.0f;
-        } else if constexpr (Util::EnumChoiceConcept<Type>) {
-            auto value = ParameterConversionTraits<Type>::fromInt(state);
-            return ParameterConversionTraits<Type>::template to<float>(value);
-        } else {
-            const auto floatRange = parameterValue.definition.getFloatValueRange();
-            auto interval = floatRange.interval;
-            if (interval == 0.0f)
-                interval = 1.0f;
-            return floatRange.start + interval * static_cast<float>(state);
-        }
+        return parameterValue.definition.stateToFloat(state);
     }
 
     String stateToLabel(int index) const override {
-        const auto stateCount = numberOfStates();
-        if (stateCount <= 0)
-            return {};
-
-        index = jlimit(0, stateCount - 1, index);
-
-        if constexpr (std::is_same_v<Type, bool>) {
-            return index == 0 ? "Off" : "On";
-        } else if constexpr (Util::EnumChoiceConcept<Type>) {
-            auto value = ParameterConversionTraits<Type>::fromInt(index);
-            if constexpr (requires { parameterValue.definition.valueToStringFunction; }) {
-                if (parameterValue.definition.valueToStringFunction)
-                    return parameterValue.definition.valueToStringFunction(value);
-            }
-            return ParameterConversionTraits<Type>::template to<String>(value);
-        } else {
-            const auto typedValue = valueFromState(index);
-            if constexpr (requires { parameterValue.definition.valueToStringFunction; }) {
-                if (parameterValue.definition.valueToStringFunction)
-                    return parameterValue.definition.valueToStringFunction(typedValue);
-            }
-            return String(typedValue);
-        }
+        return parameterValue.definition.stateToLabel(index);
     }
 
     String getId() const override {
@@ -257,28 +182,6 @@ public:
             return parameterValue.definition.units;
         else
             return {};
-    }
-
-private:
-    Type valueFromState(int state) const {
-        if constexpr (std::is_same_v<Type, bool>) {
-            return state != 0;
-        } else if constexpr (Util::EnumChoiceConcept<Type>) {
-            return ParameterConversionTraits<Type>::fromInt(state);
-        } else {
-            const auto& range = parameterValue.definition.valueRange;
-            auto interval = range.interval;
-
-            if constexpr (std::is_floating_point_v<Type>) {
-                if (std::abs(interval) <= std::numeric_limits<Type>::epsilon())
-                    interval = static_cast<Type>(1);
-            } else {
-                if (interval == static_cast<Type>(0))
-                    interval = static_cast<Type>(1);
-            }
-
-            return static_cast<Type>(range.start + interval * static_cast<Type>(state));
-        }
     }
 
     void valueChanged(Value&) override {

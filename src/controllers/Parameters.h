@@ -5,6 +5,8 @@
 
 #include <memory>
 #include <type_traits>
+#include <cmath>
+#include <limits>
 
 
 namespace MoTool {
@@ -122,7 +124,7 @@ struct ParameterDef {
     std::function<String(Type)> valueToStringFunction = {};
     std::function<Type(const String&)> stringToValueFunction = {};
 
-    NormalisableRange<float> getFloatValueRange() const {
+    constexpr NormalisableRange<float> getFloatValueRange() const {
         return {static_cast<float>(valueRange.start),
                 static_cast<float>(valueRange.end),
                 static_cast<float>(valueRange.interval)};
@@ -137,6 +139,62 @@ struct ParameterDef {
         s += " (default " + String(defaultValue) + ")";
         return s;
     }
+
+    constexpr inline bool isDiscrete() const noexcept {
+        if constexpr (std::is_floating_point_v<Type>)
+            return std::abs(valueRange.interval) > std::numeric_limits<Type>::epsilon();
+        else
+            return true;
+    }
+
+    constexpr inline int numberOfStates() const noexcept {
+        if (!isDiscrete())
+            return 0;
+
+        const auto floatRange = getFloatValueRange();
+        if (static_cast<float>(valueRange.interval) <= 0.0f)
+            return 0;
+        const auto steps = (floatRange.end - floatRange.start) / floatRange.interval;
+        return jmax(0, static_cast<int>(std::floor(steps + 0.5f)) + 1);
+    }
+
+    /** float to state index for discrete parameters */
+    inline int floatToState(float v) const {
+        const auto stateCount = numberOfStates();
+        if (stateCount <= 0)
+            return 0;
+
+        const auto floatRange = getFloatValueRange();
+        auto interval = floatRange.interval;
+        if (interval == 0.0f)
+            interval = 1.0f;
+        const auto index = roundToInt((v - floatRange.start) / interval);
+        return jlimit(0, stateCount - 1, index);
+    }
+
+    inline float stateToFloat(int state) const {
+        const auto stateCount = numberOfStates();
+        if (stateCount <= 0)
+            return ParameterConversionTraits<Type>::template to<float>(valueRange.start);
+
+        state = jlimit(0, stateCount - 1, state);
+        const auto typedValue = ParameterConversionTraits<Type>::template from<int>(state);
+        return ParameterConversionTraits<Type>::template to<float>(typedValue);
+    }
+
+    inline String stateToLabel(int state) const {
+        const auto stateCount = numberOfStates();
+        if (stateCount <= 0)
+            return {};
+
+        state = jlimit(0, stateCount - 1, state);
+        const auto typedValue = ParameterConversionTraits<Type>::template from<int>(state);
+
+        if (valueToStringFunction)
+            return valueToStringFunction(typedValue);
+
+        return String(typedValue);
+    }
 };
 
 template <>
@@ -147,7 +205,7 @@ struct ParameterDef<bool> {
     String description;
     bool defaultValue;
 
-    NormalisableRange<float> getFloatValueRange() const {
+    constexpr NormalisableRange<float> getFloatValueRange() const {
         return {0.0f, 1.0f, 1.0f};
     }
 
@@ -157,8 +215,30 @@ struct ParameterDef<bool> {
         s += " (default " + String(defaultValue ? "true" : "false") + ")";
         return s;
     }
-};
 
+    inline constexpr bool isDiscrete() const noexcept {
+        return true;
+    }
+
+    inline constexpr int numberOfStates() const noexcept {
+        return 2;
+    }
+
+    /** float to state index for discrete parameters */
+    inline int floatToState(float v) const {
+        return v >= 0.5f ? 1 : 0;
+    }
+
+    inline float stateToFloat(int state) const {
+        const auto bounded = jlimit(0, numberOfStates() - 1, state);
+        return bounded != 0 ? 1.0f : 0.0f;
+    }
+
+    inline String stateToLabel(int state) const {
+        const auto bounded = jlimit(0, numberOfStates() - 1, state);
+        return bounded == 0 ? "Off" : "On";
+    }
+};
 
 template <Util::EnumChoiceConcept E>
 struct ParameterDef<E> {
@@ -184,7 +264,7 @@ struct ParameterDef<E> {
         return E(str.toStdString());
     };
 
-    NormalisableRange<float> getFloatValueRange() const {
+    constexpr NormalisableRange<float> getFloatValueRange() const {
         return {static_cast<float>(valueRange.start),
                 static_cast<float>(valueRange.end),
                 static_cast<float>(valueRange.interval)};
@@ -203,6 +283,36 @@ struct ParameterDef<E> {
         s += ")";
         s += " (default " + String(defaultValue.getLabel()) + ")";
         return s;
+    }
+
+    inline constexpr bool isDiscrete() const noexcept {
+        return true;
+    }
+
+    int constexpr numberOfStates() const noexcept {
+        return static_cast<int>(E::size());
+    }
+
+    /** float to state index for discrete parameters */
+    inline int floatToState(float v) const {
+        const auto stateCount = numberOfStates();
+        return jlimit(0, stateCount - 1, roundToInt(v));
+    }
+
+    inline float stateToFloat(int state) const {
+        const auto bounded = jlimit(0, numberOfStates() - 1, state);
+        auto value = ParameterConversionTraits<E>::fromInt(bounded);
+        return ParameterConversionTraits<E>::template to<float>(value);
+    }
+
+    inline String stateToLabel(int state) const {
+        const auto bounded = jlimit(0, numberOfStates() - 1, state);
+        auto value = ParameterConversionTraits<E>::fromInt(bounded);
+
+        if (valueToStringFunction)
+            return valueToStringFunction(value);
+
+        return ParameterConversionTraits<E>::template to<String>(value);
     }
 };
 
@@ -312,6 +422,12 @@ struct ParameterValue {
             return liveAccessor->get();
         else
             return getStoredValue();
+    }
+
+    template <typename U>
+    U getLiveValueAs() const {
+        using Traits = ParameterConversionTraits<Type>;
+        return Traits::template to<U>(getLiveValue());
     }
 
     void* getLiveContext() const noexcept {

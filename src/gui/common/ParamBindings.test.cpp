@@ -18,16 +18,16 @@ namespace te = tracktion;
 /**
     Maybe we should have
 
-    WidgetHandlerAdapter <=> ParamEndpoint
+    WidgetParamBinding <=> ParamEndpoint
 
-    - WidgetHandlerAdapter
+    - WidgetParamBinding
         - Has handlers, but different for each widget type
         - Can call
         - Has MidiParameterMapping, MouseListenerWithCallback
 
-        - SliderHandlerAdapter: WidgetHandlerAdapter
+        - SliderParamBinding: WidgetParamBinding
           - Value in double (casted from/to float)
-        - ButtonHandlerAdapter: WidgetHandlerAdapter
+        - ButtonParamBindingr: WidgetParamBinding
           - Value in String (casted from/to int index) via ParamEndpoint::stateToLabel
 
     - ParamEndpoint
@@ -39,8 +39,6 @@ namespace te = tracktion;
           - Value always in float
         - ParamValueEndpoint: ParamEndpoint
           - Value in templated type
-
-    And construct WidgetParamBinding<SliderHandlerAdapter, ParamValueEndpoint>?
 */
 
 //==============================================================================
@@ -51,7 +49,7 @@ namespace te = tracktion;
 class ParameterEndpoint {
 public:
     virtual ~ParameterEndpoint() = default;
-    virtual Range<float> getRange() const = 0;
+    virtual NormalisableRange<float> getRange() const = 0;
     virtual float getLiveFloatValue() const = 0;
     virtual float getStoredFloatValue() const = 0;
     virtual void setStoredFloatValue(float value) = 0;
@@ -62,6 +60,9 @@ public:
     virtual int numberOfStates() const noexcept = 0;
     virtual int floatToState(float value) const = 0;
     virtual float stateToFloat(int state) const = 0;
+    virtual int getDecimalPlaces() const noexcept = 0;
+    virtual String formatValue(double value) const = 0;
+    virtual bool parseValue(const String& text, double& outValue) const = 0;
 
     virtual String stateToLabel(int index) const = 0;
     virtual String getId() const = 0;
@@ -124,9 +125,8 @@ public:
         storedValue.removeListener(this);
     }
 
-    Range<float> getRange() const override {
-        const auto floatRange = parameterValue.definition.getFloatValueRange();
-        return {floatRange.start, floatRange.end};
+    NormalisableRange<float> getRange() const override {
+        return parameterValue.definition.getFloatValueRange();
     }
 
     float getLiveFloatValue() const override {
@@ -159,6 +159,25 @@ public:
 
     float stateToFloat(int state) const override {
         return parameterValue.definition.stateToFloat(state);
+    }
+
+    int getDecimalPlaces() const noexcept override {
+        return parameterValue.definition.decimalPlaces();
+    }
+
+    String formatValue(double value) const override {
+        using Traits = ParameterConversionTraits<Type>;
+        auto typedValue = Traits::template from<double>(value);
+        return parameterValue.definition.valueToText(typedValue);
+    }
+
+    bool parseValue(const String& text, double& outValue) const override {
+        if (auto parsed = parameterValue.definition.textToValue(text)) {
+            using Traits = ParameterConversionTraits<Type>;
+            outValue = Traits::template to<double>(*parsed);
+            return true;
+        }
+        return false;
     }
 
     String stateToLabel(int index) const override {
@@ -202,54 +221,38 @@ public:
         : ownedEndpoint(std::move(endpointIn))
     {
         jassert(ownedEndpoint != nullptr);
-        endpointPtr = ownedEndpoint.get();
-        jassert(endpointPtr != nullptr);
-        configureEndpointCallbacks();
-        endpointPtr->addListener(this);
+        ownedEndpoint->addListener(this);
     }
 
     ~WidgetStaticParamBinding() override {
-        if (endpointPtr != nullptr)
-            endpointPtr->removeListener(this);
+        if (ownedEndpoint != nullptr)
+            ownedEndpoint->removeListener(this);
     }
 
 protected:
     virtual void refreshFromSource() = 0;
 
-    std::function<WidgetValueType()> fetchValue;
-    std::function<void(WidgetValueType)> applyValue;
     bool updating { false };
 
-    ParameterEndpoint& endpoint() noexcept { return *endpointPtr; }
-    const ParameterEndpoint& endpoint() const noexcept { return *endpointPtr; }
-
-private:
-    void configureEndpointCallbacks() {
-        fetchValue = [this]() -> WidgetValueType {
-            if constexpr (std::is_same_v<WidgetValueType, int>)
-                return endpointPtr->floatToState(endpointPtr->getStoredFloatValue());
-            else
-                return static_cast<WidgetValueType>(endpointPtr->getStoredFloatValue());
-        };
-
-        applyValue = [this](WidgetValueType value) {
-            if constexpr (std::is_same_v<WidgetValueType, int>)
-                endpointPtr->setStoredFloatValue(endpointPtr->stateToFloat(value));
-            else
-                endpointPtr->setStoredFloatValue(static_cast<float>(value));
-        };
+    ParameterEndpoint& endpoint() noexcept {
+        jassert(ownedEndpoint != nullptr);
+        return *ownedEndpoint;
+    }
+    const ParameterEndpoint& endpoint() const noexcept {
+        jassert(ownedEndpoint != nullptr);
+        return *ownedEndpoint;
     }
 
+private:
     void storedValueChanged(ParameterEndpoint&, float) override {
         refreshFromSource();
     }
 
-    void liveValueChanged(ParameterEndpoint&, float newValue) override {
-        juce::ignoreUnused(newValue);
+    void liveValueChanged(ParameterEndpoint&, float) override {
+        refreshFromSource();
     }
 
     std::unique_ptr<ParameterEndpoint> ownedEndpoint;
-    ParameterEndpoint* endpointPtr { nullptr };
 
     friend class WidgetBindingTests;
 };
@@ -257,38 +260,43 @@ private:
 //==============================================================================
 class SliderStaticParamBinding : public WidgetStaticParamBinding<float> {
 public:
-    template <typename Type>
-    SliderStaticParamBinding(Slider& s, ParameterValue<Type>& value)
-        : WidgetStaticParamBinding<float>(std::make_unique<StaticParamEndpoint<Type>>(value))
+    SliderStaticParamBinding(Slider& s,
+                             std::unique_ptr<ParameterEndpoint> endpoint)
+        : WidgetStaticParamBinding<float>(std::move(endpoint))
         , slider(s)
     {
-        configureWidgetForParameter(value.definition);
+        configureWidget();
         configureWidgetHandlers();
         refreshFromSource();
     }
 
 private:
-    template <typename Type>
-    inline void configureWidgetForParameter(const ParameterDef<Type>& def) {
-        slider.setTooltip(def.description);
+    void configureWidget() {
+        slider.setTooltip(endpoint().getDescription());
         slider.setPopupDisplayEnabled(true, true, nullptr);
 
-        const auto floatRange = def.getFloatValueRange();
-        slider.setRange(static_cast<double>(floatRange.start),
-                        static_cast<double>(floatRange.end),
-                        static_cast<double>(floatRange.interval));
-        slider.setSkewFactor(static_cast<double>(floatRange.skew));
+        const auto range = endpoint().getRange();
+        slider.setRange(static_cast<double>(range.start),
+                        static_cast<double>(range.end),
+                        static_cast<double>(range.interval));
+        slider.setSkewFactor(static_cast<double>(range.skew));
 
-        slider.setNumDecimalPlacesToDisplay(ParameterUIHelpers::decimalPlacesFor<Type>());
+        slider.setNumDecimalPlacesToDisplay(endpoint().getDecimalPlaces());
 
-        if (def.valueToStringFunction)
-            slider.textFromValueFunction = ParameterUIHelpers::wrapValueToString<Type>(def.valueToStringFunction);
+        slider.textFromValueFunction = [this](double value) {
+            return endpoint().formatValue(value);
+        };
 
-        if (def.stringToValueFunction)
-            slider.valueFromTextFunction = ParameterUIHelpers::wrapStringToValue<Type>(def.stringToValueFunction);
+        slider.valueFromTextFunction = [this](const String& text) -> double {
+            double parsed {};
+            if (endpoint().parseValue(text, parsed))
+                return parsed;
+            return slider.getValue();
+        };
 
-        if (def.units.isNotEmpty())
-            slider.setTextValueSuffix(def.units);
+        const auto units = endpoint().getUnits();
+        if (units.isNotEmpty())
+            slider.setTextValueSuffix(units);
     }
 
     void configureWidgetHandlers() {
@@ -297,7 +305,7 @@ private:
                 return;
 
             juce::ScopedValueSetter<bool> svs(updating, true);
-            applyValue(static_cast<float>(slider.getValue()));
+            endpoint().setStoredFloatValue(static_cast<float>(slider.getValue()));
         };
 
         // slider.onDragStart = [/*this*/] {
@@ -314,14 +322,11 @@ private:
     }
 
     void refreshFromSource() override {
-        if (!fetchValue)
-            return;
-
         if (updating)
             return;
 
         juce::ScopedValueSetter<bool> svs(updating, true);
-        slider.setValue(fetchValue(), dontSendNotification);
+        slider.setValue(static_cast<double>(endpoint().getStoredFloatValue()), dontSendNotification);
     }
 
     Slider& slider;
@@ -358,7 +363,7 @@ private:
     }
 
     void handleClick() {
-        if (!applyValue || choiceCount <= 0)
+        if (choiceCount <= 0)
             return;
 
         const auto currentIndex = getCurrentIndex();
@@ -369,7 +374,7 @@ private:
 
         {
             juce::ScopedValueSetter<bool> svs(updating, true);
-            applyValue(nextIndex);
+            endpoint().setStoredFloatValue(endpoint().stateToFloat(nextIndex));
         }
 
         // if (endGesture)
@@ -380,12 +385,12 @@ private:
         if (updating)
             return;
 
-        if (!fetchValue || !indexToLabel || choiceCount <= 0)
+        if (!indexToLabel || choiceCount <= 0)
             return;
 
         juce::ScopedValueSetter<bool> svs(updating, true);
-        const auto intValue = fetchValue();
-        const auto index = wrapIndex(intValue);
+        const auto storedState = endpoint().floatToState(endpoint().getStoredFloatValue());
+        const auto index = wrapIndex(storedState);
         button.setButtonText(indexToLabel(index));
     }
 
@@ -393,7 +398,8 @@ private:
         if (choiceCount <= 0)
             return 0;
 
-        return wrapIndex(fetchValue());
+        const auto storedState = endpoint().floatToState(endpoint().getStoredFloatValue());
+        return wrapIndex(storedState);
     }
 
     int wrapIndex(int index) const {
@@ -696,7 +702,8 @@ public:
             ParameterValue<float> value {{"testParam", "testParam", "Test Param", "A parameter for testing", 0.5f, {0.f, 1.0f}}};
             value.referTo(state, nullptr);
             Slider slider;
-            SliderStaticParamBinding binding(slider, value);
+            auto endpoint = std::make_unique<StaticParamEndpoint<float>>(value);
+            SliderStaticParamBinding binding(slider, std::move(endpoint));
 
             value.setStoredValue(0.8f);
 
@@ -717,7 +724,8 @@ public:
                 {"testParam", "testParam", "Test Param", "A parameter for testing", 0.5f, {0.f, 1.0f}}};
             value.referTo(state, nullptr);
             Slider slider;
-            SliderStaticParamBinding binding(slider, value);
+            auto endpoint = std::make_unique<StaticParamEndpoint<float>>(value);
+            SliderStaticParamBinding binding(slider, std::move(endpoint));
 
             slider.setValue(0.3, sendNotificationSync);
 

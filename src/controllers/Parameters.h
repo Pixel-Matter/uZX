@@ -4,6 +4,7 @@
 #include "../util/enumchoice.h"
 
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <cmath>
 #include <limits>
@@ -178,7 +179,7 @@ struct ParameterDef {
             return ParameterConversionTraits<Type>::template to<float>(valueRange.start);
 
         state = jlimit(0, stateCount - 1, state);
-        const auto typedValue = ParameterConversionTraits<Type>::template from<int>(state);
+        const auto typedValue = valueFromState(state);
         return ParameterConversionTraits<Type>::template to<float>(typedValue);
     }
 
@@ -188,12 +189,60 @@ struct ParameterDef {
             return {};
 
         state = jlimit(0, stateCount - 1, state);
-        const auto typedValue = ParameterConversionTraits<Type>::template from<int>(state);
+        const auto typedValue = valueFromState(state);
 
         if (valueToStringFunction)
             return valueToStringFunction(typedValue);
 
         return String(typedValue);
+    }
+
+    constexpr int decimalPlaces() const noexcept {
+        if constexpr (std::is_floating_point_v<Type>)
+            return 2;
+        else
+            return 0;
+    }
+
+    String valueToText(Type value) const {
+        if (valueToStringFunction)
+            return valueToStringFunction(value);
+
+        if constexpr (std::is_same_v<Type, bool>)
+            return value ? "On" : "Off";
+        if constexpr (Util::EnumChoiceConcept<Type>)
+            return String(std::string(value.getLabel()));
+        if constexpr (std::is_floating_point_v<Type>)
+            return String(value, decimalPlaces());
+        return String(value);
+    }
+
+    std::optional<Type> textToValue(const String& text) const {
+        if (stringToValueFunction)
+            return stringToValueFunction(text);
+
+        if constexpr (std::is_integral_v<Type> && !std::is_same_v<Type, bool>) {
+            return static_cast<Type>(text.getIntValue());
+        } else if constexpr (std::is_floating_point_v<Type>) {
+            return static_cast<Type>(text.getDoubleValue());
+        } else {
+            return std::nullopt;
+        }
+    }
+
+private:
+    Type valueFromState(int state) const {
+        auto interval = valueRange.interval;
+
+        if constexpr (std::is_floating_point_v<Type>) {
+            if (std::abs(interval) <= std::numeric_limits<Type>::epsilon())
+                interval = static_cast<Type>(1);
+        } else {
+            if (interval == static_cast<Type>(0))
+                interval = static_cast<Type>(1);
+        }
+
+        return static_cast<Type>(valueRange.start + interval * static_cast<Type>(state));
     }
 };
 
@@ -237,6 +286,22 @@ struct ParameterDef<bool> {
     inline String stateToLabel(int state) const {
         const auto bounded = jlimit(0, numberOfStates() - 1, state);
         return bounded == 0 ? "Off" : "On";
+    }
+
+    constexpr int decimalPlaces() const noexcept {
+        return 0;
+    }
+
+    String valueToText(bool value) const {
+        return value ? "On" : "Off";
+    }
+
+    std::optional<bool> textToValue(const String& text) const {
+        if (text.equalsIgnoreCase("true") || text.equalsIgnoreCase("on") || text == "1")
+            return true;
+        if (text.equalsIgnoreCase("false") || text.equalsIgnoreCase("off") || text == "0")
+            return false;
+        return std::nullopt;
     }
 };
 
@@ -313,6 +378,22 @@ struct ParameterDef<E> {
             return valueToStringFunction(value);
 
         return ParameterConversionTraits<E>::template to<String>(value);
+    }
+
+    constexpr int decimalPlaces() const noexcept {
+        return 0;
+    }
+
+    String valueToText(E value) const {
+        if (valueToStringFunction)
+            return valueToStringFunction(value);
+        return ParameterConversionTraits<E>::template to<String>(value);
+    }
+
+    std::optional<E> textToValue(const String& text) const {
+        if (stringToValueFunction)
+            return stringToValueFunction(text);
+        return E(text.toStdString());
     }
 };
 

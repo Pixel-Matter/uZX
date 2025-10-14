@@ -1,5 +1,8 @@
 #include <JuceHeader.h>
+#include <cmath>
+#include <limits>
 #include <memory>
+#include <type_traits>
 
 #include "../../controllers/BindedAutoParameter.h"
 #include "../../plugins/uZX/aychip/aychip.h"
@@ -25,80 +28,366 @@ namespace te = tracktion;
         - Has MidiParameterMapping, MouseListenerWithCallback
 
         - SliderHandlerAdapter: WidgetHandlerAdapter
+          - Value in double (casted from/to float)
         - ButtonHandlerAdapter: WidgetHandlerAdapter
+          - Value in String (casted from/to int index) via ParamEndpoint::stateToLabel
 
     - ParamEndpoint
         - Has listeners, but different for each parameter type
+        - Unified interface for parameter metadata (range, isDiscrete, numberOfStates, stateToLabel, etc)
         - Has setters and getters
         - Can call
         - AutoParamEndpoint: ParamEndpoint
+          - Value always in float
         - ParamValueEndpoint: ParamEndpoint
+          - Value in templated type
 
     And construct WidgetParamBinding<SliderHandlerAdapter, ParamValueEndpoint>?
 */
 
 //==============================================================================
-// For binding vanilla tracktion AutomatableParameters to widgets
-template <typename WidgetValueType>
-class WidgetStaticParamBinding : private Value::Listener {
+// Interface for parameter endpoint, to be used by WidgetParamBinding
+// Unifies access to parameter metadata and value conversion
+// both for AutomatableParameter and ParameterValue<T>
+// TODO Refactor as a concept?
+class ParameterEndpoint {
 public:
-    template <typename Type>
-    WidgetStaticParamBinding(ParameterValue<Type>& value) {
-        storedValue = value.getPropertyAsValue();
-        storedValue.addListener(this);
-        configureStoredValueCallbacks(value);
+    virtual ~ParameterEndpoint() = default;
+    virtual Range<float> getRange() const = 0;
+    virtual float getLiveFloatValue() const = 0;
+    virtual float getStoredFloatValue() const = 0;
+    virtual void setStoredFloatValue(float value) = 0;
+    virtual void beginGesture() = 0;
+    virtual void endGesture() = 0;
+
+    virtual bool isDiscrete() const noexcept = 0;
+    virtual int numberOfStates() const noexcept = 0;
+    virtual int floatToState(float value) const = 0;
+    virtual float stateToFloat(int state) const = 0;
+
+    virtual String stateToLabel(int index) const = 0;
+    virtual String getId() const = 0;
+    virtual String getName() const = 0;
+    virtual String getDescription() const = 0;
+    virtual String getUnits() const = 0;
+
+    // Listener interface, designed after AutomatableParameter::Listener
+    class Listener {
+    public:
+        virtual ~Listener() = default;
+        virtual void storedValueChanged(ParameterEndpoint&, float newValue) = 0;
+        virtual void liveValueChanged(ParameterEndpoint&, float newValue) = 0;
+    };
+
+    void addListener(Listener* l) {
+        listeners.add(l);
     }
 
-    ~WidgetStaticParamBinding() override {
-        storedValue.removeListener(this);
+    void removeListener(Listener* l) {
+        listeners.remove(l);
     }
 
 protected:
-    // Called by Value listener to refresh widget from ParameterValue
-    std::function<WidgetValueType()> fetchValue;
-    // Called by widget handlers to apply value to ParameterValue
-    std::function<void(WidgetValueType)> applyValue;
+    ParameterEndpoint() = default;
 
-    // std::function<void()> beginGesture;
-    // std::function<void()> endGesture;
-    bool updating { false };
-
-private:
-    template <typename Type>
-    void configureStoredValueCallbacks(ParameterValue<Type>& parameterValue) {
-        using Traits = ParameterConversionTraits<Type>;
-
-        // Called by widget handlers
-        fetchValue = [&parameterValue]() {
-            parameterValue.value.forceUpdateOfCachedValue();
-            return Traits::template to<WidgetValueType>(parameterValue.getStoredValue());
-        };
-
-        // because applier of float value can be not not templated
-        applyValue = [&parameterValue](WidgetValueType value) {
-            parameterValue.setStoredValue(Traits::template from<WidgetValueType>(value));
-        };
+    void notifyStoredValueChanged(float newValue) {
+        listeners.call([&](Listener& l) {
+            l.storedValueChanged(*this, newValue);
+        });
     }
 
-    // To be able to listen to it
+    void notifyLiveValueChanged(float newValue) {
+        listeners.call([&](Listener& l) {
+            l.liveValueChanged(*this, newValue);
+        });
+    }
+
+private:
+    ListenerList<Listener> listeners;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterEndpoint)
+};
+
+
+//==============================================================================
+// For binding ParameterValue<Type> to widgets
+template <typename Type>
+class StaticParamEndpoint : public ParameterEndpoint,
+                            private Value::Listener {
+public:
+    explicit StaticParamEndpoint(ParameterValue<Type>& value)
+        : parameterValue(value)
+    {
+        storedValue = value.getPropertyAsValue();
+        storedValue.addListener(this);
+    }
+
+    ~StaticParamEndpoint() override {
+        storedValue.removeListener(this);
+    }
+
+    Range<float> getRange() const override {
+        const auto floatRange = parameterValue.definition.getFloatValueRange();
+        return {floatRange.start, floatRange.end};
+    }
+
+    float getLiveFloatValue() const override {
+        using Traits = ParameterConversionTraits<Type>;
+        return Traits::template to<float>(parameterValue.getLiveValue());
+    }
+
+    float getStoredFloatValue() const override {
+        using Traits = ParameterConversionTraits<Type>;
+        parameterValue.value.forceUpdateOfCachedValue();
+        return Traits::template to<float>(parameterValue.getStoredValue());
+    }
+
+    void setStoredFloatValue(float value) override {
+        parameterValue.setStoredValueAs(value);
+        notifyStoredValueChanged(getStoredFloatValue());
+    }
+
+    void beginGesture() override {}
+    void endGesture() override {}
+
+    bool isDiscrete() const noexcept override {
+        if constexpr (std::is_floating_point_v<Type>)
+            return parameterValue.definition.getFloatValueRange().interval != 0.0f;
+        else
+            return true;
+    }
+
+    int numberOfStates() const noexcept override {
+        if (!isDiscrete())
+            return 0;
+
+        if constexpr (std::is_same_v<Type, bool>) {
+            return 2;
+        } else if constexpr (Util::EnumChoiceConcept<Type>) {
+            return static_cast<int>(Type::size());
+        } else {
+            const auto floatRange = parameterValue.definition.getFloatValueRange();
+            if (floatRange.interval <= 0.0f)
+                return 0;
+            const auto steps = (floatRange.end - floatRange.start) / floatRange.interval;
+            return jmax(0, static_cast<int>(std::floor(steps + 0.5f)) + 1);
+        }
+    }
+
+    int floatToState(float value) const override {
+        const auto stateCount = numberOfStates();
+        if (stateCount <= 0)
+            return 0;
+
+        if constexpr (std::is_same_v<Type, bool>) {
+            return value >= 0.5f ? 1 : 0;
+        } else if constexpr (Util::EnumChoiceConcept<Type>) {
+            return jlimit(0, stateCount - 1, roundToInt(value));
+        } else {
+            const auto floatRange = parameterValue.definition.getFloatValueRange();
+            auto interval = floatRange.interval;
+            if (interval == 0.0f)
+                interval = 1.0f;
+            const auto index = roundToInt((value - floatRange.start) / interval);
+            return jlimit(0, stateCount - 1, index);
+        }
+    }
+
+    float stateToFloat(int state) const override {
+        const auto stateCount = numberOfStates();
+        if (stateCount <= 0)
+            return getStoredFloatValue();
+
+        state = jlimit(0, stateCount - 1, state);
+
+        if constexpr (std::is_same_v<Type, bool>) {
+            return state != 0 ? 1.0f : 0.0f;
+        } else if constexpr (Util::EnumChoiceConcept<Type>) {
+            auto value = ParameterConversionTraits<Type>::fromInt(state);
+            return ParameterConversionTraits<Type>::template to<float>(value);
+        } else {
+            const auto floatRange = parameterValue.definition.getFloatValueRange();
+            auto interval = floatRange.interval;
+            if (interval == 0.0f)
+                interval = 1.0f;
+            return floatRange.start + interval * static_cast<float>(state);
+        }
+    }
+
+    String stateToLabel(int index) const override {
+        const auto stateCount = numberOfStates();
+        if (stateCount <= 0)
+            return {};
+
+        index = jlimit(0, stateCount - 1, index);
+
+        if constexpr (std::is_same_v<Type, bool>) {
+            return index == 0 ? "Off" : "On";
+        } else if constexpr (Util::EnumChoiceConcept<Type>) {
+            auto value = ParameterConversionTraits<Type>::fromInt(index);
+            if constexpr (requires { parameterValue.definition.valueToStringFunction; }) {
+                if (parameterValue.definition.valueToStringFunction)
+                    return parameterValue.definition.valueToStringFunction(value);
+            }
+            return ParameterConversionTraits<Type>::template to<String>(value);
+        } else {
+            const auto typedValue = valueFromState(index);
+            if constexpr (requires { parameterValue.definition.valueToStringFunction; }) {
+                if (parameterValue.definition.valueToStringFunction)
+                    return parameterValue.definition.valueToStringFunction(typedValue);
+            }
+            return String(typedValue);
+        }
+    }
+
+    String getId() const override {
+        return parameterValue.definition.identifier;
+    }
+
+    String getName() const override {
+        return parameterValue.definition.shortLabel;
+    }
+
+    String getDescription() const override {
+        return parameterValue.definition.description;
+    }
+
+    String getUnits() const override {
+        if constexpr (requires { parameterValue.definition.units; })
+            return parameterValue.definition.units;
+        else
+            return {};
+    }
+
+private:
+    Type valueFromState(int state) const {
+        if constexpr (std::is_same_v<Type, bool>) {
+            return state != 0;
+        } else if constexpr (Util::EnumChoiceConcept<Type>) {
+            return ParameterConversionTraits<Type>::fromInt(state);
+        } else {
+            const auto& range = parameterValue.definition.valueRange;
+            auto interval = range.interval;
+
+            if constexpr (std::is_floating_point_v<Type>) {
+                if (std::abs(interval) <= std::numeric_limits<Type>::epsilon())
+                    interval = static_cast<Type>(1);
+            } else {
+                if (interval == static_cast<Type>(0))
+                    interval = static_cast<Type>(1);
+            }
+
+            return static_cast<Type>(range.start + interval * static_cast<Type>(state));
+        }
+    }
+
+    void valueChanged(Value&) override {
+        notifyStoredValueChanged(getStoredFloatValue());
+    }
+
+    ParameterValue<Type>& parameterValue;
     Value storedValue;
 
     friend class WidgetBindingTests;
 };
 
+//==============================================================================
+template <typename WidgetValueType>
+class WidgetStaticParamBinding : private ParameterEndpoint::Listener {
+public:
+    explicit WidgetStaticParamBinding(std::unique_ptr<ParameterEndpoint> endpointIn)
+        : ownedEndpoint(std::move(endpointIn))
+    {
+        jassert(ownedEndpoint != nullptr);
+        endpointPtr = ownedEndpoint.get();
+        jassert(endpointPtr != nullptr);
+        configureEndpointCallbacks();
+        endpointPtr->addListener(this);
+    }
+
+    ~WidgetStaticParamBinding() override {
+        if (endpointPtr != nullptr)
+            endpointPtr->removeListener(this);
+    }
+
+protected:
+    virtual void refreshFromSource() = 0;
+
+    std::function<WidgetValueType()> fetchValue;
+    std::function<void(WidgetValueType)> applyValue;
+    bool updating { false };
+
+    ParameterEndpoint& endpoint() noexcept { return *endpointPtr; }
+    const ParameterEndpoint& endpoint() const noexcept { return *endpointPtr; }
+
+private:
+    void configureEndpointCallbacks() {
+        fetchValue = [this]() -> WidgetValueType {
+            if constexpr (std::is_same_v<WidgetValueType, int>)
+                return endpointPtr->floatToState(endpointPtr->getStoredFloatValue());
+            else
+                return static_cast<WidgetValueType>(endpointPtr->getStoredFloatValue());
+        };
+
+        applyValue = [this](WidgetValueType value) {
+            if constexpr (std::is_same_v<WidgetValueType, int>)
+                endpointPtr->setStoredFloatValue(endpointPtr->stateToFloat(value));
+            else
+                endpointPtr->setStoredFloatValue(static_cast<float>(value));
+        };
+    }
+
+    void storedValueChanged(ParameterEndpoint&, float) override {
+        refreshFromSource();
+    }
+
+    void liveValueChanged(ParameterEndpoint&, float newValue) override {
+        juce::ignoreUnused(newValue);
+    }
+
+    std::unique_ptr<ParameterEndpoint> ownedEndpoint;
+    ParameterEndpoint* endpointPtr { nullptr };
+
+    friend class WidgetBindingTests;
+};
+
+//==============================================================================
 class SliderStaticParamBinding : public WidgetStaticParamBinding<float> {
 public:
     template <typename Type>
     SliderStaticParamBinding(Slider& s, ParameterValue<Type>& value)
-        : WidgetStaticParamBinding(value)
+        : WidgetStaticParamBinding<float>(std::make_unique<StaticParamEndpoint<Type>>(value))
         , slider(s)
     {
-        ParameterUIHelpers::configureSliderForParameterDef(slider, value.definition);
+        configureWidgetForParameter(value.definition);
         configureWidgetHandlers();
         refreshFromSource();
     }
 
 private:
+    template <typename Type>
+    inline void configureWidgetForParameter(const ParameterDef<Type>& def) {
+        slider.setTooltip(def.description);
+        slider.setPopupDisplayEnabled(true, true, nullptr);
+
+        const auto floatRange = def.getFloatValueRange();
+        slider.setRange(static_cast<double>(floatRange.start),
+                        static_cast<double>(floatRange.end),
+                        static_cast<double>(floatRange.interval));
+        slider.setSkewFactor(static_cast<double>(floatRange.skew));
+
+        slider.setNumDecimalPlacesToDisplay(ParameterUIHelpers::decimalPlacesFor<Type>());
+
+        if (def.valueToStringFunction)
+            slider.textFromValueFunction = ParameterUIHelpers::wrapValueToString<Type>(def.valueToStringFunction);
+
+        if (def.stringToValueFunction)
+            slider.valueFromTextFunction = ParameterUIHelpers::wrapStringToValue<Type>(def.stringToValueFunction);
+
+        if (def.units.isNotEmpty())
+            slider.setTextValueSuffix(def.units);
+    }
+
     void configureWidgetHandlers() {
         slider.onValueChange = [this] {
             if (updating)
@@ -121,7 +410,7 @@ private:
         slider.setPopupMenuEnabled(false);
     }
 
-    void refreshFromSource() {
+    void refreshFromSource() override {
         if (!fetchValue)
             return;
 
@@ -132,10 +421,6 @@ private:
         slider.setValue(fetchValue(), dontSendNotification);
     }
 
-    void valueChanged(Value&) override {
-        refreshFromSource();
-    }
-
     Slider& slider;
 };
 
@@ -144,7 +429,7 @@ class ButtonStaticParamBinding : public WidgetStaticParamBinding<int> {
 public:
     template <typename Type>
     ButtonStaticParamBinding(Button& b, ParameterValue<Type>& value)
-        : WidgetStaticParamBinding(value)
+        : WidgetStaticParamBinding<int>(std::make_unique<StaticParamEndpoint<Type>>(value))
         , button(b)
     {
         configureForParameterDef(value.definition);
@@ -153,24 +438,14 @@ public:
     }
 
 private:
-    template <Util::EnumChoiceConcept Type>
-    void configureForParameterDef(const ParameterDef<Type>& def) {
-        choiceCount = static_cast<int>(Type::size());
-
+    template <typename DefType>
+    void configureForParameterDef(const DefType& def) {
         button.setTooltip(def.description);
 
-        using Traits = ParameterConversionTraits<Type>;
-
-        // valueToStringFunction overrides getLabel()
-        if (auto valueToString = def.valueToStringFunction) {
-            indexToLabel = [valueToString](int index) -> String {
-                return valueToString(Traits::from(index));
-            };
-        } else {
-            indexToLabel = [](int index) -> String {
-                return Traits::template to<String>(Traits::from(index+1));
-            };
-        }
+        choiceCount = endpoint().numberOfStates();
+        indexToLabel = [this](int index) -> String {
+            return endpoint().stateToLabel(index);
+        };
     }
 
     void configureWidgetHandlers() {
@@ -198,7 +473,7 @@ private:
         //     endGesture();
     }
 
-    void refreshFromSource() {
+    void refreshFromSource() override {
         if (updating)
             return;
 
@@ -209,10 +484,6 @@ private:
         const auto intValue = fetchValue();
         const auto index = wrapIndex(intValue);
         button.setButtonText(indexToLabel(index));
-    }
-
-    void valueChanged(Value&) override {
-        refreshFromSource();
     }
 
     int getCurrentIndex() const {
@@ -241,27 +512,32 @@ private:
 
 //==============================================================================
 // For parameters without ParameterValue<T>, for example vanilla tracktion AutomatableParameters
-class WidgetAutoParamBinding : private te::AutomatableParameter::Listener
-{
+class WidgetAutoParamBinding : private te::AutomatableParameter::Listener {
 public:
     WidgetAutoParamBinding(te::AutomatableParameter::Ptr p)
         : parameter(std::move(p))
     {
-        if (isAttached()) {
-            configureParameterCallbacks();
-            parameter->addListener(this);
-        }
+        if (!ensureAttached())
+            return;
+
+        configureParameterCallbacks();
+        parameter->addListener(this);
     }
 
     ~WidgetAutoParamBinding() override {
-        if (isAttached()) {
-            parameter->removeListener(this);
-        }
+        if (!ensureAttached())
+            return;
+        parameter->removeListener(this);
     }
 
-    bool isAttached() const noexcept {
+    bool ensureAttached() const {
+        jassert(parameter != nullptr);
         return parameter != nullptr;
     }
+
+    // bool isAttached() const noexcept {
+    //     return parameter != nullptr;
+    // }
 
 protected:
     te::AutomatableParameter::Ptr parameter;
@@ -309,8 +585,7 @@ public:
 private:
     void configureWidget() {
         // depends on param
-        jassert(isAttached());
-        if (!isAttached())
+        if (!ensureAttached())
             return;
 
         slider.setTooltip(parameter->getParameterName());
@@ -394,9 +669,7 @@ public:
 
 private:
     void configureLabelCallbacks() {
-        jassert(isAttached());
-
-        if (!isAttached() || !parameter->isDiscrete() || parameter->getNumberOfStates() <= 0)
+        if (!ensureAttached() || !parameter->isDiscrete() || parameter->getNumberOfStates() <= 0)
             return;
 
         choiceCount = parameter->getNumberOfStates();
@@ -411,7 +684,7 @@ private:
     }
 
     void refreshFromSource() {
-        if (!isAttached() || !fetchValue || choiceCount <= 0)
+        if (!ensureAttached() || !fetchValue || choiceCount <= 0)
             return;
 
         juce::ScopedValueSetter<bool> svs(updating, true);
@@ -431,7 +704,7 @@ private:
     }
 
     void handleClick() {
-        if (!isAttached() || !applyValue || choiceCount <= 0)
+        if (!ensureAttached() || !applyValue || choiceCount <= 0)
             return;
 
         const auto currentIndex = getCurrentIndex();
@@ -451,7 +724,7 @@ private:
     }
 
     int getCurrentIndex() const {
-        if (!isAttached() || !fetchValue || choiceCount <= 0)
+        if (!ensureAttached() || !fetchValue || choiceCount <= 0)
             return 0;
 
         return wrapIndex(parameter->getStateForValue(fetchValue()));
@@ -527,10 +800,10 @@ public:
             // Stored value listeners fire asynchronously on the message thread.
             juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
 
-            expectWithinAbsoluteError(static_cast<double>(binding.storedValue.getValue()), 0.8, 1e-6,
-                                      "Stored value propagated to binding");
             expectWithinAbsoluteError(slider.getValue(), 0.8, 1e-6,
                                       "Slider updated from ParameterValue");
+            expectWithinAbsoluteError(static_cast<double>(value.getStoredValue()), 0.8, 1e-6,
+                                      "ParameterValue holds updated value");
         }
 
         beginTest("WidgetParamBinding from slider");
@@ -545,8 +818,6 @@ public:
 
             slider.setValue(0.3, sendNotificationSync);
 
-            expectWithinAbsoluteError(static_cast<double>(binding.storedValue.getValue()), 0.3, 1e-6,
-                                      "Stored value updated from slider");
             expectWithinAbsoluteError((double) value.getStoredValue(), 0.3, 1e-6,
                                       "ParameterValue updated from slider");
         }

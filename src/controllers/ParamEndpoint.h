@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <memory>
 #include <utility>
 
 #include "Parameters.h"
@@ -42,6 +43,10 @@ public:
     virtual String getDescription() const = 0;
     virtual String getUnits() const = 0;
 
+    virtual bool isAutomatable() const noexcept {
+        return false;
+    }
+
     // Listener interface, designed after AutomatableParameter::Listener
     class Listener {
     public:
@@ -82,17 +87,17 @@ private:
 //==============================================================================
 // For binding ParameterValue<Type> to widgets.
 template <typename Type>
-class StaticParamEndpoint : public ParameterEndpoint,
-                            private Value::Listener {
+class ParamValueEndpoint : public ParameterEndpoint,
+                           private Value::Listener {
 public:
-    explicit StaticParamEndpoint(ParameterValue<Type>& value)
+    explicit ParamValueEndpoint(ParameterValue<Type>& value)
         : parameterValue(value)
     {
         storedValue = value.getPropertyAsValue();
         storedValue.addListener(this);
     }
 
-    ~StaticParamEndpoint() override {
+    ~ParamValueEndpoint() override {
         storedValue.removeListener(this);
     }
 
@@ -114,6 +119,7 @@ public:
     }
 
     void beginGesture() override {}
+
     void endGesture() override {}
 
     bool isDiscrete() const noexcept override {
@@ -182,15 +188,15 @@ private:
     ParameterValue<Type>& parameterValue;
     Value storedValue;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StaticParamEndpoint)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamValueEndpoint)
 };
 
 //==============================================================================
-class AutomatedParamEndpoint : public ParameterEndpoint,
-                               private te::AutomatableParameter::Listener {
+class AutomatableParamEndpoint : public ParameterEndpoint,
+                                 private te::AutomatableParameter::Listener {
 public:
-    explicit AutomatedParamEndpoint(te::AutomatableParameter::Ptr parameterIn);
-    ~AutomatedParamEndpoint() override;
+    explicit AutomatableParamEndpoint(te::AutomatableParameter::Ptr parameterIn);
+    ~AutomatableParamEndpoint() override;
 
     bool ensureIsValid() const;
 
@@ -214,6 +220,14 @@ public:
     String getDescription() const override;
     String getUnits() const override;
 
+    inline bool isAutomatable() const noexcept override {
+        return true;
+    }
+
+    inline te::AutomatableParameter::Ptr getAutomatableParameter() const noexcept {
+        return parameter;
+    }
+
 private:
     void curveHasChanged(te::AutomatableParameter& parameter) override;
     void currentValueChanged(te::AutomatableParameter& parameter) override;
@@ -221,8 +235,21 @@ private:
 
     te::AutomatableParameter::Ptr parameter;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AutomatedParamEndpoint)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AutomatableParamEndpoint)
 };
 
-} // namespace MoTool
+template <typename Type>
+inline std::unique_ptr<ParameterEndpoint> makeResolveParamEndpoint(ParameterValue<Type>& value,
+                                                                   te::AutomatableParameter::Ptr param = {})
+{
+    if (param != nullptr)
+        return std::make_unique<AutomatableParamEndpoint>(std::move(param));
 
+    if (auto* context = value.getLiveContext())
+        if (auto* liveParam = dynamic_cast<te::AutomatableParameter*>(static_cast<te::AutomatableParameter*>(context)))
+            return std::make_unique<AutomatableParamEndpoint>(te::AutomatableParameter::Ptr(liveParam));
+
+    return std::make_unique<ParamValueEndpoint<Type>>(value);
+}
+
+} // namespace MoTool

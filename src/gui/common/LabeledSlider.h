@@ -18,15 +18,14 @@ class LabeledSlider : public Component,
                       private ChangeListener  // MidiMapping change listener
 {
 public:
-    template <typename Type = float>
-    LabeledSlider(te::AutomatableEditItem& editItem, ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : binding(slider, editItem.getAutomatableParameterByID(value.definition.identifier), value)
+    template <typename Type>
+    LabeledSlider(ParameterValue<Type>& value, te::AutomatableParameter::Ptr p, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
+        : binding(slider, value, std::move(p))
     {
         slider.setSliderStyle(style);
         slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
 
-        // TODO pass label into ctor?
-        label.setText(value.definition.shortLabel, dontSendNotification);
+        label.setText(binding.endpoint().getName(), dontSendNotification);
         label.setJustificationType(Justification::centred);
         label.setFont(label.getFont().withPointHeight((float) labelHeight));
 
@@ -35,6 +34,16 @@ public:
 
         binding.midiMapping.addChangeListener(this);
     }
+
+    template <typename Type>
+    LabeledSlider(ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
+        : LabeledSlider(value, nullptr, style)
+    {}
+
+    template <typename Type>
+    LabeledSlider(te::AutomatableEditItem& editItem, ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
+        : LabeledSlider(value, editItem.getAutomatableParameterByID(value.definition.identifier), style)
+    {}
 
     ~LabeledSlider() override {
         binding.midiMapping.removeChangeListener(this);
@@ -59,7 +68,7 @@ private:
     Slider slider;
     Label label;
 
-    SliderParamBinding binding;
+    SliderParamEndpointBinding binding;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LabeledSlider)
 };

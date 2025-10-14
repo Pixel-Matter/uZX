@@ -6,6 +6,8 @@
 #include <memory>
 
 #include "../../controllers/Parameters.h"
+#include "../../controllers/ParamEndpoint.h"
+
 #include "ParameterSliderHelpers.h"
 #include "MidiParameterMapping.h"
 #include "MouseListener.h"
@@ -32,6 +34,96 @@ inline te::AutomatableParameter::Ptr resolveParamFromValue(ParameterValueType& v
 }
 } // namespace detail
 
+//==============================================================================
+class WidgetParamEndpointBinding : private ParameterEndpoint::Listener {
+public:
+    WidgetParamEndpointBinding(Component &c, std::unique_ptr<ParameterEndpoint> endpointIn);
+
+    WidgetParamEndpointBinding(Component &c, te::AutomatableParameter::Ptr parameterIn);
+
+    template <typename Type>
+    WidgetParamEndpointBinding(Component &c, ParameterValue<Type>& paramValue, te::AutomatableParameter::Ptr parameterIn = {})
+        : WidgetParamEndpointBinding(c, makeResolveParamEndpoint(paramValue, std::move(parameterIn)))
+    {}
+
+    ~WidgetParamEndpointBinding() override;
+
+    MidiParameterMapping midiMapping;
+    MouseListenerWithCallback mouseListener;
+
+    ParameterEndpoint& endpoint() noexcept;
+    const ParameterEndpoint& endpoint() const noexcept;
+
+protected:
+    virtual void refreshFromSource() = 0;
+
+    bool updating { false };
+
+private:
+    void storedValueChanged(ParameterEndpoint&, float) override;
+    void liveValueChanged(ParameterEndpoint&, float) override;
+
+    std::unique_ptr<ParameterEndpoint> ownedEndpoint;
+
+    friend class WidgetBindingTests;
+};
+
+//==============================================================================
+class SliderParamEndpointBinding : public WidgetParamEndpointBinding {
+public:
+    SliderParamEndpointBinding(Slider& s, auto&& endpoint)
+        : WidgetParamEndpointBinding(s, std::forward<decltype(endpoint)>(endpoint))
+        , slider(s)
+    {
+        configureWidget();
+        configureWidgetHandlers();
+        refreshFromSource();
+    }
+
+    template <typename Type>
+    SliderParamEndpointBinding(Slider &s, ParameterValue<Type>& paramValue, te::AutomatableParameter::Ptr parameterIn = {})
+        : SliderParamEndpointBinding(s, makeResolveParamEndpoint(paramValue, std::move(parameterIn)))
+    {}
+
+private:
+    void configureWidget();
+    void configureWidgetHandlers();
+    void refreshFromSource() override;
+
+    Slider& slider;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParamEndpointBinding)
+};
+
+//============================================================================
+class ButtonParamEndpointBinding : public WidgetParamEndpointBinding {
+public:
+    ButtonParamEndpointBinding(Button& b, auto&& endpoint)
+        : WidgetParamEndpointBinding(b, std::forward<decltype(endpoint)>(endpoint))
+        , button(b)
+    {
+        configureWidget();
+        configureWidgetHandlers();
+        refreshFromSource();
+    }
+
+private:
+    void configureWidget();
+    void configureWidgetHandlers();
+    void refreshFromSource() override;
+
+    void handleClick();
+    int getCurrentIndex() const;
+    int wrapIndex(int index) const;
+
+    Button& button;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ButtonParamEndpointBinding)
+};
+
+
+//==============================================================================
+// Below is legacy deprecated classes, change to WidgetParamEndpointBinding
 //==============================================================================
 /**
     Base bridge between a UI control and a tracktion `AutomatableParameter`.
@@ -70,7 +162,6 @@ protected:
     bool updating { false };
 
 public:
-    // TODO only for values attached to automatable parameters?
     MidiParameterMapping midiMapping;
     MouseListenerWithCallback mouseListener;
 

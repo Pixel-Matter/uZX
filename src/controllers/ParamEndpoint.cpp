@@ -4,7 +4,7 @@
 
 namespace MoTool {
 
-AutomatedParamEndpoint::AutomatedParamEndpoint(te::AutomatableParameter::Ptr parameterIn)
+AutomatableParamEndpoint::AutomatableParamEndpoint(te::AutomatableParameter::Ptr parameterIn)
     : parameter(std::move(parameterIn))
 {
     if (!ensureIsValid())
@@ -13,77 +13,77 @@ AutomatedParamEndpoint::AutomatedParamEndpoint(te::AutomatableParameter::Ptr par
     parameter->addListener(this);
 }
 
-AutomatedParamEndpoint::~AutomatedParamEndpoint() {
+AutomatableParamEndpoint::~AutomatableParamEndpoint() {
     if (!ensureIsValid())
         return;
 
     parameter->removeListener(this);
 }
 
-bool AutomatedParamEndpoint::ensureIsValid() const {
+bool AutomatableParamEndpoint::ensureIsValid() const {
     jassert(parameter != nullptr);
     return parameter != nullptr;
 }
 
-NormalisableRange<float> AutomatedParamEndpoint::getRange() const {
+NormalisableRange<float> AutomatableParamEndpoint::getRange() const {
     if (!ensureIsValid())
         return {};
 
     return parameter->valueRange;
 }
 
-float AutomatedParamEndpoint::getLiveFloatValue() const {
+float AutomatableParamEndpoint::getLiveFloatValue() const {
     if (!ensureIsValid())
         return 0.0f;
 
     return parameter->getCurrentValue();
 }
 
-float AutomatedParamEndpoint::getStoredFloatValue() const {
+float AutomatableParamEndpoint::getStoredFloatValue() const {
     if (!ensureIsValid())
         return 0.0f;
 
     return parameter->getCurrentExplicitValue();
 }
 
-void AutomatedParamEndpoint::setStoredFloatValue(float value) {
+void AutomatableParamEndpoint::setStoredFloatValue(float value) {
     if (ensureIsValid())
         parameter->setParameter(value, juce::sendNotification);
 }
 
-void AutomatedParamEndpoint::beginGesture() {
+void AutomatableParamEndpoint::beginGesture() {
     if (ensureIsValid())
         parameter->parameterChangeGestureBegin();
 }
 
-void AutomatedParamEndpoint::endGesture() {
+void AutomatableParamEndpoint::endGesture() {
     if (ensureIsValid())
         parameter->parameterChangeGestureEnd();
 }
 
-bool AutomatedParamEndpoint::isDiscrete() const noexcept {
+bool AutomatableParamEndpoint::isDiscrete() const noexcept {
     return parameter != nullptr && parameter->isDiscrete();
 }
 
-int AutomatedParamEndpoint::numberOfStates() const noexcept {
+int AutomatableParamEndpoint::numberOfStates() const noexcept {
     return parameter != nullptr ? parameter->getNumberOfStates() : 0;
 }
 
-int AutomatedParamEndpoint::floatToState(float value) const {
+int AutomatableParamEndpoint::floatToState(float value) const {
     if (!ensureIsValid())
         return 0;
 
     return parameter->getStateForValue(value);
 }
 
-float AutomatedParamEndpoint::stateToFloat(int state) const {
+float AutomatableParamEndpoint::stateToFloat(int state) const {
     if (!ensureIsValid())
         return 0.0f;
 
     return parameter->getValueForState(state);
 }
 
-int AutomatedParamEndpoint::getDecimalPlaces() const noexcept {
+int AutomatableParamEndpoint::getDecimalPlaces() const noexcept {
     if (!ensureIsValid())
         return 2;
 
@@ -107,14 +107,14 @@ int AutomatedParamEndpoint::getDecimalPlaces() const noexcept {
     return 6;
 }
 
-String AutomatedParamEndpoint::formatValue(double value) const {
+String AutomatableParamEndpoint::formatValue(double value) const {
     if (!ensureIsValid())
         return {};
 
     return parameter->valueToString(static_cast<float>(value));
 }
 
-bool AutomatedParamEndpoint::parseValue(const String& text, double& outValue) const {
+bool AutomatableParamEndpoint::parseValue(const String& text, double& outValue) const {
     if (!ensureIsValid())
         return false;
 
@@ -123,7 +123,7 @@ bool AutomatedParamEndpoint::parseValue(const String& text, double& outValue) co
     return true;
 }
 
-String AutomatedParamEndpoint::stateToLabel(int index) const {
+String AutomatableParamEndpoint::stateToLabel(int index) const {
     if (!ensureIsValid())
         return {};
 
@@ -135,45 +135,44 @@ String AutomatedParamEndpoint::stateToLabel(int index) const {
     return parameter->valueToString(stateValue);
 }
 
-String AutomatedParamEndpoint::getId() const {
+String AutomatableParamEndpoint::getId() const {
     if (!ensureIsValid())
         return {};
 
     return parameter->paramID;
 }
 
-String AutomatedParamEndpoint::getName() const {
+String AutomatableParamEndpoint::getName() const {
     if (!ensureIsValid())
         return {};
 
-    return parameter->getParameterName();
+    return parameter->getParameterShortName(16);
 }
 
-String AutomatedParamEndpoint::getDescription() const {
+String AutomatableParamEndpoint::getDescription() const {
     if (!ensureIsValid())
         return {};
 
     return parameter->getPluginAndParamName();
 }
 
-String AutomatedParamEndpoint::getUnits() const {
+String AutomatableParamEndpoint::getUnits() const {
     if (!ensureIsValid())
         return {};
 
     return parameter->getLabel();
 }
 
-void AutomatedParamEndpoint::curveHasChanged(te::AutomatableParameter& p) {
+void AutomatableParamEndpoint::curveHasChanged(te::AutomatableParameter& p) {
     notifyLiveValueChanged(p.getCurrentValue());
 }
 
-void AutomatedParamEndpoint::currentValueChanged(te::AutomatableParameter& p) {
+void AutomatableParamEndpoint::currentValueChanged(te::AutomatableParameter& p) {
     notifyLiveValueChanged(p.getCurrentValue());
 }
 
-void AutomatedParamEndpoint::parameterChanged(te::AutomatableParameter& p, float) {
+void AutomatableParamEndpoint::parameterChanged(te::AutomatableParameter& p, float) {
     notifyStoredValueChanged(p.getCurrentExplicitValue());
 }
 
 } // namespace MoTool
-

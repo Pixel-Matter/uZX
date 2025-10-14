@@ -335,25 +335,21 @@ private:
 //============================================================================
 class ButtonStaticParamBinding : public WidgetStaticParamBinding<int> {
 public:
-    template <typename Type>
-    ButtonStaticParamBinding(Button& b, ParameterValue<Type>& value)
-        : WidgetStaticParamBinding<int>(std::make_unique<StaticParamEndpoint<Type>>(value))
+    ButtonStaticParamBinding(Button& b,
+                             std::unique_ptr<ParameterEndpoint> endpoint)
+        : WidgetStaticParamBinding<int>(std::move(endpoint))
         , button(b)
     {
-        configureForParameterDef(value.definition);
+        configureWidget();
         configureWidgetHandlers();
         refreshFromSource();
     }
 
 private:
-    template <typename DefType>
-    void configureForParameterDef(const DefType& def) {
-        button.setTooltip(def.description);
-
+    void configureWidget() {
+        button.setTooltip(endpoint().getDescription());
         choiceCount = endpoint().numberOfStates();
-        indexToLabel = [this](int index) -> String {
-            return endpoint().stateToLabel(index);
-        };
+        button.setEnabled(choiceCount > 0);
     }
 
     void configureWidgetHandlers() {
@@ -385,13 +381,15 @@ private:
         if (updating)
             return;
 
-        if (!indexToLabel || choiceCount <= 0)
-            return;
-
         juce::ScopedValueSetter<bool> svs(updating, true);
+        if (choiceCount <= 0) {
+            button.setButtonText(endpoint().formatValue(endpoint().getStoredFloatValue()));
+            return;
+        }
+
         const auto storedState = endpoint().floatToState(endpoint().getStoredFloatValue());
         const auto index = wrapIndex(storedState);
-        button.setButtonText(indexToLabel(index));
+        button.setButtonText(endpoint().stateToLabel(index));
     }
 
     int getCurrentIndex() const {
@@ -411,8 +409,6 @@ private:
             index += choiceCount;
         return index;
     }
-
-    std::function<String(int)> indexToLabel;
 
     int choiceCount { 0 };
 
@@ -743,7 +739,8 @@ public:
             expectEquals(value.getStoredValue(), ChipType(ChipType::AY), "Initial value from ParameterValue");
 
             TextButton button;
-            ButtonStaticParamBinding binding(button, value);
+            auto buttonEndpoint = std::make_unique<StaticParamEndpoint<ChipType>>(value);
+            ButtonStaticParamBinding binding(button, std::move(buttonEndpoint));
 
             expectEquals(button.getButtonText(), String("AY"), "Initial button text");
 

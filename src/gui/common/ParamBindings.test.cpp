@@ -1,6 +1,8 @@
 #include <JuceHeader.h>
 #include <memory>
 #include <type_traits>
+#include <utility>
+#include <cmath>
 
 #include "../../controllers/BindedAutoParameter.h"
 #include "../../plugins/uZX/aychip/aychip.h"
@@ -219,14 +221,189 @@ public:
 class AutomatedParamEndpoint : public ParameterEndpoint,
                                private te::AutomatableParameter::Listener {
 public:
+    explicit AutomatedParamEndpoint(te::AutomatableParameter::Ptr parameterIn)
+        : parameter(std::move(parameterIn))
+    {
+        if (!ensureIsValid())
+            return;
+        parameter->addListener(this);
+    }
+
+    ~AutomatedParamEndpoint() override {
+        if (!ensureIsValid())
+            return;
+        parameter->removeListener(this);
+    }
+
+    bool ensureIsValid() const {
+        jassert(parameter != nullptr);
+        if (parameter == nullptr)
+            return false;
+
+        return true;
+    }
+
+    NormalisableRange<float> getRange() const override {
+        if (!ensureIsValid())
+            return {};
+
+        return parameter->valueRange;
+    }
+
+    float getLiveFloatValue() const override {
+        if (!ensureIsValid())
+            return 0.0f;
+
+        return parameter->getCurrentValue();
+    }
+
+    float getStoredFloatValue() const override {
+        if (!ensureIsValid())
+            return 0.0f;
+
+        return parameter->getCurrentExplicitValue();
+    }
+
+    void setStoredFloatValue(float value) override {
+        if (ensureIsValid())
+            parameter->setParameter(value, juce::sendNotification);
+    }
+
+    void beginGesture() override {
+        if (ensureIsValid())
+            parameter->parameterChangeGestureBegin();
+    }
+
+    void endGesture() override {
+        if (ensureIsValid())
+            parameter->parameterChangeGestureEnd();
+    }
+
+    bool isDiscrete() const noexcept override {
+        return parameter != nullptr && parameter->isDiscrete();
+    }
+
+    int numberOfStates() const noexcept override {
+        return parameter != nullptr ? parameter->getNumberOfStates() : 0;
+    }
+
+    int floatToState(float value) const override {
+        if (!ensureIsValid())
+            return 0;
+
+        return parameter->getStateForValue(value);
+    }
+
+    float stateToFloat(int state) const override {
+        if (!ensureIsValid())
+            return 0.0f;
+
+        return parameter->getValueForState(state);
+    }
+
+    int getDecimalPlaces() const noexcept override {
+        if (!ensureIsValid())
+            return 2;
+
+        const auto interval = parameter->valueRange.interval;
+
+        if (interval <= 0.0f)
+            return 2;
+
+        int decimals = 0;
+        auto scaled = interval;
+
+        while (decimals < 6) {
+            const auto rounded = std::round(scaled);
+            if (std::abs(rounded - scaled) < 1.0e-5f)
+                return decimals;
+
+            scaled *= 10.0f;
+            ++decimals;
+        }
+
+        return 6;
+    }
+
+    String formatValue(double value) const override {
+        if (!ensureIsValid())
+            return {};
+
+        return parameter->valueToString(static_cast<float>(value));
+    }
+
+    bool parseValue(const String& text, double& outValue) const override {
+        if (!ensureIsValid())
+            return false;
+
+        const auto parsed = parameter->stringToValue(text);
+        outValue = static_cast<double>(parsed);
+        return true;
+    }
+
+    String stateToLabel(int index) const override {
+        if (!ensureIsValid())
+            return {};
+
+        const auto stateValue = stateToFloat(index);
+
+        if (parameter->hasLabels())
+            return parameter->getLabelForValue(stateValue);
+
+        return parameter->valueToString(stateValue);
+    }
+
+    String getId() const override {
+        if (!ensureIsValid())
+            return {};
+
+        return parameter->paramID;
+    }
+
+    String getName() const override {
+        if (!ensureIsValid())
+            return {};
+
+        return parameter->getParameterName();
+    }
+
+    String getDescription() const override {
+        if (!ensureIsValid())
+            return {};
+
+        return parameter->getPluginAndParamName();
+    }
+
+    String getUnits() const override {
+        if (!ensureIsValid())
+            return {};
+
+        return parameter->getLabel();
+    }
+
 private:
+    void curveHasChanged(te::AutomatableParameter& p) override {
+        notifyLiveValueChanged(p.getCurrentValue());
+        // curve affects only live value, not stored value
+        // notifyStoredValueChanged(p.getCurrentExplicitValue());
+    }
+
+    void currentValueChanged(te::AutomatableParameter& p) override {
+        notifyLiveValueChanged(p.getCurrentValue());
+    }
+
+    void parameterChanged(te::AutomatableParameter& p, float) override {
+        notifyStoredValueChanged(p.getCurrentExplicitValue());
+        // notifyLiveValueChanged(p.getCurrentValue());
+    }
+
+    te::AutomatableParameter::Ptr parameter;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AutomatedParamEndpoint)
 };
 
 
 //==============================================================================
-template <typename WidgetValueType>
 class WidgetStaticParamBinding : private ParameterEndpoint::Listener {
 public:
     explicit WidgetStaticParamBinding(std::unique_ptr<ParameterEndpoint> endpointIn)
@@ -270,11 +447,11 @@ private:
 };
 
 //==============================================================================
-class SliderStaticParamBinding : public WidgetStaticParamBinding<float> {
+class SliderStaticParamBinding : public WidgetStaticParamBinding {
 public:
     SliderStaticParamBinding(Slider& s,
                              std::unique_ptr<ParameterEndpoint> endpoint)
-        : WidgetStaticParamBinding<float>(std::move(endpoint))
+        : WidgetStaticParamBinding(std::move(endpoint))
         , slider(s)
     {
         configureWidget();
@@ -343,11 +520,10 @@ private:
 };
 
 //============================================================================
-class ButtonStaticParamBinding : public WidgetStaticParamBinding<int> {
+class ButtonStaticParamBinding : public WidgetStaticParamBinding {
 public:
-    ButtonStaticParamBinding(Button& b,
-                             std::unique_ptr<ParameterEndpoint> endpoint)
-        : WidgetStaticParamBinding<int>(std::move(endpoint))
+    ButtonStaticParamBinding(Button& b, std::unique_ptr<ParameterEndpoint> endpoint)
+        : WidgetStaticParamBinding(std::move(endpoint))
         , button(b)
     {
         configureWidget();
@@ -425,69 +601,59 @@ private:
 
 //==============================================================================
 // For parameters without ParameterValue<T>, for example vanilla tracktion AutomatableParameters
-class WidgetAutoParamBinding : private te::AutomatableParameter::Listener {
+class WidgetAutoParamBinding : private ParameterEndpoint::Listener {
 public:
-    WidgetAutoParamBinding(te::AutomatableParameter::Ptr p)
-        : parameter(std::move(p))
-    {
-        if (!ensureAttached())
-            return;
+    explicit WidgetAutoParamBinding(te::AutomatableParameter::Ptr parameter)
+        : WidgetAutoParamBinding(std::make_unique<AutomatedParamEndpoint>(std::move(parameter)))
+    {}
 
-        configureParameterCallbacks();
-        parameter->addListener(this);
+    explicit WidgetAutoParamBinding(std::unique_ptr<ParameterEndpoint> endpointIn)
+        : ownedEndpoint(std::move(endpointIn))
+    {
+        jassert(ownedEndpoint != nullptr);
+        if (ownedEndpoint != nullptr)
+            ownedEndpoint->addListener(this);
     }
 
     ~WidgetAutoParamBinding() override {
-        if (!ensureAttached())
-            return;
-        parameter->removeListener(this);
+        if (ownedEndpoint != nullptr)
+            ownedEndpoint->removeListener(this);
     }
-
-    bool ensureAttached() const {
-        jassert(parameter != nullptr);
-        return parameter != nullptr;
-    }
-
-    // bool isAttached() const noexcept {
-    //     return parameter != nullptr;
-    // }
 
 protected:
-    te::AutomatableParameter::Ptr parameter;
+    ParameterEndpoint& endpoint() noexcept {
+        jassert(ownedEndpoint != nullptr);
+        return *ownedEndpoint;
+    }
 
-    // Called by AutomatableParameter listener to refresh widget from ParameterValue
-    std::function<float()> fetchValue;
-    // Called by widget handlers to apply value to AutomatableParameter
-    std::function<void(float)> applyValue;
+    const ParameterEndpoint& endpoint() const noexcept {
+        jassert(ownedEndpoint != nullptr);
+        return *ownedEndpoint;
+    }
 
-    std::function<void()> beginGesture;
-    std::function<void()> endGesture;
     bool updating { false };
 
 private:
-    void curveHasChanged(te::AutomatableParameter&) override {}
-
-    void configureParameterCallbacks() {
-        fetchValue = [this] {
-            return static_cast<double>(parameter->getCurrentValue());
-        };
-        applyValue = [this](double widgetValue) {
-            // TODO what if widgetValue is not float? String, int...
-            // Notification needed for attachedValue, for example
-            parameter->setParameter(static_cast<float>(widgetValue), juce::sendNotification);
-        };
-        beginGesture = [this] { parameter->parameterChangeGestureBegin(); };
-        endGesture   = [this] { parameter->parameterChangeGestureEnd(); };
+    void storedValueChanged(ParameterEndpoint&, float) override {
+        refreshFromSource();
     }
 
-    friend class WidgetBindingTests;
+    void liveValueChanged(ParameterEndpoint&, float) override {
+        refreshFromSource();
+    }
+
+    virtual void refreshFromSource() = 0;
+
+    std::unique_ptr<ParameterEndpoint> ownedEndpoint;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WidgetAutoParamBinding)
 };
 
 //==============================================================================
 class SliderAutoParamBinding : public WidgetAutoParamBinding {
 public:
-    SliderAutoParamBinding(Slider& s, te::AutomatableParameter::Ptr p)
-        : WidgetAutoParamBinding(std::move(p))
+    SliderAutoParamBinding(Slider& s, te::AutomatableParameter::Ptr parameter)
+        : WidgetAutoParamBinding(std::move(parameter))
         , slider(s)
     {
         configureWidget();
@@ -496,67 +662,64 @@ public:
     }
 
 private:
-    void configureWidget() {
-        // depends on param
-        if (!ensureAttached())
-            return;
-
-        slider.setTooltip(parameter->getParameterName());
+    void configureWidget()
+    {
+        slider.setTooltip(endpoint().getDescription());
         slider.setPopupDisplayEnabled(true, true, nullptr);
         slider.setPopupMenuEnabled(false);
 
-        slider.setRange(parameter->getValueRange().getStart(),
-                        parameter->getValueRange().getEnd(),
-                        parameter->valueRange.interval);
-        slider.setSkewFactor(parameter->valueRange.skew);
+        const auto range = endpoint().getRange();
+        slider.setRange(static_cast<double>(range.start),
+                        static_cast<double>(range.end),
+                        static_cast<double>(range.interval));
+        slider.setSkewFactor(static_cast<double>(range.skew));
 
-        // TODO deduce from interval
-        slider.setNumDecimalPlacesToDisplay(2);
-        slider.textFromValueFunction = parameter->valueToStringFunction;
-        slider.valueFromTextFunction = parameter->stringToValueFunction;
+        slider.setNumDecimalPlacesToDisplay(endpoint().getDecimalPlaces());
 
-        slider.setValue(parameter->getCurrentValue(), juce::dontSendNotification);
+        slider.textFromValueFunction = [this](double value) {
+            return endpoint().formatValue(value);
+        };
+
+        slider.valueFromTextFunction = [this](const String& text) -> double {
+            double parsed {};
+            if (endpoint().parseValue(text, parsed))
+                return parsed;
+            return slider.getValue();
+        };
+
+        const auto units = endpoint().getUnits();
+        if (units.isNotEmpty())
+            slider.setTextValueSuffix(units);
+
+        slider.setValue(static_cast<double>(endpoint().getLiveFloatValue()), juce::dontSendNotification);
     }
 
-    void configureWidgetHandlers() {
+    void configureWidgetHandlers()
+    {
         slider.onValueChange = [this] {
-            if (updating || !applyValue)
+            if (updating)
                 return;
 
             juce::ScopedValueSetter<bool> svs(updating, true);
-            applyValue(static_cast<float>(slider.getValue()));
+            endpoint().setStoredFloatValue(static_cast<float>(slider.getValue()));
         };
 
         slider.onDragStart = [this] {
-            if (beginGesture)
-                beginGesture();
+            endpoint().beginGesture();
         };
 
         slider.onDragEnd = [this] {
-            if (endGesture)
-                endGesture();
+            endpoint().endGesture();
         };
     }
 
-    void refreshFromSource() {
-        if (!fetchValue)
+    void refreshFromSource() override
+    {
+        if (updating)
             return;
 
         juce::ScopedValueSetter<bool> svs(updating, true);
-        slider.setValue(fetchValue(), dontSendNotification);
-    }
-
-    void currentValueChanged(te::AutomatableParameter&) override {
-        if (updating)
-            return;
-        refreshFromSource();
-    }
-
-    void parameterChanged(te::AutomatableParameter&, float newValue) override {
-        if (updating)
-            return;
-        juce::ScopedValueSetter<bool> svs(updating, true);
-        slider.setValue(newValue, dontSendNotification);
+        slider.setValue(static_cast<double>(endpoint().getLiveFloatValue()), dontSendNotification);
     }
 
     Slider& slider;
@@ -567,94 +730,90 @@ private:
 //==============================================================================
 class ButtonAutoParamBinding : public WidgetAutoParamBinding {
 public:
-    ButtonAutoParamBinding(TextButton& button, te::AutomatableParameter::Ptr p)
-        : WidgetAutoParamBinding(std::move(p))
+    ButtonAutoParamBinding(TextButton& button, te::AutomatableParameter::Ptr parameter)
+        : WidgetAutoParamBinding(std::move(parameter))
         , textButton(button)
     {
+        configureWidget();
         configureWidgetHandlers();
-        configureLabelCallbacks();
         refreshFromSource();
     }
 
-    ~ButtonAutoParamBinding() override {
+    ~ButtonAutoParamBinding() override
+    {
         textButton.onClick = nullptr;
     }
 
 private:
-    void configureLabelCallbacks() {
-        if (!ensureAttached() || !parameter->isDiscrete() || parameter->getNumberOfStates() <= 0)
-            return;
-
-        choiceCount = parameter->getNumberOfStates();
-
-        // indexToLabel = [](int index) -> String {
-        //     return getLabelForValue(static_cast)
-        // };
+    void configureWidget()
+    {
+        textButton.setTooltip(endpoint().getDescription());
+        textButton.setEnabled(endpoint().numberOfStates() > 0);
     }
 
-    void configureWidgetHandlers() {
+    void configureWidgetHandlers()
+    {
         textButton.onClick = [this]() { handleClick(); };
     }
 
-    void refreshFromSource() {
-        if (!ensureAttached() || !fetchValue || choiceCount <= 0)
-            return;
-
-        juce::ScopedValueSetter<bool> svs(updating, true);
-        textButton.setButtonText(parameter->getLabelForValue(fetchValue()));
-    }
-
-    void currentValueChanged(te::AutomatableParameter&) override {
-        if (updating)
-            return;
-        refreshFromSource();
-    }
-
-    void parameterChanged(te::AutomatableParameter&, float) override {
-        if (updating)
-            return;
-        refreshFromSource();
-    }
-
-    void handleClick() {
-        if (!ensureAttached() || !applyValue || choiceCount <= 0)
+    void handleClick()
+    {
+        const auto states = endpoint().numberOfStates();
+        if (states <= 0)
             return;
 
         const auto currentIndex = getCurrentIndex();
-        const auto nextIndex = wrapIndex(currentIndex + 1);
+        const auto nextIndex = wrapIndex(currentIndex + 1, states);
 
-        if (beginGesture)
-            beginGesture();
+        endpoint().beginGesture();
 
         {
             juce::ScopedValueSetter<bool> svs(updating, true);
-            // apply to parameter source or value
-            applyValue(parameter->getValueForState(nextIndex));
+            endpoint().setStoredFloatValue(endpoint().stateToFloat(nextIndex));
         }
 
-        if (endGesture)
-            endGesture();
+        endpoint().endGesture();
     }
 
-    int getCurrentIndex() const {
-        if (!ensureAttached() || !fetchValue || choiceCount <= 0)
-            return 0;
+    void refreshFromSource() override
+    {
+        if (updating)
+            return;
 
-        return wrapIndex(parameter->getStateForValue(fetchValue()));
+        juce::ScopedValueSetter<bool> svs(updating, true);
+        const auto states = endpoint().numberOfStates();
+
+        if (states <= 0)
+        {
+            textButton.setButtonText(endpoint().formatValue(endpoint().getLiveFloatValue()));
+            return;
+        }
+
+        const auto storedState = endpoint().floatToState(endpoint().getLiveFloatValue());
+        const auto index = wrapIndex(storedState, states);
+        textButton.setButtonText(endpoint().stateToLabel(index));
     }
 
-    int wrapIndex(int index) const {
-        if (choiceCount <= 0)
+    int getCurrentIndex() const
+    {
+        const auto states = endpoint().numberOfStates();
+        if (states <= 0)
             return 0;
 
-        index %= choiceCount;
+        const auto storedState = endpoint().floatToState(endpoint().getLiveFloatValue());
+        return wrapIndex(storedState, states);
+    }
+
+    static int wrapIndex(int index, int count)
+    {
+        if (count <= 0)
+            return 0;
+
+        index %= count;
         if (index < 0)
-            index += choiceCount;
+            index += count;
         return index;
     }
-
-    // std::function<String(int)> indexToLabel;
-    int choiceCount { 0 };
 
     TextButton& textButton;
 

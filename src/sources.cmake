@@ -2,6 +2,8 @@
 set(SHARED_SOURCES
     util/Midi.cpp
 
+    controllers/ParamEndpoint.cpp
+
     models/PsgMidi.cpp
     models/PsgList.cpp
     models/PsgClip.cpp
@@ -90,7 +92,7 @@ set(TEST_SOURCES
     models/tuning/RationalTuning.test.cpp
 
     controllers/Parameters.test.cpp
-    
+
     viewmodels/tuning/TuningViewModel.test.cpp
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
 

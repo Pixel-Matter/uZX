@@ -18,35 +18,10 @@ using namespace std::literals;
 namespace te = tracktion;
 
 //==============================================================================
-/**
-    Maybe we should have
-
-    WidgetParamBinding <=> ParamEndpoint
-
-    - WidgetParamBinding
-        - Has handlers, but different for each widget type
-        - Has MidiParameterMapping, MouseListenerWithCallback
-
-        - SliderParamBinding: WidgetParamBinding
-          - Value in double (casted from/to float)
-        - ButtonParamBindingr: WidgetParamBinding
-          - Value in String (casted from/to int index) via ParamEndpoint::stateToLabel
-
-    - ParamEndpoint
-        - Has listeners, but different for each parameter type
-        - Unified interface for parameter metadata (range, isDiscrete, numberOfStates, stateToLabel, etc)
-        - Has setters and getters
-        - AutoParamEndpoint: ParamEndpoint
-          - Value always in float
-        - ParamValueEndpoint: ParamEndpoint
-          - Value in templated type
-*/
-
-//==============================================================================
 // Interface for parameter endpoint, to be used by WidgetParamBinding
 // Unifies access to parameter metadata and value conversion
 // both for AutomatableParameter and ParameterValue<T>
-// TODO Refactor as a concept?
+// TODO Refactor as a concept for static polymorphism?
 class ParameterEndpoint {
 public:
     virtual ~ParameterEndpoint() = default;
@@ -217,7 +192,6 @@ public:
 };
 
 //==============================================================================
-// TODO implement
 class AutomatedParamEndpoint : public ParameterEndpoint,
                                private te::AutomatableParameter::Listener {
 public:
@@ -402,18 +376,26 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AutomatedParamEndpoint)
 };
 
-
 //==============================================================================
-class WidgetStaticParamBinding : private ParameterEndpoint::Listener {
+class WidgetParamEndpointBinding : private ParameterEndpoint::Listener {
 public:
-    explicit WidgetStaticParamBinding(std::unique_ptr<ParameterEndpoint> endpointIn)
+    explicit WidgetParamEndpointBinding(std::unique_ptr<ParameterEndpoint> endpointIn)
         : ownedEndpoint(std::move(endpointIn))
     {
         jassert(ownedEndpoint != nullptr);
         ownedEndpoint->addListener(this);
     }
 
-    ~WidgetStaticParamBinding() override {
+    template <typename Type>
+    explicit WidgetParamEndpointBinding(ParameterValue<Type>& paramValue)
+        : WidgetParamEndpointBinding(std::make_unique<StaticParamEndpoint<Type>>(paramValue))
+    {}
+
+    explicit WidgetParamEndpointBinding(te::AutomatableParameter::Ptr parameterIn)
+        : WidgetParamEndpointBinding(std::make_unique<AutomatedParamEndpoint>(std::move(parameterIn)))
+    {}
+
+    ~WidgetParamEndpointBinding() override {
         if (ownedEndpoint != nullptr)
             ownedEndpoint->removeListener(this);
     }
@@ -447,11 +429,10 @@ private:
 };
 
 //==============================================================================
-class SliderStaticParamBinding : public WidgetStaticParamBinding {
+class SliderParamEndpointBinding : public WidgetParamEndpointBinding {
 public:
-    SliderStaticParamBinding(Slider& s,
-                             std::unique_ptr<ParameterEndpoint> endpoint)
-        : WidgetStaticParamBinding(std::move(endpoint))
+    SliderParamEndpointBinding(Slider& s, auto&& endpoint)
+        : WidgetParamEndpointBinding(std::forward<decltype(endpoint)>(endpoint))
         , slider(s)
     {
         configureWidget();
@@ -520,10 +501,10 @@ private:
 };
 
 //============================================================================
-class ButtonStaticParamBinding : public WidgetStaticParamBinding {
+class ButtonParamEndpointBinding : public WidgetParamEndpointBinding {
 public:
-    ButtonStaticParamBinding(Button& b, std::unique_ptr<ParameterEndpoint> endpoint)
-        : WidgetStaticParamBinding(std::move(endpoint))
+    ButtonParamEndpointBinding(Button& b, auto&& endpoint)
+        : WidgetParamEndpointBinding(std::forward<decltype(endpoint)>(endpoint))
         , button(b)
     {
         configureWidget();
@@ -550,16 +531,12 @@ private:
         const auto currentIndex = getCurrentIndex();
         const auto nextIndex = wrapIndex(currentIndex + 1);
 
-        // if (beginGesture)
-        //     beginGesture();
-
         {
             juce::ScopedValueSetter<bool> svs(updating, true);
+            endpoint().beginGesture();
             endpoint().setStoredFloatValue(endpoint().stateToFloat(nextIndex));
+            endpoint().endGesture();
         }
-
-        // if (endGesture)
-        //     endGesture();
     }
 
     void refreshFromSource() override {
@@ -597,227 +574,8 @@ private:
     }
 
     Button& button;
-};
 
-//==============================================================================
-// For parameters without ParameterValue<T>, for example vanilla tracktion AutomatableParameters
-class WidgetAutoParamBinding : private ParameterEndpoint::Listener {
-public:
-    explicit WidgetAutoParamBinding(te::AutomatableParameter::Ptr parameter)
-        : WidgetAutoParamBinding(std::make_unique<AutomatedParamEndpoint>(std::move(parameter)))
-    {}
-
-    explicit WidgetAutoParamBinding(std::unique_ptr<ParameterEndpoint> endpointIn)
-        : ownedEndpoint(std::move(endpointIn))
-    {
-        jassert(ownedEndpoint != nullptr);
-        if (ownedEndpoint != nullptr)
-            ownedEndpoint->addListener(this);
-    }
-
-    ~WidgetAutoParamBinding() override {
-        if (ownedEndpoint != nullptr)
-            ownedEndpoint->removeListener(this);
-    }
-
-protected:
-    ParameterEndpoint& endpoint() noexcept {
-        jassert(ownedEndpoint != nullptr);
-        return *ownedEndpoint;
-    }
-
-    const ParameterEndpoint& endpoint() const noexcept {
-        jassert(ownedEndpoint != nullptr);
-        return *ownedEndpoint;
-    }
-
-    bool updating { false };
-
-private:
-    void storedValueChanged(ParameterEndpoint&, float) override {
-        refreshFromSource();
-    }
-
-    void liveValueChanged(ParameterEndpoint&, float) override {
-        refreshFromSource();
-    }
-
-    virtual void refreshFromSource() = 0;
-
-    std::unique_ptr<ParameterEndpoint> ownedEndpoint;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WidgetAutoParamBinding)
-};
-
-//==============================================================================
-class SliderAutoParamBinding : public WidgetAutoParamBinding {
-public:
-    SliderAutoParamBinding(Slider& s, te::AutomatableParameter::Ptr parameter)
-        : WidgetAutoParamBinding(std::move(parameter))
-        , slider(s)
-    {
-        configureWidget();
-        configureWidgetHandlers();
-        refreshFromSource();
-    }
-
-private:
-    void configureWidget()
-    {
-        slider.setTooltip(endpoint().getDescription());
-        slider.setPopupDisplayEnabled(true, true, nullptr);
-        slider.setPopupMenuEnabled(false);
-
-        const auto range = endpoint().getRange();
-        slider.setRange(static_cast<double>(range.start),
-                        static_cast<double>(range.end),
-                        static_cast<double>(range.interval));
-        slider.setSkewFactor(static_cast<double>(range.skew));
-
-        slider.setNumDecimalPlacesToDisplay(endpoint().getDecimalPlaces());
-
-        slider.textFromValueFunction = [this](double value) {
-            return endpoint().formatValue(value);
-        };
-
-        slider.valueFromTextFunction = [this](const String& text) -> double {
-            double parsed {};
-            if (endpoint().parseValue(text, parsed))
-                return parsed;
-            return slider.getValue();
-        };
-
-        const auto units = endpoint().getUnits();
-        if (units.isNotEmpty())
-            slider.setTextValueSuffix(units);
-
-        slider.setValue(static_cast<double>(endpoint().getLiveFloatValue()), juce::dontSendNotification);
-    }
-
-    void configureWidgetHandlers()
-    {
-        slider.onValueChange = [this] {
-            if (updating)
-                return;
-
-            juce::ScopedValueSetter<bool> svs(updating, true);
-            endpoint().setStoredFloatValue(static_cast<float>(slider.getValue()));
-        };
-
-        slider.onDragStart = [this] {
-            endpoint().beginGesture();
-        };
-
-        slider.onDragEnd = [this] {
-            endpoint().endGesture();
-        };
-    }
-
-    void refreshFromSource() override
-    {
-        if (updating)
-            return;
-
-        juce::ScopedValueSetter<bool> svs(updating, true);
-        slider.setValue(static_cast<double>(endpoint().getLiveFloatValue()), dontSendNotification);
-    }
-
-    Slider& slider;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderAutoParamBinding)
-};
-
-//==============================================================================
-class ButtonAutoParamBinding : public WidgetAutoParamBinding {
-public:
-    ButtonAutoParamBinding(TextButton& button, te::AutomatableParameter::Ptr parameter)
-        : WidgetAutoParamBinding(std::move(parameter))
-        , textButton(button)
-    {
-        configureWidget();
-        configureWidgetHandlers();
-        refreshFromSource();
-    }
-
-    ~ButtonAutoParamBinding() override
-    {
-        textButton.onClick = nullptr;
-    }
-
-private:
-    void configureWidget()
-    {
-        textButton.setTooltip(endpoint().getDescription());
-        textButton.setEnabled(endpoint().numberOfStates() > 0);
-    }
-
-    void configureWidgetHandlers()
-    {
-        textButton.onClick = [this]() { handleClick(); };
-    }
-
-    void handleClick()
-    {
-        const auto states = endpoint().numberOfStates();
-        if (states <= 0)
-            return;
-
-        const auto currentIndex = getCurrentIndex();
-        const auto nextIndex = wrapIndex(currentIndex + 1, states);
-
-        endpoint().beginGesture();
-
-        {
-            juce::ScopedValueSetter<bool> svs(updating, true);
-            endpoint().setStoredFloatValue(endpoint().stateToFloat(nextIndex));
-        }
-
-        endpoint().endGesture();
-    }
-
-    void refreshFromSource() override
-    {
-        if (updating)
-            return;
-
-        juce::ScopedValueSetter<bool> svs(updating, true);
-        const auto states = endpoint().numberOfStates();
-
-        if (states <= 0)
-        {
-            textButton.setButtonText(endpoint().formatValue(endpoint().getLiveFloatValue()));
-            return;
-        }
-
-        const auto storedState = endpoint().floatToState(endpoint().getLiveFloatValue());
-        const auto index = wrapIndex(storedState, states);
-        textButton.setButtonText(endpoint().stateToLabel(index));
-    }
-
-    int getCurrentIndex() const
-    {
-        const auto states = endpoint().numberOfStates();
-        if (states <= 0)
-            return 0;
-
-        const auto storedState = endpoint().floatToState(endpoint().getLiveFloatValue());
-        return wrapIndex(storedState, states);
-    }
-
-    static int wrapIndex(int index, int count)
-    {
-        if (count <= 0)
-            return 0;
-
-        index %= count;
-        if (index < 0)
-            index += count;
-        return index;
-    }
-
-    TextButton& textButton;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ButtonAutoParamBinding)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ButtonParamEndpointBinding)
 };
 
 //==============================================================================
@@ -864,9 +622,9 @@ public:
 
             ParameterValue<float> value {{"testParam", "testParam", "Test Param", "A parameter for testing", 0.5f, {0.f, 1.0f}}};
             value.referTo(state, nullptr);
+
             Slider slider;
-            auto endpoint = std::make_unique<StaticParamEndpoint<float>>(value);
-            SliderStaticParamBinding binding(slider, std::move(endpoint));
+            SliderParamEndpointBinding binding(slider, value);
 
             value.setStoredValue(0.8f);
 
@@ -886,9 +644,9 @@ public:
             ParameterValue<float> value{
                 {"testParam", "testParam", "Test Param", "A parameter for testing", 0.5f, {0.f, 1.0f}}};
             value.referTo(state, nullptr);
+
             Slider slider;
-            auto endpoint = std::make_unique<StaticParamEndpoint<float>>(value);
-            SliderStaticParamBinding binding(slider, std::move(endpoint));
+            SliderParamEndpointBinding binding(slider, value);
 
             slider.setValue(0.3, sendNotificationSync);
 
@@ -906,8 +664,7 @@ public:
             expectEquals(value.getStoredValue(), ChipType(ChipType::AY), "Initial value from ParameterValue");
 
             TextButton button;
-            auto buttonEndpoint = std::make_unique<StaticParamEndpoint<ChipType>>(value);
-            ButtonStaticParamBinding binding(button, std::move(buttonEndpoint));
+            ButtonParamEndpointBinding binding(button, value);
 
             expectEquals(button.getButtonText(), String("AY"), "Initial button text");
 
@@ -935,7 +692,7 @@ public:
                 new te::AutomatableParameter("volume", "Volume", plugin, {0.f, 1.0f}));
 
             Slider slider;
-            SliderAutoParamBinding binding(slider, param);
+            SliderParamEndpointBinding binding(slider, param);
 
             param->setParameter(0.3f, sendNotification);
 
@@ -971,7 +728,7 @@ public:
                                                   {0.0f, 2.0f}, 3, {"One", "Two", "Three"}));
 
             TextButton button;
-            ButtonAutoParamBinding binding(button, param);
+            ButtonParamEndpointBinding binding(button, param);
 
             expect(param->isDiscrete(), "Parameter is discrete");
             expectEquals(param->getNumberOfStates(), 3, "Parameter has 3 states");

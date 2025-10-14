@@ -4,6 +4,7 @@
 
 #include "../../controllers/BindedAutoParameter.h"
 #include "../../plugins/uZX/aychip/aychip.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 #include "ParamBindings.h"
 
 
@@ -22,7 +23,6 @@ namespace te = tracktion;
 
     - WidgetParamBinding
         - Has handlers, but different for each widget type
-        - Can call
         - Has MidiParameterMapping, MouseListenerWithCallback
 
         - SliderParamBinding: WidgetParamBinding
@@ -34,7 +34,6 @@ namespace te = tracktion;
         - Has listeners, but different for each parameter type
         - Unified interface for parameter metadata (range, isDiscrete, numberOfStates, stateToLabel, etc)
         - Has setters and getters
-        - Can call
         - AutoParamEndpoint: ParamEndpoint
           - Value always in float
         - ParamValueEndpoint: ParamEndpoint
@@ -211,7 +210,20 @@ public:
     Value storedValue;
 
     friend class WidgetBindingTests;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StaticParamEndpoint)
 };
+
+//==============================================================================
+// TODO implement
+class AutomatedParamEndpoint : public ParameterEndpoint,
+                               private te::AutomatableParameter::Listener {
+public:
+private:
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AutomatedParamEndpoint)
+};
+
 
 //==============================================================================
 template <typename WidgetValueType>
@@ -308,15 +320,13 @@ private:
             endpoint().setStoredFloatValue(static_cast<float>(slider.getValue()));
         };
 
-        // slider.onDragStart = [/*this*/] {
-        //     // if (beginGesture)
-        //     //     beginGesture();
-        // };
+        slider.onDragStart = [this] {
+            endpoint().beginGesture();
+        };
 
-        // slider.onDragEnd = [/*this*/] {
-        //     // if (endGesture)
-        //     //     endGesture();
-        // };
+        slider.onDragEnd = [this] {
+            endpoint().endGesture();
+        };
 
         slider.setPopupMenuEnabled(false);
     }
@@ -326,7 +336,7 @@ private:
             return;
 
         juce::ScopedValueSetter<bool> svs(updating, true);
-        slider.setValue(static_cast<double>(endpoint().getStoredFloatValue()), dontSendNotification);
+        slider.setValue(static_cast<double>(endpoint().getLiveFloatValue()), dontSendNotification);
     }
 
     Slider& slider;
@@ -348,8 +358,7 @@ public:
 private:
     void configureWidget() {
         button.setTooltip(endpoint().getDescription());
-        choiceCount = endpoint().numberOfStates();
-        button.setEnabled(choiceCount > 0);
+        button.setEnabled(endpoint().numberOfStates() > 0);
     }
 
     void configureWidgetHandlers() {
@@ -359,7 +368,7 @@ private:
     }
 
     void handleClick() {
-        if (choiceCount <= 0)
+        if (endpoint().numberOfStates() <= 0)
             return;
 
         const auto currentIndex = getCurrentIndex();
@@ -382,25 +391,26 @@ private:
             return;
 
         juce::ScopedValueSetter<bool> svs(updating, true);
-        if (choiceCount <= 0) {
-            button.setButtonText(endpoint().formatValue(endpoint().getStoredFloatValue()));
+        if (endpoint().numberOfStates() <= 0) {
+            button.setButtonText(endpoint().formatValue(endpoint().getLiveFloatValue()));
             return;
         }
 
-        const auto storedState = endpoint().floatToState(endpoint().getStoredFloatValue());
+        const auto storedState = endpoint().floatToState(endpoint().getLiveFloatValue());
         const auto index = wrapIndex(storedState);
         button.setButtonText(endpoint().stateToLabel(index));
     }
 
     int getCurrentIndex() const {
-        if (choiceCount <= 0)
+        if (endpoint().numberOfStates() <= 0)
             return 0;
 
-        const auto storedState = endpoint().floatToState(endpoint().getStoredFloatValue());
+        const auto storedState = endpoint().floatToState(endpoint().getLiveFloatValue());
         return wrapIndex(storedState);
     }
 
     int wrapIndex(int index) const {
+        const auto choiceCount = endpoint().numberOfStates();
         if (choiceCount <= 0)
             return 0;
 
@@ -409,8 +419,6 @@ private:
             index += choiceCount;
         return index;
     }
-
-    int choiceCount { 0 };
 
     Button& button;
 };

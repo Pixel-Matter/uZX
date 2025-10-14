@@ -18,9 +18,8 @@ class LabeledSlider : public Component,
                       private ChangeListener  // MidiMapping change listener
 {
 public:
-    template <typename Type>
-    LabeledSlider(ParameterValue<Type>& value, te::AutomatableParameter::Ptr p, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : binding(slider, value, std::move(p))
+    LabeledSlider(std::unique_ptr<ParameterEndpoint> endpoint, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
+        : binding(slider, std::move(endpoint))
     {
         slider.setSliderStyle(style);
         slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
@@ -37,12 +36,12 @@ public:
 
     template <typename Type>
     LabeledSlider(ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : LabeledSlider(value, nullptr, style)
+        : LabeledSlider(makeResolveParamEndpoint(value), style)
     {}
 
     template <typename Type>
     LabeledSlider(te::AutomatableEditItem& editItem, ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : LabeledSlider(value, editItem.getAutomatableParameterByID(value.definition.identifier), style)
+        : LabeledSlider(makeResolveParamEndpoint(editItem, value), style)
     {}
 
     ~LabeledSlider() override {

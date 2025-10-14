@@ -14,8 +14,8 @@ class ChoiceButton : public TextButton,
 {
 public:
     template <Util::EnumChoiceConcept Type>
-    ChoiceButton(te::Plugin& plugin, ParameterValue<Type>& value)
-        : binding(*this, plugin.getAutomatableParameterByID(value.definition.identifier), value)
+    ChoiceButton(te::AutomatableEditItem& plugin, ParameterValue<Type>& value)
+        : binding(*this, makeResolveParamEndpoint(plugin, value))
     {
         binding.midiMapping.addChangeListener(this);
     }
@@ -32,7 +32,7 @@ private:
         // }
     }
 
-    ButtonParamBinding binding;
+    ButtonParamEndpointBinding binding;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChoiceButton)
 };
 

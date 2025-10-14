@@ -239,9 +239,10 @@ private:
 };
 
 template <typename Type>
-inline std::unique_ptr<ParameterEndpoint> makeResolveParamEndpoint(ParameterValue<Type>& value,
-                                                                   te::AutomatableParameter::Ptr param = {})
-{
+inline std::unique_ptr<ParameterEndpoint> makeResolveParamEndpoint(
+    ParameterValue<Type>& value,
+    te::AutomatableParameter::Ptr param = {}
+) {
     if (param != nullptr)
         return std::make_unique<AutomatableParamEndpoint>(std::move(param));
 
@@ -250,6 +251,14 @@ inline std::unique_ptr<ParameterEndpoint> makeResolveParamEndpoint(ParameterValu
             return std::make_unique<AutomatableParamEndpoint>(te::AutomatableParameter::Ptr(liveParam));
 
     return std::make_unique<ParamValueEndpoint<Type>>(value);
+}
+
+template <typename Type>
+inline std::unique_ptr<ParameterEndpoint> makeResolveParamEndpoint(
+    te::AutomatableEditItem& plugin,
+    ParameterValue<Type>& value
+) {
+    return makeResolveParamEndpoint(value, plugin.getAutomatableParameterByID(value.definition.identifier));
 }
 
 } // namespace MoTool

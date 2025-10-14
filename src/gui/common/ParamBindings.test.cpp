@@ -210,7 +210,7 @@ public:
             expect(liveParam != nullptr, "Live automatable parameter is attached");
 
             Slider slider;
-            SliderParamBinding binding(slider, te::AutomatableParameter::Ptr(), value);
+            SliderParamEndpointBinding binding(slider, value);
 
             expectWithinAbsoluteError(slider.getValue(), 0.5, 1e-6,
                                       "Slider initialised from binded parameter");

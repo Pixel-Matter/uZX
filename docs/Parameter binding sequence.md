@@ -1,5 +1,7 @@
 # Sequence diagram of updating paramater from Widget to ParameterValue
 
+Deprecated
+
 ```mermaid
 sequenceDiagram
 

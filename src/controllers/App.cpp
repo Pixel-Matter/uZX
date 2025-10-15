@@ -25,7 +25,7 @@ const String MoToolApp::getApplicationFancyName() const {
     if (getTarget() == Target::uZXTuning) {
         return CharPointer_UTF8("Pixel Matter μZX Tuning");
     }
-    return CharPointer_UTF8("Pixel Matter μZX");
+    return CharPointer_UTF8("Pixel Matter μZX Studio");
 }
 
 const String MoToolApp::getWindowTitle() {

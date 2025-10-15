@@ -10,6 +10,7 @@
 #include "../../util/convert.h"
 #include "../../controllers/ParamAttachments.h"
 #include "../../utils/StringLiterals.h"
+#include "../../controllers/Parameters.h"
 
 #include <cmath>
 #include <array>
@@ -189,7 +190,7 @@ struct TuningNote {
 namespace IDs {
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(TUNINGVIEWSTATE)
-    DECLARE_ID(temperament)
+    DECLARE_ID(tuningSystem)
     DECLARE_ID(tuningTable)
     DECLARE_ID(chipClock)
     DECLARE_ID(key)
@@ -213,6 +214,18 @@ public:
     // Any UI component can now listen to tuning system changes by implementing ChangeListener
     // and calling viewModel.addChangeListener(this) in their constructor
 
+    class SelectionParams : public ParamsBase<SelectionParams> {
+    public:
+        using ParamsBase<SelectionParams>::ParamsBase;
+
+        template<typename Visitor>
+        void visit(Visitor&& visitor) {
+            visitor(tuningType);
+        }
+
+        ParameterValue<TemperamentType> tuningType {{"tuning", IDs::tuningSystem, "Tuning", "Tuning system", TemperamentType::EqualTemperament}};
+    };
+
     TuningViewModel(te::Edit& ed)
         : transientState(IDs::TUNINGVIEWSTATE)
         , edit(ed)
@@ -220,7 +233,7 @@ public:
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
                                                                  // no undo for this control
-        , selectedTemperament(transientState, IDs::temperament,  TemperamentType::getLongLabels(), &undoManager, TemperamentType::EqualTemperament)
+        , selectedTemperament(transientState, IDs::tuningSystem, TemperamentType::getLongLabels(), &undoManager, TemperamentType::EqualTemperament)
         , selectedTuningTable(transientState, IDs::tuningTable,                               nullptr, BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), &undoManager, ChipClockChoice::ZX_Spectrum_1_77_MHz)
         , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         &undoManager, Scale::Tonic::C)
@@ -820,6 +833,9 @@ private:
     std::unique_ptr<TuningSystem> tuningSystem;
 
 public:
+
+    SelectionParams selectedParams;
+
     // ParamAttachment objects - single source of truth for all persisted types
     ChoiceParamAttachment<TemperamentType>   selectedTemperament; // Equal, Just, Pythagorean, etc.
     ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;

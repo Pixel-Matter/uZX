@@ -36,6 +36,16 @@ struct TemperamentTypeEnum {
         CustomRational,
     };
 
+    static inline constexpr std::string_view shortLabels[] {
+        "12TET",
+        // "WT",
+        "5LJI",
+        "5LJIT45:64",
+        // "7LJI",
+        "3LJI",
+        "Custom"
+    };
+
     static inline constexpr std::string_view longLabels[] {
         "Equal Temperament",
         // "Well Temperament",

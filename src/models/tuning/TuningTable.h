@@ -12,7 +12,7 @@ class TuningTable final : public TuningSystem {
 public:
     TuningTable(
         double chipClock,
-        std::unique_ptr<TemperamentSystem> refTuning,
+        std::unique_ptr<ReferenceTuningSystem> refTuning,
         const std::map<int, int>& periodTable,
         const String& customName
     );
@@ -20,7 +20,7 @@ public:
     // Constructor for ProTracker-style sequential period tables
     TuningTable(
         double chipClock,
-        std::unique_ptr<TemperamentSystem> refTuning,
+        std::unique_ptr<ReferenceTuningSystem> refTuning,
         int startingMidiNote,
         const std::vector<int>& periods,
         const String& customName
@@ -29,7 +29,7 @@ public:
     // Constructor with initializer list for convenience
     TuningTable(
         double chipClock,
-        std::unique_ptr<TemperamentSystem> refTuning,
+        std::unique_ptr<ReferenceTuningSystem> refTuning,
         int startingMidiNote,
         std::initializer_list<int> periods,
         const String& customName

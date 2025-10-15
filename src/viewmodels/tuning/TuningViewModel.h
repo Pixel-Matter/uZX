@@ -223,7 +223,7 @@ public:
             visitor(tuningType);
         }
 
-        ParameterValue<TemperamentType> tuningType {{"tuning", IDs::tuningSystem, "Tuning", "Tuning system", TemperamentType::EqualTemperament}};
+        ParameterValue<TuningSystemType> tuningType {{"tuning", IDs::tuningSystem, "Tuning", "Tuning system", TuningSystemType::EqualTemperament}};
     };
 
     TuningViewModel(te::Edit& ed)
@@ -233,7 +233,7 @@ public:
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
                                                                  // no undo for this control
-        , selectedTemperament(transientState, IDs::tuningSystem, TemperamentType::getLongLabels(), &undoManager, TemperamentType::EqualTemperament)
+        , selectedTemperament(transientState, IDs::tuningSystem, TuningSystemType::getLongLabels(), &undoManager, TuningSystemType::EqualTemperament)
         , selectedTuningTable(transientState, IDs::tuningTable,                               nullptr, BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), &undoManager, ChipClockChoice::ZX_Spectrum_1_77_MHz)
         , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         &undoManager, Scale::Tonic::C)
@@ -785,7 +785,7 @@ private:
 
     void updateReferenceTuning() {
         if (tuningSystem) {
-            tuningSystem->setReferenceTuning(makeTemperamentSystem(
+            tuningSystem->setReferenceTuning(makeReferenceTuningSystem(
                 selectedTemperament.get(),
                 getCurrentTonic(),
                 a4Frequency.get()
@@ -837,7 +837,7 @@ public:
     SelectionParams selectedParams;
 
     // ParamAttachment objects - single source of truth for all persisted types
-    ChoiceParamAttachment<TemperamentType>   selectedTemperament; // Equal, Just, Pythagorean, etc.
+    ChoiceParamAttachment<TuningSystemType>   selectedTemperament; // Equal, Just, Pythagorean, etc.
     ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
     ChoiceParamAttachment<ChipClockChoice>   selectedChip;
     ChoiceParamAttachment<Scale::Tonic>      selectedTonic;

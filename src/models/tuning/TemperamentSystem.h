@@ -25,7 +25,7 @@ inline String getMidiNoteName(int note) {
     return juce::MidiMessage::getMidiNoteName(note, true, true, 4);
 }
 
-struct TemperamentTypeEnum {
+struct TuningSystemEnum {
     enum Enum : size_t {
         EqualTemperament,
         // WellTemperament,
@@ -57,10 +57,10 @@ struct TemperamentTypeEnum {
     };
 };
 
-using TemperamentType = MoTool::Util::EnumChoice<TemperamentTypeEnum>;
+using TuningSystemType = MoTool::Util::EnumChoice<TuningSystemEnum>;
 
 // Base reference tuning system interface
-class TemperamentSystem {
+class ReferenceTuningSystem {
 public:
 
     enum NoteSearch {
@@ -69,17 +69,17 @@ public:
         NextLower   // Find the next lower defined note
     };
 
-    TemperamentSystem(double a4Frequency = 440.0);
-    TemperamentSystem(const juce::ValueTree& state);
+    ReferenceTuningSystem(double a4Frequency = 440.0);
+    ReferenceTuningSystem(const juce::ValueTree& state);
 
-    virtual ~TemperamentSystem() = default;
+    virtual ~ReferenceTuningSystem() = default;
 
     virtual String getDescription() const;
     inline String getTypeName() const {
         return getType().getLongLabel().data();
     }
 
-    virtual TemperamentType getType() const = 0;
+    virtual TuningSystemType getType() const = 0;
 
     virtual Scale::Tonic getTonic() const = 0;
     virtual void setTonic(Scale::Tonic newTonic) = 0;
@@ -108,12 +108,12 @@ protected:
     juce::CachedValue<double> a4Frequency;
 };
 
-class EqualTemperamentTuning final : public TemperamentSystem {
+class EqualTemperamentTuning final : public ReferenceTuningSystem {
 public:
     EqualTemperamentTuning(double a4Frequency = 440.0);
     EqualTemperamentTuning(const juce::ValueTree& state);
 
-    TemperamentType getType() const override;
+    TuningSystemType getType() const override;
     double midiNoteToFrequency(int midiNote) const override;
     double midiNoteToFrequency(double midiNote) const override;
     double frequencyToMidiNote(double frequency) const override;
@@ -125,7 +125,7 @@ public:
 };
 
 
-class RationalTuning: public TemperamentSystem {
+class RationalTuning: public ReferenceTuningSystem {
 public:
     RationalTuning(
         const std::array<FractionNumber, 12>& rationalIntervals,
@@ -134,7 +134,7 @@ public:
     );
     RationalTuning(const juce::ValueTree& state);
 
-    TemperamentType getType() const override;
+    TuningSystemType getType() const override;
     double midiNoteToFrequency(int midiNote) const override;
     double midiNoteToFrequency(double midiNote) const override;
     double frequencyToMidiNote(double frequency) const override;
@@ -190,16 +190,16 @@ public:
     );
     JustIntonation5Limit(const juce::ValueTree& state);
 
-    TemperamentType getType() const override;
+    TuningSystemType getType() const override;
 };
 
-std::unique_ptr<TemperamentSystem> makeTemperamentSystem(
-    TemperamentType type,
+std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystem(
+    TuningSystemType type,
     const Scale::Tonic tonic,
     double a4Frequency = 440.0
 );
 
-std::unique_ptr<TemperamentSystem> makeTemperamentSystemFromState(const juce::ValueTree& state);
+std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystemFromState(const juce::ValueTree& state);
 
 } // namespace MoTool
 
@@ -210,6 +210,6 @@ using namespace MoTool;
 using namespace MoTool::Util;
 
 template <>
-struct VariantConverter<TemperamentType> : public EnumVariantConverter<TemperamentType> {};
+struct VariantConverter<TuningSystemType> : public EnumVariantConverter<TuningSystemType> {};
 
 }

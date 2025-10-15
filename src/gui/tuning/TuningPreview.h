@@ -172,7 +172,7 @@ private:
 
         Label label;
         ComboBox select;
-        ComboBoxBinding<TemperamentType> binding;
+        ComboBoxBinding<TuningSystemType> binding;
     };
     ReferenceTuning tuning {*this, viewModel};
 

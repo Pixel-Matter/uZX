@@ -289,8 +289,8 @@ void TrackBodyComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce
         if (i == te::IDs::start || i == te::IDs::length) {
             markAndUpdate(updatePositions);
         }
-    } else if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::drawWaveforms) {
+    } else if (v.hasType(MoTool::IDs::EDITVIEWSTATE)) {
+        if (i == MoTool::IDs::drawWaveforms) {
             repaint();
         }
     }
@@ -464,7 +464,7 @@ void TrackHeaderOverlayComponent::resized() {
 }
 
 void TrackHeaderOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, const juce::Identifier& i) {
-    if (i == IDs::headersWidth && s.hasType(IDs::EDITVIEWSTATE)) {
+    if (i == MoTool::IDs::headersWidth && s.hasType(MoTool::IDs::EDITVIEWSTATE)) {
         setSize(editViewState.showHeaders ? editViewState.headersWidth : 0, getHeight());
         resized();
     }
@@ -546,10 +546,10 @@ void TracksContainerComponent::paint(Graphics& g) {
 }
 
 void TracksContainerComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
-    if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::showHeaders) {
+    if (v.hasType(MoTool::IDs::EDITVIEWSTATE)) {
+        if (i == MoTool::IDs::showHeaders) {
             markAndUpdate(updateZoom);
-        } else if (i == IDs::drawWaveforms) {
+        } else if (i == MoTool::IDs::drawWaveforms) {
             // TODO move to track body?
             repaint();
         }

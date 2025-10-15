@@ -10,6 +10,7 @@ MainWindow::MainWindow(tracktion::Engine& engine)
     : DocumentWindow("", Colors::Theme::backgroundAlt, DocumentWindow::allButtons)
     , engine_(engine)
 {
+    setComponentID("studio");
     setUsingNativeTitleBar(true);
     setResizable(true, true);
 
@@ -42,18 +43,18 @@ void MainWindow::saveWindowBounds() {
     auto bounds = getBounds();
 
     auto& propertyStorage = static_cast<MoTool::PropertyStorage&>(engine_.getPropertyStorage());
-    propertyStorage.setCustomProperty("mainWindowX", bounds.getX());
-    propertyStorage.setCustomProperty("mainWindowY", bounds.getY());
-    propertyStorage.setCustomProperty("mainWindowWidth", bounds.getWidth());
-    propertyStorage.setCustomProperty("mainWindowHeight", bounds.getHeight());
+    propertyStorage.setCustomProperty(getComponentID() + "WindowX", bounds.getX());
+    propertyStorage.setCustomProperty(getComponentID() + "WindowY", bounds.getY());
+    propertyStorage.setCustomProperty(getComponentID() + "WindowWidth", bounds.getWidth());
+    propertyStorage.setCustomProperty(getComponentID() + "WindowHeight", bounds.getHeight());
 }
 
 void MainWindow::restoreWindowBounds() {
     auto& propertyStorage = static_cast<MoTool::PropertyStorage&>(engine_.getPropertyStorage());
-    int x = propertyStorage.getCustomProperty("mainWindowX", -1);
-    int y = propertyStorage.getCustomProperty("mainWindowY", -1);
-    int width = propertyStorage.getCustomProperty("mainWindowWidth", 1024);
-    int height = propertyStorage.getCustomProperty("mainWindowHeight", 740);
+    int x = propertyStorage.     getCustomProperty(getComponentID() + "WindowX", -1);
+    int y = propertyStorage.     getCustomProperty(getComponentID() + "WindowY", -1);
+    int width = propertyStorage. getCustomProperty(getComponentID() + "WindowWidth", 1024);
+    int height = propertyStorage.getCustomProperty(getComponentID() + "WindowHeight", 740);
 
     // The constrainer will automatically enforce minimum size
     Rectangle<int> bounds(x, y, width, height);

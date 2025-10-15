@@ -13,7 +13,7 @@ namespace {
 
 String getDefaultEditFileSuffix() {
     switch (MoToolApp::getApp().getTarget()) {
-        case MoToolApp::Target::uZXMain:
+        case MoToolApp::Target::uZXStudio:
         case MoToolApp::Target::uZXTuning:
             return UZX_EDIT_FILE_SUFFIX;
         case MoToolApp::Target::MoTool:

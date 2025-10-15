@@ -11,7 +11,7 @@ class MoToolApp : public JUCEApplication {
 public:
 
     enum Target {
-        uZXMain,
+        uZXStudio,
         uZXTuning,
         MoTool
     };
@@ -24,7 +24,7 @@ public:
     const String getApplicationFancyName() const;
     const String getWindowTitle();
 
-    bool moreThanOneInstanceAllowed() override ;
+    bool moreThanOneInstanceAllowed() override;
 
     void initialise(const String&) override;
 
@@ -34,17 +34,28 @@ public:
 
     static MoToolApp& getApp();
 
-    static BaseController& getController();
+    static AppController& getAppController();
+    static ArrangerController& getArrangerController();
+    // static TuningController* getTuningController();
+
+    static ApplicationCommandManager& getCommandManager() {
+        return getAppController().getCommandManager();
+    }
+
+    static te::SelectionManager& getSelectionManager() {
+        return getAppController().getSelectionManager();
+    }
 
     static Target getTarget();
 
     const MoLookAndFeel& getLookAndFeel() const { return lookAndFeel_; }
 
 private:
-static inline Target target_ = String::fromUTF8(ProjectInfo::projectName) == "μZX Tuning" ? Target::uZXTuning : Target::uZXMain;
-    MoLookAndFeel lookAndFeel_;
-    std::unique_ptr<BaseController> controller_;
+    static inline Target target_ = String::fromUTF8(ProjectInfo::projectName) == "μZX Tuning" ? Target::uZXTuning : Target::uZXStudio;
 
+    MoLookAndFeel lookAndFeel_;
+    std::unique_ptr<AppController> appController_;
+    std::unique_ptr<ArrangerController> arrangerController_;
 };
 
 } // namespace MoTool

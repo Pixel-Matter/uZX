@@ -30,7 +30,7 @@ public:
         auto type = v.getType();
 
         // Check for our custom clip types
-        if (type == IDs::PSGCLIP)
+        if (type == MoTool::IDs::PSGCLIP)
             return new PsgClip(v, id, targetParent);
 
         // Add more custom clip types as needed
@@ -40,7 +40,7 @@ public:
 
     bool isCustomClipType(const juce::Identifier& identifier) override {
         // DBG("isCustomClipType " << identifier.toString());
-        return identifier == IDs::PSGCLIP;
+        return identifier == MoTool::IDs::PSGCLIP;
     }
 
     MidiMessageSequence createPlaybackMidiSequence(const te::MidiList& list, te::MidiClip& clip, te::MidiList::TimeBase tb, bool generateMPE) override {

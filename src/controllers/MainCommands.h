@@ -62,6 +62,7 @@ public:
         // Settings Menu
         settingsAudioMidi    = 600,
         settingsPlugins,
+        settingsTuningTables, // Open Tuning Tables window
 
         // Help Menu
         helpAbout            = 1000
@@ -87,7 +88,7 @@ public:
             // addAutomationTrack,
             trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
-            settingsAudioMidi, settingsPlugins,
+            settingsAudioMidi, settingsPlugins, settingsTuningTables,
             helpAbout
         };
 
@@ -121,6 +122,8 @@ public:
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::fileImportPsg);
             menu.addSeparator();
+            menu.addCommandItem(manager, MainAppCommands::settingsTuningTables); // Add Tuning Tool menu item
+            menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::fileQuit);
         } else if (menuName == "Edit") {
             menu.addCommandItem(manager, MainAppCommands::editUndo);
@@ -151,6 +154,7 @@ public:
         } else if (menuName == "Settings") {
             menu.addCommandItem(manager, MainAppCommands::settingsAudioMidi);
             menu.addCommandItem(manager, MainAppCommands::settingsPlugins);
+            menu.addCommandItem(manager, MainAppCommands::settingsTuningTables);
         } else if (menuName == "Help") {
             menu.addCommandItem(manager, MainAppCommands::helpAbout);
         }
@@ -339,6 +343,11 @@ public:
 
             case settingsPlugins:
                 result.setInfo("Plugins", "Open plugin manager", "Settings", 0);
+                break;
+
+            case settingsTuningTables:
+                result.setInfo("Tuning Tables", "Open the Tuning tables editor in a new window", "Settings", 0);
+                result.addDefaultKeypress('T', ModifierKeys::commandModifier);
                 break;
 
             // Help commands

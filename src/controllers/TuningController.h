@@ -15,24 +15,6 @@ public:
 
     ~TuningController() override = default;
 
-    //==============================================================================
-    /**
-     * MenuBarModel implementation
-     */
-    StringArray getMenuBarNames() override;
-    PopupMenu getMenuForIndex(int menuIndex, const String& menuName) override;
-    void menuItemSelected(int /* menuItemID */, int /* topLevelMenuIndex*/ ) override;
-
-    //==============================================================================
-    /**
-     * ApplicationCommandTarget implementation
-     */
-    ApplicationCommandTarget* getNextCommandTarget() override;
-    void getAllCommands(Array<CommandID>& commands) override;
-    void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) override;
-    bool perform(const InvocationInfo& info) override;
-
-
 private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
@@ -40,6 +22,8 @@ private:
 
     std::unique_ptr<TuningViewModel> viewModel_;
     std::unique_ptr<TuningPlayer> tuningPlayer_;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningController)
 };
 
 }  // namespace MoTool

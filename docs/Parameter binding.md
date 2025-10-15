@@ -1,321 +1,57 @@
-
 # Parameter Binding Architecture
 
-The parameter subsystem bridges persistent edit state, automation metadata, and interactive controls. Typed parameter definitions live beside the ValueTree state, while UI bindings observe both automation callbacks and stored values.
+The parameter subsystem ties together three concerns: structured metadata that defines a parameter, persistent storage in `juce::ValueTree`, and the live automation or UI surfaces that read and write it. The core types (`ParameterDef<T>`, `ParameterValue<T>`, the automation bridge, and the widget bindings) are designed so each layer can be composed without exploding into widget- or type-specific code.
 
-Actually what I wanted is to prevent combinatorial explosion of classes and templates for types (int, float, bool, string, enum), bindings (`tracktion::AutomatableParameter` attached to `juce::CachedValue<T>` or `juce::CachedValue<T>` only) and widget classes (`Slider`, `Label`, `TextButton`, `Combobox`, ...). So I want to have simple system of classes that can bind any `ParameterValue<T>` to any widget and optionally to `tracktion::AutomatableParameter`.
+## Parameter definitions (`ParameterDef<T>`)
 
-## Type erasure
+- A `ParameterDef<T>` instance describes everything the UI or automation layer needs to present a value (`identifier`, `propertyID`, labels, description, units, `NormalisableRange`, default, formatting callbacks). See `src/controllers/Parameters.h:84`.
+- Helpers such as `numberOfStates`, `floatToState`, `stateToLabel`, `decimalPlaces`, `valueToText`, and `textToValue` keep consumers from re‑implementing per-type logic (`src/controllers/Parameters.h:151`–`233`).
+- Bool and `Util::EnumChoiceConcept` specialisations override the generic behaviour to provide meaningful labels and discrete state handling (`src/controllers/Parameters.h:249`–`398`).
 
-Because `tracktion::AutomatableParameter` is not a template, we need type erasure to bind `ParameterValue<T>` to `tracktion::AutomatableParameter`. Thus `ParameterValue<T>` values must be converted to/from float and also has float-string conversion functions utilized by `tracktion::AutomatableParameter`. The question is where to put these conversion functions: in `ParameterDef<T>` callbacks or in separate static traits class `ParameterTraits<T>`?
+## Conversion traits (`ParameterConversionTraits`)
 
-`CachedValue<T>` needed for storing parameter values in plugin's ValueTree state, juce conversion traits used to map T to/from ValueTree property types, for example human-readable strings for EnumChoice types. Also this ensures backwards compatibility when reading old ValueTree states.
+- `ParameterConversionTraits<T>` map strongly typed values to the lightweight forms automation expects (float/string) and back (`src/controllers/Parameters.h:20`). They cover floats, integral types, bools, and `EnumChoice` wrappers, so the rest of the system stays templated while Tracktion/JUCE code continues to operate on floats or strings.
 
-`tracktion::Plugin` maintains a list of `tracktion:AutomatedParameter` instances, each of which is linked to a `CachedValue<T>` instance.
+## Stored and live values (`ParameterValue<T>`)
 
-`ParameterDef<T>` is needed for defining parameter name, id, description, default value, range, units, conversion functions between T and float/string.
+- `ParameterValue<T>` bundles a definition with `juce::CachedValue<T>` so a parameter struct can call `.referTo(ValueTree, UndoManager)` and immediately mirror persistent state (`src/controllers/Parameters.h:477`–`488`).
+- `getStoredValue*` accesses the cached state; `setStoredValue`/`setStoredValueAs` update it; `getPropertyAsValue` hands a `juce::Value` reference to `ParamEndpoint` listeners (`src/controllers/Parameters.h:491`–`536`).
+- `LiveAccessor` + `setLiveReader` let automation (or other live sources) expose an up-to-date value without touching the `ValueTree`. If no live reader exists, `getLiveValue` falls back to the stored value (`src/controllers/Parameters.h:425`–`544`).
+- `ParameterValueConcept` captures the requirements bindings use when accepting a generic parameter instance (`src/controllers/Parameters.h:400`–`408`).
 
-`ParameterValue<T>` needed for grouping `CachedValue<T>` with `ParameterDef<T>`. Plugins maintain sctructs of parameters, automated and static.
+## Automation bridge (`BindedAutoParameter<T>`)
 
-Widgets should be configured by `ParameterDef<T>` for displaying name, units, range, etc
-Widgets bind to `ParameterValue<T>` instances, which may be static or automated `ParameterValue<T>` instances.
-Static binding binds widget to `CachedValue<T>` only, converts widget values to/from T. We should introduce conversion scheme without need to define conversion functions/structs for every pair Widget<->T. In widget binding we can fix for every wighet type which types `T` (or subset) is works with. Widget binding should be a separate class from wigget class itself.
+- `BindedAutoParameter<T>` subclasses `tracktion::AutomatableParameter`, keeps the `ParameterDef<T>` metadata in sync, and registers itself as the live reader through `ParameterValue::setLiveReader` (`src/controllers/BindedAutoParameter.h:29`–`54`).
+- It mirrors stored state into the automation lane via `updateFromAttachedParamValue`, and writes automation changes back into the `CachedValue` on the JUCE message thread using `AsyncUpdater` (`src/controllers/BindedAutoParameter.h:122`–`135`).
+- Label/step helpers honour enum choices and discrete ranges, so automation editors display the same labels the UI does (`src/controllers/BindedAutoParameter.h:56`–`118`).
+- `PluginBase::addParam` wraps the common pattern for Tracktion plug-ins, and `restorePluginStateFromValueTree` refreshes every registered parameter when an edit reloads (`src/controllers/BindedAutoParameter.h:154`–`175`).
 
-## Subclassing AutomatableParameter
+## Unified parameter endpoints
 
-We actually can subclass it to:
+- `ParameterEndpoint` abstracts everything widgets need: range, formatting, gestures, state/label helpers, and listener hooks (`src/controllers/ParamEndpoint.h:18`–`83`).
+- `ParamValueEndpoint<T>` adapts a `ParameterValue<T>` to that interface by listening to its `juce::Value` for stored updates and querying the live reader when available (`src/controllers/ParamEndpoint.h:91`–`198`).
+- `AutomatableParamEndpoint` wraps a `tracktion::AutomatableParameter`, forwarding gesture notifications and UI callbacks while staying responsive to automation playback (`src/controllers/ParamEndpoint.h:201`–`247`).
+- `makeResolveParamEndpoint` picks the right endpoint automatically: an explicit automatable parameter beats the live reader, otherwise the binding falls back to pure stored access (`src/controllers/ParamEndpoint.h:249`–`273`).
 
-- Instantiate concrete types aware of type `T`, `AutomatableBindedParameters<T>`,
-  no neeed to maintain separate bindings lists in plugins.
-- Add constructor to accept `ParameterValue<T>` and configure parameter by it.
-- Override `isDiscrete()`, `getNumberOfStates()`, etc for handling `EmumChoice` types
-- Store binding to `ParameterValue<T>`
+## Widget bindings
 
-But alas we can not subclass `AutomatableParameter::AttachedValue` because it is not exposed in public API.
-So we can not attach even subclassed parameter to `CachedValue<T>` where `T` is not float, int or bool, for example, enum serializable to `String` in `Var`;
+- `WidgetParamEndpointBinding` owns a `ParameterEndpoint`, listens for stored/live changes, and exposes MIDI learn & RMB hooks via `MidiParameterMapping` and `MouseListenerWithCallback` (`src/gui/common/ParamBindings.h:38`–`69`).
+- Specialisations such as `SliderParamEndpointBinding` and `ButtonParamEndpointBinding` configure widgets, wire UI callbacks to `ParameterEndpoint::setStoredFloatValue`, and refresh visuals when either stored or live values change (`src/gui/common/ParamBindings.h:72`–`127`).
+- Convenience constructors accept either a `ParameterValue<T>` or an explicit `AutomatableParameter::Ptr`, so UI code can stay agnostic about which layer provides live feedback.
 
-## Conversion functions
-
-`juce::Var` to type `T` conversion is handled by `juce::VariantConverter` specializations, for example `juce::VariantConverter<EnumChoice>`.
-
-`tracktion::AutomatableParameter` uses float values, so we need conversion functions between T and float. These are provided by `ParameterConversionTraits<T>` specializations, for example `ParameterConversionTraits<EnumChoice>`.
-
-TODO
-
-## Domain overview
+## Data flow
 
 ```mermaid
 classDiagram
-
-    AutomatedParameter .. ParameterDef~T~ : configured by
-    AutomatedParameter o-- CachedValue~T~ : attaches to
-
-    CachedValue~T~ o-- ValueTree : uses
-
-    MyPlugin *-- ValueTree : has
-    MyPlugin *-- "*" AutomatedParameter : has
-    MyPlugin *--  "*" ParameterValue~T~: has static
-    MyPlugin *--  "*" ParameterValue~T~: has automated
-
-    ParameterValue~T~ *-- CachedValue~T~ : has
-    ParameterValue~T~ *-- ParameterDef~T~ : defined by
-
-class AutomatedParameter {
-    <<tracktion::>>
-    function~String->float~ valueToStringFunction
-    function~float->String~ stringToValueFunction
-
-    attachToCurrentValue(CachedValue~T~&)
-    parameterChangeGestureBegin()
-    setParameter(float, bool)
-    parameterChangeGestureEnd()
-    getCurrentValue() float
-}
-
-class ParameterDef~T~ {
-    String identifier
-    Identifier propertyID
-    String description
-    T defaultValue
-    Range~T~ valueRange
-    String units
-
-    getFloatValueRange() Range~float~
-}
-
-class ParameterValue~T~ {
-    ParameterDef~T~ definition
-    CachedValue~T~ value
-
-    referTo(ValueTree&, UndoManager*)
-    getValue() T
-    setValue(T)
-}
-
-class CachedValue {
-    <<juce::>>
-}
-
-class ValueTree {
-    <<juce::>>
-}
-
-```
-
-## Parameter-related core design overview
-
-Adding bindings between `ParameterValue<T>` and `AutomatedParameter`.
-
-```mermaid
-classDiagram
-
-    AutomatedParameter .. ParameterDef~T~ : configured by
-
-    ParameterValue~T~ o.. ParameterConversionTraits~T~ : uses
-    ParameterValue~T~ *-- LiveAccessor~T~ : has
-    ParameterValue~T~ *-- ParameterDef~T~ : defined by
-    ParameterValue~T~ *-- CachedValue~T~ : has
-    CachedValue~T~ o-- ValueTree : uses
-
-    ParameterValue~T~ --o ParameterAutomationBinding : binds
-    ParameterAutomationBinding o-- AutomatedParameter : binds
-
-    LiveAccessor~T~ o.. AutomatedParameter : optional uses
-    AutomatedParameter o-- CachedValue~T~ : attaches to
-
-
-class AutomatedParameter {
-    <<tracktion::>>
-    attachToCurrentValue(CachedValue~T~&)
-    parameterChangeGestureBegin()
-    setParameter(float, bool)
-    parameterChangeGestureEnd()
-    getCurrentValue() float
-}
-
-class ParameterValue~T~ {
-    using StorageType = Traits::StorageType
-    ParameterDef~T~ definition
-    CachedValue~StorageType~ value
-    LiveAccessor liveAccessor
-
-    referTo(ValueTree&, UndoManager*)
-    getStoredValue() T
-    getLiveValue() T
-    hasLiveReader() bool
-    setStoredValue(T)
-    setLiveReader(Reader, ...)
-    clearLiveReader()
-}
-
-class LiveAccessor~T~ {
-    -Reader reader
-    -void* context
-
-    set(Reader, ...)
-    readOr(T fb) T
-    hasReader()
-    reset()
-}
-
-class ParameterDef~T~ {
-    String identifier
-    Identifier propertyID
-    String description
-    T defaultValue
-    NormalisableRange~T~ valueRange
-    String units
-
-    getFloatValueRange() NormalisableRange~float~
-    valueToStringFunction(T) String
-    stringToValueFunction(String) T
-}
-
-class ParameterConversionTraits~T~ {
-    using StorageType = ...$
-    toStorage(T value) StoredType$
-    fromStorage(StoredType stored) T$
-    toFloat(T value) float$
-    fromFloat(float f) T$
-}
-
-class CachedValue {
-    <<juce::>>
-}
-
-class ValueTree {
-    <<juce::>>
-}
-
-class AutomatedParameter {
-    <<tracktion::>>
-}
-
-```
-
-## Plugin-centered design overview
-
-```mermaid
-classDiagram
-    MyPlugin *-- ValueTree : has
-    MyPlugin *-- "*" AutomatedParameter : has
-    MyPlugin *-- "*" ParameterAutomationBinding : keeps
-
-    MyPlugin *--  "*" ParameterValue~T~: has static
-    MyPlugin *--  "*" ParameterValue~T~   : has automated
-
-    ParameterAutomationBinding o-- AutomatedParameter
-    ParameterAutomationBinding o-- ParameterValue~T~
-    AutomatedParameter o-- CachedValue~T~ : synced to
-    AutomatedParameter o.. ParameterDef~T~ : added with
-
-    ParameterValue *-- CachedValue~T~ : has
-    ParameterValue *-- ParameterDef~T~ : defined by
-    CachedValue~T~ o-- ValueTree : uses
-
-class CachedValue {
-    <<juce::>>
-}
-
-class ValueTree {
-    <<juce::>>
-}
-
-class AutomatedParameter {
-    <<tracktion::>>
-}
-
-```
-
-## WidgetParamBinding-centered design overview
-
-```mermaid
-classDiagram
-    WidgetParamBinding *-- MidiParameterMapping : manages
-    MidiParameterMapping o-- AutomatedParameter : maps
-
-    ParamBindingBase <|-- WidgetParamBinding : is
-    ParamBindingBase -- ParameterValue~T~ : configured by
-    ParamBindingBase o-- AutomatedParameter : optional uses
-
-
-    WidgetParamBinding o-- Widget : binds
-    WidgetParamBinding o-- Widget : listens RMB
-
-    ParameterValue~T~ .. AutomatedParameter : optional binds
-
-    AutomatedParameter o-- CachedValue~T~ : synced to
-
-    ParameterValue *-- ParameterDef~T~ : defined by
-    ParameterValue~T~ *-- CachedValue~T~ : has
-    CachedValue~T~ o-- ValueTree : uses
-
-class CachedValue {
-    <<juce::>>
-}
-
-class ValueTree {
-    <<juce::>>
-}
-
-class AutomatedParameter {
-    <<tracktion::>>
-}
-
-class Widget {
-    <<juce::Component>>
-    setValue()/setText()
-}
-
-class ParamBindingBase {
-    Value storedValue
-    fetchValue()
-    applyValue()
-    beginGesture()
-    endGesture()
-}
-
-class ParameterValue~T~ {
-    getStoredValue()
-    getLiveValue()
-}
-
-class ParameterDef~T~ {
-    ...
-    valueToStringFunction(T) String
-    stringToValueFunction(String) T
-}
-
-```
-
-```text
-leaving out for a while for clarity
-
-    class MyPluginUI {
-        <<juce::Component>>
-    }
-
-    MyPlugin *-- "*" AutomatedParameter : has
-
-    MyPluginUI *-- "*" Widget : contains
-    MyPluginUI *-- "*" WidgetParamBinding : contains
-
-    Plugin <|-- MyPlugin : is
-
-    DynamicParams *-- "*" ParameterValue~T~ : contains
-    StaticParams *-- "*" ParameterValue : contains
-
-    ParamBindingBase <|-- WidgetParamBinding : is
-
-    WidgetParamBinding *-- MouseListenerWithCallback : has
-    MouseListenerWithCallback o.. WidgetParamBinding : calls back
-    MouseListenerWithCallback o-- Widget : listens to
-
-    MyPlugin *-- ValueTree : has
-    MyPlugin *--  "*" ParameterValue~T~: has static
-    MyPlugin *--  "*" ParameterValue~T~   : has automated
-    MyPluginUI o-- MyPlugin : edits
-
-
-
-```
+    ParameterDef~T~ <.. ParameterValue~T~ : describes
+    ParameterValue~T~ o-- CachedValue~T~ : persists
+    ParameterValue~T~ ..> LiveAccessor : optional reader
+    ParamValueEndpoint~T~ o-- ParameterValue~T~ : adapts
+    BindedAutoParameter~T~ o-- ParameterValue~T~ : mirrors
+    BindedAutoParameter~T~ --> AutomatableParameter : inherits
+    ParameterEndpoint <|-- ParamValueEndpoint~T~
+    ParameterEndpoint <|-- AutomatableParamEndpoint
+    AutomatableParamEndpoint o-- AutomatableParameter : adapts
+    WidgetParamEndpointBinding *-- ParameterEndpoint : owns
+    WidgetParamEndpointBinding --> MidiParameterMapping : delegates
+    WidgetParamEndpointBinding --> Component : observes

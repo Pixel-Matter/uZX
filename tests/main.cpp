@@ -155,10 +155,19 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    auto allTests = UnitTest::getTestsInCategory("MoTool");
+    auto filteredTests = argc > 1 ? filterTestsByName(allTests, String(argv[1])) : allTests;
+
+    if (filteredTests.isEmpty()) {
+        std::cout << "No tests found matching filter: '" << argv[1] << "'\n";
+        std::cout << "\nAvailable tests:\n";
+        for (auto* test : allTests) {
+            std::cout << "  " << test->getName() << "\n";
+        }
+        return 0;
+    }
+
     ScopedJuceInitialiser_GUI init;
-
-    Array<UnitTest*> allTests = UnitTest::getTestsInCategory("MoTool");
-
     CoutLogger logger;
     Logger::setCurrentLogger (&logger);
 
@@ -175,24 +184,12 @@ int main(int argc, char* argv[]) {
     hostedInterface.initialise(hostedParams);
 
     deviceManager.setMidiDeviceScanIntervalSeconds(0);
-    engine.getTemporaryFileManager().getTempDirectory().deleteRecursively (false);
+    engine.getTemporaryFileManager().getTempDirectory().deleteRecursively(false);
 
     juce::UnitTestRunner testRunner;
 
     if (argc > 1) {
-        String testNameFilter = String(argv[1]);
-        auto filteredTests = filterTestsByName(allTests, testNameFilter);
-
-        if (filteredTests.isEmpty()) {
-            std::cout << "No tests found matching filter: '" << testNameFilter << "'\n";
-            std::cout << "\nAvailable tests:\n";
-            for (auto* test : allTests) {
-                std::cout << "  " << test->getName() << "\n";
-            }
-            return 1;
-        }
-
-        std::cout << "Running " << filteredTests.size() << " test(s) matching filter: '" << testNameFilter << "'\n";
+        std::cout << "Running " << filteredTests.size() << " test(s) matching filter: '" << argv[1] << "'\n";
         for (auto* test : filteredTests) {
             std::cout << "  " << test->getName() << "\n";
         }
@@ -203,8 +200,8 @@ int main(int argc, char* argv[]) {
         testRunner.runTestsInCategory("MoTool");
     }
 
-    Logger::setCurrentLogger (nullptr);
-    engine.getTemporaryFileManager().getTempDirectory().deleteRecursively (false);
+    Logger::setCurrentLogger(nullptr);
+    engine.getTemporaryFileManager().getTempDirectory().deleteRecursively(false);
 
     return 0;
 }

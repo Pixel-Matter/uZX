@@ -18,8 +18,6 @@
 
 namespace MoTool {
 
-using namespace uZX;
-
 enum class NoteGridHeadingType {
     Tuning,
     Degrees,
@@ -188,7 +186,6 @@ struct TuningNote {
     }
 };
 
-
 namespace IDs {
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(TUNINGVIEWSTATE)
@@ -215,6 +212,7 @@ class TuningViewModel : public ChangeBroadcaster,
 public:
     // Any UI component can now listen to tuning system changes by implementing ChangeListener
     // and calling viewModel.addChangeListener(this) in their constructor
+
     TuningViewModel(te::Edit& ed)
         : transientState(IDs::TUNINGVIEWSTATE)
         , edit(ed)

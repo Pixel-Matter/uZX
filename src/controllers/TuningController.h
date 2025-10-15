@@ -15,6 +15,8 @@ public:
 
     ~TuningController() override = default;
 
+    void initialize() override;
+
 private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;

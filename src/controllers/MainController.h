@@ -43,11 +43,13 @@ public:
     void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) override;
     bool perform(const InvocationInfo& info) override;
 
+    void openTuningWindow();
+    void closeTuningWindow();
+
 private:
     void handlePluginManager();
     void ensureMinimumSampleRate();
     void showAboutDialog();
-    void openTuningWindow();
 
     te::Engine engine_;
     ApplicationCommandManager commandManager_;

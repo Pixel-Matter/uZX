@@ -347,7 +347,7 @@ public:
 
             case settingsTuningTables:
                 result.setInfo("Tuning Tables", "Open the Tuning tables editor in a new window", "Settings", 0);
-                result.addDefaultKeypress('T', ModifierKeys::commandModifier);
+                result.addDefaultKeypress('T', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
                 break;
 
             // Help commands

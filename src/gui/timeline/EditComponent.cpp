@@ -31,8 +31,8 @@ EditComponent::~EditComponent() {
 }
 
 void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
-    if (v.hasType(MoTool::IDs::EDITVIEWSTATE)) {
-        if (i == MoTool::IDs::showHeaders || i == MoTool::IDs::headersWidth) {
+    if (v.hasType(IDs::EDITVIEWSTATE)) {
+        if (i == IDs::showHeaders || i == IDs::headersWidth) {
             markAndUpdate(updateSizes);
         }
     }

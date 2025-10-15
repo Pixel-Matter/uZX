@@ -54,7 +54,6 @@ set(GUI_SOURCES
     gui/main/MainWindow.cpp
     gui/main/Footer.cpp
     gui/tuning/TuningPreview.cpp
-    gui/tuning/TuningWindow.cpp
 
     gui/timeline/PlayheadComponent.cpp
     gui/timeline/TimelineGrid.cpp

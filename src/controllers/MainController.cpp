@@ -7,7 +7,6 @@
 #include "UIBehavior.h"
 
 #include "../gui/main/MainWindow.h"
-#include "../gui/tuning/TuningWindow.h"
 #include "../gui/main/MainDocument.h"
 #include "../gui/main/AboutDialog.h"
 
@@ -505,6 +504,10 @@ void AppController::openTuningWindow() {
     }
 }
 
+void AppController::closeTuningWindow() {
+    tuningController_.reset();
+}
+
 te::Engine& AppController::getEngine() {
     return engine_;
 }
@@ -531,7 +534,6 @@ void BaseController::initialize() {
 
     setEdit(createOrLoadStartupEdit());
 
-    // TODO
     window_.addKeyListener(MoToolApp::getCommandManager().getKeyMappings());
 }
 

@@ -15,6 +15,8 @@ MainWindow::MainWindow(tracktion::Engine& engine)
     setResizable(true, true);
 
     // Set up minimum size constraints
+    // TODO pass in constructor or make configurable from controller
+    // we need different min sizes for tuning window
     constrainer_.setMinimumSize(800, 480);
     setConstrainer(&constrainer_);
 
@@ -27,8 +29,16 @@ MainWindow::~MainWindow() {
     clearContentComponent();
 }
 
+void MainWindow::setCloseHandler(std::function<void()> handler) {
+    closeHandler_ = std::move(handler);
+}
+
 void MainWindow::closeButtonPressed() {
-    JUCEApplication::getInstance()->systemRequestedQuit();
+    if (closeHandler_) {
+        closeHandler_();
+    } else {
+        JUCEApplication::getInstance()->systemRequestedQuit();
+    }
 }
 
 void MainWindow::resized() {

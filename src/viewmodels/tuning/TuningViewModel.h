@@ -237,7 +237,7 @@ public:
         , selectedTuningTable(transientState, IDs::tuningTable,                               nullptr, BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), &undoManager, ChipClockChoice::ZX_Spectrum_1_77_MHz)
         , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         &undoManager, Scale::Tonic::C)
-        , selectedScale      (transientState, IDs::scale,                                          &undoManager, Scale::ScaleType::IonianOrMajor)
+        , selectedScaleType      (transientState, IDs::scale,                                          &undoManager, Scale::ScaleType::IonianOrMajor)
         , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              &undoManager, 440.0, "Hz")
         , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                &undoManager, 1.7734, "MHz")
 
@@ -254,7 +254,7 @@ public:
         selectedTuningTable.addListener(this);
         selectedChip.addListener(this);
         selectedTonic.addListener(this);
-        selectedScale.addListener(this);
+        selectedScaleType.addListener(this);
         a4Frequency.addListener(this);
         clockFrequencyMhz.addListener(this);
         playChords.addListener(this);
@@ -278,7 +278,7 @@ public:
         std::vector<TuningNoteName> noteNames;
         noteNames.reserve(12);
 
-        auto& scale = getCurrentScale();
+        const auto& scale = currentScale;
         auto scaleIntervals = scale.getIntervals();
         const auto scaleChromDegrees = scale.getChromaticDegrees();
         auto refTuning = tuningSystem ? tuningSystem->getReferenceTuning() : nullptr;
@@ -418,22 +418,8 @@ public:
         return tuningSystem ? tuningSystem->getDescription() : "Default tuning";
     }
 
-
-    Scale::ScaleType getCurrentScaleType() const {
-        auto scaleType = selectedScale.get();
-        if (currentScale.getType() != scaleType) {
-            currentScale = Scale(scaleType); // Update cache only when needed
-        }
-        return scaleType;
-    }
-
-    const Scale& getCurrentScale() const {
-        getCurrentScaleType(); // update cache if needed
-        return currentScale;
-    }
-
     std::vector<int> getScaleNotes(int octave, bool includeOctave = false) const {
-        const auto& scale = getCurrentScale();
+        const auto& scale = currentScale;
         std::vector<int> result;
         result.reserve(scale.getIntervals().size() + (includeOctave ? 1 : 0));
         for (const auto& interval : scale.getIntervals()) {
@@ -447,7 +433,7 @@ public:
     }
 
     std::vector<int> getScaleNotesFrom(int midiNote, size_t numNotes = 5) const {
-        const auto& scale = getCurrentScale();
+        const auto& scale = currentScale;
         std::vector<int> result;
         result.reserve(numNotes);
         // let midiNote = D4, root = E
@@ -478,11 +464,24 @@ public:
     }
 
     void setCurrentScaleType(Scale::ScaleType scaleType) {
-        selectedScale = scaleType;
-        // TODO double update after assigning to scaleIndex1?
-        currentScale = Scale(scaleType); // Update cache
-        // no need to update tuning system scale
-        sendChangeMessage();
+        selectedScaleType = scaleType;
+        updateCurrentScale();
+    }
+
+    void updateCurrentScale() {
+        if (currentScale.getType() != selectedScaleType.get()) {
+            currentScale = Scale(selectedScaleType); // Update cache only when needed
+            sendChangeMessage();
+        }
+    }
+
+    Scale::ScaleType getCurrentScaleType() const {
+        return selectedScaleType.get();
+    }
+
+    const Scale& getCurrentScale() {
+        updateCurrentScale();
+        return currentScale;
     }
 
     Scale::Tonic getCurrentTonic() const {
@@ -688,24 +687,18 @@ public:
 private:
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
-        if (value.refersToSameSourceAs(selectedScale.getValue())) {
-            // DBG("Scale changed from valueChanged");
-            auto newScale = selectedScale.get();
-            if (newScale != currentScale.getType()) {
-                // circular dependency if call setCurrentScaleType?
-                // setCurrentScaleType(newScale);
-                currentScale = Scale(newScale); // Update Scale object cache
-                // no need to update tuning system scale here
-                // DBG("Scale changed from valueChanged sendChangeMessage");
-                sendChangeMessage();
-            }
+        if (value.refersToSameSourceAs(selectedScaleType.getValue())) {
+            selectedScaleType.forceUpdateOfCachedValue();
+            updateCurrentScale();
         } else if (value.refersToSameSourceAs(selectedTonic.getValue())) {
             // DBG("Root changed from valueChanged");
+            selectedTonic.forceUpdateOfCachedValue();
             tuningSystem->setRoot(getCurrentTonic());
             // DBG("Root changed from valueChanged sendChangeMessage");
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(a4Frequency.getValue())) {
             // DBG("A4 frequency changed from valueChanged");
+            a4Frequency.forceUpdateOfCachedValue();
             double newFreq = value.getValue();
             if (newFreq >= 220.0 && newFreq <= 880.0) {
                 tuningSystem->setA4Frequency(newFreq);
@@ -713,6 +706,7 @@ private:
                 sendChangeMessage();
             }
         } else if (value.refersToSameSourceAs(clockFrequencyMhz.getValue())) {
+            clockFrequencyMhz.forceUpdateOfCachedValue();
             // DBG("Clock frequency changed from valueChanged");
             double newFreqMHz = value.getValue();
             if (newFreqMHz >= 1.0 && newFreqMHz <= 2.0) {
@@ -721,6 +715,7 @@ private:
                 sendChangeMessage();
             }
         } else if (value.refersToSameSourceAs(selectedChip.getValue())) {
+            selectedChip.forceUpdateOfCachedValue();
             // DBG("chipIndex0 changed from valueChanged " << value.toString());
             auto chip = selectedChip.get();
             if (chip != ChipClockChoice::Custom) {
@@ -735,22 +730,27 @@ private:
             // DBG("chipIndex0 changed from valueChanged sendChangeMessage");
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(selectedTemperament.getValue())) {
+            selectedTemperament.forceUpdateOfCachedValue();
             updateReferenceTuning();
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(selectedTuningTable.getValue())) {
+            selectedTuningTable.forceUpdateOfCachedValue();
             // DBG("Tuning table index changed from valueChanged: " << static_cast<int>(value.getValue()));
             recreateTuningSystem(); // Reset to tuning defaults when changing tuning table
             // DBG("Tuning table index changed from valueChanged sendChangeMessage");
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(playChords.getValue())) {
+            playChords.forceUpdateOfCachedValue();
             // DBG("playChords changed from valueChanged");
             updatePlayState();
             // sendChangeMessage();
         } else if (value.refersToSameSourceAs(playTone.getValue())) {
+            playTone.forceUpdateOfCachedValue();
             // DBG("playTone changed from valueChanged");
             updatePlayState();
             // sendChangeMessage();
         } else if (value.refersToSameSourceAs(playEnvelope.getValue())) {
+            playEnvelope.forceUpdateOfCachedValue();
             // DBG("playEnvelope changed from valueChanged");
             updatePlayState();
         }
@@ -776,7 +776,7 @@ private:
             // Apply tuning defaults when changing tuning table or initializing
             selectedTemperament = tuningSystem->getReferenceTuning()->getType();
             selectedTonic = options.tonic;
-            selectedScale = options.scaleType;
+            selectedScaleType = options.scaleType;
             selectedChip = options.chipChoice;
             clockFrequencyMhz = options.chipClock / MHz; // Convert Hz to MHz
             a4Frequency = options.a4Frequency;
@@ -841,7 +841,7 @@ public:
     ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
     ChoiceParamAttachment<ChipClockChoice>   selectedChip;
     ChoiceParamAttachment<Scale::Tonic>      selectedTonic;
-    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
+    ChoiceParamAttachment<Scale::ScaleType>  selectedScaleType;
     RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
     RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
     // Play modes

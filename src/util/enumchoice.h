@@ -222,7 +222,8 @@ struct EnumVariantConverter {
     }
 
     static juce::var toVar(E choice) {
-        const std::string_view label = choice.getShortLabel();
+        // NOTE Do not use short or lonng labels to be able to read it back
+        const std::string_view label = choice.getLabel();
         return juce::String {label.data()};
     }
 };

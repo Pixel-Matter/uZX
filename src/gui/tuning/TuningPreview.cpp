@@ -406,7 +406,7 @@ int TuningPreviewComponent::ChipClock::getHeight() const {
 //================================================================================
 TuningPreviewComponent::KeyScale::KeyScale(TuningPreviewComponent& c, TuningViewModel& vm)
     : keySelectBinding(keySelect, vm.selectedTonic)
-    , scaleSelectBinding(scaleSelect, vm.selectedScale)
+    , scaleSelectBinding(scaleSelect, vm.selectedScaleType)
 {
     label.setText("Scale", juce::dontSendNotification);
     label.setJustificationType(juce::Justification::centredLeft);

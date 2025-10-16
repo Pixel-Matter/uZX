@@ -106,11 +106,14 @@ public:
         value.removeListener(listener);
     }
 
+    void forceUpdateOfCachedValue() {
+        return cachedValue.forceUpdateOfCachedValue();
+    }
+
     // ======================================================================================
     ValueTree& valueTree;
     UndoManager* undoManager;
     String name;
-    // TODO CachedValue<te::AtomicWrapper<Type>> value;
     CachedValue<Type> cachedValue;
     Value value;
 
@@ -166,7 +169,7 @@ public:
     {}
 
     inline ChoiceParamAttachment& operator= (const Type& newValue) {
-        this->cachedValue = newValue;
+        ParamAttachment<Type>::operator= (newValue);
         return *this;
     }
 

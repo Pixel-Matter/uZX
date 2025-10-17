@@ -21,9 +21,6 @@ public:
     const String getApplicationName() override;
     const String getApplicationVersion() override;
 
-    const String getApplicationFancyName() const;
-    const String getWindowTitle();
-
     bool moreThanOneInstanceAllowed() override;
 
     void initialise(const String&) override;

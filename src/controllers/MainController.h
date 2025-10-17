@@ -108,6 +108,7 @@ public:
 
     ~ArrangerController() override;
 
+    void initialize() override;
     EditViewState* getEditViewState();
 
     void zoomHorizontal(float increment) override;

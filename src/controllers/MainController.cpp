@@ -571,6 +571,12 @@ std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
 }
 
 // ================================= MainController =============================================
+void ArrangerController::initialize() {
+    BaseController::initialize();
+    auto title = String::fromUTF8("Pixel Matter μZX Studio v") + MoToolApp::getApp().getApplicationVersion();
+    setMainWindowTitle(title);
+}
+
 ArrangerController::~ArrangerController() {
     // TODO actually we should clean up the render files when closing/destroying an edit, not when closing the app
     // We can subclass the edit and override destructor to do this

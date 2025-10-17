@@ -7,35 +7,11 @@ namespace MoTool {
 MoToolApp::MoToolApp() {
     juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel_);
 
-    // switch (target_) {
-    //     case Target::uZXStudio:
-    //         mainController_ = std::make_unique<StudioController>();
-    //         break;
-    //     // case Target::uZXTuning:
-    //     //     mainController_ = std::make_unique<TuningController>();
-    //     //     break;
-    //     case Target::MoTool:
-    //         jassertfalse;
-    //         break;
-    // }
     appController_ = std::make_unique<AppController>();
     arrangerController_ = std::make_unique<ArrangerController>(appController_->getEngine());
 
     appController_->initialize();
-    arrangerController_->setMainWindowTitle(getWindowTitle());
     arrangerController_->initialize();
-}
-
-const String MoToolApp::getApplicationFancyName() const {
-    // TODO to controller
-    if (getTarget() == Target::uZXTuning) {
-        return CharPointer_UTF8("Pixel Matter μZX Tuning");
-    }
-    return CharPointer_UTF8("Pixel Matter μZX Studio");
-}
-
-const String MoToolApp::getWindowTitle() {
-    return getApplicationFancyName() + " v" + getApplicationVersion();
 }
 
 const String MoToolApp::getApplicationName() {

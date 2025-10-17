@@ -9,35 +9,34 @@ public:
     TuningViewModelTest() : UnitTest("TuningViewModel", "MoTool") {}
 
     void runTest() override {
-        // beginTest("Scale and Key selection - C Major");
-        // {
-        //     tracktion::Engine engine{"TuningViewModelTest"};
-        //     auto edit = te::Edit::createSingleTrackEdit(engine);
-        //     TuningViewModel viewModel(*edit);
+        beginTest("Scale and Key selection - C Major");
+        {
+            tracktion::Engine engine{"TuningViewModelTest"};
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
+            // Default should be C Major
+            expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::C));
+            expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::IonianOrMajor));
+            expectEquals(viewModel.getScaleName(), String("C Major (Ionian)"));
 
-        //     // Default should be C Major
-        //     expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::C));
-        //     expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::IonianOrMajor));
-        //     expectEquals(viewModel.getScaleName(), String("C Major (Ionian)"));
+            // Check that C Major scale notes are in scale
+            auto noteNames = viewModel.getColumnNoteNames();
+            expectEquals(static_cast<int>(noteNames.size()), 12);
 
-        //     // Check that C Major scale notes are in scale
-        //     auto noteNames = viewModel.getColumnNoteNames();
-        //     expectEquals(static_cast<int>(noteNames.size()), 12);
-
-        //     // C Major scale intervals: [0, 2, 4, 5, 7, 9, 11] (C, D, E, F, G, A, B)
-        //     expect(noteNames[0].isInScale);   // C
-        //     expect(!noteNames[1].isInScale);  // C#
-        //     expect(noteNames[2].isInScale);   // D
-        //     expect(!noteNames[3].isInScale);  // D#
-        //     expect(noteNames[4].isInScale);   // E
-        //     expect(noteNames[5].isInScale);   // F
-        //     expect(!noteNames[6].isInScale);  // F#
-        //     expect(noteNames[7].isInScale);   // G
-        //     expect(!noteNames[8].isInScale);  // G#
-        //     expect(noteNames[9].isInScale);   // A
-        //     expect(!noteNames[10].isInScale); // A#
-        //     expect(noteNames[11].isInScale);  // B
-        // }
+            // C Major scale intervals: [0, 2, 4, 5, 7, 9, 11] (C, D, E, F, G, A, B)
+            expect(noteNames[0].isInScale);   // C
+            expect(!noteNames[1].isInScale);  // C#
+            expect(noteNames[2].isInScale);   // D
+            expect(!noteNames[3].isInScale);  // D#
+            expect(noteNames[4].isInScale);   // E
+            expect(noteNames[5].isInScale);   // F
+            expect(!noteNames[6].isInScale);  // F#
+            expect(noteNames[7].isInScale);   // G
+            expect(!noteNames[8].isInScale);  // G#
+            expect(noteNames[9].isInScale);   // A
+            expect(!noteNames[10].isInScale); // A#
+            expect(noteNames[11].isInScale);  // B
+        }
 
         beginTest("Scale and Key selection - A Minor");
         {

@@ -193,10 +193,13 @@ void MultitrackMidiPreview::startPlayback(double duration) {
     // DBG("Starting playback from start to " << timeDuration << "s");
 
     // Defer playback preparing and start to release GUI thread
-    juce::MessageManager::callAsync([this, timeDuration]() {
-        // to recreate nodes with new clips
-        edit.dispatchPendingUpdatesSynchronously();
-        transport.playSectionAndReset(tracktion::TimeRange(tracktion::TimePosition(), timeDuration));
+    auto weakThis = juce::WeakReference<MultitrackMidiPreview>(this);
+    juce::MessageManager::callAsync([weakThis, timeDuration]() {
+        if (auto* preview = weakThis.get()) {
+            // to recreate nodes with new clips; guard against preview being destroyed
+            preview->edit.dispatchPendingUpdatesSynchronously();
+            preview->transport.playSectionAndReset(tracktion::TimeRange(tracktion::TimePosition(), timeDuration));
+        }
     });
 }
 

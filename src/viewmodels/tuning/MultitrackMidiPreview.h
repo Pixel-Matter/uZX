@@ -56,6 +56,7 @@ private:
 
     const std::array<tracktion::MidiClip::Ptr, NUM_CHANNELS>& getChannelClips() const { return channelClips; }
 
+    JUCE_DECLARE_WEAK_REFERENCEABLE(MultitrackMidiPreview)
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MultitrackMidiPreview)
 };
 

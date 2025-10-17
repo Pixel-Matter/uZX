@@ -1,4 +1,5 @@
 #include "TuningController.h"
+#include <cstddef>
 #include "App.h"
 #include "TuningCommands.h"
 #include "../gui/tuning/TuningPreview.h"
@@ -8,12 +9,19 @@ namespace MoTool {
 using namespace MoTool::Commands;
 
 void TuningController::initialize() {
-    BaseController::initialize();
+
     // window_.setSize(800, 600);
     //
+    window_.setComponentID("tuning");
     window_.setCloseHandler([this] {
         MoToolApp::getAppController().closeTuningWindow();
     });
+
+    BaseController::initialize();
+}
+
+TuningController::~TuningController() {
+    window_.setCloseHandler(nullptr);
 }
 
 std::unique_ptr<te::Edit> TuningController::createOrLoadStartupEdit() {

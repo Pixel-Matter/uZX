@@ -17,11 +17,10 @@ public:
     void setCloseHandler(std::function<void()> handler);
     void closeButtonPressed() override;
     void resized() override;
+    void restoreWindowBounds();
+    void saveWindowBounds();
 
 private:
-    void saveWindowBounds();
-    void restoreWindowBounds();
-
     tracktion::Engine& engine_;
     bool windowBoundsRestored_ = false;
     ComponentBoundsConstrainer constrainer_;

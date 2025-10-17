@@ -521,15 +521,12 @@ BaseController::BaseController(te::Engine& e)
 {}
 
 BaseController::~BaseController() {
-    window_.removeKeyListener(MoToolApp::getCommandManager().getKeyMappings());
     window_.clearContentComponent();
 
     if (edit_ != nullptr) {
         EditFileOps::saveEdit(*edit_, true, true, false);
         edit_->getTempDirectory(false).deleteRecursively();
     }
-
-    engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
 }
 
 void BaseController::initialize() {
@@ -537,6 +534,7 @@ void BaseController::initialize() {
 
     setEdit(createOrLoadStartupEdit());
 
+    window_.restoreWindowBounds();
     window_.addKeyListener(MoToolApp::getCommandManager().getKeyMappings());
 }
 
@@ -575,9 +573,10 @@ std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
 
 // ================================= MainController =============================================
 void ArrangerController::initialize() {
-    BaseController::initialize();
     auto title = String::fromUTF8("Pixel Matter μZX Studio v") + MoToolApp::getApp().getApplicationVersion();
     setMainWindowTitle(title);
+    window_.setComponentID("studio");
+    BaseController::initialize();
 }
 
 ArrangerController::~ArrangerController() {

@@ -13,7 +13,7 @@ class TuningController : public BaseController {
 public:
     using BaseController::BaseController;
 
-    ~TuningController() override = default;
+    ~TuningController() override;
 
     void initialize() override;
 

@@ -10,7 +10,6 @@ MainWindow::MainWindow(tracktion::Engine& engine)
     : DocumentWindow("", Colors::Theme::backgroundAlt, DocumentWindow::allButtons)
     , engine_(engine)
 {
-    setComponentID("studio");
     setUsingNativeTitleBar(true);
     setResizable(true, true);
 
@@ -20,7 +19,6 @@ MainWindow::MainWindow(tracktion::Engine& engine)
     constrainer_.setMinimumSize(800, 480);
     setConstrainer(&constrainer_);
 
-    restoreWindowBounds();
     setVisible(true);
 }
 

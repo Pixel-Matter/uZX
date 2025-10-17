@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include <models/Behavior.h>
+#include <controllers/MainController.h>
 
 using namespace tracktion;
 using namespace MoTool;
@@ -60,7 +61,7 @@ public:
 
 //==============================================================================
 //==============================================================================
-class TestPropertyStorage : public PropertyStorage
+class TestPropertyStorage : public MoTool::PropertyStorage
 {
 public:
     TestPropertyStorage (juce::StringRef appName_)
@@ -176,8 +177,10 @@ int main(int argc, char* argv[]) {
         std::make_unique<TestUIBehaviour>(),
         std::make_unique<TestEngineBehaviour>()
     };
+    registerPlugins(engine);
     auto& deviceManager = engine.getDeviceManager();
     auto& hostedInterface = deviceManager.getHostedAudioDeviceInterface();
+    // TODO register plugins
 
     tracktion_engine::HostedAudioDeviceInterface::Parameters hostedParams;
     hostedParams.useMidiDevices = false;

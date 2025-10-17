@@ -9,9 +9,10 @@ public:
     MultitrackMidiPreviewTest() : UnitTest("MultitrackMidiPreview", "MoTool") {}
 
     void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+
         beginTest("Single note with tone enabled produces correct sequence");
         {
-            tracktion::Engine engine{"MultitrackMidiPreviewTest"};
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
 
@@ -43,7 +44,6 @@ public:
 
         beginTest("Single note with envelope enabled produces correct sequence");
         {
-            tracktion::Engine engine{"MultitrackMidiPreviewTest"};
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
 
@@ -73,8 +73,7 @@ public:
             }
 
             expect(foundToneSwitch, "Should have tone switch CC");
-            // TODO: Fix envelope switch test - envelope CCs are working but test needs adjustment
-            // expect(foundEnvSwitchOn, "Should have envelope switch ON CC");
+            expect(foundEnvSwitchOn, "Should have envelope switch ON CC");
             expectEquals(static_cast<int>(notes0.size()), 1, "Should have 1 note on track 0");
 
             // Inspect envelope track (track 3)
@@ -89,9 +88,31 @@ public:
             }
         }
 
+        beginTest("Envelope shape CC is added to envelope track");
+        {
+            te::Edit edit(engine, te::Edit::EditRole::forEditing);
+            MultitrackMidiPreview preview(edit);
+
+            // Test envelope shape by playing a single note with envelope enabled
+            preview.playSingleNote(60, 0.5, false, true, 7, 0);
+
+            auto& clips = preview.getChannelClips();
+            auto& sequence = clips[3]->getSequence(); // Check envelope channel
+            const auto& controllers = sequence.getControllerEvents();
+
+            bool foundShapeCC = false;
+            for (auto ccEvent : controllers) {
+                if (ccEvent->getType() == static_cast<int>(MidiCCType::SoundVariation)) {
+                    foundShapeCC = true;
+                    expectEquals(ccEvent->getControllerValue(), 7 << 7, "Envelope shape should be 7 << 7");
+                }
+            }
+
+            expect(foundShapeCC, "Should have envelope shape CC on track 3");
+        }
+
         beginTest("Chord playback distributes notes across tracks");
         {
-            tracktion::Engine engine{"MultitrackMidiPreviewTest"};
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
 
@@ -119,7 +140,6 @@ public:
 
         beginTest("Arpeggio creates sequential notes with synchronized CCs");
         {
-            tracktion::Engine engine{"MultitrackMidiPreviewTest"};
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
 
@@ -165,33 +185,8 @@ public:
             }
         }
 
-        beginTest("Envelope shape CC is added to envelope track");
-        {
-            tracktion::Engine engine{"MultitrackMidiPreviewTest"};
-            te::Edit edit(engine, te::Edit::EditRole::forEditing);
-            MultitrackMidiPreview preview(edit);
-
-            // Test envelope shape by playing a single note with envelope enabled
-            preview.playSingleNote(60, 0.5, false, true, 7, 0);
-
-            auto& clips = preview.getChannelClips();
-            auto& sequence = clips[3]->getSequence(); // Check envelope channel
-            const auto& controllers = sequence.getControllerEvents();
-
-            bool foundShapeCC = false;
-            for (auto ccEvent : controllers) {
-                if (ccEvent->getType() == static_cast<int>(MidiCCType::SoundVariation)) {
-                    foundShapeCC = true;
-                    expectEquals(ccEvent->getControllerValue(), 7 << 7, "Envelope shape should be 7 << 7");
-                }
-            }
-
-            expect(foundShapeCC, "Should have envelope shape CC on track 3");
-        }
-
         beginTest("Playback MIDI sequence contains CC messages");
         {
-            tracktion::Engine engine{"MultitrackMidiPreviewTest"};
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
 

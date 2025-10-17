@@ -9,9 +9,10 @@ public:
     TuningViewModelTest() : UnitTest("TuningViewModel", "MoTool") {}
 
     void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+
         beginTest("Scale and Key selection - C Major");
         {
-            tracktion::Engine engine{"TuningViewModelTest"};
             auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
             // Default should be C Major
@@ -40,7 +41,6 @@ public:
 
         beginTest("Scale and Key selection - A Minor");
         {
-            tracktion::Engine engine{"TuningViewModelTest"};
             auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
@@ -72,7 +72,6 @@ public:
 
         beginTest("Scale and Key selection - F# Major");
         {
-            tracktion::Engine engine{"TuningViewModelTest"};
             auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
@@ -103,7 +102,6 @@ public:
 
         beginTest("Scale and Key selection - D Dorian");
         {
-            tracktion::Engine engine{"TuningViewModelTest"};
             auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
@@ -134,7 +132,6 @@ public:
 
         beginTest("Key names functionality");
         {
-            tracktion::Engine engine{"TuningViewModelTest"};
             auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
@@ -152,7 +149,6 @@ public:
 
         beginTest("Scale type names functionality");
         {
-            tracktion::Engine engine{"TuningViewModelTest"};
             auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
@@ -168,7 +164,6 @@ public:
 
         beginTest("CSV export functionality");
         {
-            tracktion::Engine engine{"TuningViewModelTest"};
             auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
@@ -258,7 +253,6 @@ public:
 
         beginTest("Default export filename generation");
         {
-            tracktion::Engine engine{"TuningViewModelTest"};
             auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 

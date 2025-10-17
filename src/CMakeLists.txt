@@ -141,7 +141,7 @@ set(MOTOOL_JUCE_HEADER_TUNING
     ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode/JuceHeader.h
 )
 set(MOTOOL_JUCE_HEADER_TESTS
-    ${CMAKE_BINARY_DIR}/tests/MoToolTests_artefacts/JuceLibraryCode/JuceHeader.h
+    ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode/JuceHeader.h
 )
 
 add_custom_target(motool_generate_juce_headers

@@ -28,6 +28,11 @@ using namespace MoTool::Helpers;
 
 namespace MoTool {
 
+void registerPlugins(te::Engine& engine) {
+    engine.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
+    engine.getPluginManager().createBuiltInType<uZX::ChipInstrumentPlugin>();
+    engine.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
+}
 
 AppController::AppController()
     : engine_ {
@@ -44,9 +49,7 @@ AppController::AppController()
 }
 
 void AppController::initialize() {
-    engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
-    engine_.getPluginManager().createBuiltInType<uZX::ChipInstrumentPlugin>();
-    engine_.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
+    registerPlugins(engine_);
 
     engine_.getDeviceManager().addChangeListener(this);
 

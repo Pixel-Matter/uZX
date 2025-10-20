@@ -23,6 +23,7 @@ set(SHARED_SOURCES
 
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
+    plugins/uZX/midi_logger/MidiLoggerPlugin.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp
     plugins/uZX/instrument/ChipInstrument.cpp
@@ -97,6 +98,7 @@ set(TEST_SOURCES
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
+    plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
 
     gui/common/ParamBindings.test.cpp

@@ -92,6 +92,7 @@ public:
             visitor(volume);
             visitor(layout);
             visitor(stereoWidth);
+            visitor(monitorMode);
         }
 
         ParameterValue<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};

@@ -9,13 +9,14 @@ const char* AYChipPlugin::xmlTypeName = "aychip";
 
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     : PluginBase(info)
-    , midiParamsReader(staticParams.baseMidiChannel.getStoredValue())
+    , midiParamsReader(1)
 {
     staticParams.referTo(state, getUndoManager());
     dynamicParams.referTo(state, getUndoManager());
     dynamicParams.visit([this](auto& vd) {
         addParam(vd);
     });
+    midiParamsReader.setBaseChannel(staticParams.baseMidiChannel.getStoredValue());
 }
 
 AYChipPlugin::~AYChipPlugin() {
@@ -101,6 +102,9 @@ void AYChipPlugin::reset() {
 void AYChipPlugin::updateRegistersFromMidiParams() noexcept {
     // DBG("updateRegistersFromMidiParams");
     auto& params = midiParamsReader.getParams();
+    if (dynamicParams.monitorMode.getLiveValue()) {
+        params.debugPrintSet();
+    }
     registersFrame.clear();
     params.updateRegisters(registersFrame);
     params.clear();  // clear params after update

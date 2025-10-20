@@ -253,6 +253,21 @@ struct ParameterDef<bool> {
     String shortLabel;
     String description;
     bool defaultValue;
+    NormalisableRange<bool> valueRange = NormalisableRange<bool>(false, true, true);
+    String units = {};
+
+    // Auto-initialized label conversion functions
+    std::function<String(bool)> valueToStringFunction = [](bool value) {
+        return value ? "On" : "Off";
+    };
+
+    std::function<bool(const String&)> stringToValueFunction = [](const String& str) {
+        if (str.equalsIgnoreCase("true") || str.equalsIgnoreCase("on") || str == "1")
+            return true;
+        if (str.equalsIgnoreCase("false") || str.equalsIgnoreCase("off") || str == "0")
+            return false;
+        return false;
+    };
 
     constexpr NormalisableRange<float> getFloatValueRange() const {
         return {0.0f, 1.0f, 1.0f};

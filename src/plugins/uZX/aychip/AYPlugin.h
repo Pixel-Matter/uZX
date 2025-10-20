@@ -25,6 +25,7 @@ namespace IDs {
     DECLARE_ID(clock)
     DECLARE_ID(layout)
     DECLARE_ID(stereo)
+    DECLARE_ID(monitor)
     DECLARE_ID(noDC)
     DECLARE_ID(midi)
     DECLARE_ID(volume)
@@ -96,6 +97,7 @@ public:
         ParameterValue<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
         ParameterValue<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", ChannelsLayout::ACB}};
         ParameterValue<float> stereoWidth     {{"stereo", IDs::stereo, "Width",  "Stereo width",  0.5f, {0.f, 1.0f}}};
+        ParameterValue<bool> monitorMode      {{"monitor", IDs::monitor, "Monitor", "Chip monitor mode",  false}};
     };
 
     DynamicParams dynamicParams;

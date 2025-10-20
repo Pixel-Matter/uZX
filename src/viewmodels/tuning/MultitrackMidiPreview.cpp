@@ -1,5 +1,6 @@
 #include "MultitrackMidiPreview.h"
 #include "../../plugins/uZX/aychip/AYPlugin.h"
+#include "../../plugins/uZX/midi_logger/MidiLoggerPlugin.h"
 
 namespace MoTool {
 
@@ -30,14 +31,29 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
     if (auto ayPlugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {})) {
         track->pluginList.insertPlugin(*ayPlugin, 0, nullptr);
         auto AYPlugin = dynamic_cast<uZX::AYChipPlugin*>(ayPlugin.get());
-        jassert(AYPlugin != nullptr);
-        // set BAC to first channel be the center
-        AYPlugin->dynamicParams.layout.value = ChannelsLayout(uZX::ChannelsLayout::BAC);
+        AYPlugin->dynamicParams.layout.setStoredValue(ChannelsLayout::ACB);
+        AYPlugin->dynamicParams.monitorMode.setStoredValue(true);
+    }
+
+    if (USE_MIDI_LOGGER) {
+        if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiLoggerPlugin::xmlTypeName, {})) {
+            auto loggerPlugin = dynamic_cast<uZX::MidiLoggerPlugin*>(plugin.get());
+            loggerPlugin->setLogTag("AY");
+            track->pluginList.insertPlugin(*plugin, 0, nullptr);
+        }
     }
 
     if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::NotesToPsgPlugin::xmlTypeName, {})) {
         track->pluginList.insertPlugin(*plugin, 0, nullptr);
         NotesToPsgPlugin = dynamic_cast<uZX::NotesToPsgPlugin*>(plugin.get());
+    }
+
+    if (USE_MIDI_LOGGER) {
+        if (auto plugin = edit.getPluginCache().createNewPlugin(uZX::MidiLoggerPlugin::xmlTypeName, {})) {
+            auto loggerPlugin = dynamic_cast<uZX::MidiLoggerPlugin*>(plugin.get());
+            loggerPlugin->setLogTag("PSG");
+            track->pluginList.insertPlugin(*plugin, 0, nullptr);
+        }
     }
 
     // Set up MIDI device assignments
@@ -153,7 +169,7 @@ void MultitrackMidiPreview::playSingleNote(int midiNote, double noteLength, bool
     //     << ", shape " << envelopeShape
     //     << ", interval " << envInterval);
 
-    placeNote(0, midiNote, noteLength, 0.0, enableTone, enableEnvelope, envelopeShape, envInterval);
+    placeNote(SINGLE_NOTE_CHANNEL, midiNote, noteLength, 0.0, enableTone, enableEnvelope, envelopeShape, envInterval);
 
     startPlayback(noteLength);
 }
@@ -179,7 +195,7 @@ void MultitrackMidiPreview::playArpeggio(const std::vector<int>& midiNotes, doub
 
     double currentTime = 0.0;
     for (int midiNote : midiNotes) {
-        placeNote(0, midiNote, noteLength, currentTime, enableTone, enableEnvelope, envelopeShape, envInterval);
+        placeNote(SINGLE_NOTE_CHANNEL, midiNote, noteLength, currentTime, enableTone, enableEnvelope, envelopeShape, envInterval);
         currentTime += noteLength;
     }
     auto duration = currentTime; // Total duration of the arpeggio

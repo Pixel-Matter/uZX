@@ -31,7 +31,8 @@ public:
 
 private:
     static constexpr int NUM_CHANNELS = 4;
-
+    static constexpr int SINGLE_NOTE_CHANNEL = 1;
+    static constexpr bool USE_MIDI_LOGGER = true;
 
     // Member variables
     tracktion::Edit& edit;

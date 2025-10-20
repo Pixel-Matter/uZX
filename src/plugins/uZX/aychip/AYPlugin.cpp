@@ -116,9 +116,10 @@ void AYChipPlugin::updateRegistersFromMidiRegs() noexcept {
 void AYChipPlugin::updateChip() noexcept {
     if (midiReaderMode == MidiReaderMode::Params) {
         updateRegistersFromMidiParams();
-    } else if (midiReaderMode == MidiReaderMode::Regs) {
-        // updateRegistersFromMidiRegs();
     }
+    // else if (midiReaderMode == MidiReaderMode::Regs) {
+    //     // updateRegistersFromMidiRegs();
+    // }
 
     for (size_t i = 0; i < registersFrame.size(); ++i) {
         if (registersFrame.isSet(i)) {
@@ -131,9 +132,10 @@ void AYChipPlugin::updateChip() noexcept {
 void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept {
     if (midiReaderMode == MidiReaderMode::Params) {
         midiParamsReader.read(m);
-    } else if (midiReaderMode == MidiReaderMode::Regs) {
-        // midiRegsReader.read(m);
     }
+    // else if (midiReaderMode == MidiReaderMode::Regs) {
+    //     // midiRegsReader.read(m);
+    // }
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {

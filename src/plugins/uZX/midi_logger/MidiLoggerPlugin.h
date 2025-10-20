@@ -9,17 +9,24 @@
 
 namespace MoTool::uZX {
 
+namespace IDs {
+    inline const juce::Identifier logTag("logTag");
+}
+
 class MidiLoggerEffect {
 public:
     MidiLoggerEffect();
 
     void setOutputStream(std::ostream& stream) noexcept;
     std::ostream* getOutputStream() const noexcept;
+    void setTag(const juce::String& newTag);
 
     void operator()(MidiBufferContext& context);
 
 private:
     std::atomic<std::ostream*> outputStream { nullptr };
+    juce::SpinLock tagLock;
+    juce::String tag;
 };
 
 
@@ -45,12 +52,18 @@ public:
     void midiPanic() override {}
 
     void setOutputStream(std::ostream& stream) noexcept;
+    void setLogTag(const juce::String& tag);
+    juce::String getLogTag() const;
+
+    void restorePluginStateFromValueTree(const juce::ValueTree&) override;
 
 private:
+    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+
     MidiLoggerEffect logger;
+    juce::CachedValue<juce::String> logTag;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiLoggerPlugin)
 };
 
 }  // namespace MoTool::uZX
-

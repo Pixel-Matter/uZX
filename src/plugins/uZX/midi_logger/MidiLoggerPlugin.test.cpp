@@ -38,6 +38,7 @@ public:
             midiBuffer.addMidiMessage(juce::MidiMessage::noteOff(1, 60), 0.1, src);
             midiBuffer.addMidiMessage(juce::MidiMessage::controllerEvent(2, 64, 96), 0.2, src);
 
+            plugin.setLogTag("preA");
             std::ostringstream capture;
             plugin.setOutputStream(capture);
 
@@ -63,6 +64,7 @@ public:
             expect(output.containsIgnoreCase("controller"), "Should log controller events");
             expect(output.contains("[ch 1"), "Should include channel information");
             expect(output.contains("[ch 2"), "Should handle multiple channels");
+            expect(output.contains("[preA]"), "Should include configured tag");
         }
     }
 };

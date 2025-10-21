@@ -4,7 +4,6 @@
 
 #include "../../../formats/psg/PsgData.h"
 #include "../../../models/PsgMidi.h"
-#include "../../../controllers/ParamAttachments.h"
 #include "../../../controllers/BindedAutoParameter.h"
 #include "aychip.h"
 

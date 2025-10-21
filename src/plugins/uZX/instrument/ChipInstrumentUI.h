@@ -2,7 +2,6 @@
 
 #include <JuceHeader.h>
 #include "ChipInstrumentPlugin.h"
-#include "../../../controllers/ParamAttachments.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
 #include "../../../gui/common/LabeledSlider.h"
 

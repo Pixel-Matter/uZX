@@ -8,7 +8,6 @@
 #include "../common/ParamBindings.h"
 #include "../common/MoTooltipWindow.h"
 
-#include <map>
 #include <vector>
 
 namespace MoTool {
@@ -115,13 +114,7 @@ private:
     void changeListenerCallback(ChangeBroadcaster* source) override;
 
     // UI setup helpers
-    void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
-                                     RangedParamAttachment<double>& attachment);
-    void setupTextEditorWithValueBinding(Label& inputLabel, Label& unitsLabel,
-                                         RangedParamAttachment<double>& attachment);
     void updateControlsState();
-    void updateScaleSelection();
-
     // Setup helpers
     void setupTuningTableControls();
     void setupTuningGrid();
@@ -152,6 +145,7 @@ private:
         Label frequencyInput;
         Label unitsLabel;
         ComboBoxParamEndpointBinding binding;
+        ParameterValue<double>& clockParam;
     };
     ChipClock chipClock {*this, viewModel};
 
@@ -164,6 +158,8 @@ private:
         Label label;
         Slider slider;
         Label unitsLabel;
+        ParameterValue<double>& param;
+        SliderParamEndpointBinding binding;
     };
     A4Frequency a4Frequency {*this, viewModel};
 
@@ -176,7 +172,6 @@ private:
         Label label;
         ComboBox select;
         ComboBoxParamEndpointBinding binding;
-        // ComboBoxBinding<TuningSystemType> binding;
     };
     ReferenceTuning tuning {*this, viewModel};
 
@@ -223,8 +218,8 @@ private:
         ToggleButton playEnvelopeCheckBox;
         ComboBox envelopeShapeSelect;
         ComboBox modulationModeSelect;
-        ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding;
-        ComboBoxBinding<EnvIntervalChoice> envelopeModeBinding;
+        ComboBoxParamEndpointBinding envelopeShapeBinding;
+        ComboBoxParamEndpointBinding envelopeModeBinding;
     };
     PlayControls playControls {*this, viewModel};
 

@@ -5,6 +5,7 @@
 #include "../../util/Helpers.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace MoTool {
 
@@ -274,7 +275,7 @@ void TuningPreviewGrid::mouseDown(const MouseEvent& event) {
         auto octaveNotes = viewModel.getOctaveNotes(hitResult.octave);
         auto& note = octaveNotes[static_cast<size_t>(hitResult.noteIndex)];
         if (note.isInMidiRange()) {
-            if (viewModel.playChords.get()) {
+            if (viewModel.selectedParams.playChords.getStoredValue()) {
                 tuningPlayer.playDegreeChord(note.midiNote);
             } else {
                 tuningPlayer.playSingleNote(note.midiNote);
@@ -379,15 +380,39 @@ TuningPreviewGrid::GridHitResult TuningPreviewGrid::GridLayout::hitTest(juce::Po
 //================================================================================
 TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
     : binding(select, vm.selectedParams.chipClock)
+    , clockParam(vm.selectedParams.clockFrequencyMhz)
 {
     label.setText("Chip clock", juce::dontSendNotification);
-    // label.setJustificationType(juce::Justification::centredLeft);
 
-    // Setup frequency controls by calling the parent class methods
-    c.setupTextEditorWithValueBinding(frequencyInput, unitsLabel, vm.clockFrequencyMhz);
+    const auto& def = clockParam.definition;
+    const auto range = def.valueRange;
+
+    frequencyInput.setEditable(true);
+    frequencyInput.setJustificationType(Justification::centredLeft);
+    frequencyInput.setColour(Label::outlineColourId, frequencyInput.findColour(Slider::textBoxOutlineColourId));
+    frequencyInput.setColour(Label::backgroundColourId, frequencyInput.findColour(Slider::textBoxBackgroundColourId));
+    frequencyInput.setColour(Label::textColourId, frequencyInput.findColour(Slider::textBoxTextColourId));
+    frequencyInput.setColour(TextEditor::outlineColourId, frequencyInput.findColour(Slider::textBoxOutlineColourId));
+    frequencyInput.setColour(TextEditor::backgroundColourId, frequencyInput.findColour(Slider::textBoxBackgroundColourId));
+    frequencyInput.setColour(TextEditor::textColourId, frequencyInput.findColour(Slider::textBoxTextColourId));
+
+    frequencyInput.setText(String(clockParam.getStoredValue()), juce::dontSendNotification);
+
+    frequencyInput.onTextChange = [this, range]() {
+        auto text = frequencyInput.getText();
+        auto value = jlimit(range.start, range.end, text.getDoubleValue());
+        if (std::abs(value - text.getDoubleValue()) > 1e-9)
+            frequencyInput.setText(String(value), juce::dontSendNotification);
+        clockParam.setStoredValue(value);
+    };
+
+    unitsLabel.setText(def.units, juce::dontSendNotification);
+    unitsLabel.setJustificationType(Justification::centredLeft);
 
     c.addAndMakeVisible(label);
     c.addAndMakeVisible(select);
+    c.addAndMakeVisible(frequencyInput);
+    c.addAndMakeVisible(unitsLabel);
 }
 
 void TuningPreviewComponent::ChipClock::layout(juce::Rectangle<int>& area) {
@@ -535,8 +560,22 @@ int TuningPreviewComponent::ReferenceTuning::getHeight() const {
 }
 
 //================================================================================
-TuningPreviewComponent::A4Frequency::A4Frequency(TuningPreviewComponent& c, TuningViewModel& vm) {
-    c.setupSliderWithValueBinding(slider, label, "A4 frequency", unitsLabel, vm.a4Frequency);
+TuningPreviewComponent::A4Frequency::A4Frequency(TuningPreviewComponent& c, TuningViewModel& vm)
+    : param(vm.selectedParams.a4Frequency)
+    , binding(slider, param)
+{
+    label.setText(binding.endpoint().getDescription(), juce::dontSendNotification);
+    label.setJustificationType(juce::Justification::centredLeft);
+
+    slider.setSliderStyle(Slider::LinearHorizontal);
+    slider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
+
+    unitsLabel.setText(binding.endpoint().getUnits(), juce::dontSendNotification);
+    unitsLabel.setJustificationType(juce::Justification::centredLeft);
+
+    c.addAndMakeVisible(label);
+    c.addAndMakeVisible(slider);
+    c.addAndMakeVisible(unitsLabel);
 }
 
 int TuningPreviewComponent::A4Frequency::getHeight() const {
@@ -553,22 +592,22 @@ void TuningPreviewComponent::A4Frequency::layout(juce::Rectangle<int>& area) {
 
 //================================================================================
 TuningPreviewComponent::PlayControls::PlayControls(TuningPreviewComponent& c, TuningViewModel& vm)
-    : envelopeShapeBinding(envelopeShapeSelect, vm.envelopeShape)
-    , envelopeModeBinding(modulationModeSelect, vm.envIntervalChoice)
+    : envelopeShapeBinding(envelopeShapeSelect, vm.selectedParams.envelopeShape)
+    , envelopeModeBinding(modulationModeSelect, vm.selectedParams.envIntervalChoice)
 {
     label.setText("Play mode", juce::dontSendNotification);
 
     playChordsCheckBox.setButtonText("Chords");
-    playChordsCheckBox.getToggleStateValue().referTo(vm.playChords.getValue());
+    playChordsCheckBox.getToggleStateValue().referTo(vm.selectedParams.playChords.getPropertyAsValue());
 
     playToneCheckBox.setButtonText("Tone");
-    playToneCheckBox.getToggleStateValue().referTo(vm.playTone.getValue());
+    playToneCheckBox.getToggleStateValue().referTo(vm.selectedParams.playTone.getPropertyAsValue());
 
     retriggerToneCheckBox.setButtonText("Retrigger");
-    retriggerToneCheckBox.getToggleStateValue().referTo(vm.retriggerTone.getValue());
+    retriggerToneCheckBox.getToggleStateValue().referTo(vm.selectedParams.retriggerTone.getPropertyAsValue());
 
     playEnvelopeCheckBox.setButtonText("Envelope");
-    playEnvelopeCheckBox.getToggleStateValue().referTo(vm.playEnvelope.getValue());
+    playEnvelopeCheckBox.getToggleStateValue().referTo(vm.selectedParams.playEnvelope.getPropertyAsValue());
 
     c.addAndMakeVisible(label);
     c.addAndMakeVisible(playChordsCheckBox);
@@ -613,6 +652,7 @@ TuningPreviewComponent::TuningPreviewComponent(TuningViewModel& vm, TuningPlayer
 
     updateControlsState();
     viewModel.addChangeListener(this);
+    viewModel.selectedParams.clockFrequencyMhz.addListener(this);
     // tuningNameLabel.setText(viewModel.getTuningDescription(), juce::dontSendNotification);
     // addAndMakeVisible(tuningNameLabel);
 }
@@ -620,6 +660,7 @@ TuningPreviewComponent::TuningPreviewComponent(TuningViewModel& vm, TuningPlayer
 TuningPreviewComponent::~TuningPreviewComponent() {
     viewModel.removeChangeListener(this);
     viewModel.selectedParams.tuningTable.removeListener(this);
+    viewModel.selectedParams.clockFrequencyMhz.removeListener(this);
 }
 
 
@@ -704,73 +745,6 @@ void TuningPreviewComponent::listBoxItemClicked(int row, const MouseEvent& e) {
     viewModel.selectedParams.tuningTable.setStoredValue(BuiltinTuningType(row));
 }
 
-// UI setup helpers
-void TuningPreviewComponent::setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
-                                                         RangedParamAttachment<double>& attachment) {
-    const auto range = attachment.getRange();
-    slider.setRange(range.start, range.end, range.interval);
-    slider.setSliderStyle(Slider::LinearHorizontal);
-    slider.setTextBoxStyle(Slider::TextBoxRight, false, 80, 20);
-
-    // Use Value binding for automatic bidirectional sync
-    slider.getValueObject().referTo(attachment.getValue());
-
-    label.setText(labelText, juce::dontSendNotification);
-    label.setJustificationType(juce::Justification::centredLeft);
-
-    unitsLabel.setText(attachment.getUnits(), juce::dontSendNotification);
-    unitsLabel.setJustificationType(juce::Justification::centredLeft);
-
-    addAndMakeVisible(slider);
-    addAndMakeVisible(label);
-    addAndMakeVisible(unitsLabel);
-}
-
-void TuningPreviewComponent::setupTextEditorWithValueBinding(Label& inputLabel, Label& unitsLabel,
-                                                            RangedParamAttachment<double>& attachment) {
-    const auto range = attachment.getRange();
-
-    // Set up the input label to behave like a text editor
-    inputLabel.setEditable(true);
-    inputLabel.setJustificationType(Justification::centredLeft);
-
-    // Set colors to match Slider's text box appearance
-    inputLabel.setColour(Label::outlineColourId, inputLabel.findColour(Slider::textBoxOutlineColourId));
-    inputLabel.setColour(Label::backgroundColourId, inputLabel.findColour(Slider::textBoxBackgroundColourId));
-    inputLabel.setColour(Label::textColourId, inputLabel.findColour(Slider::textBoxTextColourId));
-    inputLabel.setColour(TextEditor::outlineColourId, inputLabel.findColour(Slider::textBoxOutlineColourId));
-    inputLabel.setColour(TextEditor::backgroundColourId, inputLabel.findColour(Slider::textBoxBackgroundColourId));
-    inputLabel.setColour(TextEditor::textColourId, inputLabel.findColour(Slider::textBoxTextColourId));
-
-    inputLabel.setText(String(attachment.getValue().getValue()), juce::dontSendNotification);
-
-    // Handle text changes
-    inputLabel.onTextChange = [&inputLabel, &attachment, range]() {
-        String text = inputLabel.getText();
-        double value = text.getDoubleValue();
-
-        // Clamp value to valid range
-        value = jlimit(range.start, range.end, value);
-
-        // Update the attachment
-        attachment.getValue().setValue(value);
-
-        // Update label to show clamped value if needed
-        if (std::abs(value - text.getDoubleValue()) > 1e-9) {
-            inputLabel.setText(String(value), juce::dontSendNotification);
-        }
-    };
-
-    // Listen for external value changes
-    attachment.getValue().addListener(this);
-
-    unitsLabel.setText(attachment.getUnits(), juce::dontSendNotification);
-    unitsLabel.setJustificationType(juce::Justification::centredLeft);
-
-    addAndMakeVisible(inputLabel);
-    addAndMakeVisible(unitsLabel);
-}
-
 void TuningPreviewComponent::updateControlsState() {
     // Update clock controls
     bool isCustom = viewModel.isCustomClockEnabled();
@@ -839,9 +813,8 @@ void TuningPreviewComponent::valueChanged(Value& value) {
         auto newIndex = viewModel.selectedParams.tuningTable.getStoredValueAs<int>();
         tuningsListBox.selectRow(newIndex, false, false);
     }
-    else if (value.refersToSameSourceAs(viewModel.clockFrequencyMhz.getValue())) {
-        // Update text editor when value changes externally
-        double newValue = static_cast<double>(viewModel.clockFrequencyMhz.getValue().getValue());
+    else if (value.refersToSameSourceAs(viewModel.selectedParams.clockFrequencyMhz.getPropertyAsValue())) {
+        double newValue = viewModel.selectedParams.clockFrequencyMhz.getStoredValue();
         chipClock.frequencyInput.setText(String(newValue), juce::dontSendNotification);
     }
 }

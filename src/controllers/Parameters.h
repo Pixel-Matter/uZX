@@ -578,7 +578,6 @@ public:
     void addListener(Value::Listener* listener) {
         static_assert(std::is_base_of<ParamsBase, Derived>::value, "Derived must inherit from ParamsBase");
         static_cast<Derived*>(this)->visit([&listener] (auto& value) {
-            DBG("Added listener to param " << value.definition.identifier);
             value.addListener(listener);
         });
     }

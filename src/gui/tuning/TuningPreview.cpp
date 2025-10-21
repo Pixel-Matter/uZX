@@ -534,7 +534,7 @@ TuningPreviewComponent::TuningPreviewComponent(TuningViewModel& vm, TuningPlayer
 
 TuningPreviewComponent::~TuningPreviewComponent() {
     viewModel.removeChangeListener(this);
-    viewModel.selectedTuningTable.removeListener(this);
+    viewModel.selectedParams.tuningTable.removeListener(this);
 }
 
 
@@ -616,7 +616,7 @@ void TuningPreviewComponent::paintListBoxItem(int rowNumber, Graphics& g, int wi
 
 void TuningPreviewComponent::listBoxItemClicked(int row, const MouseEvent& e) {
     juce::ignoreUnused(e);
-    viewModel.selectedTuningTable = BuiltinTuningType(row); // Update the tuning table index in the view model
+    viewModel.selectedParams.tuningTable.setStoredValue(BuiltinTuningType(row));
 }
 
 // UI setup helpers
@@ -703,8 +703,8 @@ void TuningPreviewComponent::setupTuningTableControls() {
     tuningTableLabel.setText("Tuning Tables:", juce::dontSendNotification);
     tuningsListBox.setModel(this);
     tuningsListBox.setMultipleSelectionEnabled(false);
-    tuningsListBox.selectRow(static_cast<int>(viewModel.selectedTuningTable.get()), false, false);
-    viewModel.selectedTuningTable.addListener(this);
+    tuningsListBox.selectRow(viewModel.selectedParams.tuningTable.getStoredValueAs<int>(), false, false);
+    viewModel.selectedParams.tuningTable.addListener(this);
 
     addAndMakeVisible(tuningTableLabel);
     addAndMakeVisible(tuningsListBox);
@@ -750,8 +750,8 @@ void TuningPreviewComponent::handleExportButtonClick() {
 // Value::Listener implementation for ListBox and other custom sync
 void TuningPreviewComponent::valueChanged(Value& value) {
     // DBG("TuningPreviewComponent::valueChanged");
-    if (value.refersToSameSourceAs(viewModel.selectedTuningTable.getValue())) {
-        int newIndex = static_cast<int>(viewModel.selectedTuningTable.get());
+    if (value.refersToSameSourceAs(viewModel.selectedParams.tuningTable.getPropertyAsValue())) {
+        auto newIndex = viewModel.selectedParams.tuningTable.getStoredValueAs<int>();
         tuningsListBox.selectRow(newIndex, false, false);
     }
     else if (value.refersToSameSourceAs(viewModel.clockFrequencyMhz.getValue())) {

@@ -224,9 +224,12 @@ public:
 
         template<typename Visitor>
         void visit(Visitor&& visitor) {
+            visitor(tuningTable);
             visitor(tuningType);
         }
 
+        ParameterValue<BuiltinTuningType> tuningTable {{"tuningTable", IDs::tuningTable, "Tuning Table", "Selected tuning table",
+                                                        BuiltinTuningType::EqualTemperament, BuiltinTuningType::getLongLabels()}};
         ParameterValue<TuningSystemType> tuningType {{"tuning", IDs::tuningSystem, "Tuning", "Reference tuning system",
                                                       TuningSystemType::EqualTemperament, TuningSystemTypeLabels }};
     };
@@ -238,7 +241,6 @@ public:
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
                                                                  // no undo for this control
-        , selectedTuningTable(transientState, IDs::tuningTable,                                    nullptr,       BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), &undoManager, ChipClockChoice::ZX_Spectrum_1_77_MHz)
         , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         &undoManager, Scale::Tonic::C)
         , selectedScaleType  (transientState, IDs::scale,                                          &undoManager, Scale::ScaleType::IonianOrMajor)
@@ -254,7 +256,6 @@ public:
 
     {
         // Set up Value listeners for bidirectional sync
-        selectedTuningTable.addListener(this);
         selectedChip.addListener(this);
         selectedTonic.addListener(this);
         selectedScaleType.addListener(this);
@@ -748,11 +749,9 @@ private:
             selectedParams.tuningType.forceUpdateOfCachedValue();
             updateReferenceTuning();
             sendChangeMessage();
-        } else if (value.refersToSameSourceAs(selectedTuningTable.getValue())) {
-            selectedTuningTable.forceUpdateOfCachedValue();
-            // DBG("Tuning table index changed from valueChanged: " << static_cast<int>(value.getValue()));
-            recreateTuningSystem(); // Reset to tuning defaults when changing tuning table
-            // DBG("Tuning table index changed from valueChanged sendChangeMessage");
+        } else if (value.refersToSameSourceAs(selectedParams.tuningTable.getPropertyAsValue())) {
+            selectedParams.tuningTable.forceUpdateOfCachedValue();
+            recreateTuningSystem();
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(playChords.getValue())) {
             playChords.forceUpdateOfCachedValue();
@@ -773,7 +772,7 @@ private:
 
     void recreateTuningSystem() {
         // DBG("Recreating tuning system with index: " << tuningTableIndex0.get());
-        auto builtinTable = selectedTuningTable.get();
+        auto builtinTable = selectedParams.tuningTable.getStoredValue();
 
         TuningOptions options {
             .builtinTable = builtinTable,
@@ -851,7 +850,6 @@ public:
     SelectionParams selectedParams;
 
     // ParamAttachment objects - single source of truth for all persisted types
-    ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
     ChoiceParamAttachment<ChipClockChoice>   selectedChip;
     ChoiceParamAttachment<Scale::Tonic>      selectedTonic;
     ChoiceParamAttachment<Scale::ScaleType>  selectedScaleType;

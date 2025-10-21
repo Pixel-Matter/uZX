@@ -104,6 +104,39 @@ void SliderParamEndpointBinding::refreshFromSource() {
     slider.setValue(static_cast<double>(endpoint().getLiveFloatValue()), dontSendNotification);
 }
 
+//==============================================================================
+void ComboBoxParamEndpointBinding::configureWidget() {
+    comboBox.setTooltip(endpoint().getDescription());
+    fillItems();
+}
+
+void ComboBoxParamEndpointBinding::configureWidgetHandlers() {
+    comboBox.onChange = [this] {
+        if (updating)
+            return;
+
+        juce::ScopedValueSetter<bool> svs(updating, true);
+        endpoint().setStoredFloatValue(static_cast<float>(comboBox.getSelectedId() - 1));
+    };
+}
+
+void ComboBoxParamEndpointBinding::fillItems() {
+    comboBox.clear();
+    for (int i = 0; i < endpoint().numberOfStates(); ++i) {
+        auto item = endpoint().stateToLabel(i);
+        comboBox.addItem(item, i + 1);
+    }
+}
+
+void ComboBoxParamEndpointBinding::refreshFromSource() {
+    if (updating)
+        return;
+
+    juce::ScopedValueSetter<bool> svs(updating, true);
+    const auto storedState = endpoint().floatToState(endpoint().getLiveFloatValue());
+    comboBox.setSelectedId(storedState + 1, dontSendNotification);
+}
+
 //============================================================================
 
 void ButtonParamEndpointBinding::configureWidget() {

@@ -93,12 +93,11 @@ public:
     explicit ParamValueEndpoint(ParameterValue<Type>& value)
         : parameterValue(value)
     {
-        storedValue = value.getPropertyAsValue();
-        storedValue.addListener(this);
+        parameterValue.addListener(this);
     }
 
     ~ParamValueEndpoint() override {
-        storedValue.removeListener(this);
+        parameterValue.removeListener(this);
     }
 
     NormalisableRange<float> getRange() const override {
@@ -186,7 +185,6 @@ private:
     }
 
     ParameterValue<Type>& parameterValue;
-    Value storedValue;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParamValueEndpoint)
 };

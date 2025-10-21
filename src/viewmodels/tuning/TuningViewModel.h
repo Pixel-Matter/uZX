@@ -2,15 +2,17 @@
 
 #include <JuceHeader.h>
 
+#include "../../controllers/ParamAttachments.h"
+#include "../../controllers/Parameters.h"
+
 #include "../../models/tuning/TemperamentSystem.h"
 #include "../../models/tuning/TuningSystemBase.h"
 #include "../../models/tuning/TuningRegistry.h"
 #include "../../models/tuning/Scales.h"
+
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../../util/convert.h"
-#include "../../controllers/ParamAttachments.h"
 #include "../../utils/StringLiterals.h"
-#include "../../controllers/Parameters.h"
 
 #include <cmath>
 #include <array>
@@ -223,7 +225,8 @@ public:
             visitor(tuningType);
         }
 
-        ParameterValue<TuningSystemType> tuningType {{"tuning", IDs::tuningSystem, "Tuning", "Tuning system", TuningSystemType::EqualTemperament}};
+        // TODO do not use "User custom"
+        ParameterValue<TuningSystemType> tuningType {{"tuning", IDs::tuningSystem, "Tuning", "Reference tuning system", TuningSystemType::EqualTemperament}};
     };
 
     TuningViewModel(te::Edit& ed)
@@ -233,11 +236,10 @@ public:
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
                                                                  // no undo for this control
-        , selectedTemperament(transientState, IDs::tuningSystem, TuningSystemType::getLongLabels(), &undoManager, TuningSystemType::EqualTemperament)
-        , selectedTuningTable(transientState, IDs::tuningTable,                               nullptr, BuiltinTuningType::EqualTemperament)
+        , selectedTuningTable(transientState, IDs::tuningTable,                                    nullptr,       BuiltinTuningType::EqualTemperament)
         , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), &undoManager, ChipClockChoice::ZX_Spectrum_1_77_MHz)
         , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         &undoManager, Scale::Tonic::C)
-        , selectedScaleType      (transientState, IDs::scale,                                          &undoManager, Scale::ScaleType::IonianOrMajor)
+        , selectedScaleType  (transientState, IDs::scale,                                          &undoManager, Scale::ScaleType::IonianOrMajor)
         , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              &undoManager, 440.0, "Hz")
         , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                &undoManager, 1.7734, "MHz")
 
@@ -250,7 +252,6 @@ public:
 
     {
         // Set up Value listeners for bidirectional sync
-        selectedTemperament.addListener(this);
         selectedTuningTable.addListener(this);
         selectedChip.addListener(this);
         selectedTonic.addListener(this);
@@ -261,6 +262,9 @@ public:
         playTone.addListener(this);
         playEnvelope.addListener(this);
 
+        selectedParams.referTo(transientState, &undoManager);
+        selectedParams.addListener(this);
+
         // init default values
         // The problem is that setting initial value in ParamAttachment constructor
         // before adding listeners results in not calling valueChanged
@@ -268,6 +272,10 @@ public:
         playTone = true;
 
         recreateTuningSystem();
+    }
+
+    ~TuningViewModel() override {
+        selectedParams.removeListener(this);
     }
 
     te::Edit& getEdit() const {
@@ -684,6 +692,11 @@ public:
         }
     }
 
+    TuningSystemType getTuningType() const {
+        jassert(tuningSystem != nullptr);
+        return tuningSystem->getReferenceTuning()->getType();
+    }
+
 private:
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
@@ -729,8 +742,8 @@ private:
             // if chip == ChipClockChoice::Custom we should send change message too
             // DBG("chipIndex0 changed from valueChanged sendChangeMessage");
             sendChangeMessage();
-        } else if (value.refersToSameSourceAs(selectedTemperament.getValue())) {
-            selectedTemperament.forceUpdateOfCachedValue();
+        } else if (value.refersToSameSourceAs(selectedParams.tuningType.getPropertyAsValue())) {
+            selectedParams.tuningType.forceUpdateOfCachedValue();
             updateReferenceTuning();
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(selectedTuningTable.getValue())) {
@@ -758,11 +771,10 @@ private:
 
     void recreateTuningSystem() {
         // DBG("Recreating tuning system with index: " << tuningTableIndex0.get());
-        auto tuningType = selectedTuningTable.get();
+        auto builtinTable = selectedTuningTable.get();
 
         TuningOptions options {
-            .tableType = tuningType,
-            .temperamentType = selectedTemperament.get(),
+            .builtinTable = builtinTable,
             .tonic = getCurrentTonic(),
             .scaleType = getCurrentScaleType(),
             .chipChoice = selectedChip.get(),
@@ -774,7 +786,7 @@ private:
 
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
-            selectedTemperament = tuningSystem->getReferenceTuning()->getType();
+            selectedParams.tuningType.setStoredValue(tuningSystem->getReferenceTuning()->getType());
             selectedTonic = options.tonic;
             selectedScaleType = options.scaleType;
             selectedChip = options.chipChoice;
@@ -786,7 +798,7 @@ private:
     void updateReferenceTuning() {
         if (tuningSystem) {
             tuningSystem->setReferenceTuning(makeReferenceTuningSystem(
-                selectedTemperament.get(),
+                selectedParams.tuningType.getStoredValue(),
                 getCurrentTonic(),
                 a4Frequency.get()
         ));
@@ -837,7 +849,6 @@ public:
     SelectionParams selectedParams;
 
     // ParamAttachment objects - single source of truth for all persisted types
-    ChoiceParamAttachment<TuningSystemType>   selectedTemperament; // Equal, Just, Pythagorean, etc.
     ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
     ChoiceParamAttachment<ChipClockChoice>   selectedChip;
     ChoiceParamAttachment<Scale::Tonic>      selectedTonic;

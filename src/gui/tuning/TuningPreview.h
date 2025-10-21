@@ -1,11 +1,14 @@
 #pragma once
 
 #include "JuceHeader.h"
+
+#include "../../controllers/ScaleBindings.h"
 #include "../../viewmodels/tuning/TuningViewModel.h"
 #include "../../viewmodels/tuning/TuningPlayer.h"
-#include "../../controllers/App.h"
-#include "../../controllers/ScaleBindings.h"
+
+#include "../common/ParamBindings.h"
 #include "../common/MoTooltipWindow.h"
+
 #include <map>
 
 namespace MoTool {
@@ -89,7 +92,7 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPreviewGrid)
 };
 
-
+//================================================================================
 class TuningPreviewComponent : public juce::Component,
                                private ChangeListener,
                                private ListBoxModel,
@@ -172,7 +175,8 @@ private:
 
         Label label;
         ComboBox select;
-        ComboBoxBinding<TuningSystemType> binding;
+        ComboBoxParamEndpointBinding binding;
+        // ComboBoxBinding<TuningSystemType> binding;
     };
     ReferenceTuning tuning {*this, viewModel};
 

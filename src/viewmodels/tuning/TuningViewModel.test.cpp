@@ -11,6 +11,19 @@ public:
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
 
+        beginTest("Reference Tuning Selection");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
+            expectEquals(static_cast<int>(viewModel.getTuningType()), static_cast<int>(TuningSystemType::EqualTemperament));
+
+            DBG("Setting tuning type to Pythagorean");
+            viewModel.selectedParams.tuningType.setStoredValue(TuningSystemType::Pythagorean);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            // expectEquals(String(viewModel.selectedParams.tuningType.getPropertyAsValue().getValue()), TuningSystemType(TuningSystemType::Pythagorean).getLabel().data());
+            expectEquals(static_cast<int>(viewModel.getTuningType()), static_cast<int>(TuningSystemType::Pythagorean));
+        }
+
         beginTest("Scale and Key selection - C Major");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);

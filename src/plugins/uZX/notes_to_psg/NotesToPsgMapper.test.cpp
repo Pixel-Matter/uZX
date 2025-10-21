@@ -22,7 +22,7 @@ private:
 
     std::unique_ptr<TuningSystem> createTestTuning() {
         TuningOptions options {
-            .tableType = BuiltinTuningEnum::EqualTemperament,
+            .builtinTable = BuiltinTuningEnum::EqualTemperament
         };
         return makeBuiltinTuning(options);
     }

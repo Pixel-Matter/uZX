@@ -95,6 +95,35 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderParamEndpointBinding)
 };
 
+//==============================================================================
+class ComboBoxParamEndpointBinding : public WidgetParamEndpointBinding {
+public:
+    ComboBoxParamEndpointBinding(ComboBox& c, auto&& endpoint)
+        : WidgetParamEndpointBinding(c, std::forward<decltype(endpoint)>(endpoint))
+        , comboBox(c)
+    {
+        configureWidget();
+        configureWidgetHandlers();
+        refreshFromSource();
+    }
+
+    template <typename Type>
+    ComboBoxParamEndpointBinding(ComboBox& s, ParameterValue<Type>& paramValue, te::AutomatableParameter::Ptr parameterIn = {})
+        : ComboBoxParamEndpointBinding(s, makeResolveParamEndpoint(paramValue, std::move(parameterIn)))
+    {}
+
+private:
+    void configureWidget();
+    void configureWidgetHandlers();
+    void refreshFromSource() override;
+
+    void fillItems();
+
+    ComboBox& comboBox;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ComboBoxParamEndpointBinding)
+};
+
 //============================================================================
 class ButtonParamEndpointBinding : public WidgetParamEndpointBinding {
 public:

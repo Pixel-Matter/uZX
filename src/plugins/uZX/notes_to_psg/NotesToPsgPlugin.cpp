@@ -37,7 +37,7 @@ void NotesToPsgPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
     staticParams.restoreStateFromValueTree(v);
 
     updateParams();
-    
+
     // IMPOTANT! To restore automated parameters properly
     PluginBase::restorePluginStateFromValueTree(v);
 }
@@ -56,7 +56,7 @@ void NotesToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& 
     juce::ignoreUnused(v);
 
     if (id == IDs::midiBase || id == IDs::midiChans) {
-        staticParams.baseMidiChannel.value.forceUpdateOfCachedValue();
+        staticParams.baseMidiChannel.forceUpdateOfCachedValue();
         updateParams();
     }
 }

@@ -188,11 +188,58 @@ public:
             FractionNumber(15, 8)   // Major seventh
         }
     );
-    JustIntonation5Limit(const juce::ValueTree& state);
-
-    TuningSystemType getType() const override;
+    using RationalTuning::RationalTuning;
 };
 
+//==============================================================================
+class JustIntonation5LimitT45_64 final : public RationalTuning {
+public:
+    JustIntonation5LimitT45_64(
+        const Scale::Tonic tonicToUse,
+        double a4Frequency = 440.0,
+        std::array<FractionNumber, 12> ratios = {
+            FractionNumber(1, 1),   // Unison
+            FractionNumber(16, 15), // Minor second
+            FractionNumber(9, 8),   // Major second
+            FractionNumber(6, 5),   // Minor third
+            FractionNumber(5, 4),   // Major third
+            FractionNumber(4, 3),   // Perfect fourth
+            FractionNumber(64, 45), // Diminished fifth
+            FractionNumber(3, 2),   // Perfect fifth
+            FractionNumber(8, 5),   // Minor sixth
+            FractionNumber(5, 3),   // Major sixth
+            FractionNumber(16, 9),  // Minor seventh
+            FractionNumber(15, 8)   // Major seventh
+        }
+    );
+    using RationalTuning::RationalTuning;
+};
+
+//==============================================================================
+class PythagoreanTuning final : public RationalTuning {
+public:
+    PythagoreanTuning(
+        const Scale::Tonic tonicToUse,
+        double a4Frequency = 440.0,
+        std::array<FractionNumber, 12> ratios = {
+            FractionNumber(1, 1),     // Unison
+            FractionNumber(256, 243), // Minor second
+            FractionNumber(9, 8),     // Major second
+            FractionNumber(32, 27),   // Minor third
+            FractionNumber(81, 64),   // Major third
+            FractionNumber(4, 3),     // Perfect fourth
+            FractionNumber(729, 512), // Augmented fourth
+            FractionNumber(3, 2),     // Perfect fifth
+            FractionNumber(128, 81),  // Minor sixth
+            FractionNumber(27, 16),   // Major sixth
+            FractionNumber(16, 9),    // Minor seventh
+            FractionNumber(243, 128)  // Major seventh
+        }
+    );
+    using RationalTuning::RationalTuning;
+};
+
+//==============================================================================
 std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystem(
     TuningSystemType type,
     const Scale::Tonic tonic,

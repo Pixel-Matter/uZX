@@ -358,10 +358,10 @@ struct ParameterDef<E> {
         for (size_t i = 0; i < labels.size(); ++i) {
             if (i > 0)
                 s += ", ";
-            s += String(labels[i]);
+            s += String(labels[i].data());
         }
         s += ")";
-        s += " (default " + String(defaultValue.getLabel()) + ")";
+        s += " (default " + String(defaultValue.getLabel().data()) + ")";
         return s;
     }
 
@@ -458,53 +458,43 @@ struct ParameterValue {
             return context;
         }
 
-        // void set(Reader r, void* ctx) noexcept {
-        //     reader = r;
-        //     context = ctx;
-        // }
-
-        // void reset() noexcept {
-        //     reader = nullptr;
-        //     context = nullptr;
-        // }
-
-        // constexpr auto hasReader() const noexcept -> bool { return reader != nullptr; }
-
-        // auto readOr(const Type& fallback) const -> Type {
-        //     if (reader != nullptr)
-        //         return reader(context);
-        //     return fallback;
-        // }
-
     private:
         Reader reader { nullptr };
         void* context { nullptr };
-        // CachedValue<LiveType> liveValue;  // for attaching automation
     };
 
     explicit ParameterValue(const ParameterDef<Type>& def)
         : definition(def)
-    {}
+    {
+    }
 
     ParameterValue(ParameterValue&&) = default;
-    ParameterValue& operator= (ParameterValue&&) = default;
 
     ParameterValue(const ParameterDef<Type>& def, ValueTree& state, UndoManager* undoMgr = nullptr)
         : definition(def)
-        , value(state, def.identifier, undoMgr, def.defaultValue)
+        , cachedValue(state, def.identifier, undoMgr, def.defaultValue)
     {}
 
     inline void referTo(ValueTree& v, UndoManager* um) {
-        value.referTo(v, definition.propertyID, um, definition.defaultValue);
+        cachedValue.referTo(v, definition.propertyID, um, definition.defaultValue);
 
-        if (value.isUsingDefault()) {
+        if (cachedValue.isUsingDefault()) {
             // ensure the default value is written to the state tree
-            value = definition.defaultValue;
+            cachedValue = definition.defaultValue;
         }
+        rawValue = cachedValue.getPropertyAsValue();
+    }
+
+    void addListener(Value::Listener* listener) {
+        rawValue.addListener(listener);
+    }
+
+    void removeListener(Value::Listener* listener) {
+        rawValue.removeListener(listener);
     }
 
     Type getStoredValue() const {
-        return value.get();
+        return cachedValue.get();
     }
 
     template <typename U>
@@ -538,16 +528,16 @@ struct ParameterValue {
     }
 
     void setStoredValue(Type newValue) {
-        value = newValue;
+        cachedValue = newValue;
     }
 
     void setStoredValueAs(auto newValue) {
         using Traits = ParameterConversionTraits<Type>;
-        value = Traits::from(newValue);
+        cachedValue = Traits::from(newValue);
     }
 
     Value getPropertyAsValue() {
-        return value.getPropertyAsValue();
+        return rawValue;
     }
 
     void setLiveReader(typename LiveAccessor::Reader reader, void* context) noexcept {
@@ -559,9 +549,18 @@ struct ParameterValue {
     }
 
     const ParameterDef<Type> definition;
-    CachedValue<Type> value;
+
+    CachedValue<Type>& getCachedValue() noexcept {
+        return cachedValue;
+    }
+
+    inline void forceUpdateOfCachedValue() {
+        cachedValue.forceUpdateOfCachedValue();
+    }
 
 private:
+    CachedValue<Type> cachedValue;
+    Value rawValue;
     std::unique_ptr<LiveAccessor> liveAccessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterValue)
@@ -579,9 +578,24 @@ public:
         });
     }
 
+    void addListener(Value::Listener* listener) {
+        static_assert(std::is_base_of<ParamsBase, Derived>::value, "Derived must inherit from ParamsBase");
+        static_cast<Derived*>(this)->visit([&listener] (auto& value) {
+            DBG("Added listener to param " << value.definition.identifier);
+            value.addListener(listener);
+        });
+    }
+
+    void removeListener(Value::Listener* listener) {
+        static_assert(std::is_base_of<ParamsBase, Derived>::value, "Derived must inherit from ParamsBase");
+        static_cast<Derived*>(this)->visit([&listener] (auto& value) {
+            value.removeListener(listener);
+        });
+    }
+
     void restoreStateFromValueTree(const ValueTree& v) {
-        static_cast<Derived*>(this)->visit([&v] (auto& value) {
-            tracktion::copyPropertiesToCachedValues(v, value.value );
+        static_cast<Derived*>(this)->visit([&v] (auto& prop) {
+            tracktion::copyPropertiesToCachedValues(v, prop.getCachedValue() );
         });
     }
 

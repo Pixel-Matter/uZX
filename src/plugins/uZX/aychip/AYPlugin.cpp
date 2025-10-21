@@ -42,7 +42,7 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 const ScopedLock sl(lock);
                 // it a static params, so it is ok to mute sounds
                 chip->muteSound();
-                staticParams.baseMidiChannel.value.forceUpdateOfCachedValue();
+                staticParams.baseMidiChannel.forceUpdateOfCachedValue();
                 midiParamsReader.setBaseChannel(staticParams.baseMidiChannel.getStoredValue());
             }
         }

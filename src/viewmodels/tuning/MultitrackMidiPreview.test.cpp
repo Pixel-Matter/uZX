@@ -15,13 +15,14 @@ public:
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
+            size_t ch = 1;
 
             // Play a single note with tone enabled
             preview.playSingleNote(60, 0.5, true, false, 0, 0);
 
             // Inspect the sequence on track 0
             auto& clips = preview.getChannelClips();
-            auto& sequence = clips[0]->getSequence();
+            auto& sequence = clips[ch]->getSequence();
 
             // Should have 1 CC message (tone switch) and 1 note
             const auto& notes = sequence.getNotes();
@@ -46,13 +47,14 @@ public:
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
+            size_t ch = 1;
 
             // Play a single note with envelope enabled
             preview.playSingleNote(60, 0.5, true, true, 5, 12);
 
             // Inspect the sequence on track 0 (main note)
             auto& clips = preview.getChannelClips();
-            auto& sequence0 = clips[0]->getSequence();
+            auto& sequence0 = clips[ch]->getSequence();
 
             const auto& notes0 = sequence0.getNotes();
             const auto& controllers0 = sequence0.getControllerEvents();
@@ -142,6 +144,7 @@ public:
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
+            size_t ch = 1;
 
             // Play an arpeggio
             std::vector<int> arpeggioNotes = {60, 64, 67, 72};
@@ -149,7 +152,7 @@ public:
 
             // Check that track 0 has all notes at different times
             auto& clips = preview.getChannelClips();
-            auto& sequence = clips[0]->getSequence();
+            auto& sequence = clips[ch]->getSequence();
             const auto& notes = sequence.getNotes();
             const auto& controllers = sequence.getControllerEvents();
 
@@ -189,12 +192,13 @@ public:
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
+            size_t ch = 1;
 
             // Play a single note with tone enabled
             preview.playSingleNote(60, 0.5, true, false, 0, 0);
 
             auto& clips = preview.getChannelClips();
-            auto& midiClip = clips[0];
+            auto& midiClip = clips[ch];
 
             // Get the actual playback MIDI sequence
             auto playbackSequence = tracktion::MidiList::createDefaultPlaybackMidiSequence(
@@ -220,7 +224,7 @@ public:
                     if (message.getControllerNumber() == static_cast<int>(MidiCCType::GPB1ToneSwitch)) {
                         foundToneCC = true;
                         expectEquals(message.getControllerValue(), 127, "Tone switch should be 127 in playback sequence");
-                        expectEquals(message.getChannel(), 1, "Tone switch should be on channel 1");
+                        expectEquals(message.getChannel(), (int) ch + 1, "Tone switch should be on channel " + String((int)ch + 1));
                     }
                 } else if (message.isNoteOn()) {
                     noteCount++;

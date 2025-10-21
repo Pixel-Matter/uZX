@@ -431,9 +431,9 @@ int TuningPreviewComponent::KeyScale::getHeight() const {
 
 //================================================================================
 TuningPreviewComponent::ReferenceTuning::ReferenceTuning(TuningPreviewComponent& c, TuningViewModel& vm)
-    : binding(select, vm.selectedTemperament)
+    : binding(select, vm.selectedParams.tuningType)
 {
-    label.setText("Reference tuning", juce::dontSendNotification);
+    label.setText(binding.endpoint().getDescription(), juce::dontSendNotification);
 
     c.addAndMakeVisible(label);
     c.addAndMakeVisible(select);

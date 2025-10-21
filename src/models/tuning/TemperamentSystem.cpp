@@ -315,7 +315,7 @@ juce::String RationalTuning::getRatiosAsString(const std::array<FractionNumber, 
     return tokens.joinIntoString(",");
 }
 
-
+//==============================================================================
 // Just Intonation 5-limit tuning
 JustIntonation5Limit::JustIntonation5Limit(const Scale::Tonic tonicToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
     : RationalTuning(ratios, tonicToUse, a4Freq)
@@ -323,16 +323,21 @@ JustIntonation5Limit::JustIntonation5Limit(const Scale::Tonic tonicToUse, double
     state.setProperty(IDs::type, "Just5Limit", nullptr);
 }
 
-JustIntonation5Limit::JustIntonation5Limit(const juce::ValueTree& initialState)
-    : RationalTuning(initialState)
+//==============================================================================
+JustIntonation5LimitT45_64::JustIntonation5LimitT45_64(const Scale::Tonic tonicToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
+    : RationalTuning(ratios, tonicToUse, a4Freq)
 {
+    state.setProperty(IDs::type, "Just5LimitT45_64", nullptr);
 }
 
-TuningSystemType JustIntonation5Limit::getType() const {
-    return TuningSystemType(state.getProperty(IDs::type, "Just5Limit").toString().toStdString());
+//==============================================================================
+PythagoreanTuning::PythagoreanTuning(const Scale::Tonic tonicToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
+    : RationalTuning(ratios, tonicToUse, a4Freq)
+{
+    state.setProperty(IDs::type, "Pythagorean", nullptr);
 }
 
-
+//==============================================================================
 // standalone functions
 std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystem(
     TuningSystemType type,
@@ -346,41 +351,11 @@ std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystem(
         case TuningSystemEnum::Just5Limit:
             return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency);
 
-        case TuningSystemEnum::Just5LimitT45_64: {
-            std::array<FractionNumber, 12> ratios = {
-                FractionNumber(1, 1),   // Unison
-                FractionNumber(16, 15), // Minor second
-                FractionNumber(9, 8),   // Major second
-                FractionNumber(6, 5),   // Minor third
-                FractionNumber(5, 4),   // Major third
-                FractionNumber(4, 3),   // Perfect fourth
-                FractionNumber(64, 45), // Diminished fifth
-                FractionNumber(3, 2),   // Perfect fifth
-                FractionNumber(8, 5),   // Minor sixth
-                FractionNumber(5, 3),   // Major sixth
-                FractionNumber(16, 9),  // Minor seventh
-                FractionNumber(15, 8)   // Major seventh
-            };
-            return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency, ratios);
-        }
+        case TuningSystemEnum::Just5LimitT45_64:
+            return std::make_unique<JustIntonation5LimitT45_64>(tonic, a4Frequency);
 
-        case TuningSystemEnum::Pythagorean: {
-            std::array<FractionNumber, 12> ratios = {
-                FractionNumber(1, 1),     // Unison
-                FractionNumber(256, 243), // Minor second
-                FractionNumber(9, 8),     // Major second
-                FractionNumber(32, 27),   // Minor third
-                FractionNumber(81, 64),   // Major third
-                FractionNumber(4, 3),     // Perfect fourth
-                FractionNumber(729, 512), // Augmented fourth
-                FractionNumber(3, 2),     // Perfect fifth
-                FractionNumber(128, 81),  // Minor sixth
-                FractionNumber(27, 16),   // Major sixth
-                FractionNumber(16, 9),    // Minor seventh
-                FractionNumber(243, 128)  // Major seventh
-            };
-            return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency, ratios);
-        }
+        case TuningSystemEnum::Pythagorean:
+            return std::make_unique<PythagoreanTuning>(tonic, a4Frequency);
 
         // Add other temperament types here as needed
         case TuningSystemEnum::CustomRational:
@@ -398,6 +373,10 @@ std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystemFromState(const 
         return std::make_unique<EqualTemperamentTuning>(state);
     } else if (type == TuningSystemType::Just5Limit) {
         return std::make_unique<JustIntonation5Limit>(state);
+    } else if (type == TuningSystemType::Just5LimitT45_64) {
+        return std::make_unique<JustIntonation5LimitT45_64>(state);
+    } else if (type == TuningSystemType::Pythagorean) {
+        return std::make_unique<PythagoreanTuning>(state);
     } else if (type == TuningSystemType::CustomRational) {
         return std::make_unique<RationalTuning>(state);
     }

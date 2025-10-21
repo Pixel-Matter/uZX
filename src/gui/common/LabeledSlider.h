@@ -18,21 +18,7 @@ class LabeledSlider : public Component,
                       private ChangeListener  // MidiMapping change listener
 {
 public:
-    LabeledSlider(std::unique_ptr<ParameterEndpoint> endpoint, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
-        : binding(slider, std::move(endpoint))
-    {
-        slider.setSliderStyle(style);
-        slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-
-        label.setText(binding.endpoint().getName(), dontSendNotification);
-        label.setJustificationType(Justification::centred);
-        label.setFont(label.getFont().withPointHeight((float) labelHeight));
-
-        addAndMakeVisible(slider);
-        addAndMakeVisible(label);
-
-        binding.midiMapping.addChangeListener(this);
-    }
+    LabeledSlider(std::unique_ptr<ParameterEndpoint> endpoint, Slider::SliderStyle style = Slider::RotaryVerticalDrag);
 
     template <typename Type>
     LabeledSlider(ParameterValue<Type>& value, Slider::SliderStyle style = Slider::RotaryVerticalDrag)
@@ -44,9 +30,7 @@ public:
         : LabeledSlider(makeResolveParamEndpoint(editItem, value), style)
     {}
 
-    ~LabeledSlider() override {
-        binding.midiMapping.removeChangeListener(this);
-    }
+    ~LabeledSlider() override;
 
     void resized() override;
     void paint(Graphics& g) override;
@@ -58,11 +42,7 @@ public:
 
 private:
     // listener to update on mapping changes
-    void changeListenerCallback(ChangeBroadcaster* source) override {
-        if (source == &binding.midiMapping) {
-            repaint();
-        }
-    }
+    void changeListenerCallback(ChangeBroadcaster* source) override;
 
     Slider slider;
     Label label;

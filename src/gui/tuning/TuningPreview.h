@@ -2,7 +2,6 @@
 
 #include "JuceHeader.h"
 
-#include "../../controllers/ScaleBindings.h"
 #include "../../viewmodels/tuning/TuningViewModel.h"
 #include "../../viewmodels/tuning/TuningPlayer.h"
 
@@ -10,6 +9,7 @@
 #include "../common/MoTooltipWindow.h"
 
 #include <map>
+#include <vector>
 
 namespace MoTool {
 
@@ -151,7 +151,7 @@ private:
         ComboBox select;
         Label frequencyInput;
         Label unitsLabel;
-        ComboBoxBinding<ChipClockChoice> binding;
+        ComboBoxParamEndpointBinding binding;
     };
     ChipClock chipClock {*this, viewModel};
 
@@ -189,8 +189,25 @@ private:
         Label label;
         ComboBox keySelect;
         ComboBox scaleSelect;
-        ComboBoxBinding<Scale::Tonic> keySelectBinding;
-        ScaleComboBoxBinding scaleSelectBinding;
+        ComboBoxParamEndpointBinding keySelectBinding;
+
+        struct ScaleSelectBinding : private Value::Listener {
+            ScaleSelectBinding(ComboBox& comboBox, ParameterValue<Scale::ScaleType>& parameter);
+            ~ScaleSelectBinding() override;
+
+            void valueChanged(Value& value) override;
+
+        private:
+            void fillItems();
+            void refreshFromSource();
+
+            ComboBox& combo;
+            ParameterValue<Scale::ScaleType>& parameterValue;
+            bool updating { false };
+            std::vector<Scale::ScaleType> itemMap;
+        };
+
+        ScaleSelectBinding scaleSelectBinding;
     };
     KeyScale keyScale {*this, viewModel};
 

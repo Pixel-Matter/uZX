@@ -4,6 +4,8 @@
 #include "../common/Utilities.h"
 #include "../../util/Helpers.h"
 
+#include <algorithm>
+
 namespace MoTool {
 
 
@@ -376,7 +378,7 @@ TuningPreviewGrid::GridHitResult TuningPreviewGrid::GridLayout::hitTest(juce::Po
 
 //================================================================================
 TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
-    : binding(select, vm.selectedChip)
+    : binding(select, vm.selectedParams.chipClock)
 {
     label.setText("Chip clock", juce::dontSendNotification);
     // label.setJustificationType(juce::Justification::centredLeft);
@@ -405,8 +407,8 @@ int TuningPreviewComponent::ChipClock::getHeight() const {
 
 //================================================================================
 TuningPreviewComponent::KeyScale::KeyScale(TuningPreviewComponent& c, TuningViewModel& vm)
-    : keySelectBinding(keySelect, vm.selectedTonic)
-    , scaleSelectBinding(scaleSelect, vm.selectedScaleType)
+    : keySelectBinding(keySelect, vm.selectedParams.tonic)
+    , scaleSelectBinding(scaleSelect, vm.selectedParams.scaleType)
 {
     label.setText("Scale", juce::dontSendNotification);
     label.setJustificationType(juce::Justification::centredLeft);
@@ -414,6 +416,89 @@ TuningPreviewComponent::KeyScale::KeyScale(TuningPreviewComponent& c, TuningView
     c.addAndMakeVisible(label);
     c.addAndMakeVisible(keySelect);
     c.addAndMakeVisible(scaleSelect);
+}
+
+TuningPreviewComponent::KeyScale::ScaleSelectBinding::ScaleSelectBinding(ComboBox& comboBox, ParameterValue<Scale::ScaleType>& parameter)
+    : combo(comboBox)
+    , parameterValue(parameter)
+{
+    parameterValue.addListener(this);
+    fillItems();
+    refreshFromSource();
+}
+
+TuningPreviewComponent::KeyScale::ScaleSelectBinding::~ScaleSelectBinding() {
+    parameterValue.removeListener(this);
+}
+
+void TuningPreviewComponent::KeyScale::ScaleSelectBinding::fillItems() {
+    juce::ScopedValueSetter<bool> sv(updating, true);
+    combo.clear();
+    itemMap.clear();
+
+    auto categories = Scale::getAllScaleCategories();
+    const auto hasCategories = !categories.empty();
+    auto lastCategory = hasCategories
+        ? categories.back()
+        : Scale::ScaleCategory(Scale::ScaleCategory::Enum::Diatonic);
+    int itemId = 1;
+
+    const auto userCategory = Scale::ScaleCategory(Scale::ScaleCategory::Enum::User);
+    const auto userScale = Scale::ScaleType(Scale::ScaleType::Enum::User);
+
+    for (auto category : categories) {
+        if (category == userCategory)
+            continue;
+
+        combo.addSectionHeading(Scale::getNameForCategory(category));
+        auto scalesInCategory = Scale::getAllScaleTypesForCategory(category);
+
+        for (auto scaleType : scalesInCategory) {
+            if (scaleType == userScale)
+                continue;
+
+            combo.addItem(Scale::getNameForType(scaleType), itemId++);
+            itemMap.push_back(scaleType);
+        }
+
+        if (category != lastCategory || lastCategory == userCategory)
+            combo.addSeparator();
+    }
+
+    combo.onChange = [this] {
+        if (updating)
+            return;
+
+        const auto selectedId = combo.getSelectedId();
+        if (selectedId <= 0 || selectedId > static_cast<int>(itemMap.size()))
+            return;
+
+        juce::ScopedValueSetter<bool> sv(updating, true);
+        parameterValue.setStoredValue(itemMap[static_cast<size_t>(selectedId - 1)]);
+    };
+}
+
+void TuningPreviewComponent::KeyScale::ScaleSelectBinding::refreshFromSource() {
+    if (updating)
+        return;
+
+    const auto current = parameterValue.getStoredValue();
+    const auto it = std::find(itemMap.begin(), itemMap.end(), current);
+
+    juce::ScopedValueSetter<bool> sv(updating, true);
+    if (it != itemMap.end()) {
+        const auto index = static_cast<int>(std::distance(itemMap.begin(), it));
+        combo.setSelectedId(index + 1, juce::dontSendNotification);
+    } else if (!itemMap.empty()) {
+        combo.setSelectedId(1, juce::dontSendNotification);
+    } else {
+        combo.setSelectedId(0, juce::dontSendNotification);
+    }
+}
+
+void TuningPreviewComponent::KeyScale::ScaleSelectBinding::valueChanged(Value& value) {
+    juce::ignoreUnused(value);
+    refreshFromSource();
 }
 
 void TuningPreviewComponent::KeyScale::layout(juce::Rectangle<int>& area) {

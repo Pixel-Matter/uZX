@@ -224,13 +224,22 @@ public:
 
         template<typename Visitor>
         void visit(Visitor&& visitor) {
+            visitor(chipClock);
+            visitor(tonic);
+            visitor(scaleType);
             visitor(tuningTable);
             visitor(tuningType);
         }
 
-        ParameterValue<BuiltinTuningType> tuningTable {{"tuningTable", IDs::tuningTable, "Tuning Table", "Selected tuning table",
+        ParameterValue<ChipClockChoice> chipClock {{IDs::chipClock.toString(), IDs::chipClock, "Chip clock", "Selected chip clock preset",
+                                                    ChipClockChoice::ZX_Spectrum_1_77_MHz, ChipClockChoice::getLongLabels()}};
+        ParameterValue<Scale::Tonic> tonic {{IDs::key.toString(), IDs::key, "Key", "Selected key tonic",
+                                             Scale::Tonic::C, Scale::Tonic::getLongLabels()}};
+        ParameterValue<Scale::ScaleType> scaleType {{IDs::scale.toString(), IDs::scale, "Scale", "Selected scale type",
+                                                     Scale::ScaleType::IonianOrMajor, Scale::ScaleType::getLongLabels()}};
+        ParameterValue<BuiltinTuningType> tuningTable {{IDs::tuningTable.toString(), IDs::tuningTable, "Tuning Table", "Selected tuning table",
                                                         BuiltinTuningType::EqualTemperament, BuiltinTuningType::getLongLabels()}};
-        ParameterValue<TuningSystemType> tuningType {{"tuning", IDs::tuningSystem, "Tuning", "Reference tuning system",
+        ParameterValue<TuningSystemType> tuningType {{IDs::tuningSystem.toString(), IDs::tuningSystem, "Reference tuning", "Reference tuning system",
                                                       TuningSystemType::EqualTemperament, TuningSystemTypeLabels }};
     };
 
@@ -241,9 +250,6 @@ public:
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
                                                                  // no undo for this control
-        , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), &undoManager, ChipClockChoice::ZX_Spectrum_1_77_MHz)
-        , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         &undoManager, Scale::Tonic::C)
-        , selectedScaleType  (transientState, IDs::scale,                                          &undoManager, Scale::ScaleType::IonianOrMajor)
         , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              &undoManager, 440.0, "Hz")
         , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                &undoManager, 1.7734, "MHz")
 
@@ -256,9 +262,6 @@ public:
 
     {
         // Set up Value listeners for bidirectional sync
-        selectedChip.addListener(this);
-        selectedTonic.addListener(this);
-        selectedScaleType.addListener(this);
         a4Frequency.addListener(this);
         clockFrequencyMhz.addListener(this);
         playChords.addListener(this);
@@ -267,6 +270,7 @@ public:
 
         selectedParams.referTo(transientState, &undoManager);
         selectedParams.addListener(this);
+        currentScale = Scale(selectedParams.scaleType.getStoredValue());
 
         // init default values
         // The problem is that setting initial value in ParamAttachment constructor
@@ -475,19 +479,19 @@ public:
     }
 
     void setCurrentScaleType(Scale::ScaleType scaleType) {
-        selectedScaleType = scaleType;
+        selectedParams.scaleType.setStoredValue(scaleType);
         updateCurrentScale();
     }
 
     void updateCurrentScale() {
-        if (currentScale.getType() != selectedScaleType.get()) {
-            currentScale = Scale(selectedScaleType); // Update cache only when needed
+        if (currentScale.getType() != selectedParams.scaleType.getStoredValue()) {
+            currentScale = Scale(selectedParams.scaleType.getStoredValue()); // Update cache only when needed
             sendChangeMessage();
         }
     }
 
     Scale::ScaleType getCurrentScaleType() const {
-        return selectedScaleType.get();
+        return selectedParams.scaleType.getStoredValue();
     }
 
     const Scale& getCurrentScale() {
@@ -496,11 +500,11 @@ public:
     }
 
     Scale::Tonic getCurrentTonic() const {
-        return selectedTonic.get();
+        return selectedParams.tonic.getStoredValue();
     }
 
     void setCurrentTonic(Scale::Tonic tonic) {
-        selectedTonic = tonic;
+        selectedParams.tonic.setStoredValue(tonic);
         // TODO double update after assigning to keyIndex1?
         tuningSystem->setRoot(tonic); // Update tuning system tonic
         sendChangeMessage();
@@ -531,13 +535,13 @@ public:
     }
 
     // ChipClockChoice getChipChoice() const {
-    //     return selectedChip.get();
+    //     return selectedParams.chipClock.getStoredValue();
     // }
 
     // Not used yet
     // void setChipChoice(ChipClockChoice clockChoice) {
     //     // DBG("setChipChoice: " << clockChoice.getLongLabel().data());
-    //     selectedChip = clockChoice;
+    //     selectedParams.chipClock.setStoredValue(clockChoice);
     //     clockFrequencyMhz = clockChoice.getClockValue() / MHz; // Store as MHz
     //     tuningSystem->setClockFrequency(clockChoice.getClockValue()); // Update tuning system clock frequency
     //     // DBG("setChipChoice sendChangeMessage");
@@ -567,7 +571,7 @@ public:
     // }
 
     bool isCustomClockEnabled() const {
-        return selectedChip.get() == ChipClockChoice::Custom;
+        return selectedParams.chipClock.getStoredValue() == ChipClockChoice::Custom;
     }
 
     bool isToneEnabled() const {
@@ -703,12 +707,12 @@ public:
 private:
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
-        if (value.refersToSameSourceAs(selectedScaleType.getValue())) {
-            selectedScaleType.forceUpdateOfCachedValue();
+        if (value.refersToSameSourceAs(selectedParams.scaleType.getPropertyAsValue())) {
+            selectedParams.scaleType.forceUpdateOfCachedValue();
             updateCurrentScale();
-        } else if (value.refersToSameSourceAs(selectedTonic.getValue())) {
+        } else if (value.refersToSameSourceAs(selectedParams.tonic.getPropertyAsValue())) {
             // DBG("Root changed from valueChanged");
-            selectedTonic.forceUpdateOfCachedValue();
+            selectedParams.tonic.forceUpdateOfCachedValue();
             tuningSystem->setRoot(getCurrentTonic());
             // DBG("Root changed from valueChanged sendChangeMessage");
             sendChangeMessage();
@@ -730,10 +734,10 @@ private:
                 // DBG("Clock frequency changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        } else if (value.refersToSameSourceAs(selectedChip.getValue())) {
-            selectedChip.forceUpdateOfCachedValue();
+        } else if (value.refersToSameSourceAs(selectedParams.chipClock.getPropertyAsValue())) {
+            selectedParams.chipClock.forceUpdateOfCachedValue();
             // DBG("chipIndex0 changed from valueChanged " << value.toString());
-            auto chip = selectedChip.get();
+            auto chip = selectedParams.chipClock.getStoredValue();
             if (chip != ChipClockChoice::Custom) {
                 // Update clock frequency when preset is selected
                 // DBG("chipIndex0 =" << chip.getLabel().data());
@@ -778,7 +782,7 @@ private:
             .builtinTable = builtinTable,
             .tonic = getCurrentTonic(),
             .scaleType = getCurrentScaleType(),
-            .chipChoice = selectedChip.get(),
+            .chipChoice = selectedParams.chipClock.getStoredValue(),
             .chipClock = clockFrequencyMhz.get() * MHz,
             .a4Frequency = a4Frequency.get()
         };
@@ -788,9 +792,9 @@ private:
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
             selectedParams.tuningType.setStoredValue(tuningSystem->getReferenceTuning()->getType());
-            selectedTonic = options.tonic;
-            selectedScaleType = options.scaleType;
-            selectedChip = options.chipChoice;
+            selectedParams.tonic.setStoredValue(options.tonic);
+            selectedParams.scaleType.setStoredValue(options.scaleType);
+            selectedParams.chipClock.setStoredValue(options.chipChoice);
             clockFrequencyMhz = options.chipClock / MHz; // Convert Hz to MHz
             a4Frequency = options.a4Frequency;
         }
@@ -850,9 +854,6 @@ public:
     SelectionParams selectedParams;
 
     // ParamAttachment objects - single source of truth for all persisted types
-    ChoiceParamAttachment<ChipClockChoice>   selectedChip;
-    ChoiceParamAttachment<Scale::Tonic>      selectedTonic;
-    ChoiceParamAttachment<Scale::ScaleType>  selectedScaleType;
     RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
     RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
     // Play modes

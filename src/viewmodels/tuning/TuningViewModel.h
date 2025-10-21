@@ -14,10 +14,9 @@
 #include "../../util/convert.h"
 #include "../../utils/StringLiterals.h"
 
-#include <cmath>
+#include <algorithm>
 #include <array>
 #include <cstddef>
-#include <limits>
 
 namespace MoTool {
 
@@ -209,6 +208,9 @@ namespace IDs {
     #undef DECLARE_ID
 }
 
+static constexpr inline const auto TuningSystemTypeLabels =
+    truncateArray<TuningSystemType::CustomRational>(TuningSystemType::getLongLabels());
+
 class TuningViewModel : public ChangeBroadcaster,
                         private Value::Listener
 {
@@ -225,8 +227,8 @@ public:
             visitor(tuningType);
         }
 
-        // TODO do not use "User custom"
-        ParameterValue<TuningSystemType> tuningType {{"tuning", IDs::tuningSystem, "Tuning", "Reference tuning system", TuningSystemType::EqualTemperament}};
+        ParameterValue<TuningSystemType> tuningType {{"tuning", IDs::tuningSystem, "Tuning", "Reference tuning system",
+                                                      TuningSystemType::EqualTemperament, TuningSystemTypeLabels }};
     };
 
     TuningViewModel(te::Edit& ed)

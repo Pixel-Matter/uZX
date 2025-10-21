@@ -97,7 +97,7 @@ public:
             expectEquals(autoParam.getValueForState(1), 0.f, "Value for state is 0 for float param");
             expectEquals(autoParam.snapToState(0.3f), 0.3f, "snapToState do not snap for float param");
 
-            expect(!autoParam.hasLabels(), "hasLabels() false for enum parameter");
+            expect(!autoParam.hasLabels(), "hasLabels() false for float parameter");
             expectEquals(autoParam.getLabelForValue(0.0f), String(), "No label for float param");
             expectEquals(autoParam.getAllLabels().size(), 0, "No labels for float param");
         }

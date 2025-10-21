@@ -74,7 +74,7 @@ public:
     //     : value(magic_enum::enum_cast<Enum>(static_cast<UnderlyingType>(v)).value_or(magic_enum::enum_value<Enum>(0u)))
     // {}
 
-    constexpr EnumChoice(std::string_view v) noexcept
+    constexpr explicit EnumChoice(std::string_view v) noexcept
         : value(magic_enum::enum_cast<Enum>(v).value_or(magic_enum::enum_value<Enum>(0u)))
     {}
 
@@ -86,7 +86,7 @@ public:
 
     constexpr operator Enum() const noexcept { return value; }
 
-    // constexpr operator juce::String() const noexcept { return juce::String(std::string(getLabel())); }
+    constexpr operator juce::String() const noexcept { return juce::String(getLabel().data()); }
 
     // constexpr operator juce::StringRef() const noexcept { return juce::StringRef(getLabel().data()); }
 
@@ -133,7 +133,11 @@ public:
         return magic_enum::enum_name<Enum>(static_cast<Enum>(i));
     }
 
-    constexpr static auto getLabels() noexcept {
+    constexpr static size_t size() noexcept {
+        return magic_enum::enum_count<Enum>();
+    }
+
+    constexpr static auto getLabels() noexcept -> std::array<std::string_view, size()> {
         return magic_enum::enum_names<Enum>();
     }
 
@@ -145,7 +149,7 @@ public:
         }
     }
 
-    constexpr static auto getLongLabels() noexcept {
+    constexpr static auto getLongLabels() noexcept -> std::array<std::string_view, size()> {
         if constexpr (requires { E::longLabels; }) {
             return to_array(E::longLabels);
         } else {
@@ -161,16 +165,12 @@ public:
         }
     }
 
-    constexpr static auto getShortLabels() noexcept {
+    constexpr static auto getShortLabels() noexcept  -> std::array<std::string_view, size()> {
         if constexpr (requires { E::shortLabels; }) {
             return E::shortLabels;
         } else {
             return magic_enum::enum_names<Enum>();
         }
-    }
-
-    constexpr static size_t size() noexcept {
-        return magic_enum::enum_count<Enum>();
     }
 
     constexpr static Enum undefined() noexcept {
@@ -197,6 +197,11 @@ template <class E>
 inline std::ostream& operator<<(std::ostream& out, EnumChoice<E> choice) {
     out << choice.getLabel();
     return out;
+}
+
+template <class E>
+juce::String& operator<<(juce::String& string1, EnumChoice<E> choice) {
+    return string1 << choice.getLabel().data();
 }
 
 /**

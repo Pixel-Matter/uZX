@@ -31,55 +31,42 @@ public:
                                   editItem, paramValue.definition.getFloatValueRange())
         , definition(paramValue.definition), parameterValue(paramValue)
 {
-        // NOTE while value is not attached, we can not restore from it
-        // attachToCurrentValue(value.value);
-        // updateFromAttachedValue();
         updateFromAttachedParamValue();
 
         parameterValue.setLiveReader(&readLiveValue, this);
 
-        if (auto fn = parameterValue.definition.valueToStringFunction; fn) {
-            valueToStringFunction = [fn](float v) { return fn(TypeTraits::from(v)); };
-        }
+        valueToStringFunction = [this](float v) {
+            return parameterValue.definition.valueToText(TypeTraits::from(v));
+        };
 
-        if (auto fn = parameterValue.definition.stringToValueFunction; fn) {
-            stringToValueFunction = [fn](const String& text) { return TypeTraits::template to<float>(fn(text)); };
-        }
+        stringToValueFunction = [this](const String& text) {
+            auto value = parameterValue.definition.textToValue(text);
+            return value.has_value()? TypeTraits::template to<float>(value.value()) : 0.0f;
+        };
     }
 
     ~BindedAutoParameter () override {
         cancelPendingUpdate();
-        // detachFromCurrentValue();  // currently not attached
         parameterValue.clearLiveReader();
     }
 
     String getParameterName() const          override { return definition.identifier; }
     String getParameterShortName (int) const override { return definition.shortLabel; }
+    // suffix or units
     String getLabel()                        override { return definition.units; }
 
-    bool isDiscrete() const override { return definition.valueRange.interval >= 1; }
+    bool isDiscrete() const override { return definition.isDiscrete(); }
 
     int getNumberOfStates() const override {
-        if (isDiscrete())
-            return static_cast<int>(definition.valueRange.end - definition.valueRange.start + 1);
-        return 0;
+        return definition.numberOfStates();
     }
 
     float getValueForState(int i) const override {
-        if (!isDiscrete())
-            return 0.0;
-
-        return static_cast<float>(i);
+        return definition.stateToFloat(i);
     }
 
     int getStateForValue(float value) const override {
-        if (!isDiscrete())
-            return 0.0;
-
-        // clamp to valid range definition.valueRange
-        auto start = TypeTraits::template to<float>(definition.valueRange.start);
-        auto end = TypeTraits::template to<float>(definition.valueRange.end);
-        return roundToInt(jlimit(start, end, value));
+        return definition.floatToState(value);
     }
 
     float snapToState(float val) const override {

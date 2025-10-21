@@ -2,7 +2,9 @@
 
 #include <JuceHeader.h>
 #include "../util/enumchoice.h"
+#include "../util/convert.h"
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -124,6 +126,7 @@ struct ParameterDef {
     String units = {};
     std::function<String(Type)> valueToStringFunction = {};
     std::function<Type(const String&)> stringToValueFunction = {};
+    StringArray entries = {};
 
     constexpr NormalisableRange<float> getFloatValueRange() const {
         return {static_cast<float>(valueRange.start),
@@ -214,7 +217,7 @@ struct ParameterDef {
             return String(std::string(value.getLabel()));
         if constexpr (std::is_floating_point_v<Type>)
             return String(value, decimalPlaces());
-        return String(value);
+        return ParameterConversionTraits<Type>::template to<String>(value);
     }
 
     std::optional<Type> textToValue(const String& text) const {
@@ -226,7 +229,7 @@ struct ParameterDef {
         } else if constexpr (std::is_floating_point_v<Type>) {
             return static_cast<Type>(text.getDoubleValue());
         } else {
-            return std::nullopt;
+            return ParameterConversionTraits<Type>::template from<String>(text);
         }
     }
 
@@ -253,21 +256,7 @@ struct ParameterDef<bool> {
     String shortLabel;
     String description;
     bool defaultValue;
-    NormalisableRange<bool> valueRange = NormalisableRange<bool>(false, true, true);
     String units = {};
-
-    // Auto-initialized label conversion functions
-    std::function<String(bool)> valueToStringFunction = [](bool value) {
-        return value ? "On" : "Off";
-    };
-
-    std::function<bool(const String&)> stringToValueFunction = [](const String& str) {
-        if (str.equalsIgnoreCase("true") || str.equalsIgnoreCase("on") || str == "1")
-            return true;
-        if (str.equalsIgnoreCase("false") || str.equalsIgnoreCase("off") || str == "0")
-            return false;
-        return false;
-    };
 
     constexpr NormalisableRange<float> getFloatValueRange() const {
         return {0.0f, 1.0f, 1.0f};
@@ -327,41 +316,48 @@ struct ParameterDef<E> {
     String shortLabel;
     String description;
     E defaultValue;
-
-    // Auto-initialized from enum size
-    NormalisableRange<E> valueRange = NormalisableRange<E>(E(0), E(E::size() - 1), 1);
-
+    StringArray labels = toStringArray(E::getLabels());
     String units = {};
 
-    // Auto-initialized label conversion functions
-    std::function<String(E)> valueToStringFunction = [](E value) {
-        // DBG("valueToStringFunction called for enum with value " << static_cast<int>(value));
-        return String(std::string(value.getLabel()));
-    };
+    ParameterDef(
+        const String& id,
+        const Identifier& propID,
+        const String& shortLbl,
+        const String& desc,
+        const E& deflt
+    )
+        : identifier(id)
+        , propertyID(propID)
+        , shortLabel(shortLbl)
+        , description(desc)
+        , defaultValue(deflt)
+    {}
 
-    std::function<E(const String&)> stringToValueFunction = [](const String& str) {
-        // DBG("stringToValueFunction called for enum with string " << str);
-        return E(str.toStdString());
-    };
+    ParameterDef(
+        const String& id,
+        const Identifier& propID,
+        const String& shortLbl,
+        const String& desc,
+        const E& deflt,
+        const auto& lbls
+    )
+        : identifier(id)
+        , propertyID(propID)
+        , shortLabel(shortLbl)
+        , description(desc)
+        , defaultValue(deflt)
+        , labels(toStringArray(lbls))
+    {}
 
     constexpr NormalisableRange<float> getFloatValueRange() const {
-        return {static_cast<float>(valueRange.start),
-                static_cast<float>(valueRange.end),
-                static_cast<float>(valueRange.interval)};
+        return {0.0f, static_cast<float>(numberOfStates() - 1), 1.0f};
     }
 
     // Keep the existing toString() method
     String toString() const {
-        String s = identifier + ": " + description;
-        s += " (choices: ";
-        auto labels = E::getLabels();
-        for (size_t i = 0; i < labels.size(); ++i) {
-            if (i > 0)
-                s += ", ";
-            s += String(labels[i].data());
-        }
-        s += ")";
-        s += " (default " + String(defaultValue.getLabel().data()) + ")";
+        String s = identifier + ": " + description
+          + "Choices: " + labels.joinIntoString(", ")
+          + "; Default: " + String(defaultValue.getLabel().data()) + ")";
         return s;
     }
 
@@ -370,7 +366,7 @@ struct ParameterDef<E> {
     }
 
     int constexpr numberOfStates() const noexcept {
-        return static_cast<int>(E::size());
+        return labels.size();
     }
 
     /** float to state index for discrete parameters */
@@ -388,27 +384,28 @@ struct ParameterDef<E> {
     inline String stateToLabel(int state) const {
         const auto bounded = jlimit(0, numberOfStates() - 1, state);
         auto value = ParameterConversionTraits<E>::fromInt(bounded);
-
-        if (valueToStringFunction)
-            return valueToStringFunction(value);
-
-        return ParameterConversionTraits<E>::template to<String>(value);
+        return valueToText(value);
     }
 
     constexpr int decimalPlaces() const noexcept {
         return 0;
     }
 
-    String valueToText(E value) const {
-        if (valueToStringFunction)
-            return valueToStringFunction(value);
-        return ParameterConversionTraits<E>::template to<String>(value);
+    inline String valueToText(E value) const {
+        int idx = ParameterConversionTraits<E>::toInt(value);
+        jassert(idx >= 0 && idx < labels.size());
+        if (idx >= 0 && idx < labels.size())
+            return labels[idx];
+        else
+            return ParameterConversionTraits<E>::template to<String>(value);
     }
 
-    std::optional<E> textToValue(const String& text) const {
-        if (stringToValueFunction)
-            return stringToValueFunction(text);
-        return E(text.toStdString());
+    inline std::optional<E> textToValue(const String& text) const {
+        for (int i = 0; i < labels.size(); ++i) {
+            if (labels[i].equalsIgnoreCase(text))
+                return ParameterConversionTraits<E>::fromInt(i);
+        }
+        return {};
     }
 };
 

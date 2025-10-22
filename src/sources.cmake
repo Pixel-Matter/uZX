@@ -54,6 +54,8 @@ set(GUI_SOURCES
     gui/main/AboutDialog.cpp
     gui/main/MainWindow.cpp
     gui/main/Footer.cpp
+    gui/tuning/ChipClockComboBinding.cpp
+    gui/tuning/TuningPreviewGrid.cpp
     gui/tuning/TuningPreview.cpp
 
     gui/timeline/PlayheadComponent.cpp

@@ -227,42 +227,35 @@ public:
         template<typename Visitor>
         void visit(Visitor&& visitor) {
             visitor(chipClock);
+            visitor(clockFrequencyMhz);
             visitor(tonic);
             visitor(scaleType);
+            visitor(a4Frequency);
+            visitor(tuningTable);
+            visitor(tuningType);
             visitor(playChords);
             visitor(playTone);
             visitor(playEnvelope);
             visitor(retriggerTone);
             visitor(envelopeShape);
-            visitor(envIntervalChoice);
-            visitor(a4Frequency);
-            visitor(clockFrequencyMhz);
-            visitor(tuningTable);
-            visitor(tuningType);
+            visitor(envInterval);
         }
 
-        ParameterValue<ChipClockChoice> chipClock {{IDs::chipClock.toString(), IDs::chipClock, "Chip clock", "Selected chip clock preset",
-                                                   ChipClockChoice::ZX_Spectrum_1_77_MHz, ChipClockChoice::getLongLabels()}};
-        ParameterValue<Scale::Tonic> tonic {{IDs::key.toString(), IDs::key, "Key", "Selected key tonic",
-                                             Scale::Tonic::C, Scale::Tonic::getLongLabels()}};
-        ParameterValue<Scale::ScaleType> scaleType {{IDs::scale.toString(), IDs::scale, "Scale", "Selected scale type",
-                                                     Scale::ScaleType::IonianOrMajor, Scale::ScaleType::getLongLabels()}};
-        ParameterValue<bool> playChords {{IDs::playChords.toString(), IDs::playChords, "Play chords", "Preview chords when enabled", false}};
-        ParameterValue<bool> playTone {{IDs::playTone.toString(), IDs::playTone, "Play tone", "Preview fundamental tone", true}};
-        ParameterValue<bool> playEnvelope {{IDs::playEnvelope.toString(), IDs::playEnvelope, "Play envelope", "Preview envelope modulation", false}};
-        ParameterValue<bool> retriggerTone {{IDs::retriggerTone.toString(), IDs::retriggerTone, "Retrigger tone", "Retrigger tone on chord changes", false}};
-        ParameterValue<EnvShapeChoice> envelopeShape {{IDs::envelopeShape.toString(), IDs::envelopeShape, "Envelope shape", "Envelope modulation shape",
-                                                       EnvShapeChoice(EnvShapeSimpleEnum::Triangle), EnvShapeChoice::getLongLabels()}};
-        ParameterValue<EnvIntervalChoice> envIntervalChoice {{IDs::envelopeMode.toString(), IDs::envelopeMode, "Modulation mode", "Envelope modulation interval",
-                                                              EnvIntervalChoice(ModulationEnum::Unison), EnvIntervalChoice::getLongLabels()}};
-        ParameterValue<double> a4Frequency {{IDs::a4Freq.toString(), IDs::a4Freq, "A4", "Concert A frequency", 440.0,
-                                             NormalisableRange<double>(220.0, 880.0, 0.1), "Hz"}};
-        ParameterValue<double> clockFrequencyMhz {{IDs::clockFreq.toString(), IDs::clockFreq, "Clock", "Chip clock frequency",
-                                                   1.7734, NormalisableRange<double>(1.0, 2.0, 0.001), "MHz"}};
-        ParameterValue<BuiltinTuningType> tuningTable {{IDs::tuningTable.toString(), IDs::tuningTable, "Tuning Table", "Selected tuning table",
-                                                        BuiltinTuningType::EqualTemperament, BuiltinTuningType::getLongLabels()}};
-        ParameterValue<TuningSystemType> tuningType {{IDs::tuningSystem.toString(), IDs::tuningSystem, "Reference tuning", "Reference tuning system",
-                                                      TuningSystemType::EqualTemperament, TuningSystemTypeLabels }};
+        ParameterValue<ChipClockChoice> chipClock     {{IDs::chipClock.toString(),    IDs::chipClock,      "Chip clock",       "Chip clock preset",         ChipClockChoice::ZX_Spectrum_1_77_MHz, ChipClockChoice::getLongLabels()}};
+        ParameterValue<double> clockFrequencyMhz      {{IDs::clockFreq.toString(),    IDs::clockFreq,      "Clock",            "Chip clock frequency",      1.7734,                              {1.0, 2.0, 0.001}, "MHz"}};
+
+        ParameterValue<Scale::Tonic> tonic            {{IDs::key.toString(),          IDs::key,            "Key",              "Selected key tonic",        Scale::Tonic::C,                     Scale::Tonic::getLongLabels()}};
+        ParameterValue<Scale::ScaleType> scaleType    {{IDs::scale.toString(),        IDs::scale,          "Scale",            "Selected scale type",       Scale::ScaleType::IonianOrMajor,     Scale::ScaleType::getLongLabels()}};
+        ParameterValue<double> a4Frequency            {{IDs::a4Freq.toString(),       IDs::a4Freq,         "A4",               "Concert A frequency",       440.0,                               NormalisableRange<double>(220.0, 880.0, 0.1), "Hz"}};
+        ParameterValue<BuiltinTuningType> tuningTable {{IDs::tuningTable.toString(),  IDs::tuningTable,    "Tuning Table",     "Selected tuning table",     BuiltinTuningType::EqualTemperament, BuiltinTuningType::getLongLabels()}};
+        ParameterValue<TuningSystemType> tuningType   {{IDs::tuningSystem.toString(), IDs::tuningSystem,   "Reference tuning", "Reference tuning system",   TuningSystemType::EqualTemperament,  TuningSystemTypeLabels }};
+
+        ParameterValue<bool> playChords               {{IDs::playChords.toString(),    IDs::playChords,    "Play chords",      "Play chords",               false}};
+        ParameterValue<bool> playTone                 {{IDs::playTone.toString(),      IDs::playTone,      "Play tone",        "Play fundamental tone",     true}};
+        ParameterValue<bool> playEnvelope             {{IDs::playEnvelope.toString(),  IDs::playEnvelope,  "Play envelope",    "Play envelope modulation",  false}};
+        ParameterValue<bool> retriggerTone            {{IDs::retriggerTone.toString(), IDs::retriggerTone, "Retrigger tone",   "Retrigger tone",            false}};
+        ParameterValue<EnvShapeChoice> envelopeShape  {{IDs::envelopeShape.toString(), IDs::envelopeShape, "Envelope shape",   "Envelope oscillator shape", EnvShapeChoice(EnvShapeSimpleEnum::Triangle), EnvShapeChoice::getLongLabels()}};
+        ParameterValue<EnvIntervalChoice> envInterval {{IDs::envelopeMode.toString(),  IDs::envelopeMode,  "Modulation mode",  "Modulation interval",       EnvIntervalChoice(ModulationEnum::Unison), EnvIntervalChoice::getLongLabels()}};
     };
 
     TuningViewModel(te::Edit& ed)
@@ -594,7 +587,7 @@ public:
         if (!isToneEnabled() || !isEnvelopeEnabled()) {
             return 0; // No modulation if tone or envelope is not enabled
         }
-        return ModulationEnum::semitones[static_cast<size_t>(selectedParams.envIntervalChoice.getStoredValue())];
+        return ModulationEnum::semitones[static_cast<size_t>(selectedParams.envInterval.getStoredValue())];
     }
 
     TuningSystem::PeriodMode getCurrentPeriodMode() const {
@@ -769,8 +762,8 @@ private:
         } else if (value.refersToSameSourceAs(selectedParams.envelopeShape.getPropertyAsValue())) {
             selectedParams.envelopeShape.forceUpdateOfCachedValue();
             sendChangeMessage();
-        } else if (value.refersToSameSourceAs(selectedParams.envIntervalChoice.getPropertyAsValue())) {
-            selectedParams.envIntervalChoice.forceUpdateOfCachedValue();
+        } else if (value.refersToSameSourceAs(selectedParams.envInterval.getPropertyAsValue())) {
+            selectedParams.envInterval.forceUpdateOfCachedValue();
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(selectedParams.retriggerTone.getPropertyAsValue())) {
             selectedParams.retriggerTone.forceUpdateOfCachedValue();

@@ -76,6 +76,10 @@ public:
         return clockValues[static_cast<size_t>(value)];
     }
 
+    inline constexpr static auto getClockEntries() noexcept {
+        return clockValues;
+    }
+
 };
 
 

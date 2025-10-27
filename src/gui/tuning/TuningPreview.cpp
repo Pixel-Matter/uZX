@@ -24,10 +24,12 @@ static std::vector<std::pair<double, String>> makeChipClockPresets() {
 
 //================================================================================
 TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
-    : comboBinding(select, vm.selectedParams.clockFrequencyMhz, makeChipClockPresets())
+    : comboBinding(select, vm.selectedParams.clockFrequencyMhz, makeChipClockPresets(), false, false)
 {
     label.setText("Chip clock", juce::dontSendNotification);
     label.setJustificationType(Justification::centredLeft);
+
+    comboBinding.setDecimalPlaces(2);
 
     c.addAndMakeVisible(label);
     c.addAndMakeVisible(select);

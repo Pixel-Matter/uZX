@@ -6,6 +6,7 @@
 #include "../../plugins/uZX/aychip/aychip.h"
 
 #include <vector>
+#include <optional>
 
 namespace MoTool {
 
@@ -15,10 +16,12 @@ public:
     ComboBindingWithPresets(juce::ComboBox& comboBox,
                             ParameterValue<double>& valueParameter,
                             const std::vector<std::pair<double, String>>& presetItems,
-                            bool showPresetLabels = true);
+                            bool showPresetLabels = true,
+                            bool showUnits = true);
     ~ComboBindingWithPresets() override;
 
     void configure();
+    void setDecimalPlaces(int digits);
 
 private:
     static constexpr int customItemId = 1;
@@ -42,6 +45,8 @@ private:
     std::vector<std::pair<double, String>> presets;
     juce::String unitsText;
     bool showTextForPresets;
+    bool showUnits;
+    std::optional<int> decimalPlaces;
 
     bool updating = false;
 };

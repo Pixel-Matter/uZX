@@ -8,13 +8,15 @@ ComboBindingWithPresets::ComboBindingWithPresets(
         juce::ComboBox& comboBox,
         ParameterValue<double>& valueParameter,
         const std::vector<std::pair<double, String>>& presetItems,
-        bool showPresetLabels
+        bool showPresetLabels,
+        bool showUnitsFlag
 )
     : select(comboBox)
     , valueParam(valueParameter)
     , presets(presetItems)
     , unitsText(valueParameter.definition.units)
     , showTextForPresets(showPresetLabels)
+    , showUnits(showUnitsFlag)
 {
     select.addListener(this);
     valueParam.addListener(this);
@@ -32,6 +34,16 @@ void ComboBindingWithPresets::configure() {
     select.setTextWhenNothingSelected({});
 
     fillPresetItems();
+    refreshFromParameters();
+}
+
+void ComboBindingWithPresets::setDecimalPlaces(int digits) {
+    if (digits >= 0) {
+        decimalPlaces = digits;
+    } else {
+        decimalPlaces.reset();
+    }
+
     refreshFromParameters();
 }
 
@@ -78,7 +90,7 @@ void ComboBindingWithPresets::refreshFromParameters() {
         applyPreset(preset, false, true);
     } else {
         select.setSelectedId(0, juce::dontSendNotification);
-        select.setText(formatValue(value), juce::dontSendNotification);
+        select.setText(formatValue(value, showUnits), juce::dontSendNotification);
         select.setEditableText(true);
     }
 }
@@ -87,7 +99,7 @@ void ComboBindingWithPresets::handleSelectionChange() {
     const int selectedId = select.getSelectedId();
     if (selectedId == customItemId) {
         juce::ScopedValueSetter<bool> guard(updating, true);
-        select.setText(formatValue(valueParam.getStoredValue()), juce::dontSendNotification);
+        select.setText(formatValue(valueParam.getStoredValue(), showUnits), juce::dontSendNotification);
         select.setEditableText(true);
         select.showEditor();
         return;
@@ -112,7 +124,7 @@ void ComboBindingWithPresets::handleTextChange() {
     const double clamped = jlimit(range.start, range.end, parsed);
     if (std::abs(clamped - parsed) > 1e-9) {
         juce::ScopedValueSetter<bool> guard(updating, true);
-        select.setText(formatValue(clamped), juce::dontSendNotification);
+        select.setText(formatValue(clamped, showUnits), juce::dontSendNotification);
     }
 
     const int presetIndex = findPresetForValue(clamped);
@@ -147,17 +159,24 @@ void ComboBindingWithPresets::applyPreset(int presetIndex, bool updateParameter,
     select.setEditableText(false);
 
     if (updateText) {
-        const juce::String textToUse = showTextForPresets ? preset.second : formatValue(preset.first);
+        const juce::String textToUse = showTextForPresets ? preset.second : formatValue(preset.first, showUnits);
         select.setText(textToUse, juce::dontSendNotification);
     }
 }
 
 juce::String ComboBindingWithPresets::formatValue(double value, bool includeUnits) const {
-    juce::String text(value, 6);
-    text = text.trimCharactersAtEnd("0");
-    text = text.trimCharactersAtEnd(".");
-    if (text.isEmpty())
-        text = "0";
+    juce::String text;
+
+    if (decimalPlaces.has_value()) {
+        text = juce::String(value, decimalPlaces.value());
+    } else {
+        text = juce::String(value, 6);
+        text = text.trimCharactersAtEnd("0");
+        text = text.trimCharactersAtEnd(".");
+        if (text.isEmpty())
+            text = "0";
+    }
+
     if (includeUnits && unitsText.isNotEmpty())
         text << " " << unitsText;
     return text;

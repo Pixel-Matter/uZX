@@ -12,7 +12,7 @@ namespace MoTool {
 
 //================================================================================
 TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
-    : comboBinding(select, vm.selectedParams.chipClock, vm.selectedParams.clockFrequencyMhz)
+    : comboBinding(select, vm.selectedParams.clockFrequencyMhz)
 {
     label.setText("Chip clock", juce::dontSendNotification);
     label.setJustificationType(Justification::centredLeft);

@@ -12,9 +12,7 @@ namespace MoTool {
 class ChipClockComboBinding : private juce::Value::Listener,
                               private juce::ComboBox::Listener {
 public:
-    ChipClockComboBinding(juce::ComboBox& comboBox,
-                          ParameterValue<ChipClockChoice>& chipParameter,
-                          ParameterValue<double>& clockParameter);
+    ChipClockComboBinding(juce::ComboBox& comboBox, ParameterValue<double>& valueParameter);
     ~ChipClockComboBinding() override;
 
     void configure();
@@ -32,18 +30,15 @@ private:
     void handleTextChange();
 
     int findPresetForValue(double freqMHz) const;
-    int findPresetForChoice(ChipClockChoice choice) const;
     void setPresetSelection(int presetIndex, bool updateText);
-    juce::String formatFrequency(double freqMHz, bool includeUnits = true) const;
+    juce::String formatValue(double value, bool includeUnits = true) const;
     juce::String removeUnits(juce::String text) const;
 
     juce::ComboBox& select;
-    ParameterValue<ChipClockChoice>& chipParam;
-    ParameterValue<double>& clockParam;
+    ParameterValue<double>& valueParam;
+    std::vector<double> presetValues;
     juce::String unitsText;
 
-    std::vector<ChipClockChoice> presetChoices;
-    std::vector<double> presetValuesMHz;
     bool updating = false;
 };
 

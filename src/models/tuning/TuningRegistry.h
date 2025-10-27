@@ -48,8 +48,7 @@ struct TuningOptions {
     TuningSystemType tuningSystemType;
     Scale::Tonic tonic;
     Scale::ScaleType scaleType;
-    ChipClockChoice chipChoice;
-    double chipClock;
+    double chipClockFreq;
     double a4Frequency;
 };
 

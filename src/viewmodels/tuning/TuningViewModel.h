@@ -226,7 +226,6 @@ public:
 
         template<typename Visitor>
         void visit(Visitor&& visitor) {
-            visitor(chipClock);
             visitor(clockFrequencyMhz);
             visitor(tonic);
             visitor(scaleType);
@@ -241,7 +240,6 @@ public:
             visitor(envInterval);
         }
 
-        ParameterValue<ChipClockChoice> chipClock     {{IDs::chipClock.toString(),    IDs::chipClock,      "Chip clock",       "Chip clock preset",         ChipClockChoice::ZX_Spectrum_1_77_MHz, ChipClockChoice::getLongLabels()}};
         ParameterValue<double> clockFrequencyMhz      {{IDs::clockFreq.toString(),    IDs::clockFreq,      "Clock",            "Chip clock frequency",      1.7734,                              {1.0, 2.0, 0.001}, "MHz"}};
 
         ParameterValue<Scale::Tonic> tonic            {{IDs::key.toString(),          IDs::key,            "Key",              "Selected key tonic",        Scale::Tonic::C,                     Scale::Tonic::getLongLabels()}};
@@ -527,41 +525,12 @@ public:
         return toStringArray(BuiltinTuningType::getLongLabels());
     }
 
-    // ChipClockChoice getChipChoice() const {
-    //     return selectedParams.chipClock.getStoredValue();
-    // }
-
-    // Not used yet
-    // void setChipChoice(ChipClockChoice clockChoice) {
-    //     // DBG("setChipChoice: " << clockChoice.getLongLabel().data());
-    //     selectedParams.chipClock.setStoredValue(clockChoice);
-    //     clockFrequencyMhz = clockChoice.getClockValue() / MHz; // Store as MHz
-    //     tuningSystem->setClockFrequency(clockChoice.getClockValue()); // Update tuning system clock frequency
-    //     // DBG("setChipChoice sendChangeMessage");
-    //     sendChangeMessage();
-    // }
-
     // used in tests only
     void setA4Frequency(double frequency) {
         // DBG("setA4Frequency: " << frequency);
         if (frequency >= 220.0 && frequency <= 880.0) {
             selectedParams.a4Frequency.setStoredValue(frequency);
         }
-    }
-
-    // Not used yet
-    // void setClockFrequency(double frequency) {
-    //     // DBG("setClockFrequencyHz: " << frequency);
-    //     if (frequency >= 1.0 * MHz && frequency <= 2.0 * MHz) {
-    //         clockFrequencyMhz = frequency / MHz; // Store as MHz
-    //         tuningSystem->setClockFrequency(frequency);
-    //         // DBG("setClockFrequencyHz sendChangeMessage");
-    //         sendChangeMessage();
-    //     }
-    // }
-
-    bool isCustomClockEnabled() const {
-        return selectedParams.chipClock.getStoredValue() == ChipClockChoice::Custom;
     }
 
     bool isToneEnabled() const {
@@ -717,25 +686,8 @@ private:
         } else if (value.refersToSameSourceAs(selectedParams.clockFrequencyMhz.getPropertyAsValue())) {
             selectedParams.clockFrequencyMhz.forceUpdateOfCachedValue();
             double newFreqMHz = selectedParams.clockFrequencyMhz.getStoredValue();
-            if (newFreqMHz >= 1.0 && newFreqMHz <= 2.0) {
-                tuningSystem->setClockFrequency(newFreqMHz * MHz);
-                // DBG("Clock frequency changed from valueChanged sendChangeMessage");
-                sendChangeMessage();
-            }
-        } else if (value.refersToSameSourceAs(selectedParams.chipClock.getPropertyAsValue())) {
-            selectedParams.chipClock.forceUpdateOfCachedValue();
-            // DBG("chipIndex0 changed from valueChanged " << value.toString());
-            auto chip = selectedParams.chipClock.getStoredValue();
-            if (chip != ChipClockChoice::Custom) {
-                // Update clock frequency when preset is selected
-                // DBG("chipIndex0 =" << chip.getLabel().data());
-                auto clock = chip.getClockValue();
-                selectedParams.clockFrequencyMhz.setStoredValue(clock / MHz);
-                tuningSystem->setClockFrequency(clock); // Update tuning system clock frequency
-                // Notify all registered listeners that the tuning system has changed
-            }
-            // if chip == ChipClockChoice::Custom we should send change message too
-            // DBG("chipIndex0 changed from valueChanged sendChangeMessage");
+            tuningSystem->setClockFrequency(newFreqMHz * MHz);
+            // DBG("Clock frequency changed from valueChanged sendChangeMessage");
             sendChangeMessage();
         } else if (value.refersToSameSourceAs(selectedParams.tuningType.getPropertyAsValue())) {
             selectedParams.tuningType.forceUpdateOfCachedValue();
@@ -779,8 +731,7 @@ private:
             .builtinTable = builtinTable,
             .tonic = getCurrentTonic(),
             .scaleType = getCurrentScaleType(),
-            .chipChoice = selectedParams.chipClock.getStoredValue(),
-            .chipClock = selectedParams.clockFrequencyMhz.getStoredValue() * MHz,
+            .chipClockFreq = selectedParams.clockFrequencyMhz.getStoredValue() * MHz,
             .a4Frequency = selectedParams.a4Frequency.getStoredValue()
         };
 
@@ -791,8 +742,7 @@ private:
             selectedParams.tuningType.setStoredValue(tuningSystem->getReferenceTuning()->getType());
             selectedParams.tonic.setStoredValue(options.tonic);
             selectedParams.scaleType.setStoredValue(options.scaleType);
-            selectedParams.chipClock.setStoredValue(options.chipChoice);
-            selectedParams.clockFrequencyMhz.setStoredValue(options.chipClock / MHz);
+            selectedParams.clockFrequencyMhz.setStoredValue(options.chipClockFreq / MHz);
             selectedParams.a4Frequency.setStoredValue(options.a4Frequency);
         }
     }

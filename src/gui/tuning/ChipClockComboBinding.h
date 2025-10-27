@@ -38,6 +38,7 @@ private:
     ParameterValue<double>& valueParam;
     std::vector<double> presetValues;
     juce::String unitsText;
+    bool showTextForPresets = true;
 
     bool updating = false;
 };

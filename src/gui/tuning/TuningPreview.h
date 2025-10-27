@@ -6,10 +6,10 @@
 #include "../../viewmodels/tuning/TuningPlayer.h"
 
 #include "../common/ParamBindings.h"
+#include "../common/ComboBindingWithPresets.h"
 #include "../common/MoTooltipWindow.h"
 
 #include "TuningPreviewGrid.h"
-#include "ChipClockComboBinding.h"
 
 #include <vector>
 
@@ -67,7 +67,7 @@ private:
     private:
         Label label;
         ComboBox select;
-        ChipClockComboBinding comboBinding;
+        ComboBindingWithPresets comboBinding;
     };
     ChipClock chipClock {*this, viewModel};
 

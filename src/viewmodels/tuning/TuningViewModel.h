@@ -240,7 +240,7 @@ public:
             visitor(envInterval);
         }
 
-        ParameterValue<double> clockFrequencyMhz      {{IDs::clockFreq.toString(),    IDs::clockFreq,      "Clock",            "Chip clock frequency",      1.7734,                              {1.0, 2.0, 0.001}, "MHz"}};
+        ParameterValue<double> clockFrequencyMhz      {{IDs::clockFreq.toString(),    IDs::clockFreq,      "Clock",            "Chip clock frequency",      1.7734,                              {0.8, 2.0}, "MHz"}};
 
         ParameterValue<Scale::Tonic> tonic            {{IDs::key.toString(),          IDs::key,            "Key",              "Selected key tonic",        Scale::Tonic::C,                     Scale::Tonic::getLongLabels()}};
         ParameterValue<Scale::ScaleType> scaleType    {{IDs::scale.toString(),        IDs::scale,          "Scale",            "Selected scale type",       Scale::ScaleType::IonianOrMajor,     Scale::ScaleType::getLongLabels()}};

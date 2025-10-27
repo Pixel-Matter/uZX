@@ -9,11 +9,11 @@
 
 namespace MoTool {
 
-class ChipClockComboBinding : private juce::Value::Listener,
+class ComboBindingWithPresets : private juce::Value::Listener,
                               private juce::ComboBox::Listener {
 public:
-    ChipClockComboBinding(juce::ComboBox& comboBox, ParameterValue<double>& valueParameter);
-    ~ChipClockComboBinding() override;
+    ComboBindingWithPresets(juce::ComboBox& comboBox, ParameterValue<double>& valueParameter, const std::vector<std::pair<double, String>>& presetItems);
+    ~ComboBindingWithPresets() override;
 
     void configure();
 
@@ -36,6 +36,7 @@ private:
 
     juce::ComboBox& select;
     ParameterValue<double>& valueParam;
+    std::vector<std::pair<double, String>> presets;
     std::vector<double> presetValues;
     juce::String unitsText;
     bool showTextForPresets = true;

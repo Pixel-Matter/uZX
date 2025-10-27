@@ -39,6 +39,7 @@ set(GUI_SOURCES
     gui/common/Utilities.cpp
     gui/common/ProgressDialog.cpp
     gui/common/ParamBindings.cpp
+    gui/common/ComboBindingWithPresets.cpp
     gui/common/LookAndFeel.cpp
     gui/common/LabeledSlider.cpp
     gui/common/MidiParameterMapping.cpp
@@ -54,7 +55,6 @@ set(GUI_SOURCES
     gui/main/AboutDialog.cpp
     gui/main/MainWindow.cpp
     gui/main/Footer.cpp
-    gui/tuning/ChipClockComboBinding.cpp
     gui/tuning/TuningPreviewGrid.cpp
     gui/tuning/TuningPreview.cpp
 

@@ -9,18 +9,28 @@
 
 namespace MoTool {
 
+static std::vector<std::pair<double, String>> makeChipClockPresets() {
+    std::vector<std::pair<double, String>> choices;
+    choices.reserve(static_cast<size_t>(ChipClockChoice::size()) - 1);
+
+    auto entries = ChipClockChoice::getClockEntries();
+    for (int idx = 0; idx < static_cast<int>(ChipClockChoice::size()); ++idx) {
+        auto choice = ChipClockChoice(idx);
+        if (entries[idx] != 0)
+            choices.emplace_back(entries[idx] / MHz, choice.getLongLabel().data());
+    }
+    return choices;
+}
 
 //================================================================================
 TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
-    : comboBinding(select, vm.selectedParams.clockFrequencyMhz)
+    : comboBinding(select, vm.selectedParams.clockFrequencyMhz, makeChipClockPresets())
 {
     label.setText("Chip clock", juce::dontSendNotification);
     label.setJustificationType(Justification::centredLeft);
 
     c.addAndMakeVisible(label);
     c.addAndMakeVisible(select);
-
-    comboBinding.configure();
 }
 
 void TuningPreviewComponent::ChipClock::layout(juce::Rectangle<int>& area) {

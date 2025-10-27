@@ -1,25 +1,30 @@
-#include "ChipClockComboBinding.h"
+#include "ComboBindingWithPresets.h"
 
 #include <cmath>
-#include "juce_core/juce_core.h"
 
 namespace MoTool {
 
-ChipClockComboBinding::ChipClockComboBinding(juce::ComboBox& comboBox, ParameterValue<double>& valueParameter)
+ComboBindingWithPresets::ComboBindingWithPresets(
+        juce::ComboBox& comboBox,
+        ParameterValue<double>& valueParameter,
+        const std::vector<std::pair<double, String>>& presetItems
+)
     : select(comboBox)
     , valueParam(valueParameter)
+    , presets(presetItems)
     , unitsText(valueParameter.definition.units)
 {
     select.addListener(this);
     valueParam.addListener(this);
+    configure();
 }
 
-ChipClockComboBinding::~ChipClockComboBinding() {
+ComboBindingWithPresets::~ComboBindingWithPresets() {
     select.removeListener(this);
     valueParam.removeListener(this);
 }
 
-void ChipClockComboBinding::configure() {
+void ComboBindingWithPresets::configure() {
     select.setJustificationType(juce::Justification::centredLeft);
     select.setTooltip(valueParam.definition.description);
     select.setTextWhenNothingSelected({});
@@ -28,14 +33,14 @@ void ChipClockComboBinding::configure() {
     refreshFromParameters();
 }
 
-void ChipClockComboBinding::valueChanged(juce::Value& value) {
+void ComboBindingWithPresets::valueChanged(juce::Value& value) {
     if (value.refersToSameSourceAs(valueParam.getPropertyAsValue())) {
         valueParam.forceUpdateOfCachedValue();
         refreshFromParameters();
     }
 }
 
-void ChipClockComboBinding::comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged) {
+void ComboBindingWithPresets::comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged) {
     if (comboBoxThatHasChanged != &select || updating)
         return;
 
@@ -48,21 +53,7 @@ void ChipClockComboBinding::comboBoxChanged(juce::ComboBox* comboBoxThatHasChang
     }
 }
 
-static std::vector<std::pair<double, String>> makeChipClockPresets() {
-    std::vector<std::pair<double, String>> choices;
-    choices.reserve(static_cast<size_t>(ChipClockChoice::size()) - 1);
-
-    auto entries = ChipClockChoice::getClockEntries();
-    for (int idx = 0; idx < static_cast<int>(ChipClockChoice::size()); ++idx) {
-        auto choice = ChipClockChoice(idx);
-        if (entries[idx] != 0)
-            choices.emplace_back(entries[idx] / 1'000'000.0, choice.getLongLabel().data());
-    }
-    return choices;
-}
-
-void ChipClockComboBinding::fillPresetItems() {
-    auto presets = makeChipClockPresets();
+void ComboBindingWithPresets::fillPresetItems() {
     juce::ScopedValueSetter<bool> guard(updating, true);
 
     select.clear(juce::dontSendNotification);
@@ -77,7 +68,7 @@ void ChipClockComboBinding::fillPresetItems() {
     }
 }
 
-void ChipClockComboBinding::refreshFromParameters() {
+void ComboBindingWithPresets::refreshFromParameters() {
     if (updating)
         return;
 
@@ -98,7 +89,7 @@ void ChipClockComboBinding::refreshFromParameters() {
     }
 }
 
-void ChipClockComboBinding::handleSelectionChange() {
+void ComboBindingWithPresets::handleSelectionChange() {
     DBG("Handling ComboBox selection change");
     const int selectedId = select.getSelectedId();
     if (selectedId == customItemId) {
@@ -121,7 +112,7 @@ void ChipClockComboBinding::handleSelectionChange() {
     select.setText(formatValue(value), juce::dontSendNotification);
 }
 
-void ChipClockComboBinding::handleTextChange() {
+void ComboBindingWithPresets::handleTextChange() {
     const auto& range = valueParam.definition.valueRange;
     auto text = removeUnits(select.getText().trim());
 
@@ -143,7 +134,7 @@ void ChipClockComboBinding::handleTextChange() {
     valueParam.setStoredValue(clamped);
 }
 
-int ChipClockComboBinding::findPresetForValue(double freqMHz) const {
+int ComboBindingWithPresets::findPresetForValue(double freqMHz) const {
     constexpr double tolerance = 1e-6;
     for (size_t i = 0; i < presetValues.size(); ++i) {
         if (std::abs(presetValues[i] - freqMHz) <= tolerance)
@@ -152,7 +143,7 @@ int ChipClockComboBinding::findPresetForValue(double freqMHz) const {
     return -1;
 }
 
-void ChipClockComboBinding::setPresetSelection(int presetIndex, bool updateText) {
+void ComboBindingWithPresets::setPresetSelection(int presetIndex, bool updateText) {
     if (presetIndex < 0 || presetIndex >= static_cast<int>(presetValues.size()))
         return;
 
@@ -165,7 +156,7 @@ void ChipClockComboBinding::setPresetSelection(int presetIndex, bool updateText)
     }
 }
 
-juce::String ChipClockComboBinding::formatValue(double value, bool includeUnits) const {
+juce::String ComboBindingWithPresets::formatValue(double value, bool includeUnits) const {
     juce::String text(value, 6);
     text = text.trimCharactersAtEnd("0");
     text = text.trimCharactersAtEnd(".");
@@ -176,7 +167,7 @@ juce::String ChipClockComboBinding::formatValue(double value, bool includeUnits)
     return text;
 }
 
-juce::String ChipClockComboBinding::removeUnits(juce::String text) const {
+juce::String ComboBindingWithPresets::removeUnits(juce::String text) const {
     if (unitsText.isEmpty())
         return text;
 

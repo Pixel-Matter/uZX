@@ -7,12 +7,14 @@ namespace MoTool {
 ComboBindingWithPresets::ComboBindingWithPresets(
         juce::ComboBox& comboBox,
         ParameterValue<double>& valueParameter,
-        const std::vector<std::pair<double, String>>& presetItems
+        const std::vector<std::pair<double, String>>& presetItems,
+        bool showPresetLabels
 )
     : select(comboBox)
     , valueParam(valueParameter)
     , presets(presetItems)
     , unitsText(valueParameter.definition.units)
+    , showTextForPresets(showPresetLabels)
 {
     select.addListener(this);
     valueParam.addListener(this);
@@ -45,10 +47,8 @@ void ComboBindingWithPresets::comboBoxChanged(juce::ComboBox* comboBoxThatHasCha
         return;
 
     if (select.getSelectedId() > 0) {
-        DBG("ComboBox selection changed: ID=" << select.getSelectedId());
         handleSelectionChange();
     } else {
-        DBG("ComboBox text changed: Text=\"" << select.getText() << "\"");
         handleTextChange();
     }
 }
@@ -57,15 +57,12 @@ void ComboBindingWithPresets::fillPresetItems() {
     juce::ScopedValueSetter<bool> guard(updating, true);
 
     select.clear(juce::dontSendNotification);
-    select.addItem("Custom", customItemId);
-    select.addSeparator();
-    presetValues.clear();
-
     int itemId = presetBaseId;
-    for (auto [value, label] : presets) {
-        select.addItem(label, itemId++);
-        presetValues.push_back(value);
+    for (const auto& preset : presets) {
+        select.addItem(preset.second, itemId++);
     }
+    select.addSeparator();
+    select.addItem("Custom", customItemId);
 }
 
 void ComboBindingWithPresets::refreshFromParameters() {
@@ -77,12 +74,9 @@ void ComboBindingWithPresets::refreshFromParameters() {
     const double value = valueParam.getStoredValue();
 
     auto preset = findPresetForValue(value);
-    DBG("Refreshing ComboBox from parameter: Value=" << value << ", Preset=" << preset);
     if (preset >= 0) {
-        DBG(" - matched preset index " << preset);
-        setPresetSelection(preset, !showTextForPresets);
+        applyPreset(preset, false, true);
     } else {
-        DBG(" - custom value");
         select.setSelectedId(0, juce::dontSendNotification);
         select.setText(formatValue(value), juce::dontSendNotification);
         select.setEditableText(true);
@@ -90,7 +84,6 @@ void ComboBindingWithPresets::refreshFromParameters() {
 }
 
 void ComboBindingWithPresets::handleSelectionChange() {
-    DBG("Handling ComboBox selection change");
     const int selectedId = select.getSelectedId();
     if (selectedId == customItemId) {
         juce::ScopedValueSetter<bool> guard(updating, true);
@@ -101,15 +94,11 @@ void ComboBindingWithPresets::handleSelectionChange() {
     }
 
     const int presetIndex = selectedId - presetBaseId;
-    if (presetIndex < 0 || presetIndex >= static_cast<int>(presetValues.size()))
+    if (presetIndex < 0 || presetIndex >= static_cast<int>(presets.size())) {
         return;
+    }
 
-    const double value = presetValues[static_cast<size_t>(presetIndex)];
-
-    valueParam.setStoredValue(value);
-    DBG(" - setting text to " << formatValue(value));
-    juce::ScopedValueSetter<bool> guard(updating, true);
-    select.setText(formatValue(value), juce::dontSendNotification);
+    applyPreset(presetIndex, true, true);
 }
 
 void ComboBindingWithPresets::handleTextChange() {
@@ -128,7 +117,7 @@ void ComboBindingWithPresets::handleTextChange() {
 
     const int presetIndex = findPresetForValue(clamped);
     if (presetIndex >= 0) {
-        setPresetSelection(presetIndex, false);
+        applyPreset(presetIndex, false, false);
     }
 
     valueParam.setStoredValue(clamped);
@@ -136,23 +125,30 @@ void ComboBindingWithPresets::handleTextChange() {
 
 int ComboBindingWithPresets::findPresetForValue(double freqMHz) const {
     constexpr double tolerance = 1e-6;
-    for (size_t i = 0; i < presetValues.size(); ++i) {
-        if (std::abs(presetValues[i] - freqMHz) <= tolerance)
+    for (size_t i = 0; i < presets.size(); ++i) {
+        if (std::abs(presets[i].first - freqMHz) <= tolerance)
             return static_cast<int>(i);
     }
     return -1;
 }
 
-void ComboBindingWithPresets::setPresetSelection(int presetIndex, bool updateText) {
-    if (presetIndex < 0 || presetIndex >= static_cast<int>(presetValues.size()))
+void ComboBindingWithPresets::applyPreset(int presetIndex, bool updateParameter, bool updateText) {
+    if (presetIndex < 0 || presetIndex >= static_cast<int>(presets.size()))
         return;
 
+    const auto& preset = presets[static_cast<size_t>(presetIndex)];
+
     juce::ScopedValueSetter<bool> guard(updating, true);
+
+    if (updateParameter)
+        valueParam.setStoredValue(preset.first);
+
     select.setSelectedId(presetBaseId + presetIndex, juce::dontSendNotification);
     select.setEditableText(false);
 
     if (updateText) {
-        select.setText(formatValue(presetValues[static_cast<size_t>(presetIndex)]), juce::dontSendNotification);
+        const juce::String textToUse = showTextForPresets ? preset.second : formatValue(preset.first);
+        select.setText(textToUse, juce::dontSendNotification);
     }
 }
 

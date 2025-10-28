@@ -56,21 +56,25 @@ void PluginDeviceUI::addMidiRangeMenu(juce::PopupMenu& parentMenu, ParameterValu
 {
     juce::PopupMenu submenu;
 
-    const auto currentValue = midiParameter.getStoredValue();
+    const auto currentChan = midiParameter.getStoredValue();
     auto start = static_cast<int>(midiParameter.definition.valueRange.start);
     auto end = static_cast<int>(midiParameter.definition.valueRange.end);
 
     jassert(midiParameter.definition.valueRange.interval == 1);
     jassert(start <= end);
 
-    for (int value = start; value <= end; ++value) {
-        submenu.addItem(juce::String(value) + " - " + juce::String(juce::jmin(value + range - 1, 16)),
-                        true, value == currentValue,
-                        [&midiParameter, value]() { midiParameter.setStoredValue(value); });
+    for (int chan = start; chan <= end + range - 1; ++chan) {
+        submenu.addItem(juce::String(chan),
+                        chan <= end,
+                        chan >= currentChan && chan <= currentChan + range - 1,
+                        [&midiParameter, chan, end]() {
+                            if (chan <= end)
+                                midiParameter.setStoredValue(chan);
+                        });
     }
 
     if (submenu.getNumItems() > 0) {
-        String label = juce::String(currentValue) + " - " + juce::String(juce::jmin(currentValue + range - 1, 16));
+        String label = juce::String(currentChan) + " - " + juce::String(juce::jmin(currentChan + range - 1, 16));
         if (title.isNotEmpty())
             label = title + " (" + label + ")";
 

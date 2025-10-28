@@ -35,7 +35,6 @@ private:
     ComponentBoundsConstrainer constrainer_;
 
     // static, cannot be automated
-    LabeledSlider midiChannelKnob { plugin_.staticParams.baseMidiChannel };
     ChoiceButton chipTypeButton   { plugin_, plugin_.staticParams.chipType };
     LabeledSlider clockKnob       { plugin_.staticParams.chipClock };
     // TextButton DCButton        { plugin_, plugin_.staticParams.removeDC };

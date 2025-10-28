@@ -50,7 +50,7 @@ public:
     public:
         using ParamsBase<StaticParams>::ParamsBase;
 
-        ParameterValue<int> baseMidiChannel {{"midiBase", IDs::midiBase, "MIDI", "Base MIDI Channel", 1, {1, 16 - 3, 1}}};
+        ParameterValue<int> baseMidiChannel {{"midiBase", IDs::midiBase, "MIDI", "MIDI channel range", 1, {1, 16 - 3, 1}}};
         // TODO Tuning system parameter, choice
 
         template<typename Visitor>

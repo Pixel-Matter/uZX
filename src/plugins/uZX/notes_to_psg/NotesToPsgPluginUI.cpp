@@ -9,13 +9,10 @@ namespace MoTool::uZX {
 NotesToPsgPluginUI::NotesToPsgPluginUI(tracktion::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
     , baseParams(notesToPsgPlugin()->staticParams)
-    , baseMidiKnob(*pluginPtr, baseParams.baseMidiChannel)
 {
     jassert(pluginPtr != nullptr);
 
     setSize(128, 80);
-
-    addAndMakeVisible(baseMidiKnob);
 }
 
 NotesToPsgPlugin* NotesToPsgPluginUI::notesToPsgPlugin() const {
@@ -31,9 +28,7 @@ void NotesToPsgPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
         return;
     }
 
-    addDiscreteIntegerParameterMenu(menu,
-                                    baseParams.baseMidiChannel,
-                                    TRANS("Base MIDI Channel"));
+    addMidiRangeMenu(menu, baseParams.baseMidiChannel, baseParams.baseMidiChannel.definition.description, 4);
 }
 
 void NotesToPsgPluginUI::paint(Graphics&) {
@@ -41,11 +36,10 @@ void NotesToPsgPluginUI::paint(Graphics&) {
 }
 
 void NotesToPsgPluginUI::resized() {
-    static constexpr int knobSize = 32;
+    // static constexpr int knobSize = 32;
     // static constexpr int spacing = 8;
 
-    auto r = getLocalBounds().reduced(8, 8);
-    baseMidiKnob.setBounds(r.removeFromTop(knobSize + baseMidiKnob.getLabelHeight()));
+    // auto r = getLocalBounds().reduced(8, 8);
 }
 
 REGISTER_PLUGIN_UI_ADAPTER(NotesToPsgPlugin, NotesToPsgPluginUI)

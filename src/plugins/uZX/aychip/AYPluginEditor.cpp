@@ -13,9 +13,8 @@ AYPluginUI::AYPluginUI(tracktion::Plugin::Ptr pluginPtr)
     , plugin_(*dynamic_cast<AYChipPlugin*>(pluginPtr.get()))
 {
     constrainer_.setMinimumWidth(160);
-    setSize(160, 320);
+    setSize(160, 160);
 
-    addAndMakeVisible(midiChannelKnob);
     addAndMakeVisible(chipTypeButton);
     addAndMakeVisible(clockKnob);
 
@@ -25,7 +24,7 @@ AYPluginUI::AYPluginUI(tracktion::Plugin::Ptr pluginPtr)
 }
 
 void AYPluginUI::paint(Graphics& g) {
-    g.fillAll(Colors::Theme::backgroundAlt);
+    // g.fillAll(Colors::Theme::backgroundAlt);
 }
 
 void AYPluginUI::resized() {
@@ -36,7 +35,6 @@ void AYPluginUI::resized() {
     auto width = staticRow.getWidth() / 3;
     chipTypeButton.setBounds(staticRow.removeFromLeft(width).withSizeKeepingCentre(width, 20));
     clockKnob.setBounds(staticRow.removeFromLeft(width));
-    midiChannelKnob.setBounds(staticRow.removeFromLeft(width));
 
     // automatable
     r.removeFromTop(itemSpacing * 2);
@@ -57,9 +55,7 @@ bool AYPluginUI::hasDeviceMenu() const {
 }
 
 void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
-    addDiscreteIntegerParameterMenu(menu,
-                                    plugin_.staticParams.baseMidiChannel,
-                                    TRANS("Base MIDI Channel"));
+    addMidiRangeMenu(menu, plugin_.staticParams.baseMidiChannel, plugin_.staticParams.baseMidiChannel.definition.description, 4);
 }
 
 REGISTER_PLUGIN_UI_ADAPTER(AYChipPlugin, AYPluginUI)

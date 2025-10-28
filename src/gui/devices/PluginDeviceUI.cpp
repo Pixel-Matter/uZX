@@ -40,8 +40,42 @@ void PluginDeviceUI::addDiscreteIntegerParameterMenu(juce::PopupMenu& parentMenu
                         [&parameter, value]() { parameter.setStoredValue(value); });
     }
 
-    if (submenu.getNumItems() > 0)
-        parentMenu.addSubMenu(title, submenu);
+    if (submenu.getNumItems() > 0) {
+        juce::String label = title;
+        if (label.isNotEmpty())
+            label += " (" + juce::String(currentValue) + ")";
+        else
+            label = juce::String(currentValue);
+
+        parentMenu.addSubMenu(label, submenu);
+    }
+}
+
+void PluginDeviceUI::addMidiRangeMenu(juce::PopupMenu& parentMenu, ParameterValue<int>& midiParameter,
+                                      const juce::String& title, int range)
+{
+    juce::PopupMenu submenu;
+
+    const auto currentValue = midiParameter.getStoredValue();
+    auto start = static_cast<int>(midiParameter.definition.valueRange.start);
+    auto end = static_cast<int>(midiParameter.definition.valueRange.end);
+
+    jassert(midiParameter.definition.valueRange.interval == 1);
+    jassert(start <= end);
+
+    for (int value = start; value <= end; ++value) {
+        submenu.addItem(juce::String(value) + " - " + juce::String(juce::jmin(value + range - 1, 16)),
+                        true, value == currentValue,
+                        [&midiParameter, value]() { midiParameter.setStoredValue(value); });
+    }
+
+    if (submenu.getNumItems() > 0) {
+        String label = juce::String(currentValue) + " - " + juce::String(juce::jmin(currentValue + range - 1, 16));
+        if (title.isNotEmpty())
+            label = title + " (" + label + ")";
+
+        parentMenu.addSubMenu(label, submenu);
+    }
 }
 
 }  // namespace MoTool

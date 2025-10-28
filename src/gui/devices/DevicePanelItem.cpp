@@ -74,7 +74,7 @@ TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI)
     addAndMakeVisible(enableButton_);
 
     menuButton_.setButtonText("☰"_u);
-    menuButton_.setTooltip(TRANS("Plugin options"));
+    menuButton_.setTooltip("Plugin options");
     menuButton_.onClick = [this]() { showDeviceMenu(&menuButton_); };
     addAndMakeVisible(menuButton_);
     refreshMenuButtonState();
@@ -134,16 +134,50 @@ void TitleBar::mouseUp(const juce::MouseEvent& event) {
 void TitleBar::showDeviceMenu(juce::Component* target) {
     juce::PopupMenu menu;
 
+    const auto addInfoLine = [&menu](const juce::String& text) {
+        if (text.isNotEmpty()) {
+            juce::PopupMenu::Item infoItem(text);
+            infoItem.isEnabled = false;
+            menu.addItem(std::move(infoItem));
+        }
+    };
+
+    bool hasInfoSection = false;
+    if (plugin_ != nullptr) {
+        addInfoLine(plugin_->getName().trim());
+        if (const auto vendor = plugin_->getVendor().trim(); vendor.isNotEmpty())
+            addInfoLine("by " + vendor);
+
+        // auto description = plugin_->getSelectableDescription().trim();
+        // if (description.isEmpty())
+        //     description = plugin_->getName();
+        // addInfoLine(description);
+
+        hasInfoSection = menu.getNumItems() > 0;
+    }
+
+    juce::PopupMenu customItems;
     if (deviceUI_ != nullptr) {
-        deviceUI_->populateDeviceMenu(menu);
+        deviceUI_->populateDeviceMenu(customItems);
+    }
+
+    const bool hasCustomItems = customItems.getNumItems() > 0;
+    const bool hasPluginActions = plugin_ != nullptr;
+
+    if (hasInfoSection && (hasCustomItems || hasPluginActions))
+        menu.addSeparator();
+
+    if (hasCustomItems) {
+        for (juce::PopupMenu::MenuItemIterator it(customItems); it.next();) {
+            menu.addItem(it.getItem());
+        }
     }
 
     if (plugin_ != nullptr) {
-        if (menu.getNumItems() > 0) {
+        if (menu.getNumItems() > 0)
             menu.addSeparator();
-        }
 
-        menu.addItem(TRANS("Remove Device"), [this] {
+        menu.addItem("Remove Device", [this] {
             plugin_->deleteFromParent();
         });
     }

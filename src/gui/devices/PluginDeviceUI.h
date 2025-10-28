@@ -30,6 +30,9 @@ protected:
     static void addDiscreteIntegerParameterMenu(juce::PopupMenu& parentMenu,
                                                 ParameterValue<int>& parameter,
                                                 const juce::String& title);
+    static void addMidiRangeMenu(juce::PopupMenu& parentMenu,
+                                 ParameterValue<int>& midiParameter,
+                                 const juce::String& title, int range);
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginDeviceUI)

@@ -118,16 +118,13 @@ void TitleBar::paint(Graphics& g) {
             const int controlBottom = menuButton_.isVisible()
                                           ? menuButton_.getBottom()
                                           : enableButton_.getBottom();
-            const int textStart = controlBottom + 2;
-            const int available = getHeight() - textStart - 2;
+            const int textEnd = controlBottom;
+            const int available = getHeight() - textEnd - 4;
             if (available > 0) {
-                DBG("Drawing rotated text for collapsed plugin: " + plugin_->getName());
                 Graphics::ScopedSaveState guard(g);
-                auto transform = AffineTransform::rotation(-MathConstants<float>::halfPi)
-                                     .translated(0.0f, (float) getWidth());
-                g.addTransform(transform);
-                Rectangle<int> textBounds(textStart, 0, available, getWidth());
-                DBG("Bounds for rotated text: " << textBounds.toString());
+                g.addTransform(AffineTransform::translation((float) -getHeight(), 0.0f)
+                                 .followedBy(AffineTransform::rotation(-MathConstants<float>::halfPi)));
+                Rectangle<int> textBounds(4, 0, available, getWidth());
                 g.drawText(plugin_->getName(), textBounds, Justification::centred, true);
             }
         } else {

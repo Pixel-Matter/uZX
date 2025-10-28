@@ -132,7 +132,9 @@ public:
 
     static constexpr float cornerSize = 4.0f;
 private:
-    bool isCollapsed_ = false;
+    void updateCollapsedInternal();
+
+    CachedValue<bool> isCollapsed_;
     int expandedWidth_ = 0;
     int expandedHeight_ = 0;
 

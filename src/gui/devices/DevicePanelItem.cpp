@@ -270,6 +270,12 @@ void FramelessDeviceItem::paint(Graphics&) {
     // Frameless - let the UI handle all painting
 }
 
+namespace IDs {
+    #define DECLARE_ID(name)  const Identifier name(#name);
+    DECLARE_ID(viewCollapsed)
+    #undef DECLARE_ID
+}
+
 //==============================================================================
 // FramedDeviceItem implementation
 
@@ -290,9 +296,13 @@ FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
     expandedWidth_ = getWidth();
     expandedHeight_ = getHeight();
 
+    if (plugin_ != nullptr) {
+        isCollapsed_.referTo(plugin_->state, IDs::viewCollapsed, nullptr, false);
+    }
     titleBar_.setCollapseToggle([this]() {
         setCollapsed(!isCollapsed_);
     });
+    updateCollapsedInternal();
 }
 
 void FramedDeviceItem::resized() {
@@ -339,16 +349,7 @@ void FramedDeviceItem::paint(Graphics& g) {
     g.fillPath(path);
 }
 
-void FramedDeviceItem::setCollapsed(bool collapsed) {
-    if (isCollapsed_ == collapsed)
-        return;
-
-    if (collapsed) {
-        expandedWidth_ = getWidth();
-        expandedHeight_ = getHeight();
-    }
-
-    isCollapsed_ = collapsed;
+void FramedDeviceItem::updateCollapsedInternal() {
     titleBar_.setCollapsed(isCollapsed_);
 
     if (ui_) {
@@ -365,6 +366,20 @@ void FramedDeviceItem::setCollapsed(bool collapsed) {
                                                       : (ui_ ? ui_->getHeight() + TitleBar::height : getHeight());
         setSize(restoreWidth, restoreHeight);
     }
+}
+
+void FramedDeviceItem::setCollapsed(bool collapsed) {
+    if (isCollapsed_ == collapsed)
+        return;
+
+    isCollapsed_ = collapsed;
+
+    if (isCollapsed_) {
+        expandedWidth_ = getWidth();
+        expandedHeight_ = getHeight();
+    }
+
+    updateCollapsedInternal();
 
     resized();
     repaint();

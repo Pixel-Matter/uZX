@@ -21,7 +21,7 @@ public:
     AddButton();
 };
 
-class AddButtonComponent : public Component, private Timer {
+class AddButtonComponent : public DevicePanelItemBase, private Timer {
 public:
     AddButtonComponent();
     void resized() override;
@@ -41,7 +41,8 @@ private:
 class TrackDevicesPanel : public juce::Component,
                           public juce::ChangeListener,
                           private FlaggedAsyncUpdater,
-                          private juce::ValueTree::Listener
+                          private juce::ValueTree::Listener,
+                          private juce::ComponentListener
 {
 public:
     TrackDevicesPanel(EditViewState& evs);
@@ -64,6 +65,9 @@ public:
     // FlaggedAsyncUpdater override
     void handleAsyncUpdate() override;
 
+    // ComponentListener override
+    void componentMovedOrResized(juce::Component& component, bool wasMoved, bool wasResized) override;
+
 private:
     EditViewState& editViewState;
     tracktion::SafeSelectable<tracktion::Track> currentTrack;
@@ -71,15 +75,17 @@ private:
     // TODO this belongs to some ViewModel class
     static bool shouldBeShown(tracktion::Plugin* p);
     void buildPlugins();
-    int createAndAddNewPluginButton(int index, Rectangle<int>& area);
+    void createAndAddNewPluginButton(int index);
+    void layoutDeviceComponents();
     void addButtonClicked(int index);
 
     Viewport viewport;
     Component content;
 
     OwnedArray<AddButtonComponent> addButtons;
-    OwnedArray<DevicePanelItem> devices;
+    OwnedArray<DeviceItem> devices;
     bool updateDevices = false;
+    bool rebuildingDevices_ = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackDevicesPanel)
 };

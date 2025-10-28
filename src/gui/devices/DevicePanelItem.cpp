@@ -66,10 +66,10 @@ TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI)
     // enableButton_.setButtonText("●"_u);
     enableButton_.setSize(buttonWidth, buttonWidth);
     enableButton_.setToggleable(true);
-    enableButton_.setToggleState(plugin->isEnabled(), juce::dontSendNotification);
+    enableButton_.setToggleState(plugin->isEnabled(), dontSendNotification);
     enableButton_.onClick = [this]() {
         plugin_->setEnabled(!enableButton_.getToggleState());
-        enableButton_.setToggleState(plugin_->isEnabled(), juce::dontSendNotification);
+        enableButton_.setToggleState(plugin_->isEnabled(), dontSendNotification);
     };
     addAndMakeVisible(enableButton_);
 
@@ -80,39 +80,88 @@ TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI)
     refreshMenuButtonState();
 }
 
-void TitleBar::paint(juce::Graphics& g) {
+void TitleBar::setCollapseToggle(std::function<void()> handler) {
+    toggleCollapsed_ = std::move(handler);
+}
+
+void TitleBar::setCollapsed(bool collapsed) {
+    if (isCollapsed_ == collapsed)
+        return;
+
+    isCollapsed_ = collapsed;
+    resized();
+    repaint();
+}
+
+void TitleBar::paint(Graphics& g) {
     auto bounds = getLocalBounds().toFloat();
     Path path;
-    path.addRoundedRectangle(
-        bounds.getX(), bounds.getY(),
-        bounds.getWidth(), bounds.getHeight(),
-        FramedDeviceItem::cornerSize, FramedDeviceItem::cornerSize,
-        true, true, false, false
-    );
-    g.setColour(findColour(juce::TextButton::buttonColourId));
+    if (isCollapsed_) {
+        path.addRoundedRectangle(bounds, FramedDeviceItem::cornerSize);
+    } else {
+        path.addRoundedRectangle(
+            bounds.getX(), bounds.getY(),
+            bounds.getWidth(), bounds.getHeight(),
+            FramedDeviceItem::cornerSize, FramedDeviceItem::cornerSize,
+            true, true, false, false
+        );
+    }
+    g.setColour(findColour(TextButton::buttonColourId));
     g.fillPath(path);
 
     if (plugin_) {
         g.setColour(Colors::Theme::textPrimary);
         auto font = g.getCurrentFont();
-        g.setFont(font.withPointHeight(11.0f).withExtraKerningFactor(0.03f).withStyle(juce::Font::bold));
+        g.setFont(font.withPointHeight(11.0f).withExtraKerningFactor(0.03f).withStyle(Font::bold));
 
-        // Draw plugin name, accounting for button and menu controls
-        int textX = buttonWidth + buttonMargin * 2 + 4;
-        int rightMargin = menuButton_.isVisible() ? (buttonWidth + buttonMargin * 2 + 4) : 4;
-        auto textBounds = juce::Rectangle<int>(textX, 0, getWidth() - textX - rightMargin, getHeight());
-        g.drawText(plugin_->getName(), textBounds, juce::Justification::centredLeft, true);
+        if (isCollapsed_) {
+            const int controlBottom = menuButton_.isVisible()
+                                          ? menuButton_.getBottom()
+                                          : enableButton_.getBottom();
+            const int textStart = controlBottom + 2;
+            const int available = getHeight() - textStart - 2;
+            if (available > 0) {
+                DBG("Drawing rotated text for collapsed plugin: " + plugin_->getName());
+                Graphics::ScopedSaveState guard(g);
+                auto transform = AffineTransform::rotation(-MathConstants<float>::halfPi)
+                                     .translated(0.0f, (float) getWidth());
+                g.addTransform(transform);
+                Rectangle<int> textBounds(textStart, 0, available, getWidth());
+                DBG("Bounds for rotated text: " << textBounds.toString());
+                g.drawText(plugin_->getName(), textBounds, Justification::centred, true);
+            }
+        } else {
+            // Draw plugin name, accounting for button and menu controls
+            int textX = buttonWidth + buttonMargin * 2 + 4;
+            int rightMargin = menuButton_.isVisible() ? (buttonWidth + buttonMargin * 2 + 4) : 4;
+            auto textBounds = Rectangle<int>(textX, 0, getWidth() - textX - rightMargin, getHeight());
+            g.drawText(plugin_->getName(), textBounds, Justification::centredLeft, true);
+        }
     }
 }
 
 void TitleBar::resized() {
     refreshMenuButtonState();
 
-    auto buttonHeight = getHeight() - buttonMargin * 2;
-    enableButton_.setBounds(buttonMargin, buttonMargin, buttonWidth, buttonHeight);
+    if (isCollapsed_) {
+        auto area = getLocalBounds().reduced(buttonMargin);
+        const int controlWidth = jmin(buttonWidth, jmax(0, area.getWidth()));
+        const int controlHeight = controlWidth;
+        const int x = area.getX() + (area.getWidth() - controlWidth) / 2;
+        enableButton_.setBounds(x, area.getY(), controlWidth, controlHeight);
+        auto nextY = enableButton_.getBottom() + buttonMargin;
+        if (menuButton_.isVisible()) {
+            menuButton_.setBounds(x, nextY, controlWidth, controlHeight);
+        } else {
+            menuButton_.setBounds(0, 0, 0, 0);
+        }
+    } else {
+        auto buttonHeight = getHeight() - buttonMargin * 2;
+        enableButton_.setBounds(buttonMargin, buttonMargin, buttonWidth, buttonHeight);
 
-    if (menuButton_.isVisible()) {
-        menuButton_.setBounds(getWidth() - buttonMargin - buttonWidth, buttonMargin, buttonWidth, buttonHeight);
+        if (menuButton_.isVisible()) {
+            menuButton_.setBounds(getWidth() - buttonMargin - buttonWidth, buttonMargin, buttonWidth, buttonHeight);
+        }
     }
 }
 
@@ -125,18 +174,24 @@ void TitleBar::refreshMenuButtonState() {
     menuButton_.setEnabled(shouldShowMenu);
 }
 
-void TitleBar::mouseUp(const juce::MouseEvent& event) {
+void TitleBar::mouseUp(const MouseEvent& event) {
     if (event.mods.isPopupMenu()) {
         showDeviceMenu(this);
     }
 }
 
-void TitleBar::showDeviceMenu(juce::Component* target) {
-    juce::PopupMenu menu;
+void TitleBar::mouseDoubleClick(const MouseEvent& event) {
+    if (!event.mods.isPopupMenu() && toggleCollapsed_ != nullptr) {
+        toggleCollapsed_();
+    }
+}
 
-    const auto addInfoLine = [&menu](const juce::String& text) {
+void TitleBar::showDeviceMenu(Component* target) {
+    PopupMenu menu;
+
+    const auto addInfoLine = [&menu](const String& text) {
         if (text.isNotEmpty()) {
-            juce::PopupMenu::Item infoItem(text);
+            PopupMenu::Item infoItem(text);
             infoItem.isEnabled = false;
             menu.addItem(std::move(infoItem));
         }
@@ -156,7 +211,7 @@ void TitleBar::showDeviceMenu(juce::Component* target) {
         hasInfoSection = menu.getNumItems() > 0;
     }
 
-    juce::PopupMenu customItems;
+    PopupMenu customItems;
     if (deviceUI_ != nullptr) {
         deviceUI_->populateDeviceMenu(customItems);
     }
@@ -168,7 +223,7 @@ void TitleBar::showDeviceMenu(juce::Component* target) {
         menu.addSeparator();
 
     if (hasCustomItems) {
-        for (juce::PopupMenu::MenuItemIterator it(customItems); it.next();) {
+        for (PopupMenu::MenuItemIterator it(customItems); it.next();) {
             menu.addItem(it.getItem());
         }
     }
@@ -183,14 +238,14 @@ void TitleBar::showDeviceMenu(juce::Component* target) {
     }
 
     if (menu.getNumItems() > 0) {
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(target));
+        menu.showMenuAsync(PopupMenu::Options().withTargetComponent(target));
     }
 }
 
 //==============================================================================
 // DevicePanelItem implementation
 
-DevicePanelItem::DevicePanelItem(std::unique_ptr<PluginDeviceUI> ui)
+DeviceItem::DeviceItem(std::unique_ptr<PluginDeviceUI> ui)
     : plugin_(ui->getPlugin())
     , ui_(std::move(ui))
 {
@@ -200,7 +255,7 @@ DevicePanelItem::DevicePanelItem(std::unique_ptr<PluginDeviceUI> ui)
 // FramelessDeviceItem implementation
 
 FramelessDeviceItem::FramelessDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
-    : DevicePanelItem(std::move(ui))
+    : DeviceItem(std::move(ui))
 {
     if (ui_) {
         addAndMakeVisible(ui_.get());
@@ -214,7 +269,7 @@ void FramelessDeviceItem::resized() {
     }
 }
 
-void FramelessDeviceItem::paint(juce::Graphics&) {
+void FramelessDeviceItem::paint(Graphics&) {
     // Frameless - let the UI handle all painting
 }
 
@@ -222,7 +277,7 @@ void FramelessDeviceItem::paint(juce::Graphics&) {
 // FramedDeviceItem implementation
 
 FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
-    : DevicePanelItem(std::move(ui))
+    : DeviceItem(std::move(ui))
     , titleBar_(plugin_, getDeviceUI())
 {
     if (ui_) {
@@ -233,22 +288,49 @@ FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
         // Size the frame to accommodate the plugin UI plus title bar
         static constexpr int frameWidth = 0;  // 2px border on each side
         setSize(ui_->getWidth() + frameWidth,
-                ui_->getHeight() + titleBar_.getHeight() + frameWidth);
+                ui_->getHeight() + TitleBar::height + frameWidth);
     }
+    expandedWidth_ = getWidth();
+    expandedHeight_ = getHeight();
+
+    titleBar_.setCollapseToggle([this]() {
+        setCollapsed(!isCollapsed_);
+    });
 }
 
 void FramedDeviceItem::resized() {
-    auto bounds = getLocalBounds();
-    auto titleBarBounds = bounds.removeFromTop(titleBar_.getHeight());
-    titleBar_.setBounds(titleBarBounds);
-    if (ui_) {
-        ui_->setBounds(bounds);
+    if (isCollapsed_) {
+        auto bounds = getLocalBounds();
+        auto collapsedWidth = TitleBar::height;
+        titleBar_.setBounds(bounds.removeFromLeft(collapsedWidth));
+        if (ui_) {
+            ui_->setBounds(0, 0, 0, 0);
+        }
+    } else {
+        auto bounds = getLocalBounds();
+        auto titleBarBounds = bounds.removeFromTop(TitleBar::height);
+        titleBar_.setBounds(titleBarBounds);
+        if (ui_) {
+            ui_->setBounds(bounds);
+        }
+        expandedWidth_ = getWidth();
+        expandedHeight_ = getHeight();
     }
 }
 
-void FramedDeviceItem::paint(juce::Graphics& g) {
+void FramedDeviceItem::paint(Graphics& g) {
     auto bounds = getLocalBounds().toFloat();
-    bounds.removeFromTop((float) titleBar_.getHeight());
+    if (isCollapsed_) {
+        auto backgroundArea = bounds;
+        backgroundArea.removeFromLeft((float) titleBar_.getWidth());
+        if (!backgroundArea.isEmpty()) {
+            g.setColour(Colors::Theme::background);
+            g.fillRect(backgroundArea);
+        }
+        return;
+    }
+
+    bounds.removeFromTop((float) TitleBar::height);
     Path path;
     path.addRoundedRectangle(
         bounds.getX(), bounds.getY(),
@@ -258,6 +340,37 @@ void FramedDeviceItem::paint(juce::Graphics& g) {
     );
     g.setColour(Colors::Theme::backgroundAlt);
     g.fillPath(path);
+}
+
+void FramedDeviceItem::setCollapsed(bool collapsed) {
+    if (isCollapsed_ == collapsed)
+        return;
+
+    if (collapsed) {
+        expandedWidth_ = getWidth();
+        expandedHeight_ = getHeight();
+    }
+
+    isCollapsed_ = collapsed;
+    titleBar_.setCollapsed(isCollapsed_);
+
+    if (ui_) {
+        ui_->setVisible(!isCollapsed_);
+    }
+
+    if (isCollapsed_) {
+        const auto targetHeight = expandedHeight_ > 0 ? expandedHeight_ : getHeight();
+        setSize(TitleBar::height, targetHeight);
+    } else {
+        const auto restoreWidth = expandedWidth_ > 0 ? expandedWidth_
+                                                    : (ui_ ? ui_->getWidth() : getWidth());
+        const auto restoreHeight = expandedHeight_ > 0 ? expandedHeight_
+                                                      : (ui_ ? ui_->getHeight() + TitleBar::height : getHeight());
+        setSize(restoreWidth, restoreHeight);
+    }
+
+    resized();
+    repaint();
 }
 
 }  // namespace MoTool

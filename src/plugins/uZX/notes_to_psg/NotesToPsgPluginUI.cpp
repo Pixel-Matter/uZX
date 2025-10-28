@@ -18,8 +18,22 @@ NotesToPsgPluginUI::NotesToPsgPluginUI(tracktion::Plugin::Ptr pluginPtr)
     addAndMakeVisible(baseMidiKnob);
 }
 
-NotesToPsgPlugin* NotesToPsgPluginUI::notesToPsgPlugin() {
+NotesToPsgPlugin* NotesToPsgPluginUI::notesToPsgPlugin() const {
     return dynamic_cast<NotesToPsgPlugin*>(plugin.get());
+}
+
+bool NotesToPsgPluginUI::hasDeviceMenu() const {
+    return notesToPsgPlugin() != nullptr;
+}
+
+void NotesToPsgPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
+    if (notesToPsgPlugin() == nullptr) {
+        return;
+    }
+
+    addDiscreteIntegerParameterMenu(menu,
+                                    baseParams.baseMidiChannel,
+                                    TRANS("Base MIDI Channel"));
 }
 
 void NotesToPsgPluginUI::paint(Graphics&) {

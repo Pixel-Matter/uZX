@@ -55,8 +55,9 @@ void BackgroundlessTextButton::paintButton(Graphics& g, bool shouldDrawButtonAsH
 
 //==============================================================================
 // TitleBar implementation
-TitleBar::TitleBar(tracktion::Plugin::Ptr plugin)
+TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI)
     : plugin_(plugin)
+    , deviceUI_(deviceUI)
 {
     setSize(getWidth(), titleBarHeight);
 
@@ -71,6 +72,12 @@ TitleBar::TitleBar(tracktion::Plugin::Ptr plugin)
         enableButton_.setToggleState(plugin_->isEnabled(), juce::dontSendNotification);
     };
     addAndMakeVisible(enableButton_);
+
+    menuButton_.setButtonText("☰"_u);
+    menuButton_.setTooltip(TRANS("Plugin options"));
+    menuButton_.onClick = [this]() { showDeviceMenu(&menuButton_); };
+    addAndMakeVisible(menuButton_);
+    refreshMenuButtonState();
 }
 
 void TitleBar::paint(juce::Graphics& g) {
@@ -90,24 +97,59 @@ void TitleBar::paint(juce::Graphics& g) {
         auto font = g.getCurrentFont();
         g.setFont(font.withPointHeight(11.0f).withExtraKerningFactor(0.03f).withStyle(juce::Font::bold));
 
-        // Draw plugin name, accounting for button space
+        // Draw plugin name, accounting for button and menu controls
         int textX = buttonWidth + buttonMargin * 2 + 4;
-        g.drawSingleLineText(
-            plugin_->getName(),
-            textX, getHeight() - 4
-        );
+        int rightMargin = menuButton_.isVisible() ? (buttonWidth + buttonMargin * 2 + 4) : 4;
+        auto textBounds = juce::Rectangle<int>(textX, 0, getWidth() - textX - rightMargin, getHeight());
+        g.drawText(plugin_->getName(), textBounds, juce::Justification::centredLeft, true);
     }
 }
 
 void TitleBar::resized() {
-    enableButton_.setBounds(buttonMargin, buttonMargin, buttonWidth, getHeight() - buttonMargin * 2);
+    refreshMenuButtonState();
+
+    auto buttonHeight = getHeight() - buttonMargin * 2;
+    enableButton_.setBounds(buttonMargin, buttonMargin, buttonWidth, buttonHeight);
+
+    if (menuButton_.isVisible()) {
+        menuButton_.setBounds(getWidth() - buttonMargin - buttonWidth, buttonMargin, buttonWidth, buttonHeight);
+    }
+}
+
+void TitleBar::refreshMenuButtonState() {
+    const bool hasCustomMenu = deviceUI_ != nullptr && deviceUI_->hasDeviceMenu();
+    const bool hasPluginMenu = plugin_ != nullptr;
+    const bool shouldShowMenu = hasCustomMenu || hasPluginMenu;
+    menuButton_.setVisible(shouldShowMenu);
+    menuButton_.setInterceptsMouseClicks(shouldShowMenu, shouldShowMenu);
+    menuButton_.setEnabled(shouldShowMenu);
 }
 
 void TitleBar::mouseUp(const juce::MouseEvent& event) {
     if (event.mods.isPopupMenu()) {
-        juce::PopupMenu m;
-        m.addItem("Delete", [this] { plugin_->deleteFromParent(); });
-        m.showAt(this);
+        showDeviceMenu(this);
+    }
+}
+
+void TitleBar::showDeviceMenu(juce::Component* target) {
+    juce::PopupMenu menu;
+
+    if (deviceUI_ != nullptr) {
+        deviceUI_->populateDeviceMenu(menu);
+    }
+
+    if (plugin_ != nullptr) {
+        if (menu.getNumItems() > 0) {
+            menu.addSeparator();
+        }
+
+        menu.addItem(TRANS("Remove Device"), [this] {
+            plugin_->deleteFromParent();
+        });
+    }
+
+    if (menu.getNumItems() > 0) {
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(target));
     }
 }
 
@@ -147,7 +189,7 @@ void FramelessDeviceItem::paint(juce::Graphics&) {
 
 FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
     : DevicePanelItem(std::move(ui))
-    , titleBar_(plugin_)
+    , titleBar_(plugin_, getDeviceUI())
 {
     if (ui_) {
         // Create and add title bar

@@ -74,15 +74,19 @@ protected:
  */
 class TitleBar : public Component {
 public:
-    TitleBar(tracktion::Plugin::Ptr plugin);
+    TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI);
 
     void paint(Graphics& g) override;
     void resized() override;
     void mouseUp(const MouseEvent& event) override;
 
 private:
+    void showDeviceMenu(juce::Component* target);
+    void refreshMenuButtonState();
     tracktion::Plugin::Ptr plugin_;
+    PluginDeviceUI* deviceUI_ = nullptr;
     BackgroundlessTextButton enableButton_;
+    BackgroundlessTextButton menuButton_;
     static constexpr int titleBarHeight = 16;
     static constexpr int buttonMargin = 0;
     static constexpr int buttonWidth = titleBarHeight - buttonMargin * 2;

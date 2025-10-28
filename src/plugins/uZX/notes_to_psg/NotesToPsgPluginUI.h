@@ -19,7 +19,10 @@ public:
     void paint(Graphics& g) override;
     void resized() override;
 
-    NotesToPsgPlugin* notesToPsgPlugin();
+    NotesToPsgPlugin* notesToPsgPlugin() const;
+
+    bool hasDeviceMenu() const override;
+    void populateDeviceMenu(juce::PopupMenu& menu) override;
 
 private:
     NotesToPsgPlugin::StaticParams& baseParams;

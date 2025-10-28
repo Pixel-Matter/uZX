@@ -52,6 +52,16 @@ ComponentBoundsConstrainer* AYPluginUI::getBoundsConstrainer() {
     return &constrainer_;
 }
 
+bool AYPluginUI::hasDeviceMenu() const {
+    return true;
+}
+
+void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
+    addDiscreteIntegerParameterMenu(menu,
+                                    plugin_.staticParams.baseMidiChannel,
+                                    TRANS("Base MIDI Channel"));
+}
+
 REGISTER_PLUGIN_UI_ADAPTER(AYChipPlugin, AYPluginUI)
 
 }

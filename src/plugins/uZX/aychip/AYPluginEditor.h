@@ -24,6 +24,9 @@ public:
 
     ComponentBoundsConstrainer* getBoundsConstrainer();
 
+    bool hasDeviceMenu() const override;
+    void populateDeviceMenu(juce::PopupMenu& menu) override;
+
     static constexpr int itemHeight = 20;
     static constexpr int itemSpacing = 4;
 

@@ -76,6 +76,7 @@ set(GUI_SOURCES
     gui/devices/GenericPluginAdapters.cpp
     gui/devices/LevelMeterUI.cpp
 
+    plugins/uZX/aychip/ChipClockPresets.cpp
     plugins/uZX/aychip/AYPluginEditor.cpp
     plugins/uZX/instrument/ChipInstrumentUI.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPluginUI.cpp

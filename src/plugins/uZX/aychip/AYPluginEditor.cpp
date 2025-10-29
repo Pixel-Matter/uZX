@@ -1,4 +1,5 @@
 #include "AYPluginEditor.h"
+#include "ChipClockPresets.h"
 #include "../../../gui/common/LookAndFeel.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 
@@ -11,12 +12,14 @@ namespace MoTool::uZX {
 AYPluginUI::AYPluginUI(tracktion::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
     , plugin_(*dynamic_cast<AYChipPlugin*>(pluginPtr.get()))
+    , chipClockBinding(chipClockCombo, plugin_.staticParams.chipClock, makeChipClockPresets(), false, true)
 {
     constrainer_.setMinimumWidth(160);
-    setSize(160, 160);
+    setSize(168, 160);
 
     addAndMakeVisible(chipTypeButton);
-    addAndMakeVisible(clockKnob);
+    addAndMakeVisible(chipClockCombo);
+    chipClockBinding.setDecimalPlaces(2);
 
     addAndMakeVisible(volumeKnob);
     addAndMakeVisible(layoutButton);
@@ -32,17 +35,19 @@ void AYPluginUI::resized() {
 
     // static
     auto staticRow = r.removeFromTop(itemHeight * 2);
-    auto width = staticRow.getWidth() / 3;
-    chipTypeButton.setBounds(staticRow.removeFromLeft(width).withSizeKeepingCentre(width, 20));
-    clockKnob.setBounds(staticRow.removeFromLeft(width));
+    auto buttonWidth = staticRow.getWidth() / 3 - 8;
+    auto knobWidth = (staticRow.getWidth() - buttonWidth) / 2;
+    chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
+    staticRow.removeFromLeft(8);
+    auto comboArea = staticRow;
+    chipClockCombo.setBounds(comboArea.withSizeKeepingCentre(comboArea.getWidth(), 20));
 
     // automatable
     r.removeFromTop(itemSpacing * 2);
     auto knobsRow = r.removeFromTop(itemHeight * 2);
 
-    width = knobsRow.getWidth() / 3;
-    layoutButton.setBounds(knobsRow.removeFromLeft(width).withSizeKeepingCentre(width, 20));
-    stereoKnob.setBounds(knobsRow.removeFromLeft(width));
+    layoutButton.setBounds(knobsRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
+    stereoKnob.setBounds(knobsRow.removeFromLeft(knobWidth));
     volumeKnob.setBounds(knobsRow);
 }
 

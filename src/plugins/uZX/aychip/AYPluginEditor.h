@@ -3,8 +3,9 @@
 #include <JuceHeader.h>
 
 #include "AYPlugin.h"
-#include "../../../gui/common/LabeledSlider.h"
 #include "../../../gui/common/ChoiceButton.h"
+#include "../../../gui/common/ComboBindingWithPresets.h"
+#include "../../../gui/common/LabeledSlider.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 
@@ -36,7 +37,8 @@ private:
 
     // static, cannot be automated
     ChoiceButton chipTypeButton   { plugin_, plugin_.staticParams.chipType };
-    LabeledSlider clockKnob       { plugin_.staticParams.chipClock };
+    ComboBox chipClockCombo;
+    ComboBindingWithPresets chipClockBinding;
     // TextButton DCButton        { plugin_, plugin_.staticParams.removeDC };
 
     // dynamic, can be automated

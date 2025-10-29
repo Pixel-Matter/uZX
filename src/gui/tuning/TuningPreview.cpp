@@ -2,6 +2,7 @@
 
 #include "../common/LookAndFeel.h"
 #include "../../util/Helpers.h"
+#include "../../plugins/uZX/aychip/ChipClockPresets.h"
 
 #include <algorithm>
 #include <cmath>
@@ -9,22 +10,9 @@
 
 namespace MoTool {
 
-static std::vector<std::pair<double, String>> makeChipClockPresets() {
-    std::vector<std::pair<double, String>> choices;
-    choices.reserve(static_cast<size_t>(ChipClockChoice::size()) - 1);
-
-    auto entries = ChipClockChoice::getClockEntries();
-    for (int idx = 0; idx < static_cast<int>(ChipClockChoice::size()); ++idx) {
-        auto choice = ChipClockChoice(idx);
-        if (entries[idx] != 0)
-            choices.emplace_back(entries[idx] / MHz, choice.getLongLabel().data());
-    }
-    return choices;
-}
-
 //================================================================================
 TuningPreviewComponent::ChipClock::ChipClock(TuningPreviewComponent& c, TuningViewModel& vm)
-    : comboBinding(select, vm.selectedParams.clockFrequencyMhz, makeChipClockPresets(), false, false)
+    : comboBinding(select, vm.selectedParams.clockFrequencyMhz, uZX::makeChipClockPresets(), false, false)
 {
     label.setText("Chip clock", juce::dontSendNotification);
     label.setJustificationType(Justification::centredLeft);

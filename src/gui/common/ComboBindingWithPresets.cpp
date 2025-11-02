@@ -5,7 +5,7 @@
 namespace MoTool {
 
 ComboBindingWithPresets::ComboBindingWithPresets(
-        juce::ComboBox& comboBox,
+        ComboBoxWithOverrideId& comboBox,
         ParameterValue<double>& valueParameter,
         const std::vector<std::pair<double, String>>& presetItems,
         bool showPresetLabels,
@@ -89,6 +89,7 @@ void ComboBindingWithPresets::refreshFromParameters() {
     if (preset >= 0) {
         applyPreset(preset, false, true);
     } else {
+        // Custom value - no preset match
         select.setSelectedId(0, juce::dontSendNotification);
         select.setText(formatValue(value, showUnits), juce::dontSendNotification);
         select.setEditableText(true);
@@ -155,8 +156,10 @@ void ComboBindingWithPresets::applyPreset(int presetIndex, bool updateParameter,
     if (updateParameter)
         valueParam.setStoredValue(preset.first);
 
-    select.setSelectedId(presetBaseId + presetIndex, juce::dontSendNotification);
+    const int itemId = presetBaseId + presetIndex;
+
     select.setEditableText(false);
+    select.setSelectedId(itemId, juce::dontSendNotification);
 
     if (updateText) {
         const juce::String textToUse = showTextForPresets ? preset.second : formatValue(preset.first, showUnits);

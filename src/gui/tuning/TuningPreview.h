@@ -7,6 +7,7 @@
 
 #include "../common/ParamBindings.h"
 #include "../common/ComboBindingWithPresets.h"
+#include "../common/ComboBoxWithOverrideId.h"
 #include "../common/MoTooltipWindow.h"
 
 #include "TuningPreviewGrid.h"
@@ -66,7 +67,7 @@ private:
 
     private:
         Label label;
-        ComboBox select;
+        ComboBoxWithOverrideId select;
         ComboBindingWithPresets comboBinding;
     };
     ChipClock chipClock {*this, viewModel};

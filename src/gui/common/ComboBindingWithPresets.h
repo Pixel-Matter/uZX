@@ -4,6 +4,7 @@
 
 #include "../common/ParamBindings.h"
 #include "../../plugins/uZX/aychip/aychip.h"
+#include "ComboBoxWithOverrideId.h"
 
 #include <vector>
 #include <optional>
@@ -13,7 +14,7 @@ namespace MoTool {
 class ComboBindingWithPresets : private juce::Value::Listener,
                               private juce::ComboBox::Listener {
 public:
-    ComboBindingWithPresets(juce::ComboBox& comboBox,
+    ComboBindingWithPresets(ComboBoxWithOverrideId& comboBox,
                             ParameterValue<double>& valueParameter,
                             const std::vector<std::pair<double, String>>& presetItems,
                             bool showPresetLabels = true,
@@ -40,7 +41,7 @@ private:
     juce::String formatValue(double value, bool includeUnits = true) const;
     juce::String removeUnits(juce::String text) const;
 
-    juce::ComboBox& select;
+    ComboBoxWithOverrideId& select;
     ParameterValue<double>& valueParam;
     std::vector<std::pair<double, String>> presets;
     juce::String unitsText;

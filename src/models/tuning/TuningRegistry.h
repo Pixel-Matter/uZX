@@ -26,6 +26,32 @@ struct BuiltinTuningEnum {
         RoschinFixed,         // IvanRoschin Fixed (Natural Cmaj/Am)
     };
 
+    static inline constexpr std::string_view shortLabels[] {
+        "12TET",
+        "5L JI",
+        "5L JI2",
+        "3L JI",
+        "PT #0",
+        "PT #1",
+        "PT #2",
+        "PT #3",
+        "VT #4",
+        "VT #4 Fix",
+    };
+
+    static inline constexpr std::string_view labels[] {
+        "Equal Temperament",
+        "Just Intonation 5L",
+        "Just Intonation 5L 2",
+        "Pythagorean 3L",
+        "ProTracker #0",
+        "ProTracker #1",
+        "ProTracker #2",
+        "ProTracker #3",
+        "IvanRoschin #4",
+        "IvanRoschin Fixed",
+    };
+
     static inline constexpr std::string_view longLabels[] {
         "Equal Temperament",
         "Just Intonation (5-limit D Phrygian)",

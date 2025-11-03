@@ -56,7 +56,7 @@ public:
         ParameterValue<int>     baseMidiChannel {{"midiBase",    IDs::midiBase,    "MIDI",         "MIDI channel range",
                                                   1, {1, 16 - 3, 1}}};
         ParameterValue<TunType> tuningTable     {{"tuningTable", IDs::tuningTable, "Tuning table", "Selected tuning table",
-                                                  TunType::EqualTemperament, TunType::getLongLabels()}};
+                                                  TunType::EqualTemperament, TunType::getLabels()}};
 
         template<typename Visitor>
         void visit(Visitor&& visitor) {

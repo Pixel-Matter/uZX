@@ -138,7 +138,11 @@ public:
     }
 
     constexpr static auto getLabels() noexcept -> std::array<std::string_view, size()> {
-        return magic_enum::enum_names<Enum>();
+        if constexpr (requires { E::labels; }) {
+            return to_array(E::labels);
+        } else {
+            return magic_enum::enum_names<Enum>();
+        }
     }
 
     constexpr auto getLongLabel() const noexcept {

@@ -4,6 +4,7 @@
 #include "NotesToPsgPlugin.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
 #include "../../../gui/common/LabeledSlider.h"
+#include "../../../gui/common/ParamBindings.h"
 
 namespace MoTool::uZX {
 
@@ -25,7 +26,11 @@ public:
     void populateDeviceMenu(juce::PopupMenu& menu) override;
 
 private:
-    NotesToPsgPlugin::StaticParams& baseParams;
+    NotesToPsgPlugin::StaticParams& staticParams;
+
+    Label tuningLabel;
+    ComboBox tuningCombo;
+    ComboBoxParamEndpointBinding tuningBinding;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgPluginUI)
 };

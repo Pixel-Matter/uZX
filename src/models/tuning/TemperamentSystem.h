@@ -40,7 +40,7 @@ struct TuningSystemEnum {
         "12TET",
         // "WT",
         "5LJI",
-        "5LJIT45:64",
+        "5LJI2",
         // "7LJI",
         "3LJI",
         "Custom"
@@ -50,7 +50,7 @@ struct TuningSystemEnum {
         "Equal Temperament",
         // "Well Temperament",
         "5-Limit Just Intonation",
-        "5-Limit Just Intonation T=45:64",
+        "5-Limit Just Intonation 6=45:64",
         // "7-Limit Just Intonation",
         "Pythagorean",
         "Custom Rational Intonation",

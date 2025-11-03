@@ -246,6 +246,8 @@ public:
         jassert(fc.bufferStartSample == 0);
         jassert(fc.midiBufferOffset == 0.0);
 
+        SCOPED_REALTIME_CHECK
+
         if (!fc.editTime.isEmpty()) {
             positionSource = PositionSource::Edit;
             playPosition = fc.editTime.getStart();

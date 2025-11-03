@@ -22,6 +22,10 @@ void NotesToPsgMapper::ChannelVoice::reset() {
     state.envOn = false;
 }
 
+void NotesToPsgMapper::ChannelVoice::setTuningSystem(std::shared_ptr<TuningSystem> tuning) {
+    tuning_ = std::move(tuning);
+}
+
 bool NotesToPsgMapper::ChannelVoice::isActive() const {
     return mpeNote.isValid();
 }
@@ -230,7 +234,7 @@ NotesToPsgMapper::NotesToPsgMapper()
     }
 {
     // Default to standard 12-TET tuning
-    setTuningSystem(defaultTuningSystem_.get());
+    setTuningSystem(makeBuiltinTuning(BuiltinTuningType::EqualTemperament));
 
     mpeInstrument_.enableLegacyMode(2, {baseChannel_, baseChannel_ + 4});
     mpeInstrument_.addListener(this);
@@ -238,24 +242,28 @@ NotesToPsgMapper::NotesToPsgMapper()
 
 NotesToPsgMapper::~NotesToPsgMapper() {
     mpeInstrument_.removeListener(this);
-    setTuningSystem(nullptr);
 }
 
-void NotesToPsgMapper::setTuningSystem(const TuningSystem* tuning) {
+TuningSystem& NotesToPsgMapper::getTuningSystem() {
+    jassert(tuningSystem_ != nullptr);
+    return *tuningSystem_;
+}
+
+void NotesToPsgMapper::setTuningSystem(std::shared_ptr<TuningSystem> tuning) {
     // TODO locking for thread safety
-    tuningSystem_ = tuning;
+    tuningSystem_ = std::move(tuning);
     for (auto& voice : voices_) {
         voice.setTuningSystem(tuningSystem_);
     }
 }
 
 void NotesToPsgMapper::setBaseChannel(int channel) {
-    baseChannel_ = juce::jlimit(1, 16, channel);
+    baseChannel_ = juce::jlimit(1, 16 - (int) voices_.size() + 1, channel);
     // Update midiChannel in voices
     for (size_t i = 0; i < voices_.size(); ++i) {
         voices_[i].midiChannel = baseChannel_ + static_cast<int>(i);
     }
-    mpeInstrument_.setLegacyModeChannelRange({baseChannel_, baseChannel_ + 4});
+    mpeInstrument_.setLegacyModeChannelRange({baseChannel_, baseChannel_ + static_cast<int>(voices_.size())});
 }
 
 void NotesToPsgMapper::reset() {
@@ -271,6 +279,7 @@ te::MidiMessageArray NotesToPsgMapper::takeOutputMessages() {
 }
 
 const NotesToPsgMapper::ChannelVoice& NotesToPsgMapper::getVoice(int channel) const {
+    jassert(isChannelInRange(channel));
     return voices_[static_cast<size_t>(channel - baseChannel_)];
 }
 

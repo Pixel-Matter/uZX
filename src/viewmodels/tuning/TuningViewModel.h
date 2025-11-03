@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <memory>
 
 using namespace juce;
 namespace te = tracktion;
@@ -319,8 +320,8 @@ public:
         return getOctaveRange().getLength();
     }
 
-    TuningSystem* getTuningSystem() const {
-        return tuningSystem.get();
+    std::shared_ptr<TuningSystem> getTuningSystem() const {
+        return tuningSystem;
     }
 
     // Octave -1 is subcontroctave
@@ -794,7 +795,7 @@ private:
 
     // Cached objects derived from values (performance optimization) - only for complex conversions
     mutable Scale currentScale;            // Scale object cache
-    std::unique_ptr<TuningSystem> tuningSystem;
+    std::shared_ptr<TuningSystem> tuningSystem;
 
 public:
 

@@ -74,8 +74,7 @@ public:
         beginTest("Basic note on/off");
         {
             NotesToPsgMapper mapper;
-            auto tuning = createTestTuning();
-            mapper.setTuningSystem(tuning.get());
+            mapper.setTuningSystem(createTestTuning());
 
             // Test note on
             mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
@@ -105,8 +104,7 @@ public:
             NotesToPsgMapper mapper;
             mapper.setBaseChannel(2);
             mapper.setPassthruOutsideChannels(false); // Disable passthrough for test
-            auto tuning = createTestTuning();
-            mapper.setTuningSystem(tuning.get());
+            mapper.setTuningSystem(createTestTuning());
 
             // Test channel 1 (should be ignored)
             mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
@@ -129,8 +127,7 @@ public:
         {
             NotesToPsgMapper mapper;
             mapper.setBaseChannel(1);
-            auto tuning = createTestTuning();
-            mapper.setTuningSystem(tuning.get());
+            mapper.setTuningSystem(createTestTuning());
 
             // Play first note
             mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
@@ -164,8 +161,7 @@ public:
         {
             NotesToPsgMapper mapper;
             mapper.setBaseChannel(1);
-            auto tuning = createTestTuning();
-            mapper.setTuningSystem(tuning.get());
+            mapper.setTuningSystem(createTestTuning());
 
             mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
             auto messages = mapper.renderVoices();
@@ -196,8 +192,7 @@ public:
         {
             NotesToPsgMapper mapper;
             mapper.setBaseChannel(1);
-            auto tuning = createTestTuning();
-            mapper.setTuningSystem(tuning.get());
+            mapper.setTuningSystem(createTestTuning());
 
             mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
             auto messages = mapper.renderVoices();
@@ -223,8 +218,7 @@ public:
         {
             NotesToPsgMapper mapper;
             mapper.setBaseChannel(1);
-            auto tuning = createTestTuning();
-            mapper.setTuningSystem(tuning.get());
+            mapper.setTuningSystem(createTestTuning());
 
             mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
             auto messages = mapper.renderVoices();
@@ -246,7 +240,7 @@ public:
             }
 
             auto reconstructedPeriod = (coarseValue << 7) | fineValue;
-            auto originalPeriod = tuning->midiNoteToPeriod(60.0);
+            auto originalPeriod = mapper.getTuningSystem().midiNoteToPeriod(60.0);
 
             expectEquals(reconstructedPeriod, originalPeriod,
                 "Reconstructed period should match original: coarse=" + String(coarseValue) +

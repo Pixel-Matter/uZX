@@ -53,11 +53,14 @@ void NotesToPsgPlugin::valueTreeChanged() {
 }
 
 void NotesToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
-    juce::ignoreUnused(v);
+    ignoreUnused(v);
 
     if (id == IDs::midiBase || id == IDs::midiChans) {
         staticParams.baseMidiChannel.forceUpdateOfCachedValue();
         updateParams();
+    } else if (id == IDs::tuningTable) {
+        staticParams.tuningTable.forceUpdateOfCachedValue();
+        recreateTuningSystem();
     }
 }
 
@@ -69,9 +72,14 @@ void NotesToPsgPlugin::updateParams() {
     reset();
 }
 
-void NotesToPsgPlugin::setTuningSystem(TuningSystem* tuningSystem) {
-    currentTuningSystem = tuningSystem;
-    midiEffect.setTuningSystem(currentTuningSystem);
+void NotesToPsgPlugin::recreateTuningSystem() {
+    // DBG("Recreating tuning system with index: " << tuningTableIndex0.get());
+    auto builtinTable = staticParams.tuningTable.getStoredValue();
+    setTuningSystem(makeBuiltinTuning(builtinTable));
+}
+
+void NotesToPsgPlugin::setTuningSystem(std::shared_ptr<TuningSystem> tuningSystem) {
+    midiEffect.setTuningSystem(std::move(tuningSystem));
 }
 
 } // namespace MoTool::uZX

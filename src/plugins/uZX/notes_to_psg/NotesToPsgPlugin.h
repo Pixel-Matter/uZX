@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <memory>
 
 #include "NotesToPsgMapper.h"
 
@@ -16,6 +17,7 @@ namespace IDs {
     #define DECLARE_ID(name)  inline const juce::Identifier name(#name);
     DECLARE_ID(midiBase)
     DECLARE_ID(midiChans)
+    DECLARE_ID(tuningTable)
     #undef DECLARE_ID
 }
 
@@ -49,29 +51,33 @@ public:
     class StaticParams : public ParamsBase<StaticParams> {
     public:
         using ParamsBase<StaticParams>::ParamsBase;
+        using TunType = BuiltinTuningType;
 
-        ParameterValue<int> baseMidiChannel {{"midiBase", IDs::midiBase, "MIDI", "MIDI channel range", 1, {1, 16 - 3, 1}}};
-        // TODO Tuning system parameter, choice
+        ParameterValue<int>     baseMidiChannel {{"midiBase",    IDs::midiBase,    "MIDI",         "MIDI channel range",
+                                                  1, {1, 16 - 3, 1}}};
+        ParameterValue<TunType> tuningTable     {{"tuningTable", IDs::tuningTable, "Tuning table", "Selected tuning table",
+                                                  TunType::EqualTemperament, TunType::getLongLabels()}};
 
         template<typename Visitor>
         void visit(Visitor&& visitor) {
             visitor(baseMidiChannel);
+            visitor(tuningTable);
         }
     };
 
     // specific for MidiToPsg methods
-    // TODO make this static parameter
-    void setTuningSystem(TuningSystem* tuningSystem);
+    void setTuningSystem(std::shared_ptr<TuningSystem> tuningSystem);
 
     StaticParams staticParams;
 
 private:
     //==============================================================================
     NotesToPsgMapper transformer;
-    TuningSystem* currentTuningSystem = nullptr;
+    // std::shared_ptr<TuningSystem> currentTuningSystem {};
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
+    void recreateTuningSystem();
     void updateParams();
     void processMidiMessageWithSource(const te::MidiMessageWithSource& msg);
 

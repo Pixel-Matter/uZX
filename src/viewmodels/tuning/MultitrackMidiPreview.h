@@ -21,7 +21,7 @@ public:
     void startPlayback(double duration);
     void stopPlayback();
 
-    void setTuningSystem(TuningSystem* ts);
+    void setTuningSystem(std::shared_ptr<TuningSystem> ts);
 
     // Access to transport for state monitoring
     tracktion::TransportControl& getTransport() { return transport; }

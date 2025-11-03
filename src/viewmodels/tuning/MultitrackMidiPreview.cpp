@@ -83,9 +83,9 @@ void MultitrackMidiPreview::setupChannelClips() {
 }
 
 
-void MultitrackMidiPreview::setTuningSystem(TuningSystem* ts) {
+void MultitrackMidiPreview::setTuningSystem(std::shared_ptr<TuningSystem> ts) {
     if (NotesToPsgPlugin != nullptr) {
-        NotesToPsgPlugin->setTuningSystem(ts);
+        NotesToPsgPlugin->setTuningSystem(std::move(ts));
     }
 }
 

@@ -161,6 +161,129 @@ Font MoLookAndFeel::getSmallFont(float pointHeigth) {
     return withDefaultMetrics(FontOptions().withPointHeight(jmin(16.0f, pointHeigth)));
 }
 
+Font MoLookAndFeel::getComboBoxFont(ComboBox& box) {
+    return withDefaultMetrics(FontOptions{jmin(16.0f, (float) box.getHeight() * 0.85f)});
+}
+
+Font MoLookAndFeel::getPopupMenuFont() {
+    return withDefaultMetrics(FontOptions(17.0f));
+}
+
+float MoLookAndFeel::getPopupMenuItemFontProportion() {
+    return 1.3f;
+}
+
+float MoLookAndFeel::getComboBoxPopupMenuItemHeight(Label& label) {
+    auto fontSize = label.getFont().getHeight();
+    fontSize = jmax(fontSize, 18.0f);
+    return fontSize * getPopupMenuItemFontProportion();
+}
+
+PopupMenu::Options MoLookAndFeel::getOptionsForComboBoxPopupMenu(ComboBox& box, Label& label) {
+    return LookAndFeel_V4::getOptionsForComboBoxPopupMenu(box, label)
+        .withStandardItemHeight(getComboBoxPopupMenuItemHeight(label));
+}
+
+//==============================================================================
+void MoLookAndFeel::drawPopupMenuItem(Graphics& g,
+                                      const Rectangle<int>& area,
+                                      const bool isSeparator,
+                                      const bool isActive,
+                                      const bool isHighlighted,
+                                      const bool isTicked,
+                                      const bool hasSubMenu,
+                                      const String& text,
+                                      const String& shortcutKeyText,
+                                      const Drawable* icon,
+                                      const Colour* const textColourToUse) {
+    if (isSeparator) {
+        auto r = area.reduced(5, 0);
+        r.removeFromTop(roundToInt(((float) r.getHeight() * 0.5f) - 0.5f));
+
+        g.setColour(findColour(PopupMenu::textColourId).withAlpha(0.3f));
+        g.fillRect(r.removeFromTop(1));
+    } else {
+        auto textColour = (textColourToUse == nullptr ? findColour(PopupMenu::textColourId) : *textColourToUse);
+
+        auto r = area.reduced(1);
+
+        if (isHighlighted && isActive) {
+            g.setColour(findColour(PopupMenu::highlightedBackgroundColourId));
+            g.fillRect(r);
+
+            g.setColour(findColour(PopupMenu::highlightedTextColourId));
+        } else {
+            g.setColour(textColour.withMultipliedAlpha(isActive ? 1.0f : 0.5f));
+        }
+
+        r.reduce(jmin(5, area.getWidth() / 20), 0);
+
+        auto font = getPopupMenuFont();
+
+        auto maxFontHeight = (float) r.getHeight() / getPopupMenuItemFontProportion();
+
+        if (font.getHeight() > maxFontHeight)
+            font.setHeight(maxFontHeight);
+
+        g.setFont(font);
+
+        auto iconArea = r.removeFromLeft(roundToInt(maxFontHeight)).toFloat();
+
+        if (icon != nullptr) {
+            icon->drawWithin(g, iconArea, RectanglePlacement::centred | RectanglePlacement::onlyReduceInSize, 1.0f);
+            r.removeFromLeft(roundToInt(maxFontHeight * 0.5f));
+        } else if (isTicked) {
+            auto tick = getTickShape(1.0f);
+            g.fillPath(tick,
+                       tick.getTransformToScaleToFit(iconArea.reduced(iconArea.getWidth() / 5, 0).toFloat(), true));
+        }
+
+        if (hasSubMenu) {
+            auto arrowH = 0.6f * getPopupMenuFont().getAscent();
+
+            auto x = static_cast<float>(r.removeFromRight((int) arrowH).getX());
+            auto halfH = static_cast<float>(r.getCentreY());
+
+            Path path;
+            path.startNewSubPath(x, halfH - arrowH * 0.5f);
+            path.lineTo(x + arrowH * 0.6f, halfH);
+            path.lineTo(x, halfH + arrowH * 0.5f);
+
+            g.strokePath(path, PathStrokeType(2.0f));
+        }
+
+        r.removeFromRight(3);
+        g.drawFittedText(text, r, Justification::centredLeft, 1);
+
+        if (shortcutKeyText.isNotEmpty()) {
+            auto f2 = font;
+            f2.setHeight(f2.getHeight() * 0.75f);
+            f2.setHorizontalScale(0.95f);
+            g.setFont(f2);
+
+            g.drawText(shortcutKeyText, r, Justification::centredRight, true);
+        }
+    }
+}
+
+void MoLookAndFeel::getIdealPopupMenuItemSize(const String& text, const bool isSeparator,
+                                              int standardMenuItemHeight,
+                                              int& idealWidth, int& idealHeight) {
+    if (isSeparator) {
+        idealWidth = 50;
+        idealHeight = standardMenuItemHeight > 0 ? standardMenuItemHeight / 10 : 10;
+    } else {
+        const auto prop = getPopupMenuItemFontProportion();
+        auto font = getPopupMenuFont();
+
+        if (standardMenuItemHeight > 0 && font.getHeight() > (float) standardMenuItemHeight / prop)
+            font.setHeight((float) standardMenuItemHeight / prop);
+
+        idealHeight = standardMenuItemHeight > 0 ? standardMenuItemHeight : roundToInt(font.getHeight() * prop);
+        idealWidth = GlyphArrangement::getStringWidthInt(font, text) + idealHeight * 2;
+    }
+}
+
 Font MoLookAndFeel::getTextButtonFont(TextButton&, int buttonHeight) {
     const int capHeight = buttonHeight - 10;
     const float pointHeight = (float) capHeight / 0.75f; // approx cap height to point size

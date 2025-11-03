@@ -122,6 +122,26 @@ public:
 
     Font getSmallFont(float pointHeigth);
 
+    Font getComboBoxFont(ComboBox& box) override;
+
+    float getPopupMenuItemFontProportion();
+
+    Font getPopupMenuFont() override;
+
+    void drawPopupMenuItem(Graphics& g, const Rectangle<int>& area,
+                           const bool isSeparator, const bool isActive, const bool isHighlighted,
+                           const bool isTicked, const bool hasSubMenu,
+                           const String& text, const String& shortcutKeyText,
+                           const Drawable* icon, const Colour* const textColourToUse) override;
+
+    PopupMenu::Options getOptionsForComboBoxPopupMenu(ComboBox& box, Label& label) override;
+
+    float getComboBoxPopupMenuItemHeight(Label& label);
+
+    void getIdealPopupMenuItemSize(const String& text, const bool isSeparator,
+                                  int standardMenuItemHeight,
+                                  int& idealWidth, int& idealHeight) override;
+
     Font getTextButtonFont(TextButton&, int buttonHeight) override;
 
     void drawButtonText(Graphics& g,

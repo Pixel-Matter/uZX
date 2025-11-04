@@ -160,6 +160,30 @@ public:
                 p->updateFromAttachedValue();
         }
     }
+
+    template <typename PluginType>
+    PluginType* findPluginAfter() {
+        // Get the plugin list that owns this plugin
+        auto* pluginList = getOwnerList();
+        if (!pluginList)
+            return nullptr;
+
+        // Find the index of this plugin in the list
+        int thisIndex = pluginList->indexOf(this);
+        if (thisIndex < 0)
+            return nullptr;
+
+        // Iterate through plugins after this one
+        for (int i = thisIndex + 1; i < pluginList->size(); ++i) {
+            if (auto* plugin = (*pluginList)[i]) {
+                if (auto* typedPlugin = dynamic_cast<PluginType*>(plugin))
+                    return typedPlugin;
+            }
+        }
+
+        return nullptr;
+    }
+
 };
 
 }  // namespace MoTool

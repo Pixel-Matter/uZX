@@ -106,6 +106,7 @@ String EqualTemperamentTuning::getDegreeRepresentation(int degree) const {
 RationalTuning::RationalTuning(
     const std::array<FractionNumber, 12>& rationalIntervals,
     const Scale::Tonic keyToUse,
+    const Scale::ScaleType scaleTypeToUse,
     double a4Freq
 )
     : ReferenceTuningSystem(a4Freq)
@@ -113,6 +114,7 @@ RationalTuning::RationalTuning(
 {
     state.setProperty(IDs::type, "CustomRational", nullptr);
     tonic.referTo(state, IDs::tonic, nullptr, keyToUse);
+    scaleType.referTo(state, IDs::scaleType, nullptr, scaleTypeToUse);
     ratiosString.referTo(state, IDs::ratios, nullptr, getRatiosAsString(rationalIntervals));
 }
 
@@ -121,6 +123,7 @@ RationalTuning::RationalTuning(const juce::ValueTree& initialState)
     , cachedRatios(getRatiosFromString(initialState.getProperty(IDs::ratios, "")))
 {
     tonic.referTo(state, IDs::tonic, nullptr, Scale::Tonic::C);
+    scaleType.referTo(state, IDs::scaleType, nullptr, Scale::ScaleType::IonianOrMajor);
     ratiosString.referTo(state, IDs::ratios, nullptr);
 }
 
@@ -280,6 +283,14 @@ Scale::Tonic RationalTuning::getTonic() const {
     return tonic.get();
 }
 
+void RationalTuning::setScaleType(Scale::ScaleType newScaleType) {
+    scaleType = newScaleType;
+}
+
+Scale::ScaleType RationalTuning::getScaleType() const {
+    return scaleType.get();
+}
+
 void RationalTuning::updateCachedRatios() {
     cachedRatios = getRatiosFromString(ratiosString.get());
 }
@@ -317,22 +328,22 @@ juce::String RationalTuning::getRatiosAsString(const std::array<FractionNumber, 
 
 //==============================================================================
 // Just Intonation 5-limit tuning
-JustIntonation5Limit::JustIntonation5Limit(const Scale::Tonic tonicToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
-    : RationalTuning(ratios, tonicToUse, a4Freq)
+JustIntonation5Limit::JustIntonation5Limit(const Scale::Tonic tonicToUse, const Scale::ScaleType scaleTypeToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
+    : RationalTuning(ratios, tonicToUse, scaleTypeToUse, a4Freq)
 {
     state.setProperty(IDs::type, "Just5Limit", nullptr);
 }
 
 //==============================================================================
-JustIntonation5LimitT45_64::JustIntonation5LimitT45_64(const Scale::Tonic tonicToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
-    : RationalTuning(ratios, tonicToUse, a4Freq)
+JustIntonation5LimitT45_64::JustIntonation5LimitT45_64(const Scale::Tonic tonicToUse, const Scale::ScaleType scaleTypeToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
+    : RationalTuning(ratios, tonicToUse, scaleTypeToUse, a4Freq)
 {
     state.setProperty(IDs::type, "Just5LimitT45_64", nullptr);
 }
 
 //==============================================================================
-PythagoreanTuning::PythagoreanTuning(const Scale::Tonic tonicToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
-    : RationalTuning(ratios, tonicToUse, a4Freq)
+PythagoreanTuning::PythagoreanTuning(const Scale::Tonic tonicToUse, const Scale::ScaleType scaleTypeToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
+    : RationalTuning(ratios, tonicToUse, scaleTypeToUse, a4Freq)
 {
     state.setProperty(IDs::type, "Pythagorean", nullptr);
 }
@@ -342,6 +353,7 @@ PythagoreanTuning::PythagoreanTuning(const Scale::Tonic tonicToUse, double a4Fre
 std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystem(
     TuningSystemType type,
     const Scale::Tonic tonic,
+    const Scale::ScaleType scaleType,
     double a4Frequency
 ) {
     switch (type) {
@@ -349,13 +361,13 @@ std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystem(
             return std::make_unique<EqualTemperamentTuning>(a4Frequency);
 
         case TuningSystemEnum::Just5Limit:
-            return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency);
+            return std::make_unique<JustIntonation5Limit>(tonic, scaleType, a4Frequency);
 
         case TuningSystemEnum::Just5LimitT45_64:
-            return std::make_unique<JustIntonation5LimitT45_64>(tonic, a4Frequency);
+            return std::make_unique<JustIntonation5LimitT45_64>(tonic, scaleType, a4Frequency);
 
         case TuningSystemEnum::Pythagorean:
-            return std::make_unique<PythagoreanTuning>(tonic, a4Frequency);
+            return std::make_unique<PythagoreanTuning>(tonic, scaleType, a4Frequency);
 
         // Add other temperament types here as needed
         case TuningSystemEnum::CustomRational:

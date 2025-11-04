@@ -17,6 +17,7 @@ namespace IDs {
     DECLARE_ID(a4Frequency)
     DECLARE_ID(tonic)
     DECLARE_ID(ratios)
+    DECLARE_ID(scaleType)
 
     #undef DECLARE_ID
 }
@@ -130,6 +131,7 @@ public:
     RationalTuning(
         const std::array<FractionNumber, 12>& rationalIntervals,
         const Scale::Tonic keyToUse,
+        const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
         double a4Frequency = 440.0
     );
     RationalTuning(const juce::ValueTree& state);
@@ -145,18 +147,14 @@ public:
     void setTonic(Scale::Tonic newKey) override;
     Scale::Tonic getTonic() const override;
 
-    // void setScale(const Scale* newScale) {
-    //     scale = newScale;
-    // }
-
-    // const Scale* getScale() const {
-    //     return scale;
-    // }
+    void setScaleType(Scale::ScaleType newScaleType);
+    Scale::ScaleType getScaleType() const;
 
     double getTonicFrequency(int octave) const;
 
 protected:
     juce::CachedValue<Scale::Tonic> tonic;
+    juce::CachedValue<Scale::ScaleType> scaleType;
     juce::CachedValue<juce::String> ratiosString;
 
 private:
@@ -172,6 +170,7 @@ class JustIntonation5Limit final : public RationalTuning {
 public:
     JustIntonation5Limit(
         const Scale::Tonic tonicToUse,
+        const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
         double a4Frequency = 440.0,
         std::array<FractionNumber, 12> ratios = {
             FractionNumber(1, 1),   // Unison
@@ -196,6 +195,7 @@ class JustIntonation5LimitT45_64 final : public RationalTuning {
 public:
     JustIntonation5LimitT45_64(
         const Scale::Tonic tonicToUse,
+        const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
         double a4Frequency = 440.0,
         std::array<FractionNumber, 12> ratios = {
             FractionNumber(1, 1),   // Unison
@@ -220,6 +220,7 @@ class PythagoreanTuning final : public RationalTuning {
 public:
     PythagoreanTuning(
         const Scale::Tonic tonicToUse,
+        const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
         double a4Frequency = 440.0,
         std::array<FractionNumber, 12> ratios = {
             FractionNumber(1, 1),     // Unison
@@ -243,6 +244,7 @@ public:
 std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystem(
     TuningSystemType type,
     const Scale::Tonic tonic,
+    const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
     double a4Frequency = 440.0
 );
 

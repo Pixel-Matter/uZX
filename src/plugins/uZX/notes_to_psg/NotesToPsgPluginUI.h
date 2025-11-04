@@ -3,7 +3,8 @@
 #include <JuceHeader.h>
 #include "NotesToPsgPlugin.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
-#include "../../../gui/common/LabeledSlider.h"
+#include "../../../gui/common/ComboBindingWithPresets.h"
+#include "../../../gui/common/ComboBoxWithOverrideId.h"
 #include "../../../gui/common/ParamBindings.h"
 
 namespace MoTool::uZX {
@@ -13,9 +14,13 @@ namespace te = tracktion;
 //==============================================================================
 // NotesToPsgPluginUI
 //==============================================================================
-class NotesToPsgPluginUI : public PluginDeviceUI {
+class NotesToPsgPluginUI : public PluginDeviceUI
+                         , private ChangeListener
+{
 public:
     NotesToPsgPluginUI(tracktion::Plugin::Ptr pluginPtr);
+
+    ~NotesToPsgPluginUI() override;
 
     void paint(Graphics& g) override;
     void resized() override;
@@ -28,9 +33,39 @@ public:
 private:
     NotesToPsgPlugin::StaticParams& staticParams;
 
-    Label tuningLabel;
-    ComboBox tuningCombo;
-    ComboBoxParamEndpointBinding tuningBinding;
+    static constexpr int itemHeight = 20;
+    static constexpr int spacing = 8;
+
+    struct TuningGroup {
+        TuningGroup(NotesToPsgPluginUI& ui);
+        void resize(Rectangle<int>& r);
+
+        Label label;
+        ComboBox combo;
+        ComboBoxParamEndpointBinding binding;
+    } tuning;
+
+    struct InfoGroup : public Value::Listener {
+        InfoGroup(NotesToPsgPluginUI& ui);
+        ~InfoGroup() override;
+        void resize(Rectangle<int>& r);
+        void update();
+        void valueChanged(Value& value) override;
+
+        Label chipClock;
+        Label a4Frequency;
+        Label tuningType;
+        Label refTuningLabel;
+        Label refTuning;
+        Label tonicAndScale;
+
+        NotesToPsgPlugin& plugin;
+
+        // ComboBoxWithOverrideId combo;
+        // ComboBindingWithPresets binding;
+    } tuningInfo;
+
+    void changeListenerCallback(ChangeBroadcaster* source) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgPluginUI)
 };

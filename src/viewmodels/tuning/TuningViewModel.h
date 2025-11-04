@@ -753,6 +753,7 @@ private:
             tuningSystem->setReferenceTuning(makeReferenceTuningSystem(
                 selectedParams.tuningType.getStoredValue(),
                 getCurrentTonic(),
+                getCurrentScaleType(),
                 selectedParams.a4Frequency.getStoredValue()
         ));
         }

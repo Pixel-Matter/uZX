@@ -131,7 +131,6 @@ void ComboBoxParamEndpointBinding::fillItems() {
 void ComboBoxParamEndpointBinding::refreshFromSource() {
     if (updating)
         return;
-
     juce::ScopedValueSetter<bool> svs(updating, true);
     const auto storedState = endpoint().floatToState(endpoint().getLiveFloatValue());
     comboBox.setSelectedId(storedState + 1, dontSendNotification);

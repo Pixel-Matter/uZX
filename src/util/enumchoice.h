@@ -125,10 +125,6 @@ public:
         return magic_enum::enum_name<Enum>(value);
     }
 
-    constexpr juce::StringRef getLabelStringRef() const noexcept {
-        return juce::StringRef(getLabel().data());
-    }
-
     constexpr static std::string_view getLabel(size_t i) noexcept {
         return magic_enum::enum_name<Enum>(static_cast<Enum>(i));
     }

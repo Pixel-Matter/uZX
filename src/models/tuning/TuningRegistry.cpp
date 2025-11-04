@@ -34,6 +34,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                 options.chipClockFreq, makeReferenceTuningSystem(
                     options.tuningSystemType,
                     options.tonic,
+                    options.scaleType,
                     options.a4Frequency
                 )
             );
@@ -51,6 +52,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                 options.chipClockFreq, makeReferenceTuningSystem(
                     options.tuningSystemType,
                     options.tonic,
+                    options.scaleType,
                     options.a4Frequency
                 )
             );
@@ -67,6 +69,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
             auto referenceTuning = makeReferenceTuningSystem(
                 options.tuningSystemType,
                 options.tonic,
+                options.scaleType,
                 options.a4Frequency
             );
             auto autoTuning = std::make_unique<AutoTuning>(
@@ -224,6 +227,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                 makeReferenceTuningSystem(
                     options.tuningSystemType,
                     options.tonic,
+                    options.scaleType,
                     options.a4Frequency
                 ),
                 24, // Starting at MIDI note 24 (C1)
@@ -261,6 +265,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                 makeReferenceTuningSystem(
                     options.tuningSystemType,
                     options.tonic,
+                    options.scaleType,
                     options.a4Frequency
                 ),
                 24, // Starting at MIDI note 24 (C1)

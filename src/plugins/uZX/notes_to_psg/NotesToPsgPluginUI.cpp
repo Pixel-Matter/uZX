@@ -1,5 +1,5 @@
 #include "NotesToPsgPluginUI.h"
-#include "../aychip/ChipClockPresets.h"
+#include "../../../gui/common/LookAndFeel.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 #include "../../../models/tuning/TemperamentSystem.h"
 
@@ -15,6 +15,7 @@ NotesToPsgPluginUI::TuningGroup::TuningGroup(NotesToPsgPluginUI& ui)
     label.setText("Tuning preset:", dontSendNotification);
     label.setJustificationType(Justification::centredLeft);
     label.setFont(FontOptions().withPointHeight(11.0f));
+    label.setColour(Label::textColourId, Colors::Theme::textSecondary);
 
     ui.addAndMakeVisible(label);
     ui.addAndMakeVisible(combo);
@@ -29,21 +30,32 @@ void NotesToPsgPluginUI::TuningGroup::resize(Rectangle<int>& r) {
 //==============================================================================
 NotesToPsgPluginUI::InfoGroup::InfoGroup(NotesToPsgPluginUI& ui)
     : plugin(*ui.notesToPsgPlugin())
+    , parentUI(ui)
 {
     plugin.staticParams.tuningTable.addListener(this);
 
-    refTuningLabel.setText("Reference tuning:", dontSendNotification);
-    refTuningLabel.setJustificationType(Justification::centredLeft);
-    refTuningLabel.setFont(FontOptions().withPointHeight(11.0f));
+    tuningType.setFont(FontOptions().withPointHeight(11.0f));
+    tuningType.setColour(Label::textColourId, Colors::Theme::textSecondary);
 
-    update();
+    chipClockLabel.setText("Chip clock:", dontSendNotification);
+    chipClockLabel.setJustificationType(Justification::centredLeft);
+    chipClockLabel.setFont(FontOptions().withPointHeight(11.0f));
+    chipClockLabel.setColour(Label::textColourId, Colors::Theme::textSecondary);
 
-    ui.addAndMakeVisible(chipClock);
-    ui.addAndMakeVisible(a4Frequency);
+    a4FrequencyLabel.setText("A4 frequency:", dontSendNotification);
+    a4FrequencyLabel.setJustificationType(Justification::centredLeft);
+    a4FrequencyLabel.setFont(FontOptions().withPointHeight(11.0f));
+    a4FrequencyLabel.setColour(Label::textColourId, Colors::Theme::textSecondary);
+
     ui.addAndMakeVisible(tuningType);
-    ui.addAndMakeVisible(refTuningLabel);
     ui.addAndMakeVisible(refTuning);
     ui.addAndMakeVisible(tonicAndScale);
+    ui.addAndMakeVisible(chipClockLabel);
+    ui.addAndMakeVisible(chipClock);
+    ui.addAndMakeVisible(a4FrequencyLabel);
+    ui.addAndMakeVisible(a4Frequency);
+
+    update();
 }
 
 NotesToPsgPluginUI::InfoGroup::~InfoGroup() {
@@ -56,40 +68,47 @@ void NotesToPsgPluginUI::InfoGroup::valueChanged(Value& value) {
 }
 
 void NotesToPsgPluginUI::InfoGroup::resize(Rectangle<int>& r) {
-    refTuningLabel.setBounds(r.removeFromTop(itemHeight));
-    // r.removeFromTop(spacing);
-    refTuning.setBounds(r.removeFromTop(itemHeight));
-    r.removeFromTop(spacing);
-
     tuningType.setBounds(r.removeFromTop(itemHeight));
+    refTuning.setBounds(r.removeFromTop(itemHeight));
+
+    if (tonicAndScale.isVisible()) {
+        tonicAndScale.setBounds(r.removeFromTop(itemHeight));
+    }
+
     r.removeFromTop(spacing);
+    chipClockLabel.setBounds(r.removeFromTop(itemHeight));
     chipClock.setBounds(r.removeFromTop(itemHeight));
     r.removeFromTop(spacing);
+    a4FrequencyLabel.setBounds(r.removeFromTop(itemHeight));
     a4Frequency.setBounds(r.removeFromTop(itemHeight));
-    r.removeFromTop(spacing);
-    tonicAndScale.setBounds(r.removeFromTop(itemHeight));
 }
 
 void NotesToPsgPluginUI::InfoGroup::update() {
     const auto& tuning = plugin.getTuningSystem();
     auto referenceTuning = tuning.getReferenceTuning();
 
+    tuningType.setText(String(tuning.getType().getLongLabel().data()) + " to:", dontSendNotification);
     refTuning.setText(referenceTuning->getType().getLongLabel().data(), dontSendNotification);
-    tuningType.setText("Tuning type: " + String(tuning.getType().getLongLabel().data()), dontSendNotification);
-    chipClock.setText("Chip clock: " + String(tuning.getClockFrequency() / MHz, 4) + " MHz", dontSendNotification);
-    a4Frequency.setText("A4 frequency: " + String(referenceTuning->getA4Frequency(), 2) + " Hz", dontSendNotification);
+    chipClock.setText(String(tuning.getClockFrequency() / MHz, 4) + " MHz", dontSendNotification);
+    a4Frequency.setText(String(referenceTuning->getA4Frequency(), 2) + " Hz", dontSendNotification);
 
     bool isRationalTuning = dynamic_cast<RationalTuning*>(referenceTuning) != nullptr;
+    bool wasVisible = tonicAndScale.isVisible();
     tonicAndScale.setVisible(isRationalTuning);
 
     if (isRationalTuning) {
         auto* rationalTuning = dynamic_cast<RationalTuning*>(referenceTuning);
         tonicAndScale.setText(
-            "Key: " +
+            // "Key: " +
             String::fromUTF8(rationalTuning->getTonic().getName()) + " " +
             String::fromUTF8(rationalTuning->getScaleType().getLabel().data()),
             dontSendNotification
         );
+    }
+
+    // Trigger resize if visibility changed
+    if (wasVisible != tonicAndScale.isVisible()) {
+        parentUI.resized();
     }
 }
 

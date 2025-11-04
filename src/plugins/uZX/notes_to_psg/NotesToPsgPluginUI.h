@@ -52,14 +52,16 @@ private:
         void update();
         void valueChanged(Value& value) override;
 
-        Label chipClock;
-        Label a4Frequency;
         Label tuningType;
-        Label refTuningLabel;
         Label refTuning;
         Label tonicAndScale;
+        Label chipClockLabel;
+        Label chipClock;
+        Label a4FrequencyLabel;
+        Label a4Frequency;
 
         NotesToPsgPlugin& plugin;
+        NotesToPsgPluginUI& parentUI;
 
         // ComboBoxWithOverrideId combo;
         // ComboBindingWithPresets binding;

@@ -101,7 +101,7 @@ void NotesToPsgPluginUI::InfoGroup::update() {
         tonicAndScale.setText(
             // "Key: " +
             String::fromUTF8(rationalTuning->getTonic().getName()) + " " +
-            String::fromUTF8(rationalTuning->getScaleType().getLabel().data()),
+            String::fromUTF8(rationalTuning->getScaleType().getLongLabel().data()),
             dontSendNotification
         );
     }

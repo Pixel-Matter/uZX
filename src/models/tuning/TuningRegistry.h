@@ -48,8 +48,8 @@ struct BuiltinTuningEnum {
         "ProTracker #1",
         "ProTracker #2",
         "ProTracker #3",
-        "IvanRoschin #4",
-        "IvanRoschin Fixed",
+        "Ivan Roschin's #4",
+        "Ivan Roschin's Fixed",
     };
 
     static inline constexpr std::string_view longLabels[] {
@@ -61,8 +61,8 @@ struct BuiltinTuningEnum {
         "ProTracker #1 (ST)",
         "ProTracker #2 (ASM)",
         "ProTracker #3 (REAL)",
-        "IvanRoschin #4 (NATURAL Cmaj/Am)",
-        "IvanRoschin Fixed (Natural D#maj)",
+        "Ivan Roschin's #4 (NATURAL Cmaj/Am)",
+        "Ivan Roschin's Fixed (Natural D#maj)",
     };
 };
 

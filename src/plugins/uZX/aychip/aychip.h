@@ -35,34 +35,34 @@ constexpr double MHz = 1000000.0;
 
 struct ChipClockEnum {
     enum Enum : uint8_t {
-        NES_NTSC_0_89_MHz,
         NES_PAL_0_83_MHz,
-        ZX_Spectrum_1_77_MHz,
-        Pentagon_1_75_MHz,
+        NES_NTSC_0_89_MHz,
         Amstrad_1_MHz,
         Vectrex_1_5_MHz,
+        Pentagon_1_75_MHz,
+        ZX_Spectrum_1_77_MHz,
         Atari_ST_2_MHz,
         Custom
     };
 
     static inline constexpr double clockValues[] {
-         894887,   // NES NTSC
          831303.5, // NES PAL
-        1773400,   // ZX Spectrum
-        1750000,   // Pentagon
+         894887,   // NES NTSC
         1000000,   // Amstrad
         1500000,   // Vectrex
+        1750000,   // Pentagon
+        1773400,   // ZX Spectrum 128
         2000000,   // Atari ST
               0    // Custom (user defined)
     };
 
     static inline constexpr std::string_view longLabels[] {
-        "NES NTSC 0.894887 MHz",
         "NES PAL 0.8313035 MHz",
-        "ZX Spectrum 1.7734 MHz",
-        "Pentagon 1.75 MHz",
+        "NES NTSC 0.894887 MHz",
         "Amstrad 1 MHz",
         "Vectrex 1.5 MHz",
+        "Pentagon 1.75 MHz",
+        "ZX Spectrum 1.7734 MHz",
         "Atari ST 2 MHz",
         "Custom"
     };
@@ -74,6 +74,10 @@ public:
 
     inline constexpr double getClockValue() const noexcept {
         return clockValues[static_cast<size_t>(value)];
+    }
+
+    inline constexpr static auto getClockEntries() noexcept {
+        return clockValues;
     }
 
 };
@@ -95,10 +99,7 @@ struct LayoutEnum {
     enum Enum : uint8_t {
         ABC,
         ACB,
-        BAC,
-        BCA,
-        CAB,
-        CBA
+        BAC
     };
 };
 
@@ -339,10 +340,7 @@ private:
     ChannelPans_ = {{
         {{0.0, 0.5, 1.0}},  // ABC
         {{0.0, 1.0, 0.5}},  // ACB
-        {{0.5, 0.0, 1.0}},  // BAC
-        {{1.0, 0.0, 0.5}},  // BCA
-        {{0.5, 1.0, 0.0}},  // CAB
-        {{1.0, 0.5, 0.0}}   // CBA
+        {{0.5, 0.0, 1.0}}   // BAC
     }};
 
 };

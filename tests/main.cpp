@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include <models/Behavior.h>
+#include <controllers/MainController.h>
 
 using namespace tracktion;
 using namespace MoTool;
@@ -51,12 +52,16 @@ public:
     bool autoInitialiseDeviceManager() override {
         return false;
     }
+
+    bool addSystemAudioIODeviceTypes() override {
+        return false;
+    }
 };
 
 
 //==============================================================================
 //==============================================================================
-class TestPropertyStorage : public PropertyStorage
+class TestPropertyStorage : public MoTool::PropertyStorage
 {
 public:
     TestPropertyStorage (juce::StringRef appName_)
@@ -99,32 +104,71 @@ struct CoutLogger : public Logger {
     }
 };
 
+struct NullLogger : public Logger {
+    void logMessage (const String&) override {}
+};
+
 
 static Array<UnitTest*> filterTestsByName(const Array<UnitTest*>& allTests, const String& testNameFilter) {
     Array<UnitTest*> filteredTests;
-    
+
     for (auto* test : allTests) {
         if (test->getName().containsIgnoreCase(testNameFilter)) {
             filteredTests.add(test);
         }
     }
-    
+
     return filteredTests;
 }
 
 static void printUsage() {
-    std::cout << "Usage: MoToolTests [test_name_filter]\n";
+    std::cout << "Usage: uZXTests [test_name_filter]\n";
     std::cout << "  test_name_filter: Optional partial test name to filter tests (case-insensitive)\n";
     std::cout << "  If no filter provided, runs all tests in MoTool category\n";
     std::cout << "\nExamples:\n";
-    std::cout << "  MoToolTests                    # Run all tests\n";
-    std::cout << "  MoToolTests TuningViewModel    # Run tests containing 'TuningViewModel'\n";
-    std::cout << "  MoToolTests AYChip             # Run tests containing 'AYChip'\n";
+    std::cout << "  uZXTests                    # Run all tests\n";
+    std::cout << "  uZXTests TuningViewModel    # Run tests containing 'TuningViewModel'\n";
+    std::cout << "  uZXTests AYChip             # Run tests containing 'AYChip'\n";
 }
 
 int main(int argc, char* argv[]) {
-    ScopedJuceInitialiser_GUI init;
+    if (argc > 1) {
+        String arg = String(argv[1]);
 
+        if (arg == "--list-tests") {
+            NullLogger nullLogger;
+            Logger::setCurrentLogger(&nullLogger);
+
+            Array<UnitTest*> listedTests = UnitTest::getTestsInCategory("MoTool");
+
+            for (auto* test : listedTests) {
+                if (test != nullptr)
+                    std::cout << "TEST:" << test->getName() << "\n";
+            }
+
+            Logger::setCurrentLogger(nullptr);
+            return 0;
+        }
+
+        if (arg == "--help" || arg == "-h") {
+            printUsage();
+            return 0;
+        }
+    }
+
+    auto allTests = UnitTest::getTestsInCategory("MoTool");
+    auto filteredTests = argc > 1 ? filterTestsByName(allTests, String(argv[1])) : allTests;
+
+    if (filteredTests.isEmpty()) {
+        std::cout << "No tests found matching filter: '" << argv[1] << "'\n";
+        std::cout << "\nAvailable tests:\n";
+        for (auto* test : allTests) {
+            std::cout << "  " << test->getName() << "\n";
+        }
+        return 0;
+    }
+
+    ScopedJuceInitialiser_GUI init;
     CoutLogger logger;
     Logger::setCurrentLogger (&logger);
 
@@ -133,44 +177,34 @@ int main(int argc, char* argv[]) {
         std::make_unique<TestUIBehaviour>(),
         std::make_unique<TestEngineBehaviour>()
     };
-    engine.getTemporaryFileManager().getTempDirectory().deleteRecursively (false);
+    registerPlugins(engine);
+    auto& deviceManager = engine.getDeviceManager();
+    auto& hostedInterface = deviceManager.getHostedAudioDeviceInterface();
+    // TODO register plugins
+
+    tracktion_engine::HostedAudioDeviceInterface::Parameters hostedParams;
+    hostedParams.useMidiDevices = false;
+    hostedInterface.initialise(hostedParams);
+
+    deviceManager.setMidiDeviceScanIntervalSeconds(0);
+    engine.getTemporaryFileManager().getTempDirectory().deleteRecursively(false);
 
     juce::UnitTestRunner testRunner;
-    
+
     if (argc > 1) {
-        String arg = String(argv[1]);
-        
-        if (arg == "--help" || arg == "-h") {
-            printUsage();
-            return 0;
-        }
-        
-        String testNameFilter = arg;
-        auto allTests = UnitTest::getTestsInCategory("MoTool");
-        auto filteredTests = filterTestsByName(allTests, testNameFilter);
-        
-        if (filteredTests.isEmpty()) {
-            std::cout << "No tests found matching filter: '" << testNameFilter << "'\n";
-            std::cout << "\nAvailable tests:\n";
-            for (auto* test : allTests) {
-                std::cout << "  " << test->getName() << "\n";
-            }
-            return 1;
-        }
-        
-        std::cout << "Running " << filteredTests.size() << " test(s) matching filter: '" << testNameFilter << "'\n";
+        std::cout << "Running " << filteredTests.size() << " test(s) matching filter: '" << argv[1] << "'\n";
         for (auto* test : filteredTests) {
             std::cout << "  " << test->getName() << "\n";
         }
         std::cout << "\n";
-        
+
         testRunner.runTests(filteredTests);
     } else {
         testRunner.runTestsInCategory("MoTool");
     }
 
-    Logger::setCurrentLogger (nullptr);
-    engine.getTemporaryFileManager().getTempDirectory().deleteRecursively (false);
+    Logger::setCurrentLogger(nullptr);
+    engine.getTemporaryFileManager().getTempDirectory().deleteRecursively(false);
 
     return 0;
 }

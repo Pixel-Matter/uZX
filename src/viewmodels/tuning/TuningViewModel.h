@@ -2,22 +2,26 @@
 
 #include <JuceHeader.h>
 
+#include "../../controllers/Parameters.h"
+
 #include "../../models/tuning/TemperamentSystem.h"
 #include "../../models/tuning/TuningSystemBase.h"
 #include "../../models/tuning/TuningRegistry.h"
 #include "../../models/tuning/Scales.h"
+
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../../util/convert.h"
-#include "../../controllers/ParamAttachments.h"
+#include "../../utils/StringLiterals.h"
 
-#include <cmath>
+#include <algorithm>
 #include <array>
 #include <cstddef>
-#include <limits>
+#include <memory>
+
+using namespace juce;
+namespace te = tracktion;
 
 namespace MoTool {
-
-using namespace uZX;
 
 enum class NoteGridHeadingType {
     Tuning,
@@ -187,11 +191,10 @@ struct TuningNote {
     }
 };
 
-
 namespace IDs {
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(TUNINGVIEWSTATE)
-    DECLARE_ID(temperament)
+    DECLARE_ID(tuningSystem)
     DECLARE_ID(tuningTable)
     DECLARE_ID(chipClock)
     DECLARE_ID(key)
@@ -208,12 +211,52 @@ namespace IDs {
     #undef DECLARE_ID
 }
 
+static constexpr inline const auto TuningSystemTypeLabels =
+    truncateArray<TuningSystemType::CustomRational>(TuningSystemType::getLongLabels());
+
 class TuningViewModel : public ChangeBroadcaster,
                         private Value::Listener
 {
 public:
     // Any UI component can now listen to tuning system changes by implementing ChangeListener
     // and calling viewModel.addChangeListener(this) in their constructor
+
+    class SelectionParams : public ParamsBase<SelectionParams> {
+    public:
+        using ParamsBase<SelectionParams>::ParamsBase;
+
+        template<typename Visitor>
+        void visit(Visitor&& visitor) {
+            visitor(clockFrequencyMhz);
+            visitor(tonic);
+            visitor(scaleType);
+            visitor(a4Frequency);
+            visitor(tuningTable);
+            visitor(tuningType);
+            visitor(playChords);
+            visitor(playTone);
+            visitor(playEnvelope);
+            visitor(retriggerTone);
+            visitor(envelopeShape);
+            visitor(envInterval);
+        }
+
+        ParameterValue<double> clockFrequencyMhz      {{IDs::clockFreq.toString(),    IDs::clockFreq,      "Clock",            "Chip clock frequency",      1.7734,                              {0.8, 2.0}, "MHz"}};
+
+        ParameterValue<Scale::Tonic> tonic            {{IDs::key.toString(),          IDs::key,            "Key",              "Selected key tonic",        Scale::Tonic::C,                     Scale::Tonic::getLongLabels()}};
+        ParameterValue<Scale::ScaleType> scaleType    {{IDs::scale.toString(),        IDs::scale,          "Scale",            "Selected scale type",       Scale::ScaleType::IonianOrMajor,     Scale::ScaleType::getLongLabels()}};
+        ParameterValue<double> a4Frequency            {{IDs::a4Freq.toString(),       IDs::a4Freq,         "A4",               "Concert A frequency",       440.0,                               NormalisableRange<double>(220.0, 880.0, 0.1), "Hz"}};
+        ParameterValue<BuiltinTuningType> tuningTable {{IDs::tuningTable.toString(),  IDs::tuningTable,    "Tuning Table",     "Selected tuning table",     BuiltinTuningType::EqualTemperament, BuiltinTuningType::getLongLabels()}};
+        ParameterValue<TuningSystemType> tuningType   {{IDs::tuningSystem.toString(), IDs::tuningSystem,   "Reference tuning", "Reference tuning system",   TuningSystemType::EqualTemperament,  TuningSystemTypeLabels }};
+
+        ParameterValue<bool> playChords               {{IDs::playChords.toString(),    IDs::playChords,    "Play chords",      "Play chords",               false}};
+        ParameterValue<bool> playTone                 {{IDs::playTone.toString(),      IDs::playTone,      "Play tone",        "Play fundamental tone",     true}};
+        ParameterValue<bool> playEnvelope             {{IDs::playEnvelope.toString(),  IDs::playEnvelope,  "Play envelope",    "Play envelope modulation",  false}};
+        ParameterValue<bool> retriggerTone            {{IDs::retriggerTone.toString(), IDs::retriggerTone, "Retrigger tone",   "Retrigger tone",            false}};
+        ParameterValue<EnvShapeChoice> envelopeShape  {{IDs::envelopeShape.toString(), IDs::envelopeShape, "Envelope shape",   "Envelope oscillator shape", EnvShapeChoice(EnvShapeSimpleEnum::Triangle), EnvShapeChoice::getLongLabels()}};
+        ParameterValue<EnvIntervalChoice> envInterval {{IDs::envelopeMode.toString(),  IDs::envelopeMode,  "Modulation mode",  "Modulation interval",       EnvIntervalChoice(ModulationEnum::Unison), EnvIntervalChoice::getLongLabels()}};
+    };
+
     TuningViewModel(te::Edit& ed)
         : transientState(IDs::TUNINGVIEWSTATE)
         , edit(ed)
@@ -221,41 +264,17 @@ public:
         // objects
         , currentScale(Scale::ScaleType::IonianOrMajor)
                                                                  // no undo for this control
-        , selectedTemperament(transientState, IDs::temperament,  TemperamentType::getLongLabels(), &undoManager, TemperamentType::EqualTemperament)
-        , selectedTuningTable(transientState, IDs::tuningTable,                               nullptr, BuiltinTuningType::EqualTemperament)
-        , selectedChip       (transientState, IDs::chipClock,    ChipClockChoice::getLongLabels(), &undoManager, ChipClockChoice::ZX_Spectrum_1_77_MHz)
-        , selectedTonic      (transientState, IDs::key,          Scale::getAllNoteNames(),         &undoManager, Scale::Tonic::C)
-        , selectedScale      (transientState, IDs::scale,                                          &undoManager, Scale::ScaleType::IonianOrMajor)
-        , a4Frequency        (transientState, IDs::a4Freq,       {220.0, 880.0, 0.1},              &undoManager, 440.0, "Hz")
-        , clockFrequencyMhz  (transientState, IDs::clockFreq,    {1.0, 2.0, 0.001},                &undoManager, 1.7734, "MHz")
-
-        , playChords         (transientState, IDs::playChords,                                     &undoManager, false)
-        , playTone           (transientState, IDs::playTone,                                       &undoManager, true)
-        , playEnvelope       (transientState, IDs::playEnvelope,                                   &undoManager, false)
-        , retriggerTone      (transientState, IDs::retriggerTone,                                  &undoManager, false)
-        , envelopeShape      (transientState, IDs::envelopeShape, EnvShapeChoice::getLongLabels(), &undoManager, EnvShapeSimpleEnum::Triangle)
-        , envIntervalChoice  (transientState, IDs::envelopeMode,  EnvIntervalChoice::getLongLabels(), &undoManager, ModulationEnum::Unison)
-
     {
         // Set up Value listeners for bidirectional sync
-        selectedTemperament.addListener(this);
-        selectedTuningTable.addListener(this);
-        selectedChip.addListener(this);
-        selectedTonic.addListener(this);
-        selectedScale.addListener(this);
-        a4Frequency.addListener(this);
-        clockFrequencyMhz.addListener(this);
-        playChords.addListener(this);
-        playTone.addListener(this);
-        playEnvelope.addListener(this);
-
-        // init default values
-        // The problem is that setting initial value in ParamAttachment constructor
-        // before adding listeners results in not calling valueChanged
-        // Or we can not init and bind in the constructor but rather in referTo after addListener
-        playTone = true;
+        selectedParams.referTo(transientState, &undoManager);
+        selectedParams.addListener(this);
+        currentScale = Scale(selectedParams.scaleType.getStoredValue());
 
         recreateTuningSystem();
+    }
+
+    ~TuningViewModel() override {
+        selectedParams.removeListener(this);
     }
 
     te::Edit& getEdit() const {
@@ -266,7 +285,7 @@ public:
         std::vector<TuningNoteName> noteNames;
         noteNames.reserve(12);
 
-        auto& scale = getCurrentScale();
+        const auto& scale = currentScale;
         auto scaleIntervals = scale.getIntervals();
         const auto scaleChromDegrees = scale.getChromaticDegrees();
         auto refTuning = tuningSystem ? tuningSystem->getReferenceTuning() : nullptr;
@@ -301,8 +320,8 @@ public:
         return getOctaveRange().getLength();
     }
 
-    TuningSystem* getTuningSystem() const {
-        return tuningSystem.get();
+    std::shared_ptr<TuningSystem> getTuningSystem() const {
+        return tuningSystem;
     }
 
     // Octave -1 is subcontroctave
@@ -406,22 +425,8 @@ public:
         return tuningSystem ? tuningSystem->getDescription() : "Default tuning";
     }
 
-
-    Scale::ScaleType getCurrentScaleType() const {
-        auto scaleType = selectedScale.get();
-        if (currentScale.getType() != scaleType) {
-            currentScale = Scale(scaleType); // Update cache only when needed
-        }
-        return scaleType;
-    }
-
-    const Scale& getCurrentScale() const {
-        getCurrentScaleType(); // update cache if needed
-        return currentScale;
-    }
-
     std::vector<int> getScaleNotes(int octave, bool includeOctave = false) const {
-        const auto& scale = getCurrentScale();
+        const auto& scale = currentScale;
         std::vector<int> result;
         result.reserve(scale.getIntervals().size() + (includeOctave ? 1 : 0));
         for (const auto& interval : scale.getIntervals()) {
@@ -435,7 +440,7 @@ public:
     }
 
     std::vector<int> getScaleNotesFrom(int midiNote, size_t numNotes = 5) const {
-        const auto& scale = getCurrentScale();
+        const auto& scale = currentScale;
         std::vector<int> result;
         result.reserve(numNotes);
         // let midiNote = D4, root = E
@@ -466,19 +471,32 @@ public:
     }
 
     void setCurrentScaleType(Scale::ScaleType scaleType) {
-        selectedScale = scaleType;
-        // TODO double update after assigning to scaleIndex1?
-        currentScale = Scale(scaleType); // Update cache
-        // no need to update tuning system scale
-        sendChangeMessage();
+        selectedParams.scaleType.setStoredValue(scaleType);
+        updateCurrentScale();
+    }
+
+    void updateCurrentScale() {
+        if (currentScale.getType() != selectedParams.scaleType.getStoredValue()) {
+            currentScale = Scale(selectedParams.scaleType.getStoredValue()); // Update cache only when needed
+            sendChangeMessage();
+        }
+    }
+
+    Scale::ScaleType getCurrentScaleType() const {
+        return selectedParams.scaleType.getStoredValue();
+    }
+
+    const Scale& getCurrentScale() {
+        updateCurrentScale();
+        return currentScale;
     }
 
     Scale::Tonic getCurrentTonic() const {
-        return selectedTonic.get();
+        return selectedParams.tonic.getStoredValue();
     }
 
     void setCurrentTonic(Scale::Tonic tonic) {
-        selectedTonic = tonic;
+        selectedParams.tonic.setStoredValue(tonic);
         // TODO double update after assigning to keyIndex1?
         tuningSystem->setRoot(tonic); // Update tuning system tonic
         sendChangeMessage();
@@ -508,62 +526,30 @@ public:
         return toStringArray(BuiltinTuningType::getLongLabels());
     }
 
-    // ChipClockChoice getChipChoice() const {
-    //     return selectedChip.get();
-    // }
-
-    // Not used yet
-    // void setChipChoice(ChipClockChoice clockChoice) {
-    //     // DBG("setChipChoice: " << clockChoice.getLongLabel().data());
-    //     selectedChip = clockChoice;
-    //     clockFrequencyMhz = clockChoice.getClockValue() / MHz; // Store as MHz
-    //     tuningSystem->setClockFrequency(clockChoice.getClockValue()); // Update tuning system clock frequency
-    //     // DBG("setChipChoice sendChangeMessage");
-    //     sendChangeMessage();
-    // }
-
     // used in tests only
     void setA4Frequency(double frequency) {
         // DBG("setA4Frequency: " << frequency);
         if (frequency >= 220.0 && frequency <= 880.0) {
-            a4Frequency = frequency;
-            tuningSystem->setA4Frequency(frequency); // Update tuning system A4 frequency
-            // DBG("setA4Frequency sendChangeMessage");
-            sendChangeMessage();
+            selectedParams.a4Frequency.setStoredValue(frequency);
         }
     }
 
-    // Not used yet
-    // void setClockFrequency(double frequency) {
-    //     // DBG("setClockFrequencyHz: " << frequency);
-    //     if (frequency >= 1.0 * MHz && frequency <= 2.0 * MHz) {
-    //         clockFrequencyMhz = frequency / MHz; // Store as MHz
-    //         tuningSystem->setClockFrequency(frequency);
-    //         // DBG("setClockFrequencyHz sendChangeMessage");
-    //         sendChangeMessage();
-    //     }
-    // }
-
-    bool isCustomClockEnabled() const {
-        return selectedChip.get() == ChipClockChoice::Custom;
-    }
-
     bool isToneEnabled() const {
-        return playTone.get();
+        return selectedParams.playTone.getStoredValue();
     }
 
     bool isEnvelopeEnabled() const {
-        return playEnvelope.get();
+        return selectedParams.playEnvelope.getStoredValue();
     }
 
     bool isEnvelopePeriodsShown() const {
         // Envelope periods are shown only if envelope is enabled and playTone is not
-        return playEnvelope.get();
+        return selectedParams.playEnvelope.getStoredValue();
     }
 
     bool isModulationEnabled() const {
         // Envelope modulation is enabled when both tone and envelope are enabled
-        return playTone.get() && playEnvelope.get();
+        return selectedParams.playTone.getStoredValue() && selectedParams.playEnvelope.getStoredValue();
     }
 
     int getEnvelopeInterval() const {
@@ -571,7 +557,7 @@ public:
         if (!isToneEnabled() || !isEnvelopeEnabled()) {
             return 0; // No modulation if tone or envelope is not enabled
         }
-        return ModulationEnum::semitones[static_cast<size_t>(envIntervalChoice.get())];
+        return ModulationEnum::semitones[static_cast<size_t>(selectedParams.envInterval.getStoredValue())];
     }
 
     TuningSystem::PeriodMode getCurrentPeriodMode() const {
@@ -608,8 +594,8 @@ public:
 
                 // Note name - convert to ASCII compatible format
                 String asciiNoteName = note.name;
-                asciiNoteName = asciiNoteName.replace(String::fromUTF8("♯"), "#");
-                asciiNoteName = asciiNoteName.replace(String::fromUTF8("♭"), "b");
+                asciiNoteName = asciiNoteName.replace("♯"_u, "#");
+                asciiNoteName = asciiNoteName.replace("♭"_u, "b");
                 if (asciiNoteName.length() == 2) {
                     // insert dash between 0th and 1st character for compatibility
                     asciiNoteName = asciiNoteName.substring(0, 1) + "-" + asciiNoteName.substring(1);
@@ -631,10 +617,10 @@ public:
         String filename = tuningSystem->getReferenceTuning()->getTypeName() + " " + tuningSystem->getTypeName() + " " + getScaleName();
 
         // Add clock frequency info
-        filename += " " + String(clockFrequencyMhz.get(), 2).replace(".", "_") + "MHz";
+        filename += " " + String(selectedParams.clockFrequencyMhz.getStoredValue(), 2).replace(".", "_") + "MHz";
 
         // Add A4 frequency
-        filename += " A4=" + String(a4Frequency.get(), 0);
+        filename += " A4=" + String(selectedParams.a4Frequency.getStoredValue(), 0);
 
         // Replace invalid filename characters
         filename = filename.replaceCharacter('/', '-')
@@ -663,7 +649,7 @@ public:
     }
 
     EnvShape getEnvelopeShape() const {
-        switch (envelopeShape.get()) {
+        switch (selectedParams.envelopeShape.getStoredValue()) {
             case EnvShapeSimpleEnum::Triangle:
                 return EnvShape::UP_DOWN_E;
             case EnvShapeSimpleEnum::Sawtooth:
@@ -673,120 +659,112 @@ public:
         }
     }
 
+    TuningSystemType getTuningType() const {
+        jassert(tuningSystem != nullptr);
+        return tuningSystem->getReferenceTuning()->getType();
+    }
+
 private:
     // Value::Listener implementation for bidirectional sync
     void valueChanged(Value& value) override {
-        if (value.refersToSameSourceAs(selectedScale.getValue())) {
-            // DBG("Scale changed from valueChanged");
-            auto newScale = selectedScale.get();
-            if (newScale != currentScale.getType()) {
-                // circular dependency if call setCurrentScaleType?
-                // setCurrentScaleType(newScale);
-                currentScale = Scale(newScale); // Update Scale object cache
-                // no need to update tuning system scale here
-                // DBG("Scale changed from valueChanged sendChangeMessage");
-                sendChangeMessage();
-            }
-        } else if (value.refersToSameSourceAs(selectedTonic.getValue())) {
+        if (value.refersToSameSourceAs(selectedParams.scaleType.getPropertyAsValue())) {
+            selectedParams.scaleType.forceUpdateOfCachedValue();
+            updateCurrentScale();
+        } else if (value.refersToSameSourceAs(selectedParams.tonic.getPropertyAsValue())) {
             // DBG("Root changed from valueChanged");
+            selectedParams.tonic.forceUpdateOfCachedValue();
             tuningSystem->setRoot(getCurrentTonic());
             // DBG("Root changed from valueChanged sendChangeMessage");
             sendChangeMessage();
-        } else if (value.refersToSameSourceAs(a4Frequency.getValue())) {
-            // DBG("A4 frequency changed from valueChanged");
-            double newFreq = value.getValue();
+        } else if (value.refersToSameSourceAs(selectedParams.a4Frequency.getPropertyAsValue())) {
+            selectedParams.a4Frequency.forceUpdateOfCachedValue();
+            double newFreq = selectedParams.a4Frequency.getStoredValue();
             if (newFreq >= 220.0 && newFreq <= 880.0) {
                 tuningSystem->setA4Frequency(newFreq);
                 // DBG("A4 frequency changed from valueChanged sendChangeMessage");
                 sendChangeMessage();
             }
-        } else if (value.refersToSameSourceAs(clockFrequencyMhz.getValue())) {
-            // DBG("Clock frequency changed from valueChanged");
-            double newFreqMHz = value.getValue();
-            if (newFreqMHz >= 1.0 && newFreqMHz <= 2.0) {
-                tuningSystem->setClockFrequency(newFreqMHz * MHz);
-                // DBG("Clock frequency changed from valueChanged sendChangeMessage");
-                sendChangeMessage();
-            }
-        } else if (value.refersToSameSourceAs(selectedChip.getValue())) {
-            // DBG("chipIndex0 changed from valueChanged " << value.toString());
-            auto chip = selectedChip.get();
-            if (chip != ChipClockChoice::Custom) {
-                // Update clock frequency when preset is selected
-                // DBG("chipIndex0 =" << chip.getLabel().data());
-                auto clock = chip.getClockValue();
-                clockFrequencyMhz = clock / MHz; // Update CachedValue (MHz)
-                tuningSystem->setClockFrequency(clock); // Update tuning system clock frequency
-                // Notify all registered listeners that the tuning system has changed
-            }
-            // if chip == ChipClockChoice::Custom we should send change message too
-            // DBG("chipIndex0 changed from valueChanged sendChangeMessage");
+        } else if (value.refersToSameSourceAs(selectedParams.clockFrequencyMhz.getPropertyAsValue())) {
+            selectedParams.clockFrequencyMhz.forceUpdateOfCachedValue();
+            double newFreqMHz = selectedParams.clockFrequencyMhz.getStoredValue();
+            tuningSystem->setClockFrequency(newFreqMHz * MHz);
+            // DBG("Clock frequency changed from valueChanged sendChangeMessage");
             sendChangeMessage();
-        } else if (value.refersToSameSourceAs(selectedTemperament.getValue())) {
+        } else if (value.refersToSameSourceAs(selectedParams.tuningType.getPropertyAsValue())) {
+            selectedParams.tuningType.forceUpdateOfCachedValue();
             updateReferenceTuning();
             sendChangeMessage();
-        } else if (value.refersToSameSourceAs(selectedTuningTable.getValue())) {
-            // DBG("Tuning table index changed from valueChanged: " << static_cast<int>(value.getValue()));
-            recreateTuningSystem(); // Reset to tuning defaults when changing tuning table
-            // DBG("Tuning table index changed from valueChanged sendChangeMessage");
+        } else if (value.refersToSameSourceAs(selectedParams.tuningTable.getPropertyAsValue())) {
+            selectedParams.tuningTable.forceUpdateOfCachedValue();
+            recreateTuningSystem();
             sendChangeMessage();
-        } else if (value.refersToSameSourceAs(playChords.getValue())) {
+        } else if (value.refersToSameSourceAs(selectedParams.playChords.getPropertyAsValue())) {
+            selectedParams.playChords.forceUpdateOfCachedValue();
             // DBG("playChords changed from valueChanged");
             updatePlayState();
             // sendChangeMessage();
-        } else if (value.refersToSameSourceAs(playTone.getValue())) {
+        } else if (value.refersToSameSourceAs(selectedParams.playTone.getPropertyAsValue())) {
+            selectedParams.playTone.forceUpdateOfCachedValue();
             // DBG("playTone changed from valueChanged");
             updatePlayState();
             // sendChangeMessage();
-        } else if (value.refersToSameSourceAs(playEnvelope.getValue())) {
+        } else if (value.refersToSameSourceAs(selectedParams.playEnvelope.getPropertyAsValue())) {
+            selectedParams.playEnvelope.forceUpdateOfCachedValue();
             // DBG("playEnvelope changed from valueChanged");
             updatePlayState();
+        } else if (value.refersToSameSourceAs(selectedParams.envelopeShape.getPropertyAsValue())) {
+            selectedParams.envelopeShape.forceUpdateOfCachedValue();
+            sendChangeMessage();
+        } else if (value.refersToSameSourceAs(selectedParams.envInterval.getPropertyAsValue())) {
+            selectedParams.envInterval.forceUpdateOfCachedValue();
+            sendChangeMessage();
+        } else if (value.refersToSameSourceAs(selectedParams.retriggerTone.getPropertyAsValue())) {
+            selectedParams.retriggerTone.forceUpdateOfCachedValue();
+            sendChangeMessage();
         }
     }
 
     void recreateTuningSystem() {
         // DBG("Recreating tuning system with index: " << tuningTableIndex0.get());
-        auto tuningType = selectedTuningTable.get();
+        auto builtinTable = selectedParams.tuningTable.getStoredValue();
 
         TuningOptions options {
-            .tableType = tuningType,
-            .temperamentType = selectedTemperament.get(),
+            .builtinTable = builtinTable,
             .tonic = getCurrentTonic(),
             .scaleType = getCurrentScaleType(),
-            .chipChoice = selectedChip.get(),
-            .chipClock = clockFrequencyMhz.get() * MHz,
-            .a4Frequency = a4Frequency.get()
+            .chipClockFreq = selectedParams.clockFrequencyMhz.getStoredValue() * MHz,
+            .a4Frequency = selectedParams.a4Frequency.getStoredValue()
         };
 
         tuningSystem = makeBuiltinTuning(options);
 
         if (tuningSystem) {
             // Apply tuning defaults when changing tuning table or initializing
-            selectedTemperament = tuningSystem->getReferenceTuning()->getType();
-            selectedTonic = options.tonic;
-            selectedScale = options.scaleType;
-            selectedChip = options.chipChoice;
-            clockFrequencyMhz = options.chipClock / MHz; // Convert Hz to MHz
-            a4Frequency = options.a4Frequency;
+            selectedParams.tuningType.setStoredValue(tuningSystem->getReferenceTuning()->getType());
+            selectedParams.tonic.setStoredValue(options.tonic);
+            selectedParams.scaleType.setStoredValue(options.scaleType);
+            selectedParams.clockFrequencyMhz.setStoredValue(options.chipClockFreq / MHz);
+            selectedParams.a4Frequency.setStoredValue(options.a4Frequency);
         }
     }
 
     void updateReferenceTuning() {
         if (tuningSystem) {
-            tuningSystem->setReferenceTuning(makeTemperamentSystem(
-                selectedTemperament.get(),
+            tuningSystem->setReferenceTuning(makeReferenceTuningSystem(
+                selectedParams.tuningType.getStoredValue(),
                 getCurrentTonic(),
-                a4Frequency.get()
+                getCurrentScaleType(),
+                selectedParams.a4Frequency.getStoredValue()
         ));
         }
     }
 
     void updatePlayState() {
-        if (playChords.get() && !playTone.get()) {
-            playTone = true;
-        } else if (!playTone.get() && !playEnvelope.get()) {
+        if (selectedParams.playChords.getStoredValue() && !selectedParams.playTone.getStoredValue()) {
+            selectedParams.playTone.setStoredValue(true);
+        } else if (!selectedParams.playTone.getStoredValue() && !selectedParams.playEnvelope.getStoredValue()) {
             // If both playTone and playEnvelope are false, enable playTone
-            playTone = true;
+            selectedParams.playTone.setStoredValue(true);
         }
         sendChangeMessage(); // Notify listeners about the state change
     }
@@ -818,24 +796,11 @@ private:
 
     // Cached objects derived from values (performance optimization) - only for complex conversions
     mutable Scale currentScale;            // Scale object cache
-    std::unique_ptr<TuningSystem> tuningSystem;
+    std::shared_ptr<TuningSystem> tuningSystem;
 
 public:
-    // ParamAttachment objects - single source of truth for all persisted types
-    ChoiceParamAttachment<TemperamentType>   selectedTemperament; // Equal, Just, Pythagorean, etc.
-    ChoiceParamAttachment<BuiltinTuningType> selectedTuningTable;
-    ChoiceParamAttachment<ChipClockChoice>   selectedChip;
-    ChoiceParamAttachment<Scale::Tonic>      selectedTonic;
-    ChoiceParamAttachment<Scale::ScaleType>  selectedScale;
-    RangedParamAttachment<double>            a4Frequency;        // Hz - authoritative source
-    RangedParamAttachment<double>            clockFrequencyMhz;  // MHz - authoritative source
-    // Play modes
-    ParamAttachment<bool>                    playChords; // Instead of individual notes
-    ParamAttachment<bool>                    playTone;
-    ParamAttachment<bool>                    playEnvelope;
-    ParamAttachment<bool>                    retriggerTone;
-    ChoiceParamAttachment<EnvShapeChoice>    envelopeShape;
-    ChoiceParamAttachment<EnvIntervalChoice> envIntervalChoice;
+
+    SelectionParams selectedParams;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningViewModel)
 };

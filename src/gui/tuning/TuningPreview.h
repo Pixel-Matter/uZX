@@ -1,95 +1,22 @@
 #pragma once
 
 #include "JuceHeader.h"
+
 #include "../../viewmodels/tuning/TuningViewModel.h"
 #include "../../viewmodels/tuning/TuningPlayer.h"
-#include "../../controllers/App.h"
-#include "../../controllers/ScaleBindings.h"
+
+#include "../common/ParamBindings.h"
+#include "../common/ComboBindingWithPresets.h"
+#include "../common/ComboBoxWithOverrideId.h"
 #include "../common/MoTooltipWindow.h"
-#include <map>
+
+#include "TuningPreviewGrid.h"
+
+#include <vector>
 
 namespace MoTool {
 
-class TuningPreviewGrid : public juce::Component,
-                          public TooltipClient,
-                          private TuningPlayer::Listener {
-public:
-    TuningPreviewGrid(TuningViewModel& vm, TuningPlayer& tp);
-    ~TuningPreviewGrid() override;
-
-    void recreateTooltipWindow();
-
-    MoTooltipWindow* tooltipWindow = nullptr;
-
-    void resized() override;
-    void paint(juce::Graphics& g) override;
-    void mouseMove(const MouseEvent& event) override;
-    void mouseDown(const MouseEvent& event) override;
-
-    // TooltipClient implementation
-    String getTooltip() override;
-
-private:
-    static constexpr int cellWidth = 56;
-    static constexpr int rowHeaderWidth = cellWidth / 2;
-    static constexpr int cellHeight = 32;
-    static constexpr int headerRowHeight = 24;
-    static constexpr int gridYOffset = static_cast<int>(headerRowHeight * 3.5);
-
-    enum class GridRegionType {
-        None,
-        NoteCell,
-        RowHeader,
-        ColumnHeader
-    };
-
-    struct GridHitResult {
-        GridRegionType regionType = GridRegionType::None;
-        int octave = -1;                     // For note cells and row headers
-        int noteIndex = -1;                  // For note cells and column headers
-        NoteGridHeadingType headerType = NoteGridHeadingType::Tuning; // For column headers
-        juce::Rectangle<int> bounds;         // Bounds of the hit region
-
-        bool isValid() const { return regionType != GridRegionType::None; }
-    };
-
-    struct GridLayout {
-        juce::Rectangle<int> totalBounds;
-        juce::Rectangle<int> gridBounds;
-        const TuningViewModel& viewModel;
-
-        GridLayout(juce::Rectangle<int> bounds, const TuningViewModel& vm)
-            : totalBounds(bounds), viewModel(vm) {
-            gridBounds = bounds;
-            gridBounds.removeFromTop(headerRowHeight / 2);
-            gridBounds.setWidth(cellWidth * (viewModel.getNumColumns() + 1));
-        }
-
-        GridHitResult hitTest(juce::Point<int> position) const;
-        juce::Rectangle<int> getColumnHeaderBounds(int headerTypeIndex, int noteIndex) const;
-        juce::Rectangle<int> getRowHeaderBounds(int octave) const;
-        juce::Rectangle<int> getNoteCellBounds(int octave, int noteIndex) const;
-        int getHeaderRowsHeight() const;
-    };
-
-    TuningViewModel& viewModel;
-    TuningPlayer& tuningPlayer;
-
-    // Mouse tracking for tooltips and hover effects
-    Point<int> lastMousePosition;
-    GridHitResult hoveredRegion;
-
-    void playingNotesChanges() override;
-
-    // Paint helper methods
-    void paintColumnHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNoteName& column, NoteGridHeadingType headingType);
-    void paintRowHeader(juce::Graphics& g, const juce::Rectangle<int>& bounds, int octave, bool isHovered = false);
-    void paintNoteCell(juce::Graphics& g, const juce::Rectangle<int>& bounds, const TuningNote& note, bool isHovered = false);
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPreviewGrid)
-};
-
-
+//================================================================================
 class TuningPreviewComponent : public juce::Component,
                                private ChangeListener,
                                private ListBoxModel,
@@ -112,13 +39,7 @@ private:
     void changeListenerCallback(ChangeBroadcaster* source) override;
 
     // UI setup helpers
-    void setupSliderWithValueBinding(Slider& slider, Label& label, const String& labelText, Label& unitsLabel,
-                                     RangedParamAttachment<double>& attachment);
-    void setupTextEditorWithValueBinding(Label& inputLabel, Label& unitsLabel,
-                                         RangedParamAttachment<double>& attachment);
     void updateControlsState();
-    void updateScaleSelection();
-
     // Setup helpers
     void setupTuningTableControls();
     void setupTuningGrid();
@@ -144,11 +65,10 @@ private:
         void layout(juce::Rectangle<int>& area);
         int getHeight() const;
 
+    private:
         Label label;
-        ComboBox select;
-        Label frequencyInput;
-        Label unitsLabel;
-        ComboBoxBinding<ChipClockChoice> binding;
+        ComboBoxWithOverrideId select;
+        ComboBindingWithPresets comboBinding;
     };
     ChipClock chipClock {*this, viewModel};
 
@@ -161,6 +81,8 @@ private:
         Label label;
         Slider slider;
         Label unitsLabel;
+        ParameterValue<double>& param;
+        SliderParamEndpointBinding binding;
     };
     A4Frequency a4Frequency {*this, viewModel};
 
@@ -172,7 +94,7 @@ private:
 
         Label label;
         ComboBox select;
-        ComboBoxBinding<TemperamentType> binding;
+        ComboBoxParamEndpointBinding binding;
     };
     ReferenceTuning tuning {*this, viewModel};
 
@@ -185,8 +107,25 @@ private:
         Label label;
         ComboBox keySelect;
         ComboBox scaleSelect;
-        ComboBoxBinding<Scale::Tonic> keySelectBinding;
-        ScaleComboBoxBinding scaleSelectBinding;
+        ComboBoxParamEndpointBinding keySelectBinding;
+
+        struct ScaleSelectBinding : private Value::Listener {
+            ScaleSelectBinding(ComboBox& comboBox, ParameterValue<Scale::ScaleType>& parameter);
+            ~ScaleSelectBinding() override;
+
+            void valueChanged(Value& value) override;
+
+        private:
+            void fillItems();
+            void refreshFromSource();
+
+            ComboBox& combo;
+            ParameterValue<Scale::ScaleType>& parameterValue;
+            bool updating { false };
+            std::vector<Scale::ScaleType> itemMap;
+        };
+
+        ScaleSelectBinding scaleSelectBinding;
     };
     KeyScale keyScale {*this, viewModel};
 
@@ -202,8 +141,8 @@ private:
         ToggleButton playEnvelopeCheckBox;
         ComboBox envelopeShapeSelect;
         ComboBox modulationModeSelect;
-        ComboBoxBinding<EnvShapeChoice> envelopeShapeBinding;
-        ComboBoxBinding<EnvIntervalChoice> envelopeModeBinding;
+        ComboBoxParamEndpointBinding envelopeShapeBinding;
+        ComboBoxParamEndpointBinding envelopeModeBinding;
     };
     PlayControls playControls {*this, viewModel};
 

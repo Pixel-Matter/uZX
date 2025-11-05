@@ -18,8 +18,38 @@ constexpr auto to_array(const T (&arr)[N]) -> std::array<T, N> {
     return result;
 }
 
-// Base class for enumerated choices
+// C++20 concept to enforce requirements on enum types used with EnumChoice
+template <typename E>
+concept EnumChoiceConcept = requires {
+    // Must have a nested enum type called Enum
+    typename E::Enum;
+    typename E::UnderlyingType;
 
+    // Enum must be an actual enum type
+    requires std::is_enum_v<typename E::Enum>;
+
+    // Must have a static getLabels() method that returns an array of string_view
+    { E::getLabels() };
+
+    // Labels must be indexable with enum values
+    requires requires(typename E::Enum value) {
+        E::getLabels()[static_cast<std::size_t>(value)];
+    };
+
+    requires requires(E value) {
+        value.getLabel();
+    };
+};
+
+template<typename T>
+struct is_enum_choice : std::false_type {};
+
+template<typename E>
+    requires EnumChoiceConcept<E>
+struct is_enum_choice<E> : std::true_type {};
+
+//==============================================================================
+// Base class for enumerated choices
 template <class E>
 class EnumChoice : public E {
 public:
@@ -44,7 +74,7 @@ public:
     //     : value(magic_enum::enum_cast<Enum>(static_cast<UnderlyingType>(v)).value_or(magic_enum::enum_value<Enum>(0u)))
     // {}
 
-    constexpr EnumChoice(std::string_view v) noexcept
+    constexpr explicit EnumChoice(std::string_view v) noexcept
         : value(magic_enum::enum_cast<Enum>(v).value_or(magic_enum::enum_value<Enum>(0u)))
     {}
 
@@ -55,6 +85,11 @@ public:
     constexpr EnumChoice& operator=(EnumChoice&&) noexcept = default;
 
     constexpr operator Enum() const noexcept { return value; }
+
+    constexpr operator juce::String() const noexcept { return juce::String(getLabel().data()); }
+
+    // constexpr operator juce::StringRef() const noexcept { return juce::StringRef(getLabel().data()); }
+
     // constexpr operator UnderlyingType() const noexcept { return magic_enum::enum_underlying(value); }
 
     template <typename T>
@@ -94,28 +129,48 @@ public:
         return magic_enum::enum_name<Enum>(static_cast<Enum>(i));
     }
 
-    constexpr static auto getLabels() noexcept {
-        return magic_enum::enum_names<Enum>();
+    constexpr static size_t size() noexcept {
+        return magic_enum::enum_count<Enum>();
+    }
+
+    constexpr static auto getLabels() noexcept -> std::array<std::string_view, size()> {
+        if constexpr (requires { E::labels; }) {
+            return to_array(E::labels);
+        } else {
+            return magic_enum::enum_names<Enum>();
+        }
     }
 
     constexpr auto getLongLabel() const noexcept {
-        return E::longLabels[value];
+        if constexpr (requires { E::longLabels[value]; }) {
+            return E::longLabels[value];
+        } else {
+            return magic_enum::enum_name<Enum>(value);
+        }
     }
 
-    constexpr static auto getLongLabels() noexcept {
-        return to_array(E::longLabels);
+    constexpr static auto getLongLabels() noexcept -> std::array<std::string_view, size()> {
+        if constexpr (requires { E::longLabels; }) {
+            return to_array(E::longLabels);
+        } else {
+            return magic_enum::enum_names<Enum>();
+        }
     }
 
     constexpr auto getShortLabel() const noexcept {
-        return E::shortLabels[value];
+        if constexpr (requires { E::shortLabels[value]; }) {
+            return E::shortLabels[value];
+        } else {
+            return magic_enum::enum_name<Enum>(value);
+        }
     }
 
-    constexpr static auto getShortLabels() noexcept {
-        return E::shortLabels;
-    }
-
-    constexpr static size_t size() noexcept {
-        return magic_enum::enum_count<Enum>();
+    constexpr static auto getShortLabels() noexcept  -> std::array<std::string_view, size()> {
+        if constexpr (requires { E::shortLabels; }) {
+            return E::shortLabels;
+        } else {
+            return magic_enum::enum_names<Enum>();
+        }
     }
 
     constexpr static Enum undefined() noexcept {
@@ -128,9 +183,13 @@ public:
     }
 
     inline constexpr magic_enum::customize::customize_t enumNameCustom() noexcept {
-        if (value < 0 || value >= std::size(E::labels))
+        if constexpr (requires { E::labels; }) {
+            if (value < 0 || value >= std::size(E::labels))
+                return magic_enum::customize::default_tag;
+            return E::labels[value];
+        } else {
             return magic_enum::customize::default_tag;
-        return E::labels[value];
+        }
     }
 };
 
@@ -138,6 +197,11 @@ template <class E>
 inline std::ostream& operator<<(std::ostream& out, EnumChoice<E> choice) {
     out << choice.getLabel();
     return out;
+}
+
+template <class E>
+juce::String& operator<<(juce::String& string1, EnumChoice<E> choice) {
+    return string1 << choice.getLabel().data();
 }
 
 /**
@@ -154,12 +218,18 @@ inline std::ostream& operator<<(std::ostream& out, EnumChoice<E> choice) {
 template<class E>
 struct EnumVariantConverter {
     static E fromVar(const juce::var& v) {
-        return E(v.toString().toStdString());
+        if (v.isString()) {
+            return E(v.toString().toStdString());
+        } else if (v.isInt() || v.isInt64() || v.isDouble()) {
+            return E(static_cast<int>(v));
+        }
+        return E();
     }
 
     static juce::var toVar(E choice) {
+        // NOTE Do not use short or lonng labels to be able to read it back
         const std::string_view label = choice.getLabel();
-        return juce::String {label.data(), label.size()};
+        return juce::String {label.data()};
     }
 };
 

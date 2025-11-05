@@ -251,10 +251,8 @@ std::optional<PsgParamFrameData> PsgParamsMidiReader::read(const juce::MidiMessa
     }
     currentTimestamp = ts;
     const auto channel = m.getChannel();
-    if (m.isController() && channel >= baseChannel && channel < baseChannel + 4) {
-        // DBG("PSG MIDI CC: " << m.getControllerNumber() << " = " << m.getControllerValue()
-            // << " on channel " << channel);
-        int psgChan = channel - baseChannel;
+    int psgChan = channel - baseChannel;
+    if (m.isController() && 0 <= psgChan && psgChan <= 3) {
         const auto ctrlNum = static_cast<MidiCCType>(m.getControllerNumber());
         const auto val = static_cast<uint16_t>(m.getControllerValue());
         if (psgChan == 3) {  // Envelope and noise channel

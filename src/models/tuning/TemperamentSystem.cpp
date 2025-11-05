@@ -7,53 +7,53 @@
 
 namespace MoTool {
 
-// TemperamentSystem base class implementation
-TemperamentSystem::TemperamentSystem(double a4Freq)
+// ReferenceTuningSystem base class implementation
+ReferenceTuningSystem::ReferenceTuningSystem(double a4Freq)
     : state(IDs::TEMPERAMENT)
 {
     a4Frequency.referTo(state, IDs::a4Frequency, nullptr, a4Freq);
 }
 
-TemperamentSystem::TemperamentSystem(const juce::ValueTree& initialState)
+ReferenceTuningSystem::ReferenceTuningSystem(const juce::ValueTree& initialState)
     : state(initialState)
 {
     a4Frequency.referTo(state, IDs::a4Frequency, nullptr, 440.0);
 }
 
-String TemperamentSystem::getDescription() const {
+String ReferenceTuningSystem::getDescription() const {
     return String(String::formatted("%s tuning, A4 = %.2f Hz", getType().getLongLabel().data(), getA4Frequency()));
 }
 
-void TemperamentSystem::setA4Frequency(double frequency) {
+void ReferenceTuningSystem::setA4Frequency(double frequency) {
     a4Frequency = frequency;
 }
 
-double TemperamentSystem::getA4Frequency() const {
+double ReferenceTuningSystem::getA4Frequency() const {
     return a4Frequency.get();
 }
 
-// juce::ValueTree TemperamentSystem::getState() const {
+// juce::ValueTree ReferenceTuningSystem::getState() const {
 //     return state;
 // }
 
-// void TemperamentSystem::setState(const juce::ValueTree& newState) {
+// void ReferenceTuningSystem::setState(const juce::ValueTree& newState) {
 //     state = newState;
 // }
 
 // EqualTemperamentTuning implementation
 EqualTemperamentTuning::EqualTemperamentTuning(double a4Freq)
-    : TemperamentSystem(a4Freq)
+    : ReferenceTuningSystem(a4Freq)
 {
     state.setProperty(IDs::type, "EqualTemperament", nullptr);
 }
 
 EqualTemperamentTuning::EqualTemperamentTuning(const juce::ValueTree& initialState)
-    : TemperamentSystem(initialState)
+    : ReferenceTuningSystem(initialState)
 {
 }
 
-TemperamentType EqualTemperamentTuning::getType() const {
-    return TemperamentType::EqualTemperament;
+TuningSystemType EqualTemperamentTuning::getType() const {
+    return TuningSystemType::EqualTemperament;
 }
 
 double EqualTemperamentTuning::midiNoteToFrequency(int midiNote) const {
@@ -106,26 +106,29 @@ String EqualTemperamentTuning::getDegreeRepresentation(int degree) const {
 RationalTuning::RationalTuning(
     const std::array<FractionNumber, 12>& rationalIntervals,
     const Scale::Tonic keyToUse,
+    const Scale::ScaleType scaleTypeToUse,
     double a4Freq
 )
-    : TemperamentSystem(a4Freq)
+    : ReferenceTuningSystem(a4Freq)
     , cachedRatios(rationalIntervals)
 {
     state.setProperty(IDs::type, "CustomRational", nullptr);
     tonic.referTo(state, IDs::tonic, nullptr, keyToUse);
+    scaleType.referTo(state, IDs::scaleType, nullptr, scaleTypeToUse);
     ratiosString.referTo(state, IDs::ratios, nullptr, getRatiosAsString(rationalIntervals));
 }
 
 RationalTuning::RationalTuning(const juce::ValueTree& initialState)
-    : TemperamentSystem(initialState)
+    : ReferenceTuningSystem(initialState)
     , cachedRatios(getRatiosFromString(initialState.getProperty(IDs::ratios, "")))
 {
     tonic.referTo(state, IDs::tonic, nullptr, Scale::Tonic::C);
+    scaleType.referTo(state, IDs::scaleType, nullptr, Scale::ScaleType::IonianOrMajor);
     ratiosString.referTo(state, IDs::ratios, nullptr);
 }
 
-TemperamentType RationalTuning::getType() const {
-    return TemperamentType(state.getProperty(IDs::type, "CustomRational").toString().toStdString());
+TuningSystemType RationalTuning::getType() const {
+    return TuningSystemType(state.getProperty(IDs::type, "CustomRational").toString().toStdString());
 }
 
 double RationalTuning::midiNoteToFrequency(int midiNote) const {
@@ -280,6 +283,14 @@ Scale::Tonic RationalTuning::getTonic() const {
     return tonic.get();
 }
 
+void RationalTuning::setScaleType(Scale::ScaleType newScaleType) {
+    scaleType = newScaleType;
+}
+
+Scale::ScaleType RationalTuning::getScaleType() const {
+    return scaleType.get();
+}
+
 void RationalTuning::updateCachedRatios() {
     cachedRatios = getRatiosFromString(ratiosString.get());
 }
@@ -315,90 +326,70 @@ juce::String RationalTuning::getRatiosAsString(const std::array<FractionNumber, 
     return tokens.joinIntoString(",");
 }
 
-
+//==============================================================================
 // Just Intonation 5-limit tuning
-JustIntonation5Limit::JustIntonation5Limit(const Scale::Tonic tonicToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
-    : RationalTuning(ratios, tonicToUse, a4Freq)
+JustIntonation5Limit::JustIntonation5Limit(const Scale::Tonic tonicToUse, const Scale::ScaleType scaleTypeToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
+    : RationalTuning(ratios, tonicToUse, scaleTypeToUse, a4Freq)
 {
     state.setProperty(IDs::type, "Just5Limit", nullptr);
 }
 
-JustIntonation5Limit::JustIntonation5Limit(const juce::ValueTree& initialState)
-    : RationalTuning(initialState)
+//==============================================================================
+JustIntonation5LimitT45_64::JustIntonation5LimitT45_64(const Scale::Tonic tonicToUse, const Scale::ScaleType scaleTypeToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
+    : RationalTuning(ratios, tonicToUse, scaleTypeToUse, a4Freq)
 {
+    state.setProperty(IDs::type, "Just5LimitT45_64", nullptr);
 }
 
-TemperamentType JustIntonation5Limit::getType() const {
-    return TemperamentType(state.getProperty(IDs::type, "Just5Limit").toString().toStdString());
+//==============================================================================
+PythagoreanTuning::PythagoreanTuning(const Scale::Tonic tonicToUse, const Scale::ScaleType scaleTypeToUse, double a4Freq, std::array<FractionNumber, 12> ratios)
+    : RationalTuning(ratios, tonicToUse, scaleTypeToUse, a4Freq)
+{
+    state.setProperty(IDs::type, "Pythagorean", nullptr);
 }
 
-
+//==============================================================================
 // standalone functions
-std::unique_ptr<TemperamentSystem> makeTemperamentSystem(
-    TemperamentType type,
+std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystem(
+    TuningSystemType type,
     const Scale::Tonic tonic,
+    const Scale::ScaleType scaleType,
     double a4Frequency
 ) {
     switch (type) {
-        case TemperamentTypeEnum::EqualTemperament:
+        case TuningSystemEnum::EqualTemperament:
             return std::make_unique<EqualTemperamentTuning>(a4Frequency);
 
-        case TemperamentTypeEnum::Just5Limit:
-            return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency);
+        case TuningSystemEnum::Just5Limit:
+            return std::make_unique<JustIntonation5Limit>(tonic, scaleType, a4Frequency);
 
-        case TemperamentTypeEnum::Just5LimitT45_64: {
-            std::array<FractionNumber, 12> ratios = {
-                FractionNumber(1, 1),   // Unison
-                FractionNumber(16, 15), // Minor second
-                FractionNumber(9, 8),   // Major second
-                FractionNumber(6, 5),   // Minor third
-                FractionNumber(5, 4),   // Major third
-                FractionNumber(4, 3),   // Perfect fourth
-                FractionNumber(64, 45), // Diminished fifth
-                FractionNumber(3, 2),   // Perfect fifth
-                FractionNumber(8, 5),   // Minor sixth
-                FractionNumber(5, 3),   // Major sixth
-                FractionNumber(16, 9),  // Minor seventh
-                FractionNumber(15, 8)   // Major seventh
-            };
-            return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency, ratios);
-        }
+        case TuningSystemEnum::Just5LimitT45_64:
+            return std::make_unique<JustIntonation5LimitT45_64>(tonic, scaleType, a4Frequency);
 
-        case TemperamentTypeEnum::Pythagorean: {
-            std::array<FractionNumber, 12> ratios = {
-                FractionNumber(1, 1),     // Unison
-                FractionNumber(256, 243), // Minor second
-                FractionNumber(9, 8),     // Major second
-                FractionNumber(32, 27),   // Minor third
-                FractionNumber(81, 64),   // Major third
-                FractionNumber(4, 3),     // Perfect fourth
-                FractionNumber(729, 512), // Augmented fourth
-                FractionNumber(3, 2),     // Perfect fifth
-                FractionNumber(128, 81),  // Minor sixth
-                FractionNumber(27, 16),   // Major sixth
-                FractionNumber(16, 9),    // Minor seventh
-                FractionNumber(243, 128)  // Major seventh
-            };
-            return std::make_unique<JustIntonation5Limit>(tonic, a4Frequency, ratios);
-        }
+        case TuningSystemEnum::Pythagorean:
+            return std::make_unique<PythagoreanTuning>(tonic, scaleType, a4Frequency);
 
         // Add other temperament types here as needed
-        case TemperamentTypeEnum::CustomRational:
+        case TuningSystemEnum::CustomRational:
         default:
             jassertfalse; // Unsupported temperament type
             return nullptr;
     }
 }
 
-std::unique_ptr<TemperamentSystem> makeTemperamentSystemFromState(const juce::ValueTree& state) {
+std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystemFromState(const juce::ValueTree& state) {
     auto typeString = state.getProperty(IDs::type, "EqualTemperament").toString();
-    TemperamentType type = TemperamentType(typeString.toStdString());
+    TuningSystemType type = TuningSystemType(typeString.toStdString());
 
-    if (type == TemperamentType::EqualTemperament) {
+    if (type == TuningSystemType::EqualTemperament) {
         return std::make_unique<EqualTemperamentTuning>(state);
-    } else if (type == TemperamentType::Just5Limit) {
+    } else if (type == TuningSystemType::Just5Limit) {
         return std::make_unique<JustIntonation5Limit>(state);
-    } else if (type == TemperamentType::CustomRational) {
+    } else if (type == TuningSystemType::Just5LimitT45_64) {
+        return std::make_unique<JustIntonation5LimitT45_64>(state);
+    } else if (type == TuningSystemType::Pythagorean) {
+        return std::make_unique<PythagoreanTuning>(state);
+    } else if (type == TuningSystemType::CustomRational) {
         return std::make_unique<RationalTuning>(state);
     }
 

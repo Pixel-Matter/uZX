@@ -71,7 +71,7 @@ private:
 // Macro to make registration more convenient
 #define REGISTER_PLUGIN_UI_ADAPTER(PluginType, UIType) \
     namespace { \
-        static const PluginUIAdapterRegistrar<PluginType, UIType> plugin_ui_adapter_registrar {}; \
+        static inline const PluginUIAdapterRegistrar<PluginType, UIType> plugin_ui_adapter_registrar {}; \
     }
 
 }  // namespace MoTool

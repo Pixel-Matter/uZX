@@ -10,6 +10,10 @@
 #include <vector>
 #include <optional>
 
+namespace MoTool::Tests {
+class MidiToPsgConverterTests;
+}
+
 namespace MoTool::uZX {
 
 using namespace MoTool;
@@ -32,7 +36,7 @@ public:
     struct ChannelVoice {
     private:
         tracktion::MidiMessageArray& midiBuffer_;
-        const TuningSystem* tuning_ = nullptr;
+        std::shared_ptr<TuningSystem> tuning_ {};
     public:
         int midiChannel;
         bool isEnvChannel = false;
@@ -45,7 +49,7 @@ public:
         ChannelVoice(tracktion::MidiMessageArray& buffer, int chan, bool isEnv = false);
 
         void reset();
-        void setTuningSystem(const TuningSystem* tuning) { tuning_ = tuning; }
+        void setTuningSystem(std::shared_ptr<TuningSystem> tuning);
 
         bool isActive() const;
         int getEffectiveChipVolume() const;
@@ -80,7 +84,8 @@ public:
     // explicit NotesToPsgMapper(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
-    void setTuningSystem(const TuningSystem* tuning);
+    TuningSystem& getTuningSystem();
+    void setTuningSystem(std::shared_ptr<TuningSystem> tuning);
     void setBaseChannel(int channel);
     void reset();
 
@@ -96,16 +101,18 @@ public:
     void debugChannelVoices() const;
 
     friend struct ChannelVoice;
+    friend class MoTool::Tests::MidiToPsgConverterTests;
 
 private:
-    // State access for testing
-    const ChannelVoice& getChannelVoice(int channel) const;
+    void setPassthruOutsideChannels(bool enable) { passthruOutsideChannels_ = enable; }
+    void setPassthruUnprocessedMIDI(bool enable) { passthruUnprocessedMIDI_ = enable; }
+
     // Helper methods
     bool isChannelInRange(int channel) const;
     const ChannelVoice& getVoice(int channel) const;
     ChannelVoice& getVoice(int channel);
 
-    te::MidiMessageArray renderVoices();
+    [[nodiscard]] te::MidiMessageArray renderVoices();
 
     //==============================================================================
     // MPEInstrument::Listener callbacks (connect MPE events to voice management)
@@ -141,9 +148,9 @@ private:
     bool passthruOutsideChannels_ = true;
     bool passthruUnprocessedMIDI_ = false;
 
-    const TuningSystem* tuningSystem_ = nullptr;
-    std::unique_ptr<TuningSystem> defaultTuningSystem_ = makeBuiltinTuning(BuiltinTuningType::EqualTemperament);
+    std::shared_ptr<TuningSystem> tuningSystem_ {};
 
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgMapper)
 };
 
 } // namespace MoTool::uZX

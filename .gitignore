@@ -35,6 +35,7 @@
 build/
 CMakeFiles/
 .cache/
+Testing/
 
 # IDE
 .vscode/
@@ -44,3 +45,6 @@ CMakeFiles/
 
 # MacOs
 .DS_Store
+
+.claude/
+src/version.h

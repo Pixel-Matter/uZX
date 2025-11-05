@@ -143,9 +143,9 @@ enum class MidiCCType {
     1    | 3    | CC 76 | Sound Controller 7
     1    | 4    | CC 77 | Sound Controller 8
     2    | 1    | CC 73 | Sound Controller 4, Attack time
-    2    | 1    | CC 75 | Sound Controller 6
-    2    | 1    | CC 79 | Sound Controller 10
-    2    | 1    | CC 72 | Sound Controller 3, Release Time
+    2    | 2    | CC 75 | Sound Controller 6, Decay Time
+    2    | 3    | CC 79 | Sound Controller 10
+    2    | 4    | CC 72 | Sound Controller 3, Release Time
     3    | 1    | CC 18 | General Purpose Slider 3
     3    | 2    | CC 19 | General Purpose Slider 4
     3    | 3    | CC 16 | General Purpose Slider 1

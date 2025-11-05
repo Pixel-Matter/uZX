@@ -20,7 +20,7 @@ public:
 
     // Only single edit can be opened at a time
     te::Edit* getCurrentlyFocusedEdit()                                   override {
-        return MoToolApp::getController().getEdit();
+        return MoToolApp::getArrangerController().getEdit();
     }
     te::Edit* getLastFocusedEdit()                                        override {
         return getCurrentlyFocusedEdit();
@@ -35,7 +35,7 @@ public:
     void editNamesMayHaveChanged()                                        override {}
 
     te::SelectionManager* getCurrentlyFocusedSelectionManager()           override {
-        return &MoToolApp::getController().getSelectionManager();
+        return &MoToolApp::getAppController().getSelectionManager();
     }
 
     te::SelectionManager* getSelectionManagerForRack(const te::RackType&) override { return {}; }
@@ -46,7 +46,7 @@ public:
     void updateAllProjectItemLists()                                      override {}
 
     juce::ApplicationCommandManager* getApplicationCommandManager() override {
-        return &MoToolApp::getController().getCommandManager();
+        return &MoToolApp::getCommandManager();
     }
 
     void getAllCommands(juce::Array<juce::CommandID>& /*commands*/) override {
@@ -96,7 +96,7 @@ public:
         until the task is done.
     */
     void runTaskWithProgressBar(te::ThreadPoolJobWithProgress& job) override {
-        auto& engine = MoToolApp::getController().getEngine();
+        auto& engine = MoToolApp::getArrangerController().getEngine();
         auto& jobManager = engine.getBackgroundJobs();
         jobManager.addJob(&job, false);
 
@@ -118,14 +118,16 @@ public:
 
     void showProjectScreen()                                    override {}
 
-    void showSettingsScreen()                                   override {
+    void showSettingsScreen() override {
         DialogWindow::LaunchOptions o;
         o.dialogTitle = TRANS("Audio Settings");
         o.dialogBackgroundColour = LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId);
-        o.content.setOwned(new AudioDeviceSelectorComponent(MoToolApp::getController().getEngine().getDeviceManager().deviceManager,
-                                                            0, 512, 1, 512, true, true, true, false));
+        o.content.setOwned(
+            new AudioDeviceSelectorComponent(MoToolApp::getArrangerController().getEngine().getDeviceManager().deviceManager,
+                                             0, 512, 1, 512,
+                                             true, true, true, false));
         o.useNativeTitleBar = true;
-        o.escapeKeyTriggersCloseButton  = true;
+        o.escapeKeyTriggersCloseButton = true;
         o.resizable = true;
         o.content->setSize(500, 600);
         o.launchAsync();
@@ -166,35 +168,25 @@ public:
     void resetOverloads()                                       override {}
     void resetPeaks()                                           override {}
 
-    void zoomHorizontal(float increment)                        override {
-        // DBG("zoomHorizontal: " << increment);
-        // TODO change to use BaseController::getZoomController()
-        if (auto* viewState = MoToolApp::getController().getEditViewState()) {
-            viewState->zoom.zoomHorizontally(increment);
-        }
+    void zoomHorizontal(float amount)                          override {
+        MoToolApp::getArrangerController().zoomHorizontal(amount);
     }
-    void zoomVertical(float /*amount*/)                         override {}
+
+    void zoomVertical(float amount)                            override {
+        MoToolApp::getArrangerController().zoomVertical(amount);
+    }
 
     void zoomToSelection()                                      override {
-        auto& ctrl = MoToolApp::getController();
-        auto objects = ctrl.getSelectionManager().getSelectedObjects();
-        objects = te::getClipSelectionWithCollectionClipContents(objects);
-        auto range = te::getTimeRangeForSelectedItems(objects);
-        auto viewState = ctrl.getEditViewState();
-        if (viewState != nullptr && !range.isEmpty()) {
-            viewState->zoom.setRange(range);
-        }
+        MoToolApp::getArrangerController().zoomToSelection();
     }
 
     void zoomToFitHorizontally()                                override {
-        auto& ctrl = MoToolApp::getController();
-        auto viewState = ctrl.getEditViewState();
-        auto range = Helpers::getEffectiveClipsTimeRange(*ctrl.getEdit());
-        if (viewState != nullptr && !range.isEmpty()) {
-            viewState->zoom.setRange(range);
-        }
+        MoToolApp::getArrangerController().zoomToFitHorizontally();
     }
-    void zoomToFitVertically()                                  override {}
+
+    void zoomToFitVertically()                                  override {
+        MoToolApp::getArrangerController().zoomToFitVertically();
+    }
 
     //==============================================================================
     /** Should return the position which used be used for edit operations such as splitting.

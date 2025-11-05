@@ -21,7 +21,7 @@ public:
     void startPlayback(double duration);
     void stopPlayback();
 
-    void setTuningSystem(TuningSystem* ts);
+    void setTuningSystem(std::shared_ptr<TuningSystem> ts);
 
     // Access to transport for state monitoring
     tracktion::TransportControl& getTransport() { return transport; }
@@ -31,7 +31,8 @@ public:
 
 private:
     static constexpr int NUM_CHANNELS = 4;
-
+    static constexpr int SINGLE_NOTE_CHANNEL = 1;
+    static constexpr bool USE_MIDI_LOGGER = false;
 
     // Member variables
     tracktion::Edit& edit;
@@ -56,6 +57,7 @@ private:
 
     const std::array<tracktion::MidiClip::Ptr, NUM_CHANNELS>& getChannelClips() const { return channelClips; }
 
+    JUCE_DECLARE_WEAK_REFERENCEABLE(MultitrackMidiPreview)
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MultitrackMidiPreview)
 };
 

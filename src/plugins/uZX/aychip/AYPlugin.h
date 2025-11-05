@@ -4,31 +4,35 @@
 
 #include "../../../formats/psg/PsgData.h"
 #include "../../../models/PsgMidi.h"
-#include "../../../controllers/ParamAttachments.h"
+#include "../../../controllers/BindedAutoParameter.h"
 #include "aychip.h"
 
 #include <atomic>
 #include <array>
 #include <cstddef>
+#include <vector>
 
 namespace te = tracktion;
 
 namespace MoTool {
 
+namespace uZX {
+
 namespace IDs {
-    #define DECLARE_ID(name)  const juce::Identifier name(#name);
+    #define DECLARE_ID(name)  inline const juce::Identifier name(#name);
     DECLARE_ID(chip)
     DECLARE_ID(clock)
     DECLARE_ID(layout)
     DECLARE_ID(stereo)
+    DECLARE_ID(monitor)
     DECLARE_ID(noDC)
     DECLARE_ID(midi)
+    DECLARE_ID(volume)
     #undef DECLARE_ID
 }  // namespace IDs
 
-namespace uZX {
 
-class AYChipPlugin : public te::Plugin {
+class AYChipPlugin : public PluginBase {
 public:
     AYChipPlugin (te::PluginCreationInfo);
     ~AYChipPlugin() override;
@@ -58,30 +62,45 @@ public:
     void restorePluginStateFromValueTree (const ValueTree&) override;
     std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
 
-    struct Params {
-        ChoiceParamAttachment<ChipType> chipTypeValue;
-        RangedParamAttachment<double> clockValue;
-        ChoiceParamAttachment<ChannelsLayout> channelsLayoutValue;
-        ParamAttachment<bool> removeDCValue;
-        RangedParamAttachment<int> baseMidiChannelValue;
-        RangedParamAttachment<double> stereoWidthValue;
+    class StaticParams : public ParamsBase<StaticParams> {
+    public:
+        using ParamsBase<StaticParams>::ParamsBase;
 
-        Params(te::Plugin& p)
-            : chipTypeValue(p.state, p.getUndoManager())
-            , clockValue(p.state, p.getUndoManager())
-            , channelsLayoutValue(p.state, p.getUndoManager())
-            , removeDCValue(p.state, p.getUndoManager())
-            , baseMidiChannelValue(p.state, p.getUndoManager())
-            , stereoWidthValue(p.state, p.getUndoManager())
-        {
-            initialise();
+        template<typename Visitor>
+        void visit(Visitor&& visitor) {
+            visitor(baseMidiChannel);
+            visitor(chipType);
+            visitor(chipClock);
+            visitor(removeDC);
         }
 
-        void initialise();
-        void restoreFromTree(const juce::ValueTree& v);
+        ParameterValue<int> baseMidiChannel {{"midi",  IDs::midi,  "MIDI",  "MIDI channel range", 1,   {1, 16 - 3, 1}}};
+        ParameterValue<ChipType> chipType   {{"chip",  IDs::chip,  "Chip",  "Chip type",      ChipType::AY}};
+        ParameterValue<double> chipClock    {{"clock", IDs::clock, "Clock", "Clock frequncy", 1.7734, {0.894887, 2.0, 0.01}, "MHz"}};
+        ParameterValue<bool> removeDC       {{"noDC",  IDs::noDC,  "Remove DC", "Remove DC from output", true}};
     };
 
-    Params staticParams {*this};
+    StaticParams staticParams;
+
+    class DynamicParams : public ParamsBase<DynamicParams> {
+    public:
+        using ParamsBase<DynamicParams>::ParamsBase;
+
+        template<typename Visitor>
+        void visit(Visitor&& visitor) {
+            visitor(volume);
+            visitor(layout);
+            visitor(stereoWidth);
+            visitor(monitorMode);
+        }
+
+        ParameterValue<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
+        ParameterValue<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", ChannelsLayout::ACB}};
+        ParameterValue<float> stereoWidth     {{"stereo", IDs::stereo, "Width",  "Stereo width",  0.5f, {0.f, 1.0f}}};
+        ParameterValue<bool> monitorMode      {{"monitor", IDs::monitor, "Monitor", "Chip monitor mode",  false}};
+    };
+
+    DynamicParams dynamicParams;
 
     enum class MidiReaderMode {
         Params,
@@ -117,8 +136,11 @@ private:
     void updateChip() noexcept;
     void handleMidiEvent(const te::MidiMessageWithSource& m) noexcept;
 
+    void updateDynamicParams();
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };
+
 
 } // namespace MoTool::uZX
 

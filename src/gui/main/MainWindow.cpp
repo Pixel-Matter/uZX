@@ -14,10 +14,11 @@ MainWindow::MainWindow(tracktion::Engine& engine)
     setResizable(true, true);
 
     // Set up minimum size constraints
+    // TODO pass in constructor or make configurable from controller
+    // we need different min sizes for tuning window
     constrainer_.setMinimumSize(800, 480);
     setConstrainer(&constrainer_);
 
-    restoreWindowBounds();
     setVisible(true);
 }
 
@@ -26,8 +27,16 @@ MainWindow::~MainWindow() {
     clearContentComponent();
 }
 
+void MainWindow::setCloseHandler(std::function<void()> handler) {
+    closeHandler_ = std::move(handler);
+}
+
 void MainWindow::closeButtonPressed() {
-    JUCEApplication::getInstance()->systemRequestedQuit();
+    if (closeHandler_) {
+        closeHandler_();
+    } else {
+        JUCEApplication::getInstance()->systemRequestedQuit();
+    }
 }
 
 void MainWindow::resized() {
@@ -42,18 +51,18 @@ void MainWindow::saveWindowBounds() {
     auto bounds = getBounds();
 
     auto& propertyStorage = static_cast<MoTool::PropertyStorage&>(engine_.getPropertyStorage());
-    propertyStorage.setCustomProperty("mainWindowX", bounds.getX());
-    propertyStorage.setCustomProperty("mainWindowY", bounds.getY());
-    propertyStorage.setCustomProperty("mainWindowWidth", bounds.getWidth());
-    propertyStorage.setCustomProperty("mainWindowHeight", bounds.getHeight());
+    propertyStorage.setCustomProperty(getComponentID() + "WindowX", bounds.getX());
+    propertyStorage.setCustomProperty(getComponentID() + "WindowY", bounds.getY());
+    propertyStorage.setCustomProperty(getComponentID() + "WindowWidth", bounds.getWidth());
+    propertyStorage.setCustomProperty(getComponentID() + "WindowHeight", bounds.getHeight());
 }
 
 void MainWindow::restoreWindowBounds() {
     auto& propertyStorage = static_cast<MoTool::PropertyStorage&>(engine_.getPropertyStorage());
-    int x = propertyStorage.getCustomProperty("mainWindowX", -1);
-    int y = propertyStorage.getCustomProperty("mainWindowY", -1);
-    int width = propertyStorage.getCustomProperty("mainWindowWidth", 1024);
-    int height = propertyStorage.getCustomProperty("mainWindowHeight", 740);
+    int x = propertyStorage.     getCustomProperty(getComponentID() + "WindowX", -1);
+    int y = propertyStorage.     getCustomProperty(getComponentID() + "WindowY", -1);
+    int width = propertyStorage. getCustomProperty(getComponentID() + "WindowWidth", 1024);
+    int height = propertyStorage.getCustomProperty(getComponentID() + "WindowHeight", 740);
 
     // The constrainer will automatically enforce minimum size
     Rectangle<int> bounds(x, y, width, height);

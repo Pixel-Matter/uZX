@@ -11,8 +11,6 @@ public:
     BuiltinTuningTest() : UnitTest("BuiltinTuning", "MoTool") {}
 
     void runTest() override {
-        ChipCapabilities testCaps {16, Range<int>(1, 4096)};
-
         beginTest("Constructor with empty period table");
         {
             std::map<int, int> emptyTable;

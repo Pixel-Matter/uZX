@@ -4,7 +4,7 @@ namespace MoTool {
 
 TuningTable::TuningTable(
     double chipClock,
-    std::unique_ptr<TemperamentSystem> refTuning,
+    std::unique_ptr<ReferenceTuningSystem> refTuning,
     const std::map<int, int>& periodTable,
     const String& customName
 )
@@ -24,7 +24,7 @@ TuningTable::TuningTable(
 
 TuningTable::TuningTable(
     double chipClock,
-    std::unique_ptr<TemperamentSystem> refTuning,
+    std::unique_ptr<ReferenceTuningSystem> refTuning,
     int startingMidiNote,
     const std::vector<int>& periods,
     const String& customName
@@ -49,7 +49,7 @@ TuningTable::TuningTable(
 
 TuningTable::TuningTable(
     double chipClock,
-    std::unique_ptr<TemperamentSystem> refTuning,
+    std::unique_ptr<ReferenceTuningSystem> refTuning,
     int startingMidiNote,
     std::initializer_list<int> periods,
     const String& customName

@@ -1,4 +1,5 @@
 #include <JuceHeader.h>
+#include <memory>
 
 #include "MainController.h"
 #include "EditState.h"
@@ -7,15 +8,19 @@
 
 #include "../gui/main/MainWindow.h"
 #include "../gui/main/MainDocument.h"
+#include "../gui/main/AboutDialog.h"
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../plugins/uZX/instrument/ChipInstrumentPlugin.h"
 #include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
+#include "../plugins/uZX/midi_logger/MidiLoggerPlugin.h"
 
 #include "../util/FileOps.h"
 #include "../util/Helpers.h"
+#include "controllers/App.h"
+#include "controllers/TuningController.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
@@ -24,34 +29,38 @@ using namespace MoTool::Helpers;
 
 namespace MoTool {
 
-void BaseController::setMainWindowTitle(const String& title) {
-    mainWindow_.setTitle(title);
-    mainWindow_.setName(title);
+void registerPlugins(te::Engine& engine) {
+    engine.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
+    engine.getPluginManager().createBuiltInType<uZX::ChipInstrumentPlugin>();
+    engine.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
+    engine.getPluginManager().createBuiltInType<uZX::MidiLoggerPlugin>();
 }
 
-BaseController::BaseController()
+AppController::AppController()
     : engine_ {
         std::make_unique<PropertyStorage>(CharPointer_UTF8(ProjectInfo::projectName)),
         std::make_unique<ExtUIBehaviour>(),
         std::make_unique<ExtEngineBehaviour>()
     }
-{}
+{
+    // engine_.getDeviceManager().initialise(engine_.getEngineBehaviour().shouldOpenAudioInputByDefault()
+    //     ? te::DeviceManager::defaultNumChannelsToOpen : 0, te::DeviceManager::defaultNumChannelsToOpen);
 
-void BaseController::initialize() {
-    engine_.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
-    engine_.getPluginManager().createBuiltInType<uZX::ChipInstrumentPlugin>();
-    engine_.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
+    // Workaround for JUCE CoreAudio buffer overflow bug at low sample rates
+    ensureMinimumSampleRate();
+}
+
+void AppController::initialize() {
+    registerPlugins(engine_);
 
     engine_.getDeviceManager().addChangeListener(this);
 
-    setEdit(createOrLoadStartupEdit());
     selectionManager_.addChangeListener(this);
 
     commandManager_.registerAllCommandsForTarget(this);
     commandManager_.setFirstCommandTarget(this);
     // Install key mappings
     commandManager_.getKeyMappings()->resetToDefaultMappings();
-    mainWindow_.addKeyListener(commandManager_.getKeyMappings());
 
     // menuBarModel::
     setApplicationCommandManagerToWatch(&commandManager_);
@@ -63,8 +72,9 @@ void BaseController::initialize() {
     #endif
 }
 
-BaseController::~BaseController() {
+AppController::~AppController() {
     engine_.getDeviceManager().removeChangeListener(this);
+    engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
 
     // commandManager_.setFirstCommandTarget(nullptr);
     selectionManager_.deselectAll();
@@ -78,72 +88,76 @@ BaseController::~BaseController() {
     #else
         setMenuBar(nullptr);
     #endif
-    mainWindow_.removeKeyListener(commandManager_.getKeyMappings());
-    mainWindow_.clearContentComponent();
-
-    if (edit_ != nullptr) {
-        EditFileOps::saveEdit(*edit_, true, true, false);
-        edit_->getTempDirectory(false).deleteRecursively();
-    }
-
-    engine_.getTemporaryFileManager().getTempDirectory().deleteRecursively();
 }
 
-te::Edit* BaseController::getEdit() {
-    return edit_.get();
-}
-
-te::Engine& BaseController::getEngine() {
-    return engine_;
-}
-
-EditViewState* BaseController::getEditViewState() {
-    return editViewState_.get();
-}
-
-te::SelectionManager& BaseController::getSelectionManager() {
+te::SelectionManager& AppController::getSelectionManager() {
     return selectionManager_;
 }
 
-ApplicationCommandManager& BaseController::getCommandManager() {
+ApplicationCommandManager& AppController::getCommandManager() {
     return commandManager_;
 }
 
-void BaseController::devicesChanged() {
-    // if (!edit_) return;
+void AppController::ensureMinimumSampleRate() {
+    constexpr double MIN_SAMPLE_RATE = 44100.0;
+    constexpr int MAX_BLOCK_SIZE = 256;
 
-    // edit_->getTransport().ensureContextAllocated();
+    auto& deviceManager = engine_.getDeviceManager().deviceManager;
+    auto* currentDevice = deviceManager.getCurrentAudioDevice();
 
-    // Do not need this because we can setup this in UI per track
-    // if (auto defaultMidiDevice = engine_.getDeviceManager().getDefaultMidiInDevice()) {
-    //     // Find the input device instance for the default MIDI device
-    //     te::InputDeviceInstance* defaultInstance = nullptr;
-    //     for (auto instance : edit_->getAllInputDevices()) {
-    //         if (&instance->getInputDevice() == defaultMidiDevice) {
-    //             defaultInstance = instance;
-    //             break;
-    //         }
-    //     }
+    bool audioOk = false;
 
-    //     for (auto at : te::getTracksOfType<te::AudioTrack>(*edit_, true)) {
-    //         if (at) {
-    //             [[maybe_unused]] auto res = defaultInstance->setTarget(at->itemID, false, &edit_->getUndoManager(), 0);
-    //         }
-    //     }
-    // }
-    // edit_->restartPlayback();
-}
+    if (currentDevice != nullptr) {
+        auto currentSampleRate = currentDevice->getCurrentSampleRate();
+        if (currentSampleRate < MIN_SAMPLE_RATE) {
+            const auto currentBufferSize = currentDevice->getCurrentBufferSizeSamples();
+            DBG("WARNING: Sample rate " << currentSampleRate << " Hz is below minimum " << MIN_SAMPLE_RATE << " Hz"
+                << ", buffer size: " << currentBufferSize);
+            auto desiredBlockSize = juce::jmin(currentBufferSize, MAX_BLOCK_SIZE);
 
-void BaseController::changeListenerCallback(ChangeBroadcaster* source) {
-    if (source == &selectionManager_) {
-        // Selection changed, update command status
-        commandManager_.commandStatusChanged();
-    } else if (source == &engine_.getDeviceManager()) {
-        devicesChanged();
+            auto availableSizes = currentDevice->getAvailableBufferSizes();
+            if (!availableSizes.isEmpty()) {
+                int candidateSize = availableSizes.getLast();
+                for (auto size : availableSizes) {
+                    if (size >= MAX_BLOCK_SIZE) {
+                        candidateSize = size;
+                        break;
+                    }
+                }
+                desiredBlockSize = juce::jmin(currentBufferSize, candidateSize);
+            }
+
+            if (currentBufferSize > desiredBlockSize) {
+                juce::AudioDeviceManager::AudioDeviceSetup setup;
+                deviceManager.getAudioDeviceSetup(setup);
+                setup.bufferSize = desiredBlockSize;
+                DBG("  Current buffer size: " << currentBufferSize << ", setting to " << desiredBlockSize);
+                if (auto error = deviceManager.setAudioDeviceSetup(setup, false); error.isNotEmpty())
+                    DBG("Failed to set audio block size: " << error);
+            }
+
+            deviceManager.restartLastAudioDevice();
+            const auto newBufferSize = currentDevice->getCurrentBufferSizeSamples();
+            DBG("  New buffer size: " << newBufferSize);
+        } else {
+            audioOk = true;
+        }
+    }
+    if (!audioOk) {
+        MessageManager::callAsync([] {
+            te::AppFunctions::showSettingsScreen();
+        });
     }
 }
 
-void BaseController::handlePluginManager() {
+void AppController::changeListenerCallback(ChangeBroadcaster* source) {
+    if (source == &selectionManager_) {
+        // Selection changed, update command status
+        commandManager_.commandStatusChanged();
+    }
+}
+
+void AppController::handlePluginManager() {
     DialogWindow::LaunchOptions o;
     o.dialogTitle                   = TRANS("Plugins");
     o.dialogBackgroundColour        = Colors::Theme::background;
@@ -161,32 +175,29 @@ void BaseController::handlePluginManager() {
     o.launchAsync();
 }
 
-std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
-    std::unique_ptr<te::Edit> edit;
-    if (editFile.existsAsFile())
-        edit = te::loadEditFromFile(engine_, editFile);
-    else
-        edit = te::createEmptyEdit(engine_, editFile);
-    return edit;
+void AppController::showAboutDialog() {
+    DialogWindow::LaunchOptions options;
+    options.dialogTitle                  = "About " + JUCEApplication::getInstance()->getApplicationName();
+    options.dialogBackgroundColour       = Colors::Theme::backgroundAlt;
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar            = true;
+    options.resizable                    = false;
+    options.useBottomRightCornerResizer  = false;
+    // TODO getCurrentFocusedDesktopWindow
+    // options.componentToCentreAround      = &mainWindow_;
+    options.content.setOwned(new AboutDialogComponent());
+    options.runModal();
 }
 
-// ================================= MainController =============================================
-MainController::~MainController() {
-    // TODO actually we should clean up the render files when closing/destroying an edit, not when closing the app
-    // We can subclass the edit and override destructor to do this
-    if (edit_ != nullptr) {
-        Helpers::removeUnusedRenderFiles(*edit_);
-    }
-}
 
 // ==============================================================================
 // MenuBarModel
 //==============================================================================
-StringArray MainController::getMenuBarNames() {
+StringArray AppController::getMenuBarNames() {
     return MainAppCommands::getMenuBarNames();
 }
 
-PopupMenu MainController::getMenuForIndex(int /* menuIndex */, const String& menuName) {
+PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menuName) {
     if (menuName == "File") {
         PopupMenu menu;
         menu.addCommandItem(&commandManager_, MainAppCommands::fileNew);
@@ -222,35 +233,38 @@ PopupMenu MainController::getMenuForIndex(int /* menuIndex */, const String& men
     return MainAppCommands::createMenu(&commandManager_, menuName);
 }
 
-void MainController::menuItemSelected(int /* menuItemID */, int /* topLevelMenuIndex*/ ) {
+void AppController::menuItemSelected(int /* menuItemID */, int /* topLevelMenuIndex*/ ) {
     // handled by CommandManager
 }
 
-ApplicationCommandTarget* MainController::getNextCommandTarget() {
+ApplicationCommandTarget* AppController::getNextCommandTarget() {
     return nullptr;
 }
 
-void MainController::getAllCommands(Array<CommandID>& commands) {
+void AppController::getAllCommands(Array<CommandID>& commands) {
     commands.addArray(MainAppCommands::getCommandIDs());
 }
 
-void MainController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) {
+void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) {
     // DBG("MainWindow::getCommandInfo: " << commandID);
     // Get main command info, name, desc, keypresses
     MainAppCommands::getCommandInfo(commandID, result);
 
+    auto& arrangerController = MoToolApp::getArrangerController();
+    auto* edit = arrangerController.getEdit();
+
     // Update command status based on current state
     switch (commandID) {
         case MainAppCommands::fileSave:
-            result.setActive(edit_ != nullptr);
+            result.setActive(edit != nullptr);
             break;
 
         case MainAppCommands::fileSaveAs:
-            result.setActive(edit_ != nullptr);
+            result.setActive(edit != nullptr);
             break;
 
         case MainAppCommands::fileReveal:
-            result.setActive(edit_ != nullptr);
+            result.setActive(edit != nullptr);
             break;
 
         case MainAppCommands::fileOpenRecent1:
@@ -281,11 +295,11 @@ void MainController::getCommandInfo(CommandID commandID, ApplicationCommandInfo&
         }
 
         case MainAppCommands::editUndo:
-            result.setActive(edit_ != nullptr && edit_->getUndoManager().canUndo());
+            result.setActive(edit != nullptr && edit->getUndoManager().canUndo());
             break;
 
         case MainAppCommands::editRedo:
-            result.setActive(edit_ != nullptr && edit_->getUndoManager().canRedo());
+            result.setActive(edit != nullptr && edit->getUndoManager().canRedo());
             break;
 
         // TODO  Theese commands are not being updated on selection change, only transportPlay and transportRecordStop are updated
@@ -303,42 +317,45 @@ void MainController::getCommandInfo(CommandID commandID, ApplicationCommandInfo&
         //     break;
 
         case MainAppCommands::transportPlay:
-            result.setActive(edit_ != nullptr);
+            result.setActive(edit != nullptr);
             break;
 
         case MainAppCommands::transportRecord:
-            result.setActive(edit_ != nullptr && !edit_->getTransport().isRecording());
+            result.setActive(edit != nullptr && !edit->getTransport().isRecording());
             break;
 
         case MainAppCommands::transportRecordStop:
-            result.setActive(edit_ != nullptr && edit_->getTransport().isRecording());
+            result.setActive(edit != nullptr && edit->getTransport().isRecording());
             break;
 
         case MainAppCommands::transportToStart:
-            result.setActive(edit_ != nullptr);
+            result.setActive(edit != nullptr);
             break;
 
         case MainAppCommands::transportLoop:
-            result.setTicked(edit_ != nullptr && edit_->getTransport().looping);
+            result.setTicked(edit != nullptr && edit->getTransport().looping);
             break;
 
         case MainAppCommands::viewZoomToSelection:
-            result.setActive(edit_ != nullptr && selectionManager_.getSelectedObjects().size() > 0);
+            result.setActive(edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
             break;
 
         // Add more dynamic command states...
     }
 }
 
-bool MainController::perform(const InvocationInfo& info) {
+bool AppController::perform(const InvocationInfo& info) {
     // DBG("MainWindow::perform: " << info.commandID);
+    auto& arrangerController = MoToolApp::getArrangerController();
+    auto* edit = arrangerController.getEdit();
+
     switch (info.commandID) {
         case MainAppCommands::fileNew:
-            handleNew();
+            arrangerController.handleNew();
             break;
 
         case MainAppCommands::fileOpen:
-            handleOpen();
+            arrangerController.handleOpen();
             break;
 
         case MainAppCommands::fileOpenRecent1:
@@ -349,11 +366,11 @@ bool MainController::perform(const InvocationInfo& info) {
         case MainAppCommands::fileOpenRecent6:
         case MainAppCommands::fileOpenRecent7:
         case MainAppCommands::fileOpenRecent8:
-            handleOpenRecent(info.commandID - MainAppCommands::fileOpenRecent1);
+            arrangerController.handleOpenRecent(info.commandID - MainAppCommands::fileOpenRecent1);
             break;
 
         case MainAppCommands::fileClearRecentFiles:
-            handleClearRecentFiles();
+            arrangerController.handleClearRecentFiles();
             break;
 
         case MainAppCommands::fileSave:
@@ -361,19 +378,19 @@ bool MainController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::fileSaveAs:
-            handleSaveAs();
+            arrangerController.handleSaveAs();
             break;
 
         case MainAppCommands::fileReveal:
-            if (edit_ != nullptr) {
-                EditFileOps::saveEdit(*edit_, false, true, false);
-                te::EditFileOperations(*edit_).getEditFile().revealToUser();
+            if (edit != nullptr) {
+                EditFileOps::saveEdit(*edit, false, true, false);
+                te::EditFileOperations(*edit).getEditFile().revealToUser();
             }
             break;
 
         case MainAppCommands::fileImportPsg:
-            if (edit_ != nullptr) {
-                importPsgAsClip(*edit_, selectionManager_);
+            if (edit != nullptr) {
+                importPsgAsClip(*edit, selectionManager_);
             }
             break;
 
@@ -398,11 +415,11 @@ bool MainController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::transportRecord:
-            handleRecord();
+            arrangerController.handleRecord();
             break;
 
         case MainAppCommands::transportRecordStop:
-            handleRecord();
+            arrangerController.handleRecord();
             break;
 
         case MainAppCommands::transportToStart:
@@ -419,8 +436,8 @@ bool MainController::perform(const InvocationInfo& info) {
 
         // Add commands
         case MainAppCommands::addAudioTrack:
-            if (edit_ != nullptr) {
-                Helpers::addAndSelectAudioTrack(*edit_, selectionManager_);
+            if (edit != nullptr) {
+                Helpers::addAndSelectAudioTrack(*edit, selectionManager_);
             }
             break;
 
@@ -432,8 +449,8 @@ bool MainController::perform(const InvocationInfo& info) {
 
         // Track commands
         case MainAppCommands::trackRenderToAudio:
-            if (edit_ != nullptr) {
-                Helpers::renderSelectedTracksToAudioTrack(*edit_, selectionManager_);
+            if (edit != nullptr) {
+                Helpers::renderSelectedTracksToAudioTrack(*edit, selectionManager_);
             }
             break;
 
@@ -466,6 +483,16 @@ bool MainController::perform(const InvocationInfo& info) {
             handlePluginManager();
             break;
 
+        case MainAppCommands::settingsTuningTables: {
+            // Open the Tuning Tool in a new window
+            openTuningWindow();
+            break;
+        }
+
+        case MainAppCommands::helpAbout:
+            showAboutDialog();
+            break;
+
         default:
             return false;
     }
@@ -473,12 +500,126 @@ bool MainController::perform(const InvocationInfo& info) {
     return true;
 }
 
-void MainController::handleNew() {
+void AppController::openTuningWindow() {
+    if (tuningController_ != nullptr) {
+        tuningController_->bringWindowToFront();
+    } else {
+        tuningController_ = std::make_unique<TuningController>(getEngine());
+        tuningController_->initialize();
+    }
+}
+
+void AppController::closeTuningWindow() {
+    tuningController_.reset();
+}
+
+te::Engine& AppController::getEngine() {
+    return engine_;
+}
+
+//============================================================================
+BaseController::BaseController(te::Engine& e)
+    : engine_ {e}
+{}
+
+BaseController::~BaseController() {
+    window_.clearContentComponent();
+
+    if (edit_ != nullptr) {
+        EditFileOps::saveEdit(*edit_, true, true, false);
+        edit_->getTempDirectory(false).deleteRecursively();
+    }
+}
+
+void BaseController::initialize() {
+    engine_.getDeviceManager().addChangeListener(this);
+
+    setEdit(createOrLoadStartupEdit());
+
+    window_.restoreWindowBounds();
+    window_.addKeyListener(MoToolApp::getCommandManager().getKeyMappings());
+}
+
+void BaseController::bringWindowToFront() {
+    window_.toFront(true);
+    window_.setVisible(true);
+}
+
+void BaseController::changeListenerCallback(ChangeBroadcaster* source) {
+    if (source == &engine_.getDeviceManager()) {
+        devicesChanged();
+    }
+}
+
+void BaseController::setMainWindowTitle(const String& title) {
+    window_.setTitle(title);
+    window_.setName(title);
+}
+
+te::Edit* BaseController::getEdit() {
+    return edit_.get();
+}
+
+te::Engine& BaseController::getEngine() {
+    return engine_;
+}
+
+std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
+    std::unique_ptr<te::Edit> edit;
+    if (editFile.existsAsFile())
+        edit = te::loadEditFromFile(engine_, editFile);
+    else
+        edit = te::createEmptyEdit(engine_, editFile);
+    return edit;
+}
+
+// ================================= MainController =============================================
+void ArrangerController::initialize() {
+    auto title = String::fromUTF8("Pixel Matter μZX Studio v") + MoToolApp::getApp().getApplicationVersion();
+    setMainWindowTitle(title);
+    window_.setComponentID("studio");
+    BaseController::initialize();
+}
+
+ArrangerController::~ArrangerController() {
+    // TODO actually we should clean up the render files when closing/destroying an edit, not when closing the app
+    // We can subclass the edit and override destructor to do this
+    if (edit_ != nullptr) {
+        Helpers::removeUnusedRenderFiles(*edit_);
+    }
+}
+
+void ArrangerController::devicesChanged() {
+    // if (!edit_) return;
+
+    // edit_->getTransport().ensureContextAllocated();
+
+    // Do not need this because we can setup this in UI per track
+    // if (auto defaultMidiDevice = engine_.getDeviceManager().getDefaultMidiInDevice()) {
+    //     // Find the input device instance for the default MIDI device
+    //     te::InputDeviceInstance* defaultInstance = nullptr;
+    //     for (auto instance : edit_->getAllInputDevices()) {
+    //         if (&instance->getInputDevice() == defaultMidiDevice) {
+    //             defaultInstance = instance;
+    //             break;
+    //         }
+    //     }
+
+    //     for (auto at : te::getTracksOfType<te::AudioTrack>(*edit_, true)) {
+    //         if (at) {
+    //             [[maybe_unused]] auto res = defaultInstance->setTarget(at->itemID, false, &edit_->getUndoManager(), 0);
+    //         }
+    //     }
+    // }
+    // edit_->restartPlayback();
+}
+
+void ArrangerController::handleNew() {
     auto newEdit = createOrLoadEdit(EditFileOps::getTempEditFile());
     setEdit(std::move(newEdit), true);
 }
 
-void MainController::handleOpen() {
+void ArrangerController::handleOpen() {
     auto location = EditFileOps::getRecentEditsDirectory();
     FileChooser fc("Open file", location, EditFileOps::getAppFileGlob());
     if (fc.browseForFileToOpen()) {
@@ -491,7 +632,7 @@ void MainController::handleOpen() {
     }
 }
 
-void MainController::handleOpenRecent(int fileIndex) {
+void ArrangerController::handleOpenRecent(int fileIndex) {
     auto recentFiles = EditFileOps::getRecentEdits();
     if (fileIndex >= 0 && fileIndex < recentFiles.size()) {
         File selectedFile(recentFiles[fileIndex]);
@@ -505,18 +646,18 @@ void MainController::handleOpenRecent(int fileIndex) {
                 "The file '" + selectedFile.getFileName() + "' could not be found.",
                 "OK");
             // The file will be automatically removed next time getRecentEdits() is called
-            commandManager_.commandStatusChanged(); // Refresh menu
+            MoToolApp::getCommandManager().commandStatusChanged(); // Refresh menu
         }
     }
 }
 
-void MainController::handleClearRecentFiles() {
+void ArrangerController::handleClearRecentFiles() {
     auto& storage = dynamic_cast<PropertyStorage&>(engine_.getPropertyStorage());
     storage.setCustomProperty("recentEdits", "");
-    commandManager_.commandStatusChanged(); // Refresh menu to show empty state
+    MoToolApp::getCommandManager().commandStatusChanged(); // Refresh menu to show empty state
 }
 
-void MainController::handleSaveAs() {
+void ArrangerController::handleSaveAs() {
     if (edit_ == nullptr) return;
 
     if (EditFileOps::saveEditAsWithDialog(*edit_)) {
@@ -526,7 +667,7 @@ void MainController::handleSaveAs() {
     }
 }
 
-void MainController::handleRecord() {
+void ArrangerController::handleRecord() {
     if (edit_ == nullptr) return;
 
     bool wasRecording = edit_->getTransport().isRecording();
@@ -569,24 +710,29 @@ void MainController::handleRecord() {
 //     }
 // }
 
-std::unique_ptr<te::Edit> MainController::createOrLoadStartupEdit() {
+std::unique_ptr<te::Edit> ArrangerController::createOrLoadStartupEdit() {
     return createOrLoadEdit(EditFileOps::getStartupEditFile());
 }
 
-void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
+
+EditViewState* ArrangerController::getEditViewState() {
+    return editViewState_.get();
+}
+
+void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     jassert(edit != nullptr);
 
     if (savePrev && edit_ != nullptr) {
         EditFileOps::saveEdit(*edit_, true, true, false);
     }
 
-    auto w = mainWindow_.getWidth(), h = mainWindow_.getHeight();
+    auto w = window_.getWidth(), h = window_.getHeight();
 
     // Clear UI components first to release any references to the old edit
-    mainWindow_.clearContentComponent();
+    window_.clearContentComponent();
 
     // Clear selection manager references to old edit objects
-    selectionManager_.deselectAll();
+    MoToolApp::getSelectionManager().deselectAll();
 
     // Reset view state before replacing edit
     editViewState_.reset();
@@ -607,19 +753,41 @@ void MainController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     createTracksAndAssignInputs();
     EditFileOps::saveEdit(*edit_, true, true, false);
 
-    editViewState_ = std::make_unique<EditViewState>(*edit_, getSelectionManager());
+    editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
 
-    mainWindow_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
+    window_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
     setMainWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
-    mainWindow_.setSize(w, h);
-    mainWindow_.repaint();
+    window_.setSize(w, h);
+    window_.repaint();
 }
 
-void MainController::createTracksAndAssignInputs() {
+void ArrangerController::createTracksAndAssignInputs() {
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
 }
 
+void ArrangerController::zoomToSelection() {
+    auto objects = MoToolApp::getSelectionManager().getSelectedObjects();
+    objects = te::getClipSelectionWithCollectionClipContents(objects);
+    auto range = te::getTimeRangeForSelectedItems(objects);
+    auto viewState = getEditViewState();
+    if (viewState != nullptr && !range.isEmpty()) {
+        viewState->zoom.setRange(range);
+    }
+}
 
+void ArrangerController::zoomHorizontal(float increment) {
+    if (auto* viewState = getEditViewState()) {
+        viewState->zoom.zoomHorizontally(increment);
+    }
+}
+
+void ArrangerController::zoomToFitHorizontally() {
+    auto viewState = getEditViewState();
+    auto range = Helpers::getEffectiveClipsTimeRange(*getEdit());
+    if (viewState != nullptr && !range.isEmpty()) {
+        viewState->zoom.setRange(range);
+    }
+}
 
 }  // namespace MoTool

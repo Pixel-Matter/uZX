@@ -6,6 +6,11 @@
 
 #include <common/Utilities.h>  // from Tracktion
 
+namespace {
+constexpr int deviceSpacing = 8;
+constexpr int addButtonComponentWidth = 16;
+}
+
 namespace MoTool {
 
 //==============================================================================
@@ -28,7 +33,10 @@ AddButton::AddButton()
     setTooltip("Add Plugin");
 }
 
+//==============================================================================
+// AddButtonComponent implementation
 AddButtonComponent::AddButtonComponent() {
+    setSize(16, 16);
     addChildComponent(button);
 }
 
@@ -37,7 +45,6 @@ void AddButtonComponent::resized() {
     auto height = getHeight();
     // set a square button, centered vertically
     auto buttonSize = jmin(width, height);
-    // auto y = (height - buttonSize) / 2;
     button.setBounds(0, 0, width, buttonSize);
 }
 
@@ -45,7 +52,6 @@ void AddButtonComponent::mouseEnter(const MouseEvent&) {
     button.setVisible(true);
     startTimer(100); // Check every 100ms
 }
-
 
 void AddButtonComponent::timerCallback() {
     auto mousePos = getMouseXYRelative();
@@ -72,6 +78,11 @@ TrackDevicesPanel::~TrackDevicesPanel() {
 
     if (currentTrack.get())
         currentTrack.get()->state.removeListener(this);
+
+    for (auto* device : devices) {
+        if (device != nullptr)
+            device->removeComponentListener(this);
+    }
 }
 
 void TrackDevicesPanel::addButtonClicked(int index) {
@@ -118,21 +129,20 @@ bool TrackDevicesPanel::shouldBeShown(tracktion::Plugin* p) {
     return true;
 }
 
-int TrackDevicesPanel::createAndAddNewPluginButton(int index, Rectangle<int>& area) {
-    static constexpr int addButtonWidth = 16;
-
+void TrackDevicesPanel::createAndAddNewPluginButton(int index) {
     auto addButton = new AddButtonComponent{};
-    addButton->setBounds(area.removeFromLeft(addButtonWidth));
-
     addButton->button.onClick = [this, index] {
         addButtonClicked(index);
     };
     addButtons.add(addButton);
     content.addAndMakeVisible(addButton);
-    return addButtonWidth;
 }
 
 void TrackDevicesPanel::buildPlugins() {
+    for (auto* device : devices) {
+        if (device != nullptr)
+            device->removeComponentListener(this);
+    }
     devices.clear();
     content.removeAllChildren();
     addButtons.clear();
@@ -144,12 +154,10 @@ void TrackDevicesPanel::buildPlugins() {
         return;
     }
 
-    static constexpr int spacing = 8;
-    Rectangle<int> area(0, spacing, 65535, getHeight() - (2 * spacing));
-
     int index = 0;
-    createAndAddNewPluginButton(index, area);
-    // area.removeFromLeft(spacing);
+
+    juce::ScopedValueSetter<bool> rebuildingGuard(rebuildingDevices_, true, false);
+    createAndAddNewPluginButton(index);
 
     for (auto plugin : track->pluginList) {
         ++index;
@@ -160,7 +168,7 @@ void TrackDevicesPanel::buildPlugins() {
 
         // Try to create device UI using adapter registry
         auto& registry = PluginUIAdapterRegistry::getInstance();
-        std::unique_ptr<DevicePanelItem> item;
+        std::unique_ptr<DeviceItem> item;
         bool canHasPlusButtonAfter = true;
 
         if (auto deviceUI = registry.createDeviceUI(plugin)) {
@@ -184,23 +192,15 @@ void TrackDevicesPanel::buildPlugins() {
         }
 
         if (item) {
-            item->setBounds(area.removeFromLeft(item->getWidth()));
+            item->addComponentListener(this);
             content.addAndMakeVisible(item.get());
             devices.add(item.release());
         }
-        // area.removeFromLeft(spacing);
         if (canHasPlusButtonAfter) {
-            createAndAddNewPluginButton(index, area);
-            // area.removeFromLeft(spacing);
-        } else {
-            area.removeFromLeft(spacing);
+            createAndAddNewPluginButton(index);
         }
     }
-    // Update content size - width based on plugins + add button, height matches container
-    content.setSize(area.getX(), getHeight());
-
-    viewport.getViewedComponent()->repaint();
-    repaint();
+    layoutDeviceComponents();
 }
 
 void TrackDevicesPanel::paint(juce::Graphics& g) {
@@ -215,6 +215,7 @@ void TrackDevicesPanel::paint(juce::Graphics& g) {
 
 void TrackDevicesPanel::resized() {
     viewport.setBounds(getLocalBounds());
+    layoutDeviceComponents();
 }
 
 // ValueTree::Listener methods
@@ -236,6 +237,38 @@ void TrackDevicesPanel::valueTreeChildOrderChanged(juce::ValueTree&, int, int) {
 void TrackDevicesPanel::handleAsyncUpdate() {
     if (compareAndReset(updateDevices))
         buildPlugins();
+}
+
+void TrackDevicesPanel::componentMovedOrResized(juce::Component& component, bool, bool wasResized) {
+    if (!wasResized || rebuildingDevices_)
+        return;
+
+    if (dynamic_cast<DeviceItem*>(&component) != nullptr) {
+        layoutDeviceComponents();
+    }
+}
+
+void TrackDevicesPanel::layoutDeviceComponents() {
+    juce::ScopedValueSetter<bool> rebuildingGuard(rebuildingDevices_, true, false);
+
+    auto height = getHeight();
+    const int childHeight = juce::jmax(0, height - (2 * deviceSpacing));
+    int x = 0;
+
+    for (int i = 0; i < content.getNumChildComponents(); ++i) {
+        auto* child = content.getChildComponent(i);
+        if (child == nullptr || dynamic_cast<DevicePanelItemBase*>(child) == nullptr) {
+            continue;
+        }
+        const int width = child->getWidth();
+        child->setBounds(x, deviceSpacing, width, childHeight);
+        x += width;
+    }
+
+    content.setSize(x, height);
+
+    viewport.getViewedComponent()->repaint();
+    repaint();
 }
 
 }  // namespace MoTool

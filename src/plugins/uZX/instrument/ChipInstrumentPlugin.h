@@ -3,10 +3,10 @@
 #include <JuceHeader.h>
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include "ChipInstrument.h"
 #include "../midi_effects/MidiEffect.h"
-#include "../midi_effects/Parameters.h"
 
 
 namespace MoTool::uZX {
@@ -15,8 +15,7 @@ namespace MoTool::uZX {
 /**
  * μZX Chip Instrument Plugin - Main instrument plugin implementation
  */
-class ChipInstrumentPlugin :
-                             public MidiFxPluginBase<ChipInstrumentFx>,
+class ChipInstrumentPlugin : public MidiFxPluginBase<ChipInstrumentFx>,
                              private tracktion::LevelMeasurer::Client
 {
 public:
@@ -61,28 +60,14 @@ public:
     ChipInstrumentFx instrument;
 
 private:
-    // Amplitude envelope automatable parameters
-    // do not need to store it there
-    // tracktion::AutomatableParameter::Ptr ampAttack, ampDecay, ampSustain, ampRelease, ampVelocity;
-    // pitch envelope automatable parameters
-    // tracktion::AutomatableParameter::Ptr pitchAttack, pitchDecay, pitchSustain, pitchRelease;
-    //==============================================================================
-
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;
     void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
     void flushPluginStateToValueTree() override;
 
-    // Params
-    tracktion::AutomatableParameter::Ptr addParam(const String& paramID,
-                                                  const String& name,
-                                                  NormalisableRange<float> valueRange,
-                                                  String label = {});
-
     //==============================================================================
     bool flushingState = false;
-    std::unordered_map<String, String> paramLabels;
     tracktion::LevelMeasurer levelMeasurer;
     tracktion::DbTimePair levels[2];
 

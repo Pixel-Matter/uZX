@@ -152,7 +152,7 @@ int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr) {
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     ayumi_set_tone(ay, i, 1);
   }
-  return ay->step < 1;
+  return 1;
 }
 
 void ayumi_set_pan(struct ayumi* ay, int index, double pan, int is_eqp) {
@@ -299,7 +299,7 @@ void ayumi_process(struct ayumi* ay) {
   ay->fir_index = (ay->fir_index + 1) % (FIR_SIZE / DECIMATE_FACTOR - 1);
   for (i = DECIMATE_FACTOR - 1; i >= 0; i -= 1) {
     ay->x += ay->step;
-    if (ay->x >= 1) {
+    while (ay->x >= 1) {
       ay->x -= 1;
       y_left[0] = y_left[1];
       y_left[1] = y_left[2];

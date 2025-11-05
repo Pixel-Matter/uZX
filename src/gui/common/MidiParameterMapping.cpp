@@ -5,12 +5,20 @@ namespace MoTool {
 namespace te = tracktion;
 
 MidiParameterMapping::MidiParameterMapping(te::AutomatableParameter::Ptr param)
-    : parameter(param)
-{
+    : parameter(std::move(param))
+{}
+
+void MidiParameterMapping::setParameter(te::AutomatableParameter::Ptr paramIn) {
+    parameter = std::move(paramIn);
+}
+
+void MidiParameterMapping::reset() {
+    parameter.reset();
 }
 
 void MidiParameterMapping::learnMidiCC() {
     if (!parameter) return;
+    // TODO make it really work
 
     // Get the Edit from the parameter
     auto& edit = parameter->getEdit();
@@ -88,16 +96,10 @@ void MidiParameterMapping::mapToMidiCC(int controllerID, int channel) {
 
     // Force reload from the state to activate the mapping
     mappings.loadFromEdit();
-
-    DBG("Manually mapped " << parameter->getParameterName()
-        << " to controller " << controllerID << " on channel " << channel
-        << " - " << getMappingDescription());
 }
 
-void MidiParameterMapping::showMappingMenu(std::function<void()> onMappingChanged) {
+void MidiParameterMapping::showMappingMenu() {
     if (!parameter) return;
-
-    mappingChangedCallback = onMappingChanged;
 
     PopupMenu menu;
 
@@ -114,12 +116,12 @@ void MidiParameterMapping::showMappingMenu(std::function<void()> onMappingChange
         menu.addSeparator();
     }
 
+    // FIXME not working
     menu.addItem(2, "Learn...");
     menu.addSeparator();
 
-    // Add "Map MIDI >" submenu
-    PopupMenu midiSubmenu = createMidiMappingSubmenu();
-    menu.addSubMenu("Map to >", midiSubmenu);
+    // Add MIDI mapping options directly to the main menu
+    addMidiMappingSubmenusToMenu(menu);
 
     auto result = menu.show();
     handleMenuResult(result);
@@ -128,14 +130,16 @@ void MidiParameterMapping::showMappingMenu(std::function<void()> onMappingChange
 void MidiParameterMapping::handleMenuResult(int result) {
     if (result == 1) {
         clearMapping();
-        if (mappingChangedCallback) mappingChangedCallback();
+        DBG("MidiParameterMapping: Cleared mapping for parameter " << parameter->getFullName());
+        sendChangeMessage();
     } else if (result == 2) {
         learnMidiCC();
     } else if (result >= 1000) {
         // Handle direct MIDI CC mapping (result IDs start from 1000)
         int controllerID = result - 1000;
         mapToMidiCC(controllerID);
-        if (mappingChangedCallback) mappingChangedCallback();
+        DBG("MidiParameterMapping: Mapped parameter " << parameter->getFullName() << " to controller ID " << controllerID);
+        sendChangeMessage();
     }
 }
 
@@ -145,7 +149,7 @@ String MidiParameterMapping::formatCCName(int ccNumber) {
     String result = "CC " + String(ccNumber);
 
     if (name.isNotEmpty()) {
-        result += " (" + name + ")";
+        result += " " + name;
     }
 
     return result;
@@ -203,9 +207,7 @@ PopupMenu MidiParameterMapping::createSpecialControllersSubmenu() {
 }
 
 // Create the main MIDI mapping submenu with 9 submenus
-PopupMenu MidiParameterMapping::createMidiMappingSubmenu() {
-    PopupMenu midiSubmenu;
-
+PopupMenu MidiParameterMapping::addMidiMappingSubmenusToMenu(PopupMenu& menu) {
     // 8 submenus for CC ranges (16 CCs each)
     for (int i = 0; i < 8; ++i) {
         int startCC = i * 16;
@@ -213,16 +215,16 @@ PopupMenu MidiParameterMapping::createMidiMappingSubmenu() {
 
         String submenuName = "CC " + String(startCC) + "-" + String(endCC);
         PopupMenu ccSubmenu = createCCSubmenu(startCC, endCC);
-        midiSubmenu.addSubMenu(submenuName, ccSubmenu);
+        menu.addSubMenu(submenuName, ccSubmenu);
     }
 
-    midiSubmenu.addSeparator();
+    menu.addSeparator();
 
     // 9th submenu for special controllers
     PopupMenu specialSubmenu = createSpecialControllersSubmenu();
-    midiSubmenu.addSubMenu("Special Controllers", specialSubmenu);
+    menu.addSubMenu("Special Controllers", specialSubmenu);
 
-    return midiSubmenu;
+    return menu;
 }
 
 }  // namespace MoTool

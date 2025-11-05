@@ -1,9 +1,11 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <functional>
 #include <memory>
 #include "../../controllers/EditState.h"
 #include "../common/LookAndFeel.h"
+#include "juce_gui_basics/juce_gui_basics.h"
 
 namespace MoTool {
 
@@ -13,12 +15,21 @@ class PluginDeviceUI;
 //==============================================================================
 /**
  * Base class for all device panel items.
+ * Provides a common base for both devices and buttons in the panel.
+ */
+class DevicePanelItemBase : public Component {
+public:
+    using Component::Component;
+};
+
+//==============================================================================
+/**
+ * Base class for all devices in devices panel
  * Provides a common interface for both framed and frameless device UIs.
  */
-class DevicePanelItem : public Component {
+class DeviceItem : public DevicePanelItemBase {
 public:
-    DevicePanelItem(std::unique_ptr<PluginDeviceUI> ui);
-    virtual ~DevicePanelItem() = default;
+    DeviceItem(std::unique_ptr<PluginDeviceUI> ui);
 
     tracktion::Plugin::Ptr getPlugin() const { return plugin_; }
 
@@ -30,7 +41,7 @@ protected:
     std::unique_ptr<PluginDeviceUI> ui_;
 
 private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DevicePanelItem)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DeviceItem)
 };
 
 //==============================================================================
@@ -38,7 +49,7 @@ private:
  * Frameless wrapper for custom device UIs (like LevelMeter).
  * Directly displays the PluginDeviceUI without additional framing.
  */
-class FramelessDeviceItem : public DevicePanelItem {
+class FramelessDeviceItem : public DeviceItem {
 public:
     FramelessDeviceItem(std::unique_ptr<PluginDeviceUI> ui);
 
@@ -74,16 +85,31 @@ protected:
  */
 class TitleBar : public Component {
 public:
-    TitleBar(tracktion::Plugin::Ptr plugin);
+    TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI);
+
+    void setCollapseToggle(std::function<void()> handler);
+    void setCollapsed(bool collapsed);
+    [[nodiscard]] bool isCollapsed() const { return isCollapsed_; }
 
     void paint(Graphics& g) override;
     void resized() override;
     void mouseUp(const MouseEvent& event) override;
+    void mouseDoubleClick(const MouseEvent& event) override;
+
+    static constexpr int height = 16;
 
 private:
+    void showDeviceMenu(juce::Component* target);
+    void refreshMenuButtonState();
     tracktion::Plugin::Ptr plugin_;
+    PluginDeviceUI* deviceUI_ = nullptr;
     BackgroundlessTextButton enableButton_;
-    static constexpr int titleBarHeight = 16;
+    BackgroundlessTextButton menuButton_;
+    std::function<void()> toggleCollapsed_;
+
+    bool isCollapsed_ = false;
+
+    static constexpr int titleBarHeight = height;
     static constexpr int buttonMargin = 0;
     static constexpr int buttonWidth = titleBarHeight - buttonMargin * 2;
 };
@@ -93,7 +119,7 @@ private:
  * Framed wrapper for regular device UIs.
  * Provides a title bar with plugin name and wraps the PluginDeviceUI directly.
  */
-class FramedDeviceItem : public DevicePanelItem {
+class FramedDeviceItem : public DeviceItem {
 public:
     FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui);
 
@@ -101,8 +127,17 @@ public:
     void resized() override;
     void paint(Graphics& g) override;
 
+    void setCollapsed(bool collapsed);
+    [[nodiscard]] bool isCollapsed() const { return isCollapsed_; }
+
     static constexpr float cornerSize = 4.0f;
 private:
+    void updateCollapsedInternal();
+
+    CachedValue<bool> isCollapsed_;
+    int expandedWidth_ = 0;
+    int expandedHeight_ = 0;
+
     TitleBar titleBar_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FramedDeviceItem)

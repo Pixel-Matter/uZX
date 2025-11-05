@@ -17,15 +17,15 @@
           `---/ / / \ / / /
              / / / \ ' / /     Copyright 2025
     B8   88 / / /   / / /    Ruslan Grokhovetski
-    B8   88  / /   / / . \   www.pixelmatter.org
-    B8,  88.  /---/ / / \ \
+    B8   88  / /   / / . \     pixelmatter.org
+    B8.  88.  /---/ / / \ \
     B8"oo""8o ---'---'   `-'
     BP
 
     d88o888ob.      d888888888b             d8b
     8@@8@@@8@@b ,d888b.`8@8',d888b. ,d888b. B@8      Copyright 2025
     B@8'B@8'8@8 8@8 8@8 B@8 8@8 8@8 8@8 8@8 B@8   Ruslan Grokhovetski
-    B@8 B@8 B@8 '"" 8@8 B@8 8@b ""' '"" 8@8 B@8   www.pixelmatter.org
+    B@8 B@8 B@8 '"" 8@8 B@8 8@b ""' '"" 8@8 B@8     pixelmatter.org
     Y@8 8@8 Y@@88@@@8P' 8@8 `Y@@@88888@@@P' Y8P
 ```
 
@@ -44,6 +44,8 @@
 ![Tracktion Engine](third_party/tracktion_engine/tutorials/images/tracktion_engine_powered.png)
 
 Powered by [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/).
+
+Uses [ayumi library](https://github.com/true-grue/ayumi) by Peter Sovietov (true-grue) for highly precise emulation of AY-3-8910 and YM2149 sound chips.
 
 Designed for easy prototyping.
 

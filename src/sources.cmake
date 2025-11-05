@@ -1,8 +1,8 @@
 # Source files used by both GUI app and tests
 set(SHARED_SOURCES
-    util/FileOps.cpp
     util/Midi.cpp
-    util/Helpers.cpp
+
+    controllers/ParamEndpoint.cpp
 
     models/PsgMidi.cpp
     models/PsgList.cpp
@@ -23,30 +23,39 @@ set(SHARED_SOURCES
 
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
+    plugins/uZX/midi_logger/MidiLoggerPlugin.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp
     plugins/uZX/instrument/ChipInstrument.cpp
     plugins/uZX/instrument/ChipInstrumentVoice.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
-
-    gui/common/Utilities.cpp
-    gui/common/LookAndFeel.cpp
-    gui/common/LabeledRotarySlider.cpp
-    gui/common/MidiParameterMapping.cpp
 )
 
 # GUI-specific files
 set(GUI_SOURCES
+    util/FileOps.cpp
+    util/Helpers.cpp
+
+    gui/common/Utilities.cpp
+    gui/common/ProgressDialog.cpp
+    gui/common/ParamBindings.cpp
+    gui/common/ComboBindingWithPresets.cpp
+    gui/common/LookAndFeel.cpp
+    gui/common/LabeledSlider.cpp
+    gui/common/MidiParameterMapping.cpp
+    gui/common/MouseListener.cpp
+
     controllers/MainController.cpp
     controllers/TuningController.cpp
     controllers/App.cpp
-    controllers/Main.cpp
     controllers/EditState.cpp
 
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Transport.cpp
+    gui/main/AboutDialog.cpp
     gui/main/MainWindow.cpp
     gui/main/Footer.cpp
+    gui/tuning/TuningPreviewGrid.cpp
     gui/tuning/TuningPreview.cpp
 
     gui/timeline/PlayheadComponent.cpp
@@ -67,13 +76,17 @@ set(GUI_SOURCES
     gui/devices/GenericPluginAdapters.cpp
     gui/devices/LevelMeterUI.cpp
 
+    plugins/uZX/aychip/ChipClockPresets.cpp
+    plugins/uZX/aychip/AYPluginEditor.cpp
     plugins/uZX/instrument/ChipInstrumentUI.cpp
+    plugins/uZX/notes_to_psg/NotesToPsgPluginUI.cpp
 )
 
 # Test-specific files to include in the test target
 set(TEST_SOURCES
     ## models/PsgTrack.test.cpp
     ## models/CustomClip.test.cpp
+
     models/PsgMidi.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/TuningTable.test.cpp
@@ -81,8 +94,15 @@ set(TEST_SOURCES
     models/tuning/AutoTuning.test.cpp
     models/tuning/Scales.test.cpp
     models/tuning/RationalTuning.test.cpp
+
+    controllers/Parameters.test.cpp
+
     viewmodels/tuning/TuningViewModel.test.cpp
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
+
     plugins/uZX/aychip/AYChip.test.cpp
+    plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
+
+    gui/common/ParamBindings.test.cpp
 )

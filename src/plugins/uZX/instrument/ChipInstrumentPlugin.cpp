@@ -13,9 +13,7 @@ ChipInstrumentPlugin::ChipInstrumentPlugin(te::PluginCreationInfo info)
     levelMeasurer.addClient(*this);
 
     instrument.oscParams.visit([this](auto& vd) {
-        auto& def = vd.definition;
-        auto param = addParam(def.paramID, def.description, def.valueRange, def.paramID);
-        vd.attachSource(std::move(std::make_unique<TracktionParamSource>(param)));
+        addParam(vd);
     });
 
     valueTreePropertyChanged(state, te::IDs::voiceMode);
@@ -41,29 +39,6 @@ bool ChipInstrumentPlugin::hasNameForMidiNoteNumber(int /*note*/, int /*midiChan
     // TODO implement for drum pads or for microtonal scales
     return false;
 }
-
-te::AutomatableParameter::Ptr ChipInstrumentPlugin::addParam(const String& paramID,
-                                                             const String& name,
-                                                             NormalisableRange<float> valueRange,
-                                                             String label) {
-    auto p = Plugin::addParam(paramID, name, valueRange);
-
-    if (label.isNotEmpty())
-        paramLabels[paramID] = label;
-
-    return p;
-}
-
-// // Update all voice parameters
-// void ChipInstrumentPlugin::updateParams() {
-
-//     ampAdsr.setParameters ({
-//         paramValue (synth.ampAttack),
-//         paramValue (synth.ampDecay),
-//         paramValue (synth.ampSustain) / 100.0f,
-//         paramValue (synth.ampRelease)
-//     });
-// }
 
 // LevelMeasurer::Client implementation - called periodically to get the current audio level for a channel
 float ChipInstrumentPlugin::getLevel(int channel) {
@@ -129,9 +104,8 @@ void ChipInstrumentPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
 
     // valueTreePropertyChanged(state, te::IDs::voiceMode);
 
-    for (auto p : getAutomatableParameters()) {
-        p->updateFromAttachedValue();
-    }
+    // IMPOTANT! To restore automated parameters properly
+    PluginBase::restorePluginStateFromValueTree(v);
 }
 
 // Array<float> ChipInstrumentPlugin::getLiveModulationPositions(te::AutomatableParameter::Ptr param) {

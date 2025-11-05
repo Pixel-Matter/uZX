@@ -35,7 +35,7 @@ public:
         Envelope = 1
     };
 
-    TuningSystem(double chipClock, std::unique_ptr<TemperamentSystem> refTuning)
+    TuningSystem(double chipClock, std::unique_ptr<ReferenceTuningSystem> refTuning)
         : clockFrequency(chipClock)
         , referenceTuning(std::move(refTuning))
     {
@@ -52,10 +52,10 @@ public:
     virtual double periodToMidiNote(int period, PeriodMode mode = Tone) const = 0;
     virtual bool isDefined(int midiNote) const = 0;
 
-    inline TemperamentSystem* getReferenceTuning() const {
+    inline ReferenceTuningSystem* getReferenceTuning() const {
         return referenceTuning.get();
     }
-    inline void setReferenceTuning(std::unique_ptr<TemperamentSystem> refTuning) {
+    inline void setReferenceTuning(std::unique_ptr<ReferenceTuningSystem> refTuning) {
         this->referenceTuning = std::move(refTuning);
     }
     // Default chip-based period/frequency conversion
@@ -89,7 +89,7 @@ protected:
     }};
 
     double clockFrequency;
-    std::unique_ptr<TemperamentSystem> referenceTuning;
+    std::unique_ptr<ReferenceTuningSystem> referenceTuning;
 
     double getReferenceFrequency(int midiNote) const;
     double getReferenceFrequency(double midiNote) const;

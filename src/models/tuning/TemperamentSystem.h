@@ -17,6 +17,7 @@ namespace IDs {
     DECLARE_ID(a4Frequency)
     DECLARE_ID(tonic)
     DECLARE_ID(ratios)
+    DECLARE_ID(scaleType)
 
     #undef DECLARE_ID
 }
@@ -25,7 +26,7 @@ inline String getMidiNoteName(int note) {
     return juce::MidiMessage::getMidiNoteName(note, true, true, 4);
 }
 
-struct TemperamentTypeEnum {
+struct TuningSystemEnum {
     enum Enum : size_t {
         EqualTemperament,
         // WellTemperament,
@@ -36,21 +37,31 @@ struct TemperamentTypeEnum {
         CustomRational,
     };
 
+    static inline constexpr std::string_view shortLabels[] {
+        "12TET",
+        // "WT",
+        "5LJI",
+        "5LJI2",
+        // "7LJI",
+        "3LJI",
+        "Custom"
+    };
+
     static inline constexpr std::string_view longLabels[] {
         "Equal Temperament",
         // "Well Temperament",
         "5-Limit Just Intonation",
-        "5-Limit Just Intonation T=45:64",
+        "5-Limit Just Intonation 6=45:64",
         // "7-Limit Just Intonation",
         "Pythagorean",
         "Custom Rational Intonation",
     };
 };
 
-using TemperamentType = MoTool::Util::EnumChoice<TemperamentTypeEnum>;
+using TuningSystemType = MoTool::Util::EnumChoice<TuningSystemEnum>;
 
 // Base reference tuning system interface
-class TemperamentSystem {
+class ReferenceTuningSystem {
 public:
 
     enum NoteSearch {
@@ -59,17 +70,17 @@ public:
         NextLower   // Find the next lower defined note
     };
 
-    TemperamentSystem(double a4Frequency = 440.0);
-    TemperamentSystem(const juce::ValueTree& state);
+    ReferenceTuningSystem(double a4Frequency = 440.0);
+    ReferenceTuningSystem(const juce::ValueTree& state);
 
-    virtual ~TemperamentSystem() = default;
+    virtual ~ReferenceTuningSystem() = default;
 
     virtual String getDescription() const;
     inline String getTypeName() const {
         return getType().getLongLabel().data();
     }
 
-    virtual TemperamentType getType() const = 0;
+    virtual TuningSystemType getType() const = 0;
 
     virtual Scale::Tonic getTonic() const = 0;
     virtual void setTonic(Scale::Tonic newTonic) = 0;
@@ -98,12 +109,12 @@ protected:
     juce::CachedValue<double> a4Frequency;
 };
 
-class EqualTemperamentTuning final : public TemperamentSystem {
+class EqualTemperamentTuning final : public ReferenceTuningSystem {
 public:
     EqualTemperamentTuning(double a4Frequency = 440.0);
     EqualTemperamentTuning(const juce::ValueTree& state);
 
-    TemperamentType getType() const override;
+    TuningSystemType getType() const override;
     double midiNoteToFrequency(int midiNote) const override;
     double midiNoteToFrequency(double midiNote) const override;
     double frequencyToMidiNote(double frequency) const override;
@@ -115,16 +126,17 @@ public:
 };
 
 
-class RationalTuning: public TemperamentSystem {
+class RationalTuning: public ReferenceTuningSystem {
 public:
     RationalTuning(
         const std::array<FractionNumber, 12>& rationalIntervals,
         const Scale::Tonic keyToUse,
+        const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
         double a4Frequency = 440.0
     );
     RationalTuning(const juce::ValueTree& state);
 
-    TemperamentType getType() const override;
+    TuningSystemType getType() const override;
     double midiNoteToFrequency(int midiNote) const override;
     double midiNoteToFrequency(double midiNote) const override;
     double frequencyToMidiNote(double frequency) const override;
@@ -135,18 +147,14 @@ public:
     void setTonic(Scale::Tonic newKey) override;
     Scale::Tonic getTonic() const override;
 
-    // void setScale(const Scale* newScale) {
-    //     scale = newScale;
-    // }
-
-    // const Scale* getScale() const {
-    //     return scale;
-    // }
+    void setScaleType(Scale::ScaleType newScaleType);
+    Scale::ScaleType getScaleType() const;
 
     double getTonicFrequency(int octave) const;
 
 protected:
     juce::CachedValue<Scale::Tonic> tonic;
+    juce::CachedValue<Scale::ScaleType> scaleType;
     juce::CachedValue<juce::String> ratiosString;
 
 private:
@@ -162,6 +170,7 @@ class JustIntonation5Limit final : public RationalTuning {
 public:
     JustIntonation5Limit(
         const Scale::Tonic tonicToUse,
+        const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
         double a4Frequency = 440.0,
         std::array<FractionNumber, 12> ratios = {
             FractionNumber(1, 1),   // Unison
@@ -178,18 +187,68 @@ public:
             FractionNumber(15, 8)   // Major seventh
         }
     );
-    JustIntonation5Limit(const juce::ValueTree& state);
-
-    TemperamentType getType() const override;
+    using RationalTuning::RationalTuning;
 };
 
-std::unique_ptr<TemperamentSystem> makeTemperamentSystem(
-    TemperamentType type,
+//==============================================================================
+class JustIntonation5LimitT45_64 final : public RationalTuning {
+public:
+    JustIntonation5LimitT45_64(
+        const Scale::Tonic tonicToUse,
+        const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
+        double a4Frequency = 440.0,
+        std::array<FractionNumber, 12> ratios = {
+            FractionNumber(1, 1),   // Unison
+            FractionNumber(16, 15), // Minor second
+            FractionNumber(9, 8),   // Major second
+            FractionNumber(6, 5),   // Minor third
+            FractionNumber(5, 4),   // Major third
+            FractionNumber(4, 3),   // Perfect fourth
+            FractionNumber(64, 45), // Diminished fifth
+            FractionNumber(3, 2),   // Perfect fifth
+            FractionNumber(8, 5),   // Minor sixth
+            FractionNumber(5, 3),   // Major sixth
+            FractionNumber(16, 9),  // Minor seventh
+            FractionNumber(15, 8)   // Major seventh
+        }
+    );
+    using RationalTuning::RationalTuning;
+};
+
+//==============================================================================
+class PythagoreanTuning final : public RationalTuning {
+public:
+    PythagoreanTuning(
+        const Scale::Tonic tonicToUse,
+        const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
+        double a4Frequency = 440.0,
+        std::array<FractionNumber, 12> ratios = {
+            FractionNumber(1, 1),     // Unison
+            FractionNumber(256, 243), // Minor second
+            FractionNumber(9, 8),     // Major second
+            FractionNumber(32, 27),   // Minor third
+            FractionNumber(81, 64),   // Major third
+            FractionNumber(4, 3),     // Perfect fourth
+            FractionNumber(729, 512), // Augmented fourth
+            FractionNumber(3, 2),     // Perfect fifth
+            FractionNumber(128, 81),  // Minor sixth
+            FractionNumber(27, 16),   // Major sixth
+            FractionNumber(16, 9),    // Minor seventh
+            FractionNumber(243, 128)  // Major seventh
+        }
+    );
+    using RationalTuning::RationalTuning;
+};
+
+//==============================================================================
+std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystem(
+    TuningSystemType type,
     const Scale::Tonic tonic,
+    const Scale::ScaleType scaleType = Scale::ScaleType::IonianOrMajor,
     double a4Frequency = 440.0
 );
 
-std::unique_ptr<TemperamentSystem> makeTemperamentSystemFromState(const juce::ValueTree& state);
+std::unique_ptr<ReferenceTuningSystem> makeReferenceTuningSystemFromState(const juce::ValueTree& state);
 
 } // namespace MoTool
 
@@ -200,6 +259,6 @@ using namespace MoTool;
 using namespace MoTool::Util;
 
 template <>
-struct VariantConverter<TemperamentType> : public EnumVariantConverter<TemperamentType> {};
+struct VariantConverter<TuningSystemType> : public EnumVariantConverter<TuningSystemType> {};
 
 }

@@ -31,7 +31,7 @@ public:
             RationalTuning tuning {justIntonationRatios, Scale::Tonic::C};
 
             expectEquals(tuning.getA4Frequency(), 440.0, "Default A4 frequency should be 440.0 Hz");
-            expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TemperamentType::CustomRational), "Tuning type should be CustomRational, got " + String(tuning.getType().getLabel().data()));
+            expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TuningSystemType::CustomRational), "Tuning type should be CustomRational, got " + String(tuning.getType().getLabel().data()));
 
             // expectEquals(static_cast<int>(tuning.getScale()->getType()), static_cast<int>(Scale::ScaleType::AeolianOrMinor),
             //              "Scale type should be AeolianOrMinor, got " + String(tuning.getScale()->getType().getLabel().data()));
@@ -159,16 +159,16 @@ public:
         beginTest("Frequency to MIDI note conversion - A4");
         {
             RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
-            int a4lower = tuning.frequencyToNearestMidiNote(450.0, TemperamentSystem::NoteSearch::NextLower);
+            int a4lower = tuning.frequencyToNearestMidiNote(450.0, ReferenceTuningSystem::NoteSearch::NextLower);
             expectEquals(a4lower, 69, "450.0 Hz should convert to MIDI note 69 (A4)");
 
-            int a4upper = tuning.frequencyToNearestMidiNote(450.0, TemperamentSystem::NoteSearch::NextHigher);
+            int a4upper = tuning.frequencyToNearestMidiNote(450.0, ReferenceTuningSystem::NoteSearch::NextHigher);
             expectEquals(a4upper, 70, "450.0 Hz should convert to MIDI note 70 (A4)");
 
-            int a4near1 = tuning.frequencyToNearestMidiNote(450.0, TemperamentSystem::NoteSearch::Nearest);
+            int a4near1 = tuning.frequencyToNearestMidiNote(450.0, ReferenceTuningSystem::NoteSearch::Nearest);
             expectEquals(a4near1, 69, "450.0 Hz should convert to MIDI note 69 (A4)");
 
-            int a4near2 = tuning.frequencyToNearestMidiNote(460.0, TemperamentSystem::NoteSearch::Nearest);
+            int a4near2 = tuning.frequencyToNearestMidiNote(460.0, ReferenceTuningSystem::NoteSearch::Nearest);
             expectEquals(a4near2, 70, "460.0 Hz should convert to MIDI note 70 (A4)");
         }
 
@@ -306,7 +306,7 @@ public:
             auto justTuning = std::make_unique<JustIntonation5Limit>(Scale::Tonic::D, 434.0);
             auto state = justTuning->state;
 
-            auto recreatedSystem = makeTemperamentSystemFromState(state);
+            auto recreatedSystem = makeReferenceTuningSystemFromState(state);
             expect(recreatedSystem != nullptr, "Factory should create system from state");
 
             expectEquals(recreatedSystem->getTypeName(), juce::String("5-Limit Just Intonation"), "Recreated system type should match");
@@ -336,7 +336,7 @@ public:
             auto originalState = original->state;
 
             // Create system from state
-            auto recreated = makeTemperamentSystemFromState(originalState);
+            auto recreated = makeReferenceTuningSystemFromState(originalState);
             auto recreatedState = recreated->state;
 
             // Compare states
@@ -354,7 +354,7 @@ public:
             auto original = std::make_unique<EqualTemperamentTuning>(444.0);
             auto state = original->state;
 
-            auto recreated = makeTemperamentSystemFromState(state);
+            auto recreated = makeReferenceTuningSystemFromState(state);
             expect(recreated != nullptr, "Factory should create EqualTemperament from state");
 
             expectEquals(recreated->getTypeName(), juce::String("Equal Temperament"), "Recreated system should be EqualTemperament");

@@ -8,77 +8,86 @@
 namespace MoTool {
 
 std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
-    switch (options.tableType) {
-        case BuiltinTuningType::EqualTemperament:
-            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+    switch (options.builtinTable) {
+        case BuiltinTuningType::EqualTemperament: {
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 440.0;
             options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
-            options.temperamentType = TemperamentType::EqualTemperament;
+            options.tuningSystemType = TuningSystemType::EqualTemperament;
 
             return std::make_unique<AutoTuning>(
-                options.chipClock, std::make_unique<EqualTemperamentTuning>(options.a4Frequency)
+                options.chipClockFreq, std::make_unique<EqualTemperamentTuning>(options.a4Frequency)
             );
+        }
 
-        case BuiltinTuningType::Just5Limit:
+        case BuiltinTuningType::Just5Limit: {
             // Implement Just Intonation 5-limit tuning
-            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 433.0;
             options.tonic = Scale::Tonic::D;
             options.scaleType = Scale::ScaleType::Phrygian;
-            options.temperamentType = TemperamentType::Just5Limit;
+            options.tuningSystemType = TuningSystemType::Just5Limit;
             return std::make_unique<AutoTuning>(
-                options.chipClock, makeTemperamentSystem(
-                    options.temperamentType,
+                options.chipClockFreq, makeReferenceTuningSystem(
+                    options.tuningSystemType,
                     options.tonic,
+                    options.scaleType,
                     options.a4Frequency
                 )
             );
+        }
 
-        case BuiltinTuningType::Just5Limit2:
+        case BuiltinTuningType::Just5Limit2: {
             // Implement Just Intonation 5-limit T=45:64 tuning
-            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 433.0;
             options.tonic = Scale::Tonic::D;
             options.scaleType = Scale::ScaleType::Phrygian;
-            options.temperamentType = TemperamentType::Just5LimitT45_64;
+            options.tuningSystemType = TuningSystemType::Just5LimitT45_64;
             return std::make_unique<AutoTuning>(
-                options.chipClock, makeTemperamentSystem(
-                    options.temperamentType,
+                options.chipClockFreq, makeReferenceTuningSystem(
+                    options.tuningSystemType,
                     options.tonic,
+                    options.scaleType,
                     options.a4Frequency
                 )
             );
+        }
 
-        case BuiltinTuningType::Pythagorean:
+        case BuiltinTuningType::Pythagorean: {
             // Implement Pythagorean tuning
-            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 433.0;
             options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
-            options.temperamentType = TemperamentType::Pythagorean;
-            return std::make_unique<AutoTuning>(
-                options.chipClock, makeTemperamentSystem(
-                    options.temperamentType,
-                    options.tonic,
-                    options.a4Frequency
-                )
+            options.tuningSystemType = TuningSystemType::Pythagorean;
+            auto referenceTuning = makeReferenceTuningSystem(
+                options.tuningSystemType,
+                options.tonic,
+                options.scaleType,
+                options.a4Frequency
             );
+            auto autoTuning = std::make_unique<AutoTuning>(
+                options.chipClockFreq, std::move(referenceTuning)
+            );
+            return autoTuning;
+        }
 
         case BuiltinTuningType::CustomPT_0_PT: {
             // ProTracker #0 (Original PT3 table)
-            options.chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 474.0;
             options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
-            options.temperamentType = TemperamentType::EqualTemperament;
+            options.tuningSystemType = TuningSystemType::EqualTemperament;
             return std::make_unique<TuningTable>(
-                options.chipClock,
+                options.chipClockFreq,
                 std::make_unique<EqualTemperamentTuning>(options.a4Frequency),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -99,20 +108,20 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                     // Octave 8 (C8-B8): $0018-$000C
                     24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12
                 },
-                options.tableType.getLongLabel().data()
+                options.builtinTable.getLongLabel().data()
             );
         }
 
         case BuiltinTuningType::CustomPT_1_ST: {
             // ProTracker #1 (SoundTracker)
-            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 390.5;
             options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
-            options.temperamentType = TemperamentType::EqualTemperament;
+            options.tuningSystemType = TuningSystemType::EqualTemperament;
             return std::make_unique<TuningTable>(
-                options.chipClock,
+                options.chipClockFreq,
                 std::make_unique<EqualTemperamentTuning>(options.a4Frequency),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -133,20 +142,20 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                     // Octave 8 (C8-B8): $001D-$000F
                     29, 28, 26, 25, 23, 22, 21, 19, 18, 17, 16, 15
                 },
-                options.tableType.getLongLabel().data()
+                options.builtinTable.getLongLabel().data()
             );
         }
 
         case BuiltinTuningType::CustomPT_2_ASM: {
             // ProTracker #2 (ASM)
-            options.chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 440.0;
             options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
-            options.temperamentType = TemperamentType::EqualTemperament;
+            options.tuningSystemType = TuningSystemType::EqualTemperament;
             return std::make_unique<TuningTable>(
-                options.chipClock,
+                options.chipClockFreq,
                 std::make_unique<EqualTemperamentTuning>(options.a4Frequency),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -167,20 +176,20 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                     // Octave 8 (C8-B8): $001A-$000D
                     26, 25, 23, 22, 21, 20, 18, 17, 16, 15, 14, 13
                 },
-                options.tableType.getLongLabel().data()
+                options.builtinTable.getLongLabel().data()
             );
         }
 
         case BuiltinTuningType::CustomPT_3_REAL: {
             // ProTracker #3 (REAL)
-            options.chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::Pentagon_1_75_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 447.0; // A4 frequency for ProTracker #3
             options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
-            options.temperamentType = TemperamentType::EqualTemperament;
+            options.tuningSystemType = TuningSystemType::EqualTemperament;
             return std::make_unique<TuningTable>(
-                options.chipClock,
+                options.chipClockFreq,
                 std::make_unique<EqualTemperamentTuning>(options.a4Frequency),
                 24, // Starting at MIDI note 24 (C1)
                 std::vector<int> {
@@ -201,23 +210,24 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                     // Octave 8 (C8-B8): $001A-$000D
                     26, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13
                 },
-                options.tableType.getLongLabel().data()
+                options.builtinTable.getLongLabel().data()
             );
         }
 
         case BuiltinTuningType::CustomVT_4_NATURAL: {
             // ProTracker #4 (Natural Cmaj/Am)
-            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 513.15; // A4 frequency for Natural Cmaj/Am
             options.tonic = Scale::Tonic::C;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
-            options.temperamentType = TemperamentType::Just5LimitT45_64;
+            options.tuningSystemType = TuningSystemType::Just5LimitT45_64;
             return std::make_unique<TuningTable>(
-                options.chipClock,
-                makeTemperamentSystem(
-                    options.temperamentType,
+                options.chipClockFreq,
+                makeReferenceTuningSystem(
+                    options.tuningSystemType,
                     options.tonic,
+                    options.scaleType,
                     options.a4Frequency
                 ),
                 24, // Starting at MIDI note 24 (C1)
@@ -239,22 +249,23 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                     // Octave 8 (C8-B8)
                     23, 21, 20, 19, 18, 17, 16, 15, 14, 14, 13, 12
                 },
-                options.tableType.getLongLabel().data()
+                options.builtinTable.getLongLabel().data()
             );
         }
 
         case BuiltinTuningType::RoschinFixed: {
-            options.chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
-            options.chipClock = options.chipChoice.getClockValue();
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
             options.a4Frequency = 433.0; // A4 frequency for Natural D#maj
             options.tonic = Scale::Tonic::DSharp;
             options.scaleType = Scale::ScaleType::IonianOrMajor;
-            options.temperamentType = TemperamentType::Just5Limit;
+            options.tuningSystemType = TuningSystemType::Just5Limit;
             return std::make_unique<TuningTable>(
-                options.chipClock,
-                makeTemperamentSystem(
-                    options.temperamentType,
+                options.chipClockFreq,
+                makeReferenceTuningSystem(
+                    options.tuningSystemType,
                     options.tonic,
+                    options.scaleType,
                     options.a4Frequency
                 ),
                 24, // Starting at MIDI note 24 (C1)
@@ -268,7 +279,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                       54,   51,   48,   45,   42,   40,  38,    36,   34,   32,   30,   28, // Octave 7 (C7-B7)
                       27,   25,   24,   23,   21,   20,  19,    18,   17,   16,   15,   14, // Octave 8 (C8-B8)
                 },
-                options.tableType.getLongLabel().data()
+                options.builtinTable.getLongLabel().data()
             );
         }
     }
@@ -277,7 +288,7 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
 }
 
 std::unique_ptr<TuningSystem> makeBuiltinTuning(BuiltinTuningType type) {
-    TuningOptions options {.tableType = type};
+    TuningOptions options {.builtinTable = type};
     return makeBuiltinTuning(options);
 }
 

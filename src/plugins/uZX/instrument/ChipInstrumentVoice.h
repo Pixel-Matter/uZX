@@ -38,6 +38,7 @@ public:
         // pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.5f });
         pitchAdsr.setParameters({ 0.0f, 0.0f, 0.0f, 0.0f });
         pitchDepth = 0.0; // in semitones
+        ampLevel = 1.0f;  // 100% default
 
         lastLevel = -1;
         lastNotePitch = -1.0f;
@@ -118,6 +119,7 @@ public:
             params.pitchRelease.getLiveValue()
         });
         pitchDepth = params.pitchDepth.getLiveValue();
+        ampLevel = params.ampLevel.getLiveValue() / 100.0f;
     }
 
     void renderNextStep(MidiBufferContext& c, double timeOffset) {
@@ -267,7 +269,7 @@ private:
         auto modLevel = ampAdsr.getEnvelopeValue();
         auto velocity = this->currentlyPlayingNote.noteOnVelocity.asUnsignedFloat();
         auto pressure = this->currentlyPlayingNote.pressure.asUnsignedFloat();
-        return jlimit(0.0f, 1.0f, modLevel * velocity + pressure);
+        return jlimit(0.0f, 1.0f, ampLevel * (modLevel * velocity + pressure));
     }
 
     double computeCurrentNotePitch() const {
@@ -285,11 +287,12 @@ private:
     te::LinEnvelope ampAdsr;
     te::LinEnvelope pitchAdsr;
     double pitchDepth;  // for pitchAdsr, in semitones, can not be more than pitchBendRange
+    float ampLevel;     // overall amplitude level (0.0 to 1.0)
 
     // TODO as a parameter, for deeper pitch bend range
     // TODO emit MIDI systems messages for pitch bend range on start/reset
     double pitchBendRange = 2.0; // in semitones
-    // TODO keyfollow modifier for pitchBendRange for example will give us desired effect
+    // TODO keyfollow modifier for pitchBend for example will give us desired effect
     // on chord starting out of tune for every note and then going to tune
 
     // Note state

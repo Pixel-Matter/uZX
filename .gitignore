@@ -46,5 +46,5 @@ Testing/
 # MacOs
 .DS_Store
 
-.claude/
+.claude/settings.local.json
 src/version.h

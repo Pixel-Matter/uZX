@@ -14,7 +14,8 @@ namespace te = tracktion;
 template <class Voice, class OwnerMidiFx>
 class MPEInstrumentFx : public MPEInstrument::Listener {
 public:
-    MPEInstrumentFx(OwnerMidiFx& owner) : voices(owner)
+    MPEInstrumentFx(OwnerMidiFx& owner)
+        : voices(owner)
     {
         mpeInstrument.enableLegacyMode();
         mpeInstrument.addListener(this);

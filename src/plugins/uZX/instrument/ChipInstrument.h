@@ -16,6 +16,7 @@ namespace IDs {
     DECLARE_ID(ampSustain)
     DECLARE_ID(ampRelease)
     DECLARE_ID(ampVelocity)
+    DECLARE_ID(ampLevel)
     DECLARE_ID(pitchAttack)
     DECLARE_ID(pitchDecay)
     DECLARE_ID(pitchSustain)
@@ -62,6 +63,7 @@ public:
         ParameterValue<float> ampSustain   {{"ampSustain",  IDs::ampSustain,  "S", "Amp Sustain Level", 100.0f, {0.0f, 100.0f}, "%"}};
         ParameterValue<float> ampRelease   {{"ampRelease",  IDs::ampRelease,  "R", "Amp Release Time",  0.0f,   {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
      // ParameterValue<float> ampVelocity  {{"ampVelocity", IDs::ampVelocity, "V", "Amp Velocity Sensitivity", 100.0f, {0.0f, 100.0f}, "%"}};
+        ParameterValue<float> ampLevel     {{"ampLevel",    IDs::ampLevel,    "Level", "Amp Level",      100.0f, {0.0f, 100.0f}, "%"}};
         ParameterValue<float> pitchAttack  {{"pitchAttack", IDs::pitchAttack, "A", "Pitch Attack Time",  0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
         ParameterValue<float> pitchDecay   {{"pitchDecay",  IDs::pitchDecay,  "D", "Pitch Decay Time",   0.0f,  {0.0f, 6.0f, 0.02f, 0.5f}, "s"}};
         ParameterValue<float> pitchSustain {{"pitchSustain",IDs::pitchSustain,"S", "Pitch Sustain Level",0.0f,  {0.0f, 100.0f}, "%"}};
@@ -75,12 +77,16 @@ public:
             visitor(ampSustain);
             visitor(ampRelease);
             // visitor(ampVelocity);
+            visitor(ampLevel);
             visitor(pitchAttack);
             visitor(pitchDecay);
             visitor(pitchSustain);
             visitor(pitchRelease);
             visitor(pitchDepth);
         }
+
+    private:
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OscParameters)
     };
 
     // void updateParams();

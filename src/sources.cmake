@@ -78,6 +78,7 @@ set(GUI_SOURCES
 
     plugins/uZX/aychip/ChipClockPresets.cpp
     plugins/uZX/aychip/AYPluginEditor.cpp
+    plugins/uZX/instrument/ChipOscillatorControls.cpp
     plugins/uZX/instrument/ChipInstrumentUI.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPluginUI.cpp
 )

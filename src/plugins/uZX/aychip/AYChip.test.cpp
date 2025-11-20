@@ -10,6 +10,7 @@ using namespace MoTool::uZX;
 
 namespace {
     // for example to bypass initial click
+    // Note: This assumes stereo mode is set. Call setOutputMode before using this.
     void bypassBlock(AyumiEmulator& ay, size_t samples) {
         float out[samples];
         ay.processBlock(out, out, samples);
@@ -85,6 +86,7 @@ public:
         beginTest("AYEmulator tone");
         {
             auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            emulator.setOutputMode(2);  // Stereo mode
             emulator.setChannelPan(0, 0.5);
             emulator.setTonePeriod(0, 1000);
             emulator.setToneOn(0, true);
@@ -101,6 +103,7 @@ public:
         beginTest("AYEmulator noise");
         {
             auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            emulator.setOutputMode(2);  // Stereo mode
             emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, true);
@@ -120,6 +123,7 @@ public:
         beginTest("AYEmulator envelope");
         {
             auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            emulator.setOutputMode(2);  // Stereo mode
             emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, false);
@@ -141,6 +145,7 @@ public:
         beginTest("AYEmulator unmixed output");
         {
             auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            emulator.setOutputMode(3);  // Three-channel mode
             // Set up different settings for each channel
             emulator.setChannelPan(0, 0.0);  // Ch0: left
             emulator.setChannelPan(1, 1.0);  // Ch1: right
@@ -175,7 +180,26 @@ public:
             expect(ch0Mean > ch1Mean, "Channel 0 (vol=15) should be louder than Channel 1 (vol=10)");
             expect(ch1Mean > ch2Mean, "Channel 1 (vol=10) should be louder than Channel 2 (vol=5)");
         }
+        beginTest("AYEmulator mono output");
+        {
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            emulator.setOutputMode(1);  // Mono mode
+            emulator.setTonePeriod(0, 1000);
+            emulator.setToneOn(0, true);
+            emulator.setVolume(0, 15);
+
+            // Skip initial click but we need to use mono processBlock
+            float bypass[4410];
+            emulator.processBlockMono(bypass, 4410);
+
+            float outMono[44100];
+            emulator.processBlockMono(outMono, 44100);
+
+            auto monoMean = mean(outMono, 44100);
+            expect(monoMean > 0.2, "Mono output should be audible");
+        }
     }
 };
+
 
 static AyChipPluginTests ayChipPluginTests;

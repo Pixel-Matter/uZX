@@ -205,7 +205,11 @@ public:
     // TODO maybe just store registers in an ordinary byte array and after setting them update the chip?
     void setRegister(size_t index, unsigned char value) noexcept;
 
+    // Output mode configuration
+    virtual auto setOutputMode(int numChannels) -> void = 0;  // 1=mono, 2=stereo, 3=three-channel
+
     // Processing
+    virtual auto processBlockMono(float* outMono, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
     virtual auto processBlock(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
     virtual auto processBlockUnmixed(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, size_t stride = 1) -> void = 0;
 
@@ -323,7 +327,11 @@ public:
     auto setMasterVolume(float volume) -> void override;
     auto getMasterVolume() const -> float override;
 
+    // Output mode configuration
+    auto setOutputMode(int numChannels) -> void override;
+
     // Processing
+    auto processBlockMono(float* outMono, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void override;
     auto processBlock(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void override;
     auto processBlockUnmixed(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, size_t stride = 1) -> void override;
 

@@ -134,17 +134,7 @@ static void update_mixer(struct ayumi* ay) {
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     out = (update_tone(ay, i) | ay->channels[i].t_off) & (noise | ay->channels[i].n_off);
     out *= ay->channels[i].e_on ? envelope : ay->channels[i].volume * 2 + 1;
-    ay->out[i] = ay->dac_table[out];
-  }
-}
-
-void ayumi_mix_stereo(struct ayumi* ay) {
-  int i;
-  ay->left = 0;
-  ay->right = 0;
-  for (i = 0; i < TONE_CHANNELS; i += 1) {
-    ay->left += ay->out[i] * ay->channels[i].pan_left;
-    ay->right += ay->out[i] * ay->channels[i].pan_right;
+    ay->channel_out[i] = ay->dac_table[out];
   }
 }
 
@@ -154,11 +144,16 @@ int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr) {
   ay->step = clock_rate / (sr * 8 * DECIMATE_FACTOR);
   ay->dac_table = is_ym ? YM_dac_table : AY_dac_table;
   ay->noise = 1;
+  ay->output_mode = AYUMI_STEREO;
   ayumi_set_envelope(ay, 1);
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     ayumi_set_tone(ay, i, 1);
   }
   return 1;
+}
+
+void ayumi_set_output_mode(struct ayumi* ay, enum ayumi_output_mode mode) {
+  ay->output_mode = mode;
 }
 
 void ayumi_set_pan(struct ayumi* ay, int index, double pan, int is_eqp) {
@@ -293,44 +288,85 @@ static double decimate(double* x) {
   return y;
 }
 
-void ayumi_process(struct ayumi* ay) {
+static double mix_channels(struct ayumi* ay, int output_index) {
   int i;
+  double mixed = 0;
+
+  switch (ay->output_mode) {
+    case AYUMI_MONO:
+      for (i = 0; i < TONE_CHANNELS; i += 1) {
+        mixed += ay->channel_out[i];
+      }
+      mixed /= TONE_CHANNELS;
+      break;
+
+    case AYUMI_STEREO:
+      if (output_index == 0) {
+        for (i = 0; i < TONE_CHANNELS; i += 1) {
+          mixed += ay->channel_out[i] * ay->channels[i].pan_left;
+        }
+      } else {
+        for (i = 0; i < TONE_CHANNELS; i += 1) {
+          mixed += ay->channel_out[i] * ay->channels[i].pan_right;
+        }
+      }
+      break;
+
+    case AYUMI_THREE_CHANNEL:
+      mixed = ay->channel_out[output_index];
+      break;
+  }
+
+  return mixed;
+}
+
+void ayumi_process(struct ayumi* ay) {
+  int i, j, num_outputs;
   double y1;
-  double* c_left = ay->interpolator_left.c;
-  double* y_left = ay->interpolator_left.y;
-  double* c_right = ay->interpolator_right.c;
-  double* y_right = ay->interpolator_right.y;
-  double* fir_left = &ay->fir_left[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
-  double* fir_right = &ay->fir_right[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+  struct ayumi_output* out;
+  double* c;
+  double* y;
+  double* fir;
+
+  num_outputs = ay->output_mode + 1;
   ay->fir_index = (ay->fir_index + 1) % (FIR_SIZE / DECIMATE_FACTOR - 1);
+
   for (i = DECIMATE_FACTOR - 1; i >= 0; i -= 1) {
     ay->x += ay->step;
     while (ay->x >= 1) {
       ay->x -= 1;
-      y_left[0] = y_left[1];
-      y_left[1] = y_left[2];
-      y_left[2] = y_left[3];
-      y_right[0] = y_right[1];
-      y_right[1] = y_right[2];
-      y_right[2] = y_right[3];
       update_mixer(ay);
-      ayumi_mix_stereo(ay);
-      y_left[3] = ay->left;
-      y_right[3] = ay->right;
-      y1 = y_left[2] - y_left[0];
-      c_left[0] = 0.5 * y_left[1] + 0.25 * (y_left[0] + y_left[2]);
-      c_left[1] = 0.5 * y1;
-      c_left[2] = 0.25 * (y_left[3] - y_left[1] - y1);
-      y1 = y_right[2] - y_right[0];
-      c_right[0] = 0.5 * y_right[1] + 0.25 * (y_right[0] + y_right[2]);
-      c_right[1] = 0.5 * y1;
-      c_right[2] = 0.25 * (y_right[3] - y_right[1] - y1);
+
+      for (j = 0; j < num_outputs; j += 1) {
+        out = &ay->outputs[j];
+        y = out->interpolator.y;
+        c = out->interpolator.c;
+
+        y[0] = y[1];
+        y[1] = y[2];
+        y[2] = y[3];
+        y[3] = mix_channels(ay, j);
+
+        y1 = y[2] - y[0];
+        c[0] = 0.5 * y[1] + 0.25 * (y[0] + y[2]);
+        c[1] = 0.5 * y1;
+        c[2] = 0.25 * (y[3] - y[1] - y1);
+      }
     }
-    fir_left[i] = (c_left[2] * ay->x + c_left[1]) * ay->x + c_left[0];
-    fir_right[i] = (c_right[2] * ay->x + c_right[1]) * ay->x + c_right[0];
+
+    for (j = 0; j < num_outputs; j += 1) {
+      out = &ay->outputs[j];
+      c = out->interpolator.c;
+      fir = &out->fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+      fir[i] = (c[2] * ay->x + c[1]) * ay->x + c[0];
+    }
   }
-  ay->left = decimate(fir_left);
-  ay->right = decimate(fir_right);
+
+  for (j = 0; j < num_outputs; j += 1) {
+    out = &ay->outputs[j];
+    fir = &out->fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+    out->value = decimate(fir);
+  }
 }
 
 static double dc_filter(struct dc_filter* dc, int index, double x) {
@@ -340,14 +376,21 @@ static double dc_filter(struct dc_filter* dc, int index, double x) {
 }
 
 void ayumi_remove_dc(struct ayumi* ay) {
-  ay->left = dc_filter(&ay->dc_left, ay->dc_index, ay->left);
-  ay->right = dc_filter(&ay->dc_right, ay->dc_index, ay->right);
+  int i, num_outputs;
+  struct ayumi_output* out;
+
+  num_outputs = ay->output_mode + 1;
+  for (i = 0; i < num_outputs; i += 1) {
+    out = &ay->outputs[i];
+    out->value = dc_filter(&out->dc, ay->dc_index, out->value);
+  }
   ay->dc_index = (ay->dc_index + 1) & (DC_FILTER_SIZE - 1);
 }
 
-double ayumi_get_channel_output(struct ayumi* ay, int channel) {
-  if (channel >= 0 && channel < TONE_CHANNELS) {
-    return ay->out[channel];
+double ayumi_get_output(struct ayumi* ay, int output_index) {
+  int num_outputs = ay->output_mode + 1;
+  if (output_index >= 0 && output_index < num_outputs) {
+    return ay->outputs[output_index].value;
   }
   return 0.0;
 }

@@ -10,6 +10,12 @@ enum {
   DC_FILTER_SIZE = 1024
 };
 
+enum ayumi_output_mode {
+  AYUMI_MONO = 0,
+  AYUMI_STEREO = 1,
+  AYUMI_THREE_CHANNEL = 2
+};
+
 struct tone_channel {
   int tone_period;
   int tone_counter;
@@ -32,6 +38,13 @@ struct dc_filter {
   double delay[DC_FILTER_SIZE];
 };
 
+struct ayumi_output {
+  struct interpolator interpolator;
+  double fir[FIR_SIZE * 2];
+  struct dc_filter dc;
+  double value;
+};
+
 struct ayumi {
   struct tone_channel channels[TONE_CHANNELS];
   int noise_period;
@@ -45,17 +58,11 @@ struct ayumi {
   const double* dac_table;
   double step;
   double x;
-  struct interpolator interpolator_left;
-  struct interpolator interpolator_right;
-  double fir_left[FIR_SIZE * 2];
-  double fir_right[FIR_SIZE * 2];
   int fir_index;
-  struct dc_filter dc_left;
-  struct dc_filter dc_right;
   int dc_index;
-  double left;
-  double right;
-  double out[TONE_CHANNELS];
+  enum ayumi_output_mode output_mode;
+  struct ayumi_output outputs[TONE_CHANNELS];
+  double channel_out[TONE_CHANNELS];
 };
 
 int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr);
@@ -66,9 +73,9 @@ void ayumi_set_mixer(struct ayumi* ay, int index, int t_off, int n_off, int e_on
 void ayumi_set_volume(struct ayumi* ay, int index, int volume);
 void ayumi_set_envelope(struct ayumi* ay, int period);
 void ayumi_set_envelope_shape(struct ayumi* ay, int shape);
+void ayumi_set_output_mode(struct ayumi* ay, enum ayumi_output_mode mode);
 void ayumi_process(struct ayumi* ay);
-void ayumi_mix_stereo(struct ayumi* ay);
 void ayumi_remove_dc(struct ayumi* ay);
-double ayumi_get_channel_output(struct ayumi* ay, int channel);
+double ayumi_get_output(struct ayumi* ay, int output_index);
 
 #endif

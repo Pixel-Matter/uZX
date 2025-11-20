@@ -131,14 +131,20 @@ static void update_mixer(struct ayumi* ay) {
   int out;
   int noise = update_noise(ay);
   int envelope = update_envelope(ay);
-  ay->left = 0;
-  ay->right = 0;
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     out = (update_tone(ay, i) | ay->channels[i].t_off) & (noise | ay->channels[i].n_off);
     out *= ay->channels[i].e_on ? envelope : ay->channels[i].volume * 2 + 1;
-    // TODO refactor panning out to ayumi_mix_stereo(ay) store ay->out[i] instead
-    ay->left += ay->dac_table[out] * ay->channels[i].pan_left;
-    ay->right += ay->dac_table[out] * ay->channels[i].pan_right;
+    ay->out[i] = ay->dac_table[out];
+  }
+}
+
+void ayumi_mix_stereo(struct ayumi* ay) {
+  int i;
+  ay->left = 0;
+  ay->right = 0;
+  for (i = 0; i < TONE_CHANNELS; i += 1) {
+    ay->left += ay->out[i] * ay->channels[i].pan_left;
+    ay->right += ay->out[i] * ay->channels[i].pan_right;
   }
 }
 
@@ -308,6 +314,7 @@ void ayumi_process(struct ayumi* ay) {
       y_right[1] = y_right[2];
       y_right[2] = y_right[3];
       update_mixer(ay);
+      ayumi_mix_stereo(ay);
       y_left[3] = ay->left;
       y_right[3] = ay->right;
       y1 = y_left[2] - y_left[0];
@@ -336,4 +343,11 @@ void ayumi_remove_dc(struct ayumi* ay) {
   ay->left = dc_filter(&ay->dc_left, ay->dc_index, ay->left);
   ay->right = dc_filter(&ay->dc_right, ay->dc_index, ay->right);
   ay->dc_index = (ay->dc_index + 1) & (DC_FILTER_SIZE - 1);
+}
+
+double ayumi_get_channel_output(struct ayumi* ay, int channel) {
+  if (channel >= 0 && channel < TONE_CHANNELS) {
+    return ay->out[channel];
+  }
+  return 0.0;
 }

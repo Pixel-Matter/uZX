@@ -55,6 +55,7 @@ struct ayumi {
   int dc_index;
   double left;
   double right;
+  double out[TONE_CHANNELS];
 };
 
 int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr);
@@ -66,6 +67,8 @@ void ayumi_set_volume(struct ayumi* ay, int index, int volume);
 void ayumi_set_envelope(struct ayumi* ay, int period);
 void ayumi_set_envelope_shape(struct ayumi* ay, int shape);
 void ayumi_process(struct ayumi* ay);
+void ayumi_mix_stereo(struct ayumi* ay);
 void ayumi_remove_dc(struct ayumi* ay);
+double ayumi_get_channel_output(struct ayumi* ay, int channel);
 
 #endif

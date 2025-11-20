@@ -223,4 +223,13 @@ auto AyumiEmulator::processBlock(float* outLeft, float* outRight, size_t numSamp
     }
 }
 
+auto AyumiEmulator::processBlockUnmixed(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, size_t stride) -> void {
+    for (size_t i = 0; i < numSamples; ++i, outCh0+=stride, outCh1+=stride, outCh2+=stride) {
+        ayumi_process(&Ayumi_);
+        *outCh0 = static_cast<float>(ayumi_get_channel_output(&Ayumi_, 0)) * MasterVolume_;
+        *outCh1 = static_cast<float>(ayumi_get_channel_output(&Ayumi_, 1)) * MasterVolume_;
+        *outCh2 = static_cast<float>(ayumi_get_channel_output(&Ayumi_, 2)) * MasterVolume_;
+    }
+}
+
 } // namespace MoTool::uZX

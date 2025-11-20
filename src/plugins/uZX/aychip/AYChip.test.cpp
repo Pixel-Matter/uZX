@@ -138,6 +138,43 @@ public:
             expect(leftMean > 0.1, "Envelope should be audible");
             expect(rightMean > 0.1, "Envelope should be audible");
         }
+        beginTest("AYEmulator unmixed output");
+        {
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            // Set up different settings for each channel
+            emulator.setChannelPan(0, 0.0);  // Ch0: left
+            emulator.setChannelPan(1, 1.0);  // Ch1: right
+            emulator.setChannelPan(2, 0.5);  // Ch2: center
+
+            emulator.setTonePeriod(0, 1000);
+            emulator.setTonePeriod(1, 800);
+            emulator.setTonePeriod(2, 600);
+
+            emulator.setToneOn(0, true);
+            emulator.setToneOn(1, true);
+            emulator.setToneOn(2, true);
+
+            emulator.setVolume(0, 15);
+            emulator.setVolume(1, 10);
+            emulator.setVolume(2, 5);
+
+            bypassBlock(emulator);
+
+            float outCh0[44100];
+            float outCh1[44100];
+            float outCh2[44100];
+            emulator.processBlockUnmixed(outCh0, outCh1, outCh2, 44100);
+
+            auto ch0Mean = mean(outCh0, 44100);
+            auto ch1Mean = mean(outCh1, 44100);
+            auto ch2Mean = mean(outCh2, 44100);
+
+            expect(ch0Mean > 0.2, "Channel 0 should be audible");
+            expect(ch1Mean > 0.1, "Channel 1 should be audible");
+            expect(ch2Mean > 0.05, "Channel 2 should be audible");
+            expect(ch0Mean > ch1Mean, "Channel 0 (vol=15) should be louder than Channel 1 (vol=10)");
+            expect(ch1Mean > ch2Mean, "Channel 1 (vol=10) should be louder than Channel 2 (vol=5)");
+        }
     }
 };
 

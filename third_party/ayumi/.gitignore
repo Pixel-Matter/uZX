@@ -1,0 +1,4 @@
+# Compiled binaries
+test_ayumi
+bench_ayumi
+*.o

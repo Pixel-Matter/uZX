@@ -198,6 +198,22 @@ void ayumi_set_envelope_shape(struct ayumi* ay, int shape) {
   reset_segment(ay);
 }
 
+static inline void update_interpolator(struct interpolator* interp, double new_value) {
+  double* y = interp->y;
+  double* c = interp->c;
+  double y1;
+
+  y[0] = y[1];
+  y[1] = y[2];
+  y[2] = y[3];
+  y[3] = new_value;
+
+  y1 = y[2] - y[0];
+  c[0] = 0.5 * y[1] + 0.25 * (y[0] + y[2]);
+  c[1] = 0.5 * y1;
+  c[2] = 0.25 * (y[3] - y[1] - y1);
+}
+
 static double decimate(double* x) {
   double y = -0.0000046183113992051936 * (x[1] + x[191]) +
     -0.00001117761640887225 * (x[2] + x[190]) +
@@ -290,9 +306,7 @@ static double decimate(double* x) {
 
 void ayumi_process(struct ayumi* ay) {
   int i;
-  double y1;
   double* c0, *c1, *c2;
-  double* y0, *y1_ptr, *y2;
   double* fir0, *fir1, *fir2;
 
   ay->fir_index = (ay->fir_index + 1) % (FIR_SIZE / DECIMATE_FACTOR - 1);
@@ -300,7 +314,6 @@ void ayumi_process(struct ayumi* ay) {
   switch (ay->output_mode) {
     case AYUMI_MONO: {
       c0 = ay->outputs[0].interpolator.c;
-      y0 = ay->outputs[0].interpolator.y;
       fir0 = &ay->outputs[0].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
 
       for (i = DECIMATE_FACTOR - 1; i >= 0; i -= 1) {
@@ -308,16 +321,8 @@ void ayumi_process(struct ayumi* ay) {
         while (ay->x >= 1) {
           ay->x -= 1;
           update_mixer(ay);
-
-          y0[0] = y0[1];
-          y0[1] = y0[2];
-          y0[2] = y0[3];
-          y0[3] = (ay->channel_out[0] + ay->channel_out[1] + ay->channel_out[2]) / 3.0;
-
-          y1 = y0[2] - y0[0];
-          c0[0] = 0.5 * y0[1] + 0.25 * (y0[0] + y0[2]);
-          c0[1] = 0.5 * y1;
-          c0[2] = 0.25 * (y0[3] - y0[1] - y1);
+          update_interpolator(&ay->outputs[0].interpolator,
+                             (ay->channel_out[0] + ay->channel_out[1] + ay->channel_out[2]) / 3.0);
         }
         fir0[i] = (c0[2] * ay->x + c0[1]) * ay->x + c0[0];
       }
@@ -327,9 +332,7 @@ void ayumi_process(struct ayumi* ay) {
 
     case AYUMI_STEREO: {
       c0 = ay->outputs[0].interpolator.c;
-      y0 = ay->outputs[0].interpolator.y;
       c1 = ay->outputs[1].interpolator.c;
-      y1_ptr = ay->outputs[1].interpolator.y;
       fir0 = &ay->outputs[0].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
       fir1 = &ay->outputs[1].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
 
@@ -339,29 +342,15 @@ void ayumi_process(struct ayumi* ay) {
           ay->x -= 1;
           update_mixer(ay);
 
-          y0[0] = y0[1];
-          y0[1] = y0[2];
-          y0[2] = y0[3];
-          y0[3] = ay->channel_out[0] * ay->channels[0].pan_left +
-                  ay->channel_out[1] * ay->channels[1].pan_left +
-                  ay->channel_out[2] * ay->channels[2].pan_left;
+          update_interpolator(&ay->outputs[0].interpolator,
+                             ay->channel_out[0] * ay->channels[0].pan_left +
+                             ay->channel_out[1] * ay->channels[1].pan_left +
+                             ay->channel_out[2] * ay->channels[2].pan_left);
 
-          y1_ptr[0] = y1_ptr[1];
-          y1_ptr[1] = y1_ptr[2];
-          y1_ptr[2] = y1_ptr[3];
-          y1_ptr[3] = ay->channel_out[0] * ay->channels[0].pan_right +
-                      ay->channel_out[1] * ay->channels[1].pan_right +
-                      ay->channel_out[2] * ay->channels[2].pan_right;
-
-          y1 = y0[2] - y0[0];
-          c0[0] = 0.5 * y0[1] + 0.25 * (y0[0] + y0[2]);
-          c0[1] = 0.5 * y1;
-          c0[2] = 0.25 * (y0[3] - y0[1] - y1);
-
-          y1 = y1_ptr[2] - y1_ptr[0];
-          c1[0] = 0.5 * y1_ptr[1] + 0.25 * (y1_ptr[0] + y1_ptr[2]);
-          c1[1] = 0.5 * y1;
-          c1[2] = 0.25 * (y1_ptr[3] - y1_ptr[1] - y1);
+          update_interpolator(&ay->outputs[1].interpolator,
+                             ay->channel_out[0] * ay->channels[0].pan_right +
+                             ay->channel_out[1] * ay->channels[1].pan_right +
+                             ay->channel_out[2] * ay->channels[2].pan_right);
         }
         fir0[i] = (c0[2] * ay->x + c0[1]) * ay->x + c0[0];
         fir1[i] = (c1[2] * ay->x + c1[1]) * ay->x + c1[0];
@@ -373,11 +362,8 @@ void ayumi_process(struct ayumi* ay) {
 
     case AYUMI_THREE_CHANNEL: {
       c0 = ay->outputs[0].interpolator.c;
-      y0 = ay->outputs[0].interpolator.y;
       c1 = ay->outputs[1].interpolator.c;
-      y1_ptr = ay->outputs[1].interpolator.y;
       c2 = ay->outputs[2].interpolator.c;
-      y2 = ay->outputs[2].interpolator.y;
       fir0 = &ay->outputs[0].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
       fir1 = &ay->outputs[1].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
       fir2 = &ay->outputs[2].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
@@ -388,35 +374,9 @@ void ayumi_process(struct ayumi* ay) {
           ay->x -= 1;
           update_mixer(ay);
 
-          y0[0] = y0[1];
-          y0[1] = y0[2];
-          y0[2] = y0[3];
-          y0[3] = ay->channel_out[0];
-
-          y1_ptr[0] = y1_ptr[1];
-          y1_ptr[1] = y1_ptr[2];
-          y1_ptr[2] = y1_ptr[3];
-          y1_ptr[3] = ay->channel_out[1];
-
-          y2[0] = y2[1];
-          y2[1] = y2[2];
-          y2[2] = y2[3];
-          y2[3] = ay->channel_out[2];
-
-          y1 = y0[2] - y0[0];
-          c0[0] = 0.5 * y0[1] + 0.25 * (y0[0] + y0[2]);
-          c0[1] = 0.5 * y1;
-          c0[2] = 0.25 * (y0[3] - y0[1] - y1);
-
-          y1 = y1_ptr[2] - y1_ptr[0];
-          c1[0] = 0.5 * y1_ptr[1] + 0.25 * (y1_ptr[0] + y1_ptr[2]);
-          c1[1] = 0.5 * y1;
-          c1[2] = 0.25 * (y1_ptr[3] - y1_ptr[1] - y1);
-
-          y1 = y2[2] - y2[0];
-          c2[0] = 0.5 * y2[1] + 0.25 * (y2[0] + y2[2]);
-          c2[1] = 0.5 * y1;
-          c2[2] = 0.25 * (y2[3] - y2[1] - y1);
+          update_interpolator(&ay->outputs[0].interpolator, ay->channel_out[0]);
+          update_interpolator(&ay->outputs[1].interpolator, ay->channel_out[1]);
+          update_interpolator(&ay->outputs[2].interpolator, ay->channel_out[2]);
         }
         fir0[i] = (c0[2] * ay->x + c0[1]) * ay->x + c0[0];
         fir1[i] = (c1[2] * ay->x + c1[1]) * ay->x + c1[0];

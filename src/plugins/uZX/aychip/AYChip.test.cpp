@@ -85,8 +85,7 @@ public:
         }
         beginTest("AYEmulator tone");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
-            emulator.setOutputMode(2);  // Stereo mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 2};  // Stereo mode
             emulator.setChannelPan(0, 0.5);
             emulator.setTonePeriod(0, 1000);
             emulator.setToneOn(0, true);
@@ -102,8 +101,7 @@ public:
         }
         beginTest("AYEmulator noise");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
-            emulator.setOutputMode(2);  // Stereo mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 2};  // Stereo mode
             emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, true);
@@ -122,8 +120,7 @@ public:
         }
         beginTest("AYEmulator envelope");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
-            emulator.setOutputMode(2);  // Stereo mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 2};  // Stereo mode
             emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, false);
@@ -144,8 +141,7 @@ public:
         }
         beginTest("AYEmulator unmixed output");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
-            emulator.setOutputMode(3);  // Three-channel mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 3};  // Three-channel mode
             // Set up different settings for each channel
             emulator.setChannelPan(0, 0.0);  // Ch0: left
             emulator.setChannelPan(1, 1.0);  // Ch1: right
@@ -182,8 +178,7 @@ public:
         }
         beginTest("AYEmulator mono output");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
-            emulator.setOutputMode(1);  // Mono mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 1};  // Mono mode
             emulator.setTonePeriod(0, 1000);
             emulator.setToneOn(0, true);
             emulator.setVolume(0, 15);

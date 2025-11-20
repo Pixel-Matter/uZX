@@ -287,7 +287,7 @@ private:
 
 class AyumiEmulator : public AYInterface {
 public:
-    AyumiEmulator(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM);
+    AyumiEmulator(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM, int numChannels = 2);
     ~AyumiEmulator() override;
 
     auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM) -> void override;

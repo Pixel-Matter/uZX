@@ -31,12 +31,13 @@ void AYInterface::setRegister(size_t index, unsigned char value) noexcept {
     }
 }
 
-AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type)
+AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type, int numChannels)
     : AYInterface()
     , Pan_ {0.25, 0.75, 0.5}  // ACB is default
     , MasterVolume_(1.0)
 {
     reset(sampleRate, clock, type);
+    setOutputMode(numChannels);
 }
 
 AyumiEmulator::~AyumiEmulator() {

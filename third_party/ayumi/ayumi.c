@@ -131,14 +131,10 @@ static void update_mixer(struct ayumi* ay) {
   int out;
   int noise = update_noise(ay);
   int envelope = update_envelope(ay);
-  ay->left = 0;
-  ay->right = 0;
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     out = (update_tone(ay, i) | ay->channels[i].t_off) & (noise | ay->channels[i].n_off);
     out *= ay->channels[i].e_on ? envelope : ay->channels[i].volume * 2 + 1;
-    // TODO refactor panning out to ayumi_mix_stereo(ay) store ay->out[i] instead
-    ay->left += ay->dac_table[out] * ay->channels[i].pan_left;
-    ay->right += ay->dac_table[out] * ay->channels[i].pan_right;
+    ay->channel_out[i] = ay->dac_table[out];
   }
 }
 
@@ -148,11 +144,16 @@ int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr) {
   ay->step = clock_rate / (sr * 8 * DECIMATE_FACTOR);
   ay->dac_table = is_ym ? YM_dac_table : AY_dac_table;
   ay->noise = 1;
+  ay->output_mode = AYUMI_STEREO;
   ayumi_set_envelope(ay, 1);
   for (i = 0; i < TONE_CHANNELS; i += 1) {
     ayumi_set_tone(ay, i, 1);
   }
   return 1;
+}
+
+void ayumi_set_output_mode(struct ayumi* ay, enum ayumi_output_mode mode) {
+  ay->output_mode = mode;
 }
 
 void ayumi_set_pan(struct ayumi* ay, int index, double pan, int is_eqp) {
@@ -195,6 +196,22 @@ void ayumi_set_envelope_shape(struct ayumi* ay, int shape) {
   ay->envelope_counter = 0;
   ay->envelope_segment = 0;
   reset_segment(ay);
+}
+
+static inline void update_interpolator(struct interpolator* interp, double new_value) {
+  double* y = interp->y;
+  double* c = interp->c;
+  double y1;
+
+  y[0] = y[1];
+  y[1] = y[2];
+  y[2] = y[3];
+  y[3] = new_value;
+
+  y1 = y[2] - y[0];
+  c[0] = 0.5 * y[1] + 0.25 * (y[0] + y[2]);
+  c[1] = 0.5 * y1;
+  c[2] = 0.25 * (y[3] - y[1] - y1);
 }
 
 static double decimate(double* x) {
@@ -289,41 +306,88 @@ static double decimate(double* x) {
 
 void ayumi_process(struct ayumi* ay) {
   int i;
-  double y1;
-  double* c_left = ay->interpolator_left.c;
-  double* y_left = ay->interpolator_left.y;
-  double* c_right = ay->interpolator_right.c;
-  double* y_right = ay->interpolator_right.y;
-  double* fir_left = &ay->fir_left[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
-  double* fir_right = &ay->fir_right[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+  double* c0, *c1, *c2;
+  double* fir0, *fir1, *fir2;
+
   ay->fir_index = (ay->fir_index + 1) % (FIR_SIZE / DECIMATE_FACTOR - 1);
-  for (i = DECIMATE_FACTOR - 1; i >= 0; i -= 1) {
-    ay->x += ay->step;
-    while (ay->x >= 1) {
-      ay->x -= 1;
-      y_left[0] = y_left[1];
-      y_left[1] = y_left[2];
-      y_left[2] = y_left[3];
-      y_right[0] = y_right[1];
-      y_right[1] = y_right[2];
-      y_right[2] = y_right[3];
-      update_mixer(ay);
-      y_left[3] = ay->left;
-      y_right[3] = ay->right;
-      y1 = y_left[2] - y_left[0];
-      c_left[0] = 0.5 * y_left[1] + 0.25 * (y_left[0] + y_left[2]);
-      c_left[1] = 0.5 * y1;
-      c_left[2] = 0.25 * (y_left[3] - y_left[1] - y1);
-      y1 = y_right[2] - y_right[0];
-      c_right[0] = 0.5 * y_right[1] + 0.25 * (y_right[0] + y_right[2]);
-      c_right[1] = 0.5 * y1;
-      c_right[2] = 0.25 * (y_right[3] - y_right[1] - y1);
+
+  switch (ay->output_mode) {
+    case AYUMI_MONO: {
+      c0 = ay->outputs[0].interpolator.c;
+      fir0 = &ay->outputs[0].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+
+      for (i = DECIMATE_FACTOR - 1; i >= 0; i -= 1) {
+        ay->x += ay->step;
+        while (ay->x >= 1) {
+          ay->x -= 1;
+          update_mixer(ay);
+          update_interpolator(&ay->outputs[0].interpolator,
+                             (ay->channel_out[0] + ay->channel_out[1] + ay->channel_out[2]) / 3.0);
+        }
+        fir0[i] = (c0[2] * ay->x + c0[1]) * ay->x + c0[0];
+      }
+      ay->outputs[0].value = decimate(fir0);
+      break;
     }
-    fir_left[i] = (c_left[2] * ay->x + c_left[1]) * ay->x + c_left[0];
-    fir_right[i] = (c_right[2] * ay->x + c_right[1]) * ay->x + c_right[0];
+
+    case AYUMI_STEREO: {
+      c0 = ay->outputs[0].interpolator.c;
+      c1 = ay->outputs[1].interpolator.c;
+      fir0 = &ay->outputs[0].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+      fir1 = &ay->outputs[1].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+
+      for (i = DECIMATE_FACTOR - 1; i >= 0; i -= 1) {
+        ay->x += ay->step;
+        while (ay->x >= 1) {
+          ay->x -= 1;
+          update_mixer(ay);
+
+          update_interpolator(&ay->outputs[0].interpolator,
+                             ay->channel_out[0] * ay->channels[0].pan_left +
+                             ay->channel_out[1] * ay->channels[1].pan_left +
+                             ay->channel_out[2] * ay->channels[2].pan_left);
+
+          update_interpolator(&ay->outputs[1].interpolator,
+                             ay->channel_out[0] * ay->channels[0].pan_right +
+                             ay->channel_out[1] * ay->channels[1].pan_right +
+                             ay->channel_out[2] * ay->channels[2].pan_right);
+        }
+        fir0[i] = (c0[2] * ay->x + c0[1]) * ay->x + c0[0];
+        fir1[i] = (c1[2] * ay->x + c1[1]) * ay->x + c1[0];
+      }
+      ay->outputs[0].value = decimate(fir0);
+      ay->outputs[1].value = decimate(fir1);
+      break;
+    }
+
+    case AYUMI_THREE_CHANNEL: {
+      c0 = ay->outputs[0].interpolator.c;
+      c1 = ay->outputs[1].interpolator.c;
+      c2 = ay->outputs[2].interpolator.c;
+      fir0 = &ay->outputs[0].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+      fir1 = &ay->outputs[1].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+      fir2 = &ay->outputs[2].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
+
+      for (i = DECIMATE_FACTOR - 1; i >= 0; i -= 1) {
+        ay->x += ay->step;
+        while (ay->x >= 1) {
+          ay->x -= 1;
+          update_mixer(ay);
+
+          update_interpolator(&ay->outputs[0].interpolator, ay->channel_out[0]);
+          update_interpolator(&ay->outputs[1].interpolator, ay->channel_out[1]);
+          update_interpolator(&ay->outputs[2].interpolator, ay->channel_out[2]);
+        }
+        fir0[i] = (c0[2] * ay->x + c0[1]) * ay->x + c0[0];
+        fir1[i] = (c1[2] * ay->x + c1[1]) * ay->x + c1[0];
+        fir2[i] = (c2[2] * ay->x + c2[1]) * ay->x + c2[0];
+      }
+      ay->outputs[0].value = decimate(fir0);
+      ay->outputs[1].value = decimate(fir1);
+      ay->outputs[2].value = decimate(fir2);
+      break;
+    }
   }
-  ay->left = decimate(fir_left);
-  ay->right = decimate(fir_right);
 }
 
 static double dc_filter(struct dc_filter* dc, int index, double x) {
@@ -333,7 +397,21 @@ static double dc_filter(struct dc_filter* dc, int index, double x) {
 }
 
 void ayumi_remove_dc(struct ayumi* ay) {
-  ay->left = dc_filter(&ay->dc_left, ay->dc_index, ay->left);
-  ay->right = dc_filter(&ay->dc_right, ay->dc_index, ay->right);
+  int i, num_outputs;
+  struct ayumi_output* out;
+
+  num_outputs = ay->output_mode + 1;
+  for (i = 0; i < num_outputs; i += 1) {
+    out = &ay->outputs[i];
+    out->value = dc_filter(&out->dc, ay->dc_index, out->value);
+  }
   ay->dc_index = (ay->dc_index + 1) & (DC_FILTER_SIZE - 1);
+}
+
+double ayumi_get_output(struct ayumi* ay, int output_index) {
+  int num_outputs = ay->output_mode + 1;
+  if (output_index >= 0 && output_index < num_outputs) {
+    return ay->outputs[output_index].value;
+  }
+  return 0.0;
 }

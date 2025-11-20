@@ -31,12 +31,13 @@ void AYInterface::setRegister(size_t index, unsigned char value) noexcept {
     }
 }
 
-AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type)
+AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type, int numChannels)
     : AYInterface()
     , Pan_ {0.25, 0.75, 0.5}  // ACB is default
     , MasterVolume_(1.0)
 {
     reset(sampleRate, clock, type);
+    setOutputMode(numChannels);
 }
 
 AyumiEmulator::~AyumiEmulator() {
@@ -212,14 +213,49 @@ auto AyumiEmulator::getMasterVolume() const -> float {
     return MasterVolume_;
 }
 
+auto AyumiEmulator::setOutputMode(int numChannels) -> void {
+    enum ayumi_output_mode mode;
+    switch (numChannels) {
+        case 1: mode = AYUMI_MONO; break;
+        case 2: mode = AYUMI_STEREO; break;
+        case 3: mode = AYUMI_THREE_CHANNEL; break;
+        default:
+            jassertfalse;  // Invalid number of channels
+            return;
+    }
+    ayumi_set_output_mode(&Ayumi_, mode);
+}
+
+auto AyumiEmulator::processBlockMono(float* outMono, size_t numSamples, bool removeDC, size_t stride) -> void {
+    jassert(Ayumi_.output_mode == AYUMI_MONO);  // Must call setOutputMode(1) first
+    for (size_t i = 0; i < numSamples; ++i, outMono+=stride) {
+        ayumi_process(&Ayumi_);
+        if (removeDC) {
+            ayumi_remove_dc(&Ayumi_);
+        }
+        *outMono = static_cast<float>(ayumi_get_output(&Ayumi_, 0)) * MasterVolume_;
+    }
+}
+
 auto AyumiEmulator::processBlock(float* outLeft, float* outRight, size_t numSamples, bool removeDC, size_t stride) -> void {
+    jassert(Ayumi_.output_mode == AYUMI_STEREO);  // Must call setOutputMode(2) first
     for (size_t i = 0; i < numSamples; ++i, outLeft+=stride, outRight+=stride) {
         ayumi_process(&Ayumi_);
         if (removeDC) {
             ayumi_remove_dc(&Ayumi_);
         }
-        *outLeft = static_cast<float>(Ayumi_.left) * MasterVolume_;
-        *outRight = static_cast<float>(Ayumi_.right) * MasterVolume_;
+        *outLeft = static_cast<float>(ayumi_get_output(&Ayumi_, 0)) * MasterVolume_;
+        *outRight = static_cast<float>(ayumi_get_output(&Ayumi_, 1)) * MasterVolume_;
+    }
+}
+
+auto AyumiEmulator::processBlockUnmixed(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, size_t stride) -> void {
+    jassert(Ayumi_.output_mode == AYUMI_THREE_CHANNEL);  // Must call setOutputMode(3) first
+    for (size_t i = 0; i < numSamples; ++i, outCh0+=stride, outCh1+=stride, outCh2+=stride) {
+        ayumi_process(&Ayumi_);
+        *outCh0 = static_cast<float>(ayumi_get_output(&Ayumi_, 0)) * MasterVolume_;
+        *outCh1 = static_cast<float>(ayumi_get_output(&Ayumi_, 1)) * MasterVolume_;
+        *outCh2 = static_cast<float>(ayumi_get_output(&Ayumi_, 2)) * MasterVolume_;
     }
 }
 

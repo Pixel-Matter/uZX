@@ -4,6 +4,7 @@
 
 #include "AYPlugin.h"
 #include "../../../gui/common/ChoiceButton.h"
+#include "../../../gui/common/ToggleButton.h"
 #include "../../../gui/common/ComboBindingWithPresets.h"
 #include "../../../gui/common/ComboBoxWithOverrideId.h"
 #include "../../../gui/common/LabeledSlider.h"
@@ -46,6 +47,50 @@ private:
     LabeledSlider volumeKnob   { plugin_, plugin_.dynamicParams.volume };
     ChoiceButton layoutButton  { plugin_, plugin_.dynamicParams.layout };
     LabeledSlider stereoKnob   { plugin_, plugin_.dynamicParams.stereoWidth };
+
+    struct ChannelGroup {
+        ChannelGroup(AYChipPlugin& plugin,
+                     ParameterValue<bool>& channelParam,
+                     ParameterValue<bool>& toneParam,
+                     ParameterValue<bool>& noiseParam,
+                     ParameterValue<bool>& envelopeParam)
+            : channelOn   { plugin, channelParam }
+            , toneOn      { plugin, toneParam }
+            , noiseOn     { plugin, noiseParam }
+            , envelopeOn  { plugin, envelopeParam }
+        {}
+
+        ToggleButton channelOn;
+        ToggleButton toneOn;
+        ToggleButton noiseOn;
+        ToggleButton envelopeOn;
+
+        void addToComponent(Component& parent) {
+            parent.addAndMakeVisible(channelOn);
+            parent.addAndMakeVisible(toneOn);
+            parent.addAndMakeVisible(noiseOn);
+            parent.addAndMakeVisible(envelopeOn);
+        }
+    };
+
+    // Channel groups
+    ChannelGroup channelA { plugin_, plugin_.dynamicParams.channelA,
+                            plugin_.dynamicParams.toneA,
+                            plugin_.dynamicParams.noiseA,
+                            plugin_.dynamicParams.envelopeA };
+    ChannelGroup channelB { plugin_, plugin_.dynamicParams.channelB,
+                            plugin_.dynamicParams.toneB,
+                            plugin_.dynamicParams.noiseB,
+                            plugin_.dynamicParams.envelopeB };
+    ChannelGroup channelC { plugin_, plugin_.dynamicParams.channelC,
+                            plugin_.dynamicParams.toneC,
+                            plugin_.dynamicParams.noiseC,
+                            plugin_.dynamicParams.envelopeC };
+
+    std::array<ChannelGroup*, 3> channelGroups { &channelA, &channelB, &channelC };
+
+    void setupToggleButtons();
+    void layoutChannelToggles(juce::Rectangle<int>& r);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginUI)
 };

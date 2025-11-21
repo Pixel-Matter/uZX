@@ -120,24 +120,24 @@ private:
     // Value::Listener - implement linked toggle behavior
     void valueChanged(Value& value) override {
         // Find which channel changed and update its TNE buttons
-        if (value.refersToSameSourceAs(channelA.rawValue)) {
-            bool enabled = channelA.getStoredValue();
-            toneA.setStoredValue(enabled);
-            noiseA.setStoredValue(enabled);
-            envelopeA.setStoredValue(enabled);
-        }
-        else if (value.refersToSameSourceAs(channelB.rawValue)) {
-            bool enabled = channelB.getStoredValue();
-            toneB.setStoredValue(enabled);
-            noiseB.setStoredValue(enabled);
-            envelopeB.setStoredValue(enabled);
-        }
-        else if (value.refersToSameSourceAs(channelC.rawValue)) {
-            bool enabled = channelC.getStoredValue();
-            toneC.setStoredValue(enabled);
-            noiseC.setStoredValue(enabled);
-            envelopeC.setStoredValue(enabled);
-        }
+        // if (value.refersToSameSourceAs(channelA.getPropertyAsValue())) {
+        //     bool enabled = channelA.getStoredValue();
+        //     toneA.setStoredValue(enabled);
+        //     noiseA.setStoredValue(enabled);
+        //     envelopeA.setStoredValue(enabled);
+        // }
+        // else if (value.refersToSameSourceAs(channelB.getPropertyAsValue())) {
+        //     bool enabled = channelB.getStoredValue();
+        //     toneB.setStoredValue(enabled);
+        //     noiseB.setStoredValue(enabled);
+        //     envelopeB.setStoredValue(enabled);
+        // }
+        // else if (value.refersToSameSourceAs(channelC.getPropertyAsValue())) {
+        //     bool enabled = channelC.getStoredValue();
+        //     toneC.setStoredValue(enabled);
+        //     noiseC.setStoredValue(enabled);
+        //     envelopeC.setStoredValue(enabled);
+        // }
     }
 
     bool getChannelEnabled(size_t chan) const noexcept {

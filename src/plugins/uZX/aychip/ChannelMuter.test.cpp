@@ -21,7 +21,7 @@ public:
             regs.setEnvMod(0, false);
 
             // Disable channel A
-            filter.setChannelEnabled(0, false);
+            filter.channelA.setStoredValue(false);
             filter.apply(regs);
 
             // Verify: tone and noise are disabled
@@ -43,7 +43,7 @@ public:
             regs.setEnvMod(1, false);
 
             // Disable only tone
-            filter.setToneEnabled(1, false);
+            filter.toneB.setStoredValue(false);
             filter.apply(regs);
 
             // Verify
@@ -63,7 +63,7 @@ public:
             regs.setEnvMod(2, true);
 
             // Disable envelope
-            filter.setEnvelopeEnabled(2, false);
+            filter.envelopeC.setStoredValue(false);
             filter.apply(regs);
 
             // Verify
@@ -111,9 +111,9 @@ public:
             }
 
             // Disable different things on each channel
-            filter.setChannelEnabled(0, false);  // A: completely off
-            filter.setToneEnabled(1, false);      // B: no tone
-            filter.setNoiseEnabled(2, false);     // C: no noise
+            filter.channelA.setStoredValue(false); // A: no channel
+            filter.toneA.setStoredValue(false);    // A: no tone
+            filter.noiseA.setStoredValue(false);   // A: no noise
 
             filter.apply(regs);
 

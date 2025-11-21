@@ -17,11 +17,9 @@ namespace MoTool::uZX {
 //==============================================================================
 // Editor for AYChipPlugin
 //==============================================================================
-class AYPluginUI : public PluginDeviceUI,
-                   private Button::Listener {
+class AYPluginUI : public PluginDeviceUI {
 public:
     AYPluginUI(tracktion::Plugin::Ptr pluginPtr);
-    ~AYPluginUI() override;
 
     void paint(Graphics& g) override;
 
@@ -76,26 +74,23 @@ private:
     };
 
     // Channel groups
-    ChannelGroup channelA { plugin_, plugin_.dynamicParams.channelA,
-                            plugin_.dynamicParams.toneA,
-                            plugin_.dynamicParams.noiseA,
-                            plugin_.dynamicParams.envelopeA };
-    ChannelGroup channelB { plugin_, plugin_.dynamicParams.channelB,
-                            plugin_.dynamicParams.toneB,
-                            plugin_.dynamicParams.noiseB,
-                            plugin_.dynamicParams.envelopeB };
-    ChannelGroup channelC { plugin_, plugin_.dynamicParams.channelC,
-                            plugin_.dynamicParams.toneC,
-                            plugin_.dynamicParams.noiseC,
-                            plugin_.dynamicParams.envelopeC };
+    ChannelGroup channelA { plugin_, plugin_.channelMuter.channelA,
+                            plugin_.channelMuter.toneA,
+                            plugin_.channelMuter.noiseA,
+                            plugin_.channelMuter.envelopeA };
+    ChannelGroup channelB { plugin_, plugin_.channelMuter.channelB,
+                            plugin_.channelMuter.toneB,
+                            plugin_.channelMuter.noiseB,
+                            plugin_.channelMuter.envelopeB };
+    ChannelGroup channelC { plugin_, plugin_.channelMuter.channelC,
+                            plugin_.channelMuter.toneC,
+                            plugin_.channelMuter.noiseC,
+                            plugin_.channelMuter.envelopeC };
 
     std::array<ChannelGroup*, 3> channelGroups { &channelA, &channelB, &channelC };
 
     void setupToggleButtons();
     void layoutChannelToggles(juce::Rectangle<int>& r);
-
-    // Button::Listener
-    void buttonClicked(Button* button) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginUI)
 };

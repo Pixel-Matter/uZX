@@ -29,18 +29,6 @@ namespace IDs {
     DECLARE_ID(noDC)
     DECLARE_ID(midi)
     DECLARE_ID(volume)
-    DECLARE_ID(channelA)
-    DECLARE_ID(channelB)
-    DECLARE_ID(channelC)
-    DECLARE_ID(toneA)
-    DECLARE_ID(toneB)
-    DECLARE_ID(toneC)
-    DECLARE_ID(noiseA)
-    DECLARE_ID(noiseB)
-    DECLARE_ID(noiseC)
-    DECLARE_ID(envelopeA)
-    DECLARE_ID(envelopeB)
-    DECLARE_ID(envelopeC)
     #undef DECLARE_ID
 }  // namespace IDs
 
@@ -105,47 +93,16 @@ public:
             visitor(layout);
             visitor(stereoWidth);
             visitor(monitorMode);
-            visitor(channelA);
-            visitor(channelB);
-            visitor(channelC);
-            visitor(toneA);
-            visitor(toneB);
-            visitor(toneC);
-            visitor(noiseA);
-            visitor(noiseB);
-            visitor(noiseC);
-            visitor(envelopeA);
-            visitor(envelopeB);
-            visitor(envelopeC);
         }
 
         ParameterValue<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
         ParameterValue<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", ChannelsLayout::ACB}};
         ParameterValue<float> stereoWidth     {{"stereo", IDs::stereo, "Width",  "Stereo width",  0.5f, {0.f, 1.0f}}};
         ParameterValue<bool> monitorMode      {{"monitor", IDs::monitor, "Monitor", "Chip monitor mode",  false}};
-
-        // Channel enables
-        ParameterValue<bool> channelA         {{"channelA", IDs::channelA, "A", "Channel A enable", true}};
-        ParameterValue<bool> channelB         {{"channelB", IDs::channelB, "B", "Channel B enable", true}};
-        ParameterValue<bool> channelC         {{"channelC", IDs::channelC, "C", "Channel C enable", true}};
-
-        // Tone enables
-        ParameterValue<bool> toneA            {{"toneA", IDs::toneA, "T", "Tone A enable", true}};
-        ParameterValue<bool> toneB            {{"toneB", IDs::toneB, "T", "Tone B enable", true}};
-        ParameterValue<bool> toneC            {{"toneC", IDs::toneC, "T", "Tone C enable", true}};
-
-        // Noise enables
-        ParameterValue<bool> noiseA           {{"noiseA", IDs::noiseA, "N", "Noise A enable", true}};
-        ParameterValue<bool> noiseB           {{"noiseB", IDs::noiseB, "N", "Noise B enable", true}};
-        ParameterValue<bool> noiseC           {{"noiseC", IDs::noiseC, "N", "Noise C enable", true}};
-
-        // Envelope enables
-        ParameterValue<bool> envelopeA        {{"envelopeA", IDs::envelopeA, "E", "Envelope A enable", true}};
-        ParameterValue<bool> envelopeB        {{"envelopeB", IDs::envelopeB, "E", "Envelope B enable", true}};
-        ParameterValue<bool> envelopeC        {{"envelopeC", IDs::envelopeC, "E", "Envelope C enable", true}};
     };
 
     DynamicParams dynamicParams;
+    ChannelMuter channelMuter;
 
     enum class MidiReaderMode {
         Params,
@@ -163,7 +120,6 @@ private:
     PsgParamsMidiReader midiParamsReader;
     // PsgRegsMidiReader midiRegsReader;  // old version
     PsgRegsFrame registersFrame;
-    ChannelMuter channelEffectFilter;
     std::unique_ptr<AYInterface> chip;
 
     // double timeFromReset;
@@ -183,7 +139,6 @@ private:
     void handleMidiEvent(const te::MidiMessageWithSource& m) noexcept;
 
     void updateDynamicParams();
-    void updateChannelEffectFilter() noexcept;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };

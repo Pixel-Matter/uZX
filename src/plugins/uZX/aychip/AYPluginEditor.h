@@ -64,6 +64,15 @@ private:
     ChoiceButton envelopeBButton  { plugin_, plugin_.dynamicParams.envelopeB };
     ChoiceButton envelopeCButton  { plugin_, plugin_.dynamicParams.envelopeC };
 
+    // Helper arrays for iteration
+    std::array<ChoiceButton*, 3> channelButtons;
+    std::array<ChoiceButton*, 3> toneButtons;
+    std::array<ChoiceButton*, 3> noiseButtons;
+    std::array<ChoiceButton*, 3> envelopeButtons;
+
+    void setupToggleButtons();
+    void layoutChannelToggles(juce::Rectangle<int>& r);
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginUI)
 };
 

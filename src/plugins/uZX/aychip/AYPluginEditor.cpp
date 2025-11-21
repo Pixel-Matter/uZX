@@ -13,6 +13,10 @@ AYPluginUI::AYPluginUI(tracktion::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
     , plugin_(*dynamic_cast<AYChipPlugin*>(pluginPtr.get()))
     , chipClockBinding(chipClockCombo, plugin_.staticParams.chipClock, makeChipClockPresets(), false, true)
+    , channelButtons{&channelAButton, &channelBButton, &channelCButton}
+    , toneButtons{&toneAButton, &toneBButton, &toneCButton}
+    , noiseButtons{&noiseAButton, &noiseBButton, &noiseCButton}
+    , envelopeButtons{&envelopeAButton, &envelopeBButton, &envelopeCButton}
 {
     constrainer_.setMinimumWidth(160);
     setSize(168, 180);
@@ -25,22 +29,49 @@ AYPluginUI::AYPluginUI(tracktion::Plugin::Ptr pluginPtr)
     addAndMakeVisible(layoutButton);
     addAndMakeVisible(stereoKnob);
 
-    // Add channel and effect toggle buttons
-    addAndMakeVisible(channelAButton);
-    addAndMakeVisible(channelBButton);
-    addAndMakeVisible(channelCButton);
+    setupToggleButtons();
+}
 
-    addAndMakeVisible(toneAButton);
-    addAndMakeVisible(toneBButton);
-    addAndMakeVisible(toneCButton);
+void AYPluginUI::setupToggleButtons() {
+    for (auto* btn : channelButtons) addAndMakeVisible(*btn);
+    for (auto* btn : toneButtons) addAndMakeVisible(*btn);
+    for (auto* btn : noiseButtons) addAndMakeVisible(*btn);
+    for (auto* btn : envelopeButtons) addAndMakeVisible(*btn);
+}
 
-    addAndMakeVisible(noiseAButton);
-    addAndMakeVisible(noiseBButton);
-    addAndMakeVisible(noiseCButton);
+void AYPluginUI::layoutChannelToggles(juce::Rectangle<int>& r) {
+    r.removeFromTop(itemSpacing * 2);
 
-    addAndMakeVisible(envelopeAButton);
-    addAndMakeVisible(envelopeBButton);
-    addAndMakeVisible(envelopeCButton);
+    // Row 1: Channel enables (A, B, C) - full width large buttons
+    auto channelRow = r.removeFromTop(itemHeight);
+    const int channelButtonSpacing = 4;
+    const int channelButtonWidth = (channelRow.getWidth() - 2 * channelButtonSpacing) / 3;
+
+    for (int i = 0; i < 3; ++i) {
+        if (i > 0) channelRow.removeFromLeft(channelButtonSpacing);
+        channelButtons[i]->setBounds(i < 2 ? channelRow.removeFromLeft(channelButtonWidth) : channelRow);
+    }
+
+    r.removeFromTop(itemSpacing);
+
+    // Row 2: Effect toggles grouped by channel [T|N|E] [T|N|E] [T|N|E]
+    auto effectsRow = r.removeFromTop(itemHeight);
+    const int effectGroupSpacing = 4;
+    const int effectGroupWidth = (effectsRow.getWidth() - 2 * effectGroupSpacing) / 3;
+    const int effectButtonSpacing = 2;
+    const int effectButtonWidth = (effectGroupWidth - 2 * effectButtonSpacing) / 3;
+
+    for (int chan = 0; chan < 3; ++chan) {
+        if (chan > 0) effectsRow.removeFromLeft(effectGroupSpacing);
+
+        auto effectGroup = (chan < 2) ? effectsRow.removeFromLeft(effectGroupWidth) : effectsRow;
+
+        toneButtons[chan]->setBounds(effectGroup.removeFromLeft(effectButtonWidth));
+        effectGroup.removeFromLeft(effectButtonSpacing);
+        noiseButtons[chan]->setBounds(effectGroup.removeFromLeft(effectButtonWidth));
+        effectGroup.removeFromLeft(effectButtonSpacing);
+        envelopeButtons[chan]->setBounds(effectGroup);
+    }
 }
 
 void AYPluginUI::paint(Graphics& g) {
@@ -68,55 +99,7 @@ void AYPluginUI::resized() {
     volumeKnob.setBounds(knobsRow);
 
     // Channel and effect toggles
-    r.removeFromTop(itemSpacing * 2);
-
-    // Row 1: Channel enables (A, B, C) - full width large buttons
-    auto channelRow = r.removeFromTop(itemHeight);
-    const int channelButtonSpacing = 4;
-    const int channelButtonWidth = (channelRow.getWidth() - 2 * channelButtonSpacing) / 3;
-
-    channelAButton.setBounds(channelRow.removeFromLeft(channelButtonWidth));
-    channelRow.removeFromLeft(channelButtonSpacing);
-    channelBButton.setBounds(channelRow.removeFromLeft(channelButtonWidth));
-    channelRow.removeFromLeft(channelButtonSpacing);
-    channelCButton.setBounds(channelRow);
-
-    r.removeFromTop(itemSpacing);
-
-    // Row 2: Effect toggles grouped by channel [T|N|E] [T|N|E] [T|N|E]
-    auto effectsRow = r.removeFromTop(itemHeight);
-    const int effectGroupSpacing = 4;
-    const int effectGroupWidth = (effectsRow.getWidth() - 2 * effectGroupSpacing) / 3;
-    const int effectButtonSpacing = 2;
-    const int effectButtonWidth = (effectGroupWidth - 2 * effectButtonSpacing) / 3;
-
-    // Channel A effects: T|N|E
-    auto effectGroupA = effectsRow.removeFromLeft(effectGroupWidth);
-    toneAButton.setBounds(effectGroupA.removeFromLeft(effectButtonWidth));
-    effectGroupA.removeFromLeft(effectButtonSpacing);
-    noiseAButton.setBounds(effectGroupA.removeFromLeft(effectButtonWidth));
-    effectGroupA.removeFromLeft(effectButtonSpacing);
-    envelopeAButton.setBounds(effectGroupA);
-
-    effectsRow.removeFromLeft(effectGroupSpacing);
-
-    // Channel B effects: T|N|E
-    auto effectGroupB = effectsRow.removeFromLeft(effectGroupWidth);
-    toneBButton.setBounds(effectGroupB.removeFromLeft(effectButtonWidth));
-    effectGroupB.removeFromLeft(effectButtonSpacing);
-    noiseBButton.setBounds(effectGroupB.removeFromLeft(effectButtonWidth));
-    effectGroupB.removeFromLeft(effectButtonSpacing);
-    envelopeBButton.setBounds(effectGroupB);
-
-    effectsRow.removeFromLeft(effectGroupSpacing);
-
-    // Channel C effects: T|N|E
-    auto effectGroupC = effectsRow;
-    toneCButton.setBounds(effectGroupC.removeFromLeft(effectButtonWidth));
-    effectGroupC.removeFromLeft(effectButtonSpacing);
-    noiseCButton.setBounds(effectGroupC.removeFromLeft(effectButtonWidth));
-    effectGroupC.removeFromLeft(effectButtonSpacing);
-    envelopeCButton.setBounds(effectGroupC);
+    layoutChannelToggles(r);
 }
 
 ComponentBoundsConstrainer* AYPluginUI::getBoundsConstrainer() {

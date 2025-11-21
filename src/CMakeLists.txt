@@ -155,7 +155,7 @@ add_dependencies(motool_common motool_generate_juce_headers)
 
 add_dependencies(${MAIN_TARGET_NAME}   motool_generate_version_header)
 add_dependencies(${TUNING_TARGET_NAME} motool_generate_version_header)
-add_dependencies(motool_common motool_generate_version_header)
+#add_dependencies(motool_common motool_generate_version_header)
 
 # Tracktion Utils
 # include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")

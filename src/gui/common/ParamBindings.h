@@ -155,6 +155,34 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ButtonParamEndpointBinding)
 };
 
+//============================================================================
+class ToggleParamEndpointBinding : public WidgetParamEndpointBinding {
+public:
+    ToggleParamEndpointBinding(Button& b, auto&& endpoint, const String& label)
+        : WidgetParamEndpointBinding(b, std::forward<decltype(endpoint)>(endpoint))
+        , button(b)
+        , buttonLabel(label)
+    {
+        configureWidget();
+        configureWidgetHandlers();
+        refreshFromSource();
+    }
+
+    template <typename Type>
+    ToggleParamEndpointBinding(Button& b, ParameterValue<Type>& paramValue, te::AutomatableParameter::Ptr parameterIn = {})
+        : ToggleParamEndpointBinding(b, makeResolveParamEndpoint(paramValue, std::move(parameterIn)), paramValue.definition.shortLabel)
+    {}
+
+private:
+    void configureWidget();
+    void configureWidgetHandlers();
+    void refreshFromSource() override;
+
+    Button& button;
+    String buttonLabel;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ToggleParamEndpointBinding)
+};
 
 
 }  // namespace MoTool

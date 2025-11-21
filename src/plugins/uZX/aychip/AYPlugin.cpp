@@ -32,6 +32,28 @@ void AYChipPlugin::updateDynamicParams() {
     chip->setLayoutAndStereoWidth(dynamicParams.layout.getLiveValue(), dynamicParams.stereoWidth.getLiveValue());
 }
 
+void AYChipPlugin::updateChannelEffectFilter() noexcept {
+    // Update channel enables
+    channelEffectFilter.setChannelEnabled(0, dynamicParams.channelA.getLiveValue());
+    channelEffectFilter.setChannelEnabled(1, dynamicParams.channelB.getLiveValue());
+    channelEffectFilter.setChannelEnabled(2, dynamicParams.channelC.getLiveValue());
+
+    // Update tone enables
+    channelEffectFilter.setToneEnabled(0, dynamicParams.toneA.getLiveValue());
+    channelEffectFilter.setToneEnabled(1, dynamicParams.toneB.getLiveValue());
+    channelEffectFilter.setToneEnabled(2, dynamicParams.toneC.getLiveValue());
+
+    // Update noise enables
+    channelEffectFilter.setNoiseEnabled(0, dynamicParams.noiseA.getLiveValue());
+    channelEffectFilter.setNoiseEnabled(1, dynamicParams.noiseB.getLiveValue());
+    channelEffectFilter.setNoiseEnabled(2, dynamicParams.noiseC.getLiveValue());
+
+    // Update envelope enables
+    channelEffectFilter.setEnvelopeEnabled(0, dynamicParams.envelopeA.getLiveValue());
+    channelEffectFilter.setEnvelopeEnabled(1, dynamicParams.envelopeB.getLiveValue());
+    channelEffectFilter.setEnvelopeEnabled(2, dynamicParams.envelopeC.getLiveValue());
+}
+
 void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
     // TODO staticParams.isParamProperty(id);
     if (v == state) {
@@ -125,6 +147,9 @@ void AYChipPlugin::updateChip() noexcept {
     //     // updateRegistersFromMidiRegs();
     // }
 
+    // Apply channel and effect filters
+    channelEffectFilter.apply(registersFrame);
+
     for (size_t i = 0; i < registersFrame.size(); ++i) {
         if (registersFrame.isSet(i)) {
             // DBG("" << i << " = " << registersFrame.getRaw(i));
@@ -164,6 +189,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     // }
     for (auto& m : *fc.bufferForMidiMessages) {
         updateDynamicParams();
+        updateChannelEffectFilter();
         // TODO retrigger events with smallest delay
 
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
@@ -179,6 +205,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         handleMidiEvent(m);
     }
     updateDynamicParams();
+    updateChannelEffectFilter();
     // process to the end of the block
     updateChip();
     if (currentSample < fc.destBuffer->getNumSamples()) {

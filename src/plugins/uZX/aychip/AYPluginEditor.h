@@ -47,6 +47,23 @@ private:
     ChoiceButton layoutButton  { plugin_, plugin_.dynamicParams.layout };
     LabeledSlider stereoKnob   { plugin_, plugin_.dynamicParams.stereoWidth };
 
+    // Channel and effect toggles
+    ChoiceButton channelAButton   { plugin_, plugin_.dynamicParams.channelA };
+    ChoiceButton channelBButton   { plugin_, plugin_.dynamicParams.channelB };
+    ChoiceButton channelCButton   { plugin_, plugin_.dynamicParams.channelC };
+
+    ChoiceButton toneAButton      { plugin_, plugin_.dynamicParams.toneA };
+    ChoiceButton toneBButton      { plugin_, plugin_.dynamicParams.toneB };
+    ChoiceButton toneCButton      { plugin_, plugin_.dynamicParams.toneC };
+
+    ChoiceButton noiseAButton     { plugin_, plugin_.dynamicParams.noiseA };
+    ChoiceButton noiseBButton     { plugin_, plugin_.dynamicParams.noiseB };
+    ChoiceButton noiseCButton     { plugin_, plugin_.dynamicParams.noiseC };
+
+    ChoiceButton envelopeAButton  { plugin_, plugin_.dynamicParams.envelopeA };
+    ChoiceButton envelopeBButton  { plugin_, plugin_.dynamicParams.envelopeB };
+    ChoiceButton envelopeCButton  { plugin_, plugin_.dynamicParams.envelopeC };
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginUI)
 };
 

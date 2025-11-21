@@ -17,9 +17,11 @@ namespace MoTool::uZX {
 //==============================================================================
 // Editor for AYChipPlugin
 //==============================================================================
-class AYPluginUI : public PluginDeviceUI {
+class AYPluginUI : public PluginDeviceUI,
+                   private Button::Listener {
 public:
     AYPluginUI(tracktion::Plugin::Ptr pluginPtr);
+    ~AYPluginUI() override;
 
     void paint(Graphics& g) override;
 
@@ -91,6 +93,9 @@ private:
 
     void setupToggleButtons();
     void layoutChannelToggles(juce::Rectangle<int>& r);
+
+    // Button::Listener
+    void buttonClicked(Button* button) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginUI)
 };

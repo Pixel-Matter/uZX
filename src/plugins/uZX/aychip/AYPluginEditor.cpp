@@ -28,6 +28,13 @@ AYPluginUI::AYPluginUI(tracktion::Plugin::Ptr pluginPtr)
     setupToggleButtons();
 }
 
+AYPluginUI::~AYPluginUI() {
+    // Remove button listeners
+    for (auto* group : channelGroups) {
+        group->channelOn.removeListener(this);
+    }
+}
+
 void AYPluginUI::setupToggleButtons() {
     for (auto* group : channelGroups) {
         group->addToComponent(*this);
@@ -36,6 +43,9 @@ void AYPluginUI::setupToggleButtons() {
         group->toneOn.setConnectedEdges(Button::ConnectedOnRight);
         group->noiseOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnRight);
         group->envelopeOn.setConnectedEdges(Button::ConnectedOnLeft);
+
+        // Add channel button listener for linked toggle behavior
+        group->channelOn.addListener(this);
     }
 }
 
@@ -112,6 +122,27 @@ bool AYPluginUI::hasDeviceMenu() const {
 
 void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
     addMidiRangeMenu(menu, plugin_.staticParams.baseMidiChannel, plugin_.staticParams.baseMidiChannel.definition.description, 4);
+}
+
+void AYPluginUI::buttonClicked(Button* button) {
+    // Find which channel button was clicked and link TNE toggles
+    bool channelEnabled = button->getToggleState();
+
+    if (button == &channelA.channelOn) {
+        plugin_.dynamicParams.toneA.setStoredValue(channelEnabled);
+        plugin_.dynamicParams.noiseA.setStoredValue(channelEnabled);
+        plugin_.dynamicParams.envelopeA.setStoredValue(channelEnabled);
+    }
+    else if (button == &channelB.channelOn) {
+        plugin_.dynamicParams.toneB.setStoredValue(channelEnabled);
+        plugin_.dynamicParams.noiseB.setStoredValue(channelEnabled);
+        plugin_.dynamicParams.envelopeB.setStoredValue(channelEnabled);
+    }
+    else if (button == &channelC.channelOn) {
+        plugin_.dynamicParams.toneC.setStoredValue(channelEnabled);
+        plugin_.dynamicParams.noiseC.setStoredValue(channelEnabled);
+        plugin_.dynamicParams.envelopeC.setStoredValue(channelEnabled);
+    }
 }
 
 REGISTER_PLUGIN_UI_ADAPTER(AYChipPlugin, AYPluginUI)

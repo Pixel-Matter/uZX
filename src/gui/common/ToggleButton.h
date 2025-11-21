@@ -13,7 +13,7 @@ class ToggleButton : public TextButton,
 {
 public:
     ToggleButton(te::AutomatableEditItem& plugin, ParameterValue<bool>& value)
-        : binding(*this, makeResolveParamEndpoint(plugin, value))
+        : binding(*this, makeResolveParamEndpoint(plugin, value), value.definition.shortLabel)
     {
         binding.midiMapping.addChangeListener(this);
     }
@@ -30,7 +30,7 @@ private:
         // }
     }
 
-    ButtonParamEndpointBinding binding;
+    ToggleParamEndpointBinding binding;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ToggleButton)
 };
 

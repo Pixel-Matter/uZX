@@ -198,4 +198,34 @@ int ButtonParamEndpointBinding::wrapIndex(int index) const {
     return index;
 }
 
+//============================================================================
+
+void ToggleParamEndpointBinding::configureWidget() {
+    button.setTooltip(endpoint().getDescription());
+    button.setButtonText(buttonLabel);
+    button.setClickingTogglesState(true);
+}
+
+void ToggleParamEndpointBinding::configureWidgetHandlers() {
+    button.onClick = [this] {
+        if (updating)
+            return;
+
+        juce::ScopedValueSetter<bool> svs(updating, true);
+        const bool newState = button.getToggleState();
+        endpoint().beginGesture();
+        endpoint().setStoredFloatValue(newState ? 1.0f : 0.0f);
+        endpoint().endGesture();
+    };
+}
+
+void ToggleParamEndpointBinding::refreshFromSource() {
+    if (updating)
+        return;
+
+    juce::ScopedValueSetter<bool> svs(updating, true);
+    const bool state = endpoint().getLiveFloatValue() >= 0.5f;
+    button.setToggleState(state, dontSendNotification);
+}
+
 } // namespace MoTool

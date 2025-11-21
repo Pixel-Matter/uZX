@@ -31,6 +31,11 @@ AYPluginUI::AYPluginUI(tracktion::Plugin::Ptr pluginPtr)
 void AYPluginUI::setupToggleButtons() {
     for (auto* group : channelGroups) {
         group->addToComponent(*this);
+
+        // Set connected edges for effect buttons [T|N|E]
+        group->toneOn.setConnectedEdges(Button::ConnectedOnRight);
+        group->noiseOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnRight);
+        group->envelopeOn.setConnectedEdges(Button::ConnectedOnLeft);
     }
 }
 
@@ -54,8 +59,7 @@ void AYPluginUI::layoutChannelToggles(juce::Rectangle<int>& r) {
     auto effectsRow = r.removeFromTop(itemHeight);
     const int effectGroupSpacing = 4;
     const int effectGroupWidth = (effectsRow.getWidth() - 2 * effectGroupSpacing) / 3;
-    const int effectButtonSpacing = 2;
-    const int effectButtonWidth = (effectGroupWidth - 2 * effectButtonSpacing) / 3;
+    const int effectButtonWidth = effectGroupWidth / 3;  // No spacing between connected buttons
 
     for (int chan = 0; chan < 3; ++chan) {
         if (chan > 0) effectsRow.removeFromLeft(effectGroupSpacing);
@@ -63,10 +67,9 @@ void AYPluginUI::layoutChannelToggles(juce::Rectangle<int>& r) {
         auto effectGroup = (chan < 2) ? effectsRow.removeFromLeft(effectGroupWidth) : effectsRow;
         auto& group = *channelGroups[chan];
 
+        // Layout connected buttons with no spacing
         group.toneOn.setBounds(effectGroup.removeFromLeft(effectButtonWidth));
-        effectGroup.removeFromLeft(effectButtonSpacing);
         group.noiseOn.setBounds(effectGroup.removeFromLeft(effectButtonWidth));
-        effectGroup.removeFromLeft(effectButtonSpacing);
         group.envelopeOn.setBounds(effectGroup);
     }
 }

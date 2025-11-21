@@ -4,6 +4,7 @@
 
 #include "AYPlugin.h"
 #include "../../../gui/common/ChoiceButton.h"
+#include "../../../gui/common/ToggleButton.h"
 #include "../../../gui/common/ComboBindingWithPresets.h"
 #include "../../../gui/common/ComboBoxWithOverrideId.h"
 #include "../../../gui/common/LabeledSlider.h"
@@ -47,28 +48,41 @@ private:
     ChoiceButton layoutButton  { plugin_, plugin_.dynamicParams.layout };
     LabeledSlider stereoKnob   { plugin_, plugin_.dynamicParams.stereoWidth };
 
+    struct ChannelGroup {
+        ChannelGroup(AYChipPlugin& plugin)
+            : channelOn   { plugin, plugin.dynamicParams.channelA }
+            , toneOn      { plugin, plugin.dynamicParams.toneA }
+            , noiseOn     { plugin, plugin.dynamicParams.noiseA }
+            , envelopeOn  { plugin, plugin.dynamicParams.envelopeA }
+        {}
+        ToggleButton channelOn;
+        ToggleButton toneOn;
+        ToggleButton noiseOn;
+        ToggleButton envelopeOn;
+    };
+
     // Channel and effect toggles
-    ChoiceButton channelAButton   { plugin_, plugin_.dynamicParams.channelA };
-    ChoiceButton channelBButton   { plugin_, plugin_.dynamicParams.channelB };
-    ChoiceButton channelCButton   { plugin_, plugin_.dynamicParams.channelC };
+    ToggleButton channelAButton   { plugin_, plugin_.dynamicParams.channelA };
+    ToggleButton channelBButton   { plugin_, plugin_.dynamicParams.channelB };
+    ToggleButton channelCButton   { plugin_, plugin_.dynamicParams.channelC };
 
-    ChoiceButton toneAButton      { plugin_, plugin_.dynamicParams.toneA };
-    ChoiceButton toneBButton      { plugin_, plugin_.dynamicParams.toneB };
-    ChoiceButton toneCButton      { plugin_, plugin_.dynamicParams.toneC };
+    ToggleButton toneAButton      { plugin_, plugin_.dynamicParams.toneA };
+    ToggleButton toneBButton      { plugin_, plugin_.dynamicParams.toneB };
+    ToggleButton toneCButton      { plugin_, plugin_.dynamicParams.toneC };
 
-    ChoiceButton noiseAButton     { plugin_, plugin_.dynamicParams.noiseA };
-    ChoiceButton noiseBButton     { plugin_, plugin_.dynamicParams.noiseB };
-    ChoiceButton noiseCButton     { plugin_, plugin_.dynamicParams.noiseC };
+    ToggleButton noiseAButton     { plugin_, plugin_.dynamicParams.noiseA };
+    ToggleButton noiseBButton     { plugin_, plugin_.dynamicParams.noiseB };
+    ToggleButton noiseCButton     { plugin_, plugin_.dynamicParams.noiseC };
 
-    ChoiceButton envelopeAButton  { plugin_, plugin_.dynamicParams.envelopeA };
-    ChoiceButton envelopeBButton  { plugin_, plugin_.dynamicParams.envelopeB };
-    ChoiceButton envelopeCButton  { plugin_, plugin_.dynamicParams.envelopeC };
+    ToggleButton envelopeAButton  { plugin_, plugin_.dynamicParams.envelopeA };
+    ToggleButton envelopeBButton  { plugin_, plugin_.dynamicParams.envelopeB };
+    ToggleButton envelopeCButton  { plugin_, plugin_.dynamicParams.envelopeC };
 
     // Helper arrays for iteration
-    std::array<ChoiceButton*, 3> channelButtons;
-    std::array<ChoiceButton*, 3> toneButtons;
-    std::array<ChoiceButton*, 3> noiseButtons;
-    std::array<ChoiceButton*, 3> envelopeButtons;
+    std::array<ToggleButton*, 3> channelButtons;
+    std::array<ToggleButton*, 3> toneButtons;
+    std::array<ToggleButton*, 3> noiseButtons;
+    std::array<ToggleButton*, 3> envelopeButtons;
 
     void setupToggleButtons();
     void layoutChannelToggles(juce::Rectangle<int>& r);

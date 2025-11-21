@@ -1,17 +1,17 @@
 #include <JuceHeader.h>
-#include "ChannelEffectFilter.h"
+#include "ChannelMuter.h"
 
 namespace MoTool::uZX {
 
 //==============================================================================
 class ChannelEffectFilterTest : public juce::UnitTest {
 public:
-    ChannelEffectFilterTest() : UnitTest("ChannelEffectFilter", "MoTool") {}
+    ChannelEffectFilterTest() : UnitTest("ChannelMuter", "MoTool") {}
 
     void runTest() override {
         beginTest("Disabling channel should disable all effects");
         {
-            ChannelEffectFilter filter;
+            ChannelMuter filter;
             PsgRegsFrame regs;
 
             // Setup: channel has tone, noise, and volume
@@ -33,7 +33,7 @@ public:
 
         beginTest("Disabling tone only should preserve noise and volume");
         {
-            ChannelEffectFilter filter;
+            ChannelMuter filter;
             PsgRegsFrame regs;
 
             // Setup
@@ -54,7 +54,7 @@ public:
 
         beginTest("Disabling envelope should clear envelope mod bit");
         {
-            ChannelEffectFilter filter;
+            ChannelMuter filter;
             PsgRegsFrame regs;
 
             // Setup: channel using envelope
@@ -73,7 +73,7 @@ public:
 
         beginTest("Channel disabled with only tone - verify silence without volume=0");
         {
-            ChannelEffectFilter filter;
+            ChannelMuter filter;
             PsgRegsFrame regs;
 
             // Setup: channel with tone only, high volume
@@ -100,7 +100,7 @@ public:
 
         beginTest("All channels can be controlled independently");
         {
-            ChannelEffectFilter filter;
+            ChannelMuter filter;
             PsgRegsFrame regs;
 
             // Setup all channels

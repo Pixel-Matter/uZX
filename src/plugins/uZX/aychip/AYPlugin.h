@@ -6,7 +6,7 @@
 #include "../../../models/PsgMidi.h"
 #include "../../../controllers/BindedAutoParameter.h"
 #include "aychip.h"
-#include "ChannelEffectFilter.h"
+#include "ChannelMuter.h"
 
 #include <atomic>
 #include <array>
@@ -125,24 +125,24 @@ public:
         ParameterValue<bool> monitorMode      {{"monitor", IDs::monitor, "Monitor", "Chip monitor mode",  false}};
 
         // Channel enables
-        ParameterValue<bool> channelA         {{"channelA", IDs::channelA, "Ch A", "Channel A enable", true}};
-        ParameterValue<bool> channelB         {{"channelB", IDs::channelB, "Ch B", "Channel B enable", true}};
-        ParameterValue<bool> channelC         {{"channelC", IDs::channelC, "Ch C", "Channel C enable", true}};
+        ParameterValue<bool> channelA         {{"channelA", IDs::channelA, "A", "Channel A enable", true}};
+        ParameterValue<bool> channelB         {{"channelB", IDs::channelB, "B", "Channel B enable", true}};
+        ParameterValue<bool> channelC         {{"channelC", IDs::channelC, "C", "Channel C enable", true}};
 
         // Tone enables
-        ParameterValue<bool> toneA            {{"toneA", IDs::toneA, "Tone A", "Tone A enable", true}};
-        ParameterValue<bool> toneB            {{"toneB", IDs::toneB, "Tone B", "Tone B enable", true}};
-        ParameterValue<bool> toneC            {{"toneC", IDs::toneC, "Tone C", "Tone C enable", true}};
+        ParameterValue<bool> toneA            {{"toneA", IDs::toneA, "T", "Tone A enable", true}};
+        ParameterValue<bool> toneB            {{"toneB", IDs::toneB, "T", "Tone B enable", true}};
+        ParameterValue<bool> toneC            {{"toneC", IDs::toneC, "T", "Tone C enable", true}};
 
         // Noise enables
-        ParameterValue<bool> noiseA           {{"noiseA", IDs::noiseA, "Noise A", "Noise A enable", true}};
-        ParameterValue<bool> noiseB           {{"noiseB", IDs::noiseB, "Noise B", "Noise B enable", true}};
-        ParameterValue<bool> noiseC           {{"noiseC", IDs::noiseC, "Noise C", "Noise C enable", true}};
+        ParameterValue<bool> noiseA           {{"noiseA", IDs::noiseA, "N", "Noise A enable", true}};
+        ParameterValue<bool> noiseB           {{"noiseB", IDs::noiseB, "N", "Noise B enable", true}};
+        ParameterValue<bool> noiseC           {{"noiseC", IDs::noiseC, "N", "Noise C enable", true}};
 
         // Envelope enables
-        ParameterValue<bool> envelopeA        {{"envelopeA", IDs::envelopeA, "Env A", "Envelope A enable", true}};
-        ParameterValue<bool> envelopeB        {{"envelopeB", IDs::envelopeB, "Env B", "Envelope B enable", true}};
-        ParameterValue<bool> envelopeC        {{"envelopeC", IDs::envelopeC, "Env C", "Envelope C enable", true}};
+        ParameterValue<bool> envelopeA        {{"envelopeA", IDs::envelopeA, "E", "Envelope A enable", true}};
+        ParameterValue<bool> envelopeB        {{"envelopeB", IDs::envelopeB, "E", "Envelope B enable", true}};
+        ParameterValue<bool> envelopeC        {{"envelopeC", IDs::envelopeC, "E", "Envelope C enable", true}};
     };
 
     DynamicParams dynamicParams;
@@ -163,7 +163,7 @@ private:
     PsgParamsMidiReader midiParamsReader;
     // PsgRegsMidiReader midiRegsReader;  // old version
     PsgRegsFrame registersFrame;
-    ChannelEffectFilter channelEffectFilter;
+    ChannelMuter channelEffectFilter;
     std::unique_ptr<AYInterface> chip;
 
     // double timeFromReset;

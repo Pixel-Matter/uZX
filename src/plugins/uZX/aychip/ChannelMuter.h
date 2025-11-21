@@ -12,9 +12,9 @@ namespace MoTool::uZX {
  * allowing selective muting of channels and their individual effects (tone,
  * noise, envelope).
  */
-class ChannelEffectFilter {
+class ChannelMuter {
 public:
-    ChannelEffectFilter() = default;
+    ChannelMuter() = default;
 
     /**
      * Apply channel and effect filters to the register frame
@@ -24,12 +24,10 @@ public:
     void apply(PsgRegsFrame& regs) const noexcept {
         for (size_t chan = 0; chan < 3; ++chan) {
             if (!channelEnabled_[chan]) {
-                // Disable entire channel by disabling all effects
-                // Note: No need to set volume to 0 - when both tone and noise
-                // are disabled via mixer, the channel is silent regardless of volume
                 regs.setToneOn(chan, false);
                 regs.setNoiseOn(chan, false);
-                regs.setEnvMod(chan, false);
+                regs.setVolumeAndEnvMod(chan, 0, false);
+                // regs.setEnvMod(chan, false);
             } else {
                 // Channel is enabled, but check individual effects
                 if (!toneEnabled_[chan]) {

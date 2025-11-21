@@ -49,40 +49,45 @@ private:
     LabeledSlider stereoKnob   { plugin_, plugin_.dynamicParams.stereoWidth };
 
     struct ChannelGroup {
-        ChannelGroup(AYChipPlugin& plugin)
-            : channelOn   { plugin, plugin.dynamicParams.channelA }
-            , toneOn      { plugin, plugin.dynamicParams.toneA }
-            , noiseOn     { plugin, plugin.dynamicParams.noiseA }
-            , envelopeOn  { plugin, plugin.dynamicParams.envelopeA }
+        ChannelGroup(AYChipPlugin& plugin,
+                     ParameterValue<bool>& channelParam,
+                     ParameterValue<bool>& toneParam,
+                     ParameterValue<bool>& noiseParam,
+                     ParameterValue<bool>& envelopeParam)
+            : channelOn   { plugin, channelParam }
+            , toneOn      { plugin, toneParam }
+            , noiseOn     { plugin, noiseParam }
+            , envelopeOn  { plugin, envelopeParam }
         {}
+
         ToggleButton channelOn;
         ToggleButton toneOn;
         ToggleButton noiseOn;
         ToggleButton envelopeOn;
+
+        void addToComponent(Component& parent) {
+            parent.addAndMakeVisible(channelOn);
+            parent.addAndMakeVisible(toneOn);
+            parent.addAndMakeVisible(noiseOn);
+            parent.addAndMakeVisible(envelopeOn);
+        }
     };
 
-    // Channel and effect toggles
-    ToggleButton channelAButton   { plugin_, plugin_.dynamicParams.channelA };
-    ToggleButton channelBButton   { plugin_, plugin_.dynamicParams.channelB };
-    ToggleButton channelCButton   { plugin_, plugin_.dynamicParams.channelC };
+    // Channel groups
+    ChannelGroup channelA { plugin_, plugin_.dynamicParams.channelA,
+                            plugin_.dynamicParams.toneA,
+                            plugin_.dynamicParams.noiseA,
+                            plugin_.dynamicParams.envelopeA };
+    ChannelGroup channelB { plugin_, plugin_.dynamicParams.channelB,
+                            plugin_.dynamicParams.toneB,
+                            plugin_.dynamicParams.noiseB,
+                            plugin_.dynamicParams.envelopeB };
+    ChannelGroup channelC { plugin_, plugin_.dynamicParams.channelC,
+                            plugin_.dynamicParams.toneC,
+                            plugin_.dynamicParams.noiseC,
+                            plugin_.dynamicParams.envelopeC };
 
-    ToggleButton toneAButton      { plugin_, plugin_.dynamicParams.toneA };
-    ToggleButton toneBButton      { plugin_, plugin_.dynamicParams.toneB };
-    ToggleButton toneCButton      { plugin_, plugin_.dynamicParams.toneC };
-
-    ToggleButton noiseAButton     { plugin_, plugin_.dynamicParams.noiseA };
-    ToggleButton noiseBButton     { plugin_, plugin_.dynamicParams.noiseB };
-    ToggleButton noiseCButton     { plugin_, plugin_.dynamicParams.noiseC };
-
-    ToggleButton envelopeAButton  { plugin_, plugin_.dynamicParams.envelopeA };
-    ToggleButton envelopeBButton  { plugin_, plugin_.dynamicParams.envelopeB };
-    ToggleButton envelopeCButton  { plugin_, plugin_.dynamicParams.envelopeC };
-
-    // Helper arrays for iteration
-    std::array<ToggleButton*, 3> channelButtons;
-    std::array<ToggleButton*, 3> toneButtons;
-    std::array<ToggleButton*, 3> noiseButtons;
-    std::array<ToggleButton*, 3> envelopeButtons;
+    std::array<ChannelGroup*, 3> channelGroups { &channelA, &channelB, &channelC };
 
     void setupToggleButtons();
     void layoutChannelToggles(juce::Rectangle<int>& r);

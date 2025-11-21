@@ -24,8 +24,9 @@ public:
     void apply(PsgRegsFrame& regs) const noexcept {
         for (size_t chan = 0; chan < 3; ++chan) {
             if (!channelEnabled_[chan]) {
-                // Disable entire channel - set volume to 0 and disable all effects
-                regs.setVolume(chan, 0);
+                // Disable entire channel by disabling all effects
+                // Note: No need to set volume to 0 - when both tone and noise
+                // are disabled via mixer, the channel is silent regardless of volume
                 regs.setToneOn(chan, false);
                 regs.setNoiseOn(chan, false);
                 regs.setEnvMod(chan, false);

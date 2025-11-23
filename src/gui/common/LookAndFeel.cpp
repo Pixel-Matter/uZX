@@ -109,9 +109,16 @@ void MoLookAndFeel::drawButtonBackground(Graphics& g, Button& button,
     // if (shouldDrawButtonAsDown || shouldDrawButtonAsHighlighted)
     //     baseColour = baseColour.contrasting(shouldDrawButtonAsDown ? 0.2f : 0.05f);
     // g.setColour(baseColour);
-    g.setColour(shouldDrawButtonAsDown ? backgroundColour.darker(0.2f) :
-                shouldDrawButtonAsHighlighted ? backgroundColour.brighter(0.1f) :
-                backgroundColour);
+    auto baseColour = shouldDrawButtonAsDown ? backgroundColour.darker(0.2f) :
+                      shouldDrawButtonAsHighlighted ? backgroundColour.brighter(0.1f) :
+                      backgroundColour;
+
+    // Apply transparency for disabled buttons
+    if (!button.isEnabled()) {
+        baseColour = baseColour.withAlpha(0.3f);
+    }
+
+    g.setColour(baseColour);
 
     auto flatOnLeft = button.isConnectedOnLeft();
     auto flatOnRight = button.isConnectedOnRight();
@@ -298,7 +305,7 @@ void MoLookAndFeel::drawButtonText(Graphics& g,
 
     g.setFont(font);
     auto color = button.findColour(button.getToggleState() ? TextButton::textColourOnId : TextButton::textColourOffId)
-                       .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f);
+                       .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.3f);
     g.setColour(color);
     // const int yIndent = jmin(2, button.proportionOfHeight(0.3f));
     const int xIndent = 1;

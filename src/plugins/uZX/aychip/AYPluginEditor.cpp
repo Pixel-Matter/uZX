@@ -23,7 +23,7 @@ AYPluginUI::ChannelGroup::ChannelGroup(AYChipPlugin& plugin,
     , channelParam_(channelParam)
 {
     channelParam_.addListener(this);
-    updateTNEButtonsEnabledState();
+    updateTNEState();
 }
 
 AYPluginUI::ChannelGroup::~ChannelGroup() {
@@ -37,11 +37,31 @@ void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
     parent.addAndMakeVisible(envelopeOn);
 }
 
-void AYPluginUI::ChannelGroup::valueChanged(Value&) {
-    updateTNEButtonsEnabledState();
+void AYPluginUI::ChannelGroup::setupWidgets() {
+    // Set connected edges for [A|T|N|E] style buttons
+    channelOn.setConnectedEdges(Button::ConnectedOnRight);
+    toneOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnBottom);
+    noiseOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnTop | Button::ConnectedOnBottom);
+    envelopeOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnTop);
 }
 
-void AYPluginUI::ChannelGroup::updateTNEButtonsEnabledState() {
+void AYPluginUI::ChannelGroup::layoutButtons(Rectangle<int> bounds) {
+    // Layout: [A|T|N|E] - all buttons connected
+    const int buttonSize = bounds.getHeight() / 3;
+    const int w = buttonSize;
+
+    channelOn.setBounds(bounds.removeFromLeft(buttonSize));
+    auto column = bounds.removeFromLeft(buttonSize);
+    toneOn.setBounds(column.removeFromTop(column.getHeight() / 3));
+    noiseOn.setBounds(column.removeFromTop(column.getHeight() / 2));
+    envelopeOn.setBounds(column);
+}
+
+void AYPluginUI::ChannelGroup::valueChanged(Value&) {
+    updateTNEState();
+}
+
+void AYPluginUI::ChannelGroup::updateTNEState() {
     bool enabled = channelParam_.getStoredValue();
     toneOn.setEnabled(enabled);
     noiseOn.setEnabled(enabled);
@@ -73,12 +93,7 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
 void AYPluginUI::setupToggleButtons() {
     for (auto* group : channelGroups) {
         group->addToComponent(*this);
-
-        // Set connected edges for [A|T|N|E] style buttons
-        group->channelOn.setConnectedEdges(Button::ConnectedOnRight);
-        group->toneOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnRight);
-        group->noiseOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnRight);
-        group->envelopeOn.setConnectedEdges(Button::ConnectedOnLeft);
+        group->setupWidgets();
     }
 }
 
@@ -88,21 +103,13 @@ void AYPluginUI::layoutChannelToggles(juce::Rectangle<int>& r) {
     // Layout: [A|T|N|E]
     //         [B|T|N|E]
     //         [C|T|N|E]
-    // Each channel gets its own row with all buttons connected and square (w=h)
-
-    const int buttonSize = itemHeight;  // Square buttons
+    // Each channel group handles its own layout
 
     for (int i = 0; i < 3; ++i) {
         if (i > 0) r.removeFromTop(itemSpacing);
 
-        auto row = r.removeFromTop(buttonSize);
-        auto& group = *channelGroups[i];
-
-        // All buttons connected with no spacing, all square
-        group.channelOn.setBounds(row.removeFromLeft(buttonSize));
-        group.toneOn.setBounds(row.removeFromLeft(buttonSize));
-        group.noiseOn.setBounds(row.removeFromLeft(buttonSize));
-        group.envelopeOn.setBounds(row.removeFromLeft(buttonSize));
+        auto row = r.removeFromTop(itemHeight * 5 / 2);
+        channelGroups[i]->layoutButtons(row);
     }
 }
 
@@ -114,9 +121,8 @@ void AYPluginUI::resized() {
     auto r = getLocalBounds().reduced(8, 8);
 
     // static
-    auto staticRow = r.removeFromTop(itemHeight * 2);
+    auto staticRow = r.removeFromTop(itemHeight);
     auto buttonWidth = staticRow.getWidth() / 3 - 8;
-    auto knobWidth = (staticRow.getWidth() - buttonWidth) / 2;
     chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
     staticRow.removeFromLeft(8);
     auto comboArea = staticRow;
@@ -127,6 +133,9 @@ void AYPluginUI::resized() {
     auto knobsRow = r.removeFromTop(itemHeight * 2);
 
     layoutButton.setBounds(knobsRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
+
+    auto knobWidth = knobsRow.getWidth() / 2;
+    knobsRow.removeFromLeft(8);
     stereoKnob.setBounds(knobsRow.removeFromLeft(knobWidth));
     volumeKnob.setBounds(knobsRow);
 

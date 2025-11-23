@@ -63,10 +63,12 @@ private:
         ToggleButton envelopeOn;
 
         void addToComponent(Component& parent);
+        void setupWidgets();
+        void layoutButtons(Rectangle<int> bounds);
 
     private:
         void valueChanged(Value&) override;
-        void updateTNEButtonsEnabledState();
+        void updateTNEState();
 
         ParameterValue<bool>& channelParam_;
     };

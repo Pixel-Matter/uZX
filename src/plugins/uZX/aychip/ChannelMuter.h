@@ -1,12 +1,14 @@
 #pragma once
 
+#include <JuceHeader.h>
+
 #include "../../../formats/psg/PsgData.h"
 #include "../../../controllers/Parameters.h"
 
 namespace MoTool::uZX {
 
 namespace IDs {
-    #define DECLARE_ID(name)  inline const juce::Identifier name(#name);
+    #define DECLARE_ID(name)  inline const Identifier name(#name);
     DECLARE_ID(channelA)
     DECLARE_ID(channelB)
     DECLARE_ID(channelC)
@@ -95,11 +97,7 @@ public:
      */
     void apply(PsgRegsFrame& regs) const noexcept {
         for (size_t chan = 0; chan < 3; ++chan) {
-            bool channelEnabled = getChannelEnabled(chan);
-
-            if (!channelEnabled) {
-                regs.setToneOn(chan, false);
-                regs.setNoiseOn(chan, false);
+            if (!getChannelEfecctivelyEnabled(chan)) {
                 regs.setVolumeAndEnvMod(chan, 0, false);
             } else {
                 // Channel is enabled, but check individual effects
@@ -117,27 +115,7 @@ public:
     }
 
 private:
-    // Value::Listener - implement linked toggle behavior
-    void valueChanged(Value& value) override {
-        // Find which channel changed and update its TNE buttons
-        // if (value.refersToSameSourceAs(channelA.getPropertyAsValue())) {
-        //     bool enabled = channelA.getStoredValue();
-        //     toneA.setStoredValue(enabled);
-        //     noiseA.setStoredValue(enabled);
-        //     envelopeA.setStoredValue(enabled);
-        // }
-        // else if (value.refersToSameSourceAs(channelB.getPropertyAsValue())) {
-        //     bool enabled = channelB.getStoredValue();
-        //     toneB.setStoredValue(enabled);
-        //     noiseB.setStoredValue(enabled);
-        //     envelopeB.setStoredValue(enabled);
-        // }
-        // else if (value.refersToSameSourceAs(channelC.getPropertyAsValue())) {
-        //     bool enabled = channelC.getStoredValue();
-        //     toneC.setStoredValue(enabled);
-        //     noiseC.setStoredValue(enabled);
-        //     envelopeC.setStoredValue(enabled);
-        // }
+    void valueChanged(Value&) override {
     }
 
     bool getChannelEnabled(size_t chan) const noexcept {
@@ -147,6 +125,10 @@ private:
             case 2: return channelC.getLiveValue();
             default: return false;
         }
+    }
+
+    bool getChannelEfecctivelyEnabled(size_t c) const noexcept {
+        return getChannelEnabled(c) && (getToneEnabled(c) || getNoiseEnabled(c) || getEnvelopeEnabled(c));
     }
 
     bool getToneEnabled(size_t chan) const noexcept {

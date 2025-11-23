@@ -239,6 +239,76 @@ public:
             juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
             expectWithinAbsoluteError(slider.getValue(), 0.65, 1e-6,
                                       "Slider refreshed after restoring ParameterValue state");
+
+        }
+
+        beginTest("ToggleButton - button click toggles parameter");
+        {
+            ValueTree state {te::IDs::PLUGIN};
+            ParameterValue<bool> value{{"toggle", "toggle", "T", "Toggle test", false}};
+            value.referTo(state, nullptr);
+
+            TextButton button;
+            ToggleParamEndpointBinding binding(button, value);
+
+            // Initial state
+            expect(!button.getToggleState(), "Button initially off");
+            expect(!value.getStoredValue(), "Parameter initially false");
+
+            // Click button
+            button.triggerClick();
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+
+            // Should toggle parameter
+            expect(value.getStoredValue(), "Parameter true after click");
+            expect(button.getToggleState(), "Button on after click");
+
+            // Click again
+            button.triggerClick();
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+
+            // Should toggle back
+            expect(!value.getStoredValue(), "Parameter false after second click");
+            expect(!button.getToggleState(), "Button off after second click");
+        }
+
+        beginTest("ToggleButton - parameter change updates button");
+        {
+            ValueTree state {te::IDs::PLUGIN};
+            ParameterValue<bool> value{{"toggle", "toggle", "T", "Toggle test", false}};
+            value.referTo(state, nullptr);
+
+            TextButton button;
+            ToggleParamEndpointBinding binding(button, value);
+
+            // Initial state
+            expect(!button.getToggleState(), "Button initially off");
+
+            // Change parameter
+            value.setStoredValue(true);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+
+            // Button should update
+            expect(button.getToggleState(), "Button on after parameter changed to true");
+
+            // Change back
+            value.setStoredValue(false);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+
+            // Button should update
+            expect(!button.getToggleState(), "Button off after parameter changed to false");
+        }
+
+        beginTest("ToggleButton - displays shortLabel");
+        {
+            ValueTree state {te::IDs::PLUGIN};
+            ParameterValue<bool> value{{"toggle", "toggle", "TestBtn", "Toggle test", false}};
+            value.referTo(state, nullptr);
+
+            TextButton button;
+            ToggleParamEndpointBinding binding(button, value);
+
+            expectEquals(button.getButtonText(), String("TestBtn"), "Button displays shortLabel");
         }
     }
 };

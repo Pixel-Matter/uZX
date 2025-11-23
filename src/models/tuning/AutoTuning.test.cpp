@@ -208,7 +208,7 @@ public:
         beginTest("getName method");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
             String name = tuning.getDescription();
 
@@ -221,7 +221,7 @@ public:
         beginTest("MIDI note to period conversion - A4");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
             int period = tuning.midiNoteToPeriod(69.0); // A4 = 440 Hz
             DBG("A4 period = " << period);
@@ -234,7 +234,7 @@ public:
         beginTest("MIDI note to period conversion - Middle C");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
             int period = tuning.midiNoteToPeriod(60.0); // Middle C
 
@@ -247,7 +247,7 @@ public:
         beginTest("Period to MIDI note conversion");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
             // Test with A4 period
             expect(tuning.getReferenceTuning() != nullptr, "Reference tuning should not be null");
@@ -259,7 +259,7 @@ public:
         beginTest("Octave relationships in periods");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
 
             int a4Period = tuning.midiNoteToPeriod(69.0); // A4
@@ -276,7 +276,7 @@ public:
         beginTest("Frequency conversion methods");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
 
             // Test midiNoteToFrequency
@@ -291,7 +291,7 @@ public:
         beginTest("isDefined method - delegates to reference tuning");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
 
             // Equal temperament defines all notes
@@ -304,7 +304,7 @@ public:
         beginTest("Offtune calculation");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
 
             // For auto tuning with equal temperament reference, offtune should be minimal
@@ -322,13 +322,13 @@ public:
         {
             // Test with A4 = 432 Hz
             AutoTuning tuning432(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 432.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 432.0)
             );
             int period432 = tuning432.midiNoteToPeriod(69.0);
 
             // Test with A4 = 440 Hz
             AutoTuning tuning440(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
             int period440 = tuning440.midiNoteToPeriod(69.0);
 
@@ -338,7 +338,7 @@ public:
         beginTest("Changing the key");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::C, Scale::ScaleType::IonianOrMajor, 440.0)
             );
 
             // Change to D major
@@ -355,7 +355,7 @@ public:
         beginTest("Changing reference tuning");
         {
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::D, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::D, Scale::ScaleType::IonianOrMajor, 440.0)
             );
             int justPeriod = tuning.midiNoteToPeriod(60.0);
 
@@ -371,7 +371,7 @@ public:
             // but first we should tune A4 to some frequency, so notes should be A-E with A key
             // calculate frequency for A4 and D4 in just intonation
             AutoTuning tuning(testClockFreq,
-                std::make_unique<JustIntonation5Limit>(Scale::Tonic::A, 440.0)
+                std::make_unique<JustIntonation5Limit>(Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0)
             );
             double targetA4Freq = tuning.periodToFrequency(252);  //  439.831
             DBG("Target A4 frequency: " << targetA4Freq);

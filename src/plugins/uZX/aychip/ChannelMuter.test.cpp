@@ -4,14 +4,17 @@
 namespace MoTool::uZX {
 
 //==============================================================================
-class ChannelEffectFilterTest : public juce::UnitTest {
+class ChannelEffectFilterTest : public UnitTest {
 public:
     ChannelEffectFilterTest() : UnitTest("ChannelMuter", "MoTool") {}
 
     void runTest() override {
         beginTest("Disabling channel should disable all effects");
         {
+            ValueTree state("ChannelMuter");
             ChannelMuter filter;
+            filter.referTo(state, nullptr);
+
             PsgRegsFrame regs;
 
             // Setup: channel has tone, noise, and volume
@@ -33,7 +36,10 @@ public:
 
         beginTest("Disabling tone only should preserve noise and volume");
         {
+            ValueTree state("ChannelMuter");
             ChannelMuter filter;
+            filter.referTo(state, nullptr);
+
             PsgRegsFrame regs;
 
             // Setup
@@ -54,7 +60,10 @@ public:
 
         beginTest("Disabling envelope should clear envelope mod bit");
         {
+            ValueTree state("ChannelMuter");
             ChannelMuter filter;
+            filter.referTo(state, nullptr);
+
             PsgRegsFrame regs;
 
             // Setup: channel using envelope
@@ -100,7 +109,10 @@ public:
 
         beginTest("All channels can be controlled independently");
         {
+            ValueTree state("ChannelMuter");
             ChannelMuter filter;
+            filter.referTo(state, nullptr);
+
             PsgRegsFrame regs;
 
             // Setup all channels
@@ -111,9 +123,9 @@ public:
             }
 
             // Disable different things on each channel
-            filter.channelA.setStoredValue(false); // A: no channel
-            filter.toneA.setStoredValue(false);    // A: no tone
-            filter.noiseA.setStoredValue(false);   // A: no noise
+            filter.channelA.setStoredValue(false);  // A: completely off
+            filter.toneB.setStoredValue(false);      // B: no tone
+            filter.noiseC.setStoredValue(false);     // C: no noise
 
             filter.apply(regs);
 

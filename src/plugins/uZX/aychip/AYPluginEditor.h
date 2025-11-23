@@ -28,7 +28,7 @@ public:
     ComponentBoundsConstrainer* getBoundsConstrainer();
 
     bool hasDeviceMenu() const override;
-    void populateDeviceMenu(juce::PopupMenu& menu) override;
+    void populateDeviceMenu(PopupMenu& menu) override;
 
     static constexpr int itemHeight = 20;
     static constexpr int itemSpacing = 4;
@@ -90,7 +90,7 @@ private:
     std::array<ChannelGroup*, 3> channelGroups { &channelA, &channelB, &channelC };
 
     void setupToggleButtons();
-    void layoutChannelToggles(juce::Rectangle<int>& r);
+    void layoutChannelToggles(Rectangle<int>& r);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYPluginUI)
 };

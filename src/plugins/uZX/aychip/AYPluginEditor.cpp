@@ -6,10 +6,12 @@
 
 namespace MoTool::uZX {
 
+namespace te = tracktion;
+
 //==============================================================================
 // Editor for AYChipPlugin
 //==============================================================================
-AYPluginUI::AYPluginUI(tracktion::Plugin::Ptr pluginPtr)
+AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
     , plugin_(*dynamic_cast<AYChipPlugin*>(pluginPtr.get()))
     , chipClockBinding(chipClockCombo, plugin_.staticParams.chipClock, makeChipClockPresets(), false, true)

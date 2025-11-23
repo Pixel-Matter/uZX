@@ -169,12 +169,10 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     const int numChannels = staticParams.numOutputChannels.getStoredValue();
     const int actualChannels = fc.destBuffer->getNumChannels();
 
-    // Safety check: if buffer doesn't have expected channels yet (during graph rebuild), use what's available
-    const int channelsToUse = jmin(numChannels, actualChannels);
-
-    if (channelsToUse < numChannels) {
+    // Safety check: ensure buffer has required channels
+    if (actualChannels < numChannels) {
         // Buffer doesn't have enough channels yet - audio graph is being rebuilt
-        // Clear available channels and return early
+        // Clear available channels and return early to prevent crashes
         te::clearChannels(*fc.destBuffer, actualChannels, -1, fc.bufferStartSample, fc.bufferNumSamples);
         return;
     }
@@ -193,16 +191,16 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample > currentSample) {
             updateChip();
-            if (numChannels == 1) {
+            if (numChannels == 1 && actualChannels >= 1) {
                 chip->processBlockMono(fc.destBuffer->getWritePointer(0, currentSample),
                                        static_cast<size_t>(timeSample - currentSample),
                                        staticParams.removeDC.getStoredValue());
-            } else if (numChannels == 2) {
+            } else if (numChannels == 2 && actualChannels >= 2) {
                 chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                    fc.destBuffer->getWritePointer(1, currentSample),
                                    static_cast<size_t>(timeSample - currentSample),
                                    staticParams.removeDC.getStoredValue());
-            } else { // numChannels == 3
+            } else if (numChannels == 3 && actualChannels >= 3) {
                 chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
                                           fc.destBuffer->getWritePointer(1, currentSample),
                                           fc.destBuffer->getWritePointer(2, currentSample),
@@ -217,16 +215,16 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     // process to the end of the block
     updateChip();
     if (currentSample < fc.destBuffer->getNumSamples()) {
-        if (numChannels == 1) {
+        if (numChannels == 1 && actualChannels >= 1) {
             chip->processBlockMono(fc.destBuffer->getWritePointer(0, currentSample),
                                    static_cast<size_t>(fc.bufferNumSamples - currentSample),
                                    staticParams.removeDC.getStoredValue());
-        } else if (numChannels == 2) {
+        } else if (numChannels == 2 && actualChannels >= 2) {
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                fc.destBuffer->getWritePointer(1, currentSample),
                                static_cast<size_t>(fc.bufferNumSamples - currentSample),
                                staticParams.removeDC.getStoredValue());
-        } else { // numChannels == 3
+        } else if (numChannels == 3 && actualChannels >= 3) {
             chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
                                       fc.destBuffer->getWritePointer(1, currentSample),
                                       fc.destBuffer->getWritePointer(2, currentSample),

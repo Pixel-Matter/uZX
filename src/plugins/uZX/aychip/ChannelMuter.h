@@ -76,87 +76,23 @@ public:
     ParameterValue<bool> envelopeB  {{"envelopeB", IDs::envelopeB, "E", "Envelope B enable", true}};
     ParameterValue<bool> envelopeC  {{"envelopeC", IDs::envelopeC, "E", "Envelope C enable", true}};
 
-    void setupLinkedToggleBehavior() {
-        // Listen to channel parameter changes to implement linked behavior
-        channelA.addListener(this);
-        channelB.addListener(this);
-        channelC.addListener(this);
-    }
-
-    ~ChannelMuter() override {
-        // Clean up listeners
-        channelA.removeListener(this);
-        channelB.removeListener(this);
-        channelC.removeListener(this);
-    }
+    void setupLinkedToggleBehavior();
+    ~ChannelMuter() override;
 
     /**
      * Apply channel and effect filters to the register frame
      *
      * @param regs The register frame to filter
      */
-    void apply(PsgRegsFrame& regs) const noexcept {
-        for (size_t chan = 0; chan < 3; ++chan) {
-            if (!getChannelEfecctivelyEnabled(chan)) {
-                regs.setVolumeAndEnvMod(chan, 0, false);
-            } else {
-                // Channel is enabled, but check individual effects
-                if (!getToneEnabled(chan)) {
-                    regs.setToneOn(chan, false);
-                }
-                if (!getNoiseEnabled(chan)) {
-                    regs.setNoiseOn(chan, false);
-                }
-                if (!getEnvelopeEnabled(chan)) {
-                    regs.setEnvMod(chan, false);
-                }
-            }
-        }
-    }
+    void apply(PsgRegsFrame& regs) const noexcept;
 
 private:
-    void valueChanged(Value&) override {
-    }
-
-    bool getChannelEnabled(size_t chan) const noexcept {
-        switch (chan) {
-            case 0: return channelA.getLiveValue();
-            case 1: return channelB.getLiveValue();
-            case 2: return channelC.getLiveValue();
-            default: return false;
-        }
-    }
-
-    bool getChannelEfecctivelyEnabled(size_t c) const noexcept {
-        return getChannelEnabled(c) && (getToneEnabled(c) || getNoiseEnabled(c) || getEnvelopeEnabled(c));
-    }
-
-    bool getToneEnabled(size_t chan) const noexcept {
-        switch (chan) {
-            case 0: return toneA.getLiveValue();
-            case 1: return toneB.getLiveValue();
-            case 2: return toneC.getLiveValue();
-            default: return false;
-        }
-    }
-
-    bool getNoiseEnabled(size_t chan) const noexcept {
-        switch (chan) {
-            case 0: return noiseA.getLiveValue();
-            case 1: return noiseB.getLiveValue();
-            case 2: return noiseC.getLiveValue();
-            default: return false;
-        }
-    }
-
-    bool getEnvelopeEnabled(size_t chan) const noexcept {
-        switch (chan) {
-            case 0: return envelopeA.getLiveValue();
-            case 1: return envelopeB.getLiveValue();
-            case 2: return envelopeC.getLiveValue();
-            default: return false;
-        }
-    }
+    void valueChanged(Value&) override;
+    bool getChannelEnabled(size_t chan) const noexcept;
+    bool getChannelEfecctivelyEnabled(size_t c) const noexcept;
+    bool getToneEnabled(size_t chan) const noexcept;
+    bool getNoiseEnabled(size_t chan) const noexcept;
+    bool getEnvelopeEnabled(size_t chan) const noexcept;
 };
 
 } // namespace MoTool::uZX

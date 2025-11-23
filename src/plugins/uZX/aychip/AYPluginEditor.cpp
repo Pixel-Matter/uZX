@@ -9,6 +9,46 @@ namespace MoTool::uZX {
 namespace te = tracktion;
 
 //==============================================================================
+// ChannelGroup implementation
+//==============================================================================
+AYPluginUI::ChannelGroup::ChannelGroup(AYChipPlugin& plugin,
+                                        ParameterValue<bool>& channelParam,
+                                        ParameterValue<bool>& toneParam,
+                                        ParameterValue<bool>& noiseParam,
+                                        ParameterValue<bool>& envelopeParam)
+    : channelOn   { plugin, channelParam }
+    , toneOn      { plugin, toneParam }
+    , noiseOn     { plugin, noiseParam }
+    , envelopeOn  { plugin, envelopeParam }
+    , channelParam_(channelParam)
+{
+    channelParam_.addListener(this);
+    updateTNEButtonsEnabledState();
+}
+
+AYPluginUI::ChannelGroup::~ChannelGroup() {
+    channelParam_.removeListener(this);
+}
+
+void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
+    parent.addAndMakeVisible(channelOn);
+    parent.addAndMakeVisible(toneOn);
+    parent.addAndMakeVisible(noiseOn);
+    parent.addAndMakeVisible(envelopeOn);
+}
+
+void AYPluginUI::ChannelGroup::valueChanged(Value&) {
+    updateTNEButtonsEnabledState();
+}
+
+void AYPluginUI::ChannelGroup::updateTNEButtonsEnabledState() {
+    bool enabled = channelParam_.getStoredValue();
+    toneOn.setEnabled(enabled);
+    noiseOn.setEnabled(enabled);
+    envelopeOn.setEnabled(enabled);
+}
+
+//==============================================================================
 // Editor for AYChipPlugin
 //==============================================================================
 AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)

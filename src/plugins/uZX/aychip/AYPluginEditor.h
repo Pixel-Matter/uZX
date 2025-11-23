@@ -48,29 +48,27 @@ private:
     ChoiceButton layoutButton  { plugin_, plugin_.dynamicParams.layout };
     LabeledSlider stereoKnob   { plugin_, plugin_.dynamicParams.stereoWidth };
 
-    struct ChannelGroup {
+    struct ChannelGroup : private Value::Listener {
         ChannelGroup(AYChipPlugin& plugin,
                      ParameterValue<bool>& channelParam,
                      ParameterValue<bool>& toneParam,
                      ParameterValue<bool>& noiseParam,
-                     ParameterValue<bool>& envelopeParam)
-            : channelOn   { plugin, channelParam }
-            , toneOn      { plugin, toneParam }
-            , noiseOn     { plugin, noiseParam }
-            , envelopeOn  { plugin, envelopeParam }
-        {}
+                     ParameterValue<bool>& envelopeParam);
+
+        ~ChannelGroup();
 
         ToggleButton channelOn;
         ToggleButton toneOn;
         ToggleButton noiseOn;
         ToggleButton envelopeOn;
 
-        void addToComponent(Component& parent) {
-            parent.addAndMakeVisible(channelOn);
-            parent.addAndMakeVisible(toneOn);
-            parent.addAndMakeVisible(noiseOn);
-            parent.addAndMakeVisible(envelopeOn);
-        }
+        void addToComponent(Component& parent);
+
+    private:
+        void valueChanged(Value&) override;
+        void updateTNEButtonsEnabledState();
+
+        ParameterValue<bool>& channelParam_;
     };
 
     // Channel groups

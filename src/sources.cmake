@@ -23,6 +23,7 @@ set(SHARED_SOURCES
 
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
+    plugins/uZX/aychip/ChannelMuter.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp

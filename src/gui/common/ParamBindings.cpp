@@ -81,7 +81,7 @@ void SliderParamEndpointBinding::configureWidgetHandlers() {
         if (updating)
             return;
 
-        juce::ScopedValueSetter<bool> svs(updating, true);
+        ScopedValueSetter<bool> svs(updating, true);
         endpoint().setStoredFloatValue(static_cast<float>(slider.getValue()));
     };
 
@@ -100,7 +100,7 @@ void SliderParamEndpointBinding::refreshFromSource() {
     if (updating)
         return;
 
-    juce::ScopedValueSetter<bool> svs(updating, true);
+    ScopedValueSetter<bool> svs(updating, true);
     slider.setValue(static_cast<double>(endpoint().getLiveFloatValue()), dontSendNotification);
 }
 
@@ -115,7 +115,7 @@ void ComboBoxParamEndpointBinding::configureWidgetHandlers() {
         if (updating)
             return;
 
-        juce::ScopedValueSetter<bool> svs(updating, true);
+        ScopedValueSetter<bool> svs(updating, true);
         endpoint().setStoredFloatValue(static_cast<float>(comboBox.getSelectedId() - 1));
     };
 }
@@ -131,7 +131,7 @@ void ComboBoxParamEndpointBinding::fillItems() {
 void ComboBoxParamEndpointBinding::refreshFromSource() {
     if (updating)
         return;
-    juce::ScopedValueSetter<bool> svs(updating, true);
+    ScopedValueSetter<bool> svs(updating, true);
     const auto storedState = endpoint().floatToState(endpoint().getLiveFloatValue());
     comboBox.setSelectedId(storedState + 1, dontSendNotification);
 }
@@ -157,7 +157,7 @@ void ButtonParamEndpointBinding::handleClick() {
     const auto nextIndex = wrapIndex(currentIndex + 1);
 
     {
-        juce::ScopedValueSetter<bool> svs(updating, true);
+        ScopedValueSetter<bool> svs(updating, true);
         endpoint().beginGesture();
         endpoint().setStoredFloatValue(endpoint().stateToFloat(nextIndex));
         endpoint().endGesture();
@@ -168,7 +168,7 @@ void ButtonParamEndpointBinding::refreshFromSource() {
     if (updating)
         return;
 
-    juce::ScopedValueSetter<bool> svs(updating, true);
+    ScopedValueSetter<bool> svs(updating, true);
     if (endpoint().numberOfStates() <= 0) {
         button.setButtonText(endpoint().formatValue(endpoint().getLiveFloatValue()));
         return;
@@ -196,6 +196,38 @@ int ButtonParamEndpointBinding::wrapIndex(int index) const {
     if (index < 0)
         index += choiceCount;
     return index;
+}
+
+//============================================================================
+
+void ToggleParamEndpointBinding::configureWidget() {
+    button.setTooltip(endpoint().getDescription());
+    button.setButtonText(buttonLabel);
+}
+
+void ToggleParamEndpointBinding::configureWidgetHandlers() {
+    button.onClick = [this] {
+        if (updating)
+            return;
+
+        // Toggle the parameter value
+        ScopedValueSetter<bool> svs(updating, true);
+        const bool currentState = endpoint().getLiveFloatValue() >= 0.5f;
+        const bool newState = !currentState;
+
+        endpoint().beginGesture();
+        endpoint().setStoredFloatValue(newState ? 1.0f : 0.0f);
+        endpoint().endGesture();
+    };
+}
+
+void ToggleParamEndpointBinding::refreshFromSource() {
+    if (updating)
+        return;
+
+    ScopedValueSetter<bool> svs(updating, true);
+    const bool state = endpoint().getLiveFloatValue() >= 0.5f;
+    button.setToggleState(state, dontSendNotification);
 }
 
 } // namespace MoTool

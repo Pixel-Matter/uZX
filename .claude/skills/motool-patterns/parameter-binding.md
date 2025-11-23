@@ -22,30 +22,30 @@ Traditional parameter systems face challenges:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ Widget Layer: SliderParamEndpointBinding       │
+│ Widget Layer: SliderParamEndpointBinding        │
 │               ButtonParamEndpointBinding        │
-└─────────────────┬───────────────────────────────┘
-                  │ uses
-         ┌────────▼─────────┐
-         │ ParameterEndpoint│ (interface)
-         └────────┬─────────┘
-                  │ implemented by
-     ┌────────────┴────────────┐
-     │                         │
-┌────▼─────────────┐  ┌────────▼──────────────┐
-│ParamValueEndpoint│  │AutomatableParamEndpoint│
-└────┬─────────────┘  └────────┬──────────────┘
-     │ adapts               │ adapts
-     │                      │
-┌────▼──────────┐    ┌──────▼──────────────┐
-│ParameterValue │    │BindedAutoParameter  │
-└────┬──────────┘    └──────┬──────────────┘
-     │ uses                 │ inherits
-     │                      │
-┌────▼──────┐      ┌────────▼────────────────┐
-│CachedValue│      │AutomatableParameter     │
-│(ValueTree)│      │(Tracktion automation)   │
-└───────────┘      └─────────────────────────┘
+└──────────────────────┬──────────────────────────┘
+                       │ uses
+             ┌─────────▼─────────┐
+             │ ParameterEndpoint │ (interface)
+             └─────────┬─────────┘
+                       │ implemented by
+           ┌───────────┴─────────────┐
+           │                         │
+┌──────────▼──────────┐ ┌────────────▼────────────┐
+│ ParamValueEndpoint  │ │ AutomatableParamEndpoint│
+└──────────┬──────────┘ └────────────┬────────────┘
+           │ adapts                  │ adapts
+           │                         │
+┌──────────▼──────────┐ ┌────────────▼────────────┐
+│   ParameterValue    │ │   BindedAutoParameter   │
+└──────────┬──────────┘ └────────────┬────────────┘
+           │ uses                    │ inherits
+           │                         │
+┌──────────▼──────────┐ ┌────────────▼────────────┐
+│     CachedValue     │ │   AutomatableParameter  │
+│     (ValueTree)     │ │  (Tracktion automation) │
+└─────────────────────┘ └─────────────────────────┘
 ```
 
 **Key Files**:

@@ -68,7 +68,7 @@ void AppController::initialize() {
     #if JUCE_MAC
     setMacMainMenu(this);
     #else
-    setMenuBar(this);
+    // Menu bar is set on the window in ArrangerController::initialize()
     #endif
 }
 
@@ -86,7 +86,7 @@ AppController::~AppController() {
     #if JUCE_MAC
         setMacMainMenu(nullptr);
     #else
-        setMenuBar(nullptr);
+    // Menu bar is cleared on the window in ArrangerController destructor
     #endif
 }
 
@@ -578,10 +578,21 @@ void ArrangerController::initialize() {
     auto title = String::fromUTF8("Pixel Matter μZX Studio v") + MoToolApp::getApp().getApplicationVersion();
     setMainWindowTitle(title);
     window_.setComponentID("studio");
+
+    #if !JUCE_MAC
+    // Set menu bar on the window (macOS uses system menu bar set in AppController)
+    window_.setMenuBar(&MoToolApp::getAppController());
+    #endif
+
     BaseController::initialize();
 }
 
 ArrangerController::~ArrangerController() {
+    #if !JUCE_MAC
+    // Clear menu bar from the window
+    window_.setMenuBar(nullptr);
+    #endif
+
     // TODO actually we should clean up the render files when closing/destroying an edit, not when closing the app
     // We can subclass the edit and override destructor to do this
     if (edit_ != nullptr) {

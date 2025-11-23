@@ -6,6 +6,7 @@
 #include "../../../models/PsgMidi.h"
 #include "../../../controllers/BindedAutoParameter.h"
 #include "aychip.h"
+#include "ChannelMuter.h"
 
 #include <atomic>
 #include <array>
@@ -101,6 +102,7 @@ public:
     };
 
     DynamicParams dynamicParams;
+    ChannelMuter channelMuter;
 
     enum class MidiReaderMode {
         Params,

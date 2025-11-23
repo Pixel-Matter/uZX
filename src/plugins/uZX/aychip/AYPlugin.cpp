@@ -16,6 +16,11 @@ AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     dynamicParams.visit([this](auto& vd) {
         addParam(vd);
     });
+    channelMuter.referTo(state, getUndoManager());
+    channelMuter.visit([this](auto& vd) {
+        addParam(vd);
+    });
+    channelMuter.setupLinkedToggleBehavior();
     midiParamsReader.setBaseChannel(staticParams.baseMidiChannel.getStoredValue());
 }
 
@@ -124,6 +129,9 @@ void AYChipPlugin::updateChip() noexcept {
     // else if (midiReaderMode == MidiReaderMode::Regs) {
     //     // updateRegistersFromMidiRegs();
     // }
+
+    // Apply channel and effect filters
+    channelMuter.apply(registersFrame);
 
     for (size_t i = 0; i < registersFrame.size(); ++i) {
         if (registersFrame.isSet(i)) {

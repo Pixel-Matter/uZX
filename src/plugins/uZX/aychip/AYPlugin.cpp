@@ -40,7 +40,7 @@ void AYChipPlugin::updateDynamicParams() {
 void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
     // TODO staticParams.isParamProperty(id);
     if (v == state) {
-        if (id == IDs::clock || id == IDs::chip) {
+        if (id == IDs::clock || id == IDs::chip || id == IDs::numChannels) {
             reset();
         } else if (id == IDs::midi) {
             if (chip != nullptr) {
@@ -92,10 +92,12 @@ void AYChipPlugin::reset() {
     const ScopedLock sl(lock);
     if (chip == nullptr) {
         chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.chipClock.getStoredValue() * MHz,
-                                               staticParams.chipType.getStoredValue());
+                                               staticParams.chipType.getStoredValue(),
+                                               staticParams.numOutputChannels.getStoredValue());
     } else {
         chip->reset(static_cast<int>(sampleRate), staticParams.chipClock.getStoredValue() * MHz,
                                                   staticParams.chipType.getStoredValue());
+        chip->setOutputMode(staticParams.numOutputChannels.getStoredValue());
     }
     updateDynamicParams();
     // timeFromReset = 0.0;  // not used now
@@ -164,7 +166,9 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         // do not return here!
     }
 
-    te::clearChannels(*fc.destBuffer, 2, -1, fc.bufferStartSample, fc.bufferNumSamples);
+    const int numChannels = staticParams.numOutputChannels.getStoredValue();
+    te::clearChannels(*fc.destBuffer, numChannels, -1, fc.bufferStartSample, fc.bufferNumSamples);
+
     // Process PSG regiser events, no midi notes on this low level
     int currentSample = 0;
     // if (fc.bufferForMidiMessages->isNotEmpty()) {
@@ -177,10 +181,17 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample > currentSample) {
             updateChip();
-            chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
-                               fc.destBuffer->getWritePointer(1, currentSample),
-                               static_cast<size_t>(timeSample - currentSample),
-                               staticParams.removeDC.getStoredValue());
+            if (numChannels == 3) {
+                chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
+                                          fc.destBuffer->getWritePointer(1, currentSample),
+                                          fc.destBuffer->getWritePointer(2, currentSample),
+                                          static_cast<size_t>(timeSample - currentSample));
+            } else {
+                chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
+                                   fc.destBuffer->getWritePointer(1, currentSample),
+                                   static_cast<size_t>(timeSample - currentSample),
+                                   staticParams.removeDC.getStoredValue());
+            }
             currentSample = timeSample;
         }
         // DBG("AY in midi " << m.getDescription());
@@ -190,10 +201,17 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     // process to the end of the block
     updateChip();
     if (currentSample < fc.destBuffer->getNumSamples()) {
-        chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
-                           fc.destBuffer->getWritePointer(1, currentSample),
-                           static_cast<size_t>(fc.bufferNumSamples - currentSample),
-                           staticParams.removeDC.getStoredValue());
+        if (numChannels == 3) {
+            chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
+                                      fc.destBuffer->getWritePointer(1, currentSample),
+                                      fc.destBuffer->getWritePointer(2, currentSample),
+                                      static_cast<size_t>(fc.bufferNumSamples - currentSample));
+        } else {
+            chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
+                               fc.destBuffer->getWritePointer(1, currentSample),
+                               static_cast<size_t>(fc.bufferNumSamples - currentSample),
+                               staticParams.removeDC.getStoredValue());
+        }
     }
     // timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;
     // DBG("timeFromReset = " << timeFromReset);

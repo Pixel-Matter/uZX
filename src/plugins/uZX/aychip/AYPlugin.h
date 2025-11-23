@@ -29,6 +29,7 @@ namespace IDs {
     DECLARE_ID(noDC)
     DECLARE_ID(midi)
     DECLARE_ID(volume)
+    DECLARE_ID(numChannels)
     #undef DECLARE_ID
 }  // namespace IDs
 
@@ -49,7 +50,7 @@ public:
     String getSelectableDescription() override    { return "AY Chip plugin based on Ayumi emulator"; }
     bool isSynth() override                       { return true; }
 
-    int getNumOutputChannelsGivenInputs(int numInputChannels) override { return jmin (numInputChannels, 2); }
+    int getNumOutputChannelsGivenInputs(int numInputChannels) override { return jmin (numInputChannels, staticParams.numOutputChannels.getStoredValue()); }
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;
     void applyToBuffer(const te::PluginRenderContext&) noexcept override;
@@ -73,12 +74,14 @@ public:
             visitor(chipType);
             visitor(chipClock);
             visitor(removeDC);
+            visitor(numOutputChannels);
         }
 
         ParameterValue<int> baseMidiChannel {{"midi",  IDs::midi,  "MIDI",  "MIDI channel range", 1,   {1, 16 - 3, 1}}};
         ParameterValue<ChipType> chipType   {{"chip",  IDs::chip,  "Chip",  "Chip type",      ChipType::AY}};
         ParameterValue<double> chipClock    {{"clock", IDs::clock, "Clock", "Clock frequncy", 1.7734, {0.894887, 2.0, 0.01}, "MHz"}};
         ParameterValue<bool> removeDC       {{"noDC",  IDs::noDC,  "Remove DC", "Remove DC from output", true}};
+        ParameterValue<int> numOutputChannels {{"numChannels", IDs::numChannels, "Output Channels", "Number of output channels", 2, {1, 3, 1}}};
     };
 
     StaticParams staticParams;

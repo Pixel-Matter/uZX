@@ -74,8 +74,9 @@ void AYPluginUI::setupToggleButtons() {
     for (auto* group : channelGroups) {
         group->addToComponent(*this);
 
-        // Set connected edges for effect buttons [T|N|E]
-        group->toneOn.setConnectedEdges(Button::ConnectedOnRight);
+        // Set connected edges for [A|T|N|E] style buttons
+        group->channelOn.setConnectedEdges(Button::ConnectedOnRight);
+        group->toneOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnRight);
         group->noiseOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnRight);
         group->envelopeOn.setConnectedEdges(Button::ConnectedOnLeft);
     }
@@ -84,35 +85,24 @@ void AYPluginUI::setupToggleButtons() {
 void AYPluginUI::layoutChannelToggles(juce::Rectangle<int>& r) {
     r.removeFromTop(itemSpacing * 3);
 
-    // Row 1: Channel enables (A, B, C) - full width large buttons
-    auto channelRow = r.removeFromTop(itemHeight);
-    const int channelButtonSpacing = 4;
-    const int channelButtonWidth = (channelRow.getWidth() - 2 * channelButtonSpacing) / 3;
+    // Layout: [A|T|N|E]
+    //         [B|T|N|E]
+    //         [C|T|N|E]
+    // Each channel gets its own row with all buttons connected and square (w=h)
+
+    const int buttonSize = itemHeight;  // Square buttons
 
     for (int i = 0; i < 3; ++i) {
-        if (i > 0) channelRow.removeFromLeft(channelButtonSpacing);
+        if (i > 0) r.removeFromTop(itemSpacing);
+
+        auto row = r.removeFromTop(buttonSize);
         auto& group = *channelGroups[i];
-        group.channelOn.setBounds(i < 2 ? channelRow.removeFromLeft(channelButtonWidth) : channelRow);
-    }
 
-    r.removeFromTop(itemSpacing);
-
-    // Row 2: Effect toggles grouped by channel [T|N|E] [T|N|E] [T|N|E]
-    auto effectsRow = r.removeFromTop(itemHeight);
-    const int effectGroupSpacing = 4;
-    const int effectGroupWidth = (effectsRow.getWidth() - 2 * effectGroupSpacing) / 3;
-    const int effectButtonWidth = effectGroupWidth / 3;  // No spacing between connected buttons
-
-    for (int chan = 0; chan < 3; ++chan) {
-        if (chan > 0) effectsRow.removeFromLeft(effectGroupSpacing);
-
-        auto effectGroup = (chan < 2) ? effectsRow.removeFromLeft(effectGroupWidth) : effectsRow;
-        auto& group = *channelGroups[chan];
-
-        // Layout connected buttons with no spacing
-        group.toneOn.setBounds(effectGroup.removeFromLeft(effectButtonWidth));
-        group.noiseOn.setBounds(effectGroup.removeFromLeft(effectButtonWidth));
-        group.envelopeOn.setBounds(effectGroup);
+        // All buttons connected with no spacing, all square
+        group.channelOn.setBounds(row.removeFromLeft(buttonSize));
+        group.toneOn.setBounds(row.removeFromLeft(buttonSize));
+        group.noiseOn.setBounds(row.removeFromLeft(buttonSize));
+        group.envelopeOn.setBounds(row.removeFromLeft(buttonSize));
     }
 }
 

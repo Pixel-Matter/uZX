@@ -181,16 +181,20 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
         if (timeSample > currentSample) {
             updateChip();
-            if (numChannels == 3) {
-                chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
-                                          fc.destBuffer->getWritePointer(1, currentSample),
-                                          fc.destBuffer->getWritePointer(2, currentSample),
-                                          static_cast<size_t>(timeSample - currentSample));
-            } else {
+            if (numChannels == 1) {
+                chip->processBlockMono(fc.destBuffer->getWritePointer(0, currentSample),
+                                       static_cast<size_t>(timeSample - currentSample),
+                                       staticParams.removeDC.getStoredValue());
+            } else if (numChannels == 2) {
                 chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                    fc.destBuffer->getWritePointer(1, currentSample),
                                    static_cast<size_t>(timeSample - currentSample),
                                    staticParams.removeDC.getStoredValue());
+            } else { // numChannels == 3
+                chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
+                                          fc.destBuffer->getWritePointer(1, currentSample),
+                                          fc.destBuffer->getWritePointer(2, currentSample),
+                                          static_cast<size_t>(timeSample - currentSample));
             }
             currentSample = timeSample;
         }
@@ -201,16 +205,20 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     // process to the end of the block
     updateChip();
     if (currentSample < fc.destBuffer->getNumSamples()) {
-        if (numChannels == 3) {
-            chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
-                                      fc.destBuffer->getWritePointer(1, currentSample),
-                                      fc.destBuffer->getWritePointer(2, currentSample),
-                                      static_cast<size_t>(fc.bufferNumSamples - currentSample));
-        } else {
+        if (numChannels == 1) {
+            chip->processBlockMono(fc.destBuffer->getWritePointer(0, currentSample),
+                                   static_cast<size_t>(fc.bufferNumSamples - currentSample),
+                                   staticParams.removeDC.getStoredValue());
+        } else if (numChannels == 2) {
             chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                                fc.destBuffer->getWritePointer(1, currentSample),
                                static_cast<size_t>(fc.bufferNumSamples - currentSample),
                                staticParams.removeDC.getStoredValue());
+        } else { // numChannels == 3
+            chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
+                                      fc.destBuffer->getWritePointer(1, currentSample),
+                                      fc.destBuffer->getWritePointer(2, currentSample),
+                                      static_cast<size_t>(fc.bufferNumSamples - currentSample));
         }
     }
     // timeFromReset += (double) fc.destBuffer->getNumSamples() / sampleRate;

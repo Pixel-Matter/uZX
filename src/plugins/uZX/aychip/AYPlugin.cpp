@@ -167,6 +167,18 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     }
 
     const int numChannels = staticParams.numOutputChannels.getStoredValue();
+    const int actualChannels = fc.destBuffer->getNumChannels();
+
+    // Safety check: if buffer doesn't have expected channels yet (during graph rebuild), use what's available
+    const int channelsToUse = jmin(numChannels, actualChannels);
+
+    if (channelsToUse < numChannels) {
+        // Buffer doesn't have enough channels yet - audio graph is being rebuilt
+        // Clear available channels and return early
+        te::clearChannels(*fc.destBuffer, actualChannels, -1, fc.bufferStartSample, fc.bufferNumSamples);
+        return;
+    }
+
     te::clearChannels(*fc.destBuffer, numChannels, -1, fc.bufferStartSample, fc.bufferNumSamples);
 
     // Process PSG regiser events, no midi notes on this low level

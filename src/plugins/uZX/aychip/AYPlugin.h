@@ -143,6 +143,8 @@ private:
 
     void updateDynamicParams();
 
+    void renderChannels(const te::PluginRenderContext& fc, int currentSample, int timeSample);
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)
 };
 

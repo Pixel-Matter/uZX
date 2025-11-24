@@ -425,7 +425,7 @@ void TrackRowComponent::mouseDown(const MouseEvent&) {
 void TrackRowComponent::resized() {
     trackViewState.setTrackHeight(getHeight());
 
-    const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
+    const int headerWidth = editViewState.getTrackHeaderWidth();
     auto r = getLocalBounds();
     resizer.setBounds(r.removeFromBottom(2));
 
@@ -444,7 +444,7 @@ TrackHeaderOverlayComponent::TrackHeaderOverlayComponent(EditViewState& evs)
     setInterceptsMouseClicks(false, true);
 
     editViewState.state.addListener(this);
-    setSize(editViewState.showHeaders ? editViewState.headersWidth : 0, getHeight());
+    setSize(editViewState.getTrackHeaderWidth(), getHeight());
     constrainer.setMinimumWidth(110);
     constrainer.setMaximumWidth(300);
     addAndMakeVisible(resizer);
@@ -465,7 +465,7 @@ void TrackHeaderOverlayComponent::resized() {
 
 void TrackHeaderOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, const juce::Identifier& i) {
     if (i == IDs::headersWidth && s.hasType(IDs::EDITVIEWSTATE)) {
-        setSize(editViewState.showHeaders ? editViewState.headersWidth : 0, getHeight());
+        setSize(editViewState.getTrackHeaderWidth(), getHeight());
         resized();
     }
 }

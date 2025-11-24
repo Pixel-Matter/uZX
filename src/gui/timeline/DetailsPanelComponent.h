@@ -7,6 +7,7 @@
 namespace MoTool {
 
 class TimelineGrid;
+class PsgParamEditorComponent;
 
 class DetailsPanelComponent: public Component,
                              public juce::ChangeListener {
@@ -24,6 +25,17 @@ private:
     EditViewState& editViewState;
 
     TabbedComponent tabbedComponent {TabbedButtonBar::TabsAtLeft};
+
+    // Wrapper components for tab content with proper padding
+    class PsgParamWrapper : public Component {
+    public:
+        PsgParamWrapper(EditViewState& evs, PsgParamEditorComponent* editor, TabbedComponent* tabbedComp);
+        void resized() override;
+    private:
+        EditViewState& editViewState_;
+        TabbedComponent* tabbedComponent_;
+        std::unique_ptr<PsgParamEditorComponent> editor_;
+    };
 
     void updateTabVisibility();
 };

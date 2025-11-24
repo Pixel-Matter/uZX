@@ -7,11 +7,30 @@
 
 namespace MoTool {
 
-DetailsPanelComponent::DetailsPanelComponent(EditViewState& evs, TimelineGrid& g)
-    : editViewState(evs)
-{
+//==============================================================================
+// PsgParamWrapper implementation
+DetailsPanelComponent::PsgParamWrapper::PsgParamWrapper(EditViewState& evs,
+                                                        PsgParamEditorComponent* editor,
+                                                        TabbedComponent* tabbedComp)
+    : editViewState_(evs), tabbedComponent_(tabbedComp), editor_(editor) {
+    addAndMakeVisible(editor_.get());
+}
+
+void DetailsPanelComponent::PsgParamWrapper::resized() {
+    auto bounds = getLocalBounds();
+    const int headerWidth = editViewState_.getTrackHeaderWidth();
+    const int tabBarWidth = tabbedComponent_ ? tabbedComponent_->getTabBarDepth() : 0;
+    // Align plot with track content: remove (headerWidth - tabBarWidth) since tabBar already provides tabBarWidth
+    // offset
+    bounds.removeFromLeft(headerWidth - tabBarWidth - 8);
+    editor_->setBounds(bounds);
+}
+
+//==============================================================================
+DetailsPanelComponent::DetailsPanelComponent(EditViewState& evs, TimelineGrid& g) : editViewState(evs) {
     tabbedComponent.setOutline(0);
-    tabbedComponent.addTab("Clip Parameters", Colors::Theme::background, new PsgParamEditorComponent(evs, g), true);
+    tabbedComponent.addTab("Clip Parameters", Colors::Theme::background,
+                           new PsgParamWrapper(evs, new PsgParamEditorComponent(evs, g), &tabbedComponent), true);
     tabbedComponent.addTab("Track Devices", Colors::Theme::background, new TrackDevicesPanel(evs), true);
 
     addAndMakeVisible(tabbedComponent);
@@ -31,9 +50,7 @@ void DetailsPanelComponent::paint(Graphics& g) {
 
 void DetailsPanelComponent::resized() {
     auto bounds = getLocalBounds();
-    bounds.removeFromLeft(editViewState.showHeaders ? editViewState.headersWidth : 0);
-    bounds.removeFromLeft(-tabbedComponent.getTabBarDepth());
-
+    bounds.removeFromLeft(8);
     tabbedComponent.setBounds(bounds.reduced(0, 8));
 }
 
@@ -48,12 +65,12 @@ void DetailsPanelComponent::updateTabVisibility() {
     auto* track = editViewState.selectionManager.getFirstItemOfType<tracktion::Track>();
 
     if (psgClip) {
-        auto parametersTabName = psgClip->getName().isNotEmpty() ? psgClip->getName() : "Clip Parameters";
-        tabbedComponent.setTabName(0, parametersTabName);
+        // auto parametersTabName = psgClip->getName().isNotEmpty() ? psgClip->getName() : "Clip Parameters";
+        // tabbedComponent.setTabName(0, parametersTabName);
         tabbedComponent.setCurrentTabIndex(0, true);
     } else if (track) {
-        auto devicesTabName = track->getName().isNotEmpty() ? track->getName() : "Track Devices";
-        tabbedComponent.setTabName(1, devicesTabName);
+        // auto devicesTabName = track->getName().isNotEmpty() ? track->getName() : "Track Devices";
+        // tabbedComponent.setTabName(1, devicesTabName);
         tabbedComponent.setCurrentTabIndex(1, true);
     }
 }

@@ -125,6 +125,8 @@ public:
     void setBeatLength(te::TimeDuration beatLen);
     void setFramesPerBeat(int fpb);
 
+    int getTrackHeaderWidth() const;
+
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditViewState)
 };

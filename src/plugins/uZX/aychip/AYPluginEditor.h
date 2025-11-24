@@ -69,6 +69,7 @@ private:
     private:
         void valueChanged(Value&) override;
         void updateTNEState();
+        void setupButtonColours(ToggleButton& button);
 
         ParameterValue<bool>& channelParam_;
     };

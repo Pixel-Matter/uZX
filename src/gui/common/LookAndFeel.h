@@ -57,8 +57,10 @@ struct Theme {
     inline static const Colour primary       = Colour::fromString("#FF0EA5E9"); // sky-500
     inline static const Colour secondary     = Colour::fromString("#FF8B5CF6"); // violet-500
     inline static const Colour success       = Colour::fromString("#FF10B981"); // emerald-500
+    inline static const Colour soloed        = Colour::fromString("#FF10B981"); // emerald-500
     inline static const Colour warning       = Colour::fromString("#FFF59E0B"); // amber-500
     inline static const Colour error         = Colour::fromString("#FFEF4444"); // red-500
+    inline static const Colour muted         = Colour::fromString("#FFEF4444"); // red-500
 };
 
 // Timeline specific colors

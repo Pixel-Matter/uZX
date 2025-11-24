@@ -17,9 +17,9 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
 {
     ::Helpers::addAndMakeVisible(*this, { &trackName, &armButton, &muteButton, &soloButton, &inputButton });
 
-    armButton.setColour(TextButton::buttonOnColourId, Colours::red);
-    muteButton.setColour(TextButton::buttonOnColourId, Colours::red);
-    soloButton.setColour(TextButton::buttonOnColourId, Colours::green);
+    armButton.setColour( TextButton::buttonOnColourId, Colors::Theme::muted);
+    muteButton.setColour(TextButton::buttonOnColourId, Colors::Theme::muted);
+    soloButton.setColour(TextButton::buttonOnColourId, Colors::Theme::soloed);
 
     // TODO move to L&f for Label font
     trackName.setFont(trackName.getFont().withPointHeight(12.0f).withExtraKerningFactor(0.03f));

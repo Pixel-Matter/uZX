@@ -37,8 +37,23 @@ void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
     parent.addAndMakeVisible(envelopeOn);
 }
 
+void AYPluginUI::ChannelGroup::setupButtonColours(ToggleButton& button) {
+    button .setColour(TextButton::buttonOnColourId, Colors::Theme::soloed);
+
+    // TODO if logic is inverted, use Theme::surface as on color
+    // button.setColour(TextButton::buttonOnColourId, Colors::Theme::surface);
+    // button.setColour(TextButton::buttonColourId,   Colors::Theme::muted);
+    // button.setColour(TextButton::textColourOffId,  Colors::Theme::background);
+    // button.setColour(TextButton::textColourOnId,   Colors::Theme::textPrimary);
+}
+
 void AYPluginUI::ChannelGroup::setupWidgets() {
-    // Set connected edges for [A|T|N|E] style buttons
+    setupButtonColours(channelOn);
+    setupButtonColours(toneOn);
+    setupButtonColours(noiseOn);
+    setupButtonColours(envelopeOn);
+
+    // Set connected edges for buttons
     channelOn.setConnectedEdges(Button::ConnectedOnRight);
     toneOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnBottom);
     noiseOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnTop | Button::ConnectedOnBottom);
@@ -46,9 +61,8 @@ void AYPluginUI::ChannelGroup::setupWidgets() {
 }
 
 void AYPluginUI::ChannelGroup::layoutButtons(Rectangle<int> bounds) {
-    // Layout: [A|T|N|E] - all buttons connected
-    const int buttonSize = bounds.getHeight() / 3;
-    const int w = buttonSize;
+    const int buttonSize = bounds.getHeight() / 2;
+    const int w = bounds.getWidth();
 
     channelOn.setBounds(bounds.removeFromLeft(buttonSize));
     auto column = bounds.removeFromLeft(buttonSize);
@@ -97,22 +111,6 @@ void AYPluginUI::setupToggleButtons() {
     }
 }
 
-void AYPluginUI::layoutChannelToggles(juce::Rectangle<int>& r) {
-    r.removeFromTop(itemSpacing * 3);
-
-    // Layout: [A|T|N|E]
-    //         [B|T|N|E]
-    //         [C|T|N|E]
-    // Each channel group handles its own layout
-
-    for (int i = 0; i < 3; ++i) {
-        if (i > 0) r.removeFromTop(itemSpacing);
-
-        auto row = r.removeFromTop(itemHeight * 5 / 2);
-        channelGroups[i]->layoutButtons(row);
-    }
-}
-
 void AYPluginUI::paint(Graphics& g) {
     // g.fillAll(Colors::Theme::backgroundAlt);
 }
@@ -125,8 +123,7 @@ void AYPluginUI::resized() {
     auto buttonWidth = staticRow.getWidth() / 3 - 8;
     chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
     staticRow.removeFromLeft(8);
-    auto comboArea = staticRow;
-    chipClockCombo.setBounds(comboArea.withSizeKeepingCentre(comboArea.getWidth(), 20));
+    chipClockCombo.setBounds(staticRow.withSizeKeepingCentre(staticRow.getWidth(), 20));
 
     // automatable
     r.removeFromTop(itemSpacing * 2);
@@ -134,14 +131,18 @@ void AYPluginUI::resized() {
 
     layoutButton.setBounds(knobsRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
 
-    auto knobWidth = knobsRow.getWidth() / 2;
     knobsRow.removeFromLeft(8);
-    stereoKnob.setBounds(knobsRow.removeFromLeft(knobWidth));
+    stereoKnob.setBounds(knobsRow.removeFromLeft(knobsRow.getWidth() / 2));
     volumeKnob.setBounds(knobsRow);
 
     // Channel and effect toggles
-    layoutChannelToggles(r);
-}
+    r.removeFromTop(itemSpacing * 2);
+    auto col = r.removeFromLeft(buttonWidth);
+    const float h = ((float) col.getHeight() - itemSpacing * 2.0f) / 3.0f;
+    for (int i = 0; i < 3; ++i) {
+        channelGroups[i]->layoutButtons(col.removeFromTop(roundToInt(h)));
+        col.removeFromTop(itemSpacing);
+    }}
 
 ComponentBoundsConstrainer* AYPluginUI::getBoundsConstrainer() {
     return &constrainer_;

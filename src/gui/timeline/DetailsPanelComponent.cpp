@@ -7,30 +7,10 @@
 
 namespace MoTool {
 
-//==============================================================================
-// PsgParamWrapper implementation
-DetailsPanelComponent::PsgParamWrapper::PsgParamWrapper(EditViewState& evs,
-                                                        PsgParamEditorComponent* editor,
-                                                        TabbedComponent* tabbedComp)
-    : editViewState_(evs), tabbedComponent_(tabbedComp), editor_(editor) {
-    addAndMakeVisible(editor_.get());
-}
-
-void DetailsPanelComponent::PsgParamWrapper::resized() {
-    auto bounds = getLocalBounds();
-    const int headerWidth = editViewState_.getTrackHeaderWidth();
-    const int tabBarWidth = tabbedComponent_ ? tabbedComponent_->getTabBarDepth() : 0;
-    // Align plot with track content: remove (headerWidth - tabBarWidth) since tabBar already provides tabBarWidth
-    // offset
-    bounds.removeFromLeft(headerWidth - tabBarWidth - 8);
-    editor_->setBounds(bounds);
-}
-
-//==============================================================================
 DetailsPanelComponent::DetailsPanelComponent(EditViewState& evs, TimelineGrid& g) : editViewState(evs) {
     tabbedComponent.setOutline(0);
     tabbedComponent.addTab("Clip Parameters", Colors::Theme::background,
-                           new PsgParamWrapper(evs, new PsgParamEditorComponent(evs, g), &tabbedComponent), true);
+                           new PsgParamEditorWrapper(evs, g), true);
     tabbedComponent.addTab("Track Devices", Colors::Theme::background, new TrackDevicesPanel(evs), true);
 
     addAndMakeVisible(tabbedComponent);

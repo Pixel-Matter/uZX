@@ -28,7 +28,7 @@ public:
 private:
     const PsgClip& clip;
     const PsgParamType paramType;
-    const juce::Array<PsgParamFrame*>& frames;
+    const Array<PsgParamFrame*>& frames;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgParamList)
 };
@@ -41,10 +41,13 @@ public:
     PsgParamEditorComponent(EditViewState& evs, TimelineGrid& g);
     ~PsgParamEditorComponent() override;
 
+    void setCurrentParam(PsgParamType param);
+    PsgParamType getCurrentParam() const { return currentParam; }
+
     // ZoomViewState::Listener overrides
     void zoomChanged() override;
     void setCurrentClip(PsgClip* c);
-    void changeListenerCallback(juce::ChangeBroadcaster* cb) override;
+    void changeListenerCallback(ChangeBroadcaster* cb) override;
     void selectableObjectChanged(te::Selectable* s) override;
 
     // CurveEditor overrides
@@ -65,24 +68,24 @@ public:
     void setValueWhenNoPoints(float /*value*/) override;
     te::CurveEditorPoint* createPoint(int /*idx*/) override;
     int curvePoint(int /*index*/, float /*newCurve*/) override;
-    juce::String getCurveName() override;
+    String getCurveName() override;
     int getCurveNameOffset() override;
     te::Selectable* getItem() override;
     bool isShowingCurve() const override;
     void updateFromTrack() override;
-    juce::Colour getCurrentLineColour() override;
-    juce::Colour getCurrentFillColour() override;
-    juce::Colour getDefaultLineColour() const override;
-    juce::Colour getSelectedLineColour() const override;
-    juce::Colour getBackgroundColour() const override;
-    juce::Colour getCurveNameTextBackgroundColour() const override;
-    juce::Colour getPointOutlineColour() const override;
+    Colour getCurrentLineColour() override;
+    Colour getCurrentFillColour() override;
+    Colour getDefaultLineColour() const override;
+    Colour getSelectedLineColour() const override;
+    Colour getBackgroundColour() const override;
+    Colour getCurveNameTextBackgroundColour() const override;
+    Colour getPointOutlineColour() const override;
     double timeScale() const;
-    void paint(juce::Graphics& g) override;
+    void paint(Graphics& g) override;
     bool hitTest(int x, int y) override;
 
 protected:
-    void paintGrid(juce::Graphics& g);
+    void paintGrid(Graphics& g);
     void showBubbleForPointUnderMouse() override;
     void hideBubble() override;
 
@@ -95,5 +98,36 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgParamEditorComponent)
 };
+
+
+/** Wrapper component that adds parameter type selector in the left padding */
+class PsgParamEditorWrapper : public Component,
+                               private ListBoxModel,
+                               private ValueTree::Listener {
+public:
+    PsgParamEditorWrapper(EditViewState& evs, TimelineGrid& g);
+    ~PsgParamEditorWrapper() override;
+    void resized() override;
+    void paint(Graphics& g) override;
+
+    // ListBoxModel overrides
+    int getNumRows() override;
+    void paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected) override;
+    void listBoxItemClicked(int row, const MouseEvent&) override;
+
+    // ValueTree::Listener overrides
+    void valueTreePropertyChanged(ValueTree& tree, const Identifier& property) override;
+
+private:
+    EditViewState& editViewState_;
+    PsgParamEditorComponent editor_;
+    ListBox paramList_;
+    TabbedComponent* tabbedComponent_ = nullptr;
+
+    std::vector<PsgParamType::Enum> paramTypes_;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgParamEditorWrapper)
+};
+
 
 }  // namespace MoTool

@@ -154,6 +154,7 @@ bool AYPluginUI::hasDeviceMenu() const {
 
 void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
     addMidiRangeMenu(menu, plugin_.staticParams.baseMidiChannel, plugin_.staticParams.baseMidiChannel.definition.description, 4);
+    addDiscreteIntegerParameterMenu(menu, plugin_.staticParams.numOutputChannels, plugin_.staticParams.numOutputChannels.definition.description);
 }
 
 REGISTER_PLUGIN_UI_ADAPTER(AYChipPlugin, AYPluginUI)

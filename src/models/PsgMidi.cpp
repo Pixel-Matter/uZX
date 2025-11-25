@@ -128,7 +128,7 @@ inline void PsgParamsMidiWriter::addEvent(double time, int psgChan, MidiCCType t
 void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
     int psgChan = 0;
     for (auto [type, value] : data.getParams()) {
-        switch (type.value) {
+        switch (type.asEnum()) {
             case PsgParamType::VolumeA:
                 psgChan = 0;
                 addEvent(time, psgChan, MidiCCType::Volume, value);

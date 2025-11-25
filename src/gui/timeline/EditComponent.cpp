@@ -51,7 +51,7 @@ void EditComponent::paint(Graphics& g) {
 void EditComponent::resized() {
     // also get called on updated zoom
     const int rulerHeight = 24;
-    const auto headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
+    const auto headerWidth = editViewState.getTrackHeaderWidth();
     auto r = getLocalBounds();
 
     editViewState.zoom.setViewWidthPx(r.getWidth() - headerWidth);

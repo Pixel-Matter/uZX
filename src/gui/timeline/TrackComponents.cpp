@@ -17,9 +17,9 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
 {
     ::Helpers::addAndMakeVisible(*this, { &trackName, &armButton, &muteButton, &soloButton, &inputButton });
 
-    armButton.setColour(TextButton::buttonOnColourId, Colours::red);
-    muteButton.setColour(TextButton::buttonOnColourId, Colours::red);
-    soloButton.setColour(TextButton::buttonOnColourId, Colours::green);
+    armButton.setColour( TextButton::buttonOnColourId, Colors::Theme::muted);
+    muteButton.setColour(TextButton::buttonOnColourId, Colors::Theme::muted);
+    soloButton.setColour(TextButton::buttonOnColourId, Colors::Theme::soloed);
 
     // TODO move to L&f for Label font
     trackName.setFont(trackName.getFont().withPointHeight(12.0f).withExtraKerningFactor(0.03f));
@@ -425,7 +425,7 @@ void TrackRowComponent::mouseDown(const MouseEvent&) {
 void TrackRowComponent::resized() {
     trackViewState.setTrackHeight(getHeight());
 
-    const int headerWidth = editViewState.showHeaders ? editViewState.headersWidth : 0;
+    const int headerWidth = editViewState.getTrackHeaderWidth();
     auto r = getLocalBounds();
     resizer.setBounds(r.removeFromBottom(2));
 
@@ -444,7 +444,7 @@ TrackHeaderOverlayComponent::TrackHeaderOverlayComponent(EditViewState& evs)
     setInterceptsMouseClicks(false, true);
 
     editViewState.state.addListener(this);
-    setSize(editViewState.showHeaders ? editViewState.headersWidth : 0, getHeight());
+    setSize(editViewState.getTrackHeaderWidth(), getHeight());
     constrainer.setMinimumWidth(110);
     constrainer.setMaximumWidth(300);
     addAndMakeVisible(resizer);
@@ -465,7 +465,7 @@ void TrackHeaderOverlayComponent::resized() {
 
 void TrackHeaderOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, const juce::Identifier& i) {
     if (i == IDs::headersWidth && s.hasType(IDs::EDITVIEWSTATE)) {
-        setSize(editViewState.showHeaders ? editViewState.headersWidth : 0, getHeight());
+        setSize(editViewState.getTrackHeaderWidth(), getHeight());
         resized();
     }
 }

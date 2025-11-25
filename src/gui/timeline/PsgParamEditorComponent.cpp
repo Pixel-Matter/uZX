@@ -1,7 +1,117 @@
 #include "PsgParamEditorComponent.h"
 #include "../../controllers/App.h"
+#include "../common/LookAndFeel.h"
 
 namespace MoTool {
+
+//==============================================================================
+// PsgParamEditorWrapper implementation
+//==============================================================================
+PsgParamEditorWrapper::PsgParamEditorWrapper(EditViewState& evs, TimelineGrid& g)
+    : editViewState_(evs)
+    , editor_(evs, g)
+{
+    // Initialize parameter types - most commonly used parameters
+    paramTypes_ = {
+        PsgParamType::VolumeA,
+        PsgParamType::VolumeB,
+        PsgParamType::VolumeC,
+        PsgParamType::TonePeriodA,
+        PsgParamType::TonePeriodB,
+        PsgParamType::TonePeriodC,
+        PsgParamType::EnvelopePeriod,
+        PsgParamType::EnvelopeShape,
+        PsgParamType::NoisePeriod,
+    };
+
+    paramList_.setModel(this);
+    paramList_.setMultipleSelectionEnabled(false);
+    paramList_.setRowHeight(20);
+    paramList_.setOutlineThickness(0);
+
+    addAndMakeVisible(paramList_);
+    addAndMakeVisible(editor_);
+
+    // Listen to headersWidth changes
+    editViewState_.state.addListener(this);
+
+    // Select first parameter by default (TonePeriodA)
+    paramList_.selectRow(3, false, false);
+}
+
+PsgParamEditorWrapper::~PsgParamEditorWrapper() {
+    editViewState_.state.removeListener(this);
+}
+
+int PsgParamEditorWrapper::getNumRows() {
+    return static_cast<int>(paramTypes_.size());
+}
+
+void PsgParamEditorWrapper::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected) {
+    if (rowNumber < 0 || rowNumber >= static_cast<int>(paramTypes_.size()))
+        return;
+
+    PsgParamType param(paramTypes_[rowNumber]);
+    auto label = param.getLabel();
+
+    if (rowIsSelected) {
+        g.setColour(Colors::Theme::primary);
+        g.fillRect(0, 0, width, height);
+    }
+
+    // Text
+    g.setColour(Colors::Theme::textPrimary);
+    g.drawText(String(label.data(), label.size()), 4, 0, width - 8, height, Justification::centredLeft, true);
+}
+
+void PsgParamEditorWrapper::listBoxItemClicked(int row, const MouseEvent&) {
+    if (row >= 0 && row < static_cast<int>(paramTypes_.size())) {
+        editor_.setCurrentParam(PsgParamType(paramTypes_[row]));
+    }
+}
+
+void PsgParamEditorWrapper::paint(Graphics& g) {
+    // No need to paint background - ListBox handles it
+}
+
+void PsgParamEditorWrapper::resized() {
+    auto bounds = getLocalBounds();
+    const int headerWidth = editViewState_.getTrackHeaderWidth();
+
+    // Get tab bar width from parent TabbedComponent
+    int tabBarWidth = 0;
+    if (!tabbedComponent_) {
+        // Find TabbedComponent parent on first resize
+        auto* parent = getParentComponent();
+        while (parent) {
+            if (auto* tabbed = dynamic_cast<TabbedComponent*>(parent)) {
+                tabbedComponent_ = tabbed;
+                break;
+            }
+            parent = parent->getParentComponent();
+        }
+    }
+
+    if (tabbedComponent_) {
+        tabBarWidth = tabbedComponent_->getTabBarDepth();
+    }
+
+    // Left area for parameter selector: headerWidth - tabBarWidth - 8px
+    const int listWidth = headerWidth - tabBarWidth - 8;
+    auto leftArea = bounds.removeFromLeft(listWidth);
+    paramList_.setBounds(leftArea);
+
+    // Right area for the editor
+    editor_.setBounds(bounds);
+}
+
+void PsgParamEditorWrapper::valueTreePropertyChanged(ValueTree& tree, const Identifier& property) {
+    if (property == IDs::headersWidth && tree.hasType(IDs::EDITVIEWSTATE)) {
+        resized();
+    }
+}
+
+//==============================================================================
 
 // PsgParamList implementation
 PsgParamList::PsgParamList(const PsgClip& c, PsgParamType type)
@@ -19,8 +129,7 @@ int PsgParamList::size() const {
 }
 
 float PsgParamList::getMaxValue() const {
-    // TODO implement in PsgParamFrame or PsgParamType
-    return 4096.0f;
+    return static_cast<float>(paramType.getRange().end);
 }
 
 int PsgParamList::findIndex(te::TimePosition pos) const {
@@ -101,7 +210,15 @@ void PsgParamEditorComponent::setCurrentClip(PsgClip* c) {
     }
 }
 
-void PsgParamEditorComponent::changeListenerCallback(juce::ChangeBroadcaster* cb) {
+void PsgParamEditorComponent::setCurrentParam(PsgParamType param) {
+    currentParam = param;
+    if (currentClip.get() != nullptr) {
+        paramList.emplace(*currentClip, currentParam);
+    }
+    repaint();
+}
+
+void PsgParamEditorComponent::changeListenerCallback(ChangeBroadcaster* cb) {
     if (cb == &editViewState.selectionManager) {
         if (auto* s = editViewState.selectionManager.getFirstItemOfType<PsgClip>()) {
             currentParam = PsgParamType::TonePeriodA;  // Default to TonePeriodA
@@ -201,7 +318,7 @@ int PsgParamEditorComponent::curvePoint(int /*index*/, float /*newCurve*/) {
     return 0;
 }
 
-juce::String PsgParamEditorComponent::getCurveName() {
+String PsgParamEditorComponent::getCurveName() {
     if (currentClip.get() != nullptr) {
         return std::string(currentParam.getLabel());
     }
@@ -224,31 +341,31 @@ void PsgParamEditorComponent::updateFromTrack() {
     // TODO
 }
 
-juce::Colour PsgParamEditorComponent::getCurrentLineColour() {
+Colour PsgParamEditorComponent::getCurrentLineColour() {
     return Colours::white;
 }
 
-juce::Colour PsgParamEditorComponent::getCurrentFillColour() {
-    return juce::Colours::transparentBlack;
+Colour PsgParamEditorComponent::getCurrentFillColour() {
+    return Colours::transparentBlack;
 }
 
-juce::Colour PsgParamEditorComponent::getDefaultLineColour() const {
+Colour PsgParamEditorComponent::getDefaultLineColour() const {
     return Colours::black;
 }
 
-juce::Colour PsgParamEditorComponent::getSelectedLineColour() const {
+Colour PsgParamEditorComponent::getSelectedLineColour() const {
     return Colours::yellow;
 }
 
-juce::Colour PsgParamEditorComponent::getBackgroundColour() const {
+Colour PsgParamEditorComponent::getBackgroundColour() const {
     return Colours::white;
 }
 
-juce::Colour PsgParamEditorComponent::getCurveNameTextBackgroundColour() const {
+Colour PsgParamEditorComponent::getCurveNameTextBackgroundColour() const {
     return Colours::white;  // TODO color of the current PSG param
 }
 
-juce::Colour PsgParamEditorComponent::getPointOutlineColour() const {
+Colour PsgParamEditorComponent::getPointOutlineColour() const {
     return Colours::black;
 }
 
@@ -257,7 +374,7 @@ double PsgParamEditorComponent::timeScale() const {
     return (rightTime - leftTime).inSeconds() / getWidth();
 }
 
-void PsgParamEditorComponent::paintGrid(juce::Graphics& g) {
+void PsgParamEditorComponent::paintGrid(Graphics& g) {
     g.fillAll(LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId));
 
     if (auto ticks = grid.getTicks(); !ticks.empty()) {
@@ -265,7 +382,7 @@ void PsgParamEditorComponent::paintGrid(juce::Graphics& g) {
     }
 }
 
-void PsgParamEditorComponent::paint(juce::Graphics& g) {
+void PsgParamEditorComponent::paint(Graphics& g) {
     using namespace tracktion;
     CRASH_TRACER
 
@@ -289,7 +406,7 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
         auto text = getCurveName();
         g.setFont(13.0f);
     #if JUCE_MAJOR_VERSION >= 8
-        auto tw = juce::GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text);
+        auto tw = GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text);
     #else
         auto tw = g.getCurrentFont().getStringWidth (text);
     #endif
@@ -297,7 +414,7 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
         g.fillRect(tx, 0, tw + 8, 16);
 
         g.setColour(getDefaultLineColour());
-        g.drawText(text, tx + 4, 0, tw + 6, 16, juce::Justification::left, true);
+        g.drawText(text, tx + 4, 0, tw + 6, 16, Justification::left, true);
     }
 
     const int start = jmax(0, paramList->findPrevActiveIndex(paramList->findIndex(leftTime)));
@@ -306,7 +423,7 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
         const int preStart = paramList->findPrevActiveIndex(start - 1);
         const auto startX = std::max(0.0f, timeToX({}));
         auto lastY = valueToY(getValue(preStart));
-        juce::Path curvePath;
+        Path curvePath;
         curvePath.startNewSubPath(startX, lastY);
         curvePath.preallocateSpace((numPoints - start) * 2 + 2);
 
@@ -355,7 +472,7 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
         // curvePath.lineTo((float) getWidth(), lastY);
 
         if (auto fillCol = getCurrentFillColour(); ! fillCol.isTransparent()) {
-            juce::Path fillPath(curvePath);
+            Path fillPath(curvePath);
             const auto y = getHeight() + 1.0f;
             fillPath.lineTo((float) getWidth(), y);
             fillPath.lineTo(startX, y);
@@ -366,7 +483,7 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
         }
 
         g.setColour(getCurrentLineColour());
-        g.strokePath(curvePath, juce::PathStrokeType(lineThickness / 2));
+        g.strokePath(curvePath, PathStrokeType(lineThickness / 2));
     }
 
     //=========================================================================================
@@ -379,7 +496,7 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
     const bool anySelected = areAnyPointsSelected();
 
     if (isOver || isCurveSelected || anySelected) {
-        juce::RectangleList<float> rects, selectedRects, fills;
+        RectangleList<float> rects, selectedRects, fills;
         rects.ensureStorageAllocated(numPoints - start);
 
         if (anySelected)
@@ -391,7 +508,7 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
                 continue;
             auto pos = getPosition(i);
 
-            juce::Rectangle<float> r(pos.x - pointRadius, pos.y - pointRadius,
+            Rectangle<float> r(pos.x - pointRadius, pos.y - pointRadius,
                                      pointRadius * 2, pointRadius * 2);
             r = r.reduced(2);
 
@@ -422,7 +539,7 @@ void PsgParamEditorComponent::paint(juce::Graphics& g) {
         // for (int i = start; i < numPoints - 1; ++i) {
         //     auto pos = getPosition(getBezierHandle(i));
 
-        //     juce::Rectangle<float> r (pos.x - pointRadius,
+        //     Rectangle<float> r (pos.x - pointRadius,
         //                             pos.y - pointRadius,
         //                             pointRadius * 2,
         //                             pointRadius * 2);

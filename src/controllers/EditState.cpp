@@ -257,7 +257,9 @@ double EditViewState::setBpmSnappedToFps(double bpm) {
     return snappedBpm;
 }
 
-
+int EditViewState::getTrackHeaderWidth() const {
+    return showHeaders ? headersWidth.get() : 0;
+}
 
 //==============================================================================
 // TrackViewState

@@ -73,7 +73,7 @@ public:
     using EnumChoice::EnumChoice;
 
     inline constexpr double getClockValue() const noexcept {
-        return clockValues[static_cast<size_t>(value)];
+        return clockValues[asUnderlying()];
     }
 
     inline constexpr static auto getClockEntries() noexcept {
@@ -122,58 +122,31 @@ struct EnvShapeEnum {
         UP_DOWN_E,
         UP_HOLD_BOTTOM_F,
     };
+
+    static inline constexpr std::string_view shortLabels[] {
+        "\\___",
+        "\\___",
+        "\\___",
+        "\\___",
+        "/|__",
+        "/|__",
+        "/|__",
+        "/|__",
+        "\\|\\|",
+        "\\___",
+        "\\/\\/",
+        "\\|~~",
+        "/|/|",
+        "/~~~~",
+        "/\\/\\",
+        "/|__"
+    };
 };
 
 using ChipType = MoTool::Util::EnumChoice<TypeEnum>;
 using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
 using EnvShape = MoTool::Util::EnumChoice<EnvShapeEnum>;
 
-} // namespace MoTool::uZX
-
-
-// Specialization of `enum_name` must be injected in `namespace magic_enum::customize`.
-namespace magic_enum::customize {
-
-using namespace MoTool::uZX;
-
-// template <>
-// inline constexpr customize_t enum_name<ChipClockChoice::Enum>(ChipClockChoice::Enum value) noexcept {
-//     return ChipClockChoice(value).enumNameCustom();
-// }
-
-// template <>
-// inline constexpr customize_t enum_name<ChipType::Enum>(ChipType::Enum value) noexcept {
-//     return ChipType(value).enumNameCustom();
-// }
-
-template <>
-inline constexpr customize_t enum_name<MoTool::uZX::EnvShapeEnum::Enum>(MoTool::uZX::EnvShapeEnum::Enum value) noexcept {
-    using EnvShape = MoTool::uZX::EnvShapeEnum::Enum;
-    switch(value) {
-        case EnvShape::DOWN_HOLD_BOTTOM_0: [[fallthrough]];
-        case EnvShape::DOWN_HOLD_BOTTOM_1: [[fallthrough]];
-        case EnvShape::DOWN_HOLD_BOTTOM_2: [[fallthrough]];
-        case EnvShape::DOWN_HOLD_BOTTOM_3: return "\\___";
-        case EnvShape::UP_HOLD_BOTTOM_4:   [[fallthrough]];
-        case EnvShape::UP_HOLD_BOTTOM_5:   [[fallthrough]];
-        case EnvShape::UP_HOLD_BOTTOM_6:   [[fallthrough]];
-        case EnvShape::UP_HOLD_BOTTOM_7:   return "/|__";
-        case EnvShape::DOWN_DOWN_8:        return "\\|\\|";
-        case EnvShape::DOWN_HOLD_BOTTOM_9: return "\\___";
-        case EnvShape::DOWN_UP_A:          return "\\/\\/";
-        case EnvShape::DOWN_HOLD_TOP_B:    return "\\|~~";
-        case EnvShape::UP_UP_C:            return "/|/|";
-        case EnvShape::UP_HOLD_TOP_D:      return "/~~~~";
-        case EnvShape::UP_DOWN_E:          return "/\\/\\";
-        case EnvShape::UP_HOLD_BOTTOM_F:   return "/|__";
-    }
-    return default_tag;
-}
-
-} // namespace magic_enum::customize
-
-
-namespace MoTool::uZX {
 
 class AYInterface {
 public:

@@ -199,7 +199,7 @@ void PsgClipComponent::paintParameters(Graphics& g) {
             if (frameData.isSet(paramNum)) {
                 juce::Colour color;
                 auto value = frameData.getRaw(static_cast<PsgParamType>(paramNum));
-                switch (paramType.value) {
+                switch (paramType.asEnum()) {
                     case PsgParamType::TonePeriodA:
                         color = Colors::PSG::A;
                         break;

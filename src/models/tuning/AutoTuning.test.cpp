@@ -19,7 +19,7 @@ public:
             AutoTuning tuning(testClockFreq, std::make_unique<EqualTemperamentTuning>(440.0));
             expectEquals(tuning.getA4Frequency(), 440.0, "A4 frequency should be 440.0 Hz");
             expectEquals(tuning.getClockFrequency(), testClockFreq, "Clock frequency should be set correctly");
-            expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TuningType::AutoTuning));
+            expectEquals(static_cast<int>(tuning.getType()), static_cast<int>(TuningType::AutoTuning));
         }
 
         beginTest("getName method");

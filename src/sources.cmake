@@ -89,6 +89,8 @@ set(TEST_SOURCES
     ## models/PsgTrack.test.cpp
     ## models/CustomClip.test.cpp
 
+    util/enumchoice.test.cpp
+
     models/PsgMidi.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/TuningTable.test.cpp

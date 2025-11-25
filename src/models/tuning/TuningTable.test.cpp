@@ -17,7 +17,7 @@ public:
             TuningTable tuning(1773400, std::make_unique<EqualTemperamentTuning>(440.0), emptyTable, "Empty Test");
 
             expectEquals(tuning.getDescription(), String("Empty Test, defined notes C-1-C-1, A4 = 440.00Hz"));
-            expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TuningType::CustomTable));
+            expectEquals(static_cast<int>(tuning.getType()), static_cast<int>(TuningType::CustomTable));
         }
 
         beginTest("Constructor with simple period table");

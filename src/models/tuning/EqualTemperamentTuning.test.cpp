@@ -13,7 +13,7 @@ public:
         {
             EqualTemperamentTuning tuning;
             expectEquals(tuning.getA4Frequency(), 440.0, "Default A4 frequency should be 440.0 Hz");
-            expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TuningSystemType::EqualTemperament));
+            expectEquals(static_cast<int>(tuning.getType()), static_cast<int>(TuningSystemType::EqualTemperament));
         }
 
         beginTest("Constructor with custom A4 frequency");

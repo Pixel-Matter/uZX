@@ -31,7 +31,7 @@ public:
             RationalTuning tuning {justIntonationRatios, Scale::Tonic::C};
 
             expectEquals(tuning.getA4Frequency(), 440.0, "Default A4 frequency should be 440.0 Hz");
-            expectEquals(static_cast<int>(tuning.getType().value), static_cast<int>(TuningSystemType::CustomRational), "Tuning type should be CustomRational, got " + String(tuning.getType().getLabel().data()));
+            expectEquals(static_cast<int>(tuning.getType()), static_cast<int>(TuningSystemType::CustomRational), "Tuning type should be CustomRational, got " + String(tuning.getType().getLabel().data()));
 
             // expectEquals(static_cast<int>(tuning.getScale()->getType()), static_cast<int>(Scale::ScaleType::AeolianOrMinor),
             //              "Scale type should be AeolianOrMinor, got " + String(tuning.getScale()->getType().getLabel().data()));

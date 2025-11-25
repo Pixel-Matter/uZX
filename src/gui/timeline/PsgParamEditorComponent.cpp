@@ -129,8 +129,7 @@ int PsgParamList::size() const {
 }
 
 float PsgParamList::getMaxValue() const {
-    // TODO implement in PsgParamFrame or PsgParamType
-    return 4096.0f;
+    return static_cast<float>(paramType.getRange().end);
 }
 
 int PsgParamList::findIndex(te::TimePosition pos) const {

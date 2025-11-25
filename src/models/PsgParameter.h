@@ -4,6 +4,7 @@
 
 #include "../formats/psg/PsgData.h"
 #include "../util/enumchoice.h"
+#include "juce_core/juce_core.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -62,7 +63,46 @@ struct PsgParamTypeEnum {
         "Retrigger Envelope",
     };
 };
-using PsgParamType = MoTool::Util::EnumChoice<PsgParamTypeEnum>;
+
+class PsgParamType : public Util::EnumChoice<PsgParamTypeEnum> {
+public:
+    using Util::EnumChoice<PsgParamTypeEnum>::EnumChoice;
+
+    NormalisableRange<size_t> inline constexpr getRange() const noexcept {
+        switch (asEnum()) {
+            case VolumeA:
+            case VolumeB:
+            case VolumeC:
+                return NormalisableRange<size_t>(0, 15);
+            case TonePeriodA:
+            case TonePeriodB:
+            case TonePeriodC:
+                return NormalisableRange<size_t>(0, 4095);
+            case ToneIsOnA:
+            case ToneIsOnB:
+            case ToneIsOnC:
+            case NoiseIsOnA:
+            case NoiseIsOnB:
+            case NoiseIsOnC:
+            case EnvelopeIsOnA:
+            case EnvelopeIsOnB:
+            case EnvelopeIsOnC:
+            case RetriggerToneA:
+            case RetriggerToneB:
+            case RetriggerToneC:
+            case RetriggerEnvelope:
+                return NormalisableRange<size_t>(0, 1);
+            case NoisePeriod:
+                return NormalisableRange<size_t>(0, 31);
+            case EnvelopePeriod:
+                return NormalisableRange<size_t>(0, 512);
+            case EnvelopeShape:
+                return NormalisableRange<size_t>(0, 15);
+            default:
+                return NormalisableRange<size_t>(0, 0);
+        }
+    }
+};
 
 class PsgParamFrameData {
 public:

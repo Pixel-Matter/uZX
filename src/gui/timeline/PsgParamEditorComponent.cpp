@@ -187,6 +187,7 @@ PsgParamEditorComponent::PsgParamEditorComponent(EditViewState& evs, TimelineGri
     : CurveEditor(evs.edit, evs.selectionManager)
     , editViewState(evs)
     , grid(g)
+    , currentParam(PsgParamType::TonePeriodA)  // Initialize to match wrapper's default selection
 {
     setTimes(editViewState.zoom.getRange().getStart(), editViewState.zoom.getRange().getEnd());
     evs.zoom.addListener(this);
@@ -221,7 +222,7 @@ void PsgParamEditorComponent::setCurrentParam(PsgParamType param) {
 void PsgParamEditorComponent::changeListenerCallback(ChangeBroadcaster* cb) {
     if (cb == &editViewState.selectionManager) {
         if (auto* s = editViewState.selectionManager.getFirstItemOfType<PsgClip>()) {
-            currentParam = PsgParamType::TonePeriodA;  // Default to TonePeriodA
+            // Keep the current parameter selection when switching clips
             setCurrentClip(s);
         }
         // else {
@@ -234,8 +235,8 @@ void PsgParamEditorComponent::changeListenerCallback(ChangeBroadcaster* cb) {
 void PsgParamEditorComponent::selectableObjectChanged(te::Selectable* s) {
     // TODO when is this called?
     if (auto psgClip = dynamic_cast<PsgClip*>(s)) {
+        // Keep the current parameter selection when switching clips
         setCurrentClip(psgClip);
-        currentParam = PsgParamType::TonePeriodA;
     } else {
         setCurrentClip(nullptr);
         currentParam = -1;

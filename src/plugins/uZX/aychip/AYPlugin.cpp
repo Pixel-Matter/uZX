@@ -157,15 +157,20 @@ void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int current
     const int actualChannels = fc.destBuffer->getNumChannels();
     const auto samples = static_cast<size_t>(timeSample - currentSample);
 
+    // TODO do not use mono, we can have zero stereo width instead
     if (numChannels == 1 && actualChannels >= 1) {
         chip->processBlockMono(
             fc.destBuffer->getWritePointer(0, currentSample), samples, staticParams.removeDC.getStoredValue());
+            if (actualChannels >= 2)
+                fc.destBuffer->copyFrom(1, currentSample, *fc.destBuffer, 0, currentSample, samples);
+
     } else if (numChannels == 2 && actualChannels >= 2) {
         chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
                            fc.destBuffer->getWritePointer(1, currentSample),
                            samples,
                            staticParams.removeDC.getStoredValue());
     } else if (numChannels == 3 && actualChannels >= 3) {
+        // TODO output 5 channels: 2 stereo + ABC unmixed
         chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
                                   fc.destBuffer->getWritePointer(1, currentSample),
                                   fc.destBuffer->getWritePointer(2, currentSample),

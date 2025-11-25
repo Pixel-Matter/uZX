@@ -322,7 +322,7 @@ void ayumi_process(struct ayumi* ay) {
           ay->x -= 1;
           update_mixer(ay);
           update_interpolator(&ay->outputs[0].interpolator,
-                             (ay->channel_out[0] + ay->channel_out[1] + ay->channel_out[2]) / 3.0);
+                             (ay->channel_out[0] + ay->channel_out[1] + ay->channel_out[2]) / 2.0);
         }
         fir0[i] = (c0[2] * ay->x + c0[1]) * ay->x + c0[0];
       }

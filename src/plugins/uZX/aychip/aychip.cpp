@@ -227,7 +227,6 @@ auto AyumiEmulator::setOutputMode(int numChannels) -> void {
 }
 
 auto AyumiEmulator::processBlockMono(float* outMono, size_t numSamples, bool removeDC, size_t stride) -> void {
-    jassert(Ayumi_.output_mode == AYUMI_MONO);  // Must call setOutputMode(1) first
     for (size_t i = 0; i < numSamples; ++i, outMono+=stride) {
         ayumi_process(&Ayumi_);
         if (removeDC) {
@@ -240,7 +239,6 @@ auto AyumiEmulator::processBlockMono(float* outMono, size_t numSamples, bool rem
 }
 
 auto AyumiEmulator::processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC, size_t stride) -> void {
-    jassert(Ayumi_.output_mode == AYUMI_STEREO);  // Must call setOutputMode(2) first
     for (size_t i = 0; i < numSamples; ++i, outLeft+=stride, outRight+=stride) {
         ayumi_process(&Ayumi_);
         if (removeDC) {

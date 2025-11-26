@@ -409,8 +409,23 @@ void ayumi_remove_dc(struct ayumi* ay) {
 }
 
 void ayumi_get_stereo_output(struct ayumi* ay, double* left, double* right) {
-  *left = ay->outputs[0].value;
-  *right = ay->outputs[1].value;
+  if (ay->output_mode == AYUMI_SEPARATE) {
+    // When in SEPARATE mode, manually mix the three channels to stereo using pan values
+    *left = ay->outputs[0].value * ay->channels[0].pan_left +
+            ay->outputs[1].value * ay->channels[1].pan_left +
+            ay->outputs[2].value * ay->channels[2].pan_left;
+    *right = ay->outputs[0].value * ay->channels[0].pan_right +
+             ay->outputs[1].value * ay->channels[1].pan_right +
+             ay->outputs[2].value * ay->channels[2].pan_right;
+  } else if (ay->output_mode == AYUMI_MONO) {
+    // MONO mode - use left channel for both outputs
+    *left = ay->outputs[0].value;
+    *right = ay->outputs[0].value;
+  } else {
+    // STEREO mode - outputs are already mixed
+    *left = ay->outputs[0].value;
+    *right = ay->outputs[1].value;
+  }
 }
 
 void ayumi_get_separate_output(struct ayumi* ay, double* out_a, double* out_b, double* out_c) {

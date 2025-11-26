@@ -81,7 +81,7 @@ public:
         ParameterValue<ChipType> chipType   {{"chip",  IDs::chip,  "Chip",  "Chip type",      ChipType::AY}};
         ParameterValue<double> chipClock    {{"clock", IDs::clock, "Clock", "Clock frequncy", 1.7734, {0.894887, 2.0, 0.01}, "MHz"}};
         ParameterValue<bool> removeDC       {{"noDC",  IDs::noDC,  "Remove DC", "Remove DC from output", true}};
-        ParameterValue<int> numOutputChannels {{"numChannels", IDs::numChannels, "Output Channels", "Number of output channels", 2, {1, 3, 1}}};
+        ParameterValue<int> numOutputChannels {{"numChannels", IDs::numChannels, "Output Channels", "Number of output channels", 2, {1, 5, 1}}};
     };
 
     StaticParams staticParams;

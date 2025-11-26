@@ -268,4 +268,28 @@ auto AyumiEmulator::processBlockSeparate(float* outCh0, float* outCh1, float* ou
     }
 }
 
+auto AyumiEmulator::processBlockStereoPlusSeparate(float* outLeft, float* outRight, float* outCh0, float* outCh1, float* outCh2,
+                                                   size_t numSamples, bool removeDC, size_t stride) -> void {
+    jassert(Ayumi_.output_mode == AYUMI_SEPARATE);  // Must call setOutputMode(3) first
+    for (size_t i = 0; i < numSamples; ++i, outLeft+=stride, outRight+=stride, outCh0+=stride, outCh1+=stride, outCh2+=stride) {
+        ayumi_process(&Ayumi_);
+        if (removeDC) {
+            ayumi_remove_dc(&Ayumi_);
+        }
+
+        // Get separate channel outputs
+        double ch0, ch1, ch2;
+        ayumi_get_separate_output(&Ayumi_, &ch0, &ch1, &ch2);
+        *outCh0 = static_cast<float>(ch0) * MasterVolume_;
+        *outCh1 = static_cast<float>(ch1) * MasterVolume_;
+        *outCh2 = static_cast<float>(ch2) * MasterVolume_;
+
+        // Get stereo output (ayumi_get_stereo_output handles mixing in SEPARATE mode)
+        double left, right;
+        ayumi_get_stereo_output(&Ayumi_, &left, &right);
+        *outLeft = static_cast<float>(left) * MasterVolume_;
+        *outRight = static_cast<float>(right) * MasterVolume_;
+    }
+}
+
 } // namespace MoTool::uZX

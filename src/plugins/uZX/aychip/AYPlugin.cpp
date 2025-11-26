@@ -90,14 +90,18 @@ void AYChipPlugin::midiPanic() {
 
 void AYChipPlugin::reset() {
     const ScopedLock sl(lock);
+    const int numChannels = staticParams.numOutputChannels.getStoredValue();
+    // Map channel count to ayumi mode: 1→MONO, 2→STEREO, 3→SEPARATE, 5→SEPARATE
+    const int ayumiMode = (numChannels == 5) ? 3 : numChannels;
+
     if (chip == nullptr) {
         chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.chipClock.getStoredValue() * MHz,
                                                staticParams.chipType.getStoredValue(),
-                                               staticParams.numOutputChannels.getStoredValue());
+                                               ayumiMode);
     } else {
         chip->reset(static_cast<int>(sampleRate), staticParams.chipClock.getStoredValue() * MHz,
                                                   staticParams.chipType.getStoredValue());
-        chip->setOutputMode(staticParams.numOutputChannels.getStoredValue());
+        chip->setOutputMode(ayumiMode);
     }
     updateDynamicParams();
     // timeFromReset = 0.0;  // not used now
@@ -170,11 +174,20 @@ void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int current
                            samples,
                            staticParams.removeDC.getStoredValue());
     } else if (numChannels == 3 && actualChannels >= 3) {
-        // TODO output 5 channels: 2 stereo + ABC unmixed
         chip->processBlockSeparate(fc.destBuffer->getWritePointer(0, currentSample),
                                   fc.destBuffer->getWritePointer(1, currentSample),
                                   fc.destBuffer->getWritePointer(2, currentSample),
                                   samples);
+    } else if (numChannels == 5 && actualChannels >= 5) {
+        // Output 5 channels: stereo (L+R) + 3 separate (A, B, C)
+        chip->processBlockStereoPlusSeparate(
+            fc.destBuffer->getWritePointer(0, currentSample),  // Left
+            fc.destBuffer->getWritePointer(1, currentSample),  // Right
+            fc.destBuffer->getWritePointer(2, currentSample),  // Channel A
+            fc.destBuffer->getWritePointer(3, currentSample),  // Channel B
+            fc.destBuffer->getWritePointer(4, currentSample),  // Channel C
+            samples,
+            staticParams.removeDC.getStoredValue());
     }
 }
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {

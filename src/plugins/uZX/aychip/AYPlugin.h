@@ -50,12 +50,13 @@ public:
     String getSelectableDescription() override    { return "AY Chip plugin based on Ayumi emulator"; }
     bool isSynth() override                       { return true; }
 
-    int getNumOutputChannelsGivenInputs(int /*numInputChannels*/) override { return staticParams.numOutputChannels.getStoredValue(); }
+    int getNumOutputChannelsGivenInputs(int /*numInputChannels*/) override;
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;
     void applyToBuffer(const te::PluginRenderContext&) noexcept override;
     void midiPanic() override;
     void reset() override;
+    void getChannelNames(juce::StringArray*, juce::StringArray*) override;
 
     //==============================================================================
     bool takesMidiInput() override                      { return true; }

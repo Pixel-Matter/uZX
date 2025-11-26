@@ -30,6 +30,7 @@ set(SHARED_SOURCES
     plugins/uZX/instrument/ChipInstrument.cpp
     plugins/uZX/instrument/ChipInstrumentVoice.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
+    plugins/uZX/scope/ScopePlugin.cpp
 )
 
 # GUI-specific files
@@ -82,6 +83,7 @@ set(GUI_SOURCES
     plugins/uZX/instrument/ChipOscillatorControls.cpp
     plugins/uZX/instrument/ChipInstrumentUI.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPluginUI.cpp
+    plugins/uZX/scope/ScopePluginUI.cpp
 )
 
 # Test-specific files to include in the test target

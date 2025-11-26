@@ -16,6 +16,7 @@
 #include "../plugins/uZX/instrument/ChipInstrumentPlugin.h"
 #include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 #include "../plugins/uZX/midi_logger/MidiLoggerPlugin.h"
+#include "../plugins/uZX/scope/ScopePlugin.h"
 
 #include "../util/FileOps.h"
 #include "../util/Helpers.h"
@@ -34,6 +35,7 @@ void registerPlugins(te::Engine& engine) {
     engine.getPluginManager().createBuiltInType<uZX::ChipInstrumentPlugin>();
     engine.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
     engine.getPluginManager().createBuiltInType<uZX::MidiLoggerPlugin>();
+    engine.getPluginManager().createBuiltInType<uZX::ScopePlugin>();
 }
 
 AppController::AppController()

@@ -28,6 +28,20 @@ AYChipPlugin::~AYChipPlugin() {
     notifyListenersOfDeletion();
 }
 
+int AYChipPlugin::getNumOutputChannelsGivenInputs(int /*numInputChannels*/) {
+    return staticParams.numOutputChannels.getStoredValue();
+}
+
+void AYChipPlugin::getChannelNames(StringArray*, StringArray* outs) {
+    if (outs != nullptr) {
+        const int numChannels = staticParams.numOutputChannels.getStoredValue();
+        outs->clear();
+        for (int i = 0; i < numChannels; ++i) {
+            outs->add("Channel " + String(i + 1));
+        }
+    }
+}
+
 void AYChipPlugin::valueTreeChanged() {
     te::Plugin::valueTreeChanged();
 }
@@ -236,7 +250,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     }
 }
 
-void AYChipPlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
+void AYChipPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
     staticParams.restoreStateFromValueTree(v);
     dynamicParams.restoreStateFromValueTree(v);
 

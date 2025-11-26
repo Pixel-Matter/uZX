@@ -6,6 +6,7 @@
 #include "../../plugins/uZX/instrument/ChipInstrumentPlugin.h"
 #include "../../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 #include "../../plugins/uZX/midi_logger/MidiLoggerPlugin.h"
+#include "../../plugins/uZX/scope/ScopePlugin.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
@@ -176,6 +177,7 @@ void PluginTreeGroup::createUZXItems(int& num, te::Plugin::Type /*types*/) {
     addInternalPlugin<uZX::ChipInstrumentPlugin>(*this, num);
     addInternalPlugin<uZX::NotesToPsgPlugin>(*this, num);
     addInternalPlugin<uZX::MidiLoggerPlugin>(*this, num);
+    addInternalPlugin<uZX::ScopePlugin>(*this, num);
 }
 
 //==============================================================================

@@ -218,7 +218,7 @@ auto AyumiEmulator::setOutputMode(int numChannels) -> void {
     switch (numChannels) {
         case 1: mode = AYUMI_MONO; break;
         case 2: mode = AYUMI_STEREO; break;
-        case 3: mode = AYUMI_THREE_CHANNEL; break;
+        case 3: mode = AYUMI_SEPARATE; break;
         default:
             jassertfalse;  // Invalid number of channels
             return;
@@ -233,29 +233,38 @@ auto AyumiEmulator::processBlockMono(float* outMono, size_t numSamples, bool rem
         if (removeDC) {
             ayumi_remove_dc(&Ayumi_);
         }
-        *outMono = static_cast<float>(ayumi_get_output(&Ayumi_, 0)) * MasterVolume_;
+        double mono, unused;
+        ayumi_get_stereo_output(&Ayumi_, &mono, &unused);
+        *outMono = static_cast<float>(mono) * MasterVolume_;
     }
 }
 
-auto AyumiEmulator::processBlock(float* outLeft, float* outRight, size_t numSamples, bool removeDC, size_t stride) -> void {
+auto AyumiEmulator::processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC, size_t stride) -> void {
     jassert(Ayumi_.output_mode == AYUMI_STEREO);  // Must call setOutputMode(2) first
     for (size_t i = 0; i < numSamples; ++i, outLeft+=stride, outRight+=stride) {
         ayumi_process(&Ayumi_);
         if (removeDC) {
             ayumi_remove_dc(&Ayumi_);
         }
-        *outLeft = static_cast<float>(ayumi_get_output(&Ayumi_, 0)) * MasterVolume_;
-        *outRight = static_cast<float>(ayumi_get_output(&Ayumi_, 1)) * MasterVolume_;
+        double left, right;
+        ayumi_get_stereo_output(&Ayumi_, &left, &right);
+        *outLeft = static_cast<float>(left) * MasterVolume_;
+        *outRight = static_cast<float>(right) * MasterVolume_;
     }
 }
 
-auto AyumiEmulator::processBlockUnmixed(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, size_t stride) -> void {
-    jassert(Ayumi_.output_mode == AYUMI_THREE_CHANNEL);  // Must call setOutputMode(3) first
+auto AyumiEmulator::processBlockSeparate(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, bool removeDC, size_t stride) -> void {
+    jassert(Ayumi_.output_mode == AYUMI_SEPARATE);  // Must call setOutputMode(3) first
     for (size_t i = 0; i < numSamples; ++i, outCh0+=stride, outCh1+=stride, outCh2+=stride) {
         ayumi_process(&Ayumi_);
-        *outCh0 = static_cast<float>(ayumi_get_output(&Ayumi_, 0)) * MasterVolume_;
-        *outCh1 = static_cast<float>(ayumi_get_output(&Ayumi_, 1)) * MasterVolume_;
-        *outCh2 = static_cast<float>(ayumi_get_output(&Ayumi_, 2)) * MasterVolume_;
+        if (removeDC) {
+            ayumi_remove_dc(&Ayumi_);
+        }
+        double ch0, ch1, ch2;
+        ayumi_get_separate_output(&Ayumi_, &ch0, &ch1, &ch2);
+        *outCh0 = static_cast<float>(ch0) * MasterVolume_;
+        *outCh1 = static_cast<float>(ch1) * MasterVolume_;
+        *outCh2 = static_cast<float>(ch2) * MasterVolume_;
     }
 }
 

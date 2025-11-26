@@ -183,9 +183,8 @@ public:
 
     // Processing
     virtual auto processBlockMono(float* outMono, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
-    virtual auto processBlock(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
-    // TODO dc removal?
-    virtual auto processBlockUnmixed(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, size_t stride = 1) -> void = 0;
+    virtual auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
+    virtual auto processBlockSeparate(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
 
 protected:
     // AY functions
@@ -306,8 +305,8 @@ public:
 
     // Processing
     auto processBlockMono(float* outMono, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void override;
-    auto processBlock(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void override;
-    auto processBlockUnmixed(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, size_t stride = 1) -> void override;
+    auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void override;
+    auto processBlockSeparate(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void override;
 
 private:
     ayumi Ayumi_;

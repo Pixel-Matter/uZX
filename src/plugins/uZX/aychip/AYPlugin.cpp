@@ -165,13 +165,13 @@ void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int current
                 fc.destBuffer->copyFrom(1, currentSample, *fc.destBuffer, 0, currentSample, samples);
 
     } else if (numChannels == 2 && actualChannels >= 2) {
-        chip->processBlock(fc.destBuffer->getWritePointer(0, currentSample),
+        chip->processBlockStereo(fc.destBuffer->getWritePointer(0, currentSample),
                            fc.destBuffer->getWritePointer(1, currentSample),
                            samples,
                            staticParams.removeDC.getStoredValue());
     } else if (numChannels == 3 && actualChannels >= 3) {
         // TODO output 5 channels: 2 stereo + ABC unmixed
-        chip->processBlockUnmixed(fc.destBuffer->getWritePointer(0, currentSample),
+        chip->processBlockSeparate(fc.destBuffer->getWritePointer(0, currentSample),
                                   fc.destBuffer->getWritePointer(1, currentSample),
                                   fc.destBuffer->getWritePointer(2, currentSample),
                                   samples);

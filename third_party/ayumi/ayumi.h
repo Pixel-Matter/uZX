@@ -13,7 +13,7 @@ enum {
 enum ayumi_output_mode {
   AYUMI_MONO = 0,
   AYUMI_STEREO = 1,
-  AYUMI_THREE_CHANNEL = 2
+  AYUMI_SEPARATE = 2
 };
 
 struct tone_channel {
@@ -76,6 +76,7 @@ void ayumi_set_envelope_shape(struct ayumi* ay, int shape);
 void ayumi_set_output_mode(struct ayumi* ay, enum ayumi_output_mode mode);
 void ayumi_process(struct ayumi* ay);
 void ayumi_remove_dc(struct ayumi* ay);
-double ayumi_get_output(struct ayumi* ay, int output_index);
+void ayumi_get_stereo_output(struct ayumi* ay, double* left, double* right);
+void ayumi_get_separate_output(struct ayumi* ay, double* out_a, double* out_b, double* out_c);
 
 #endif

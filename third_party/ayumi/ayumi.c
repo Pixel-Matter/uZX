@@ -360,7 +360,7 @@ void ayumi_process(struct ayumi* ay) {
       break;
     }
 
-    case AYUMI_THREE_CHANNEL: {
+    case AYUMI_SEPARATE: {
       c0 = ay->outputs[0].interpolator.c;
       c1 = ay->outputs[1].interpolator.c;
       c2 = ay->outputs[2].interpolator.c;
@@ -408,10 +408,13 @@ void ayumi_remove_dc(struct ayumi* ay) {
   ay->dc_index = (ay->dc_index + 1) & (DC_FILTER_SIZE - 1);
 }
 
-double ayumi_get_output(struct ayumi* ay, int output_index) {
-  int num_outputs = ay->output_mode + 1;
-  if (output_index >= 0 && output_index < num_outputs) {
-    return ay->outputs[output_index].value;
-  }
-  return 0.0;
+void ayumi_get_stereo_output(struct ayumi* ay, double* left, double* right) {
+  *left = ay->outputs[0].value;
+  *right = ay->outputs[1].value;
+}
+
+void ayumi_get_separate_output(struct ayumi* ay, double* out_a, double* out_b, double* out_c) {
+  *out_a = ay->outputs[0].value;
+  *out_b = ay->outputs[1].value;
+  *out_c = ay->outputs[2].value;
 }

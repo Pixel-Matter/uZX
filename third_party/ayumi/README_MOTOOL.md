@@ -16,7 +16,7 @@ The original Ayumi provided fixed stereo output. MoTool adds support for three o
 
 1. **AYUMI_MONO** - Single mono output (average of all 3 channels)
 2. **AYUMI_STEREO** - Traditional stereo output with panning (default)
-3. **AYUMI_THREE_CHANNEL** - Three separate unmixed outputs
+3. **AYUMI_SEPARATE** - Three separate unmixed outputs
 
 Each mode processes outputs through the full signal chain:
 - Cubic interpolation (upsampling from chip rate to sample rate)
@@ -63,7 +63,7 @@ All modes run comfortably faster than real-time even without SIMD optimizations.
 ```c
 struct ayumi ay;
 ayumi_configure(&ay, 0, 2000000, 44100);
-ayumi_set_output_mode(&ay, AYUMI_THREE_CHANNEL);
+ayumi_set_output_mode(&ay, AYUMI_SEPARATE);
 ```
 
 **Important**: Set output mode during configuration, not during processing. Changing modes mid-processing can corrupt filter state.
@@ -71,20 +71,20 @@ ayumi_set_output_mode(&ay, AYUMI_THREE_CHANNEL);
 #### Processing Audio
 
 ```c
-// Mono mode
+// Mono mode (only first output is valid, second is unused)
 ayumi_process(&ay);
-double mono = ayumi_get_output(&ay, 0);
+double mono, unused;
+ayumi_get_stereo_output(&ay, &mono, &unused);
 
 // Stereo mode (default)
 ayumi_process(&ay);
-double left = ayumi_get_output(&ay, 0);
-double right = ayumi_get_output(&ay, 1);
+double left, right;
+ayumi_get_stereo_output(&ay, &left, &right);
 
 // Three-channel mode
 ayumi_process(&ay);
-double ch0 = ayumi_get_output(&ay, 0);
-double ch1 = ayumi_get_output(&ay, 1);
-double ch2 = ayumi_get_output(&ay, 2);
+double ch0, ch1, ch2;
+ayumi_get_separate_output(&ay, &ch0, &ch1, &ch2);
 ```
 
 #### DC Filtering
@@ -150,8 +150,8 @@ emulator.setOutputMode(2);  // Stereo mode
 
 // Process blocks
 emulator.processBlockMono(mono, samples);
-emulator.processBlock(left, right, samples);
-emulator.processBlockUnmixed(ch0, ch1, ch2, samples);
+emulator.processBlockStereo(left, right, samples);
+emulator.processBlockSeparate(ch0, ch1, ch2, samples);
 ```
 
 ## Modifications Summary

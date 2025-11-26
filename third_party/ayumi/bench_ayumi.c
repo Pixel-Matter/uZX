@@ -80,7 +80,7 @@ int main(void) {
     stereo_time = benchmark_mode(&ay, AYUMI_STEREO, "STEREO mode");
 
     setup_chip(&ay);
-    three_ch_time = benchmark_mode(&ay, AYUMI_THREE_CHANNEL, "THREE_CHANNEL mode");
+    three_ch_time = benchmark_mode(&ay, AYUMI_SEPARATE, "THREE_CHANNEL mode");
 
     printf("\n");
     printf("Relative performance:\n");

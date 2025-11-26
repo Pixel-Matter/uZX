@@ -52,8 +52,7 @@ static int test_stereo_mode(void) {
 
     for (i = 0; i < TEST_SAMPLES; i++) {
         ayumi_process(&ay);
-        left_samples[i] = ayumi_get_output(&ay, 0);
-        right_samples[i] = ayumi_get_output(&ay, 1);
+        ayumi_get_stereo_output(&ay, &left_samples[i], &right_samples[i]);
     }
 
     left_mean = compute_mean(left_samples, TEST_SAMPLES);
@@ -82,7 +81,7 @@ static int test_three_channel_mode(void) {
     printf("Testing THREE_CHANNEL mode:\n");
 
     ayumi_configure(&ay, 0, 2000000, 44100);
-    ayumi_set_output_mode(&ay, AYUMI_THREE_CHANNEL);
+    ayumi_set_output_mode(&ay, AYUMI_SEPARATE);
 
     ayumi_set_tone(&ay, 0, 1000);
     ayumi_set_mixer(&ay, 0, 0, 1, 0);
@@ -98,9 +97,7 @@ static int test_three_channel_mode(void) {
 
     for (i = 0; i < TEST_SAMPLES; i++) {
         ayumi_process(&ay);
-        ch0_samples[i] = ayumi_get_output(&ay, 0);
-        ch1_samples[i] = ayumi_get_output(&ay, 1);
-        ch2_samples[i] = ayumi_get_output(&ay, 2);
+        ayumi_get_separate_output(&ay, &ch0_samples[i], &ch1_samples[i], &ch2_samples[i]);
     }
 
     ch0_mean = compute_mean(ch0_samples, TEST_SAMPLES);
@@ -136,8 +133,9 @@ static int test_mono_mode(void) {
     ayumi_set_volume(&ay, 0, 15);
 
     for (i = 0; i < TEST_SAMPLES; i++) {
+        double unused;
         ayumi_process(&ay);
-        mono_samples[i] = ayumi_get_output(&ay, 0);
+        ayumi_get_stereo_output(&ay, &mono_samples[i], &unused);
     }
 
     mono_mean = compute_mean(mono_samples, TEST_SAMPLES);

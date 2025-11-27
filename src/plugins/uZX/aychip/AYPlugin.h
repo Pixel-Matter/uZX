@@ -5,6 +5,7 @@
 #include "../../../formats/psg/PsgData.h"
 #include "../../../models/PsgMidi.h"
 #include "../../../controllers/BindedAutoParameter.h"
+#include "../scope/ScopeBuffer.h"
 #include "aychip.h"
 #include "ChannelMuter.h"
 
@@ -50,7 +51,7 @@ public:
     String getSelectableDescription() override    { return "AY Chip plugin based on Ayumi emulator"; }
     bool isSynth() override                       { return true; }
 
-    int getNumOutputChannelsGivenInputs(int /*numInputChannels*/) override;
+    int getNumOutputChannelsGivenInputs(int numInputChannels) override;
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;
     void applyToBuffer(const te::PluginRenderContext&) noexcept override;
@@ -78,11 +79,11 @@ public:
             visitor(numOutputChannels);
         }
 
-        ParameterValue<int> baseMidiChannel {{"midi",  IDs::midi,  "MIDI",  "MIDI channel range", 1,   {1, 16 - 3, 1}}};
-        ParameterValue<ChipType> chipType   {{"chip",  IDs::chip,  "Chip",  "Chip type",      ChipType::AY}};
-        ParameterValue<double> chipClock    {{"clock", IDs::clock, "Clock", "Clock frequncy", 1.7734, {0.894887, 2.0, 0.01}, "MHz"}};
-        ParameterValue<bool> removeDC       {{"noDC",  IDs::noDC,  "Remove DC", "Remove DC from output", true}};
-        ParameterValue<int> numOutputChannels {{"numChannels", IDs::numChannels, "Output Channels", "Number of output channels", 2, {1, 5, 1}}};
+        ParameterValue<int> baseMidiChannel   {{"midi",        IDs::midi,        "MIDI",            "MIDI channel range",             1,      {1, 16 - 3, 1}}};
+        ParameterValue<ChipType> chipType     {{"chip",        IDs::chip,        "Chip",            "Chip type",                      ChipType::AY}};
+        ParameterValue<double> chipClock      {{"clock",       IDs::clock,       "Clock",           "Clock frequncy",                 1.7734, {0.894887, 2.0, 0.01}, "MHz"}};
+        ParameterValue<bool> removeDC         {{"noDC",        IDs::noDC,        "Remove DC",       "Remove DC from output",          true}};
+        ParameterValue<int> numOutputChannels {{"numChannels", IDs::numChannels, "Output Channels", "Output mode (1=mono, 2=stereo, 3=separate)", 2, {1, 3, 1}}};
     };
 
     StaticParams staticParams;
@@ -115,6 +116,21 @@ public:
 
     MidiReaderMode midiReaderMode = MidiReaderMode::Params;
 
+    //==============================================================================
+    // Scope buffer access for visualization (used by ScopePlugin)
+
+    static constexpr int kNumScopeChannels = 3;  // A, B, C
+
+    /**
+     * Get scope buffer for raw channel output (0=A, 1=B, 2=C).
+     * These buffers contain the unmixed channel outputs for oscilloscope visualization.
+     */
+    const ScopeBuffer* getScopeBuffer(int channel) const {
+        if (channel >= 0 && channel < kNumScopeChannels)
+            return &scopeBuffers_[static_cast<size_t>(channel)];
+        return nullptr;
+    }
+
 private:
     //==============================================================================
 
@@ -134,6 +150,11 @@ private:
 
     // PendingChanges pendingChanges;
     std::atomic<bool> isProcessing {false};
+
+    // Scope buffers for A, B, C channel visualization
+    std::array<ScopeBuffer, kNumScopeChannels> scopeBuffers_;
+    // Temporary buffers for separate channel output (reused per render call)
+    std::array<std::vector<float>, kNumScopeChannels> separateChannelBuffers_;
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;

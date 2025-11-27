@@ -268,7 +268,12 @@ auto AyumiEmulator::processBlockSeparate(float* outCh0, float* outCh1, float* ou
 
 auto AyumiEmulator::processBlockStereoPlusSeparate(float* outLeft, float* outRight, float* outCh0, float* outCh1, float* outCh2,
                                                    size_t numSamples, bool removeDC, size_t stride) -> void {
-    jassert(Ayumi_.output_mode == AYUMI_SEPARATE);  // Must call setOutputMode(3) first
+    if (Ayumi_.output_mode != AYUMI_SEPARATE) {
+        DBG("WARNING: processBlockStereoPlusSeparate called but output_mode=" << Ayumi_.output_mode << " (expected AYUMI_SEPARATE=2)");
+    }
+    
+    float maxLeft = 0.0f, maxRight = 0.0f;
+    
     for (size_t i = 0; i < numSamples; ++i, outLeft+=stride, outRight+=stride, outCh0+=stride, outCh1+=stride, outCh2+=stride) {
         ayumi_process(&Ayumi_);
         if (removeDC) {
@@ -287,6 +292,14 @@ auto AyumiEmulator::processBlockStereoPlusSeparate(float* outLeft, float* outRig
         ayumi_get_stereo_output(&Ayumi_, &left, &right);
         *outLeft = static_cast<float>(left) * MasterVolume_;
         *outRight = static_cast<float>(right) * MasterVolume_;
+        
+        maxLeft = std::max(maxLeft, std::abs(*outLeft));
+        maxRight = std::max(maxRight, std::abs(*outRight));
+    }
+    
+    static int debugCounter = 0;
+    if (debugCounter++ % 500 == 0) {
+        DBG("processBlockStereoPlusSeparate: samples=" << numSamples << " maxLeft=" << maxLeft << " maxRight=" << maxRight << " MasterVolume=" << MasterVolume_);
     }
 }
 

@@ -164,12 +164,11 @@ ScopePluginUI::ScopePluginUI(tracktion::Plugin::Ptr pluginPtr)
     constrainer_.setMinimumWidth(160);
     constrainer_.setMinimumHeight(kChannelHeight + kControlsHeight + kSpacing * 2);
 
-    // Create display components
+    // Create display components (will be configured in updateDisplayCount)
     for (size_t i = 0; i < displays_.size(); ++i) {
-        // Use A/B/C labels for 3-channel, L/R for stereo (determined at runtime)
         displays_[i] = std::make_unique<WaveformDisplay>(
             channelColours_[i],
-            juce::String(channelLabels_[i])
+            juce::String(ayChannelLabels_[i])
         );
         displays_[i]->setBuffer(plugin_.getBuffer(static_cast<int>(i)));
         addChildComponent(*displays_[i]);
@@ -225,48 +224,50 @@ void ScopePluginUI::updateDisplayParams() {
 }
 
 void ScopePluginUI::updateDisplayCount() {
-    int numChannels = plugin_.getNumActiveChannels();
-    if (numChannels == 0)
-        numChannels = 2;  // Default to stereo if not yet initialized
+    const auto inputMode = plugin_.getInputMode();
+    const int numDisplayChannels = plugin_.getNumDisplayChannels();
     
-    numChannels = std::min(numChannels, ScopePlugin::kMaxChannels);
+    // Check if mode changed
+    if (currentInputMode_ == inputMode && visibleDisplayCount_ == numDisplayChannels)
+        return;
     
-    if (visibleDisplayCount_ != numChannels) {
-        visibleDisplayCount_ = numChannels;
-        
-        // Update labels for stereo vs 3-channel mode
-        if (numChannels == 2) {
-            for (size_t i = 0; i < 2; ++i) {
-                // Recreate with stereo labels
-                displays_[i] = std::make_unique<WaveformDisplay>(
-                    channelColours_[i],
-                    juce::String(stereoLabels_[i])
-                );
-                displays_[i]->setBuffer(plugin_.getBuffer(static_cast<int>(i)));
-                addAndMakeVisible(*displays_[i]);
-            }
-            if (displays_[2])
-                displays_[2]->setVisible(false);
-        } else {
-            for (size_t i = 0; i < static_cast<size_t>(numChannels); ++i) {
-                displays_[i] = std::make_unique<WaveformDisplay>(
-                    channelColours_[i],
-                    juce::String(channelLabels_[i])
-                );
-                displays_[i]->setBuffer(plugin_.getBuffer(static_cast<int>(i)));
-                addAndMakeVisible(*displays_[i]);
-            }
+    currentInputMode_ = inputMode;
+    visibleDisplayCount_ = numDisplayChannels;
+    
+    if (inputMode == ScopePlugin::InputMode::AYSeparate) {
+        // AY 5-channel mode: Show 3 displays (A, B, C)
+        for (size_t i = 0; i < 3; ++i) {
+            displays_[i] = std::make_unique<WaveformDisplay>(
+                channelColours_[i],
+                juce::String(ayChannelLabels_[i])
+            );
+            displays_[i]->setBuffer(plugin_.getBuffer(static_cast<int>(i)));
+            addAndMakeVisible(*displays_[i]);
+        }
+    } else {
+        // Stereo mode: Show 2 displays (L, R)
+        for (size_t i = 0; i < 2; ++i) {
+            displays_[i] = std::make_unique<WaveformDisplay>(
+                channelColours_[i],
+                juce::String(stereoLabels_[i])
+            );
+            displays_[i]->setBuffer(plugin_.getBuffer(static_cast<int>(i)));
+            addAndMakeVisible(*displays_[i]);
         }
         
-        // Show/hide displays
-        for (size_t i = 0; i < displays_.size(); ++i) {
-            if (displays_[i])
-                displays_[i]->setVisible(static_cast<int>(i) < numChannels);
-        }
-        
-        updateDisplayParams();
-        resized();
+        // Hide third display
+        if (displays_[2])
+            displays_[2]->setVisible(false);
     }
+    
+    // Show/hide displays based on count
+    for (size_t i = 0; i < displays_.size(); ++i) {
+        if (displays_[i])
+            displays_[i]->setVisible(static_cast<int>(i) < visibleDisplayCount_);
+    }
+    
+    updateDisplayParams();
+    resized();
 }
 
 
@@ -289,9 +290,10 @@ void ScopePluginUI::resized() {
 
     r.removeFromBottom(kSpacing);
 
-    // Check for channel count changes
-    int currentChannels = plugin_.getNumActiveChannels();
-    if (currentChannels > 0 && currentChannels != visibleDisplayCount_) {
+    // Check for input mode changes
+    const auto currentMode = plugin_.getInputMode();
+    const int currentChannels = plugin_.getNumDisplayChannels();
+    if (currentMode != currentInputMode_ || currentChannels != visibleDisplayCount_) {
         updateDisplayCount();
     }
 

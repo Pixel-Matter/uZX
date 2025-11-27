@@ -19,6 +19,8 @@ namespace ScopeIDs {
     DECLARE_ID(gain)
     DECLARE_ID(triggerMode)
     DECLARE_ID(triggerLevel)
+    DECLARE_ID(sourceMode)
+    DECLARE_ID(channelOffset)
     #undef DECLARE_ID
 }  // namespace ScopeIDs
 
@@ -27,7 +29,11 @@ namespace ScopeIDs {
  * Oscilloscope plugin for visualizing audio waveforms.
  * 
  * Placed after AYPlugin in chain to display individual channel waveforms.
- * Audio passes through unchanged - this is purely a visualization plugin.
+ * 
+ * Channel handling:
+ * - 5-channel input (from AYPlugin): Displays channels 2,3,4 (A,B,C raw),
+ *   passes through channels 0,1 (stereo mix), outputs 2 channels
+ * - 2-channel input (stereo): Displays L+R mono sum, passes through unchanged
  * 
  * Features:
  * - Per-channel waveform display (auto-detects channel count)
@@ -50,7 +56,14 @@ public:
     juce::String getSelectableDescription() override { return "Oscilloscope display"; }
     bool isSynth() override                         { return false; }
 
-    int getNumOutputChannelsGivenInputs(int numInputChannels) override { return numInputChannels; }
+    /**
+     * Returns output channel count.
+     * When receiving 5 channels (AY mode), outputs 2 (stereo pass-through).
+     * Otherwise passes through unchanged.
+     */
+    int getNumOutputChannelsGivenInputs(int numInputChannels) override {
+        return (numInputChannels == 5) ? 2 : numInputChannels;
+    }
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;
     void applyToBuffer(const te::PluginRenderContext&) override;
@@ -64,7 +77,31 @@ public:
     //==============================================================================
     // Parameter access
     
-    static constexpr int kMaxChannels = 3;
+    static constexpr int kMaxDisplayChannels = 3;  // Max waveforms to display
+
+    /**
+     * Source mode selection.
+     */
+    enum class SourceMode {
+        StereoMix = 0,      // Display channels 0-1 (L, R stereo mix)
+        SeparateChannels = 1 // Display separate channels starting from offset
+    };
+
+    /**
+     * Input mode detected from channel count.
+     */
+    enum class InputMode {
+        Stereo,      // 2-channel input: display L and R separately
+        AYSeparate   // 5-channel input: display A, B, C (channels 2,3,4)
+    };
+    
+    /**
+     * Get current number of display channels.
+     * Returns 3 for AY mode, 2 for stereo mode.
+     */
+    int getNumDisplayChannels() const {
+        return (inputMode_.load(std::memory_order_relaxed) == InputMode::AYSeparate) ? 3 : 2;
+    }
     
     /**
      * Static parameters (not automated, changed via UI).
@@ -107,25 +144,27 @@ public:
     // Buffer access for UI
     
     /**
-     * Get scope buffer for channel (0-indexed).
+     * Get scope buffer for display channel (0-indexed).
+     * In AY mode: returns A, B, C channel buffers
+     * In Stereo mode: returns L, R channel buffers
      * Returns nullptr if channel index is out of range.
      */
     const ScopeBuffer* getBuffer(int channel) const {
-        if (channel >= 0 && channel < kMaxChannels)
+        if (channel >= 0 && channel < kMaxDisplayChannels)
             return &buffers_[static_cast<size_t>(channel)];
         return nullptr;
     }
     
     /**
-     * Get current number of active channels (from last processed buffer).
+     * Get current input mode.
      */
-    int getNumActiveChannels() const {
-        return numActiveChannels_.load(std::memory_order_relaxed);
+    InputMode getInputMode() const {
+        return inputMode_.load(std::memory_order_relaxed);
     }
 
 private:
-    std::array<ScopeBuffer, kMaxChannels> buffers_;
-    std::atomic<int> numActiveChannels_{0};
+    std::array<ScopeBuffer, kMaxDisplayChannels> buffers_;
+    std::atomic<InputMode> inputMode_{InputMode::Stereo};
 
     void valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& id) override;
 

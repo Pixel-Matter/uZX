@@ -104,8 +104,9 @@ private:
     LabeledSlider gainSlider_;
     LabeledSlider levelSlider_;
 
-    // Channel displays - dynamically shown based on active channels
-    std::array<std::unique_ptr<WaveformDisplay>, ScopePlugin::kMaxChannels> displays_;
+    // Channel displays - dynamically shown based on input mode
+    std::array<std::unique_ptr<WaveformDisplay>, ScopePlugin::kMaxDisplayChannels> displays_;
+    ScopePlugin::InputMode currentInputMode_{ScopePlugin::InputMode::Stereo};
     int visibleDisplayCount_{0};
 
     // Channel colors from PSG palette
@@ -115,11 +116,12 @@ private:
         Colors::PSG::C   // Amber
     };
 
-    static constexpr std::array<const char*, 3> channelLabels_{
+    // Labels for AY 3-channel mode (A, B, C)
+    static constexpr std::array<const char*, 3> ayChannelLabels_{
         "A", "B", "C"
     };
 
-    // Stereo labels when in 2-channel mode
+    // Labels for stereo mode (L, R)
     static constexpr std::array<const char*, 2> stereoLabels_{
         "L", "R"
     };

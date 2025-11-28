@@ -89,8 +89,8 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
     , plugin_(*dynamic_cast<AYChipPlugin*>(pluginPtr.get()))
     , chipClockBinding(chipClockCombo, plugin_.staticParams.chipClock, makeChipClockPresets(), false, true)
 {
-    constrainer_.setMinimumWidth(280);
-    setSize(280, 180);
+    constrainer_.setMinimumWidth(224);
+    setSize(224, 180);
 
     addAndMakeVisible(chipTypeButton);
     addAndMakeVisible(chipClockCombo);
@@ -116,9 +116,47 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
             juce::String(channelLabels[i])
         );
         scopeDisplays_[i]->setBuffer(plugin_.getVizChannelBuffer(static_cast<int>(i)));
-        scopeDisplays_[i]->setWindowSize(512);  // Default window size
-        scopeDisplays_[i]->setGain(1.0f);       // Default gain
+        scopeDisplays_[i]->setScopeSettings(&plugin_.scopeSettings);
         addAndMakeVisible(*scopeDisplays_[i]);
+    }
+
+    // Listen to scope settings changes
+    plugin_.scopeSettings.windowSamples.addListener(this);
+    plugin_.scopeSettings.gain.addListener(this);
+    plugin_.scopeSettings.triggerMode.addListener(this);
+    plugin_.scopeSettings.triggerLevel.addListener(this);
+
+    // Apply initial scope settings to all displays
+    updateScopeDisplayParams();
+}
+
+AYPluginUI::~AYPluginUI() {
+    plugin_.scopeSettings.windowSamples.removeListener(this);
+    plugin_.scopeSettings.gain.removeListener(this);
+    plugin_.scopeSettings.triggerMode.removeListener(this);
+    plugin_.scopeSettings.triggerLevel.removeListener(this);
+}
+
+void AYPluginUI::valueChanged(juce::Value&) {
+    updateScopeDisplayParams();
+}
+
+void AYPluginUI::updateScopeDisplayParams() {
+    const int window = plugin_.scopeSettings.windowSamples.getStoredValue();
+    const float gain = plugin_.scopeSettings.gain.getStoredValue();
+    const auto mode = plugin_.scopeSettings.triggerMode.getStoredValue();
+    const float level = plugin_.scopeSettings.triggerLevel.getStoredValue();
+
+    auto strategy = TriggerStrategy::fromMode(mode);
+
+    // Apply settings to all 3 scope displays
+    for (auto& display : scopeDisplays_) {
+        if (display) {
+            display->setWindowSize(window);
+            display->setGain(gain);
+            display->setTriggerStrategy(strategy);
+            display->setTriggerLevel(level);
+        }
     }
 }
 
@@ -138,7 +176,7 @@ void AYPluginUI::resized() {
 
     // static
     auto staticRow = r.removeFromTop(itemHeight);
-    auto buttonWidth = staticRow.getWidth() / 3 - 8;
+    auto buttonWidth = staticRow.getWidth() / 4 - 8;
     chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
     staticRow.removeFromLeft(8);
     chipClockCombo.setBounds(staticRow.withSizeKeepingCentre(staticRow.getWidth(), 20));
@@ -189,6 +227,62 @@ bool AYPluginUI::hasDeviceMenu() const {
 void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
     addMidiRangeMenu(menu, plugin_.staticParams.baseMidiChannel, plugin_.staticParams.baseMidiChannel.definition.description, 4);
     // addDiscreteIntegerParameterMenu(menu, plugin_.staticParams.numOutputChannels, plugin_.staticParams.numOutputChannels.definition.description);
+
+    menu.addSeparator();
+
+    // Scope settings submenu
+    juce::PopupMenu scopeMenu;
+
+    // Window size presets
+    juce::PopupMenu windowMenu;
+    const std::array<int, 5> windowPresets = {256, 512, 1024, 2048, 4096};
+    for (int preset : windowPresets) {
+        windowMenu.addItem(juce::String(preset) + " samples",
+            [this, preset]() {
+                plugin_.scopeSettings.windowSamples.setStoredValue(preset);
+            });
+    }
+    scopeMenu.addSubMenu("Window Size", windowMenu);
+
+    // Gain presets
+    juce::PopupMenu gainMenu;
+    const std::array<float, 5> gainPresets = {0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
+    for (float preset : gainPresets) {
+        gainMenu.addItem(juce::String(preset, 1) + "x",
+            [this, preset]() {
+                plugin_.scopeSettings.gain.setStoredValue(preset);
+            });
+    }
+    scopeMenu.addSubMenu("Gain", gainMenu);
+
+    // Trigger mode
+    juce::PopupMenu triggerMenu;
+    triggerMenu.addItem("Free Running",
+        [this]() {
+            plugin_.scopeSettings.triggerMode.setStoredValue(TriggerMode::FreeRunning);
+        });
+    triggerMenu.addItem("Rising Edge",
+        [this]() {
+            plugin_.scopeSettings.triggerMode.setStoredValue(TriggerMode::RisingEdge);
+        });
+    triggerMenu.addItem("Falling Edge",
+        [this]() {
+            plugin_.scopeSettings.triggerMode.setStoredValue(TriggerMode::FallingEdge);
+        });
+    scopeMenu.addSubMenu("Trigger Mode", triggerMenu);
+
+    // Trigger level presets
+    juce::PopupMenu levelMenu;
+    const std::array<float, 5> levelPresets = {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
+    for (float preset : levelPresets) {
+        levelMenu.addItem(juce::String(preset, 2),
+            [this, preset]() {
+                plugin_.scopeSettings.triggerLevel.setStoredValue(preset);
+            });
+    }
+    scopeMenu.addSubMenu("Trigger Level", levelMenu);
+
+    menu.addSubMenu("Scope Settings", scopeMenu);
 }
 
 REGISTER_PLUGIN_UI_ADAPTER(AYChipPlugin, AYPluginUI)

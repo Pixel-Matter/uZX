@@ -21,6 +21,7 @@ AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
         addParam(vd);
     });
     channelMuter.setupLinkedToggleBehavior();
+    scopeSettings.referTo(state, getUndoManager());
     midiParamsReader.setBaseChannel(staticParams.baseMidiChannel.getStoredValue());
 }
 
@@ -250,6 +251,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 void AYChipPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
     staticParams.restoreStateFromValueTree(v);
     dynamicParams.restoreStateFromValueTree(v);
+    scopeSettings.restoreStateFromValueTree(v);
 
     // IMPOTANT! To restore automated parameters properly
     PluginBase::restorePluginStateFromValueTree(v);

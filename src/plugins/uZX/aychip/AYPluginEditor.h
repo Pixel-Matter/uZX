@@ -18,9 +18,11 @@ namespace MoTool::uZX {
 //==============================================================================
 // Editor for AYChipPlugin
 //==============================================================================
-class AYPluginUI : public PluginDeviceUI {
+class AYPluginUI : public PluginDeviceUI,
+                   private juce::Value::Listener {
 public:
     AYPluginUI(tracktion::Plugin::Ptr pluginPtr);
+    ~AYPluginUI() override;
 
     void paint(Graphics& g) override;
 
@@ -35,6 +37,9 @@ public:
     static constexpr int itemSpacing = 4;
 
 private:
+    void valueChanged(juce::Value& value) override;
+    void updateScopeDisplayParams();
+
     AYChipPlugin& plugin_;
     ComponentBoundsConstrainer constrainer_;
 

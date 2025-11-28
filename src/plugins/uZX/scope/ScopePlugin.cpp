@@ -8,7 +8,7 @@ const char* ScopePlugin::xmlTypeName = "scope";
 ScopePlugin::ScopePlugin(te::PluginCreationInfo info)
     : Plugin(info)
 {
-    staticParams.referTo(state, getUndoManager());
+    scopeSettings.referTo(state, getUndoManager());
 }
 
 ScopePlugin::~ScopePlugin() {
@@ -51,9 +51,9 @@ void ScopePlugin::applyToBuffer(const te::PluginRenderContext& fc) {
     const int startSample = fc.bufferStartSample;
 
     // Read parameters
-    const int sourceModeInt = staticParams.sourceMode.getStoredValue();
+    const int sourceModeInt = scopeSettings.sourceMode.getStoredValue();
     const SourceMode source = static_cast<SourceMode>(sourceModeInt);
-    const int channelOffset = staticParams.channelOffset.getStoredValue();
+    const int channelOffset = scopeSettings.channelOffset.getStoredValue();
 
     // Determine input mode based on channel count
     const InputMode mode = (numInputChannels == 5) ? InputMode::AYSeparate : InputMode::Stereo;
@@ -100,7 +100,7 @@ void ScopePlugin::valueTreePropertyChanged(juce::ValueTree& v, const juce::Ident
 }
 
 void ScopePlugin::restorePluginStateFromValueTree(const juce::ValueTree& v) {
-    staticParams.restoreStateFromValueTree(v);
+    scopeSettings.restoreStateFromValueTree(v);
 }
 
 //==============================================================================

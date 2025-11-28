@@ -6,6 +6,7 @@
 #include "../../../models/PsgMidi.h"
 #include "../../../controllers/BindedAutoParameter.h"
 #include "../scope/ScopeBuffer.h"
+#include "../scope/ScopeSettings.h"
 #include "aychip.h"
 #include "ChannelMuter.h"
 
@@ -107,6 +108,7 @@ public:
 
     DynamicParams dynamicParams;
     ChannelMuter channelMuter;
+    ScopeSettings scopeSettings;
 
     enum class MidiReaderMode {
         Params,

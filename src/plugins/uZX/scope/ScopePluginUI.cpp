@@ -24,6 +24,10 @@ void WaveformDisplay::setBuffer(const ScopeBuffer* buffer) {
     sourceBuffer_ = buffer;
 }
 
+void WaveformDisplay::setScopeSettings(ScopeSettings* settings) {
+    scopeSettings_ = settings;
+}
+
 void WaveformDisplay::setWindowSize(int samples) {
     if (windowSize_ != samples) {
         windowSize_ = samples;
@@ -146,6 +150,70 @@ void WaveformDisplay::resized() {
     buildPath();
 }
 
+void WaveformDisplay::mouseDown(const juce::MouseEvent& event) {
+    if (event.mods.isPopupMenu()) {
+        showPopupMenu();
+    }
+}
+
+void WaveformDisplay::showPopupMenu() {
+    if (scopeSettings_ == nullptr)
+        return;
+
+    juce::PopupMenu menu;
+
+    // Window size presets
+    juce::PopupMenu windowMenu;
+    const std::array<int, 5> windowPresets = {256, 512, 1024, 2048, 4096};
+    for (int preset : windowPresets) {
+        windowMenu.addItem(juce::String(preset) + " samples",
+            [this, preset]() {
+                scopeSettings_->windowSamples.setStoredValue(preset);
+            });
+    }
+    menu.addSubMenu("Window Size", windowMenu);
+
+    // Gain presets
+    juce::PopupMenu gainMenu;
+    const std::array<float, 5> gainPresets = {0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
+    for (float preset : gainPresets) {
+        gainMenu.addItem(juce::String(preset, 1) + "x",
+            [this, preset]() {
+                scopeSettings_->gain.setStoredValue(preset);
+            });
+    }
+    menu.addSubMenu("Gain", gainMenu);
+
+    // Trigger mode
+    juce::PopupMenu triggerMenu;
+    triggerMenu.addItem("Free Running",
+        [this]() {
+            scopeSettings_->triggerMode.setStoredValue(TriggerMode::FreeRunning);
+        });
+    triggerMenu.addItem("Rising Edge",
+        [this]() {
+            scopeSettings_->triggerMode.setStoredValue(TriggerMode::RisingEdge);
+        });
+    triggerMenu.addItem("Falling Edge",
+        [this]() {
+            scopeSettings_->triggerMode.setStoredValue(TriggerMode::FallingEdge);
+        });
+    menu.addSubMenu("Trigger Mode", triggerMenu);
+
+    // Trigger level presets
+    juce::PopupMenu levelMenu;
+    const std::array<float, 5> levelPresets = {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
+    for (float preset : levelPresets) {
+        levelMenu.addItem(juce::String(preset, 2),
+            [this, preset]() {
+                scopeSettings_->triggerLevel.setStoredValue(preset);
+            });
+    }
+    menu.addSubMenu("Trigger Level", levelMenu);
+
+    menu.showMenuAsync(juce::PopupMenu::Options());
+}
+
 
 //==============================================================================
 // ScopePluginUI implementation
@@ -154,10 +222,10 @@ void WaveformDisplay::resized() {
 ScopePluginUI::ScopePluginUI(tracktion::Plugin::Ptr pluginPtr)
     : PluginDeviceUI(pluginPtr)
     , plugin_(*dynamic_cast<ScopePlugin*>(pluginPtr.get()))
-    , triggerButton_(plugin_, plugin_.staticParams.triggerMode)
-    , windowSlider_(plugin_, plugin_.staticParams.windowSamples)
-    , gainSlider_(plugin_, plugin_.staticParams.gain)
-    , levelSlider_(plugin_, plugin_.staticParams.triggerLevel)
+    , triggerButton_(plugin_, plugin_.scopeSettings.triggerMode)
+    , windowSlider_(plugin_, plugin_.scopeSettings.windowSamples)
+    , gainSlider_(plugin_, plugin_.scopeSettings.gain)
+    , levelSlider_(plugin_, plugin_.scopeSettings.triggerLevel)
 {
     jassert(dynamic_cast<ScopePlugin*>(pluginPtr.get()) != nullptr);
 
@@ -181,10 +249,10 @@ ScopePluginUI::ScopePluginUI(tracktion::Plugin::Ptr pluginPtr)
     addAndMakeVisible(levelSlider_);
 
     // Listen for parameter changes
-    plugin_.staticParams.triggerMode.addListener(this);
-    plugin_.staticParams.windowSamples.addListener(this);
-    plugin_.staticParams.gain.addListener(this);
-    plugin_.staticParams.triggerLevel.addListener(this);
+    plugin_.scopeSettings.triggerMode.addListener(this);
+    plugin_.scopeSettings.windowSamples.addListener(this);
+    plugin_.scopeSettings.gain.addListener(this);
+    plugin_.scopeSettings.triggerLevel.addListener(this);
 
     // Initial setup
     updateDisplayParams();
@@ -195,10 +263,10 @@ ScopePluginUI::ScopePluginUI(tracktion::Plugin::Ptr pluginPtr)
 }
 
 ScopePluginUI::~ScopePluginUI() {
-    plugin_.staticParams.triggerMode.removeListener(this);
-    plugin_.staticParams.windowSamples.removeListener(this);
-    plugin_.staticParams.gain.removeListener(this);
-    plugin_.staticParams.triggerLevel.removeListener(this);
+    plugin_.scopeSettings.triggerMode.removeListener(this);
+    plugin_.scopeSettings.windowSamples.removeListener(this);
+    plugin_.scopeSettings.gain.removeListener(this);
+    plugin_.scopeSettings.triggerLevel.removeListener(this);
 }
 
 void ScopePluginUI::valueChanged(juce::Value&) {
@@ -206,11 +274,11 @@ void ScopePluginUI::valueChanged(juce::Value&) {
 }
 
 void ScopePluginUI::updateDisplayParams() {
-    const int window = plugin_.staticParams.windowSamples.getStoredValue();
-    const float gain = plugin_.staticParams.gain.getStoredValue();
-    const auto mode = plugin_.staticParams.triggerMode.getStoredValue();
-    const float level = plugin_.staticParams.triggerLevel.getStoredValue();
-    
+    const int window = plugin_.scopeSettings.windowSamples.getStoredValue();
+    const float gain = plugin_.scopeSettings.gain.getStoredValue();
+    const auto mode = plugin_.scopeSettings.triggerMode.getStoredValue();
+    const float level = plugin_.scopeSettings.triggerLevel.getStoredValue();
+
     auto strategy = TriggerStrategy::fromMode(mode);
 
     for (auto& display : displays_) {
@@ -324,7 +392,7 @@ void ScopePluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
     for (int preset : windowPresets) {
         windowMenu.addItem(juce::String(preset) + " samples",
             [this, preset]() {
-                plugin_.staticParams.windowSamples.setStoredValue(preset);
+                plugin_.scopeSettings.windowSamples.setStoredValue(preset);
             });
     }
     menu.addSubMenu("Window Size", windowMenu);
@@ -335,7 +403,7 @@ void ScopePluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
     for (float preset : gainPresets) {
         gainMenu.addItem(juce::String(preset, 1) + "x",
             [this, preset]() {
-                plugin_.staticParams.gain.setStoredValue(preset);
+                plugin_.scopeSettings.gain.setStoredValue(preset);
             });
     }
     menu.addSubMenu("Gain", gainMenu);

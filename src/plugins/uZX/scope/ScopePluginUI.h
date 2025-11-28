@@ -32,6 +32,12 @@ public:
     void setBuffer(const ScopeBuffer* buffer);
 
     /**
+     * Set the scope settings to allow the display to modify them via popup menu.
+     * Pass nullptr to disable popup menu.
+     */
+    void setScopeSettings(ScopeSettings* settings);
+
+    /**
      * Update display parameters.
      */
     void setWindowSize(int samples);
@@ -41,14 +47,17 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void mouseDown(const juce::MouseEvent& event) override;
 
 private:
     void timerCallback() override;
     void updateWaveform();
     int findTriggerPoint();
     void buildPath();
+    void showPopupMenu();
 
     const ScopeBuffer* sourceBuffer_{nullptr};
+    ScopeSettings* scopeSettings_{nullptr};
     std::vector<float> displaySamples_;
     std::vector<float> workBuffer_;  // Larger buffer for trigger search
     juce::Path waveformPath_;

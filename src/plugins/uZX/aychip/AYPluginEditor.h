@@ -10,6 +10,7 @@
 #include "../../../gui/common/LabeledSlider.h"
 #include "../../../gui/devices/PluginDeviceUI.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
+#include "../scope/ScopePluginUI.h"
 
 
 namespace MoTool::uZX {
@@ -89,6 +90,9 @@ private:
                             plugin_.channelMuter.envelopeC };
 
     std::array<ChannelGroup*, 3> channelGroups { &channelA, &channelB, &channelC };
+
+    // Scope displays for channels A, B, C
+    std::array<std::unique_ptr<WaveformDisplay>, 3> scopeDisplays_;
 
     void setupToggleButtons();
     void layoutChannelToggles(Rectangle<int>& r);

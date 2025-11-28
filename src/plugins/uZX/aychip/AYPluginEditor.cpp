@@ -38,13 +38,13 @@ void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
 }
 
 void AYPluginUI::ChannelGroup::setupButtonColours(ToggleButton& button) {
-    button .setColour(TextButton::buttonOnColourId, Colors::Theme::soloed);
+    // button .setColour(TextButton::buttonOnColourId, Colors::Theme::soloed);
 
-    // TODO if logic is inverted, use Theme::surface as on color
-    // button.setColour(TextButton::buttonOnColourId, Colors::Theme::surface);
-    // button.setColour(TextButton::buttonColourId,   Colors::Theme::muted);
-    // button.setColour(TextButton::textColourOffId,  Colors::Theme::background);
-    // button.setColour(TextButton::textColourOnId,   Colors::Theme::textPrimary);
+    // if logic is inverted, use Theme::surface as on color
+    button.setColour(TextButton::buttonOnColourId, Colors::Theme::surface);
+    button.setColour(TextButton::buttonColourId,   Colors::Theme::muted);
+    button.setColour(TextButton::textColourOffId,  Colors::Theme::background);
+    button.setColour(TextButton::textColourOnId,   Colors::Theme::textPrimary);
 }
 
 void AYPluginUI::ChannelGroup::setupWidgets() {
@@ -61,8 +61,7 @@ void AYPluginUI::ChannelGroup::setupWidgets() {
 }
 
 void AYPluginUI::ChannelGroup::layoutButtons(Rectangle<int> bounds) {
-    const int buttonSize = bounds.getHeight() / 2;
-    const int w = bounds.getWidth();
+    const int buttonSize = bounds.getWidth() / 2;
 
     channelOn.setBounds(bounds.removeFromLeft(buttonSize));
     auto column = bounds.removeFromLeft(buttonSize);
@@ -90,8 +89,8 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
     , plugin_(*dynamic_cast<AYChipPlugin*>(pluginPtr.get()))
     , chipClockBinding(chipClockCombo, plugin_.staticParams.chipClock, makeChipClockPresets(), false, true)
 {
-    constrainer_.setMinimumWidth(160);
-    setSize(168, 180);
+    constrainer_.setMinimumWidth(280);
+    setSize(280, 180);
 
     addAndMakeVisible(chipTypeButton);
     addAndMakeVisible(chipClockCombo);
@@ -102,6 +101,25 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
     addAndMakeVisible(stereoKnob);
 
     setupToggleButtons();
+
+    // Initialize scope displays for channels A, B, C
+    static const std::array<juce::Colour, 3> channelColours{
+        Colors::PSG::A,  // Blue
+        Colors::PSG::B,  // Emerald
+        Colors::PSG::C   // Amber
+    };
+    static const std::array<const char*, 3> channelLabels{"A", "B", "C"};
+
+    for (size_t i = 0; i < 3; ++i) {
+        scopeDisplays_[i] = std::make_unique<WaveformDisplay>(
+            channelColours[i],
+            juce::String(channelLabels[i])
+        );
+        scopeDisplays_[i]->setBuffer(plugin_.getVizChannelBuffer(static_cast<int>(i)));
+        scopeDisplays_[i]->setWindowSize(512);  // Default window size
+        scopeDisplays_[i]->setGain(1.0f);       // Default gain
+        addAndMakeVisible(*scopeDisplays_[i]);
+    }
 }
 
 void AYPluginUI::setupToggleButtons() {
@@ -135,14 +153,30 @@ void AYPluginUI::resized() {
     stereoKnob.setBounds(knobsRow.removeFromLeft(knobsRow.getWidth() / 2));
     volumeKnob.setBounds(knobsRow);
 
-    // Channel and effect toggles
+    // Channel and effect toggles + scope displays
     r.removeFromTop(itemSpacing * 2);
     auto col = r.removeFromLeft(buttonWidth);
     const float h = ((float) col.getHeight() - itemSpacing * 2.0f) / 3.0f;
+
+    // Add spacing between channel groups and scopes
+    r.removeFromLeft(itemSpacing);
+
+    // Layout scope displays to the right of channel groups
+    auto scopeArea = r;
+
     for (int i = 0; i < 3; ++i) {
         channelGroups[i]->layoutButtons(col.removeFromTop(roundToInt(h)));
+
+        // Layout corresponding scope display
+        auto scopeBounds = scopeArea.removeFromTop(roundToInt(h));
+        if (scopeDisplays_[static_cast<size_t>(i)]) {
+            scopeDisplays_[static_cast<size_t>(i)]->setBounds(scopeBounds);
+        }
+
         col.removeFromTop(itemSpacing);
-    }}
+        scopeArea.removeFromTop(itemSpacing);
+    }
+}
 
 ComponentBoundsConstrainer* AYPluginUI::getBoundsConstrainer() {
     return &constrainer_;

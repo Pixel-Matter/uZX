@@ -115,6 +115,16 @@ public:
 
     MidiReaderMode midiReaderMode = MidiReaderMode::Params;
 
+    /**
+     * Get visualization buffer for raw channel output (0=A, 1=B, 2=C).
+     * These buffers contain the unmixed channel outputs for oscilloscope/spectrum visualization.
+     */
+    const ScopeBuffer* getVizChannelBuffer(int channel) const {
+        if (channel >= 0 && channel < 3)
+            return &vizBuffers_[static_cast<size_t>(channel)];
+        return nullptr;
+    }
+
 private:
     //==============================================================================
 
@@ -144,16 +154,6 @@ private:
     * Copy separate channel buffer to visualization buffers.
     */
     void copyTempBufferToVizBuffer();
-
-    /**
-     * Get visualization buffer for raw channel output (0=A, 1=B, 2=C).
-     * These buffers contain the unmixed channel outputs for oscilloscope/spectrum visualization.
-     */
-    const ScopeBuffer* getVizChannelBuffer(int channel) const {
-        if (channel >= 0 && channel < 3)
-            return &vizBuffers_[static_cast<size_t>(channel)];
-        return nullptr;
-    }
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;

@@ -339,6 +339,46 @@ void ScopePluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
             });
     }
     menu.addSubMenu("Gain", gainMenu);
+
+    // Sidechain source selection
+    juce::PopupMenu sidechainMenu;
+
+    // Add "None" option to clear sidechain
+    sidechainMenu.addItem("None",
+        [this]() {
+            plugin_.setSidechainSourceID(te::EditItemID());
+            DBG("ScopePlugin: Cleared sidechain source");
+        });
+
+    sidechainMenu.addSeparator();
+
+    // Add "Auto (Previous Plugin)" option
+    sidechainMenu.addItem("Auto (Previous Plugin)",
+        [this]() {
+            plugin_.autoSetSidechainToPreviousPlugin();
+        });
+
+    sidechainMenu.addSeparator();
+
+    // Add all plugins on the track
+    auto pluginsOnTrack = plugin_.getPluginsOnTrack();
+    const auto currentSidechainID = plugin_.getSidechainSourceID();
+
+    for (auto& otherPlugin : pluginsOnTrack) {
+        if (otherPlugin.get() == &plugin_)
+            continue;  // Skip self
+
+        const bool isCurrent = (otherPlugin->itemID == currentSidechainID);
+        const juce::String itemText = otherPlugin->getName() + (isCurrent ? " ✓" : "");
+
+        sidechainMenu.addItem(itemText,
+            [this, pluginPtr = otherPlugin]() {
+                plugin_.setSidechainSourceID(pluginPtr->itemID);
+                DBG("ScopePlugin: Set sidechain source to " << pluginPtr->getName());
+            });
+    }
+
+    menu.addSubMenu("Sidechain Source", sidechainMenu);
 }
 
 //==============================================================================

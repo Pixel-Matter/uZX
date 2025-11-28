@@ -28,41 +28,25 @@ AYChipPlugin::~AYChipPlugin() {
     notifyListenersOfDeletion();
 }
 
-int AYChipPlugin::getNumOutputChannelsGivenInputs(int) {
-    // Read directly from ValueTree state instead of CachedValue to get saved value during early initialization
-    const int defaultChannels = staticParams.numOutputChannels.definition.defaultValue;
-    const int numChannels = state.getProperty(IDs::numChannels, defaultChannels);
-
-    // Channel mapping:
-    // 1 (mono) → 2 channels (L, R)
-    // 2 (stereo) → 2 channels (L, R)
-    // 3 (separate) → 5 channels (L, R, A, B, C)
-    const int result = (numChannels > 2) ? 5 : 2;
-    DBG("AYChipPlugin::getNumOutputChannelsGivenInputs: numChannels=" << numChannels << " -> returning " << result);
-    return result;
-}
-
-void AYChipPlugin::getChannelNames(StringArray*, StringArray* outs) {
-    if (outs != nullptr) {
-        outs->clear();
-        getLeftRightChannelNames(outs);
-        // Read directly from ValueTree state instead of CachedValue to get saved value during early initialization
-        const int defaultChannels = staticParams.numOutputChannels.definition.defaultValue;
-        const int numChannels = state.getProperty(IDs::numChannels, defaultChannels);
-        DBG("AYChipPlugin::getChannelNames: numChannels from state=" << numChannels << " (default=" << defaultChannels << ")");
-        if (numChannels > 2) {
-            // Stereo mode outputs 5 channels: L, R, A, B, C
-            outs->add("Channel A");
-            outs->add("Channel B");
-            outs->add("Channel C");
-        }
-        // output channel names to console
-        DBG("AYChipPlugin::getChannelNames: output channels:");
-        for (int i = 0; i < outs->size(); ++i) {
-            DBG("  " << i << ": " << outs->getReference(i));
-        }
-    }
-}
+// void AYChipPlugin::getChannelNames(StringArray* ins, StringArray* outs) {
+//     Plugin::getChannelNames(ins, outs);
+//     if (outs != nullptr) {
+//         staticParams.numOutputChannels.forceUpdateOfCachedValue();
+//         const int numChannels = staticParams.numOutputChannels.getStoredValue();
+//         DBG("AYChipPlugin::getChannelNames: numChannels from state=" << numChannels);
+//         if (numChannels > 2) {
+//             // Stereo mode outputs 5 channels: L, R, A, B, C
+//             outs->add("Channel A");
+//             outs->add("Channel B");
+//             outs->add("Channel C");
+//         }
+//         // output channel names to console
+//         DBG("AYChipPlugin::getChannelNames: output channels:");
+//         for (int i = 0; i < outs->size(); ++i) {
+//             DBG("  " << i << ": " << outs->getReference(i));
+//         }
+//     }
+// }
 
 void AYChipPlugin::valueTreeChanged() {
     te::Plugin::valueTreeChanged();
@@ -126,13 +110,13 @@ void AYChipPlugin::midiPanic() {
 
 void AYChipPlugin::reset() {
     const ScopedLock sl(lock);
-    // Read directly from ValueTree state instead of CachedValue to get saved value during early initialization
-    const int defaultChannels = staticParams.numOutputChannels.definition.defaultValue;
-    const int numChannels = state.getProperty(IDs::numChannels, defaultChannels);
-    // Ayumi mode: 1=MONO, 3=SEPARATE (for stereo+separate output via processBlockStereoPlusSeparate)
-    const int ayumiMode = (numChannels >= 2) ? 3 : 1;
+    // staticParams.numOutputChannels.forceUpdateOfCachedValue();
+    // const int numChannels = staticParams.numOutputChannels.getStoredValue();
+    // // Ayumi mode: 1=MONO, 3=SEPARATE (for stereo+separate output via processBlockStereoPlusSeparate)
+    // const int ayumiMode = (numChannels >= 2) ? 3 : 1;
 
-    DBG("AYChipPlugin::reset: numChannels=" << numChannels << " ayumiMode=" << ayumiMode);
+    // Ayumi mode: 1=MONO, 3=SEPARATE (for stereo+separate output via processBlockStereoPlusSeparate)
+    const int ayumiMode = 3;
 
     if (chip == nullptr) {
         chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.chipClock.getStoredValue() * MHz,
@@ -140,8 +124,8 @@ void AYChipPlugin::reset() {
                                                ayumiMode);
     } else {
         chip->reset(static_cast<int>(sampleRate), staticParams.chipClock.getStoredValue() * MHz,
-                                                  staticParams.chipType.getStoredValue());
-        chip->setOutputMode(ayumiMode);
+                                                  staticParams.chipType.getStoredValue(),
+                                                  ayumiMode);
     }
     updateDynamicParams();
     midiParamsReader.reset();
@@ -194,33 +178,31 @@ void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept 
     // }
 }
 
+bool AYChipPlugin::needsSeparateRendering() const noexcept {
+    return false;
+}
+
 void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int currentSample, int timeSample) {
-    const int numChannels = staticParams.numOutputChannels.getStoredValue();
-    const int actualChannels = fc.destBuffer->getNumChannels();
     const auto samples = static_cast<size_t>(timeSample - currentSample);
 
-    DBG("renderChannels: numChannels=" << numChannels << " actualChannels=" << actualChannels << " samples=" << samples);
-
-    if (numChannels <=2 && actualChannels >= 2) {
-        // Mono and stereo mode
-        DBG("  -> processBlockStereo (actualChannels=" << actualChannels << ")");
+    if (needsSeparateRendering()) {
+        // Separate mode: Output 5 channels (L, R, A, B, C)
+        // const int numChannels = staticParams.numOutputChannels.getStoredValue();
+        // const int actualChannels = fc.destBuffer->getNumChannels();
+        // DBG("  -> processBlockStereoPlusSeparate (5 channels)");
+        // chip->processBlockStereoPlusSeparate(
+        //     fc.destBuffer->getWritePointer(0, currentSample),  // Left
+        //     fc.destBuffer->getWritePointer(1, currentSample),  // Right
+        //     fc.destBuffer->getWritePointer(2, currentSample),  // Channel A
+        //     fc.destBuffer->getWritePointer(3, currentSample),  // Channel B
+        //     fc.destBuffer->getWritePointer(4, currentSample),  // Channel C
+        //     samples,
+        //     staticParams.removeDC.getStoredValue());
+    } else {
         chip->processBlockStereo(fc.destBuffer->getWritePointer(0, currentSample),
                                  fc.destBuffer->getWritePointer(1, currentSample),
                                  samples,
                                  staticParams.removeDC.getStoredValue());
-    } else if (numChannels > 2 && actualChannels >= 5) {
-        // Stereo mode: Output 5 channels (L, R, A, B, C)
-        DBG("  -> processBlockStereoPlusSeparate (5 channels)");
-        chip->processBlockStereoPlusSeparate(
-            fc.destBuffer->getWritePointer(0, currentSample),  // Left
-            fc.destBuffer->getWritePointer(1, currentSample),  // Right
-            fc.destBuffer->getWritePointer(2, currentSample),  // Channel A
-            fc.destBuffer->getWritePointer(3, currentSample),  // Channel B
-            fc.destBuffer->getWritePointer(4, currentSample),  // Channel C
-            samples,
-            staticParams.removeDC.getStoredValue());
-    } else {
-        DBG("  -> NO RENDER PATH MATCHED!" << " numChannels=" << numChannels << " actualChannels=" << actualChannels);
     }
 }
 
@@ -234,15 +216,6 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 
     if (fc.bufferForMidiMessages->isAllNotesOff) {
         chip->muteSound();
-    }
-
-    const int numChannels = staticParams.numOutputChannels.getStoredValue();
-    // Actual output channels: 1 for mono, 5 for stereo (L, R, A, B, C)
-    const int actualChannels = fc.destBuffer->getNumChannels();
-
-    static int debugCounter = 0;
-    if (debugCounter++ % 1000 == 0) {
-        DBG("applyToBuffer: numChannels=" << numChannels << " actualChannels=" << actualChannels);
     }
 
     // Process PSG register events

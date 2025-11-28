@@ -36,8 +36,7 @@ AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type, int nu
     , Pan_ {0.25, 0.75, 0.5}  // ACB is default
     , MasterVolume_(1.0)
 {
-    reset(sampleRate, clock, type);
-    setOutputMode(numChannels);
+    reset(sampleRate, clock, type, numChannels);
 }
 
 AyumiEmulator::~AyumiEmulator() {
@@ -54,7 +53,7 @@ auto AyumiEmulator::muteSound() -> void {
     setRegister(10, 0);
 }
 
-auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {
+auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type, int numChannels) -> void {
     SampleRate_ = sampleRate;
     ClockRate_ = clock;
     Type_ = type;
@@ -71,6 +70,7 @@ auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {
         //           << " succeeded" << std::endl;
     }
     ignoreUnused(result);
+    setOutputMode(numChannels);
     for (int i = 0; i < TONE_CHANNELS; ++i) {
         setChannelPan(i, Pan_[i]);
         setMixer(i, false, false, false);
@@ -271,9 +271,9 @@ auto AyumiEmulator::processBlockStereoPlusSeparate(float* outLeft, float* outRig
     if (Ayumi_.output_mode != AYUMI_SEPARATE) {
         DBG("WARNING: processBlockStereoPlusSeparate called but output_mode=" << Ayumi_.output_mode << " (expected AYUMI_SEPARATE=2)");
     }
-    
+
     float maxLeft = 0.0f, maxRight = 0.0f;
-    
+
     for (size_t i = 0; i < numSamples; ++i, outLeft+=stride, outRight+=stride, outCh0+=stride, outCh1+=stride, outCh2+=stride) {
         ayumi_process(&Ayumi_);
         if (removeDC) {
@@ -292,11 +292,11 @@ auto AyumiEmulator::processBlockStereoPlusSeparate(float* outLeft, float* outRig
         ayumi_get_stereo_output(&Ayumi_, &left, &right);
         *outLeft = static_cast<float>(left) * MasterVolume_;
         *outRight = static_cast<float>(right) * MasterVolume_;
-        
+
         maxLeft = std::max(maxLeft, std::abs(*outLeft));
         maxRight = std::max(maxRight, std::abs(*outRight));
     }
-    
+
     static int debugCounter = 0;
     if (debugCounter++ % 500 == 0) {
         DBG("processBlockStereoPlusSeparate: samples=" << numSamples << " maxLeft=" << maxLeft << " maxRight=" << maxRight << " MasterVolume=" << MasterVolume_);

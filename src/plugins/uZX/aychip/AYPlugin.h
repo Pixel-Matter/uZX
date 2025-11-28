@@ -135,10 +135,15 @@ private:
     // Scope buffers for A, B, C channel visualization
     std::array<ScopeBuffer, kNumVizChannels> vizBuffers_;
     // Temporary buffers for separate channel output (reused per render call)
-    std::array<std::vector<float>, kNumVizChannels> separateChannelBuffers_;
+    AudioBuffer<float> separateChannelBuffer_;
 
     //==============================================================================
     bool needsSeparateRendering() const noexcept;
+
+    /**
+    * Copy separate channel buffer to visualization buffers.
+    */
+    void copyTempBufferToVizBuffer();
 
     /**
      * Get visualization buffer for raw channel output (0=A, 1=B, 2=C).

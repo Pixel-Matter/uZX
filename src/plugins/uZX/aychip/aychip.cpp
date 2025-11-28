@@ -292,14 +292,6 @@ auto AyumiEmulator::processBlockStereoPlusSeparate(float* outLeft, float* outRig
         ayumi_get_stereo_output(&Ayumi_, &left, &right);
         *outLeft = static_cast<float>(left) * MasterVolume_;
         *outRight = static_cast<float>(right) * MasterVolume_;
-
-        maxLeft = std::max(maxLeft, std::abs(*outLeft));
-        maxRight = std::max(maxRight, std::abs(*outRight));
-    }
-
-    static int debugCounter = 0;
-    if (debugCounter++ % 500 == 0) {
-        DBG("processBlockStereoPlusSeparate: samples=" << numSamples << " maxLeft=" << maxLeft << " maxRight=" << maxRight << " MasterVolume=" << MasterVolume_);
     }
 }
 

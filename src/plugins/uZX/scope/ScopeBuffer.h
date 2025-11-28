@@ -9,10 +9,10 @@ namespace MoTool::uZX {
 
 /**
  * Lock-free ring buffer for audio→UI communication.
- * 
+ *
  * Audio thread pushes samples via pushSamples() (non-blocking write).
  * UI thread reads snapshots via copyTo() (non-blocking read).
- * 
+ *
  * Uses relaxed atomics for write index since we only need eventual consistency
  * for visualization purposes - dropped frames are acceptable.
  */
@@ -24,6 +24,10 @@ public:
         buffer_.fill(0.0f);
     }
 
+    inline constexpr static int size() noexcept {
+        return kBufferSize;
+    }
+
     /**
      * Push samples from audio thread (non-blocking).
      * May overwrite unread samples - this is acceptable for visualization.
@@ -33,19 +37,19 @@ public:
             return;
 
         int writePos = writeIndex_.load(std::memory_order_relaxed);
-        
+
         for (int i = 0; i < numSamples; ++i) {
             buffer_[writePos] = samples[i];
             writePos = (writePos + 1) % kBufferSize;
         }
-        
+
         writeIndex_.store(writePos, std::memory_order_release);
     }
 
     /**
      * Copy most recent samples to destination buffer (UI thread).
      * Returns the number of samples actually copied.
-     * 
+     *
      * @param dest Destination buffer (must have capacity for numSamples)
      * @param numSamples Number of samples to copy (will be clamped to buffer size)
      */
@@ -54,13 +58,13 @@ public:
             return 0;
 
         numSamples = std::min(numSamples, kBufferSize);
-        
+
         // Read write index with acquire to synchronize with audio thread
         int writePos = writeIndex_.load(std::memory_order_acquire);
-        
+
         // Calculate start position (numSamples before current write position)
         int startPos = (writePos - numSamples + kBufferSize) % kBufferSize;
-        
+
         // Copy samples, handling wrap-around
         if (startPos + numSamples <= kBufferSize) {
             // No wrap-around needed
@@ -71,7 +75,7 @@ public:
             std::memcpy(dest, buffer_.data() + startPos, firstPart * sizeof(float));
             std::memcpy(dest + firstPart, buffer_.data(), (numSamples - firstPart) * sizeof(float));
         }
-        
+
         return numSamples;
     }
 

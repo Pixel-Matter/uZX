@@ -94,8 +94,9 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
     Plugin::valueTreePropertyChanged(v, id);
 }
 
-void AYChipPlugin::initialise(const te::PluginInitialisationInfo&) {
+void AYChipPlugin::initialise(const te::PluginInitialisationInfo& info) {
     reset();
+    separateChannelBuffer_.setSize(kNumVizChannels, info.blockSizeSamples);
 }
 
 void AYChipPlugin::deinitialise() {
@@ -179,30 +180,36 @@ void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept 
 }
 
 bool AYChipPlugin::needsSeparateRendering() const noexcept {
-    return false;
+    return true;
+}
+
+void AYChipPlugin::copyTempBufferToVizBuffer() {
+    for (size_t chan = 0; chan < kNumVizChannels; ++chan) {
+        auto* src = separateChannelBuffer_.getReadPointer(static_cast<int>(chan));
+        vizBuffers_[chan].pushSamples(src, separateChannelBuffer_.getNumSamples());
+    }
 }
 
 void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int currentSample, int timeSample) {
     const auto samples = static_cast<size_t>(timeSample - currentSample);
-
+    auto left = fc.destBuffer->getWritePointer(0, currentSample);
+    auto right = fc.destBuffer->getWritePointer(1, currentSample);
+    auto removeDC = staticParams.removeDC.getStoredValue();
     if (needsSeparateRendering()) {
         // Separate mode: Output 5 channels (L, R, A, B, C)
         // const int numChannels = staticParams.numOutputChannels.getStoredValue();
         // const int actualChannels = fc.destBuffer->getNumChannels();
-        // DBG("  -> processBlockStereoPlusSeparate (5 channels)");
-        // chip->processBlockStereoPlusSeparate(
-        //     fc.destBuffer->getWritePointer(0, currentSample),  // Left
-        //     fc.destBuffer->getWritePointer(1, currentSample),  // Right
-        //     fc.destBuffer->getWritePointer(2, currentSample),  // Channel A
-        //     fc.destBuffer->getWritePointer(3, currentSample),  // Channel B
-        //     fc.destBuffer->getWritePointer(4, currentSample),  // Channel C
-        //     samples,
-        //     staticParams.removeDC.getStoredValue());
+        separateChannelBuffer_.setSize(kNumVizChannels, static_cast<int>(samples), false, false, true);
+        jassert(separateChannelBuffer_.getNumSamples() >= static_cast<int>(samples));
+
+        chip->processBlockStereoPlusSeparate(left, right,
+                                             separateChannelBuffer_.getWritePointer(0, 0),  // Channel A
+                                             separateChannelBuffer_.getWritePointer(1, 0),  // Channel B
+                                             separateChannelBuffer_.getWritePointer(2, 0),  // Channel C
+                                             samples, removeDC);
+        copyTempBufferToVizBuffer();
     } else {
-        chip->processBlockStereo(fc.destBuffer->getWritePointer(0, currentSample),
-                                 fc.destBuffer->getWritePointer(1, currentSample),
-                                 samples,
-                                 staticParams.removeDC.getStoredValue());
+        chip->processBlockStereo(left, right, samples, removeDC);
     }
 }
 

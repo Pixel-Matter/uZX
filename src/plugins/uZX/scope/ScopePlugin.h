@@ -60,23 +60,7 @@ public:
     //==============================================================================
     // Parameter access
 
-    static constexpr int kMaxDisplayChannels = 3;  // Max waveforms to display
-
-    /**
-     * Input mode detected from channel count.
-     */
-    enum class InputMode {
-        Stereo,      // 2-channel input: display L and R separately
-        AYSeparate   // 5-channel input: display A, B, C (channels 2,3,4)
-    };
-
-    /**
-     * Get current number of display channels.
-     * Returns 3 for AY mode, 2 for stereo mode.
-     */
-    int getNumDisplayChannels() const {
-        return (inputMode_.load(std::memory_order_relaxed) == InputMode::AYSeparate) ? 3 : 2;
-    }
+    static constexpr int kMaxDisplayChannels = 2;  // Stereo L and R
 
     ScopeSettings scopeSettings;
 
@@ -85,8 +69,7 @@ public:
 
     /**
      * Get scope buffer for display channel (0-indexed).
-     * In AY mode: returns A, B, C channel buffers
-     * In Stereo mode: returns L, R channel buffers
+     * Returns L or R channel buffer.
      * Returns nullptr if channel index is out of range.
      */
     const ScopeBuffer* getBuffer(int channel) const {
@@ -95,35 +78,8 @@ public:
         return nullptr;
     }
 
-    /**
-     * Get current input mode.
-     */
-    InputMode getInputMode() const {
-        return inputMode_.load(std::memory_order_relaxed);
-    }
-
-    //==============================================================================
-    // Sidechain management
-
-    /**
-     * Get all plugins on the same track as this plugin.
-     */
-    std::vector<te::Plugin::Ptr> getPluginsOnTrack() const;
-
-    /**
-     * Get the plugin immediately before this one on the track.
-     */
-    te::Plugin::Ptr getPreviousPluginOnTrack() const;
-
-    /**
-     * Auto-set sidechain source to the previous plugin on the track.
-     * Returns true if successful.
-     */
-    bool autoSetSidechainToPreviousPlugin();
-
 private:
     std::array<ScopeBuffer, kMaxDisplayChannels> buffers_;
-    std::atomic<InputMode> inputMode_{InputMode::Stereo};
 
     void valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& id) override;
 

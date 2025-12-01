@@ -23,19 +23,11 @@ namespace MoTool::uZX {
 class WaveformDisplay : public juce::Component,
                         private juce::Timer {
 public:
-    WaveformDisplay(juce::Colour colour, const juce::String& label);
+    WaveformDisplay(juce::Colour colour,
+                    const juce::String& label,
+                    const ScopeBuffer& buffer,
+                    ScopeSettings& settings);
     ~WaveformDisplay() override;
-
-    /**
-     * Set the source buffer for this display (non-owning pointer).
-     */
-    void setBuffer(const ScopeBuffer* buffer);
-
-    /**
-     * Set the scope settings to allow the display to modify them via popup menu.
-     * Pass nullptr to disable popup menu.
-     */
-    void setScopeSettings(ScopeSettings* settings);
 
     /**
      * Update display parameters.
@@ -56,8 +48,8 @@ private:
     void buildPath();
     void showPopupMenu();
 
-    const ScopeBuffer* sourceBuffer_{nullptr};
-    ScopeSettings* scopeSettings_{nullptr};
+    const ScopeBuffer& sourceBuffer_;
+    ScopeSettings& scopeSettings_;
     std::vector<float> displaySamples_;
     std::vector<float> workBuffer_;  // Larger buffer for trigger search
     juce::Path waveformPath_;
@@ -96,13 +88,12 @@ public:
     void populateDeviceMenu(juce::PopupMenu& menu) override;
 
     static constexpr int kChannelHeight = 80;
-    static constexpr int kControlsHeight = 28;
+    static constexpr int kControlsHeight = 40;  // Consistent with AY plugin
     static constexpr int kSpacing = 4;
 
 private:
     void valueChanged(juce::Value& value) override;
     void updateDisplayParams();
-    void updateDisplayCount();
 
     ScopePlugin& plugin_;
     juce::ComponentBoundsConstrainer constrainer_;
@@ -113,21 +104,13 @@ private:
     LabeledSlider gainSlider_;
     LabeledSlider levelSlider_;
 
-    // Channel displays - dynamically shown based on input mode
+    // Channel displays - stereo L and R
     std::array<std::unique_ptr<WaveformDisplay>, ScopePlugin::kMaxDisplayChannels> displays_;
-    ScopePlugin::InputMode currentInputMode_{ScopePlugin::InputMode::Stereo};
-    int visibleDisplayCount_{0};
 
-    // Channel colors from PSG palette
-    inline static const std::array<juce::Colour, 3> channelColours_{
-        Colors::PSG::A,  // Blue
-        Colors::PSG::B,  // Emerald
-        Colors::PSG::C   // Amber
-    };
-
-    // Labels for AY 3-channel mode (A, B, C)
-    static constexpr std::array<const char*, 3> ayChannelLabels_{
-        "A", "B", "C"
+    // Channel colors (L = blue, R = emerald)
+    inline static const std::array<juce::Colour, 2> channelColours_{
+        Colors::PSG::A,  // Blue (L)
+        Colors::PSG::B   // Emerald (R)
     };
 
     // Labels for stereo mode (L, R)

@@ -1,4 +1,5 @@
 #include "ScopePluginUI.h"
+#include "juce_core/juce_core.h"
 
 namespace MoTool::uZX {
 
@@ -6,8 +7,13 @@ namespace MoTool::uZX {
 // WaveformDisplay implementation
 //==============================================================================
 
-WaveformDisplay::WaveformDisplay(juce::Colour colour, const juce::String& label)
-    : colour_(colour)
+WaveformDisplay::WaveformDisplay(juce::Colour colour,
+                                 const juce::String& label,
+                                 const ScopeBuffer& buffer,
+                                 ScopeSettings& settings)
+    : sourceBuffer_(buffer)
+    , scopeSettings_(settings)
+    , colour_(colour)
     , label_(label)
     , triggerStrategy_(TriggerStrategy::risingEdge())
 {
@@ -18,14 +24,6 @@ WaveformDisplay::WaveformDisplay(juce::Colour colour, const juce::String& label)
 
 WaveformDisplay::~WaveformDisplay() {
     stopTimer();
-}
-
-void WaveformDisplay::setBuffer(const ScopeBuffer* buffer) {
-    sourceBuffer_ = buffer;
-}
-
-void WaveformDisplay::setScopeSettings(ScopeSettings* settings) {
-    scopeSettings_ = settings;
 }
 
 void WaveformDisplay::setWindowSize(int samples) {
@@ -54,12 +52,9 @@ void WaveformDisplay::timerCallback() {
 }
 
 void WaveformDisplay::updateWaveform() {
-    if (sourceBuffer_ == nullptr)
-        return;
-
     // Copy samples from ring buffer into work buffer for trigger search
     int workSamples = windowSize_ * kTriggerSearchMultiplier;
-    sourceBuffer_->copyTo(workBuffer_.data(), workSamples);
+    sourceBuffer_.copyTo(workBuffer_.data(), workSamples);
 
     // Find trigger point
     int triggerOffset = findTriggerPoint();
@@ -67,13 +62,13 @@ void WaveformDisplay::updateWaveform() {
     // Copy display window starting from trigger point
     int copyStart = triggerOffset;
     int copyCount = std::min(windowSize_, workSamples - triggerOffset);
-    
+
     if (copyCount > 0) {
         std::copy(workBuffer_.begin() + copyStart,
                   workBuffer_.begin() + copyStart + copyCount,
                   displaySamples_.begin());
     }
-    
+
     // Fill remaining with zeros if needed
     if (copyCount < windowSize_) {
         std::fill(displaySamples_.begin() + copyCount, displaySamples_.end(), 0.0f);
@@ -90,7 +85,7 @@ int WaveformDisplay::findTriggerPoint() {
 
 void WaveformDisplay::buildPath() {
     waveformPath_.clear();
-    
+
     if (displaySamples_.empty() || getWidth() <= 0 || getHeight() <= 0)
         return;
 
@@ -98,7 +93,7 @@ void WaveformDisplay::buildPath() {
     const float height = static_cast<float>(getHeight());
     const float midY = height * 0.5f;
     const float scaleY = midY * gain_;
-    
+
     const int numSamples = static_cast<int>(displaySamples_.size());
     const float xStep = width / static_cast<float>(numSamples - 1);
 
@@ -119,7 +114,7 @@ void WaveformDisplay::buildPath() {
 
 void WaveformDisplay::paint(juce::Graphics& g) {
     const auto bounds = getLocalBounds().toFloat();
-    
+
     // Background
     g.setColour(Colors::Theme::backgroundDark);
     g.fillRect(bounds);
@@ -157,59 +152,10 @@ void WaveformDisplay::mouseDown(const juce::MouseEvent& event) {
 }
 
 void WaveformDisplay::showPopupMenu() {
-    if (scopeSettings_ == nullptr)
-        return;
-
     juce::PopupMenu menu;
 
-    // Window size presets
-    juce::PopupMenu windowMenu;
-    const std::array<int, 5> windowPresets = {256, 512, 1024, 2048, 4096};
-    for (int preset : windowPresets) {
-        windowMenu.addItem(juce::String(preset) + " samples",
-            [this, preset]() {
-                scopeSettings_->windowSamples.setStoredValue(preset);
-            });
-    }
-    menu.addSubMenu("Window Size", windowMenu);
-
-    // Gain presets
-    juce::PopupMenu gainMenu;
-    const std::array<float, 5> gainPresets = {0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
-    for (float preset : gainPresets) {
-        gainMenu.addItem(juce::String(preset, 1) + "x",
-            [this, preset]() {
-                scopeSettings_->gain.setStoredValue(preset);
-            });
-    }
-    menu.addSubMenu("Gain", gainMenu);
-
-    // Trigger mode
-    juce::PopupMenu triggerMenu;
-    triggerMenu.addItem("Free Running",
-        [this]() {
-            scopeSettings_->triggerMode.setStoredValue(TriggerMode::FreeRunning);
-        });
-    triggerMenu.addItem("Rising Edge",
-        [this]() {
-            scopeSettings_->triggerMode.setStoredValue(TriggerMode::RisingEdge);
-        });
-    triggerMenu.addItem("Falling Edge",
-        [this]() {
-            scopeSettings_->triggerMode.setStoredValue(TriggerMode::FallingEdge);
-        });
-    menu.addSubMenu("Trigger Mode", triggerMenu);
-
-    // Trigger level presets
-    juce::PopupMenu levelMenu;
-    const std::array<float, 5> levelPresets = {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
-    for (float preset : levelPresets) {
-        levelMenu.addItem(juce::String(preset, 2),
-            [this, preset]() {
-                scopeSettings_->triggerLevel.setStoredValue(preset);
-            });
-    }
-    menu.addSubMenu("Trigger Level", levelMenu);
+    // Add scope settings directly to menu (no submenu grouping)
+    MoTool::addScopeSettingsMenu(menu, scopeSettings_, "");
 
     menu.showMenuAsync(juce::PopupMenu::Options());
 }
@@ -229,17 +175,18 @@ ScopePluginUI::ScopePluginUI(tracktion::Plugin::Ptr pluginPtr)
 {
     jassert(dynamic_cast<ScopePlugin*>(pluginPtr.get()) != nullptr);
 
-    constrainer_.setMinimumWidth(160);
-    constrainer_.setMinimumHeight(kChannelHeight + kControlsHeight + kSpacing * 2);
+    constrainer_.setMinimumWidth(224);
+    constrainer_.setMinimumHeight(kChannelHeight * 2 + kControlsHeight + kSpacing * 3);
 
-    // Create display components (will be configured in updateDisplayCount)
+    // Create display components for stereo L and R
     for (size_t i = 0; i < displays_.size(); ++i) {
         displays_[i] = std::make_unique<WaveformDisplay>(
             channelColours_[i],
-            juce::String(ayChannelLabels_[i])
+            juce::String(stereoLabels_[i]),
+            *plugin_.getBuffer(static_cast<int>(i)),
+            plugin_.scopeSettings
         );
-        displays_[i]->setBuffer(plugin_.getBuffer(static_cast<int>(i)));
-        addChildComponent(*displays_[i]);
+        addAndMakeVisible(*displays_[i]);
     }
 
     // Add controls
@@ -256,10 +203,9 @@ ScopePluginUI::ScopePluginUI(tracktion::Plugin::Ptr pluginPtr)
 
     // Initial setup
     updateDisplayParams();
-    updateDisplayCount();
 
-    // Initial size based on expected channels (will adjust dynamically)
-    setSize(200, kChannelHeight * 2 + kControlsHeight + kSpacing * 3);
+    // Initial size - match AY plugin width
+    setSize(224, kChannelHeight * 2 + kControlsHeight + kSpacing * 3);
 }
 
 ScopePluginUI::~ScopePluginUI() {
@@ -291,88 +237,37 @@ void ScopePluginUI::updateDisplayParams() {
     }
 }
 
-void ScopePluginUI::updateDisplayCount() {
-    const auto inputMode = plugin_.getInputMode();
-    const int numDisplayChannels = plugin_.getNumDisplayChannels();
-    
-    // Check if mode changed
-    if (currentInputMode_ == inputMode && visibleDisplayCount_ == numDisplayChannels)
-        return;
-    
-    currentInputMode_ = inputMode;
-    visibleDisplayCount_ = numDisplayChannels;
-    
-    if (inputMode == ScopePlugin::InputMode::AYSeparate) {
-        // AY 5-channel mode: Show 3 displays (A, B, C)
-        for (size_t i = 0; i < 3; ++i) {
-            displays_[i] = std::make_unique<WaveformDisplay>(
-                channelColours_[i],
-                juce::String(ayChannelLabels_[i])
-            );
-            displays_[i]->setBuffer(plugin_.getBuffer(static_cast<int>(i)));
-            addAndMakeVisible(*displays_[i]);
-        }
-    } else {
-        // Stereo mode: Show 2 displays (L, R)
-        for (size_t i = 0; i < 2; ++i) {
-            displays_[i] = std::make_unique<WaveformDisplay>(
-                channelColours_[i],
-                juce::String(stereoLabels_[i])
-            );
-            displays_[i]->setBuffer(plugin_.getBuffer(static_cast<int>(i)));
-            addAndMakeVisible(*displays_[i]);
-        }
-        
-        // Hide third display
-        if (displays_[2])
-            displays_[2]->setVisible(false);
-    }
-    
-    // Show/hide displays based on count
-    for (size_t i = 0; i < displays_.size(); ++i) {
-        if (displays_[i])
-            displays_[i]->setVisible(static_cast<int>(i) < visibleDisplayCount_);
-    }
-    
-    updateDisplayParams();
-    resized();
-}
-
 
 void ScopePluginUI::paint(juce::Graphics& g) {
     // Background handled by displays and parent
 }
 
 void ScopePluginUI::resized() {
-    auto r = getLocalBounds().reduced(kSpacing);
+    auto r = getLocalBounds().reduced(kSpacing * 2);
 
-    // Controls at bottom
-    auto controlsArea = r.removeFromBottom(kControlsHeight);
-    
-    // Layout controls horizontally
-    const int controlWidth = controlsArea.getWidth() / 4;
-    triggerButton_.setBounds(controlsArea.removeFromLeft(controlWidth).reduced(2));
-    levelSlider_.setBounds(controlsArea.removeFromLeft(controlWidth).reduced(2));
-    windowSlider_.setBounds(controlsArea.removeFromLeft(controlWidth).reduced(2));
-    gainSlider_.setBounds(controlsArea.reduced(2));
+    // Controls at top
+    auto row = r.removeFromTop(kControlsHeight);
 
-    r.removeFromBottom(kSpacing);
+    // Layout controls horizontally with 40%, 20%, 20%, 20% widths
+    const int totalWidth = row.getWidth();
+    const int buttonWidth = static_cast<int>(row.getWidth() * 0.4f);
+    triggerButton_.setBounds(row.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
 
-    // Check for input mode changes
-    const auto currentMode = plugin_.getInputMode();
-    const int currentChannels = plugin_.getNumDisplayChannels();
-    if (currentMode != currentInputMode_ || currentChannels != visibleDisplayCount_) {
-        updateDisplayCount();
-    }
+    row.removeFromLeft(kSpacing * 2);
+    const int moduleWidth = row.getWidth() / 3;
+    levelSlider_.setBounds(row.removeFromLeft(static_cast<int>(moduleWidth)));
+    windowSlider_.setBounds(row.removeFromLeft(static_cast<int>(moduleWidth)));
+    gainSlider_.setBounds(row);
 
-    // Distribute remaining space among visible displays
-    if (visibleDisplayCount_ > 0) {
-        const int displayHeight = r.getHeight() / visibleDisplayCount_;
-        
-        for (int i = 0; i < visibleDisplayCount_; ++i) {
-            if (displays_[static_cast<size_t>(i)]) {
-                displays_[static_cast<size_t>(i)]->setBounds(r.removeFromTop(displayHeight));
-            }
+    r.removeFromTop(kSpacing * 2);
+
+    // Distribute remaining space among 2 displays (L and R)
+    const int displayHeight = (r.getHeight() - (kSpacing * (displays_.size() - 1))) / displays_.size();
+
+    for (size_t i = 0; i < displays_.size(); ++i) {
+        if (displays_[i]) {
+            displays_[i]->setBounds(r.removeFromTop(displayHeight));
+            r.removeFromTop(kSpacing);
         }
     }
 }
@@ -386,67 +281,8 @@ bool ScopePluginUI::hasDeviceMenu() const {
 }
 
 void ScopePluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
-    // Window size presets
-    juce::PopupMenu windowMenu;
-    const std::array<int, 5> windowPresets = {256, 512, 1024, 2048, 4096};
-    for (int preset : windowPresets) {
-        windowMenu.addItem(juce::String(preset) + " samples",
-            [this, preset]() {
-                plugin_.scopeSettings.windowSamples.setStoredValue(preset);
-            });
-    }
-    menu.addSubMenu("Window Size", windowMenu);
-
-    // Gain presets
-    juce::PopupMenu gainMenu;
-    const std::array<float, 5> gainPresets = {0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
-    for (float preset : gainPresets) {
-        gainMenu.addItem(juce::String(preset, 1) + "x",
-            [this, preset]() {
-                plugin_.scopeSettings.gain.setStoredValue(preset);
-            });
-    }
-    menu.addSubMenu("Gain", gainMenu);
-
-    // Sidechain source selection
-    juce::PopupMenu sidechainMenu;
-
-    // Add "None" option to clear sidechain
-    sidechainMenu.addItem("None",
-        [this]() {
-            plugin_.setSidechainSourceID(te::EditItemID());
-            DBG("ScopePlugin: Cleared sidechain source");
-        });
-
-    sidechainMenu.addSeparator();
-
-    // Add "Auto (Previous Plugin)" option
-    sidechainMenu.addItem("Auto (Previous Plugin)",
-        [this]() {
-            plugin_.autoSetSidechainToPreviousPlugin();
-        });
-
-    sidechainMenu.addSeparator();
-
-    // Add all plugins on the track
-    auto pluginsOnTrack = plugin_.getPluginsOnTrack();
-    const auto currentSidechainID = plugin_.getSidechainSourceID();
-
-    for (auto& otherPlugin : pluginsOnTrack) {
-        if (otherPlugin.get() == &plugin_)
-            continue;  // Skip self
-
-        const bool isCurrent = (otherPlugin->itemID == currentSidechainID);
-        const juce::String itemText = otherPlugin->getName() + (isCurrent ? " ✓" : "");
-
-        sidechainMenu.addItem(itemText,
-            [this, pluginPtr = otherPlugin]() {
-                plugin_.setSidechainSourceID(pluginPtr->itemID);
-                DBG("ScopePlugin: Set sidechain source to " << pluginPtr->getName());
-            });
-    }
-
-    menu.addSubMenu("Sidechain Source", sidechainMenu);
+    // Add scope settings directly (Window, Gain, Trigger Mode, Trigger Level)
+    MoTool::addScopeSettingsMenu(menu, plugin_.scopeSettings, "");
 }
 
 //==============================================================================

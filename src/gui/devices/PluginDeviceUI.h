@@ -38,4 +38,17 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginDeviceUI)
 };
 
+// Forward declaration
+namespace uZX {
+    struct ScopeSettings;
+}
+
+/**
+ * Helper function to populate scope settings menu.
+ * Can be used by any plugin that has scope displays.
+ */
+void addScopeSettingsMenu(juce::PopupMenu& parentMenu,
+                          uZX::ScopeSettings& settings,
+                          const juce::String& title = "Scope Settings");
+
 }  // namespace MoTool

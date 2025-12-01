@@ -1,6 +1,8 @@
 #include "PluginDeviceUI.h"
 #include "PluginUIAdapterRegistry.h"
 #include "../../controllers/Parameters.h"
+#include "../../plugins/uZX/scope/ScopeSettings.h"
+#include "../../plugins/uZX/scope/TriggerStrategy.h"
 
 
 namespace MoTool {
@@ -79,6 +81,90 @@ void PluginDeviceUI::addMidiRangeMenu(juce::PopupMenu& parentMenu, ParameterValu
             label = title + " (" + label + ")";
 
         parentMenu.addSubMenu(label, submenu);
+    }
+}
+
+void addScopeSettingsMenu(juce::PopupMenu& parentMenu,
+                         uZX::ScopeSettings& settings,
+                         const juce::String& title)
+{
+    using namespace uZX;
+
+    // Determine target menu - use parent directly or create submenu
+    juce::PopupMenu* targetMenu = &parentMenu;
+    juce::PopupMenu scopeSubmenu;
+    if (title.isNotEmpty()) {
+        targetMenu = &scopeSubmenu;
+    }
+
+    // Window size presets
+    juce::PopupMenu windowMenu;
+    const int currentWindow = settings.windowSamples.getStoredValue();
+    const std::array<int, 5> windowPresets = {256, 512, 1024, 2048, 4096};
+    for (int preset : windowPresets) {
+        windowMenu.addItem(juce::String(preset) + " samples",
+            true,
+            preset == currentWindow,
+            [&settings, preset]() {
+                settings.windowSamples.setStoredValue(preset);
+            });
+    }
+    targetMenu->addSubMenu("Window Size (" + juce::String(currentWindow) + ")", windowMenu);
+
+    // Gain presets
+    juce::PopupMenu gainMenu;
+    const float currentGain = settings.gain.getStoredValue();
+    const std::array<float, 5> gainPresets = {0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
+    for (float preset : gainPresets) {
+        gainMenu.addItem(juce::String(preset, 1) + "x",
+            true,
+            std::abs(preset - currentGain) < 0.01f,
+            [&settings, preset]() {
+                settings.gain.setStoredValue(preset);
+            });
+    }
+    targetMenu->addSubMenu("Gain (" + juce::String(currentGain, 1) + "x)", gainMenu);
+
+    // Trigger mode
+    juce::PopupMenu triggerMenu;
+    const auto currentMode = settings.triggerMode.getStoredValue();
+    triggerMenu.addItem("Free Running",
+        true,
+        currentMode == TriggerMode::FreeRunning,
+        [&settings]() {
+            settings.triggerMode.setStoredValue(TriggerMode::FreeRunning);
+        });
+    triggerMenu.addItem("Rising Edge",
+        true,
+        currentMode == TriggerMode::RisingEdge,
+        [&settings]() {
+            settings.triggerMode.setStoredValue(TriggerMode::RisingEdge);
+        });
+    triggerMenu.addItem("Falling Edge",
+        true,
+        currentMode == TriggerMode::FallingEdge,
+        [&settings]() {
+            settings.triggerMode.setStoredValue(TriggerMode::FallingEdge);
+        });
+    targetMenu->addSubMenu("Trigger Mode", triggerMenu);
+
+    // Trigger level presets
+    juce::PopupMenu levelMenu;
+    const float currentLevel = settings.triggerLevel.getStoredValue();
+    const std::array<float, 5> levelPresets = {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
+    for (float preset : levelPresets) {
+        levelMenu.addItem(juce::String(preset, 2),
+            true,
+            std::abs(preset - currentLevel) < 0.01f,
+            [&settings, preset]() {
+                settings.triggerLevel.setStoredValue(preset);
+            });
+    }
+    targetMenu->addSubMenu("Trigger Level (" + juce::String(currentLevel, 2) + ")", levelMenu);
+
+    // If title was provided, add the submenu to parent
+    if (title.isNotEmpty()) {
+        parentMenu.addSubMenu(title, scopeSubmenu);
     }
 }
 

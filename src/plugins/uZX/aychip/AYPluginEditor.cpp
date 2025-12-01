@@ -113,10 +113,10 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
     for (size_t i = 0; i < 3; ++i) {
         scopeDisplays_[i] = std::make_unique<WaveformDisplay>(
             channelColours[i],
-            juce::String(channelLabels[i])
+            juce::String(channelLabels[i]),
+            *plugin_.getVizChannelBuffer(static_cast<int>(i)),
+            plugin_.scopeSettings
         );
-        scopeDisplays_[i]->setBuffer(plugin_.getVizChannelBuffer(static_cast<int>(i)));
-        scopeDisplays_[i]->setScopeSettings(&plugin_.scopeSettings);
         addAndMakeVisible(*scopeDisplays_[i]);
     }
 
@@ -177,7 +177,7 @@ void AYPluginUI::resized() {
     // static
     auto staticRow = r.removeFromTop(itemHeight);
     auto buttonWidth = staticRow.getWidth() / 4 - 8;
-    chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
+    chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, itemHeight));
     staticRow.removeFromLeft(8);
     chipClockCombo.setBounds(staticRow.withSizeKeepingCentre(staticRow.getWidth(), 20));
 
@@ -185,7 +185,7 @@ void AYPluginUI::resized() {
     r.removeFromTop(itemSpacing * 2);
     auto knobsRow = r.removeFromTop(itemHeight * 2);
 
-    layoutButton.setBounds(knobsRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, 20));
+    layoutButton.setBounds(knobsRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, itemHeight));
 
     knobsRow.removeFromLeft(8);
     stereoKnob.setBounds(knobsRow.removeFromLeft(knobsRow.getWidth() / 2));
@@ -197,7 +197,7 @@ void AYPluginUI::resized() {
     const float h = ((float) col.getHeight() - itemSpacing * 2.0f) / 3.0f;
 
     // Add spacing between channel groups and scopes
-    r.removeFromLeft(itemSpacing);
+    r.removeFromLeft(itemSpacing * 2);
 
     // Layout scope displays to the right of channel groups
     auto scopeArea = r;
@@ -230,59 +230,8 @@ void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
 
     menu.addSeparator();
 
-    // Scope settings submenu
-    juce::PopupMenu scopeMenu;
-
-    // Window size presets
-    juce::PopupMenu windowMenu;
-    const std::array<int, 5> windowPresets = {256, 512, 1024, 2048, 4096};
-    for (int preset : windowPresets) {
-        windowMenu.addItem(juce::String(preset) + " samples",
-            [this, preset]() {
-                plugin_.scopeSettings.windowSamples.setStoredValue(preset);
-            });
-    }
-    scopeMenu.addSubMenu("Window Size", windowMenu);
-
-    // Gain presets
-    juce::PopupMenu gainMenu;
-    const std::array<float, 5> gainPresets = {0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
-    for (float preset : gainPresets) {
-        gainMenu.addItem(juce::String(preset, 1) + "x",
-            [this, preset]() {
-                plugin_.scopeSettings.gain.setStoredValue(preset);
-            });
-    }
-    scopeMenu.addSubMenu("Gain", gainMenu);
-
-    // Trigger mode
-    juce::PopupMenu triggerMenu;
-    triggerMenu.addItem("Free Running",
-        [this]() {
-            plugin_.scopeSettings.triggerMode.setStoredValue(TriggerMode::FreeRunning);
-        });
-    triggerMenu.addItem("Rising Edge",
-        [this]() {
-            plugin_.scopeSettings.triggerMode.setStoredValue(TriggerMode::RisingEdge);
-        });
-    triggerMenu.addItem("Falling Edge",
-        [this]() {
-            plugin_.scopeSettings.triggerMode.setStoredValue(TriggerMode::FallingEdge);
-        });
-    scopeMenu.addSubMenu("Trigger Mode", triggerMenu);
-
-    // Trigger level presets
-    juce::PopupMenu levelMenu;
-    const std::array<float, 5> levelPresets = {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
-    for (float preset : levelPresets) {
-        levelMenu.addItem(juce::String(preset, 2),
-            [this, preset]() {
-                plugin_.scopeSettings.triggerLevel.setStoredValue(preset);
-            });
-    }
-    scopeMenu.addSubMenu("Trigger Level", levelMenu);
-
-    menu.addSubMenu("Scope Settings", scopeMenu);
+    // Add scope settings as submenu
+    MoTool::addScopeSettingsMenu(menu, plugin_.scopeSettings, "Scope Settings");
 }
 
 REGISTER_PLUGIN_UI_ADAPTER(AYChipPlugin, AYPluginUI)

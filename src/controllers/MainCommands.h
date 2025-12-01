@@ -27,6 +27,7 @@ public:
         fileSaveAs,
         fileReveal,
         fileImportPsg,
+        fileImportAudio,
         fileQuit,
 
         // Edit Menu
@@ -81,7 +82,7 @@ public:
             fileOpenRecent1, fileOpenRecent2, fileOpenRecent3, fileOpenRecent4,
             fileOpenRecent5, fileOpenRecent6, fileOpenRecent7, fileOpenRecent8,
             fileClearRecentFiles,
-            fileSave, fileSaveAs, fileReveal, fileImportPsg, fileQuit,
+            fileSave, fileSaveAs, fileReveal, fileImportPsg, fileImportAudio, fileQuit,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
             addAudioTrack,
@@ -121,6 +122,7 @@ public:
             menu.addCommandItem(manager, MainAppCommands::fileReveal);
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::fileImportPsg);
+            menu.addCommandItem(manager, MainAppCommands::fileImportAudio);
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::settingsTuningTables); // Add Tuning Tool menu item
             menu.addSeparator();
@@ -227,6 +229,10 @@ public:
 
             case fileImportPsg:
                 result.setInfo("Import PSG...", "Import PSG file", "File", 0);
+                break;
+
+            case fileImportAudio:
+                result.setInfo("Import Audio...", "Import audio file", "File", 0);
                 break;
 
             case fileQuit:

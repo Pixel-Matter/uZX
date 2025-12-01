@@ -19,6 +19,7 @@ te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& sel
 // te::AutomationTrack* addAndSelectAutomationTrack(te::Edit& edit, te::SelectionManager& selectionManager);
 
 void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor = false);
+void importAudioAsClip(te::Edit& edit, te::SelectionManager& selectionManager, bool insertAtCursor = false);
 
 void removeUnusedRenderFiles(te::Edit& edit);
 File getFreezeFileForTrack(const te::AudioTrack& track);

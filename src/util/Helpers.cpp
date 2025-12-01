@@ -134,6 +134,56 @@ void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, boo
     });
 }
 
+void importAudioAsClip(te::Edit& edit, te::SelectionManager& selectionManager, bool insertAtCursor) {
+    browseForAudioFile(edit.engine, [&](const File& f) {
+        if (!f.existsAsFile()) {
+            return;
+        }
+
+        // Validate audio file
+        te::AudioFile audioFile(edit.engine, f);
+        if (!audioFile.isValid()) {
+            edit.engine.getUIBehaviour().showWarningMessage("Invalid audio file: " + f.getFileName());
+            return;
+        }
+
+        // Get or create track
+        auto track = getSelectedOrInsertAudioTrack(edit, selectionManager, f.getFileNameWithoutExtension());
+        jassert(track != nullptr);
+
+        // Rename track if empty
+        if (track->getClips().size() == 0) {
+            track->setName(f.getFileNameWithoutExtension());
+        }
+
+        // Determine insert position
+        te::TimePosition insertTime;
+        if (insertAtCursor) {
+            insertTime = edit.getTransport().getPosition();
+        }
+
+        // Create clip position with audio file duration
+        te::ClipPosition pos = {{insertTime, te::TimeDuration::fromSeconds(audioFile.getLength())}, {}};
+
+        // Insert audio clip
+        if (auto clip = track->insertWaveClip(
+            f.getFileNameWithoutExtension(),
+            f,
+            pos,
+            false  // deleteExistingClips
+        )) {
+            // Disable time-stretching features
+            clip->setAutoTempo(false);
+            clip->setAutoPitch(false);
+
+            // Notify track of changes
+            track->changed();
+        } else {
+            edit.engine.getUIBehaviour().showWarningMessage("Failed to insert audio clip");
+        }
+    });
+}
+
 void removeUnusedRenderFiles(te::Edit& edit) {
     auto rendersDir = EditFileOps::getRendersDirectory(edit);
     TRACKTION_LOG("Cleaning renders directory " + rendersDir.getFullPathName());

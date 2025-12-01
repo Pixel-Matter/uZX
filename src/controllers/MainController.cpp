@@ -226,6 +226,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         menu.addCommandItem(&commandManager_, MainAppCommands::fileReveal);
         menu.addSeparator();
         menu.addCommandItem(&commandManager_, MainAppCommands::fileImportPsg);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileImportAudio);
         menu.addSeparator();
         menu.addCommandItem(&commandManager_, MainAppCommands::fileQuit);
 
@@ -393,6 +394,12 @@ bool AppController::perform(const InvocationInfo& info) {
         case MainAppCommands::fileImportPsg:
             if (edit != nullptr) {
                 importPsgAsClip(*edit, selectionManager_);
+            }
+            break;
+
+        case MainAppCommands::fileImportAudio:
+            if (edit != nullptr) {
+                importAudioAsClip(*edit, selectionManager_);
             }
             break;
 

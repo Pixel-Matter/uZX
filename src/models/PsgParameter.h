@@ -12,6 +12,19 @@
 
 namespace MoTool {
 
+enum class ScaleType : uint8 {
+    LinearScale = 0,
+    LogScale,
+    ReverseLogScale
+};
+
+struct ParameterScale {
+    int start;
+    int end;
+    ScaleType type;
+    StringArray labels;
+};
+
 struct PsgParamTypeEnum {
     enum Enum {
         VolumeA = 0,
@@ -95,7 +108,7 @@ public:
             case NoisePeriod:
                 return NormalisableRange<size_t>(0, 31);
             case EnvelopePeriod:
-                return NormalisableRange<size_t>(0, 512);
+                return NormalisableRange<size_t>(0, 4095);
             case EnvelopeShape:
                 return NormalisableRange<size_t>(0, 15);
             default:

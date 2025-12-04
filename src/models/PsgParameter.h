@@ -109,7 +109,7 @@ public:
             case NoisePeriod:
                 return {0, 31, ScaleType::Linear, {}};
             case EnvelopePeriod:
-                return {0, 4095, ScaleType::ReciprocalLog, {}};
+                return {0, 256, ScaleType::ReciprocalLog, {}};
             case EnvelopeShape:
                 return {0, 15, ScaleType::Linear, {}};
             default:
@@ -123,7 +123,7 @@ public:
         const float range = static_cast<float>(scale.end - scale.start);
         if (range <= 0.0f) return 0.0f;
 
-        const float v = static_cast<float>(juce::jlimit(scale.start, scale.end, value) - scale.start);
+        const float v = static_cast<float>(value - scale.start);
 
         switch (scale.type) {
             case ScaleType::Linear:

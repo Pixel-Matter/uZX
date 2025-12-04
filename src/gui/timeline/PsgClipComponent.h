@@ -3,6 +3,7 @@
 #include "ClipComponents.h"
 #include "PsgParamEditorComponent.h"
 #include "../../models/PsgClip.h"
+#include "../common/GUIPaintMeasurer.h"
 
 namespace MoTool {
 

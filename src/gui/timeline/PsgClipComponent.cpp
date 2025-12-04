@@ -127,8 +127,12 @@ PsgClip* PsgClipComponent::getPsgClip() {
 }
 
 void PsgClipComponent::paint(Graphics& g) {
+    GUIPaintMeasurer::ScopedTimer timer(paintMeasurer_);
+
     paintParameters(g);
     // paintRegisters(g);
+
+    paintMeasurer_.drawOverlay(g, getLocalBounds());
 }
 
 void PsgClipComponent::paintRegisters(Graphics& g) {

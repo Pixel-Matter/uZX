@@ -70,6 +70,13 @@ struct PsgRegsFrame : public PsgDeltaBase<uint8_t, 14> {
 
     using PsgDeltaBase::PsgDeltaBase;
 
+    constexpr PsgRegsFrame(std::initializer_list<std::pair<PsgRegType, uint8_t>> regs) noexcept {
+        for (const auto& [reg, value] : regs) {
+            registers[static_cast<size_t>(reg)] = value;
+            mask[static_cast<size_t>(reg)] = true;
+        }
+    }
+
     // Helpers for common register access
     inline constexpr bool hasTonePeriodSet(size_t chan) const noexcept {
         return mask[PsgRegType::TonePeriodFineA + chan * 2] || mask[PsgRegType::TonePeriodCoarseA + chan * 2];

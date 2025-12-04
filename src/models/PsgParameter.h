@@ -149,15 +149,15 @@ public:
     explicit constexpr PsgParamFrameData(const uZX::PsgRegsFrame& regs) noexcept {
         for (size_t i = 0; i < 3; ++i) {
             if (regs.hasVolumeOrEnvModSet(i)) {
-                set(PsgParamType(int(PsgParamType::EnvelopeIsOnA) + int(i)), regs.getEnvMod(i));
+                set(PsgParamType::EnvelopeIsOnA + int(i), regs.getEnvMod(i));
                 // NOTE PSG clearing must be a separate process
                 // if (!regs.getEnvMod(i)) {
                     // volume set only if envelope is off
-                    set(PsgParamType(int(PsgParamType::VolumeA) + int(i)), regs.getVolume(i));
+                    set(PsgParamType::VolumeA + int(i), regs.getVolume(i));
                 // }
             }
             if (regs.hasTonePeriodSet(i)) {
-                set(PsgParamType(int(PsgParamType::TonePeriodA) + int(i)), regs.getTonePeriod(i));
+                set(PsgParamType::TonePeriodA + int(i), regs.getTonePeriod(i));
             }
         }
         if (regs.hasMixerSet()) {
@@ -192,44 +192,38 @@ public:
             //     // if env is set, volume is 0
             //     regs.setVolumeAndEnvMod(i, 0, values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
             // } else
-            if (masks[size_t(PsgParamType::EnvelopeIsOnA) + i] || masks[size_t(PsgParamType::VolumeA) + i]) {
-                // DBG("Setting volume/env chan " << i << ": " << values[size_t(PsgParamType::VolumeA) + i] << ", " << values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
-                regs.setVolumeAndEnvMod(i, uint8(values[size_t(PsgParamType::VolumeA) + i]), values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
+            if (isSet(PsgParamType::EnvelopeIsOnA + int(i)) || isSet(PsgParamType::VolumeA) + int(i)) {
+                regs.setVolumeAndEnvMod(size_t(i), uint8(getRaw(PsgParamType::VolumeA + int(i))),
+                                                         getRaw(PsgParamType::EnvelopeIsOnA + int(i)));
             }
         }
         for (size_t i = 0; i < 3; ++i) {
-            if (masks[size_t(PsgParamType::TonePeriodA) + i]) {
-                // DBG("Setting tone period chan " << i << ": " << values[size_t(PsgParamType::TonePeriodA) + i]);
-                regs.setTonePeriod(i, values[size_t(PsgParamType::TonePeriodA) + i]);
+            if (isSet(PsgParamType::TonePeriodA + int(i))) {
+                regs.setTonePeriod(i, getRaw(PsgParamType::TonePeriodA + int(i)));
             }
         }
         // Set all mixer params regardless of individual mask
         bool mixerSet = false;
         for (size_t i = 0; i < 3; ++i) {
-            mixerSet = mixerSet || masks[size_t(PsgParamType::ToneIsOnA) + i] || masks[size_t(PsgParamType::NoiseIsOnA) + i];
+            mixerSet = mixerSet || isSet(PsgParamType::ToneIsOnA + int(i)) || isSet(PsgParamType::NoiseIsOnA + int(i));
         }
         if (mixerSet) {
             for (size_t i = 0; i < 3; ++i) {
-                // DBG("Setting mixer chan " << i << ": t="
-                //     << values[size_t(PsgParamType::ToneIsOnA) + i] << ", n="
-                //     << values[size_t(PsgParamType::NoiseIsOnA) + i]);
-                regs.setToneOn(i, values[size_t(PsgParamType::ToneIsOnA) + i]);
-                regs.setNoiseOn(i, values[size_t(PsgParamType::NoiseIsOnA) + i]);
+                regs.setToneOn (i, getRaw(PsgParamType::ToneIsOnA + int(i)));
+                regs.setNoiseOn(i, getRaw(PsgParamType::NoiseIsOnA + int(i)));
             }
-            // DBG("Mixer set to " << regs.getMixer());
         }
         // Noise and env para
-        if (masks[size_t(PsgParamType::NoisePeriod)]) {
-            // DBG("Setting noise period: " << values[size_t(PsgParamType::NoisePeriod)]);
-            regs.setNoisePeriod(static_cast<uint8>(values[size_t(PsgParamType::NoisePeriod)]));
+        if (isSet(PsgParamType::NoisePeriod)) {
+            regs.setNoisePeriod(static_cast<uint8>(getRaw(PsgParamType::NoisePeriod)));
         }
-        if (masks[size_t(PsgParamType::EnvelopePeriod)]) {
-            // DBG("Setting envelope period: " << values[size_t(PsgParamType::EnvelopePeriod)]);
-            regs.setEnvelopePeriod(values[size_t(PsgParamType::EnvelopePeriod)]);
+        if (isSet(PsgParamType::EnvelopePeriod)) {
+            regs.setEnvelopePeriod(getRaw(PsgParamType::EnvelopePeriod));
         }
-        if (masks[size_t(PsgParamType::EnvelopeShape)]) {
-            // DBG("Setting envelope shape: " << values[size_t(PsgParamType::EnvelopeShape)]);
-            regs.setEnvelopeShape(static_cast<uint8>(values[size_t(PsgParamType::EnvelopeShape)]));
+        // Write envelope shape if shape changed OR retrigger=1
+        if (isSet(PsgParamType::EnvelopeShape) ||
+            (isSet(PsgParamType::RetriggerEnvelope) && getRaw(PsgParamType::RetriggerEnvelope) == 1)) {
+            regs.setEnvelopeShape(static_cast<uint8>(getRaw(PsgParamType::EnvelopeShape)));
         }
         // TODO retrigger tone
         // if (masks[size_t(PsgParamType::RetriggerToneA)]) {
@@ -314,18 +308,12 @@ public:
         values[static_cast<size_t>(PsgParamType::NoiseIsOnA)] = 1;
         values[static_cast<size_t>(PsgParamType::NoiseIsOnB)] = 1;
         values[static_cast<size_t>(PsgParamType::NoiseIsOnC)] = 1;
-        masks[static_cast<size_t>(PsgParamType::ToneIsOnA)]  = false;
-        masks[static_cast<size_t>(PsgParamType::ToneIsOnB)]  = false;
-        masks[static_cast<size_t>(PsgParamType::ToneIsOnC)]  = false;
-        masks[static_cast<size_t>(PsgParamType::NoiseIsOnA)] = false;
-        masks[static_cast<size_t>(PsgParamType::NoiseIsOnB)] = false;
-        masks[static_cast<size_t>(PsgParamType::NoiseIsOnC)] = false;
-        // masks[static_cast<size_t>(PsgParamType::ToneIsOnA)] = true;
-        // masks[static_cast<size_t>(PsgParamType::ToneIsOnB)] = true;
-        // masks[static_cast<size_t>(PsgParamType::ToneIsOnC)] = true;
-        // masks[static_cast<size_t>(PsgParamType::NoiseIsOnA)] = true;
-        // masks[static_cast<size_t>(PsgParamType::NoiseIsOnB)] = true;
-        // masks[static_cast<size_t>(PsgParamType::NoiseIsOnC)] = true;
+        unSet(PsgParamType::ToneIsOnA);
+        unSet(PsgParamType::ToneIsOnB);
+        unSet(PsgParamType::ToneIsOnC);
+        unSet(PsgParamType::NoiseIsOnA);
+        unSet(PsgParamType::NoiseIsOnB);
+        unSet(PsgParamType::NoiseIsOnC);
     }
 
     constexpr std::vector<std::pair<PsgParamType, uint16_t>> getParams() const {
@@ -346,8 +334,6 @@ public:
 private:
     // not map or vector to avoid dynamic allocations
     std::array<uint16_t, static_cast<size_t>(PsgParamType::size())> values {};
-    // TODO or use bitmask for 21 bits
-    // sizeof(std::vector<bool>) is 24 bytes
     std::array<bool,     static_cast<size_t>(PsgParamType::size())> masks {};
 };
 

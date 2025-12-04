@@ -303,6 +303,11 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
     uZX::PsgRegsFrame regsState;
     // uZX::PsgRegsFrame regsFromParamsState;
     params.resetMixer();  // because AY regs after reset has all NNNTTT flags set (bits==0)
+
+    // Track last envelope shape and retrigger state for state transitions
+    std::optional<uint8_t> lastEnvelopeShape;
+    bool lastRetriggerState = false;  // Track if last frame had retrigger=1
+
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];
         if (frame.isEmpty()) {
@@ -315,6 +320,37 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
 
         params.clear();
         params.update(regsState);  // tracks really changed params
+
+        bool currentRetriggerState = false;
+
+        // Detect envelope shape retrigger and manage state transitions
+        if (frame.hasEnvelopeShapeSet()) {
+            auto currentShape = frame.getEnvelopeShape();
+
+            if (lastEnvelopeShape.has_value() && lastEnvelopeShape.value() == currentShape) {
+                // Same envelope shape = retrigger!
+                params.set(PsgParamType::RetriggerEnvelope, 1);
+                params.set(PsgParamType::EnvelopeShape, currentShape);
+                currentRetriggerState = true;
+            } else {
+                // Value changed or first write - explicitly turn off retrigger if it was on
+                if (lastRetriggerState) {
+                    params.set(PsgParamType::RetriggerEnvelope, 0);
+                }
+                currentRetriggerState = false;
+            }
+
+            lastEnvelopeShape = currentShape;
+        } else {
+            // No envelope shape write this frame - turn off retrigger if it was on
+            if (lastRetriggerState) {
+                params.set(PsgParamType::RetriggerEnvelope, 0);
+            }
+            currentRetriggerState = false;
+        }
+
+        lastRetriggerState = currentRetriggerState;
+
         auto v = PsgParamFrame::createPsgFrameValueTree(beat, params);
         state.addChild(v, -1, um);
 

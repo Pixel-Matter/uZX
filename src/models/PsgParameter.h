@@ -4,7 +4,6 @@
 
 #include "../formats/psg/PsgData.h"
 #include "../util/enumchoice.h"
-#include "juce_core/juce_core.h"
 
 #include <algorithm>
 #include <cmath>
@@ -242,7 +241,7 @@ public:
             //     // if env is set, volume is 0
             //     regs.setVolumeAndEnvMod(i, 0, values[size_t(PsgParamType::EnvelopeIsOnA) + i]);
             // } else
-            if (isSet(PsgParamType::EnvelopeIsOnA + int(i)) || isSet(PsgParamType::VolumeA) + int(i)) {
+            if (isSet(PsgParamType::EnvelopeIsOnA + int(i)) || isSet(PsgParamType::VolumeA + int(i))) {
                 regs.setVolumeAndEnvMod(size_t(i), uint8(getRaw(PsgParamType::VolumeA + int(i))),
                                                          getRaw(PsgParamType::EnvelopeIsOnA + int(i)));
             }
@@ -304,16 +303,19 @@ public:
     }
 
     void debugPrint() const noexcept {
-        for (size_t i = 0; i < PsgParamType::size(); ++i) {
-            DBG(std::string(static_cast<PsgParamType>(static_cast<int>(i)).getLabel()) << ": " << values[i] << " " << (masks[i] ? "true" : "false"));
-        }
+        PsgParamType::forEach([this](auto enumValue) {
+            auto type = PsgParamType(enumValue);
+            DBG(std::string(type.getLabel()) << ": " << values[static_cast<size_t>(type)]);
+        });
     }
 
     void debugPrintSet() const noexcept {
-        for (size_t i = 0; i < PsgParamType::size(); ++i) {
-            if (!masks[i]) continue;
-            DBG(std::string(static_cast<PsgParamType>(static_cast<int>(i)).getLabel()) << ": " << values[i]);
-        }
+        PsgParamType::forEach([this](auto enumValue) {
+            auto type = PsgParamType(enumValue);
+            if (isSet(type)) {
+                DBG(std::string(type.getLabel()) << ": " << values[static_cast<size_t>(type)]);
+            }
+        });
     }
 
     constexpr bool isEmpty() const noexcept {

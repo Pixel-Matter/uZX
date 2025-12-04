@@ -62,6 +62,64 @@ const std::array<Colour, 14> RegColors = {
     Colors::PSG::Env   // purple-100
 };
 
+/** Draw dotted pattern for noise modulation */
+void drawNoisePattern(Graphics& g, float x, float y, float width, float height) {
+    g.setColour(Colours::black);
+    constexpr float dotSpacing = 4.0f;
+    constexpr float dotRadius = 1.0f;
+    for (float dx = dotSpacing / 2; dx < width - dotSpacing / 2; dx += dotSpacing) {
+        for (float dy = dotSpacing / 2; dy < height - dotSpacing / 2; dy += dotSpacing) {
+            g.fillEllipse(x + dx - dotRadius, y + dy - dotRadius,
+                         dotRadius * 2, dotRadius * 2);
+        }
+    }
+}
+
+/** Draw stripe pattern for envelope modulation based on envelope shape direction */
+void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float height, uint8_t shape) {
+    g.setColour(Colours::black);
+    constexpr float stripeSpacing = 3.0f;
+    constexpr float strokeWidth = 1.0f;
+
+    // Determine direction based on envelope shape:
+    // Up-first shapes: 4-7, C-F (attack first)
+    // Down-first shapes: 0-3, 8-B (decay first)
+    // Triangle shapes: A (down-up), E (up-down)
+    bool isUpFirst = (shape >= 4 && shape <= 7) || (shape >= 0xC);
+    bool isTriangle = (shape == 0xA || shape == 0xE);
+
+    Path stripes;
+    if (isTriangle) {
+        // Zigzag pattern
+        for (float dx = 0; dx < width + height; dx += stripeSpacing * 2) {
+            float startX = x + dx;
+            // Up stroke
+            stripes.startNewSubPath(startX, y + height);
+            stripes.lineTo(startX + stripeSpacing, y);
+            // Down stroke
+            stripes.lineTo(startX + stripeSpacing * 2, y + height);
+        }
+    } else if (isUpFirst) {
+        // Forward stripes //// (attack)
+        for (float offset = -height; offset < width + height; offset += stripeSpacing) {
+            stripes.startNewSubPath(x + offset, y + height);
+            stripes.lineTo(x + offset + height, y);
+        }
+    } else {
+        // Backward stripes \\\\ (decay)
+        for (float offset = -height; offset < width + height; offset += stripeSpacing) {
+            stripes.startNewSubPath(x + offset, y);
+            stripes.lineTo(x + offset + height, y + height);
+        }
+    }
+
+    // Clip to note bounds
+    g.saveState();
+    g.reduceClipRegion(juce::Rectangle<float>(x, y, width, height).toNearestIntEdges());
+    g.strokePath(stripes, PathStrokeType(strokeWidth));
+    g.restoreState();
+}
+
 } // namespace
 
 PsgClip* PsgClipComponent::getPsgClip() {
@@ -166,8 +224,10 @@ void PsgClipComponent::paintParameters(Graphics& g) {
     const auto frameDur = te::TimeDuration::fromSeconds(1.0f / tc.getFPS());
     const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds());
 
-    // constexpr auto lanesRange = PsgParamType::size();
-    // const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / lanesRange);
+    // Dynamic note height based on component height (roughly 8 octaves = 96 semitones displayed)
+    constexpr float pitchRangeInSemitones = 96.0f;
+    const float semitoneHeight = static_cast<float>(rect.getHeight()) / pitchRangeInSemitones;
+    const float noteHeight = juce::jmax(4.0f, semitoneHeight * 0.8f);
 
     te::TimePosition startPos = jmax(clipRange.getStart(), viewRange.getStart() - frameDur);
     te::TimePosition endPos = jmin(clipRange.getEnd(), viewRange.getEnd());
@@ -194,25 +254,49 @@ void PsgClipComponent::paintParameters(Graphics& g) {
 
         const auto& frameData = frame->getData();
 
-        // Tone periods with their corresponding volume params
-        static constexpr std::tuple<PsgParamType::Enum, PsgParamType::Enum, const juce::Colour*> toneParams[] = {
-            {PsgParamType::TonePeriodA, PsgParamType::VolumeA, &Colors::PSG::A},
-            {PsgParamType::TonePeriodB, PsgParamType::VolumeB, &Colors::PSG::B},
-            {PsgParamType::TonePeriodC, PsgParamType::VolumeC, &Colors::PSG::C},
+        // Channel colors (A, B, C)
+        static const juce::Colour channelColors[] = {
+            Colors::PSG::A.withSaturation(1.0f),
+            Colors::PSG::B.withSaturation(1.0f),
+            Colors::PSG::C.withSaturation(1.0f),
         };
 
-        for (const auto& [periodEnum, volumeEnum, colorPtr] : toneParams) {
-            PsgParamType periodType(periodEnum);
-            PsgParamType volumeType(volumeEnum);
-            // Render if period is set OR if volume is set and > 0
+        // Get envelope shape once per frame (used for envelope stripes)
+        uint8_t envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
+
+        for (int ch = 0; ch < 3; ++ch) {
+            PsgParamType periodType (PsgParamType::TonePeriodA + ch);
+            PsgParamType volumeType (PsgParamType::VolumeA + ch);
+            PsgParamType envOnType  (PsgParamType::EnvelopeIsOnA + ch);
+            PsgParamType noiseOnType(PsgParamType::NoiseIsOnA + ch);
+
+            bool hasEnvMod = frameData[envOnType].value_or(0) > 0;
+            bool hasNoiseMod = frameData[noiseOnType].value_or(0) > 0;
+
+            // Render if period is set OR if volume is set and > 0 OR if envelope modulated
             const auto rawVolume = frameData.getRaw(volumeType);
             const bool hasVolume = frameData.isSet(volumeType) && rawVolume > 0;
-            if (frameData.isSet(periodType) || hasVolume) {
+            if (frameData.isSet(periodType) || hasVolume || hasEnvMod) {
                 auto period = frameData.getRaw(periodType);
                 float pitch = periodType.valueToNormalized(period);
-                float alpha = static_cast<float>(frameData.getRaw(volumeType)) / 15.0f * 0.8f + 0.2f;
-                g.setColour(colorPtr->withSaturation(1.0f).withAlpha(alpha));
-                g.fillRect(x1, (1.0f - pitch) * rect.getHeight() - 4, (float)pixelsPerFrame, 4.0f);
+                // If envelope modulated, use max alpha (envelope controls volume)
+                float alpha = hasEnvMod ? 1.0f : (static_cast<float>(rawVolume) / 15.0f * 0.8f + 0.2f);
+                float noteY = (1.0f - pitch) * rect.getHeight() - noteHeight;
+                const auto& color = channelColors[ch];
+
+                // Draw base note rectangle
+                g.setColour(color.withAlpha(alpha));
+                g.fillRect(x1, noteY, (float)pixelsPerFrame, noteHeight);
+
+                // Draw envelope stripes if modulated
+                if (hasEnvMod) {
+                    drawEnvelopeStripes(g, x1, noteY, (float)pixelsPerFrame, noteHeight, envShape);
+                }
+
+                // Draw noise pattern if modulated
+                if (hasNoiseMod) {
+                    drawNoisePattern(g, x1, noteY, (float)pixelsPerFrame, noteHeight);
+                }
             }
         }
 
@@ -222,7 +306,7 @@ void PsgClipComponent::paintParameters(Graphics& g) {
             auto value = frameData.getRaw(envType);
             float val = envType.valueToNormalized(value);
             g.setColour(Colors::PSG::Env.withSaturation(1.0f).withAlpha(0.75f));
-            g.fillRect(x1, (1.0f - val) * rect.getHeight() - 4, (float)pixelsPerFrame, 4.0f);
+            g.fillRect(x1, (1.0f - val) * rect.getHeight() - noteHeight, (float)pixelsPerFrame, noteHeight);
         }
     }
 }

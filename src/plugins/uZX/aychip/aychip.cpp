@@ -31,6 +31,30 @@ void AYInterface::setRegister(size_t index, unsigned char value) noexcept {
     }
 }
 
+void AYInterface::applyChannelMute(int chan, bool toneEnabled, bool noiseEnabled, bool envelopeEnabled, bool channelEnabled) noexcept {
+    if (chan < 0 || chan >= 3) {
+        return;
+    }
+
+    if (!channelEnabled) {
+        // When channel is disabled, set volume to 0 and envelope off
+        // to prevent audible clicks (tone-off sets signal high)
+        setVolume(chan, 0);
+        setEnvelopeOn(chan, false);
+    } else {
+        // Channel is enabled, but check individual effects
+        if (!toneEnabled) {
+            setToneOn(chan, false);
+        }
+        if (!noiseEnabled) {
+            setNoiseOn(chan, false);
+        }
+        if (!envelopeEnabled) {
+            setEnvelopeOn(chan, false);
+        }
+    }
+}
+
 AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type, int numChannels)
     : AYInterface()
     , Pan_ {0.25, 0.75, 0.5}  // ACB is default

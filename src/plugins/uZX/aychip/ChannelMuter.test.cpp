@@ -25,7 +25,7 @@ public:
 
             // Disable channel A
             filter.channelA.setStoredValue(false);
-            filter.apply(regs);
+            filter.applyToRegsFrame(regs);
 
             // Verify: volume is set to 0 to prevent clicks
             // (tone-off would set signal high, causing audible clicks with non-zero volume)
@@ -49,7 +49,7 @@ public:
 
             // Disable only tone
             filter.toneB.setStoredValue(false);
-            filter.apply(regs);
+            filter.applyToRegsFrame(regs);
 
             // Verify
             expect(!regs.getToneOn(1), "Tone should be disabled");
@@ -72,7 +72,7 @@ public:
 
             // Disable envelope
             filter.envelopeC.setStoredValue(false);
-            filter.apply(regs);
+            filter.applyToRegsFrame(regs);
 
             // Verify
             expect(!regs.getEnvMod(2), "Envelope mod should be disabled");
@@ -124,7 +124,7 @@ public:
             filter.toneB.setStoredValue(false);
             filter.noiseB.setStoredValue(false);
             filter.envelopeB.setStoredValue(false);
-            filter.apply(regs);
+            filter.applyToRegsFrame(regs);
 
             // Verify: volume is set to 0 to prevent audible clicks
             expectEquals(regs.getVolume(1), static_cast<uint8_t>(0), "Volume should be 0 when all TNE disabled");
@@ -150,7 +150,7 @@ public:
             filter.toneB.setStoredValue(false);      // B: no tone
             filter.noiseC.setStoredValue(false);     // C: no noise
 
-            filter.apply(regs);
+            filter.applyToRegsFrame(regs);
 
             // Verify A - channel disabled means volume=0
             expectEquals(regs.getVolume(0), static_cast<uint8_t>(0), "A: volume should be 0");

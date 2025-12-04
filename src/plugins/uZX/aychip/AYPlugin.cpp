@@ -160,15 +160,16 @@ void AYChipPlugin::updateChip() noexcept {
     //     // updateRegistersFromMidiRegs();
     // }
 
-    // Apply channel and effect filters
-    channelMuter.apply(registersFrame);
-
+    // Set registers from the frame to the chip
     for (size_t i = 0; i < registersFrame.size(); ++i) {
         if (registersFrame.isSet(i)) {
             // DBG("" << i << " = " << registersFrame.getRaw(i));
             chip->setRegister(i, registersFrame.getRaw(i));
         }
     }
+
+    // Apply channel and effect filters directly to chip registers
+    channelMuter.applyToChip(*chip);
 }
 
 void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept {

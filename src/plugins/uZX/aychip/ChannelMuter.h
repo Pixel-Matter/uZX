@@ -84,7 +84,14 @@ public:
      *
      * @param regs The register frame to filter
      */
-    void apply(PsgRegsFrame& regs) const noexcept;
+    void applyToRegsFrame(PsgRegsFrame& regs) const noexcept;
+
+    /**
+     * Apply channel and effect filters directly to the chip registers
+     *
+     * @param chip The chip to apply filters to
+     */
+    void applyToChip(class AYInterface& chip) const noexcept;
 
 private:
     void valueChanged(Value&) override;

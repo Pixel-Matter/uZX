@@ -1,4 +1,5 @@
 #include "ChannelMuter.h"
+#include "aychip.h"
 
 namespace MoTool::uZX {
 
@@ -16,7 +17,7 @@ ChannelMuter::~ChannelMuter() {
     channelC.removeListener(this);
 }
 
-void ChannelMuter::apply(PsgRegsFrame& regs) const noexcept {
+void ChannelMuter::applyToRegsFrame(PsgRegsFrame& regs) const noexcept {
     for (size_t chan = 0; chan < 3; ++chan) {
         if (!getChannelEfecctivelyEnabled(chan)) {
             // When channel is disabled or all TNE are off, set volume to 0
@@ -34,6 +35,17 @@ void ChannelMuter::apply(PsgRegsFrame& regs) const noexcept {
                 regs.setEnvMod(chan, false);
             }
         }
+    }
+}
+
+void ChannelMuter::applyToChip(AYInterface& chip) const noexcept {
+    for (size_t chan = 0; chan < 3; ++chan) {
+        const bool channelEnabled = getChannelEfecctivelyEnabled(chan);
+        const bool toneEnabled = getToneEnabled(chan);
+        const bool noiseEnabled = getNoiseEnabled(chan);
+        const bool envelopeEnabled = getEnvelopeEnabled(chan);
+
+        chip.applyChannelMute(static_cast<int>(chan), toneEnabled, noiseEnabled, envelopeEnabled, channelEnabled);
     }
 }
 

@@ -17,7 +17,7 @@ public:
     ~PsgParamList();
 
     int size() const;
-    float getMaxValue() const;
+    ParameterScale getScale() const;
     int findIndex(te::TimePosition pos) const;
     int findPrevActiveIndex(int idx) const;
     bool isActive(int idx) const;

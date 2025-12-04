@@ -7,15 +7,16 @@
 #include "juce_core/juce_core.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <initializer_list>
 
 namespace MoTool {
 
-enum class ScaleType : uint8 {
-    LinearScale = 0,
-    LogScale,
-    ReverseLogScale
+enum class ScaleType : unsigned short {
+    Linear = 0,
+    Log,
+    ReciprocalLog
 };
 
 struct ParameterScale {
@@ -52,28 +53,28 @@ struct PsgParamTypeEnum {
     };
 
     static inline constexpr std::string_view labels[] {
-        "Volume A",
-        "Volume B",
-        "Volume C",
-        "Tone Period A",
-        "Tone Period B",
-        "Tone Period C",
-        "Tone Is On A",
-        "Tone Is On B",
-        "Tone Is On C",
-        "Noise Is On A",
-        "Noise Is On B",
-        "Noise Is On C",
-        "Envelope Is On A",
-        "Envelope Is On B",
-        "Envelope Is On C",
+        "A: Volume",
+        "B: Volume",
+        "C: Volume",
+        "A: Tone Period",
+        "B: Tone Period",
+        "C: Tone Period",
+        "A: Tone Is On",
+        "B: Tone Is On",
+        "C: Tone Is On",
+        "A: Noise Is On",
+        "B: Noise Is On",
+        "C: Noise Is On",
+        "A: Envelope Is On",
+        "B: Envelope Is On",
+        "C: Envelope Is On",
         "Noise Period",
-        "Envelope Period",
-        "Envelope Shape",
-        "Retrigger Tone A",
-        "Retrigger Tone B",
-        "Retrigger Tone C",
-        "Retrigger Envelope",
+        "Envelope: Period",
+        "Envelope: Shape",
+        "A: Retrigger Tone",
+        "B: Retrigger Tone",
+        "C: Retrigger Tone",
+        "Envelope: Retrigger",
     };
 };
 
@@ -81,16 +82,16 @@ class PsgParamType : public Util::EnumChoice<PsgParamTypeEnum> {
 public:
     using Util::EnumChoice<PsgParamTypeEnum>::EnumChoice;
 
-    NormalisableRange<size_t> inline constexpr getRange() const noexcept {
+    ParameterScale inline getScale() const noexcept {
         switch (asEnum()) {
             case VolumeA:
             case VolumeB:
             case VolumeC:
-                return NormalisableRange<size_t>(0, 15);
+                return {0, 15, ScaleType::Linear, {}};
             case TonePeriodA:
             case TonePeriodB:
             case TonePeriodC:
-                return NormalisableRange<size_t>(0, 4095);
+                return {0, 4095, ScaleType::ReciprocalLog, {}};
             case ToneIsOnA:
             case ToneIsOnB:
             case ToneIsOnC:
@@ -104,16 +105,65 @@ public:
             case RetriggerToneB:
             case RetriggerToneC:
             case RetriggerEnvelope:
-                return NormalisableRange<size_t>(0, 1);
+                return {0, 1, ScaleType::Linear, {}};
             case NoisePeriod:
-                return NormalisableRange<size_t>(0, 31);
+                return {0, 31, ScaleType::Linear, {}};
             case EnvelopePeriod:
-                return NormalisableRange<size_t>(0, 4095);
+                return {0, 4095, ScaleType::ReciprocalLog, {}};
             case EnvelopeShape:
-                return NormalisableRange<size_t>(0, 15);
+                return {0, 15, ScaleType::Linear, {}};
             default:
-                return NormalisableRange<size_t>(0, 0);
+                return {0, 0, ScaleType::Linear, {}};
         }
+    }
+
+    /** Convert raw parameter value to normalized 0-1 range based on scale type */
+    float valueToNormalized(int value) const noexcept {
+        const auto scale = getScale();
+        const float range = static_cast<float>(scale.end - scale.start);
+        if (range <= 0.0f) return 0.0f;
+
+        const float v = static_cast<float>(juce::jlimit(scale.start, scale.end, value) - scale.start);
+
+        switch (scale.type) {
+            case ScaleType::Linear:
+                return v / range;
+            case ScaleType::Log:
+                return std::log(v + 1.0f) / std::log(range + 1.0f);
+            case ScaleType::ReciprocalLog:
+                // Inverted log: high values (low frequency) → bottom, low values (high frequency) → top
+                return 1.0f - std::log(v + 1.0f) / std::log(range + 1.0f);
+            default:
+                return v / range;
+        }
+    }
+
+    /** Convert normalized 0-1 value back to raw parameter value based on scale type */
+    int normalizedToValue(float normalized) const noexcept {
+        const auto scale = getScale();
+        const float range = static_cast<float>(scale.end - scale.start);
+        if (range <= 0.0f) return scale.start;
+
+        const float n = juce::jlimit(0.0f, 1.0f, normalized);
+        float v;
+
+        switch (scale.type) {
+            case ScaleType::Linear:
+                v = n * range;
+                break;
+            case ScaleType::Log:
+                v = std::exp(n * std::log(range + 1.0f)) - 1.0f;
+                break;
+            case ScaleType::ReciprocalLog:
+                // Inverse of reciprocal log
+                v = std::exp((1.0f - n) * std::log(range + 1.0f)) - 1.0f;
+                break;
+            default:
+                v = n * range;
+                break;
+        }
+
+        return scale.start + static_cast<int>(std::round(v));
     }
 };
 

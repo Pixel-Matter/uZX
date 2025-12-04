@@ -198,7 +198,6 @@ void PsgClipComponent::paintParameters(Graphics& g) {
             const auto paramType = static_cast<PsgParamType>(paramNum);
             if (frameData.isSet(paramNum)) {
                 juce::Colour color;
-                auto value = frameData.getRaw(static_cast<PsgParamType>(paramNum));
                 switch (paramType.asEnum()) {
                     case PsgParamType::TonePeriodA:
                         color = Colors::PSG::A;
@@ -211,14 +210,14 @@ void PsgClipComponent::paintParameters(Graphics& g) {
                         break;
                     case PsgParamType::EnvelopePeriod:
                         color = Colors::PSG::Env;
-                        value *= 16;
                         break;
                     default:
                         continue;
                 }
-                float val = 1.0f - static_cast<float>(value) / 4096.0f;
+                auto value = frameData.getRaw(paramType);
+                float val = paramType.valueToNormalized(value);
                 g.setColour(color.withSaturation(1.0f).withAlpha(0.75f));
-                g.fillRect(x1, val * rect.getHeight() - 4, (float)pixelsPerFrame, 4.0f);
+                g.fillRect(x1, (1.0f - val) * rect.getHeight() - 4, (float)pixelsPerFrame, 4.0f);
             }
         }
     }

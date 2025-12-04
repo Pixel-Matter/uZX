@@ -14,23 +14,24 @@ PsgParamEditorWrapper::PsgParamEditorWrapper(EditViewState& evs, TimelineGrid& g
     // Initialize parameter types - most commonly used parameters
     paramTypes_ = {
         PsgParamType::VolumeA,
-        PsgParamType::VolumeB,
-        PsgParamType::VolumeC,
         PsgParamType::TonePeriodA,
-        PsgParamType::TonePeriodB,
-        PsgParamType::TonePeriodC,
-        PsgParamType::ToneIsOnB,
         PsgParamType::ToneIsOnA,
-        PsgParamType::ToneIsOnC,
         PsgParamType::NoiseIsOnA,
-        PsgParamType::NoiseIsOnB,
-        PsgParamType::NoiseIsOnC,
         PsgParamType::EnvelopeIsOnA,
+        PsgParamType::VolumeB,
+        PsgParamType::TonePeriodB,
+        PsgParamType::ToneIsOnB,
+        PsgParamType::NoiseIsOnB,
         PsgParamType::EnvelopeIsOnB,
+        PsgParamType::VolumeC,
+        PsgParamType::TonePeriodC,
+        PsgParamType::ToneIsOnC,
+        PsgParamType::NoiseIsOnC,
         PsgParamType::EnvelopeIsOnC,
+        PsgParamType::NoisePeriod,
         PsgParamType::EnvelopePeriod,
         PsgParamType::EnvelopeShape,
-        PsgParamType::NoisePeriod,
+        PsgParamType::RetriggerEnvelope
     };
 
     paramList_.setModel(this);
@@ -137,8 +138,8 @@ int PsgParamList::size() const {
     return frames.size();
 }
 
-float PsgParamList::getMaxValue() const {
-    return static_cast<float>(paramType.getRange().end);
+ParameterScale PsgParamList::getScale() const {
+    return paramType.getScale();
 }
 
 int PsgParamList::findIndex(te::TimePosition pos) const {
@@ -184,7 +185,7 @@ te::TimePosition PsgParamList::getTime(int idx) const {
 float PsgParamList::getValue(int idx) const {
     if (idx < 0 || idx >= frames.size())
         return 0.0f;
-    return frames[idx]->getData().getRaw(paramType) / getMaxValue();  // Normalize to 0.0 - 1.0 range
+    return paramType.valueToNormalized(frames[idx]->getData().getRaw(paramType));
 }
 
 float PsgParamList::getValueAt(te::TimePosition time) const {

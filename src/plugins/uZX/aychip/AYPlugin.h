@@ -76,6 +76,7 @@ public:
             visitor(chipType);
             visitor(chipClock);
             visitor(removeDC);
+            visitor(monitorMode);
             // visitor(numOutputChannels);
         }
 
@@ -83,7 +84,7 @@ public:
         ParameterValue<ChipType> chipType     {{"chip",        IDs::chip,        "Chip",            "Chip type",                      ChipType::AY}};
         ParameterValue<double> chipClock      {{"clock",       IDs::clock,       "Clock",           "Clock frequncy",                 1.7734, {0.894887, 2.0, 0.01}, "MHz"}};
         ParameterValue<bool> removeDC         {{"noDC",        IDs::noDC,        "Remove DC",       "Remove DC from output",          true}};
-        // ParameterValue<int> numOutputChannels {{"numChannels", IDs::numChannels, "Output Channels", "Output mode (1=mono, 2=stereo, 3=separate)", 2, {1, 3, 1}}};
+        ParameterValue<bool> monitorMode      {{"monitor",     IDs::monitor,     "Monitor",         "Chip debug to console",         false}};
     };
 
     StaticParams staticParams;
@@ -97,13 +98,11 @@ public:
             visitor(volume);
             visitor(layout);
             visitor(stereoWidth);
-            visitor(monitorMode);
         }
 
         ParameterValue<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
         ParameterValue<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", ChannelsLayout::ACB}};
         ParameterValue<float> stereoWidth     {{"stereo", IDs::stereo, "Width",  "Stereo width",  0.5f, {0.f, 1.0f}}};
-        ParameterValue<bool> monitorMode      {{"monitor", IDs::monitor, "Monitor", "Chip monitor mode",  false}};
     };
 
     DynamicParams dynamicParams;

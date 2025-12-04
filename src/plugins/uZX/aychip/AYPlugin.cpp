@@ -137,7 +137,7 @@ void AYChipPlugin::reset() {
 void AYChipPlugin::updateRegistersFromMidiParams() noexcept {
     // DBG("updateRegistersFromMidiParams");
     auto& params = midiParamsReader.getParams();
-    if (dynamicParams.monitorMode.getLiveValue()) {
+    if (staticParams.monitorMode.getStoredValue()) {
         params.debugPrintSet();
     }
     registersFrame.clear();

@@ -32,7 +32,7 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
         track->pluginList.insertPlugin(*ayPlugin, 0, nullptr);
         auto AYPlugin = dynamic_cast<uZX::AYChipPlugin*>(ayPlugin.get());
         AYPlugin->dynamicParams.layout.setStoredValue(ChannelsLayout::ACB);
-        AYPlugin->dynamicParams.monitorMode.setStoredValue(true);
+        AYPlugin->staticParams.monitorMode.setStoredValue(true);
     }
 
     if (USE_MIDI_LOGGER) {

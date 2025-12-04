@@ -228,6 +228,16 @@ void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
     addMidiRangeMenu(menu, plugin_.staticParams.baseMidiChannel, plugin_.staticParams.baseMidiChannel.definition.description, 4);
     // addDiscreteIntegerParameterMenu(menu, plugin_.staticParams.numOutputChannels, plugin_.staticParams.numOutputChannels.definition.description);
 
+    // Monitor mode toggle
+    const bool monitorEnabled = plugin_.staticParams.monitorMode.getStoredValue();
+    menu.addItem(plugin_.staticParams.monitorMode.definition.description,
+                 true,
+                 monitorEnabled,
+                 [this]() {
+                     plugin_.staticParams.monitorMode.setStoredValue(
+                         !plugin_.staticParams.monitorMode.getStoredValue());
+                 });
+
     menu.addSeparator();
 
     // Add scope settings as submenu

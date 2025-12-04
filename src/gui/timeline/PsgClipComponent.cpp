@@ -194,31 +194,35 @@ void PsgClipComponent::paintParameters(Graphics& g) {
 
         const auto& frameData = frame->getData();
 
-        for (int paramNum = 0; paramNum < static_cast<int>(frameData.size()); ++paramNum) {
-            const auto paramType = static_cast<PsgParamType>(paramNum);
-            if (frameData.isSet(paramNum)) {
-                juce::Colour color;
-                switch (paramType.asEnum()) {
-                    case PsgParamType::TonePeriodA:
-                        color = Colors::PSG::A;
-                        break;
-                    case PsgParamType::TonePeriodB:
-                        color = Colors::PSG::B;
-                        break;
-                    case PsgParamType::TonePeriodC:
-                        color = Colors::PSG::C;
-                        break;
-                    case PsgParamType::EnvelopePeriod:
-                        color = Colors::PSG::Env;
-                        break;
-                    default:
-                        continue;
-                }
-                auto value = frameData.getRaw(paramType);
-                float val = paramType.valueToNormalized(value);
-                g.setColour(color.withSaturation(1.0f).withAlpha(0.75f));
-                g.fillRect(x1, (1.0f - val) * rect.getHeight() - 4, (float)pixelsPerFrame, 4.0f);
+        // Tone periods with their corresponding volume params
+        static constexpr std::tuple<PsgParamType::Enum, PsgParamType::Enum, const juce::Colour*> toneParams[] = {
+            {PsgParamType::TonePeriodA, PsgParamType::VolumeA, &Colors::PSG::A},
+            {PsgParamType::TonePeriodB, PsgParamType::VolumeB, &Colors::PSG::B},
+            {PsgParamType::TonePeriodC, PsgParamType::VolumeC, &Colors::PSG::C},
+        };
+
+        for (const auto& [periodEnum, volumeEnum, colorPtr] : toneParams) {
+            PsgParamType periodType(periodEnum);
+            PsgParamType volumeType(volumeEnum);
+            // Render if period is set OR if volume is set and > 0
+            const auto rawVolume = frameData.getRaw(volumeType);
+            const bool hasVolume = frameData.isSet(volumeType) && rawVolume > 0;
+            if (frameData.isSet(periodType) || hasVolume) {
+                auto period = frameData.getRaw(periodType);
+                float pitch = periodType.valueToNormalized(period);
+                float alpha = static_cast<float>(frameData.getRaw(volumeType)) / 15.0f * 0.8f + 0.2f;
+                g.setColour(colorPtr->withSaturation(1.0f).withAlpha(alpha));
+                g.fillRect(x1, (1.0f - pitch) * rect.getHeight() - 4, (float)pixelsPerFrame, 4.0f);
             }
+        }
+
+        // Envelope period - render only if set
+        if (frameData.isSet(PsgParamType::EnvelopePeriod)) {
+            PsgParamType envType(PsgParamType::EnvelopePeriod);
+            auto value = frameData.getRaw(envType);
+            float val = envType.valueToNormalized(value);
+            g.setColour(Colors::PSG::Env.withSaturation(1.0f).withAlpha(0.75f));
+            g.fillRect(x1, (1.0f - val) * rect.getHeight() - 4, (float)pixelsPerFrame, 4.0f);
         }
     }
 }

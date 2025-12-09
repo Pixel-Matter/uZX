@@ -127,6 +127,10 @@ PsgClip* PsgClipComponent::getPsgClip() {
 }
 
 void PsgClipComponent::paint(Graphics& g) {
+    ClipComponent::paint(g);
+
+    auto lastInterval = paintMeasurer_.getInstantIntervalMs();
+
     GUIPaintMeasurer::ScopedTimer timer(paintMeasurer_);
 
     paintParameters(g);
@@ -136,7 +140,6 @@ void PsgClipComponent::paint(Graphics& g) {
 }
 
 void PsgClipComponent::paintRegisters(Graphics& g) {
-    ClipComponent::paint(g);
     g.setFont(12.0f);
 
     auto* psgClip = getPsgClip();
@@ -209,7 +212,6 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
 }
 
 void PsgClipComponent::paintParameters(Graphics& g) {
-    ClipComponent::paint(g);
     g.setFont(12.0f);
 
     auto* psgClip = getPsgClip();

@@ -25,7 +25,8 @@ public:
     // void resized() override;
 
 private:
-    // PsgParamEditorComponent editor_;
+    GUIPaintMeasurer paintMeasurer_;
+
 };
 
 }  // namespace MoTool

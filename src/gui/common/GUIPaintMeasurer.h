@@ -45,7 +45,9 @@ public:
     //==============================================================================
     /** RAII timer for measuring paint duration. */
     struct ScopedTimer {
-        ScopedTimer(GUIPaintMeasurer& m) : measurer(m), startTime(juce::Time::getMillisecondCounterHiRes()) {}
+        ScopedTimer(GUIPaintMeasurer& m) : measurer(m), startTime(juce::Time::getMillisecondCounterHiRes()) {
+            measurer.updateFpsTracking();
+        }
 
         ~ScopedTimer() {
             double elapsed = juce::Time::getMillisecondCounterHiRes() - startTime;
@@ -59,9 +61,29 @@ public:
         JUCE_DECLARE_NON_COPYABLE(ScopedTimer)
     };
 
+    double getInstantIntervalMs() const {
+        return juce::Time::getMillisecondCounterHiRes() - lastPaintTimestamp_;
+    }
+
+    void updateFpsTracking() {
+        double now = juce::Time::getMillisecondCounterHiRes();
+        double interval = now - lastPaintTimestamp_;
+        lastPaintTimestamp_ = now;
+        intervalMs_.store(interval);
+
+        if (interval > 0.0) {
+            double instantFps = 1000.0 / interval;
+            double currentFps = fps_.load();
+            if (currentFps == 0.0) {
+                fps_.store(instantFps);
+            } else {
+                fps_.store(currentFps + alpha_ * (instantFps - currentFps));
+            }
+        }
+    }
+
     /** Manually register a paint time (normally use ScopedTimer instead). */
     void registerPaintTime(double milliseconds) {
-        constexpr double alpha = 0.1;  // EMA smoothing factor
 
         lastPaintTimeMs_.store(milliseconds);
 
@@ -75,23 +97,7 @@ public:
             avgPaintTimeMs_.store(milliseconds);
         } else {
             double currentAvg = avgPaintTimeMs_.load();
-            avgPaintTimeMs_.store(currentAvg + alpha * (milliseconds - currentAvg));
-        }
-
-        // Update FPS tracking
-        double now = juce::Time::getMillisecondCounterHiRes();
-        double interval = now - lastPaintTimestamp_;
-        lastPaintTimestamp_ = now;
-        intervalMs_.store(interval);
-
-        if (interval > 0.0) {
-            double instantFps = 1000.0 / interval;
-            double currentFps = fps_.load();
-            if (currentFps == 0.0) {
-                fps_.store(instantFps);
-            } else {
-                fps_.store(currentFps + alpha * (instantFps - currentFps));
-            }
+            avgPaintTimeMs_.store(currentAvg + alpha_ * (milliseconds - currentAvg));
         }
     }
 
@@ -135,6 +141,8 @@ public:
     }
 
 private:
+    inline static constexpr double alpha_ = 0.1;  // EMA smoothing factor
+
     std::atomic<double> lastPaintTimeMs_{0.0};
     std::atomic<double> avgPaintTimeMs_{0.0};
     std::atomic<double> maxPaintTimeMs_{0.0};

@@ -53,18 +53,19 @@ public:
     // CurveEditor overrides
     String getTooltip() override;
     float getValue(int idx) const;
-    float getValueAt(te::TimePosition time) override;
-    te::TimePosition getPointTime(int idx) override;
+    float getValueAt(te::EditPosition time) override;
+    te::EditPosition getPointPosition(int idx) override;
     float getPointValue(int idx) override;
     float getPointCurve(int /*idx*/) override;
     void removePoint(int /*index*/) override;
-    int addPoint(te::TimePosition /*time*/, float /*value*/, float /*curve*/) override;
+    int addPoint(te::EditPosition /*time*/, float /*value*/, float /*curve*/) override;
     int getNumPoints() override;
     te::CurvePoint getBezierHandle(int /*idx*/) override;
     te::CurvePoint getBezierPoint(int /*idx*/) override;
-    int nextIndexAfter(te::TimePosition time) override;
+    int nextIndexAfter(te::EditPosition time) override;
     void getBezierEnds(int /*index*/, double& x1out, float& y1out, double& x2out, float& y2out) override;
-    int movePoint(int /*index*/, te::TimePosition /*newTime*/, float /*newValue*/, bool /*removeInterveningPoints*/) override;
+    std::pair<te::CurvePoint, te::CurvePoint> getBezierEnds(int /*index*/) override;
+    int movePoint(int /*index*/, te::EditPosition /*newTime*/, float /*newValue*/, bool /*removeInterveningPoints*/) override;
     void setValueWhenNoPoints(float /*value*/) override;
     te::CurveEditorPoint* createPoint(int /*idx*/) override;
     int curvePoint(int /*index*/, float /*newCurve*/) override;
@@ -80,6 +81,7 @@ public:
     Colour getBackgroundColour() const override;
     Colour getCurveNameTextBackgroundColour() const override;
     Colour getPointOutlineColour() const override;
+    Range<float> getParameterRange() const override;
     double timeScale() const;
     void paint(Graphics& g) override;
     bool hitTest(int x, int y) override;

@@ -262,11 +262,11 @@ float PsgParamEditorComponent::getValue(int idx) const {
     return paramList->getValue(idx);
 }
 
-float PsgParamEditorComponent::getValueAt(te::TimePosition time) {
-    return paramList->getValueAt(time);
+float PsgParamEditorComponent::getValueAt(te::EditPosition time) {
+    return paramList->getValueAt(tracktion::toTime(time, edit.tempoSequence));
 }
 
-te::TimePosition PsgParamEditorComponent::getPointTime(int idx) {
+te::EditPosition PsgParamEditorComponent::getPointPosition(int idx) {
     return paramList->getTime(idx);
 }
 
@@ -281,7 +281,7 @@ float PsgParamEditorComponent::getPointCurve(int /*idx*/) {
 void PsgParamEditorComponent::removePoint(int /*index*/) {
 }
 
-int PsgParamEditorComponent::addPoint(te::TimePosition /*time*/, float /*value*/, float /*curve*/) {
+int PsgParamEditorComponent::addPoint(te::EditPosition /*time*/, float /*value*/, float /*curve*/) {
     return 0;
 }
 
@@ -297,8 +297,8 @@ te::CurvePoint PsgParamEditorComponent::getBezierPoint(int /*idx*/) {
     return {};
 }
 
-int PsgParamEditorComponent::nextIndexAfter(te::TimePosition time) {
-    auto idx = paramList->findIndex(time);
+int PsgParamEditorComponent::nextIndexAfter(te::EditPosition time) {
+    auto idx = paramList->findIndex(tracktion::toTime(time, edit.tempoSequence));
     if (idx < 0 || idx >= paramList->size()) {
         return 0;  // No points found, return 0
     } else {
@@ -313,7 +313,11 @@ void PsgParamEditorComponent::getBezierEnds(int /*index*/, double& x1out, float&
     y2out = 0;
 }
 
-int PsgParamEditorComponent::movePoint(int /*index*/, te::TimePosition /*newTime*/, float /*newValue*/, bool /*removeInterveningPoints*/) {
+std::pair<te::CurvePoint, te::CurvePoint> PsgParamEditorComponent::getBezierEnds(int /*index*/) {
+    return { {}, {} };
+}
+
+int PsgParamEditorComponent::movePoint(int /*index*/, te::EditPosition /*newTime*/, float /*newValue*/, bool /*removeInterveningPoints*/) {
     return 0;
 }
 
@@ -380,9 +384,15 @@ Colour PsgParamEditorComponent::getPointOutlineColour() const {
     return Colours::black;
 }
 
+Range<float> PsgParamEditorComponent::getParameterRange() const {
+    return Range<float>(0.0f, 1.0f);
+}
+
 double PsgParamEditorComponent::timeScale() const {
     // seconds per pixel
-    return (rightTime - leftTime).inSeconds() / getWidth();
+    auto leftTimePos = tracktion::toTime(leftTime, edit.tempoSequence);
+    auto rightTimePos = tracktion::toTime(rightTime, edit.tempoSequence);
+    return (rightTimePos - leftTimePos).inSeconds() / getWidth();
 }
 
 void PsgParamEditorComponent::paintGrid(Graphics& g) {
@@ -397,7 +407,9 @@ void PsgParamEditorComponent::paint(Graphics& g) {
     using namespace tracktion;
     CRASH_TRACER
 
-    if ((rightTime - leftTime) == TimeDuration())
+    auto leftTimePos = tracktion::toTime(leftTime, edit.tempoSequence);
+    auto rightTimePos = tracktion::toTime(rightTime, edit.tempoSequence);
+    if ((rightTimePos - leftTimePos) == tracktion::TimeDuration())
         return;
 
     const int numPoints = getNumPoints();
@@ -428,7 +440,7 @@ void PsgParamEditorComponent::paint(Graphics& g) {
         g.drawText(text, tx + 4, 0, tw + 6, 16, Justification::left, true);
     }
 
-    const int start = jmax(0, paramList->findPrevActiveIndex(paramList->findIndex(leftTime)));
+    const int start = jmax(0, paramList->findPrevActiveIndex(paramList->findIndex(leftTimePos)));
     auto clipBounds = g.getClipBounds();
     {
         const int preStart = paramList->findPrevActiveIndex(start - 1);
@@ -581,9 +593,9 @@ bool PsgParamEditorComponent::hitTest(int x, int y) {
         return true;
 
     for (int i = firstIndexOnScreen; i < getNumPoints(); ++i) {
-        auto t = getPointTime(i);
+        auto t = getPointPosition(i);
 
-        if (t >= rightTime)
+        if (tracktion::greaterThanOrEqualTo(t, rightTime, edit.tempoSequence))
             break;
 
         auto px = timeToX(t);

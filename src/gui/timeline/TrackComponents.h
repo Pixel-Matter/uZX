@@ -152,7 +152,9 @@ private:
     EditViewState& editViewState;
     OwnedArray<TrackRowComponent> trackRows;
     TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
-    bool updateTracks = false, updateZoom = false;
+    bool updateTracks = false;
+    bool needsRepaint = false;
+    bool needsResize = false;
     Rectangle<int> gridRect;
     TimelineGrid& grid;
 

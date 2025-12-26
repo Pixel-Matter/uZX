@@ -323,6 +323,9 @@ void TrackBodyComponent::handleAsyncUpdate() {
     if (compareAndReset(updatePositions))
         resized();
     if (compareAndReset(updateZoom)) {
+        // TODO track from where updateZoom is called and at what exact time (in paint later)
+        // TODO is repaint really needed after resized()?
+        //
         resized();
         repaint();
     }
@@ -548,10 +551,7 @@ void TracksContainerComponent::paint(Graphics& g) {
 void TracksContainerComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
     if (v.hasType(IDs::EDITVIEWSTATE)) {
         if (i == IDs::showHeaders) {
-            markAndUpdate(updateZoom);
-        } else if (i == IDs::drawWaveforms) {
-            // TODO move to track body?
-            repaint();
+            markAndUpdate(needsResize);
         }
     }
 }
@@ -574,16 +574,16 @@ void TracksContainerComponent::valueTreeChildOrderChanged(juce::ValueTree& v, in
 }
 
 void TracksContainerComponent::zoomChanged() {
-    markAndUpdate(updateZoom);
+    markAndUpdate(needsRepaint);
 }
 
 void TracksContainerComponent::changeListenerCallback(ChangeBroadcaster*) {
-    // selectin changed
+    // selection changed
     repaint();
 }
 
 void TracksContainerComponent::componentMovedOrResized(Component& /*component*/, bool /*wasMoved*/, bool /*wasResized*/) {
-    markAndUpdate(updateZoom);
+    markAndUpdate(needsResize);
 }
 
 void TracksContainerComponent::buildTracks() {
@@ -615,15 +615,17 @@ void TracksContainerComponent::buildTracks() {
             addAndMakeVisible(c);
         }
     }
-    markAndUpdate(updateZoom);
+    markAndUpdate(needsResize);
 }
 
 void TracksContainerComponent::handleAsyncUpdate() {
     if (compareAndReset(updateTracks)) {
         buildTracks();
     }
-    if (compareAndReset(updateZoom)) {
+    if (compareAndReset(needsResize)) {
         resized();
+    }
+    if (compareAndReset(needsRepaint)) {
         repaint();
     }
 }

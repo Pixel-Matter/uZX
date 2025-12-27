@@ -3,7 +3,6 @@
 #include <JuceHeader.h>
 #include <limits>
 
-#include "../formats/psg/PsgFile.h"
 #include "../formats/psg/PsgData.h"
 #include "PsgClip.h"
 
@@ -157,13 +156,6 @@ enum class MidiCCType {
     */
 };
 
-
-//==============================================================================
-/**
- * Forward declarations
- */
-class PsgClip;
-class PsgParamFrame;
 
 //==============================================================================
 /**

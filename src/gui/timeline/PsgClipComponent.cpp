@@ -417,7 +417,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
             PsgParamType envType(PsgParamType::EnvelopePeriod);
             float val = envType.valueToNormalized(frameData.getRaw(envType));
             float envY = normToY(val) - noteHeight * 0.5f;
-            g.setColour(Colors::PSG::Env.withSaturation(1.0f).withAlpha(0.75f));
+            g.setColour(Colors::PSG::Env);
             g.fillRect(x1, envY, pixelsPerFrame, noteHeight);
             drawEnvelopeStripes(g, x1, envY, pixelsPerFrame, noteHeight, envShape);
         }

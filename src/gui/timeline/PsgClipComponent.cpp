@@ -273,16 +273,21 @@ void PsgClipComponent::paintParameters(Graphics& g) {
         for (int ch = 0; ch < 3; ++ch) {
             PsgParamType periodType (PsgParamType::TonePeriodA + ch);
             PsgParamType volumeType (PsgParamType::VolumeA + ch);
+            PsgParamType toneOnType (PsgParamType::ToneIsOnA + ch);
             PsgParamType envOnType  (PsgParamType::EnvelopeIsOnA + ch);
             PsgParamType noiseOnType(PsgParamType::NoiseIsOnA + ch);
 
-            bool hasEnvMod = frameData[envOnType].value_or(0) > 0;
-            bool hasNoiseMod = frameData[noiseOnType].value_or(0) > 0;
-
-            // Render if period is set OR if volume is set and > 0 OR if envelope modulated
+            // Use accumulated state - getRaw returns full state even if mask not set
             const auto rawVolume = frameData.getRaw(volumeType);
-            const bool hasVolume = frameData.isSet(volumeType) && rawVolume > 0;
-            if (frameData.isSet(periodType) || hasVolume || hasEnvMod) {
+
+            bool toneIsOn = frameData.getRaw(toneOnType) > 0;
+            bool hasEnvMod = frameData.getRaw(envOnType) > 0;
+            bool hasNoiseMod = frameData.getRaw(noiseOnType) > 0;
+            bool isAudible = (rawVolume > 0) || hasEnvMod;
+
+            // Draw note if tone is on and channel is audible (has volume or envelope)
+            if (toneIsOn && isAudible) {
+
                 auto period = frameData.getRaw(periodType);
                 float pitch = periodType.valueToNormalized(period);
                 // If envelope modulated, use max alpha (envelope controls volume)
@@ -306,8 +311,11 @@ void PsgClipComponent::paintParameters(Graphics& g) {
             }
         }
 
-        // Envelope period - render only if set
-        if (frameData.isSet(PsgParamType::EnvelopePeriod)) {
+        // Envelope period - render when any channel uses envelope modulation
+        bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
+                         frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
+                         frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
+        if (anyEnvMod) {
             PsgParamType envType(PsgParamType::EnvelopePeriod);
             auto value = frameData.getRaw(envType);
             float val = envType.valueToNormalized(value);

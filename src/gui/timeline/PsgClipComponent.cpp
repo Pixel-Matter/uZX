@@ -302,30 +302,58 @@ void PsgClipComponent::paintParameters(Graphics& g) {
         minNorm = 0.0f;
         maxNorm = 1.0f;
     } else {
-        float padding = 1.0f / pitchRangeInSemitones;
-        // Ensure minimum range of 2 noteHeights
-        float minRange = 2.0f / pitchRangeInSemitones;
+        // Pad one semitone on top and bottom
+        float oneSemitone = 1.0f / pitchRangeInSemitones;
+        float padding = oneSemitone;
+        // Ensure minimum range of 2 semitones
+        float minRange = 12.0f * oneSemitone;
         float range = maxNorm - minNorm;
         if (range < minRange) {
             float center = (minNorm + maxNorm) * 0.5f;
             minNorm = center - minRange * 0.5f;
             maxNorm = center + minRange * 0.5f;
         }
-        minNorm = jmax(0.0f, minNorm - padding);
-        maxNorm = jmin(1.0f, maxNorm + padding);
+        // Extra top padding for legend (swatchSize + 2*pad ≈ 18px)
+        float normRange = maxNorm - minNorm + 2.0f * padding;
+        float legendPx = 18.0f;
+        float topPadding = padding + normRange * legendPx / (float)rect.getHeight();
+        float bottomPadding = 2.0f * oneSemitone;
+        minNorm = jmax(0.0f, minNorm - bottomPadding);
+        maxNorm = jmin(1.0f, maxNorm + topPadding);
     }
 
     const float normRange = maxNorm - minNorm;
     const float noteHeight = static_cast<float>(rect.getHeight()) / (normRange * pitchRangeInSemitones);
 
+    paintNotes(g, *psgClip, rect, pixelsPerFrame, startIdx, startPos, endPos,
+               noteHeight, maxNorm, normRange);
+    paintLegend(g, *psgClip, rect, timeToX);
+}
+
+void PsgClipComponent::paintNotes(Graphics& g, PsgClip& psgClip, const juce::Rectangle<int>& rect,
+                                   float pixelsPerFrame, int startIdx, te::TimePosition startPos,
+                                   te::TimePosition endPos, float noteHeight, float maxNorm, float normRange) {
+    const auto& frames = psgClip.getPsg().getFrames();
+
     auto normToY = [&](float norm) {
         return (maxNorm - norm) / normRange * rect.getHeight();
+    };
+
+    auto timeToX = [w = rect.getWidth(), s = psgClip.getEditTimeRange().getStart(),
+                    len = psgClip.getEditTimeRange().getLength(), left = rect.getX()] (auto time) {
+        return static_cast<float>(((time - s) * w) / len - left);
+    };
+
+    static const juce::Colour channelColors[] = {
+        Colors::PSG::A,
+        Colors::PSG::B,
+        Colors::PSG::C,
     };
 
     for (int i = startIdx; i < frames.size(); ++i) {
         const auto& frame = frames[i];
         jassert(frame != nullptr);
-        auto s = frame->getEditTime(*psgClip);
+        auto s = frame->getEditTime(psgClip);
 
         if (s < startPos)
             continue;
@@ -337,15 +365,6 @@ void PsgClipComponent::paintParameters(Graphics& g) {
             continue;
 
         const auto& frameData = frame->getData();
-
-        // Channel colors (A, B, C)
-        static const juce::Colour channelColors[] = {
-            Colors::PSG::A.withSaturation(1.0f),
-            Colors::PSG::B.withSaturation(1.0f),
-            Colors::PSG::C.withSaturation(1.0f),
-        };
-
-        // Get envelope shape once per frame (used for envelope stripes)
         uint8_t envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
 
         for (int ch = 0; ch < 3; ++ch) {
@@ -355,87 +374,75 @@ void PsgClipComponent::paintParameters(Graphics& g) {
             PsgParamType envOnType  (PsgParamType::EnvelopeIsOnA + ch);
             PsgParamType noiseOnType(PsgParamType::NoiseIsOnA + ch);
 
-            // Use accumulated state - getRaw returns full state even if mask not set
             const auto rawVolume = frameData.getRaw(volumeType);
-
             bool toneIsOn = frameData.getRaw(toneOnType) > 0;
             bool hasEnvMod = frameData.getRaw(envOnType) > 0;
             bool hasNoiseMod = frameData.getRaw(noiseOnType) > 0;
             bool isAudible = (rawVolume > 0) || hasEnvMod;
 
-            // Draw note if tone is on and channel is audible (has volume or envelope)
             if (toneIsOn && isAudible) {
-
                 auto period = frameData.getRaw(periodType);
                 float pitch = periodType.valueToNormalized(period);
-                // If envelope modulated, use max alpha (envelope controls volume)
                 float alpha = hasEnvMod ? 1.0f : (static_cast<float>(rawVolume) / 15.0f * 0.8f + 0.2f);
                 float noteY = normToY(pitch) - noteHeight * 0.5f;
-                const auto& color = channelColors[ch];
 
-                // Draw base note rectangle
-                g.setColour(color.withAlpha(alpha));
-                g.fillRect(x1, noteY, (float)pixelsPerFrame, noteHeight);
+                g.setColour(channelColors[ch].withAlpha(alpha));
+                g.fillRect(x1, noteY, pixelsPerFrame, noteHeight);
 
-                // Draw envelope stripes if modulated
-                if (hasEnvMod) {
-                    drawEnvelopeStripes(g, x1, noteY, (float)pixelsPerFrame, noteHeight, envShape);
-                }
+                if (hasEnvMod)
+                    drawEnvelopeStripes(g, x1, noteY, pixelsPerFrame, noteHeight, envShape);
 
-                // Draw noise pattern if modulated (seed from frame index + channel for determinism)
-                if (hasNoiseMod) {
-                    drawNoisePattern(g, x1, noteY, (float)pixelsPerFrame, noteHeight,
-                                     (int64_t)i * 3 + ch);
-                }
+                if (hasNoiseMod)
+                    drawNoisePattern(g, x1, noteY, pixelsPerFrame, noteHeight, (int64_t)i * 3 + ch);
             }
         }
 
-        // Envelope period - render when any channel uses envelope modulation
+        // Envelope period
         bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
                          frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
                          frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
         if (anyEnvMod) {
             PsgParamType envType(PsgParamType::EnvelopePeriod);
-            auto value = frameData.getRaw(envType);
-            float val = envType.valueToNormalized(value);
+            float val = envType.valueToNormalized(frameData.getRaw(envType));
             float envY = normToY(val) - noteHeight * 0.5f;
             g.setColour(Colors::PSG::Env.withSaturation(1.0f).withAlpha(0.75f));
-            g.fillRect(x1, envY, (float)pixelsPerFrame, noteHeight);
-            drawEnvelopeStripes(g, x1, envY, (float)pixelsPerFrame, noteHeight, envShape);
+            g.fillRect(x1, envY, pixelsPerFrame, noteHeight);
+            drawEnvelopeStripes(g, x1, envY, pixelsPerFrame, noteHeight, envShape);
         }
     }
+}
 
-    // Draw channel color legend at upper-left corner
-    {
-        constexpr float pad = 3.0f;
-        constexpr float swatchSize = 12.0f;
-        constexpr float spacing = 1.0f;
+void PsgClipComponent::paintLegend(Graphics& g, PsgClip& psgClip, const juce::Rectangle<int>& rect,
+                                    std::function<float(te::TimePosition)> timeToX) {
+    constexpr float pad = 3.0f;
+    constexpr float swatchSize = 12.0f;
+    constexpr float spacing = 1.0f;
 
-        struct LegendItem { const char* label; Colour color; };
-        const LegendItem items[] = {
-            { "A", Colors::PSG::A.withSaturation(1.0f) },
-            { "B", Colors::PSG::B.withSaturation(1.0f) },
-            { "C", Colors::PSG::C.withSaturation(1.0f) },
-            { "E", Colors::PSG::Env.withSaturation(1.0f) },
-        };
+    struct LegendItem { const char* label; Colour color; };
+    const LegendItem items[] = {
+        { "A", Colors::PSG::A },
+        { "B", Colors::PSG::B },
+        { "C", Colors::PSG::C },
+        { "E", Colors::PSG::Env },
+    };
 
-        g.setFont(Font(FontOptions(swatchSize - 1.0f).withStyle("Bold")));
-        float x = rect.getX() + pad;
-        float y = rect.getY() + pad;
+    const auto viewRange = editViewState.zoom.getRange();
+    g.setFont(Font(FontOptions(swatchSize - 1.0f).withStyle("Bold")));
+    float visibleLeft = jmax((float)rect.getX(), timeToX(viewRange.getStart()));
+    float x = visibleLeft + pad;
+    float y = rect.getY() + pad;
 
-        for (const auto& item : items) {
-            g.setColour(item.color);
-            g.fillRect(x, y, swatchSize, swatchSize);
-            g.setColour(Colours::black);
-            g.drawText(item.label, (int)x, (int)y, (int)swatchSize, (int)swatchSize, Justification::centred);
-            x += swatchSize + spacing;
-        }
-
-        // Clip name after legend
-        x += pad;
-        g.setColour(Colours::white.withAlpha(0.7f));
-        g.drawText(psgClip->getName(), (int)x, (int)y, rect.getWidth() - (int)x, (int)swatchSize, Justification::centredLeft);
+    for (const auto& item : items) {
+        g.setColour(item.color);
+        g.fillRect(x, y, swatchSize, swatchSize);
+        g.setColour(Colours::black);
+        g.drawText(item.label, (int)x, (int)y, (int)swatchSize, (int)swatchSize, Justification::centred);
+        x += swatchSize + spacing;
     }
+
+    x += pad;
+    g.setColour(Colours::white.withAlpha(0.7f));
+    g.drawText(psgClip.getName(), (int)x, (int)y, rect.getWidth() - (int)x, (int)swatchSize, Justification::centredLeft);
 }
 
 }  // namespace MoTool

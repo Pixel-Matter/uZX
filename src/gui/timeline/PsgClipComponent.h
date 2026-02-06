@@ -22,6 +22,11 @@ public:
     void paint(Graphics& g) override;
     void paintRegisters(Graphics& g);
     void paintParameters(Graphics& g);
+    void paintNotes(Graphics& g, PsgClip& psgClip, const juce::Rectangle<int>& rect,
+                    float pixelsPerFrame, int startIdx, te::TimePosition startPos,
+                    te::TimePosition endPos, float noteHeight, float maxNorm, float normRange);
+    void paintLegend(Graphics& g, PsgClip& psgClip, const juce::Rectangle<int>& rect,
+                     std::function<float(te::TimePosition)> timeToX);
 
 private:
     // void onVBlank() {

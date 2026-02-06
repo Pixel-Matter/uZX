@@ -323,6 +323,33 @@ void PsgClipComponent::paintParameters(Graphics& g) {
             g.fillRect(x1, (1.0f - val) * rect.getHeight() - noteHeight, (float)pixelsPerFrame, noteHeight);
         }
     }
+
+    // Draw channel color legend at upper-left corner
+    {
+        constexpr float pad = 3.0f;
+        constexpr float swatchSize = 12.0f;
+        constexpr float spacing = 1.0f;
+
+        struct LegendItem { const char* label; Colour color; };
+        const LegendItem items[] = {
+            { "A", Colors::PSG::A.withSaturation(1.0f) },
+            { "B", Colors::PSG::B.withSaturation(1.0f) },
+            { "C", Colors::PSG::C.withSaturation(1.0f) },
+            { "E", Colors::PSG::Env.withSaturation(1.0f) },
+        };
+
+        g.setFont(Font(FontOptions(swatchSize - 1.0f).withStyle("Bold")));
+        float x = rect.getX() + pad;
+        float y = rect.getY() + pad;
+
+        for (const auto& item : items) {
+            g.setColour(item.color);
+            g.fillRect(x, y, swatchSize, swatchSize);
+            g.setColour(Colours::black);
+            g.drawText(item.label, (int)x, (int)y, (int)swatchSize, (int)swatchSize, Justification::centred);
+            x += swatchSize + spacing;
+        }
+    }
 }
 
 }  // namespace MoTool

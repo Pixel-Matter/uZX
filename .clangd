@@ -1,5 +1,5 @@
 CompileFlags:
-  Add: [-std=gnu++2b, -DDEBUG=1, -DJUCE_STANDALONE_APPLICATION=1, -include, /Users/ruguevara/projects/MoTool/src/tracktion_juce_all_includes.h]
+  Add: [-std=gnu++2b]
   CompilationDatabase: build
 
 Index:

@@ -22,6 +22,10 @@ void TuningController::initialize() {
 
 TuningController::~TuningController() {
     window_.setCloseHandler(nullptr);
+
+    // Destroy UI components before viewModel_/tuningPlayer_ are implicitly destroyed,
+    // since components reference them in their destructors.
+    window_.clearContentComponent();
 }
 
 std::unique_ptr<te::Edit> TuningController::createOrLoadStartupEdit() {

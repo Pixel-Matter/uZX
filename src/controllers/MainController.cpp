@@ -609,6 +609,10 @@ ArrangerController::~ArrangerController() {
     if (edit_ != nullptr) {
         Helpers::removeUnusedRenderFiles(*edit_);
     }
+
+    // Destroy UI components before editViewState_ is implicitly destroyed,
+    // since components reference it in their destructors.
+    window_.clearContentComponent();
 }
 
 void ArrangerController::devicesChanged() {

@@ -38,6 +38,7 @@ PsgParamEditorWrapper::PsgParamEditorWrapper(EditViewState& evs, TimelineGrid& g
     paramList_.setMultipleSelectionEnabled(false);
     paramList_.setRowHeight(20);
     paramList_.setOutlineThickness(0);
+    paramList_.setWantsKeyboardFocus(false);
 
     addAndMakeVisible(paramList_);
     addAndMakeVisible(editor_);

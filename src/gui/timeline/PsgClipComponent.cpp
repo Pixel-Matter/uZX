@@ -62,24 +62,32 @@ const std::array<Colour, 14> RegColors = {
     Colors::PSG::Env   // purple-100
 };
 
-/** Draw dotted pattern for noise modulation */
-void drawNoisePattern(Graphics& g, float x, float y, float width, float height) {
-    g.setColour(Colours::black);
-    constexpr float dotSpacing = 4.0f;
-    constexpr float dotRadius = 1.0f;
-    for (float dx = dotSpacing / 2; dx < width - dotSpacing / 2; dx += dotSpacing) {
-        for (float dy = dotSpacing / 2; dy < height - dotSpacing / 2; dy += dotSpacing) {
-            g.fillEllipse(x + dx - dotRadius, y + dy - dotRadius,
-                         dotRadius * 2, dotRadius * 2);
+/** Draw random dotted pattern for noise modulation, seeded from note position */
+void drawNoisePattern(Graphics& g, float x, float y, float width, float height, int64_t seed) {
+    g.setColour(Colours::black.withAlpha(0.5f));
+    constexpr float dotDensity = 3.0f; // average spacing between dots
+    int ix = roundToInt(x), iy = roundToInt(y);
+    int iw = roundToInt(width), ih = roundToInt(height);
+    if (iw < 2 || ih < 2) return;
+
+    juce::Random rng(seed);
+    constexpr int jitter = 1; // max random offset from grid position
+
+    constexpr int dotSize = 2;
+    for (float gx = 0; gx < (float)iw; gx += dotDensity) {
+        for (float gy = 0; gy < (float)ih; gy += dotDensity) {
+            int dx = jlimit(0, iw - dotSize, roundToInt(gx) + rng.nextInt(jitter * 2 + 1) - jitter);
+            int dy = jlimit(0, ih - dotSize, roundToInt(gy) + rng.nextInt(jitter * 2 + 1) - jitter);
+            g.fillRect(ix + dx, iy + dy, dotSize, dotSize);
         }
     }
 }
 
 /** Draw stripe pattern for envelope modulation based on envelope shape direction */
 void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float height, uint8_t shape) {
-    g.setColour(Colours::black);
-    constexpr float stripeSpacing = 3.0f;
-    constexpr float strokeWidth = 1.0f;
+    g.setColour(Colours::black.withAlpha(0.5f));
+    constexpr float nominalSpacing = 4.0f;
+    constexpr float strokeWidth = 2.0f;
 
     // Determine direction based on envelope shape:
     // Up-first shapes: 4-7, C-F (attack first)
@@ -88,28 +96,37 @@ void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float heigh
     bool isUpFirst = (shape >= 4 && shape <= 7) || (shape >= 0xC);
     bool isTriangle = (shape == 0xA || shape == 0xE);
 
+    // For diagonal stripes, one period on x-axis = height (the line travels height pixels
+    // horizontally). Fit a whole number of periods into the note width.
+    // For zigzag, one V period = 2 * half-width on x.
+    float periodX = isTriangle ? nominalSpacing * 2.0f : height;
+    int numPeriods = jmax(1, roundToInt(width / periodX));
+    float adjustedPeriod = width / (float)numPeriods;
+
     Path stripes;
     if (isTriangle) {
-        // Zigzag pattern
-        for (float dx = 0; dx < width + height; dx += stripeSpacing * 2) {
-            float startX = x + dx;
+        float halfPeriod = adjustedPeriod * 0.5f;
+        for (int p = 0; p < numPeriods; ++p) {
+            float startX = x + (float)p * adjustedPeriod;
             // Up stroke
             stripes.startNewSubPath(startX, y + height);
-            stripes.lineTo(startX + stripeSpacing, y);
+            stripes.lineTo(startX + halfPeriod, y);
             // Down stroke
-            stripes.lineTo(startX + stripeSpacing * 2, y + height);
+            stripes.lineTo(startX + adjustedPeriod, y + height);
         }
     } else if (isUpFirst) {
-        // Forward stripes //// (attack)
-        for (float offset = -height; offset < width + height; offset += stripeSpacing) {
+        // Forward stripes //// (attack) - one period = one diagonal line spanning height on x
+        for (int p = 0; p < numPeriods; ++p) {
+            float offset = (float)p * adjustedPeriod;
             stripes.startNewSubPath(x + offset, y + height);
-            stripes.lineTo(x + offset + height, y);
+            stripes.lineTo(x + offset + adjustedPeriod, y);
         }
     } else {
         // Backward stripes \\\\ (decay)
-        for (float offset = -height; offset < width + height; offset += stripeSpacing) {
+        for (int p = 0; p < numPeriods; ++p) {
+            float offset = (float)p * adjustedPeriod;
             stripes.startNewSubPath(x + offset, y);
-            stripes.lineTo(x + offset + height, y + height);
+            stripes.lineTo(x + offset + adjustedPeriod, y + height);
         }
     }
 
@@ -230,9 +247,7 @@ void PsgClipComponent::paintParameters(Graphics& g) {
     const auto frameDur = te::TimeDuration::fromSeconds(1.0f / tc.getFPS());
     const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds());
 
-    // Note height = one semitone (8 octaves = 96 semitones displayed)
     constexpr float pitchRangeInSemitones = 96.0f;
-    const float noteHeight = static_cast<float>(rect.getHeight()) / pitchRangeInSemitones;
 
     te::TimePosition startPos = jmax(clipRange.getStart(), viewRange.getStart() - frameDur);
     te::TimePosition endPos = jmin(clipRange.getEnd(), viewRange.getEnd());
@@ -242,6 +257,70 @@ void PsgClipComponent::paintParameters(Graphics& g) {
         return;
 
     const auto startIdx = bisectFindPosition(frames, *psgClip, startPos);
+
+    // First pass: find min/max normalized values across visible frames
+    float minNorm = 1.0f;
+    float maxNorm = 0.0f;
+    for (int i = startIdx; i < frames.size(); ++i) {
+        const auto& frame = frames[i];
+        auto s = frame->getEditTime(*psgClip);
+        if (s < startPos) continue;
+        if (s >= endPos) break;
+
+        const auto& frameData = frame->getData();
+        for (int ch = 0; ch < 3; ++ch) {
+            PsgParamType periodType (PsgParamType::TonePeriodA + ch);
+            PsgParamType volumeType (PsgParamType::VolumeA + ch);
+            PsgParamType toneOnType (PsgParamType::ToneIsOnA + ch);
+            PsgParamType envOnType  (PsgParamType::EnvelopeIsOnA + ch);
+
+            bool toneIsOn = frameData.getRaw(toneOnType) > 0;
+            bool hasEnvMod = frameData.getRaw(envOnType) > 0;
+            bool isAudible = (frameData.getRaw(volumeType) > 0) || hasEnvMod;
+
+            if (toneIsOn && isAudible) {
+                float pitch = periodType.valueToNormalized(frameData.getRaw(periodType));
+                minNorm = jmin(minNorm, pitch);
+                maxNorm = jmax(maxNorm, pitch);
+            }
+        }
+
+        bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
+                         frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
+                         frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
+        if (anyEnvMod) {
+            PsgParamType envType(PsgParamType::EnvelopePeriod);
+            float val = envType.valueToNormalized(frameData.getRaw(envType));
+            minNorm = jmin(minNorm, val);
+            maxNorm = jmax(maxNorm, val);
+        }
+    }
+
+    // Handle edge cases and add padding
+    if (minNorm > maxNorm) {
+        // No values found - use full range
+        minNorm = 0.0f;
+        maxNorm = 1.0f;
+    } else {
+        float padding = 1.0f / pitchRangeInSemitones;
+        // Ensure minimum range of 2 noteHeights
+        float minRange = 2.0f / pitchRangeInSemitones;
+        float range = maxNorm - minNorm;
+        if (range < minRange) {
+            float center = (minNorm + maxNorm) * 0.5f;
+            minNorm = center - minRange * 0.5f;
+            maxNorm = center + minRange * 0.5f;
+        }
+        minNorm = jmax(0.0f, minNorm - padding);
+        maxNorm = jmin(1.0f, maxNorm + padding);
+    }
+
+    const float normRange = maxNorm - minNorm;
+    const float noteHeight = static_cast<float>(rect.getHeight()) / (normRange * pitchRangeInSemitones);
+
+    auto normToY = [&](float norm) {
+        return (maxNorm - norm) / normRange * rect.getHeight();
+    };
 
     for (int i = startIdx; i < frames.size(); ++i) {
         const auto& frame = frames[i];
@@ -291,7 +370,7 @@ void PsgClipComponent::paintParameters(Graphics& g) {
                 float pitch = periodType.valueToNormalized(period);
                 // If envelope modulated, use max alpha (envelope controls volume)
                 float alpha = hasEnvMod ? 1.0f : (static_cast<float>(rawVolume) / 15.0f * 0.8f + 0.2f);
-                float noteY = (1.0f - pitch) * rect.getHeight() - noteHeight;
+                float noteY = normToY(pitch) - noteHeight * 0.5f;
                 const auto& color = channelColors[ch];
 
                 // Draw base note rectangle
@@ -303,9 +382,10 @@ void PsgClipComponent::paintParameters(Graphics& g) {
                     drawEnvelopeStripes(g, x1, noteY, (float)pixelsPerFrame, noteHeight, envShape);
                 }
 
-                // Draw noise pattern if modulated
+                // Draw noise pattern if modulated (seed from frame index + channel for determinism)
                 if (hasNoiseMod) {
-                    drawNoisePattern(g, x1, noteY, (float)pixelsPerFrame, noteHeight);
+                    drawNoisePattern(g, x1, noteY, (float)pixelsPerFrame, noteHeight,
+                                     (int64_t)i * 3 + ch);
                 }
             }
         }
@@ -318,8 +398,10 @@ void PsgClipComponent::paintParameters(Graphics& g) {
             PsgParamType envType(PsgParamType::EnvelopePeriod);
             auto value = frameData.getRaw(envType);
             float val = envType.valueToNormalized(value);
+            float envY = normToY(val) - noteHeight * 0.5f;
             g.setColour(Colors::PSG::Env.withSaturation(1.0f).withAlpha(0.75f));
-            g.fillRect(x1, (1.0f - val) * rect.getHeight() - noteHeight, (float)pixelsPerFrame, noteHeight);
+            g.fillRect(x1, envY, (float)pixelsPerFrame, noteHeight);
+            drawEnvelopeStripes(g, x1, envY, (float)pixelsPerFrame, noteHeight, envShape);
         }
     }
 

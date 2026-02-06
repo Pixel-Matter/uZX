@@ -6,7 +6,78 @@
 
 namespace MoTool {
 
+struct PitchMapping {
+    float maxNorm;
+    float normRange;
+};
+
 namespace {
+
+static PitchMapping findVisiblePitchMapping(
+    const juce::Array<PsgParamFrame*>& frames,
+    const PsgClip& psgClip,
+    int startIdx,
+    te::TimeRange visibleRange,
+    float rectHeight)
+{
+    float minNorm = 1.0f;
+    float maxNorm = 0.0f;
+    for (int i = startIdx; i < frames.size(); ++i) {
+        const auto& frame = frames[i];
+        auto s = frame->getEditTime(psgClip);
+        if (s < visibleRange.getStart()) continue;
+        if (s >= visibleRange.getEnd()) break;
+
+        const auto& frameData = frame->getData();
+        for (int ch = 0; ch < 3; ++ch) {
+            PsgParamType periodType (PsgParamType::TonePeriodA + ch);
+            PsgParamType volumeType (PsgParamType::VolumeA + ch);
+            PsgParamType toneOnType (PsgParamType::ToneIsOnA + ch);
+            PsgParamType envOnType  (PsgParamType::EnvelopeIsOnA + ch);
+
+            bool toneIsOn = frameData.getRaw(toneOnType) > 0;
+            bool hasEnvMod = frameData.getRaw(envOnType) > 0;
+            bool isAudible = (frameData.getRaw(volumeType) > 0) || hasEnvMod;
+
+            if (toneIsOn && isAudible) {
+                float pitch = periodType.valueToNormalized(frameData.getRaw(periodType));
+                minNorm = jmin(minNorm, pitch);
+                maxNorm = jmax(maxNorm, pitch);
+            }
+        }
+
+        bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
+                         frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
+                         frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
+        if (anyEnvMod) {
+            PsgParamType envType(PsgParamType::EnvelopePeriod);
+            float val = envType.valueToNormalized(frameData.getRaw(envType));
+            minNorm = jmin(minNorm, val);
+            maxNorm = jmax(maxNorm, val);
+        }
+    }
+
+    if (minNorm > maxNorm) {
+        minNorm = 0.0f;
+        maxNorm = 1.0f;
+    } else {
+        float oneSemitone = 1.0f / 96.0f;
+        float padding = oneSemitone * 1.5f;
+        float minRange = 12.0f * oneSemitone;
+        float range = maxNorm - minNorm;
+        if (range < minRange) {
+            float center = (minNorm + maxNorm) * 0.5f;
+            minNorm = center - minRange * 0.5f;
+            maxNorm = center + minRange * 0.5f;
+        }
+        float normRange = maxNorm - minNorm + 3.0f * padding;
+        minNorm = jmax(0.0f, minNorm - padding);
+        maxNorm = jmin(1.0f, maxNorm + padding);
+    }
+
+    float normRange = maxNorm - minNorm;
+    return { maxNorm, normRange };
+}
 
 static int bisectFindPosition(
     const juce::Array<PsgParamFrame*>& frames,
@@ -238,109 +309,50 @@ void PsgClipComponent::paintParameters(Graphics& g) {
     const auto clipRange = psgClip->getEditTimeRange();
     const auto viewRange = editViewState.zoom.getRange();
 
-    auto timeToX = [w = rect.getWidth(), s = clipRange.getStart(), len = clipRange.getLength(),
-                    left = rect.getX()] (auto time) {
-        return static_cast<float>(((time - s) * w) / len - left);
-    };
-
     const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
     const auto frameDur = te::TimeDuration::fromSeconds(1.0f / tc.getFPS());
     const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds());
 
-    constexpr float pitchRangeInSemitones = 96.0f;
-
-    te::TimePosition startPos = jmax(clipRange.getStart(), viewRange.getStart() - frameDur);
-    te::TimePosition endPos = jmin(clipRange.getEnd(), viewRange.getEnd());
+    te::TimeRange visibleRange(jmax(clipRange.getStart(), viewRange.getStart() - frameDur),
+                               jmin(clipRange.getEnd(), viewRange.getEnd()));
 
     const auto& frames = psgClip->getPsg().getFrames();
     if (frames.size() == 0)
         return;
 
-    const auto startIdx = bisectFindPosition(frames, *psgClip, startPos);
+    const auto startIdx = bisectFindPosition(frames, *psgClip, visibleRange.getStart());
+    // TODO use framesRange with ptr and size? or some JUCE span-like alternative
 
-    // First pass: find min/max normalized values across visible frames
-    float minNorm = 1.0f;
-    float maxNorm = 0.0f;
-    for (int i = startIdx; i < frames.size(); ++i) {
-        const auto& frame = frames[i];
-        auto s = frame->getEditTime(*psgClip);
-        if (s < startPos) continue;
-        if (s >= endPos) break;
+    const auto pitchMapping = findVisiblePitchMapping(
+        frames, *psgClip, startIdx, visibleRange,
+        static_cast<float>(rect.getHeight()));
 
-        const auto& frameData = frame->getData();
-        for (int ch = 0; ch < 3; ++ch) {
-            PsgParamType periodType (PsgParamType::TonePeriodA + ch);
-            PsgParamType volumeType (PsgParamType::VolumeA + ch);
-            PsgParamType toneOnType (PsgParamType::ToneIsOnA + ch);
-            PsgParamType envOnType  (PsgParamType::EnvelopeIsOnA + ch);
+    paintNotes(g, rect, pixelsPerFrame, startIdx, visibleRange, pitchMapping);
 
-            bool toneIsOn = frameData.getRaw(toneOnType) > 0;
-            bool hasEnvMod = frameData.getRaw(envOnType) > 0;
-            bool isAudible = (frameData.getRaw(volumeType) > 0) || hasEnvMod;
-
-            if (toneIsOn && isAudible) {
-                float pitch = periodType.valueToNormalized(frameData.getRaw(periodType));
-                minNorm = jmin(minNorm, pitch);
-                maxNorm = jmax(maxNorm, pitch);
-            }
-        }
-
-        bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
-                         frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
-                         frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
-        if (anyEnvMod) {
-            PsgParamType envType(PsgParamType::EnvelopePeriod);
-            float val = envType.valueToNormalized(frameData.getRaw(envType));
-            minNorm = jmin(minNorm, val);
-            maxNorm = jmax(maxNorm, val);
-        }
-    }
-
-    // Handle edge cases and add padding
-    if (minNorm > maxNorm) {
-        // No values found - use full range
-        minNorm = 0.0f;
-        maxNorm = 1.0f;
-    } else {
-        // Pad one semitone on top and bottom
-        float oneSemitone = 1.0f / pitchRangeInSemitones;
-        float padding = oneSemitone;
-        // Ensure minimum range of 2 semitones
-        float minRange = 12.0f * oneSemitone;
-        float range = maxNorm - minNorm;
-        if (range < minRange) {
-            float center = (minNorm + maxNorm) * 0.5f;
-            minNorm = center - minRange * 0.5f;
-            maxNorm = center + minRange * 0.5f;
-        }
-        // Extra top padding for legend (swatchSize + 2*pad ≈ 18px)
-        float normRange = maxNorm - minNorm + 2.0f * padding;
-        float legendPx = 18.0f;
-        float topPadding = padding + normRange * legendPx / (float)rect.getHeight();
-        float bottomPadding = 2.0f * oneSemitone;
-        minNorm = jmax(0.0f, minNorm - bottomPadding);
-        maxNorm = jmin(1.0f, maxNorm + topPadding);
-    }
-
-    const float normRange = maxNorm - minNorm;
-    const float noteHeight = static_cast<float>(rect.getHeight()) / (normRange * pitchRangeInSemitones);
-
-    paintNotes(g, *psgClip, rect, pixelsPerFrame, startIdx, startPos, endPos,
-               noteHeight, maxNorm, normRange);
-    paintLegend(g, *psgClip, rect, timeToX);
+    auto timeToX = [w = rect.getWidth(), s = clipRange.getStart(), len = clipRange.getLength(),
+                    left = rect.getX()] (auto time) {
+        return static_cast<float>(((time - s) * w) / len - left);
+    };
+    paintLegend(g, rect, timeToX);
 }
 
-void PsgClipComponent::paintNotes(Graphics& g, PsgClip& psgClip, const juce::Rectangle<int>& rect,
-                                   float pixelsPerFrame, int startIdx, te::TimePosition startPos,
-                                   te::TimePosition endPos, float noteHeight, float maxNorm, float normRange) {
-    const auto& frames = psgClip.getPsg().getFrames();
+void PsgClipComponent::paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
+                                  float pixelsPerFrame, int startIdx, te::TimeRange visibleRange,
+                                  const PitchMapping& pm) {
+
+    auto* psgClip = getPsgClip();
+    if (psgClip == nullptr) return;
+
+    const auto& frames = psgClip->getPsg().getFrames();
+
+    const float noteHeight = rect.getHeight() / (pm.normRange * 96.0f);
 
     auto normToY = [&](float norm) {
-        return (maxNorm - norm) / normRange * rect.getHeight();
+        return (pm.maxNorm - norm) / pm.normRange * rect.getHeight();
     };
 
-    auto timeToX = [w = rect.getWidth(), s = psgClip.getEditTimeRange().getStart(),
-                    len = psgClip.getEditTimeRange().getLength(), left = rect.getX()] (auto time) {
+    auto timeToX = [w = rect.getWidth(), s = psgClip->getEditTimeRange().getStart(),
+                    len = psgClip->getEditTimeRange().getLength(), left = rect.getX()] (auto time) {
         return static_cast<float>(((time - s) * w) / len - left);
     };
 
@@ -353,11 +365,11 @@ void PsgClipComponent::paintNotes(Graphics& g, PsgClip& psgClip, const juce::Rec
     for (int i = startIdx; i < frames.size(); ++i) {
         const auto& frame = frames[i];
         jassert(frame != nullptr);
-        auto s = frame->getEditTime(psgClip);
+        auto s = frame->getEditTime(*psgClip);
 
-        if (s < startPos)
+        if (s < visibleRange.getStart())
             continue;
-        if (s >= endPos)
+        if (s >= visibleRange.getEnd())
             break;
 
         float x1 = timeToX(s);
@@ -412,8 +424,12 @@ void PsgClipComponent::paintNotes(Graphics& g, PsgClip& psgClip, const juce::Rec
     }
 }
 
-void PsgClipComponent::paintLegend(Graphics& g, PsgClip& psgClip, const juce::Rectangle<int>& rect,
+void PsgClipComponent::paintLegend(Graphics& g, const juce::Rectangle<int>& rect,
                                     std::function<float(te::TimePosition)> timeToX) {
+
+    auto* psgClip = getPsgClip();
+    if (psgClip == nullptr) return;
+
     constexpr float pad = 3.0f;
     constexpr float swatchSize = 12.0f;
     constexpr float spacing = 1.0f;
@@ -442,7 +458,7 @@ void PsgClipComponent::paintLegend(Graphics& g, PsgClip& psgClip, const juce::Re
 
     x += pad;
     g.setColour(Colours::white.withAlpha(0.7f));
-    g.drawText(psgClip.getName(), (int)x, (int)y, rect.getWidth() - (int)x, (int)swatchSize, Justification::centredLeft);
+    g.drawText(psgClip->getName(), (int)x, (int)y, rect.getWidth() - (int)x, (int)swatchSize, Justification::centredLeft);
 }
 
 }  // namespace MoTool

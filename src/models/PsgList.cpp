@@ -403,12 +403,40 @@ te::BeatPosition PsgList::getLastBeatNumber() const {
     return t;
 }
 
+const PsgParamFrame* PsgList::getFrameAt(te::BeatPosition beat) const {
+    const auto& frames = getFrames();
+    if (frames.isEmpty())
+        return nullptr;
+
+    // Binary search for exact beat position
+    int low = 0;
+    int high = frames.size() - 1;
+
+    while (low <= high) {
+        int mid = (low + high) / 2;
+        auto midBeat = frames[mid]->getBeatPosition();
+
+        if (midBeat == beat)
+            return frames[mid];
+        else if (midBeat < beat)
+            low = mid + 1;
+        else
+            high = mid - 1;
+    }
+
+    return nullptr;
+}
+
 double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::MidiList::TimeBase timeBase) const {
     switch (timeBase) {
-        case te::MidiList::TimeBase::beatsRaw:  return frame.getBeatPosition().inBeats();
-        case te::MidiList::TimeBase::beats:     return std::max(0_bp, frame.getEditBeats(clip) - toDuration (clip.getStartBeat())).inBeats();
-        case te::MidiList::TimeBase::seconds:   [[ fallthrough ]];
-        default:                           return std::max(0_tp, frame.getEditTime(clip) - toDuration (clip.getPosition().getStart())).inSeconds();
+        case te::MidiList::TimeBase::beatsRaw:
+            return frame.getBeatPosition().inBeats();
+        case te::MidiList::TimeBase::beats:
+            return std::max(0_bp, frame.getEditBeats(clip) - toDuration(clip.getStartBeat())).inBeats();
+        case te::MidiList::TimeBase::seconds:
+            [[fallthrough]];
+        default:
+            return std::max(0_tp, frame.getEditTime(clip) - toDuration(clip.getPosition().getStart())).inSeconds();
     }
 }
 

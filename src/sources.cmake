@@ -95,6 +95,7 @@ set(TEST_SOURCES
 
     models/PsgMidi.test.cpp
     models/PsgParameter.test.cpp
+    models/PsgList.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/TuningTable.test.cpp
     models/tuning/EqualTemperamentTuning.test.cpp

@@ -382,6 +382,7 @@ public:
 
     friend class PsgParamFrame;
     friend class PsgParamsChangeTracker;
+    friend class PsgList;
 
 private:
     // not map or vector to avoid dynamic allocations

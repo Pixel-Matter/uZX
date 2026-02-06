@@ -133,6 +133,7 @@ public:
     te::BeatPosition getLastBeatNumber() const;
 
     PsgParamFrame* getFrame(int index) const                  { return getFrames()[index]; }
+    const PsgParamFrame* getFrameAt(te::BeatPosition beat) const;
     PsgParamFrame* getParamEventAt(te::BeatPosition, PsgParamType paramType) const;
 
     PsgParamFrame* addFrameEvent(const PsgParamFrame&, juce::UndoManager*);

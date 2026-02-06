@@ -230,10 +230,9 @@ void PsgClipComponent::paintParameters(Graphics& g) {
     const auto frameDur = te::TimeDuration::fromSeconds(1.0f / tc.getFPS());
     const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds());
 
-    // Dynamic note height based on component height (roughly 8 octaves = 96 semitones displayed)
+    // Note height = one semitone (8 octaves = 96 semitones displayed)
     constexpr float pitchRangeInSemitones = 96.0f;
-    const float semitoneHeight = static_cast<float>(rect.getHeight()) / pitchRangeInSemitones;
-    const float noteHeight = juce::jmax(4.0f, semitoneHeight * 0.8f);
+    const float noteHeight = static_cast<float>(rect.getHeight()) / pitchRangeInSemitones;
 
     te::TimePosition startPos = jmax(clipRange.getStart(), viewRange.getStart() - frameDur);
     te::TimePosition endPos = jmin(clipRange.getEnd(), viewRange.getEnd());
@@ -349,6 +348,11 @@ void PsgClipComponent::paintParameters(Graphics& g) {
             g.drawText(item.label, (int)x, (int)y, (int)swatchSize, (int)swatchSize, Justification::centred);
             x += swatchSize + spacing;
         }
+
+        // Clip name after legend
+        x += pad;
+        g.setColour(Colours::white.withAlpha(0.7f));
+        g.drawText(psgClip->getName(), (int)x, (int)y, rect.getWidth() - (int)x, (int)swatchSize, Justification::centredLeft);
     }
 }
 

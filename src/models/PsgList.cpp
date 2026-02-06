@@ -234,6 +234,24 @@ void PsgList::initialise(juce::UndoManager* um) {
     midiChannel.referTo (state, te::IDs::channelNumber, um);
 
     framesList = std::make_unique<EventList<PsgParamFrame>>(state);
+    recomputeAccumulatedState();
+}
+
+void PsgList::recomputeAccumulatedState() {
+    PsgParamFrameData accumulated;
+    accumulated.resetMixer();
+    for (auto* frame : getFrames()) {
+        // Merge this frame's changes into accumulated state
+        for (size_t i = 0; i < PsgParamType::size(); ++i) {
+            if (frame->data.isSet(PsgParamType(static_cast<int>(i)))) {
+                accumulated.values[i] = frame->data.values[i];
+            }
+        }
+        // Copy accumulated values to frame (preserving frame's masks)
+        auto savedMasks = frame->data.masks;
+        frame->data.values = accumulated.values;
+        frame->data.masks = savedMasks;
+    }
 }
 
 void PsgList::clear (juce::UndoManager* um) {
@@ -272,19 +290,21 @@ void PsgList::setMidiChannel(te::MidiChannel newChannel) {
 PsgParamFrame* PsgList::addFrameEvent(const PsgParamFrame& event, juce::UndoManager* um) {
     auto v = event.state.createCopy();
     state.addChild(v, -1, um);
+    recomputeAccumulatedState();
     return framesList->getEventFor(v);
 }
 
 PsgParamFrame* PsgList::addFrameEvent(te::BeatPosition beat, const PsgParamFrameData& data, juce::UndoManager* um) {
-    // FIXME maybe slow
     auto v = PsgParamFrame::createPsgFrameValueTree(beat, data);
     state.addChild(v, -1, um);
+    recomputeAccumulatedState();
     return framesList->getEventFor(v);
 }
 
 PsgParamFrame* PsgList::addFrameEvent(te::BeatPosition beat, const uZX::PsgRegsFrame& regs, juce::UndoManager* um) {
     auto v = PsgParamFrame::createPsgFrameValueTree(beat, PsgParamFrameData {regs});
     state.addChild(v, -1, um);
+    recomputeAccumulatedState();
     return framesList->getEventFor(v);
 }
 
@@ -353,25 +373,9 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
 
         auto v = PsgParamFrame::createPsgFrameValueTree(beat, params);
         state.addChild(v, -1, um);
-
-        // if (i < 7) {
-        //     regsFromParamsState.clear();
-        //     params.updateRegisters(regsFromParamsState);
-        //     // auto regsFromParams = params.toRegisters();
-        //     if (!regsState.matches(regsFromParamsState)) {
-        //         DBG("------------------------------------------------------------");
-        //         DBG("Registers do NOT match after conversion from params at frame " << i);
-        //         DBG("------------- Regs state from data -------------");
-        //         regsState.debugPrintSet();
-        //         DBG("------------- Regs state from params -------------");
-        //         regsFromParamsState.debugPrintSet();
-        //         DBG("------------- Params from frame -------------");
-        //         PsgParamFrameData {regsState}.debugPrintSet();
-        //         DBG("------------- Params -------------");
-        //         params.debugPrintSet();
-        //     }
-        // }
     }
+
+    recomputeAccumulatedState();
 }
 
 void PsgList::loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager* um) {

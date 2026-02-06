@@ -110,11 +110,11 @@ public:
         {
             PsgData data {
                 {
-                    {{PsgRegType::VolumeA, 10}},  // beat ~0
+                    {{PsgRegType::VolumeA, 10}},  // frame 0
                     {},
-                    {{PsgRegType::VolumeB, 8}},   // beat ~0.04
+                    {{PsgRegType::VolumeB, 8}},   // frame 2
                     {},
-                    {{PsgRegType::VolumeC, 6}},   // beat ~0.08
+                    {{PsgRegType::VolumeC, 6}},   // frame 4
                 },
                 {50.0, 1}
             };
@@ -123,18 +123,113 @@ public:
             PsgList psgList;
             psgList.loadFrom(data, *edit, nullptr);
 
-            // Get state at various positions
-            auto state0 = psgList.getFrameAt(0_bp)->getData();
-            expectEquals(int(state0.getRaw(PsgParamType::VolumeA)), 10, "State at 0: VolumeA=10");
-            expectEquals(int(state0.getRaw(PsgParamType::VolumeB)), 0, "State at 0: VolumeB=0 (not yet set)");
+            auto& frames = psgList.getFrames();
+            expectEquals(int(frames.size()), 3, "Should have 3 non-empty frames");
 
-            auto state1 = psgList.getFrameAt(1_bp)->getData();
-            expectEquals(int(state1.getRaw(PsgParamType::VolumeA)), 10, "State at 1: VolumeA=10");
-            expectEquals(int(state1.getRaw(PsgParamType::VolumeB)), 8, "State at 1: VolumeB=8");
-            expectEquals(int(state1.getRaw(PsgParamType::VolumeC)), 6, "State at 1: VolumeC=6");
+            // Use actual beat positions from frames
+            auto beat0 = frames[0]->getBeatPosition();
+            auto beat2 = frames[2]->getBeatPosition();
+
+            auto* f0 = psgList.getFrameAt(beat0);
+            expect(f0 != nullptr, "getFrameAt should find frame at beat0");
+            expectEquals(int(f0->getData().getRaw(PsgParamType::VolumeA)), 10, "State at beat0: VolumeA=10");
+            expectEquals(int(f0->getData().getRaw(PsgParamType::VolumeB)), 0, "State at beat0: VolumeB=0 (not yet set)");
+
+            auto* f2 = psgList.getFrameAt(beat2);
+            expect(f2 != nullptr, "getFrameAt should find frame at beat2");
+            expectEquals(int(f2->getData().getRaw(PsgParamType::VolumeA)), 10, "State at beat2: VolumeA accumulated=10");
+            expectEquals(int(f2->getData().getRaw(PsgParamType::VolumeB)), 8, "State at beat2: VolumeB=8");
+            expectEquals(int(f2->getData().getRaw(PsgParamType::VolumeC)), 6, "State at beat2: VolumeC=6");
         }
 
-        // TODO test accumulated state after loading the edit from a file or constructing the list in other ways, not just from PsgData
+        beginTest("Accumulated state survives ValueTree round-trip (simulating file load)");
+        {
+            // First, create a PsgList from PsgData (which computes accumulated state)
+            PsgData data {
+                {
+                    {{PsgRegType::VolumeA, 10}, {PsgRegType::TonePeriodFineA, 100}},
+                    {},
+                    {{PsgRegType::VolumeA, 5},  {PsgRegType::VolumeB, 8}},
+                    {{PsgRegType::TonePeriodFineA, 200}},
+                },
+                {50.0, 1}
+            };
+
+            auto edit = Edit::createSingleTrackEdit(engine);
+            PsgList original;
+            original.loadFrom(data, *edit, nullptr);
+
+            // Copy the ValueTree state (simulates saving/loading a file)
+            auto stateCopy = original.state.createCopy();
+
+            // Construct a new PsgList from the copied state
+            PsgList loaded(stateCopy, nullptr);
+
+            auto& frames = loaded.getFrames();
+            expectEquals(int(frames.size()), 3, "Loaded: Should have 3 non-empty frames");
+
+            {   // Frame 0: VolumeA=10, TonePeriodA=100
+                auto& f = frames[0]->getData();
+                expect(f.isSet(PsgParamType::VolumeA), "Loaded F0: VolumeA should be set");
+                expect(f.isSet(PsgParamType::TonePeriodA), "Loaded F0: TonePeriodA should be set");
+                expectEquals(int(f.getRaw(PsgParamType::VolumeA)), 10, "Loaded F0: VolumeA=10");
+                expectEquals(int(f.getRaw(PsgParamType::TonePeriodA)), 100, "Loaded F0: TonePeriodA=100");
+            }
+
+            {   // Frame 1: VolumeA=5, VolumeB=8, TonePeriodA accumulated=100
+                auto& f = frames[1]->getData();
+                expectEquals(int(f.getRaw(PsgParamType::VolumeA)), 5, "Loaded F1: VolumeA=5");
+                expectEquals(int(f.getRaw(PsgParamType::VolumeB)), 8, "Loaded F1: VolumeB=8");
+                expectEquals(int(f.getRaw(PsgParamType::TonePeriodA)), 100, "Loaded F1: TonePeriodA accumulated=100");
+            }
+
+            {   // Frame 2: TonePeriodA=200, VolumeA accumulated=5, VolumeB accumulated=8
+                auto& f = frames[2]->getData();
+                expectEquals(int(f.getRaw(PsgParamType::TonePeriodA)), 200, "Loaded F2: TonePeriodA=200");
+                expectEquals(int(f.getRaw(PsgParamType::VolumeA)), 5, "Loaded F2: VolumeA accumulated=5");
+                expectEquals(int(f.getRaw(PsgParamType::VolumeB)), 8, "Loaded F2: VolumeB accumulated=8");
+            }
+        }
+
+        beginTest("Accumulated state works with addFrameEvent API");
+        {
+            PsgList psgList;
+
+            // Add frames manually (as if user is editing)
+            PsgParamFrameData f0data {{
+                {PsgParamType::VolumeA, 10},
+                {PsgParamType::TonePeriodA, 100},
+            }};
+            psgList.addFrameEvent(te::BeatPosition::fromBeats(0.0), f0data, nullptr);
+
+            PsgParamFrameData f1data {{
+                {PsgParamType::VolumeA, 5},
+                {PsgParamType::VolumeB, 8},
+            }};
+            psgList.addFrameEvent(te::BeatPosition::fromBeats(1.0), f1data, nullptr);
+
+            PsgParamFrameData f2data {{
+                {PsgParamType::TonePeriodA, 200},
+            }};
+            psgList.addFrameEvent(te::BeatPosition::fromBeats(2.0), f2data, nullptr);
+
+            auto& frames = psgList.getFrames();
+            expectEquals(int(frames.size()), 3, "addFrameEvent: Should have 3 frames");
+
+            {   // Frame 1 should have TonePeriodA accumulated from frame 0
+                auto& f = frames[1]->getData();
+                expectEquals(int(f.getRaw(PsgParamType::VolumeA)), 5, "addFrame F1: VolumeA=5");
+                expectEquals(int(f.getRaw(PsgParamType::VolumeB)), 8, "addFrame F1: VolumeB=8");
+                expectEquals(int(f.getRaw(PsgParamType::TonePeriodA)), 100, "addFrame F1: TonePeriodA accumulated=100");
+            }
+
+            {   // Frame 2 should have VolumeA/B accumulated from frame 1
+                auto& f = frames[2]->getData();
+                expectEquals(int(f.getRaw(PsgParamType::TonePeriodA)), 200, "addFrame F2: TonePeriodA=200");
+                expectEquals(int(f.getRaw(PsgParamType::VolumeA)), 5, "addFrame F2: VolumeA accumulated=5");
+                expectEquals(int(f.getRaw(PsgParamType::VolumeB)), 8, "addFrame F2: VolumeB accumulated=8");
+            }
+        }
     }
 };
 

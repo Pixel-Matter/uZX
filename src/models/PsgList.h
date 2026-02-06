@@ -190,6 +190,7 @@ private:
     juce::String importedName;
 
     void initialise(juce::UndoManager*);
+    void recomputeAccumulatedState();
 
     template<typename EventType>
     struct EventDelegate {

@@ -30,6 +30,8 @@ void MoToolApp::initialise(const String&) {
 }
 
 void MoToolApp::shutdown() {
+    arrangerController_.reset();
+    appController_.reset();
     juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
 }
 

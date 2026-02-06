@@ -532,6 +532,8 @@ BaseController::BaseController(te::Engine& e)
 {}
 
 BaseController::~BaseController() {
+    engine_.getDeviceManager().removeChangeListener(this);
+
     window_.clearContentComponent();
 
     if (edit_ != nullptr) {

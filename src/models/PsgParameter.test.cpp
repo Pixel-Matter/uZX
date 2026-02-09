@@ -126,4 +126,92 @@ public:
 
 static RetriggerEnvelopeTests retriggerEnvelopeTests;
 
+//==============================================================================
+class ParameterScaleTests : public UnitTest {
+public:
+    ParameterScaleTests() : UnitTest("ParameterScale", "MoTool") {}
+
+    void runTest() override {
+        beginTest("Linear: valueToNormalized");
+        {
+            ParameterScale scale {0, 15, ScaleType::Linear, {}};
+            expectWithinAbsoluteError(scale.valueToNormalized(0), 0.0f, 1e-5f);
+            expectWithinAbsoluteError(scale.valueToNormalized(7), 7.0f / 15.0f, 1e-5f);
+            expectWithinAbsoluteError(scale.valueToNormalized(15), 1.0f, 1e-5f);
+        }
+
+        beginTest("Linear: normalizedToValue");
+        {
+            ParameterScale scale {0, 15, ScaleType::Linear, {}};
+            expectEquals(scale.normalizedToValue(0.0f), 0);
+            expectEquals(scale.normalizedToValue(0.5f), 8);
+            expectEquals(scale.normalizedToValue(1.0f), 15);
+        }
+
+        beginTest("Linear: round-trip");
+        {
+            ParameterScale scale {0, 15, ScaleType::Linear, {}};
+            for (int v = 0; v <= 15; ++v) {
+                expectEquals(scale.normalizedToValue(scale.valueToNormalized(v)), v,
+                    "Round-trip failed for value " + String(v));
+            }
+        }
+
+        beginTest("Log: round-trip");
+        {
+            ParameterScale scale {0, 4095, ScaleType::Log, {}};
+            for (int v : {0, 1, 100, 2048, 4095}) {
+                expectEquals(scale.normalizedToValue(scale.valueToNormalized(v)), v,
+                    "Log round-trip failed for value " + String(v));
+            }
+        }
+
+        beginTest("ReciprocalLog: round-trip");
+        {
+            ParameterScale scale {0, 4095, ScaleType::ReciprocalLog, {}};
+            for (int v : {0, 1, 100, 2048, 4095}) {
+                expectEquals(scale.normalizedToValue(scale.valueToNormalized(v)), v,
+                    "ReciprocalLog round-trip failed for value " + String(v));
+            }
+        }
+
+        beginTest("ReciprocalLog: ordering");
+        {
+            ParameterScale scale {0, 4095, ScaleType::ReciprocalLog, {}};
+            // Higher raw values should produce lower normalized values (inversion property)
+            expect(scale.valueToNormalized(100) > scale.valueToNormalized(1000),
+                "Higher raw value should produce lower normalized value");
+            expect(scale.valueToNormalized(1000) > scale.valueToNormalized(4095),
+                "Higher raw value should produce lower normalized value");
+        }
+
+        beginTest("Edge: zero range");
+        {
+            ParameterScale scale {5, 5, ScaleType::Linear, {}};
+            expectWithinAbsoluteError(scale.valueToNormalized(5), 0.0f, 1e-5f);
+            expectEquals(scale.normalizedToValue(0.5f), 5);
+        }
+
+        beginTest("Boundary: normalized clamping");
+        {
+            ParameterScale scale {0, 15, ScaleType::Linear, {}};
+            expectEquals(scale.normalizedToValue(-0.5f), 0);
+            expectEquals(scale.normalizedToValue(1.5f), 15);
+        }
+
+        beginTest("Octaves");
+        {
+            // 1..4096 = 12 octaves (log2(4096) - log2(1) = 12)
+            ParameterScale scale {1, 4096, ScaleType::Linear, {}};
+            expectWithinAbsoluteError(scale.octaves(), 12.0f, 1e-5f);
+
+            // start=0 is clamped to 1: log2(4095) - log2(1) ≈ 11.999
+            ParameterScale tonePeriod {0, 4095, ScaleType::ReciprocalLog, {}};
+            expectWithinAbsoluteError(tonePeriod.octaves(), std::log2(4095.0f), 1e-5f);
+        }
+    }
+};
+
+static ParameterScaleTests parameterScaleTests;
+
 }  // namespace MoTool::Tests

@@ -27,8 +27,7 @@ public:
     void paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
                     float pixelsPerFrame, int startIdx, te::TimeRange visibleRange,
                     const PitchMapping& pm);
-    void paintLegend(Graphics& g, const juce::Rectangle<int>& rect,
-                     std::function<float(te::TimePosition)> timeToX);
+    void paintLegend(Graphics& g, const juce::Rectangle<int>& rect);
 
 private:
     // void onVBlank() {

@@ -23,6 +23,52 @@ struct ParameterScale {
     int end;
     ScaleType type;
     StringArray labels;
+
+    /** Convert raw parameter value to normalized 0-1 range */
+    constexpr float valueToNormalized(int value) const noexcept {
+        const float range = static_cast<float>(end - start);
+        if (range <= 0.0f) return 0.0f;
+        const float v = static_cast<float>(value - start);
+        switch (type) {
+            case ScaleType::Linear:
+                return v / range;
+            case ScaleType::Log:
+                return std::log(v + 1.0f) / std::log(range + 1.0f);
+            case ScaleType::ReciprocalLog:
+                return 1.0f - std::log(v + 1.0f) / std::log(range + 1.0f);
+            default:
+                return v / range;
+        }
+    }
+
+    /** Convert normalized 0-1 value back to raw parameter value */
+    constexpr int normalizedToValue(float normalized) const noexcept {
+        const float range = static_cast<float>(end - start);
+        if (range <= 0.0f) return start;
+        const float n = std::clamp(normalized, 0.0f, 1.0f);
+        float v;
+        switch (type) {
+            case ScaleType::Linear:
+                v = n * range;
+                break;
+            case ScaleType::Log:
+                v = std::exp(n * std::log(range + 1.0f)) - 1.0f;
+                break;
+            case ScaleType::ReciprocalLog:
+                v = std::exp((1.0f - n) * std::log(range + 1.0f)) - 1.0f;
+                break;
+            default:
+                v = n * range;
+                break;
+        }
+        return start + static_cast<int>(std::round(v));
+    }
+
+    /** Number of octaves spanned by the scale range */
+    constexpr float octaves() const noexcept {
+        return std::log2(static_cast<float>(end))
+             - std::log2(static_cast<float>(std::max(1, start)));
+    }
 };
 
 struct PsgParamTypeEnum {
@@ -81,7 +127,7 @@ class PsgParamType : public Util::EnumChoice<PsgParamTypeEnum> {
 public:
     using Util::EnumChoice<PsgParamTypeEnum>::EnumChoice;
 
-    ParameterScale inline getScale() const noexcept {
+    inline constexpr ParameterScale getScale() const noexcept {
         switch (asEnum()) {
             case VolumeA:
             case VolumeB:
@@ -116,53 +162,12 @@ public:
         }
     }
 
-    /** Convert raw parameter value to normalized 0-1 range based on scale type */
-    float valueToNormalized(int value) const noexcept {
-        const auto scale = getScale();
-        const float range = static_cast<float>(scale.end - scale.start);
-        if (range <= 0.0f) return 0.0f;
-
-        const float v = static_cast<float>(value - scale.start);
-
-        switch (scale.type) {
-            case ScaleType::Linear:
-                return v / range;
-            case ScaleType::Log:
-                return std::log(v + 1.0f) / std::log(range + 1.0f);
-            case ScaleType::ReciprocalLog:
-                // Inverted log: high values (low frequency) → bottom, low values (high frequency) → top
-                return 1.0f - std::log(v + 1.0f) / std::log(range + 1.0f);
-            default:
-                return v / range;
-        }
+    constexpr float valueToNormalized(int value) const noexcept {
+        return getScale().valueToNormalized(value);
     }
 
-    /** Convert normalized 0-1 value back to raw parameter value based on scale type */
-    int normalizedToValue(float normalized) const noexcept {
-        const auto scale = getScale();
-        const float range = static_cast<float>(scale.end - scale.start);
-        if (range <= 0.0f) return scale.start;
-
-        const float n = juce::jlimit(0.0f, 1.0f, normalized);
-        float v;
-
-        switch (scale.type) {
-            case ScaleType::Linear:
-                v = n * range;
-                break;
-            case ScaleType::Log:
-                v = std::exp(n * std::log(range + 1.0f)) - 1.0f;
-                break;
-            case ScaleType::ReciprocalLog:
-                // Inverse of reciprocal log
-                v = std::exp((1.0f - n) * std::log(range + 1.0f)) - 1.0f;
-                break;
-            default:
-                v = n * range;
-                break;
-        }
-
-        return scale.start + static_cast<int>(std::round(v));
+    constexpr int normalizedToValue(float normalized) const noexcept {
+        return getScale().normalizedToValue(normalized);
     }
 };
 

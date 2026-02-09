@@ -13,15 +13,15 @@ struct PitchMapping {
 
 namespace {
 
-static PitchMapping findVisiblePitchMapping(
+static PitchMapping findVisiblePitchRange(
     const juce::Array<PsgParamFrame*>& frames,
     const PsgClip& psgClip,
     int startIdx,
     te::TimeRange visibleRange,
     float rectHeight)
 {
-    float minNorm = 1.0f;
-    float maxNorm = 0.0f;
+    float min = 1.0f;
+    float max = 0.0f;
     for (int i = startIdx; i < frames.size(); ++i) {
         const auto& frame = frames[i];
         auto s = frame->getEditTime(psgClip);
@@ -41,8 +41,8 @@ static PitchMapping findVisiblePitchMapping(
 
             if (toneIsOn && isAudible) {
                 float pitch = periodType.valueToNormalized(frameData.getRaw(periodType));
-                minNorm = jmin(minNorm, pitch);
-                maxNorm = jmax(maxNorm, pitch);
+                min = jmin(min, pitch);
+                max = jmax(max, pitch);
             }
         }
 
@@ -52,31 +52,28 @@ static PitchMapping findVisiblePitchMapping(
         if (anyEnvMod) {
             PsgParamType envType(PsgParamType::EnvelopePeriod);
             float val = envType.valueToNormalized(frameData.getRaw(envType));
-            minNorm = jmin(minNorm, val);
-            maxNorm = jmax(maxNorm, val);
+            min = jmin(min, val);
+            max = jmax(max, val);
         }
     }
 
-    if (minNorm > maxNorm) {
-        minNorm = 0.0f;
-        maxNorm = 1.0f;
+    if (min > max) {
+        min = 0.0f;
+        max = 1.0f;
     } else {
-        float oneSemitone = 1.0f / 96.0f;
-        float padding = oneSemitone * 1.5f;
-        float minRange = 12.0f * oneSemitone;
-        float range = maxNorm - minNorm;
-        if (range < minRange) {
-            float center = (minNorm + maxNorm) * 0.5f;
-            minNorm = center - minRange * 0.5f;
-            maxNorm = center + minRange * 0.5f;
+        const float oneSemitone = 1.f / PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() / 12.f;
+        const float minRange = 12.f * oneSemitone;
+        if (max - min < minRange) {
+            float center = (min + max) / 2.f;
+            min = center - minRange * 0.5f;
+            max = center + minRange * 0.5f;
         }
-        float normRange = maxNorm - minNorm + 3.0f * padding;
-        minNorm = jmax(0.0f, minNorm - padding);
-        maxNorm = jmin(1.0f, maxNorm + padding);
+        const float padding = oneSemitone * 1.5f;
+        float normRange = max - min + 2.f * padding;
+        min = jmax(0.0f, min - padding);
+        max = jmin(1.0f, max + padding);
     }
-
-    float normRange = maxNorm - minNorm;
-    return { maxNorm, normRange };
+    return { max, max - min };
 }
 
 static int bisectFindPosition(
@@ -311,8 +308,6 @@ void PsgClipComponent::paintParameters(Graphics& g) {
 
     const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
     const auto frameDur = te::TimeDuration::fromSeconds(1.0f / tc.getFPS());
-    const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds());
-
     te::TimeRange visibleRange(jmax(clipRange.getStart(), viewRange.getStart() - frameDur),
                                jmin(clipRange.getEnd(), viewRange.getEnd()));
 
@@ -323,17 +318,14 @@ void PsgClipComponent::paintParameters(Graphics& g) {
     const auto startIdx = bisectFindPosition(frames, *psgClip, visibleRange.getStart());
     // TODO use framesRange with ptr and size? or some JUCE span-like alternative
 
-    const auto pitchMapping = findVisiblePitchMapping(
+    const auto pitchMapping = findVisiblePitchRange(
         frames, *psgClip, startIdx, visibleRange,
         static_cast<float>(rect.getHeight()));
 
-    paintNotes(g, rect, pixelsPerFrame, startIdx, visibleRange, pitchMapping);
+    const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds());
 
-    auto timeToX = [w = rect.getWidth(), s = clipRange.getStart(), len = clipRange.getLength(),
-                    left = rect.getX()] (auto time) {
-        return static_cast<float>(((time - s) * w) / len - left);
-    };
-    paintLegend(g, rect, timeToX);
+    paintNotes(g, rect, pixelsPerFrame, startIdx, visibleRange, pitchMapping);
+    paintLegend(g, rect);
 }
 
 void PsgClipComponent::paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
@@ -345,7 +337,8 @@ void PsgClipComponent::paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
 
     const auto& frames = psgClip->getPsg().getFrames();
 
-    const float noteHeight = rect.getHeight() / (pm.normRange * 96.0f);
+    const float noteHeight =
+        rect.getHeight() / (pm.normRange * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.f);
 
     auto normToY = [&](float norm) {
         return (pm.maxNorm - norm) / pm.normRange * rect.getHeight();
@@ -424,12 +417,13 @@ void PsgClipComponent::paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
     }
 }
 
-void PsgClipComponent::paintLegend(Graphics& g, const juce::Rectangle<int>& rect,
-                                    std::function<float(te::TimePosition)> timeToX) {
+void PsgClipComponent::paintLegend(Graphics& g, const juce::Rectangle<int>& rect) {
 
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr) return;
 
+    const auto viewRange = editViewState.zoom.getRange();
+    const auto clipRange = psgClip->getEditTimeRange();
     constexpr float pad = 3.0f;
     constexpr float swatchSize = 12.0f;
     constexpr float spacing = 1.0f;
@@ -442,9 +436,12 @@ void PsgClipComponent::paintLegend(Graphics& g, const juce::Rectangle<int>& rect
         { "E", Colors::PSG::Env },
     };
 
-    const auto viewRange = editViewState.zoom.getRange();
     g.setFont(Font(FontOptions(swatchSize - 1.0f).withStyle("Bold")));
-    float visibleLeft = jmax((float)rect.getX(), timeToX(viewRange.getStart()));
+
+    float visibleLeft =
+        jmax((float) rect.getX(),
+             (float) (((viewRange.getStart() - clipRange.getStart()) * rect.getWidth()) / clipRange.getLength() - rect.getX()));
+
     float x = visibleLeft + pad;
     float y = rect.getY() + pad;
 

@@ -57,6 +57,7 @@ namespace IDs {
     DECLARE_ID(n)
     DECLARE_ID(e)
     DECLARE_ID(s)
+    DECLARE_ID(paintMode)
 
     #undef DECLARE_ID
 }  // namespace IDs

@@ -3,6 +3,7 @@
 #include "PsgClipComponent.h"
 #include "../common/LookAndFeel.h"
 #include "../../models/EditUtilities.h"
+#include "../../models/Ids.h"
 
 namespace MoTool {
 
@@ -222,10 +223,35 @@ void PsgClipComponent::paint(Graphics& g) {
 
     GUIPaintMeasurer::ScopedTimer timer(paintMeasurer_);
 
-    paintParameters(g);
-    // paintRegisters(g);
+    int mode = clip->state.getProperty(IDs::paintMode, 0);
+    if (mode == 0)
+        paintParameters(g);
+    else
+        paintRegisters(g);
 
     paintMeasurer_.drawOverlay(g);
+}
+
+void PsgClipComponent::mouseDown(const MouseEvent& e) {
+    if (e.mods.isPopupMenu()) {
+        auto* psgClip = getPsgClip();
+        if (psgClip == nullptr) return;
+
+        int mode = clip->state.getProperty(IDs::paintMode, 0);
+
+        PopupMenu m;
+        m.addItem("Parameters", true, mode == 0, [this] {
+            clip->state.setProperty(IDs::paintMode, 0, nullptr);
+            repaint();
+        });
+        m.addItem("Registers", true, mode == 1, [this] {
+            clip->state.setProperty(IDs::paintMode, 1, nullptr);
+            repaint();
+        });
+        m.showMenuAsync({});
+    } else {
+        ClipComponent::mouseDown(e);
+    }
 }
 
 void PsgClipComponent::paintRegisters(Graphics& g) {
@@ -288,8 +314,7 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
                     g.setColour(color.withLightness(0.75f));
                     g.fillRect(x1, y1, pixelsPerFrame, laneHeight);
                     g.setColour(Colours::black);
-                    // it uses GlyphArrangementCache!
-                    g.drawSingleLineText(hexValue, (int)(x1 + 1), (int)(y1 + laneHeight - 1), Justification::left);
+                    g.drawText(hexValue, (int)(x1 + 1), (int)y1, (int)pixelsPerFrame, (int)laneHeight, Justification::centredLeft);
                 } else {
                     auto val = static_cast<float>(value) / 255.0f;
                     g.setColour(color.withLightness(0.75f).withAlpha(0.5f + val / 2.0f));

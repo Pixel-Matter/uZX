@@ -20,6 +20,7 @@ public:
     PsgClip* getPsgClip();
 
     void paint(Graphics& g) override;
+    void mouseDown(const MouseEvent& e) override;
     void paintRegisters(Graphics& g);
     void paintParameters(Graphics& g);
     void paintNotes(Graphics& g);

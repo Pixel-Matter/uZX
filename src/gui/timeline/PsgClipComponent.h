@@ -7,8 +7,6 @@
 
 namespace MoTool {
 
-struct PitchMapping;
-
 //==============================================================================
 class PsgClipComponent : public MidiClipComponent {
 public:
@@ -24,10 +22,8 @@ public:
     void paint(Graphics& g) override;
     void paintRegisters(Graphics& g);
     void paintParameters(Graphics& g);
-    void paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
-                    float pixelsPerFrame, int startIdx, te::TimeRange visibleRange,
-                    const PitchMapping& pm);
-    void paintLegend(Graphics& g, const juce::Rectangle<int>& rect);
+    void paintNotes(Graphics& g);
+    void paintLegend(Graphics& g);
 
 private:
     // void onVBlank() {

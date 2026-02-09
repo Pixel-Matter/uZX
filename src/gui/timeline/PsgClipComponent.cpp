@@ -6,14 +6,9 @@
 
 namespace MoTool {
 
-struct PitchMapping {
-    float maxNorm;
-    float normRange;
-};
-
 namespace {
 
-static PitchMapping findVisiblePitchRange(
+static juce::Range<float> findVisiblePitchRange(
     const juce::Array<PsgParamFrame*>& frames,
     const PsgClip& psgClip,
     int startIdx,
@@ -73,7 +68,7 @@ static PitchMapping findVisiblePitchRange(
         min = jmax(0.0f, min - padding);
         max = jmin(1.0f, max + padding);
     }
-    return { max, max - min };
+    return { min, max };
 }
 
 static int bisectFindPosition(
@@ -297,57 +292,57 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
 }
 
 void PsgClipComponent::paintParameters(Graphics& g) {
-    g.setFont(12.0f);
-
-    auto* psgClip = getPsgClip();
-    if (psgClip == nullptr) return;
-
-    const auto rect = getLocalBounds();
-    const auto clipRange = psgClip->getEditTimeRange();
-    const auto viewRange = editViewState.zoom.getRange();
-
-    const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
-    const auto frameDur = te::TimeDuration::fromSeconds(1.0f / tc.getFPS());
-    te::TimeRange visibleRange(jmax(clipRange.getStart(), viewRange.getStart() - frameDur),
-                               jmin(clipRange.getEnd(), viewRange.getEnd()));
-
-    const auto& frames = psgClip->getPsg().getFrames();
-    if (frames.size() == 0)
-        return;
-
-    const auto startIdx = bisectFindPosition(frames, *psgClip, visibleRange.getStart());
-    // TODO use framesRange with ptr and size? or some JUCE span-like alternative
-
-    const auto pitchMapping = findVisiblePitchRange(
-        frames, *psgClip, startIdx, visibleRange,
-        static_cast<float>(rect.getHeight()));
-
-    const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth() / clipRange.getLength().inSeconds());
-
-    paintNotes(g, rect, pixelsPerFrame, startIdx, visibleRange, pitchMapping);
-    paintLegend(g, rect);
+    paintNotes(g);
+    paintLegend(g);
 }
 
-void PsgClipComponent::paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
-                                  float pixelsPerFrame, int startIdx, te::TimeRange visibleRange,
-                                  const PitchMapping& pm) {
+struct ClipVisibility {
+    Rectangle<int> rect;
+    te::TimeRange clipRange;
+    te::TimeDuration frameDur;
+    te::TimeRange range;
+    int startIdx;
+    juce::Range<float> pitchRange;
+    float pixelsPerFrame;
+    float noteHeight;
 
+    ClipVisibility(const PsgClip& clip,
+                   const juce::Array<PsgParamFrame*>& frames,
+                   const EditViewState& evs,
+                   Rectangle<int> rectangle)
+        : rect(rectangle)
+        , clipRange(clip.getEditTimeRange())
+        , frameDur(te::TimeDuration::fromSeconds(1.0f / Helpers::getEditTimecodeFormat(clip.edit).getFPS()))
+        , range(jmax(clipRange.getStart(), evs.zoom.getRange().getStart() - frameDur),
+                jmin(clipRange.getEnd(), evs.zoom.getRange().getEnd()))
+        , startIdx(bisectFindPosition(frames, clip, range.getStart()))
+        , pitchRange(findVisiblePitchRange(frames, clip, startIdx, range, static_cast<float>(rect.getHeight())))
+        , pixelsPerFrame(static_cast<float>(frameDur.inSeconds() * rect.getWidth())
+                         / static_cast<float>(clipRange.getLength().inSeconds()))
+        , noteHeight(rect.getHeight()
+                     / (pitchRange.getLength() * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.f))
+    {
+    }
+
+    inline float normToY(float norm) const {
+        return (pitchRange.getEnd() - norm) / pitchRange.getLength() * static_cast<float>(rect.getHeight());
+    }
+
+    inline float timeToX(te::TimePosition time) const {
+        return static_cast<float>(((time - clipRange.getStart()) * rect.getWidth()) / clipRange.getLength()
+                                  - rect.getX());
+    }
+};
+
+void PsgClipComponent::paintNotes(Graphics& g) {
     auto* psgClip = getPsgClip();
-    if (psgClip == nullptr) return;
+    if (psgClip == nullptr)
+        return;
 
+    const auto rect = getLocalBounds();
     const auto& frames = psgClip->getPsg().getFrames();
-
-    const float noteHeight =
-        rect.getHeight() / (pm.normRange * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.f);
-
-    auto normToY = [&](float norm) {
-        return (pm.maxNorm - norm) / pm.normRange * rect.getHeight();
-    };
-
-    auto timeToX = [w = rect.getWidth(), s = psgClip->getEditTimeRange().getStart(),
-                    len = psgClip->getEditTimeRange().getLength(), left = rect.getX()] (auto time) {
-        return static_cast<float>(((time - s) * w) / len - left);
-    };
+    const auto vis = ClipVisibility {*psgClip, frames, editViewState, rect};
+    const bool drawMods = vis.pixelsPerFrame >= 6.0f && vis.noteHeight >= 2.0f;
 
     static const juce::Colour channelColors[] = {
         Colors::PSG::A,
@@ -355,18 +350,18 @@ void PsgClipComponent::paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
         Colors::PSG::C,
     };
 
-    for (int i = startIdx; i < frames.size(); ++i) {
+    for (int i = vis.startIdx; i < frames.size(); ++i) {
         const auto& frame = frames[i];
         jassert(frame != nullptr);
         auto s = frame->getEditTime(*psgClip);
 
-        if (s < visibleRange.getStart())
+        if (s < vis.range.getStart())
             continue;
-        if (s >= visibleRange.getEnd())
+        if (s >= vis.range.getEnd())
             break;
 
-        float x1 = timeToX(s);
-        if (x1 + pixelsPerFrame < 0)
+        float x1 = vis.timeToX(s);
+        if (x1 + vis.pixelsPerFrame < 0)
             continue;
 
         const auto& frameData = frame->getData();
@@ -389,16 +384,18 @@ void PsgClipComponent::paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
                 auto period = frameData.getRaw(periodType);
                 float pitch = periodType.valueToNormalized(period);
                 float alpha = hasEnvMod ? 1.0f : (static_cast<float>(rawVolume) / 15.0f * 0.8f + 0.2f);
-                float noteY = normToY(pitch) - noteHeight * 0.5f;
+                float noteY = vis.normToY(pitch) - vis.noteHeight * 0.5f;
+                float noteYround = roundToInt(noteY);
+                float heightRound = roundToInt(noteY + vis.noteHeight) - noteYround;
 
                 g.setColour(channelColors[ch].withAlpha(alpha));
-                g.fillRect(x1, noteY, pixelsPerFrame, noteHeight);
+                g.fillRect(x1, noteYround, vis.pixelsPerFrame, heightRound);
 
-                if (hasEnvMod)
-                    drawEnvelopeStripes(g, x1, noteY, pixelsPerFrame, noteHeight, envShape);
+                if (hasEnvMod && drawMods)
+                    drawEnvelopeStripes(g, x1, noteYround, vis.pixelsPerFrame, heightRound, envShape);
 
-                if (hasNoiseMod)
-                    drawNoisePattern(g, x1, noteY, pixelsPerFrame, noteHeight, (int64_t)i * 3 + ch);
+                if (hasNoiseMod && drawMods)
+                    drawNoisePattern(g, x1, noteYround, vis.pixelsPerFrame, heightRound, (int64_t)i * 3 + ch);
             }
         }
 
@@ -409,19 +406,22 @@ void PsgClipComponent::paintNotes(Graphics& g, const juce::Rectangle<int>& rect,
         if (anyEnvMod) {
             PsgParamType envType(PsgParamType::EnvelopePeriod);
             float val = envType.valueToNormalized(frameData.getRaw(envType));
-            float envY = normToY(val) - noteHeight * 0.5f;
+            float envY = vis.normToY(val) - vis.noteHeight * 0.5f;
             g.setColour(Colors::PSG::Env);
-            g.fillRect(x1, envY, pixelsPerFrame, noteHeight);
-            drawEnvelopeStripes(g, x1, envY, pixelsPerFrame, noteHeight, envShape);
+            g.fillRect(x1, envY, vis.pixelsPerFrame, vis.noteHeight);
+            if (drawMods) {
+                drawEnvelopeStripes(g, x1, envY, vis.pixelsPerFrame, vis.noteHeight, envShape);
+            }
         }
     }
 }
 
-void PsgClipComponent::paintLegend(Graphics& g, const juce::Rectangle<int>& rect) {
+void PsgClipComponent::paintLegend(Graphics& g) {
 
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr) return;
 
+    const auto rect = getLocalBounds();
     const auto viewRange = editViewState.zoom.getRange();
     const auto clipRange = psgClip->getEditTimeRange();
     constexpr float pad = 3.0f;

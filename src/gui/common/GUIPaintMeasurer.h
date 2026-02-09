@@ -103,7 +103,7 @@ public:
 
     //==============================================================================
     /** Draws the paint statistics overlay in the visible (clipped) area. */
-    void drawOverlay(juce::Graphics& g, [[maybe_unused]] juce::Rectangle<int> bounds) const {
+    void drawOverlay(juce::Graphics& g) const {
         double ms = lastPaintTimeMs_.load();
         double currentFps = fps_.load();
         double interval = intervalMs_.load();

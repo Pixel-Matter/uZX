@@ -225,7 +225,7 @@ void PsgClipComponent::paint(Graphics& g) {
     paintParameters(g);
     // paintRegisters(g);
 
-    paintMeasurer_.drawOverlay(g, getLocalBounds());
+    paintMeasurer_.drawOverlay(g);
 }
 
 void PsgClipComponent::paintRegisters(Graphics& g) {
@@ -485,9 +485,7 @@ void PsgClipComponent::paintLegend(Graphics& g) {
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr) return;
 
-    const auto rect = getLocalBounds();
-    const auto viewRange = editViewState.zoom.getRange();
-    const auto clipRange = psgClip->getEditTimeRange();
+    const auto rect = g.getClipBounds();
     constexpr float pad = 3.0f;
     constexpr float swatchSize = 12.0f;
     constexpr float spacing = 1.0f;
@@ -502,11 +500,7 @@ void PsgClipComponent::paintLegend(Graphics& g) {
 
     g.setFont(Font(FontOptions(swatchSize - 1.0f).withStyle("Bold")));
 
-    float visibleLeft =
-        jmax((float) rect.getX(),
-             (float) (((viewRange.getStart() - clipRange.getStart()) * rect.getWidth()) / clipRange.getLength() - rect.getX()));
-
-    float x = visibleLeft + pad;
+    float x = rect.getX() + pad;
     float y = rect.getY() + pad;
 
     for (const auto& item : items) {
@@ -519,7 +513,7 @@ void PsgClipComponent::paintLegend(Graphics& g) {
 
     x += pad;
     g.setColour(Colours::white.withAlpha(0.7f));
-    g.drawText(psgClip->getName(), (int)x, (int)y, rect.getWidth() - (int)x, (int)swatchSize, Justification::centredLeft);
+    g.drawText(psgClip->getName(), (int)x, (int)y, rect.getRight() - (int)x, (int)swatchSize, Justification::centredLeft);
 }
 
 }  // namespace MoTool

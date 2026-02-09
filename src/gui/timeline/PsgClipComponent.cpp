@@ -146,6 +146,15 @@ void drawNoisePattern(Graphics& g, float x, float y, float width, float height, 
     }
 }
 
+struct FrameNote {
+    float noteYround;
+    float heightRound;
+    float alpha;
+    int   channelIndex;  // 0=A, 1=B, 2=C, 3=Envelope
+    bool  hasEnvMod;
+    bool  hasNoiseMod;
+};
+
 /** Draw stripe pattern for envelope modulation based on envelope shape direction */
 void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float height, uint8_t shape) {
     g.setColour(Colours::black.withAlpha(0.5f));
@@ -348,6 +357,7 @@ void PsgClipComponent::paintNotes(Graphics& g) {
         Colors::PSG::A,
         Colors::PSG::B,
         Colors::PSG::C,
+        Colors::PSG::Env,
     };
 
     for (int i = vis.startIdx; i < frames.size(); ++i) {
@@ -367,6 +377,10 @@ void PsgClipComponent::paintNotes(Graphics& g) {
         const auto& frameData = frame->getData();
         uint8_t envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
 
+        // Collect all visible notes for this frame
+        std::array<FrameNote, 4> notes;
+        int noteCount = 0;
+
         for (int ch = 0; ch < 3; ++ch) {
             PsgParamType periodType (PsgParamType::TonePeriodA + ch);
             PsgParamType volumeType (PsgParamType::VolumeA + ch);
@@ -385,21 +399,14 @@ void PsgClipComponent::paintNotes(Graphics& g) {
                 float pitch = periodType.valueToNormalized(period);
                 float alpha = hasEnvMod ? 1.0f : (static_cast<float>(rawVolume) / 15.0f * 0.8f + 0.2f);
                 float noteY = vis.normToY(pitch) - vis.noteHeight * 0.5f;
-                float noteYround = roundToInt(noteY);
-                float heightRound = roundToInt(noteY + vis.noteHeight) - noteYround;
+                float noteYround = static_cast<float>(roundToInt(noteY));
+                float heightRound = static_cast<float>(roundToInt(noteY + vis.noteHeight)) - noteYround;
 
-                g.setColour(channelColors[ch].withAlpha(alpha));
-                g.fillRect(x1, noteYround, vis.pixelsPerFrame, heightRound);
-
-                if (hasEnvMod && drawMods)
-                    drawEnvelopeStripes(g, x1, noteYround, vis.pixelsPerFrame, heightRound, envShape);
-
-                if (hasNoiseMod && drawMods)
-                    drawNoisePattern(g, x1, noteYround, vis.pixelsPerFrame, heightRound, (int64_t)i * 3 + ch);
+                notes[noteCount++] = { noteYround, heightRound, alpha, ch, hasEnvMod, hasNoiseMod };
             }
         }
 
-        // Envelope period
+        // Envelope period note
         bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
                          frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
                          frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
@@ -407,10 +414,67 @@ void PsgClipComponent::paintNotes(Graphics& g) {
             PsgParamType envType(PsgParamType::EnvelopePeriod);
             float val = envType.valueToNormalized(frameData.getRaw(envType));
             float envY = vis.normToY(val) - vis.noteHeight * 0.5f;
-            g.setColour(Colors::PSG::Env);
-            g.fillRect(x1, envY, vis.pixelsPerFrame, vis.noteHeight);
-            if (drawMods) {
-                drawEnvelopeStripes(g, x1, envY, vis.pixelsPerFrame, vis.noteHeight, envShape);
+            float envYround = static_cast<float>(roundToInt(envY));
+            float envHeightRound = static_cast<float>(roundToInt(envY + vis.noteHeight)) - envYround;
+
+            notes[noteCount++] = { envYround, envHeightRound, 1.0f, 3, true, false };
+        }
+
+        // Sort by noteYround then channelIndex (insertion sort for <= 4 elements)
+        for (int a = 1; a < noteCount; ++a) {
+            auto key = notes[a];
+            int b = a - 1;
+            while (b >= 0 && (notes[b].noteYround > key.noteYround ||
+                              (notes[b].noteYround == key.noteYround && notes[b].channelIndex > key.channelIndex))) {
+                notes[b + 1] = notes[b];
+                --b;
+            }
+            notes[b + 1] = key;
+        }
+
+        // Paint notes, subdividing overlapping groups
+        int gi = 0;
+        while (gi < noteCount) {
+            // Find group of notes whose vertical rects overlap.
+            // Notes are sorted by noteYround, so we extend the group as long as
+            // the next note's top is within the current group's bottom.
+            int groupStart = gi;
+            float groupY = notes[gi].noteYround;
+            float groupBottom = notes[gi].noteYround + notes[gi].heightRound;
+            ++gi;
+            while (gi < noteCount && notes[gi].noteYround < groupBottom) {
+                groupBottom = jmax(groupBottom, notes[gi].noteYround + notes[gi].heightRound);
+                ++gi;
+            }
+            int groupSize = gi - groupStart;
+            float groupH = groupBottom - groupY;
+
+            // Graceful degradation: if sub-lane height < 1px, paint full height
+            bool subdivide = groupSize > 1 && groupH / static_cast<float>(groupSize) >= 1.0f;
+
+            for (int j = 0; j < groupSize; ++j) {
+                const auto& note = notes[groupStart + j];
+                float subY, subH;
+                if (subdivide) {
+                    subH = std::floor(groupH / static_cast<float>(groupSize));
+                    subY = groupY + static_cast<float>(j) * subH;
+                    // Last sub-lane absorbs any rounding remainder
+                    if (j == groupSize - 1)
+                        subH = groupBottom - subY;
+                } else {
+                    subY = note.noteYround;
+                    subH = note.heightRound;
+                }
+
+                g.setColour(channelColors[note.channelIndex].withAlpha(note.alpha));
+                g.fillRect(x1, subY, vis.pixelsPerFrame, subH);
+
+                if (note.hasEnvMod && drawMods)
+                    drawEnvelopeStripes(g, x1, subY, vis.pixelsPerFrame, subH, envShape);
+
+                if (note.hasNoiseMod && drawMods)
+                    drawNoisePattern(g, x1, subY, vis.pixelsPerFrame, subH,
+                                     (int64_t)i * 4 + note.channelIndex);
             }
         }
     }

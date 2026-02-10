@@ -49,6 +49,8 @@ juce::Range<float> PsgClip::getPitchRange() const {
 
     float min = 1.0f;
     float max = 0.0f;
+    // Ignore extremely high pitches that are unlikely to be intentional musical notes
+    constexpr int hearableMin = 8;
 
     const auto& frames = getPsg().getFrames();
     for (auto* frame : frames) {
@@ -64,9 +66,12 @@ juce::Range<float> PsgClip::getPitchRange() const {
             bool isAudible = (frameData.getRaw(volumeType) > 0) || hasEnvMod;
 
             if (toneIsOn && isAudible) {
-                float pitch = periodType.valueToNormalized(frameData.getRaw(periodType));
-                min = jmin(min, pitch);
-                max = jmax(max, pitch);
+                auto period = frameData.getRaw(periodType);
+                if (period >= hearableMin) {
+                    float pitch = periodType.valueToNormalized(period);
+                    min = jmin(min, pitch);
+                    max = jmax(max, pitch);
+                }
             }
         }
 
@@ -75,9 +80,10 @@ juce::Range<float> PsgClip::getPitchRange() const {
                          frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
         if (anyEnvMod) {
             PsgParamType envType(PsgParamType::EnvelopePeriod);
-            float val = envType.valueToNormalized(frameData.getRaw(envType));
-            min = jmin(min, val);
-            max = jmax(max, val);
+            auto period = frameData.getRaw(envType);
+            float pitch = envType.valueToNormalized(period);
+            min = jmin(min, pitch);
+            max = jmax(max, pitch);
         }
     }
 

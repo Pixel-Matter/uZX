@@ -22,6 +22,9 @@ public:
     void zoomChanged() override;
     void paint(Graphics& g) override;
     void mouseDown(const MouseEvent& e) override;
+    void mouseDrag(const MouseEvent& e) override;
+    void mouseUp(const MouseEvent& e) override;
+    void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
 
 private:
     void repositionTransportToX(int x);
@@ -32,6 +35,11 @@ private:
     EditViewState& editViewState;
     juce::CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
     TimelineGrid& grid;
+
+    bool isDragging = false;
+    te::TimePosition dragStartViewStart;
+    te::TimeDuration dragStartTimePerPixel;
+    static constexpr int dragThreshold = 4;
 };
 
 } // namespace MoTool

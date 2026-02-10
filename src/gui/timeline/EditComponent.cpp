@@ -63,4 +63,13 @@ void EditComponent::resized() {
     tracksContainer.setBounds(r.withHeight(jmax(tracksContainer.getIdealHeight(), r.getHeight())));
 }
 
+void EditComponent::ZoomableViewport::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
+    if (e.mods.isCommandDown()) {
+        auto headerWidth = editViewState.getTrackHeaderWidth();
+        editViewState.zoom.zoomAroundX(wheel.deltaY, e.x - headerWidth);
+    } else {
+        Viewport::mouseWheelMove(e, wheel);
+    }
+}
+
 }  // namespace MoTool

@@ -33,10 +33,18 @@ private:
     EditViewState& editViewState;
     TimelineGrid grid {editViewState};
 
+    class ZoomableViewport : public Viewport {
+    public:
+        ZoomableViewport(EditViewState& evs) : editViewState(evs) {}
+        void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
+    private:
+        EditViewState& editViewState;
+    };
+
     PlayheadComponent playhead {edit, editViewState};
     RulerComponent ruler {edit, editViewState, grid};
     TracksContainerComponent tracksContainer {edit, editViewState, grid};
-    Viewport trackViewport;
+    ZoomableViewport trackViewport {editViewState};
     DetailsPanelComponent detailsPanel {editViewState, grid};
 
     bool updateSizes = false;

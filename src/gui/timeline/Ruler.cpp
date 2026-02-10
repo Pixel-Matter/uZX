@@ -60,7 +60,53 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         });
         m.showMenuAsync({});
     } else {
+        isDragging = false;
+        dragStartViewStart = editViewState.zoom.getStart();
+        dragStartTimePerPixel = editViewState.zoom.getTimePerPixel();
+    }
+}
+
+void RulerComponent::mouseDrag(const MouseEvent& e) {
+    if (e.mods.isPopupMenu())
+        return;
+
+    if (!isDragging && e.getDistanceFromDragStart() >= dragThreshold)
+        isDragging = true;
+
+    if (!isDragging)
+        return;
+
+    auto deltaX = e.getDistanceFromDragStartX();
+    auto deltaY = e.getDistanceFromDragStartY();
+
+    auto newTimePerPixel = dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01);
+    if (newTimePerPixel < 0.0005s) newTimePerPixel = te::TimeDuration::fromSeconds(0.0005);
+    if (newTimePerPixel > 2s) newTimePerPixel = te::TimeDuration::fromSeconds(2.0);
+
+    auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) e.getMouseDownX();
+    auto newStart = anchorTime - newTimePerPixel * (double)(e.getMouseDownX() + deltaX);
+    newStart = jmax(te::TimePosition(), newStart);
+    auto newSpan = newTimePerPixel * editViewState.zoom.getViewWidthPx();
+    editViewState.zoom.setRange({newStart, newSpan});
+}
+
+void RulerComponent::mouseUp(const MouseEvent& e) {
+    if (e.mods.isPopupMenu())
+        return;
+
+    if (!isDragging)
         repositionTransportToX(e.x);
+
+    isDragging = false;
+}
+
+void RulerComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
+    if (e.mods.isCommandDown()) {
+        editViewState.zoom.zoomAroundX(wheel.deltaY, e.x);
+    } else {
+        auto scrollAmount = editViewState.zoom.getTimePerPixel() * wheel.deltaY * 200.0;
+        auto newStart = editViewState.zoom.getStart() - scrollAmount;
+        editViewState.zoom.setStart(jmax(te::TimePosition(), newStart));
     }
 }
 

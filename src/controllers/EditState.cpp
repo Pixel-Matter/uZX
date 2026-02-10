@@ -123,6 +123,21 @@ void ZoomViewState::zoomHorizontally(double factor) {
     handleUpdateNowIfNeeded();
 }
 
+void ZoomViewState::zoomAroundX(double factor, int anchorX) {
+    double scaleFactor = std::pow(2.0, -factor * 5.0);
+    auto anchorTime = xToTime(anchorX);
+    auto newTimePerPixel = getTimePerPixel() * scaleFactor;
+
+    if (newTimePerPixel > 0.0005s && newTimePerPixel < 2s) {
+        auto newStart = anchorTime - newTimePerPixel * (double) anchorX;
+        newStart = jmax(te::TimePosition(), newStart);
+        auto newSpan = newTimePerPixel * getViewWidthPx();
+        setRange({newStart, newSpan});
+        markAndUpdate(updateZoom);
+    }
+    handleUpdateNowIfNeeded();
+}
+
 void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
     if (tree == state && isZoomProperty(prop)) {
         markAndUpdate(updateZoom);

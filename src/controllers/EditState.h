@@ -59,6 +59,7 @@ public:
     void removeListener(Listener* l);
 
     void zoomHorizontally(double factor);
+    void zoomAroundX(double factor, int anchorX);
 
     int getViewWidthPx() const noexcept;
     void setViewWidthPx(int w) noexcept;

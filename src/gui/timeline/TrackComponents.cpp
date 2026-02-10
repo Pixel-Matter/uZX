@@ -272,8 +272,10 @@ void TrackBodyComponent::paint(Graphics& g) {
     MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, getLocalBounds(), ticks);
 }
 
-void TrackBodyComponent::mouseDown(const MouseEvent&) {
+void TrackBodyComponent::mouseDown(const MouseEvent& e) {
     editViewState.selectionManager.selectOnly(track.get());
+    auto pos = editViewState.zoom.xToTime(e.x);
+    track->edit.getTransport().setPosition(pos);
 }
 
 void TrackBodyComponent::changeListenerCallback(ChangeBroadcaster* source) {

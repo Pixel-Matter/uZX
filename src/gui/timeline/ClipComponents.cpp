@@ -25,8 +25,10 @@ void ClipComponent::paint(Graphics& g) {
     }
 }
 
-void ClipComponent::mouseDown(const MouseEvent&) {
+void ClipComponent::mouseDown(const MouseEvent& e) {
     editViewState.selectionManager.selectOnly(clip.get());
+    auto pos = editViewState.zoom.xToTime(e.x + getX());
+    clip->edit.getTransport().setPosition(pos);
 }
 
 //==============================================================================

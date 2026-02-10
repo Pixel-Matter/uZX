@@ -18,6 +18,8 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
 
     playhead.setAlwaysOnTop(true);
 
+    editViewState.transparentClips = options.transparentClips;
+    editViewState.disableClipSelection = options.disableClipSelection;
     tracksContainer.setAutoFitTrackHeights(options.autoFitTrackHeights);
 
     trackViewport.setViewedComponent(&tracksContainer, false);

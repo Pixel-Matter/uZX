@@ -12,6 +12,9 @@ ClipComponent::ClipComponent (EditViewState& evs, te::Clip::Ptr c)
 {}
 
 void ClipComponent::paint(Graphics& g) {
+    if (editViewState.transparentClips)
+        return;
+
     // TODO Move to lookAndFeel
     g.setColour(clip->getColour().withMultipliedBrightness(0.25f).withAlpha(0.75f));
     g.fillRoundedRectangle(getLocalBounds().toFloat(), 6.0f);
@@ -26,7 +29,8 @@ void ClipComponent::paint(Graphics& g) {
 }
 
 void ClipComponent::mouseDown(const MouseEvent& e) {
-    editViewState.selectionManager.selectOnly(clip.get());
+    if (!editViewState.disableClipSelection)
+        editViewState.selectionManager.selectOnly(clip.get());
     auto pos = editViewState.zoom.xToTime(e.x + getX());
     clip->edit.getTransport().setPosition(pos);
 }

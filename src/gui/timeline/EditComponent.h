@@ -13,6 +13,8 @@ namespace MoTool {
 struct EditComponentOptions {
     bool showDetailsPanel = true;
     bool autoFitTrackHeights = false;
+    bool transparentClips = false;
+    bool disableClipSelection = false;
 };
 
 //==============================================================================

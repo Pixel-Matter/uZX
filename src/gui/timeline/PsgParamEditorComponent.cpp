@@ -46,8 +46,15 @@ PsgParamEditorWrapper::PsgParamEditorWrapper(EditViewState& evs, TimelineGrid& g
     // Listen to headersWidth changes
     editViewState_.state.addListener(this);
 
-    // Select first parameter by default (TonePeriodA)
+    // Select default parameter (NoiseIsOnA = row 3)
     paramList_.selectRow(3, false, false);
+    editor_.setCurrentParam(PsgParamType(paramTypes_[3]));
+
+    // // Hide param list when no clip is selected
+    // editor_.onClipChanged = [this]() {
+    //     paramList_.setVisible(editor_.hasClip());
+    // };
+    // paramList_.setVisible(false);
 }
 
 PsgParamEditorWrapper::~PsgParamEditorWrapper() {
@@ -233,26 +240,25 @@ void PsgParamEditorComponent::setCurrentParam(PsgParamType param) {
 void PsgParamEditorComponent::changeListenerCallback(ChangeBroadcaster* cb) {
     if (cb == &editViewState.selectionManager) {
         if (auto* s = editViewState.selectionManager.getFirstItemOfType<PsgClip>()) {
-            // Keep the current parameter selection when switching clips
             setCurrentClip(s);
+        } else {
+            // setCurrentClip(nullptr);
         }
-        // else {
-        //     setCurrentClip(nullptr);
-        // }
+        if (onClipChanged)
+            onClipChanged();
     }
     te::CurveEditor::changeListenerCallback(cb);
 }
 
 void PsgParamEditorComponent::selectableObjectChanged(te::Selectable* s) {
-    // TODO when is this called?
     if (auto psgClip = dynamic_cast<PsgClip*>(s)) {
-        // Keep the current parameter selection when switching clips
         setCurrentClip(psgClip);
     } else {
         setCurrentClip(nullptr);
-        currentParam = -1;
     }
-    te::CurveEditor::selectableObjectChanged(s);  // updateLineThickness();
+    if (onClipChanged)
+        onClipChanged();
+    te::CurveEditor::selectableObjectChanged(s);
 }
 
 String PsgParamEditorComponent::getTooltip() {

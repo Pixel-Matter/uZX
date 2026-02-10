@@ -43,6 +43,9 @@ public:
 
     void setCurrentParam(PsgParamType param);
     PsgParamType getCurrentParam() const { return currentParam; }
+    bool hasClip() const { return currentClip.get() != nullptr; }
+
+    std::function<void()> onClipChanged;
 
     // ZoomViewState::Listener overrides
     void zoomChanged() override;

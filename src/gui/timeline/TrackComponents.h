@@ -98,6 +98,7 @@ public:
     void trackViewStateChanged() override;
 
     int getTrackHeight() const noexcept;
+    void setResizerVisible(bool visible);
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
@@ -146,6 +147,7 @@ public:
     void resized() override;
     void paint(Graphics& g) override;
     int getIdealHeight() const;
+    void setAutoFitTrackHeights(bool enabled);
 
 private:
     te::Edit& edit;
@@ -155,6 +157,8 @@ private:
     bool updateTracks = false;
     bool needsRepaint = false;
     bool needsResize = false;
+    bool autoFitTrackHeights_ = false;
+    int lastFitHeight_ = 0;
     Rectangle<int> gridRect;
     TimelineGrid& grid;
 

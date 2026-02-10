@@ -18,8 +18,10 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
 
     playhead.setAlwaysOnTop(true);
 
+    tracksContainer.setAutoFitTrackHeights(options.autoFitTrackHeights);
+
     trackViewport.setViewedComponent(&tracksContainer, false);
-    trackViewport.setScrollBarsShown(true, false);
+    trackViewport.setScrollBarsShown(!options.autoFitTrackHeights, false);
 
     addAndMakeVisible(playhead);
     addAndMakeVisible(ruler);
@@ -64,7 +66,10 @@ void EditComponent::resized() {
     playhead.setBounds(r.withTrimmedLeft(headerWidth));
     ruler.setBounds(r.removeFromTop(rulerHeight).withTrimmedLeft(headerWidth));
     trackViewport.setBounds(r);
-    tracksContainer.setBounds(r.withHeight(jmax(tracksContainer.getIdealHeight(), r.getHeight())));
+    if (options.autoFitTrackHeights)
+        tracksContainer.setBounds(r);
+    else
+        tracksContainer.setBounds(r.withHeight(jmax(tracksContainer.getIdealHeight(), r.getHeight())));
 }
 
 void EditComponent::ZoomableViewport::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {

@@ -229,6 +229,7 @@ public:
 
             case fileImportPsg:
                 result.setInfo("Import PSG...", "Import PSG file", "File", 0);
+                result.addDefaultKeypress('i', ModifierKeys::commandModifier);
                 break;
 
             case fileImportAudio:

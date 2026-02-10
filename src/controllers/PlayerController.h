@@ -28,6 +28,8 @@ private:
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
 
     void ensureAYPluginOnTrack(te::AudioTrack& track);
+    void importPsgToNewTrack(const File& f);
+    void importPsgToNewEdit(const File& f);
 
     std::unique_ptr<EditViewState> editViewState_;
 

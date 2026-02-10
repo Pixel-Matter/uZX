@@ -119,42 +119,86 @@ void PlayerController::handleImportPsgReplace() {
     if (edit_ == nullptr) return;
 
     Helpers::browseForPSGFile(engine_, [this](const File& f) {
-        auto& transport = edit_->getTransport();
-        transport.stop(false, false);
+        if (!f.existsAsFile()) return;
 
-        // Remove all clips from all tracks
-        for (auto track : te::getClipTracks(*edit_)) {
-            auto clips = track->getClips();
-            for (int i = clips.size(); --i >= 0;) {
-                clips[i]->removeFromParent();
+        auto options = MessageBoxOptions()
+            .withTitle("Import PSG")
+            .withMessage("How would you like to import \"" + f.getFileNameWithoutExtension() + "\"?")
+            .withButton("New Track")
+            .withButton("New Edit")
+            .withButton("Cancel");
+
+        NativeMessageBox::showAsync(options, [this, f](int result) {
+            DBG("Import result: " << result);
+            if (result == 0)
+                importPsgToNewTrack(f);
+            else if (result == 1)
+                importPsgToNewEdit(f);
+        });
+    });
+}
+
+void PlayerController::importPsgToNewTrack(const File& f) {
+    auto& transport = edit_->getTransport();
+    transport.stop(false, false);
+
+    auto track = edit_->insertNewAudioTrack(te::TrackInsertPoint(nullptr, te::getAudioTracks(*edit_).getLast()), nullptr);
+    jassert(track != nullptr);
+
+    auto psgFile = uZX::PsgFile(f);
+    psgFile.ensureRead();
+    te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
+
+    if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
+        track->changed();
+        ensureAYPluginOnTrack(*track);
+        track->setName(f.getFileNameWithoutExtension());
+        zoomToFitHorizontally();
+    }
+}
+
+void PlayerController::importPsgToNewEdit(const File& f) {
+    edit_->getTransport().stop(false, false);
+
+    // Create a new edit and populate it before setting it on the UI
+    auto newEditFile = EditFileOps::getTempEditFile();
+    auto newEdit = createOrLoadEdit(newEditFile);
+    newEdit->ensureNumberOfAudioTracks(1);
+    auto* track = te::getAudioTracks(*newEdit).getFirst();
+    jassert(track != nullptr);
+
+    auto psgFile = uZX::PsgFile(f);
+    psgFile.ensureRead();
+    te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
+
+    if (PsgClip::insertTo(*track, psgFile, pos)) {
+        track->changed();
+
+        // Ensure AY plugin using the new edit's plugin cache
+        bool hasAY = false;
+        for (auto& p : track->pluginList) {
+            if (dynamic_cast<uZX::AYChipPlugin*>(p)) {
+                hasAY = true;
+                break;
             }
         }
-
-        // Remove all audio tracks except first
-        auto audioTracks = te::getAudioTracks(*edit_);
-        for (int i = audioTracks.size() - 1; i > 0; --i) {
-            edit_->deleteTrack(audioTracks[i]);
+        if (!hasAY) {
+            auto plugin = newEdit->getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
+            track->pluginList.insertPlugin(plugin, 0, nullptr);
         }
 
-        // Ensure we have at least one track
-        edit_->ensureNumberOfAudioTracks(1);
-        auto* track = te::getAudioTracks(*edit_).getFirst();
-        jassert(track != nullptr);
+        track->setName(f.getFileNameWithoutExtension());
+    }
 
-        // Import PSG file
-        auto psgFile = uZX::PsgFile(f);
-        psgFile.ensureRead();
-        te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
+    // Update the edit file name to match the imported PSG file
+    auto namedFile = newEditFile.getSiblingFile(f.getFileNameWithoutExtension())
+        .withFileExtension(EditFileOps::getDefaultEditFileSuffix());
+    newEdit->editFileRetriever = [namedFile] { return namedFile; };
 
-        if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
-            track->changed();
-            ensureAYPluginOnTrack(*track);
-            track->setName(f.getFileNameWithoutExtension());
-
-            // Zoom to fit
-            zoomToFitHorizontally();
-        }
-    });
+    // Set the fully-prepared edit (rebuilds UI with clip already present)
+    setEdit(std::move(newEdit), true);
+    setMainWindowTitle(f.getFileNameWithoutExtension());
+    zoomToFitHorizontally();
 }
 
 void PlayerController::ensureAYPluginOnTrack(te::AudioTrack& track) {

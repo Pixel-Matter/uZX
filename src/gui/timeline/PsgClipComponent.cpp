@@ -428,14 +428,23 @@ void PsgClipComponent::paintNotes(Graphics& g) {
                 float heightRound = static_cast<float>(roundToInt(noteY + vis.noteHeight)) - noteYround;
 
                 notes[noteCount++] = { noteYround, heightRound, alpha, ch, hasEnvMod, hasNoiseMod };
+            } else if (!toneIsOn && hasEnvMod) {
+                // Channel has envelope but no tone: draw at envelope pitch with channel color
+                PsgParamType envType(PsgParamType::EnvelopePeriod);
+                float pitch = envType.valueToNormalized(frameData.getRaw(envType));
+                float noteY = vis.normToY(pitch) - vis.noteHeight * 0.5f;
+                float noteYround = static_cast<float>(roundToInt(noteY));
+                float heightRound = static_cast<float>(roundToInt(noteY + vis.noteHeight)) - noteYround;
+
+                notes[noteCount++] = { noteYround, heightRound, 1.0f, ch, true, hasNoiseMod };
             }
         }
 
-        // Envelope period note
-        bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
-                         frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
-                         frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
-        if (anyEnvMod) {
+        // Envelope period note — only when a channel has BOTH tone AND envelope
+        bool anyToneAndEnv = (frameData.getRaw(PsgParamType::ToneIsOnA) > 0 && frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0) ||
+                             (frameData.getRaw(PsgParamType::ToneIsOnB) > 0 && frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0) ||
+                             (frameData.getRaw(PsgParamType::ToneIsOnC) > 0 && frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0);
+        if (anyToneAndEnv) {
             PsgParamType envType(PsgParamType::EnvelopePeriod);
             float val = envType.valueToNormalized(frameData.getRaw(envType));
             float envY = vis.normToY(val) - vis.noteHeight * 0.5f;

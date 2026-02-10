@@ -32,6 +32,10 @@ public:
         return *psgList;
     }
 
+    /** Returns the normalized pitch range across all frames in the clip.
+        Cached and automatically invalidated when PSG data changes. */
+    juce::Range<float> getPitchRange() const;
+
     static Ptr insertTo(
         te::ClipOwner& owner,
         uZX::PsgFile& psgFile,
@@ -47,6 +51,8 @@ public:
 
 private:
     std::unique_ptr<PsgList> psgList;
+    mutable juce::Range<float> cachedPitchRange_ { 0.0f, 1.0f };
+    mutable int pitchRangeVersion_ = -1;
 
     void loadFrom(uZX::PsgData &data);
     void loadFrom(uZX::PsgFile &psgFile);

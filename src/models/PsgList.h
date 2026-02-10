@@ -99,6 +99,9 @@ public:
     }
 
     //==============================================================================
+    int getDataVersion() const noexcept                             { return dataVersion_; }
+
+    //==============================================================================
     bool isAttachedToClip() const noexcept                          { return ! state.getParent().hasType(te::IDs::NA); }
 
     //==============================================================================
@@ -185,6 +188,7 @@ public:
 private:
     //==============================================================================
     juce::CachedValue<te::MidiChannel> midiChannel;
+    int dataVersion_ = 0;
 
     juce::String importedFileName;
     juce::String importedName;

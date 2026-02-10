@@ -9,69 +9,6 @@ namespace MoTool {
 
 namespace {
 
-static juce::Range<float> findVisiblePitchRange(
-    const juce::Array<PsgParamFrame*>& frames,
-    const PsgClip& psgClip,
-    int startIdx,
-    te::TimeRange visibleRange,
-    float rectHeight)
-{
-    float min = 1.0f;
-    float max = 0.0f;
-    for (int i = startIdx; i < frames.size(); ++i) {
-        const auto& frame = frames[i];
-        auto s = frame->getEditTime(psgClip);
-        if (s < visibleRange.getStart()) continue;
-        if (s >= visibleRange.getEnd()) break;
-
-        const auto& frameData = frame->getData();
-        for (int ch = 0; ch < 3; ++ch) {
-            PsgParamType periodType (PsgParamType::TonePeriodA + ch);
-            PsgParamType volumeType (PsgParamType::VolumeA + ch);
-            PsgParamType toneOnType (PsgParamType::ToneIsOnA + ch);
-            PsgParamType envOnType  (PsgParamType::EnvelopeIsOnA + ch);
-
-            bool toneIsOn = frameData.getRaw(toneOnType) > 0;
-            bool hasEnvMod = frameData.getRaw(envOnType) > 0;
-            bool isAudible = (frameData.getRaw(volumeType) > 0) || hasEnvMod;
-
-            if (toneIsOn && isAudible) {
-                float pitch = periodType.valueToNormalized(frameData.getRaw(periodType));
-                min = jmin(min, pitch);
-                max = jmax(max, pitch);
-            }
-        }
-
-        bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
-                         frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
-                         frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
-        if (anyEnvMod) {
-            PsgParamType envType(PsgParamType::EnvelopePeriod);
-            float val = envType.valueToNormalized(frameData.getRaw(envType));
-            min = jmin(min, val);
-            max = jmax(max, val);
-        }
-    }
-
-    if (min > max) {
-        min = 0.0f;
-        max = 1.0f;
-    } else {
-        const float oneSemitone = 1.f / PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() / 12.f;
-        const float minRange = 12.f * oneSemitone;
-        if (max - min < minRange) {
-            float center = (min + max) / 2.f;
-            min = center - minRange * 0.5f;
-            max = center + minRange * 0.5f;
-        }
-        const float padding = oneSemitone * 1.5f;
-        float normRange = max - min + 2.f * padding;
-        min = jmax(0.0f, min - padding);
-        max = jmin(1.0f, max + padding);
-    }
-    return { min, max };
-}
-
 static int bisectFindPosition(
     const juce::Array<PsgParamFrame*>& frames,
     const PsgClip& clip,
@@ -350,7 +287,7 @@ struct ClipVisibility {
         , range(jmax(clipRange.getStart(), evs.zoom.getRange().getStart() - frameDur),
                 jmin(clipRange.getEnd(), evs.zoom.getRange().getEnd()))
         , startIdx(bisectFindPosition(frames, clip, range.getStart()))
-        , pitchRange(findVisiblePitchRange(frames, clip, startIdx, range, static_cast<float>(rect.getHeight())))
+        , pitchRange(clip.getPitchRange())
         , pixelsPerFrame(static_cast<float>(frameDur.inSeconds() * rect.getWidth())
                          / static_cast<float>(clipRange.getLength().inSeconds()))
         , noteHeight(rect.getHeight()

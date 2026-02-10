@@ -238,6 +238,7 @@ void PsgList::initialise(juce::UndoManager* um) {
 }
 
 void PsgList::recomputeAccumulatedState() {
+    ++dataVersion_;
     PsgParamFrameData accumulated;
     accumulated.resetMixer();
     for (auto* frame : getFrames()) {

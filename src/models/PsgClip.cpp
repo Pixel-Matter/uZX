@@ -2,6 +2,7 @@
 #include "Ids.h"
 #include "PsgMidi.h"
 #include "PsgList.h"
+#include "PsgParameter.h"
 #include "../formats/psg/PsgFile.h"
 
 #include <cstddef>
@@ -37,6 +38,67 @@ void PsgClip::initialise() {
 
 String PsgClip::getSelectableDescription() {
     return "PSG AY data clip - " + getName();
+}
+
+juce::Range<float> PsgClip::getPitchRange() const {
+    auto version = getPsg().getDataVersion();
+    if (pitchRangeVersion_ == version)
+        return cachedPitchRange_;
+
+    pitchRangeVersion_ = version;
+
+    float min = 1.0f;
+    float max = 0.0f;
+
+    const auto& frames = getPsg().getFrames();
+    for (auto* frame : frames) {
+        const auto& frameData = frame->getData();
+        for (int ch = 0; ch < 3; ++ch) {
+            PsgParamType periodType(PsgParamType::TonePeriodA + ch);
+            PsgParamType volumeType(PsgParamType::VolumeA + ch);
+            PsgParamType toneOnType(PsgParamType::ToneIsOnA + ch);
+            PsgParamType envOnType(PsgParamType::EnvelopeIsOnA + ch);
+
+            bool toneIsOn = frameData.getRaw(toneOnType) > 0;
+            bool hasEnvMod = frameData.getRaw(envOnType) > 0;
+            bool isAudible = (frameData.getRaw(volumeType) > 0) || hasEnvMod;
+
+            if (toneIsOn && isAudible) {
+                float pitch = periodType.valueToNormalized(frameData.getRaw(periodType));
+                min = jmin(min, pitch);
+                max = jmax(max, pitch);
+            }
+        }
+
+        bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
+                         frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
+                         frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
+        if (anyEnvMod) {
+            PsgParamType envType(PsgParamType::EnvelopePeriod);
+            float val = envType.valueToNormalized(frameData.getRaw(envType));
+            min = jmin(min, val);
+            max = jmax(max, val);
+        }
+    }
+
+    if (min > max) {
+        min = 0.0f;
+        max = 1.0f;
+    } else {
+        const float oneSemitone = 1.f / PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() / 12.f;
+        const float minRange = 12.f * oneSemitone;
+        if (max - min < minRange) {
+            float center = (min + max) / 2.f;
+            min = center - minRange * 0.5f;
+            max = center + minRange * 0.5f;
+        }
+        const float padding = oneSemitone * 1.5f;
+        min = jmax(0.0f, min - padding);
+        max = jmin(1.0f, max + padding);
+    }
+
+    cachedPitchRange_ = { min, max };
+    return cachedPitchRange_;
 }
 
 PsgClip::Ptr PsgClip::insertTo(

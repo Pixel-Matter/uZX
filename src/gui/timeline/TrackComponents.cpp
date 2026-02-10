@@ -419,6 +419,10 @@ int TrackRowComponent::getTrackHeight() const noexcept {
     return trackViewState.getHeight();
 }
 
+void TrackRowComponent::setResizerVisible(bool visible) {
+    resizer.setVisible(visible);
+}
+
 void TrackRowComponent::trackViewStateChanged() {
     resized();
 }
@@ -511,6 +515,10 @@ void TracksContainerComponent::mouseDown(const MouseEvent& e) {
     }
 }
 
+void TracksContainerComponent::setAutoFitTrackHeights(bool enabled) {
+    autoFitTrackHeights_ = enabled;
+}
+
 int TracksContainerComponent::getIdealHeight() const {
     return std::accumulate (trackRows.begin(), trackRows.end(), 0, [] (auto acc, auto& track) {
         return acc + track->getTrackHeight();
@@ -519,7 +527,6 @@ int TracksContainerComponent::getIdealHeight() const {
 
 void TracksContainerComponent::resized() {
     // also get called on updated zoom
-    const int trackGap = 0;
     const auto headerWidth = trackHeaderOverlay.getWidth();
     auto r = getLocalBounds();
     setSize(r.getWidth(), getHeight());
@@ -527,6 +534,54 @@ void TracksContainerComponent::resized() {
 
     trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
 
+    if (autoFitTrackHeights_ && !trackRows.isEmpty()) {
+        const int totalHeight = getHeight();
+
+        if (totalHeight != lastFitHeight_) {
+            // Container was resized — scale all tracks proportionally
+            int oldTotal = 0;
+            for (auto t : trackRows)
+                oldTotal += t->getTrackHeight();
+
+            if (oldTotal <= 0) oldTotal = totalHeight;
+
+            int y = 0;
+            for (int i = 0; i < trackRows.size(); ++i) {
+                if (i == trackRows.size() - 1) {
+                    // Last track gets remainder
+                    int h = totalHeight - y;
+                    trackRows[i]->setBounds(0, y, getWidth(), h);
+                    trackRows[i]->resized();
+                } else {
+                    int h = roundToInt((double)trackRows[i]->getTrackHeight() / oldTotal * totalHeight);
+                    h = jmax(h, 40);
+                    trackRows[i]->setBounds(0, y, getWidth(), h);
+                    trackRows[i]->resized();
+                    y += h;
+                }
+            }
+        } else {
+            // Same height — a track was manually resized; last track absorbs difference
+            int y = 0;
+            for (int i = 0; i < trackRows.size(); ++i) {
+                if (i == trackRows.size() - 1) {
+                    int h = totalHeight - y;
+                    trackRows[i]->setBounds(0, y, getWidth(), h);
+                    trackRows[i]->resized();
+                } else {
+                    int h = trackRows[i]->getTrackHeight();
+                    trackRows[i]->setBounds(0, y, getWidth(), h);
+                    trackRows[i]->resized();
+                    y += h;
+                }
+            }
+        }
+
+        lastFitHeight_ = totalHeight;
+        return;
+    }
+
+    const int trackGap = 0;
     int y = roundToInt(editViewState.zoom.getViewY());
 
     for (auto t : trackRows) {
@@ -617,6 +672,13 @@ void TracksContainerComponent::buildTracks() {
             addAndMakeVisible(c);
         }
     }
+
+    if (autoFitTrackHeights_) {
+        lastFitHeight_ = 0;
+        for (int i = 0; i < trackRows.size(); ++i)
+            trackRows[i]->setResizerVisible(i < trackRows.size() - 1);
+    }
+
     markAndUpdate(needsResize);
 }
 

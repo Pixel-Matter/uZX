@@ -6,7 +6,7 @@ namespace MoTool {
 
 PlayerDocumentComponent::PlayerDocumentComponent(te::Edit& edit, EditViewState& evs)
     : transportBar_ {evs, {.showRecord = false, .showAutomation = false}}
-    , editComponent_ {edit, evs, {.showDetailsPanel = false}}
+    , editComponent_ {edit, evs, {.showDetailsPanel = false, .autoFitTrackHeights = true}}
     , ayPanel_ {edit, MoToolApp::getSelectionManager()}
 {
     addAndMakeVisible(transportBar_);

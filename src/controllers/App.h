@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "MainController.h"
+#include "PlayerController.h"
 #include "../gui/common/LookAndFeel.h"
 
 namespace MoTool {
@@ -13,6 +14,7 @@ public:
     enum Target {
         uZXStudio,
         uZXTuning,
+        uZXPlayer,
         MoTool
     };
 
@@ -33,7 +35,7 @@ public:
 
     static AppController& getAppController();
     static ArrangerController& getArrangerController();
-    // static TuningController* getTuningController();
+    static PlayerController& getPlayerController();
 
     static ApplicationCommandManager& getCommandManager() {
         return getAppController().getCommandManager();
@@ -48,11 +50,12 @@ public:
     const MoLookAndFeel& getLookAndFeel() const { return lookAndFeel_; }
 
 private:
-    static inline Target target_ = String::fromUTF8(ProjectInfo::projectName) == "μZX Tuning" ? Target::uZXTuning : Target::uZXStudio;
+    static Target target_;  // defined in Main.cpp via MOTOOL_APP_TARGET
 
     MoLookAndFeel lookAndFeel_;
     std::unique_ptr<AppController> appController_;
     std::unique_ptr<ArrangerController> arrangerController_;
+    std::unique_ptr<PlayerController> playerController_;
 };
 
 } // namespace MoTool

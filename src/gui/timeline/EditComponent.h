@@ -10,6 +10,10 @@
 
 namespace MoTool {
 
+struct EditComponentOptions {
+    bool showDetailsPanel = true;
+};
+
 //==============================================================================
 /**
  * Main component for the timeline edit view, containing tracks, ruler, and playhead
@@ -19,7 +23,7 @@ class EditComponent final : public Component,
                       private ValueTree::Listener
                     {
 public:
-    EditComponent(te::Edit&, EditViewState&);
+    EditComponent(te::Edit&, EditViewState&, EditComponentOptions opts = {});
     ~EditComponent() override;
 
 private:
@@ -29,6 +33,7 @@ private:
     void resized() override;
     void paint(Graphics& g) override;
 
+    EditComponentOptions options;
     te::Edit& edit;
     EditViewState& editViewState;
     TimelineGrid grid {editViewState};

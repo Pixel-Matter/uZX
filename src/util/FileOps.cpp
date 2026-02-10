@@ -15,6 +15,7 @@ String getDefaultEditFileSuffix() {
     switch (MoToolApp::getApp().getTarget()) {
         case MoToolApp::Target::uZXStudio:
         case MoToolApp::Target::uZXTuning:
+        case MoToolApp::Target::uZXPlayer:
             return UZX_EDIT_FILE_SUFFIX;
         case MoToolApp::Target::MoTool:
             return MOTOOL_EDIT_FILE_SUFFIX;
@@ -38,8 +39,12 @@ File getRecentEditsDirectory() {
     return storage.getDefaultLoadSaveDirectory("edits");
 }
 
+static String getAppName() {
+    return MoToolApp::getApp().getApplicationName();
+}
+
 static File getTempEditsLocation() {
-    auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(MoToolApp::getApp().getApplicationName() + " Edits");
+    auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(getAppName() + " Edits");
     d.createDirectory();
     return d;
 }
@@ -62,7 +67,7 @@ File suffestSaveAsFileName(te::Edit& edit) {
     File defaultLocation = !isTemp && currentFile.existsAsFile()
                                ? currentFile.getParentDirectory()
                                : File::getSpecialLocation(File::userDocumentsDirectory)
-                                     .getChildFile(MoToolApp::getApp().getApplicationName());
+                                     .getChildFile(getAppName());
 
     auto newEditName = defaultLocation.getChildFile(currentFile.getFileName());
     newEditName = te::getNonExistentSiblingWithIncrementedNumberSuffix(newEditName, false);
@@ -146,7 +151,7 @@ File getRendersDirectory(te::Edit& edit) {
     File rendersDir = editFile.existsAsFile()
         ? editFile.getParentDirectory().getChildFile(editFile.getFileNameWithoutExtension()).withFileExtension("Renders")
         : File::getSpecialLocation(File::userMusicDirectory)
-            .getChildFile(CharPointer_UTF8(ProjectInfo::projectName)).getChildFile("Renders");
+            .getChildFile(getAppName()).getChildFile("Renders");
 
     return rendersDir;
 }

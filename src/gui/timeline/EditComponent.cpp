@@ -9,8 +9,9 @@ namespace MoTool {
 
 
 //==============================================================================
-EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
-    : edit(e)
+EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptions opts)
+    : options(opts)
+    , edit(e)
     , editViewState(evs)
 {
     editViewState.state.addListener(this);
@@ -23,7 +24,8 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs)
     addAndMakeVisible(playhead);
     addAndMakeVisible(ruler);
     addAndMakeVisible(trackViewport);
-    addAndMakeVisible(detailsPanel);
+    if (options.showDetailsPanel)
+        addAndMakeVisible(detailsPanel);
 }
 
 EditComponent::~EditComponent() {
@@ -55,8 +57,10 @@ void EditComponent::resized() {
     auto r = getLocalBounds();
 
     editViewState.zoom.setViewWidthPx(r.getWidth() - headerWidth);
-    detailsPanel.setBounds(r.removeFromBottom(300));
-    detailsPanel.resized();  // for internal components
+    if (options.showDetailsPanel) {
+        detailsPanel.setBounds(r.removeFromBottom(300));
+        detailsPanel.resized();  // for internal components
+    }
     playhead.setBounds(r.withTrimmedLeft(headerWidth));
     ruler.setBounds(r.removeFromTop(rulerHeight).withTrimmedLeft(headerWidth));
     trackViewport.setBounds(r);

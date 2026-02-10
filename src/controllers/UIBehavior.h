@@ -15,12 +15,18 @@ namespace MoTool {
 
 
 class ExtUIBehaviour : public te::UIBehaviour {
+    static BaseController& getActiveController() {
+        if (MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer)
+            return MoToolApp::getPlayerController();
+        return MoToolApp::getArrangerController();
+    }
+
 public:
     ExtUIBehaviour() = default;
 
     // Only single edit can be opened at a time
     te::Edit* getCurrentlyFocusedEdit()                                   override {
-        return MoToolApp::getArrangerController().getEdit();
+        return getActiveController().getEdit();
     }
     te::Edit* getLastFocusedEdit()                                        override {
         return getCurrentlyFocusedEdit();
@@ -96,7 +102,7 @@ public:
         until the task is done.
     */
     void runTaskWithProgressBar(te::ThreadPoolJobWithProgress& job) override {
-        auto& engine = MoToolApp::getArrangerController().getEngine();
+        auto& engine = getActiveController().getEngine();
         auto& jobManager = engine.getBackgroundJobs();
         jobManager.addJob(&job, false);
 
@@ -123,7 +129,7 @@ public:
         o.dialogTitle = TRANS("Audio Settings");
         o.dialogBackgroundColour = LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId);
         o.content.setOwned(
-            new AudioDeviceSelectorComponent(MoToolApp::getArrangerController().getEngine().getDeviceManager().deviceManager,
+            new AudioDeviceSelectorComponent(getActiveController().getEngine().getDeviceManager().deviceManager,
                                              0, 512, 1, 512,
                                              true, true, true, false));
         o.useNativeTitleBar = true;
@@ -169,23 +175,23 @@ public:
     void resetPeaks()                                           override {}
 
     void zoomHorizontal(float amount)                          override {
-        MoToolApp::getArrangerController().zoomHorizontal(amount);
+        getActiveController().zoomHorizontal(amount);
     }
 
     void zoomVertical(float amount)                            override {
-        MoToolApp::getArrangerController().zoomVertical(amount);
+        getActiveController().zoomVertical(amount);
     }
 
     void zoomToSelection()                                      override {
-        MoToolApp::getArrangerController().zoomToSelection();
+        getActiveController().zoomToSelection();
     }
 
     void zoomToFitHorizontally()                                override {
-        MoToolApp::getArrangerController().zoomToFitHorizontally();
+        getActiveController().zoomToFitHorizontally();
     }
 
     void zoomToFitVertically()                                  override {
-        MoToolApp::getArrangerController().zoomToFitVertically();
+        getActiveController().zoomToFitVertically();
     }
 
     //==============================================================================

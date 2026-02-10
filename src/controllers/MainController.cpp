@@ -40,7 +40,7 @@ void registerPlugins(te::Engine& engine) {
 
 AppController::AppController()
     : engine_ {
-        std::make_unique<PropertyStorage>(CharPointer_UTF8(ProjectInfo::projectName)),
+        std::make_unique<PropertyStorage>(MoToolApp::getApp().getApplicationName()),
         std::make_unique<ExtUIBehaviour>(),
         std::make_unique<ExtEngineBehaviour>()
     }
@@ -196,13 +196,19 @@ void AppController::showAboutDialog() {
 // MenuBarModel
 //==============================================================================
 StringArray AppController::getMenuBarNames() {
+    if (MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer)
+        return { "File", "Transport", "View", "Settings", "Help" };
     return MainAppCommands::getMenuBarNames();
 }
 
 PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menuName) {
+    bool isPlayer = MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer;
+
     if (menuName == "File") {
         PopupMenu menu;
-        menu.addCommandItem(&commandManager_, MainAppCommands::fileNew);
+
+        if (!isPlayer)
+            menu.addCommandItem(&commandManager_, MainAppCommands::fileNew);
         menu.addCommandItem(&commandManager_, MainAppCommands::fileOpen);
 
         // Recent files submenu - populate dynamically
@@ -221,15 +227,38 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         }
 
         menu.addSeparator();
-        menu.addCommandItem(&commandManager_, MainAppCommands::fileSave);
-        menu.addCommandItem(&commandManager_, MainAppCommands::fileSaveAs);
-        menu.addCommandItem(&commandManager_, MainAppCommands::fileReveal);
-        menu.addSeparator();
+
+        if (!isPlayer) {
+            menu.addCommandItem(&commandManager_, MainAppCommands::fileSave);
+            menu.addCommandItem(&commandManager_, MainAppCommands::fileSaveAs);
+            menu.addCommandItem(&commandManager_, MainAppCommands::fileReveal);
+            menu.addSeparator();
+        }
+
         menu.addCommandItem(&commandManager_, MainAppCommands::fileImportPsg);
-        menu.addCommandItem(&commandManager_, MainAppCommands::fileImportAudio);
+        if (!isPlayer)
+            menu.addCommandItem(&commandManager_, MainAppCommands::fileImportAudio);
         menu.addSeparator();
         menu.addCommandItem(&commandManager_, MainAppCommands::fileQuit);
 
+        return menu;
+    }
+
+    if (isPlayer) {
+        // Reduced menu set for player
+        PopupMenu menu;
+        if (menuName == "Transport") {
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportPlay);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportToStart);
+        } else if (menuName == "View") {
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomToProject);
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomIn);
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomOut);
+        } else if (menuName == "Settings") {
+            menu.addCommandItem(&commandManager_, MainAppCommands::settingsAudioMidi);
+        } else if (menuName == "Help") {
+            menu.addCommandItem(&commandManager_, MainAppCommands::helpAbout);
+        }
         return menu;
     }
 
@@ -253,8 +282,11 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
     // Get main command info, name, desc, keypresses
     MainAppCommands::getCommandInfo(commandID, result);
 
-    auto& arrangerController = MoToolApp::getArrangerController();
-    auto* edit = arrangerController.getEdit();
+    bool isPlayer = MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer;
+    BaseController& controller = isPlayer
+        ? static_cast<BaseController&>(MoToolApp::getPlayerController())
+        : static_cast<BaseController&>(MoToolApp::getArrangerController());
+    auto* edit = controller.getEdit();
 
     // Update command status based on current state
     switch (commandID) {
@@ -324,11 +356,11 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::transportRecord:
-            result.setActive(edit != nullptr && !edit->getTransport().isRecording());
+            result.setActive(!isPlayer && edit != nullptr && !edit->getTransport().isRecording());
             break;
 
         case MainAppCommands::transportRecordStop:
-            result.setActive(edit != nullptr && edit->getTransport().isRecording());
+            result.setActive(!isPlayer && edit != nullptr && edit->getTransport().isRecording());
             break;
 
         case MainAppCommands::transportToStart:
@@ -349,16 +381,18 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
 
 bool AppController::perform(const InvocationInfo& info) {
     // DBG("MainWindow::perform: " << info.commandID);
-    auto& arrangerController = MoToolApp::getArrangerController();
-    auto* edit = arrangerController.getEdit();
+    bool isPlayer = MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer;
 
     switch (info.commandID) {
         case MainAppCommands::fileNew:
-            arrangerController.handleNew();
+            if (!isPlayer) MoToolApp::getArrangerController().handleNew();
             break;
 
         case MainAppCommands::fileOpen:
-            arrangerController.handleOpen();
+            if (isPlayer)
+                MoToolApp::getPlayerController().handleOpen();
+            else
+                MoToolApp::getArrangerController().handleOpen();
             break;
 
         case MainAppCommands::fileOpenRecent1:
@@ -369,37 +403,54 @@ bool AppController::perform(const InvocationInfo& info) {
         case MainAppCommands::fileOpenRecent6:
         case MainAppCommands::fileOpenRecent7:
         case MainAppCommands::fileOpenRecent8:
-            arrangerController.handleOpenRecent(info.commandID - MainAppCommands::fileOpenRecent1);
+            if (isPlayer)
+                MoToolApp::getPlayerController().handleOpenRecent(info.commandID - MainAppCommands::fileOpenRecent1);
+            else
+                MoToolApp::getArrangerController().handleOpenRecent(info.commandID - MainAppCommands::fileOpenRecent1);
             break;
 
         case MainAppCommands::fileClearRecentFiles:
-            arrangerController.handleClearRecentFiles();
+            if (isPlayer)
+                MoToolApp::getPlayerController().handleClearRecentFiles();
+            else
+                MoToolApp::getArrangerController().handleClearRecentFiles();
             break;
 
         case MainAppCommands::fileSave:
-            te::AppFunctions::saveEdit();
+            if (!isPlayer) te::AppFunctions::saveEdit();
             break;
 
         case MainAppCommands::fileSaveAs:
-            arrangerController.handleSaveAs();
+            if (!isPlayer) MoToolApp::getArrangerController().handleSaveAs();
             break;
 
         case MainAppCommands::fileReveal:
-            if (edit != nullptr) {
-                EditFileOps::saveEdit(*edit, false, true, false);
-                te::EditFileOperations(*edit).getEditFile().revealToUser();
+            if (!isPlayer) {
+                auto* edit = MoToolApp::getArrangerController().getEdit();
+                if (edit != nullptr) {
+                    EditFileOps::saveEdit(*edit, false, true, false);
+                    te::EditFileOperations(*edit).getEditFile().revealToUser();
+                }
             }
             break;
 
         case MainAppCommands::fileImportPsg:
-            if (edit != nullptr) {
-                importPsgAsClip(*edit, selectionManager_);
+            if (isPlayer) {
+                MoToolApp::getPlayerController().handleImportPsgReplace();
+            } else {
+                auto* edit = MoToolApp::getArrangerController().getEdit();
+                if (edit != nullptr) {
+                    importPsgAsClip(*edit, selectionManager_);
+                }
             }
             break;
 
         case MainAppCommands::fileImportAudio:
-            if (edit != nullptr) {
-                importAudioAsClip(*edit, selectionManager_);
+            if (!isPlayer) {
+                auto* edit = MoToolApp::getArrangerController().getEdit();
+                if (edit != nullptr) {
+                    importAudioAsClip(*edit, selectionManager_);
+                }
             }
             break;
 
@@ -424,11 +475,11 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::transportRecord:
-            arrangerController.handleRecord();
+            if (!isPlayer) MoToolApp::getArrangerController().handleRecord();
             break;
 
         case MainAppCommands::transportRecordStop:
-            arrangerController.handleRecord();
+            if (!isPlayer) MoToolApp::getArrangerController().handleRecord();
             break;
 
         case MainAppCommands::transportToStart:
@@ -445,8 +496,11 @@ bool AppController::perform(const InvocationInfo& info) {
 
         // Add commands
         case MainAppCommands::addAudioTrack:
-            if (edit != nullptr) {
-                Helpers::addAndSelectAudioTrack(*edit, selectionManager_);
+            if (!isPlayer) {
+                auto* edit = MoToolApp::getArrangerController().getEdit();
+                if (edit != nullptr) {
+                    Helpers::addAndSelectAudioTrack(*edit, selectionManager_);
+                }
             }
             break;
 
@@ -458,8 +512,11 @@ bool AppController::perform(const InvocationInfo& info) {
 
         // Track commands
         case MainAppCommands::trackRenderToAudio:
-            if (edit != nullptr) {
-                Helpers::renderSelectedTracksToAudioTrack(*edit, selectionManager_);
+            if (!isPlayer) {
+                auto* edit = MoToolApp::getArrangerController().getEdit();
+                if (edit != nullptr) {
+                    Helpers::renderSelectedTracksToAudioTrack(*edit, selectionManager_);
+                }
             }
             break;
 

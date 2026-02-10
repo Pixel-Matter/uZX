@@ -142,7 +142,7 @@ AboutDialogComponent::AboutDialogComponent() {
     companyLabel_.setFont(FontOptions(16.0f, Font::plain));
     addAndMakeVisible(companyLabel_);
 
-    titleLabel_.setText(String::fromUTF8(ProjectInfo::projectName), dontSendNotification);
+    titleLabel_.setText(JUCEApplication::getInstance()->getApplicationName(), dontSendNotification);
     titleLabel_.setFont(FontOptions(48.0f, Font::bold));
     titleLabel_.setJustificationType(Justification::centred);
     titleLabel_.setColour(Label::textColourId, Colors::Theme::textPrimary);

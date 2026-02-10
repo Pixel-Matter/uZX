@@ -20,5 +20,9 @@
 
 using namespace MoTool;
 
+#ifndef MOTOOL_APP_TARGET
+#define MOTOOL_APP_TARGET 0
+#endif
+MoToolApp::Target MoToolApp::target_ = static_cast<MoToolApp::Target>(MOTOOL_APP_TARGET);
 
 START_JUCE_APPLICATION(MoToolApp)

@@ -315,7 +315,7 @@ te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionMa
 
 File getLastCsvExportDirectory() {
     PropertiesFile::Options options;
-    options.applicationName = CharPointer_UTF8(ProjectInfo::projectName);
+    options.applicationName = JUCEApplication::getInstance()->getApplicationName();
     options.filenameSuffix = ".settings";
     options.osxLibrarySubFolder = "Application Support";
 
@@ -334,7 +334,7 @@ File getLastCsvExportDirectory() {
 
 void setLastCsvExportDirectory(const File& directory) {
     PropertiesFile::Options options;
-    options.applicationName = CharPointer_UTF8(ProjectInfo::projectName);
+    options.applicationName = JUCEApplication::getInstance()->getApplicationName();
     options.filenameSuffix = ".settings";
     options.osxLibrarySubFolder = "Application Support";
 

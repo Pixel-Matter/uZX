@@ -34,19 +34,25 @@ private:
 };
 
 
+struct TransportBarOptions {
+    bool showRecord = true;
+    bool showAutomation = true;
+};
+
 class TransportBar  : public Component,
                       private ValueTree::Listener,
                       private ChangeListener,
                       private tracktion::AutomationRecordManager::Listener
 {
 public:
-    explicit TransportBar(EditViewState& evs);
+    explicit TransportBar(EditViewState& evs, TransportBarOptions opts = {});
     ~TransportBar() override;
 
     void paint(Graphics& g) override;
     void resized() override;
 
 private:
+    TransportBarOptions options_;
     EditViewState& viewState_;
     te::Edit& edit_;
 

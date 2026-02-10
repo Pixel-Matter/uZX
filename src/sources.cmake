@@ -49,6 +49,7 @@ set(GUI_SOURCES
 
     controllers/MainController.cpp
     controllers/TuningController.cpp
+    controllers/PlayerController.cpp
     controllers/App.cpp
     controllers/EditState.cpp
 
@@ -56,6 +57,7 @@ set(GUI_SOURCES
     gui/common/Transport.cpp
     gui/main/AboutDialog.cpp
     gui/main/MainWindow.cpp
+    gui/main/PlayerDocument.cpp
     gui/main/Footer.cpp
     gui/tuning/TuningPreviewGrid.cpp
     gui/tuning/TuningPreview.cpp
@@ -70,6 +72,7 @@ set(GUI_SOURCES
     gui/timeline/Ruler.cpp
     gui/timeline/DetailsPanelComponent.cpp
 
+    gui/devices/AYPluginSidePanel.cpp
     gui/devices/PluginTree.cpp
     gui/devices/TrackDevicesPanel.cpp
     gui/devices/PluginDeviceUI.cpp

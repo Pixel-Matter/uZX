@@ -19,8 +19,9 @@ double BpmControl::snapValue(double attemptedValue, DragMode) {
 }
 
 
-TransportBar::TransportBar(EditViewState& evs)
-    : viewState_{evs}
+TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
+    : options_{opts}
+    , viewState_{evs}
     , edit_{evs.edit}
     , transport_{edit_.getTransport()}
 {
@@ -30,19 +31,22 @@ TransportBar::TransportBar(EditViewState& evs)
     edit_.getAutomationRecordManager().addListener(this);
     timecodeFormat.referTo(edit_.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
 
-    ::Helpers::addAndMakeVisible (*this, {
-        &rewindButton_,
-        &playPauseButton_,
-        &recordButton_,
-        &automationLabel_,
-        &autoReadButton_,
-        &autoWriteButton_,
-        &bpmSlider_,
-        &beatFramesSlider_,
-        &timeSigLabel_,
-        &transportReadout_,
-        &masterVolumeSlider_
-    });
+    addAndMakeVisible(rewindButton_);
+    addAndMakeVisible(playPauseButton_);
+    addAndMakeVisible(bpmSlider_);
+    addAndMakeVisible(beatFramesSlider_);
+    addAndMakeVisible(timeSigLabel_);
+    addAndMakeVisible(transportReadout_);
+    addAndMakeVisible(masterVolumeSlider_);
+
+    if (options_.showRecord)
+        addAndMakeVisible(recordButton_);
+    if (options_.showAutomation) {
+        addAndMakeVisible(automationLabel_);
+        addAndMakeVisible(autoReadButton_);
+        addAndMakeVisible(autoWriteButton_);
+    }
+
     masterVolumeSlider_.setPopupDisplayEnabled(true, true, nullptr);
     masterVolumeSlider_.setNumDecimalPlacesToDisplay(2);
 
@@ -50,31 +54,42 @@ TransportBar::TransportBar(EditViewState& evs)
         rewindButton_.setCommandToTrigger(mgr, MainAppCommands::transportToStart, true);
         playPauseButton_.setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);
     }
-    recordButton_.onClick = [this] {
-        bool wasRecording = edit_.getTransport().isRecording();
-        if (!wasRecording) {
-            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(MainAppCommands::transportRecord, false);
-        } else {
-            edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(MainAppCommands::transportRecordStop, false);
-        }
-    };
 
-    autoReadButton_.setClickingTogglesState(true);
-    autoReadButton_.onClick = [this] {
-        auto& arm = edit_.getAutomationRecordManager();
-        arm.setReadingAutomation(!arm.isReadingAutomation());
-    };
+    if (options_.showRecord) {
+        recordButton_.onClick = [this] {
+            bool wasRecording = edit_.getTransport().isRecording();
+            if (!wasRecording) {
+                edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(MainAppCommands::transportRecord, false);
+            } else {
+                edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(MainAppCommands::transportRecordStop, false);
+            }
+        };
+        recordButton_.setColour(TextButton::textColourOnId, Colours::red);
+    }
 
-    autoWriteButton_.setClickingTogglesState(true);
-    autoWriteButton_.setColour(TextButton::buttonOnColourId, Colours::red);
-    autoWriteButton_.onClick = [this] {
-        auto& arm = edit_.getAutomationRecordManager();
-        arm.setWritingAutomation(!arm.isWritingAutomation());
-    };
+    if (options_.showAutomation) {
+        autoReadButton_.setClickingTogglesState(true);
+        autoReadButton_.onClick = [this] {
+            auto& arm = edit_.getAutomationRecordManager();
+            arm.setReadingAutomation(!arm.isReadingAutomation());
+        };
+
+        autoWriteButton_.setClickingTogglesState(true);
+        autoWriteButton_.setColour(TextButton::buttonOnColourId, Colours::red);
+        autoWriteButton_.onClick = [this] {
+            auto& arm = edit_.getAutomationRecordManager();
+            arm.setWritingAutomation(!arm.isWritingAutomation());
+        };
+
+        automationLabel_.setText("Automation:", dontSendNotification);
+        automationLabel_.setJustificationType(Justification::centredRight);
+    }
 
     updatePlayButtonText(transport_.isPlaying());
-    updateRecordButtonText(transport_.isRecording());
-    updateAutomationButtons();
+    if (options_.showRecord)
+        updateRecordButtonText(transport_.isRecording());
+    if (options_.showAutomation)
+        updateAutomationButtons();
 
     bpmSlider_.onValueChange = [this] {
         auto bpm = bpmSlider_.getValue();
@@ -90,16 +105,11 @@ TransportBar::TransportBar(EditViewState& evs)
     beatFramesSlider_.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
     beatFramesSlider_.setTextValueSuffix(" frames/beat");
 
-    recordButton_.setColour(TextButton::textColourOnId, Colours::red);
-
     // Apply ReadoutLookAndFeel to all numeric controls
     bpmSlider_.setLookAndFeel(&readoutLookAndFeel_);
     beatFramesSlider_.setLookAndFeel(&readoutLookAndFeel_);
     readoutLookAndFeel_.setupReadoutLabel(timeSigLabel_);
     readoutLookAndFeel_.setupReadoutLabel(transportReadout_);
-
-    automationLabel_.setText("Automation:", dontSendNotification);
-    automationLabel_.setJustificationType(Justification::centredRight);
 
     updateTimeLabels(transport_.getPosition());
 }
@@ -148,17 +158,21 @@ void TransportBar::resized() {
     b.removeFromLeft(spacing);
     playPauseButton_.setBounds(b.removeFromLeft(w * 2));
     b.removeFromLeft(spacing);
-    recordButton_.setBounds(b.removeFromLeft(w * 2));
+    if (options_.showRecord)
+        recordButton_.setBounds(b.removeFromLeft(w * 2));
 
     b.removeFromLeft(spacing);
 
     transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
-    b.removeFromLeft(spacing);
-    automationLabel_.setBounds(b.removeFromLeft(w * 3));
-    b.removeFromLeft(spacing);
-    autoReadButton_.setBounds(b.removeFromLeft(w * 2));
-    b.removeFromLeft(spacing);
-    autoWriteButton_.setBounds(b.removeFromLeft(w * 2));
+
+    if (options_.showAutomation) {
+        b.removeFromLeft(spacing);
+        automationLabel_.setBounds(b.removeFromLeft(w * 3));
+        b.removeFromLeft(spacing);
+        autoReadButton_.setBounds(b.removeFromLeft(w * 2));
+        b.removeFromLeft(spacing);
+        autoWriteButton_.setBounds(b.removeFromLeft(w * 2));
+    }
 
     //----------------------------------------------------------------------
     // shift everything to the center
@@ -168,11 +182,14 @@ void TransportBar::resized() {
     timeSigLabel_.setBounds(timeSigLabel_.getBounds().withX(timeSigLabel_.getX() + shiftBy));
     rewindButton_.setBounds(rewindButton_.getBounds().withX(rewindButton_.getX() + shiftBy));
     playPauseButton_.setBounds(playPauseButton_.getBounds().withX(playPauseButton_.getX() + shiftBy));
-    recordButton_.setBounds(recordButton_.getBounds().withX(recordButton_.getX() + shiftBy));
+    if (options_.showRecord)
+        recordButton_.setBounds(recordButton_.getBounds().withX(recordButton_.getX() + shiftBy));
     transportReadout_.setBounds(transportReadout_.getBounds().withX(transportReadout_.getX() + shiftBy));
-    automationLabel_.setBounds(automationLabel_.getBounds().withX(automationLabel_.getX() + shiftBy));
-    autoReadButton_.setBounds(autoReadButton_.getBounds().withX(autoReadButton_.getX() + shiftBy));
-    autoWriteButton_.setBounds(autoWriteButton_.getBounds().withX(autoWriteButton_.getX() + shiftBy));
+    if (options_.showAutomation) {
+        automationLabel_.setBounds(automationLabel_.getBounds().withX(automationLabel_.getX() + shiftBy));
+        autoReadButton_.setBounds(autoReadButton_.getBounds().withX(autoReadButton_.getX() + shiftBy));
+        autoWriteButton_.setBounds(autoWriteButton_.getBounds().withX(autoWriteButton_.getX() + shiftBy));
+    }
 
     masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
 
@@ -181,7 +198,8 @@ void TransportBar::resized() {
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
     // TODO use flagged async updater to avoid too many updates
     updatePlayButtonText(transport_.isPlaying());
-    updateRecordButtonText(transport_.isRecording());
+    if (options_.showRecord)
+        updateRecordButtonText(transport_.isRecording());
     // TODO separate updating of tempo, timsig and fps controls
     updateTimeLabels(transport_.getPosition());
 }

@@ -289,6 +289,14 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_options(${PLAYER_TARGET_NAME} PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
     target_link_options(${TEST_TARGET_NAME}   PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
 
+    # Replace JUCE-generated Icon.icns with our complete icon set (all sizes)
+    add_custom_command(TARGET ${PLAYER_TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_SOURCE_DIR}/resources/icon_player.icns"
+            "$<TARGET_BUNDLE_DIR:${PLAYER_TARGET_NAME}>/Contents/Resources/Icon.icns"
+        COMMENT "Installing complete icon set for ${PLAYER_TARGET_NAME}"
+    )
+
     # Code Signing Configuration
     # Set from environment variable or use default
     if(DEFINED ENV{CODESIGN_IDENTITY})

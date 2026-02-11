@@ -184,8 +184,8 @@ AboutDialogComponent::AboutDialogComponent() {
     infoText_.setText(infoContent);
     addAndMakeVisible(infoText_);
 
-    auto year = String(Time::getCurrentTime().getYear());
-    copyrightLabel_.setText(String::fromUTF8("© ") + year + " "
+    auto year = buildTimestamp.substring(0, 4);
+    copyrightLabel_.setText(String::fromUTF8("© 2025–") + year + " "
                             + String::fromUTF8(ProjectInfo::companyName), dontSendNotification);
     copyrightLabel_.setJustificationType(Justification::centred);
     copyrightLabel_.setColour(Label::textColourId, Colors::Theme::textSecondary);

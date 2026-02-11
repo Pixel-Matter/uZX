@@ -39,10 +39,25 @@ const String MoToolApp::getApplicationVersion() {
 }
 
 bool MoToolApp::moreThanOneInstanceAllowed()  {
-    return true;
+    return target_ != Target::uZXPlayer;
 }
 
-void MoToolApp::initialise(const String&) {
+void MoToolApp::initialise(const String& commandLineParameters) {
+    if (target_ == Target::uZXPlayer && commandLineParameters.isNotEmpty()) {
+        // Handle file passed as command-line argument (e.g. double-click from Finder)
+        auto file = File(commandLineParameters.unquoted().trim());
+        if (file.existsAsFile())
+            playerController_->handleOpenFile(file);
+    }
+}
+
+void MoToolApp::anotherInstanceStarted(const String& commandLine) {
+    if (target_ == Target::uZXPlayer && commandLine.isNotEmpty()) {
+        auto file = File(commandLine.unquoted().trim());
+        if (file.existsAsFile())
+            playerController_->handleOpenFile(file);
+        playerController_->bringWindowToFront();
+    }
 }
 
 void MoToolApp::shutdown() {

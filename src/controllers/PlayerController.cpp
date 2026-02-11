@@ -14,9 +14,15 @@ using namespace MoTool::Helpers;
 
 namespace MoTool {
 
+static String makePlayerWindowTitle(const String& filename = {}) {
+    auto appName = String::fromUTF8("μZX Player");
+    if (filename.isEmpty())
+        return appName;
+    return filename + String::fromUTF8(" — ") + appName;
+}
+
 void PlayerController::initialize() {
-    auto title = String::fromUTF8("Pixel Matter μZX Player v") + MoToolApp::getApp().getApplicationVersion();
-    setMainWindowTitle(title);
+    setMainWindowTitle(makePlayerWindowTitle());
     window_.setComponentID("player");
 
     #if !JUCE_MAC
@@ -74,20 +80,31 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     editViewState_->showHeaders = false;
 
     window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), true);
-    setMainWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
+    setMainWindowTitle(makePlayerWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension()));
     window_.setSize(w, h);
     window_.repaint();
 }
 
 void PlayerController::handleOpen() {
     auto location = EditFileOps::getRecentEditsDirectory();
-    FileChooser fc("Open file", location, EditFileOps::getAppFileGlob());
+    FileChooser fc("Open file", location, "*.uzx;*.psg");
     if (fc.browseForFileToOpen()) {
         auto selectedFile = fc.getResult();
         if (selectedFile.existsAsFile()) {
-            EditFileOps::setRecentEditsDirectory(selectedFile);
+            handleOpenFile(selectedFile);
         }
-        auto newEdit = createOrLoadEdit(selectedFile);
+    }
+}
+
+void PlayerController::handleOpenFile(const File& file) {
+    if (!file.existsAsFile()) return;
+
+    auto ext = file.getFileExtension().toLowerCase();
+    if (ext == ".psg") {
+        importPsgToNewEdit(file);
+    } else if (ext == ".uzx") {
+        EditFileOps::setRecentEditsDirectory(file);
+        auto newEdit = createOrLoadEdit(file);
         setEdit(std::move(newEdit), true);
     }
 }
@@ -197,7 +214,7 @@ void PlayerController::importPsgToNewEdit(const File& f) {
 
     // Set the fully-prepared edit (rebuilds UI with clip already present)
     setEdit(std::move(newEdit), true);
-    setMainWindowTitle(f.getFileNameWithoutExtension());
+    setMainWindowTitle(makePlayerWindowTitle(f.getFileNameWithoutExtension()));
     zoomToFitHorizontally();
 }
 

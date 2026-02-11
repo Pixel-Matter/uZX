@@ -29,6 +29,9 @@ juce_add_gui_app(${PLAYER_TARGET_NAME}
     PRODUCT_NAME "μZX Player"
     COMPANY_NAME "Pixel Matter"
     BUNDLE_ID "org.pixelmatter.${PLAYER_TARGET_NAME}"
+    ICON_BIG "${CMAKE_SOURCE_DIR}/resources/icon_player_big.png"
+    ICON_SMALL "${CMAKE_SOURCE_DIR}/resources/icon_player_small.png"
+    DOCUMENT_EXTENSIONS psg uzx
 )
 
 juce_add_console_app(${TEST_TARGET_NAME})

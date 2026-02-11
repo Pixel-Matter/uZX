@@ -19,6 +19,7 @@ public:
     void zoomToFitHorizontally() override;
 
     void handleOpen();
+    void handleOpenFile(const File& file);
     void handleOpenRecent(int fileIndex);
     void handleClearRecentFiles();
     void handleImportPsgReplace();

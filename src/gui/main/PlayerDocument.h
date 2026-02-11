@@ -10,12 +10,17 @@ namespace MoTool {
 
 //==============================================================================
 
-class PlayerDocumentComponent : public Component {
+class PlayerDocumentComponent : public Component,
+                                public FileDragAndDropTarget {
 public:
     PlayerDocumentComponent(te::Edit& edit, EditViewState& evs);
     ~PlayerDocumentComponent() override;
 
     void resized() override;
+
+    // FileDragAndDropTarget
+    bool isInterestedInFileDrag(const StringArray& files) override;
+    void filesDropped(const StringArray& files, int x, int y) override;
 
 private:
     TransportBar transportBar_;

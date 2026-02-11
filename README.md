@@ -107,3 +107,7 @@ This subsystem is like your favorite DAW.
     - MIDI, CC stream for specific music chip
     - Audio, (emulated chip output)
     - Data, PSG binary data for native/emulated player
+
+## μZX Player
+
+Lightweight playback-only variant of μZX Studio. Same codebase, reduced feature set. Users can open `.uzx` projects and `.psg` files for playback without editing capabilities.

@@ -25,9 +25,11 @@ public:
 
     bool moreThanOneInstanceAllowed() override;
 
-    void initialise(const String&) override;
+    void initialise(const String& commandLineParameters) override;
 
     void shutdown() override;
+
+    void anotherInstanceStarted(const String& commandLine) override;
 
     void systemRequestedQuit() override;
 

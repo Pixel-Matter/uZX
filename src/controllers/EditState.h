@@ -61,7 +61,7 @@ public:
     void zoomHorizontally(double factor);
     void zoomAroundX(double factor, int anchorX);
 
-    int getViewWidthPx() const noexcept;
+    inline int getViewWidthPx() const noexcept { return viewWidthPx.load(); }
     void setViewWidthPx(int w) noexcept;
 
     te::TimeDuration getViewSpan() const;

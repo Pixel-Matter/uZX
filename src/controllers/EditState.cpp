@@ -48,10 +48,6 @@ void ZoomViewState::setRange(te::TimeRange range) {
     markAndUpdate(updateZoom);
 }
 
-inline int ZoomViewState::getViewWidthPx() const noexcept {
-    return viewWidthPx.load();
-}
-
 void ZoomViewState::setViewWidthPx(int w) noexcept {
     if (w <= 0)
         return;

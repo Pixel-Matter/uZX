@@ -293,10 +293,32 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_options(${PLAYER_TARGET_NAME} PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
     target_link_options(${TEST_TARGET_NAME}   PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
 
-    # Replace JUCE-generated Icon.icns with our complete icon set (all sizes)
+    # Regenerate icon_player.icns from source PNGs when they change
+    set(PLAYER_ICON_SOURCE "${CMAKE_SOURCE_DIR}/resources/icon_player_big.png")
+    set(PLAYER_ICONSET_DIR "${CMAKE_SOURCE_DIR}/resources/icon_player.iconset")
+    set(PLAYER_ICNS_FILE   "${CMAKE_SOURCE_DIR}/resources/icon_player.icns")
+
+    add_custom_command(
+        OUTPUT "${PLAYER_ICNS_FILE}"
+        COMMAND ${CMAKE_COMMAND}
+            -DSOURCE_PNG=${PLAYER_ICON_SOURCE}
+            -DICONSET_DIR=${PLAYER_ICONSET_DIR}
+            -DICNS_OUTPUT=${PLAYER_ICNS_FILE}
+            -P "${CMAKE_SOURCE_DIR}/cmake/GenerateIconset.cmake"
+        DEPENDS
+            "${PLAYER_ICON_SOURCE}"
+            "${CMAKE_SOURCE_DIR}/resources/icon_player_small.png"
+            "${CMAKE_SOURCE_DIR}/cmake/GenerateIconset.cmake"
+        COMMENT "Generating player iconset from source PNGs"
+    )
+
+    add_custom_target(player_icons DEPENDS "${PLAYER_ICNS_FILE}")
+    add_dependencies(${PLAYER_TARGET_NAME} player_icons)
+
+    # Install complete icon set into app bundle (replaces JUCE-generated Icon.icns)
     add_custom_command(TARGET ${PLAYER_TARGET_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_SOURCE_DIR}/resources/icon_player.icns"
+            "${PLAYER_ICNS_FILE}"
             "$<TARGET_BUNDLE_DIR:${PLAYER_TARGET_NAME}>/Contents/Resources/Icon.icns"
         COMMENT "Installing complete icon set for ${PLAYER_TARGET_NAME}"
     )

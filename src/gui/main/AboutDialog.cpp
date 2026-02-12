@@ -166,6 +166,9 @@ AboutDialogComponent::AboutDialogComponent() {
     if (channelStr.isNotEmpty() && gitHash.isNotEmpty()) {
         coreInfo += "+" + gitHash;
     }
+    if (MoTool::Build::gitDirty) {
+        coreInfo += "-dirty";
+    }
     version += " (" + coreInfo + ")";
 
     infoLines.add(version);

@@ -209,14 +209,20 @@ PsgParamEditorComponent::PsgParamEditorComponent(EditViewState& evs, TimelineGri
 {
     setTimes(editViewState.zoom.getRange().getStart(), editViewState.zoom.getRange().getEnd());
     evs.zoom.addListener(this);
+    grid.addListener(this);
 }
 
 PsgParamEditorComponent::~PsgParamEditorComponent() {
     editViewState.zoom.removeListener(this);
+    grid.removeListener(this);
 }
 
 void PsgParamEditorComponent::zoomChanged() {
     setTimes(editViewState.zoom.getRange().getStart(), editViewState.zoom.getRange().getEnd());
+    repaint();
+}
+
+void PsgParamEditorComponent::gridChanged() {
     repaint();
 }
 

@@ -245,6 +245,7 @@ TrackBodyComponent::TrackBodyComponent(EditViewState& evs, TimelineGrid& g, te::
     track->state.addListener(this);
     editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
+    grid.addListener(this);
 
     track->edit.getTransport().addChangeListener(this);
     editViewState.selectionManager.addChangeListener(this);
@@ -260,6 +261,7 @@ TrackBodyComponent::~TrackBodyComponent() {
     editViewState.selectionManager.removeChangeListener(this);
     editViewState.state.removeListener(this);
     editViewState.zoom.removeListener(this);
+    grid.removeListener(this);
 }
 
 void TrackBodyComponent::paint(Graphics& g) {
@@ -300,6 +302,10 @@ void TrackBodyComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce
 
 void TrackBodyComponent::zoomChanged() {
     markAndUpdate(updateZoom);
+}
+
+void TrackBodyComponent::gridChanged() {
+    repaint();
 }
 
 void TrackBodyComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {
@@ -490,6 +496,7 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
     editViewState.selectionManager.addChangeListener(this);
     editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
+    grid.addListener(this);
 
     addAndMakeVisible(trackHeaderOverlay);
     trackHeaderOverlay.setAlwaysOnTop(true);
@@ -503,6 +510,7 @@ TracksContainerComponent::~TracksContainerComponent() {
     editViewState.state.removeListener(this);
     editViewState.selectionManager.removeChangeListener(this);
     edit.state.removeListener(this);
+    grid.removeListener(this);
 }
 
 void TracksContainerComponent::mouseDown(const MouseEvent& e) {
@@ -631,6 +639,10 @@ void TracksContainerComponent::valueTreeChildOrderChanged(juce::ValueTree& v, in
 }
 
 void TracksContainerComponent::zoomChanged() {
+    markAndUpdate(needsRepaint);
+}
+
+void TracksContainerComponent::gridChanged() {
     markAndUpdate(needsRepaint);
 }
 

@@ -33,7 +33,7 @@ endif()
 
 if (APPLE)
     set (CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE INTERNAL "")
-    # set (CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures")
+    set (CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures")
 endif()
 
 # Global project settings

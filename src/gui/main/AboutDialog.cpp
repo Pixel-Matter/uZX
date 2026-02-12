@@ -1,5 +1,6 @@
 #include "AboutDialog.h"
 #include "version.h"
+#include "controllers/App.h"
 #include <cmath>
 
 using namespace juce;
@@ -153,17 +154,24 @@ AboutDialogComponent::AboutDialogComponent() {
     addAndMakeVisible(websiteLink_);
 
     StringArray infoLines;
-    const auto versionBase = String::fromUTF8(ProjectInfo::versionString);
-    auto version = String("Version ") + versionBase;
+    auto version = String("Version ") + MoToolApp::getTargetVersion();
 
-    auto suffix = String::fromUTF8(MoTool::Build::versionSuffix);
-    if (suffix.isNotEmpty()) {
-        version += suffix;
+    auto channelStr = String::fromUTF8(MoTool::Build::channel);
+    if (channelStr.isNotEmpty()) {
+        version += "-" + channelStr;
     }
+
+    auto coreInfo = String("core ") + MoTool::Build::coreVersion;
+    auto gitHash = String::fromUTF8(MoTool::Build::gitHash);
+    if (channelStr.isNotEmpty() && gitHash.isNotEmpty()) {
+        coreInfo += "+" + gitHash;
+    }
+    version += " (" + coreInfo + ")";
+
     infoLines.add(version);
 
     const auto buildTimestamp = String::fromUTF8(MoTool::Build::buildTimestamp);
-    if (suffix.isNotEmpty() && buildTimestamp.isNotEmpty()) {
+    if (channelStr.isNotEmpty() && buildTimestamp.isNotEmpty()) {
         infoLines.add("Built at " + buildTimestamp);
     }
 

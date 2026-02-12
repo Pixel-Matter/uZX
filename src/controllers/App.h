@@ -48,11 +48,13 @@ public:
     }
 
     static Target getTarget();
+    static const char* getTargetVersion();
 
     const MoLookAndFeel& getLookAndFeel() const { return lookAndFeel_; }
 
 private:
-    static Target target_;  // defined in Main.cpp via MOTOOL_APP_TARGET
+    static Target target_;          // defined in Main.cpp via MOTOOL_APP_TARGET
+    static const char* targetVersion_;  // defined in Main.cpp via MOTOOL_TARGET_VERSION
 
     MoLookAndFeel lookAndFeel_;
     std::unique_ptr<AppController> appController_;

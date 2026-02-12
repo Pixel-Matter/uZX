@@ -35,7 +35,11 @@ const String MoToolApp::getApplicationName() {
 }
 
 const String MoToolApp::getApplicationVersion() {
-    return ProjectInfo::versionString;
+    return targetVersion_;
+}
+
+const char* MoToolApp::getTargetVersion() {
+    return targetVersion_;
 }
 
 bool MoToolApp::moreThanOneInstanceAllowed()  {

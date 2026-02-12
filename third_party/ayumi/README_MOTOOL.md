@@ -1,16 +1,16 @@
-# Ayumi Emulator - MoTool Modifications
+# Ayumi Emulator - µZX Modifications
 
-This directory contains the Ayumi AY-3-8910/YM2149 emulator with enhancements for MoTool.
+This directory contains the Ayumi AY-3-8910/YM2149 emulator with enhancements for µZX.
 
 ## Original Author
 
 Peter Sovietov (original Ayumi implementation)
 
-## MoTool Enhancements
+## µZX Enhancements
 
 ### Flexible Output Mode System
 
-The original Ayumi provided fixed stereo output. MoTool adds support for three output modes with proper filtering for each:
+The original Ayumi provided fixed stereo output. µZX adds support for three output modes with proper filtering for each:
 
 #### Output Modes
 
@@ -137,9 +137,9 @@ The code uses mode-specialized inline paths to maximize performance:
 - `bench_ayumi.c` - Performance benchmarks
 - `Makefile` - Build configuration
 
-## C++ Wrapper (MoTool)
+## C++ Wrapper (µZX)
 
-The C++ wrapper `AyumiEmulator` (in `src/plugins/uZX/aychip/`) provides:
+The C++ wrapper `AyumiEmulator` (in `src/plugins/µZX/aychip/`) provides:
 
 ```cpp
 // Constructor with output mode

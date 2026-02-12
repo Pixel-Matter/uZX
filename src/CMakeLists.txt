@@ -1,7 +1,7 @@
 # File src/CMakeLists.txt
 
 # Target Definition
-set(MAIN_TARGET_NAME uZX)
+set(STUDIO_TARGET_NAME uZX)
 set(TUNING_TARGET_NAME uZXTuning)
 set(PLAYER_TARGET_NAME uZXPlayer)
 set(TEST_TARGET_NAME uZXTests)
@@ -11,14 +11,17 @@ set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 
 # JUCE Application Setup
-juce_add_gui_app(${MAIN_TARGET_NAME}
+juce_add_gui_app(${STUDIO_TARGET_NAME}
+    VERSION "${UZX_STUDIO_VERSION}"
     PRODUCT_NAME "μZX Studio"
     COMPANY_NAME "Pixel Matter"
-    BUNDLE_ID "org.pixelmatter.${MAIN_TARGET_NAME}"
+    BUNDLE_ID "org.pixelmatter.${STUDIO_TARGET_NAME}"
+    DOCUMENT_EXTENSIONS uzx
 )
 
 # JUCE Tuning Application Setup
 juce_add_gui_app(${TUNING_TARGET_NAME}
+    VERSION "${UZX_TUNING_VERSION}"
     PRODUCT_NAME "μZX Tuning"
     COMPANY_NAME "Pixel Matter"
     BUNDLE_ID "org.pixelmatter.${TUNING_TARGET_NAME}"
@@ -26,6 +29,7 @@ juce_add_gui_app(${TUNING_TARGET_NAME}
 
 # JUCE Player Application Setup
 juce_add_gui_app(${PLAYER_TARGET_NAME}
+    VERSION "${UZX_PLAYER_VERSION}"
     PRODUCT_NAME "μZX Player"
     COMPANY_NAME "Pixel Matter"
     BUNDLE_ID "org.pixelmatter.${PLAYER_TARGET_NAME}"
@@ -36,18 +40,18 @@ juce_add_gui_app(${PLAYER_TARGET_NAME}
 
 juce_add_console_app(${TEST_TARGET_NAME})
 
-juce_generate_juce_header(${MAIN_TARGET_NAME})
+juce_generate_juce_header(${STUDIO_TARGET_NAME})
 juce_generate_juce_header(${TUNING_TARGET_NAME})
 juce_generate_juce_header(${PLAYER_TARGET_NAME})
 juce_generate_juce_header(${TEST_TARGET_NAME})
 
 # Compiler and Language Settings
-target_compile_features(${MAIN_TARGET_NAME} PRIVATE cxx_std_23)
+target_compile_features(${STUDIO_TARGET_NAME} PRIVATE cxx_std_23)
 target_compile_features(${TUNING_TARGET_NAME} PRIVATE cxx_std_23)
 target_compile_features(${PLAYER_TARGET_NAME} PRIVATE cxx_std_23)
 target_compile_features(${TEST_TARGET_NAME} PRIVATE cxx_std_23)
 
-set_target_properties(${MAIN_TARGET_NAME} PROPERTIES
+set_target_properties(${STUDIO_TARGET_NAME} PROPERTIES
     C_VISIBILITY_PRESET hidden
     CXX_VISIBILITY_PRESET hidden
 )
@@ -91,13 +95,13 @@ target_include_directories(motool_common
         # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sratom
         # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv
         # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv/src
-        ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode
+        ${CMAKE_BINARY_DIR}/src/${STUDIO_TARGET_NAME}_artefacts/JuceLibraryCode
         ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode
         ${CMAKE_BINARY_DIR}/src/${PLAYER_TARGET_NAME}_artefacts/JuceLibraryCode
         ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode
 )
 
-target_sources(${MAIN_TARGET_NAME} PRIVATE
+target_sources(${STUDIO_TARGET_NAME} PRIVATE
     controllers/Main.cpp
 )
 
@@ -112,9 +116,9 @@ target_sources(${PLAYER_TARGET_NAME} PRIVATE
 # Per-target ID so Main.cpp can resolve the app target at link time.
 # motool_common cannot use ProjectInfo::projectName because it is compiled
 # once with the first JuceHeader found (uZX Studio).
-target_compile_definitions(${MAIN_TARGET_NAME}   PRIVATE MOTOOL_APP_TARGET=0)
-target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE MOTOOL_APP_TARGET=1)
-target_compile_definitions(${PLAYER_TARGET_NAME} PRIVATE MOTOOL_APP_TARGET=2)
+target_compile_definitions(${STUDIO_TARGET_NAME}   PRIVATE MOTOOL_APP_TARGET=0 MOTOOL_TARGET_VERSION="${UZX_STUDIO_VERSION}")
+target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE MOTOOL_APP_TARGET=1 MOTOOL_TARGET_VERSION="${UZX_TUNING_VERSION}")
+target_compile_definitions(${PLAYER_TARGET_NAME} PRIVATE MOTOOL_APP_TARGET=2 MOTOOL_TARGET_VERSION="${UZX_PLAYER_VERSION}")
 
 target_sources(${TEST_TARGET_NAME} PRIVATE
     ${TEST_SOURCES}
@@ -153,13 +157,13 @@ set(MOTOOL_INCLUDE_DIRS
     # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/sratom
     # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv
     # ${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce/modules/juce_audio_processors/format_types/LV2_SDK/lilv/src
-    ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode
+    ${CMAKE_BINARY_DIR}/src/${STUDIO_TARGET_NAME}_artefacts/JuceLibraryCode
     ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode
     ${CMAKE_BINARY_DIR}/src/${PLAYER_TARGET_NAME}_artefacts/JuceLibraryCode
     ${CMAKE_BINARY_DIR}/src/${TEST_TARGET_NAME}_artefacts/JuceLibraryCode
 )
 
-target_include_directories(${MAIN_TARGET_NAME}   PRIVATE ${MOTOOL_INCLUDE_DIRS})
+target_include_directories(${STUDIO_TARGET_NAME}   PRIVATE ${MOTOOL_INCLUDE_DIRS})
 target_include_directories(${TUNING_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
 target_include_directories(${PLAYER_TARGET_NAME} PRIVATE ${MOTOOL_INCLUDE_DIRS})
 target_include_directories(${TEST_TARGET_NAME}   PRIVATE ${MOTOOL_INCLUDE_DIRS})
@@ -167,7 +171,7 @@ target_include_directories(${TEST_TARGET_NAME}   PRIVATE ${MOTOOL_INCLUDE_DIRS})
 # TODO maybe we should make this motool_common library juce modules?
 # Ensure JUCE headers exist before building our common static library
 set(MOTOOL_JUCE_HEADER_MAIN
-    ${CMAKE_BINARY_DIR}/src/${MAIN_TARGET_NAME}_artefacts/JuceLibraryCode/JuceHeader.h
+    ${CMAKE_BINARY_DIR}/src/${STUDIO_TARGET_NAME}_artefacts/JuceLibraryCode/JuceHeader.h
 )
 set(MOTOOL_JUCE_HEADER_TUNING
     ${CMAKE_BINARY_DIR}/src/${TUNING_TARGET_NAME}_artefacts/JuceLibraryCode/JuceHeader.h
@@ -189,10 +193,10 @@ add_custom_target(motool_generate_juce_headers
 
 add_dependencies(motool_common motool_generate_juce_headers)
 
-add_dependencies(${MAIN_TARGET_NAME}   motool_generate_version_header)
-add_dependencies(${TUNING_TARGET_NAME} motool_generate_version_header)
-add_dependencies(${PLAYER_TARGET_NAME} motool_generate_version_header)
-#add_dependencies(motool_common motool_generate_version_header)
+add_dependencies(${STUDIO_TARGET_NAME}   generate_version_header)
+add_dependencies(${TUNING_TARGET_NAME} generate_version_header)
+add_dependencies(${PLAYER_TARGET_NAME} generate_version_header)
+#add_dependencies(motool_common generate_version_header)
 
 # Tracktion Utils
 # include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
@@ -267,12 +271,12 @@ target_compile_definitions(motool_common PUBLIC
     JUCE_STANDALONE_APPLICATION=1
 )
 
-target_compile_definitions(${MAIN_TARGET_NAME}   PRIVATE ${JUCE_DEFINITIONS})
+target_compile_definitions(${STUDIO_TARGET_NAME}   PRIVATE ${JUCE_DEFINITIONS})
 target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 target_compile_definitions(${PLAYER_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 target_compile_definitions(${TEST_TARGET_NAME}   PRIVATE ${JUCE_DEFINITIONS})
 
-target_link_libraries(${MAIN_TARGET_NAME}   PRIVATE motool_common ${MOTOOL_APP_LINK_LIBS})
+target_link_libraries(${STUDIO_TARGET_NAME}   PRIVATE motool_common ${MOTOOL_APP_LINK_LIBS})
 target_link_libraries(${TUNING_TARGET_NAME} PRIVATE motool_common ${MOTOOL_APP_LINK_LIBS})
 target_link_libraries(${PLAYER_TARGET_NAME} PRIVATE motool_common ${MOTOOL_APP_LINK_LIBS})
 target_link_libraries(${TEST_TARGET_NAME}   PRIVATE motool_common ${MOTOOL_APP_LINK_LIBS})
@@ -280,11 +284,11 @@ target_link_libraries(${TEST_TARGET_NAME}   PRIVATE motool_common ${MOTOOL_APP_L
 # Platform-Specific Settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_compile_options(motool_common         PRIVATE "-fno-aligned-allocation")
-    target_compile_options(${MAIN_TARGET_NAME}   PRIVATE "-fno-aligned-allocation")
+    target_compile_options(${STUDIO_TARGET_NAME}   PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TUNING_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
     target_compile_options(${PLAYER_TARGET_NAME} PRIVATE "-fno-aligned-allocation")
     target_compile_options(${TEST_TARGET_NAME}   PRIVATE "-fno-aligned-allocation")
-    target_link_options(${MAIN_TARGET_NAME}   PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
+    target_link_options(${STUDIO_TARGET_NAME}   PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
     target_link_options(${TUNING_TARGET_NAME} PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
     target_link_options(${PLAYER_TARGET_NAME} PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
     target_link_options(${TEST_TARGET_NAME}   PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
@@ -314,9 +318,9 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/codesign.sh" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
 
         # Add custom command to sign μZX after build
-        add_custom_command(TARGET ${MAIN_TARGET_NAME} POST_BUILD
-            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/codesign.sh $<TARGET_BUNDLE_DIR:${MAIN_TARGET_NAME}>
-            COMMENT "Code signing ${MAIN_TARGET_NAME}"
+        add_custom_command(TARGET ${STUDIO_TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/codesign.sh $<TARGET_BUNDLE_DIR:${STUDIO_TARGET_NAME}>
+            COMMENT "Code signing ${STUDIO_TARGET_NAME}"
         )
 
         # Add custom command to sign μZXTuning after build
@@ -336,12 +340,12 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(${MAIN_TARGET_NAME}   PRIVATE "-latomic")
+    target_link_libraries(${STUDIO_TARGET_NAME}   PRIVATE "-latomic")
     target_link_libraries(${TUNING_TARGET_NAME} PRIVATE "-latomic")
     target_link_libraries(${PLAYER_TARGET_NAME} PRIVATE "-latomic")
     target_link_libraries(${TEST_TARGET_NAME}   PRIVATE "-latomic")
     if (NOT ${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "aarch64")
-        target_link_options(${MAIN_TARGET_NAME}   PRIVATE "-m64")
+        target_link_options(${STUDIO_TARGET_NAME}   PRIVATE "-m64")
         target_link_options(${TUNING_TARGET_NAME} PRIVATE "-m64")
         target_link_options(${PLAYER_TARGET_NAME} PRIVATE "-m64")
         target_link_options(${TEST_TARGET_NAME}   PRIVATE "-m64")

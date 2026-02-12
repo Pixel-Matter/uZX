@@ -2,11 +2,11 @@
 
 namespace MoTool::Build
 {
-inline constexpr const char* gitHash = "@MOTOOL_GIT_COMMIT@";
-inline constexpr bool gitDirty = @MOTOOL_GIT_DIRTY@;
-inline constexpr const char* versionDisplay = "@MOTOOL_VERSION_DISPLAY@";
-inline constexpr const char* versionBase = "@MOTOOL_VERSION_BASE@";
-inline constexpr const char* versionSuffix = "@MOTOOL_VERSION_SUFFIX@";
-inline constexpr const char* buildTimestamp = "@MOTOOL_BUILD_TIME@";
-inline constexpr const char* channel = "@MOTOOL_CHANNEL@";
+inline constexpr const char* gitHash = "@PROJECT_GIT_COMMIT@";
+inline constexpr bool gitDirty = @PROJECT_GIT_DIRTY@;
+inline constexpr const char* versionDisplay = "@PROJECT_VERSION_DISPLAY@";
+inline constexpr const char* coreVersion = "@PROJECT_VERSION_BASE@";
+inline constexpr const char* versionSuffix = "@PROJECT_VERSION_SUFFIX@";
+inline constexpr const char* buildTimestamp = "@VERSION_BUILD_TIME@";
+inline constexpr const char* channel = "@PROJECT_CHANNEL@";
 }

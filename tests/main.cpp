@@ -2,9 +2,15 @@
 
 #include <models/Behavior.h>
 #include <controllers/MainController.h>
+#include <controllers/App.h>
 
 using namespace tracktion;
 using namespace MoTool;
+
+// Provide static member definitions for MoToolApp (normally in Main.cpp)
+// so the force-loaded motool_common library resolves these symbols.
+MoToolApp::Target MoToolApp::target_ = MoToolApp::Target::uZXStudio;
+const char* MoToolApp::targetVersion_ = "0.0.0";
 
 class TestUIBehaviour : public UIBehaviour {
 public:

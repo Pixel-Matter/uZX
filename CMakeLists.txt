@@ -38,30 +38,29 @@ endif()
 
 # Global project settings
 
-file(READ VERSION.md CURRENT_VERSION_RAW)
-string(STRIP "${CURRENT_VERSION_RAW}" CURRENT_VERSION)
+include(versions.cmake)
 
-set(MOTOOL_VERSION_BASE "${CURRENT_VERSION}")
-set(MOTOOL_VERSION_SUFFIX "")
-set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}")
-set(MOTOOL_GIT_COMMIT "")
-set(MOTOOL_GIT_DIRTY 0)
-set(MOTOOL_CHANNEL "dev" CACHE STRING "Release channel")
-set_property(CACHE MOTOOL_CHANNEL PROPERTY STRINGS alpha beta rc demo dev)
-string(TOLOWER "${MOTOOL_CHANNEL}" MOTOOL_CHANNEL_LOWER)
-set(_motool_valid_channels alpha beta rc demo dev)
-list(FIND _motool_valid_channels "${MOTOOL_CHANNEL_LOWER}" _motool_channel_index)
-if(_motool_channel_index EQUAL -1)
-    message(FATAL_ERROR "Invalid MoTool release channel: ${MOTOOL_CHANNEL}. Allowed values: alpha, beta, rc, demo, dev")
+set(PROJECT_VERSION_BASE "${PROJECT_CORE_VERSION}")
+set(PROJECT_VERSION_SUFFIX "")
+set(PROJECT_VERSION_DISPLAY "${PROJECT_VERSION_BASE}")
+set(PROJECT_GIT_COMMIT "")
+set(PROJECT_GIT_DIRTY 0)
+set(PROJECT_CHANNEL "dev" CACHE STRING "Release channel")
+set_property(CACHE PROJECT_CHANNEL PROPERTY STRINGS alpha beta rc demo dev)
+string(TOLOWER "${PROJECT_CHANNEL}" PROJECT_CHANNEL_LOWER)
+set(_version_valid_channels alpha beta rc demo dev)
+list(FIND _version_valid_channels "${PROJECT_CHANNEL_LOWER}" _version_channel_index)
+if(_version_channel_index EQUAL -1)
+    message(FATAL_ERROR "Invalid release channel: ${PROJECT_CHANNEL}. Allowed values: alpha, beta, rc, demo, dev")
 endif()
-set(MOTOOL_CHANNEL "${MOTOOL_CHANNEL_LOWER}" CACHE STRING "Release channel" FORCE)
-unset(_motool_valid_channels)
-unset(_motool_channel_index)
-string(TIMESTAMP MOTOOL_BUILD_TIME "%Y-%m-%dT%H:%M:%SZ" UTC)
+set(PROJECT_CHANNEL "${PROJECT_CHANNEL_LOWER}" CACHE STRING "Release channel" FORCE)
+unset(_version_valid_channels)
+unset(_version_channel_index)
+string(TIMESTAMP VERSION_BUILD_TIME "%Y-%m-%dT%H:%M:%SZ" UTC)
 
-if(MOTOOL_CHANNEL)
-    string(APPEND MOTOOL_VERSION_SUFFIX "-${MOTOOL_CHANNEL}")
-    set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}${MOTOOL_VERSION_SUFFIX}")
+if(PROJECT_CHANNEL)
+    string(APPEND PROJECT_VERSION_SUFFIX "-${PROJECT_CHANNEL}")
+    set(PROJECT_VERSION_DISPLAY "${PROJECT_VERSION_BASE}${PROJECT_VERSION_SUFFIX}")
 endif()
 
 find_package(Git QUIET)
@@ -69,74 +68,73 @@ if(Git_FOUND)
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        OUTPUT_VARIABLE MOTOOL_GIT_COMMIT
+        OUTPUT_VARIABLE PROJECT_GIT_COMMIT
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
-        RESULT_VARIABLE MOTOOL_GIT_COMMIT_RESULT)
+        RESULT_VARIABLE PROJECT_GIT_COMMIT_RESULT)
 
-    if(MOTOOL_GIT_COMMIT_RESULT EQUAL 0 AND MOTOOL_GIT_COMMIT)
-        if(MOTOOL_CHANNEL STREQUAL "dev")
-            if(MOTOOL_VERSION_SUFFIX)
-                string(APPEND MOTOOL_VERSION_SUFFIX "+g${MOTOOL_GIT_COMMIT}")
+    if(PROJECT_GIT_COMMIT_RESULT EQUAL 0 AND PROJECT_GIT_COMMIT)
+        if(PROJECT_CHANNEL STREQUAL "dev")
+            if(PROJECT_VERSION_SUFFIX)
+                string(APPEND PROJECT_VERSION_SUFFIX "+g${PROJECT_GIT_COMMIT}")
             else()
-                set(MOTOOL_VERSION_SUFFIX "+g${MOTOOL_GIT_COMMIT}")
+                set(PROJECT_VERSION_SUFFIX "+g${PROJECT_GIT_COMMIT}")
             endif()
-            set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}${MOTOOL_VERSION_SUFFIX}")
+            set(PROJECT_VERSION_DISPLAY "${PROJECT_VERSION_BASE}${PROJECT_VERSION_SUFFIX}")
         endif()
-        set(MOTOOL_GIT_COMMIT "${MOTOOL_GIT_COMMIT}")
+        set(PROJECT_GIT_COMMIT "${PROJECT_GIT_COMMIT}")
 
         execute_process(
             COMMAND ${GIT_EXECUTABLE} status --porcelain
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            OUTPUT_VARIABLE MOTOOL_GIT_STATUS_OUTPUT
+            OUTPUT_VARIABLE PROJECT_GIT_STATUS_OUTPUT
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
-            RESULT_VARIABLE MOTOOL_GIT_STATUS_RESULT)
+            RESULT_VARIABLE PROJECT_GIT_STATUS_RESULT)
 
-        if(MOTOOL_GIT_STATUS_RESULT EQUAL 0 AND MOTOOL_GIT_STATUS_OUTPUT)
-            string(APPEND MOTOOL_VERSION_SUFFIX "-dirty")
-            set(MOTOOL_VERSION_DISPLAY "${MOTOOL_VERSION_BASE}${MOTOOL_VERSION_SUFFIX}")
-            set(MOTOOL_GIT_DIRTY 1)
+        if(PROJECT_GIT_STATUS_RESULT EQUAL 0 AND PROJECT_GIT_STATUS_OUTPUT)
+            string(APPEND PROJECT_VERSION_SUFFIX "-dirty")
+            set(PROJECT_VERSION_DISPLAY "${PROJECT_VERSION_BASE}${PROJECT_VERSION_SUFFIX}")
+            set(PROJECT_GIT_DIRTY 1)
         endif()
-    elseif(NOT MOTOOL_GIT_COMMIT_RESULT EQUAL 0)
-        set(MOTOOL_GIT_COMMIT "unknown")
+    elseif(NOT PROJECT_GIT_COMMIT_RESULT EQUAL 0)
+        set(PROJECT_GIT_COMMIT "unknown")
     endif()
 endif()
 
-project(MoTool VERSION ${MOTOOL_VERSION_BASE})
+project(MoTool VERSION ${PROJECT_VERSION_BASE})
 message("Project name: ${PROJECT_NAME}, version: ${PROJECT_VERSION}")
-if(NOT MOTOOL_VERSION_DISPLAY STREQUAL PROJECT_VERSION)
-    message(STATUS "Project build metadata version: ${MOTOOL_VERSION_DISPLAY}")
+if(NOT PROJECT_VERSION_DISPLAY STREQUAL PROJECT_VERSION)
+    message(STATUS "Project build metadata version: ${PROJECT_VERSION_DISPLAY}")
 endif()
 
-set(MOTOOL_VERSION_TEMPLATE "${CMAKE_SOURCE_DIR}/cmake/version.h.in")
-set(MOTOOL_VERSION_HEADER "${CMAKE_SOURCE_DIR}/src/version.h")
-set(_motool_version_command
+set(VERSION_FILE_TEMPLATE "${CMAKE_SOURCE_DIR}/cmake/version.h.in")
+set(VERSION_FILE_HEADER "${CMAKE_SOURCE_DIR}/src/version.h")
+set(_version_command
     ${CMAKE_COMMAND}
-    "-DMOTOOL_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
-    "-DINPUT_TEMPLATE=${MOTOOL_VERSION_TEMPLATE}"
-    "-DOUTPUT_FILE=${MOTOOL_VERSION_HEADER}"
-    "-DMOTOOL_VERSION_BASE=${MOTOOL_VERSION_BASE}"
-    "-DMOTOOL_CHANNEL=${MOTOOL_CHANNEL}"
-    "-DVERSION_FILE=${CMAKE_SOURCE_DIR}/VERSION.md"
+    "-DPROJECT_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+    "-DINPUT_TEMPLATE=${VERSION_FILE_TEMPLATE}"
+    "-DOUTPUT_FILE=${VERSION_FILE_HEADER}"
+    "-DPROJECT_VERSION_BASE=${PROJECT_VERSION_BASE}"
+    "-DPROJECT_CHANNEL=${PROJECT_CHANNEL}"
 )
 if(GIT_EXECUTABLE)
-    list(APPEND _motool_version_command "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}")
+    list(APPEND _version_command "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}")
 endif()
-list(APPEND _motool_version_command "-P" "${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake")
+list(APPEND _version_command "-P" "${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake")
 
-add_custom_target(motool_generate_version_header
-    COMMAND ${_motool_version_command}
-    BYPRODUCTS ${MOTOOL_VERSION_HEADER}
+add_custom_target(generate_version_header
+    COMMAND ${_version_command}
+    BYPRODUCTS ${VERSION_FILE_HEADER}
     DEPENDS
-        ${MOTOOL_VERSION_TEMPLATE}
+        ${VERSION_FILE_TEMPLATE}
         ${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
-        ${CMAKE_SOURCE_DIR}/VERSION.md
+        ${CMAKE_SOURCE_DIR}/versions.cmake
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Generating version header"
     VERBATIM
 )
-unset(_motool_version_command)
+unset(_version_command)
 
 enable_testing()
 set(BUILD_TESTING ON CACHE BOOL "Enable CTest" FORCE)
@@ -144,15 +142,17 @@ set(BUILD_TESTING ON CACHE BOOL "Enable CTest" FORCE)
 option(ENABLE_LTO "Enable Link Time Optimisation (IPO) for optimized configs" ON)
 if(ENABLE_LTO)
     include(CheckIPOSupported)
-    check_ipo_supported(RESULT motool_ipo_supported OUTPUT motool_ipo_error)
-    if(motool_ipo_supported)
+    check_ipo_supported(RESULT _ipo_supported OUTPUT _ipo_error)
+    if(_ipo_supported)
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ON)
         message(STATUS "IPO/LTO enabled for optimized configurations")
     else()
-        message(WARNING "IPO/LTO requested but not supported: ${motool_ipo_error}")
+        message(WARNING "IPO/LTO requested but not supported: ${_ipo_error}")
     endif()
+    unset(_ipo_supported)
+    unset(_ipo_error)
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/ayumi)

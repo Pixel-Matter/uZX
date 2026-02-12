@@ -13,10 +13,12 @@ TimelineGrid::TimelineGrid(EditViewState& evs)
     : editViewState(evs)
 {
     editViewState.zoom.addListener(this);
+    editViewState.edit.state.addListener(this);
 }
 
 TimelineGrid::~TimelineGrid() {
     editViewState.zoom.removeListener(this);
+    editViewState.edit.state.removeListener(this);
 }
 
 std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::getTicks() {
@@ -27,6 +29,14 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::getTicks() {
     ticksCache.swap(newTicks);
     ticksCacheValid = true;
     return ticksCache;
+}
+
+void TimelineGrid::addListener(Listener* l) { listeners.add(l); }
+void TimelineGrid::removeListener(Listener* l) { listeners.remove(l); }
+
+void TimelineGrid::invalidateAndNotify() {
+    ticksCacheValid = false;
+    listeners.call(&Listener::gridChanged);
 }
 
 std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
@@ -77,6 +87,11 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
 
 void TimelineGrid::zoomChanged() {
     ticksCacheValid = false;
+}
+
+void TimelineGrid::valueTreePropertyChanged(ValueTree&, const Identifier& property) {
+    if (property == te::IDs::timecodeFormat)
+        invalidateAndNotify();
 }
 
 }  // namespace MoTool

@@ -13,7 +13,8 @@ class RulerComponent : public Component,
                        private Timer,
                        private te::TempoSequence::Listener,
                        private ValueTree::Listener,
-                       private ZoomViewState::Listener
+                       private ZoomViewState::Listener,
+                       private TimelineGrid::Listener
 {
 public:
     RulerComponent(te::Edit& ed, EditViewState& evs, TimelineGrid& g);
@@ -30,6 +31,7 @@ private:
     void repositionTransportToX(int x);
     void timerCallback() override;
     void selectableObjectChanged(te::Selectable*) override;
+    void gridChanged() override;
 
     te::Edit& edit;
     EditViewState& editViewState;

@@ -35,7 +35,8 @@ private:
 
 
 class PsgParamEditorComponent: public te::CurveEditor,
-                               public ZoomViewState::Listener
+                               public ZoomViewState::Listener,
+                               private TimelineGrid::Listener
 {
 public:
     PsgParamEditorComponent(EditViewState& evs, TimelineGrid& g);
@@ -49,6 +50,7 @@ public:
 
     // ZoomViewState::Listener overrides
     void zoomChanged() override;
+    void gridChanged() override;
     void setCurrentClip(PsgClip* c);
     void changeListenerCallback(ChangeBroadcaster* cb) override;
     void selectableObjectChanged(te::Selectable* s) override;

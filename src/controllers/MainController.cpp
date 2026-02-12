@@ -254,6 +254,10 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomToProject);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomIn);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomOut);
+            if (auto* edit = MoToolApp::getPlayerController().getEdit()) {
+                menu.addSeparator();
+                menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
+            }
         } else if (menuName == "Settings") {
             menu.addCommandItem(&commandManager_, MainAppCommands::settingsAudioMidi);
         } else if (menuName == "Help") {
@@ -262,7 +266,16 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         return menu;
     }
 
-    return MainAppCommands::createMenu(&commandManager_, menuName);
+    auto menu = MainAppCommands::createMenu(&commandManager_, menuName);
+
+    if (menuName == "View") {
+        if (auto* edit = MoToolApp::getArrangerController().getEdit()) {
+            menu.addSeparator();
+            menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
+        }
+    }
+
+    return menu;
 }
 
 void AppController::menuItemSelected(int /* menuItemID */, int /* topLevelMenuIndex*/ ) {

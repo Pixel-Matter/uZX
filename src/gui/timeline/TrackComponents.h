@@ -46,7 +46,8 @@ class TrackBodyComponent : public Component,
                        private ValueTree::Listener,
                        private FlaggedAsyncUpdater,
                        private ZoomViewState::Listener,
-                       private ChangeListener {
+                       private ChangeListener,
+                       private TimelineGrid::Listener {
 public:
     TrackBodyComponent(EditViewState&, TimelineGrid& g, te::Track::Ptr);
     ~TrackBodyComponent() override;
@@ -63,6 +64,7 @@ private:
     void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
     void valueTreeChildOrderChanged(ValueTree&, int, int) override;
     void zoomChanged() override;
+    void gridChanged() override;
 
     void handleAsyncUpdate() override;
 
@@ -136,7 +138,8 @@ class TracksContainerComponent : public Component,
                                  private ChangeListener,
                                  private ComponentListener,
                                  private ValueTree::Listener,
-                                 private ZoomViewState::Listener
+                                 private ZoomViewState::Listener,
+                                 private TimelineGrid::Listener
 {
 public:
     TracksContainerComponent(te::Edit& e, EditViewState& evs, TimelineGrid& g);
@@ -168,6 +171,7 @@ private:
     void valueTreeChildOrderChanged(juce::ValueTree& v, int a, int b) override;
 
     void zoomChanged() override;
+    void gridChanged() override;
     void changeListenerCallback(ChangeBroadcaster*) override;
     void componentMovedOrResized(Component& /*component*/, bool /*wasMoved*/, bool /*wasResized*/) override;
 

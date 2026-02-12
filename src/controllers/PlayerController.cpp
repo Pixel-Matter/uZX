@@ -70,7 +70,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     rescaleAllMidiClipsToFit(*edit_);
 
     edit_->playInStopEnabled = true;
-    setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
+    setEditTimecodeFormat(*edit_, TimecodeTypeExt::millisecs);
 
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);

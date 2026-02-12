@@ -1,5 +1,7 @@
 #include "Ruler.h"
 
+#include "../../models/EditUtilities.h"
+
 namespace MoTool {
 
 RulerComponent::RulerComponent(te::Edit& ed, EditViewState& evs, TimelineGrid& g)
@@ -11,6 +13,7 @@ RulerComponent::RulerComponent(te::Edit& ed, EditViewState& evs, TimelineGrid& g
     edit.tempoSequence.addListener(this);
     editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
+    grid.addListener(this);
     // cached value is ValueTree::Listener
     timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr, TimecodeDisplayFormatExt {TimecodeTypeExt::barsBeatsFps50});
 }
@@ -19,6 +22,7 @@ RulerComponent::~RulerComponent() {
     edit.tempoSequence.removeListener(this);
     editViewState.state.removeListener(this);
     editViewState.zoom.removeListener(this);
+    grid.removeListener(this);
 }
 
 void RulerComponent::zoomChanged() {
@@ -58,6 +62,8 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         m.addItem("Zoom fit", [this] {
             edit.engine.getUIBehaviour().zoomToFitHorizontally();
         });
+        m.addSeparator();
+        m.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(edit));
         m.showMenuAsync({});
     } else {
         isDragging = false;
@@ -116,6 +122,10 @@ void RulerComponent::repositionTransportToX(int x) {
 }
 
 void RulerComponent::timerCallback() {
+    repaint();
+}
+
+void RulerComponent::gridChanged() {
     repaint();
 }
 

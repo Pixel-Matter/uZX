@@ -19,6 +19,7 @@ public:
     void mouseDrag(const MouseEvent&) override;
     void mouseDown(const MouseEvent&) override;
     void mouseUp(const MouseEvent&) override;
+    void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override;
 
 private:
     void zoomChanged() override;

@@ -1,5 +1,5 @@
 # Core (shared engine/library) version
-set(PROJECT_CORE_VERSION "0.3.0")
+set(PROJECT_CORE_VERSION "0.3.1")
 
 # Per-target application versions
 set(UZX_STUDIO_VERSION "${PROJECT_CORE_VERSION}")

@@ -78,6 +78,11 @@ void EditComponent::ZoomableViewport::mouseWheelMove(const MouseEvent& e, const 
     if (e.mods.isCommandDown()) {
         auto headerWidth = editViewState.getTrackHeaderWidth();
         editViewState.zoom.zoomAroundX(wheel.deltaY, e.x - headerWidth);
+    } else if (e.mods.isShiftDown()) {
+        auto delta = wheel.deltaY != 0.0f ? wheel.deltaY : wheel.deltaX;
+        auto scrollAmount = editViewState.zoom.getTimePerPixel() * delta * 200.0;
+        auto newStart = editViewState.zoom.getStart() - scrollAmount;
+        editViewState.zoom.setStart(jmax(te::TimePosition(), newStart));
     } else {
         Viewport::mouseWheelMove(e, wheel);
     }

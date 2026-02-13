@@ -110,7 +110,8 @@ void RulerComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails
     if (e.mods.isCommandDown()) {
         editViewState.zoom.zoomAroundX(wheel.deltaY, e.x);
     } else {
-        auto scrollAmount = editViewState.zoom.getTimePerPixel() * wheel.deltaY * 200.0;
+        auto delta = e.mods.isShiftDown() && wheel.deltaY == 0.0f ? wheel.deltaX : wheel.deltaY;
+        auto scrollAmount = editViewState.zoom.getTimePerPixel() * delta * 200.0;
         auto newStart = editViewState.zoom.getStart() - scrollAmount;
         editViewState.zoom.setStart(jmax(te::TimePosition(), newStart));
     }

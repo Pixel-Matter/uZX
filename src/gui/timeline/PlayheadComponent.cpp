@@ -67,8 +67,11 @@ void PlayheadComponent::mouseDrag(const MouseEvent& e) {
     auto r = getLocalBounds();
     auto x = jmax(jmin(e.x, r.getRight() - 1), r.getX());
     auto t = jmax(0_tp, editViewState.zoom.xToTime(x));
+    // DBG("PlayheadComponent::mouseDrag, mouseX: " << e.x << " clampedX: " << x << " time: " << t.inSeconds());
     edit.getTransport().setPosition(t);
-    // checkRepaint();
+    // DBG("PlayheadComponent::mouseDrag, transportPos after setPosition: " << edit.getTransport().getPosition().inSeconds());
+    // fix for Playhead painting while dragging
+    checkRepaint();
 }
 
 void PlayheadComponent::zoomOrPosChanged() {
@@ -82,9 +85,11 @@ void PlayheadComponent::zoomChanged() {
 
 void PlayheadComponent::checkRepaint() {
     int newX = roundToInt(editViewState.zoom.timeToX(edit.getTransport().getPosition()));
-    // DBG("PlayheadComponent::checkRepaint, pos: " << edit.getTransport().getPosition().inSeconds());
+    // DBG("PlayheadComponent::checkRepaint, pos: " << edit.getTransport().getPosition().inSeconds()
+        // << " newX: " << newX << " oldX: " << xPosition);
     if (newX != xPosition) {
-        // DBG("PlayheadComponent::checkRepaint, repainting at x: " << newX);
+        // DBG("PlayheadComponent::checkRepaint, repainting strip [" << jmin(newX, xPosition) - 1
+            // << ".." << jmax(newX, xPosition) + 2 << "]");
         repaint(jmin(newX, xPosition) - 1, 0, jmax(newX, xPosition) - jmin(newX, xPosition) + 3, getHeight());
         xPosition = newX;
     }

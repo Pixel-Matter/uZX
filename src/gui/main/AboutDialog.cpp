@@ -183,7 +183,7 @@ AboutDialogComponent::AboutDialogComponent() {
     infoLines.add("Includes ayumi library by Peter Sovietov (true-grue)");
     infoLines.add("");
     infoLines.add("Greets to:");
-    infoLines.add("diver, spke, n1k-o, bfox, wbcbz7, Pator, Megus");
+    infoLines.add("diver, spke, n1k-o, bfox, wbcbz7, Pator, Megus, Volutar");
     infoLines.add("and all ZX Spectrum musicians and demosceners!");
 
     infoText_.setFont(Font(FontOptions(14.0f, Font::plain)));

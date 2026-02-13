@@ -142,6 +142,9 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
             // because this callback could be called before tc.position is updated from state
             tc.position.forceUpdateOfCachedValue();
         }
+        // DBG("ZoomViewState::valueTreePropertyChanged position: " << tc.getPosition().inSeconds()
+            // << " dragging: " << (int) tc.isUserDragging()
+            // << " playing: " << (int) tc.isPlaying());
         handlePlaybackScrolling();
         markAndUpdate(updatePos);
     }
@@ -175,14 +178,19 @@ void ZoomViewState::handlePlaybackScrolling() {
                 setStart(newX1);
             }
         }
-    } else {
+    } else if (!edit.getTransport().isUserDragging()) {
         // assuming autojump to current position when stopped
+        // DBG("ZoomViewState::handlePlaybackScrolling, jumping to pos (not dragging, not playing)");
         jumpToCurrentPosition();
+    } else {
+        // DBG("ZoomViewState::handlePlaybackScrolling, skipping jump (user is dragging)");
     }
 }
 
 void ZoomViewState::handleAsyncUpdate() {
     if (compareAndReset(updatePos)) {
+        // DBG("ZoomViewState::handleAsyncUpdate, dispatching zoomOrPosChanged, pos: "
+            // << edit.getTransport().getPosition().inSeconds());
         listeners.call(&Listener::zoomOrPosChanged);
     }
     if (compareAndReset(updateZoom)) {

@@ -48,6 +48,19 @@ void PlayheadComponent::mouseUp(const MouseEvent&) {
     edit.getTransport().setUserDragging(false);
 }
 
+void PlayheadComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
+    if (auto* parent = getParentComponent()) {
+        auto posInParent = e.getEventRelativeTo(parent).getPosition();
+        for (int i = parent->getNumChildComponents() - 1; i >= 0; --i) {
+            auto* child = parent->getChildComponent(i);
+            if (child != this && child->getBounds().contains(posInParent)) {
+                child->mouseWheelMove(e.getEventRelativeTo(child), wheel);
+                return;
+            }
+        }
+    }
+}
+
 void PlayheadComponent::mouseDrag(const MouseEvent& e) {
     // TODO start horizontal scroll instead (if mouse is outside of the component)
     // limit x to LocalBounds

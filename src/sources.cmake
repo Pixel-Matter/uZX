@@ -117,4 +117,5 @@ set(TEST_SOURCES
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
 
     gui/common/ParamBindings.test.cpp
+    gui/common/LookAndFeel.test.cpp
 )

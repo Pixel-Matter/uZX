@@ -384,6 +384,16 @@ add_custom_command(TARGET ${TEST_TARGET_NAME} POST_BUILD
     COMMENT "Discovering JUCE unit tests for ${TEST_TARGET_NAME}"
 )
 
+# Binary Data Resources (embedded fonts)
+juce_add_binary_data(MoToolBinaryData SOURCES
+    ${CMAKE_SOURCE_DIR}/resources/fonts/Inter-Regular.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/Inter-Bold.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/IosevkaAile-Regular.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/IosevkaAile-SemiBold.ttf
+)
+
+target_link_libraries(motool_common PUBLIC MoToolBinaryData)
+
 # Commented sections moved to bottom for reference
 # # VST2 SDK Configuration
 # if (DEFINED ENV{VST2_SDK_DIR})

@@ -125,6 +125,16 @@ public:
 
     MoLookAndFeel();
 
+    Typeface::Ptr getTypefaceForFont(const Font& font) override;
+
+private:
+    Typeface::Ptr interRegularTypeface_;
+    Typeface::Ptr interBoldTypeface_;
+    Typeface::Ptr iosevkaRegularTypeface_;
+    Typeface::Ptr iosevkaSemiBoldTypeface_;
+
+public:
+
 
     // Helper method to debug current color scheme
     void debugColourScheme();

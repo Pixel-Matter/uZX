@@ -1,13 +1,22 @@
 #include "LookAndFeel.h"
+#include "BinaryData.h"
 
 namespace MoTool {
 
 MoLookAndFeel::MoLookAndFeel() {
     using namespace Colors;
 
-    // used for numeric readouts
-    // setDefaultSansSerifTypefaceName("Iosevka Aile");  // Very-very good, crisp and squary, programmer's 0
-    setDefaultSansSerifTypefaceName("Inter");  // Very good
+    // Embedded fonts loaded from BinaryData
+    interRegularTypeface_ = Typeface::createSystemTypefaceFor(
+        BinaryData::InterRegular_ttf, BinaryData::InterRegular_ttfSize);
+    interBoldTypeface_ = Typeface::createSystemTypefaceFor(
+        BinaryData::InterBold_ttf, BinaryData::InterBold_ttfSize);
+    iosevkaRegularTypeface_ = Typeface::createSystemTypefaceFor(
+        BinaryData::IosevkaAileRegular_ttf, BinaryData::IosevkaAileRegular_ttfSize);
+    iosevkaSemiBoldTypeface_ = Typeface::createSystemTypefaceFor(
+        BinaryData::IosevkaAileSemiBold_ttf, BinaryData::IosevkaAileSemiBold_ttfSize);
+
+    setDefaultSansSerifTypefaceName(interRegularTypeface_->getName());
 
     setUsingNativeAlertWindows(true);
 
@@ -77,6 +86,27 @@ MoLookAndFeel::MoLookAndFeel() {
     // GroupComponent
     setColour(GroupComponent::outlineColourId, Theme::border);
     setColour(GroupComponent::textColourId, Theme::textSecondary);
+}
+
+Typeface::Ptr MoLookAndFeel::getTypefaceForFont(const Font& font) {
+    auto name = font.getTypefaceName();
+    bool isDefault = (name == Font::getDefaultSansSerifFontName());
+    bool isInter   = name.containsIgnoreCase("Inter");
+    auto style = font.getTypefaceStyle();
+
+    if (isInter || isDefault) {
+        if (style.containsIgnoreCase("Bold"))
+            return interBoldTypeface_;
+        return interRegularTypeface_;
+    }
+
+    if (name.containsIgnoreCase("Iosevka Aile")) {
+        if (style.containsIgnoreCase("Semibold") || style.containsIgnoreCase("Semi Bold"))
+            return iosevkaSemiBoldTypeface_;
+        return iosevkaRegularTypeface_;
+    }
+
+    return LookAndFeel_V4::getTypefaceForFont(font);
 }
 
 void MoLookAndFeel::debugColourScheme() {

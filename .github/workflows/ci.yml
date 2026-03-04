@@ -24,7 +24,7 @@ jobs:
         run: cmake --build build
 
       - name: Run tests
-        run: build/tests/MoToolTests_artefacts/Release/uZXTests
+        run: build/src/uZXTests_artefacts/Release/uZXTests
 
   build-windows:
     runs-on: windows-latest

@@ -4,9 +4,12 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+## [v0.4.0-alpha] - 2026-03-04
+
 ### Added
 - Embedded fonts
 - Greetz updated
+- First public pre-release of µZX Player
 
 ## [v0.3.1] - 2026-02-13
 

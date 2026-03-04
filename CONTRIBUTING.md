@@ -83,11 +83,11 @@ New source files must be added to `src/sources.cmake`:
 
 MoTool is built on [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/) and [JUCE](https://juce.com/). Key architectural docs are in the `docs/` directory:
 
-- `docs/Design.md` -- overall architecture
-- `docs/OVM Design pattern.md` -- state management pattern
-- `docs/Parameter binding.md` -- parameter binding system
-- `docs/Tuning Systems.md` -- tuning system design
-- `docs/uzx-player.md` -- Player variant design
+- `docs/Design.md` — overall architecture
+- `docs/OVM Design pattern.md` — state management pattern
+- `docs/Parameter binding.md` — parameter binding system
+- `docs/Tuning Systems.md` — tuning system design
+- `docs/uzx-player.md` — Player variant design
 
 ## Submitting Changes
 

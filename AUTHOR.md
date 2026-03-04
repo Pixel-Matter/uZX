@@ -4,9 +4,9 @@ I'm a C++ and Python developer with a background spanning video editing, 3D grap
 
 ## The ZX Spectrum Connection
 
-I had a Soviet ZX Spectrum clone in 1990 and immediately fell in love with it. Games, BASIC, writing my first simple games. Then assembly language, self-taught. In the early 90s I moved to PCs for school and university -- VGA graphics, some 256-color effects in Pascal, wireframe 3D.
+I had a Soviet ZX Spectrum clone in 1990 and immediately fell in love with it. Games, BASIC, writing my first simple games. Then assembly language, self-taught. In the early 90s I moved to PCs for school and university — VGA graphics, some 256-color effects in Pascal, wireframe 3D.
 
-Then I saw *Second Reality* and it blew my mind. Music and effects! Impossible colorful plasma! But I didn't have the time to dive deep into demo coding back then. Life pulled me toward the web -- design, programming, the early internet.
+Then I saw *Second Reality* and it blew my mind. Music and effects! Impossible colorful plasma! But I didn't have the time to dive deep into demo coding back then. Life pulled me toward the web — design, programming, the early internet.
 
 ## Return to the Demoscene
 
@@ -16,9 +16,9 @@ I started drawing pictures in the 6912-byte ZX screen format, posting them on zx
 
 ## Why This Tool
 
-I wanted to make a full-featured demo production, but to start with music, I needed a good instrument -- and I don't like oldschool trackers. Over the years I accumulated prototypes: Python tools, a C++ JUCE VST plugin for AY chip, machine code timeline experiments with state caching, FUSE emulator bridging via pybind11, conversion tools involving AI. The vision for a modern composing tool came naturally from all of this.
+I wanted to make a full-featured demo production, but to start with music, I needed a good instrument — and I don't like oldschool trackers. Over the years I accumulated prototypes: Python tools, a C++ JUCE VST plugin for AY chip, machine code timeline experiments with state caching, FUSE emulator bridging via pybind11, conversion tools involving AI. The vision for a modern composing tool came naturally from all of this.
 
-Python taught me rapid development but lacked good UI frameworks. JUCE with C++ turned out to be the right foundation -- the ValueTree state management is robust, and it's unmatched for cross-platform audio development. When my AY chip VST3 plugin grew too complex, I needed to break it apart and inspect intermediate MIDI streams separately. That's when uZX was born.
+Python taught me rapid development but lacked good UI frameworks. JUCE with C++ turned out to be the right foundation — the ValueTree state management is robust, and it's unmatched for cross-platform audio development. When my AY chip VST3 plugin grew too complex, I needed to break it apart and inspect intermediate MIDI streams separately. That's when uZX was born.
 
 ## Contact
 

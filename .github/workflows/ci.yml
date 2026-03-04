@@ -111,11 +111,17 @@ jobs:
       - name: Build
         run: cmake --build build --target uZX --target uZXPlayer
 
-      - name: Upload to GitHub Release
+      - name: Package and Upload to GitHub Release
         run: |
+          cd build/src/uZX_artefacts/Release
+          zip -r "uZX-macOS.zip" *.app
+          cd -
+          cd build/src/uZXPlayer_artefacts/Release
+          zip -r "uZXPlayer-macOS.zip" *.app
+          cd -
           gh release upload ${{ github.ref_name }} \
-            build/src/uZX_artefacts/Release/*.app \
-            build/src/uZXPlayer_artefacts/Release/*.app
+            build/src/uZX_artefacts/Release/uZX-macOS.zip \
+            build/src/uZXPlayer_artefacts/Release/uZXPlayer-macOS.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

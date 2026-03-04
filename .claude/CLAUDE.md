@@ -112,6 +112,32 @@ static MyTest myTest; // Register test instance
   - Add `.test.cpp` files to `TEST_SOURCES` section
 - Tests are automatically included in the main test executable
 
+## Cross-Compiler Pitfalls
+
+The codebase builds on macOS (Clang), Linux (GCC), and Windows (MSVC). Clang is the most permissive; GCC and MSVC catch additional issues.
+
+### GCC-specific warnings (not caught by Clang)
+
+| Warning | Cause | Fix |
+|---------|-------|-----|
+| `-Wchanges-meaning` | `using Foo = Foo;` inside a class where `Foo` is also in the enclosing namespace | Use fully qualified name: `using Foo = MoTool::Foo;` |
+| `-Wreturn-type` | `switch` over enum with no `default`, GCC doesn't infer exhaustiveness | Add `jassertfalse; return {};` after the switch |
+| `-Wshadow` | Constructor parameter has same name as an inherited member | Rename parameter (e.g. append `_`) |
+| `-Wunused-but-set-variable` | Variable only used inside `DBG()`, which is a no-op in Release | Add `[[maybe_unused]]` before the type, or use `juce::ignoreUnused()` |
+| `-Wfloat-equal` | Comparing float with `==` or `!=` | Use `JUCE_BEGIN/END_IGNORE_WARNINGS_GCC_LIKE("-Wfloat-equal")` when comparison is intentional (e.g. checking for exact zero) |
+
+### MSVC-specific errors (not caught by Clang/GCC)
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `[[maybe_unused]]` on range-for variable | MSVC rejects the attribute in that position | Use `juce::ignoreUnused(var)` inside the loop body instead |
+
+### General rules
+- Always use `juce::ignoreUnused(x)` to suppress unused variable warnings — works on all three compilers
+- Use `JUCE_BEGIN/END_IGNORE_WARNINGS_GCC_LIKE` for intentional GCC/Clang warning suppressions
+- Avoid constructor parameters with the same name as inherited members
+- Exhaustive enum switches should end with `jassertfalse; return {};` to satisfy GCC
+
 ## Code Style Guidelines
 
 - Namespaces: Use `MoTool::` namespace with sub-namespaces like `uZX` for specific components

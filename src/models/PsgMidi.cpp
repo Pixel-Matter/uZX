@@ -2,8 +2,6 @@
 #include "PsgMidi.h"
 #include "PsgClip.h"
 
-#include <sys/types.h>
-
 using namespace tracktion;
 
 namespace MoTool {

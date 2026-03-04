@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <sstream>
-#include <sys/types.h>
 #include <vector>
 #include <array>
 

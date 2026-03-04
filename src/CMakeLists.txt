@@ -373,6 +373,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
 endif()
 
+if(MSVC)
+    target_link_options(${STUDIO_TARGET_NAME} PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
+    target_link_options(${TUNING_TARGET_NAME} PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
+    target_link_options(${PLAYER_TARGET_NAME} PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
+    target_link_options(${TEST_TARGET_NAME}   PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
+endif()
+
 # add_test(NAME AllTests COMMAND ${TEST_TARGET_NAME})
 
 add_custom_command(TARGET ${TEST_TARGET_NAME} POST_BUILD

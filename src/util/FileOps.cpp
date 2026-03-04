@@ -20,6 +20,8 @@ String getDefaultEditFileSuffix() {
         case MoToolApp::Target::MoTool:
             return MOTOOL_EDIT_FILE_SUFFIX;
     }
+    jassertfalse;
+    return {};
 }
 
 String getAppFileGlob() {

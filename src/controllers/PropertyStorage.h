@@ -8,8 +8,8 @@ namespace MoTool {
 
 class PropertyStorage : public tracktion::PropertyStorage {
 public:
-    PropertyStorage(StringRef appName)
-        : tracktion::PropertyStorage(appName)
+    PropertyStorage(StringRef appName_)
+        : tracktion::PropertyStorage(appName_)
     {}
 
     ~PropertyStorage() override = default;

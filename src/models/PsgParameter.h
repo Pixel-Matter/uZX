@@ -162,8 +162,8 @@ public:
         }
     }
 
-    constexpr float valueToNormalized(int value) const noexcept {
-        return getScale().valueToNormalized(value);
+    constexpr float valueToNormalized(int v) const noexcept {
+        return getScale().valueToNormalized(v);
     }
 
     constexpr int normalizedToValue(float normalized) const noexcept {
@@ -309,7 +309,7 @@ public:
 
     void debugPrint() const noexcept {
         PsgParamType::forEach([this](auto enumValue) {
-            auto type = PsgParamType(enumValue);
+            [[maybe_unused]] auto type = PsgParamType(enumValue);
             DBG(std::string(type.getLabel()) << ": " << values[static_cast<size_t>(type)]);
         });
     }

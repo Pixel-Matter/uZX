@@ -170,7 +170,9 @@ struct ParameterDef {
 
         const auto floatRange = getFloatValueRange();
         auto interval = floatRange.interval;
+        JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wfloat-equal")
         if (interval == 0.0f)
+        JUCE_END_IGNORE_WARNINGS_GCC_LIKE
             interval = 1.0f;
         const auto index = roundToInt((v - floatRange.start) / interval);
         return jlimit(0, stateCount - 1, index);

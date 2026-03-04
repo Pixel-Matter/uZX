@@ -60,7 +60,7 @@ struct ScaleDegree {
 class Scale {
 public:
     using Degree = ScaleDegree;
-    using Accidental = Accidental;
+    using Accidental = MoTool::Accidental;
 
     struct TonicEnum {
         enum Enum {

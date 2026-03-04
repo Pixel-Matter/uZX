@@ -41,8 +41,10 @@
 
 #### P2 — Nice to have
 
-- [ ] **Mute/solo buttons** — per-channel mute in AY side panel
+- [ ] **GitHub Actions CI for macOS** — build, upload as release artifact
 - [ ] **Windows build** — GitHub Actions
+- [ ] **Linux build** — GitHub Actions
+- [ ] **Mute/solo buttons** — per-channel mute in AY side panel
 
 ---
 

@@ -57,7 +57,7 @@ private:
 
     // Helper to debug mesagesa
     void debugMessages(const te::MidiMessageArray& messages) {
-        for (const auto& msg : messages) {
+        for (const [[maybe_unused]] auto& msg : messages) {
             DBG(msg.getDescription());
         }
     }

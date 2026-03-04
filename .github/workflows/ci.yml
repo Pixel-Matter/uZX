@@ -10,6 +10,7 @@ on:
 jobs:
   build-macos:
     runs-on: macos-latest
+    if: github.ref_type == 'branch'
 
     steps:
       - name: Checkout
@@ -29,6 +30,7 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
+    if: github.ref_type == 'branch'
 
     steps:
       - name: Checkout
@@ -62,6 +64,7 @@ jobs:
 
   build-windows:
     runs-on: windows-latest
+    if: github.ref_type == 'branch'
 
     steps:
       - name: Checkout

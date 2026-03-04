@@ -148,6 +148,36 @@ The codebase builds multiple application targets from shared source:
 
 Target detection is in `App.h` via `ProjectInfo::projectName`. Each target shares the `motool_common` static library and `Main.cpp` entry point.
 
+## CI (GitHub Actions)
+
+Workflow file: `.github/workflows/ci.yml`
+Triggers: push to `main`/`develop`, PRs to `main`/`develop`, any `v*` tag.
+
+Build jobs (`build-*`) are skipped on tag pushes (`if: github.ref_type == 'branch'`) to avoid double builds — release jobs do their own full build.
+
+## Release Process
+
+Versions are defined in `versions.cmake`. The CI workflow (`.github/workflows/ci.yml`) triggers releases on `v*` tags.
+
+### Steps
+1. Update version in `versions.cmake` if needed
+2. Ensure all changes are on `develop` and pushed
+3. Fast-forward `main` to `develop` and push:
+   ```bash
+   git checkout main && git merge --ff-only develop && git push origin main
+   git checkout develop
+   ```
+4. Tag and push — this triggers the release jobs:
+   ```bash
+   git tag v0.4.1-alpha   # use v<version> or v<version>-alpha etc.
+   git push origin v0.4.1-alpha
+   ```
+
+### CI Behavior
+- **Branch push**: runs `build-macos`, `build-linux`, `build-windows` (tests only)
+- **Tag push (`v*`)**: skips build jobs, runs `create-release` → `release-macos/linux/windows` (full build + upload)
+- Release jobs require `permissions: contents: write` (already set in ci.yml)
+
 ## Documentation
 
 ### Tracktion Engine Architecture

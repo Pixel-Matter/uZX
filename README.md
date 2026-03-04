@@ -83,6 +83,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, prerequi
 - [OVM Design Pattern](docs/OVM%20Design%20pattern.md) — state management
 - [Roadmap](docs/ROADMAP.md) — planned features and release milestones
 
+## Community
+
+Join the [µZX Discord](https://discord.com/channels/1103598609804562463/1357634772666552340) for support, discussion, and to connect with other users.
+
 ## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for build setup, code style, testing, and how to submit changes.

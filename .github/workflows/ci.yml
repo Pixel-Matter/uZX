@@ -46,6 +46,40 @@ jobs:
       - name: Run tests
         run: build\src\uZXTests_artefacts\Release\uZXTests.exe
 
+  release-macos:
+    runs-on: macos-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --target uZX --target uZXPlayer
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: uZX-macos-${{ github.ref_name }}
+          path: |
+            build/src/uZX_artefacts/Release/
+            build/src/uZXPlayer_artefacts/Release/
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/src/uZX_artefacts/Release/*.app
+            build/src/uZXPlayer_artefacts/Release/*.app
+
   release-windows:
     runs-on: windows-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')

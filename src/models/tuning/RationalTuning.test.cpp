@@ -48,7 +48,7 @@ public:
 
         beginTest("Tonic to frequency conversion - A4 = 432.0 Hz");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 432.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 432.0};
 
             expectWithinAbsoluteError(tuning.getTonicFrequency(4), 432.0, 1e-6, "Tonic should be A4 = 432.0 Hz");
         }
@@ -127,7 +127,7 @@ public:
 
         beginTest("MIDI note to frequency conversion - Middle C");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
             double frequency = tuning.midiNoteToFrequency(60); // Middle C
             // In just intonation, C to A is major sixth (5:3), so C = A / (5/3) = A * (3/5)
             double expectedFreq = 440.0 * 3.0 / 5.0;
@@ -136,7 +136,7 @@ public:
 
         beginTest("Fractional MIDI note to frequency conversion - Middle C+");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
             double frequency = tuning.midiNoteToFrequency(60.5); // Middle C plus quarter tone
             // In just intonation, C to A is major sixth (5:3), so C = A / (5/3) = A * (3/5)
             double expectedFreq1 = 440.0 * 3.0 / 5.0;
@@ -147,7 +147,7 @@ public:
 
         beginTest("MIDI note to frequency conversion - octave relationships");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
             double a4_freq = tuning.midiNoteToFrequency(69); // A4
             double a5_freq = tuning.midiNoteToFrequency(81); // A5 (one octave higher)
             double a3_freq = tuning.midiNoteToFrequency(57); // A3 (one octave lower)
@@ -158,7 +158,7 @@ public:
 
         beginTest("Frequency to MIDI note conversion - A4");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
             int a4lower = tuning.frequencyToNearestMidiNote(450.0, ReferenceTuningSystem::NoteSearch::NextLower);
             expectEquals(a4lower, 69, "450.0 Hz should convert to MIDI note 69 (A4)");
 
@@ -174,7 +174,7 @@ public:
 
         beginTest("Frequency to MIDI note conversion - Middle C");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
             double middleCFreq = 440.0 * 3.0 / 5.0; // C to A is 5:3 in just intonation
             double midiNote = tuning.frequencyToMidiNote(middleCFreq);
             expectWithinAbsoluteError(midiNote, 60.0, 1e-3, "Middle C frequency should convert to MIDI note 60");
@@ -182,7 +182,7 @@ public:
 
         beginTest("Frequency to MIDI note conversion - Middle C quarter tone");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
             double middleCFreq = 269.444; // C+ is quarter tone above C
             double midiNote = tuning.frequencyToMidiNote(middleCFreq);
 
@@ -191,7 +191,7 @@ public:
 
         beginTest("Round-trip conversion accuracy");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
             for (double note = 21.0; note <= 108.0; note += 0.25) { // Test from A0 to A8
                 double frequency = tuning.midiNoteToFrequency(note);
                 double roundTripNote = tuning.frequencyToMidiNote(frequency);
@@ -202,7 +202,7 @@ public:
 
         beginTest("isDefined method - all notes should be defined");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
 
             // Test various MIDI note ranges
             expect(tuning.isDefined(0), "MIDI note 0 should be defined");
@@ -213,7 +213,7 @@ public:
 
         beginTest("A4 frequency setter");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
             tuning.setA4Frequency(432.0);
             expectWithinAbsoluteError(tuning.getA4Frequency(), 432.0, 1e-6, "A4 frequency should be updated to 432.0 Hz");
 
@@ -232,7 +232,7 @@ public:
 
         beginTest("Edge case - very high and low frequencies");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
 
             // Test very low MIDI note
             double lowFreq = tuning.midiNoteToFrequency(0.0);
@@ -251,7 +251,7 @@ public:
 
         beginTest("Fractional MIDI notes");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
 
             // Test quarter-tone between A4 and A#4
             double quarterToneFreq = tuning.midiNoteToFrequency(69.5);
@@ -292,7 +292,7 @@ public:
 
         beginTest("ValueTree state serialization - RationalTuning");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::F, 436.0};
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::F, Scale::ScaleType::IonianOrMajor, 436.0};
             auto state = tuning.state;
 
             expectEquals(state.getProperty("type").toString(), juce::String("CustomRational"), "Type should be CustomRational");

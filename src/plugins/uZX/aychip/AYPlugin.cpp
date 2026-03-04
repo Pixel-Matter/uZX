@@ -121,7 +121,7 @@ void AYChipPlugin::reset() {
     const int ayumiMode = 3;
 
     if (chip == nullptr) {
-        chip = std::make_unique<AyumiEmulator>(sampleRate, staticParams.chipClock.getStoredValue() * MHz,
+        chip = std::make_unique<AyumiEmulator>(static_cast<int>(sampleRate), staticParams.chipClock.getStoredValue() * MHz,
                                                staticParams.chipType.getStoredValue(),
                                                ayumiMode);
     } else {

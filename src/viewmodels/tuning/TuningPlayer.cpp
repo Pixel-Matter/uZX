@@ -112,7 +112,7 @@ void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
     midiPreview.playChord(midiNotes, duration, tone, env, envelopeShape, modulationSemitones);
 
     // Track playing notes
-    for (size_t i = 0; i < std::min(midiNotes.size(), 3ul); ++i) {
+    for (size_t i = 0; i < std::min(midiNotes.size(), static_cast<size_t>(3)); ++i) {
         playingNotes_[midiNotes[i]] = static_cast<int>(i + 1);
     }
     notifyPlayingNotes();

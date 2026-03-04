@@ -65,7 +65,7 @@ struct ParameterScale {
     }
 
     /** Number of octaves spanned by the scale range */
-    constexpr float octaves() const noexcept {
+    float octaves() const noexcept {
         return std::log2(static_cast<float>(end))
              - std::log2(static_cast<float>(std::max(1, start)));
     }

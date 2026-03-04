@@ -43,11 +43,11 @@ public:
 
     FractionNumber(const juce::String& ratio); // "3:2", "5:4", etc.
 
-    constexpr double toSemitones() const noexcept {
+    double toSemitones() const noexcept {
         return std::log2(value) * 12.0; // Convert ratio to semitones
     }
 
-    constexpr double toCents() const noexcept {
+    double toCents() const noexcept {
         return std::log2(value) * 1200.0; // Convert ratio to cents
     }
 

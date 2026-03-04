@@ -1,5 +1,6 @@
 # µZX — Chiptune Music Tool
 
+[![CI](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml/badge.svg)](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENCE.md)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20iOS%20%7C%20Android-lightgrey)]()
 

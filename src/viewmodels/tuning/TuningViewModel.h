@@ -174,20 +174,16 @@ struct TuningNote {
         if (envPeriod == -1) {  // period is env
             periodInfo = String::formatted("Env period: %d", period);
         } else {
-            periodInfo = String::formatted("Period: %d\nEnv: %d %s",
-                                period, envPeriod,
-                                isSafeForEnvelope() ? "(in sync)" : "(out of sync)"
-                            );
+            periodInfo = String::formatted("Period: %d\nEnv: %d ", period, envPeriod)
+                       + (isSafeForEnvelope() ? "(in sync)" : "(out of sync)");
         }
 
-        return name + String::formatted(": MIDI %s\nTracker note: %s\n%s\nFrequency: %s\n%s\nOfftune: %+.1f cents",
-                                midiInfo.toUTF8(),
-                                trackerInfo.toUTF8(),
-                                periodInfo.toUTF8(),
-                                freqInfo.toUTF8(),
-                                hearableInfo.toUTF8(),
-                                offtune
-                            );
+        return name + ": MIDI " + midiInfo
+             + "\nTracker note: " + trackerInfo
+             + "\n" + periodInfo
+             + "\nFrequency: " + freqInfo
+             + "\n" + hearableInfo
+             + String::formatted("\nOfftune: %+.1f cents", offtune);
     }
 };
 

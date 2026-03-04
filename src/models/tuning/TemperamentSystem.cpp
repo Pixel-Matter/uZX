@@ -21,7 +21,7 @@ ReferenceTuningSystem::ReferenceTuningSystem(const juce::ValueTree& initialState
 }
 
 String ReferenceTuningSystem::getDescription() const {
-    return String(String::formatted("%s tuning, A4 = %.2f Hz", getType().getLongLabel().data(), getA4Frequency()));
+    return String(getType().getLongLabel().data()) + String::formatted(" tuning, A4 = %.2f Hz", getA4Frequency());
 }
 
 void ReferenceTuningSystem::setA4Frequency(double frequency) {
@@ -81,6 +81,8 @@ int EqualTemperamentTuning::frequencyToNearestMidiNote(double frequency, NoteSea
             return static_cast<int>(std::ceil(midiNote));
         }
     }
+    jassertfalse;
+    return static_cast<int>(std::round(midiNote));
 }
 
 bool EqualTemperamentTuning::isDefined(int /*midiNote*/) const {

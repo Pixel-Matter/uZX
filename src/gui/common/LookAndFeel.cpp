@@ -106,7 +106,8 @@ Typeface::Ptr MoLookAndFeel::getTypefaceForFont(const Font& font) {
         return iosevkaRegularTypeface_;
     }
 
-    return LookAndFeel_V4::getTypefaceForFont(font);
+    auto typeface = LookAndFeel_V4::getTypefaceForFont(font);
+    return typeface != nullptr ? typeface : interRegularTypeface_;
 }
 
 void MoLookAndFeel::debugColourScheme() {

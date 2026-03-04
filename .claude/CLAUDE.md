@@ -131,6 +131,7 @@ The codebase builds on macOS (Clang), Linux (GCC), and Windows (MSVC). Clang is 
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `[[maybe_unused]]` on range-for variable | MSVC rejects the attribute in that position | Use `juce::ignoreUnused(var)` inside the loop body instead |
+| `String::formatted("%s", str.toUTF8())` garbles text | JUCE uses `_vswprintf` on Windows; `%s` expects `wchar_t*` but `toUTF8()` returns `char*` | Use string concatenation: `"prefix " + str + String::formatted(", val=%.2f", x)` |
 
 ### General rules
 - Always use `juce::ignoreUnused(x)` to suppress unused variable warnings — works on all three compilers

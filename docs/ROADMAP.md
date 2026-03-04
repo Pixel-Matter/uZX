@@ -42,6 +42,7 @@
 #### P2 — Nice to have
 
 - [ ] **Mute/solo buttons** — per-channel mute in AY side panel
+- [ ] **Windows build** — GitHub Actions
 
 ---
 
@@ -81,9 +82,9 @@
 
 ---
 
-### v1.1 — Windows + Quality of Life
+### v1.1 — Windows installer + Quality of Life
 
-- [ ] **Windows build** — GitHub Actions, NSIS or WiX installer
+- [ ] **Windows build** — NSIS or WiX installer
 - [ ] **Windows code signing**
 - [ ] **WAV export** — render PSG to WAV
 - [ ] **Looping** — toggle loop playback
@@ -97,7 +98,7 @@
 - [ ] **Linux build** — GitHub Actions, AppImage packaging
 - [ ] **CN import** — ChipNomad format
 - [ ] **PT3/VT2 import** — ProTracker 3, Vortex Tracker II
-- [ ] **AY file import** — AY container format
+- [ ] **AY/SNDH file import** — AY container format, Atari ST music format
 - [ ] **MP3/OGG export**
 
 ---

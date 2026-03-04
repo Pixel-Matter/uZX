@@ -34,9 +34,9 @@ public:
 
             // expect(sizeof(PsgParamFrameData::values) == 42, "Expected 42 bytes, got " + std::to_string(sizeof(PsgParamFrameData::values)));
             // expect(sizeof(PsgParamFrameData::masks) == 21, "Expected 21 bytes, got " + std::to_string(sizeof(PsgParamFrameData::masks)));
-            expectEquals(sizeof(PsgParamFrameData), 66ul);
+            expectEquals(sizeof(PsgParamFrameData), size_t{66});
 
-            expectEquals(data.getParams().size(), 2ul);
+            expectEquals(data.getParams().size(), size_t{2});
             expect(data.getParams()[1].first == PsgParamType::EnvelopeShape, "Expected EnvelopeShape");
             expect(data[PsgParamType::VolumeA] == 1, "Expected VolumeA to be 1");
             expect(data[PsgParamType::VolumeB] == std::nullopt, "Expected VolumeB to be nullopt");

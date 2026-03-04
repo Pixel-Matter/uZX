@@ -12,8 +12,8 @@ namespace {
     // for example to bypass initial click
     // Note: This assumes stereo mode is set. Call setOutputMode before using this.
     void bypassBlock(AyumiEmulator& ay, size_t samples) {
-        float out[samples];
-        ay.processBlockStereo(out, out, samples);
+        std::vector<float> out(samples);
+        ay.processBlockStereo(out.data(), out.data(), samples);
     }
 
     void bypassBlock(AyumiEmulator& ay, double duration_s = 0.03) {

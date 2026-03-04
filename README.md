@@ -27,6 +27,8 @@ A modern tool for composing and playing back chiptune music for platforms using 
     BP
 ```
 
+![µZX Player](docs/uzx-player.gif)
+
 ## Features
 
 **Three applications from one codebase:**

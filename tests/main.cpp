@@ -212,5 +212,10 @@ int main(int argc, char* argv[]) {
     Logger::setCurrentLogger(nullptr);
     engine.getTemporaryFileManager().getTempDirectory().deleteRecursively(false);
 
-    return 0;
+    int numFailures = 0;
+    for (int i = 0; i < testRunner.getNumResults(); ++i)
+        if (const auto* result = testRunner.getResult(i))
+            numFailures += result->failures;
+
+    return numFailures > 0 ? 1 : 0;
 }

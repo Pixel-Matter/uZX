@@ -58,8 +58,9 @@ TuningTable::TuningTable(
 {}
 
 String TuningTable::getDescription() const {
-    return customName_ + String::formatted(", defined notes %s-%s, A4 = %.2fHz",
-        getMidiNoteName(minDefinedNote_).toUTF8(), getMidiNoteName(maxDefinedNote_).toUTF8(), getA4Frequency());
+    return customName_ + ", defined notes "
+        + getMidiNoteName(minDefinedNote_) + "-" + getMidiNoteName(maxDefinedNote_)
+        + String::formatted(", A4 = %.2fHz", getA4Frequency());
 }
 
 TuningType TuningTable::getType() const {

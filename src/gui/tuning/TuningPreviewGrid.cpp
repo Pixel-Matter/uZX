@@ -254,7 +254,7 @@ juce::String TuningPreviewGrid::getTooltip() {
                     case NoteGridHeadingType::Notes: headerTypeName = "Note"; break;
                 }
                 juce::String headerText = column.getHeadingText(hoveredRegion.headerType);
-                return juce::String::formatted("%s: %s", headerTypeName.toUTF8(), headerText.toUTF8());
+                return headerTypeName + ": " + headerText;
             }
             break;
         }

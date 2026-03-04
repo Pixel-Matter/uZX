@@ -36,7 +36,7 @@ void TimelineGrid::removeListener(Listener* l) { listeners.remove(l); }
 
 void TimelineGrid::invalidateAndNotify() {
     ticksCacheValid = false;
-    listeners.call(&Listener::gridChanged);
+    listeners.call(&TimelineGrid::Listener::gridChanged);
 }
 
 std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {

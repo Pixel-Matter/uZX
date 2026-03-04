@@ -1,5 +1,5 @@
 #include "AboutDialog.h"
-#include "version.h"
+#include "../../version.h"
 #include "controllers/App.h"
 #include <cmath>
 

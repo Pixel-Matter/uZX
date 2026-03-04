@@ -1,4 +1,4 @@
-# MoTool is a modern PC-based *de*motool for retrocomputer demoscene production
+# MoTool is a planned modern PC-based *de*motool for retrocomputer demoscene production
 
 ```text
         █▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌
@@ -31,12 +31,6 @@
     B8 B8 B8 "" 8P B8 Yb "" "" 8P B8
     Y8 88 Y@888@8' 88 `8@88888@8' YP
 ```
-
-![Tracktion Engine](third_party/tracktion_engine/tutorials/images/tracktion_engine_powered.png)
-
-Powered by [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/).
-
-Uses [ayumi library](https://github.com/true-grue/ayumi) by Peter Sovietov (true-grue) for highly precise emulation of AY-3-8910 and YM2149 sound chips.
 
 Designed for easy prototyping.
 
@@ -125,72 +119,3 @@ And vice versa. Links between nodes can be done as in Nodes View as between trac
 or in properties panel (keyframe by keyframe).
 
 Yes, there is some gaps in this vision, but we should eat the elephant by pieces.
-
-### About me
-
-I'm experienced C++ and Python developer with background in video editing, 3D, graphics and motion design in early 2000s,
-webdesign and UX in mid 2000s, web backend in 2010s and ML/data engineering in 2020s.
-
-This vision is being appeared in my mind for several years, with number of implemented prototypes of the tool,
-in python mainly, in C++ JUCE VST plugin form, implemented machine code in a timeline with state caching already in Python,
-bridging the FUSE emulator with C++ and pybind11, etc. Also I'm very into demoscene and coded several asm effects for ZX Spectrum,
-winning places at compos. So I do not afraid, I just have to get myself, my small projects codebase and this vision together.
-
-*When and how did I first get into the demoscene? What drew me to it and specifically to ZX Spectrum demos?*
-
-I had ZX Spectrum Soviet clone in 1990 and falled in love with it, of course. Games, BASIC, first simple games programmed.
-Then asm, self-taught, but not for very complex projects. There was not demoscene then yet. Then in early 90s in school and
-University I switched to PCs, of course. VGA graphics is no comparison to ZX. I coded some semi-static 256 color fx
-with Pascal, and some wireframe 3D.
-
-*What are some of your favorite demos that inspired you, either technically or artistically? Are there specific effects
-or techniques that you found particularly fascinating?*
-
-Then I saw Second Reality and it blew my mind. Music and fx! Impossible colorful plasma! You know! But I didn't know
-how to code this tricks in Pascal and x86 asm, and didn't have much time. I have to work and study. Then I got to FIDO
-and then internet, and decided to involve into that, design, web programming etc. But later, in 2017 as I can remember
-I realised that web turned into something very complex and not fun. So I remembered good old days when you knew the
-machine from top to bottom and could push it to the limits, deepening your understanding etc. I found out that
-ZX Spectrum demoscene lives and started to draw pictures in 6912 byte format, you know.
-
-*Mentioned winning compo places with ZX Spectrum effects - could you tell me about some of these demos/effects?
-What made them unique or challenging?*
-
-I posted pictures on zxart.ee, joined ZX telegram discussion groups on gfx and music (Also I play guitar and synth,
-a little). Then made friends with some forks from ZX scene, virtually, then in DI:Halt demoparty irl, when I took 1st
-place for "Little PRINC-E" ZX Spectrum graphics. Then we coded 256byte intro Stellarator, first place at 2019 CAFEParty.
-Then one more 256 byte intro, no top place. I wanted to make my first full-featured demo prod, but alas my first
-concepts of a demo didnt driven anyone in our little group. Then in 2022 the war happened and motivation for the demo
-dropped, but I have some demoscene friend from London, we developed very ambitious fx projects and conversion tools
-involving AI and NN (I have some backgound on it too). So to this time I gathered a number of semi-finished conversion
-and tooling projects, semi-finished intrersting asm fx, an ambitious demo vision even, but no team alas. And to start
-with music, I should have a good instrument, and I do not like oldschool trackers. So, this vision came naturally.
-But maybe I'm just a person that can not finish anything?
-
-*On the development side:*
-
-*What led you to explore different prototypes in Python and C++?*
-
-I do not know, It came naturally, as I said, I just love Python.
-C++ is for performance, zero-abstraction, you know, elegance, etc.. and for tracktion engine. I had experience with
-Python UI libraries and didn't like it very much. I do not want to get into Qt, its a monster and it is outdated now.
-
-*Which aspects of JUCE particularly appealed to you for the VST plugin approach?*
-
-Oh! I like ValueTreeState approach very much! And JUCE for multiplatform plugin development is very strong, no alternatives.
-
-*What were the key lessons learned from these different implementation attempts?*
-
-Lessons are: Python is very flexible and is very good for rapid development, but absence of strong typing can mislead
-into bad design, and Python lacks good enough UI frameworks. I used GTK, PyImgGUI, what else i can not remember,
-but JUCE with C++ is a win. And regarding software packaging, Python have problems, you know.
-
-When I developed AY chip VST3 plugin, I started very quickly and get results, but when I added features, legato, portamento,
-mixing, pitchwheel, all in one plugin, I struggled with complexity and wanted to break the plugin into separate parts
-to debug and inspect the intermidiate midi streams separately. So again it came naturally to implement my own DAW-like tool for that.
-
-*Your background spans development, video editing, design, and UX - how do you think this interdisciplinary experience*
-*shapes your vision for MoTool? Are there specific pain points from these different fields that you're hoping to solve?*
-
-I do not know really, I didn't think of that specifically. But I can not start a demo without a music, and can not start
-composing music in trackers. Integration and iteration, maybe this is the word.

@@ -148,8 +148,6 @@ The codebase builds multiple application targets from shared source:
 
 Target detection is in `App.h` via `ProjectInfo::projectName`. Each target shares the `motool_common` static library and `Main.cpp` entry point.
 
-See `docs/uzx-player.md` for μZX Player design and architecture.
-
 ## Documentation
 
 ### Tracktion Engine Architecture

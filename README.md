@@ -35,6 +35,10 @@ A modern tool for composing and playing back chiptune music for platforms using 
 - **µZX Player** — lightweight playback for `.uzx` projects and `.psg` files
 - **µZX Tuning** — standalone tuning table editor for exploring chip tuning systems
 
+## Vision
+
+µZX is being developed as the music subsystem of **MoTool** — a planned demotool for retrocomputer demoscene production. MoTool does not exist as a release yet; it will launch as a separate project on the shared codebase once the timeline supports video material and emulator integration. See [docs/Vision.md](docs/Vision.md) for the full picture.
+
 **Music composition:**
 
 - Timeline-based arranging with tracks, clips, and automation
@@ -91,11 +95,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for build setu
 
 Greets to diver, spke, n1k-o, bfox, wbcbz7, Pator, Megus, Volutar and all ZX Spectrum musicians and demosceners!
 
-![Powered by Tracktion Engine](third_party/tracktion_engine/tutorials/images/tracktion_engine_powered.png)
-
-## Vision
-
-µZX is the music subsystem of the larger **MoTool** project — a demotool for retrocomputer demoscene production that will eventually combine music, graphics, effects, and machine code in a single timeline. See [docs/Vision.md](docs/Vision.md) for the full picture.
+![Powered by Tracktion Engine](https://raw.githubusercontent.com/Tracktion/tracktion_engine/develop/tutorials/images/tracktion_engine_powered.png)
 
 ## About
 

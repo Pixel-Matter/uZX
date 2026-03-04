@@ -34,7 +34,7 @@ A modern tool for composing and playing back chiptune music for platforms using 
 **Three applications from one codebase:**
 
 - **µZX Studio** — full-featured PSG music editor with timeline, instruments, and effects. Includes µZX Tuning.
-- **µZX Player** — lightweight playback for `.uzx` projects and `.psg` files
+- **µZX Player** — lightweight playback for `.uzx` projects and `.psg` files with drag-drop support, file associations, and keyboard shortcuts
 - **µZX Tuning** — standalone tuning table editor for exploring chip tuning systems. (Included in µZX Studio as a built-in tool)
 
 ## Vision
@@ -56,15 +56,27 @@ A modern tool for composing and playing back chiptune music for platforms using 
 - Configurable chip clock frequency and A4 reference
 - CSV export of tuning tables
 
-**Visualization:**
+**Visualization & Interaction:**
 
 - PSG clip display with notes, noise/envelope decoration, and note pitch scale
-- Integrated oscilloscope displays per AY channel
+- Integrated oscilloscope displays per AY channel with live monitoring
 - Standalone scope plugin
+- Smooth timeline scrolling and zooming with click-to-seek
 
 ## Download
 
 See [Releases](https://github.com/Pixel-Matter/uZX/releases) for pre-built binaries.
+
+### macOS Setup
+
+If you encounter a quarantine warning when opening the app, clear it with:
+
+```bash
+xattr -rd com.apple.quarantine /Applications/µZX\ Player.app
+xattr -rd com.apple.quarantine /Applications/µZX\ Studio.app
+```
+
+(Replace app paths as needed. Adjust for your installation location, e.g., `~/Applications/` if installed there.)
 
 ## Building from Source
 
@@ -81,10 +93,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, prerequi
 
 - [Design](docs/Design.md) — architecture overview
 - [Tuning Systems](docs/Tuning%20Systems.md) — tuning system design
-- [µZX Player](docs/uzx-player.md) — Player variant architecture
 - [Parameter Binding](docs/Parameter%20binding.md) — parameter binding system
 - [OVM Design Pattern](docs/OVM%20Design%20pattern.md) — state management
 - [Roadmap](docs/ROADMAP.md) — planned features and release milestones
+- [Vision](docs/Vision.md) — full MoTool vision and long-term goals
 
 ## Community
 

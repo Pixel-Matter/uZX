@@ -112,6 +112,46 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  release-linux:
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y \
+            libasound2-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev \
+            libfreetype-dev libfontconfig1-dev \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libglib2.0-dev \
+            libjack-jackd2-dev \
+            libcurl4-openssl-dev \
+            libwebkit2gtk-4.1-dev
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --target uZX --target uZXPlayer
+
+      - name: Upload to GitHub Release
+        run: |
+          find build/src/uZX_artefacts/Release \
+               build/src/uZXPlayer_artefacts/Release \
+               -maxdepth 1 -type f -executable \
+          | xargs gh release upload ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   release-windows:
     runs-on: windows-latest
     needs: create-release

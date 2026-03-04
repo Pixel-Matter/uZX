@@ -33,7 +33,7 @@ A modern tool for composing and playing back chiptune music for platforms using 
 
 - **µZX Studio** — full-featured PSG music editor with timeline, instruments, and effects. Includes µZX Tuning.
 - **µZX Player** — lightweight playback for `.uzx` projects and `.psg` files
-- **µZX Tuning** — standalone tuning table editor for exploring chip tuning systems
+- **µZX Tuning** — standalone tuning table editor for exploring chip tuning systems. (Included in µZX Studio as a built-in tool)
 
 ## Vision
 

@@ -258,7 +258,7 @@ struct ParameterDef<bool> {
     bool defaultValue;
     String units = {};
 
-    constexpr NormalisableRange<float> getFloatValueRange() const {
+    NormalisableRange<float> getFloatValueRange() const {
         return {0.0f, 1.0f, 1.0f};
     }
 

@@ -44,7 +44,7 @@ A modern tool for composing and playing back chiptune music for platforms using 
 **Music composition:**
 
 - Timeline-based arranging with tracks, clips, and automation
-- **Multiple AY chips** — use multiple tracks or add PSG instruments to multiple tracks for polyphonic compositions
+- **Multiple chips** — add chip plugins to multiple tracks or load multiple PSGs to separate tracks for multi-chip compositions.
 - ChipInstrument plugin with ADSR envelopes for AY chip
 - MIDI to PSG conversion with configurable tuning systems
 - Real-time AY-3-8910/YM2149 emulation via [ayumi](https://github.com/true-grue/ayumi)

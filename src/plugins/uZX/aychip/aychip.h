@@ -24,10 +24,8 @@ namespace MoTool::uZX {
     - Output to thee separate channels instead of mixing them to stereo panorama
 */
 
-namespace {
-    extern "C" {
-        #include <ayumi.h>
-    }
+extern "C" {
+    #include <ayumi.h>
 }
 
 constexpr double MHz = 1000000.0;

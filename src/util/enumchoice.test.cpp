@@ -157,11 +157,11 @@ public:
         beginTest("conversion to String works");
         {
             TestColor red(TestColorEnum::Red);
-            String redString = static_cast<juce::String>(red);
+            String redString(red.getLabel().data());
             expectEquals(redString, String("Red"));
 
             TestDirection north(TestDirectionEnum::North);
-            String northString = static_cast<juce::String>(north);
+            String northString(north.getLabel().data());
             expectEquals(northString, String("Move North"));
         }
 

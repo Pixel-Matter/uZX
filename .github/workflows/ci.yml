@@ -46,9 +46,17 @@ jobs:
       - name: Run tests
         run: build\src\uZXTests_artefacts\Release\uZXTests.exe
 
+  create-release:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
   release-macos:
     runs-on: macos-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    needs: create-release
 
     steps:
       - name: Checkout
@@ -63,26 +71,17 @@ jobs:
       - name: Build
         run: cmake --build build --target uZX --target uZXPlayer
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: uZX-macos-${{ github.ref_name }}
-          path: |
-            build/src/uZX_artefacts/Release/
-            build/src/uZXPlayer_artefacts/Release/
-          if-no-files-found: error
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            build/src/uZX_artefacts/Release/*.app
+      - name: Upload to GitHub Release
+        run: |
+          gh release upload ${{ github.ref_name }} \
+            build/src/uZX_artefacts/Release/*.app \
             build/src/uZXPlayer_artefacts/Release/*.app
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-windows:
     runs-on: windows-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    needs: create-release
 
     steps:
       - name: Checkout
@@ -97,19 +96,9 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --target uZX --target uZXPlayer
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: uZX-windows-${{ github.ref_name }}
-          path: |
-            build/src/uZX_artefacts/Release/
-            build/src/uZXPlayer_artefacts/Release/
-          if-no-files-found: error
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            build/src/uZX_artefacts/Release/*.exe
-            build/src/uZXPlayer_artefacts/Release/*.exe
+      - name: Upload to GitHub Release
+        run: |
+          Get-ChildItem "build\src\uZX_artefacts\Release\*.exe","build\src\uZXPlayer_artefacts\Release\*.exe" |
+            ForEach-Object { gh release upload "${{ github.ref_name }}" $_.FullName }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

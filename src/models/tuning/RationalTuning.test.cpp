@@ -224,10 +224,10 @@ public:
 
         beginTest("getName method");
         {
-            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, 440.0};
-            String name = tuning.getDescription();
-            expect(name.contains("Rational"), "Name should contain 'Rational'");
-            expect(name.contains("440.00"), "Name should contain A4 frequency");
+            RationalTuning tuning {justIntonationRatios, Scale::Tonic::A, Scale::ScaleType::IonianOrMajor, 440.0};
+            String description = tuning.getDescription();
+            expect(description.contains("Rational"), "Name should contain 'Rational'");
+            expect(description.contains("440.00"), "Name should contain A4 frequency");
         }
 
         beginTest("Edge case - very high and low frequencies");

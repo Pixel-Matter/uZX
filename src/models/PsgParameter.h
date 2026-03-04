@@ -309,7 +309,8 @@ public:
 
     void debugPrint() const noexcept {
         PsgParamType::forEach([this](auto enumValue) {
-            [[maybe_unused]] auto type = PsgParamType(enumValue);
+            auto type = PsgParamType(enumValue);
+            juce::ignoreUnused(type, this);
             DBG(std::string(type.getLabel()) << ": " << values[static_cast<size_t>(type)]);
         });
     }
@@ -317,6 +318,7 @@ public:
     void debugPrintSet() const noexcept {
         PsgParamType::forEach([this](auto enumValue) {
             auto type = PsgParamType(enumValue);
+            juce::ignoreUnused(this);
             if (isSet(type)) {
                 DBG(std::string(type.getLabel()) << ": " << values[static_cast<size_t>(type)]);
             }

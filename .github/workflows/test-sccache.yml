@@ -3,6 +3,9 @@ name: Test sccache on Windows
 on:
   workflow_dispatch:
 
+env:
+  SCCACHE_GHA_ENABLED: "true"
+
 jobs:
   test-sccache:
     runs-on: windows-2022
@@ -14,34 +17,46 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
 
-      - name: Create test file
+      - name: Create test project
         shell: pwsh
         run: |
+          mkdir testproj
+          @"
+          cmake_minimum_required(VERSION 3.20)
+          project(sccache_test CXX)
+          add_executable(hello hello.cpp)
+          "@ | Out-File -Encoding utf8 testproj/CMakeLists.txt
+
           @"
           #include <iostream>
           int main() {
               std::cout << "Hello from sccache test" << std::endl;
               return 0;
           }
-          "@ | Out-File -Encoding utf8 test.cpp
+          "@ | Out-File -Encoding utf8 testproj/hello.cpp
 
-      - name: Compile (cold cache)
+      - name: Install Ninja
+        run: choco install -y ninja
+
+      - name: Build (cold cache)
         shell: cmd
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          sccache cl /EHsc /Fe:test.exe test.cpp
-          test.exe
+          cmake -S testproj -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          cmake --build build
+          build\hello.exe
 
-      - name: Show sccache stats (after first compile)
+      - name: Show sccache stats (after first build)
         run: sccache --show-stats
 
-      - name: Clean and recompile (should hit cache)
+      - name: Clean and rebuild (should hit cache)
         shell: cmd
         run: |
-          del test.exe test.obj
+          rmdir /s /q build
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          sccache cl /EHsc /Fe:test.exe test.cpp
-          test.exe
+          cmake -S testproj -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          cmake --build build
+          build\hello.exe
 
-      - name: Show sccache stats (after cached compile)
+      - name: Show sccache stats (after cached build)
         run: sccache --show-stats

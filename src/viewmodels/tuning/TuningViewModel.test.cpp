@@ -51,6 +51,7 @@ public:
             expect(noteNames[9].isInScale);   // A
             expect(!noteNames[10].isInScale); // A#
             expect(noteNames[11].isInScale);  // B
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Scale and Key selection - A Minor");
@@ -82,6 +83,7 @@ public:
             expect(noteNames[9].isInScale);   // A -> in scale (root)
             expect(!noteNames[10].isInScale); // A#
             expect(noteNames[11].isInScale);  // B -> in scale
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Scale and Key selection - F# Major");
@@ -112,6 +114,7 @@ public:
             expect(!noteNames[9].isInScale);  // A
             expect(noteNames[10].isInScale);  // A# -> in scale
             expect(noteNames[11].isInScale);  // B -> in scale
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Scale and Key selection - D Dorian");
@@ -142,6 +145,7 @@ public:
             expect(noteNames[9].isInScale);   // A -> in scale
             expect(!noteNames[10].isInScale); // A#
             expect(noteNames[11].isInScale);  // B -> in scale
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Key names functionality");
@@ -159,6 +163,7 @@ public:
             expectEquals(Scale::getTonicName(Scale::Tonic::Enum::C), String("C"));
             expectEquals(Scale::getTonicName(Scale::Tonic::Enum::A), String("A"));
             expectEquals(Scale::getTonicName(Scale::Tonic::Enum::FSharp), "F♯"_u);
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Scale type names functionality");
@@ -174,6 +179,7 @@ public:
             expect(scaleNames.contains("Double Harmonic"));
             expect(scaleNames.contains("Dorian"));
             expect(!scaleNames.contains("User Defined"));  // Should not include UserDefined
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("CSV export functionality");
@@ -263,6 +269,7 @@ public:
             expect(csvData3.contains("F#"), "Should contain F#");
             expect(csvData3.contains("G#"), "Should contain G#");
             expect(csvData3.contains("A#"), "Should contain A#");
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Default export filename generation");
@@ -296,6 +303,7 @@ public:
             expect(!filename2.contains(":"), "Filename should not contain colon");
             expect(!filename2.contains("*"), "Filename should not contain asterisk");
             expect(!filename2.contains("?"), "Filename should not contain question mark");
+            TestHelpers::flushMessageQueue();
         }
     }
 };

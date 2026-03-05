@@ -305,18 +305,18 @@ jobs:
         run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
 
       - name: Run tests
-        run: .\build\src\uZXTests_artefacts\uZXTests.exe
+        run: .\build\src\uZXTests_artefacts\Release\uZXTests.exe
 
       - name: Package and Upload to GitHub Release
         run: |
           $version = $env:TAG_NAME -replace '^v', ''
 
           Compress-Archive `
-            -Path "build\src\uZX_artefacts\μZX Studio.exe" `
+            -Path "build\src\uZX_artefacts\Release\μZX Studio.exe" `
             -DestinationPath "uZX-${version}-windows-x64.zip"
 
           Compress-Archive `
-            -Path "build\src\uZXPlayer_artefacts\μZX Player.exe" `
+            -Path "build\src\uZXPlayer_artefacts\Release\μZX Player.exe" `
             -DestinationPath "uZXPlayer-${version}-windows-x64.zip"
 
           gh release upload "$env:TAG_NAME" `

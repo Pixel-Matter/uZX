@@ -28,6 +28,8 @@ concurrency:
 jobs:
   build:
     if: github.ref_type == 'branch'
+    env:
+      SCCACHE_GHA_ENABLED: "true"
     strategy:
       fail-fast: false
       matrix:
@@ -273,6 +275,8 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: write
+    env:
+      SCCACHE_GHA_ENABLED: "true"
 
     steps:
       - name: Checkout
@@ -290,8 +294,6 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
-        env:
-          SCCACHE_GHA_ENABLED: "true"
 
       - name: Configure
         run: >

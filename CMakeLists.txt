@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
+# Enable CMAKE_MSVC_DEBUG_INFORMATION_FORMAT (requires CMP0141=NEW, available since CMake 3.25).
+# This allows switching from /Zi (shared PDB) to /Z7 (embedded) for sccache compatibility.
+if(POLICY CMP0141)
+    cmake_policy(SET CMP0141 NEW)
+endif()
+
 # Default to Debug for single-config generators (Make, Ninja) when not specified.
 # Multi-config generators (Xcode, Visual Studio) ignore CMAKE_BUILD_TYPE.
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)

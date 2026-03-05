@@ -1,5 +1,6 @@
 #include <JuceHeader.h>
 #include "TuningViewModel.h"
+#include "../../util/TestHelpers.h"
 #include "../../utils/StringLiterals.h"
 
 using namespace MoTool;
@@ -19,7 +20,7 @@ public:
 
             DBG("Setting tuning type to Pythagorean");
             viewModel.selectedParams.tuningType.setStoredValue(TuningSystemType::Pythagorean);
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
             // expectEquals(String(viewModel.selectedParams.tuningType.getPropertyAsValue().getValue()), TuningSystemType(TuningSystemType::Pythagorean).getLabel().data());
             expectEquals(static_cast<int>(viewModel.getTuningType()), static_cast<int>(TuningSystemType::Pythagorean));
         }

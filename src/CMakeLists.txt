@@ -381,7 +381,7 @@ if(MSVC)
     target_link_options(${TEST_TARGET_NAME}   PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
 endif()
 
-# add_test(NAME AllTests COMMAND ${TEST_TARGET_NAME})
+add_test(NAME AllTests COMMAND ${TEST_TARGET_NAME})
 
 add_custom_command(TARGET ${TEST_TARGET_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND}

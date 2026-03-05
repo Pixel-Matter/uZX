@@ -3,6 +3,7 @@
 
 #include "../../controllers/BindedAutoParameter.h"
 #include "../../plugins/uZX/aychip/aychip.h"
+#include "../../util/TestHelpers.h"
 #include "ParamBindings.h"
 
 
@@ -64,7 +65,7 @@ public:
             value.setStoredValue(0.8f);
 
             // Stored value listeners fire asynchronously on the message thread.
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             expectWithinAbsoluteError(slider.getValue(), 0.8, 1e-6,
                                       "Slider updated from ParameterValue");
@@ -106,12 +107,12 @@ public:
             value.setStoredValue(ChipType::YM);
 
             // Stored value listeners fire asynchronously on the message thread.
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             expectEquals(button.getButtonText(), String("YM"), "Button text updated from ParameterValue");
 
             button.triggerClick();
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             expectEquals(value.getStoredValue(), ChipType(ChipType::AY),
                          "ParameterValue updated from button click");
@@ -140,13 +141,13 @@ public:
                                       "AutomatableParameter updated from slider sync");
 
             // should wait to async backsync to slider
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             slider.setValue(0.5, sendNotificationAsync);
             expectWithinAbsoluteError(static_cast<double>(param->getCurrentValue()), 0.8, 1e-6,
                                       "AutomatableParameter should stay the same after async slider set");
 
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             expectWithinAbsoluteError(static_cast<double>(param->getCurrentValue()), 0.5, 1e-6,
                                       "AutomatableParameter should stay the same after async slider set");
@@ -181,7 +182,7 @@ public:
             expectEquals(button.getButtonText(), String("Three"), "Button updated from AutomatableParameter");
 
             button.triggerClick();
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             expectEquals(param->getCurrentValue(), 0.f, "AutomatableParameter updated from button click");
             expectEquals(button.getButtonText(), String("One"), "Button updated from AutomatableParameter");
@@ -216,7 +217,7 @@ public:
                                       "Slider initialised from binded parameter");
 
             liveParam->setParameter(0.8f, sendNotification);
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
             expectWithinAbsoluteError(slider.getValue(), 0.8, 1e-6,
                                       "Slider reflects automatable parameter updates");
 
@@ -224,19 +225,19 @@ public:
             expectWithinAbsoluteError(static_cast<double>(liveParam->getCurrentValue()), 0.2, 1e-6,
                                       "Live param value updated from slider through binded parameter");
 
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
             expectWithinAbsoluteError(static_cast<double>(value.getStoredValue()), 0.2, 1e-6,
                                       "ParameterValue updated from slider through binded parameter");
 
             value.setStoredValue(0.65f);
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
             expectWithinAbsoluteError(static_cast<double>(liveParam->getCurrentValue()), 0.2, 1e-6,
                                       "Live param value not updated from ParameterValue state change");
             expectWithinAbsoluteError(slider.getValue(), 0.2, 1e-6,
                                       "Slider not refreshed after ParameterValue state change");
 
             plugin.restorePluginStateFromValueTree(pluginState);
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
             expectWithinAbsoluteError(slider.getValue(), 0.65, 1e-6,
                                       "Slider refreshed after restoring ParameterValue state");
 
@@ -257,7 +258,7 @@ public:
 
             // Click button
             button.triggerClick();
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             // Should toggle parameter
             expect(value.getStoredValue(), "Parameter true after click");
@@ -265,7 +266,7 @@ public:
 
             // Click again
             button.triggerClick();
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             // Should toggle back
             expect(!value.getStoredValue(), "Parameter false after second click");
@@ -286,14 +287,14 @@ public:
 
             // Change parameter
             value.setStoredValue(true);
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             // Button should update
             expect(button.getToggleState(), "Button on after parameter changed to true");
 
             // Change back
             value.setStoredValue(false);
-            juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+            TestHelpers::flushMessageQueue();
 
             // Button should update
             expect(!button.getToggleState(), "Button off after parameter changed to false");

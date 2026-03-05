@@ -112,7 +112,8 @@ jobs:
 
       - name: Stop sccache (Windows)
         if: runner.os == 'Windows'
-        run: C:\ProgramData\chocolatey\bin\sccache.exe --stop-server
+        shell: cmd
+        run: sccache --stop-server
 
       - name: Run tests
         run: ${{ matrix.test-bin }}
@@ -304,7 +305,8 @@ jobs:
         run: cmake --build build --config Release --parallel 3 --target uZX --target uZXPlayer --target uZXTests
 
       - name: Stop sccache
-        run: C:\ProgramData\chocolatey\bin\sccache.exe --stop-server
+        shell: cmd
+        run: sccache --stop-server
 
       - name: Run tests
         run: build\src\uZXTests_artefacts\Release\uZXTests.exe

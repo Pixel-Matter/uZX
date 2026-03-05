@@ -48,7 +48,9 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout submodules (shallow)
-        run: git submodule update --init --depth=1 --recursive
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule update --init --depth=1 --recursive
 
       - name: Install Linux dependencies
         if: matrix.install-deps
@@ -127,7 +129,9 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout submodules (shallow)
-        run: git submodule update --init --depth=1 --recursive
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule update --init --depth=1 --recursive
 
       - name: Install ccache
         run: brew install ccache
@@ -185,7 +189,9 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout submodules (shallow)
-        run: git submodule update --init --depth=1 --recursive
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule update --init --depth=1 --recursive
 
       - name: Install dependencies
         uses: ./.github/actions/install-linux-deps
@@ -248,7 +254,9 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout submodules (shallow)
-        run: git submodule update --init --depth=1 --recursive
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule update --init --depth=1 --recursive
 
       - name: Install sccache
         run: choco install sccache -y

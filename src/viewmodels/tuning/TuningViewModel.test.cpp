@@ -11,10 +11,10 @@ public:
 
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
 
         beginTest("Reference Tuning Selection");
         {
-            auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
             expectEquals(static_cast<int>(viewModel.getTuningType()), static_cast<int>(TuningSystemType::EqualTemperament));
 
@@ -27,7 +27,6 @@ public:
 
         beginTest("Scale and Key selection - C Major");
         {
-            auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
             // Default should be C Major
             expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::C));
@@ -56,7 +55,6 @@ public:
 
         beginTest("Scale and Key selection - A Minor");
         {
-            auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
             // Set to A Minor (Natural Minor = Aeolian)
@@ -88,7 +86,6 @@ public:
 
         beginTest("Scale and Key selection - F# Major");
         {
-            auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
             // Set to F# Major
@@ -119,7 +116,6 @@ public:
 
         beginTest("Scale and Key selection - D Dorian");
         {
-            auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
             // Set to D Dorian
@@ -150,7 +146,6 @@ public:
 
         beginTest("Key names functionality");
         {
-            auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
             auto keyNames = Scale::getAllNoteNames();
@@ -168,7 +163,6 @@ public:
 
         beginTest("Scale type names functionality");
         {
-            auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
             auto scaleNames = viewModel.getScaleTypeNames();
@@ -184,7 +178,6 @@ public:
 
         beginTest("CSV export functionality");
         {
-            auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
             // Set up test configuration
@@ -274,7 +267,6 @@ public:
 
         beginTest("Default export filename generation");
         {
-            auto edit = te::Edit::createSingleTrackEdit(engine);
             TuningViewModel viewModel(*edit);
 
             // Test default filename with C Major
@@ -305,6 +297,10 @@ public:
             expect(!filename2.contains("?"), "Filename should not contain question mark");
             TestHelpers::flushMessageQueue();
         }
+
+        // Drain all pending async activity before the shared edit is destroyed
+        TestHelpers::flushMessageQueue();
+        TestHelpers::flushMessageQueue();
     }
 };
 

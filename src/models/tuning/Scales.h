@@ -232,10 +232,10 @@ public:
 
             // Symmetrical
             "Whole Tone",
-            "Hexatonic",
             "Diminished (H-W)",
             "Diminished (W-H)",
             "Chromatic",
+            "Hexatonic",
 
             // Exotic/World
             "Persian",
@@ -264,7 +264,7 @@ public:
             "Hirajo", "Iwato", "In", "Yo", "Insen",                   // Pentatonic Japanese
             // "Chinese",                                                // Pentatonic Chinese
             "Blues", "MajBlu",                                        // Blues
-            "WholeTn", "Hex", "Dim(H-W)", "Dim(W-H)", "Chrom",        // Symmetrical
+            "WholeTn", "Dim(H-W)", "Dim(W-H)", "Chrom", "Hex",          // Symmetrical
             "Persian", "Arabic", "Gypsy", "Enigma",                   // Exotic/World
             "DHrm", "Promet", "3Tone",                                // Exotic/World
             "BebMaj", "BebDom", "BebMin",                             // Bebop

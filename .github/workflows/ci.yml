@@ -1,194 +1,320 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main, develop]
     tags: ['v*']
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  build:
     if: github.ref_type == 'branch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            build-target: uZXTests
+            test-bin: build/src/uZXTests_artefacts/Debug/uZXTests
+            cache-path: ~/Library/Caches/ccache
+            configure-extra: ""
+          - os: ubuntu-22.04
+            build-target: uZXTests
+            test-bin: build/src/uZXTests_artefacts/Debug/uZXTests
+            cache-path: ~/.cache/ccache
+            install-deps: true
+            configure-extra: ""
+          - os: windows-2022
+            build-target: uZXTests
+            test-bin: build\src\uZXTests_artefacts\Debug\uZXTests.exe
+            cache-path: ~\AppData\Local\Mozilla\sccache
+            configure-extra: -G "Visual Studio 17 2022" -A x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          submodules: recursive
           fetch-depth: 0
 
-      - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Checkout submodules (shallow)
+        run: git submodule update --init --depth=1 --recursive
 
-      - name: Build
-        run: cmake --build build
+      - name: Install Linux dependencies
+        if: matrix.install-deps
+        uses: ./.github/actions/install-linux-deps
 
-      - name: Run tests
-        run: build/src/uZXTests_artefacts/Release/uZXTests
+      - name: Install ccache (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ccache
 
-  build-linux:
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'branch'
+      - name: Install ccache (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y ccache
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Install sccache (Windows)
+        if: runner.os == 'Windows'
+        run: choco install sccache -y
+
+      - name: Restore build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
-          submodules: recursive
-          fetch-depth: 0
+          path: ${{ matrix.cache-path }}
+          key: build-cache-${{ matrix.os }}-debug-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-${{ github.sha }}
+          restore-keys: |
+            build-cache-${{ matrix.os }}-debug-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-
+            build-cache-${{ matrix.os }}-debug-
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y \
-            libasound2-dev \
-            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
-            libxinerama-dev libxrandr-dev libxrender-dev \
-            libfreetype-dev libfontconfig1-dev \
-            libgl1-mesa-dev libglu1-mesa-dev \
-            libglib2.0-dev \
-            libjack-jackd2-dev \
-            libcurl4-openssl-dev \
-            libwebkit2gtk-4.1-dev
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          ${{ matrix.configure-extra }}
 
-      - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: >
+          cmake -S . -B build
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          ${{ matrix.configure-extra }}
 
       - name: Build tests
-        run: cmake --build build --target uZXTests
+        run: cmake --build build --config Debug --parallel --target ${{ matrix.build-target }}
 
       - name: Run tests
-        run: build/src/uZXTests_artefacts/Release/uZXTests
+        run: ${{ matrix.test-bin }}
 
-  build-windows:
-    runs-on: windows-latest
-    if: github.ref_type == 'branch'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Configure
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-
-      - name: Build tests
-        run: cmake --build build --config Release --target uZXTests
-
-      - name: Run tests
-        run: build\src\uZXTests_artefacts\Release\uZXTests.exe
+  # ---------- Release pipeline ----------
 
   create-release:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 5
     permissions:
       contents: write
     steps:
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
+          draft: true
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') }}
 
   release-macos:
-    runs-on: macos-latest
+    runs-on: macos-14
     needs: create-release
+    timeout-minutes: 60
     permissions:
       contents: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          submodules: recursive
           fetch-depth: 0
 
+      - name: Checkout submodules (shallow)
+        run: git submodule update --init --depth=1 --recursive
+
+      - name: Install ccache
+        run: brew install ccache
+
+      - name: Restore build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/Library/Caches/ccache
+          key: build-cache-macos-14-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-${{ github.sha }}
+          restore-keys: |
+            build-cache-macos-14-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-
+            build-cache-macos-14-
+
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --target uZX --target uZXPlayer
+        run: cmake --build build --parallel --target uZX --target uZXPlayer --target uZXTests
+
+      - name: Run tests
+        run: build/src/uZXTests_artefacts/Release/uZXTests
 
       - name: Package and Upload to GitHub Release
         run: |
+          VERSION="${TAG_NAME#v}"
+
           cd build/src/uZX_artefacts/Release
-          zip -r "uZX-macOS.zip" *.app
+          zip -r "uZX-${VERSION}-macOS.zip" *.app
           cd -
           cd build/src/uZXPlayer_artefacts/Release
-          zip -r "uZXPlayer-macOS.zip" *.app
+          zip -r "uZXPlayer-${VERSION}-macOS.zip" *.app
           cd -
-          gh release upload ${{ github.ref_name }} \
-            build/src/uZX_artefacts/Release/uZX-macOS.zip \
-            build/src/uZXPlayer_artefacts/Release/uZXPlayer-macOS.zip
+          gh release upload "${TAG_NAME}" \
+            "build/src/uZX_artefacts/Release/uZX-${VERSION}-macOS.zip" \
+            "build/src/uZXPlayer_artefacts/Release/uZXPlayer-${VERSION}-macOS.zip"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
 
   release-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: create-release
+    timeout-minutes: 60
     permissions:
       contents: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          submodules: recursive
           fetch-depth: 0
+
+      - name: Checkout submodules (shallow)
+        run: git submodule update --init --depth=1 --recursive
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y \
-            libasound2-dev \
-            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
-            libxinerama-dev libxrandr-dev libxrender-dev \
-            libfreetype-dev libfontconfig1-dev \
-            libgl1-mesa-dev libglu1-mesa-dev \
-            libglib2.0-dev \
-            libjack-jackd2-dev \
-            libcurl4-openssl-dev \
-            libwebkit2gtk-4.1-dev
+        uses: ./.github/actions/install-linux-deps
+
+      - name: Install ccache
+        run: sudo apt-get install -y ccache
+
+      - name: Restore build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ccache
+          key: build-cache-ubuntu-22.04-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-${{ github.sha }}
+          restore-keys: |
+            build-cache-ubuntu-22.04-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-
+            build-cache-ubuntu-22.04-
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --target uZX --target uZXPlayer
+        run: cmake --build build --parallel --target uZX --target uZXPlayer --target uZXTests
 
-      - name: Upload to GitHub Release
+      - name: Run tests
+        run: build/src/uZXTests_artefacts/Release/uZXTests
+
+      - name: Package and Upload to GitHub Release
         run: |
-          find build/src/uZX_artefacts/Release \
-               build/src/uZXPlayer_artefacts/Release \
-               -maxdepth 1 -type f -executable \
-          | xargs gh release upload ${{ github.ref_name }}
+          VERSION="${TAG_NAME#v}"
+          mkdir -p staging
+
+          cp "build/src/uZX_artefacts/Release/μZX Studio" staging/
+          tar -czf "uZX-${VERSION}-linux-x86_64.tar.gz" -C staging "μZX Studio"
+          rm staging/*
+
+          cp "build/src/uZXPlayer_artefacts/Release/μZX Player" staging/
+          tar -czf "uZXPlayer-${VERSION}-linux-x86_64.tar.gz" -C staging "μZX Player"
+
+          gh release upload "${TAG_NAME}" \
+            "uZX-${VERSION}-linux-x86_64.tar.gz" \
+            "uZXPlayer-${VERSION}-linux-x86_64.tar.gz"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
 
   release-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     needs: create-release
+    timeout-minutes: 60
     permissions:
       contents: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          submodules: recursive
           fetch-depth: 0
 
+      - name: Checkout submodules (shallow)
+        run: git submodule update --init --depth=1 --recursive
+
+      - name: Install sccache
+        run: choco install sccache -y
+
+      - name: Restore build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~\AppData\Local\Mozilla\sccache
+          key: build-cache-windows-2022-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-${{ github.sha }}
+          restore-keys: |
+            build-cache-windows-2022-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-
+            build-cache-windows-2022-
+
       - name: Configure
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+        run: >
+          cmake -S . -B build
+          -G "Visual Studio 17 2022" -A x64
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build
-        run: cmake --build build --config Release --target uZX --target uZXPlayer
+        run: cmake --build build --config Release --target uZX --target uZXPlayer --target uZXTests
 
-      - name: Upload to GitHub Release
+      - name: Run tests
+        run: build\src\uZXTests_artefacts\Release\uZXTests.exe
+
+      - name: Package and Upload to GitHub Release
         run: |
-          Get-ChildItem "build\src\uZX_artefacts\Release\*.exe","build\src\uZXPlayer_artefacts\Release\*.exe" |
-            ForEach-Object { gh release upload "${{ github.ref_name }}" $_.FullName }
+          $version = $env:TAG_NAME -replace '^v', ''
+
+          Compress-Archive `
+            -Path "build\src\uZX_artefacts\Release\μZX Studio.exe" `
+            -DestinationPath "uZX-${version}-windows-x64.zip"
+
+          Compress-Archive `
+            -Path "build\src\uZXPlayer_artefacts\Release\μZX Player.exe" `
+            -DestinationPath "uZXPlayer-${version}-windows-x64.zip"
+
+          gh release upload "$env:TAG_NAME" `
+            "uZX-${version}-windows-x64.zip" `
+            "uZXPlayer-${version}-windows-x64.zip"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+
+  publish-release:
+    runs-on: ubuntu-latest
+    needs: [release-macos, release-linux, release-windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Generate checksums
+        run: |
+          gh release download "${TAG_NAME}" --repo "${GITHUB_REPOSITORY}" --dir artifacts
+          cd artifacts
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release upload "${TAG_NAME}" SHA256SUMS.txt --repo "${GITHUB_REPOSITORY}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+
+      - name: Publish release
+        run: gh release edit "${TAG_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}

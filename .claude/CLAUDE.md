@@ -178,16 +178,18 @@ Target detection is in `App.h` via `ProjectInfo::projectName`. Each target share
 ## CI (GitHub Actions)
 
 Workflow file: `.github/workflows/ci.yml`
-Triggers: push to `main`/`develop`, PRs to `main`/`develop`, any `v*` tag.
+Triggers: push to `main`/`develop`, PRs to `main`/`develop`, any `v*` tag, manual dispatch.
 
-Build jobs (`build-*`) are skipped on tag pushes (`if: github.ref_type == 'branch'`) to avoid double builds — release jobs do their own full build.
+Concurrency: superseded branch runs are auto-cancelled; tag (release) runs are never cancelled.
+
+Build caching: ccache (macOS/Linux) and sccache (Windows) with GitHub Actions cache.
 
 ## Release Process
 
 Versions are defined in `versions.cmake`. The CI workflow (`.github/workflows/ci.yml`) triggers releases on `v*` tags.
 
 ### Steps
-1. Update version in `versions.cmake` if needed
+1. Update version in `versions.cmake` (edit the `PROJECT_CORE_VERSION` line) if needed
 2. Ensure all changes are on `develop` and pushed
 3. Fast-forward `main` to `develop` and push:
    ```bash
@@ -201,9 +203,10 @@ Versions are defined in `versions.cmake`. The CI workflow (`.github/workflows/ci
    ```
 
 ### CI Behavior
-- **Branch push**: runs `build-macos`, `build-linux`, `build-windows` (tests only)
-- **Tag push (`v*`)**: skips build jobs, runs `create-release` → `release-macos/linux/windows` (full build + upload)
-- Release jobs require `permissions: contents: write` (already set in ci.yml)
+- **Branch push**: runs `build` matrix job across macOS/Linux/Windows (tests only, with ccache/sccache)
+- **Tag push (`v*`)**: runs `create-release` → `release-macos/linux/windows` (build + test + package + upload) → `checksums` (SHA256SUMS.txt)
+- Release artifacts include version in filenames (e.g. `uZX-0.4.2-macOS.zip`)
+- Release jobs require `permissions: contents: write` (ci.yml uses top-level `contents: read` default)
 
 ## Documentation
 

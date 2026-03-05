@@ -1,0 +1,20 @@
+name: Install Linux Build Dependencies
+description: Install system packages needed for JUCE/Tracktion builds on Ubuntu
+
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y \
+          libasound2-dev \
+          libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+          libxinerama-dev libxrandr-dev libxrender-dev \
+          libfreetype-dev libfontconfig1-dev \
+          libgl1-mesa-dev libglu1-mesa-dev \
+          libglib2.0-dev \
+          libjack-jackd2-dev \
+          libcurl4-openssl-dev \
+          libwebkit2gtk-4.1-dev

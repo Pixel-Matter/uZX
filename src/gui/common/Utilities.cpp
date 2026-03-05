@@ -10,8 +10,8 @@ namespace te = tracktion;
 
 namespace MoTool::Helpers {
 
-static constexpr std::string MIDI_WILDCARD {"*.mid;*.midi"};
-static constexpr std::string PSG_WILDCARD {"*.psg;*.ay"};
+static const std::string MIDI_WILDCARD {"*.mid;*.midi"};
+static const std::string PSG_WILDCARD {"*.psg;*.ay"};
 
 //==============================================================================
 

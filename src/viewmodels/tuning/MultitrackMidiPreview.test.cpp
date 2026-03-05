@@ -1,6 +1,10 @@
 #include "MultitrackMidiPreview.h"
 #include "../../models/PsgMidi.h"
+#include "../../util/TestHelpers.h"
 #include <JuceHeader.h>
+#include <iostream>
+
+#define DBGCI(msg) do { std::cerr << "[CI] " << msg << "\n"; std::cerr.flush(); } while(0)
 
 namespace MoTool {
 
@@ -12,6 +16,7 @@ public:
         auto& engine = *te::Engine::getEngines()[0];
 
         beginTest("Single note with tone enabled produces correct sequence");
+        DBGCI("test1: begin");
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
@@ -41,9 +46,14 @@ public:
                 auto noteEvent = notes[0];
                 expectEquals(noteEvent->getNoteNumber(), 60);
             }
+            DBGCI("test1: before flush");
+            TestHelpers::flushMessageQueue();
+            DBGCI("test1: scope end");
         }
+        DBGCI("test1: after scope (preview+edit destroyed)");
 
         beginTest("Single note with envelope enabled produces correct sequence");
+        DBGCI("test2: begin");
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
@@ -88,9 +98,14 @@ public:
                 auto noteEvent = notes3[0];
                 expectEquals(noteEvent->getNoteNumber(), 60 + 12, "Envelope note should be offset by modulation semitones");
             }
+            DBGCI("test2: before flush");
+            TestHelpers::flushMessageQueue();
+            DBGCI("test2: scope end");
         }
+        DBGCI("test2: after scope");
 
         beginTest("Envelope shape CC is added to envelope track");
+        DBGCI("test3: begin");
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
@@ -111,9 +126,14 @@ public:
             }
 
             expect(foundShapeCC, "Should have envelope shape CC on track 3");
+            DBGCI("test3: before flush");
+            TestHelpers::flushMessageQueue();
+            DBGCI("test3: scope end");
         }
+        DBGCI("test3: after scope");
 
         beginTest("Chord playback distributes notes across tracks");
+        DBGCI("test4: begin");
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
@@ -138,9 +158,14 @@ public:
                                "Track " + juce::String(static_cast<int>(trackIndex)) + " should have note " + juce::String(expectedNote));
                 }
             }
+            DBGCI("test4: before flush");
+            TestHelpers::flushMessageQueue();
+            DBGCI("test4: scope end");
         }
+        DBGCI("test4: after scope");
 
         beginTest("Arpeggio creates sequential notes with synchronized CCs");
+        DBGCI("test5: begin");
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
             MultitrackMidiPreview preview(edit);
@@ -186,27 +211,38 @@ public:
                                             "CC " + juce::String(static_cast<int>(i)) + " should be synchronized with note");
                 }
             }
+            DBGCI("test5: before flush");
+            TestHelpers::flushMessageQueue();
+            DBGCI("test5: scope end");
         }
+        DBGCI("test5: after scope");
 
         beginTest("Playback MIDI sequence contains CC messages");
+        DBGCI("test6: begin");
         {
             te::Edit edit(engine, te::Edit::EditRole::forEditing);
+            DBGCI("test6: edit created");
             MultitrackMidiPreview preview(edit);
+            DBGCI("test6: preview created");
             size_t ch = 1;
 
             // Play a single note with tone enabled
             preview.playSingleNote(60, 0.5, true, false, 0, 0);
+            DBGCI("test6: playSingleNote done");
 
             auto& clips = preview.getChannelClips();
             auto& midiClip = clips[ch];
+            DBGCI("test6: got midiClip");
 
             // Get the actual playback MIDI sequence
+            DBGCI("test6: calling createDefaultPlaybackMidiSequence");
             auto playbackSequence = tracktion::MidiList::createDefaultPlaybackMidiSequence(
                 midiClip->getSequence(),
                 *midiClip,
                 tracktion::MidiList::TimeBase::beats,
                 false   // generateMPE
             );
+            DBGCI("test6: createDefaultPlaybackMidiSequence done");
 
             bool foundToneCC = false;
             int ccCount = 0;
@@ -231,11 +267,17 @@ public:
                     DBG("Playback Note: " << message.getNoteNumber() << " on channel " << message.getChannel());
                 }
             }
+            DBGCI("test6: iteration done, foundToneCC=" << (foundToneCC ? "true" : "false") << " ccCount=" << ccCount << " noteCount=" << noteCount);
 
             expect(foundToneCC, "Should have tone switch CC in playback sequence");
             expectEquals(ccCount, 1, "Should have 1 CC message in playback sequence");
             expectEquals(noteCount, 1, "Should have 1 note in playback sequence");
+
+            DBGCI("test6: before flush");
+            TestHelpers::flushMessageQueue();
+            DBGCI("test6: scope end");
         }
+        DBGCI("test6: after scope (preview+edit destroyed)");
     }
 };
 

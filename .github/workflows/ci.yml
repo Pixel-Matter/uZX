@@ -48,9 +48,8 @@ jobs:
           - os: windows-2022
             build-target: uZXTests
             test-bin: build\src\uZXTests_artefacts\Debug\uZXTests.exe
-            cache-path: ~\AppData\Local\Mozilla\sccache
             parallel: 3
-            configure-extra: -G "Visual Studio 17 2022" -A x64
+            configure-extra: -G Ninja
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
 
@@ -77,6 +76,16 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get install -y ccache
 
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup sccache (Windows)
+        if: runner.os == 'Windows'
+        uses: mozilla-actions/sccache-action@v0.0.9
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+
       - name: Restore build cache
         if: runner.os != 'Windows'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
@@ -100,6 +109,10 @@ jobs:
         if: runner.os == 'Windows'
         run: >
           cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
           ${{ matrix.configure-extra }}
 
       - name: Build tests
@@ -272,27 +285,38 @@ jobs:
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git submodule update --init --depth=1 --recursive
 
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+
       - name: Configure
         run: >
           cmake -S . -B build
-          -G "Visual Studio 17 2022" -A x64
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build
-        run: cmake --build build --config Release --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
 
       - name: Run tests
-        run: build\src\uZXTests_artefacts\Release\uZXTests.exe
+        run: build\src\uZXTests_artefacts\uZXTests.exe
 
       - name: Package and Upload to GitHub Release
         run: |
           $version = $env:TAG_NAME -replace '^v', ''
 
           Compress-Archive `
-            -Path "build\src\uZX_artefacts\Release\μZX Studio.exe" `
+            -Path "build\src\uZX_artefacts\μZX Studio.exe" `
             -DestinationPath "uZX-${version}-windows-x64.zip"
 
           Compress-Archive `
-            -Path "build\src\uZXPlayer_artefacts\Release\μZX Player.exe" `
+            -Path "build\src\uZXPlayer_artefacts\μZX Player.exe" `
             -DestinationPath "uZXPlayer-${version}-windows-x64.zip"
 
           gh release upload "$env:TAG_NAME" `

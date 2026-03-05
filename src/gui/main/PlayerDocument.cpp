@@ -24,7 +24,7 @@ void PlayerDocumentComponent::resized() {
 
     transportBar_.setBounds(r.removeFromTop(transportBarHeight));
     ayPanel_.setBounds(r.removeFromRight(ayPanelWidth));
-    editComponent_.setBounds(r.withTrimmedLeft(8));
+    editComponent_.setBounds(r.withTrimmedLeft(8).withTrimmedBottom(8));
 }
 
 bool PlayerDocumentComponent::isInterestedInFileDrag(const StringArray& files) {

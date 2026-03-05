@@ -26,17 +26,20 @@ jobs:
             build-target: uZXTests
             test-bin: build/src/uZXTests_artefacts/Debug/uZXTests
             cache-path: ~/Library/Caches/ccache
+            parallel: 0
             configure-extra: ""
           - os: ubuntu-22.04
             build-target: uZXTests
             test-bin: build/src/uZXTests_artefacts/Debug/uZXTests
             cache-path: ~/.cache/ccache
+            parallel: 2
             install-deps: true
             configure-extra: ""
           - os: windows-2022
             build-target: uZXTests
             test-bin: build\src\uZXTests_artefacts\Debug\uZXTests.exe
             cache-path: ~\AppData\Local\Mozilla\sccache
+            parallel: 2
             configure-extra: -G "Visual Studio 17 2022" -A x64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -95,7 +98,7 @@ jobs:
           ${{ matrix.configure-extra }}
 
       - name: Build tests
-        run: cmake --build build --config Debug --parallel --target ${{ matrix.build-target }}
+        run: cmake --build build --config Debug --parallel ${{ matrix.parallel || '' }} --target ${{ matrix.build-target }}
 
       - name: Run tests
         run: ${{ matrix.test-bin }}
@@ -216,7 +219,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --parallel --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel 2 --target uZX --target uZXPlayer --target uZXTests
 
       - name: Run tests
         run: build/src/uZXTests_artefacts/Release/uZXTests
@@ -278,7 +281,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build
-        run: cmake --build build --config Release --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --config Release --parallel 2 --target uZX --target uZXPlayer --target uZXTests
 
       - name: Run tests
         run: build\src\uZXTests_artefacts\Release\uZXTests.exe

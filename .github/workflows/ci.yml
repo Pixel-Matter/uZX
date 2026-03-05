@@ -110,8 +110,8 @@ jobs:
         run: >
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Debug
-          -DCMAKE_C_COMPILER_LAUNCHER=sccache
-          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          -DCMAKE_C_COMPILER_LAUNCHER="${{ env.SCCACHE_PATH }}"
+          -DCMAKE_CXX_COMPILER_LAUNCHER="${{ env.SCCACHE_PATH }}"
           -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
           ${{ matrix.configure-extra }}
 
@@ -298,8 +298,8 @@ jobs:
           cmake -S . -B build
           -G Ninja
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_C_COMPILER_LAUNCHER=sccache
-          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          -DCMAKE_C_COMPILER_LAUNCHER="${{ env.SCCACHE_PATH }}"
+          -DCMAKE_CXX_COMPILER_LAUNCHER="${{ env.SCCACHE_PATH }}"
 
       - name: Build
         run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests

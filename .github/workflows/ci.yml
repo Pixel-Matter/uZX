@@ -77,11 +77,8 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get install -y ccache
 
-      - name: Install sccache (Windows)
-        if: runner.os == 'Windows'
-        run: choco install sccache -y
-
       - name: Restore build cache
+        if: runner.os != 'Windows'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ matrix.cache-path }}
@@ -103,17 +100,10 @@ jobs:
         if: runner.os == 'Windows'
         run: >
           cmake -S . -B build
-          -DCMAKE_C_COMPILER_LAUNCHER=sccache
-          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           ${{ matrix.configure-extra }}
 
       - name: Build tests
         run: cmake --build build --config Debug --parallel ${{ matrix.parallel || '' }} --target ${{ matrix.build-target }}
-
-      - name: Stop sccache (Windows)
-        if: runner.os == 'Windows'
-        shell: cmd
-        run: sccache --stop-server
 
       - name: Run tests
         run: ${{ matrix.test-bin }}
@@ -282,31 +272,13 @@ jobs:
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git submodule update --init --depth=1 --recursive
 
-      - name: Install sccache
-        run: choco install sccache -y
-
-      - name: Restore build cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ~\AppData\Local\Mozilla\sccache
-          key: build-cache-windows-2022-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-${{ github.sha }}
-          restore-keys: |
-            build-cache-windows-2022-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-
-            build-cache-windows-2022-
-
       - name: Configure
         run: >
           cmake -S . -B build
           -G "Visual Studio 17 2022" -A x64
-          -DCMAKE_C_COMPILER_LAUNCHER=sccache
-          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build
         run: cmake --build build --config Release --parallel 3 --target uZX --target uZXPlayer --target uZXTests
-
-      - name: Stop sccache
-        shell: cmd
-        run: sccache --stop-server
 
       - name: Run tests
         run: build\src\uZXTests_artefacts\Release\uZXTests.exe

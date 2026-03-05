@@ -32,27 +32,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15
             build-target: uZXTests
             test-bin: build/src/uZXTests_artefacts/Debug/uZXTests
             cache-path: ~/Library/Caches/ccache
-            parallel: 0
+            parallel: 3
             configure-extra: ""
           - os: ubuntu-24.04
             build-target: uZXTests
             test-bin: build/src/uZXTests_artefacts/Debug/uZXTests
             cache-path: ~/.cache/ccache
-            parallel: 2
+            parallel: 3
             install-deps: true
             configure-extra: ""
           - os: windows-2022
             build-target: uZXTests
             test-bin: build\src\uZXTests_artefacts\Debug\uZXTests.exe
             cache-path: ~\AppData\Local\Mozilla\sccache
-            parallel: 2
+            parallel: 3
             configure-extra: -G "Visual Studio 17 2022" -A x64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -110,6 +110,10 @@ jobs:
       - name: Build tests
         run: cmake --build build --config Debug --parallel ${{ matrix.parallel || '' }} --target ${{ matrix.build-target }}
 
+      - name: Stop sccache (Windows)
+        if: runner.os == 'Windows'
+        run: sccache --stop-server
+
       - name: Run tests
         run: ${{ matrix.test-bin }}
 
@@ -129,9 +133,9 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') }}
 
   release-macos:
-    runs-on: macos-14
+    runs-on: macos-15
     needs: create-release
-    timeout-minutes: 60
+    timeout-minutes: 90
     permissions:
       contents: write
 
@@ -153,10 +157,10 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/Library/Caches/ccache
-          key: build-cache-macos-14-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-${{ github.sha }}
+          key: build-cache-macos-15-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-${{ github.sha }}
           restore-keys: |
-            build-cache-macos-14-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-
-            build-cache-macos-14-
+            build-cache-macos-15-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-
+            build-cache-macos-15-
 
       - name: Configure
         run: >
@@ -166,7 +170,10 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --parallel --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+
+      - name: Show ccache stats
+        run: ccache --show-stats
 
       - name: Run tests
         run: build/src/uZXTests_artefacts/Release/uZXTests
@@ -229,7 +236,10 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --parallel 2 --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+
+      - name: Show ccache stats
+        run: ccache --show-stats
 
       - name: Run tests
         run: build/src/uZXTests_artefacts/Release/uZXTests
@@ -291,7 +301,10 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build
-        run: cmake --build build --config Release --parallel 2 --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --config Release --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+
+      - name: Stop sccache
+        run: sccache --stop-server
 
       - name: Run tests
         run: build\src\uZXTests_artefacts\Release\uZXTests.exe

@@ -188,24 +188,50 @@ Build caching: ccache (macOS/Linux) and sccache (Windows) with GitHub Actions ca
 
 Versions are defined in `versions.cmake`. The CI workflow (`.github/workflows/ci.yml`) triggers releases on `v*` tags.
 
+**Important**: The `main` branch is protected — it requires pull requests and passing status checks. You cannot push directly to `main`.
+
 ### Steps
-1. Update version in `versions.cmake` (edit the `PROJECT_CORE_VERSION` line) if needed
-2. Ensure all changes are on `develop` and pushed
-3. Fast-forward `main` to `develop` and push:
+1. Ensure you are on `develop`:
    ```bash
-   git checkout main && git merge --ff-only develop && git push origin main
    git checkout develop
    ```
-4. Tag and push — this triggers the release jobs:
+2. Update version in `versions.cmake` (edit the `PROJECT_CORE_VERSION` line):
    ```bash
-   git tag v0.4.1-alpha   # use v<version> or v<version>-alpha etc.
-   git push origin v0.4.1-alpha
+   # Example: bump to 0.4.9
+   sed -i '' 's/PROJECT_CORE_VERSION ".*"/PROJECT_CORE_VERSION "0.4.9"/' versions.cmake
    ```
+3. Commit and push to `develop`:
+   ```bash
+   git add versions.cmake
+   git commit -m "bump version to 0.4.9"
+   git push origin develop
+   ```
+4. Create a PR from `develop` to `main`:
+   ```bash
+   gh pr create --base main --head develop \
+     --title "Bump version to 0.4.9" \
+     --body "Version bump for v0.4.9-alpha release."
+   ```
+5. Wait for CI to pass, then merge the PR (via GitHub UI or CLI):
+   ```bash
+   gh pr merge --merge
+   ```
+6. Tag the merged commit on `main` and push — this triggers the release jobs:
+   ```bash
+   git fetch origin main
+   git tag v0.4.9-alpha origin/main
+   git push origin v0.4.9-alpha
+   ```
+
+### Version Tag Convention
+- Stable release: `v0.5.0`
+- Alpha/pre-release: `v0.4.9-alpha`
+- The version in `versions.cmake` should match the numeric part of the tag
 
 ### CI Behavior
 - **Branch push**: runs `build` matrix job across macOS/Linux/Windows (tests only, with ccache/sccache)
 - **Tag push (`v*`)**: runs `create-release` → `release-macos/linux/windows` (build + test + package + upload) → `checksums` (SHA256SUMS.txt)
-- Release artifacts include version in filenames (e.g. `uZX-0.4.2-macOS.zip`)
+- Release artifacts include version in filenames (e.g. `uZX-0.4.9-macOS.zip`)
 - Release jobs require `permissions: contents: write` (ci.yml uses top-level `contents: read` default)
 
 ## Documentation

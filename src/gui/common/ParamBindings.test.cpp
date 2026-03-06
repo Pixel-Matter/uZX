@@ -311,6 +311,7 @@ public:
 
             expectEquals(button.getButtonText(), String("TestBtn"), "Button displays shortLabel");
         }
+
     }
 };
 

@@ -322,11 +322,6 @@ public:
             TestHelpers::flushMessageQueue();
         }
 
-        DBGCI("all tests complete, flushing before edit destruction");
-        // Drain all pending async activity before the shared edit is destroyed
-        TestHelpers::flushMessageQueue();
-        TestHelpers::flushMessageQueue();
-        DBGCI("runTest() returning");
     }
 };
 

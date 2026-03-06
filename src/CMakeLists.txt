@@ -375,13 +375,20 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 if(MSVC)
-    target_link_options(${STUDIO_TARGET_NAME} PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
-    target_link_options(${TUNING_TARGET_NAME} PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
-    target_link_options(${PLAYER_TARGET_NAME} PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
-    target_link_options(${TEST_TARGET_NAME}   PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
+    foreach(_target ${STUDIO_TARGET_NAME} ${TUNING_TARGET_NAME} ${PLAYER_TARGET_NAME} ${TEST_TARGET_NAME})
+        target_link_options(${_target} PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:motool_common>")
+        # Increase stack size from 1MB default to 8MB to match Linux/macOS defaults
+        target_link_options(${_target} PRIVATE "/STACK:8388608")
+    endforeach()
 endif()
 
 add_test(NAME AllTests COMMAND ${TEST_TARGET_NAME})
+
+if(APPLE)
+    set_tests_properties(AllTests PROPERTIES
+        ENVIRONMENT "MallocScribble=1"
+    )
+endif()
 
 add_custom_command(TARGET ${TEST_TARGET_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND}

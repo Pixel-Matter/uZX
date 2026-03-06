@@ -120,6 +120,7 @@ public:
                 expect(frames[frame5Idx]->getData()[PsgParamType::RetriggerEnvelope] == 1,
                     "Frame 5 should have retrigger=1");
             }
+
         }
     }
 };

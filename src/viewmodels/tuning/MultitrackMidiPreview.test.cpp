@@ -46,9 +46,7 @@ public:
                 auto noteEvent = notes[0];
                 expectEquals(noteEvent->getNoteNumber(), 60);
             }
-            DBGCI("test1: before flush");
             TestHelpers::flushMessageQueue();
-            DBGCI("test1: scope end");
         }
         DBGCI("test1: after scope (preview+edit destroyed)");
 
@@ -98,9 +96,7 @@ public:
                 auto noteEvent = notes3[0];
                 expectEquals(noteEvent->getNoteNumber(), 60 + 12, "Envelope note should be offset by modulation semitones");
             }
-            DBGCI("test2: before flush");
             TestHelpers::flushMessageQueue();
-            DBGCI("test2: scope end");
         }
         DBGCI("test2: after scope");
 
@@ -126,9 +122,7 @@ public:
             }
 
             expect(foundShapeCC, "Should have envelope shape CC on track 3");
-            DBGCI("test3: before flush");
             TestHelpers::flushMessageQueue();
-            DBGCI("test3: scope end");
         }
         DBGCI("test3: after scope");
 
@@ -158,9 +152,7 @@ public:
                                "Track " + juce::String(static_cast<int>(trackIndex)) + " should have note " + juce::String(expectedNote));
                 }
             }
-            DBGCI("test4: before flush");
             TestHelpers::flushMessageQueue();
-            DBGCI("test4: scope end");
         }
         DBGCI("test4: after scope");
 
@@ -211,9 +203,7 @@ public:
                                             "CC " + juce::String(static_cast<int>(i)) + " should be synchronized with note");
                 }
             }
-            DBGCI("test5: before flush");
             TestHelpers::flushMessageQueue();
-            DBGCI("test5: scope end");
         }
         DBGCI("test5: after scope");
 
@@ -254,9 +244,6 @@ public:
 
                 if (message.isController()) {
                     ccCount++;
-                    DBG("Playback CC: Controller " << message.getControllerNumber() << " = " << message.getControllerValue()
-                        << " on channel " << message.getChannel());
-
                     if (message.getControllerNumber() == static_cast<int>(MidiCCType::GPB1ToneSwitch)) {
                         foundToneCC = true;
                         expectEquals(message.getControllerValue(), 127, "Tone switch should be 127 in playback sequence");
@@ -264,7 +251,6 @@ public:
                     }
                 } else if (message.isNoteOn()) {
                     noteCount++;
-                    DBG("Playback Note: " << message.getNoteNumber() << " on channel " << message.getChannel());
                 }
             }
             DBGCI("test6: iteration done, foundToneCC=" << (foundToneCC ? "true" : "false") << " ccCount=" << ccCount << " noteCount=" << noteCount);
@@ -272,10 +258,7 @@ public:
             expect(foundToneCC, "Should have tone switch CC in playback sequence");
             expectEquals(ccCount, 1, "Should have 1 CC message in playback sequence");
             expectEquals(noteCount, 1, "Should have 1 note in playback sequence");
-
-            DBGCI("test6: before flush");
             TestHelpers::flushMessageQueue();
-            DBGCI("test6: scope end");
         }
         DBGCI("test6: after scope (preview+edit destroyed)");
     }

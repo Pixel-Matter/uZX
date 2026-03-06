@@ -1,8 +1,10 @@
 #include <JuceHeader.h>
+#include <iostream>
 
 #include <models/Behavior.h>
 #include <controllers/MainController.h>
 #include <controllers/App.h>
+#include <util/CIDiagnostics.h>
 
 using namespace tracktion;
 using namespace MoTool;
@@ -116,11 +118,19 @@ struct NullLogger : public Logger {
 
 
 static Array<UnitTest*> filterTestsByName(const Array<UnitTest*>& allTests, const String& testNameFilter) {
+    // Support comma-separated filters: "TuningViewModel,MultitrackMidiPreview"
+    auto filters = StringArray::fromTokens(testNameFilter, ",", "");
+    filters.trim();
+    filters.removeEmptyStrings();
+
     Array<UnitTest*> filteredTests;
 
     for (auto* test : allTests) {
-        if (test->getName().containsIgnoreCase(testNameFilter)) {
-            filteredTests.add(test);
+        for (const auto& filter : filters) {
+            if (test->getName().containsIgnoreCase(filter)) {
+                filteredTests.addIfNotAlreadyThere(test);
+                break;
+            }
         }
     }
 
@@ -138,6 +148,8 @@ static void printUsage() {
 }
 
 int main(int argc, char* argv[]) {
+    TestHelpers::installCIDiagnostics();
+
     if (argc > 1) {
         String arg = String(argv[1]);
 
@@ -186,8 +198,6 @@ int main(int argc, char* argv[]) {
     registerPlugins(engine);
     auto& deviceManager = engine.getDeviceManager();
     auto& hostedInterface = deviceManager.getHostedAudioDeviceInterface();
-    // TODO register plugins
-
     tracktion_engine::HostedAudioDeviceInterface::Parameters hostedParams;
     hostedParams.useMidiDevices = false;
     hostedInterface.initialise(hostedParams);

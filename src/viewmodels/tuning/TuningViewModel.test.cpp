@@ -2,6 +2,10 @@
 #include "TuningViewModel.h"
 #include "../../util/TestHelpers.h"
 #include "../../utils/StringLiterals.h"
+#include <iostream>
+
+// Debug helper: always flushes stderr (unbuffered on Windows), survives crashes
+#define DBGCI(msg) do { std::cerr << "[CI] " << msg << "\n"; std::cerr.flush(); } while(0)
 
 using namespace MoTool;
 
@@ -11,11 +15,16 @@ public:
 
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
+        DBGCI("creating edit");
         auto edit = te::Edit::createSingleTrackEdit(engine);
+        DBGCI("edit created");
 
         beginTest("Reference Tuning Selection");
+        DBGCI("beginTest: Reference Tuning Selection");
         {
+            DBGCI("constructing viewModel [RefTuning]");
             TuningViewModel viewModel(*edit);
+            DBGCI("viewModel constructed [RefTuning]");
             expectEquals(static_cast<int>(viewModel.getTuningType()), static_cast<int>(TuningSystemType::EqualTemperament));
 
             DBG("Setting tuning type to Pythagorean");
@@ -23,11 +32,16 @@ public:
             TestHelpers::flushMessageQueue();
             // expectEquals(String(viewModel.selectedParams.tuningType.getPropertyAsValue().getValue()), TuningSystemType(TuningSystemType::Pythagorean).getLabel().data());
             expectEquals(static_cast<int>(viewModel.getTuningType()), static_cast<int>(TuningSystemType::Pythagorean));
+            DBGCI("scope end [RefTuning]");
         }
+        DBGCI("viewModel destroyed [RefTuning]");
 
         beginTest("Scale and Key selection - C Major");
+        DBGCI("beginTest: C Major");
         {
+            DBGCI("constructing viewModel [CMaj]");
             TuningViewModel viewModel(*edit);
+            DBGCI("viewModel constructed [CMaj]");
             // Default should be C Major
             expectEquals(static_cast<int>(viewModel.getCurrentTonic()), static_cast<int>(Scale::Tonic::C));
             expectEquals(static_cast<int>(viewModel.getCurrentScaleType()), static_cast<int>(Scale::ScaleType::IonianOrMajor));
@@ -50,12 +64,18 @@ public:
             expect(noteNames[9].isInScale);   // A
             expect(!noteNames[10].isInScale); // A#
             expect(noteNames[11].isInScale);  // B
+            DBGCI("flushing [CMaj]");
             TestHelpers::flushMessageQueue();
+            DBGCI("scope end [CMaj]");
         }
+        DBGCI("viewModel destroyed [CMaj]");
 
         beginTest("Scale and Key selection - A Minor");
+        DBGCI("beginTest: A Minor");
         {
+            DBGCI("constructing viewModel [AMin]");
             TuningViewModel viewModel(*edit);
+            DBGCI("viewModel constructed [AMin]");
 
             // Set to A Minor (Natural Minor = Aeolian)
             viewModel.setCurrentTonic(Scale::Tonic::A);
@@ -81,10 +101,14 @@ public:
             expect(noteNames[9].isInScale);   // A -> in scale (root)
             expect(!noteNames[10].isInScale); // A#
             expect(noteNames[11].isInScale);  // B -> in scale
+            DBGCI("flushing [AMin]");
             TestHelpers::flushMessageQueue();
+            DBGCI("scope end [AMin]");
         }
+        DBGCI("viewModel destroyed [AMin]");
 
         beginTest("Scale and Key selection - F# Major");
+        DBGCI("beginTest: F# Major");
         {
             TuningViewModel viewModel(*edit);
 

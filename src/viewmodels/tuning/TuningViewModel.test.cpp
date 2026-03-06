@@ -298,9 +298,6 @@ public:
             TestHelpers::flushMessageQueue();
         }
 
-        // Drain all pending async activity before the shared edit is destroyed
-        TestHelpers::flushMessageQueue();
-        TestHelpers::flushMessageQueue();
     }
 };
 

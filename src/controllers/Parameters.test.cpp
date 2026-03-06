@@ -169,6 +169,7 @@ public:
                              "Live reader updates from ValueTree change");
             }
         }
+
     }
 };
 

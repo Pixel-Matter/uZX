@@ -92,12 +92,11 @@ public:
             emulator.setVolume(0, 15);
             bypassBlock(emulator);
 
-            float outLeft[44100];
-            float outRight[44100];
-            emulator.processBlockStereo(outLeft, outRight, 44100);
+            std::vector<float> outLeft(44100), outRight(44100);
+            emulator.processBlockStereo(outLeft.data(), outRight.data(), 44100);
 
-            expect(mean(outLeft, 44100) > 0.2, "Tone should be audible");
-            expect(mean(outRight, 44100) > 0.2, "Tone should be audible");
+            expect(mean(outLeft.data(), 44100) > 0.2, "Tone should be audible");
+            expect(mean(outRight.data(), 44100) > 0.2, "Tone should be audible");
         }
         beginTest("AYEmulator noise");
         {
@@ -109,12 +108,11 @@ public:
             emulator.setNoisePeriod(31);
             bypassBlock(emulator);
 
-            float outLeft[44100];
-            float outRight[44100];
-            emulator.processBlockStereo(outLeft, outRight, 44100);
+            std::vector<float> outLeft(44100), outRight(44100);
+            emulator.processBlockStereo(outLeft.data(), outRight.data(), 44100);
 
-            auto leftMean = mean(outLeft, 44100);
-            auto rightMean = mean(outRight, 44100);
+            auto leftMean = mean(outLeft.data(), 44100);
+            auto rightMean = mean(outRight.data(), 44100);
             expect(leftMean > 0.2, "Noise should be audible");
             expect(rightMean > 0.2, "Noise should be audible");
         }
@@ -130,12 +128,11 @@ public:
             emulator.setEnvelopeShape(EnvShape::DOWN_DOWN_8);
             bypassBlock(emulator);
 
-            float outLeft[44100];
-            float outRight[44100];
-            emulator.processBlockStereo(outLeft, outRight, 44100);
+            std::vector<float> outLeft(44100), outRight(44100);
+            emulator.processBlockStereo(outLeft.data(), outRight.data(), 44100);
 
-            auto leftMean = mean(outLeft, 44100);
-            auto rightMean = mean(outRight, 44100);
+            auto leftMean = mean(outLeft.data(), 44100);
+            auto rightMean = mean(outRight.data(), 44100);
             expect(leftMean > 0.1, "Envelope should be audible");
             expect(rightMean > 0.1, "Envelope should be audible");
         }
@@ -161,14 +158,12 @@ public:
 
             bypassBlock(emulator);
 
-            float outCh0[44100];
-            float outCh1[44100];
-            float outCh2[44100];
-            emulator.processBlockSeparate(outCh0, outCh1, outCh2, 44100);
+            std::vector<float> outCh0(44100), outCh1(44100), outCh2(44100);
+            emulator.processBlockSeparate(outCh0.data(), outCh1.data(), outCh2.data(), 44100);
 
-            auto ch0Mean = mean(outCh0, 44100);
-            auto ch1Mean = mean(outCh1, 44100);
-            auto ch2Mean = mean(outCh2, 44100);
+            auto ch0Mean = mean(outCh0.data(), 44100);
+            auto ch1Mean = mean(outCh1.data(), 44100);
+            auto ch2Mean = mean(outCh2.data(), 44100);
 
             expect(ch0Mean > 0.2, "Channel 0 should be audible");
             expect(ch1Mean > 0.1, "Channel 1 should be audible");
@@ -184,13 +179,13 @@ public:
             emulator.setVolume(0, 15);
 
             // Skip initial click but we need to use mono processBlock
-            float bypass[4410];
-            emulator.processBlockMono(bypass, 4410);
+            std::vector<float> bypass(4410);
+            emulator.processBlockMono(bypass.data(), 4410);
 
-            float outMono[44100];
-            emulator.processBlockMono(outMono, 44100);
+            std::vector<float> outMono(44100);
+            emulator.processBlockMono(outMono.data(), 44100);
 
-            auto monoMean = mean(outMono, 44100);
+            auto monoMean = mean(outMono.data(), 44100);
             expect(monoMean > 0.2, "Mono output should be audible");
         }
     }

@@ -1,5 +1,6 @@
 #include "MultitrackMidiPreview.h"
 #include "../../models/PsgMidi.h"
+#include "../../util/TestHelpers.h"
 #include <JuceHeader.h>
 
 namespace MoTool {
@@ -41,6 +42,7 @@ public:
                 auto noteEvent = notes[0];
                 expectEquals(noteEvent->getNoteNumber(), 60);
             }
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Single note with envelope enabled produces correct sequence");
@@ -88,6 +90,7 @@ public:
                 auto noteEvent = notes3[0];
                 expectEquals(noteEvent->getNoteNumber(), 60 + 12, "Envelope note should be offset by modulation semitones");
             }
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Envelope shape CC is added to envelope track");
@@ -111,6 +114,7 @@ public:
             }
 
             expect(foundShapeCC, "Should have envelope shape CC on track 3");
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Chord playback distributes notes across tracks");
@@ -138,6 +142,7 @@ public:
                                "Track " + juce::String(static_cast<int>(trackIndex)) + " should have note " + juce::String(expectedNote));
                 }
             }
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Arpeggio creates sequential notes with synchronized CCs");
@@ -186,6 +191,7 @@ public:
                                             "CC " + juce::String(static_cast<int>(i)) + " should be synchronized with note");
                 }
             }
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Playback MIDI sequence contains CC messages");
@@ -218,9 +224,6 @@ public:
 
                 if (message.isController()) {
                     ccCount++;
-                    DBG("Playback CC: Controller " << message.getControllerNumber() << " = " << message.getControllerValue()
-                        << " on channel " << message.getChannel());
-
                     if (message.getControllerNumber() == static_cast<int>(MidiCCType::GPB1ToneSwitch)) {
                         foundToneCC = true;
                         expectEquals(message.getControllerValue(), 127, "Tone switch should be 127 in playback sequence");
@@ -228,13 +231,13 @@ public:
                     }
                 } else if (message.isNoteOn()) {
                     noteCount++;
-                    DBG("Playback Note: " << message.getNoteNumber() << " on channel " << message.getChannel());
                 }
             }
 
             expect(foundToneCC, "Should have tone switch CC in playback sequence");
             expectEquals(ccCount, 1, "Should have 1 CC message in playback sequence");
             expectEquals(noteCount, 1, "Should have 1 note in playback sequence");
+            TestHelpers::flushMessageQueue();
         }
     }
 };

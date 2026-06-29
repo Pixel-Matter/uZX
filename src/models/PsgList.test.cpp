@@ -1,6 +1,8 @@
 #include <JuceHeader.h>
 #include "formats/psg/PsgData.h"
+#include "PsgClip.h"
 #include "PsgList.h"
+#include "PsgMidi.h"
 #include "PsgParameter.h"
 
 namespace MoTool::Tests {
@@ -234,5 +236,77 @@ public:
 };
 
 static PsgListAccumulatedStateTests psgListAccumulatedStateTests;
+
+//==============================================================================
+class PsgListInitialStateExportTests : public UnitTest {
+public:
+    PsgListInitialStateExportTests() : UnitTest("PsgListInitState", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+
+        beginTest("exportToPlaybackMidiSequence emits all params at time 0");
+        {
+            // PSG data where frame 0 only sets VolumeA — a typical sparse PSG start
+            PsgData data {
+                {
+                    {{PsgRegType::VolumeA, 10}},  // F0: only volume A set
+                    {{PsgRegType::VolumeB, 8}},   // F1
+                },
+                {50.0, 1}
+            };
+
+            auto edit = Edit::createSingleTrackEdit(engine);
+
+            // Create a PsgClip to call exportToPlaybackMidiSequence
+            auto t = te::getAudioTracks(*edit)[0];
+            auto* clip = CustomClip::insertClipWithState(*t, {}, {}, CustomClip::Type::psg,
+                {{0_tp, 4_td}, {}}, te::DeleteExistingClips::no, false);
+            auto* psgClip = dynamic_cast<PsgClip*>(clip);
+            expect(psgClip != nullptr, "PsgClip created");
+
+            psgClip->getPsg().loadFrom(data, *edit, nullptr);
+
+            auto seq = psgClip->getPsg().exportToPlaybackMidiSequence(
+                *psgClip, te::MidiList::TimeBase::seconds);
+
+            // Count distinct MIDI CC (controller number, channel) pairs at time 0
+            // Each PsgParamType maps to one or more CC events on specific channels.
+            // With the fix, the first frame should produce CC events for ALL param types.
+            double firstTime = -1.0;
+            int eventsAtTime0 = 0;
+            for (int i = 0; i < seq.getNumEvents(); ++i) {
+                auto& msg = seq.getEventPointer(i)->message;
+                if (msg.isController()) {
+                    if (firstTime < 0.0)
+                        firstTime = msg.getTimeStamp();
+                    if (std::abs(msg.getTimeStamp() - firstTime) < 1.0e-9)
+                        eventsAtTime0++;
+                }
+            }
+
+            // Minimum: 22 param types, some produce 2 CCs = at least 25 CC events
+            expect(eventsAtTime0 > 10,
+                "Should have many CC events at time 0 for complete AY init, got " + String(eventsAtTime0));
+
+            // The accumulated value for VolumeA (set in frame 0) must be emitted at time 0.
+            // VolumeA -> CC7 (Volume) on the base channel (psgChan 0).
+            const int baseChannel = psgClip->getPsg().getMidiChannel().getChannelNumber();
+            bool foundVolumeA = false;
+            for (int i = 0; i < seq.getNumEvents(); ++i) {
+                auto& msg = seq.getEventPointer(i)->message;
+                if (std::abs(msg.getTimeStamp() - firstTime) < 1.0e-9
+                    && msg.isControllerOfType(static_cast<int>(MidiCCType::Volume))
+                    && msg.getChannel() == baseChannel) {
+                    foundVolumeA = true;
+                    expectEquals(msg.getControllerValue(), 10, "VolumeA accumulated value at time 0");
+                }
+            }
+            expect(foundVolumeA, "VolumeA CC emitted at time 0");
+        }
+    }
+};
+
+static PsgListInitialStateExportTests psgListInitialStateExportTests;
 
 }  // namespace MoTool::Tests

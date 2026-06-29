@@ -194,9 +194,11 @@ add_custom_target(project_generate_juce_headers
 
 add_dependencies(motool_common project_generate_juce_headers)
 
-add_dependencies(${STUDIO_TARGET_NAME} generate_version_header)
-add_dependencies(${TUNING_TARGET_NAME} generate_version_header)
-add_dependencies(${PLAYER_TARGET_NAME} generate_version_header)
+# AboutDialog.cpp (in motool_common) includes the generated version.h, so the
+# header must exist before motool_common compiles. Attaching the dependency to
+# motool_common covers every consumer (all app targets and uZXTests) — a clean
+# CI build otherwise fails with "version.h: No such file or directory".
+add_dependencies(motool_common generate_version_header)
 
 # Tracktion Utils
 # include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")

@@ -24,7 +24,8 @@
 
 #### P1 — Important
 
-- [ ] **Add left padding for player**
+- [x] **Add left padding for player**
+- [ ] Save/Save As.. menu item for Player
 - [ ] Beat+frames-based timeline
 - [ ] Different rendering in seconds-only and beat-based timeline
 - [x] **PSG** file icons in Finder

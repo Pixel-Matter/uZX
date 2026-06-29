@@ -50,3 +50,4 @@ Testing/
 
 .claude/settings.local.json
 src/version.h
+DEVLOG.md

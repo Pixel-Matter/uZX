@@ -51,11 +51,24 @@ private:
     void ensureMinimumSampleRate();
     void showAboutDialog();
 
+    /** Returns an error description if the audio output device is not usable, or an empty
+        string when audio is working. When requireRunning is true, a device whose callback is
+        not currently running is also treated as an error (use before starting playback). */
+    String getAudioDeviceError(bool requireRunning = false) const;
+    /** Shows an alert about the audio problem (once) and opens the Audio/MIDI settings screen. */
+    void reportAudioDeviceProblem(const String& error);
+    /** Verifies audio is usable before starting playback; returns true if it is safe to play. */
+    bool ensureAudioReadyForPlayback();
+
     te::Engine engine_;
     ApplicationCommandManager commandManager_;
     te::SelectionManager selectionManager_ {engine_};
 
     std::unique_ptr<TuningController> tuningController_;
+
+    // Tracks whether the audio device was last seen as broken, so we only alert
+    // the user once per transition into a broken state (not on every device change).
+    bool audioDeviceWasBroken_ = false;
 
     // Called when the selection changes
     void changeListenerCallback(ChangeBroadcaster*) override;

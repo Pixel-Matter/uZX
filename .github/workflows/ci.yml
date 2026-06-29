@@ -38,19 +38,19 @@ jobs:
             build-target: uZXTests
             test-bin: build/src/uZXTests_artefacts/Debug/uZXTests
             cache-path: ~/Library/Caches/ccache
-            parallel: 3
+            parallel: 0
             configure-extra: ""
           - os: ubuntu-24.04
             build-target: uZXTests
             test-bin: build/src/uZXTests_artefacts/Debug/uZXTests
             cache-path: ~/.cache/ccache
-            parallel: 3
+            parallel: 0
             install-deps: true
             configure-extra: ""
           - os: windows-2022
             build-target: uZXTests
             test-bin: .\build\src\uZXTests_artefacts\Debug\uZXTests.exe
-            parallel: 3
+            parallel: 0
             configure-extra: -G Ninja
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
@@ -176,7 +176,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel --target uZX --target uZXPlayer --target uZXTests
 
       - name: Show ccache stats
         run: ccache --show-stats
@@ -242,7 +242,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel --target uZX --target uZXPlayer --target uZXTests
 
       - name: Show ccache stats
         run: ccache --show-stats
@@ -304,7 +304,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER="${{ env.SCCACHE_PATH }}"
 
       - name: Build
-        run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel --target uZX --target uZXPlayer --target uZXTests
 
       - name: Run tests
         run: .\build\src\uZXTests_artefacts\Release\uZXTests.exe

@@ -50,6 +50,24 @@ AppController::AppController()
 
     // Workaround for JUCE CoreAudio buffer overflow bug at low sample rates
     ensureMinimumSampleRate();
+
+    // A previously-saved setup may pair a separate input device with the output device, which
+    // freezes playback on macOS. Drop the mismatched input before the user hits an unplayable state.
+    sanitizeAudioInputDevice();
+}
+
+void AppController::sanitizeAudioInputDevice() {
+    auto& deviceManager = engine_.getDeviceManager().deviceManager;
+
+    juce::AudioDeviceManager::AudioDeviceSetup setup;
+    deviceManager.getAudioDeviceSetup(setup);
+
+    if (setup.inputDeviceName.isNotEmpty() && setup.inputDeviceName != setup.outputDeviceName) {
+        setup.inputDeviceName = {};
+        setup.inputChannels.clear();
+        setup.useDefaultInputChannels = true;
+        deviceManager.setAudioDeviceSetup(setup, true);
+    }
 }
 
 void AppController::initialize() {
@@ -203,15 +221,9 @@ void AppController::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &selectionManager_) {
         // Selection changed, update command status
         commandManager_.commandStatusChanged();
-    } else if (source == &engine_.getDeviceManager()) {
-        // Audio device configuration changed: alert the user once when it becomes broken,
-        // so a misconfigured device doesn't silently freeze the playhead.
-        const auto error = getAudioDeviceError(/* requireRunning */ false);
-        const bool broken = error.isNotEmpty();
-        if (broken && !audioDeviceWasBroken_)
-            reportAudioDeviceProblem(error);
-        audioDeviceWasBroken_ = broken;
     }
+    // Note: an invalid audio configuration is prevented at the source by AudioSettingsComponent,
+    // and a leftover bad setup is caught by the play guard (ensureAudioReadyForPlayback).
 }
 
 void AppController::handlePluginManager() {

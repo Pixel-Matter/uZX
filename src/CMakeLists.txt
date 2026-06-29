@@ -113,6 +113,7 @@ target_sources(${PLAYER_TARGET_NAME} PRIVATE
     controllers/Main.cpp
 )
 
+
 # Per-target ID so Main.cpp can resolve the app target at link time.
 # motool_common cannot use ProjectInfo::projectName because it is compiled
 # once with the first JuceHeader found (uZX Studio).
@@ -196,7 +197,6 @@ add_dependencies(motool_common project_generate_juce_headers)
 add_dependencies(${STUDIO_TARGET_NAME} generate_version_header)
 add_dependencies(${TUNING_TARGET_NAME} generate_version_header)
 add_dependencies(${PLAYER_TARGET_NAME} generate_version_header)
-add_dependencies(${TEST_TARGET_NAME} generate_version_header)
 
 # Tracktion Utils
 # include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")

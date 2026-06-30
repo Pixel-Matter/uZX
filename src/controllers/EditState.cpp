@@ -1,5 +1,6 @@
 #include "EditState.h"
 #include "../models/EditUtilities.h"
+#include "../models/PsgTimingPreserver.h"
 
 using namespace std::literals;
 
@@ -216,6 +217,7 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     showHeaders.referTo(state, IDs::showHeaders, um, true);
     showMidiDevices.referTo(state, IDs::showMidiDevices, um, true);
     showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
+    preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, um, false);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
 }
 
@@ -253,7 +255,8 @@ void EditViewState::setBeatLength(te::TimeDuration beatLen) {
     auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
     auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
     bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm);
-    ts.setBpm(bpm);
+
+    PsgTiming::setTempoBpmPreservingFrames(edit, ts, bpm, shouldPreservePsgTimingOnTempoChange());
 }
 
 void EditViewState::setFramesPerBeat(int fpb) {
@@ -272,8 +275,18 @@ double EditViewState::getBpmSnappedToFps(double bpm) const {
 double EditViewState::setBpmSnappedToFps(double bpm) {
     auto snappedBpm = getBpmSnappedToFps(bpm);
     auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    ts.setBpm(snappedBpm);
+
+    PsgTiming::setTempoBpmPreservingFrames(edit, ts, snappedBpm, shouldPreservePsgTimingOnTempoChange());
+
     return snappedBpm;
+}
+
+void EditViewState::setPreservePsgTimingOnTempoChange(bool shouldPreserve) {
+    preservePsgTimingOnTempoChange = shouldPreserve;
+}
+
+bool EditViewState::shouldPreservePsgTimingOnTempoChange() const {
+    return preservePsgTimingOnTempoChange.get();
 }
 
 int EditViewState::getTrackHeaderWidth() const {

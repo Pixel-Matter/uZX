@@ -98,12 +98,31 @@ juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, co
     return v;
 }
 
+te::BeatPosition PsgParamFrame::getRawEditBeats(const PsgClip& c) const {
+    return beatNumber - toDuration(c.getLoopStartBeats()) + toDuration(c.getContentStartBeat());
+}
 te::BeatPosition PsgParamFrame::getEditBeats(const PsgClip& c) const {
-    return c.getQuantisation().roundBeatToNearest(beatNumber - toDuration(c.getLoopStartBeats()) + toDuration(c.getContentStartBeat()));
-    return beatNumber;
+    return c.getQuantisation().roundBeatToNearest(getRawEditBeats(c));
+}
+te::TimePosition PsgParamFrame::getRawEditTime(const PsgClip& c) const {
+    return c.edit.tempoSequence.toTime(getRawEditBeats(c));
 }
 te::TimePosition PsgParamFrame::getEditTime(const PsgClip& c) const {
     return c.edit.tempoSequence.toTime(getEditBeats(c));
+}
+
+void PsgParamFrame::setBeatPosition(te::BeatPosition newBeatNumber, juce::UndoManager* um) {
+    newBeatNumber = jmax(0_bp, newBeatNumber);
+
+    if (beatNumber != newBeatNumber) {
+        state.setProperty(te::IDs::b, newBeatNumber.inBeats(), um);
+        beatNumber = newBeatNumber;
+    }
+}
+
+void PsgParamFrame::setRawEditTime(const PsgClip& c, te::TimePosition editTime, juce::UndoManager* um) {
+    const auto editBeat = c.edit.tempoSequence.toBeats(jmax(0_tp, editTime));
+    setBeatPosition(editBeat + toDuration(c.getLoopStartBeats()) - toDuration(c.getContentStartBeat()), um);
 }
 
 void PsgParamFrame::updatePropertiesFromState() noexcept {

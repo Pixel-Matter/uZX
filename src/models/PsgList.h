@@ -27,6 +27,14 @@ public:
     te::BeatPosition getBeatPosition() const noexcept                         { return beatNumber; }
     void setBeatPosition (te::BeatPosition, juce::UndoManager*);
 
+    /** Sets the frame's stored beat so its raw (unquantised) edit time matches the
+        given time. The inverse of getRawEditTime, so snapshot/restore round-trips exactly. */
+    void setRawEditTime(const PsgClip&, te::TimePosition, juce::UndoManager*);
+
+    /** Raw clip-relative position, ignoring quantising/groove. */
+    te::BeatPosition getRawEditBeats(const PsgClip&) const;
+    te::TimePosition getRawEditTime(const PsgClip&) const;
+
     /** This takes into account quantising, groove templates, clip offset, etc */
     te::BeatPosition getEditBeats(const PsgClip&) const;
     te::TimePosition getEditTime(const PsgClip&) const;

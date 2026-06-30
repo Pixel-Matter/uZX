@@ -20,6 +20,7 @@ namespace IDs
     DECLARE_ID(showHeaders)
     DECLARE_ID(showArranger)
     DECLARE_ID(headersWidth)
+    DECLARE_ID(preservePsgTimingOnTempoChange)
 
     DECLARE_ID(ZOOMVIEWSTATE)
     DECLARE_ID(viewStartTime)
@@ -106,7 +107,8 @@ public:
     EditViewState(te::Edit& e, te::SelectionManager& s);
 
     CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,
-                      drawWaveforms, showHeaders, showMidiDevices, showWaveDevices;
+                      drawWaveforms, showHeaders, showMidiDevices, showWaveDevices,
+                      preservePsgTimingOnTempoChange;
     CachedValue<int> headersWidth;
 
     ValueTree state;
@@ -125,6 +127,8 @@ public:
 
     void setBeatLength(te::TimeDuration beatLen);
     void setFramesPerBeat(int fpb);
+    void setPreservePsgTimingOnTempoChange(bool shouldPreserve);
+    bool shouldPreservePsgTimingOnTempoChange() const;
 
     int getTrackHeaderWidth() const;
 

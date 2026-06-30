@@ -9,6 +9,12 @@
 > construction. The old opt-in preserve flag, the snapshot/restore machinery, and
 > the `transportPreservePsgTiming` command have been removed. Manually placed
 > frames use index `-1` and stay beat-anchored (legacy behaviour).
+>
+> **Migration:** old files (frames with `b` but no `fi`/`frameRate`) are upgraded
+> on load in `PsgClip::initialise` via `PsgList::migrateToFrameIndicesIfNeeded`,
+> which adopts the edit's timecode FPS and back-fills each frame's index by
+> inverting its stored beat through the tempo map. One-time and idempotent
+> (skipped once a frame rate is present).
 
 ## Problem this addresses
 

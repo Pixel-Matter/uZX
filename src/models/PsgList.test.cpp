@@ -400,6 +400,39 @@ public:
             expectWithinAbsoluteError(preservedRawTime.inSeconds(), originalRawTime.inSeconds(), 1.0e-9,
                                       "Raw frame time must survive the tempo change despite quantisation");
         }
+
+        beginTest("Legacy beat-only frames are migrated to frame indices");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+
+            auto track = getAudioTracks(*edit)[0];
+            // An empty clip starts with no frame rate; frames added by beat carry no
+            // index — exactly the shape of legacy beat-only data.
+            uZX::PsgData empty { {}, {50.0, 1} };
+            auto clip = PsgClip::insertTo(*track, empty, {{0_tp, 4_td}, {}}, "legacy");
+
+            // Beat 0.12 at 120 BPM == 0.06 s == frame 3 at 50 fps (off the .5 boundary).
+            auto frame = clip->getPsg().addFrameEvent(0.12_bp, PsgParamFrameData {{PsgParamType::VolumeA, 7}}, nullptr);
+            const auto beatBefore = frame->getBeatPosition();
+            expect(! frame->hasFrameIndex(), "Sanity: beat-added frame has no index");
+            expectWithinAbsoluteError(clip->getPsg().getFrameRate(), 0.0, 1.0e-9,
+                                      "Sanity: legacy list has no frame rate");
+
+            clip->getPsg().migrateToFrameIndicesIfNeeded(*clip, 50.0, nullptr);
+
+            expect(frame->hasFrameIndex(), "Frame should gain an index after migration");
+            expectEquals(frame->getFrameIndex(), 3, "Migration should recover the nearest tick");
+            expectWithinAbsoluteError(clip->getPsg().getFrameRate(), 50.0, 1.0e-9,
+                                      "List should adopt the migration frame rate");
+            expectWithinAbsoluteError(frame->getBeatPosition().inBeats(), beatBefore.inBeats(), 1.0e-9,
+                                      "Migration should not move the existing beat");
+
+            // Second call is a no-op once the frame rate is present.
+            clip->getPsg().migrateToFrameIndicesIfNeeded(*clip, 25.0, nullptr);
+            expectWithinAbsoluteError(clip->getPsg().getFrameRate(), 50.0, 1.0e-9,
+                                      "Already-migrated list keeps its frame rate");
+        }
     }
 };
 

@@ -3,6 +3,7 @@
 #include "PsgMidi.h"
 #include "PsgList.h"
 #include "PsgParameter.h"
+#include "EditUtilities.h"
 #include "../formats/psg/PsgFile.h"
 
 #include <cstddef>
@@ -19,9 +20,14 @@ void PsgClip::initialise() {
     // load PSG list
     auto um = getUndoManager();
     auto psg = state.getChildWithName(IDs::PSG);
-    if (psg.isValid())
+    if (psg.isValid()) {
         psgList = std::make_unique<PsgList>(psg, um);
-    else {
+
+        // Legacy files store only per-frame beats. Back-fill machine-frame indices
+        // from the edit's frame rate so old PSG data also stays tempo-stable.
+        const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+        psgList->migrateToFrameIndicesIfNeeded(*this, fps, um);
+    } else {
         state.addChild(PsgList::createPsgList(), -1, um);
         psgList = std::make_unique<PsgList>();
     }

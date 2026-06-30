@@ -133,6 +133,22 @@ void PsgParamFrame::updateBeatFromFrameIndex(const PsgClip& c, double frameRate,
     setBeatPosition(beat, um);
 }
 
+void PsgParamFrame::setFrameIndex(int newFrameIndex, juce::UndoManager* um) {
+    if (frameIndex != newFrameIndex) {
+        state.setProperty(IDs::fi, newFrameIndex, um);
+        frameIndex = newFrameIndex;
+    }
+}
+
+void PsgParamFrame::migrateFrameIndexFromBeat(const PsgClip& c, double frameRate, juce::UndoManager* um) {
+    if (hasFrameIndex() || frameRate <= 0.0)
+        return;
+
+    // Inverse of the load mapping: stored beat -> seconds -> nearest machine frame.
+    const auto timeSec = c.edit.tempoSequence.toTime(beatNumber).inSeconds();
+    setFrameIndex(jmax(0, roundToInt(timeSec * frameRate)), um);
+}
+
 void PsgParamFrame::updatePropertiesFromState() noexcept {
     beatNumber  = te::BeatPosition::fromBeats(static_cast<double>(state.getProperty(te::IDs::b)));
     frameIndex  = static_cast<int>(state.getProperty(IDs::fi, -1));
@@ -285,6 +301,17 @@ void PsgList::updateBeatsFromFrameIndices(const PsgClip& clip, juce::UndoManager
     recomputeAccumulatedState();
 }
 
+void PsgList::migrateToFrameIndicesIfNeeded(const PsgClip& clip, double frameRate, juce::UndoManager* um) {
+    // Already migrated / freshly imported lists carry a frame rate; nothing to do.
+    if (getFrameRate() > 0.0 || frameRate <= 0.0 || getNumFrames() == 0)
+        return;
+
+    for (auto* frame : getFrames())
+        frame->migrateFrameIndexFromBeat(clip, frameRate, um);
+
+    setFrameRate(frameRate, um);
+}
+
 void PsgList::recomputeAccumulatedState() {
     ++dataVersion_;
     PsgParamFrameData accumulated;
@@ -425,7 +452,10 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
         state.addChild(v, -1, um);
     }
 
-    setFrameRate(data.getFrameRate(), um);
+    // Only an actually-populated list has a meaningful frame rate to anchor indices.
+    if (getNumFrames() > 0)
+        setFrameRate(data.getFrameRate(), um);
+
     recomputeAccumulatedState();
 }
 

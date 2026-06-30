@@ -31,10 +31,16 @@ public:
         -1 means the frame predates the frame-index model (legacy beat-only). */
     int getFrameIndex() const noexcept                                        { return frameIndex; }
     bool hasFrameIndex() const noexcept                                       { return frameIndex >= 0; }
+    void setFrameIndex(int, juce::UndoManager*);
 
     /** Rewrites this frame's beat so it lands at frameIndex / frameRate seconds under
         the edit's current tempo map. Keeps PSG timing fixed across tempo changes. */
     void updateBeatFromFrameIndex(const PsgClip&, double frameRate, juce::UndoManager*);
+
+    /** Back-fills the frame index for a legacy beat-only frame by inverting its
+        current beat through the tempo map at the given frame rate. No-op if the
+        frame already has an index. */
+    void migrateFrameIndexFromBeat(const PsgClip&, double frameRate, juce::UndoManager*);
 
     /** Raw clip-relative position, ignoring quantising/groove. */
     te::BeatPosition getRawEditBeats(const PsgClip&) const;
@@ -125,6 +131,12 @@ public:
         current tempo map, so PSG frames stay fixed in time across tempo changes.
         No-op for legacy frames that have no index. */
     void updateBeatsFromFrameIndices(const PsgClip&, juce::UndoManager*);
+
+    /** One-time upgrade for legacy lists that have frames but no frame rate:
+        adopts the given frame rate and back-fills every frame's index from its
+        stored beat, so old data gains tempo-stable PSG timing. No-op if the list
+        already has a frame rate (already migrated / freshly imported) or is empty. */
+    void migrateToFrameIndicesIfNeeded(const PsgClip&, double frameRate, juce::UndoManager*);
 
     //==============================================================================
     bool isAttachedToClip() const noexcept                          { return ! state.getParent().hasType(te::IDs::NA); }

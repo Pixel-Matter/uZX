@@ -5,11 +5,11 @@ Granular tasks and implementation notes for active development.
 ## Arranger mode
 
 - [x] Bug with playhead in uZX Studio (not in uZX Player) — root cause: failed audio device freezes audible time; now detected with an error alert + Audio Settings
-- [ ] Timecode switching (frames, seconds, bars/beats)
-- [ ] Grid respect new timecode format with beats and frames
+- [x] Timecode switching (frames, seconds, bars/beats)
+- [x] Ruler respects timecode format
+- [x] Grid respect new timecode format with beats and frames
 - [ ] FPS editing of timecode or of a separate edit FPS setting
 - [ ] Double timecode
-- [ ] Ruler respects timecode format
 - [ ] Double ruler (second is below the timeline)
 - [ ] Better BPM editing
 - [ ] Start horizontal scroll if playhead is being dragged outside of the visible bounds

@@ -9,9 +9,9 @@ namespace MoTool {
 enum class TimecodeTypeExt {
     millisecs       = (int) te::TimecodeType::millisecs,
     barsBeats       = (int) te::TimecodeType::barsBeats,
-    fps24           = (int) te::TimecodeType::fps24,
-    fps25           = (int) te::TimecodeType::fps25,
-    fps30           = (int) te::TimecodeType::fps30,
+    fps24           = (int) te::TimecodeType::fps24,  // SMPTE
+    fps25           = (int) te::TimecodeType::fps25,  // SMPTE
+    fps30           = (int) te::TimecodeType::fps30,  // SMPTE
     fps48           = 100,  // For non-fractional BPM
     // fps48828,               // Pentagon (TODO round up to 50?)
     fps50,                  // ZX Spectrum/PAL
@@ -40,11 +40,21 @@ struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
     {}
 
     TimecodeDisplayFormatExt(TimecodeTypeExt t) noexcept
-        : te::TimecodeDisplayFormat(t <= TimecodeTypeExt::fps30 ? static_cast<te::TimecodeType>(t) : te::TimecodeType::barsBeats)
+        : te::TimecodeDisplayFormat(t <= TimecodeTypeExt::fps30
+                                    ? static_cast<te::TimecodeType>(t)
+                                    : te::TimecodeType::barsBeats)
         , typeExt(t)
     {}
 
     using te::TimecodeDisplayFormat::TimecodeDisplayFormat;
+
+    bool isExtendedFramesOnly() const noexcept {
+        return typeExt >= TimecodeTypeExt::fps48 && typeExt <= TimecodeTypeExt::fps200;
+    }
+
+    bool isBarsBeatsFrames() const noexcept {
+        return typeExt >= TimecodeTypeExt::barsBeatsFps24 && typeExt <= TimecodeTypeExt::barsBeatsFps200;
+    }
 
     inline float getFPS() const {
         float frameRate = 25; // Default
@@ -85,7 +95,13 @@ struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
 
         if (typeExt <= TimecodeTypeExt::fps30) {
             return te::TimecodeDisplayFormat::getString(tempo, time, isRelative);
-        } if (typeExt >= TimecodeTypeExt::barsBeatsFps24 && typeExt <= TimecodeTypeExt::barsBeatsFps60) {
+        }
+
+        if (isExtendedFramesOnly()) {
+            return te::TimecodeDisplayFormat::toFullTimecode(time, roundToInt(getFPS()));
+        }
+
+        if (isBarsBeatsFrames()) {
             te::tempo::BarsAndBeats barsBeats;
             int bars, beats;
             te::BeatDuration fraction;
@@ -148,7 +164,7 @@ struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
 
     std::vector<te::TimecodeSnapType> getOptimalSnapTypes(const te::TempoSetting& tempo,
                                                          te::TimeDuration onScreenTimePerPixel,
-                                                         bool isTripletOverride) {
+                                                         bool isTripletOverride) const {
         std::vector<te::TimecodeSnapType> snaps;
         snaps.reserve(3);
         snaps.push_back(getBestSnapType(tempo, onScreenTimePerPixel, isTripletOverride));

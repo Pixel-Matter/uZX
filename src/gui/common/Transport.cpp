@@ -210,7 +210,8 @@ void TransportBar::valueTreePropertyChanged(ValueTree& tree, const Identifier& p
     } else if (tree == transport_.state && prop == te::IDs::position) {
         updateTimeLabels(transport_.getPosition());
     } else if (tree == edit_.state && prop == te::IDs::timecodeFormat) {
-        // timecodeFormat = TimecodeDisplayFormatExt::fromString(edit_.state[te::IDs::timecodeFormat].toString());
+        timecodeFormat.forceUpdateOfCachedValue();
+        updateTimeLabels(transport_.getPosition());
     }
 }
 

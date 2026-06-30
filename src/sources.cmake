@@ -116,6 +116,8 @@ set(TEST_SOURCES
     plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
 
+    gui/timeline/TimelineGrid.test.cpp
+
     gui/common/ParamBindings.test.cpp
     gui/common/LookAndFeel.test.cpp
 )

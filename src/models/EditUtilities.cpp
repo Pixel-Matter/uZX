@@ -42,18 +42,17 @@ juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit) {
 
     PopupMenu menu;
 
-    menu.addItem(item("Seconds", TimecodeTypeExt::millisecs));
-    menu.addItem(item("Bars & Beats", TimecodeTypeExt::barsBeats));
-    menu.addSeparator();
+    menu.addItem(item("Bars | Beats", TimecodeTypeExt::barsBeats));
 
     // Bars | Beats | Frames submenu
     PopupMenu bbfMenu;
-    for (auto& fps : fpsEntries)
+    for (auto& fps : fpsEntries) {
         bbfMenu.addItem(item(fps.label, fps.barsBeats));
+    }
     menu.addSubMenu("Bars | Beats | Frames", bbfMenu,
-                     true, nullptr, false);
+                   true, nullptr, false);
 
-    menu.addSeparator();
+    menu.addItem(item("Seconds", TimecodeTypeExt::millisecs));
 
     // Frames only submenu
     PopupMenu framesMenu;

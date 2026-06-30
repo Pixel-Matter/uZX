@@ -349,6 +349,29 @@ public:
                                       "Frame rate should be captured from the imported data");
         }
 
+        beginTest("Stored beat is a cache regenerated from the frame index");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+
+            auto data = makeOffGridFrameData();
+            auto track = getAudioTracks(*edit)[0];
+            auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "timing");
+
+            auto frame = clip->getPsg().getFrame(0);
+            const auto trueBeat = frame->getBeatPosition().inBeats();
+
+            // Corrupt the cached beat as a stale value would be.
+            frame->setBeatPosition(te::BeatPosition::fromBeats(trueBeat + 1.0), nullptr);
+            expectWithinAbsoluteError(frame->getBeatPosition().inBeats(), trueBeat + 1.0, 1.0e-9,
+                                      "Sanity: stale beat was applied");
+
+            // Regenerating from the index (as load does) must overwrite the cache.
+            clip->getPsg().updateBeatsFromFrameIndices(*clip, nullptr);
+            expectWithinAbsoluteError(frame->getBeatPosition().inBeats(), trueBeat, 1.0e-9,
+                                      "Beat must be regenerated from the frame index, not trusted from disk");
+        }
+
         beginTest("PSG frame time stays fixed when frames per beat changes");
         {
             auto edit = Edit::createSingleTrackEdit(engine);

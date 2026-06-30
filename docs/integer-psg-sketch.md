@@ -2,13 +2,17 @@
 
 > Design note on branch `integer-psg-sketch`.
 >
-> **Status: Option A implemented.** Frames now carry a machine-frame index
-> (`IDs::fi`) and the PSG list stores its frame rate (`IDs::frameRate`). Tempo
-> changes call `PsgTiming::setTempoBpmRetimingFrames`, which re-derives each
-> frame's beat from `frameIndex / frameRate` — keeping PSG timing fixed in time by
-> construction. The old opt-in preserve flag, the snapshot/restore machinery, and
-> the `transportPreservePsgTiming` command have been removed. Manually placed
-> frames use index `-1` and stay beat-anchored (legacy behaviour).
+> **Status: Option A implemented.** Frames carry a machine-frame index (`IDs::i`)
+> and the PSG list stores its frame rate (`IDs::frameRate`). The index is the
+> single source of truth; the tracktion beat (`te::IDs::b`) is kept as a cache so
+> the engine's `b`-keyed sorting/MidiClip integration keeps working, but it is
+> regenerated from `i` on load (`PsgClip::initialise` → `updateBeatsFromFrameIndices`),
+> so the two can never disagree. Tempo changes call
+> `PsgTiming::setTempoBpmRetimingFrames`, which re-derives each frame's beat from
+> `i / frameRate` — keeping PSG timing fixed in time by construction. The old
+> opt-in preserve flag, the snapshot/restore machinery, and the
+> `transportPreservePsgTiming` command have been removed. Manually placed frames
+> use index `-1` and stay beat-anchored (legacy behaviour).
 >
 > **Migration:** old files (frames with `b` but no `fi`/`frameRate`) are upgraded
 > on load in `PsgClip::initialise` via `PsgList::migrateToFrameIndicesIfNeeded`,

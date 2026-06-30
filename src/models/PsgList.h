@@ -27,8 +27,9 @@ public:
     te::BeatPosition getBeatPosition() const noexcept                         { return beatNumber; }
     void setBeatPosition (te::BeatPosition, juce::UndoManager*);
 
-    /** Canonical machine-frame index — the tempo-independent timestamp.
-        -1 means the frame predates the frame-index model (legacy beat-only). */
+    /** Canonical machine-frame index — the tempo-independent timestamp and single
+        source of truth. The stored beat (te::IDs::b) is a cache regenerated from this
+        on load. -1 means the frame predates the frame-index model (legacy beat-only). */
     int getFrameIndex() const noexcept                                        { return frameIndex; }
     bool hasFrameIndex() const noexcept                                       { return frameIndex >= 0; }
     void setFrameIndex(int, juce::UndoManager*);

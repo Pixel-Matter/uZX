@@ -36,7 +36,7 @@ namespace IDs {
     DECLARE_ID(PSG)
     DECLARE_ID(frameRate)  // PSG list machine frame rate (Hz), anchors frame indices
     DECLARE_ID(FRAME)
-    DECLARE_ID(fi)         // integer machine-frame index — the canonical frame timestamp
+    DECLARE_ID(i)          // integer machine-frame index — the canonical frame timestamp (b is derived from it)
     DECLARE_ID(va)
     DECLARE_ID(vb)
     DECLARE_ID(vc)

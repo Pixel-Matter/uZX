@@ -16,6 +16,7 @@ namespace {
     void convertPsgFrameFromStrings(juce::ValueTree& frames) {
         if (frames.hasType(IDs::FRAME)) {
             te::convertPropertyToType<double>(frames, te::IDs::b);
+            te::convertPropertyToType<int>   (frames, IDs::i); // machine-frame index
             // te::convertPropertyToType<int>   (frames, te::IDs::metadata);
 
             te::convertPropertyToType<int> (frames, IDs::va); // VolumeA
@@ -63,7 +64,7 @@ PsgParamFrame::PsgParamFrame(const juce::ValueTree& v)
 
 juce::ValueTree PsgParamFrame::createPsgFrameValueTree(int frameIndex, te::BeatPosition beat, const PsgParamFrameData& data) {
     auto v = te::createValueTree(IDs::FRAME,
-        IDs::fi,       frameIndex,
+        IDs::i,       frameIndex,
         te::IDs::b,    roundTo(beat.inBeats())
     );
     PsgParamType::forEach([&v, &data](auto paramTypeVal) {
@@ -135,7 +136,7 @@ void PsgParamFrame::updateBeatFromFrameIndex(const PsgClip& c, double frameRate,
 
 void PsgParamFrame::setFrameIndex(int newFrameIndex, juce::UndoManager* um) {
     if (frameIndex != newFrameIndex) {
-        state.setProperty(IDs::fi, newFrameIndex, um);
+        state.setProperty(IDs::i, newFrameIndex, um);
         frameIndex = newFrameIndex;
     }
 }
@@ -151,7 +152,7 @@ void PsgParamFrame::migrateFrameIndexFromBeat(const PsgClip& c, double frameRate
 
 void PsgParamFrame::updatePropertiesFromState() noexcept {
     beatNumber  = te::BeatPosition::fromBeats(static_cast<double>(state.getProperty(te::IDs::b)));
-    frameIndex  = static_cast<int>(state.getProperty(IDs::fi, -1));
+    frameIndex  = static_cast<int>(state.getProperty(IDs::i, -1));
     // TODO update other properties
     // Why not use CahedValue<>? Too slow?
     // read all properties from state

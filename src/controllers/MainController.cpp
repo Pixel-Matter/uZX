@@ -50,6 +50,24 @@ AppController::AppController()
 
     // Workaround for JUCE CoreAudio buffer overflow bug at low sample rates
     ensureMinimumSampleRate();
+
+    // A previously-saved setup may pair a separate input device with the output device, which
+    // freezes playback on macOS. Drop the mismatched input before the user hits an unplayable state.
+    sanitizeAudioInputDevice();
+}
+
+void AppController::sanitizeAudioInputDevice() {
+    auto& deviceManager = engine_.getDeviceManager().deviceManager;
+
+    juce::AudioDeviceManager::AudioDeviceSetup setup;
+    deviceManager.getAudioDeviceSetup(setup);
+
+    if (setup.inputDeviceName.isNotEmpty() && setup.inputDeviceName != setup.outputDeviceName) {
+        setup.inputDeviceName = {};
+        setup.inputChannels.clear();
+        setup.useDefaultInputChannels = true;
+        deviceManager.setAudioDeviceSetup(setup, true);
+    }
 }
 
 void AppController::initialize() {
@@ -152,11 +170,60 @@ void AppController::ensureMinimumSampleRate() {
     }
 }
 
+String AppController::getAudioDeviceError(bool requireRunning) const {
+    auto& deviceManager = engine_.getDeviceManager().deviceManager;
+    auto* device = deviceManager.getCurrentAudioDevice();
+
+    if (device == nullptr)
+        return "No audio output device is selected.";
+
+    if (!device->isOpen())
+        return "The audio device \"" + device->getName() + "\" could not be opened.";
+
+    if (auto lastError = device->getLastError(); lastError.isNotEmpty())
+        return "Audio device \"" + device->getName() + "\" error: " + lastError;
+
+    if (device->getActiveOutputChannels().isZero())
+        return "The audio device \"" + device->getName() + "\" has no active output channels.";
+
+    // The device callback not running is the symptom behind the frozen playhead (e.g. a failed
+    // input device). Only treat it as fatal when we're about to start playback, since at startup
+    // the device may not have spun up yet.
+    if (requireRunning && !device->isPlaying())
+        return "The audio device \"" + device->getName() + "\" is not running.";
+
+    return {};
+}
+
+void AppController::reportAudioDeviceProblem(const String& error) {
+    AlertWindow::showMessageBoxAsync(
+        AlertWindow::WarningIcon,
+        "Audio Problem",
+        error + "\n\nPlayback will not advance until a working audio device is configured. "
+                "Please check your audio settings.",
+        "Open Audio Settings",
+        nullptr,
+        ModalCallbackFunction::create([](int) {
+            te::AppFunctions::showSettingsScreen();
+        }));
+}
+
+bool AppController::ensureAudioReadyForPlayback() {
+    auto error = getAudioDeviceError(/* requireRunning */ true);
+    if (error.isEmpty())
+        return true;
+
+    reportAudioDeviceProblem(error);
+    return false;
+}
+
 void AppController::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &selectionManager_) {
         // Selection changed, update command status
         commandManager_.commandStatusChanged();
     }
+    // Note: an invalid audio configuration is prevented at the source by AudioSettingsComponent,
+    // and a leftover bad setup is caught by the play guard (ensureAudioReadyForPlayback).
 }
 
 void AppController::handlePluginManager() {
@@ -483,9 +550,17 @@ bool AppController::perform(const InvocationInfo& info) {
             te::AppFunctions::deleteSelected();
             break;
         // Transport commands
-        case MainAppCommands::transportPlay:
+        case MainAppCommands::transportPlay: {
+            // Guard against a misconfigured audio device: starting playback with a broken
+            // device leaves the audible time frozen and the playhead stuck (see getAudioDeviceError).
+            auto* activeEdit = isPlayer ? MoToolApp::getPlayerController().getEdit()
+                                        : MoToolApp::getArrangerController().getEdit();
+            const bool isPlaying = activeEdit != nullptr && activeEdit->getTransport().isPlaying();
+            if (!isPlaying && !ensureAudioReadyForPlayback())
+                break;
             te::AppFunctions::startStopPlay();
             break;
+        }
 
         case MainAppCommands::transportRecord:
             if (!isPlayer) MoToolApp::getArrangerController().handleRecord();

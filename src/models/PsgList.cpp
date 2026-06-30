@@ -448,8 +448,22 @@ double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::Mid
 [[nodiscard]] juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, te::MidiList::TimeBase timeBase) const {
     // DBG("Exporting PSG to MIDI sequence, channel " << getMidiChannel().getChannelNumber() << ", timebase " << (timeBase == te::MidiList::TimeBase::beats ? "beats" : "seconds"));
     PsgParamsMidiWriter writer {getMidiChannel().getChannelNumber()};
-    for (auto f : getFrames()) {
-        writer.write(getTimeInBase(*f, clip, timeBase), f->getData());
+    const auto& frames = getFrames();
+    for (int i = 0; i < frames.size(); ++i) {
+        auto* f = frames[i];
+        if (i == 0) {
+            // Export the complete accumulated initial state at time 0.
+            // PSG frames only mask registers that changed, but recomputeAccumulatedState()
+            // copies the full accumulated values (including the resetMixer baseline and
+            // defaults) into every frame. Forcing all masks on at frame 0 emits a complete
+            // AY register snapshot, so playback/reposition always starts from a deterministic
+            // state instead of inheriting stale registers from a previous play.
+            PsgParamFrameData fullState = f->getData();
+            std::fill(fullState.masks.begin(), fullState.masks.end(), true);
+            writer.write(getTimeInBase(*f, clip, timeBase), fullState);
+        } else {
+            writer.write(getTimeInBase(*f, clip, timeBase), f->getData());
+        }
     }
     return writer.getSequence();
 }

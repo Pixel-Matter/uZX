@@ -4,6 +4,7 @@
 
 #include "App.h"
 
+#include "../gui/common/AudioSettingsComponent.h"
 #include "../gui/common/ProgressDialog.h"
 #include "../gui/common/Utilities.h"
 #include "../util/Helpers.h"
@@ -128,14 +129,15 @@ public:
         DialogWindow::LaunchOptions o;
         o.dialogTitle = TRANS("Audio Settings");
         o.dialogBackgroundColour = LookAndFeel::getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId);
+        // AudioSettingsComponent wraps the JUCE selector and prevents an unplayable configuration
+        // (a separate input device different from the output) from being applied - see its docs.
         o.content.setOwned(
-            new AudioDeviceSelectorComponent(getActiveController().getEngine().getDeviceManager().deviceManager,
-                                             0, 512, 1, 512,
-                                             true, true, true, false));
+            new AudioSettingsComponent(getActiveController().getEngine().getDeviceManager().deviceManager));
         o.useNativeTitleBar = true;
         o.escapeKeyTriggersCloseButton = true;
         o.resizable = true;
-        o.content->setSize(500, 600);
+        // Sized to fit the device selector content - avoids the large empty area below it.
+        o.content->setSize(500, 470);
         o.launchAsync();
     }
 

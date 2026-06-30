@@ -44,6 +44,8 @@ jobs:
             build-target: uZXTests
             test-bin: build/src/uZXTests_artefacts/Debug/uZXTests
             cache-path: ~/.cache/ccache
+            # Linux runners have 16 GB RAM; JUCE/Tracktion TUs are memory-heavy.
+            # Unbounded -j OOM-kills the runner (SIGTERM/143), so cap parallelism.
             parallel: 3
             install-deps: true
             configure-extra: ""

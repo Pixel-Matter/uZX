@@ -186,47 +186,62 @@ Build caching: ccache (macOS/Linux) and sccache (Windows) with GitHub Actions ca
 
 ## Release Process
 
-Versions are defined in `versions.cmake`. The CI workflow (`.github/workflows/ci.yml`) triggers releases on `v*` tags.
+Versions are defined in `versions.cmake`. The CI workflow (`.github/workflows/ci.yml`) triggers releases on `v*` tags. Tags can be created on either `develop` or `main`:
+- **`develop`** — alpha/dev pre-releases (tagged with `-alpha`, `-dev`, etc.)
+- **`main`** — stable releases only (tagged without suffix)
 
 **Important**: The `main` branch is protected — it requires pull requests and passing status checks. You cannot push directly to `main`.
 
-### Steps
-1. Ensure you are on `develop`:
+### Alpha/Pre-release (from `develop`)
+1. Bump version in `versions.cmake` on `develop`:
    ```bash
    git checkout develop
-   ```
-2. Update version in `versions.cmake` (edit the `PROJECT_CORE_VERSION` line):
-   ```bash
-   # Example: bump to 0.4.9
    sed -i '' 's/PROJECT_CORE_VERSION ".*"/PROJECT_CORE_VERSION "0.4.9"/' versions.cmake
-   ```
-3. Commit and push to `develop`:
-   ```bash
    git add versions.cmake
    git commit -m "bump version to 0.4.9"
    git push origin develop
    ```
-4. Create a PR from `develop` to `main`:
+2. Tag the `develop` HEAD and push — this triggers the release jobs:
    ```bash
-   gh pr create --base main --head develop \
-     --title "Bump version to 0.4.9" \
-     --body "Version bump for v0.4.9-alpha release."
-   ```
-5. Wait for CI to pass, then merge the PR (via GitHub UI or CLI):
-   ```bash
-   gh pr merge --merge
-   ```
-6. Tag the merged commit on `main` and push — this triggers the release jobs:
-   ```bash
-   git fetch origin main
-   git tag v0.4.9-alpha origin/main
+   git tag v0.4.9-alpha
    git push origin v0.4.9-alpha
    ```
 
+### Stable Release (from `main`)
+1. Bump version in `versions.cmake` on `develop`:
+   ```bash
+   git checkout develop
+   sed -i '' 's/PROJECT_CORE_VERSION ".*"/PROJECT_CORE_VERSION "0.5.0"/' versions.cmake
+   git add versions.cmake
+   git commit -m "bump version to 0.5.0"
+   git push origin develop
+   ```
+2. Create a PR from `develop` to `main`:
+   ```bash
+   gh pr create --base main --head develop \
+     --title "Release v0.5.0" \
+     --body "Stable release v0.5.0."
+   ```
+3. Wait for CI to pass, then merge the PR (via GitHub UI or CLI):
+   ```bash
+   gh pr merge --merge
+   ```
+4. Tag the merged commit on `main` and push — this triggers the release jobs:
+   ```bash
+   git fetch origin main
+   git tag v0.5.0 origin/main
+   git push origin v0.5.0
+   ```
+
 ### Version Tag Convention
-- Stable release: `v0.5.0`
-- Alpha/pre-release: `v0.4.9-alpha`
-- The version in `versions.cmake` should match the numeric part of the tag
+
+| Tag | Branch | Meaning |
+|-----|--------|---------|
+| `v0.5.0` | `main` | Stable release |
+| `v0.4.9-alpha` | `develop` | Alpha pre-release |
+| `v0.4.9-dev` | `develop` | Dev pre-release |
+
+The version in `versions.cmake` should match the numeric part of the tag.
 
 ### CI Behavior
 - **Branch push**: runs `build` matrix job across macOS/Linux/Windows (tests only, with ccache/sccache)

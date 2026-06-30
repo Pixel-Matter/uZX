@@ -11,6 +11,7 @@
 - [ ] Some bug with pure env bass viz on B channel in SkyTrainFunk close to the start
 - [ ] Playhead disappears while dragging fast enough
 - [ ] **Fix** sometimes stopping after 2 seconds of playback
+- [ ] **Tone/envelope visual mismatch** — detuning between tone and envelope viz when periods are in ratio
 - [x] **Drag-and-drop** — accept `.psg` and `.uzx` files dropped onto the window
 - [x] **Open from Finder** — handle `anotherInstanceStarted()` / command-line args
 - [x] **File association** — `.psg` and `.uzx` macOS file types
@@ -23,8 +24,8 @@
 
 #### P1 — Important
 
-- [ ] **Add left padding for player**
-- [ ] **Global master volume** saved in app settings, not per-edit
+- [x] **Add left padding for player**
+- [ ] Save/Save As.. menu item for Player
 - [ ] Beat+frames-based timeline
 - [ ] Different rendering in seconds-only and beat-based timeline
 - [x] **PSG** file icons in Finder
@@ -37,13 +38,18 @@
 - [ ] **AY reset** at the start of playback
 - [x] **Shift-wheel** horizontal scrolling
 - [x] **Mouse gestures** work over the playhead (transparent hit zone)
+- [ ] **Middle mouse drag-pan** — pan timeline by dragging with middle mouse button (DAW convention)
+- [ ] **Global master volume** — save master volume in app settings, apply to all opened files
+- [ ] **UI shortcuts documentation** — document keyboard/mouse shortcuts for users
+- [ ] **Cross-platform shortcut unification** — check modifier key behavior consistency across macOS/Windows
 - [ ] **Last opened edit** not always working
 
 #### P2 — Nice to have
 
-- [ ] **GitHub Actions CI for macOS** — build, upload as release artifact
-- [ ] **Windows build** — GitHub Actions
-- [ ] **Linux build** — GitHub Actions
+- [x] **GitHub Actions CI for macOS** — build, upload as release artifact
+- [x] **Windows build** — GitHub Actions
+- [x] **Linux build** — GitHub Actions
+- [ ] **Global default AY settings** — apply saved AY config (frequency, stereo, channels) when opening PSG from command line
 - [ ] **Mute/solo buttons** — per-channel mute in AY side panel
 
 ---
@@ -64,7 +70,7 @@
 
 #### P1 — Important
 
-- [ ] **Release branch strategy** — tagging `main` recommended
+- [x] **Release branch strategy** — tagging `main` recommended
 - [ ] **About dialog** — working links to GitHub repo, scroller for greets
 - [ ] **Error handling** — graceful message for corrupt/invalid PSG files
 - [ ] **Audio device fallback** — handle "no audio device" cleanly

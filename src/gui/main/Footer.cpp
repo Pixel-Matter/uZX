@@ -11,7 +11,9 @@ FooterBar::FooterBar(te::Engine& engine)
         &pluginListButton_,
         &audioSettingsButton_
     });
-    audioSettingsButton_.onClick = [this] { EngineHelpers::showAudioDeviceSettings(engine_); };
+    // Route through our UIBehaviour so the dialog uses the same input/output validation
+    // (see ExtUIBehaviour::showSettingsScreen) as the menu/transport entry points.
+    audioSettingsButton_.onClick = [] { te::AppFunctions::showSettingsScreen(); };
 
     // Show the plugin scan dialog
     // If you're loading an Edit with plugins in, you'll need to perform a scan first

@@ -42,9 +42,13 @@ build/tests/MoToolTests_artefacts/Debug/uZXTests AYChip        # filter by name
 
 ## Release Process
 
-Releases are triggered by pushing a `v*` tag. The `main` branch is protected, so changes must go through a PR.
+Releases are triggered by pushing a `v*` tag. Tags can be created on either `develop` or `main`:
+- **`develop`** — alpha/dev pre-releases (tagged with `-alpha`, `-dev`, etc.)
+- **`main`** — stable releases only (tagged without suffix)
 
-### Steps
+The `main` branch is protected, so changes must go through a PR.
+
+### Alpha/Pre-release (from `develop`)
 
 1. **Bump the version** on `develop`:
    ```bash
@@ -55,11 +59,30 @@ Releases are triggered by pushing a `v*` tag. The `main` branch is protected, so
    git push origin develop
    ```
 
+2. **Tag `develop` HEAD** and push:
+   ```bash
+   git tag v0.4.9-alpha
+   git push origin v0.4.9-alpha
+   ```
+
+No PR to `main` needed — this triggers the full release pipeline directly from `develop`.
+
+### Stable Release (from `main`)
+
+1. **Bump the version** on `develop`:
+   ```bash
+   git checkout develop
+   # Edit versions.cmake — update PROJECT_CORE_VERSION
+   git add versions.cmake
+   git commit -m "bump version to 0.5.0"
+   git push origin develop
+   ```
+
 2. **Create a PR** from `develop` to `main`:
    ```bash
    gh pr create --base main --head develop \
-     --title "Bump version to 0.4.9" \
-     --body "Version bump for v0.4.9-alpha release."
+     --title "Release v0.5.0" \
+     --body "Stable release v0.5.0."
    ```
 
 3. **Wait for CI**, then merge the PR.
@@ -67,18 +90,19 @@ Releases are triggered by pushing a `v*` tag. The `main` branch is protected, so
 4. **Tag the merged commit** on `main`:
    ```bash
    git fetch origin main
-   git tag v0.4.9-alpha origin/main
-   git push origin v0.4.9-alpha
+   git tag v0.5.0 origin/main
+   git push origin v0.5.0
    ```
 
-This triggers the full release pipeline: build + test + package on macOS/Linux/Windows, then upload artifacts to a GitHub Release with SHA256 checksums.
+Both flows trigger the full release pipeline: build + test + package on macOS/Linux/Windows, then upload artifacts to a GitHub Release with SHA256 checksums.
 
 ### Version Tag Convention
 
-| Tag format | Meaning |
-|---|---|
-| `v0.5.0` | Stable release |
-| `v0.4.9-alpha` | Pre-release / alpha |
+| Tag | Branch | Meaning |
+|-----|--------|---------|
+| `v0.5.0` | `main` | Stable release |
+| `v0.4.9-alpha` | `develop` | Alpha pre-release |
+| `v0.4.9-dev` | `develop` | Dev pre-release |
 
 The version in `versions.cmake` (`PROJECT_CORE_VERSION`) should match the numeric part of the tag.
 

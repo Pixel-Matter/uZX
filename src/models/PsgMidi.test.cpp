@@ -311,7 +311,7 @@ public:
                 {PsgParamType::VolumeA, 1},
                 {PsgParamType::EnvelopeShape, 2}
             };
-            auto v = PsgParamFrame::createPsgFrameValueTree(2.3_bp, data);
+            auto v = PsgParamFrame::createPsgFrameValueTree(-1, 2.3_bp, data);
             expect(v.hasType(IDs::FRAME), "Expected FRAME type");
             expect(v.getProperty(te::IDs::b).equals(2.3), "Expected beat number to be 2.3");
             expect(v.getProperty(IDs::va).equals(1), "Expected VolumeA to be 1");
@@ -327,7 +327,7 @@ public:
                 {PsgParamType::EnvelopeShape, 2}
 
             };
-            auto v = PsgParamFrame::createPsgFrameValueTree(2.3_bp, data);
+            auto v = PsgParamFrame::createPsgFrameValueTree(-1, 2.3_bp, data);
             PsgParamFrame frame(v);
 
             expectWithinAbsoluteError(frame.getBeatPosition().inBeats(), 2.3, 0.0001, "Expected beat number to be 2.3");

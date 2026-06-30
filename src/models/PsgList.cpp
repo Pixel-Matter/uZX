@@ -61,8 +61,9 @@ PsgParamFrame::PsgParamFrame(const juce::ValueTree& v)
     updatePropertiesFromState();
 }
 
-juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, const PsgParamFrameData& data) {
+juce::ValueTree PsgParamFrame::createPsgFrameValueTree(int frameIndex, te::BeatPosition beat, const PsgParamFrameData& data) {
     auto v = te::createValueTree(IDs::FRAME,
+        IDs::fi,       frameIndex,
         te::IDs::b,    roundTo(beat.inBeats())
     );
     PsgParamType::forEach([&v, &data](auto paramTypeVal) {
@@ -120,13 +121,21 @@ void PsgParamFrame::setBeatPosition(te::BeatPosition newBeatNumber, juce::UndoMa
     }
 }
 
-void PsgParamFrame::setRawEditTime(const PsgClip& c, te::TimePosition editTime, juce::UndoManager* um) {
-    const auto editBeat = c.edit.tempoSequence.toBeats(jmax(0_tp, editTime));
-    setBeatPosition(editBeat + toDuration(c.getLoopStartBeats()) - toDuration(c.getContentStartBeat()), um);
+void PsgParamFrame::updateBeatFromFrameIndex(const PsgClip& c, double frameRate, juce::UndoManager* um) {
+    if (! hasFrameIndex() || frameRate <= 0.0)
+        return;
+
+    // Mirror the load mapping exactly: the stored beat is frameIndex/frameRate
+    // converted through the current tempo map. Clip offsets are applied later by
+    // getRawEditBeats, so they must not be folded in here.
+    const auto timeSec = (double) frameIndex / frameRate;
+    const auto beat = c.edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
+    setBeatPosition(beat, um);
 }
 
 void PsgParamFrame::updatePropertiesFromState() noexcept {
     beatNumber  = te::BeatPosition::fromBeats(static_cast<double>(state.getProperty(te::IDs::b)));
+    frameIndex  = static_cast<int>(state.getProperty(IDs::fi, -1));
     // TODO update other properties
     // Why not use CahedValue<>? Too slow?
     // read all properties from state
@@ -251,8 +260,28 @@ void PsgList::initialise(juce::UndoManager* um) {
     CRASH_TRACER
 
     midiChannel.referTo (state, te::IDs::channelNumber, um);
+    frameRate_.referTo (state, IDs::frameRate, um, 0.0);
 
     framesList = std::make_unique<EventList<PsgParamFrame>>(state);
+    recomputeAccumulatedState();
+}
+
+double PsgList::getFrameRate() const noexcept {
+    return frameRate_.get();
+}
+
+void PsgList::setFrameRate(double fps, juce::UndoManager* um) {
+    frameRate_.setValue(fps, um);
+}
+
+void PsgList::updateBeatsFromFrameIndices(const PsgClip& clip, juce::UndoManager* um) {
+    const double fps = getFrameRate();
+    if (fps <= 0.0)
+        return;
+
+    for (auto* frame : getFrames())
+        frame->updateBeatFromFrameIndex(clip, fps, um);
+
     recomputeAccumulatedState();
 }
 
@@ -315,14 +344,15 @@ PsgParamFrame* PsgList::addFrameEvent(const PsgParamFrame& event, juce::UndoMana
 }
 
 PsgParamFrame* PsgList::addFrameEvent(te::BeatPosition beat, const PsgParamFrameData& data, juce::UndoManager* um) {
-    auto v = PsgParamFrame::createPsgFrameValueTree(beat, data);
+    // Manually placed frames have no canonical machine-frame index: beat-anchored.
+    auto v = PsgParamFrame::createPsgFrameValueTree(-1, beat, data);
     state.addChild(v, -1, um);
     recomputeAccumulatedState();
     return framesList->getEventFor(v);
 }
 
 PsgParamFrame* PsgList::addFrameEvent(te::BeatPosition beat, const uZX::PsgRegsFrame& regs, juce::UndoManager* um) {
-    auto v = PsgParamFrame::createPsgFrameValueTree(beat, PsgParamFrameData {regs});
+    auto v = PsgParamFrame::createPsgFrameValueTree(-1, beat, PsgParamFrameData {regs});
     state.addChild(v, -1, um);
     recomputeAccumulatedState();
     return framesList->getEventFor(v);
@@ -391,10 +421,11 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
 
         lastRetriggerState = currentRetriggerState;
 
-        auto v = PsgParamFrame::createPsgFrameValueTree(beat, params);
+        auto v = PsgParamFrame::createPsgFrameValueTree(static_cast<int>(i), beat, params);
         state.addChild(v, -1, um);
     }
 
+    setFrameRate(data.getFrameRate(), um);
     recomputeAccumulatedState();
 }
 

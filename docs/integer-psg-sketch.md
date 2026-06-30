@@ -1,6 +1,14 @@
 # Sketch: integer-frame PSG timestamps
 
-> Exploratory design note on branch `integer-psg-sketch`. Not a committed plan.
+> Design note on branch `integer-psg-sketch`.
+>
+> **Status: Option A implemented.** Frames now carry a machine-frame index
+> (`IDs::fi`) and the PSG list stores its frame rate (`IDs::frameRate`). Tempo
+> changes call `PsgTiming::setTempoBpmRetimingFrames`, which re-derives each
+> frame's beat from `frameIndex / frameRate` — keeping PSG timing fixed in time by
+> construction. The old opt-in preserve flag, the snapshot/restore machinery, and
+> the `transportPreservePsgTiming` command have been removed. Manually placed
+> frames use index `-1` and stay beat-anchored (legacy behaviour).
 
 ## Problem this addresses
 

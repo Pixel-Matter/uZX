@@ -7,7 +7,7 @@ set(SHARED_SOURCES
     models/PsgMidi.cpp
     models/PsgList.cpp
     models/PsgClip.cpp
-    models/PsgTimingPreserver.cpp
+    models/PsgFrameRetimer.cpp
     models/Selectable.cpp
     models/EditUtilities.cpp
 

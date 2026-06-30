@@ -17,7 +17,7 @@ class PsgClip;
 
 class PsgParamFrame {
 public:
-    static juce::ValueTree createPsgFrameValueTree(te::BeatPosition, const PsgParamFrameData& data);
+    static juce::ValueTree createPsgFrameValueTree(int frameIndex, te::BeatPosition, const PsgParamFrameData& data);
     static juce::ValueTree createPsgFrame(const PsgParamFrame&, te::BeatPosition);
 
     PsgParamFrame(const juce::ValueTree&);
@@ -27,9 +27,14 @@ public:
     te::BeatPosition getBeatPosition() const noexcept                         { return beatNumber; }
     void setBeatPosition (te::BeatPosition, juce::UndoManager*);
 
-    /** Sets the frame's stored beat so its raw (unquantised) edit time matches the
-        given time. The inverse of getRawEditTime, so snapshot/restore round-trips exactly. */
-    void setRawEditTime(const PsgClip&, te::TimePosition, juce::UndoManager*);
+    /** Canonical machine-frame index — the tempo-independent timestamp.
+        -1 means the frame predates the frame-index model (legacy beat-only). */
+    int getFrameIndex() const noexcept                                        { return frameIndex; }
+    bool hasFrameIndex() const noexcept                                       { return frameIndex >= 0; }
+
+    /** Rewrites this frame's beat so it lands at frameIndex / frameRate seconds under
+        the edit's current tempo map. Keeps PSG timing fixed across tempo changes. */
+    void updateBeatFromFrameIndex(const PsgClip&, double frameRate, juce::UndoManager*);
 
     /** Raw clip-relative position, ignoring quantising/groove. */
     te::BeatPosition getRawEditBeats(const PsgClip&) const;
@@ -61,6 +66,7 @@ private:
     friend class PsgList;
 
     te::BeatPosition beatNumber;
+    int frameIndex = -1;
     PsgParamFrameData data;
 
     void updatePropertiesFromState() noexcept;
@@ -108,6 +114,17 @@ public:
 
     //==============================================================================
     int getDataVersion() const noexcept                             { return dataVersion_; }
+
+    //==============================================================================
+    /** Machine frame rate (Hz) the frame indices are anchored to. 0 if unknown
+        (legacy data loaded before the frame-index model). */
+    double getFrameRate() const noexcept;
+    void setFrameRate(double, juce::UndoManager*);
+
+    /** Re-derives every frame's beat from its machine-frame index under the edit's
+        current tempo map, so PSG frames stay fixed in time across tempo changes.
+        No-op for legacy frames that have no index. */
+    void updateBeatsFromFrameIndices(const PsgClip&, juce::UndoManager*);
 
     //==============================================================================
     bool isAttachedToClip() const noexcept                          { return ! state.getParent().hasType(te::IDs::NA); }
@@ -196,6 +213,7 @@ public:
 private:
     //==============================================================================
     juce::CachedValue<te::MidiChannel> midiChannel;
+    juce::CachedValue<double> frameRate_;
     int dataVersion_ = 0;
 
     juce::String importedFileName;

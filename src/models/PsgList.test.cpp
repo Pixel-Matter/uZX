@@ -316,41 +316,40 @@ class PsgListTempoChangeTimingTests : public UnitTest {
 public:
     PsgListTempoChangeTimingTests() : UnitTest("PsgListTempoTiming", "MoTool") {}
 
+    // Empty frames are dropped on load, so this leaves a single VolumeA frame at
+    // tick 2 (2/50 s) -> an off-grid fraction of a beat at 120 BPM.
+    static PsgData makeOffGridFrameData() {
+        return PsgData {
+            {
+                {},
+                {},
+                {{PsgRegType::VolumeA, 10}},
+            },
+            {50.0, 1}
+        };
+    }
+
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
 
-        beginTest("Preserve mode keeps PSG frame edit time when frames per beat changes");
+        beginTest("Load captures the machine-frame index and frame rate");
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
 
-            SelectionManager selectionManager(engine);
-            EditViewState editViewState(*edit, selectionManager);
-
-            PsgData data {
-                {
-                    {},
-                    {},
-                    {{PsgRegType::VolumeA, 10}},
-                },
-                {50.0, 1}
-            };
-
+            auto data = makeOffGridFrameData();
             auto track = getAudioTracks(*edit)[0];
             auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "timing");
+
+            expectEquals(clip->getPsg().getNumFrames(), 1, "Single surviving frame");
             auto frame = clip->getPsg().getFrame(0);
-            const auto originalTime = frame->getEditTime(*clip);
-
-            editViewState.setPreservePsgTimingOnTempoChange(true);
-            editViewState.setFramesPerBeat(30);
-
-            const auto preservedTime = frame->getEditTime(*clip);
-            expectWithinAbsoluteError(preservedTime.inSeconds(), originalTime.inSeconds(), 1.0e-9,
-                                      "PSG frame should keep its absolute edit time");
+            expect(frame->hasFrameIndex(), "Frame should carry a machine-frame index");
+            expectEquals(frame->getFrameIndex(), 2, "Frame index should be the source tick");
+            expectWithinAbsoluteError(clip->getPsg().getFrameRate(), 50.0, 1.0e-9,
+                                      "Frame rate should be captured from the imported data");
         }
 
-        beginTest("Default mode leaves PSG frame beats unchanged when frames per beat changes");
+        beginTest("PSG frame time stays fixed when frames per beat changes");
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
@@ -359,15 +358,7 @@ public:
             SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
 
-            PsgData data {
-                {
-                    {},
-                    {},
-                    {{PsgRegType::VolumeA, 10}},
-                },
-                {50.0, 1}
-            };
-
+            auto data = makeOffGridFrameData();
             auto track = getAudioTracks(*edit)[0];
             auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "timing");
             auto frame = clip->getPsg().getFrame(0);
@@ -376,10 +367,11 @@ public:
             editViewState.setFramesPerBeat(30);
 
             const auto retimedTime = frame->getEditTime(*clip);
-            expect(retimedTime > originalTime, "Default beat-based mode should retime the PSG frame");
+            expectWithinAbsoluteError(retimedTime.inSeconds(), originalTime.inSeconds(), 1.0e-9,
+                                      "Frame index anchors the frame to a fixed wall-clock time");
         }
 
-        beginTest("Preserve mode keeps raw frame time even with clip quantisation enabled");
+        beginTest("PSG frame time stays fixed across a direct BPM change with quantisation");
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
@@ -388,36 +380,21 @@ public:
             SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
 
-            PsgData data {
-                {
-                    {},
-                    {},
-                    {{PsgRegType::VolumeA, 10}},
-                },
-                {50.0, 1}
-            };
-
+            auto data = makeOffGridFrameData();
             auto track = getAudioTracks(*edit)[0];
             auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "timing");
 
-            // Snap to whole beats: an off-grid frame would be quantised away on a
-            // round-trip through getEditTime/setEditTime.
+            // Quantisation must not perturb the stored, frame-index-anchored position.
             clip->getQuantisation().setType("1 beat");
 
-            // Empty frames are dropped on load, so the only stored frame is the
-            // VolumeA write at tick 2 (2/50 s) -> an off-grid fraction of a beat.
-            expect(clip->getPsg().getNumFrames() == 1, "Sanity: expected a single PSG frame");
             auto frame = clip->getPsg().getFrame(0);
-            expect(frame != nullptr, "Sanity: frame must exist");
-
             const auto originalRawTime = frame->getRawEditTime(*clip);
             expect(originalRawTime.inSeconds() > 0.0, "Sanity: frame should be off the beat grid");
             expect(! approximatelyEqual(frame->getEditBeats(*clip).inBeats(),
                                         frame->getRawEditBeats(*clip).inBeats()),
-                   "Sanity: quantisation should actually move this frame");
+                   "Sanity: quantisation should actually move the quantised view");
 
-            editViewState.setPreservePsgTimingOnTempoChange(true);
-            editViewState.setFramesPerBeat(30);
+            editViewState.setBpmSnappedToFps(90.0);
 
             const auto preservedRawTime = frame->getRawEditTime(*clip);
             expectWithinAbsoluteError(preservedRawTime.inSeconds(), originalRawTime.inSeconds(), 1.0e-9,

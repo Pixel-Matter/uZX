@@ -147,6 +147,9 @@ te::TimePosition PsgParamFrame::getEditTime(const PsgClip& c) const {
 }
 
 void PsgParamFrame::setFrameIndex(int newFrameIndex, juce::UndoManager* um) {
+    // Negative values would collide with the -1 "needs migration" sentinel.
+    newFrameIndex = jmax(0, newFrameIndex);
+
     if (frameIndex != newFrameIndex) {
         state.setProperty(IDs::i, newFrameIndex, um);
         frameIndex = newFrameIndex;
@@ -163,7 +166,7 @@ void PsgParamFrame::migrateFrameIndexFromBeat(const PsgClip& c, double frameRate
     // Inverse of the load mapping: stored beat -> seconds -> nearest machine frame.
     const auto beat = te::BeatPosition::fromBeats(static_cast<double>(state.getProperty(te::IDs::b)));
     const auto timeSec = c.edit.tempoSequence.toTime(beat).inSeconds();
-    setFrameIndex(jmax(0, roundToInt(timeSec * frameRate)), um);
+    setFrameIndex(roundToInt(timeSec * frameRate), um);
 }
 
 void PsgParamFrame::removeLegacyBeatProperty(juce::UndoManager* um) {
@@ -343,7 +346,15 @@ bool PsgList::hasFpsMismatch(const PsgClip& clip, double editFps) const {
 }
 
 void PsgList::migrateToFrameIndicesIfNeeded(const PsgClip& clip, double frameRate, juce::UndoManager* um) {
-    const double fps = getFrameRate() > 0.0 ? getFrameRate() : frameRate;
+    // Rate priority: the stored source rate, then the rate implied by existing
+    // frames-per-beat metadata (interim files that predate frameRate), then the
+    // edit's project fps. Migrating at a rate that doesn't match the legacy
+    // frame spacing would collide adjacent frames onto one index.
+    double fps = getFrameRate();
+    if (fps <= 0.0)
+        fps = getEffectiveFps(clip);
+    if (fps <= 0.0)
+        fps = frameRate;
 
     if (getNumFrames() == 0) {
         if (getFrameRate() <= 0.0 && fps > 0.0)
@@ -367,6 +378,12 @@ void PsgList::migrateToFrameIndicesIfNeeded(const PsgClip& clip, double frameRat
 
     for (auto* frame : getFrames())
         frame->removeLegacyBeatProperty(um);
+
+   #if JUCE_DEBUG
+    // A duplicate index means the migration rate didn't match the legacy spacing.
+    for (int i = 1; i < getFrames().size(); ++i)
+        jassert(getFrames()[i]->getFrameIndex() != getFrames()[i - 1]->getFrameIndex());
+   #endif
 
     recomputeAccumulatedState();
 }

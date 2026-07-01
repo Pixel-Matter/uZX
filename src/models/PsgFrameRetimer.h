@@ -17,7 +17,11 @@ namespace PsgTiming {
 
 /** Sets tempo.getBpm() to the new value. If preserveAbsoluteFrameTimes is true,
     PSG lists scale framesPerBeat by the beat-length ratio so frame-index playback
-    remains fixed in wall-clock time. */
+    remains fixed in wall-clock time.
+
+    Assumes a single tempo setting: the ratio comes from the changed TempoSetting
+    but is applied to every PSG clip in the edit, so clips under other tempo
+    sections of a multi-tempo edit would be rescaled incorrectly. */
 void setTempoBpmRetimingFrames(te::Edit&, te::TempoSetting&, double bpm, bool preserveAbsoluteFrameTimes);
 
 }  // namespace PsgTiming

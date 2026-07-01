@@ -538,6 +538,86 @@ public:
             expectWithinAbsoluteError(frame->getFrameBeatPosition(*clip).inBeats(), 0.08, 1.0e-9,
                                       "Indexed legacy beat should derive from frame index and frames per beat");
         }
+
+        beginTest("Interim lists migrate at their frames-per-beat implied rate");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+
+            auto track = getAudioTracks(*edit)[0];
+            uZX::PsgData empty { {}, {50.0, 1} };
+            auto clip = PsgClip::insertTo(*track, empty, {{0_tp, 4_td}, {}}, "interim legacy");
+
+            // Interim files store framesPerBeat but no frameRate. 30 frames per beat
+            // at 120 BPM means the material actually plays at 60 fps, so migration
+            // must back-fill indices at 60 fps, not at the passed project fps.
+            auto legacyState = juce::ValueTree(IDs::PSG);
+            legacyState.setProperty(te::IDs::ver, 1, nullptr);
+            legacyState.setProperty(te::IDs::channelNumber, te::MidiChannel(1), nullptr);
+            legacyState.setProperty(IDs::framesPerBeat, 30.0, nullptr);
+
+            auto legacyFrame = PsgParamFrame::createPsgFrameValueTree(
+                -1, PsgParamFrameData {{PsgParamType::VolumeA, 7}});
+            legacyFrame.removeProperty(IDs::i, nullptr);
+            legacyFrame.setProperty(te::IDs::b, 0.2, nullptr);  // 0.1 s at 120 BPM
+            legacyState.addChild(legacyFrame, -1, nullptr);
+
+            PsgList legacyList(legacyState, nullptr);
+            auto frame = legacyList.getFrame(0);
+
+            legacyList.migrateToFrameIndicesIfNeeded(*clip, 50.0, nullptr);
+
+            expectEquals(frame->getFrameIndex(), 6, "Index should come from the 60 fps implied rate (0.1 s * 60)");
+            expectWithinAbsoluteError(legacyList.getFrameRate(), 60.0, 1.0e-9,
+                                      "List should adopt the implied rate, not the project fps fallback");
+            expectWithinAbsoluteError(legacyList.getFramesPerBeat(), 30.0, 1.0e-9,
+                                      "Existing frames-per-beat metadata must be kept");
+            expectWithinAbsoluteError((double) frame->getFrameIndex() / legacyList.getFramesPerBeat(), 0.2, 1.0e-9,
+                                      "Index over frames-per-beat should recover the original beat");
+        }
+
+        beginTest("Fps mismatch tolerates float error but flags real differences");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+
+            auto data = makeOffGridFrameData();
+            auto track = getAudioTracks(*edit)[0];
+            auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "tol");
+            auto& psg = clip->getPsg();
+            const auto eff = psg.getEffectiveFps(*clip);
+
+            expect(! psg.hasFpsMismatch(*clip, eff), "Exact match must not warn");
+            expect(! psg.hasFpsMismatch(*clip, eff - 1.0e-9), "Tiny float error must not warn");
+            expect(psg.hasFpsMismatch(*clip, eff + 5.0), "A real fps difference must warn");
+        }
+
+        beginTest("Repeated preserved frames-per-beat changes do not drift metadata");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+
+            SelectionManager selectionManager(engine);
+            EditViewState editViewState(*edit, selectionManager);
+
+            auto data = makeOffGridFrameData();
+            auto track = getAudioTracks(*edit)[0];
+            auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "drift");
+
+            editViewState.setPreservePsgTimingOnTempoChange(true);
+            for (int i = 0; i < 20; ++i) {
+                editViewState.setFramesPerBeat(30);
+                editViewState.setFramesPerBeat(25);
+            }
+
+            expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), 25.0, 1.0e-9,
+                                      "Integer snapping should return frames-per-beat to the exact original value");
+            expectWithinAbsoluteError(clip->getPsg().getEffectiveFps(*clip), 50.0, 1.0e-6,
+                                      "Effective fps should not drift after repeated preserved changes");
+            expect(! clip->getPsg().hasFpsMismatch(*clip, 50.0),
+                   "Round-tripped metadata should not produce a mismatch warning");
+        }
     }
 };
 

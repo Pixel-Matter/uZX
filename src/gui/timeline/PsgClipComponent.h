@@ -30,7 +30,6 @@ public:
     void paint(Graphics& g) override;
     void mouseDown(const MouseEvent& e) override;
     void paintRegisters(Graphics& g);
-    void paintParameters(Graphics& g);
     void paintNotes(Graphics& g);
 
     /** Top row shared by the channel legend, clip name and fps-mismatch warning. */

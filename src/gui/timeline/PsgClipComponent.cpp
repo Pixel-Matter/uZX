@@ -5,6 +5,9 @@
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
 
+#include <algorithm>
+#include <tuple>
+
 namespace MoTool {
 
 namespace {
@@ -85,12 +88,69 @@ void drawNoisePattern(Graphics& g, float x, float y, float width, float height, 
 }
 
 struct FrameNote {
-    float noteYround;
-    float heightRound;
+    float y;
+    float height;
     float alpha;
     int   channelIndex;  // 0=A, 1=B, 2=C, 3=Envelope
     bool  hasEnvMod;
     bool  hasNoiseMod;
+};
+
+/** Frame duration in edit time, taken from the clip's own PSG timing metadata.
+    Falls back to the stored source rate and finally the edit's project fps for
+    legacy clips, mirroring the fallback chain in getFrameBeatPosition(). */
+te::TimeDuration getClipFrameDuration(const PsgClip& clip) {
+    double fps = clip.getPsg().getEffectiveFps(clip);
+    if (fps <= 0.0)
+        fps = clip.getPsg().getFrameRate();
+    if (fps <= 0.0)
+        fps = Helpers::getProjectFps(clip.edit);
+    return te::TimeDuration::fromSeconds(1.0 / fps);
+}
+
+/** The frame-to-pixel mapping shared by the notes and registers painters. */
+struct ClipVisibility {
+    Rectangle<int> rect;
+    te::TimeRange clipRange;
+    te::TimeDuration frameDur;
+    te::TimeRange range;   // visible part of the clip, with one frame of slack on the left
+    int startIdx;          // first frame that can fall inside range
+    float pixelsPerFrame;
+
+    ClipVisibility(const PsgClip& clip,
+                   const juce::Array<PsgParamFrame*>& frames,
+                   const EditViewState& evs,
+                   Rectangle<int> rectangle)
+        : rect(rectangle)
+        , clipRange(clip.getEditTimeRange())
+        , frameDur(getClipFrameDuration(clip))
+        , range(jmax(clipRange.getStart(), evs.zoom.getRange().getStart() - frameDur),
+                jmin(clipRange.getEnd(), evs.zoom.getRange().getEnd()))
+        , startIdx(bisectFindPosition(frames, clip, range.getStart()))
+        , pixelsPerFrame(static_cast<float>(frameDur.inSeconds() * rect.getWidth()
+                                            / clipRange.getLength().inSeconds()))
+    {
+    }
+
+    float timeToX(te::TimePosition time) const {
+        return static_cast<float>(((time - clipRange.getStart()) * rect.getWidth()) / clipRange.getLength());
+    }
+
+    /** Calls fn(frameArrayIndex, frame, x) for every frame inside the visible range. */
+    template <typename Fn>
+    void forEachVisibleFrame(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, Fn&& fn) const {
+        for (int i = startIdx; i < frames.size(); ++i) {
+            const auto& frame = *frames[i];
+            const auto t = frame.getEditTime(clip);
+
+            if (t < range.getStart())
+                continue;
+            if (t >= range.getEnd())
+                break;
+
+            fn(i, frame, timeToX(t));
+        }
+    }
 };
 
 /** Draw stripe pattern for envelope modulation based on envelope shape direction */
@@ -165,13 +225,11 @@ void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Id
 void PsgClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
 
-    auto lastInterval = paintMeasurer_.getInstantIntervalMs();
-
     GUIPaintMeasurer::ScopedTimer timer(paintMeasurer_);
 
     int mode = clip->state.getProperty(IDs::paintMode, 0);
     if (mode == 0)
-        paintParameters(g);
+        paintNotes(g);
     else
         paintRegisters(g);
 
@@ -203,126 +261,69 @@ void PsgClipComponent::mouseDown(const MouseEvent& e) {
 }
 
 void PsgClipComponent::paintRegisters(Graphics& g) {
-    g.setFont(12.0f);
-
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr) return;
 
-    const auto rect = getLocalBounds();
-    const auto clipRange = psgClip->getEditTimeRange();
-    const auto viewRange = editViewState.zoom.getRange();
-
-    auto timeToX = [w = rect.getWidth(), s = clipRange.getStart(), len = clipRange.getLength(),
-                    left = rect.getX()] (auto time) {
-        return static_cast<float>(((time - s) * w) / len - left);
-    };
-
-    const auto frameDur = te::TimeDuration::fromSeconds(1.0 / Helpers::getProjectFps(psgClip->edit));
-    const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth()) / static_cast<float>(clipRange.getLength().inSeconds());
-
-    constexpr auto regsRange = uZX::PsgRegsFrame::size();
-    const float laneHeight = std::round(static_cast<float>(rect.getHeight()) / regsRange);
-
-    te::TimePosition startPos = jmax(clipRange.getStart(), viewRange.getStart() - frameDur);
-    te::TimePosition endPos = jmin(clipRange.getEnd(), viewRange.getEnd());
-
     const auto& frames = psgClip->getPsg().getFrames();
-    if (frames.size() == 0)
+    if (frames.isEmpty())
         return;
 
-    const auto startIdx = bisectFindPosition(frames, *psgClip, startPos);
+    const ClipVisibility vis {*psgClip, frames, editViewState, getLocalBounds()};
+
+    constexpr auto numRegs = uZX::PsgRegsFrame::size();
+    const auto height = static_cast<float>(vis.rect.getHeight());
+    const float laneHeight = std::round(height / numRegs);
+    const bool showHexValues = vis.pixelsPerFrame >= 12.0f;
+
+    g.setFont(12.0f);
 
     uZX::PsgRegsFrame regsFrame;
-    for (int i = startIdx; i < frames.size(); ++i) {
-        const auto& frame = frames[i];
-        auto s = frame->getEditTime(*psgClip);
-
-        if (s < startPos)
-            continue;
-        if (s >= endPos)
-            break;
-
-        float x1 = timeToX(s);
-        if (x1 + pixelsPerFrame < 0)
-            continue;
-
-        const auto& frameData = frame->getData();
+    vis.forEachVisibleFrame(frames, *psgClip, [&] (int, const PsgParamFrame& frame, float x) {
         regsFrame.clear();
-        frameData.updateRegisters(regsFrame);
+        frame.getData().updateRegisters(regsFrame);
 
-        for (size_t regNumber = 0; regNumber < regsFrame.size(); ++regNumber) {
-            if (regsFrame.isSet(regNumber)) {
-                auto value = regsFrame.getRaw(regNumber);
-                float y1 = static_cast<float>(regNumber) / regsRange * static_cast<float>(rect.getHeight());
+        for (size_t reg = 0; reg < regsFrame.size(); ++reg) {
+            if (! regsFrame.isSet(reg))
+                continue;
 
-                auto color = RegColors[static_cast<size_t>(regNumber)];
-                if (pixelsPerFrame >= 12) {
-                    String hexValue = choc::text::createHexString(value, 2);
-                    g.setColour(color.withLightness(0.75f));
-                    g.fillRect(x1, y1, pixelsPerFrame, laneHeight);
-                    g.setColour(Colours::black);
-                    g.drawText(hexValue, (int)(x1 + 1), (int)y1, (int)pixelsPerFrame, (int)laneHeight, Justification::centredLeft);
-                } else {
-                    auto val = static_cast<float>(value) / 255.0f;
-                    g.setColour(color.withLightness(0.75f).withAlpha(0.5f + val / 2.0f));
-                    g.fillRect(x1, y1, pixelsPerFrame, laneHeight);
-                }
+            const auto value = regsFrame.getRaw(reg);
+            const float y = static_cast<float>(reg) / numRegs * height;
+            const auto color = RegColors[reg];
+
+            if (showHexValues) {
+                String hexValue = choc::text::createHexString(value, 2);
+                g.setColour(color.withLightness(0.75f));
+                g.fillRect(x, y, vis.pixelsPerFrame, laneHeight);
+                g.setColour(Colours::black);
+                g.drawText(hexValue, (int)(x + 1), (int)y, (int)vis.pixelsPerFrame, (int)laneHeight, Justification::centredLeft);
+            } else {
+                const auto brightness = static_cast<float>(value) / 255.0f;
+                g.setColour(color.withLightness(0.75f).withAlpha(0.5f + brightness / 2.0f));
+                g.fillRect(x, y, vis.pixelsPerFrame, laneHeight);
             }
         }
-    }
+    });
 }
-
-void PsgClipComponent::paintParameters(Graphics& g) {
-    paintNotes(g);
-}
-
-struct ClipVisibility {
-    Rectangle<int> rect;
-    te::TimeRange clipRange;
-    te::TimeDuration frameDur;
-    te::TimeRange range;
-    int startIdx;
-    juce::Range<float> pitchRange;
-    float pixelsPerFrame;
-    float noteHeight;
-
-    ClipVisibility(const PsgClip& clip,
-                   const juce::Array<PsgParamFrame*>& frames,
-                   const EditViewState& evs,
-                   Rectangle<int> rectangle)
-        : rect(rectangle)
-        , clipRange(clip.getEditTimeRange())
-        , frameDur(te::TimeDuration::fromSeconds(1.0 / Helpers::getProjectFps(clip.edit)))
-        , range(jmax(clipRange.getStart(), evs.zoom.getRange().getStart() - frameDur),
-                jmin(clipRange.getEnd(), evs.zoom.getRange().getEnd()))
-        , startIdx(bisectFindPosition(frames, clip, range.getStart()))
-        , pitchRange(clip.getPitchRange())
-        , pixelsPerFrame(static_cast<float>(frameDur.inSeconds() * rect.getWidth())
-                         / static_cast<float>(clipRange.getLength().inSeconds()))
-        , noteHeight(rect.getHeight()
-                     / (pitchRange.getLength() * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.f))
-    {
-    }
-
-    inline float normToY(float norm) const {
-        return (pitchRange.getEnd() - norm) / pitchRange.getLength() * static_cast<float>(rect.getHeight());
-    }
-
-    inline float timeToX(te::TimePosition time) const {
-        return static_cast<float>(((time - clipRange.getStart()) * rect.getWidth()) / clipRange.getLength()
-                                  - rect.getX());
-    }
-};
 
 void PsgClipComponent::paintNotes(Graphics& g) {
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr)
         return;
 
-    const auto rect = getLocalBounds();
     const auto& frames = psgClip->getPsg().getFrames();
-    const auto vis = ClipVisibility {*psgClip, frames, editViewState, rect};
-    const bool drawMods = vis.pixelsPerFrame >= 6.0f && vis.noteHeight >= 2.0f;
+    if (frames.isEmpty())
+        return;
+
+    const ClipVisibility vis {*psgClip, frames, editViewState, getLocalBounds()};
+
+    const auto pitchRange = psgClip->getPitchRange();
+    const float noteHeight = static_cast<float>(vis.rect.getHeight())
+        / (pitchRange.getLength() * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.0f);
+    const bool drawMods = vis.pixelsPerFrame >= 6.0f && noteHeight >= 2.0f;
+
+    auto normToY = [&] (float norm) {
+        return (pitchRange.getEnd() - norm) / pitchRange.getLength() * static_cast<float>(vis.rect.getHeight());
+    };
 
     static const juce::Colour channelColors[] = {
         Colors::PSG::A,
@@ -331,133 +332,68 @@ void PsgClipComponent::paintNotes(Graphics& g) {
         Colors::PSG::Env,
     };
 
-    for (int i = vis.startIdx; i < frames.size(); ++i) {
-        const auto& frame = frames[i];
-        jassert(frame != nullptr);
-        auto s = frame->getEditTime(*psgClip);
+    vis.forEachVisibleFrame(frames, *psgClip, [&] (int frameIdx, const PsgParamFrame& frame, float x) {
+        const auto& frameData = frame.getData();
+        const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
 
-        if (s < vis.range.getStart())
-            continue;
-        if (s >= vis.range.getEnd())
-            break;
-
-        float x1 = vis.timeToX(s);
-        if (x1 + vis.pixelsPerFrame < 0)
-            continue;
-
-        const auto& frameData = frame->getData();
-        uint8_t envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
-
-        // Collect all visible notes for this frame
+        // Collect this frame's notes: up to one per channel plus the envelope
         std::array<FrameNote, 4> notes;
         int noteCount = 0;
 
-        for (int ch = 0; ch < 3; ++ch) {
-            PsgParamType periodType (PsgParamType::TonePeriodA + ch);
-            PsgParamType volumeType (PsgParamType::VolumeA + ch);
-            PsgParamType toneOnType (PsgParamType::ToneIsOnA + ch);
-            PsgParamType envOnType  (PsgParamType::EnvelopeIsOnA + ch);
-            PsgParamType noiseOnType(PsgParamType::NoiseIsOnA + ch);
+        visitFrameNotes(frameData, [&] (const PsgFrameNote& n) {
+            const float alpha = n.hasEnvMod ? 1.0f : (static_cast<float>(n.volume) / 15.0f * 0.8f + 0.2f);
+            const float top = normToY(n.pitch) - noteHeight * 0.5f;
+            const float topRound = static_cast<float>(roundToInt(top));
+            const float heightRound = static_cast<float>(roundToInt(top + noteHeight)) - topRound;
+            notes[noteCount++] = { topRound, heightRound, alpha, n.channelIndex, n.hasEnvMod, n.hasNoiseMod };
+        });
 
-            const auto rawVolume = frameData.getRaw(volumeType);
-            bool toneIsOn = frameData.getRaw(toneOnType) > 0;
-            bool hasEnvMod = frameData.getRaw(envOnType) > 0;
-            bool hasNoiseMod = frameData.getRaw(noiseOnType) > 0;
-            bool isAudible = (rawVolume > 0) || hasEnvMod;
+        std::sort(notes.begin(), notes.begin() + noteCount, [] (const FrameNote& a, const FrameNote& b) {
+            return std::tie(a.y, a.channelIndex) < std::tie(b.y, b.channelIndex);
+        });
 
-            if (toneIsOn && isAudible) {
-                auto period = frameData.getRaw(periodType);
-                float pitch = periodType.valueToNormalized(period);
-                float alpha = hasEnvMod ? 1.0f : (static_cast<float>(rawVolume) / 15.0f * 0.8f + 0.2f);
-                float noteY = vis.normToY(pitch) - vis.noteHeight * 0.5f;
-                float noteYround = static_cast<float>(roundToInt(noteY));
-                float heightRound = static_cast<float>(roundToInt(noteY + vis.noteHeight)) - noteYround;
-
-                notes[noteCount++] = { noteYround, heightRound, alpha, ch, hasEnvMod, hasNoiseMod };
-            } else if (!toneIsOn && hasEnvMod) {
-                // Channel has envelope but no tone: draw at envelope pitch with channel color
-                PsgParamType envType(PsgParamType::EnvelopePeriod);
-                float pitch = envType.valueToNormalized(frameData.getRaw(envType));
-                float noteY = vis.normToY(pitch) - vis.noteHeight * 0.5f;
-                float noteYround = static_cast<float>(roundToInt(noteY));
-                float heightRound = static_cast<float>(roundToInt(noteY + vis.noteHeight)) - noteYround;
-
-                notes[noteCount++] = { noteYround, heightRound, 1.0f, ch, true, hasNoiseMod };
-            }
-        }
-
-        // Envelope period note — only when a channel has BOTH tone AND envelope
-        bool anyToneAndEnv = (frameData.getRaw(PsgParamType::ToneIsOnA) > 0 && frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0) ||
-                             (frameData.getRaw(PsgParamType::ToneIsOnB) > 0 && frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0) ||
-                             (frameData.getRaw(PsgParamType::ToneIsOnC) > 0 && frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0);
-        if (anyToneAndEnv) {
-            PsgParamType envType(PsgParamType::EnvelopePeriod);
-            float val = envType.valueToNormalized(frameData.getRaw(envType));
-            float envY = vis.normToY(val) - vis.noteHeight * 0.5f;
-            float envYround = static_cast<float>(roundToInt(envY));
-            float envHeightRound = static_cast<float>(roundToInt(envY + vis.noteHeight)) - envYround;
-
-            notes[noteCount++] = { envYround, envHeightRound, 1.0f, 3, true, false };
-        }
-
-        // Sort by noteYround then channelIndex (insertion sort for <= 4 elements)
-        for (int a = 1; a < noteCount; ++a) {
-            auto key = notes[a];
-            int b = a - 1;
-            while (b >= 0 && (notes[b].noteYround > key.noteYround ||
-                              (notes[b].noteYround == key.noteYround && notes[b].channelIndex > key.channelIndex))) {
-                notes[b + 1] = notes[b];
-                --b;
-            }
-            notes[b + 1] = key;
-        }
-
-        // Paint notes, subdividing overlapping groups
+        // Paint notes, subdividing overlapping groups. Notes are sorted by y,
+        // so a group extends as long as the next note's top is within the
+        // current group's bottom.
         int gi = 0;
         while (gi < noteCount) {
-            // Find group of notes whose vertical rects overlap.
-            // Notes are sorted by noteYround, so we extend the group as long as
-            // the next note's top is within the current group's bottom.
-            int groupStart = gi;
-            float groupY = notes[gi].noteYround;
-            float groupBottom = notes[gi].noteYround + notes[gi].heightRound;
+            const int groupStart = gi;
+            const float groupY = notes[gi].y;
+            float groupBottom = notes[gi].y + notes[gi].height;
             ++gi;
-            while (gi < noteCount && notes[gi].noteYround < groupBottom) {
-                groupBottom = jmax(groupBottom, notes[gi].noteYround + notes[gi].heightRound);
+            while (gi < noteCount && notes[gi].y < groupBottom) {
+                groupBottom = jmax(groupBottom, notes[gi].y + notes[gi].height);
                 ++gi;
             }
-            int groupSize = gi - groupStart;
-            float groupH = groupBottom - groupY;
+            const int groupSize = gi - groupStart;
+            const float groupH = groupBottom - groupY;
 
             // Graceful degradation: if sub-lane height < 1px, paint full height
-            bool subdivide = groupSize > 1 && groupH / static_cast<float>(groupSize) >= 1.0f;
+            const bool subdivide = groupSize > 1 && groupH / static_cast<float>(groupSize) >= 1.0f;
 
             for (int j = 0; j < groupSize; ++j) {
                 const auto& note = notes[groupStart + j];
-                float subY, subH;
+                float subY = note.y, subH = note.height;
                 if (subdivide) {
                     subH = std::floor(groupH / static_cast<float>(groupSize));
                     subY = groupY + static_cast<float>(j) * subH;
                     // Last sub-lane absorbs any rounding remainder
                     if (j == groupSize - 1)
                         subH = groupBottom - subY;
-                } else {
-                    subY = note.noteYround;
-                    subH = note.heightRound;
                 }
 
                 g.setColour(channelColors[note.channelIndex].withAlpha(note.alpha));
-                g.fillRect(x1, subY, vis.pixelsPerFrame, subH);
+                g.fillRect(x, subY, vis.pixelsPerFrame, subH);
 
-                if (note.hasEnvMod && drawMods)
-                    drawEnvelopeStripes(g, x1, subY, vis.pixelsPerFrame, subH, envShape);
+                if (drawMods && note.hasEnvMod)
+                    drawEnvelopeStripes(g, x, subY, vis.pixelsPerFrame, subH, envShape);
 
-                if (note.hasNoiseMod && drawMods)
-                    drawNoisePattern(g, x1, subY, vis.pixelsPerFrame, subH,
-                                     (int64_t)i * 4 + note.channelIndex);
+                if (drawMods && note.hasNoiseMod)
+                    drawNoisePattern(g, x, subY, vis.pixelsPerFrame, subH,
+                                     (int64_t)frameIdx * 4 + note.channelIndex);
             }
         }
-    }
+    });
 }
 
 void PsgClipComponent::paintHeader(Graphics& g) {

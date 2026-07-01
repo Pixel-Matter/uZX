@@ -217,8 +217,7 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
         return static_cast<float>(((time - s) * w) / len - left);
     };
 
-    const auto tc = Helpers::getEditTimecodeFormat(psgClip->edit);
-    const auto frameDur = te::TimeDuration::fromSeconds(1.0 / tc.getFPS());
+    const auto frameDur = te::TimeDuration::fromSeconds(1.0 / Helpers::getProjectFps(psgClip->edit));
     const float pixelsPerFrame = static_cast<float>(frameDur.inSeconds() * rect.getWidth()) / static_cast<float>(clipRange.getLength().inSeconds());
 
     constexpr auto regsRange = uZX::PsgRegsFrame::size();
@@ -293,7 +292,7 @@ struct ClipVisibility {
                    Rectangle<int> rectangle)
         : rect(rectangle)
         , clipRange(clip.getEditTimeRange())
-        , frameDur(te::TimeDuration::fromSeconds(1.0f / Helpers::getEditTimecodeFormat(clip.edit).getFPS()))
+        , frameDur(te::TimeDuration::fromSeconds(1.0 / Helpers::getProjectFps(clip.edit)))
         , range(jmax(clipRange.getStart(), evs.zoom.getRange().getStart() - frameDur),
                 jmin(clipRange.getEnd(), evs.zoom.getRange().getEnd()))
         , startIdx(bisectFindPosition(frames, clip, range.getStart()))
@@ -498,7 +497,7 @@ void PsgClipComponent::paintHeader(Graphics& g) {
     // edit's. Kept on the left so it never collides with the paint-measurer overlay,
     // which draws in the top-right corner.
     const auto effectiveFps = psgClip->getPsg().getEffectiveFps(*psgClip);
-    const auto editFps = (double) Helpers::getEditTimecodeFormat(psgClip->edit).getFPS();
+    const auto editFps = Helpers::getProjectFps(psgClip->edit);
 
     if (psgClip->getPsg().hasFpsMismatch(*psgClip, editFps)) {
         auto text = String::fromUTF8("\xE2\x9A\xA0 ")  // ⚠

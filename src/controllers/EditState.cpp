@@ -234,7 +234,7 @@ double EditViewState::getBpmForBeatLength(te::TimeDuration beatLen) const {
 }
 
 double EditViewState::getFramesPerBeatFor(double bpm) const {
-    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+    const double fps = Helpers::getProjectFps(edit);
     return fps * getBeatLengthFor(bpm).inSeconds();
 }
 
@@ -260,14 +260,14 @@ void EditViewState::setBeatLength(te::TimeDuration beatLen) {
 }
 
 void EditViewState::setFramesPerBeat(int fpb) {
-    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+    const double fps = Helpers::getProjectFps(edit);
     auto targetBeatLen = te::TimeDuration::fromSeconds((double)fpb / fps);
     setBeatLength(targetBeatLen);
 }
 
 double EditViewState::getBpmSnappedToFps(double bpm) const {
     int fpb = roundToInt(getFramesPerBeatFor(bpm));
-    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
+    const double fps = Helpers::getProjectFps(edit);
     auto targetBeatLen = te::TimeDuration::fromSeconds((double)fpb / fps);
     return getBpmForBeatLength(targetBeatLen);
 }

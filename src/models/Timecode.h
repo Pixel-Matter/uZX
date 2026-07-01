@@ -31,6 +31,15 @@ enum class TimecodeTypeExt {
     // barsBeatsFpsCustom
 };
 
+/** The display layout of a timecode format, independent of its frame rate.
+    Separating this from the fps lets us change one without disturbing the other. */
+enum class TimecodeDisplayMode {
+    seconds,          // millisecs
+    barsBeats,        // barsBeats (no frames)
+    barsBeatsFrames,  // bars | beats | frames at some fps
+    framesOnly,       // extended frames-only at some fps
+};
+
 struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
     TimecodeTypeExt typeExt;
 
@@ -54,6 +63,45 @@ struct TimecodeDisplayFormatExt : public te::TimecodeDisplayFormat {
 
     bool isBarsBeatsFrames() const noexcept {
         return typeExt >= TimecodeTypeExt::barsBeatsFps24 && typeExt <= TimecodeTypeExt::barsBeatsFps200;
+    }
+
+    /** Classifies the format into its fps-independent display layout. */
+    TimecodeDisplayMode getDisplayMode() const noexcept {
+        if (typeExt == TimecodeTypeExt::millisecs) return TimecodeDisplayMode::seconds;
+        if (typeExt == TimecodeTypeExt::barsBeats) return TimecodeDisplayMode::barsBeats;
+        if (isBarsBeatsFrames())                   return TimecodeDisplayMode::barsBeatsFrames;
+        return TimecodeDisplayMode::framesOnly;
+    }
+
+    /** Builds the TimecodeTypeExt for a given display mode at a given fps. For the
+        frame-bearing modes the fps is snapped to the nearest supported rate; modes
+        that carry no fps (seconds, barsBeats) ignore it. */
+    static TimecodeTypeExt makeTimecodeType(TimecodeDisplayMode mode, double fps) noexcept {
+        switch (mode) {
+            case TimecodeDisplayMode::seconds:   return TimecodeTypeExt::millisecs;
+            case TimecodeDisplayMode::barsBeats: return TimecodeTypeExt::barsBeats;
+            case TimecodeDisplayMode::barsBeatsFrames:
+                if (fps <= 24) return TimecodeTypeExt::barsBeatsFps24;
+                if (fps <= 25) return TimecodeTypeExt::barsBeatsFps25;
+                if (fps <= 30) return TimecodeTypeExt::barsBeatsFps30;
+                if (fps <= 48) return TimecodeTypeExt::barsBeatsFps48;
+                if (fps <= 50) return TimecodeTypeExt::barsBeatsFps50;
+                if (fps <= 60) return TimecodeTypeExt::barsBeatsFps60;
+                if (fps <= 100) return TimecodeTypeExt::barsBeatsFps100;
+                return TimecodeTypeExt::barsBeatsFps200;
+            case TimecodeDisplayMode::framesOnly:
+                if (fps <= 24) return TimecodeTypeExt::fps24;
+                if (fps <= 25) return TimecodeTypeExt::fps25;
+                if (fps <= 30) return TimecodeTypeExt::fps30;
+                if (fps <= 48) return TimecodeTypeExt::fps48;
+                if (fps <= 50) return TimecodeTypeExt::fps50;
+                if (fps <= 60) return TimecodeTypeExt::fps60;
+                if (fps <= 100) return TimecodeTypeExt::fps100;
+                return TimecodeTypeExt::fps200;
+            default: break;
+        }
+        jassertfalse;
+        return TimecodeTypeExt::barsBeatsFps50;
     }
 
     inline float getFPS() const {

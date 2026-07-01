@@ -2,6 +2,7 @@
 #include "PsgClip.h"
 #include "PsgMidi.h"
 #include "Ids.h"
+#include "EditUtilities.h"
 
 #include <cmath>
 
@@ -379,6 +380,9 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
     bool lastRetriggerState = false;  // Track if last frame had retrigger=1
 
     setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, 0_tp), um);
+    // Adopt the imported file's frame rate as the project fps so the transport
+    // readout and the grid/ruler reflect the material being edited.
+    Helpers::setProjectFps(edit, data.getFrameRate());
 
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];

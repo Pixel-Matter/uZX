@@ -2,6 +2,8 @@
 
 #include "../../controllers/MainCommands.h"
 #include "../../models/Timecode.h"
+#include "../../models/EditUtilities.h"
+#include "../../models/Ids.h"
 #include "LookAndFeel.h"
 #include "../../utils/StringLiterals.h"
 
@@ -13,9 +15,26 @@ namespace MoTool {
 using namespace Commands;
 
 
-double BpmControl::snapValue(double attemptedValue, DragMode) {
-    auto bpm = viewState_.getBpmSnappedToFps(attemptedValue);
-    return bpm;
+EditableReadout::EditableReadout() {
+    setEditable(true, true, false);  // edit on single or double click
+    setKeyboardType(TextInputTarget::decimalKeyboard);
+    // onTextChange fires after the edited text has been committed to the label,
+    // so we read it back from getText() (the editor is already gone by then).
+    onTextChange = [this] { commitEditedText(); };
+}
+
+void EditableReadout::setValue(double value, int decimals) {
+    lastValue_ = value;
+    decimals_ = decimals;
+    setText(String(value, decimals), dontSendNotification);
+}
+
+void EditableReadout::commitEditedText() {
+    if (! onCommit) return;
+
+    auto entered = getText().retainCharacters("0123456789.-").getDoubleValue();
+    auto resolved = onCommit(entered);
+    setValue(resolved, decimals_);
 }
 
 
@@ -33,9 +52,15 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 
     addAndMakeVisible(rewindButton_);
     addAndMakeVisible(playPauseButton_);
-    addAndMakeVisible(bpmSlider_);
-    addAndMakeVisible(beatFramesSlider_);
+    addAndMakeVisible(bpmControl_);
+    addAndMakeVisible(bpmUnitLabel_);
+    addAndMakeVisible(fpsLabel_);
+    addAndMakeVisible(fpsUnitLabel_);
+    addAndMakeVisible(fpbControl_);
+    addAndMakeVisible(fpbUnitLabel_);
     addAndMakeVisible(timeSigLabel_);
+    addAndMakeVisible(sigUnitLabel_);
+    addAndMakeVisible(posLabel_);
     addAndMakeVisible(transportReadout_);
     addAndMakeVisible(masterVolumeSlider_);
 
@@ -91,32 +116,53 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     if (options_.showAutomation)
         updateAutomationButtons();
 
-    bpmSlider_.onValueChange = [this] {
-        auto bpm = bpmSlider_.getValue();
+    // Editable value boxes: commit callbacks clamp/snap and return the value to show.
+    bpmControl_.onCommit = [this](double entered) {
+        auto bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, entered);
+        bpm = viewState_.getBpmSnappedToFps(bpm);
         viewState_.setBpmSnappedToFps(bpm);
+        return bpm;
     };
-    bpmSlider_.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
-    bpmSlider_.setTextValueSuffix(" BPM");
-
-    beatFramesSlider_.setRange(4, 150, 1);
-    beatFramesSlider_.onValueChange = [this] {
-        viewState_.setFramesPerBeat((int)beatFramesSlider_.getValue());
+    fpbControl_.onCommit = [this](double entered) {
+        auto fpb = jlimit(4, 150, roundToInt(entered));
+        viewState_.setFramesPerBeat(fpb);
+        return viewState_.getCurrentFramesPerBeat();
     };
-    beatFramesSlider_.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
-    beatFramesSlider_.setTextValueSuffix(" frames/beat");
 
-    // Apply ReadoutLookAndFeel to all numeric controls
-    bpmSlider_.setLookAndFeel(&readoutLookAndFeel_);
-    beatFramesSlider_.setLookAndFeel(&readoutLookAndFeel_);
+    // Apply ReadoutLookAndFeel to all editable/clickable value boxes.
+    readoutLookAndFeel_.setupReadoutLabel(bpmControl_);
+    readoutLookAndFeel_.setupReadoutLabel(fpbControl_);
     readoutLookAndFeel_.setupReadoutLabel(timeSigLabel_);
+    readoutLookAndFeel_.setupReadoutLabel(fpsLabel_);
     readoutLookAndFeel_.setupReadoutLabel(transportReadout_);
+
+    // Editing the position box seeks the transport.
+    transportReadout_.onTextChange = [this] { commitEditedPosition(); };
+
+    // Unit / prefix labels sit next to their value box as plain, non-interactive text.
+    struct { Label& label; const char* text; } units[] = {
+        { bpmUnitLabel_, "BPM" }, { fpsUnitLabel_, "FPS" },
+        { fpbUnitLabel_, "FPB" }, { sigUnitLabel_, "SIG" },
+        { posLabel_, "Pos" },
+    };
+    for (auto& u : units) {
+        u.label.setText(u.text, dontSendNotification);
+        u.label.setFont(readoutLookAndFeel_.getNumericReadoutFont());
+        u.label.setColour(Label::textColourId, Colors::Theme::primary);
+    }
+
+    // "Pos" is a prefix, so hug it against the timecode box on its right.
+    posLabel_.setJustificationType(Justification::centredRight);
+
+    // The fps readout picks from a fixed set of rates via a popup, not free text.
+    fpsLabel_.setEditable(false, false, false);
+    fpsLabel_.addMouseListener(this, false);
 
     updateTimeLabels(transport_.getPosition());
 }
 
 TransportBar::~TransportBar() {
-    bpmSlider_.setLookAndFeel(nullptr);
-    beatFramesSlider_.setLookAndFeel(nullptr);
+    fpsLabel_.removeMouseListener(this);
 
     transport_.removeChangeListener(this);
     transport_.state.removeListener(this);
@@ -128,71 +174,60 @@ void TransportBar::paint(Graphics& g) {
     g.fillAll(Colors::Theme::backgroundAlt);
 }
 
-static void setIncDecSliderStyleWithHeight(Slider& s) {
-    s.setSliderStyle(Slider::SliderStyle::IncDecButtons);
-    s.setIncDecButtonsMode(Slider::incDecButtonsDraggable_Horizontal);
-    s.setTextBoxStyle(Slider::TextBoxLeft, false,
-        s.getWidth() - s.getHeight(),
-        s.getHeight()
-    );
-}
-
 void TransportBar::resized() {
     auto b = getLocalBounds();
     static constexpr int spacing = 8;
     b.reduce(spacing, spacing);
     int w = b.getHeight();
 
-    bpmSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
-    b.removeFromLeft(spacing);
-    timeSigLabel_.setBounds(b.removeFromLeft(w * 2));
-    b.removeFromLeft(spacing);
-    beatFramesSlider_.setBounds(b.removeFromLeft(static_cast<int>(w * 7)));
+    // Components that make up the left-aligned block, collected so we can shift the
+    // whole block to horizontal centre afterwards.
+    std::vector<Component*> block;
 
-    setIncDecSliderStyleWithHeight(bpmSlider_);
-    setIncDecSliderStyleWithHeight(beatFramesSlider_);
+    // A readout is a value box followed by an adjacent unit label.
+    auto placeReadout = [&](Component& value, Label& unit, int valueW, int unitW) {
+        value.setBounds(b.removeFromLeft(valueW));
+        unit.setBounds(b.removeFromLeft(unitW));
+        b.removeFromLeft(spacing);
+        block.push_back(&value);
+        block.push_back(&unit);
+    };
+    auto placeButton = [&](Component& c, int cw) {
+        c.setBounds(b.removeFromLeft(cw));
+        b.removeFromLeft(spacing);
+        block.push_back(&c);
+    };
 
-    b.removeFromLeft(spacing);
+    placeReadout(bpmControl_, bpmUnitLabel_, w * 3, w * 2);
+    placeReadout(fpsLabel_,   fpsUnitLabel_, w * 2, w * 2);
+    placeReadout(fpbControl_, fpbUnitLabel_, w * 2, w * 2);
+    placeReadout(timeSigLabel_, sigUnitLabel_, w * 2, w * 2);
 
-    rewindButton_.setBounds(b.removeFromLeft(w * 2));
-    b.removeFromLeft(spacing);
-    playPauseButton_.setBounds(b.removeFromLeft(w * 2));
-    b.removeFromLeft(spacing);
+    placeButton(rewindButton_, w * 2);
+    placeButton(playPauseButton_, w * 2);
     if (options_.showRecord)
-        recordButton_.setBounds(b.removeFromLeft(w * 2));
+        placeButton(recordButton_, w * 2);
 
+    // Position readout: "Pos" prefix label, then the editable timecode box.
+    posLabel_.setBounds(b.removeFromLeft(static_cast<int>(w * 2)));
+    transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 5)));
     b.removeFromLeft(spacing);
-
-    transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 6)));
+    block.push_back(&posLabel_);
+    block.push_back(&transportReadout_);
 
     if (options_.showAutomation) {
-        b.removeFromLeft(spacing);
-        automationLabel_.setBounds(b.removeFromLeft(w * 3));
-        b.removeFromLeft(spacing);
-        autoReadButton_.setBounds(b.removeFromLeft(w * 2));
-        b.removeFromLeft(spacing);
-        autoWriteButton_.setBounds(b.removeFromLeft(w * 2));
+        placeButton(automationLabel_, w * 3);
+        placeButton(autoReadButton_, w * 2);
+        placeButton(autoWriteButton_, w * 2);
     }
 
     //----------------------------------------------------------------------
-    // shift everything to the center
+    // shift the whole block to the horizontal centre of the remaining space
     auto shiftBy = b.getWidth() / 2;
-    bpmSlider_.setBounds(bpmSlider_.getBounds().withX(bpmSlider_.getX() + shiftBy));
-    beatFramesSlider_.setBounds(beatFramesSlider_.getBounds().withX(beatFramesSlider_.getX() + shiftBy));
-    timeSigLabel_.setBounds(timeSigLabel_.getBounds().withX(timeSigLabel_.getX() + shiftBy));
-    rewindButton_.setBounds(rewindButton_.getBounds().withX(rewindButton_.getX() + shiftBy));
-    playPauseButton_.setBounds(playPauseButton_.getBounds().withX(playPauseButton_.getX() + shiftBy));
-    if (options_.showRecord)
-        recordButton_.setBounds(recordButton_.getBounds().withX(recordButton_.getX() + shiftBy));
-    transportReadout_.setBounds(transportReadout_.getBounds().withX(transportReadout_.getX() + shiftBy));
-    if (options_.showAutomation) {
-        automationLabel_.setBounds(automationLabel_.getBounds().withX(automationLabel_.getX() + shiftBy));
-        autoReadButton_.setBounds(autoReadButton_.getBounds().withX(autoReadButton_.getX() + shiftBy));
-        autoWriteButton_.setBounds(autoWriteButton_.getBounds().withX(autoWriteButton_.getX() + shiftBy));
-    }
+    for (auto* c : block)
+        c->setBounds(c->getBounds().withX(c->getX() + shiftBy));
 
     masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
-
 }
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
@@ -211,6 +246,8 @@ void TransportBar::valueTreePropertyChanged(ValueTree& tree, const Identifier& p
         updateTimeLabels(transport_.getPosition());
     } else if (tree == edit_.state && prop == te::IDs::timecodeFormat) {
         timecodeFormat.forceUpdateOfCachedValue();
+        updateTimeLabels(transport_.getPosition());
+    } else if (tree == edit_.state && prop == IDs::projectFps) {
         updateTimeLabels(transport_.getPosition());
     }
 }
@@ -256,14 +293,56 @@ String TransportBar::getTimecode(te::TimePosition pos) const {
 
 void TransportBar::updateTimeLabels(te::TimePosition pos) {
     auto& ts = edit_.tempoSequence;
-    auto timecode = getTimecode(pos);
-    transportReadout_.setText("Pos: " + timecode, dontSendNotification);
+    transportReadout_.setText(getTimecode(pos), dontSendNotification);
 
-    // TODO FPS control
-
-    bpmSlider_.setValue(ts.getBpmAt(pos), dontSendNotification);
+    bpmControl_.setValue(ts.getBpmAt(pos), 2);
     timeSigLabel_.setText(ts.getTimeSigAt(pos).getStringTimeSig(), dontSendNotification);
-    beatFramesSlider_.setValue(viewState_.getCurrentFramesPerBeat(), dontSendNotification);
+    fpbControl_.setValue(viewState_.getCurrentFramesPerBeat(), 0);
+    fpsLabel_.setText(String(roundToInt(Helpers::getProjectFps(edit_))), dontSendNotification);
+}
+
+void TransportBar::commitEditedPosition() {
+    // Parse the same layout getTimecode() emits: HH:MM:SS:CC (centiseconds),
+    // shorter inputs are read from the least-significant end (e.g. "SS:CC" or "SS").
+    auto parts = StringArray::fromTokens(transportReadout_.getText().trim(), ":", "");
+    parts.trim();
+    parts.removeEmptyStrings();
+    if (parts.isEmpty()) {
+        updateTimeLabels(transport_.getPosition());  // restore display
+        return;
+    }
+
+    double hours = 0, mins = 0, secs = 0, centis = 0;
+    switch (parts.size()) {
+        case 1: secs = parts[0].getDoubleValue(); break;
+        case 2: secs = parts[0].getIntValue(); centis = parts[1].getIntValue(); break;
+        case 3: mins = parts[0].getIntValue(); secs = parts[1].getIntValue(); centis = parts[2].getIntValue(); break;
+        default:
+            hours = parts[0].getIntValue(); mins = parts[1].getIntValue();
+            secs = parts[2].getIntValue(); centis = parts[3].getIntValue();
+            break;
+    }
+
+    auto totalSeconds = jmax(0.0, hours * 3600.0 + mins * 60.0 + secs + centis / 100.0);
+    transport_.setPosition(te::TimePosition::fromSeconds(totalSeconds));
+    updateTimeLabels(transport_.getPosition());  // re-normalise the display
+}
+
+void TransportBar::mouseDown(const MouseEvent& e) {
+    if (e.eventComponent == &fpsLabel_)
+        showFpsMenu();
+}
+
+void TransportBar::showFpsMenu() {
+    const auto currentFps = roundToInt(Helpers::getProjectFps(edit_));
+
+    PopupMenu menu;
+    for (double fps : Helpers::kAllowedProjectFps) {
+        const int rounded = roundToInt(fps);
+        menu.addItem(String(rounded) + " fps", true, rounded == currentFps,
+                     [this, fps] { Helpers::setProjectFps(edit_, fps); });
+    }
+    menu.showMenuAsync(PopupMenu::Options().withTargetComponent(&fpsLabel_));
 }
 
 } // namespace MoTool

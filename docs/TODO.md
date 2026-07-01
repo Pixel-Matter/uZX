@@ -9,6 +9,7 @@ Granular tasks and implementation notes for active development.
 - [x] Ruler respects timecode format
 - [x] Grid respect new timecode format with beats and frames
 - [ ] FPS editing of timecode or of a separate edit FPS setting
+- [ ] Ruler timecode is not saved in edit vew state
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)
 - [ ] Better BPM editing

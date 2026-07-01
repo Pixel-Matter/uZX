@@ -1,5 +1,6 @@
 #include "Ruler.h"
 
+#include "../../controllers/MainCommands.h"
 #include "../../models/EditUtilities.h"
 
 namespace MoTool {
@@ -64,6 +65,10 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         });
         m.addSeparator();
         m.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(edit));
+        if (auto mgr = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
+            m.addSeparator();
+            m.addCommandItem(mgr, Commands::MainAppCommands::transportPreservePsgTiming);
+        }
         m.showMenuAsync({});
     } else {
         isDragging = false;

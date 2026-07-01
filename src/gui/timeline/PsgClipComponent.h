@@ -8,13 +8,21 @@
 namespace MoTool {
 
 //==============================================================================
-class PsgClipComponent : public MidiClipComponent {
+class PsgClipComponent : public MidiClipComponent,
+                         private juce::ValueTree::Listener {
 public:
     PsgClipComponent(EditViewState& evs, te::Clip::Ptr c)
         : MidiClipComponent(evs, c)
         // , vblankAttachment_(this, [this](double) { onVBlank(); })
     {
         // setBufferedToImage(true);
+        // The fps-warning in the header depends on the edit's timecode format,
+        // so repaint when it changes.
+        editViewState.edit.state.addListener(this);
+    }
+
+    ~PsgClipComponent() override {
+        editViewState.edit.state.removeListener(this);
     }
 
     PsgClip* getPsgClip();
@@ -24,9 +32,15 @@ public:
     void paintRegisters(Graphics& g);
     void paintParameters(Graphics& g);
     void paintNotes(Graphics& g);
-    void paintLegend(Graphics& g);
+
+    /** Top row shared by the channel legend, clip name and fps-mismatch warning. */
+    void paintHeader(Graphics& g);
 
 private:
+    static constexpr int headerHeight = 14;
+
+    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+
     // void onVBlank() {
     //     // Throttle to ~30fps (skip every other vblank on 60Hz display)
     //     if (++vblankCounter_ < vblankDivider_)

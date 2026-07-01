@@ -3,6 +3,8 @@
 #include "PsgMidi.h"
 #include "Ids.h"
 
+#include <cmath>
+
 namespace te = tracktion;
 
 namespace MoTool {
@@ -11,6 +13,24 @@ static double roundTo(double value, int decimalPlaces = 3) {
     double factor = std::pow(10.0, decimalPlaces);
     return std::round(value * factor) / factor;
 }
+
+static double canonicalizeFramesPerBeat(double value) {
+    if (! std::isfinite(value) || value <= 0.0)
+        return 0.0;
+
+    const auto rounded = std::round(value);
+    const auto tolerance = std::max(1.0e-9, std::abs(value) * 1.0e-9);
+    if (std::abs(value - rounded) <= tolerance)
+        return rounded;
+
+    return value;
+}
+
+static double getBeatLengthSecondsAt(te::Edit& edit, te::TimePosition pos) {
+    return edit.tempoSequence.getTempoAt(pos).getApproxBeatLength().inSeconds();
+}
+
+static double getFramesPerBeatFromGeometry(const juce::Array<PsgParamFrame*>& frames);
 
 namespace {
     void convertPsgFrameFromStrings(juce::ValueTree& frames) {
@@ -98,12 +118,31 @@ juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, co
     return v;
 }
 
+te::BeatPosition PsgParamFrame::getRawEditBeats(const PsgClip& c) const {
+    return beatNumber - toDuration(c.getLoopStartBeats()) + toDuration(c.getContentStartBeat());
+}
 te::BeatPosition PsgParamFrame::getEditBeats(const PsgClip& c) const {
-    return c.getQuantisation().roundBeatToNearest(beatNumber - toDuration(c.getLoopStartBeats()) + toDuration(c.getContentStartBeat()));
-    return beatNumber;
+    return c.getQuantisation().roundBeatToNearest(getRawEditBeats(c));
+}
+te::TimePosition PsgParamFrame::getRawEditTime(const PsgClip& c) const {
+    return c.edit.tempoSequence.toTime(getRawEditBeats(c));
 }
 te::TimePosition PsgParamFrame::getEditTime(const PsgClip& c) const {
     return c.edit.tempoSequence.toTime(getEditBeats(c));
+}
+
+void PsgParamFrame::setBeatPosition(te::BeatPosition newBeatNumber, juce::UndoManager* um) {
+    newBeatNumber = jmax(0_bp, newBeatNumber);
+
+    if (beatNumber != newBeatNumber) {
+        state.setProperty(te::IDs::b, newBeatNumber.inBeats(), um);
+        beatNumber = newBeatNumber;
+    }
+}
+
+void PsgParamFrame::setRawEditTime(const PsgClip& c, te::TimePosition editTime, juce::UndoManager* um) {
+    const auto editBeat = c.edit.tempoSequence.toBeats(jmax(0_tp, editTime));
+    setBeatPosition(editBeat + toDuration(c.getLoopStartBeats()) - toDuration(c.getContentStartBeat()), um);
 }
 
 void PsgParamFrame::updatePropertiesFromState() noexcept {
@@ -232,8 +271,13 @@ void PsgList::initialise(juce::UndoManager* um) {
     CRASH_TRACER
 
     midiChannel.referTo (state, te::IDs::channelNumber, um);
+    framesPerBeat_.referTo(state, IDs::framesPerBeat, um, 0.0);
 
     framesList = std::make_unique<EventList<PsgParamFrame>>(state);
+
+    if (canonicalizeFramesPerBeat(framesPerBeat_.get()) <= 0.0 && ! getFrames().isEmpty())
+        setFramesPerBeat(getFramesPerBeatFromGeometry(getFrames()), um);
+
     recomputeAccumulatedState();
 }
 
@@ -257,6 +301,7 @@ void PsgList::recomputeAccumulatedState() {
 
 void PsgList::clear (juce::UndoManager* um) {
     state.removeAllChildren(um);
+    setFramesPerBeat(0.0, um);
     importedName = {};
 }
 
@@ -286,6 +331,10 @@ void PsgList::addFrom(const PsgList& other, juce::UndoManager* um) {
 
 void PsgList::setMidiChannel(te::MidiChannel newChannel) {
     midiChannel = newChannel;
+}
+
+void PsgList::setFramesPerBeat(double framesPerBeat, juce::UndoManager* um) {
+    framesPerBeat_.setValue(canonicalizeFramesPerBeat(framesPerBeat), um);
 }
 
 PsgParamFrame* PsgList::addFrameEvent(const PsgParamFrame& event, juce::UndoManager* um) {
@@ -328,6 +377,8 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
     // Track last envelope shape and retrigger state for state transitions
     std::optional<uint8_t> lastEnvelopeShape;
     bool lastRetriggerState = false;  // Track if last frame had retrigger=1
+
+    setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, 0_tp), um);
 
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];
@@ -377,6 +428,49 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
     }
 
     recomputeAccumulatedState();
+}
+
+static double getFramesPerBeatFromGeometry(const juce::Array<PsgParamFrame*>& frames) {
+    // Legacy backfill only: infer from the smallest positive stored beat gap and persist
+    // the result as framesPerBeat. New imports store dense frames-per-beat directly.
+    te::BeatDuration minGap;
+    bool found = false;
+    for (int i = 1; i < frames.size(); ++i) {
+        const auto gap = frames[i]->getBeatPosition() - frames[i - 1]->getBeatPosition();
+        if (gap > te::BeatDuration() && (! found || gap < minGap)) {
+            minGap = gap;
+            found = true;
+        }
+    }
+
+    if (! found || minGap.inBeats() <= 0.0)
+        return 0.0;  // fewer than two distinct frames -> unknown
+
+    return canonicalizeFramesPerBeat(std::max(1.0, (double) roundToInt(1.0 / minGap.inBeats())));
+}
+
+double PsgList::getFramesPerBeat() const {
+    return canonicalizeFramesPerBeat(framesPerBeat_.get());
+}
+
+double PsgList::getEffectiveFps(const PsgClip& clip) const {
+    const auto framesPerBeat = getFramesPerBeat();
+    const auto beatLength = getBeatLengthSecondsAt(clip.edit, clip.getPosition().getStart());
+    if (framesPerBeat <= 0.0 || beatLength <= 0.0)
+        return 0.0;  // can't measure (fewer than two frames) -> no meaningful rate
+
+    return framesPerBeat / beatLength;
+}
+
+bool PsgList::hasFpsMismatch(const PsgClip& clip, double editFps) const {
+    const auto effective = getEffectiveFps(clip);
+    if (effective <= 0.0 || editFps <= 0.0)
+        return false;
+
+    // Small relative tolerance so float noise never trips the warning while a genuine
+    // rate difference still does. 0.1% is far below the integer-rounded chip's precision.
+    const auto tolerance = 1.0e-3 * jmax(effective, editFps);
+    return std::abs(effective - editFps) > tolerance;
 }
 
 void PsgList::loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager* um) {

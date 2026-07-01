@@ -153,6 +153,15 @@ PsgClip* PsgClipComponent::getPsgClip() {
     return dynamic_cast<PsgClip*>(clip.get());
 }
 
+void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
+    // The header's effective-fps warning depends on frames-per-beat, current beat length
+    // and the edit's timecode fps, so refresh when tempo or timecode changes.
+    if (property == te::IDs::timecodeFormat
+        || property == te::IDs::bpm
+        || property == te::IDs::startBeat)
+        repaint();
+}
+
 void PsgClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
 
@@ -165,6 +174,8 @@ void PsgClipComponent::paint(Graphics& g) {
         paintParameters(g);
     else
         paintRegisters(g);
+
+    paintHeader(g);
 
     paintMeasurer_.drawOverlay(g);
 }
@@ -264,7 +275,6 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
 
 void PsgClipComponent::paintParameters(Graphics& g) {
     paintNotes(g);
-    paintLegend(g);
 }
 
 struct ClipVisibility {
@@ -451,16 +461,20 @@ void PsgClipComponent::paintNotes(Graphics& g) {
     }
 }
 
-void PsgClipComponent::paintLegend(Graphics& g) {
-
+void PsgClipComponent::paintHeader(Graphics& g) {
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr) return;
 
-    const auto rect = g.getClipBounds();
-    constexpr float pad = 3.0f;
-    constexpr float swatchSize = 12.0f;
-    constexpr float spacing = 1.0f;
+    constexpr int pad = 3;
+    constexpr int swatchSize = 12;
+    constexpr int spacing = 1;
 
+    // The clip component can extend far off-screen (its width is the whole clip in
+    // pixels), so anchor the header to the currently-visible slice rather than the
+    // component's own left edge. getClipBounds() is that slice, in local coords.
+    auto row = g.getClipBounds().removeFromTop(headerHeight).reduced(pad, pad);
+
+    // Channel swatches on the left.
     struct LegendItem { const char* label; Colour color; };
     const LegendItem items[] = {
         { "A", Colors::PSG::A },
@@ -469,22 +483,44 @@ void PsgClipComponent::paintLegend(Graphics& g) {
         { "E", Colors::PSG::Env },
     };
 
-    g.setFont(Font(FontOptions(swatchSize - 1.0f).withStyle("Bold")));
-
-    float x = rect.getX() + pad;
-    float y = rect.getY() + pad;
-
+    g.setFont(Font(FontOptions((float) swatchSize - 1.0f).withStyle("Bold")));
     for (const auto& item : items) {
+        auto swatch = row.removeFromLeft(swatchSize);
         g.setColour(item.color);
-        g.fillRect(x, y, swatchSize, swatchSize);
+        g.fillRect(swatch);
         g.setColour(Colours::black);
-        g.drawText(item.label, (int)x, (int)y, (int)swatchSize, (int)swatchSize, Justification::centred);
-        x += swatchSize + spacing;
+        g.drawText(item.label, swatch, Justification::centred);
+        row.removeFromLeft(spacing);
+    }
+    row.removeFromLeft(pad);
+
+    // fps warning chip after the swatches, only when the clip's fps differs from the
+    // edit's. Kept on the left so it never collides with the paint-measurer overlay,
+    // which draws in the top-right corner.
+    const auto effectiveFps = psgClip->getPsg().getEffectiveFps(*psgClip);
+    const auto editFps = (double) Helpers::getEditTimecodeFormat(psgClip->edit).getFPS();
+
+    if (psgClip->getPsg().hasFpsMismatch(*psgClip, editFps)) {
+        auto text = String::fromUTF8("\xE2\x9A\xA0 ")  // ⚠
+                  + String(roundToInt(effectiveFps)) + " @ "
+                  + String(roundToInt(editFps)) + " fps";
+
+        g.setFont(Font(FontOptions((float) swatchSize - 1.0f)));
+        const int chipWidth = jmin(row.getWidth(), GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text) + 2 * pad);
+        auto chip = row.removeFromLeft(chipWidth);
+
+        g.setColour(Colors::Theme::warning.withAlpha(0.9f));
+        g.fillRoundedRectangle(chip.toFloat(), 2.0f);
+        g.setColour(Colours::black);
+        g.drawText(text, chip.reduced(pad, 0), Justification::centred, true);
+
+        row.removeFromLeft(pad);
     }
 
-    x += pad;
+    // Clip name fills whatever space is left.
+    g.setFont(Font(FontOptions((float) swatchSize - 1.0f)));
     g.setColour(Colours::white.withAlpha(0.7f));
-    g.drawText(psgClip->getName(), (int)x, (int)y, rect.getRight() - (int)x, (int)swatchSize, Justification::centredLeft);
+    g.drawText(psgClip->getName(), row, Justification::centredLeft, true);
 }
 
 }  // namespace MoTool

@@ -27,6 +27,14 @@ public:
     te::BeatPosition getBeatPosition() const noexcept                         { return beatNumber; }
     void setBeatPosition (te::BeatPosition, juce::UndoManager*);
 
+    /** Sets the frame's stored beat so its raw (unquantised) edit time matches the
+        given time. The inverse of getRawEditTime, so snapshot/restore round-trips exactly. */
+    void setRawEditTime(const PsgClip&, te::TimePosition, juce::UndoManager*);
+
+    /** Raw clip-relative position, ignoring quantising/groove. */
+    te::BeatPosition getRawEditBeats(const PsgClip&) const;
+    te::TimePosition getRawEditTime(const PsgClip&) const;
+
     /** This takes into account quantising, groove templates, clip offset, etc */
     te::BeatPosition getEditBeats(const PsgClip&) const;
     te::TimePosition getEditTime(const PsgClip&) const;
@@ -111,6 +119,20 @@ public:
     /** Gives the list a channel number that it'll use when generating real midi messages. Value is 1 to 16. */
     void setMidiChannel(te::MidiChannel chanNum);
 
+    //==============================================================================
+    /** The dense source frames that fall on one beat. New imports store this as PSG-level
+        metadata; older edits without it are back-filled once from geometry on load. */
+    double getFramesPerBeat() const;
+    void setFramesPerBeat(double, juce::UndoManager*);
+
+    /** The rate the frames fire at now: framesPerBeat / current beat length at the
+        clip's start. Grows/shrinks with tempo unless PSG timing was preserved. */
+    double getEffectiveFps(const PsgClip&) const;
+
+    /** True when the clip's effective fps differs from the given edit fps by more than a
+        small tolerance, so an effectively-exact match (e.g. 50 vs 49.9999) is not flagged. */
+    bool hasFpsMismatch(const PsgClip&, double editFps) const;
+
     /** If the data was pulled from a PSG file then this may have a useful name describing its purpose. */
     juce::String getImportedPsgTrackName() const noexcept           { return importedName; }
 
@@ -188,6 +210,7 @@ public:
 private:
     //==============================================================================
     juce::CachedValue<te::MidiChannel> midiChannel;
+    juce::CachedValue<double> framesPerBeat_;
     int dataVersion_ = 0;
 
     juce::String importedFileName;

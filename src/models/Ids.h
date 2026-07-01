@@ -58,6 +58,7 @@ namespace IDs {
     DECLARE_ID(e)
     DECLARE_ID(s)
     DECLARE_ID(paintMode)
+    DECLARE_ID(framesPerBeat)
 
     #undef DECLARE_ID
 }  // namespace IDs

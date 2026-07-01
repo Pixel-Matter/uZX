@@ -8,11 +8,13 @@ Granular tasks and implementation notes for active development.
 - [x] Timecode switching (frames, seconds, bars/beats)
 - [x] Ruler respects timecode format
 - [x] Grid respect new timecode format with beats and frames
-- [ ] FPS editing of timecode or of a separate edit FPS setting
+- [x] FPS editing of timecode or of a separate edit FPS setting
 - [ ] Ruler timecode is not saved in edit vew state
+- [ ] Grid level 0 subdivisions are strange
+- [ ] Pos readout/editing in different timecode formats
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)
-- [ ] Better BPM editing
+- [x] Better BPM editing
 - [ ] Start horizontal scroll if playhead is being dragged outside of the visible bounds
 - [ ] Clip names are visible
 - [ ] Virtual MIDI keyboard (see audio plugin host)

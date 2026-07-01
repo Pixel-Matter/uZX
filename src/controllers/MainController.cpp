@@ -451,6 +451,18 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             result.setTicked(edit != nullptr && edit->getTransport().looping);
             break;
 
+        case MainAppCommands::transportPreservePsgTiming:
+            if (!isPlayer) {
+                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
+                    result.setActive(true);
+                    result.setTicked(editViewState->shouldPreservePsgTimingOnTempoChange());
+                    break;
+                }
+            }
+
+            result.setActive(false);
+            break;
+
         case MainAppCommands::viewZoomToSelection:
             result.setActive(edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
             break;
@@ -580,6 +592,16 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::transportLoop:
             te::AppFunctions::toggleLoop();
+            break;
+
+        case MainAppCommands::transportPreservePsgTiming:
+            if (!isPlayer) {
+                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
+                    editViewState->setPreservePsgTimingOnTempoChange(
+                        ! editViewState->shouldPreservePsgTimingOnTempoChange());
+                    commandManager_.commandStatusChanged();
+                }
+            }
             break;
 
         // Add commands

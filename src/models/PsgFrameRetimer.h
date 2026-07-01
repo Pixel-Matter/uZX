@@ -7,19 +7,18 @@ namespace te = tracktion;
 namespace MoTool {
 
 //==============================================================================
-/** Helper for changing an edit's tempo while keeping imported PSG frames pinned
-    to their absolute (wall-clock) times.
+/** Helper for changing an edit's tempo with optional PSG timing preservation.
 
-    PSG frames carry a tempo-independent machine-frame index (frameIndex/frameRate
-    seconds). A BPM change re-maps beats to time, so after setting the new tempo we
-    re-derive each frame's beat from its frame index — keeping PSG playback fixed in
-    time by construction, with no snapshot/restore needed.
+    PSG frames carry integer frame indices. Beat positions are derived from each
+    list's framesPerBeat metadata, so preserving timing only scales metadata and
+    never rewrites frame indices.
 */
 namespace PsgTiming {
 
-/** Sets tempo.getBpm() to the new value, then retimes every PSG frame in the edit
-    from its frame index so PSG timing stays fixed in wall-clock time. */
-void setTempoBpmRetimingFrames(te::Edit&, te::TempoSetting&, double bpm);
+/** Sets tempo.getBpm() to the new value. If preserveAbsoluteFrameTimes is true,
+    PSG lists scale framesPerBeat by the beat-length ratio so frame-index playback
+    remains fixed in wall-clock time. */
+void setTempoBpmRetimingFrames(te::Edit&, te::TempoSetting&, double bpm, bool preserveAbsoluteFrameTimes);
 
 }  // namespace PsgTiming
 

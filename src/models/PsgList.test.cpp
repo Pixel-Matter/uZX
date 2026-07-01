@@ -110,7 +110,7 @@ public:
             expectEquals(int(f1.getRaw(PsgParamType::NoiseIsOnB)), 1, "Frame 1: NoiseIsOnB accumulated=1");
         }
 
-        beginTest("getFrameAt returns full accumulated state");
+        beginTest("getFrameAtIndex returns full accumulated state");
         {
             PsgData data {
                 {
@@ -130,20 +130,16 @@ public:
             auto& frames = psgList.getFrames();
             expectEquals(int(frames.size()), 3, "Should have 3 non-empty frames");
 
-            // Use actual beat positions from frames
-            auto beat0 = frames[0]->getBeatPosition();
-            auto beat2 = frames[2]->getBeatPosition();
+            auto* f0 = psgList.getFrameAtIndex(0);
+            expect(f0 != nullptr, "getFrameAtIndex should find frame 0");
+            expectEquals(int(f0->getData().getRaw(PsgParamType::VolumeA)), 10, "State at frame 0: VolumeA=10");
+            expectEquals(int(f0->getData().getRaw(PsgParamType::VolumeB)), 0, "State at frame 0: VolumeB=0 (not yet set)");
 
-            auto* f0 = psgList.getFrameAt(beat0);
-            expect(f0 != nullptr, "getFrameAt should find frame at beat0");
-            expectEquals(int(f0->getData().getRaw(PsgParamType::VolumeA)), 10, "State at beat0: VolumeA=10");
-            expectEquals(int(f0->getData().getRaw(PsgParamType::VolumeB)), 0, "State at beat0: VolumeB=0 (not yet set)");
-
-            auto* f2 = psgList.getFrameAt(beat2);
-            expect(f2 != nullptr, "getFrameAt should find frame at beat2");
-            expectEquals(int(f2->getData().getRaw(PsgParamType::VolumeA)), 10, "State at beat2: VolumeA accumulated=10");
-            expectEquals(int(f2->getData().getRaw(PsgParamType::VolumeB)), 8, "State at beat2: VolumeB=8");
-            expectEquals(int(f2->getData().getRaw(PsgParamType::VolumeC)), 6, "State at beat2: VolumeC=6");
+            auto* f4 = psgList.getFrameAtIndex(4);
+            expect(f4 != nullptr, "getFrameAtIndex should find frame 4");
+            expectEquals(int(f4->getData().getRaw(PsgParamType::VolumeA)), 10, "State at frame 4: VolumeA accumulated=10");
+            expectEquals(int(f4->getData().getRaw(PsgParamType::VolumeB)), 8, "State at frame 4: VolumeB=8");
+            expectEquals(int(f4->getData().getRaw(PsgParamType::VolumeC)), 6, "State at frame 4: VolumeC=6");
         }
 
         beginTest("Accumulated state survives ValueTree round-trip (simulating file load)");
@@ -204,18 +200,18 @@ public:
                 {PsgParamType::VolumeA, 10},
                 {PsgParamType::TonePeriodA, 100},
             }};
-            psgList.addFrameEvent(te::BeatPosition::fromBeats(0.0), f0data, nullptr);
+            psgList.addFrameEvent(0, f0data, nullptr);
 
             PsgParamFrameData f1data {{
                 {PsgParamType::VolumeA, 5},
                 {PsgParamType::VolumeB, 8},
             }};
-            psgList.addFrameEvent(te::BeatPosition::fromBeats(1.0), f1data, nullptr);
+            psgList.addFrameEvent(1, f1data, nullptr);
 
             PsgParamFrameData f2data {{
                 {PsgParamType::TonePeriodA, 200},
             }};
-            psgList.addFrameEvent(te::BeatPosition::fromBeats(2.0), f2data, nullptr);
+            psgList.addFrameEvent(2, f2data, nullptr);
 
             auto& frames = psgList.getFrames();
             expectEquals(int(frames.size()), 3, "addFrameEvent: Should have 3 frames");
@@ -347,9 +343,13 @@ public:
             expectEquals(frame->getFrameIndex(), 2, "Frame index should be the source tick");
             expectWithinAbsoluteError(clip->getPsg().getFrameRate(), 50.0, 1.0e-9,
                                       "Frame rate should be captured from the imported data");
+            expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), 25.0, 1.0e-9,
+                                      "Frames per beat should match 50 fps at 120 BPM");
+            expectWithinAbsoluteError(clip->getPsg().getEffectiveFps(*clip), 50.0, 1.0e-9,
+                                      "Imported PSG should initially play at its source frame rate");
         }
 
-        beginTest("Stored beat is a cache regenerated from the frame index");
+        beginTest("Imported PSG frames store only frame indices");
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
@@ -359,20 +359,14 @@ public:
             auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "timing");
 
             auto frame = clip->getPsg().getFrame(0);
-            const auto trueBeat = frame->getBeatPosition().inBeats();
+            expect(! frame->state.hasProperty(te::IDs::b), "PSG frame state should not store beat property");
 
-            // Corrupt the cached beat as a stale value would be.
-            frame->setBeatPosition(te::BeatPosition::fromBeats(trueBeat + 1.0), nullptr);
-            expectWithinAbsoluteError(frame->getBeatPosition().inBeats(), trueBeat + 1.0, 1.0e-9,
-                                      "Sanity: stale beat was applied");
-
-            // Regenerating from the index (as load does) must overwrite the cache.
-            clip->getPsg().updateBeatsFromFrameIndices(*clip, nullptr);
-            expectWithinAbsoluteError(frame->getBeatPosition().inBeats(), trueBeat, 1.0e-9,
-                                      "Beat must be regenerated from the frame index, not trusted from disk");
+            const auto expectedBeat = 2.0 / clip->getPsg().getFramesPerBeat();
+            expectWithinAbsoluteError(frame->getFrameBeatPosition(*clip).inBeats(), expectedBeat, 1.0e-9,
+                                      "Beat position should be derived from frame index and frames per beat");
         }
 
-        beginTest("PSG frame time stays fixed when frames per beat changes");
+        beginTest("Preserve timing scales PSG frames per beat when project frames per beat changes");
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
@@ -386,12 +380,16 @@ public:
             auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "timing");
             auto frame = clip->getPsg().getFrame(0);
             const auto originalTime = frame->getEditTime(*clip);
+            const auto originalFrameIndex = frame->getFrameIndex();
 
             editViewState.setFramesPerBeat(30);
 
             const auto retimedTime = frame->getEditTime(*clip);
             expectWithinAbsoluteError(retimedTime.inSeconds(), originalTime.inSeconds(), 1.0e-9,
-                                      "Frame index anchors the frame to a fixed wall-clock time");
+                                      "Preserve mode should keep PSG wall-clock time fixed");
+            expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), 30.0, 1.0e-9,
+                                      "PSG frames per beat should scale by the beat-length ratio");
+            expectEquals(frame->getFrameIndex(), originalFrameIndex, "Tempo preservation must not touch frame indices");
         }
 
         beginTest("PSG frame time stays fixed across a direct BPM change with quantisation");
@@ -422,6 +420,40 @@ public:
             const auto preservedRawTime = frame->getRawEditTime(*clip);
             expectWithinAbsoluteError(preservedRawTime.inSeconds(), originalRawTime.inSeconds(), 1.0e-9,
                                       "Raw frame time must survive the tempo change despite quantisation");
+            expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), 33.0, 1.0e-9,
+                                      "Snapped BPM change should scale PSG frames per beat in preserve mode");
+        }
+
+        beginTest("Unchecking preserve timing leaves PSG frames per beat fixed");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+
+            SelectionManager selectionManager(engine);
+            EditViewState editViewState(*edit, selectionManager);
+            editViewState.setPreservePsgTimingOnTempoChange(false);
+
+            auto data = makeOffGridFrameData();
+            auto track = getAudioTracks(*edit)[0];
+            auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "timing");
+            auto frame = clip->getPsg().getFrame(0);
+            const auto originalRawTime = frame->getRawEditTime(*clip);
+            const auto originalBeat = frame->getFrameBeatPosition(*clip);
+            const auto originalFramesPerBeat = clip->getPsg().getFramesPerBeat();
+            const auto originalFrameIndex = frame->getFrameIndex();
+
+            editViewState.setBpmSnappedToFps(90.0);
+
+            expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), originalFramesPerBeat, 1.0e-9,
+                                      "Unchecked mode should not scale PSG frames per beat");
+            expectWithinAbsoluteError(frame->getFrameBeatPosition(*clip).inBeats(), originalBeat.inBeats(), 1.0e-9,
+                                      "Unchecked mode should leave PSG frame beats unchanged");
+            expectEquals(frame->getFrameIndex(), originalFrameIndex, "Unchecked mode must not touch frame indices");
+
+            const auto retimedRawTime = frame->getRawEditTime(*clip);
+            expect(retimedRawTime.inSeconds() > originalRawTime.inSeconds(),
+                   "Unchecked mode should let PSG wall-clock timing follow the slower project tempo");
         }
 
         beginTest("Legacy beat-only frames are migrated to frame indices");
@@ -430,31 +462,81 @@ public:
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
 
             auto track = getAudioTracks(*edit)[0];
-            // An empty clip starts with no frame rate; frames added by beat carry no
-            // index — exactly the shape of legacy beat-only data.
             uZX::PsgData empty { {}, {50.0, 1} };
             auto clip = PsgClip::insertTo(*track, empty, {{0_tp, 4_td}, {}}, "legacy");
 
             // Beat 0.12 at 120 BPM == 0.06 s == frame 3 at 50 fps (off the .5 boundary).
-            auto frame = clip->getPsg().addFrameEvent(0.12_bp, PsgParamFrameData {{PsgParamType::VolumeA, 7}}, nullptr);
-            const auto beatBefore = frame->getBeatPosition();
-            expect(! frame->hasFrameIndex(), "Sanity: beat-added frame has no index");
-            expectWithinAbsoluteError(clip->getPsg().getFrameRate(), 0.0, 1.0e-9,
-                                      "Sanity: legacy list has no frame rate");
+            auto legacyState = juce::ValueTree(IDs::PSG);
+            legacyState.setProperty(te::IDs::ver, 1, nullptr);
+            legacyState.setProperty(te::IDs::channelNumber, te::MidiChannel(1), nullptr);
 
-            clip->getPsg().migrateToFrameIndicesIfNeeded(*clip, 50.0, nullptr);
+            auto legacyFrame = PsgParamFrame::createPsgFrameValueTree(
+                -1, PsgParamFrameData {{PsgParamType::VolumeA, 7}});
+            legacyFrame.removeProperty(IDs::i, nullptr);
+            legacyFrame.setProperty(te::IDs::b, 0.12, nullptr);
+            legacyState.addChild(legacyFrame, -1, nullptr);
+
+            PsgList legacyList(legacyState, nullptr);
+            auto frame = legacyList.getFrame(0);
+            expect(! frame->hasFrameIndex(), "Sanity: legacy frame has no index");
+            expect(frame->state.hasProperty(te::IDs::b), "Sanity: legacy frame has a beat property");
+            expectWithinAbsoluteError(legacyList.getFrameRate(), 0.0, 1.0e-9,
+                                      "Sanity: legacy list has no frame rate");
+            expectWithinAbsoluteError(legacyList.getFramesPerBeat(), 0.0, 1.0e-9,
+                                      "Sanity: legacy list has no frames-per-beat metadata");
+
+            legacyList.migrateToFrameIndicesIfNeeded(*clip, 50.0, nullptr);
 
             expect(frame->hasFrameIndex(), "Frame should gain an index after migration");
             expectEquals(frame->getFrameIndex(), 3, "Migration should recover the nearest tick");
-            expectWithinAbsoluteError(clip->getPsg().getFrameRate(), 50.0, 1.0e-9,
+            expectWithinAbsoluteError(legacyList.getFrameRate(), 50.0, 1.0e-9,
                                       "List should adopt the migration frame rate");
-            expectWithinAbsoluteError(frame->getBeatPosition().inBeats(), beatBefore.inBeats(), 1.0e-9,
-                                      "Migration should not move the existing beat");
+            expectWithinAbsoluteError(legacyList.getFramesPerBeat(), 25.0, 1.0e-9,
+                                      "List should backfill frames per beat from the current tempo");
+            expect(! frame->state.hasProperty(te::IDs::b), "Migration should remove the legacy beat property");
+            expectWithinAbsoluteError(frame->getFrameBeatPosition(*clip).inBeats(), 0.12, 1.0e-9,
+                                      "Migrated frame should derive the original beat from its frame index");
 
             // Second call is a no-op once the frame rate is present.
-            clip->getPsg().migrateToFrameIndicesIfNeeded(*clip, 25.0, nullptr);
-            expectWithinAbsoluteError(clip->getPsg().getFrameRate(), 50.0, 1.0e-9,
+            legacyList.migrateToFrameIndicesIfNeeded(*clip, 25.0, nullptr);
+            expectWithinAbsoluteError(legacyList.getFrameRate(), 50.0, 1.0e-9,
                                       "Already-migrated list keeps its frame rate");
+        }
+
+        beginTest("Indexed legacy lists backfill frames per beat without touching indices");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+
+            auto track = getAudioTracks(*edit)[0];
+            uZX::PsgData empty { {}, {50.0, 1} };
+            auto clip = PsgClip::insertTo(*track, empty, {{0_tp, 4_td}, {}}, "indexed legacy");
+
+            auto legacyState = juce::ValueTree(IDs::PSG);
+            legacyState.setProperty(te::IDs::ver, 1, nullptr);
+            legacyState.setProperty(te::IDs::channelNumber, te::MidiChannel(1), nullptr);
+            legacyState.setProperty(IDs::frameRate, 50.0, nullptr);
+            legacyState.addChild(
+                PsgParamFrame::createPsgFrameValueTree(2, PsgParamFrameData {{PsgParamType::VolumeA, 7}}),
+                -1,
+                nullptr);
+
+            PsgList legacyList(legacyState, nullptr);
+            auto frame = legacyList.getFrame(0);
+            expectEquals(frame->getFrameIndex(), 2, "Sanity: indexed frame keeps its source index");
+            expectWithinAbsoluteError(legacyList.getFramesPerBeat(), 0.0, 1.0e-9,
+                                      "Sanity: indexed legacy list is missing frames per beat");
+
+            legacyList.migrateToFrameIndicesIfNeeded(*clip, 25.0, nullptr);
+
+            expectEquals(frame->getFrameIndex(), 2, "Backfill must not rewrite existing frame indices");
+            expectWithinAbsoluteError(legacyList.getFrameRate(), 50.0, 1.0e-9,
+                                      "Existing source frame rate should win over migration fallback");
+            expectWithinAbsoluteError(legacyList.getFramesPerBeat(), 25.0, 1.0e-9,
+                                      "Frames per beat should be inferred from frame rate and current tempo");
+            expect(! frame->state.hasProperty(te::IDs::b), "Indexed legacy frame should not gain a beat property");
+            expectWithinAbsoluteError(frame->getFrameBeatPosition(*clip).inBeats(), 0.08, 1.0e-9,
+                                      "Indexed legacy beat should derive from frame index and frames per beat");
         }
     }
 };

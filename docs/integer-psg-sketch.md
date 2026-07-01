@@ -2,50 +2,51 @@
 
 > Design note on branch `integer-psg-sketch`.
 >
-> **Status: Option A implemented.** Frames carry a machine-frame index (`IDs::i`)
-> and the PSG list stores its frame rate (`IDs::frameRate`). The index is the
-> single source of truth; the tracktion beat (`te::IDs::b`) is kept as a cache so
-> the engine's `b`-keyed sorting/MidiClip integration keeps working, but it is
-> regenerated from `i` on load (`PsgClip::initialise` → `updateBeatsFromFrameIndices`),
-> so the two can never disagree. Tempo changes call
-> `PsgTiming::setTempoBpmRetimingFrames`, which re-derives each frame's beat from
-> `i / frameRate` — keeping PSG timing fixed in time by construction. The old
-> opt-in preserve flag, the snapshot/restore machinery, and the
-> `transportPreservePsgTiming` command have been removed. Manually placed frames
-> use index `-1` and stay beat-anchored (legacy behaviour).
+> **Status: Option A implemented with `framesPerBeat`.** Frames carry a machine-frame
+> index (`IDs::i`) and the PSG list stores source frame rate (`IDs::frameRate`) plus
+> musical spacing (`IDs::framesPerBeat`). The index is the per-event source of
+> truth. PSG frame events no longer store `te::IDs::b`; beat positions are derived
+> as `i / framesPerBeat`. Tempo changes never rewrite indexes. The preserve option
+> only scales PSG list `framesPerBeat`; unchecked mode leaves it fixed so PSG timing
+> follows beat-space tempo changes.
 >
-> **Migration:** old files (frames with `b` but no `fi`/`frameRate`) are upgraded
+> **Migration:** old files (frames with `b` but no `i`/`frameRate`) are upgraded
 > on load in `PsgClip::initialise` via `PsgList::migrateToFrameIndicesIfNeeded`,
 > which adopts the edit's timecode FPS and back-fills each frame's index by
-> inverting its stored beat through the tempo map. One-time and idempotent
-> (skipped once a frame rate is present).
+> inverting its stored beat through the tempo map. The legacy `b` property is
+> removed after migration. Lists missing `framesPerBeat` infer it from frame rate
+> and the current beat length.
 
 ## Problem this addresses
 
 PSG/AY register dumps are natively a sequence of frames at a fixed machine rate
-(50 Hz on ZX Spectrum/PAL, etc.). Today each `PsgParamFrame` stores its position
-as a **beat** (`te::IDs::b`, a `te::BeatPosition`). Because beats are tempo-relative,
-a BPM/frames-per-beat change moves every frame in wall-clock time — which is wrong
-for imported PSG data, where frame N must always play at `N / frameRate` seconds.
+(50 Hz on ZX Spectrum/PAL, etc.). Storing PSG event positions as beats is wrong
+for imported PSG data, where frame N must always play at `N / frameRate` seconds:
+because beats are tempo-relative, a BPM/frames-per-beat change would otherwise
+move every frame in wall-clock time.
 
 The `timecode` branch works around this with an opt-in snapshot/remap
 (`PsgTimingPreserver`) that pins frames to their absolute time across a tempo
 change. That is correct but it is a *workaround*: it reconstructs, on every tempo
 edit, a timestamp the data already has natively.
 
-**Idea:** make the integer frame index (plus the clip's frame rate) the stored
-source of truth, and derive beats/seconds on demand. Then tempo changes never
-move PSG frames, and the preserve flag + remap machinery can be retired.
+**Idea:** make the integer frame index the stored event timestamp and keep
+`framesPerBeat` as list-level musical spacing. Then tempo changes can either
+preserve absolute PSG timing by scaling one list property, or preserve beat
+positions by leaving that property fixed.
 
 ## Current model (where time lives)
 
 - `PsgData::frameNumToSeconds(i) = i / frameRate` — the canonical mapping already
   exists. `PsgData::Options::frameRate` defaults to 50; `playRate` is a machine-frame
   multiplier. (`src/formats/psg/PsgData.h:245`)
-- On load, `PsgList::loadFrom` drops empty frames and converts each surviving
-  frame's time to **beats** via `tempoSequence.toBeats(seconds)`, storing `b`.
-  (`src/models/PsgList.cpp:341`)
-- `PsgParamFrame` keeps `te::BeatPosition beatNumber` mirrored from `IDs::b`.
+- On load, `PsgList::loadFrom` drops empty frames and stores each surviving
+  frame's source machine-frame index as `IDs::i`.
+- `PsgList` stores `frameRate` for source/native rate and `framesPerBeat` for the
+  current musical spacing. Effective FPS is `framesPerBeat / beatLengthSeconds`.
+- `PsgParamFrame` does not store a beat. `getFrameBeatPosition`,
+  `getRawEditBeats`, and `getEditTime` derive beat position from
+  `frameIndex / framesPerBeat`.
 - Read paths go through three accessors:
   - `getRawEditBeats` / `getRawEditTime` — clip-offset applied, no quantise.
   - `getEditBeats` / `getEditTime` — adds `getQuantisation().roundBeatToNearest`.
@@ -57,35 +58,34 @@ model needs a translation layer at each of these boundaries:
 
 | Consumer | File | Reads |
 |----------|------|-------|
-| MIDI render (playback/export) | `models/PsgMidi.cpp:73` `getTimeInBase` | `getBeatPosition` / `getEditBeats` / `getEditTime` per `TimeBase` |
+| MIDI render (playback/export) | `models/PsgList.cpp` `getTimeInBase` | `getFrameBeatPosition` / `getEditBeats` / `getEditTime` per `TimeBase` |
 | Clip waveform / param drawing | `gui/timeline/PsgClipComponent.cpp:228,328` | `getEditTime` |
 | Param editor hit-testing | `gui/timeline/PsgParamEditorComponent.cpp:162,190` | `getEditTime` |
-| Tempo-change preserve | `models/PsgTimingPreserver.cpp` | raw edit time (would be **deleted**) |
-| Edit ops | `PsgList::moveAllBeatPositions / rescale / trimOutside` | beat math |
+| Tempo-change preserve | `models/PsgFrameRetimer.cpp` | scales list `framesPerBeat`; never rewrites frame indexes |
+| Edit ops | `PsgList::addFrameEvent / getFrameAtIndex` | frame-index math |
 
 ## Two possible representations
 
 ### Option A — frame index is the stored truth; beats derived
 
-`PsgParamFrame` stores `int frameIndex` + the owning clip exposes `frameRate`.
-`b` (beat) becomes a *cache*, recomputed from `frameIndex / frameRate → toBeats`
-whenever the tempo map changes.
+`PsgParamFrame` stores `int frameIndex`; `PsgList` stores `frameRate` and
+`framesPerBeat`. Beats are derived from `frameIndex / framesPerBeat` whenever a
+Tracktion boundary needs beat-space timing.
 
-- **Pro:** tempo changes are free — `frameIndex` doesn't move, so frames are
-  rock-stable in time by construction. `PsgTimingPreserver` and the preserve
-  toggle disappear entirely. Off-grid/quantise round-trip issue is moot.
+- **Pro:** tempo changes never touch per-event indexes. Preserving absolute timing
+  is a cheap metadata scale; disabling preserve keeps PSG in beat space.
 - **Pro:** matches import/export/chip semantics 1:1.
 - **Con:** beats are now derived, so any beat-based edit (drag-snap to musical
-  grid, `moveAllBeatPositions`, groove) must round-trip through frames, or accept
-  that "snap to beat" means "snap to nearest frame near that beat."
-- **Con:** larger change — `b` flips from authoritative to cache; the engine still
-  sequences in beats so the cache must stay coherent (re-derive on tempo/rate edit).
+  grid, groove) must round-trip through frames, or accept that "snap to beat"
+  means "snap to nearest frame near that beat."
+- **Con:** larger change — every Tracktion-facing path needs a derivation layer,
+  because the stored PSG event itself is no longer beat-addressed.
 
-### Option B — keep `b` authoritative, add `frameIndex` as a parallel anchor
+### Option B — rejected: keep `b` authoritative, add `frameIndex` as a parallel anchor
 
 Store both; treat `frameIndex` as the anchor only while "lock to frames" is on,
-recomputing `b` from it on tempo change (essentially what the preserve flag does,
-but persisted per-frame instead of reconstructed).
+and repair `b` on tempo change (essentially what the preserve flag did, but
+persisted per-frame instead of reconstructed).
 
 - **Pro:** much smaller delta; consumers keep reading beats unchanged.
 - **Con:** two timestamps that can disagree → exactly the coherence hazard we're
@@ -96,21 +96,18 @@ that keeps the dual-representation smell.
 
 ## Migration outline for Option A
 
-1. **Storage:** add `te::IDs` frame index property (e.g. `fi`) to the frame value
-   tree; keep `b` written as a derived value for engine compatibility. `PsgList`
-   owns the clip frame rate (already on `PsgData::Options::frameRate` at load).
-2. **Derivation helper:** `frameIndexToBeats(idx) = tempoSequence.toBeats(idx / fps)`,
+1. **Storage:** store `IDs::i` on each frame value tree and `IDs::frameRate` /
+   `IDs::framesPerBeat` on `PsgList`. Do not write `te::IDs::b` for PSG frames.
+2. **Derivation helper:** `frameIndexToBeats(idx) = idx / framesPerBeat`,
    centralised so every read path uses it.
-3. **Recompute hook:** on tempo or frame-rate change, walk frames and rewrite each
-   `b` from `frameIndex` (this *replaces* `PsgTimingPreserver` — and is simpler,
-   since there is nothing to snapshot; the index is already the anchor).
+3. **Tempo changes:** preserve mode scales `framesPerBeat` by
+   `newBeatLength / oldBeatLength`; unchecked mode leaves it fixed.
 4. **Consumers:** `getEditBeats/getEditTime` derive from `frameIndex`; quantise
    becomes optional snapping *for editing*, never for stored position.
-5. **Edits:** `moveAllBeatPositions`/`rescale` operate on `frameIndex`
-   (move/scale integer indices); `trimOutside` filters by index range.
-6. **Retire:** delete `PsgTimingPreserver.{h,cpp}`, the `preservePsgTimingOnTempoChange`
-   cached value, the `transportPreservePsgTiming` command, and the Ruler/Transport
-   menu entries. Update `PsgListTempoTiming` tests to assert frames never move.
+5. **Edits:** frame insertion/lookup operates on `frameIndex`; any beat-snapped UI
+   operation must quantise to the nearest PSG frame before storage.
+6. **Retire:** no snapshot/remap of PSG frame events. The transport/ruler preserve
+   command remains as a metadata-scaling policy toggle.
 
 ## Open questions
 

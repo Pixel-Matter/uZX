@@ -311,9 +311,10 @@ public:
                 {PsgParamType::VolumeA, 1},
                 {PsgParamType::EnvelopeShape, 2}
             };
-            auto v = PsgParamFrame::createPsgFrameValueTree(-1, 2.3_bp, data);
+            auto v = PsgParamFrame::createPsgFrameValueTree(23, data);
             expect(v.hasType(IDs::FRAME), "Expected FRAME type");
-            expect(v.getProperty(te::IDs::b).equals(2.3), "Expected beat number to be 2.3");
+            expect(v.getProperty(IDs::i).equals(23), "Expected frame index to be 23");
+            expect(!v.hasProperty(te::IDs::b), "Expected no stored beat property");
             expect(v.getProperty(IDs::va).equals(1), "Expected VolumeA to be 1");
             expect(v.getProperty(IDs::va).isInt(), "Expected VolumeA to be an int");
             expect(!v.hasProperty(IDs::vb), "Expected VolumeB to be missing");
@@ -327,10 +328,10 @@ public:
                 {PsgParamType::EnvelopeShape, 2}
 
             };
-            auto v = PsgParamFrame::createPsgFrameValueTree(-1, 2.3_bp, data);
+            auto v = PsgParamFrame::createPsgFrameValueTree(23, data);
             PsgParamFrame frame(v);
 
-            expectWithinAbsoluteError(frame.getBeatPosition().inBeats(), 2.3, 0.0001, "Expected beat number to be 2.3");
+            expectEquals(frame.getFrameIndex(), 23, "Expected frame index to be 23");
 
             expect(frame.getParam(PsgParamType::VolumeA) == 1, "Expected VolumeA to be 1, got " + std::to_string(frame.getParam(PsgParamType::VolumeA).value_or(-1)));
             expect(frame.getParam(PsgParamType::VolumeB) == std::nullopt, "Expected VolumeB to be nullopt");

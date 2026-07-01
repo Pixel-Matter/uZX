@@ -217,6 +217,7 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     showHeaders.referTo(state, IDs::showHeaders, um, true);
     showMidiDevices.referTo(state, IDs::showMidiDevices, um, true);
     showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
+    preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, um, true);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
 }
 
@@ -255,7 +256,7 @@ void EditViewState::setBeatLength(te::TimeDuration beatLen) {
     auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
     bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm);
 
-    PsgTiming::setTempoBpmRetimingFrames(edit, ts, bpm);
+    PsgTiming::setTempoBpmRetimingFrames(edit, ts, bpm, shouldPreservePsgTimingOnTempoChange());
 }
 
 void EditViewState::setFramesPerBeat(int fpb) {
@@ -275,9 +276,17 @@ double EditViewState::setBpmSnappedToFps(double bpm) {
     auto snappedBpm = getBpmSnappedToFps(bpm);
     auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
 
-    PsgTiming::setTempoBpmRetimingFrames(edit, ts, snappedBpm);
+    PsgTiming::setTempoBpmRetimingFrames(edit, ts, snappedBpm, shouldPreservePsgTimingOnTempoChange());
 
     return snappedBpm;
+}
+
+void EditViewState::setPreservePsgTimingOnTempoChange(bool shouldPreserve) {
+    preservePsgTimingOnTempoChange = shouldPreserve;
+}
+
+bool EditViewState::shouldPreservePsgTimingOnTempoChange() const {
+    return preservePsgTimingOnTempoChange.get();
 }
 
 int EditViewState::getTrackHeaderWidth() const {

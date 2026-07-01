@@ -23,14 +23,10 @@ void PsgClip::initialise() {
     if (psg.isValid()) {
         psgList = std::make_unique<PsgList>(psg, um);
 
-        // Legacy files store only per-frame beats. Back-fill machine-frame indices
-        // from the edit's frame rate so old PSG data also stays tempo-stable.
+        // Legacy files may store per-frame beats. Back-fill machine-frame indices
+        // from the edit's frame rate and drop the legacy beat property.
         const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
         psgList->migrateToFrameIndicesIfNeeded(*this, fps, um);
-
-        // The frame index is the source of truth; the stored beat is a cache.
-        // Regenerate it from the index on load so the two can never disagree.
-        psgList->updateBeatsFromFrameIndices(*this, um);
     } else {
         state.addChild(PsgList::createPsgList(), -1, um);
         psgList = std::make_unique<PsgList>();

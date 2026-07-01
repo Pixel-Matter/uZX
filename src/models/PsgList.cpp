@@ -5,15 +5,11 @@
 #include "EditUtilities.h"
 
 #include <cmath>
+#include <limits>
 
 namespace te = tracktion;
 
 namespace MoTool {
-
-static double roundTo(double value, int decimalPlaces = 3) {
-    double factor = std::pow(10.0, decimalPlaces);
-    return std::round(value * factor) / factor;
-}
 
 static double canonicalizeFramesPerBeat(double value) {
     if (! std::isfinite(value) || value <= 0.0)
@@ -31,12 +27,11 @@ static double getBeatLengthSecondsAt(te::Edit& edit, te::TimePosition pos) {
     return edit.tempoSequence.getTempoAt(pos).getApproxBeatLength().inSeconds();
 }
 
-static double getFramesPerBeatFromGeometry(const juce::Array<PsgParamFrame*>& frames);
-
 namespace {
     void convertPsgFrameFromStrings(juce::ValueTree& frames) {
         if (frames.hasType(IDs::FRAME)) {
             te::convertPropertyToType<double>(frames, te::IDs::b);
+            te::convertPropertyToType<int>   (frames, IDs::i); // machine-frame index
             // te::convertPropertyToType<int>   (frames, te::IDs::metadata);
 
             te::convertPropertyToType<int> (frames, IDs::va); // VolumeA
@@ -82,9 +77,9 @@ PsgParamFrame::PsgParamFrame(const juce::ValueTree& v)
     updatePropertiesFromState();
 }
 
-juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, const PsgParamFrameData& data) {
+juce::ValueTree PsgParamFrame::createPsgFrameValueTree(int frameIndex, const PsgParamFrameData& data) {
     auto v = te::createValueTree(IDs::FRAME,
-        te::IDs::b,    roundTo(beat.inBeats())
+        IDs::i, frameIndex
     );
     PsgParamType::forEach([&v, &data](auto paramTypeVal) {
         auto paramType = paramTypeVal();  // Extract enum value from integral_constant
@@ -119,35 +114,65 @@ juce::ValueTree PsgParamFrame::createPsgFrameValueTree(te::BeatPosition beat, co
     return v;
 }
 
-te::BeatPosition PsgParamFrame::getRawEditBeats(const PsgClip& c) const {
-    return beatNumber - toDuration(c.getLoopStartBeats()) + toDuration(c.getContentStartBeat());
+te::BeatPosition PsgParamFrame::getFrameBeatPosition(const PsgClip& c) const {
+    if (! hasFrameIndex())
+        return {};
+
+    const auto framesPerBeat = c.getPsg().getFramesPerBeat();
+    if (framesPerBeat > 0.0)
+        return te::BeatPosition::fromBeats((double) frameIndex / framesPerBeat);
+
+    const auto frameRate = c.getPsg().getFrameRate();
+    if (frameRate <= 0.0)
+        return {};
+
+    const auto timeSec = (double) frameIndex / frameRate;
+    return c.edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
 }
+
+te::BeatPosition PsgParamFrame::getRawEditBeats(const PsgClip& c) const {
+    return getFrameBeatPosition(c) - toDuration(c.getLoopStartBeats()) + toDuration(c.getContentStartBeat());
+}
+
 te::BeatPosition PsgParamFrame::getEditBeats(const PsgClip& c) const {
     return c.getQuantisation().roundBeatToNearest(getRawEditBeats(c));
 }
+
 te::TimePosition PsgParamFrame::getRawEditTime(const PsgClip& c) const {
     return c.edit.tempoSequence.toTime(getRawEditBeats(c));
 }
+
 te::TimePosition PsgParamFrame::getEditTime(const PsgClip& c) const {
     return c.edit.tempoSequence.toTime(getEditBeats(c));
 }
 
-void PsgParamFrame::setBeatPosition(te::BeatPosition newBeatNumber, juce::UndoManager* um) {
-    newBeatNumber = jmax(0_bp, newBeatNumber);
-
-    if (beatNumber != newBeatNumber) {
-        state.setProperty(te::IDs::b, newBeatNumber.inBeats(), um);
-        beatNumber = newBeatNumber;
+void PsgParamFrame::setFrameIndex(int newFrameIndex, juce::UndoManager* um) {
+    if (frameIndex != newFrameIndex) {
+        state.setProperty(IDs::i, newFrameIndex, um);
+        frameIndex = newFrameIndex;
     }
 }
 
-void PsgParamFrame::setRawEditTime(const PsgClip& c, te::TimePosition editTime, juce::UndoManager* um) {
-    const auto editBeat = c.edit.tempoSequence.toBeats(jmax(0_tp, editTime));
-    setBeatPosition(editBeat + toDuration(c.getLoopStartBeats()) - toDuration(c.getContentStartBeat()), um);
+void PsgParamFrame::migrateFrameIndexFromBeat(const PsgClip& c, double frameRate, juce::UndoManager* um) {
+    if (hasFrameIndex() || frameRate <= 0.0)
+        return;
+
+    if (! state.hasProperty(te::IDs::b))
+        return;
+
+    // Inverse of the load mapping: stored beat -> seconds -> nearest machine frame.
+    const auto beat = te::BeatPosition::fromBeats(static_cast<double>(state.getProperty(te::IDs::b)));
+    const auto timeSec = c.edit.tempoSequence.toTime(beat).inSeconds();
+    setFrameIndex(jmax(0, roundToInt(timeSec * frameRate)), um);
+}
+
+void PsgParamFrame::removeLegacyBeatProperty(juce::UndoManager* um) {
+    if (state.hasProperty(te::IDs::b))
+        state.removeProperty(te::IDs::b, um);
 }
 
 void PsgParamFrame::updatePropertiesFromState() noexcept {
-    beatNumber  = te::BeatPosition::fromBeats(static_cast<double>(state.getProperty(te::IDs::b)));
+    frameIndex  = static_cast<int>(state.getProperty(IDs::i, -1));
     // TODO update other properties
     // Why not use CahedValue<>? Too slow?
     // read all properties from state
@@ -216,7 +241,7 @@ struct PsgList::EventDelegate<PsgParamFrame> {
 
     static bool updateObject(PsgParamFrame& e, const juce::Identifier& i) {
         e.updatePropertiesFromState();
-        return i == te::IDs::b;
+        return i == IDs::i;
     }
 
     static void removeFromSelection(PsgParamFrame* e) {
@@ -228,12 +253,12 @@ struct PsgList::EventDelegate<PsgParamFrame> {
 template<typename EventType>
 const juce::Array<EventType*>& getEventsChecked(const juce::Array<EventType*>& events) {
     #if JUCE_DEBUG
-        te::BeatPosition lastBeat;
+        int lastFrameIndex = std::numeric_limits<int>::min();
 
         for (auto* e : events) {
-            auto beat = e->getBeatPosition();
-            jassert(lastBeat <= beat);
-            lastBeat = beat;
+            auto frameIndex = e->getFrameIndex();
+            jassert(lastFrameIndex <= frameIndex);
+            lastFrameIndex = frameIndex;
         }
     #endif
 
@@ -244,11 +269,15 @@ const juce::Array<EventType*>& getEventsChecked(const juce::Array<EventType*>& e
 juce::ValueTree PsgList::createPsgList() {
     return createValueTree(IDs::PSG,
                            te::IDs::ver, 1,
+                           IDs::frameRate, 50.0,
+                           IDs::framesPerBeat, 0.0,
                            te::IDs::channelNumber, te::MidiChannel(1));
 }
 
 PsgList::PsgList() : state (IDs::PSG) {
     state.setProperty(te::IDs::ver, 1, nullptr);
+    state.setProperty(IDs::frameRate, 50.0, nullptr);
+    state.setProperty(IDs::framesPerBeat, 0.0, nullptr);
     state.setProperty(te::IDs::channelNumber, te::MidiChannel(1), nullptr);
     initialise(nullptr);
 }
@@ -272,12 +301,72 @@ void PsgList::initialise(juce::UndoManager* um) {
     CRASH_TRACER
 
     midiChannel.referTo (state, te::IDs::channelNumber, um);
+    frameRate_.referTo (state, IDs::frameRate, um, 0.0);
     framesPerBeat_.referTo(state, IDs::framesPerBeat, um, 0.0);
 
     framesList = std::make_unique<EventList<PsgParamFrame>>(state);
+    recomputeAccumulatedState();
+}
 
-    if (canonicalizeFramesPerBeat(framesPerBeat_.get()) <= 0.0 && ! getFrames().isEmpty())
-        setFramesPerBeat(getFramesPerBeatFromGeometry(getFrames()), um);
+double PsgList::getFrameRate() const noexcept {
+    return frameRate_.get();
+}
+
+void PsgList::setFrameRate(double fps, juce::UndoManager* um) {
+    frameRate_.setValue(fps, um);
+}
+
+double PsgList::getFramesPerBeat() const noexcept {
+    return canonicalizeFramesPerBeat(framesPerBeat_.get());
+}
+
+void PsgList::setFramesPerBeat(double framesPerBeat, juce::UndoManager* um) {
+    framesPerBeat_.setValue(canonicalizeFramesPerBeat(framesPerBeat), um);
+}
+
+double PsgList::getEffectiveFps(const PsgClip& clip) const {
+    const auto framesPerBeat = getFramesPerBeat();
+    const auto beatLength = getBeatLengthSecondsAt(clip.edit, clip.getPosition().getStart());
+    if (framesPerBeat <= 0.0 || beatLength <= 0.0)
+        return 0.0;
+
+    return framesPerBeat / beatLength;
+}
+
+bool PsgList::hasFpsMismatch(const PsgClip& clip, double editFps) const {
+    const auto effective = getEffectiveFps(clip);
+    if (effective <= 0.0 || editFps <= 0.0)
+        return false;
+
+    const auto tolerance = 1.0e-3 * jmax(effective, editFps);
+    return std::abs(effective - editFps) > tolerance;
+}
+
+void PsgList::migrateToFrameIndicesIfNeeded(const PsgClip& clip, double frameRate, juce::UndoManager* um) {
+    const double fps = getFrameRate() > 0.0 ? getFrameRate() : frameRate;
+
+    if (getNumFrames() == 0) {
+        if (getFrameRate() <= 0.0 && fps > 0.0)
+            setFrameRate(fps, um);
+        if (getFramesPerBeat() <= 0.0 && fps > 0.0)
+            setFramesPerBeat(fps * getBeatLengthSecondsAt(clip.edit, clip.getPosition().getStart()), um);
+        return;
+    }
+
+    if (fps <= 0.0)
+        return;
+
+    for (auto* frame : getFrames())
+        frame->migrateFrameIndexFromBeat(clip, fps, um);
+
+    if (getFrameRate() <= 0.0)
+        setFrameRate(fps, um);
+
+    if (getFramesPerBeat() <= 0.0)
+        setFramesPerBeat(fps * getBeatLengthSecondsAt(clip.edit, clip.getPosition().getStart()), um);
+
+    for (auto* frame : getFrames())
+        frame->removeLegacyBeatProperty(um);
 
     recomputeAccumulatedState();
 }
@@ -325,35 +414,37 @@ void PsgList::moveFrom(PsgList& other, juce::UndoManager* um) {
 }
 
 void PsgList::addFrom(const PsgList& other, juce::UndoManager* um) {
-    if (this != &other)
-        for (int i = 0; i < other.state.getNumChildren(); ++i)
-            state.addChild(other.state.getChild (i).createCopy(), -1, um);
+    if (this != &other) {
+        for (int i = 0; i < other.state.getNumChildren(); ++i) {
+            auto child = other.state.getChild(i).createCopy();
+            if (child.hasType(IDs::FRAME))
+                child.removeProperty(te::IDs::b, nullptr);
+            state.addChild(std::move(child), -1, um);
+        }
+    }
 }
 
 void PsgList::setMidiChannel(te::MidiChannel newChannel) {
     midiChannel = newChannel;
 }
 
-void PsgList::setFramesPerBeat(double framesPerBeat, juce::UndoManager* um) {
-    framesPerBeat_.setValue(canonicalizeFramesPerBeat(framesPerBeat), um);
-}
-
 PsgParamFrame* PsgList::addFrameEvent(const PsgParamFrame& event, juce::UndoManager* um) {
     auto v = event.state.createCopy();
+    v.removeProperty(te::IDs::b, nullptr);
     state.addChild(v, -1, um);
     recomputeAccumulatedState();
     return framesList->getEventFor(v);
 }
 
-PsgParamFrame* PsgList::addFrameEvent(te::BeatPosition beat, const PsgParamFrameData& data, juce::UndoManager* um) {
-    auto v = PsgParamFrame::createPsgFrameValueTree(beat, data);
+PsgParamFrame* PsgList::addFrameEvent(int frameIndex, const PsgParamFrameData& data, juce::UndoManager* um) {
+    auto v = PsgParamFrame::createPsgFrameValueTree(frameIndex, data);
     state.addChild(v, -1, um);
     recomputeAccumulatedState();
     return framesList->getEventFor(v);
 }
 
-PsgParamFrame* PsgList::addFrameEvent(te::BeatPosition beat, const uZX::PsgRegsFrame& regs, juce::UndoManager* um) {
-    auto v = PsgParamFrame::createPsgFrameValueTree(beat, PsgParamFrameData {regs});
+PsgParamFrame* PsgList::addFrameEvent(int frameIndex, const uZX::PsgRegsFrame& regs, juce::UndoManager* um) {
+    auto v = PsgParamFrame::createPsgFrameValueTree(frameIndex, PsgParamFrameData {regs});
     state.addChild(v, -1, um);
     recomputeAccumulatedState();
     return framesList->getEventFor(v);
@@ -379,9 +470,8 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
     std::optional<uint8_t> lastEnvelopeShape;
     bool lastRetriggerState = false;  // Track if last frame had retrigger=1
 
+    setFrameRate(data.getFrameRate(), um);
     setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, 0_tp), um);
-    // Adopt the imported file's frame rate as the project fps so the transport
-    // readout and the grid/ruler reflect the material being edited.
     Helpers::setProjectFps(edit, data.getFrameRate());
 
     for (size_t i = 0; i < data.frames.size(); i++) {
@@ -389,8 +479,6 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
         if (frame.isEmpty()) {
             continue;
         }
-        auto timeSec = data.frameNumToSeconds(i);
-        auto beat = edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
         regsState.clear();
         regsState.update(data.frames[i]);
 
@@ -427,54 +515,11 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
 
         lastRetriggerState = currentRetriggerState;
 
-        auto v = PsgParamFrame::createPsgFrameValueTree(beat, params);
+        auto v = PsgParamFrame::createPsgFrameValueTree(static_cast<int>(i), params);
         state.addChild(v, -1, um);
     }
 
     recomputeAccumulatedState();
-}
-
-static double getFramesPerBeatFromGeometry(const juce::Array<PsgParamFrame*>& frames) {
-    // Legacy backfill only: infer from the smallest positive stored beat gap and persist
-    // the result as framesPerBeat. New imports store dense frames-per-beat directly.
-    te::BeatDuration minGap;
-    bool found = false;
-    for (int i = 1; i < frames.size(); ++i) {
-        const auto gap = frames[i]->getBeatPosition() - frames[i - 1]->getBeatPosition();
-        if (gap > te::BeatDuration() && (! found || gap < minGap)) {
-            minGap = gap;
-            found = true;
-        }
-    }
-
-    if (! found || minGap.inBeats() <= 0.0)
-        return 0.0;  // fewer than two distinct frames -> unknown
-
-    return canonicalizeFramesPerBeat(std::max(1.0, (double) roundToInt(1.0 / minGap.inBeats())));
-}
-
-double PsgList::getFramesPerBeat() const {
-    return canonicalizeFramesPerBeat(framesPerBeat_.get());
-}
-
-double PsgList::getEffectiveFps(const PsgClip& clip) const {
-    const auto framesPerBeat = getFramesPerBeat();
-    const auto beatLength = getBeatLengthSecondsAt(clip.edit, clip.getPosition().getStart());
-    if (framesPerBeat <= 0.0 || beatLength <= 0.0)
-        return 0.0;  // can't measure (fewer than two frames) -> no meaningful rate
-
-    return framesPerBeat / beatLength;
-}
-
-bool PsgList::hasFpsMismatch(const PsgClip& clip, double editFps) const {
-    const auto effective = getEffectiveFps(clip);
-    if (effective <= 0.0 || editFps <= 0.0)
-        return false;
-
-    // Small relative tolerance so float noise never trips the warning while a genuine
-    // rate difference still does. 0.1% is far below the integer-rounded chip's precision.
-    const auto tolerance = 1.0e-3 * jmax(effective, editFps);
-    return std::abs(effective - editFps) > tolerance;
 }
 
 void PsgList::loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager* um) {
@@ -494,34 +539,21 @@ const juce::Array<PsgParamFrame*>& PsgList::getFrames() const {
 }
 
 //==============================================================================
-te::BeatPosition PsgList::getFirstBeatNumber() const {
-    auto t = te::BeatPosition::fromBeats(te::Edit::maximumLength);
-    if (auto first = getFrames().getFirst())  t = std::min(t, first->getBeatPosition());
-    return t;
-}
-
-te::BeatPosition PsgList::getLastBeatNumber() const {
-    te::BeatPosition t;
-    if (auto last = getFrames().getLast())  t = std::max (t, last->getBeatPosition());
-    return t;
-}
-
-const PsgParamFrame* PsgList::getFrameAt(te::BeatPosition beat) const {
+const PsgParamFrame* PsgList::getFrameAtIndex(int frameIndex) const {
     const auto& frames = getFrames();
     if (frames.isEmpty())
         return nullptr;
 
-    // Binary search for exact beat position
     int low = 0;
     int high = frames.size() - 1;
 
     while (low <= high) {
         int mid = (low + high) / 2;
-        auto midBeat = frames[mid]->getBeatPosition();
+        auto midFrameIndex = frames[mid]->getFrameIndex();
 
-        if (midBeat == beat)
+        if (midFrameIndex == frameIndex)
             return frames[mid];
-        else if (midBeat < beat)
+        else if (midFrameIndex < frameIndex)
             low = mid + 1;
         else
             high = mid - 1;
@@ -533,7 +565,7 @@ const PsgParamFrame* PsgList::getFrameAt(te::BeatPosition beat) const {
 double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::MidiList::TimeBase timeBase) const {
     switch (timeBase) {
         case te::MidiList::TimeBase::beatsRaw:
-            return frame.getBeatPosition().inBeats();
+            return frame.getFrameBeatPosition(clip).inBeats();
         case te::MidiList::TimeBase::beats:
             return std::max(0_bp, frame.getEditBeats(clip) - toDuration(clip.getStartBeat())).inBeats();
         case te::MidiList::TimeBase::seconds:

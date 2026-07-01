@@ -65,9 +65,9 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         });
         m.addSeparator();
         m.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(edit));
-        if (auto mgr = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
+        if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
             m.addSeparator();
-            m.addCommandItem(mgr, Commands::MainAppCommands::transportPreservePsgTiming);
+            m.addCommandItem(manager, Commands::MainAppCommands::transportPreservePsgTiming);
         }
         m.showMenuAsync({});
     } else {

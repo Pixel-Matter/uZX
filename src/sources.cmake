@@ -7,7 +7,7 @@ set(SHARED_SOURCES
     models/PsgMidi.cpp
     models/PsgList.cpp
     models/PsgClip.cpp
-    models/PsgTimingPreserver.cpp
+    models/PsgFrameRetimer.cpp
     models/Selectable.cpp
     models/EditUtilities.cpp
 
@@ -100,7 +100,6 @@ set(TEST_SOURCES
     models/PsgMidi.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
-    models/ProjectFps.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/TuningTable.test.cpp
     models/tuning/EqualTemperamentTuning.test.cpp

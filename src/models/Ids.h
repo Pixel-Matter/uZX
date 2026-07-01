@@ -34,7 +34,10 @@ namespace IDs {
     DECLARE_ID(PSGTRACK)
     DECLARE_ID(PSGCLIP)
     DECLARE_ID(PSG)
+    DECLARE_ID(frameRate)  // PSG list machine frame rate (Hz), anchors frame indices
+    DECLARE_ID(framesPerBeat) // PSG frames per beat at the current project tempo
     DECLARE_ID(FRAME)
+    DECLARE_ID(i)          // integer machine-frame index — the canonical frame timestamp
     DECLARE_ID(va)
     DECLARE_ID(vb)
     DECLARE_ID(vc)
@@ -58,7 +61,6 @@ namespace IDs {
     DECLARE_ID(e)
     DECLARE_ID(s)
     DECLARE_ID(paintMode)
-    DECLARE_ID(framesPerBeat)
     DECLARE_ID(projectFps)
 
     #undef DECLARE_ID

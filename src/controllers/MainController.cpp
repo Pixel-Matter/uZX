@@ -453,9 +453,9 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
 
         case MainAppCommands::transportPreservePsgTiming:
             if (!isPlayer) {
-                if (auto* evs = MoToolApp::getArrangerController().getEditViewState()) {
+                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
                     result.setActive(true);
-                    result.setTicked(evs->shouldPreservePsgTimingOnTempoChange());
+                    result.setTicked(editViewState->shouldPreservePsgTimingOnTempoChange());
                     break;
                 }
             }
@@ -596,8 +596,9 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::transportPreservePsgTiming:
             if (!isPlayer) {
-                if (auto* evs = MoToolApp::getArrangerController().getEditViewState()) {
-                    evs->setPreservePsgTimingOnTempoChange(!evs->shouldPreservePsgTimingOnTempoChange());
+                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
+                    editViewState->setPreservePsgTimingOnTempoChange(
+                        ! editViewState->shouldPreservePsgTimingOnTempoChange());
                     commandManager_.commandStatusChanged();
                 }
             }

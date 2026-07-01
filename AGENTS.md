@@ -8,8 +8,8 @@ uZX is a C++23 JUCE/Tracktion Engine application. App and library code lives und
 
 - `git submodule update --init --depth=1`: fetch JUCE, Tracktion, and ayumi dependencies after cloning.
 - `cmake --preset default`: configure a Debug build in `build/`.
-- `cmake --build --preset default`: build the default targets.
-- `cmake --build build --target uZX`: build Studio; use `uZXTuning`, `uZXPlayer`, or `uZXTests` for other targets.
+- `cmake --build --preset default --parallel`: build the default targets.
+- `cmake --build build --target uZX --parallel`: build Studio; use `uZXTuning`, `uZXPlayer`, or `uZXTests` for other targets. Always pass `--parallel` to CMake build commands.
 - `ctest --preset default --output-on-failure`: run CTest after `uZXTests` has been built.
 - `build/src/uZXTests_artefacts/Debug/uZXTests AYChip`: run tests matching a filter.
 - `./format-code.sh -n` then `./format-code.sh`: dry-run and apply clang-format.

@@ -10,6 +10,7 @@ set(SHARED_SOURCES
     models/PsgFrameRetimer.cpp
     models/Selectable.cpp
     models/EditUtilities.cpp
+    models/SnapLadder.cpp
 
     models/tuning/Ratios.cpp
     models/tuning/Scales.cpp
@@ -101,6 +102,7 @@ set(TEST_SOURCES
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
     models/ProjectFps.test.cpp
+    models/SnapLadder.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/TuningTable.test.cpp
     models/tuning/EqualTemperamentTuning.test.cpp

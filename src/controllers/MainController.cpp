@@ -12,6 +12,7 @@
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
+#include "../models/Ids.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../plugins/uZX/instrument/ChipInstrumentPlugin.h"
 #include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
@@ -941,7 +942,7 @@ void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) 
     rescaleAllMidiClipsToFit(*edit_);
 
     edit_->playInStopEnabled = true;
-    setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
+    migrateTimecodeDisplaySettings(*edit_);
 
     createTracksAndAssignInputs();
     EditFileOps::saveEdit(*edit_, true, true, false);

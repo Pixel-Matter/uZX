@@ -1,7 +1,6 @@
 #include "Transport.h"
 
 #include "../../controllers/MainCommands.h"
-#include "../../models/Timecode.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
 #include "LookAndFeel.h"
@@ -48,7 +47,6 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     transport_.state.addListener(this);
     edit_.state.addListener(this);
     edit_.getAutomationRecordManager().addListener(this);
-    timecodeFormat.referTo(edit_.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
 
     addAndMakeVisible(rewindButton_);
     addAndMakeVisible(playPauseButton_);
@@ -244,8 +242,7 @@ void TransportBar::valueTreePropertyChanged(ValueTree& tree, const Identifier& p
         updateTimeLabels(transport_.getPosition());
     } else if (tree == transport_.state && prop == te::IDs::position) {
         updateTimeLabels(transport_.getPosition());
-    } else if (tree == edit_.state && prop == te::IDs::timecodeFormat) {
-        timecodeFormat.forceUpdateOfCachedValue();
+    } else if (tree == edit_.state && prop == IDs::timecodeDisplayMode) {
         updateTimeLabels(transport_.getPosition());
     } else if (tree == edit_.state && prop == IDs::projectFps) {
         updateTimeLabels(transport_.getPosition());
@@ -287,8 +284,7 @@ void TransportBar::updateAutomationButtons() {
 }
 
 String TransportBar::getTimecode(te::TimePosition pos) const {
-    return timecodeFormat->toFullTimecode(pos, 100, true);
-    // return timecodeFormat->getString(edit_.tempoSequence, pos, true);
+    return te::TimecodeDisplayFormat::toFullTimecode(pos, 100, true);
 }
 
 void TransportBar::updateTimeLabels(te::TimePosition pos) {

@@ -62,6 +62,9 @@ public:
     void zoomHorizontally(double factor);
     void zoomAroundX(double factor, int anchorX);
 
+    static constexpr auto MinTimePerPixel = te::TimeDuration::fromSeconds(0.00005);
+    static constexpr auto MaxTimePerPixel = te::TimeDuration::fromSeconds(2.0);
+
     inline int getViewWidthPx() const noexcept { return viewWidthPx.load(); }
     void setViewWidthPx(int w) noexcept;
 

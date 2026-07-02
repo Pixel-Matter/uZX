@@ -3,7 +3,6 @@
 #include <JuceHeader.h>
 
 #include "../../controllers/EditState.h"
-#include "../../models/Timecode.h"
 #include "TimelineGrid.h"
 
 
@@ -35,7 +34,6 @@ private:
 
     te::Edit& edit;
     EditViewState& editViewState;
-    juce::CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
     TimelineGrid& grid;
 
     bool isDragging = false;

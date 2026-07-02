@@ -216,7 +216,7 @@ PsgClip* PsgClipComponent::getPsgClip() {
 void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
     // The header's effective-fps warning depends on frames-per-beat, current beat length
     // and the edit's timecode fps, so refresh when tempo or timecode changes.
-    if (property == te::IDs::timecodeFormat
+    if (property == IDs::timecodeDisplayMode
         || property == te::IDs::bpm
         || property == te::IDs::startBeat)
         repaint();

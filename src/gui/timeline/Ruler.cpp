@@ -15,8 +15,6 @@ RulerComponent::RulerComponent(te::Edit& ed, EditViewState& evs, TimelineGrid& g
     editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
     grid.addListener(this);
-    // cached value is ValueTree::Listener
-    timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr, TimecodeDisplayFormatExt {TimecodeTypeExt::barsBeatsFps50});
 }
 
 RulerComponent::~RulerComponent() {
@@ -91,8 +89,8 @@ void RulerComponent::mouseDrag(const MouseEvent& e) {
     auto deltaY = e.getDistanceFromDragStartY();
 
     auto newTimePerPixel = dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01);
-    if (newTimePerPixel < 0.0005s) newTimePerPixel = te::TimeDuration::fromSeconds(0.0005);
-    if (newTimePerPixel > 2s) newTimePerPixel = te::TimeDuration::fromSeconds(2.0);
+    if (newTimePerPixel < ZoomViewState::MinTimePerPixel) newTimePerPixel = ZoomViewState::MinTimePerPixel;
+    if (newTimePerPixel > ZoomViewState::MaxTimePerPixel) newTimePerPixel = ZoomViewState::MaxTimePerPixel;
 
     auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) e.getMouseDownX();
     auto newStart = anchorTime - newTimePerPixel * (double)(e.getMouseDownX() + deltaX);

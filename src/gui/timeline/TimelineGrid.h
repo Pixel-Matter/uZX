@@ -6,8 +6,6 @@
 
 namespace MoTool {
 
-struct TimecodeDisplayFormatExt;
-
 //==============================================================================
 class TimelineGrid : private ZoomViewState::Listener,
                      private ValueTree::Listener,
@@ -31,12 +29,6 @@ public:
 
 private:
     std::vector<MoLookAndFeel::TimelineGridTick> makeTicks();
-    std::vector<MoLookAndFeel::TimelineGridTick>
-        makeTicksForSnaps(const std::vector<te::TimecodeSnapType>&);
-    std::vector<MoLookAndFeel::TimelineGridTick>
-        makeExtendedFrameTicks(const TimecodeDisplayFormatExt&);
-    std::vector<MoLookAndFeel::TimelineGridTick>
-        makeBarsBeatsFrameTicks(const TimecodeDisplayFormatExt&);
     void invalidateAndNotify();
 
     void zoomChanged() override;

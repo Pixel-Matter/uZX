@@ -109,7 +109,8 @@ void ZoomViewState::zoomHorizontally(double factor) {
     auto span = getViewSpan();
     auto newRange = span * scaleFactor;
 
-    if (auto newTimePerPixel = newRange / getViewWidthPx(); newTimePerPixel > 0.0005s && newTimePerPixel < 2s) {
+    if (auto newTimePerPixel = newRange / getViewWidthPx();
+        newTimePerPixel > MinTimePerPixel && newTimePerPixel < MaxTimePerPixel) {
         setRange({
             jmax(te::TimePosition(), pos - newRange / 2.0),
             newRange
@@ -125,7 +126,7 @@ void ZoomViewState::zoomAroundX(double factor, int anchorX) {
     auto anchorTime = xToTime(anchorX);
     auto newTimePerPixel = getTimePerPixel() * scaleFactor;
 
-    if (newTimePerPixel > 0.0005s && newTimePerPixel < 2s) {
+    if (newTimePerPixel > MinTimePerPixel && newTimePerPixel < MaxTimePerPixel) {
         auto newStart = anchorTime - newTimePerPixel * (double) anchorX;
         newStart = jmax(te::TimePosition(), newStart);
         auto newSpan = newTimePerPixel * getViewWidthPx();

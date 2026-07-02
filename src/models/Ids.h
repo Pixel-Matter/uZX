@@ -62,6 +62,8 @@ namespace IDs {
     DECLARE_ID(s)
     DECLARE_ID(paintMode)
     DECLARE_ID(projectFps)
+    DECLARE_ID(timecodeDisplayMode) // TimecodeDisplayMode of the timeline ruler/grid
+    DECLARE_ID(gridSubdivision) // space-separated frame counts per subdivision group within a beat
 
     #undef DECLARE_ID
 }  // namespace IDs

@@ -3,7 +3,6 @@
 #include <JuceHeader.h>
 
 #include "../../controllers/EditState.h"
-#include "../../models/Timecode.h"
 #include "../../utils/StringLiterals.h"
 
 #include "ParamBindings.h"
@@ -58,7 +57,6 @@ private:
     te::Edit& edit_;
 
     te::TransportControl& transport_;
-    CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
 
     Slider masterVolumeSlider_ { Slider::SliderStyle::RotaryVerticalDrag, Slider::TextEntryBoxPosition::NoTextBox };
     SliderParamEndpointBinding masterAttachment_ {masterVolumeSlider_, edit_.getMasterSliderPosParameter()};

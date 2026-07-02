@@ -20,13 +20,16 @@
 - [x] **App icon**
 - [x] Timeline is seconds-based until ruler supports custom beats+frames divisions
 - [x] **Embed fonts** as binary resource data
+- [x] Correct **subdivisions** in the grid
+- [ ] UI for subdivs
+- [ ] Better subdiv grid lines colors
 - [ ] **Crash audit** — test common scenarios and fix any crashes
 
 #### P1 — Important
 
 - [x] **Add left padding for player**
 - [ ] Save/Save As.. menu item for Player
-- [ ] Beat+frames-based timeline
+- [x] Beat+frames-based timeline
 - [x] Different rendering in seconds-only and beat-based timeline
 - [x] **PSG** file icons in Finder
 - [x] **Keyboard shortcuts** — Space, Cmd+O, Cmd+Q, Home

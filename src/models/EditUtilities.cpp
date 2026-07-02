@@ -3,6 +3,8 @@
 
 #include "Ids.h"
 
+#include <numeric>
+
 namespace te = tracktion;
 
 namespace MoTool::Helpers {
@@ -56,18 +58,74 @@ void setProjectFps(te::Edit& edit, double fps) {
     edit.state.setProperty(IDs::projectFps, fps, &edit.getUndoManager());
 }
 
-std::vector<int> getGridSubdivisionPattern(te::Edit& edit) {
-    StringArray tokens;
-    tokens.addTokens(edit.state[IDs::gridSubdivision].toString(), false);
+std::vector<int> getDefaultGridSubdivisionPattern(int framesPerBeat) {
+    if (framesPerBeat < 6)
+        return {};
+
+    if (framesPerBeat % 4 == 0)
+        return std::vector<int>(4, framesPerBeat / 4);
+
+    if (framesPerBeat % 2 == 0)
+        return std::vector<int>(2, framesPerBeat / 2);
+
+    return {};
+}
+
+std::vector<int> parseGridSubdivisionPattern(const juce::String& text, int framesPerBeat) {
+    if (framesPerBeat < 6)
+        return {};
 
     std::vector<int> pattern;
-    for (const auto& token : tokens)
+    String token;
+    for (const auto c : text) {
+        if (c >= '0' && c <= '9') {
+            token += c;
+        } else if (token.isNotEmpty()) {
+            if (auto frames = token.getIntValue(); frames > 0)
+                pattern.push_back(frames);
+            token.clear();
+        }
+    }
+    if (token.isNotEmpty()) {
         if (auto frames = token.getIntValue(); frames > 0)
             pattern.push_back(frames);
+    }
+
+    if (pattern.empty())
+        return {};
+
+    auto sum = std::accumulate(pattern.begin(), pattern.end(), 0);
+    if (sum < framesPerBeat) {
+        pattern.back() += framesPerBeat - sum;
+    } else if (sum > framesPerBeat) {
+        auto excess = sum - framesPerBeat;
+        while (excess > 0 && ! pattern.empty()) {
+            auto& last = pattern.back();
+            const auto reduction = std::min(last, excess);
+            last -= reduction;
+            excess -= reduction;
+            if (last == 0)
+                pattern.pop_back();
+        }
+    }
 
     if (pattern.size() < 2)
         pattern.clear();
     return pattern;
+}
+
+std::vector<int> getGridSubdivisionPattern(te::Edit& edit, int framesPerBeat) {
+    if (! edit.state.hasProperty(IDs::gridSubdivision))
+        return getDefaultGridSubdivisionPattern(framesPerBeat);
+
+    return parseGridSubdivisionPattern(edit.state[IDs::gridSubdivision].toString(), framesPerBeat);
+}
+
+String formatGridSubdivisionPattern(const std::vector<int>& pattern) {
+    StringArray tokens;
+    for (auto frames : pattern)
+        tokens.add(String(frames));
+    return tokens.joinIntoString(" ");
 }
 
 void setGridSubdivisionPattern(te::Edit& edit, const std::vector<int>& pattern) {
@@ -76,10 +134,7 @@ void setGridSubdivisionPattern(te::Edit& edit, const std::vector<int>& pattern) 
         return;
     }
 
-    StringArray tokens;
-    for (auto frames : pattern)
-        tokens.add(String(frames));
-    edit.state.setProperty(IDs::gridSubdivision, tokens.joinIntoString(" "), &edit.getUndoManager());
+    edit.state.setProperty(IDs::gridSubdivision, formatGridSubdivisionPattern(pattern), &edit.getUndoManager());
 }
 
 juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit) {

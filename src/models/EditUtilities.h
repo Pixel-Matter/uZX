@@ -29,9 +29,19 @@ double getProjectFps(te::Edit& edit);
 
 void setProjectFps(te::Edit& edit, double fps);
 
+/** Default frame subdivision pattern for a frames-per-beat value:
+    quarters when divisible by 4, halves when divisible by 2, otherwise empty. */
+std::vector<int> getDefaultGridSubdivisionPattern(int framesPerBeat);
+
+/** Parses positive integers from any non-digit-delimited text and adjusts the
+    tail of the pattern so the sum matches framesPerBeat. */
+std::vector<int> parseGridSubdivisionPattern(const juce::String& text, int framesPerBeat);
+
+juce::String formatGridSubdivisionPattern(const std::vector<int>& pattern);
+
 /** Frame counts per subdivision group within one beat (e.g. {6, 7, 6, 7} for a
-    swing grid at 26 frames per beat), or empty when no subdivision is configured. */
-std::vector<int> getGridSubdivisionPattern(te::Edit& edit);
+    swing grid at 26 frames per beat), or the default pattern when unset. */
+std::vector<int> getGridSubdivisionPattern(te::Edit& edit, int framesPerBeat);
 
 /** Stores the subdivision pattern as a space-separated string; fewer than two
     groups clears it. */

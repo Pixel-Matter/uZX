@@ -55,7 +55,7 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
     const auto fps = Helpers::getProjectFps(edit);
     const auto framesPerBeat = jmax(1, roundToInt(editViewState.getCurrentFramesPerBeat()));
 
-    const SnapLadder ladder(mode, fps, framesPerBeat, Helpers::getGridSubdivisionPattern(edit));
+    const SnapLadder ladder(mode, fps, framesPerBeat, Helpers::getGridSubdivisionPattern(edit, framesPerBeat));
 
     // Three display levels, finest first: short unlabeled ticks, labeled medium
     // ticks, and the next structural milestone (beat, bar, bar group, ...).

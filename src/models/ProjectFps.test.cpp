@@ -19,6 +19,8 @@ public:
         testMigrateLegacyTimecodeDisplaySettings();
         testModeAndFpsRoundTrip();
         testGridSubdivisionPattern();
+        testDefaultGridSubdivisionPattern();
+        testParseGridSubdivisionPattern();
     }
 
 private:
@@ -139,16 +141,44 @@ private:
         auto edit = te::Edit::createSingleTrackEdit(engine);
 
         Helpers::setGridSubdivisionPattern(*edit, {6, 7, 6, 7});
-        auto result = Helpers::getGridSubdivisionPattern(*edit);
+        auto result = Helpers::getGridSubdivisionPattern(*edit, 26);
         expect(result == std::vector<int>({6, 7, 6, 7}),
                "{6,7,6,7} pattern should round-trip");
 
         // Fewer than 2 entries should be treated as empty / remove the property.
         Helpers::setGridSubdivisionPattern(*edit, {5});
-        auto cleared = Helpers::getGridSubdivisionPattern(*edit);
-        expect(cleared.empty(), "single-entry pattern should be stored as empty");
+        auto cleared = Helpers::getGridSubdivisionPattern(*edit, 7);
+        expect(cleared.empty(), "single-entry pattern should fall back to empty default for odd FPB");
         expect(! edit->state.hasProperty(IDs::gridSubdivision),
                "single-entry pattern should remove the property");
+    }
+
+    void testDefaultGridSubdivisionPattern() {
+        beginTest("default grid subdivision pattern follows frames per beat");
+
+        expect(Helpers::getDefaultGridSubdivisionPattern(5).empty(), "FPB below 6 has no default divisions");
+        expect(Helpers::getDefaultGridSubdivisionPattern(6) == std::vector<int>({3, 3}), "6 FPB halves");
+        expect(Helpers::getDefaultGridSubdivisionPattern(7).empty(), "7 FPB has no equal default");
+        expect(Helpers::getDefaultGridSubdivisionPattern(8) == std::vector<int>({2, 2, 2, 2}), "8 FPB quarters");
+        expect(Helpers::getDefaultGridSubdivisionPattern(10) == std::vector<int>({5, 5}), "10 FPB halves");
+        expect(Helpers::getDefaultGridSubdivisionPattern(12) == std::vector<int>({3, 3, 3, 3}), "12 FPB quarters");
+        expect(Helpers::getDefaultGridSubdivisionPattern(14) == std::vector<int>({7, 7}), "14 FPB halves");
+        expect(Helpers::getDefaultGridSubdivisionPattern(16) == std::vector<int>({4, 4, 4, 4}), "16 FPB quarters");
+    }
+
+    void testParseGridSubdivisionPattern() {
+        beginTest("parseGridSubdivisionPattern accepts punctuation and normalizes the tail");
+
+        expect(Helpers::parseGridSubdivisionPattern("6 7,6--7", 26) == std::vector<int>({6, 7, 6, 7}),
+               "punctuation should delimit positive numbers");
+        expect(Helpers::parseGridSubdivisionPattern("6 7 6 5", 26) == std::vector<int>({6, 7, 6, 7}),
+               "short sums should add the remainder to the last division");
+        expect(Helpers::parseGridSubdivisionPattern("6 7 6 9", 26) == std::vector<int>({6, 7, 6, 7}),
+               "long sums should reduce from the last division");
+        expect(Helpers::parseGridSubdivisionPattern("20 20", 26) == std::vector<int>({20, 6}),
+               "overflow should reduce trailing divisions");
+        expect(Helpers::parseGridSubdivisionPattern("30", 26).empty(),
+               "one normalized division is not a subdivision pattern");
     }
 };
 

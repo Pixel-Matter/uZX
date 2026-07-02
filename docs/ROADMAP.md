@@ -21,8 +21,9 @@
 - [x] Timeline is seconds-based until ruler supports custom beats+frames divisions
 - [x] **Embed fonts** as binary resource data
 - [x] Correct **subdivisions** in the grid
-- [ ] UI for subdivs
+- [x] UI for subdivs
 - [ ] Better subdiv grid lines colors
+- [ ] Always paint envelope notes
 - [ ] **Crash audit** — test common scenarios and fix any crashes
 
 #### P1 — Important
@@ -38,7 +39,7 @@
 - [x] **macOS universal build** (x86_64 + arm64)
 - [ ] **Cleanup debug artifacts**
 - [ ] **Zooming** — zoom around playhead position while playing
-- [ ] **AY reset** at the start of playback
+- [ ] **AY regs** at the start of playback, from any frame, send all effective AY regs, not only diffs
 - [x] **Shift-wheel** horizontal scrolling
 - [x] **Mouse gestures** work over the playhead (transparent hit zone)
 - [ ] **Middle mouse drag-pan** — pan timeline by dragging with middle mouse button (DAW convention)

@@ -11,6 +11,7 @@ Granular tasks and implementation notes for active development.
 - [x] FPS editing of timecode or of a separate edit FPS setting
 - [ ] Ruler timecode is not saved in edit vew state
 - [ ] Grid level 0 subdivisions are strange
+- [ ] Playhead snaps to grid
 - [ ] Pos readout/editing in different timecode formats
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)

@@ -88,9 +88,19 @@ void PlayheadComponent::checkRepaint() {
     // DBG("PlayheadComponent::checkRepaint, pos: " << edit.getTransport().getPosition().inSeconds()
         // << " newX: " << newX << " oldX: " << xPosition);
     if (newX != xPosition) {
-        // DBG("PlayheadComponent::checkRepaint, repainting strip [" << jmin(newX, xPosition) - 1
-            // << ".." << jmax(newX, xPosition) + 2 << "]");
-        repaint(jmin(newX, xPosition) - 1, 0, jmax(newX, xPosition) - jmin(newX, xPosition) + 3, getHeight());
+        if (edit.getTransport().isUserDragging()) {
+            // During a drag, mouse events can land between the peer's deferred-repaint
+            // flush and the actual paint, so paint() runs with a dirty region that
+            // predates the latest xPosition and narrow strips would clip the line out
+            // entirely at high drag speeds. Invalidating everything keeps the line
+            // inside every frame's clip region.
+            repaint();
+        } else {
+            // Playback moves the line ~1px per update, so two narrow strips
+            // (erase old, draw new) are enough and keep repaints cheap.
+            repaint(xPosition - 1, 0, 4, getHeight());
+            repaint(newX - 1, 0, 4, getHeight());
+        }
         xPosition = newX;
     }
 }

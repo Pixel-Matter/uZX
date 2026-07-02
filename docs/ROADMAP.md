@@ -9,9 +9,9 @@
 #### P0 — Blockers
 
 - [ ] Some bug with pure env bass viz on B channel in SkyTrainFunk close to the start
-- [ ] Playhead disappears while dragging fast enough
-- [ ] **Fix** sometimes stopping after 2 seconds of playback
-- [ ] **Tone/envelope visual mismatch** — detuning between tone and envelope viz when periods are in ratio
+- [x] Playhead disappears while dragging fast enough
+- [x] **Fix** sometimes stopping after 2 seconds of playback
+- [x] **Tone/envelope visual mismatch** — detuning between tone and envelope viz when periods are in ratio
 - [x] **Drag-and-drop** — accept `.psg` and `.uzx` files dropped onto the window
 - [x] **Open from Finder** — handle `anotherInstanceStarted()` / command-line args
 - [x] **File association** — `.psg` and `.uzx` macOS file types
@@ -27,7 +27,7 @@
 - [x] **Add left padding for player**
 - [ ] Save/Save As.. menu item for Player
 - [ ] Beat+frames-based timeline
-- [ ] Different rendering in seconds-only and beat-based timeline
+- [x] Different rendering in seconds-only and beat-based timeline
 - [x] **PSG** file icons in Finder
 - [x] **Keyboard shortcuts** — Space, Cmd+O, Cmd+Q, Home
 - [x] **Copyright year** — 2025-2026

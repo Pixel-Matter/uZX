@@ -449,7 +449,7 @@ inline void visitFrameNotes(const PsgParamFrameData& data, Fn&& fn) {
         if (toneIsOn && isAudible && period >= hearableMin) {
             fn(PsgFrameNote { periodType.valueToNormalized(period), rawVolume, ch, hasEnvMod, hasNoiseMod });
         } else if (hasEnvMod && envHearable) {
-            // Envelope-driven channel without a hearable tone: shown at the envelope pitch
+            // Envelope-driven channel without a hearable tone: shown at the envelope pitch, at tone channel
             fn(PsgFrameNote { envPitch, rawVolume, ch, true, hasNoiseMod });
         }
     }

@@ -383,7 +383,7 @@ void PsgClipComponent::paintNotes(Graphics& g) {
                 }
 
                 g.setColour(channelColors[note.channelIndex].withAlpha(note.alpha));
-                g.fillRect(x, subY, vis.pixelsPerFrame, subH);
+                g.fillRect(x, subY, vis.pixelsPerFrame, jmax(1.0f, subH));
 
                 if (drawMods && note.hasEnvMod)
                     drawEnvelopeStripes(g, x, subY, vis.pixelsPerFrame, subH, envShape);

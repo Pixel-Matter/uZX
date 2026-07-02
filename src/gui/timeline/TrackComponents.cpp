@@ -303,6 +303,8 @@ void TrackBodyComponent::paintOverChildren(Graphics& g) {
 void TrackBodyComponent::mouseDown(const MouseEvent& e) {
     editViewState.selectionManager.selectOnly(track.get());
     auto pos = editViewState.zoom.xToTime(e.x);
+    if (editViewState.shouldSnapPlayheadToGrid())
+        pos = grid.snapTimeToVisibleGrid(pos);
     track->edit.getTransport().setPosition(pos);
 }
 
@@ -388,13 +390,13 @@ void TrackBodyComponent::buildClips() {
             ClipComponent* cc = nullptr;
 
             if (dynamic_cast<te::WaveAudioClip*>(c))
-                cc = new AudioClipComponent(editViewState, c);
+                cc = new AudioClipComponent(editViewState, grid, c);
             else if (dynamic_cast<PsgClip*>(c))  // must go before MidiClip
-                cc = new PsgClipComponent(editViewState, c);
+                cc = new PsgClipComponent(editViewState, grid, c);
             else if (dynamic_cast<te::MidiClip*>(c))
-                cc = new MidiClipComponent(editViewState, c);
+                cc = new MidiClipComponent(editViewState, grid, c);
             else
-                cc = new ClipComponent(editViewState, c);
+                cc = new ClipComponent(editViewState, grid, c);
 
             clips.add(cc);
             addAndMakeVisible(cc);
@@ -545,6 +547,8 @@ void TracksContainerComponent::mouseDown(const MouseEvent& e) {
     auto x = e.x - gridRect.getX();
     if (x >= 0 && x < gridRect.getWidth()) {
         auto pos = editViewState.zoom.xToTime(x);
+        if (editViewState.shouldSnapPlayheadToGrid())
+            pos = grid.snapTimeToVisibleGrid(pos);
         edit.getTransport().setPosition(pos);
     }
 }

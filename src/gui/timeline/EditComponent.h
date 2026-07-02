@@ -49,7 +49,7 @@ private:
         EditViewState& editViewState;
     };
 
-    PlayheadComponent playhead {edit, editViewState};
+    PlayheadComponent playhead {edit, editViewState, grid};
     RulerComponent ruler {edit, editViewState, grid};
     TracksContainerComponent tracksContainer {edit, editViewState, grid};
     ZoomableViewport trackViewport {editViewState};

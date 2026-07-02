@@ -115,6 +115,8 @@ set(TEST_SOURCES
     viewmodels/tuning/TuningViewModel.test.cpp
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
 
+    gui/timeline/TimelineGrid.test.cpp
+
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp

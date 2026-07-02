@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "PlayheadComponent.h"
+#include "TimelineGrid.h"
 
 #include "../common/LookAndFeel.h"
 
@@ -10,9 +11,10 @@ namespace MoTool {
 
 
 //==============================================================================
-PlayheadComponent::PlayheadComponent(te::Edit& e, EditViewState& evs)
+PlayheadComponent::PlayheadComponent(te::Edit& e, EditViewState& evs, TimelineGrid& g)
     : edit (e)
     , editViewState (evs)
+    , grid (g)
 {
     // edit.getTransport().state.addListener(this);
     editViewState.zoom.addListener(this);
@@ -67,6 +69,8 @@ void PlayheadComponent::mouseDrag(const MouseEvent& e) {
     auto r = getLocalBounds();
     auto x = jmax(jmin(e.x, r.getRight() - 1), r.getX());
     auto t = jmax(0_tp, editViewState.zoom.xToTime(x));
+    if (editViewState.shouldSnapPlayheadToGrid())
+        t = grid.snapTimeToVisibleGrid(t);
     // DBG("PlayheadComponent::mouseDrag, mouseX: " << e.x << " clampedX: " << x << " time: " << t.inSeconds());
     edit.getTransport().setPosition(t);
     // DBG("PlayheadComponent::mouseDrag, transportPos after setPosition: " << edit.getTransport().getPosition().inSeconds());

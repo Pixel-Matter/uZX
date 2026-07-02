@@ -60,6 +60,7 @@ public:
         viewZoomToSelection,
         viewZoomIn,
         viewZoomOut,
+        viewSnapPlayheadToGrid,
 
         // Settings Menu
         settingsAudioMidi    = 600,
@@ -91,6 +92,7 @@ public:
             // addAutomationTrack,
             trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
+            viewSnapPlayheadToGrid,
             settingsAudioMidi, settingsPlugins, settingsTuningTables,
             helpAbout
         };
@@ -157,6 +159,8 @@ public:
             menu.addCommandItem(manager, MainAppCommands::viewZoomToSelection);
             menu.addCommandItem(manager, MainAppCommands::viewZoomIn);
             menu.addCommandItem(manager, MainAppCommands::viewZoomOut);
+            menu.addSeparator();
+            menu.addCommandItem(manager, MainAppCommands::viewSnapPlayheadToGrid);
         } else if (menuName == "Settings") {
             menu.addCommandItem(manager, MainAppCommands::settingsAudioMidi);
             menu.addCommandItem(manager, MainAppCommands::settingsPlugins);
@@ -350,6 +354,12 @@ public:
             case viewZoomOut:
                 result.setInfo("Zoom out", "Zoom out", "View", 0);
                 result.addDefaultKeypress('-', 0);
+                break;
+
+            case viewSnapPlayheadToGrid:
+                result.setInfo("Snap Playhead to Grid",
+                               "Snap playhead dragging and ruler clicks to the nearest visible grid line",
+                               "View", 0);
                 break;
 
             // Settings commands

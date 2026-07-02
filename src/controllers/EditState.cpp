@@ -219,6 +219,7 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     showMidiDevices.referTo(state, IDs::showMidiDevices, um, true);
     showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
     preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, um, true);
+    snapPlayheadToGrid.referTo(state, IDs::snapPlayheadToGrid, um, true);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
 }
 
@@ -288,6 +289,14 @@ void EditViewState::setPreservePsgTimingOnTempoChange(bool shouldPreserve) {
 
 bool EditViewState::shouldPreservePsgTimingOnTempoChange() const {
     return preservePsgTimingOnTempoChange.get();
+}
+
+void EditViewState::setSnapPlayheadToGrid(bool shouldSnap) {
+    snapPlayheadToGrid = shouldSnap;
+}
+
+bool EditViewState::shouldSnapPlayheadToGrid() const {
+    return snapPlayheadToGrid.get();
 }
 
 int EditViewState::getTrackHeaderWidth() const {

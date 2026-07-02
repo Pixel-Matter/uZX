@@ -21,6 +21,7 @@ namespace IDs
     DECLARE_ID(showArranger)
     DECLARE_ID(headersWidth)
     DECLARE_ID(preservePsgTimingOnTempoChange)
+    DECLARE_ID(snapPlayheadToGrid)
 
     DECLARE_ID(ZOOMVIEWSTATE)
     DECLARE_ID(viewStartTime)
@@ -111,7 +112,7 @@ public:
 
     CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,
                       drawWaveforms, showHeaders, showMidiDevices, showWaveDevices,
-                      preservePsgTimingOnTempoChange;
+                      preservePsgTimingOnTempoChange, snapPlayheadToGrid;
     CachedValue<int> headersWidth;
 
     ValueTree state;
@@ -132,6 +133,8 @@ public:
     void setFramesPerBeat(int fpb);
     void setPreservePsgTimingOnTempoChange(bool shouldPreserve);
     bool shouldPreservePsgTimingOnTempoChange() const;
+    void setSnapPlayheadToGrid(bool shouldSnap);
+    bool shouldSnapPlayheadToGrid() const;
 
     int getTrackHeaderWidth() const;
 

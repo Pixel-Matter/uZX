@@ -1,4 +1,5 @@
 #include "ClipComponents.h"
+#include "TimelineGrid.h"
 
 
 namespace te = tracktion;
@@ -7,8 +8,8 @@ using namespace std::literals;
 namespace MoTool {
 
 //==============================================================================
-ClipComponent::ClipComponent (EditViewState& evs, te::Clip::Ptr c)
-    : editViewState (evs), clip (c)
+ClipComponent::ClipComponent (EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+    : editViewState (evs), grid (g), clip (c)
 {}
 
 void ClipComponent::paint(Graphics& g) {
@@ -32,12 +33,14 @@ void ClipComponent::mouseDown(const MouseEvent& e) {
     if (!editViewState.disableClipSelection)
         editViewState.selectionManager.selectOnly(clip.get());
     auto pos = editViewState.zoom.xToTime(e.x + getX());
+    if (editViewState.shouldSnapPlayheadToGrid())
+        pos = grid.snapTimeToVisibleGrid(pos);
     clip->edit.getTransport().setPosition(pos);
 }
 
 //==============================================================================
-AudioClipComponent::AudioClipComponent(EditViewState& evs, te::Clip::Ptr c)
-    : ClipComponent(evs, c)
+AudioClipComponent::AudioClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+    : ClipComponent(evs, g, c)
 {
     updateThumbnail();
 }
@@ -146,8 +149,8 @@ void AudioClipComponent::updateThumbnail() {
 
 
 //==============================================================================
-MidiClipComponent::MidiClipComponent (EditViewState& evs, te::Clip::Ptr c)
-    : ClipComponent(evs, c)
+MidiClipComponent::MidiClipComponent (EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+    : ClipComponent(evs, g, c)
 {}
 
 void MidiClipComponent::paint(Graphics& g) {

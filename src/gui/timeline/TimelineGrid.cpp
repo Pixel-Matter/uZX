@@ -2,7 +2,6 @@
 #include "../common/LookAndFeel.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
-#include "../../models/SnapLadder.h"
 
 using namespace std::literals;
 using namespace juce;
@@ -41,6 +40,28 @@ void TimelineGrid::invalidateAndNotify() {
     listeners.call(&TimelineGrid::Listener::gridChanged);
 }
 
+SnapLadder TimelineGrid::makeSnapLadder() const {
+    auto& edit = editViewState.edit;
+    const auto mode = Helpers::getTimecodeDisplayMode(edit);
+    const auto fps = Helpers::getProjectFps(edit);
+    const auto framesPerBeat = jmax(1, roundToInt(editViewState.getCurrentFramesPerBeat()));
+
+    return SnapLadder(mode, fps, framesPerBeat, Helpers::getGridSubdivisionPattern(edit, framesPerBeat));
+}
+
+int TimelineGrid::getVisibleSnapLevel(const SnapLadder& ladder) const {
+    auto& edit = editViewState.edit;
+    const auto& tempo = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
+    const bool triplets = edit.tempoSequence.isTripletsAtTime(editViewState.zoom.getRange().getStart());
+
+    return ladder.getBestLevel(editViewState.zoom.getTimePerPixel(), 12.0, tempo, triplets);
+}
+
+te::TimePosition TimelineGrid::snapTimeToVisibleGrid(te::TimePosition time) const {
+    const auto ladder = makeSnapLadder();
+    return ladder.roundNearest(getVisibleSnapLevel(ladder), time, editViewState.edit.tempoSequence);
+}
+
 std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
     std::vector<MoLookAndFeel::TimelineGridTick> ticks;
 
@@ -51,15 +72,11 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
     const auto timePerPixel = editViewState.zoom.getTimePerPixel();
     const bool triplets = ts.isTripletsAtTime(range.getStart());
 
-    const auto mode = Helpers::getTimecodeDisplayMode(edit);
-    const auto fps = Helpers::getProjectFps(edit);
-    const auto framesPerBeat = jmax(1, roundToInt(editViewState.getCurrentFramesPerBeat()));
-
-    const SnapLadder ladder(mode, fps, framesPerBeat, Helpers::getGridSubdivisionPattern(edit, framesPerBeat));
+    const auto ladder = makeSnapLadder();
 
     // Three display levels, finest first: short unlabeled ticks, labeled medium
     // ticks, and the next structural milestone (beat, bar, bar group, ...).
-    const int fine = ladder.getBestLevel(timePerPixel, 12.0, tempo, triplets);
+    const int fine = getVisibleSnapLevel(ladder);
     const int medium = ladder.getBestLevel(timePerPixel, 48.0, tempo, triplets);
     const int coarse = ladder.getMilestoneAfter(medium);
 

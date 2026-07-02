@@ -468,6 +468,18 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             result.setActive(edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
             break;
 
+        case MainAppCommands::viewSnapPlayheadToGrid:
+            if (!isPlayer) {
+                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
+                    result.setActive(true);
+                    result.setTicked(editViewState->shouldSnapPlayheadToGrid());
+                    break;
+                }
+            }
+
+            result.setActive(false);
+            break;
+
         // Add more dynamic command states...
     }
 }
@@ -649,6 +661,15 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::viewZoomOut:
             te::AppFunctions::zoomOut();
+            break;
+
+        case MainAppCommands::viewSnapPlayheadToGrid:
+            if (!isPlayer) {
+                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
+                    editViewState->setSnapPlayheadToGrid(! editViewState->shouldSnapPlayheadToGrid());
+                    commandManager_.commandStatusChanged();
+                }
+            }
             break;
 
         // Settings commands

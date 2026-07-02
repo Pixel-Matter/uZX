@@ -85,6 +85,30 @@ public:
             expect(! labels.contains("1.1.05"), "Zoomed-out labels should not show frame subdivisions.");
         }
 
+        beginTest("Visible grid snapping follows the displayed fine level");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+
+            te::SelectionManager selectionManager(engine);
+            EditViewState editViewState(*edit, selectionManager);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
+
+            editViewState.zoom.setViewWidthPx(1000);
+            editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(1.0)});
+
+            TimelineGrid grid(editViewState);
+            expectWithinAbsoluteError(grid.snapTimeToVisibleGrid(te::TimePosition::fromSeconds(0.029)).inSeconds(),
+                                      0.02, 1.0e-6,
+                                      "Zoomed-in snapping should use visible frame grid lines.");
+
+            editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(16.0)});
+            expectWithinAbsoluteError(grid.snapTimeToVisibleGrid(te::TimePosition::fromSeconds(0.26)).inSeconds(),
+                                      0.5, 1.0e-6,
+                                      "Zoomed-out snapping should use visible beat grid lines.");
+        }
+
         beginTest("Bars beats frames coarse frame labels stay clear of beat edges");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);

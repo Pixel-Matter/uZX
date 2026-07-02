@@ -65,6 +65,7 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         m.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(edit));
         if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
             m.addSeparator();
+            m.addCommandItem(manager, Commands::MainAppCommands::viewSnapPlayheadToGrid);
             m.addCommandItem(manager, Commands::MainAppCommands::transportPreservePsgTiming);
         }
         m.showMenuAsync({});
@@ -122,6 +123,8 @@ void RulerComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails
 
 void RulerComponent::repositionTransportToX(int x) {
     auto pos = editViewState.zoom.xToTime(x);
+    if (editViewState.shouldSnapPlayheadToGrid())
+        pos = grid.snapTimeToVisibleGrid(pos);
     edit.getTransport().setPosition(pos);
 }
 

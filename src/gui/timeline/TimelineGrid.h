@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "../../controllers/EditState.h"
+#include "../../models/SnapLadder.h"
 #include "../common/LookAndFeel.h"
 
 namespace MoTool {
@@ -23,11 +24,14 @@ public:
     ~TimelineGrid() override;
 
     std::vector<MoLookAndFeel::TimelineGridTick> getTicks();
+    te::TimePosition snapTimeToVisibleGrid(te::TimePosition time) const;
 
     void addListener(Listener* l);
     void removeListener(Listener* l);
 
 private:
+    SnapLadder makeSnapLadder() const;
+    int getVisibleSnapLevel(const SnapLadder& ladder) const;
     std::vector<MoLookAndFeel::TimelineGridTick> makeTicks();
     void invalidateAndNotify();
 

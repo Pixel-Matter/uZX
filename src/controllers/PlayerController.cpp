@@ -22,6 +22,9 @@ static String makePlayerWindowTitle(const String& filename = {}) {
 }
 
 void PlayerController::initialize() {
+    // The Player never records or routes hardware MIDI; skip the periodic device rescan.
+    getEngine().getDeviceManager().setMidiDeviceScanIntervalSeconds(0);
+
     setMainWindowTitle(makePlayerWindowTitle());
     window_.setComponentID("player");
 

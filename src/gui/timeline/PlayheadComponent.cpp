@@ -87,22 +87,18 @@ void PlayheadComponent::checkRepaint() {
     int newX = roundToInt(editViewState.zoom.timeToX(edit.getTransport().getPosition()));
     // DBG("PlayheadComponent::checkRepaint, pos: " << edit.getTransport().getPosition().inSeconds()
         // << " newX: " << newX << " oldX: " << xPosition);
-    if (newX != xPosition) {
-        if (edit.getTransport().isUserDragging()) {
-            // During a drag, mouse events can land between the peer's deferred-repaint
-            // flush and the actual paint, so paint() runs with a dirty region that
-            // predates the latest xPosition and narrow strips would clip the line out
-            // entirely at high drag speeds. Invalidating everything keeps the line
-            // inside every frame's clip region.
-            repaint();
-        } else {
-            // Playback moves the line ~1px per update, so two narrow strips
-            // (erase old, draw new) are enough and keep repaints cheap.
-            repaint(xPosition - 1, 0, 4, getHeight());
-            repaint(newX - 1, 0, 4, getHeight());
-        }
-        xPosition = newX;
-    }
+    if (newX == xPosition)
+        return;
+
+    // The peer flushes deferred repaints at vblank; a mouse event landing between the
+    // flush and paint() moves xPosition past the dirty region, so pad the rect by twice
+    // the current step to keep the line inside the next frame's clip (see DEVLOG 2026-07-02).
+    const int step = std::abs(newX - xPosition);
+    const int pad = 2 * step + 8;
+    const int left = jmin(newX, xPosition) - pad;
+    const int right = jmax(newX, xPosition) + 2 + pad;
+    repaint(left, 0, right - left, getHeight());
+    xPosition = newX;
 }
 
 }  // namespace MoTool

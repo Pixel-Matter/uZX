@@ -8,7 +8,7 @@
 
 #### P0 — Blockers
 
-- [ ] Some bug with pure env bass viz on B channel in SkyTrainFunk close to the start
+- [x] Some bug with pure env bass viz on B channel in SkyTrainFunk close to the start
 - [x] Playhead disappears while dragging fast enough
 - [x] **Fix** sometimes stopping after 2 seconds of playback
 - [x] **Tone/envelope visual mismatch** — detuning between tone and envelope viz when periods are in ratio

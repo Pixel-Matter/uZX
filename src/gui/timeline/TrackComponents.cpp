@@ -275,7 +275,6 @@ void TrackBodyComponent::paint(Graphics& g) {
 }
 
 void TrackBodyComponent::paintOverChildren(Graphics& g) {
-    static constexpr std::array<float, 3> clipGridAlpha { 0.0f, 0.28f, 0.42f };
     const auto ticks = grid.getTicks();
 
     auto drawClipGrid = [&] (const Component& clipComponent) {
@@ -284,11 +283,10 @@ void TrackBodyComponent::paintOverChildren(Graphics& g) {
             return;
 
         for (const auto& tick : ticks) {
-            // if (tick.level == 0 || tick.level >= clipGridAlpha.size() || ! clipBounds.contains(tick.x, clipBounds.getY()))
-            if (tick.level >= clipGridAlpha.size() || ! clipBounds.contains(tick.x, clipBounds.getY()))
+            if (tick.level >= Colors::Timeline::trackGridTickColors.size() || ! clipBounds.contains(tick.x, clipBounds.getY()))
                 continue;
 
-            g.setColour(Colors::Palette::slate200.withAlpha(clipGridAlpha[tick.level]));
+            g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
             g.drawVerticalLine(tick.x, (float) clipBounds.getY(), (float) clipBounds.getBottom());
         }
     };

@@ -22,27 +22,51 @@ struct Palette {
     inline static const Colour slate900   = Colour::fromString("#0xFF0F172A");
     inline static const Colour slate950   = Colour::fromString("#0xFF020617");
 
-    inline static const Colour red500     = Colour::fromString("#0xFFEF4444");
-    inline static const Colour orange500  = Colour::fromString("#0xFFF97316");
-    inline static const Colour amber500   = Colour::fromString("#0xFFF59E0B");
-    inline static const Colour yellow500  = Colour::fromString("#0xFFF59E0B");
-    inline static const Colour lime500    = Colour::fromString("#0xFF84CC16");
-    inline static const Colour green500   = Colour::fromString("#0xFF22C55E");
-    inline static const Colour emerald500 = Colour::fromString("#0xFF10B981");
-    inline static const Colour teal500    = Colour::fromString("#0xFF14B8A6");
-    inline static const Colour cyan500    = Colour::fromString("#0xFF06B6D4");
-    inline static const Colour sky500     = Colour::fromString("#0xFF0EA5E9");
-    inline static const Colour blue500    = Colour::fromString("#0xFF3B82F6");
-    inline static const Colour indigo500  = Colour::fromString("#0xFF6366F1");
-    inline static const Colour violet500  = Colour::fromString("#0xFF8B5CF6");
-    inline static const Colour purple500  = Colour::fromString("#0xFFA855F7");
-    inline static const Colour fuchsia500 = Colour::fromString("#0xFFD946EF");
-    inline static const Colour pink500    = Colour::fromString("#0xFFEC4899");
-    inline static const Colour rose500    = Colour::fromString("#0xFFFB7185");
-    inline static const Colour gray500    = Colour::fromString("#0xFF6B7280");
-    inline static const Colour zink500    = Colour::fromString("#0xFF71717A");
+    // 500
+    inline static const Colour red500     = Colour::fromString("#0xFFFB2C36");
+    inline static const Colour orange500  = Colour::fromString("#0xFFFF6900");
+    inline static const Colour amber500   = Colour::fromString("#0xFFFE9A00");
+    inline static const Colour yellow500  = Colour::fromString("#0xFFF0B100");
+    inline static const Colour lime500    = Colour::fromString("#0xFF7CCF00");
+    inline static const Colour green500   = Colour::fromString("#0xFF00C950");
+    inline static const Colour emerald500 = Colour::fromString("#0xFF00BC7D");
+    inline static const Colour teal500    = Colour::fromString("#0xFF00BBA7");
+    inline static const Colour cyan500    = Colour::fromString("#0xFF00B8DB");
+    inline static const Colour sky500     = Colour::fromString("#0xFF00A6F4");
+    inline static const Colour blue500    = Colour::fromString("#0xFF2B7FFF");
+    inline static const Colour indigo500  = Colour::fromString("#0xFF615FFF");
+    inline static const Colour violet500  = Colour::fromString("#0xFF8E51FF");
+    inline static const Colour purple500  = Colour::fromString("#0xFFAD46FF");
+    inline static const Colour fuchsia500 = Colour::fromString("#0xFFE12AFB");
+    inline static const Colour pink500    = Colour::fromString("#0xFFF6339A");
+    inline static const Colour rose500    = Colour::fromString("#0xFFFF2056");
+    inline static const Colour stone500   = Colour::fromString("#0xFF79716B");
     inline static const Colour neutral500 = Colour::fromString("#0xFF737373");
-    inline static const Colour stone500   = Colour::fromString("#0xFF7C7C8A");
+    inline static const Colour zink500    = Colour::fromString("#0xFF71717B");
+    inline static const Colour gray500    = Colour::fromString("#0xFF6A7282");
+
+    // 400
+    inline static const Colour red400     = Colour::fromString("#0xFFFF6467");
+    inline static const Colour orange400  = Colour::fromString("#0xFFFF8904");
+    inline static const Colour amber400   = Colour::fromString("#0xFFFFB900");
+    inline static const Colour yellow400  = Colour::fromString("#0xFFFDC700");
+    inline static const Colour lime400    = Colour::fromString("#0xFF9AE600");
+    inline static const Colour green400   = Colour::fromString("#0xFF05DF72");
+    inline static const Colour emerald400 = Colour::fromString("#0xFF00D492");
+    inline static const Colour teal400    = Colour::fromString("#0xFF00D5BE");
+    inline static const Colour cyan400    = Colour::fromString("#0xFF00D3F2");
+    inline static const Colour sky400     = Colour::fromString("#0xFF00BCFF");
+    inline static const Colour blue400    = Colour::fromString("#0xFF51A2FF");
+    inline static const Colour indigo400  = Colour::fromString("#0xFF7C86FF");
+    inline static const Colour violet400  = Colour::fromString("#0xFFA684FF");
+    inline static const Colour purple400  = Colour::fromString("#0xFFC27AFF");
+    inline static const Colour fuchsia400 = Colour::fromString("#0xFFED6AFF");
+    inline static const Colour pink400    = Colour::fromString("#0xFFFB64B6");
+    inline static const Colour rose400    = Colour::fromString("#0xFFFF637E");
+    inline static const Colour stone400   = Colour::fromString("#0xFFA6A09B");
+    inline static const Colour neutral400 = Colour::fromString("#0xFFA1A1A1");
+    inline static const Colour zink400    = Colour::fromString("#0xFF9F9FA9");
+    inline static const Colour gray400    = Colour::fromString("#0xFF99A1AF");
 };
 
 // Main theme colors using slate
@@ -67,13 +91,13 @@ struct Theme {
     inline static const Colour borderDark    = Palette::slate700;  // Darker borders
 
     // Other UI colors
-    inline static const Colour primary       = Colour::fromString("#FF0EA5E9"); // sky-500
-    inline static const Colour secondary     = Colour::fromString("#FF8B5CF6"); // violet-500
-    inline static const Colour success       = Colour::fromString("#FF10B981"); // emerald-500
-    inline static const Colour soloed        = Colour::fromString("#FF10B981"); // emerald-500
-    inline static const Colour warning       = Colour::fromString("#FFF59E0B"); // amber-500
-    inline static const Colour error         = Colour::fromString("#FFEF4444"); // red-500
-    inline static const Colour muted         = Colour::fromString("#FFEF4444"); // red-500
+    inline static const Colour primary       = Palette::sky500;
+    inline static const Colour secondary     = Palette::violet500;
+    inline static const Colour success       = Palette::emerald500;
+    inline static const Colour soloed        = Palette::emerald500;
+    inline static const Colour warning       = Palette::orange500;
+    inline static const Colour error         = Palette::red500;
+    inline static const Colour muted         = Palette::red500;
 };
 
 // Timeline specific colors
@@ -95,21 +119,25 @@ struct Timeline {
         Palette::orange500,
     };
 
-    // Track grid tick colors array on background Palette::slate850 or Palette::slate800
     static inline const std::array<Colour, 3> trackGridTickColors = {
-        Palette::slate950,  // darker than bg
-        Palette::slate700,  // brighter
-        Palette::slate500,  // brightest
+        Palette::slate500.withAlpha(0.1f),
+        Palette::slate500.withAlpha(0.33f),
+        Palette::slate500.withAlpha(0.66f),
     };
 };
 
 // PSG specific colors
 struct PSG {
-    inline static const auto A   = Palette::amber500.withSaturation(1.0f);
-    inline static const auto B   = Palette::emerald500.withSaturation(1.0f);
-    inline static const auto C   = Palette::sky500.withSaturation(1.0f);
-    inline static const auto Env = Palette::purple500.withSaturation(1.0f);
-    inline static const auto Mix = Palette::gray500;
+    // inline static const auto A   = Palette::amber500.withSaturation(1.0f);
+    // inline static const auto B   = Palette::emerald500.withSaturation(1.0f);
+    // inline static const auto C   = Palette::sky500.withSaturation(1.0f);
+
+    inline static const auto A   = Palette::orange400;
+    inline static const auto B   = Palette::emerald500;
+    inline static const auto C   = Palette::indigo400;
+
+    inline static const auto Env = Palette::fuchsia500;
+    inline static const auto Mix = Palette::slate500;
 };
 
 } // namespace Colors

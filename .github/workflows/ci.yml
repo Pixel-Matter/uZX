@@ -86,7 +86,7 @@ jobs:
 
       - name: Setup sccache (Windows)
         if: runner.os == 'Windows'
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
         env:
           SCCACHE_GHA_ENABLED: "true"
 
@@ -295,7 +295,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Configure
         run: >

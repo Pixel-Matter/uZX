@@ -6,6 +6,8 @@
 #include "../../models/Ids.h"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <tuple>
 
 namespace MoTool {
@@ -66,35 +68,119 @@ const std::array<Colour, 14> RegColors = {
     Colors::PSG::Env   // purple-100
 };
 
-/** Draw random dotted pattern for noise modulation, seeded from note position */
-void drawNoisePattern(Graphics& g, float x, float y, float width, float height, int64_t seed) {
-    g.setColour(Colours::black.withAlpha(0.5f));
-    constexpr float dotDensity = 3.0f; // average spacing between dots
-    int ix = roundToInt(x), iy = roundToInt(y);
-    int iw = roundToInt(width), ih = roundToInt(height);
-    if (iw < 2 || ih < 2) return;
-
-    juce::Random rng(seed);
-    constexpr int jitter = 1; // max random offset from grid position
-
-    constexpr int dotSize = 2;
-    for (float gx = 0; gx < (float)iw; gx += dotDensity) {
-        for (float gy = 0; gy < (float)ih; gy += dotDensity) {
-            int dx = jlimit(0, iw - dotSize, roundToInt(gx) + rng.nextInt(jitter * 2 + 1) - jitter);
-            int dy = jlimit(0, ih - dotSize, roundToInt(gy) + rng.nextInt(jitter * 2 + 1) - jitter);
-            g.fillRect(ix + dx, iy + dy, dotSize, dotSize);
-        }
-    }
-}
-
 struct FrameNote {
     float y;
     float height;
     float alpha;
-    int   channelIndex;  // 0=A, 1=B, 2=C, 3=Envelope
-    bool  hasEnvMod;
-    bool  hasNoiseMod;
+    uint8_t channelMask;
+    bool isEnvelopePitch;
+    bool hasEnvMod;
 };
+
+struct NoiseBandStyle {
+    uint8_t channelMask;
+    Colour color;
+    float alpha;
+};
+
+Colour getChannelMaskColor(uint8_t channelMask) {
+    switch (channelMask & 0x7u) {
+        case 0x1: return Colors::PSG::A;
+        case 0x2: return Colors::PSG::B;
+        case 0x3: return Colors::Palette::yellow500.withSaturation(1.0f);
+        case 0x4: return Colors::PSG::C;
+        case 0x5: return Colors::Palette::pink500.withSaturation(1.0f);
+        case 0x6: return Colors::Palette::cyan500.withSaturation(1.0f);
+        case 0x7: return Colors::PSG::Mix.brighter(0.8f);
+        default:  return Colours::transparentBlack;
+    }
+}
+
+float noisePeriodToYNorm(int noisePeriod) {
+    auto y = std::log2(static_cast<float>(jlimit(1, 31, noisePeriod))) / std::log2(31.0f);
+    return jmap(y, 1.0f/16, 1.0f - 1.0f/16);
+}
+
+Range<float> getNoisePeriodYRange(int noisePeriod) {
+    const float Y = noisePeriodToYNorm(noisePeriod);
+    return { Y - 0.1f, Y + 0.1f };
+}
+
+Colour getWeightedChannelMaskColor(const std::array<float, 3>& weights) {
+    float red = 0.0f;
+    float green = 0.0f;
+    float blue = 0.0f;
+    float total = 0.0f;
+    auto remaining = weights;
+
+    while (true) {
+        uint8_t channelMask = 0;
+        float layerWeight = std::numeric_limits<float>::max();
+
+        for (int ch = 0; ch < 3; ++ch) {
+            const auto weight = remaining[static_cast<size_t>(ch)];
+            if (weight > 0.0f) {
+                channelMask |= static_cast<uint8_t>(1u << ch);
+                layerWeight = jmin(layerWeight, weight);
+            }
+        }
+
+        if (channelMask == 0)
+            break;
+
+        const auto color = getChannelMaskColor(channelMask);
+        red += color.getFloatRed() * layerWeight;
+        green += color.getFloatGreen() * layerWeight;
+        blue += color.getFloatBlue() * layerWeight;
+        total += layerWeight;
+
+        for (auto& weight : remaining)
+            weight = jmax(0.0f, weight - layerWeight);
+    }
+
+    if (total <= 0.0f)
+        return Colours::transparentBlack;
+
+    return Colour::fromFloatRGBA(red / total, green / total, blue / total, 1.0f);
+}
+
+NoiseBandStyle getNoiseBandStyle(const PsgParamFrameData& data) {
+    std::array<float, 3> weights {};
+    uint8_t channelMask = 0;
+    float noiseWeight = 0.0f;
+
+    for (int ch = 0; ch < 3; ++ch) {
+        const auto rawVolume   = data.getRaw(PsgParamType(PsgParamType::VolumeA + ch));
+        const bool hasEnvMod   = data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0;
+        const bool hasNoiseMod = data.getRaw(PsgParamType(PsgParamType::NoiseIsOnA + ch)) > 0;
+
+        if (! hasNoiseMod)
+            continue;
+
+        const float weight = hasEnvMod ? 15.0f : static_cast<float>(rawVolume);
+        weights[static_cast<size_t>(ch)] = weight;
+
+        if (weight > 0.0f) {
+            channelMask |= static_cast<uint8_t>(1u << ch);
+            noiseWeight += weight;
+        }
+    }
+
+    const auto alpha = channelMask == 0 ? 0.0f : jlimit(0.0f, 1.0f, noiseWeight / (3 * 15.0f)) * 0.5f + 0.2f;
+    return {channelMask, getWeightedChannelMaskColor(weights), alpha};
+}
+
+void drawNoiseBand(Graphics& g, float x, float width, float y, float height, Colour color, float alpha) {
+    if (width <= 0.0f || height <= 0.0f)
+        return;
+
+    ColourGradient gradient(color.withAlpha(0.0f), x, y, color.withAlpha(0.0f), x, y + height, false);
+    gradient.addColour(0.5, color.withAlpha(alpha));
+    // gradient.addColour(0.5, color.withAlpha(0.38f * alpha));
+
+    g.setGradientFill(gradient);
+    g.fillRect(x, y, width, height);
+}
 
 /** Frame duration in edit time, taken from the clip's own PSG timing metadata.
     Falls back to the stored source rate and finally the edit's project fps for
@@ -154,8 +240,8 @@ struct ClipVisibility {
 };
 
 /** Draw stripe pattern for envelope modulation based on envelope shape direction */
-void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float height, uint8_t shape) {
-    g.setColour(Colours::black.withAlpha(0.5f));
+void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float height, uint8_t shape, Colour color) {
+    g.setColour(color);
     constexpr float nominalSpacing = 4.0f;
     constexpr float strokeWidth = 2.0f;
 
@@ -325,31 +411,43 @@ void PsgClipComponent::paintNotes(Graphics& g) {
         return (pitchRange.getEnd() - norm) / pitchRange.getLength() * static_cast<float>(vis.rect.getHeight());
     };
 
-    static const juce::Colour channelColors[] = {
-        Colors::PSG::A,
-        Colors::PSG::B,
-        Colors::PSG::C,
-        Colors::PSG::Env,
-    };
-
-    vis.forEachVisibleFrame(frames, *psgClip, [&] (int frameIdx, const PsgParamFrame& frame, float x) {
+    vis.forEachVisibleFrame(frames, *psgClip, [&] (int, const PsgParamFrame& frame, float x) {
         const auto& frameData = frame.getData();
         const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
+
+        const auto noiseBandStyle = getNoiseBandStyle(frameData);
+        if (noiseBandStyle.channelMask != 0) {
+            const auto period = static_cast<int>(frameData.getRaw(PsgParamType::NoisePeriod));
+            const auto noiseRange = getNoisePeriodYRange(period);
+            const float noiseY = noiseRange.getStart() * static_cast<float>(vis.rect.getHeight());
+            const float noiseH = jmax(2.0f, noiseRange.getLength() * static_cast<float>(vis.rect.getHeight()));
+            drawNoiseBand(g, x, vis.pixelsPerFrame, noiseY, noiseH, noiseBandStyle.color, noiseBandStyle.alpha);
+        }
 
         // Collect this frame's notes: up to one per channel plus the envelope
         std::array<FrameNote, 4> notes;
         int noteCount = 0;
 
         visitFrameNotes(frameData, [&] (const PsgFrameNote& n) {
-            const float alpha = n.hasEnvMod ? 1.0f : (static_cast<float>(n.volume) / 15.0f * 0.8f + 0.2f);
+            const float alpha = (n.hasEnvMod || n.isEnvelopePitch)
+                ? 1.0f
+                : (static_cast<float>(n.volume) / 15.0f * 0.8f + 0.2f);
             const float top = normToY(n.pitch) - noteHeight * 0.5f;
             const float topRound = static_cast<float>(roundToInt(top));
             const float heightRound = static_cast<float>(roundToInt(top + noteHeight)) - topRound;
-            notes[noteCount++] = { topRound, heightRound, alpha, n.channelIndex, n.hasEnvMod, n.hasNoiseMod };
+            notes[noteCount++] = {
+                topRound,
+                heightRound,
+                alpha,
+                n.channelMask,
+                n.isEnvelopePitch,
+                n.hasEnvMod
+            };
         });
 
         std::sort(notes.begin(), notes.begin() + noteCount, [] (const FrameNote& a, const FrameNote& b) {
-            return std::tie(a.y, a.channelIndex) < std::tie(b.y, b.channelIndex);
+            return std::tie(a.y, a.isEnvelopePitch, a.channelMask)
+                 < std::tie(b.y, b.isEnvelopePitch, b.channelMask);
         });
 
         // Paint notes, subdividing overlapping groups. Notes are sorted by y,
@@ -382,15 +480,37 @@ void PsgClipComponent::paintNotes(Graphics& g) {
                         subH = groupBottom - subY;
                 }
 
-                g.setColour(channelColors[note.channelIndex].withAlpha(note.alpha));
-                g.fillRect(x, subY, vis.pixelsPerFrame, jmax(1.0f, subH));
+                const auto noteColor = getChannelMaskColor(note.channelMask);
+                const auto noteRect = Rectangle<float>(x, subY, vis.pixelsPerFrame, jmax(1.0f, subH));
 
-                if (drawMods && note.hasEnvMod)
-                    drawEnvelopeStripes(g, x, subY, vis.pixelsPerFrame, subH, envShape);
+                if (note.isEnvelopePitch) {
+                    if (drawMods)
+                        drawEnvelopeStripes(
+                            g,
+                            noteRect.getX(),
+                            noteRect.getY(),
+                            noteRect.getWidth(),
+                            noteRect.getHeight(),
+                            envShape,
+                            noteColor
+                        );
+                    g.setColour(noteColor.withAlpha(1.0f));
+                    g.drawRect(noteRect, 1.0f);
+                } else {
+                    g.setColour(noteColor.withAlpha(note.alpha));
+                    g.fillRect(noteRect);
 
-                if (drawMods && note.hasNoiseMod)
-                    drawNoisePattern(g, x, subY, vis.pixelsPerFrame, subH,
-                                     (int64_t)frameIdx * 4 + note.channelIndex);
+                    if (drawMods && note.hasEnvMod)
+                        drawEnvelopeStripes(
+                            g,
+                            noteRect.getX(),
+                            noteRect.getY(),
+                            noteRect.getWidth(),
+                            noteRect.getHeight(),
+                            envShape,
+                            noteColor.brighter(0.8f).withAlpha(0.85f)
+                        );
+                }
             }
         }
     });
@@ -409,19 +529,26 @@ void PsgClipComponent::paintHeader(Graphics& g) {
     // component's own left edge. getClipBounds() is that slice, in local coords.
     auto row = g.getClipBounds().removeFromTop(headerHeight).reduced(pad, pad);
 
-    // Channel swatches on the left.
-    struct LegendItem { const char* label; Colour color; };
+    // Channel ownership swatches on the left.
+    struct LegendItem { const char* label; uint8_t channelMask; };
     const LegendItem items[] = {
-        { "A", Colors::PSG::A },
-        { "B", Colors::PSG::B },
-        { "C", Colors::PSG::C },
-        { "E", Colors::PSG::Env },
+        { "A", 0x1 },
+        { "B", 0x2 },
+        { "C", 0x4 },
+        { "AB", 0x3 },
+        { "AC", 0x5 },
+        { "BC", 0x6 },
+        { "ABC", 0x7 },
     };
 
     g.setFont(Font(FontOptions((float) swatchSize - 1.0f).withStyle("Bold")));
     for (const auto& item : items) {
-        auto swatch = row.removeFromLeft(swatchSize);
-        g.setColour(item.color);
+        const int swatchWidth = jmax(
+            swatchSize,
+            GlyphArrangement::getStringWidthInt(g.getCurrentFont(), item.label) + 4
+        );
+        auto swatch = row.removeFromLeft(swatchWidth);
+        g.setColour(getChannelMaskColor(item.channelMask));
         g.fillRect(swatch);
         g.setColour(Colours::black);
         g.drawText(item.label, swatch, Justification::centred);

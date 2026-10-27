@@ -31,6 +31,16 @@ using namespace MoTool::Helpers;
 
 namespace MoTool {
 
+namespace {
+
+BaseController& getActiveController() {
+    return MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer
+        ? static_cast<BaseController&>(MoToolApp::getPlayerController())
+        : static_cast<BaseController&>(MoToolApp::getArrangerController());
+}
+
+}  // namespace
+
 void registerPlugins(te::Engine& engine) {
     engine.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
     engine.getPluginManager().createBuiltInType<uZX::ChipInstrumentPlugin>();
@@ -322,6 +332,8 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomToProject);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomIn);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomOut);
+            menu.addSeparator();
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewSnapPlayheadToGrid);
             if (auto* edit = MoToolApp::getPlayerController().getEdit()) {
                 menu.addSeparator();
                 menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
@@ -364,9 +376,7 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
     MainAppCommands::getCommandInfo(commandID, result);
 
     bool isPlayer = MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer;
-    BaseController& controller = isPlayer
-        ? static_cast<BaseController&>(MoToolApp::getPlayerController())
-        : static_cast<BaseController&>(MoToolApp::getArrangerController());
+    auto& controller = getActiveController();
     auto* edit = controller.getEdit();
 
     // Update command status based on current state
@@ -469,12 +479,10 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::viewSnapPlayheadToGrid:
-            if (!isPlayer) {
-                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
-                    result.setActive(true);
-                    result.setTicked(editViewState->shouldSnapPlayheadToGrid());
-                    break;
-                }
+            if (auto* editViewState = controller.getEditViewState()) {
+                result.setActive(true);
+                result.setTicked(editViewState->shouldSnapPlayheadToGrid());
+                break;
             }
 
             result.setActive(false);
@@ -664,11 +672,9 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::viewSnapPlayheadToGrid:
-            if (!isPlayer) {
-                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
-                    editViewState->setSnapPlayheadToGrid(! editViewState->shouldSnapPlayheadToGrid());
-                    commandManager_.commandStatusChanged();
-                }
+            if (auto* editViewState = getActiveController().getEditViewState()) {
+                editViewState->setSnapPlayheadToGrid(! editViewState->shouldSnapPlayheadToGrid());
+                commandManager_.commandStatusChanged();
             }
             break;
 

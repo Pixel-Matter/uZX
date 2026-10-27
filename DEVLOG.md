@@ -6,6 +6,14 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 
 <!-- entries below -->
 
+## 2026-07-01 -- Implement latency-aware playhead sync (`0ca5678b-6880-4769-b32f-9b9b3e224ecf`)
+
+- **Did:** Built `getAudibleTimelinePosition()` helper to centralize playhead/scroll sync logic: prefers audible time from playback context while playing/recording, falls back to raw transport when stopped (avoids stale audible time after seek). Applied to `PlayheadComponent` and `EditState::handlePlaybackScrolling()`. Added regression test for seek-to-Home behavior. Commit 09e9f51.
+- **Difficulty:** 2 -- clear task; main challenge was understanding when audible time stales after seek.
+- **Model:** claude-opus-4-8 -- fit.
+- **Agent:** good -- methodical exploration of Tracktion APIs and playback context lifecycle; caught the stopped-seek regression before shipping.
+- **Friction:** some -- first fix assumed audible time was always current (broke Home seek); user feedback + reasoning led to the stopped state check.
+
 ## 2026-07-02 -- Snap playhead to visible grid (`fa6ac6eb-2222-4e9a-89fd-6c0ca8d7a747`)
 
 - **Did:** Added default-on playhead snapping to the nearest visible TimelineGrid level, reusing SnapLadder's displayed fine level instead of Tracktion's native snap type. Stored the option in `EditViewState`, exposed it in the View menu and ruler context menu, and applied it to playhead drag plus ruler/clip/track timeline seeks. Added TimelineGrid regression coverage and put the test in `TEST_SOURCES`.
@@ -147,3 +155,12 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 - **Model:** claude-sonnet-4-5 -- fit.
 - **Agent:** good -- systematic diagnosis to root cause with a working fix.
 - **Friction:** some -- required navigating the nested submodule structure.
+
+<!-- trivial sessions (no summary) -->
+06becf55-c1b2-4e28-9cff-8b25fa630360
+4660af07-b97d-4292-b54c-6405e49d7ebc
+agent-a72a3f1
+agent-aac0079
+cc76f453-782e-48f0-81d8-cafd776c1f1e
+110f7244-15b3-466c-823d-9222acf0543d
+15c7455a-38e3-45ee-8b6f-b94a29e97ac1

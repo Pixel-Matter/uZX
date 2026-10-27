@@ -116,6 +116,7 @@ set(TEST_SOURCES
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
 
     gui/timeline/TimelineGrid.test.cpp
+    gui/timeline/PsgClipComponent.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp

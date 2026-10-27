@@ -44,14 +44,15 @@ SnapLadder TimelineGrid::makeSnapLadder() const {
     auto& edit = editViewState.edit;
     const auto mode = Helpers::getTimecodeDisplayMode(edit);
     const auto fps = Helpers::getProjectFps(edit);
-    const auto framesPerBeat = jmax(1, roundToInt(editViewState.getCurrentFramesPerBeat()));
+    const auto& tempo = edit.tempoSequence.getTempoAt(editViewState.zoom.getRange().getStart());
+    const auto framesPerBeat = jmax(1, roundToInt(fps * tempo.getApproxBeatLength().inSeconds()));
 
     return SnapLadder(mode, fps, framesPerBeat, Helpers::getGridSubdivisionPattern(edit, framesPerBeat));
 }
 
 int TimelineGrid::getVisibleSnapLevel(const SnapLadder& ladder) const {
     auto& edit = editViewState.edit;
-    const auto& tempo = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
+    const auto& tempo = edit.tempoSequence.getTempoAt(editViewState.zoom.getRange().getStart());
     const bool triplets = edit.tempoSequence.isTripletsAtTime(editViewState.zoom.getRange().getStart());
 
     return ladder.getBestLevel(editViewState.zoom.getTimePerPixel(), 12.0, tempo, triplets);
@@ -67,8 +68,8 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
 
     auto& edit = editViewState.edit;
     const auto& ts = edit.tempoSequence;
-    const auto& tempo = ts.getTempoAt(edit.getTransport().getPosition());
     const auto range = editViewState.zoom.getRange();
+    const auto& tempo = ts.getTempoAt(range.getStart());
     const auto timePerPixel = editViewState.zoom.getTimePerPixel();
     const bool triplets = ts.isTripletsAtTime(range.getStart());
 

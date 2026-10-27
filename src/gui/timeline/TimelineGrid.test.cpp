@@ -109,6 +109,65 @@ public:
                                       "Zoomed-out snapping should use visible beat grid lines.");
         }
 
+        beginTest("Short subdivision groups retain single-frame ticks and snapping at deep zoom");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(250.0);
+            Helpers::setProjectFps(*edit, 50.0);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(1200);
+            view.zoom.setRange({te::TimePosition(), te::TimeDuration::fromSeconds(0.24)});
+            TimelineGrid grid(view);
+
+            // 12 FPB defaults to 3+3+3+3; explicit patterns may have even shorter groups.
+            for (const auto& pattern : {std::vector<int>{3, 3, 3, 3}, std::vector<int>{1, 2, 9}}) {
+                Helpers::setGridSubdivisionPattern(*edit, pattern);
+                const auto ticks = grid.getTicks();
+                for (int frame = 0; frame < 12; ++frame) {
+                    expect(std::any_of(ticks.begin(), ticks.end(), [frame](const auto& tick) {
+                        return tick.x == frame * 100;
+                    }), "Each frame should have a visible tick");
+                    const auto time = te::TimePosition::fromSeconds(frame / 50.0);
+                    expectWithinAbsoluteError(grid.snapTimeToVisibleGrid(time).inSeconds(), time.inSeconds(), 1.0e-9);
+                }
+            }
+        }
+
+        beginTest("Seeking across a tempo change preserves the visible grid and its snapping");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            edit->tempoSequence.insertTempo(te::BeatPosition::fromBeats(4.0), 3000.0 / 26.0, 1.0f);
+            Helpers::setProjectFps(*edit, 50.0);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(1000);
+            view.zoom.setRange({te::TimePosition(), te::TimeDuration::fromSeconds(4.0)});
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+            TimelineGrid grid(view);
+            const auto before = grid.getTicks();
+            expect(std::any_of(before.begin(), before.end(), [](const auto& tick) { return tick.x == 20; }));
+
+            edit->getTransport().setPosition(te::TimePosition::fromSeconds(2.1));
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+            expectWithinAbsoluteError(grid.snapTimeToVisibleGrid(te::TimePosition::fromSeconds(0.08)).inSeconds(),
+                                      0.08, 1.0e-9, "Seeking must not change the grid under a stationary viewport");
+
+            // Rebuild the cache at the same view range: its ticks must still match.
+            view.zoom.setRange(view.zoom.getRange());
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+            const auto after = grid.getTicks();
+            expectEquals(int(after.size()), int(before.size()));
+            for (size_t i = 0; i < std::min(before.size(), after.size()); ++i) {
+                expectEquals(after[i].x, before[i].x);
+                expectEquals(after[i].level, before[i].level);
+                expectEquals(after[i].label, before[i].label);
+            }
+        }
+
         beginTest("Bars beats frames coarse frame labels stay clear of beat edges");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);

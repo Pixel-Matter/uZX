@@ -49,12 +49,10 @@ SnapLadder::SnapLadder(TimecodeDisplayMode mode, double fps, int framesPerBeat,
             levels_.push_back({ LevelKind::teSnap, 1, te::TimecodeSnapType(type, i) });
     };
 
-    // A frame multiple must fit its container (beat, second or subdivision
-    // group) several times over, otherwise the grid steps up to the next
-    // structural level instead of drawing a couple of stray frame ticks.
+    // Prune coarse multiples, but always retain single frames for deep zoom.
     auto addFrameLevels = [this](int containerFrames, const auto& multiples) {
         for (auto m : multiples)
-            if (m * 4 <= containerFrames)
+            if (m == 1 || m * 4 <= containerFrames)
                 levels_.push_back({ LevelKind::frames, m, {} });
     };
 

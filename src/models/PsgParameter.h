@@ -404,7 +404,8 @@ private:
 struct PsgFrameNote {
     float    pitch;         // normalized to the TonePeriod scale
     uint16_t volume;        // raw 0..15 (meaningless when hasEnvMod is true)
-    int      channelIndex;  // 0=A, 1=B, 2=C, 3=Envelope
+    uint8_t  channelMask;   // bit 0=A, bit 1=B, bit 2=C
+    bool     isEnvelopePitch;
     bool     hasEnvMod;
     bool     hasNoiseMod;
 };
@@ -416,9 +417,9 @@ inline float envelopePeriodToTonePitch(int envPeriod) noexcept {
     return PsgParamType{PsgParamType::TonePeriodA}.getScale().valueToNormalized(16 * envPeriod);
 }
 
-/** Calls fn(PsgFrameNote) for every audible note in the frame: up to one per
-    tone channel, plus the envelope's own note when some channel plays tone and
-    envelope together. Pitches outside the hearable window of the tone scale
+/** Calls fn(PsgFrameNote) for every audible note in the frame: up to one tone
+    note per channel, plus one shared envelope-pitch note for every channel that
+    uses envelope volume. Pitches outside the hearable window of the tone scale
     are skipped: very small tone periods are unlikely to be intentional notes,
     and envelope periods above the scale are slow non-pitched sweeps.
     PsgClip::getPitchRange() and the clip painter both use this, so the
@@ -433,7 +434,7 @@ inline void visitFrameNotes(const PsgParamFrameData& data, Fn&& fn) {
     const float envPitch = envHearable
         ? PsgParamType{PsgParamType::TonePeriodA}.valueToNormalized(envTonePeriod) : 0.0f;
 
-    bool anyToneAndEnv = false;
+    uint8_t envChannelMask = 0;
     for (int ch = 0; ch < 3; ++ch) {
         const auto rawVolume   = data.getRaw(PsgParamType(PsgParamType::VolumeA + ch));
         const bool toneIsOn    = data.getRaw(PsgParamType(PsgParamType::ToneIsOnA + ch)) > 0;
@@ -441,22 +442,27 @@ inline void visitFrameNotes(const PsgParamFrameData& data, Fn&& fn) {
         const bool hasNoiseMod = data.getRaw(PsgParamType(PsgParamType::NoiseIsOnA + ch)) > 0;
         const bool isAudible   = (rawVolume > 0) || hasEnvMod;
 
-        anyToneAndEnv = anyToneAndEnv || (toneIsOn && hasEnvMod);
+        const auto channelMask = static_cast<uint8_t>(1u << ch);
+        if (hasEnvMod && envHearable)
+            envChannelMask |= channelMask;
 
         const PsgParamType periodType(PsgParamType::TonePeriodA + ch);
         const int period = data.getRaw(periodType);
 
         if (toneIsOn && isAudible && period >= hearableMin) {
-            fn(PsgFrameNote { periodType.valueToNormalized(period), rawVolume, ch, hasEnvMod, hasNoiseMod });
-        } else if (hasEnvMod && envHearable) {
-            // Envelope-driven channel without a hearable tone: shown at the envelope pitch, at tone channel
-            fn(PsgFrameNote { envPitch, rawVolume, ch, true, hasNoiseMod });
+            fn(PsgFrameNote {
+                periodType.valueToNormalized(period),
+                rawVolume,
+                channelMask,
+                false,
+                hasEnvMod,
+                hasNoiseMod
+            });
         }
     }
 
-    // The envelope's own note, when some channel plays tone and envelope together
-    if (anyToneAndEnv && envHearable)
-        fn(PsgFrameNote { envPitch, 15, 3, true, false });
+    if (envChannelMask != 0)
+        fn(PsgFrameNote { envPitch, 15, envChannelMask, true, true, false });
 }
 
 }  // namespace MoTool

@@ -329,8 +329,7 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
         runs.emplace_back(text, changed ? rowColour : rowColour.withMultipliedAlpha(0.5f));
     };
     const auto hz = [&] (int tonePeriod) {
-        const double f = chipClockHz / 16.0 / jmax(1, tonePeriod);  // AY tone clock divider
-        return (f >= 100.0 ? String(roundToInt(f)) : String(f, f >= 10.0 ? 1 : 2)) + "Hz";
+        return String(chipClockHz / 16.0 / jmax(1, tonePeriod), 1) + "Hz";  // AY tone clock divider
     };
 
     // Rows A, B, C, Env, Noise share the period and Hz columns.
@@ -572,7 +571,7 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
     const float laneHeight = std::round(height / numRegs);
     const bool showHexValues = vis.pixelsPerFrame >= 12.0f;
 
-    g.setFont(12.0f);
+    g.setFont(Font(FontOptions(12.0f).withStyle("Bold")));
 
     uZX::PsgRegsFrame regsFrame;
     vis.forEachVisibleFrame(frames, *psgClip, [&] (int, const PsgParamFrame& frame, float x) {
@@ -588,14 +587,14 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
             const auto color = RegColors[reg];
 
             if (showHexValues) {
-                String hexValue = choc::text::createHexString(value, 2);
-                g.setColour(color.withLightness(0.75f));
+                const auto hexValue = String::toHexString(value).paddedLeft('0', 2).toUpperCase();
+                g.setColour(color);
                 g.fillRect(x, y, vis.pixelsPerFrame, laneHeight);
                 g.setColour(Colours::black);
-                g.drawText(hexValue, (int)(x + 1), (int)y, (int)vis.pixelsPerFrame, (int)laneHeight, Justification::centredLeft);
+                g.drawText(hexValue, Rectangle<float>(x, y, vis.pixelsPerFrame, laneHeight), Justification::centred);
             } else {
                 const auto brightness = static_cast<float>(value) / 255.0f;
-                g.setColour(color.withLightness(0.75f).withAlpha(0.5f + brightness / 2.0f));
+                g.setColour(color.withAlpha(0.5f + brightness / 2.0f));
                 g.fillRect(x, y, vis.pixelsPerFrame, laneHeight);
             }
         }

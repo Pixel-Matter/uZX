@@ -417,10 +417,10 @@ public:
         const auto runs = formatPsgFrame(frame, 1773400.0);
         for (const auto& [text, colour] : runs)
             marked << (colour.isOpaque() ? "[" + text + "]" : text);
-        expectEquals(marked, String("[A    ]  [ 254]  [ 436Hz]  15  T--\n"
-                                    "[B    ]  1000   111Hz  [ 8]  ---\n"
-                                    "[C    ]  4095  27.1Hz   0  --[E]\n"
-                                    "[Env  ]   120  57.7Hz  shape [E]\n"
+        expectEquals(marked, String("[A    ]  [ 254]  [436.4Hz]  15  T--\n"
+                                    "[B    ]  1000  110.8Hz  [ 8]  ---\n"
+                                    "[C    ]  4095   27.1Hz   0  --[E]\n"
+                                    "[Env  ]   120   57.7Hz  shape [E]\n"
                                     "Noise     5"));
         expect(runs[0].second == Colors::PSG::A, "Changed rows use the legend colour");
         const auto unchangedB = std::find_if(runs.begin(), runs.end(), [] (const auto& run) { return run.first == "1000"; });

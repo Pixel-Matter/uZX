@@ -6,6 +6,14 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 
 <!-- entries below -->
 
+## 2026-10-28 -- Branch hygiene and PsgClip undo fix (`8e986e54-26a2-4bfe-84ab-28eb61fca43d`)
+
+- **Did:** Cleaned up 8 local + remote branches merged to develop; reviewed PSG timing chains (timecode/rescaled/integer-sketch) and marked branches for removal; fixed PsgClip::loadFrom() which was calling getPsg().clear() without passing undo manager, then calls state operations with um; updated integer-psg doc.
+- **Difficulty:** 2 -- branch review straightforward, undo fix was 1-line pass-through.
+- **Model:** claude-opus-5-5 -- fit.
+- **Agent:** good -- systematic branch review and quick issue triage from grep.
+- **Friction:** low -- cleanup task, no ambiguity.
+
 ## 2026-07-01 -- Implement latency-aware playhead sync (`0ca5678b-6880-4769-b32f-9b9b3e224ecf`)
 
 - **Did:** Built `getAudibleTimelinePosition()` helper to centralize playhead/scroll sync logic: prefers audible time from playback context while playing/recording, falls back to raw transport when stopped (avoids stale audible time after seek). Applied to `PlayheadComponent` and `EditState::handlePlaybackScrolling()`. Added regression test for seek-to-Home behavior. Commit 09e9f51.
@@ -157,6 +165,9 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 - **Friction:** some -- required navigating the nested submodule structure.
 
 <!-- trivial sessions (no summary) -->
+912c1ef6-1e61-4605-8f69-e5fa0e3f05cb
+7fe29ee9-23dd-4684-99bf-b2f99b2b5b43
+9a8fba71-75f3-41ab-91ef-b434837774a2
 06becf55-c1b2-4e28-9cff-8b25fa630360
 4660af07-b97d-4292-b54c-6405e49d7ebc
 agent-a72a3f1

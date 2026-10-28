@@ -405,6 +405,27 @@ public:
         expect(std::abs(int(noiseCenter.getGreen()) - int(Colors::PSG::Mix.getGreen())) <= 2);
         expect(std::abs(int(noiseCenter.getBlue()) - int(Colors::PSG::Mix.getBlue())) <= 2);
         expect(header.getPixelAt(68, 8).isTransparent(), "Padding follows N before the clip name");
+
+        beginTest("Frame hover shows the full state as a right-aligned table, changes bright");
+        using T = PsgParamType;
+        const PsgParamFrameData frame {std::vector<std::tuple<T, uint16_t, bool>> {
+            {T::TonePeriodA, 254, true}, {T::VolumeA, 15, false}, {T::ToneIsOnA, 1, false},
+            {T::TonePeriodB, 1000, false}, {T::VolumeB, 8, true},
+            {T::TonePeriodC, 4095, false}, {T::EnvelopeIsOnC, 1, true},
+            {T::EnvelopeShape, 0xE, true}, {T::EnvelopePeriod, 120, false}, {T::NoisePeriod, 5, false}}};
+        String marked;  // changed (opaque) runs in [brackets]
+        const auto runs = formatPsgFrame(frame, 1773400.0);
+        for (const auto& [text, colour] : runs)
+            marked << (colour.isOpaque() ? "[" + text + "]" : text);
+        expectEquals(marked, String("[A    ]  [ 254]  [ 436Hz]  15  T--\n"
+                                    "[B    ]  1000   111Hz  [ 8]  ---\n"
+                                    "[C    ]  4095  27.1Hz   0  --[E]\n"
+                                    "[Env  ]   120  57.7Hz  shape [E]\n"
+                                    "Noise     5"));
+        expect(runs[0].second == Colors::PSG::A, "Changed rows use the legend colour");
+        const auto unchangedB = std::find_if(runs.begin(), runs.end(), [] (const auto& run) { return run.first == "1000"; });
+        expect(unchangedB != runs.end() && unchangedB->second == Colors::PSG::B.withMultipliedAlpha(0.5f),
+               "Unchanged values use the half-alpha legend colour");
     }
 };
 

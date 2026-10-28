@@ -4,6 +4,7 @@
 #include "../common/LookAndFeel.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
+#include "../../plugins/uZX/aychip/AYPlugin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -320,6 +321,124 @@ void drawLowEnvelopeArrow(Graphics& g, Rectangle<float> bounds, uint8_t owners, 
 
 } // namespace
 
+std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz) {
+    using T = PsgParamType;
+    std::vector<std::pair<String, Colour>> runs;
+    Colour rowColour;
+    const auto add = [&] (const String& text, bool changed = false) {
+        runs.emplace_back(text, changed ? rowColour : rowColour.withMultipliedAlpha(0.5f));
+    };
+    const auto hz = [&] (int tonePeriod) {
+        const double f = chipClockHz / 16.0 / jmax(1, tonePeriod);  // AY tone clock divider
+        return (f >= 100.0 ? String(roundToInt(f)) : String(f, f >= 10.0 ? 1 : 2)) + "Hz";
+    };
+
+    // Rows A, B, C, Env, Noise share the period and Hz columns.
+    const int envPeriod = data.getRaw(T::EnvelopePeriod);
+    std::array<String, 5> periods, freqs, volumes;
+    for (size_t ch = 0; ch < 3; ++ch) {
+        const int period = data.getRaw(T(T::TonePeriodA + int(ch)));
+        periods[ch] = String(period);
+        freqs[ch] = hz(period);
+        volumes[ch] = String(data.getRaw(T(T::VolumeA + int(ch))));
+    }
+    periods[3] = String(envPeriod);
+    freqs[3] = hz(envelopePeriodToTonePeriod(jmax(1, envPeriod)));
+    periods[4] = String(data.getRaw(T::NoisePeriod));
+    const auto widest = [] (const std::array<String, 5>& column) {
+        int width = 0;
+        for (const auto& text : column)
+            width = jmax(width, text.length());
+        return width;
+    };
+    const int periodWidth = widest(periods), hzWidth = widest(freqs), volumeWidth = widest(volumes);
+    const auto cell = [&] (const String& text, int width, bool changed) {
+        add("  ");
+        add(text.paddedLeft(' ', width), changed);
+    };
+    const auto label = [&] (const String& text, bool changed) { add(text.paddedRight(' ', 5), changed); };
+
+    for (size_t ch = 0; ch < 3; ++ch) {
+        const T period(T::TonePeriodA + int(ch)), volume(T::VolumeA + int(ch));
+        const std::array<T, 3> flags {T(T::ToneIsOnA + int(ch)), T(T::NoiseIsOnA + int(ch)), T(T::EnvelopeIsOnA + int(ch))};
+        bool rowChanged = data.isSet(period) || data.isSet(volume);
+        for (auto flag : flags)
+            rowChanged = rowChanged || data.isSet(flag);
+
+        rowColour = getChannelMaskColor(static_cast<uint8_t>(1u << ch));
+        label(String::charToString(juce_wchar('A' + ch)), rowChanged);
+        cell(periods[ch], periodWidth, data.isSet(period));
+        cell(freqs[ch], hzWidth, data.isSet(period));
+        cell(volumes[ch], volumeWidth, data.isSet(volume));
+        add("  ");
+        for (size_t i = 0; i < 3; ++i)
+            add(data.getRaw(flags[i]) ? String::charToString(juce_wchar("TNE"[i])) : String("-"), data.isSet(flags[i]));
+        add("\n");
+    }
+
+    const bool shapeChanged = data.isSet(T::EnvelopeShape), envPeriodChanged = data.isSet(T::EnvelopePeriod);
+    rowColour = Colors::PSG::Env;
+    label("Env", shapeChanged || envPeriodChanged);
+    cell(periods[3], periodWidth, envPeriodChanged);
+    cell(freqs[3], hzWidth, envPeriodChanged);
+    add("  shape ");
+    add(String::toHexString(data.getRaw(T::EnvelopeShape)).toUpperCase(), shapeChanged);
+    add("\n");
+
+    rowColour = Colors::Theme::textPrimary;
+    label("Noise", data.isSet(T::NoisePeriod));
+    cell(periods[4], periodWidth, data.isSet(T::NoisePeriod));
+    return runs;
+}
+
+//==============================================================================
+/** Tooltip-styled popup showing formatPsgFrame() runs. */
+class PsgClipComponent::FrameHover : public Component {
+public:
+    FrameHover() {
+        setInterceptsMouseClicks(false, false);
+        setAlwaysOnTop(true);
+    }
+
+    void setText(const std::vector<std::pair<String, Colour>>& runs) {
+        const Font font(FontOptions(Font::getDefaultMonospacedFontName(), 12.0f, Font::plain));
+        AttributedString text;
+        for (const auto& [run, colour] : runs)
+            text.append(run, font, colour);
+        layout_.createLayout(text, 1.0e6f);
+        setSize(roundToInt(layout_.getWidth()) + 2 * pad, roundToInt(layout_.getHeight()) + 2 * pad);
+        repaint();
+    }
+
+    void paint(Graphics& g) override {
+        const auto bounds = getLocalBounds().toFloat();
+        g.setColour(Colors::Theme::backgroundAlt);
+        g.fillRoundedRectangle(bounds, 5.0f);
+        g.setColour(Colors::Theme::border);
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 5.0f, 1.0f);
+        layout_.draw(g, bounds.reduced(pad));
+    }
+
+private:
+    static constexpr int pad = 6;
+    TextLayout layout_;
+};
+
+//==============================================================================
+PsgClipComponent::PsgClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+    : MidiClipComponent(evs, g, c)
+    // , vblankAttachment_(this, [this](double) { onVBlank(); })
+{
+    // setBufferedToImage(true);
+    // The fps-warning in the header depends on the edit's timecode format,
+    // so repaint when it changes.
+    editViewState.edit.state.addListener(this);
+}
+
+PsgClipComponent::~PsgClipComponent() {
+    editViewState.edit.state.removeListener(this);
+}
+
 PsgClip* PsgClipComponent::getPsgClip() {
     return dynamic_cast<PsgClip*>(clip.get());
 }
@@ -350,6 +469,7 @@ void PsgClipComponent::paint(Graphics& g) {
 }
 
 void PsgClipComponent::mouseDown(const MouseEvent& e) {
+    hideFrameHover();
     if (e.mods.isPopupMenu()) {
         auto* psgClip = getPsgClip();
         if (psgClip == nullptr) return;
@@ -369,6 +489,72 @@ void PsgClipComponent::mouseDown(const MouseEvent& e) {
     } else {
         ClipComponent::mouseDown(e);
     }
+}
+
+void PsgClipComponent::mouseMove(const MouseEvent&) {
+    hideFrameHover();
+    startTimer(2000);
+}
+
+void PsgClipComponent::mouseExit(const MouseEvent&) {
+    hideFrameHover();
+}
+
+void PsgClipComponent::timerCallback() {
+    stopTimer();
+    showFrameHover();
+}
+
+std::vector<std::pair<String, Colour>> PsgClipComponent::describeFrameAt(int x) {
+    auto* psgClip = getPsgClip();
+    if (psgClip == nullptr)
+        return {};
+
+    // The frame sounding at time is the last one starting at or before it.
+    const auto& frames = psgClip->getPsg().getFrames();
+    const auto time = editViewState.zoom.xToTime(x + getX());
+    int i = bisectFindPosition(frames, *psgClip, time);
+    if (i == frames.size() || frames[i]->getEditTime(*psgClip) > time)
+        --i;
+    if (i < 0)
+        return {};
+
+    // Past the frame's own slot its state just holds, so nothing changes there.
+    auto data = frames[i]->getData();
+    if (time >= frames[i]->getEditTime(*psgClip) + getClipFrameDuration(*psgClip))
+        data.clear();
+
+    auto* track = psgClip->getClipTrack();
+    auto* chip = track != nullptr ? track->pluginList.findFirstPluginOfType<uZX::AYChipPlugin>() : nullptr;
+    const double clockHz = chip != nullptr
+        ? chip->staticParams.chipClock.getStoredValue() * uZX::MHz
+        : uZX::ChipClockEnum::clockValues[uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz];
+    return formatPsgFrame(data, clockHz);
+}
+
+void PsgClipComponent::showFrameHover() {
+    auto* top = getTopLevelComponent();
+    const auto mouse = getMouseXYRelative();
+    const auto text = describeFrameAt(mouse.x);
+    if (top == this || text.empty())
+        return;
+
+    frameHover_ = std::make_unique<FrameHover>();
+    frameHover_->setText(text);
+    top->addAndMakeVisible(*frameHover_);
+
+    // Same placement as MoLookAndFeel::getTooltipBounds: away from the cursor, towards the centre.
+    const auto pos = top->getLocalPoint(this, mouse);
+    const auto area = top->getLocalBounds();
+    const int w = frameHover_->getWidth(), h = frameHover_->getHeight();
+    frameHover_->setBounds(Rectangle<int>(pos.x > area.getCentreX() ? pos.x - (w + 12) : pos.x + 24,
+                                          pos.y > area.getCentreY() ? pos.y - (h + 6) : pos.y + 6,
+                                          w, h).constrainedWithin(area));
+}
+
+void PsgClipComponent::hideFrameHover() {
+    stopTimer();
+    frameHover_.reset();
 }
 
 void PsgClipComponent::paintRegisters(Graphics& g) {

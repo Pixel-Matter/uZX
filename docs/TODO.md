@@ -64,6 +64,9 @@ Granular tasks and implementation notes for active development.
 - [ ] Send cumulative regs/params values on play start from new position
 - [ ] Async or modal with progress bar PSG loading
 - [ ] PSG clip paint image cache for performance
+- [ ] Route every tempo change through `PsgTiming::setTempoBpmRetimingFrames` — today only `EditViewState::setBeatLength` / `setBpmSnappedToFps` rescale `framesPerBeat`; tempo edits from any other path (Tracktion tempo editing, future tempo track/automation) skip preserve-timing compensation
+- [ ] `PsgList::loadFrom` should not write edit-wide project fps (`Helpers::setProjectFps`) — move that decision to the import caller (clip/controller)
+- [ ] `PsgList::loadFrom` derives `framesPerBeat` from the beat length at 0, while migration uses the clip start — use the clip start in both
 
 ## AY Chip Emulator plugin
 

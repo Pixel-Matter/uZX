@@ -118,16 +118,13 @@ te::BeatPosition PsgParamFrame::getFrameBeatPosition(const PsgClip& c) const {
     if (! hasFrameIndex())
         return {};
 
+    // PsgClip::initialise guarantees framesPerBeat > 0 for any clip-attached list.
     const auto framesPerBeat = c.getPsg().getFramesPerBeat();
-    if (framesPerBeat > 0.0)
-        return te::BeatPosition::fromBeats((double) frameIndex / framesPerBeat);
-
-    const auto frameRate = c.getPsg().getFrameRate();
-    if (frameRate <= 0.0)
+    jassert(framesPerBeat > 0.0);
+    if (framesPerBeat <= 0.0)
         return {};
 
-    const auto timeSec = (double) frameIndex / frameRate;
-    return c.edit.tempoSequence.toBeats(te::TimePosition::fromSeconds(timeSec));
+    return te::BeatPosition::fromBeats((double) frameIndex / framesPerBeat);
 }
 
 te::BeatPosition PsgParamFrame::getRawEditBeats(const PsgClip& c) const {
@@ -407,8 +404,9 @@ void PsgList::recomputeAccumulatedState() {
 }
 
 void PsgList::clear (juce::UndoManager* um) {
+    // Timing metadata (frameRate, framesPerBeat) is kept: it describes the list's
+    // relation to tempo, not its content.
     state.removeAllChildren(um);
-    setFramesPerBeat(0.0, um);
     importedName = {};
 }
 

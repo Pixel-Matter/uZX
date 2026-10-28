@@ -618,6 +618,50 @@ public:
             expect(! clip->getPsg().hasFpsMismatch(*clip, 50.0),
                    "Round-tripped metadata should not produce a mismatch warning");
         }
+
+        beginTest("Clip-attached PSG lists always have frames per beat");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            auto track = getAudioTracks(*edit)[0];
+
+            // A bare clip with no PSG child must get an attached list with timing metadata.
+            auto* clip = dynamic_cast<PsgClip*>(CustomClip::insertClipWithState(
+                *track, {}, "bare", CustomClip::Type::psg, {{0_tp, 4_td}, {}},
+                te::DeleteExistingClips::yes, false));
+            expect(clip != nullptr, "Sanity: bare PSG clip inserted");
+            expect(clip->getPsg().state == clip->state.getChildWithName(IDs::PSG),
+                   "The clip's PsgList must refer to its own PSG state child");
+            expect(clip->getPsg().getFramesPerBeat() > 0.0, "Bare clip should get frames per beat");
+
+            const auto framesPerBeat = clip->getPsg().getFramesPerBeat();
+            clip->getPsg().clear();
+            expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), framesPerBeat, 1.0e-9,
+                                      "clear() must keep timing metadata");
+        }
+
+        beginTest("One undo removes a whole PSG import");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            auto track = getAudioTracks(*edit)[0];
+            auto& um = edit->getUndoManager();
+            um.beginNewTransaction();
+
+            auto data = makeOffGridFrameData();
+            auto clip = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "undo import");
+            expectEquals(clip->getPsg().getNumFrames(), 1, "Sanity: import has one frame");
+
+            um.undo();
+            expectEquals(track->getClips().size(), 0, "One undo should remove the whole import");
+
+            um.redo();
+            expectEquals(track->getClips().size(), 1, "Redo should restore the imported clip");
+            if (auto* redone = dynamic_cast<PsgClip*>(track->getClips().getFirst())) {
+                expect(redone->getPsg().state == redone->state.getChildWithName(IDs::PSG),
+                       "Redone clip's list must be attached to its state");
+                expectEquals(redone->getPsg().getNumFrames(), 1, "Redone clip should have the imported frame");
+            }
+        }
     }
 };
 

@@ -20,17 +20,16 @@ void PsgClip::initialise() {
     // load PSG list
     auto um = getUndoManager();
     auto psg = state.getChildWithName(IDs::PSG);
-    if (psg.isValid()) {
-        psgList = std::make_unique<PsgList>(psg, um);
-
-        // Legacy files may store per-frame beats. Back-fill machine-frame indices
-        // from the edit's frame rate and drop the legacy beat property.
-        const double fps = Helpers::getProjectFps(edit);
-        psgList->migrateToFrameIndicesIfNeeded(*this, fps, um);
-    } else {
-        state.addChild(PsgList::createPsgList(), -1, um);
-        psgList = std::make_unique<PsgList>();
+    if (! psg.isValid()) {
+        psg = PsgList::createPsgList();
+        state.addChild(psg, -1, um);
     }
+    psgList = std::make_unique<PsgList>(psg, um);
+
+    // Legacy files may store per-frame beats. Back-fill machine-frame indices
+    // from the edit's frame rate and drop the legacy beat property. This also
+    // guarantees framesPerBeat > 0, which frame timing relies on.
+    psgList->migrateToFrameIndicesIfNeeded(*this, Helpers::getProjectFps(edit), um);
 
     if (getColour() == getDefaultColour()) {
         auto track = getTrack();
@@ -120,7 +119,7 @@ PsgClip::Ptr PsgClip::insertTo(
         false
     ));
     jassert(clip != nullptr);
-    clip->getUndoManager()->beginNewTransaction();
+    // Same undo transaction as the insert: one undo removes the whole import.
     clip->loadFrom(data);
 
     // // debug checks
@@ -210,9 +209,10 @@ void PsgClip::loadFrom(uZX::PsgData &data) {
         // state.removeChild(state.getChildWithName(te::IDs::SEQUENCE), um);
         // state.addChild(seqState, -1, um);
 
-        getPsg().clear();
+        // Build the list detached and without undo; attaching it below is the
+        // single undoable step.
         PsgList psg;
-        psg.loadFrom(data, edit, um);
+        psg.loadFrom(data, edit, nullptr);
         state.removeChild(state.getChildWithName(IDs::PSG), um);
         state.addChild(psg.state, -1, um);
         initialise();
@@ -220,11 +220,6 @@ void PsgClip::loadFrom(uZX::PsgData &data) {
     DBG("PSG clip constructed in " << timeElapsed << "s");
     changed();
     scaleVerticallyToFit();
-}
-
-void PsgClip::loadFrom(uZX::PsgFile &psgFile) {
-    psgFile.ensureRead();
-    loadFrom(psgFile.getData());
 }
 
 }  // namespace MoTool

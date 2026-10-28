@@ -1,6 +1,6 @@
 # Sketch: integer-frame PSG timestamps
 
-> Design note on branch `integer-psg-sketch`.
+> Design note. Implemented on `develop`.
 >
 > **Status: Option A implemented with `framesPerBeat`.** Frames carry a machine-frame
 > index (`IDs::i`) and the PSG list stores source frame rate (`IDs::frameRate`) plus
@@ -16,6 +16,23 @@
 > inverting its stored beat through the tempo map. The legacy `b` property is
 > removed after migration. Lists missing `framesPerBeat` infer it from frame rate
 > and the current beat length.
+>
+> **Invariant:** every clip-attached `PsgList` has `framesPerBeat > 0`.
+> `PsgClip::initialise` always runs the migration, which back-fills it, and
+> `PsgList::clear` keeps it. There is no time-based fallback: frame timing is
+> always `i / framesPerBeat` beats, mapped to seconds through the tempo map.
+>
+> **What "preserve timing" actually preserves:** PSG frames are beat-locked. A
+> frame's wall-clock time is `tempoMap.toTime(i / framesPerBeat)`, so it moves
+> whenever the tempo map moves under it. Preserve mode compensates for *one*
+> tempo setting being changed through `PsgTiming::setTempoBpmRetimingFrames`, by
+> scaling `framesPerBeat` by the beat-length ratio. It is exact for single-tempo
+> edits only:
+>
+> - a tempo change inside a clip still moves the frames after it in wall-clock time;
+> - in a multi-tempo edit the one ratio is applied to every PSG clip, including
+>   clips under other tempo sections;
+> - tempo changes that bypass `setTempoBpmRetimingFrames` are not compensated.
 
 ## Problem this addresses
 
@@ -111,9 +128,11 @@ that keeps the dual-representation smell.
 
 ## Open questions
 
-- Variable tempo within a clip: with frame-index truth, a frame's *beat* still moves
-  under a mid-clip tempo change, but its *time* stays fixed — which is the desired
-  behaviour. Confirm the drawing/snap code is happy deriving beats live.
+- Variable tempo within a clip: answered — the opposite of the original hope. A
+  frame's *beat* (`i / framesPerBeat`) is fixed and its *time* moves with the
+  tempo map, so a mid-clip tempo change shifts the frames after it. True
+  time-locking would need beats derived from `i / frameRate` seconds through the
+  tempo map instead; see the status note above.
 - `playRate` (machine-frame multiplier) interaction with `frameIndex`: decide whether
   the stored index is in play-frames or machine-frames.
 - Snap-to-beat editing UX once position is frame-quantised: "nearest frame to beat"

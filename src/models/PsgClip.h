@@ -55,7 +55,6 @@ private:
     mutable int pitchRangeVersion_ = -1;
 
     void loadFrom(uZX::PsgData &data);
-    void loadFrom(uZX::PsgFile &psgFile);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgClip)
 };

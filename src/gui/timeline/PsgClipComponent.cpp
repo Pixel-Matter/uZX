@@ -96,15 +96,13 @@ struct FrameNote {
     bool  hasNoiseMod;
 };
 
-/** Frame duration in edit time, taken from the clip's own PSG timing metadata.
-    Falls back to the stored source rate and finally the edit's project fps for
-    legacy clips, mirroring the fallback chain in getFrameBeatPosition(). */
+/** Frame duration in edit time, taken from the clip's own PSG timing metadata. */
 te::TimeDuration getClipFrameDuration(const PsgClip& clip) {
     double fps = clip.getPsg().getEffectiveFps(clip);
-    if (fps <= 0.0)
-        fps = clip.getPsg().getFrameRate();
-    if (fps <= 0.0)
+    if (fps <= 0.0) {
+        jassertfalse;  // PsgClip::initialise guarantees framesPerBeat > 0
         fps = Helpers::getProjectFps(clip.edit);
+    }
     return te::TimeDuration::fromSeconds(1.0 / fps);
 }
 

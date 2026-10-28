@@ -29,3 +29,10 @@ Prefer concise imperative messages; use a lowercase scope when helpful (`docs:`,
 ## Agent-Specific Instructions
 
 Do not edit generated build trees or vendored `third_party/` code unless explicitly required. Keep build artifacts out of commits.
+
+For native macOS UX testing, screenshots, and keyboard/mouse control, use
+`./scripts/peekaboo.sh`; read `docs/ux-testing.md` first. Run desktop operations
+outside the sandbox, target the exact uZX PID/window, and observe after each
+action. Save screenshots and JSON under `.cache/ux/`.
+Regenerate the user-guide figures with `python3 -B scripts/illustrate_user_guide.py`;
+the generator owns and closes its test app sessions, and refuses existing ones.

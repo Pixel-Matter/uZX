@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic three-channel melody for reproducible guide screenshots. -->
+<EDIT appVersion="0.4.9" projectFps="50.0" timecodeDisplayMode="seconds" timecodeFormat="seconds">
+  <TRANSPORT endToEnd="1" />
+  <PITCHSEQUENCE>
+    <PITCH startBeat="0.0" pitch="60" />
+  </PITCHSEQUENCE>
+  <TEMPOSEQUENCE>
+    <TEMPO startBeat="0.0" bpm="120.0" curve="1.0" />
+    <TIMESIG numerator="4" denominator="4" startBeat="0.0" />
+  </TEMPOSEQUENCE>
+  <VIDEO />
+  <CLICKTRACK level="0.6000000238418579" />
+  <MASTERVOLUME>
+    <PLUGIN type="volume" volume="0.6376281380653381" id="1001" enabled="1">
+      <MODIFIERASSIGNMENTS />
+    </PLUGIN>
+  </MASTERVOLUME>
+  <RACKS />
+  <MASTERPLUGINS />
+  <INPUTDEVICES />
+  <TRACKCOMPS />
+  <ARRANGERTRACK name="Arranger" id="1006" />
+  <CHORDTRACK name="Chord" id="1008" />
+  <MARKERTRACK id="1002" name="Marker" />
+  <TEMPOTRACK name="Global" id="1007">
+    <MODIFIERS />
+  </TEMPOTRACK>
+  <MASTERTRACK name="Master" id="1009">
+    <MODIFIERS />
+  </MASTERTRACK>
+  <TRACK id="1003" name="Guide melody">
+    <MODIFIERS />
+    <OUTPUTDEVICES>
+      <DEVICE name="(default audio output)" />
+    </OUTPUTDEVICES>
+    <CLIPSLOTS />
+    <PLUGIN type="aychip" windowLocked="1" id="1011" enabled="1" midi="1" chip="AY" clock="1.7734" noDC="1" monitor="0" volume="0.5" layout="ACB" stereo="0.5" channelA="1" channelB="1" channelC="1" toneA="1" toneB="1" toneC="1" noiseA="1" noiseB="1" noiseC="1" envelopeA="1" envelopeB="1" envelopeC="1" windowSamples="1024" gain="1.0" triggerMode="RisingEdge" triggerLevel="0.0" remapOnTempoChange="1">
+      <MODIFIERASSIGNMENTS />
+    </PLUGIN>
+    <PLUGIN type="volume" id="1004" enabled="1" remapOnTempoChange="1">
+      <MODIFIERASSIGNMENTS />
+    </PLUGIN>
+    <PLUGIN type="level" id="1005" enabled="1" />
+    <PSGCLIP name="Guide melody" start="0.0" length="8.0" offset="0.0" id="1010" currentTake="0" speed="1.0" colour="ff0088ff">
+      <AUTOMATIONCURVES />
+      <QUANTISATION />
+      <GROOVE />
+      <SEQUENCE ver="1" channelNumber="1" />
+      <PSG ver="1" frameRate="50.0" framesPerBeat="25.0" channelNumber="1">
+        <FRAME i="0" va="14" vb="9" vc="7" pa="424" pb="847" pc="566" na="0" nb="0" nc="0" n="8" />
+        <FRAME i="1" s="0" re="1" />
+        <FRAME i="2" va="13" s="0" re="1" />
+        <FRAME i="3" s="0" re="1" />
+        <FRAME i="4" va="12" s="0" re="1" />
+        <FRAME i="5" s="0" re="1" />
+        <FRAME i="6" va="11" s="0" re="1" />
+        <FRAME i="7" s="0" re="1" />
+        <FRAME i="8" va="10" s="0" re="1" />
+        <FRAME i="9" s="0" re="1" />
+        <FRAME i="10" va="9" s="0" re="1" />
+        <FRAME i="11" s="0" re="1" />
+        <FRAME i="12" va="8" s="0" re="1" />
+        <FRAME i="13" s="0" re="1" />
+        <FRAME i="14" va="7" s="0" re="1" />
+        <FRAME i="15" s="0" re="1" />
+        <FRAME i="16" va="6" s="0" re="1" />
+        <FRAME i="17" s="0" re="1" />
+        <FRAME i="18" va="5" s="0" re="1" />
+        <FRAME i="19" s="0" re="1" />
+        <FRAME i="20" va="4" s="0" re="1" />
+        <FRAME i="21" s="0" re="1" />
+        <FRAME i="22" va="3" s="0" re="1" />
+        <FRAME i="23" s="0" re="1" />
+        <FRAME i="24" s="0" re="1" />
+        <FRAME i="25" va="14" pa="336" pb="673" pc="449" s="0" re="1" />
+        <FRAME i="26" s="0" re="1" />
+        <FRAME i="27" va="13" s="0" re="1" />
+        <FRAME i="28" s="0" re="1" />
+        <FRAME i="29" va="12" s="0" re="1" />
+        <FRAME i="30" s="0" re="1" />
+        <FRAME i="31" va="11" s="0" re="1" />
+        <FRAME i="32" s="0" re="1" />
+        <FRAME i="33" va="10" s="0" re="1" />
+        <FRAME i="34" s="0" re="1" />
+        <FRAME i="35" va="9" s="0" re="1" />
+        <FRAME i="36" s="0" re="1" />
+        <FRAME i="37" va="8" s="0" re="1" />
+        <FRAME i="38" s="0" re="1" />
+        <FRAME i="39" va="7" s="0" re="1" />
+        <FRAME i="40" s="0" re="1" />
+        <FRAME i="41" va="6" s="0" re="1" />
+        <FRAME i="42" s="0" re="1" />
+        <FRAME i="43" va="5" s="0" re="1" />
+        <FRAME i="44" s="0" re="1" />
+        <FRAME i="45" va="4" s="0" re="1" />
+        <FRAME i="46" s="0" re="1" />
+        <FRAME i="47" va="3" s="0" re="1" />
+        <FRAME i="48" s="0" re="1" />
+        <FRAME i="49" s="0" re="1" />
+        <FRAME i="50" va="14" pa="283" pb="566" pc="377" s="0" re="1" />
+        <FRAME i="51" s="0" re="1" />
+        <FRAME i="52" va="13" s="0" re="1" />
+        <FRAME i="53" s="0" re="1" />
+        <FRAME i="54" va="12" s="0" re="1" />
+        <FRAME i="55" s="0" re="1" />
+        <FRAME i="56" va="11" s="0" re="1" />
+        <FRAME i="57" s="0" re="1" />
+        <FRAME i="58" va="10" s="0" re="1" />
+        <FRAME i="59" s="0" re="1" />
+        <FRAME i="60" va="9" s="0" re="1" />
+        <FRAME i="61" s="0" re="1" />
+        <FRAME i="62" va="8" s="0" re="1" />
+        <FRAME i="63" s="0" re="1" />
+        <FRAME i="64" va="7" s="0" re="1" />
+        <FRAME i="65" s="0" re="1" />
+        <FRAME i="66" va="6" s="0" re="1" />
+        <FRAME i="67" s="0" re="1" />
+        <FRAME i="68" va="5" s="0" re="1" />
+        <FRAME i="69" s="0" re="1" />
+        <FRAME i="70" va="4" s="0" re="1" />
+        <FRAME i="71" s="0" re="1" />
+        <FRAME i="72" va="3" s="0" re="1" />
+        <FRAME i="73" s="0" re="1" />
+        <FRAME i="74" s="0" re="1" />
+        <FRAME i="75" va="14" pa="212" pb="424" pc="283" s="0" re="1" />
+        <FRAME i="76" s="0" re="1" />
+        <FRAME i="77" va="13" s="0" re="1" />
+        <FRAME i="78" s="0" re="1" />
+        <FRAME i="79" va="12" s="0" re="1" />
+        <FRAME i="80" s="0" re="1" />
+        <FRAME i="81" va="11" s="0" re="1" />
+        <FRAME i="82" s="0" re="1" />
+        <FRAME i="83" va="10" s="0" re="1" />
+        <FRAME i="84" s="0" re="1" />
+        <FRAME i="85" va="9" s="0" re="1" />
+        <FRAME i="86" s="0" re="1" />
+        <FRAME i="87" va="8" s="0" re="1" />
+        <FRAME i="88" s="0" re="1" />
+        <FRAME i="89" va="7" s="0" re="1" />
+        <FRAME i="90" s="0" re="1" />
+        <FRAME i="91" va="6" s="0" re="1" />
+        <FRAME i="92" s="0" re="1" />
+        <FRAME i="93" va="5" s="0" re="1" />
+        <FRAME i="94" s="0" re="1" />
+        <FRAME i="95" va="4" s="0" re="1" />
+        <FRAME i="96" s="0" re="1" />
+        <FRAME i="97" va="3" s="0" re="1" />
+        <FRAME i="98" s="0" re="1" />
+        <FRAME i="99" s="0" re="1" />
+        <FRAME i="100" va="14" pa="224" pb="449" pc="300" s="0" re="1" />
+        <FRAME i="101" s="0" re="1" />
+        <FRAME i="102" va="13" s="0" re="1" />
+        <FRAME i="103" s="0" re="1" />
+        <FRAME i="104" va="12" s="0" re="1" />
+        <FRAME i="105" s="0" re="1" />
+        <FRAME i="106" va="11" s="0" re="1" />
+        <FRAME i="107" s="0" re="1" />
+        <FRAME i="108" va="10" s="0" re="1" />
+        <FRAME i="109" s="0" re="1" />
+        <FRAME i="110" va="9" s="0" re="1" />
+        <FRAME i="111" s="0" re="1" />
+        <FRAME i="112" va="8" s="0" re="1" />
+        <FRAME i="113" s="0" re="1" />
+        <FRAME i="114" va="7" s="0" re="1" />
+        <FRAME i="115" s="0" re="1" />
+        <FRAME i="116" va="6" s="0" re="1" />
+        <FRAME i="117" s="0" re="1" />
+        <FRAME i="118" va="5" s="0" re="1" />
+        <FRAME i="119" s="0" re="1" />
+        <FRAME i="120" va="4" s="0" re="1" />
+        <FRAME i="121" s="0" re="1" />
+        <FRAME i="122" va="3" s="0" re="1" />
+        <FRAME i="123" s="0" re="1" />
+        <FRAME i="124" s="0" re="1" />
+        <FRAME i="125" va="14" pa="283" pb="566" pc="377" s="0" re="1" />
+        <FRAME i="126" s="0" re="1" />
+        <FRAME i="127" va="13" s="0" re="1" />
+        <FRAME i="128" s="0" re="1" />
+        <FRAME i="129" va="12" s="0" re="1" />
+        <FRAME i="130" s="0" re="1" />
+        <FRAME i="131" va="11" s="0" re="1" />
+        <FRAME i="132" s="0" re="1" />
+        <FRAME i="133" va="10" s="0" re="1" />
+        <FRAME i="134" s="0" re="1" />
+        <FRAME i="135" va="9" s="0" re="1" />
+        <FRAME i="136" s="0" re="1" />
+        <FRAME i="137" va="8" s="0" re="1" />
+        <FRAME i="138" s="0" re="1" />
+        <FRAME i="139" va="7" s="0" re="1" />
+        <FRAME i="140" s="0" re="1" />
+        <FRAME i="141" va="6" s="0" re="1" />
+        <FRAME i="142" s="0" re="1" />
+        <FRAME i="143" va="5" s="0" re="1" />
+        <FRAME i="144" s="0" re="1" />
+        <FRAME i="145" va="4" s="0" re="1" />
+        <FRAME i="146" s="0" re="1" />
+        <FRAME i="147" va="3" s="0" re="1" />
+        <FRAME i="148" s="0" re="1" />
+        <FRAME i="149" s="0" re="1" />
+        <FRAME i="150" va="14" pa="317" pb="635" pc="424" s="0" re="1" />
+        <FRAME i="151" s="0" re="1" />
+        <FRAME i="152" va="13" s="0" re="1" />
+        <FRAME i="153" s="0" re="1" />
+        <FRAME i="154" va="12" s="0" re="1" />
+        <FRAME i="155" s="0" re="1" />
+        <FRAME i="156" va="11" s="0" re="1" />
+        <FRAME i="157" s="0" re="1" />
+        <FRAME i="158" va="10" s="0" re="1" />
+        <FRAME i="159" s="0" re="1" />
+        <FRAME i="160" va="9" s="0" re="1" />
+        <FRAME i="161" s="0" re="1" />
+        <FRAME i="162" va="8" s="0" re="1" />
+        <FRAME i="163" s="0" re="1" />
+        <FRAME i="164" va="7" s="0" re="1" />
+        <FRAME i="165" s="0" re="1" />
+        <FRAME i="166" va="6" s="0" re="1" />
+        <FRAME i="167" s="0" re="1" />
+        <FRAME i="168" va="5" s="0" re="1" />
+        <FRAME i="169" s="0" re="1" />
+        <FRAME i="170" va="4" s="0" re="1" />
+        <FRAME i="171" s="0" re="1" />
+        <FRAME i="172" va="3" s="0" re="1" />
+        <FRAME i="173" s="0" re="1" />
+        <FRAME i="174" s="0" re="1" />
+        <FRAME i="175" va="14" pa="377" pb="755" pc="504" s="0" re="1" />
+        <FRAME i="176" s="0" re="1" />
+        <FRAME i="177" va="13" s="0" re="1" />
+        <FRAME i="178" s="0" re="1" />
+        <FRAME i="179" va="12" s="0" re="1" />
+        <FRAME i="180" s="0" re="1" />
+        <FRAME i="181" va="11" s="0" re="1" />
+        <FRAME i="182" s="0" re="1" />
+        <FRAME i="183" va="10" s="0" re="1" />
+        <FRAME i="184" s="0" re="1" />
+        <FRAME i="185" va="9" s="0" re="1" />
+        <FRAME i="186" s="0" re="1" />
+        <FRAME i="187" va="8" s="0" re="1" />
+        <FRAME i="188" s="0" re="1" />
+        <FRAME i="189" va="7" s="0" re="1" />
+        <FRAME i="190" s="0" re="1" />
+        <FRAME i="191" va="6" s="0" re="1" />
+        <FRAME i="192" s="0" re="1" />
+        <FRAME i="193" va="5" s="0" re="1" />
+        <FRAME i="194" s="0" re="1" />
+        <FRAME i="195" va="4" s="0" re="1" />
+        <FRAME i="196" s="0" re="1" />
+        <FRAME i="197" va="3" s="0" re="1" />
+        <FRAME i="198" s="0" re="1" />
+        <FRAME i="199" s="0" re="1" />
+        <FRAME i="200" va="14" pa="424" pb="847" pc="566" s="0" re="1" />
+        <FRAME i="201" s="0" re="1" />
+        <FRAME i="202" va="13" s="0" re="1" />
+        <FRAME i="203" s="0" re="1" />
+        <FRAME i="204" va="12" s="0" re="1" />
+        <FRAME i="205" s="0" re="1" />
+        <FRAME i="206" va="11" s="0" re="1" />
+        <FRAME i="207" s="0" re="1" />
+        <FRAME i="208" va="10" s="0" re="1" />
+        <FRAME i="209" s="0" re="1" />
+        <FRAME i="210" va="9" s="0" re="1" />
+        <FRAME i="211" s="0" re="1" />
+        <FRAME i="212" va="8" s="0" re="1" />
+        <FRAME i="213" s="0" re="1" />
+        <FRAME i="214" va="7" s="0" re="1" />
+        <FRAME i="215" s="0" re="1" />
+        <FRAME i="216" va="6" s="0" re="1" />
+        <FRAME i="217" s="0" re="1" />
+        <FRAME i="218" va="5" s="0" re="1" />
+        <FRAME i="219" s="0" re="1" />
+        <FRAME i="220" va="4" s="0" re="1" />
+        <FRAME i="221" s="0" re="1" />
+        <FRAME i="222" va="3" s="0" re="1" />
+        <FRAME i="223" s="0" re="1" />
+        <FRAME i="224" s="0" re="1" />
+        <FRAME i="225" va="14" pa="336" pb="673" pc="449" s="0" re="1" />
+        <FRAME i="226" s="0" re="1" />
+        <FRAME i="227" va="13" s="0" re="1" />
+        <FRAME i="228" s="0" re="1" />
+        <FRAME i="229" va="12" s="0" re="1" />
+        <FRAME i="230" s="0" re="1" />
+        <FRAME i="231" va="11" s="0" re="1" />
+        <FRAME i="232" s="0" re="1" />
+        <FRAME i="233" va="10" s="0" re="1" />
+        <FRAME i="234" s="0" re="1" />
+        <FRAME i="235" va="9" s="0" re="1" />
+        <FRAME i="236" s="0" re="1" />
+        <FRAME i="237" va="8" s="0" re="1" />
+        <FRAME i="238" s="0" re="1" />
+        <FRAME i="239" va="7" s="0" re="1" />
+        <FRAME i="240" s="0" re="1" />
+        <FRAME i="241" va="6" s="0" re="1" />
+        <FRAME i="242" s="0" re="1" />
+        <FRAME i="243" va="5" s="0" re="1" />
+        <FRAME i="244" s="0" re="1" />
+        <FRAME i="245" va="4" s="0" re="1" />
+        <FRAME i="246" s="0" re="1" />
+        <FRAME i="247" va="3" s="0" re="1" />
+        <FRAME i="248" s="0" re="1" />
+        <FRAME i="249" s="0" re="1" />
+        <FRAME i="250" va="14" pa="252" pb="504" pc="336" s="0" re="1" />
+        <FRAME i="251" s="0" re="1" />
+        <FRAME i="252" va="13" s="0" re="1" />
+        <FRAME i="253" s="0" re="1" />
+        <FRAME i="254" va="12" s="0" re="1" />
+        <FRAME i="255" s="0" re="1" />
+        <FRAME i="256" va="11" s="0" re="1" />
+        <FRAME i="257" s="0" re="1" />
+        <FRAME i="258" va="10" s="0" re="1" />
+        <FRAME i="259" s="0" re="1" />
+        <FRAME i="260" va="9" s="0" re="1" />
+        <FRAME i="261" s="0" re="1" />
+        <FRAME i="262" va="8" s="0" re="1" />
+        <FRAME i="263" s="0" re="1" />
+        <FRAME i="264" va="7" s="0" re="1" />
+        <FRAME i="265" s="0" re="1" />
+        <FRAME i="266" va="6" s="0" re="1" />
+        <FRAME i="267" s="0" re="1" />
+        <FRAME i="268" va="5" s="0" re="1" />
+        <FRAME i="269" s="0" re="1" />
+        <FRAME i="270" va="4" s="0" re="1" />
+        <FRAME i="271" s="0" re="1" />
+        <FRAME i="272" va="3" s="0" re="1" />
+        <FRAME i="273" s="0" re="1" />
+        <FRAME i="274" s="0" re="1" />
+        <FRAME i="275" va="14" pa="212" pb="424" pc="283" s="0" re="1" />
+        <FRAME i="276" s="0" re="1" />
+        <FRAME i="277" va="13" s="0" re="1" />
+        <FRAME i="278" s="0" re="1" />
+        <FRAME i="279" va="12" s="0" re="1" />
+        <FRAME i="280" s="0" re="1" />
+        <FRAME i="281" va="11" s="0" re="1" />
+        <FRAME i="282" s="0" re="1" />
+        <FRAME i="283" va="10" s="0" re="1" />
+        <FRAME i="284" s="0" re="1" />
+        <FRAME i="285" va="9" s="0" re="1" />
+        <FRAME i="286" s="0" re="1" />
+        <FRAME i="287" va="8" s="0" re="1" />
+        <FRAME i="288" s="0" re="1" />
+        <FRAME i="289" va="7" s="0" re="1" />
+        <FRAME i="290" s="0" re="1" />
+        <FRAME i="291" va="6" s="0" re="1" />
+        <FRAME i="292" s="0" re="1" />
+        <FRAME i="293" va="5" s="0" re="1" />
+        <FRAME i="294" s="0" re="1" />
+        <FRAME i="295" va="4" s="0" re="1" />
+        <FRAME i="296" s="0" re="1" />
+        <FRAME i="297" va="3" s="0" re="1" />
+        <FRAME i="298" s="0" re="1" />
+        <FRAME i="299" s="0" re="1" />
+        <FRAME i="300" va="14" pa="189" pb="377" pc="252" s="0" re="1" />
+        <FRAME i="301" s="0" re="1" />
+        <FRAME i="302" va="13" s="0" re="1" />
+        <FRAME i="303" s="0" re="1" />
+        <FRAME i="304" va="12" s="0" re="1" />
+        <FRAME i="305" s="0" re="1" />
+        <FRAME i="306" va="11" s="0" re="1" />
+        <FRAME i="307" s="0" re="1" />
+        <FRAME i="308" va="10" s="0" re="1" />
+        <FRAME i="309" s="0" re="1" />
+        <FRAME i="310" va="9" s="0" re="1" />
+        <FRAME i="311" s="0" re="1" />
+        <FRAME i="312" va="8" s="0" re="1" />
+        <FRAME i="313" s="0" re="1" />
+        <FRAME i="314" va="7" s="0" re="1" />
+        <FRAME i="315" s="0" re="1" />
+        <FRAME i="316" va="6" s="0" re="1" />
+        <FRAME i="317" s="0" re="1" />
+        <FRAME i="318" va="5" s="0" re="1" />
+        <FRAME i="319" s="0" re="1" />
+        <FRAME i="320" va="4" s="0" re="1" />
+        <FRAME i="321" s="0" re="1" />
+        <FRAME i="322" va="3" s="0" re="1" />
+        <FRAME i="323" s="0" re="1" />
+        <FRAME i="324" s="0" re="1" />
+        <FRAME i="325" va="14" pa="224" pb="449" pc="300" s="0" re="1" />
+        <FRAME i="326" s="0" re="1" />
+        <FRAME i="327" va="13" s="0" re="1" />
+        <FRAME i="328" s="0" re="1" />
+        <FRAME i="329" va="12" s="0" re="1" />
+        <FRAME i="330" s="0" re="1" />
+        <FRAME i="331" va="11" s="0" re="1" />
+        <FRAME i="332" s="0" re="1" />
+        <FRAME i="333" va="10" s="0" re="1" />
+        <FRAME i="334" s="0" re="1" />
+        <FRAME i="335" va="9" s="0" re="1" />
+        <FRAME i="336" s="0" re="1" />
+        <FRAME i="337" va="8" s="0" re="1" />
+        <FRAME i="338" s="0" re="1" />
+        <FRAME i="339" va="7" s="0" re="1" />
+        <FRAME i="340" s="0" re="1" />
+        <FRAME i="341" va="6" s="0" re="1" />
+        <FRAME i="342" s="0" re="1" />
+        <FRAME i="343" va="5" s="0" re="1" />
+        <FRAME i="344" s="0" re="1" />
+        <FRAME i="345" va="4" s="0" re="1" />
+        <FRAME i="346" s="0" re="1" />
+        <FRAME i="347" va="3" s="0" re="1" />
+        <FRAME i="348" s="0" re="1" />
+        <FRAME i="349" s="0" re="1" />
+        <FRAME i="350" va="14" pa="283" pb="566" pc="377" s="0" re="1" />
+        <FRAME i="351" s="0" re="1" />
+        <FRAME i="352" va="13" s="0" re="1" />
+        <FRAME i="353" s="0" re="1" />
+        <FRAME i="354" va="12" s="0" re="1" />
+        <FRAME i="355" s="0" re="1" />
+        <FRAME i="356" va="11" s="0" re="1" />
+        <FRAME i="357" s="0" re="1" />
+        <FRAME i="358" va="10" s="0" re="1" />
+        <FRAME i="359" s="0" re="1" />
+        <FRAME i="360" va="9" s="0" re="1" />
+        <FRAME i="361" s="0" re="1" />
+        <FRAME i="362" va="8" s="0" re="1" />
+        <FRAME i="363" s="0" re="1" />
+        <FRAME i="364" va="7" s="0" re="1" />
+        <FRAME i="365" s="0" re="1" />
+        <FRAME i="366" va="6" s="0" re="1" />
+        <FRAME i="367" s="0" re="1" />
+        <FRAME i="368" va="5" s="0" re="1" />
+        <FRAME i="369" s="0" re="1" />
+        <FRAME i="370" va="4" s="0" re="1" />
+        <FRAME i="371" s="0" re="1" />
+        <FRAME i="372" va="3" s="0" re="1" />
+        <FRAME i="373" s="0" re="1" />
+        <FRAME i="374" s="0" re="1" />
+        <FRAME i="375" va="14" pa="424" pb="847" pc="566" s="0" re="1" />
+        <FRAME i="376" s="0" re="1" />
+        <FRAME i="377" va="13" s="0" re="1" />
+        <FRAME i="378" s="0" re="1" />
+        <FRAME i="379" va="12" s="0" re="1" />
+        <FRAME i="380" s="0" re="1" />
+        <FRAME i="381" va="11" s="0" re="1" />
+        <FRAME i="382" s="0" re="1" />
+        <FRAME i="383" va="10" s="0" re="1" />
+        <FRAME i="384" s="0" re="1" />
+        <FRAME i="385" va="9" s="0" re="1" />
+        <FRAME i="386" s="0" re="1" />
+        <FRAME i="387" va="8" s="0" re="1" />
+        <FRAME i="388" s="0" re="1" />
+        <FRAME i="389" va="7" s="0" re="1" />
+        <FRAME i="390" s="0" re="1" />
+        <FRAME i="391" va="6" s="0" re="1" />
+        <FRAME i="392" s="0" re="1" />
+        <FRAME i="393" va="5" s="0" re="1" />
+        <FRAME i="394" s="0" re="1" />
+        <FRAME i="395" va="4" s="0" re="1" />
+        <FRAME i="396" s="0" re="1" />
+        <FRAME i="397" va="3" s="0" re="1" />
+        <FRAME i="398" s="0" re="1" />
+        <FRAME i="399" s="0" re="1" />
+      </PSG>
+    </PSGCLIP>
+    <VIEWSTATE height="400" />
+  </TRACK>
+  <EDITVIEWSTATE headersWidth="180" />
+</EDIT>

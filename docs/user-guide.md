@@ -115,6 +115,8 @@ The timeline contains **tracks** stacked vertically. Each track has a **header**
 
 Clips appear in the track body as colored blocks. PSG clips visualize chip register activity as miniature graphics inside each block.
 
+See [Reading PSG clips](psg-visualization.md) for an illustrated reference to tone, envelope, noise, channel ownership, and matching pitches.
+
 Click a clip to select it. The Details Panel updates to show clip-specific editors.
 
 #### Ruler

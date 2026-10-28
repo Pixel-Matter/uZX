@@ -118,6 +118,9 @@ set(TEST_SOURCES
 
     gui/timeline/TimelineGrid.test.cpp
     gui/timeline/PsgClipComponent.test.cpp
+    gui/timeline/PsgClipTestHelpers.h
+    gui/timeline/PsgVisualGuide.test.cpp
+    gui/timeline/PsgPaintingBenchmark.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp

@@ -413,8 +413,12 @@ struct PsgFrameNote {
 /** An envelope period P sounds at the pitch of tone period 16*P: the AY divides
     its clock by 256 for the envelope but by 16 for tone. Mapping through the
     tone scale keeps every pitch in one normalized space. */
+inline constexpr int envelopePeriodToTonePeriod(int envPeriod) noexcept {
+    return 16 * envPeriod;
+}
+
 inline float envelopePeriodToTonePitch(int envPeriod) noexcept {
-    return PsgParamType{PsgParamType::TonePeriodA}.getScale().valueToNormalized(16 * envPeriod);
+    return PsgParamType{PsgParamType::TonePeriodA}.getScale().valueToNormalized(envelopePeriodToTonePeriod(envPeriod));
 }
 
 /** Calls fn(PsgFrameNote) for every audible note in the frame: up to one tone
@@ -429,7 +433,7 @@ inline void visitFrameNotes(const PsgParamFrameData& data, Fn&& fn) {
     constexpr int hearableMin = 8;
     const int hearableMax = PsgParamType{PsgParamType::TonePeriodA}.getScale().end;
 
-    const int envTonePeriod = data.getRaw(PsgParamType::EnvelopePeriod) * 16;
+    const int envTonePeriod = envelopePeriodToTonePeriod(data.getRaw(PsgParamType::EnvelopePeriod));
     const bool envHearable = envTonePeriod >= hearableMin && envTonePeriod <= hearableMax;
     const float envPitch = envHearable
         ? PsgParamType{PsgParamType::TonePeriodA}.valueToNormalized(envTonePeriod) : 0.0f;

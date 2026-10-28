@@ -275,7 +275,8 @@ public:
             expectEquals(int(notes.size()), 1, "Expected exactly one note");
             if (!notes.empty()) {
                 const auto& n = notes[0];
-                expectEquals(n.channelIndex, 0, "channelIndex should be 0 (A)");
+                expectEquals(int(n.channelMask), 1, "channelMask should be A");
+                expect(!n.isEnvelopePitch, "Tone note should not be an envelope pitch note");
                 expect(!n.hasEnvMod, "hasEnvMod should be false");
                 expectEquals(int(n.volume), 10, "volume should be 10");
                 const float expectedPitch = PsgParamType{PsgParamType::TonePeriodA}.valueToNormalized(500);
@@ -294,7 +295,7 @@ public:
             expectEquals(int(notes.size()), 0, "Expected no notes from silent channel");
         }
 
-        beginTest("Env-only channel (toneOn=0, envMod=1): one channel note, no envelope note");
+        beginTest("Env-only channel (toneOn=0, envMod=1): one shared envelope pitch note");
         {
             PsgParamFrameData data;
             data.set(PsgParamType::EnvelopePeriod, 100);
@@ -305,19 +306,15 @@ public:
             expectEquals(int(notes.size()), 1, "Expected exactly one note");
             if (!notes.empty()) {
                 const auto& n = notes[0];
-                expectEquals(n.channelIndex, 0, "channelIndex should be 0 (A)");
+                expectEquals(int(n.channelMask), 1, "channelMask should be A");
+                expect(n.isEnvelopePitch, "Env-only note should be an envelope pitch note");
                 expect(n.hasEnvMod, "hasEnvMod should be true");
                 const float expectedPitch = envelopePeriodToTonePitch(100);
                 expectWithinAbsoluteError(n.pitch, expectedPitch, 1e-6f, "pitch mismatch");
-                // No channelIndex-3 note (toneIsOn is false, so anyToneAndEnv stays false)
-                bool hasEnvNote = false;
-                for (const auto& note : notes)
-                    if (note.channelIndex == 3) hasEnvNote = true;
-                expect(!hasEnvNote, "Should not emit channelIndex-3 note when toneIsOn=0");
             }
         }
 
-        beginTest("Tone+env on channel A: two notes (ch0 at tone pitch, ch3 at env pitch)");
+        beginTest("Tone+env on channel A: two notes (A tone pitch, shared env pitch)");
         {
             PsgParamFrameData data;
             data.set(PsgParamType::TonePeriodA, 500);
@@ -329,26 +326,30 @@ public:
             expectEquals(int(notes.size()), 2, "Expected exactly two notes");
 
             const PsgFrameNote* ch0Note = nullptr;
-            const PsgFrameNote* ch3Note = nullptr;
+            const PsgFrameNote* envNote = nullptr;
             for (const auto& n : notes) {
-                if (n.channelIndex == 0) ch0Note = &n;
-                if (n.channelIndex == 3) ch3Note = &n;
+                if (! n.isEnvelopePitch && n.channelMask == 1) ch0Note = &n;
+                if (n.isEnvelopePitch) envNote = &n;
             }
 
-            expect(ch0Note != nullptr, "Should have channel A (index 0) note");
-            expect(ch3Note != nullptr, "Should have envelope (index 3) note");
+            expect(ch0Note != nullptr, "Should have channel A tone note");
+            expect(envNote != nullptr, "Should have shared envelope pitch note");
 
             if (ch0Note) {
+                expectEquals(int(ch0Note->channelMask), 1, "Channel A note mask should be A");
+                expect(!ch0Note->isEnvelopePitch, "Channel A note should be a tone pitch note");
                 expect(ch0Note->hasEnvMod, "Channel A note should have hasEnvMod=true");
                 const float expectedTonePitch = PsgParamType{PsgParamType::TonePeriodA}.valueToNormalized(500);
                 expectWithinAbsoluteError(ch0Note->pitch, expectedTonePitch, 1e-6f,
                     "Channel A pitch should be at tone period 500");
             }
-            if (ch3Note) {
+            if (envNote) {
+                expectEquals(int(envNote->channelMask), 1, "Envelope note mask should be A");
+                expect(envNote->isEnvelopePitch, "Envelope note should be marked as envelope pitch");
                 const float expectedEnvPitch = envelopePeriodToTonePitch(100);
-                expectWithinAbsoluteError(ch3Note->pitch, expectedEnvPitch, 1e-6f,
+                expectWithinAbsoluteError(envNote->pitch, expectedEnvPitch, 1e-6f,
                     "Envelope note pitch should be at envPeriod=100");
-                expectEquals(int(ch3Note->volume), 15, "Envelope note volume should be 15");
+                expectEquals(int(envNote->volume), 15, "Envelope note volume should be 15");
             }
         }
 
@@ -363,7 +364,7 @@ public:
             expectEquals(int(notes1.size()), 0,
                 "Env-only channel with envPeriod=5000 should yield no notes");
 
-            // Tone+env channel with out-of-range env period: only tone note, no ch3 note
+            // Tone+env channel with out-of-range env period: only tone note, no envelope pitch note
             PsgParamFrameData toneAndEnv;
             toneAndEnv.set(PsgParamType::TonePeriodA, 500);
             toneAndEnv.set(PsgParamType::ToneIsOnA, 1);
@@ -371,13 +372,14 @@ public:
             toneAndEnv.set(PsgParamType::EnvelopeIsOnA, 1);
             toneAndEnv.set(PsgParamType::EnvelopePeriod, 5000);
             auto notes2 = collect(toneAndEnv);
-            expectEquals(int(notes2.size()), 1, "Only tone note, no ch3 note expected");
+            expectEquals(int(notes2.size()), 1, "Only tone note, no envelope pitch note expected");
             if (!notes2.empty()) {
-                expectEquals(notes2[0].channelIndex, 0, "Only note should be channel A");
+                expectEquals(int(notes2[0].channelMask), 1, "Only note should be channel A");
+                expect(! notes2[0].isEnvelopePitch, "Only note should be a tone pitch note");
             }
         }
 
-        beginTest("Ultra-high tone (period<8) with env fallback: env pitch emitted, plus ch3 note");
+        beginTest("Ultra-high tone (period<8) with env fallback: one shared env pitch note");
         {
             PsgParamFrameData data;
             data.set(PsgParamType::TonePeriodA, 4);   // <8, filtered out as tone
@@ -387,24 +389,22 @@ public:
             data.set(PsgParamType::EnvelopePeriod, 100);
 
             auto notes = collect(data);
-            // Expect: channel A note (env fallback) + ch3 envelope note = 2
-            expectEquals(int(notes.size()), 2, "Expected two notes: env-fallback ch0 + ch3");
+            expectEquals(int(notes.size()), 1, "Expected one shared envelope pitch note");
 
-            const PsgFrameNote* ch0Note = nullptr;
-            const PsgFrameNote* ch3Note = nullptr;
+            const PsgFrameNote* envNote = nullptr;
             for (const auto& n : notes) {
-                if (n.channelIndex == 0) ch0Note = &n;
-                if (n.channelIndex == 3) ch3Note = &n;
+                if (n.isEnvelopePitch) envNote = &n;
             }
 
-            expect(ch0Note != nullptr, "Should have channel A note");
-            expect(ch3Note != nullptr, "Should have envelope (index 3) note");
+            expect(envNote != nullptr, "Should have shared envelope pitch note");
 
-            if (ch0Note) {
-                expect(ch0Note->hasEnvMod, "Channel A note should have hasEnvMod=true");
+            if (envNote) {
+                expectEquals(int(envNote->channelMask), 1, "Envelope note mask should be A");
+                expect(envNote->isEnvelopePitch, "Envelope note should be marked as envelope pitch");
+                expect(envNote->hasEnvMod, "Envelope note should have hasEnvMod=true");
                 const float expectedEnvPitch = envelopePeriodToTonePitch(100);
-                expectWithinAbsoluteError(ch0Note->pitch, expectedEnvPitch, 1e-6f,
-                    "Channel A note should be at env pitch (tone period too small)");
+                expectWithinAbsoluteError(envNote->pitch, expectedEnvPitch, 1e-6f,
+                    "Envelope note should be at env pitch");
             }
         }
 
@@ -419,7 +419,7 @@ public:
             expectEquals(int(notes.size()), 0, "envPeriod=0 should yield no notes");
         }
 
-        beginTest("Three channels tone+env: 4 notes (3 channel notes + 1 envelope note)");
+        beginTest("Three channels tone+env: 4 notes (3 tone notes + 1 envelope note)");
         {
             PsgParamFrameData data;
             data.set(PsgParamType::EnvelopePeriod, 100);
@@ -430,12 +430,19 @@ public:
             }
 
             auto notes = collect(data);
-            expectEquals(int(notes.size()), 4, "Expected 4 notes: ch0, ch1, ch2 + envelope");
+            expectEquals(int(notes.size()), 4, "Expected 4 notes: A, B, C + envelope");
 
             int envNoteCount = 0;
-            for (const auto& n : notes)
-                if (n.channelIndex == 3) ++envNoteCount;
-            expectEquals(envNoteCount, 1, "Exactly one envelope (ch3) note");
+            const PsgFrameNote* envNote = nullptr;
+            for (const auto& n : notes) {
+                if (n.isEnvelopePitch) {
+                    ++envNoteCount;
+                    envNote = &n;
+                }
+            }
+            expectEquals(envNoteCount, 1, "Exactly one shared envelope pitch note");
+            if (envNote != nullptr)
+                expectEquals(int(envNote->channelMask), 7, "Envelope note should be shared by A+B+C");
         }
     }
 };

@@ -6,11 +6,13 @@
 
 namespace MoTool {
 
+class TimelineGrid;
+
 //==============================================================================
 class PlayheadComponent : public Component,
                           private ZoomViewState::Listener {
 public:
-    PlayheadComponent(te::Edit&, EditViewState&);
+    PlayheadComponent(te::Edit&, EditViewState&, TimelineGrid&);
     ~PlayheadComponent() override;
 
     void paint(Graphics& g) override;
@@ -29,6 +31,7 @@ private:
 
     te::Edit& edit;
     EditViewState& editViewState;
+    TimelineGrid& grid;
 
     int xPosition = 0;
     // bool firstTimer = true;

@@ -13,7 +13,7 @@ public:
     ~PlayerController() override;
 
     void initialize() override;
-    EditViewState* getEditViewState();
+    EditViewState* getEditViewState() override;
 
     void zoomHorizontal(float increment) override;
     void zoomToFitHorizontally() override;

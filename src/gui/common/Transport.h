@@ -3,7 +3,6 @@
 #include <JuceHeader.h>
 
 #include "../../controllers/EditState.h"
-#include "../../models/Timecode.h"
 #include "../../utils/StringLiterals.h"
 
 #include "ParamBindings.h"
@@ -58,7 +57,6 @@ private:
     te::Edit& edit_;
 
     te::TransportControl& transport_;
-    CachedValue<TimecodeDisplayFormatExt> timecodeFormat;
 
     Slider masterVolumeSlider_ { Slider::SliderStyle::RotaryVerticalDrag, Slider::TextEntryBoxPosition::NoTextBox };
     SliderParamEndpointBinding masterAttachment_ {masterVolumeSlider_, edit_.getMasterSliderPosParameter()};
@@ -72,12 +70,13 @@ private:
     //    stepRightButton_ { ">" };
 
     // Readout group: value box + adjacent unit label, laid out as
-    //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ 4/4 ] SIG
+    //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ DIVS ] DIV   [ 4/4 ] SIG
     EditableReadout bpmControl_;
     EditableReadout fpbControl_;
     Label fpsLabel_;        // click opens a popup of allowed rates
+    Label divControl_;
     Label timeSigLabel_;
-    Label bpmUnitLabel_, fpsUnitLabel_, fpbUnitLabel_, sigUnitLabel_;
+    Label bpmUnitLabel_, fpsUnitLabel_, fpbUnitLabel_, divUnitLabel_, sigUnitLabel_;
 
     Label posLabel_;          // "Pos" prefix, left of the editable position box
     Label transportReadout_;  // editable timecode; committing it seeks the transport
@@ -96,6 +95,7 @@ private:
     String getTimecode(te::TimePosition pos) const;
     void updateTimeLabels(te::TimePosition pos);
     void commitEditedPosition();
+    void commitEditedDivisions();
     void showFpsMenu();
 
     ReadoutLookAndFeel readoutLookAndFeel_;

@@ -6,6 +6,8 @@
 #include "../../models/Ids.h"
 
 #include <algorithm>
+#include <cmath>
+#include <span>
 #include <tuple>
 
 namespace MoTool {
@@ -66,35 +68,112 @@ const std::array<Colour, 14> RegColors = {
     Colors::PSG::Env   // purple-100
 };
 
-/** Draw random dotted pattern for noise modulation, seeded from note position */
-void drawNoisePattern(Graphics& g, float x, float y, float width, float height, int64_t seed) {
-    g.setColour(Colours::black.withAlpha(0.5f));
-    constexpr float dotDensity = 3.0f; // average spacing between dots
-    int ix = roundToInt(x), iy = roundToInt(y);
-    int iw = roundToInt(width), ih = roundToInt(height);
-    if (iw < 2 || ih < 2) return;
-
-    juce::Random rng(seed);
-    constexpr int jitter = 1; // max random offset from grid position
-
-    constexpr int dotSize = 2;
-    for (float gx = 0; gx < (float)iw; gx += dotDensity) {
-        for (float gy = 0; gy < (float)ih; gy += dotDensity) {
-            int dx = jlimit(0, iw - dotSize, roundToInt(gx) + rng.nextInt(jitter * 2 + 1) - jitter);
-            int dy = jlimit(0, ih - dotSize, roundToInt(gy) + rng.nextInt(jitter * 2 + 1) - jitter);
-            g.fillRect(ix + dx, iy + dy, dotSize, dotSize);
-        }
-    }
-}
-
 struct FrameNote {
     float y;
     float height;
     float alpha;
-    int   channelIndex;  // 0=A, 1=B, 2=C, 3=Envelope
-    bool  hasEnvMod;
-    bool  hasNoiseMod;
+    uint8_t channelMask;
+    bool isEnvelopePitch;
+    bool hasEnvMod;
 };
+
+Colour getChannelMaskColor(uint8_t channelMask) {
+    switch (channelMask & 0x7u) {
+        case 0x1: return Colors::PSG::A;
+        case 0x2: return Colors::PSG::B;
+        case 0x3: return Colors::Palette::yellow500.withSaturation(1.0f);
+        case 0x4: return Colors::PSG::C;
+        case 0x5: return Colors::Palette::pink500.withSaturation(1.0f);
+        case 0x6: return Colors::Palette::cyan500.withSaturation(1.0f);
+        case 0x7: return Colors::PSG::Mix.brighter(0.8f);
+        default:  return Colours::transparentBlack;
+    }
+}
+
+float noisePeriodToYNorm(int noisePeriod) {
+    auto y = std::log2(static_cast<float>(jlimit(1, 31, noisePeriod))) / std::log2(31.0f);
+    return jmap(y, 1.0f/16, 1.0f - 1.0f/16);
+}
+
+Range<float> getNoisePeriodYRange(int noisePeriod) {
+    const float Y = noisePeriodToYNorm(noisePeriod);
+    return { Y - 0.1f, Y + 0.1f };
+}
+
+std::array<float, 3> getNoiseChannelLevels(const PsgParamFrameData& data) {
+    std::array<float, 3> levels {};
+
+    for (int ch = 0; ch < 3; ++ch) {
+        const bool hasNoiseMod = data.getRaw(PsgParamType(PsgParamType::NoiseIsOnA + ch)) > 0;
+        if (! hasNoiseMod)
+            continue;
+
+        const auto rawVolume = data.getRaw(PsgParamType(PsgParamType::VolumeA + ch));
+        const bool hasEnvMod = data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0;
+        levels[static_cast<size_t>(ch)] = hasEnvMod ? 1.0f : static_cast<float>(rawVolume) / 15.0f;
+    }
+
+    return levels;
+}
+
+void drawNoiseBand(Graphics& g, Rectangle<float> bounds, float alpha) {
+    if (bounds.isEmpty() || alpha <= 0.0f)
+        return;
+    const auto color = Colors::PSG::Mix;
+    ColourGradient gradient(color.withAlpha(0.0f), bounds.getX(), bounds.getY(),
+                            color.withAlpha(0.0f), bounds.getX(), bounds.getBottom(), false);
+    gradient.addColour(0.5, color.withAlpha(alpha));
+    g.setGradientFill(gradient);
+    g.fillRect(bounds);
+}
+
+void drawNoiseFringe(Graphics& g, Rectangle<float> bounds, int spread, uint8_t channelMask,
+                     const std::array<float, 3>& levels, int frameIndex, Rectangle<float> viewport,
+                     std::span<const FrameNote> notes) {
+    std::array<size_t, 3> channels {};
+    int channelCount = 0;
+    for (size_t ch = 0; ch < levels.size(); ++ch)
+        if ((channelMask & (1u << ch)) != 0 && levels[ch] > 0.0f)
+            channels[static_cast<size_t>(channelCount++)] = ch;
+    if (channelCount == 0 || spread < 2)
+        return;
+
+    const int minX = static_cast<int>(std::ceil(jmax(bounds.getX(), viewport.getX())));
+    const int maxX = static_cast<int>(std::floor(jmin(bounds.getRight(), viewport.getRight())));
+    const int minY = static_cast<int>(std::ceil(jmax(bounds.getY() - float(spread), viewport.getY())));
+    const int maxY = static_cast<int>(std::floor(jmin(bounds.getBottom() + float(spread), viewport.getBottom())));
+    const auto clip = g.getClipBounds();
+    const int left = static_cast<int>(std::ceil(bounds.getX()));
+    const int firstColumn = jmax(0, (jmax(minX, clip.getX()) - left) / 6);
+    const int lastColumn = jmax(0, (jmin(maxX, clip.getRight()) - left + 5) / 6);
+    constexpr std::array<uint8_t, 16> pattern {19, 52, 7, 41, 28, 60, 3, 46, 35, 12, 58, 23, 49, 6, 31, 44};
+    const auto phase = static_cast<uint32_t>(frameIndex) * 5u + channelMask;
+    auto drawMark = [&](int x, int y) {
+        // Test geometry against content bounds; damage clipping must not change the pattern.
+        if (x < minX || x + 2 > maxX || y < minY || y + 2 > maxY)
+            return;
+        for (const auto& note : notes)
+            if (float(y) < note.y + note.height && float(y + 2) > note.y)
+                return;
+        g.fillRect(x, y, 2, 2);
+    };
+
+    // Fixed rectangular stipple: no RNG, allocation, or gradient per dot; visit only visible columns.
+    for (int owner = 0; owner < channelCount; ++owner) {
+        const auto ch = channels[static_cast<size_t>(owner)];
+        g.setColour(getChannelMaskColor(static_cast<uint8_t>(1u << ch)).withAlpha(0.25f + 0.5f * levels[ch]));
+        for (int depth = 0; depth + 2 <= spread; depth += 3) {
+            const int first = firstColumn + (owner + channelCount - firstColumn % channelCount) % channelCount;
+            for (int column = first; column < lastColumn; column += channelCount) {
+                const auto bits = pattern[(static_cast<uint32_t>(column + depth * 7) + phase) & 15u];
+                const int upperOffset = jmin(depth + ((bits >> 4) & 1), spread - 2);
+                const int lowerOffset = jmin(depth + ((bits >> 5) & 1), spread - 2);
+                drawMark(left + column * 6 + (bits & 3), roundToInt(bounds.getY()) - upperOffset - 2);
+                drawMark(left + column * 6 + ((bits >> 2) & 3), roundToInt(bounds.getBottom()) + lowerOffset);
+            }
+        }
+    }
+}
 
 /** Frame duration in edit time, taken from the clip's own PSG timing metadata. */
 te::TimeDuration getClipFrameDuration(const PsgClip& clip) {
@@ -152,8 +231,8 @@ struct ClipVisibility {
 };
 
 /** Draw stripe pattern for envelope modulation based on envelope shape direction */
-void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float height, uint8_t shape) {
-    g.setColour(Colours::black.withAlpha(0.5f));
+void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float height, uint8_t shape, Colour color) {
+    g.setColour(color);
     constexpr float nominalSpacing = 4.0f;
     constexpr float strokeWidth = 2.0f;
 
@@ -205,6 +284,40 @@ void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float heigh
     g.restoreState();
 }
 
+void drawLowEnvelopeArrow(Graphics& g, Rectangle<float> bounds, uint8_t owners, bool drawDetails) {
+    const auto color = Colors::PSG::Env;
+    if (bounds.getHeight() < 4.0f || bounds.getWidth() < 4.0f) {
+        g.setColour(color);
+        g.fillRect(bounds);
+        return;
+    }
+    bounds = bounds.reduced(0.75f);
+    const float middle = bounds.getCentreX();
+    const float shoulderY = bounds.getY() + bounds.getHeight() * 0.45f;
+    const float stemLeft = middle - bounds.getWidth() * 0.2f;
+    const float stemRight = middle + bounds.getWidth() * 0.2f;
+    Path arrow;
+    arrow.startNewSubPath(stemLeft, bounds.getY());
+    arrow.lineTo(stemRight, bounds.getY());
+    arrow.lineTo(stemRight, shoulderY);
+    arrow.lineTo(bounds.getRight(), shoulderY);
+    arrow.lineTo(middle, bounds.getBottom());
+    arrow.lineTo(bounds.getX(), shoulderY);
+    arrow.lineTo(stemLeft, shoulderY);
+    arrow.closeSubPath();
+    g.setColour(color.withAlpha(0.65f));
+    g.fillPath(arrow);
+    if (drawDetails) {
+        g.saveState();
+        g.reduceClipRegion(arrow);
+        drawEnvelopeStripes(g, bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(), 8, color);
+        drawEnvelopeStripes(g, bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(), 12, color);
+        g.restoreState();
+    }
+    g.setColour(getChannelMaskColor(owners));
+    g.strokePath(arrow, PathStrokeType(1.5f));
+}
+
 } // namespace
 
 PsgClip* PsgClipComponent::getPsgClip() {
@@ -214,7 +327,7 @@ PsgClip* PsgClipComponent::getPsgClip() {
 void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
     // The header's effective-fps warning depends on frames-per-beat, current beat length
     // and the edit's timecode fps, so refresh when tempo or timecode changes.
-    if (property == te::IDs::timecodeFormat
+    if (property == IDs::timecodeDisplayMode
         || property == te::IDs::bpm
         || property == te::IDs::startBeat)
         repaint();
@@ -318,36 +431,66 @@ void PsgClipComponent::paintNotes(Graphics& g) {
     const float noteHeight = static_cast<float>(vis.rect.getHeight())
         / (pitchRange.getLength() * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.0f);
     const bool drawMods = vis.pixelsPerFrame >= 6.0f && noteHeight >= 2.0f;
+    constexpr float NoiseSpreadInNoteHeights = 0.75f;
+    const int noiseSpread = static_cast<int>(std::floor(noteHeight * NoiseSpreadInNoteHeights));
 
     auto normToY = [&] (float norm) {
         return (pitchRange.getEnd() - norm) / pitchRange.getLength() * static_cast<float>(vis.rect.getHeight());
     };
+    const auto visibleTime = editViewState.zoom.getRange();
+    const Range<float> visibleX {vis.timeToX(visibleTime.getStart()), vis.timeToX(visibleTime.getEnd())};
+    const Rectangle<float> viewport {visibleX.getStart(), 0.0f, visibleX.getLength(), float(vis.rect.getHeight())};
 
-    static const juce::Colour channelColors[] = {
-        Colors::PSG::A,
-        Colors::PSG::B,
-        Colors::PSG::C,
-        Colors::PSG::Env,
-    };
-
-    vis.forEachVisibleFrame(frames, *psgClip, [&] (int frameIdx, const PsgParamFrame& frame, float x) {
+    vis.forEachVisibleFrame(frames, *psgClip, [&] (int frameIndex, const PsgParamFrame& frame, float x) {
         const auto& frameData = frame.getData();
         const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
+
+        const auto noiseLevels = drawMods ? getNoiseChannelLevels(frameData) : std::array<float, 3> {};
+        const auto noiseLevel = *std::max_element(noiseLevels.begin(), noiseLevels.end());
+        Rectangle<float> noiseBounds;
+        if (noiseLevel > 0.0f) {
+            const auto period = static_cast<int>(frameData.getRaw(PsgParamType::NoisePeriod));
+            const auto noiseRange = getNoisePeriodYRange(period);
+            const float noiseY = noiseRange.getStart() * static_cast<float>(vis.rect.getHeight());
+            const float noiseH = jmax(2.0f, noiseRange.getLength() * static_cast<float>(vis.rect.getHeight()));
+            noiseBounds = {x, noiseY, vis.pixelsPerFrame, noiseH};
+            drawNoiseBand(g, noiseBounds, 0.15f + 0.1f * noiseLevel);
+        }
 
         // Collect this frame's notes: up to one per channel plus the envelope
         std::array<FrameNote, 4> notes;
         int noteCount = 0;
+        uint8_t toneChannels = 0, pitchChannels = 0;
 
         visitFrameNotes(frameData, [&] (const PsgFrameNote& n) {
-            const float alpha = n.hasEnvMod ? 1.0f : (static_cast<float>(n.volume) / 15.0f * 0.8f + 0.2f);
+            pitchChannels |= n.channelMask;
+            if (! n.isEnvelopePitch)
+                toneChannels |= n.channelMask;
+            const float alpha = (n.hasEnvMod || n.isEnvelopePitch)
+                ? 1.0f
+                : (static_cast<float>(n.volume) / 15.0f * 0.8f + 0.2f);
             const float top = normToY(n.pitch) - noteHeight * 0.5f;
             const float topRound = static_cast<float>(roundToInt(top));
             const float heightRound = static_cast<float>(roundToInt(top + noteHeight)) - topRound;
-            notes[noteCount++] = { topRound, heightRound, alpha, n.channelIndex, n.hasEnvMod, n.hasNoiseMod };
+            notes[noteCount++] = {
+                topRound,
+                heightRound,
+                alpha,
+                n.channelMask,
+                n.isEnvelopePitch,
+                n.hasEnvMod
+            };
         });
 
+        const std::span<const FrameNote> pitchNotes(notes.data(), static_cast<size_t>(noteCount));
+        if (noiseLevel > 0.0f)
+            drawNoiseFringe(g, {x, float(roundToInt(noiseBounds.getCentreY())), vis.pixelsPerFrame, 0.0f},
+                           noiseSpread, static_cast<uint8_t>(~pitchChannels & 0x7u), noiseLevels, frameIndex,
+                           viewport, pitchNotes);
+
         std::sort(notes.begin(), notes.begin() + noteCount, [] (const FrameNote& a, const FrameNote& b) {
-            return std::tie(a.y, a.channelIndex) < std::tie(b.y, b.channelIndex);
+            return std::tie(a.y, a.isEnvelopePitch, a.channelMask)
+                 < std::tie(b.y, b.isEnvelopePitch, b.channelMask);
         });
 
         // Paint notes, subdividing overlapping groups. Notes are sorted by y,
@@ -365,6 +508,14 @@ void PsgClipComponent::paintNotes(Graphics& g) {
             }
             const int groupSize = gi - groupStart;
             const float groupH = groupBottom - groupY;
+            if (noiseLevel > 0.0f) {
+                uint8_t owners = 0;
+                for (int i = groupStart; i < gi; ++i)
+                    owners |= notes[i].isEnvelopePitch
+                        ? static_cast<uint8_t>(notes[i].channelMask & ~toneChannels) : notes[i].channelMask;
+                drawNoiseFringe(g, {x, groupY, vis.pixelsPerFrame, groupH}, noiseSpread,
+                               owners, noiseLevels, frameIndex, viewport, pitchNotes);
+            }
 
             // Graceful degradation: if sub-lane height < 1px, paint full height
             const bool subdivide = groupSize > 1 && groupH / static_cast<float>(groupSize) >= 1.0f;
@@ -380,17 +531,56 @@ void PsgClipComponent::paintNotes(Graphics& g) {
                         subH = groupBottom - subY;
                 }
 
-                g.setColour(channelColors[note.channelIndex].withAlpha(note.alpha));
-                g.fillRect(x, subY, vis.pixelsPerFrame, subH);
+                const auto noteColor = note.isEnvelopePitch ? Colors::PSG::Env : getChannelMaskColor(note.channelMask);
+                const auto noteRect = Rectangle<float>(x, subY, vis.pixelsPerFrame, jmax(1.0f, subH));
 
-                if (drawMods && note.hasEnvMod)
-                    drawEnvelopeStripes(g, x, subY, vis.pixelsPerFrame, subH, envShape);
+                if (note.isEnvelopePitch) {
+                    if (drawMods)
+                        drawEnvelopeStripes(
+                            g,
+                            noteRect.getX(),
+                            noteRect.getY(),
+                            noteRect.getWidth(),
+                            noteRect.getHeight(),
+                            envShape,
+                            noteColor
+                        );
+                    g.setColour(getChannelMaskColor(note.channelMask));
+                    g.drawRect(noteRect, 1.0f);
+                } else {
+                    g.setColour(noteColor.withAlpha(note.alpha));
+                    g.fillRect(noteRect);
 
-                if (drawMods && note.hasNoiseMod)
-                    drawNoisePattern(g, x, subY, vis.pixelsPerFrame, subH,
-                                     (int64_t)frameIdx * 4 + note.channelIndex);
+                    if (drawMods && note.hasEnvMod)
+                        drawEnvelopeStripes(
+                            g,
+                            noteRect.getX(),
+                            noteRect.getY(),
+                            noteRect.getWidth(),
+                            noteRect.getHeight(),
+                            envShape,
+                            noteColor.brighter(0.8f).withAlpha(0.85f)
+                        );
+                }
             }
         }
+        if (envelopePeriodToTonePeriod(frameData.getRaw(PsgParamType::EnvelopePeriod))
+            > PsgParamType{PsgParamType::TonePeriodA}.getScale().end) {
+            uint8_t owners = 0;
+            for (int ch = 0; ch < 3; ++ch)
+                if (frameData.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0)
+                    owners |= static_cast<uint8_t>(1u << ch);
+            if (owners != 0) {
+                const auto visible = Range<float>(x, x + vis.pixelsPerFrame).getIntersectionWith(visibleX);
+                const float height = drawMods ? jlimit(8.0f, 12.0f, noteHeight * 1.5f)
+                                              : jlimit(1.0f, 3.0f, noteHeight);
+                const float width = jmin(visible.getLength(), jmin(18.0f, jmax(8.0f, height * 1.6f)));
+                if (width > 0.0f)
+                    drawLowEnvelopeArrow(g, {visible.getStart() + (visible.getLength() - width) * 0.5f,
+                                            float(vis.rect.getHeight()) - height, width, height}, owners, drawMods);
+            }
+        }
+
     });
 }
 
@@ -405,23 +595,39 @@ void PsgClipComponent::paintHeader(Graphics& g) {
     // The clip component can extend far off-screen (its width is the whole clip in
     // pixels), so anchor the header to the currently-visible slice rather than the
     // component's own left edge. getClipBounds() is that slice, in local coords.
-    auto row = g.getClipBounds().removeFromTop(headerHeight).reduced(pad, pad);
+    auto row = g.getClipBounds().removeFromTop(swatchSize + 2 * pad).reduced(pad, pad);
 
-    // Channel swatches on the left.
-    struct LegendItem { const char* label; Colour color; };
+    // Channel colors and the envelope-pitch appearance on the left.
+    enum class LegendStyle { Channel, Envelope, Noise };
+    struct LegendItem { const char* label; Colour color; LegendStyle style = LegendStyle::Channel; };
     const LegendItem items[] = {
         { "A", Colors::PSG::A },
         { "B", Colors::PSG::B },
         { "C", Colors::PSG::C },
-        { "E", Colors::PSG::Env },
+        { "E", Colors::PSG::Env, LegendStyle::Envelope },
+        { "N", Colors::PSG::Mix, LegendStyle::Noise },
     };
 
     g.setFont(Font(FontOptions((float) swatchSize - 1.0f).withStyle("Bold")));
     for (const auto& item : items) {
-        auto swatch = row.removeFromLeft(swatchSize);
-        g.setColour(item.color);
-        g.fillRect(swatch);
-        g.setColour(Colours::black);
+        const int swatchWidth = jmax(
+            swatchSize,
+            GlyphArrangement::getStringWidthInt(g.getCurrentFont(), item.label) + 4
+        );
+        auto swatch = row.removeFromLeft(swatchWidth);
+        if (item.style == LegendStyle::Noise) {
+            drawNoiseBand(g, swatch.toFloat(), 0.9f);
+        } else if (item.style == LegendStyle::Envelope) {
+            drawEnvelopeStripes(g, (float) swatch.getX(), (float) swatch.getY(),
+                                (float) swatch.getWidth(), (float) swatch.getHeight(),
+                                0x8, item.color.withAlpha(0.25f));
+            g.setColour(item.color);
+            g.drawRect(swatch);
+        } else {
+            g.setColour(item.color);
+            g.fillRect(swatch);
+        }
+        g.setColour(item.style == LegendStyle::Channel ? Colours::black : Colours::white);
         g.drawText(item.label, swatch, Justification::centred);
         row.removeFromLeft(spacing);
     }

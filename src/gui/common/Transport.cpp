@@ -1,7 +1,6 @@
 #include "Transport.h"
 
 #include "../../controllers/MainCommands.h"
-#include "../../models/Timecode.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
 #include "LookAndFeel.h"
@@ -48,7 +47,6 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     transport_.state.addListener(this);
     edit_.state.addListener(this);
     edit_.getAutomationRecordManager().addListener(this);
-    timecodeFormat.referTo(edit_.state, te::IDs::timecodeFormat, &edit_.getUndoManager());
 
     addAndMakeVisible(rewindButton_);
     addAndMakeVisible(playPauseButton_);
@@ -58,6 +56,8 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     addAndMakeVisible(fpsUnitLabel_);
     addAndMakeVisible(fpbControl_);
     addAndMakeVisible(fpbUnitLabel_);
+    addAndMakeVisible(divControl_);
+    addAndMakeVisible(divUnitLabel_);
     addAndMakeVisible(timeSigLabel_);
     addAndMakeVisible(sigUnitLabel_);
     addAndMakeVisible(posLabel_);
@@ -126,23 +126,28 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     fpbControl_.onCommit = [this](double entered) {
         auto fpb = jlimit(4, 150, roundToInt(entered));
         viewState_.setFramesPerBeat(fpb);
-        return viewState_.getCurrentFramesPerBeat();
+        const auto resolvedFpb = jmax(1, roundToInt(viewState_.getCurrentFramesPerBeat()));
+        Helpers::setGridSubdivisionPattern(edit_, Helpers::getDefaultGridSubdivisionPattern(resolvedFpb));
+        return resolvedFpb;
     };
 
     // Apply ReadoutLookAndFeel to all editable/clickable value boxes.
     readoutLookAndFeel_.setupReadoutLabel(bpmControl_);
     readoutLookAndFeel_.setupReadoutLabel(fpbControl_);
+    readoutLookAndFeel_.setupReadoutLabel(divControl_);
     readoutLookAndFeel_.setupReadoutLabel(timeSigLabel_);
     readoutLookAndFeel_.setupReadoutLabel(fpsLabel_);
     readoutLookAndFeel_.setupReadoutLabel(transportReadout_);
 
     // Editing the position box seeks the transport.
     transportReadout_.onTextChange = [this] { commitEditedPosition(); };
+    divControl_.setEditable(true, true, false);
+    divControl_.onTextChange = [this] { commitEditedDivisions(); };
 
     // Unit / prefix labels sit next to their value box as plain, non-interactive text.
     struct { Label& label; const char* text; } units[] = {
         { bpmUnitLabel_, "BPM" }, { fpsUnitLabel_, "FPS" },
-        { fpbUnitLabel_, "FPB" }, { sigUnitLabel_, "SIG" },
+        { fpbUnitLabel_, "FPB" }, { divUnitLabel_, "DIV" }, { sigUnitLabel_, "SIG" },
         { posLabel_, "Pos" },
     };
     for (auto& u : units) {
@@ -201,6 +206,7 @@ void TransportBar::resized() {
     placeReadout(bpmControl_, bpmUnitLabel_, w * 3, w * 2);
     placeReadout(fpsLabel_,   fpsUnitLabel_, w * 2, w * 2);
     placeReadout(fpbControl_, fpbUnitLabel_, w * 2, w * 2);
+    placeReadout(divControl_, divUnitLabel_, w * 3, w * 2);
     placeReadout(timeSigLabel_, sigUnitLabel_, w * 2, w * 2);
 
     placeButton(rewindButton_, w * 2);
@@ -244,10 +250,11 @@ void TransportBar::valueTreePropertyChanged(ValueTree& tree, const Identifier& p
         updateTimeLabels(transport_.getPosition());
     } else if (tree == transport_.state && prop == te::IDs::position) {
         updateTimeLabels(transport_.getPosition());
-    } else if (tree == edit_.state && prop == te::IDs::timecodeFormat) {
-        timecodeFormat.forceUpdateOfCachedValue();
+    } else if (tree == edit_.state && prop == IDs::timecodeDisplayMode) {
         updateTimeLabels(transport_.getPosition());
     } else if (tree == edit_.state && prop == IDs::projectFps) {
+        updateTimeLabels(transport_.getPosition());
+    } else if (tree == edit_.state && prop == IDs::gridSubdivision) {
         updateTimeLabels(transport_.getPosition());
     }
 }
@@ -287,8 +294,7 @@ void TransportBar::updateAutomationButtons() {
 }
 
 String TransportBar::getTimecode(te::TimePosition pos) const {
-    return timecodeFormat->toFullTimecode(pos, 100, true);
-    // return timecodeFormat->getString(edit_.tempoSequence, pos, true);
+    return te::TimecodeDisplayFormat::toFullTimecode(pos, 100, true);
 }
 
 void TransportBar::updateTimeLabels(te::TimePosition pos) {
@@ -297,7 +303,11 @@ void TransportBar::updateTimeLabels(te::TimePosition pos) {
 
     bpmControl_.setValue(ts.getBpmAt(pos), 2);
     timeSigLabel_.setText(ts.getTimeSigAt(pos).getStringTimeSig(), dontSendNotification);
-    fpbControl_.setValue(viewState_.getCurrentFramesPerBeat(), 0);
+    const auto framesPerBeat = jmax(1, roundToInt(viewState_.getCurrentFramesPerBeat()));
+    fpbControl_.setValue(framesPerBeat, 0);
+    divControl_.setText(Helpers::formatGridSubdivisionPattern(
+                            Helpers::getGridSubdivisionPattern(edit_, framesPerBeat)),
+                        dontSendNotification);
     fpsLabel_.setText(String(roundToInt(Helpers::getProjectFps(edit_))), dontSendNotification);
 }
 
@@ -326,6 +336,15 @@ void TransportBar::commitEditedPosition() {
     auto totalSeconds = jmax(0.0, hours * 3600.0 + mins * 60.0 + secs + centis / 100.0);
     transport_.setPosition(te::TimePosition::fromSeconds(totalSeconds));
     updateTimeLabels(transport_.getPosition());  // re-normalise the display
+}
+
+void TransportBar::commitEditedDivisions() {
+    const auto framesPerBeat = jmax(1, roundToInt(viewState_.getCurrentFramesPerBeat()));
+    const auto pattern = Helpers::parseGridSubdivisionPattern(divControl_.getText(), framesPerBeat);
+    Helpers::setGridSubdivisionPattern(edit_, pattern);
+    divControl_.setText(Helpers::formatGridSubdivisionPattern(
+                            Helpers::getGridSubdivisionPattern(edit_, framesPerBeat)),
+                        dontSendNotification);
 }
 
 void TransportBar::mouseDown(const MouseEvent& e) {

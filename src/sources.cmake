@@ -10,6 +10,7 @@ set(SHARED_SOURCES
     models/PsgFrameRetimer.cpp
     models/Selectable.cpp
     models/EditUtilities.cpp
+    models/SnapLadder.cpp
 
     models/tuning/Ratios.cpp
     models/tuning/Scales.cpp
@@ -101,6 +102,7 @@ set(TEST_SOURCES
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
     models/ProjectFps.test.cpp
+    models/SnapLadder.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/TuningTable.test.cpp
     models/tuning/EqualTemperamentTuning.test.cpp
@@ -108,10 +110,17 @@ set(TEST_SOURCES
     models/tuning/Scales.test.cpp
     models/tuning/RationalTuning.test.cpp
 
+    controllers/EditState.test.cpp
     controllers/Parameters.test.cpp
 
     viewmodels/tuning/TuningViewModel.test.cpp
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
+
+    gui/timeline/TimelineGrid.test.cpp
+    gui/timeline/PsgClipComponent.test.cpp
+    gui/timeline/PsgClipTestHelpers.h
+    gui/timeline/PsgVisualGuide.test.cpp
+    gui/timeline/PsgPaintingBenchmark.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp

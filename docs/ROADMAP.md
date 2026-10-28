@@ -20,13 +20,17 @@
 - [x] **App icon**
 - [x] Timeline is seconds-based until ruler supports custom beats+frames divisions
 - [x] **Embed fonts** as binary resource data
+- [x] Correct **subdivisions** in the grid
+- [x] UI for subdivs
+- [x] Better subdiv grid lines colors
+- [ ] Always paint envelope notes
 - [ ] **Crash audit** — test common scenarios and fix any crashes
 
 #### P1 — Important
 
 - [x] **Add left padding for player**
-- [ ] Save/Save As.. menu item for Player
-- [ ] Beat+frames-based timeline
+- [ ] Save Project/Save Project As.. menu item for Player
+- [x] Beat+frames-based timeline
 - [x] Different rendering in seconds-only and beat-based timeline
 - [x] **PSG** file icons in Finder
 - [x] **Keyboard shortcuts** — Space, Cmd+O, Cmd+Q, Home
@@ -34,8 +38,8 @@
 - [x] **Separate version numbering** per target
 - [x] **macOS universal build** (x86_64 + arm64)
 - [ ] **Cleanup debug artifacts**
-- [ ] **Zooming** — zoom around playhead position while playing
-- [ ] **AY reset** at the start of playback
+- [ ] **Zooming** — fix mouse zoom around playhead position while playing
+- [ ] **AY regs** at the start of playback, from any frame, send all effective AY regs, not only diffs
 - [x] **Shift-wheel** horizontal scrolling
 - [x] **Mouse gestures** work over the playhead (transparent hit zone)
 - [ ] **Middle mouse drag-pan** — pan timeline by dragging with middle mouse button (DAW convention)
@@ -65,7 +69,7 @@
 - [ ] **DMG packaging** — app with Applications symlink
 - [ ] **GitHub Actions CI** — build, sign, notarize, DMG, upload as release artifact
 - [ ] **GitHub Release** — tag `v1.0.0`, DMG attached, release notes
-- [ ] **Seek snapping** — snap to frame boundaries
+- [x] **Seek snapping** — snap to frame boundaries
 - [ ] **BPM and timesig** editing
 
 #### P1 — Important

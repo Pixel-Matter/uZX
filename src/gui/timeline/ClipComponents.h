@@ -8,10 +8,12 @@ using namespace std::literals;
 
 namespace MoTool {
 
+class TimelineGrid;
+
 //==============================================================================
 class ClipComponent : public Component {
 public:
-    ClipComponent(EditViewState&, te::Clip::Ptr);
+    ClipComponent(EditViewState&, TimelineGrid&, te::Clip::Ptr);
 
     void paint(Graphics& g) override;
     void mouseDown(const MouseEvent& e) override;
@@ -20,13 +22,14 @@ public:
 
 protected:
     EditViewState& editViewState;
+    TimelineGrid& grid;
     te::Clip::Ptr clip;
 };
 
 //==============================================================================
 class AudioClipComponent : public ClipComponent {
 public:
-    AudioClipComponent(EditViewState&, te::Clip::Ptr);
+    AudioClipComponent(EditViewState&, TimelineGrid&, te::Clip::Ptr);
 
     te::WaveAudioClip* getWaveAudioClip() {
         return dynamic_cast<te::WaveAudioClip*>(clip.get());
@@ -48,7 +51,7 @@ private:
 //==============================================================================
 class MidiClipComponent : public ClipComponent {
 public:
-    MidiClipComponent(EditViewState&, te::Clip::Ptr);
+    MidiClipComponent(EditViewState&, TimelineGrid&, te::Clip::Ptr);
 
     te::MidiClip* getMidiClip() {
         return dynamic_cast<te::MidiClip*>(clip.get());

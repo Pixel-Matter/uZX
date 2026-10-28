@@ -2,6 +2,8 @@
 #include "../models/EditUtilities.h"
 #include "../models/PsgFrameRetimer.h"
 
+#include <limits>
+
 using namespace std::literals;
 
 namespace MoTool {
@@ -109,7 +111,8 @@ void ZoomViewState::zoomHorizontally(double factor) {
     auto span = getViewSpan();
     auto newRange = span * scaleFactor;
 
-    if (auto newTimePerPixel = newRange / getViewWidthPx(); newTimePerPixel > 0.0005s && newTimePerPixel < 2s) {
+    if (auto newTimePerPixel = newRange / getViewWidthPx();
+        newTimePerPixel > MinTimePerPixel && newTimePerPixel < MaxTimePerPixel) {
         setRange({
             jmax(te::TimePosition(), pos - newRange / 2.0),
             newRange
@@ -125,7 +128,7 @@ void ZoomViewState::zoomAroundX(double factor, int anchorX) {
     auto anchorTime = xToTime(anchorX);
     auto newTimePerPixel = getTimePerPixel() * scaleFactor;
 
-    if (newTimePerPixel > 0.0005s && newTimePerPixel < 2s) {
+    if (newTimePerPixel > MinTimePerPixel && newTimePerPixel < MaxTimePerPixel) {
         auto newStart = anchorTime - newTimePerPixel * (double) anchorX;
         newStart = jmax(te::TimePosition(), newStart);
         auto newSpan = newTimePerPixel * getViewWidthPx();
@@ -218,6 +221,7 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     showMidiDevices.referTo(state, IDs::showMidiDevices, um, true);
     showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
     preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, um, true);
+    snapPlayheadToGrid.referTo(state, IDs::snapPlayheadToGrid, um, true);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
 }
 
@@ -289,6 +293,14 @@ bool EditViewState::shouldPreservePsgTimingOnTempoChange() const {
     return preservePsgTimingOnTempoChange.get();
 }
 
+void EditViewState::setSnapPlayheadToGrid(bool shouldSnap) {
+    snapPlayheadToGrid = shouldSnap;
+}
+
+bool EditViewState::shouldSnapPlayheadToGrid() const {
+    return snapPlayheadToGrid.get();
+}
+
 int EditViewState::getTrackHeaderWidth() const {
     return showHeaders ? headersWidth.get() : 0;
 }
@@ -300,7 +312,7 @@ TrackViewState::TrackViewState(ValueTree trackState, UndoManager* undoManager)
   : state(ensure(trackState)), height(state, IDs::height, undoManager, 160)
 {
     constrainer.setMinimumHeight(56);
-    constrainer.setMaximumHeight(600);
+    constrainer.setMinimumOnscreenAmounts(0, 0, std::numeric_limits<int>::max(), 0);
     state.addListener(this);
 }
 

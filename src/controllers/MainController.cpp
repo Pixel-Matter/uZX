@@ -12,6 +12,7 @@
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
+#include "../models/Ids.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../plugins/uZX/instrument/ChipInstrumentPlugin.h"
 #include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
@@ -29,6 +30,16 @@ using namespace MoTool::Commands;
 using namespace MoTool::Helpers;
 
 namespace MoTool {
+
+namespace {
+
+BaseController& getActiveController() {
+    return MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer
+        ? static_cast<BaseController&>(MoToolApp::getPlayerController())
+        : static_cast<BaseController&>(MoToolApp::getArrangerController());
+}
+
+}  // namespace
 
 void registerPlugins(te::Engine& engine) {
     engine.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
@@ -321,6 +332,8 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomToProject);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomIn);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomOut);
+            menu.addSeparator();
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewSnapPlayheadToGrid);
             if (auto* edit = MoToolApp::getPlayerController().getEdit()) {
                 menu.addSeparator();
                 menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
@@ -363,9 +376,7 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
     MainAppCommands::getCommandInfo(commandID, result);
 
     bool isPlayer = MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer;
-    BaseController& controller = isPlayer
-        ? static_cast<BaseController&>(MoToolApp::getPlayerController())
-        : static_cast<BaseController&>(MoToolApp::getArrangerController());
+    auto& controller = getActiveController();
     auto* edit = controller.getEdit();
 
     // Update command status based on current state
@@ -465,6 +476,16 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
 
         case MainAppCommands::viewZoomToSelection:
             result.setActive(edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
+            break;
+
+        case MainAppCommands::viewSnapPlayheadToGrid:
+            if (auto* editViewState = controller.getEditViewState()) {
+                result.setActive(true);
+                result.setTicked(editViewState->shouldSnapPlayheadToGrid());
+                break;
+            }
+
+            result.setActive(false);
             break;
 
         // Add more dynamic command states...
@@ -648,6 +669,13 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::viewZoomOut:
             te::AppFunctions::zoomOut();
+            break;
+
+        case MainAppCommands::viewSnapPlayheadToGrid:
+            if (auto* editViewState = getActiveController().getEditViewState()) {
+                editViewState->setSnapPlayheadToGrid(! editViewState->shouldSnapPlayheadToGrid());
+                commandManager_.commandStatusChanged();
+            }
             break;
 
         // Settings commands
@@ -941,7 +969,7 @@ void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) 
     rescaleAllMidiClipsToFit(*edit_);
 
     edit_->playInStopEnabled = true;
-    setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
+    migrateTimecodeDisplaySettings(*edit_);
 
     createTracksAndAssignInputs();
     EditFileOps::saveEdit(*edit_, true, true, false);

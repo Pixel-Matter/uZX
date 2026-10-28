@@ -370,7 +370,8 @@ public:
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
 
             SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
@@ -396,7 +397,8 @@ public:
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
 
             SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
@@ -428,7 +430,8 @@ public:
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
 
             SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
@@ -596,7 +599,8 @@ public:
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
 
             SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);

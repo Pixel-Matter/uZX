@@ -11,8 +11,8 @@ namespace MoTool {
 class PsgClipComponent : public MidiClipComponent,
                          private juce::ValueTree::Listener {
 public:
-    PsgClipComponent(EditViewState& evs, te::Clip::Ptr c)
-        : MidiClipComponent(evs, c)
+    PsgClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+        : MidiClipComponent(evs, g, c)
         // , vblankAttachment_(this, [this](double) { onVBlank(); })
     {
         // setBufferedToImage(true);
@@ -36,8 +36,6 @@ public:
     void paintHeader(Graphics& g);
 
 private:
-    static constexpr int headerHeight = 14;
-
     void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
 
     // void onVBlank() {

@@ -1,7 +1,9 @@
 #include <JuceHeader.h>
 
 #include "TimelineGrid.h"
+#include "Ruler.h"
 #include "../../models/EditUtilities.h"
+#include "../../models/Ids.h"
 
 namespace MoTool {
 
@@ -19,7 +21,8 @@ public:
 
             te::SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
 
             editViewState.zoom.setViewWidthPx(1000);
             editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(1.0)});
@@ -43,7 +46,7 @@ public:
             expect(hasTickAtX(40), "Expected a grid tick at the second 50 fps frame.");
             expect(hasTickAtX(60), "Expected a grid tick at the third 50 fps frame.");
             expect(! hasTickAtX(16), "Grid should not use 1/32-beat ticks when the selected format is frames.");
-            expect(labels.contains("1.1.05"), "Expected ruler labels to use 50 fps frame counts.");
+            expect(labels.contains("1.1.04"), "Expected ruler labels to use 50 fps frame counts.");
             expect(! labels.contains("1.1.120"),
                    "Ruler labels should not use Tracktion beat ticks for bars/beats/frames.");
             expect(labels.contains("1.2"), "Beat labels should match the native bars/beats format.");
@@ -57,7 +60,8 @@ public:
 
             te::SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
 
             editViewState.zoom.setViewWidthPx(1000);
             editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(16.0)});
@@ -83,14 +87,98 @@ public:
             expect(! labels.contains("1.1.05"), "Zoomed-out labels should not show frame subdivisions.");
         }
 
-        beginTest("Bars beats frames coarse frame labels stay clear of beat edges");
+        beginTest("Visible grid snapping follows the displayed fine level");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
 
             te::SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
+
+            editViewState.zoom.setViewWidthPx(1000);
+            editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(1.0)});
+
+            TimelineGrid grid(editViewState);
+            expectWithinAbsoluteError(grid.snapTimeToVisibleGrid(te::TimePosition::fromSeconds(0.029)).inSeconds(),
+                                      0.02, 1.0e-6,
+                                      "Zoomed-in snapping should use visible frame grid lines.");
+
+            editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(16.0)});
+            expectWithinAbsoluteError(grid.snapTimeToVisibleGrid(te::TimePosition::fromSeconds(0.26)).inSeconds(),
+                                      0.5, 1.0e-6,
+                                      "Zoomed-out snapping should use visible beat grid lines.");
+        }
+
+        beginTest("Short subdivision groups retain single-frame ticks and snapping at deep zoom");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(250.0);
+            Helpers::setProjectFps(*edit, 50.0);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(1200);
+            view.zoom.setRange({te::TimePosition(), te::TimeDuration::fromSeconds(0.24)});
+            TimelineGrid grid(view);
+
+            // 12 FPB defaults to 3+3+3+3; explicit patterns may have even shorter groups.
+            for (const auto& pattern : {std::vector<int>{3, 3, 3, 3}, std::vector<int>{1, 2, 9}}) {
+                Helpers::setGridSubdivisionPattern(*edit, pattern);
+                const auto ticks = grid.getTicks();
+                for (int frame = 0; frame < 12; ++frame) {
+                    expect(std::any_of(ticks.begin(), ticks.end(), [frame](const auto& tick) {
+                        return tick.x == frame * 100;
+                    }), "Each frame should have a visible tick");
+                    const auto time = te::TimePosition::fromSeconds(frame / 50.0);
+                    expectWithinAbsoluteError(grid.snapTimeToVisibleGrid(time).inSeconds(), time.inSeconds(), 1.0e-9);
+                }
+            }
+        }
+
+        beginTest("Seeking across a tempo change preserves the visible grid and its snapping");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            edit->tempoSequence.insertTempo(te::BeatPosition::fromBeats(4.0), 3000.0 / 26.0, 1.0f);
+            Helpers::setProjectFps(*edit, 50.0);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(1000);
+            view.zoom.setRange({te::TimePosition(), te::TimeDuration::fromSeconds(4.0)});
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+            TimelineGrid grid(view);
+            const auto before = grid.getTicks();
+            expect(std::any_of(before.begin(), before.end(), [](const auto& tick) { return tick.x == 20; }));
+
+            edit->getTransport().setPosition(te::TimePosition::fromSeconds(2.1));
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+            expectWithinAbsoluteError(grid.snapTimeToVisibleGrid(te::TimePosition::fromSeconds(0.08)).inSeconds(),
+                                      0.08, 1.0e-9, "Seeking must not change the grid under a stationary viewport");
+
+            // Rebuild the cache at the same view range: its ticks must still match.
+            view.zoom.setRange(view.zoom.getRange());
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+            const auto after = grid.getTicks();
+            expectEquals(int(after.size()), int(before.size()));
+            for (size_t i = 0; i < std::min(before.size(), after.size()); ++i) {
+                expectEquals(after[i].x, before[i].x);
+                expectEquals(after[i].level, before[i].level);
+                expectEquals(after[i].label, before[i].label);
+            }
+        }
+
+        beginTest("Grid supplies frame label candidates near beat edges for ruler layout");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+
+            te::SelectionManager selectionManager(engine);
+            EditViewState editViewState(*edit, selectionManager);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
 
             editViewState.zoom.setViewWidthPx(625);
             editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(1.0)});
@@ -103,10 +191,66 @@ public:
                     labels.add(tick.label);
             }
 
-            expect(labels.contains("1.1.10"), "Expected middle-of-beat frame labels to remain visible.");
-            expect(! labels.contains("1.1.05"), "Coarse frame labels should not crowd the beat start.");
-            expect(! labels.contains("1.1.20"), "Coarse frame labels should not crowd the next beat.");
+            expect(labels.contains("1.1.08"), "Expected middle-of-beat frame labels to remain visible.");
+            expect(labels.contains("1.1.04"), "The ruler decides whether a label fits after the beat start.");
+            expect(labels.contains("1.1.20"), "The ruler decides whether a label fits before the next beat.");
             expect(labels.contains("1.2"), "Expected native beat labels to remain visible.");
+        }
+
+        beginTest("Ruler displays the first frame after a beat when its label fits");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(100.0);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(2400);
+            view.zoom.setRange({te::TimePosition::fromSeconds(9.6), te::TimeDuration::fromSeconds(1.0)});
+            TimelineGrid grid(view);
+            RulerComponent ruler(*edit, view, grid);
+            ruler.setSize(2400, 26);
+            Image image(Image::RGB, 2400, 26, true);
+            Graphics graphics(image);
+            ruler.paint(graphics);
+
+            for (const auto& label : {String("5.1"), String("5.1.01"), String("5.1.02")}) {
+                const auto ticks = grid.getTicks();
+                const auto tick = std::find_if(ticks.begin(), ticks.end(), [&](const auto& t) {
+                    return t.label == label;
+                });
+                expect(tick != ticks.end(), "Missing label candidate: " + label);
+                if (tick == ticks.end())
+                    continue;
+
+                bool hasText = false;
+                for (int y = 0; y < 10; ++y)
+                    for (int x = tick->x + 2; x < tick->x + 30; ++x)
+                        hasText = hasText || image.getPixelAt(x, y) != Colors::Theme::background;
+                expect(hasText, "Label should be painted: " + label);
+            }
+
+            beginTest("Ruler keeps beat labels clear of overlapping preceding frame labels");
+            edit->state.setProperty(IDs::gridSubdivision, "", nullptr);
+            view.zoom.setViewWidthPx(600);
+            view.zoom.setRange({te::TimePosition::fromSeconds(9.6), te::TimeDuration::fromSeconds(1.0)});
+            ruler.setSize(600, 26);
+            Image denseImage(Image::RGB, 600, 26, true);
+            Graphics denseGraphics(denseImage);
+            ruler.paint(denseGraphics);
+
+            const auto denseTicks = grid.getTicks();
+            const auto crowded = std::find_if(denseTicks.begin(), denseTicks.end(), [](const auto& tick) {
+                return tick.label == "5.1.28";
+            });
+            expect(crowded != denseTicks.end(), "Expected a frame label candidate just before beat 5.2");
+            if (crowded != denseTicks.end()) {
+                bool hasCrowdedText = false;
+                for (int y = 0; y < 10; ++y)
+                    for (int x = crowded->x + 2; x < crowded->x + 20; ++x)
+                        hasCrowdedText = hasCrowdedText || denseImage.getPixelAt(x, y) != Colors::Theme::background;
+                expect(! hasCrowdedText, "The overlapping frame label should yield to the beat label");
+            }
         }
 
         beginTest("Extended frames-only grid snaps use selected FPS");
@@ -116,7 +260,8 @@ public:
 
             te::SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::fps50);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::framesOnly);
+            Helpers::setProjectFps(*edit, 50.0);
 
             editViewState.zoom.setViewWidthPx(1000);
             editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(1.0)});
@@ -144,6 +289,75 @@ public:
             expect(! labels.contains("1.1"), "Frames-only labels should not use bars/beats.");
         }
 
+        beginTest("Subdivision pattern draws swing boundaries between frames and beats");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(3000.0 / 26.0);  // beat = 0.52s = 26 frames at 50 fps
+
+            te::SelectionManager selectionManager(engine);
+            EditViewState editViewState(*edit, selectionManager);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
+            Helpers::setGridSubdivisionPattern(*edit, { 6, 7, 6, 7 });
+
+            editViewState.zoom.setViewWidthPx(1000);
+            editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(1.0)});
+
+            TimelineGrid grid(editViewState);
+            auto ticks = grid.getTicks();
+            StringArray labels;
+
+            auto hasLabeledTickAtX = [&ticks](int x) {
+                return std::any_of(ticks.begin(), ticks.end(), [x](const auto& tick) {
+                    return tick.x == x && tick.level >= 1;
+                });
+            };
+
+            for (const auto& tick : ticks) {
+                if (tick.label.isNotEmpty())
+                    labels.add(tick.label);
+            }
+
+            // 20 px per frame: subdivision boundaries at frames 6, 13, 19 of the first beat.
+            expect(hasLabeledTickAtX(120), "Expected a subdivision tick at frame 6.");
+            expect(hasLabeledTickAtX(260), "Expected a subdivision tick at frame 13.");
+            expect(hasLabeledTickAtX(380), "Expected a subdivision tick at frame 19.");
+            expect(! hasLabeledTickAtX(200), "Frame 10 is not a subdivision boundary.");
+            expect(labels.contains("1.1.06"), "Expected subdivision labels with frame numbers.");
+            expect(labels.contains("1.1.13"), "Expected subdivision labels with frame numbers.");
+            expect(labels.contains("1.2"), "Beat labels should remain.");
+        }
+
+        beginTest("Subdivision pattern remains visible at very deep zoom");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(3000.0 / 26.0);  // beat = 0.52s = 26 frames at 50 fps
+
+            te::SelectionManager selectionManager(engine);
+            EditViewState editViewState(*edit, selectionManager);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
+            Helpers::setGridSubdivisionPattern(*edit, { 6, 7, 6, 7 });
+
+            editViewState.zoom.setViewWidthPx(2600);
+            editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(0.52)});
+
+            TimelineGrid grid(editViewState);
+            auto ticks = grid.getTicks();
+
+            auto hasSubdivisionTickAtX = [&ticks](int x) {
+                return std::any_of(ticks.begin(), ticks.end(), [x](const auto& tick) {
+                    return tick.x == x && tick.level >= 1 && tick.label.isNotEmpty();
+                });
+            };
+
+            // 100 px per frame: the medium pixel budget picks single frames, so the
+            // milestone level must still promote 6/7/6/7 boundaries above frame ticks.
+            expect(hasSubdivisionTickAtX(600), "Expected a subdivision tick at frame 6.");
+            expect(hasSubdivisionTickAtX(1300), "Expected a subdivision tick at frame 13.");
+            expect(hasSubdivisionTickAtX(1900), "Expected a subdivision tick at frame 19.");
+        }
+
         beginTest("Tempo changes invalidate grid ticks");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);
@@ -151,7 +365,8 @@ public:
 
             te::SelectionManager selectionManager(engine);
             EditViewState editViewState(*edit, selectionManager);
-            Helpers::setEditTimecodeFormat(*edit, TimecodeTypeExt::barsBeatsFps50);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
 
             editViewState.zoom.setViewWidthPx(1000);
             editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(1.0)});

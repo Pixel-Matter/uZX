@@ -2,11 +2,10 @@
 
 #include <JuceHeader.h>
 #include "../../controllers/EditState.h"
+#include "../../models/SnapLadder.h"
 #include "../common/LookAndFeel.h"
 
 namespace MoTool {
-
-struct TimecodeDisplayFormatExt;
 
 //==============================================================================
 class TimelineGrid : private ZoomViewState::Listener,
@@ -25,18 +24,15 @@ public:
     ~TimelineGrid() override;
 
     std::vector<MoLookAndFeel::TimelineGridTick> getTicks();
+    te::TimePosition snapTimeToVisibleGrid(te::TimePosition time) const;
 
     void addListener(Listener* l);
     void removeListener(Listener* l);
 
 private:
+    SnapLadder makeSnapLadder() const;
+    int getVisibleSnapLevel(const SnapLadder& ladder) const;
     std::vector<MoLookAndFeel::TimelineGridTick> makeTicks();
-    std::vector<MoLookAndFeel::TimelineGridTick>
-        makeTicksForSnaps(const std::vector<te::TimecodeSnapType>&);
-    std::vector<MoLookAndFeel::TimelineGridTick>
-        makeExtendedFrameTicks(const TimecodeDisplayFormatExt&);
-    std::vector<MoLookAndFeel::TimelineGridTick>
-        makeBarsBeatsFrameTicks(const TimecodeDisplayFormatExt&);
     void invalidateAndNotify();
 
     void zoomChanged() override;

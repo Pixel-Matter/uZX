@@ -84,6 +84,7 @@ public:
     virtual void initialize();
 
     te::Edit* getEdit();
+    virtual EditViewState* getEditViewState() { return nullptr; }
     te::Engine& getEngine();
 
     MainWindow* getMainWindow() { return &window_; }
@@ -120,7 +121,7 @@ public:
     ~ArrangerController() override;
 
     void initialize() override;
-    EditViewState* getEditViewState();
+    EditViewState* getEditViewState() override;
 
     void zoomHorizontal(float increment) override;
     void zoomToSelection() override;

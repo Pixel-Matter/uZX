@@ -2,6 +2,8 @@
 
 µZX is a suite of applications for working with PSG chip music (AY-3-8910 / YM2149), targeting ZX Spectrum demoscene production.
 
+The screenshots show the macOS build using the [Guide melody example](examples/Guide%20melody.uzx).
+
 ---
 
 ## Applications
@@ -30,6 +32,12 @@ A minimal player for listening to PSG chip music files.
 ### Transport Bar
 
 Located at the top of the window.
+
+<!-- guide-figure:player-overview -->
+![Player transport and timeline](images/user-guide/player-overview.png)
+
+The transport sits above the timeline; the AY controls are on the right.
+<!-- /guide-figure:player-overview -->
 
 | Control | Description |
 |---------|-------------|
@@ -65,6 +73,12 @@ A panel on the right side of the window shows the AY chip plugin controls for th
 
 If no track is selected the panel shows "No AY plugin".
 
+<!-- guide-figure:player-ay-panel -->
+![Player AY side panel](images/user-guide/player-ay-panel.png)
+
+Chip type and clock, stereo controls, and the three channel strips.
+<!-- /guide-figure:player-ay-panel -->
+
 ---
 
 ## µZX Studio
@@ -73,18 +87,11 @@ A DAW-style editor for composing PSG chip music.
 
 ### Layout
 
-```
-+---------------------------------------------+
-|              Transport Bar                   |
-+-------------+-------------------------------+
-| Track       |   Timeline / Clip Area        |
-| Headers     |                               |
-|             |   [PSG Clip] [PSG Clip] ...   |
-|             |                               |
-+-------------+-------------------------------+
-|         Details Panel (tabbed)              |
-+---------------------------------------------+
-```
+<!-- guide-figure:studio-layout -->
+![Studio layout with a selected PSG clip](images/user-guide/studio-layout.png)
+
+Track headers are on the left, clips above, and the selected clip's parameter editor below.
+<!-- /guide-figure:studio-layout -->
 
 ### Transport Bar
 
@@ -141,9 +148,21 @@ When a PSG clip is selected, the parameter editor appears. It shows an automatio
 - **Curve area** — shows the value of the parameter across the clip duration. Click to add points; drag points to edit.
 - The curve aligns with the timeline grid.
 
+<!-- guide-figure:studio-psg-editor -->
+![PSG parameter editor](images/user-guide/studio-psg-editor.png)
+
+Choose a register parameter in the list to inspect its values against the timeline grid.
+<!-- /guide-figure:studio-psg-editor -->
+
 #### Track Devices / Plugins
 
 When a track is selected, the Devices panel shows the plugin chain on that track (e.g., the AY chip instrument plugin). Click **+** between device slots to insert a new plugin.
+
+<!-- guide-figure:studio-devices -->
+![Studio track device chain](images/user-guide/studio-devices.png)
+
+Selecting the track reveals its devices, including the AY chip emulator.
+<!-- /guide-figure:studio-devices -->
 
 ---
 
@@ -153,19 +172,13 @@ A standalone editor for generating and previewing AY chip tuning tables.
 
 ### Layout
 
-```
-+-------------------+-------------------------------+
-| Controls          |   Tuning Grid                 |
-|                   |                               |
-| Tuning table list |   (note → period mapping)     |
-| Chip clock        |                               |
-| A4 frequency      |                               |
-| Reference tuning  |                               |
-| Key / Scale       |                               |
-| Play controls     |                               |
-| [Export]          |                               |
-+-------------------+-------------------------------+
-```
+The Tuning window is also available from **Settings → Tuning Tables** in Studio.
+
+<!-- guide-figure:tuning-layout -->
+![Tuning tables, controls, and note grid](images/user-guide/tuning-layout.png)
+
+Choose a table on the left; pitch and preview controls sit above the note grid, with CSV export below.
+<!-- /guide-figure:tuning-layout -->
 
 ### Controls
 
@@ -217,7 +230,7 @@ Click a cell in the tuning grid to hear the corresponding note.
 
 #### Export Button
 
-Exports the current tuning table as an assembly include file (`.asm`/`.inc`) with period values for all notes. The output is ready to include in ZX Spectrum or other target machine source code.
+Click **Export to CSV** to save the current tuning table as a `.csv` file for use in a spreadsheet or further conversion.
 
 ### Tuning Grid
 

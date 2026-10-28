@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <tuple>
 
 namespace MoTool {
@@ -77,12 +76,6 @@ struct FrameNote {
     bool hasEnvMod;
 };
 
-struct NoiseBandStyle {
-    uint8_t channelMask;
-    Colour color;
-    float alpha;
-};
-
 Colour getChannelMaskColor(uint8_t channelMask) {
     switch (channelMask & 0x7u) {
         case 0x1: return Colors::PSG::A;
@@ -106,80 +99,52 @@ Range<float> getNoisePeriodYRange(int noisePeriod) {
     return { Y - 0.1f, Y + 0.1f };
 }
 
-Colour getWeightedChannelMaskColor(const std::array<float, 3>& weights) {
-    float red = 0.0f;
-    float green = 0.0f;
-    float blue = 0.0f;
-    float total = 0.0f;
-    auto remaining = weights;
-
-    while (true) {
-        uint8_t channelMask = 0;
-        float layerWeight = std::numeric_limits<float>::max();
-
-        for (int ch = 0; ch < 3; ++ch) {
-            const auto weight = remaining[static_cast<size_t>(ch)];
-            if (weight > 0.0f) {
-                channelMask |= static_cast<uint8_t>(1u << ch);
-                layerWeight = jmin(layerWeight, weight);
-            }
-        }
-
-        if (channelMask == 0)
-            break;
-
-        const auto color = getChannelMaskColor(channelMask);
-        red += color.getFloatRed() * layerWeight;
-        green += color.getFloatGreen() * layerWeight;
-        blue += color.getFloatBlue() * layerWeight;
-        total += layerWeight;
-
-        for (auto& weight : remaining)
-            weight = jmax(0.0f, weight - layerWeight);
-    }
-
-    if (total <= 0.0f)
-        return Colours::transparentBlack;
-
-    return Colour::fromFloatRGBA(red / total, green / total, blue / total, 1.0f);
-}
-
-NoiseBandStyle getNoiseBandStyle(const PsgParamFrameData& data) {
-    std::array<float, 3> weights {};
-    uint8_t channelMask = 0;
-    float noiseWeight = 0.0f;
+std::array<float, 3> getNoiseChannelLevels(const PsgParamFrameData& data) {
+    std::array<float, 3> levels {};
 
     for (int ch = 0; ch < 3; ++ch) {
-        const auto rawVolume   = data.getRaw(PsgParamType(PsgParamType::VolumeA + ch));
-        const bool hasEnvMod   = data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0;
         const bool hasNoiseMod = data.getRaw(PsgParamType(PsgParamType::NoiseIsOnA + ch)) > 0;
-
         if (! hasNoiseMod)
             continue;
 
-        const float weight = hasEnvMod ? 15.0f : static_cast<float>(rawVolume);
-        weights[static_cast<size_t>(ch)] = weight;
-
-        if (weight > 0.0f) {
-            channelMask |= static_cast<uint8_t>(1u << ch);
-            noiseWeight += weight;
-        }
+        const auto rawVolume = data.getRaw(PsgParamType(PsgParamType::VolumeA + ch));
+        const bool hasEnvMod = data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0;
+        levels[static_cast<size_t>(ch)] = hasEnvMod ? 1.0f : static_cast<float>(rawVolume) / 15.0f;
     }
 
-    const auto alpha = channelMask == 0 ? 0.0f : jlimit(0.0f, 1.0f, noiseWeight / (3 * 15.0f)) * 0.5f + 0.2f;
-    return {channelMask, getWeightedChannelMaskColor(weights), alpha};
+    return levels;
 }
 
-void drawNoiseBand(Graphics& g, float x, float width, float y, float height, Colour color, float alpha) {
-    if (width <= 0.0f || height <= 0.0f)
+void drawNoiseBand(Graphics& g, float x, float width, float y, float height, const std::array<float, 3>& levels) {
+    const auto maxLevel = *std::max_element(levels.begin(), levels.end());
+    if (width <= 0.0f || height <= 0.0f || maxLevel <= 0.0f)
         return;
 
+    const auto color = Colors::PSG::Mix;
     ColourGradient gradient(color.withAlpha(0.0f), x, y, color.withAlpha(0.0f), x, y + height, false);
-    gradient.addColour(0.5, color.withAlpha(alpha));
-    // gradient.addColour(0.5, color.withAlpha(0.38f * alpha));
-
+    gradient.addColour(0.5, color.withAlpha(0.15f + 0.1f * maxLevel));
     g.setGradientFill(gradient);
     g.fillRect(x, y, width, height);
+
+    std::array<size_t, 3> activeChannels {};
+    size_t activeCount = 0;
+    for (size_t ch = 0; ch < levels.size(); ++ch) {
+        if (levels[ch] > 0.0f)
+            activeChannels[activeCount++] = ch;
+    }
+
+    // Repeat one scattered pattern so routing changes recolor dots without moving them.
+    constexpr std::array<Point<float>, 6> dots {{
+        {0.17f, 0.32f}, {0.64f, 0.22f}, {0.43f, 0.51f},
+        {0.85f, 0.45f}, {0.29f, 0.78f}, {0.73f, 0.74f}
+    }};
+    const float diameter = jmin(2.0f, width * 0.25f, height * 0.25f);
+    for (size_t i = 0; i < dots.size(); ++i) {
+        const auto ch = activeChannels[i % activeCount];
+        g.setColour(getChannelMaskColor(static_cast<uint8_t>(1u << ch)).withAlpha(0.35f + 0.35f * levels[ch]));
+        g.fillEllipse(x + dots[i].x * (width - diameter), y + dots[i].y * (height - diameter),
+                      diameter, diameter);
+    }
 }
 
 /** Frame duration in edit time, taken from the clip's own PSG timing metadata.
@@ -415,13 +380,13 @@ void PsgClipComponent::paintNotes(Graphics& g) {
         const auto& frameData = frame.getData();
         const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
 
-        const auto noiseBandStyle = getNoiseBandStyle(frameData);
-        if (noiseBandStyle.channelMask != 0) {
+        const auto noiseLevels = getNoiseChannelLevels(frameData);
+        if (drawMods && *std::max_element(noiseLevels.begin(), noiseLevels.end()) > 0.0f) {
             const auto period = static_cast<int>(frameData.getRaw(PsgParamType::NoisePeriod));
             const auto noiseRange = getNoisePeriodYRange(period);
             const float noiseY = noiseRange.getStart() * static_cast<float>(vis.rect.getHeight());
             const float noiseH = jmax(2.0f, noiseRange.getLength() * static_cast<float>(vis.rect.getHeight()));
-            drawNoiseBand(g, x, vis.pixelsPerFrame, noiseY, noiseH, noiseBandStyle.color, noiseBandStyle.alpha);
+            drawNoiseBand(g, x, vis.pixelsPerFrame, noiseY, noiseH, noiseLevels);
         }
 
         // Collect this frame's notes: up to one per channel plus the envelope
@@ -480,7 +445,7 @@ void PsgClipComponent::paintNotes(Graphics& g) {
                         subH = groupBottom - subY;
                 }
 
-                const auto noteColor = getChannelMaskColor(note.channelMask);
+                const auto noteColor = note.isEnvelopePitch ? Colors::PSG::Env : getChannelMaskColor(note.channelMask);
                 const auto noteRect = Rectangle<float>(x, subY, vis.pixelsPerFrame, jmax(1.0f, subH));
 
                 if (note.isEnvelopePitch) {
@@ -527,18 +492,15 @@ void PsgClipComponent::paintHeader(Graphics& g) {
     // The clip component can extend far off-screen (its width is the whole clip in
     // pixels), so anchor the header to the currently-visible slice rather than the
     // component's own left edge. getClipBounds() is that slice, in local coords.
-    auto row = g.getClipBounds().removeFromTop(headerHeight).reduced(pad, pad);
+    auto row = g.getClipBounds().removeFromTop(swatchSize + 2 * pad).reduced(pad, pad);
 
-    // Channel ownership swatches on the left.
-    struct LegendItem { const char* label; uint8_t channelMask; };
+    // Channel colors and the envelope-pitch appearance on the left.
+    struct LegendItem { const char* label; Colour color; bool isEnvelopePitch = false; };
     const LegendItem items[] = {
-        { "A", 0x1 },
-        { "B", 0x2 },
-        { "C", 0x4 },
-        { "AB", 0x3 },
-        { "AC", 0x5 },
-        { "BC", 0x6 },
-        { "ABC", 0x7 },
+        { "A", Colors::PSG::A },
+        { "B", Colors::PSG::B },
+        { "C", Colors::PSG::C },
+        { "E", Colors::PSG::Env, true },
     };
 
     g.setFont(Font(FontOptions((float) swatchSize - 1.0f).withStyle("Bold")));
@@ -548,9 +510,17 @@ void PsgClipComponent::paintHeader(Graphics& g) {
             GlyphArrangement::getStringWidthInt(g.getCurrentFont(), item.label) + 4
         );
         auto swatch = row.removeFromLeft(swatchWidth);
-        g.setColour(getChannelMaskColor(item.channelMask));
-        g.fillRect(swatch);
-        g.setColour(Colours::black);
+        if (item.isEnvelopePitch) {
+            drawEnvelopeStripes(g, (float) swatch.getX(), (float) swatch.getY(),
+                                (float) swatch.getWidth(), (float) swatch.getHeight(),
+                                0x8, item.color.withAlpha(0.25f));
+            g.setColour(item.color);
+            g.drawRect(swatch);
+        } else {
+            g.setColour(item.color);
+            g.fillRect(swatch);
+        }
+        g.setColour(item.isEnvelopePitch ? Colours::white : Colours::black);
         g.drawText(item.label, swatch, Justification::centred);
         row.removeFromLeft(spacing);
     }

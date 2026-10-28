@@ -1,7 +1,9 @@
 #include <JuceHeader.h>
 
 #include "TimelineGrid.h"
+#include "Ruler.h"
 #include "../../models/EditUtilities.h"
+#include "../../models/Ids.h"
 
 namespace MoTool {
 
@@ -168,7 +170,7 @@ public:
             }
         }
 
-        beginTest("Bars beats frames coarse frame labels stay clear of beat edges");
+        beginTest("Grid supplies frame label candidates near beat edges for ruler layout");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);
@@ -190,9 +192,65 @@ public:
             }
 
             expect(labels.contains("1.1.08"), "Expected middle-of-beat frame labels to remain visible.");
-            expect(! labels.contains("1.1.04"), "Coarse frame labels should not crowd the beat start.");
-            expect(! labels.contains("1.1.20"), "Coarse frame labels should not crowd the next beat.");
+            expect(labels.contains("1.1.04"), "The ruler decides whether a label fits after the beat start.");
+            expect(labels.contains("1.1.20"), "The ruler decides whether a label fits before the next beat.");
             expect(labels.contains("1.2"), "Expected native beat labels to remain visible.");
+        }
+
+        beginTest("Ruler displays the first frame after a beat when its label fits");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(100.0);
+            Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::barsBeatsFrames);
+            Helpers::setProjectFps(*edit, 50.0);
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(2400);
+            view.zoom.setRange({te::TimePosition::fromSeconds(9.6), te::TimeDuration::fromSeconds(1.0)});
+            TimelineGrid grid(view);
+            RulerComponent ruler(*edit, view, grid);
+            ruler.setSize(2400, 26);
+            Image image(Image::RGB, 2400, 26, true);
+            Graphics graphics(image);
+            ruler.paint(graphics);
+
+            for (const auto& label : {String("5.1"), String("5.1.01"), String("5.1.02")}) {
+                const auto ticks = grid.getTicks();
+                const auto tick = std::find_if(ticks.begin(), ticks.end(), [&](const auto& t) {
+                    return t.label == label;
+                });
+                expect(tick != ticks.end(), "Missing label candidate: " + label);
+                if (tick == ticks.end())
+                    continue;
+
+                bool hasText = false;
+                for (int y = 0; y < 10; ++y)
+                    for (int x = tick->x + 2; x < tick->x + 30; ++x)
+                        hasText = hasText || image.getPixelAt(x, y) != Colors::Theme::background;
+                expect(hasText, "Label should be painted: " + label);
+            }
+
+            beginTest("Ruler keeps beat labels clear of overlapping preceding frame labels");
+            edit->state.setProperty(IDs::gridSubdivision, "", nullptr);
+            view.zoom.setViewWidthPx(600);
+            view.zoom.setRange({te::TimePosition::fromSeconds(9.6), te::TimeDuration::fromSeconds(1.0)});
+            ruler.setSize(600, 26);
+            Image denseImage(Image::RGB, 600, 26, true);
+            Graphics denseGraphics(denseImage);
+            ruler.paint(denseGraphics);
+
+            const auto denseTicks = grid.getTicks();
+            const auto crowded = std::find_if(denseTicks.begin(), denseTicks.end(), [](const auto& tick) {
+                return tick.label == "5.1.28";
+            });
+            expect(crowded != denseTicks.end(), "Expected a frame label candidate just before beat 5.2");
+            if (crowded != denseTicks.end()) {
+                bool hasCrowdedText = false;
+                for (int y = 0; y < 10; ++y)
+                    for (int x = crowded->x + 2; x < crowded->x + 20; ++x)
+                        hasCrowdedText = hasCrowdedText || denseImage.getPixelAt(x, y) != Colors::Theme::background;
+                expect(! hasCrowdedText, "The overlapping frame label should yield to the beat label");
+            }
         }
 
         beginTest("Extended frames-only grid snaps use selected FPS");

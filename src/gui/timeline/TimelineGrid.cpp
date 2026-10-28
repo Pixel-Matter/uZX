@@ -96,14 +96,6 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
     const auto visualOffset = 3 - displayLevels.size();
     const auto mediumIndex = medium == fine ? (size_t) 0 : (size_t) 1;
 
-    const int beatLevel = ladder.getBeatLevel();
-    const auto pixelsFromNearestBeat = [&](te::TimePosition t) {
-        if (beatLevel < 0)
-            return std::numeric_limits<double>::max();
-        const auto beatTime = ladder.roundNearest(beatLevel, t, ts);
-        return std::abs((t - beatTime).inSeconds()) / timePerPixel.inSeconds();
-    };
-
     auto time = jmax(te::TimePosition(), ladder.roundUp(fine, range.getStart(), ts));
 
     while (time < range.getEnd()) {
@@ -117,16 +109,8 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
         }
 
         String label;
-        if (matched >= mediumIndex) {
-            const auto level = displayLevels[matched];
-            const auto kind = ladder.getKind(level);
-            // Frame tick labels too close to a beat boundary would crowd its label.
-            const bool crowded = (kind == SnapLadder::LevelKind::frames
-                                  || kind == SnapLadder::LevelKind::subdivision)
-                                 && pixelsFromNearestBeat(time) < 72.0;
-            if (! crowded)
-                label = ladder.getLabel(level, time, ts);
-        }
+        if (matched >= mediumIndex)
+            label = ladder.getLabel(displayLevels[matched], time, ts);
 
         const auto x = roundToInt(editViewState.zoom.timeToX(time));
         ticks.push_back({ x, visualOffset + matched, label });

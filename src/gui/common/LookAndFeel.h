@@ -124,6 +124,12 @@ struct Timeline {
         Palette::slate500.withAlpha(0.33f),
         Palette::slate500.withAlpha(0.66f),
     };
+
+    static inline const std::array<Colour, 3> trackGridLabelColors = {
+        Palette::slate600,
+        Palette::slate500,
+        Palette::slate400,
+    };
 };
 
 // PSG specific colors
@@ -136,7 +142,7 @@ struct PSG {
     inline static const auto B   = Palette::emerald500;
     inline static const auto C   = Palette::indigo400;
 
-    inline static const auto Env = Palette::fuchsia500;
+    inline static const auto Env = Palette::purple400;
     inline static const auto Mix = Palette::slate500;
 };
 

@@ -110,6 +110,7 @@ set(TEST_SOURCES
     models/tuning/Scales.test.cpp
     models/tuning/RationalTuning.test.cpp
 
+    controllers/EditState.test.cpp
     controllers/Parameters.test.cpp
 
     viewmodels/tuning/TuningViewModel.test.cpp

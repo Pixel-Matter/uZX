@@ -40,7 +40,22 @@ void RulerComponent::paint(Graphics& g) {
         g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
         auto y = (float) bounds.getHeight() - (float) bounds.getHeight() / (float) (3 - tick.level);
         g.drawVerticalLine(tick.x, y, (float)bounds.getHeight());
-        if (tick.label.isNotEmpty()) {
+    }
+
+    // Resolve text collisions here, where the actual font is known; structural labels win.
+    RectangleList<int> occupiedLabels;
+    for (size_t level = Colors::Timeline::trackGridLabelColors.size(); level-- > 0;) {
+        for (const auto& tick : ticks) {
+            if (tick.level != level || tick.label.isEmpty() || tick.x > bounds.getWidth())
+                continue;
+
+            const int width = GlyphArrangement::getStringWidthInt(g.getCurrentFont(), tick.label);
+            const Rectangle<int> labelBounds(tick.x + 2, 0, width + 4, bounds.getHeight());
+            if (occupiedLabels.intersectsRectangle(labelBounds))
+                continue;
+
+            occupiedLabels.addWithoutMerging(labelBounds);
+            g.setColour(Colors::Timeline::trackGridLabelColors[tick.level]);
             g.drawSingleLineText(tick.label, tick.x + 2, 10, Justification::left);
         }
     }

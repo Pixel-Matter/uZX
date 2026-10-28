@@ -2,6 +2,8 @@
 #include "../models/EditUtilities.h"
 #include "../models/PsgFrameRetimer.h"
 
+#include <limits>
+
 using namespace std::literals;
 
 namespace MoTool {
@@ -310,7 +312,7 @@ TrackViewState::TrackViewState(ValueTree trackState, UndoManager* undoManager)
   : state(ensure(trackState)), height(state, IDs::height, undoManager, 160)
 {
     constrainer.setMinimumHeight(56);
-    constrainer.setMaximumHeight(600);
+    constrainer.setMinimumOnscreenAmounts(0, 0, std::numeric_limits<int>::max(), 0);
     state.addListener(this);
 }
 

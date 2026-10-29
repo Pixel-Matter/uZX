@@ -113,7 +113,7 @@ Video file asset (one import)
 - The `juce_video` module already exists in the tree
   (`third_party/tracktion_engine/modules/juce/modules/juce_video/`); no submodule change.
 - After editing CMake, regenerate (`cmake -S . -B build`) so clangd + JuceHeader pick up the
-  new module (per CLAUDE.md clangd notes).
+  new module (see the clangd notes in CONTRIBUTING.md).
 
 ### 2. Model: `VideoClip` (mirror `PsgClip`)
 

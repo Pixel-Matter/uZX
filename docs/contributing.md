@@ -20,25 +20,9 @@
 3. Open a PR targeting `develop`.
 4. After review and CI passes, merge the PR.
 
-## Building
+## Building and Testing
 
-See [CLAUDE.md](../.claude/CLAUDE.md) for full build commands. Quick start:
-
-```bash
-git submodule update --init --depth=1   # first time only
-cmake -S . -B build
-cmake --build build
-```
-
-## Testing
-
-Tests use the JUCE UnitTest framework. Test files live alongside source files with a `.test.cpp` extension.
-
-```bash
-cmake --build build --target uZXTests
-build/tests/MoToolTests_artefacts/Debug/uZXTests              # run all
-build/tests/MoToolTests_artefacts/Debug/uZXTests AYChip        # filter by name
-```
+See [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Release Process
 

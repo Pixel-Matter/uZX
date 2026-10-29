@@ -7,7 +7,7 @@ Thank you for your interest in contributing! µZX currently targets AY-3-8910/YM
 ### Prerequisites
 
 - **CMake** 3.22+
-- **C++17** compiler (Clang, GCC, or MSVC)
+- **C++23** compiler (Clang, GCC, or MSVC)
 - **JUCE** dependencies (included via submodules)
 - **macOS**: Xcode command line tools
 - **Linux**: ALSA, X11, and related development packages
@@ -33,6 +33,7 @@ cmake --build build
 |--------|------------------------------------------|----------------------|
 | Studio | `cmake --build build --target uZX`       | Full-featured editor |
 | Player | `cmake --build build --target uZXPlayer` | Lightweight playback |
+| Tuning | `cmake --build build --target uZXTuning` | Tuning table editor  |
 | Tests  | `cmake --build build --target uZXTests`  | Unit tests           |
 
 ### Running
@@ -43,9 +44,31 @@ build/src/uZX_artefacts/Debug/μZX.app/Contents/MacOS/μZX                      
 build/src/uZXPlayer_artefacts/Debug/μZX\ Player.app/Contents/MacOS/μZX\ Player  # Player
 
 # Tests
-build/tests/MoToolTests_artefacts/Debug/uZXTests               # All tests
-build/tests/MoToolTests_artefacts/Debug/uZXTests AYChip        # Filtered tests
+build/src/uZXTests_artefacts/Debug/uZXTests                   # All tests
+build/src/uZXTests_artefacts/Debug/uZXTests AYChip            # Tests whose name contains "AYChip"
+build/src/uZXTests_artefacts/Debug/uZXTests --list-tests      # List test names
 ```
+
+### Code Signing (macOS)
+
+Set `CODESIGN_IDENTITY` before configuring and the apps are signed after each build:
+
+```bash
+export CODESIGN_IDENTITY="Apple Development: your.email@domain.com (TEAMID)"
+cmake -S . -B build
+cmake --build build
+```
+
+List available identities with `security find-identity -v -p codesigning`. To sign by hand:
+
+```bash
+codesign --force --sign "YOUR_IDENTITY" --deep "build/src/uZX_artefacts/Debug/μZX.app"
+codesign --verify --verbose "build/src/uZX_artefacts/Debug/μZX.app"
+```
+
+### Editor Setup (clangd)
+
+`.clangd` reads `build/compile_commands.json`. JUCE headers are generated per app target, so build `uZX`, `uZXTuning`, and `uZXPlayer` once before expecting clean diagnostics. If clangd reports bogus errors after a CMake change, re-run `cmake -S . -B build` and restart the language server (VS Code: "clangd: Restart language server").
 
 ## Code Style
 
@@ -56,6 +79,8 @@ build/tests/MoToolTests_artefacts/Debug/uZXTests AYChip        # Filtered tests
 - **Constants**: UPPER_CASE or PascalCase for enum values
 - **Indentation**: 4 spaces, no tabs
 - **Braces**: same line for functions/methods, new line for class/struct definitions
+
+Run `./format-code.sh` before committing. Code must build warning-free on Clang, GCC, and MSVC; see the cross-compiler pitfalls in [AGENTS.md](AGENTS.md).
 
 ## Testing
 
@@ -87,12 +112,11 @@ MoTool is built on [Tracktion Engine](https://github.com/Tracktion/tracktion_eng
 - `docs/OVM Design pattern.md` — state management pattern
 - `docs/Parameter binding.md` — parameter binding system
 - `docs/Tuning Systems.md` — tuning system design
-- `docs/uzx-player.md` — Player variant design
 
 ## Submitting Changes
 
 1. Fork the repository
-2. Create a feature branch from `main`
+2. Create a feature branch from `develop` and target your pull request at `develop` (see [docs/contributing.md](docs/contributing.md))
 3. Make your changes with tests where applicable
 4. Ensure `uZXTests` passes
 5. Submit a pull request with a clear description of your changes

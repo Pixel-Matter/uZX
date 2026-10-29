@@ -31,7 +31,6 @@ None.
 - [ ] **Global master volume** — save in app settings and apply to every opened file (stored per edit now)
 - [ ] **Last opened edit** — reopening works in code; reproduce the "not always" report or close it
 - [ ] **Save / Save As** in the Player (Cmd+S does nothing)
-- [ ] **Loop mode** for project scope (wole project span is loop region on default)
 - [ ] **Shortcut consistency** across macOS, Windows and Linux
 - [ ] **Turbo-sound** load 2-3 PSGs at the same time
 - [ ] **Level meter** in transport bar to the left or right of global volume, stereo

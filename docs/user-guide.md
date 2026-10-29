@@ -244,7 +244,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Space` | Play / Pause | Player, Studio |
 | `Home` or `Cmd+Left` | Rewind to start | Player, Studio |
 | `End` or `Cmd+Right` | Jump to end | Player, Studio |
-| `Cmd+L` | Loop on / off | Player, Studio |
+| `Cmd+L` | Loop the whole project on / off | Player, Studio |
 | `=` | Zoom in around the playhead | Player, Studio |
 | `-` | Zoom out around the playhead | Player, Studio |
 | `Shift+Z` | Zoom to fit the project | Player, Studio |

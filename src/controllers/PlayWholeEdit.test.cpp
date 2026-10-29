@@ -46,6 +46,19 @@ public:
             expectEquals(transport.getPosition().inSeconds(), 0.5);
         }
 
+        beginTest("The loop range is the whole edit and follows its clips");
+        {
+            expect(transport.getLoopRange() == te::TimeRange(0_tp, 1_tp));
+
+            auto* clip = te::getAudioTracks(*edit)[0]->insertMIDIClip({2_tp, 3_tp}, nullptr).get();
+            TestHelpers::flushMessageQueue();
+            expect(transport.getLoopRange() == te::TimeRange(0_tp, 3_tp));
+
+            clip->removeFromParent();
+            TestHelpers::flushMessageQueue();
+            expect(transport.getLoopRange() == te::TimeRange(0_tp, 1_tp));
+        }
+
         transport.stop(false, false);
     }
 };

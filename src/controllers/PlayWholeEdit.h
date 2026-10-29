@@ -4,17 +4,20 @@
 
 namespace MoTool {
 
-/** Stops playback once the end of the edit has been heard, unless recording or looping.
+/** Playback covers the whole edit: it stops once the end has been heard, unless recording
+    or looping, and the loop range follows the edit from its start to its end.
     Rides on the transport's periodic position updates; create one per edit. */
-class PlayWholeEdit : private juce::ValueTree::Listener
+class PlayWholeEdit : private juce::ValueTree::Listener,
+                      private juce::AsyncUpdater
 {
 public:
     explicit PlayWholeEdit(tracktion::Edit& e) : edit_{e} {
-        edit_.getTransport().state.addListener(this);
+        edit_.state.addListener(this);
+        handleAsyncUpdate();
     }
 
     ~PlayWholeEdit() override {
-        edit_.getTransport().state.removeListener(this);
+        edit_.state.removeListener(this);
     }
 
     /** Moves the transport back to the start when it is parked at or past the end,
@@ -32,14 +35,32 @@ private:
         return tracktion::toPosition(edit.getLength());
     }
 
+    // Async: the edit's cached length is invalidated by its own listener, which may run after this one.
+    // ponytail: overwrites any loop range; keep a user-set one once the ruler can set it (v1.0 Loop range)
+    void handleAsyncUpdate() override {
+        edit_.getTransport().setLoopRange({tracktion::TimePosition(), getEnd(edit_)});
+    }
+
+    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& child) override {
+        if (tracktion::Clip::isClipState(child) || tracktion::TrackList::isTrack(child))
+            triggerAsyncUpdate();
+    }
+
+    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& child, int) override {
+        valueTreeChildAdded(child, child);
+    }
+
     void valueTreePropertyChanged(juce::ValueTree& tree, const juce::Identifier& prop) override {
+        if (tracktion::Clip::isClipState(tree) && (prop == tracktion::IDs::start || prop == tracktion::IDs::length)) {
+            triggerAsyncUpdate();
+            return;
+        }
+
         auto& transport = edit_.getTransport();
         if (tree != transport.state || prop != tracktion::IDs::position
             || !transport.isPlaying() || transport.isRecording() || transport.looping)
             return;
 
-        // The transport's cached position may lag this notification, so read the tree.
-        // It also runs ahead of the speakers by the output latency: wait until the end is audible.
         const auto end = getEnd(edit_);
         const auto position = tracktion::TimePosition::fromSeconds(static_cast<double>(tree[tracktion::IDs::position]));
         auto* context = transport.getCurrentPlaybackContext();

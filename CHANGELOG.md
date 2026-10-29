@@ -39,6 +39,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Stale chip registers after a seek or play start landing just before a PSG frame (patched in our Tracktion Engine fork)
 - Crash on quit while the Audio/MIDI Settings or Plugins window was open (a cause of the intermittent crash on exit)
 - Envelope period 0 drew nothing; it now draws as period 1, the way the chip plays it
+- Loop (`Cmd+L`) refused to play, asking for in/out markers that cannot be set; it now loops the whole project, following clip changes
 - Crash when opening a damaged project, including on launch when the last project was damaged; an error is shown instead
 - Memory corruption when loading PSG files that write the AY I/O port registers (R14/R15)
 - Studio: possible crash when importing a file after switching projects while the file dialog was open

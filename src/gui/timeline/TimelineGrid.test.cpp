@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "TimelineGrid.h"
+#include "../../models/PsgFrameRetimer.h"
 #include "Ruler.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
@@ -403,7 +404,7 @@ public:
             Probe probe;
             grid.addListener(&probe);
 
-            editViewState.setFramesPerBeat(30);
+            PsgTiming::setFramesPerBeat(*edit, 30, editViewState.shouldPreservePsgTimingOnTempoChange());
             MessageManager::getInstance()->runDispatchLoopUntil(50);
 
             expect(probe.changed, "Grid should notify listeners after tempo changes.");

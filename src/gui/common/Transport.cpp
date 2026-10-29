@@ -3,6 +3,7 @@
 #include "../../controllers/MainCommands.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
+#include "../../models/PsgFrameRetimer.h"
 #include "LookAndFeel.h"
 #include "../../utils/StringLiterals.h"
 
@@ -118,15 +119,13 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 
     // Editable value boxes: commit callbacks clamp/snap and return the value to show.
     bpmControl_.onCommit = [this](double entered) {
-        auto bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, entered);
-        bpm = viewState_.getBpmSnappedToFps(bpm);
-        viewState_.setBpmSnappedToFps(bpm);
-        return bpm;
+        const auto bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, entered);
+        return PsgTiming::setBpmSnappedToFrames(edit_, bpm, viewState_.shouldPreservePsgTimingOnTempoChange());
     };
     fpbControl_.onCommit = [this](double entered) {
         auto fpb = jlimit(4, 150, roundToInt(entered));
-        viewState_.setFramesPerBeat(fpb);
-        const auto resolvedFpb = jmax(1, roundToInt(viewState_.getCurrentFramesPerBeat()));
+        PsgTiming::setFramesPerBeat(edit_, fpb, viewState_.shouldPreservePsgTimingOnTempoChange());
+        const auto resolvedFpb = jmax(1, roundToInt(PsgTiming::getFramesPerBeat(edit_)));
         Helpers::setGridSubdivisionPattern(edit_, Helpers::getDefaultGridSubdivisionPattern(resolvedFpb));
         return resolvedFpb;
     };
@@ -303,7 +302,7 @@ void TransportBar::updateTimeLabels(te::TimePosition pos) {
 
     bpmControl_.setValue(ts.getBpmAt(pos), 2);
     timeSigLabel_.setText(ts.getTimeSigAt(pos).getStringTimeSig(), dontSendNotification);
-    const auto framesPerBeat = jmax(1, roundToInt(viewState_.getCurrentFramesPerBeat()));
+    const auto framesPerBeat = jmax(1, roundToInt(PsgTiming::getFramesPerBeat(edit_)));
     fpbControl_.setValue(framesPerBeat, 0);
     divControl_.setText(Helpers::formatGridSubdivisionPattern(
                             Helpers::getGridSubdivisionPattern(edit_, framesPerBeat)),
@@ -339,7 +338,7 @@ void TransportBar::commitEditedPosition() {
 }
 
 void TransportBar::commitEditedDivisions() {
-    const auto framesPerBeat = jmax(1, roundToInt(viewState_.getCurrentFramesPerBeat()));
+    const auto framesPerBeat = jmax(1, roundToInt(PsgTiming::getFramesPerBeat(edit_)));
     const auto pattern = Helpers::parseGridSubdivisionPattern(divControl_.getText(), framesPerBeat);
     Helpers::setGridSubdivisionPattern(edit_, pattern);
     divControl_.setText(Helpers::formatGridSubdivisionPattern(

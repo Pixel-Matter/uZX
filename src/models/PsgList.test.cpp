@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 #include "controllers/EditState.h"
 #include "models/EditUtilities.h"
+#include "models/PsgFrameRetimer.h"
 #include "formats/psg/PsgData.h"
 #include "PsgClip.h"
 #include "PsgList.h"
@@ -383,7 +384,7 @@ public:
             const auto originalTime = frame->getEditTime(*clip);
             const auto originalFrameIndex = frame->getFrameIndex();
 
-            editViewState.setFramesPerBeat(30);
+            PsgTiming::setFramesPerBeat(*edit, 30, editViewState.shouldPreservePsgTimingOnTempoChange());
 
             const auto retimedTime = frame->getEditTime(*clip);
             expectWithinAbsoluteError(retimedTime.inSeconds(), originalTime.inSeconds(), 1.0e-9,
@@ -417,7 +418,7 @@ public:
                                         frame->getRawEditBeats(*clip).inBeats()),
                    "Sanity: quantisation should actually move the quantised view");
 
-            editViewState.setBpmSnappedToFps(90.0);
+            PsgTiming::setBpmSnappedToFrames(*edit, 90.0, editViewState.shouldPreservePsgTimingOnTempoChange());
 
             const auto preservedRawTime = frame->getRawEditTime(*clip);
             expectWithinAbsoluteError(preservedRawTime.inSeconds(), originalRawTime.inSeconds(), 1.0e-9,
@@ -446,7 +447,7 @@ public:
             const auto originalFramesPerBeat = clip->getPsg().getFramesPerBeat();
             const auto originalFrameIndex = frame->getFrameIndex();
 
-            editViewState.setBpmSnappedToFps(90.0);
+            PsgTiming::setBpmSnappedToFrames(*edit, 90.0, editViewState.shouldPreservePsgTimingOnTempoChange());
 
             expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), originalFramesPerBeat, 1.0e-9,
                                       "Unchecked mode should not scale PSG frames per beat");
@@ -611,8 +612,8 @@ public:
 
             editViewState.setPreservePsgTimingOnTempoChange(true);
             for (int i = 0; i < 20; ++i) {
-                editViewState.setFramesPerBeat(30);
-                editViewState.setFramesPerBeat(25);
+                PsgTiming::setFramesPerBeat(*edit, 30, editViewState.shouldPreservePsgTimingOnTempoChange());
+                PsgTiming::setFramesPerBeat(*edit, 25, editViewState.shouldPreservePsgTimingOnTempoChange());
             }
 
             expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), 25.0, 1.0e-9,

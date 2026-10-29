@@ -140,15 +140,6 @@ public:
     te::SelectionManager& selectionManager;
     te::Edit& edit;
 
-    te::TimeDuration getBeatLengthFor(double bpm) const;
-    double getFramesPerBeatFor(double bpm) const;
-    double getCurrentFramesPerBeat() const;
-    double getBpmForBeatLength(te::TimeDuration beatLen) const;
-    double getBpmSnappedToFps(double bpm) const;
-    double setBpmSnappedToFps(double bpm);
-
-    void setBeatLength(te::TimeDuration beatLen);
-    void setFramesPerBeat(int fpb);
     void setPreservePsgTimingOnTempoChange(bool shouldPreserve);
     bool shouldPreservePsgTimingOnTempoChange() const;
     void setSnapPlayheadToGrid(bool shouldSnap);

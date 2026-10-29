@@ -266,59 +266,6 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     headersWidth.referTo(state, IDs::headersWidth, nullptr, minHeadersWidth);
 }
 
-te::TimeDuration EditViewState::getBeatLengthFor(double bpm) const {
-    const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    const auto beatLen = te::TimeDuration::fromSeconds(240.0 / (bpm * ts.getMatchingTimeSig().denominator));
-    return beatLen;
-}
-
-double EditViewState::getBpmForBeatLength(te::TimeDuration beatLen) const {
-    const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    const auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
-    return bpm;
-}
-
-double EditViewState::getFramesPerBeatFor(double bpm) const {
-    const double fps = Helpers::getProjectFps(edit);
-    return fps * getBeatLengthFor(bpm).inSeconds();
-}
-
-double EditViewState::getCurrentFramesPerBeat() const {
-    const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    return getFramesPerBeatFor(ts.getBpm());
-}
-
-void EditViewState::setBeatLength(te::TimeDuration beatLen) {
-    jassert(beatLen > 0s);
-    auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
-    bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm);
-
-    PsgTiming::setTempoBpmRetimingFrames(edit, ts, bpm, shouldPreservePsgTimingOnTempoChange());
-}
-
-void EditViewState::setFramesPerBeat(int fpb) {
-    const double fps = Helpers::getProjectFps(edit);
-    auto targetBeatLen = te::TimeDuration::fromSeconds((double)fpb / fps);
-    setBeatLength(targetBeatLen);
-}
-
-double EditViewState::getBpmSnappedToFps(double bpm) const {
-    int fpb = roundToInt(getFramesPerBeatFor(bpm));
-    const double fps = Helpers::getProjectFps(edit);
-    auto targetBeatLen = te::TimeDuration::fromSeconds((double)fpb / fps);
-    return getBpmForBeatLength(targetBeatLen);
-}
-
-double EditViewState::setBpmSnappedToFps(double bpm) {
-    auto snappedBpm = getBpmSnappedToFps(bpm);
-    auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-
-    PsgTiming::setTempoBpmRetimingFrames(edit, ts, snappedBpm, shouldPreservePsgTimingOnTempoChange());
-
-    return snappedBpm;
-}
-
 void EditViewState::setPreservePsgTimingOnTempoChange(bool shouldPreserve) {
     preservePsgTimingOnTempoChange = shouldPreserve;
 }

@@ -1,5 +1,6 @@
 #include "PsgFrameRetimer.h"
 #include "PsgClip.h"
+#include "EditUtilities.h"
 
 #include <unordered_set>
 
@@ -48,6 +49,18 @@ void scalePsgFramesPerBeat(te::Edit& edit, double scale) {
     });
 }
 
+te::TempoSetting& tempoAtTransport(te::Edit& edit) {
+    return edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
+}
+
+double beatSecondsAt(te::Edit& edit, double bpm) {
+    return 240.0 / (bpm * tempoAtTransport(edit).getMatchingTimeSig().denominator);
+}
+
+double bpmForBeatSeconds(te::Edit& edit, double seconds) {
+    return 240.0 / (seconds * tempoAtTransport(edit).getMatchingTimeSig().denominator);
+}
+
 }  // namespace
 
 namespace PsgTiming {
@@ -66,6 +79,24 @@ void setTempoBpmRetimingFrames(te::Edit& edit, te::TempoSetting& tempo, double b
         if (oldBeatLength > 0.0 && newBeatLength > 0.0)
             scalePsgFramesPerBeat(edit, newBeatLength / oldBeatLength);
     }
+}
+
+double getFramesPerBeat(te::Edit& edit) {
+    return Helpers::getProjectFps(edit) * beatSecondsAt(edit, tempoAtTransport(edit).getBpm());
+}
+
+void setFramesPerBeat(te::Edit& edit, int framesPerBeat, bool preserveAbsoluteFrameTimes) {
+    jassert(framesPerBeat > 0);
+    const auto bpm = bpmForBeatSeconds(edit, framesPerBeat / Helpers::getProjectFps(edit));
+    setTempoBpmRetimingFrames(edit, tempoAtTransport(edit), jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm),
+                              preserveAbsoluteFrameTimes);
+}
+
+double setBpmSnappedToFrames(te::Edit& edit, double bpm, bool preserveAbsoluteFrameTimes) {
+    const auto fps = Helpers::getProjectFps(edit);
+    const auto snappedBpm = bpmForBeatSeconds(edit, roundToInt(fps * beatSecondsAt(edit, bpm)) / fps);
+    setTempoBpmRetimingFrames(edit, tempoAtTransport(edit), snappedBpm, preserveAbsoluteFrameTimes);
+    return snappedBpm;
 }
 
 }  // namespace PsgTiming

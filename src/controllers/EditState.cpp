@@ -101,13 +101,16 @@ bool ZoomViewState::jumpToPosition(te::TimePosition pos) {
 }
 
 bool ZoomViewState::jumpToCurrentPosition() {
-    auto pos = edit.getTransport().getPosition();
-    return jumpToPosition(pos);
+    return jumpToPosition(getPlayheadPosition());
+}
+
+te::TimePosition ZoomViewState::getPlayheadPosition() const {
+    return edit.getTransport().getPosition();
 }
 
 void ZoomViewState::zoomHorizontally(double factor) {
     double scaleFactor = std::pow(2.0, -factor * 5.0);
-    auto pos = edit.getTransport().getPosition();
+    auto pos = getPlayheadPosition();
     auto span = getViewSpan();
     auto newRange = span * scaleFactor;
 
@@ -157,22 +160,7 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
 
 void ZoomViewState::handlePlaybackScrolling() {
     if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
-        // TODO Proposed future change:
-        // get position from audible time in playback context
-        // because there can be latency in audio output
-
-        // te::TimePosition pos;
-        // auto pbc = edit.getCurrentPlaybackContext();
-        // if (pbc != nullptr) {
-        //     pos = pbc->getAudibleTimelineTime();
-        //     DBG("ZoomViewState::handlePlaybackScrolling, "
-        //         << " pos from context: " << pos
-        //         << " edit pos: " << edit.getTransport().getPosition()
-        //     );
-        // } else {
-        //     pos = edit.getTransport().getPosition();
-        // }
-        auto pos = edit.getTransport().getPosition();
+        auto pos = getPlayheadPosition();
         // DBG("ZoomViewState::handlePlaybackScrolling, pos: " << pos.inSeconds());
         auto range = getRange();
         auto leftRange = range.getLength() / 3.0;

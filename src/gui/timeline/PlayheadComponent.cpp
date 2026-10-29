@@ -88,7 +88,7 @@ void PlayheadComponent::zoomChanged() {
 }
 
 void PlayheadComponent::checkRepaint() {
-    int newX = roundToInt(editViewState.zoom.timeToX(edit.getTransport().getPosition()));
+    int newX = roundToInt(editViewState.zoom.timeToX(editViewState.zoom.getPlayheadPosition()));
     // DBG("PlayheadComponent::checkRepaint, pos: " << edit.getTransport().getPosition().inSeconds()
         // << " newX: " << newX << " oldX: " << xPosition);
     if (newX == xPosition)

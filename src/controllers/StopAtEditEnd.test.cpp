@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "StopAtEditEnd.h"
+#include "../util/TestHelpers.h"
 
 namespace MoTool::Tests {
 
@@ -25,12 +26,12 @@ public:
         {
             transport.setPosition(0.5_tp);
             transport.play(false);
-            processBlocks(engine, 2);
+            TestHelpers::processBlocks(engine, 2);
 
             transport.setPosition(1.5_tp);  // audible time still lags behind the end
             expect(transport.isPlaying());
 
-            processBlocks(engine, 2);
+            TestHelpers::processBlocks(engine, 2);
             transport.setPosition(1.6_tp);
             expect(!transport.isPlaying());
         }
@@ -46,17 +47,6 @@ public:
         }
 
         transport.stop(false, false);
-    }
-
-private:
-    static void processBlocks(te::Engine& engine, int numBlocks) {
-        auto& audioIO = engine.getDeviceManager().getHostedAudioDeviceInterface();
-        juce::AudioBuffer<float> buffer(2, 512);
-        juce::MidiBuffer midi;
-        for (int i = 0; i < numBlocks; ++i) {
-            buffer.clear();
-            audioIO.processBlock(buffer, midi);
-        }
     }
 };
 

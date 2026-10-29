@@ -82,6 +82,9 @@ public:
     float durationToPixels(te::TimeDuration duration) const;
     double getViewY() const;
 
+    /** Where the playhead is drawn and the view follows while playing. */
+    te::TimePosition getPlayheadPosition() const;
+
     static bool isZoomProperty(const juce::Identifier& id);
 
     te::Edit& edit;

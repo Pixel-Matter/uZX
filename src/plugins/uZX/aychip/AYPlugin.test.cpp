@@ -2,6 +2,7 @@
 
 #include "AYPlugin.h"
 #include "../../../models/PsgClip.h"
+#include "../../../util/TestHelpers.h"
 
 namespace MoTool::Tests {
 
@@ -33,7 +34,7 @@ public:
         {
             transport.setPosition(2_tp);
             transport.play(false);
-            processBlocks(engine, 10);
+            TestHelpers::processBlocks(engine, 10);
 
             auto expected = data.frames[0];
             expected.update(data.frames[50]);
@@ -43,7 +44,7 @@ public:
         beginTest("Seeking back while playing overwrites every register changed since");
         {
             transport.setPosition(0.5_tp);
-            processBlocks(engine, 10);
+            TestHelpers::processBlocks(engine, 10);
 
             expectRegisters(chip.getChipRegisters(), data.frames[0]);
         }
@@ -86,15 +87,6 @@ private:
         return {std::move(frames), {50.0, 1}};
     }
 
-    static void processBlocks(te::Engine& engine, int numBlocks) {
-        auto& audioIO = engine.getDeviceManager().getHostedAudioDeviceInterface();
-        juce::AudioBuffer<float> buffer(2, 512);
-        juce::MidiBuffer midi;
-        for (int i = 0; i < numBlocks; ++i) {
-            buffer.clear();
-            audioIO.processBlock(buffer, midi);
-        }
-    }
 };
 
 static AYChipPluginPlaybackTests ayChipPluginPlaybackTests;

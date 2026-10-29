@@ -470,7 +470,9 @@ void PsgClipComponent::paint(Graphics& g) {
 
     paintHeader(g);
 
+   #if JUCE_DEBUG
     paintMeasurer_.drawOverlay(g);
+   #endif
 }
 
 void PsgClipComponent::mouseDown(const MouseEvent& e) {

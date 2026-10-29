@@ -6,6 +6,14 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 
 <!-- entries below -->
 
+## 2026-10-28 -- Merge grid-subdivisions: PSG visualization fixes (`9fc92c17-faeb-4583-a21c-edc5169a08a7`)
+
+- **Did:** Merged grid-subdivisions branch to develop after pulling origin/develop. Reviewed and fixed PsgClipComponent rendering: simplified Hz frequency display logic (removed float-formatting branch), updated hex value formatting using JUCE String::toHexString, adjusted PSG register visualization colors and transparency, centered hex text in cells. Ran codex review and cleanup. Pushed merged changes and removed branch.
+- **Difficulty:** 2 -- straightforward merge workflow and mechanical rendering fixes.
+- **Model:** claude-opus-5-5 -- fit.
+- **Agent:** good -- systematic merge flow and rendering logic review.
+- **Friction:** low -- branch merge + code review, clear tasks.
+
 ## 2026-10-28 -- Branch hygiene and PsgClip undo fix (`8e986e54-26a2-4bfe-84ab-28eb61fca43d`)
 
 - **Did:** Cleaned up 8 local + remote branches merged to develop; reviewed PSG timing chains (timecode/rescaled/integer-sketch) and marked branches for removal; fixed PsgClip::loadFrom() which was calling getPsg().clear() without passing undo manager, then calls state operations with um; updated integer-psg doc.
@@ -165,6 +173,7 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 - **Friction:** some -- required navigating the nested submodule structure.
 
 <!-- trivial sessions (no summary) -->
+7ea68ba9-ad18-4cc0-a6ee-f9efbd5e3c13
 912c1ef6-1e61-4605-8f69-e5fa0e3f05cb
 7fe29ee9-23dd-4684-99bf-b2f99b2b5b43
 9a8fba71-75f3-41ab-91ef-b434837774a2

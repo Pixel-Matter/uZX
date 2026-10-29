@@ -208,10 +208,10 @@ void ZoomViewState::handleAsyncUpdate() {
     if (compareAndReset(updatePos)) {
         // DBG("ZoomViewState::handleAsyncUpdate, dispatching zoomOrPosChanged, pos: "
             // << edit.getTransport().getPosition().inSeconds());
-        listeners.call(&Listener::zoomOrPosChanged);
+        listeners.call(&ZoomViewState::Listener::zoomOrPosChanged);
     }
     if (compareAndReset(updateZoom)) {
-        listeners.call(&Listener::zoomChanged);
+        listeners.call(&ZoomViewState::Listener::zoomChanged);
     }
 }
 

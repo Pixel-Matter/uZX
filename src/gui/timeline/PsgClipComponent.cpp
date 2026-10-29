@@ -202,8 +202,8 @@ struct ClipVisibility {
         : rect(rectangle)
         , clipRange(clip.getEditTimeRange())
         , frameDur(getClipFrameDuration(clip))
-        , range(jmax(clipRange.getStart(), evs.zoom.getRange().getStart() - frameDur),
-                jmin(clipRange.getEnd(), evs.zoom.getRange().getEnd()))
+        // empty, not reversed, when the view has been panned past the clip
+        , range(clipRange.getIntersectionWith({evs.zoom.getRange().getStart() - frameDur, evs.zoom.getRange().getEnd()}))
         , startIdx(bisectFindPosition(frames, clip, range.getStart()))
         , pixelsPerFrame(static_cast<float>(frameDur.inSeconds() * rect.getWidth()
                                             / clipRange.getLength().inSeconds()))

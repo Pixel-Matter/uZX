@@ -37,7 +37,7 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds
 - [ ] Reopening the project that is already open (Open Recent item 0, drop of the current .uzx) loses unsaved changes: `setEdit` saves the old edit, then force-saves the stale freshly loaded copy over it; both edits share a project ID, so deleting the old temp folder also wipes the new one's
 - [ ] A second Player instance fully initialises and saves the shared startup edit before quitting (`moreThanOneInstanceAllowed` is checked after the `MoToolApp` constructor)
-- [ ] Crash audit leftovers, not exercised live: seek by clicking/dragging the ruler, Finder drag-and-drop onto the window, quit while a render progress dialog is up
+- [ ] Crash audit leftover, not exercised live: quit while a render progress dialog is up (Studio)
 
 ## ChipInstrument plugin
 
@@ -71,7 +71,7 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [ ] Route every tempo change through `PsgTiming::setTempoBpmRetimingFrames` — today only `EditViewState::setBeatLength` / `setBpmSnappedToFps` rescale `framesPerBeat`; tempo edits from any other path (Tracktion tempo editing, future tempo track/automation) skip preserve-timing compensation
 - [ ] `PsgList::loadFrom` should not write edit-wide project fps (`Helpers::setProjectFps`) — move that decision to the import caller (clip/controller)
 - [ ] `PsgList::loadFrom` derives `framesPerBeat` from the beat length at 0, while migration uses the clip start — use the clip start in both
-- [ ] Seek may drop the restored full AY state: restored controller values arrive at timestamp 0, and if the next frame lands a fraction of a sample later `PsgParamsMidiReader::read` clears the pending values before `updateChip` runs (`PsgMidi.cpp:243-249`, `AYPlugin.cpp:236-242`); with snap-to-grid seeks land exactly on frames, so float noise decides
+- [ ] Seek/play start can leave stale AY registers (reproduced by an engine-level probe in the 2026-10-29 crash audit): Tracktion's `MidiNodeHelpers::createMessagesForTime` stamps the chased controller state at +0.0001 s, and that state only covers events up to the block start. A clip frame in the first 0.1 ms after the start goes out earlier at its real time and is then overwritten by the stale chase. Hits 100% of seeks/starts landing 0.5–4.5 samples before a frame (≈0.5% of positions at 50 fps), and every 4th snapped frame at 44.1 kHz with 48 fps PSG timing. A register stays wrong until a later frame writes it. Fix: chase controllers at 0.0 in the fork (as `LoopingMidiNode` already does) and make the AY plugin apply pending params whenever the event timestamp advances, not only when the sample index does (`AYPlugin.cpp` `applyToBuffer`, `PsgMidi.cpp:243-249`)
 - [ ] PSG pause runs (`FE xx`, up to 1,020 empty frames per 2 bytes) can exhaust memory on a crafted file of a few MB; past 2³¹ frames `static_cast<int>(i)` in `PsgList.cpp:533` overflows — cap total frames
 
 ## AY Chip Emulator plugin

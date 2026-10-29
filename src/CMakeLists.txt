@@ -325,6 +325,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
             COMMAND ${CMAKE_COMMAND} -E copy
                 "${icns_file}"
                 "$<TARGET_BUNDLE_DIR:${target}>/Contents/Resources/AppIcon.icns"
+            # macOS caches bundle icons by the .app's mtime, which the copy above doesn't change
+            COMMAND ${CMAKE_COMMAND} -E touch "$<TARGET_BUNDLE_DIR:${target}>"
             COMMENT "Installing complete icon set for ${target}"
         )
     endfunction()

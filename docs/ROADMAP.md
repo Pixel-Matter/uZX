@@ -8,8 +8,7 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. Crash audit
-2. Change the player **app icon**, then tag the next alpha
+1. Change the player **app icon**, then tag the next alpha
 
 ### Alpha for testers
 
@@ -17,7 +16,6 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 
 #### P0 — Blockers
 
-- [ ] **Crash audit** — open, drop, seek, switch files, quit; the intermittent crash on exit is only partly fixed
 - [ ] **Shortcut docs match the app** — the user guide lists 5 shortcuts and a scrollbar that doesn't exist; add zoom (`=` `-` `Z`), Cmd+Wheel, Cmd+L, Cmd+I, Cmd+,
 
 #### P1 — Important

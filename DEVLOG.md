@@ -6,6 +6,14 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 
 <!-- entries below -->
 
+## 2026-10-29 -- Audit shortcuts; add docs-update rule (`189b2f7a-7d54-4cde-a934-9e3f960d4b75`)
+
+- **Did:** Compared 5 shortcuts listed in user-guide against app code; found 3 missing (Cmd+Wheel, Cmd+L for zoom-to-fit, Cmd+I for toggle info). Dropped 2 nonexistent (scrollbar wheel, pinch zoom). Added "Keyboard and Mouse" section as single authoritative reference; updated AGENTS.md to require user-guide updates for any user-visible change. 1 commit: AGENTS.md, user-guide.md, ROADMAP.md update, CHANGELOG entry.
+- **Difficulty:** 1 -- straightforward audit + doc write.
+- **Model:** claude-opus-5-5 -- fit.
+- **Agent:** good -- completed as requested, enforcement rule added.
+- **Friction:** low -- no blockers.
+
 ## 2026-10-29 -- Implement "Stop at project end" & AY state restoration (`e2b0f97f-38b8-4c12-821b-486adbbaebdd`)
 
 - **Did:** Implemented two roadmap items: (1) Stop playback at the end of the project unless recording or looping — new `StopAtEditEnd` class with playback context hook, applied to both Studio and Player. (2) Restored full AY state when playback starts or seeks mid-file — updated engine fork to chase MIDI controllers on all PSG channels (not just the clip's channel), added chip-register coverage test. 6+ commits including new test files (65+102 lines), engine submodule bump.

@@ -2,6 +2,14 @@
 
 Open work only, highest priority first. Finished work goes to [CHANGELOG.md](../CHANGELOG.md).
 
+## Goal
+
+µZX is a modern tool for composing and playing back chiptune music, and the music subsystem of [MoTool](Vision.md).
+
+**Done** means: I can write a whole track in µZX Studio, from MIDI to a PSG export, and play it on real hardware; and play live from a MIDI controller through the AY emulator or even a real AY on a Spectrum (MIDI → PC → AY MIDI → ZX → audio). That is a far goal, so work goes milestone by milestone; each milestone below states its own goal.
+
+**Out of scope:** anything not on this roadmap. For the current milestone (Player alpha for testers) that includes other chips, video, the node system, tracker UI and mobile.
+
 ## µZX Player
 
 Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).

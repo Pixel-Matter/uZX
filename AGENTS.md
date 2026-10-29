@@ -42,7 +42,7 @@ Add JUCE `UnitTest` classes in adjacent `*.test.cpp` files and register them wit
 
 ## Commit & Pull Request Guidelines
 
-Prefer concise imperative messages; use a lowercase scope when helpful (`docs:`, `ci:`, `build:`). Branch from `develop` and open PRs back to `develop`; `main` is stable and protected, so never push to it directly. Releases are cut by pushing `v*` tags; see `docs/contributing.md`. PRs should describe behavior changes, link issues, list tests run, and include screenshots or recordings for UI changes.
+Prefer concise imperative messages; use a lowercase scope when helpful (`docs:`, `ci:`, `build:`). Branch from `develop` and open PRs back to `develop`; `main` is stable and protected, so never push to it directly. Releases are cut by pushing `v*` tags; see `CONTRIBUTING.md`. PRs should describe behavior changes, link issues, list tests run, and include screenshots or recordings for UI changes.
 
 ## Agent-Specific Instructions
 

@@ -425,7 +425,7 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Tr
     , body(evs, g, t)
     , editViewState(evs)
     , track(t)
-    , trackViewState(t->state, &editViewState.edit.getUndoManager())
+    , trackViewState(t->state)
     , resizer(this, &trackViewState.getConstrainer(), ResizableEdgeComponent::Edge::bottomEdge)
 {
     addAndMakeVisible(header);
@@ -478,8 +478,8 @@ TrackHeaderOverlayComponent::TrackHeaderOverlayComponent(EditViewState& evs)
 
     editViewState.state.addListener(this);
     setSize(editViewState.getTrackHeaderWidth(), getHeight());
-    constrainer.setMinimumWidth(110);
-    constrainer.setMaximumWidth(300);
+    constrainer.setMinimumWidth(EditViewState::minHeadersWidth);
+    constrainer.setMaximumWidth(EditViewState::maxHeadersWidth);
     addAndMakeVisible(resizer);
 }
 
@@ -491,7 +491,8 @@ void TrackHeaderOverlayComponent::paint(Graphics&) {
 }
 
 void TrackHeaderOverlayComponent::resized() {
-    editViewState.headersWidth = getWidth();
+    if (editViewState.showHeaders)  // hidden headers are 0 wide: keep the width Studio uses
+        editViewState.headersWidth = getWidth();
     auto bounds = getLocalBounds();
     resizer.setBounds(bounds.removeFromRight(2));
 }
@@ -512,7 +513,6 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
 {
     edit.state.addListener(this);
     editViewState.selectionManager.addChangeListener(this);
-    editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
     grid.addListener(this);
 
@@ -525,7 +525,6 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
 
 TracksContainerComponent::~TracksContainerComponent() {
     editViewState.zoom.removeListener(this);
-    editViewState.state.removeListener(this);
     editViewState.selectionManager.removeChangeListener(this);
     edit.state.removeListener(this);
     grid.removeListener(this);
@@ -557,7 +556,7 @@ int TracksContainerComponent::getIdealHeight() const {
 
 void TracksContainerComponent::resized() {
     // also get called on updated zoom
-    const auto headerWidth = trackHeaderOverlay.getWidth();
+    const auto headerWidth = editViewState.getTrackHeaderWidth();
     auto r = getLocalBounds();
     setSize(r.getWidth(), getHeight());
     r = getLocalBounds();
@@ -633,14 +632,6 @@ void TracksContainerComponent::paint(Graphics& g) {
     // g.fillRect(gridSpace);
     auto ticks = grid.getTicks();
     MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, gridRect, ticks);
-}
-
-void TracksContainerComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
-    if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::showHeaders) {
-            markAndUpdate(needsResize);
-        }
-    }
 }
 
 void TracksContainerComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {

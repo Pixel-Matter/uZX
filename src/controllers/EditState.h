@@ -10,7 +10,6 @@ namespace IDs
 {
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(EDITVIEWSTATE)
-    DECLARE_ID(showHeaders)
     DECLARE_ID(headersWidth)
     DECLARE_ID(preservePsgTimingOnTempoChange)
     DECLARE_ID(snapPlayheadToGrid)
@@ -133,8 +132,10 @@ class EditViewState {
 public:
     EditViewState(te::Edit& e, te::SelectionManager& s);
 
-    CachedValue<bool> showHeaders, preservePsgTimingOnTempoChange, snapPlayheadToGrid;
-    CachedValue<int> headersWidth;
+    // Saved with the edit, but not undoable: these are view settings, not edits
+    CachedValue<bool> preservePsgTimingOnTempoChange, snapPlayheadToGrid;
+    CachedValue<int> headersWidth;  // Studio's; written only while headers are shown
+    static constexpr int minHeadersWidth = 110, maxHeadersWidth = 300;
 
     ValueTree state;
     ZoomViewState zoom;
@@ -157,6 +158,7 @@ public:
 
     int getTrackHeaderWidth() const;
 
+    bool showHeaders = true;  // per app, not saved: the Player hides them
     bool transparentClips = false;
     bool disableClipSelection = false;
 
@@ -174,9 +176,8 @@ class TrackViewState : private ValueTree::Listener {
 public:
     /**
         @param trackState  ValueTree with type TRACK, inside which VIEWSTATE is created or extracted
-        @param undoManager  UndoManager from EditViewState
-    */
-    TrackViewState(ValueTree trackState, UndoManager* undoManager);
+        */
+    explicit TrackViewState(ValueTree trackState);
     ~TrackViewState() override;
 
     int getHeight() const noexcept;

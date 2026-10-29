@@ -13,6 +13,8 @@ public:
 
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
+        runLayoutTests(engine);
+
         auto edit = te::Edit::createSingleTrackEdit(engine);
         te::getAudioTracks(*edit)[0]->insertMIDIClip({0_tp, 10_tp}, nullptr);
 
@@ -115,6 +117,24 @@ public:
     }
 
 private:
+    void runLayoutTests(te::Engine& engine) {
+        beginTest("Player layout stays out of undo and leaves Studio's track headers alone");
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        te::SelectionManager selectionManager(engine);
+        edit->getUndoManager().clearUndoHistory();
+        {
+            EditViewState playerView(*edit, selectionManager);
+            playerView.showHeaders = false;  // as the Player does
+            EditComponent player(*edit, playerView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+            player.setSize(1000, 300);
+            player.setSize(1000, 400);  // auto-fit resizes the tracks
+            TestHelpers::flushMessageQueue();
+        }
+        expect(!edit->getUndoManager().canUndo());
+        EditViewState studioView(*edit, selectionManager);
+        expectEquals(studioView.getTrackHeaderWidth(), EditViewState::minHeadersWidth);
+    }
+
     template <typename T>
     static T* findChild(Component& parent) {
         for (auto* child : parent.getChildren())

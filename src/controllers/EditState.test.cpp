@@ -9,7 +9,7 @@ public:
     TrackViewStateTest() : UnitTest("TrackViewState", "MoTool") {}
 
     void runTest() override {
-        TrackViewState view(ValueTree(te::IDs::TRACK), nullptr);
+        TrackViewState view {ValueTree(te::IDs::TRACK)};
         Component container;
         Component row;
         container.setSize(800, 1000);

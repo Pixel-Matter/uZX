@@ -266,11 +266,9 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
   , zoom(e)
   , selectionManager(s), edit(e)
 {
-    auto um = &edit.getUndoManager();
-    showHeaders.referTo(state, IDs::showHeaders, um, true);
-    preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, um, true);
-    snapPlayheadToGrid.referTo(state, IDs::snapPlayheadToGrid, um, true);
-    headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
+    preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, nullptr, true);
+    snapPlayheadToGrid.referTo(state, IDs::snapPlayheadToGrid, nullptr, true);
+    headersWidth.referTo(state, IDs::headersWidth, nullptr, minHeadersWidth);
 }
 
 te::TimeDuration EditViewState::getBeatLengthFor(double bpm) const {
@@ -343,14 +341,15 @@ bool EditViewState::shouldSnapPlayheadToGrid() const {
 }
 
 int EditViewState::getTrackHeaderWidth() const {
-    return showHeaders ? headersWidth.get() : 0;
+    // clamped: older Player builds saved 0
+    return showHeaders ? jlimit(minHeadersWidth, maxHeadersWidth, headersWidth.get()) : 0;
 }
 
 //==============================================================================
 // TrackViewState
 
-TrackViewState::TrackViewState(ValueTree trackState, UndoManager* undoManager)
-  : state(ensure(trackState)), height(state, IDs::height, undoManager, 160)
+TrackViewState::TrackViewState(ValueTree trackState)
+  : state(ensure(trackState)), height(state, IDs::height, nullptr, 160)  // layout, not an edit
 {
     constrainer.setMinimumHeight(56);
     constrainer.setMinimumOnscreenAmounts(0, 0, std::numeric_limits<int>::max(), 0);

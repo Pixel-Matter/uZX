@@ -45,7 +45,7 @@ EditComponent::~EditComponent() {
 
 void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
     if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::showHeaders || i == IDs::headersWidth) {
+        if (i == IDs::headersWidth) {
             markAndUpdate(updateSizes);
         }
     } else if (te::Clip::isClipState(v) && (i == te::IDs::start || i == te::IDs::length)) {

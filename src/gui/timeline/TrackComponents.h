@@ -166,7 +166,6 @@ private:
     Rectangle<int> gridRect;
     TimelineGrid& grid;
 
-    void valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) override;
     void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) override;
     void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) override;
     void valueTreeChildOrderChanged(juce::ValueTree& v, int a, int b) override;

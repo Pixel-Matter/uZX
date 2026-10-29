@@ -33,6 +33,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Tracktion Engine updated to v3.2.0
 
 ### Fixed
+- Studio showed no track headers for a project last saved by the Player
+- Resizing the window or a track, and toggling snap or PSG-timing options, no longer add undo steps
 - Scrolling and zooming, including the auto-scroll during playback, no longer fill the undo history
 - Stale chip registers after a seek or play start landing just before a PSG frame (patched in our Tracktion Engine fork)
 - Crash on quit while the Audio/MIDI Settings or Plugins window was open (a cause of the intermittent crash on exit)

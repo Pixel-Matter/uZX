@@ -412,9 +412,10 @@ struct PsgFrameNote {
 
 /** An envelope period P sounds at the pitch of tone period 16*P: the AY divides
     its clock by 256 for the envelope but by 16 for tone. Mapping through the
-    tone scale keeps every pitch in one normalized space. */
+    tone scale keeps every pitch in one normalized space. The chip plays period 0
+    as period 1. */
 inline constexpr int envelopePeriodToTonePeriod(int envPeriod) noexcept {
-    return 16 * envPeriod;
+    return 16 * std::max(1, envPeriod);
 }
 
 inline float envelopePeriodToTonePitch(int envPeriod) noexcept {

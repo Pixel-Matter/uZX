@@ -348,7 +348,7 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
         volumes[ch] = number(data.getRaw(T(T::VolumeA + int(ch))), 1);
     }
     periods[3] = number(envPeriod, 4);
-    freqs[3] = hz(envelopePeriodToTonePeriod(jmax(1, envPeriod)));
+    freqs[3] = hz(envelopePeriodToTonePeriod(envPeriod));
     periods[4] = number(data.getRaw(T::NoisePeriod), 2);
     const auto widest = [] (const std::array<String, 5>& column) {
         int width = 0;

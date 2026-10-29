@@ -408,7 +408,7 @@ public:
             }
         }
 
-        beginTest("envPeriod=0: env notes skipped (envTonePeriod=0 < hearableMin)");
+        beginTest("envPeriod=0 plays as envPeriod=1: one shared envelope pitch note");
         {
             PsgParamFrameData data;
             data.set(PsgParamType::EnvelopePeriod, 0);
@@ -416,7 +416,12 @@ public:
             data.set(PsgParamType::ToneIsOnA, 0);
 
             auto notes = collect(data);
-            expectEquals(int(notes.size()), 0, "envPeriod=0 should yield no notes");
+            expectEquals(int(notes.size()), 1, "envPeriod=0 should yield the envPeriod=1 note");
+            if (!notes.empty()) {
+                expect(notes[0].isEnvelopePitch, "Note should be an envelope pitch note");
+                expectWithinAbsoluteError(notes[0].pitch, envelopePeriodToTonePitch(1), 1e-6f,
+                    "envPeriod=0 pitch should equal envPeriod=1 pitch");
+            }
         }
 
         beginTest("Three channels tone+env: 4 notes (3 tone notes + 1 envelope note)");

@@ -28,7 +28,6 @@ None.
 
 #### P1 — Important
 
-- [ ] **Envelope period 0** — draws neither a note nor the low-envelope marker
 - [ ] **Global master volume** — save in app settings and apply to every opened file (stored per edit now)
 - [ ] **Last opened edit** — reopening works in code; reproduce the "not always" report or close it
 - [ ] **Save / Save As** in the Player (Cmd+S does nothing)

@@ -296,7 +296,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_options(${TEST_TARGET_NAME}      PRIVATE "-Wl,-force_load,$<TARGET_FILE:motool_common>")
 
     # Regenerate resources/icon_<name>.icns from the source PNGs when they change and install it into
-    # the bundle (replaces the JUCE-generated Icon.icns). Called before code signing below.
+    # the bundle over the JUCE-generated AppIcon.icns (the name JUCE puts in CFBundleIconFile).
+    # Called before code signing below.
     function(uzx_add_app_icons target name)
         set(source_png "${CMAKE_SOURCE_DIR}/resources/icon_${name}_big.png")
         set(icns_file  "${CMAKE_SOURCE_DIR}/resources/icon_${name}.icns")
@@ -321,7 +322,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         add_custom_command(TARGET ${target} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy
                 "${icns_file}"
-                "$<TARGET_BUNDLE_DIR:${target}>/Contents/Resources/Icon.icns"
+                "$<TARGET_BUNDLE_DIR:${target}>/Contents/Resources/AppIcon.icns"
             COMMENT "Installing complete icon set for ${target}"
         )
     endfunction()

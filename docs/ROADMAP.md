@@ -12,11 +12,11 @@ Open work only, highest priority first. Finished work goes to [CHANGELOG.md](../
 
 ## µZX Player
 
-Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
+Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. Change the player **app icon**, then tag the next alpha
+1. **Global master volume** — first P1 below
 
 ### Alpha for testers
 

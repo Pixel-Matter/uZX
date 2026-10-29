@@ -21,6 +21,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Noise is drawn only for channels where it is audible, with per-channel ownership marks; shared envelopes show which channels use them; envelopes too slow to have a pitch get a marker at the bottom
 - Ruler labels no longer overlap
 - Look and feel refresh
+- New app icons for μZX Player and μZX Studio (Studio had none)
 - Tracktion Engine updated to v3.2.0
 
 ### Fixed

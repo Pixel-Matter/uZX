@@ -1,0 +1,27 @@
+<!-- μZX Studio app icon, after the MoTool icon. Colours are the μZX tokens in src/gui/common/LookAndFeel.h:
+     ground Theme::background, playhead outline Theme::backgroundDark, playhead Theme::primary,
+     lanes PSG::A, PSG::B, PSG::C, PSG::Env. Render: rsvg-convert -w 1024 -h 1024 icon_studio.svg -o icon_studio_big.png -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="c"><rect width="64" height="64" rx="14"/></clipPath>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.10"/>
+      <stop offset="0.5" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="64" height="64" fill="#0F172A"/>
+    <rect x="8" y="14" width="22" height="7" rx="1.5" fill="#FF8904"/>
+    <rect x="34" y="14" width="14" height="7" rx="1.5" fill="#FF8904" opacity="0.32"/>
+    <rect x="8" y="25" width="12" height="7" rx="1.5" fill="#00BC7D"/>
+    <rect x="24" y="25" width="32" height="7" rx="1.5" fill="#00BC7D" opacity="0.32"/>
+    <rect x="8" y="36" width="32" height="7" rx="1.5" fill="#7C86FF"/>
+    <rect x="8" y="47" width="18" height="7" rx="1.5" fill="#C27AFF"/>
+    <rect x="30" y="47" width="20" height="7" rx="1.5" fill="#C27AFF" opacity="0.32"/>
+    <path d="M25 1 L39 1 L32 11 Z" fill="#020617"/>
+    <rect x="29.5" y="5" width="5" height="54" fill="#020617"/>
+    <rect x="30.5" y="6" width="3" height="52" fill="#00A6F4"/>
+    <path d="M26 2 L38 2 L32 10 Z" fill="#00A6F4"/>
+    <rect width="64" height="64" fill="url(#sheen)"/>
+  </g>
+</svg>

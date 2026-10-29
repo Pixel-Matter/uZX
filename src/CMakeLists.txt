@@ -16,6 +16,8 @@ juce_add_gui_app(${STUDIO_TARGET_NAME}
     PRODUCT_NAME "μZX Studio"
     COMPANY_NAME "Pixel Matter"
     BUNDLE_ID "org.pixelmatter.${STUDIO_TARGET_NAME}"
+    ICON_BIG "${CMAKE_SOURCE_DIR}/resources/icon_studio_big.png"
+    ICON_SMALL "${CMAKE_SOURCE_DIR}/resources/icon_studio_small.png"
     DOCUMENT_EXTENSIONS uzx
 )
 
@@ -328,6 +330,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     endfunction()
 
     uzx_add_app_icons(${PLAYER_TARGET_NAME} player)
+    uzx_add_app_icons(${STUDIO_TARGET_NAME} studio)
 
     # Code Signing Configuration
     # Set from environment variable or use default

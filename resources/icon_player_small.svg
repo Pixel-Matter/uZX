@@ -1,0 +1,20 @@
+<!-- Small-size μZX Player icon (three PSG tone channels, thicker lanes, no sheen).
+     Render: rsvg-convert -w 256 -h 256 icon_player_small.svg -o icon_player_small.png -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="c"><rect width="64" height="64" rx="10"/></clipPath>
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="64" height="64" fill="#0F172A"/>
+    <rect x="9" y="15" width="23" height="9" rx="2" fill="#FF8904"/>
+    <rect x="32" y="15" width="23" height="9" rx="2" fill="#FF8904" opacity="0.32"/>
+    <rect x="9" y="28" width="23" height="9" rx="2" fill="#00BC7D"/>
+    <rect x="32" y="28" width="23" height="9" rx="2" fill="#00BC7D" opacity="0.32"/>
+    <rect x="9" y="41" width="23" height="9" rx="2" fill="#7C86FF"/>
+    <rect x="32" y="41" width="23" height="9" rx="2" fill="#7C86FF" opacity="0.32"/>
+    <path d="M24 3 L40 3 L32 13 Z" fill="#020617"/>
+    <rect x="29" y="8" width="6" height="48" fill="#020617"/>
+    <rect x="30" y="9" width="4" height="46" fill="#00A6F4"/>
+    <path d="M25 4 L39 4 L32 12 Z" fill="#00A6F4"/>
+  </g>
+</svg>

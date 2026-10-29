@@ -6,6 +6,14 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 
 <!-- entries below -->
 
+## 2026-10-28 -- PSG visualization polish, error handling, docs restructure (`f06b2c7e-5291-4983-8575-2274a929a693`)
+
+- **Did:** Multi-stream session: added frame hover popup (table showing full PSG state, legend colours, changed values bright; 2s delay, mouse move hides). Refined register cell display (channel colours, bold uppercase hex, centred). Added "Hex params in hover" clip menu toggle (stored in app settings). Implemented error handling for unreadable PSG files (PsgFile::ensureRead check at import). Fixed Windows ruler test (Direct2D Graphics scope issue). Installed MoLookAndFeel in test runner for consistent font rendering. Restructured docs (CLAUDE.md→AGENTS.md, code signing/clangd notes to CONTRIBUTING.md, stale paths fixed). Removed unused Inter-Variable font, hid paint-timing overlay in release, updated roadmap. 13 commits, all to develop.
+- **Difficulty:** 2 -- Polish and infrastructure; no deep modeling.
+- **Model:** claude-opus-5-5 -- fit.
+- **Agent:** good -- productive multi-hour session, systematic across UI/test/docs.
+- **Friction:** low -- no blockers, incremental improvements.
+
 ## 2026-10-28 -- Merge grid-subdivisions: PSG visualization fixes (`9fc92c17-faeb-4583-a21c-edc5169a08a7`)
 
 - **Did:** Merged grid-subdivisions branch to develop after pulling origin/develop. Reviewed and fixed PsgClipComponent rendering: simplified Hz frequency display logic (removed float-formatting branch), updated hex value formatting using JUCE String::toHexString, adjusted PSG register visualization colors and transparency, centered hex text in cells. Ran codex review and cleanup. Pushed merged changes and removed branch.

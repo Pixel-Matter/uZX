@@ -9,9 +9,6 @@
 namespace MoTool {
 
 class RulerComponent : public Component,
-                       private Timer,
-                       private te::TempoSequence::Listener,
-                       private ValueTree::Listener,
                        private ZoomViewState::Listener,
                        private TimelineGrid::Listener
 {
@@ -29,8 +26,6 @@ public:
 
 private:
     void repositionTransportToX(int x);
-    void timerCallback() override;
-    void selectableObjectChanged(te::Selectable*) override;
     void gridChanged() override;
 
     te::Edit& edit;

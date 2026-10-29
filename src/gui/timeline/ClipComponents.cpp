@@ -50,7 +50,7 @@ AudioClipComponent::AudioClipComponent(EditViewState& evs, TimelineGrid& g, te::
 void AudioClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
 
-    if (editViewState.drawWaveforms && thumbnail != nullptr)
+    if (thumbnail != nullptr)
         drawWaveform(
             g, *getWaveAudioClip(), *thumbnail, Colours::white.withAlpha(0.5f), getX(), getRight(), 0, getHeight(), 0);
 }
@@ -243,8 +243,7 @@ void RecordingClipComponent::paint(Graphics& g) {
     // g.setColour(Colours::black);
     // g.drawRect(getLocalBounds());
 
-    if (editViewState.drawWaveforms)
-        drawThumbnail(g, Colours::black.withAlpha(0.5f));
+    drawThumbnail(g, Colours::black.withAlpha(0.5f));
 }
 
 void RecordingClipComponent::drawThumbnail(Graphics& g, Colour waveformColour) const {

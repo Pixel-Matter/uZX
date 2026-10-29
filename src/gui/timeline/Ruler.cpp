@@ -6,20 +6,15 @@
 namespace MoTool {
 
 RulerComponent::RulerComponent(te::Edit& ed, EditViewState& evs, TimelineGrid& g)
-    : te::TempoSequence::Listener {ed.tempoSequence}
-    , edit {ed}
+    : edit {ed}
     , editViewState {evs}
     , grid {g}
 {
-    edit.tempoSequence.addListener(this);
-    editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
     grid.addListener(this);
 }
 
 RulerComponent::~RulerComponent() {
-    edit.tempoSequence.removeListener(this);
-    editViewState.state.removeListener(this);
     editViewState.zoom.removeListener(this);
     grid.removeListener(this);
 }
@@ -129,15 +124,7 @@ void RulerComponent::repositionTransportToX(int x) {
     edit.getTransport().setPosition(pos);
 }
 
-void RulerComponent::timerCallback() {
-    repaint();
-}
-
 void RulerComponent::gridChanged() {
-    repaint();
-}
-
-void RulerComponent::selectableObjectChanged(te::Selectable*) {
     repaint();
 }
 

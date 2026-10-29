@@ -54,25 +54,21 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
                 }
             }
 
-            if (editViewState.showWaveDevices) {
-                int id = 1;
-                for (auto instance : at->edit.getAllInputDevices()) {
-                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice) {
-                        bool ticked = instance->getTargets().contains(at->itemID);
-                        m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
-                    }
+            int id = 1;
+            for (auto instance : at->edit.getAllInputDevices()) {
+                if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice) {
+                    bool ticked = instance->getTargets().contains(at->itemID);
+                    m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
                 }
             }
 
-            if (editViewState.showMidiDevices) {
-                m.addSeparator();
+            m.addSeparator();
 
-                int id = 100;
-                for (auto instance : at->edit.getAllInputDevices()) {
-                    if (instance->getInputDevice().isMidi()) {
-                        bool ticked = instance->getTargets().contains(at->itemID);
-                        m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
-                    }
+            id = 100;
+            for (auto instance : at->edit.getAllInputDevices()) {
+                if (instance->getInputDevice().isMidi()) {
+                    bool ticked = instance->getTargets().contains(at->itemID);
+                    m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
                 }
             }
 
@@ -243,7 +239,6 @@ TrackBodyComponent::TrackBodyComponent(EditViewState& evs, TimelineGrid& g, te::
     , grid(g)
 {
     track->state.addListener(this);
-    editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
     grid.addListener(this);
 
@@ -259,7 +254,6 @@ TrackBodyComponent::~TrackBodyComponent() {
     track->state.removeListener(this);
     track->edit.getTransport().removeChangeListener(this);
     editViewState.selectionManager.removeChangeListener(this);
-    editViewState.state.removeListener(this);
     editViewState.zoom.removeListener(this);
     grid.removeListener(this);
 }
@@ -320,10 +314,6 @@ void TrackBodyComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce
     if (te::Clip::isClipState(v)) {
         if (i == te::IDs::start || i == te::IDs::length) {
             markAndUpdate(updatePositions);
-        }
-    } else if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::drawWaveforms) {
-            repaint();
         }
     }
 }
@@ -695,26 +685,13 @@ void TracksContainerComponent::buildTracks() {
     trackRows.clear();
 
     for (auto t : getAllTracks(edit)) {
-        TrackRowComponent* c = nullptr;
-        bool show = true;
-        if (t->isMasterTrack()) {
-            show = editViewState.showMasterTrack;
-        } else if (t->isTempoTrack()) {
-            show = editViewState.showGlobalTrack;
-        } else if (t->isMarkerTrack()) {
-            show = editViewState.showMarkerTrack;
-        } else if (t->isChordTrack()) {
-            show = editViewState.showChordTrack;
-        } else if (t->isArrangerTrack()) {
-            show = editViewState.showArrangerTrack;
-        }
+        if (t->isMasterTrack() || t->isTempoTrack() || t->isMarkerTrack() || t->isChordTrack() || t->isArrangerTrack())
+            continue;  // only the content tracks are shown
 
-        if (show) {
-            c = new TrackRowComponent(editViewState, grid, t);
-            trackRows.add(c);
-            c->addComponentListener(this);
-            addAndMakeVisible(c);
-        }
+        auto* c = new TrackRowComponent(editViewState, grid, t);
+        trackRows.add(c);
+        c->addComponentListener(this);
+        addAndMakeVisible(c);
     }
 
     if (autoFitTrackHeights_) {

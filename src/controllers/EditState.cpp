@@ -267,15 +267,7 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
   , selectionManager(s), edit(e)
 {
     auto um = &edit.getUndoManager();
-    showMasterTrack.referTo(state, IDs::showMasterTrack, um, false);
-    showGlobalTrack.referTo(state, IDs::showGlobalTrack, um, false);
-    showMarkerTrack.referTo(state, IDs::showMarkerTrack, um, false);
-    showChordTrack.referTo(state, IDs::showChordTrack, um, false);
-    showArrangerTrack.referTo(state, IDs::showArranger, um, false);
-    drawWaveforms.referTo(state, IDs::drawWaveforms, um, true);
     showHeaders.referTo(state, IDs::showHeaders, um, true);
-    showMidiDevices.referTo(state, IDs::showMidiDevices, um, true);
-    showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
     preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, um, true);
     snapPlayheadToGrid.referTo(state, IDs::snapPlayheadToGrid, um, true);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
@@ -301,13 +293,6 @@ double EditViewState::getFramesPerBeatFor(double bpm) const {
 double EditViewState::getCurrentFramesPerBeat() const {
     const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
     return getFramesPerBeatFor(ts.getBpm());
-}
-
-// for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
-double EditViewState::getFramesPerNote(size_t divider) const {
-    // Quarter note is always one beat
-    jassert(divider > 0);
-    return getCurrentFramesPerBeat() / ((double) divider / 4.0);
 }
 
 void EditViewState::setBeatLength(te::TimeDuration beatLen) {

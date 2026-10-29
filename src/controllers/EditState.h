@@ -10,15 +10,7 @@ namespace IDs
 {
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(EDITVIEWSTATE)
-    DECLARE_ID(showMasterTrack)
-    DECLARE_ID(showGlobalTrack)
-    DECLARE_ID(showMarkerTrack)
-    DECLARE_ID(showChordTrack)
-    DECLARE_ID(showMidiDevices)
-    DECLARE_ID(showWaveDevices)
-    DECLARE_ID(drawWaveforms)
     DECLARE_ID(showHeaders)
-    DECLARE_ID(showArranger)
     DECLARE_ID(headersWidth)
     DECLARE_ID(preservePsgTimingOnTempoChange)
     DECLARE_ID(snapPlayheadToGrid)
@@ -141,9 +133,7 @@ class EditViewState {
 public:
     EditViewState(te::Edit& e, te::SelectionManager& s);
 
-    CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,
-                      drawWaveforms, showHeaders, showMidiDevices, showWaveDevices,
-                      preservePsgTimingOnTempoChange, snapPlayheadToGrid;
+    CachedValue<bool> showHeaders, preservePsgTimingOnTempoChange, snapPlayheadToGrid;
     CachedValue<int> headersWidth;
 
     ValueTree state;
@@ -154,8 +144,6 @@ public:
     te::TimeDuration getBeatLengthFor(double bpm) const;
     double getFramesPerBeatFor(double bpm) const;
     double getCurrentFramesPerBeat() const;
-    // for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
-    double getFramesPerNote(size_t divider) const;
     double getBpmForBeatLength(te::TimeDuration beatLen) const;
     double getBpmSnappedToFps(double bpm) const;
     double setBpmSnappedToFps(double bpm);

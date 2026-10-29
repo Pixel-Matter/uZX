@@ -35,6 +35,7 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 - [ ] **Loop mode** for project scope (wole project span is loop region on default)
 - [ ] **Shortcut consistency** across macOS, Windows and Linux
 - [ ] **Turbo-sound** load 2-3 PSGs at the same time
+- [ ] **Level meter** in transport bar to the left or right of global volume, stereo
 
 #### P2 — Nice to have
 
@@ -56,6 +57,7 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 - [ ] **DMG packaging** with an Applications symlink
 - [ ] **Tracktion Engine** — move from v3.2.0 + fork patches to the latest stable, or decide to stay
 - [ ] **Release notes** — CHANGELOG entry for the tag
+- [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
 
 #### P1 — Important
 

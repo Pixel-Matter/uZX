@@ -91,4 +91,64 @@ private:
 
 static AYChipPluginPlaybackTests ayChipPluginPlaybackTests;
 
+//==============================================================================
+/** Seeks landing just before a frame: Tracktion chases the clip's controllers at the seek point,
+    and neither that state nor the frame right after it may be lost. */
+class AYChipSeekStateTests : public juce::UnitTest {
+public:
+    AYChipSeekStateTests() : UnitTest("AYChipSeekState", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+
+        beginTest("A frame just after the seek point is not overwritten by the chased state");
+        checkSeeksBeforeFrames(engine, 50.0, 2.0);
+
+        beginTest("The chased state survives a frame a fraction of a sample after the seek point");
+        checkSeeksBeforeFrames(engine, 48.0, 0.0);  // at 44.1 kHz every 4th 48 fps frame is 0.25 samples late
+    }
+
+private:
+    /** Frames 1-39 each write VolumeA; frame 50 writes VolumeC; frame 60 keeps the clip running.
+        Seeking back from past frame 50
+        to `samplesEarly` before frame k must leave VolumeA from frame k and VolumeC from frame 0. */
+    void checkSeeksBeforeFrames(te::Engine& engine, double fps, double samplesEarly) {
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        auto* track = te::getAudioTracks(*edit)[0];
+
+        std::vector<PsgRegsFrame> frames(61);
+        frames[0] = {{PsgRegType::Mixer, 0x38}, {PsgRegType::VolumeA, 0x00}, {PsgRegType::VolumeC, 0x07}};
+        for (size_t k = 1; k < 40; ++k)
+            frames[k] = {{PsgRegType::VolumeA, static_cast<uint8_t>(k % 16)}};
+        frames[50] = {{PsgRegType::VolumeC, 0x03}};
+        frames[60] = {{PsgRegType::VolumeB, 0x01}};
+        PsgData data {std::move(frames), {fps, 1}};
+
+        PsgClip::insertTo(*track, data, {{0_tp, te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
+        auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+        track->pluginList.insertPlugin(plugin, 0, nullptr);
+        auto& chip = dynamic_cast<AYChipPlugin&>(*plugin);
+        engine.getDeviceManager().dispatchPendingUpdates();
+
+        auto& transport = edit->getTransport();
+        const auto sampleRate = engine.getDeviceManager().getSampleRate();
+        transport.play(false);
+
+        for (int k = 1; k < 40; ++k) {
+            transport.setPosition(te::TimePosition::fromSeconds(52.0 / fps));
+            TestHelpers::processBlocks(engine, 2);
+            expectEquals(int(chip.getChipRegisters().getRaw(PsgRegType::VolumeC)), 0x03, "past frame 50");
+
+            transport.setPosition(te::TimePosition::fromSeconds(k / fps - samplesEarly / sampleRate));
+            TestHelpers::processBlocks(engine, 1);  // shorter than a frame
+            const auto regs = chip.getChipRegisters();
+            expectEquals(int(regs.getRaw(PsgRegType::VolumeA)), k % 16, "VolumeA from frame " + juce::String(k));
+            expectEquals(int(regs.getRaw(PsgRegType::VolumeC)), 0x07, "chased VolumeC, seek to frame " + juce::String(k));
+        }
+        transport.stop(false, false);
+    }
+};
+
+static AYChipSeekStateTests ayChipSeekStateTests;
+
 }  // namespace MoTool::Tests

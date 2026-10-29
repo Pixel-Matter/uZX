@@ -230,13 +230,20 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 
     // Process PSG register events
     int currentSample = 0;
+    auto lastTimestamp = std::numeric_limits<double>::lowest();
     for (auto& m : *fc.bufferForMidiMessages) {
         updateDynamicParams();
+
+        // Apply the pending frame before reading a newer one, even within the same sample:
+        // the reader drops unapplied values once the timestamp advances.
+        if (m.getTimeStamp() > lastTimestamp) {
+            updateChip();
+            lastTimestamp = m.getTimeStamp();
+        }
 
         // Upstream plugins can pass events stamped past the block end; never render beyond it.
         const int timeSample = jmin(fc.bufferNumSamples, roundToInt(m.getTimeStamp() * sampleRate));
         if (timeSample > currentSample) {
-            updateChip();
             renderChannels(fc, currentSample, timeSample);
             currentSample = timeSample;
         }

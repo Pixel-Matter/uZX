@@ -47,10 +47,6 @@ std::unique_ptr<te::Edit> PlayerController::createOrLoadStartupEdit() {
     return createOrLoadEdit(EditFileOps::getStartupEditFile());
 }
 
-EditViewState* PlayerController::getEditViewState() {
-    return editViewState_.get();
-}
-
 void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     if (edit == nullptr)  // unreadable file, already reported: keep the current edit
         return;
@@ -235,20 +231,6 @@ void PlayerController::ensureAYPluginOnTrack(te::AudioTrack& track) {
     }
     auto plugin = edit_->getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
     track.pluginList.insertPlugin(plugin, 0, nullptr);
-}
-
-void PlayerController::zoomHorizontal(float increment) {
-    if (auto* viewState = getEditViewState()) {
-        viewState->zoom.zoomHorizontally(increment);
-    }
-}
-
-void PlayerController::zoomToFitHorizontally() {
-    auto viewState = getEditViewState();
-    auto range = Helpers::getEffectiveClipsTimeRange(*getEdit());
-    if (viewState != nullptr && !range.isEmpty()) {
-        viewState->zoom.setRange(range);
-    }
 }
 
 }  // namespace MoTool

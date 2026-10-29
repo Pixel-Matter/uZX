@@ -13,10 +13,6 @@ public:
     ~PlayerController() override;
 
     void initialize() override;
-    EditViewState* getEditViewState() override;
-
-    void zoomHorizontal(float increment) override;
-    void zoomToFitHorizontally() override;
 
     void handleOpen();
     void handleOpenFile(const File& file);
@@ -31,8 +27,6 @@ private:
     void ensureAYPluginOnTrack(te::AudioTrack& track);
     void importPsgToNewTrack(const File& f);
     void importPsgToNewEdit(const File& f);
-
-    std::unique_ptr<EditViewState> editViewState_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerController)
 };

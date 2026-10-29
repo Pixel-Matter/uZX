@@ -85,7 +85,7 @@ public:
     virtual void initialize();
 
     te::Edit* getEdit();
-    virtual EditViewState* getEditViewState() { return nullptr; }
+    EditViewState* getEditViewState() { return editViewState_.get(); }
     te::Engine& getEngine();
 
     MainWindow* getMainWindow() { return &window_; }
@@ -93,11 +93,9 @@ public:
 
     void bringWindowToFront();
 
-    virtual void zoomHorizontal(float) {}
-    virtual void zoomVertical(float) {}
+    void zoomHorizontal(float increment);
     virtual void zoomToSelection() {}
-    virtual void zoomToFitHorizontally() {}
-    virtual void zoomToFitVertically() {}
+    void zoomToFitHorizontally();
 
 protected:
     virtual std::unique_ptr<te::Edit> createOrLoadStartupEdit() = 0;
@@ -109,6 +107,7 @@ protected:
     MainWindow window_ {engine_};
     std::unique_ptr<te::Edit> edit_;
     std::unique_ptr<StopAtEditEnd> stopAtEnd_;
+    std::unique_ptr<EditViewState> editViewState_;  // after edit_, so destroyed before it
 
 private:
     // Called when the selection changes
@@ -123,11 +122,8 @@ public:
     ~ArrangerController() override;
 
     void initialize() override;
-    EditViewState* getEditViewState() override;
 
-    void zoomHorizontal(float increment) override;
     void zoomToSelection() override;
-    void zoomToFitHorizontally() override;
 
     void handleNew();
     void handleOpen();
@@ -142,8 +138,6 @@ private:
     void createTracksAndAssignInputs();
 
     void devicesChanged() override;
-
-    std::unique_ptr<EditViewState> editViewState_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ArrangerController)
 };

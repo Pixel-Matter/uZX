@@ -100,6 +100,12 @@ PlayerController& MoToolApp::getPlayerController() {
     return *getApp().playerController_;
 }
 
+BaseController& MoToolApp::getActiveController() {
+    if (getTarget() == Target::uZXPlayer)
+        return getPlayerController();
+    return getArrangerController();
+}
+
 MoToolApp::Target MoToolApp::getTarget() {
     return target_;
 }

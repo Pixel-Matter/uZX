@@ -413,15 +413,24 @@ public:
             {T::TonePeriodB, 1000, false}, {T::VolumeB, 8, true},
             {T::TonePeriodC, 4095, false}, {T::EnvelopeIsOnC, 1, true},
             {T::EnvelopeShape, 0xE, true}, {T::EnvelopePeriod, 120, false}, {T::NoisePeriod, 5, false}}};
-        String marked;  // changed (opaque) runs in [brackets]
-        const auto runs = formatPsgFrame(frame, 1773400.0);
-        for (const auto& [text, colour] : runs)
-            marked << (colour.isOpaque() ? "[" + text + "]" : text);
-        expectEquals(marked, String("[A    ]  [ 254]  [436.4Hz]  15  T--\n"
-                                    "[B    ]  1000  110.8Hz  [ 8]  ---\n"
-                                    "[C    ]  4095   27.1Hz   0  --[E]\n"
-                                    "[Env  ]   120   57.7Hz  shape [E]\n"
-                                    "Noise     5"));
+        const auto marked = [] (const std::vector<std::pair<String, Colour>>& runs) {
+            String text;  // changed (opaque) runs in [brackets]
+            for (const auto& [run, colour] : runs)
+                text << (colour.isOpaque() ? "[" + run + "]" : run);
+            return text;
+        };
+        const auto runs = formatPsgFrame(frame, 1773400.0, false);
+        expectEquals(marked(runs), String("[A    ]  [ 254]  [436.4Hz]  15  T--\n"
+                                          "[B    ]  1000  110.8Hz  [ 8]  ---\n"
+                                          "[C    ]  4095   27.1Hz   0  --[E]\n"
+                                          "[Env  ]   120   57.7Hz  shape [E]\n"
+                                          "Noise     5"));
+        expectEquals(marked(formatPsgFrame(frame, 1773400.0, true)),
+                     String("[A    ]  [ 0FE]  [436.4Hz]  F  T--\n"
+                            "[B    ]   3E8  110.8Hz  [8]  ---\n"
+                            "[C    ]   FFF   27.1Hz  0  --[E]\n"
+                            "[Env  ]  0078   57.7Hz  shape [E]\n"
+                            "Noise    05"));
         expect(runs[0].second == Colors::PSG::A, "Changed rows use the legend colour");
         const auto unchangedB = std::find_if(runs.begin(), runs.end(), [] (const auto& run) { return run.first == "1000"; });
         expect(unchangedB != runs.end() && unchangedB->second == Colors::PSG::B.withMultipliedAlpha(0.5f),

@@ -10,8 +10,8 @@ namespace MoTool {
 //==============================================================================
 /** Frame hover popup text as coloured runs: A/B/C, Env and Noise as a borderless
     table with right-aligned numbers, in legend colours, half-alpha unless this frame
-    changed the value. */
-std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz);
+    changed the value. With hex, periods and volumes are zero-padded hex. */
+std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex);
 
 //==============================================================================
 class PsgClipComponent : public MidiClipComponent,

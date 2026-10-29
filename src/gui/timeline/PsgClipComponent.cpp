@@ -319,9 +319,12 @@ void drawLowEnvelopeArrow(Graphics& g, Rectangle<float> bounds, uint8_t owners, 
     g.strokePath(arrow, PathStrokeType(1.5f));
 }
 
+/** Global app setting: show periods and volumes in hex in the frame hover. */
+constexpr auto hexHoverSetting = "psgHoverHexParams";
+
 } // namespace
 
-std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz) {
+std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex) {
     using T = PsgParamType;
     std::vector<std::pair<String, Colour>> runs;
     Colour rowColour;
@@ -331,19 +334,22 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
     const auto hz = [&] (int tonePeriod) {
         return String(chipClockHz / 16.0 / jmax(1, tonePeriod), 1) + "Hz";  // AY tone clock divider
     };
+    const auto number = [hex] (int value, int hexDigits) {
+        return hex ? String::toHexString(value).paddedLeft('0', hexDigits).toUpperCase() : String(value);
+    };
 
     // Rows A, B, C, Env, Noise share the period and Hz columns.
     const int envPeriod = data.getRaw(T::EnvelopePeriod);
     std::array<String, 5> periods, freqs, volumes;
     for (size_t ch = 0; ch < 3; ++ch) {
         const int period = data.getRaw(T(T::TonePeriodA + int(ch)));
-        periods[ch] = String(period);
+        periods[ch] = number(period, 3);
         freqs[ch] = hz(period);
-        volumes[ch] = String(data.getRaw(T(T::VolumeA + int(ch))));
+        volumes[ch] = number(data.getRaw(T(T::VolumeA + int(ch))), 1);
     }
-    periods[3] = String(envPeriod);
+    periods[3] = number(envPeriod, 4);
     freqs[3] = hz(envelopePeriodToTonePeriod(jmax(1, envPeriod)));
-    periods[4] = String(data.getRaw(T::NoisePeriod));
+    periods[4] = number(data.getRaw(T::NoisePeriod), 2);
     const auto widest = [] (const std::array<String, 5>& column) {
         int width = 0;
         for (const auto& text : column)
@@ -476,13 +482,18 @@ void PsgClipComponent::mouseDown(const MouseEvent& e) {
         int mode = clip->state.getProperty(IDs::paintMode, 0);
 
         PopupMenu m;
-        m.addItem("Parameters", true, mode == 0, [this] {
+        m.addItem("Notes", true, mode == 0, [this] {
             clip->state.setProperty(IDs::paintMode, 0, nullptr);
             repaint();
         });
         m.addItem("Registers", true, mode == 1, [this] {
             clip->state.setProperty(IDs::paintMode, 1, nullptr);
             repaint();
+        });
+        m.addSeparator();
+        auto& settings = clip->edit.engine.getPropertyStorage().getPropertiesFile();
+        m.addItem("Hex params in hover", true, settings.getBoolValue(hexHoverSetting), [&settings] {
+            settings.setValue(hexHoverSetting, ! settings.getBoolValue(hexHoverSetting));
         });
         m.showMenuAsync({});
     } else {
@@ -528,7 +539,8 @@ std::vector<std::pair<String, Colour>> PsgClipComponent::describeFrameAt(int x) 
     const double clockHz = chip != nullptr
         ? chip->staticParams.chipClock.getStoredValue() * uZX::MHz
         : uZX::ChipClockEnum::clockValues[uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz];
-    return formatPsgFrame(data, clockHz);
+    const bool hex = clip->edit.engine.getPropertyStorage().getPropertiesFile().getBoolValue(hexHoverSetting);
+    return formatPsgFrame(data, clockHz, hex);
 }
 
 void PsgClipComponent::showFrameHover() {

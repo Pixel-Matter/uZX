@@ -25,6 +25,9 @@ public:
 
     std::vector<MoLookAndFeel::TimelineGridTick> getTicks();
     te::TimePosition snapTimeToVisibleGrid(te::TimePosition time) const;
+    /** Where a click or drag at timeline x puts the playhead: not before 0, and on the visible grid when
+        snapping is on. */
+    te::TimePosition playheadTimeAtX(int x) const;
 
     void addListener(Listener* l);
     void removeListener(Listener* l);

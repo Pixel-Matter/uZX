@@ -34,10 +34,7 @@ void ClipComponent::mouseDown(const MouseEvent& e) {
         return;  // view navigation, see EditComponent
     if (!editViewState.disableClipSelection)
         editViewState.selectionManager.selectOnly(clip.get());
-    auto pos = editViewState.zoom.xToTime(e.x + getX());
-    if (editViewState.shouldSnapPlayheadToGrid())
-        pos = grid.snapTimeToVisibleGrid(pos);
-    clip->edit.getTransport().setPosition(pos);
+    clip->edit.getTransport().setPosition(grid.playheadTimeAtX(e.x + getX()));
 }
 
 //==============================================================================

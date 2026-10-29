@@ -25,7 +25,6 @@ public:
     void mouseMagnify(const MouseEvent& e, float scale) override;
 
 private:
-    void repositionTransportToX(int x);
     void gridChanged() override;
 
     te::Edit& edit;

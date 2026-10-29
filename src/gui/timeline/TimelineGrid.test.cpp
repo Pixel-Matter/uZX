@@ -14,6 +14,25 @@ public:
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
 
+        beginTest("A click puts the playhead at its time, never before 0, snapped only when snapping is on");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            te::SelectionManager selectionManager(engine);
+            EditViewState editViewState(*edit, selectionManager);
+            editViewState.zoom.setViewWidthPx(1000);
+            editViewState.zoom.setRange({te::TimePosition::fromSeconds(0.0), te::TimeDuration::fromSeconds(1.0)});
+            TimelineGrid grid(editViewState);
+            const auto at123 = editViewState.zoom.xToTime(123);
+
+            editViewState.setSnapPlayheadToGrid(false);
+            expectWithinAbsoluteError(grid.playheadTimeAtX(123).inSeconds(), at123.inSeconds(), 1e-9);
+            expectEquals(grid.playheadTimeAtX(-50).inSeconds(), 0.0);
+
+            editViewState.setSnapPlayheadToGrid(true);
+            expectEquals(grid.playheadTimeAtX(123).inSeconds(), grid.snapTimeToVisibleGrid(at123).inSeconds());
+            expect(grid.playheadTimeAtX(123) != at123, "precondition: 123 px is off the grid");
+        }
+
         beginTest("Bars beats frames grid uses frame subdivisions when zoomed in below a beat");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);

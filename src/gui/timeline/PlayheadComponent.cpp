@@ -5,8 +5,6 @@
 
 #include "../common/LookAndFeel.h"
 
-using namespace tracktion::literals;
-
 namespace MoTool {
 
 
@@ -80,11 +78,7 @@ void PlayheadComponent::mouseDrag(const MouseEvent& e) {
     beginDragAutoRepeat(x != e.x ? 40 : 0);
     if (x != e.x)
         editViewState.zoom.scrollBy(e.x - x);
-    auto t = jmax(0_tp, editViewState.zoom.xToTime(x));
-    if (editViewState.shouldSnapPlayheadToGrid())
-        t = grid.snapTimeToVisibleGrid(t);
-    // DBG("PlayheadComponent::mouseDrag, mouseX: " << e.x << " clampedX: " << x << " time: " << t.inSeconds());
-    edit.getTransport().setPosition(t);
+    edit.getTransport().setPosition(grid.playheadTimeAtX(x));
     // DBG("PlayheadComponent::mouseDrag, transportPos after setPosition: " << edit.getTransport().getPosition().inSeconds());
     // fix for Playhead painting while dragging
     checkRepaint();

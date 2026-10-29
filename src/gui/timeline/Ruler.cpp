@@ -101,7 +101,7 @@ void RulerComponent::mouseUp(const MouseEvent& e) {
     if (isDragging)  // whatever modifiers are held now, or following stays off
         editViewState.zoom.endDrag();
     else if (!e.mods.isPopupMenu())
-        repositionTransportToX(e.x);
+        edit.getTransport().setPosition(grid.playheadTimeAtX(e.x));
 
     isDragging = false;
 }
@@ -115,13 +115,6 @@ void RulerComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails
 
 void RulerComponent::mouseMagnify(const MouseEvent& e, float scale) {
     editViewState.zoom.magnifyAroundX(scale, e.x);
-}
-
-void RulerComponent::repositionTransportToX(int x) {
-    auto pos = editViewState.zoom.xToTime(x);
-    if (editViewState.shouldSnapPlayheadToGrid())
-        pos = grid.snapTimeToVisibleGrid(pos);
-    edit.getTransport().setPosition(pos);
 }
 
 void RulerComponent::gridChanged() {

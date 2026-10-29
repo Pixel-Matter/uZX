@@ -32,6 +32,11 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::getTicks() {
     return ticksCache;
 }
 
+te::TimePosition TimelineGrid::playheadTimeAtX(int x) const {
+    const auto time = jmax(te::TimePosition(), editViewState.zoom.xToTime(x));
+    return editViewState.shouldSnapPlayheadToGrid() ? snapTimeToVisibleGrid(time) : time;
+}
+
 void TimelineGrid::addListener(Listener* l) { listeners.add(l); }
 void TimelineGrid::removeListener(Listener* l) { listeners.remove(l); }
 

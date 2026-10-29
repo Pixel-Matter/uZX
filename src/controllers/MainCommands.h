@@ -358,7 +358,7 @@ public:
 
             case viewSnapPlayheadToGrid:
                 result.setInfo("Snap Playhead to Grid",
-                               "Snap playhead dragging and ruler clicks to the nearest visible grid line",
+                               "Snap the playhead to the nearest visible grid line when you click or drag it",
                                "View", 0);
                 break;
 

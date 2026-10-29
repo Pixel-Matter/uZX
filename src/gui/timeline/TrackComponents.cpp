@@ -296,10 +296,7 @@ void TrackBodyComponent::mouseDown(const MouseEvent& e) {
     if (e.mods.isMiddleButtonDown())
         return;  // view navigation, see EditComponent
     editViewState.selectionManager.selectOnly(track.get());
-    auto pos = editViewState.zoom.xToTime(e.x);
-    if (editViewState.shouldSnapPlayheadToGrid())
-        pos = grid.snapTimeToVisibleGrid(pos);
-    track->edit.getTransport().setPosition(pos);
+    track->edit.getTransport().setPosition(grid.playheadTimeAtX(e.x));
 }
 
 void TrackBodyComponent::changeListenerCallback(ChangeBroadcaster* source) {
@@ -536,12 +533,8 @@ void TracksContainerComponent::mouseDown(const MouseEvent& e) {
     editViewState.selectionManager.deselectAll();
 
     auto x = e.x - gridRect.getX();
-    if (x >= 0 && x < gridRect.getWidth()) {
-        auto pos = editViewState.zoom.xToTime(x);
-        if (editViewState.shouldSnapPlayheadToGrid())
-            pos = grid.snapTimeToVisibleGrid(pos);
-        edit.getTransport().setPosition(pos);
-    }
+    if (x >= 0 && x < gridRect.getWidth())
+        edit.getTransport().setPosition(grid.playheadTimeAtX(x));
 }
 
 void TracksContainerComponent::setAutoFitTrackHeights(bool enabled) {

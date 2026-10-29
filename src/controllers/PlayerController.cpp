@@ -159,14 +159,16 @@ void PlayerController::handleImportPsgReplace() {
 }
 
 void PlayerController::importPsgToNewTrack(const File& f) {
+    auto psgFile = uZX::PsgFile(f);
+    if (! Helpers::readPsgOrShowError(psgFile))
+        return;
+
     auto& transport = edit_->getTransport();
     transport.stop(false, false);
 
     auto track = edit_->insertNewAudioTrack(te::TrackInsertPoint(nullptr, te::getAudioTracks(*edit_).getLast()), nullptr);
     jassert(track != nullptr);
 
-    auto psgFile = uZX::PsgFile(f);
-    psgFile.ensureRead();
     te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
 
     if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
@@ -178,6 +180,10 @@ void PlayerController::importPsgToNewTrack(const File& f) {
 }
 
 void PlayerController::importPsgToNewEdit(const File& f) {
+    auto psgFile = uZX::PsgFile(f);
+    if (! Helpers::readPsgOrShowError(psgFile))
+        return;
+
     edit_->getTransport().stop(false, false);
 
     // Create a new edit and populate it before setting it on the UI
@@ -187,8 +193,6 @@ void PlayerController::importPsgToNewEdit(const File& f) {
     auto* track = te::getAudioTracks(*newEdit).getFirst();
     jassert(track != nullptr);
 
-    auto psgFile = uZX::PsgFile(f);
-    psgFile.ensureRead();
     te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
 
     if (PsgClip::insertTo(*track, psgFile, pos)) {

@@ -98,6 +98,8 @@ set(TEST_SOURCES
 
     util/enumchoice.test.cpp
 
+    formats/psg/PsgFile.test.cpp
+
     models/PsgMidi.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp

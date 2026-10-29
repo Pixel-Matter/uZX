@@ -22,6 +22,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Fixed
 - Paint-timing debug box no longer shows on PSG clips in release builds
+- Opening a file that isn't a PSG (or has no music) shows an error instead of creating an empty track or project
 - Playback stopping when MIDI devices are rescanned
 - Playhead freezing when the audio input device differs from the output device; the audio settings dialog now prevents this setup
 - Playhead disappearing while dragged fast

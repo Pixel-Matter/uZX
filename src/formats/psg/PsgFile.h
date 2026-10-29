@@ -147,9 +147,13 @@ public:
         return file_;
     }
 
-    void ensureRead() {
+    /** Reads the file once. Returns false if it holds nothing playable: missing, not a
+        PSG file, or no frames. A damaged tail (e.g. a 0xFD end marker) is dropped and the
+        frames before it are kept, so read() failing alone doesn't make a file unreadable. */
+    bool ensureRead() {
         if (psgData_.isEmpty())
             read();
+        return ! psgData_.isEmpty();
     }
 
     PsgData& getData() noexcept {

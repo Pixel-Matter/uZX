@@ -4,6 +4,8 @@
 
 namespace te = tracktion;
 
+namespace MoTool::uZX { class PsgFile; }
+
 namespace MoTool::Helpers {
 
 void visitAllMidiClips(te::Edit& edit, std::function<bool (te::MidiClip&)> func);
@@ -17,6 +19,9 @@ te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& sel
 
 // te::AutomationTrack* addAutomationTrackAfter(te::Edit& edit, te::Track* track);
 // te::AutomationTrack* addAndSelectAutomationTrack(te::Edit& edit, te::SelectionManager& selectionManager);
+
+/** Reads the file; shows an error and returns false if it holds no playable PSG data. */
+bool readPsgOrShowError(uZX::PsgFile&);
 
 void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor = false);
 void importAudioAsClip(te::Edit& edit, te::SelectionManager& selectionManager, bool insertAtCursor = false);

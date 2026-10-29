@@ -8,8 +8,8 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. Show an error for unreadable PSG files
-2. Test playback started mid-file; send a full AY register snapshot if it's wrong (see docs/uZX-timer-fx-notes.md for ideas)
+1. Test playback started mid-file; send a full AY register snapshot if it's wrong (see docs/uZX-timer-fx-notes.md for ideas)
+2. Stop at project end
 3. Crash audit, then tag the next alpha
 
 ### Alpha for testers
@@ -18,8 +18,8 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 
 #### P0 — Blockers
 
-- [ ] **Unreadable PSG files** — `PsgFile::ensureRead()` ignores read failures; show an error instead of opening a broken clip
 - [ ] **AY state when starting mid-file** — only frame 0 sends every register; later starts rely on Tracktion replaying the last CC values. Cover with a test, send a full snapshot if needed
+- [ ] **Stop at project end** if not in record mode
 - [ ] **Crash audit** — open, drop, seek, switch files, quit; the intermittent crash on exit is only partly fixed
 - [ ] **Shortcut docs match the app** — the user guide lists 5 shortcuts and a scrollbar that doesn't exist; add zoom (`=` `-` `Z`), Cmd+Wheel, Cmd+L, Cmd+I, Cmd+,
 
@@ -32,8 +32,9 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 - [ ] **Last opened edit** — reopening works in code; reproduce the "not always" report or close it
 - [ ] **Save / Save As** in the Player (Cmd+S does nothing)
 - [ ] **Middle-mouse drag to pan** the timeline
+- [ ] **Loop mode** for project scope (wole project span is loop region on default)
 - [ ] **Shortcut consistency** across macOS, Windows and Linux
-- [ ] **Stop at project end** if not in record mode
+- [ ] **Turbo-sound** load 2-3 PSGs at the same time
 
 #### P2 — Nice to have
 

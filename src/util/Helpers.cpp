@@ -105,15 +105,28 @@ te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& sel
 //     return added;
 // }
 
+bool readPsgOrShowError(uZX::PsgFile& psgFile) {
+    if (psgFile.ensureRead())
+        return true;
+
+    AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+        "Can't Open PSG File",
+        "'" + psgFile.getFile().getFileName() + "' is not a PSG file or contains no music.",
+        "OK");
+    return false;
+}
+
 void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor) {
     browseForPSGFile(edit.engine, [&](const File& f) {
+        auto psgFile = uZX::PsgFile(f);
+        if (! readPsgOrShowError(psgFile))
+            return;
+
         auto track = getSelectedOrInsertAudioTrack(edit, selectionManager, f.getFileNameWithoutExtension());
         jassert(track != nullptr);
         if (track->getClips().size() == 0) {
             track->setName(f.getFileNameWithoutExtension());
         }
-        auto psgFile = uZX::PsgFile(f);
-        psgFile.ensureRead();
         te::TimePosition insertTime;
         if (insertAtCursor) {
             insertTime = edit.getTransport().getPosition();

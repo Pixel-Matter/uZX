@@ -20,6 +20,7 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 - [ ] **Stop at project end** if not in record mode
 - [ ] **Crash audit** — open, drop, seek, switch files, quit; the intermittent crash on exit is only partly fixed
 - [ ] **Shortcut docs match the app** — the user guide lists 5 shortcuts and a scrollbar that doesn't exist; add zoom (`=` `-` `Z`), Cmd+Wheel, Cmd+L, Cmd+I, Cmd+,
+- [ ] Change the player **app icon**
 
 #### P1 — Important
 

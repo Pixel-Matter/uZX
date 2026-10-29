@@ -4,7 +4,7 @@
 
 #include "EditState.h"
 #include "PropertyStorage.h"
-#include "StopAtEditEnd.h"
+#include "PlayWholeEdit.h"
 
 #include "../gui/main/MainWindow.h"
 
@@ -106,7 +106,7 @@ protected:
     te::Engine& engine_;
     MainWindow window_ {engine_};
     std::unique_ptr<te::Edit> edit_;
-    std::unique_ptr<StopAtEditEnd> stopAtEnd_;
+    std::unique_ptr<PlayWholeEdit> playWholeEdit_;
     std::unique_ptr<EditViewState> editViewState_;  // after edit_, so destroyed before it
 
 private:

@@ -6,14 +6,14 @@ namespace MoTool {
 
 /** Stops playback once the end of the edit has been heard, unless recording or looping.
     Rides on the transport's periodic position updates; create one per edit. */
-class StopAtEditEnd : private juce::ValueTree::Listener
+class PlayWholeEdit : private juce::ValueTree::Listener
 {
 public:
-    explicit StopAtEditEnd(tracktion::Edit& e) : edit_{e} {
+    explicit PlayWholeEdit(tracktion::Edit& e) : edit_{e} {
         edit_.getTransport().state.addListener(this);
     }
 
-    ~StopAtEditEnd() override {
+    ~PlayWholeEdit() override {
         edit_.getTransport().state.removeListener(this);
     }
 
@@ -49,7 +49,7 @@ private:
         transport.stop(false, false);
     }
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StopAtEditEnd)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayWholeEdit)
 };
 
 }  // namespace MoTool

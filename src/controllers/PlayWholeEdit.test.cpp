@@ -1,6 +1,6 @@
 #include <JuceHeader.h>
 
-#include "StopAtEditEnd.h"
+#include "PlayWholeEdit.h"
 #include "../util/TestHelpers.h"
 
 namespace MoTool::Tests {
@@ -9,9 +9,9 @@ namespace te = tracktion;
 using namespace tracktion::literals;
 
 //==============================================================================
-class StopAtEditEndTests : public juce::UnitTest {
+class PlayWholeEditTests : public juce::UnitTest {
 public:
-    StopAtEditEndTests() : UnitTest("StopAtEditEnd", "MoTool") {}
+    PlayWholeEditTests() : UnitTest("PlayWholeEdit", "MoTool") {}
 
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
@@ -20,7 +20,7 @@ public:
         engine.getDeviceManager().dispatchPendingUpdates();
 
         auto& transport = edit->getTransport();
-        StopAtEditEnd stopAtEnd {*edit};
+        PlayWholeEdit playWholeEdit {*edit};
 
         beginTest("Playback keeps going until the end has been heard, then stops");
         {
@@ -38,11 +38,11 @@ public:
 
         beginTest("Play from the end starts over from the beginning");
         {
-            StopAtEditEnd::rewindIfAtEnd(*edit);
+            PlayWholeEdit::rewindIfAtEnd(*edit);
             expectEquals(transport.getPosition().inSeconds(), 0.0);
 
             transport.setPosition(0.5_tp);
-            StopAtEditEnd::rewindIfAtEnd(*edit);
+            PlayWholeEdit::rewindIfAtEnd(*edit);
             expectEquals(transport.getPosition().inSeconds(), 0.5);
         }
 
@@ -50,6 +50,6 @@ public:
     }
 };
 
-static StopAtEditEndTests stopAtEditEndTests;
+static PlayWholeEditTests playWholeEditTests;
 
 }  // namespace MoTool::Tests

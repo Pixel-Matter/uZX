@@ -210,9 +210,14 @@ public:
             TimelineGrid grid(view);
             RulerComponent ruler(*edit, view, grid);
             ruler.setSize(2400, 26);
-            Image image(Image::RGB, 2400, 26, true);
-            Graphics graphics(image);
-            ruler.paint(graphics);
+            // Direct2D images (Windows) expose painted pixels only after the Graphics is destroyed.
+            auto paintRuler = [&ruler] {
+                Image result(Image::RGB, ruler.getWidth(), ruler.getHeight(), true);
+                Graphics g(result);
+                ruler.paint(g);
+                return result;
+            };
+            const auto image = paintRuler();
 
             for (const auto& label : {String("5.1"), String("5.1.01"), String("5.1.02")}) {
                 const auto ticks = grid.getTicks();
@@ -235,9 +240,7 @@ public:
             view.zoom.setViewWidthPx(600);
             view.zoom.setRange({te::TimePosition::fromSeconds(9.6), te::TimeDuration::fromSeconds(1.0)});
             ruler.setSize(600, 26);
-            Image denseImage(Image::RGB, 600, 26, true);
-            Graphics denseGraphics(denseImage);
-            ruler.paint(denseGraphics);
+            const auto denseImage = paintRuler();
 
             const auto denseTicks = grid.getTicks();
             const auto crowded = std::find_if(denseTicks.begin(), denseTicks.end(), [](const auto& tick) {

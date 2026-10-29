@@ -8,8 +8,7 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. Stop at project end
-2. Crash audit, then tag the next alpha
+1. Crash audit, then tag the next alpha
 
 ### Alpha for testers
 
@@ -17,7 +16,6 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 
 #### P0 — Blockers
 
-- [ ] **Stop at project end** if not in record mode
 - [ ] **Crash audit** — open, drop, seek, switch files, quit; the intermittent crash on exit is only partly fixed
 - [ ] **Shortcut docs match the app** — the user guide lists 5 shortcuts and a scrollbar that doesn't exist; add zoom (`=` `-` `Z`), Cmd+Wheel, Cmd+L, Cmd+I, Cmd+,
 - [ ] Change the player **app icon**
@@ -36,6 +34,7 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 - [ ] **Turbo-sound** load 2-3 PSGs at the same time
 - [ ] **Level meter** in transport bar to the left or right of global volume, stereo
 - [ ] **Audit** and fix render smoothness
+- [ ] Fix **tab bars** look and feel to match design system (after plugins panes)
 
 #### P2 — Nice to have
 

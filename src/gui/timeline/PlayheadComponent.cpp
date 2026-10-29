@@ -96,7 +96,7 @@ void PlayheadComponent::checkRepaint() {
 
     // The peer flushes deferred repaints at vblank; a mouse event landing between the
     // flush and paint() moves xPosition past the dirty region, so pad the rect by twice
-    // the current step to keep the line inside the next frame's clip (see DEVLOG 2026-07-02).
+    // the current step to keep the line inside the next frame's clip.
     const int step = std::abs(newX - xPosition);
     const int pad = 2 * step + 8;
     const int left = jmin(newX, xPosition) - pad;

@@ -1,6 +1,6 @@
 # µZX Development TODO
 
-Granular tasks and implementation notes for active development.
+Granular tasks and implementation notes for µZX Studio and the shared engine. Player priorities are in [ROADMAP.md](ROADMAP.md); finished work goes to [CHANGELOG.md](../CHANGELOG.md).
 
 ## Arranger mode
 
@@ -9,30 +9,31 @@ Granular tasks and implementation notes for active development.
 - [x] Ruler respects timecode format
 - [x] Grid respect new timecode format with beats and frames
 - [x] FPS editing of timecode or of a separate edit FPS setting
-- [ ] Ruler timecode is not saved in edit vew state
-- [ ] Grid level 0 subdivisions are strange
-- [ ] Playhead snaps to grid
-- [ ] Pos readout/editing in different timecode formats
+- [x] Ruler timecode is saved with the edit
+- [x] Grid level 0 subdivisions are strange
+- [x] Playhead snaps to grid
+- [ ] Pos readout/editing in different timecode formats (always HH:MM:SS:CC now)
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)
 - [x] Better BPM editing
 - [ ] Start horizontal scroll if playhead is being dragged outside of the visible bounds
-- [ ] Clip names are visible
+- [ ] Clip names are visible on audio and MIDI clips (PSG clips show them)
 - [ ] Virtual MIDI keyboard (see audio plugin host)
-- [ ] Loop region and looped playback
+- [ ] Loop region and looped playback (Loop toggle exists, no range UI)
 - [ ] Track level knob/slider
 - [ ] Track devices intermediate level meters
 - [ ] Zoom slider
 - [ ] Moving clips around
 - [ ] Moving tracks around
 - [ ] BPM automation
-- [ ] Time sig editing
+- [ ] Time sig editing (SIG is read-only)
 - [ ] Time sig automation
 
 ## Global
 
 - [ ] Icons (fontaudio, Font Awesome, octicons, nerd-fonts)
 - [ ] CPU usage ticker in the status bar
+- [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds
 
 ## ChipInstrument plugin
 
@@ -59,18 +60,14 @@ Granular tasks and implementation notes for active development.
 
 ## PSG Clip / PSG data
 
-- [ ] Send initial PSG state on play start (noise-on bug when not in PSG file)
+- [x] Send initial PSG state on play start (noise-on bug when not in PSG file)
 - [ ] PSG export
-- [ ] Send cumulative regs/params values on play start from new position
-- [ ] Async or modal with progress bar PSG loading
-- [ ] PSG clip paint image cache for performance
 - [ ] Route every tempo change through `PsgTiming::setTempoBpmRetimingFrames` — today only `EditViewState::setBeatLength` / `setBpmSnappedToFps` rescale `framesPerBeat`; tempo edits from any other path (Tracktion tempo editing, future tempo track/automation) skip preserve-timing compensation
 - [ ] `PsgList::loadFrom` should not write edit-wide project fps (`Helpers::setProjectFps`) — move that decision to the import caller (clip/controller)
 - [ ] `PsgList::loadFrom` derives `framesPerBeat` from the beat length at 0, while migration uses the clip start — use the clip start in both
 
 ## AY Chip Emulator plugin
 
-- [ ] Visual monitor of current AY registers (human readable PSG parameters)
 - [ ] Consider keeping chip emulator state for every keyframe
 
 ## Tuning System
@@ -85,7 +82,7 @@ Granular tasks and implementation notes for active development.
 
 ## PSG Param Editor
 
-- [ ] Do not capture keyboard in PSG param list component
+- [ ] Do not capture keyboard in PSG param list component (list focus is off since 2cc7588; recheck)
 - [ ] Actual editing of PSG parameters
 - [ ] Multiple selection of param points
 - [ ] Copy/paste param curves

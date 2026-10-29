@@ -4,6 +4,31 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Added
+- PSG frame hover: rest the mouse on a PSG clip for 2 s to see the frame's full state as a table — period, Hz (from the AY clock), volume and tone/noise/envelope flags per channel, envelope shape, period and Hz, noise period. Values this frame changed are bright, the rest dimmed. Optional hex periods and volumes (clip context menu, saved globally)
+- Clip view menu: Notes / Registers
+- Beats+frames timeline: grid and ruler follow the timecode format, one zoom-level ladder, subdivision patterns (including swing such as 6-7-6-7) in the DIV control, FPB control
+- Playhead snaps to the visible grid (toggle in the View and ruler menus)
+- PSG timing is preserved across tempo changes (toggle in the ruler menu)
+- PSG clip header: channel legend A B C E N, clip name, and a warning chip when the clip's fps differs from the project's
+- Illustrated user guide (`docs/user-guide.md`)
+
+### Changed
+- Registers view: centred bold uppercase hex in channel colours
+- Noise is drawn only for channels where it is audible, with per-channel ownership marks; shared envelopes show which channels use them; envelopes too slow to have a pitch get a marker at the bottom
+- Ruler labels no longer overlap
+- Look and feel refresh
+- Tracktion Engine updated to v3.2.0
+
+### Fixed
+- Paint-timing debug box no longer shows on PSG clips in release builds
+- Playback stopping when MIDI devices are rescanned
+- Playhead freezing when the audio input device differs from the output device; the audio settings dialog now prevents this setup
+- Playhead disappearing while dragged fast
+- Wrong chip state at the start of a PSG file: the first frame now sends every register
+- PSG import is a single undo step
+- Ruler timecode format is saved with the project
+
 ## [v0.4.0-alpha] - 2026-03-04
 
 ### Added

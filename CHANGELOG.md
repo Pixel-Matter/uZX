@@ -32,6 +32,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Opening a file that isn't a PSG (or has no music) shows an error instead of creating an empty track or project
 - Playback stopping when MIDI devices are rescanned
 - Playhead freezing when the audio input device differs from the output device; the audio settings dialog now prevents this setup
+- Playhead running ahead of the sound by the audio device's output latency (large buffers, Bluetooth headphones); after Play or a seek it now waits at the new position until it is heard
 - Playhead disappearing while dragged fast
 - Wrong chip state at the start of a PSG file: the first frame now sends every register
 - PSG import is a single undo step

@@ -20,11 +20,13 @@ ZoomViewState::ZoomViewState(te::Edit& e)
 
     viewY.referTo(state, IDs::viewY, um, 0);
     edit.getTransport().state.addListener(this);
+    edit.getTransport().addListener(this);
     state.addListener(this);
 }
 
 ZoomViewState::~ZoomViewState() {
     state.removeListener(this);
+    edit.getTransport().removeListener(this);
     edit.getTransport().state.removeListener(this);
 }
 
@@ -105,7 +107,17 @@ bool ZoomViewState::jumpToCurrentPosition() {
 }
 
 te::TimePosition ZoomViewState::getPlayheadPosition() const {
-    return edit.getTransport().getPosition();
+    auto& transport = edit.getTransport();
+    if (!transport.isPlaying() && !transport.isRecording())
+        return transport.getPosition();
+
+    // Tracktion already takes the graph's own latency off the transport position, but the device
+    // sounds each block only after its output latency (buffer, driver, Bluetooth...). After a jump,
+    // wait at the new position until it is heard rather than stepping back before it.
+    // ponytail: a loop wrap counts as a jump, so the playhead leaves the loop end one latency early;
+    // map the wrap if that shows with long latencies.
+    auto latency = te::TimeDuration::fromSeconds(edit.engine.getDeviceManager().getOutputLatencySeconds());
+    return std::max(transport.getPosition() - latency, lastJumpPosition);
 }
 
 void ZoomViewState::zoomHorizontally(double factor) {
@@ -152,6 +164,10 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
         // DBG("ZoomViewState::valueTreePropertyChanged position: " << tc.getPosition().inSeconds()
             // << " dragging: " << (int) tc.isUserDragging()
             // << " playing: " << (int) tc.isPlaying());
+        auto pos = tc.getPosition();
+        if (!tc.isPositionUpdatingFromPlayhead() || pos < lastTransportPosition)
+            lastJumpPosition = pos;
+        lastTransportPosition = pos;
         handlePlaybackScrolling();
         markAndUpdate(updatePos);
     }
@@ -177,6 +193,15 @@ void ZoomViewState::handlePlaybackScrolling() {
     } else {
         // DBG("ZoomViewState::handlePlaybackScrolling, skipping jump (user is dragging)");
     }
+}
+
+void ZoomViewState::startVideo() {
+    lastJumpPosition = lastTransportPosition = edit.getTransport().getPosition();
+}
+
+void ZoomViewState::stopVideo() {
+    // the playhead goes back to the transport position, which does not change on stop
+    markAndUpdate(updatePos);
 }
 
 void ZoomViewState::handleAsyncUpdate() {

@@ -41,7 +41,8 @@ namespace te = tracktion;
  */
 class ZoomViewState :
         private FlaggedAsyncUpdater,
-        private ValueTree::Listener {
+        private ValueTree::Listener,
+        private te::TransportControl::Listener {
 public:
 
     // Actually we do not need to use listeners in every ValueTree state wrapper,
@@ -82,7 +83,8 @@ public:
     float durationToPixels(te::TimeDuration duration) const;
     double getViewY() const;
 
-    /** Where the playhead is drawn and the view follows while playing. */
+    /** Where the playhead is drawn and the view follows while playing: the transport position,
+        minus the audio device's output latency while playing, so it matches what is heard. */
     te::TimePosition getPlayheadPosition() const;
 
     static bool isZoomProperty(const juce::Identifier& id);
@@ -101,7 +103,13 @@ private:
 
     bool updateZoom = false, updatePos = false;
 
+    // Where playback last started, was moved to or looped back to, and the last transport position seen
+    te::TimePosition lastJumpPosition, lastTransportPosition;
+
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
+    // Tracktion's synchronous play/stop notifications
+    void startVideo() override;
+    void stopVideo() override;
     void handleAsyncUpdate() override;
     void handlePlaybackScrolling();
     bool jumpToPosition(te::TimePosition pos);

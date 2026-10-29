@@ -41,7 +41,6 @@ None.
 
 - [ ] **Global default AY settings** (clock, stereo, channels) for PSG files opened from Finder or the command line
 - [ ] **Solo** per AY channel (mute exists)
-- [ ] **Loop** in the Player menu (Cmd+L already works)
 - [ ] **BPM, FPB, DIV** detection
 - [ ] **Note lanes** and tuning table detection
 

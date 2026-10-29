@@ -318,6 +318,8 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         if (menuName == "Transport") {
             menu.addCommandItem(&commandManager_, MainAppCommands::transportPlay);
             menu.addCommandItem(&commandManager_, MainAppCommands::transportToStart);
+            menu.addSeparator();
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportLoop);
         } else if (menuName == "View") {
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomToProject);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomIn);

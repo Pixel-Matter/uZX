@@ -23,6 +23,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - A sideways trackpad swipe over the ruler or the tracks scrolls the timeline; in the Player, so does the plain wheel over the tracks
 - Wheel, swipe and pinch over the scrollbar act as on the ruler; pinch also works over the playhead line
 - Playback stops at the end of the project (unless recording or looping); Play from there starts over
+- Loop in the Player's Transport menu
 
 ### Changed
 - Registers view: centred bold uppercase hex in channel colours

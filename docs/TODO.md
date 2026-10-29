@@ -26,6 +26,7 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [ ] Moving clips around
 - [ ] Moving tracks around
 - [ ] BPM automation
+- [ ] Playback auto-scroll goes into undo history: `ZoomViewState` stores view start/zoom with the edit's UndoManager (`EditState.cpp:18-19`)
 - [ ] Time sig editing (SIG is read-only)
 - [ ] Time sig automation
 
@@ -34,6 +35,9 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [ ] Icons (fontaudio, Font Awesome, octicons, nerd-fonts)
 - [ ] CPU usage ticker in the status bar
 - [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds
+- [ ] Reopening the project that is already open (Open Recent item 0, drop of the current .uzx) loses unsaved changes: `setEdit` saves the old edit, then force-saves the stale freshly loaded copy over it; both edits share a project ID, so deleting the old temp folder also wipes the new one's
+- [ ] A second Player instance fully initialises and saves the shared startup edit before quitting (`moreThanOneInstanceAllowed` is checked after the `MoToolApp` constructor)
+- [ ] Crash audit leftovers, not exercised live: seek by clicking/dragging the ruler, Finder drag-and-drop onto the window, quit while a render progress dialog is up
 
 ## ChipInstrument plugin
 
@@ -57,6 +61,8 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 
 - [ ] UI for MIDI to PSG plugin with tuning editor button
 - [ ] Sync tuning scale with Edit scales and keys
+- [ ] Thread safety (crash risk): `NotesToPsgMapper::setTuningSystem` / `reset` / `setBaseChannel` run on the message thread without a lock while the audio thread uses `tuning_`, `midiBuffer_` and `voices_[channel - baseChannel_]` — use-after-free of the old `TuningSystem`, concurrent `juce::Array` writes, out-of-range voice index. Easiest to hit in uZXTuning by changing root/A4/clock/table while a scale plays
+- [ ] Out-of-window MIDI is passed through with its timestamp and then merged again with an offset, roughly doubling it (`NotesToPsgMapper.cpp:298-299, 346, 352`); the AY plugin now clamps, but the mapper is still wrong
 
 ## PSG Clip / PSG data
 
@@ -65,6 +71,8 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [ ] Route every tempo change through `PsgTiming::setTempoBpmRetimingFrames` — today only `EditViewState::setBeatLength` / `setBpmSnappedToFps` rescale `framesPerBeat`; tempo edits from any other path (Tracktion tempo editing, future tempo track/automation) skip preserve-timing compensation
 - [ ] `PsgList::loadFrom` should not write edit-wide project fps (`Helpers::setProjectFps`) — move that decision to the import caller (clip/controller)
 - [ ] `PsgList::loadFrom` derives `framesPerBeat` from the beat length at 0, while migration uses the clip start — use the clip start in both
+- [ ] Seek may drop the restored full AY state: restored controller values arrive at timestamp 0, and if the next frame lands a fraction of a sample later `PsgParamsMidiReader::read` clears the pending values before `updateChip` runs (`PsgMidi.cpp:243-249`, `AYPlugin.cpp:236-242`); with snap-to-grid seeks land exactly on frames, so float noise decides
+- [ ] PSG pause runs (`FE xx`, up to 1,020 empty frames per 2 bytes) can exhaust memory on a crafted file of a few MB; past 2³¹ frames `static_cast<int>(i)` in `PsgList.cpp:533` overflows — cap total frames
 
 ## AY Chip Emulator plugin
 

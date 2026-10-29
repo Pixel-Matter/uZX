@@ -76,8 +76,8 @@ public:
                 {50.0, 1}
             };
 
-            auto engine = std::make_unique<Engine>("RetriggerTest", nullptr, nullptr);
-            auto edit = Edit::createSingleTrackEdit(*engine);
+            auto& engine = *Engine::getEngines()[0];
+            auto edit = Edit::createSingleTrackEdit(engine);
             PsgList psgList;
             psgList.loadFrom(data, *edit, nullptr);
 

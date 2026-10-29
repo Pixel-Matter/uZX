@@ -742,7 +742,10 @@ BaseController::~BaseController() {
 void BaseController::initialize() {
     engine_.getDeviceManager().addChangeListener(this);
 
-    setEdit(createOrLoadStartupEdit());
+    auto edit = createOrLoadStartupEdit();
+    if (edit == nullptr)  // the last project is unreadable: start with an empty one
+        edit = createOrLoadEdit(EditFileOps::getTempEditFile());
+    setEdit(std::move(edit));
 
     window_.restoreWindowBounds();
     window_.addKeyListener(MoToolApp::getCommandManager().getKeyMappings());
@@ -773,11 +776,15 @@ te::Engine& BaseController::getEngine() {
 }
 
 std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
-    std::unique_ptr<te::Edit> edit;
-    if (editFile.existsAsFile())
-        edit = te::loadEditFromFile(engine_, editFile);
-    else
-        edit = te::createEmptyEdit(engine_, editFile);
+    if (!editFile.existsAsFile())
+        return te::createEmptyEdit(engine_, editFile);
+
+    auto edit = te::loadEditFromFile(engine_, editFile);
+    if (edit == nullptr)
+        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+            "Can't Open Project",
+            "'" + editFile.getFileName() + "' is not a " + String::fromUTF8("µZX") + " project or is damaged.",
+            "OK");
     return edit;
 }
 
@@ -943,7 +950,8 @@ EditViewState* ArrangerController::getEditViewState() {
 }
 
 void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
-    jassert(edit != nullptr);
+    if (edit == nullptr)  // unreadable file, already reported: keep the current edit
+        return;
 
     if (savePrev && edit_ != nullptr) {
         EditFileOps::saveEdit(*edit_, true, true, false);

@@ -30,6 +30,18 @@ public:
         beginTest("Frames are readable, and survive a damaged tail");
         expect(readable(withHeader({0xFF, 0x07, 0x38, 0xFF, 0x08, 0x0F})));
         expect(readable(withHeader({0xFF, 0x07, 0x38, 0xFD})), "0xFD end marker keeps the frames before it");
+
+        beginTest("I/O port registers 14 and 15 are skipped");
+        {
+            TemporaryFile temp(".psg");
+            const auto bytes = withHeader({0xFF, 0x0E, 0xAA, 0x0F, 0xBB, 0x07, 0x38});
+            temp.getFile().replaceWithData(bytes.data(), bytes.size());
+            PsgFile file(temp.getFile());
+            expect(file.ensureRead());
+            const auto& frame = file.getData().frames[0];
+            expect(! frame.isSet(0) && ! frame.isSet(1), "R14/R15 must not leak into other registers");
+            expect(frame.isSet(7));
+        }
     }
 };
 

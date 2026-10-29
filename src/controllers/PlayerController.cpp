@@ -52,7 +52,8 @@ EditViewState* PlayerController::getEditViewState() {
 }
 
 void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
-    jassert(edit != nullptr);
+    if (edit == nullptr)  // unreadable file, already reported: keep the current edit
+        return;
 
     if (savePrev && edit_ != nullptr) {
         EditFileOps::saveEdit(*edit_, true, true, false);

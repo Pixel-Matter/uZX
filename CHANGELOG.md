@@ -23,6 +23,10 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Tracktion Engine updated to v3.2.0
 
 ### Fixed
+- Crash on quit while the Audio/MIDI Settings or Plugins window was open (a cause of the intermittent crash on exit)
+- Crash when opening a damaged project, including on launch when the last project was damaged; an error is shown instead
+- Memory corruption when loading PSG files that write the AY I/O port registers (R14/R15)
+- Studio: possible crash when importing a file after switching projects while the file dialog was open
 - Wrong chip state when playback starts or seeks mid-file: channels B, C, noise and envelope kept stale registers (patched in our Tracktion Engine fork)
 - Paint-timing debug box no longer shows on PSG clips in release builds
 - Opening a file that isn't a PSG (or has no music) shows an error instead of creating an empty track or project

@@ -116,8 +116,13 @@ bool readPsgOrShowError(uZX::PsgFile& psgFile) {
     return false;
 }
 
-void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor) {
-    browseForPSGFile(edit.engine, [&](const File& f) {
+void importPsgAsClip(te::Edit& targetEdit, te::SelectionManager& selectionManager, bool insertAtCursor) {
+    // The macOS file panel is not modal: the edit may be closed before a file is picked.
+    browseForPSGFile(targetEdit.engine, [safeEdit = te::SafeSelectable<te::Edit>(targetEdit), &selectionManager,
+                                        insertAtCursor](const File& f) {
+        if (safeEdit == nullptr)
+            return;
+        auto& edit = *safeEdit.get();
         auto psgFile = uZX::PsgFile(f);
         if (! readPsgOrShowError(psgFile))
             return;
@@ -147,11 +152,13 @@ void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, boo
     });
 }
 
-void importAudioAsClip(te::Edit& edit, te::SelectionManager& selectionManager, bool insertAtCursor) {
-    browseForAudioFile(edit.engine, [&](const File& f) {
-        if (!f.existsAsFile()) {
+void importAudioAsClip(te::Edit& targetEdit, te::SelectionManager& selectionManager, bool insertAtCursor) {
+    browseForAudioFile(targetEdit.engine, [safeEdit = te::SafeSelectable<te::Edit>(targetEdit), &selectionManager,
+                                          insertAtCursor](const File& f) {
+        if (safeEdit == nullptr || !f.existsAsFile()) {
             return;
         }
+        auto& edit = *safeEdit.get();
 
         // Validate audio file
         te::AudioFile audioFile(edit.engine, f);

@@ -119,8 +119,10 @@ static Optional<PsgRegsFrame> readNextFrame(const uint8*& data, size_t& remainin
             const auto val = tryRead<uint8>(data, remaining);
             if (!val.hasValue())
                 return {};
-            currentFrame.registers[reg] = *val;
-            currentFrame.mask[reg] = true;
+            if (reg < PsgRegsFrame::size()) {  // R14/R15 are I/O ports, not sound
+                currentFrame.registers[reg] = *val;
+                currentFrame.mask[reg] = true;
+            }
         } else {
             // not a register, rewind
             data -= 1;

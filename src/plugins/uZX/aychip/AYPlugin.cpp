@@ -97,6 +97,7 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
 
 void AYChipPlugin::initialise(const te::PluginInitialisationInfo& info) {
     reset();
+    const ScopedLock sl(lock);  // an old graph may still be rendering into this buffer
     separateChannelBuffer_.setSize(kNumVizChannels, info.blockSizeSamples);
 }
 
@@ -232,7 +233,8 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     for (auto& m : *fc.bufferForMidiMessages) {
         updateDynamicParams();
 
-        const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
+        // Upstream plugins can pass events stamped past the block end; never render beyond it.
+        const int timeSample = jmin(fc.bufferNumSamples, roundToInt(m.getTimeStamp() * sampleRate));
         if (timeSample > currentSample) {
             updateChip();
             renderChannels(fc, currentSample, timeSample);
@@ -244,7 +246,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     updateDynamicParams();
     // process to the end of the block
     updateChip();
-    if (currentSample < fc.destBuffer->getNumSamples()) {
+    if (currentSample < fc.bufferNumSamples) {
         renderChannels(fc, currentSample, fc.bufferNumSamples);
     }
 }

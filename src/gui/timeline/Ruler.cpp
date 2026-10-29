@@ -86,8 +86,6 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         m.showMenuAsync({});
     } else {
         isDragging = false;
-        dragStartViewStart = editViewState.zoom.getStart();
-        dragStartTimePerPixel = editViewState.zoom.getTimePerPixel();
     }
 }
 
@@ -95,45 +93,33 @@ void RulerComponent::mouseDrag(const MouseEvent& e) {
     if (e.mods.isPopupMenu())
         return;
 
-    if (!isDragging && e.getDistanceFromDragStart() >= dragThreshold)
+    if (!isDragging && e.getDistanceFromDragStart() >= dragThreshold) {
         isDragging = true;
+        editViewState.zoom.beginDrag();
+    }
 
-    if (!isDragging)
-        return;
-
-    auto deltaX = e.getDistanceFromDragStartX();
-    auto deltaY = e.getDistanceFromDragStartY();
-
-    auto newTimePerPixel = dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01);
-    if (newTimePerPixel < ZoomViewState::MinTimePerPixel) newTimePerPixel = ZoomViewState::MinTimePerPixel;
-    if (newTimePerPixel > ZoomViewState::MaxTimePerPixel) newTimePerPixel = ZoomViewState::MaxTimePerPixel;
-
-    auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) e.getMouseDownX();
-    auto newStart = anchorTime - newTimePerPixel * (double)(e.getMouseDownX() + deltaX);
-    newStart = jmax(te::TimePosition(), newStart);
-    auto newSpan = newTimePerPixel * editViewState.zoom.getViewWidthPx();
-    editViewState.zoom.setRange({newStart, newSpan});
+    if (isDragging)
+        editViewState.zoom.dragBy(e.getMouseDownX(), e.getDistanceFromDragStartX(), e.getDistanceFromDragStartY());
 }
 
 void RulerComponent::mouseUp(const MouseEvent& e) {
-    if (e.mods.isPopupMenu())
-        return;
-
-    if (!isDragging)
+    if (isDragging)  // whatever modifiers are held now, or following stays off
+        editViewState.zoom.endDrag();
+    else if (!e.mods.isPopupMenu())
         repositionTransportToX(e.x);
 
     isDragging = false;
 }
 
 void RulerComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
-    if (e.mods.isCommandDown()) {
+    if (e.mods.isCommandDown())
         editViewState.zoom.zoomAroundX(wheel.deltaY, e.x);
-    } else {
-        auto delta = e.mods.isShiftDown() && wheel.deltaY == 0.0f ? wheel.deltaX : wheel.deltaY;
-        auto scrollAmount = editViewState.zoom.getTimePerPixel() * delta * 200.0;
-        auto newStart = editViewState.zoom.getStart() - scrollAmount;
-        editViewState.zoom.setStart(jmax(te::TimePosition(), newStart));
-    }
+    else
+        editViewState.zoom.scrollByWheel(wheel);
+}
+
+void RulerComponent::mouseMagnify(const MouseEvent& e, float scale) {
+    editViewState.zoom.magnifyAroundX(scale, e.x);
 }
 
 void RulerComponent::repositionTransportToX(int x) {

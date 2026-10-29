@@ -50,6 +50,79 @@ public:
 static TrackViewStateTest trackViewStateTest;
 
 //==============================================================================
+class ZoomViewStateTest : public UnitTest
+{
+public:
+    ZoomViewStateTest() : UnitTest("ZoomViewState", "MoTool") {}
+
+    void runTest() override {
+        using namespace tracktion::literals;
+        auto edit = te::Edit::createSingleTrackEdit(*te::Engine::getEngines()[0]);
+        ZoomViewState zoom {*edit};
+        auto& undo = edit->getUndoManager();
+        undo.clearUndoHistory();
+
+        beginTest("Scrolling and zooming stay out of the undo history");
+        zoom.setStart(5_tp);
+        zoom.setRange({1_tp, 2_td});
+        expect(!undo.canUndo());
+
+        beginTest("Dragging the view scrolls sideways and zooms around the anchor");
+        zoom.setViewWidthPx(1000);
+        zoom.setRange({10_tp, 10_td});  // 10 ms per pixel
+        zoom.beginDrag();
+        zoom.dragBy(500, 100, 0);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 9.0, 1e-9);
+        zoom.dragBy(500, 0, 100);  // down zooms out 2x around the time under x = 500
+        expectWithinAbsoluteError(zoom.getViewSpan().inSeconds(), 20.0, 1e-9);
+        expectWithinAbsoluteError(zoom.xToTime(500).inSeconds(), 15.0, 1e-9);
+        zoom.endDrag();
+
+        beginTest("Playback does not scroll the view while the user drags it, and follows again on release");
+        auto& transport = edit->getTransport();
+        transport.play(false);
+        zoom.setRange({100_tp, 10_td});
+        zoom.beginDrag();
+        transport.setPosition(1_tp);
+        expectEquals(zoom.getStart().inSeconds(), 100.0);
+        zoom.endDrag();
+        transport.setPosition(2_tp);
+        expectLessThan(zoom.getStart().inSeconds(), 2.0);
+        transport.stop(false, false);
+
+        beginTest("Pinch zooms around the anchor");
+        zoom.setRange({10_tp, 10_td});
+        zoom.magnifyAroundX(2.0f, 500);
+        expectWithinAbsoluteError(zoom.getViewSpan().inSeconds(), 5.0, 1e-9);
+        expectWithinAbsoluteError(zoom.xToTime(500).inSeconds(), 15.0, 1e-9);
+
+        beginTest("While following the playhead, wheel zoom keeps the playhead where it is");
+        zoom.setRange({0_tp, 10_td});
+        transport.play(false);
+        expect(transport.isPlaying(), "precondition: playing");
+        transport.setPosition(3_tp);  // 300 px, inside the followed first third
+        zoom.zoomAroundX(0.2, 900);   // zoom in 2x, the mouse elsewhere
+        expectWithinAbsoluteError(zoom.getViewSpan().inSeconds(), 5.0, 1e-9);
+        expectWithinAbsoluteError(zoom.timeToX(3_tp), 300.0f, 0.5f);
+
+        beginTest("After a wheel scroll, playback leaves the view alone for a moment, then follows again");
+        MouseWheelDetails wheel {};
+        wheel.deltaY = -0.5f;  // 100 px later
+        zoom.setRange({100_tp, 10_td});
+        zoom.scrollByWheel(wheel);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 101.0, 1e-9);
+        transport.setPosition(1_tp);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 101.0, 1e-9);
+        Thread::sleep(1100);
+        transport.setPosition(2_tp);
+        expectLessThan(zoom.getStart().inSeconds(), 2.0);
+        transport.stop(false, false);
+    }
+};
+
+static ZoomViewStateTest zoomViewStateTest;
+
+//==============================================================================
 /** Plays through a hosted device that reports 0.25 s of output latency and checks the
     playhead follows what is heard, not what the transport has already rendered. */
 class PlayheadPositionTest : public UnitTest

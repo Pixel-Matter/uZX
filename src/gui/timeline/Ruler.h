@@ -25,6 +25,7 @@ public:
     void mouseDrag(const MouseEvent& e) override;
     void mouseUp(const MouseEvent& e) override;
     void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
+    void mouseMagnify(const MouseEvent& e, float scale) override;
 
 private:
     void repositionTransportToX(int x);
@@ -37,8 +38,6 @@ private:
     TimelineGrid& grid;
 
     bool isDragging = false;
-    te::TimePosition dragStartViewStart;
-    te::TimeDuration dragStartTimePerPixel;
     static constexpr int dragThreshold = 4;
 };
 

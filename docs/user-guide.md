@@ -53,7 +53,7 @@ For keys, see [Keyboard and Mouse](#keyboard-and-mouse).
 
 The timeline shows the loaded file as a clip on a track. Click anywhere on the ruler or timeline to seek to that position, or drag the playhead line to scrub.
 
-There is no scrollbar: scroll and zoom with the wheel or by dragging the ruler, or zoom with `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)).
+Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
 
 ### AY Side Panel
 
@@ -267,11 +267,16 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Gesture | Where | Action |
 |---------|-------|--------|
 | Click | Ruler or tracks | Move the playhead (snaps to the grid when **View → Snap Playhead to Grid** is on) |
-| Drag the playhead line | Ruler or tracks | Scrub |
-| Wheel | Ruler | Scroll horizontally |
+| Drag the playhead line | Ruler or tracks | Scrub; hold past either edge to scroll |
+| Wheel or swipe | Ruler or scrollbar | Scroll horizontally |
+| Wheel or swipe | Tracks (Player) | Scroll horizontally |
+| Sideways swipe | Tracks | Scroll horizontally |
 | Drag | Ruler | Sideways scrolls, up/down zooms (down zooms out) |
+| Middle-drag | Tracks | Same as dragging the ruler |
 | `Shift+Wheel` | Ruler or tracks | Scroll horizontally |
-| `Cmd+Wheel` | Ruler or tracks | Zoom around the mouse pointer |
+| Drag | Scrollbar under the tracks | Scroll horizontally |
+| `Cmd+Wheel` | Ruler, tracks or scrollbar | Zoom around the mouse pointer, or around the playhead while it is followed |
+| Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |
 | Right-click | Ruler | Zoom, timecode format, and snap options |
 | Right-click | PSG clip | Notes / Registers view, hex values on hover |

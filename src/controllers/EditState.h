@@ -62,7 +62,14 @@ public:
     void removeListener(Listener* l);
 
     void zoomHorizontally(double factor);
+    /** Zooms by a wheel delta around anchorX, or around the playhead while the view follows it. */
     void zoomAroundX(double factor, int anchorX);
+    /** The same for a pinch, where scale > 1 zooms in. */
+    void magnifyAroundX(float scale, int anchorX);
+    /** Scrolls by pixels, positive towards later times. */
+    void scrollBy(double pixels);
+    /** Scrolls by a wheel or swipe, along its dominant axis. Playback does not scroll the view for a moment after. */
+    void scrollByWheel(const MouseWheelDetails& wheel);
 
     static constexpr auto MinTimePerPixel = te::TimeDuration::fromSeconds(0.00001);
     static constexpr auto MaxTimePerPixel = te::TimeDuration::fromSeconds(2.0);
@@ -87,6 +94,12 @@ public:
         minus the audio device's output latency while playing, so it matches what is heard. */
     te::TimePosition getPlayheadPosition() const;
 
+    /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
+    void beginDrag();
+    /** Sideways scrolls, vertically zooms around anchorX (down zooms out); deltas are from the drag start. */
+    void dragBy(int anchorX, int deltaX, int deltaY);
+    void endDrag();
+
     static bool isZoomProperty(const juce::Identifier& id);
 
     te::Edit& edit;
@@ -102,6 +115,11 @@ private:
     std::atomic<int> viewWidthPx = 1024;  // not stored in ValueTree
 
     bool updateZoom = false, updatePos = false;
+    bool userDraggingView = false;
+    uint32 lastWheelScrollMs = 0;
+    static constexpr uint32 wheelFollowPauseMs = 1000;
+    te::TimePosition dragStartViewStart;
+    te::TimeDuration dragStartTimePerPixel;
 
     // Where playback last started, was moved to or looped back to, and the last transport position seen
     te::TimePosition lastJumpPosition, lastTransportPosition;
@@ -112,6 +130,8 @@ private:
     void stopVideo() override;
     void handleAsyncUpdate() override;
     void handlePlaybackScrolling();
+    bool isFollowingPlayhead() const;
+    void zoomAroundXByScale(double timePerPixelScale, int anchorX);
     bool jumpToPosition(te::TimePosition pos);
     bool jumpToCurrentPosition();
 };

@@ -43,31 +43,43 @@ void PlayheadComponent::mouseEnter(const MouseEvent&) {
 }
 
 void PlayheadComponent::mouseDown(const MouseEvent&) {
+    editViewState.zoom.beginDrag();  // the view does not follow the playhead being dragged
     edit.getTransport().setUserDragging(true);
 }
 
 void PlayheadComponent::mouseUp(const MouseEvent&) {
     edit.getTransport().setUserDragging(false);
+    editViewState.zoom.endDrag();
+}
+
+// The playhead line sits on top of the timeline: pass wheel and pinch on to what is under it
+Component* PlayheadComponent::getSiblingUnder(const MouseEvent& e) const {
+    if (auto* parent = getParentComponent()) {
+        auto posInParent = e.getEventRelativeTo(parent).getPosition();
+        for (int i = parent->getNumChildComponents() - 1; i >= 0; --i)
+            if (auto* child = parent->getChildComponent(i); child != this && child->getBounds().contains(posInParent))
+                return child;
+    }
+    return nullptr;
 }
 
 void PlayheadComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
-    if (auto* parent = getParentComponent()) {
-        auto posInParent = e.getEventRelativeTo(parent).getPosition();
-        for (int i = parent->getNumChildComponents() - 1; i >= 0; --i) {
-            auto* child = parent->getChildComponent(i);
-            if (child != this && child->getBounds().contains(posInParent)) {
-                child->mouseWheelMove(e.getEventRelativeTo(child), wheel);
-                return;
-            }
-        }
-    }
+    if (auto* sibling = getSiblingUnder(e))
+        sibling->mouseWheelMove(e.getEventRelativeTo(sibling), wheel);
+}
+
+void PlayheadComponent::mouseMagnify(const MouseEvent& e, float scale) {
+    if (auto* sibling = getSiblingUnder(e))
+        sibling->mouseMagnify(e.getEventRelativeTo(sibling), scale);
 }
 
 void PlayheadComponent::mouseDrag(const MouseEvent& e) {
-    // TODO start horizontal scroll instead (if mouse is outside of the component)
-    // limit x to LocalBounds
+    // Past either edge, scroll by the overshoot, again and again while the mouse is held there
     auto r = getLocalBounds();
-    auto x = jmax(jmin(e.x, r.getRight() - 1), r.getX());
+    auto x = jlimit(r.getX(), r.getRight() - 1, e.x);
+    beginDragAutoRepeat(x != e.x ? 40 : 0);
+    if (x != e.x)
+        editViewState.zoom.scrollBy(e.x - x);
     auto t = jmax(0_tp, editViewState.zoom.xToTime(x));
     if (editViewState.shouldSnapPlayheadToGrid())
         t = grid.snapTimeToVisibleGrid(t);

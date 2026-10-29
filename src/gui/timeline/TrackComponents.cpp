@@ -299,6 +299,8 @@ void TrackBodyComponent::paintOverChildren(Graphics& g) {
 }
 
 void TrackBodyComponent::mouseDown(const MouseEvent& e) {
+    if (e.mods.isMiddleButtonDown())
+        return;  // view navigation, see EditComponent
     editViewState.selectionManager.selectOnly(track.get());
     auto pos = editViewState.zoom.xToTime(e.x);
     if (editViewState.shouldSnapPlayheadToGrid())
@@ -540,6 +542,8 @@ TracksContainerComponent::~TracksContainerComponent() {
 }
 
 void TracksContainerComponent::mouseDown(const MouseEvent& e) {
+    if (e.mods.isMiddleButtonDown())
+        return;  // view navigation, see EditComponent
     editViewState.selectionManager.deselectAll();
 
     auto x = e.x - gridRect.getX();

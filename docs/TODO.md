@@ -16,7 +16,6 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)
 - [x] Better BPM editing
-- [ ] Start horizontal scroll if playhead is being dragged outside of the visible bounds
 - [ ] Clip names are visible on audio and MIDI clips (PSG clips show them)
 - [ ] Virtual MIDI keyboard (see audio plugin host)
 - [ ] Loop region and looped playback (Loop toggle exists, no range UI)
@@ -26,7 +25,6 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [ ] Moving clips around
 - [ ] Moving tracks around
 - [ ] BPM automation
-- [ ] Playback auto-scroll goes into undo history: `ZoomViewState` stores view start/zoom with the edit's UndoManager (`EditState.cpp:18-19`)
 - [ ] Time sig editing (SIG is read-only)
 - [ ] Time sig automation
 

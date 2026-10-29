@@ -28,13 +28,10 @@ None.
 
 #### P1 — Important
 
-- [ ] **Zoom around the playhead while playing** — Cmd+Wheel zooms around the mouse; keyboard zoom already centres on the playhead
-- [ ] **Horizontal scrollbar** — disabled in `EditComponent`
 - [ ] **Envelope period 0** — draws neither a note nor the low-envelope marker
 - [ ] **Global master volume** — save in app settings and apply to every opened file (stored per edit now)
 - [ ] **Last opened edit** — reopening works in code; reproduce the "not always" report or close it
 - [ ] **Save / Save As** in the Player (Cmd+S does nothing)
-- [ ] **Middle-mouse drag to pan** the timeline
 - [ ] **Loop mode** for project scope (wole project span is loop region on default)
 - [ ] **Shortcut consistency** across macOS, Windows and Linux
 - [ ] **Turbo-sound** load 2-3 PSGs at the same time
@@ -79,7 +76,6 @@ None.
 - [ ] **DMG background image**
 - [ ] **Visualizer mode** — fullscreen oscilloscopes without controls (for streaming)
 - [ ] **Channel split mode** — each AY channel in its own lane
-- [ ] **Touchpad gestures** — pinch to zoom
 - [ ] **Minimap** on the horizontal scroller
 
 ---

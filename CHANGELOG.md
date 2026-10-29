@@ -14,6 +14,14 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Illustrated user guide (`docs/user-guide.md`)
 - User guide lists every keyboard shortcut and timeline mouse gesture
 
+- Horizontal scrollbar under the timeline
+- Middle-drag over the tracks scrolls and zooms like dragging the ruler
+- While you drag the ruler, the scrollbar, the playhead or the tracks during playback, the view stops following the playhead until release, and for a second after a wheel scroll
+- During playback, Cmd+Wheel zooms around the playhead, so the view no longer jumps back to it
+- Pinch to zoom on the ruler and tracks
+- Dragging the playhead past either edge of the timeline scrolls the view
+- A sideways trackpad swipe over the ruler or the tracks scrolls the timeline; in the Player, so does the plain wheel over the tracks
+- Wheel, swipe and pinch over the scrollbar act as on the ruler; pinch also works over the playhead line
 - Playback stops at the end of the project (unless recording or looping); Play from there starts over
 
 ### Changed
@@ -25,6 +33,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Tracktion Engine updated to v3.2.0
 
 ### Fixed
+- Scrolling and zooming, including the auto-scroll during playback, no longer fill the undo history
 - Stale chip registers after a seek or play start landing just before a PSG frame (patched in our Tracktion Engine fork)
 - Crash on quit while the Audio/MIDI Settings or Plugins window was open (a cause of the intermittent crash on exit)
 - Crash when opening a damaged project, including on launch when the last project was damaged; an error is shown instead

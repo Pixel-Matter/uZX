@@ -30,6 +30,8 @@ void ClipComponent::paint(Graphics& g) {
 }
 
 void ClipComponent::mouseDown(const MouseEvent& e) {
+    if (e.mods.isMiddleButtonDown())
+        return;  // view navigation, see EditComponent
     if (!editViewState.disableClipSelection)
         editViewState.selectionManager.selectOnly(clip.get());
     auto pos = editViewState.zoom.xToTime(e.x + getX());

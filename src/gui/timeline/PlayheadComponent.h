@@ -22,12 +22,14 @@ public:
     void mouseDown(const MouseEvent&) override;
     void mouseUp(const MouseEvent&) override;
     void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override;
+    void mouseMagnify(const MouseEvent&, float scale) override;
 
 private:
     void zoomChanged() override;
     void zoomOrPosChanged() override;
 
     void checkRepaint();
+    Component* getSiblingUnder(const MouseEvent&) const;
 
     te::Edit& edit;
     EditViewState& editViewState;

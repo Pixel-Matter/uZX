@@ -14,11 +14,10 @@ ZoomViewState::ZoomViewState(te::Edit& e)
   : edit(e)
 {
     state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
-    auto um = &edit.getUndoManager();
-    viewStartTime.referTo(state, IDs::viewStartTime, um, 0s);
-    viewTimePerPixel.referTo(state, IDs::viewTimePerPixel, um, 60s / (double) viewWidthPx.load());
-
-    viewY.referTo(state, IDs::viewY, um, 0);
+    // Saved with the edit, but kept out of undo: scrolling and zooming are not edits
+    viewStartTime.referTo(state, IDs::viewStartTime, nullptr, 0s);
+    viewTimePerPixel.referTo(state, IDs::viewTimePerPixel, nullptr, 60s / (double) viewWidthPx.load());
+    viewY.referTo(state, IDs::viewY, nullptr, 0);
     edit.getTransport().state.addListener(this);
     edit.getTransport().addListener(this);
     state.addListener(this);
@@ -139,9 +138,18 @@ void ZoomViewState::zoomHorizontally(double factor) {
 }
 
 void ZoomViewState::zoomAroundX(double factor, int anchorX) {
-    double scaleFactor = std::pow(2.0, -factor * 5.0);
+    zoomAroundXByScale(std::pow(2.0, -factor * 5.0), anchorX);
+}
+
+void ZoomViewState::magnifyAroundX(float scale, int anchorX) {
+    zoomAroundXByScale(1.0 / scale, anchorX);
+}
+
+void ZoomViewState::zoomAroundXByScale(double timePerPixelScale, int anchorX) {
+    if (isFollowingPlayhead())
+        anchorX = roundToInt(timeToX(getPlayheadPosition()));  // else following would jump the view back to it
     auto anchorTime = xToTime(anchorX);
-    auto newTimePerPixel = getTimePerPixel() * scaleFactor;
+    auto newTimePerPixel = getTimePerPixel() * timePerPixelScale;
 
     if (newTimePerPixel > MinTimePerPixel && newTimePerPixel < MaxTimePerPixel) {
         auto newStart = anchorTime - newTimePerPixel * (double) anchorX;
@@ -151,6 +159,32 @@ void ZoomViewState::zoomAroundX(double factor, int anchorX) {
         markAndUpdate(updateZoom);
     }
     handleUpdateNowIfNeeded();
+}
+
+void ZoomViewState::scrollBy(double pixels) {
+    setStart(jmax(te::TimePosition(), getStart() + getTimePerPixel() * pixels));
+}
+
+void ZoomViewState::scrollByWheel(const MouseWheelDetails& wheel) {
+    lastWheelScrollMs = Time::getMillisecondCounter();
+    scrollBy(-200.0 * (std::abs(wheel.deltaY) >= std::abs(wheel.deltaX) ? wheel.deltaY : wheel.deltaX));
+}
+
+void ZoomViewState::beginDrag() {
+    userDraggingView = true;
+    dragStartViewStart = getStart();
+    dragStartTimePerPixel = getTimePerPixel();
+}
+
+void ZoomViewState::dragBy(int anchorX, int deltaX, int deltaY) {
+    auto newTimePerPixel = jlimit(MinTimePerPixel, MaxTimePerPixel, dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01));
+    auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) anchorX;
+    auto newStart = jmax(te::TimePosition(), anchorTime - newTimePerPixel * (double) (anchorX + deltaX));
+    setRange({newStart, newTimePerPixel * getViewWidthPx()});
+}
+
+void ZoomViewState::endDrag() {
+    userDraggingView = false;
 }
 
 void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
@@ -174,8 +208,17 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
     handleUpdateNowIfNeeded();
 }
 
+bool ZoomViewState::isFollowingPlayhead() const {
+    auto& transport = edit.getTransport();
+    return (transport.isPlaying() || transport.isRecording()) && !userDraggingView
+        && Time::getMillisecondCounter() - lastWheelScrollMs >= wheelFollowPauseMs;
+}
+
 void ZoomViewState::handlePlaybackScrolling() {
-    if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
+    auto& transport = edit.getTransport();
+    if (transport.isPlaying() || transport.isRecording()) {
+        if (!isFollowingPlayhead())
+            return;  // the user holds or has just scrolled the view
         auto pos = getPlayheadPosition();
         // DBG("ZoomViewState::handlePlaybackScrolling, pos: " << pos.inSeconds());
         auto range = getRange();
@@ -186,7 +229,7 @@ void ZoomViewState::handlePlaybackScrolling() {
                 setStart(newX1);
             }
         }
-    } else if (!edit.getTransport().isUserDragging()) {
+    } else if (!transport.isUserDragging() && !userDraggingView) {
         // assuming autojump to current position when stopped
         // DBG("ZoomViewState::handlePlaybackScrolling, jumping to pos (not dragging, not playing)");
         jumpToCurrentPosition();

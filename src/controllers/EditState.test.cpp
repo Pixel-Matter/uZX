@@ -68,10 +68,13 @@ public:
         const auto playhead = [&] { return zoom.getPlayheadPosition().inSeconds(); };
         const auto heard = [&] { return transport.getPosition().inSeconds() - 0.25; };
 
-        // The transport takes playhead updates at 50 Hz, and ignores them for 200 ms after a seek.
+        // The transport takes playhead updates on a 50 Hz message-thread timer, and ignores them
+        // for 200 ms after a seek, so wait until it has caught up rather than for a fixed time.
         const auto play = [&](int numBlocks) {
             TestHelpers::processBlocks(engine, numBlocks);
-            MessageManager::getInstance()->runDispatchLoopUntil(60);
+            const auto heardByDevice = transport.getCurrentPlaybackContext()->getAudibleTimelineTime();
+            for (int i = 0; i < 200 && transport.getPosition() != heardByDevice; ++i)
+                MessageManager::getInstance()->runDispatchLoopUntil(10);
         };
         const auto seek = [&](te::TimePosition t) {
             transport.setPosition(t);

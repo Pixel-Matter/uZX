@@ -249,6 +249,18 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     }
 }
 
+PsgRegsFrame AYChipPlugin::getChipRegisters() const {
+    const ScopedLock sl(lock);
+    PsgRegsFrame regs;
+    if (chip != nullptr) {
+        for (size_t i = 0; i < regs.size(); ++i) {
+            regs.registers[i] = chip->getRegister(i);
+            regs.mask[i] = true;
+        }
+    }
+    return regs;
+}
+
 void AYChipPlugin::restorePluginStateFromValueTree(const ValueTree& v) {
     staticParams.restoreStateFromValueTree(v);
     dynamicParams.restoreStateFromValueTree(v);

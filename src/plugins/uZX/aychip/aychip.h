@@ -174,6 +174,7 @@ public:
 
     // TODO maybe just store registers in an ordinary byte array and after setting them update the chip?
     void setRegister(size_t index, unsigned char value) noexcept;
+    unsigned char getRegister(size_t index) const noexcept;
 
     // Channel muting interface (public access for ChannelMuter)
     void applyChannelMute(int chan, bool toneEnabled, bool noiseEnabled, bool envelopeEnabled, bool channelEnabled) noexcept;

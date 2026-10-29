@@ -21,6 +21,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Tracktion Engine updated to v3.2.0
 
 ### Fixed
+- Wrong chip state when playback starts or seeks mid-file: channels B, C, noise and envelope kept stale registers (patched in our Tracktion Engine fork)
 - Paint-timing debug box no longer shows on PSG clips in release builds
 - Opening a file that isn't a PSG (or has no music) shows an error instead of creating an empty track or project
 - Playback stopping when MIDI devices are rescanned

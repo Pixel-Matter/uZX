@@ -8,9 +8,8 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. Test playback started mid-file; send a full AY register snapshot if it's wrong (see docs/uZX-timer-fx-notes.md for ideas)
-2. Stop at project end
-3. Crash audit, then tag the next alpha
+1. Stop at project end
+2. Crash audit, then tag the next alpha
 
 ### Alpha for testers
 
@@ -18,7 +17,6 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 
 #### P0 — Blockers
 
-- [ ] **AY state when starting mid-file** — only frame 0 sends every register; later starts rely on Tracktion replaying the last CC values. Cover with a test, send a full snapshot if needed
 - [ ] **Stop at project end** if not in record mode
 - [ ] **Crash audit** — open, drop, seek, switch files, quit; the intermittent crash on exit is only partly fixed
 - [ ] **Shortcut docs match the app** — the user guide lists 5 shortcuts and a scrollbar that doesn't exist; add zoom (`=` `-` `Z`), Cmd+Wheel, Cmd+L, Cmd+I, Cmd+,

@@ -125,6 +125,7 @@ set(TEST_SOURCES
     gui/timeline/PsgPaintingBenchmark.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
+    plugins/uZX/aychip/AYPlugin.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp

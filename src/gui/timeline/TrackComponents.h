@@ -64,7 +64,7 @@ private:
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;
     void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
     void valueTreeChildOrderChanged(ValueTree&, int, int) override;
-    void zoomChanged() override;
+    void viewRangeChanged() override;
     void gridChanged() override;
 
     void handleAsyncUpdate() override;
@@ -170,7 +170,7 @@ private:
     void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) override;
     void valueTreeChildOrderChanged(juce::ValueTree& v, int a, int b) override;
 
-    void zoomChanged() override;
+    void viewRangeChanged() override;
     void gridChanged() override;
     void changeListenerCallback(ChangeBroadcaster*) override;
     void componentMovedOrResized(Component& /*component*/, bool /*wasMoved*/, bool /*wasResized*/) override;

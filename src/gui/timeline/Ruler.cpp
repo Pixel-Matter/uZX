@@ -19,7 +19,7 @@ RulerComponent::~RulerComponent() {
     grid.removeListener(this);
 }
 
-void RulerComponent::zoomChanged() {
+void RulerComponent::viewRangeChanged() {
     repaint();
 }
 

@@ -16,7 +16,7 @@ public:
     RulerComponent(te::Edit& ed, EditViewState& evs, TimelineGrid& g);
     ~RulerComponent() override;
 
-    void zoomChanged() override;
+    void viewRangeChanged() override;
     void paint(Graphics& g) override;
     void mouseDown(const MouseEvent& e) override;
     void mouseDrag(const MouseEvent& e) override;

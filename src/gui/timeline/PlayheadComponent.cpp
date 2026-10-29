@@ -84,11 +84,11 @@ void PlayheadComponent::mouseDrag(const MouseEvent& e) {
     checkRepaint();
 }
 
-void PlayheadComponent::zoomOrPosChanged() {
+void PlayheadComponent::playheadMoved() {
     checkRepaint();
 }
 
-void PlayheadComponent::zoomChanged() {
+void PlayheadComponent::viewRangeChanged() {
     // needed to redraw playhead position if zooming out/in
     checkRepaint();
 }

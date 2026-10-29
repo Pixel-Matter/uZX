@@ -25,8 +25,8 @@ public:
     void mouseMagnify(const MouseEvent&, float scale) override;
 
 private:
-    void zoomChanged() override;
-    void zoomOrPosChanged() override;
+    void viewRangeChanged() override;
+    void playheadMoved() override;
 
     void checkRepaint();
     Component* getSiblingUnder(const MouseEvent&) const;

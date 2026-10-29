@@ -315,7 +315,7 @@ void TrackBodyComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce
     }
 }
 
-void TrackBodyComponent::zoomChanged() {
+void TrackBodyComponent::viewRangeChanged() {
     markAndUpdate(updateZoom);
 }
 
@@ -644,7 +644,7 @@ void TracksContainerComponent::valueTreeChildOrderChanged(juce::ValueTree& v, in
         markAndUpdate(updateTracks);
 }
 
-void TracksContainerComponent::zoomChanged() {
+void TracksContainerComponent::viewRangeChanged() {
     markAndUpdate(needsRepaint);
 }
 

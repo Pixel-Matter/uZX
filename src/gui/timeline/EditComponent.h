@@ -35,7 +35,7 @@ private:
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;
     void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
-    void zoomChanged() override;
+    void viewRangeChanged() override;
     void updateScrollBar();
     void scrollBarMoved(ScrollBar*, double newRangeStart) override;
 

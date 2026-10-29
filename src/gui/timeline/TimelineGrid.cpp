@@ -131,7 +131,7 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
     return ticks;
 }
 
-void TimelineGrid::zoomChanged() {
+void TimelineGrid::viewRangeChanged() {
     ticksCacheValid = false;
 }
 

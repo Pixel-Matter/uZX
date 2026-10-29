@@ -90,6 +90,11 @@ public:
         expectLessThan(zoom.getStart().inSeconds(), 2.0);
         transport.stop(false, false);
 
+        beginTest("Zooming past the limits stops at them");
+        zoom.setRange({0_tp, ZoomViewState::MaxTimePerPixel * 500.0});
+        zoom.zoomAroundX(-1.0, 0);  // 32x out
+        expectEquals(zoom.getTimePerPixel().inSeconds(), ZoomViewState::MaxTimePerPixel.inSeconds());
+
         beginTest("Pinch zooms around the anchor");
         zoom.setRange({10_tp, 10_td});
         zoom.magnifyAroundX(2.0f, 500);
@@ -233,8 +238,8 @@ private:
     struct PosListener : ZoomViewState::Listener
     {
         int calls = 0;
-        void zoomChanged() override {}
-        void zoomOrPosChanged() override { ++calls; }
+        void viewRangeChanged() override {}
+        void playheadMoved() override { ++calls; }
     };
 };
 

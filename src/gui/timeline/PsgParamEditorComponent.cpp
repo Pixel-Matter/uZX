@@ -217,7 +217,7 @@ PsgParamEditorComponent::~PsgParamEditorComponent() {
     grid.removeListener(this);
 }
 
-void PsgParamEditorComponent::zoomChanged() {
+void PsgParamEditorComponent::viewRangeChanged() {
     setTimes(editViewState.zoom.getRange().getStart(), editViewState.zoom.getRange().getEnd());
     repaint();
 }

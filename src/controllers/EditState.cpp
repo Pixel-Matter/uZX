@@ -10,6 +10,18 @@ namespace MoTool {
 
 // ZoomViewState
 
+namespace {
+    // Every zoom stops at the limits rather than refusing to move
+    te::TimeDuration clampTimePerPixel(te::TimeDuration t) {
+        return jlimit(ZoomViewState::MinTimePerPixel, ZoomViewState::MaxTimePerPixel, t);
+    }
+
+    // Time per pixel scale for a wheel or keyboard zoom step; positive zooms in
+    double zoomStepScale(double factor) {
+        return std::pow(2.0, -factor * 5.0);
+    }
+}
+
 ZoomViewState::ZoomViewState(te::Edit& e)
   : edit(e)
 {
@@ -49,14 +61,14 @@ void ZoomViewState::setRange(te::TimeRange range) {
     viewStartTime = range.getStart();
     viewTimePerPixel = range.getLength() / getViewWidthPx();
     // DBG("viewTimePerPixel == " << viewTimePerPixel);
-    markAndUpdate(updateZoom);
+    markAndUpdate(updateViewRange);
 }
 
 void ZoomViewState::setViewWidthPx(int w) noexcept {
     if (w <= 0)
         return;
     viewWidthPx.store(w);
-    markAndUpdate(updateZoom);
+    markAndUpdate(updateViewRange);
     handleUpdateNowIfNeeded();
 }
 
@@ -120,25 +132,14 @@ te::TimePosition ZoomViewState::getPlayheadPosition() const {
 }
 
 void ZoomViewState::zoomHorizontally(double factor) {
-    double scaleFactor = std::pow(2.0, -factor * 5.0);
-    auto pos = getPlayheadPosition();
-    auto span = getViewSpan();
-    auto newRange = span * scaleFactor;
-
-    if (auto newTimePerPixel = newRange / getViewWidthPx();
-        newTimePerPixel > MinTimePerPixel && newTimePerPixel < MaxTimePerPixel) {
-        setRange({
-            jmax(te::TimePosition(), pos - newRange / 2.0),
-            newRange
-        });
-        handlePlaybackScrolling();
-        markAndUpdate(updateZoom);
-    }
+    const auto newSpan = clampTimePerPixel(getTimePerPixel() * zoomStepScale(factor)) * getViewWidthPx();
+    setRange({jmax(te::TimePosition(), getPlayheadPosition() - newSpan / 2.0), newSpan});
+    handlePlaybackScrolling();
     handleUpdateNowIfNeeded();
 }
 
 void ZoomViewState::zoomAroundX(double factor, int anchorX) {
-    zoomAroundXByScale(std::pow(2.0, -factor * 5.0), anchorX);
+    zoomAroundXByScale(zoomStepScale(factor), anchorX);
 }
 
 void ZoomViewState::magnifyAroundX(float scale, int anchorX) {
@@ -148,16 +149,10 @@ void ZoomViewState::magnifyAroundX(float scale, int anchorX) {
 void ZoomViewState::zoomAroundXByScale(double timePerPixelScale, int anchorX) {
     if (isFollowingPlayhead())
         anchorX = roundToInt(timeToX(getPlayheadPosition()));  // else following would jump the view back to it
-    auto anchorTime = xToTime(anchorX);
-    auto newTimePerPixel = getTimePerPixel() * timePerPixelScale;
-
-    if (newTimePerPixel > MinTimePerPixel && newTimePerPixel < MaxTimePerPixel) {
-        auto newStart = anchorTime - newTimePerPixel * (double) anchorX;
-        newStart = jmax(te::TimePosition(), newStart);
-        auto newSpan = newTimePerPixel * getViewWidthPx();
-        setRange({newStart, newSpan});
-        markAndUpdate(updateZoom);
-    }
+    const auto anchorTime = xToTime(anchorX);
+    const auto newTimePerPixel = clampTimePerPixel(getTimePerPixel() * timePerPixelScale);
+    setRange({jmax(te::TimePosition(), anchorTime - newTimePerPixel * (double) anchorX),
+              newTimePerPixel * getViewWidthPx()});
     handleUpdateNowIfNeeded();
 }
 
@@ -177,7 +172,7 @@ void ZoomViewState::beginDrag() {
 }
 
 void ZoomViewState::dragBy(int anchorX, int deltaX, int deltaY) {
-    auto newTimePerPixel = jlimit(MinTimePerPixel, MaxTimePerPixel, dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01));
+    auto newTimePerPixel = clampTimePerPixel(dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01));
     auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) anchorX;
     auto newStart = jmax(te::TimePosition(), anchorTime - newTimePerPixel * (double) (anchorX + deltaX));
     setRange({newStart, newTimePerPixel * getViewWidthPx()});
@@ -189,7 +184,7 @@ void ZoomViewState::endDrag() {
 
 void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
     if (tree == state && isZoomProperty(prop)) {
-        markAndUpdate(updateZoom);
+        markAndUpdate(updateViewRange);
     } else if (auto& tc = edit.getTransport(); tree == tc.state && prop == te::IDs::position) {
         if (!approximatelyEqual((double) tc.state[te::IDs::position], tc.getPosition().inSeconds())) {
             // because this callback could be called before tc.position is updated from state
@@ -203,7 +198,7 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
             lastJumpPosition = pos;
         lastTransportPosition = pos;
         handlePlaybackScrolling();
-        markAndUpdate(updatePos);
+        markAndUpdate(updatePlayhead);
     }
     handleUpdateNowIfNeeded();
 }
@@ -244,17 +239,17 @@ void ZoomViewState::startVideo() {
 
 void ZoomViewState::stopVideo() {
     // the playhead goes back to the transport position, which does not change on stop
-    markAndUpdate(updatePos);
+    markAndUpdate(updatePlayhead);
 }
 
 void ZoomViewState::handleAsyncUpdate() {
-    if (compareAndReset(updatePos)) {
-        // DBG("ZoomViewState::handleAsyncUpdate, dispatching zoomOrPosChanged, pos: "
+    if (compareAndReset(updatePlayhead)) {
+        // DBG("ZoomViewState::handleAsyncUpdate, dispatching playheadMoved, pos: "
             // << edit.getTransport().getPosition().inSeconds());
-        listeners.call(&ZoomViewState::Listener::zoomOrPosChanged);
+        listeners.call(&ZoomViewState::Listener::playheadMoved);
     }
-    if (compareAndReset(updateZoom)) {
-        listeners.call(&ZoomViewState::Listener::zoomChanged);
+    if (compareAndReset(updateViewRange)) {
+        listeners.call(&ZoomViewState::Listener::viewRangeChanged);
     }
 }
 

@@ -42,8 +42,8 @@ public:
     class Listener {
     public:
         virtual ~Listener() = default;
-        virtual void zoomChanged() = 0;
-        virtual void zoomOrPosChanged() {}
+        virtual void viewRangeChanged() = 0;
+        virtual void playheadMoved() {}
     };
 
     ZoomViewState(te::Edit& e);
@@ -91,11 +91,8 @@ public:
     void dragBy(int anchorX, int deltaX, int deltaY);
     void endDrag();
 
-    static bool isZoomProperty(const juce::Identifier& id);
-
-    te::Edit& edit;
-
 private:
+    te::Edit& edit;
     ValueTree state;
     CachedValue<te::TimePosition> viewStartTime;
     CachedValue<te::TimeDuration> viewTimePerPixel;
@@ -105,7 +102,7 @@ private:
     // transient state
     std::atomic<int> viewWidthPx = 1024;  // not stored in ValueTree
 
-    bool updateZoom = false, updatePos = false;
+    bool updateViewRange = false, updatePlayhead = false;
     bool userDraggingView = false;
     uint32 lastWheelScrollMs = 0;
     static constexpr uint32 wheelFollowPauseMs = 1000;
@@ -120,6 +117,7 @@ private:
     void startVideo() override;
     void stopVideo() override;
     void handleAsyncUpdate() override;
+    static bool isZoomProperty(const juce::Identifier& id);
     void handlePlaybackScrolling();
     bool isFollowingPlayhead() const;
     void zoomAroundXByScale(double timePerPixelScale, int anchorX);

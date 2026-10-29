@@ -63,7 +63,7 @@ void EditComponent::valueTreeChildRemoved(ValueTree&, ValueTree& c, int) {
         markAndUpdate(updateScrollRange);
 }
 
-void EditComponent::zoomChanged() {
+void EditComponent::viewRangeChanged() {
     updateScrollBar();
 }
 

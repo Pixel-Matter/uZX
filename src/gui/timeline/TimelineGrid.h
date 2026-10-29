@@ -38,7 +38,7 @@ private:
     std::vector<MoLookAndFeel::TimelineGridTick> makeTicks();
     void invalidateAndNotify();
 
-    void zoomChanged() override;
+    void viewRangeChanged() override;
     void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
     void selectableObjectChanged(te::Selectable*) override;
 

@@ -6,6 +6,14 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 
 <!-- entries below -->
 
+## 2026-10-29 -- Implement "Stop at project end" & AY state restoration (`e2b0f97f-38b8-4c12-821b-486adbbaebdd`)
+
+- **Did:** Implemented two roadmap items: (1) Stop playback at the end of the project unless recording or looping — new `StopAtEditEnd` class with playback context hook, applied to both Studio and Player. (2) Restored full AY state when playback starts or seeks mid-file — updated engine fork to chase MIDI controllers on all PSG channels (not just the clip's channel), added chip-register coverage test. 6+ commits including new test files (65+102 lines), engine submodule bump.
+- **Difficulty:** 2 -- straightforward feature implementation; main work was understanding playback context lifecycle and MIDI controller chasing.
+- **Model:** claude-opus-5-5 -- fit.
+- **Agent:** good -- methodical exploration of Tracktion playback APIs, test-first approach, clean implementation.
+- **Friction:** low -- no blockers, incremental commits.
+
 ## 2026-10-29 -- Implement "Stop at project end" & AY state restoration (`ab7fa234-c001-43a1-a1e0-5ba64840919c`)
 
 - **Did:** Implemented two roadmap items: (1) Stop playback at the end of the project unless recording or looping — new `StopAtEditEnd` class with playback context hook, applied to both Studio and Player. (2) Restored full AY state when playback starts or seeks mid-file — updated engine fork to chase MIDI controllers on all PSG channels (not just the clip's channel), added chip-register coverage test. 6 commits including new test files (65+102 lines), engine submodule bump.

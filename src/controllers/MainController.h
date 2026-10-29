@@ -4,6 +4,7 @@
 
 #include "EditState.h"
 #include "PropertyStorage.h"
+#include "StopAtEditEnd.h"
 
 #include "../gui/main/MainWindow.h"
 
@@ -107,6 +108,7 @@ protected:
     te::Engine& engine_;
     MainWindow window_ {engine_};
     std::unique_ptr<te::Edit> edit_;
+    std::unique_ptr<StopAtEditEnd> stopAtEnd_;
 
 private:
     // Called when the selection changes

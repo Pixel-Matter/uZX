@@ -591,6 +591,8 @@ bool AppController::perform(const InvocationInfo& info) {
             const bool isPlaying = activeEdit != nullptr && activeEdit->getTransport().isPlaying();
             if (!isPlaying && !ensureAudioReadyForPlayback())
                 break;
+            if (!isPlaying && activeEdit != nullptr)
+                StopAtEditEnd::rewindIfAtEnd(*activeEdit);
             te::AppFunctions::startStopPlay();
             break;
         }
@@ -957,6 +959,7 @@ void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) 
 
     // Reset view state before replacing edit
     editViewState_.reset();
+    stopAtEnd_.reset();
 
     // Clean up old edit temp directory if it exists
     if (edit_ != nullptr) {
@@ -972,6 +975,7 @@ void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) 
     migrateTimecodeDisplaySettings(*edit_);
 
     createTracksAndAssignInputs();
+    stopAtEnd_ = std::make_unique<StopAtEditEnd>(*edit_);
     EditFileOps::saveEdit(*edit_, true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());

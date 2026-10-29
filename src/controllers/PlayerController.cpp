@@ -63,6 +63,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     window_.clearContentComponent();
     MoToolApp::getSelectionManager().deselectAll();
     editViewState_.reset();
+    stopAtEnd_.reset();
 
     if (edit_ != nullptr) {
         edit_->getTempDirectory(false).deleteRecursively();
@@ -77,6 +78,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
+    stopAtEnd_ = std::make_unique<StopAtEditEnd>(*edit_);
     EditFileOps::saveEdit(*edit_, true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());

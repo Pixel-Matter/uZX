@@ -13,6 +13,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - PSG clip header: channel legend A B C E N, clip name, and a warning chip when the clip's fps differs from the project's
 - Illustrated user guide (`docs/user-guide.md`)
 
+- Playback stops at the end of the project (unless recording or looping); Play from there starts over
+
 ### Changed
 - Registers view: centred bold uppercase hex in channel colours
 - Noise is drawn only for channels where it is audible, with per-channel ownership marks; shared envelopes show which channels use them; envelopes too slow to have a pitch get a marker at the bottom

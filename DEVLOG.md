@@ -6,6 +6,14 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 
 <!-- entries below -->
 
+## 2026-10-29 -- Implement "Stop at project end" & AY state restoration (`ab7fa234-c001-43a1-a1e0-5ba64840919c`)
+
+- **Did:** Implemented two roadmap items: (1) Stop playback at the end of the project unless recording or looping — new `StopAtEditEnd` class with playback context hook, applied to both Studio and Player. (2) Restored full AY state when playback starts or seeks mid-file — updated engine fork to chase MIDI controllers on all PSG channels (not just the clip's channel), added chip-register coverage test. 6 commits including new test files (65+102 lines), engine submodule bump.
+- **Difficulty:** 2 -- straightforward feature implementation; main work was understanding playback context lifecycle and MIDI controller chasing.
+- **Model:** claude-opus-5-5 -- fit.
+- **Agent:** good -- methodical exploration of Tracktion playback APIs, test-first approach, clean implementation.
+- **Friction:** low -- no blockers, incremental commits.
+
 ## 2026-10-28 -- PSG visualization polish, error handling, docs restructure (`f06b2c7e-5291-4983-8575-2274a929a693`)
 
 - **Did:** Multi-stream session: added frame hover popup (table showing full PSG state, legend colours, changed values bright; 2s delay, mouse move hides). Refined register cell display (channel colours, bold uppercase hex, centred). Added "Hex params in hover" clip menu toggle (stored in app settings). Implemented error handling for unreadable PSG files (PsgFile::ensureRead check at import). Fixed Windows ruler test (Direct2D Graphics scope issue). Installed MoLookAndFeel in test runner for consistent font rendering. Restructured docs (CLAUDE.md→AGENTS.md, code signing/clangd notes to CONTRIBUTING.md, stale paths fixed). Removed unused Inter-Variable font, hid paint-timing overlay in release, updated roadmap. 13 commits, all to develop.
@@ -181,6 +189,8 @@ by `session_id`. Keep entries terse. Did: 300 chars, Difficulty, Model, Agent, F
 - **Friction:** some -- required navigating the nested submodule structure.
 
 <!-- trivial sessions (no summary) -->
+a6dbf11c-3a62-4eb7-ab5f-c35e0a200fed
+f8a06e2d-3535-42ba-8026-0162a9ea68df
 42a7382e-ed92-4cf0-af50-988536e2374c
 7ea68ba9-ad18-4cc0-a6ee-f9efbd5e3c13
 912c1ef6-1e61-4605-8f69-e5fa0e3f05cb

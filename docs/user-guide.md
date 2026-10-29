@@ -47,21 +47,13 @@ The transport sits above the timeline; the AY controls are on the right.
 | BPM control | Tempo in BPM (inc/dec buttons or direct entry) |
 | Master volume knob | Global output level |
 
-**Keyboard shortcuts:**
-
-| Key | Action |
-|-----|--------|
-| `Space` | Play / Pause |
-| `Home` | Rewind to start |
-| `Cmd+O` / `Ctrl+O` | Open file |
-| `Cmd+Q` / `Ctrl+Q` | Quit |
-| `Shift+Wheel` | Horizontal scroll |
+For keys, see [Keyboard and Mouse](#keyboard-and-mouse).
 
 ### Timeline
 
-The timeline shows the loaded file as a clip on a track. Click anywhere on the ruler or timeline to seek to that position.
+The timeline shows the loaded file as a clip on a track. Click anywhere on the ruler or timeline to seek to that position, or drag the playhead line to scrub.
 
-Scroll horizontally with `Shift+Wheel` or the scrollbar.
+There is no scrollbar: scroll and zoom with the wheel or by dragging the ruler, or zoom with `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)).
 
 ### AY Side Panel
 
@@ -112,7 +104,7 @@ The timeline contains **tracks** stacked vertically. Each track has a **header**
 
 | Control | Description |
 |---------|-------------|
-| Track name | Displays the track name; click to rename |
+| Track name | Displays the track name; double-click to rename |
 | R (Arm) | Arm track for recording |
 | M (Mute) | Mute track output |
 | S (Solo) | Solo this track (mutes all others) |
@@ -132,9 +124,8 @@ A time ruler runs along the top of the timeline. The display format switches bet
 
 #### Zoom and Scroll
 
-- **Scroll wheel** — vertical scroll
-- **Shift + Scroll wheel** — horizontal scroll
-- **Pinch gesture** — zoom in/out (trackpad)
+- **Wheel** over the tracks — scroll tracks vertically when they don't fit
+- Horizontal scroll and zoom work as in the Player — see [Keyboard and Mouse](#keyboard-and-mouse).
 - Drag the resizable edge on the track header area to resize the header column.
 - Drag the bottom edge of a track row to resize track height.
 
@@ -239,6 +230,52 @@ Click **Export to CSV** to save the current tuning table as a `.csv` file for us
 The main grid displays the computed AY period register values for each note across multiple octaves. Columns are notes, rows are octaves. The cell color indicates the tuning error relative to the ideal frequency (cents deviation).
 
 Click a cell to preview the note through the AY emulator using the current play control settings.
+
+---
+
+## Keyboard and Mouse
+
+`Cmd` is `Ctrl` on Windows and Linux. Keys are ignored while a text field is being edited.
+
+### Keyboard
+
+| Key | Action | Apps |
+|-----|--------|------|
+| `Space` | Play / Pause | Player, Studio |
+| `Home` or `Cmd+Left` | Rewind to start | Player, Studio |
+| `End` or `Cmd+Right` | Jump to end | Player, Studio |
+| `Cmd+L` | Loop on / off | Player, Studio |
+| `=` | Zoom in around the playhead | Player, Studio |
+| `-` | Zoom out around the playhead | Player, Studio |
+| `Shift+Z` | Zoom to fit the project | Player, Studio |
+| `Z` | Zoom to selection | Studio |
+| `Cmd+O` | Open file | Player, Studio |
+| `Cmd+I` | Import PSG — Studio adds it as a clip; Player asks whether to add a new track or open a new edit | Player, Studio |
+| `Cmd+N` | New edit | Studio |
+| `Cmd+S` | Save | Studio |
+| `Cmd+Shift+S` | Save As | Studio |
+| `Cmd+Z` / `Cmd+Shift+Z` | Undo / Redo | Studio |
+| `Delete` or `Backspace` | Delete the selected clip, track, or device | Studio |
+| `Cmd+T` | Add track | Studio |
+| `Cmd+Shift+T` | Open Tuning Tables | Studio |
+| `Cmd+,` | Audio/MIDI settings | Player, Studio |
+| `Esc` | Close the Settings, Plugins, or About window | Player, Studio |
+| `Cmd+Q` | Quit | Player, Studio |
+
+### Mouse and trackpad (timeline)
+
+| Gesture | Where | Action |
+|---------|-------|--------|
+| Click | Ruler or tracks | Move the playhead (snaps to the grid when **View → Snap Playhead to Grid** is on) |
+| Drag the playhead line | Ruler or tracks | Scrub |
+| Wheel | Ruler | Scroll horizontally |
+| Drag | Ruler | Sideways scrolls, up/down zooms (down zooms out) |
+| `Shift+Wheel` | Ruler or tracks | Scroll horizontally |
+| `Cmd+Wheel` | Ruler or tracks | Zoom around the mouse pointer |
+| Wheel | Tracks (Studio) | Scroll tracks vertically |
+| Right-click | Ruler | Zoom, timecode format, and snap options |
+| Right-click | PSG clip | Notes / Registers view, hex values on hover |
+| Double-click | Track name (Studio) | Rename |
 
 ---
 

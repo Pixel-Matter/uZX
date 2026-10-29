@@ -40,6 +40,10 @@ CI builds with Clang (macOS), GCC (Linux), and MSVC (Windows). Clang is the most
 
 Add JUCE `UnitTest` classes in adjacent `*.test.cpp` files and register them with a static instance. Name tests by feature, such as `TuningViewModel` or `AYChip`, so direct binary filtering remains useful. Cover changed model, tuning, plugin, and controller behavior; add regression tests for bug fixes. Remember to list new test files in `TEST_SOURCES`.
 
+## User Documentation
+
+A change to anything a user can see or do updates `docs/user-guide.md` in the same commit. That covers key bindings (`addDefaultKeypress` in `src/controllers/MainCommands.h`), mouse and wheel handlers, menus, and controls. **Keyboard and Mouse** in the guide is the single list of shortcuts and gestures; it must match what the code actually does in each app. Don't document a binding that does nothing.
+
 ## Commit & Pull Request Guidelines
 
 Prefer concise imperative messages; use a lowercase scope when helpful (`docs:`, `ci:`, `build:`). Branch from `develop` and open PRs back to `develop`; `main` is stable and protected, so never push to it directly. Releases are cut by pushing `v*` tags; see `CONTRIBUTING.md`. PRs should describe behavior changes, link issues, list tests run, and include screenshots or recordings for UI changes.

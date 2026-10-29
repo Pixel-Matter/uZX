@@ -16,7 +16,7 @@ Current release: `v0.4.9-alpha` (unsigned builds for macOS, Windows and Linux).
 
 #### P0 — Blockers
 
-- [ ] **Shortcut docs match the app** — the user guide lists 5 shortcuts and a scrollbar that doesn't exist; add zoom (`=` `-` `Z`), Cmd+Wheel, Cmd+L, Cmd+I, Cmd+,
+None.
 
 #### P1 — Important
 

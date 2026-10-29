@@ -12,6 +12,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - PSG timing is preserved across tempo changes (toggle in the ruler menu)
 - PSG clip header: channel legend A B C E N, clip name, and a warning chip when the clip's fps differs from the project's
 - Illustrated user guide (`docs/user-guide.md`)
+- User guide lists every keyboard shortcut and timeline mouse gesture
 
 - Playback stops at the end of the project (unless recording or looping); Play from there starts over
 

@@ -37,7 +37,8 @@ def main(n, out):
                 got += 1
                 if t["id"] in seen or not t.get("originalUrl"):
                     continue
-                name = urllib.parse.unquote(t.get("originalFileName") or t["originalUrl"].rsplit("filename:", 1)[-1])
+                # the name comes from the server: keep only its last component so it can't leave `out`
+                name = Path(urllib.parse.unquote(t.get("originalFileName") or t["originalUrl"].rsplit("filename:", 1)[-1])).name
                 dest = out / f'{t["id"]}_{name}'
                 urllib.request.urlretrieve(t["originalUrl"], dest)
                 idx.write(json.dumps({k: t.get(k) for k in ("id", "title", "authorIds", "year", "rating", "plays", "time")}

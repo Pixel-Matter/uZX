@@ -38,7 +38,7 @@ None.
 
 #### P2 — Nice to have
 
-- [x] **BPM, FPB, DIV** detection — set on PSG import from the tracker row grid; dumps without a grid (speed 1, heavy volume ornaments) keep the current tempo
+- [x] **BPM, FPB, DIV, SIG** detection — set on PSG import from the tracker row grid and bar-level repetition (3/4 or 4/4); dumps without a grid (speed 1, heavy volume ornaments) keep the current tempo
 - [ ] **Global default AY settings** (clock, stereo, channels) for PSG files opened from Finder or the command line
 - [ ] **Solo** per AY channel (mute exists)
 

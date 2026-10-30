@@ -44,7 +44,7 @@ The transport sits above the timeline; the AY controls are on the right.
 | Rewind (⏮) | Jump to the beginning |
 | Play/Pause (▶/⏸) | Start or pause playback |
 | Position readout | Current time; format switches between bars/beats and mm:ss |
-| BPM control | Tempo in BPM (inc/dec buttons or direct entry). Importing a PSG into an empty project sets it from the detected tracker speed, together with the frames-per-beat grid; dumps without a clear row grid keep the current tempo |
+| BPM control | Tempo in BPM (inc/dec buttons or direct entry). Importing a PSG into an empty project sets it from the detected tracker speed, together with the frames-per-beat grid; dumps without a clear row grid keep the current tempo. If a dump starts a few frames before its first tracker row, the clip is trimmed so that row starts bar 1, or, when those frames are not silent, moved right so it starts bar 2 |
 | Master volume knob | Output level; each app remembers it across files and launches |
 | Level meter | Stereo output level, after the master volume |
 
@@ -95,7 +95,7 @@ Same controls as µZX Player, plus:
 | Record (⏺) | Arm recording |
 | Automation Read | Read automation from recorded data |
 | Automation Write | Write automation from control movements |
-| Time signature | Displayed next to the BPM control |
+| Time signature | Displayed next to the BPM control. Importing a PSG into an empty project sets 3/4 when its drum and bass patterns clearly repeat every three beats, 4/4 when they clearly repeat every four, and otherwise leaves it as is |
 
 ### Timeline
 

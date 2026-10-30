@@ -24,6 +24,10 @@ namespace PsgTiming {
     sections of a multi-tempo edit would be rescaled incorrectly. */
 void setTempoBpmRetimingFrames(te::Edit&, te::TempoSetting&, double bpm, bool preserveAbsoluteFrameTimes);
 
+/** Sets the given tempo so a beat lasts framesPerBeat frames at the project fps
+    (clamped to the tempo limits). */
+void setFramesPerBeat(te::Edit&, te::TempoSetting&, int framesPerBeat, bool preserveAbsoluteFrameTimes);
+
 // The functions below work on the tempo at the transport position, at the project fps.
 
 /** How many frames a beat lasts. */

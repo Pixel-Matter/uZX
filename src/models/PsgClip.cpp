@@ -248,8 +248,7 @@ PsgClip::Ptr PsgClip::insertTo(
     jassert(clip != nullptr);
     // Same undo transaction as the insert: one undo removes the whole import.
     clip->loadFrom(data);
-    if (auto tempo = PsgTempo::detect(data))
-        PsgTempo::applyToEdit(*clip, *tempo);
+    PsgTempo::applyToEdit(*clip, data);
 
     // // debug checks
     // auto seq = clip->getPsg().exportToPlaybackMidiSequence(*clip, te::MidiList::TimeBase::seconds);

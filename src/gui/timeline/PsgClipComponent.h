@@ -14,6 +14,29 @@ namespace MoTool {
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex);
 
 //==============================================================================
+/** One piano-roll lane of the Notes view: a grid note's band in normalized pitch,
+    bounded by the midpoints to its neighbours. */
+struct NoteLane
+{
+    float lo, hi;
+    int note;
+    String label;
+};
+
+/** Lanes for every note of a grid, lowest first. */
+std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid);
+
+/** How much of the lanes the Notes view draws at a lane height (one semitone, in px). */
+struct LaneDetail
+{
+    enum Level { None, Tonic, All };
+    Level lines = None;
+    Level labels = None;
+};
+
+LaneDetail getLaneDetail(float noteHeight);
+
+//==============================================================================
 class PsgClipComponent : public MidiClipComponent,
                          private juce::ValueTree::Listener,
                          private juce::Timer {
@@ -46,6 +69,9 @@ private:
 
     class FrameHover;
     std::unique_ptr<FrameHover> frameHover_;
+
+    std::vector<NoteLane> lanes_;  // rebuilt when the clip's tuning revision changes
+    int lanesRevision_ = -1;
 
     // void onVBlank() {
     //     // Throttle to ~30fps (skip every other vblank on 60Hz display)

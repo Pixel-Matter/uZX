@@ -8,6 +8,7 @@
 #include "../formats/psg/PsgFile.h"
 #include "tuning/TuningDetector.h"
 
+#include <array>
 #include <optional>
 
 namespace te = tracktion;
@@ -45,16 +46,24 @@ public:
     PitchHistogram buildPitchHistogram() const;
 
     /** The grid and key in effect: the user's choice stored in the clip state, else the
-        detection. `uncertain` is a detection tie that no choice has settled. */
+        detection. A stored choice this build cannot read (an unknown table name, an A4 or
+        tonic out of range) is ignored. A clip without audible pitches has neither table
+        nor key unless the user chose one. `uncertain` is a detection tie no choice settled. */
     struct Tuning {
-        PeriodGrid grid;
-        String tableLabel;
-        DetectedKey key;
+        PeriodGrid grid;    // empty when there is no table
+        String tableLabel;  // empty when there is no table
+        std::optional<BuiltinTuningType> table;  // set when a built-in table is in effect
+        bool isEqualTemperament = false;         // set when a 12TET grid is in effect
+        DetectedKey key;    // meaningful only when hasKey
+        bool hasKey = false;
         bool tableChosen = false;
         bool keyChosen = false;
         bool uncertain = false;
+        int revision = 0;   // changes whenever any field above may have changed
     };
-    Tuning getTuning() const;
+
+    /** Cached until the clip's data or its tuning properties change. */
+    const Tuning& getTuning() const;
 
     void chooseTuningTable(BuiltinTuningType table);
     void chooseEqualTemperament(double a4Frequency);
@@ -80,6 +89,12 @@ private:
     mutable int pitchRangeVersion_ = -1;
     mutable std::optional<TuningDetection> detection_;
     mutable int detectionVersion_ = -1;
+    mutable std::optional<Tuning> tuning_;
+    mutable int tuningVersion_ = -1;
+    mutable std::array<juce::var, 4> tuningChoice_;
+    mutable int tuningRevision_ = 0;
+
+    Tuning resolveTuning() const;
 
     void loadFrom(uZX::PsgData &data);
 

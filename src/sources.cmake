@@ -105,6 +105,7 @@ set(TEST_SOURCES
     models/PsgMidi.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
+    models/PsgClipTuning.test.cpp
     models/ProjectFps.test.cpp
     models/SnapLadder.test.cpp
     models/tuning/Ratios.test.cpp

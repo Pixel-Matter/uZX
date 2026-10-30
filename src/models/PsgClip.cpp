@@ -6,6 +6,7 @@
 #include "EditUtilities.h"
 #include "../formats/psg/PsgFile.h"
 
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -25,6 +26,10 @@ void PsgClip::initialise() {
         state.addChild(psg, -1, um);
     }
     psgList = std::make_unique<PsgList>(psg, um);
+    // A new list restarts its data version, so caches keyed on it must start over.
+    pitchRangeVersion_ = -1;
+    detection_.reset();
+    tuning_.reset();
 
     // Legacy files may store per-frame beats. Back-fill machine-frame indices
     // from the edit's frame rate and drop the legacy beat property. This also
@@ -91,10 +96,10 @@ juce::Range<float> PsgClip::getPitchRange() const {
 
 //==============================================================================
 PitchHistogram PsgClip::buildPitchHistogram() const {
-    PitchHistogram hist;
+    PitchHistogram::Builder builder;
     for (auto* frame : getPsg().getFrames())
-        hist.addFrame(frame->getData());
-    return hist;
+        builder.addFrame(frame->getData());
+    return builder.build();
 }
 
 const TuningDetection& PsgClip::getTuningDetection() const {
@@ -106,33 +111,64 @@ const TuningDetection& PsgClip::getTuningDetection() const {
     return *detection_;
 }
 
-PsgClip::Tuning PsgClip::getTuning() const {
+namespace {
+const juce::Identifier* const tuningChoiceIds[] {
+    &IDs::clipTuningTable, &IDs::clipTuningA4, &IDs::clipKeyTonic, &IDs::clipKeyMinor
+};
+
+// A chosen equal temperament is the detection's fit (A4 within a semitone of 440 Hz);
+// anything far outside that is a damaged or foreign value.
+constexpr double minChosenA4 = 300.0, maxChosenA4 = 600.0;
+}  // namespace
+
+const PsgClip::Tuning& PsgClip::getTuning() const {
+    const auto version = getPsg().getDataVersion();
+    std::array<juce::var, 4> choice;
+    for (size_t i = 0; i < choice.size(); ++i)
+        choice[i] = state[*tuningChoiceIds[i]];
+    if (! tuning_ || tuningVersion_ != version || tuningChoice_ != choice) {
+        tuningVersion_ = version;
+        tuningChoice_ = choice;
+        tuning_ = resolveTuning();
+        tuning_->revision = ++tuningRevision_;
+    }
+    return *tuning_;
+}
+
+PsgClip::Tuning PsgClip::resolveTuning() const {
     const auto& detection = getTuningDetection();
     Tuning tuning;
 
-    if (state.hasProperty(IDs::clipTuningA4)) {
-        const double a4 = state[IDs::clipTuningA4];
-        tuning.grid = makeEqualTemperamentGrid(a4, 1773400.0);
+    const double a4 = state.getProperty(IDs::clipTuningA4, 0.0);
+    const auto table = juce::VariantConverter<BuiltinTuningType>::fromVar(state[IDs::clipTuningTable]);
+    if (std::isfinite(a4) && a4 >= minChosenA4 && a4 <= maxChosenA4) {
+        tuning.grid = makeEqualTemperamentGrid(a4, tuningGridClock);
         tuning.tableLabel = getEqualTemperamentLabel(a4);
-        tuning.tableChosen = true;
-    } else if (state.hasProperty(IDs::clipTuningTable)) {
-        const auto table = juce::VariantConverter<BuiltinTuningType>::fromVar(state[IDs::clipTuningTable]);
+        tuning.isEqualTemperament = tuning.tableChosen = true;
+    } else if (state.hasProperty(IDs::clipTuningTable) && static_cast<size_t>(table) < BuiltinTuningType::size()) {
         tuning.grid = getBuiltinPeriodGrid(table);
         tuning.tableLabel = String(table.getShortLabel().data());
+        tuning.table = table;
         tuning.tableChosen = true;
-    } else {
+    } else if (detection.hasNotes) {
         tuning.grid = detection.grid;
         tuning.tableLabel = detection.getTableLabel();
+        tuning.isEqualTemperament = detection.usesEqualTemperament;
+        if (! detection.usesEqualTemperament)
+            tuning.table = detection.tables.front().table;
     }
 
-    if (state.hasProperty(IDs::clipKeyTonic)) {
-        tuning.key = { Scale::Tonic(static_cast<int>(state[IDs::clipKeyTonic])), static_cast<bool>(state[IDs::clipKeyMinor]), 1.0f };
-        tuning.keyChosen = true;
-    } else {
+    const int tonic = state.getProperty(IDs::clipKeyTonic, -1);
+    if (tonic >= 0 && tonic < 12) {
+        tuning.key = { Scale::Tonic(tonic), static_cast<bool>(state[IDs::clipKeyMinor]), 1.0f };
+        tuning.hasKey = tuning.keyChosen = true;
+    } else if (detection.hasNotes) {
         tuning.key = detection.getKey();
+        tuning.hasKey = true;
     }
 
-    tuning.uncertain = (detection.tableTie && ! tuning.tableChosen) || (detection.keyTie && ! tuning.keyChosen);
+    tuning.uncertain = detection.hasNotes
+        && ((detection.tableTie && ! tuning.tableChosen) || (detection.keyTie && ! tuning.keyChosen));
     return tuning;
 }
 
@@ -156,7 +192,7 @@ void PsgClip::chooseKey(const DetectedKey& key) {
 
 void PsgClip::clearTuningChoice() {
     auto* um = getUndoManager();
-    for (const auto* id : { &IDs::clipTuningTable, &IDs::clipTuningA4, &IDs::clipKeyTonic, &IDs::clipKeyMinor })
+    for (const auto* id : tuningChoiceIds)
         state.removeProperty(*id, um);
 }
 

@@ -13,6 +13,10 @@
 
 namespace MoTool {
 
+/** The clock that equal-temperament grids are fitted and drawn at. Built-in tables are
+    period lists and need no clock; a fitted 12TET is reported as an A4 at this clock. */
+inline constexpr double tuningGridClock = uZX::ChipClockEnum::clockValues[uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz];
+
 //==============================================================================
 /** Period -> MIDI note for every note a tuning defines. Trackers write these exact
     register values, so a note either is or is not on the grid: no cents tolerance. */
@@ -31,14 +35,34 @@ struct PitchHistogram
     std::map<int, int> tone;      // tone period -> frames
     std::map<int, int> envelope;  // 16 * envelope period -> frames
 
-    void addFrame(const PsgParamFrameData& frame);
+    /** Collects frames in flat per-period counters and makes the histogram once at the
+        end: a map update per note is far slower over tens of thousands of frames. */
+    class Builder
+    {
+    public:
+        void addFrame(const PsgParamFrameData& frame);
+        PitchHistogram build() const;
+
+    private:
+        // Register periods are 16-bit; the envelope pitch is filtered to the tone range.
+        std::vector<int> tone_ = std::vector<int>(1 << 16), envelope_ = std::vector<int>(1 << 16);
+    };
+
     int getTotal() const noexcept;
     bool isEmpty() const noexcept { return tone.empty() && envelope.empty(); }
 
-    /** Share of note-frames on the grid: tone exact, envelope within ±envelopeTolerance. */
+    /** Share of note-frames on the grid: tone exact, envelope within ±envelopeTolerance.
+        Envelope pitches whose window is a semitone or wider match every grid, so they are
+        left out of the share entirely. */
     float getShareOnGrid(const PeriodGrid& grid) const;
 
+    /** Same, for a grid given as its periods in ascending order. */
+    float getShareOnPeriods(const std::vector<int>& ascendingPeriods) const;
+
     static constexpr int envelopeTolerance = 8;  // half an envelope step, in tone-period units
+
+    /** True when an envelope pitch at this tone-equivalent period can tell grids apart. */
+    static bool isEnvelopeDiscriminating(int period) noexcept;
 };
 
 //==============================================================================
@@ -80,6 +104,11 @@ struct EqualTemperamentFit
 
 struct TuningDetection
 {
+    /** False for a clip with no audible pitches: nothing below is meaningful then. */
+    bool hasNotes = false;
+    /** The histogram the detection was made from; the picker draws it. */
+    PitchHistogram histogram;
+
     /** Built-in tables best first. Grids that share over 90% of their periods are one
         candidate, named by the later registry entry (PT #3 absorbs PT #0). */
     std::vector<TuningCandidate> tables;

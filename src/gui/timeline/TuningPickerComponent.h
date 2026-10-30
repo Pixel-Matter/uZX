@@ -11,11 +11,18 @@ namespace MoTool {
     or override it. Shows the ranked tables and keys with their scores and the clip's
     pitch classes at sub-semitone resolution on the selected grid, so a wrong grid is
     visible as peaks between the lines. Choices are written to the clip state at once;
-    "Use detected" removes them. */
-class TuningPickerComponent : public Component, private juce::ValueTree::Listener
+    "Use detected" removes them.
+
+    The picker holds the clip weakly and closes itself when the clip is deleted, which
+    also happens when its Edit is replaced or closed: a clip must never outlive its Edit.
+    Lists follow the clip's data, so they stay right while the clip is edited. */
+class TuningPickerComponent : public Component,
+                              private juce::ValueTree::Listener,
+                              private te::SelectableListener,
+                              private juce::AsyncUpdater
 {
 public:
-    explicit TuningPickerComponent(PsgClip::Ptr clip);
+    explicit TuningPickerComponent(PsgClip& clip);
     ~TuningPickerComponent() override;
 
     /** Opens the picker for a clip in its own window. */
@@ -26,8 +33,9 @@ public:
 private:
     class HistogramView;
 
-    PsgClip::Ptr clip_;
-    PitchHistogram histogram_;
+    te::SafeSelectable<PsgClip> clip_;
+    juce::ValueTree clipState_;  // kept so the listener can be removed after the clip is gone
+    int listedDataVersion_ = -1;
 
     Label tableLabel_{{}, "Tuning table"};
     Label keyLabel_{{}, "Key"};
@@ -36,10 +44,25 @@ private:
     TextButton detectedButton_{"Use detected"};
     std::unique_ptr<HistogramView> histogramView_;
 
+    // Items are listed in detection order; the combo IDs below index into these copies,
+    // never into a detection that may have been recomputed since.
+    std::vector<BuiltinTuningType> listedTables_;
+    double listedA4_ = 440.0;
+    std::vector<DetectedKey> listedKeys_;
+
     static constexpr int equalTemperamentItemId = 1000;
 
+    void rebuildLists(const PsgClip& clip);
     void refresh();
-    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+    void close();
+
+    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override { triggerAsyncUpdate(); }
+    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override { triggerAsyncUpdate(); }
+    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override { triggerAsyncUpdate(); }
+    void handleAsyncUpdate() override;
+
+    void selectableObjectChanged(te::Selectable*) override {}
+    void selectableObjectAboutToBeDeleted(te::Selectable*) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPickerComponent)
 };

@@ -8,6 +8,11 @@ honouring the per-channel note-duration command) and the speeds set by
 in-pattern commands in any channel. Used as weak labels for tempo and meter
 detection. The channel decoding follows zxtune's PT3 parser
 (src/formats/chiptune/aym/protracker3_compiled.cpp).
+
+info() also returns the tone table number and format version from the header,
+and the written notes of all three channels weighted by the rows they sound
+(note 0 is C1, so note % 12 is the pitch class). With --tuning, main prints
+those instead; they are ground truth for tuning table and key detection.
 """
 import sys
 from collections import Counter
@@ -21,12 +26,16 @@ def read_word(d, i):
     return d[i] | d[i + 1] << 8
 
 
-def channel_rows(d, ptr, limit=4096):
+def channel_rows(d, ptr, limit=4096, notes=None, state=None):
     """Counts rows of one channel until its 0x00 terminator or `limit` rows.
     Returns (rows, speeds) where speeds lists (row, new_speed) for every
-    set-speed command. rows is None when the data runs out first."""
+    set-speed command. rows is None when the data runs out first.
+
+    With a notes Counter, adds each row's sounding note (0..95) weighted by the
+    rows it lasts; state carries the note held across patterns as state["note"]."""
     rows, skip, i, speeds = 0, 1, ptr, []
     pending = []
+    state = state if state is not None else {}
     while i < len(d) and rows < limit:
         b = d[i]
         i += 1
@@ -46,6 +55,12 @@ def channel_rows(d, ptr, limit=4096):
                     speeds.append((rows, d[i]))
                 i += EFFECT_PARAM_BYTES.get(cmd, 0)
             pending = []
+            if 0x50 <= b <= 0xAF:
+                state["note"] = b - 0x50
+            elif b == 0xC0:
+                state["note"] = None
+            if notes is not None and state.get("note") is not None:
+                notes[state["note"]] += skip
             rows += skip
         elif b == 0xB0:
             pass
@@ -65,6 +80,9 @@ def info(path):
     d = Path(path).read_bytes()
     if not d.startswith(b"ProTracker 3.") and not d.startswith(b"Vortex Tracker II"):
         return None
+    # Players pick table variants by version; Vortex Tracker II modules count as 3.6.
+    version = d[13] - ord("0") if d.startswith(b"ProTracker 3.") and 48 <= d[13] <= 57 else 6
+    table = d[99]
     speed = d[100]
     patterns_ptr = read_word(d, 103)
     positions = []
@@ -73,16 +91,29 @@ def info(path):
         positions.append(d[i] // 3)
         i += 1
     lengths, speed_changes = [], []
+    notes = Counter()
+    held = [{}, {}, {}]  # per-channel note held across patterns
     for p in positions:
         # channel A ends the pattern; B and C only play while A does
-        rows, speeds = channel_rows(d, read_word(d, patterns_ptr + p * 6))
+        rows, speeds = channel_rows(d, read_word(d, patterns_ptr + p * 6), notes=notes, state=held[0])
         if rows is None:
             return None
         for ch in (1, 2):
-            speeds += channel_rows(d, read_word(d, patterns_ptr + p * 6 + 2 * ch), rows)[1]
+            speeds += channel_rows(d, read_word(d, patterns_ptr + p * 6 + 2 * ch), rows,
+                                   notes=notes, state=held[ch])[1]
         lengths.append(rows)
         speed_changes += [(len(lengths) - 1, r, s) for r, s in sorted(speeds) if r < rows]
-    return dict(speed=speed, lengths=lengths, speed_changes=speed_changes)
+    return dict(speed=speed, lengths=lengths, speed_changes=speed_changes,
+                version=version, table=table, notes=notes)
+
+
+def pitch_classes(notes):
+    """Row-weighted share of each pitch class, C first."""
+    pcs = [0] * 12
+    for note, rows in notes.items():
+        pcs[note % 12] += rows
+    total = sum(pcs) or 1
+    return [x / total for x in pcs]
 
 
 def rows_per_speed(meta):
@@ -100,11 +131,21 @@ def rows_per_speed(meta):
     return played
 
 
+NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+
 def main(paths):
-    for f in paths:
+    tuning = "--tuning" in paths
+    for f in (p for p in paths if p != "--tuning"):
         r = info(f)
         if r is None:
             print(f"? {Path(f).name}")
+            continue
+        if tuning:
+            pcs = pitch_classes(r["notes"])
+            top = sorted(range(12), key=lambda pc: -pcs[pc])[:7]
+            print(f"version=3.{r['version']} table={r['table']} notes={sum(r['notes'].values())} "
+                  f"top={' '.join(NOTE_NAMES[pc] for pc in top)} {Path(f).name}")
             continue
         common = Counter(r["lengths"]).most_common(3)
         speeds = sorted({s for _, _, s in r["speed_changes"]})

@@ -10,7 +10,6 @@ namespace {
 
 constexpr int firstGridNote = 24;  // C1, where every registry table starts
 constexpr int numGridNotes = 96;   // eight octaves
-constexpr double zxClock = 1773400.0;
 
 // Krumhansl-Kessler probe-tone profiles for a major and a minor key on C.
 constexpr std::array<float, 12>
@@ -58,6 +57,76 @@ struct LogGrid
     }
 };
 
+/** Clock / 16 / frequency of every grid note at A4 = 1 Hz: an equal-temperament period is
+    this divided by A4, so a sweep needs no pow() per step. */
+const std::array<double, numGridNotes>& equalTemperamentPeriodsAtUnitA4() {
+    static const auto periods = [] {
+        std::array<double, numGridNotes> p{};
+        for (int i = 0; i < numGridNotes; ++i)
+            p[static_cast<size_t>(i)] = tuningGridClock / 16.0 / std::pow(2.0, (firstGridNote + i - 69) / 12.0);
+        return p;
+    }();
+    return periods;
+}
+
+/** Fills `out` with the equal-temperament periods for a4, ascending. */
+void equalTemperamentPeriods(double a4, std::vector<int>& out) {
+    const auto& unit = equalTemperamentPeriodsAtUnitA4();
+    out.resize(unit.size());
+    // Periods fall as notes rise, so filling from the top note gives ascending order.
+    for (size_t i = 0; i < unit.size(); ++i)
+        out[i] = static_cast<int>(std::round(unit[unit.size() - 1 - i] / a4));
+}
+
+/** A histogram as flat (period, frames) lists, with the envelope pitches that cannot tell
+    grids apart already dropped: the 12TET sweep scores it a few hundred times. */
+struct FlatHistogram
+{
+    std::vector<std::pair<int, int>> tone, envelope;
+    int total = 0;
+
+    explicit FlatHistogram(const PitchHistogram& hist) {
+        tone.assign(hist.tone.begin(), hist.tone.end());
+        for (const auto& [period, frames] : hist.envelope)
+            if (PitchHistogram::isEnvelopeDiscriminating(period))
+                envelope.emplace_back(period, frames);
+        for (const auto* part : {&tone, &envelope})
+            for (const auto& [period, frames] : *part)
+                total += frames;
+    }
+
+    /** Both lists are ascending, so one merge walk per grid scores it in linear time. */
+    float shareOn(const std::vector<int>& ascendingPeriods) const {
+        if (total == 0)
+            return 0.0f;
+        int hits = 0;
+        const auto gridEnd = ascendingPeriods.end();
+        auto g = ascendingPeriods.begin();
+        for (const auto& [period, frames] : tone) {
+            while (g != gridEnd && *g < period)
+                ++g;
+            if (g != gridEnd && *g == period)
+                hits += frames;
+        }
+        g = ascendingPeriods.begin();
+        for (const auto& [period, frames] : envelope) {
+            while (g != gridEnd && *g < period - PitchHistogram::envelopeTolerance)
+                ++g;
+            if (g != gridEnd && *g <= period + PitchHistogram::envelopeTolerance)
+                hits += frames;
+        }
+        return static_cast<float>(hits) / static_cast<float>(total);
+    }
+};
+
+std::vector<int> periodsOf(const PeriodGrid& grid) {
+    std::vector<int> periods;
+    periods.reserve(grid.size());
+    for (const auto& [period, note] : grid)
+        periods.push_back(period);
+    return periods;
+}
+
 /** Jaccard overlap of two grids' period sets. */
 float gridOverlap(const PeriodGrid& a, const PeriodGrid& b) {
     int common = 0;
@@ -78,6 +147,7 @@ PeriodGrid makePeriodGrid(const TuningSystem& tuning) {
 }
 
 PeriodGrid makeEqualTemperamentGrid(double a4Frequency, double chipClock) {
+    jassert(a4Frequency > 0.0 && chipClock > 0.0);
     PeriodGrid grid;
     for (int note = firstGridNote; note < firstGridNote + numGridNotes; ++note) {
         const double frequency = a4Frequency * std::pow(2.0, (note - 69) / 12.0);
@@ -101,9 +171,22 @@ String getEqualTemperamentLabel(double a4Frequency) {
 }
 
 //==============================================================================
-void PitchHistogram::addFrame(const PsgParamFrameData& frame) {
-    visitFrameNotes(frame,
-                    [this](const PsgFrameNote& note) { ++(note.isEnvelopePitch ? envelope : tone)[note.period]; });
+void PitchHistogram::Builder::addFrame(const PsgParamFrameData& frame) {
+    visitFrameNotes(frame, [this](const PsgFrameNote& note) {
+        jassert(note.period >= 0 && note.period < (1 << 16));
+        ++(note.isEnvelopePitch ? envelope_ : tone_)[static_cast<size_t>(note.period)];
+    });
+}
+
+PitchHistogram PitchHistogram::Builder::build() const {
+    PitchHistogram hist;
+    for (int period = 0; period < static_cast<int>(tone_.size()); ++period) {
+        if (const int frames = tone_[static_cast<size_t>(period)])
+            hist.tone.emplace_hint(hist.tone.end(), period, frames);
+        if (const int frames = envelope_[static_cast<size_t>(period)])
+            hist.envelope.emplace_hint(hist.envelope.end(), period, frames);
+    }
+    return hist;
 }
 
 int PitchHistogram::getTotal() const noexcept {
@@ -115,23 +198,18 @@ int PitchHistogram::getTotal() const noexcept {
     return total;
 }
 
+bool PitchHistogram::isEnvelopeDiscriminating(int period) noexcept {
+    // The window must be narrower than the semitone spacing at this period.
+    static const double semitone = std::pow(2.0, 1.0 / 12.0) - 1.0;
+    return 2.0 * envelopeTolerance < period * semitone;
+}
+
 float PitchHistogram::getShareOnGrid(const PeriodGrid& grid) const {
-    const int total = getTotal();
-    if (total == 0)
-        return 0.0f;
+    return getShareOnPeriods(periodsOf(grid));
+}
 
-    int hits = 0;
-    for (const auto& [period, frames] : tone)
-        if (grid.count(period) > 0)
-            hits += frames;
-
-    for (const auto& [period, frames] : envelope) {
-        // Any grid period within the tolerance window counts.
-        auto it = grid.lower_bound(period - envelopeTolerance);
-        if (it != grid.end() && it->first <= period + envelopeTolerance)
-            hits += frames;
-    }
-    return static_cast<float>(hits) / static_cast<float>(total);
+float PitchHistogram::getShareOnPeriods(const std::vector<int>& ascendingPeriods) const {
+    return FlatHistogram(*this).shareOn(ascendingPeriods);
 }
 
 //==============================================================================
@@ -193,6 +271,9 @@ std::vector<float> makeFoldedPitchHistogram(const PitchHistogram& hist, const Pe
     for (const auto [part, halfBand] :
          {std::pair{&hist.tone, 0.5}, std::pair{&hist.envelope, double(PitchHistogram::envelopeTolerance)}}) {
         for (const auto& [period, frames] : *part) {
+            // A band of an octave or more says nothing about the pitch class.
+            if (12.0 * std::log2((period + halfBand) / (period - halfBand)) >= 12.0)
+                continue;
             double lo = position(period + halfBand), hi = position(period - halfBand);
             if (hi < lo)
                 hi += numBins;
@@ -219,35 +300,51 @@ String TuningDetection::getTableLabel() const {
     return String(tables.front().table.getShortLabel().data());
 }
 
+/** Built-in tables with near-identical grids merged; the later registry entry names a
+    group (PT #3 absorbs PT #0, the same list a semitone away). Data-independent. */
+static const std::vector<BuiltinTuningType>& getCandidateTables() {
+    static const auto candidates = [] {
+        std::vector<BuiltinTuningType> reps;
+        for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i) {
+            const BuiltinTuningType table(i);
+            auto same = std::find_if(reps.begin(), reps.end(), [&](auto rep) {
+                return gridOverlap(getBuiltinPeriodGrid(rep), getBuiltinPeriodGrid(table)) > 0.9f;
+            });
+            if (same != reps.end())
+                *same = table;
+            else
+                reps.push_back(table);
+        }
+        return reps;
+    }();
+    return candidates;
+}
+
 TuningDetection detectTuning(const PitchHistogram& hist) {
     TuningDetection result;
+    result.histogram = hist;
+    result.keys = rankKeys({});
+    result.hasNotes = hist.getTotal() > 0;
+    if (!result.hasNotes)
+        return result;
 
-    // Rank the built-in tables, merging near-identical grids into the later entry.
-    std::vector<BuiltinTuningType> representatives;
-    for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i) {
-        const BuiltinTuningType table(i);
-        bool merged = false;
-        for (auto& rep : representatives) {
-            if (gridOverlap(getBuiltinPeriodGrid(rep), getBuiltinPeriodGrid(table)) > 0.9f) {
-                rep = table;  // later registry entry names the group
-                merged = true;
-                break;
-            }
-        }
-        if (!merged)
-            representatives.push_back(table);
-    }
-    for (auto table : representatives)
-        result.tables.push_back({table, hist.getShareOnGrid(getBuiltinPeriodGrid(table))});
+    const FlatHistogram flat(hist);
+    for (auto table : getCandidateTables())
+        result.tables.push_back({table, flat.shareOn(periodsOf(getBuiltinPeriodGrid(table)))});
     std::stable_sort(
         result.tables.begin(), result.tables.end(), [](const auto& a, const auto& b) { return a.share > b.share; });
 
     // Equal temperament: A4 and A4 * 2^(1/12) give the same period set, so one semitone
-    // around 440 Hz is the whole search space. The plateau of equally good A4 values is
-    // the fit's real precision; its middle is reported.
+    // around 440 Hz is the whole search space. The middle of the plateau of equally good
+    // A4 values is refined at a tenth of a step: the lowest notes move one period unit
+    // per half cent, so the coarse grid can miss their exact value.
     constexpr int steps = 200;
-    auto a4At = [] (double step) { return 440.0 * std::pow(2.0, (step / steps - 0.5) / 12.0); };
-    auto shareAt = [&] (double step) { return hist.getShareOnGrid(makeEqualTemperamentGrid(a4At(step), zxClock)); };
+    auto a4At = [](double step) { return 440.0 * std::pow(2.0, (step / steps - 0.5) / 12.0); };
+    std::vector<int> periods;
+    auto shareAt = [&](double step) {
+        equalTemperamentPeriods(a4At(step), periods);
+        return flat.shareOn(periods);
+    };
     std::vector<std::pair<float, double>> sweep;
     sweep.reserve(steps);
     for (int k = 0; k < steps; ++k)
@@ -257,8 +354,6 @@ TuningDetection detectTuning(const PitchHistogram& hist) {
     for (const auto& [share, step] : sweep)
         if (share >= bestShare - 0.01f)
             plateau.push_back(step);
-    // Refine around the plateau's middle at a tenth of a step: the lowest notes move one
-    // period unit per half cent, so the coarse grid can miss their exact value.
     double bestStep = plateau[plateau.size() / 2];
     float refined = bestShare;
     for (int k = -10; k <= 10; ++k) {
@@ -269,19 +364,17 @@ TuningDetection detectTuning(const PitchHistogram& hist) {
             bestStep = step;
         }
     }
-    result.equalTemperament = { a4At(bestStep), refined };
+    result.equalTemperament = {a4At(bestStep), refined};
 
-    // Choose the grid.
-    const float bestTable = result.tables.empty() ? 0.0f : result.tables.front().share;
-    const float secondTable = result.tables.size() > 1 ? result.tables[1].share : 0.0f;
     // A named table wins a draw: PT #2 is equal temperament at the Pentagon clock, so the
     // fit reaches its share exactly. The fit wins only when it is clearly better.
+    const float bestTable = result.tables.front().share;
+    const float secondTable = result.tables.size() > 1 ? result.tables[1].share : 0.0f;
     if (result.equalTemperament.share > bestTable + TuningDetection::tieGap) {
         result.usesEqualTemperament = true;
-        result.grid = makeEqualTemperamentGrid(result.equalTemperament.a4Frequency, zxClock);
+        result.grid = makeEqualTemperamentGrid(result.equalTemperament.a4Frequency, tuningGridClock);
         result.share = result.equalTemperament.share;
-        result.tableTie = result.share - bestTable < TuningDetection::tieGap;
-    } else if (!result.tables.empty()) {
+    } else {
         result.grid = getBuiltinPeriodGrid(result.tables.front().table);
         result.share = bestTable;
         result.tableTie = bestTable - secondTable < TuningDetection::tieGap;

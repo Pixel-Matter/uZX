@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include <algorithm>
+
 #include "../../formats/psg/PsgFile.h"
 
 using namespace MoTool;
@@ -21,6 +23,8 @@ public:
     }
 
     void runTest() override {
+        runCorpusReport();
+
         beginTest("Every built-in table is detected from its own periods");
         {
             for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i) {
@@ -69,6 +73,33 @@ public:
             expectWithinAbsoluteError(tone.getShareOnGrid(grid), 0.0f, 0.001f);
         }
 
+        beginTest("A histogram without notes detects nothing");
+        {
+            const auto result = detectTuning({});
+            expect(!result.hasNotes);
+            expect(result.tables.empty());
+            expect(result.grid.empty());
+            expect(!result.tableTie && !result.keyTie);
+        }
+
+        beginTest("Envelope pitches whose window spans a semitone are left out of the share");
+        {
+            expect(!PitchHistogram::isEnvelopeDiscriminating(16));   // envelope period 1: 8..24
+            expect(!PitchHistogram::isEnvelopeDiscriminating(256));  // 248..264 is still a semitone
+            expect(PitchHistogram::isEnvelopeDiscriminating(1024));
+            const auto& grid = getBuiltinPeriodGrid(BuiltinTuningType::CustomPT_1_ST);
+            PitchHistogram hist;
+            hist.tone[grid.rbegin()->first] = 10;  // one exact tone hit
+            hist.envelope[16] = 30;                // would match any grid
+            expectWithinAbsoluteError(hist.getShareOnGrid(grid), 1.0f, 0.001f);
+            PitchHistogram onlyAmbiguous;
+            onlyAmbiguous.envelope[16] = 30;
+            expectWithinAbsoluteError(onlyAmbiguous.getShareOnGrid(grid), 0.0f, 0.001f);
+            const auto bins = makeFoldedPitchHistogram(onlyAmbiguous, grid, 5);
+            expect(std::all_of(bins.begin(), bins.end(), [](float b) { return b == 0.0f; }),
+                   "an octave-wide band carries no pitch class");
+        }
+
         beginTest("Key ranking: A minor pitch classes rank A minor first");
         {
             std::array<float, 12> pcs{};
@@ -107,7 +138,7 @@ public:
         beginTest("Corpus fixtures detect the known table and key");
         {
             const auto dir = File(UZX_FIXTURES_DIR).getChildFile("psg");
-            if (! dir.isDirectory()) {
+            if (!dir.isDirectory()) {
                 logMessage("fixtures missing at " + dir.getFullPathName() + ", skipping");
                 return;
             }
@@ -152,6 +183,30 @@ public:
         }
     }
 
+    /** Development report, run only when UZX_TUNING_CORPUS names a folder of PSG files:
+        one tab-separated "TUNING" line per file with the chosen grid, its share, the key,
+        the tie flags and the pitch-class histogram. scripts/validate_tuning_detection.py
+        compares it against PT3 ground truth. */
+    void runCorpusReport() {
+        const auto dirName = SystemStats::getEnvironmentVariable("UZX_TUNING_CORPUS", {});
+        if (dirName.isEmpty())
+            return;
+        beginTest("Corpus report from UZX_TUNING_CORPUS");
+        for (const auto& file : File(dirName).findChildFiles(File::findFiles, false, "*.psg")) {
+            const auto r = detectTuning(histogramOfFile(file));
+            const String grid =
+                r.usesEqualTemperament ? String("12TET") : String(std::string(r.tables.front().table.getEnumName()));
+            StringArray pcs;
+            for (auto pc : r.pitchClasses)
+                pcs.add(String(pc, 4));
+            logMessage("TUNING\t" + file.getFileNameWithoutExtension() + "\t" + grid + "\t"
+                       + String(r.equalTemperament.a4Frequency, 1) + "\t" + String(r.share, 3) + "\t"
+                       + String((int) r.tableTie) + "\t" + String(static_cast<int>(r.getKey().tonic)) + "\t"
+                       + String((int) r.getKey().minor) + "\t" + String((int) r.keyTie) + "\t"
+                       + pcs.joinIntoString(","));
+        }
+    }
+
 private:
     static int sumFrames(const std::map<int, int>& part) {
         int total = 0;
@@ -163,9 +218,9 @@ private:
     /** Accumulates the register stream like PsgList does and feeds every frame in. */
     static PitchHistogram histogramOfFile(const File& file) {
         uZX::PsgFile psg(file);
-        PitchHistogram hist;
+        PitchHistogram::Builder builder;
         if (!psg.ensureRead())
-            return hist;
+            return builder.build();
         // Same two-stage accumulation as PsgList::loadFrom: registers first, so a frame
         // that writes only the fine period byte keeps its coarse byte.
         uZX::PsgRegsFrame regsState;
@@ -176,9 +231,9 @@ private:
             regsState.update(regs);
             params.clear();
             params.update(regsState);
-            hist.addFrame(params);
+            builder.addFrame(params);
         }
-        return hist;
+        return builder.build();
     }
 };
 

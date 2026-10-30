@@ -2,6 +2,7 @@
 
 #include "PsgClipTestHelpers.h"
 #include "TimelineGrid.h"
+#include "TuningPickerComponent.h"
 #include "../common/LookAndFeel.h"
 #include "../../formats/psg/PsgData.h"
 
@@ -439,5 +440,76 @@ public:
 };
 
 static PsgClipPaintingTest psgClipPaintingTest;
+
+//==============================================================================
+/** Lane geometry and level of detail of the Notes view's tuning lanes. */
+class PsgNoteLanesTest : public UnitTest
+{
+public:
+    PsgNoteLanesTest() : UnitTest("PsgNoteLanes", "MoTool") {}
+
+    void runTest() override {
+        const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
+        const auto& grid = getBuiltinPeriodGrid(BuiltinTuningType::CustomPT_1_ST);
+        const auto lanes = makeNoteLanes(grid);
+
+        beginTest("One lane per grid note, lowest first, boundaries between pitch centres");
+        expectEquals(static_cast<int>(lanes.size()), static_cast<int>(grid.size()));
+        for (size_t i = 0; i < lanes.size(); ++i) {
+            const auto& lane = lanes[i];
+            float centre = -1.0f;
+            for (const auto& [period, note] : grid)
+                if (note == lane.note)
+                    centre = toneScale.valueToNormalized(period);
+            expect(lane.lo < centre && centre < lane.hi, "lane " + lane.label + " must contain its note");
+            if (i > 0) {
+                expectGreaterThan(lane.note, lanes[i - 1].note);
+                expectWithinAbsoluteError(lane.lo, lanes[i - 1].hi, 1e-6f);  // lanes tile the axis
+            }
+        }
+        expectEquals(lanes.front().label, getMidiNoteName(lanes.front().note));
+        expect(makeNoteLanes({{100, 60}}).empty(), "a single note has no neighbour to bound it");
+
+        beginTest("Level of detail follows the lane height");
+        auto detail = [](float height) { const auto d = getLaneDetail(height); return std::pair{d.lines, d.labels}; };
+        expect(detail(12.0f) == std::pair{LaneDetail::All, LaneDetail::All});
+        expect(detail(5.0f) == std::pair{LaneDetail::All, LaneDetail::Tonic});
+        expect(detail(0.5f) == std::pair{LaneDetail::Tonic, LaneDetail::None});
+        expect(detail(0.1f) == std::pair{LaneDetail::None, LaneDetail::None});
+    }
+};
+
+static PsgNoteLanesTest psgNoteLanesTest;
+
+//==============================================================================
+/** The tuning picker must never keep a clip alive past its Edit: a clip's destructor
+    reaches into its Edit, so a picker left open while the Player opened another file
+    used to crash when it closed. */
+class TuningPickerLifetimeTest : public UnitTest
+{
+public:
+    TuningPickerLifetimeTest() : UnitTest("TuningPickerLifetime", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+        beginTest("Deleting the Edit deletes the clip under an open picker");
+
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        uZX::PsgData data{{{{uZX::PsgRegType::VolumeA, 12}, {uZX::PsgRegType::TonePeriodFineA, 200}}}, {50.0, 1}};
+        PsgClip* clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                          {{te::TimePosition(), te::TimeDuration::fromSeconds(1.0)}, {}}, "t").get();
+        expect(clip != nullptr);
+        if (clip == nullptr)
+            return;
+        const te::SafeSelectable<PsgClip> weak(clip);
+
+        auto picker = std::make_unique<TuningPickerComponent>(*clip);
+        edit.reset();
+        expect(weak.get() == nullptr, "the picker must not keep the clip alive past its Edit");
+        picker.reset();  // must not touch the deleted clip or Edit
+    }
+};
+
+static TuningPickerLifetimeTest tuningPickerLifetimeTest;
 
 }  // namespace MoTool

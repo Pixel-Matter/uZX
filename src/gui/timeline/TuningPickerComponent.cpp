@@ -1,5 +1,6 @@
 #include "TuningPickerComponent.h"
 
+#include <algorithm>
 #include <array>
 
 #include "../../models/Ids.h"
@@ -63,48 +64,43 @@ private:
 };
 
 //==============================================================================
-TuningPickerComponent::TuningPickerComponent(PsgClip::Ptr clip)
-    : clip_(std::move(clip)), histogram_(clip_->buildPitchHistogram()),
-      histogramView_(std::make_unique<HistogramView>()) {
-    const auto& detection = clip_->getTuningDetection();
-
-    int id = 1;
-    for (const auto& candidate : detection.tables)
-        tableBox_.addItem(String(candidate.table.getShortLabel().data()) + "  "
-                              + String(roundToInt(candidate.share * 100)) + "%",
-                          id++);
-    tableBox_.addItem(getEqualTemperamentLabel(detection.equalTemperament.a4Frequency) + "  "
-                          + String(roundToInt(detection.equalTemperament.share * 100)) + "%",
-                      equalTemperamentItemId);
+TuningPickerComponent::TuningPickerComponent(PsgClip& clip)
+    : clip_(clip), clipState_(clip.state), histogramView_(std::make_unique<HistogramView>()) {
     tableBox_.onChange = [this] {
+        auto* c = clip_.get();
         const int selected = tableBox_.getSelectedId();
+        if (c == nullptr)
+            return;
         if (selected == equalTemperamentItemId)
-            clip_->chooseEqualTemperament(clip_->getTuningDetection().equalTemperament.a4Frequency);
-        else if (selected > 0)
-            clip_->chooseTuningTable(clip_->getTuningDetection().tables[static_cast<size_t>(selected - 1)].table);
+            c->chooseEqualTemperament(listedA4_);
+        else if (selected > 0 && selected <= static_cast<int>(listedTables_.size()))
+            c->chooseTuningTable(listedTables_[static_cast<size_t>(selected - 1)]);
     };
-
-    id = 1;
-    for (const auto& key : detection.keys)
-        keyBox_.addItem(key.getName() + "  " + String(key.correlation, 2), id++);
     keyBox_.onChange = [this] {
+        auto* c = clip_.get();
         const int selected = keyBox_.getSelectedId();
-        if (selected > 0)
-            clip_->chooseKey(clip_->getTuningDetection().keys[static_cast<size_t>(selected - 1)]);
+        if (c != nullptr && selected > 0 && selected <= static_cast<int>(listedKeys_.size()))
+            c->chooseKey(listedKeys_[static_cast<size_t>(selected - 1)]);
     };
-
-    detectedButton_.onClick = [this] { clip_->clearTuningChoice(); };
+    detectedButton_.onClick = [this] {
+        if (auto* c = clip_.get())
+            c->clearTuningChoice();
+    };
 
     for (auto* c : std::initializer_list<Component*>{
              &tableLabel_, &tableBox_, &keyLabel_, &keyBox_, &detectedButton_, histogramView_.get()})
         addAndMakeVisible(c);
 
-    clip_->state.addListener(this);
-    refresh();
+    clip.addSelectableListener(this);
+    clipState_.addListener(this);
+    handleAsyncUpdate();
 }
 
 TuningPickerComponent::~TuningPickerComponent() {
-    clip_->state.removeListener(this);
+    cancelPendingUpdate();
+    clipState_.removeListener(this);
+    if (auto* c = clip_.get())
+        c->removeSelectableListener(this);
 }
 
 void TuningPickerComponent::show(PsgClip& clip) {
@@ -115,10 +111,27 @@ void TuningPickerComponent::show(PsgClip& clip) {
     o.useNativeTitleBar = true;
     o.resizable = true;
     o.useBottomRightCornerResizer = true;
-    auto* content = new TuningPickerComponent(PsgClip::Ptr(&clip));
+    auto* content = new TuningPickerComponent(clip);
     content->setSize(560, 340);
     o.content.setOwned(content);
     o.launchAsync();
+}
+
+void TuningPickerComponent::selectableObjectAboutToBeDeleted(te::Selectable*) {
+    // The clip is going (its Edit may be going too): drop everything that refers to it
+    // now, and close the window once this call has returned.
+    cancelPendingUpdate();
+    clipState_.removeListener(this);
+    clip_ = nullptr;
+    MessageManager::callAsync([safeThis = Component::SafePointer<TuningPickerComponent>(this)] {
+        if (safeThis != nullptr)
+            safeThis->close();
+    });
+}
+
+void TuningPickerComponent::close() {
+    if (auto* window = findParentComponentOfClass<DialogWindow>())
+        window->exitModalState(0);  // launchAsync windows delete themselves on exit
 }
 
 void TuningPickerComponent::resized() {
@@ -135,39 +148,81 @@ void TuningPickerComponent::resized() {
     histogramView_->setBounds(area);
 }
 
-void TuningPickerComponent::refresh() {
-    const auto& detection = clip_->getTuningDetection();
-    const auto tuning = clip_->getTuning();
+void TuningPickerComponent::handleAsyncUpdate() {
+    auto* c = clip_.get();
+    if (c == nullptr)
+        return;
+    if (listedDataVersion_ != c->getPsg().getDataVersion())
+        rebuildLists(*c);
+    refresh();
+}
 
-    // Reflect the state without re-triggering the onChange handlers.
-    if (clip_->state.hasProperty(IDs::clipTuningA4) || (!tuning.tableChosen && detection.usesEqualTemperament)) {
+void TuningPickerComponent::rebuildLists(const PsgClip& clip) {
+    const auto& detection = clip.getTuningDetection();
+    listedDataVersion_ = clip.getPsg().getDataVersion();
+
+    // Detection ranks one table per group of near-identical grids. The tables it merged
+    // away (PT #0, a semitone from PT #3) are listed after, so a tune written for them
+    // can still be named right.
+    std::vector<TuningCandidate> candidates = detection.tables;
+    for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i) {
+        const BuiltinTuningType table(i);
+        if (std::none_of(candidates.begin(), candidates.end(), [&](const auto& c) { return c.table == table; }))
+            candidates.push_back({table, detection.histogram.getShareOnGrid(getBuiltinPeriodGrid(table))});
+    }
+    listedTables_.clear();
+    tableBox_.clear(dontSendNotification);
+    for (const auto& candidate : candidates) {
+        listedTables_.push_back(candidate.table);
+        tableBox_.addItem(String(candidate.table.getShortLabel().data()) + "  "
+                              + String(roundToInt(candidate.share * 100)) + "%",
+                          static_cast<int>(listedTables_.size()));
+    }
+    listedA4_ = detection.equalTemperament.a4Frequency;
+    tableBox_.addItem(getEqualTemperamentLabel(listedA4_) + "  "
+                          + String(roundToInt(detection.equalTemperament.share * 100)) + "%",
+                      equalTemperamentItemId);
+
+    listedKeys_ = detection.keys;
+    keyBox_.clear(dontSendNotification);
+    for (size_t i = 0; i < listedKeys_.size(); ++i)
+        keyBox_.addItem(listedKeys_[i].getName() + "  " + String(listedKeys_[i].correlation, 2),
+                        static_cast<int>(i) + 1);
+}
+
+void TuningPickerComponent::refresh() {
+    auto* c = clip_.get();
+    if (c == nullptr)
+        return;
+    const auto& detection = c->getTuningDetection();
+    const auto& tuning = c->getTuning();
+
+    // Select the table in effect. A chosen 12TET keeps its own A4, which may differ from
+    // the current fit, so its item shows that A4.
+    if (tuning.isEqualTemperament) {
+        tableBox_.changeItemText(equalTemperamentItemId,
+                                 tuning.tableChosen
+                                     ? tuning.tableLabel
+                                     : getEqualTemperamentLabel(listedA4_) + "  "
+                                           + String(roundToInt(detection.equalTemperament.share * 100)) + "%");
         tableBox_.setSelectedId(equalTemperamentItemId, dontSendNotification);
-    } else {
-        const auto chosen = tuning.tableChosen
-                                ? juce::VariantConverter<BuiltinTuningType>::fromVar(clip_->state[IDs::clipTuningTable])
-                                : detection.tables.front().table;
-        for (size_t i = 0; i < detection.tables.size(); ++i)
-            if (detection.tables[i].table == chosen)
+    } else if (tuning.table) {
+        for (size_t i = 0; i < listedTables_.size(); ++i)
+            if (listedTables_[i] == *tuning.table)
                 tableBox_.setSelectedId(static_cast<int>(i) + 1, dontSendNotification);
     }
-    for (size_t i = 0; i < detection.keys.size(); ++i)
-        if (detection.keys[i].tonic == tuning.key.tonic && detection.keys[i].minor == tuning.key.minor)
+    for (size_t i = 0; i < listedKeys_.size(); ++i)
+        if (tuning.hasKey && listedKeys_[i].tonic == tuning.key.tonic && listedKeys_[i].minor == tuning.key.minor)
             keyBox_.setSelectedId(static_cast<int>(i) + 1, dontSendNotification);
 
     detectedButton_.setEnabled(tuning.tableChosen || tuning.keyChosen);
     const Scale scale(tuning.key.getScaleType());
-    const int tonic = static_cast<int>(tuning.key.tonic);
+    const int tonic = tuning.hasKey ? static_cast<int>(tuning.key.tonic) : -1;
     std::array<bool, 12> inKey{};
-    for (int pc = 0; pc < 12; ++pc)
+    for (int pc = 0; pc < 12 && tonic >= 0; ++pc)
         inKey[static_cast<size_t>(pc)] = scale.isIntervalInScale((pc - tonic + 12) % 12);
     histogramView_->set(
-        makeFoldedPitchHistogram(histogram_, tuning.grid, HistogramView::binsPerSemitone), tonic, inKey);
-}
-
-void TuningPickerComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
-    if (property == IDs::clipTuningTable || property == IDs::clipTuningA4 || property == IDs::clipKeyTonic
-        || property == IDs::clipKeyMinor)
-        refresh();
+        makeFoldedPitchHistogram(detection.histogram, tuning.grid, HistogramView::binsPerSemitone), tonic, inKey);
 }
 
 }  // namespace MoTool

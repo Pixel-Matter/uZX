@@ -38,6 +38,8 @@ public:
     static AppController& getAppController();
     static ArrangerController& getArrangerController();
     static PlayerController& getPlayerController();
+    /** The Player's controller in the Player, Studio's otherwise. */
+    static BaseController& getActiveController();
 
     static ApplicationCommandManager& getCommandManager() {
         return getAppController().getCommandManager();

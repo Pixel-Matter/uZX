@@ -119,8 +119,10 @@ static Optional<PsgRegsFrame> readNextFrame(const uint8*& data, size_t& remainin
             const auto val = tryRead<uint8>(data, remaining);
             if (!val.hasValue())
                 return {};
-            currentFrame.registers[reg] = *val;
-            currentFrame.mask[reg] = true;
+            if (reg < PsgRegsFrame::size()) {  // R14/R15 are I/O ports, not sound
+                currentFrame.registers[reg] = *val;
+                currentFrame.mask[reg] = true;
+            }
         } else {
             // not a register, rewind
             data -= 1;
@@ -147,9 +149,13 @@ public:
         return file_;
     }
 
-    void ensureRead() {
+    /** Reads the file once. Returns false if it holds nothing playable: missing, not a
+        PSG file, or no frames. A damaged tail (e.g. a 0xFD end marker) is dropped and the
+        frames before it are kept, so read() failing alone doesn't make a file unreadable. */
+    bool ensureRead() {
         if (psgData_.isEmpty())
             read();
+        return ! psgData_.isEmpty();
     }
 
     PsgData& getData() noexcept {

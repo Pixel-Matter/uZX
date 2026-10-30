@@ -73,8 +73,8 @@ See [Releases](https://github.com/Pixel-Matter/uZX/releases) for pre-built binar
 If you encounter a quarantine warning when opening the app, clear it with:
 
 ```bash
-xattr -rd com.apple.quarantine /Applications/µZX\ Player.app
-xattr -rd com.apple.quarantine /Applications/µZX\ Studio.app
+xattr -rd com.apple.quarantine /Applications/μZX\ Player.app
+xattr -rd com.apple.quarantine /Applications/μZX\ Studio.app
 ```
 
 (Replace app paths as needed. Adjust for your installation location, e.g., `~/Applications/` if installed there.)

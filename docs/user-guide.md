@@ -2,6 +2,8 @@
 
 µZX is a suite of applications for working with PSG chip music (AY-3-8910 / YM2149), targeting ZX Spectrum demoscene production.
 
+The screenshots show the macOS build using the [Guide melody example](examples/Guide%20melody.uzx).
+
 ---
 
 ## Applications
@@ -31,6 +33,12 @@ A minimal player for listening to PSG chip music files.
 
 Located at the top of the window.
 
+<!-- guide-figure:player-overview -->
+![Player transport and timeline](images/user-guide/player-overview.png)
+
+The transport sits above the timeline; the AY controls are on the right.
+<!-- /guide-figure:player-overview -->
+
 | Control | Description |
 |---------|-------------|
 | Rewind (⏮) | Jump to the beginning |
@@ -39,21 +47,13 @@ Located at the top of the window.
 | BPM control | Tempo in BPM (inc/dec buttons or direct entry) |
 | Master volume knob | Global output level |
 
-**Keyboard shortcuts:**
-
-| Key | Action |
-|-----|--------|
-| `Space` | Play / Pause |
-| `Home` | Rewind to start |
-| `Cmd+O` / `Ctrl+O` | Open file |
-| `Cmd+Q` / `Ctrl+Q` | Quit |
-| `Shift+Wheel` | Horizontal scroll |
+For keys, see [Keyboard and Mouse](#keyboard-and-mouse).
 
 ### Timeline
 
-The timeline shows the loaded file as a clip on a track. Click anywhere on the ruler or timeline to seek to that position.
+The timeline shows the loaded file as a clip on a track. Click anywhere on the ruler or timeline to seek to that position, or drag the playhead line to scrub.
 
-Scroll horizontally with `Shift+Wheel` or the scrollbar.
+Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
 
 ### AY Side Panel
 
@@ -65,6 +65,12 @@ A panel on the right side of the window shows the AY chip plugin controls for th
 
 If no track is selected the panel shows "No AY plugin".
 
+<!-- guide-figure:player-ay-panel -->
+![Player AY side panel](images/user-guide/player-ay-panel.png)
+
+Chip type and clock, stereo controls, and the three channel strips.
+<!-- /guide-figure:player-ay-panel -->
+
 ---
 
 ## µZX Studio
@@ -73,18 +79,11 @@ A DAW-style editor for composing PSG chip music.
 
 ### Layout
 
-```
-+---------------------------------------------+
-|              Transport Bar                   |
-+-------------+-------------------------------+
-| Track       |   Timeline / Clip Area        |
-| Headers     |                               |
-|             |   [PSG Clip] [PSG Clip] ...   |
-|             |                               |
-+-------------+-------------------------------+
-|         Details Panel (tabbed)              |
-+---------------------------------------------+
-```
+<!-- guide-figure:studio-layout -->
+![Studio layout with a selected PSG clip](images/user-guide/studio-layout.png)
+
+Track headers are on the left, clips above, and the selected clip's parameter editor below.
+<!-- /guide-figure:studio-layout -->
 
 ### Transport Bar
 
@@ -105,7 +104,7 @@ The timeline contains **tracks** stacked vertically. Each track has a **header**
 
 | Control | Description |
 |---------|-------------|
-| Track name | Displays the track name; click to rename |
+| Track name | Displays the track name; double-click to rename |
 | R (Arm) | Arm track for recording |
 | M (Mute) | Mute track output |
 | S (Solo) | Solo this track (mutes all others) |
@@ -115,6 +114,8 @@ The timeline contains **tracks** stacked vertically. Each track has a **header**
 
 Clips appear in the track body as colored blocks. PSG clips visualize chip register activity as miniature graphics inside each block.
 
+See [Reading PSG clips](psg-visualization.md) for an illustrated reference to tone, envelope, noise, channel ownership, and matching pitches.
+
 Click a clip to select it. The Details Panel updates to show clip-specific editors.
 
 #### Ruler
@@ -123,9 +124,8 @@ A time ruler runs along the top of the timeline. The display format switches bet
 
 #### Zoom and Scroll
 
-- **Scroll wheel** — vertical scroll
-- **Shift + Scroll wheel** — horizontal scroll
-- **Pinch gesture** — zoom in/out (trackpad)
+- **Wheel** over the tracks — scroll tracks vertically when they don't fit
+- Horizontal scroll and zoom work as in the Player — see [Keyboard and Mouse](#keyboard-and-mouse).
 - Drag the resizable edge on the track header area to resize the header column.
 - Drag the bottom edge of a track row to resize track height.
 
@@ -141,9 +141,21 @@ When a PSG clip is selected, the parameter editor appears. It shows an automatio
 - **Curve area** — shows the value of the parameter across the clip duration. Click to add points; drag points to edit.
 - The curve aligns with the timeline grid.
 
+<!-- guide-figure:studio-psg-editor -->
+![PSG parameter editor](images/user-guide/studio-psg-editor.png)
+
+Choose a register parameter in the list to inspect its values against the timeline grid.
+<!-- /guide-figure:studio-psg-editor -->
+
 #### Track Devices / Plugins
 
 When a track is selected, the Devices panel shows the plugin chain on that track (e.g., the AY chip instrument plugin). Click **+** between device slots to insert a new plugin.
+
+<!-- guide-figure:studio-devices -->
+![Studio track device chain](images/user-guide/studio-devices.png)
+
+Selecting the track reveals its devices, including the AY chip emulator.
+<!-- /guide-figure:studio-devices -->
 
 ---
 
@@ -153,19 +165,13 @@ A standalone editor for generating and previewing AY chip tuning tables.
 
 ### Layout
 
-```
-+-------------------+-------------------------------+
-| Controls          |   Tuning Grid                 |
-|                   |                               |
-| Tuning table list |   (note → period mapping)     |
-| Chip clock        |                               |
-| A4 frequency      |                               |
-| Reference tuning  |                               |
-| Key / Scale       |                               |
-| Play controls     |                               |
-| [Export]          |                               |
-+-------------------+-------------------------------+
-```
+The Tuning window is also available from **Settings → Tuning Tables** in Studio.
+
+<!-- guide-figure:tuning-layout -->
+![Tuning tables, controls, and note grid](images/user-guide/tuning-layout.png)
+
+Choose a table on the left; pitch and preview controls sit above the note grid, with CSV export below.
+<!-- /guide-figure:tuning-layout -->
 
 ### Controls
 
@@ -217,13 +223,64 @@ Click a cell in the tuning grid to hear the corresponding note.
 
 #### Export Button
 
-Exports the current tuning table as an assembly include file (`.asm`/`.inc`) with period values for all notes. The output is ready to include in ZX Spectrum or other target machine source code.
+Click **Export to CSV** to save the current tuning table as a `.csv` file for use in a spreadsheet or further conversion.
 
 ### Tuning Grid
 
 The main grid displays the computed AY period register values for each note across multiple octaves. Columns are notes, rows are octaves. The cell color indicates the tuning error relative to the ideal frequency (cents deviation).
 
 Click a cell to preview the note through the AY emulator using the current play control settings.
+
+---
+
+## Keyboard and Mouse
+
+`Cmd` is `Ctrl` on Windows and Linux. Keys are ignored while a text field is being edited.
+
+### Keyboard
+
+| Key | Action | Apps |
+|-----|--------|------|
+| `Space` | Play / Pause | Player, Studio |
+| `Home` or `Cmd+Left` | Rewind to start | Player, Studio |
+| `End` or `Cmd+Right` | Jump to end | Player, Studio |
+| `Cmd+L` | Loop the whole project on / off | Player, Studio |
+| `=` | Zoom in around the playhead | Player, Studio |
+| `-` | Zoom out around the playhead | Player, Studio |
+| `Shift+Z` | Zoom to fit the project | Player, Studio |
+| `Z` | Zoom to selection | Studio |
+| `Cmd+O` | Open file | Player, Studio |
+| `Cmd+I` | Import PSG — Studio adds it as a clip; Player asks whether to add a new track or open a new edit | Player, Studio |
+| `Cmd+N` | New edit | Studio |
+| `Cmd+S` | Save | Studio |
+| `Cmd+Shift+S` | Save As | Studio |
+| `Cmd+Z` / `Cmd+Shift+Z` | Undo / Redo | Studio |
+| `Delete` or `Backspace` | Delete the selected clip, track, or device | Studio |
+| `Cmd+T` | Add track | Studio |
+| `Cmd+Shift+T` | Open Tuning Tables | Studio |
+| `Cmd+,` | Audio/MIDI settings | Player, Studio |
+| `Esc` | Close the Settings, Plugins, or About window | Player, Studio |
+| `Cmd+Q` | Quit | Player, Studio |
+
+### Mouse and trackpad (timeline)
+
+| Gesture | Where | Action |
+|---------|-------|--------|
+| Click | Ruler or tracks | Move the playhead (snaps to the grid when **View → Snap Playhead to Grid** is on) |
+| Drag the playhead line | Ruler or tracks | Scrub; hold past either edge to scroll |
+| Wheel or swipe | Ruler or scrollbar | Scroll horizontally |
+| Wheel or swipe | Tracks (Player) | Scroll horizontally |
+| Sideways swipe | Tracks | Scroll horizontally |
+| Drag | Ruler | Sideways scrolls, up/down zooms (down zooms out) |
+| Middle-drag | Tracks | Same as dragging the ruler |
+| `Shift+Wheel` | Ruler or tracks | Scroll horizontally |
+| Drag | Scrollbar under the tracks | Scroll horizontally |
+| `Cmd+Wheel` | Ruler, tracks or scrollbar | Zoom around the mouse pointer, or around the playhead while it is followed |
+| Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
+| Wheel | Tracks (Studio) | Scroll tracks vertically |
+| Right-click | Ruler | Zoom, timecode format, and snap options |
+| Right-click | PSG clip | Notes / Registers view, hex values on hover |
+| Double-click | Track name (Studio) | Rename |
 
 ---
 

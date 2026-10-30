@@ -54,25 +54,21 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
                 }
             }
 
-            if (editViewState.showWaveDevices) {
-                int id = 1;
-                for (auto instance : at->edit.getAllInputDevices()) {
-                    if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice) {
-                        bool ticked = instance->getTargets().contains(at->itemID);
-                        m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
-                    }
+            int id = 1;
+            for (auto instance : at->edit.getAllInputDevices()) {
+                if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice) {
+                    bool ticked = instance->getTargets().contains(at->itemID);
+                    m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
                 }
             }
 
-            if (editViewState.showMidiDevices) {
-                m.addSeparator();
+            m.addSeparator();
 
-                int id = 100;
-                for (auto instance : at->edit.getAllInputDevices()) {
-                    if (instance->getInputDevice().isMidi()) {
-                        bool ticked = instance->getTargets().contains(at->itemID);
-                        m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
-                    }
+            id = 100;
+            for (auto instance : at->edit.getAllInputDevices()) {
+                if (instance->getInputDevice().isMidi()) {
+                    bool ticked = instance->getTargets().contains(at->itemID);
+                    m.addItem(id++, instance->getInputDevice().getName(), true, ticked);
                 }
             }
 
@@ -243,7 +239,6 @@ TrackBodyComponent::TrackBodyComponent(EditViewState& evs, TimelineGrid& g, te::
     , grid(g)
 {
     track->state.addListener(this);
-    editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
     grid.addListener(this);
 
@@ -259,7 +254,6 @@ TrackBodyComponent::~TrackBodyComponent() {
     track->state.removeListener(this);
     track->edit.getTransport().removeChangeListener(this);
     editViewState.selectionManager.removeChangeListener(this);
-    editViewState.state.removeListener(this);
     editViewState.zoom.removeListener(this);
     grid.removeListener(this);
 }
@@ -274,10 +268,35 @@ void TrackBodyComponent::paint(Graphics& g) {
     MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, getLocalBounds(), ticks);
 }
 
+void TrackBodyComponent::paintOverChildren(Graphics& g) {
+    const auto ticks = grid.getTicks();
+
+    auto drawClipGrid = [&] (const Component& clipComponent) {
+        const auto clipBounds = clipComponent.getBounds().getIntersection(getLocalBounds());
+        if (clipBounds.isEmpty())
+            return;
+
+        for (const auto& tick : ticks) {
+            if (tick.level >= Colors::Timeline::trackGridTickColors.size() || ! clipBounds.contains(tick.x, clipBounds.getY()))
+                continue;
+
+            g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
+            g.drawVerticalLine(tick.x, (float) clipBounds.getY(), (float) clipBounds.getBottom());
+        }
+    };
+
+    for (auto* clip : clips)
+        drawClipGrid(*clip);
+
+    if (recordingClip != nullptr)
+        drawClipGrid(*recordingClip);
+}
+
 void TrackBodyComponent::mouseDown(const MouseEvent& e) {
+    if (e.mods.isMiddleButtonDown())
+        return;  // view navigation, see EditComponent
     editViewState.selectionManager.selectOnly(track.get());
-    auto pos = editViewState.zoom.xToTime(e.x);
-    track->edit.getTransport().setPosition(pos);
+    track->edit.getTransport().setPosition(grid.playheadTimeAtX(e.x));
 }
 
 void TrackBodyComponent::changeListenerCallback(ChangeBroadcaster* source) {
@@ -293,14 +312,10 @@ void TrackBodyComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce
         if (i == te::IDs::start || i == te::IDs::length) {
             markAndUpdate(updatePositions);
         }
-    } else if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::drawWaveforms) {
-            repaint();
-        }
     }
 }
 
-void TrackBodyComponent::zoomChanged() {
+void TrackBodyComponent::viewRangeChanged() {
     markAndUpdate(updateZoom);
 }
 
@@ -362,13 +377,13 @@ void TrackBodyComponent::buildClips() {
             ClipComponent* cc = nullptr;
 
             if (dynamic_cast<te::WaveAudioClip*>(c))
-                cc = new AudioClipComponent(editViewState, c);
+                cc = new AudioClipComponent(editViewState, grid, c);
             else if (dynamic_cast<PsgClip*>(c))  // must go before MidiClip
-                cc = new PsgClipComponent(editViewState, c);
+                cc = new PsgClipComponent(editViewState, grid, c);
             else if (dynamic_cast<te::MidiClip*>(c))
-                cc = new MidiClipComponent(editViewState, c);
+                cc = new MidiClipComponent(editViewState, grid, c);
             else
-                cc = new ClipComponent(editViewState, c);
+                cc = new ClipComponent(editViewState, grid, c);
 
             clips.add(cc);
             addAndMakeVisible(cc);
@@ -407,7 +422,7 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Tr
     , body(evs, g, t)
     , editViewState(evs)
     , track(t)
-    , trackViewState(t->state, &editViewState.edit.getUndoManager())
+    , trackViewState(t->state)
     , resizer(this, &trackViewState.getConstrainer(), ResizableEdgeComponent::Edge::bottomEdge)
 {
     addAndMakeVisible(header);
@@ -460,8 +475,8 @@ TrackHeaderOverlayComponent::TrackHeaderOverlayComponent(EditViewState& evs)
 
     editViewState.state.addListener(this);
     setSize(editViewState.getTrackHeaderWidth(), getHeight());
-    constrainer.setMinimumWidth(110);
-    constrainer.setMaximumWidth(300);
+    constrainer.setMinimumWidth(EditViewState::minHeadersWidth);
+    constrainer.setMaximumWidth(EditViewState::maxHeadersWidth);
     addAndMakeVisible(resizer);
 }
 
@@ -473,7 +488,8 @@ void TrackHeaderOverlayComponent::paint(Graphics&) {
 }
 
 void TrackHeaderOverlayComponent::resized() {
-    editViewState.headersWidth = getWidth();
+    if (editViewState.showHeaders)  // hidden headers are 0 wide: keep the width Studio uses
+        editViewState.headersWidth = getWidth();
     auto bounds = getLocalBounds();
     resizer.setBounds(bounds.removeFromRight(2));
 }
@@ -494,7 +510,6 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
 {
     edit.state.addListener(this);
     editViewState.selectionManager.addChangeListener(this);
-    editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
     grid.addListener(this);
 
@@ -507,20 +522,19 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
 
 TracksContainerComponent::~TracksContainerComponent() {
     editViewState.zoom.removeListener(this);
-    editViewState.state.removeListener(this);
     editViewState.selectionManager.removeChangeListener(this);
     edit.state.removeListener(this);
     grid.removeListener(this);
 }
 
 void TracksContainerComponent::mouseDown(const MouseEvent& e) {
+    if (e.mods.isMiddleButtonDown())
+        return;  // view navigation, see EditComponent
     editViewState.selectionManager.deselectAll();
 
     auto x = e.x - gridRect.getX();
-    if (x >= 0 && x < gridRect.getWidth()) {
-        auto pos = editViewState.zoom.xToTime(x);
-        edit.getTransport().setPosition(pos);
-    }
+    if (x >= 0 && x < gridRect.getWidth())
+        edit.getTransport().setPosition(grid.playheadTimeAtX(x));
 }
 
 void TracksContainerComponent::setAutoFitTrackHeights(bool enabled) {
@@ -535,7 +549,7 @@ int TracksContainerComponent::getIdealHeight() const {
 
 void TracksContainerComponent::resized() {
     // also get called on updated zoom
-    const auto headerWidth = trackHeaderOverlay.getWidth();
+    const auto headerWidth = editViewState.getTrackHeaderWidth();
     auto r = getLocalBounds();
     setSize(r.getWidth(), getHeight());
     r = getLocalBounds();
@@ -613,14 +627,6 @@ void TracksContainerComponent::paint(Graphics& g) {
     MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, gridRect, ticks);
 }
 
-void TracksContainerComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& i) {
-    if (v.hasType(IDs::EDITVIEWSTATE)) {
-        if (i == IDs::showHeaders) {
-            markAndUpdate(needsResize);
-        }
-    }
-}
-
 void TracksContainerComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {
     if (te::TrackList::isTrack(c))
         markAndUpdate(updateTracks);
@@ -638,7 +644,7 @@ void TracksContainerComponent::valueTreeChildOrderChanged(juce::ValueTree& v, in
         markAndUpdate(updateTracks);
 }
 
-void TracksContainerComponent::zoomChanged() {
+void TracksContainerComponent::viewRangeChanged() {
     markAndUpdate(needsRepaint);
 }
 
@@ -663,26 +669,13 @@ void TracksContainerComponent::buildTracks() {
     trackRows.clear();
 
     for (auto t : getAllTracks(edit)) {
-        TrackRowComponent* c = nullptr;
-        bool show = true;
-        if (t->isMasterTrack()) {
-            show = editViewState.showMasterTrack;
-        } else if (t->isTempoTrack()) {
-            show = editViewState.showGlobalTrack;
-        } else if (t->isMarkerTrack()) {
-            show = editViewState.showMarkerTrack;
-        } else if (t->isChordTrack()) {
-            show = editViewState.showChordTrack;
-        } else if (t->isArrangerTrack()) {
-            show = editViewState.showArrangerTrack;
-        }
+        if (t->isMasterTrack() || t->isTempoTrack() || t->isMarkerTrack() || t->isChordTrack() || t->isArrangerTrack())
+            continue;  // only the content tracks are shown
 
-        if (show) {
-            c = new TrackRowComponent(editViewState, grid, t);
-            trackRows.add(c);
-            c->addComponentListener(this);
-            addAndMakeVisible(c);
-        }
+        auto* c = new TrackRowComponent(editViewState, grid, t);
+        trackRows.add(c);
+        c->addComponentListener(this);
+        addAndMakeVisible(c);
     }
 
     if (autoFitTrackHeights_) {

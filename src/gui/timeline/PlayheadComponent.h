@@ -6,11 +6,13 @@
 
 namespace MoTool {
 
+class TimelineGrid;
+
 //==============================================================================
 class PlayheadComponent : public Component,
                           private ZoomViewState::Listener {
 public:
-    PlayheadComponent(te::Edit&, EditViewState&);
+    PlayheadComponent(te::Edit&, EditViewState&, TimelineGrid&);
     ~PlayheadComponent() override;
 
     void paint(Graphics& g) override;
@@ -20,15 +22,18 @@ public:
     void mouseDown(const MouseEvent&) override;
     void mouseUp(const MouseEvent&) override;
     void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override;
+    void mouseMagnify(const MouseEvent&, float scale) override;
 
 private:
-    void zoomChanged() override;
-    void zoomOrPosChanged() override;
+    void viewRangeChanged() override;
+    void playheadMoved() override;
 
     void checkRepaint();
+    Component* getSiblingUnder(const MouseEvent&) const;
 
     te::Edit& edit;
     EditViewState& editViewState;
+    TimelineGrid& grid;
 
     int xPosition = 0;
     // bool firstTimer = true;

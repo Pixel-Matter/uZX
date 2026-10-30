@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
+<defs><clipPath id="c"><path d="M0 2.5Q0 2 0.5 2L10.5 2Q11 2 11.354 2.354L15.788 6.788Q16 7 16 7.3L16 8.7Q16 9 15.788 9.212L11.354 13.646Q11 14 10.5 14L0.5 14Q0 14 0 13.5Z"></path></clipPath><clipPath id="c2"><path d="M0 2.5Q0 2 0.5 2L10.5 2Q11 2 11.354 2.354L15.788 6.788Q16 7 16 7.3L16 8.7Q16 9 15.788 9.212L11.354 13.646Q11 14 10.5 14L0.5 14Q0 14 0 13.5Z" transform="translate(0 -1)"></path></clipPath></defs>
+<g clip-path="url(#c)" shape-rendering="geometricPrecision">
+  <rect width="16" height="16" fill="#009664"></rect><rect width="5" height="16" fill="#293444"></rect>
+  <g clip-path="url(#c2)"><rect width="16" height="16" fill="#00BC7D"></rect><rect width="5" height="16" fill="#334155"></rect></g>
+</g>
+<path fill="#FFFFFF" d="M1 6h1v5h-1ZM3 6h1v4h-1ZM2 9h1v1h-1Z"></path>
+<path fill="#020617" d="M5 5h3v1h-3ZM7 6h1v1h-1ZM6 7h1v1h-1ZM5 8h1v1h-1ZM5 9h3v1h-3ZM9 5h1v1h-1ZM12 5h2v1h-2ZM10 6h1v1h-1ZM12 6h1v1h-1ZM11 7h1v1h-1ZM10 8h1v1h-1ZM12 8h1v1h-1ZM9 9h2v1h-2ZM13 9h1v1h-1Z"></path>
+</svg>

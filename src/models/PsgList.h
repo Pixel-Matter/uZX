@@ -17,15 +17,33 @@ class PsgClip;
 
 class PsgParamFrame {
 public:
-    static juce::ValueTree createPsgFrameValueTree(te::BeatPosition, const PsgParamFrameData& data);
-    static juce::ValueTree createPsgFrame(const PsgParamFrame&, te::BeatPosition);
+    static juce::ValueTree createPsgFrameValueTree(int frameIndex, const PsgParamFrameData& data);
 
     PsgParamFrame(const juce::ValueTree&);
     PsgParamFrame(PsgParamFrame&&) = default;
 
     //==============================================================================
-    te::BeatPosition getBeatPosition() const noexcept                         { return beatNumber; }
-    void setBeatPosition (te::BeatPosition, juce::UndoManager*);
+    /** Canonical machine-frame index — the tempo-independent timestamp and single
+        source of truth. -1 means the frame predates the frame-index model and still
+        needs one-time migration from a legacy beat value. */
+    int getFrameIndex() const noexcept                                        { return frameIndex; }
+    bool hasFrameIndex() const noexcept                                       { return frameIndex >= 0; }
+    void setFrameIndex(int, juce::UndoManager*);
+
+    /** Back-fills the frame index for a legacy beat-only frame by inverting its
+        current beat through the tempo map at the given frame rate. No-op if the
+        frame already has an index. */
+    void migrateFrameIndexFromBeat(const PsgClip&, double frameRate, juce::UndoManager*);
+    void removeLegacyBeatProperty(juce::UndoManager*);
+
+    /** Frame position converted to beat space. This is derived on demand from the
+        owning list's frames-per-beat metadata; PSG frame events are not stored in
+        beat space. */
+    te::BeatPosition getFrameBeatPosition(const PsgClip&) const;
+
+    /** Raw edit position, ignoring quantising/groove. */
+    te::BeatPosition getRawEditBeats(const PsgClip&) const;
+    te::TimePosition getRawEditTime(const PsgClip&) const;
 
     /** This takes into account quantising, groove templates, clip offset, etc */
     te::BeatPosition getEditBeats(const PsgClip&) const;
@@ -52,7 +70,7 @@ private:
     //==============================================================================
     friend class PsgList;
 
-    te::BeatPosition beatNumber;
+    int frameIndex = -1;
     PsgParamFrameData data;
 
     void updatePropertiesFromState() noexcept;
@@ -102,6 +120,28 @@ public:
     int getDataVersion() const noexcept                             { return dataVersion_; }
 
     //==============================================================================
+    /** Source machine frame rate (Hz) the frame indices came from. 0 if unknown
+        (legacy data loaded before the frame-index model). */
+    double getFrameRate() const noexcept;
+    void setFrameRate(double, juce::UndoManager*);
+
+    /** Dense PSG source frames that fall on one musical beat. This controls the
+        current PSG tempo without touching per-frame integer indices. */
+    double getFramesPerBeat() const noexcept;
+    void setFramesPerBeat(double, juce::UndoManager*);
+
+    /** Current effective PSG frame rate at this clip's start: framesPerBeat divided
+        by the current beat length. */
+    double getEffectiveFps(const PsgClip&) const;
+    bool hasFpsMismatch(const PsgClip&, double editFps) const;
+
+    /** One-time upgrade for legacy lists that have frames but no frame rate:
+        adopts the given frame rate and back-fills every frame's index from its
+        stored beat, so old data gains tempo-stable PSG timing. Any legacy beat
+        property is removed after migration. */
+    void migrateToFrameIndicesIfNeeded(const PsgClip&, double frameRate, juce::UndoManager*);
+
+    //==============================================================================
     bool isAttachedToClip() const noexcept                          { return ! state.getParent().hasType(te::IDs::NA); }
 
     //==============================================================================
@@ -122,48 +162,19 @@ public:
     bool isEmpty() const noexcept                                   { return state.getNumChildren() == 0; }
 
     void clear(juce::UndoManager* = nullptr);
-    void trimOutside(te::BeatPosition firstBeat, te::BeatPosition lastBeat, juce::UndoManager*);
-    void moveAllBeatPositions(te::BeatDuration deltaBeats, juce::UndoManager*);
-    void rescale(double factor, juce::UndoManager*);
 
     //==============================================================================
     int getNumFrames() const                                        { return getFrames().size(); }
 
-    /** Beat number of first event in the list */
-    te::BeatPosition getFirstBeatNumber() const;
-
-    /** Beat number of last event in the list */
-    te::BeatPosition getLastBeatNumber() const;
-
     PsgParamFrame* getFrame(int index) const                  { return getFrames()[index]; }
-    const PsgParamFrame* getFrameAt(te::BeatPosition beat) const;
-    PsgParamFrame* getParamEventAt(te::BeatPosition, PsgParamType paramType) const;
+    const PsgParamFrame* getFrameAtIndex(int frameIndex) const;
 
     PsgParamFrame* addFrameEvent(const PsgParamFrame&, juce::UndoManager*);
-    PsgParamFrame* addFrameEvent(te::BeatPosition, const PsgParamFrameData&, juce::UndoManager*);
-    PsgParamFrame* addFrameEvent(te::BeatPosition, const uZX::PsgRegsFrame&, juce::UndoManager*);
+    PsgParamFrame* addFrameEvent(int frameIndex, const PsgParamFrameData&, juce::UndoManager*);
+    PsgParamFrame* addFrameEvent(int frameIndex, const uZX::PsgRegsFrame&, juce::UndoManager*);
 
     void removeFrameEvent(PsgParamFrame&, juce::UndoManager*);
     void removeAllFrames(juce::UndoManager*);
-
-    void setControllerValueAt(PsgParamType paramType, te::BeatPosition beatNumber, int newValue, juce::UndoManager*);
-    void removeControllersBetween(PsgParamType paramType, te::BeatPosition beatNumberStart, te::BeatPosition beatNumberEnd, juce::UndoManager*);
-
-    /** Adds controller values over a specified time, at an even interval */
-    void insertRepeatedParamValue (PsgParamType paramType, int startVal, int endVal,
-                                   te::BeatRange rangeBeats,
-                                   te::BeatDuration intervalBeats, juce::UndoManager*);
-
-    //==============================================================================
-    /** Adds the contents of a MidiMessageSequence to this list.
-        If an Edit is provided, it'll be used to convert the timestamps from possible seconds to beats
-    */
-    void importPsgRegsData(const juce::MidiMessageSequence&, te::Edit*,
-                           te::TimePosition editTimeOfListTimeZero, juce::UndoManager*);
-
-    // /** Adds the contents of a MidiSequence to this list assigning MPE expression changes to EXP expression. */
-    // void importFromEditTimeSequenceWithNoteExpression (const juce::MidiMessageSequence&, Edit*,
-    //                                                    te::TimePosition editTimeOfListTimeZero, juce::UndoManager*);
 
     /** Get time according to MIDI timing */
     double getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::MidiList::TimeBase timeBase) const;
@@ -177,9 +188,9 @@ public:
 
     //==============================================================================
     template <typename Type>
-    static void sortEventsByTime(juce::Array<Type>& events) {
-        std::sort(events.begin(), events.end(),
-                  [] (const Type& a, const Type& b) { return a->getBeatPosition() < b->getBeatPosition(); });
+    static void sortEventsByFrameIndex(juce::Array<Type>& events) {
+        std::stable_sort(events.begin(), events.end(),
+                         [] (const Type& a, const Type& b) { return a->getFrameIndex() < b->getFrameIndex(); });
     }
 
     //==============================================================================
@@ -188,6 +199,8 @@ public:
 private:
     //==============================================================================
     juce::CachedValue<te::MidiChannel> midiChannel;
+    juce::CachedValue<double> frameRate_;
+    juce::CachedValue<double> framesPerBeat_;
     int dataVersion_ = 0;
 
     juce::String importedFileName;
@@ -250,7 +263,7 @@ private:
             if (needsSorting) {
                 needsSorting = false;
                 sortedEvents = te::ValueTreeObjectList<EventType>::objects;
-                sortEventsByTime(sortedEvents);
+                sortEventsByFrameIndex(sortedEvents);
             }
 
             return sortedEvents;

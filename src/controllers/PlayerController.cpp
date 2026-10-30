@@ -22,6 +22,9 @@ static String makePlayerWindowTitle(const String& filename = {}) {
 }
 
 void PlayerController::initialize() {
+    // The Player never records or routes hardware MIDI; skip the periodic device rescan.
+    getEngine().getDeviceManager().setMidiDeviceScanIntervalSeconds(0);
+
     setMainWindowTitle(makePlayerWindowTitle());
     window_.setComponentID("player");
 
@@ -44,12 +47,9 @@ std::unique_ptr<te::Edit> PlayerController::createOrLoadStartupEdit() {
     return createOrLoadEdit(EditFileOps::getStartupEditFile());
 }
 
-EditViewState* PlayerController::getEditViewState() {
-    return editViewState_.get();
-}
-
 void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
-    jassert(edit != nullptr);
+    if (edit == nullptr)  // unreadable file, already reported: keep the current edit
+        return;
 
     if (savePrev && edit_ != nullptr) {
         EditFileOps::saveEdit(*edit_, true, true, false);
@@ -60,6 +60,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     window_.clearContentComponent();
     MoToolApp::getSelectionManager().deselectAll();
     editViewState_.reset();
+    playWholeEdit_.reset();
 
     if (edit_ != nullptr) {
         edit_->getTempDirectory(false).deleteRecursively();
@@ -70,10 +71,11 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     rescaleAllMidiClipsToFit(*edit_);
 
     edit_->playInStopEnabled = true;
-    setEditTimecodeFormat(*edit_, TimecodeTypeExt::millisecs);
+    setTimecodeDisplayMode(*edit_, TimecodeDisplayMode::seconds);
 
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
+    playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);
     EditFileOps::saveEdit(*edit_, true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
@@ -156,14 +158,16 @@ void PlayerController::handleImportPsgReplace() {
 }
 
 void PlayerController::importPsgToNewTrack(const File& f) {
+    auto psgFile = uZX::PsgFile(f);
+    if (! Helpers::readPsgOrShowError(psgFile))
+        return;
+
     auto& transport = edit_->getTransport();
     transport.stop(false, false);
 
     auto track = edit_->insertNewAudioTrack(te::TrackInsertPoint(nullptr, te::getAudioTracks(*edit_).getLast()), nullptr);
     jassert(track != nullptr);
 
-    auto psgFile = uZX::PsgFile(f);
-    psgFile.ensureRead();
     te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
 
     if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
@@ -175,6 +179,10 @@ void PlayerController::importPsgToNewTrack(const File& f) {
 }
 
 void PlayerController::importPsgToNewEdit(const File& f) {
+    auto psgFile = uZX::PsgFile(f);
+    if (! Helpers::readPsgOrShowError(psgFile))
+        return;
+
     edit_->getTransport().stop(false, false);
 
     // Create a new edit and populate it before setting it on the UI
@@ -184,8 +192,6 @@ void PlayerController::importPsgToNewEdit(const File& f) {
     auto* track = te::getAudioTracks(*newEdit).getFirst();
     jassert(track != nullptr);
 
-    auto psgFile = uZX::PsgFile(f);
-    psgFile.ensureRead();
     te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
 
     if (PsgClip::insertTo(*track, psgFile, pos)) {
@@ -225,20 +231,6 @@ void PlayerController::ensureAYPluginOnTrack(te::AudioTrack& track) {
     }
     auto plugin = edit_->getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
     track.pluginList.insertPlugin(plugin, 0, nullptr);
-}
-
-void PlayerController::zoomHorizontal(float increment) {
-    if (auto* viewState = getEditViewState()) {
-        viewState->zoom.zoomHorizontally(increment);
-    }
-}
-
-void PlayerController::zoomToFitHorizontally() {
-    auto viewState = getEditViewState();
-    auto range = Helpers::getEffectiveClipsTimeRange(*getEdit());
-    if (viewState != nullptr && !range.isEmpty()) {
-        viewState->zoom.setRange(range);
-    }
 }
 
 }  // namespace MoTool

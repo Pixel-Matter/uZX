@@ -4,6 +4,59 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+## [v0.5.0-alpha] - 2026-10-29
+
+### Added
+- PSG frame hover: rest the mouse on a PSG clip for 2 s to see the frame's full state as a table — period, Hz (from the AY clock), volume and tone/noise/envelope flags per channel, envelope shape, period and Hz, noise period. Values this frame changed are bright, the rest dimmed. Optional hex periods and volumes (clip context menu, saved globally)
+- Clip view menu: Notes / Registers
+- Beats+frames timeline: grid and ruler follow the timecode format, one zoom-level ladder, subdivision patterns (including swing such as 6-7-6-7) in the DIV control, FPB control
+- Playhead snaps to the visible grid (toggle in the View and ruler menus)
+- PSG timing is preserved across tempo changes (toggle in the ruler menu)
+- PSG clip header: channel legend A B C E N, clip name, and a warning chip when the clip's fps differs from the project's
+- Illustrated user guide (`docs/user-guide.md`)
+- User guide lists every keyboard shortcut and timeline mouse gesture
+
+- Horizontal scrollbar under the timeline
+- Middle-drag over the tracks scrolls and zooms like dragging the ruler
+- While you drag the ruler, the scrollbar, the playhead or the tracks during playback, the view stops following the playhead until release, and for a second after a wheel scroll
+- During playback, Cmd+Wheel zooms around the playhead, so the view no longer jumps back to it
+- Pinch to zoom on the ruler and tracks
+- Dragging the playhead past either edge of the timeline scrolls the view
+- A sideways trackpad swipe over the ruler or the tracks scrolls the timeline; in the Player, so does the plain wheel over the tracks
+- Wheel, swipe and pinch over the scrollbar act as on the ruler; pinch also works over the playhead line
+- Playback stops at the end of the project (unless recording or looping); Play from there starts over
+- Loop in the Player's Transport menu
+
+### Changed
+- Registers view: centred bold uppercase hex in channel colours
+- Noise is drawn only for channels where it is audible, with per-channel ownership marks; shared envelopes show which channels use them; envelopes too slow to have a pitch get a marker at the bottom
+- Ruler labels no longer overlap
+- Look and feel refresh
+- New app icons for μZX Player and μZX Studio (Studio had none)
+- Tracktion Engine updated to v3.2.0
+
+### Fixed
+- Studio showed no track headers for a project last saved by the Player
+- Resizing the window or a track, and toggling snap or PSG-timing options, no longer add undo steps
+- Scrolling and zooming, including the auto-scroll during playback, no longer fill the undo history
+- Stale chip registers after a seek or play start landing just before a PSG frame (patched in our Tracktion Engine fork)
+- Crash on quit while the Audio/MIDI Settings or Plugins window was open (a cause of the intermittent crash on exit)
+- Envelope period 0 drew nothing; it now draws as period 1, the way the chip plays it
+- Loop (`Cmd+L`) refused to play, asking for in/out markers that cannot be set; it now loops the whole project, following clip changes
+- Crash when opening a damaged project, including on launch when the last project was damaged; an error is shown instead
+- Memory corruption when loading PSG files that write the AY I/O port registers (R14/R15)
+- Studio: possible crash when importing a file after switching projects while the file dialog was open
+- Wrong chip state when playback starts or seeks mid-file: channels B, C, noise and envelope kept stale registers (patched in our Tracktion Engine fork)
+- Paint-timing debug box no longer shows on PSG clips in release builds
+- Opening a file that isn't a PSG (or has no music) shows an error instead of creating an empty track or project
+- Playback stopping when MIDI devices are rescanned
+- Playhead freezing when the audio input device differs from the output device; the audio settings dialog now prevents this setup
+- Playhead running ahead of the sound by the audio device's output latency (large buffers, Bluetooth headphones); after Play or a seek it now waits at the new position until it is heard
+- Playhead disappearing while dragged fast
+- Wrong chip state at the start of a PSG file: the first frame now sends every register
+- PSG import is a single undo step
+- Ruler timecode format is saved with the project
+
 ## [v0.4.0-alpha] - 2026-03-04
 
 ### Added

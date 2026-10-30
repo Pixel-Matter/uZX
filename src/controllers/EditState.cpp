@@ -1,5 +1,8 @@
 #include "EditState.h"
 #include "../models/EditUtilities.h"
+#include "../models/PsgFrameRetimer.h"
+
+#include <limits>
 
 using namespace std::literals;
 
@@ -7,21 +10,34 @@ namespace MoTool {
 
 // ZoomViewState
 
+namespace {
+    // Every zoom stops at the limits rather than refusing to move
+    te::TimeDuration clampTimePerPixel(te::TimeDuration t) {
+        return jlimit(ZoomViewState::MinTimePerPixel, ZoomViewState::MaxTimePerPixel, t);
+    }
+
+    // Time per pixel scale for a wheel or keyboard zoom step; positive zooms in
+    double zoomStepScale(double factor) {
+        return std::pow(2.0, -factor * 5.0);
+    }
+}
+
 ZoomViewState::ZoomViewState(te::Edit& e)
   : edit(e)
 {
     state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
-    auto um = &edit.getUndoManager();
-    viewStartTime.referTo(state, IDs::viewStartTime, um, 0s);
-    viewTimePerPixel.referTo(state, IDs::viewTimePerPixel, um, 60s / (double) viewWidthPx.load());
-
-    viewY.referTo(state, IDs::viewY, um, 0);
+    // Saved with the edit, but kept out of undo: scrolling and zooming are not edits
+    viewStartTime.referTo(state, IDs::viewStartTime, nullptr, 0s);
+    viewTimePerPixel.referTo(state, IDs::viewTimePerPixel, nullptr, 60s / (double) viewWidthPx.load());
+    viewY.referTo(state, IDs::viewY, nullptr, 0);
     edit.getTransport().state.addListener(this);
+    edit.getTransport().addListener(this);
     state.addListener(this);
 }
 
 ZoomViewState::~ZoomViewState() {
     state.removeListener(this);
+    edit.getTransport().removeListener(this);
     edit.getTransport().state.removeListener(this);
 }
 
@@ -45,14 +61,14 @@ void ZoomViewState::setRange(te::TimeRange range) {
     viewStartTime = range.getStart();
     viewTimePerPixel = range.getLength() / getViewWidthPx();
     // DBG("viewTimePerPixel == " << viewTimePerPixel);
-    markAndUpdate(updateZoom);
+    markAndUpdate(updateViewRange);
 }
 
 void ZoomViewState::setViewWidthPx(int w) noexcept {
     if (w <= 0)
         return;
     viewWidthPx.store(w);
-    markAndUpdate(updateZoom);
+    markAndUpdate(updateViewRange);
     handleUpdateNowIfNeeded();
 }
 
@@ -98,45 +114,77 @@ bool ZoomViewState::jumpToPosition(te::TimePosition pos) {
 }
 
 bool ZoomViewState::jumpToCurrentPosition() {
-    auto pos = edit.getTransport().getPosition();
-    return jumpToPosition(pos);
+    return jumpToPosition(getPlayheadPosition());
+}
+
+te::TimePosition ZoomViewState::getPlayheadPosition() const {
+    auto& transport = edit.getTransport();
+    if (!transport.isPlaying() && !transport.isRecording())
+        return transport.getPosition();
+
+    // Tracktion already takes the graph's own latency off the transport position, but the device
+    // sounds each block only after its output latency (buffer, driver, Bluetooth...). After a jump,
+    // wait at the new position until it is heard rather than stepping back before it.
+    // ponytail: a loop wrap counts as a jump, so the playhead leaves the loop end one latency early;
+    // map the wrap if that shows with long latencies.
+    auto latency = te::TimeDuration::fromSeconds(edit.engine.getDeviceManager().getOutputLatencySeconds());
+    return std::max(transport.getPosition() - latency, lastJumpPosition);
 }
 
 void ZoomViewState::zoomHorizontally(double factor) {
-    double scaleFactor = std::pow(2.0, -factor * 5.0);
-    auto pos = edit.getTransport().getPosition();
-    auto span = getViewSpan();
-    auto newRange = span * scaleFactor;
-
-    if (auto newTimePerPixel = newRange / getViewWidthPx(); newTimePerPixel > 0.0005s && newTimePerPixel < 2s) {
-        setRange({
-            jmax(te::TimePosition(), pos - newRange / 2.0),
-            newRange
-        });
-        handlePlaybackScrolling();
-        markAndUpdate(updateZoom);
-    }
+    const auto newSpan = clampTimePerPixel(getTimePerPixel() * zoomStepScale(factor)) * getViewWidthPx();
+    setRange({jmax(te::TimePosition(), getPlayheadPosition() - newSpan / 2.0), newSpan});
+    handlePlaybackScrolling();
     handleUpdateNowIfNeeded();
 }
 
 void ZoomViewState::zoomAroundX(double factor, int anchorX) {
-    double scaleFactor = std::pow(2.0, -factor * 5.0);
-    auto anchorTime = xToTime(anchorX);
-    auto newTimePerPixel = getTimePerPixel() * scaleFactor;
+    zoomAroundXByScale(zoomStepScale(factor), anchorX);
+}
 
-    if (newTimePerPixel > 0.0005s && newTimePerPixel < 2s) {
-        auto newStart = anchorTime - newTimePerPixel * (double) anchorX;
-        newStart = jmax(te::TimePosition(), newStart);
-        auto newSpan = newTimePerPixel * getViewWidthPx();
-        setRange({newStart, newSpan});
-        markAndUpdate(updateZoom);
-    }
+void ZoomViewState::magnifyAroundX(float scale, int anchorX) {
+    zoomAroundXByScale(1.0 / scale, anchorX);
+}
+
+void ZoomViewState::zoomAroundXByScale(double timePerPixelScale, int anchorX) {
+    if (isFollowingPlayhead())
+        anchorX = roundToInt(timeToX(getPlayheadPosition()));  // else following would jump the view back to it
+    const auto anchorTime = xToTime(anchorX);
+    const auto newTimePerPixel = clampTimePerPixel(getTimePerPixel() * timePerPixelScale);
+    setRange({jmax(te::TimePosition(), anchorTime - newTimePerPixel * (double) anchorX),
+              newTimePerPixel * getViewWidthPx()});
     handleUpdateNowIfNeeded();
+}
+
+void ZoomViewState::scrollBy(double pixels) {
+    setStart(jmax(te::TimePosition(), getStart() + getTimePerPixel() * pixels));
+}
+
+void ZoomViewState::scrollByWheel(const MouseWheelDetails& wheel) {
+    lastWheelScrollMs = Time::getMillisecondCounter();
+    scrollBy(-200.0 * (std::abs(wheel.deltaY) >= std::abs(wheel.deltaX) ? wheel.deltaY : wheel.deltaX));
+}
+
+void ZoomViewState::beginDrag() {
+    userDraggingView = true;
+    dragStartViewStart = getStart();
+    dragStartTimePerPixel = getTimePerPixel();
+}
+
+void ZoomViewState::dragBy(int anchorX, int deltaX, int deltaY) {
+    auto newTimePerPixel = clampTimePerPixel(dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01));
+    auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) anchorX;
+    auto newStart = jmax(te::TimePosition(), anchorTime - newTimePerPixel * (double) (anchorX + deltaX));
+    setRange({newStart, newTimePerPixel * getViewWidthPx()});
+}
+
+void ZoomViewState::endDrag() {
+    userDraggingView = false;
 }
 
 void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
     if (tree == state && isZoomProperty(prop)) {
-        markAndUpdate(updateZoom);
+        markAndUpdate(updateViewRange);
     } else if (auto& tc = edit.getTransport(); tree == tc.state && prop == te::IDs::position) {
         if (!approximatelyEqual((double) tc.state[te::IDs::position], tc.getPosition().inSeconds())) {
             // because this callback could be called before tc.position is updated from state
@@ -145,30 +193,28 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
         // DBG("ZoomViewState::valueTreePropertyChanged position: " << tc.getPosition().inSeconds()
             // << " dragging: " << (int) tc.isUserDragging()
             // << " playing: " << (int) tc.isPlaying());
+        auto pos = tc.getPosition();
+        if (!tc.isPositionUpdatingFromPlayhead() || pos < lastTransportPosition)
+            lastJumpPosition = pos;
+        lastTransportPosition = pos;
         handlePlaybackScrolling();
-        markAndUpdate(updatePos);
+        markAndUpdate(updatePlayhead);
     }
     handleUpdateNowIfNeeded();
 }
 
-void ZoomViewState::handlePlaybackScrolling() {
-    if (edit.getTransport().isPlaying() || edit.getTransport().isRecording()) {
-        // TODO Proposed future change:
-        // get position from audible time in playback context
-        // because there can be latency in audio output
+bool ZoomViewState::isFollowingPlayhead() const {
+    auto& transport = edit.getTransport();
+    return (transport.isPlaying() || transport.isRecording()) && !userDraggingView
+        && Time::getMillisecondCounter() - lastWheelScrollMs >= wheelFollowPauseMs;
+}
 
-        // te::TimePosition pos;
-        // auto pbc = edit.getCurrentPlaybackContext();
-        // if (pbc != nullptr) {
-        //     pos = pbc->getAudibleTimelineTime();
-        //     DBG("ZoomViewState::handlePlaybackScrolling, "
-        //         << " pos from context: " << pos
-        //         << " edit pos: " << edit.getTransport().getPosition()
-        //     );
-        // } else {
-        //     pos = edit.getTransport().getPosition();
-        // }
-        auto pos = edit.getTransport().getPosition();
+void ZoomViewState::handlePlaybackScrolling() {
+    auto& transport = edit.getTransport();
+    if (transport.isPlaying() || transport.isRecording()) {
+        if (!isFollowingPlayhead())
+            return;  // the user holds or has just scrolled the view
+        auto pos = getPlayheadPosition();
         // DBG("ZoomViewState::handlePlaybackScrolling, pos: " << pos.inSeconds());
         auto range = getRange();
         auto leftRange = range.getLength() / 3.0;
@@ -178,7 +224,7 @@ void ZoomViewState::handlePlaybackScrolling() {
                 setStart(newX1);
             }
         }
-    } else if (!edit.getTransport().isUserDragging()) {
+    } else if (!transport.isUserDragging() && !userDraggingView) {
         // assuming autojump to current position when stopped
         // DBG("ZoomViewState::handlePlaybackScrolling, jumping to pos (not dragging, not playing)");
         jumpToCurrentPosition();
@@ -187,14 +233,23 @@ void ZoomViewState::handlePlaybackScrolling() {
     }
 }
 
+void ZoomViewState::startVideo() {
+    lastJumpPosition = lastTransportPosition = edit.getTransport().getPosition();
+}
+
+void ZoomViewState::stopVideo() {
+    // the playhead goes back to the transport position, which does not change on stop
+    markAndUpdate(updatePlayhead);
+}
+
 void ZoomViewState::handleAsyncUpdate() {
-    if (compareAndReset(updatePos)) {
-        // DBG("ZoomViewState::handleAsyncUpdate, dispatching zoomOrPosChanged, pos: "
+    if (compareAndReset(updatePlayhead)) {
+        // DBG("ZoomViewState::handleAsyncUpdate, dispatching playheadMoved, pos: "
             // << edit.getTransport().getPosition().inSeconds());
-        listeners.call(&Listener::zoomOrPosChanged);
+        listeners.call(&ZoomViewState::Listener::playheadMoved);
     }
-    if (compareAndReset(updateZoom)) {
-        listeners.call(&Listener::zoomChanged);
+    if (compareAndReset(updateViewRange)) {
+        listeners.call(&ZoomViewState::Listener::viewRangeChanged);
     }
 }
 
@@ -206,88 +261,40 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
   , zoom(e)
   , selectionManager(s), edit(e)
 {
-    auto um = &edit.getUndoManager();
-    showMasterTrack.referTo(state, IDs::showMasterTrack, um, false);
-    showGlobalTrack.referTo(state, IDs::showGlobalTrack, um, false);
-    showMarkerTrack.referTo(state, IDs::showMarkerTrack, um, false);
-    showChordTrack.referTo(state, IDs::showChordTrack, um, false);
-    showArrangerTrack.referTo(state, IDs::showArranger, um, false);
-    drawWaveforms.referTo(state, IDs::drawWaveforms, um, true);
-    showHeaders.referTo(state, IDs::showHeaders, um, true);
-    showMidiDevices.referTo(state, IDs::showMidiDevices, um, true);
-    showWaveDevices.referTo(state, IDs::showWaveDevices, um, true);
-    headersWidth.referTo(state, IDs::headersWidth, nullptr, 110);
+    preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, nullptr, true);
+    snapPlayheadToGrid.referTo(state, IDs::snapPlayheadToGrid, nullptr, true);
+    headersWidth.referTo(state, IDs::headersWidth, nullptr, minHeadersWidth);
 }
 
-te::TimeDuration EditViewState::getBeatLengthFor(double bpm) const {
-    const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    const auto beatLen = te::TimeDuration::fromSeconds(240.0 / (bpm * ts.getMatchingTimeSig().denominator));
-    return beatLen;
+void EditViewState::setPreservePsgTimingOnTempoChange(bool shouldPreserve) {
+    preservePsgTimingOnTempoChange = shouldPreserve;
 }
 
-double EditViewState::getBpmForBeatLength(te::TimeDuration beatLen) const {
-    const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    const auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
-    return bpm;
+bool EditViewState::shouldPreservePsgTimingOnTempoChange() const {
+    return preservePsgTimingOnTempoChange.get();
 }
 
-double EditViewState::getFramesPerBeatFor(double bpm) const {
-    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
-    return fps * getBeatLengthFor(bpm).inSeconds();
+void EditViewState::setSnapPlayheadToGrid(bool shouldSnap) {
+    snapPlayheadToGrid = shouldSnap;
 }
 
-double EditViewState::getCurrentFramesPerBeat() const {
-    const auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    return getFramesPerBeatFor(ts.getBpm());
-}
-
-// for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
-double EditViewState::getFramesPerNote(size_t divider) const {
-    // Quarter note is always one beat
-    jassert(divider > 0);
-    return getCurrentFramesPerBeat() / ((double) divider / 4.0);
-}
-
-void EditViewState::setBeatLength(te::TimeDuration beatLen) {
-    jassert(beatLen > 0s);
-    auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    auto bpm = 240.0 / (beatLen.inSeconds() * ts.getMatchingTimeSig().denominator);
-    bpm = jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm);
-    ts.setBpm(bpm);
-}
-
-void EditViewState::setFramesPerBeat(int fpb) {
-    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
-    auto targetBeatLen = te::TimeDuration::fromSeconds((double)fpb / fps);
-    setBeatLength(targetBeatLen);
-}
-
-double EditViewState::getBpmSnappedToFps(double bpm) const {
-    int fpb = roundToInt(getFramesPerBeatFor(bpm));
-    const double fps = Helpers::getEditTimecodeFormat(edit).getFPS();
-    auto targetBeatLen = te::TimeDuration::fromSeconds((double)fpb / fps);
-    return getBpmForBeatLength(targetBeatLen);
-}
-
-double EditViewState::setBpmSnappedToFps(double bpm) {
-    auto snappedBpm = getBpmSnappedToFps(bpm);
-    auto& ts = edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
-    ts.setBpm(snappedBpm);
-    return snappedBpm;
+bool EditViewState::shouldSnapPlayheadToGrid() const {
+    return snapPlayheadToGrid.get();
 }
 
 int EditViewState::getTrackHeaderWidth() const {
-    return showHeaders ? headersWidth.get() : 0;
+    // clamped: older Player builds saved 0
+    return showHeaders ? jlimit(minHeadersWidth, maxHeadersWidth, headersWidth.get()) : 0;
 }
 
 //==============================================================================
 // TrackViewState
 
-TrackViewState::TrackViewState(ValueTree trackState, UndoManager* undoManager)
-  : state(ensure(trackState)), height(state, IDs::height, undoManager, 160)
+TrackViewState::TrackViewState(ValueTree trackState)
+  : state(ensure(trackState)), height(state, IDs::height, nullptr, 160)  // layout, not an edit
 {
     constrainer.setMinimumHeight(56);
-    constrainer.setMaximumHeight(600);
+    constrainer.setMinimumOnscreenAmounts(0, 0, std::numeric_limits<int>::max(), 0);
     state.addListener(this);
 }
 

@@ -16,4 +16,17 @@ inline void flushMessageQueue()
         juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
 }
 
+/** Runs numBlocks 512-sample blocks through the test engine's hosted audio device. */
+inline void processBlocks(tracktion::Engine& engine, int numBlocks)
+{
+    auto& audioIO = engine.getDeviceManager().getHostedAudioDeviceInterface();
+    juce::AudioBuffer<float> buffer(2, 512);
+    juce::MidiBuffer midi;
+
+    for (int i = 0; i < numBlocks; ++i) {
+        buffer.clear();
+        audioIO.processBlock(buffer, midi);
+    }
+}
+
 }  // namespace MoTool::TestHelpers

@@ -1,31 +1,25 @@
 #include "Ruler.h"
 
+#include "../../controllers/MainCommands.h"
 #include "../../models/EditUtilities.h"
 
 namespace MoTool {
 
 RulerComponent::RulerComponent(te::Edit& ed, EditViewState& evs, TimelineGrid& g)
-    : te::TempoSequence::Listener {ed.tempoSequence}
-    , edit {ed}
+    : edit {ed}
     , editViewState {evs}
     , grid {g}
 {
-    edit.tempoSequence.addListener(this);
-    editViewState.state.addListener(this);
     editViewState.zoom.addListener(this);
     grid.addListener(this);
-    // cached value is ValueTree::Listener
-    timecodeFormat.referTo(edit.state, te::IDs::timecodeFormat, nullptr, TimecodeDisplayFormatExt {TimecodeTypeExt::barsBeatsFps50});
 }
 
 RulerComponent::~RulerComponent() {
-    edit.tempoSequence.removeListener(this);
-    editViewState.state.removeListener(this);
     editViewState.zoom.removeListener(this);
     grid.removeListener(this);
 }
 
-void RulerComponent::zoomChanged() {
+void RulerComponent::viewRangeChanged() {
     repaint();
 }
 
@@ -41,7 +35,22 @@ void RulerComponent::paint(Graphics& g) {
         g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
         auto y = (float) bounds.getHeight() - (float) bounds.getHeight() / (float) (3 - tick.level);
         g.drawVerticalLine(tick.x, y, (float)bounds.getHeight());
-        if (tick.label.isNotEmpty()) {
+    }
+
+    // Resolve text collisions here, where the actual font is known; structural labels win.
+    RectangleList<int> occupiedLabels;
+    for (size_t level = Colors::Timeline::trackGridLabelColors.size(); level-- > 0;) {
+        for (const auto& tick : ticks) {
+            if (tick.level != level || tick.label.isEmpty() || tick.x > bounds.getWidth())
+                continue;
+
+            const int width = GlyphArrangement::getStringWidthInt(g.getCurrentFont(), tick.label);
+            const Rectangle<int> labelBounds(tick.x + 2, 0, width + 4, bounds.getHeight());
+            if (occupiedLabels.intersectsRectangle(labelBounds))
+                continue;
+
+            occupiedLabels.addWithoutMerging(labelBounds);
+            g.setColour(Colors::Timeline::trackGridLabelColors[tick.level]);
             g.drawSingleLineText(tick.label, tick.x + 2, 10, Justification::left);
         }
     }
@@ -64,11 +73,14 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         });
         m.addSeparator();
         m.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(edit));
+        if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
+            m.addSeparator();
+            m.addCommandItem(manager, Commands::MainAppCommands::viewSnapPlayheadToGrid);
+            m.addCommandItem(manager, Commands::MainAppCommands::transportPreservePsgTiming);
+        }
         m.showMenuAsync({});
     } else {
         isDragging = false;
-        dragStartViewStart = editViewState.zoom.getStart();
-        dragStartTimePerPixel = editViewState.zoom.getTimePerPixel();
     }
 }
 
@@ -76,61 +88,36 @@ void RulerComponent::mouseDrag(const MouseEvent& e) {
     if (e.mods.isPopupMenu())
         return;
 
-    if (!isDragging && e.getDistanceFromDragStart() >= dragThreshold)
+    if (!isDragging && e.getDistanceFromDragStart() >= dragThreshold) {
         isDragging = true;
+        editViewState.zoom.beginDrag();
+    }
 
-    if (!isDragging)
-        return;
-
-    auto deltaX = e.getDistanceFromDragStartX();
-    auto deltaY = e.getDistanceFromDragStartY();
-
-    auto newTimePerPixel = dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01);
-    if (newTimePerPixel < 0.0005s) newTimePerPixel = te::TimeDuration::fromSeconds(0.0005);
-    if (newTimePerPixel > 2s) newTimePerPixel = te::TimeDuration::fromSeconds(2.0);
-
-    auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) e.getMouseDownX();
-    auto newStart = anchorTime - newTimePerPixel * (double)(e.getMouseDownX() + deltaX);
-    newStart = jmax(te::TimePosition(), newStart);
-    auto newSpan = newTimePerPixel * editViewState.zoom.getViewWidthPx();
-    editViewState.zoom.setRange({newStart, newSpan});
+    if (isDragging)
+        editViewState.zoom.dragBy(e.getMouseDownX(), e.getDistanceFromDragStartX(), e.getDistanceFromDragStartY());
 }
 
 void RulerComponent::mouseUp(const MouseEvent& e) {
-    if (e.mods.isPopupMenu())
-        return;
-
-    if (!isDragging)
-        repositionTransportToX(e.x);
+    if (isDragging)  // whatever modifiers are held now, or following stays off
+        editViewState.zoom.endDrag();
+    else if (!e.mods.isPopupMenu())
+        edit.getTransport().setPosition(grid.playheadTimeAtX(e.x));
 
     isDragging = false;
 }
 
 void RulerComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
-    if (e.mods.isCommandDown()) {
+    if (e.mods.isCommandDown())
         editViewState.zoom.zoomAroundX(wheel.deltaY, e.x);
-    } else {
-        auto delta = e.mods.isShiftDown() && wheel.deltaY == 0.0f ? wheel.deltaX : wheel.deltaY;
-        auto scrollAmount = editViewState.zoom.getTimePerPixel() * delta * 200.0;
-        auto newStart = editViewState.zoom.getStart() - scrollAmount;
-        editViewState.zoom.setStart(jmax(te::TimePosition(), newStart));
-    }
+    else
+        editViewState.zoom.scrollByWheel(wheel);
 }
 
-void RulerComponent::repositionTransportToX(int x) {
-    auto pos = editViewState.zoom.xToTime(x);
-    edit.getTransport().setPosition(pos);
-}
-
-void RulerComponent::timerCallback() {
-    repaint();
+void RulerComponent::mouseMagnify(const MouseEvent& e, float scale) {
+    editViewState.zoom.magnifyAroundX(scale, e.x);
 }
 
 void RulerComponent::gridChanged() {
-    repaint();
-}
-
-void RulerComponent::selectableObjectChanged(te::Selectable*) {
     repaint();
 }
 

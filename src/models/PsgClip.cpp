@@ -3,6 +3,7 @@
 #include "PsgMidi.h"
 #include "PsgList.h"
 #include "PsgParameter.h"
+#include "EditUtilities.h"
 #include "../formats/psg/PsgFile.h"
 
 #include <cstddef>
@@ -19,12 +20,16 @@ void PsgClip::initialise() {
     // load PSG list
     auto um = getUndoManager();
     auto psg = state.getChildWithName(IDs::PSG);
-    if (psg.isValid())
-        psgList = std::make_unique<PsgList>(psg, um);
-    else {
-        state.addChild(PsgList::createPsgList(), -1, um);
-        psgList = std::make_unique<PsgList>();
+    if (! psg.isValid()) {
+        psg = PsgList::createPsgList();
+        state.addChild(psg, -1, um);
     }
+    psgList = std::make_unique<PsgList>(psg, um);
+
+    // Legacy files may store per-frame beats. Back-fill machine-frame indices
+    // from the edit's frame rate and drop the legacy beat property. This also
+    // guarantees framesPerBeat > 0, which frame timing relies on.
+    psgList->migrateToFrameIndicesIfNeeded(*this, Helpers::getProjectFps(edit), um);
 
     if (getColour() == getDefaultColour()) {
         auto track = getTrack();
@@ -47,47 +52,21 @@ juce::Range<float> PsgClip::getPitchRange() const {
 
     pitchRangeVersion_ = version;
 
+    // Fold min/max over the same notes the clip painter draws (visitFrameNotes
+    // is the single source of the audibility and pitch-mapping rules).
+    bool hasNotes = false;
     float min = 1.0f;
     float max = 0.0f;
-    // Ignore extremely high pitches that are unlikely to be intentional musical notes
-    constexpr int hearableMin = 8;
 
-    const auto& frames = getPsg().getFrames();
-    for (auto* frame : frames) {
-        const auto& frameData = frame->getData();
-        for (int ch = 0; ch < 3; ++ch) {
-            PsgParamType periodType(PsgParamType::TonePeriodA + ch);
-            PsgParamType volumeType(PsgParamType::VolumeA + ch);
-            PsgParamType toneOnType(PsgParamType::ToneIsOnA + ch);
-            PsgParamType envOnType(PsgParamType::EnvelopeIsOnA + ch);
-
-            bool toneIsOn = frameData.getRaw(toneOnType) > 0;
-            bool hasEnvMod = frameData.getRaw(envOnType) > 0;
-            bool isAudible = (frameData.getRaw(volumeType) > 0) || hasEnvMod;
-
-            if (toneIsOn && isAudible) {
-                auto period = frameData.getRaw(periodType);
-                if (period >= hearableMin) {
-                    float pitch = periodType.valueToNormalized(period);
-                    min = jmin(min, pitch);
-                    max = jmax(max, pitch);
-                }
-            }
-        }
-
-        bool anyEnvMod = frameData.getRaw(PsgParamType::EnvelopeIsOnA) > 0 ||
-                         frameData.getRaw(PsgParamType::EnvelopeIsOnB) > 0 ||
-                         frameData.getRaw(PsgParamType::EnvelopeIsOnC) > 0;
-        if (anyEnvMod) {
-            PsgParamType envType(PsgParamType::EnvelopePeriod);
-            auto period = frameData.getRaw(envType);
-            float pitch = envType.valueToNormalized(period);
-            min = jmin(min, pitch);
-            max = jmax(max, pitch);
-        }
+    for (auto* frame : getPsg().getFrames()) {
+        visitFrameNotes(frame->getData(), [&] (const PsgFrameNote& note) {
+            hasNotes = true;
+            min = jmin(min, note.pitch);
+            max = jmax(max, note.pitch);
+        });
     }
 
-    if (min > max) {
+    if (! hasNotes) {
         min = 0.0f;
         max = 1.0f;
     } else {
@@ -98,9 +77,12 @@ juce::Range<float> PsgClip::getPitchRange() const {
             min = center - minRange * 0.5f;
             max = center + minRange * 0.5f;
         }
+        // The painter centres a note on its pitch, so a note at the range
+        // boundary would straddle the clip edge. Keep the padding even past
+        // [0, 1] — the range is only a mapping domain, not a raw-value range.
         const float padding = oneSemitone * 1.5f;
-        min = jmax(0.0f, min - padding);
-        max = jmin(1.0f, max + padding);
+        min -= padding;
+        max += padding;
     }
 
     cachedPitchRange_ = { min, max };
@@ -137,7 +119,7 @@ PsgClip::Ptr PsgClip::insertTo(
         false
     ));
     jassert(clip != nullptr);
-    clip->getUndoManager()->beginNewTransaction();
+    // Same undo transaction as the insert: one undo removes the whole import.
     clip->loadFrom(data);
 
     // // debug checks
@@ -227,9 +209,10 @@ void PsgClip::loadFrom(uZX::PsgData &data) {
         // state.removeChild(state.getChildWithName(te::IDs::SEQUENCE), um);
         // state.addChild(seqState, -1, um);
 
-        getPsg().clear();
+        // Build the list detached and without undo; attaching it below is the
+        // single undoable step.
         PsgList psg;
-        psg.loadFrom(data, edit, um);
+        psg.loadFrom(data, edit, nullptr);
         state.removeChild(state.getChildWithName(IDs::PSG), um);
         state.addChild(psg.state, -1, um);
         initialise();
@@ -237,11 +220,6 @@ void PsgClip::loadFrom(uZX::PsgData &data) {
     DBG("PSG clip constructed in " << timeElapsed << "s");
     changed();
     scaleVerticallyToFit();
-}
-
-void PsgClip::loadFrom(uZX::PsgFile &psgFile) {
-    psgFile.ensureRead();
-    loadFrom(psgFile.getData());
 }
 
 }  // namespace MoTool

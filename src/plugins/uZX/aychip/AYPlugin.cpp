@@ -97,6 +97,7 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
 
 void AYChipPlugin::initialise(const te::PluginInitialisationInfo& info) {
     reset();
+    const ScopedLock sl(lock);  // an old graph may still be rendering into this buffer
     separateChannelBuffer_.setSize(kNumVizChannels, info.blockSizeSamples);
 }
 
@@ -229,12 +230,20 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 
     // Process PSG register events
     int currentSample = 0;
+    auto lastTimestamp = std::numeric_limits<double>::lowest();
     for (auto& m : *fc.bufferForMidiMessages) {
         updateDynamicParams();
 
-        const int timeSample = roundToInt(m.getTimeStamp() * sampleRate);
-        if (timeSample > currentSample) {
+        // Apply the pending frame before reading a newer one, even within the same sample:
+        // the reader drops unapplied values once the timestamp advances.
+        if (m.getTimeStamp() > lastTimestamp) {
             updateChip();
+            lastTimestamp = m.getTimeStamp();
+        }
+
+        // Upstream plugins can pass events stamped past the block end; never render beyond it.
+        const int timeSample = jmin(fc.bufferNumSamples, roundToInt(m.getTimeStamp() * sampleRate));
+        if (timeSample > currentSample) {
             renderChannels(fc, currentSample, timeSample);
             currentSample = timeSample;
         }
@@ -244,9 +253,21 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     updateDynamicParams();
     // process to the end of the block
     updateChip();
-    if (currentSample < fc.destBuffer->getNumSamples()) {
+    if (currentSample < fc.bufferNumSamples) {
         renderChannels(fc, currentSample, fc.bufferNumSamples);
     }
+}
+
+PsgRegsFrame AYChipPlugin::getChipRegisters() const {
+    const ScopedLock sl(lock);
+    PsgRegsFrame regs;
+    if (chip != nullptr) {
+        for (size_t i = 0; i < regs.size(); ++i) {
+            regs.registers[i] = chip->getRegister(i);
+            regs.mask[i] = true;
+        }
+    }
+    return regs;
 }
 
 void AYChipPlugin::restorePluginStateFromValueTree(const ValueTree& v) {

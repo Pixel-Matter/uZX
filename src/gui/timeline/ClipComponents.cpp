@@ -1,4 +1,5 @@
 #include "ClipComponents.h"
+#include "TimelineGrid.h"
 
 
 namespace te = tracktion;
@@ -7,8 +8,8 @@ using namespace std::literals;
 namespace MoTool {
 
 //==============================================================================
-ClipComponent::ClipComponent (EditViewState& evs, te::Clip::Ptr c)
-    : editViewState (evs), clip (c)
+ClipComponent::ClipComponent (EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+    : editViewState (evs), grid (g), clip (c)
 {}
 
 void ClipComponent::paint(Graphics& g) {
@@ -29,15 +30,16 @@ void ClipComponent::paint(Graphics& g) {
 }
 
 void ClipComponent::mouseDown(const MouseEvent& e) {
+    if (e.mods.isMiddleButtonDown())
+        return;  // view navigation, see EditComponent
     if (!editViewState.disableClipSelection)
         editViewState.selectionManager.selectOnly(clip.get());
-    auto pos = editViewState.zoom.xToTime(e.x + getX());
-    clip->edit.getTransport().setPosition(pos);
+    clip->edit.getTransport().setPosition(grid.playheadTimeAtX(e.x + getX()));
 }
 
 //==============================================================================
-AudioClipComponent::AudioClipComponent(EditViewState& evs, te::Clip::Ptr c)
-    : ClipComponent(evs, c)
+AudioClipComponent::AudioClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+    : ClipComponent(evs, g, c)
 {
     updateThumbnail();
 }
@@ -45,7 +47,7 @@ AudioClipComponent::AudioClipComponent(EditViewState& evs, te::Clip::Ptr c)
 void AudioClipComponent::paint(Graphics& g) {
     ClipComponent::paint(g);
 
-    if (editViewState.drawWaveforms && thumbnail != nullptr)
+    if (thumbnail != nullptr)
         drawWaveform(
             g, *getWaveAudioClip(), *thumbnail, Colours::white.withAlpha(0.5f), getX(), getRight(), 0, getHeight(), 0);
 }
@@ -146,8 +148,8 @@ void AudioClipComponent::updateThumbnail() {
 
 
 //==============================================================================
-MidiClipComponent::MidiClipComponent (EditViewState& evs, te::Clip::Ptr c)
-    : ClipComponent(evs, c)
+MidiClipComponent::MidiClipComponent (EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+    : ClipComponent(evs, g, c)
 {}
 
 void MidiClipComponent::paint(Graphics& g) {
@@ -238,8 +240,7 @@ void RecordingClipComponent::paint(Graphics& g) {
     // g.setColour(Colours::black);
     // g.drawRect(getLocalBounds());
 
-    if (editViewState.drawWaveforms)
-        drawThumbnail(g, Colours::black.withAlpha(0.5f));
+    drawThumbnail(g, Colours::black.withAlpha(0.5f));
 }
 
 void RecordingClipComponent::drawThumbnail(Graphics& g, Colour waveformColour) const {

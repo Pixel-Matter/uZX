@@ -31,6 +31,38 @@ void AYInterface::setRegister(size_t index, unsigned char value) noexcept {
     }
 }
 
+unsigned char AYInterface::getRegister(size_t index) const noexcept {
+    const auto fine   = [](int period) { return static_cast<unsigned char>(period & 0xff); };
+    const auto coarse = [](int period) { return static_cast<unsigned char>(period >> 8); };
+    switch (index) {
+        case 0: return fine  (getTonePeriod(0));
+        case 1: return coarse(getTonePeriod(0));
+        case 2: return fine  (getTonePeriod(1));
+        case 3: return coarse(getTonePeriod(1));
+        case 4: return fine  (getTonePeriod(2));
+        case 5: return coarse(getTonePeriod(2));
+        case 6: return static_cast<unsigned char>(getNoisePeriod());
+        case 7: {
+            unsigned char mixer = 0;  // inverted: a set bit turns tone or noise off
+            for (int chan = 0; chan < 3; ++chan) {
+                const auto [toneOn, noiseOn, envOn] = getMixer(chan);
+                juce::ignoreUnused(envOn);
+                mixer |= static_cast<unsigned char>((toneOn ? 0 : 0x01 << chan) | (noiseOn ? 0 : 0x08 << chan));
+            }
+            return mixer;
+        }
+        case 8: case 9: case 10: {
+            const int chan = static_cast<int>(index) - 8;
+            const bool envOn = std::get<2>(getMixer(chan));
+            return static_cast<unsigned char>(getVolume(chan) | (envOn ? 0x10 : 0));
+        }
+        case 11: return fine  (getEnvelopePeriod());
+        case 12: return coarse(getEnvelopePeriod());
+        case 13: return static_cast<unsigned char>(getEnvelopeShape().asEnum());
+        default: return 0;
+    }
+}
+
 void AYInterface::applyChannelMute(int chan, bool toneEnabled, bool noiseEnabled, bool envelopeEnabled, bool channelEnabled) noexcept {
     if (chan < 0 || chan >= 3) {
         return;

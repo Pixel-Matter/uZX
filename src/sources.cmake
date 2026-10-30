@@ -7,8 +7,10 @@ set(SHARED_SOURCES
     models/PsgMidi.cpp
     models/PsgList.cpp
     models/PsgClip.cpp
+    models/PsgFrameRetimer.cpp
     models/Selectable.cpp
     models/EditUtilities.cpp
+    models/SnapLadder.cpp
 
     models/tuning/Ratios.cpp
     models/tuning/Scales.cpp
@@ -96,9 +98,13 @@ set(TEST_SOURCES
 
     util/enumchoice.test.cpp
 
+    formats/psg/PsgFile.test.cpp
+
     models/PsgMidi.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
+    models/ProjectFps.test.cpp
+    models/SnapLadder.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/TuningTable.test.cpp
     models/tuning/EqualTemperamentTuning.test.cpp
@@ -106,15 +112,27 @@ set(TEST_SOURCES
     models/tuning/Scales.test.cpp
     models/tuning/RationalTuning.test.cpp
 
+    controllers/EditState.test.cpp
+    controllers/PlayWholeEdit.test.cpp
     controllers/Parameters.test.cpp
 
     viewmodels/tuning/TuningViewModel.test.cpp
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
 
+    gui/timeline/TimelineGrid.test.cpp
+    gui/timeline/EditComponent.test.cpp
+    gui/timeline/PsgClipComponent.test.cpp
+    gui/timeline/PsgClipTestHelpers.h
+    gui/timeline/PsgVisualGuide.test.cpp
+    gui/timeline/PsgPaintingBenchmark.test.cpp
+
     plugins/uZX/aychip/AYChip.test.cpp
+    plugins/uZX/aychip/AYPlugin.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
+
+    gui/timeline/TimelineGrid.test.cpp
 
     gui/common/ParamBindings.test.cpp
     gui/common/LookAndFeel.test.cpp

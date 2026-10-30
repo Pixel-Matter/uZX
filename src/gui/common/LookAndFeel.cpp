@@ -65,6 +65,9 @@ MoLookAndFeel::MoLookAndFeel() {
     setColour(Slider::trackColourId, Theme::primary);
     setColour(Slider::thumbColourId, Theme::textPrimary);
 
+    // ScrollBar: quiet slate rather than the scheme's primary fill
+    setColour(ScrollBar::thumbColourId, Theme::borderLight);
+
     // ComboBox
     setColour(ComboBox::backgroundColourId, Theme::surface);
     setColour(ComboBox::textColourId, Theme::textPrimary);

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="-0.3 -1.8 19.6 19.6">
+<defs><clipPath id="c"><path d="M0.6 0.4H10.6Q11.1 0.4 11.5 0.75L18.3 7.35Q19 8 18.3 8.65L11.5 15.25Q11.1 15.6 10.6 15.6H0.6Q0 15.6 0 15V1Q0 0.4 0.6 0.4Z"></path></clipPath><clipPath id="c2"><path d="M0.6 0.4H10.6Q11.1 0.4 11.5 0.75L18.3 7.35Q19 8 18.3 8.65L11.5 15.25Q11.1 15.6 10.6 15.6H0.6Q0 15.6 0 15V1Q0 0.4 0.6 0.4Z" transform="translate(-0.55 -0.9)"></path></clipPath></defs>
+<g clip-path="url(#c)">
+  <rect x="-2" y="-2" width="22" height="20" fill="#009664"></rect>
+  <rect x="-2" y="-2" width="7.75" height="20" fill="#293444"></rect>
+  <g clip-path="url(#c2)"><rect x="-2" y="-2" width="22" height="20" fill="#00BC7D"></rect><rect x="-2" y="-2" width="7.75" height="20" fill="#334155"></rect></g>
+</g><g transform="translate(7.38 8) scale(0.94) translate(-8 -8)"><g transform="translate(0 0) translate(0 10.25) skewX(-9) translate(0 -10.25)"><g transform="">
+<path fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-width="0.74" d="M2.6 6.25V10.95C2.6 11.35 2.55 11.55 2.42 11.68"></path>
+<g fill="#FFFFFF">
+  <path d="M2.97 8.5C2.97 9.6 3.37 10.13 3.625 10.13C4.075 10.13 4.28 9.7 4.28 8.9V9.9C4.08 10.26 3.875 10.37 3.625 10.37C3.225 10.37 3.07 10.13 2.97 9.7Z"></path>
+  <path d="M4.28 6.25V9.55C4.28 10.2 4.83 10.38 5.55 10.07A0.14 0.14 0 0 0 5.4 9.826C5.1 10 5.02 9.85 5.02 9.3V6.25A0.37 0.37 0 0 0 4.28 6.25Z"></path>
+</g></g></g>
+<g fill="#020617" transform="translate(-0.6 0)">
+  <path d="M8.065 5H11.574L11.283 5.75L9.535 10.25H11.274L10.983 11H7.474L7.765 10.25L9.512 5.75H7.774Z"></path>
+  <path d="M13.654 5H15.424L13.094 11H11.324Z"></path>
+  <defs><clipPath id="pu"><rect x="0" y="4" width="20" height="4"></rect></clipPath><clipPath id="pl"><rect x="0" y="8" width="20" height="8"></rect></clipPath></defs><path clip-path="url(#pu)" transform="translate(-0.1 0)" d="M11.674 5H12.424L15.074 11H14.324Z"></path><path clip-path="url(#pl)" transform="translate(0.1 0)" d="M11.674 5H12.424L15.074 11H14.324Z"></path>
+</g></g></svg>

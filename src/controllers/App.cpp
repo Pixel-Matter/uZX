@@ -72,6 +72,15 @@ void MoToolApp::shutdown() {
 }
 
 void MoToolApp::systemRequestedQuit() {
+    // Async dialogs (Audio/MIDI settings, plugin list) listen to the engine, but JUCE would only
+    // delete them after shutdown() has destroyed it. Close them first, then quit once they're gone.
+    if (ModalComponentManager::getInstance()->cancelAllModalComponents()) {
+        Timer::callAfterDelay(100, [] {
+            if (auto* app = JUCEApplicationBase::getInstance())
+                app->systemRequestedQuit();
+        });
+        return;
+    }
     quit();
 }
 
@@ -89,6 +98,12 @@ ArrangerController& MoToolApp::getArrangerController() {
 
 PlayerController& MoToolApp::getPlayerController() {
     return *getApp().playerController_;
+}
+
+BaseController& MoToolApp::getActiveController() {
+    if (getTarget() == Target::uZXPlayer)
+        return getPlayerController();
+    return getArrangerController();
 }
 
 MoToolApp::Target MoToolApp::getTarget() {

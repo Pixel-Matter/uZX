@@ -12,6 +12,7 @@
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
+#include "../models/Ids.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../plugins/uZX/instrument/ChipInstrumentPlugin.h"
 #include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
@@ -317,10 +318,14 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         if (menuName == "Transport") {
             menu.addCommandItem(&commandManager_, MainAppCommands::transportPlay);
             menu.addCommandItem(&commandManager_, MainAppCommands::transportToStart);
+            menu.addSeparator();
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportLoop);
         } else if (menuName == "View") {
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomToProject);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomIn);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomOut);
+            menu.addSeparator();
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewSnapPlayheadToGrid);
             if (auto* edit = MoToolApp::getPlayerController().getEdit()) {
                 menu.addSeparator();
                 menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
@@ -363,9 +368,7 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
     MainAppCommands::getCommandInfo(commandID, result);
 
     bool isPlayer = MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer;
-    BaseController& controller = isPlayer
-        ? static_cast<BaseController&>(MoToolApp::getPlayerController())
-        : static_cast<BaseController&>(MoToolApp::getArrangerController());
+    auto& controller = MoToolApp::getActiveController();
     auto* edit = controller.getEdit();
 
     // Update command status based on current state
@@ -451,8 +454,30 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             result.setTicked(edit != nullptr && edit->getTransport().looping);
             break;
 
+        case MainAppCommands::transportPreservePsgTiming:
+            if (!isPlayer) {
+                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
+                    result.setActive(true);
+                    result.setTicked(editViewState->shouldPreservePsgTimingOnTempoChange());
+                    break;
+                }
+            }
+
+            result.setActive(false);
+            break;
+
         case MainAppCommands::viewZoomToSelection:
             result.setActive(edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
+            break;
+
+        case MainAppCommands::viewSnapPlayheadToGrid:
+            if (auto* editViewState = controller.getEditViewState()) {
+                result.setActive(true);
+                result.setTicked(editViewState->shouldSnapPlayheadToGrid());
+                break;
+            }
+
+            result.setActive(false);
             break;
 
         // Add more dynamic command states...
@@ -558,6 +583,8 @@ bool AppController::perform(const InvocationInfo& info) {
             const bool isPlaying = activeEdit != nullptr && activeEdit->getTransport().isPlaying();
             if (!isPlaying && !ensureAudioReadyForPlayback())
                 break;
+            if (!isPlaying && activeEdit != nullptr)
+                PlayWholeEdit::rewindIfAtEnd(*activeEdit);
             te::AppFunctions::startStopPlay();
             break;
         }
@@ -580,6 +607,16 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::transportLoop:
             te::AppFunctions::toggleLoop();
+            break;
+
+        case MainAppCommands::transportPreservePsgTiming:
+            if (!isPlayer) {
+                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
+                    editViewState->setPreservePsgTimingOnTempoChange(
+                        ! editViewState->shouldPreservePsgTimingOnTempoChange());
+                    commandManager_.commandStatusChanged();
+                }
+            }
             break;
 
         // Add commands
@@ -626,6 +663,13 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::viewZoomOut:
             te::AppFunctions::zoomOut();
+            break;
+
+        case MainAppCommands::viewSnapPlayheadToGrid:
+            if (auto* editViewState = MoToolApp::getActiveController().getEditViewState()) {
+                editViewState->setSnapPlayheadToGrid(! editViewState->shouldSnapPlayheadToGrid());
+                commandManager_.commandStatusChanged();
+            }
             break;
 
         // Settings commands
@@ -690,7 +734,10 @@ BaseController::~BaseController() {
 void BaseController::initialize() {
     engine_.getDeviceManager().addChangeListener(this);
 
-    setEdit(createOrLoadStartupEdit());
+    auto edit = createOrLoadStartupEdit();
+    if (edit == nullptr)  // the last project is unreadable: start with an empty one
+        edit = createOrLoadEdit(EditFileOps::getTempEditFile());
+    setEdit(std::move(edit));
 
     window_.restoreWindowBounds();
     window_.addKeyListener(MoToolApp::getCommandManager().getKeyMappings());
@@ -716,16 +763,32 @@ te::Edit* BaseController::getEdit() {
     return edit_.get();
 }
 
+void BaseController::zoomHorizontal(float increment) {
+    if (editViewState_ != nullptr)
+        editViewState_->zoom.zoomHorizontally(increment);
+}
+
+void BaseController::zoomToFitHorizontally() {
+    if (editViewState_ == nullptr)
+        return;
+    if (auto range = Helpers::getEffectiveClipsTimeRange(*edit_); !range.isEmpty())
+        editViewState_->zoom.setRange(range);
+}
+
 te::Engine& BaseController::getEngine() {
     return engine_;
 }
 
 std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
-    std::unique_ptr<te::Edit> edit;
-    if (editFile.existsAsFile())
-        edit = te::loadEditFromFile(engine_, editFile);
-    else
-        edit = te::createEmptyEdit(engine_, editFile);
+    if (!editFile.existsAsFile())
+        return te::createEmptyEdit(engine_, editFile);
+
+    auto edit = te::loadEditFromFile(engine_, editFile);
+    if (edit == nullptr)
+        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+            "Can't Open Project",
+            "'" + editFile.getFileName() + "' is not a " + String::fromUTF8("µZX") + " project or is damaged.",
+            "OK");
     return edit;
 }
 
@@ -886,12 +949,9 @@ std::unique_ptr<te::Edit> ArrangerController::createOrLoadStartupEdit() {
 }
 
 
-EditViewState* ArrangerController::getEditViewState() {
-    return editViewState_.get();
-}
-
 void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
-    jassert(edit != nullptr);
+    if (edit == nullptr)  // unreadable file, already reported: keep the current edit
+        return;
 
     if (savePrev && edit_ != nullptr) {
         EditFileOps::saveEdit(*edit_, true, true, false);
@@ -907,6 +967,7 @@ void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) 
 
     // Reset view state before replacing edit
     editViewState_.reset();
+    playWholeEdit_.reset();
 
     // Clean up old edit temp directory if it exists
     if (edit_ != nullptr) {
@@ -919,9 +980,10 @@ void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) 
     rescaleAllMidiClipsToFit(*edit_);
 
     edit_->playInStopEnabled = true;
-    setEditTimecodeFormat(*edit_, TimecodeTypeExt::barsBeatsFps50);
+    migrateTimecodeDisplaySettings(*edit_);
 
     createTracksAndAssignInputs();
+    playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);
     EditFileOps::saveEdit(*edit_, true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
@@ -942,20 +1004,6 @@ void ArrangerController::zoomToSelection() {
     objects = te::getClipSelectionWithCollectionClipContents(objects);
     auto range = te::getTimeRangeForSelectedItems(objects);
     auto viewState = getEditViewState();
-    if (viewState != nullptr && !range.isEmpty()) {
-        viewState->zoom.setRange(range);
-    }
-}
-
-void ArrangerController::zoomHorizontal(float increment) {
-    if (auto* viewState = getEditViewState()) {
-        viewState->zoom.zoomHorizontally(increment);
-    }
-}
-
-void ArrangerController::zoomToFitHorizontally() {
-    auto viewState = getEditViewState();
-    auto range = Helpers::getEffectiveClipsTimeRange(*getEdit());
     if (viewState != nullptr && !range.isEmpty()) {
         viewState->zoom.setRange(range);
     }

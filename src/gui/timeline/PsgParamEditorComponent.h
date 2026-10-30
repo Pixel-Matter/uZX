@@ -49,7 +49,7 @@ public:
     std::function<void()> onClipChanged;
 
     // ZoomViewState::Listener overrides
-    void zoomChanged() override;
+    void viewRangeChanged() override;
     void gridChanged() override;
     void setCurrentClip(PsgClip* c);
     void changeListenerCallback(ChangeBroadcaster* cb) override;

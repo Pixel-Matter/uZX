@@ -1,34 +1,41 @@
 # µZX Development TODO
 
-Granular tasks and implementation notes for active development.
+Granular tasks and implementation notes for µZX Studio and the shared engine. Player priorities are in [ROADMAP.md](ROADMAP.md); finished work goes to [CHANGELOG.md](../CHANGELOG.md).
 
 ## Arranger mode
 
 - [x] Bug with playhead in uZX Studio (not in uZX Player) — root cause: failed audio device freezes audible time; now detected with an error alert + Audio Settings
-- [ ] Timecode switching (frames, seconds, bars/beats)
-- [ ] Grid respect new timecode format with beats and frames
-- [ ] FPS editing of timecode or of a separate edit FPS setting
+- [x] Timecode switching (frames, seconds, bars/beats)
+- [x] Ruler respects timecode format
+- [x] Grid respect new timecode format with beats and frames
+- [x] FPS editing of timecode or of a separate edit FPS setting
+- [x] Ruler timecode is saved with the edit
+- [x] Grid level 0 subdivisions are strange
+- [x] Playhead snaps to grid
+- [ ] Pos readout/editing in different timecode formats (always HH:MM:SS:CC now)
 - [ ] Double timecode
-- [ ] Ruler respects timecode format
 - [ ] Double ruler (second is below the timeline)
-- [ ] Better BPM editing
-- [ ] Start horizontal scroll if playhead is being dragged outside of the visible bounds
-- [ ] Clip names are visible
+- [x] Better BPM editing
+- [ ] Clip names are visible on audio and MIDI clips (PSG clips show them)
 - [ ] Virtual MIDI keyboard (see audio plugin host)
-- [ ] Loop region and looped playback
+- [ ] Loop region and looped playback (Loop toggle exists, no range UI)
 - [ ] Track level knob/slider
 - [ ] Track devices intermediate level meters
 - [ ] Zoom slider
 - [ ] Moving clips around
 - [ ] Moving tracks around
 - [ ] BPM automation
-- [ ] Time sig editing
+- [ ] Time sig editing (SIG is read-only)
 - [ ] Time sig automation
 
 ## Global
 
 - [ ] Icons (fontaudio, Font Awesome, octicons, nerd-fonts)
 - [ ] CPU usage ticker in the status bar
+- [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds
+- [ ] Reopening the project that is already open (Open Recent item 0, drop of the current .uzx) loses unsaved changes: `setEdit` saves the old edit, then force-saves the stale freshly loaded copy over it; both edits share a project ID, so deleting the old temp folder also wipes the new one's
+- [ ] A second Player instance fully initialises and saves the shared startup edit before quitting (`moreThanOneInstanceAllowed` is checked after the `MoToolApp` constructor)
+- [ ] Crash audit leftover, not exercised live: quit while a render progress dialog is up (Studio)
 
 ## ChipInstrument plugin
 
@@ -52,18 +59,20 @@ Granular tasks and implementation notes for active development.
 
 - [ ] UI for MIDI to PSG plugin with tuning editor button
 - [ ] Sync tuning scale with Edit scales and keys
+- [ ] Thread safety (crash risk): `NotesToPsgMapper::setTuningSystem` / `reset` / `setBaseChannel` run on the message thread without a lock while the audio thread uses `tuning_`, `midiBuffer_` and `voices_[channel - baseChannel_]` — use-after-free of the old `TuningSystem`, concurrent `juce::Array` writes, out-of-range voice index. Easiest to hit in uZXTuning by changing root/A4/clock/table while a scale plays
+- [ ] Out-of-window MIDI is passed through with its timestamp and then merged again with an offset, roughly doubling it (`NotesToPsgMapper.cpp:298-299, 346, 352`); the AY plugin now clamps, but the mapper is still wrong
 
 ## PSG Clip / PSG data
 
-- [ ] Send initial PSG state on play start (noise-on bug when not in PSG file)
+- [x] Send initial PSG state on play start (noise-on bug when not in PSG file)
 - [ ] PSG export
-- [ ] Send cumulative regs/params values on play start from new position
-- [ ] Async or modal with progress bar PSG loading
-- [ ] PSG clip paint image cache for performance
+- [ ] Route every tempo change through `PsgTiming::setTempoBpmRetimingFrames` — today only `PsgTiming::setFramesPerBeat` / `setBpmSnappedToFrames` (the transport bar's FPB and BPM boxes) rescale `framesPerBeat`; tempo edits from any other path (Tracktion tempo editing, future tempo track/automation) skip preserve-timing compensation
+- [ ] `PsgList::loadFrom` should not write edit-wide project fps (`Helpers::setProjectFps`) — move that decision to the import caller (clip/controller)
+- [ ] `PsgList::loadFrom` derives `framesPerBeat` from the beat length at 0, while migration uses the clip start — use the clip start in both
+- [ ] PSG pause runs (`FE xx`, up to 1,020 empty frames per 2 bytes) can exhaust memory on a crafted file of a few MB; past 2³¹ frames `static_cast<int>(i)` in `PsgList.cpp:533` overflows — cap total frames
 
 ## AY Chip Emulator plugin
 
-- [ ] Visual monitor of current AY registers (human readable PSG parameters)
 - [ ] Consider keeping chip emulator state for every keyframe
 
 ## Tuning System
@@ -78,7 +87,7 @@ Granular tasks and implementation notes for active development.
 
 ## PSG Param Editor
 
-- [ ] Do not capture keyboard in PSG param list component
+- [ ] Do not capture keyboard in PSG param list component (list focus is off since 2cc7588; recheck)
 - [ ] Actual editing of PSG parameters
 - [ ] Multiple selection of param points
 - [ ] Copy/paste param curves

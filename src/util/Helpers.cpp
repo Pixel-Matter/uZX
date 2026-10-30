@@ -105,15 +105,33 @@ te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& sel
 //     return added;
 // }
 
-void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, bool insertAtCursor) {
-    browseForPSGFile(edit.engine, [&](const File& f) {
+bool readPsgOrShowError(uZX::PsgFile& psgFile) {
+    if (psgFile.ensureRead())
+        return true;
+
+    AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+        "Can't Open PSG File",
+        "'" + psgFile.getFile().getFileName() + "' is not a PSG file or contains no music.",
+        "OK");
+    return false;
+}
+
+void importPsgAsClip(te::Edit& targetEdit, te::SelectionManager& selectionManager, bool insertAtCursor) {
+    // The macOS file panel is not modal: the edit may be closed before a file is picked.
+    browseForPSGFile(targetEdit.engine, [safeEdit = te::SafeSelectable<te::Edit>(targetEdit), &selectionManager,
+                                        insertAtCursor](const File& f) {
+        if (safeEdit == nullptr)
+            return;
+        auto& edit = *safeEdit.get();
+        auto psgFile = uZX::PsgFile(f);
+        if (! readPsgOrShowError(psgFile))
+            return;
+
         auto track = getSelectedOrInsertAudioTrack(edit, selectionManager, f.getFileNameWithoutExtension());
         jassert(track != nullptr);
         if (track->getClips().size() == 0) {
             track->setName(f.getFileNameWithoutExtension());
         }
-        auto psgFile = uZX::PsgFile(f);
-        psgFile.ensureRead();
         te::TimePosition insertTime;
         if (insertAtCursor) {
             insertTime = edit.getTransport().getPosition();
@@ -134,11 +152,13 @@ void importPsgAsClip(te::Edit &edit, te::SelectionManager& selectionManager, boo
     });
 }
 
-void importAudioAsClip(te::Edit& edit, te::SelectionManager& selectionManager, bool insertAtCursor) {
-    browseForAudioFile(edit.engine, [&](const File& f) {
-        if (!f.existsAsFile()) {
+void importAudioAsClip(te::Edit& targetEdit, te::SelectionManager& selectionManager, bool insertAtCursor) {
+    browseForAudioFile(targetEdit.engine, [safeEdit = te::SafeSelectable<te::Edit>(targetEdit), &selectionManager,
+                                          insertAtCursor](const File& f) {
+        if (safeEdit == nullptr || !f.existsAsFile()) {
             return;
         }
+        auto& edit = *safeEdit.get();
 
         // Validate audio file
         te::AudioFile audioFile(edit.engine, f);

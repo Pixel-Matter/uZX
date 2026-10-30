@@ -397,5 +397,77 @@ private:
     std::array<bool,     static_cast<size_t>(PsgParamType::size())> masks {};
 };
 
+//==============================================================================
+/** A drawable pitch event within one PSG frame, produced by visitFrameNotes().
+    All pitches are normalized to the tone-period scale so tone and envelope
+    notes share one vertical axis. */
+struct PsgFrameNote {
+    float    pitch;         // normalized to the TonePeriod scale
+    uint16_t volume;        // raw 0..15 (meaningless when hasEnvMod is true)
+    uint8_t  channelMask;   // bit 0=A, bit 1=B, bit 2=C
+    bool     isEnvelopePitch;
+    bool     hasEnvMod;
+    bool     hasNoiseMod;
+};
+
+/** An envelope period P sounds at the pitch of tone period 16*P: the AY divides
+    its clock by 256 for the envelope but by 16 for tone. Mapping through the
+    tone scale keeps every pitch in one normalized space. The chip plays period 0
+    as period 1. */
+inline constexpr int envelopePeriodToTonePeriod(int envPeriod) noexcept {
+    return 16 * std::max(1, envPeriod);
+}
+
+inline float envelopePeriodToTonePitch(int envPeriod) noexcept {
+    return PsgParamType{PsgParamType::TonePeriodA}.getScale().valueToNormalized(envelopePeriodToTonePeriod(envPeriod));
+}
+
+/** Calls fn(PsgFrameNote) for every audible note in the frame: up to one tone
+    note per channel, plus one shared envelope-pitch note for every channel that
+    uses envelope volume. Pitches outside the hearable window of the tone scale
+    are skipped: very small tone periods are unlikely to be intentional notes,
+    and envelope periods above the scale are slow non-pitched sweeps.
+    PsgClip::getPitchRange() and the clip painter both use this, so the
+    computed range and the painted notes always agree. */
+template <typename Fn>
+inline void visitFrameNotes(const PsgParamFrameData& data, Fn&& fn) {
+    constexpr int hearableMin = 8;
+    const int hearableMax = PsgParamType{PsgParamType::TonePeriodA}.getScale().end;
+
+    const int envTonePeriod = envelopePeriodToTonePeriod(data.getRaw(PsgParamType::EnvelopePeriod));
+    const bool envHearable = envTonePeriod >= hearableMin && envTonePeriod <= hearableMax;
+    const float envPitch = envHearable
+        ? PsgParamType{PsgParamType::TonePeriodA}.valueToNormalized(envTonePeriod) : 0.0f;
+
+    uint8_t envChannelMask = 0;
+    for (int ch = 0; ch < 3; ++ch) {
+        const auto rawVolume   = data.getRaw(PsgParamType(PsgParamType::VolumeA + ch));
+        const bool toneIsOn    = data.getRaw(PsgParamType(PsgParamType::ToneIsOnA + ch)) > 0;
+        const bool hasEnvMod   = data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0;
+        const bool hasNoiseMod = data.getRaw(PsgParamType(PsgParamType::NoiseIsOnA + ch)) > 0;
+        const bool isAudible   = (rawVolume > 0) || hasEnvMod;
+
+        const auto channelMask = static_cast<uint8_t>(1u << ch);
+        if (hasEnvMod && envHearable)
+            envChannelMask |= channelMask;
+
+        const PsgParamType periodType(PsgParamType::TonePeriodA + ch);
+        const int period = data.getRaw(periodType);
+
+        if (toneIsOn && isAudible && period >= hearableMin) {
+            fn(PsgFrameNote {
+                periodType.valueToNormalized(period),
+                rawVolume,
+                channelMask,
+                false,
+                hasEnvMod,
+                hasNoiseMod
+            });
+        }
+    }
+
+    if (envChannelMask != 0)
+        fn(PsgFrameNote { envPitch, 15, envChannelMask, true, true, false });
+}
 
 }  // namespace MoTool

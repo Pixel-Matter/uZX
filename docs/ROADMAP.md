@@ -1,129 +1,124 @@
 # µZX Roadmap
 
+Open work only, highest priority first. Finished work goes to [CHANGELOG.md](../CHANGELOG.md).
+
+## Goal
+
+µZX is a modern tool for composing and playing back chiptune music, and the music subsystem of [MoTool](Vision.md).
+
+**Done** means: I can write a whole track in µZX Studio, from MIDI to a PSG export, and play it on real hardware; and play live from a MIDI controller through the AY emulator or even a real AY on a Spectrum (MIDI → PC → AY MIDI → ZX → audio). That is a far goal, so work goes milestone by milestone; each milestone below states its own goal.
+
+**Out of scope:** anything not on this roadmap. For the current milestone (Player alpha for testers) that includes other chips, video, the node system, tracker UI and mobile.
+
 ## µZX Player
 
-### v0.9 — Alpha (Internal Testing)
+Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
 
-**Goal:** A build you can hand to a few people to try. Fix showstoppers.
+### Next up
+
+1. **Global master volume** — first P1 below
+
+### Alpha for testers
+
+**Goal:** a build you can hand to a few people without explaining workarounds.
 
 #### P0 — Blockers
 
-- [ ] Some bug with pure env bass viz on B channel in SkyTrainFunk close to the start
-- [ ] Playhead disappears while dragging fast enough
-- [ ] **Fix** sometimes stopping after 2 seconds of playback
-- [ ] **Tone/envelope visual mismatch** — detuning between tone and envelope viz when periods are in ratio
-- [x] **Drag-and-drop** — accept `.psg` and `.uzx` files dropped onto the window
-- [x] **Open from Finder** — handle `anotherInstanceStarted()` / command-line args
-- [x] **File association** — `.psg` and `.uzx` macOS file types
-- [x] **Window title** — show filename in title bar
-- [x] **Seek by clicking** — click on the timeline/ruler to seek
-- [x] **App icon**
-- [x] Timeline is seconds-based until ruler supports custom beats+frames divisions
-- [x] **Embed fonts** as binary resource data
-- [ ] **Crash audit** — test common scenarios and fix any crashes
+None.
 
 #### P1 — Important
 
-- [x] **Add left padding for player**
-- [ ] Save/Save As.. menu item for Player
-- [ ] Beat+frames-based timeline
-- [ ] Different rendering in seconds-only and beat-based timeline
-- [x] **PSG** file icons in Finder
-- [x] **Keyboard shortcuts** — Space, Cmd+O, Cmd+Q, Home
-- [x] **Copyright year** — 2025-2026
-- [x] **Separate version numbering** per target
-- [x] **macOS universal build** (x86_64 + arm64)
-- [ ] **Cleanup debug artifacts**
-- [ ] **Zooming** — zoom around playhead position while playing
-- [ ] **AY reset** at the start of playback
-- [x] **Shift-wheel** horizontal scrolling
-- [x] **Mouse gestures** work over the playhead (transparent hit zone)
-- [ ] **Middle mouse drag-pan** — pan timeline by dragging with middle mouse button (DAW convention)
-- [ ] **Global master volume** — save master volume in app settings, apply to all opened files
-- [ ] **UI shortcuts documentation** — document keyboard/mouse shortcuts for users
-- [ ] **Cross-platform shortcut unification** — check modifier key behavior consistency across macOS/Windows
-- [ ] **Last opened edit** not always working
+- [ ] **Global master volume** — save in app settings and apply to every opened file (stored per edit now)
+- [ ] **Last opened edit** — reopening works in code; reproduce the "not always" report or close it
+- [ ] **Save / Save As** in the Player (Cmd+S does nothing)
+- [ ] **Shortcut consistency** across macOS, Windows and Linux
+- [ ] **Turbo-sound** load 2-3 PSGs at the same time
+- [ ] **Level meter** in transport bar to the left or right of global volume, stereo
+- [ ] **Audit** and fix render smoothness
+- [ ] Fix **tab bars** look and feel to match design system (after plugins panes)
 
 #### P2 — Nice to have
 
-- [x] **GitHub Actions CI for macOS** — build, upload as release artifact
-- [x] **Windows build** — GitHub Actions
-- [x] **Linux build** — GitHub Actions
-- [ ] **Global default AY settings** — apply saved AY config (frequency, stereo, channels) when opening PSG from command line
-- [ ] **Mute/solo buttons** — per-channel mute in AY side panel
+- [ ] **Global default AY settings** (clock, stereo, channels) for PSG files opened from Finder or the command line
+- [ ] **Solo** per AY channel (mute exists)
+- [ ] **BPM, FPB, DIV** detection
+- [ ] **Note lanes** and tuning table detection
 
 ---
 
-### v1.0 — First Public Release (macOS)
+### v1.0 — First public release (macOS)
 
-**Goal:** A polished macOS app anyone can download from GitHub and use.
+**Goal:** a signed macOS app anyone can download from GitHub and open without a Gatekeeper workaround.
 
 #### P0 — Blockers
 
-- [ ] **Update Tracktion** engine to latest stable
-- [ ] **macOS code signing + notarization** — Apple Developer ID signing and notarytool
-- [ ] **DMG packaging** — app with Applications symlink
-- [ ] **GitHub Actions CI** — build, sign, notarize, DMG, upload as release artifact
-- [ ] **GitHub Release** — tag `v1.0.0`, DMG attached, release notes
-- [ ] **Seek snapping** — snap to frame boundaries
-- [ ] **BPM and timesig** editing
+- [ ] **Code signing + notarization in CI** — release automation exists; the macOS build is an unsigned zip
+- [ ] **DMG packaging** with an Applications symlink
+- [ ] **Tracktion Engine** — move from v3.2.0 + fork patches to the latest stable, or decide to stay
+- [ ] **Release notes** — CHANGELOG entry for the tag
+- [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
 
 #### P1 — Important
 
-- [x] **Release branch strategy** — tagging `main` recommended
-- [ ] **About dialog** — working links to GitHub repo, scroller for greets
-- [ ] **Error handling** — graceful message for corrupt/invalid PSG files
-- [ ] **Audio device fallback** — handle "no audio device" cleanly
-- [ ] **Horizontal scrollbar** for timeline
-- [ ] **Turbosound** — open/import 2-3 PSG files at once
-- [ ] **Separate visualizer window** — oscilloscope with horizontal and vertical layouts
+- [ ] **About dialog** — GitHub link (only pixelmatter.org now), greets scroller
+- [ ] **Turbosound** — open or drop 2–3 PSG files at once (Import PSG → New Track adds them one at a time)
+- [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
+- [ ] **Time signature editing** — BPM, FPS, FPB and DIV are editable; SIG is read-only
+- [ ] **Loop range** on the ruler
 - [ ] **Nicer transport icons**
+- [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
 
 #### P2 — Nice to have
 
 - [ ] **DMG background image**
-- [ ] **Screenshot/GIF** for README
 - [ ] **Visualizer mode** — fullscreen oscilloscopes without controls (for streaming)
-- [ ] **Channel split mode** — each AY channel in a separate lane
-- [ ] **Minimap** on horizontal scroller
-- [ ] **Touchpad gestures** for scrolling and zooming
+- [ ] **Channel split mode** — each AY channel in its own lane
+- [ ] **Minimap** on the horizontal scroller
 
 ---
 
-### v1.1 — Windows installer + Quality of Life
+### After 1.0
 
-- [ ] **Windows build** — NSIS or WiX installer
-- [ ] **Windows code signing**
-- [ ] **WAV export** — render PSG to WAV
-- [ ] **Looping** — toggle loop playback
-- [ ] Address crash reports and UX issues from v1.0 feedback
-- [ ] Performance profiling — smooth 60FPS on modest hardware
+Grouped by theme, not ordered.
 
----
+**Platforms**
 
-### v1.2 — Linux + Format Support
+- [ ] Windows installer (NSIS or WiX) and code signing — CI ships a zip
+- [ ] Linux AppImage — CI ships a tar.gz
+- [ ] iOS and Android — JUCE supports mobile platforms; the Player is a natural fit
 
-- [ ] **Linux build** — GitHub Actions, AppImage packaging
-- [ ] **CN import** — ChipNomad format
-- [ ] **PT3/VT2 import** — ProTracker 3, Vortex Tracker II
-- [ ] **AY/SNDH file import** — AY container format, Atari ST music format
-- [ ] **MP3/OGG export**
+**Export**
 
----
-
-### v2.0 — Major Feature Release
-
-- [ ] **Playlist mode** — open multiple files, sequential play, queue management
-- [ ] **Channel views** — pseudonotes / PSG params / AY regs switching
-- [ ] **Frequency visualization** — spectrum analyzer-like display
-- [ ] **Tuning analyzer** — detect tuning system used in a PSG file
-- [ ] **Beat detection** — estimate BPM and groove patterns
-- [ ] **Pianomania-like view** — scrolling piano roll visualization
-- [ ] **Tracker-like view** — scrolling tracker pattern view
+- [ ] WAV export with a save dialog (Studio's internal Render to audio exists)
+- [ ] MP3/OGG export
+- [ ] PSG export and optimization
 - [ ] Rendering to video
-- [ ] PSG file optimization and export
+
+**Import**
+
+- [ ] ChipNomad (CN)
+- [ ] ProTracker 3 / Vortex Tracker II (PT3/VT2)
+- [ ] AY and SNDH containers
+
+**Views**
+
+- [ ] Playlist mode — open several files, sequential play, queue
+- [ ] PSG params clip view (Notes and Registers views exist)
+- [ ] Live AY register monitor (the frame hover shows stored clip data, not chip state)
+- [ ] Spectrum display
+- [ ] Pianomania-like scrolling piano roll
+- [ ] Tracker-like scrolling pattern view
 - [ ] Skins/themes
-- [ ] **iOS and Android** — JUCE supports mobile platforms; µZX Player is a natural fit
+
+**Analysis**
+
+- [ ] Tuning analyzer — detect the tuning system of a PSG file
+- [ ] Beat detection — estimate BPM and groove
+
+**Quality**
+
+- [ ] Smooth 60 FPS on modest hardware: PSG clip paint cache, async PSG loading with progress
+- [ ] Crash reports and UX issues from 1.0 feedback
 
 ---
 

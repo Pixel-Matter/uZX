@@ -126,6 +126,9 @@ public:
         return nullptr;
     }
 
+    /** The emulated chip's registers R0-R13 as playback has set them. */
+    PsgRegsFrame getChipRegisters() const;
+
 private:
     //==============================================================================
 

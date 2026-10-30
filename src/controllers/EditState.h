@@ -10,16 +10,9 @@ namespace IDs
 {
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(EDITVIEWSTATE)
-    DECLARE_ID(showMasterTrack)
-    DECLARE_ID(showGlobalTrack)
-    DECLARE_ID(showMarkerTrack)
-    DECLARE_ID(showChordTrack)
-    DECLARE_ID(showMidiDevices)
-    DECLARE_ID(showWaveDevices)
-    DECLARE_ID(drawWaveforms)
-    DECLARE_ID(showHeaders)
-    DECLARE_ID(showArranger)
     DECLARE_ID(headersWidth)
+    DECLARE_ID(preservePsgTimingOnTempoChange)
+    DECLARE_ID(snapPlayheadToGrid)
 
     DECLARE_ID(ZOOMVIEWSTATE)
     DECLARE_ID(viewStartTime)
@@ -39,7 +32,8 @@ namespace te = tracktion;
  */
 class ZoomViewState :
         private FlaggedAsyncUpdater,
-        private ValueTree::Listener {
+        private ValueTree::Listener,
+        private te::TransportControl::Listener {
 public:
 
     // Actually we do not need to use listeners in every ValueTree state wrapper,
@@ -48,8 +42,8 @@ public:
     class Listener {
     public:
         virtual ~Listener() = default;
-        virtual void zoomChanged() = 0;
-        virtual void zoomOrPosChanged() {}
+        virtual void viewRangeChanged() = 0;
+        virtual void playheadMoved() {}
     };
 
     ZoomViewState(te::Edit& e);
@@ -59,7 +53,17 @@ public:
     void removeListener(Listener* l);
 
     void zoomHorizontally(double factor);
+    /** Zooms by a wheel delta around anchorX, or around the playhead while the view follows it. */
     void zoomAroundX(double factor, int anchorX);
+    /** The same for a pinch, where scale > 1 zooms in. */
+    void magnifyAroundX(float scale, int anchorX);
+    /** Scrolls by pixels, positive towards later times. */
+    void scrollBy(double pixels);
+    /** Scrolls by a wheel or swipe, along its dominant axis. Playback does not scroll the view for a moment after. */
+    void scrollByWheel(const MouseWheelDetails& wheel);
+
+    static constexpr auto MinTimePerPixel = te::TimeDuration::fromSeconds(0.00001);
+    static constexpr auto MaxTimePerPixel = te::TimeDuration::fromSeconds(2.0);
 
     inline int getViewWidthPx() const noexcept { return viewWidthPx.load(); }
     void setViewWidthPx(int w) noexcept;
@@ -77,11 +81,18 @@ public:
     float durationToPixels(te::TimeDuration duration) const;
     double getViewY() const;
 
-    static bool isZoomProperty(const juce::Identifier& id);
+    /** Where the playhead is drawn and the view follows while playing: the transport position,
+        minus the audio device's output latency while playing, so it matches what is heard. */
+    te::TimePosition getPlayheadPosition() const;
 
-    te::Edit& edit;
+    /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
+    void beginDrag();
+    /** Sideways scrolls, vertically zooms around anchorX (down zooms out); deltas are from the drag start. */
+    void dragBy(int anchorX, int deltaX, int deltaY);
+    void endDrag();
 
 private:
+    te::Edit& edit;
     ValueTree state;
     CachedValue<te::TimePosition> viewStartTime;
     CachedValue<te::TimeDuration> viewTimePerPixel;
@@ -91,11 +102,25 @@ private:
     // transient state
     std::atomic<int> viewWidthPx = 1024;  // not stored in ValueTree
 
-    bool updateZoom = false, updatePos = false;
+    bool updateViewRange = false, updatePlayhead = false;
+    bool userDraggingView = false;
+    uint32 lastWheelScrollMs = 0;
+    static constexpr uint32 wheelFollowPauseMs = 1000;
+    te::TimePosition dragStartViewStart;
+    te::TimeDuration dragStartTimePerPixel;
+
+    // Where playback last started, was moved to or looped back to, and the last transport position seen
+    te::TimePosition lastJumpPosition, lastTransportPosition;
 
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
+    // Tracktion's synchronous play/stop notifications
+    void startVideo() override;
+    void stopVideo() override;
     void handleAsyncUpdate() override;
+    static bool isZoomProperty(const juce::Identifier& id);
     void handlePlaybackScrolling();
+    bool isFollowingPlayhead() const;
+    void zoomAroundXByScale(double timePerPixelScale, int anchorX);
     bool jumpToPosition(te::TimePosition pos);
     bool jumpToCurrentPosition();
 };
@@ -105,29 +130,24 @@ class EditViewState {
 public:
     EditViewState(te::Edit& e, te::SelectionManager& s);
 
-    CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,
-                      drawWaveforms, showHeaders, showMidiDevices, showWaveDevices;
-    CachedValue<int> headersWidth;
+    // Saved with the edit, but not undoable: these are view settings, not edits
+    CachedValue<bool> preservePsgTimingOnTempoChange, snapPlayheadToGrid;
+    CachedValue<int> headersWidth;  // Studio's; written only while headers are shown
+    static constexpr int minHeadersWidth = 110, maxHeadersWidth = 300;
 
     ValueTree state;
     ZoomViewState zoom;
     te::SelectionManager& selectionManager;
     te::Edit& edit;
 
-    te::TimeDuration getBeatLengthFor(double bpm) const;
-    double getFramesPerBeatFor(double bpm) const;
-    double getCurrentFramesPerBeat() const;
-    // for note lengths: whole (divider=1), half (divider=2), quarter (divider=4), eighth (divider=8), etc.
-    double getFramesPerNote(size_t divider) const;
-    double getBpmForBeatLength(te::TimeDuration beatLen) const;
-    double getBpmSnappedToFps(double bpm) const;
-    double setBpmSnappedToFps(double bpm);
-
-    void setBeatLength(te::TimeDuration beatLen);
-    void setFramesPerBeat(int fpb);
+    void setPreservePsgTimingOnTempoChange(bool shouldPreserve);
+    bool shouldPreservePsgTimingOnTempoChange() const;
+    void setSnapPlayheadToGrid(bool shouldSnap);
+    bool shouldSnapPlayheadToGrid() const;
 
     int getTrackHeaderWidth() const;
 
+    bool showHeaders = true;  // per app, not saved: the Player hides them
     bool transparentClips = false;
     bool disableClipSelection = false;
 
@@ -145,9 +165,8 @@ class TrackViewState : private ValueTree::Listener {
 public:
     /**
         @param trackState  ValueTree with type TRACK, inside which VIEWSTATE is created or extracted
-        @param undoManager  UndoManager from EditViewState
-    */
-    TrackViewState(ValueTree trackState, UndoManager* undoManager);
+        */
+    explicit TrackViewState(ValueTree trackState);
     ~TrackViewState() override;
 
     int getHeight() const noexcept;

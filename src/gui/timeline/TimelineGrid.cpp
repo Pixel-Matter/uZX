@@ -1,7 +1,7 @@
 #include "TimelineGrid.h"
 #include "../common/LookAndFeel.h"
 #include "../../models/EditUtilities.h"
-#include "../../controllers/App.h"
+#include "../../models/Ids.h"
 
 using namespace std::literals;
 using namespace juce;
@@ -10,7 +10,8 @@ namespace MoTool {
 
 //==============================================================================
 TimelineGrid::TimelineGrid(EditViewState& evs)
-    : editViewState(evs)
+    : te::TempoSequence::Listener {evs.edit.tempoSequence}
+    , editViewState(evs)
 {
     editViewState.zoom.addListener(this);
     editViewState.edit.state.addListener(this);
@@ -31,6 +32,11 @@ std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::getTicks() {
     return ticksCache;
 }
 
+te::TimePosition TimelineGrid::playheadTimeAtX(int x) const {
+    const auto time = jmax(te::TimePosition(), editViewState.zoom.xToTime(x));
+    return editViewState.shouldSnapPlayheadToGrid() ? snapTimeToVisibleGrid(time) : time;
+}
+
 void TimelineGrid::addListener(Listener* l) { listeners.add(l); }
 void TimelineGrid::removeListener(Listener* l) { listeners.remove(l); }
 
@@ -39,59 +45,106 @@ void TimelineGrid::invalidateAndNotify() {
     listeners.call(&TimelineGrid::Listener::gridChanged);
 }
 
+SnapLadder TimelineGrid::makeSnapLadder() const {
+    auto& edit = editViewState.edit;
+    const auto mode = Helpers::getTimecodeDisplayMode(edit);
+    const auto fps = Helpers::getProjectFps(edit);
+    const auto& tempo = edit.tempoSequence.getTempoAt(editViewState.zoom.getRange().getStart());
+    const auto framesPerBeat = jmax(1, roundToInt(fps * tempo.getApproxBeatLength().inSeconds()));
+
+    return SnapLadder(mode, fps, framesPerBeat, Helpers::getGridSubdivisionPattern(edit, framesPerBeat));
+}
+
+int TimelineGrid::getVisibleSnapLevel(const SnapLadder& ladder) const {
+    auto& edit = editViewState.edit;
+    const auto& tempo = edit.tempoSequence.getTempoAt(editViewState.zoom.getRange().getStart());
+    const bool triplets = edit.tempoSequence.isTripletsAtTime(editViewState.zoom.getRange().getStart());
+
+    return ladder.getBestLevel(editViewState.zoom.getTimePerPixel(), 12.0, tempo, triplets);
+}
+
+te::TimePosition TimelineGrid::snapTimeToVisibleGrid(te::TimePosition time) const {
+    const auto ladder = makeSnapLadder();
+    return ladder.roundNearest(getVisibleSnapLevel(ladder), time, editViewState.edit.tempoSequence);
+}
+
 std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
     std::vector<MoLookAndFeel::TimelineGridTick> ticks;
 
-    auto tcf = Helpers::getEditTimecodeFormat(editViewState.edit);
-    auto range = editViewState.zoom.getRange();
-    auto time = range.getStart();
-    auto endTime = range.getEnd();
+    auto& edit = editViewState.edit;
+    const auto& ts = edit.tempoSequence;
+    const auto range = editViewState.zoom.getRange();
+    const auto& tempo = ts.getTempoAt(range.getStart());
+    const auto timePerPixel = editViewState.zoom.getTimePerPixel();
+    const bool triplets = ts.isTripletsAtTime(range.getStart());
 
-    // TODO iterate tempo setting along the whole time span and regular grid inbetween
-    const auto& ts = editViewState.edit.tempoSequence;
-    const auto& tempo = ts.getTempoAt(editViewState.edit.getTransport().getPosition());
+    const auto ladder = makeSnapLadder();
 
-    auto snaps = tcf.getOptimalSnapTypes(tempo, editViewState.zoom.getTimePerPixel(), ts.isTripletsAtTime(time));
-    // for (auto& snap : snaps) {
-    //     DBG("Snap " << snap.getLevel()
-    //         << ": " << snap.getDescription(tempo, ts.isTripletsAtTime(time))
-    //         << ", tc " << snap.getTimecodeString(0s, ts, false)
-    //     );
-    // }
+    // Three display levels, finest first: short unlabeled ticks, labeled medium
+    // ticks, and the next structural milestone (beat, bar, bar group, ...).
+    const int fine = getVisibleSnapLevel(ladder);
+    const int medium = ladder.getBestLevel(timePerPixel, 48.0, tempo, triplets);
+    const int coarse = ladder.getMilestoneAfter(medium);
 
-    // prepare up to 3 levels of snap if available: finest then coarse and coarser
-    auto colorOffset = 3 - snaps.size();
-    while (time < endTime) {
-        size_t tickLevel = 0;
-        time = snaps[tickLevel].roundTimeUp(time, ts);
-        auto halfStep = snaps[tickLevel].getApproxIntervalTime(tempo, ts.isTripletsAtTime(time)) / 2.0;
+    std::vector<int> displayLevels { fine };
+    if (medium != fine)
+        displayLevels.push_back(medium);
+    if (coarse != displayLevels.back())
+        displayLevels.push_back(coarse);
+    while (displayLevels.size() < 3) {
+        const auto milestone = ladder.getMilestoneAfter(displayLevels.back());
+        if (milestone == displayLevels.back())
+            break;
+        displayLevels.push_back(milestone);
+    }
 
-        for (size_t i = 1; i < snaps.size(); ++i) {
-            if (approximatelyEqual(time, snaps[i].roundTimeNearest(time, ts))) {
-                tickLevel = i;
+    const auto visualOffset = 3 - displayLevels.size();
+    const auto mediumIndex = medium == fine ? (size_t) 0 : (size_t) 1;
+
+    auto time = jmax(te::TimePosition(), ladder.roundUp(fine, range.getStart(), ts));
+
+    while (time < range.getEnd()) {
+        // The coarsest display level this tick lies on.
+        size_t matched = 0;
+        for (size_t i = displayLevels.size(); --i > 0;) {
+            if (ladder.isOnGrid(displayLevels[i], time, ts)) {
+                matched = i;
+                break;
             }
         }
-        String label;
-        if (tickLevel != 0) {
-            // only label coarse and coarser ticks
-            label = snaps[tickLevel].getTimecodeString(time, ts, false);
-            label = label.replace("|", ".").replace("Bar ", "");
-        }
-        auto x = roundToInt(editViewState.zoom.timeToX(time));
-        ticks.push_back({ x, colorOffset + tickLevel, label });
 
-        time = time + halfStep;
+        String label;
+        if (matched >= mediumIndex)
+            label = ladder.getLabel(displayLevels[matched], time, ts);
+
+        const auto x = roundToInt(editViewState.zoom.timeToX(time));
+        ticks.push_back({ x, visualOffset + matched, label });
+
+        const auto next = ladder.getNextTick(fine, time, ts);
+        if (next <= time) {
+            jassertfalse;
+            break;
+        }
+        time = next;
     }
+
     return ticks;
 }
 
-void TimelineGrid::zoomChanged() {
+void TimelineGrid::viewRangeChanged() {
     ticksCacheValid = false;
 }
 
 void TimelineGrid::valueTreePropertyChanged(ValueTree&, const Identifier& property) {
-    if (property == te::IDs::timecodeFormat)
+    if (property == IDs::timecodeDisplayMode
+        || property == IDs::projectFps
+        || property == IDs::gridSubdivision
+        || property == te::IDs::timecodeFormat)
         invalidateAndNotify();
+}
+
+void TimelineGrid::selectableObjectChanged(te::Selectable*) {
+    invalidateAndNotify();
 }
 
 }  // namespace MoTool

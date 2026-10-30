@@ -16,11 +16,7 @@ namespace MoTool {
 
 
 class ExtUIBehaviour : public te::UIBehaviour {
-    static BaseController& getActiveController() {
-        if (MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer)
-            return MoToolApp::getPlayerController();
-        return MoToolApp::getArrangerController();
-    }
+    static BaseController& getActiveController() { return MoToolApp::getActiveController(); }
 
 public:
     ExtUIBehaviour() = default;
@@ -180,20 +176,12 @@ public:
         getActiveController().zoomHorizontal(amount);
     }
 
-    void zoomVertical(float amount)                            override {
-        getActiveController().zoomVertical(amount);
-    }
-
     void zoomToSelection()                                      override {
         getActiveController().zoomToSelection();
     }
 
     void zoomToFitHorizontally()                                override {
         getActiveController().zoomToFitHorizontally();
-    }
-
-    void zoomToFitVertically()                                  override {
-        getActiveController().zoomToFitVertically();
     }
 
     //==============================================================================

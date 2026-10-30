@@ -8,25 +8,43 @@
 namespace MoTool {
 
 //==============================================================================
-class PsgClipComponent : public MidiClipComponent {
+/** Frame hover popup text as coloured runs: A/B/C, Env and Noise as a borderless
+    table with right-aligned numbers, in legend colours, half-alpha unless this frame
+    changed the value. With hex, periods and volumes are zero-padded hex. */
+std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex);
+
+//==============================================================================
+class PsgClipComponent : public MidiClipComponent,
+                         private juce::ValueTree::Listener,
+                         private juce::Timer {
 public:
-    PsgClipComponent(EditViewState& evs, te::Clip::Ptr c)
-        : MidiClipComponent(evs, c)
-        // , vblankAttachment_(this, [this](double) { onVBlank(); })
-    {
-        // setBufferedToImage(true);
-    }
+    PsgClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c);
+    ~PsgClipComponent() override;
 
     PsgClip* getPsgClip();
 
     void paint(Graphics& g) override;
     void mouseDown(const MouseEvent& e) override;
+    void mouseMove(const MouseEvent& e) override;
+    void mouseExit(const MouseEvent& e) override;
     void paintRegisters(Graphics& g);
-    void paintParameters(Graphics& g);
     void paintNotes(Graphics& g);
-    void paintLegend(Graphics& g);
+
+    /** Top row shared by the channel legend, clip name and fps-mismatch warning. */
+    void paintHeader(Graphics& g);
 
 private:
+    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+    void timerCallback() override;
+
+    /** Hover popup text for the frame under local x; empty before the first frame. */
+    std::vector<std::pair<String, Colour>> describeFrameAt(int x);
+    void showFrameHover();
+    void hideFrameHover();
+
+    class FrameHover;
+    std::unique_ptr<FrameHover> frameHover_;
+
     // void onVBlank() {
     //     // Throttle to ~30fps (skip every other vblank on 60Hz display)
     //     if (++vblankCounter_ < vblankDivider_)

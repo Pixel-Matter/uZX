@@ -45,6 +45,7 @@ public:
         transportToStart,
         transportToEnd,
         transportLoop,
+        transportPreservePsgTiming,
 
         // Add Menu
         addAudioTrack        = 300,
@@ -59,6 +60,7 @@ public:
         viewZoomToSelection,
         viewZoomIn,
         viewZoomOut,
+        viewSnapPlayheadToGrid,
 
         // Settings Menu
         settingsAudioMidi    = 600,
@@ -85,10 +87,12 @@ public:
             fileSave, fileSaveAs, fileReveal, fileImportPsg, fileImportAudio, fileQuit,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
+            transportPreservePsgTiming,
             addAudioTrack,
             // addAutomationTrack,
             trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
+            viewSnapPlayheadToGrid,
             settingsAudioMidi, settingsPlugins, settingsTuningTables,
             helpAbout
         };
@@ -143,6 +147,8 @@ public:
             menu.addCommandItem(manager, MainAppCommands::transportToEnd);
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::transportLoop);
+            menu.addSeparator();
+            menu.addCommandItem(manager, MainAppCommands::transportPreservePsgTiming);
         } else if (menuName == "Add") {
             menu.addCommandItem(manager, MainAppCommands::addAudioTrack);
             // menu.addCommandItem(manager, AppCommands::addAutomationTrack);
@@ -153,6 +159,8 @@ public:
             menu.addCommandItem(manager, MainAppCommands::viewZoomToSelection);
             menu.addCommandItem(manager, MainAppCommands::viewZoomIn);
             menu.addCommandItem(manager, MainAppCommands::viewZoomOut);
+            menu.addSeparator();
+            menu.addCommandItem(manager, MainAppCommands::viewSnapPlayheadToGrid);
         } else if (menuName == "Settings") {
             menu.addCommandItem(manager, MainAppCommands::settingsAudioMidi);
             menu.addCommandItem(manager, MainAppCommands::settingsPlugins);
@@ -306,6 +314,12 @@ public:
                 result.addDefaultKeypress('l', ModifierKeys::commandModifier);
                 break;
 
+            case transportPreservePsgTiming:
+                result.setInfo("Preserve PSG Timing While Changing Tempo",
+                               "Keep imported PSG frame timing fixed while changing BPM or frames per beat",
+                               "Transport", 0);
+                break;
+
             // Add commands
             case addAudioTrack:
                 result.setInfo("Audio Track", "Add a new audio track", "Add", 0);
@@ -340,6 +354,12 @@ public:
             case viewZoomOut:
                 result.setInfo("Zoom out", "Zoom out", "View", 0);
                 result.addDefaultKeypress('-', 0);
+                break;
+
+            case viewSnapPlayheadToGrid:
+                result.setInfo("Snap Playhead to Grid",
+                               "Snap the playhead to the nearest visible grid line when you click or drag it",
+                               "View", 0);
                 break;
 
             // Settings commands

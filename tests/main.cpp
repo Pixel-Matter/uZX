@@ -187,6 +187,9 @@ int main(int argc, char* argv[]) {
     }
 
     ScopedJuceInitialiser_GUI init;
+    // Render with the app's bundled fonts, as MoToolApp does, not the platform default.
+    MoLookAndFeel lookAndFeel;
+    LookAndFeel::setDefaultLookAndFeel(&lookAndFeel);
     CoutLogger logger;
     Logger::setCurrentLogger (&logger);
 
@@ -220,6 +223,7 @@ int main(int argc, char* argv[]) {
     }
 
     Logger::setCurrentLogger(nullptr);
+    LookAndFeel::setDefaultLookAndFeel(nullptr);
     engine.getTemporaryFileManager().getTempDirectory().deleteRecursively(false);
 
     int numFailures = 0;

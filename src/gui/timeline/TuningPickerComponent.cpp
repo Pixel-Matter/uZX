@@ -1,5 +1,7 @@
 #include "TuningPickerComponent.h"
 
+#include <array>
+
 #include "../../models/Ids.h"
 #include "../common/LookAndFeel.h"
 
@@ -12,9 +14,12 @@ class TuningPickerComponent::HistogramView : public Component
 public:
     static constexpr int binsPerSemitone = 5;
 
-    void set(std::vector<float> newBins, int newTonic) {
+    /** inKey marks the pitch classes of the chosen key's scale; they get the brighter
+        grid lines and labels, so out-of-key peaks stand out at a glance. */
+    void set(std::vector<float> newBins, int newTonic, std::array<bool, 12> inKey) {
         bins_ = std::move(newBins);
         tonic_ = newTonic;
+        inKey_ = inKey;
         repaint();
     }
 
@@ -31,9 +36,10 @@ public:
         for (int pc = 0; pc < 12; ++pc) {
             const float x = area.getX() + static_cast<float>(pc * binsPerSemitone) * binWidth + binWidth * 0.5f;
             const bool isTonic = pc == tonic_;
-            g.setColour(Colours::white.withAlpha(isTonic ? 0.6f : 0.2f));
+            const bool inKey = inKey_[static_cast<size_t>(pc)];
+            g.setColour(Colours::white.withAlpha(isTonic ? 0.7f : inKey ? 0.4f : 0.1f));
             g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
-            g.setColour(Colours::white.withAlpha(isTonic ? 0.9f : 0.5f));
+            g.setColour(Colours::white.withAlpha(isTonic ? 0.95f : inKey ? 0.75f : 0.3f));
             g.drawText(String::fromUTF8(Scale::Tonic(pc).getLongLabel().data()),
                        Rectangle<float>(x - 12.0f, labels.getY(), 24.0f, labels.getHeight()),
                        Justification::centred,
@@ -53,6 +59,7 @@ public:
 private:
     std::vector<float> bins_;
     int tonic_ = -1;
+    std::array<bool, 12> inKey_{};
 };
 
 //==============================================================================
@@ -148,8 +155,13 @@ void TuningPickerComponent::refresh() {
             keyBox_.setSelectedId(static_cast<int>(i) + 1, dontSendNotification);
 
     detectedButton_.setEnabled(tuning.tableChosen || tuning.keyChosen);
-    histogramView_->set(makeFoldedPitchHistogram(histogram_, tuning.grid, HistogramView::binsPerSemitone),
-                        static_cast<int>(tuning.key.tonic));
+    const Scale scale(tuning.key.getScaleType());
+    const int tonic = static_cast<int>(tuning.key.tonic);
+    std::array<bool, 12> inKey{};
+    for (int pc = 0; pc < 12; ++pc)
+        inKey[static_cast<size_t>(pc)] = scale.isIntervalInScale((pc - tonic + 12) % 12);
+    histogramView_->set(
+        makeFoldedPitchHistogram(histogram_, tuning.grid, HistogramView::binsPerSemitone), tonic, inKey);
 }
 
 void TuningPickerComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {

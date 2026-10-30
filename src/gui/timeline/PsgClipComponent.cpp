@@ -647,9 +647,10 @@ static NotesLayout makeNotesLayout(const PsgClip& clip, const ClipVisibility& vi
     };
 }
 
-/** One guide line per note of the clip's tuning grid, brighter on the tonic, with note
-    names once the lanes are tall enough. Drawn under the notes, which are never snapped
-    to the lanes: drift, bends and portamento stay where the chip plays them. */
+/** Piano-roll lanes for the clip's tuning grid: a boundary line midway between
+    adjacent grid notes, the tonic lane shaded, and note names inside the lanes once
+    they are tall enough. Drawn under the notes, which are never snapped to the lanes:
+    drift, bends and portamento stay where the chip plays them. */
 void PsgClipComponent::paintNoteLanes(Graphics& g) {
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr || psgClip->getPsg().getFrames().isEmpty())
@@ -660,22 +661,38 @@ void PsgClipComponent::paintNoteLanes(Graphics& g) {
     const auto tuning = psgClip->getTuning();
     const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
     const int tonic = static_cast<int>(tuning.key.tonic);
+
+    // Grid notes by rising pitch; the scale is logarithmic, so the midpoint of two
+    // normalized pitches is the geometric mean of their periods.
+    std::vector<std::pair<float, int>> notes;
+    notes.reserve(tuning.grid.size());
+    for (auto it = tuning.grid.rbegin(); it != tuning.grid.rend(); ++it)
+        notes.emplace_back(toneScale.valueToNormalized(it->first), it->second);
+    if (notes.size() < 2)
+        return;
+
+    const float x = layout.visibleX.getStart(), width = layout.visibleX.getLength();
     const bool labelLanes = layout.noteHeight >= 9.0f;
     if (labelLanes)
         g.setFont(Font(FontOptions(jmin(11.0f, layout.noteHeight - 2.0f))));
 
-    for (const auto& [period, note] : tuning.grid) {
-        const float norm = toneScale.valueToNormalized(period);
-        if (! layout.pitchRange.contains(norm))
+    for (size_t i = 0; i < notes.size(); ++i) {
+        const float below = i > 0 ? notes[i - 1].first : notes[i].first - (notes[i + 1].first - notes[i].first);
+        const float above = i + 1 < notes.size() ? notes[i + 1].first : notes[i].first + (notes[i].first - notes[i - 1].first);
+        const float lo = (below + notes[i].first) * 0.5f, hi = (notes[i].first + above) * 0.5f;
+        if (hi < layout.pitchRange.getStart() || lo > layout.pitchRange.getEnd())
             continue;
-        const float y = layout.normToY(norm);
-        const bool isTonic = ((note % 12) + 12) % 12 == tonic;
-        g.setColour(Colours::white.withAlpha(isTonic ? 0.28f : 0.08f));
-        g.drawHorizontalLine(roundToInt(y), layout.visibleX.getStart(), layout.visibleX.getEnd());
+        const float top = layout.normToY(hi), bottom = layout.normToY(lo);
+        const bool isTonic = ((notes[i].second % 12) + 12) % 12 == tonic;
+        if (isTonic) {
+            g.setColour(Colours::white.withAlpha(0.07f));
+            g.fillRect(x, top, width, bottom - top);
+        }
+        g.setColour(Colours::white.withAlpha(0.1f));
+        g.drawHorizontalLine(roundToInt(bottom), x, x + width);
         if (labelLanes) {
             g.setColour(Colours::white.withAlpha(isTonic ? 0.8f : 0.45f));
-            g.drawText(getMidiNoteName(note),
-                       Rectangle<float>(layout.visibleX.getStart() + 3.0f, y - layout.noteHeight * 0.5f, 40.0f, layout.noteHeight),
+            g.drawText(getMidiNoteName(notes[i].second), Rectangle<float>(x + 3.0f, top, 40.0f, bottom - top),
                        Justification::centredLeft, false);
         }
     }

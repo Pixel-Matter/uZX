@@ -1,14 +1,17 @@
 # cmake/GenerateIconset.cmake
-# Generates a .iconset directory and .icns file from a source PNG.
+# Generates a .iconset directory and .icns file from source PNGs.
+# 16px comes from <prefix>_tiny.png, 32px from <prefix>_small.png, larger sizes from <prefix>_big.png.
 #
 # Required variables:
-#   SOURCE_PNG   - Path to source PNG (1024x1024)
+#   SOURCE_PREFIX - Path prefix of the source PNGs: <prefix>_big.png (1024x1024), _small.png (32x32), _tiny.png (16x16)
 #   ICONSET_DIR  - Path to output .iconset directory
 #   ICNS_OUTPUT  - Path to output .icns file
 
-if(NOT EXISTS "${SOURCE_PNG}")
-    message(FATAL_ERROR "Source PNG not found: ${SOURCE_PNG}")
-endif()
+foreach(variant big small tiny)
+    if(NOT EXISTS "${SOURCE_PREFIX}_${variant}.png")
+        message(FATAL_ERROR "Source PNG not found: ${SOURCE_PREFIX}_${variant}.png")
+    endif()
+endforeach()
 
 # Filenames and corresponding pixel sizes (two parallel lists)
 set(ICON_NAMES
@@ -38,8 +41,16 @@ foreach(i RANGE ${last})
 
     set(output_file "${ICONSET_DIR}/${filename}")
 
+    if(size EQUAL 16)
+        set(source_png "${SOURCE_PREFIX}_tiny.png")
+    elseif(size EQUAL 32)
+        set(source_png "${SOURCE_PREFIX}_small.png")
+    else()
+        set(source_png "${SOURCE_PREFIX}_big.png")
+    endif()
+
     # Copy source then resize in-place with sips
-    file(COPY_FILE "${SOURCE_PNG}" "${output_file}")
+    file(COPY_FILE "${source_png}" "${output_file}")
     execute_process(
         COMMAND sips -z ${size} ${size} "${output_file}"
         OUTPUT_QUIET
@@ -61,4 +72,4 @@ if(NOT iconutil_result EQUAL 0)
     message(FATAL_ERROR "iconutil failed: ${iconutil_error}")
 endif()
 
-message(STATUS "Generated ${ICNS_OUTPUT} from ${SOURCE_PNG}")
+message(STATUS "Generated ${ICNS_OUTPUT} from ${SOURCE_PREFIX}_*.png")

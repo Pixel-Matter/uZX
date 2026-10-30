@@ -301,19 +301,20 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     # the bundle over the JUCE-generated AppIcon.icns (the name JUCE puts in CFBundleIconFile).
     # Called before code signing below.
     function(uzx_add_app_icons target name)
-        set(source_png "${CMAKE_SOURCE_DIR}/resources/icon_${name}_big.png")
+        set(source_prefix "${CMAKE_SOURCE_DIR}/resources/icon_${name}")
         set(icns_file  "${CMAKE_SOURCE_DIR}/resources/icon_${name}.icns")
 
         add_custom_command(
             OUTPUT "${icns_file}"
             COMMAND ${CMAKE_COMMAND}
-                -DSOURCE_PNG=${source_png}
+                -DSOURCE_PREFIX=${source_prefix}
                 -DICONSET_DIR=${CMAKE_SOURCE_DIR}/resources/icon_${name}.iconset
                 -DICNS_OUTPUT=${icns_file}
                 -P "${CMAKE_SOURCE_DIR}/cmake/GenerateIconset.cmake"
             DEPENDS
-                "${source_png}"
-                "${CMAKE_SOURCE_DIR}/resources/icon_${name}_small.png"
+                "${source_prefix}_big.png"
+                "${source_prefix}_small.png"
+                "${source_prefix}_tiny.png"
                 "${CMAKE_SOURCE_DIR}/cmake/GenerateIconset.cmake"
             COMMENT "Generating ${name} iconset from source PNGs"
         )

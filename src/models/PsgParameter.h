@@ -408,6 +408,7 @@ struct PsgFrameNote {
     bool     isEnvelopePitch;
     bool     hasEnvMod;
     bool     hasNoiseMod;
+    int      period;        // tone period, or 16 * envelope period for an envelope pitch
 };
 
 /** An envelope period P sounds at the pitch of tone period 16*P: the AY divides
@@ -461,13 +462,14 @@ inline void visitFrameNotes(const PsgParamFrameData& data, Fn&& fn) {
                 channelMask,
                 false,
                 hasEnvMod,
-                hasNoiseMod
+                hasNoiseMod,
+                period
             });
         }
     }
 
     if (envChannelMask != 0)
-        fn(PsgFrameNote { envPitch, 15, envChannelMask, true, true, false });
+        fn(PsgFrameNote { envPitch, 15, envChannelMask, true, true, false, envTonePeriod });
 }
 
 }  // namespace MoTool

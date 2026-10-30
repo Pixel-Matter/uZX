@@ -61,6 +61,10 @@ namespace IDs {
     DECLARE_ID(e)
     DECLARE_ID(s)
     DECLARE_ID(paintMode)
+    DECLARE_ID(clipTuningTable) // user-chosen BuiltinTuningType name for a PSG clip; absent = detected
+    DECLARE_ID(clipTuningA4)    // user-chosen equal-temperament A4 (Hz at the ZX clock) for a PSG clip
+    DECLARE_ID(clipKeyTonic)    // user-chosen key tonic (0 = C .. 11 = B) for a PSG clip; absent = detected
+    DECLARE_ID(clipKeyMinor)    // user-chosen key mode for a PSG clip (true = minor)
     DECLARE_ID(projectFps)
     DECLARE_ID(timecodeDisplayMode) // TimecodeDisplayMode of the timeline ruler/grid
     DECLARE_ID(gridSubdivision) // space-separated frame counts per subdivision group within a beat

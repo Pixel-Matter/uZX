@@ -29,6 +29,8 @@ public:
     void mouseExit(const MouseEvent& e) override;
     void paintRegisters(Graphics& g);
     void paintNotes(Graphics& g);
+    /** Tuning-grid guide lines, drawn under the notes in the Notes view. */
+    void paintNoteLanes(Graphics& g);
 
     /** Top row shared by the channel legend, clip name and fps-mismatch warning. */
     void paintHeader(Graphics& g);

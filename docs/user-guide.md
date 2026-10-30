@@ -116,6 +116,10 @@ Clips appear in the track body as colored blocks. PSG clips visualize chip regis
 
 See [Reading PSG clips](psg-visualization.md) for an illustrated reference to tone, envelope, noise, channel ownership, and matching pitches.
 
+**Tuning table and key.** When a PSG file is imported, µZX detects which tuning table the tracker used (ProTracker tables, natural tunings, or equal temperament with a fitted A4) and the key of the tune. The clip header shows both, for example `PT #1  E minor`. In the Notes view, a faint guide line marks every note of that table, brighter on the tonic, with note names once the clip is tall enough. Notes are drawn where the chip plays them and never snapped to the lines, so drift, bends and portamento stay visible as offsets from a line.
+
+A `?` after the label means the detection was a close call. Right-click the clip and choose **Tuning and key…** to see the ranked tables and keys with their scores and the clip's pitch classes at sub-semitone resolution on the selected grid; a wrong grid shows as peaks between the lines. Picking a table or key stores the choice with the clip; **Use detected** removes it.
+
 Click a clip to select it. The Details Panel updates to show clip-specific editors.
 
 #### Ruler
@@ -279,7 +283,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |
 | Right-click | Ruler | Zoom, timecode format, and snap options |
-| Right-click | PSG clip | Notes / Registers view, hex values on hover |
+| Right-click | PSG clip | Notes / Registers view, hex values on hover, tuning table and key picker |
 | Double-click | Track name (Studio) | Rename |
 
 ---

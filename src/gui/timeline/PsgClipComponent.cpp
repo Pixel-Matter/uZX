@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "PsgClipComponent.h"
+#include "TuningPickerComponent.h"
 #include "../common/LookAndFeel.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
@@ -453,7 +454,9 @@ void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Id
     // and the edit's timecode fps, so refresh when tempo or timecode changes.
     if (property == IDs::timecodeDisplayMode
         || property == te::IDs::bpm
-        || property == te::IDs::startBeat)
+        || property == te::IDs::startBeat
+        || property == IDs::clipTuningTable || property == IDs::clipTuningA4
+        || property == IDs::clipKeyTonic || property == IDs::clipKeyMinor)
         repaint();
 }
 
@@ -463,10 +466,12 @@ void PsgClipComponent::paint(Graphics& g) {
     GUIPaintMeasurer::ScopedTimer timer(paintMeasurer_);
 
     int mode = clip->state.getProperty(IDs::paintMode, 0);
-    if (mode == 0)
+    if (mode == 0) {
+        paintNoteLanes(g);
         paintNotes(g);
-    else
+    } else {
         paintRegisters(g);
+    }
 
     paintHeader(g);
 
@@ -497,6 +502,8 @@ void PsgClipComponent::mouseDown(const MouseEvent& e) {
         m.addItem("Hex params in hover", true, settings.getBoolValue(hexHoverSetting), [&settings] {
             settings.setValue(hexHoverSetting, ! settings.getBoolValue(hexHoverSetting));
         });
+        m.addSeparator();
+        m.addItem("Tuning and key...", [psgClip = PsgClip::Ptr(psgClip)] { TuningPickerComponent::show(*psgClip); });
         m.showMenuAsync({});
     } else {
         ClipComponent::mouseDown(e);
@@ -615,6 +622,65 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
     });
 }
 
+/** Vertical mapping of the Notes view: the clip's pitch range over the component
+    height, the height of one semitone, and the visible slice of the clip in x. */
+struct NotesLayout {
+    Range<float> pitchRange;
+    float noteHeight;
+    Range<float> visibleX;
+    float height;
+
+    float normToY(float norm) const {
+        return (pitchRange.getEnd() - norm) / pitchRange.getLength() * height;
+    }
+};
+
+static NotesLayout makeNotesLayout(const PsgClip& clip, const ClipVisibility& vis, const EditViewState& evs) {
+    const auto pitchRange = clip.getPitchRange();
+    const auto visibleTime = evs.zoom.getRange();
+    return {
+        pitchRange,
+        static_cast<float>(vis.rect.getHeight())
+            / (pitchRange.getLength() * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.0f),
+        { vis.timeToX(visibleTime.getStart()), vis.timeToX(visibleTime.getEnd()) },
+        static_cast<float>(vis.rect.getHeight())
+    };
+}
+
+/** One guide line per note of the clip's tuning grid, brighter on the tonic, with note
+    names once the lanes are tall enough. Drawn under the notes, which are never snapped
+    to the lanes: drift, bends and portamento stay where the chip plays them. */
+void PsgClipComponent::paintNoteLanes(Graphics& g) {
+    auto* psgClip = getPsgClip();
+    if (psgClip == nullptr || psgClip->getPsg().getFrames().isEmpty())
+        return;
+
+    const ClipVisibility vis {*psgClip, psgClip->getPsg().getFrames(), editViewState, getLocalBounds()};
+    const auto layout = makeNotesLayout(*psgClip, vis, editViewState);
+    const auto tuning = psgClip->getTuning();
+    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
+    const int tonic = static_cast<int>(tuning.key.tonic);
+    const bool labelLanes = layout.noteHeight >= 9.0f;
+    if (labelLanes)
+        g.setFont(Font(FontOptions(jmin(11.0f, layout.noteHeight - 2.0f))));
+
+    for (const auto& [period, note] : tuning.grid) {
+        const float norm = toneScale.valueToNormalized(period);
+        if (! layout.pitchRange.contains(norm))
+            continue;
+        const float y = layout.normToY(norm);
+        const bool isTonic = ((note % 12) + 12) % 12 == tonic;
+        g.setColour(Colours::white.withAlpha(isTonic ? 0.28f : 0.08f));
+        g.drawHorizontalLine(roundToInt(y), layout.visibleX.getStart(), layout.visibleX.getEnd());
+        if (labelLanes) {
+            g.setColour(Colours::white.withAlpha(isTonic ? 0.8f : 0.45f));
+            g.drawText(getMidiNoteName(note),
+                       Rectangle<float>(layout.visibleX.getStart() + 3.0f, y - layout.noteHeight * 0.5f, 40.0f, layout.noteHeight),
+                       Justification::centredLeft, false);
+        }
+    }
+}
+
 void PsgClipComponent::paintNotes(Graphics& g) {
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr)
@@ -625,19 +691,16 @@ void PsgClipComponent::paintNotes(Graphics& g) {
         return;
 
     const ClipVisibility vis {*psgClip, frames, editViewState, getLocalBounds()};
+    const auto layout = makeNotesLayout(*psgClip, vis, editViewState);
 
-    const auto pitchRange = psgClip->getPitchRange();
-    const float noteHeight = static_cast<float>(vis.rect.getHeight())
-        / (pitchRange.getLength() * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.0f);
+    const auto pitchRange = layout.pitchRange;
+    const float noteHeight = layout.noteHeight;
     const bool drawMods = vis.pixelsPerFrame >= 6.0f && noteHeight >= 2.0f;
     constexpr float NoiseSpreadInNoteHeights = 0.75f;
     const int noiseSpread = static_cast<int>(std::floor(noteHeight * NoiseSpreadInNoteHeights));
 
-    auto normToY = [&] (float norm) {
-        return (pitchRange.getEnd() - norm) / pitchRange.getLength() * static_cast<float>(vis.rect.getHeight());
-    };
-    const auto visibleTime = editViewState.zoom.getRange();
-    const Range<float> visibleX {vis.timeToX(visibleTime.getStart()), vis.timeToX(visibleTime.getEnd())};
+    auto normToY = [&] (float norm) { return layout.normToY(norm); };
+    const Range<float> visibleX = layout.visibleX;
     const Rectangle<float> viewport {visibleX.getStart(), 0.0f, visibleX.getLength(), float(vis.rect.getHeight())};
 
     vis.forEachVisibleFrame(frames, *psgClip, [&] (int frameIndex, const PsgParamFrame& frame, float x) {
@@ -852,6 +915,18 @@ void PsgClipComponent::paintHeader(Graphics& g) {
         g.setColour(Colours::black);
         g.drawText(text, chip.reduced(pad, 0), Justification::centred, true);
 
+        row.removeFromLeft(pad);
+    }
+
+    // Detected (or chosen) tuning table and key; '?' marks a detection tie nobody settled.
+    {
+        const auto tuning = psgClip->getTuning();
+        const auto text = tuning.tableLabel + "  " + tuning.key.getName() + (tuning.uncertain ? " ?" : "");
+        g.setFont(Font(FontOptions((float) swatchSize - 1.0f)));
+        const int width = jmin(row.getWidth(), GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text) + 2 * pad);
+        auto chip = row.removeFromLeft(width);
+        g.setColour(Colours::white.withAlpha(tuning.uncertain ? 0.9f : 0.6f));
+        g.drawText(text, chip.reduced(pad, 0), Justification::centredLeft, true);
         row.removeFromLeft(pad);
     }
 

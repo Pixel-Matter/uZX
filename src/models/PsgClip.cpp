@@ -89,6 +89,77 @@ juce::Range<float> PsgClip::getPitchRange() const {
     return cachedPitchRange_;
 }
 
+//==============================================================================
+PitchHistogram PsgClip::buildPitchHistogram() const {
+    PitchHistogram hist;
+    for (auto* frame : getPsg().getFrames())
+        hist.addFrame(frame->getData());
+    return hist;
+}
+
+const TuningDetection& PsgClip::getTuningDetection() const {
+    const auto version = getPsg().getDataVersion();
+    if (! detection_ || detectionVersion_ != version) {
+        detectionVersion_ = version;
+        detection_ = detectTuning(buildPitchHistogram());
+    }
+    return *detection_;
+}
+
+PsgClip::Tuning PsgClip::getTuning() const {
+    const auto& detection = getTuningDetection();
+    Tuning tuning;
+
+    if (state.hasProperty(IDs::clipTuningA4)) {
+        const double a4 = state[IDs::clipTuningA4];
+        tuning.grid = makeEqualTemperamentGrid(a4, 1773400.0);
+        tuning.tableLabel = getEqualTemperamentLabel(a4);
+        tuning.tableChosen = true;
+    } else if (state.hasProperty(IDs::clipTuningTable)) {
+        const auto table = juce::VariantConverter<BuiltinTuningType>::fromVar(state[IDs::clipTuningTable]);
+        tuning.grid = getBuiltinPeriodGrid(table);
+        tuning.tableLabel = String(table.getShortLabel().data());
+        tuning.tableChosen = true;
+    } else {
+        tuning.grid = detection.grid;
+        tuning.tableLabel = detection.getTableLabel();
+    }
+
+    if (state.hasProperty(IDs::clipKeyTonic)) {
+        tuning.key = { Scale::Tonic(static_cast<int>(state[IDs::clipKeyTonic])), static_cast<bool>(state[IDs::clipKeyMinor]), 1.0f };
+        tuning.keyChosen = true;
+    } else {
+        tuning.key = detection.getKey();
+    }
+
+    tuning.uncertain = (detection.tableTie && ! tuning.tableChosen) || (detection.keyTie && ! tuning.keyChosen);
+    return tuning;
+}
+
+void PsgClip::chooseTuningTable(BuiltinTuningType table) {
+    auto* um = getUndoManager();
+    state.removeProperty(IDs::clipTuningA4, um);
+    state.setProperty(IDs::clipTuningTable, juce::VariantConverter<BuiltinTuningType>::toVar(table), um);
+}
+
+void PsgClip::chooseEqualTemperament(double a4Frequency) {
+    auto* um = getUndoManager();
+    state.removeProperty(IDs::clipTuningTable, um);
+    state.setProperty(IDs::clipTuningA4, a4Frequency, um);
+}
+
+void PsgClip::chooseKey(const DetectedKey& key) {
+    auto* um = getUndoManager();
+    state.setProperty(IDs::clipKeyTonic, static_cast<int>(key.tonic), um);
+    state.setProperty(IDs::clipKeyMinor, key.minor, um);
+}
+
+void PsgClip::clearTuningChoice() {
+    auto* um = getUndoManager();
+    for (const auto* id : { &IDs::clipTuningTable, &IDs::clipTuningA4, &IDs::clipKeyTonic, &IDs::clipKeyMinor })
+        state.removeProperty(*id, um);
+}
+
 PsgClip::Ptr PsgClip::insertTo(
     te::ClipOwner& owner,
     uZX::PsgFile& psgFile,

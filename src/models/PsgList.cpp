@@ -378,8 +378,11 @@ void PsgList::migrateToFrameIndicesIfNeeded(const PsgClip& clip, double frameRat
 
    #if JUCE_DEBUG
     // A duplicate index means the migration rate didn't match the legacy spacing.
-    for (int i = 1; i < getFrames().size(); ++i)
-        jassert(getFrames()[i]->getFrameIndex() != getFrames()[i - 1]->getFrameIndex());
+    // Fetch the list once: every getFrames() call re-validates the whole list in Debug,
+    // which made this loop quadratic (ten seconds for a 15k-frame file).
+    const auto& frames = getFrames();
+    for (int i = 1; i < frames.size(); ++i)
+        jassert(frames[i]->getFrameIndex() != frames[i - 1]->getFrameIndex());
    #endif
 
     recomputeAccumulatedState();

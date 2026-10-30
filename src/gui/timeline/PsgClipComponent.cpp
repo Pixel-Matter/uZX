@@ -672,9 +672,18 @@ void PsgClipComponent::paintNoteLanes(Graphics& g) {
         return;
 
     const float x = layout.visibleX.getStart(), width = layout.visibleX.getLength();
-    const bool labelLanes = layout.noteHeight >= 9.0f;
-    if (labelLanes)
-        g.setFont(Font(FontOptions(jmin(11.0f, layout.noteHeight - 2.0f))));
+    // Level of detail follows the lane height: every lane with its name, then every
+    // lane with only the tonic of each octave named, then only the tonic boundaries, then
+    // nothing.
+    constexpr float minLaneHeight = 3.0f, minLabelHeight = 9.0f;
+    const bool drawAll = layout.noteHeight >= minLaneHeight;
+    const bool drawOctaves = ! drawAll && layout.noteHeight * 12.0f >= minLaneHeight;
+    if (! drawAll && ! drawOctaves)
+        return;
+    const bool labelAll = layout.noteHeight >= minLabelHeight;
+    const bool labelOctaves = ! labelAll && layout.noteHeight * 12.0f >= minLabelHeight;
+    if (labelAll || labelOctaves)
+        g.setFont(Font(FontOptions(labelAll ? jmin(11.0f, layout.noteHeight - 2.0f) : 9.0f)));
 
     for (size_t i = 0; i < notes.size(); ++i) {
         const float below = i > 0 ? notes[i - 1].first : notes[i].first - (notes[i + 1].first - notes[i].first);
@@ -684,16 +693,23 @@ void PsgClipComponent::paintNoteLanes(Graphics& g) {
             continue;
         const float top = layout.normToY(hi), bottom = layout.normToY(lo);
         const bool isTonic = ((notes[i].second % 12) + 12) % 12 == tonic;
-        if (isTonic) {
+        if (drawAll && isTonic) {
             g.setColour(Colours::white.withAlpha(0.07f));
             g.fillRect(x, top, width, bottom - top);
         }
-        g.setColour(Colours::white.withAlpha(0.1f));
-        g.drawHorizontalLine(roundToInt(bottom), x, x + width);
-        if (labelLanes) {
+        if (drawAll || isTonic) {
+            g.setColour(Colours::white.withAlpha(drawAll && ! isTonic ? 0.1f : 0.16f));
+            g.drawHorizontalLine(roundToInt(bottom), x, x + width);
+        }
+        if (labelAll) {
             g.setColour(Colours::white.withAlpha(isTonic ? 0.8f : 0.45f));
             g.drawText(getMidiNoteName(notes[i].second), Rectangle<float>(x + 3.0f, top, 40.0f, bottom - top),
                        Justification::centredLeft, false);
+        } else if (labelOctaves && isTonic) {
+            // The label hangs just above the tonic lane's bottom boundary.
+            g.setColour(Colours::white.withAlpha(0.45f));
+            g.drawText(getMidiNoteName(notes[i].second), Rectangle<float>(x + 3.0f, bottom - 10.0f, 40.0f, 10.0f),
+                       Justification::bottomLeft, false);
         }
     }
 }

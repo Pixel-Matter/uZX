@@ -91,7 +91,11 @@ public:
             }
         }
         auto report = std::make_unique<DynamicObject>();
-        report->setProperty("build", JUCE_DEBUG ? "Debug" : "Release");
+       #if JUCE_DEBUG
+        report->setProperty("build", "Debug");
+       #else
+        report->setProperty("build", "Release");
+       #endif
         report->setProperty("measuredAt", Time::getCurrentTime().toISO8601(true));
         report->setProperty("os", SystemStats::getOperatingSystemName());
         report->setProperty("cpu", SystemStats::getCpuModel());

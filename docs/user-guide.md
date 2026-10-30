@@ -44,7 +44,7 @@ The transport sits above the timeline; the AY controls are on the right.
 | Rewind (⏮) | Jump to the beginning |
 | Play/Pause (▶/⏸) | Start or pause playback |
 | Position readout | Current time; format switches between bars/beats and mm:ss |
-| BPM control | Tempo in BPM (inc/dec buttons or direct entry) |
+| BPM control | Tempo in BPM (inc/dec buttons or direct entry). Importing a PSG into an empty project sets it from the detected tracker speed, together with the frames-per-beat grid; dumps without a clear row grid keep the current tempo |
 | Master volume knob | Output level; each app remembers it across files and launches |
 | Level meter | Stereo output level, after the master volume |
 

@@ -1,4 +1,5 @@
 #include "PsgClip.h"
+#include "PsgTempoDetector.h"
 #include "Ids.h"
 #include "PsgMidi.h"
 #include "PsgList.h"
@@ -247,6 +248,8 @@ PsgClip::Ptr PsgClip::insertTo(
     jassert(clip != nullptr);
     // Same undo transaction as the insert: one undo removes the whole import.
     clip->loadFrom(data);
+    if (auto tempo = PsgTempo::detect(data))
+        PsgTempo::applyToEdit(*clip, *tempo);
 
     // // debug checks
     // auto seq = clip->getPsg().exportToPlaybackMidiSequence(*clip, te::MidiList::TimeBase::seconds);

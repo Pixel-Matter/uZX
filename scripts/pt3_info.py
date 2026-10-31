@@ -4,12 +4,10 @@
     python3 -I scripts/pt3_info.py FILE.pt3 [...]
 
 Prints the initial speed, the pattern lengths in play order (channel A rows,
-honouring the per-channel note-duration command) and any in-pattern speed
-changes. Used as weak labels for tempo and meter detection.
-
-The row decoder is approximate: pattern lengths are reliable, but it skips
-effect parameters by fixed sizes, so an odd speed value (like 255) means a
-misread parameter, not a real speed change.
+honouring the per-channel note-duration command) and the speeds set by
+in-pattern commands in any channel. Used as weak labels for tempo and meter
+detection. The channel decoding follows zxtune's PT3 parser
+(src/formats/chiptune/aym/protracker3_compiled.cpp).
 """
 import sys
 from collections import Counter
@@ -24,8 +22,9 @@ def read_word(d, i):
 
 
 def channel_rows(d, ptr, limit=4096):
-    """Counts rows of one channel until its 0x00 terminator. Returns (rows, speeds)
-    where speeds lists (row, new_speed) for every set-speed command."""
+    """Counts rows of one channel until its 0x00 terminator or `limit` rows.
+    Returns (rows, speeds) where speeds lists (row, new_speed) for every
+    set-speed command. rows is None when the data runs out first."""
     rows, skip, i, speeds = 0, 1, ptr, []
     pending = []
     while i < len(d) and rows < limit:
@@ -59,7 +58,7 @@ def channel_rows(d, ptr, limit=4096):
             pass                        # volume / sample
         elif b >= 0xF0:
             i += 1                      # ornament + sample byte
-    return None, speeds
+    return (rows if rows >= limit else None), speeds
 
 
 def info(path):
@@ -75,13 +74,30 @@ def info(path):
         i += 1
     lengths, speed_changes = [], []
     for p in positions:
-        ch_a = read_word(d, patterns_ptr + p * 6)
-        rows, speeds = channel_rows(d, ch_a)
+        # channel A ends the pattern; B and C only play while A does
+        rows, speeds = channel_rows(d, read_word(d, patterns_ptr + p * 6))
         if rows is None:
             return None
+        for ch in (1, 2):
+            speeds += channel_rows(d, read_word(d, patterns_ptr + p * 6 + 2 * ch), rows)[1]
         lengths.append(rows)
-        speed_changes += [(p, r, s) for r, s in speeds]
+        speed_changes += [(len(lengths) - 1, r, s) for r, s in sorted(speeds) if r < rows]
     return dict(speed=speed, lengths=lengths, speed_changes=speed_changes)
+
+
+def rows_per_speed(meta):
+    """Rows played at each speed, walking the order list once with the speed commands."""
+    speed, played = meta["speed"], Counter()
+    changes = {}
+    for pos, row, s in meta["speed_changes"]:
+        changes.setdefault(pos, []).append((row, s))
+    for pos, length in enumerate(meta["lengths"]):
+        row = 0
+        for at, s in changes.get(pos, []):
+            played[speed] += at - row
+            row, speed = at, s
+        played[speed] += length - row
+    return played
 
 
 def main(paths):
@@ -92,7 +108,11 @@ def main(paths):
             continue
         common = Counter(r["lengths"]).most_common(3)
         speeds = sorted({s for _, _, s in r["speed_changes"]})
-        print(f"speed={r['speed']} patterns={common} speed_cmds={speeds} {Path(f).name}")
+        played = rows_per_speed(r)
+        main_speed, main_rows = played.most_common(1)[0]
+        share = 100 * main_rows / max(1, sum(played.values()))
+        print(f"speed={r['speed']} patterns={common} speed_cmds={speeds} "
+              f"main_speed={main_speed} ({share:.0f}% of rows) {Path(f).name}")
 
 
 if __name__ == "__main__":

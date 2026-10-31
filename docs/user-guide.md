@@ -116,7 +116,7 @@ Clips appear in the track body as colored blocks. PSG clips visualize chip regis
 
 See [Reading PSG clips](psg-visualization.md) for an illustrated reference to tone, envelope, noise, channel ownership, and matching pitches.
 
-**Tuning table and key.** When a PSG file is imported, µZX detects which tuning table the tracker used (ProTracker tables, natural tunings, or equal temperament with a fitted A4) and the key of the tune. The clip header shows both, for example `PT #1  E minor`; a clip with no audible notes shows neither. In the Notes view, the table's notes become piano-roll lanes: a line between neighbouring notes, so each note sits inside its lane, and a shaded band on the tonic. Note names appear inside the lanes when the clip is tall enough; in a shorter clip only the tonic of each octave is named and only its boundary drawn, and in a very short clip the lanes disappear. Notes are drawn where the chip plays them and never snapped to a lane, so drift, bends and portamento stay visible.
+**Tuning table and key.** When a PSG file is imported, µZX detects which tuning table the tracker used (ProTracker tables, natural tunings, or equal temperament with a fitted A4) and the key of the tune. The clip header shows both, for example `PT #1  E minor`; a clip with no audible notes shows neither. In the Notes view, the table's notes become piano-roll lanes: a line between neighbouring notes, so each note sits inside its lane, and a shaded band on the tonic. Note names appear inside the lanes when the clip is tall enough; in a shorter clip only the tonic of each octave is named and only its boundary drawn, and in a very short clip the lanes disappear. Notes are drawn where the chip plays them and never snapped to a lane, so drift, bends and portamento stay visible. Turn the lanes off or on with **View → Note Lanes** or **Note Lanes** in the clip's right-click menu; the choice applies to every clip and is remembered across files.
 
 A `?` after the label means the detection was a close call. Right-click the clip and choose **Tuning and key…** to see the ranked tables and keys with their scores, and the clip's pitch classes at sub-semitone resolution on the selected grid: a wrong grid shows as peaks between the lines, and the key's own pitch classes have brighter lines and labels than the others. Picking a table or key stores the choice with the clip; **Use detected** removes it. The window follows the clip as you edit it and closes when the clip is deleted or another file is opened. ProTracker tables #0 and #3 differ only by a semitone, so a tune written for #0 is shown on #3 with every note named a semitone higher; pick the table to correct it.
 
@@ -283,7 +283,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |
 | Right-click | Ruler | Zoom, timecode format, and snap options |
-| Right-click | PSG clip | Notes / Registers view, hex values on hover, tuning table and key picker |
+| Right-click | PSG clip | Notes / Registers view, note lanes, hex values on hover, tuning table and key picker |
 | Double-click | Track name (Studio) | Rename |
 
 ---

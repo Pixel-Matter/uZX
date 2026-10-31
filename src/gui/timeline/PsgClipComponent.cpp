@@ -327,8 +327,18 @@ void drawLowEnvelopeArrow(Graphics& g, Rectangle<float> bounds, uint8_t owners, 
 
 /** Global app setting: show periods and volumes in hex in the frame hover. */
 constexpr auto hexHoverSetting = "psgHoverHexParams";
+constexpr auto noteLanesSetting = "showNoteLanes";
 
 } // namespace
+
+bool areNoteLanesShown(te::Engine& engine) {
+    return engine.getPropertyStorage().getPropertiesFile().getBoolValue(noteLanesSetting, true);
+}
+
+void setNoteLanesShown(te::Engine& engine, bool shouldShow) {
+    // The settings file broadcasts the change; every PsgClipComponent repaints on it.
+    engine.getPropertyStorage().getPropertiesFile().setValue(noteLanesSetting, shouldShow);
+}
 
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex) {
     using T = PsgParamType;
@@ -444,10 +454,18 @@ PsgClipComponent::PsgClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip
     // The fps-warning in the header depends on the edit's timecode format,
     // so repaint when it changes.
     editViewState.edit.state.addListener(this);
+    // App settings such as Note Lanes. Track bodies are buffered to images, so a window
+    // repaint would not reach this component: it has to repaint itself.
+    clip->edit.engine.getPropertyStorage().getPropertiesFile().addChangeListener(this);
 }
 
 PsgClipComponent::~PsgClipComponent() {
+    clip->edit.engine.getPropertyStorage().getPropertiesFile().removeChangeListener(this);
     editViewState.edit.state.removeListener(this);
+}
+
+void PsgClipComponent::changeListenerCallback(ChangeBroadcaster*) {
+    repaint();
 }
 
 PsgClip* PsgClipComponent::getPsgClip() {
@@ -504,6 +522,10 @@ void PsgClipComponent::mouseDown(const MouseEvent& e) {
         m.addItem("Registers", true, mode == 1, [this] {
             clip->state.setProperty(IDs::paintMode, 1, nullptr);
             repaint();
+        });
+        auto& engine = clip->edit.engine;
+        m.addItem("Note Lanes", mode == 0, areNoteLanesShown(engine), [&engine] {
+            setNoteLanesShown(engine, ! areNoteLanesShown(engine));
         });
         m.addSeparator();
         auto& settings = clip->edit.engine.getPropertyStorage().getPropertiesFile();
@@ -666,21 +688,48 @@ std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid) {
     // centred exactly where a note on that grid period is drawn.
     const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
     std::vector<std::pair<float, int>> notes;
-    notes.reserve(grid.size());
+    notes.reserve(grid.size() + 48);
     for (auto it = grid.rbegin(); it != grid.rend(); ++it)
         notes.emplace_back(toneScale.valueToNormalized(it->first), it->second);
+    if (notes.size() < 2)
+        return {};
+
+    // Tables stop at C1 and B8, but tone periods reach down to the octave below C1 and up
+    // to period 8, up to a whole octave above B8. Lanes continue past both ends by octaves
+    // of the outermost table octave, with exact (unrounded) periods so they stay even.
+    std::map<int, double> periodOf;
+    for (const auto& [period, note] : grid)
+        periodOf.try_emplace(note, period);
+    const int lowest = periodOf.begin()->first, highest = periodOf.rbegin()->first;
+    std::vector<std::pair<float, int>> below, above;
+    for (int note = lowest - 1; note >= 0; --note) {
+        auto octaveUp = periodOf.find(note + 12);
+        if (octaveUp == periodOf.end() || octaveUp->second * 2.0 > toneScale.end * 2.0)
+            break;
+        periodOf[note] = octaveUp->second * 2.0;
+        below.emplace_back(toneScale.valueToNormalized(static_cast<float>(periodOf[note])), note);
+    }
+    for (int note = highest + 1;; ++note) {
+        auto octaveDown = periodOf.find(note - 12);
+        if (octaveDown == periodOf.end() || octaveDown->second / 2.0 < 4.0)
+            break;
+        periodOf[note] = octaveDown->second / 2.0;
+        above.emplace_back(toneScale.valueToNormalized(static_cast<float>(periodOf[note])), note);
+    }
+    notes.insert(notes.begin(), below.rbegin(), below.rend());
+    notes.insert(notes.end(), above.begin(), above.end());
 
     std::vector<NoteLane> lanes;
-    if (notes.size() < 2)
-        return lanes;
     lanes.reserve(notes.size());
     for (size_t i = 0; i < notes.size(); ++i) {
         const float centre = notes[i].first;
         // The outermost lanes mirror their inner neighbour's spacing.
         const float below = i > 0 ? notes[i - 1].first : centre - (notes[i + 1].first - centre);
         const float above = i + 1 < notes.size() ? notes[i + 1].first : centre + (centre - notes[i - 1].first);
-        lanes.push_back({ (below + centre) * 0.5f, (centre + above) * 0.5f, notes[i].second,
-                          getMidiNoteName(notes[i].second) });
+        // Composed rather than getMidiNoteName(): lanes above B8 go past MIDI note 127.
+        const int note = notes[i].second;
+        lanes.push_back({ (below + centre) * 0.5f, (centre + above) * 0.5f, note,
+                          MidiMessage::getMidiNoteName(note % 12, true, false, 4) + String(note / 12 - 1) });
     }
     return lanes;
 }
@@ -703,7 +752,7 @@ LaneDetail getLaneDetail(float noteHeight) {
     the repaint area. */
 void PsgClipComponent::paintNoteLanes(Graphics& g) {
     auto* psgClip = getPsgClip();
-    if (psgClip == nullptr || psgClip->getPsg().isEmpty())
+    if (psgClip == nullptr || psgClip->getPsg().isEmpty() || ! areNoteLanesShown(psgClip->edit.engine))
         return;
 
     const auto& tuning = psgClip->getTuning();

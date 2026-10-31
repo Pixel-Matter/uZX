@@ -23,7 +23,8 @@ struct NoteLane
     String label;
 };
 
-/** Lanes for every note of a grid, lowest first. */
+/** Lanes for every note of a grid, lowest first, continued by octaves past the grid's
+    ends to the limits of the tone range. */
 std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid);
 
 /** How much of the lanes the Notes view draws at a lane height (one semitone, in px). */
@@ -36,9 +37,16 @@ struct LaneDetail
 
 LaneDetail getLaneDetail(float noteHeight);
 
+/** Whether the Notes view draws note lanes (View > Note Lanes). An app setting rather than
+    an edit property: the Player opens every file into a fresh edit, where an edit property
+    would reset. Every PsgClipComponent repaints when the settings change. */
+bool areNoteLanesShown(te::Engine&);
+void setNoteLanesShown(te::Engine&, bool shouldShow);
+
 //==============================================================================
 class PsgClipComponent : public MidiClipComponent,
                          private juce::ValueTree::Listener,
+                         private juce::ChangeListener,
                          private juce::Timer {
 public:
     PsgClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c);
@@ -60,6 +68,7 @@ public:
 
 private:
     void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+    void changeListenerCallback(ChangeBroadcaster*) override;
     void timerCallback() override;
 
     /** Hover popup text for the frame under local x; empty before the first frame. */

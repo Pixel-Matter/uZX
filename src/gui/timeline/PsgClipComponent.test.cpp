@@ -1,5 +1,7 @@
 #include <JuceHeader.h>
 
+#include <algorithm>
+
 #include "PsgClipTestHelpers.h"
 #include "TimelineGrid.h"
 #include "TuningPickerComponent.h"
@@ -454,20 +456,37 @@ public:
         const auto lanes = makeNoteLanes(grid);
 
         beginTest("One lane per grid note, lowest first, boundaries between pitch centres");
-        expectEquals(static_cast<int>(lanes.size()), static_cast<int>(grid.size()));
+        expectGreaterThan(static_cast<int>(lanes.size()), static_cast<int>(grid.size()));
         for (size_t i = 0; i < lanes.size(); ++i) {
             const auto& lane = lanes[i];
-            float centre = -1.0f;
             for (const auto& [period, note] : grid)
-                if (note == lane.note)
-                    centre = toneScale.valueToNormalized(period);
-            expect(lane.lo < centre && centre < lane.hi, "lane " + lane.label + " must contain its note");
+                if (note == lane.note) {
+                    const float centre = toneScale.valueToNormalized(period);
+                    expect(lane.lo < centre && centre < lane.hi, "lane " + lane.label + " must contain its note");
+                }
             if (i > 0) {
                 expectGreaterThan(lane.note, lanes[i - 1].note);
                 expectWithinAbsoluteError(lane.lo, lanes[i - 1].hi, 1e-6f);  // lanes tile the axis
             }
         }
         expectEquals(lanes.front().label, getMidiNoteName(lanes.front().note));
+
+        beginTest("Lanes continue past the table to the ends of the tone range");
+        {
+            // Tables span C1 (24) to B8 (119); notes play up to period 8 and down to 4095.
+            expect(lanes.back().hi >= toneScale.valueToNormalized(8), "lanes must reach the highest drawn note");
+            expect(lanes.front().lo <= toneScale.valueToNormalized(4095), "lanes must reach the lowest tone");
+            expectGreaterOrEqual(lanes.front().note, 0);
+
+            // The extrapolated octave above B8 keeps the table's top-octave spacing.
+            auto laneOf = [&](int note) { return std::find_if(lanes.begin(), lanes.end(), [=](auto& l) { return l.note == note; }); };
+            const auto c8 = laneOf(108), c9 = laneOf(120), b8 = laneOf(119);
+            expect(c8 != lanes.end() && c9 != lanes.end() && b8 != lanes.end());
+            if (c9 != lanes.end() && b8 != lanes.end())
+                expectWithinAbsoluteError(c9->lo, b8->hi, 1e-6f);
+            const auto g9sharp = laneOf(128);  // past MIDI 127, so the label is composed
+            expect(g9sharp != lanes.end() && g9sharp->label == "G#9");
+        }
         expect(makeNoteLanes({{100, 60}}).empty(), "a single note has no neighbour to bound it");
 
         beginTest("Level of detail follows the lane height");

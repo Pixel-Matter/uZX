@@ -26,9 +26,14 @@ struct ParameterScale {
 
     /** Convert raw parameter value to normalized 0-1 range */
     constexpr float valueToNormalized(int value) const noexcept {
+        return valueToNormalized(static_cast<float>(value));
+    }
+
+    /** Same, for a value between register steps, such as an ideal period. */
+    constexpr float valueToNormalized(float value) const noexcept {
         const float range = static_cast<float>(end - start);
         if (range <= 0.0f) return 0.0f;
-        const float v = static_cast<float>(value - start);
+        const float v = value - static_cast<float>(start);
         switch (type) {
             case ScaleType::Linear:
                 return v / range;

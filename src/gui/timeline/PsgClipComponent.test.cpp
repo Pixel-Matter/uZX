@@ -513,9 +513,12 @@ public:
             TimelineGrid grid(view);
             PsgClipComponent component(view, grid, clip);
             component.setSize(500, 300);
+            // Direct2D images (Windows) expose painted pixels only after the Graphics is destroyed.
             Image image(Image::ARGB, 500, 300, true);
-            Graphics g(image);
-            component.paintNoteLanes(g);
+            {
+                Graphics g(image);
+                component.paintNoteLanes(g);
+            }
 
             // Lane lines are faint (alpha <= 0.16, 0.23 over the tonic band); names are
             // drawn at 0.45 or more, so a brighter pixel near the left edge is a name.

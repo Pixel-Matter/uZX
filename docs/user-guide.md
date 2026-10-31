@@ -45,7 +45,8 @@ The transport sits above the timeline; the AY controls are on the right.
 | Play/Pause (▶/⏸) | Start or pause playback |
 | Position readout | Current time; format switches between bars/beats and mm:ss |
 | BPM control | Tempo in BPM (inc/dec buttons or direct entry) |
-| Master volume knob | Global output level |
+| Master volume knob | Output level; each app remembers it across files and launches |
+| Level meter | Stereo output level, after the master volume |
 
 For keys, see [Keyboard and Mouse](#keyboard-and-mouse).
 

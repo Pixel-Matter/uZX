@@ -733,6 +733,7 @@ BaseController::~BaseController() {
 
 void BaseController::initialize() {
     engine_.getDeviceManager().addChangeListener(this);
+    masterVolume_.addListener(this);
 
     auto edit = createOrLoadStartupEdit();
     if (edit == nullptr)  // the last project is unreadable: start with an empty one
@@ -741,6 +742,20 @@ void BaseController::initialize() {
 
     window_.restoreWindowBounds();
     window_.addKeyListener(MoToolApp::getCommandManager().getKeyMappings());
+}
+
+static const char* const masterVolumeDbKey = "masterVolumeDb";
+
+void BaseController::useGlobalMasterVolume() {
+    auto& storage = dynamic_cast<PropertyStorage&>(engine_.getPropertyStorage());
+    auto masterVolume = edit_->getMasterVolumePlugin();
+    masterVolume->setVolumeDb(static_cast<float>(storage.getCustomProperty(masterVolumeDbKey, 0.0)));
+    masterVolume_.referTo(masterVolume->state.getPropertyAsValue(te::IDs::volume, nullptr));
+}
+
+void BaseController::valueChanged(Value&) {
+    auto& storage = dynamic_cast<PropertyStorage&>(engine_.getPropertyStorage());
+    storage.setCustomProperty(masterVolumeDbKey, edit_->getMasterVolumePlugin()->getVolumeDb());
 }
 
 void BaseController::bringWindowToFront() {
@@ -981,6 +996,7 @@ void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) 
 
     edit_->playInStopEnabled = true;
     migrateTimecodeDisplaySettings(*edit_);
+    useGlobalMasterVolume();
 
     createTracksAndAssignInputs();
     playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);

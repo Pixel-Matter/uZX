@@ -64,6 +64,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     addAndMakeVisible(posLabel_);
     addAndMakeVisible(transportReadout_);
     addAndMakeVisible(masterVolumeSlider_);
+    addAndMakeVisible(masterMeter_);
 
     if (options_.showRecord)
         addAndMakeVisible(recordButton_);
@@ -184,6 +185,15 @@ void TransportBar::resized() {
     b.reduce(spacing, spacing);
     int w = b.getHeight();
 
+    // Output section on the right, reserved first so the centred block can't overlap it.
+    // ponytail: 60 px puts the knob centre 92 px from the right edge, midway between the Player's
+    // AY panel Width and Volume knobs; re-derive if either layout changes.
+    static constexpr int meterWidth = 60;
+    masterMeter_.setBounds(b.removeFromRight(meterWidth).withSizeKeepingCentre(meterWidth, w / 2));
+    b.removeFromRight(spacing);
+    masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
+    b.removeFromRight(spacing);
+
     // Components that make up the left-aligned block, collected so we can shift the
     // whole block to horizontal centre afterwards.
     std::vector<Component*> block;
@@ -231,8 +241,6 @@ void TransportBar::resized() {
     auto shiftBy = b.getWidth() / 2;
     for (auto* c : block)
         c->setBounds(c->getBounds().withX(c->getX() + shiftBy));
-
-    masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
 }
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {

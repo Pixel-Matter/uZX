@@ -4,6 +4,12 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Added
+- Stereo level meter of the master output in the transport bar, right of the master volume knob
+
+### Changed
+- Master volume is an app setting instead of a per-file one: Player and Studio each remember it across launches and apply it to every opened file
+
 ## [v0.5.0-alpha] - 2026-10-29
 
 ### Added

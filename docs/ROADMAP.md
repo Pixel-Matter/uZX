@@ -16,7 +16,7 @@ Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. **Global master volume** — first P1 below
+1. **Audit** render smoothness — first P1 below
 
 ### Alpha for testers
 
@@ -28,21 +28,19 @@ None.
 
 #### P1 — Important
 
-- [ ] **Global master volume** — save in app settings and apply to every opened file (stored per edit now)
+- [ ] **Audit** and fix render smoothness
 - [ ] **Last opened edit** — reopening works in code; reproduce the "not always" report or close it
 - [ ] **Save / Save As** in the Player (Cmd+S does nothing)
 - [ ] **Shortcut consistency** across macOS, Windows and Linux
 - [ ] **Turbo-sound** load 2-3 PSGs at the same time
-- [ ] **Level meter** in transport bar to the left or right of global volume, stereo
-- [ ] **Audit** and fix render smoothness
 - [ ] Fix **tab bars** look and feel to match design system (after plugins panes)
+- [ ] **Note lanes** and tuning table detection
 
 #### P2 — Nice to have
 
+- [ ] **BPM, FPB, DIV** detection
 - [ ] **Global default AY settings** (clock, stereo, channels) for PSG files opened from Finder or the command line
 - [ ] **Solo** per AY channel (mute exists)
-- [ ] **BPM, FPB, DIV** detection
-- [ ] **Note lanes** and tuning table detection
 
 ---
 

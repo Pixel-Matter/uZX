@@ -72,6 +72,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 
     edit_->playInStopEnabled = true;
     setTimecodeDisplayMode(*edit_, TimecodeDisplayMode::seconds);
+    useGlobalMasterVolume();
 
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);

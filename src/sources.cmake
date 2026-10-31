@@ -48,6 +48,7 @@ set(GUI_SOURCES
     gui/common/LabeledSlider.cpp
     gui/common/MidiParameterMapping.cpp
     gui/common/MouseListener.cpp
+    gui/common/LevelMeter.cpp
 
     controllers/MainController.cpp
     controllers/TuningController.cpp

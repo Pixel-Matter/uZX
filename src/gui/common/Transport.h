@@ -5,6 +5,7 @@
 #include "../../controllers/EditState.h"
 #include "../../utils/StringLiterals.h"
 
+#include "LevelMeter.h"
 #include "ParamBindings.h"
 #include "LookAndFeel.h"
 
@@ -60,6 +61,7 @@ private:
 
     Slider masterVolumeSlider_ { Slider::SliderStyle::RotaryVerticalDrag, Slider::TextEntryBoxPosition::NoTextBox };
     SliderParamEndpointBinding masterAttachment_ {masterVolumeSlider_, edit_.getMasterSliderPosParameter()};
+    MasterLevelMeter masterMeter_ {edit_};
 
     TextButton rewindButton_    { "⏮"_u },
     //    stepLeftButton_  { "<" },

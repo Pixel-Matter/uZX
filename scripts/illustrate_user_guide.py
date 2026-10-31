@@ -130,6 +130,8 @@ def demo_startup(settings, project):
     if recent is None:
         recent = ET.SubElement(properties, "VALUE", {"name": "recentEdits"})
     recent.set("val", str(project))
+    for volume in properties.findall("VALUE[@name='masterVolumeDb']"):
+        properties.remove(volume)  # figures show the default level, not the user's
     if original is not None:
         replace_bytes(backup, original)
     try:

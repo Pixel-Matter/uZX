@@ -42,6 +42,44 @@ public:
             expect(! frame.isSet(0) && ! frame.isSet(1), "R14/R15 must not leak into other registers");
             expect(frame.isSet(7));
         }
+
+        beginTest("A pause adds exactly 4 * n empty frames and no extra frame before the next marker");
+        {
+            TemporaryFile temp(".psg");
+            // frame, pause of 2 (8 empty frames), frame
+            const auto bytes = withHeader({0xFF, 0x08, 0x0F, 0xFE, 0x02, 0xFF, 0x08, 0x00});
+            temp.getFile().replaceWithData(bytes.data(), bytes.size());
+            PsgFile file(temp.getFile());
+            expect(file.ensureRead());
+            const auto& frames = file.getData().frames;
+            expectEquals((int) frames.size(), 10);
+            expect(frames[0].isSet(8) && frames[9].isSet(8));
+            for (size_t i = 1; i < 9; ++i)
+                expect(frames[i].isEmpty(), "pause frames must be empty");
+        }
+
+        beginTest("Register pairs right after a pause land in the last paused frame");
+        {
+            TemporaryFile temp(".psg");
+            const auto bytes = withHeader({0xFF, 0x08, 0x0F, 0xFE, 0x01, 0x0A, 0x04, 0xFF, 0x08, 0x00});
+            temp.getFile().replaceWithData(bytes.data(), bytes.size());
+            PsgFile file(temp.getFile());
+            expect(file.ensureRead());
+            const auto& frames = file.getData().frames;
+            expectEquals((int) frames.size(), 6);
+            expect(frames[4].isSet(10) && frames[4].getRaw(10) == 4);
+            expect(frames[5].isSet(8));
+        }
+
+        beginTest("A 0xFF version byte means frames start right after the magic");
+        {
+            TemporaryFile temp(".psg");
+            const std::vector<uint8> bytes{'P', 'S', 'G', 0x1A, 0xFF, 0x08, 0x0F, 0xFF, 0x08, 0x00};
+            temp.getFile().replaceWithData(bytes.data(), bytes.size());
+            PsgFile file(temp.getFile());
+            expect(file.ensureRead());
+            expectEquals((int) file.getData().frames.size(), 2);
+        }
     }
 };
 

@@ -8,6 +8,7 @@ set(SHARED_SOURCES
     models/PsgList.cpp
     models/PsgClip.cpp
     models/PsgFrameRetimer.cpp
+    models/PsgTempoDetector.cpp
     models/Selectable.cpp
     models/EditUtilities.cpp
     models/SnapLadder.cpp
@@ -107,6 +108,7 @@ set(TEST_SOURCES
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
     models/PsgClipTuning.test.cpp
+    models/PsgTempoDetector.test.cpp
     models/ProjectFps.test.cpp
     models/SnapLadder.test.cpp
     models/tuning/Ratios.test.cpp

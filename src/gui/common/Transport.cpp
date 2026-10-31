@@ -143,11 +143,13 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     transportReadout_.onTextChange = [this] { commitEditedPosition(); };
     divControl_.setEditable(true, true, false);
     divControl_.onTextChange = [this] { commitEditedDivisions(); };
+    timeSigLabel_.setEditable(true, true, false);
+    timeSigLabel_.onTextChange = [this] { commitEditedTimeSig(); };
 
     // Unit / prefix labels sit next to their value box as plain, non-interactive text.
     struct { Label& label; const char* text; } units[] = {
         { bpmUnitLabel_, "BPM" }, { fpsUnitLabel_, "FPS" },
-        { fpbUnitLabel_, "FPB" }, { divUnitLabel_, "DIV" }, { sigUnitLabel_, "SIG" },
+        { fpbUnitLabel_, "FPB" }, { divUnitLabel_, "GRV" }, { sigUnitLabel_, "SIG" },
         { posLabel_, "Pos" },
     };
     for (auto& u : units) {
@@ -352,6 +354,13 @@ void TransportBar::commitEditedDivisions() {
     divControl_.setText(Helpers::formatGridSubdivisionPattern(
                             Helpers::getGridSubdivisionPattern(edit_, framesPerBeat)),
                         dontSendNotification);
+}
+
+void TransportBar::commitEditedTimeSig() {
+    auto& timeSig = edit_.tempoSequence.getTimeSigAt(transport_.getPosition());
+    if (const auto parsed = Helpers::parseTimeSig(timeSigLabel_.getText(), timeSig.denominator.get()))
+        PsgTiming::setTimeSig(edit_, timeSig, parsed->first, parsed->second);
+    updateTimeLabels(transport_.getPosition());  // shows the result, or restores the old one
 }
 
 void TransportBar::mouseDown(const MouseEvent& e) {

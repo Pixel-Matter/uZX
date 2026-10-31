@@ -6,9 +6,16 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Added
 - Stereo level meter of the master output in the transport bar, right of the master volume knob
+- Tuning table and key detection for imported PSG clips: the clip header shows both (for example `PT #1  E minor`, with `?` on a close call), the Notes view draws the table's notes as piano-roll lanes, and **Tuning and key…** in the clip menu shows the ranked candidates and lets you choose; View > Note Lanes turns the lanes off
+- Tempo detection on PSG import into an empty project: BPM, frames per beat, swings and grooves (tracker speed tables such as 4-4-3-3 frame rows) and 3/4 or 4/4 when the bar repetition is clear. A dump that starts a few frames before its first row is trimmed, or moved right when those frames sound, so that row starts a bar
+- The time signature (SIG) in the transport bar is editable: type `3/4`, `6/8` or a bare numerator; PSG clips keep playing at the same times
 
 ### Changed
 - Master volume is an app setting instead of a per-file one: Player and Studio each remember it across launches and apply it to every opened file
+- The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
+
+### Fixed
+- PSG files with pause markers no longer shift every later frame by one per pause, and files written with a `0xFF` version byte open
 
 ## [v0.5.0-alpha] - 2026-10-29
 

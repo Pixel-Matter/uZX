@@ -21,6 +21,7 @@ public:
         testGridSubdivisionPattern();
         testDefaultGridSubdivisionPattern();
         testParseGridSubdivisionPattern();
+        testParseTimeSig();
     }
 
 private:
@@ -179,6 +180,20 @@ private:
                "overflow should reduce trailing divisions");
         expect(Helpers::parseGridSubdivisionPattern("30", 26).empty(),
                "one normalized division is not a subdivision pattern");
+    }
+
+    void testParseTimeSig() {
+        beginTest("parseTimeSig reads n/d or a bare numerator and rejects the rest");
+
+        expect(Helpers::parseTimeSig("3/4", 4) == std::pair{3, 4});
+        expect(Helpers::parseTimeSig(" 6 / 8 ", 4) == std::pair{6, 8}, "spaces are allowed");
+        expect(Helpers::parseTimeSig("7", 8) == std::pair{7, 8}, "a bare numerator keeps the denominator");
+        expect(!Helpers::parseTimeSig("3/5", 4), "the denominator must be a power of two");
+        expect(!Helpers::parseTimeSig("0/4", 4), "the numerator must be positive");
+        expect(!Helpers::parseTimeSig("33/4", 4), "the numerator is capped at 32");
+        expect(!Helpers::parseTimeSig("abc", 4));
+        expect(!Helpers::parseTimeSig("3/", 4));
+        expect(!Helpers::parseTimeSig("", 4));
     }
 };
 

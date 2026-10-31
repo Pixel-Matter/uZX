@@ -88,6 +88,12 @@ static Optional<PsgHeaderDetails> parsePsgHeader(const uint8* const initialData,
     if (!version.hasValue())
         return {};
 
+    if (*version == 0xFF) {  // some emulators write frames right after the magic (zxtune tolerates this too)
+        PsgHeaderDetails result;
+        result.bytesRead = 4;
+        return {result};
+    }
+
     const auto interruptRate = tryRead<uint8>(data, remaining);
     if (!interruptRate.hasValue())
         return {};
@@ -225,7 +231,18 @@ private:
                 for (int i = 0; i < *pause * 4; ++i) {
                     psgData_.frames.push_back({});
                 }
-                expectFrame = true;
+                // The next interrupt starts with its own 0xFF marker. Register pairs that
+                // follow the pause directly belong to the last paused frame (as zxtune
+                // reads them); starting a new frame here would shift everything after it.
+                if (remaining > 0 && *d <= 0x0F) {
+                    const auto frame = readNextFrame(d, remaining);
+                    if (!frame.hasValue())
+                        return false;
+                    if (psgData_.frames.empty())
+                        psgData_.frames.push_back(*frame);
+                    else
+                        psgData_.frames.back().update(*frame);
+                }
             } else if (*marker == 0xFF) {
                 expectFrame = true;
             } else {

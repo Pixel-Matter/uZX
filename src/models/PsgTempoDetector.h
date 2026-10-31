@@ -15,7 +15,8 @@ class PsgClip;
 
     Trackers write every note on a row, and a row lasts a whole number of frames
     (the tracker "speed"), so the job is to find that integer, an optional
-    two-value swing (6-7-6-7...), and how many rows make a beat.
+    two-value swing (6-7-6-7...), and how many rows make a beat (3, 4 or 5, times a
+    power of two).
 */
 namespace PsgTempo {
 

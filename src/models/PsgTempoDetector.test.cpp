@@ -29,7 +29,7 @@ public:
         data.frames.resize((size_t) numFrames);
         int t = 0, row = 0;
         while (t < numFrames) {
-            data.frames[(size_t) t].setTonePeriod(0, (uint16_t) (200 + (row % 5) * 20));
+            data.frames[(size_t) t].setTonePeriod(0, (uint16_t) (200 + (row % 4) * 20));
             data.frames[(size_t) t].setVolume(0, 15);
             if (row % accentRows == 0) {
                 data.frames[(size_t) t].setTonePeriod(1, 400);
@@ -45,18 +45,18 @@ public:
         return data;
     }
 
-    /** Like makeTune, plus a bar structure: speed 6, 4 rows per beat, a kick and
-        hats on channel C noise and a bass line on channel B that repeat every bar. */
-    static PsgData makeBarTune(int numFrames, int beatsPerBar) {
-        auto data = makeTune(numFrames, {6}, 4);
+    /** Like makeTune, plus a bar structure: a kick and beat hats on channel C noise
+        and a bass line on channel B that repeat every bar. */
+    static PsgData makeBarTune(int numFrames, int beatsPerBar, int rowsPerBeat = 4, int speed = 6) {
+        auto data = makeTune(numFrames, {speed}, rowsPerBeat);
         data.frames[0].setMixer(0x1c);  // tone A and B, noise C
         data.frames[0].setVolume(1, 12);
-        const int rowsPerBar = 4 * beatsPerBar;
-        for (int row = 0; row * 6 < numFrames; ++row) {
-            const auto t = (size_t) row * 6;
+        const int rowsPerBar = rowsPerBeat * beatsPerBar;
+        for (int row = 0; row * speed < numFrames; ++row) {
+            const auto t = (size_t) (row * speed);
             const int rowInBar = row % rowsPerBar;
             data.frames[t].setTonePeriod(1, (uint16_t) (1000 + 40 * rowInBar));
-            if (rowInBar == 0 || rowInBar % 2 == 1) {
+            if (rowInBar % rowsPerBeat == 0) {  // kick on the downbeat, hat on every other beat
                 data.frames[t].setNoisePeriod(rowInBar == 0 ? 20 : 1);
                 data.frames[t].setVolume(2, 15);
                 if (t + 2 < (size_t) numFrames)
@@ -117,9 +117,21 @@ public:
             expectEquals(result->framesPerBeat, 13 * result->rowsPerBeat / 2);
         }
 
+        beginTest("Rows are grouped into beats of 3, 4 or 5 by what repeats");
+        {
+            auto triplet = PsgTempo::detect(makeBarTune(4000, 4, 3, 3));
+            expect(static_cast<bool>(triplet));
+            expectEquals(triplet->rowsPerBeat, 6, "3-row groups at speed 3, doubled into range");
+
+            auto quintuplet = PsgTempo::detect(makeBarTune(6000, 4, 5, 3));
+            expect(static_cast<bool>(quintuplet));
+            expectEquals(quintuplet->rowsPerBeat, 10, "5-row groups at speed 3, doubled into range");
+            expectWithinAbsoluteError(quintuplet->bpm, 100.0, 0.01);
+        }
+
         beginTest("A slow triplet beat keeps 3 rows instead of halving to 1");
         {
-            auto result = PsgTempo::detect(makeTune(4000, {16}, 3));
+            auto result = PsgTempo::detect(makeBarTune(8000, 4, 3, 16));
             expect(static_cast<bool>(result));
             expectEquals(result->rowsPerBeat, 3);
             expectEquals(result->framesPerBeat, 48);

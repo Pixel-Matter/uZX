@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""Validate the PSG tempo detector against PT3 header speeds.
+"""Validate the PSG tempo detector against PT3 header speeds, or against tempos set by ear.
 
     python3 -I scripts/psg_tempo_validate.py PT3_DIR PSG_DIR [UZX_TESTS]
+    python3 -I scripts/psg_tempo_validate.py --labels PSG_DIR [PSG_DIR ...]
+
+The --labels form compares the detected BPM with scripts/psg_tempo_labels.csv for
+every labelled file found in the given folders.
 
 Converts each .pt3 to .psg with zxtune123 (skipped when the .psg exists), runs
 the C++ detector over PSG_DIR through the test binary (UZX_PSG_TEMPO_DIR mode),
@@ -10,6 +14,7 @@ swing counts as a match when its mean equals the delay; frames per beat that
 are a whole number of rows count as harmonic. UZX_TESTS defaults to the Debug
 build of uZXTests.
 """
+import csv
 import os
 import re
 import subprocess
@@ -88,7 +93,29 @@ def main(src, dst, tests):
     print("meter (? = unclear, left as is):", sorted(sigs.items()))
 
 
+def check_labels(dirs, tests=UZX_TESTS):
+    """Prints detected against labelled BPM; a match is within 1%."""
+    with open(Path(__file__).parent / "psg_tempo_labels.csv") as f:
+        labels = {r["file"]: r for r in csv.DictReader(line for line in f if not line.startswith("#"))}
+    ok = total = 0
+    for d in dirs:
+        for name, m in detect_all(d, tests).items():
+            label = labels.get(name)
+            if label is None or not label["bpm"]:
+                continue
+            want = float(label["bpm"])
+            got = float(m[5]) if m else None
+            hit = got is not None and abs(got - want) <= 0.01 * want
+            ok += hit
+            total += 1
+            print(f"{'ok  ' if hit else 'MISS'} want {want:6.1f} got {'-' if got is None else f'{got:6.1f}'}  {name[:60]}")
+    print(f"\nlabelled tempo matches {ok}/{total}")
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 2 and sys.argv[1] == "--labels":
+        check_labels([Path(p) for p in sys.argv[2:]])
+        sys.exit()
     if len(sys.argv) < 3:
         sys.exit(__doc__)
     main(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]) if len(sys.argv) > 3 else UZX_TESTS)

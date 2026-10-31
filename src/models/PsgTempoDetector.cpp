@@ -132,46 +132,6 @@ std::vector<size_t> rowStarts(size_t numFrames, const Speed& speed) {
     return starts;
 }
 
-/** Picks 3 or 4 rows per beat from the row-accent autocorrelation (duple unless
-    triplets clearly win), then halves or doubles to land inside the BPM range;
-    three rows are never halved, so a slow triplet beat may stay below it.
-    A swing pair never splits across beats: every beat must hold the same
-    a-b-a-b pattern, so swing tunes get an even number of rows per beat. */
-int detectRowsPerBeat(const std::vector<double>& energy,
-                      const std::vector<size_t>& starts,
-                      const Speed& speed,
-                      double dataFps) {
-    std::vector<double> rows;
-    for (auto i : starts)
-        rows.push_back(energy[i]);
-
-    const double mean = rows.empty() ? 0.0 : std::accumulate(rows.begin(), rows.end(), 0.0) / (double) rows.size();
-    for (auto& r : rows)
-        r -= mean;
-    auto autocorrelation = [&](size_t lag) {
-        double sum = 0.0;
-        for (size_t i = lag; i < rows.size(); ++i)
-            sum += rows[i - lag] * rows[i];
-        return sum;
-    };
-
-    const bool swing = speed.a != speed.b;
-    const double triplet = autocorrelation(3), duple = autocorrelation(4);
-    int rowsPerBeat = !swing && triplet > 0.0 && triplet > duple * 1.2 ? 3 : 4;
-    const int minRowsPerBeat = swing ? 2 : 1;
-    const double rowLength = (speed.a + speed.b) / 2.0;
-    double bpm = dataFps * 60.0 / (rowLength * rowsPerBeat);
-    while (bpm < minBpm && rowsPerBeat % 2 == 0 && rowsPerBeat / 2 >= minRowsPerBeat) {
-        rowsPerBeat /= 2;
-        bpm *= 2.0;
-    }
-    while (bpm > maxBpm) {
-        rowsPerBeat *= 2;
-        bpm /= 2.0;
-    }
-    return rowsPerBeat;
-}
-
 /** What a row sounds like at its start, coarse enough to repeat bar after bar:
     the drums (channels playing noise, the noise period, an envelope retrigger
     within the row) and the bass (lowest tone, in semitones). */
@@ -217,25 +177,85 @@ std::vector<RowFeature> rowFeatures(const uZX::PsgData& data, const std::vector<
     return rows;
 }
 
+/** Share of rows that sound like the row lagRows earlier, drums and bass
+    counted separately. */
+double repetition(const std::vector<RowFeature>& rows, size_t lagRows) {
+    if (lagRows == 0 || lagRows >= rows.size())
+        return 0.0;
+    int matches = 0;
+    for (size_t i = lagRows; i < rows.size(); ++i)
+        matches += (rows[i].drumsEqual(rows[i - lagRows]) ? 1 : 0)
+                   + (rows[i].bassSemitone == rows[i - lagRows].bassSemitone ? 1 : 0);
+    return matches / (2.0 * (double) (rows.size() - lagRows));
+}
+
+/** Picks how many rows make a beat. Candidates group rows by 3, 4 or 5, each
+    halved or doubled to land inside the BPM range; odd groups are never halved,
+    so a slow triplet beat may stay below it. The winner is the beat whose half
+    bars, bars and two-bar phrases (2, 4 and 8 beats) repeat best: patterns
+    repeat where the music's beats start, so a wrong beat length lines up rows
+    from different parts of the bar. A bar can repeat the same as 4 beats of 3
+    rows or 3 beats of 4 (a waltz), so a beat other than the 4-row one also needs
+    its accents (note starts per row) to recur at its own length. A swing pair
+    never splits across beats, so swing tunes always group by 4. */
+int detectRowsPerBeat(const std::vector<RowFeature>& rows,
+                      const std::vector<double>& accents,
+                      const Speed& speed,
+                      double dataFps) {
+    const bool swing = speed.a != speed.b;
+    const double rowLength = (speed.a + speed.b) / 2.0;
+    auto fitToBpmRange = [&](int rowsPerBeat) {
+        const int minRowsPerBeat = swing ? 2 : 1;
+        double bpm = dataFps * 60.0 / (rowLength * rowsPerBeat);
+        while (bpm < minBpm && rowsPerBeat % 2 == 0 && rowsPerBeat / 2 >= minRowsPerBeat) {
+            rowsPerBeat /= 2;
+            bpm *= 2.0;
+        }
+        while (bpm > maxBpm) {
+            rowsPerBeat *= 2;
+            bpm /= 2.0;
+        }
+        return rowsPerBeat;
+    };
+
+    const double mean =
+        accents.empty() ? 0.0 : std::accumulate(accents.begin(), accents.end(), 0.0) / (double) accents.size();
+    auto accentRecurrence = [&](int lag) {
+        double sum = 0.0;
+        for (size_t i = (size_t) lag; i < accents.size(); ++i)
+            sum += (accents[i - (size_t) lag] - mean) * (accents[i] - mean);
+        return sum;
+    };
+    auto repeats = [&](int rowsPerBeat) {
+        return (repetition(rows, (size_t) (2 * rowsPerBeat)) + repetition(rows, (size_t) (4 * rowsPerBeat))
+                + repetition(rows, (size_t) (8 * rowsPerBeat)))
+               / 3.0;
+    };
+
+    const int fourRowBeat = fitToBpmRange(4);
+    if (swing)
+        return fourRowBeat;
+    int best = fourRowBeat;
+    double bestScore = repeats(fourRowBeat);
+    for (int group : {3, 5}) {
+        const int beat = fitToBpmRange(group);
+        const double score = repeats(beat);
+        const double accent = accentRecurrence(group);
+        if (score > bestScore && accent > 0.0 && accent > accentRecurrence(4)) {
+            best = beat;
+            bestScore = score;
+        }
+    }
+    return best;
+}
+
 /** Drum and bass patterns repeat every bar, so rows one bar apart match more
     often than rows any other distance apart. Returns how much better bars of 3
     (and 6) beats explain the repetition than bars of 4 (and 8): clearly
     positive means 3/4, clearly negative 4/4, near zero no evidence either way. */
 double tripleMeterMargin(const std::vector<RowFeature>& rows, int rowsPerBeat) {
-    auto matchRate = [&](int beats) {
-        const auto lag = (size_t) (beats * rowsPerBeat);
-        if (lag >= rows.size())
-            return 0.0;
-        int matches = 0;
-        for (size_t i = lag; i < rows.size(); ++i)
-            matches += (rows[i].drumsEqual(rows[i - lag]) ? 1 : 0)
-                       + (rows[i].bassSemitone == rows[i - lag].bassSemitone ? 1 : 0);
-        return matches / (2.0 * (double) (rows.size() - lag));
-    };
-
-    const double triple = (matchRate(3) + matchRate(6)) / 2.0;
-    const double duple = (matchRate(4) + matchRate(8)) / 2.0;
-    return triple - duple;
+    auto bars = [&](int beats) { return repetition(rows, (size_t) (beats * rowsPerBeat)); };
+    return (bars(3) + bars(6)) / 2.0 - (bars(4) + bars(8)) / 2.0;
 }
 
 /** Whether the first bars of the tune follow the detected row grid. The grid is
@@ -280,8 +300,12 @@ juce::Optional<Result> detect(const uZX::PsgData& data) {
     result.speedA = speed->a * playRate;
     result.speedB = speed->b * playRate;
     const auto starts = rowStarts(energy.size(), *speed);
-    result.rowsPerBeat = detectRowsPerBeat(energy, starts, *speed, data.getFrameRate() / playRate);
-    const auto meterMargin = tripleMeterMargin(rowFeatures(data, starts), result.rowsPerBeat);
+    const auto rows = rowFeatures(data, starts);
+    std::vector<double> accents;
+    for (auto i : starts)
+        accents.push_back(energy[i]);
+    result.rowsPerBeat = detectRowsPerBeat(rows, accents, *speed, data.getFrameRate() / playRate);
+    const auto meterMargin = tripleMeterMargin(rows, result.rowsPerBeat);
     result.beatsPerBar = meterMargin > minMeterMargin ? 3 : 4;
     result.meterClear = std::abs(meterMargin) > minMeterMargin;
     const auto pattern = result.subdivisionPattern();

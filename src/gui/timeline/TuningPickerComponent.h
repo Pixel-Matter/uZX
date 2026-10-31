@@ -53,6 +53,7 @@ private:
     static constexpr int equalTemperamentItemId = 1000;
 
     void rebuildLists(const PsgClip& clip);
+    void rebuildKeyList(const std::vector<DetectedKey>& keys);
     void refresh();
     void close();
 

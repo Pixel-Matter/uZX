@@ -40,6 +40,77 @@ public:
             return PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data, {{te::TimePosition(), length}, {}}, "t");
         };
 
+        beginTest("Import weights each register state by how long it sounds");
+        {
+            // PsgList keeps only frames that write a register: a held A is one stored frame
+            // followed by silence in the register stream. Counting stored frames would let
+            // the eight one-frame C-major notes outweigh it.
+            const auto& grid = getBuiltinPeriodGrid(BuiltinTuningType::CustomPT_1_ST);
+            auto periodOf = [&grid](int note) {
+                for (const auto& [period, n] : grid)
+                    if (n == note)
+                        return period;
+                return 0;
+            };
+            auto noteFrame = [](int period) {
+                return uZX::PsgRegsFrame{{uZX::PsgRegType::VolumeA, 12},
+                                         {uZX::PsgRegType::TonePeriodFineA, static_cast<uint8_t>(period & 0xff)},
+                                         {uZX::PsgRegType::TonePeriodCoarseA, static_cast<uint8_t>(period >> 8)}};
+            };
+            uZX::PsgData data{{}, {50.0, 1}};
+            data.frames.push_back(noteFrame(periodOf(57)));  // A3, held
+            for (int i = 0; i < 199; ++i)
+                data.frames.push_back({});
+            for (int note : {60, 64, 67, 71, 62, 65, 60, 64})  // C E G B D F C E, one frame each
+                data.frames.push_back(noteFrame(periodOf(note)));
+            data.frames.push_back(noteFrame(periodOf(57)));  // A3 again, held to the end
+            for (int i = 0; i < 49; ++i)
+                data.frames.push_back({});
+
+            auto held = insert(data);
+            expect(held != nullptr);
+            if (held != nullptr) {
+                const auto hist = held->buildPitchHistogram();
+                expectEquals(
+                    hist.tone.at(periodOf(57)), 250, "both held As count every frame, the last to the clip end");
+                expectEquals(hist.tone.at(periodOf(60)), 2);
+                expectEquals(hist.getTotal(), 258);
+                expectEquals(held->getTuning().key.getName(), String("A minor"));
+            }
+        }
+
+        beginTest("Choosing a table re-ranks the keys on that table");
+        {
+            // An A minor phrase written on PT #0 is detected on PT #3, which names every
+            // note a semitone higher. Choosing PT #0 must bring the key back to A minor.
+            const auto& pt0 = getBuiltinPeriodGrid(BuiltinTuningType::CustomPT_0_PT);
+            uZX::PsgData data{{}, {50.0, 1}};
+            for (const auto& [period, note] : pt0) {
+                const int pc = note % 12;
+                if (note < 45 || note > 81
+                    || !(pc == 9 || pc == 11 || pc == 0 || pc == 2 || pc == 4 || pc == 5 || pc == 7))
+                    continue;
+                const int weight = pc == 9 ? 6 : pc == 4 || pc == 0 ? 3 : 1;
+                for (int k = 0; k < weight; ++k)
+                    data.frames.push_back({{uZX::PsgRegType::VolumeA, 12},
+                                           {uZX::PsgRegType::TonePeriodFineA, static_cast<uint8_t>(period & 0xff)},
+                                           {uZX::PsgRegType::TonePeriodCoarseA, static_cast<uint8_t>(period >> 8)}});
+            }
+            auto pt0Clip = insert(data);
+            expect(pt0Clip != nullptr);
+            if (pt0Clip != nullptr) {
+                expect(*pt0Clip->getTuning().table == BuiltinTuningType::CustomPT_3_REAL,
+                       "detection merges PT #0 into PT #3");
+                expectEquals(pt0Clip->getTuning().key.getName(), String::fromUTF8("A\xe2\x99\xaf minor"));
+                pt0Clip->chooseTuningTable(BuiltinTuningType::CustomPT_0_PT);
+                expectEquals(pt0Clip->getTuning().key.getName(), String("A minor"));
+                expectEquals(pt0Clip->getTuning().keys.front().getName(), String("A minor"));
+                pt0Clip->chooseKey({Scale::Tonic(4), true});  // an explicit key survives a table change
+                pt0Clip->chooseTuningTable(BuiltinTuningType::CustomPT_3_REAL);
+                expectEquals(pt0Clip->getTuning().key.getName(), String("E minor"));
+            }
+        }
+
         beginTest("Without a choice the detection is in effect");
         auto clip = insert(aMinorOnPt1());
         expect(clip != nullptr);

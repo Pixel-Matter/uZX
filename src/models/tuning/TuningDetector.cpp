@@ -171,10 +171,11 @@ String getEqualTemperamentLabel(double a4Frequency) {
 }
 
 //==============================================================================
-void PitchHistogram::Builder::addFrame(const PsgParamFrameData& frame) {
-    visitFrameNotes(frame, [this](const PsgFrameNote& note) {
+void PitchHistogram::Builder::addFrame(const PsgParamFrameData& frame, int frames) {
+    jassert(frames > 0);
+    visitFrameNotes(frame, [this, frames](const PsgFrameNote& note) {
         jassert(note.period >= 0 && note.period < (1 << 16));
-        ++(note.isEnvelopePitch ? envelope_ : tone_)[static_cast<size_t>(note.period)];
+        (note.isEnvelopePitch ? envelope_ : tone_)[static_cast<size_t>(note.period)] += frames;
     });
 }
 
@@ -236,6 +237,10 @@ std::vector<DetectedKey> rankKeys(const std::array<float, 12>& pitchClasses) {
     std::stable_sort(
         keys.begin(), keys.end(), [](const auto& a, const auto& b) { return a.correlation > b.correlation; });
     return keys;
+}
+
+bool isKeyTie(const std::vector<DetectedKey>& rankedKeys) {
+    return rankedKeys.size() > 1 && rankedKeys[0].correlation - rankedKeys[1].correlation < TuningDetection::tieGap;
 }
 
 std::array<float, 12> makePitchClassHistogram(const PitchHistogram& hist, const PeriodGrid& grid) {
@@ -382,7 +387,7 @@ TuningDetection detectTuning(const PitchHistogram& hist) {
 
     result.pitchClasses = makePitchClassHistogram(hist, result.grid);
     result.keys = rankKeys(result.pitchClasses);
-    result.keyTie = result.keys[0].correlation - result.keys[1].correlation < TuningDetection::tieGap;
+    result.keyTie = isKeyTie(result.keys);
     return result;
 }
 

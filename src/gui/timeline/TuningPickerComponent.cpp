@@ -183,7 +183,11 @@ void TuningPickerComponent::rebuildLists(const PsgClip& clip) {
                           + String(roundToInt(detection.equalTemperament.share * 100)) + "%",
                       equalTemperamentItemId);
 
-    listedKeys_ = detection.keys;
+    listedKeys_.clear();  // scores changed with the data: refresh() lists them again
+}
+
+void TuningPickerComponent::rebuildKeyList(const std::vector<DetectedKey>& keys) {
+    listedKeys_ = keys;
     keyBox_.clear(dontSendNotification);
     for (size_t i = 0; i < listedKeys_.size(); ++i)
         keyBox_.addItem(listedKeys_[i].getName() + "  " + String(listedKeys_[i].correlation, 2),
@@ -211,6 +215,14 @@ void TuningPickerComponent::refresh() {
             if (listedTables_[i] == *tuning.table)
                 tableBox_.setSelectedId(static_cast<int>(i) + 1, dontSendNotification);
     }
+    // Keys are ranked on the grid in effect, so choosing a table can reorder them.
+    const bool sameRanking =
+        listedKeys_.size() == tuning.keys.size()
+        && std::equal(listedKeys_.begin(), listedKeys_.end(), tuning.keys.begin(), [](const auto& a, const auto& b) {
+               return a.tonic == b.tonic && a.minor == b.minor;
+           });
+    if (!sameRanking)
+        rebuildKeyList(tuning.keys);
     for (size_t i = 0; i < listedKeys_.size(); ++i)
         if (tuning.hasKey && listedKeys_[i].tonic == tuning.key.tonic && listedKeys_[i].minor == tuning.key.minor)
             keyBox_.setSelectedId(static_cast<int>(i) + 1, dontSendNotification);

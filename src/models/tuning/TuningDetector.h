@@ -40,7 +40,8 @@ struct PitchHistogram
     class Builder
     {
     public:
-        void addFrame(const PsgParamFrameData& frame);
+        /** Adds a register state that sounds for `frames` machine frames. */
+        void addFrame(const PsgParamFrameData& frame, int frames = 1);
         PitchHistogram build() const;
 
     private:
@@ -78,6 +79,9 @@ struct DetectedKey
 
 /** The 24 major/minor keys ranked by Krumhansl-Kessler profile correlation, best first. */
 std::vector<DetectedKey> rankKeys(const std::array<float, 12>& pitchClasses);
+
+/** True when the two best keys are too close to call (see TuningDetection::tieGap). */
+bool isKeyTie(const std::vector<DetectedKey>& rankedKeys);
 
 /** Normalised weight per pitch class; off-grid periods go to their nearest grid note. */
 std::array<float, 12> makePitchClassHistogram(const PitchHistogram& hist, const PeriodGrid& grid);

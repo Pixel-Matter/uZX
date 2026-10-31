@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "../../formats/psg/PsgFile.h"
+#include "../PsgClip.h"
 
 using namespace MoTool;
 
@@ -163,6 +164,23 @@ public:
                     continue;
                 const auto hist = histogramOfFile(files.getFirst());
                 const auto result = detectTuning(hist);
+
+                // The application path: import into a clip, where empty frames are not
+                // stored. Its histogram must equal the one counted from the raw stream.
+                {
+                    uZX::PsgFile psg(files.getFirst());
+                    auto edit = te::Edit::createSingleTrackEdit(*te::Engine::getEngines()[0]);
+                    const auto length =
+                        te::TimeDuration::fromSeconds(psg.ensureRead() ? psg.getData().getLengthSeconds() : 0.0);
+                    auto clip =
+                        PsgClip::insertTo(*te::getAudioTracks(*edit)[0], psg, {{te::TimePosition(), length}, {}});
+                    expect(clip != nullptr);
+                    if (clip != nullptr) {
+                        const auto imported = clip->buildPitchHistogram();
+                        expect(imported.tone == hist.tone && imported.envelope == hist.envelope,
+                               String(e.prefix) + " import path histogram");
+                    }
+                }
                 logMessage(String(e.prefix) + ": tone-frames " + String(sumFrames(hist.tone)) + ", env-frames "
                            + String(sumFrames(hist.envelope)));
                 expect(result.usesEqualTemperament == e.tet, String(e.prefix) + " fallback");

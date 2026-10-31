@@ -55,6 +55,10 @@ public:
         std::optional<BuiltinTuningType> table;  // set when a built-in table is in effect
         bool isEqualTemperament = false;         // set when a 12TET grid is in effect
         DetectedKey key;    // meaningful only when hasKey
+        /** The 24 keys ranked on this grid: a chosen table names the notes differently
+            from the detected one, so the ranking follows the grid in effect. */
+        std::vector<DetectedKey> keys;
+        bool keyTie = false;  // on this grid; meaningless without notes
         bool hasKey = false;
         bool tableChosen = false;
         bool keyChosen = false;

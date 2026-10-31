@@ -661,7 +661,7 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
 struct NotesLayout {
     Range<float> pitchRange;
     float noteHeight;
-    Range<float> visibleX;
+    Range<float> visibleX;  // the part of the component inside the view
     float height;
 
     float normToY(float norm) const {
@@ -674,11 +674,14 @@ static NotesLayout makeNotesLayout(const PsgClip& clip, Rectangle<int> bounds, c
     const auto clipRange = clip.getEditTimeRange();
     const auto visibleTime = evs.zoom.getRange();
     const auto height = static_cast<float>(bounds.getHeight());
+    // The view and the clip overlap only partly: a clip starting later than the view's
+    // start would put the view's left edge at a negative x, outside the component.
+    const Range<float> viewX { clipTimeToX(clipRange, bounds.getWidth(), visibleTime.getStart()),
+                               clipTimeToX(clipRange, bounds.getWidth(), visibleTime.getEnd()) };
     return {
         pitchRange,
         height / (pitchRange.getLength() * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.0f),
-        { clipTimeToX(clipRange, bounds.getWidth(), visibleTime.getStart()),
-          clipTimeToX(clipRange, bounds.getWidth(), visibleTime.getEnd()) },
+        viewX.getIntersectionWith({ 0.0f, static_cast<float>(bounds.getWidth()) }),
         height
     };
 }

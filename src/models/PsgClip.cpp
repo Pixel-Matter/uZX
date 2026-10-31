@@ -96,9 +96,22 @@ juce::Range<float> PsgClip::getPitchRange() const {
 
 //==============================================================================
 PitchHistogram PsgClip::buildPitchHistogram() const {
+    // The list keeps only frames that change a register, so each state sounds until the
+    // next stored frame: weight it by that many machine frames. The last state lasts to
+    // the end of the clip's source, so a held final note counts in full too.
+    const auto& frames = getPsg().getFrames();
+    double fps = getPsg().getEffectiveFps(*this);
+    if (fps <= 0.0)
+        fps = getPsg().getFrameRate();
+    const auto position = getPosition();
+    const int endIndex = roundToInt((position.getOffset() + position.getLength()).inSeconds() * fps);
+
     PitchHistogram::Builder builder;
-    for (auto* frame : getPsg().getFrames())
-        builder.addFrame(frame->getData());
+    for (int i = 0; i < frames.size(); ++i) {
+        const int start = frames[i]->getFrameIndex();
+        const int end = i + 1 < frames.size() ? frames[i + 1]->getFrameIndex() : endIndex;
+        builder.addFrame(frames[i]->getData(), jmax(1, end - start));
+    }
     return builder.build();
 }
 
@@ -158,17 +171,23 @@ PsgClip::Tuning PsgClip::resolveTuning() const {
             tuning.table = detection.tables.front().table;
     }
 
+    // A chosen table may name every note differently (PT #0 is PT #3 a semitone away),
+    // so keys are ranked again on the grid in effect.
+    tuning.keys = tuning.tableChosen ? rankKeys(makePitchClassHistogram(detection.histogram, tuning.grid))
+                                     : detection.keys;
+    tuning.keyTie = detection.hasNotes && isKeyTie(tuning.keys);
+
     const int tonic = state.getProperty(IDs::clipKeyTonic, -1);
     if (tonic >= 0 && tonic < 12) {
         tuning.key = { Scale::Tonic(tonic), static_cast<bool>(state[IDs::clipKeyMinor]), 1.0f };
         tuning.hasKey = tuning.keyChosen = true;
     } else if (detection.hasNotes) {
-        tuning.key = detection.getKey();
+        tuning.key = tuning.keys.front();
         tuning.hasKey = true;
     }
 
     tuning.uncertain = detection.hasNotes
-        && ((detection.tableTie && ! tuning.tableChosen) || (detection.keyTie && ! tuning.keyChosen));
+        && ((detection.tableTie && ! tuning.tableChosen) || (tuning.keyTie && ! tuning.keyChosen));
     return tuning;
 }
 

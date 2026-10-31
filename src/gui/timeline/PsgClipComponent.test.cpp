@@ -489,6 +489,43 @@ public:
         }
         expect(makeNoteLanes({{100, 60}}).empty(), "a single note has no neighbour to bound it");
 
+        beginTest("Lane names stay inside a clip that starts after the view");
+        {
+            // A 10 s clip at 10..20 s in a 20 s view: the view's left edge is 500 px left
+            // of the clip, and names drawn there would be outside the component.
+            auto& engine = *te::Engine::getEngines()[0];
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto& pt1 = getBuiltinPeriodGrid(BuiltinTuningType::CustomPT_1_ST);
+            const int a3 = std::find_if(pt1.begin(), pt1.end(), [](auto& e) { return e.second == 57; })->first;
+            uZX::PsgData data{{}, {50.0, 1}};
+            data.frames.push_back({{uZX::PsgRegType::VolumeA, 12},
+                                   {uZX::PsgRegType::TonePeriodFineA, static_cast<uint8_t>(a3 & 0xff)},
+                                   {uZX::PsgRegType::TonePeriodCoarseA, static_cast<uint8_t>(a3 >> 8)}});
+            for (int i = 0; i < 499; ++i)
+                data.frames.push_back({});
+            auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                          {{te::TimePosition::fromSeconds(10.0), te::TimeDuration::fromSeconds(10.0)}, {}},
+                                          "late");
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(1000);
+            view.zoom.setRange({te::TimePosition(), te::TimeDuration::fromSeconds(20.0)});
+            TimelineGrid grid(view);
+            PsgClipComponent component(view, grid, clip);
+            component.setSize(500, 300);
+            Image image(Image::ARGB, 500, 300, true);
+            Graphics g(image);
+            component.paintNoteLanes(g);
+
+            // Lane lines are faint (alpha <= 0.16, 0.23 over the tonic band); names are
+            // drawn at 0.45 or more, so a brighter pixel near the left edge is a name.
+            bool nameNearLeftEdge = false;
+            for (int y = 0; y < image.getHeight() && ! nameNearLeftEdge; ++y)
+                for (int x = 0; x < 45 && ! nameNearLeftEdge; ++x)
+                    nameNearLeftEdge = image.getPixelAt(x, y).getFloatAlpha() > 0.35f;
+            expect(nameNearLeftEdge, "note names must be drawn at the clip's own left edge");
+        }
+
         beginTest("Level of detail follows the lane height");
         auto detail = [](float height) { const auto d = getLaneDetail(height); return std::pair{d.lines, d.labels}; };
         expect(detail(12.0f) == std::pair{LaneDetail::All, LaneDetail::All});

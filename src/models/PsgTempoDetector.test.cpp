@@ -213,35 +213,6 @@ public:
             expect(!PsgTempo::detect(noise));
         }
 
-        // Developer aid, not a check: UZX_PSG_TEMPO_DIR=<folder> prints the detector's
-        // verdict for every .psg there; scripts/psg_tempo_validate.py reads it.
-        if (const auto dir = SystemStats::getEnvironmentVariable("UZX_PSG_TEMPO_DIR", ""); dir.isNotEmpty()) {
-            beginTest("Real files from UZX_PSG_TEMPO_DIR");
-            for (const auto& file : File(dir).findChildFiles(File::findFiles, false, "*.psg")) {
-                PsgFile psg(file);
-                psg.ensureRead();
-                logMessage(String::formatted("frames=%d playRate=%d fps=%.1f ",
-                                             (int) psg.getData().frames.size(),
-                                             (int) psg.getData().options.playRate,
-                                             psg.getData().getFrameRate())
-                           + file.getFileName());
-                if (auto r = PsgTempo::detect(psg.getData()))
-                    logMessage(rowPattern(r->rowFrames)
-                               + String::formatted(" rpb=%d fpb=%d bpm=%.1f g=%.2f sig=%d clear=%d first=%d silent=%d ",
-                                                   r->rowsPerBeat,
-                                                   r->framesPerBeat,
-                                                   r->bpm,
-                                                   r->gridShare,
-                                                   r->beatsPerBar,
-                                                   (int) r->meterClear,
-                                                   r->firstRowFrame,
-                                                   (int) r->silentLeadIn)
-                               + file.getFileName());
-                else
-                    logMessage("? " + file.getFileName());
-            }
-        }
-
         beginTest("Importing into an empty edit sets tempo and grid; a second clip keeps them");
         {
             auto& engine = *tracktion::Engine::getEngines()[0];
@@ -347,6 +318,89 @@ public:
             const auto barsBeats = audibleEdit->tempoSequence.toBarsAndBeats(firstRowTime(*shifted));
             expectEquals(barsBeats.bars, 1, "first row starts bar 2");
             expectWithinAbsoluteError(barsBeats.beats.inBeats(), 0.0, 1.0e-6);
+        }
+
+        testCorpusFixtures();
+        runCorpusReport();
+    }
+
+    /** Tempos set by ear in the uZX Player (scripts/psg_tempo_labels.csv) for tunes of the
+        committed fixture collection, checked on the raw file and through import. */
+    void testCorpusFixtures() {
+        beginTest("Corpus fixtures detect the tempo heard by ear");
+        const auto dir = File(UZX_FIXTURES_DIR).getChildFile("psg");
+        if (!dir.isDirectory()) {
+            logMessage("fixtures missing at " + dir.getFullPathName() + ", skipping");
+            return;
+        }
+        struct Expected
+        {
+            const char* prefix;
+            int framesPerBeat;
+            std::vector<int> groove;  // empty: not checked
+        };
+        const Expected expected[] = {
+            {"02_Mic", 24, {}},                     // 125 BPM; once misread as 3-row triplets
+            {"04_Igoval", 20, {}},                  // 150 BPM
+            {"05_Sauron", 20, {}},                  // 150 BPM
+            {"11_Yerzmyey", 20, {}},                // 150 BPM
+            {"24_nq_-_lmao", 24, {}},               // 125 BPM
+            {"26_djnzx48", 28, {}},                 // 107 BPM, a 3-5-3-3 groove
+            {"29_nq_-_tiratok", 26, {7, 6, 7, 6}},  // 115 BPM, 4-3-3-3 rows shown in pairs
+        };
+        for (const auto& e : expected) {
+            const auto files = dir.findChildFiles(File::findFiles, false, String(e.prefix) + "*.psg");
+            expectEquals(files.size(), 1, String("fixture ") + e.prefix);
+            if (files.isEmpty())
+                continue;
+            PsgFile psg(files.getFirst());
+            expect(psg.ensureRead(), String(e.prefix) + " reads");
+            const auto result = PsgTempo::detect(psg.getData());
+            expect(static_cast<bool>(result), String(e.prefix) + " has a tempo");
+            if (!result)
+                continue;
+            expectEquals(result->framesPerBeat, e.framesPerBeat, String(e.prefix) + " frames per beat");
+            if (!e.groove.empty())
+                expect(result->subdivisionPattern() == e.groove, String(e.prefix) + " groove");
+
+            auto edit = Edit::createSingleTrackEdit(*tracktion::Engine::getEngines()[0]);
+            const tracktion::ClipPosition pos{
+                {0_tp, tracktion::TimeDuration::fromSeconds(psg.getData().getLengthSeconds())}, {}};
+            PsgClip::insertTo(*getAudioTracks(*edit)[0], psg, pos);
+            expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(),
+                                      3000.0 / e.framesPerBeat,
+                                      0.01,
+                                      String(e.prefix) + " imported tempo");
+        }
+    }
+
+    /** Development report, run only when UZX_TEMPO_CORPUS names a folder of PSG files: one
+        tab-separated "TEMPO" line per file with the row pattern, rows and frames per beat,
+        BPM, grid share, meter and its clarity, and the first-row placement, or "-" when no
+        tempo is found. scripts/validate_tempo_detection.py compares it against PT3 speeds
+        and the ear labels. */
+    void runCorpusReport() {
+        const auto dirName = SystemStats::getEnvironmentVariable("UZX_TEMPO_CORPUS", {});
+        if (dirName.isEmpty())
+            return;
+        beginTest("Corpus report from UZX_TEMPO_CORPUS");
+        for (const auto& file : File(dirName).findChildFiles(File::findFiles, false, "*.psg")) {
+            PsgFile psg(file);
+            const auto r = psg.ensureRead() ? PsgTempo::detect(psg.getData()) : juce::Optional<PsgTempo::Result>{};
+            StringArray fields{"TEMPO", file.getFileNameWithoutExtension()};
+            if (r)
+                fields.addArray(StringArray{rowPattern(r->rowFrames),
+                                            String(r->rowsPerBeat),
+                                            String(r->framesPerBeat),
+                                            String(r->bpm, 2),
+                                            String(r->gridShare, 3),
+                                            String(r->beatsPerBar),
+                                            String((int) r->meterClear),
+                                            String(r->firstRowFrame),
+                                            String((int) r->silentLeadIn)});
+            else
+                fields.add("-");
+            logMessage(fields.joinIntoString("\t"));
         }
     }
 };

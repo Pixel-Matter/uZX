@@ -8,6 +8,7 @@
 #include "EditUtilities.h"
 #include "PsgClip.h"
 #include "PsgFrameRetimer.h"
+#include "PsgParameter.h"
 
 namespace MoTool::PsgTempo {
 
@@ -180,7 +181,8 @@ std::vector<size_t> rowStarts(size_t numFrames, const Speed& speed) {
 
 /** What a row sounds like at its start, coarse enough to repeat bar after bar:
     the drums (channels playing noise, the noise period, an envelope retrigger
-    within the row) and the bass (lowest tone, in semitones). */
+    within the row) and the bass (the lowest note the Notes view would draw, an
+    envelope pitch included, in semitones). */
 struct RowFeature
 {
     std::array<bool, 3> noiseChannels{};
@@ -196,10 +198,20 @@ struct RowFeature
 std::vector<RowFeature> rowFeatures(const uZX::PsgData& data, const std::vector<size_t>& starts) {
     std::vector<RowFeature> rows(starts.size());
     uZX::PsgRegsFrame state;
+    // Same two-stage accumulation as PsgList::loadFrom, so the bass is the note the Notes
+    // view would draw lowest (envelope pitches included): registers first, so a frame
+    // that writes only a fine period byte keeps its coarse byte.
+    uZX::PsgRegsFrame regsState;
+    PsgParamFrameData params;
+    params.resetMixer();
     size_t row = 0;
 
     for (size_t i = 0; i < data.frames.size() && row < starts.size(); ++i) {
         state.update(data.frames[i]);
+        regsState.clear();
+        regsState.update(data.frames[i]);
+        params.clear();
+        params.update(regsState);
         if (row + 1 < starts.size() && i >= starts[row + 1])
             ++row;
         auto& feature = rows[row];
@@ -208,15 +220,14 @@ std::vector<RowFeature> rowFeatures(const uZX::PsgData& data, const std::vector<
             continue;
 
         const auto mixer = state.getMixer();
-        int bassPeriod = 0;
         for (size_t ch = 0; ch < 3; ++ch) {
             const bool audible = (state.getRaw(uZX::PsgRegType::VolumeA + ch) & 0x1f) != 0;
             feature.noiseChannels[ch] = audible && ((mixer >> (3 + ch)) & 1) == 0;
-            if (audible && ((mixer >> ch) & 1) == 0)
-                bassPeriod = std::max<int>(bassPeriod, state.getTonePeriod(ch));
         }
         if (feature.noiseChannels[0] || feature.noiseChannels[1] || feature.noiseChannels[2])
             feature.noisePeriod = state.getNoisePeriod();
+        int bassPeriod = 0;
+        visitFrameNotes(params, [&](const PsgFrameNote& note) { bassPeriod = std::max(bassPeriod, note.period); });
         if (bassPeriod > 0)
             feature.bassSemitone = juce::roundToInt(12.0 * std::log2((double) bassPeriod));
     }

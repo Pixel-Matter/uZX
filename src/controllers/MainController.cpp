@@ -9,6 +9,7 @@
 #include "../gui/main/MainWindow.h"
 #include "../gui/main/MainDocument.h"
 #include "../gui/main/AboutDialog.h"
+#include "../gui/timeline/PsgClipComponent.h"
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
@@ -326,6 +327,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomOut);
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::viewSnapPlayheadToGrid);
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewNoteLanes);
             if (auto* edit = MoToolApp::getPlayerController().getEdit()) {
                 menu.addSeparator();
                 menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
@@ -468,6 +470,10 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
 
         case MainAppCommands::viewZoomToSelection:
             result.setActive(edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
+            break;
+
+        case MainAppCommands::viewNoteLanes:
+            result.setTicked(areNoteLanesShown(engine_));
             break;
 
         case MainAppCommands::viewSnapPlayheadToGrid:
@@ -670,6 +676,11 @@ bool AppController::perform(const InvocationInfo& info) {
                 editViewState->setSnapPlayheadToGrid(! editViewState->shouldSnapPlayheadToGrid());
                 commandManager_.commandStatusChanged();
             }
+            break;
+
+        case MainAppCommands::viewNoteLanes:
+            setNoteLanesShown(engine_, ! areNoteLanesShown(engine_));
+            commandManager_.commandStatusChanged();
             break;
 
         // Settings commands

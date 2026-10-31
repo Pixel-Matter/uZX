@@ -279,6 +279,7 @@ target_compile_definitions(${STUDIO_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 target_compile_definitions(${TUNING_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 target_compile_definitions(${PLAYER_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 target_compile_definitions(${TEST_TARGET_NAME}   PRIVATE ${JUCE_DEFINITIONS})
+target_compile_definitions(${TEST_TARGET_NAME}   PRIVATE UZX_FIXTURES_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures")
 
 target_link_libraries(${STUDIO_TARGET_NAME} PRIVATE motool_common ${COMMON_APP_LINK_LIBS})
 target_link_libraries(${TUNING_TARGET_NAME} PRIVATE motool_common ${COMMON_APP_LINK_LIBS})

@@ -61,6 +61,7 @@ public:
         viewZoomIn,
         viewZoomOut,
         viewSnapPlayheadToGrid,
+        viewNoteLanes,
 
         // Settings Menu
         settingsAudioMidi    = 600,
@@ -92,7 +93,7 @@ public:
             // addAutomationTrack,
             trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
-            viewSnapPlayheadToGrid,
+            viewSnapPlayheadToGrid, viewNoteLanes,
             settingsAudioMidi, settingsPlugins, settingsTuningTables,
             helpAbout
         };
@@ -161,6 +162,7 @@ public:
             menu.addCommandItem(manager, MainAppCommands::viewZoomOut);
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::viewSnapPlayheadToGrid);
+            menu.addCommandItem(manager, MainAppCommands::viewNoteLanes);
         } else if (menuName == "Settings") {
             menu.addCommandItem(manager, MainAppCommands::settingsAudioMidi);
             menu.addCommandItem(manager, MainAppCommands::settingsPlugins);
@@ -359,6 +361,12 @@ public:
             case viewSnapPlayheadToGrid:
                 result.setInfo("Snap Playhead to Grid",
                                "Snap the playhead to the nearest visible grid line when you click or drag it",
+                               "View", 0);
+                break;
+
+            case viewNoteLanes:
+                result.setInfo("Note Lanes",
+                               "Draw the tuning table's notes as lanes behind PSG clips in the Notes view",
                                "View", 0);
                 break;
 

@@ -19,6 +19,7 @@ set(SHARED_SOURCES
     models/tuning/TuningSystemBase.cpp
     models/tuning/AutoTuning.cpp
     models/tuning/TuningTable.cpp
+    models/tuning/TuningDetector.cpp
 
     viewmodels/tuning/TuningPlayer.cpp
     viewmodels/tuning/MultitrackMidiPreview.cpp
@@ -71,6 +72,7 @@ set(GUI_SOURCES
     gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
     gui/timeline/PsgClipComponent.cpp
+    gui/timeline/TuningPickerComponent.cpp
     gui/timeline/PsgParamEditorComponent.cpp
     gui/timeline/Ruler.cpp
     gui/timeline/DetailsPanelComponent.cpp
@@ -104,10 +106,12 @@ set(TEST_SOURCES
     models/PsgMidi.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
+    models/PsgClipTuning.test.cpp
     models/ProjectFps.test.cpp
     models/SnapLadder.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/TuningTable.test.cpp
+    models/tuning/TuningDetector.test.cpp
     models/tuning/EqualTemperamentTuning.test.cpp
     models/tuning/AutoTuning.test.cpp
     models/tuning/Scales.test.cpp

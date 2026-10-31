@@ -1,0 +1,145 @@
+#pragma once
+
+#include <JuceHeader.h>
+
+#include <array>
+#include <map>
+#include <optional>
+#include <vector>
+
+#include "../PsgParameter.h"
+#include "Scales.h"
+#include "TuningRegistry.h"
+
+namespace MoTool {
+
+/** The clock that equal-temperament grids are fitted and drawn at. Built-in tables are
+    period lists and need no clock; a fitted 12TET is reported as an A4 at this clock. */
+inline constexpr double tuningGridClock = uZX::ChipClockEnum::clockValues[uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz];
+
+//==============================================================================
+/** Period -> MIDI note for every note a tuning defines. Trackers write these exact
+    register values, so a note either is or is not on the grid: no cents tolerance. */
+using PeriodGrid = std::map<int, int>;
+
+PeriodGrid makePeriodGrid(const TuningSystem& tuning);
+PeriodGrid makeEqualTemperamentGrid(double a4Frequency, double chipClock);
+
+//==============================================================================
+/** Frame-weighted counts of the audible pitches of a clip, built from the same
+    visitFrameNotes() rules the Notes view paints. Envelope pitches are kept apart:
+    a tracker rounds them to tone / 16, so they only match a grid within half an
+    envelope step. */
+struct PitchHistogram
+{
+    std::map<int, int> tone;      // tone period -> frames
+    std::map<int, int> envelope;  // 16 * envelope period -> frames
+
+    /** Collects frames in flat per-period counters and makes the histogram once at the
+        end: a map update per note is far slower over tens of thousands of frames. */
+    class Builder
+    {
+    public:
+        /** Adds a register state that sounds for `frames` machine frames. */
+        void addFrame(const PsgParamFrameData& frame, int frames = 1);
+        PitchHistogram build() const;
+
+    private:
+        // Register periods are 16-bit; the envelope pitch is filtered to the tone range.
+        std::vector<int> tone_ = std::vector<int>(1 << 16), envelope_ = std::vector<int>(1 << 16);
+    };
+
+    int getTotal() const noexcept;
+    bool isEmpty() const noexcept { return tone.empty() && envelope.empty(); }
+
+    /** Share of note-frames on the grid: tone exact, envelope within ±envelopeTolerance.
+        Envelope pitches whose window is a semitone or wider match every grid, so they are
+        left out of the share entirely. */
+    float getShareOnGrid(const PeriodGrid& grid) const;
+
+    /** Same, for a grid given as its periods in ascending order. */
+    float getShareOnPeriods(const std::vector<int>& ascendingPeriods) const;
+
+    static constexpr int envelopeTolerance = 8;  // half an envelope step, in tone-period units
+
+    /** True when an envelope pitch at this tone-equivalent period can tell grids apart. */
+    static bool isEnvelopeDiscriminating(int period) noexcept;
+};
+
+//==============================================================================
+struct DetectedKey
+{
+    Scale::Tonic tonic;
+    bool minor = false;
+    float correlation = 0.0f;
+
+    String getName() const;  // "E minor"
+    Scale::ScaleType getScaleType() const;
+};
+
+/** The 24 major/minor keys ranked by Krumhansl-Kessler profile correlation, best first. */
+std::vector<DetectedKey> rankKeys(const std::array<float, 12>& pitchClasses);
+
+/** True when the two best keys are too close to call (see TuningDetection::tieGap). */
+bool isKeyTie(const std::vector<DetectedKey>& rankedKeys);
+
+/** Normalised weight per pitch class; off-grid periods go to their nearest grid note. */
+std::array<float, 12> makePitchClassHistogram(const PitchHistogram& hist, const PeriodGrid& grid);
+
+/** Pitch classes at sub-semitone resolution: every period is placed at its fractional
+    note on the grid (grid notes sit exactly on bin multiples of binsPerSemitone, whether
+    or not the table is octave-periodic), folded to one octave, and smeared over its
+    quantisation band so high notes show as wide low bumps. Bin 0 is C; the result is
+    normalised to a peak of 1. */
+std::vector<float> makeFoldedPitchHistogram(const PitchHistogram& hist, const PeriodGrid& grid, int binsPerSemitone);
+
+//==============================================================================
+struct TuningCandidate
+{
+    BuiltinTuningType table;
+    float share = 0.0f;
+};
+
+struct EqualTemperamentFit
+{
+    double a4Frequency = 440.0;  // at the ZX clock
+    float share = 0.0f;
+};
+
+struct TuningDetection
+{
+    /** False for a clip with no audible pitches: nothing below is meaningful then. */
+    bool hasNotes = false;
+    /** The histogram the detection was made from; the picker draws it. */
+    PitchHistogram histogram;
+
+    /** Built-in tables best first. Grids that share over 90% of their periods are one
+        candidate, named by the later registry entry (PT #3 absorbs PT #0). */
+    std::vector<TuningCandidate> tables;
+    /** The best equal-temperament grid over one semitone of A4 around 440 Hz. */
+    EqualTemperamentFit equalTemperament;
+    /** True when the fit beat the best table by more than tieGap. */
+    bool usesEqualTemperament = false;
+
+    PeriodGrid grid;     // the chosen grid
+    float share = 0.0f;  // of the chosen grid
+    bool tableTie = false;
+
+    std::array<float, 12> pitchClasses{};
+    std::vector<DetectedKey> keys;  // best first
+    bool keyTie = false;
+
+    String getTableLabel() const;  // "PT #1" or "12TET 436 Hz"
+    const DetectedKey& getKey() const { return keys.front(); }
+
+    static constexpr float tieGap = 0.05f;
+};
+
+TuningDetection detectTuning(const PitchHistogram& hist);
+
+/** The grid of a built-in table (cached: the registry builds them from constants). */
+const PeriodGrid& getBuiltinPeriodGrid(BuiltinTuningType table);
+
+String getEqualTemperamentLabel(double a4Frequency);
+
+}  // namespace MoTool

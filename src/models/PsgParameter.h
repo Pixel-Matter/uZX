@@ -26,9 +26,14 @@ struct ParameterScale {
 
     /** Convert raw parameter value to normalized 0-1 range */
     constexpr float valueToNormalized(int value) const noexcept {
+        return valueToNormalized(static_cast<float>(value));
+    }
+
+    /** Same, for a value between register steps, such as an ideal period. */
+    constexpr float valueToNormalized(float value) const noexcept {
         const float range = static_cast<float>(end - start);
         if (range <= 0.0f) return 0.0f;
-        const float v = static_cast<float>(value - start);
+        const float v = value - static_cast<float>(start);
         switch (type) {
             case ScaleType::Linear:
                 return v / range;
@@ -408,6 +413,7 @@ struct PsgFrameNote {
     bool     isEnvelopePitch;
     bool     hasEnvMod;
     bool     hasNoiseMod;
+    int      period;        // tone period, or 16 * envelope period for an envelope pitch
 };
 
 /** An envelope period P sounds at the pitch of tone period 16*P: the AY divides
@@ -461,13 +467,14 @@ inline void visitFrameNotes(const PsgParamFrameData& data, Fn&& fn) {
                 channelMask,
                 false,
                 hasEnvMod,
-                hasNoiseMod
+                hasNoiseMod,
+                period
             });
         }
     }
 
     if (envChannelMask != 0)
-        fn(PsgFrameNote { envPitch, 15, envChannelMask, true, true, false });
+        fn(PsgFrameNote { envPitch, 15, envChannelMask, true, true, false, envTonePeriod });
 }
 
 }  // namespace MoTool

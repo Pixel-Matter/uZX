@@ -6,6 +6,7 @@
 #include "EditUtilities.h"
 #include "../formats/psg/PsgFile.h"
 
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -25,6 +26,10 @@ void PsgClip::initialise() {
         state.addChild(psg, -1, um);
     }
     psgList = std::make_unique<PsgList>(psg, um);
+    // A new list restarts its data version, so caches keyed on it must start over.
+    pitchRangeVersion_ = -1;
+    detection_.reset();
+    tuning_.reset();
 
     // Legacy files may store per-frame beats. Back-fill machine-frame indices
     // from the edit's frame rate and drop the legacy beat property. This also
@@ -87,6 +92,127 @@ juce::Range<float> PsgClip::getPitchRange() const {
 
     cachedPitchRange_ = { min, max };
     return cachedPitchRange_;
+}
+
+//==============================================================================
+PitchHistogram PsgClip::buildPitchHistogram() const {
+    // The list keeps only frames that change a register, so each state sounds until the
+    // next stored frame: weight it by that many machine frames. The last state lasts to
+    // the end of the clip's source, so a held final note counts in full too.
+    const auto& frames = getPsg().getFrames();
+    double fps = getPsg().getEffectiveFps(*this);
+    if (fps <= 0.0)
+        fps = getPsg().getFrameRate();
+    const auto position = getPosition();
+    const int endIndex = roundToInt((position.getOffset() + position.getLength()).inSeconds() * fps);
+
+    PitchHistogram::Builder builder;
+    for (int i = 0; i < frames.size(); ++i) {
+        const int start = frames[i]->getFrameIndex();
+        const int end = i + 1 < frames.size() ? frames[i + 1]->getFrameIndex() : endIndex;
+        builder.addFrame(frames[i]->getData(), jmax(1, end - start));
+    }
+    return builder.build();
+}
+
+const TuningDetection& PsgClip::getTuningDetection() const {
+    const auto version = getPsg().getDataVersion();
+    if (! detection_ || detectionVersion_ != version) {
+        detectionVersion_ = version;
+        detection_ = detectTuning(buildPitchHistogram());
+    }
+    return *detection_;
+}
+
+namespace {
+const juce::Identifier* const tuningChoiceIds[] {
+    &IDs::clipTuningTable, &IDs::clipTuningA4, &IDs::clipKeyTonic, &IDs::clipKeyMinor
+};
+
+// A chosen equal temperament is the detection's fit (A4 within a semitone of 440 Hz);
+// anything far outside that is a damaged or foreign value.
+constexpr double minChosenA4 = 300.0, maxChosenA4 = 600.0;
+}  // namespace
+
+const PsgClip::Tuning& PsgClip::getTuning() const {
+    const auto version = getPsg().getDataVersion();
+    std::array<juce::var, 4> choice;
+    for (size_t i = 0; i < choice.size(); ++i)
+        choice[i] = state[*tuningChoiceIds[i]];
+    if (! tuning_ || tuningVersion_ != version || tuningChoice_ != choice) {
+        tuningVersion_ = version;
+        tuningChoice_ = choice;
+        tuning_ = resolveTuning();
+        tuning_->revision = ++tuningRevision_;
+    }
+    return *tuning_;
+}
+
+PsgClip::Tuning PsgClip::resolveTuning() const {
+    const auto& detection = getTuningDetection();
+    Tuning tuning;
+
+    const double a4 = state.getProperty(IDs::clipTuningA4, 0.0);
+    const auto table = juce::VariantConverter<BuiltinTuningType>::fromVar(state[IDs::clipTuningTable]);
+    if (std::isfinite(a4) && a4 >= minChosenA4 && a4 <= maxChosenA4) {
+        tuning.grid = makeEqualTemperamentGrid(a4, tuningGridClock);
+        tuning.tableLabel = getEqualTemperamentLabel(a4);
+        tuning.isEqualTemperament = tuning.tableChosen = true;
+    } else if (state.hasProperty(IDs::clipTuningTable) && static_cast<size_t>(table) < BuiltinTuningType::size()) {
+        tuning.grid = getBuiltinPeriodGrid(table);
+        tuning.tableLabel = String(table.getShortLabel().data());
+        tuning.table = table;
+        tuning.tableChosen = true;
+    } else if (detection.hasNotes) {
+        tuning.grid = detection.grid;
+        tuning.tableLabel = detection.getTableLabel();
+        tuning.isEqualTemperament = detection.usesEqualTemperament;
+        if (! detection.usesEqualTemperament)
+            tuning.table = detection.tables.front().table;
+    }
+
+    // A chosen table may name every note differently (PT #0 is PT #3 a semitone away),
+    // so keys are ranked again on the grid in effect.
+    tuning.keys = tuning.tableChosen ? rankKeys(makePitchClassHistogram(detection.histogram, tuning.grid))
+                                     : detection.keys;
+    tuning.keyTie = detection.hasNotes && isKeyTie(tuning.keys);
+
+    const int tonic = state.getProperty(IDs::clipKeyTonic, -1);
+    if (tonic >= 0 && tonic < 12) {
+        tuning.key = { Scale::Tonic(tonic), static_cast<bool>(state[IDs::clipKeyMinor]), 1.0f };
+        tuning.hasKey = tuning.keyChosen = true;
+    } else if (detection.hasNotes) {
+        tuning.key = tuning.keys.front();
+        tuning.hasKey = true;
+    }
+
+    tuning.uncertain = detection.hasNotes
+        && ((detection.tableTie && ! tuning.tableChosen) || (tuning.keyTie && ! tuning.keyChosen));
+    return tuning;
+}
+
+void PsgClip::chooseTuningTable(BuiltinTuningType table) {
+    auto* um = getUndoManager();
+    state.removeProperty(IDs::clipTuningA4, um);
+    state.setProperty(IDs::clipTuningTable, juce::VariantConverter<BuiltinTuningType>::toVar(table), um);
+}
+
+void PsgClip::chooseEqualTemperament(double a4Frequency) {
+    auto* um = getUndoManager();
+    state.removeProperty(IDs::clipTuningTable, um);
+    state.setProperty(IDs::clipTuningA4, a4Frequency, um);
+}
+
+void PsgClip::chooseKey(const DetectedKey& key) {
+    auto* um = getUndoManager();
+    state.setProperty(IDs::clipKeyTonic, static_cast<int>(key.tonic), um);
+    state.setProperty(IDs::clipKeyMinor, key.minor, um);
+}
+
+void PsgClip::clearTuningChoice() {
+    auto* um = getUndoManager();
+    for (const auto* id : tuningChoiceIds)
+        state.removeProperty(*id, um);
 }
 
 PsgClip::Ptr PsgClip::insertTo(

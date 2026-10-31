@@ -14,8 +14,39 @@ namespace MoTool {
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex);
 
 //==============================================================================
+/** One piano-roll lane of the Notes view: a grid note's band in normalized pitch,
+    bounded by the midpoints to its neighbours. */
+struct NoteLane
+{
+    float lo, hi;
+    int note;
+    String label;
+};
+
+/** Lanes for every note of a grid, lowest first, continued by octaves past the grid's
+    ends to the limits of the tone range. */
+std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid);
+
+/** How much of the lanes the Notes view draws at a lane height (one semitone, in px). */
+struct LaneDetail
+{
+    enum Level { None, Tonic, All };
+    Level lines = None;
+    Level labels = None;
+};
+
+LaneDetail getLaneDetail(float noteHeight);
+
+/** Whether the Notes view draws note lanes (View > Note Lanes). An app setting rather than
+    an edit property: the Player opens every file into a fresh edit, where an edit property
+    would reset. Every PsgClipComponent repaints when the settings change. */
+bool areNoteLanesShown(te::Engine&);
+void setNoteLanesShown(te::Engine&, bool shouldShow);
+
+//==============================================================================
 class PsgClipComponent : public MidiClipComponent,
                          private juce::ValueTree::Listener,
+                         private juce::ChangeListener,
                          private juce::Timer {
 public:
     PsgClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c);
@@ -29,12 +60,15 @@ public:
     void mouseExit(const MouseEvent& e) override;
     void paintRegisters(Graphics& g);
     void paintNotes(Graphics& g);
+    /** Tuning-grid guide lines, drawn under the notes in the Notes view. */
+    void paintNoteLanes(Graphics& g);
 
     /** Top row shared by the channel legend, clip name and fps-mismatch warning. */
     void paintHeader(Graphics& g);
 
 private:
     void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+    void changeListenerCallback(ChangeBroadcaster*) override;
     void timerCallback() override;
 
     /** Hover popup text for the frame under local x; empty before the first frame. */
@@ -44,6 +78,9 @@ private:
 
     class FrameHover;
     std::unique_ptr<FrameHover> frameHover_;
+
+    std::vector<NoteLane> lanes_;  // rebuilt when the clip's tuning revision changes
+    int lanesRevision_ = -1;
 
     // void onVBlank() {
     //     // Throttle to ~30fps (skip every other vblank on 60Hz display)

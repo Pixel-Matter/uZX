@@ -394,7 +394,39 @@ public:
             expectEquals(frame->getFrameIndex(), originalFrameIndex, "Tempo preservation must not touch frame indices");
         }
 
-        beginTest("PSG frame time stays fixed across a direct BPM change with quantisation");
+        beginTest("A time signature change never moves PSG frames");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            Helpers::setProjectFps(*edit, 50.0);
+
+            auto data = makeOffGridFrameData();
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], data, {{0_tp, 4_td}, {}}, "timing");
+            auto frame = clip->getPsg().getFrame(0);
+            const auto originalTime = frame->getEditTime(*clip);
+            const auto originalFramesPerBeat = clip->getPsg().getFramesPerBeat();
+            const auto originalFrameIndex = frame->getFrameIndex();
+            auto& timeSig = *edit->tempoSequence.getTimeSig(0);
+
+            PsgTiming::setTimeSig(*edit, timeSig, 3, 4);
+            expectEquals(timeSig.numerator.get(), 3);
+            expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), originalFramesPerBeat, 1.0e-9,
+                                      "a numerator change leaves the beat length alone");
+
+            PsgTiming::setTimeSig(*edit, timeSig, 6, 8);
+            expectEquals(timeSig.denominator.get(), 8);
+            expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), originalFramesPerBeat / 2.0, 1.0e-9,
+                                      "eighth-note beats are half as long");
+            expectWithinAbsoluteError(frame->getEditTime(*clip).inSeconds(), originalTime.inSeconds(), 1.0e-9,
+                                      "PSG wall-clock time stays fixed");
+            expectEquals(frame->getFrameIndex(), originalFrameIndex, "frame indices are never touched");
+
+            PsgTiming::setTimeSig(*edit, timeSig, 4, 4);
+            expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), originalFramesPerBeat, 1.0e-9);
+            expectWithinAbsoluteError(frame->getEditTime(*clip).inSeconds(), originalTime.inSeconds(), 1.0e-9);
+        }
+
+                beginTest("PSG frame time stays fixed across a direct BPM change with quantisation");
         {
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTempo(0)->setBpm(120.0);

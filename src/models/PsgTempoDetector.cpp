@@ -86,19 +86,48 @@ GridFit gridShare(const std::vector<double>& energy, double total, int period, i
     return {(raw - chance) / (1.0 - chance), phases};
 }
 
+/** The row grid: row lengths in frames, repeating (one length for a uniform
+    speed, two for a swing, four for a groove), starting at frame `phase`. */
 struct Speed
 {
-    int a, b, phase;
+    std::vector<int> rows;
+    int phase;
     double share;
+
+    int period() const { return std::accumulate(rows.begin(), rows.end(), 0); }
+    double meanRow() const { return (double) period() / (double) rows.size(); }
 };
 
-/** Every divisor of the true speed also holds, so the largest period wins, but a
-    multiple only beats its divisors if it keeps (almost) all of their energy;
-    otherwise the tune just has most of its notes on even rows. */
+/** The repeating row lengths that the best numRows residues mod period imply,
+    starting at the earliest residue, or nothing when they are implausible: a
+    row outside the speed range, rows more than 2 frames apart, or a pattern a
+    shorter one already describes (all equal, or two halves alike). */
+juce::Optional<Speed> patternFrom(const GridFit& fit, int period) {
+    const auto n = fit.phases.size();
+    std::vector<int> rows;
+    for (size_t k = 0; k < n; ++k)
+        rows.push_back((k + 1 < n ? fit.phases[k + 1] : fit.phases[0] + period) - fit.phases[k]);
+    const auto [shortest, longest] = std::minmax_element(rows.begin(), rows.end());
+    if (*shortest < minSpeed || *longest > maxSpeed || *longest - *shortest > 2 || *longest == *shortest)
+        return {};
+    if (n == 4 && rows[0] == rows[2] && rows[1] == rows[3])
+        return {};
+    return Speed{rows, fit.phases[0], fit.share};
+}
+
+/** Uniform rows: every divisor of the true speed also holds, so the largest
+    period wins, but a multiple only beats its divisors if it keeps (almost) all
+    of their energy; otherwise the tune just has most of its notes on even rows.
+    Swings (two row lengths, 6-7) and grooves (four, 4-4-3-3) compete with that
+    on the same terms: of the grids that fit about as well as the best one, the
+    coarsest wins, since a fine uniform grid fits most patterns roughly. A swing
+    or groove finer than the uniform rows only describes stray note starts inside
+    rows, so it never replaces them. */
 juce::Optional<Speed> detectSpeed(const std::vector<double>& energy, double total) {
     std::array<double, maxSpeed + 1> share{};
-    juce::Optional<Speed> best;
+    std::vector<Speed> candidates;
 
+    juce::Optional<Speed> uniform;
     for (int p = minSpeed; p <= maxSpeed; ++p) {
         const auto fit = gridShare(energy, total, p, 1);
         share[(size_t) p] = fit.share;
@@ -107,27 +136,44 @@ juce::Optional<Speed> detectSpeed(const std::vector<double>& energy, double tota
             if (p % d == 0)
                 divisors = std::max(divisors, share[(size_t) d]);
         if (fit.share >= minGridShare && fit.share >= divisors - harmonicTolerance)
-            best = Speed{p, p, fit.phases[0], fit.share};
+            uniform = Speed{{p}, fit.phases[0], fit.share};
     }
-    if (best)
-        return best;
+    if (uniform)
+        candidates.push_back(*uniform);
 
-    // two-value swing: period a+b with two phases a apart, a and b near each other
-    for (int period = 2 * minSpeed + 1; period <= 2 * maxSpeed; ++period) {
-        const auto fit = gridShare(energy, total, period, 2);
-        const int a = fit.phases[1] - fit.phases[0];
-        const int b = period - a;
-        const bool plausible = a >= minSpeed && a <= maxSpeed && b >= minSpeed && b <= maxSpeed && std::abs(a - b) <= 2;
-        if (plausible && fit.share >= minGridShare && (!best || fit.share > best->share))
-            best = Speed{a, b, fit.phases[0], fit.share};
+    for (int numRows : {2, 4}) {
+        juce::Optional<Speed> patterned;
+        for (int period = numRows * minSpeed + 1; period <= numRows * maxSpeed; ++period) {
+            const auto candidate = patternFrom(gridShare(energy, total, period, numRows), period);
+            if (candidate && candidate->share >= minGridShare && (!patterned || candidate->share > patterned->share))
+                patterned = candidate;
+        }
+        // finer than the uniform rows: stray note starts inside rows, not the row grid
+        if (patterned && (!uniform || patterned->meanRow() > uniform->meanRow()))
+            candidates.push_back(*patterned);
     }
-    return best;
+    if (candidates.empty())
+        return {};
+
+    double bestShare = 0.0;
+    for (const auto& c : candidates)
+        bestShare = std::max(bestShare, c.share);
+    const Speed* chosen = nullptr;
+    for (const auto& c : candidates) {
+        if (c.share < bestShare - harmonicTolerance)
+            continue;
+        const bool coarser = chosen == nullptr || c.meanRow() > chosen->meanRow()
+                             || (c.meanRow() == chosen->meanRow() && c.rows.size() < chosen->rows.size());
+        if (coarser)
+            chosen = &c;
+    }
+    return *chosen;
 }
 
 /** Frame index of every row start. */
 std::vector<size_t> rowStarts(size_t numFrames, const Speed& speed) {
     std::vector<size_t> starts;
-    for (size_t i = (size_t) speed.phase, k = 0; i < numFrames; i += (size_t) (k++ % 2 == 0 ? speed.a : speed.b))
+    for (size_t i = (size_t) speed.phase, k = 0; i < numFrames; i += (size_t) speed.rows[k++ % speed.rows.size()])
         starts.push_back(i);
     return starts;
 }
@@ -196,16 +242,16 @@ double repetition(const std::vector<RowFeature>& rows, size_t lagRows) {
     repeat where the music's beats start, so a wrong beat length lines up rows
     from different parts of the bar. A bar can repeat the same as 4 beats of 3
     rows or 3 beats of 4 (a waltz), so a beat other than the 4-row one also needs
-    its accents (note starts per row) to recur at its own length. A swing pair
-    never splits across beats, so swing tunes always group by 4. */
+    its accents (note starts per row) to recur at its own length. A swing pair or
+    groove never splits across beats, so those tunes always group by 4. */
 int detectRowsPerBeat(const std::vector<RowFeature>& rows,
                       const std::vector<double>& accents,
                       const Speed& speed,
                       double dataFps) {
-    const bool swing = speed.a != speed.b;
-    const double rowLength = (speed.a + speed.b) / 2.0;
+    const bool swing = speed.rows.size() > 1;
+    const double rowLength = speed.meanRow();
     auto fitToBpmRange = [&](int rowsPerBeat) {
-        const int minRowsPerBeat = swing ? 2 : 1;
+        const int minRowsPerBeat = (int) speed.rows.size();
         double bpm = dataFps * 60.0 / (rowLength * rowsPerBeat);
         while (bpm < minBpm && rowsPerBeat % 2 == 0 && rowsPerBeat / 2 >= minRowsPerBeat) {
             rowsPerBeat /= 2;
@@ -240,8 +286,8 @@ int detectRowsPerBeat(const std::vector<RowFeature>& rows,
     for (int group : {3, 5}) {
         const int beat = fitToBpmRange(group);
         const double score = repeats(beat);
-        const double accent = accentRecurrence(group);
-        if (score > bestScore && accent > 0.0 && accent > accentRecurrence(4)) {
+        const double accent = accentRecurrence(beat);
+        if (score > bestScore && accent > 0.0 && accent > accentRecurrence(fourRowBeat)) {
             best = beat;
             bestScore = score;
         }
@@ -263,14 +309,17 @@ double tripleMeterMargin(const std::vector<RowFeature>& rows, int rowsPerBeat) {
     clip by a bogus offset. Note starts on frame 0 are skipped: everything audible
     there counts as a start, whether a row begins or not. */
 bool openingFollowsGrid(const std::vector<double>& energy, const Speed& speed, size_t openingFrames) {
-    const auto period = (size_t) (speed.a + speed.b);
+    const auto period = (size_t) speed.period();
+    std::vector<size_t> rowOffsets;
+    for (size_t k = 0, offset = 0; k < speed.rows.size(); offset += (size_t) speed.rows[k++])
+        rowOffsets.push_back(offset);
     int onsets = 0, onGrid = 0;
     for (size_t i = 1; i < std::min(openingFrames, energy.size()); ++i) {
         if (energy[i] <= 0.0)
             continue;
         ++onsets;
         const auto residue = (i + period - (size_t) speed.phase % period) % period;
-        if (residue == 0 || residue == (size_t) speed.a || (speed.a == speed.b && residue % (size_t) speed.a == 0))
+        if (std::find(rowOffsets.begin(), rowOffsets.end(), residue) != rowOffsets.end())
             ++onGrid;
     }
     return onsets >= minOpeningOnsets && onGrid >= minOpeningOnGrid * onsets;
@@ -279,9 +328,16 @@ bool openingFollowsGrid(const std::vector<double>& energy, const Speed& speed, s
 }  // namespace
 
 std::vector<int> Result::subdivisionPattern() const {
-    std::vector<int> pattern;
+    int groups = rowsPerBeat;
+    for (int candidate : {4, 3, 5, 2})
+        if (rowsPerBeat % candidate == 0) {
+            groups = candidate;
+            break;
+        }
+    const int rowsPerGroup = rowsPerBeat / groups;
+    std::vector<int> pattern((size_t) groups, 0);
     for (int row = 0; row < rowsPerBeat; ++row)
-        pattern.push_back(row % 2 == 0 ? speedA : speedB);
+        pattern[(size_t) (row / rowsPerGroup)] += rowFrames[(size_t) row % rowFrames.size()];
     return pattern;
 }
 
@@ -297,8 +353,8 @@ juce::Optional<Result> detect(const uZX::PsgData& data) {
 
     const auto playRate = (int) std::max<size_t>(1, data.options.playRate);  // machine frames per data frame
     Result result;
-    result.speedA = speed->a * playRate;
-    result.speedB = speed->b * playRate;
+    for (int row : speed->rows)
+        result.rowFrames.push_back(row * playRate);
     const auto starts = rowStarts(energy.size(), *speed);
     const auto rows = rowFeatures(data, starts);
     std::vector<double> accents;
@@ -308,8 +364,8 @@ juce::Optional<Result> detect(const uZX::PsgData& data) {
     const auto meterMargin = tripleMeterMargin(rows, result.rowsPerBeat);
     result.beatsPerBar = meterMargin > minMeterMargin ? 3 : 4;
     result.meterClear = std::abs(meterMargin) > minMeterMargin;
-    const auto pattern = result.subdivisionPattern();
-    result.framesPerBeat = std::accumulate(pattern.begin(), pattern.end(), 0);
+    for (int row = 0; row < result.rowsPerBeat; ++row)
+        result.framesPerBeat += result.rowFrames[(size_t) row % result.rowFrames.size()];
     result.bpm = data.getFrameRate() * 60.0 / result.framesPerBeat;
     result.gridShare = speed->share;
     const auto barFrames = (size_t) (result.framesPerBeat * result.beatsPerBar / playRate);

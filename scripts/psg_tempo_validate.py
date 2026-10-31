@@ -10,7 +10,7 @@ every labelled file found in the given folders.
 Converts each .pt3 to .psg with zxtune123 (skipped when the .psg exists), runs
 the C++ detector over PSG_DIR through the test binary (UZX_PSG_TEMPO_DIR mode),
 and compares the detected speed with the PT3 "delay" byte. A detected 2-value
-swing counts as a match when its mean equals the delay; frames per beat that
+swing or groove counts as a match when its mean row equals the delay; frames per beat that
 are a whole number of rows count as harmonic. UZX_TESTS defaults to the Debug
 build of uZXTests.
 """
@@ -25,8 +25,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ZXTUNE = ROOT / ".cache/tools/zxtune/bin/darwin/release/zxtune123"
 UZX_TESTS = ROOT / "build/src/uZXTests_artefacts/Debug/uZXTests"
-LINE = re.compile(r"^(\d+)-(\d+) rpb=(\d+) fpb=(\d+) bpm=([\d.]+) g=([\d.]+) sig=(\d) clear=(\d) "
-                  r"first=(\d+) silent=(\d) (.+)$")
+LINE = re.compile(r"^(?P<rows>[\d-]+) rpb=(?P<rpb>\d+) fpb=(?P<fpb>\d+) bpm=(?P<bpm>[\d.]+) g=[\d.]+ "
+                  r"sig=(?P<sig>\d) clear=(?P<clear>\d) first=\d+ silent=\d (?P<name>.+)$")
 
 
 def convert(pt3, psg):
@@ -48,7 +48,7 @@ def detect_all(psg_dir, tests):
     results = {}
     for line in out.splitlines():
         if m := LINE.match(line):
-            results[m[11]] = m
+            results[m["name"]] = m
         elif line.startswith("? "):
             results[line[2:]] = None
     return results
@@ -74,11 +74,12 @@ def main(src, dst, tests):
             unknown += 1
             print(f"UNKNOWN  exp={expected:<2} {pt3.name[:60]}")
             continue
-        a, b, rpb, fpb = int(m[1]), int(m[2]), int(m[3]), int(m[4])
-        bpms[round(float(m[5]))] += 1
-        sigs[f"{m[7]}/4{'' if m[8] == '1' else '?'}"] += 1
-        line = f"exp={expected:<2} got={a}-{b} rpb={rpb:<2} fpb={fpb:<3} bpm={float(m[5]):5.1f} {pt3.name[:60]}"
-        if (a + b) / 2 == expected:
+        rows = [int(r) for r in m["rows"].split("-")]
+        rpb, fpb, bpm = int(m["rpb"]), int(m["fpb"]), float(m["bpm"])
+        bpms[round(bpm)] += 1
+        sigs[f"{m['sig']}/4{'' if m['clear'] == '1' else '?'}"] += 1
+        line = f"exp={expected:<2} got={m['rows']} rpb={rpb:<2} fpb={fpb:<3} bpm={bpm:5.1f} {pt3.name[:60]}"
+        if sum(rows) / len(rows) == expected:
             ok += 1
         elif fpb % expected == 0:
             harmonic += 1  # frames per beat is still a whole number of rows
@@ -94,22 +95,33 @@ def main(src, dst, tests):
 
 
 def check_labels(dirs, tests=UZX_TESTS):
-    """Prints detected against labelled BPM; a match is within 1%."""
+    """Prints detected against labelled tempo (a match is within 1%) and meter. An
+    unclear meter counts as 4/4, the default an imported edit keeps."""
     with open(Path(__file__).parent / "psg_tempo_labels.csv") as f:
         labels = {r["file"]: r for r in csv.DictReader(line for line in f if not line.startswith("#"))}
-    ok = total = 0
+    tempo_ok = tempo_total = meter_ok = meter_total = 0
     for d in dirs:
         for name, m in detect_all(d, tests).items():
             label = labels.get(name)
-            if label is None or not label["bpm"]:
+            if label is None:
                 continue
-            want = float(label["bpm"])
-            got = float(m[5]) if m else None
-            hit = got is not None and abs(got - want) <= 0.01 * want
-            ok += hit
-            total += 1
-            print(f"{'ok  ' if hit else 'MISS'} want {want:6.1f} got {'-' if got is None else f'{got:6.1f}'}  {name[:60]}")
-    print(f"\nlabelled tempo matches {ok}/{total}")
+            got_bpm = float(m["bpm"]) if m else None
+            got_meter = (int(m["sig"]) if m["clear"] == "1" else 4) if m else None
+            marks = []
+            if label["bpm"]:
+                want = float(label["bpm"])
+                hit = got_bpm is not None and abs(got_bpm - want) <= 0.01 * want
+                tempo_ok += hit
+                tempo_total += 1
+                marks.append(f"{'ok' if hit else 'MISS'} bpm {want:6.1f} got {'-' if got_bpm is None else f'{got_bpm:6.1f}'}")
+            if label.get("meter"):
+                hit = got_meter == int(label["meter"])
+                meter_ok += hit
+                meter_total += 1
+                marks.append(f"{'ok' if hit else 'MISS'} meter {label['meter']}/4 got {got_meter}/4")
+            if marks:
+                print(f"{'  '.join(marks):60} {name[:55]}")
+    print(f"\nlabelled tempo matches {tempo_ok}/{tempo_total}, meter matches {meter_ok}/{meter_total}")
 
 
 if __name__ == "__main__":

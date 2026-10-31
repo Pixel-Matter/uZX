@@ -28,6 +28,14 @@ void setTempoBpmRetimingFrames(te::Edit&, te::TempoSetting&, double bpm, bool pr
     (clamped to the tempo limits). */
 void setFramesPerBeat(te::Edit&, te::TempoSetting&, int framesPerBeat, bool preserveAbsoluteFrameTimes);
 
+/** Sets a time signature without changing when PSG frames sound. The
+    denominator sets how long a beat lasts (6/8 beats are half as long as 6/4
+    ones), so PSG lists scale framesPerBeat by the same ratio; frame indices are
+    never touched. A signature is notation, so unlike a tempo change this does
+    not depend on the preserve-timing option. Same single-tempo assumption as
+    setTempoBpmRetimingFrames. */
+void setTimeSig(te::Edit&, te::TimeSigSetting&, int numerator, int denominator);
+
 // The functions below work on the tempo at the transport position, at the project fps.
 
 /** How many frames a beat lasts. */

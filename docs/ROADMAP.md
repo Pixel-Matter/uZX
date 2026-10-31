@@ -38,7 +38,7 @@ None.
 
 #### P2 — Nice to have
 
-- [x] **BPM, FPB, DIV, SIG** detection — set on PSG import from the tracker row grid and bar-level repetition (3/4 or 4/4); dumps without a grid (speed 1, heavy volume ornaments) keep the current tempo
+- [x] **BPM, FPB, GRV, SIG** detection — set on PSG import from the tracker row grid and bar-level repetition (3/4 or 4/4); dumps without a grid (speed 1, heavy volume ornaments) keep the current tempo
 - [ ] **Global default AY settings** (clock, stereo, channels) for PSG files opened from Finder or the command line
 - [ ] **Solo** per AY channel (mute exists)
 
@@ -61,7 +61,7 @@ None.
 - [ ] **About dialog** — GitHub link (only pixelmatter.org now), greets scroller
 - [ ] **Turbosound** — open or drop 2–3 PSG files at once (Import PSG → New Track adds them one at a time)
 - [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
-- [ ] **Time signature editing** — BPM, FPS, FPB and DIV are editable; SIG is read-only
+- [x] **Time signature editing** — SIG is editable in the transport bar; PSG clips keep their timing
 - [ ] **Loop range** on the ruler
 - [ ] **Nicer transport icons**
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)

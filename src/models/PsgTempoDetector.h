@@ -14,16 +14,15 @@ class PsgClip;
 /** Tempo detection for AY register dumps.
 
     Trackers write every note on a row, and a row lasts a whole number of frames
-    (the tracker "speed"), so the job is to find that integer, an optional
-    two-value swing (6-7-6-7...), and how many rows make a beat (3, 4 or 5, times a
-    power of two).
+    (the tracker "speed"), so the job is to find that integer, or a repeating
+    swing (6-7) or groove (4-4-3-3) of row lengths, and how many rows make a beat
+    (3, 4 or 5, times a power of two).
 */
 namespace PsgTempo {
 
 struct Result
 {
-    int speedA = 0;  ///< machine frames per row (first row of a swing pair)
-    int speedB = 0;  ///< machine frames per row (second row); equals speedA without swing
+    std::vector<int> rowFrames;  ///< machine frames per row, repeating: {6}, a swing {6, 7}, a groove {4, 4, 3, 3}
     int rowsPerBeat = 0;
     int beatsPerBar = 4;      ///< 3 or 4; 4 unless bar-level repetition clearly says 3
     bool meterClear = false;  ///< bar-level repetition clearly favours beatsPerBar over the other choice
@@ -35,7 +34,10 @@ struct Result
     int firstRowFrame = 0;
     bool silentLeadIn = true;  ///< nothing is audible before firstRowFrame
 
-    /** Frame counts per row within one beat, e.g. {6, 7, 6, 7}. */
+    /** The beat's groove for the grid: frame counts of 4 groups of rows (3 or 5 when
+        the beat divides that way, else 2), so a swing or groove shows as its
+        pairs, e.g. {6, 7, 6, 7} or, for 4-3-3-3 rows, {7, 6, 7, 6}. Single rows
+        are left to the frame level of the grid. */
     std::vector<int> subdivisionPattern() const;
 };
 

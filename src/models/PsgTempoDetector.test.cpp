@@ -77,13 +77,19 @@ public:
         return data;
     }
 
+    static String rowPattern(const std::vector<int>& rowFrames) {
+        StringArray rows;
+        for (int row : rowFrames)
+            rows.add(String(row));
+        return rows.joinIntoString("-");
+    }
+
     void runTest() override {
         beginTest("Speed 6, accent every 4 rows: 24 frames per beat at 125 BPM");
         {
             auto result = PsgTempo::detect(makeTune(3000, {6}, 4));
             expect(static_cast<bool>(result));
-            expectEquals(result->speedA, 6);
-            expectEquals(result->speedB, 6);
+            expect(result->rowFrames == std::vector<int>{6});
             expectEquals(result->rowsPerBeat, 4);
             expectEquals(result->framesPerBeat, 24);
             expectWithinAbsoluteError(result->bpm, 125.0, 0.01);
@@ -94,19 +100,29 @@ public:
         {
             auto result = PsgTempo::detect(makeTune(3000, {3}, 8));
             expect(static_cast<bool>(result));
-            expectEquals(result->speedA, 3);
+            expect(result->rowFrames == std::vector<int>{3});
             expectEquals(result->rowsPerBeat, 8);
             expectEquals(result->framesPerBeat, 24);
+            expect(result->subdivisionPattern() == std::vector<int>{6, 6, 6, 6}, "8 rows of 3 show as 4 groups");
         }
 
         beginTest("6-7 swing gives a 6 7 6 7 pattern, 26 frames per beat");
         {
             auto result = PsgTempo::detect(makeTune(3000, {6, 7}, 4));
             expect(static_cast<bool>(result));
-            expectEquals(result->speedA, 6);
-            expectEquals(result->speedB, 7);
+            expect(result->rowFrames == std::vector<int>{6, 7});
             expectEquals(result->framesPerBeat, 26);
             expect(result->subdivisionPattern() == std::vector<int>{6, 7, 6, 7});
+        }
+
+        beginTest("A 4-4-3-3 groove gives 28 frames per beat at 107 BPM");
+        {
+            auto result = PsgTempo::detect(makeTune(4000, {4, 4, 3, 3}, 8));
+            expect(static_cast<bool>(result));
+            expect(result->rowFrames == std::vector<int>{4, 4, 3, 3});
+            expectEquals(result->framesPerBeat, 28);
+            expectWithinAbsoluteError(result->bpm, 3000.0 / 28.0, 0.01);
+            expect(result->subdivisionPattern() == std::vector<int>{8, 6, 8, 6}, "rows are paired into 4 groups");
         }
 
         beginTest("Swing with triplet accents still gets an even number of rows per beat");
@@ -122,11 +138,13 @@ public:
             auto triplet = PsgTempo::detect(makeBarTune(4000, 4, 3, 3));
             expect(static_cast<bool>(triplet));
             expectEquals(triplet->rowsPerBeat, 6, "3-row groups at speed 3, doubled into range");
+            expect(triplet->subdivisionPattern() == std::vector<int>{6, 6, 6}, "a triplet beat shows 3 groups");
 
             auto quintuplet = PsgTempo::detect(makeBarTune(6000, 4, 5, 3));
             expect(static_cast<bool>(quintuplet));
             expectEquals(quintuplet->rowsPerBeat, 10, "5-row groups at speed 3, doubled into range");
             expectWithinAbsoluteError(quintuplet->bpm, 100.0, 0.01);
+            expect(quintuplet->subdivisionPattern() == std::vector<int>{6, 6, 6, 6, 6}, "10 rows show as 5 groups");
         }
 
         beginTest("A slow triplet beat keeps 3 rows instead of halving to 1");
@@ -157,7 +175,7 @@ public:
             intro.frames.insert(intro.frames.begin(), introRows.frames.begin(), introRows.frames.end());
             auto withIntro = PsgTempo::detect(intro);
             expect(static_cast<bool>(withIntro));
-            expectEquals(withIntro->speedA, 6);
+            expect(withIntro->rowFrames == std::vector<int>{6});
             expectEquals(withIntro->firstRowFrame, 0, "leave the clip alone when the opening is off the grid");
         }
 
@@ -208,19 +226,17 @@ public:
                                              psg.getData().getFrameRate())
                            + file.getFileName());
                 if (auto r = PsgTempo::detect(psg.getData()))
-                    logMessage(
-                        String::formatted("%d-%d rpb=%d fpb=%d bpm=%.1f g=%.2f sig=%d clear=%d first=%d silent=%d ",
-                                          r->speedA,
-                                          r->speedB,
-                                          r->rowsPerBeat,
-                                          r->framesPerBeat,
-                                          r->bpm,
-                                          r->gridShare,
-                                          r->beatsPerBar,
-                                          (int) r->meterClear,
-                                          r->firstRowFrame,
-                                          (int) r->silentLeadIn)
-                        + file.getFileName());
+                    logMessage(rowPattern(r->rowFrames)
+                               + String::formatted(" rpb=%d fpb=%d bpm=%.1f g=%.2f sig=%d clear=%d first=%d silent=%d ",
+                                                   r->rowsPerBeat,
+                                                   r->framesPerBeat,
+                                                   r->bpm,
+                                                   r->gridShare,
+                                                   r->beatsPerBar,
+                                                   (int) r->meterClear,
+                                                   r->firstRowFrame,
+                                                   (int) r->silentLeadIn)
+                               + file.getFileName());
                 else
                     logMessage("? " + file.getFileName());
             }

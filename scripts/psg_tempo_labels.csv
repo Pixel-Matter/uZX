@@ -1,27 +1,55 @@
 # Tempo labels set by ear in the uZX Player (2026-10-31). Files are matched by name:
 # zxart tunes by the id prefix from scripts/zxart_fetch_pt3.py, others from the user's collection.
-# bpm: the tempo a listener counts; shift_beats: how far the bar lines must move right; blank = not judged.
-file,bpm,shift_beats,note
-"75339_Megus_-_Robocop_(2000)_(Phat0,_15).psg",75,,
-75775_Max-Hi-Fi_-_4u4epuha_(2001).psg,75,,unsure; cover of Chicherina - Zhara
-76297_nq_-_Ppk_(2002).psg,150,,PPK - ResuRection cover; fairly sure
-392570_nq_-_skazochnyi_desant_(2022)_(CAFe_2022).psg,150,3,
-"496800_MmcM_-_Fragment-2024_Realtime_compose_(2024)_(DiHalt_2024_Winter,_3).psg",75,,
-"516875_MmcM_-_The_Bright_Rays_Of_You_(2024)_(Multimatograf_2024,_1).psg",75,,
-"408084_Aki_-_4ever_in_Me_(LikeWavesInTheSea)_(2023)_(FOReVER_2023_-_ROBOT,_1).psg",150,,
-44815_Mast_-_Rainbow_Dreams_(1998).psg,150,,
-"45886_Gogin_-_Dizzy_Underground_OST_-_Dreamhouse_World_(CC'2001_AY_Music_Compo)_(2001)_(Chaos_Constructions_2001,_2).psg",150,,
-"552438_CatMan_-_We_still_alive!_(party_version)_(2025)_(speccy.pl_party_2025,_1).psg",150,,
-04_Igoval - ZX-SOS (1998).psg,150,,
-11_Yerzmyey_-_NEW_SOUND_(2003).psg,150,,
-02_Mic_-_Second comming_(1997).psg,125,,
-22_fatalsnipe_-_Fight_4_the_lite_(2017).psg,,2,shift is for the main part
-"45887_Megus_-_Summer_Mood_(2001)_(Chaos_Constructions_2001,_3).psg",125,,
-72779_luchibobra_-_Der_Flaum_(2004).psg,100,,
-192567_Bonysoft_-_Sanxion_(2017).psg,125,,
-"192806_fatalsnipe_-_prove_fatal_(2017)_(DiHalt_2017,_3).psg",125,,
-"193077_fatalsnipe_-_Fight_4_the_lite_(2017)_(Chaos_Constructions_2017,_2).psg",125,2.5,
-"307922_nq_-_Arpeggio_Prism_Power_(2019)_(DiHalt_Lite_2019,_1).psg",125,,"meter changes, not always 4/4"
-44154_nq_-_piis_(2002).psg,166.7,,
-73706_Karbofos_-_Insane_(2005_version)_(2005).psg,166.7,,
-05_Sauron_-_Jam_(main_theme)_(1999).psg,150,,
+# bpm: the tempo a listener counts; meter: beats per bar; shift_beats: how far the bar lines must move right;
+# blank = not judged.
+file,bpm,meter,shift_beats,note
+"75339_Megus_-_Robocop_(2000)_(Phat0,_15).psg",75,,,
+75775_Max-Hi-Fi_-_4u4epuha_(2001).psg,75,,,unsure; cover of Chicherina - Zhara
+76297_nq_-_Ppk_(2002).psg,150,,,PPK - ResuRection cover; fairly sure
+392570_nq_-_skazochnyi_desant_(2022)_(CAFe_2022).psg,150,,3,
+"496800_MmcM_-_Fragment-2024_Realtime_compose_(2024)_(DiHalt_2024_Winter,_3).psg",75,,,
+"516875_MmcM_-_The_Bright_Rays_Of_You_(2024)_(Multimatograf_2024,_1).psg",75,,,
+"408084_Aki_-_4ever_in_Me_(LikeWavesInTheSea)_(2023)_(FOReVER_2023_-_ROBOT,_1).psg",150,,,
+44815_Mast_-_Rainbow_Dreams_(1998).psg,150,,,
+"45886_Gogin_-_Dizzy_Underground_OST_-_Dreamhouse_World_(CC'2001_AY_Music_Compo)_(2001)_(Chaos_Constructions_2001,_2).psg",150,,,
+"552438_CatMan_-_We_still_alive!_(party_version)_(2025)_(speccy.pl_party_2025,_1).psg",150,,,
+04_Igoval - ZX-SOS (1998).psg,150,,,
+11_Yerzmyey_-_NEW_SOUND_(2003).psg,150,,,
+02_Mic_-_Second comming_(1997).psg,125,,,
+22_fatalsnipe_-_Fight_4_the_lite_(2017).psg,,,2,shift is for the main part
+"45887_Megus_-_Summer_Mood_(2001)_(Chaos_Constructions_2001,_3).psg",125,,,
+72779_luchibobra_-_Der_Flaum_(2004).psg,100,4,,
+192567_Bonysoft_-_Sanxion_(2017).psg,125,,,
+"192806_fatalsnipe_-_prove_fatal_(2017)_(DiHalt_2017,_3).psg",125,,,
+"193077_fatalsnipe_-_Fight_4_the_lite_(2017)_(Chaos_Constructions_2017,_2).psg",125,,2.5,
+"307922_nq_-_Arpeggio_Prism_Power_(2019)_(DiHalt_Lite_2019,_1).psg",125,,,"meter changes, not always 4/4"
+44154_nq_-_piis_(2002).psg,166.7,,,
+73706_Karbofos_-_Insane_(2005_version)_(2005).psg,166.7,,,
+05_Sauron_-_Jam_(main_theme)_(1999).psg,150,,,
+496058_Pator_-_Mizerna_Cicha_(2023).psg,,3,,
+"351127_Pator_-_It's_Raining_Outside_(2020)_(Lost_Party_2020,_1).psg",125.0,4,,groove list judged ok
+357954_KUVO_-_Heatbeat's_day_by_day_theme_(2021).psg,,4,,
+"413568_Pator_-_Spectrumizer_(2023)_(Lost_Party_2023,_3).psg",,4,,
+"364013_AceMan_-_Hedgedog__Piesojez_(2021)_(Lost_Party_2021,_1).psg",,,,maybe 3/4; detected tempo wrong
+205495_C-Jeff_-_Changes_(Final_Version)_(2018).psg,,,,"skip: tempo drifts, intro then 3/4 then 4/4"
+"19738_MmcM_-_Summer_Night_(2013)_(DiHalt_2013,_2).psg",107.14,4,,groove list judged ok
+44230_MmcM_-_Jungle_Bit_+_Pops_Acid_(2000).psg,,4,,
+74585_MmcM_-_DizXeM!X_(2001).psg,107.14,4,,
+"543156_Pator_-_Not_Picking_Up_(2025)_(DiHalt_2025_Winter,_2).psg",107.14,4,,
+"84862_MmcM_-_Hibernation_(2016)_(DiHalt_Lite_2016,_1).psg",93.8,4,,judged '4/4 ok' at the detected 93.8
+"90228_MmcM_-_How_are_you_(2016)_(DiHalt_2016,_1).psg",93.8,4,,judged '4/4 ok' at the detected 93.8
+"193078_MmcM_-_Not_Yet_Time_(2017)_(Chaos_Constructions_2017,_3).psg",93.8,4,,judged '4/4 ok' at the detected 93.8
+"414489_MmcM_-_Demodulation_(2023)_(Демодуляция_2023,_1).psg",93.8,4,,judged '4/4 ok' at the detected 93.8
+194464_nq_-_Zvenit_yanvarskaya_viyuga_(2018)_(DiHalt_Lite_2018).psg,125.0,,,groove list judged ok
+"88576_Aki_-_Don't_Punish_My_Sync_Claire_(2016)_(Revision_2016,_3).psg",125.0,,,groove list judged ok
+24_nq_-_lmao_(2018).psg,125.0,,,groove list judged ok
+"543157_MmcM_-_Xiaomi_vs_..._(2025)_(DiHalt_2025_Winter,_1).psg",125.0,,,groove list judged ok
+325578_nq_-_Tiratok_(2019).psg,115.4,,,groove list judged ok
+29_nq_-_tiratok_(2019).psg,115.4,,,groove list judged ok
+26_djnzx48_-_Bean_Brothers_in-game_(2018).psg,107.14,,,groove list judged ok
+351583_nq_-_Battle_City_Ending_(2020).psg,107.14,,,groove list judged ok
+305543_djnzx48_-_Bean_Brothers_in-game_(2018).psg,107.14,,,groove list judged ok
+400266_luchibobra_-_aLIEz_short_(2022).psg,107.14,,,groove list judged ok
+46058_D-Juice_-_Sentimrntal'motives_(1999).psg,93.8,,,groove list judged ok
+"61065_luchibobra_-_three_bad_mice_(2015)_(3BM_OpenAir_2015,_1).psg",88.2,,,"groove list judged ok; 5-4-3-5 maybe ok, PT3 rows are 5-4-4-4"
+84500_nq_-_you_should_(2015).psg,88.2,,,groove list judged ok

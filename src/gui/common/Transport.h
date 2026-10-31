@@ -72,12 +72,12 @@ private:
     //    stepRightButton_ { ">" };
 
     // Readout group: value box + adjacent unit label, laid out as
-    //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ DIVS ] DIV   [ 4/4 ] SIG
+    //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ 7 6 7 6 ] GRV   [ 4/4 ] SIG
     EditableReadout bpmControl_;
     EditableReadout fpbControl_;
     Label fpsLabel_;        // click opens a popup of allowed rates
     Label divControl_;
-    Label timeSigLabel_;
+    Label timeSigLabel_;    // editable: "3/4", "6/8" or a bare numerator
     Label bpmUnitLabel_, fpsUnitLabel_, fpbUnitLabel_, divUnitLabel_, sigUnitLabel_;
 
     Label posLabel_;          // "Pos" prefix, left of the editable position box
@@ -98,6 +98,7 @@ private:
     void updateTimeLabels(te::TimePosition pos);
     void commitEditedPosition();
     void commitEditedDivisions();
+    void commitEditedTimeSig();
     void showFpsMenu();
 
     ReadoutLookAndFeel readoutLookAndFeel_;

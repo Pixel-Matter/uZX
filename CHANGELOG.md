@@ -11,6 +11,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The time signature (SIG) in the transport bar is editable: type `3/4`, `6/8` or a bare numerator; PSG clips keep playing at the same times
 
 ### Changed
+- The Player's timeline shows bars | beats | frames like Studio's, instead of always switching to seconds; a `.uzx` file keeps the format it was saved with
 - Master volume is an app setting instead of a per-file one: Player and Studio each remember it across launches and apply it to every opened file
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 

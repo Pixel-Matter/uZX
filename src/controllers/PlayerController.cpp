@@ -71,7 +71,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     rescaleAllMidiClipsToFit(*edit_);
 
     edit_->playInStopEnabled = true;
-    setTimecodeDisplayMode(*edit_, TimecodeDisplayMode::seconds);
+    migrateTimecodeDisplaySettings(*edit_);  // as in Studio: a new edit shows bars | beats | frames
     useGlobalMasterVolume();
 
     edit_->getTransport().ensureContextAllocated();

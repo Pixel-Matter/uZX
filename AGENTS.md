@@ -10,6 +10,7 @@ All targets — `uZX` (Studio), `uZXTuning`, `uZXPlayer`, `uZXTests` — link th
 
 - `git submodule update --init --depth=1`: fetch JUCE, Tracktion, and ayumi dependencies after cloning.
 - `cmake --preset default`: configure a Debug build in `build/`.
+- `cmake --preset release` then `cmake --build --preset release --parallel`: a Release build in `build-release/`, as CI ships; measure GUI performance here, not in Debug.
 - `cmake --build --preset default --parallel`: build the default targets.
 - `cmake --build build --target uZX --parallel`: build Studio; use `uZXTuning`, `uZXPlayer`, or `uZXTests` for other targets. Always pass `--parallel` to CMake build commands.
 - `ctest --preset default --output-on-failure`: run CTest after `uZXTests` has been built.

@@ -84,6 +84,9 @@ private:
 
     bool updateSizes = false, updateScrollRange = false;
     bool middleDragging = false;
+
+    // The display's frame clock: the playhead, the view and everything drawn from them move once per frame
+    VBlankAttachment frameClock {this, [this](double timestampSec) { editViewState.zoom.advanceFrame(timestampSec); }};
 };
 
 }

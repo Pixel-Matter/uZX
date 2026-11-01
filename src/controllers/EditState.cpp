@@ -121,7 +121,13 @@ te::TimePosition ZoomViewState::getPlayheadPosition() const {
     auto& transport = edit.getTransport();
     if (!transport.isPlaying() && !transport.isRecording())
         return transport.getPosition();
+    if (framePlayheadValid && areFramesRunning())
+        return framePlayhead;
+    return getHeardPosition();
+}
 
+te::TimePosition ZoomViewState::getHeardPosition() const {
+    auto& transport = edit.getTransport();
     // Tracktion already takes the graph's own latency off the transport position, but the device
     // sounds each block only after its output latency (buffer, driver, Bluetooth...). After a jump,
     // wait at the new position until it is heard rather than stepping back before it.
@@ -129,6 +135,41 @@ te::TimePosition ZoomViewState::getPlayheadPosition() const {
     // map the wrap if that shows with long latencies.
     auto latency = te::TimeDuration::fromSeconds(edit.engine.getDeviceManager().getOutputLatencySeconds());
     return std::max(transport.getPosition() - latency, lastJumpPosition);
+}
+
+void ZoomViewState::reportHeardPosition() {
+    const auto heard = getHeardPosition();
+    playheadClock.report(heard.inSeconds(), Time::getMillisecondCounterHiRes(), heard > lastJumpPosition);
+}
+
+bool ZoomViewState::areFramesRunning() const {
+    return Time::getMillisecondCounterHiRes() - lastFrameMs < framesStopAfterMs;
+}
+
+void ZoomViewState::advanceFrame(double timestampSec) {
+    // The display's frame period, for drawing the playhead where it is by the time the frame is seen
+    const auto period = timestampSec - lastFrameTimestampSec;
+    lastFrameTimestampSec = timestampSec;
+    if (period > 1.0 / 240.0 && period < 1.0 / 20.0)
+        framePeriodSec = period;
+
+    auto& transport = edit.getTransport();
+    if (!transport.isPlaying() && !transport.isRecording())
+        return;  // nothing moves by itself
+
+    // ponytail: frameLead is a fixed one frame of display pipeline; tune it by eye against the sound,
+    // or measure the presentation time per platform if that varies.
+    lastFrameMs = Time::getMillisecondCounterHiRes();
+    auto pos = te::TimePosition::fromSeconds(
+        playheadClock.positionAt(lastFrameMs + framePeriodSec * frameLead * 1000.0));
+    if (transport.looping)
+        pos = std::min(pos, transport.getLoopRange().getEnd());  // the wrap report comes later
+    framePlayhead = pos;
+    framePlayheadValid = true;
+
+    handlePlaybackScrolling();
+    markAndUpdate(updatePlayhead);
+    handleUpdateNowIfNeeded();
 }
 
 void ZoomViewState::zoomHorizontally(double factor) {
@@ -194,11 +235,18 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
             // << " dragging: " << (int) tc.isUserDragging()
             // << " playing: " << (int) tc.isPlaying());
         auto pos = tc.getPosition();
-        if (!tc.isPositionUpdatingFromPlayhead() || pos < lastTransportPosition)
+        const bool jumped = !tc.isPositionUpdatingFromPlayhead() || pos < lastTransportPosition;
+        if (jumped) {
             lastJumpPosition = pos;
+            framePlayheadValid = false;  // show the jump now, not the frame's old position
+        }
         lastTransportPosition = pos;
-        handlePlaybackScrolling();
-        markAndUpdate(updatePlayhead);
+        reportHeardPosition();
+        // While frames run they move the playhead and the view; reports only feed the clock
+        if (jumped || !areFramesRunning()) {
+            handlePlaybackScrolling();
+            markAndUpdate(updatePlayhead);
+        }
     }
     handleUpdateNowIfNeeded();
 }
@@ -235,9 +283,13 @@ void ZoomViewState::handlePlaybackScrolling() {
 
 void ZoomViewState::startVideo() {
     lastJumpPosition = lastTransportPosition = edit.getTransport().getPosition();
+    framePlayheadValid = false;
+    reportHeardPosition();
 }
 
 void ZoomViewState::stopVideo() {
+    framePlayheadValid = false;
+    lastFrameMs = -1.0e9;  // stopped, the transport moves the playhead again
     // the playhead goes back to the transport position, which does not change on stop
     markAndUpdate(updatePlayhead);
 }

@@ -4,6 +4,8 @@
 
 #include <common/Utilities.h>  // from Tracktion, for FlaggedAsyncUpdater
 
+#include "PlayheadClock.h"
+
 namespace MoTool {
 
 namespace IDs
@@ -82,8 +84,18 @@ public:
     double getViewY() const;
 
     /** Where the playhead is drawn and the view follows while playing: the transport position,
-        minus the audio device's output latency while playing, so it matches what is heard. */
+        minus the audio device's output latency while playing, so it matches what is heard.
+        While display frames run, this is the position latched for the current frame. */
     te::TimePosition getPlayheadPosition() const;
+
+    /** Called once per display frame (see VBlankAttachment) with its timestamp in seconds.
+        While playing, latches a steady playhead for the moment the frame is seen, follows it
+        and tells the listeners at once, so everything they repaint lands in this frame. */
+    void advanceFrame(double timestampSec);
+
+    /** How many display frames ahead of the vblank the playhead is drawn, for the frame to be
+        on screen by then. */
+    static constexpr double frameLead = 1.0;
 
     /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
     void beginDrag();
@@ -112,6 +124,13 @@ private:
     // Where playback last started, was moved to or looped back to, and the last transport position seen
     te::TimePosition lastJumpPosition, lastTransportPosition;
 
+    // Display frames: the playhead latched for the current one, and when frames last ran while playing
+    PlayheadClock playheadClock;
+    te::TimePosition framePlayhead;
+    bool framePlayheadValid = false;
+    double lastFrameMs = -1.0e9, lastFrameTimestampSec = 0.0, framePeriodSec = 1.0 / 60.0;
+    static constexpr double framesStopAfterMs = 100.0;
+
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
     // Tracktion's synchronous play/stop notifications
     void startVideo() override;
@@ -123,6 +142,10 @@ private:
     void zoomAroundXByScale(double timePerPixelScale, int anchorX);
     bool jumpToPosition(te::TimePosition pos);
     bool jumpToCurrentPosition();
+    /** The transport position minus the output latency, held at the last jump until that is heard. */
+    te::TimePosition getHeardPosition() const;
+    void reportHeardPosition();
+    bool areFramesRunning() const;
 };
 
 

@@ -133,6 +133,11 @@ private:
         expectEquals(edit->state[te::IDs::timecodeFormat].toString(),
                      juce::String("beats"),
                      "legacy te timecodeFormat should be rewritten only after migration");
+
+        beginTest("A new edit shows bars, beats and frames");
+        auto fresh = te::createEmptyEdit(engine, File::getSpecialLocation(File::tempDirectory).getChildFile("fresh.uzx"));
+        Helpers::migrateTimecodeDisplaySettings(*fresh);
+        expect(Helpers::getTimecodeDisplayMode(*fresh) == TimecodeDisplayMode::barsBeatsFrames);
     }
 
     void testGridSubdivisionPattern() {

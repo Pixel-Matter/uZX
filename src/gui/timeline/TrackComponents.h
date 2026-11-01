@@ -79,7 +79,7 @@ private:
     OwnedArray<ClipComponent> clips;
     std::unique_ptr<RecordingClipComponent> recordingClip;
 
-    bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false, updateZoom = false;
+    bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false;
 };
 
 

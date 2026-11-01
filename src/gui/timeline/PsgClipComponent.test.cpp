@@ -529,6 +529,47 @@ public:
             expect(nameNearLeftEdge, "note names must be drawn at the clip's own left edge");
         }
 
+        beginTest("Lane names stay on the same pixels while the view scrolls by fractions of a pixel");
+        {
+            auto& engine = *te::Engine::getEngines()[0];
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto& pt1 = getBuiltinPeriodGrid(BuiltinTuningType::CustomPT_1_ST);
+            const int a3 = std::find_if(pt1.begin(), pt1.end(), [](auto& e) { return e.second == 57; })->first;
+            uZX::PsgData data{{}, {50.0, 1}};
+            data.frames.push_back({{uZX::PsgRegType::VolumeA, 12},
+                                   {uZX::PsgRegType::TonePeriodFineA, static_cast<uint8_t>(a3 & 0xff)},
+                                   {uZX::PsgRegType::TonePeriodCoarseA, static_cast<uint8_t>(a3 >> 8)}});
+            for (int i = 0; i < 2999; ++i)
+                data.frames.push_back({});
+            auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                          {{te::TimePosition(), te::TimeDuration::fromSeconds(60.0)}, {}}, "long");
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(1000);
+            TimelineGrid grid(view);
+            PsgClipComponent component(view, grid, clip);
+
+            // Placed and drawn the way the track body does it, into the view's own pixels
+            const auto renderAt = [&](double viewStartSec) {
+                view.zoom.setRange({te::TimePosition::fromSeconds(viewStartSec), te::TimeDuration::fromSeconds(10.0)});
+                const int x = roundToInt(view.zoom.timeToX(te::TimePosition()));
+                component.setBounds(x, 0, roundToInt(view.zoom.timeToX(te::TimePosition::fromSeconds(60.0))) - x, 300);
+                Image image(Image::ARGB, 1000, 300, true);
+                {
+                    Graphics g(image);
+                    g.setOrigin(component.getPosition());
+                    component.paintNoteLanes(g);
+                }
+                return image;
+            };
+            const auto before = renderAt(20.0), after = renderAt(20.0 + 0.0137);  // 1.37 px later
+            int differing = 0;
+            for (int y = 0; y < 300; ++y)
+                for (int x = 0; x < 45; ++x)
+                    differing += before.getPixelAt(x, y) != after.getPixelAt(x, y);
+            expectEquals(differing, 0, "names pinned to the view's left edge must not shift or blur");
+        }
+
         beginTest("Level of detail follows the lane height");
         auto detail = [](float height) { const auto d = getLaneDetail(height); return std::pair{d.lines, d.labels}; };
         expect(detail(12.0f) == std::pair{LaneDetail::All, LaneDetail::All});

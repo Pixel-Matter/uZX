@@ -16,6 +16,14 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "ENABLE_ASAN": "ON"
             }
+        },
+        {
+            "name": "release",
+            "displayName": "Release",
+            "binaryDir": "build-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
         }
     ],
     "buildPresets": [
@@ -26,6 +34,10 @@
         {
             "name": "asan",
             "configurePreset": "asan"
+        },
+        {
+            "name": "release",
+            "configurePreset": "release"
         }
     ],
     "testPresets": [
@@ -39,6 +51,10 @@
             "environment": {
                 "ASAN_OPTIONS": "detect_stack_use_after_return=1"
             }
+        },
+        {
+            "name": "release",
+            "configurePreset": "release"
         }
     ]
 }

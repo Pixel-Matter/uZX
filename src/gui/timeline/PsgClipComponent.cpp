@@ -187,15 +187,31 @@ te::TimeDuration getClipFrameDuration(const PsgClip& clip) {
     return te::TimeDuration::fromSeconds(1.0 / fps);
 }
 
-/** x of an edit time in a component that spans the whole clip over `width` pixels. */
-static float clipTimeToX(te::TimeRange clipRange, int width, te::TimePosition time) {
-    return static_cast<float>(((time - clipRange.getStart()) * width) / clipRange.getLength());
-}
+/** x of an edit time in a clip component: the timeline's own x, less the whole-pixel x where
+    TrackBodyComponent places the component. Clip contents line up with the ruler to the pixel,
+    and the view's edges fall on whole pixels, so nothing pinned to them shifts while scrolling. */
+struct ClipXMapping {
+    te::TimePosition viewStart;
+    te::TimeDuration timePerPixel;
+    double originX;
+
+    ClipXMapping(const ZoomViewState& zoom, te::TimePosition clipStart)
+        : viewStart(zoom.getStart())
+        , timePerPixel(zoom.getTimePerPixel())
+        , originX(roundToInt(zoom.timeToX(clipStart)))  // as TrackBodyComponent::resized()
+    {
+    }
+
+    float operator()(te::TimePosition time) const {
+        return static_cast<float>((time - viewStart) / timePerPixel - originX);
+    }
+};
 
 /** The frame-to-pixel mapping shared by the notes and registers painters. */
 struct ClipVisibility {
     Rectangle<int> rect;
     te::TimeRange clipRange;
+    ClipXMapping toX;
     te::TimeDuration frameDur;
     te::TimeRange range;   // visible part of the clip, with one frame of slack on the left
     int startIdx;          // first frame that can fall inside range
@@ -207,17 +223,17 @@ struct ClipVisibility {
                    Rectangle<int> rectangle)
         : rect(rectangle)
         , clipRange(clip.getEditTimeRange())
+        , toX(evs.zoom, clipRange.getStart())
         , frameDur(getClipFrameDuration(clip))
         // empty, not reversed, when the view has been panned past the clip
         , range(clipRange.getIntersectionWith({evs.zoom.getRange().getStart() - frameDur, evs.zoom.getRange().getEnd()}))
         , startIdx(bisectFindPosition(frames, clip, range.getStart()))
-        , pixelsPerFrame(static_cast<float>(frameDur.inSeconds() * rect.getWidth()
-                                            / clipRange.getLength().inSeconds()))
+        , pixelsPerFrame(static_cast<float>(frameDur / toX.timePerPixel))
     {
     }
 
     float timeToX(te::TimePosition time) const {
-        return clipTimeToX(clipRange, rect.getWidth(), time);
+        return toX(time);
     }
 
     /** Calls fn(frameArrayIndex, frame, x) for every frame inside the visible range. */
@@ -671,13 +687,12 @@ struct NotesLayout {
 
 static NotesLayout makeNotesLayout(const PsgClip& clip, Rectangle<int> bounds, const EditViewState& evs) {
     const auto pitchRange = clip.getPitchRange();
-    const auto clipRange = clip.getEditTimeRange();
+    const ClipXMapping toX {evs.zoom, clip.getEditTimeRange().getStart()};
     const auto visibleTime = evs.zoom.getRange();
     const auto height = static_cast<float>(bounds.getHeight());
     // The view and the clip overlap only partly: a clip starting later than the view's
     // start would put the view's left edge at a negative x, outside the component.
-    const Range<float> viewX { clipTimeToX(clipRange, bounds.getWidth(), visibleTime.getStart()),
-                               clipTimeToX(clipRange, bounds.getWidth(), visibleTime.getEnd()) };
+    const Range<float> viewX { toX(visibleTime.getStart()), toX(visibleTime.getEnd()) };
     return {
         pitchRange,
         height / (pitchRange.getLength() * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.0f),

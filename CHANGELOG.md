@@ -16,6 +16,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Fixed
 - The timeline scrolls smoothly during playback: the playhead, ruler, PSG clips and parameter chart move together once per display frame, and the playhead keeps up with the sound instead of trailing it by a frame or two
+- PSG clips line up with the ruler to the pixel, and note lane names no longer shift by a pixel while the view scrolls
 - PSG files with pause markers no longer shift every later frame by one per pause, and files written with a `0xFF` version byte open
 
 ## [v0.5.0-alpha] - 2026-10-29

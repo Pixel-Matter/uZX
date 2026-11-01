@@ -57,6 +57,7 @@ set(GUI_SOURCES
     controllers/PlayerController.cpp
     controllers/App.cpp
     controllers/EditState.cpp
+    controllers/PlayheadClock.cpp
 
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Transport.cpp
@@ -120,6 +121,7 @@ set(TEST_SOURCES
     models/tuning/RationalTuning.test.cpp
 
     controllers/EditState.test.cpp
+    controllers/PlayheadClock.test.cpp
     controllers/PlayWholeEdit.test.cpp
     controllers/Parameters.test.cpp
 

@@ -15,6 +15,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
+- The timeline scrolls smoothly during playback: the playhead, ruler, PSG clips and parameter chart move together once per display frame, and the playhead keeps up with the sound instead of trailing it by a frame or two
 - PSG files with pause markers no longer shift every later frame by one per pause, and files written with a `0xFF` version byte open
 
 ## [v0.5.0-alpha] - 2026-10-29

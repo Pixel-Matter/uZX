@@ -316,7 +316,9 @@ void TrackBodyComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce
 }
 
 void TrackBodyComponent::viewRangeChanged() {
-    markAndUpdate(updateZoom);
+    // At once, not deferred: the ruler and the other views repaint now, for the same frame
+    resized();
+    repaint();
 }
 
 void TrackBodyComponent::gridChanged() {
@@ -345,13 +347,6 @@ void TrackBodyComponent::handleAsyncUpdate() {
         buildClips();
     if (compareAndReset(updatePositions))
         resized();
-    if (compareAndReset(updateZoom)) {
-        // TODO track from where updateZoom is called and at what exact time (in paint later)
-        // TODO is repaint really needed after resized()?
-        //
-        resized();
-        repaint();
-    }
     if (compareAndReset(updateRecordClips))
         buildRecordClips();
     if (compareAndReset(updateSelection))
@@ -645,7 +640,7 @@ void TracksContainerComponent::valueTreeChildOrderChanged(juce::ValueTree& v, in
 }
 
 void TracksContainerComponent::viewRangeChanged() {
-    markAndUpdate(needsRepaint);
+    repaint();  // at once, like the tracks
 }
 
 void TracksContainerComponent::gridChanged() {

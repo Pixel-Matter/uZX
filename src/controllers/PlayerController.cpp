@@ -14,6 +14,15 @@ using namespace MoTool::Helpers;
 
 namespace MoTool {
 
+/** The track's AY chip, added first if the track has none. */
+static uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track) {
+    if (auto* chip = track.pluginList.findFirstPluginOfType<uZX::AYChipPlugin>())
+        return *chip;
+    auto plugin = track.edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
+    track.pluginList.insertPlugin(plugin, 0, nullptr);
+    return *dynamic_cast<uZX::AYChipPlugin*>(plugin.get());
+}
+
 static String makePlayerWindowTitle(const String& filename = {}) {
     auto appName = String::fromUTF8("μZX Player");
     if (filename.isEmpty())
@@ -195,22 +204,13 @@ void PlayerController::importPsgToNewEdit(const File& f) {
 
     te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
 
-    if (PsgClip::insertTo(*track, psgFile, pos)) {
+    if (auto clip = PsgClip::insertTo(*track, psgFile, pos)) {
         track->changed();
-
-        // Ensure AY plugin using the new edit's plugin cache
-        bool hasAY = false;
-        for (auto& p : track->pluginList) {
-            if (dynamic_cast<uZX::AYChipPlugin*>(p)) {
-                hasAY = true;
-                break;
-            }
-        }
-        if (!hasAY) {
-            auto plugin = newEdit->getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
-            track->pluginList.insertPlugin(plugin, 0, nullptr);
-        }
-
+        auto& chip = ensureAYPluginOnTrack(*track);
+        // A PSG stores no clock. A fitted tuning names the machine the tune was written
+        // for, so the opened tune plays at that clock; a tracker table leaves it as it is.
+        if (const auto& fit = clip->getTuning().fit)
+            chip.staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
         track->setName(f.getFileNameWithoutExtension());
     }
 
@@ -223,15 +223,6 @@ void PlayerController::importPsgToNewEdit(const File& f) {
     setEdit(std::move(newEdit), true);
     setMainWindowTitle(makePlayerWindowTitle(f.getFileNameWithoutExtension()));
     zoomToFitHorizontally();
-}
-
-void PlayerController::ensureAYPluginOnTrack(te::AudioTrack& track) {
-    for (auto& p : track.pluginList) {
-        if (dynamic_cast<uZX::AYChipPlugin*>(p))
-            return;
-    }
-    auto plugin = edit_->getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
-    track.pluginList.insertPlugin(plugin, 0, nullptr);
 }
 
 }  // namespace MoTool

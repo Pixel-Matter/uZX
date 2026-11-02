@@ -1,5 +1,8 @@
 #include "TuningDetector.h"
 
+#include "TemperamentSystem.h"
+#include "TuningTable.h"
+
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -10,6 +13,12 @@ namespace {
 
 constexpr int firstGridNote = 24;  // C1, where every registry table starts
 constexpr int numGridNotes = 96;   // eight octaves
+
+/** How close to 440 Hz a fit's A4 must come at a clock for detection to name it: near enough
+    to be the tune's tuning rather than a detuned one landing close by chance. */
+constexpr double maxClockGuessCents = 4.0;
+constexpr int semitoneSteps = 200;  // a fit sweeps pitch in half cents
+constexpr double c4At440 = 261.6255653005986;
 
 // Krumhansl-Kessler probe-tone profiles for a major and a minor key on C.
 constexpr std::array<float, 12>
@@ -57,25 +66,80 @@ struct LogGrid
     }
 };
 
-/** Clock / 16 / frequency of every grid note at A4 = 1 Hz: an equal-temperament period is
-    this divided by A4, so a sweep needs no pow() per step. */
-const std::array<double, numGridNotes>& equalTemperamentPeriodsAtUnitA4() {
-    static const auto periods = [] {
-        std::array<double, numGridNotes> p{};
-        for (int i = 0; i < numGridNotes; ++i)
-            p[static_cast<size_t>(i)] = tuningGridClock / 16.0 / std::pow(2.0, (firstGridNote + i - 69) / 12.0);
-        return p;
+using UnitPeriods = std::array<double, numGridNotes>;
+
+/** ZX clock / 16 / frequency of every grid note, lowest first, of a fitted system on a tonic
+    at A4 = 1 Hz: a period is this divided by A4, so a sweep needs no pow() per step. Equal
+    temperament is the same on every tonic. */
+const UnitPeriods& unitPeriods(TuningSystemType system, Scale::Tonic tonic) {
+    static const auto all = [] {
+        std::vector<UnitPeriods> tables;  // fittedSystems index * 12 + tonic
+        for (auto fitted : fittedSystems) {
+            for (int t = 0; t < 12; ++t) {
+                const auto reference = makeReferenceTuningSystem(fitted, Scale::Tonic(t),
+                                                                 Scale::ScaleType::IonianOrMajor, 1.0);
+                UnitPeriods periods{};
+                for (int i = 0; i < numGridNotes; ++i)
+                    periods[static_cast<size_t>(i)] = tuningGridClock / 16.0 / reference->midiNoteToFrequency(firstGridNote + i);
+                tables.push_back(periods);
+            }
+        }
+        return tables;
     }();
-    return periods;
+    const auto index = std::find(std::begin(fittedSystems), std::end(fittedSystems), system.asEnum()) - std::begin(fittedSystems);
+    jassert(index < static_cast<std::ptrdiff_t>(std::size(fittedSystems)));
+    return all[static_cast<size_t>(index) * 12 + static_cast<size_t>(tonic.asUnderlying())];
 }
 
-/** Fills `out` with the equal-temperament periods for a4, ascending. */
-void equalTemperamentPeriods(double a4, std::vector<int>& out) {
-    const auto& unit = equalTemperamentPeriodsAtUnitA4();
+/** Frequency of the tonic in octave 4 at A4 = 1 Hz. */
+double unitTonicFrequency(TuningSystemType system, Scale::Tonic tonic) {
+    const auto note = 60 + static_cast<int>(tonic.asUnderlying()) - firstGridNote;
+    return tuningGridClock / 16.0 / unitPeriods(system, tonic)[static_cast<size_t>(note)];
+}
+
+/** Fills `out` with the periods at the ZX clock for an A4, ascending. */
+void fitPeriods(const UnitPeriods& unit, double a4, std::vector<int>& out) {
     out.resize(unit.size());
     // Periods fall as notes rise, so filling from the top note gives ascending order.
     for (size_t i = 0; i < unit.size(); ++i)
         out[i] = static_cast<int>(std::round(unit[unit.size() - 1 - i] / a4));
+}
+
+/** The fit of a system whose tonic sounds at `frequency` (in any octave) at a clock. The
+    tonic is named after its nearest equal-temperament note at A4 = 440 Hz; 12TET has no
+    tonic, its A4 just lands within half a semitone of 440 Hz. */
+TuningFit fitWithTonicAt(TuningSystemType system, double frequency, double chipClock, float share) {
+    const double semitones = 12.0 * std::log2(frequency / c4At440);
+    const int nearest = static_cast<int>(std::round(semitones));
+    const Scale::Tonic tonic(((nearest % 12) + 12) % 12);
+    const double inOctave4 = c4At440 * std::pow(2.0, (semitones - (nearest - static_cast<int>(tonic.asUnderlying()))) / 12.0);
+    const bool equal = system == TuningSystemEnum::EqualTemperament;
+    return {system, equal ? Scale::Tonic(Scale::Tonic::C) : tonic, inOctave4 / unitTonicFrequency(system, tonic), chipClock, share};
+}
+
+/** Best step of a circular sweep: the middle of the run of near-best steps around the best
+    one, refined to a tenth of a step (the lowest notes move one period unit per half cent,
+    so the coarse steps can miss their exact value). Returns the step and its share. */
+template <typename ShareAt>
+std::pair<double, float> sweepForBest(int steps, ShareAt&& shareAt) {
+    std::vector<float> shares(static_cast<size_t>(steps));
+    for (int k = 0; k < steps; ++k)
+        shares[static_cast<size_t>(k)] = shareAt(static_cast<double>(k));
+    const auto at = [&](int k) { return shares[static_cast<size_t>(((k % steps) + steps) % steps)]; };
+    const auto best = static_cast<int>(std::max_element(shares.begin(), shares.end()) - shares.begin());
+    const float nearBest = shares[static_cast<size_t>(best)] - 0.01f;
+    int lo = best, hi = best;
+    while (hi - lo + 1 < steps && at(lo - 1) >= nearBest)
+        --lo;
+    while (hi - lo + 1 < steps && at(hi + 1) >= nearBest)
+        ++hi;
+    const double middle = (lo + hi) / 2.0;
+    std::pair<double, float> result{middle, shareAt(middle)};
+    for (int k = 1; k <= 10; ++k)
+        for (const double step : {middle - k / 10.0, middle + k / 10.0})
+            if (const float share = shareAt(step); share > result.second)
+                result = {step, share};
+    return result;
 }
 
 /** A histogram as flat (period, frames) lists, with the envelope pitches that cannot tell
@@ -166,8 +230,65 @@ const PeriodGrid& getBuiltinPeriodGrid(BuiltinTuningType table) {
     return grids[static_cast<size_t>(static_cast<int>(table))];
 }
 
-String getEqualTemperamentLabel(double a4Frequency) {
-    return "12TET " + String(roundToInt(a4Frequency)) + " Hz";
+bool isTrackerTable(BuiltinTuningType table) {
+    static const auto tracker = [] {
+        std::vector<bool> all;
+        for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i)
+            all.push_back(dynamic_cast<const TuningTable*>(makeBuiltinTuning(BuiltinTuningType(i)).get()) != nullptr);
+        return all;
+    }();
+    return tracker[static_cast<size_t>(static_cast<int>(table))];
+}
+
+String getClockName(double chipClock) {
+    // Within a hertz: the AY plugin stores its clock in MHz, so 1.7734 * 1e6 may be off by a hair.
+    const auto named = std::find_if(std::begin(tuningClocks), std::end(tuningClocks),
+                                    [&](const auto& c) { return std::abs(c.hz - chipClock) < 1.0; });
+    return named != std::end(tuningClocks) ? String(named->name) : String(chipClock / 1.0e6, 4) + " MHz";
+}
+
+/** " Pentagon" after a label for a grid at that clock; nothing at the ZX clock. */
+static String getClockSuffix(double chipClock) {
+    return exactlyEqual(chipClock, tuningGridClock) ? String() : " " + getClockName(chipClock);
+}
+
+PeriodGrid makeFitGrid(const TuningFit& fit) {
+    const auto& unit = unitPeriods(fit.system, fit.tonic);
+    const double scale = fit.chipClock / tuningGridClock / fit.a4Frequency;
+    PeriodGrid grid;
+    for (int i = 0; i < numGridNotes; ++i)
+        grid.try_emplace(static_cast<int>(std::round(unit[static_cast<size_t>(i)] * scale)), firstGridNote + i);
+    return grid;
+}
+
+TuningFit atClock(const TuningFit& fit, double chipClock) {
+    const double tonic = fit.a4Frequency * unitTonicFrequency(fit.system, fit.tonic);
+    return fitWithTonicAt(fit.system, tonic * chipClock / fit.chipClock, chipClock, fit.share);
+}
+
+String getFitLabel(const TuningFit& fit) {
+    String label(fit.system.getShortLabel().data());
+    if (fit.system != TuningSystemEnum::EqualTemperament)
+        label << " " << String::fromUTF8(fit.tonic.getLongLabel().data());
+    return label + " " + String(roundToInt(fit.a4Frequency)) + " Hz" + getClockSuffix(fit.chipClock);
+}
+
+/** The fit at the guessed clock where its A4 comes closest to 440 Hz, if within a few cents;
+    else unchanged. The periods stay the same either way. */
+static TuningFit guessClock(const TuningFit& fit) {
+    TuningFit best = fit;
+    double bestCents = maxClockGuessCents;
+    for (const auto& clock : tuningClocks) {  // most likely first: it wins a draw
+        if (! clock.guessed)
+            continue;
+        const auto there = atClock(fit, clock.hz);
+        const double cents = std::abs(1200.0 * std::log2(there.a4Frequency / 440.0));
+        if (cents < bestCents) {
+            bestCents = cents;
+            best = there;
+        }
+    }
+    return best;
 }
 
 //==============================================================================
@@ -300,18 +421,22 @@ std::vector<float> makeFoldedPitchHistogram(const PitchHistogram& hist, const Pe
 
 //==============================================================================
 String TuningDetection::getTableLabel() const {
-    if (usesEqualTemperament || tables.empty())
-        return getEqualTemperamentLabel(equalTemperament.a4Frequency);
+    if (usesFit || tables.empty())
+        return getFitLabel(getFit());
     return String(tables.front().table.getShortLabel().data());
 }
 
-/** Built-in tables with near-identical grids merged; the later registry entry names a
-    group (PT #3 absorbs PT #0, the same list a semitone away). Data-independent. */
+/** Tracker tables with near-identical grids merged; the later registry entry names a
+    group (PT #3 absorbs PT #0, the same list a semitone away). The tables the registry
+    computes (12TET, just intonations) are composing presets, not lists a tracker plays:
+    equal temperament is fitted instead. Data-independent. */
 static const std::vector<BuiltinTuningType>& getCandidateTables() {
     static const auto candidates = [] {
         std::vector<BuiltinTuningType> reps;
         for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i) {
             const BuiltinTuningType table(i);
+            if (! isTrackerTable(table))
+                continue;
             auto same = std::find_if(reps.begin(), reps.end(), [&](auto rep) {
                 return gridOverlap(getBuiltinPeriodGrid(rep), getBuiltinPeriodGrid(table)) > 0.9f;
             });
@@ -329,6 +454,7 @@ TuningDetection detectTuning(const PitchHistogram& hist) {
     TuningDetection result;
     result.histogram = hist;
     result.keys = rankKeys({});
+    result.fits = {TuningFit{}};
     result.hasNotes = hist.getTotal() > 0;
     if (!result.hasNotes)
         return result;
@@ -340,45 +466,55 @@ TuningDetection detectTuning(const PitchHistogram& hist) {
         result.tables.begin(), result.tables.end(), [](const auto& a, const auto& b) { return a.share > b.share; });
 
     // Equal temperament: A4 and A4 * 2^(1/12) give the same period set, so one semitone
-    // around 440 Hz is the whole search space. The middle of the plateau of equally good
-    // A4 values is refined at a tenth of a step: the lowest notes move one period unit
-    // per half cent, so the coarse grid can miss their exact value.
-    constexpr int steps = 200;
-    auto a4At = [](double step) { return 440.0 * std::pow(2.0, (step / steps - 0.5) / 12.0); };
+    // around 440 Hz is the whole search space.
     std::vector<int> periods;
-    auto shareAt = [&](double step) {
-        equalTemperamentPeriods(a4At(step), periods);
+    const auto& equalUnit = unitPeriods(TuningSystemEnum::EqualTemperament, Scale::Tonic::C);
+    auto a4At = [](double step) { return 440.0 * std::pow(2.0, (step / semitoneSteps - 0.5) / 12.0); };
+    const auto [equalStep, equalShare] = sweepForBest(semitoneSteps, [&](double step) {
+        fitPeriods(equalUnit, a4At(step), periods);
         return flat.shareOn(periods);
-    };
-    std::vector<std::pair<float, double>> sweep;
-    sweep.reserve(steps);
-    for (int k = 0; k < steps; ++k)
-        sweep.emplace_back(shareAt(k), double(k));
-    const float bestShare = std::max_element(sweep.begin(), sweep.end())->first;
-    std::vector<double> plateau;
-    for (const auto& [share, step] : sweep)
-        if (share >= bestShare - 0.01f)
-            plateau.push_back(step);
-    double bestStep = plateau[plateau.size() / 2];
-    float refined = bestShare;
-    for (int k = -10; k <= 10; ++k) {
-        const double step = plateau[plateau.size() / 2] + k / 10.0;
-        const float share = shareAt(step);
-        if (share > refined) {
-            refined = share;
-            bestStep = step;
-        }
+    });
+    result.fits = {atClock({TuningSystemEnum::EqualTemperament, Scale::Tonic::C, a4At(equalStep), tuningGridClock, equalShare},
+                           tuningGridClock)};
+
+    // A just intonation's periods depend only on where its tonic sounds, so the tonic is
+    // swept over an octave and named after its nearest equal-temperament note.
+    for (auto system : fittedSystems) {
+        if (system == TuningSystemEnum::EqualTemperament)
+            continue;
+        auto fitAt = [system](double step) {
+            const double cents = (step / semitoneSteps - 0.5) * 100.0;  // above C4 at A4 = 440 Hz
+            return fitWithTonicAt(system, c4At440 * std::pow(2.0, cents / 1200.0), tuningGridClock, 0.0f);
+        };
+        const auto [step, share] = sweepForBest(12 * semitoneSteps, [&](double at) {
+            const auto fit = fitAt(at);
+            fitPeriods(unitPeriods(fit.system, fit.tonic), fit.a4Frequency, periods);
+            return flat.shareOn(periods);
+        });
+        auto fit = fitAt(step);
+        fit.share = share;
+        result.fits.push_back(fit);
     }
-    result.equalTemperament = {a4At(bestStep), refined};
+    for (auto& fit : result.fits)
+        fit = guessClock(fit);
+
+    // Best first, but 12TET leads unless a just intonation is clearly better: they share
+    // the periods near the tonic, so a just intonation always fits a 12TET tune partly.
+    std::stable_sort(result.fits.begin(), result.fits.end(), [](const auto& a, const auto& b) { return a.share > b.share; });
+    const auto equal = std::find_if(result.fits.begin(), result.fits.end(), [](const auto& fit) {
+        return fit.system == TuningSystemEnum::EqualTemperament;
+    });
+    if (result.fits.front().share <= equal->share + TuningDetection::tieGap)
+        std::rotate(result.fits.begin(), equal, equal + 1);
 
     // A named table wins a draw: PT #2 is equal temperament at the Pentagon clock, so the
     // fit reaches its share exactly. The fit wins only when it is clearly better.
     const float bestTable = result.tables.front().share;
     const float secondTable = result.tables.size() > 1 ? result.tables[1].share : 0.0f;
-    if (result.equalTemperament.share > bestTable + TuningDetection::tieGap) {
-        result.usesEqualTemperament = true;
-        result.grid = makeEqualTemperamentGrid(result.equalTemperament.a4Frequency, tuningGridClock);
-        result.share = result.equalTemperament.share;
+    if (result.getFit().share > bestTable + TuningDetection::tieGap) {
+        result.usesFit = true;
+        result.grid = makeFitGrid(result.getFit());
+        result.share = result.getFit().share;
     } else {
         result.grid = getBuiltinPeriodGrid(result.tables.front().table);
         result.share = bestTable;

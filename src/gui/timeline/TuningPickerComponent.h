@@ -7,8 +7,10 @@
 namespace MoTool {
 
 //==============================================================================
-/** Lets the user settle a PSG clip's tuning table and key when detection is unsure,
-    or override it. Shows the ranked tables and keys with their scores and the clip's
+/** Lets the user settle a PSG clip's tuning and key when detection is unsure, or override
+    them. Tracker tables and fitted tunings (12TET, just intonations) are listed with their
+    scores; a fitted tuning also takes a chip clock, which renames its notes and leaves its
+    score alone. Shows the ranked keys with their scores and the clip's
     pitch classes at sub-semitone resolution on the selected grid, so a wrong grid is
     visible as peaks between the lines. Choices are written to the clip state at once;
     "Use detected" removes them.
@@ -37,8 +39,11 @@ private:
     juce::ValueTree clipState_;  // kept so the listener can be removed after the clip is gone
     int listedDataVersion_ = -1;
 
-    Label tableLabel_{{}, "Tuning table"};
+    Label tableLabel_{{}, "Tuning"};
+    Label clockLabel_{{}, "Chip clock"};
+    Label a4Label_;
     Label keyLabel_{{}, "Key"};
+    ComboBox clockBox_;
     ComboBox tableBox_;
     ComboBox keyBox_;
     TextButton detectedButton_{"Use detected"};
@@ -47,13 +52,14 @@ private:
     // Items are listed in detection order; the combo IDs below index into these copies,
     // never into a detection that may have been recomputed since.
     std::vector<BuiltinTuningType> listedTables_;
-    double listedA4_ = 440.0;
+    std::vector<TuningFit> listedFits_;
     std::vector<DetectedKey> listedKeys_;
 
-    static constexpr int equalTemperamentItemId = 1000;
+    static constexpr int firstFitItemId = 1000;
 
     void rebuildLists(const PsgClip& clip);
     void rebuildKeyList(const std::vector<DetectedKey>& keys);
+    String getListedFitText(size_t index) const;
     void refresh();
     void close();
 

@@ -24,7 +24,6 @@ private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
 
-    void ensureAYPluginOnTrack(te::AudioTrack& track);
     void importPsgToNewTrack(const File& f);
     void importPsgToNewEdit(const File& f);
 

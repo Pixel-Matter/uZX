@@ -137,15 +137,44 @@ public:
         beginTest("A stored A4 wins over a stored table; a damaged A4 is ignored");
         {
             clip->state.setProperty(IDs::clipTuningA4, 436.0, nullptr);
-            expect(clip->getTuning().isEqualTemperament && !clip->getTuning().table.has_value());
+            expect(clip->getTuning().fit.has_value() && !clip->getTuning().table.has_value());
             expectEquals(clip->getTuning().tableLabel, String("12TET 436 Hz"));
             for (const var& damaged : {var(0.0), var(-440.0), var(std::nan("")), var("abc"), var(5000.0)}) {
                 clip->state.setProperty(IDs::clipTuningA4, damaged, nullptr);
-                expect(!clip->getTuning().isEqualTemperament, "ignored A4 " + damaged.toString());
+                expect(!clip->getTuning().fit.has_value(), "ignored A4 " + damaged.toString());
                 expect(clip->getTuning().table.has_value()
                        && *clip->getTuning().table == BuiltinTuningType::CustomPT_2_ASM);
             }
+            clip->state.setProperty(IDs::clipTuningA4, 440.0, nullptr);
+            clip->state.setProperty(IDs::clipTuningClock, 2000000.0, nullptr);
+            expectEquals(clip->getTuning().tableLabel, String("12TET 440 Hz Atari ST"));
+            for (const var& damaged : {var(0.0), var(std::nan("")), var("abc"), var(1.0e9)}) {
+                clip->state.setProperty(IDs::clipTuningClock, damaged, nullptr);
+                expect(!clip->getTuning().fit.has_value(), "ignored clock " + damaged.toString());
+            }
+            clip->state.removeProperty(IDs::clipTuningClock, nullptr);
             clip->state.removeProperty(IDs::clipTuningA4, nullptr);
+        }
+
+        beginTest("A chosen fit stores its system, tonic, A4 and clock");
+        {
+            const double pentagon = uZX::ChipClockEnum::clockValues[uZX::ChipClockEnum::Pentagon_1_75_MHz];
+            clip->chooseFit({TuningSystemType::Just5Limit, Scale::Tonic::D, 433.0, pentagon});
+            const auto& tuning = clip->getTuning();
+            expect(tuning.tableChosen && tuning.fit.has_value() && !tuning.table.has_value());
+            expectEquals(tuning.tableLabel, String("5LJI D 433 Hz Pentagon"));
+            expect(tuning.grid == makeFitGrid({TuningSystemType::Just5Limit, Scale::Tonic::D, 433.0, pentagon}));
+            for (const auto& [id, damaged] : {std::pair{&IDs::clipTuningSystem, var("NoSuchSystem")},
+                                              std::pair{&IDs::clipTuningSystem, var("CustomRational")},
+                                              std::pair{&IDs::clipTuningTonic, var(12)}}) {
+                const auto kept = clip->state[*id];
+                clip->state.setProperty(*id, damaged, nullptr);
+                expect(!clip->getTuning().fit.has_value(), "ignored " + id->toString() + " " + damaged.toString());
+                clip->state.setProperty(*id, kept, nullptr);
+            }
+            clip->chooseTuningTable(BuiltinTuningType::CustomPT_2_ASM);
+            for (const auto* id : {&IDs::clipTuningA4, &IDs::clipTuningClock, &IDs::clipTuningSystem, &IDs::clipTuningTonic})
+                expect(!clip->state.hasProperty(*id), "a table choice drops " + id->toString());
         }
 
         beginTest("An unknown table name falls back to the detection");

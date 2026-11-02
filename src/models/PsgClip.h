@@ -53,7 +53,7 @@ public:
         PeriodGrid grid;    // empty when there is no table
         String tableLabel;  // empty when there is no table
         std::optional<BuiltinTuningType> table;  // set when a built-in table is in effect
-        bool isEqualTemperament = false;         // set when a 12TET grid is in effect
+        std::optional<TuningFit> fit;            // set when a fitted tuning is in effect
         DetectedKey key;    // meaningful only when hasKey
         /** The 24 keys ranked on this grid: a chosen table names the notes differently
             from the detected one, so the ranking follows the grid in effect. */
@@ -70,7 +70,8 @@ public:
     const Tuning& getTuning() const;
 
     void chooseTuningTable(BuiltinTuningType table);
-    void chooseEqualTemperament(double a4Frequency);
+    /** A fitted tuning, from TuningDetection::fits or re-expressed by atClock(). */
+    void chooseFit(const TuningFit& fit);
     void chooseKey(const DetectedKey& key);
     void clearTuningChoice();
 
@@ -95,7 +96,7 @@ private:
     mutable int detectionVersion_ = -1;
     mutable std::optional<Tuning> tuning_;
     mutable int tuningVersion_ = -1;
-    mutable std::array<juce::var, 4> tuningChoice_;
+    mutable std::array<juce::var, 7> tuningChoice_;
     mutable int tuningRevision_ = 0;
 
     Tuning resolveTuning() const;

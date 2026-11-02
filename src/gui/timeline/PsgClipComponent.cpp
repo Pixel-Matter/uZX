@@ -341,6 +341,14 @@ void drawLowEnvelopeArrow(Graphics& g, Rectangle<float> bounds, uint8_t owners, 
     g.strokePath(arrow, PathStrokeType(1.5f));
 }
 
+/** The clock of the AY chip on the clip's track, if the track has one. */
+std::optional<double> getTrackChipClock(const PsgClip& clip) {
+    auto* track = clip.getClipTrack();
+    if (auto* chip = track != nullptr ? track->pluginList.findFirstPluginOfType<uZX::AYChipPlugin>() : nullptr)
+        return chip->staticParams.chipClock.getStoredValue() * uZX::MHz;
+    return std::nullopt;
+}
+
 /** Global app setting: show periods and volumes in hex in the frame hover. */
 constexpr auto hexHoverSetting = "psgHoverHexParams";
 constexpr auto noteLanesSetting = "showNoteLanes";
@@ -363,6 +371,14 @@ bool arePianoKeysShown(te::Engine& engine) {
 
 void setPianoKeysShown(te::Engine& engine, bool shouldShow) {
     engine.getPropertyStorage().getPropertiesFile().setValue(pianoKeysSetting, shouldShow);
+}
+
+String getClockMismatchText(double tuningClock, double trackClock) {
+    const int cents = roundToInt(1200.0 * std::log2(trackClock / tuningClock));
+    if (cents == 0)
+        return {};
+    return String::fromUTF8("\xE2\x9A\xA0 ") + getClockName(tuningClock) + " @ " + getClockName(trackClock)  // ⚠
+         + String::formatted(" %+d", cents) + String::fromUTF8("\xC2\xA2");                                  // ¢
 }
 
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex) {
@@ -504,8 +520,13 @@ void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree& tree, const juc
         || property == te::IDs::bpm
         || property == te::IDs::startBeat)
         repaint();
+    // The header's clock warning compares the tuning with the track's AY clock. Changes are
+    // rare, so any chip's clock repaints every PSG clip.
+    else if (property == uZX::IDs::clock)
+        repaint();
     // The listener sits on the whole edit; another clip's tuning is not ours to repaint.
-    else if ((property == IDs::clipTuningTable || property == IDs::clipTuningA4
+    else if ((property == IDs::clipTuningTable || property == IDs::clipTuningA4 || property == IDs::clipTuningClock
+              || property == IDs::clipTuningSystem || property == IDs::clipTuningTonic
               || property == IDs::clipKeyTonic || property == IDs::clipKeyMinor)
              && tree == clip->state)
         repaint();
@@ -605,11 +626,7 @@ std::vector<std::pair<String, Colour>> PsgClipComponent::describeFrameAt(int x) 
     if (time >= frames[i]->getEditTime(*psgClip) + getClipFrameDuration(*psgClip))
         data.clear();
 
-    auto* track = psgClip->getClipTrack();
-    auto* chip = track != nullptr ? track->pluginList.findFirstPluginOfType<uZX::AYChipPlugin>() : nullptr;
-    const double clockHz = chip != nullptr
-        ? chip->staticParams.chipClock.getStoredValue() * uZX::MHz
-        : uZX::ChipClockEnum::clockValues[uZX::ChipClockEnum::ZX_Spectrum_1_77_MHz];
+    const double clockHz = getTrackChipClock(*psgClip).value_or(tuningGridClock);
     const bool hex = clip->edit.engine.getPropertyStorage().getPropertiesFile().getBoolValue(hexHoverSetting);
     return formatPsgFrame(data, clockHz, hex);
 }
@@ -1092,11 +1109,7 @@ void PsgClipComponent::paintHeader(Graphics& g) {
     const auto effectiveFps = psgClip->getPsg().getEffectiveFps(*psgClip);
     const auto editFps = Helpers::getProjectFps(psgClip->edit);
 
-    if (psgClip->getPsg().hasFpsMismatch(*psgClip, editFps)) {
-        auto text = String::fromUTF8("\xE2\x9A\xA0 ")  // ⚠
-                  + String(roundToInt(effectiveFps)) + " @ "
-                  + String(roundToInt(editFps)) + " fps";
-
+    const auto drawWarningChip = [&](const String& text) {
         g.setFont(Font(FontOptions((float) swatchSize - 1.0f)));
         const int chipWidth = jmin(row.getWidth(), GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text) + 2 * pad);
         auto chip = row.removeFromLeft(chipWidth);
@@ -1107,6 +1120,12 @@ void PsgClipComponent::paintHeader(Graphics& g) {
         g.drawText(text, chip.reduced(pad, 0), Justification::centred, true);
 
         row.removeFromLeft(pad);
+    };
+
+    if (psgClip->getPsg().hasFpsMismatch(*psgClip, editFps)) {
+        drawWarningChip(String::fromUTF8("\xE2\x9A\xA0 ")  // ⚠
+                        + String(roundToInt(effectiveFps)) + " @ "
+                        + String(roundToInt(editFps)) + " fps");
     }
 
     // Detected (or chosen) tuning table and key; '?' marks a detection tie nobody settled.
@@ -1123,6 +1142,12 @@ void PsgClipComponent::paintHeader(Graphics& g) {
         g.setColour(Colours::white.withAlpha(tuning.uncertain ? 0.9f : 0.6f));
         g.drawText(text, chip.reduced(pad, 0), Justification::centredLeft, true);
         row.removeFromLeft(pad);
+
+        // A fitted tuning names its notes for its clock; a track at another clock plays
+        // them off by the clock ratio. Tracker tables have no clock to disagree with.
+        if (const auto trackClock = getTrackChipClock(*psgClip); tuning.fit && trackClock)
+            if (const auto warning = getClockMismatchText(tuning.fit->chipClock, *trackClock); warning.isNotEmpty())
+                drawWarningChip(warning);
     }
 
     // Clip name fills whatever space is left.

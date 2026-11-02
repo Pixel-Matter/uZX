@@ -14,6 +14,11 @@ namespace MoTool {
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex);
 
 //==============================================================================
+/** The header's warning when a fitted tuning's clock is not the clock its track plays at,
+    e.g. "⚠ Pentagon @ ZX Spectrum +23¢": every note sounds that many cents off its name.
+    Empty when the clocks agree to within a cent. */
+String getClockMismatchText(double tuningClock, double trackClock);
+
 /** One piano-roll lane of the Notes view: a grid note's band in normalized pitch,
     bounded by the midpoints to its neighbours. */
 struct NoteLane

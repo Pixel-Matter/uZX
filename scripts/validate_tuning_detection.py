@@ -8,7 +8,8 @@ by UZX_TUNING_CORPUS) and joins each result with PT3_DIR/<stem>.pt3, read by
 scripts/pt3_info.py. The PT3 header names the tone table the tune was written for,
 and its patterns give the written notes, so the report shows per tune:
 
-  table   the PT3 table (0 PT, 1 ST, 2 ASM, 3 REAL) and whether detection matched it;
+  table   the PT3 table (0 PT, 1 ST, 2 ASM, 3 REAL; for PT 3.3 and older, the earlier
+          lists of #0 and #2) and whether detection matched it;
           a matched table names every note as the composer wrote it
   shift   for a mismatched table, the semitones between written and detected pitch
           classes: +1 is PT #0 read as PT #3, which share all but one period
@@ -32,6 +33,8 @@ import pt3_info  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TESTS = ROOT / "build/src/uZXTests_artefacts/Debug/uZXTests"
 EXPECTED = {0: "CustomPT_0_PT", 1: "CustomPT_1_ST", 2: "CustomPT_2_ASM", 3: "CustomPT_3_REAL"}
+# PT 3.3 and older play tables #0 and #2 from earlier lists (Bulba's PTxPlay: version digit < 4).
+EXPECTED_BEFORE_3_4 = {0: "CustomPT_0_PT33", 2: "CustomPT_2_ASM33"}
 NAMES = pt3_info.NOTE_NAMES
 KK_MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
 KK_MINOR = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
@@ -83,7 +86,8 @@ def main(pt3_dir, psg_dir, tests):
         if info is None or not info["notes"]:
             continue
         written = pt3_info.pitch_classes(info["notes"])
-        expected = EXPECTED.get(info["table"], f"table{info['table']}")
+        expected = (EXPECTED_BEFORE_3_4 if info["version"] < 4 else {}).get(info["table"]) \
+            or EXPECTED.get(info["table"], f"table{info['table']}")
         table_ok = d["grid"] == expected
         shift = best_shift(written, d["pcs"])
         true_key = key_of(written)

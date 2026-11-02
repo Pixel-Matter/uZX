@@ -62,7 +62,10 @@ namespace IDs {
     DECLARE_ID(s)
     DECLARE_ID(paintMode)
     DECLARE_ID(clipTuningTable) // user-chosen BuiltinTuningType name for a PSG clip; absent = detected
-    DECLARE_ID(clipTuningA4)    // user-chosen equal-temperament A4 (Hz at the ZX clock) for a PSG clip
+    DECLARE_ID(clipTuningA4)    // user-chosen fitted tuning's A4 (Hz at clipTuningClock) for a PSG clip
+    DECLARE_ID(clipTuningClock) // chip clock (Hz) of clipTuningA4; absent = the ZX clock
+    DECLARE_ID(clipTuningSystem) // TuningSystemType name of clipTuningA4; absent = equal temperament
+    DECLARE_ID(clipTuningTonic) // just-intonation tonic (0 = C .. 11 = B) of clipTuningA4; absent = C
     DECLARE_ID(clipKeyTonic)    // user-chosen key tonic (0 = C .. 11 = B) for a PSG clip; absent = detected
     DECLARE_ID(clipKeyMinor)    // user-chosen key mode for a PSG clip (true = minor)
     DECLARE_ID(projectFps)

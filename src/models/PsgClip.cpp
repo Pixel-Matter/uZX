@@ -127,17 +127,39 @@ const TuningDetection& PsgClip::getTuningDetection() const {
 
 namespace {
 const juce::Identifier* const tuningChoiceIds[] {
-    &IDs::clipTuningTable, &IDs::clipTuningA4, &IDs::clipKeyTonic, &IDs::clipKeyMinor
+    &IDs::clipTuningTable, &IDs::clipTuningA4,    &IDs::clipTuningClock, &IDs::clipTuningSystem,
+    &IDs::clipTuningTonic, &IDs::clipKeyTonic,    &IDs::clipKeyMinor
 };
 
-// A chosen equal temperament is the detection's fit (A4 within a semitone of 440 Hz);
-// anything far outside that is a damaged or foreign value.
+// A chosen fit has an A4 within a semitone or so of 440 Hz at a chip's clock; anything far
+// outside that is a damaged or foreign value.
 constexpr double minChosenA4 = 300.0, maxChosenA4 = 600.0;
+constexpr double minChosenClock = 0.5e6, maxChosenClock = 4.0e6;
+
+/** The fit stored in a clip's state, if one is there and readable. A choice made before
+    clocks, systems and tonics were stored is a 12TET at the ZX clock. */
+std::optional<TuningFit> readChosenFit(const juce::ValueTree& state) {
+    TuningFit fit;
+    fit.a4Frequency = state.getProperty(IDs::clipTuningA4, 0.0);
+    fit.chipClock = state.getProperty(IDs::clipTuningClock, tuningGridClock);
+    if (state.hasProperty(IDs::clipTuningSystem))
+        fit.system = juce::VariantConverter<TuningSystemType>::fromVar(state[IDs::clipTuningSystem]);
+    const int tonic = state.getProperty(IDs::clipTuningTonic, 0);
+    const bool fitted = std::find(std::begin(fittedSystems), std::end(fittedSystems), fit.system.asEnum())
+                        != std::end(fittedSystems);
+    if (! (std::isfinite(fit.a4Frequency) && fit.a4Frequency >= minChosenA4 && fit.a4Frequency <= maxChosenA4)
+        || ! (std::isfinite(fit.chipClock) && fit.chipClock >= minChosenClock && fit.chipClock <= maxChosenClock)
+        || ! fitted || tonic < 0 || tonic >= 12)
+        return std::nullopt;
+    fit.tonic = Scale::Tonic(tonic);
+    return fit;
+}
 }  // namespace
 
 const PsgClip::Tuning& PsgClip::getTuning() const {
     const auto version = getPsg().getDataVersion();
-    std::array<juce::var, 4> choice;
+    decltype(tuningChoice_) choice;
+    static_assert(std::tuple_size_v<decltype(tuningChoice_)> == std::size(tuningChoiceIds));
     for (size_t i = 0; i < choice.size(); ++i)
         choice[i] = state[*tuningChoiceIds[i]];
     if (! tuning_ || tuningVersion_ != version || tuningChoice_ != choice) {
@@ -153,12 +175,12 @@ PsgClip::Tuning PsgClip::resolveTuning() const {
     const auto& detection = getTuningDetection();
     Tuning tuning;
 
-    const double a4 = state.getProperty(IDs::clipTuningA4, 0.0);
     const auto table = juce::VariantConverter<BuiltinTuningType>::fromVar(state[IDs::clipTuningTable]);
-    if (std::isfinite(a4) && a4 >= minChosenA4 && a4 <= maxChosenA4) {
-        tuning.grid = makeEqualTemperamentGrid(a4, tuningGridClock);
-        tuning.tableLabel = getEqualTemperamentLabel(a4);
-        tuning.isEqualTemperament = tuning.tableChosen = true;
+    if (const auto chosen = readChosenFit(state)) {
+        tuning.fit = *chosen;
+        tuning.grid = makeFitGrid(*chosen);
+        tuning.tableLabel = getFitLabel(*chosen);
+        tuning.tableChosen = true;
     } else if (state.hasProperty(IDs::clipTuningTable) && static_cast<size_t>(table) < BuiltinTuningType::size()) {
         tuning.grid = getBuiltinPeriodGrid(table);
         tuning.tableLabel = String(table.getShortLabel().data());
@@ -167,13 +189,15 @@ PsgClip::Tuning PsgClip::resolveTuning() const {
     } else if (detection.hasNotes) {
         tuning.grid = detection.grid;
         tuning.tableLabel = detection.getTableLabel();
-        tuning.isEqualTemperament = detection.usesEqualTemperament;
-        if (! detection.usesEqualTemperament)
+        if (detection.usesFit)
+            tuning.fit = detection.getFit();
+        else
             tuning.table = detection.tables.front().table;
     }
 
-    // A chosen table may name every note differently (PT #0 is PT #3 a semitone away),
-    // so keys are ranked again on the grid in effect.
+    // A chosen table or clock may name every note differently (PT #0 is PT #3 a semitone
+    // away, a 12TET at the Atari ST clock two semitones from the ZX one), so keys are
+    // ranked again on the grid in effect.
     tuning.keys = tuning.tableChosen ? rankKeys(makePitchClassHistogram(detection.histogram, tuning.grid))
                                      : detection.keys;
     tuning.keyTie = detection.hasNotes && isKeyTie(tuning.keys);
@@ -194,14 +218,18 @@ PsgClip::Tuning PsgClip::resolveTuning() const {
 
 void PsgClip::chooseTuningTable(BuiltinTuningType table) {
     auto* um = getUndoManager();
-    state.removeProperty(IDs::clipTuningA4, um);
+    for (const auto* id : {&IDs::clipTuningA4, &IDs::clipTuningClock, &IDs::clipTuningSystem, &IDs::clipTuningTonic})
+        state.removeProperty(*id, um);
     state.setProperty(IDs::clipTuningTable, juce::VariantConverter<BuiltinTuningType>::toVar(table), um);
 }
 
-void PsgClip::chooseEqualTemperament(double a4Frequency) {
+void PsgClip::chooseFit(const TuningFit& fit) {
     auto* um = getUndoManager();
     state.removeProperty(IDs::clipTuningTable, um);
-    state.setProperty(IDs::clipTuningA4, a4Frequency, um);
+    state.setProperty(IDs::clipTuningSystem, juce::VariantConverter<TuningSystemType>::toVar(fit.system), um);
+    state.setProperty(IDs::clipTuningTonic, static_cast<int>(fit.tonic.asUnderlying()), um);
+    state.setProperty(IDs::clipTuningClock, fit.chipClock, um);
+    state.setProperty(IDs::clipTuningA4, fit.a4Frequency, um);
 }
 
 void PsgClip::chooseKey(const DetectedKey& key) {

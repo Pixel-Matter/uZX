@@ -344,6 +344,7 @@ void drawLowEnvelopeArrow(Graphics& g, Rectangle<float> bounds, uint8_t owners, 
 /** Global app setting: show periods and volumes in hex in the frame hover. */
 constexpr auto hexHoverSetting = "psgHoverHexParams";
 constexpr auto noteLanesSetting = "showNoteLanes";
+constexpr auto pianoKeysSetting = "noteLanesAsPianoKeys";
 
 } // namespace
 
@@ -354,6 +355,14 @@ bool areNoteLanesShown(te::Engine& engine) {
 void setNoteLanesShown(te::Engine& engine, bool shouldShow) {
     // The settings file broadcasts the change; every PsgClipComponent repaints on it.
     engine.getPropertyStorage().getPropertiesFile().setValue(noteLanesSetting, shouldShow);
+}
+
+bool arePianoKeysShown(te::Engine& engine) {
+    return engine.getPropertyStorage().getPropertiesFile().getBoolValue(pianoKeysSetting, false);
+}
+
+void setPianoKeysShown(te::Engine& engine, bool shouldShow) {
+    engine.getPropertyStorage().getPropertiesFile().setValue(pianoKeysSetting, shouldShow);
 }
 
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex) {
@@ -542,6 +551,9 @@ void PsgClipComponent::mouseDown(const MouseEvent& e) {
         auto& engine = clip->edit.engine;
         m.addItem("Note Lanes", mode == 0, areNoteLanesShown(engine), [&engine] {
             setNoteLanesShown(engine, ! areNoteLanesShown(engine));
+        });
+        m.addItem("Piano Keys", mode == 0 && areNoteLanesShown(engine), arePianoKeysShown(engine), [&engine] {
+            setPianoKeysShown(engine, ! arePianoKeysShown(engine));
         });
         m.addSeparator();
         auto& settings = clip->edit.engine.getPropertyStorage().getPropertiesFile();
@@ -764,6 +776,37 @@ LaneDetail getLaneDetail(float noteHeight) {
     return { level(minLineSpacing), level(minLabelHeight) };
 }
 
+constexpr float whiteKeyWidth = 18.0f, blackKeyWidth = 11.0f;
+
+/** Piano Keys mode: a short keyboard over the grid at the view's left edge, just enough to
+    show the groups of two and three black keys that tell where C is. Each lane is one key;
+    white keys meet halfway along the black key between them, as on a piano. */
+static void paintPianoKeys(Graphics& g, const std::vector<NoteLane>& lanes, const NotesLayout& layout) {
+    const float x = layout.visibleX.getStart();
+    const auto damage = g.getClipBounds().toFloat();
+    if (damage.getX() >= x + whiteKeyWidth || damage.getRight() <= x)
+        return;
+
+    g.setColour(Colours::white.withAlpha(0.85f));
+    g.fillRect(x, 0.0f, whiteKeyWidth, layout.height);
+    for (const auto& lane : lanes) {
+        // Whole pixels, so neighbouring keys neither overlap nor leave seams.
+        const float top = std::round(layout.normToY(lane.hi)), bottom = std::round(layout.normToY(lane.lo));
+        if (bottom < damage.getY() || top > damage.getBottom())
+            continue;
+
+        if (MidiMessage::isMidiNoteBlack(lane.note)) {
+            g.setColour(Colours::black.withAlpha(0.85f));
+            g.fillRect(x, top, blackKeyWidth, bottom - top);
+            g.setColour(Colours::black.withAlpha(0.5f));
+            g.drawHorizontalLine(roundToInt((top + bottom) * 0.5f), x + blackKeyWidth, x + whiteKeyWidth);
+        } else if (lane.note % 12 == 0 || lane.note % 12 == 5) {  // B|C and E|F have no black key between
+            g.setColour(Colours::black.withAlpha(0.5f));
+            g.drawHorizontalLine(roundToInt(bottom), x, x + whiteKeyWidth);
+        }
+    }
+}
+
 /** Piano-roll lanes for the clip's tuning grid, under the notes, which are never snapped
     to them: drift, bends and portamento stay where the chip plays them. The lane list is
     rebuilt only when the clip's tuning changes; each paint draws the lanes that intersect
@@ -784,13 +827,17 @@ void PsgClipComponent::paintNoteLanes(Graphics& g) {
         lanesRevision_ = tuning.revision;
     }
 
+    // Keys too short to tell apart leave just the grid; names move right of the keys.
+    const bool pianoKeys = arePianoKeysShown(psgClip->edit.engine) && detail.lines == LaneDetail::All;
+
     // Without a key the octave anchor falls back to C and no lane is shaded.
     const int tonic = tuning.hasKey ? static_cast<int>(tuning.key.tonic) : 0;
     const float x = layout.visibleX.getStart(), width = layout.visibleX.getLength();
+    const float labelX = x + (pianoKeys ? whiteKeyWidth : 0.0f) + 3.0f;
     const auto damage = g.getClipBounds().toFloat();
     constexpr float labelWidth = 40.0f, tonicLabelHeight = 10.0f;
     const bool labelsInDamage = detail.labels != LaneDetail::None
-        && damage.getX() < x + 3.0f + labelWidth && damage.getRight() > x;
+        && damage.getX() < labelX + labelWidth && damage.getRight() > x;
     if (labelsInDamage)
         g.setFont(Font(FontOptions(detail.labels == LaneDetail::All ? jmin(11.0f, layout.noteHeight - 2.0f) : 9.0f)));
 
@@ -813,14 +860,16 @@ void PsgClipComponent::paintNoteLanes(Graphics& g) {
             continue;
         if (detail.labels == LaneDetail::All) {
             g.setColour(Colours::white.withAlpha(isTonic ? 0.8f : 0.45f));
-            g.drawText(lane.label, Rectangle<float>(x + 3.0f, top, labelWidth, bottom - top),
+            g.drawText(lane.label, Rectangle<float>(labelX, top, labelWidth, bottom - top),
                        Justification::centredLeft, false);
         } else if (isTonic) {
             g.setColour(Colours::white.withAlpha(0.45f));
-            g.drawText(lane.label, Rectangle<float>(x + 3.0f, bottom - tonicLabelHeight, labelWidth, tonicLabelHeight),
+            g.drawText(lane.label, Rectangle<float>(labelX, bottom - tonicLabelHeight, labelWidth, tonicLabelHeight),
                        Justification::bottomLeft, false);
         }
     }
+    if (pianoKeys)
+        paintPianoKeys(g, lanes_, layout);
 }
 
 void PsgClipComponent::paintNotes(Graphics& g) {

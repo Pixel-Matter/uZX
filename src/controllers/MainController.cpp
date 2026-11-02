@@ -328,6 +328,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::viewSnapPlayheadToGrid);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewNoteLanes);
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewPianoKeys);
             if (auto* edit = MoToolApp::getPlayerController().getEdit()) {
                 menu.addSeparator();
                 menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
@@ -474,6 +475,11 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
 
         case MainAppCommands::viewNoteLanes:
             result.setTicked(areNoteLanesShown(engine_));
+            break;
+
+        case MainAppCommands::viewPianoKeys:
+            result.setActive(areNoteLanesShown(engine_));
+            result.setTicked(arePianoKeysShown(engine_));
             break;
 
         case MainAppCommands::viewSnapPlayheadToGrid:
@@ -680,6 +686,11 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::viewNoteLanes:
             setNoteLanesShown(engine_, ! areNoteLanesShown(engine_));
+            commandManager_.commandStatusChanged();
+            break;
+
+        case MainAppCommands::viewPianoKeys:
+            setPianoKeysShown(engine_, ! arePianoKeysShown(engine_));
             commandManager_.commandStatusChanged();
             break;
 

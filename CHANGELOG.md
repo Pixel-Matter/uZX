@@ -9,6 +9,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Tuning table and key detection for imported PSG clips: the clip header shows both (for example `PT #1  E minor`, with `?` on a close call), the Notes view draws the table's notes as piano-roll lanes, and **Tuning and key…** in the clip menu shows the ranked candidates and lets you choose; View > Note Lanes turns the lanes off
 - Tempo detection on PSG import into an empty project: BPM, frames per beat, swings and grooves (tracker speed tables such as 4-4-3-3 frame rows) and 3/4 or 4/4 when the bar repetition is clear. A dump that starts a few frames before its first row is trimmed, or moved right when those frames sound, so that row starts a bar
 - The time signature (SIG) in the transport bar is editable: type `3/4`, `6/8` or a bare numerator; PSG clips keep playing at the same times
+- View > Piano Keys (also in the PSG clip menu): a short piano keyboard over the note lanes at the view's left edge, so the groups of black keys show where C is
 
 ### Changed
 - The Player's timeline shows bars | beats | frames like Studio's, instead of always switching to seconds; a `.uzx` file keeps the format it was saved with

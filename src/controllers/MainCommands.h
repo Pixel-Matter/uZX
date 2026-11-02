@@ -62,6 +62,7 @@ public:
         viewZoomOut,
         viewSnapPlayheadToGrid,
         viewNoteLanes,
+        viewPianoKeys,
 
         // Settings Menu
         settingsAudioMidi    = 600,
@@ -93,7 +94,7 @@ public:
             // addAutomationTrack,
             trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
-            viewSnapPlayheadToGrid, viewNoteLanes,
+            viewSnapPlayheadToGrid, viewNoteLanes, viewPianoKeys,
             settingsAudioMidi, settingsPlugins, settingsTuningTables,
             helpAbout
         };
@@ -163,6 +164,7 @@ public:
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::viewSnapPlayheadToGrid);
             menu.addCommandItem(manager, MainAppCommands::viewNoteLanes);
+            menu.addCommandItem(manager, MainAppCommands::viewPianoKeys);
         } else if (menuName == "Settings") {
             menu.addCommandItem(manager, MainAppCommands::settingsAudioMidi);
             menu.addCommandItem(manager, MainAppCommands::settingsPlugins);
@@ -367,6 +369,12 @@ public:
             case viewNoteLanes:
                 result.setInfo("Note Lanes",
                                "Draw the tuning table's notes as lanes behind PSG clips in the Notes view",
+                               "View", 0);
+                break;
+
+            case viewPianoKeys:
+                result.setInfo("Piano Keys",
+                               "Draw a short piano keyboard over the note lanes at the left edge",
                                "View", 0);
                 break;
 

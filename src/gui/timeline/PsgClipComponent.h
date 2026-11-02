@@ -43,6 +43,11 @@ LaneDetail getLaneDetail(float noteHeight);
 bool areNoteLanesShown(te::Engine&);
 void setNoteLanesShown(te::Engine&, bool shouldShow);
 
+/** Whether the note lanes get a short piano keyboard over their left edge in the view
+    (View > Piano Keys). An app setting, like areNoteLanesShown(). */
+bool arePianoKeysShown(te::Engine&);
+void setPianoKeysShown(te::Engine&, bool shouldShow);
+
 //==============================================================================
 class PsgClipComponent : public MidiClipComponent,
                          private juce::ValueTree::Listener,

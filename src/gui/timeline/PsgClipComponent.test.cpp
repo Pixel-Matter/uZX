@@ -527,6 +527,32 @@ public:
                 for (int x = 0; x < 45 && ! nameNearLeftEdge; ++x)
                     nameNearLeftEdge = image.getPixelAt(x, y).getFloatAlpha() > 0.35f;
             expect(nameNearLeftEdge, "note names must be drawn at the clip's own left edge");
+
+            beginTest("Piano Keys lay a keyboard over the grid's left edge, names beside it");
+            const bool wasPianoKeys = arePianoKeysShown(engine);
+            setPianoKeysShown(engine, true);
+            Image keys(Image::ARGB, 500, 300, true);
+            {
+                Graphics g(keys);
+                component.paintNoteLanes(g);
+            }
+            setPianoKeysShown(engine, wasPianoKeys);
+
+            int blackRows = 0, whiteRows = 0, gridPixels = 0;
+            bool nameBesideKeys = false;
+            for (int y = 0; y < keys.getHeight(); ++y) {
+                const auto key = keys.getPixelAt(5, y);
+                blackRows += key.getFloatAlpha() > 0.8f && key.getBrightness() < 0.3f;
+                whiteRows += key.getFloatAlpha() > 0.8f && key.getBrightness() > 0.9f;
+                for (int x = 20; x < keys.getWidth(); ++x) {
+                    const float alpha = keys.getPixelAt(x, y).getFloatAlpha();
+                    gridPixels += alpha > 0.0f;
+                    nameBesideKeys = nameBesideKeys || (x < 60 && alpha > 0.35f);
+                }
+            }
+            expect(blackRows > 0 && whiteRows > 0, "white keys must read as white and black keys as black");
+            expect(gridPixels > 0, "the grid stays across the clip");
+            expect(nameBesideKeys, "note names must move right of the keys");
         }
 
         beginTest("Lane names stay on the same pixels while the view scrolls by fractions of a pixel");

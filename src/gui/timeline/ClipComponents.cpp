@@ -1,5 +1,7 @@
 #include "ClipComponents.h"
 #include "TimelineGrid.h"
+#include "../common/LookAndFeel.h"
+#include "../../util/Oklch.h"
 
 
 namespace te = tracktion;
@@ -7,26 +9,48 @@ using namespace std::literals;
 
 namespace MoTool {
 
+namespace {
+
+/** The colour's hue at an OKLCH lightness, its chroma scaled: every clip colour, from the
+    palette or chosen by hand, comes out equally light, so one text colour reads on all. */
+Colour atLightness(Colour colour, float lightness, float chromaScale) {
+    auto lch = Oklch::fromColour(colour);
+    lch.L = lightness;
+    lch.C *= chromaScale;
+    return Oklch::toColour(lch);
+}
+
+}  // namespace
+
+Rectangle<int> getShownArea(const Component& c) {
+    auto area = c.getLocalBounds();
+    for (auto* p = c.getParentComponent(); p != nullptr; p = p->getParentComponent())
+        area = area.getIntersection(c.getLocalArea(p, p->getLocalBounds()));
+    return area;
+}
+
 //==============================================================================
 ClipComponent::ClipComponent (EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
     : editViewState (evs), grid (g), clip (c)
 {}
+
+Colour ClipComponent::getFill(Colour clipColour, bool selected) {
+    return selected ? atLightness(clipColour, 0.31f, 0.45f).withAlpha(0.75f)
+                    : atLightness(clipColour, 0.24f, 0.35f).withAlpha(0.75f);
+}
 
 void ClipComponent::paint(Graphics& g) {
     if (editViewState.transparentClips)
         return;
 
     // TODO Move to lookAndFeel
-    g.setColour(clip->getColour().withMultipliedBrightness(0.25f).withAlpha(0.75f));
-    g.fillRoundedRectangle(getLocalBounds().toFloat(), 6.0f);
-
-    if (editViewState.selectionManager.isSelected(clip.get())) {
-        g.setColour(Colours::white.withAlpha(0.5f));
-        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0), 5.0f, 2.0f);
-    } else {
-        // g.setColour(Colors::Theme::border.withAlpha(0.5f));
-        // g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0), 6.0f, 2.0f);
-    }
+    const bool selected = editViewState.selectionManager.isSelected(clip.get());
+    const auto bounds = getLocalBounds().toFloat();
+    Path shape;
+    shape.addRoundedRectangle(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
+                              cornerSize, cornerSize, false, false, true, true);
+    g.setColour(getFill(clip->getColour(), selected));
+    g.fillPath(shape);
 }
 
 void ClipComponent::mouseDown(const MouseEvent& e) {
@@ -38,6 +62,105 @@ void ClipComponent::mouseDown(const MouseEvent& e) {
 }
 
 //==============================================================================
+ClipHeader::ClipHeader(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+    : editViewState(evs), grid(g), clip(c)
+{}
+
+ClipHeader::Fit ClipHeader::fit(int width, int nameWidth, const std::vector<int>& itemWidths, int legendWidth) {
+    constexpr int minNameWidth = 48;
+    Fit result {itemWidths.size(), legendWidth > 0};
+    const auto needed = [&] {
+        int sum = jmin(nameWidth, minNameWidth) + (result.legend ? legendWidth : 0);
+        for (size_t i = 0; i < result.items; ++i)
+            sum += itemWidths[i];
+        return sum;
+    };
+    if (needed() > width)
+        result.legend = false;
+    while (result.items > 0 && needed() > width)
+        --result.items;
+    return result;
+}
+
+Colour ClipHeader::getFill(Colour clipColour, bool selected) {
+    // L 0.72 is the palette's own, see PsgClip::colourForTrackIndex()
+    return selected ? atLightness(clipColour, 0.72f, 1.0f) : atLightness(clipColour, 0.6f, 0.6f);
+}
+
+void ClipHeader::paint(Graphics& g) {
+    constexpr int pad = 3;
+
+    const bool selected = editViewState.selectionManager.isSelected(clip.get());
+    const auto bounds = getLocalBounds().toFloat();
+    Path shape;
+    shape.addRoundedRectangle(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
+                              ClipComponent::cornerSize, ClipComponent::cornerSize, true, true, false, false);
+    g.setColour(getFill(clip->getColour(), selected));
+    g.fillPath(shape);
+
+    auto row = getShownArea(*this).reduced(pad);
+
+    const Font nameFont(FontOptions(11.0f).withStyle("Bold"));
+    const Font font(FontOptions(11.0f));
+    const auto name = clip->getName();
+    const auto warnings = getWarnings();
+    const auto info = getInfo();
+
+    // Each item with the gap before it; warnings are chips, with padding inside.
+    std::vector<int> itemWidths;
+    for (const auto& warning : warnings)
+        itemWidths.push_back(pad + GlyphArrangement::getStringWidthInt(font, warning) + 2 * pad);
+    if (info.isNotEmpty())
+        itemWidths.push_back(pad + GlyphArrangement::getStringWidthInt(font, info));
+    const bool showLegend = selected || editViewState.disableClipSelection;
+    const int legendWidth = showLegend ? getLegendWidth() : 0;
+    const int nameWidth = GlyphArrangement::getStringWidthInt(nameFont, name);
+    const auto fitted = fit(row.getWidth(), nameWidth, itemWidths, legendWidth == 0 ? 0 : legendWidth + pad);
+
+    if (fitted.legend) {
+        auto legend = row.removeFromRight(legendWidth);
+        row.removeFromRight(pad);
+        // The legend's envelope and noise swatches are see-through, drawn for the dark body.
+        g.setColour(Colors::Theme::backgroundAlt);
+        g.fillRoundedRectangle(legend.expanded(1).toFloat(), 2.0f);
+        paintLegend(g, legend);
+    }
+
+    int itemsWidth = 0;
+    for (size_t i = 0; i < fitted.items; ++i)
+        itemsWidth += itemWidths[i];
+    g.setColour(textColour);
+    g.setFont(nameFont);
+    const auto nameArea = row.removeFromLeft(jmin(nameWidth, row.getWidth() - itemsWidth));
+    g.drawText(name, nameArea, Justification::centredLeft, true);
+
+    g.setFont(font);
+    for (size_t i = 0; i < fitted.items; ++i) {
+        row.removeFromLeft(pad);
+        auto area = row.removeFromLeft(itemWidths[i] - pad);
+        if (i < (size_t) warnings.size()) {
+            g.setColour(Colors::Theme::warning.withAlpha(0.9f));
+            g.fillRoundedRectangle(area.toFloat(), 2.0f);
+            g.setColour(Colours::black);
+            g.drawText(warnings[(int) i], area.reduced(pad, 0), Justification::centred, true);
+        } else {
+            g.setColour(textColour);
+            g.drawText(info, area, Justification::centredLeft, true);
+        }
+    }
+}
+
+void ClipHeader::mouseDown(const MouseEvent& e) {
+    if (e.mods.isMiddleButtonDown())
+        return;  // view navigation, see EditComponent
+    if (e.mods.isPopupMenu())
+        return;
+    if (editViewState.disableClipSelection)  // the Player: like anywhere else on the clip
+        clip->edit.getTransport().setPosition(grid.playheadTimeAtX(e.x + getX()));
+    else
+        editViewState.selectionManager.selectOnly(clip.get());
+}
+
 AudioClipComponent::AudioClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
     : ClipComponent(evs, g, c)
 {

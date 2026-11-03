@@ -102,8 +102,8 @@ public:
     }
 
     //==============================================================================
-    /** Draws the paint statistics overlay in the visible (clipped) area. */
-    void drawOverlay(juce::Graphics& g) const {
+    /** Draws the paint statistics overlay in the bottom-right corner of area. */
+    void drawOverlay(juce::Graphics& g, juce::Rectangle<int> area) const {
         double ms = lastPaintTimeMs_.load();
         double currentFps = fps_.load();
         double interval = intervalMs_.load();
@@ -117,12 +117,9 @@ public:
         auto textWidth = static_cast<int>(glyphs.getBoundingBox(0, -1, false).getWidth()) + 6;
         auto textHeight = 14;
 
-        // Use clip bounds to position in visible area (top-right of what's actually visible)
-        auto clipBounds = g.getClipBounds();
-
         auto textBounds = juce::Rectangle<int>(
-            clipBounds.getRight() - textWidth - 2,
-            clipBounds.getY() + 2,
+            area.getRight() - textWidth - 2,
+            area.getBottom() - textHeight - 2,
             textWidth,
             textHeight
         );

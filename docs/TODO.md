@@ -16,7 +16,7 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)
 - [x] Better BPM editing
-- [ ] Clip names are visible on audio and MIDI clips (PSG clips show them)
+- [x] Clip names are visible on audio and MIDI clips (PSG clips show them)
 - [ ] Virtual MIDI keyboard (see audio plugin host)
 - [ ] Loop region and looped playback (Loop toggle exists, no range UI)
 - [ ] Track level knob/slider

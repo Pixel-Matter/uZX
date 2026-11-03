@@ -130,6 +130,7 @@ set(TEST_SOURCES
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
 
     gui/timeline/TimelineGrid.test.cpp
+    gui/timeline/ClipComponents.test.cpp
     gui/timeline/EditComponent.test.cpp
     gui/timeline/PsgClipComponent.test.cpp
     gui/timeline/PsgClipTestHelpers.h

@@ -18,18 +18,18 @@ public:
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
         auto renderData = [&engine](uZX::PsgData data, int width = 100, int height = 300,
-                                    bool header = false) {
-            return Tests::renderPsgClip(engine, std::move(data), width, height, {}, header);
+                                    bool legend = false) {
+            return Tests::renderPsgClip(engine, std::move(data), width, height, {}, legend);
         };
         auto render = [&renderData](uint8_t mixer, uint8_t volumeA, uint8_t volumeB, uint8_t volumeC = 0,
-                                    bool header = false, int width = 100, int height = 300) {
+                                    bool legend = false, int width = 100, int height = 300) {
             const uZX::PsgData data {
                 {{{uZX::PsgRegType::Mixer, mixer}, {uZX::PsgRegType::NoisePeriod, 16},
                   {uZX::PsgRegType::VolumeA, volumeA}, {uZX::PsgRegType::VolumeB, volumeB},
                   {uZX::PsgRegType::VolumeC, volumeC}}},
                 {50.0, 1}
             };
-            return renderData(data, width, height, header);
+            return renderData(data, width, height, legend);
         };
         auto isBlank = [](const Image& image) {
             for (int y = 0; y < image.getHeight(); ++y)
@@ -375,7 +375,7 @@ public:
         expect(hasOutline, "Tone-off must not hide envelope channel ownership");
         expect(hasHatching, "Envelope hatching keeps the envelope color");
 
-        beginTest("Header shows A/B/C colors and a padded outlined envelope swatch");
+        beginTest("Legend shows A/B/C colors and a padded outlined envelope swatch");
         const auto header = render(0x3f, 0, 0, 0, true);
         const std::array<Colour, 3> colors {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
         for (int ch = 0; ch < 3; ++ch) {
@@ -407,7 +407,7 @@ public:
         expect(std::abs(int(noiseCenter.getRed()) - int(Colors::PSG::Mix.getRed())) <= 2);
         expect(std::abs(int(noiseCenter.getGreen()) - int(Colors::PSG::Mix.getGreen())) <= 2);
         expect(std::abs(int(noiseCenter.getBlue()) - int(Colors::PSG::Mix.getBlue())) <= 2);
-        expect(header.getPixelAt(68, 8).isTransparent(), "Padding follows N before the clip name");
+        expect(header.getPixelAt(68, 8).isTransparent(), "The legend ends with N");
 
         beginTest("Frame hover shows the full state as a right-aligned table, changes bright");
         using T = PsgParamType;

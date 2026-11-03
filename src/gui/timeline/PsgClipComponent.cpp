@@ -349,6 +349,13 @@ std::optional<double> getTrackChipClock(const PsgClip& clip) {
     return std::nullopt;
 }
 
+/** Clip properties the tuning and key are read from. */
+bool isTuningProperty(const juce::Identifier& property) {
+    return property == IDs::clipTuningTable || property == IDs::clipTuningA4 || property == IDs::clipTuningClock
+        || property == IDs::clipTuningSystem || property == IDs::clipTuningTonic
+        || property == IDs::clipKeyTonic || property == IDs::clipKeyMinor;
+}
+
 /** Global app setting: show periods and volumes in hex in the frame hover. */
 constexpr auto hexHoverSetting = "psgHoverHexParams";
 constexpr auto noteLanesSetting = "showNoteLanes";
@@ -492,8 +499,7 @@ PsgClipComponent::PsgClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip
     // , vblankAttachment_(this, [this](double) { onVBlank(); })
 {
     // setBufferedToImage(true);
-    // The fps-warning in the header depends on the edit's timecode format,
-    // so repaint when it changes.
+    // Tempo and the clip's tuning, see valueTreePropertyChanged().
     editViewState.edit.state.addListener(this);
     // App settings such as Note Lanes. Track bodies are buffered to images, so a window
     // repaint would not reach this component: it has to repaint itself.
@@ -514,21 +520,11 @@ PsgClip* PsgClipComponent::getPsgClip() {
 }
 
 void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Identifier& property) {
-    // The header's effective-fps warning depends on frames-per-beat, current beat length
-    // and the edit's timecode fps, so refresh when tempo or timecode changes.
-    if (property == IDs::timecodeDisplayMode
-        || property == te::IDs::bpm
-        || property == te::IDs::startBeat)
-        repaint();
-    // The header's clock warning compares the tuning with the track's AY clock. Changes are
-    // rare, so any chip's clock repaints every PSG clip.
-    else if (property == uZX::IDs::clock)
+    // Frames are placed at the effective fps: frames-per-beat at the current beat length.
+    if (property == te::IDs::bpm || property == te::IDs::startBeat)
         repaint();
     // The listener sits on the whole edit; another clip's tuning is not ours to repaint.
-    else if ((property == IDs::clipTuningTable || property == IDs::clipTuningA4 || property == IDs::clipTuningClock
-              || property == IDs::clipTuningSystem || property == IDs::clipTuningTonic
-              || property == IDs::clipKeyTonic || property == IDs::clipKeyMinor)
-             && tree == clip->state)
+    else if ((isTuningProperty(property) || property == IDs::paintMode) && tree == clip->state)
         repaint();
 }
 
@@ -545,52 +541,50 @@ void PsgClipComponent::paint(Graphics& g) {
         paintRegisters(g);
     }
 
-    paintHeader(g);
-
    #if JUCE_DEBUG
-    paintMeasurer_.drawOverlay(g);
+    paintMeasurer_.drawOverlay(g, getShownArea(*this));
    #endif
+}
+
+/** The right-click menu of a PSG clip's body and header. */
+static void showPsgClipMenu(PsgClip& psgClip) {
+    const int mode = psgClip.state.getProperty(IDs::paintMode, 0);
+
+    // The body repaints on the paint mode change.
+    PopupMenu m;
+    m.addItem("Notes", true, mode == 0, [clip = te::Clip::Ptr(&psgClip)] {
+        clip->state.setProperty(IDs::paintMode, 0, nullptr);
+    });
+    m.addItem("Registers", true, mode == 1, [clip = te::Clip::Ptr(&psgClip)] {
+        clip->state.setProperty(IDs::paintMode, 1, nullptr);
+    });
+    auto& engine = psgClip.edit.engine;
+    m.addItem("Note Lanes", mode == 0, areNoteLanesShown(engine), [&engine] {
+        setNoteLanesShown(engine, ! areNoteLanesShown(engine));
+    });
+    m.addItem("Piano Keys", mode == 0 && areNoteLanesShown(engine), arePianoKeysShown(engine), [&engine] {
+        setPianoKeysShown(engine, ! arePianoKeysShown(engine));
+    });
+    m.addSeparator();
+    auto& settings = engine.getPropertyStorage().getPropertiesFile();
+    m.addItem("Hex params in hover", true, settings.getBoolValue(hexHoverSetting), [&settings] {
+        settings.setValue(hexHoverSetting, ! settings.getBoolValue(hexHoverSetting));
+    });
+    m.addSeparator();
+    m.addItem("Tuning and key...", psgClip.getTuningDetection().hasNotes, false,
+              [safeClip = te::SafeSelectable<PsgClip>(&psgClip)] {
+                  if (auto* c = safeClip.get())
+                      TuningPickerComponent::show(*c);
+              });
+    m.showMenuAsync({});
 }
 
 void PsgClipComponent::mouseDown(const MouseEvent& e) {
     hideFrameHover();
-    if (e.mods.isPopupMenu()) {
-        auto* psgClip = getPsgClip();
-        if (psgClip == nullptr) return;
-
-        int mode = clip->state.getProperty(IDs::paintMode, 0);
-
-        PopupMenu m;
-        m.addItem("Notes", true, mode == 0, [this] {
-            clip->state.setProperty(IDs::paintMode, 0, nullptr);
-            repaint();
-        });
-        m.addItem("Registers", true, mode == 1, [this] {
-            clip->state.setProperty(IDs::paintMode, 1, nullptr);
-            repaint();
-        });
-        auto& engine = clip->edit.engine;
-        m.addItem("Note Lanes", mode == 0, areNoteLanesShown(engine), [&engine] {
-            setNoteLanesShown(engine, ! areNoteLanesShown(engine));
-        });
-        m.addItem("Piano Keys", mode == 0 && areNoteLanesShown(engine), arePianoKeysShown(engine), [&engine] {
-            setPianoKeysShown(engine, ! arePianoKeysShown(engine));
-        });
-        m.addSeparator();
-        auto& settings = clip->edit.engine.getPropertyStorage().getPropertiesFile();
-        m.addItem("Hex params in hover", true, settings.getBoolValue(hexHoverSetting), [&settings] {
-            settings.setValue(hexHoverSetting, ! settings.getBoolValue(hexHoverSetting));
-        });
-        m.addSeparator();
-        m.addItem("Tuning and key...", psgClip->getTuningDetection().hasNotes, false,
-                  [safeClip = te::SafeSelectable<PsgClip>(psgClip)] {
-                      if (auto* c = safeClip.get())
-                          TuningPickerComponent::show(*c);
-                  });
-        m.showMenuAsync({});
-    } else {
+    if (! e.mods.isPopupMenu())
         ClipComponent::mouseDown(e);
-    }
+    else if (auto* psgClip = getPsgClip())
+        showPsgClipMenu(*psgClip);
 }
 
 void PsgClipComponent::mouseMove(const MouseEvent&) {
@@ -1054,22 +1048,90 @@ void PsgClipComponent::paintNotes(Graphics& g) {
     });
 }
 
-void PsgClipComponent::paintHeader(Graphics& g) {
-    auto* psgClip = getPsgClip();
-    if (psgClip == nullptr) return;
+//==============================================================================
+PsgClipHeader::PsgClipHeader(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
+    : ClipHeader(evs, g, c)
+{
+    editViewState.edit.state.addListener(this);
+}
 
-    constexpr int pad = 3;
-    constexpr int swatchSize = 12;
-    constexpr int spacing = 1;
+PsgClipHeader::~PsgClipHeader() {
+    editViewState.edit.state.removeListener(this);
+}
 
-    // The clip component can extend far off-screen (its width is the whole clip in
-    // pixels), so anchor the header to the currently-visible slice rather than the
-    // component's own left edge. getClipBounds() is that slice, in local coords.
-    auto row = g.getClipBounds().removeFromTop(swatchSize + 2 * pad).reduced(pad, pad);
+void PsgClipHeader::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Identifier& property) {
+    // The effective-fps warning depends on frames-per-beat, current beat length
+    // and the edit's timecode fps, so refresh when tempo or timecode changes.
+    if (property == IDs::timecodeDisplayMode
+        || property == te::IDs::bpm
+        || property == te::IDs::startBeat)
+        repaint();
+    // The clock warning compares the tuning with the track's AY clock. Changes are
+    // rare, so any chip's clock repaints every PSG clip header.
+    else if (property == uZX::IDs::clock)
+        repaint();
+    else if (isTuningProperty(property) && tree == clip->state)
+        repaint();
+}
 
-    // Channel colors and the envelope-pitch appearance on the left.
-    enum class LegendStyle { Channel, Envelope, Noise };
-    struct LegendItem { const char* label; Colour color; LegendStyle style = LegendStyle::Channel; };
+void PsgClipHeader::mouseDown(const MouseEvent& e) {
+    if (! e.mods.isPopupMenu())
+        ClipHeader::mouseDown(e);
+    else if (auto* psgClip = dynamic_cast<PsgClip*>(clip.get()))
+        showPsgClipMenu(*psgClip);
+}
+
+StringArray PsgClipHeader::getWarnings() {
+    auto* psgClip = dynamic_cast<PsgClip*>(clip.get());
+    if (psgClip == nullptr)
+        return {};
+
+    StringArray warnings;
+    const auto editFps = Helpers::getProjectFps(psgClip->edit);
+    if (psgClip->getPsg().hasFpsMismatch(*psgClip, editFps))
+        warnings.add(String::fromUTF8("\xE2\x9A\xA0 ")  // ⚠
+                     + String(roundToInt(psgClip->getPsg().getEffectiveFps(*psgClip))) + " @ "
+                     + String(roundToInt(editFps)) + " fps");
+
+    // A fitted tuning names its notes for its clock; a track at another clock plays
+    // them off by the clock ratio. Tracker tables have no clock to disagree with.
+    if (const auto& tuning = psgClip->getTuning(); tuning.fit)
+        if (const auto trackClock = getTrackChipClock(*psgClip))
+            if (const auto warning = getClockMismatchText(tuning.fit->chipClock, *trackClock); warning.isNotEmpty())
+                warnings.add(warning);
+    return warnings;
+}
+
+String PsgClipHeader::getInfo() {
+    auto* psgClip = dynamic_cast<PsgClip*>(clip.get());
+    if (psgClip == nullptr)
+        return {};
+
+    // Detected (or chosen) tuning table and key; '?' marks a detection tie nobody settled.
+    // A clip without audible pitches has neither, unless the user chose one.
+    const auto& tuning = psgClip->getTuning();
+    auto text = tuning.tableLabel;
+    if (tuning.hasKey)
+        text << (text.isEmpty() ? "" : "  ") << tuning.key.getName();
+    if (text.isNotEmpty() && tuning.uncertain)
+        text << " ?";
+    return text;
+}
+
+namespace {
+
+enum class LegendStyle { Channel, Envelope, Noise };
+struct LegendItem { const char* label; Colour color; LegendStyle style = LegendStyle::Channel; };
+
+constexpr int legendSpacing = 1;
+
+Font getLegendFont() {
+    return Font(FontOptions(11.0f).withStyle("Bold"));
+}
+
+/** Channel colors and the envelope-pitch appearance, with each swatch's width. */
+template <typename Fn>
+void forEachLegendSwatch(Fn&& fn) {
     const LegendItem items[] = {
         { "A", Colors::PSG::A },
         { "B", Colors::PSG::B },
@@ -1077,14 +1139,24 @@ void PsgClipComponent::paintHeader(Graphics& g) {
         { "E", Colors::PSG::Env, LegendStyle::Envelope },
         { "N", Colors::PSG::Mix, LegendStyle::Noise },
     };
+    const auto font = getLegendFont();
+    for (const auto& item : items)
+        fn(item, jmax(12, GlyphArrangement::getStringWidthInt(font, item.label) + 4));
+}
 
-    g.setFont(Font(FontOptions((float) swatchSize - 1.0f).withStyle("Bold")));
-    for (const auto& item : items) {
-        const int swatchWidth = jmax(
-            swatchSize,
-            GlyphArrangement::getStringWidthInt(g.getCurrentFont(), item.label) + 4
-        );
-        auto swatch = row.removeFromLeft(swatchWidth);
+}  // namespace
+
+int PsgClipHeader::getLegendWidth() {
+    int width = -legendSpacing;
+    forEachLegendSwatch([&](const LegendItem&, int swatchWidth) { width += swatchWidth + legendSpacing; });
+    return width;
+}
+
+void PsgClipHeader::paintLegend(Graphics& g, Rectangle<int> area) {
+    g.setFont(getLegendFont());
+    forEachLegendSwatch([&](const LegendItem& item, int swatchWidth) {
+        auto swatch = area.removeFromLeft(swatchWidth);
+        area.removeFromLeft(legendSpacing);
         if (item.style == LegendStyle::Noise) {
             drawNoiseBand(g, swatch.toFloat(), 0.9f);
         } else if (item.style == LegendStyle::Envelope) {
@@ -1099,61 +1171,7 @@ void PsgClipComponent::paintHeader(Graphics& g) {
         }
         g.setColour(item.style == LegendStyle::Channel ? Colours::black : Colours::white);
         g.drawText(item.label, swatch, Justification::centred);
-        row.removeFromLeft(spacing);
-    }
-    row.removeFromLeft(pad);
-
-    // fps warning chip after the swatches, only when the clip's fps differs from the
-    // edit's. Kept on the left so it never collides with the paint-measurer overlay,
-    // which draws in the top-right corner.
-    const auto effectiveFps = psgClip->getPsg().getEffectiveFps(*psgClip);
-    const auto editFps = Helpers::getProjectFps(psgClip->edit);
-
-    const auto drawWarningChip = [&](const String& text) {
-        g.setFont(Font(FontOptions((float) swatchSize - 1.0f)));
-        const int chipWidth = jmin(row.getWidth(), GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text) + 2 * pad);
-        auto chip = row.removeFromLeft(chipWidth);
-
-        g.setColour(Colors::Theme::warning.withAlpha(0.9f));
-        g.fillRoundedRectangle(chip.toFloat(), 2.0f);
-        g.setColour(Colours::black);
-        g.drawText(text, chip.reduced(pad, 0), Justification::centred, true);
-
-        row.removeFromLeft(pad);
-    };
-
-    if (psgClip->getPsg().hasFpsMismatch(*psgClip, editFps)) {
-        drawWarningChip(String::fromUTF8("\xE2\x9A\xA0 ")  // ⚠
-                        + String(roundToInt(effectiveFps)) + " @ "
-                        + String(roundToInt(editFps)) + " fps");
-    }
-
-    // Detected (or chosen) tuning table and key; '?' marks a detection tie nobody settled.
-    // A clip without audible pitches has neither, unless the user chose one.
-    if (const auto& tuning = psgClip->getTuning(); tuning.tableLabel.isNotEmpty() || tuning.hasKey) {
-        auto text = tuning.tableLabel;
-        if (tuning.hasKey)
-            text << (text.isEmpty() ? "" : "  ") << tuning.key.getName();
-        if (tuning.uncertain)
-            text << " ?";
-        g.setFont(Font(FontOptions((float) swatchSize - 1.0f)));
-        const int width = jmin(row.getWidth(), GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text) + 2 * pad);
-        auto chip = row.removeFromLeft(width);
-        g.setColour(Colours::white.withAlpha(tuning.uncertain ? 0.9f : 0.6f));
-        g.drawText(text, chip.reduced(pad, 0), Justification::centredLeft, true);
-        row.removeFromLeft(pad);
-
-        // A fitted tuning names its notes for its clock; a track at another clock plays
-        // them off by the clock ratio. Tracker tables have no clock to disagree with.
-        if (const auto trackClock = getTrackChipClock(*psgClip); tuning.fit && trackClock)
-            if (const auto warning = getClockMismatchText(tuning.fit->chipClock, *trackClock); warning.isNotEmpty())
-                drawWarningChip(warning);
-    }
-
-    // Clip name fills whatever space is left.
-    g.setFont(Font(FontOptions((float) swatchSize - 1.0f)));
-    g.setColour(Colours::white.withAlpha(0.7f));
-    g.drawText(psgClip->getName(), row, Justification::centredLeft, true);
+    });
 }
 
 }  // namespace MoTool

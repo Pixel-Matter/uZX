@@ -77,6 +77,7 @@ private:
     TimelineGrid& grid;
 
     OwnedArray<ClipComponent> clips;
+    OwnedArray<ClipHeader> clipHeaders;
     std::unique_ptr<RecordingClipComponent> recordingClip;
 
     bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false;

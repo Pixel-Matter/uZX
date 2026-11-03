@@ -135,14 +135,15 @@ struct Timeline {
 
 // PSG specific colors
 struct PSG {
-    // Channel colours share OKLCH lightness and chroma so no channel stands out;
-    // hues are those of orange-400, emerald-500 and indigo-400. C 0.155 is the
-    // most all three hues can show in sRGB at L 0.70.
-    inline static const auto A   = Oklch::toColour({0.70f, 0.155f, 56.7f});
-    inline static const auto B   = Oklch::toColour({0.70f, 0.155f, 160.4f});
-    inline static const auto C   = Oklch::toColour({0.70f, 0.155f, 276.9f});
+    // Channel and envelope colours share OKLCH lightness and chroma so none
+    // stands out; hues are near orange-400, emerald-500, indigo-400 and
+    // purple-400. L 0.68, C 0.168 is about the most chroma these four hues
+    // share in sRGB: indigo caps it, and green is nudged to 152 to keep up.
+    inline static const auto A   = Oklch::toColour({0.68f, 0.168f, 55.0f});
+    inline static const auto B   = Oklch::toColour({0.68f, 0.168f, 152.0f});
+    inline static const auto C   = Oklch::toColour({0.68f, 0.168f, 276.9f});
 
-    inline static const auto Env = Palette::purple400;
+    inline static const auto Env = Oklch::toColour({0.68f, 0.168f, 307.1f});
     inline static const auto Mix = Palette::slate500;
 };
 

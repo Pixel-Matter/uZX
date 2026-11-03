@@ -15,7 +15,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Changed
 - New PSG clips get track colours of equal lightness and colourfulness: the hue steps around OKLCH instead of HSV, so yellow and cyan clips no longer outshine blue and violet ones
-- The AY channel colours A, B and C (orange, green, blue) share one lightness and colourfulness, so channel A no longer looks brightest and C darkest
+- The AY channel colours A, B and C (orange, green, blue) and the envelope's purple share one lightness and colourfulness, so channel A no longer looks brightest and C darkest. The E swatch in the clip header shows its stripes in the full envelope colour, as envelope notes do, instead of faded
 - The Player's timeline shows bars | beats | frames like Studio's, instead of always switching to seconds; a `.uzx` file keeps the format it was saved with
 - Master volume is an app setting instead of a per-file one: Player and Studio each remember it across launches and apply it to every opened file
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6

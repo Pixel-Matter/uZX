@@ -2,7 +2,7 @@
 
 µZX is a suite of applications for working with PSG chip music (AY-3-8910 / YM2149), targeting ZX Spectrum demoscene production.
 
-The screenshots show the macOS build using the [Guide melody example](examples/Guide%20melody.uzx).
+The screenshots show the macOS build using the [Guide demo project](../tests/fixtures/Guide%20demo.uzx).
 
 ---
 

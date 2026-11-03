@@ -44,9 +44,12 @@ class GuideIllustrationsTest(unittest.TestCase):
 
     def test_demo_contains_real_chip_data_without_personal_paths(self):
         root = ET.parse(guide.EXAMPLE).getroot()
-        self.assertEqual(root.find("TRACK").get("name"), "Guide melody")
-        self.assertIsNotNone(root.find(".//PLUGIN[@type='aychip']"))
-        self.assertEqual(len(root.findall(".//PSG/FRAME")), 400)
+        self.assertEqual(root.find("TRACK").get("name"), guide.TRACK)
+        self.assertEqual(len(root.findall("TRACK/PLUGIN[@type='aychip']")), 3)
+        clips = root.findall("TRACK/PSGCLIP")
+        self.assertEqual(len(clips), 18)
+        self.assertEqual(len({clip.get("colour") for clip in clips}), 18, "one palette step per clip")
+        self.assertTrue(all(clip.findall("PSG/FRAME") for clip in clips))
         self.assertNotIn("/Users/", guide.EXAMPLE.read_text())
         self.assertIsNone(root.get("modifiedBy"))
 

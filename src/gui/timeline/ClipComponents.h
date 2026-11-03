@@ -29,8 +29,9 @@ public:
     /** Of the clip's outline: the header rounds the top corners, the body the bottom ones. */
     static constexpr float cornerSize = 6.0f;
 
-    /** A dark, see-through shade of the clip's colour, lighter when selected. */
-    static Colour getFill(Colour clipColour, bool selected);
+    /** The body: the lane's slate, a little lighter, more when the clip is selected.
+        The clip's colour is in its header and ring. */
+    static Colour getFill(Colour lane, bool selected);
 
     /** Width and colour (a pale tint of the clip's hue) of the ring around a selected clip's
         header and body. Every clip is inset by ringWidth so the ring fits outside it. */

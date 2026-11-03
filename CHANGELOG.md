@@ -14,7 +14,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Tuning detection knows the earlier ProTracker tables #0 and #2 that PT 3.3 and older play, so tunes written with them are named on their own table instead of a nearby one. The Tuning window measures each tracker table against the clock and A4 its authors documented, such as 1.625 MHz for ProTracker #0 and 1.52064 MHz for Vortex Tracker #4
 
 ### Changed
-- Unselected clip headers keep the clip's full colour instead of a dimmed one; a selected clip is lighter and has a ring in a pale tint of its colour
+- Unselected clip headers keep the clip's full colour instead of a dimmed one; a selected clip is lighter and has a ring in a pale tint of its colour. Clip bodies are the track's own slate, a little lighter, instead of a dark tint of the clip colour that turned muddy over the slate
 - New PSG clips get track colours of equal lightness and colourfulness: the hue steps around OKLCH instead of HSV, so yellow and cyan clips no longer outshine blue and violet ones
 - The AY channel colours A, B and C (orange, green, blue) and the envelope's purple share one lightness and colourfulness, so channel A no longer looks brightest and C darkest. The E swatch in the clip header shows its stripes in the full envelope colour, as envelope notes do, instead of faded
 - Accent colours across the UI share the PSG channels' lightness and colourfulness: automation Write, Record, mute and arm are a softer red instead of pure `#FF0000`, and solo, warnings, highlights, the level meter, MIDI-mapped markers and notes two channels play at once follow the same level

@@ -203,7 +203,7 @@ void TrackHeaderComponent::valueTreeChildRemoved(ValueTree&, ValueTree& c, int) 
 
 void TrackHeaderComponent::paint(Graphics& g) {
     bool isSelected = editViewState.selectionManager.isSelected(track.get());
-    auto bgColor = isSelected ? Colors::Theme::backgroundSel : Colors::Theme::backgroundAlt;
+    auto bgColor = Colors::Timeline::lane(isSelected);
 
     g.setColour(bgColor);
     g.fillRect(getLocalBounds().withTrimmedRight(2));
@@ -260,7 +260,7 @@ TrackBodyComponent::~TrackBodyComponent() {
 
 void TrackBodyComponent::paint(Graphics& g) {
     bool isSelected = editViewState.selectionManager.isSelected(track.get());
-    auto bgColor = isSelected ? Colors::Theme::backgroundSel : Colors::Theme::backgroundAlt;
+    auto bgColor = Colors::Timeline::lane(isSelected);
 
     g.fillAll(bgColor);
 

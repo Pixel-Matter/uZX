@@ -69,6 +69,16 @@ public:
             expectWithinAbsoluteError(selected.C, jmin(original.C, Oklch::maxChroma(selected.L, original.H)), 0.005f);
         }
 
+        beginTest("A clip body is its lane's slate, lighter than the lane, more when selected");
+        for (const bool trackSelected : {false, true}) {
+            const auto lane = Oklch::fromColour(Colors::Timeline::lane(trackSelected));
+            const auto body = Oklch::fromColour(ClipComponent::getFill(Colors::Timeline::lane(trackSelected), false));
+            const auto selected = Oklch::fromColour(ClipComponent::getFill(Colors::Timeline::lane(trackSelected), true));
+            expect(body.L > lane.L + 0.02f && selected.L > body.L + 0.02f);
+            expectWithinAbsoluteError(body.C, lane.C, 0.005f);
+            expectWithinAbsoluteError(body.H, lane.H, 3.0f);
+        }
+
         auto& engine = *te::Engine::getEngines()[0];
         auto edit = te::Edit::createSingleTrackEdit(engine);
         uZX::PsgData data {{{{uZX::PsgRegType::VolumeA, 12}}}, {50.0, 1}};

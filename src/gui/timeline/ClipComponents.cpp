@@ -34,9 +34,11 @@ ClipComponent::ClipComponent (EditViewState& evs, TimelineGrid& g, te::Clip::Ptr
     : editViewState (evs), grid (g), clip (c)
 {}
 
-Colour ClipComponent::getFill(Colour clipColour, bool selected) {
-    return selected ? atLightness(clipColour, 0.36f, 0.55f).withAlpha(0.75f)
-                    : atLightness(clipColour, 0.24f, 0.35f).withAlpha(0.75f);
+Colour ClipComponent::getFill(Colour lane, bool selected) {
+    // Neutral, so the notes' channel colours stand out; lighter than the lane, a card on it
+    auto lch = Oklch::fromColour(lane);
+    lch.L += selected ? 0.07f : 0.035f;
+    return Oklch::toColour(lch);
 }
 
 Colour ClipComponent::getRingColour(Colour clipColour) {
@@ -53,7 +55,9 @@ void ClipComponent::paint(Graphics& g) {
     Path shape;
     shape.addRoundedRectangle(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
                               cornerSize, cornerSize, false, false, true, true);
-    g.setColour(getFill(clip->getColour(), selected));
+    const auto* track = clip->getTrack();
+    const bool trackSelected = track != nullptr && editViewState.selectionManager.isSelected(track);
+    g.setColour(getFill(Colors::Timeline::lane(trackSelected), selected));
     g.fillPath(shape);
 }
 

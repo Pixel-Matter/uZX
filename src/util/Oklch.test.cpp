@@ -39,12 +39,16 @@ public:
             expect(PsgClip::colourForTrackIndex(0) == PsgClip::colourForTrackIndex(18));
         }
 
-        beginTest("PSG channel and envelope colours share lightness and chroma");
+        beginTest("Accent colours share lightness and chroma");
         {
-            for (auto colour : {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C, Colors::PSG::Env}) {
+            for (auto colour : {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C, Colors::PSG::Env,
+                                Colors::PSG::AB, Colors::PSG::AC, Colors::PSG::BC,
+                                Colors::Theme::primary, Colors::Theme::secondary, Colors::Theme::success,
+                                Colors::Theme::warning, Colors::Theme::error, Colors::Meter::midi}) {
+                // Hues sRGB can't show that vividly (yellow, cyan, sky) sit on its boundary
                 const auto lch = fromColour(colour);
                 expectWithinAbsoluteError(lch.L, 0.68f, 0.005f);
-                expectWithinAbsoluteError(lch.C, 0.168f, 0.002f);
+                expectWithinAbsoluteError(lch.C, jmin(0.168f, maxChroma(0.68f, lch.H)), 0.003f);
             }
         }
     }

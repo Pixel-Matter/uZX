@@ -235,7 +235,7 @@ void RecordingClipComponent::initialiseThumbnailAndPunchTime()
 }
 
 void RecordingClipComponent::paint(Graphics& g) {
-    g.fillAll(Colours::red.withAlpha(0.5f));
+    g.fillAll(Colors::Theme::error.withAlpha(0.5f));
     // no outline
     // g.setColour(Colours::black);
     // g.drawRect(getLocalBounds());

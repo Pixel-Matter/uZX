@@ -3,6 +3,7 @@
 #include "PsgClipComponent.h"
 #include "TimelineGrid.h"
 #include "../common/LookAndFeel.h"
+#include "../../util/Oklch.h"
 #include "../../formats/psg/PsgData.h"
 
 namespace MoTool::Tests {
@@ -53,6 +54,29 @@ public:
                     expect(contrast(ClipHeader::getFill(colour, selected).overlaidWith(ClipHeader::textColour),
                                     ClipHeader::getFill(colour, selected)) >= 4.5f,
                            colour.toDisplayString(false) + (selected ? " selected" : " unselected"));
+        }
+
+        beginTest("An unselected header keeps the clip's colour; selection only lifts its lightness");
+        for (int i = 0; i < 18; ++i) {
+            const auto colour = PsgClip::colourForTrackIndex(i);
+            const auto unselected = Oklch::fromColour(ClipHeader::getFill(colour, false));
+            const auto selected = Oklch::fromColour(ClipHeader::getFill(colour, true));
+            const auto original = Oklch::fromColour(colour);
+            expectWithinAbsoluteError(unselected.L, original.L, 0.005f);
+            expectWithinAbsoluteError(unselected.C, original.C, 0.005f);
+            expect(selected.L > unselected.L + 0.05f, "selected is lighter");
+            // Blues can't keep full chroma that light in sRGB, so they sit on its boundary
+            expectWithinAbsoluteError(selected.C, jmin(original.C, Oklch::maxChroma(selected.L, original.H)), 0.005f);
+        }
+
+        beginTest("A clip body is its lane's slate, lighter than the lane, more when selected");
+        for (const bool trackSelected : {false, true}) {
+            const auto lane = Oklch::fromColour(Colors::Timeline::lane(trackSelected));
+            const auto body = Oklch::fromColour(ClipComponent::getFill(Colors::Timeline::lane(trackSelected), false));
+            const auto selected = Oklch::fromColour(ClipComponent::getFill(Colors::Timeline::lane(trackSelected), true));
+            expect(body.L > lane.L + 0.02f && selected.L > body.L + 0.02f);
+            expectWithinAbsoluteError(body.C, lane.C, 0.005f);
+            expectWithinAbsoluteError(body.H, lane.H, 3.0f);
         }
 
         auto& engine = *te::Engine::getEngines()[0];

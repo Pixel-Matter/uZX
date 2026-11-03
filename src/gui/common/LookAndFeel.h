@@ -122,6 +122,11 @@ struct Meter {
 
 // Timeline specific colors
 struct Timeline {
+    /** A track's lane, behind its clips, and its header. */
+    static Colour lane(bool trackSelected) {
+        return trackSelected ? Theme::backgroundSel : Theme::backgroundAlt;
+    }
+
     inline static const Colour grid         = Palette::slate600;
     inline static const Colour cursor       = Theme::primary;
     inline static const Colour clipBg       = Colour::fromString("#FF3B82F6"); // blue-500

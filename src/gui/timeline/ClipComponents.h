@@ -29,8 +29,14 @@ public:
     /** Of the clip's outline: the header rounds the top corners, the body the bottom ones. */
     static constexpr float cornerSize = 6.0f;
 
-    /** A dark, see-through shade of the clip's colour, lighter when selected. */
-    static Colour getFill(Colour clipColour, bool selected);
+    /** The body: the lane's slate, a little lighter, more when the clip is selected.
+        The clip's colour is in its header and ring. */
+    static Colour getFill(Colour lane, bool selected);
+
+    /** Width and colour (a pale tint of the clip's hue) of the ring around a selected clip's
+        header and body. Every clip is inset by ringWidth so the ring fits outside it. */
+    static constexpr int ringWidth = 2;
+    static Colour getRingColour(Colour clipColour);
 
 protected:
     EditViewState& editViewState;
@@ -39,8 +45,7 @@ protected:
 };
 
 //==============================================================================
-/** The band above a clip's body, in the clip's colour, which is full when the clip is
-    selected and dimmed when not. From the left: the name, warnings, info, and at the right
+/** The band above a clip's body, in the clip's colour, lighter when the clip is selected. From the left: the name, warnings, info, and at the right
     edge of the view a legend, on the selected clip only, or on every clip when clips cannot
     be selected (the Player). Clicking it selects the clip. TrackBodyComponent places it,
     next to the clip's body; clip types with more to say subclass it. */
@@ -55,7 +60,7 @@ public:
 
     static constexpr int height = 18;
 
-    /** The clip's colour at a lightness on which textColour reads, brighter when selected. */
+    /** The clip's colour at a lightness on which textColour reads, lighter when selected. */
     static Colour getFill(Colour clipColour, bool selected);
     inline static const Colour textColour {0xff000000};  // not Colours::black, initialised in another file
 

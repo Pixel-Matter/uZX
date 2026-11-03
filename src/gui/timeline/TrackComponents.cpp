@@ -203,7 +203,7 @@ void TrackHeaderComponent::valueTreeChildRemoved(ValueTree&, ValueTree& c, int) 
 
 void TrackHeaderComponent::paint(Graphics& g) {
     bool isSelected = editViewState.selectionManager.isSelected(track.get());
-    auto bgColor = isSelected ? Colors::Theme::backgroundSel : Colors::Theme::backgroundAlt;
+    auto bgColor = Colors::Timeline::lane(isSelected);
 
     g.setColour(bgColor);
     g.fillRect(getLocalBounds().withTrimmedRight(2));
@@ -260,7 +260,7 @@ TrackBodyComponent::~TrackBodyComponent() {
 
 void TrackBodyComponent::paint(Graphics& g) {
     bool isSelected = editViewState.selectionManager.isSelected(track.get());
-    auto bgColor = isSelected ? Colors::Theme::backgroundSel : Colors::Theme::backgroundAlt;
+    auto bgColor = Colors::Timeline::lane(isSelected);
 
     g.fillAll(bgColor);
 
@@ -290,6 +290,17 @@ void TrackBodyComponent::paintOverChildren(Graphics& g) {
 
     if (recordingClip != nullptr)
         drawClipGrid(*recordingClip);
+
+    // The ring around a selected clip, outside its header and body
+    for (auto* header : clipHeaders) {
+        auto& clip = header->getClip();
+        if (! editViewState.selectionManager.isSelected(&clip))
+            continue;
+        constexpr float ring = (float) ClipComponent::ringWidth;
+        const auto bounds = header->getBounds().toFloat().withBottom((float) getHeight() - ring).expanded(ring * 0.5f);
+        g.setColour(ClipComponent::getRingColour(clip.getColour()));
+        g.drawRoundedRectangle(bounds, ClipComponent::cornerSize + ring * 0.5f, ring);
+    }
 }
 
 void TrackBodyComponent::mouseDown(const MouseEvent& e) {
@@ -361,13 +372,16 @@ void TrackBodyComponent::resized() {
         return Range<int>(x1, x2);
     };
 
+    // Inset top and bottom, so a selected clip's ring fits around it
+    constexpr int inset = ClipComponent::ringWidth;
     for (auto cc : clips) {
         const auto x = clipX(cc->getClip());
-        cc->setBounds(x.getStart(), ClipHeader::height, x.getLength(), jmax(0, getHeight() - ClipHeader::height));
+        cc->setBounds(x.getStart(), inset + ClipHeader::height, x.getLength(),
+                      jmax(0, getHeight() - ClipHeader::height - 2 * inset));
     }
     for (auto header : clipHeaders) {
         const auto x = clipX(header->getClip());
-        header->setBounds(x.getStart(), 0, x.getLength(), ClipHeader::height);
+        header->setBounds(x.getStart(), inset, x.getLength(), ClipHeader::height);
     }
 }
 

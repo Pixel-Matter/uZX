@@ -116,7 +116,7 @@ The timeline contains **tracks** stacked vertically. Each track has a **header**
 
 Clips appear in the track body as colored blocks. PSG clips visualize chip register activity as miniature graphics inside each block.
 
-Along the top of each clip runs its **header**, in the clip's colour: bright when the clip is selected, dimmed when not. It shows the clip's name, then warnings, such as a PSG clip whose fps or chip clock differs from the project's, then details such as the tuning table and key. A selected PSG clip's header also shows the legend of its colours at the right edge of the view: channels A, B and C, the envelope E and noise N. The Player, where clips are not selected, shows it on every PSG clip. When a header is too short for everything, the legend goes first, then the details, then the warnings, and the name is shortened last. In Studio, click the header to select the clip.
+Along the top of each clip runs its **header**, in the clip's colour. A selected clip is lighter, header and body, with a ring in a pale tint of its colour around it. It shows the clip's name, then warnings, such as a PSG clip whose fps or chip clock differs from the project's, then details such as the tuning table and key. A selected PSG clip's header also shows the legend of its colours at the right edge of the view: channels A, B and C, the envelope E and noise N. The Player, where clips are not selected, shows it on every PSG clip. When a header is too short for everything, the legend goes first, then the details, then the warnings, and the name is shortened last. In Studio, click the header to select the clip.
 
 See [Reading PSG clips](psg-visualization.md) for an illustrated reference to tone, envelope, noise, channel ownership, and matching pitches.
 

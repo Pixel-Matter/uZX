@@ -34,9 +34,15 @@ ClipComponent::ClipComponent (EditViewState& evs, TimelineGrid& g, te::Clip::Ptr
     : editViewState (evs), grid (g), clip (c)
 {}
 
-Colour ClipComponent::getFill(Colour clipColour, bool selected) {
-    return selected ? atLightness(clipColour, 0.31f, 0.45f).withAlpha(0.75f)
-                    : atLightness(clipColour, 0.24f, 0.35f).withAlpha(0.75f);
+Colour ClipComponent::getFill(Colour lane, bool selected) {
+    // Neutral, so the notes' channel colours stand out; lighter than the lane, a card on it
+    auto lch = Oklch::fromColour(lane);
+    lch.L += selected ? 0.07f : 0.035f;
+    return Oklch::toColour(lch);
+}
+
+Colour ClipComponent::getRingColour(Colour clipColour) {
+    return atLightness(clipColour, 0.92f, 0.4f);
 }
 
 void ClipComponent::paint(Graphics& g) {
@@ -49,7 +55,9 @@ void ClipComponent::paint(Graphics& g) {
     Path shape;
     shape.addRoundedRectangle(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
                               cornerSize, cornerSize, false, false, true, true);
-    g.setColour(getFill(clip->getColour(), selected));
+    const auto* track = clip->getTrack();
+    const bool trackSelected = track != nullptr && editViewState.selectionManager.isSelected(track);
+    g.setColour(getFill(Colors::Timeline::lane(trackSelected), selected));
     g.fillPath(shape);
 }
 
@@ -83,8 +91,8 @@ ClipHeader::Fit ClipHeader::fit(int width, int nameWidth, const std::vector<int>
 }
 
 Colour ClipHeader::getFill(Colour clipColour, bool selected) {
-    // L 0.72 is the palette's own, see PsgClip::colourForTrackIndex()
-    return selected ? atLightness(clipColour, 0.72f, 1.0f) : atLightness(clipColour, 0.6f, 0.6f);
+    // L 0.72 is the palette's own, see PsgClip::colourForTrackIndex(); selection lifts it
+    return atLightness(clipColour, selected ? 0.82f : 0.72f, 1.0f);
 }
 
 void ClipHeader::paint(Graphics& g) {

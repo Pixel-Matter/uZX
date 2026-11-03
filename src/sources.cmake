@@ -2,6 +2,8 @@
 set(SHARED_SOURCES
     util/Midi.cpp
 
+    formats/psg/TurboSound.cpp
+
     controllers/ParamEndpoint.cpp
 
     models/PsgMidi.cpp
@@ -103,8 +105,10 @@ set(TEST_SOURCES
 
     util/enumchoice.test.cpp
     util/Oklch.test.cpp
+    util/Helpers.test.cpp
 
     formats/psg/PsgFile.test.cpp
+    formats/psg/TurboSound.test.cpp
 
     models/PsgMidi.test.cpp
     models/PsgParameter.test.cpp

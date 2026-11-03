@@ -29,6 +29,10 @@ A minimal player for listening to PSG chip music files.
 - **Double-click** a `.psg` or `.uzx` file in Finder / Explorer (file association registered on install).
 - Pass a file path as a command-line argument.
 
+Drop or open several `.psg` files at once to play them together, each on its own track with its own AY chip, as a Turbo Sound tune has one file per chip. They replace the open edit, which is named after the start their names share: `song_1.psg` and `song_2.psg` open as `song`.
+
+**Turbo Sound sets.** When a single `.psg` file's name ends in a chip number 1 to 3 after `_`, `-`, `.` or a space (`song_1.psg`, or `song.1.psg` as Vortex Tracker exports them), and files with the other numbers lie next to it with as many frames and the same PSG header, µZX asks whether to open the whole set or only that file. This applies however a single file comes in: opening, dropping, Finder / Explorer, and **Import PSG** in both apps.
+
 ### Transport Bar
 
 Located at the top of the window.
@@ -97,6 +101,10 @@ Same controls as µZX Player, plus:
 | Record (⏺) | Arm recording |
 | Automation Read | Read automation from recorded data |
 | Automation Write | Write automation from control movements |
+
+### Importing PSG Files
+
+**File → Import PSG** (`Cmd+I`) picks one or more `.psg` files. One file goes on the selected track, or a new track when no track is selected; several files go on new tracks, one each. Dropping `.psg` files onto the window adds each on a new track. Clips start at the beginning of the project. A file of a Turbo Sound set brings up the same question as in the Player (see [Opening Files](#opening-files)).
 
 ### Timeline
 
@@ -258,7 +266,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Shift+Z` | Zoom to fit the project | Player, Studio |
 | `Z` | Zoom to selection | Studio |
 | `Cmd+O` | Open file | Player, Studio |
-| `Cmd+I` | Import PSG — Studio adds it as a clip; Player asks whether to add a new track or open a new edit | Player, Studio |
+| `Cmd+I` | Import PSG files — Studio adds one to the selected track, several on new tracks; Player asks whether to add them on new tracks or open them in a new edit | Player, Studio |
 | `Cmd+N` | New edit | Studio |
 | `Cmd+S` | Save | Studio |
 | `Cmd+Shift+S` | Save As | Studio |
@@ -290,6 +298,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Right-click | Ruler | Zoom, timecode format, and snap options |
 | Right-click | PSG clip | Notes / Registers view, note lanes, piano keys, hex values on hover, tuning table and key picker |
 | Double-click | Track name (Studio) | Rename |
+| Drop `.psg` files | Anywhere in the window | Player: open them together, each on its own track (or drop a `.uzx` project to open it); Studio: add each on a new track |
 
 ---
 

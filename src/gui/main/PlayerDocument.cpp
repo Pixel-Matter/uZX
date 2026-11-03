@@ -36,15 +36,11 @@ bool PlayerDocumentComponent::isInterestedInFileDrag(const StringArray& files) {
     return false;
 }
 
-void PlayerDocumentComponent::filesDropped(const StringArray& files, int /*x*/, int /*y*/) {
-    for (auto& path : files) {
-        File f(path);
-        auto ext = f.getFileExtension().toLowerCase();
-        if (ext == ".psg" || ext == ".uzx") {
-            MoToolApp::getPlayerController().handleOpenFile(f);
-            return;
-        }
-    }
+void PlayerDocumentComponent::filesDropped(const StringArray& paths, int /*x*/, int /*y*/) {
+    Array<File> files;
+    for (auto& path : paths)
+        files.add(File(path));
+    MoToolApp::getPlayerController().handleOpenFiles(files);
 }
 
 }  // namespace MoTool

@@ -6,6 +6,7 @@
 #include "../gui/common/Utilities.h"
 #include "../models/PsgClip.h"
 #include "../models/EditUtilities.h"
+#include "../formats/psg/TurboSound.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../util/FileOps.h"
 #include "../util/Helpers.h"
@@ -13,15 +14,6 @@
 using namespace MoTool::Helpers;
 
 namespace MoTool {
-
-/** The track's AY chip, added first if the track has none. */
-static uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track) {
-    if (auto* chip = track.pluginList.findFirstPluginOfType<uZX::AYChipPlugin>())
-        return *chip;
-    auto plugin = track.edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
-    track.pluginList.insertPlugin(plugin, 0, nullptr);
-    return *dynamic_cast<uZX::AYChipPlugin*>(plugin.get());
-}
 
 static String makePlayerWindowTitle(const String& filename = {}) {
     auto appName = String::fromUTF8("μZX Player");
@@ -100,24 +92,27 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 void PlayerController::handleOpen() {
     auto location = EditFileOps::getRecentEditsDirectory();
     FileChooser fc("Open file", location, "*.uzx;*.psg");
-    if (fc.browseForFileToOpen()) {
-        auto selectedFile = fc.getResult();
-        if (selectedFile.existsAsFile()) {
-            handleOpenFile(selectedFile);
-        }
-    }
+    if (fc.browseForMultipleFilesToOpen())
+        handleOpenFiles(fc.getResults());
 }
 
-void PlayerController::handleOpenFile(const File& file) {
-    if (!file.existsAsFile()) return;
+void PlayerController::handleOpenFiles(const Array<File>& files) {
+    Array<File> psgs;
+    for (const auto& f : files)
+        if (f.hasFileExtension("psg") && f.existsAsFile())
+            psgs.add(f);
 
-    auto ext = file.getFileExtension().toLowerCase();
-    if (ext == ".psg") {
-        importPsgToNewEdit(file);
-    } else if (ext == ".uzx") {
-        EditFileOps::setRecentEditsDirectory(file);
-        auto newEdit = createOrLoadEdit(file);
-        setEdit(std::move(newEdit), true);
+    if (! psgs.isEmpty()) {
+        Helpers::withTurboSoundSet(psgs, [this](const Array<File>& set) { importPsgsToNewEdit(set); });
+        return;
+    }
+
+    for (const auto& f : files) {
+        if (f.hasFileExtension("uzx") && f.existsAsFile()) {
+            EditFileOps::setRecentEditsDirectory(f);
+            setEdit(createOrLoadEdit(f), true);
+            return;
+        }
     }
 }
 
@@ -147,81 +142,59 @@ void PlayerController::handleClearRecentFiles() {
 void PlayerController::handleImportPsgReplace() {
     if (edit_ == nullptr) return;
 
-    Helpers::browseForPSGFile(engine_, [this](const File& f) {
-        if (!f.existsAsFile()) return;
+    Helpers::browseForPSGFiles(engine_, [this](const Array<File>& picked) {
+        Helpers::withTurboSoundSet(picked, [this](const Array<File>& files) {
+            if (files.isEmpty()) return;
 
-        auto options = MessageBoxOptions()
-            .withTitle("Import PSG")
-            .withMessage("How would you like to import \"" + f.getFileNameWithoutExtension() + "\"?")
-            .withButton("New Track")
-            .withButton("New Edit")
-            .withButton("Cancel");
+            const auto what = files.size() == 1 ? "\"" + files[0].getFileNameWithoutExtension() + "\""
+                                                : String(files.size()) + " files";
+            auto options = MessageBoxOptions()
+                .withTitle("Import PSG")
+                .withMessage("How would you like to import " + what + "?")
+                .withButton(files.size() == 1 ? "New Track" : "New Tracks")
+                .withButton("New Edit")
+                .withButton("Cancel");
 
-        NativeMessageBox::showAsync(options, [this, f](int result) {
-            DBG("Import result: " << result);
-            if (result == 0)
-                importPsgToNewTrack(f);
-            else if (result == 1)
-                importPsgToNewEdit(f);
+            NativeMessageBox::showAsync(options, [this, files](int result) {
+                if (result == 0)
+                    importPsgsToNewTracks(files);
+                else if (result == 1)
+                    importPsgsToNewEdit(files);
+            });
         });
     });
 }
 
-void PlayerController::importPsgToNewTrack(const File& f) {
-    auto psgFile = uZX::PsgFile(f);
-    if (! Helpers::readPsgOrShowError(psgFile))
-        return;
-
-    auto& transport = edit_->getTransport();
-    transport.stop(false, false);
-
-    auto track = edit_->insertNewAudioTrack(te::TrackInsertPoint(nullptr, te::getAudioTracks(*edit_).getLast()), nullptr);
-    jassert(track != nullptr);
-
-    te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
-
-    if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
-        track->changed();
-        ensureAYPluginOnTrack(*track);
-        track->setName(f.getFileNameWithoutExtension());
+void PlayerController::importPsgsToNewTracks(const Array<File>& files) {
+    edit_->getTransport().stop(false, false);
+    if (! Helpers::importPsgFiles(*edit_, files).isEmpty())
         zoomToFitHorizontally();
-    }
 }
 
-void PlayerController::importPsgToNewEdit(const File& f) {
-    auto psgFile = uZX::PsgFile(f);
-    if (! Helpers::readPsgOrShowError(psgFile))
+void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
+    // Populate a new edit before setting it on the UI; a fresh edit has one empty track for the first file
+    auto newEditFile = EditFileOps::getTempEditFile();
+    auto newEdit = createOrLoadEdit(newEditFile);
+    const auto clips = Helpers::importPsgFiles(*newEdit, files, {}, te::getAudioTracks(*newEdit).getFirst());
+    if (clips.isEmpty())
         return;
+
+    // A PSG stores no clock. A fitted tuning names the machine the tune was written
+    // for, so the opened tune plays at that clock; a tracker table leaves it as it is.
+    for (auto* clip : clips)
+        if (const auto& fit = clip->getTuning().fit)
+            Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack())
+                .staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
 
     edit_->getTransport().stop(false, false);
 
-    // Create a new edit and populate it before setting it on the UI
-    auto newEditFile = EditFileOps::getTempEditFile();
-    auto newEdit = createOrLoadEdit(newEditFile);
-    newEdit->ensureNumberOfAudioTracks(1);
-    auto* track = te::getAudioTracks(*newEdit).getFirst();
-    jassert(track != nullptr);
-
-    te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
-
-    if (auto clip = PsgClip::insertTo(*track, psgFile, pos)) {
-        track->changed();
-        auto& chip = ensureAYPluginOnTrack(*track);
-        // A PSG stores no clock. A fitted tuning names the machine the tune was written
-        // for, so the opened tune plays at that clock; a tracker table leaves it as it is.
-        if (const auto& fit = clip->getTuning().fit)
-            chip.staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
-        track->setName(f.getFileNameWithoutExtension());
-    }
-
-    // Update the edit file name to match the imported PSG file
-    auto namedFile = newEditFile.getSiblingFile(f.getFileNameWithoutExtension())
-        .withFileExtension(EditFileOps::getDefaultEditFileSuffix());
+    // Name the edit file after the imported PSG files
+    const auto name = uZX::getSetName(files);
+    auto namedFile = newEditFile.getSiblingFile(name).withFileExtension(EditFileOps::getDefaultEditFileSuffix());
     newEdit->editFileRetriever = [namedFile] { return namedFile; };
 
-    // Set the fully-prepared edit (rebuilds UI with clip already present)
     setEdit(std::move(newEdit), true);
-    setMainWindowTitle(makePlayerWindowTitle(f.getFileNameWithoutExtension()));
+    setMainWindowTitle(makePlayerWindowTitle(name));
     zoomToFitHorizontally();
 }
 

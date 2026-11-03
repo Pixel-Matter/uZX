@@ -398,14 +398,14 @@ void TrackBodyComponent::buildClips() {
                 cc = new AudioClipComponent(editViewState, grid, c);
             else if (dynamic_cast<PsgClip*>(c)) {  // must go before MidiClip
                 cc = new PsgClipComponent(editViewState, grid, c);
-                header = new PsgClipHeader(editViewState, grid, c);
+                header = new PsgClipHeader(editViewState, c);
             } else if (dynamic_cast<te::MidiClip*>(c))
                 cc = new MidiClipComponent(editViewState, grid, c);
             else
                 cc = new ClipComponent(editViewState, grid, c);
 
             if (header == nullptr)
-                header = new ClipHeader(editViewState, grid, c);
+                header = new ClipHeader(editViewState, c);
 
             clips.add(cc);
             addAndMakeVisible(cc);

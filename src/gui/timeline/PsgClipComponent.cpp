@@ -1049,8 +1049,8 @@ void PsgClipComponent::paintNotes(Graphics& g) {
 }
 
 //==============================================================================
-PsgClipHeader::PsgClipHeader(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
-    : ClipHeader(evs, g, c)
+PsgClipHeader::PsgClipHeader(EditViewState& evs, te::Clip::Ptr c)
+    : ClipHeader(evs, c)
 {
     editViewState.edit.state.addListener(this);
 }

@@ -1,7 +1,6 @@
 #include <JuceHeader.h>
 
 #include "PsgClipComponent.h"
-#include "TimelineGrid.h"
 #include "../common/LookAndFeel.h"
 #include "../../util/Oklch.h"
 #include "../../formats/psg/PsgData.h"
@@ -86,12 +85,11 @@ public:
                                       {{te::TimePosition(), te::TimeDuration::fromSeconds(1.0)}, {}}, "clip");
         te::SelectionManager selection(engine);
         EditViewState view(*edit, selection);
-        TimelineGrid grid(view);
 
         // The header spans x 0..2000 of a track body showing 1000..1400 of it.
         Component trackBody;
         trackBody.setSize(400, ClipHeader::height);
-        PsgClipHeader header(view, grid, clip);
+        PsgClipHeader header(view, clip);
         trackBody.addAndMakeVisible(header);
         header.setBounds(-1000, 0, 2000, ClipHeader::height);
         const auto legendColumns = [&] {
@@ -114,10 +112,29 @@ public:
         expect(! columns.isEmpty(), "the selected clip has a legend");
         expect(columns.getStart() > 1300 && columns.getEnd() < 1400, "the legend ends at the view's right edge");
 
+        beginTest("Clicking the header selects the clip and leaves the playhead where it is");
+        const auto click = [&] {
+            const auto now = Time::getCurrentTime();
+            const Point<float> pos {1200.0f, 9.0f};
+            header.mouseDown({Desktop::getInstance().getMainMouseSource(), pos, ModifierKeys::leftButtonModifier,
+                              MouseInputSource::defaultPressure, MouseInputSource::defaultOrientation,
+                              MouseInputSource::defaultRotation, MouseInputSource::defaultTiltX,
+                              MouseInputSource::defaultTiltY, &header, &header, now, pos, now, 1, false});
+        };
+        auto& transport = edit->getTransport();
+        transport.setPosition(te::TimePosition::fromSeconds(0.25));
+        selection.deselectAll();
+        click();
+        expect(selection.isSelected(clip.get()));
+        expectEquals(transport.getPosition().inSeconds(), 0.25);
+
         beginTest("The Player, where clips cannot be selected, always shows the legend");
         selection.deselectAll();
         view.disableClipSelection = true;
         expect(! legendColumns().isEmpty());
+        click();
+        expect(! selection.isSelected(clip.get()), "the Player selects no clips");
+        expectEquals(transport.getPosition().inSeconds(), 0.25, "nor does its header move the playhead");
     }
 };
 

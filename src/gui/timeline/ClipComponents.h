@@ -45,13 +45,14 @@ protected:
 };
 
 //==============================================================================
-/** The band above a clip's body, in the clip's colour, lighter when the clip is selected. From the left: the name, warnings, info, and at the right
-    edge of the view a legend, on the selected clip only, or on every clip when clips cannot
-    be selected (the Player). Clicking it selects the clip. TrackBodyComponent places it,
-    next to the clip's body; clip types with more to say subclass it. */
+/** The band above a clip's body, in the clip's colour, lighter when the clip is selected.
+    From the left: the name, warnings, info, and at the right edge of the view a legend, on
+    the selected clip only, or on every clip when clips cannot be selected (the Player).
+    Clicking it selects the clip and leaves the playhead where it is. TrackBodyComponent
+    places it, next to the clip's body; clip types with more to say subclass it. */
 class ClipHeader : public Component {
 public:
-    ClipHeader(EditViewState&, TimelineGrid&, te::Clip::Ptr);
+    ClipHeader(EditViewState&, te::Clip::Ptr);
 
     void paint(Graphics& g) override;
     void mouseDown(const MouseEvent& e) override;
@@ -84,7 +85,6 @@ protected:
     virtual void paintLegend(Graphics&, Rectangle<int>) {}
 
     EditViewState& editViewState;
-    TimelineGrid& grid;
     te::Clip::Ptr clip;
 };
 

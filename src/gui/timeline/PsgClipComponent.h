@@ -128,7 +128,7 @@ private:
 class PsgClipHeader : public ClipHeader,
                       private juce::ValueTree::Listener {
 public:
-    PsgClipHeader(EditViewState&, TimelineGrid&, te::Clip::Ptr);
+    PsgClipHeader(EditViewState&, te::Clip::Ptr);
     ~PsgClipHeader() override;
 
     void mouseDown(const MouseEvent& e) override;

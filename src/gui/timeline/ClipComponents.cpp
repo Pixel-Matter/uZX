@@ -70,8 +70,8 @@ void ClipComponent::mouseDown(const MouseEvent& e) {
 }
 
 //==============================================================================
-ClipHeader::ClipHeader(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
-    : editViewState(evs), grid(g), clip(c)
+ClipHeader::ClipHeader(EditViewState& evs, te::Clip::Ptr c)
+    : editViewState(evs), clip(c)
 {}
 
 ClipHeader::Fit ClipHeader::fit(int width, int nameWidth, const std::vector<int>& itemWidths, int legendWidth) {
@@ -161,11 +161,7 @@ void ClipHeader::paint(Graphics& g) {
 void ClipHeader::mouseDown(const MouseEvent& e) {
     if (e.mods.isMiddleButtonDown())
         return;  // view navigation, see EditComponent
-    if (e.mods.isPopupMenu())
-        return;
-    if (editViewState.disableClipSelection)  // the Player: like anywhere else on the clip
-        clip->edit.getTransport().setPosition(grid.playheadTimeAtX(e.x + getX()));
-    else
+    if (! e.mods.isPopupMenu() && ! editViewState.disableClipSelection)
         editViewState.selectionManager.selectOnly(clip.get());
 }
 

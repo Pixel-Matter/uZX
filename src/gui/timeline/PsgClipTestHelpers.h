@@ -32,7 +32,7 @@ inline Image renderPsgClip(te::Engine& engine, uZX::PsgData data, int width, int
         graphics.reduceClipRegion(repaint);
     graphics.addTransform(AffineTransform::translation(-static_cast<float>(frameWidth * visibleFrames.getStart()), 0));
     if (legend) {
-        PsgClipHeader clipHeader(view, grid, clip);
+        PsgClipHeader clipHeader(view, clip);
         clipHeader.paintLegend(graphics, {3, 3, width, 12});  // where the header used to draw it
     } else
         component.paintNotes(graphics);

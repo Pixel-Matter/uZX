@@ -6,6 +6,7 @@
 #include "PsgParameter.h"
 #include "EditUtilities.h"
 #include "../formats/psg/PsgFile.h"
+#include "../util/Oklch.h"
 
 #include <cmath>
 #include <cstddef>
@@ -15,6 +16,15 @@
 namespace te = tracktion;
 
 namespace MoTool {
+
+Colour PsgClip::colourForTrackIndex(int trackIndex) {
+    // Same OKLCH lightness and chroma for every track, so only the hue differs
+    // and no track's clips look brighter or duller than another's. C 0.12 is
+    // the largest chroma sRGB can show at L 0.72 for every hue.
+    constexpr int steps = 18;
+    const float hue = 140.0f + (float) (trackIndex % steps) * 360.0f / steps;
+    return Oklch::toColour({0.72f, 0.12f, std::fmod(hue, 360.0f)});
+}
 
 void PsgClip::initialise() {
     te::MidiClip::initialise();
@@ -38,10 +48,8 @@ void PsgClip::initialise() {
     psgList->migrateToFrameIndicesIfNeeded(*this, Helpers::getProjectFps(edit), um);
 
     if (getColour() == getDefaultColour()) {
-        auto track = getTrack();
         // TODO make clip colors use themed palette
-        float hue = (track->getIndexInEditTrackList() % 18) * 1.0f / 18.0f + 0.3f;
-        setColour(getDefaultColour().withHue(hue));
+        setColour(colourForTrackIndex(getTrack()->getIndexInEditTrackList()));
     }
     // Not sure we should have clip plugins yet
     // ensureHasAYPlugin();

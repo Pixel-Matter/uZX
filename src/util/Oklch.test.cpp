@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 #include "Oklch.h"
 #include "../models/PsgClip.h"
+#include "../gui/common/LookAndFeel.h"
 
 namespace MoTool::Oklch {
 
@@ -36,6 +37,15 @@ public:
             }
             expect(PsgClip::colourForTrackIndex(0) != PsgClip::colourForTrackIndex(1));
             expect(PsgClip::colourForTrackIndex(0) == PsgClip::colourForTrackIndex(18));
+        }
+
+        beginTest("PSG channel colours share lightness and chroma");
+        {
+            for (auto colour : {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C}) {
+                const auto lch = fromColour(colour);
+                expectWithinAbsoluteError(lch.L, 0.70f, 0.005f);
+                expectWithinAbsoluteError(lch.C, 0.155f, 0.002f);
+            }
         }
     }
 };

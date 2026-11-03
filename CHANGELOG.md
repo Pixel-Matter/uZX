@@ -14,6 +14,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Tuning detection knows the earlier ProTracker tables #0 and #2 that PT 3.3 and older play, so tunes written with them are named on their own table instead of a nearby one. The Tuning window measures each tracker table against the clock and A4 its authors documented, such as 1.625 MHz for ProTracker #0 and 1.52064 MHz for Vortex Tracker #4
 
 ### Changed
+- New PSG clips get track colours of equal lightness and colourfulness: the hue steps around OKLCH instead of HSV, so yellow and cyan clips no longer outshine blue and violet ones
 - The Player's timeline shows bars | beats | frames like Studio's, instead of always switching to seconds; a `.uzx` file keeps the format it was saved with
 - Master volume is an app setting instead of a per-file one: Player and Studio each remember it across launches and apply it to every opened file
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6

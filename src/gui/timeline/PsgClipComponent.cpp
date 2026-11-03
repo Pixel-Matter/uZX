@@ -1090,7 +1090,7 @@ void PsgClipComponent::paintHeader(Graphics& g) {
         } else if (item.style == LegendStyle::Envelope) {
             drawEnvelopeStripes(g, (float) swatch.getX(), (float) swatch.getY(),
                                 (float) swatch.getWidth(), (float) swatch.getHeight(),
-                                0x8, item.color.withAlpha(0.25f));
+                                0x8, item.color);
             g.setColour(item.color);
             g.drawRect(swatch);
         } else {

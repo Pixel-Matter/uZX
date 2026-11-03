@@ -31,6 +31,10 @@ public:
         return Colours::blue;
     }
 
+    /** Colour a new clip gets on the track at this index: hues rotate in
+        OKLCH at constant lightness and chroma. */
+    static Colour colourForTrackIndex(int trackIndex);
+
     PsgList& getPsg() const noexcept {
         jassert(psgList != nullptr);
         return *psgList;

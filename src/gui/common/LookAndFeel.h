@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "../../util/Oklch.h"
 
 namespace MoTool {
 
@@ -134,15 +135,15 @@ struct Timeline {
 
 // PSG specific colors
 struct PSG {
-    // inline static const auto A   = Palette::amber500.withSaturation(1.0f);
-    // inline static const auto B   = Palette::emerald500.withSaturation(1.0f);
-    // inline static const auto C   = Palette::sky500.withSaturation(1.0f);
+    // Channel and envelope colours share OKLCH lightness and chroma so none
+    // stands out; hues are near orange-400, emerald-500, indigo-400 and
+    // purple-400. L 0.68, C 0.168 is about the most chroma these four hues
+    // share in sRGB: indigo caps it, and green is nudged to 152 to keep up.
+    inline static const auto A   = Oklch::toColour({0.68f, 0.168f, 55.0f});
+    inline static const auto B   = Oklch::toColour({0.68f, 0.168f, 152.0f});
+    inline static const auto C   = Oklch::toColour({0.68f, 0.168f, 276.9f});
 
-    inline static const auto A   = Palette::orange400;
-    inline static const auto B   = Palette::emerald500;
-    inline static const auto C   = Palette::indigo400;
-
-    inline static const auto Env = Palette::purple400;
+    inline static const auto Env = Oklch::toColour({0.68f, 0.168f, 307.1f});
     inline static const auto Mix = Palette::slate500;
 };
 

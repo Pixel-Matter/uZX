@@ -17,7 +17,8 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 GUIDE = ROOT / "docs/user-guide.md"
-EXAMPLE = ROOT / "docs/examples/Guide melody.uzx"
+EXAMPLE = ROOT / "tests/fixtures/Guide demo.uzx"  # scripts/make_guide_fixture.py writes it
+TRACK = "Lead"  # the example's first track, whose first clip and devices the figures show
 FIGURES = {
     "player-overview": ("Player transport and timeline", "The transport sits above the timeline; the AY controls are on the right."),
     "player-ay-panel": ("Player AY side panel", "Chip type and clock, stereo controls, and the three channel strips."),
@@ -191,7 +192,7 @@ def capture_figures(build, work):
         resize(pid, window, 1280, 800)
         menu(pid, "View > Zoom to project")
         scene = observe(pid, window, work / "studio-before.png")
-        track = element(scene, EXAMPLE.stem, "textField")
+        track = element(scene, TRACK, "textField")
         origin = scene["coordinate_context"]["logical_bounds"][0]
         b = track["bounds"]
         click_at(pid, window, scene, b["x"] + b["width"] + 40 - origin[0], b["y"] + 60 - origin[1])
@@ -204,7 +205,7 @@ def capture_figures(build, work):
         top = round(element(scene, "Clip Parameters")["bounds"]["y"] - origin[1] - 8)
         observe(pid, window, work / "studio-psg-editor.png", (0, top, width, height - top))
         scene = observe(pid, window, work / "studio-before-devices.png")
-        b = element(scene, EXAMPLE.stem, "textField")["bounds"]
+        b = element(scene, TRACK, "textField")["bounds"]
         click_at(pid, window, scene, b["x"] + b["width"] / 2 - origin[0], b["y"] + 90 - origin[1])
         # shortcut: the demo has one AY device; widen the crop when adding more devices.
         scene = observe(pid, window, work / "studio-devices.png", (0, top, min(width, 360), height - top))

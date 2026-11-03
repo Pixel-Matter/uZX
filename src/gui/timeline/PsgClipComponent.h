@@ -73,9 +73,6 @@ public:
     /** Tuning-grid guide lines, drawn under the notes in the Notes view. */
     void paintNoteLanes(Graphics& g);
 
-    /** Top row shared by the channel legend, clip name and fps-mismatch warning. */
-    void paintHeader(Graphics& g);
-
 private:
     void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
     void changeListenerCallback(ChangeBroadcaster*) override;
@@ -125,6 +122,27 @@ private:
     // bool needsRepaint_ = true;
     // int vblankCounter_ = 0;
     // int vblankDivider_ = 2;  // 60Hz / 2 = 30fps
+};
+
+/** A PSG clip's header: fps and clock warnings, tuning and key, and the channel legend. */
+class PsgClipHeader : public ClipHeader,
+                      private juce::ValueTree::Listener {
+public:
+    PsgClipHeader(EditViewState&, TimelineGrid&, te::Clip::Ptr);
+    ~PsgClipHeader() override;
+
+    void mouseDown(const MouseEvent& e) override;
+
+    /** A B C E N swatches from area's left edge, each area's height tall. */
+    void paintLegend(Graphics& g, Rectangle<int> area) override;
+
+protected:
+    StringArray getWarnings() override;
+    String getInfo() override;
+    int getLegendWidth() override;
+
+private:
+    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
 };
 
 }  // namespace MoTool

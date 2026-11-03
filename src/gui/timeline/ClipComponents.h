@@ -10,7 +10,13 @@ namespace MoTool {
 
 class TimelineGrid;
 
+/** The part of a clip's header or body that can show, in its own coordinates: inside the
+    track body, which spans the view, and the viewport, whose scroll bar hides the view's
+    right edge. Both are as wide as the whole clip, mostly off-screen when zoomed in. */
+Rectangle<int> getShownArea(const Component&);
+
 //==============================================================================
+/** A clip's body, under its ClipHeader: the clip's contents. */
 class ClipComponent : public Component {
 public:
     ClipComponent(EditViewState&, TimelineGrid&, te::Clip::Ptr);
@@ -20,6 +26,12 @@ public:
 
     te::Clip& getClip() { return *clip; }
 
+    /** Of the clip's outline: the header rounds the top corners, the body the bottom ones. */
+    static constexpr float cornerSize = 6.0f;
+
+    /** A dark, see-through shade of the clip's colour, lighter when selected. */
+    static Colour getFill(Colour clipColour, bool selected);
+
 protected:
     EditViewState& editViewState;
     TimelineGrid& grid;
@@ -27,6 +39,50 @@ protected:
 };
 
 //==============================================================================
+/** The band above a clip's body, in the clip's colour, which is full when the clip is
+    selected and dimmed when not. From the left: the name, warnings, info, and at the right
+    edge of the view a legend, on the selected clip only, or on every clip when clips cannot
+    be selected (the Player). Clicking it selects the clip. TrackBodyComponent places it,
+    next to the clip's body; clip types with more to say subclass it. */
+class ClipHeader : public Component {
+public:
+    ClipHeader(EditViewState&, TimelineGrid&, te::Clip::Ptr);
+
+    void paint(Graphics& g) override;
+    void mouseDown(const MouseEvent& e) override;
+
+    te::Clip& getClip() { return *clip; }
+
+    static constexpr int height = 18;
+
+    /** The clip's colour at a lightness on which textColour reads, brighter when selected. */
+    static Colour getFill(Colour clipColour, bool selected);
+    inline static const Colour textColour {0xff000000};  // not Colours::black, initialised in another file
+
+    /** Which parts fit a header row of width, each item's width with the gap before it:
+        the name keeps up to 48 px of its width; the legend goes first, then the items,
+        last first. */
+    struct Fit
+    {
+        size_t items;
+        bool legend;
+    };
+    static Fit fit(int width, int nameWidth, const std::vector<int>& itemWidths, int legendWidth);
+
+protected:
+    /** Incompatibilities, drawn as warning chips after the name. */
+    virtual StringArray getWarnings() { return {}; }
+    /** Facts after the warnings, such as the tuning. */
+    virtual String getInfo() { return {}; }
+    /** Zero for no legend. */
+    virtual int getLegendWidth() { return 0; }
+    virtual void paintLegend(Graphics&, Rectangle<int>) {}
+
+    EditViewState& editViewState;
+    TimelineGrid& grid;
+    te::Clip::Ptr clip;
+};
+
 class AudioClipComponent : public ClipComponent {
 public:
     AudioClipComponent(EditViewState&, TimelineGrid&, te::Clip::Ptr);

@@ -354,34 +354,49 @@ void TrackBodyComponent::handleAsyncUpdate() {
 }
 
 void TrackBodyComponent::resized() {
-    for (auto cc : clips) {
-        auto& c = cc->getClip();
+    const auto clipX = [this](te::Clip& c) {
         auto pos = c.getPosition();
         int x1 = roundToInt(editViewState.zoom.timeToX(pos.getStart()));
         int x2 = roundToInt(editViewState.zoom.timeToX(pos.getEnd()));
+        return Range<int>(x1, x2);
+    };
 
-        cc->setBounds(x1, 0, x2 - x1, getHeight());
+    for (auto cc : clips) {
+        const auto x = clipX(cc->getClip());
+        cc->setBounds(x.getStart(), ClipHeader::height, x.getLength(), jmax(0, getHeight() - ClipHeader::height));
+    }
+    for (auto header : clipHeaders) {
+        const auto x = clipX(header->getClip());
+        header->setBounds(x.getStart(), 0, x.getLength(), ClipHeader::height);
     }
 }
 
 void TrackBodyComponent::buildClips() {
+    clipHeaders.clear();
     clips.clear();
 
     if (auto ct = dynamic_cast<te::ClipTrack*>(track.get())) {
         for (auto c : ct->getClips()) {
             ClipComponent* cc = nullptr;
+            ClipHeader* header = nullptr;
 
             if (dynamic_cast<te::WaveAudioClip*>(c))
                 cc = new AudioClipComponent(editViewState, grid, c);
-            else if (dynamic_cast<PsgClip*>(c))  // must go before MidiClip
+            else if (dynamic_cast<PsgClip*>(c)) {  // must go before MidiClip
                 cc = new PsgClipComponent(editViewState, grid, c);
-            else if (dynamic_cast<te::MidiClip*>(c))
+                header = new PsgClipHeader(editViewState, grid, c);
+            } else if (dynamic_cast<te::MidiClip*>(c))
                 cc = new MidiClipComponent(editViewState, grid, c);
             else
                 cc = new ClipComponent(editViewState, grid, c);
 
+            if (header == nullptr)
+                header = new ClipHeader(editViewState, grid, c);
+
             clips.add(cc);
             addAndMakeVisible(cc);
+            clipHeaders.add(header);
+            addAndMakeVisible(header);
         }
     }
 

@@ -382,7 +382,7 @@ Colour PsgParamEditorComponent::getDefaultLineColour() const {
 }
 
 Colour PsgParamEditorComponent::getSelectedLineColour() const {
-    return Colours::yellow;
+    return Colors::Theme::highlight;
 }
 
 Colour PsgParamEditorComponent::getBackgroundColour() const {

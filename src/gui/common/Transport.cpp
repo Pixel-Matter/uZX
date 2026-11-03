@@ -91,7 +91,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
                 edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(MainAppCommands::transportRecordStop, false);
             }
         };
-        recordButton_.setColour(TextButton::textColourOnId, Colours::red);
+        recordButton_.setColour(TextButton::textColourOnId, Colors::Theme::error);
     }
 
     if (options_.showAutomation) {
@@ -102,7 +102,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         };
 
         autoWriteButton_.setClickingTogglesState(true);
-        autoWriteButton_.setColour(TextButton::buttonOnColourId, Colours::red);
+        autoWriteButton_.setColour(TextButton::buttonOnColourId, Colors::Theme::error);
         autoWriteButton_.onClick = [this] {
             auto& arm = edit_.getAutomationRecordManager();
             arm.setWritingAutomation(!arm.isWritingAutomation());
@@ -290,7 +290,7 @@ void TransportBar::updatePlayButtonText(bool isPlaying) {
 
 void TransportBar::updateRecordButtonText(bool isRecording) {
     recordButton_.setButtonText(isRecording ? "⏹"_u : "⏺"_u);
-    recordButton_.setColour(TextButton::textColourOnId, Colours::red);
+    recordButton_.setColour(TextButton::textColourOnId, Colors::Theme::error);
     // recordButton_.setColour(TextButton::buttonOnColourId, isRecording ?
     //                         recordButton_.findColour(TextButton::textColourOnId)
     //                         : Colours::red);

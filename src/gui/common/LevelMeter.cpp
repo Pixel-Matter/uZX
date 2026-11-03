@@ -1,4 +1,5 @@
 #include "LevelMeter.h"
+#include "LookAndFeel.h"
 
 namespace MoTool {
 
@@ -11,12 +12,12 @@ float dbToFill(float dB) {
 
 static Colour ledColour(float position, bool isMidi) {
     if (isMidi)
-        return Colours::cyan.withSaturation(0.8f);
+        return Colors::Meter::midi;
     if (position < 0.6f)
-        return Colours::green;
+        return Colors::Meter::low;
     if (position < 0.85f)
-        return Colours::yellow;
-    return Colours::red;
+        return Colors::Meter::mid;
+    return Colors::Meter::high;
 }
 
 void draw(Graphics& g, Rectangle<int> area, int ledSize, int gap, float fill, bool horizontal, bool isMidi) {

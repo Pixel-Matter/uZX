@@ -83,10 +83,10 @@ Colour getChannelMaskColor(uint8_t channelMask) {
     switch (channelMask & 0x7u) {
         case 0x1: return Colors::PSG::A;
         case 0x2: return Colors::PSG::B;
-        case 0x3: return Colors::Palette::yellow500.withSaturation(1.0f);
+        case 0x3: return Colors::PSG::AB;
         case 0x4: return Colors::PSG::C;
-        case 0x5: return Colors::Palette::pink500.withSaturation(1.0f);
-        case 0x6: return Colors::Palette::cyan500.withSaturation(1.0f);
+        case 0x5: return Colors::PSG::AC;
+        case 0x6: return Colors::PSG::BC;
         case 0x7: return Colors::PSG::Mix.brighter(0.8f);
         default:  return Colours::transparentBlack;
     }

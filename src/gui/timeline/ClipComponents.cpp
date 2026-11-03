@@ -35,8 +35,12 @@ ClipComponent::ClipComponent (EditViewState& evs, TimelineGrid& g, te::Clip::Ptr
 {}
 
 Colour ClipComponent::getFill(Colour clipColour, bool selected) {
-    return selected ? atLightness(clipColour, 0.31f, 0.45f).withAlpha(0.75f)
+    return selected ? atLightness(clipColour, 0.36f, 0.55f).withAlpha(0.75f)
                     : atLightness(clipColour, 0.24f, 0.35f).withAlpha(0.75f);
+}
+
+Colour ClipComponent::getRingColour(Colour clipColour) {
+    return atLightness(clipColour, 0.92f, 0.4f);
 }
 
 void ClipComponent::paint(Graphics& g) {
@@ -83,8 +87,8 @@ ClipHeader::Fit ClipHeader::fit(int width, int nameWidth, const std::vector<int>
 }
 
 Colour ClipHeader::getFill(Colour clipColour, bool selected) {
-    // L 0.72 is the palette's own, see PsgClip::colourForTrackIndex()
-    return selected ? atLightness(clipColour, 0.72f, 1.0f) : atLightness(clipColour, 0.6f, 0.6f);
+    // L 0.72 is the palette's own, see PsgClip::colourForTrackIndex(); selection lifts it
+    return atLightness(clipColour, selected ? 0.82f : 0.72f, 1.0f);
 }
 
 void ClipHeader::paint(Graphics& g) {

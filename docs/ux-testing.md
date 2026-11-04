@@ -107,8 +107,9 @@ python3 -B scripts/illustrate_user_guide.py
 
 Pass `--build-dir /absolute/path/to/build` to use another Debug build. Run outside
 the sandbox with Studio and Player closed; the generator refuses to reuse an
-existing app session. It loads scratch copies of `tests/fixtures/Guide demo.uzx`
-(written by `scripts/make_guide_fixture.py`),
+existing app session. It loads scratch copies of `tests/fixtures/Guide demo.uzx` in
+Studio and `tests/fixtures/Turbo Sound demo.uzx` in the Player (both written by
+`scripts/make_guide_fixture.py`),
 captures the six figures, closes each test app in a `finally` block, and then
 updates the marked sections of `docs/user-guide.md`. During each session it
 temporarily sets that app's `recentEdits` to the scratch project so

@@ -51,7 +51,7 @@ void MoToolApp::initialise(const String& commandLineParameters) {
         // Handle file passed as command-line argument (e.g. double-click from Finder)
         auto file = File(commandLineParameters.unquoted().trim());
         if (file.existsAsFile())
-            playerController_->handleOpenFile(file);
+            playerController_->handleOpenFiles({file});
     }
 }
 
@@ -59,7 +59,7 @@ void MoToolApp::anotherInstanceStarted(const String& commandLine) {
     if (target_ == Target::uZXPlayer && commandLine.isNotEmpty()) {
         auto file = File(commandLine.unquoted().trim());
         if (file.existsAsFile())
-            playerController_->handleOpenFile(file);
+            playerController_->handleOpenFiles({file});
         playerController_->bringWindowToFront();
     }
 }

@@ -216,6 +216,13 @@ void AYPluginUI::resized() {
     }
 }
 
+int AYPluginUI::getMinimumHeight() const {
+    // as resized() lays it out: margins, the chip row, the knobs, then three channel groups of T, N and E
+    constexpr int margins = 2 * 8, gaps = 2 * (2 * itemSpacing);
+    constexpr int channels = 3 * (3 * minToggleHeight) + 2 * itemSpacing;
+    return margins + itemHeight + gaps + 2 * itemHeight + channels;
+}
+
 ComponentBoundsConstrainer* AYPluginUI::getBoundsConstrainer() {
     return &constrainer_;
 }

@@ -11,9 +11,11 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The time signature (SIG) in the transport bar is editable: type `3/4`, `6/8` or a bare numerator; PSG clips keep playing at the same times
 - View > Piano Keys (also in the PSG clip menu): a short piano keyboard over the note lanes at the view's left edge, so the groups of black keys show where C is
 - Tuning detection fits just intonations (5-limit, 5-limit 45:64, Pythagorean) on any tonic alongside 12TET, and names the chip clock (ZX Spectrum 128 or Pentagon; the Atari ST and Amstrad only by hand) at which a fitted A4 is within 4 cents of 440 Hz, for example `12TET 440 Hz Pentagon`. Detection matches only tracker tables and otherwise fits; the 12TET and just-intonation presets are left out. The **Tuning and key…** window lists the fitted tunings after the tracker tables and has a **Chip clock** choice for them, which renames the notes. The Player plays a PSG file it opens at the clock of its fitted tuning, and the clip header warns when the track's AY clock differs from it, for example `⚠ Pentagon @ ZX Spectrum +23¢`
+- Several PSG files at once: the Player opens them together, each on its own track and AY chip (Open, Import PSG, or drop them on the window), named after their shared name; Studio's Import PSG puts several on new tracks, and PSG files dropped on Studio are added on new tracks. A single file named like one chip of a Turbo Sound set (`song_1.psg`, `song.1.psg`, `song-1.psg`, `song 1.psg`) whose sibling chips have as many frames and the same header brings up a question whether to open the whole set
 - Tuning detection knows the earlier ProTracker tables #0 and #2 that PT 3.3 and older play, so tunes written with them are named on their own table instead of a nearby one. The Tuning window measures each tracker table against the clock and A4 its authors documented, such as 1.625 MHz for ProTracker #0 and 1.52064 MHz for Vortex Tracker #4
 
 ### Changed
+- The Player shows each track's AY chip and level meter at the right end of its row, instead of one side panel for the selected track, so a Turbo Sound tune shows every chip. The chip's title bar turns it on or off and has its menu; chips can't be removed or added in the Player. A track is never shorter than its AY chip needs; when the tracks don't fit the window, they scroll
 - Unselected clip headers keep the clip's full colour instead of a dimmed one; a selected clip is lighter and has a ring in a pale tint of its colour. Clip bodies are the track's own slate, a little lighter, instead of a dark tint of the clip colour that turned muddy over the slate
 - New PSG clips get track colours of equal lightness and colourfulness: the hue steps around OKLCH instead of HSV, so yellow and cyan clips no longer outshine blue and violet ones
 - The AY channel colours A, B and C (orange, green, blue) and the envelope's purple share one lightness and colourfulness, so channel A no longer looks brightest and C darkest. The E swatch in the clip header shows its stripes in the full envelope colour, as envelope notes do, instead of faded
@@ -24,6 +26,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
+- Showing a track's level meter, in Studio's track devices or the Player, no longer adds a step to Undo
 - The timeline scrolls smoothly during playback: the playhead, ruler, PSG clips and parameter chart move together once per display frame, and the playhead keeps up with the sound instead of trailing it by a frame or two
 - PSG clips line up with the ruler to the pixel, and note lane names no longer shift by a pixel while the view scrolls
 - PSG files with pause markers no longer shift every later frame by one per pause, and files written with a `0xFF` version byte open

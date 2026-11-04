@@ -25,7 +25,9 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
 
     trackViewport.setViewedComponent(&tracksContainer, false);
     tracksContainer.addMouseListener(this, true);
-    trackViewport.setScrollBarsShown(!options.autoFitTrackHeights, false);
+    trackViewport.setScrollBarsShown(true, false);  // fitted tracks scroll only when they need more height
+    trackViewport.fittedTracks = options.autoFitTrackHeights;
+    tracksContainer.onRowsChanged = [this] { markAndUpdate(updateSizes); };
 
     addAndMakeVisible(playhead);
     addAndMakeVisible(ruler);
@@ -94,19 +96,29 @@ void EditComponent::resized() {
     // also get called on updated zoom
     const int rulerHeight = 24;
     const auto headerWidth = editViewState.getTrackHeaderWidth();
+    const auto scrollbarWidth = getLookAndFeel().getDefaultScrollbarWidth();
     auto r = getLocalBounds();
 
-    editViewState.zoom.setViewWidthPx(r.getWidth() - headerWidth);
     if (options.showDetailsPanel) {
         detailsPanel.setBounds(r.removeFromBottom(300));
         detailsPanel.resized();  // for internal components
     }
-    timeScrollBar.setBounds(r.removeFromBottom(getLookAndFeel().getDefaultScrollbarWidth()).withTrimmedLeft(headerWidth));
-    playhead.setBounds(r.withTrimmedLeft(headerWidth));
-    ruler.setBounds(r.removeFromTop(rulerHeight).withTrimmedLeft(headerWidth));
+    auto scrollBarArea = r.removeFromBottom(scrollbarWidth);
+    const int tracksHeight = r.getHeight() - rulerHeight;
+
+    // fitted tracks below their minimum height scroll, and their scrollbar takes the right edge
+    const bool fittedTracksScroll = options.autoFitTrackHeights && tracksContainer.getMinimumHeight() > tracksHeight;
+    const auto footerWidth = editViewState.getTrackFooterWidth() + (fittedTracksScroll ? scrollbarWidth : 0);
+
+    editViewState.zoom.setViewWidthPx(r.getWidth() - headerWidth - footerWidth);
+    const auto timeline = [=](Rectangle<int> b) { return b.withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth); };
+    timeScrollBar.setBounds(timeline(scrollBarArea));
+    playhead.setBounds(timeline(r));
+    ruler.setBounds(timeline(r.removeFromTop(rulerHeight)));
     trackViewport.setBounds(r);
     if (options.autoFitTrackHeights)
-        tracksContainer.setBounds(r);
+        tracksContainer.setBounds(r.withTrimmedRight(fittedTracksScroll ? scrollbarWidth : 0)
+                                   .withHeight(jmax(r.getHeight(), tracksContainer.getMinimumHeight())));
     else
         tracksContainer.setBounds(r.withHeight(jmax(tracksContainer.getIdealHeight(), r.getHeight())));
 }
@@ -152,8 +164,9 @@ void EditComponent::ZoomableViewport::mouseWheelMove(const MouseEvent& e, const 
     if (e.mods.isCommandDown()) {
         auto headerWidth = editViewState.getTrackHeaderWidth();
         editViewState.zoom.zoomAroundX(wheel.deltaY, e.x - headerWidth);
-    } else if (e.mods.isShiftDown() || !isVerticalScrollBarShown() || std::abs(wheel.deltaX) > std::abs(wheel.deltaY)) {
-        // sideways swipes, and any wheel where the tracks never scroll vertically (Player), scroll the timeline
+    } else if (e.mods.isShiftDown() || (fittedTracks && ! getVerticalScrollBar().isVisible())
+               || std::abs(wheel.deltaX) > std::abs(wheel.deltaY)) {
+        // sideways swipes, and any wheel over fitted tracks that don't scroll (Player), scroll the timeline
         editViewState.zoom.scrollByWheel(wheel);
     } else {
         Viewport::mouseWheelMove(e, wheel);

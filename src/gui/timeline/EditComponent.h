@@ -57,6 +57,7 @@ private:
         ZoomableViewport(EditViewState& evs) : editViewState(evs) {}
         void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
         void mouseMagnify(const MouseEvent& e, float scale) override;
+        bool fittedTracks = false;  // the tracks fit the height, and scroll only when they can't
     private:
         EditViewState& editViewState;
     };

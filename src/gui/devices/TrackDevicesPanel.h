@@ -36,26 +36,28 @@ private:
 //==============================================================================
 /**
  * TrackDevicesPanel - Panel that displays the list of devices (plugins)
- * on the currently selected track and "+" buttons between them to add new plugins.
+ * on a track and, when editable, "+" buttons between them to add new plugins
+ * and a menu item to remove each.
  */
 class TrackDevicesPanel : public juce::Component,
-                          public juce::ChangeListener,
                           private FlaggedAsyncUpdater,
                           private juce::ValueTree::Listener,
                           private juce::ComponentListener
 {
 public:
-    TrackDevicesPanel(EditViewState& evs);
+    explicit TrackDevicesPanel(EditViewState& evs, bool editable = true);
     ~TrackDevicesPanel() override;
 
+    /** Shows the devices of `track` right away. */
     void setCurrentTrack(tracktion::Track* track);
+    /** Height the devices need, padding included. */
+    int getMinimumHeight() const;
+    /** Space around the devices; by default 8 above and below. */
+    void setPadding(juce::BorderSize<int> padding);
 
     // Component overrides
     void paint(juce::Graphics& g) override;
     void resized() override;
-
-    // ChangeListener override
-    void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 
     // ValueTree::Listener overrides
     void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) override;
@@ -70,6 +72,8 @@ public:
 
 private:
     EditViewState& editViewState;
+    const bool editable_;
+    juce::BorderSize<int> padding_;
     tracktion::SafeSelectable<tracktion::Track> currentTrack;
 
     // TODO this belongs to some ViewModel class

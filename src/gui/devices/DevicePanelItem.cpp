@@ -55,9 +55,10 @@ void BackgroundlessTextButton::paintButton(Graphics& g, bool shouldDrawButtonAsH
 
 //==============================================================================
 // TitleBar implementation
-TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI)
+TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI, bool removable)
     : plugin_(plugin)
     , deviceUI_(deviceUI)
+    , removable_(removable)
 {
     setSize(getWidth(), titleBarHeight);
 
@@ -164,7 +165,7 @@ void TitleBar::resized() {
 
 void TitleBar::refreshMenuButtonState() {
     const bool hasCustomMenu = deviceUI_ != nullptr && deviceUI_->hasDeviceMenu();
-    const bool hasPluginMenu = plugin_ != nullptr;
+    const bool hasPluginMenu = plugin_ != nullptr && removable_;
     const bool shouldShowMenu = hasCustomMenu || hasPluginMenu;
     menuButton_.setVisible(shouldShowMenu);
     menuButton_.setInterceptsMouseClicks(shouldShowMenu, shouldShowMenu);
@@ -214,7 +215,7 @@ void TitleBar::showDeviceMenu(Component* target) {
     }
 
     const bool hasCustomItems = customItems.getNumItems() > 0;
-    const bool hasPluginActions = plugin_ != nullptr;
+    const bool hasPluginActions = plugin_ != nullptr && removable_;
 
     if (hasInfoSection && (hasCustomItems || hasPluginActions))
         menu.addSeparator();
@@ -225,7 +226,7 @@ void TitleBar::showDeviceMenu(Component* target) {
         }
     }
 
-    if (plugin_ != nullptr) {
+    if (hasPluginActions) {
         if (menu.getNumItems() > 0)
             menu.addSeparator();
 
@@ -246,6 +247,10 @@ DeviceItem::DeviceItem(std::unique_ptr<PluginDeviceUI> ui)
     : plugin_(ui->getPlugin())
     , ui_(std::move(ui))
 {
+}
+
+int DeviceItem::getMinimumHeight() const {
+    return ui_ != nullptr ? ui_->getMinimumHeight() : 0;
 }
 
 //==============================================================================
@@ -279,9 +284,9 @@ namespace IDs {
 //==============================================================================
 // FramedDeviceItem implementation
 
-FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
+FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui, bool removable)
     : DeviceItem(std::move(ui))
-    , titleBar_(plugin_, getDeviceUI())
+    , titleBar_(plugin_, getDeviceUI(), removable)
 {
     if (ui_) {
         // Create and add title bar
@@ -303,6 +308,10 @@ FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui)
         setCollapsed(!isCollapsed_);
     });
     updateCollapsedInternal();
+}
+
+int FramedDeviceItem::getMinimumHeight() const {
+    return TitleBar::height + DeviceItem::getMinimumHeight();
 }
 
 void FramedDeviceItem::resized() {

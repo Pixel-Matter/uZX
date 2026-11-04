@@ -17,7 +17,7 @@ LevelMeterUI::LevelMeterUI(tracktion::Plugin::Ptr p)
     setSize(METER_WIDTH, 100);  // Height will be adjusted by parent
 
     if (levelMeterPlugin) {
-        levelMeterPlugin->showMidiActivity = true;
+        levelMeterPlugin->showMidiActivity.setValue(true, nullptr);  // a display setting: not undoable
         levelMeterPlugin->measurer.addClient(measurerClient);
     }
 

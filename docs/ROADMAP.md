@@ -31,7 +31,6 @@ None.
 - [ ] **Last opened edit** — reopening works in code; reproduce the "not always" report or close it
 - [ ] **Save / Save As** in the Player (Cmd+S does nothing)
 - [ ] **Shortcut consistency** across macOS, Windows and Linux
-- [ ] **Turbo-sound** load 2-3 PSGs at the same time
 - [ ] Fix **tab bars** look and feel to match design system (after plugins panes)
 
 #### P2 — Nice to have
@@ -57,7 +56,6 @@ None.
 #### P1 — Important
 
 - [ ] **About dialog** — GitHub link (only pixelmatter.org now), greets scroller
-- [ ] **Turbosound** — open or drop 2–3 PSG files at once (Import PSG → New Track adds them one at a time)
 - [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
 - [x] **Time signature editing** — SIG is editable in the transport bar; PSG clips keep their timing
 - [ ] **Loop range** on the ruler

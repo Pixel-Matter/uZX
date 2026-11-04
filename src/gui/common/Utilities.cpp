@@ -15,22 +15,36 @@ static const std::string PSG_WILDCARD {"*.psg;*.ay"};
 
 //==============================================================================
 
-void browseForFile(te::Engine& engine,
-                   const String& name, const String& category, const String& wildcard,
-                   std::function<void(const File&)> fileChosenCallback) {
+void browseForFiles(te::Engine& engine,
+                    const String& name, const String& category, const String& wildcard, bool multiple,
+                    std::function<void(const Array<File>&)> filesChosenCallback) {
     auto location = engine.getPropertyStorage().getDefaultLoadSaveDirectory(category);
     auto fc = std::make_shared<FileChooser>("Please select " + name + " file to load...", location, wildcard);
 
-    fc->launchAsync(FileBrowserComponent::openMode + FileBrowserComponent::canSelectFiles,
-                    [fc, &engine, category, callback = std::move(fileChosenCallback)](const FileChooser&) {
-                        const auto f = fc->getResult();
-                        if (f.existsAsFile()) {
+    auto flags = FileBrowserComponent::openMode + FileBrowserComponent::canSelectFiles;
+    if (multiple)
+        flags += FileBrowserComponent::canSelectMultipleItems;
+
+    fc->launchAsync(flags,
+                    [fc, &engine, category, callback = std::move(filesChosenCallback)](const FileChooser&) {
+                        Array<File> files;
+                        for (const auto& f : fc->getResults())
+                            if (f.existsAsFile())
+                                files.add(f);
+                        if (! files.isEmpty()) {
                             auto& storage = engine.getPropertyStorage();
-                            storage.setDefaultLoadSaveDirectory(category, f.getParentDirectory());
+                            storage.setDefaultLoadSaveDirectory(category, files[0].getParentDirectory());
                         }
 
-                        callback(f);
+                        callback(files);
                     });
+}
+
+void browseForFile(te::Engine& engine,
+                   const String& name, const String& category, const String& wildcard,
+                   std::function<void(const File&)> fileChosenCallback) {
+    browseForFiles(engine, name, category, wildcard, false,
+                   [callback = std::move(fileChosenCallback)](const Array<File>& files) { callback(files[0]); });
 }
 
 void browseForAudioFile(te::Engine& engine, std::function<void (const File&)> fileChosenCallback) {
@@ -41,8 +55,8 @@ void browseForMidiFile(te::Engine& engine, std::function<void (const File&)> fil
     browseForFile(engine, "a MIDI", "midi", String(MIDI_WILDCARD), fileChosenCallback);
 }
 
-void browseForPSGFile(te::Engine& engine, std::function<void (const File&)> fileChosenCallback) {
-    browseForFile(engine, "a PSG", "psg", String(PSG_WILDCARD), fileChosenCallback);
+void browseForPSGFiles(te::Engine& engine, std::function<void (const Array<File>&)> filesChosenCallback) {
+    browseForFiles(engine, "PSG", "psg", String(PSG_WILDCARD), true, std::move(filesChosenCallback));
 }
 
 }  // namespace MoTool::Helpers

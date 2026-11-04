@@ -31,10 +31,12 @@ public:
     ComponentBoundsConstrainer* getBoundsConstrainer();
 
     bool hasDeviceMenu() const override;
+    int getMinimumHeight() const override;
     void populateDeviceMenu(PopupMenu& menu) override;
 
     static constexpr int itemHeight = 20;
     static constexpr int itemSpacing = 4;
+    static constexpr int minToggleHeight = 16;  // T, N and E stay legible: button text is 10 shorter
 
 private:
     void valueChanged(juce::Value& value) override;

@@ -172,9 +172,15 @@ public:
         return psgData_;
     }
 
+    /** Header of the last read; all zeros before a read or for a file without one. */
+    const PsgFileHelpers::PsgHeaderDetails& getHeader() const noexcept {
+        return header_;
+    }
+
 private:
     juce::File file_;
     PsgData psgData_;
+    PsgFileHelpers::PsgHeaderDetails header_;
 
     /** Reads a PSG file format stream.
 
@@ -203,6 +209,7 @@ private:
         if (!header.hasValue())
             return false;
 
+        header_ = *header;
         d += header->bytesRead;
         remaining -= (size_t) header->bytesRead;
 

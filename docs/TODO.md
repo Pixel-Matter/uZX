@@ -30,6 +30,7 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 
 ## Global
 
+- [ ] Before v1.0: review and tweak all paddings and margins (Player, Studio, Tuning, dialogs)
 - [ ] Icons (fontaudio, Font Awesome, octicons, nerd-fonts)
 - [ ] CPU usage ticker in the status bar
 - [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds

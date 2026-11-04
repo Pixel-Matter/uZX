@@ -15,7 +15,9 @@ public:
     void initialize() override;
 
     void handleOpen();
-    void handleOpenFile(const File& file);
+    /** Opens the PSG files together in a new edit (offering a single PSG's Turbo Sound set),
+        or else the first .uzx project. */
+    void handleOpenFiles(const Array<File>& files);
     void handleOpenRecent(int fileIndex);
     void handleClearRecentFiles();
     void handleImportPsgReplace();
@@ -24,8 +26,8 @@ private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
 
-    void importPsgToNewTrack(const File& f);
-    void importPsgToNewEdit(const File& f);
+    void importPsgsToNewTracks(const Array<File>& files);
+    void importPsgsToNewEdit(const Array<File>& files);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerController)
 };

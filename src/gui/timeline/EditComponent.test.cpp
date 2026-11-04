@@ -1,6 +1,9 @@
 #include <JuceHeader.h>
 
 #include "EditComponent.h"
+#include "../devices/TrackDevicesPanel.h"
+#include "../../plugins/uZX/aychip/AYPluginEditor.h"
+#include "../../util/Helpers.h"
 #include "../../util/TestHelpers.h"
 
 namespace MoTool::Tests {
@@ -14,6 +17,7 @@ public:
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
         runLayoutTests(engine);
+        runMinimumHeightTests(engine);
 
         auto edit = te::Edit::createSingleTrackEdit(engine);
         te::getAudioTracks(*edit)[0]->insertMIDIClip({0_tp, 10_tp}, nullptr);
@@ -118,21 +122,92 @@ public:
 
 private:
     void runLayoutTests(te::Engine& engine) {
-        beginTest("Player layout stays out of undo and leaves Studio's track headers alone");
+        beginTest("Player layout stays out of undo, ends track rows in their devices, and leaves Studio's headers alone");
         auto edit = te::Edit::createSingleTrackEdit(engine);
         te::SelectionManager selectionManager(engine);
         edit->getUndoManager().clearUndoHistory();
         {
             EditViewState playerView(*edit, selectionManager);
             playerView.showHeaders = false;  // as the Player does
+            playerView.showFooters = true;
             EditComponent player(*edit, playerView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
             player.setSize(1000, 300);
             player.setSize(1000, 400);  // auto-fit resizes the tracks
             TestHelpers::flushMessageQueue();
+
+            // the timeline stops before the devices at the end of each track row
+            const int timelineRight = 1000 - EditViewState::footerWidth;
+            expectEquals(findChild<RulerComponent>(player)->getRight(), timelineRight, "ruler");
+            auto* row = findDescendant<TrackRowComponent>(player);
+            expect(row != nullptr && row->footer != nullptr, "track row with devices");
+            if (row != nullptr && row->footer != nullptr) {
+                expectEquals(row->footer->getX(), timelineRight, "devices start");
+                expectEquals(row->footer->getRight(), row->getWidth(), "devices end");
+                expectEquals(row->body.getRight(), timelineRight, "clips end");
+            }
         }
         expect(!edit->getUndoManager().canUndo());
         EditViewState studioView(*edit, selectionManager);
         expectEquals(studioView.getTrackHeaderWidth(), EditViewState::minHeadersWidth);
+    }
+
+    void runMinimumHeightTests(te::Engine& engine) {
+        beginTest("Fitted rows share the height in proportion, none below its minimum");
+        {
+            using Heights = Array<int>;
+            const auto fit = TracksContainerComponent::fitHeights;
+            expect(fit({100, 300}, {50, 50}, 800) == Heights({200, 600}), "in proportion");
+            expect(fit({100, 300}, {250, 250}, 600) == Heights({250, 350}), "held at the minimum");
+            expect(fit({0, 0, 0}, {10, 10, 10}, 100) == Heights({33, 33, 34}), "the last takes the rounding");
+        }
+
+        beginTest("Player rows keep the AY panel's minimum height and scroll when the view is shorter");
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        edit->ensureNumberOfAudioTracks(2);
+        for (auto* track : te::getAudioTracks(*edit))
+            Helpers::ensureAYPluginOnTrack(*track);
+        te::SelectionManager selectionManager(engine);
+        EditViewState playerView(*edit, selectionManager);
+        playerView.showHeaders = false;
+        playerView.showFooters = true;
+        EditComponent player(*edit, playerView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+        player.setSize(1000, 1000);
+        TestHelpers::flushMessageQueue();
+
+        auto* row = findDescendant<TrackRowComponent>(player);
+        auto* devices = row != nullptr ? row->footer.get() : nullptr;
+        expect(devices != nullptr);
+        if (devices == nullptr)
+            return;
+        auto* chip = findDescendant<uZX::AYPluginUI>(*devices);
+        expect(chip != nullptr && chip->getMinimumHeight() > 0);
+        const int minimum = row->getMinimumHeight();
+        expectEquals(minimum, chip->getMinimumHeight() + TitleBar::height + 2 * ClipComponent::ringWidth
+                                  + TrackRowComponent::resizerHeight);
+
+        player.setSize(1000, 300);  // two rows can't fit
+        TestHelpers::flushMessageQueue();
+        auto* tracks = findChild<Viewport>(player);
+        expect(tracks->getVerticalScrollBar().isVisible(), "tracks scroll");
+        expect(row->getHeight() >= minimum, "rows keep their minimum");
+        expectEquals(findChild<RulerComponent>(player)->getRight(),
+                     1000 - EditViewState::footerWidth - player.getLookAndFeel().getDefaultScrollbarWidth(),
+                     "the scrollbar takes the right edge from the timeline");
+
+        player.setSize(1000, 1000);
+        TestHelpers::flushMessageQueue();
+        expect(! tracks->getVerticalScrollBar().isVisible(), "tracks fit again");
+    }
+
+    template <typename T>
+    static T* findDescendant(Component& parent) {
+        for (auto* child : parent.getChildren()) {
+            if (auto* c = dynamic_cast<T*>(child))
+                return c;
+            if (auto* c = findDescendant<T>(*child))
+                return c;
+        }
+        return nullptr;
     }
 
     template <typename T>

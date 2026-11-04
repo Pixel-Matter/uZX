@@ -11,6 +11,8 @@
 
 namespace MoTool {
 
+class TrackDevicesPanel;
+
 //==============================================================================
 /**
  * Component for track header containing track name and controls
@@ -102,10 +104,15 @@ public:
     void trackViewStateChanged() override;
 
     int getTrackHeight() const noexcept;
+    /** Height the row needs for its devices; 0 without them. */
+    int getMinimumHeight() const;
     void setResizerVisible(bool visible);
+
+    static constexpr int resizerHeight = 2;
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
+    std::unique_ptr<TrackDevicesPanel> footer;  // the track's devices, fixed; only when the view shows footers
 
 private:
     EditViewState& editViewState;
@@ -152,7 +159,15 @@ public:
     void resized() override;
     void paint(Graphics& g) override;
     int getIdealHeight() const;
+    /** Height the rows need when they fit the view. */
+    int getMinimumHeight() const;
     void setAutoFitTrackHeights(bool enabled);
+
+    /** Shares `total` among rows in proportion to their current heights; a row that would get
+        less than its minimum keeps the minimum and the others share the rest. */
+    static Array<int> fitHeights(const Array<int>& current, const Array<int>& minimum, int total);
+
+    std::function<void()> onRowsChanged;  // the rows were rebuilt, so their minimum height may differ
 
 private:
     te::Edit& edit;

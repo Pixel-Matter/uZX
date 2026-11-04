@@ -47,7 +47,7 @@ The transport sits above the timeline; each track ends in its AY chip and level 
 |---------|-------------|
 | Rewind (⏮) | Jump to the beginning |
 | Play/Pause (▶/⏸) | Start or pause playback |
-| Position readout | Current time; format switches between bars/beats and mm:ss |
+| Position readout (Pos) | Current time in the ruler's timecode format: Bars.Beats.Frames (`1.2.05`), Minutes:Seconds:Frames (`01:05:12`), or Frames (`3262`). Click and type a position to seek there. You can leave parts off: in Bars.Beats.Frames `5` is bar 5; in Minutes:Seconds:Frames `5:20` is 5 seconds 20 frames and `1.5` is 1.5 seconds |
 | BPM control | Tempo in BPM (inc/dec buttons or direct entry). Importing a PSG into an empty project sets it from the detected tracker speed, together with the frames-per-beat grid; dumps without a clear row grid keep the current tempo. If a dump starts a few frames before its first tracker row, the clip is trimmed so that row starts bar 1, or, when those frames are not silent, moved right so it starts bar 2 |
 | Groove (GRV) | Frame counts of the grid groups within one beat, such as 6 6 6 6, or 7 6 7 6 for a swing. Click and type your own. Importing a PSG into an empty project sets it from the detected rows, grouped four to a beat (three or five where the beat divides that way) |
 | Time signature (SIG) | Click and type a new one, such as 3/4 or 6/8; a bare number keeps the denominator. PSG clips keep playing at the same times. Importing a PSG into an empty project sets 3/4 when its drum and bass patterns clearly repeat every three beats, 4/4 when they clearly repeat every four, and otherwise leaves it as is |

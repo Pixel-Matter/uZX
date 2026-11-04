@@ -94,7 +94,6 @@ private:
     void updatePlayButtonText(bool isPlaying);
     void updateRecordButtonText(bool isRecording);
     void updateAutomationButtons();
-    String getTimecode(te::TimePosition pos) const;
     void updateTimeLabels(te::TimePosition pos);
     void commitEditedPosition();
     void commitEditedDivisions();

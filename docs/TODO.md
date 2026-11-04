@@ -12,7 +12,7 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [x] Ruler timecode is saved with the edit
 - [x] Grid level 0 subdivisions are strange
 - [x] Playhead snaps to grid
-- [ ] Pos readout/editing in different timecode formats (always HH:MM:SS:CC now)
+- [x] Pos readout/editing in current timecode formats
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)
 - [x] Better BPM editing

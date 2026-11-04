@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include "SnapLadder.h"
 #include "Timecode.h"
 
 namespace te = tracktion;
@@ -51,6 +52,10 @@ std::vector<int> getGridSubdivisionPattern(te::Edit& edit, int framesPerBeat);
 /** Stores the subdivision pattern as a space-separated string; fewer than two
     groups clears it. */
 void setGridSubdivisionPattern(te::Edit& edit, const std::vector<int>& pattern);
+
+/** The grid/snap ladder for the edit's timecode mode, fps and subdivision
+    pattern, with frames per beat taken from the tempo at the given time. */
+SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt);
 
 juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit);
 

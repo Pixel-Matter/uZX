@@ -46,13 +46,7 @@ void TimelineGrid::invalidateAndNotify() {
 }
 
 SnapLadder TimelineGrid::makeSnapLadder() const {
-    auto& edit = editViewState.edit;
-    const auto mode = Helpers::getTimecodeDisplayMode(edit);
-    const auto fps = Helpers::getProjectFps(edit);
-    const auto& tempo = edit.tempoSequence.getTempoAt(editViewState.zoom.getRange().getStart());
-    const auto framesPerBeat = jmax(1, roundToInt(fps * tempo.getApproxBeatLength().inSeconds()));
-
-    return SnapLadder(mode, fps, framesPerBeat, Helpers::getGridSubdivisionPattern(edit, framesPerBeat));
+    return Helpers::makeSnapLadder(editViewState.edit, editViewState.zoom.getRange().getStart());
 }
 
 int TimelineGrid::getVisibleSnapLevel(const SnapLadder& ladder) const {

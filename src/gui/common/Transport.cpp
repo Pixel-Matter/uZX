@@ -302,13 +302,9 @@ void TransportBar::updateAutomationButtons() {
     autoWriteButton_.setToggleState(arm.isWritingAutomation(), dontSendNotification);
 }
 
-String TransportBar::getTimecode(te::TimePosition pos) const {
-    return te::TimecodeDisplayFormat::toFullTimecode(pos, 100, true);
-}
-
 void TransportBar::updateTimeLabels(te::TimePosition pos) {
     auto& ts = edit_.tempoSequence;
-    transportReadout_.setText(getTimecode(pos), dontSendNotification);
+    transportReadout_.setText(Helpers::makeSnapLadder(edit_, pos).getPositionLabel(pos, ts), dontSendNotification);
 
     bpmControl_.setValue(ts.getBpmAt(pos), 2);
     timeSigLabel_.setText(ts.getTimeSigAt(pos).getStringTimeSig(), dontSendNotification);
@@ -321,30 +317,10 @@ void TransportBar::updateTimeLabels(te::TimePosition pos) {
 }
 
 void TransportBar::commitEditedPosition() {
-    // Parse the same layout getTimecode() emits: HH:MM:SS:CC (centiseconds),
-    // shorter inputs are read from the least-significant end (e.g. "SS:CC" or "SS").
-    auto parts = StringArray::fromTokens(transportReadout_.getText().trim(), ":", "");
-    parts.trim();
-    parts.removeEmptyStrings();
-    if (parts.isEmpty()) {
-        updateTimeLabels(transport_.getPosition());  // restore display
-        return;
-    }
-
-    double hours = 0, mins = 0, secs = 0, centis = 0;
-    switch (parts.size()) {
-        case 1: secs = parts[0].getDoubleValue(); break;
-        case 2: secs = parts[0].getIntValue(); centis = parts[1].getIntValue(); break;
-        case 3: mins = parts[0].getIntValue(); secs = parts[1].getIntValue(); centis = parts[2].getIntValue(); break;
-        default:
-            hours = parts[0].getIntValue(); mins = parts[1].getIntValue();
-            secs = parts[2].getIntValue(); centis = parts[3].getIntValue();
-            break;
-    }
-
-    auto totalSeconds = jmax(0.0, hours * 3600.0 + mins * 60.0 + secs + centis / 100.0);
-    transport_.setPosition(te::TimePosition::fromSeconds(totalSeconds));
-    updateTimeLabels(transport_.getPosition());  // re-normalise the display
+    const auto pos = transport_.getPosition();
+    if (auto parsed = Helpers::makeSnapLadder(edit_, pos).parsePosition(transportReadout_.getText(), edit_.tempoSequence))
+        transport_.setPosition(*parsed);
+    updateTimeLabels(transport_.getPosition());  // shows the result, or restores the old one
 }
 
 void TransportBar::commitEditedDivisions() {

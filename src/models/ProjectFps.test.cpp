@@ -51,8 +51,8 @@ private:
         }
         {
             auto result = parseLegacyTimecodeFormat("beats");
-            expect(result.mode == TimecodeDisplayMode::barsBeats,
-                   "beats should map to barsBeats");
+            expect(result.mode == TimecodeDisplayMode::barsBeatsFrames,
+                   "the dropped frameless beats mode should map to barsBeatsFrames");
             expect(! result.fps.has_value(), "beats should carry no fps");
         }
         {

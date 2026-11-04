@@ -23,7 +23,7 @@ void setTimecodeDisplayMode(te::Edit& edit, TimecodeDisplayMode mode) {
         IDs::timecodeDisplayMode, VariantConverter<TimecodeDisplayMode>::toVar(mode), &edit.getUndoManager());
 
     // Keep the te-native property on a value Tracktion understands.
-    const bool musical = mode == TimecodeDisplayMode::barsBeats || mode == TimecodeDisplayMode::barsBeatsFrames;
+    const bool musical = mode == TimecodeDisplayMode::barsBeatsFrames;
     edit.state.setProperty(te::IDs::timecodeFormat, musical ? "beats" : "seconds", &edit.getUndoManager());
 }
 
@@ -148,6 +148,14 @@ void setGridSubdivisionPattern(te::Edit& edit, const std::vector<int>& pattern) 
     edit.state.setProperty(IDs::gridSubdivision, formatGridSubdivisionPattern(pattern), &edit.getUndoManager());
 }
 
+SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt) {
+    const auto fps = getProjectFps(edit);
+    const auto& tempo = edit.tempoSequence.getTempoAt(tempoAt);
+    const auto framesPerBeat = jmax(1, roundToInt(fps * tempo.getApproxBeatLength().inSeconds()));
+
+    return SnapLadder(getTimecodeDisplayMode(edit), fps, framesPerBeat, getGridSubdivisionPattern(edit, framesPerBeat));
+}
+
 juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit) {
     const auto current = getTimecodeDisplayMode(edit);
 
@@ -164,10 +172,9 @@ juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit) {
     };
 
     PopupMenu menu;
-    menu.addItem(item("Bars | Beats", TimecodeDisplayMode::barsBeats));
-    menu.addItem(item("Bars | Beats | Frames", TimecodeDisplayMode::barsBeatsFrames));
-    menu.addItem(item("Seconds", TimecodeDisplayMode::seconds));
-    menu.addItem(item("Frames Only", TimecodeDisplayMode::framesOnly));
+    menu.addItem(item("Bars.Beats.Frames", TimecodeDisplayMode::barsBeatsFrames));
+    menu.addItem(item("Minutes:Seconds:Frames", TimecodeDisplayMode::seconds));
+    menu.addItem(item("Frames", TimecodeDisplayMode::framesOnly));
     return menu;
 }
 

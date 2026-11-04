@@ -14,7 +14,7 @@ namespace MoTool {
 
     Unlike Tracktion's beat-fraction levels, the frame-bearing modes subdivide
     in integer frame space: frames restart at each beat (barsBeatsFrames) or at
-    each second (framesOnly), and an optional subdivision pattern (e.g. 6-7-6-7
+    each second (the clock modes, seconds and framesOnly), and an optional subdivision pattern (e.g. 6-7-6-7
     for 26 frames per beat) inserts a swing-capable level between the frames
     and the beat. Frame levels restart at each subdivision boundary, so every
     level's ticks are a superset of the ticks of all coarser levels' boundaries.
@@ -59,8 +59,18 @@ public:
         multiples (or simply two levels up for the non-musical modes). */
     int getMilestoneAfter(int level) const;
 
-    /** Ruler label for a tick of this level ("3", "1.2", "1.1.05", "0:00:05"). */
+    /** Ruler label for a tick of this level ("3", "1.2", "1.1.05", "00:05:00", "255"). */
     juce::String getLabel(int level, te::TimePosition, const te::TempoSequence&) const;
+
+    /** Position readout: the finest level's label at the nearest finest tick
+        ("1.2.05", "00:05:12", "262"). */
+    juce::String getPositionLabel(te::TimePosition, const te::TempoSequence&) const;
+
+    /** Inverse of getPositionLabel. The musical modes may drop parts from the
+        right ("3" is bar 3), seconds from the left ("5:20" is 5 s 20 frames), and a
+        lone seconds number may have a fraction ("1.5"). Gives nothing for text
+        that isn't digits and separators. */
+    juce::Optional<te::TimePosition> parsePosition(const juce::String&, const te::TempoSequence&) const;
 
 private:
     struct Level {
@@ -70,7 +80,7 @@ private:
     };
 
     /** The container a frame-level time lives in: one beat (barsBeatsFrames)
-        or one second (framesOnly), with the queried time as a frame offset. */
+        or one second (clock modes), with the queried time as a frame offset. */
     struct FrameContext {
         te::TimePosition start, end;
         int frameCount = 1;
@@ -91,7 +101,11 @@ private:
     std::vector<Level> levels_;
     int beatLevel_ = -1;
     int barLevel_ = -1;
-    int firstTeLevel_ = -1;  // framesOnly: index of the seconds level
+    int firstTeLevel_ = -1;  // clock modes: index of the seconds level
+
+    bool isClock() const noexcept {
+        return mode_ == TimecodeDisplayMode::seconds || mode_ == TimecodeDisplayMode::framesOnly;
+    }
 };
 
 }  // namespace MoTool

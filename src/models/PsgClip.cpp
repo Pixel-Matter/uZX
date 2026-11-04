@@ -386,4 +386,11 @@ void PsgClip::loadFrom(uZX::PsgData &data) {
     scaleVerticallyToFit();
 }
 
+TuningDetection detectTuningTogether(const juce::Array<PsgClip*>& clips) {
+    PitchHistogram together;
+    for (auto* clip : clips)
+        together += clip->getTuningDetection().histogram;  // each clip's is cached
+    return detectTuning(together);
+}
+
 }  // namespace MoTool

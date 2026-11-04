@@ -53,6 +53,19 @@ class GuideIllustrationsTest(unittest.TestCase):
         self.assertNotIn("/Users/", guide.EXAMPLE.read_text())
         self.assertIsNone(root.get("modifiedBy"))
 
+    def test_player_demo_is_a_turbo_sound_set_with_one_clip_per_track(self):
+        root = ET.parse(guide.PLAYER_EXAMPLE).getroot()
+        tracks = root.findall("TRACK")
+        self.assertEqual(len(tracks), 2)
+        for chip, track in enumerate(tracks, start=1):
+            self.assertEqual(track.get("name"), f"{guide.PLAYER_EXAMPLE.stem}.{chip}")
+            self.assertEqual(len(track.findall("PLUGIN[@type='aychip']")), 1)
+            clips = track.findall("PSGCLIP")
+            self.assertEqual(len(clips), 1, "the Player opens one clip per track")
+            self.assertTrue(clips[0].findall("PSG/FRAME"))
+        self.assertEqual(len({clip.get("length") for clip in root.findall("TRACK/PSGCLIP")}), 1)
+        self.assertNotIn("/Users/", guide.PLAYER_EXAMPLE.read_text())
+
     def test_track_locator_distinguishes_the_document_title(self):
         track = {"label": "Guide melody", "role": "textField"}
         scene = {"ui_elements": [{"label": "Guide melody", "role": "other"}, track]}
@@ -118,7 +131,7 @@ class GuideIllustrationsTest(unittest.TestCase):
                  patch.object(guide.plistlib, "loads", return_value={"CFBundleExecutable": "Player"}), \
                  patch.object(Path, "read_bytes", return_value=b"plist"):
                 with self.assertRaisesRegex(RuntimeError, "capture failed"):
-                    with guide.application(ROOT, "uZXPlayer", Path(temporary)):
+                    with guide.application(ROOT, "uZXPlayer", Path(temporary), guide.PLAYER_EXAMPLE):
                         raise RuntimeError("capture failed")
                 driver.assert_any_call("app", "quit", "--pid", 123, required=False)
                 process.terminate.assert_called_once()

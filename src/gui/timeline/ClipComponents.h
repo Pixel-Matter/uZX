@@ -75,6 +75,11 @@ public:
     };
     static Fit fit(int width, int nameWidth, const std::vector<int>& itemWidths, int legendWidth);
 
+    /** A warning chip: its width, then the chip in area. */
+    static int getWarningWidth(const String& warning);
+    static void paintWarning(Graphics& g, Rectangle<int> area, const String& warning);
+    static constexpr int pad = 3;
+
 protected:
     /** Incompatibilities, drawn as warning chips after the name. */
     virtual StringArray getWarnings() { return {}; }

@@ -83,6 +83,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
     editViewState_->showHeaders = false;
     editViewState_->showFooters = true;
+    editViewState_->showClipHeaders = false;
 
     window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), true);
     setMainWindowTitle(makePlayerWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension()));

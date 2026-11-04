@@ -311,6 +311,14 @@ PitchHistogram PitchHistogram::Builder::build() const {
     return hist;
 }
 
+PitchHistogram& PitchHistogram::operator+=(const PitchHistogram& other) {
+    for (const auto& [period, frames] : other.tone)
+        tone[period] += frames;
+    for (const auto& [period, frames] : other.envelope)
+        envelope[period] += frames;
+    return *this;
+}
+
 int PitchHistogram::getTotal() const noexcept {
     int total = 0;
     for (const auto& [period, frames] : tone)

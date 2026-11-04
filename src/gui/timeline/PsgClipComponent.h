@@ -19,6 +19,17 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, 
     Empty when the clocks agree to within a cent. */
 String getClockMismatchText(double tuningClock, double trackClock);
 
+/** A PSG clip's warnings: its fps against the project's, and its tuning's clock against its track's. */
+StringArray getPsgClipWarnings(PsgClip&);
+/** A PSG clip's tuning table and key, "?" after a detection tie nobody settled. */
+String getPsgClipInfo(const PsgClip&);
+/** The A B C E N channel legend: its width, then the swatches from area's left edge, area's height tall. */
+int getPsgLegendWidth();
+void paintPsgLegend(Graphics& g, Rectangle<int> area);
+/** The tuning table and key of an edit's PSG clips: one clip's own, or several detected
+    together, as the chips of a Turbo Sound tune. Empty without PSG clips or pitches. */
+String getPsgSetInfo(te::Edit&);
+
 /** One piano-roll lane of the Notes view: a grid note's band in normalized pitch,
     bounded by the midpoints to its neighbours. */
 struct NoteLane
@@ -77,6 +88,8 @@ private:
     void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
     void changeListenerCallback(ChangeBroadcaster*) override;
     void timerCallback() override;
+    /** Without clip headers (the Player), the warnings go over the notes' top-left corner. */
+    void paintWarnings(Graphics& g);
 
     /** Hover popup text for the frame under local x; empty before the first frame. */
     std::vector<std::pair<String, Colour>> describeFrameAt(int x);
@@ -143,6 +156,36 @@ protected:
 
 private:
     void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+};
+
+//==============================================================================
+/** The channel legend on its backing, for views without clip headers (the Player). */
+class PsgLegendComponent : public Component {
+public:
+    PsgLegendComponent();
+    void paint(Graphics& g) override;
+};
+
+/** The tuning table and key of all PSG clips (getPsgSetInfo), for views without clip
+    headers (the Player); follows clips coming and going and their tuning choices. */
+class PsgSetInfoComponent : public Component,
+                            private juce::ValueTree::Listener,
+                            private juce::AsyncUpdater {
+public:
+    explicit PsgSetInfoComponent(te::Edit&);
+    ~PsgSetInfoComponent() override;
+
+    void paint(Graphics& g) override;
+    const String& getText() const noexcept { return text_; }
+
+private:
+    void handleAsyncUpdate() override;
+    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override;
+    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override;
+    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+
+    te::Edit& edit_;
+    String text_;
 };
 
 }  // namespace MoTool

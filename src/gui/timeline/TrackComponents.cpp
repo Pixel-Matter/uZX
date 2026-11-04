@@ -375,10 +375,11 @@ void TrackBodyComponent::resized() {
 
     // Inset top and bottom, so a selected clip's ring fits around it
     constexpr int inset = ClipComponent::ringWidth;
+    const int headerHeight = editViewState.showClipHeaders ? ClipHeader::height : 0;
     for (auto cc : clips) {
         const auto x = clipX(cc->getClip());
-        cc->setBounds(x.getStart(), inset + ClipHeader::height, x.getLength(),
-                      jmax(0, getHeight() - ClipHeader::height - 2 * inset));
+        cc->setBounds(x.getStart(), inset + headerHeight, x.getLength(),
+                      jmax(0, getHeight() - headerHeight - 2 * inset));
     }
     for (auto header : clipHeaders) {
         const auto x = clipX(header->getClip());
@@ -393,23 +394,23 @@ void TrackBodyComponent::buildClips() {
     if (auto ct = dynamic_cast<te::ClipTrack*>(track.get())) {
         for (auto c : ct->getClips()) {
             ClipComponent* cc = nullptr;
-            ClipHeader* header = nullptr;
+            const bool psg = dynamic_cast<PsgClip*>(c) != nullptr;
 
             if (dynamic_cast<te::WaveAudioClip*>(c))
                 cc = new AudioClipComponent(editViewState, grid, c);
-            else if (dynamic_cast<PsgClip*>(c)) {  // must go before MidiClip
+            else if (psg)  // must go before MidiClip
                 cc = new PsgClipComponent(editViewState, grid, c);
-                header = new PsgClipHeader(editViewState, c);
-            } else if (dynamic_cast<te::MidiClip*>(c))
+            else if (dynamic_cast<te::MidiClip*>(c))
                 cc = new MidiClipComponent(editViewState, grid, c);
             else
                 cc = new ClipComponent(editViewState, grid, c);
 
-            if (header == nullptr)
-                header = new ClipHeader(editViewState, c);
-
             clips.add(cc);
             addAndMakeVisible(cc);
+
+            if (! editViewState.showClipHeaders)
+                continue;
+            auto* header = psg ? new PsgClipHeader(editViewState, c) : new ClipHeader(editViewState, c);
             clipHeaders.add(header);
             addAndMakeVisible(header);
         }

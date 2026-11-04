@@ -526,6 +526,9 @@ void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree& tree, const juc
     // The listener sits on the whole edit; another clip's tuning is not ours to repaint.
     else if ((isTuningProperty(property) || property == IDs::paintMode) && tree == clip->state)
         repaint();
+    // Warnings over the notes compare with the project's fps and the track's clock, as the header's do
+    else if (! editViewState.showClipHeaders && (property == IDs::timecodeDisplayMode || property == uZX::IDs::clock))
+        repaint();
 }
 
 void PsgClipComponent::paint(Graphics& g) {
@@ -540,6 +543,8 @@ void PsgClipComponent::paint(Graphics& g) {
     } else {
         paintRegisters(g);
     }
+    if (! editViewState.showClipHeaders)
+        paintWarnings(g);
 
    #if JUCE_DEBUG
     paintMeasurer_.drawOverlay(g, getShownArea(*this));
@@ -788,6 +793,31 @@ LaneDetail getLaneDetail(float noteHeight) {
 }
 
 constexpr float whiteKeyWidth = 18.0f, blackKeyWidth = 11.0f;
+constexpr float laneLabelGap = 3.0f, laneLabelWidth = 40.0f;
+
+/** The note lanes as the Notes view draws them now. */
+struct LaneView {
+    NotesLayout layout;
+    LaneDetail detail;
+    bool pianoKeys;  // keys too short to tell apart leave just the grid
+
+    /** Where the names start: right of the keys when they are shown. */
+    float getLabelX() const { return layout.visibleX.getStart() + (pianoKeys ? whiteKeyWidth : 0.0f) + laneLabelGap; }
+    /** Where the keys and names end: right of it is clear of them. */
+    float getGutterRight() const { return getLabelX() + (detail.labels != LaneDetail::None ? laneLabelWidth : 0.0f); }
+};
+
+/** None when the lanes are off, the clip is empty, the tuning has no grid, or the lanes are
+    too short to draw. */
+static std::optional<LaneView> getLaneView(const PsgClip& clip, Rectangle<int> bounds, const EditViewState& evs) {
+    if (clip.getPsg().isEmpty() || ! areNoteLanesShown(clip.edit.engine) || clip.getTuning().grid.size() < 2)
+        return std::nullopt;
+    const auto layout = makeNotesLayout(clip, bounds, evs);
+    const auto detail = getLaneDetail(layout.noteHeight);
+    if (detail.lines == LaneDetail::None)
+        return std::nullopt;
+    return LaneView {layout, detail, arePianoKeysShown(clip.edit.engine) && detail.lines == LaneDetail::All};
+}
 
 /** Piano Keys mode: a short keyboard over the grid at the view's left edge, just enough to
     show the groups of two and three black keys that tell where C is. Each lane is one key;
@@ -824,29 +854,26 @@ static void paintPianoKeys(Graphics& g, const std::vector<NoteLane>& lanes, cons
     the repaint area. */
 void PsgClipComponent::paintNoteLanes(Graphics& g) {
     auto* psgClip = getPsgClip();
-    if (psgClip == nullptr || psgClip->getPsg().isEmpty() || ! areNoteLanesShown(psgClip->edit.engine))
+    const auto view = psgClip != nullptr ? getLaneView(*psgClip, getLocalBounds(), editViewState) : std::nullopt;
+    if (! view)
         return;
 
     const auto& tuning = psgClip->getTuning();
-    const auto layout = makeNotesLayout(*psgClip, getLocalBounds(), editViewState);
-    const auto detail = getLaneDetail(layout.noteHeight);
-    if (tuning.grid.size() < 2 || detail.lines == LaneDetail::None)
-        return;
+    const auto& layout = view->layout;
+    const auto detail = view->detail;
+    const bool pianoKeys = view->pianoKeys;
 
     if (lanesRevision_ != tuning.revision) {
         lanes_ = makeNoteLanes(tuning.grid);
         lanesRevision_ = tuning.revision;
     }
 
-    // Keys too short to tell apart leave just the grid; names move right of the keys.
-    const bool pianoKeys = arePianoKeysShown(psgClip->edit.engine) && detail.lines == LaneDetail::All;
-
     // Without a key the octave anchor falls back to C and no lane is shaded.
     const int tonic = tuning.hasKey ? static_cast<int>(tuning.key.tonic) : 0;
     const float x = layout.visibleX.getStart(), width = layout.visibleX.getLength();
-    const float labelX = x + (pianoKeys ? whiteKeyWidth : 0.0f) + 3.0f;
+    const float labelX = view->getLabelX();
     const auto damage = g.getClipBounds().toFloat();
-    constexpr float labelWidth = 40.0f, tonicLabelHeight = 10.0f;
+    constexpr float labelWidth = laneLabelWidth, tonicLabelHeight = 10.0f;
     const bool labelsInDamage = detail.labels != LaneDetail::None
         && damage.getX() < labelX + labelWidth && damage.getRight() > x;
     if (labelsInDamage)
@@ -881,6 +908,25 @@ void PsgClipComponent::paintNoteLanes(Graphics& g) {
     }
     if (pianoKeys)
         paintPianoKeys(g, lanes_, layout);
+}
+
+void PsgClipComponent::paintWarnings(Graphics& g) {
+    auto* psgClip = getPsgClip();
+    if (psgClip == nullptr)
+        return;
+    constexpr int pad = ClipHeader::pad, chipHeight = 12;
+    auto row = getShownArea(*this).reduced(pad).withHeight(chipHeight);
+    // clear of the note lanes' keys and names
+    if ((int) clip->state.getProperty(IDs::paintMode, 0) == 0)
+        if (const auto view = getLaneView(*psgClip, getLocalBounds(), editViewState))
+            row.setLeft(jmax(row.getX(), roundToInt(view->getGutterRight())));
+    for (const auto& warning : getPsgClipWarnings(*psgClip)) {
+        const int width = ClipHeader::getWarningWidth(warning);
+        if (width > row.getWidth())
+            break;
+        ClipHeader::paintWarning(g, row.removeFromLeft(width), warning);
+        row.removeFromLeft(pad);
+    }
 }
 
 void PsgClipComponent::paintNotes(Graphics& g) {
@@ -1081,41 +1127,43 @@ void PsgClipHeader::mouseDown(const MouseEvent& e) {
         showPsgClipMenu(*psgClip);
 }
 
-StringArray PsgClipHeader::getWarnings() {
-    auto* psgClip = dynamic_cast<PsgClip*>(clip.get());
-    if (psgClip == nullptr)
-        return {};
-
+StringArray getPsgClipWarnings(PsgClip& psgClip) {
     StringArray warnings;
-    const auto editFps = Helpers::getProjectFps(psgClip->edit);
-    if (psgClip->getPsg().hasFpsMismatch(*psgClip, editFps))
+    const auto editFps = Helpers::getProjectFps(psgClip.edit);
+    if (psgClip.getPsg().hasFpsMismatch(psgClip, editFps))
         warnings.add(String::fromUTF8("\xE2\x9A\xA0 ")  // ⚠
-                     + String(roundToInt(psgClip->getPsg().getEffectiveFps(*psgClip))) + " @ "
+                     + String(roundToInt(psgClip.getPsg().getEffectiveFps(psgClip))) + " @ "
                      + String(roundToInt(editFps)) + " fps");
 
     // A fitted tuning names its notes for its clock; a track at another clock plays
     // them off by the clock ratio. Tracker tables have no clock to disagree with.
-    if (const auto& tuning = psgClip->getTuning(); tuning.fit)
-        if (const auto trackClock = getTrackChipClock(*psgClip))
+    if (const auto& tuning = psgClip.getTuning(); tuning.fit)
+        if (const auto trackClock = getTrackChipClock(psgClip))
             if (const auto warning = getClockMismatchText(tuning.fit->chipClock, *trackClock); warning.isNotEmpty())
                 warnings.add(warning);
     return warnings;
 }
 
-String PsgClipHeader::getInfo() {
-    auto* psgClip = dynamic_cast<PsgClip*>(clip.get());
-    if (psgClip == nullptr)
-        return {};
-
+String getPsgClipInfo(const PsgClip& psgClip) {
     // Detected (or chosen) tuning table and key; '?' marks a detection tie nobody settled.
     // A clip without audible pitches has neither, unless the user chose one.
-    const auto& tuning = psgClip->getTuning();
+    const auto& tuning = psgClip.getTuning();
     auto text = tuning.tableLabel;
     if (tuning.hasKey)
         text << (text.isEmpty() ? "" : "  ") << tuning.key.getName();
     if (text.isNotEmpty() && tuning.uncertain)
         text << " ?";
     return text;
+}
+
+StringArray PsgClipHeader::getWarnings() {
+    auto* psgClip = dynamic_cast<PsgClip*>(clip.get());
+    return psgClip != nullptr ? getPsgClipWarnings(*psgClip) : StringArray();
+}
+
+String PsgClipHeader::getInfo() {
+    auto* psgClip = dynamic_cast<PsgClip*>(clip.get());
+    return psgClip != nullptr ? getPsgClipInfo(*psgClip) : String();
 }
 
 namespace {
@@ -1146,13 +1194,13 @@ void forEachLegendSwatch(Fn&& fn) {
 
 }  // namespace
 
-int PsgClipHeader::getLegendWidth() {
+int getPsgLegendWidth() {
     int width = -legendSpacing;
     forEachLegendSwatch([&](const LegendItem&, int swatchWidth) { width += swatchWidth + legendSpacing; });
     return width;
 }
 
-void PsgClipHeader::paintLegend(Graphics& g, Rectangle<int> area) {
+void paintPsgLegend(Graphics& g, Rectangle<int> area) {
     g.setFont(getLegendFont());
     forEachLegendSwatch([&](const LegendItem& item, int swatchWidth) {
         auto swatch = area.removeFromLeft(swatchWidth);
@@ -1172,6 +1220,88 @@ void PsgClipHeader::paintLegend(Graphics& g, Rectangle<int> area) {
         g.setColour(item.style == LegendStyle::Channel ? Colours::black : Colours::white);
         g.drawText(item.label, swatch, Justification::centred);
     });
+}
+
+int PsgClipHeader::getLegendWidth() {
+    return getPsgLegendWidth();
+}
+
+void PsgClipHeader::paintLegend(Graphics& g, Rectangle<int> area) {
+    paintPsgLegend(g, area);
+}
+
+//==============================================================================
+String getPsgSetInfo(te::Edit& edit) {
+    Array<PsgClip*> clips;
+    for (auto* track : te::getAudioTracks(edit))
+        for (auto* clip : track->getClips())
+            if (auto* psgClip = dynamic_cast<PsgClip*>(clip))
+                clips.add(psgClip);
+
+    if (clips.size() <= 1)
+        return clips.isEmpty() ? String() : getPsgClipInfo(*clips[0]);
+
+    // ponytail: detected together, the clips' own tuning choices are not consulted;
+    // a set-wide choice needs clips linked in the model.
+    const auto detection = detectTuningTogether(clips);
+    if (! detection.hasNotes)
+        return {};
+    auto text = detection.getTableLabel() + "  " + detection.keys.front().getName();
+    if (detection.tableTie || isKeyTie(detection.keys))
+        text << " ?";
+    return text;
+}
+
+PsgLegendComponent::PsgLegendComponent() {
+    setInterceptsMouseClicks(false, false);
+    setSize(getPsgLegendWidth() + 2, 14);
+}
+
+void PsgLegendComponent::paint(Graphics& g) {
+    // The envelope and noise swatches are see-through, drawn for the dark body.
+    g.setColour(Colors::Theme::backgroundAlt);
+    g.fillRoundedRectangle(getLocalBounds().toFloat(), 2.0f);
+    paintPsgLegend(g, getLocalBounds().reduced(1));
+}
+
+PsgSetInfoComponent::PsgSetInfoComponent(te::Edit& edit)
+    : edit_(edit)
+{
+    setInterceptsMouseClicks(false, false);
+    edit_.state.addListener(this);
+    triggerAsyncUpdate();  // the clips may come after this
+}
+
+PsgSetInfoComponent::~PsgSetInfoComponent() {
+    edit_.state.removeListener(this);
+}
+
+void PsgSetInfoComponent::paint(Graphics& g) {
+    g.setColour(Colors::Theme::textPrimary);
+    g.setFont(FontOptions(11.0f));
+    g.drawText(text_, getLocalBounds().reduced(ClipHeader::pad * 3, 0), Justification::centredLeft, true);
+}
+
+void PsgSetInfoComponent::handleAsyncUpdate() {
+    if (auto text = getPsgSetInfo(edit_); text != text_) {
+        text_ = text;
+        repaint();
+    }
+}
+
+void PsgSetInfoComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& child) {
+    if (te::Clip::isClipState(child))
+        triggerAsyncUpdate();
+}
+
+void PsgSetInfoComponent::valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& child, int) {
+    if (te::Clip::isClipState(child))
+        triggerAsyncUpdate();
+}
+
+void PsgSetInfoComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
+    if (isTuningProperty(property))
+        triggerAsyncUpdate();
 }
 
 }  // namespace MoTool

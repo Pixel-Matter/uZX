@@ -17,7 +17,8 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 GUIDE = ROOT / "docs/user-guide.md"
-EXAMPLE = ROOT / "tests/fixtures/Guide demo.uzx"  # scripts/make_guide_fixture.py writes it
+EXAMPLE = ROOT / "tests/fixtures/Guide demo.uzx"  # scripts/make_guide_fixture.py writes both
+PLAYER_EXAMPLE = ROOT / "tests/fixtures/Turbo Sound demo.uzx"  # one clip per track, as the Player opens files
 TRACK = "Lead"  # the example's first track, whose first clip and devices the figures show
 FIGURES = {
     "player-overview": ("Player transport and timeline", "The transport sits above the timeline; each track ends in its AY chip and level meter."),
@@ -147,14 +148,14 @@ def demo_startup(settings, project):
 
 
 @contextmanager
-def application(build, target, work):
+def application(build, target, work, example):
     name = "μZX Player" if target == "uZXPlayer" else "μZX Studio"
     bundle = build / f"src/{target}_artefacts/Debug/{name}.app"
     info = plistlib.loads((bundle / "Contents/Info.plist").read_bytes())
     project_dir = work / target
     project_dir.mkdir()
-    project = project_dir / EXAMPLE.name
-    shutil.copyfile(EXAMPLE, project)
+    project = project_dir / example.name
+    shutil.copyfile(example, project)
     command = [str(bundle / "Contents/MacOS" / info["CFBundleExecutable"])]
     settings = Path.home() / f"Library/Application Support/{name}/{name}.settings"
     with demo_startup(settings, project), (work / f"{target}.log").open("w") as log:
@@ -176,11 +177,11 @@ def application(build, target, work):
 
 
 def capture_figures(build, work):
-    with application(build, "uZXPlayer", work) as (pid, window):
-        resize(pid, window, 1280, 650)
+    with application(build, "uZXPlayer", work, PLAYER_EXAMPLE) as (pid, window):
+        resize(pid, window, 1280, 650)  # fits the demo's two chips at the tracks' minimum height
         menu(pid, "View > Zoom to project")
         scene = observe(pid, window, work / "player-overview.png")
-        if EXAMPLE.stem not in scene["window_title"]:
+        if PLAYER_EXAMPLE.stem not in scene["window_title"]:
             raise RuntimeError("Player did not load the example project")
         width, height = scene["coordinate_context"]["delivered_image_size"]
         # shortcut: track rows end in a fixed 264-point devices footer (EditViewState::footerWidth)
@@ -188,7 +189,7 @@ def capture_figures(build, work):
         observe(pid, window, work / "player-ay-panel.png", (width - 264, 72, 264, height - 72))
         print("Captured Player transport/timeline and AY panel", flush=True)
 
-    with application(build, "uZX", work) as (pid, window):
+    with application(build, "uZX", work, EXAMPLE) as (pid, window):
         resize(pid, window, 1280, 800)
         menu(pid, "View > Zoom to project")
         scene = observe(pid, window, work / "studio-before.png")

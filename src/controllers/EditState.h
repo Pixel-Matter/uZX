@@ -176,6 +176,7 @@ public:
 
     bool showHeaders = true;  // per app, not saved: the Player hides them
     bool showFooters = false;  // per app, not saved: the Player shows them
+    bool showClipHeaders = true;  // per app, not saved: the Player draws warnings and the legend over the notes
     bool transparentClips = false;
     bool disableClipSelection = false;
 

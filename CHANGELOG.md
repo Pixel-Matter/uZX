@@ -14,7 +14,11 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Several PSG files at once: the Player opens them together, each on its own track and AY chip (Open, Import PSG, or drop them on the window), named after their shared name; Studio's Import PSG puts several on new tracks, and PSG files dropped on Studio are added on new tracks. A single file named like one chip of a Turbo Sound set (`song_1.psg`, `song.1.psg`, `song-1.psg`, `song 1.psg`) whose sibling chips have as many frames and the same header brings up a question whether to open the whole set
 - Tuning detection knows the earlier ProTracker tables #0 and #2 that PT 3.3 and older play, so tunes written with them are named on their own table instead of a nearby one. The Tuning window measures each tracker table against the clock and A4 its authors documented, such as 1.625 MHz for ProTracker #0 and 1.52064 MHz for Vortex Tracker #4
 
+- The Pos readout in the transport bar shows the position in the ruler's timecode format, such as `2.3.05`, `01:05:12` or `3262`, and takes a typed position in that format; parts can be left off, so `5` is bar 5
+
 ### Changed
+- Timecode Format has three formats, named as they read: Bars.Beats.Frames, Minutes:Seconds:Frames (`MM:SS:FF`, which snaps to frames instead of milliseconds) and Frames (an absolute frame count instead of `m:ss:ff`). Bars | Beats without frames is gone; files saved with it open in Bars.Beats.Frames
+- Switching the timecode format is no longer a step in Undo and doesn't count as an unsaved change; the file still keeps it
 - The Player shows each track's AY chip and level meter at the right end of its row, instead of one side panel for the selected track, so a Turbo Sound tune shows every chip. The chip's title bar turns it on or off and has its menu; chips can't be removed or added in the Player. A track is never shorter than its AY chip needs; when the tracks don't fit the window, they scroll
 - Unselected clip headers keep the clip's full colour instead of a dimmed one; a selected clip is lighter and has a ring in a pale tint of its colour. Clip bodies are the track's own slate, a little lighter, instead of a dark tint of the clip colour that turned muddy over the slate
 - New PSG clips get track colours of equal lightness and colourfulness: the hue steps around OKLCH instead of HSV, so yellow and cyan clips no longer outshine blue and violet ones
@@ -26,6 +30,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
+- PSG clip FPS warnings update as soon as the project FPS changes, instead of on the next redraw
 - Showing a track's level meter, in Studio's track devices or the Player, no longer adds a step to Undo
 - The timeline scrolls smoothly during playback: the playhead, ruler, PSG clips and parameter chart move together once per display frame, and the playhead keeps up with the sound instead of trailing it by a frame or two
 - PSG clips line up with the ruler to the pixel, and note lane names no longer shift by a pixel while the view scrolls

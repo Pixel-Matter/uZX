@@ -94,10 +94,12 @@ private:
 
         auto& engine = *te::Engine::getEngines()[0];
         auto edit = te::Edit::createSingleTrackEdit(engine);
+        edit->getUndoManager().clearUndoHistory();
 
         Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::framesOnly);
         expect(Helpers::getTimecodeDisplayMode(*edit) == TimecodeDisplayMode::framesOnly,
                "framesOnly mode should round-trip");
+        expect(! edit->getUndoManager().canUndo(), "switching the display mode is not undoable");
         expectEquals(edit->state[te::IDs::timecodeFormat].toString(),
                      juce::String("seconds"),
                      "framesOnly should write te timecodeFormat as 'seconds'");

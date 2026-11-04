@@ -19,12 +19,13 @@ TimecodeDisplayMode getTimecodeDisplayMode(te::Edit& edit) {
 }
 
 void setTimecodeDisplayMode(te::Edit& edit, TimecodeDisplayMode mode) {
-    edit.state.setProperty(
-        IDs::timecodeDisplayMode, VariantConverter<TimecodeDisplayMode>::toVar(mode), &edit.getUndoManager());
+    // A view setting: saved with the edit, but outside undo, so switching it
+    // neither lands on Cmd+Z nor marks the edit as changed.
+    edit.state.setProperty(IDs::timecodeDisplayMode, VariantConverter<TimecodeDisplayMode>::toVar(mode), nullptr);
 
     // Keep the te-native property on a value Tracktion understands.
     const bool musical = mode == TimecodeDisplayMode::barsBeatsFrames;
-    edit.state.setProperty(te::IDs::timecodeFormat, musical ? "beats" : "seconds", &edit.getUndoManager());
+    edit.state.setProperty(te::IDs::timecodeFormat, musical ? "beats" : "seconds", nullptr);
 }
 
 void migrateTimecodeDisplaySettings(te::Edit& edit) {

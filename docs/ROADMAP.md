@@ -60,6 +60,7 @@ None.
 - [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
 - [x] **Time signature editing** — SIG is editable in the transport bar; PSG clips keep their timing
 - [ ] **Loop range** on the ruler
+- [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Nicer transport icons**
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
 
@@ -69,6 +70,7 @@ None.
 - [ ] **Visualizer mode** — fullscreen oscilloscopes without controls (for streaming)
 - [ ] **Channel split mode** — each AY channel in its own lane
 - [ ] **Minimap** on the horizontal scroller
+- [ ] **Clock-mode frame grid** — frame ticks restart every second, so at 24 fps 5-frame ticks run …20, 24, 29; the frame field widens to three digits at 100/200 fps
 
 ---
 
@@ -114,6 +116,7 @@ Grouped by theme, not ordered.
 
 - [ ] Smooth 60 FPS on modest hardware: PSG clip paint cache, async PSG loading with progress
 - [ ] Crash reports and UX issues from 1.0 feedback
+- [ ] Tracktion timecode (MMC, hosted plugins) follows the project FPS — it is always 24 now
 
 ---
 

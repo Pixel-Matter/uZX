@@ -527,7 +527,7 @@ void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree& tree, const juc
     else if ((isTuningProperty(property) || property == IDs::paintMode) && tree == clip->state)
         repaint();
     // Warnings over the notes compare with the project's fps and the track's clock, as the header's do
-    else if (! editViewState.showClipHeaders && (property == IDs::timecodeDisplayMode || property == uZX::IDs::clock))
+    else if (! editViewState.showClipHeaders && (property == IDs::projectFps || property == uZX::IDs::clock))
         repaint();
 }
 
@@ -1107,8 +1107,8 @@ PsgClipHeader::~PsgClipHeader() {
 
 void PsgClipHeader::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Identifier& property) {
     // The effective-fps warning depends on frames-per-beat, current beat length
-    // and the edit's timecode fps, so refresh when tempo or timecode changes.
-    if (property == IDs::timecodeDisplayMode
+    // and the project fps, so refresh when tempo or fps changes.
+    if (property == IDs::projectFps
         || property == te::IDs::bpm
         || property == te::IDs::startBeat)
         repaint();

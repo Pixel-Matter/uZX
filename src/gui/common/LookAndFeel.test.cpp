@@ -11,6 +11,32 @@ public:
     void runTest() override {
         MoLookAndFeel lf;
 
+        beginTest("Buttons too short for text still get a valid font");
+        {
+            TextButton button;
+            for (int height : {0, 4, 10})
+                expect(lf.getTextButtonFont(button, height).getHeightInPoints() > 0.0f,
+                       "button " + String(height) + " high");
+        }
+
+        beginTest("A knob squeezed below its body draws nothing");
+        {
+            Slider knob(Slider::RotaryVerticalDrag, Slider::NoTextBox);
+            knob.setLookAndFeel(&lf);
+            const auto isBlank = [](const Image& image) {
+                for (int y = 0; y < image.getHeight(); ++y)
+                    for (int x = 0; x < image.getWidth(); ++x)
+                        if (! image.getPixelAt(x, y).isTransparent())
+                            return false;
+                return true;
+            };
+            knob.setSize(78, 4);
+            expect(isBlank(knob.createComponentSnapshot(knob.getLocalBounds())), "4 high");
+            knob.setSize(40, 40);
+            expect(! isBlank(knob.createComponentSnapshot(knob.getLocalBounds())), "40 high");
+            knob.setLookAndFeel(nullptr);
+        }
+
         beginTest("BinaryData contains font resources");
         {
             expect(BinaryData::InterRegular_ttfSize > 0, "Inter Regular font data should be non-empty");

@@ -50,8 +50,9 @@ None.
 - [ ] **Code signing + notarization in CI** — release automation exists; the macOS build is an unsigned zip
 - [ ] **DMG packaging** with an Applications symlink
 - [ ] **Tracktion Engine** — move from v3.2.0 + fork patches to the latest stable, or decide to stay
-- [ ] **Release notes** — CHANGELOG entry for the tag
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
+- [ ] **UX quality review** review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
+- [ ] **Release notes** — CHANGELOG entry for the tag
 
 #### P1 — Important
 

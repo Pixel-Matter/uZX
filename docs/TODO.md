@@ -30,7 +30,6 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 
 ## Global
 
-- [ ] Before v1.0: review and tweak all paddings and margins (Player, Studio, Tuning, dialogs)
 - [ ] Icons (fontaudio, Font Awesome, octicons, nerd-fonts)
 - [ ] CPU usage ticker in the status bar
 - [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds
@@ -74,7 +73,7 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 
 ## AY Chip Emulator plugin
 
-- [ ] Consider keeping chip emulator state for every keyframe
+- [ ] Timer fx support (for TAYM import/export)
 
 ## Tuning System
 

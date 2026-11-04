@@ -105,6 +105,7 @@ set(TEST_SOURCES
     util/enumchoice.test.cpp
     util/Oklch.test.cpp
     util/Helpers.test.cpp
+    util/FileOps.test.cpp
 
     formats/psg/PsgFile.test.cpp
     formats/psg/TurboSound.test.cpp

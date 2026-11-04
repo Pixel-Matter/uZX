@@ -16,7 +16,7 @@ Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. **Last opened edit** — first P1 below
+1. **Save / Save As** — first P1 below
 
 ### Alpha for testers
 
@@ -28,7 +28,6 @@ None.
 
 #### P1 — Important
 
-- [ ] **Last opened edit** — reopening works in code; reproduce the "not always" report or close it
 - [ ] **Save / Save As** in the Player (Cmd+S does nothing)
 - [ ] **Shortcut consistency** across macOS, Windows and Linux
 - [ ] Fix **tab bars** look and feel to match design system (after plugins panes)

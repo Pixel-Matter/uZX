@@ -1,5 +1,6 @@
 #include "TrackComponents.h"
 #include "PsgClipComponent.h"
+#include "../devices/TrackDevicesPanel.h"
 
 #include "../common/LookAndFeel.h"
 #include "../../controllers/App.h"
@@ -453,6 +454,18 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Tr
     addAndMakeVisible(body);
     addAndMakeVisible(resizer);
 
+    if (editViewState.showFooters) {
+        footer = std::make_unique<TrackDevicesPanel>(editViewState, false);
+        // level with the clips, apart from them and from the window edge
+        constexpr int gap = 8;
+        footer->setPadding({ClipComponent::ringWidth, gap, ClipComponent::ringWidth, gap});
+        footer->setCurrentTrack(track.get());
+        addAndMakeVisible(*footer);
+
+        auto& constrainer = trackViewState.getConstrainer();
+        constrainer.setMinimumHeight(jmax(constrainer.getMinimumHeight(), getMinimumHeight()));
+    }
+
     trackViewState.addListener(this);
 }
 
@@ -462,6 +475,10 @@ TrackRowComponent::~TrackRowComponent() {
 
 int TrackRowComponent::getTrackHeight() const noexcept {
     return trackViewState.getHeight();
+}
+
+int TrackRowComponent::getMinimumHeight() const {
+    return footer != nullptr ? footer->getMinimumHeight() + resizerHeight : 0;
 }
 
 void TrackRowComponent::setResizerVisible(bool visible) {
@@ -481,9 +498,11 @@ void TrackRowComponent::resized() {
 
     const int headerWidth = editViewState.getTrackHeaderWidth();
     auto r = getLocalBounds();
-    resizer.setBounds(r.removeFromBottom(2));
+    resizer.setBounds(r.removeFromBottom(resizerHeight));
 
     header.setBounds(r.removeFromLeft(headerWidth));
+    if (footer != nullptr)
+        footer->setBounds(r.removeFromRight(editViewState.getTrackFooterWidth()));
     body.setBounds(r);
 
     // do not remove
@@ -565,6 +584,49 @@ void TracksContainerComponent::setAutoFitTrackHeights(bool enabled) {
     autoFitTrackHeights_ = enabled;
 }
 
+static constexpr int minFittedRowHeight = 40;
+
+int TracksContainerComponent::getMinimumHeight() const {
+    int height = 0;
+    for (auto* row : trackRows)
+        height += jmax(minFittedRowHeight, row->getMinimumHeight());
+    return height;
+}
+
+Array<int> TracksContainerComponent::fitHeights(const Array<int>& current, const Array<int>& minimum, int total) {
+    const int n = current.size();
+    Array<int> heights(minimum);
+    Array<bool> held;
+    held.insertMultiple(0, false, n);
+
+    for (bool holding = true; holding;) {
+        holding = false;
+        int space = total, weight = 0;
+        for (int i = 0; i < n; ++i) {
+            if (held[i])
+                space -= minimum[i];
+            else
+                weight += jmax(1, current[i]);
+        }
+        for (int i = 0; i < n; ++i) {
+            if (held[i])
+                continue;
+            heights.set(i, roundToInt((double) space * jmax(1, current[i]) / jmax(1, weight)));
+            if (heights[i] < minimum[i]) {
+                heights.set(i, minimum[i]);
+                held.set(i, true);
+                holding = true;
+            }
+        }
+    }
+
+    int above = 0;  // the last row takes the rounding
+    for (int i = 0; i < n - 1; ++i)
+        above += heights[i];
+    heights.set(n - 1, jmax(minimum[n - 1], total - above));
+    return heights;
+}
+
 int TracksContainerComponent::getIdealHeight() const {
     return std::accumulate (trackRows.begin(), trackRows.end(), 0, [] (auto acc, auto& track) {
         return acc + track->getTrackHeight();
@@ -582,45 +644,29 @@ void TracksContainerComponent::resized() {
 
     if (autoFitTrackHeights_ && !trackRows.isEmpty()) {
         const int totalHeight = getHeight();
+        Array<int> heights, minimums;
+        for (auto* row : trackRows) {
+            heights.add(row->getTrackHeight());
+            minimums.add(jmax(minFittedRowHeight, row->getMinimumHeight()));
+        }
 
-        if (totalHeight != lastFitHeight_) {
-            // Container was resized — scale all tracks proportionally
-            int oldTotal = 0;
-            for (auto t : trackRows)
-                oldTotal += t->getTrackHeight();
+        bool refit = totalHeight != lastFitHeight_;  // the container was resized: scale all rows
+        if (! refit) {
+            // a row was resized by hand: the last one takes up the difference while it can
+            int above = 0;
+            for (int i = 0; i < heights.size() - 1; ++i)
+                above += heights[i];
+            heights.set(heights.size() - 1, totalHeight - above);
+            refit = heights.getLast() < minimums.getLast();
+        }
+        if (refit)
+            heights = fitHeights(heights, minimums, totalHeight);
 
-            if (oldTotal <= 0) oldTotal = totalHeight;
-
-            int y = 0;
-            for (int i = 0; i < trackRows.size(); ++i) {
-                if (i == trackRows.size() - 1) {
-                    // Last track gets remainder
-                    int h = totalHeight - y;
-                    trackRows[i]->setBounds(0, y, getWidth(), h);
-                    trackRows[i]->resized();
-                } else {
-                    int h = roundToInt((double)trackRows[i]->getTrackHeight() / oldTotal * totalHeight);
-                    h = jmax(h, 40);
-                    trackRows[i]->setBounds(0, y, getWidth(), h);
-                    trackRows[i]->resized();
-                    y += h;
-                }
-            }
-        } else {
-            // Same height — a track was manually resized; last track absorbs difference
-            int y = 0;
-            for (int i = 0; i < trackRows.size(); ++i) {
-                if (i == trackRows.size() - 1) {
-                    int h = totalHeight - y;
-                    trackRows[i]->setBounds(0, y, getWidth(), h);
-                    trackRows[i]->resized();
-                } else {
-                    int h = trackRows[i]->getTrackHeight();
-                    trackRows[i]->setBounds(0, y, getWidth(), h);
-                    trackRows[i]->resized();
-                    y += h;
-                }
-            }
+        int y = 0;
+        for (int i = 0; i < trackRows.size(); ++i) {
+            trackRows[i]->setBounds(0, y, getWidth(), heights[i]);
+            trackRows[i]->resized();
+            y += heights[i];
         }
 
         lastFitHeight_ = totalHeight;
@@ -639,7 +685,7 @@ void TracksContainerComponent::resized() {
 
     gridRect = Rectangle<int>(
         headerWidth, y,
-        getWidth() - headerWidth,
+        getWidth() - headerWidth - editViewState.getTrackFooterWidth(),
         getHeight() - y
     );
 }
@@ -709,6 +755,8 @@ void TracksContainerComponent::buildTracks() {
     }
 
     markAndUpdate(needsResize);
+    if (onRowsChanged)
+        onRowsChanged();
 }
 
 void TracksContainerComponent::handleAsyncUpdate() {

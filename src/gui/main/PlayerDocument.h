@@ -4,7 +4,6 @@
 
 #include "../timeline/EditComponent.h"
 #include "../common/Transport.h"
-#include "../devices/AYPluginSidePanel.h"
 
 namespace MoTool {
 
@@ -25,7 +24,6 @@ public:
 private:
     TransportBar transportBar_;
     EditComponent editComponent_;
-    AYPluginSidePanel ayPanel_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerDocumentComponent)
 };

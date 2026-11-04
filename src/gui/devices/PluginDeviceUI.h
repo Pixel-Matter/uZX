@@ -21,6 +21,8 @@ public:
     tracktion::Plugin::Ptr getPlugin() const { return plugin; }
 
     virtual bool hasCustomDeviceUI() { return false; }
+    /** Height below which the controls stop being usable; 0 when any height will do. */
+    virtual int getMinimumHeight() const { return 0; }
     virtual bool canHasPlusButtonAfter() { return true; }
     virtual bool hasDeviceMenu() const { return false; }
     virtual void populateDeviceMenu(juce::PopupMenu& /*menu*/) {}

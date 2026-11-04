@@ -11,7 +11,8 @@ DetailsPanelComponent::DetailsPanelComponent(EditViewState& evs, TimelineGrid& g
     tabbedComponent.setOutline(0);
     tabbedComponent.addTab("Clip Parameters", Colors::Theme::background,
                            new PsgParamEditorWrapper(evs, g), true);
-    tabbedComponent.addTab("Track Devices", Colors::Theme::background, new TrackDevicesPanel(evs), true);
+    devicesPanel = new TrackDevicesPanel(evs);
+    tabbedComponent.addTab("Track Devices", Colors::Theme::background, devicesPanel, true);
 
     addAndMakeVisible(tabbedComponent);
 
@@ -36,6 +37,8 @@ void DetailsPanelComponent::resized() {
 
 void DetailsPanelComponent::changeListenerCallback(juce::ChangeBroadcaster* source) {
     if (source == &editViewState.selectionManager) {
+        if (auto* track = editViewState.selectionManager.getFirstItemOfType<tracktion::Track>())
+            devicesPanel->setCurrentTrack(track);
         updateTabVisibility();
     }
 }

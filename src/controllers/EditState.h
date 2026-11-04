@@ -169,8 +169,13 @@ public:
     bool shouldSnapPlayheadToGrid() const;
 
     int getTrackHeaderWidth() const;
+    /** Width of the track devices at the right of each track row; 0 when footers are hidden. */
+    int getTrackFooterWidth() const { return showFooters ? footerWidth : 0; }
+
+    static constexpr int footerWidth = 264;  // an AY chip and a level meter, 8 apart and from each side
 
     bool showHeaders = true;  // per app, not saved: the Player hides them
+    bool showFooters = false;  // per app, not saved: the Player shows them
     bool transparentClips = false;
     bool disableClipSelection = false;
 

@@ -20,8 +20,8 @@ GUIDE = ROOT / "docs/user-guide.md"
 EXAMPLE = ROOT / "tests/fixtures/Guide demo.uzx"  # scripts/make_guide_fixture.py writes it
 TRACK = "Lead"  # the example's first track, whose first clip and devices the figures show
 FIGURES = {
-    "player-overview": ("Player transport and timeline", "The transport sits above the timeline; the AY controls are on the right."),
-    "player-ay-panel": ("Player AY side panel", "Chip type and clock, stereo controls, and the three channel strips."),
+    "player-overview": ("Player transport and timeline", "The transport sits above the timeline; each track ends in its AY chip and level meter."),
+    "player-ay-panel": ("Player track devices", "Chip type and clock, stereo controls, the three channel strips, and the track's level meter."),
     "studio-layout": ("Studio layout with a selected PSG clip", "Track headers are on the left, clips above, and the selected clip's parameter editor below."),
     "studio-psg-editor": ("PSG parameter editor", "Choose a register parameter in the list to inspect its values against the timeline grid."),
     "studio-devices": ("Studio track device chain", "Selecting the track reveals its devices, including the AY chip emulator."),
@@ -183,9 +183,9 @@ def capture_figures(build, work):
         if EXAMPLE.stem not in scene["window_title"]:
             raise RuntimeError("Player did not load the example project")
         width, height = scene["coordinate_context"]["delivered_image_size"]
-        # shortcut: PlayerDocument has a fixed 240-point AY panel and 40-point transport;
-        # update this crop if that layout changes.
-        observe(pid, window, work / "player-ay-panel.png", (width - 240, 72, 240, height - 72))
+        # shortcut: track rows end in a fixed 264-point devices footer (EditViewState::footerWidth)
+        # under a 40-point transport; update this crop if that layout changes.
+        observe(pid, window, work / "player-ay-panel.png", (width - 264, 72, 264, height - 72))
         print("Captured Player transport/timeline and AY panel", flush=True)
 
     with application(build, "uZX", work) as (pid, window):

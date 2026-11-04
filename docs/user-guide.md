@@ -40,7 +40,7 @@ Located at the top of the window.
 <!-- guide-figure:player-overview -->
 ![Player transport and timeline](images/user-guide/player-overview.png)
 
-The transport sits above the timeline; the AY controls are on the right.
+The transport sits above the timeline; each track ends in its AY chip and level meter.
 <!-- /guide-figure:player-overview -->
 
 | Control | Description |
@@ -62,20 +62,22 @@ The timeline shows the loaded file as a clip on a track. Click anywhere on the r
 
 Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
 
-### AY Side Panel
+### AY Chip and Level Meter
 
-A panel on the right side of the window shows the AY chip plugin controls for the currently selected track. Here you can adjust:
+Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Here you can adjust:
 
 - **Chip clock frequency** — affects pitch of the whole output
 - **Stereo mode** — mono, ABC, ACB, or custom channel panning
 - Channel-level output settings
 
-If no track is selected the panel shows "No AY plugin".
+The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with its MIDI channels, monitor mode and scope settings. Chips can't be removed or added in the Player.
+
+A track is never shorter than its AY chip needs to show every control. When the tracks need more height than the window has, they scroll up and down.
 
 <!-- guide-figure:player-ay-panel -->
-![Player AY side panel](images/user-guide/player-ay-panel.png)
+![Player track devices](images/user-guide/player-ay-panel.png)
 
-Chip type and clock, stereo controls, and the three channel strips.
+Chip type and clock, stereo controls, the three channel strips, and the track's level meter.
 <!-- /guide-figure:player-ay-panel -->
 
 ---
@@ -286,7 +288,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Click | Clip header (Studio) | Select the clip, leaving the playhead where it is |
 | Drag the playhead line | Ruler or tracks | Scrub; hold past either edge to scroll |
 | Wheel or swipe | Ruler or scrollbar | Scroll horizontally |
-| Wheel or swipe | Tracks (Player) | Scroll horizontally |
+| Wheel or swipe | Tracks (Player) | Scroll horizontally; when the tracks don't fit the window, the wheel scrolls them vertically and a sideways swipe scrolls the timeline |
 | Sideways swipe | Tracks | Scroll horizontally |
 | Drag | Ruler | Sideways scrolls, up/down zooms (down zooms out) |
 | Middle-drag | Tracks | Same as dragging the ruler |

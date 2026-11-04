@@ -30,6 +30,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
+- Player and Studio reopen the last edit on launch again: once the recent list was full, a newly opened or imported edit dropped out of it, so the previous edit opened instead and File > Open Recent never listed the newest one
 - PSG clip FPS warnings update as soon as the project FPS changes, instead of on the next redraw
 - Showing a track's level meter, in Studio's track devices or the Player, no longer adds a step to Undo
 - The timeline scrolls smoothly during playback: the playhead, ruler, PSG clips and parameter chart move together once per display frame, and the playhead keeps up with the sound instead of trailing it by a frame or two

@@ -84,9 +84,6 @@ StringArray getRecentEdits() {
     files.trim();
     files.removeEmptyStrings();
 
-    while (files.size() > 8)
-        files.remove(0);
-
     for (int i = files.size(); --i >= 0;) {
         const File f(files.getReference(i));
 
@@ -95,6 +92,7 @@ StringArray getRecentEdits() {
         }
     }
 
+    files.removeRange(8, files.size());  // newest first: drop the oldest
     return files;
 }
 

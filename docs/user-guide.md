@@ -60,6 +60,8 @@ For keys, see [Keyboard and Mouse](#keyboard-and-mouse).
 
 The timeline shows the loaded file as a clip on a track. Click anywhere on the ruler or timeline to seek to that position, or drag the playhead line to scrub.
 
+Clips in the Player have no header: the notes take the whole track. A clip's warnings, such as an fps or chip clock that differs from the project's, sit over the top-left corner of its notes. The legend of the colours (channels A, B and C, the envelope E and noise N) appears once, at the top right of the tracks. The tuning table and key are in the corner above the AY chips; for a Turbo Sound tune they are detected from all its chips together, since each chip plays only part of the music, so the tune gets one key.
+
 Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
 
 ### AY Chip and Level Meter
@@ -126,7 +128,7 @@ The timeline contains **tracks** stacked vertically. Each track has a **header**
 
 Clips appear in the track body as colored blocks. PSG clips visualize chip register activity as miniature graphics inside each block.
 
-Along the top of each clip runs its **header**, in the clip's colour. A selected clip is lighter, header and body, with a ring in a pale tint of its colour around it. It shows the clip's name, then warnings, such as a PSG clip whose fps or chip clock differs from the project's, then details such as the tuning table and key. A selected PSG clip's header also shows the legend of its colours at the right edge of the view: channels A, B and C, the envelope E and noise N. The Player, where clips are not selected, shows it on every PSG clip. When a header is too short for everything, the legend goes first, then the details, then the warnings, and the name is shortened last. In Studio, click the header to select the clip; a click on a header never moves the playhead.
+Along the top of each clip runs its **header**, in the clip's colour. A selected clip is lighter, header and body, with a ring in a pale tint of its colour around it. It shows the clip's name, then warnings, such as a PSG clip whose fps or chip clock differs from the project's, then details such as the tuning table and key. A selected PSG clip's header also shows the legend of its colours at the right edge of the view: channels A, B and C, the envelope E and noise N. The Player has no clip headers (see [Timeline](#timeline)). When a header is too short for everything, the legend goes first, then the details, then the warnings, and the name is shortened last. In Studio, click the header to select the clip; a click on a header never moves the playhead.
 
 See [Reading PSG clips](psg-visualization.md) for an illustrated reference to tone, envelope, noise, channel ownership, and matching pitches.
 

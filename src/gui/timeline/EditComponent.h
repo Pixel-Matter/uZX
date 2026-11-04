@@ -10,6 +10,9 @@
 
 namespace MoTool {
 
+class PsgLegendComponent;
+class PsgSetInfoComponent;
+
 struct EditComponentOptions {
     bool showDetailsPanel = true;
     bool autoFitTrackHeights = false;
@@ -82,6 +85,11 @@ private:
     };
 
     TimeScrollBar timeScrollBar {editViewState.zoom, ruler};
+
+    // Without clip headers (the Player): the legend once over the tracks, and the tune's
+    // tuning and key in the corner above the track devices
+    std::unique_ptr<PsgLegendComponent> legend;
+    std::unique_ptr<PsgSetInfoComponent> setInfo;
 
     bool updateSizes = false, updateScrollRange = false;
     bool middleDragging = false;

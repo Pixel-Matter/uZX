@@ -3,6 +3,7 @@
 #include "EditComponent.h"
 #include "../devices/TrackDevicesPanel.h"
 #include "../../plugins/uZX/aychip/AYPluginEditor.h"
+#include "PsgClipComponent.h"
 #include "../../util/Helpers.h"
 #include "../../util/TestHelpers.h"
 
@@ -18,6 +19,7 @@ public:
         auto& engine = *te::Engine::getEngines()[0];
         runLayoutTests(engine);
         runMinimumHeightTests(engine);
+        runPlayerOverlayTests(engine);
 
         auto edit = te::Edit::createSingleTrackEdit(engine);
         te::getAudioTracks(*edit)[0]->insertMIDIClip({0_tp, 10_tp}, nullptr);
@@ -197,6 +199,45 @@ private:
         player.setSize(1000, 1000);
         TestHelpers::flushMessageQueue();
         expect(! tracks->getVerticalScrollBar().isVisible(), "tracks fit again");
+    }
+
+    void runPlayerOverlayTests(te::Engine& engine) {
+        beginTest("Without clip headers the notes start at the top, with one legend and the tune's key");
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        edit->ensureNumberOfAudioTracks(2);
+        Array<PsgClip*> clips;
+        for (auto* track : te::getAudioTracks(*edit)) {
+            const uZX::PsgRegsFrame tone {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::TonePeriodFineA, 0xfc},
+                                          {uZX::PsgRegType::VolumeA, 15}};
+            uZX::PsgData data {std::vector<uZX::PsgRegsFrame>(50, tone), {50.0, 1}};
+            clips.add(PsgClip::insertTo(*track, data, {{0_tp, 1_td}, {}}, "PSG").get());
+        }
+        te::SelectionManager selectionManager(engine);
+        EditViewState playerView(*edit, selectionManager);
+        playerView.showHeaders = false;
+        playerView.showFooters = true;
+        playerView.showClipHeaders = false;
+        EditComponent player(*edit, playerView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+        player.setSize(1000, 1000);
+        TestHelpers::flushMessageQueue();
+
+        expect(findDescendant<ClipHeader>(player) == nullptr, "no clip headers");
+        auto* notes = findDescendant<PsgClipComponent>(player);
+        expect(notes != nullptr && notes->getY() == ClipComponent::ringWidth, "notes at the top of the track");
+        int legends = 0;
+        for (auto* child : player.getChildren())
+            legends += dynamic_cast<PsgLegendComponent*>(child) != nullptr ? 1 : 0;
+        expectEquals(legends, 1);
+
+        auto* setInfo = findChild<PsgSetInfoComponent>(player);
+        expect(setInfo != nullptr);
+        const auto together = detectTuningTogether(clips);
+        expect(together.hasNotes);
+        if (setInfo != nullptr && together.hasNotes) {
+            expect(setInfo->getText().startsWith(together.getTableLabel()), setInfo->getText());
+            expect(setInfo->getText().contains(together.keys.front().getName()), setInfo->getText());
+            expectEquals(setInfo->getX(), findChild<RulerComponent>(player)->getRight(), "in the corner above the devices");
+        }
     }
 
     template <typename T>

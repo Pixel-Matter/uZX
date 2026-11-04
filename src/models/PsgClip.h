@@ -110,4 +110,8 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgClip)
 };
 
+/** Tuning table and key detected over clips that play together, such as the chips of a
+    Turbo Sound tune: each chip plays only part of the music, the key is in all of them. */
+TuningDetection detectTuningTogether(const juce::Array<PsgClip*>& clips);
+
 }  // namespace MoTool

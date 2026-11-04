@@ -95,9 +95,23 @@ Colour ClipHeader::getFill(Colour clipColour, bool selected) {
     return atLightness(clipColour, selected ? 0.82f : 0.72f, 1.0f);
 }
 
-void ClipHeader::paint(Graphics& g) {
-    constexpr int pad = 3;
+static Font getHeaderFont() {
+    return Font(FontOptions(11.0f));
+}
 
+int ClipHeader::getWarningWidth(const String& warning) {
+    return GlyphArrangement::getStringWidthInt(getHeaderFont(), warning) + 2 * pad;
+}
+
+void ClipHeader::paintWarning(Graphics& g, Rectangle<int> area, const String& warning) {
+    g.setColour(Colors::Theme::warning.withAlpha(0.9f));
+    g.fillRoundedRectangle(area.toFloat(), 2.0f);
+    g.setColour(Colours::black);
+    g.setFont(getHeaderFont());
+    g.drawText(warning, area.reduced(pad, 0), Justification::centred, true);
+}
+
+void ClipHeader::paint(Graphics& g) {
     const bool selected = editViewState.selectionManager.isSelected(clip.get());
     const auto bounds = getLocalBounds().toFloat();
     Path shape;
@@ -109,7 +123,7 @@ void ClipHeader::paint(Graphics& g) {
     auto row = getShownArea(*this).reduced(pad);
 
     const Font nameFont(FontOptions(11.0f).withStyle("Bold"));
-    const Font font(FontOptions(11.0f));
+    const Font font = getHeaderFont();
     const auto name = clip->getName();
     const auto warnings = getWarnings();
     const auto info = getInfo();
@@ -117,7 +131,7 @@ void ClipHeader::paint(Graphics& g) {
     // Each item with the gap before it; warnings are chips, with padding inside.
     std::vector<int> itemWidths;
     for (const auto& warning : warnings)
-        itemWidths.push_back(pad + GlyphArrangement::getStringWidthInt(font, warning) + 2 * pad);
+        itemWidths.push_back(pad + getWarningWidth(warning));
     if (info.isNotEmpty())
         itemWidths.push_back(pad + GlyphArrangement::getStringWidthInt(font, info));
     const bool showLegend = selected || editViewState.disableClipSelection;
@@ -147,10 +161,7 @@ void ClipHeader::paint(Graphics& g) {
         row.removeFromLeft(pad);
         auto area = row.removeFromLeft(itemWidths[i] - pad);
         if (i < (size_t) warnings.size()) {
-            g.setColour(Colors::Theme::warning.withAlpha(0.9f));
-            g.fillRoundedRectangle(area.toFloat(), 2.0f);
-            g.setColour(Colours::black);
-            g.drawText(warnings[(int) i], area.reduced(pad, 0), Justification::centred, true);
+            paintWarning(g, area, warnings[(int) i]);
         } else {
             g.setColour(textColour);
             g.drawText(info, area, Justification::centredLeft, true);

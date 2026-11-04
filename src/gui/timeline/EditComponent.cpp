@@ -3,6 +3,7 @@
 #include "EditComponent.h"
 #include "TrackComponents.h"
 #include "PlayheadComponent.h"
+#include "PsgClipComponent.h"
 #include "../../controllers/App.h"
 
 namespace MoTool {
@@ -37,6 +38,12 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
     addAndMakeVisible(timeScrollBar);
     if (options.showDetailsPanel)
         addAndMakeVisible(detailsPanel);
+    if (! editViewState.showClipHeaders) {
+        legend = std::make_unique<PsgLegendComponent>();
+        addAndMakeVisible(*legend);
+        setInfo = std::make_unique<PsgSetInfoComponent>(edit);
+        addAndMakeVisible(*setInfo);
+    }
 }
 
 EditComponent::~EditComponent() {
@@ -114,7 +121,13 @@ void EditComponent::resized() {
     const auto timeline = [=](Rectangle<int> b) { return b.withTrimmedLeft(headerWidth).withTrimmedRight(footerWidth); };
     timeScrollBar.setBounds(timeline(scrollBarArea));
     playhead.setBounds(timeline(r));
-    ruler.setBounds(timeline(r.removeFromTop(rulerHeight)));
+    const auto rulerRow = r.removeFromTop(rulerHeight);
+    ruler.setBounds(timeline(rulerRow));
+    if (setInfo != nullptr)
+        setInfo->setBounds(rulerRow.withLeft(ruler.getRight()));
+    if (legend != nullptr)
+        legend->setTopRightPosition(timeline(r).getRight() - ClipHeader::pad,
+                                    r.getY() + ClipComponent::ringWidth + ClipHeader::pad);
     trackViewport.setBounds(r);
     if (options.autoFitTrackHeights)
         tracksContainer.setBounds(r.withTrimmedRight(fittedTracksScroll ? scrollbarWidth : 0)

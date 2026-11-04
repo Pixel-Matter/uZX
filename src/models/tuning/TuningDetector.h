@@ -72,6 +72,8 @@ struct PitchHistogram
 
     int getTotal() const noexcept;
     bool isEmpty() const noexcept { return tone.empty() && envelope.empty(); }
+    /** Adds another histogram's frames, as for clips played together. */
+    PitchHistogram& operator+=(const PitchHistogram& other);
 
     /** Share of note-frames on the grid: tone exact, envelope within ±envelopeTolerance.
         Envelope pitches whose window is a semitone or wider match every grid, so they are

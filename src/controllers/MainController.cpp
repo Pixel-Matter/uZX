@@ -88,7 +88,13 @@ void AppController::initialize() {
     setApplicationCommandManagerToWatch(&commandManager_);
 
     #if JUCE_MAC
-    setMacMainMenu(this);
+    // macOS puts About and Settings in the app menu, next to the Quit item it adds itself
+    PopupMenu appMenu;
+    appMenu.addCommandItem(&commandManager_, MainAppCommands::helpAbout,
+                           "About " + JUCEApplication::getInstance()->getApplicationName());
+    appMenu.addSeparator();
+    appMenu.addCommandItem(&commandManager_, MainAppCommands::settingsAudioMidi, "Settings...");
+    setMacMainMenu(this, &appMenu);
     #else
     // Menu bar is set on the window in ArrangerController::initialize()
     #endif
@@ -265,9 +271,16 @@ void AppController::showAboutDialog() {
 // MenuBarModel
 //==============================================================================
 StringArray AppController::getMenuBarNames() {
-    if (MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer)
-        return { "File", "Transport", "View", "Settings", "Help" };
-    return MainAppCommands::getMenuBarNames();
+    const bool isPlayer = MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer;
+    auto names = isPlayer ? StringArray { "File", "Edit", "Transport", "View", "Settings", "Help" }
+                          : MainAppCommands::getMenuBarNames();
+   #if JUCE_MAC
+    // About and Settings are in the app menu, see initialize()
+    names.removeString("Help");
+    if (isPlayer)
+        names.removeString("Settings");
+   #endif
+    return names;
 }
 
 PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menuName) {
@@ -305,8 +318,10 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         menu.addCommandItem(&commandManager_, MainAppCommands::fileImportPsg);
         if (!isPlayer)
             menu.addCommandItem(&commandManager_, MainAppCommands::fileImportAudio);
+       #if ! JUCE_MAC  // macOS has Quit in the app menu
         menu.addSeparator();
         menu.addCommandItem(&commandManager_, MainAppCommands::fileQuit);
+       #endif
 
         return menu;
     }
@@ -314,7 +329,10 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
     if (isPlayer) {
         // Reduced menu set for player
         PopupMenu menu;
-        if (menuName == "Transport") {
+        if (menuName == "Edit") {
+            menu.addCommandItem(&commandManager_, MainAppCommands::editUndo);
+            menu.addCommandItem(&commandManager_, MainAppCommands::editRedo);
+        } else if (menuName == "Transport") {
             menu.addCommandItem(&commandManager_, MainAppCommands::transportPlay);
             menu.addCommandItem(&commandManager_, MainAppCommands::transportToStart);
             menu.addSeparator();
@@ -420,6 +438,12 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
 
         case MainAppCommands::editRedo:
             result.setActive(edit != nullptr && edit->getUndoManager().canRedo());
+            break;
+
+        // the Player can't add tracks or chips back, and has no Tuning window
+        case MainAppCommands::editDelete:
+        case MainAppCommands::settingsTuningTables:
+            result.setActive(!isPlayer);
             break;
 
         // TODO  Theese commands are not being updated on selection change, only transportPlay and transportRecordStop are updated

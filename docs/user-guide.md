@@ -35,7 +35,7 @@ Drop or open several `.psg` files at once to play them together, each on its own
 
 ### Saving
 
-The Player keeps your changes to the open edit, such as tempo, AY chip settings and mutes, and opens it again on the next launch. **File → Save** (`Cmd+S`) writes them to the `.uzx` file. A PSG file you opened has no `.uzx` file yet, so Save asks where to put one, as **File → Save As** (`Cmd+Shift+S`) always does. **File → Reveal in Finder** shows the saved file; it stays off until the edit has one.
+The Player keeps your changes to the open edit, such as tempo, AY chip settings and mutes, and opens it again on the next launch. **File → Save** (`Cmd+S`) writes them to the `.uzx` file. A PSG file you opened has no `.uzx` file yet, so Save asks where to put one, as **File → Save As** (`Cmd+Shift+S`) always does. **File → Reveal in Finder** (**Show in Explorer** on Windows, **Show in Folder** on Linux) shows the saved file; it stays off until the edit has one.
 
 ### Transport Bar
 
@@ -76,7 +76,7 @@ Each track ends on the right in its own AY chip and level meter, so a Turbo Soun
 - **Stereo mode** — mono, ABC, ACB, or custom channel panning
 - Channel-level output settings
 
-The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with its MIDI channels, monitor mode and scope settings. Chips can't be removed or added in the Player.
+The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with scope settings; in Studio the menu also sets the chip's MIDI channels. Chips can't be removed or added in the Player, and its controls take no MIDI mapping.
 
 A track is never shorter than its AY chip needs to show every control. When the tracks need more height than the window has, they scroll up and down.
 
@@ -259,7 +259,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 
 ## Keyboard and Mouse
 
-`Cmd` is `Ctrl` on Windows and Linux. Keys are ignored while a text field is being edited.
+`Cmd` is `Ctrl` on Windows and Linux; on a Mac, `Ctrl`+click works as a right-click. Keys are ignored while a text field is being edited.
 
 ### Keyboard
 
@@ -269,7 +269,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Home` or `Cmd+Left` | Rewind to start | Player, Studio |
 | `End` or `Cmd+Right` | Jump to end | Player, Studio |
 | `Cmd+L` | Loop the whole project on / off | Player, Studio |
-| `=` | Zoom in around the playhead | Player, Studio |
+| `=` or `+` | Zoom in around the playhead | Player, Studio |
 | `-` | Zoom out around the playhead | Player, Studio |
 | `Shift+Z` | Zoom to fit the project | Player, Studio |
 | `Z` | Zoom to selection | Studio |
@@ -278,11 +278,11 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Cmd+N` | New edit | Studio |
 | `Cmd+S` | Save | Player, Studio |
 | `Cmd+Shift+S` | Save As | Player, Studio |
-| `Cmd+Z` / `Cmd+Shift+Z` | Undo / Redo | Studio |
+| `Cmd+Z` / `Cmd+Shift+Z` | Undo / Redo, such as AY chip settings or a clip's tuning; `Ctrl+Y` also redoes on Windows and Linux | Player, Studio |
 | `Delete` or `Backspace` | Delete the selected clip, track, or device | Studio |
 | `Cmd+T` | Add track | Studio |
 | `Cmd+Shift+T` | Open Tuning Tables | Studio |
-| `Cmd+,` | Audio/MIDI settings | Player, Studio |
+| `Cmd+,` | Audio/MIDI settings; on macOS, **Settings...** in the app menu, next to **About** | Player, Studio |
 | `Esc` | Close the Settings, Plugins, or About window | Player, Studio |
 | `Cmd+Q` | Quit | Player, Studio |
 
@@ -304,6 +304,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |
 | Right-click | Ruler | Zoom, timecode format, and snap options |
+| Right-click | Knob, slider, or switch (Studio) | MIDI mapping: learn a controller, pick a CC, or clear it |
 | Right-click | PSG clip | Notes / Registers view, note lanes, piano keys, hex values on hover, tuning table and key picker |
 | Double-click | Track name (Studio) | Rename |
 | Drop `.psg` files | Anywhere in the window | Player: open them together, each on its own track (or drop a `.uzx` project to open it); Studio: add each on a new track |

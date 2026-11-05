@@ -17,22 +17,30 @@ ChannelMuter::~ChannelMuter() {
     channelC.removeListener(this);
 }
 
-ParameterValue<bool>& ChannelMuter::getChannelParam(size_t chan) noexcept {
-    jassert(chan < 3);
-    return chan == 0 ? channelA : chan == 1 ? channelB : channelC;
+void ChannelMuter::referTo(ValueTree& v, UndoManager* um) {
+    ParamsBase<ChannelMuter>::referTo(v, um);
+    for (size_t chan = 0; chan < 3; ++chan) {
+        getSoloParam(chan).referTo(v, nullptr);  // not a step in Undo, as track solo isn't
+        getSoloParam(chan).addListener(this);
+    }
+    updateSoloMask();
 }
 
-void ChannelMuter::toggleSolo(const Array<ChannelMuter*>& all, ChannelMuter& soloed, size_t chan) {
-    auto isSoloed = [&](ChannelMuter* m, size_t c) { return m == &soloed && c == chan; };
+ParameterValue<bool>& ChannelMuter::getSoloParam(size_t chan) noexcept {
+    jassert(chan < 3);
+    return chan == 0 ? soloA : chan == 1 ? soloB : soloC;
+}
 
-    bool playsAlone = true;
-    for (auto* m : all)
-        for (size_t c = 0; c < 3; ++c)
-            playsAlone = playsAlone && m->getChannelParam(c).getStoredValue() == isSoloed(m, c);
+bool ChannelMuter::hasSolo() const {
+    return soloA.getStoredValue() || soloB.getStoredValue() || soloC.getStoredValue();
+}
 
-    for (auto* m : all)
-        for (size_t c = 0; c < 3; ++c)
-            m->getChannelParam(c).setStoredValue(playsAlone || isSoloed(m, c));
+void ChannelMuter::updateSoloMask() {
+    uint8_t mask = 0;
+    for (size_t chan = 0; chan < 3; ++chan)
+        if (getSoloParam(chan).getStoredValue())
+            mask = static_cast<uint8_t>(mask | (1u << chan));
+    soloMask_ = mask;
 }
 
 void ChannelMuter::applyToRegsFrame(PsgRegsFrame& regs) const noexcept {
@@ -68,6 +76,7 @@ void ChannelMuter::applyToChip(AYInterface& chip) const noexcept {
 }
 
 void ChannelMuter::valueChanged(Value&) {
+    updateSoloMask();
 }
 
 bool ChannelMuter::getChannelEnabled(size_t chan) const noexcept {
@@ -80,7 +89,9 @@ bool ChannelMuter::getChannelEnabled(size_t chan) const noexcept {
 }
 
 bool ChannelMuter::getChannelEfecctivelyEnabled(size_t c) const noexcept {
-    return getChannelEnabled(c) && (getToneEnabled(c) || getNoiseEnabled(c) || getEnvelopeEnabled(c));
+    const auto solos = soloMask_.load(std::memory_order_relaxed);
+    const bool soloedOut = solos != 0 && (solos & (1u << c)) == 0;
+    return getChannelEnabled(c) && ! soloedOut && (getToneEnabled(c) || getNoiseEnabled(c) || getEnvelopeEnabled(c));
 }
 
 bool ChannelMuter::getToneEnabled(size_t chan) const noexcept {

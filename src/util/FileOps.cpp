@@ -61,12 +61,15 @@ void setRecentEditsDirectory(const File& fileOrDir) {
     }
 }
 
+bool isTempEdit(te::Edit& edit) {
+    return te::EditFileOperations(edit).getEditFile().getParentDirectory() == getTempEditsLocation();
+}
+
 File suffestSaveAsFileName(te::Edit& edit) {
     auto efo = te::EditFileOperations(edit);
     auto currentFile = efo.getEditFile();
 
-    bool isTemp = currentFile.getParentDirectory() == getTempEditsLocation();
-    File defaultLocation = !isTemp && currentFile.existsAsFile()
+    File defaultLocation = !isTempEdit(edit) && currentFile.existsAsFile()
                                ? currentFile.getParentDirectory()
                                : File::getSpecialLocation(File::userDocumentsDirectory)
                                      .getChildFile(getAppName());

@@ -112,7 +112,10 @@ public:
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
-    std::unique_ptr<TrackDevicesPanel> footer;  // the track's devices, fixed; only when the view shows footers
+    /** The track's devices, fixed, when the view shows footers; in Viz mode its chip's scopes. */
+    std::unique_ptr<Component> footer;
+    /** Level with the clips, apart from them and from the window edge. */
+    static inline const BorderSize<int> footerPadding {ClipComponent::ringWidth, 8, ClipComponent::ringWidth, 8};
 
 private:
     EditViewState& editViewState;

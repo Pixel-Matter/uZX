@@ -36,13 +36,17 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
     timeScrollBar.setAutoHide(false);
     timeScrollBar.addListener(this);
     addAndMakeVisible(timeScrollBar);
+    ruler.setVisible(! editViewState.vizMode);
+    timeScrollBar.setVisible(! editViewState.vizMode);
     if (options.showDetailsPanel)
         addAndMakeVisible(detailsPanel);
     if (! editViewState.showClipHeaders) {
         legend = std::make_unique<PsgLegendComponent>();
         addAndMakeVisible(*legend);
-        setInfo = std::make_unique<PsgSetInfoComponent>(edit);
-        addAndMakeVisible(*setInfo);
+        if (! editViewState.vizMode) {
+            setInfo = std::make_unique<PsgSetInfoComponent>(edit);
+            addAndMakeVisible(*setInfo);
+        }
     }
 }
 
@@ -101,7 +105,7 @@ void EditComponent::paint(Graphics& g) {
 
 void EditComponent::resized() {
     // also get called on updated zoom
-    const int rulerHeight = 24;
+    const int rulerHeight = editViewState.vizMode ? 0 : 24;
     const auto headerWidth = editViewState.getTrackHeaderWidth();
     const auto scrollbarWidth = getLookAndFeel().getDefaultScrollbarWidth();
     auto r = getLocalBounds();
@@ -110,7 +114,7 @@ void EditComponent::resized() {
         detailsPanel.setBounds(r.removeFromBottom(300));
         detailsPanel.resized();  // for internal components
     }
-    auto scrollBarArea = r.removeFromBottom(scrollbarWidth);
+    auto scrollBarArea = r.removeFromBottom(editViewState.vizMode ? 0 : scrollbarWidth);
     const int tracksHeight = r.getHeight() - rulerHeight;
 
     // fitted tracks below their minimum height scroll, and their scrollbar takes the right edge

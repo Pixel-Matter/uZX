@@ -5,6 +5,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ## [Unreleased]
 
 ### Added
+- Viz mode in the Player: **View → Viz Mode** (`F`) goes full screen with only each track's notes and its chip's A, B and C scopes; `F` or `Esc` leaves it
 - Solo an AY channel: `Alt`-click (`Option`-click on a Mac) its A, B or C button and only that channel plays, on every chip of a Turbo Sound tune too; `Alt`-click it again and all channels play
 - The Player remembers the stereo layout and width last chosen and applies them to every PSG file it opens next, as it does the master volume; a saved `.uzx` keeps its own, and clock, chip type and mutes stay per tune
 - Stereo level meter of the master output in the transport bar, right of the master volume knob

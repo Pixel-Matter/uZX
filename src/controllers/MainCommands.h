@@ -63,6 +63,8 @@ public:
         viewSnapPlayheadToGrid,
         viewNoteLanes,
         viewPianoKeys,
+        viewVizMode,
+        viewExitVizMode,
 
         // Settings Menu
         settingsAudioMidi    = 600,
@@ -94,7 +96,7 @@ public:
             // addAutomationTrack,
             trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
-            viewSnapPlayheadToGrid, viewNoteLanes, viewPianoKeys,
+            viewSnapPlayheadToGrid, viewNoteLanes, viewPianoKeys, viewVizMode, viewExitVizMode,
             settingsAudioMidi, settingsPlugins, settingsTuningTables,
             helpAbout
         };
@@ -391,6 +393,16 @@ public:
                 result.setInfo("Piano Keys",
                                "Draw a short piano keyboard over the note lanes at the left edge",
                                "View", 0);
+                break;
+
+            case viewVizMode:
+                result.setInfo("Viz Mode", "Full screen with only the notes and each chip's scopes", "View", 0);
+                result.addDefaultKeypress('f', 0);
+                break;
+
+            case viewExitVizMode:
+                result.setInfo("Exit Viz Mode", "Leave Viz mode", "View", 0);
+                result.addDefaultKeypress(KeyPress::escapeKey, 0);
                 break;
 
             // Settings commands

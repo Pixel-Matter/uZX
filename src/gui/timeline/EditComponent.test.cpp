@@ -20,6 +20,7 @@ public:
         runLayoutTests(engine);
         runMinimumHeightTests(engine);
         runPlayerOverlayTests(engine);
+        runVizModeTests(engine);
 
         auto edit = te::Edit::createSingleTrackEdit(engine);
         te::getAudioTracks(*edit)[0]->insertMIDIClip({0_tp, 10_tp}, nullptr);
@@ -151,6 +152,28 @@ private:
         expect(!edit->getUndoManager().canUndo());
         EditViewState studioView(*edit, selectionManager);
         expectEquals(studioView.getTrackHeaderWidth(), EditViewState::minHeadersWidth);
+    }
+
+    void runVizModeTests(te::Engine& engine) {
+        beginTest("Viz mode: no ruler or scrollbar, and each track row ends in its chip's scopes");
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        Helpers::ensureAYPluginOnTrack(*te::getAudioTracks(*edit)[0]);
+        te::SelectionManager selectionManager(engine);
+        EditViewState vizView(*edit, selectionManager);
+        vizView.showHeaders = false;  // as the Player does
+        vizView.showFooters = true;
+        vizView.showClipHeaders = false;
+        vizView.vizMode = true;
+        EditComponent viz(*edit, vizView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+        viz.setSize(1000, 400);
+        TestHelpers::flushMessageQueue();
+
+        expect(! findChild<RulerComponent>(viz)->isVisible(), "no ruler");
+        expect(! findChild<ScrollBar>(viz)->isVisible(), "no scrollbar");
+        expect(findChild<Viewport>(viz)->getBounds() == viz.getLocalBounds(), "the tracks fill the view");
+        auto* row = findDescendant<TrackRowComponent>(viz);
+        expect(row != nullptr && dynamic_cast<uZX::AYScopes*>(row->footer.get()) != nullptr, "scopes");
+        expect(findDescendant<uZX::AYPluginUI>(viz) == nullptr, "no chip controls");
     }
 
     void runMinimumHeightTests(te::Engine& engine) {

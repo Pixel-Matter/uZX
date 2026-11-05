@@ -16,8 +16,7 @@ Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. **P2** below: Viz mode
-2. **Cut the alpha for testers** — no P0 or P1 left
+1. **Cut the alpha for testers** — no P0 or P1 left
 
 ### Alpha for testers
 
@@ -34,7 +33,6 @@ None.
 #### P2 — Nice to have
 
 - [x] **BPM, FPB, GRV, SIG** detection — set on PSG import from the tracker row grid and bar-level repetition (3/4 or 4/4); dumps without a grid (speed 1, heavy volume ornaments) keep the current tempo
-- [ ] **Viz mode** Simple viz mode, fullscreen
 
 ---
 

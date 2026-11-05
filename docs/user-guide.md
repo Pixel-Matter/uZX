@@ -68,6 +68,10 @@ Clips in the Player have no header: the notes take the whole track. A clip's war
 
 Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
 
+### Viz Mode
+
+**View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The transport, ruler, scrollbar and chip controls are hidden. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
+
 ### AY Chip and Level Meter
 
 Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Here you can adjust:
@@ -283,7 +287,8 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Cmd+T` | Add track | Studio |
 | `Cmd+Shift+T` | Open Tuning Tables | Studio |
 | `Cmd+,` | Audio/MIDI settings; on macOS, **Settings...** in the app menu, next to **About** | Player, Studio |
-| `Esc` | Close the Settings, Plugins, or About window | Player, Studio |
+| `F` | Viz mode on / off: full screen, only the notes and each chip's scopes | Player |
+| `Esc` | Close the Settings, Plugins, or About window; in the Player, leave Viz mode | Player, Studio |
 | `Cmd+Q` | Quit | Player, Studio |
 
 ### Mouse and trackpad (timeline)

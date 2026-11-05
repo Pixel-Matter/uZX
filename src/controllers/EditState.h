@@ -177,6 +177,7 @@ public:
     bool showHeaders = true;  // per app, not saved: the Player hides them
     bool showFooters = false;  // per app, not saved: the Player shows them
     bool showClipHeaders = true;  // per app, not saved: the Player draws warnings and the legend over the notes
+    bool vizMode = false;  // the Player's Viz mode, not saved: notes and each chip's scopes, no ruler or controls
     bool transparentClips = false;
     bool disableClipSelection = false;
 

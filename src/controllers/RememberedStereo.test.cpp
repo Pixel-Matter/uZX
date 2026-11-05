@@ -48,8 +48,8 @@ public:
             auto next = te::Edit::createSingleTrackEdit(engine);
             auto& nextChip = makeChip(*next);
             RememberedStereo::apply(nextChip);
-            expect(nextChip.dynamicParams.layout.getStoredValue() == uZX::LayoutEnum::ABC);
-            expectEquals(nextChip.dynamicParams.stereoWidth.getStoredValue(), 0.8f);
+            expect(nextChip.dynamicParams.layout.getLiveValue() == uZX::LayoutEnum::ABC);
+            expectEquals(nextChip.dynamicParams.stereoWidth.getLiveValue(), 0.8f);
         }
 
         storage.setCustomProperty(RememberedStereo::layoutKey, savedLayout);

@@ -36,6 +36,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
+- Undo and Redo of AY chip settings (channel on/off, stereo layout and width, volume) change the sound and the buttons again, not only the saved file
 - `Delete` and `Backspace` in the Player no longer remove the last clicked track with its AY chip
 - Zoom in works on keyboard layouts where `=` needs Shift, such as German; `+` zooms in too
 - `Ctrl`+click opens the MIDI mapping menu on a Mac, as right-click does

@@ -15,6 +15,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Tuning detection knows the earlier ProTracker tables #0 and #2 that PT 3.3 and older play, so tunes written with them are named on their own table instead of a nearby one. The Tuning window measures each tracker table against the clock and A4 its authors documented, such as 1.625 MHz for ProTracker #0 and 1.52064 MHz for Vortex Tracker #4
 
 - Save and Save As in the Player (`Cmd+S`, `Cmd+Shift+S`): Save writes the open `.uzx` file; for an opened PSG file, which has none yet, it asks where to save one. Reveal in Finder shows a saved file
+- An Edit menu in the Player with Undo and Redo, for changes such as AY chip settings or a clip's tuning
 - The Pos readout in the transport bar shows the position in the ruler's timecode format, such as `2.3.05`, `01:05:12` or `3262`, and takes a typed position in that format; parts can be left off, so `5` is bar 5
 
 ### Changed
@@ -28,9 +29,15 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Every clip has a header in its colour, bright when the clip is selected, instead of a white outline: its name, then warnings and the tuning and key. The A B C E N legend sits at the right edge of the view, on the selected clip. Click the header to select the clip. The Player has no clip headers: warnings sit over the notes, the legend appears once at the top right of the tracks, the tuning and key once above the AY chips, detected from all the chips of a Turbo Sound tune together
 - The Player's timeline shows bars | beats | frames like Studio's, instead of always switching to seconds; a `.uzx` file keeps the format it was saved with
 - Master volume is an app setting instead of a per-file one: Player and Studio each remember it across launches and apply it to every opened file
+- macOS: About and Settings... (`Cmd+,`) are in the app menu, File has no second Quit, and the Player has no Settings and Help menus
+- Windows and Linux: `Ctrl+Y` also redoes, and Reveal in Finder reads Show in Explorer or Show in Folder
+- The Player has no MIDI learn or CC mapping on its controls and no MIDI channel range in the chip menu; Chip debug to console is in Debug builds only
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
+- `Delete` and `Backspace` in the Player no longer remove the last clicked track with its AY chip
+- Zoom in works on keyboard layouts where `=` needs Shift, such as German; `+` zooms in too
+- `Ctrl`+click opens the MIDI mapping menu on a Mac, as right-click does
 - Player and Studio reopen the last edit on launch again: once the recent list was full, a newly opened or imported edit dropped out of it, so the previous edit opened instead and File > Open Recent never listed the newest one
 - PSG clip FPS warnings update as soon as the project FPS changes, instead of on the next redraw
 - Showing a track's level meter, in Studio's track devices or the Player, no longer adds a step to Undo

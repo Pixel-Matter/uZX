@@ -16,7 +16,7 @@ Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. **Shortcut consistency** — first P1 below
+1. **Tab bars** — the remaining P1 below
 
 ### Alpha for testers
 
@@ -28,7 +28,6 @@ None.
 
 #### P1 — Important
 
-- [ ] **Shortcut consistency** across macOS, Windows and Linux
 - [ ] Fix **tab bars** look and feel to match design system (after plugins panes)
 
 #### P2 — Nice to have
@@ -135,6 +134,7 @@ Grouped by theme, not ordered.
 
 ### Editors
 
+- [ ] **Cut, Copy and Paste** of clips — the Edit menu lists them with `Cmd+X`, `Cmd+C` and `Cmd+V`, but they do nothing yet
 - [ ] **MIDI note editor** — piano roll note editing
 - [ ] **MIDI CC editor**
 - [ ] **Automation editor**

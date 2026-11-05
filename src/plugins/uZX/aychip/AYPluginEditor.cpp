@@ -83,6 +83,56 @@ void AYPluginUI::ChannelGroup::updateTNEState() {
 }
 
 //==============================================================================
+// AYScopes
+//==============================================================================
+AYScopes::AYScopes(AYChipPlugin& plugin) : settings_(plugin.scopeSettings) {
+    static const std::array<juce::Colour, 3> colours {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
+    static const std::array<const char*, 3> labels {"A", "B", "C"};
+
+    for (size_t i = 0; i < 3; ++i) {
+        displays_[i] = std::make_unique<WaveformDisplay>(colours[i], labels[i],
+                                                         *plugin.getVizChannelBuffer(static_cast<int>(i)), settings_);
+        addAndMakeVisible(*displays_[i]);
+    }
+
+    settings_.windowSamples.addListener(this);
+    settings_.gain.addListener(this);
+    settings_.triggerMode.addListener(this);
+    settings_.triggerLevel.addListener(this);
+    applySettings();
+}
+
+AYScopes::~AYScopes() {
+    settings_.windowSamples.removeListener(this);
+    settings_.gain.removeListener(this);
+    settings_.triggerMode.removeListener(this);
+    settings_.triggerLevel.removeListener(this);
+}
+
+void AYScopes::valueChanged(juce::Value&) {
+    applySettings();
+}
+
+void AYScopes::applySettings() {
+    const auto strategy = TriggerStrategy::fromMode(settings_.triggerMode.getStoredValue());
+    for (auto& display : displays_) {
+        display->setWindowSize(settings_.windowSamples.getStoredValue());
+        display->setGain(settings_.gain.getStoredValue());
+        display->setTriggerStrategy(strategy);
+        display->setTriggerLevel(settings_.triggerLevel.getStoredValue());
+    }
+}
+
+void AYScopes::resized() {
+    auto r = getLocalBounds();
+    const float h = ((float) r.getHeight() - spacing * 2.0f) / 3.0f;
+    for (auto& display : displays_) {
+        display->setBounds(r.removeFromTop(roundToInt(h)));
+        r.removeFromTop(spacing);
+    }
+}
+
+//==============================================================================
 // Editor for AYChipPlugin
 //==============================================================================
 AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
@@ -103,63 +153,10 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
 
     setupToggleButtons();
 
-    // Initialize scope displays for channels A, B, C
-    static const std::array<juce::Colour, 3> channelColours{
-        Colors::PSG::A,  // Blue
-        Colors::PSG::B,  // Emerald
-        Colors::PSG::C   // Amber
-    };
-    static const std::array<const char*, 3> channelLabels{"A", "B", "C"};
-
-    for (size_t i = 0; i < 3; ++i) {
-        scopeDisplays_[i] = std::make_unique<WaveformDisplay>(
-            channelColours[i],
-            juce::String(channelLabels[i]),
-            *plugin_.getVizChannelBuffer(static_cast<int>(i)),
-            plugin_.scopeSettings
-        );
-        addAndMakeVisible(*scopeDisplays_[i]);
-    }
-
-    // Listen to scope settings changes
-    plugin_.scopeSettings.windowSamples.addListener(this);
-    plugin_.scopeSettings.gain.addListener(this);
-    plugin_.scopeSettings.triggerMode.addListener(this);
-    plugin_.scopeSettings.triggerLevel.addListener(this);
-
-    // Apply initial scope settings to all displays
-    updateScopeDisplayParams();
+    addAndMakeVisible(scopes_);
 }
 
-AYPluginUI::~AYPluginUI() {
-    plugin_.scopeSettings.windowSamples.removeListener(this);
-    plugin_.scopeSettings.gain.removeListener(this);
-    plugin_.scopeSettings.triggerMode.removeListener(this);
-    plugin_.scopeSettings.triggerLevel.removeListener(this);
-}
-
-void AYPluginUI::valueChanged(juce::Value&) {
-    updateScopeDisplayParams();
-}
-
-void AYPluginUI::updateScopeDisplayParams() {
-    const int window = plugin_.scopeSettings.windowSamples.getStoredValue();
-    const float gain = plugin_.scopeSettings.gain.getStoredValue();
-    const auto mode = plugin_.scopeSettings.triggerMode.getStoredValue();
-    const float level = plugin_.scopeSettings.triggerLevel.getStoredValue();
-
-    auto strategy = TriggerStrategy::fromMode(mode);
-
-    // Apply settings to all 3 scope displays
-    for (auto& display : scopeDisplays_) {
-        if (display) {
-            display->setWindowSize(window);
-            display->setGain(gain);
-            display->setTriggerStrategy(strategy);
-            display->setTriggerLevel(level);
-        }
-    }
-}
+AYPluginUI::~AYPluginUI() = default;
 
 void AYPluginUI::setupToggleButtons() {
     for (size_t chan = 0; chan < channelGroups.size(); ++chan) {
@@ -207,24 +204,14 @@ void AYPluginUI::resized() {
     auto col = r.removeFromLeft(buttonWidth);
     const float h = ((float) col.getHeight() - itemSpacing * 2.0f) / 3.0f;
 
-    // Add spacing between channel groups and scopes
-    r.removeFromLeft(itemSpacing * 2);
-
-    // Layout scope displays to the right of channel groups
-    auto scopeArea = r;
-
-    for (int i = 0; i < 3; ++i) {
-        channelGroups[i]->layoutButtons(col.removeFromTop(roundToInt(h)));
-
-        // Layout corresponding scope display
-        auto scopeBounds = scopeArea.removeFromTop(roundToInt(h));
-        if (scopeDisplays_[static_cast<size_t>(i)]) {
-            scopeDisplays_[static_cast<size_t>(i)]->setBounds(scopeBounds);
-        }
-
+    for (auto* group : channelGroups) {
+        group->layoutButtons(col.removeFromTop(roundToInt(h)));
         col.removeFromTop(itemSpacing);
-        scopeArea.removeFromTop(itemSpacing);
     }
+
+    // the scopes to the right, level with the channel groups
+    r.removeFromLeft(itemSpacing * 2);
+    scopes_.setBounds(r);
 }
 
 int AYPluginUI::getMinimumHeight() const {

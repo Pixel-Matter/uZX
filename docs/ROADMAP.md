@@ -16,7 +16,7 @@ Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. **Tab bars** — the remaining P1 below
+1. **Cut the alpha for testers** — no P0 or P1 left
 
 ### Alpha for testers
 
@@ -28,13 +28,14 @@ None.
 
 #### P1 — Important
 
-- [ ] Fix **tab bars** look and feel to match design system (after plugins panes)
+None.
 
 #### P2 — Nice to have
 
 - [x] **BPM, FPB, GRV, SIG** detection — set on PSG import from the tracker row grid and bar-level repetition (3/4 or 4/4); dumps without a grid (speed 1, heavy volume ornaments) keep the current tempo
 - [ ] **Remembered stereo** — the stereo layout and width last chosen in the Player apply to every PSG file opened next, as the master volume already does; a saved `.uzx` keeps its own. Clock and chip type stay per tune (detected on open), and mutes don't carry over
 - [ ] **Solo** per AY channel (mute exists)
+- [ ] **Viz mode** Simple viz mode, fullscreen
 
 ---
 
@@ -60,6 +61,7 @@ None.
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Nicer transport icons**
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
+- [ ] **Tab bars** in Studio's details panel match the design system (the Player has none)
 
 #### P2 — Nice to have
 

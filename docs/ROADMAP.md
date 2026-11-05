@@ -16,7 +16,8 @@ Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. **Cut the alpha for testers** — no P0 or P1 left
+1. **P2** below: Remembered stereo, Solo, Viz mode
+2. **Cut the alpha for testers** — no P0 or P1 left
 
 ### Alpha for testers
 

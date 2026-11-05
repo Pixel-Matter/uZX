@@ -74,7 +74,7 @@ Each track ends on the right in its own AY chip and level meter, so a Turbo Soun
 
 - **Chip clock frequency** — affects pitch of the whole output
 - **Stereo mode** — mono, ABC, ACB, or custom channel panning. The Player remembers the layout and width last chosen and gives them to every PSG file it opens next; a saved `.uzx` file keeps its own
-- Channel-level output settings
+- Channel-level output settings: the A, B and C buttons turn a channel on or off, T, N and E its tone, noise and envelope; `Option`+click (`Alt`+click on Windows and Linux) on A, B or C solos that channel
 
 The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with scope settings; in Studio the menu also sets the chip's MIDI channels. Chips can't be removed or added in the Player, and its controls take no MIDI mapping.
 
@@ -259,7 +259,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 
 ## Keyboard and Mouse
 
-`Cmd` is `Ctrl` on Windows and Linux; on a Mac, `Ctrl`+click works as a right-click. Keys are ignored while a text field is being edited.
+`Cmd` is `Ctrl` and `Option` is `Alt` on Windows and Linux; on a Mac, `Ctrl`+click works as a right-click. Keys are ignored while a text field is being edited.
 
 ### Keyboard
 
@@ -304,6 +304,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |
 | Right-click | Ruler | Zoom, timecode format, and snap options |
+| `Option`+click | A, B or C button of an AY chip | Solo the channel: only it plays, on every chip; `Option`+click it again and all channels play |
 | Right-click | Knob, slider, or switch (Studio) | MIDI mapping: learn a controller, pick a CC, or clear it |
 | Right-click | PSG clip | Notes / Registers view, note lanes, piano keys, hex values on hover, tuning table and key picker |
 | Double-click | Track name (Studio) | Rename |

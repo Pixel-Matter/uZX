@@ -33,7 +33,37 @@ public:
             expect(!regs.getEnvMod(0), "Envelope mod should be disabled");
         }
 
-        beginTest("Disabling tone only should preserve noise and volume");
+        beginTest("Solo plays one channel of all chips, and again plays them all");
+        {
+            ValueTree state1("ChannelMuter"), state2("ChannelMuter");
+            ChannelMuter chip1, chip2;
+            chip1.referTo(state1, nullptr);
+            chip2.referTo(state2, nullptr);
+            const Array<ChannelMuter*> all {&chip1, &chip2};
+
+            auto playing = [&] {
+                String s;
+                for (auto* m : all)
+                    for (size_t c = 0; c < 3; ++c)
+                        s << (m->getChannelParam(c).getStoredValue() ? "ABC"[c] : '-');
+                return s;
+            };
+
+            ChannelMuter::toggleSolo(all, chip1, 1);
+            expectEquals(playing(), String("-B----"));
+
+            ChannelMuter::toggleSolo(all, chip2, 2);
+            expectEquals(playing(), String("-----C"), "Another channel takes over the solo");
+
+            ChannelMuter::toggleSolo(all, chip2, 2);
+            expectEquals(playing(), String("ABCABC"), "Unsolo");
+
+            chip1.channelA.setStoredValue(false);
+            ChannelMuter::toggleSolo(all, chip1, 0);
+            expectEquals(playing(), String("A-----"), "A muted channel can be soloed");
+        }
+
+                beginTest("Disabling tone only should preserve noise and volume");
         {
             ValueTree state("ChannelMuter");
             ChannelMuter filter;

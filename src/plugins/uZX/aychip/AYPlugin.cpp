@@ -49,6 +49,14 @@ AYChipPlugin::~AYChipPlugin() {
 //     }
 // }
 
+void AYChipPlugin::toggleSolo(size_t channel) {
+    juce::Array<ChannelMuter*> muters;
+    for (auto* p : te::getAllPlugins(edit, false))
+        if (auto* chipPlugin = dynamic_cast<AYChipPlugin*>(p))
+            muters.add(&chipPlugin->channelMuter);
+    ChannelMuter::toggleSolo(muters, channelMuter, channel);
+}
+
 void AYChipPlugin::valueTreeChanged() {
     te::Plugin::valueTreeChanged();
 }

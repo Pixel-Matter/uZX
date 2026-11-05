@@ -17,6 +17,24 @@ ChannelMuter::~ChannelMuter() {
     channelC.removeListener(this);
 }
 
+ParameterValue<bool>& ChannelMuter::getChannelParam(size_t chan) noexcept {
+    jassert(chan < 3);
+    return chan == 0 ? channelA : chan == 1 ? channelB : channelC;
+}
+
+void ChannelMuter::toggleSolo(const Array<ChannelMuter*>& all, ChannelMuter& soloed, size_t chan) {
+    auto isSoloed = [&](ChannelMuter* m, size_t c) { return m == &soloed && c == chan; };
+
+    bool playsAlone = true;
+    for (auto* m : all)
+        for (size_t c = 0; c < 3; ++c)
+            playsAlone = playsAlone && m->getChannelParam(c).getStoredValue() == isSoloed(m, c);
+
+    for (auto* m : all)
+        for (size_t c = 0; c < 3; ++c)
+            m->getChannelParam(c).setStoredValue(playsAlone || isSoloed(m, c));
+}
+
 void ChannelMuter::applyToRegsFrame(PsgRegsFrame& regs) const noexcept {
     for (size_t chan = 0; chan < 3; ++chan) {
         if (!getChannelEfecctivelyEnabled(chan)) {

@@ -162,9 +162,19 @@ void AYPluginUI::updateScopeDisplayParams() {
 }
 
 void AYPluginUI::setupToggleButtons() {
-    for (auto* group : channelGroups) {
-        group->addToComponent(*this);
-        group->setupWidgets();
+    for (size_t chan = 0; chan < channelGroups.size(); ++chan) {
+        auto& group = *channelGroups[chan];
+        group.addToComponent(*this);
+        group.setupWidgets();
+
+        auto& button = group.channelOn;
+        button.setTooltip(button.getTooltip() + String(JUCE_MAC ? ". Option" : ". Alt") + "-click: solo");
+        button.onClick = [this, chan, toggle = std::move(button.onClick)] {
+            if (ModifierKeys::currentModifiers.isAltDown())
+                plugin_.toggleSolo(chan);
+            else
+                toggle();
+        };
     }
 }
 

@@ -79,6 +79,15 @@ public:
     void setupLinkedToggleBehavior();
     ~ChannelMuter() override;
 
+    /** The A, B or C on/off toggle (0, 1, 2). */
+    ParameterValue<bool>& getChannelParam(size_t chan) noexcept;
+
+    /**
+     * Solo: only channel `chan` of `soloed` plays, every other channel of `all` is off.
+     * On a channel that already plays alone, turns every channel of `all` back on.
+     */
+    static void toggleSolo(const Array<ChannelMuter*>& all, ChannelMuter& soloed, size_t chan);
+
     /**
      * Apply channel and effect filters to the register frame
      *

@@ -1,5 +1,6 @@
 #include "ParamBindings.h"
 #include "gui/common/MouseListener.h"
+#include "controllers/App.h"
 
 using namespace juce;
 
@@ -16,9 +17,10 @@ WidgetParamEndpointBinding::WidgetParamEndpointBinding(Component &c, std::unique
     if (auto param = dynamic_cast<AutomatableParamEndpoint*>(ownedEndpoint.get())) {
         midiMapping.setParameter(param->getAutomatableParameter());
     }
-    mouseListener.setRmbCallback([this]() {
-        midiMapping.showMappingMenu();
-    });
+    if (MoToolApp::hasMidiControl())
+        mouseListener.setRmbCallback([this]() {
+            midiMapping.showMappingMenu();
+        });
 }
 
 WidgetParamEndpointBinding::WidgetParamEndpointBinding(Component &c, te::AutomatableParameter::Ptr parameterIn)

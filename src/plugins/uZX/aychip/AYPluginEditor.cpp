@@ -2,6 +2,7 @@
 #include "ChipClockPresets.h"
 #include "../../../gui/common/LookAndFeel.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
+#include "../../../controllers/App.h"
 
 
 namespace MoTool::uZX {
@@ -232,10 +233,11 @@ bool AYPluginUI::hasDeviceMenu() const {
 }
 
 void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
-    addMidiRangeMenu(menu, plugin_.staticParams.baseMidiChannel, plugin_.staticParams.baseMidiChannel.definition.description, 4);
+    if (MoToolApp::hasMidiControl())
+        addMidiRangeMenu(menu, plugin_.staticParams.baseMidiChannel, plugin_.staticParams.baseMidiChannel.definition.description, 4);
     // addDiscreteIntegerParameterMenu(menu, plugin_.staticParams.numOutputChannels, plugin_.staticParams.numOutputChannels.definition.description);
 
-    // Monitor mode toggle
+   #if JUCE_DEBUG  // its output goes through DBG, which Release builds drop
     const bool monitorEnabled = plugin_.staticParams.monitorMode.getStoredValue();
     menu.addItem(plugin_.staticParams.monitorMode.definition.description,
                  true,
@@ -244,6 +246,7 @@ void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
                      plugin_.staticParams.monitorMode.setStoredValue(
                          !plugin_.staticParams.monitorMode.getStoredValue());
                  });
+   #endif
 
     menu.addSeparator();
 

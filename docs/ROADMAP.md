@@ -34,18 +34,18 @@ None.
 #### P2 — Nice to have
 
 - [x] **BPM, FPB, GRV, SIG** detection — set on PSG import from the tracker row grid and bar-level repetition (3/4 or 4/4); dumps without a grid (speed 1, heavy volume ornaments) keep the current tempo
-- [ ] **Global default AY settings** (clock, stereo, channels) for PSG files opened from Finder or the command line
+- [ ] **Remembered stereo** — the stereo layout and width last chosen in the Player apply to every PSG file opened next, as the master volume already does; a saved `.uzx` keeps its own. Clock and chip type stay per tune (detected on open), and mutes don't carry over
 - [ ] **Solo** per AY channel (mute exists)
 
 ---
 
 ### v1.0 — First public release (macOS)
 
-**Goal:** a signed macOS app anyone can download from GitHub and open without a Gatekeeper workaround.
+**Goal:** a macOS app anyone can download from GitHub and open with one documented first-launch step. No paid Apple Developer Program, so no Developer ID signing or notarization.
 
 #### P0 — Blockers
 
-- [ ] **Code signing + notarization in CI** — release automation exists; the macOS build is an unsigned zip
+- [ ] **Ad-hoc signing in CI** — sign the whole bundle with `codesign --sign -`, so the first launch is **Open Anyway** in System Settings → Privacy & Security rather than `xattr` in Terminal; README and the user guide show that step
 - [ ] **DMG packaging** with an Applications symlink
 - [ ] **Tracktion Engine** — move from v3.2.0 + fork patches to the latest stable, or decide to stay
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
@@ -78,21 +78,25 @@ Grouped by theme, not ordered.
 
 **Platforms**
 
-- [ ] Windows installer (NSIS or WiX) and code signing — CI ships a zip
+- [ ] Windows installer (NSIS or WiX) and code signing — CI ships a zip. Signing through [SignPath Foundation](https://signpath.org), free for open-source projects: needs a published code signing policy, MFA for everyone, and a manual approval of each release
 - [ ] Linux AppImage — CI ships a tar.gz
 - [ ] iOS and Android — JUCE supports mobile platforms; the Player is a natural fit
+
+**Sound**
+
+- [ ] **Three-channel AY rendering** — ayumi renders channels A, B and C as three separate outputs, with options to turn off its filter and to remove DC
 
 **Export**
 
 - [ ] WAV export with a save dialog (Studio's internal Render to audio exists)
 - [ ] MP3/OGG export
 - [ ] PSG export and optimization
-- [ ] Rendering to video
+- [ ] **Rendering to video** — a view mode for recording or exporting a visualization clip, also from the command line: resolution, frame rate (common rates or custom), frame format (4:3, 16:10, 16:9), what to show (lanes, keys, ruler, oscilloscopes with their width and layout, note decorations, colours, background colour, the PSG base name), zoom (a set level or the current view)
 
 **Import**
 
-- [ ] ChipNomad (CN)
-- [ ] ProTracker 3 / Vortex Tracker II (PT3/VT2)
+- [ ] TAYM (needs Timer fx, see [TODO.md](TODO.md))
+- [ ] **Tracker modules**, converted to PSG or TAYM on open: ProTracker 3 / Vortex Tracker II (PT3/VT2), Bitphase, ChipNomad (CN); conversion by zxtune123, its sources added as a submodule
 - [ ] AY and SNDH containers
 
 **Views**

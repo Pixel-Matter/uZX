@@ -42,6 +42,10 @@ const char* MoToolApp::getTargetVersion() {
     return targetVersion_;
 }
 
+bool MoToolApp::hasMidiControl() {
+    return target_ != Target::uZXPlayer;
+}
+
 bool MoToolApp::moreThanOneInstanceAllowed()  {
     return target_ != Target::uZXPlayer;
 }

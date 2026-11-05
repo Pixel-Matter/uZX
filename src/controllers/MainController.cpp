@@ -297,12 +297,10 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
 
         menu.addSeparator();
 
-        if (!isPlayer) {
-            menu.addCommandItem(&commandManager_, MainAppCommands::fileSave);
-            menu.addCommandItem(&commandManager_, MainAppCommands::fileSaveAs);
-            menu.addCommandItem(&commandManager_, MainAppCommands::fileReveal);
-            menu.addSeparator();
-        }
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileSave);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileSaveAs);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileReveal);
+        menu.addSeparator();
 
         menu.addCommandItem(&commandManager_, MainAppCommands::fileImportPsg);
         if (!isPlayer)
@@ -385,7 +383,8 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::fileReveal:
-            result.setActive(edit != nullptr);
+            // the Player's opened PSG files live in the temp folder until saved
+            result.setActive(edit != nullptr && (!isPlayer || !EditFileOps::isTempEdit(*edit)));
             break;
 
         case MainAppCommands::fileOpenRecent1:
@@ -534,20 +533,23 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::fileSave:
-            if (!isPlayer) te::AppFunctions::saveEdit();
+            if (isPlayer)
+                MoToolApp::getPlayerController().handleSave();
+            else
+                te::AppFunctions::saveEdit();
             break;
 
         case MainAppCommands::fileSaveAs:
-            if (!isPlayer) MoToolApp::getArrangerController().handleSaveAs();
+            if (isPlayer)
+                MoToolApp::getPlayerController().handleSaveAs();
+            else
+                MoToolApp::getArrangerController().handleSaveAs();
             break;
 
         case MainAppCommands::fileReveal:
-            if (!isPlayer) {
-                auto* edit = MoToolApp::getArrangerController().getEdit();
-                if (edit != nullptr) {
-                    EditFileOps::saveEdit(*edit, false, true, false);
-                    te::EditFileOperations(*edit).getEditFile().revealToUser();
-                }
+            if (auto* edit = MoToolApp::getActiveController().getEdit()) {
+                EditFileOps::saveEdit(*edit, false, true, false);
+                te::EditFileOperations(*edit).getEditFile().revealToUser();
             }
             break;
 

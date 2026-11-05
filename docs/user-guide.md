@@ -33,6 +33,10 @@ Drop or open several `.psg` files at once to play them together, each on its own
 
 **Turbo Sound sets.** When a single `.psg` file's name ends in a chip number 1 to 3 after `_`, `-`, `.` or a space (`song_1.psg`, or `song.1.psg` as Vortex Tracker exports them), and files with the other numbers lie next to it with as many frames and the same PSG header, µZX asks whether to open the whole set or only that file. This applies however a single file comes in: opening, dropping, Finder / Explorer, and **Import PSG** in both apps.
 
+### Saving
+
+The Player keeps your changes to the open edit, such as tempo, AY chip settings and mutes, and opens it again on the next launch. **File → Save** (`Cmd+S`) writes them to the `.uzx` file. A PSG file you opened has no `.uzx` file yet, so Save asks where to put one, as **File → Save As** (`Cmd+Shift+S`) always does. **File → Reveal in Finder** shows the saved file; it stays off until the edit has one.
+
 ### Transport Bar
 
 Located at the top of the window.
@@ -272,8 +276,8 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Cmd+O` | Open file | Player, Studio |
 | `Cmd+I` | Import PSG files — Studio adds one to the selected track, several on new tracks; Player asks whether to add them on new tracks or open them in a new edit | Player, Studio |
 | `Cmd+N` | New edit | Studio |
-| `Cmd+S` | Save | Studio |
-| `Cmd+Shift+S` | Save As | Studio |
+| `Cmd+S` | Save | Player, Studio |
+| `Cmd+Shift+S` | Save As | Player, Studio |
 | `Cmd+Z` / `Cmd+Shift+Z` | Undo / Redo | Studio |
 | `Delete` or `Backspace` | Delete the selected clip, track, or device | Studio |
 | `Cmd+T` | Add track | Studio |

@@ -86,9 +86,27 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     editViewState_->showClipHeaders = false;
 
     window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), true);
-    setMainWindowTitle(makePlayerWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension()));
+    updateWindowTitle();
     window_.setSize(w, h);
     window_.repaint();
+}
+
+void PlayerController::updateWindowTitle() {
+    setMainWindowTitle(makePlayerWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension()));
+}
+
+void PlayerController::handleSave() {
+    if (edit_ == nullptr) return;
+
+    if (EditFileOps::isTempEdit(*edit_))
+        handleSaveAs();
+    else
+        EditFileOps::saveEdit(*edit_, true, true, false);
+}
+
+void PlayerController::handleSaveAs() {
+    if (edit_ != nullptr && EditFileOps::saveEditAsWithDialog(*edit_))
+        updateWindowTitle();
 }
 
 void PlayerController::handleOpen() {

@@ -16,19 +16,23 @@ AYPluginUI::ChannelGroup::ChannelGroup(AYChipPlugin& plugin,
                                         ParameterValue<bool>& channelParam,
                                         ParameterValue<bool>& toneParam,
                                         ParameterValue<bool>& noiseParam,
-                                        ParameterValue<bool>& envelopeParam)
+                                        ParameterValue<bool>& envelopeParam,
+                                        ParameterValue<bool>& soloParam)
     : channelOn   { plugin, channelParam }
     , toneOn      { plugin, toneParam }
     , noiseOn     { plugin, noiseParam }
     , envelopeOn  { plugin, envelopeParam }
     , channelParam_(channelParam)
+    , soloParam_(soloParam)
 {
     channelParam_.addListener(this);
+    soloParam_.addListener(this);
     updateTNEState();
 }
 
 AYPluginUI::ChannelGroup::~ChannelGroup() {
     channelParam_.removeListener(this);
+    soloParam_.removeListener(this);
 }
 
 void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
@@ -39,8 +43,6 @@ void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
 }
 
 void AYPluginUI::ChannelGroup::setupButtonColours(ToggleButton& button) {
-    // button .setColour(TextButton::buttonOnColourId, Colors::Theme::soloed);
-
     // if logic is inverted, use Theme::surface as on color
     button.setColour(TextButton::buttonOnColourId, Colors::Theme::surface);
     button.setColour(TextButton::buttonColourId,   Colors::Theme::muted);
@@ -53,6 +55,7 @@ void AYPluginUI::ChannelGroup::setupWidgets() {
     setupButtonColours(toneOn);
     setupButtonColours(noiseOn);
     setupButtonColours(envelopeOn);
+    updateSoloColour();
 
     // Set connected edges for buttons
     channelOn.setConnectedEdges(Button::ConnectedOnRight);
@@ -73,6 +76,12 @@ void AYPluginUI::ChannelGroup::layoutButtons(Rectangle<int> bounds) {
 
 void AYPluginUI::ChannelGroup::valueChanged(Value&) {
     updateTNEState();
+    updateSoloColour();
+}
+
+void AYPluginUI::ChannelGroup::updateSoloColour() {
+    channelOn.setColour(TextButton::buttonOnColourId,
+                        soloParam_.getStoredValue() ? Colors::Theme::soloed : Colors::Theme::surface);
 }
 
 void AYPluginUI::ChannelGroup::updateTNEState() {

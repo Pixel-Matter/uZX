@@ -129,7 +129,7 @@ public:
     /** The emulated chip's registers R0-R13 as playback has set them. */
     PsgRegsFrame getChipRegisters() const;
 
-    /** Solo channel 0-2 across every AY chip of the edit, see ChannelMuter::toggleSolo. */
+    /** Solos channel 0-2, or unsolos it; several can be soloed, on any chips of the edit. */
     void toggleSolo(size_t channel);
 
 private:

@@ -50,11 +50,12 @@ AYChipPlugin::~AYChipPlugin() {
 // }
 
 void AYChipPlugin::toggleSolo(size_t channel) {
-    juce::Array<ChannelMuter*> muters;
-    for (auto* p : te::getAllPlugins(edit, false))
-        if (auto* chipPlugin = dynamic_cast<AYChipPlugin*>(p))
-            muters.add(&chipPlugin->channelMuter);
-    ChannelMuter::toggleSolo(muters, channelMuter, channel);
+    auto& solo = channelMuter.getSoloParam(channel);
+    solo.setStoredValue(! solo.getStoredValue());
+
+    // The track is soloed while any of its chip's channels is, so the other tracks go silent.
+    if (auto* track = getOwnerTrack())
+        track->setSolo(channelMuter.hasSolo());
 }
 
 void AYChipPlugin::valueTreeChanged() {

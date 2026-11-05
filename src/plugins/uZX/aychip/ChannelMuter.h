@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include <atomic>
+
 #include "../../../formats/psg/PsgData.h"
 #include "../../../controllers/Parameters.h"
 
@@ -21,6 +23,9 @@ namespace IDs {
     DECLARE_ID(envelopeA)
     DECLARE_ID(envelopeB)
     DECLARE_ID(envelopeC)
+    DECLARE_ID(soloA)
+    DECLARE_ID(soloB)
+    DECLARE_ID(soloC)
     #undef DECLARE_ID
 }  // namespace IDs
 
@@ -34,6 +39,9 @@ namespace IDs {
  *
  * Implements linked toggle behavior: when a channel is disabled, all its
  * effects (tone, noise, envelope) are automatically disabled as well.
+ *
+ * Solo is apart from mute: while any channel is soloed, the others are silent
+ * and keep their toggles; a muted channel stays silent when soloed.
  */
 class ChannelMuter : public ParamsBase<ChannelMuter>,
                      private Value::Listener {
@@ -76,17 +84,20 @@ public:
     ParameterValue<bool> envelopeB  {{"envelopeB", IDs::envelopeB, "E", "Envelope B enable", true}};
     ParameterValue<bool> envelopeC  {{"envelopeC", IDs::envelopeC, "E", "Envelope C enable", true}};
 
+    // Not visited: solo is not automatable
+    ParameterValue<bool> soloA      {{"soloA", IDs::soloA, "S", "Channel A solo", false}};
+    ParameterValue<bool> soloB      {{"soloB", IDs::soloB, "S", "Channel B solo", false}};
+    ParameterValue<bool> soloC      {{"soloC", IDs::soloC, "S", "Channel C solo", false}};
+
+    /** Refers the visited parameters to `v` with `um`, and the solos without it. */
+    void referTo(ValueTree& v, UndoManager* um);
+
     void setupLinkedToggleBehavior();
     ~ChannelMuter() override;
 
-    /** The A, B or C on/off toggle (0, 1, 2). */
-    ParameterValue<bool>& getChannelParam(size_t chan) noexcept;
-
-    /**
-     * Solo: only channel `chan` of `soloed` plays, every other channel of `all` is off.
-     * On a channel that already plays alone, turns every channel of `all` back on.
-     */
-    static void toggleSolo(const Array<ChannelMuter*>& all, ChannelMuter& soloed, size_t chan);
+    /** The solo of channel A, B or C (0, 1, 2). */
+    ParameterValue<bool>& getSoloParam(size_t chan) noexcept;
+    bool hasSolo() const;
 
     /**
      * Apply channel and effect filters to the register frame
@@ -104,11 +115,14 @@ public:
 
 private:
     void valueChanged(Value&) override;
+    void updateSoloMask();
     bool getChannelEnabled(size_t chan) const noexcept;
     bool getChannelEfecctivelyEnabled(size_t c) const noexcept;
     bool getToneEnabled(size_t chan) const noexcept;
     bool getNoiseEnabled(size_t chan) const noexcept;
     bool getEnvelopeEnabled(size_t chan) const noexcept;
+
+    std::atomic<uint8_t> soloMask_ {0};  // bit per soloed channel, for the audio thread
 };
 
 } // namespace MoTool::uZX

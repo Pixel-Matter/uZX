@@ -1,5 +1,6 @@
 #include <JuceHeader.h>
 #include "ChannelMuter.h"
+#include "../../../util/TestHelpers.h"
 
 namespace MoTool::uZX {
 
@@ -33,37 +34,45 @@ public:
             expect(!regs.getEnvMod(0), "Envelope mod should be disabled");
         }
 
-        beginTest("Solo plays one channel of all chips, and again plays them all");
+        beginTest("Soloed channels play alone, several at once, and a muted one stays silent");
         {
-            ValueTree state1("ChannelMuter"), state2("ChannelMuter");
-            ChannelMuter chip1, chip2;
-            chip1.referTo(state1, nullptr);
-            chip2.referTo(state2, nullptr);
-            const Array<ChannelMuter*> all {&chip1, &chip2};
+            ValueTree state("ChannelMuter");
+            ChannelMuter muter;
+            muter.referTo(state, nullptr);
 
-            auto playing = [&] {
+            auto volumes = [&] {
+                PsgRegsFrame regs;
+                for (size_t chan = 0; chan < 3; ++chan) {
+                    regs.setToneOn(chan, true);
+                    regs.setVolume(chan, 15);
+                }
+                muter.applyToRegsFrame(regs);
                 String s;
-                for (auto* m : all)
-                    for (size_t c = 0; c < 3; ++c)
-                        s << (m->getChannelParam(c).getStoredValue() ? "ABC"[c] : '-');
+                for (size_t chan = 0; chan < 3; ++chan)
+                    s << (regs.getVolume(chan) > 0 ? "ABC"[chan] : '-');
                 return s;
             };
 
-            ChannelMuter::toggleSolo(all, chip1, 1);
-            expectEquals(playing(), String("-B----"));
+            muter.soloB.setStoredValue(true);
+            TestHelpers::flushMessageQueue();
+            expectEquals(volumes(), String("-B-"));
+            expect(muter.channelA.getStoredValue() && muter.channelC.getStoredValue(), "the others aren't muted");
 
-            ChannelMuter::toggleSolo(all, chip2, 2);
-            expectEquals(playing(), String("-----C"), "Another channel takes over the solo");
+            muter.soloC.setStoredValue(true);
+            TestHelpers::flushMessageQueue();
+            expectEquals(volumes(), String("-BC"), "several solos");
 
-            ChannelMuter::toggleSolo(all, chip2, 2);
-            expectEquals(playing(), String("ABCABC"), "Unsolo");
+            muter.channelC.setStoredValue(false);
+            expectEquals(volumes(), String("-B-"), "mute wins over solo");
 
-            chip1.channelA.setStoredValue(false);
-            ChannelMuter::toggleSolo(all, chip1, 0);
-            expectEquals(playing(), String("A-----"), "A muted channel can be soloed");
+            muter.soloB.setStoredValue(false);
+            muter.soloC.setStoredValue(false);
+            muter.channelC.setStoredValue(true);
+            TestHelpers::flushMessageQueue();
+            expectEquals(volumes(), String("ABC"), "no solo");
         }
 
-                beginTest("Disabling tone only should preserve noise and volume");
+        beginTest("Disabling tone only should preserve noise and volume");
         {
             ValueTree state("ChannelMuter");
             ChannelMuter filter;

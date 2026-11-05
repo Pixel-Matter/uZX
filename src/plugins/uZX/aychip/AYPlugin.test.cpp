@@ -151,4 +151,47 @@ private:
 
 static AYChipSeekStateTests ayChipSeekStateTests;
 
+//==============================================================================
+class AYChipSoloTests : public juce::UnitTest {
+public:
+    AYChipSoloTests() : UnitTest("AYChipSolo", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        edit->ensureNumberOfAudioTracks(2);
+        auto tracks = te::getAudioTracks(*edit);
+        auto addChip = [&](te::AudioTrack& track) -> AYChipPlugin& {
+            auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+            track.pluginList.insertPlugin(plugin, 0, nullptr);
+            return dynamic_cast<AYChipPlugin&>(*plugin);
+        };
+        auto& chip1 = addChip(*tracks[0]);
+        addChip(*tracks[1]);
+
+        beginTest("A chip with a soloed channel solos its track, so the other tracks go silent");
+        {
+            chip1.toggleSolo(1);
+            chip1.toggleSolo(2);
+            expect(tracks[0]->isSolo(false) && ! tracks[1]->isSolo(false));
+
+            chip1.toggleSolo(1);
+            expect(tracks[0]->isSolo(false), "C is still soloed");
+
+            chip1.toggleSolo(2);
+            expect(! edit->areAnyTracksSolo(), "no solo left");
+        }
+
+        beginTest("Solo is not a step in Undo, as track solo isn't");
+        {
+            edit->getUndoManager().clearUndoHistory();
+            chip1.toggleSolo(0);
+            expect(! edit->getUndoManager().canUndo());
+            chip1.toggleSolo(0);
+        }
+    }
+};
+
+static AYChipSoloTests ayChipSoloTests;
+
 }  // namespace MoTool::Tests

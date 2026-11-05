@@ -80,7 +80,8 @@ private:
                      ParameterValue<bool>& channelParam,
                      ParameterValue<bool>& toneParam,
                      ParameterValue<bool>& noiseParam,
-                     ParameterValue<bool>& envelopeParam);
+                     ParameterValue<bool>& envelopeParam,
+                     ParameterValue<bool>& soloParam);
 
         ~ChannelGroup();
 
@@ -96,24 +97,29 @@ private:
     private:
         void valueChanged(Value&) override;
         void updateTNEState();
+        void updateSoloColour();
         void setupButtonColours(ToggleButton& button);
 
         ParameterValue<bool>& channelParam_;
+        ParameterValue<bool>& soloParam_;
     };
 
     // Channel groups
     ChannelGroup channelA { plugin_, plugin_.channelMuter.channelA,
                             plugin_.channelMuter.toneA,
                             plugin_.channelMuter.noiseA,
-                            plugin_.channelMuter.envelopeA };
+                            plugin_.channelMuter.envelopeA,
+                            plugin_.channelMuter.soloA };
     ChannelGroup channelB { plugin_, plugin_.channelMuter.channelB,
                             plugin_.channelMuter.toneB,
                             plugin_.channelMuter.noiseB,
-                            plugin_.channelMuter.envelopeB };
+                            plugin_.channelMuter.envelopeB,
+                            plugin_.channelMuter.soloB };
     ChannelGroup channelC { plugin_, plugin_.channelMuter.channelC,
                             plugin_.channelMuter.toneC,
                             plugin_.channelMuter.noiseC,
-                            plugin_.channelMuter.envelopeC };
+                            plugin_.channelMuter.envelopeC,
+                            plugin_.channelMuter.soloC };
 
     std::array<ChannelGroup*, 3> channelGroups { &channelA, &channelB, &channelC };
 

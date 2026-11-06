@@ -14,6 +14,7 @@ namespace IDs
     DECLARE_ID(EDITVIEWSTATE)
     DECLARE_ID(headersWidth)
     DECLARE_ID(vizScopesWidth)
+    DECLARE_ID(footersWidth)
     DECLARE_ID(preservePsgTimingOnTempoChange)
     DECLARE_ID(snapPlayheadToGrid)
 
@@ -158,6 +159,7 @@ public:
     CachedValue<bool> preservePsgTimingOnTempoChange, snapPlayheadToGrid;
     CachedValue<int> headersWidth;  // Studio's; written only while headers are shown
     CachedValue<int> vizScopesWidth;  // written only in Viz mode
+    CachedValue<int> footersWidth;  // the Player's track devices; written only outside Viz mode
     static constexpr int minVizScopesWidth = 120;
     static constexpr int minHeadersWidth = 110, maxHeadersWidth = 300;
 
@@ -177,10 +179,10 @@ public:
     int getTrackFooterWidth() const {
         if (! showFooters)
             return 0;
-        return vizMode ? jmax(minVizScopesWidth, vizScopesWidth.get()) : footerWidth;
+        return vizMode ? jmax(minVizScopesWidth, vizScopesWidth.get()) : jmax(footerWidth, footersWidth.get());
     }
 
-    static constexpr int footerWidth = 264;  // an AY chip and a level meter, 8 apart and from each side
+    static constexpr int footerWidth = 264;  // the narrowest: an AY chip and a level meter, 8 apart and from each side
 
     bool showHeaders = true;  // per app, not saved: the Player hides them
     bool showFooters = false;  // per app, not saved: the Player shows them

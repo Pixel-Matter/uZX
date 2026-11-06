@@ -75,7 +75,7 @@ Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler;
 
 ### AY Chip and Level Meter
 
-Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Here you can adjust:
+Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Drag the gap to the left of the chips to make them wider, for wider scopes, or back down to their narrowest. Here you can adjust:
 
 - **Chip clock frequency** — affects pitch of the whole output
 - **Stereo mode** — mono, ABC, ACB, or custom channel panning. The Player remembers the layout and width last chosen and gives them to every PSG file it opens next; a saved `.uzx` file keeps its own
@@ -306,6 +306,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Middle-drag | Tracks | Same as dragging the ruler |
 | `Shift+Wheel` | Ruler or tracks | Scroll horizontally |
 | Drag | Scrollbar under the tracks | Scroll horizontally |
+| Drag | Gap left of the AY chips, or of the scopes in Viz mode (Player) | Make them wider or narrower |
 | `Cmd+Wheel` | Ruler, tracks or scrollbar | Zoom around the mouse pointer, or around the playhead while it is followed |
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |

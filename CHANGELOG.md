@@ -5,6 +5,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ## [Unreleased]
 
 ### Added
+- Viz mode in the Player: **View → Viz Mode** (`F`) goes full screen with only each track's notes, on the scopes' dark background, and its chip's A, B and C scopes, whose width you drag; `F` or `Esc` leaves it
+- Solo AY channels. Each A, B or C button is on, muted (red) or soloed (emerald): a click mutes a channel that is on and turns a muted or soloed one back on; `Alt`-click (`Option`-click on a Mac) solos a channel, a muted one too, or unsolos it. Several channels can be soloed, on any chips; while any is, only soloed channels play, and the other buttons stay as they were. A chip with a soloed channel solos its track. Solo is saved with the file and, like track solo, isn't a step in Undo
+- The Player remembers the stereo layout and width last chosen and applies them to every PSG file it opens next, as it does the master volume; a saved `.uzx` keeps its own, and clock, chip type and mutes stay per tune
 - Stereo level meter of the master output in the transport bar, right of the master volume knob
 - Tuning table and key detection for imported PSG clips: the clip header shows both (for example `PT #1  E minor`, with `?` on a close call), the Notes view draws the table's notes as piano-roll lanes, and **Tuning and key…** in the clip menu shows the ranked candidates and lets you choose; View > Note Lanes turns the lanes off
 - Tempo detection on PSG import into an empty project: BPM, frames per beat, swings and grooves (tracker speed tables such as 4-4-3-3 frame rows) and 3/4 or 4/4 when the bar repetition is clear. A dump that starts a few frames before its first row is trimmed, or moved right when those frames sound, so that row starts a bar
@@ -35,6 +38,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
+- Undo and Redo of AY chip settings (channel on/off, stereo layout and width, volume) change the sound and the buttons again, not only the saved file
 - `Delete` and `Backspace` in the Player no longer remove the last clicked track with its AY chip
 - Zoom in works on keyboard layouts where `=` needs Shift, such as German; `+` zooms in too
 - `Ctrl`+click opens the MIDI mapping menu on a Mac, as right-click does

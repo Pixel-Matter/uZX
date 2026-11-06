@@ -127,6 +127,9 @@ struct Timeline {
         return trackSelected ? Theme::backgroundSel : Theme::backgroundAlt;
     }
 
+    /** Behind the notes in Viz mode, where they are a display like the scopes, so as deep. */
+    inline static const Colour vizLane = Theme::backgroundDark;
+
     inline static const Colour grid         = Palette::slate600;
     inline static const Colour cursor       = Theme::primary;
     inline static const Colour clipBg       = Colour::fromString("#FF3B82F6"); // blue-500

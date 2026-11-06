@@ -60,6 +60,7 @@ set(GUI_SOURCES
     controllers/App.cpp
     controllers/EditState.cpp
     controllers/PlayheadClock.cpp
+    controllers/RememberedStereo.cpp
 
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Transport.cpp
@@ -128,6 +129,7 @@ set(TEST_SOURCES
     controllers/EditState.test.cpp
     controllers/PlayheadClock.test.cpp
     controllers/PlayWholeEdit.test.cpp
+    controllers/RememberedStereo.test.cpp
     controllers/Parameters.test.cpp
 
     viewmodels/tuning/TuningViewModel.test.cpp

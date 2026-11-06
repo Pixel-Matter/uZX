@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "MainController.h"
+#include "RememberedStereo.h"
 
 namespace MoTool {
 
@@ -25,6 +26,11 @@ public:
     void handleSaveAs();
     void handleImportPsgReplace();
 
+    /** Viz mode: full screen with only the notes and each chip's scopes. An app state, not saved:
+        it stays on for the next file opened. */
+    void setVizMode(bool on);
+    bool isVizMode() const noexcept { return vizMode_; }
+
 private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
@@ -32,6 +38,9 @@ private:
 
     void importPsgsToNewTracks(const Array<File>& files);
     void importPsgsToNewEdit(const Array<File>& files);
+
+    std::unique_ptr<RememberedStereo> rememberedStereo_;
+    bool vizMode_ = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerController)
 };

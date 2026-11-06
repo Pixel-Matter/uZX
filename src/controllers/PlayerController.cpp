@@ -60,8 +60,11 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 
     window_.clearContentComponent();
     MoToolApp::getSelectionManager().deselectAll();
+    const auto vizScopesWidth = editViewState_ != nullptr ? editViewState_->vizScopesWidth.get() : 0;
+    const auto footersWidth = editViewState_ != nullptr ? editViewState_->footersWidth.get() : 0;
     editViewState_.reset();
     playWholeEdit_.reset();
+    rememberedStereo_.reset();
 
     if (edit_ != nullptr) {
         edit_->getTempDirectory(false).deleteRecursively();
@@ -78,17 +81,33 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
     playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);
+    rememberedStereo_ = std::make_unique<RememberedStereo>(*edit_);
     EditFileOps::saveEdit(*edit_, true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
     editViewState_->showHeaders = false;
     editViewState_->showFooters = true;
     editViewState_->showClipHeaders = false;
+    editViewState_->vizMode = vizMode_;
+    if (vizScopesWidth > 0) {  // the devices and scopes keep their widths in the next file
+        editViewState_->vizScopesWidth = vizScopesWidth;
+        editViewState_->footersWidth = footersWidth;
+    }
 
     window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), true);
     updateWindowTitle();
     window_.setSize(w, h);
     window_.repaint();
+}
+
+void PlayerController::setVizMode(bool on) {
+    if (on == vizMode_ || edit_ == nullptr)
+        return;
+
+    vizMode_ = on;
+    editViewState_->vizMode = on;
+    window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), false);
+    window_.setFullScreen(on);
 }
 
 void PlayerController::updateWindowTitle() {
@@ -187,7 +206,10 @@ void PlayerController::handleImportPsgReplace() {
 
 void PlayerController::importPsgsToNewTracks(const Array<File>& files) {
     edit_->getTransport().stop(false, false);
-    if (! Helpers::importPsgFiles(*edit_, files).isEmpty())
+    const auto clips = Helpers::importPsgFiles(*edit_, files);
+    for (auto* clip : clips)
+        RememberedStereo::apply(Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack()));
+    if (! clips.isEmpty())
         zoomToFitHorizontally();
 }
 
@@ -199,12 +221,14 @@ void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
     if (clips.isEmpty())
         return;
 
-    // A PSG stores no clock. A fitted tuning names the machine the tune was written
-    // for, so the opened tune plays at that clock; a tracker table leaves it as it is.
-    for (auto* clip : clips)
+    for (auto* clip : clips) {
+        auto& chip = Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack());
+        RememberedStereo::apply(chip);
+        // A PSG stores no clock. A fitted tuning names the machine the tune was written
+        // for, so the opened tune plays at that clock; a tracker table leaves it as it is.
         if (const auto& fit = clip->getTuning().fit)
-            Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack())
-                .staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
+            chip.staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
+    }
 
     edit_->getTransport().stop(false, false);
 

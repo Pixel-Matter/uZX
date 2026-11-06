@@ -112,7 +112,10 @@ public:
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
-    std::unique_ptr<TrackDevicesPanel> footer;  // the track's devices, fixed; only when the view shows footers
+    /** The track's devices, fixed, when the view shows footers; in Viz mode its chip's scopes. */
+    std::unique_ptr<Component> footer;
+    /** Level with the clips, apart from them and from the window edge. */
+    static inline const BorderSize<int> footerPadding {ClipComponent::ringWidth, 8, ClipComponent::ringWidth, 8};
 
 private:
     EditViewState& editViewState;
@@ -136,6 +139,24 @@ private:
     EditViewState& editViewState;
     ComponentBoundsConstrainer constrainer;
     ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::rightEdge};
+};
+
+//==============================================================================
+/** The column at the right of the track rows when the view shows footers: the devices, or in
+    Viz mode the scopes. Drag the gap at its left edge, before the devices or scopes, to resize it. */
+class TrackFooterOverlayComponent : public Component, private te::ValueTreeAllEventListener {
+public:
+    TrackFooterOverlayComponent(EditViewState& evs);
+    ~TrackFooterOverlayComponent() override;
+    void resized() override;
+    void setMaximumWidth(int width) { constrainer.setMaximumWidth(width); }
+    void valueTreeChanged() override {}
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
+
+private:
+    EditViewState& editViewState;
+    ComponentBoundsConstrainer constrainer;
+    ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::leftEdge};
 };
 
 //==============================================================================
@@ -174,6 +195,7 @@ private:
     EditViewState& editViewState;
     OwnedArray<TrackRowComponent> trackRows;
     TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
+    TrackFooterOverlayComponent trackFooterOverlay {editViewState};
     bool updateTracks = false;
     bool needsRepaint = false;
     bool needsResize = false;

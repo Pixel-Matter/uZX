@@ -2,6 +2,7 @@
 
 #include "EditComponent.h"
 #include "../devices/TrackDevicesPanel.h"
+#include "../devices/LevelMeterUI.h"
 #include "../../plugins/uZX/aychip/AYPluginEditor.h"
 #include "PsgClipComponent.h"
 #include "../../util/Helpers.h"
@@ -20,6 +21,7 @@ public:
         runLayoutTests(engine);
         runMinimumHeightTests(engine);
         runPlayerOverlayTests(engine);
+        runVizModeTests(engine);
 
         auto edit = te::Edit::createSingleTrackEdit(engine);
         te::getAudioTracks(*edit)[0]->insertMIDIClip({0_tp, 10_tp}, nullptr);
@@ -153,6 +155,36 @@ private:
         expectEquals(studioView.getTrackHeaderWidth(), EditViewState::minHeadersWidth);
     }
 
+    void runVizModeTests(te::Engine& engine) {
+        beginTest("Viz mode: no ruler or scrollbar, and each track row ends in its chip's scopes");
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        Helpers::ensureAYPluginOnTrack(*te::getAudioTracks(*edit)[0]);
+        te::SelectionManager selectionManager(engine);
+        EditViewState vizView(*edit, selectionManager);
+        vizView.showHeaders = false;  // as the Player does
+        vizView.showFooters = true;
+        vizView.showClipHeaders = false;
+        vizView.vizMode = true;
+        EditComponent viz(*edit, vizView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+        viz.setSize(1000, 400);
+        TestHelpers::flushMessageQueue();
+
+        expect(! findChild<RulerComponent>(viz)->isVisible(), "no ruler");
+        expect(! findChild<ScrollBar>(viz)->isVisible(), "no scrollbar");
+        expect(findChild<Viewport>(viz)->getBounds() == viz.getLocalBounds(), "the tracks fill the view");
+        auto* row = findDescendant<TrackRowComponent>(viz);
+        expect(row != nullptr && dynamic_cast<uZX::AYScopes*>(row->footer.get()) != nullptr, "scopes");
+        expect(findDescendant<uZX::AYPluginUI>(viz) == nullptr, "no chip controls");
+
+        vizView.vizScopesWidth = 400;  // what dragging the gap before the scopes does
+        TestHelpers::flushMessageQueue();
+        if (row != nullptr && row->footer != nullptr) {
+            expectEquals(row->body.getRight(), row->getWidth() - 400, "the notes end where the scopes' column starts");
+            expectEquals(row->footer->getX(), row->getWidth() - 400 + TrackRowComponent::footerPadding.getLeft(),
+                         "the scopes start after the gap");
+        }
+    }
+
     void runMinimumHeightTests(te::Engine& engine) {
         beginTest("Fitted rows share the height in proportion, none below its minimum");
         {
@@ -199,6 +231,22 @@ private:
         player.setSize(1000, 1000);
         TestHelpers::flushMessageQueue();
         expect(! tracks->getVerticalScrollBar().isVisible(), "tracks fit again");
+
+        beginTest("A wider Player footer gives its width to the AY chip, and is never narrower than its minimum");
+        playerView.footersWidth = 400;  // what dragging the gap before the devices does
+        TestHelpers::flushMessageQueue();
+        expectEquals(row->footer->getWidth(), 400);
+        constexpr int padding = 8, spacing = 8, meter = 16;
+        // found again: the devices may have been rebuilt meanwhile
+        auto chipWidth = [&] { return findDescendant<uZX::AYPluginUI>(*row->footer)->getWidth(); };
+        expect(findDescendant<LevelMeterUI>(*row->footer) != nullptr,
+               "the level meter has its own UI: every device UI is linked in, on Linux too");
+        expectEquals(chipWidth(), 400 - 2 * padding - spacing - meter, "the chip takes the rest");
+
+        playerView.footersWidth = 100;
+        TestHelpers::flushMessageQueue();
+        expectEquals(row->footer->getWidth(), EditViewState::footerWidth);
+        expectEquals(chipWidth(), EditViewState::footerWidth - 2 * padding - spacing - meter);
     }
 
     void runPlayerOverlayTests(te::Engine& engine) {

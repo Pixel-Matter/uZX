@@ -1,6 +1,7 @@
 #include "TrackComponents.h"
 #include "PsgClipComponent.h"
 #include "../devices/TrackDevicesPanel.h"
+#include "../../plugins/uZX/aychip/AYPluginEditor.h"
 
 #include "../common/LookAndFeel.h"
 #include "../../controllers/App.h"
@@ -261,7 +262,7 @@ TrackBodyComponent::~TrackBodyComponent() {
 
 void TrackBodyComponent::paint(Graphics& g) {
     bool isSelected = editViewState.selectionManager.isSelected(track.get());
-    auto bgColor = Colors::Timeline::lane(isSelected);
+    auto bgColor = editViewState.vizMode ? Colors::Timeline::vizLane : Colors::Timeline::lane(isSelected);
 
     g.fillAll(bgColor);
 
@@ -455,13 +456,17 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Tr
     addAndMakeVisible(body);
     addAndMakeVisible(resizer);
 
-    if (editViewState.showFooters) {
-        footer = std::make_unique<TrackDevicesPanel>(editViewState, false);
-        // level with the clips, apart from them and from the window edge
-        constexpr int gap = 8;
-        footer->setPadding({ClipComponent::ringWidth, gap, ClipComponent::ringWidth, gap});
-        footer->setCurrentTrack(track.get());
-        addAndMakeVisible(*footer);
+    if (editViewState.showFooters && editViewState.vizMode) {
+        if (auto* chip = track->pluginList.findFirstPluginOfType<uZX::AYChipPlugin>()) {
+            footer = std::make_unique<uZX::AYScopes>(*chip);
+            addAndMakeVisible(*footer);
+        }
+    } else if (editViewState.showFooters) {
+        auto devices = std::make_unique<TrackDevicesPanel>(editViewState, false);
+        devices->setPadding(footerPadding);
+        devices->setCurrentTrack(track.get());
+        addAndMakeVisible(*devices);
+        footer = std::move(devices);
 
         auto& constrainer = trackViewState.getConstrainer();
         constrainer.setMinimumHeight(jmax(constrainer.getMinimumHeight(), getMinimumHeight()));
@@ -479,7 +484,9 @@ int TrackRowComponent::getTrackHeight() const noexcept {
 }
 
 int TrackRowComponent::getMinimumHeight() const {
-    return footer != nullptr ? footer->getMinimumHeight() + resizerHeight : 0;
+    if (auto* devices = dynamic_cast<TrackDevicesPanel*>(footer.get()))
+        return devices->getMinimumHeight() + resizerHeight;
+    return 0;
 }
 
 void TrackRowComponent::setResizerVisible(bool visible) {
@@ -502,8 +509,10 @@ void TrackRowComponent::resized() {
     resizer.setBounds(r.removeFromBottom(resizerHeight));
 
     header.setBounds(r.removeFromLeft(headerWidth));
-    if (footer != nullptr)
-        footer->setBounds(r.removeFromRight(editViewState.getTrackFooterWidth()));
+    if (footer != nullptr) {
+        auto footerArea = r.removeFromRight(editViewState.getTrackFooterWidth());
+        footer->setBounds(editViewState.vizMode ? footerPadding.subtractedFrom(footerArea) : footerArea);
+    }
     body.setBounds(r);
 
     // do not remove
@@ -547,6 +556,35 @@ void TrackHeaderOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, c
 
 
 //==============================================================================
+TrackFooterOverlayComponent::TrackFooterOverlayComponent(EditViewState& evs)
+    : editViewState (evs)
+{
+    setInterceptsMouseClicks(false, true);
+    editViewState.state.addListener(this);
+    constrainer.setMinimumWidth(editViewState.vizMode ? EditViewState::minVizScopesWidth : EditViewState::footerWidth);
+    addAndMakeVisible(resizer);
+}
+
+TrackFooterOverlayComponent::~TrackFooterOverlayComponent() {
+    editViewState.state.removeListener(this);
+}
+
+void TrackFooterOverlayComponent::resized() {
+    if (editViewState.showFooters && getWidth() > 0)
+        (editViewState.vizMode ? editViewState.vizScopesWidth : editViewState.footersWidth) = getWidth();
+    resizer.setBounds(getLocalBounds().removeFromLeft(TrackRowComponent::footerPadding.getLeft()));
+}
+
+void TrackFooterOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, const juce::Identifier& i) {
+    if ((i == IDs::vizScopesWidth || i == IDs::footersWidth) && s.hasType(IDs::EDITVIEWSTATE)
+        && getParentComponent() != nullptr) {
+        const auto width = editViewState.getTrackFooterWidth();
+        setBounds(getBounds().withLeft(getRight() - width));
+    }
+}
+
+
+//==============================================================================
 TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& evs, TimelineGrid& g)
     : edit(e)
     , editViewState(evs)
@@ -560,6 +598,11 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
     addAndMakeVisible(trackHeaderOverlay);
     trackHeaderOverlay.setAlwaysOnTop(true);
     trackHeaderOverlay.addComponentListener(this);
+    if (editViewState.showFooters) {
+        addAndMakeVisible(trackFooterOverlay);
+        trackFooterOverlay.setAlwaysOnTop(true);
+        trackFooterOverlay.addComponentListener(this);
+    }
 
     markAndUpdate(updateTracks);
 }
@@ -642,6 +685,12 @@ void TracksContainerComponent::resized() {
     r = getLocalBounds();
 
     trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
+    if (editViewState.showFooters) {
+        constexpr int minNotesWidth = 160;
+        const int minWidth = editViewState.vizMode ? EditViewState::minVizScopesWidth : EditViewState::footerWidth;
+        trackFooterOverlay.setMaximumWidth(jmax(minWidth, getWidth() - headerWidth - minNotesWidth));
+        trackFooterOverlay.setBounds(r.withLeft(r.getRight() - editViewState.getTrackFooterWidth()));
+    }
 
     if (autoFitTrackHeights_ && !trackRows.isEmpty()) {
         const int totalHeight = getHeight();

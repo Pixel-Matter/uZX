@@ -68,13 +68,17 @@ Clips in the Player have no header: the notes take the whole track. A clip's war
 
 Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
 
+### Viz Mode
+
+**View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
+
 ### AY Chip and Level Meter
 
-Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Here you can adjust:
+Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Drag the gap to the left of the chips to make them wider, for wider scopes, or back down to their narrowest. Here you can adjust:
 
 - **Chip clock frequency** — affects pitch of the whole output
-- **Stereo mode** — mono, ABC, ACB, or custom channel panning
-- Channel-level output settings
+- **Stereo mode** — mono, ABC, ACB, or custom channel panning. The Player remembers the layout and width last chosen and gives them to every PSG file it opens next; a saved `.uzx` file keeps its own
+- Channel-level output settings: T, N and E turn a channel's tone, noise and envelope on or off. Each of A, B and C is on, muted (red) or soloed (emerald): a click mutes a channel that is on and turns a muted or soloed one back on; `Option`+click (`Alt`+click on Windows and Linux) solos it, a muted one too, or unsolos it. Several channels can be soloed, on any chips: while any is, only the soloed channels play. Soloing doesn't change the other buttons, and it isn't a step in Undo
 
 The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with scope settings; in Studio the menu also sets the chip's MIDI channels. Chips can't be removed or added in the Player, and its controls take no MIDI mapping.
 
@@ -259,7 +263,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 
 ## Keyboard and Mouse
 
-`Cmd` is `Ctrl` on Windows and Linux; on a Mac, `Ctrl`+click works as a right-click. Keys are ignored while a text field is being edited.
+`Cmd` is `Ctrl` and `Option` is `Alt` on Windows and Linux; on a Mac, `Ctrl`+click works as a right-click. Keys are ignored while a text field is being edited.
 
 ### Keyboard
 
@@ -283,7 +287,8 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Cmd+T` | Add track | Studio |
 | `Cmd+Shift+T` | Open Tuning Tables | Studio |
 | `Cmd+,` | Audio/MIDI settings; on macOS, **Settings...** in the app menu, next to **About** | Player, Studio |
-| `Esc` | Close the Settings, Plugins, or About window | Player, Studio |
+| `F` | Viz mode on / off: full screen, only the notes and each chip's scopes | Player |
+| `Esc` | Close the Settings, Plugins, or About window; in the Player, leave Viz mode | Player, Studio |
 | `Cmd+Q` | Quit | Player, Studio |
 
 ### Mouse and trackpad (timeline)
@@ -300,10 +305,12 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Middle-drag | Tracks | Same as dragging the ruler |
 | `Shift+Wheel` | Ruler or tracks | Scroll horizontally |
 | Drag | Scrollbar under the tracks | Scroll horizontally |
+| Drag | Gap left of the AY chips, or of the scopes in Viz mode (Player) | Make them wider or narrower |
 | `Cmd+Wheel` | Ruler, tracks or scrollbar | Zoom around the mouse pointer, or around the playhead while it is followed |
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |
 | Right-click | Ruler | Zoom, timecode format, and snap options |
+| `Option`+click | A, B or C button of an AY chip | Solo the channel, a muted one too, or unsolo it (emerald when soloed); while any channel is soloed, on any chip, only soloed ones play. A plain click turns a soloed or muted channel back on |
 | Right-click | Knob, slider, or switch (Studio) | MIDI mapping: learn a controller, pick a CC, or clear it |
 | Right-click | PSG clip | Notes / Registers view, note lanes, piano keys, hex values on hover, tuning table and key picker |
 | Double-click | Track name (Studio) | Rename |

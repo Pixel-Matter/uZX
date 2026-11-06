@@ -345,6 +345,8 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addCommandItem(&commandManager_, MainAppCommands::viewSnapPlayheadToGrid);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewNoteLanes);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewPianoKeys);
+            menu.addSeparator();
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewVizMode);
             if (auto* edit = MoToolApp::getPlayerController().getEdit()) {
                 menu.addSeparator();
                 menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
@@ -503,6 +505,15 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
         case MainAppCommands::viewPianoKeys:
             result.setActive(areNoteLanesShown(engine_));
             result.setTicked(arePianoKeysShown(engine_));
+            break;
+
+        case MainAppCommands::viewVizMode:
+            result.setActive(isPlayer && edit != nullptr);
+            result.setTicked(isPlayer && MoToolApp::getPlayerController().isVizMode());
+            break;
+
+        case MainAppCommands::viewExitVizMode:
+            result.setActive(isPlayer && MoToolApp::getPlayerController().isVizMode());
             break;
 
         case MainAppCommands::viewSnapPlayheadToGrid:
@@ -718,6 +729,15 @@ bool AppController::perform(const InvocationInfo& info) {
         case MainAppCommands::viewPianoKeys:
             setPianoKeysShown(engine_, ! arePianoKeysShown(engine_));
             commandManager_.commandStatusChanged();
+            break;
+
+        case MainAppCommands::viewVizMode:
+        case MainAppCommands::viewExitVizMode:
+            if (isPlayer) {
+                auto& player = MoToolApp::getPlayerController();
+                player.setVizMode(info.commandID == MainAppCommands::viewVizMode && ! player.isVizMode());
+                commandManager_.commandStatusChanged();
+            }
             break;
 
         // Settings commands

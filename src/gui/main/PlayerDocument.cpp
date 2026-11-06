@@ -9,7 +9,8 @@ PlayerDocumentComponent::PlayerDocumentComponent(te::Edit& edit, EditViewState& 
     : transportBar_ {evs, {.showRecord = false, .showAutomation = false}}
     , editComponent_ {edit, evs, {.showDetailsPanel = false, .autoFitTrackHeights = true, .transparentClips = true, .disableClipSelection = true}}
 {
-    addAndMakeVisible(transportBar_);
+    if (! evs.vizMode)
+        addAndMakeVisible(transportBar_);
     addAndMakeVisible(editComponent_);
 }
 
@@ -19,7 +20,8 @@ void PlayerDocumentComponent::resized() {
     auto r = getLocalBounds();
     static constexpr int transportBarHeight = 40;
 
-    transportBar_.setBounds(r.removeFromTop(transportBarHeight));
+    if (transportBar_.isVisible())
+        transportBar_.setBounds(r.removeFromTop(transportBarHeight));
     editComponent_.setBounds(r.withTrimmedLeft(8));
 }
 

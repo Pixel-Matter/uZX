@@ -16,10 +16,32 @@
 namespace MoTool::uZX {
 
 //==============================================================================
+/** The chip's A, B and C oscilloscopes, stacked, following its scope settings. */
+class AYScopes : public Component,
+                 private juce::Value::Listener {
+public:
+    explicit AYScopes(AYChipPlugin& plugin);
+    ~AYScopes() override;
+
+    void resized() override;
+
+    static constexpr int spacing = 4;
+
+private:
+    void valueChanged(juce::Value&) override;
+    void applySettings();
+
+    ScopeSettings& settings_;
+    std::array<std::unique_ptr<WaveformDisplay>, 3> displays_;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYScopes)
+};
+
+
+//==============================================================================
 // Editor for AYChipPlugin
 //==============================================================================
-class AYPluginUI : public PluginDeviceUI,
-                   private juce::Value::Listener {
+class AYPluginUI : public PluginDeviceUI {
 public:
     AYPluginUI(tracktion::Plugin::Ptr pluginPtr);
     ~AYPluginUI() override;
@@ -35,13 +57,11 @@ public:
     void populateDeviceMenu(PopupMenu& menu) override;
 
     static constexpr int itemHeight = 20;
-    static constexpr int itemSpacing = 4;
-    static constexpr int minToggleHeight = 16;  // T, N and E stay legible: button text is 10 shorter
+    static constexpr int itemSpacing = AYScopes::spacing;
+    static constexpr int minToggleHeight = 16;
+    static constexpr int maxButtonWidth = 44;  // as at the narrowest: a wider panel widens the scopes  // T, N and E stay legible: button text is 10 shorter
 
 private:
-    void valueChanged(juce::Value& value) override;
-    void updateScopeDisplayParams();
-
     AYChipPlugin& plugin_;
     ComponentBoundsConstrainer constrainer_;
 
@@ -61,7 +81,8 @@ private:
                      ParameterValue<bool>& channelParam,
                      ParameterValue<bool>& toneParam,
                      ParameterValue<bool>& noiseParam,
-                     ParameterValue<bool>& envelopeParam);
+                     ParameterValue<bool>& envelopeParam,
+                     ParameterValue<bool>& soloParam);
 
         ~ChannelGroup();
 
@@ -77,29 +98,33 @@ private:
     private:
         void valueChanged(Value&) override;
         void updateTNEState();
+        void updateSoloColour();
         void setupButtonColours(ToggleButton& button);
 
         ParameterValue<bool>& channelParam_;
+        ParameterValue<bool>& soloParam_;
     };
 
     // Channel groups
     ChannelGroup channelA { plugin_, plugin_.channelMuter.channelA,
                             plugin_.channelMuter.toneA,
                             plugin_.channelMuter.noiseA,
-                            plugin_.channelMuter.envelopeA };
+                            plugin_.channelMuter.envelopeA,
+                            plugin_.channelMuter.soloA };
     ChannelGroup channelB { plugin_, plugin_.channelMuter.channelB,
                             plugin_.channelMuter.toneB,
                             plugin_.channelMuter.noiseB,
-                            plugin_.channelMuter.envelopeB };
+                            plugin_.channelMuter.envelopeB,
+                            plugin_.channelMuter.soloB };
     ChannelGroup channelC { plugin_, plugin_.channelMuter.channelC,
                             plugin_.channelMuter.toneC,
                             plugin_.channelMuter.noiseC,
-                            plugin_.channelMuter.envelopeC };
+                            plugin_.channelMuter.envelopeC,
+                            plugin_.channelMuter.soloC };
 
     std::array<ChannelGroup*, 3> channelGroups { &channelA, &channelB, &channelC };
 
-    // Scope displays for channels A, B, C
-    std::array<std::unique_ptr<WaveformDisplay>, 3> scopeDisplays_;
+    AYScopes scopes_ {plugin_};
 
     void setupToggleButtons();
     void layoutChannelToggles(Rectangle<int>& r);

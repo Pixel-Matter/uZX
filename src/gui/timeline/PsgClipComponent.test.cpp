@@ -711,15 +711,24 @@ public:
             const auto timePerPixel = te::TimeDuration::fromSeconds(timePerPixelSec);
             view.zoom.setRange({te::TimePosition() + timePerPixel * startPx, timePerPixel * 1000.0});
             const auto expected = render(direct), actual = render(cached);
-            int worst = 0;
+            int worst = 0, differing = 0;
+            Point<int> at;
             for (int y = 0; y < expected.getHeight(); ++y)
                 for (int x = 0; x < expected.getWidth(); ++x) {
                     const auto e = expected.getPixelAt(x, y), a = actual.getPixelAt(x, y);
-                    worst = std::max({worst, std::abs(e.getRed() - a.getRed()), std::abs(e.getGreen() - a.getGreen()),
-                                      std::abs(e.getBlue() - a.getBlue()), std::abs(e.getAlpha() - a.getAlpha())});
+                    const int d = std::max({std::abs(e.getRed() - a.getRed()), std::abs(e.getGreen() - a.getGreen()),
+                                            std::abs(e.getBlue() - a.getBlue()), std::abs(e.getAlpha() - a.getAlpha())});
+                    differing += d > 2;
+                    if (d > worst) {
+                        worst = d;
+                        at = {x, y};
+                    }
                 }
             // The tiles hold the content alone, composited over the clip's fill: rounding only
-            expect(worst <= 2, what + ": channels differ by up to " + String(worst));
+            expect(worst <= 2, what + ": " + String(differing) + " device pixels differ, up to " + String(worst)
+                                   + " at " + at.toString() + " (clip at " + String(direct.getX() * 2) + "): "
+                                   + expected.getPixelAt(at.x, at.y).toDisplayString(true) + " drawn, "
+                                   + actual.getPixelAt(at.x, at.y).toDisplayString(true) + " cached");
         };
 
         beginTest("Tiles draw what the view draws while it scrolls by whole pixels");

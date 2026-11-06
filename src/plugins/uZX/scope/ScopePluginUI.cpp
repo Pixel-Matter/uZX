@@ -153,13 +153,16 @@ void WaveformDisplay::paint(juce::Graphics& g) {
     g.setColour(Colors::Theme::backgroundDark);
     g.fillRect(bounds);
 
-    // Zero line
-    g.setColour(Colors::Theme::border);
+    // Zero line; a silent chip channel's waveform lies there itself
     const auto axis = yAxis(bounds.getHeight());
-    g.drawHorizontalLine(static_cast<int>(axis.zero), 0.0f, bounds.getWidth());
+    const bool chipLevels = baseline_ == Baseline::Bottom;
+    if (! chipLevels) {
+        g.setColour(Colors::Theme::border);
+        g.drawHorizontalLine(static_cast<int>(axis.zero), 0.0f, bounds.getWidth());
+    }
 
-    // Trigger level line
-    if (triggerStrategy_.mode != TriggerMode(TriggerModeEnum::FreeRunning)) {
+    // Trigger level line, unless it would lie along the chip's silence
+    if (triggerStrategy_.mode != TriggerMode(TriggerModeEnum::FreeRunning) && (! chipLevels || triggerLevel_ > 0.0f)) {
         g.setColour(Colors::Theme::warning.withAlpha(0.5f));
         const float trigY = axis.zero - triggerLevel_ * axis.scale;
         g.drawHorizontalLine(static_cast<int>(trigY), 0.0f, bounds.getWidth());

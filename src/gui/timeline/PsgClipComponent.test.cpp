@@ -542,9 +542,10 @@ public:
                     nameNearLeftEdge = image.getPixelAt(x, y).getFloatAlpha() > 0.35f;
             expect(nameNearLeftEdge, "note names must be drawn at the clip's own left edge");
 
-            beginTest("Piano Keys lay a keyboard over the grid's left edge, names beside it");
+            beginTest("Piano Keys lay a keyboard over the grid's left edge, the key's notes named on it");
             const bool wasPianoKeys = arePianoKeysShown(engine);
             setPianoKeysShown(engine, true);
+            clip->chooseKey({Scale::Tonic(4), true});  // E minor: F# is its one black key, F is out
             Image keys(Image::ARGB, 500, 300, true);
             {
                 Graphics g(keys);
@@ -552,21 +553,48 @@ public:
             }
             setPianoKeysShown(engine, wasPianoKeys);
 
-            int blackRows = 0, whiteRows = 0, gridPixels = 0;
-            bool nameBesideKeys = false;
-            for (int y = 0; y < keys.getHeight(); ++y) {
-                const auto key = keys.getPixelAt(5, y);
-                blackRows += key.getFloatAlpha() > 0.8f && key.getBrightness() < 0.3f;
-                whiteRows += key.getFloatAlpha() > 0.8f && key.getBrightness() > 0.9f;
-                for (int x = 20; x < keys.getWidth(); ++x) {
-                    const float alpha = keys.getPixelAt(x, y).getFloatAlpha();
-                    gridPixels += alpha > 0.0f;
-                    nameBesideKeys = nameBesideKeys || (x < 60 && alpha > 0.35f);
+            // A row's key colour is what the black keys' width shows besides a name, which is
+            // neither black nor white on either key. A key is named when light pixels are on it,
+            // if black, or dark ones right of the black keys, if white; a run of same-coloured
+            // rows is one key.
+            enum { none = -1, black, white };
+            const auto colourAt = [&](int y) {
+                int dark = 0, light = 0;
+                for (int x = 0; x < 18; ++x) {
+                    const auto c = keys.getPixelAt(x, y);
+                    dark += c.getFloatAlpha() > 0.8f && c.getBrightness() < 0.3f;
+                    light += c.getFloatAlpha() > 0.8f && c.getBrightness() > 0.9f;
                 }
+                return dark > light ? black : light > dark ? white : none;
+            };
+            int named[2] = {}, unnamed[2] = {}, gridPixels = 0;
+            bool whiteNameLeftOfBlackKeys = false, blackNameAtLeftEnd = false;
+            for (int y = 0; y < keys.getHeight();) {
+                const int colour = colourAt(y);
+                bool hasName = false;
+                for (; y < keys.getHeight() && colourAt(y) == colour; ++y)
+                    for (int x = 0; x < 32 && colour != none; ++x) {
+                        const float brightness = keys.getPixelAt(x, y).getBrightness();
+                        if (colour == black) {
+                            hasName = hasName || (x < 18 && brightness > 0.4f);
+                            blackNameAtLeftEnd = blackNameAtLeftEnd || (x < 2 && brightness > 0.4f);
+                        } else if (x < 18) {
+                            whiteNameLeftOfBlackKeys = whiteNameLeftOfBlackKeys || brightness < 0.6f;
+                        } else {
+                            hasName = hasName || brightness < 0.6f;
+                        }
+                    }
+                if (colour != none)
+                    ++(hasName ? named : unnamed)[colour];
             }
-            expect(blackRows > 0 && whiteRows > 0, "white keys must read as white and black keys as black");
+            for (int y = 0; y < keys.getHeight(); ++y)
+                for (int x = 50; x < keys.getWidth(); ++x)
+                    gridPixels += keys.getPixelAt(x, y).getFloatAlpha() > 0.0f;
             expect(gridPixels > 0, "the grid stays across the clip");
-            expect(nameBesideKeys, "note names must move right of the keys");
+            expect(named[white] > 0 && named[black] > 0, "the key's notes are named, F# on its black key");
+            expect(unnamed[white] > 0 && unnamed[black] > 0, "notes out of the key, F and C#, stay unnamed");
+            expect(! whiteNameLeftOfBlackKeys, "a white key's name sits right of the black keys");
+            expect(blackNameAtLeftEnd, "a black key's name starts at the key's left end");
         }
 
         beginTest("Lane names stay on the same pixels while the view scrolls by fractions of a pixel");

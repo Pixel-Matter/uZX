@@ -79,12 +79,38 @@ public:
     void mouseDown(const MouseEvent& e) override;
     void mouseMove(const MouseEvent& e) override;
     void mouseExit(const MouseEvent& e) override;
-    void paintRegisters(Graphics& g);
+    /** The Notes view's notes, as paint() draws them for the view. */
     void paintNotes(Graphics& g);
-    /** Tuning-grid guide lines, drawn under the notes in the Notes view. */
+    /** Tuning-grid guide lines, drawn under the notes in the Notes view, with the lane names and
+        piano keys at the view's left edge. */
     void paintNoteLanes(Graphics& g);
 
+    /** Where the painters draw: see PsgClipComponent.cpp. */
+    struct PaintView;
+
+protected:
+    /** Whether paint() blits the content from cached tiles: while the view follows playback,
+        when it scrolls every frame by whole pixels. */
+    virtual bool shouldCacheContent() const;
+
 private:
+    /** The view's part of the clip, in this component's coordinates. */
+    PaintView getViewPaintView() const;
+    /** Note lanes and notes, or registers. Without the gutter, the lane names and piano keys
+        pinned to the view's left edge are left out. */
+    void paintContent(Graphics& g, const PaintView& view, bool withGutter);
+    void paintRegisters(Graphics& g, const PaintView& view);
+    void paintNotes(Graphics& g, const PaintView& view);
+    void paintNoteLanes(Graphics& g, const PaintView& view, bool withGutter);
+    /** paintContent() from the tiles, and the gutter over them, drawn as it is each frame. */
+    void paintCachedContent(Graphics& g, const PaintView& view);
+
+    /** The content without the gutter, cached as images in fixed-width tiles along x. Scrolling
+        blits them; the tile about to scroll in is painted ahead, a slice each frame. */
+    class ContentTiles;
+    std::unique_ptr<ContentTiles> tiles_;
+    int contentRevision_ = 0;  // changes of the content other than the clip's geometry and the zoom
+
     void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
     void changeListenerCallback(ChangeBroadcaster*) override;
     void timerCallback() override;

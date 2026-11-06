@@ -2,6 +2,7 @@
 
 #include "EditComponent.h"
 #include "../devices/TrackDevicesPanel.h"
+#include "../devices/LevelMeterUI.h"
 #include "../../plugins/uZX/aychip/AYPluginEditor.h"
 #include "PsgClipComponent.h"
 #include "../../util/Helpers.h"
@@ -238,24 +239,9 @@ private:
         constexpr int padding = 8, spacing = 8, meter = 16;
         // found again: the devices may have been rebuilt meanwhile
         auto chipWidth = [&] { return findDescendant<uZX::AYPluginUI>(*row->footer)->getWidth(); };
-        auto describeDevices = [&] {  // ponytail: diagnostics for a Linux-only failure, drop once understood
-            String d = "footer " + String(row->footer->getWidth()) + ":";
-            std::function<void(Component&)> walk = [&](Component& c) {
-                for (auto* child : c.getChildren()) {
-                    if (auto* framed = dynamic_cast<FramedDeviceItem*>(child))
-                        d << " framed@" << framed->getX() << "+" << framed->getWidth() << " min " << framed->getMinimumWidth()
-                          << (framed->isCollapsed() ? " collapsed" : "");
-                    else if (auto* item = dynamic_cast<DeviceItem*>(child))
-                        d << " frameless@" << item->getX() << "+" << item->getWidth();
-                    walk(*child);
-                }
-            };
-            walk(*row->footer);
-            return d;
-        };
-        expectEquals(chipWidth(), 400 - 2 * padding - spacing - meter, "the chip takes the rest; " + describeDevices());
-        TestHelpers::flushMessageQueue(20);
-        expectEquals(chipWidth(), 400 - 2 * padding - spacing - meter, "after a longer flush; " + describeDevices());
+        expect(findDescendant<LevelMeterUI>(*row->footer) != nullptr,
+               "the level meter has its own UI: every device UI is linked in, on Linux too");
+        expectEquals(chipWidth(), 400 - 2 * padding - spacing - meter, "the chip takes the rest");
 
         playerView.footersWidth = 100;
         TestHelpers::flushMessageQueue();

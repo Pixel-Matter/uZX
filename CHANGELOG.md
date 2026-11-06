@@ -39,6 +39,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
+- Linux: the level meter next to each AY chip shows its LEDs instead of a generic plugin button; the Linux builds now link every device panel, as macOS and Windows already did
 - Undo and Redo of AY chip settings (channel on/off, stereo layout and width, volume) change the sound and the buttons again, not only the saved file
 - `Delete` and `Backspace` in the Player no longer remove the last clicked track with its AY chip
 - Zoom in works on keyboard layouts where `=` needs Shift, such as German; `+` zooms in too

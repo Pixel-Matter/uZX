@@ -13,8 +13,16 @@
 
 #include <vector>
 #include <array>
+#include <utility>
 
 namespace MoTool::uZX {
+
+/**
+ * Reduces samples to one vertical span per pixel column, so a peak between columns is never lost
+ * as it would be by skipping samples. Each column takes an equal slice plus the last sample of
+ * the slice before, so the spans join up; a span runs from min to max on a rise, max to min on a fall.
+ */
+std::vector<std::pair<float, float>> minMaxColumns(const float* samples, int numSamples, int columns);
 
 //==============================================================================
 /**

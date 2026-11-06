@@ -81,6 +81,8 @@ Each track ends on the right in its own AY chip and level meter, so a Turbo Soun
 - **Stereo mode** — mono, ABC, ACB, or custom channel panning. The Player remembers the layout and width last chosen and gives them to every PSG file it opens next; a saved `.uzx` file keeps its own
 - Channel-level output settings: T, N and E turn a channel's tone, noise and envelope on or off. Each of A, B and C is on, muted (red) or soloed (emerald): a click mutes a channel that is on and turns a muted or soloed one back on; `Option`+click (`Alt`+click on Windows and Linux) solos it, a muted one too, or unsolos it. Several channels can be soloed, on any chips: while any is, only the soloed channels play. Soloing doesn't change the other buttons, and it isn't a step in Undo
 
+The A, B and C scopes show each channel as the chip outputs it, before the stereo mix and the volume: silence is the line at the bottom, and at Gain 1 a channel at volume 15 reaches the top.
+
 The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with scope settings; in Studio the menu also sets the chip's MIDI channels. Chips can't be removed or added in the Player, and its controls take no MIDI mapping.
 
 A track is never shorter than its AY chip needs to show every control. When the tracks need more height than the window has, they scroll up and down.

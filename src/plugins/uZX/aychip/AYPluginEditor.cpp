@@ -103,7 +103,8 @@ AYScopes::AYScopes(AYChipPlugin& plugin) : settings_(plugin.scopeSettings) {
 
     for (size_t i = 0; i < 3; ++i) {
         displays_[i] = std::make_unique<WaveformDisplay>(colours[i], labels[i],
-                                                         *plugin.getVizChannelBuffer(static_cast<int>(i)), settings_);
+                                                         *plugin.getVizChannelBuffer(static_cast<int>(i)), settings_,
+                                                         WaveformDisplay::Baseline::Bottom);
         addAndMakeVisible(*displays_[i]);
     }
 

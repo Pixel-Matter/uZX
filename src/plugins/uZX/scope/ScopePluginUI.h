@@ -31,10 +31,14 @@ std::vector<std::pair<float, float>> minMaxColumns(const float* samples, int num
  */
 class WaveformDisplay : public juce::Component {
 public:
+    /** Where a zero sample sits: in the middle for audio, at the bottom for a chip channel's levels 0..1. */
+    enum class Baseline { Middle, Bottom };
+
     WaveformDisplay(juce::Colour colour,
                     const juce::String& label,
                     const ScopeBuffer& buffer,
-                    ScopeSettings& settings);
+                    ScopeSettings& settings,
+                    Baseline baseline = Baseline::Middle);
 
     /**
      * Update display parameters.
@@ -56,6 +60,10 @@ private:
     void buildPath();
     void showPopupMenu();
 
+    /** The y of a zero sample, and pixels per unit: at gain 1 the signal's range spans 90% of the height. */
+    struct YAxis { float zero, scale; };
+    YAxis yAxis(float height) const;
+
     const ScopeBuffer& sourceBuffer_;
     ScopeSettings& scopeSettings_;
     std::vector<float> displaySamples_;
@@ -64,6 +72,7 @@ private:
 
     juce::Colour colour_;
     juce::String label_;
+    Baseline baseline_;
 
     int windowSize_{1024};
     float gain_{1.0f};

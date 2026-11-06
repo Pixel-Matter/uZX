@@ -29,11 +29,13 @@ std::vector<std::pair<float, float>> minMaxColumns(const float* samples, int num
 WaveformDisplay::WaveformDisplay(juce::Colour colour,
                                  const juce::String& label,
                                  const ScopeBuffer& buffer,
-                                 ScopeSettings& settings)
+                                 ScopeSettings& settings,
+                                 Baseline baseline)
     : sourceBuffer_(buffer)
     , scopeSettings_(settings)
     , colour_(colour)
     , label_(label)
+    , baseline_(baseline)
     , triggerStrategy_(TriggerStrategy::risingEdge())
 {
     displaySamples_.resize(static_cast<size_t>(windowSize_));
@@ -99,6 +101,13 @@ int WaveformDisplay::findTriggerPoint() {
     return triggerStrategy_(workBuffer_.data(), searchLength, triggerLevel_);
 }
 
+WaveformDisplay::YAxis WaveformDisplay::yAxis(float height) const {
+    constexpr float margin = 0.05f;
+    if (baseline_ == Baseline::Bottom)
+        return {height * (1.0f - margin), height * (1.0f - 2.0f * margin) * gain_};
+    return {height * 0.5f, height * (0.5f - margin) * gain_};
+}
+
 void WaveformDisplay::buildPath() {
     waveformPath_.clear();
 
@@ -107,10 +116,9 @@ void WaveformDisplay::buildPath() {
 
     const float width = static_cast<float>(getWidth());
     const float height = static_cast<float>(getHeight());
-    const float midY = height * 0.5f;
-    const float scaleY = midY * gain_;
+    const auto axis = yAxis(height);
 
-    const auto toY = [&](float sample) { return juce::jlimit(0.0f, height, midY - sample * scaleY); };
+    const auto toY = [&](float sample) { return juce::jlimit(0.0f, height, axis.zero - sample * axis.scale); };
     const auto addPoint = [this](size_t i, float x, float y) {
         if (i == 0)
             waveformPath_.startNewSubPath(x, y);
@@ -145,15 +153,15 @@ void WaveformDisplay::paint(juce::Graphics& g) {
     g.setColour(Colors::Theme::backgroundDark);
     g.fillRect(bounds);
 
-    // Center line (zero crossing reference)
+    // Zero line
     g.setColour(Colors::Theme::border);
-    const float midY = bounds.getHeight() * 0.5f;
-    g.drawHorizontalLine(static_cast<int>(midY), 0.0f, bounds.getWidth());
+    const auto axis = yAxis(bounds.getHeight());
+    g.drawHorizontalLine(static_cast<int>(axis.zero), 0.0f, bounds.getWidth());
 
     // Trigger level line
     if (triggerStrategy_.mode != TriggerMode(TriggerModeEnum::FreeRunning)) {
         g.setColour(Colors::Theme::warning.withAlpha(0.5f));
-        const float trigY = midY - triggerLevel_ * midY * gain_;
+        const float trigY = axis.zero - triggerLevel_ * axis.scale;
         g.drawHorizontalLine(static_cast<int>(trigY), 0.0f, bounds.getWidth());
     }
 

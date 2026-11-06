@@ -195,6 +195,8 @@ te::TimeDuration getClipFrameDuration(const PsgClip& clip) {
     return te::TimeDuration::fromSeconds(1.0 / fps);
 }
 
+}  // namespace
+
 /** x of an edit time in a clip component: the timeline's own x, less the whole-pixel x where
     TrackBodyComponent places the component. Clip contents line up with the ruler to the pixel,
     and the view's edges fall on whole pixels, so nothing pinned to them shifts while scrolling. */
@@ -213,7 +215,21 @@ struct ClipXMapping {
     float operator()(te::TimePosition time) const {
         return static_cast<float>((time - viewStart) / timePerPixel - originX);
     }
+
+    te::TimePosition xToTime(float x) const {
+        return viewStart + timePerPixel * (static_cast<double>(x) + originX);
+    }
 };
+
+/** Where a painter draws: edit time to x in its Graphics' coordinates, and the x extent of the
+    clip's content that counts as in view. Painters cover only what the Graphics' clip bounds
+    leave of that extent. */
+struct PsgClipComponent::PaintView {
+    ClipXMapping toX;
+    Range<float> visibleX;
+};
+
+namespace {
 
 /** The frame-to-pixel mapping shared by the notes and registers painters. */
 struct ClipVisibility {
@@ -221,23 +237,30 @@ struct ClipVisibility {
     te::TimeRange clipRange;
     ClipXMapping toX;
     te::TimeDuration frameDur;
-    te::TimeRange range;   // visible part of the clip, with one frame of slack on the left
+    te::TimeRange range;   // visible part of the clip within the damage, with one frame of slack on the left
     int startIdx;          // first frame that can fall inside range
     float pixelsPerFrame;
 
     ClipVisibility(const PsgClip& clip,
                    const juce::Array<PsgParamFrame*>& frames,
-                   const EditViewState& evs,
-                   Rectangle<int> rectangle)
+                   const PsgClipComponent::PaintView& view,
+                   Rectangle<int> rectangle,
+                   Rectangle<int> damage)
         : rect(rectangle)
         , clipRange(clip.getEditTimeRange())
-        , toX(evs.zoom, clipRange.getStart())
+        , toX(view.toX)
         , frameDur(getClipFrameDuration(clip))
-        // empty, not reversed, when the view has been panned past the clip
-        , range(clipRange.getIntersectionWith({evs.zoom.getRange().getStart() - frameDur, evs.zoom.getRange().getEnd()}))
+        , range(getRange(view, damage))
         , startIdx(bisectFindPosition(frames, clip, range.getStart()))
         , pixelsPerFrame(static_cast<float>(frameDur / toX.timePerPixel))
     {
+    }
+
+    /** The visible extent within the damage, in time; empty, not reversed, when they miss the clip. */
+    te::TimeRange getRange(const PsgClipComponent::PaintView& view, Rectangle<int> damage) const {
+        const auto start = toX.xToTime(jmax(view.visibleX.getStart(), static_cast<float>(damage.getX()))) - frameDur;
+        const auto end = toX.xToTime(jmin(view.visibleX.getEnd(), static_cast<float>(damage.getRight())));
+        return clipRange.getIntersectionWith({start, jmax(start, end)});
     }
 
     float timeToX(te::TimePosition time) const {
@@ -544,19 +567,31 @@ void PsgClipComponent::paint(Graphics& g) {
 
     GUIPaintMeasurer::ScopedTimer timer(paintMeasurer_);
 
-    int mode = clip->state.getProperty(IDs::paintMode, 0);
-    if (mode == 0) {
-        paintNoteLanes(g);
-        paintNotes(g);
-    } else {
-        paintRegisters(g);
-    }
+    paintContent(g, getViewPaintView(), true);
     if (! editViewState.showClipHeaders)
         paintWarnings(g);
 
    #if JUCE_DEBUG
     paintMeasurer_.drawOverlay(g, getShownArea(*this));
    #endif
+}
+
+PsgClipComponent::PaintView PsgClipComponent::getViewPaintView() const {
+    const ClipXMapping toX {editViewState.zoom, clip->getEditTimeRange().getStart()};
+    const auto viewTime = editViewState.zoom.getRange();
+    // The view and the clip overlap only partly: a clip starting later than the view's
+    // start would put the view's left edge at a negative x, outside the component.
+    const Range<float> viewX {toX(viewTime.getStart()), toX(viewTime.getEnd())};
+    return {toX, viewX.getIntersectionWith({0.0f, static_cast<float>(getWidth())})};
+}
+
+void PsgClipComponent::paintContent(Graphics& g, const PaintView& view, bool withGutter) {
+    if ((int) clip->state.getProperty(IDs::paintMode, 0) == 0) {
+        paintNoteLanes(g, view, withGutter);
+        paintNotes(g, view);
+    } else {
+        paintRegisters(g, view);
+    }
 }
 
 /** The right-click menu of a PSG clip's body and header. */
@@ -663,7 +698,7 @@ void PsgClipComponent::hideFrameHover() {
     frameHover_.reset();
 }
 
-void PsgClipComponent::paintRegisters(Graphics& g) {
+void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr) return;
 
@@ -671,7 +706,7 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
     if (frames.isEmpty())
         return;
 
-    const ClipVisibility vis {*psgClip, frames, editViewState, getLocalBounds()};
+    const ClipVisibility vis {*psgClip, frames, view, getLocalBounds(), g.getClipBounds()};
 
     constexpr auto numRegs = uZX::PsgRegsFrame::size();
     const auto height = static_cast<float>(vis.rect.getHeight());
@@ -713,7 +748,7 @@ void PsgClipComponent::paintRegisters(Graphics& g) {
 struct NotesLayout {
     Range<float> pitchRange;
     float noteHeight;
-    Range<float> visibleX;  // the part of the component inside the view
+    Range<float> visibleX;  // as PaintView's
     float height;
 
     float normToY(float norm) const {
@@ -721,18 +756,13 @@ struct NotesLayout {
     }
 };
 
-static NotesLayout makeNotesLayout(const PsgClip& clip, Rectangle<int> bounds, const EditViewState& evs) {
+static NotesLayout makeNotesLayout(const PsgClip& clip, Rectangle<int> bounds, Range<float> visibleX) {
     const auto pitchRange = clip.getPitchRange();
-    const ClipXMapping toX {evs.zoom, clip.getEditTimeRange().getStart()};
-    const auto visibleTime = evs.zoom.getRange();
     const auto height = static_cast<float>(bounds.getHeight());
-    // The view and the clip overlap only partly: a clip starting later than the view's
-    // start would put the view's left edge at a negative x, outside the component.
-    const Range<float> viewX { toX(visibleTime.getStart()), toX(visibleTime.getEnd()) };
     return {
         pitchRange,
         height / (pitchRange.getLength() * PsgParamType{PsgParamType::TonePeriodA}.getScale().octaves() * 12.0f),
-        viewX.getIntersectionWith({ 0.0f, static_cast<float>(bounds.getWidth()) }),
+        visibleX,
         height
     };
 }
@@ -817,10 +847,10 @@ struct LaneView {
 
 /** None when the lanes are off, the clip is empty, the tuning has no grid, or the lanes are
     too short to draw. */
-static std::optional<LaneView> getLaneView(const PsgClip& clip, Rectangle<int> bounds, const EditViewState& evs) {
+static std::optional<LaneView> getLaneView(const PsgClip& clip, Rectangle<int> bounds, Range<float> visibleX) {
     if (clip.getPsg().isEmpty() || ! areNoteLanesShown(clip.edit.engine) || clip.getTuning().grid.size() < 2)
         return std::nullopt;
-    const auto layout = makeNotesLayout(clip, bounds, evs);
+    const auto layout = makeNotesLayout(clip, bounds, visibleX);
     const auto detail = getLaneDetail(layout.noteHeight);
     if (detail.lines == LaneDetail::None)
         return std::nullopt;
@@ -861,8 +891,12 @@ static void paintPianoKeys(Graphics& g, const std::vector<NoteLane>& lanes, cons
     rebuilt only when the clip's tuning changes; each paint draws the lanes that intersect
     the repaint area. */
 void PsgClipComponent::paintNoteLanes(Graphics& g) {
+    paintNoteLanes(g, getViewPaintView(), true);
+}
+
+void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView, bool withGutter) {
     auto* psgClip = getPsgClip();
-    const auto view = psgClip != nullptr ? getLaneView(*psgClip, getLocalBounds(), editViewState) : std::nullopt;
+    const auto view = psgClip != nullptr ? getLaneView(*psgClip, getLocalBounds(), paintView.visibleX) : std::nullopt;
     if (! view)
         return;
 
@@ -882,7 +916,7 @@ void PsgClipComponent::paintNoteLanes(Graphics& g) {
     const float labelX = view->getLabelX();
     const auto damage = g.getClipBounds().toFloat();
     constexpr float labelWidth = laneLabelWidth, tonicLabelHeight = 10.0f;
-    const bool labelsInDamage = detail.labels != LaneDetail::None
+    const bool labelsInDamage = withGutter && detail.labels != LaneDetail::None
         && damage.getX() < labelX + labelWidth && damage.getRight() > x;
     if (labelsInDamage)
         g.setFont(Font(FontOptions(detail.labels == LaneDetail::All ? jmin(11.0f, layout.noteHeight - 2.0f) : 9.0f)));
@@ -914,7 +948,7 @@ void PsgClipComponent::paintNoteLanes(Graphics& g) {
                        Justification::bottomLeft, false);
         }
     }
-    if (pianoKeys)
+    if (withGutter && pianoKeys)
         paintPianoKeys(g, lanes_, layout);
 }
 
@@ -926,7 +960,7 @@ void PsgClipComponent::paintWarnings(Graphics& g) {
     auto row = getShownArea(*this).reduced(pad).withHeight(chipHeight);
     // clear of the note lanes' keys and names
     if ((int) clip->state.getProperty(IDs::paintMode, 0) == 0)
-        if (const auto view = getLaneView(*psgClip, getLocalBounds(), editViewState))
+        if (const auto view = getLaneView(*psgClip, getLocalBounds(), getViewPaintView().visibleX))
             row.setLeft(jmax(row.getX(), roundToInt(view->getGutterRight())));
     for (const auto& warning : getPsgClipWarnings(*psgClip)) {
         const int width = ClipHeader::getWarningWidth(warning);
@@ -938,6 +972,10 @@ void PsgClipComponent::paintWarnings(Graphics& g) {
 }
 
 void PsgClipComponent::paintNotes(Graphics& g) {
+    paintNotes(g, getViewPaintView());
+}
+
+void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr)
         return;
@@ -946,8 +984,8 @@ void PsgClipComponent::paintNotes(Graphics& g) {
     if (frames.isEmpty())
         return;
 
-    const ClipVisibility vis {*psgClip, frames, editViewState, getLocalBounds()};
-    const auto layout = makeNotesLayout(*psgClip, vis.rect, editViewState);
+    const ClipVisibility vis {*psgClip, frames, view, getLocalBounds(), g.getClipBounds()};
+    const auto layout = makeNotesLayout(*psgClip, vis.rect, view.visibleX);
 
     const auto pitchRange = layout.pitchRange;
     const float noteHeight = layout.noteHeight;

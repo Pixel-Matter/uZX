@@ -113,7 +113,7 @@ public:
     }
 
     void handleAsyncUpdate() override {
-        parameterValue.setStoredValueAs(getCurrentValue());
+        parameterValue.setStoredValueAs(getCurrentExplicitValue());
     }
 
     void parameterChanged(float, bool byAutomation) override {
@@ -123,6 +123,19 @@ public:
     }
 
 private:
+    // The stored value also changes by undo, redo and code: the parameter follows it.
+    // Automation never writes it (see parameterChanged), so an automated value isn't pinned.
+    void valueTreePropertyChanged(ValueTree& v, const Identifier& i) override {
+        BindedAutoParameterBase::valueTreePropertyChanged(v, i);
+        if (i != definition.propertyID || v != parameterValue.getCachedValue().getValueTree())
+            return;
+
+        parameterValue.forceUpdateOfCachedValue();
+        const auto stored = parameterValue.template getStoredValueAs<float>();
+        if (! exactlyEqual(stored, getCurrentExplicitValue()))
+            setParameter(stored, sendNotification);
+    }
+
     static auto readLiveValue(void* context) noexcept -> Type {
         auto* param = static_cast<tracktion::AutomatableParameter*>(context);
         jassert(param != nullptr);

@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "MainController.h"
+#include "RememberedStereo.h"
 
 namespace MoTool {
 
@@ -32,6 +33,8 @@ private:
 
     void importPsgsToNewTracks(const Array<File>& files);
     void importPsgsToNewEdit(const Array<File>& files);
+
+    std::unique_ptr<RememberedStereo> rememberedStereo_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerController)
 };

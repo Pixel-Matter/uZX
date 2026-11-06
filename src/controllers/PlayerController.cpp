@@ -62,6 +62,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     MoToolApp::getSelectionManager().deselectAll();
     editViewState_.reset();
     playWholeEdit_.reset();
+    rememberedStereo_.reset();
 
     if (edit_ != nullptr) {
         edit_->getTempDirectory(false).deleteRecursively();
@@ -78,6 +79,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
     playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);
+    rememberedStereo_ = std::make_unique<RememberedStereo>(*edit_);
     EditFileOps::saveEdit(*edit_, true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
@@ -187,7 +189,10 @@ void PlayerController::handleImportPsgReplace() {
 
 void PlayerController::importPsgsToNewTracks(const Array<File>& files) {
     edit_->getTransport().stop(false, false);
-    if (! Helpers::importPsgFiles(*edit_, files).isEmpty())
+    const auto clips = Helpers::importPsgFiles(*edit_, files);
+    for (auto* clip : clips)
+        RememberedStereo::apply(Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack()));
+    if (! clips.isEmpty())
         zoomToFitHorizontally();
 }
 
@@ -199,12 +204,14 @@ void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
     if (clips.isEmpty())
         return;
 
-    // A PSG stores no clock. A fitted tuning names the machine the tune was written
-    // for, so the opened tune plays at that clock; a tracker table leaves it as it is.
-    for (auto* clip : clips)
+    for (auto* clip : clips) {
+        auto& chip = Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack());
+        RememberedStereo::apply(chip);
+        // A PSG stores no clock. A fitted tuning names the machine the tune was written
+        // for, so the opened tune plays at that clock; a tracker table leaves it as it is.
         if (const auto& fit = clip->getTuning().fit)
-            Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack())
-                .staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
+            chip.staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
+    }
 
     edit_->getTransport().stop(false, false);
 

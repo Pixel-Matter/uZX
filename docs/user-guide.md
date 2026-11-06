@@ -73,7 +73,7 @@ Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler;
 Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Here you can adjust:
 
 - **Chip clock frequency** — affects pitch of the whole output
-- **Stereo mode** — mono, ABC, ACB, or custom channel panning
+- **Stereo mode** — mono, ABC, ACB, or custom channel panning. The Player remembers the layout and width last chosen and gives them to every PSG file it opens next; a saved `.uzx` file keeps its own
 - Channel-level output settings
 
 The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with scope settings; in Studio the menu also sets the chip's MIDI channels. Chips can't be removed or added in the Player, and its controls take no MIDI mapping.

@@ -231,10 +231,10 @@ public:
 
             value.setStoredValue(0.65f);
             TestHelpers::flushMessageQueue();
-            expectWithinAbsoluteError(static_cast<double>(liveParam->getCurrentValue()), 0.2, 1e-6,
-                                      "Live param value not updated from ParameterValue state change");
-            expectWithinAbsoluteError(slider.getValue(), 0.2, 1e-6,
-                                      "Slider not refreshed after ParameterValue state change");
+            expectWithinAbsoluteError(static_cast<double>(liveParam->getCurrentValue()), 0.65, 1e-6,
+                                      "Live param value follows a ParameterValue state change, as from undo");
+            expectWithinAbsoluteError(slider.getValue(), 0.65, 1e-6,
+                                      "Slider refreshed after ParameterValue state change");
 
             plugin.restorePluginStateFromValueTree(pluginState);
             TestHelpers::flushMessageQueue();

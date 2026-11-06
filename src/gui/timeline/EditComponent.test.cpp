@@ -174,6 +174,14 @@ private:
         auto* row = findDescendant<TrackRowComponent>(viz);
         expect(row != nullptr && dynamic_cast<uZX::AYScopes*>(row->footer.get()) != nullptr, "scopes");
         expect(findDescendant<uZX::AYPluginUI>(viz) == nullptr, "no chip controls");
+
+        vizView.vizScopesWidth = 400;  // what dragging the gap before the scopes does
+        TestHelpers::flushMessageQueue();
+        if (row != nullptr && row->footer != nullptr) {
+            expectEquals(row->body.getRight(), row->getWidth() - 400, "the notes end where the scopes' column starts");
+            expectEquals(row->footer->getX(), row->getWidth() - 400 + TrackRowComponent::footerPadding.getLeft(),
+                         "the scopes start after the gap");
+        }
     }
 
     void runMinimumHeightTests(te::Engine& engine) {

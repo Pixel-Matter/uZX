@@ -316,6 +316,7 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
     preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, nullptr, true);
     snapPlayheadToGrid.referTo(state, IDs::snapPlayheadToGrid, nullptr, true);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, minHeadersWidth);
+    vizScopesWidth.referTo(state, IDs::vizScopesWidth, nullptr, footerWidth);
 }
 
 void EditViewState::setPreservePsgTimingOnTempoChange(bool shouldPreserve) {

@@ -70,7 +70,7 @@ Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler;
 
 ### Viz Mode
 
-**View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The transport, ruler, scrollbar and chip controls are hidden. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
+**View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
 
 ### AY Chip and Level Meter
 

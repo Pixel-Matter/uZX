@@ -13,6 +13,7 @@ namespace IDs
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(EDITVIEWSTATE)
     DECLARE_ID(headersWidth)
+    DECLARE_ID(vizScopesWidth)
     DECLARE_ID(preservePsgTimingOnTempoChange)
     DECLARE_ID(snapPlayheadToGrid)
 
@@ -156,6 +157,8 @@ public:
     // Saved with the edit, but not undoable: these are view settings, not edits
     CachedValue<bool> preservePsgTimingOnTempoChange, snapPlayheadToGrid;
     CachedValue<int> headersWidth;  // Studio's; written only while headers are shown
+    CachedValue<int> vizScopesWidth;  // written only in Viz mode
+    static constexpr int minVizScopesWidth = 120;
     static constexpr int minHeadersWidth = 110, maxHeadersWidth = 300;
 
     ValueTree state;
@@ -169,8 +172,13 @@ public:
     bool shouldSnapPlayheadToGrid() const;
 
     int getTrackHeaderWidth() const;
-    /** Width of the track devices at the right of each track row; 0 when footers are hidden. */
-    int getTrackFooterWidth() const { return showFooters ? footerWidth : 0; }
+    /** Width of the track devices at the right of each track row, or in Viz mode of the scopes;
+        0 when footers are hidden. */
+    int getTrackFooterWidth() const {
+        if (! showFooters)
+            return 0;
+        return vizMode ? jmax(minVizScopesWidth, vizScopesWidth.get()) : footerWidth;
+    }
 
     static constexpr int footerWidth = 264;  // an AY chip and a level meter, 8 apart and from each side
 

@@ -60,6 +60,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 
     window_.clearContentComponent();
     MoToolApp::getSelectionManager().deselectAll();
+    const auto vizScopesWidth = editViewState_ != nullptr ? editViewState_->vizScopesWidth.get() : 0;
     editViewState_.reset();
     playWholeEdit_.reset();
     rememberedStereo_.reset();
@@ -87,6 +88,8 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     editViewState_->showFooters = true;
     editViewState_->showClipHeaders = false;
     editViewState_->vizMode = vizMode_;
+    if (vizScopesWidth > 0)  // the scopes keep their width in the next file, as Viz mode stays on
+        editViewState_->vizScopesWidth = vizScopesWidth;
 
     window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), true);
     updateWindowTitle();

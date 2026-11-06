@@ -5,7 +5,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ## [Unreleased]
 
 ### Added
-- Viz mode in the Player: **View → Viz Mode** (`F`) goes full screen with only each track's notes and its chip's A, B and C scopes; `F` or `Esc` leaves it
+- Viz mode in the Player: **View → Viz Mode** (`F`) goes full screen with only each track's notes, on the scopes' dark background, and its chip's A, B and C scopes, whose width you drag; `F` or `Esc` leaves it
 - Solo AY channels. Each A, B or C button is on, muted (red) or soloed (emerald): a click mutes a channel that is on and turns a muted or soloed one back on; `Alt`-click (`Option`-click on a Mac) solos a channel, a muted one too, or unsolos it. Several channels can be soloed, on any chips; while any is, only soloed channels play, and the other buttons stay as they were. A chip with a soloed channel solos its track. Solo is saved with the file and, like track solo, isn't a step in Undo
 - The Player remembers the stereo layout and width last chosen and applies them to every PSG file it opens next, as it does the master volume; a saved `.uzx` keeps its own, and clock, chip type and mutes stay per tune
 - Stereo level meter of the master output in the transport bar, right of the master volume knob

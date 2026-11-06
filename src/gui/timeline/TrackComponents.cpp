@@ -262,7 +262,7 @@ TrackBodyComponent::~TrackBodyComponent() {
 
 void TrackBodyComponent::paint(Graphics& g) {
     bool isSelected = editViewState.selectionManager.isSelected(track.get());
-    auto bgColor = Colors::Timeline::lane(isSelected);
+    auto bgColor = editViewState.vizMode ? Colors::Timeline::vizLane : Colors::Timeline::lane(isSelected);
 
     g.fillAll(bgColor);
 
@@ -556,6 +556,34 @@ void TrackHeaderOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, c
 
 
 //==============================================================================
+VizScopesOverlayComponent::VizScopesOverlayComponent(EditViewState& evs)
+    : editViewState (evs)
+{
+    setInterceptsMouseClicks(false, true);
+    editViewState.state.addListener(this);
+    constrainer.setMinimumWidth(EditViewState::minVizScopesWidth);
+    addAndMakeVisible(resizer);
+}
+
+VizScopesOverlayComponent::~VizScopesOverlayComponent() {
+    editViewState.state.removeListener(this);
+}
+
+void VizScopesOverlayComponent::resized() {
+    if (editViewState.vizMode && getWidth() > 0)
+        editViewState.vizScopesWidth = getWidth();
+    resizer.setBounds(getLocalBounds().removeFromLeft(TrackRowComponent::footerPadding.getLeft()));
+}
+
+void VizScopesOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, const juce::Identifier& i) {
+    if (i == IDs::vizScopesWidth && s.hasType(IDs::EDITVIEWSTATE) && getParentComponent() != nullptr) {
+        const auto width = editViewState.getTrackFooterWidth();
+        setBounds(getBounds().withLeft(getRight() - width));
+    }
+}
+
+
+//==============================================================================
 TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& evs, TimelineGrid& g)
     : edit(e)
     , editViewState(evs)
@@ -569,6 +597,11 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
     addAndMakeVisible(trackHeaderOverlay);
     trackHeaderOverlay.setAlwaysOnTop(true);
     trackHeaderOverlay.addComponentListener(this);
+    if (editViewState.vizMode) {
+        addAndMakeVisible(vizScopesOverlay);
+        vizScopesOverlay.setAlwaysOnTop(true);
+        vizScopesOverlay.addComponentListener(this);
+    }
 
     markAndUpdate(updateTracks);
 }
@@ -651,6 +684,11 @@ void TracksContainerComponent::resized() {
     r = getLocalBounds();
 
     trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
+    if (editViewState.vizMode) {
+        constexpr int minNotesWidth = 160;
+        vizScopesOverlay.setMaximumWidth(jmax(EditViewState::minVizScopesWidth, getWidth() - headerWidth - minNotesWidth));
+        vizScopesOverlay.setBounds(r.withLeft(r.getRight() - editViewState.getTrackFooterWidth()));
+    }
 
     if (autoFitTrackHeights_ && !trackRows.isEmpty()) {
         const int totalHeight = getHeight();

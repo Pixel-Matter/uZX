@@ -236,12 +236,14 @@ private:
         TestHelpers::flushMessageQueue();
         expectEquals(row->footer->getWidth(), 400);
         constexpr int padding = 8, spacing = 8, meter = 16;
-        expectEquals(chip->getWidth(), 400 - 2 * padding - spacing - meter, "the chip takes the rest");
+        // found again: the devices may have been rebuilt meanwhile
+        auto chipWidth = [&] { return findDescendant<uZX::AYPluginUI>(*row->footer)->getWidth(); };
+        expectEquals(chipWidth(), 400 - 2 * padding - spacing - meter, "the chip takes the rest");
 
         playerView.footersWidth = 100;
         TestHelpers::flushMessageQueue();
         expectEquals(row->footer->getWidth(), EditViewState::footerWidth);
-        expectEquals(chip->getWidth(), EditViewState::footerWidth - 2 * padding - spacing - meter);
+        expectEquals(chipWidth(), EditViewState::footerWidth - 2 * padding - spacing - meter);
     }
 
     void runPlayerOverlayTests(te::Engine& engine) {

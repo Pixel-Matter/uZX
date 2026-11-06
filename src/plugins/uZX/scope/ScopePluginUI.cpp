@@ -79,7 +79,7 @@ bool WaveformDisplay::updateWaveform() {
     const int workSamples = windowSize_ * kTriggerSearchMultiplier;
     sourceBuffer_.copyTo(workBuffer_.data(), workSamples);
 
-    // The trigger is searched in the first window, so a whole window always follows it
+    // The trigger lands in the window's centre, with half a window on each side of it
     const int triggerOffset = findTriggerPoint();
     jassert(triggerOffset >= 0 && triggerOffset + windowSize_ <= workSamples);
     const float* window = workBuffer_.data() + triggerOffset;
@@ -94,9 +94,8 @@ bool WaveformDisplay::updateWaveform() {
 }
 
 int WaveformDisplay::findTriggerPoint() {
-    // Search in the first half of work buffer to leave room for display window
-    int searchLength = windowSize_;
-    return triggerStrategy_(workBuffer_.data(), searchLength, triggerLevel_);
+    // Searched from half a window in, the trigger's index there is where the window around it starts
+    return triggerStrategy_(workBuffer_.data() + windowSize_ / 2, windowSize_, triggerLevel_);
 }
 
 WaveformDisplay::YAxis WaveformDisplay::yAxis(float height) const {

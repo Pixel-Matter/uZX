@@ -26,6 +26,11 @@ void ChannelMuter::referTo(ValueTree& v, UndoManager* um) {
     updateSoloMask();
 }
 
+ParameterValue<bool>& ChannelMuter::getChannelParam(size_t chan) noexcept {
+    jassert(chan < 3);
+    return chan == 0 ? channelA : chan == 1 ? channelB : channelC;
+}
+
 ParameterValue<bool>& ChannelMuter::getSoloParam(size_t chan) noexcept {
     jassert(chan < 3);
     return chan == 0 ? soloA : chan == 1 ? soloB : soloC;

@@ -95,6 +95,8 @@ public:
     void setupLinkedToggleBehavior();
     ~ChannelMuter() override;
 
+    /** The on/off toggle of channel A, B or C (0, 1, 2). */
+    ParameterValue<bool>& getChannelParam(size_t chan) noexcept;
     /** The solo of channel A, B or C (0, 1, 2). */
     ParameterValue<bool>& getSoloParam(size_t chan) noexcept;
     bool hasSolo() const;

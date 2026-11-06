@@ -183,7 +183,7 @@ public:
             expect(! edit->areAnyTracksSolo(), "no solo left");
         }
 
-        beginTest("Alt-click then click: a click on a soloed channel unsolos it instead of muting it");
+        beginTest("A channel is on, muted or soloed, and a click turns a muted or soloed one back on");
         {
             AYPluginUI ui {&chip1};
             auto button = [&](const String& text) -> Button* {
@@ -201,8 +201,14 @@ public:
 
             button("B")->triggerClick();
             TestHelpers::flushMessageQueue();
-            expect(! muter.channelB.getStoredValue(), "a click on a channel that isn't soloed mutes it");
-            muter.channelB.setStoredValue(true);
+            expect(! muter.channelB.getStoredValue(), "a click on a channel that's on mutes it");
+
+            chip1.toggleSolo(1);  // click then Alt-click
+            expect(muter.soloB.getStoredValue() && muter.channelB.getStoredValue(), "the muted channel is soloed instead");
+
+            button("B")->triggerClick();
+            TestHelpers::flushMessageQueue();
+            expect(! muter.hasSolo() && muter.channelB.getStoredValue(), "and a click turns it back on");
         }
 
         beginTest("Solo is not a step in Undo, as track solo isn't");

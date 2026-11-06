@@ -181,7 +181,7 @@ void AYPluginUI::setupToggleButtons() {
 
         auto& button = group.channelOn;
         button.setTooltip(button.getTooltip() + String(JUCE_MAC ? ". Option" : ". Alt") + "-click: solo");
-        // a click on a soloed channel unsolos it, so a solo never hides under a mute
+        // a channel is on, muted or soloed: a click turns a muted or soloed one back on
         button.onClick = [this, chan, toggle = std::move(button.onClick)] {
             if (ModifierKeys::currentModifiers.isAltDown() || plugin_.channelMuter.getSoloParam(chan).getStoredValue())
                 plugin_.toggleSolo(chan);

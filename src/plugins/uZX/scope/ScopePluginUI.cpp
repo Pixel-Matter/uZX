@@ -101,8 +101,12 @@ int WaveformDisplay::findTriggerPoint() {
 
 WaveformDisplay::YAxis WaveformDisplay::yAxis(float height) const {
     constexpr float margin = 0.05f;
-    if (scopeSettings_.baseline == ScopeSettings::Baseline::Bottom)
-        return {height * (1.0f - margin), height * (1.0f - 2.0f * margin) * gain_};
+    if (scopeSettings_.baseline == ScopeSettings::Baseline::Bottom) {
+        // The window's midpoint between its lowest and highest level sits in the middle
+        const auto [lo, hi] = std::minmax_element(displaySamples_.begin(), displaySamples_.end());
+        const float scale = height * (1.0f - 2.0f * margin) * gain_;
+        return {height * 0.5f + (*lo + *hi) * 0.5f * scale, scale};
+    }
     return {height * 0.5f, height * (0.5f - margin) * gain_};
 }
 

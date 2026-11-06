@@ -5,7 +5,7 @@
  #ifndef NOMINMAX
   #define NOMINMAX
  #endif
- #include <windows.h>
+ #include <windows.h>  // declares a GDI Rectangle(), so this file writes juce::Rectangle
 #else
  #include <time.h>
 #endif
@@ -29,14 +29,15 @@ static Colour ledColour(float position, bool isMidi) {
     return Colors::Meter::high;
 }
 
-void draw(Graphics& g, Rectangle<int> area, int ledSize, int gap, float fill, bool horizontal, bool isMidi) {
+void draw(Graphics& g, juce::Rectangle<int> area, int ledSize, int gap, float fill, bool horizontal, bool isMidi) {
     const int step = ledSize + gap;
     const int ledCount = (horizontal ? area.getWidth() : area.getHeight()) / step;
     const int activeLeds = static_cast<int>(jlimit(0.0f, 1.0f, fill) * static_cast<float>(ledCount));
 
     for (int i = 0; i < ledCount; ++i) {
-        auto led = horizontal ? Rectangle<int>(area.getX() + i * step, area.getY(), ledSize, area.getHeight())
-                              : Rectangle<int>(area.getX(), area.getBottom() - (i + 1) * step, area.getWidth(), ledSize);
+        using R = juce::Rectangle<int>;
+        auto led = horizontal ? R(area.getX() + i * step, area.getY(), ledSize, area.getHeight())
+                              : R(area.getX(), area.getBottom() - (i + 1) * step, area.getWidth(), ledSize);
         auto colour = ledColour(static_cast<float>(i) / static_cast<float>(ledCount), isMidi);
         g.setColour(i < activeLeds ? colour : colour.withAlpha(0.1f));
         g.fillRect(led);
@@ -125,7 +126,7 @@ void CpuLoadMeter::paint(Graphics& g) {
     static constexpr int ledSize = 2, gap = 1, ledHeight = 5, captionWidth = 22;
     g.setFont(FontOptions(9.0f));
     auto b = getLocalBounds();
-    const auto row = [&](Rectangle<int> r, const char* caption, float load) {
+    const auto row = [&](juce::Rectangle<int> r, const char* caption, float load) {
         g.setColour(Colors::Theme::textSecondary);
         g.drawText(caption, r.removeFromLeft(captionWidth), Justification::centredLeft, false);
         LedMeter::draw(g, r.withSizeKeepingCentre(r.getWidth(), ledHeight), ledSize, gap, load, true);

@@ -104,7 +104,7 @@ public:
 
     DynamicParams dynamicParams;
     ChannelMuter channelMuter;
-    ScopeSettings scopeSettings {ScopeSettings::Baseline::Bottom};
+    ScopeSettings scopeSettings {ScopeSettings::Signal::ChipLevels};
 
     enum class MidiReaderMode {
         Params,

@@ -101,7 +101,7 @@ int WaveformDisplay::findTriggerPoint() {
 
 WaveformDisplay::YAxis WaveformDisplay::yAxis(float height) const {
     constexpr float margin = 0.05f;
-    if (scopeSettings_.baseline == ScopeSettings::Baseline::Bottom) {
+    if (scopeSettings_.signal == ScopeSettings::Signal::ChipLevels) {
         // The window's midpoint between its lowest and highest level sits in the middle
         const auto [lo, hi] = std::minmax_element(displaySamples_.begin(), displaySamples_.end());
         const float scale = height * (1.0f - 2.0f * margin) * gain_;
@@ -155,9 +155,9 @@ void WaveformDisplay::paint(juce::Graphics& g) {
     g.setColour(Colors::Theme::backgroundDark);
     g.fillRect(bounds);
 
-    // Zero line; a silent chip channel's waveform lies there itself
+    // Zero line for audio; a chip channel's zero moves with each centred window
     const auto axis = yAxis(bounds.getHeight());
-    const bool chipLevels = scopeSettings_.baseline == ScopeSettings::Baseline::Bottom;
+    const bool chipLevels = scopeSettings_.signal == ScopeSettings::Signal::ChipLevels;
     if (! chipLevels) {
         g.setColour(Colors::Theme::border);
         g.drawHorizontalLine(static_cast<int>(axis.zero), 0.0f, bounds.getWidth());

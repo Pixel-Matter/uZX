@@ -20,12 +20,12 @@ namespace ScopeIDs {
  * These parameters control waveform display appearance and behavior.
  */
 struct ScopeSettings : ParamsBase<ScopeSettings> {
-    /** Where a zero sample sits: in the middle for audio, at the bottom for a chip channel's levels 0..1. */
-    enum class Baseline { Middle, Bottom };
+    /** What the scope shows: audio around zero, or a chip channel's levels 0..1, centred window by window. */
+    enum class Signal { Audio, ChipLevels };
 
-    explicit ScopeSettings(Baseline baseline_ = Baseline::Middle) : baseline(baseline_) {}
+    explicit ScopeSettings(Signal signal_ = Signal::Audio) : signal(signal_) {}
 
-    const Baseline baseline;
+    const Signal signal;
 
     template<typename Visitor>
     void visit(Visitor&& visitor) {

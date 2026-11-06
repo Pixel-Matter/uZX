@@ -151,7 +151,7 @@ void addScopeSettingsMenu(juce::PopupMenu& parentMenu,
     // Trigger level presets: around zero for audio, above the silence for a chip channel's levels
     juce::PopupMenu levelMenu;
     const float currentLevel = settings.triggerLevel.getStoredValue();
-    const auto levelPresets = settings.baseline == ScopeSettings::Baseline::Bottom
+    const auto levelPresets = settings.signal == ScopeSettings::Signal::ChipLevels
                                   ? std::vector<float> {0.0f, 0.1f, 0.25f, 0.5f}
                                   : std::vector<float> {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
     for (float preset : levelPresets) {

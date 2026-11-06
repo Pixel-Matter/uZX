@@ -112,7 +112,10 @@ public:
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
-    std::unique_ptr<TrackDevicesPanel> footer;  // the track's devices, fixed; only when the view shows footers
+    /** The track's devices, fixed, when the view shows footers; in Viz mode its chip's scopes. */
+    std::unique_ptr<Component> footer;
+    /** Level with the clips, apart from them and from the window edge. */
+    static inline const BorderSize<int> footerPadding {ClipComponent::ringWidth, 8, ClipComponent::ringWidth, 8};
 
 private:
     EditViewState& editViewState;
@@ -136,6 +139,24 @@ private:
     EditViewState& editViewState;
     ComponentBoundsConstrainer constrainer;
     ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::rightEdge};
+};
+
+//==============================================================================
+/** In Viz mode, the scopes' column at the right of the track rows: drag the gap at its left
+    edge, between the notes and the scopes, to resize it. */
+class VizScopesOverlayComponent : public Component, private te::ValueTreeAllEventListener {
+public:
+    VizScopesOverlayComponent(EditViewState& evs);
+    ~VizScopesOverlayComponent() override;
+    void resized() override;
+    void setMaximumWidth(int width) { constrainer.setMaximumWidth(width); }
+    void valueTreeChanged() override {}
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
+
+private:
+    EditViewState& editViewState;
+    ComponentBoundsConstrainer constrainer;
+    ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::leftEdge};
 };
 
 //==============================================================================
@@ -174,6 +195,7 @@ private:
     EditViewState& editViewState;
     OwnedArray<TrackRowComponent> trackRows;
     TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
+    VizScopesOverlayComponent vizScopesOverlay {editViewState};
     bool updateTracks = false;
     bool needsRepaint = false;
     bool needsResize = false;

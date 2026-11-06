@@ -39,6 +39,7 @@ WaveformDisplay::WaveformDisplay(juce::Colour colour,
     displaySamples_.resize(static_cast<size_t>(windowSize_));
     workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
     syncWork_.resize(workBuffer_.size());
+    amplitudeWork_.resize(workBuffer_.size());
 }
 
 void WaveformDisplay::setWindowSize(int samples) {
@@ -47,6 +48,7 @@ void WaveformDisplay::setWindowSize(int samples) {
         displaySamples_.resize(static_cast<size_t>(windowSize_));
         workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
         syncWork_.resize(workBuffer_.size());
+        amplitudeWork_.resize(workBuffer_.size());
         settingsChanged_ = true;
     }
 }
@@ -79,7 +81,7 @@ void WaveformDisplay::onVBlank() {
 bool WaveformDisplay::updateWaveform() {
     // Copy samples from ring buffer into work buffer for trigger search
     const int workSamples = windowSize_ * kTriggerSearchMultiplier;
-    sourceBuffer_.copyTo(workBuffer_.data(), workSamples, syncWork_.data());
+    sourceBuffer_.copyTo(workBuffer_.data(), workSamples, syncWork_.data(), amplitudeWork_.data());
 
     // The trigger lands in the window's centre, with half a window on each side of it
     const int triggerOffset = findTriggerPoint();
@@ -87,11 +89,16 @@ bool WaveformDisplay::updateWaveform() {
     const float* window = workBuffer_.data() + triggerOffset;
     const auto bytes = displaySamples_.size() * sizeof(float);
 
+    // A chip channel is centred on half the highest level its volume reaches in the window
+    const auto amplitudes = amplitudeWork_.begin() + triggerOffset;
+    const float centre = *std::max_element(amplitudes, amplitudes + windowSize_) * 0.5f;
+
     // Silence, a held tone or a stopped transport give the same window: nothing to repaint
-    if (std::memcmp(displaySamples_.data(), window, bytes) == 0)
+    if (std::memcmp(displaySamples_.data(), window, bytes) == 0 && juce::exactlyEqual(centre, centre_))
         return false;
 
     std::memcpy(displaySamples_.data(), window, bytes);
+    centre_ = centre;
     return true;
 }
 
@@ -104,10 +111,8 @@ int WaveformDisplay::findTriggerPoint() {
 WaveformDisplay::YAxis WaveformDisplay::yAxis(float height) const {
     constexpr float margin = 0.05f;
     if (scopeSettings_.signal == ScopeSettings::Signal::ChipLevels) {
-        // The window's midpoint between its lowest and highest level sits in the middle
-        const auto [lo, hi] = std::minmax_element(displaySamples_.begin(), displaySamples_.end());
         const float scale = height * (1.0f - 2.0f * margin) * gain_;
-        return {height * 0.5f + (*lo + *hi) * 0.5f * scale, scale};
+        return {height * 0.5f + centre_ * scale, scale};
     }
     return {height * 0.5f, height * (0.5f - margin) * gain_};
 }

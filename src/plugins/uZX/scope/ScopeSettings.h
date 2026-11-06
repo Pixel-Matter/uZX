@@ -20,7 +20,7 @@ namespace ScopeIDs {
  * These parameters control waveform display appearance and behavior.
  */
 struct ScopeSettings : ParamsBase<ScopeSettings> {
-    /** What the scope shows: audio around zero, or a chip channel's levels 0..1, centred window by window. */
+    /** What the scope shows: audio around zero, or a chip channel's levels 0..1, centred on half its amplitude. */
     enum class Signal { Audio, ChipLevels };
 
     explicit ScopeSettings(Signal signal_ = Signal::Audio) : signal(signal_) {}

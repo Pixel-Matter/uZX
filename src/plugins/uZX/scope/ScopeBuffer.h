@@ -21,8 +21,8 @@ public:
     static constexpr int kBufferSize = 8192;  // ~185ms at 44.1kHz
 
     ScopeBuffer() {
-        buffer_.fill(0.0f);
-        sync_.fill(0.0f);
+        for (auto& lane : lanes_)
+            lane.fill(0.0f);
     }
 
     inline constexpr static int size() noexcept {
@@ -32,17 +32,20 @@ public:
     /**
      * Push samples from audio thread (non-blocking).
      * May overwrite unread samples - this is acceptable for visualization.
-     * `sync`, if given, is a trigger signal that shares each sample's slot, so the two never drift apart.
+     * `sync` and `amplitude`, if given, are a chip channel's trigger and the highest level its volume reaches;
+     * they share each sample's slot, so they never drift apart from it.
      */
-    void pushSamples(const float* samples, int numSamples, const float* sync = nullptr) noexcept {
+    void pushSamples(const float* samples, int numSamples, const float* sync = nullptr,
+                     const float* amplitude = nullptr) noexcept {
         if (samples == nullptr || numSamples <= 0)
             return;
 
+        const std::array<const float*, kNumLanes> sources {samples, sync, amplitude};
         int writePos = writeIndex_.load(std::memory_order_relaxed);
 
         for (int i = 0; i < numSamples; ++i) {
-            buffer_[writePos] = samples[i];
-            sync_[writePos] = sync != nullptr ? sync[i] : 0.0f;
+            for (size_t lane = 0; lane < kNumLanes; ++lane)
+                lanes_[lane][static_cast<size_t>(writePos)] = sources[lane] != nullptr ? sources[lane][i] : 0.0f;
             writePos = (writePos + 1) % kBufferSize;
         }
 
@@ -55,9 +58,10 @@ public:
      *
      * @param dest Destination buffer (must have capacity for numSamples)
      * @param numSamples Number of samples to copy (will be clamped to buffer size)
-     * @param syncDest If given, takes the sync signal of the same samples
+     * @param syncDest If given, takes the sync of the same samples
+     * @param amplitudeDest If given, takes the amplitude of the same samples
      */
-    int copyTo(float* dest, int numSamples, float* syncDest = nullptr) const noexcept {
+    int copyTo(float* dest, int numSamples, float* syncDest = nullptr, float* amplitudeDest = nullptr) const noexcept {
         if (dest == nullptr || numSamples <= 0)
             return 0;
 
@@ -69,9 +73,10 @@ public:
         // Calculate start position (numSamples before current write position)
         int startPos = (writePos - numSamples + kBufferSize) % kBufferSize;
 
-        copyRing(buffer_, dest, startPos, numSamples);
-        if (syncDest != nullptr)
-            copyRing(sync_, syncDest, startPos, numSamples);
+        const std::array<float*, kNumLanes> dests {dest, syncDest, amplitudeDest};
+        for (size_t lane = 0; lane < kNumLanes; ++lane)
+            if (dests[lane] != nullptr)
+                copyRing(lanes_[lane], dests[lane], startPos, numSamples);
 
         return numSamples;
     }
@@ -80,12 +85,13 @@ public:
      * Clear the buffer (call from UI thread when resetting display).
      */
     void clear() noexcept {
-        buffer_.fill(0.0f);
-        sync_.fill(0.0f);
+        for (auto& lane : lanes_)
+            lane.fill(0.0f);
         writeIndex_.store(0, std::memory_order_release);
     }
 
 private:
+    static constexpr size_t kNumLanes = 3;  // samples, sync, amplitude
     using Ring = std::array<float, kBufferSize>;
 
     static void copyRing(const Ring& ring, float* dest, int startPos, int numSamples) noexcept {
@@ -101,8 +107,7 @@ private:
         }
     }
 
-    Ring buffer_;
-    Ring sync_;
+    std::array<Ring, kNumLanes> lanes_;
     std::atomic<int> writeIndex_{0};
 };
 

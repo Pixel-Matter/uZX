@@ -182,7 +182,7 @@ public:
 
             std::vector<float> left(44100), right(44100), a(44100), b(44100), c(44100);
             std::array<float*, 3> raw {a.data(), b.data(), c.data()};
-            emulator.processBlockStereo(left.data(), right.data(), 44100, true, raw.data());
+            emulator.processBlockStereo(left.data(), right.data(), 44100, true, {.levels = raw.data()});
 
             const auto [lo, hi] = std::minmax_element(a.begin(), a.end());
             expectEquals(*lo, 0.0f, "A's tone drops to the DAC's zero");
@@ -204,13 +204,13 @@ public:
 
             std::vector<float> left(19200), right(19200), a(19200), b(19200), c(19200);
             std::array<float*, 3> raw {a.data(), b.data(), c.data()};
-            emulator.processBlockStereo(left.data(), right.data(), 19200, true, raw.data());
+            emulator.processBlockStereo(left.data(), right.data(), 19200, true, {.levels = raw.data()});
 
             expect(std::all_of(a.begin(), a.end(), [](float x) { return x >= 0.0f && x <= 1.0f; }),
                    "A sample with no chip tick holds the level");
             expectEquals(*std::max_element(a.begin(), a.end()), 1.0f, "A's tone still shows");
         }
-        beginTest("AYEmulator sync follows the tone through noise, else the envelope");
+        beginTest("AYEmulator sync follows the tone through noise, else the envelope; amplitude follows the volume");
         {
             auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             emulator.setTonePeriod(0, 1000);  // A: a 125 Hz tone chopped by noise
@@ -220,19 +220,22 @@ public:
             emulator.setEnvelopePeriod(100);  // B: a triangle envelope, 64 steps of 100 * 8 clocks: 39 Hz
             emulator.setEnvelopeShape(EnvShape::DOWN_UP_A);
             emulator.setMixer(1, false, false, true);
-            emulator.setMixer(2, false, true, false);  // C: noise only
-            emulator.setVolume(2, 15);
+            emulator.setMixer(2, false, true, false);  // C: noise only, at volume 8
+            emulator.setVolume(2, 8);
 
             std::vector<float> left(44100), right(44100);
-            std::array<std::vector<float>, 3> levels, sync;
-            std::array<float*, 3> levelPtrs, syncPtrs;
+            std::array<std::vector<float>, 3> levels, sync, amplitude;
+            std::array<float*, 3> levelPtrs, syncPtrs, amplitudePtrs;
             for (size_t ch = 0; ch < 3; ++ch) {
                 levels[ch].resize(44100);
                 sync[ch].resize(44100);
+                amplitude[ch].resize(44100);
                 levelPtrs[ch] = levels[ch].data();
                 syncPtrs[ch] = sync[ch].data();
+                amplitudePtrs[ch] = amplitude[ch].data();
             }
-            emulator.processBlockStereo(left.data(), right.data(), 44100, true, levelPtrs.data(), syncPtrs.data());
+            emulator.processBlockStereo(left.data(), right.data(), 44100, true,
+                                        {levelPtrs.data(), syncPtrs.data(), amplitudePtrs.data()});
 
             const auto rises = [](const std::vector<float>& s) {
                 int n = 0;
@@ -244,6 +247,11 @@ public:
             expect(rises(levels[0]) > 1000, "A's levels rise far more often, chopped by the noise");
             expect(std::abs(rises(sync[1]) - 39) <= 1, "B syncs once per envelope cycle: " + String(rises(sync[1])));
             expectEquals(rises(sync[2]), 0, "C has no tone or envelope to sync to");
+
+            expectEquals(amplitude[0].back(), 1.0f, "A's volume 15 reaches the top");
+            expectEquals(amplitude[1].back(), 1.0f, "The envelope can drive B to the top");
+            expectWithinAbsoluteError(amplitude[2].back(), *std::max_element(levels[2].begin(), levels[2].end()), 1e-6f,
+                         "C's volume 8 reaches as high as its noise does");
         }
         beginTest("AYEmulator renders all three channels after a reset");
         {

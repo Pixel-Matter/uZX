@@ -90,8 +90,7 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
 void AYChipPlugin::initialise(const te::PluginInitialisationInfo& info) {
     reset();
     const ScopedLock sl(lock);  // an old graph may still be rendering into this buffer
-    rawChannelBuffer_.setSize(kNumVizChannels, info.blockSizeSamples);
-    syncChannelBuffer_.setSize(kNumVizChannels, info.blockSizeSamples);
+    scopeLanes_.setSize(3 * kNumVizChannels, info.blockSizeSamples);
 }
 
 void AYChipPlugin::deinitialise() {
@@ -168,8 +167,9 @@ void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept 
 void AYChipPlugin::copyTempBufferToVizBuffer() {
     for (size_t chan = 0; chan < kNumVizChannels; ++chan) {
         const auto c = static_cast<int>(chan);
-        vizBuffers_[chan].pushSamples(rawChannelBuffer_.getReadPointer(c), rawChannelBuffer_.getNumSamples(),
-                                      syncChannelBuffer_.getReadPointer(c));
+        vizBuffers_[chan].pushSamples(scopeLanes_.getReadPointer(c), scopeLanes_.getNumSamples(),
+                                      scopeLanes_.getReadPointer(kNumVizChannels + c),
+                                      scopeLanes_.getReadPointer(2 * kNumVizChannels + c));
     }
 }
 
@@ -177,10 +177,10 @@ void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int current
     const auto samples = static_cast<size_t>(timeSample - currentSample);
     auto left = fc.destBuffer->getWritePointer(0, currentSample);
     auto right = fc.destBuffer->getWritePointer(1, currentSample);
-    rawChannelBuffer_.setSize(kNumVizChannels, static_cast<int>(samples), false, false, true);
-    syncChannelBuffer_.setSize(kNumVizChannels, static_cast<int>(samples), false, false, true);
+    scopeLanes_.setSize(3 * kNumVizChannels, static_cast<int>(samples), false, false, true);
+    auto* const* lanes = scopeLanes_.getArrayOfWritePointers();
     chip->processBlockStereo(left, right, samples, staticParams.removeDC.getStoredValue(),
-                             rawChannelBuffer_.getArrayOfWritePointers(), syncChannelBuffer_.getArrayOfWritePointers());
+                             {lanes, lanes + kNumVizChannels, lanes + 2 * kNumVizChannels});
     if (fc.isPlaying)  // stopped, the scopes keep the last frame that played
         copyTempBufferToVizBuffer();
 }

@@ -269,19 +269,19 @@ auto AyumiEmulator::getMasterVolume() const -> float {
 }
 
 auto AyumiEmulator::processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC,
-                                       float* const* raw, float* const* sync) -> void {
+                                       const ScopeLanes& scope) -> void {
     float* const out[] {outLeft, outRight};
-    render(AYUMI_STEREO, out, numSamples, removeDC, raw, sync);
+    render(AYUMI_STEREO, out, numSamples, removeDC, scope);
 }
 
 auto AyumiEmulator::processBlockSeparate(float* outA, float* outB, float* outC, size_t numSamples, bool removeDC,
-                                         float* const* raw, float* const* sync) -> void {
+                                         const ScopeLanes& scope) -> void {
     float* const out[] {outA, outB, outC};
-    render(AYUMI_SEPARATE, out, numSamples, removeDC, raw, sync);
+    render(AYUMI_SEPARATE, out, numSamples, removeDC, scope);
 }
 
 void AyumiEmulator::render(ayumi_output_mode mode, float* const* out, size_t numSamples, bool removeDC,
-                           float* const* raw, float* const* sync) {
+                           const ScopeLanes& scope) {
     // A switch clicks once: the filters it brings in still hold whatever they rendered last
     ayumi_set_output_mode(&Ayumi_, mode);
     const auto numOutputs = static_cast<size_t>(mode);
@@ -293,16 +293,17 @@ void AyumiEmulator::render(ayumi_output_mode mode, float* const* out, size_t num
         for (size_t ch = 0; ch < numOutputs; ++ch) {
             out[ch][i] = static_cast<float>(Ayumi_.outputs[ch].value) * MasterVolume_;
         }
-        if (raw != nullptr) {
-            for (size_t ch = 0; ch < TONE_CHANNELS; ++ch) {
-                raw[ch][i] = static_cast<float>(Ayumi_.raw[ch]);
+        for (size_t ch = 0; ch < TONE_CHANNELS; ++ch) {
+            const auto& c = Ayumi_.channels[ch];
+            if (scope.levels != nullptr) {
+                scope.levels[ch][i] = static_cast<float>(Ayumi_.raw[ch]);
             }
-        }
-        if (sync != nullptr) {
-            for (size_t ch = 0; ch < TONE_CHANNELS; ++ch) {
-                const auto& c = Ayumi_.channels[ch];
+            if (scope.sync != nullptr) {
                 const int bit = ! c.t_off ? c.tone : c.e_on ? Ayumi_.envelope_segment : 0;
-                sync[ch][i] = static_cast<float>(bit);
+                scope.sync[ch][i] = static_cast<float>(bit);
+            }
+            if (scope.amplitude != nullptr) {
+                scope.amplitude[ch][i] = c.e_on ? 1.0f : static_cast<float>(Ayumi_.dac_table[c.volume * 2 + 1]);
             }
         }
     }

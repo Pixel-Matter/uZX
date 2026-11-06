@@ -148,9 +148,9 @@ private:
 
     // Scope buffers for A, B, C channel visualization
     std::array<ScopeBuffer, kNumVizChannels> vizBuffers_;
-    // Raw channel levels and their sync of the current render call, on their way to the scope buffers
-    AudioBuffer<float> rawChannelBuffer_;
-    AudioBuffer<float> syncChannelBuffer_;
+    // The current render call's scope lanes on their way to the scope buffers: levels, sync and amplitude, one
+    // channel per chip channel each
+    AudioBuffer<float> scopeLanes_;
 
     //==============================================================================
     /**

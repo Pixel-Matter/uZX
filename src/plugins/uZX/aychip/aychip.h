@@ -142,6 +142,17 @@ using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
 using EnvShape = MoTool::Util::EnumChoice<EnvShapeEnum>;
 
 
+/** What channels A, B and C show on their scopes; each lane, if given, takes a pointer per channel. */
+struct ScopeLanes {
+    /** The chip's DAC levels 0..1: unfiltered, before the mix and the volume. */
+    float* const* levels = nullptr;
+    /** 1 or 0: the tone if on, else the envelope's segment if on, else 0, so noise and the envelope don't
+        move the phase a scope triggers on. */
+    float* const* sync = nullptr;
+    /** The highest level the channel's volume reaches: 1 when the envelope drives it. */
+    float* const* amplitude = nullptr;
+};
+
 class AYInterface {
 public:
 
@@ -178,14 +189,12 @@ public:
 
     /**
         Renders the stereo mix, or channels A, B and C apart for mixing them elsewhere: filtered, DC-removed if asked,
-        at master volume. `raw`, if given, takes channels A, B and C as the chip's DAC levels 0..1, unfiltered and
-        before the mix and the volume, for scopes. `sync`, if given, takes each channel's trigger for its scope, 1 or 0:
-        its tone if on, else its envelope's segment if on, else 0, so noise and the envelope don't move the phase.
+        at master volume, and the channels' scope lanes.
     */
     virtual auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true,
-                                    float* const* raw = nullptr, float* const* sync = nullptr) -> void = 0;
+                                    const ScopeLanes& scope = {}) -> void = 0;
     virtual auto processBlockSeparate(float* outA, float* outB, float* outC, size_t numSamples, bool removeDC = true,
-                                      float* const* raw = nullptr, float* const* sync = nullptr) -> void = 0;
+                                      const ScopeLanes& scope = {}) -> void = 0;
 
 protected:
     // AY functions
@@ -302,14 +311,13 @@ public:
     auto getMasterVolume() const -> float override;
 
     auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true,
-                            float* const* raw = nullptr, float* const* sync = nullptr) -> void override;
+                            const ScopeLanes& scope = {}) -> void override;
     auto processBlockSeparate(float* outA, float* outB, float* outC, size_t numSamples, bool removeDC = true,
-                              float* const* raw = nullptr, float* const* sync = nullptr) -> void override;
+                              const ScopeLanes& scope = {}) -> void override;
 
   private:
     /** The mode follows the call, so a reset can't leave the chip rendering fewer outputs than asked for. */
-    void render(ayumi_output_mode mode, float* const* out, size_t numSamples, bool removeDC, float* const* raw,
-                float* const* sync);
+    void render(ayumi_output_mode mode, float* const* out, size_t numSamples, bool removeDC, const ScopeLanes& scope);
 
     ayumi Ayumi_;
     ChipType Type_;

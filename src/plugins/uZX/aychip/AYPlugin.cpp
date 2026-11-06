@@ -51,7 +51,10 @@ AYChipPlugin::~AYChipPlugin() {
 
 void AYChipPlugin::toggleSolo(size_t channel) {
     auto& solo = channelMuter.getSoloParam(channel);
-    solo.setStoredValue(! solo.getStoredValue());
+    const bool soloing = ! solo.getStoredValue();
+    solo.setStoredValue(soloing);
+    if (soloing)  // a channel is on, muted or soloed: a muted one is soloed instead
+        channelMuter.getChannelParam(channel).setStoredValue(true);
 
     // The track is soloed while any of its chip's channels is, so the other tracks go silent.
     if (auto* track = getOwnerTrack())

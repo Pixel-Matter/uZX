@@ -34,7 +34,7 @@ public:
             expect(!regs.getEnvMod(0), "Envelope mod should be disabled");
         }
 
-        beginTest("Soloed channels play alone, several at once, and a muted one stays silent");
+        beginTest("Soloed channels play alone, several at once, muted or not");
         {
             ValueTree state("ChannelMuter");
             ChannelMuter muter;
@@ -63,13 +63,12 @@ public:
             expectEquals(volumes(), String("-BC"), "several solos");
 
             muter.channelC.setStoredValue(false);
-            expectEquals(volumes(), String("-B-"), "mute wins over solo");
+            expectEquals(volumes(), String("-BC"), "solo wins over mute");
 
             muter.soloB.setStoredValue(false);
             muter.soloC.setStoredValue(false);
-            muter.channelC.setStoredValue(true);
             TestHelpers::flushMessageQueue();
-            expectEquals(volumes(), String("ABC"), "no solo");
+            expectEquals(volumes(), String("AB-"), "unsoloed, C is muted again");
         }
 
         beginTest("Disabling tone only should preserve noise and volume");

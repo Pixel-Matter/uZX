@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "AYPlugin.h"
+#include "AYPluginEditor.h"
 #include "../../../models/PsgClip.h"
 #include "../../../util/TestHelpers.h"
 
@@ -180,6 +181,34 @@ public:
 
             chip1.toggleSolo(2);
             expect(! edit->areAnyTracksSolo(), "no solo left");
+        }
+
+        beginTest("A channel is on, muted or soloed, and a click turns a muted or soloed one back on");
+        {
+            AYPluginUI ui {&chip1};
+            auto button = [&](const String& text) -> Button* {
+                for (auto* child : ui.getChildren())
+                    if (auto* b = dynamic_cast<TextButton*>(child); b != nullptr && b->getButtonText() == text)
+                        return b;
+                return nullptr;
+            };
+            auto& muter = chip1.channelMuter;
+
+            chip1.toggleSolo(0);  // what Alt-click on A does
+            button("A")->triggerClick();
+            TestHelpers::flushMessageQueue();
+            expect(! muter.hasSolo() && muter.channelA.getStoredValue(), "A unsoloed, not muted");
+
+            button("B")->triggerClick();
+            TestHelpers::flushMessageQueue();
+            expect(! muter.channelB.getStoredValue(), "a click on a channel that's on mutes it");
+
+            chip1.toggleSolo(1);  // click then Alt-click
+            expect(muter.soloB.getStoredValue() && muter.channelB.getStoredValue(), "the muted channel is soloed instead");
+
+            button("B")->triggerClick();
+            TestHelpers::flushMessageQueue();
+            expect(! muter.hasSolo() && muter.channelB.getStoredValue(), "and a click turns it back on");
         }
 
         beginTest("Solo is not a step in Undo, as track solo isn't");

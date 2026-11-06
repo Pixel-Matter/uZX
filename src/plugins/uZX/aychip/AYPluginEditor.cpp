@@ -80,12 +80,15 @@ void AYPluginUI::ChannelGroup::valueChanged(Value&) {
 }
 
 void AYPluginUI::ChannelGroup::updateSoloColour() {
-    channelOn.setColour(TextButton::buttonOnColourId,
-                        soloParam_.getStoredValue() ? Colors::Theme::soloed : Colors::Theme::surface);
+    // a soloed channel plays, muted or not
+    const bool soloed = soloParam_.getStoredValue();
+    channelOn.setColour(TextButton::buttonOnColourId, soloed ? Colors::Theme::soloed : Colors::Theme::surface);
+    channelOn.setColour(TextButton::buttonColourId, soloed ? Colors::Theme::soloed : Colors::Theme::muted);
+    channelOn.setColour(TextButton::textColourOffId, soloed ? Colors::Theme::textPrimary : Colors::Theme::background);
 }
 
 void AYPluginUI::ChannelGroup::updateTNEState() {
-    bool enabled = channelParam_.getStoredValue();
+    bool enabled = channelParam_.getStoredValue() || soloParam_.getStoredValue();
     toneOn.setEnabled(enabled);
     noiseOn.setEnabled(enabled);
     envelopeOn.setEnabled(enabled);
@@ -175,8 +178,9 @@ void AYPluginUI::setupToggleButtons() {
 
         auto& button = group.channelOn;
         button.setTooltip(button.getTooltip() + String(JUCE_MAC ? ". Option" : ". Alt") + "-click: solo");
+        // a channel is on, muted or soloed: a click turns a muted or soloed one back on
         button.onClick = [this, chan, toggle = std::move(button.onClick)] {
-            if (ModifierKeys::currentModifiers.isAltDown())
+            if (ModifierKeys::currentModifiers.isAltDown() || plugin_.channelMuter.getSoloParam(chan).getStoredValue())
                 plugin_.toggleSolo(chan);
             else
                 toggle();

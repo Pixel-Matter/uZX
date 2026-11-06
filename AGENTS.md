@@ -48,7 +48,7 @@ A change to anything a user can see or do updates `docs/user-guide.md` in the sa
 
 ## Commit & Pull Request Guidelines
 
-Prefer concise imperative messages; use a lowercase scope when helpful (`docs:`, `ci:`, `build:`). Never commit to `develop` directly: branch from it as `feature/<name>` or `fix/<name>`, commit there, and merge back into `develop` (a PR, or a local `--no-ff` merge when asked), per **Branching Model** in `CONTRIBUTING.md`; release version bumps are the one exception. `main` is stable and protected, so never push to it directly. Releases are cut by pushing `v*` tags; see `CONTRIBUTING.md`. PRs should describe behavior changes, link issues, list tests run, and include screenshots or recordings for UI changes.
+Prefer concise imperative messages; use a lowercase scope when helpful (`docs:`, `ci:`, `build:`). Never commit to `develop` directly: branch from it as `feature/<name>` or `fix/<name>`, commit there, and merge back into `develop` (a PR, or a local `--no-ff` merge when asked), per **Branching Model** in `CONTRIBUTING.md`; the exceptions are release version bumps and commits that touch only `docs/`. `main` is stable and protected, so never push to it directly. Releases are cut by pushing `v*` tags; see `CONTRIBUTING.md`. PRs should describe behavior changes, link issues, list tests run, and include screenshots or recordings for UI changes.
 
 ## Agent-Specific Instructions
 

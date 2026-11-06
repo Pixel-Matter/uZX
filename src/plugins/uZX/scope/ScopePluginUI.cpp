@@ -163,7 +163,7 @@ void WaveformDisplay::paint(juce::Graphics& g) {
 
     // Trigger level line, unless it would lie along the chip's silence
     if (triggerStrategy_.mode != TriggerMode(TriggerModeEnum::FreeRunning) && (! chipLevels || triggerLevel_ > 0.0f)) {
-        g.setColour(Colors::Theme::warning.withAlpha(0.5f));
+        g.setColour(Colors::Timeline::trackGridTickColors[1]);  // as faint as the timeline's labeled grid lines
         const float trigY = axis.zero - triggerLevel_ * axis.scale;
         g.drawHorizontalLine(static_cast<int>(trigY), 0.0f, bounds.getWidth());
     }

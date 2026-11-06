@@ -247,7 +247,8 @@ TrackBodyComponent::TrackBodyComponent(EditViewState& evs, TimelineGrid& g, te::
     track->edit.getTransport().addChangeListener(this);
     editViewState.selectionManager.addChangeListener(this);
 
-    setBufferedToImage(true);
+    // Not buffered to an image: following the playhead repaints the whole body every frame,
+    // and a cache only adds a full-size clear and copy to each.
     setRepaintsOnMouseActivity(true);
     markAndUpdate(updateClips);
 }

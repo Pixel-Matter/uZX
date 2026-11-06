@@ -102,6 +102,10 @@ private:
     std::vector<NoteLane> lanes_;  // rebuilt when the clip's tuning revision changes
     int lanesRevision_ = -1;
 
+    /** The noise band, pre-rendered once per height at full opacity and one pixel wide: each frame's
+        band is a stretched blit of it, not a gradient evaluated per pixel. */
+    Image noiseBand_;
+
     // void onVBlank() {
     //     // Throttle to ~30fps (skip every other vblank on 60Hz display)
     //     if (++vblankCounter_ < vblankDivider_)

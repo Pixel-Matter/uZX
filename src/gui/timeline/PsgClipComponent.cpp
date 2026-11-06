@@ -129,6 +129,14 @@ void drawNoiseBand(Graphics& g, Rectangle<float> bounds, float alpha) {
     g.fillRect(bounds);
 }
 
+/** drawNoiseBand at full opacity into a one-pixel-wide strip heightPx tall. */
+Image renderNoiseBandStrip(int heightPx) {
+    Image strip(Image::ARGB, 1, heightPx, true);
+    Graphics g(strip);
+    drawNoiseBand(g, {0.0f, 0.0f, 1.0f, float(heightPx)}, 1.0f);
+    return strip;
+}
+
 void drawNoiseFringe(Graphics& g, Rectangle<float> bounds, int spread, uint8_t channelMask,
                      const std::array<float, 3>& levels, int frameIndex, Rectangle<float> viewport,
                      std::span<const FrameNote> notes) {
@@ -964,7 +972,12 @@ void PsgClipComponent::paintNotes(Graphics& g) {
             const float noiseY = noiseRange.getStart() * static_cast<float>(vis.rect.getHeight());
             const float noiseH = jmax(2.0f, noiseRange.getLength() * static_cast<float>(vis.rect.getHeight()));
             noiseBounds = {x, noiseY, vis.pixelsPerFrame, noiseH};
-            drawNoiseBand(g, noiseBounds, 0.15f + 0.1f * noiseLevel);
+            const int stripHeight = roundToInt(noiseH * g.getInternalContext().getPhysicalPixelScaleFactor());
+            if (noiseBand_.getHeight() != stripHeight)
+                noiseBand_ = renderNoiseBandStrip(stripHeight);  // noiseH >= 2: never empty
+            g.setOpacity(0.15f + 0.1f * noiseLevel);
+            g.drawImage(noiseBand_, noiseBounds);
+            g.setOpacity(1.0f);
         }
 
         // Collect this frame's notes: up to one per channel plus the envelope

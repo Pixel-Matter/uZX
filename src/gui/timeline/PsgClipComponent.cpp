@@ -938,21 +938,23 @@ std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid) {
     return lanes;
 }
 
-LaneDetail getLaneDetail(float noteHeight) {
-    // Lines need a few pixels per lane, names about a line of small text; when a single
-    // lane is too short, one per octave (the tonic's) can still be shown.
-    constexpr float minLineSpacing = 3.0f, minLabelHeight = 9.0f;
-    auto level = [noteHeight](float minimum) {
-        return noteHeight >= minimum ? LaneDetail::All
-             : noteHeight * 12.0f >= minimum ? LaneDetail::Tonic
-             : LaneDetail::None;
-    };
-    return { level(minLineSpacing), level(minLabelHeight) };
-}
+// A line under every lane needs a few pixels, names about a line of small text. When a single
+// lane is too short, one per octave (the tonic's) can still be shown, its line down to a few
+// pixels an octave. Piano keys need lanes tall enough to tell apart.
+constexpr float minLaneHeight = 4.0f, minOctaveHeight = 3.0f, minLabelHeight = 8.0f, minPianoKeyHeight = 4.0f;
 
 // A black key holds a sharp's name, C#4; right of it, a white key holds its own.
 constexpr float whiteKeyWidth = 32.0f, blackKeyWidth = 18.0f, keyNameGap = 2.0f;
 constexpr float laneLabelGap = 3.0f, laneLabelWidth = 40.0f;
+
+LaneDetail getLaneDetail(float noteHeight) {
+    auto level = [noteHeight](float minLane, float minOctave) {
+        return noteHeight >= minLane ? LaneDetail::All
+             : noteHeight * 12.0f >= minOctave ? LaneDetail::Tonic
+             : LaneDetail::None;
+    };
+    return { level(minLaneHeight, minOctaveHeight), level(minLabelHeight, minLabelHeight) };
+}
 
 /** The note lanes as the Notes view draws them now. */
 struct LaneView {
@@ -979,10 +981,14 @@ static std::optional<LaneView> getLaneView(const PsgClip& clip, Rectangle<int> b
     if (clip.getPsg().isEmpty() || ! areNoteLanesShown(clip.edit.engine) || clip.getTuning().grid.size() < 2)
         return std::nullopt;
     const auto layout = makeNotesLayout(clip, bounds, visibleX);
-    const auto detail = getLaneDetail(layout.noteHeight);
+    auto detail = getLaneDetail(layout.noteHeight);
     if (detail.lines == LaneDetail::None)
         return std::nullopt;
-    return LaneView {layout, detail, arePianoKeysShown(clip.edit.engine) && detail.lines == LaneDetail::All};
+    const bool pianoKeys = arePianoKeysShown(clip.edit.engine) && layout.noteHeight >= minPianoKeyHeight;
+    // A tonic's name alone would spill over the keys around it, which show where C is anyway.
+    if (pianoKeys && detail.labels == LaneDetail::Tonic)
+        detail.labels = LaneDetail::None;
+    return LaneView {layout, detail, pianoKeys};
 }
 
 /** Piano Keys mode: a short keyboard over the grid at the view's left edge, just enough to
@@ -1055,10 +1061,8 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView, b
 
     for (const auto& lane : lanes_) {
         const float top = layout.normToY(lane.hi), bottom = layout.normToY(lane.lo);
-        // A tonic label hangs above the lane's bottom boundary, or is centred on it over the
-        // keys, and may overflow a short lane.
-        if (bottom + tonicLabelHeight * 0.5f < damage.getY()
-            || jmin(top, bottom - tonicLabelHeight) > damage.getBottom())
+        // A tonic label hangs above the lane's bottom boundary and may overflow a short lane.
+        if (bottom < damage.getY() || jmin(top, bottom - tonicLabelHeight) > damage.getBottom())
             continue;
 
         const int degree = ((lane.note - tonic) % 12 + 12) % 12;
@@ -1074,7 +1078,8 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView, b
         if (! labelsInDamage)
             continue;
         if (detail.labels == LaneDetail::All) {
-            // Over the keys only the key's notes are named: light on a black key, dark on a white one.
+            // Over the keys only the key's notes are named, each on its own key: light at a black
+            // key's left end, dark right of the black keys on a white one.
             if (pianoKeys && ! scale.isIntervalInScale(degree))
                 continue;
             const bool onBlackKey = pianoKeys && MidiMessage::isMidiNoteBlack(lane.note);
@@ -1083,11 +1088,6 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView, b
             g.setColour(ink.withAlpha(isTonic ? 0.8f : 0.45f));
             g.drawText(lane.label, Rectangle<float>(nameX, top, labelX + labelWidth - nameX, bottom - top),
                        Justification::centredLeft, false);
-        } else if (isTonic && pianoKeys) {
-            // Taller than its key, so on the white ends right of the black keys, centred on its own
-            g.setColour(Colours::black.withAlpha(0.7f));
-            g.drawText(lane.label, Rectangle<float>(labelX, (top + bottom - tonicLabelHeight) * 0.5f, labelWidth,
-                                                    tonicLabelHeight), Justification::centredLeft, false);
         } else if (isTonic) {
             g.setColour(Colours::white.withAlpha(0.45f));
             g.drawText(lane.label, Rectangle<float>(labelX, bottom - tonicLabelHeight, labelWidth, tonicLabelHeight),

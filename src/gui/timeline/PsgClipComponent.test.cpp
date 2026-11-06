@@ -545,12 +545,20 @@ public:
             beginTest("Piano Keys lay a keyboard over the grid's left edge, the key's notes named on it");
             const bool wasPianoKeys = arePianoKeysShown(engine);
             setPianoKeysShown(engine, true);
+            const auto paintKeys = [&](int height) {
+                component.setSize(500, height);
+                Image image(Image::ARGB, 500, height, true);
+                {
+                    Graphics g(image);
+                    component.paintNoteLanes(g);
+                }
+                return image;
+            };
             clip->chooseKey({Scale::Tonic(4), true});  // E minor: F# is its one black key, F is out
-            Image keys(Image::ARGB, 500, 300, true);
-            {
-                Graphics g(keys);
-                component.paintNoteLanes(g);
-            }
+            const auto keys = paintKeys(300);
+            clip->chooseKey({Scale::Tonic(6), true});  // F# minor, in a clip that names tonics only without keys
+            const auto tonicKeys = paintKeys(100);  // lanes ~6.7 px: keys, but too short to name them all
+            component.setSize(500, 300);
             setPianoKeysShown(engine, wasPianoKeys);
 
             // A row's key colour is what the black keys' width shows besides a name, which is
@@ -558,43 +566,58 @@ public:
             // if black, or dark ones right of the black keys, if white; a run of same-coloured
             // rows is one key.
             enum { none = -1, black, white };
-            const auto colourAt = [&](int y) {
-                int dark = 0, light = 0;
-                for (int x = 0; x < 18; ++x) {
-                    const auto c = keys.getPixelAt(x, y);
-                    dark += c.getFloatAlpha() > 0.8f && c.getBrightness() < 0.3f;
-                    light += c.getFloatAlpha() > 0.8f && c.getBrightness() > 0.9f;
-                }
-                return dark > light ? black : light > dark ? white : none;
+            struct KeysRead
+            {
+                int named[2] = {}, unnamed[2] = {};
+                bool whiteNameLeftOfBlackKeys = false, blackNameAtLeftEnd = false;
             };
-            int named[2] = {}, unnamed[2] = {}, gridPixels = 0;
-            bool whiteNameLeftOfBlackKeys = false, blackNameAtLeftEnd = false;
-            for (int y = 0; y < keys.getHeight();) {
-                const int colour = colourAt(y);
-                bool hasName = false;
-                for (; y < keys.getHeight() && colourAt(y) == colour; ++y)
-                    for (int x = 0; x < 32 && colour != none; ++x) {
-                        const float brightness = keys.getPixelAt(x, y).getBrightness();
-                        if (colour == black) {
-                            hasName = hasName || (x < 18 && brightness > 0.4f);
-                            blackNameAtLeftEnd = blackNameAtLeftEnd || (x < 2 && brightness > 0.4f);
-                        } else if (x < 18) {
-                            whiteNameLeftOfBlackKeys = whiteNameLeftOfBlackKeys || brightness < 0.6f;
-                        } else {
-                            hasName = hasName || brightness < 0.6f;
-                        }
+            const auto readKeys = [](const Image& image) {
+                const auto colourAt = [&](int y) {
+                    int dark = 0, light = 0;
+                    for (int x = 0; x < 18; ++x) {
+                        const auto c = image.getPixelAt(x, y);
+                        dark += c.getFloatAlpha() > 0.8f && c.getBrightness() < 0.3f;
+                        light += c.getFloatAlpha() > 0.8f && c.getBrightness() > 0.9f;
                     }
-                if (colour != none)
-                    ++(hasName ? named : unnamed)[colour];
-            }
+                    return dark > light ? black : light > dark ? white : none;
+                };
+                KeysRead read;
+                for (int y = 0; y < image.getHeight();) {
+                    const int colour = colourAt(y);
+                    bool hasName = false;
+                    for (; y < image.getHeight() && colourAt(y) == colour; ++y)
+                        for (int x = 0; x < 32 && colour != none; ++x) {
+                            const float brightness = image.getPixelAt(x, y).getBrightness();
+                            if (colour == black) {
+                                hasName = hasName || (x < 18 && brightness > 0.4f);
+                                read.blackNameAtLeftEnd = read.blackNameAtLeftEnd || (x < 2 && brightness > 0.4f);
+                            } else if (x < 18) {
+                                read.whiteNameLeftOfBlackKeys = read.whiteNameLeftOfBlackKeys || brightness < 0.6f;
+                            } else {
+                                hasName = hasName || brightness < 0.6f;
+                            }
+                        }
+                    if (colour != none)
+                        ++(hasName ? read.named : read.unnamed)[colour];
+                }
+                return read;
+            };
+
+            int gridPixels = 0;
             for (int y = 0; y < keys.getHeight(); ++y)
                 for (int x = 50; x < keys.getWidth(); ++x)
                     gridPixels += keys.getPixelAt(x, y).getFloatAlpha() > 0.0f;
             expect(gridPixels > 0, "the grid stays across the clip");
-            expect(named[white] > 0 && named[black] > 0, "the key's notes are named, F# on its black key");
-            expect(unnamed[white] > 0 && unnamed[black] > 0, "notes out of the key, F and C#, stay unnamed");
-            expect(! whiteNameLeftOfBlackKeys, "a white key's name sits right of the black keys");
-            expect(blackNameAtLeftEnd, "a black key's name starts at the key's left end");
+            const auto read = readKeys(keys);
+            expect(read.named[white] > 0 && read.named[black] > 0, "the key's notes are named, F# on its black key");
+            expect(read.unnamed[white] > 0 && read.unnamed[black] > 0, "notes out of the key, F and C#, stay unnamed");
+            expect(! read.whiteNameLeftOfBlackKeys, "a white key's name sits right of the black keys");
+            expect(read.blackNameAtLeftEnd, "a black key's name starts at the key's left end");
+
+            const auto tonicRead = readKeys(tonicKeys);
+            expect(tonicRead.unnamed[black] > 0 && tonicRead.unnamed[white] > 0, "the keys are drawn");
+            expect(tonicRead.named[black] == 0 && tonicRead.named[white] == 0,
+                   "over the keys, a clip too short to name every lane names none");
         }
 
         beginTest("Lane names stay on the same pixels while the view scrolls by fractions of a pixel");
@@ -641,7 +664,8 @@ public:
         beginTest("Level of detail follows the lane height");
         auto detail = [](float height) { const auto d = getLaneDetail(height); return std::pair{d.lines, d.labels}; };
         expect(detail(12.0f) == std::pair{LaneDetail::All, LaneDetail::All});
-        expect(detail(5.0f) == std::pair{LaneDetail::All, LaneDetail::Tonic});
+        expect(detail(7.0f) == std::pair{LaneDetail::All, LaneDetail::Tonic});
+        expect(detail(3.0f) == std::pair{LaneDetail::Tonic, LaneDetail::Tonic}, "too short for a line per lane");
         expect(detail(0.5f) == std::pair{LaneDetail::Tonic, LaneDetail::None});
         expect(detail(0.1f) == std::pair{LaneDetail::None, LaneDetail::None});
     }

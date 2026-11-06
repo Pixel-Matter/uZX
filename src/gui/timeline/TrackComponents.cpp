@@ -262,10 +262,7 @@ TrackBodyComponent::~TrackBodyComponent() {
 }
 
 void TrackBodyComponent::paint(Graphics& g) {
-    bool isSelected = editViewState.selectionManager.isSelected(track.get());
-    auto bgColor = editViewState.vizMode ? Colors::Timeline::vizLane : Colors::Timeline::lane(isSelected);
-
-    g.fillAll(bgColor);
+    g.fillAll(getLaneColour(editViewState, editViewState.selectionManager.isSelected(track.get())));
 
     auto ticks = grid.getTicks();
     MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, getLocalBounds(), ticks);

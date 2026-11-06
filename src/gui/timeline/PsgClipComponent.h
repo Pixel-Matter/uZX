@@ -101,6 +101,7 @@ private:
     void paintRegisters(Graphics& g, const PaintView& view);
     void paintNotes(Graphics& g, const PaintView& view);
     void paintNoteLanes(Graphics& g, const PaintView& view);
+    void paintTicksOverLanes(Graphics& g, const PaintView& view);
     /** paintContent() from cached images: the note lanes, and the notes or registers over them. */
     void paintCachedContent(Graphics& g, const PaintView& view);
 

@@ -197,6 +197,56 @@ public:
         expect(onNote > 0 && onFill > 0, "the column crosses the note and the empty clip");
         expectEquals(gridOverNote, 0, "the grid must not be drawn over the note");
         expectEquals(gridOnFill, onFill, "the grid must show on the clip's empty fill");
+
+        beginTest("Lane lines take the grid's colours, the medium one each octave; where they cross a tick the brighter shows");
+        {
+            setNoteLanesShown(engine, true);
+            component.setBounds(0, 0, 1000, 600);  // tall enough for a line on every lane
+            Image lanes(Image::ARGB, 1000, 600, true);
+            {
+                Graphics g(lanes);
+                component.paint(g);
+            }
+            setNoteLanesShown(engine, wereLanes);
+
+            const auto background = component.getBackground();
+            const auto minor = background.overlaidWith(Colors::Timeline::trackGridTickColors[0]);
+            const auto major = background.overlaidWith(Colors::Timeline::trackGridTickColors[1]);
+            const auto hasTick = [&](int x) {
+                return std::any_of(ticks.begin(), ticks.end(), [x](const auto& t) { return t.x == x; });
+            };
+            // The lane lines, counted in a column without ticks
+            int minorRows = 0, majorRows = 0;
+            int column = 61;
+            while (column < 999 && (hasTick(column) || hasTick(column + 1)))
+                ++column;
+            for (int y = 0; y < lanes.getHeight(); ++y) {
+                const auto c = lanes.getPixelAt(column, y);
+                minorRows += c == minor;
+                majorRows += c == major;
+            }
+            // Every tick right of the names, with no other tick beside it, against every lane line it crosses
+            int blended = 0;
+            size_t levelsSeen = 0;
+            for (const auto& tick : ticks) {
+                if (tick.x <= 60 || tick.x >= 998 || hasTick(tick.x + 1))
+                    continue;
+                const auto tickColour = background.overlaidWith(Colors::Timeline::trackGridTickColors[tick.level]);
+                for (int y = 0; y < lanes.getHeight(); ++y) {
+                    const auto beside = lanes.getPixelAt(tick.x + 1, y);
+                    if (beside != minor && beside != major)
+                        continue;
+                    const size_t lineLevel = beside == minor ? 0 : 1;
+                    blended += lanes.getPixelAt(tick.x, y) != (tick.level > lineLevel ? tickColour : beside);
+                }
+                levelsSeen |= size_t(1) << tick.level;
+            }
+            expect(minorRows > 10, "lane lines in the grid's finest colour: " + String(minorRows));
+            expect(majorRows > 0 && majorRows * 8 < minorRows, "a line in the grid's medium colour each octave: "
+                                                                 + String(majorRows) + " of " + String(minorRows + majorRows));
+            expect(levelsSeen == 0b111, "ticks of every level cross the lanes");
+            expectEquals(blended, 0, "where a tick crosses a lane line, the brighter of the two shows");
+        }
     }
 };
 

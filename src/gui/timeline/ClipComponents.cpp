@@ -29,6 +29,10 @@ Rectangle<int> getShownArea(const Component& c) {
     return area;
 }
 
+Colour getLaneColour(const EditViewState& evs, bool trackSelected) {
+    return evs.vizMode ? Colors::Timeline::vizLane : Colors::Timeline::lane(trackSelected);
+}
+
 //==============================================================================
 ClipComponent::ClipComponent (EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
     : editViewState (evs), grid (g), clip (c)
@@ -45,19 +49,24 @@ Colour ClipComponent::getRingColour(Colour clipColour) {
     return atLightness(clipColour, 0.92f, 0.4f);
 }
 
+Colour ClipComponent::getBackground() const {
+    const auto* track = clip->getTrack();
+    const bool trackSelected = track != nullptr && editViewState.selectionManager.isSelected(track);
+    if (editViewState.transparentClips)
+        return getLaneColour(editViewState, trackSelected);
+    return getFill(Colors::Timeline::lane(trackSelected), editViewState.selectionManager.isSelected(clip.get()));
+}
+
 void ClipComponent::paint(Graphics& g) {
     if (editViewState.transparentClips)
         return;
 
     // TODO Move to lookAndFeel
-    const bool selected = editViewState.selectionManager.isSelected(clip.get());
     const auto bounds = getLocalBounds().toFloat();
     Path shape;
     shape.addRoundedRectangle(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
                               cornerSize, cornerSize, false, false, true, true);
-    const auto* track = clip->getTrack();
-    const bool trackSelected = track != nullptr && editViewState.selectionManager.isSelected(track);
-    g.setColour(getFill(Colors::Timeline::lane(trackSelected), selected));
+    g.setColour(getBackground());
     g.fillPath(shape);
 
     // The timeline grid over the fill and under the contents, as on the lane around the clip.

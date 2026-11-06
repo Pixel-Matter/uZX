@@ -534,12 +534,14 @@ public:
                 component.paintNoteLanes(g);
             }
 
-            // Lane lines are faint (alpha <= 0.16, 0.23 over the tonic band); names are
-            // drawn at 0.45 or more, so a brighter pixel near the left edge is a name.
+            // Lane lines are opaque greys and the tonic band a faint white (alpha 0.07); names are
+            // white at 0.45 or more, so a white pixel that solid near the left edge is a name.
             bool nameNearLeftEdge = false;
             for (int y = 0; y < image.getHeight() && ! nameNearLeftEdge; ++y)
-                for (int x = 0; x < 45 && ! nameNearLeftEdge; ++x)
-                    nameNearLeftEdge = image.getPixelAt(x, y).getFloatAlpha() > 0.35f;
+                for (int x = 0; x < 45 && ! nameNearLeftEdge; ++x) {
+                    const auto c = image.getPixelAt(x, y);
+                    nameNearLeftEdge = c.getFloatAlpha() > 0.35f && c.getBrightness() > 0.9f;
+                }
             expect(nameNearLeftEdge, "note names must be drawn at the clip's own left edge");
 
             beginTest("Piano Keys lay a keyboard over the grid's left edge, the key's notes named on it");

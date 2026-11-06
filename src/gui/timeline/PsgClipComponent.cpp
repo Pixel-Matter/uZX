@@ -536,11 +536,12 @@ public:
         te::TimeDuration timePerPixel;
         te::ClipPosition position;
         int width, height, scalePercent, revision;
+        uint32 background;  // the lane lines are opaque, blended onto it
 
         bool operator==(const Key& o) const {
             return timePerPixel == o.timePerPixel && position.time == o.position.time
                 && position.offset == o.position.offset && width == o.width && height == o.height
-                && scalePercent == o.scalePercent && revision == o.revision;
+                && scalePercent == o.scalePercent && revision == o.revision && background == o.background;
         }
     };
 
@@ -720,6 +721,7 @@ PsgClipComponent::PaintView PsgClipComponent::getViewPaintView() const {
 void PsgClipComponent::paintContent(Graphics& g, const PaintView& view) {
     if ((int) clip->state.getProperty(IDs::paintMode, 0) == 0) {
         paintNoteLanes(g, view);
+        paintTicksOverLanes(g, view);
         paintNotes(g, view);
     } else {
         paintRegisters(g, view);
@@ -983,6 +985,18 @@ struct LaneView {
             return layout.visibleX.getStart() + whiteKeyWidth;
         return getLabelX() + (detail.labels != LaneDetail::None ? laneLabelWidth : 0.0f);
     }
+    /** The whole pixels of the view's part of the clip, and where the grid starts in them, right of
+        the keys and names. */
+    Range<int> getViewX() const {
+        return {static_cast<int>(std::floor(layout.visibleX.getStart())),
+                static_cast<int>(std::ceil(layout.visibleX.getEnd()))};
+    }
+    int getGridX() const {
+        const auto viewX = getViewX();
+        if (detail.labels == LaneDetail::None && ! pianoKeys)
+            return viewX.getStart();
+        return jlimit(viewX.getStart(), viewX.getEnd(), static_cast<int>(std::ceil(getGutterRight())));
+    }
 };
 
 /** None when the lanes are off, the clip is empty, the tuning has no grid, or the lanes are
@@ -1058,6 +1072,10 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView) {
     const float labelX = view->getLabelX(), labelWidth = view->getGutterRight() - labelX;
     const auto damage = g.getClipBounds().toFloat();
     constexpr float tonicLabelHeight = 10.0f;
+    // As the timeline grid's finest and medium ticks look on the clip
+    const auto background = getBackground();
+    const auto laneLine = background.overlaidWith(Colors::Timeline::trackGridTickColors[0]);
+    const auto octaveLine = background.overlaidWith(Colors::Timeline::trackGridTickColors[1]);
     const bool labelsInDamage = detail.labels != LaneDetail::None
         && damage.getX() < labelX + labelWidth && damage.getRight() > x;
     if (labelsInDamage)
@@ -1079,8 +1097,11 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView) {
             g.setColour(Colours::white.withAlpha(0.07f));
             g.fillRect(gridX, top, right - gridX, bottom - top);
         }
-        if (detail.lines == LaneDetail::All || isTonic) {
-            g.setColour(Colours::white.withAlpha(detail.lines == LaneDetail::All && ! isTonic ? 0.1f : 0.16f));
+        // Octaves start on C whatever the key; the lines are opaque, so the timeline grid under them
+        // does not add up to a brighter dot where they cross
+        const bool octave = lane.note % 12 == 0;
+        if (detail.lines == LaneDetail::All || octave) {
+            g.setColour(octave ? octaveLine : laneLine);
             g.drawHorizontalLine(roundToInt(bottom), gridX, right);
         }
         if (! labelsInDamage)
@@ -1105,6 +1126,25 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView) {
             g.drawText(lane.label, Rectangle<float>(labelX, bottom - tonicLabelHeight, labelWidth, tonicLabelHeight),
                        Justification::bottomLeft, false);
         }
+    }
+}
+
+/** The timeline grid's beat and bar ticks over the lanes' grid, opaque, so where one crosses a lane
+    line the brighter of the two shows, not their blend. The finest ticks stay under the lanes, the
+    colour of their lines; none cross the keys and names. */
+void PsgClipComponent::paintTicksOverLanes(Graphics& g, const PaintView& view) {
+    auto* psgClip = getPsgClip();
+    const auto lanes = psgClip != nullptr ? getLaneView(*psgClip, getLocalBounds(), view.visibleX) : std::nullopt;
+    if (! lanes)
+        return;
+    const Range<int> gridX {lanes->getGridX(), lanes->getViewX().getEnd()};
+    const auto background = getBackground();
+    for (const auto& tick : grid.getTicks()) {
+        const int x = tick.x - getX();  // ticks are in the track body's x
+        if (tick.level == 0 || tick.level >= Colors::Timeline::trackGridTickColors.size() || ! gridX.contains(x))
+            continue;
+        g.setColour(background.overlaidWith(Colors::Timeline::trackGridTickColors[tick.level]));
+        g.drawVerticalLine(x, 0.0f, static_cast<float>(getHeight()));
     }
 }
 
@@ -1134,7 +1174,7 @@ bool PsgClipComponent::shouldCacheContent() const {
 void PsgClipComponent::paintCachedContent(Graphics& g, const PaintView& view) {
     const float scale = g.getInternalContext().getPhysicalPixelScaleFactor();
     const ContentTiles::Key key {view.toX.timePerPixel, clip->getPosition(), getWidth(), getHeight(),
-                                 roundToInt(scale * 100.0f), contentRevision_};
+                                 roundToInt(scale * 100.0f), contentRevision_, getBackground().getARGB()};
     auto shift = tiles_ != nullptr && tiles_->key == key ? tiles_->getShift(view.toX) : std::nullopt;
     if (! shift) {
         tiles_ = std::make_unique<ContentTiles>(key, view.toX);
@@ -1146,12 +1186,12 @@ void PsgClipComponent::paintCachedContent(Graphics& g, const PaintView& view) {
     const bool notesView = (int) clip->state.getProperty(IDs::paintMode, 0) == 0;
     if (auto* psgClip = getPsgClip(); psgClip != nullptr && notesView)
         if (const auto lanes = getLaneView(*psgClip, getLocalBounds(), view.visibleX)) {
-            const int left = static_cast<int>(std::floor(view.visibleX.getStart()));
-            const int right = static_cast<int>(std::ceil(view.visibleX.getEnd()));
-            const bool hasGutter = lanes->detail.labels != LaneDetail::None || lanes->pianoKeys;
-            const int gridX = hasGutter ? jlimit(left, right, static_cast<int>(std::ceil(lanes->getGutterRight()))) : left;
-            tiles_->paintLanes(g, {left, 0, gridX - left, getHeight()}, {gridX, 0, right - gridX, getHeight()}, scale,
+            const auto viewX = lanes->getViewX();
+            const int gridX = lanes->getGridX();
+            tiles_->paintLanes(g, {viewX.getStart(), 0, gridX - viewX.getStart(), getHeight()},
+                               {gridX, 0, viewX.getEnd() - gridX, getHeight()}, scale,
                                [&](Graphics& lg) { paintNoteLanes(lg, view); });
+            paintTicksOverLanes(g, view);
         }
 
     tiles_->paint(g, *shift, scale, g.getClipBounds(), getShownArea(*this),

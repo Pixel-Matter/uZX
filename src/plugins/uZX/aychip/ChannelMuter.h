@@ -41,7 +41,7 @@ namespace IDs {
  * effects (tone, noise, envelope) are automatically disabled as well.
  *
  * Solo is apart from mute: while any channel is soloed, the others are silent
- * and keep their toggles; a muted channel stays silent when soloed.
+ * and keep their toggles; a soloed channel plays even when muted.
  */
 class ChannelMuter : public ParamsBase<ChannelMuter>,
                      private Value::Listener {

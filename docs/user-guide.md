@@ -74,7 +74,7 @@ Each track ends on the right in its own AY chip and level meter, so a Turbo Soun
 
 - **Chip clock frequency** — affects pitch of the whole output
 - **Stereo mode** — mono, ABC, ACB, or custom channel panning. The Player remembers the layout and width last chosen and gives them to every PSG file it opens next; a saved `.uzx` file keeps its own
-- Channel-level output settings: the A, B and C buttons turn a channel on or off, T, N and E its tone, noise and envelope; `Option`+click (`Alt`+click on Windows and Linux) on A, B or C solos or unsolos that channel, and the button turns emerald. Several channels can be soloed, on any chips: while any is, only the soloed channels play, and a muted one stays silent. Soloing doesn't change the other buttons, and it isn't a step in Undo
+- Channel-level output settings: the A, B and C buttons turn a channel on or off, T, N and E its tone, noise and envelope; `Option`+click (`Alt`+click on Windows and Linux) on A, B or C solos or unsolos that channel, and the button turns emerald. Several channels can be soloed, on any chips: while any is, only the soloed channels play, muted or not. A plain click on a soloed button unsolos it, and the channel goes back to on or off as it was. Soloing doesn't change the other buttons, and it isn't a step in Undo
 
 The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with scope settings; in Studio the menu also sets the chip's MIDI channels. Chips can't be removed or added in the Player, and its controls take no MIDI mapping.
 
@@ -304,7 +304,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |
 | Right-click | Ruler | Zoom, timecode format, and snap options |
-| `Option`+click | A, B or C button of an AY chip | Solo or unsolo the channel (emerald when soloed); while any channel is soloed, on any chip, only soloed ones play |
+| `Option`+click | A, B or C button of an AY chip | Solo or unsolo the channel (emerald when soloed); while any channel is soloed, on any chip, only soloed ones play. A click on a soloed button unsolos it |
 | Right-click | Knob, slider, or switch (Studio) | MIDI mapping: learn a controller, pick a CC, or clear it |
 | Right-click | PSG clip | Notes / Registers view, note lanes, piano keys, hex values on hover, tuning table and key picker |
 | Double-click | Track name (Studio) | Rename |

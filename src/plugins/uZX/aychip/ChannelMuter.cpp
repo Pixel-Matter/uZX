@@ -90,8 +90,10 @@ bool ChannelMuter::getChannelEnabled(size_t chan) const noexcept {
 
 bool ChannelMuter::getChannelEfecctivelyEnabled(size_t c) const noexcept {
     const auto solos = soloMask_.load(std::memory_order_relaxed);
-    const bool soloedOut = solos != 0 && (solos & (1u << c)) == 0;
-    return getChannelEnabled(c) && ! soloedOut && (getToneEnabled(c) || getNoiseEnabled(c) || getEnvelopeEnabled(c));
+    const bool soloed = (solos & (1u << c)) != 0;
+    if (solos != 0 && ! soloed)
+        return false;
+    return (getChannelEnabled(c) || soloed) && (getToneEnabled(c) || getNoiseEnabled(c) || getEnvelopeEnabled(c));
 }
 
 bool ChannelMuter::getToneEnabled(size_t chan) const noexcept {

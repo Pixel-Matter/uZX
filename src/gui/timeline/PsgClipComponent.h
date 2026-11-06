@@ -88,6 +88,11 @@ public:
     /** Where the painters draw: see PsgClipComponent.cpp. */
     struct PaintView;
 
+protected:
+    /** Whether paint() blits the content from cached tiles: while the view follows playback,
+        when it scrolls every frame by whole pixels. */
+    virtual bool shouldCacheContent() const;
+
 private:
     /** The view's part of the clip, in this component's coordinates. */
     PaintView getViewPaintView() const;
@@ -97,6 +102,14 @@ private:
     void paintRegisters(Graphics& g, const PaintView& view);
     void paintNotes(Graphics& g, const PaintView& view);
     void paintNoteLanes(Graphics& g, const PaintView& view, bool withGutter);
+    /** paintContent() from the tiles, and the gutter over them, drawn as it is each frame. */
+    void paintCachedContent(Graphics& g, const PaintView& view);
+
+    /** The content without the gutter, cached as images in fixed-width tiles along x. Scrolling
+        blits them; the tile about to scroll in is painted ahead, a slice each frame. */
+    class ContentTiles;
+    std::unique_ptr<ContentTiles> tiles_;
+    int contentRevision_ = 0;  // changes of the content other than the clip's geometry and the zoom
 
     void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
     void changeListenerCallback(ChangeBroadcaster*) override;

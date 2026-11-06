@@ -525,6 +525,115 @@ private:
 };
 
 //==============================================================================
+class PsgClipComponent::ContentTiles {
+public:
+    /** Logical px: 512 device px on a Retina display. Each frame blits the visible tiles, about
+        ten per 2500 px view, and paints one slice of the tile about to scroll in. */
+    static constexpr int tileWidth = 256, sliceWidth = 64;
+
+    /** What the cached pixels depend on besides the time-to-x mapping. */
+    struct Key {
+        te::TimeDuration timePerPixel;
+        te::ClipPosition position;
+        int width, height, scalePercent, revision;
+
+        bool operator==(const Key& o) const {
+            return timePerPixel == o.timePerPixel && position.time == o.position.time
+                && position.offset == o.position.offset && width == o.width && height == o.height
+                && scalePercent == o.scalePercent && revision == o.revision;
+        }
+    };
+
+    ContentTiles(const Key& k, const ClipXMapping& x) : key(k), toX(x) {}
+
+    /** Whole pixels from the tiles' content x to the component's, or none when the view has
+        moved by a fraction of a pixel since the tiles were painted. */
+    std::optional<int> getShift(const ClipXMapping& now) const {
+        const double shift = (toX.viewStart - now.viewStart) / toX.timePerPixel + (toX.originX - now.originX);
+        const int whole = roundToInt(shift);
+        if (std::abs(shift - whole) > 0.01)
+            return std::nullopt;
+        return whole;
+    }
+
+    using Painter = std::function<void(Graphics&, const PaintView&)>;
+
+    /** Blits the tiles in damage, painting what they lack, and paints a slice ahead of shown.
+        Rectangles are in the component's coordinates. */
+    void paint(Graphics& g, int shift, float scale, Rectangle<int> damage, Rectangle<int> shown, const Painter& painter) {
+        const auto firstOf = [&](int x) { return floorDiv(x - shift); };
+        const int lastTile = (key.width - 1) / tileWidth;
+        const int keepFirst = firstOf(shown.getX()) - 1, keepLast = firstOf(shown.getRight() - 1) + 1;
+        for (auto it = tiles.begin(); it != tiles.end();)
+            it = it->first < keepFirst || it->first > keepLast ? tiles.erase(it) : std::next(it);
+
+        g.setOpacity(1.0f);
+        for (int i = jmax(0, firstOf(damage.getX())); i <= jmin(lastTile, firstOf(damage.getRight() - 1)); ++i) {
+            auto& tile = getTile(i, scale);
+            paintTile(tile, i, tileWidth, scale, painter);
+            g.drawImageTransformed(tile.image, AffineTransform::scale(1.0f / scale)
+                                                   .translated(static_cast<float>(i * tileWidth + shift), 0.0f));
+        }
+
+        // ponytail: a fixed slice keeps up with views scrolling up to sliceWidth / tileWidth of a tile
+        // a frame; faster, the rest is painted as the tile shows. Make it follow the scroll speed if that shows.
+        if (const int ahead = keepLast; ahead <= lastTile)
+            paintTile(getTile(ahead, scale), ahead, sliceWidth, scale, painter);
+    }
+
+    /** Blits the gutter, the note lanes in area with their names and keys, painting it first if
+        area has changed size: it holds nothing that moves with time. */
+    void paintGutter(Graphics& g, Rectangle<int> area, float scale, const std::function<void(Graphics&)>& painter) {
+        const int w = roundToInt(area.getWidth() * scale), h = roundToInt(area.getHeight() * scale);
+        if (gutter.getWidth() != w || gutter.getHeight() != h) {
+            gutter = Image(Image::ARGB, w, h, true);
+            Graphics gg(gutter);
+            gg.addTransform(AffineTransform::scale(scale));
+            gg.setOrigin(-area.getPosition());
+            painter(gg);
+        }
+        g.setOpacity(1.0f);
+        g.drawImageTransformed(gutter, AffineTransform::scale(1.0f / scale)
+                                           .translated(static_cast<float>(area.getX()), static_cast<float>(area.getY())));
+    }
+
+    const Key key;
+    const ClipXMapping toX;  // the content's x, as of when the tiles were first painted
+
+private:
+    Image gutter;
+    struct Tile {
+        Image image;
+        int painted = 0;  // px painted from the tile's left
+    };
+    std::map<int, Tile> tiles;
+
+    static int floorDiv(int x) { return x >= 0 ? x / tileWidth : -((tileWidth - 1 - x) / tileWidth); }
+
+    Tile& getTile(int index, float scale) {
+        auto& tile = tiles[index];
+        if (! tile.image.isValid())
+            tile.image = Image(Image::ARGB, roundToInt(tileWidth * scale), roundToInt(key.height * scale), true);
+        return tile;
+    }
+
+    /** Paints up to width more px of the tile, left to right. */
+    void paintTile(Tile& tile, int index, int width, float scale, const Painter& painter) const {
+        const int end = jmin(tileWidth, tile.painted + width);
+        if (end <= tile.painted)
+            return;
+        {
+            Graphics g(tile.image);
+            g.addTransform(AffineTransform::scale(scale));
+            g.reduceClipRegion(tile.painted, 0, end - tile.painted, key.height);
+            g.setOrigin({-index * tileWidth, 0});
+            painter(g, {toX, {0.0f, static_cast<float>(key.width)}});
+        }
+        tile.painted = end;
+    }
+};
+
+//==============================================================================
 PsgClipComponent::PsgClipComponent(EditViewState& evs, TimelineGrid& g, te::Clip::Ptr c)
     : MidiClipComponent(evs, g, c)
     // , vblankAttachment_(this, [this](double) { onVBlank(); })
@@ -543,6 +652,7 @@ PsgClipComponent::~PsgClipComponent() {
 }
 
 void PsgClipComponent::changeListenerCallback(ChangeBroadcaster*) {
+    ++contentRevision_;
     repaint();
 }
 
@@ -552,11 +662,15 @@ PsgClip* PsgClipComponent::getPsgClip() {
 
 void PsgClipComponent::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Identifier& property) {
     // Frames are placed at the effective fps: frames-per-beat at the current beat length.
-    if (property == te::IDs::bpm || property == te::IDs::startBeat)
+    if (property == te::IDs::bpm || property == te::IDs::startBeat) {
+        ++contentRevision_;
         repaint();
+    }
     // The listener sits on the whole edit; another clip's tuning is not ours to repaint.
-    else if ((isTuningProperty(property) || property == IDs::paintMode) && tree == clip->state)
+    else if ((isTuningProperty(property) || property == IDs::paintMode) && tree == clip->state) {
+        ++contentRevision_;
         repaint();
+    }
     // Warnings over the notes compare with the project's fps and the track's clock, as the header's do
     else if (! editViewState.showClipHeaders && (property == IDs::projectFps || property == uZX::IDs::clock))
         repaint();
@@ -567,7 +681,13 @@ void PsgClipComponent::paint(Graphics& g) {
 
     GUIPaintMeasurer::ScopedTimer timer(paintMeasurer_);
 
-    paintContent(g, getViewPaintView(), true);
+    const auto view = getViewPaintView();
+    if (shouldCacheContent()) {
+        paintCachedContent(g, view);
+    } else {
+        tiles_.reset();
+        paintContent(g, view, true);
+    }
     if (! editViewState.showClipHeaders)
         paintWarnings(g);
 
@@ -968,6 +1088,47 @@ void PsgClipComponent::paintWarnings(Graphics& g) {
             break;
         ClipHeader::paintWarning(g, row.removeFromLeft(width), warning);
         row.removeFromLeft(pad);
+    }
+}
+
+bool PsgClipComponent::shouldCacheContent() const {
+    return editViewState.zoom.isFollowingPlayhead();
+}
+
+void PsgClipComponent::paintCachedContent(Graphics& g, const PaintView& view) {
+    const float scale = g.getInternalContext().getPhysicalPixelScaleFactor();
+    const ContentTiles::Key key {view.toX.timePerPixel, clip->getPosition(), getWidth(), getHeight(),
+                                 roundToInt(scale * 100.0f), contentRevision_};
+    auto shift = tiles_ != nullptr && tiles_->key == key ? tiles_->getShift(view.toX) : std::nullopt;
+    if (! shift) {
+        tiles_ = std::make_unique<ContentTiles>(key, view.toX);
+        shift = 0;
+    }
+
+    // The lane names and piano keys stay at the view's left edge: that strip is the lanes from
+    // their own image, and the notes over them as they are drawn without tiles.
+    Rectangle<int> gutter;
+    if (auto* psgClip = getPsgClip(); psgClip != nullptr && (int) clip->state.getProperty(IDs::paintMode, 0) == 0)
+        if (const auto lanes = getLaneView(*psgClip, getLocalBounds(), view.visibleX))
+            if (lanes->detail.labels != LaneDetail::None || lanes->pianoKeys) {
+                const int left = static_cast<int>(std::floor(view.visibleX.getStart()));
+                gutter = {left, 0, static_cast<int>(std::ceil(lanes->getGutterRight())) - left, getHeight()};
+            }
+
+    {
+        Graphics::ScopedSaveState state(g);
+        g.excludeClipRegion(gutter);
+        if (! g.isClipEmpty())
+            tiles_->paint(g, *shift, scale, g.getClipBounds(), getShownArea(*this),
+                          [this](Graphics& tg, const PaintView& tileView) { paintContent(tg, tileView, false); });
+    }
+    if (! gutter.isEmpty()) {
+        Graphics::ScopedSaveState state(g);
+        g.reduceClipRegion(gutter);
+        if (! g.isClipEmpty()) {
+            tiles_->paintGutter(g, gutter, scale, [&](Graphics& gg) { paintNoteLanes(gg, view, true); });
+            paintNotes(g, view);
+        }
     }
 }
 

@@ -622,6 +622,99 @@ public:
 static PsgNoteLanesTest psgNoteLanesTest;
 
 //==============================================================================
+/** While the view follows playback, a PSG clip blits its content from cached tiles. They must
+    draw what painting the view draws, as the view scrolls by whole pixels (and by a fraction,
+    zooms or changes mode, which repaint the tiles). */
+class PsgClipContentTilesTest : public UnitTest
+{
+public:
+    PsgClipContentTilesTest() : UnitTest("PsgClipContentTiles", "MoTool") {}
+
+    struct CachedClip : PsgClipComponent
+    {
+        using PsgClipComponent::PsgClipComponent;
+        bool shouldCacheContent() const override { return true; }
+    };
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        // Tones only: noise fringes and low-envelope arrows near the view's edges are allowed to differ
+        uZX::PsgData data{{}, {50.0, 1}};
+        for (int i = 0; i < 600; ++i) {
+            const int a = 100 + (i * 37) % 900, b = 300 + (i * 11) % 500;
+            data.frames.push_back({{uZX::PsgRegType::Mixer, 0x3c},
+                                   {uZX::PsgRegType::VolumeA, static_cast<uint8_t>(6 + i % 10)},
+                                   {uZX::PsgRegType::VolumeB, static_cast<uint8_t>(15 - i % 7)},
+                                   {uZX::PsgRegType::TonePeriodFineA, static_cast<uint8_t>(a & 0xff)},
+                                   {uZX::PsgRegType::TonePeriodCoarseA, static_cast<uint8_t>(a >> 8)},
+                                   {uZX::PsgRegType::TonePeriodFineB, static_cast<uint8_t>(b & 0xff)},
+                                   {uZX::PsgRegType::TonePeriodCoarseB, static_cast<uint8_t>(b >> 8)}});
+        }
+        auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                      {{te::TimePosition::fromSeconds(1.0), te::TimeDuration::fromSeconds(12.0)}, {}},
+                                      "tiles");
+        te::SelectionManager selection(engine);
+        EditViewState view(*edit, selection);
+        view.zoom.setViewWidthPx(1000);
+        TimelineGrid grid(view);
+        PsgClipComponent direct(view, grid, clip);
+        CachedClip cached(view, grid, clip);
+        const bool wereLanes = areNoteLanesShown(engine), wereKeys = arePianoKeysShown(engine);
+        setNoteLanesShown(engine, true);
+        setPianoKeysShown(engine, true);
+
+        // Placed and drawn the way the track body does it, into the view's own pixels at Retina scale
+        const auto render = [&](PsgClipComponent& component) {
+            const auto range = clip->getEditTimeRange();
+            const int x = roundToInt(view.zoom.timeToX(range.getStart()));
+            component.setBounds(x, 0, roundToInt(view.zoom.timeToX(range.getEnd())) - x, 300);
+            Image image(Image::ARGB, 2000, 600, true);
+            {
+                Graphics g(image);
+                g.addTransform(AffineTransform::scale(2.0f));
+                g.setOrigin(component.getPosition());
+                component.paint(g);
+            }
+            return image;
+        };
+        const auto expectSameAt = [&](double startPx, double timePerPixelSec, const String& what) {
+            const auto timePerPixel = te::TimeDuration::fromSeconds(timePerPixelSec);
+            view.zoom.setRange({te::TimePosition() + timePerPixel * startPx, timePerPixel * 1000.0});
+            const auto expected = render(direct), actual = render(cached);
+            int worst = 0;
+            for (int y = 0; y < expected.getHeight(); ++y)
+                for (int x = 0; x < expected.getWidth(); ++x) {
+                    const auto e = expected.getPixelAt(x, y), a = actual.getPixelAt(x, y);
+                    worst = std::max({worst, std::abs(e.getRed() - a.getRed()), std::abs(e.getGreen() - a.getGreen()),
+                                      std::abs(e.getBlue() - a.getBlue()), std::abs(e.getAlpha() - a.getAlpha())});
+                }
+            // The tiles hold the content alone, composited over the clip's fill: rounding only
+            expect(worst <= 2, what + ": channels differ by up to " + String(worst));
+        };
+
+        beginTest("Tiles draw what the view draws while it scrolls by whole pixels");
+        for (const double startPx : {100.0, 113.0, 126.0, 139.0, 400.0, 1500.0, 1513.0})
+            expectSameAt(startPx, 0.004, "at " + String(startPx) + " px");
+
+        beginTest("Tiles are repainted when the view moves by a fraction of a pixel or zooms");
+        expectSameAt(1513.37, 0.004, "a fraction later");
+        expectSameAt(1513.37 * 0.004 / 0.0031, 0.0031, "zoomed in");
+
+        beginTest("Tiles are repainted in the Registers view");
+        clip->state.setProperty(IDs::paintMode, 1, nullptr);
+        expectSameAt(800.0, 0.0031, "registers");
+        expectSameAt(813.0, 0.0031, "registers, scrolled");
+        clip->state.setProperty(IDs::paintMode, 0, nullptr);
+
+        setNoteLanesShown(engine, wereLanes);
+        setPianoKeysShown(engine, wereKeys);
+    }
+};
+
+static PsgClipContentTilesTest psgClipContentTilesTest;
+
+//==============================================================================
 /** The tuning picker must never keep a clip alive past its Edit: a clip's destructor
     reaches into its Edit, so a picker left open while the Player opened another file
     used to crash when it closed. */

@@ -267,7 +267,11 @@ void ZoomViewState::handlePlaybackScrolling() {
         auto range = getRange();
         auto leftRange = range.getLength() / 3.0;
         if (pos < viewStartTime || pos > viewStartTime + leftRange) {
-            auto newX1 = jmax(te::TimePosition(), pos - leftRange);
+            // On the timeline's whole pixels, so what is drawn keeps its place within a pixel and
+            // clips can blit their cached content (PsgClipComponent) in line with the ruler and the playhead
+            const auto timePerPixel = getTimePerPixel();
+            auto newX1 = te::TimePosition() + timePerPixel * std::floor(jmax(te::TimePosition(), pos - leftRange)
+                                                                             .inSeconds() / timePerPixel.inSeconds());
             if (newX1 != viewStartTime) {
                 setStart(newX1);
             }

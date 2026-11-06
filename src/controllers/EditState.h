@@ -99,6 +99,10 @@ public:
         on screen by then. */
     static constexpr double frameLead = 1.0;
 
+    /** While playing, unless the user holds or has just scrolled the view: the view keeps the
+        playhead in its left third, scrolling by whole pixels. */
+    bool isFollowingPlayhead() const;
+
     /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
     void beginDrag();
     /** Sideways scrolls, vertically zooms around anchorX (down zooms out); deltas are from the drag start. */
@@ -140,7 +144,6 @@ private:
     void handleAsyncUpdate() override;
     static bool isZoomProperty(const juce::Identifier& id);
     void handlePlaybackScrolling();
-    bool isFollowingPlayhead() const;
     void zoomAroundXByScale(double timePerPixelScale, int anchorX);
     bool jumpToPosition(te::TimePosition pos);
     bool jumpToCurrentPosition();

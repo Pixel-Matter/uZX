@@ -74,7 +74,7 @@ Each track ends on the right in its own AY chip and level meter, so a Turbo Soun
 
 - **Chip clock frequency** — affects pitch of the whole output
 - **Stereo mode** — mono, ABC, ACB, or custom channel panning. The Player remembers the layout and width last chosen and gives them to every PSG file it opens next; a saved `.uzx` file keeps its own
-- Channel-level output settings
+- Channel-level output settings: T, N and E turn a channel's tone, noise and envelope on or off. Each of A, B and C is on, muted (red) or soloed (emerald): a click mutes a channel that is on and turns a muted or soloed one back on; `Option`+click (`Alt`+click on Windows and Linux) solos it, a muted one too, or unsolos it. Several channels can be soloed, on any chips: while any is, only the soloed channels play. Soloing doesn't change the other buttons, and it isn't a step in Undo
 
 The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with scope settings; in Studio the menu also sets the chip's MIDI channels. Chips can't be removed or added in the Player, and its controls take no MIDI mapping.
 
@@ -259,7 +259,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 
 ## Keyboard and Mouse
 
-`Cmd` is `Ctrl` on Windows and Linux; on a Mac, `Ctrl`+click works as a right-click. Keys are ignored while a text field is being edited.
+`Cmd` is `Ctrl` and `Option` is `Alt` on Windows and Linux; on a Mac, `Ctrl`+click works as a right-click. Keys are ignored while a text field is being edited.
 
 ### Keyboard
 
@@ -304,6 +304,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |
 | Right-click | Ruler | Zoom, timecode format, and snap options |
+| `Option`+click | A, B or C button of an AY chip | Solo the channel, a muted one too, or unsolo it (emerald when soloed); while any channel is soloed, on any chip, only soloed ones play. A plain click turns a soloed or muted channel back on |
 | Right-click | Knob, slider, or switch (Studio) | MIDI mapping: learn a controller, pick a CC, or clear it |
 | Right-click | PSG clip | Notes / Registers view, note lanes, piano keys, hex values on hover, tuning table and key picker |
 | Double-click | Track name (Studio) | Rename |

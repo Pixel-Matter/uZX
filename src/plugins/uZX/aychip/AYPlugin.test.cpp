@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "AYPlugin.h"
+#include "AYPluginEditor.h"
 #include "../../../models/PsgClip.h"
 #include "../../../util/TestHelpers.h"
 
@@ -150,5 +151,76 @@ private:
 };
 
 static AYChipSeekStateTests ayChipSeekStateTests;
+
+//==============================================================================
+class AYChipSoloTests : public juce::UnitTest {
+public:
+    AYChipSoloTests() : UnitTest("AYChipSolo", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        edit->ensureNumberOfAudioTracks(2);
+        auto tracks = te::getAudioTracks(*edit);
+        auto addChip = [&](te::AudioTrack& track) -> AYChipPlugin& {
+            auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+            track.pluginList.insertPlugin(plugin, 0, nullptr);
+            return dynamic_cast<AYChipPlugin&>(*plugin);
+        };
+        auto& chip1 = addChip(*tracks[0]);
+        addChip(*tracks[1]);
+
+        beginTest("A chip with a soloed channel solos its track, so the other tracks go silent");
+        {
+            chip1.toggleSolo(1);
+            chip1.toggleSolo(2);
+            expect(tracks[0]->isSolo(false) && ! tracks[1]->isSolo(false));
+
+            chip1.toggleSolo(1);
+            expect(tracks[0]->isSolo(false), "C is still soloed");
+
+            chip1.toggleSolo(2);
+            expect(! edit->areAnyTracksSolo(), "no solo left");
+        }
+
+        beginTest("A channel is on, muted or soloed, and a click turns a muted or soloed one back on");
+        {
+            AYPluginUI ui {&chip1};
+            auto button = [&](const String& text) -> Button* {
+                for (auto* child : ui.getChildren())
+                    if (auto* b = dynamic_cast<TextButton*>(child); b != nullptr && b->getButtonText() == text)
+                        return b;
+                return nullptr;
+            };
+            auto& muter = chip1.channelMuter;
+
+            chip1.toggleSolo(0);  // what Alt-click on A does
+            button("A")->triggerClick();
+            TestHelpers::flushMessageQueue();
+            expect(! muter.hasSolo() && muter.channelA.getStoredValue(), "A unsoloed, not muted");
+
+            button("B")->triggerClick();
+            TestHelpers::flushMessageQueue();
+            expect(! muter.channelB.getStoredValue(), "a click on a channel that's on mutes it");
+
+            chip1.toggleSolo(1);  // click then Alt-click
+            expect(muter.soloB.getStoredValue() && muter.channelB.getStoredValue(), "the muted channel is soloed instead");
+
+            button("B")->triggerClick();
+            TestHelpers::flushMessageQueue();
+            expect(! muter.hasSolo() && muter.channelB.getStoredValue(), "and a click turns it back on");
+        }
+
+        beginTest("Solo is not a step in Undo, as track solo isn't");
+        {
+            edit->getUndoManager().clearUndoHistory();
+            chip1.toggleSolo(0);
+            expect(! edit->getUndoManager().canUndo());
+            chip1.toggleSolo(0);
+        }
+    }
+};
+
+static AYChipSoloTests ayChipSoloTests;
 
 }  // namespace MoTool::Tests

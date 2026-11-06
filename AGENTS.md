@@ -34,6 +34,7 @@ CI builds with Clang (macOS), GCC (Linux), and MSVC (Windows). Clang is the most
 - GCC `-Wshadow`: a constructor parameter named like an inherited member. Rename the parameter (e.g. trailing `_`).
 - GCC `-Wunused-but-set-variable`: a variable used only inside `DBG()`, which is empty in Release. Use `juce::ignoreUnused(x)`.
 - GCC `-Wfloat-equal`: `==`/`!=` on floats. Wrap intentional comparisons in `JUCE_BEGIN/END_IGNORE_WARNINGS_GCC_LIKE("-Wfloat-equal")`.
+- `JUCE_MAC`, `JUCE_WINDOWS` and `JUCE_LINUX` are defined only on their own platform, so `JUCE_MAC ? a : b` is an undeclared identifier elsewhere. Test them with `#if`.
 - MSVC rejects `[[maybe_unused]]` on a range-for variable. Use `juce::ignoreUnused(var)` in the loop body.
 - MSVC: `String::formatted("%s", str.toUTF8())` garbles text because `%s` expects `wchar_t*` on Windows. Concatenate instead: `"prefix " + str + String::formatted(", val=%.2f", x)`.
 

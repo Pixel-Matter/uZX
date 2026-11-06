@@ -16,19 +16,23 @@ AYPluginUI::ChannelGroup::ChannelGroup(AYChipPlugin& plugin,
                                         ParameterValue<bool>& channelParam,
                                         ParameterValue<bool>& toneParam,
                                         ParameterValue<bool>& noiseParam,
-                                        ParameterValue<bool>& envelopeParam)
+                                        ParameterValue<bool>& envelopeParam,
+                                        ParameterValue<bool>& soloParam)
     : channelOn   { plugin, channelParam }
     , toneOn      { plugin, toneParam }
     , noiseOn     { plugin, noiseParam }
     , envelopeOn  { plugin, envelopeParam }
     , channelParam_(channelParam)
+    , soloParam_(soloParam)
 {
     channelParam_.addListener(this);
+    soloParam_.addListener(this);
     updateTNEState();
 }
 
 AYPluginUI::ChannelGroup::~ChannelGroup() {
     channelParam_.removeListener(this);
+    soloParam_.removeListener(this);
 }
 
 void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
@@ -39,8 +43,6 @@ void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
 }
 
 void AYPluginUI::ChannelGroup::setupButtonColours(ToggleButton& button) {
-    // button .setColour(TextButton::buttonOnColourId, Colors::Theme::soloed);
-
     // if logic is inverted, use Theme::surface as on color
     button.setColour(TextButton::buttonOnColourId, Colors::Theme::surface);
     button.setColour(TextButton::buttonColourId,   Colors::Theme::muted);
@@ -53,6 +55,7 @@ void AYPluginUI::ChannelGroup::setupWidgets() {
     setupButtonColours(toneOn);
     setupButtonColours(noiseOn);
     setupButtonColours(envelopeOn);
+    updateSoloColour();
 
     // Set connected edges for buttons
     channelOn.setConnectedEdges(Button::ConnectedOnRight);
@@ -73,10 +76,19 @@ void AYPluginUI::ChannelGroup::layoutButtons(Rectangle<int> bounds) {
 
 void AYPluginUI::ChannelGroup::valueChanged(Value&) {
     updateTNEState();
+    updateSoloColour();
+}
+
+void AYPluginUI::ChannelGroup::updateSoloColour() {
+    // a soloed channel plays, muted or not
+    const bool soloed = soloParam_.getStoredValue();
+    channelOn.setColour(TextButton::buttonOnColourId, soloed ? Colors::Theme::soloed : Colors::Theme::surface);
+    channelOn.setColour(TextButton::buttonColourId, soloed ? Colors::Theme::soloed : Colors::Theme::muted);
+    channelOn.setColour(TextButton::textColourOffId, soloed ? Colors::Theme::textPrimary : Colors::Theme::background);
 }
 
 void AYPluginUI::ChannelGroup::updateTNEState() {
-    bool enabled = channelParam_.getStoredValue();
+    bool enabled = channelParam_.getStoredValue() || soloParam_.getStoredValue();
     toneOn.setEnabled(enabled);
     noiseOn.setEnabled(enabled);
     envelopeOn.setEnabled(enabled);
@@ -162,9 +174,24 @@ void AYPluginUI::updateScopeDisplayParams() {
 }
 
 void AYPluginUI::setupToggleButtons() {
-    for (auto* group : channelGroups) {
-        group->addToComponent(*this);
-        group->setupWidgets();
+    for (size_t chan = 0; chan < channelGroups.size(); ++chan) {
+        auto& group = *channelGroups[chan];
+        group.addToComponent(*this);
+        group.setupWidgets();
+
+        auto& button = group.channelOn;
+       #if JUCE_MAC
+        button.setTooltip(button.getTooltip() + ". Option-click: solo");
+       #else
+        button.setTooltip(button.getTooltip() + ". Alt-click: solo");
+       #endif
+        // a channel is on, muted or soloed: a click turns a muted or soloed one back on
+        button.onClick = [this, chan, toggle = std::move(button.onClick)] {
+            if (ModifierKeys::currentModifiers.isAltDown() || plugin_.channelMuter.getSoloParam(chan).getStoredValue())
+                plugin_.toggleSolo(chan);
+            else
+                toggle();
+        };
     }
 }
 

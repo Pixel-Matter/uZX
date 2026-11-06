@@ -1,6 +1,15 @@
 #include "LevelMeter.h"
 #include "LookAndFeel.h"
 
+#if JUCE_WINDOWS
+ #ifndef NOMINMAX
+  #define NOMINMAX
+ #endif
+ #include <windows.h>
+#else
+ #include <time.h>
+#endif
+
 namespace MoTool {
 
 namespace LedMeter {
@@ -72,6 +81,57 @@ void MasterLevelMeter::paint(Graphics& g) {
     auto top = b.removeFromTop(b.getHeight() / 2);
     LedMeter::draw(g, top.withTrimmedBottom(gap), ledSize, gap, left_, true);
     LedMeter::draw(g, b.withTrimmedTop(gap), ledSize, gap, right_, true);
+}
+
+//==============================================================================
+/** CPU time the calling thread has used so far, in milliseconds. */
+static double getThreadCpuTimeMs() {
+   #if JUCE_WINDOWS
+    // ponytail: Windows counts thread time in scheduler ticks (~15.6 ms); fine over the meter's 250 ms.
+    FILETIME created, exited, kernel, user;
+    GetThreadTimes(GetCurrentThread(), &created, &exited, &kernel, &user);
+    const auto ms = [](FILETIME t) { return double((uint64(t.dwHighDateTime) << 32) | t.dwLowDateTime) / 1.0e4; };
+    return ms(kernel) + ms(user);
+   #else
+    timespec t {};
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t);
+    return double(t.tv_sec) * 1.0e3 + double(t.tv_nsec) / 1.0e6;
+   #endif
+}
+
+CpuLoadMeter::CpuLoadMeter(tracktion::Engine& engine)
+    : engine_{engine}
+    , lastThreadMs_{getThreadCpuTimeMs()}
+    , lastWallMs_{Time::getMillisecondCounterHiRes()}
+{
+    setInterceptsMouseClicks(false, false);
+    startTimerHz(4);
+}
+
+void CpuLoadMeter::timerCallback() {
+    // The timer runs on the message thread, so its own CPU time is the message thread's.
+    const auto threadMs = getThreadCpuTimeMs();
+    const auto wallMs = Time::getMillisecondCounterHiRes();
+    if (wallMs > lastWallMs_)
+        message_ = float((threadMs - lastThreadMs_) / (wallMs - lastWallMs_));
+    lastThreadMs_ = threadMs;
+    lastWallMs_ = wallMs;
+
+    audio_ = engine_.getDeviceManager().getCpuUsage();
+    repaint();
+}
+
+void CpuLoadMeter::paint(Graphics& g) {
+    static constexpr int ledSize = 2, gap = 1, ledHeight = 5, captionWidth = 22;
+    g.setFont(FontOptions(9.0f));
+    auto b = getLocalBounds();
+    const auto row = [&](Rectangle<int> r, const char* caption, float load) {
+        g.setColour(Colors::Theme::textSecondary);
+        g.drawText(caption, r.removeFromLeft(captionWidth), Justification::centredLeft, false);
+        LedMeter::draw(g, r.withSizeKeepingCentre(r.getWidth(), ledHeight), ledSize, gap, load, true);
+    };
+    row(b.removeFromTop(b.getHeight() / 2), "DSP", audio_);
+    row(b, "GUI", message_);
 }
 
 }  // namespace MoTool

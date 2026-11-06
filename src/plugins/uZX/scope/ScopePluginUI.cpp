@@ -1,7 +1,26 @@
 #include "ScopePluginUI.h"
 #include "juce_core/juce_core.h"
 
+#include <algorithm>
+#include <cstring>
+
 namespace MoTool::uZX {
+
+std::vector<std::pair<float, float>> minMaxColumns(const float* samples, int numSamples, int columns) {
+    jassert(columns > 0 && numSamples >= columns);
+    std::vector<std::pair<float, float>> spans;
+    spans.reserve(static_cast<size_t>(columns));
+
+    for (int c = 0; c < columns; ++c) {
+        const auto sliceStart = static_cast<int>(static_cast<juce::int64>(c) * numSamples / columns);
+        const int begin = std::max(0, sliceStart - 1);
+        const auto end = static_cast<int>(static_cast<juce::int64>(c + 1) * numSamples / columns);
+        const auto [lo, hi] = std::minmax_element(samples + begin, samples + end);
+        const bool falling = samples[end - 1] < samples[begin];
+        spans.push_back(falling ? std::pair{*hi, *lo} : std::pair{*lo, *hi});
+    }
+    return spans;
+}
 
 //==============================================================================
 // WaveformDisplay implementation
@@ -19,11 +38,6 @@ WaveformDisplay::WaveformDisplay(juce::Colour colour,
 {
     displaySamples_.resize(static_cast<size_t>(windowSize_));
     workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
-    startTimerHz(kRefreshRateHz);
-}
-
-WaveformDisplay::~WaveformDisplay() {
-    stopTimer();
 }
 
 void WaveformDisplay::setWindowSize(int samples) {
@@ -31,50 +45,52 @@ void WaveformDisplay::setWindowSize(int samples) {
         windowSize_ = samples;
         displaySamples_.resize(static_cast<size_t>(windowSize_));
         workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
+        settingsChanged_ = true;
     }
 }
 
 void WaveformDisplay::setGain(float gain) {
     gain_ = gain;
+    settingsChanged_ = true;
 }
 
 void WaveformDisplay::setTriggerStrategy(const TriggerStrategy& strategy) {
     triggerStrategy_ = strategy;
+    settingsChanged_ = true;
 }
 
 void WaveformDisplay::setTriggerLevel(float level) {
     triggerLevel_ = level;
+    settingsChanged_ = true;
 }
 
-void WaveformDisplay::timerCallback() {
-    updateWaveform();
+void WaveformDisplay::onVBlank() {
+    const bool samplesChanged = updateWaveform();  // always runs: a settings change takes the new window too
+    if (! samplesChanged && ! settingsChanged_)
+        return;
+
+    settingsChanged_ = false;
+    buildPath();
     repaint();
 }
 
-void WaveformDisplay::updateWaveform() {
+bool WaveformDisplay::updateWaveform() {
     // Copy samples from ring buffer into work buffer for trigger search
-    int workSamples = windowSize_ * kTriggerSearchMultiplier;
+    const int workSamples = windowSize_ * kTriggerSearchMultiplier;
     sourceBuffer_.copyTo(workBuffer_.data(), workSamples);
 
-    // Find trigger point
-    int triggerOffset = findTriggerPoint();
+    // The trigger is searched in the first window, so a whole window always follows it
+    const int triggerOffset = findTriggerPoint();
+    jassert(triggerOffset >= 0 && triggerOffset + windowSize_ <= workSamples);
+    const float* window = workBuffer_.data() + triggerOffset;
+    const auto bytes = displaySamples_.size() * sizeof(float);
 
-    // Copy display window starting from trigger point
-    int copyStart = triggerOffset;
-    int copyCount = std::min(windowSize_, workSamples - triggerOffset);
+    // Silence, a held tone or a stopped transport give the same window: nothing to repaint
+    if (std::memcmp(displaySamples_.data(), window, bytes) == 0)
+        return false;
 
-    if (copyCount > 0) {
-        std::copy(workBuffer_.begin() + copyStart,
-                  workBuffer_.begin() + copyStart + copyCount,
-                  displaySamples_.begin());
-    }
-
-    // Fill remaining with zeros if needed
-    if (copyCount < windowSize_) {
-        std::fill(displaySamples_.begin() + copyCount, displaySamples_.end(), 0.0f);
-    }
-
-    buildPath();
+    std::memcpy(displaySamples_.data(), window, bytes);
+    return true;
 }
 
 int WaveformDisplay::findTriggerPoint() {
@@ -94,22 +110,32 @@ void WaveformDisplay::buildPath() {
     const float midY = height * 0.5f;
     const float scaleY = midY * gain_;
 
+    const auto toY = [&](float sample) { return juce::jlimit(0.0f, height, midY - sample * scaleY); };
+    const auto addPoint = [this](size_t i, float x, float y) {
+        if (i == 0)
+            waveformPath_.startNewSubPath(x, y);
+        else
+            waveformPath_.lineTo(x, y);
+    };
+
     const int numSamples = static_cast<int>(displaySamples_.size());
-    const float xStep = width / static_cast<float>(numSamples - 1);
+    const int columns = juce::roundToInt(width * Component::getApproximateScaleFactorForComponent(this));
 
-    // Start path
-    float x = 0.0f;
-    float y = midY - displaySamples_[0] * scaleY;
-    y = juce::jlimit(0.0f, height, y);
-    waveformPath_.startNewSubPath(x, y);
-
-    // Draw line through all samples
-    for (int i = 1; i < numSamples; ++i) {
-        x = static_cast<float>(i) * xStep;
-        y = midY - displaySamples_[static_cast<size_t>(i)] * scaleY;
-        y = juce::jlimit(0.0f, height, y);
-        waveformPath_.lineTo(x, y);
+    // More samples than physical pixels: one min/max span per pixel column
+    if (columns >= 2 && numSamples > 2 * columns) {
+        const auto spans = minMaxColumns(displaySamples_.data(), numSamples, columns);
+        const float xStep = width / static_cast<float>(columns - 1);
+        for (size_t c = 0; c < spans.size(); ++c) {
+            const float x = static_cast<float>(c) * xStep;
+            addPoint(c, x, toY(spans[c].first));
+            waveformPath_.lineTo(x, toY(spans[c].second));
+        }
+        return;
     }
+
+    const float xStep = width / static_cast<float>(numSamples - 1);
+    for (size_t i = 0; i < displaySamples_.size(); ++i)
+        addPoint(i, static_cast<float>(i) * xStep, toY(displaySamples_[i]));
 }
 
 void WaveformDisplay::paint(juce::Graphics& g) {

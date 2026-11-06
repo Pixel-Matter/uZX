@@ -65,6 +65,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     addAndMakeVisible(transportReadout_);
     addAndMakeVisible(masterVolumeSlider_);
     addAndMakeVisible(masterMeter_);
+    addAndMakeVisible(cpuMeter_);
 
     if (options_.showRecord)
         addAndMakeVisible(recordButton_);
@@ -194,6 +195,9 @@ void TransportBar::resized() {
     masterMeter_.setBounds(b.removeFromRight(meterWidth).withSizeKeepingCentre(meterWidth, w / 2));
     b.removeFromRight(spacing);
     masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
+    b.removeFromRight(spacing);
+    static constexpr int cpuMeterWidth = 62;
+    cpuMeter_.setBounds(b.removeFromRight(cpuMeterWidth));
     b.removeFromRight(spacing);
 
     // Components that make up the left-aligned block, collected so we can shift the

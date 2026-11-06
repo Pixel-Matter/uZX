@@ -57,6 +57,7 @@ The transport sits above the timeline; each track ends in its AY chip and level 
 | Time signature (SIG) | Click and type a new one, such as 3/4 or 6/8; a bare number keeps the denominator. PSG clips keep playing at the same times. Importing a PSG into an empty project sets 3/4 when its drum and bass patterns clearly repeat every three beats, 4/4 when they clearly repeat every four, and otherwise leaves it as is |
 | Master volume knob | Output level; each app remembers it across files and launches |
 | Level meter | Stereo output level, after the master volume |
+| CPU meter | Left of the master volume knob. DSP: how much of each audio buffer's time the sound engine needs; near full, the sound can crackle. GUI: how busy the app's main thread is, which draws the window; near full, the timeline and scopes can stutter |
 
 For keys, see [Keyboard and Mouse](#keyboard-and-mouse).
 

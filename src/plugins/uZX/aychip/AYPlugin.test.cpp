@@ -50,7 +50,18 @@ public:
             expectRegisters(chip.getChipRegisters(), data.frames[0]);
         }
 
-        transport.stop(false, false);
+        beginTest("Stopped, the scopes keep the last frame that played");
+        {
+            transport.stop(false, false);
+            TestHelpers::processBlocks(engine, 2);
+            std::array<float, ScopeBuffer::kBufferSize> onStop {}, later {};
+            chip.getVizChannelBuffer(0)->copyTo(onStop.data(), ScopeBuffer::kBufferSize);
+            TestHelpers::processBlocks(engine, 10);
+            chip.getVizChannelBuffer(0)->copyTo(later.data(), ScopeBuffer::kBufferSize);
+
+            expect(std::any_of(onStop.begin(), onStop.end(), [](float x) { return x > 0.0f; }), "A's tone is shown");
+            expect(onStop == later, "A's scope holds still");
+        }
     }
 
 private:

@@ -178,7 +178,8 @@ void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int current
     rawChannelBuffer_.setSize(kNumVizChannels, static_cast<int>(samples), false, false, true);
     chip->processBlockStereo(left, right, samples, staticParams.removeDC.getStoredValue(),
                              rawChannelBuffer_.getArrayOfWritePointers());
-    copyTempBufferToVizBuffer();
+    if (fc.isPlaying)  // stopped, the scopes keep the last frame that played
+        copyTempBufferToVizBuffer();
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {

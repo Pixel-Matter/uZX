@@ -950,7 +950,8 @@ LaneDetail getLaneDetail(float noteHeight) {
     return { level(minLineSpacing), level(minLabelHeight) };
 }
 
-constexpr float whiteKeyWidth = 18.0f, blackKeyWidth = 11.0f;
+// A black key holds a sharp's name, C#4; right of it, a white key holds its own.
+constexpr float whiteKeyWidth = 32.0f, blackKeyWidth = 18.0f, keyNameGap = 2.0f;
 constexpr float laneLabelGap = 3.0f, laneLabelWidth = 40.0f;
 
 /** The note lanes as the Notes view draws them now. */
@@ -959,10 +960,17 @@ struct LaneView {
     LaneDetail detail;
     bool pianoKeys;  // keys too short to tell apart leave just the grid
 
-    /** Where the names start: right of the keys when they are shown. */
-    float getLabelX() const { return layout.visibleX.getStart() + (pianoKeys ? whiteKeyWidth : 0.0f) + laneLabelGap; }
+    /** Where the names start: right of the black keys when the keys are shown, but a black
+        key's own name starts at its left end. */
+    float getLabelX() const {
+        return layout.visibleX.getStart() + (pianoKeys ? blackKeyWidth + keyNameGap : laneLabelGap);
+    }
     /** Where the keys and names end: right of it is clear of them. */
-    float getGutterRight() const { return getLabelX() + (detail.labels != LaneDetail::None ? laneLabelWidth : 0.0f); }
+    float getGutterRight() const {
+        if (pianoKeys)
+            return layout.visibleX.getStart() + whiteKeyWidth;
+        return getLabelX() + (detail.labels != LaneDetail::None ? laneLabelWidth : 0.0f);
+    }
 };
 
 /** None when the lanes are off, the clip is empty, the tuning has no grid, or the lanes are
@@ -1030,46 +1038,62 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView, b
         lanesRevision_ = tuning.revision;
     }
 
-    // Without a key the octave anchor falls back to C and no lane is shaded.
+    // Without a key the octave anchor falls back to C and no lane is shaded; the keys name C major.
     const int tonic = tuning.hasKey ? static_cast<int>(tuning.key.tonic) : 0;
-    const float x = layout.visibleX.getStart(), width = layout.visibleX.getLength();
-    const float labelX = view->getLabelX();
+    const Scale scale(tuning.hasKey ? tuning.key.getScaleType() : Scale::ScaleType(Scale::ScaleType::IonianOrMajor));
+    const float x = layout.visibleX.getStart(), right = layout.visibleX.getEnd();
+    const float gridX = withGutter && pianoKeys ? x + whiteKeyWidth : x;  // the keys take the grid's left end
+    const float labelX = view->getLabelX(), labelWidth = view->getGutterRight() - labelX;
     const auto damage = g.getClipBounds().toFloat();
-    constexpr float labelWidth = laneLabelWidth, tonicLabelHeight = 10.0f;
+    constexpr float tonicLabelHeight = 10.0f;
     const bool labelsInDamage = withGutter && detail.labels != LaneDetail::None
         && damage.getX() < labelX + labelWidth && damage.getRight() > x;
     if (labelsInDamage)
         g.setFont(Font(FontOptions(detail.labels == LaneDetail::All ? jmin(11.0f, layout.noteHeight - 2.0f) : 9.0f)));
+    if (withGutter && pianoKeys)
+        paintPianoKeys(g, lanes_, layout);
 
     for (const auto& lane : lanes_) {
         const float top = layout.normToY(lane.hi), bottom = layout.normToY(lane.lo);
-        // A tonic label hangs above the lane's bottom boundary and may overflow a short lane.
-        if (bottom < damage.getY() || jmin(top, bottom - tonicLabelHeight) > damage.getBottom())
+        // A tonic label hangs above the lane's bottom boundary, or is centred on it over the
+        // keys, and may overflow a short lane.
+        if (bottom + tonicLabelHeight * 0.5f < damage.getY()
+            || jmin(top, bottom - tonicLabelHeight) > damage.getBottom())
             continue;
 
-        const bool isTonic = ((lane.note % 12) + 12) % 12 == tonic;
+        const int degree = ((lane.note - tonic) % 12 + 12) % 12;
+        const bool isTonic = degree == 0;
         if (tuning.hasKey && isTonic && detail.lines == LaneDetail::All) {
             g.setColour(Colours::white.withAlpha(0.07f));
-            g.fillRect(x, top, width, bottom - top);
+            g.fillRect(gridX, top, right - gridX, bottom - top);
         }
         if (detail.lines == LaneDetail::All || isTonic) {
             g.setColour(Colours::white.withAlpha(detail.lines == LaneDetail::All && ! isTonic ? 0.1f : 0.16f));
-            g.drawHorizontalLine(roundToInt(bottom), x, x + width);
+            g.drawHorizontalLine(roundToInt(bottom), gridX, right);
         }
         if (! labelsInDamage)
             continue;
         if (detail.labels == LaneDetail::All) {
-            g.setColour(Colours::white.withAlpha(isTonic ? 0.8f : 0.45f));
-            g.drawText(lane.label, Rectangle<float>(labelX, top, labelWidth, bottom - top),
+            // Over the keys only the key's notes are named: light on a black key, dark on a white one.
+            if (pianoKeys && ! scale.isIntervalInScale(degree))
+                continue;
+            const bool onBlackKey = pianoKeys && MidiMessage::isMidiNoteBlack(lane.note);
+            const float nameX = onBlackKey ? x : labelX;
+            const auto ink = pianoKeys && ! onBlackKey ? Colours::black : Colours::white;
+            g.setColour(ink.withAlpha(isTonic ? 0.8f : 0.45f));
+            g.drawText(lane.label, Rectangle<float>(nameX, top, labelX + labelWidth - nameX, bottom - top),
                        Justification::centredLeft, false);
+        } else if (isTonic && pianoKeys) {
+            // Taller than its key, so on the white ends right of the black keys, centred on its own
+            g.setColour(Colours::black.withAlpha(0.7f));
+            g.drawText(lane.label, Rectangle<float>(labelX, (top + bottom - tonicLabelHeight) * 0.5f, labelWidth,
+                                                    tonicLabelHeight), Justification::centredLeft, false);
         } else if (isTonic) {
             g.setColour(Colours::white.withAlpha(0.45f));
             g.drawText(lane.label, Rectangle<float>(labelX, bottom - tonicLabelHeight, labelWidth, tonicLabelHeight),
                        Justification::bottomLeft, false);
         }
     }
-    if (withGutter && pianoKeys)
-        paintPianoKeys(g, lanes_, layout);
 }
 
 void PsgClipComponent::paintWarnings(Graphics& g) {

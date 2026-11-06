@@ -1,6 +1,8 @@
 #include "ScopePluginUI.h"
 #include "juce_core/juce_core.h"
 
+#include <cstring>
+
 namespace MoTool::uZX {
 
 //==============================================================================
@@ -19,11 +21,6 @@ WaveformDisplay::WaveformDisplay(juce::Colour colour,
 {
     displaySamples_.resize(static_cast<size_t>(windowSize_));
     workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
-    startTimerHz(kRefreshRateHz);
-}
-
-WaveformDisplay::~WaveformDisplay() {
-    stopTimer();
 }
 
 void WaveformDisplay::setWindowSize(int samples) {
@@ -31,50 +28,52 @@ void WaveformDisplay::setWindowSize(int samples) {
         windowSize_ = samples;
         displaySamples_.resize(static_cast<size_t>(windowSize_));
         workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
+        settingsChanged_ = true;
     }
 }
 
 void WaveformDisplay::setGain(float gain) {
     gain_ = gain;
+    settingsChanged_ = true;
 }
 
 void WaveformDisplay::setTriggerStrategy(const TriggerStrategy& strategy) {
     triggerStrategy_ = strategy;
+    settingsChanged_ = true;
 }
 
 void WaveformDisplay::setTriggerLevel(float level) {
     triggerLevel_ = level;
+    settingsChanged_ = true;
 }
 
-void WaveformDisplay::timerCallback() {
-    updateWaveform();
+void WaveformDisplay::onVBlank() {
+    const bool samplesChanged = updateWaveform();  // always runs: a settings change takes the new window too
+    if (! samplesChanged && ! settingsChanged_)
+        return;
+
+    settingsChanged_ = false;
+    buildPath();
     repaint();
 }
 
-void WaveformDisplay::updateWaveform() {
+bool WaveformDisplay::updateWaveform() {
     // Copy samples from ring buffer into work buffer for trigger search
-    int workSamples = windowSize_ * kTriggerSearchMultiplier;
+    const int workSamples = windowSize_ * kTriggerSearchMultiplier;
     sourceBuffer_.copyTo(workBuffer_.data(), workSamples);
 
-    // Find trigger point
-    int triggerOffset = findTriggerPoint();
+    // The trigger is searched in the first window, so a whole window always follows it
+    const int triggerOffset = findTriggerPoint();
+    jassert(triggerOffset >= 0 && triggerOffset + windowSize_ <= workSamples);
+    const float* window = workBuffer_.data() + triggerOffset;
+    const auto bytes = displaySamples_.size() * sizeof(float);
 
-    // Copy display window starting from trigger point
-    int copyStart = triggerOffset;
-    int copyCount = std::min(windowSize_, workSamples - triggerOffset);
+    // Silence, a held tone or a stopped transport give the same window: nothing to repaint
+    if (std::memcmp(displaySamples_.data(), window, bytes) == 0)
+        return false;
 
-    if (copyCount > 0) {
-        std::copy(workBuffer_.begin() + copyStart,
-                  workBuffer_.begin() + copyStart + copyCount,
-                  displaySamples_.begin());
-    }
-
-    // Fill remaining with zeros if needed
-    if (copyCount < windowSize_) {
-        std::fill(displaySamples_.begin() + copyCount, displaySamples_.end(), 0.0f);
-    }
-
-    buildPath();
+    std::memcpy(displaySamples_.data(), window, bytes);
+    return true;
 }
 
 int WaveformDisplay::findTriggerPoint() {

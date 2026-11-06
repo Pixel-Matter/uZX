@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "PsgClipComponent.h"
+#include "TimelineGrid.h"
 #include "../common/LookAndFeel.h"
 #include "../../util/Oklch.h"
 #include "../../formats/psg/PsgData.h"
@@ -139,5 +140,66 @@ public:
 };
 
 static ClipHeaderTests clipHeaderTests;
+
+//==============================================================================
+/** The timeline grid runs under a clip's contents: over its fill, but not over its notes. */
+class ClipGridTests : public juce::UnitTest {
+public:
+    ClipGridTests() : UnitTest("ClipGrid", "MoTool") {}
+
+    void runTest() override {
+        beginTest("Grid lines cross a clip's empty part and pass under an opaque note");
+        auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        // Channel A at full volume, an opaque note, for two seconds of 50 fps frames
+        uZX::PsgData data {{}, {50.0, 1}};
+        for (int i = 0; i < 100; ++i)
+            data.frames.push_back({{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15},
+                                   {uZX::PsgRegType::TonePeriodFineA, 0x1c}, {uZX::PsgRegType::TonePeriodCoarseA, 1}});
+        auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                      {{te::TimePosition(), te::TimeDuration::fromSeconds(2.0)}, {}}, "grid");
+        te::SelectionManager selection(engine);
+        EditViewState view(*edit, selection);
+        view.zoom.setViewWidthPx(1000);
+        view.zoom.setRange({te::TimePosition(), te::TimeDuration::fromSeconds(2.0)});  // frames 10 px wide
+        TimelineGrid grid(view);
+        const bool wereLanes = areNoteLanesShown(engine);
+        setNoteLanesShown(engine, false);
+        PsgClipComponent component(view, grid, clip);
+        component.setBounds(0, 0, 1000, 200);
+        Image image(Image::ARGB, 1000, 200, true);
+        {
+            Graphics g(image);
+            component.paint(g);
+        }
+        setNoteLanesShown(engine, wereLanes);
+
+        // A tick clear of its neighbours, so the column right of it shows the clip without the grid
+        const auto ticks = grid.getTicks();
+        auto tick = std::find_if(ticks.begin(), ticks.end(), [&](const auto& t) {
+            return t.x > 0 && t.x < 998 && std::none_of(ticks.begin(), ticks.end(), [&](const auto& o) { return o.x == t.x + 1; });
+        });
+        expect(tick != ticks.end(), "the view has grid ticks");
+        if (tick == ticks.end())
+            return;
+
+        int onNote = 0, onFill = 0, gridOverNote = 0, gridOnFill = 0;
+        for (int y = 0; y < image.getHeight(); ++y) {
+            const auto beside = image.getPixelAt(tick->x + 1, y), at = image.getPixelAt(tick->x, y);
+            if (beside == Colors::PSG::A) {
+                ++onNote;
+                gridOverNote += at != beside;
+            } else if (beside.isOpaque()) {
+                ++onFill;
+                gridOnFill += at != beside;
+            }
+        }
+        expect(onNote > 0 && onFill > 0, "the column crosses the note and the empty clip");
+        expectEquals(gridOverNote, 0, "the grid must not be drawn over the note");
+        expectEquals(gridOnFill, onFill, "the grid must show on the clip's empty fill");
+    }
+};
+
+static ClipGridTests clipGridTests;
 
 }  // namespace MoTool::Tests

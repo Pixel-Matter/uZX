@@ -272,27 +272,17 @@ void TrackBodyComponent::paint(Graphics& g) {
 }
 
 void TrackBodyComponent::paintOverChildren(Graphics& g) {
-    const auto ticks = grid.getTicks();
-
-    auto drawClipGrid = [&] (const Component& clipComponent) {
-        const auto clipBounds = clipComponent.getBounds().getIntersection(getLocalBounds());
-        if (clipBounds.isEmpty())
-            return;
-
-        for (const auto& tick : ticks) {
-            if (tick.level >= Colors::Timeline::trackGridTickColors.size() || ! clipBounds.contains(tick.x, clipBounds.getY()))
+    // Clips draw the grid under their contents (ClipComponent::paint); a recording clip has it over
+    if (recordingClip != nullptr) {
+        const auto clipBounds = recordingClip->getBounds().getIntersection(getLocalBounds());
+        for (const auto& tick : grid.getTicks()) {
+            if (clipBounds.isEmpty() || tick.level >= Colors::Timeline::trackGridTickColors.size()
+                || ! clipBounds.contains(tick.x, clipBounds.getY()))
                 continue;
-
             g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
             g.drawVerticalLine(tick.x, (float) clipBounds.getY(), (float) clipBounds.getBottom());
         }
-    };
-
-    for (auto* clip : clips)
-        drawClipGrid(*clip);
-
-    if (recordingClip != nullptr)
-        drawClipGrid(*recordingClip);
+    }
 
     // The ring around a selected clip, outside its header and body
     for (auto* header : clipHeaders) {

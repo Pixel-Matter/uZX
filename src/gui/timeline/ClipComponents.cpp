@@ -59,6 +59,16 @@ void ClipComponent::paint(Graphics& g) {
     const bool trackSelected = track != nullptr && editViewState.selectionManager.isSelected(track);
     g.setColour(getFill(Colors::Timeline::lane(trackSelected), selected));
     g.fillPath(shape);
+
+    // The timeline grid over the fill and under the contents, as on the lane around the clip.
+    // Transparent clips show the lane's own.
+    for (const auto& tick : grid.getTicks()) {
+        const int x = tick.x - getX();  // ticks are in the track body's x, where this clip is placed
+        if (tick.level >= Colors::Timeline::trackGridTickColors.size() || x < 0 || x >= getWidth())
+            continue;
+        g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
+        g.drawVerticalLine(x, 0.0f, bounds.getHeight());
+    }
 }
 
 void ClipComponent::mouseDown(const MouseEvent& e) {

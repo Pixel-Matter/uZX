@@ -148,10 +148,12 @@ void addScopeSettingsMenu(juce::PopupMenu& parentMenu,
         });
     targetMenu->addSubMenu("Trigger Mode", triggerMenu);
 
-    // Trigger level presets
+    // Trigger level presets: around zero for audio, above the silence for a chip channel's levels
     juce::PopupMenu levelMenu;
     const float currentLevel = settings.triggerLevel.getStoredValue();
-    const std::array<float, 5> levelPresets = {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
+    const auto levelPresets = settings.baseline == ScopeSettings::Baseline::Bottom
+                                  ? std::vector<float> {0.0f, 0.1f, 0.25f, 0.5f}
+                                  : std::vector<float> {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
     for (float preset : levelPresets) {
         levelMenu.addItem(juce::String(preset, 2),
             true,

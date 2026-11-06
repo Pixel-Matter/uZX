@@ -29,13 +29,11 @@ std::vector<std::pair<float, float>> minMaxColumns(const float* samples, int num
 WaveformDisplay::WaveformDisplay(juce::Colour colour,
                                  const juce::String& label,
                                  const ScopeBuffer& buffer,
-                                 ScopeSettings& settings,
-                                 Baseline baseline)
+                                 ScopeSettings& settings)
     : sourceBuffer_(buffer)
     , scopeSettings_(settings)
     , colour_(colour)
     , label_(label)
-    , baseline_(baseline)
     , triggerStrategy_(TriggerStrategy::risingEdge())
 {
     displaySamples_.resize(static_cast<size_t>(windowSize_));
@@ -103,7 +101,7 @@ int WaveformDisplay::findTriggerPoint() {
 
 WaveformDisplay::YAxis WaveformDisplay::yAxis(float height) const {
     constexpr float margin = 0.05f;
-    if (baseline_ == Baseline::Bottom)
+    if (scopeSettings_.baseline == ScopeSettings::Baseline::Bottom)
         return {height * (1.0f - margin), height * (1.0f - 2.0f * margin) * gain_};
     return {height * 0.5f, height * (0.5f - margin) * gain_};
 }
@@ -155,7 +153,7 @@ void WaveformDisplay::paint(juce::Graphics& g) {
 
     // Zero line; a silent chip channel's waveform lies there itself
     const auto axis = yAxis(bounds.getHeight());
-    const bool chipLevels = baseline_ == Baseline::Bottom;
+    const bool chipLevels = scopeSettings_.baseline == ScopeSettings::Baseline::Bottom;
     if (! chipLevels) {
         g.setColour(Colors::Theme::border);
         g.drawHorizontalLine(static_cast<int>(axis.zero), 0.0f, bounds.getWidth());

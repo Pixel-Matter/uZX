@@ -1,6 +1,6 @@
 /* Ayumi Output Modes Test
  *
- * Tests all three output modes to verify correct functionality.
+ * Tests the stereo and separate output modes and the raw channel levels to verify correct functionality.
  * Compile: gcc -Wall test_ayumi.c ayumi.c -lm -o test_ayumi
  * Run: ./test_ayumi
  */
@@ -117,36 +117,38 @@ static int test_three_channel_mode(void) {
     }
 }
 
-static int test_mono_mode(void) {
+static int test_raw_levels(void) {
     struct ayumi ay;
-    double mono_samples[TEST_SAMPLES];
-    double mono_mean;
-    int i;
+    double peak_a = 0.0, peak_b = 0.0, prev = 0.0;
+    int i, wide_edges = 0;
 
-    printf("Testing MONO mode:\n");
+    printf("Testing raw channel levels:\n");
 
     ayumi_configure(&ay, 0, 2000000, 44100);
-    ayumi_set_output_mode(&ay, AYUMI_MONO);
+    ayumi_set_output_mode(&ay, AYUMI_STEREO);
 
     ayumi_set_tone(&ay, 0, 1000);
     ayumi_set_mixer(&ay, 0, 0, 1, 0);
     ayumi_set_volume(&ay, 0, 15);
 
     for (i = 0; i < TEST_SAMPLES; i++) {
-        double unused;
+        double a;
         ayumi_process(&ay);
-        ayumi_get_stereo_output(&ay, &mono_samples[i], &unused);
+        a = ay.raw[0];
+        /* Two levels in a row between 0 and 1 would be an edge smeared over more than a sample */
+        if (a > 0.0 && a < 1.0 && prev > 0.0 && prev < 1.0) wide_edges++;
+        prev = a;
+        if (a > peak_a) peak_a = a;
+        if (ay.raw[1] > peak_b) peak_b = ay.raw[1];
     }
 
-    mono_mean = compute_mean(mono_samples, TEST_SAMPLES);
+    printf("  Channel A peak: %.6f, channel B peak: %.6f, wide edges: %d\n", peak_a, peak_b, wide_edges);
 
-    printf("  Mono output mean: %.6f\n", mono_mean);
-
-    if (mono_mean > 0.1) {
-        printf("  ✓ MONO mode working correctly\n\n");
+    if (peak_a == 1.0 && peak_b == 0.0 && wide_edges == 0) {
+        printf("  ✓ Raw levels are the DAC levels, one sample per edge\n\n");
         return 1;
     } else {
-        printf("  ✗ MONO mode FAILED\n\n");
+        printf("  ✗ Raw levels FAILED\n\n");
         return 0;
     }
 }
@@ -158,9 +160,9 @@ int main(void) {
     printf("Ayumi Output Modes Test\n");
     printf("=======================\n\n");
 
-    if (test_mono_mode()) tests_passed++;
     if (test_stereo_mode()) tests_passed++;
     if (test_three_channel_mode()) tests_passed++;
+    if (test_raw_levels()) tests_passed++;
 
     printf("Results: %d/%d tests passed\n", tests_passed, tests_total);
 

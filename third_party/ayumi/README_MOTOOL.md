@@ -10,15 +10,14 @@ Peter Sovietov (original Ayumi implementation)
 
 ### Flexible Output Mode System
 
-The original Ayumi provided fixed stereo output. µZX adds support for three output modes with proper filtering for each:
+The original Ayumi provided fixed stereo output. µZX adds a mode with three separate filtered outputs, and raw channel levels in either mode:
 
 #### Output Modes
 
-1. **AYUMI_MONO** - Single mono output (average of all 3 channels)
-2. **AYUMI_STEREO** - Traditional stereo output with panning (default)
-3. **AYUMI_SEPARATE** - Three separate unmixed outputs
+1. **AYUMI_STEREO** - Traditional stereo output with panning (default)
+2. **AYUMI_SEPARATE** - Three separate unmixed outputs, for mixing them elsewhere; no stereo
 
-Each mode processes outputs through the full signal chain:
+The mode's value is its number of outputs. Each output goes through the full signal chain:
 - Cubic interpolation (upsampling from chip rate to sample rate)
 - 192-tap FIR decimation (anti-aliasing filter)
 - DC filtering (optional, per-output)
@@ -36,17 +35,22 @@ struct ayumi_output {
 };
 ```
 
-All 3 outputs are statically allocated. The output mode determines how many are processed (1, 2, or 3).
+All 3 outputs are statically allocated. The output mode determines how many are processed (2 or 3).
+
+#### Raw Channel Levels
+
+After each `ayumi_process()`, `ay->raw[0..2]` holds each channel's DAC level 0..1 averaged over the chip ticks of that
+output sample: no interpolation, FIR or DC filter, so a tone's edge takes at most one sample. They are for scopes. A
+sample with no chip tick, at a low clock and a high sample rate, holds the current level.
 
 ### Performance
 
-Benchmark results (GCC -O3, 441K samples):
+Benchmark results (`make bench`, Apple clang -O3, 441K samples):
 
 | Mode          | Speed         | Real-time factor |
 |---------------|---------------|------------------|
-| MONO          | 6.3 MHz/s     | 143x             |
-| STEREO        | 4.0 MHz/s     | 91x              |
-| THREE_CHANNEL | 3.4 MHz/s     | 77x              |
+| STEREO        | 6.0 MHz/s     | 136x             |
+| THREE_CHANNEL | 4.2 MHz/s     | 96x              |
 
 All modes run comfortably faster than real-time even without SIMD optimizations.
 
@@ -66,16 +70,11 @@ ayumi_configure(&ay, 0, 2000000, 44100);
 ayumi_set_output_mode(&ay, AYUMI_SEPARATE);
 ```
 
-**Important**: Set output mode during configuration, not during processing. Changing modes mid-processing can corrupt filter state.
+Changing modes mid-processing clicks once: the outputs it brings in still hold their old filter state.
 
 #### Processing Audio
 
 ```c
-// Mono mode (only first output is valid, second is unused)
-ayumi_process(&ay);
-double mono, unused;
-ayumi_get_stereo_output(&ay, &mono, &unused);
-
 // Stereo mode (default)
 ayumi_process(&ay);
 double left, right;
@@ -85,6 +84,9 @@ ayumi_get_stereo_output(&ay, &left, &right);
 ayumi_process(&ay);
 double ch0, ch1, ch2;
 ayumi_get_separate_output(&ay, &ch0, &ch1, &ch2);
+
+// Raw levels, in either mode
+double a = ay.raw[0], b = ay.raw[1], c = ay.raw[2];
 ```
 
 #### DC Filtering
@@ -106,9 +108,10 @@ make clean   # Remove built binaries
 
 ### Test Utility
 
-`test_ayumi.c` verifies all three output modes work correctly:
-- Tests mono, stereo, and three-channel modes
+`test_ayumi.c` verifies both output modes and the raw levels:
+- Tests stereo and three-channel modes
 - Validates output amplitude and channel separation
+- Checks raw levels reach the DAC's 0 and 1 with one-sample edges
 - Returns 0 on success, 1 on failure
 
 ### Benchmark Utility
@@ -139,29 +142,26 @@ The code uses mode-specialized inline paths to maximize performance:
 
 ## C++ Wrapper (µZX)
 
-The C++ wrapper `AyumiEmulator` (in `src/plugins/µZX/aychip/`) provides:
+The C++ wrapper `AyumiEmulator` (in `src/plugins/uZX/aychip/`) sets the mode from the call, so a reset can't leave
+it rendering fewer outputs than asked for:
 
 ```cpp
-// Constructor with output mode
-AyumiEmulator emulator(44100, 2000000, ChipType::AY, 3);  // 3-channel mode
+AyumiEmulator emulator(44100, 2000000, ChipType::AY);
 
-// Or set mode later
-emulator.setOutputMode(2);  // Stereo mode
-
-// Process blocks
-emulator.processBlockMono(mono, samples);
-emulator.processBlockStereo(left, right, samples);
-emulator.processBlockSeparate(ch0, ch1, ch2, samples);
+// Process blocks; raw (3 pointers, optional) takes the unfiltered channel levels for scopes
+emulator.processBlockStereo(left, right, samples, removeDC, raw);
+emulator.processBlockSeparate(a, b, c, samples, removeDC, raw);
 ```
 
 ## Modifications Summary
 
-1. **Added flexible output mode system** with enum `ayumi_output_mode`
-2. **Extracted interpolation logic** to `update_interpolator()` function
-3. **Refactored ayumi_process()** to inline mixing per mode
-4. **Added DC filtering** per output (not just stereo pair)
-5. **Created test and benchmark utilities** for validation
-6. **Optimized performance** through code specialization
+1. **Added an output mode system** with enum `ayumi_output_mode`: stereo or three separate outputs
+2. **Added raw channel levels** averaged per output sample, for scopes
+3. **Extracted interpolation logic** to `update_interpolator()` function
+4. **Refactored ayumi_process()** to inline mixing per mode
+5. **Added DC filtering** per output (not just stereo pair)
+6. **Created test and benchmark utilities** for validation
+7. **Optimized performance** through code specialization
 
 ## Compatibility
 

@@ -10,10 +10,10 @@ enum {
   DC_FILTER_SIZE = 1024
 };
 
+/* The value is the number of filtered outputs */
 enum ayumi_output_mode {
-  AYUMI_MONO = 0,
-  AYUMI_STEREO = 1,
-  AYUMI_SEPARATE = 2
+  AYUMI_STEREO = 2,
+  AYUMI_SEPARATE = 3
 };
 
 struct tone_channel {
@@ -63,6 +63,10 @@ struct ayumi {
   enum ayumi_output_mode output_mode;
   struct ayumi_output outputs[TONE_CHANNELS];
   double channel_out[TONE_CHANNELS];
+  double raw_sum[TONE_CHANNELS];
+  int raw_ticks;
+  /* Each channel's DAC level 0..1 averaged over the last output sample: unfiltered, in any mode */
+  double raw[TONE_CHANNELS];
 };
 
 int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr);

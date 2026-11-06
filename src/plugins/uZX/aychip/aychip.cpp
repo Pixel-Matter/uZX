@@ -87,12 +87,12 @@ void AYInterface::applyChannelMute(int chan, bool toneEnabled, bool noiseEnabled
     }
 }
 
-AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type, int numChannels)
+AyumiEmulator::AyumiEmulator(int sampleRate, double clock, ChipType type)
     : AYInterface()
     , Pan_ {0.25, 0.75, 0.5}  // ACB is default
     , MasterVolume_(1.0)
 {
-    reset(sampleRate, clock, type, numChannels);
+    reset(sampleRate, clock, type);
 }
 
 AyumiEmulator::~AyumiEmulator() {
@@ -109,7 +109,7 @@ auto AyumiEmulator::muteSound() -> void {
     setRegister(10, 0);
 }
 
-auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type, int numChannels) -> void {
+auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {
     SampleRate_ = sampleRate;
     ClockRate_ = clock;
     Type_ = type;
@@ -126,7 +126,6 @@ auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type, int numCh
         //           << " succeeded" << std::endl;
     }
     ignoreUnused(result);
-    setOutputMode(numChannels);
     for (int i = 0; i < TONE_CHANNELS; ++i) {
         setChannelPan(i, Pan_[i]);
         setMixer(i, false, false, false);
@@ -269,85 +268,36 @@ auto AyumiEmulator::getMasterVolume() const -> float {
     return MasterVolume_;
 }
 
-auto AyumiEmulator::setOutputMode(int numChannels) -> void {
-    enum ayumi_output_mode mode;
-    switch (numChannels) {
-        case 1: mode = AYUMI_MONO; break;
-        case 2: mode = AYUMI_STEREO; break;
-        case 3: mode = AYUMI_SEPARATE; break;
-        default:
-            jassertfalse;  // Invalid number of channels
-            return;
-    }
+auto AyumiEmulator::processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC,
+                                       float* const* raw) -> void {
+    float* const out[] {outLeft, outRight};
+    render(AYUMI_STEREO, out, numSamples, removeDC, raw);
+}
+
+auto AyumiEmulator::processBlockSeparate(float* outA, float* outB, float* outC, size_t numSamples, bool removeDC,
+                                         float* const* raw) -> void {
+    float* const out[] {outA, outB, outC};
+    render(AYUMI_SEPARATE, out, numSamples, removeDC, raw);
+}
+
+void AyumiEmulator::render(ayumi_output_mode mode, float* const* out, size_t numSamples, bool removeDC,
+                           float* const* raw) {
+    // A switch clicks once: the filters it brings in still hold whatever they rendered last
     ayumi_set_output_mode(&Ayumi_, mode);
-}
-
-auto AyumiEmulator::processBlockMono(float* outMono, size_t numSamples, bool removeDC, size_t stride) -> void {
-    for (size_t i = 0; i < numSamples; ++i, outMono+=stride) {
+    const auto numOutputs = static_cast<size_t>(mode);
+    for (size_t i = 0; i < numSamples; ++i) {
         ayumi_process(&Ayumi_);
         if (removeDC) {
             ayumi_remove_dc(&Ayumi_);
         }
-        double mono, unused;
-        ayumi_get_stereo_output(&Ayumi_, &mono, &unused);
-        *outMono = static_cast<float>(mono) * MasterVolume_;
-    }
-}
-
-auto AyumiEmulator::processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC, size_t stride) -> void {
-    for (size_t i = 0; i < numSamples; ++i, outLeft+=stride, outRight+=stride) {
-        ayumi_process(&Ayumi_);
-        if (removeDC) {
-            ayumi_remove_dc(&Ayumi_);
+        for (size_t ch = 0; ch < numOutputs; ++ch) {
+            out[ch][i] = static_cast<float>(Ayumi_.outputs[ch].value) * MasterVolume_;
         }
-        double left, right;
-        ayumi_get_stereo_output(&Ayumi_, &left, &right);
-        *outLeft = static_cast<float>(left) * MasterVolume_;
-        *outRight = static_cast<float>(right) * MasterVolume_;
-    }
-}
-
-auto AyumiEmulator::processBlockSeparate(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, bool removeDC, size_t stride) -> void {
-    jassert(Ayumi_.output_mode == AYUMI_SEPARATE);  // Must call setOutputMode(3) first
-    for (size_t i = 0; i < numSamples; ++i, outCh0+=stride, outCh1+=stride, outCh2+=stride) {
-        ayumi_process(&Ayumi_);
-        if (removeDC) {
-            ayumi_remove_dc(&Ayumi_);
+        if (raw != nullptr) {
+            for (size_t ch = 0; ch < TONE_CHANNELS; ++ch) {
+                raw[ch][i] = static_cast<float>(Ayumi_.raw[ch]);
+            }
         }
-        double ch0, ch1, ch2;
-        ayumi_get_separate_output(&Ayumi_, &ch0, &ch1, &ch2);
-        *outCh0 = static_cast<float>(ch0) * MasterVolume_;
-        *outCh1 = static_cast<float>(ch1) * MasterVolume_;
-        *outCh2 = static_cast<float>(ch2) * MasterVolume_;
-    }
-}
-
-auto AyumiEmulator::processBlockStereoPlusSeparate(float* outLeft, float* outRight, float* outCh0, float* outCh1, float* outCh2,
-                                                   size_t numSamples, bool removeDC, size_t stride) -> void {
-    if (Ayumi_.output_mode != AYUMI_SEPARATE) {
-        DBG("WARNING: processBlockStereoPlusSeparate called but output_mode=" << Ayumi_.output_mode << " (expected AYUMI_SEPARATE=2)");
-    }
-
-    float maxLeft = 0.0f, maxRight = 0.0f;
-
-    for (size_t i = 0; i < numSamples; ++i, outLeft+=stride, outRight+=stride, outCh0+=stride, outCh1+=stride, outCh2+=stride) {
-        ayumi_process(&Ayumi_);
-        if (removeDC) {
-            ayumi_remove_dc(&Ayumi_);
-        }
-
-        // Get separate channel outputs
-        double ch0, ch1, ch2;
-        ayumi_get_separate_output(&Ayumi_, &ch0, &ch1, &ch2);
-        *outCh0 = static_cast<float>(ch0) * MasterVolume_;
-        *outCh1 = static_cast<float>(ch1) * MasterVolume_;
-        *outCh2 = static_cast<float>(ch2) * MasterVolume_;
-
-        // Get stereo output (ayumi_get_stereo_output handles mixing in SEPARATE mode)
-        double left, right;
-        ayumi_get_stereo_output(&Ayumi_, &left, &right);
-        *outLeft = static_cast<float>(left) * MasterVolume_;
-        *outRight = static_cast<float>(right) * MasterVolume_;
     }
 }
 

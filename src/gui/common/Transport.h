@@ -62,6 +62,7 @@ private:
     Slider masterVolumeSlider_ { Slider::SliderStyle::RotaryVerticalDrag, Slider::TextEntryBoxPosition::NoTextBox };
     SliderParamEndpointBinding masterAttachment_ {masterVolumeSlider_, edit_.getMasterSliderPosParameter()};
     MasterLevelMeter masterMeter_ {edit_};
+    CpuLoadMeter cpuMeter_ {edit_.engine};
 
     TextButton rewindButton_    { "⏮"_u },
     //    stepLeftButton_  { "<" },

@@ -375,6 +375,11 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Link all of motool_common, as -force_load and /WHOLEARCHIVE do, or the linker drops the
+    # self-registering device UIs (REGISTER_PLUGIN_UI_ADAPTER) that nothing references
+    foreach(_target ${STUDIO_TARGET_NAME} ${TUNING_TARGET_NAME} ${PLAYER_TARGET_NAME} ${TEST_TARGET_NAME})
+        target_link_options(${_target} PRIVATE "SHELL:-Wl,--whole-archive $<TARGET_FILE:motool_common> -Wl,--no-whole-archive")
+    endforeach()
     target_link_libraries(${STUDIO_TARGET_NAME} PRIVATE "-latomic")
     target_link_libraries(${TUNING_TARGET_NAME} PRIVATE "-latomic")
     target_link_libraries(${PLAYER_TARGET_NAME} PRIVATE "-latomic")

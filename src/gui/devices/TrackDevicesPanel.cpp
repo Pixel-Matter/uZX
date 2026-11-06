@@ -257,6 +257,23 @@ void TrackDevicesPanel::layoutDeviceComponents() {
     const int childHeight = juce::jmax(0, height - padding_.getTopAndBottom());
     int x = padding_.getLeft();
 
+    // Without "+" buttons (the Player) the devices fill the width: expanded framed ones share
+    // what the others leave, never below the width they were made with
+    auto stretches = [](Component* c) {
+        auto* framed = dynamic_cast<FramedDeviceItem*>(c);
+        return framed != nullptr && ! framed->isCollapsed() ? framed : nullptr;
+    };
+    int spare = 0, numStretching = 0;
+    if (! editable_) {
+        int natural = padding_.getLeftAndRight() + deviceSpacing * juce::jmax(0, devices.size() - 1);
+        for (auto* device : devices) {
+            auto* framed = stretches(device);
+            natural += framed != nullptr ? framed->getMinimumWidth() : device->getWidth();
+            numStretching += framed != nullptr ? 1 : 0;
+        }
+        spare = juce::jmax(0, getWidth() - natural);
+    }
+
     for (int i = 0; i < content.getNumChildComponents(); ++i) {
         auto* child = content.getChildComponent(i);
         if (child == nullptr || dynamic_cast<DevicePanelItemBase*>(child) == nullptr) {
@@ -264,7 +281,8 @@ void TrackDevicesPanel::layoutDeviceComponents() {
         }
         if (! editable_ && x > padding_.getLeft())
             x += deviceSpacing;  // no "+" buttons to keep devices apart
-        const int width = child->getWidth();
+        auto* framed = editable_ ? nullptr : stretches(child);
+        const int width = framed != nullptr ? framed->getMinimumWidth() + spare / numStretching : child->getWidth();
         child->setBounds(x, padding_.getTop(), width, childHeight);
         x += width;
     }

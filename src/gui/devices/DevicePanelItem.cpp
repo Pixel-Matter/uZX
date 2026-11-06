@@ -298,6 +298,7 @@ FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui, bool remo
         setSize(ui_->getWidth() + frameWidth,
                 ui_->getHeight() + TitleBar::height + frameWidth);
     }
+    minimumWidth_ = getWidth();
     expandedWidth_ = getWidth();
     expandedHeight_ = getHeight();
 

@@ -5,6 +5,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ## [Unreleased]
 
 ### Added
+- The Player's AY chips get wider by dragging the gap to their left: the scopes widen, the buttons keep their size, and the width carries over to the next file opened
 - Viz mode in the Player: **View → Viz Mode** (`F`) goes full screen with only each track's notes, on the scopes' dark background, and its chip's A, B and C scopes, whose width you drag; `F` or `Esc` leaves it
 - Solo AY channels. Each A, B or C button is on, muted (red) or soloed (emerald): a click mutes a channel that is on and turns a muted or soloed one back on; `Alt`-click (`Option`-click on a Mac) solos a channel, a muted one too, or unsolos it. Several channels can be soloed, on any chips; while any is, only soloed channels play, and the other buttons stay as they were. A chip with a soloed channel solos its track. Solo is saved with the file and, like track solo, isn't a step in Undo
 - The Player remembers the stereo layout and width last chosen and applies them to every PSG file it opens next, as it does the master volume; a saved `.uzx` keeps its own, and clock, chip type and mutes stay per tune
@@ -38,6 +39,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
+- Linux: the level meter next to each AY chip shows its LEDs instead of a generic plugin button; the Linux builds now link every device panel, as macOS and Windows already did
 - Undo and Redo of AY chip settings (channel on/off, stereo layout and width, volume) change the sound and the buttons again, not only the saved file
 - `Delete` and `Backspace` in the Player no longer remove the last clicked track with its AY chip
 - Zoom in works on keyboard layouts where `=` needs Shift, such as German; `+` zooms in too
@@ -46,6 +48,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - PSG clip FPS warnings update as soon as the project FPS changes, instead of on the next redraw
 - Showing a track's level meter, in Studio's track devices or the Player, no longer adds a step to Undo
 - The timeline scrolls smoothly during playback: the playhead, ruler, PSG clips and parameter chart move together once per display frame, and the playhead keeps up with the sound instead of trailing it by a frame or two
+- The AY chip's and the Scope's oscilloscopes update once per display frame, together with the timeline, instead of about 25 times a second at uneven intervals, and stop redrawing while the waveform doesn't change
 - PSG clips line up with the ruler to the pixel, and note lane names no longer shift by a pixel while the view scrolls
 - PSG files with pause markers no longer shift every later frame by one per pause, and files written with a `0xFF` version byte open
 

@@ -52,6 +52,7 @@ None.
 #### P1 — Important
 
 - [ ] **About dialog** — GitHub link (only pixelmatter.org now), greets scroller
+- [ ] **TAYM** (needs Timer fx, see [TODO.md](TODO.md))
 - [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
 - [x] **Time signature editing** — SIG is editable in the transport bar; PSG clips keep their timing
 - [ ] **Loop range** on the ruler
@@ -93,7 +94,6 @@ Grouped by theme, not ordered.
 
 **Import**
 
-- [ ] TAYM (needs Timer fx, see [TODO.md](TODO.md))
 - [ ] **Tracker modules**, converted to PSG or TAYM on open: ProTracker 3 / Vortex Tracker II (PT3/VT2), Bitphase, ChipNomad (CN); conversion by zxtune123, its sources added as a submodule
 - [ ] AY and SNDH containers
 

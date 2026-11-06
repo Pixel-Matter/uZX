@@ -134,12 +134,15 @@ public:
     void setCollapsed(bool collapsed);
     [[nodiscard]] bool isCollapsed() const { return isCollapsed_; }
     int getMinimumHeight() const override;
+    /** The width it was made with; a wider frame gives the rest to the device. */
+    int getMinimumWidth() const { return minimumWidth_; }
 
     static constexpr float cornerSize = 4.0f;
 private:
     void updateCollapsedInternal();
 
     CachedValue<bool> isCollapsed_;
+    int minimumWidth_ = 0;
     int expandedWidth_ = 0;
     int expandedHeight_ = 0;
 

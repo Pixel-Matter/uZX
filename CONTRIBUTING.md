@@ -117,7 +117,7 @@ MoTool is built on [Tracktion Engine](https://github.com/Tracktion/tracktion_eng
 
 ### Branching Model
 
-- **`develop`** — active development branch. Protected: changes land through squash-merged PRs with green CI.
+- **`develop`** — active development branch. Protected: changes land through squash-merged PRs with green CI. Maintainers may push commits that touch only `docs/` directly; docs-only PRs skip the build.
 - **`main`** — stable branch. Protected: only PRs from `develop`, merge commit only, green CI. No direct pushes.
 - **Feature branches** — branch off `develop`, merge back into `develop` via PR.
 

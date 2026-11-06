@@ -57,6 +57,7 @@ The transport sits above the timeline; each track ends in its AY chip and level 
 | Time signature (SIG) | Click and type a new one, such as 3/4 or 6/8; a bare number keeps the denominator. PSG clips keep playing at the same times. Importing a PSG into an empty project sets 3/4 when its drum and bass patterns clearly repeat every three beats, 4/4 when they clearly repeat every four, and otherwise leaves it as is |
 | Master volume knob | Output level; each app remembers it across files and launches |
 | Level meter | Stereo output level, after the master volume |
+| CPU meter | Left of the master volume knob. DSP: how much of each audio buffer's time the sound engine needs; near full, the sound can crackle. GUI: how busy the app's main thread is, which draws the window; near full, the timeline and scopes can stutter |
 
 For keys, see [Keyboard and Mouse](#keyboard-and-mouse).
 
@@ -74,7 +75,7 @@ Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler;
 
 ### AY Chip and Level Meter
 
-Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Here you can adjust:
+Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Drag the gap to the left of the chips to make them wider, for wider scopes, or back down to their narrowest. Here you can adjust:
 
 - **Chip clock frequency** — affects pitch of the whole output
 - **Stereo mode** — mono, ABC, ACB, or custom channel panning. The Player remembers the layout and width last chosen and gives them to every PSG file it opens next; a saved `.uzx` file keeps its own
@@ -305,6 +306,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Middle-drag | Tracks | Same as dragging the ruler |
 | `Shift+Wheel` | Ruler or tracks | Scroll horizontally |
 | Drag | Scrollbar under the tracks | Scroll horizontally |
+| Drag | Gap left of the AY chips, or of the scopes in Viz mode (Player) | Make them wider or narrower |
 | `Cmd+Wheel` | Ruler, tracks or scrollbar | Zoom around the mouse pointer, or around the playhead while it is followed |
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |

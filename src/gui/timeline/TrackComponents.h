@@ -142,12 +142,12 @@ private:
 };
 
 //==============================================================================
-/** In Viz mode, the scopes' column at the right of the track rows: drag the gap at its left
-    edge, between the notes and the scopes, to resize it. */
-class VizScopesOverlayComponent : public Component, private te::ValueTreeAllEventListener {
+/** The column at the right of the track rows when the view shows footers: the devices, or in
+    Viz mode the scopes. Drag the gap at its left edge, before the devices or scopes, to resize it. */
+class TrackFooterOverlayComponent : public Component, private te::ValueTreeAllEventListener {
 public:
-    VizScopesOverlayComponent(EditViewState& evs);
-    ~VizScopesOverlayComponent() override;
+    TrackFooterOverlayComponent(EditViewState& evs);
+    ~TrackFooterOverlayComponent() override;
     void resized() override;
     void setMaximumWidth(int width) { constrainer.setMaximumWidth(width); }
     void valueTreeChanged() override {}
@@ -195,7 +195,7 @@ private:
     EditViewState& editViewState;
     OwnedArray<TrackRowComponent> trackRows;
     TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
-    VizScopesOverlayComponent vizScopesOverlay {editViewState};
+    TrackFooterOverlayComponent trackFooterOverlay {editViewState};
     bool updateTracks = false;
     bool needsRepaint = false;
     bool needsResize = false;

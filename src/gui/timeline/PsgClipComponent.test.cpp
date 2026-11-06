@@ -534,8 +534,8 @@ public:
                 component.paintNoteLanes(g);
             }
 
-            // Lane lines are opaque greys and the tonic band a faint white (alpha 0.07); names are
-            // white at 0.45 or more, so a white pixel that solid near the left edge is a name.
+            // Lane lines and the tonic band are opaque greys; names are white at 0.45 or more, so a
+            // white pixel that solid near the left edge is a name.
             bool nameNearLeftEdge = false;
             for (int y = 0; y < image.getHeight() && ! nameNearLeftEdge; ++y)
                 for (int x = 0; x < 45 && ! nameNearLeftEdge; ++x) {

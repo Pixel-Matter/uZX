@@ -201,6 +201,7 @@ public:
         beginTest("Lane lines take the grid's colours, the medium one each octave; where they cross a tick the brighter shows");
         {
             setNoteLanesShown(engine, true);
+            clip->chooseKey({Scale::Tonic(9), false});  // A major, for a shaded tonic lane
             component.setBounds(0, 0, 1000, 600);  // tall enough for a line on every lane
             Image lanes(Image::ARGB, 1000, 600, true);
             {
@@ -220,11 +221,18 @@ public:
             int column = 61;
             while (column < 999 && (hasTick(column) || hasTick(column + 1)))
                 ++column;
+            int longestMinorRun = 0, run = 0, blendedRows = 0;
             for (int y = 0; y < lanes.getHeight(); ++y) {
                 const auto c = lanes.getPixelAt(column, y);
                 minorRows += c == minor;
                 majorRows += c == major;
+                run = c == minor ? run + 1 : 0;
+                longestMinorRun = jmax(longestMinorRun, run);
+                // The lanes are whole rows: nothing between the fill, the lines and the note
+                blendedRows += c != background && c != minor && c != major && c != Colors::PSG::A;
             }
+            expect(longestMinorRun > 2, "the tonic lane is filled in the lines' colour: " + String(longestMinorRun));
+            expectEquals(blendedRows, 0, "no row of the lanes blends into its neighbours");
             // Every tick right of the names, with no other tick beside it, against every lane line it crosses
             int blended = 0;
             size_t levelsSeen = 0;

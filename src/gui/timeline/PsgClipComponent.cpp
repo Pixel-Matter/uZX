@@ -1094,8 +1094,11 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView) {
         const int degree = ((lane.note - tonic) % 12 + 12) % 12;
         const bool isTonic = degree == 0;
         if (tuning.hasKey && isTonic && detail.lines == LaneDetail::All) {
-            g.setColour(Colours::white.withAlpha(0.07f));
-            g.fillRect(gridX, top, right - gridX, bottom - top);
+            // In the lines' colour and on their rows, from the line above to its own: one even stripe,
+            // with no soft edge or gap against them. Its own line, an octave's on C, goes over it.
+            const int bandTop = roundToInt(top), bandBottom = roundToInt(bottom);
+            g.setColour(laneLine);
+            g.fillRect(gridX, static_cast<float>(bandTop), right - gridX, static_cast<float>(bandBottom - bandTop + 1));
         }
         // Octaves start on C whatever the key; the lines are opaque, so the timeline grid under them
         // does not add up to a brighter dot where they cross

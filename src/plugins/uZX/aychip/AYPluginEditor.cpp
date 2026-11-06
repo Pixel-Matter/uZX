@@ -201,7 +201,7 @@ void AYPluginUI::resized() {
 
     // static
     auto staticRow = r.removeFromTop(itemHeight);
-    auto buttonWidth = staticRow.getWidth() / 4 - 8;
+    const auto buttonWidth = jmin(staticRow.getWidth() / 4 - 8, maxButtonWidth);
     chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, itemHeight));
     staticRow.removeFromLeft(8);
     chipClockCombo.setBounds(staticRow.withSizeKeepingCentre(staticRow.getWidth(), 20));

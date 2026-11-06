@@ -58,7 +58,8 @@ public:
 
     static constexpr int itemHeight = 20;
     static constexpr int itemSpacing = AYScopes::spacing;
-    static constexpr int minToggleHeight = 16;  // T, N and E stay legible: button text is 10 shorter
+    static constexpr int minToggleHeight = 16;
+    static constexpr int maxButtonWidth = 44;  // as at the narrowest: a wider panel widens the scopes  // T, N and E stay legible: button text is 10 shorter
 
 private:
     AYChipPlugin& plugin_;

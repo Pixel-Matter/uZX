@@ -230,6 +230,18 @@ private:
         player.setSize(1000, 1000);
         TestHelpers::flushMessageQueue();
         expect(! tracks->getVerticalScrollBar().isVisible(), "tracks fit again");
+
+        beginTest("A wider Player footer gives its width to the AY chip, and is never narrower than its minimum");
+        playerView.footersWidth = 400;  // what dragging the gap before the devices does
+        TestHelpers::flushMessageQueue();
+        expectEquals(row->footer->getWidth(), 400);
+        constexpr int padding = 8, spacing = 8, meter = 16;
+        expectEquals(chip->getWidth(), 400 - 2 * padding - spacing - meter, "the chip takes the rest");
+
+        playerView.footersWidth = 100;
+        TestHelpers::flushMessageQueue();
+        expectEquals(row->footer->getWidth(), EditViewState::footerWidth);
+        expectEquals(chip->getWidth(), EditViewState::footerWidth - 2 * padding - spacing - meter);
     }
 
     void runPlayerOverlayTests(te::Engine& engine) {

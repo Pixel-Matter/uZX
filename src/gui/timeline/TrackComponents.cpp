@@ -556,27 +556,28 @@ void TrackHeaderOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, c
 
 
 //==============================================================================
-VizScopesOverlayComponent::VizScopesOverlayComponent(EditViewState& evs)
+TrackFooterOverlayComponent::TrackFooterOverlayComponent(EditViewState& evs)
     : editViewState (evs)
 {
     setInterceptsMouseClicks(false, true);
     editViewState.state.addListener(this);
-    constrainer.setMinimumWidth(EditViewState::minVizScopesWidth);
+    constrainer.setMinimumWidth(editViewState.vizMode ? EditViewState::minVizScopesWidth : EditViewState::footerWidth);
     addAndMakeVisible(resizer);
 }
 
-VizScopesOverlayComponent::~VizScopesOverlayComponent() {
+TrackFooterOverlayComponent::~TrackFooterOverlayComponent() {
     editViewState.state.removeListener(this);
 }
 
-void VizScopesOverlayComponent::resized() {
-    if (editViewState.vizMode && getWidth() > 0)
-        editViewState.vizScopesWidth = getWidth();
+void TrackFooterOverlayComponent::resized() {
+    if (editViewState.showFooters && getWidth() > 0)
+        (editViewState.vizMode ? editViewState.vizScopesWidth : editViewState.footersWidth) = getWidth();
     resizer.setBounds(getLocalBounds().removeFromLeft(TrackRowComponent::footerPadding.getLeft()));
 }
 
-void VizScopesOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, const juce::Identifier& i) {
-    if (i == IDs::vizScopesWidth && s.hasType(IDs::EDITVIEWSTATE) && getParentComponent() != nullptr) {
+void TrackFooterOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, const juce::Identifier& i) {
+    if ((i == IDs::vizScopesWidth || i == IDs::footersWidth) && s.hasType(IDs::EDITVIEWSTATE)
+        && getParentComponent() != nullptr) {
         const auto width = editViewState.getTrackFooterWidth();
         setBounds(getBounds().withLeft(getRight() - width));
     }
@@ -597,10 +598,10 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
     addAndMakeVisible(trackHeaderOverlay);
     trackHeaderOverlay.setAlwaysOnTop(true);
     trackHeaderOverlay.addComponentListener(this);
-    if (editViewState.vizMode) {
-        addAndMakeVisible(vizScopesOverlay);
-        vizScopesOverlay.setAlwaysOnTop(true);
-        vizScopesOverlay.addComponentListener(this);
+    if (editViewState.showFooters) {
+        addAndMakeVisible(trackFooterOverlay);
+        trackFooterOverlay.setAlwaysOnTop(true);
+        trackFooterOverlay.addComponentListener(this);
     }
 
     markAndUpdate(updateTracks);
@@ -684,10 +685,11 @@ void TracksContainerComponent::resized() {
     r = getLocalBounds();
 
     trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
-    if (editViewState.vizMode) {
+    if (editViewState.showFooters) {
         constexpr int minNotesWidth = 160;
-        vizScopesOverlay.setMaximumWidth(jmax(EditViewState::minVizScopesWidth, getWidth() - headerWidth - minNotesWidth));
-        vizScopesOverlay.setBounds(r.withLeft(r.getRight() - editViewState.getTrackFooterWidth()));
+        const int minWidth = editViewState.vizMode ? EditViewState::minVizScopesWidth : EditViewState::footerWidth;
+        trackFooterOverlay.setMaximumWidth(jmax(minWidth, getWidth() - headerWidth - minNotesWidth));
+        trackFooterOverlay.setBounds(r.withLeft(r.getRight() - editViewState.getTrackFooterWidth()));
     }
 
     if (autoFitTrackHeights_ && !trackRows.isEmpty()) {

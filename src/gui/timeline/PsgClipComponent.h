@@ -96,17 +96,18 @@ protected:
 private:
     /** The view's part of the clip, in this component's coordinates. */
     PaintView getViewPaintView() const;
-    /** Note lanes and notes, or registers. Without the gutter, the lane names and piano keys
-        pinned to the view's left edge are left out. */
-    void paintContent(Graphics& g, const PaintView& view, bool withGutter);
+    /** Note lanes and notes, or registers. */
+    void paintContent(Graphics& g, const PaintView& view);
     void paintRegisters(Graphics& g, const PaintView& view);
     void paintNotes(Graphics& g, const PaintView& view);
-    void paintNoteLanes(Graphics& g, const PaintView& view, bool withGutter);
-    /** paintContent() from the tiles, and the gutter over them, drawn as it is each frame. */
+    void paintNoteLanes(Graphics& g, const PaintView& view);
+    void paintTicksOverLanes(Graphics& g, const PaintView& view);
+    /** paintContent() from cached images: the note lanes, and the notes or registers over them. */
     void paintCachedContent(Graphics& g, const PaintView& view);
 
-    /** The content without the gutter, cached as images in fixed-width tiles along x. Scrolling
-        blits them; the tile about to scroll in is painted ahead, a slice each frame. */
+    /** The notes or registers, cached as images in fixed-width tiles along x, and the note lanes
+        as an image of the gutter and a one-pixel column of the grid. Scrolling blits them; the
+        tile about to scroll in is painted ahead, a slice each frame. */
     class ContentTiles;
     std::unique_ptr<ContentTiles> tiles_;
     int contentRevision_ = 0;  // changes of the content other than the clip's geometry and the zoom

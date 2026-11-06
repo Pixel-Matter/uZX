@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "PsgClipComponent.h"
+#include "TimelineGrid.h"
 #include "../common/LookAndFeel.h"
 #include "../../util/Oklch.h"
 #include "../../formats/psg/PsgData.h"
@@ -139,5 +140,124 @@ public:
 };
 
 static ClipHeaderTests clipHeaderTests;
+
+//==============================================================================
+/** The timeline grid runs under a clip's contents: over its fill, but not over its notes. */
+class ClipGridTests : public juce::UnitTest {
+public:
+    ClipGridTests() : UnitTest("ClipGrid", "MoTool") {}
+
+    void runTest() override {
+        beginTest("Grid lines cross a clip's empty part and pass under an opaque note");
+        auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        // Channel A at full volume, an opaque note, for two seconds of 50 fps frames
+        uZX::PsgData data {{}, {50.0, 1}};
+        for (int i = 0; i < 100; ++i)
+            data.frames.push_back({{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15},
+                                   {uZX::PsgRegType::TonePeriodFineA, 0x1c}, {uZX::PsgRegType::TonePeriodCoarseA, 1}});
+        auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                      {{te::TimePosition(), te::TimeDuration::fromSeconds(2.0)}, {}}, "grid");
+        te::SelectionManager selection(engine);
+        EditViewState view(*edit, selection);
+        view.zoom.setViewWidthPx(1000);
+        view.zoom.setRange({te::TimePosition(), te::TimeDuration::fromSeconds(2.0)});  // frames 10 px wide
+        TimelineGrid grid(view);
+        const bool wereLanes = areNoteLanesShown(engine);
+        setNoteLanesShown(engine, false);
+        PsgClipComponent component(view, grid, clip);
+        component.setBounds(0, 0, 1000, 200);
+        Image image(Image::ARGB, 1000, 200, true);
+        {
+            Graphics g(image);
+            component.paint(g);
+        }
+        setNoteLanesShown(engine, wereLanes);
+
+        // A tick clear of its neighbours, so the column right of it shows the clip without the grid
+        const auto ticks = grid.getTicks();
+        auto tick = std::find_if(ticks.begin(), ticks.end(), [&](const auto& t) {
+            return t.x > 0 && t.x < 998 && std::none_of(ticks.begin(), ticks.end(), [&](const auto& o) { return o.x == t.x + 1; });
+        });
+        expect(tick != ticks.end(), "the view has grid ticks");
+        if (tick == ticks.end())
+            return;
+
+        int onNote = 0, onFill = 0, gridOverNote = 0, gridOnFill = 0;
+        for (int y = 0; y < image.getHeight(); ++y) {
+            const auto beside = image.getPixelAt(tick->x + 1, y), at = image.getPixelAt(tick->x, y);
+            if (beside == Colors::PSG::A) {
+                ++onNote;
+                gridOverNote += at != beside;
+            } else if (beside.isOpaque()) {
+                ++onFill;
+                gridOnFill += at != beside;
+            }
+        }
+        expect(onNote > 0 && onFill > 0, "the column crosses the note and the empty clip");
+        expectEquals(gridOverNote, 0, "the grid must not be drawn over the note");
+        expectEquals(gridOnFill, onFill, "the grid must show on the clip's empty fill");
+
+        beginTest("Lane lines take the grid's colours, the medium one each octave; where they cross a tick the brighter shows");
+        {
+            setNoteLanesShown(engine, true);
+            clip->chooseKey({Scale::Tonic(9), false});  // A major, for a shaded tonic lane
+            component.setBounds(0, 0, 1000, 600);  // tall enough for a line on every lane
+            Image lanes(Image::ARGB, 1000, 600, true);
+            {
+                Graphics g(lanes);
+                component.paint(g);
+            }
+            setNoteLanesShown(engine, wereLanes);
+
+            const auto background = component.getBackground();
+            const auto minor = background.overlaidWith(Colors::Timeline::trackGridTickColors[0]);
+            const auto major = background.overlaidWith(Colors::Timeline::trackGridTickColors[1]);
+            const auto hasTick = [&](int x) {
+                return std::any_of(ticks.begin(), ticks.end(), [x](const auto& t) { return t.x == x; });
+            };
+            // The lane lines, counted in a column without ticks
+            int minorRows = 0, majorRows = 0;
+            int column = 61;
+            while (column < 999 && (hasTick(column) || hasTick(column + 1)))
+                ++column;
+            int longestMinorRun = 0, run = 0, blendedRows = 0;
+            for (int y = 0; y < lanes.getHeight(); ++y) {
+                const auto c = lanes.getPixelAt(column, y);
+                minorRows += c == minor;
+                majorRows += c == major;
+                run = c == minor ? run + 1 : 0;
+                longestMinorRun = jmax(longestMinorRun, run);
+                // The lanes are whole rows: nothing between the fill, the lines and the note
+                blendedRows += c != background && c != minor && c != major && c != Colors::PSG::A;
+            }
+            expect(longestMinorRun > 2, "the tonic lane is filled in the lines' colour: " + String(longestMinorRun));
+            expectEquals(blendedRows, 0, "no row of the lanes blends into its neighbours");
+            // Every tick right of the names, with no other tick beside it, against every lane line it crosses
+            int blended = 0;
+            size_t levelsSeen = 0;
+            for (const auto& tick : ticks) {
+                if (tick.x <= 60 || tick.x >= 998 || hasTick(tick.x + 1))
+                    continue;
+                const auto tickColour = background.overlaidWith(Colors::Timeline::trackGridTickColors[tick.level]);
+                for (int y = 0; y < lanes.getHeight(); ++y) {
+                    const auto beside = lanes.getPixelAt(tick.x + 1, y);
+                    if (beside != minor && beside != major)
+                        continue;
+                    const size_t lineLevel = beside == minor ? 0 : 1;
+                    blended += lanes.getPixelAt(tick.x, y) != (tick.level > lineLevel ? tickColour : beside);
+                }
+                levelsSeen |= size_t(1) << tick.level;
+            }
+            expect(minorRows > 10, "lane lines in the grid's finest colour: " + String(minorRows));
+            expect(majorRows > 0 && majorRows * 8 < minorRows, "a line in the grid's medium colour each octave: "
+                                                                 + String(majorRows) + " of " + String(minorRows + majorRows));
+            expect(levelsSeen == 0b111, "ticks of every level cross the lanes");
+            expectEquals(blended, 0, "where a tick crosses a lane line, the brighter of the two shows");
+        }
+    }
+};
+
+static ClipGridTests clipGridTests;
 
 }  // namespace MoTool::Tests

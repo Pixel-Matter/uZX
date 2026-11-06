@@ -534,12 +534,14 @@ public:
                 component.paintNoteLanes(g);
             }
 
-            // Lane lines are faint (alpha <= 0.16, 0.23 over the tonic band); names are
-            // drawn at 0.45 or more, so a brighter pixel near the left edge is a name.
+            // Lane lines and the tonic band are opaque greys; names are white at 0.45 or more, so a
+            // white pixel that solid near the left edge is a name.
             bool nameNearLeftEdge = false;
             for (int y = 0; y < image.getHeight() && ! nameNearLeftEdge; ++y)
-                for (int x = 0; x < 45 && ! nameNearLeftEdge; ++x)
-                    nameNearLeftEdge = image.getPixelAt(x, y).getFloatAlpha() > 0.35f;
+                for (int x = 0; x < 45 && ! nameNearLeftEdge; ++x) {
+                    const auto c = image.getPixelAt(x, y);
+                    nameNearLeftEdge = c.getFloatAlpha() > 0.35f && c.getBrightness() > 0.9f;
+                }
             expect(nameNearLeftEdge, "note names must be drawn at the clip's own left edge");
 
             beginTest("Piano Keys lay a keyboard over the grid's left edge, the key's notes named on it");
@@ -726,6 +728,7 @@ public:
                 Graphics g(image);
                 g.addTransform(AffineTransform::scale(2.0f));
                 g.setOrigin(component.getPosition());
+                g.reduceClipRegion(component.getLocalBounds());  // as the track body clips it
                 component.paint(g);
             }
             return image;
@@ -734,15 +737,32 @@ public:
             const auto timePerPixel = te::TimeDuration::fromSeconds(timePerPixelSec);
             view.zoom.setRange({te::TimePosition() + timePerPixel * startPx, timePerPixel * 1000.0});
             const auto expected = render(direct), actual = render(cached);
-            int worst = 0;
+            int worst = 0, differing = 0;
+            Point<int> at;
             for (int y = 0; y < expected.getHeight(); ++y)
                 for (int x = 0; x < expected.getWidth(); ++x) {
                     const auto e = expected.getPixelAt(x, y), a = actual.getPixelAt(x, y);
-                    worst = std::max({worst, std::abs(e.getRed() - a.getRed()), std::abs(e.getGreen() - a.getGreen()),
-                                      std::abs(e.getBlue() - a.getBlue()), std::abs(e.getAlpha() - a.getAlpha())});
+                    const int d = std::max({std::abs(e.getRed() - a.getRed()), std::abs(e.getGreen() - a.getGreen()),
+                                            std::abs(e.getBlue() - a.getBlue()), std::abs(e.getAlpha() - a.getAlpha())});
+                    differing += d > 2;
+                    if (d > worst) {
+                        worst = d;
+                        at = {x, y};
+                    }
                 }
-            // The tiles hold the content alone, composited over the clip's fill: rounding only
-            expect(worst <= 2, what + ": channels differ by up to " + String(worst));
+            // The tiles hold the content alone, composited over the clip's fill: rounding only. Direct2D
+            // antialiases the same fractional note edge a few percent differently in a tile's bitmap than in
+            // the view's (50 edge pixels off by up to 17 seen), so there a few edge pixels may differ that much.
+           #if JUCE_WINDOWS
+            constexpr int tolerance = 24, allowedPixels = 100;
+           #else
+            constexpr int tolerance = 2, allowedPixels = 0;
+           #endif
+            const bool same = worst <= 2 || (worst <= tolerance && differing <= allowedPixels);
+            expect(same, what + ": " + String(differing) + " device pixels differ, up to " + String(worst)
+                                   + " at " + at.toString() + " (clip at " + String(direct.getX() * 2) + "): "
+                                   + expected.getPixelAt(at.x, at.y).toDisplayString(true) + " drawn, "
+                                   + actual.getPixelAt(at.x, at.y).toDisplayString(true) + " cached");
         };
 
         beginTest("Tiles draw what the view draws while it scrolls by whole pixels");
@@ -758,6 +778,11 @@ public:
         expectSameAt(800.0, 0.0031, "registers");
         expectSameAt(813.0, 0.0031, "registers, scrolled");
         clip->state.setProperty(IDs::paintMode, 0, nullptr);
+
+        beginTest("Lane names without keys: the lines under them, then the grid column stretched");
+        setPianoKeysShown(engine, false);
+        for (const double startPx : {100.0, 113.0, 900.0, 913.0})
+            expectSameAt(startPx, 0.0031, "no keys, at " + String(startPx) + " px");
 
         setNoteLanesShown(engine, wereLanes);
         setPianoKeysShown(engine, wereKeys);

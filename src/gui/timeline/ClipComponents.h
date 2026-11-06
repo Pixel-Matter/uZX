@@ -15,6 +15,9 @@ class TimelineGrid;
     right edge. Both are as wide as the whole clip, mostly off-screen when zoomed in. */
 Rectangle<int> getShownArea(const Component&);
 
+/** A track's lane: behind its clips, and showing through them where they are transparent. */
+Colour getLaneColour(const EditViewState&, bool trackSelected);
+
 //==============================================================================
 /** A clip's body, under its ClipHeader: the clip's contents. */
 class ClipComponent : public Component {
@@ -25,6 +28,9 @@ public:
     void mouseDown(const MouseEvent& e) override;
 
     te::Clip& getClip() { return *clip; }
+
+    /** What the contents are drawn on: the clip's fill, or the lane through a transparent clip. */
+    Colour getBackground() const;
 
     /** Of the clip's outline: the header rounds the top corners, the body the bottom ones. */
     static constexpr float cornerSize = 6.0f;

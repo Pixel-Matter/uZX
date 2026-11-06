@@ -33,6 +33,7 @@ None.
 #### P2 — Nice to have
 
 - [x] **BPM, FPB, GRV, SIG** detection — set on PSG import from the tracker row grid and bar-level repetition (3/4 or 4/4); dumps without a grid (speed 1, heavy volume ornaments) keep the current tempo
+- [ ] Full combined tuning table + music key and beat grid detection for TS.
 
 ---
 

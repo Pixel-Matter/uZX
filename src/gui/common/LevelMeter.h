@@ -40,4 +40,26 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MasterLevelMeter)
 };
 
+
+//==============================================================================
+/** CPU load as two captioned LED rows: DSP is the audio callback's share of its time budget,
+    GUI is the message thread's CPU time per second of wall time. */
+class CpuLoadMeter : public Component,
+                     private Timer
+{
+public:
+    explicit CpuLoadMeter(tracktion::Engine& engine);
+
+    void paint(Graphics& g) override;
+
+private:
+    void timerCallback() override;
+
+    tracktion::Engine& engine_;
+    double lastThreadMs_, lastWallMs_;
+    float audio_ = 0.0f, message_ = 0.0f;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CpuLoadMeter)
+};
+
 }  // namespace MoTool

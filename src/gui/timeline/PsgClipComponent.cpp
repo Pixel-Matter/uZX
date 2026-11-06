@@ -581,27 +581,39 @@ public:
             paintTile(getTile(ahead, scale), ahead, sliceWidth, scale, painter);
     }
 
-    /** Blits the gutter, the note lanes in area with their names and keys, painting it first if
-        area has changed size: it holds nothing that moves with time. */
-    void paintGutter(Graphics& g, Rectangle<int> area, float scale, const std::function<void(Graphics&)>& painter) {
-        const int w = roundToInt(area.getWidth() * scale), h = roundToInt(area.getHeight() * scale);
-        if (gutter.getWidth() != w || gutter.getHeight() != h) {
-            gutter = Image(Image::ARGB, w, h, true);
-            Graphics gg(gutter);
-            gg.addTransform(AffineTransform::scale(scale));
-            gg.setOrigin(-area.getPosition());
-            painter(gg);
-        }
+    /** Blits the note lanes, which hold nothing that moves with time: the gutter as it is, and
+        right of it, over grid, one device pixel column of the grid stretched. Each is painted by
+        painter, in this component's coordinates, when its size changes. */
+    void paintLanes(Graphics& g, Rectangle<int> gutter, Rectangle<int> grid, float scale,
+                    const std::function<void(Graphics&)>& painter) {
+        const auto update = [&](Image& image, Rectangle<int> area, int width) {
+            const int height = roundToInt(area.getHeight() * scale);
+            if (image.getWidth() == width && image.getHeight() == height)
+                return;
+            image = Image(Image::ARGB, width, height, true);
+            Graphics ig(image);
+            ig.addTransform(AffineTransform::scale(scale));
+            ig.setOrigin(-area.getPosition());
+            painter(ig);
+        };
+        Graphics::ScopedSaveState state(g);
         g.setOpacity(1.0f);
-        g.drawImageTransformed(gutter, AffineTransform::scale(1.0f / scale)
-                                           .translated(static_cast<float>(area.getX()), static_cast<float>(area.getY())));
+        if (! gutter.isEmpty()) {
+            update(gutterImage, gutter, roundToInt(gutter.getWidth() * scale));
+            g.drawImageTransformed(gutterImage, AffineTransform::scale(1.0f / scale).translated(gutter.getPosition().toFloat()));
+        }
+        if (! grid.isEmpty()) {
+            update(gridColumn, grid, 1);
+            g.setImageResamplingQuality(Graphics::lowResamplingQuality);  // copies of the column, not blends
+            g.drawImage(gridColumn, grid.toFloat());
+        }
     }
 
     const Key key;
     const ClipXMapping toX;  // the content's x, as of when the tiles were first painted
 
 private:
-    Image gutter;
+    Image gutterImage, gridColumn;
     struct Tile {
         Image image;
         int painted = 0;  // px painted from the tile's left
@@ -686,7 +698,7 @@ void PsgClipComponent::paint(Graphics& g) {
         paintCachedContent(g, view);
     } else {
         tiles_.reset();
-        paintContent(g, view, true);
+        paintContent(g, view);
     }
     if (! editViewState.showClipHeaders)
         paintWarnings(g);
@@ -705,9 +717,9 @@ PsgClipComponent::PaintView PsgClipComponent::getViewPaintView() const {
     return {toX, viewX.getIntersectionWith({0.0f, static_cast<float>(getWidth())})};
 }
 
-void PsgClipComponent::paintContent(Graphics& g, const PaintView& view, bool withGutter) {
+void PsgClipComponent::paintContent(Graphics& g, const PaintView& view) {
     if ((int) clip->state.getProperty(IDs::paintMode, 0) == 0) {
-        paintNoteLanes(g, view, withGutter);
+        paintNoteLanes(g, view);
         paintNotes(g, view);
     } else {
         paintRegisters(g, view);
@@ -1019,10 +1031,10 @@ static void paintPianoKeys(Graphics& g, const std::vector<NoteLane>& lanes, cons
     rebuilt only when the clip's tuning changes; each paint draws the lanes that intersect
     the repaint area. */
 void PsgClipComponent::paintNoteLanes(Graphics& g) {
-    paintNoteLanes(g, getViewPaintView(), true);
+    paintNoteLanes(g, getViewPaintView());
 }
 
-void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView, bool withGutter) {
+void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView) {
     auto* psgClip = getPsgClip();
     const auto view = psgClip != nullptr ? getLaneView(*psgClip, getLocalBounds(), paintView.visibleX) : std::nullopt;
     if (! view)
@@ -1042,15 +1054,15 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView, b
     const int tonic = tuning.hasKey ? static_cast<int>(tuning.key.tonic) : 0;
     const Scale scale(tuning.hasKey ? tuning.key.getScaleType() : Scale::ScaleType(Scale::ScaleType::IonianOrMajor));
     const float x = layout.visibleX.getStart(), right = layout.visibleX.getEnd();
-    const float gridX = withGutter && pianoKeys ? x + whiteKeyWidth : x;  // the keys take the grid's left end
+    const float gridX = pianoKeys ? x + whiteKeyWidth : x;  // the keys take the grid's left end
     const float labelX = view->getLabelX(), labelWidth = view->getGutterRight() - labelX;
     const auto damage = g.getClipBounds().toFloat();
     constexpr float tonicLabelHeight = 10.0f;
-    const bool labelsInDamage = withGutter && detail.labels != LaneDetail::None
+    const bool labelsInDamage = detail.labels != LaneDetail::None
         && damage.getX() < labelX + labelWidth && damage.getRight() > x;
     if (labelsInDamage)
         g.setFont(Font(FontOptions(detail.labels == LaneDetail::All ? jmin(11.0f, layout.noteHeight - 2.0f) : 9.0f)));
-    if (withGutter && pianoKeys)
+    if (pianoKeys)
         paintPianoKeys(g, lanes_, layout);
 
     for (const auto& lane : lanes_) {
@@ -1129,31 +1141,26 @@ void PsgClipComponent::paintCachedContent(Graphics& g, const PaintView& view) {
         shift = 0;
     }
 
-    // The lane names and piano keys stay at the view's left edge: that strip is the lanes from
-    // their own image, and the notes over them as they are drawn without tiles.
-    Rectangle<int> gutter;
-    if (auto* psgClip = getPsgClip(); psgClip != nullptr && (int) clip->state.getProperty(IDs::paintMode, 0) == 0)
-        if (const auto lanes = getLaneView(*psgClip, getLocalBounds(), view.visibleX))
-            if (lanes->detail.labels != LaneDetail::None || lanes->pianoKeys) {
-                const int left = static_cast<int>(std::floor(view.visibleX.getStart()));
-                gutter = {left, 0, static_cast<int>(std::ceil(lanes->getGutterRight())) - left, getHeight()};
-            }
-
-    {
-        Graphics::ScopedSaveState state(g);
-        g.excludeClipRegion(gutter);
-        if (! g.isClipEmpty())
-            tiles_->paint(g, *shift, scale, g.getClipBounds(), getShownArea(*this),
-                          [this](Graphics& tg, const PaintView& tileView) { paintContent(tg, tileView, false); });
-    }
-    if (! gutter.isEmpty()) {
-        Graphics::ScopedSaveState state(g);
-        g.reduceClipRegion(gutter);
-        if (! g.isClipEmpty()) {
-            tiles_->paintGutter(g, gutter, scale, [&](Graphics& gg) { paintNoteLanes(gg, view, true); });
-            paintNotes(g, view);
+    // The lanes, with the names and keys at the view's left edge, from their own images under the
+    // notes' tiles: the order paintContent() draws them in.
+    const bool notesView = (int) clip->state.getProperty(IDs::paintMode, 0) == 0;
+    if (auto* psgClip = getPsgClip(); psgClip != nullptr && notesView)
+        if (const auto lanes = getLaneView(*psgClip, getLocalBounds(), view.visibleX)) {
+            const int left = static_cast<int>(std::floor(view.visibleX.getStart()));
+            const int right = static_cast<int>(std::ceil(view.visibleX.getEnd()));
+            const bool hasGutter = lanes->detail.labels != LaneDetail::None || lanes->pianoKeys;
+            const int gridX = hasGutter ? jlimit(left, right, static_cast<int>(std::ceil(lanes->getGutterRight()))) : left;
+            tiles_->paintLanes(g, {left, 0, gridX - left, getHeight()}, {gridX, 0, right - gridX, getHeight()}, scale,
+                               [&](Graphics& lg) { paintNoteLanes(lg, view); });
         }
-    }
+
+    tiles_->paint(g, *shift, scale, g.getClipBounds(), getShownArea(*this),
+                  [this, notesView](Graphics& tg, const PaintView& tileView) {
+                      if (notesView)
+                          paintNotes(tg, tileView);
+                      else
+                          paintRegisters(tg, tileView);
+                  });
 }
 
 void PsgClipComponent::paintNotes(Graphics& g) {

@@ -702,6 +702,7 @@ public:
                 Graphics g(image);
                 g.addTransform(AffineTransform::scale(2.0f));
                 g.setOrigin(component.getPosition());
+                g.reduceClipRegion(component.getLocalBounds());  // as the track body clips it
                 component.paint(g);
             }
             return image;
@@ -734,6 +735,11 @@ public:
         expectSameAt(800.0, 0.0031, "registers");
         expectSameAt(813.0, 0.0031, "registers, scrolled");
         clip->state.setProperty(IDs::paintMode, 0, nullptr);
+
+        beginTest("Lane names without keys: the lines under them, then the grid column stretched");
+        setPianoKeysShown(engine, false);
+        for (const double startPx : {100.0, 113.0, 900.0, 913.0})
+            expectSameAt(startPx, 0.0031, "no keys, at " + String(startPx) + " px");
 
         setNoteLanesShown(engine, wereLanes);
         setPianoKeysShown(engine, wereKeys);

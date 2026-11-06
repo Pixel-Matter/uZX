@@ -45,9 +45,14 @@ struct ScopeSettings : ParamsBase<ScopeSettings> {
          1.0f, {0.1f, 10.0f, 0.1f}}
     };
 
+    // A chip channel's scope syncs to the chip by default; audio has no chip, so its modes stop before Chip Sync
     ParameterValue<TriggerMode> triggerMode {
-        {"trigger", ScopeIDs::triggerMode, "Trigger", "Trigger mode",
-         TriggerMode::RisingEdge}
+        signal == Signal::ChipLevels
+            ? ParameterDef<TriggerMode> {"trigger", ScopeIDs::triggerMode, "Trigger", "Trigger mode",
+                                         TriggerMode::ChipSync}
+            : ParameterDef<TriggerMode> {"trigger", ScopeIDs::triggerMode, "Trigger", "Trigger mode",
+                                         TriggerMode::RisingEdge,
+                                         truncateArray<TriggerMode::ChipSync>(TriggerMode::getLabels())}
     };
 
     ParameterValue<float> triggerLevel {

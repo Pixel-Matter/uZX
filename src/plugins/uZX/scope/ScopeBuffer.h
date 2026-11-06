@@ -22,6 +22,7 @@ public:
 
     ScopeBuffer() {
         buffer_.fill(0.0f);
+        sync_.fill(0.0f);
     }
 
     inline constexpr static int size() noexcept {
@@ -31,8 +32,9 @@ public:
     /**
      * Push samples from audio thread (non-blocking).
      * May overwrite unread samples - this is acceptable for visualization.
+     * `sync`, if given, is a trigger signal that shares each sample's slot, so the two never drift apart.
      */
-    void pushSamples(const float* samples, int numSamples) noexcept {
+    void pushSamples(const float* samples, int numSamples, const float* sync = nullptr) noexcept {
         if (samples == nullptr || numSamples <= 0)
             return;
 
@@ -40,6 +42,7 @@ public:
 
         for (int i = 0; i < numSamples; ++i) {
             buffer_[writePos] = samples[i];
+            sync_[writePos] = sync != nullptr ? sync[i] : 0.0f;
             writePos = (writePos + 1) % kBufferSize;
         }
 
@@ -52,8 +55,9 @@ public:
      *
      * @param dest Destination buffer (must have capacity for numSamples)
      * @param numSamples Number of samples to copy (will be clamped to buffer size)
+     * @param syncDest If given, takes the sync signal of the same samples
      */
-    int copyTo(float* dest, int numSamples) const noexcept {
+    int copyTo(float* dest, int numSamples, float* syncDest = nullptr) const noexcept {
         if (dest == nullptr || numSamples <= 0)
             return 0;
 
@@ -65,16 +69,9 @@ public:
         // Calculate start position (numSamples before current write position)
         int startPos = (writePos - numSamples + kBufferSize) % kBufferSize;
 
-        // Copy samples, handling wrap-around
-        if (startPos + numSamples <= kBufferSize) {
-            // No wrap-around needed
-            std::memcpy(dest, buffer_.data() + startPos, numSamples * sizeof(float));
-        } else {
-            // Wrap-around: copy in two parts
-            int firstPart = kBufferSize - startPos;
-            std::memcpy(dest, buffer_.data() + startPos, firstPart * sizeof(float));
-            std::memcpy(dest + firstPart, buffer_.data(), (numSamples - firstPart) * sizeof(float));
-        }
+        copyRing(buffer_, dest, startPos, numSamples);
+        if (syncDest != nullptr)
+            copyRing(sync_, syncDest, startPos, numSamples);
 
         return numSamples;
     }
@@ -84,11 +81,28 @@ public:
      */
     void clear() noexcept {
         buffer_.fill(0.0f);
+        sync_.fill(0.0f);
         writeIndex_.store(0, std::memory_order_release);
     }
 
 private:
-    std::array<float, kBufferSize> buffer_;
+    using Ring = std::array<float, kBufferSize>;
+
+    static void copyRing(const Ring& ring, float* dest, int startPos, int numSamples) noexcept {
+        // Copy samples, handling wrap-around
+        if (startPos + numSamples <= kBufferSize) {
+            // No wrap-around needed
+            std::memcpy(dest, ring.data() + startPos, numSamples * sizeof(float));
+        } else {
+            // Wrap-around: copy in two parts
+            int firstPart = kBufferSize - startPos;
+            std::memcpy(dest, ring.data() + startPos, firstPart * sizeof(float));
+            std::memcpy(dest + firstPart, ring.data(), (numSamples - firstPart) * sizeof(float));
+        }
+    }
+
+    Ring buffer_;
+    Ring sync_;
     std::atomic<int> writeIndex_{0};
 };
 

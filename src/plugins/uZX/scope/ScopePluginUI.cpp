@@ -38,6 +38,7 @@ WaveformDisplay::WaveformDisplay(juce::Colour colour,
 {
     displaySamples_.resize(static_cast<size_t>(windowSize_));
     workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
+    syncWork_.resize(workBuffer_.size());
 }
 
 void WaveformDisplay::setWindowSize(int samples) {
@@ -45,6 +46,7 @@ void WaveformDisplay::setWindowSize(int samples) {
         windowSize_ = samples;
         displaySamples_.resize(static_cast<size_t>(windowSize_));
         workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
+        syncWork_.resize(workBuffer_.size());
         settingsChanged_ = true;
     }
 }
@@ -77,7 +79,7 @@ void WaveformDisplay::onVBlank() {
 bool WaveformDisplay::updateWaveform() {
     // Copy samples from ring buffer into work buffer for trigger search
     const int workSamples = windowSize_ * kTriggerSearchMultiplier;
-    sourceBuffer_.copyTo(workBuffer_.data(), workSamples);
+    sourceBuffer_.copyTo(workBuffer_.data(), workSamples, syncWork_.data());
 
     // The trigger lands in the window's centre, with half a window on each side of it
     const int triggerOffset = findTriggerPoint();
@@ -95,7 +97,8 @@ bool WaveformDisplay::updateWaveform() {
 
 int WaveformDisplay::findTriggerPoint() {
     // Searched from half a window in, the trigger's index there is where the window around it starts
-    return triggerStrategy_(workBuffer_.data() + windowSize_ / 2, windowSize_, triggerLevel_);
+    const bool chipSync = triggerStrategy_.mode == TriggerMode(TriggerModeEnum::ChipSync);
+    return triggerStrategy_((chipSync ? syncWork_ : workBuffer_).data() + windowSize_ / 2, windowSize_, triggerLevel_);
 }
 
 WaveformDisplay::YAxis WaveformDisplay::yAxis(float height) const {
@@ -162,8 +165,10 @@ void WaveformDisplay::paint(juce::Graphics& g) {
         g.drawHorizontalLine(static_cast<int>(axis.zero), 0.0f, bounds.getWidth());
     }
 
-    // Trigger level line, unless it would lie along the chip's silence
-    if (triggerStrategy_.mode != TriggerMode(TriggerModeEnum::FreeRunning) && (! chipLevels || triggerLevel_ > 0.0f)) {
+    // Trigger level line for the modes that use it, unless it would lie along the chip's silence
+    const auto mode = triggerStrategy_.mode.asEnum();
+    const bool usesLevel = mode == TriggerModeEnum::RisingEdge || mode == TriggerModeEnum::FallingEdge;
+    if (usesLevel && (! chipLevels || triggerLevel_ > 0.0f)) {
         g.setColour(Colors::Timeline::trackGridTickColors[1]);  // as faint as the timeline's labeled grid lines
         const float trigY = axis.zero - triggerLevel_ * axis.scale;
         g.drawHorizontalLine(static_cast<int>(trigY), 0.0f, bounds.getWidth());

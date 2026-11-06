@@ -64,6 +64,7 @@ private:
     ScopeSettings& scopeSettings_;
     std::vector<float> displaySamples_;
     std::vector<float> workBuffer_;  // Larger buffer for trigger search
+    std::vector<float> syncWork_;    // The work buffer's sync, searched instead in Chip Sync mode
     juce::Path waveformPath_;
 
     juce::Colour colour_;

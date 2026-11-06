@@ -179,12 +179,13 @@ public:
     /**
         Renders the stereo mix, or channels A, B and C apart for mixing them elsewhere: filtered, DC-removed if asked,
         at master volume. `raw`, if given, takes channels A, B and C as the chip's DAC levels 0..1, unfiltered and
-        before the mix and the volume, for scopes.
+        before the mix and the volume, for scopes. `sync`, if given, takes each channel's trigger for its scope, 1 or 0:
+        its tone if on, else its envelope's segment if on, else 0, so noise and the envelope don't move the phase.
     */
     virtual auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true,
-                                    float* const* raw = nullptr) -> void = 0;
+                                    float* const* raw = nullptr, float* const* sync = nullptr) -> void = 0;
     virtual auto processBlockSeparate(float* outA, float* outB, float* outC, size_t numSamples, bool removeDC = true,
-                                      float* const* raw = nullptr) -> void = 0;
+                                      float* const* raw = nullptr, float* const* sync = nullptr) -> void = 0;
 
 protected:
     // AY functions
@@ -301,13 +302,14 @@ public:
     auto getMasterVolume() const -> float override;
 
     auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true,
-                            float* const* raw = nullptr) -> void override;
+                            float* const* raw = nullptr, float* const* sync = nullptr) -> void override;
     auto processBlockSeparate(float* outA, float* outB, float* outC, size_t numSamples, bool removeDC = true,
-                              float* const* raw = nullptr) -> void override;
+                              float* const* raw = nullptr, float* const* sync = nullptr) -> void override;
 
   private:
     /** The mode follows the call, so a reset can't leave the chip rendering fewer outputs than asked for. */
-    void render(ayumi_output_mode mode, float* const* out, size_t numSamples, bool removeDC, float* const* raw);
+    void render(ayumi_output_mode mode, float* const* out, size_t numSamples, bool removeDC, float* const* raw,
+                float* const* sync);
 
     ayumi Ayumi_;
     ChipType Type_;

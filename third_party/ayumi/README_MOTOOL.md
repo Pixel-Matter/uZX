@@ -148,9 +148,10 @@ it rendering fewer outputs than asked for:
 ```cpp
 AyumiEmulator emulator(44100, 2000000, ChipType::AY);
 
-// Process blocks; raw (3 pointers, optional) takes the unfiltered channel levels for scopes
-emulator.processBlockStereo(left, right, samples, removeDC, raw);
-emulator.processBlockSeparate(a, b, c, samples, removeDC, raw);
+// Process blocks; raw (3 pointers, optional) takes the unfiltered channel levels for scopes,
+// sync (3 pointers, optional) each channel's tone, else its envelope's segment, as 1 or 0 to trigger them on
+emulator.processBlockStereo(left, right, samples, removeDC, raw, sync);
+emulator.processBlockSeparate(a, b, c, samples, removeDC, raw, sync);
 ```
 
 ## Modifications Summary

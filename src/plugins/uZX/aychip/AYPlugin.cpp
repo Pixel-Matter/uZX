@@ -91,6 +91,7 @@ void AYChipPlugin::initialise(const te::PluginInitialisationInfo& info) {
     reset();
     const ScopedLock sl(lock);  // an old graph may still be rendering into this buffer
     rawChannelBuffer_.setSize(kNumVizChannels, info.blockSizeSamples);
+    syncChannelBuffer_.setSize(kNumVizChannels, info.blockSizeSamples);
 }
 
 void AYChipPlugin::deinitialise() {
@@ -166,8 +167,9 @@ void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept 
 
 void AYChipPlugin::copyTempBufferToVizBuffer() {
     for (size_t chan = 0; chan < kNumVizChannels; ++chan) {
-        auto* src = rawChannelBuffer_.getReadPointer(static_cast<int>(chan));
-        vizBuffers_[chan].pushSamples(src, rawChannelBuffer_.getNumSamples());
+        const auto c = static_cast<int>(chan);
+        vizBuffers_[chan].pushSamples(rawChannelBuffer_.getReadPointer(c), rawChannelBuffer_.getNumSamples(),
+                                      syncChannelBuffer_.getReadPointer(c));
     }
 }
 
@@ -176,8 +178,9 @@ void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int current
     auto left = fc.destBuffer->getWritePointer(0, currentSample);
     auto right = fc.destBuffer->getWritePointer(1, currentSample);
     rawChannelBuffer_.setSize(kNumVizChannels, static_cast<int>(samples), false, false, true);
+    syncChannelBuffer_.setSize(kNumVizChannels, static_cast<int>(samples), false, false, true);
     chip->processBlockStereo(left, right, samples, staticParams.removeDC.getStoredValue(),
-                             rawChannelBuffer_.getArrayOfWritePointers());
+                             rawChannelBuffer_.getArrayOfWritePointers(), syncChannelBuffer_.getArrayOfWritePointers());
     if (fc.isPlaying)  // stopped, the scopes keep the last frame that played
         copyTempBufferToVizBuffer();
 }

@@ -210,6 +210,41 @@ public:
                    "A sample with no chip tick holds the level");
             expectEquals(*std::max_element(a.begin(), a.end()), 1.0f, "A's tone still shows");
         }
+        beginTest("AYEmulator sync follows the tone through noise, else the envelope");
+        {
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            emulator.setTonePeriod(0, 1000);  // A: a 125 Hz tone chopped by noise
+            emulator.setNoisePeriod(5);
+            emulator.setMixer(0, true, true, false);
+            emulator.setVolume(0, 15);
+            emulator.setEnvelopePeriod(100);  // B: a triangle envelope, 64 steps of 100 * 8 clocks: 39 Hz
+            emulator.setEnvelopeShape(EnvShape::DOWN_UP_A);
+            emulator.setMixer(1, false, false, true);
+            emulator.setMixer(2, false, true, false);  // C: noise only
+            emulator.setVolume(2, 15);
+
+            std::vector<float> left(44100), right(44100);
+            std::array<std::vector<float>, 3> levels, sync;
+            std::array<float*, 3> levelPtrs, syncPtrs;
+            for (size_t ch = 0; ch < 3; ++ch) {
+                levels[ch].resize(44100);
+                sync[ch].resize(44100);
+                levelPtrs[ch] = levels[ch].data();
+                syncPtrs[ch] = sync[ch].data();
+            }
+            emulator.processBlockStereo(left.data(), right.data(), 44100, true, levelPtrs.data(), syncPtrs.data());
+
+            const auto rises = [](const std::vector<float>& s) {
+                int n = 0;
+                for (size_t i = 1; i < s.size(); ++i)
+                    n += s[i - 1] < 0.5f && s[i] >= 0.5f;
+                return n;
+            };
+            expect(std::abs(rises(sync[0]) - 125) <= 1, "A syncs once per tone period: " + String(rises(sync[0])));
+            expect(rises(levels[0]) > 1000, "A's levels rise far more often, chopped by the noise");
+            expect(std::abs(rises(sync[1]) - 39) <= 1, "B syncs once per envelope cycle: " + String(rises(sync[1])));
+            expectEquals(rises(sync[2]), 0, "C has no tone or envelope to sync to");
+        }
         beginTest("AYEmulator renders all three channels after a reset");
         {
             auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};

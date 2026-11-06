@@ -57,4 +57,22 @@ public:
 
 static ScopeMinMaxColumnsTest scopeMinMaxColumnsTest;
 
+class ScopeTriggerModesTest : public juce::UnitTest {
+public:
+    ScopeTriggerModesTest() : UnitTest("ScopeTriggerModes", "MoTool") {}
+
+    void runTest() override {
+        beginTest("A chip channel's scope syncs to the chip by default; audio's modes stop before Chip Sync");
+        {
+            const ScopeSettings audio, chip {ScopeSettings::Signal::ChipLevels};
+            expect(audio.triggerMode.definition.defaultValue == TriggerMode::RisingEdge);
+            expectEquals(audio.triggerMode.definition.numberOfStates(), int(TriggerMode::ChipSync));
+            expect(chip.triggerMode.definition.defaultValue == TriggerMode::ChipSync);
+            expectEquals(chip.triggerMode.definition.numberOfStates(), int(TriggerMode::ChipSync) + 1);
+        }
+    }
+};
+
+static ScopeTriggerModesTest scopeTriggerModesTest;
+
 }  // namespace MoTool::uZX

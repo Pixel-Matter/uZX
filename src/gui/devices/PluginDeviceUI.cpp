@@ -146,6 +146,14 @@ void addScopeSettingsMenu(juce::PopupMenu& parentMenu,
         [&settings]() {
             settings.triggerMode.setStoredValue(TriggerMode::FallingEdge);
         });
+    if (settings.signal == ScopeSettings::Signal::ChipLevels) {
+        triggerMenu.addItem("Chip Sync",
+            true,
+            currentMode == TriggerMode::ChipSync,
+            [&settings]() {
+                settings.triggerMode.setStoredValue(TriggerMode::ChipSync);
+            });
+    }
     targetMenu->addSubMenu("Trigger Mode", triggerMenu);
 
     // Trigger level presets: around zero for audio, above the silence for a chip channel's levels
@@ -162,7 +170,8 @@ void addScopeSettingsMenu(juce::PopupMenu& parentMenu,
                 settings.triggerLevel.setStoredValue(preset);
             });
     }
-    targetMenu->addSubMenu("Trigger Level (" + juce::String(currentLevel, 2) + ")", levelMenu);
+    const bool usesLevel = currentMode == TriggerMode::RisingEdge || currentMode == TriggerMode::FallingEdge;
+    targetMenu->addSubMenu("Trigger Level (" + juce::String(currentLevel, 2) + ")", levelMenu, usesLevel);
 
     // If title was provided, add the submenu to parent
     if (title.isNotEmpty()) {

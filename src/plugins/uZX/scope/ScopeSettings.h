@@ -10,6 +10,7 @@ namespace ScopeIDs {
     DECLARE_ID(windowSamples)
     DECLARE_ID(gain)
     DECLARE_ID(triggerMode)
+    DECLARE_ID(chipTriggerMode)
     DECLARE_ID(triggerLevel)
     #undef DECLARE_ID
 }  // namespace ScopeIDs
@@ -45,10 +46,12 @@ struct ScopeSettings : ParamsBase<ScopeSettings> {
          1.0f, {0.1f, 10.0f, 0.1f}}
     };
 
-    // A chip channel's scope syncs to the chip by default; audio has no chip, so its modes stop before Chip Sync
+    // A chip channel's scope syncs to the chip by default; audio has no chip, so its modes stop before Chip Sync.
+    // Chip scopes keep their mode under their own ID: edits saved before Chip Sync existed store the old default,
+    // Rising Edge, under triggerMode, and it would override Chip Sync.
     ParameterValue<TriggerMode> triggerMode {
         signal == Signal::ChipLevels
-            ? ParameterDef<TriggerMode> {"trigger", ScopeIDs::triggerMode, "Trigger", "Trigger mode",
+            ? ParameterDef<TriggerMode> {"trigger", ScopeIDs::chipTriggerMode, "Trigger", "Trigger mode",
                                          TriggerMode::ChipSync}
             : ParameterDef<TriggerMode> {"trigger", ScopeIDs::triggerMode, "Trigger", "Trigger mode",
                                          TriggerMode::RisingEdge,

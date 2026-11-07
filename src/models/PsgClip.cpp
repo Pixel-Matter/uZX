@@ -1,5 +1,4 @@
 #include "PsgClip.h"
-#include "PsgTempoDetector.h"
 #include "Ids.h"
 #include "PsgMidi.h"
 #include "PsgList.h"
@@ -39,6 +38,7 @@ void PsgClip::initialise() {
     psgList = std::make_unique<PsgList>(psg, um);
     // A new list restarts its data version, so caches keyed on it must start over.
     pitchRangeVersion_ = -1;
+    histogram_.reset();
     detection_.reset();
     tuning_.reset();
 
@@ -124,11 +124,48 @@ PitchHistogram PsgClip::buildPitchHistogram() const {
     return builder.build();
 }
 
-const TuningDetection& PsgClip::getTuningDetection() const {
+const PitchHistogram& PsgClip::getPitchHistogram() const {
     const auto version = getPsg().getDataVersion();
-    if (! detection_ || detectionVersion_ != version) {
-        detectionVersion_ = version;
-        detection_ = detectTuning(buildPitchHistogram());
+    if (! histogram_ || histogramVersion_ != version) {
+        histogramVersion_ = version;
+        histogram_ = buildPitchHistogram();
+        ++histogramRevision_;  // never restarts, unlike a new list's data version
+    }
+    return *histogram_;
+}
+
+juce::Array<PsgClip*> PsgClip::getTuneClips() const {
+    auto* self = const_cast<PsgClip*>(this);
+    const auto& tune = state[IDs::psgTune];
+    if (tune.toString().isEmpty())
+        return {self};
+    // ponytail: a copy of a clip keeps the id and joins the tune; unlink copies if that misleads.
+    juce::Array<PsgClip*> clips;
+    for (auto* track : te::getClipTracks(edit))
+        for (auto* clip : track->getClips())
+            if (auto* psg = dynamic_cast<PsgClip*>(clip); psg != nullptr && psg->state[IDs::psgTune] == tune)
+                clips.add(psg);
+    clips.addIfNotAlreadyThere(self);  // not on a track yet, or on its way out
+    return clips;
+}
+
+void PsgClip::linkAsOneTune(const juce::Array<PsgClip*>& clips) {
+    const auto tune = juce::Uuid().toString();
+    for (auto* clip : clips)
+        clip->state.setProperty(IDs::psgTune, tune, clip->getUndoManager());
+}
+
+const TuningDetection& PsgClip::getTuningDetection() const {
+    const auto clips = getTuneClips();
+    std::vector<std::pair<const PsgClip*, int>> key;
+    for (auto* clip : clips) {
+        clip->getPitchHistogram();
+        key.emplace_back(clip, clip->histogramRevision_);
+    }
+    if (! detection_ || detectionKey_ != key) {
+        detectionKey_ = std::move(key);
+        detection_ = detectTuningTogether(clips);
+        ++detectionRevision_;
     }
     return *detection_;
 }
@@ -165,13 +202,13 @@ std::optional<TuningFit> readChosenFit(const juce::ValueTree& state) {
 }  // namespace
 
 const PsgClip::Tuning& PsgClip::getTuning() const {
-    const auto version = getPsg().getDataVersion();
+    getTuningDetection();  // brings detectionRevision_ up to date
     decltype(tuningChoice_) choice;
     static_assert(std::tuple_size_v<decltype(tuningChoice_)> == std::size(tuningChoiceIds));
     for (size_t i = 0; i < choice.size(); ++i)
         choice[i] = state[*tuningChoiceIds[i]];
-    if (! tuning_ || tuningVersion_ != version || tuningChoice_ != choice) {
-        tuningVersion_ = version;
+    if (! tuning_ || tuningDetectionRevision_ != detectionRevision_ || tuningChoice_ != choice) {
+        tuningDetectionRevision_ = detectionRevision_;
         tuningChoice_ = choice;
         tuning_ = resolveTuning();
         tuning_->revision = ++tuningRevision_;
@@ -225,31 +262,40 @@ PsgClip::Tuning PsgClip::resolveTuning() const {
 }
 
 void PsgClip::chooseTuningTable(BuiltinTuningType table) {
-    auto* um = getUndoManager();
-    for (const auto* id : {&IDs::clipTuningA4, &IDs::clipTuningClock, &IDs::clipTuningSystem, &IDs::clipTuningTonic})
-        state.removeProperty(*id, um);
-    state.setProperty(IDs::clipTuningTable, juce::VariantConverter<BuiltinTuningType>::toVar(table), um);
+    for (auto* clip : getTuneClips()) {
+        auto* um = clip->getUndoManager();
+        for (const auto* id : {&IDs::clipTuningA4, &IDs::clipTuningClock, &IDs::clipTuningSystem, &IDs::clipTuningTonic})
+            clip->state.removeProperty(*id, um);
+        clip->state.setProperty(IDs::clipTuningTable, juce::VariantConverter<BuiltinTuningType>::toVar(table), um);
+    }
 }
 
 void PsgClip::chooseFit(const TuningFit& fit) {
-    auto* um = getUndoManager();
-    state.removeProperty(IDs::clipTuningTable, um);
-    state.setProperty(IDs::clipTuningSystem, juce::VariantConverter<TuningSystemType>::toVar(fit.system), um);
-    state.setProperty(IDs::clipTuningTonic, static_cast<int>(fit.tonic.asUnderlying()), um);
-    state.setProperty(IDs::clipTuningClock, fit.chipClock, um);
-    state.setProperty(IDs::clipTuningA4, fit.a4Frequency, um);
+    for (auto* clip : getTuneClips()) {
+        auto* um = clip->getUndoManager();
+        auto& s = clip->state;
+        s.removeProperty(IDs::clipTuningTable, um);
+        s.setProperty(IDs::clipTuningSystem, juce::VariantConverter<TuningSystemType>::toVar(fit.system), um);
+        s.setProperty(IDs::clipTuningTonic, static_cast<int>(fit.tonic.asUnderlying()), um);
+        s.setProperty(IDs::clipTuningClock, fit.chipClock, um);
+        s.setProperty(IDs::clipTuningA4, fit.a4Frequency, um);
+    }
 }
 
 void PsgClip::chooseKey(const DetectedKey& key) {
-    auto* um = getUndoManager();
-    state.setProperty(IDs::clipKeyTonic, static_cast<int>(key.tonic), um);
-    state.setProperty(IDs::clipKeyMinor, key.minor, um);
+    for (auto* clip : getTuneClips()) {
+        auto* um = clip->getUndoManager();
+        clip->state.setProperty(IDs::clipKeyTonic, static_cast<int>(key.tonic), um);
+        clip->state.setProperty(IDs::clipKeyMinor, key.minor, um);
+    }
 }
 
 void PsgClip::clearTuningChoice() {
-    auto* um = getUndoManager();
-    for (const auto* id : tuningChoiceIds)
-        state.removeProperty(*id, um);
+    for (auto* clip : getTuneClips()) {
+        auto* um = clip->getUndoManager();
+        for (const auto* id : tuningChoiceIds)
+            clip->state.removeProperty(*id, um);
+    }
 }
 
 PsgClip::Ptr PsgClip::insertTo(
@@ -284,7 +330,6 @@ PsgClip::Ptr PsgClip::insertTo(
     jassert(clip != nullptr);
     // Same undo transaction as the insert: one undo removes the whole import.
     clip->loadFrom(data);
-    PsgTempo::applyToEdit(*clip, data);
 
     // // debug checks
     // auto seq = clip->getPsg().exportToPlaybackMidiSequence(*clip, te::MidiList::TimeBase::seconds);
@@ -389,7 +434,7 @@ void PsgClip::loadFrom(uZX::PsgData &data) {
 TuningDetection detectTuningTogether(const juce::Array<PsgClip*>& clips) {
     PitchHistogram together;
     for (auto* clip : clips)
-        together += clip->getTuningDetection().histogram;  // each clip's is cached
+        together += clip->getPitchHistogram();  // each clip's is cached
     return detectTuning(together);
 }
 

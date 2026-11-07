@@ -14,6 +14,8 @@ namespace MoTool::PsgTempo {
 
 namespace {
 
+using Chips = std::vector<const uZX::PsgData*>;
+
 constexpr int minOnsetJump = 4;             // volume step (0..15) that counts as a note start
 constexpr double minGridShare = 0.8;        // chance-corrected share of onset energy on the row grid
 constexpr double harmonicTolerance = 0.02;  // a doubled period may lose this much share and still win
@@ -179,57 +181,67 @@ std::vector<size_t> rowStarts(size_t numFrames, const Speed& speed) {
     return starts;
 }
 
-/** What a row sounds like at its start, coarse enough to repeat bar after bar:
-    the drums (channels playing noise, the noise period, an envelope retrigger
-    within the row) and the bass (the lowest note the Notes view would draw, an
-    envelope pitch included, in semitones). */
-struct RowFeature
+/** One chip's drums at a row start: channels playing noise, the noise period, an
+    envelope retrigger within the row. */
+struct Drums
 {
     std::array<bool, 3> noiseChannels{};
     int noisePeriod = -1;
     bool retrigger = false;
-    int bassSemitone = -1;
 
-    bool drumsEqual(const RowFeature& o) const {
-        return noiseChannels == o.noiseChannels && noisePeriod == o.noisePeriod && retrigger == o.retrigger;
-    }
+    bool operator==(const Drums&) const = default;
 };
 
-std::vector<RowFeature> rowFeatures(const uZX::PsgData& data, const std::vector<size_t>& starts) {
-    std::vector<RowFeature> rows(starts.size());
-    uZX::PsgRegsFrame state;
-    // Same two-stage accumulation as PsgList::loadFrom, so the bass is the note the Notes
-    // view would draw lowest (envelope pitches included): registers first, so a frame
-    // that writes only a fine period byte keeps its coarse byte.
-    uZX::PsgRegsFrame regsState;
-    PsgParamFrameData params;
-    params.resetMixer();
-    size_t row = 0;
+/** What a row sounds like at its start, coarse enough to repeat bar after bar:
+    the drums of every chip and the bass (the lowest note the Notes view would draw
+    on any chip, an envelope pitch included, in semitones of its period). */
+struct RowFeature
+{
+    std::vector<Drums> drums;  // one per chip
+    int bassSemitone = -1;
 
-    for (size_t i = 0; i < data.frames.size() && row < starts.size(); ++i) {
-        state.update(data.frames[i]);
-        regsState.clear();
-        regsState.update(data.frames[i]);
-        params.clear();
-        params.update(regsState);
-        if (row + 1 < starts.size() && i >= starts[row + 1])
-            ++row;
-        auto& feature = rows[row];
-        feature.retrigger = feature.retrigger || data.frames[i].isSet(uZX::PsgRegType::EnvelopeShape);
-        if (i != starts[row])
-            continue;
+    bool drumsEqual(const RowFeature& o) const { return drums == o.drums; }
+};
 
-        const auto mixer = state.getMixer();
-        for (size_t ch = 0; ch < 3; ++ch) {
-            const bool audible = (state.getRaw(uZX::PsgRegType::VolumeA + ch) & 0x1f) != 0;
-            feature.noiseChannels[ch] = audible && ((mixer >> (3 + ch)) & 1) == 0;
+std::vector<RowFeature> rowFeatures(const Chips& chips, const std::vector<size_t>& starts) {
+    std::vector<RowFeature> rows(starts.size(), RowFeature{std::vector<Drums>(chips.size()), -1});
+    for (size_t chip = 0; chip < chips.size(); ++chip) {
+        const auto& data = *chips[chip];
+        uZX::PsgRegsFrame state;
+        // Same two-stage accumulation as PsgList::loadFrom, so the bass is the note the Notes
+        // view would draw lowest (envelope pitches included): registers first, so a frame
+        // that writes only a fine period byte keeps its coarse byte.
+        uZX::PsgRegsFrame regsState;
+        PsgParamFrameData params;
+        params.resetMixer();
+        size_t row = 0;
+
+        for (size_t i = 0; i < data.frames.size() && row < starts.size(); ++i) {
+            state.update(data.frames[i]);
+            regsState.clear();
+            regsState.update(data.frames[i]);
+            params.clear();
+            params.update(regsState);
+            if (row + 1 < starts.size() && i >= starts[row + 1])
+                ++row;
+            auto& drums = rows[row].drums[chip];
+            drums.retrigger = drums.retrigger || data.frames[i].isSet(uZX::PsgRegType::EnvelopeShape);
+            if (i != starts[row])
+                continue;
+
+            const auto mixer = state.getMixer();
+            for (size_t ch = 0; ch < 3; ++ch) {
+                const bool audible = (state.getRaw(uZX::PsgRegType::VolumeA + ch) & 0x1f) != 0;
+                drums.noiseChannels[ch] = audible && ((mixer >> (3 + ch)) & 1) == 0;
+            }
+            if (drums.noiseChannels[0] || drums.noiseChannels[1] || drums.noiseChannels[2])
+                drums.noisePeriod = state.getNoisePeriod();
+            int bassPeriod = 0;
+            visitFrameNotes(params, [&](const PsgFrameNote& note) { bassPeriod = std::max(bassPeriod, note.period); });
+            if (bassPeriod > 0)
+                rows[row].bassSemitone =
+                    std::max(rows[row].bassSemitone, juce::roundToInt(12.0 * std::log2((double) bassPeriod)));
         }
-        if (feature.noiseChannels[0] || feature.noiseChannels[1] || feature.noiseChannels[2])
-            feature.noisePeriod = state.getNoisePeriod();
-        int bassPeriod = 0;
-        visitFrameNotes(params, [&](const PsgFrameNote& note) { bassPeriod = std::max(bassPeriod, note.period); });
-        if (bassPeriod > 0)
-            feature.bassSemitone = juce::roundToInt(12.0 * std::log2((double) bassPeriod));
     }
     return rows;
 }
@@ -353,7 +365,20 @@ std::vector<int> Result::subdivisionPattern() const {
 }
 
 juce::Optional<Result> detect(const uZX::PsgData& data) {
-    const auto energy = onsetEnergy(data);
+    return detect(Chips{&data});
+}
+
+juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips) {
+    if (chips.empty())
+        return {};
+    // The chips play one tune: their note starts add up frame by frame.
+    std::vector<double> energy;
+    for (const auto* chip : chips) {
+        const auto chipEnergy = onsetEnergy(*chip);
+        energy.resize(std::max(energy.size(), chipEnergy.size()), 0.0);
+        for (size_t i = 0; i < chipEnergy.size(); ++i)
+            energy[i] += chipEnergy[i];
+    }
     const double total = std::accumulate(energy.begin(), energy.end(), 0.0);
     if (total < minEnergy)
         return {};
@@ -362,12 +387,13 @@ juce::Optional<Result> detect(const uZX::PsgData& data) {
     if (!speed)
         return {};
 
+    const auto& data = *chips.front();  // the chips of one tune share the frame rate
     const auto playRate = (int) std::max<size_t>(1, data.options.playRate);  // machine frames per data frame
     Result result;
     for (int row : speed->rows)
         result.rowFrames.push_back(row * playRate);
     const auto starts = rowStarts(energy.size(), *speed);
-    const auto rows = rowFeatures(data, starts);
+    const auto rows = rowFeatures(chips, starts);
     std::vector<double> accents;
     for (auto i : starts)
         accents.push_back(energy[i]);
@@ -384,28 +410,33 @@ juce::Optional<Result> detect(const uZX::PsgData& data) {
     if (openingFollowsGrid(energy, *speed, 2 * barFrames))
         result.firstRowFrame = firstRow * playRate;
 
-    uZX::PsgRegsFrame state;
-    for (size_t i = 0; i < (size_t) firstRow && i < data.frames.size(); ++i) {
-        state.update(data.frames[i]);
-        for (size_t ch = 0; ch < 3; ++ch)
-            if ((state.getRaw(uZX::PsgRegType::VolumeA + ch) & 0x1f) != 0)
-                result.silentLeadIn = false;
+    for (const auto* chip : chips) {
+        uZX::PsgRegsFrame state;
+        for (size_t i = 0; i < (size_t) firstRow && i < chip->frames.size(); ++i) {
+            state.update(chip->frames[i]);
+            for (size_t ch = 0; ch < 3; ++ch)
+                if ((state.getRaw(uZX::PsgRegType::VolumeA + ch) & 0x1f) != 0)
+                    result.silentLeadIn = false;
+        }
     }
     return result;
 }
 
 namespace {
 
-/** Whether the clip is alone in its edit: tempo and meter are only taken from
-    the file when nothing else depends on them. */
-bool isOnlyClipInEdit(PsgClip& clip) {
-    for (auto* track : tracktion::getClipTracks(clip.edit)) {
+/** Whether the clips are alone in their edit: tempo and meter are only taken from
+    the files when nothing else depends on them. */
+bool areOnlyClipsInEdit(const juce::Array<PsgClip*>& clips) {
+    auto isOther = [&](tracktion::Clip* other) {
+        return other != nullptr && ! clips.contains(dynamic_cast<PsgClip*>(other));
+    };
+    for (auto* track : tracktion::getClipTracks(clips.getFirst()->edit)) {
         for (auto* other : track->getClips())
-            if (other != &clip)
+            if (isOther(other))
                 return false;
         if (auto* audioTrack = dynamic_cast<tracktion::AudioTrack*>(track))
             for (auto* slot : audioTrack->getClipSlotList().getClipSlots())
-                if (auto* other = slot->getClip(); other != nullptr && other != &clip)
+                if (isOther(slot->getClip()))
                     return false;
     }
     return true;
@@ -413,15 +444,15 @@ bool isOnlyClipInEdit(PsgClip& clip) {
 
 }  // namespace
 
-void applyToEdit(PsgClip& clip, const uZX::PsgData& data) {
-    if (!isOnlyClipInEdit(clip))
+void applyToEdit(const juce::Array<PsgClip*>& clips, const std::vector<const uZX::PsgData*>& chips) {
+    if (clips.isEmpty() || !areOnlyClipsInEdit(clips))
         return;
-    const auto result = detect(data);
+    const auto result = detect(chips);
     if (!result)
         return;
 
-    auto& edit = clip.edit;
-    const auto clipStart = clip.getPosition().getStart();
+    auto& edit = clips.getFirst()->edit;
+    const auto clipStart = clips.getFirst()->getPosition().getStart();
     PsgTiming::setFramesPerBeat(edit,
                                 edit.tempoSequence.getTempoAt(clipStart),
                                 result->framesPerBeat,
@@ -434,17 +465,20 @@ void applyToEdit(PsgClip& clip, const uZX::PsgData& data) {
     if (result->firstRowFrame <= 0)
         return;
 
+    // Every clip moves alike, so the chips of a Turbo Sound tune stay in step.
     const auto fps = Helpers::getProjectFps(edit);
-    auto position = clip.getPosition();
-    if (result->silentLeadIn) {
-        const auto lead = tracktion::TimeDuration::fromSeconds(result->firstRowFrame / fps);
-        position.time = {position.getStart(), position.getEnd() - lead};
-        position.offset = position.offset + lead;
-        clip.setPosition(position);
-    } else {
-        const int barFrames = result->framesPerBeat * timeSig.numerator.get();
-        const int shift = barFrames - result->firstRowFrame % barFrames;
-        clip.setStart(position.getStart() + tracktion::TimeDuration::fromSeconds(shift / fps), false, true);
+    for (auto* clip : clips) {
+        auto position = clip->getPosition();
+        if (result->silentLeadIn) {
+            const auto lead = tracktion::TimeDuration::fromSeconds(result->firstRowFrame / fps);
+            position.time = {position.getStart(), position.getEnd() - lead};
+            position.offset = position.offset + lead;
+            clip->setPosition(position);
+        } else {
+            const int barFrames = result->framesPerBeat * timeSig.numerator.get();
+            const int shift = barFrames - result->firstRowFrame % barFrames;
+            clip->setStart(position.getStart() + tracktion::TimeDuration::fromSeconds(shift / fps), false, true);
+        }
     }
 }
 

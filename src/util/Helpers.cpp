@@ -2,6 +2,9 @@
 #include "../formats/psg/PsgFile.h"
 #include "../formats/psg/TurboSound.h"
 #include "../models/PsgClip.h"
+#include "../models/PsgTempoDetector.h"
+
+#include <list>
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../gui/common/Utilities.h"
 #include "../util/FileOps.h"
@@ -128,8 +131,10 @@ uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track) {
 Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::TimePosition start,
                                te::AudioTrack* firstTrack) {
     Array<PsgClip*> clips;
+    std::list<uZX::PsgFile> psgFiles;  // their data, for the tempo detection below
+    std::vector<const uZX::PsgData*> chips;
     for (const auto& f : files) {
-        auto psgFile = uZX::PsgFile(f);
+        auto& psgFile = psgFiles.emplace_back(f);
         if (! readPsgOrShowError(psgFile))
             continue;
 
@@ -143,8 +148,12 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
             track->changed();
             ensureAYPluginOnTrack(*track);
             clips.add(clip.get());
+            chips.push_back(&psgFile.getData());
         }
     }
+    if (clips.size() > 1)
+        PsgClip::linkAsOneTune(clips);
+    PsgTempo::applyToEdit(clips, chips);
     return clips;
 }
 

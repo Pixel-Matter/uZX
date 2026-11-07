@@ -70,6 +70,19 @@ public:
             expect(chip.triggerMode.definition.defaultValue == TriggerMode::ChipSync);
             expectEquals(chip.triggerMode.definition.numberOfStates(), int(TriggerMode::ChipSync) + 1);
         }
+
+        beginTest("A chip scope from an edit saved before Chip Sync syncs to the chip, not to the stored Rising Edge");
+        {
+            const auto loaded = [](ScopeSettings::Signal signal, const char* storedMode) {
+                juce::ValueTree state {"PLUGIN"};
+                state.setProperty(ScopeIDs::triggerMode, storedMode, nullptr);
+                ScopeSettings settings {signal};
+                settings.referTo(state, nullptr);
+                return settings.triggerMode.getStoredValue();
+            };
+            expect(loaded(ScopeSettings::Signal::ChipLevels, "RisingEdge") == TriggerMode::ChipSync);
+            expect(loaded(ScopeSettings::Signal::Audio, "FallingEdge") == TriggerMode::FallingEdge);
+        }
     }
 };
 

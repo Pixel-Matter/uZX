@@ -58,7 +58,7 @@ public:
     void runTest() override {
         using namespace tracktion::literals;
         auto edit = te::Edit::createSingleTrackEdit(*te::Engine::getEngines()[0]);
-        ZoomViewState zoom {*edit};
+        ZoomViewState zoom {*edit, edit->state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr)};
         auto& undo = edit->getUndoManager();
         undo.clearUndoHistory();
 
@@ -142,7 +142,7 @@ public:
 
         auto edit = te::Edit::createSingleTrackEdit(engine);
         auto& transport = edit->getTransport();
-        ZoomViewState zoom {*edit};
+        ZoomViewState zoom {*edit, edit->state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr)};
         const auto playhead = [&] { return zoom.getPlayheadPosition().inSeconds(); };
         const auto heard = [&] { return transport.getPosition().inSeconds() - 0.25; };
 

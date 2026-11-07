@@ -29,6 +29,7 @@ public:
         fileImportPsg,
         fileImportAudio,
         fileQuit,
+        fileRenderVideo,
 
         // Edit Menu
         editUndo             = 100,
@@ -88,7 +89,7 @@ public:
             fileOpenRecent1, fileOpenRecent2, fileOpenRecent3, fileOpenRecent4,
             fileOpenRecent5, fileOpenRecent6, fileOpenRecent7, fileOpenRecent8,
             fileClearRecentFiles,
-            fileSave, fileSaveAs, fileReveal, fileImportPsg, fileImportAudio, fileQuit,
+            fileSave, fileSaveAs, fileReveal, fileImportPsg, fileImportAudio, fileQuit, fileRenderVideo,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
             transportPreservePsgTiming,
@@ -256,6 +257,10 @@ public:
 
             case fileImportAudio:
                 result.setInfo("Import Audio...", "Import audio file", "File", 0);
+                break;
+
+            case fileRenderVideo:
+                result.setInfo("Render Video...", "Render the tune as a video of its notes and scopes", "File", 0);
                 break;
 
             case fileQuit:

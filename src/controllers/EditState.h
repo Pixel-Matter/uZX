@@ -50,7 +50,8 @@ public:
         virtual void playheadMoved() {}
     };
 
-    ZoomViewState(te::Edit& e);
+    /** Scrolls and zooms by `state`, the edit's ZOOMVIEWSTATE or a copy of it. */
+    ZoomViewState(te::Edit& e, ValueTree state);
     ~ZoomViewState() override;
 
     void addListener(Listener* l);
@@ -99,8 +100,12 @@ public:
         on screen by then. */
     static constexpr double frameLead = 1.0;
 
-    /** While playing, unless the user holds or has just scrolled the view: the view keeps the
-        playhead in its left third, scrolling by whole pixels. */
+    /** For a video rendered offline: from now on the playhead is `pos`, whatever the transport does,
+        and the view follows it as it does in playback. Tells the listeners at once. */
+    void showOfflineFrame(te::TimePosition pos);
+
+    /** While playing, unless the user holds or has just scrolled the view, and in offline frames:
+        the view keeps the playhead in its left third, scrolling by whole pixels. */
     bool isFollowingPlayhead() const;
 
     /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
@@ -134,6 +139,7 @@ private:
     PlayheadClock playheadClock;
     te::TimePosition framePlayhead;
     bool framePlayheadValid = false;
+    bool offlineFrames = false;  // showOfflineFrame() drives the playhead
     double lastFrameMs = -1.0e9, lastFrameTimestampSec = 0.0;
     FramePeriod framePeriod;
     static constexpr double framesStopAfterMs = 100.0;
@@ -145,6 +151,8 @@ private:
     void handleAsyncUpdate() override;
     static bool isZoomProperty(const juce::Identifier& id);
     void handlePlaybackScrolling();
+    /** Keeps pos in the view's left third, scrolling by whole pixels. */
+    void followPlayhead(te::TimePosition pos);
     void zoomAroundXByScale(double timePerPixelScale, int anchorX);
     bool jumpToPosition(te::TimePosition pos);
     bool jumpToCurrentPosition();
@@ -157,7 +165,9 @@ private:
 
 class EditViewState {
 public:
-    EditViewState(te::Edit& e, te::SelectionManager& s);
+    /** A detached view starts from copies of the edit's view settings and keeps its scrolling and widths
+        to itself: the off-screen view that renders a video moves without the one on screen. */
+    EditViewState(te::Edit& e, te::SelectionManager& s, bool detached = false);
 
     // Saved with the edit, but not undoable: these are view settings, not edits
     CachedValue<bool> preservePsgTimingOnTempoChange, snapPlayheadToGrid;

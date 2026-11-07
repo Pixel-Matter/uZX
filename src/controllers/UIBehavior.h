@@ -107,6 +107,12 @@ public:
         dialog.setVisible(true);
         dialog.runModalLoop();
 
+        // Done, cancelled, or closed by quitting. A job may be waiting for the message thread (Tracktion's
+        // callBlocking, a video frame being drawn), so keep messages going until it returns
+        job.signalJobShouldExit();
+        while (job.isRunning())
+            MessageManager::getInstance()->runDispatchLoopUntil(10);
+
         job.prepareForJobDeletion();
         jobManager.removeJob(&job, false, 1000);
     }

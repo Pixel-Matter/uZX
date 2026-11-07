@@ -48,8 +48,11 @@ public:
     void resized() override;
     void mouseDown(const juce::MouseEvent& event) override;
 
+    /** Takes the latest window from the buffer and repaints if it changed: once per display frame,
+        or per video frame when a video is rendered off screen. */
+    void refresh();
+
 private:
-    void onVBlank();
     /** Takes the triggered window from the buffer; false if it is the one already shown. */
     bool updateWaveform();
     int findTriggerPoint();
@@ -80,7 +83,7 @@ private:
 
     static constexpr int kTriggerSearchMultiplier = 2;  // Search in 2x window for trigger
 
-    juce::VBlankAttachment vblank_{this, [this] { onVBlank(); }};  // last: detaches before the rest goes
+    juce::VBlankAttachment vblank_{this, [this] { refresh(); }};  // last: detaches before the rest goes
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WaveformDisplay)
 };

@@ -68,7 +68,7 @@ void WaveformDisplay::setTriggerLevel(float level) {
     settingsChanged_ = true;
 }
 
-void WaveformDisplay::onVBlank() {
+void WaveformDisplay::refresh() {
     const bool samplesChanged = updateWaveform();  // always runs: a settings change takes the new window too
     if (! samplesChanged && ! settingsChanged_)
         return;

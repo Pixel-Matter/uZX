@@ -51,6 +51,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The AY chip's and the Scope's oscilloscopes update once per display frame, together with the timeline, instead of about 25 times a second at uneven intervals, and stop redrawing while the waveform doesn't change
 - PSG clips line up with the ruler to the pixel, and note lane names no longer shift by a pixel while the view scrolls
 - PSG files with pause markers no longer shift every later frame by one per pause, and files written with a `0xFF` version byte open
+- macOS 14 and later: playback scrolls with fewer dropped frames on displays such as a MacBook Pro panel set to 50 Hz, as each frame is now drawn in step with the screen rather than on a separate timer
 
 ## [v0.5.0-alpha] - 2026-10-29
 

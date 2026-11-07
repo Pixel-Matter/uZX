@@ -13,13 +13,15 @@ struct TriggerModeEnum {
     enum Enum : uint8_t {
         FreeRunning,
         RisingEdge,
-        FallingEdge
+        FallingEdge,
+        ChipSync  // last: audio scopes offer the modes before it
     };
 
     static inline constexpr std::string_view labels[] {
         "Free Running",
         "Rising Edge",
-        "Falling Edge"
+        "Falling Edge",
+        "Chip Sync"
     };
 };
 
@@ -56,20 +58,23 @@ struct TriggerStrategy {
         };
     }
 
-    static TriggerStrategy risingEdge() {
-        return {
-            TriggerMode::RisingEdge,
-            [](const float* samples, int numSamples, float threshold) -> int {
-                // Need at least 2 samples to detect edge
-                if (numSamples < 2)
-                    return 0;
+    static int firstRise(const float* samples, int numSamples, float threshold) {
+        for (int i = 1; i < numSamples; ++i) {
+            if (samples[i - 1] <= threshold && samples[i] > threshold)
+                return i;
+        }
+        return 0;  // No trigger found
+    }
 
-                for (int i = 1; i < numSamples; ++i) {
-                    if (samples[i - 1] <= threshold && samples[i] > threshold)
-                        return i;
-                }
-                return 0;  // No trigger found
-            }
+    static TriggerStrategy risingEdge() {
+        return {TriggerMode::RisingEdge, firstRise};
+    }
+
+    /** Searches a chip channel's sync, 1 or 0, rather than its levels, so the level setting doesn't apply. */
+    static TriggerStrategy chipSync() {
+        return {
+            TriggerMode::ChipSync,
+            [](const float* sync, int numSamples, float) { return firstRise(sync, numSamples, 0.5f); }
         };
     }
 
@@ -98,6 +103,8 @@ struct TriggerStrategy {
                 return risingEdge();
             case TriggerModeEnum::FallingEdge:
                 return fallingEdge();
+            case TriggerModeEnum::ChipSync:
+                return chipSync();
             case TriggerModeEnum::FreeRunning:
             default:
                 return freeRunning();

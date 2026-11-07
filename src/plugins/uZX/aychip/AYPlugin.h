@@ -31,7 +31,6 @@ namespace IDs {
     DECLARE_ID(noDC)
     DECLARE_ID(midi)
     DECLARE_ID(volume)
-    DECLARE_ID(numChannels)
     #undef DECLARE_ID
 }  // namespace IDs
 
@@ -57,7 +56,6 @@ public:
     void applyToBuffer(const te::PluginRenderContext&) noexcept override;
     void midiPanic() override;
     void reset() override;
-    // void getChannelNames(juce::StringArray*, juce::StringArray*) override;
 
     //==============================================================================
     bool takesMidiInput() override                      { return true; }
@@ -77,7 +75,6 @@ public:
             visitor(chipClock);
             visitor(removeDC);
             visitor(monitorMode);
-            // visitor(numOutputChannels);
         }
 
         ParameterValue<int> baseMidiChannel   {{"midi",        IDs::midi,        "MIDI",            "MIDI channel range",             1,      {1, 16 - 3, 1}}};
@@ -107,7 +104,7 @@ public:
 
     DynamicParams dynamicParams;
     ChannelMuter channelMuter;
-    ScopeSettings scopeSettings;
+    ScopeSettings scopeSettings {ScopeSettings::Signal::ChipLevels};
 
     enum class MidiReaderMode {
         Params,
@@ -117,8 +114,8 @@ public:
     MidiReaderMode midiReaderMode = MidiReaderMode::Params;
 
     /**
-     * Get visualization buffer for raw channel output (0=A, 1=B, 2=C).
-     * These buffers contain the unmixed channel outputs for oscilloscope/spectrum visualization.
+     * Get visualization buffer for raw channel output (0=A, 1=B, 2=C): the chip's DAC levels 0..1,
+     * unfiltered and before the stereo mix and the volume.
      */
     const ScopeBuffer* getVizChannelBuffer(int channel) const {
         if (channel >= 0 && channel < 3)
@@ -151,12 +148,11 @@ private:
 
     // Scope buffers for A, B, C channel visualization
     std::array<ScopeBuffer, kNumVizChannels> vizBuffers_;
-    // Temporary buffers for separate channel output (reused per render call)
-    AudioBuffer<float> separateChannelBuffer_;
+    // The current render call's scope lanes on their way to the scope buffers: levels, sync and amplitude, one
+    // channel per chip channel each
+    AudioBuffer<float> scopeLanes_;
 
     //==============================================================================
-    bool needsSeparateRendering() const noexcept;
-
     /**
     * Copy separate channel buffer to visualization buffers.
     */

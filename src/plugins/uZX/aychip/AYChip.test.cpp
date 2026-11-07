@@ -2,6 +2,8 @@
 
 #include "aychip.h"
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 
 // #include "TestUtils.h"
@@ -10,7 +12,6 @@ using namespace MoTool::uZX;
 
 namespace {
     // for example to bypass initial click
-    // Note: This assumes stereo mode is set. Call setOutputMode before using this.
     void bypassBlock(AyumiEmulator& ay, size_t samples) {
         std::vector<float> out(samples);
         ay.processBlockStereo(out.data(), out.data(), samples);
@@ -85,7 +86,7 @@ public:
         }
         beginTest("AYEmulator tone");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 2};  // Stereo mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             emulator.setChannelPan(0, 0.5);
             emulator.setTonePeriod(0, 1000);
             emulator.setToneOn(0, true);
@@ -100,7 +101,7 @@ public:
         }
         beginTest("AYEmulator noise");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 2};  // Stereo mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, true);
@@ -118,7 +119,7 @@ public:
         }
         beginTest("AYEmulator envelope");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 2};  // Stereo mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             emulator.setChannelPan(0, 0.5);
             emulator.setToneOn(0, false);
             emulator.setNoiseOn(0, false);
@@ -138,7 +139,7 @@ public:
         }
         beginTest("AYEmulator unmixed output");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 3};  // Three-channel mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
             // Set up different settings for each channel
             emulator.setChannelPan(0, 0.0);  // Ch0: left
             emulator.setChannelPan(1, 1.0);  // Ch1: right
@@ -171,22 +172,102 @@ public:
             expect(ch0Mean > ch1Mean, "Channel 0 (vol=15) should be louder than Channel 1 (vol=10)");
             expect(ch1Mean > ch2Mean, "Channel 1 (vol=10) should be louder than Channel 2 (vol=5)");
         }
-        beginTest("AYEmulator mono output");
+        beginTest("AYEmulator raw channel levels");
         {
-            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY, 1};  // Mono mode
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            emulator.setMasterVolume(0.5f);
             emulator.setTonePeriod(0, 1000);
             emulator.setToneOn(0, true);
             emulator.setVolume(0, 15);
 
-            // Skip initial click but we need to use mono processBlock
-            std::vector<float> bypass(4410);
-            emulator.processBlockMono(bypass.data(), 4410);
+            std::vector<float> left(44100), right(44100), a(44100), b(44100), c(44100);
+            std::array<float*, 3> raw {a.data(), b.data(), c.data()};
+            emulator.processBlockStereo(left.data(), right.data(), 44100, true, {.levels = raw.data()});
 
-            std::vector<float> outMono(44100);
-            emulator.processBlockMono(outMono.data(), 44100);
+            const auto [lo, hi] = std::minmax_element(a.begin(), a.end());
+            expectEquals(*lo, 0.0f, "A's tone drops to the DAC's zero");
+            expectEquals(*hi, 1.0f, "A's volume 15 reaches the DAC's top, whatever the master volume");
+            expect(std::all_of(b.begin(), b.end(), [](float x) { return x == 0.0f; }), "Silent B stays at zero");
 
-            auto monoMean = mean(outMono.data(), 44100);
-            expect(monoMean > 0.2, "Mono output should be audible");
+            int wideEdges = 0;
+            for (size_t i = 1; i < a.size(); ++i)
+                wideEdges += a[i - 1] > 0.0f && a[i - 1] < 1.0f && a[i] > 0.0f && a[i] < 1.0f;
+            expectEquals(wideEdges, 0, "Each edge takes at most one sample between the levels");
+        }
+        beginTest("AYEmulator raw levels with fewer chip ticks than samples");
+        {
+            auto emulator = AyumiEmulator {192000, ChipClockChoice(ChipClockEnum::NES_PAL_0_83_MHz).getClockValue(),
+                                           ChipType::AY};
+            emulator.setTonePeriod(0, 100);
+            emulator.setToneOn(0, true);
+            emulator.setVolume(0, 15);
+
+            std::vector<float> left(19200), right(19200), a(19200), b(19200), c(19200);
+            std::array<float*, 3> raw {a.data(), b.data(), c.data()};
+            emulator.processBlockStereo(left.data(), right.data(), 19200, true, {.levels = raw.data()});
+
+            expect(std::all_of(a.begin(), a.end(), [](float x) { return x >= 0.0f && x <= 1.0f; }),
+                   "A sample with no chip tick holds the level");
+            expectEquals(*std::max_element(a.begin(), a.end()), 1.0f, "A's tone still shows");
+        }
+        beginTest("AYEmulator sync follows the tone through noise, else the envelope; amplitude follows the volume");
+        {
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            emulator.setTonePeriod(0, 1000);  // A: a 125 Hz tone chopped by noise
+            emulator.setNoisePeriod(5);
+            emulator.setMixer(0, true, true, false);
+            emulator.setVolume(0, 15);
+            emulator.setEnvelopePeriod(100);  // B: a triangle envelope, 64 steps of 100 * 8 clocks: 39 Hz
+            emulator.setEnvelopeShape(EnvShape::DOWN_UP_A);
+            emulator.setMixer(1, false, false, true);
+            emulator.setMixer(2, false, true, false);  // C: noise only, at volume 8
+            emulator.setVolume(2, 8);
+
+            std::vector<float> left(44100), right(44100);
+            std::array<std::vector<float>, 3> levels, sync, amplitude;
+            std::array<float*, 3> levelPtrs, syncPtrs, amplitudePtrs;
+            for (size_t ch = 0; ch < 3; ++ch) {
+                levels[ch].resize(44100);
+                sync[ch].resize(44100);
+                amplitude[ch].resize(44100);
+                levelPtrs[ch] = levels[ch].data();
+                syncPtrs[ch] = sync[ch].data();
+                amplitudePtrs[ch] = amplitude[ch].data();
+            }
+            emulator.processBlockStereo(left.data(), right.data(), 44100, true,
+                                        {levelPtrs.data(), syncPtrs.data(), amplitudePtrs.data()});
+
+            const auto rises = [](const std::vector<float>& s) {
+                int n = 0;
+                for (size_t i = 1; i < s.size(); ++i)
+                    n += s[i - 1] < 0.5f && s[i] >= 0.5f;
+                return n;
+            };
+            expect(std::abs(rises(sync[0]) - 125) <= 1, "A syncs once per tone period: " + String(rises(sync[0])));
+            expect(rises(levels[0]) > 1000, "A's levels rise far more often, chopped by the noise");
+            expect(std::abs(rises(sync[1]) - 39) <= 1, "B syncs once per envelope cycle: " + String(rises(sync[1])));
+            expectEquals(rises(sync[2]), 0, "C has no tone or envelope to sync to");
+
+            expectEquals(amplitude[0].back(), 1.0f, "A's volume 15 reaches the top");
+            expectEquals(amplitude[1].back(), 1.0f, "The envelope can drive B to the top");
+            expectWithinAbsoluteError(amplitude[2].back(), *std::max_element(levels[2].begin(), levels[2].end()), 1e-6f,
+                         "C's volume 8 reaches as high as its noise does");
+        }
+        beginTest("AYEmulator renders all three channels after a reset");
+        {
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            std::vector<float> outA(44100), outB(44100), outC(44100);
+            emulator.processBlockSeparate(outA.data(), outB.data(), outC.data(), 4410);
+
+            emulator.setClock(1773400);  // resets the chip
+            emulator.setTonePeriod(2, 1000);
+            emulator.setToneOn(2, true);
+            emulator.setVolume(2, 15);
+            emulator.processBlockSeparate(outA.data(), outB.data(), outC.data(), 4410);
+            emulator.processBlockSeparate(outA.data(), outB.data(), outC.data(), 44100);
+
+            expect(mean(outC.data(), 44100) > 0.2, "Channel C should be audible");
+            expect(mean(outA.data(), 44100) < 0.01, "Channel A should be silent");
         }
     }
 };

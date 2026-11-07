@@ -1,6 +1,6 @@
 /* Ayumi Performance Benchmark
  *
- * Benchmarks the three output modes to measure CPU performance.
+ * Benchmarks the stereo and separate output modes to measure CPU performance.
  * Compile: gcc -O3 -Wall bench_ayumi.c ayumi.c -lm -o bench_ayumi
  * Run: ./bench_ayumi
  */
@@ -53,7 +53,7 @@ static void setup_chip(struct ayumi* ay) {
 
 int main(void) {
     struct ayumi ay;
-    double mono_time, stereo_time, three_ch_time;
+    double stereo_time, three_ch_time;
 
     printf("Ayumi Performance Benchmark\n");
     printf("============================\n");
@@ -73,10 +73,6 @@ int main(void) {
     printf("\n");
 
     setup_chip(&ay);
-
-    mono_time = benchmark_mode(&ay, AYUMI_MONO, "MONO mode");
-
-    setup_chip(&ay);
     stereo_time = benchmark_mode(&ay, AYUMI_STEREO, "STEREO mode");
 
     setup_chip(&ay);
@@ -84,13 +80,10 @@ int main(void) {
 
     printf("\n");
     printf("Relative performance:\n");
-    printf("  MONO vs STEREO:        %.2fx faster\n", stereo_time / mono_time);
-    printf("  MONO vs THREE_CHANNEL: %.2fx faster\n", three_ch_time / mono_time);
     printf("  STEREO vs THREE_CHANNEL: %.2fx faster\n", three_ch_time / stereo_time);
 
     printf("\n");
     printf("Real-time capability @ 44.1kHz:\n");
-    printf("  MONO:          %.1fx real-time\n", 10.0 / mono_time);
     printf("  STEREO:        %.1fx real-time\n", 10.0 / stereo_time);
     printf("  THREE_CHANNEL: %.1fx real-time\n", 10.0 / three_ch_time);
 

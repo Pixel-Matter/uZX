@@ -146,12 +146,22 @@ void addScopeSettingsMenu(juce::PopupMenu& parentMenu,
         [&settings]() {
             settings.triggerMode.setStoredValue(TriggerMode::FallingEdge);
         });
+    if (settings.signal == ScopeSettings::Signal::ChipLevels) {
+        triggerMenu.addItem("Chip Sync",
+            true,
+            currentMode == TriggerMode::ChipSync,
+            [&settings]() {
+                settings.triggerMode.setStoredValue(TriggerMode::ChipSync);
+            });
+    }
     targetMenu->addSubMenu("Trigger Mode", triggerMenu);
 
-    // Trigger level presets
+    // Trigger level presets: around zero for audio, above the silence for a chip channel's levels
     juce::PopupMenu levelMenu;
     const float currentLevel = settings.triggerLevel.getStoredValue();
-    const std::array<float, 5> levelPresets = {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
+    const auto levelPresets = settings.signal == ScopeSettings::Signal::ChipLevels
+                                  ? std::vector<float> {0.0f, 0.1f, 0.25f, 0.5f}
+                                  : std::vector<float> {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
     for (float preset : levelPresets) {
         levelMenu.addItem(juce::String(preset, 2),
             true,
@@ -160,7 +170,8 @@ void addScopeSettingsMenu(juce::PopupMenu& parentMenu,
                 settings.triggerLevel.setStoredValue(preset);
             });
     }
-    targetMenu->addSubMenu("Trigger Level (" + juce::String(currentLevel, 2) + ")", levelMenu);
+    const bool usesLevel = currentMode == TriggerMode::RisingEdge || currentMode == TriggerMode::FallingEdge;
+    targetMenu->addSubMenu("Trigger Level (" + juce::String(currentLevel, 2) + ")", levelMenu, usesLevel);
 
     // If title was provided, add the submenu to parent
     if (title.isNotEmpty()) {

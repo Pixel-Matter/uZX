@@ -56,10 +56,17 @@ private:
     void buildPath();
     void showPopupMenu();
 
+    /** The y of a zero sample, and pixels per unit: at gain 1 the signal's range spans 90% of the height. */
+    struct YAxis { float zero, scale; };
+    YAxis yAxis(float height) const;
+
     const ScopeBuffer& sourceBuffer_;
     ScopeSettings& scopeSettings_;
     std::vector<float> displaySamples_;
     std::vector<float> workBuffer_;  // Larger buffer for trigger search
+    std::vector<float> syncWork_;       // The work buffer's sync, searched instead in Chip Sync mode
+    std::vector<float> amplitudeWork_;  // The work buffer's amplitude, which centres a chip channel
+    float centre_{0.0f};                // Half the shown window's highest amplitude: a chip channel's middle
     juce::Path waveformPath_;
 
     juce::Colour colour_;

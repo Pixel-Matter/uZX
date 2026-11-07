@@ -38,6 +38,8 @@ WaveformDisplay::WaveformDisplay(juce::Colour colour,
 {
     displaySamples_.resize(static_cast<size_t>(windowSize_));
     workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
+    syncWork_.resize(workBuffer_.size());
+    amplitudeWork_.resize(workBuffer_.size());
 }
 
 void WaveformDisplay::setWindowSize(int samples) {
@@ -45,6 +47,8 @@ void WaveformDisplay::setWindowSize(int samples) {
         windowSize_ = samples;
         displaySamples_.resize(static_cast<size_t>(windowSize_));
         workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
+        syncWork_.resize(workBuffer_.size());
+        amplitudeWork_.resize(workBuffer_.size());
         settingsChanged_ = true;
     }
 }
@@ -77,26 +81,40 @@ void WaveformDisplay::onVBlank() {
 bool WaveformDisplay::updateWaveform() {
     // Copy samples from ring buffer into work buffer for trigger search
     const int workSamples = windowSize_ * kTriggerSearchMultiplier;
-    sourceBuffer_.copyTo(workBuffer_.data(), workSamples);
+    sourceBuffer_.copyTo(workBuffer_.data(), workSamples, syncWork_.data(), amplitudeWork_.data());
 
-    // The trigger is searched in the first window, so a whole window always follows it
+    // The trigger lands in the window's centre, with half a window on each side of it
     const int triggerOffset = findTriggerPoint();
     jassert(triggerOffset >= 0 && triggerOffset + windowSize_ <= workSamples);
     const float* window = workBuffer_.data() + triggerOffset;
     const auto bytes = displaySamples_.size() * sizeof(float);
 
+    // A chip channel is centred on half the highest level its volume reaches in the window
+    const auto amplitudes = amplitudeWork_.begin() + triggerOffset;
+    const float centre = *std::max_element(amplitudes, amplitudes + windowSize_) * 0.5f;
+
     // Silence, a held tone or a stopped transport give the same window: nothing to repaint
-    if (std::memcmp(displaySamples_.data(), window, bytes) == 0)
+    if (std::memcmp(displaySamples_.data(), window, bytes) == 0 && juce::exactlyEqual(centre, centre_))
         return false;
 
     std::memcpy(displaySamples_.data(), window, bytes);
+    centre_ = centre;
     return true;
 }
 
 int WaveformDisplay::findTriggerPoint() {
-    // Search in the first half of work buffer to leave room for display window
-    int searchLength = windowSize_;
-    return triggerStrategy_(workBuffer_.data(), searchLength, triggerLevel_);
+    // Searched from half a window in, the trigger's index there is where the window around it starts
+    const bool chipSync = triggerStrategy_.mode == TriggerMode(TriggerModeEnum::ChipSync);
+    return triggerStrategy_((chipSync ? syncWork_ : workBuffer_).data() + windowSize_ / 2, windowSize_, triggerLevel_);
+}
+
+WaveformDisplay::YAxis WaveformDisplay::yAxis(float height) const {
+    constexpr float margin = 0.05f;
+    if (scopeSettings_.signal == ScopeSettings::Signal::ChipLevels) {
+        const float scale = height * (1.0f - 2.0f * margin) * gain_;
+        return {height * 0.5f + centre_ * scale, scale};
+    }
+    return {height * 0.5f, height * (0.5f - margin) * gain_};
 }
 
 void WaveformDisplay::buildPath() {
@@ -107,10 +125,9 @@ void WaveformDisplay::buildPath() {
 
     const float width = static_cast<float>(getWidth());
     const float height = static_cast<float>(getHeight());
-    const float midY = height * 0.5f;
-    const float scaleY = midY * gain_;
+    const auto axis = yAxis(height);
 
-    const auto toY = [&](float sample) { return juce::jlimit(0.0f, height, midY - sample * scaleY); };
+    const auto toY = [&](float sample) { return juce::jlimit(0.0f, height, axis.zero - sample * axis.scale); };
     const auto addPoint = [this](size_t i, float x, float y) {
         if (i == 0)
             waveformPath_.startNewSubPath(x, y);
@@ -145,15 +162,20 @@ void WaveformDisplay::paint(juce::Graphics& g) {
     g.setColour(Colors::Theme::backgroundDark);
     g.fillRect(bounds);
 
-    // Center line (zero crossing reference)
-    g.setColour(Colors::Theme::border);
-    const float midY = bounds.getHeight() * 0.5f;
-    g.drawHorizontalLine(static_cast<int>(midY), 0.0f, bounds.getWidth());
+    // Zero line for audio; a chip channel's zero moves with each centred window
+    const auto axis = yAxis(bounds.getHeight());
+    const bool chipLevels = scopeSettings_.signal == ScopeSettings::Signal::ChipLevels;
+    if (! chipLevels) {
+        g.setColour(Colors::Theme::border);
+        g.drawHorizontalLine(static_cast<int>(axis.zero), 0.0f, bounds.getWidth());
+    }
 
-    // Trigger level line
-    if (triggerStrategy_.mode != TriggerMode(TriggerModeEnum::FreeRunning)) {
-        g.setColour(Colors::Theme::warning.withAlpha(0.5f));
-        const float trigY = midY - triggerLevel_ * midY * gain_;
+    // Trigger level line for the modes that use it, unless it would lie along the chip's silence
+    const auto mode = triggerStrategy_.mode.asEnum();
+    const bool usesLevel = mode == TriggerModeEnum::RisingEdge || mode == TriggerModeEnum::FallingEdge;
+    if (usesLevel && (! chipLevels || triggerLevel_ > 0.0f)) {
+        g.setColour(Colors::Timeline::trackGridTickColors[1]);  // as faint as the timeline's labeled grid lines
+        const float trigY = axis.zero - triggerLevel_ * axis.scale;
         g.drawHorizontalLine(static_cast<int>(trigY), 0.0f, bounds.getWidth());
     }
 

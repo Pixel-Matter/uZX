@@ -32,4 +32,11 @@ double PlayheadClock::positionAt(double nowMs) {
     return shownPos;
 }
 
+void FramePeriod::add(double intervalSec) {
+    recent[next++ % recent.size()] = intervalSec;
+    auto sorted = recent;
+    std::nth_element(sorted.begin(), sorted.begin() + sorted.size() / 2, sorted.end());
+    period = sorted[sorted.size() / 2];
+}
+
 }  // namespace MoTool

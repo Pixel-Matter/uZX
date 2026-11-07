@@ -14,6 +14,8 @@ public:
         testHoldAndStart();
         testJumps();
         testReportsStopping();
+        testFramePeriod();
+        testLateFrame();
     }
 
 private:
@@ -92,6 +94,42 @@ private:
         const auto stopped = clock.positionAt(1000.0 + PlayheadClock::maxExtrapolationMs + 50.0);
         const auto later = clock.positionAt(1000.0 + PlayheadClock::maxExtrapolationMs + 150.0);
         expectWithinAbsoluteError(later, stopped, 1e-12);
+    }
+
+    void testFramePeriod() {
+        beginTest("A late frame does not change the frame period; another display's rate takes over");
+        FramePeriod period;
+        for (int i = 0; i < 10; ++i)
+            period.add(0.01668);
+        period.add(0.045);  // a vblank the message thread missed
+        expectWithinAbsoluteError(period.get(), 0.01668, 1e-12);
+        period.add(0.0334);
+        expectWithinAbsoluteError(period.get(), 0.01668, 1e-12, "two late frames in a row");
+        for (int i = 0; i < 3; ++i)
+            period.add(0.02);  // moved to a 50 Hz display
+        expectWithinAbsoluteError(period.get(), 0.02, 1e-12);
+    }
+
+    void testLateFrame() {
+        beginTest("After a late frame the playhead catches up once, without overshooting and then holding");
+        // As ZoomViewState::advanceFrame does it: the position one frame period after the callback
+        PlayheadClock clock;
+        FramePeriod period;
+        clock.report(0.0, 0.0, true);
+        double previous = 0.0, nowMs = 0.0;
+        std::vector<double> steps;
+        for (int frame = 1; frame <= 12; ++frame) {
+            const double interval = frame == 6 ? 45.0 : frameMs;
+            nowMs += interval;
+            clock.report(nowMs / 1000.0, nowMs, true);  // playback where it truly is
+            period.add(interval / 1000.0);
+            const auto shown = clock.positionAt(nowMs + period.get() * 1000.0);
+            steps.push_back((shown - previous) * 1000.0);
+            previous = shown;
+        }
+        expectWithinAbsoluteError(steps[5], 45.0, 1.0, "the late frame steps by the time that passed");
+        for (size_t i = 6; i < steps.size(); ++i)
+            expectWithinAbsoluteError(steps[i], frameMs, 1.0, "frames after it step evenly, frame " + String((int) i));
     }
 };
 

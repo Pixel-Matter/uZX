@@ -1,0 +1,87 @@
+#pragma once
+
+#include <JuceHeader.h>
+
+#include <atomic>
+#include <memory>
+#include <vector>
+
+#include "../../controllers/EditState.h"
+#include "../../formats/video/VideoExport.h"
+#include "../../util/PipedProcess.h"
+
+namespace MoTool {
+
+class PlayerDocumentComponent;
+
+//==============================================================================
+/**
+    Renders an edit to a video file. Plays the edit offline one video frame of sound at a time and draws
+    each frame as the Player's Viz mode shows it, at the zoom on screen; ffmpeg encodes the frames as they
+    come, then adds the sound. Create and delete on the message thread; run with
+    UIBehaviour::runTaskWithProgressBar.
+*/
+class VideoRenderJob : public tracktion::ThreadPoolJobWithProgress,
+                       private juce::AudioFormatWriter::ThreadedWriter::IncomingDataReceiver
+{
+public:
+    VideoRenderJob(tracktion::Edit&, const Video::Settings&, const juce::File& ffmpeg, const juce::File& dest);
+    ~VideoRenderJob() override;
+
+    JobStatus runJob() override;
+    float getCurrentTaskProgress() override;
+    bool canCancel() const override { return true; }
+
+    /** Once finished: true if the video was written. */
+    bool hasWritten() const { return stage == Stage::done; }
+    /** Once finished: why it failed; empty if it was written or cancelled. */
+    juce::String getError() const { return error; }
+
+private:
+    enum class Stage
+    {
+        frames,
+        encoding,
+        muxing,
+        done
+    };
+
+    void renderFrames();
+    void finishEncoding();
+    void finishMuxing();
+    bool drawFrame(tracktion::TimePosition playhead);
+    juce::StringArray ffmpegCommand(const juce::StringArray& args) const;
+    juce::String ffmpegErrors() const;
+
+    // The sound written so far, block by block
+    void reset(int, double, juce::int64) override {}
+    void addBlock(juce::int64 sampleNumberInSource, const juce::AudioBuffer<float>&, int, int numSamples) override;
+
+    tracktion::Edit& edit;
+    const Video::Settings settings;
+    const juce::File ffmpeg;
+    const int width, height, totalFrames;
+
+    juce::TemporaryFile video{".mp4"}, sound{".wav"}, log{".log"};
+    juce::TemporaryFile output;  // beside the destination, which it replaces only once the video is complete
+
+    tracktion::SelectionManager selection;
+    EditViewState view;
+    std::unique_ptr<PlayerDocumentComponent> document;
+    juce::Image frame;
+    std::vector<juce::uint8> pixels;
+
+    std::unique_ptr<tracktion::Edit::ScopedRenderStatus> renderStatus;
+    std::unique_ptr<tracktion::Renderer::RenderTask> audioRender;
+    PipedProcess encoder, muxer;  // after the temporary files: they stop before the files go
+
+    Stage stage = Stage::frames;
+    std::atomic<int> framesDone{0};
+    std::atomic<bool> finished{false};
+    juce::int64 samplesRendered = 0;
+    juce::String error;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VideoRenderJob)
+};
+
+}  // namespace MoTool

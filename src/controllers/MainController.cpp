@@ -10,6 +10,7 @@
 #include "../gui/main/MainDocument.h"
 #include "../gui/main/AboutDialog.h"
 #include "../gui/timeline/PsgClipComponent.h"
+#include "../gui/video/RenderVideoDialog.h"
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
@@ -318,6 +319,8 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         menu.addCommandItem(&commandManager_, MainAppCommands::fileImportPsg);
         if (!isPlayer)
             menu.addCommandItem(&commandManager_, MainAppCommands::fileImportAudio);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileRenderVideo);
        #if ! JUCE_MAC  // macOS has Quit in the app menu
         menu.addSeparator();
         menu.addCommandItem(&commandManager_, MainAppCommands::fileQuit);
@@ -405,6 +408,10 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
         case MainAppCommands::fileReveal:
             // the Player's opened PSG files live in the temp folder until saved
             result.setActive(edit != nullptr && (!isPlayer || !EditFileOps::isTempEdit(*edit)));
+            break;
+
+        case MainAppCommands::fileRenderVideo:
+            result.setActive(edit != nullptr);
             break;
 
         case MainAppCommands::fileOpenRecent1:
@@ -606,6 +613,11 @@ bool AppController::perform(const InvocationInfo& info) {
                     importAudioAsClip(*edit, selectionManager_);
                 }
             }
+            break;
+
+        case MainAppCommands::fileRenderVideo:
+            if (auto* edit = MoToolApp::getActiveController().getEdit())
+                showRenderVideoDialog(*edit);
             break;
 
         case MainAppCommands::fileQuit:

@@ -73,6 +73,19 @@ Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler;
 
 **View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
 
+### Rendering a Video
+
+**File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes, at the zoom you see on screen, and the view follows the playhead from the start of the tune to 3 seconds after its end. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, µZX offers to show the file. The sound is the tune at full level: the master volume knob doesn't change it.
+
+- **ffmpeg** encodes the video. µZX looks for it on the `PATH` and in `/opt/homebrew/bin` and `/usr/local/bin`. If it isn't found, install it (`brew install ffmpeg`, or from [ffmpeg.org](https://ffmpeg.org/download.html)), or click **Choose...** to point to it.
+- **Render** is the size the frames are drawn at, from 1280 × 720 to 3840 × 2160: the notes, scopes and labels are laid out as in a window that size. **Output** scales the frames up by a whole number, up to 8K, each drawn pixel becoming a sharp square block: 1280 × 720 at ×3 makes a 4K video of a 720p view.
+- **Frame rate**: 60, 50, 48, 30, 25 or 24 fps. At 60 the notes scroll most smoothly on most screens.
+- **Video**: H.264 plays everywhere; HEVC (H.265) and AV1 make smaller files, for 4K and 8K. **Quality** is High, Very high or Near lossless. A codec your ffmpeg can't encode is greyed out.
+- **Audio**: AAC 384 kbps, Opus 256 kbps or ALAC (lossless), 48 kHz stereo.
+- **Render...** asks where to save the `.mp4` file.
+
+µZX remembers these settings, and the folder, for the next render.
+
 ### AY Chip and Level Meter
 
 Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Drag the gap to the left of the chips to make them wider, for wider scopes, or back down to their narrowest. Here you can adjust:
@@ -120,6 +133,10 @@ Same controls as µZX Player, plus:
 ### Importing PSG Files
 
 **File → Import PSG** (`Cmd+I`) picks one or more `.psg` files. One file goes on the selected track, or a new track when no track is selected; several files go on new tracks, one each. Dropping `.psg` files onto the window adds each on a new track. Clips start at the beginning of the project. A file of a Turbo Sound set brings up the same question as in the Player (see [Opening Files](#opening-files)).
+
+### Rendering a Video
+
+**File → Render Video...** works as in the Player: see [Rendering a Video](#rendering-a-video). Every track is drawn as Viz mode shows it, a chip's scopes at the right of its row.
 
 ### Timeline
 

@@ -1,6 +1,9 @@
 # Source files used by both GUI app and tests
 set(SHARED_SOURCES
     util/Midi.cpp
+    util/PipedProcess.cpp
+
+    formats/video/VideoExport.cpp
 
     formats/psg/TurboSound.cpp
 
@@ -68,6 +71,8 @@ set(GUI_SOURCES
     gui/main/MainWindow.cpp
     gui/main/PlayerDocument.cpp
     gui/main/Footer.cpp
+    gui/video/VideoRenderJob.cpp
+    gui/video/RenderVideoDialog.cpp
     gui/tuning/TuningPreviewGrid.cpp
     gui/tuning/TuningPreview.cpp
 
@@ -107,6 +112,9 @@ set(TEST_SOURCES
     util/Oklch.test.cpp
     util/Helpers.test.cpp
     util/FileOps.test.cpp
+    util/PipedProcess.test.cpp
+
+    formats/video/VideoExport.test.cpp
 
     formats/psg/PsgFile.test.cpp
     formats/psg/TurboSound.test.cpp
@@ -142,6 +150,7 @@ set(TEST_SOURCES
     gui/timeline/PsgClipTestHelpers.h
     gui/timeline/PsgVisualGuide.test.cpp
     gui/timeline/PsgPaintingBenchmark.test.cpp
+    gui/video/VideoRenderJob.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/aychip/AYPlugin.test.cpp

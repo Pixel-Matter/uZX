@@ -5,6 +5,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ## [Unreleased]
 
 ### Added
+- **File → Render Video...** in the Player and Studio renders the tune as a video: Viz mode's notes and scopes at the zoom on screen, drawn at 720p to 4K and scaled up by whole numbers with sharp pixels to as much as 8K, at 24 to 60 fps, encoded by ffmpeg as H.264, HEVC or AV1 with AAC, Opus or lossless ALAC sound. It renders offline, faster than real time, with progress and Cancel, and remembers its settings
 - The Player's AY chips get wider by dragging the gap to their left: the scopes widen, the buttons keep their size, and the width carries over to the next file opened
 - Viz mode in the Player: **View → Viz Mode** (`F`) goes full screen with only each track's notes, on the scopes' dark background, and its chip's A, B and C scopes, whose width you drag; `F` or `Esc` leaves it
 - Solo AY channels. Each A, B or C button is on, muted (red) or soloed (emerald): a click mutes a channel that is on and turns a muted or soloed one back on; `Alt`-click (`Option`-click on a Mac) solos a channel, a muted one too, or unsolos it. Several channels can be soloed, on any chips; while any is, only soloed channels play, and the other buttons stay as they were. A chip with a soloed channel solos its track. Solo is saved with the file and, like track solo, isn't a step in Undo

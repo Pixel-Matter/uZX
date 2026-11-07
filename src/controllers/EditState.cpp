@@ -22,10 +22,9 @@ namespace {
     }
 }
 
-ZoomViewState::ZoomViewState(te::Edit& e)
-  : edit(e)
+ZoomViewState::ZoomViewState(te::Edit& e, ValueTree s)
+  : edit(e), state(s)
 {
-    state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
     // Saved with the edit, but kept out of undo: scrolling and zooming are not edits
     viewStartTime.referTo(state, IDs::viewStartTime, nullptr, 0s);
     viewTimePerPixel.referTo(state, IDs::viewTimePerPixel, nullptr, 60s / (double) viewWidthPx.load());
@@ -118,6 +117,8 @@ bool ZoomViewState::jumpToCurrentPosition() {
 }
 
 te::TimePosition ZoomViewState::getPlayheadPosition() const {
+    if (offlineFrames)
+        return framePlayhead;
     auto& transport = edit.getTransport();
     if (!transport.isPlaying() && !transport.isRecording())
         return transport.getPosition();
@@ -168,6 +169,14 @@ void ZoomViewState::advanceFrame(double timestampSec) {
     framePlayheadValid = true;
 
     handlePlaybackScrolling();
+    markAndUpdate(updatePlayhead);
+    handleUpdateNowIfNeeded();
+}
+
+void ZoomViewState::showOfflineFrame(te::TimePosition pos) {
+    offlineFrames = true;
+    framePlayhead = pos;
+    followPlayhead(pos);
     markAndUpdate(updatePlayhead);
     handleUpdateNowIfNeeded();
 }
@@ -252,6 +261,8 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
 }
 
 bool ZoomViewState::isFollowingPlayhead() const {
+    if (offlineFrames)
+        return true;  // as in playback, which lets clips scroll their cached content
     auto& transport = edit.getTransport();
     return (transport.isPlaying() || transport.isRecording()) && !userDraggingView
         && Time::getMillisecondCounter() - lastWheelScrollMs >= wheelFollowPauseMs;
@@ -260,28 +271,27 @@ bool ZoomViewState::isFollowingPlayhead() const {
 void ZoomViewState::handlePlaybackScrolling() {
     auto& transport = edit.getTransport();
     if (transport.isPlaying() || transport.isRecording()) {
-        if (!isFollowingPlayhead())
-            return;  // the user holds or has just scrolled the view
-        auto pos = getPlayheadPosition();
-        // DBG("ZoomViewState::handlePlaybackScrolling, pos: " << pos.inSeconds());
-        auto range = getRange();
-        auto leftRange = range.getLength() / 3.0;
-        if (pos < viewStartTime || pos > viewStartTime + leftRange) {
-            // On the timeline's whole pixels, so what is drawn keeps its place within a pixel and
-            // clips can blit their cached content (PsgClipComponent) in line with the ruler and the playhead
-            const auto timePerPixel = getTimePerPixel();
-            auto newX1 = te::TimePosition() + timePerPixel * std::floor(jmax(te::TimePosition(), pos - leftRange)
-                                                                             .inSeconds() / timePerPixel.inSeconds());
-            if (newX1 != viewStartTime) {
-                setStart(newX1);
-            }
-        }
+        if (isFollowingPlayhead())  // else the user holds or has just scrolled the view
+            followPlayhead(getPlayheadPosition());
     } else if (!transport.isUserDragging() && !userDraggingView) {
         // assuming autojump to current position when stopped
         // DBG("ZoomViewState::handlePlaybackScrolling, jumping to pos (not dragging, not playing)");
         jumpToCurrentPosition();
     } else {
         // DBG("ZoomViewState::handlePlaybackScrolling, skipping jump (user is dragging)");
+    }
+}
+
+void ZoomViewState::followPlayhead(te::TimePosition pos) {
+    const auto leftRange = getViewSpan() / 3.0;
+    if (pos < viewStartTime || pos > viewStartTime + leftRange) {
+        // On the timeline's whole pixels, so what is drawn keeps its place within a pixel and
+        // clips can blit their cached content (PsgClipComponent) in line with the ruler and the playhead
+        const auto timePerPixel = getTimePerPixel();
+        auto newX1 = te::TimePosition() + timePerPixel * std::floor(jmax(te::TimePosition(), pos - leftRange)
+                                                                         .inSeconds() / timePerPixel.inSeconds());
+        if (newX1 != viewStartTime)
+            setStart(newX1);
     }
 }
 
@@ -312,9 +322,16 @@ void ZoomViewState::handleAsyncUpdate() {
 //==============================================================================
 // EditViewState
 
-EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
-  : state(e.state.getOrCreateChildWithName(IDs::EDITVIEWSTATE, nullptr))
-  , zoom(e)
+namespace {
+    ValueTree viewSettings(te::Edit& e, const Identifier& type, bool detached) {
+        auto settings = e.state.getOrCreateChildWithName(type, nullptr);
+        return detached ? settings.createCopy() : settings;
+    }
+}
+
+EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s, bool detached)
+  : state(viewSettings(e, IDs::EDITVIEWSTATE, detached))
+  , zoom(e, viewSettings(e, IDs::ZOOMVIEWSTATE, detached))
   , selectionManager(s), edit(e)
 {
     preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, nullptr, true);

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
+
 namespace MoTool {
 
 //==============================================================================
@@ -33,6 +36,25 @@ private:
     double reportPos = 0.0, reportMs = 0.0;
     double shownPos = 0.0, shownMs = 0.0;
     bool moving = false;
+};
+
+/**
+    The display's frame period, from the intervals between its vblanks: the median of the last
+    few, so a late frame (a vblank the message thread missed) does not count as a slower display,
+    while a display with another refresh rate takes over within three frames.
+*/
+class FramePeriod {
+public:
+    /** Takes the interval since the previous vblank, in seconds. */
+    void add(double intervalSec);
+
+    /** The period in seconds: a 60 Hz frame until intervals come in. */
+    double get() const noexcept { return period; }
+
+private:
+    std::array<double, 5> recent {1.0 / 60.0, 1.0 / 60.0, 1.0 / 60.0, 1.0 / 60.0, 1.0 / 60.0};
+    size_t next = 0;
+    double period = 1.0 / 60.0;
 };
 
 }  // namespace MoTool

@@ -134,7 +134,8 @@ private:
     PlayheadClock playheadClock;
     te::TimePosition framePlayhead;
     bool framePlayheadValid = false;
-    double lastFrameMs = -1.0e9, lastFrameTimestampSec = 0.0, framePeriodSec = 1.0 / 60.0;
+    double lastFrameMs = -1.0e9, lastFrameTimestampSec = 0.0;
+    FramePeriod framePeriod;
     static constexpr double framesStopAfterMs = 100.0;
 
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;

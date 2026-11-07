@@ -77,6 +77,29 @@ public:
         return data;
     }
 
+    /** One chip of a Turbo Sound tune: of rows `speed` frames long, it plays every
+        numChips-th one, starting at row `chip`; the chips together play every row. */
+    static PsgData makeChip(int numFrames, int chip, int numChips, int speed = 6) {
+        PsgData data;
+        data.options = {50.0, 1};
+        data.frames.resize((size_t) numFrames);
+        for (int row = chip; row * speed < numFrames; row += numChips) {
+            const auto t = (size_t) (row * speed);
+            data.frames[t].setTonePeriod(0, (uint16_t) (200 + (row % 4) * 20));
+            data.frames[t].setVolume(0, 15);
+            if (t + 2 < (size_t) numFrames)
+                data.frames[t + 2].setVolume(0, 0);
+        }
+        return data;
+    }
+
+    /** Inserts the dump as a clip and applies its tempo, as importing a file does. */
+    static PsgClip::Ptr importTune(AudioTrack& track, PsgData& tune, const ClipPosition& pos, const String& name = {}) {
+        auto clip = PsgClip::insertTo(track, tune, pos, name);
+        PsgTempo::applyToEdit({clip.get()}, {&tune});
+        return clip;
+    }
+
     static String rowPattern(const std::vector<int>& rowFrames) {
         StringArray rows;
         for (int row : rowFrames)
@@ -222,7 +245,7 @@ public:
             const tracktion::ClipPosition pos{{0_tp, tracktion::TimeDuration::fromSeconds(tune.getLengthSeconds())},
                                               {}};
 
-            auto clip = PsgClip::insertTo(*track, tune, pos, "first");
+            auto clip = importTune(*track, tune, pos, "first");
             expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), 125.0, 0.01);
             expectWithinAbsoluteError(clip->getPsg().getFramesPerBeat(), 24.0, 0.01);
             expect(Helpers::getGridSubdivisionPattern(*edit, 24) == std::vector<int>{6, 6, 6, 6});
@@ -230,7 +253,7 @@ public:
 
             auto waltzEdit = Edit::createSingleTrackEdit(engine);
             auto waltz = makeBarTune(4000, 3);
-            PsgClip::insertTo(*getAudioTracks(*waltzEdit)[0],
+            importTune(*getAudioTracks(*waltzEdit)[0],
                               waltz,
                               {{0_tp, tracktion::TimeDuration::fromSeconds(waltz.getLengthSeconds())}, {}},
                               "waltz");
@@ -238,7 +261,7 @@ public:
             expectEquals(waltzEdit->tempoSequence.getTimeSig(0)->denominator.get(), 4);
 
             auto second = makeTune(3000, {5}, 4);
-            PsgClip::insertTo(
+            importTune(
                 *track,
                 second,
                 {{tracktion::TimePosition::fromSeconds(70.0), tracktion::TimeDuration::fromSeconds(60.0)}, {}},
@@ -254,7 +277,7 @@ public:
             track->insertMIDIClip("arrangement", {0_tp, 8_tp}, nullptr);
             edit->tempoSequence.getTimeSig(0)->numerator = 3;
             auto tune = makeTune(3000, {6}, 4);
-            PsgClip::insertTo(
+            importTune(
                 *track, tune, {{10_tp, tracktion::TimeDuration::fromSeconds(tune.getLengthSeconds())}, {}}, "psg");
             expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), 120.0, 0.01);
             expectEquals(edit->tempoSequence.getTimeSig(0)->numerator.get(), 3);
@@ -267,7 +290,7 @@ public:
             edit->tempoSequence.insertTempo(tracktion::BeatPosition::fromBeats(64), 90.0, 0.0f);
             edit->getTransport().setPosition(tracktion::TimePosition::fromSeconds(60.0));
             auto tune = makeTune(3000, {6}, 4);
-            PsgClip::insertTo(*getAudioTracks(*edit)[0],
+            importTune(*getAudioTracks(*edit)[0],
                               tune,
                               {{0_tp, tracktion::TimeDuration::fromSeconds(tune.getLengthSeconds())}, {}},
                               "psg");
@@ -282,7 +305,7 @@ public:
             expect(!PsgTempo::detect(unclear)->meterClear, "the plain tune has no bar-level repetition");
             auto edit = Edit::createSingleTrackEdit(engine);
             edit->tempoSequence.getTimeSig(0)->numerator = 3;
-            PsgClip::insertTo(*getAudioTracks(*edit)[0],
+            importTune(*getAudioTracks(*edit)[0],
                               unclear,
                               {{0_tp, tracktion::TimeDuration::fromSeconds(unclear.getLengthSeconds())}, {}},
                               "psg");
@@ -302,7 +325,7 @@ public:
                 auto edit = Edit::createSingleTrackEdit(engine);
                 const tracktion::ClipPosition pos{{0_tp, tracktion::TimeDuration::fromSeconds(tune.getLengthSeconds())},
                                                   {}};
-                auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], tune, pos, "lead-in");
+                auto clip = importTune(*getAudioTracks(*edit)[0], tune, pos, "lead-in");
                 return std::pair{std::move(edit), clip};
             };
 
@@ -318,6 +341,46 @@ public:
             const auto barsBeats = audibleEdit->tempoSequence.toBarsAndBeats(firstRowTime(*shifted));
             expectEquals(barsBeats.bars, 1, "first row starts bar 2");
             expectWithinAbsoluteError(barsBeats.beats.inBeats(), 0.0, 1.0e-6);
+        }
+
+        beginTest("The chips of a Turbo Sound tune are detected as one and move together");
+        {
+            std::vector<PsgData> chips;
+            for (int chip = 0; chip < 3; ++chip)
+                chips.push_back(makeChip(3000, chip, 3));
+            const auto alone = PsgTempo::detect(chips[0]);
+            expect(static_cast<bool>(alone) && alone->rowFrames != std::vector<int>{6}, "one chip alone misses rows");
+            const auto together = PsgTempo::detect(std::vector<const PsgData*>{&chips[0], &chips[1], &chips[2]});
+            expect(static_cast<bool>(together));
+            if (together) {
+                expect(together->rowFrames == std::vector<int>{6});
+                expectEquals(together->framesPerBeat, 24);
+            }
+
+            // Only the second chip sounds before the first row: no chip's lead-in is silent.
+            auto& engine = *tracktion::Engine::getEngines()[0];
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->ensureNumberOfAudioTracks(3);
+            chips[0] = withLeadIn(chips[0], 5, false);
+            chips[1] = withLeadIn(chips[1], 5, true);
+            chips[2] = withLeadIn(chips[2], 5, false);
+            juce::Array<PsgClip*> clips;
+            std::vector<const PsgData*> data;
+            for (int chip = 0; chip < 3; ++chip) {
+                auto& tune = chips[(size_t) chip];
+                const ClipPosition pos{{0_tp, TimeDuration::fromSeconds(tune.getLengthSeconds())}, {}};
+                clips.add(PsgClip::insertTo(*getAudioTracks(*edit)[chip], tune, pos, "chip").get());
+                data.push_back(&tune);
+            }
+            PsgTempo::applyToEdit(clips, data);
+            expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), 125.0, 0.01);
+            // Each chip plays every third row with noise on, so the meter may well read 3/4.
+            const int barFrames = 24 * edit->tempoSequence.getTimeSig(0)->numerator.get();
+            for (auto* clip : clips) {
+                // every clip moves alike, so the first row (frame 5) starts bar 2
+                expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), (barFrames - 5) / 50.0, 1.0e-9);
+                expectWithinAbsoluteError(clip->getPosition().getOffset().inSeconds(), 0.0, 1.0e-9);
+            }
         }
 
         testCorpusFixtures();
@@ -366,7 +429,7 @@ public:
             auto edit = Edit::createSingleTrackEdit(*tracktion::Engine::getEngines()[0]);
             const tracktion::ClipPosition pos{
                 {0_tp, tracktion::TimeDuration::fromSeconds(psg.getData().getLengthSeconds())}, {}};
-            PsgClip::insertTo(*getAudioTracks(*edit)[0], psg, pos);
+            importTune(*getAudioTracks(*edit)[0], psg.getData(), pos);
             expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(),
                                       3000.0 / e.framesPerBeat,
                                       0.01,

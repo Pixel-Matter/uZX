@@ -10,6 +10,8 @@
 
 #include <array>
 #include <optional>
+#include <utility>
+#include <vector>
 
 namespace te = tracktion;
 
@@ -45,9 +47,17 @@ public:
     juce::Range<float> getPitchRange() const;
 
     //==============================================================================
-    /** Tuning table and key detection over this clip's data, run once per data version. */
+    /** The clips of this clip's tune, this one included: the PSG clips of its edit imported
+        with it, such as the chips of a Turbo Sound tune. Just this one when it came alone. */
+    juce::Array<PsgClip*> getTuneClips() const;
+    /** Makes the clips one tune: tuning and key are detected, and chosen, over all of them. */
+    static void linkAsOneTune(const juce::Array<PsgClip*>& clips);
+
+    /** Tuning table and key detection over the tune's clips (see getTuneClips), run once
+        per change of their data. */
     const TuningDetection& getTuningDetection() const;
-    PitchHistogram buildPitchHistogram() const;
+    /** This clip's own pitches, cached until its data changes. */
+    const PitchHistogram& getPitchHistogram() const;
 
     /** The grid and key in effect: the user's choice stored in the clip state, else the
         detection. A stored choice this build cannot read (an unknown table name, an A4 or
@@ -70,9 +80,10 @@ public:
         int revision = 0;   // changes whenever any field above may have changed
     };
 
-    /** Cached until the clip's data or its tuning properties change. */
+    /** Cached until the detection or the clip's tuning properties change. */
     const Tuning& getTuning() const;
 
+    /** A choice applies to every clip of the tune. */
     void chooseTuningTable(BuiltinTuningType table);
     /** A fitted tuning, from TuningDetection::fits or re-expressed by atClock(). */
     void chooseFit(const TuningFit& fit);
@@ -96,14 +107,19 @@ private:
     std::unique_ptr<PsgList> psgList;
     mutable juce::Range<float> cachedPitchRange_ { 0.0f, 1.0f };
     mutable int pitchRangeVersion_ = -1;
+    mutable std::optional<PitchHistogram> histogram_;
+    mutable int histogramVersion_ = -1;
+    mutable int histogramRevision_ = 0;
     mutable std::optional<TuningDetection> detection_;
-    mutable int detectionVersion_ = -1;
+    mutable std::vector<std::pair<const PsgClip*, int>> detectionKey_;  // tune clips and histogram revisions
+    mutable int detectionRevision_ = 0;
     mutable std::optional<Tuning> tuning_;
-    mutable int tuningVersion_ = -1;
+    mutable int tuningDetectionRevision_ = -1;
     mutable std::array<juce::var, 7> tuningChoice_;
     mutable int tuningRevision_ = 0;
 
     Tuning resolveTuning() const;
+    PitchHistogram buildPitchHistogram() const;
 
     void loadFrom(uZX::PsgData &data);
 

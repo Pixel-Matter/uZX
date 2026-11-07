@@ -274,7 +274,7 @@ public:
                         PsgClip::insertTo(*te::getAudioTracks(*edit)[0], psg, {{te::TimePosition(), length}, {}});
                     expect(clip != nullptr);
                     if (clip != nullptr) {
-                        const auto imported = clip->buildPitchHistogram();
+                        const auto imported = clip->getPitchHistogram();
                         expect(imported.tone == hist.tone && imported.envelope == hist.envelope,
                                String(e.prefix) + " import path histogram");
                     }

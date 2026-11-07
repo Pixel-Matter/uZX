@@ -73,7 +73,7 @@ public:
             auto held = insert(data);
             expect(held != nullptr);
             if (held != nullptr) {
-                const auto hist = held->buildPitchHistogram();
+                const auto hist = held->getPitchHistogram();
                 expectEquals(
                     hist.tone.at(periodOf(57)), 250, "both held As count every frame, the last to the clip end");
                 expectEquals(hist.tone.at(periodOf(60)), 2);
@@ -233,6 +233,21 @@ public:
             expectEquals(together.getTableLabel(), String("PT #1"));
             expectEquals(together.histogram.getTotal(),
                          triad->getTuningDetection().histogram.getTotal() + rest->getTuningDetection().histogram.getTotal());
+
+            // Linked as one tune, every clip has the tune's detection, and a choice on one is on all.
+            PsgClip::linkAsOneTune({triad.get(), rest.get()});
+            for (auto* clip : {triad.get(), rest.get()}) {
+                expectEquals(clip->getTuneClips().size(), 2);
+                expectEquals(clip->getTuningDetection().histogram.getTotal(), together.histogram.getTotal());
+                expectEquals(clip->getTuning().key.getName(), String("A minor"));
+                expectEquals(clip->getTuning().tableLabel, String("PT #1"));
+            }
+            rest->chooseKey({Scale::Tonic(0), false, 1.0f});
+            expectEquals(triad->getTuning().key.getName(), String("C major"));
+            expect(triad->getTuning().keyChosen);
+            triad->clearTuningChoice();
+            expect(! rest->getTuning().keyChosen);
+            expectEquals(rest->getTuning().key.getName(), String("A minor"));
         }
     }
 };

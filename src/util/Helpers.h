@@ -28,7 +28,9 @@ bool readPsgOrShowError(uZX::PsgFile&);
 uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track);
 
 /** Adds each PSG at `start` on a new track named after it, the first one on `firstTrack` instead
-    when given; skips unreadable files with an error. Returns the clips added. */
+    when given; skips unreadable files with an error. The files play together as one tune (the
+    chips of a Turbo Sound tune): their tempo is detected together (see PsgTempo::applyToEdit),
+    and so are their tuning and key (see PsgClip::linkAsOneTune). Returns the clips added. */
 Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::TimePosition start = {},
                                te::AudioTrack* firstTrack = nullptr);
 

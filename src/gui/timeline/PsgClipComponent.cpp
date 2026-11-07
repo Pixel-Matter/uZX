@@ -1524,11 +1524,13 @@ String getPsgSetInfo(te::Edit& edit) {
             if (auto* psgClip = dynamic_cast<PsgClip*>(clip))
                 clips.add(psgClip);
 
-    if (clips.size() <= 1)
-        return clips.isEmpty() ? String() : getPsgClipInfo(*clips[0]);
+    if (clips.isEmpty())
+        return {};
+    // One tune (the clips imported together): its detection and choices are shared.
+    if (clips[0]->getTuneClips().size() == clips.size())
+        return getPsgClipInfo(*clips[0]);
 
-    // ponytail: detected together, the clips' own tuning choices are not consulted;
-    // a set-wide choice needs clips linked in the model.
+    // Several tunes, or clips from before tunes were linked: detected together, ignoring choices.
     const auto detection = detectTuningTogether(clips);
     if (! detection.hasNotes)
         return {};

@@ -44,20 +44,24 @@ struct Result
 /** Returns nothing when the dump has too few note starts or no frame grid
     (speed 1, sample tunes, heavily modulated material). */
 juce::Optional<Result> detect(const uZX::PsgData&);
+/** The chips of one tune detected as one: a Turbo Sound tune spreads its notes and
+    drums over them. They share the first chip's frame rate. */
+juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips);
 
-/** When the clip is the only clip in its edit, detects the tempo of the dump and
+/** When the clips (the chips of one tune, each loaded from its dump in `chips`) are the
+    only clips in their edit, detects the tempo of the dumps together and
     sets the tempo at the clip start so a beat lasts framesPerBeat frames, stores
     the row pattern as the grid subdivision, sets the time signature to
     beatsPerBar/4 when the meter is clear, and puts the first row on a bar line:
-    a silent lead-in is trimmed with the clip offset, an audible one (a dump that
-    starts mid-row) moves the clip right so the first row lands on bar 2.
+    a silent lead-in is trimmed with the clip offsets, an audible one (a dump that
+    starts mid-row) moves the clips right so the first row lands on bar 2.
     Importing into a project that already has clips keeps its tempo and meter.
 
     Musical pickups (notes before the first downbeat on the row grid) are not
     detected: in tracker dumps the first row is the downbeat in about 97% of
     tunes, and no register cue tried could tell the rest apart without moving
     correct ones. */
-void applyToEdit(PsgClip&, const uZX::PsgData&);
+void applyToEdit(const juce::Array<PsgClip*>& clips, const std::vector<const uZX::PsgData*>& chips);
 
 }  // namespace PsgTempo
 

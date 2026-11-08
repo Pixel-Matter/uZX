@@ -45,8 +45,8 @@ public:
                 expectEquals(module->title, String(expected.title), expected.file);
                 expect(module->table.has_value() == expected.table.has_value(), String(expected.file) + ": table");
                 if (module->table && expected.table)
-                    expectEquals(module->table->getLabel().data(), BuiltinTuningType(*expected.table).getLabel().data(),
-                                 expected.file);
+                    expectEquals(String(module->table->getLabel().data()),
+                                 String(BuiltinTuningType(*expected.table).getLabel().data()), expected.file);
                 expectRows(module->rowStarts, expected.rowFrames, expected.file);
             }
         }

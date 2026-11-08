@@ -130,7 +130,7 @@ void PlayerController::handleSaveAs() {
 
 void PlayerController::handleOpen() {
     auto location = EditFileOps::getRecentEditsDirectory();
-    FileChooser fc("Open file", location, "*.uzx;*.psg");
+    FileChooser fc("Open file", location, "*.uzx;" + Helpers::getTuneFileWildcard());
     if (fc.browseForMultipleFilesToOpen())
         handleOpenFiles(fc.getResults());
 }
@@ -138,7 +138,7 @@ void PlayerController::handleOpen() {
 void PlayerController::handleOpenFiles(const Array<File>& files) {
     Array<File> psgs;
     for (const auto& f : files)
-        if (f.hasFileExtension("psg") && f.existsAsFile())
+        if (Helpers::isTuneFile(f) && f.existsAsFile())
             psgs.add(f);
 
     if (! psgs.isEmpty()) {

@@ -162,6 +162,7 @@ if(ENABLE_LTO)
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/ayumi)
+add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/zxtune)
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce ./cmake_build_juce)
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules ./cmake_build_tracktion)
 

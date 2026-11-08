@@ -368,6 +368,42 @@ std::unique_ptr<TuningSystem> makeBuiltinTuning(TuningOptions& options) {
                 options.builtinTable.getLongLabel().data()
             );
         }
+
+        case BuiltinTuningType::CustomST: {
+            // Sound Tracker's own table, as STC and STP modules play it (zxtune's "SoundTracker").
+            // PT #1 is its copy in Pro Tracker 2 and 3, with B2 and A#4 changed (1021, 266); the
+            // reference is PT #1's.
+            uZX::ChipClockChoice chipChoice = uZX::ChipClockChoice::ZX_Spectrum_1_77_MHz;
+            options.chipClockFreq = chipChoice.getClockValue();
+            options.a4Frequency = 392.0;
+            options.tonic = Scale::Tonic::C;
+            options.scaleType = Scale::ScaleType::IonianOrMajor;
+            options.tuningSystemType = TuningSystemType::EqualTemperament;
+            return std::make_unique<TuningTable>(
+                options.chipClockFreq,
+                std::make_unique<EqualTemperamentTuning>(options.a4Frequency),
+                24, // Starting at MIDI note 24 (C1)
+                std::vector<int> {
+                    // Octave 1 (C1-B1)
+                    3832, 3600, 3424, 3200, 3032, 2856, 2696, 2544, 2400, 2272, 2136, 2016,
+                    // Octave 2 (C2-B2)
+                    1916, 1800, 1712, 1600, 1516, 1428, 1348, 1272, 1200, 1136, 1068, 1008,
+                    // Octave 3 (C3-B3)
+                    958, 900, 856, 800, 758, 714, 674, 636, 600, 568, 534, 504,
+                    // Octave 4 (C4-B4)
+                    479, 450, 428, 400, 379, 357, 337, 318, 300, 284, 267, 252,
+                    // Octave 5 (C5-B5)
+                    239, 225, 214, 200, 189, 178, 168, 159, 150, 142, 133, 126,
+                    // Octave 6 (C6-B6)
+                    119, 112, 107, 100, 94, 89, 84, 79, 75, 71, 66, 63,
+                    // Octave 7 (C7-B7)
+                    59, 56, 53, 50, 47, 44, 42, 39, 37, 35, 33, 31,
+                    // Octave 8 (C8-B8)
+                    29, 28, 26, 25, 23, 22, 21, 19, 18, 17, 16, 15
+                },
+                options.builtinTable.getLongLabel().data()
+            );
+        }
     }
 
     return nullptr; // Should never reach here

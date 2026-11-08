@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "Utilities.h"
+#include "../../util/Helpers.h"
 
 #include <common/Utilities.h>  // from Tracktion
 
@@ -11,7 +12,6 @@ namespace te = tracktion;
 namespace MoTool::Helpers {
 
 static const std::string MIDI_WILDCARD {"*.mid;*.midi"};
-static const std::string PSG_WILDCARD {"*.psg;*.ay"};
 
 //==============================================================================
 
@@ -56,7 +56,7 @@ void browseForMidiFile(te::Engine& engine, std::function<void (const File&)> fil
 }
 
 void browseForPSGFiles(te::Engine& engine, std::function<void (const Array<File>&)> filesChosenCallback) {
-    browseForFiles(engine, "PSG", "psg", String(PSG_WILDCARD), true, std::move(filesChosenCallback));
+    browseForFiles(engine, "PSG", "psg", getTuneFileWildcard(), true, std::move(filesChosenCallback));
 }
 
 }  // namespace MoTool::Helpers

@@ -100,6 +100,15 @@ public:
         return clip;
     }
 
+    /** The frame every row starts at, as a tracker module reports its rows: lengths cycle
+        from `first`. */
+    static std::vector<size_t> rowsOf(int numFrames, std::vector<int> rowLengths, size_t first = 0) {
+        std::vector<size_t> starts;
+        for (size_t t = first, row = 0; t < (size_t) numFrames; t += (size_t) rowLengths[row++ % rowLengths.size()])
+            starts.push_back(t);
+        return starts;
+    }
+
     static String rowPattern(const std::vector<int>& rowFrames) {
         StringArray rows;
         for (int row : rowFrames)
@@ -218,6 +227,42 @@ public:
 
             auto noBars = PsgTempo::detect(makeTune(3000, {6}, 4));
             expectEquals(noBars->beatsPerBar, 4, "no bar-level repetition keeps 4/4");
+        }
+
+        beginTest("A module's own rows replace the grid detection");
+        {
+            // A swing as wide as speeds 2 and 6: detection only takes rows up to 2 frames apart.
+            auto wide = makeTune(3000, {2, 6}, 4);
+            auto known = PsgTempo::detect({&wide}, rowsOf(3000, {2, 6}));
+            expect(static_cast<bool>(known));
+            expect(known->rowFrames == std::vector<int>{2, 6}, rowPattern(known->rowFrames));
+            // 4 rows (16 frames) would be 187.5 BPM: 8 rows, 4 whole swing pairs, make the beat.
+            expectEquals(known->rowsPerBeat, 8);
+            expectEquals(known->framesPerBeat, 32);
+            expectWithinAbsoluteError(known->gridShare, 1.0, 1e-9);
+
+            // An 8-row groove (Bad Apple!! by nq) keeps its 8 rows in one beat of 21 frames.
+            const std::vector<int> groove {3, 3, 3, 2, 3, 2, 3, 2};
+            auto grooved = makeTune(3000, groove, 8);
+            auto eight = PsgTempo::detect({&grooved}, rowsOf(3000, groove));
+            expect(eight->rowFrames == groove, rowPattern(eight->rowFrames));
+            expectEquals(eight->rowsPerBeat, 8);
+            expectEquals(eight->framesPerBeat, 21);
+            expect(eight->subdivisionPattern() == std::vector<int>{6, 5, 5, 5}, "4 groups of 2 rows");
+
+            // An intro of 10 rows at speed 7 before speed 6: the module's first row is still the downbeat.
+            auto tune = makeTune(3000, {6}, 4);
+            auto rows = rowsOf(70, {7});
+            for (auto start : rowsOf(3000 - 70, {6}))
+                rows.push_back(70 + start);
+            auto withIntro = PsgTempo::detect({&tune}, rows);
+            expect(withIntro->rowFrames == std::vector<int>{6}, "the speed 90% of the rows have");
+            expectEquals(withIntro->firstRowFrame, 0);
+
+            // A grid needs no notes once the module gives its rows; one row is no grid.
+            auto quiet = makeTune(60, {6}, 4);
+            expect(static_cast<bool>(PsgTempo::detect({&quiet}, rowsOf(60, {6}))));
+            expect(!PsgTempo::detect({&quiet}, {0}), "a single row falls back to detection");
         }
 
         beginTest("Too few notes or no grid gives no result");

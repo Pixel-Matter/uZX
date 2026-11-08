@@ -118,6 +118,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for build setu
 - [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/) — audio engine foundation
 - [JUCE](https://juce.com/) — cross-platform C++ framework
 - [ayumi](https://github.com/true-grue/ayumi) by Peter Sovietov (true-grue) — AY-3-8910/YM2149 emulation
+- [zxtune](https://github.com/vitamin-caig/zxtune) by Vitamin/CAIG — tracker module players (LGPL-3.0), built from the [uzx branch](https://github.com/Pixel-Matter/zxtune/tree/uzx) of our fork
 
 Greets to diver, spke, n1k-o, bfox, wbcbz7, Pator, Megus, Volutar and all ZX Spectrum musicians and demosceners!
 

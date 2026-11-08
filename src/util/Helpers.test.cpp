@@ -1,5 +1,6 @@
 #include <JuceHeader.h>
 
+#include "../models/EditUtilities.h"
 #include "../models/PsgClip.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "Helpers.h"
@@ -52,6 +53,54 @@ public:
             if (clips.size() == 2) {
                 expect(clips[0]->getTrack() == first);
                 expect(clips[1]->getTrack() != first);
+            }
+        }
+
+        beginTest("A tracker module comes in with its title, note table and row grid");
+        {
+            const File samples(UZX_ZXTUNE_REGRESSION_DIR);
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto clips = Helpers::importPsgFiles(*edit, {samples.getChildFile("hypergy.pt3")}, {},
+                                                       te::getAudioTracks(*edit).getFirst());
+            expectEquals(clips.size(), 1);
+            if (clips.size() == 1) {
+                expectEquals(clips[0]->getTrack()->getName(), String("hypergy #2"), "the module's title");
+                const auto& tuning = clips[0]->getTuning();
+                expect(tuning.tableChosen && tuning.table.has_value(), "the module's table is chosen");
+                if (tuning.table)
+                    expectEquals(String(tuning.table->getLabel().data()),
+                                 String(BuiltinTuningType(BuiltinTuningEnum::CustomPT_2_ASM).getLabel().data()));
+                const auto framesPerBeat = juce::roundToInt(clips[0]->getPsg().getFramesPerBeat());
+                expect(framesPerBeat > 0 && framesPerBeat % 5 == 0, "beats of whole speed-5 rows");
+                expect(Helpers::getGridSubdivisionPattern(*edit, framesPerBeat)
+                           == std::vector<int>(4, framesPerBeat / 4), "rows as the grid");
+            }
+        }
+
+        beginTest("A Turbo Sound module lands on two tracks as one tune");
+        {
+            const File samples(UZX_ZXTUNE_REGRESSION_DIR);
+            MemoryBlock first, second;
+            samples.getChildFile("hypergy.pt3").loadFileAsData(first);
+            samples.getChildFile(";-).pt3").loadFileAsData(second);
+            MemoryOutputStream pair;
+            pair << first << second;
+            pair.write("PT3!", 4);
+            pair.writeShort((short) first.getSize());
+            pair.write("PT3!", 4);
+            pair.writeShort((short) second.getSize());
+            pair.write("02TS", 4);
+            auto file = root.getChildFile("pair.pt3");
+            file.replaceWithData(pair.getData(), pair.getDataSize());
+
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto clips = Helpers::importPsgFiles(*edit, {file}, {}, te::getAudioTracks(*edit).getFirst());
+            expectEquals(clips.size(), 2);
+            if (clips.size() == 2) {
+                expectEquals(clips[0]->getTrack()->getName(), String("hypergy #2/:-) 1"));
+                expectEquals(clips[1]->getTrack()->getName(), String("hypergy #2/:-) 2"));
+                expectEquals(clips[0]->getTuneClips().size(), 2, "one tune");
+                expect(clips[1]->getTuning().tableChosen, "the table applies to both chips");
             }
         }
 

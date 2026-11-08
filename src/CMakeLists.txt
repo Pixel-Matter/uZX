@@ -81,6 +81,8 @@ target_sources(motool_common PRIVATE
     ${GUI_SOURCES}
 )
 target_compile_features(motool_common PUBLIC cxx_std_23)
+# Tracker module import: only zxtune's uzx/ay_module.h is visible here.
+target_link_libraries(motool_common PRIVATE zxtune_aym)
 target_include_directories(motool_common
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src
@@ -127,6 +129,9 @@ target_sources(${TEST_TARGET_NAME} PRIVATE
     ${TEST_SOURCES}
     ${CMAKE_SOURCE_DIR}/tests/main.cpp
 )
+# zxtune's sample modules with its register dumps, for the TrackerModule tests.
+target_compile_definitions(${TEST_TARGET_NAME} PRIVATE
+    UZX_ZXTUNE_REGRESSION_DIR="${CMAKE_SOURCE_DIR}/third_party/zxtune/regression")
 
 set(PROJECT_DISCOVERY_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/DiscoverJuceTests.cmake")
 set(PROJECT_DISCOVERY_FILE "${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_NAME}_discovered.cmake")

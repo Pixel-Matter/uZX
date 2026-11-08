@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <map>
 #include <numeric>
 
 #include "EditUtilities.h"
@@ -173,6 +174,37 @@ juce::Optional<Speed> detectSpeed(const std::vector<double>& energy, double tota
     return *chosen;
 }
 
+/** A tracker module's own row grid, from the frame every row starts at: the shortest
+    of 1, 2, 4 or 8 row lengths, repeating from the first row, that 90% of the rows follow
+    (an intro or an ending at another speed aside), else the commonest row length. A
+    module knows its rows, so a swing as wide as speeds 2 and 6, or a groove of 8 rows
+    (3-3-3-2-3-2-3-2), is a grid too. */
+Speed speedOfRows(const std::vector<size_t>& starts) {
+    std::vector<int> lengths;
+    for (size_t i = 1; i < starts.size(); ++i)
+        lengths.push_back((int) (starts[i] - starts[i - 1]));
+    auto commonest = [&](size_t n, size_t k) {
+        std::map<int, size_t> counts;
+        for (size_t i = k; i < lengths.size(); i += n)
+            ++counts[lengths[i]];
+        return std::max_element(counts.begin(), counts.end(), [](auto& a, auto& b) { return a.second < b.second; })
+            ->first;
+    };
+    for (size_t n : {1, 2, 4, 8}) {
+        if (lengths.size() < n)
+            break;
+        std::vector<int> rows;
+        for (size_t k = 0; k < n; ++k)
+            rows.push_back(commonest(n, k));
+        size_t follow = 0;
+        for (size_t i = 0; i < lengths.size(); ++i)
+            follow += lengths[i] == rows[i % n] ? 1 : 0;
+        if ((double) follow >= 0.9 * (double) lengths.size())
+            return Speed{rows, (int) starts.front(), 1.0};
+    }
+    return Speed{{commonest(1, 0)}, (int) starts.front(), 1.0};
+}
+
 /** Frame index of every row start. */
 std::vector<size_t> rowStarts(size_t numFrames, const Speed& speed) {
     std::vector<size_t> starts;
@@ -266,7 +298,8 @@ double repetition(const std::vector<RowFeature>& rows, size_t lagRows) {
     from different parts of the bar. A bar can repeat the same as 4 beats of 3
     rows or 3 beats of 4 (a waltz), so a beat other than the 4-row one also needs
     its accents (note starts per row) to recur at its own length. A swing pair or
-    groove never splits across beats, so those tunes always group by 4. */
+    groove never splits across beats, so those tunes always group by 4, or by a
+    module's 8-row groove. */
 int detectRowsPerBeat(const std::vector<RowFeature>& rows,
                       const std::vector<double>& accents,
                       const Speed& speed,
@@ -301,7 +334,7 @@ int detectRowsPerBeat(const std::vector<RowFeature>& rows,
                / 3.0;
     };
 
-    const int fourRowBeat = fitToBpmRange(4);
+    const int fourRowBeat = fitToBpmRange(std::max(4, (int) speed.rows.size()));
     if (swing)
         return fourRowBeat;
     int best = fourRowBeat;
@@ -369,6 +402,10 @@ juce::Optional<Result> detect(const uZX::PsgData& data) {
 }
 
 juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips) {
+    return detect(chips, {});
+}
+
+juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, const std::vector<size_t>& knownRows) {
     if (chips.empty())
         return {};
     // The chips play one tune: their note starts add up frame by frame.
@@ -380,10 +417,11 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips) {
             energy[i] += chipEnergy[i];
     }
     const double total = std::accumulate(energy.begin(), energy.end(), 0.0);
-    if (total < minEnergy)
+    const bool rowsKnown = knownRows.size() > 1;
+    if (!rowsKnown && total < minEnergy)
         return {};
 
-    const auto speed = detectSpeed(energy, total);
+    const auto speed = rowsKnown ? juce::Optional<Speed>(speedOfRows(knownRows)) : detectSpeed(energy, total);
     if (!speed)
         return {};
 
@@ -392,7 +430,7 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips) {
     Result result;
     for (int row : speed->rows)
         result.rowFrames.push_back(row * playRate);
-    const auto starts = rowStarts(energy.size(), *speed);
+    const auto starts = rowsKnown ? knownRows : rowStarts(energy.size(), *speed);
     const auto rows = rowFeatures(chips, starts);
     std::vector<double> accents;
     for (auto i : starts)
@@ -407,7 +445,7 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips) {
     result.gridShare = speed->share;
     const auto barFrames = (size_t) (result.framesPerBeat * result.beatsPerBar / playRate);
     const int firstRow = speed->phase;
-    if (openingFollowsGrid(energy, *speed, 2 * barFrames))
+    if (rowsKnown || openingFollowsGrid(energy, *speed, 2 * barFrames))
         result.firstRowFrame = firstRow * playRate;
 
     for (const auto* chip : chips) {
@@ -444,10 +482,12 @@ bool areOnlyClipsInEdit(const juce::Array<PsgClip*>& clips) {
 
 }  // namespace
 
-void applyToEdit(const juce::Array<PsgClip*>& clips, const std::vector<const uZX::PsgData*>& chips) {
+void applyToEdit(const juce::Array<PsgClip*>& clips,
+                 const std::vector<const uZX::PsgData*>& chips,
+                 const std::vector<size_t>& knownRows) {
     if (clips.isEmpty() || !areOnlyClipsInEdit(clips))
         return;
-    const auto result = detect(chips);
+    const auto result = detect(chips, knownRows);
     if (!result)
         return;
 

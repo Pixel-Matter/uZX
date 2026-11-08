@@ -43,6 +43,8 @@ public:
     void setGain(float gain);
     void setTriggerStrategy(const TriggerStrategy& strategy);
     void setTriggerLevel(float level);
+    /** The trace, and its label, in one colour on another: Viz mode's Classic colours. */
+    void setColours(juce::Colour trace, juce::Colour background);
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -72,7 +74,7 @@ private:
     float centre_{0.0f};                // Half the shown window's highest amplitude: a chip channel's middle
     juce::Path waveformPath_;
 
-    juce::Colour colour_;
+    juce::Colour colour_, background_;
     juce::String label_;
 
     int windowSize_{1024};

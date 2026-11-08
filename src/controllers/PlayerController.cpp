@@ -33,10 +33,12 @@ void PlayerController::initialize() {
     window_.setMenuBar(&MoToolApp::getAppController());
     #endif
 
+    getAppSettings().addChangeListener(&appSettingsListener_);
     BaseController::initialize();
 }
 
 PlayerController::~PlayerController() {
+    getAppSettings().removeChangeListener(&appSettingsListener_);
     #if !JUCE_MAC
     window_.setMenuBar(nullptr);
     #endif
@@ -85,10 +87,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     EditFileOps::saveEdit(*edit_, true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
-    editViewState_->showHeaders = false;
-    editViewState_->showFooters = true;
-    editViewState_->showClipHeaders = false;
-    editViewState_->vizMode = vizMode_;
+    editViewState_->showAsPlayer(vizMode_, VizOptions::load(getAppSettings()));
     if (vizScopesWidth > 0) {  // the devices and scopes keep their widths in the next file
         editViewState_->vizScopesWidth = vizScopesWidth;
         editViewState_->footersWidth = footersWidth;
@@ -105,9 +104,32 @@ void PlayerController::setVizMode(bool on) {
         return;
 
     vizMode_ = on;
-    editViewState_->vizMode = on;
-    window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), false);
+    showView(VizOptions::load(getAppSettings()));
     window_.setFullScreen(on);
+}
+
+PropertiesFile& PlayerController::getAppSettings() {
+    return getEngine().getPropertyStorage().getPropertiesFile();
+}
+
+void PlayerController::appSettingsChanged() {
+    const auto options = VizOptions::load(getAppSettings());
+    if (vizMode_ && editViewState_ != nullptr && options != editViewState_->vizOptions) {
+        showView(options);
+        MoToolApp::getCommandManager().commandStatusChanged();  // the menu ticks, and S only with scopes
+    }
+}
+
+void PlayerController::showView(VizOptions options) {
+    const auto& shown = *editViewState_;
+    const bool newLayout = vizMode_
+                           && (! shown.vizMode || options.layout != shown.vizOptions.layout
+                               || options.scopes != shown.vizOptions.scopes);
+    editViewState_->showAsPlayer(vizMode_, options);
+    auto* document = new PlayerDocumentComponent(*edit_, *editViewState_);
+    window_.setContentOwned(document, false);
+    if (newLayout)
+        document->showVizHint();
 }
 
 void PlayerController::updateWindowTitle() {

@@ -24,6 +24,9 @@ PlayheadComponent::~PlayheadComponent() {
 }
 
 void PlayheadComponent::paint(Graphics& g) {
+    if (getCoveredAreas)
+        for (auto area : getCoveredAreas())
+            g.excludeClipRegion(area);
     g.setColour(Colors::Theme::success);
     g.drawRect(xPosition, 0, 2, getHeight());
 }

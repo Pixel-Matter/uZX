@@ -27,10 +27,7 @@ VideoRenderJob::VideoRenderJob(tracktion::Edit& e,
       totalFrames(juce::jmax(1, (int) std::ceil((e.getLength().inSeconds() + Video::Settings::tailSeconds) * s.fps))),
       output(dest), selection(e.engine), view(e, selection, true) {
     // The Player's Viz mode, on its own copy of the view settings: the view on screen stays where it is
-    view.showHeaders = false;
-    view.showFooters = true;
-    view.showClipHeaders = false;
-    view.vizMode = true;
+    view.showAsPlayer(true, VizOptions::load(e.engine.getPropertyStorage().getPropertiesFile()));
     document = std::make_unique<PlayerDocumentComponent>(edit, view);
     document->setSize(width, height);
     frame = juce::Image(juce::Image::ARGB, width, height, true);

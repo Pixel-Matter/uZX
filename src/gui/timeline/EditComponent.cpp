@@ -30,7 +30,15 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
     trackViewport.fittedTracks = options.autoFitTrackHeights;
     tracksContainer.onRowsChanged = [this] { markAndUpdate(updateSizes); };
 
-    addAndMakeVisible(playhead);
+    addChildComponent(playhead);
+    playhead.setVisible(editViewState.showsNotes());
+    if (editViewState.areVizScopesUnderNotes())
+        playhead.getCoveredAreas = [this] {
+            auto areas = tracksContainer.getScopesBands();
+            for (auto& area : areas)
+                area = playhead.getLocalArea(&tracksContainer, area);
+            return areas;
+        };
     addAndMakeVisible(ruler);
     addAndMakeVisible(trackViewport);
     timeScrollBar.setAutoHide(false);
@@ -40,7 +48,7 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
     timeScrollBar.setVisible(! editViewState.vizMode);
     if (options.showDetailsPanel)
         addAndMakeVisible(detailsPanel);
-    if (! editViewState.showClipHeaders) {
+    if (! editViewState.showClipHeaders && editViewState.showsNotes()) {
         legend = std::make_unique<PsgLegendComponent>();
         addAndMakeVisible(*legend);
         if (! editViewState.vizMode) {
@@ -60,6 +68,8 @@ void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Ide
     if (v.hasType(IDs::EDITVIEWSTATE)) {
         if (i == IDs::headersWidth || i == IDs::vizScopesWidth || i == IDs::footersWidth) {
             markAndUpdate(updateSizes);
+        } else if (i == IDs::vizScopesShare) {
+            tracksContainer.resized();  // the rows keep their size, and share it anew
         }
     } else if (te::Clip::isClipState(v) && (i == te::IDs::start || i == te::IDs::length)) {
         markAndUpdate(updateScrollRange);
@@ -100,7 +110,8 @@ void EditComponent::handleAsyncUpdate() {
 }
 
 void EditComponent::paint(Graphics& g) {
-    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+    g.fillAll(editViewState.isVizClassic() ? Colors::VizClassic::background
+                                           : getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
 }
 
 void EditComponent::resized() {

@@ -4,6 +4,7 @@
 #include "../devices/TrackDevicesPanel.h"
 #include "../devices/LevelMeterUI.h"
 #include "../../plugins/uZX/aychip/AYPluginEditor.h"
+#include "PlayheadComponent.h"
 #include "PsgClipComponent.h"
 #include "../../util/Helpers.h"
 #include "../../util/TestHelpers.h"
@@ -161,10 +162,7 @@ private:
         Helpers::ensureAYPluginOnTrack(*te::getAudioTracks(*edit)[0]);
         te::SelectionManager selectionManager(engine);
         EditViewState vizView(*edit, selectionManager);
-        vizView.showHeaders = false;  // as the Player does
-        vizView.showFooters = true;
-        vizView.showClipHeaders = false;
-        vizView.vizMode = true;
+        vizView.showAsPlayer(true, {});
         EditComponent viz(*edit, vizView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
         viz.setSize(1000, 400);
         TestHelpers::flushMessageQueue();
@@ -182,6 +180,82 @@ private:
             expectEquals(row->body.getRight(), row->getWidth() - 400, "the notes end where the scopes' column starts");
             expectEquals(row->footer->getX(), row->getWidth() - 400 + TrackRowComponent::footerPadding.getLeft(),
                          "the scopes start after the gap");
+        }
+
+        beginTest("Viz mode showing the notes alone: no scopes and no gap, the notes fill the row");
+        {
+            EditViewState notesView(*edit, selectionManager);
+            notesView.showAsPlayer(true, {VizOptions::Layout::notes});
+            EditComponent notes(*edit, notesView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+            notes.setSize(1000, 400);
+            TestHelpers::flushMessageQueue();
+            auto* notesRow = findDescendant<TrackRowComponent>(notes);
+            expect(notesRow != nullptr && notesRow->footer == nullptr, "no scopes");
+            if (notesRow != nullptr)
+                expectEquals(notesRow->body.getRight(), notesRow->getWidth(), "the notes reach the right edge");
+            expect(findDescendant<TrackFooterOverlayComponent>(notes) == nullptr, "no gap to drag");
+        }
+
+        beginTest("Viz mode showing the scopes alone: they fill the row, with no notes, playhead or legend");
+        {
+            EditViewState scopesView(*edit, selectionManager);
+            scopesView.showAsPlayer(true, {VizOptions::Layout::scopes});
+            EditComponent scopes(*edit, scopesView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+            scopes.setSize(1000, 400);
+            TestHelpers::flushMessageQueue();
+            auto* scopesRow = findDescendant<TrackRowComponent>(scopes);
+            expect(scopesRow != nullptr && scopesRow->footer != nullptr && ! scopesRow->body.isVisible(),
+                   "scopes only");
+            if (scopesRow != nullptr && scopesRow->footer != nullptr) {
+                const auto& pad = TrackRowComponent::footerPadding;
+                expectEquals(scopesRow->footer->getX(), pad.getLeft(), "from the left");
+                expectEquals(scopesRow->footer->getRight(), scopesRow->getWidth() - pad.getRight(), "to the right");
+            }
+            expect(findDescendant<TrackFooterOverlayComponent>(scopes) == nullptr, "no gap to drag");
+            expect(! findChild<PlayheadComponent>(scopes)->isVisible(), "no playhead");
+            expect(findChild<PsgLegendComponent>(scopes) == nullptr, "no legend");
+        }
+
+        beginTest("Scopes side by side: under each row's notes, A | B | C, the notes across the whole width");
+        {
+            EditViewState bandView(*edit, selectionManager);
+            bandView.showAsPlayer(true, {.scopes = VizOptions::Scopes::sideBySide});
+            bandView.vizScopesShare = 40;
+            EditComponent band(*edit, bandView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+            band.setSize(1000, 400);
+            TestHelpers::flushMessageQueue();
+            auto* bandRow = findDescendant<TrackRowComponent>(band);
+            expect(bandRow != nullptr && bandRow->footer != nullptr, "scopes");
+            if (bandRow != nullptr && bandRow->footer != nullptr) {
+                expectEquals(bandRow->body.getRight(), bandRow->getWidth(), "the notes reach the right edge");
+                expect(bandRow->footer->getY() > bandRow->body.getBottom(), "the scopes under the notes");
+                expectEquals(bandRow->footer->getRight(), bandRow->getWidth() - 8, "apart from the window edge");
+                const auto& scopes = bandRow->footer->getChildren();
+                expect(scopes.size() == 3 && scopes[0]->getY() == scopes[2]->getY()
+                           && scopes[0]->getRight() < scopes[1]->getX(), "A | B | C");
+
+                const int scopesTop = bandRow->footer->getY();
+                bandView.vizScopesShare = 60;  // what dragging the gap above the scopes does
+                expect(bandRow->footer->getY() < scopesTop, "a bigger share raises the scopes");
+            }
+            expect(findDescendant<TrackFooterOverlayComponent>(band) == nullptr, "no column gap");
+            expect(findChild<PlayheadComponent>(band)->getCoveredAreas != nullptr, "the playhead keeps off the scopes");
+        }
+
+        beginTest("Classic colours: the scopes are drawn on black");
+        {
+            EditViewState classicView(*edit, selectionManager);
+            classicView.showAsPlayer(true, {VizOptions::Layout::scopes, VizOptions::Colours::classic});
+            EditComponent classic(*edit, classicView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+            classic.setSize(1000, 400);
+            TestHelpers::flushMessageQueue();
+            auto* scope = findDescendant<uZX::WaveformDisplay>(classic);
+            expect(scope != nullptr, "a scope");
+            if (scope != nullptr) {
+                const auto image = scope->createComponentSnapshot(scope->getLocalBounds(), true, 1.0f);
+                const auto pixel = image.getPixelAt(image.getWidth() - 1, image.getHeight() - 1);
+                expect(pixel == Colours::black, pixel.toDisplayString(true));
+            }
         }
     }
 

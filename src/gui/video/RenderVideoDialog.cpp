@@ -1,5 +1,6 @@
 #include "RenderVideoDialog.h"
 
+#include "../../controllers/EditState.h"
 #include "../../formats/video/VideoExport.h"
 #include "VideoRenderJob.h"
 
@@ -59,7 +60,10 @@ public:
         settings.load(appSettings(e.engine));
         ffmpeg = Video::findFfmpeg(settings.ffmpeg);
 
-        for (auto* label : {&ffmpegLabel,
+        for (auto* label : {&showLabel,
+                            &scopesLabel,
+                            &coloursLabel,
+                            &ffmpegLabel,
                             &renderLabel,
                             &outputLabel,
                             &fpsLabel,
@@ -69,8 +73,27 @@ public:
                             &ffmpegPath,
                             &note})
             addAndMakeVisible(label);
-        for (auto* box : {&renderBox, &outputBox, &fpsBox, &codecBox, &qualityBox, &audioBox})
+        for (auto* box :
+             {&showBox, &scopesBox, &coloursBox, &renderBox, &outputBox, &fpsBox, &codecBox, &qualityBox, &audioBox})
             addAndMakeVisible(box);
+
+        // Viz mode's own options, saved as they change: the Player's view behind shows each choice
+        const auto viz = VizOptions::load(appSettings(e.engine));
+        showBox.addItemList(VizOptions::layoutNames, 1);
+        showBox.setSelectedId((int) viz.layout + 1, juce::dontSendNotification);
+        showBox.onChange = [this] {
+            changeViz([this](VizOptions& o) { o.layout = (VizOptions::Layout) (showBox.getSelectedId() - 1); });
+        };
+        scopesBox.addItemList(VizOptions::scopesNames, 1);
+        scopesBox.setSelectedId((int) viz.scopes + 1, juce::dontSendNotification);
+        scopesBox.onChange = [this] {
+            changeViz([this](VizOptions& o) { o.scopes = (VizOptions::Scopes) (scopesBox.getSelectedId() - 1); });
+        };
+        coloursBox.addItemList(VizOptions::colourNames, 1);
+        coloursBox.setSelectedId((int) viz.colours + 1, juce::dontSendNotification);
+        coloursBox.onChange = [this] {
+            changeViz([this](VizOptions& o) { o.colours = (VizOptions::Colours) (coloursBox.getSelectedId() - 1); });
+        };
         for (auto* button : {&chooseButton, &cancelButton, &renderButton})
             addAndMakeVisible(button);
 
@@ -113,7 +136,7 @@ public:
         renderButton.addShortcut(juce::KeyPress(juce::KeyPress::returnKey));
 
         showFfmpeg();
-        setSize(540, 264);
+        setSize(540, 328);
     }
 
     void resized() override {
@@ -130,7 +153,11 @@ public:
             return r.withTrimmedLeft(gap * 2);
         };
 
-        auto r = row();
+        auto r = pair(row(), showLabel, showBox, boxWidth);
+        pair(r, scopesLabel, scopesBox, r.getWidth() - labelWidth);
+        pair(row(), coloursLabel, coloursBox, boxWidth);
+
+        r = row();
         ffmpegLabel.setBounds(r.removeFromLeft(labelWidth));
         chooseButton.setBounds(r.removeFromRight(90));
         ffmpegPath.setBounds(r.withTrimmedRight(gap));
@@ -150,6 +177,14 @@ public:
     }
 
 private:
+    void changeViz(const std::function<void(VizOptions&)>& change) {
+        if (auto* e = edit.get()) {
+            auto options = VizOptions::load(appSettings(e->engine));
+            change(options);
+            options.save(appSettings(e->engine));
+        }
+    }
+
     void fillOutputs() {
         outputBox.clear(juce::dontSendNotification);
         for (auto scale : Video::Settings::scalesFor(settings.renderHeight)) {
@@ -267,10 +302,11 @@ private:
     Video::Settings settings;
     juce::Optional<Video::Ffmpeg> ffmpeg;
 
+    juce::Label showLabel{{}, "Show"}, scopesLabel{{}, "Scopes"}, coloursLabel{{}, "Colours"};
     juce::Label ffmpegLabel{{}, "ffmpeg"}, renderLabel{{}, "Render"}, outputLabel{{}, "Output"},
         fpsLabel{{}, "Frame rate"}, videoLabel{{}, "Video"}, qualityLabel{{}, "Quality"}, audioLabel{{}, "Audio"},
         ffmpegPath, note;
-    juce::ComboBox renderBox, outputBox, fpsBox, codecBox, qualityBox, audioBox;
+    juce::ComboBox showBox, scopesBox, coloursBox, renderBox, outputBox, fpsBox, codecBox, qualityBox, audioBox;
     juce::TextButton chooseButton{"Choose..."}, cancelButton{"Cancel"}, renderButton{"Render..."};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RenderVideoComponent)

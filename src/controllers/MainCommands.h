@@ -66,6 +66,8 @@ public:
         viewPianoKeys,
         viewVizMode,
         viewExitVizMode,
+        viewNextVizLayout,
+        viewSwitchVizScopes,
 
         // Settings Menu
         settingsAudioMidi    = 600,
@@ -98,6 +100,7 @@ public:
             trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
             viewSnapPlayheadToGrid, viewNoteLanes, viewPianoKeys, viewVizMode, viewExitVizMode,
+            viewNextVizLayout, viewSwitchVizScopes,
             settingsAudioMidi, settingsPlugins, settingsTuningTables,
             helpAbout
         };
@@ -408,6 +411,16 @@ public:
             case viewExitVizMode:
                 result.setInfo("Exit Viz Mode", "Leave Viz mode", "View", 0);
                 result.addDefaultKeypress(KeyPress::escapeKey, 0);
+                break;
+
+            case viewNextVizLayout:
+                result.setInfo("Next Layout", "In Viz mode, show notes and scopes, then notes, then scopes", "View", 0);
+                result.addDefaultKeypress('v', 0);
+                break;
+
+            case viewSwitchVizScopes:
+                result.setInfo("Switch Scopes", "In Viz mode, stack the scopes or set them side by side", "View", 0);
+                result.addDefaultKeypress('s', 0);
                 break;
 
             // Settings commands

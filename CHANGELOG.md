@@ -4,6 +4,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+## [v0.6.0-alpha] - 2026-11-08
+
 ### Added
 - **File → Render Video...** in the Player and Studio renders the tune as a video: Viz mode's notes and scopes at the zoom on screen, drawn at 720p to 4K and scaled up by whole numbers with sharp pixels to as much as 8K, at 24 to 60 fps, encoded by ffmpeg as H.264, HEVC or AV1 with AAC, Opus or lossless ALAC sound. It renders offline, faster than real time, with progress and Cancel, and remembers its settings
 - The Player's AY chips get wider by dragging the gap to their left: the scopes widen, the buttons keep their size, and the width carries over to the next file opened
@@ -11,14 +13,15 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Solo AY channels. Each A, B or C button is on, muted (red) or soloed (emerald): a click mutes a channel that is on and turns a muted or soloed one back on; `Alt`-click (`Option`-click on a Mac) solos a channel, a muted one too, or unsolos it. Several channels can be soloed, on any chips; while any is, only soloed channels play, and the other buttons stay as they were. A chip with a soloed channel solos its track. Solo is saved with the file and, like track solo, isn't a step in Undo
 - The Player remembers the stereo layout and width last chosen and applies them to every PSG file it opens next, as it does the master volume; a saved `.uzx` keeps its own, and clock, chip type and mutes stay per tune
 - Stereo level meter of the master output in the transport bar, right of the master volume knob
+- DSP and GUI CPU meters in the transport bar, left of the master volume knob: DSP is how much of each audio buffer's time the sound engine needs, so near full the sound can crackle; GUI is how busy the main thread that draws the window is, so near full the timeline and scopes can stutter
 - Tuning table and key detection for imported PSG clips: the clip header shows both (for example `PT #1  E minor`, with `?` on a close call), the Notes view draws the table's notes as piano-roll lanes, and **Tuning and key…** in the clip menu shows the ranked candidates and lets you choose; View > Note Lanes turns the lanes off
 - Tempo detection on PSG import into an empty project: BPM, frames per beat, swings and grooves (tracker speed tables such as 4-4-3-3 frame rows) and 3/4 or 4/4 when the bar repetition is clear. A dump that starts a few frames before its first row is trimmed, or moved right when those frames sound, so that row starts a bar
 - The time signature (SIG) in the transport bar is editable: type `3/4`, `6/8` or a bare numerator; PSG clips keep playing at the same times
-- View > Piano Keys (also in the PSG clip menu): a short piano keyboard over the note lanes at the view's left edge, so the groups of black keys show where C is
+- View > Piano Keys (also in the PSG clip menu): a short piano keyboard over the note lanes at the view's left edge, so the groups of black keys show where C is. The notes of the clip's key (C major without one) are named on the keys themselves
 - Tuning detection fits just intonations (5-limit, 5-limit 45:64, Pythagorean) on any tonic alongside 12TET, and names the chip clock (ZX Spectrum 128 or Pentagon; the Atari ST and Amstrad only by hand) at which a fitted A4 is within 4 cents of 440 Hz, for example `12TET 440 Hz Pentagon`. Detection matches only tracker tables and otherwise fits; the 12TET and just-intonation presets are left out. The **Tuning and key…** window lists the fitted tunings after the tracker tables and has a **Chip clock** choice for them, which renames the notes. The Player plays a PSG file it opens at the clock of its fitted tuning, and the clip header warns when the track's AY clock differs from it, for example `⚠ Pentagon @ ZX Spectrum +23¢`
 - Several PSG files at once: the Player opens them together, each on its own track and AY chip (Open, Import PSG, or drop them on the window), named after their shared name; Studio's Import PSG puts several on new tracks, and PSG files dropped on Studio are added on new tracks. A single file named like one chip of a Turbo Sound set (`song_1.psg`, `song.1.psg`, `song-1.psg`, `song 1.psg`) whose sibling chips have as many frames and the same header brings up a question whether to open the whole set
 - Tuning detection knows the earlier ProTracker tables #0 and #2 that PT 3.3 and older play, so tunes written with them are named on their own table instead of a nearby one. The Tuning window measures each tracker table against the clock and A4 its authors documented, such as 1.625 MHz for ProTracker #0 and 1.52064 MHz for Vortex Tracker #4
-
+- Files imported together, such as the chips of a Turbo Sound tune, are detected as one tune: tempo, tuning table and key come from all of them, a lead-in trim or shift moves every clip alike, and a tuning or key chosen on one clip applies to all
 - Save and Save As in the Player (`Cmd+S`, `Cmd+Shift+S`): Save writes the open `.uzx` file; for an opened PSG file, which has none yet, it asks where to save one. Reveal in Finder shows a saved file
 - An Edit menu in the Player with Undo and Redo, for changes such as AY chip settings or a clip's tuning
 - The Pos readout in the transport bar shows the position in the ruler's timecode format, such as `2.3.05`, `01:05:12` or `3262`, and takes a typed position in that format; parts can be left off, so `5` is bar 5
@@ -37,6 +40,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - macOS: About and Settings... (`Cmd+,`) are in the app menu, File has no second Quit, and the Player has no Settings and Help menus
 - Windows and Linux: `Ctrl+Y` also redoes, and Reveal in Finder reads Show in Explorer or Show in Folder
 - The Player has no MIDI learn or CC mapping on its controls and no MIDI channel range in the chip menu; Chip debug to console is in Debug builds only
+- The AY chip's A, B and C scopes show each channel as the chip outputs it, before the stereo mix, the filters and the volume. Each centres its waveform so it holds still as it plays, triggers on **Chip Sync** by default (a rise of the channel's tone, or of its envelope when the tone is off, so noise and the envelope don't shake it), also in edits saved before it existed, and keeps the last frame that played when playback stops
+- The timeline holds 60 fps while following playback on a 5K display: noise bands, PSG clip notes and note lanes are drawn from cached images instead of being repainted every frame
 - The transport's subdivision readout is now GRV (groove), and import fills it with four groups per beat, so a 4-3-3-3 row groove reads 7 6 7 6
 
 ### Fixed
@@ -50,6 +55,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Showing a track's level meter, in Studio's track devices or the Player, no longer adds a step to Undo
 - The timeline scrolls smoothly during playback: the playhead, ruler, PSG clips and parameter chart move together once per display frame, and the playhead keeps up with the sound instead of trailing it by a frame or two
 - The AY chip's and the Scope's oscilloscopes update once per display frame, together with the timeline, instead of about 25 times a second at uneven intervals, and stop redrawing while the waveform doesn't change
+- Bar and beat lines run under a clip's notes, lane names and piano keys instead of across them
 - PSG clips line up with the ruler to the pixel, and note lane names no longer shift by a pixel while the view scrolls
 - PSG files with pause markers no longer shift every later frame by one per pause, and files written with a `0xFF` version byte open
 - A frame drawn late no longer throws the scrolling timeline ahead and then holds it for a frame: the view catches up once and scrolls on evenly

@@ -30,6 +30,8 @@ Rectangle<int> getShownArea(const Component& c) {
 }
 
 Colour getLaneColour(const EditViewState& evs, bool trackSelected) {
+    if (evs.isVizClassic())
+        return Colors::VizClassic::background;
     return evs.vizMode ? Colors::Timeline::vizLane : Colors::Timeline::lane(trackSelected);
 }
 

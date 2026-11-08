@@ -4,6 +4,12 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Video and Viz mode
+- Viz mode and Render Video show notes and scopes, notes alone, or scopes alone: `V` in Viz mode switches, **View → Viz Options** and the Render Video dialog choose
+- **Classic Black and White** colours for Viz mode and video: black, white scopes, thin grey lines between them
+- `S` in Viz mode stacks each chip's scopes beside its notes or sets them side by side under them; scopes alone make a column or a grid, a chip per row (3×1 for one AY, 3×2 for Turbo Sound)
+- Entering Viz mode, or pressing `V` or `S`, shows both choices for a moment, with the key to leave
+
 ## [v0.6.0-alpha] - 2026-11-08
 
 ### Video and Viz mode

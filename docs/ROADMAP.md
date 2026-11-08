@@ -71,7 +71,7 @@ Grouped by theme, not ordered.
 - [ ] WAV export with a save dialog (Studio's internal Render to audio exists)
 - [ ] MP3/OGG export
 - [ ] PSG export and optimization
-- [ ] **Render Video options** — File → Render Video renders Viz mode as on screen; next: what to show (note lanes, piano keys, grid, timecode, scope layout left/right/top/bottom and size), a zoom picker, vertical 9:16 video with vertical scrolling, and rendering from the command line
+- [ ] **Render Video options** — File → Render Video renders Viz mode as on screen, in its layout (notes and scopes, notes, or scopes), scopes (stacked beside the notes, or side by side under them) and colours (Slate or Classic Black and White); next: what else to show (note lanes, piano keys, grid, timecode, scopes before the notes), a zoom picker, vertical 9:16 video with vertical scrolling, and rendering from the command line
 
 **Import**
 

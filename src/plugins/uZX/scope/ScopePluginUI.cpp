@@ -33,6 +33,7 @@ WaveformDisplay::WaveformDisplay(juce::Colour colour,
     : sourceBuffer_(buffer)
     , scopeSettings_(settings)
     , colour_(colour)
+    , background_(Colors::Theme::backgroundDark)
     , label_(label)
     , triggerStrategy_(TriggerStrategy::risingEdge())
 {
@@ -66,6 +67,12 @@ void WaveformDisplay::setTriggerStrategy(const TriggerStrategy& strategy) {
 void WaveformDisplay::setTriggerLevel(float level) {
     triggerLevel_ = level;
     settingsChanged_ = true;
+}
+
+void WaveformDisplay::setColours(juce::Colour trace, juce::Colour background) {
+    colour_ = trace;
+    background_ = background;
+    repaint();
 }
 
 void WaveformDisplay::refresh() {
@@ -159,7 +166,7 @@ void WaveformDisplay::paint(juce::Graphics& g) {
     const auto bounds = getLocalBounds().toFloat();
 
     // Background
-    g.setColour(Colors::Theme::backgroundDark);
+    g.setColour(background_);
     g.fillRect(bounds);
 
     // Zero line for audio; a chip channel's zero moves with each centred window

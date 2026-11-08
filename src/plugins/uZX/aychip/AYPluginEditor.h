@@ -16,13 +16,15 @@
 namespace MoTool::uZX {
 
 //==============================================================================
-/** The chip's A, B and C oscilloscopes, stacked, following its scope settings. */
+/** The chip's A, B and C oscilloscopes, stacked, following its scope settings: each in its channel's
+    colour, or classic white on black with grey rules between. */
 class AYScopes : public Component,
                  private juce::Value::Listener {
 public:
-    explicit AYScopes(AYChipPlugin& plugin);
+    explicit AYScopes(AYChipPlugin& plugin, bool classic = false);
     ~AYScopes() override;
 
+    void paint(Graphics& g) override;
     void resized() override;
 
     static constexpr int spacing = 4;
@@ -33,6 +35,7 @@ private:
 
     ScopeSettings& settings_;
     std::array<std::unique_ptr<WaveformDisplay>, 3> displays_;
+    const bool classic_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYScopes)
 };

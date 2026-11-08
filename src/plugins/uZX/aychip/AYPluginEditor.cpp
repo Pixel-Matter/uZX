@@ -97,13 +97,15 @@ void AYPluginUI::ChannelGroup::updateTNEState() {
 //==============================================================================
 // AYScopes
 //==============================================================================
-AYScopes::AYScopes(AYChipPlugin& plugin) : settings_(plugin.scopeSettings) {
+AYScopes::AYScopes(AYChipPlugin& plugin, bool classic) : settings_(plugin.scopeSettings), classic_(classic) {
     static const std::array<juce::Colour, 3> colours {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
     static const std::array<const char*, 3> labels {"A", "B", "C"};
 
     for (size_t i = 0; i < 3; ++i) {
         displays_[i] = std::make_unique<WaveformDisplay>(colours[i], labels[i],
                                                          *plugin.getVizChannelBuffer(static_cast<int>(i)), settings_);
+        if (classic_)
+            displays_[i]->setColours(Colors::VizClassic::trace, Colors::VizClassic::background);
         addAndMakeVisible(*displays_[i]);
     }
 
@@ -133,6 +135,15 @@ void AYScopes::applySettings() {
         display->setTriggerStrategy(strategy);
         display->setTriggerLevel(settings_.triggerLevel.getStoredValue());
     }
+}
+
+void AYScopes::paint(Graphics& g) {
+    if (! classic_)
+        return;
+    // A rule in the middle of each gap, between the scopes
+    g.setColour(Colors::VizClassic::rule);
+    for (size_t i = 1; i < displays_.size(); ++i)
+        g.fillRect(0, displays_[i]->getY() - spacing / 2, getWidth(), 1);
 }
 
 void AYScopes::resized() {

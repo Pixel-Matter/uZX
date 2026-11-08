@@ -33,6 +33,36 @@ using namespace MoTool::Helpers;
 
 namespace MoTool {
 
+namespace {
+/** View > Viz Options: what Viz mode, and a rendered video, show and in which colours. The Player
+    shows a change as it is saved. */
+PopupMenu buildVizOptionsMenu(ApplicationCommandManager& commands, PropertiesFile& settings) {
+    const auto current = VizOptions::load(settings);
+    auto choose = [&settings](std::function<void(VizOptions&)> change) {
+        return [&settings, change] {
+            auto options = VizOptions::load(settings);
+            change(options);
+            options.save(settings);
+        };
+    };
+
+    PopupMenu menu;
+    for (int i = 0; i < VizOptions::layoutNames.size(); ++i) {
+        const auto layout = (VizOptions::Layout) i;
+        menu.addItem(VizOptions::layoutNames[i], true, current.layout == layout,
+                     choose([layout](VizOptions& o) { o.layout = layout; }));
+    }
+    menu.addCommandItem(&commands, MainAppCommands::viewNextVizLayout);
+    menu.addSeparator();
+    for (int i = 0; i < VizOptions::colourNames.size(); ++i) {
+        const auto colours = (VizOptions::Colours) i;
+        menu.addItem(VizOptions::colourNames[i], true, current.colours == colours,
+                     choose([colours](VizOptions& o) { o.colours = colours; }));
+    }
+    return menu;
+}
+}  // namespace
+
 void registerPlugins(te::Engine& engine) {
     engine.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
     engine.getPluginManager().createBuiltInType<uZX::ChipInstrumentPlugin>();
@@ -350,6 +380,8 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addCommandItem(&commandManager_, MainAppCommands::viewPianoKeys);
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::viewVizMode);
+            menu.addSubMenu("Viz Options",
+                            buildVizOptionsMenu(commandManager_, engine_.getPropertyStorage().getPropertiesFile()));
             if (auto* edit = MoToolApp::getPlayerController().getEdit()) {
                 menu.addSeparator();
                 menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
@@ -520,6 +552,7 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::viewExitVizMode:
+        case MainAppCommands::viewNextVizLayout:
             result.setActive(isPlayer && MoToolApp::getPlayerController().isVizMode());
             break;
 
@@ -751,6 +784,14 @@ bool AppController::perform(const InvocationInfo& info) {
                 commandManager_.commandStatusChanged();
             }
             break;
+
+        case MainAppCommands::viewNextVizLayout: {
+            auto& settings = engine_.getPropertyStorage().getPropertiesFile();
+            auto options = VizOptions::load(settings);
+            options.layout = options.nextLayout();
+            options.save(settings);  // the Player shows it
+            break;
+        }
 
         // Settings commands
         case MainAppCommands::settingsAudioMidi:

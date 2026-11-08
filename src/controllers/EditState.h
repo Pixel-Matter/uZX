@@ -163,6 +163,34 @@ private:
 };
 
 
+//==============================================================================
+/** What the Player's Viz mode shows, and so a rendered video, and in which colours. App settings rather
+    than the edit's: the Player opens every file into a fresh edit. */
+struct VizOptions
+{
+    enum class Layout { notesAndScopes, notes, scopes };
+    enum class Colours { slate, classic };
+
+    Layout layout = Layout::notesAndScopes;
+    Colours colours = Colours::slate;
+
+    /** As the menus and the Render Video dialog name them, in enum order. */
+    static inline const StringArray layoutNames {"Notes and Scopes", "Notes", "Scopes"};
+    static inline const StringArray colourNames {"Slate", "Classic Black and White"};
+
+    bool showsNotes() const { return layout != Layout::scopes; }
+    bool showsScopes() const { return layout != Layout::notes; }
+    /** The layout after this one, and the first after the last. */
+    Layout nextLayout() const { return (Layout) (((int) layout + 1) % layoutNames.size()); }
+
+    bool operator==(const VizOptions&) const = default;
+
+    /** Anything missing or out of range keeps its default. */
+    static VizOptions load(PropertiesFile&);
+    void save(PropertiesFile&) const;
+};
+
+
 class EditViewState {
 public:
     /** A detached view starts from copies of the edit's view settings and keeps its scrolling and widths
@@ -202,8 +230,18 @@ public:
     bool showFooters = false;  // per app, not saved: the Player shows them
     bool showClipHeaders = true;  // per app, not saved: the Player draws warnings and the legend over the notes
     bool vizMode = false;  // the Player's Viz mode, not saved: notes and each chip's scopes, no ruler or controls
+    VizOptions vizOptions;  // what Viz mode shows
     bool transparentClips = false;
     bool disableClipSelection = false;
+
+    /** The Player's view: no headers or clip headers, and at the right of each track its devices, or
+        in Viz mode its chip's scopes unless the Viz options leave them out. Components read these as
+        they are built. */
+    void showAsPlayer(bool viz, VizOptions options);
+    /** False only in Viz mode showing the scopes alone. */
+    bool showsNotes() const { return ! vizMode || vizOptions.showsNotes(); }
+    /** Viz mode in Classic colours: black, with white scopes. */
+    bool isVizClassic() const { return vizMode && vizOptions.colours == VizOptions::Colours::classic; }
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditViewState)

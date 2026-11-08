@@ -30,7 +30,8 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
     trackViewport.fittedTracks = options.autoFitTrackHeights;
     tracksContainer.onRowsChanged = [this] { markAndUpdate(updateSizes); };
 
-    addAndMakeVisible(playhead);
+    addChildComponent(playhead);
+    playhead.setVisible(editViewState.showsNotes());
     addAndMakeVisible(ruler);
     addAndMakeVisible(trackViewport);
     timeScrollBar.setAutoHide(false);
@@ -40,7 +41,7 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
     timeScrollBar.setVisible(! editViewState.vizMode);
     if (options.showDetailsPanel)
         addAndMakeVisible(detailsPanel);
-    if (! editViewState.showClipHeaders) {
+    if (! editViewState.showClipHeaders && editViewState.showsNotes()) {
         legend = std::make_unique<PsgLegendComponent>();
         addAndMakeVisible(*legend);
         if (! editViewState.vizMode) {
@@ -100,7 +101,8 @@ void EditComponent::handleAsyncUpdate() {
 }
 
 void EditComponent::paint(Graphics& g) {
-    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+    g.fillAll(editViewState.isVizClassic() ? Colors::VizClassic::background
+                                           : getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
 }
 
 void EditComponent::resized() {

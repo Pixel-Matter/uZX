@@ -99,6 +99,7 @@ public:
     ~TrackRowComponent() override;
 
     void mouseDown(const MouseEvent& e) override;
+    void paint(Graphics& g) override;
     void resized() override;
 
     void trackViewStateChanged() override;
@@ -148,6 +149,7 @@ class TrackFooterOverlayComponent : public Component, private te::ValueTreeAllEv
 public:
     TrackFooterOverlayComponent(EditViewState& evs);
     ~TrackFooterOverlayComponent() override;
+    void paint(Graphics& g) override;
     void resized() override;
     void setMaximumWidth(int width) { constrainer.setMaximumWidth(width); }
     void valueTreeChanged() override {}
@@ -215,6 +217,8 @@ private:
 
     void handleAsyncUpdate() override;
     void buildTracks();
+    /** The devices or scopes have a column of their own at the right, after a gap to drag. */
+    bool hasFooterGap() const { return editViewState.showFooters && editViewState.showsNotes(); }
 };
 
 

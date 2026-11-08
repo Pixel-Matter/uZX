@@ -4,6 +4,11 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Video and Viz mode
+- Viz mode and Render Video show notes and scopes, notes alone, or scopes alone: `V` in Viz mode switches, **View → Viz Options** and the Render Video dialog choose
+- **Classic Black and White** colours for Viz mode and video: black, white scopes, thin grey lines between them
+- Entering Viz mode, or pressing `V`, names the layouts for a moment, with the keys to switch and to leave
+
 ## [v0.6.0-alpha] - 2026-11-08
 
 ### Video and Viz mode

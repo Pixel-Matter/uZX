@@ -50,6 +50,49 @@ public:
 static TrackViewStateTest trackViewStateTest;
 
 //==============================================================================
+class VizOptionsTest : public UnitTest
+{
+public:
+    VizOptionsTest() : UnitTest("VizOptions", "MoTool") {}
+
+    void runTest() override {
+        using Layout = VizOptions::Layout;
+        TemporaryFile file;
+        PropertiesFile settings(file.getFile(), {});
+
+        beginTest("Notes and scopes in Slate until chosen otherwise, and a choice is remembered");
+        expect(VizOptions::load(settings) == VizOptions{});
+        const VizOptions chosen{Layout::scopes, VizOptions::Colours::classic};
+        chosen.save(settings);
+        expect(VizOptions::load(settings) == chosen);
+
+        beginTest("A setting from a newer build, out of range, keeps the default");
+        settings.setValue("vizLayout", 7);
+        expect(VizOptions::load(settings).layout == Layout::notesAndScopes);
+
+        beginTest("Next layout goes round all three");
+        VizOptions o;
+        for (auto expected : {Layout::notes, Layout::scopes, Layout::notesAndScopes}) {
+            o.layout = o.nextLayout();
+            expect(o.layout == expected);
+        }
+
+        beginTest("The Player's view shows the scopes' column only in a layout with both notes and scopes");
+        auto edit = te::Edit::createSingleTrackEdit(*te::Engine::getEngines()[0]);
+        te::SelectionManager selectionManager(edit->engine);
+        EditViewState view(*edit, selectionManager);
+        view.showAsPlayer(false, {Layout::notes});
+        expect(view.showFooters && view.showsNotes() && ! view.isVizClassic(), "out of Viz mode: the devices");
+        view.showAsPlayer(true, {Layout::notes, VizOptions::Colours::classic});
+        expect(! view.showFooters && view.getTrackFooterWidth() == 0 && view.isVizClassic(), "notes");
+        view.showAsPlayer(true, {Layout::scopes});
+        expect(view.showFooters && ! view.showsNotes() && ! view.isVizClassic(), "scopes");
+    }
+};
+
+static VizOptionsTest vizOptionsTest;
+
+//==============================================================================
 class ZoomViewStateTest : public UnitTest
 {
 public:

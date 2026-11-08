@@ -120,6 +120,14 @@ struct Meter {
     inline static const Colour high = Theme::error;
 };
 
+/** Viz mode's Classic colours, as on an oscilloscope: white traces on black, thin grey rules between. */
+struct VizClassic {
+    // Literal values: copying juce::Colours here could run before they are set up
+    inline static const Colour background = Colour(0xff000000);
+    inline static const Colour trace      = Colour(0xffffffff);
+    inline static const Colour rule       = Colour(0xff404040);
+};
+
 // Timeline specific colors
 struct Timeline {
     /** A track's lane, behind its clips, and its header. */

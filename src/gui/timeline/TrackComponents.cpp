@@ -444,9 +444,10 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Tr
     addAndMakeVisible(body);
     addAndMakeVisible(resizer);
 
+    body.setVisible(editViewState.showsNotes());
     if (editViewState.showFooters && editViewState.vizMode) {
         if (auto* chip = track->pluginList.findFirstPluginOfType<uZX::AYChipPlugin>()) {
-            footer = std::make_unique<uZX::AYScopes>(*chip);
+            footer = std::make_unique<uZX::AYScopes>(*chip, editViewState.isVizClassic());
             addAndMakeVisible(*footer);
         }
     } else if (editViewState.showFooters) {
@@ -481,6 +482,14 @@ void TrackRowComponent::setResizerVisible(bool visible) {
     resizer.setVisible(visible);
 }
 
+void TrackRowComponent::paint(Graphics& g) {
+    // Classic colours draw a rule between rows, as between the scopes
+    if (editViewState.isVizClassic() && resizer.isVisible()) {
+        g.setColour(Colors::VizClassic::rule);
+        g.fillRect(resizer.getBounds().withHeight(1));
+    }
+}
+
 void TrackRowComponent::trackViewStateChanged() {
     resized();
 }
@@ -498,7 +507,8 @@ void TrackRowComponent::resized() {
 
     header.setBounds(r.removeFromLeft(headerWidth));
     if (footer != nullptr) {
-        auto footerArea = r.removeFromRight(editViewState.getTrackFooterWidth());
+        // Viz mode showing the scopes alone gives them the whole row
+        auto footerArea = editViewState.showsNotes() ? r.removeFromRight(editViewState.getTrackFooterWidth()) : r;
         footer->setBounds(editViewState.vizMode ? footerPadding.subtractedFrom(footerArea) : footerArea);
     }
     body.setBounds(r);
@@ -557,6 +567,14 @@ TrackFooterOverlayComponent::~TrackFooterOverlayComponent() {
     editViewState.state.removeListener(this);
 }
 
+void TrackFooterOverlayComponent::paint(Graphics& g) {
+    // Classic colours draw the gap before the scopes as a rule, as between the scopes
+    if (editViewState.isVizClassic()) {
+        g.setColour(Colors::VizClassic::rule);
+        g.fillRect(TrackRowComponent::footerPadding.getLeft() / 2, 0, 1, getHeight());
+    }
+}
+
 void TrackFooterOverlayComponent::resized() {
     if (editViewState.showFooters && getWidth() > 0)
         (editViewState.vizMode ? editViewState.vizScopesWidth : editViewState.footersWidth) = getWidth();
@@ -586,7 +604,7 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
     addAndMakeVisible(trackHeaderOverlay);
     trackHeaderOverlay.setAlwaysOnTop(true);
     trackHeaderOverlay.addComponentListener(this);
-    if (editViewState.showFooters) {
+    if (hasFooterGap()) {
         addAndMakeVisible(trackFooterOverlay);
         trackFooterOverlay.setAlwaysOnTop(true);
         trackFooterOverlay.addComponentListener(this);
@@ -673,7 +691,7 @@ void TracksContainerComponent::resized() {
     r = getLocalBounds();
 
     trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
-    if (editViewState.showFooters) {
+    if (hasFooterGap()) {
         constexpr int minNotesWidth = 160;
         const int minWidth = editViewState.vizMode ? EditViewState::minVizScopesWidth : EditViewState::footerWidth;
         trackFooterOverlay.setMaximumWidth(jmax(minWidth, getWidth() - headerWidth - minNotesWidth));
@@ -731,6 +749,8 @@ void TracksContainerComponent::resized() {
 void TracksContainerComponent::paint(Graphics& g) {
     // g.setColour(Colors::Theme::backgroundAlt);
     // g.fillRect(gridSpace);
+    if (! editViewState.showsNotes())
+        return;  // no timeline under the scopes alone
     auto ticks = grid.getTicks();
     MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, gridRect, ticks);
 }

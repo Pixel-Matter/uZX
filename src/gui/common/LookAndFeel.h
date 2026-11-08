@@ -1,9 +1,18 @@
 #pragma once
 #include <JuceHeader.h>
+#include "../../util/Oklch.h"
 
 namespace MoTool {
 
 namespace Colors {
+
+/** A colour at the shared accent level. Every accent has the same OKLCH
+    lightness and chroma, so only its hue sets it apart and none outshines
+    another. L 0.68, C 0.168 is about the most chroma the PSG channel hues
+    share in sRGB: indigo caps it. */
+inline Colour accent(float hue) {
+    return Oklch::toColour({0.68f, 0.168f, hue});
+}
 
 // Tailwind CSS color palette
 // https://tailwindcss.com/docs/customizing-colors
@@ -90,18 +99,37 @@ struct Theme {
     inline static const Colour border        = Palette::slate600;  // Normal borders
     inline static const Colour borderDark    = Palette::slate700;  // Darker borders
 
-    // Other UI colors
-    inline static const Colour primary       = Palette::sky500;
-    inline static const Colour secondary     = Palette::violet500;
-    inline static const Colour success       = Palette::emerald500;
-    inline static const Colour soloed        = Palette::emerald500;
-    inline static const Colour warning       = Palette::orange500;
-    inline static const Colour error         = Palette::red500;
-    inline static const Colour muted         = Palette::red500;
+    // Other UI colors, at the accent level; hues are those of the Tailwind
+    // colours they replace, success shares PSG channel B's green
+    inline static const Colour primary       = accent(240.4f);  // sky-500
+    inline static const Colour secondary     = accent(293.9f);  // violet-500
+    inline static const Colour success       = accent(152.0f);
+    inline static const Colour soloed        = success;
+    inline static const Colour warning       = accent(44.4f);   // orange-500
+    inline static const Colour error         = accent(27.0f);   // red-500; also record and automation write
+    inline static const Colour muted         = error;
+    // A yellow at accent lightness reads as olive, so highlights stay light
+    inline static const Colour highlight     = Oklch::toColour({0.85f, 0.168f, 100.0f});
+};
+
+// Level meter zones
+struct Meter {
+    inline static const Colour midi = accent(218.0f);
+    inline static const Colour low  = Theme::success;
+    inline static const Colour mid  = Theme::highlight;
+    inline static const Colour high = Theme::error;
 };
 
 // Timeline specific colors
 struct Timeline {
+    /** A track's lane, behind its clips, and its header. */
+    static Colour lane(bool trackSelected) {
+        return trackSelected ? Theme::backgroundSel : Theme::backgroundAlt;
+    }
+
+    /** Behind the notes in Viz mode, where they are a display like the scopes, so as deep. */
+    inline static const Colour vizLane = Theme::backgroundDark;
+
     inline static const Colour grid         = Palette::slate600;
     inline static const Colour cursor       = Theme::primary;
     inline static const Colour clipBg       = Colour::fromString("#FF3B82F6"); // blue-500
@@ -134,15 +162,19 @@ struct Timeline {
 
 // PSG specific colors
 struct PSG {
-    // inline static const auto A   = Palette::amber500.withSaturation(1.0f);
-    // inline static const auto B   = Palette::emerald500.withSaturation(1.0f);
-    // inline static const auto C   = Palette::sky500.withSaturation(1.0f);
+    // Channel and envelope colours at the accent level; hues are near
+    // orange-400, emerald-500, indigo-400 and purple-400 (green nudged to 152
+    // to reach the shared chroma)
+    inline static const auto A   = accent(55.0f);
+    inline static const auto B   = accent(152.0f);
+    inline static const auto C   = accent(276.9f);
 
-    inline static const auto A   = Palette::orange400;
-    inline static const auto B   = Palette::emerald500;
-    inline static const auto C   = Palette::indigo400;
+    // Notes two channels play at once: yellow-500, pink-500 and cyan-500 hues
+    inline static const auto AB  = accent(82.7f);
+    inline static const auto AC  = accent(352.7f);
+    inline static const auto BC  = accent(218.0f);
 
-    inline static const auto Env = Palette::purple400;
+    inline static const auto Env = accent(307.1f);
     inline static const auto Mix = Palette::slate500;
 };
 

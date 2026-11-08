@@ -11,6 +11,8 @@
 
 namespace MoTool {
 
+class TrackDevicesPanel;
+
 //==============================================================================
 /**
  * Component for track header containing track name and controls
@@ -77,9 +79,10 @@ private:
     TimelineGrid& grid;
 
     OwnedArray<ClipComponent> clips;
+    OwnedArray<ClipHeader> clipHeaders;
     std::unique_ptr<RecordingClipComponent> recordingClip;
 
-    bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false, updateZoom = false;
+    bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false;
 };
 
 
@@ -101,10 +104,18 @@ public:
     void trackViewStateChanged() override;
 
     int getTrackHeight() const noexcept;
+    /** Height the row needs for its devices; 0 without them. */
+    int getMinimumHeight() const;
     void setResizerVisible(bool visible);
+
+    static constexpr int resizerHeight = 2;
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
+    /** The track's devices, fixed, when the view shows footers; in Viz mode its chip's scopes. */
+    std::unique_ptr<Component> footer;
+    /** Level with the clips, apart from them and from the window edge. */
+    static inline const BorderSize<int> footerPadding {ClipComponent::ringWidth, 8, ClipComponent::ringWidth, 8};
 
 private:
     EditViewState& editViewState;
@@ -131,6 +142,24 @@ private:
 };
 
 //==============================================================================
+/** The column at the right of the track rows when the view shows footers: the devices, or in
+    Viz mode the scopes. Drag the gap at its left edge, before the devices or scopes, to resize it. */
+class TrackFooterOverlayComponent : public Component, private te::ValueTreeAllEventListener {
+public:
+    TrackFooterOverlayComponent(EditViewState& evs);
+    ~TrackFooterOverlayComponent() override;
+    void resized() override;
+    void setMaximumWidth(int width) { constrainer.setMaximumWidth(width); }
+    void valueTreeChanged() override {}
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
+
+private:
+    EditViewState& editViewState;
+    ComponentBoundsConstrainer constrainer;
+    ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::leftEdge};
+};
+
+//==============================================================================
 /**
  * Container component that holds all track rows and manages track layout
  */
@@ -151,13 +180,22 @@ public:
     void resized() override;
     void paint(Graphics& g) override;
     int getIdealHeight() const;
+    /** Height the rows need when they fit the view. */
+    int getMinimumHeight() const;
     void setAutoFitTrackHeights(bool enabled);
+
+    /** Shares `total` among rows in proportion to their current heights; a row that would get
+        less than its minimum keeps the minimum and the others share the rest. */
+    static Array<int> fitHeights(const Array<int>& current, const Array<int>& minimum, int total);
+
+    std::function<void()> onRowsChanged;  // the rows were rebuilt, so their minimum height may differ
 
 private:
     te::Edit& edit;
     EditViewState& editViewState;
     OwnedArray<TrackRowComponent> trackRows;
     TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
+    TrackFooterOverlayComponent trackFooterOverlay {editViewState};
     bool updateTracks = false;
     bool needsRepaint = false;
     bool needsResize = false;

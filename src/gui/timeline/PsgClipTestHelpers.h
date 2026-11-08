@@ -6,7 +6,7 @@
 namespace MoTool::Tests {
 
 inline Image renderPsgClip(te::Engine& engine, uZX::PsgData data, int width, int height,
-                           Range<int> visibleFrames = {}, bool header = false, Rectangle<int> repaint = {}) {
+                           Range<int> visibleFrames = {}, bool legend = false, Rectangle<int> repaint = {}) {
     jassert(! data.frames.empty());
     if (visibleFrames.isEmpty())
         visibleFrames = {0, static_cast<int>(data.frames.size())};
@@ -31,9 +31,10 @@ inline Image renderPsgClip(te::Engine& engine, uZX::PsgData data, int width, int
     if (! repaint.isEmpty())
         graphics.reduceClipRegion(repaint);
     graphics.addTransform(AffineTransform::translation(-static_cast<float>(frameWidth * visibleFrames.getStart()), 0));
-    if (header)
-        component.paintHeader(graphics);
-    else
+    if (legend) {
+        PsgClipHeader clipHeader(view, clip);
+        clipHeader.paintLegend(graphics, {3, 3, width, 12});  // where the header used to draw it
+    } else
         component.paintNotes(graphics);
     return image;
 }

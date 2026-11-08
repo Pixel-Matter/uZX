@@ -10,6 +10,9 @@
 
 namespace MoTool {
 
+class PsgLegendComponent;
+class PsgSetInfoComponent;
+
 struct EditComponentOptions {
     bool showDetailsPanel = true;
     bool autoFitTrackHeights = false;
@@ -57,6 +60,7 @@ private:
         ZoomableViewport(EditViewState& evs) : editViewState(evs) {}
         void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
         void mouseMagnify(const MouseEvent& e, float scale) override;
+        bool fittedTracks = false;  // the tracks fit the height, and scroll only when they can't
     private:
         EditViewState& editViewState;
     };
@@ -82,8 +86,16 @@ private:
 
     TimeScrollBar timeScrollBar {editViewState.zoom, ruler};
 
+    // Without clip headers (the Player): the legend once over the tracks, and the tune's
+    // tuning and key in the corner above the track devices
+    std::unique_ptr<PsgLegendComponent> legend;
+    std::unique_ptr<PsgSetInfoComponent> setInfo;
+
     bool updateSizes = false, updateScrollRange = false;
     bool middleDragging = false;
+
+    // The display's frame clock: the playhead, the view and everything drawn from them move once per frame
+    VBlankAttachment frameClock {this, [this](double timestampSec) { editViewState.zoom.advanceFrame(timestampSec); }};
 };
 
 }

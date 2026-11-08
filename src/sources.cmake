@@ -1,6 +1,11 @@
 # Source files used by both GUI app and tests
 set(SHARED_SOURCES
     util/Midi.cpp
+    util/PipedProcess.cpp
+
+    formats/video/VideoExport.cpp
+
+    formats/psg/TurboSound.cpp
 
     controllers/ParamEndpoint.cpp
 
@@ -8,6 +13,7 @@ set(SHARED_SOURCES
     models/PsgList.cpp
     models/PsgClip.cpp
     models/PsgFrameRetimer.cpp
+    models/PsgTempoDetector.cpp
     models/Selectable.cpp
     models/EditUtilities.cpp
     models/SnapLadder.cpp
@@ -19,6 +25,7 @@ set(SHARED_SOURCES
     models/tuning/TuningSystemBase.cpp
     models/tuning/AutoTuning.cpp
     models/tuning/TuningTable.cpp
+    models/tuning/TuningDetector.cpp
 
     viewmodels/tuning/TuningPlayer.cpp
     viewmodels/tuning/MultitrackMidiPreview.cpp
@@ -48,12 +55,15 @@ set(GUI_SOURCES
     gui/common/LabeledSlider.cpp
     gui/common/MidiParameterMapping.cpp
     gui/common/MouseListener.cpp
+    gui/common/LevelMeter.cpp
 
     controllers/MainController.cpp
     controllers/TuningController.cpp
     controllers/PlayerController.cpp
     controllers/App.cpp
     controllers/EditState.cpp
+    controllers/PlayheadClock.cpp
+    controllers/RememberedStereo.cpp
 
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Transport.cpp
@@ -61,6 +71,8 @@ set(GUI_SOURCES
     gui/main/MainWindow.cpp
     gui/main/PlayerDocument.cpp
     gui/main/Footer.cpp
+    gui/video/VideoRenderJob.cpp
+    gui/video/RenderVideoDialog.cpp
     gui/tuning/TuningPreviewGrid.cpp
     gui/tuning/TuningPreview.cpp
 
@@ -70,11 +82,11 @@ set(GUI_SOURCES
     gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
     gui/timeline/PsgClipComponent.cpp
+    gui/timeline/TuningPickerComponent.cpp
     gui/timeline/PsgParamEditorComponent.cpp
     gui/timeline/Ruler.cpp
     gui/timeline/DetailsPanelComponent.cpp
 
-    gui/devices/AYPluginSidePanel.cpp
     gui/devices/PluginTree.cpp
     gui/devices/TrackDevicesPanel.cpp
     gui/devices/PluginDeviceUI.cpp
@@ -97,40 +109,55 @@ set(TEST_SOURCES
     ## models/CustomClip.test.cpp
 
     util/enumchoice.test.cpp
+    util/Oklch.test.cpp
+    util/Helpers.test.cpp
+    util/FileOps.test.cpp
+    util/PipedProcess.test.cpp
+
+    formats/video/VideoExport.test.cpp
 
     formats/psg/PsgFile.test.cpp
+    formats/psg/TurboSound.test.cpp
 
     models/PsgMidi.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
+    models/PsgClipTuning.test.cpp
+    models/PsgTempoDetector.test.cpp
     models/ProjectFps.test.cpp
     models/SnapLadder.test.cpp
     models/tuning/Ratios.test.cpp
     models/tuning/TuningTable.test.cpp
+    models/tuning/TuningDetector.test.cpp
     models/tuning/EqualTemperamentTuning.test.cpp
     models/tuning/AutoTuning.test.cpp
     models/tuning/Scales.test.cpp
     models/tuning/RationalTuning.test.cpp
 
     controllers/EditState.test.cpp
+    controllers/PlayheadClock.test.cpp
     controllers/PlayWholeEdit.test.cpp
+    controllers/RememberedStereo.test.cpp
     controllers/Parameters.test.cpp
 
     viewmodels/tuning/TuningViewModel.test.cpp
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
 
     gui/timeline/TimelineGrid.test.cpp
+    gui/timeline/ClipComponents.test.cpp
     gui/timeline/EditComponent.test.cpp
     gui/timeline/PsgClipComponent.test.cpp
     gui/timeline/PsgClipTestHelpers.h
     gui/timeline/PsgVisualGuide.test.cpp
     gui/timeline/PsgPaintingBenchmark.test.cpp
+    gui/video/VideoRenderJob.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/aychip/AYPlugin.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
+    plugins/uZX/scope/ScopePluginUI.test.cpp
 
     gui/timeline/TimelineGrid.test.cpp
 

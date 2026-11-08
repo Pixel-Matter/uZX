@@ -1,5 +1,7 @@
 #include "TrackComponents.h"
 #include "PsgClipComponent.h"
+#include "../devices/TrackDevicesPanel.h"
+#include "../../plugins/uZX/aychip/AYPluginEditor.h"
 
 #include "../common/LookAndFeel.h"
 #include "../../controllers/App.h"
@@ -203,7 +205,7 @@ void TrackHeaderComponent::valueTreeChildRemoved(ValueTree&, ValueTree& c, int) 
 
 void TrackHeaderComponent::paint(Graphics& g) {
     bool isSelected = editViewState.selectionManager.isSelected(track.get());
-    auto bgColor = isSelected ? Colors::Theme::backgroundSel : Colors::Theme::backgroundAlt;
+    auto bgColor = Colors::Timeline::lane(isSelected);
 
     g.setColour(bgColor);
     g.fillRect(getLocalBounds().withTrimmedRight(2));
@@ -245,7 +247,8 @@ TrackBodyComponent::TrackBodyComponent(EditViewState& evs, TimelineGrid& g, te::
     track->edit.getTransport().addChangeListener(this);
     editViewState.selectionManager.addChangeListener(this);
 
-    setBufferedToImage(true);
+    // Not buffered to an image: following the playhead repaints the whole body every frame,
+    // and a cache only adds a full-size clear and copy to each.
     setRepaintsOnMouseActivity(true);
     markAndUpdate(updateClips);
 }
@@ -259,37 +262,35 @@ TrackBodyComponent::~TrackBodyComponent() {
 }
 
 void TrackBodyComponent::paint(Graphics& g) {
-    bool isSelected = editViewState.selectionManager.isSelected(track.get());
-    auto bgColor = isSelected ? Colors::Theme::backgroundSel : Colors::Theme::backgroundAlt;
-
-    g.fillAll(bgColor);
+    g.fillAll(getLaneColour(editViewState, editViewState.selectionManager.isSelected(track.get())));
 
     auto ticks = grid.getTicks();
     MoToolApp::getApp().getLookAndFeel().drawTimelineGrid(g, getLocalBounds(), ticks);
 }
 
 void TrackBodyComponent::paintOverChildren(Graphics& g) {
-    const auto ticks = grid.getTicks();
-
-    auto drawClipGrid = [&] (const Component& clipComponent) {
-        const auto clipBounds = clipComponent.getBounds().getIntersection(getLocalBounds());
-        if (clipBounds.isEmpty())
-            return;
-
-        for (const auto& tick : ticks) {
-            if (tick.level >= Colors::Timeline::trackGridTickColors.size() || ! clipBounds.contains(tick.x, clipBounds.getY()))
+    // Clips draw the grid under their contents (ClipComponent::paint); a recording clip has it over
+    if (recordingClip != nullptr) {
+        const auto clipBounds = recordingClip->getBounds().getIntersection(getLocalBounds());
+        for (const auto& tick : grid.getTicks()) {
+            if (clipBounds.isEmpty() || tick.level >= Colors::Timeline::trackGridTickColors.size()
+                || ! clipBounds.contains(tick.x, clipBounds.getY()))
                 continue;
-
             g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
             g.drawVerticalLine(tick.x, (float) clipBounds.getY(), (float) clipBounds.getBottom());
         }
-    };
+    }
 
-    for (auto* clip : clips)
-        drawClipGrid(*clip);
-
-    if (recordingClip != nullptr)
-        drawClipGrid(*recordingClip);
+    // The ring around a selected clip, outside its header and body
+    for (auto* header : clipHeaders) {
+        auto& clip = header->getClip();
+        if (! editViewState.selectionManager.isSelected(&clip))
+            continue;
+        constexpr float ring = (float) ClipComponent::ringWidth;
+        const auto bounds = header->getBounds().toFloat().withBottom((float) getHeight() - ring).expanded(ring * 0.5f);
+        g.setColour(ClipComponent::getRingColour(clip.getColour()));
+        g.drawRoundedRectangle(bounds, ClipComponent::cornerSize + ring * 0.5f, ring);
+    }
 }
 
 void TrackBodyComponent::mouseDown(const MouseEvent& e) {
@@ -316,7 +317,9 @@ void TrackBodyComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce
 }
 
 void TrackBodyComponent::viewRangeChanged() {
-    markAndUpdate(updateZoom);
+    // At once, not deferred: the ruler and the other views repaint now, for the same frame
+    resized();
+    repaint();
 }
 
 void TrackBodyComponent::gridChanged() {
@@ -345,13 +348,6 @@ void TrackBodyComponent::handleAsyncUpdate() {
         buildClips();
     if (compareAndReset(updatePositions))
         resized();
-    if (compareAndReset(updateZoom)) {
-        // TODO track from where updateZoom is called and at what exact time (in paint later)
-        // TODO is repaint really needed after resized()?
-        //
-        resized();
-        repaint();
-    }
     if (compareAndReset(updateRecordClips))
         buildRecordClips();
     if (compareAndReset(updateSelection))
@@ -359,26 +355,39 @@ void TrackBodyComponent::handleAsyncUpdate() {
 }
 
 void TrackBodyComponent::resized() {
-    for (auto cc : clips) {
-        auto& c = cc->getClip();
+    const auto clipX = [this](te::Clip& c) {
         auto pos = c.getPosition();
         int x1 = roundToInt(editViewState.zoom.timeToX(pos.getStart()));
         int x2 = roundToInt(editViewState.zoom.timeToX(pos.getEnd()));
+        return Range<int>(x1, x2);
+    };
 
-        cc->setBounds(x1, 0, x2 - x1, getHeight());
+    // Inset top and bottom, so a selected clip's ring fits around it
+    constexpr int inset = ClipComponent::ringWidth;
+    const int headerHeight = editViewState.showClipHeaders ? ClipHeader::height : 0;
+    for (auto cc : clips) {
+        const auto x = clipX(cc->getClip());
+        cc->setBounds(x.getStart(), inset + headerHeight, x.getLength(),
+                      jmax(0, getHeight() - headerHeight - 2 * inset));
+    }
+    for (auto header : clipHeaders) {
+        const auto x = clipX(header->getClip());
+        header->setBounds(x.getStart(), inset, x.getLength(), ClipHeader::height);
     }
 }
 
 void TrackBodyComponent::buildClips() {
+    clipHeaders.clear();
     clips.clear();
 
     if (auto ct = dynamic_cast<te::ClipTrack*>(track.get())) {
         for (auto c : ct->getClips()) {
             ClipComponent* cc = nullptr;
+            const bool psg = dynamic_cast<PsgClip*>(c) != nullptr;
 
             if (dynamic_cast<te::WaveAudioClip*>(c))
                 cc = new AudioClipComponent(editViewState, grid, c);
-            else if (dynamic_cast<PsgClip*>(c))  // must go before MidiClip
+            else if (psg)  // must go before MidiClip
                 cc = new PsgClipComponent(editViewState, grid, c);
             else if (dynamic_cast<te::MidiClip*>(c))
                 cc = new MidiClipComponent(editViewState, grid, c);
@@ -387,6 +396,12 @@ void TrackBodyComponent::buildClips() {
 
             clips.add(cc);
             addAndMakeVisible(cc);
+
+            if (! editViewState.showClipHeaders)
+                continue;
+            auto* header = psg ? new PsgClipHeader(editViewState, c) : new ClipHeader(editViewState, c);
+            clipHeaders.add(header);
+            addAndMakeVisible(header);
         }
     }
 
@@ -429,6 +444,22 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Tr
     addAndMakeVisible(body);
     addAndMakeVisible(resizer);
 
+    if (editViewState.showFooters && editViewState.vizMode) {
+        if (auto* chip = track->pluginList.findFirstPluginOfType<uZX::AYChipPlugin>()) {
+            footer = std::make_unique<uZX::AYScopes>(*chip);
+            addAndMakeVisible(*footer);
+        }
+    } else if (editViewState.showFooters) {
+        auto devices = std::make_unique<TrackDevicesPanel>(editViewState, false);
+        devices->setPadding(footerPadding);
+        devices->setCurrentTrack(track.get());
+        addAndMakeVisible(*devices);
+        footer = std::move(devices);
+
+        auto& constrainer = trackViewState.getConstrainer();
+        constrainer.setMinimumHeight(jmax(constrainer.getMinimumHeight(), getMinimumHeight()));
+    }
+
     trackViewState.addListener(this);
 }
 
@@ -438,6 +469,12 @@ TrackRowComponent::~TrackRowComponent() {
 
 int TrackRowComponent::getTrackHeight() const noexcept {
     return trackViewState.getHeight();
+}
+
+int TrackRowComponent::getMinimumHeight() const {
+    if (auto* devices = dynamic_cast<TrackDevicesPanel*>(footer.get()))
+        return devices->getMinimumHeight() + resizerHeight;
+    return 0;
 }
 
 void TrackRowComponent::setResizerVisible(bool visible) {
@@ -457,9 +494,13 @@ void TrackRowComponent::resized() {
 
     const int headerWidth = editViewState.getTrackHeaderWidth();
     auto r = getLocalBounds();
-    resizer.setBounds(r.removeFromBottom(2));
+    resizer.setBounds(r.removeFromBottom(resizerHeight));
 
     header.setBounds(r.removeFromLeft(headerWidth));
+    if (footer != nullptr) {
+        auto footerArea = r.removeFromRight(editViewState.getTrackFooterWidth());
+        footer->setBounds(editViewState.vizMode ? footerPadding.subtractedFrom(footerArea) : footerArea);
+    }
     body.setBounds(r);
 
     // do not remove
@@ -503,6 +544,35 @@ void TrackHeaderOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, c
 
 
 //==============================================================================
+TrackFooterOverlayComponent::TrackFooterOverlayComponent(EditViewState& evs)
+    : editViewState (evs)
+{
+    setInterceptsMouseClicks(false, true);
+    editViewState.state.addListener(this);
+    constrainer.setMinimumWidth(editViewState.vizMode ? EditViewState::minVizScopesWidth : EditViewState::footerWidth);
+    addAndMakeVisible(resizer);
+}
+
+TrackFooterOverlayComponent::~TrackFooterOverlayComponent() {
+    editViewState.state.removeListener(this);
+}
+
+void TrackFooterOverlayComponent::resized() {
+    if (editViewState.showFooters && getWidth() > 0)
+        (editViewState.vizMode ? editViewState.vizScopesWidth : editViewState.footersWidth) = getWidth();
+    resizer.setBounds(getLocalBounds().removeFromLeft(TrackRowComponent::footerPadding.getLeft()));
+}
+
+void TrackFooterOverlayComponent::valueTreePropertyChanged(juce::ValueTree& s, const juce::Identifier& i) {
+    if ((i == IDs::vizScopesWidth || i == IDs::footersWidth) && s.hasType(IDs::EDITVIEWSTATE)
+        && getParentComponent() != nullptr) {
+        const auto width = editViewState.getTrackFooterWidth();
+        setBounds(getBounds().withLeft(getRight() - width));
+    }
+}
+
+
+//==============================================================================
 TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& evs, TimelineGrid& g)
     : edit(e)
     , editViewState(evs)
@@ -516,6 +586,11 @@ TracksContainerComponent::TracksContainerComponent(te::Edit& e, EditViewState& e
     addAndMakeVisible(trackHeaderOverlay);
     trackHeaderOverlay.setAlwaysOnTop(true);
     trackHeaderOverlay.addComponentListener(this);
+    if (editViewState.showFooters) {
+        addAndMakeVisible(trackFooterOverlay);
+        trackFooterOverlay.setAlwaysOnTop(true);
+        trackFooterOverlay.addComponentListener(this);
+    }
 
     markAndUpdate(updateTracks);
 }
@@ -541,6 +616,49 @@ void TracksContainerComponent::setAutoFitTrackHeights(bool enabled) {
     autoFitTrackHeights_ = enabled;
 }
 
+static constexpr int minFittedRowHeight = 40;
+
+int TracksContainerComponent::getMinimumHeight() const {
+    int height = 0;
+    for (auto* row : trackRows)
+        height += jmax(minFittedRowHeight, row->getMinimumHeight());
+    return height;
+}
+
+Array<int> TracksContainerComponent::fitHeights(const Array<int>& current, const Array<int>& minimum, int total) {
+    const int n = current.size();
+    Array<int> heights(minimum);
+    Array<bool> held;
+    held.insertMultiple(0, false, n);
+
+    for (bool holding = true; holding;) {
+        holding = false;
+        int space = total, weight = 0;
+        for (int i = 0; i < n; ++i) {
+            if (held[i])
+                space -= minimum[i];
+            else
+                weight += jmax(1, current[i]);
+        }
+        for (int i = 0; i < n; ++i) {
+            if (held[i])
+                continue;
+            heights.set(i, roundToInt((double) space * jmax(1, current[i]) / jmax(1, weight)));
+            if (heights[i] < minimum[i]) {
+                heights.set(i, minimum[i]);
+                held.set(i, true);
+                holding = true;
+            }
+        }
+    }
+
+    int above = 0;  // the last row takes the rounding
+    for (int i = 0; i < n - 1; ++i)
+        above += heights[i];
+    heights.set(n - 1, jmax(minimum[n - 1], total - above));
+    return heights;
+}
+
 int TracksContainerComponent::getIdealHeight() const {
     return std::accumulate (trackRows.begin(), trackRows.end(), 0, [] (auto acc, auto& track) {
         return acc + track->getTrackHeight();
@@ -555,48 +673,38 @@ void TracksContainerComponent::resized() {
     r = getLocalBounds();
 
     trackHeaderOverlay.setBounds(r.withWidth(headerWidth));
+    if (editViewState.showFooters) {
+        constexpr int minNotesWidth = 160;
+        const int minWidth = editViewState.vizMode ? EditViewState::minVizScopesWidth : EditViewState::footerWidth;
+        trackFooterOverlay.setMaximumWidth(jmax(minWidth, getWidth() - headerWidth - minNotesWidth));
+        trackFooterOverlay.setBounds(r.withLeft(r.getRight() - editViewState.getTrackFooterWidth()));
+    }
 
     if (autoFitTrackHeights_ && !trackRows.isEmpty()) {
         const int totalHeight = getHeight();
+        Array<int> heights, minimums;
+        for (auto* row : trackRows) {
+            heights.add(row->getTrackHeight());
+            minimums.add(jmax(minFittedRowHeight, row->getMinimumHeight()));
+        }
 
-        if (totalHeight != lastFitHeight_) {
-            // Container was resized — scale all tracks proportionally
-            int oldTotal = 0;
-            for (auto t : trackRows)
-                oldTotal += t->getTrackHeight();
+        bool refit = totalHeight != lastFitHeight_;  // the container was resized: scale all rows
+        if (! refit) {
+            // a row was resized by hand: the last one takes up the difference while it can
+            int above = 0;
+            for (int i = 0; i < heights.size() - 1; ++i)
+                above += heights[i];
+            heights.set(heights.size() - 1, totalHeight - above);
+            refit = heights.getLast() < minimums.getLast();
+        }
+        if (refit)
+            heights = fitHeights(heights, minimums, totalHeight);
 
-            if (oldTotal <= 0) oldTotal = totalHeight;
-
-            int y = 0;
-            for (int i = 0; i < trackRows.size(); ++i) {
-                if (i == trackRows.size() - 1) {
-                    // Last track gets remainder
-                    int h = totalHeight - y;
-                    trackRows[i]->setBounds(0, y, getWidth(), h);
-                    trackRows[i]->resized();
-                } else {
-                    int h = roundToInt((double)trackRows[i]->getTrackHeight() / oldTotal * totalHeight);
-                    h = jmax(h, 40);
-                    trackRows[i]->setBounds(0, y, getWidth(), h);
-                    trackRows[i]->resized();
-                    y += h;
-                }
-            }
-        } else {
-            // Same height — a track was manually resized; last track absorbs difference
-            int y = 0;
-            for (int i = 0; i < trackRows.size(); ++i) {
-                if (i == trackRows.size() - 1) {
-                    int h = totalHeight - y;
-                    trackRows[i]->setBounds(0, y, getWidth(), h);
-                    trackRows[i]->resized();
-                } else {
-                    int h = trackRows[i]->getTrackHeight();
-                    trackRows[i]->setBounds(0, y, getWidth(), h);
-                    trackRows[i]->resized();
-                    y += h;
-                }
-            }
+        int y = 0;
+        for (int i = 0; i < trackRows.size(); ++i) {
+            trackRows[i]->setBounds(0, y, getWidth(), heights[i]);
+            trackRows[i]->resized();
+            y += heights[i];
         }
 
         lastFitHeight_ = totalHeight;
@@ -615,7 +723,7 @@ void TracksContainerComponent::resized() {
 
     gridRect = Rectangle<int>(
         headerWidth, y,
-        getWidth() - headerWidth,
+        getWidth() - headerWidth - editViewState.getTrackFooterWidth(),
         getHeight() - y
     );
 }
@@ -645,7 +753,7 @@ void TracksContainerComponent::valueTreeChildOrderChanged(juce::ValueTree& v, in
 }
 
 void TracksContainerComponent::viewRangeChanged() {
-    markAndUpdate(needsRepaint);
+    repaint();  // at once, like the tracks
 }
 
 void TracksContainerComponent::gridChanged() {
@@ -685,6 +793,8 @@ void TracksContainerComponent::buildTracks() {
     }
 
     markAndUpdate(needsResize);
+    if (onRowsChanged)
+        onRowsChanged();
 }
 
 void TracksContainerComponent::handleAsyncUpdate() {

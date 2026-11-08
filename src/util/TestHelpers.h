@@ -5,15 +5,19 @@
 namespace MoTool::TestHelpers {
 
 /** Flush all pending async messages on the message thread.
-    Posts a sentinel via callAsync and spins the dispatch loop until it arrives,
-    guaranteeing all previously-queued async messages have been processed. */
-inline void flushMessageQueue()
+    Each round posts a sentinel via callAsync and spins the dispatch loop until it arrives,
+    so everything queued before it has been processed. Messages those post in turn (an async
+    track build posting an async clip build) need further rounds: Windows dispatches only
+    the batch queued at the time, where macOS delivers the newcomers as well. */
+inline void flushMessageQueue(int rounds = 4)
 {
-    bool flushed = false;
-    juce::MessageManager::callAsync([&flushed] { flushed = true; });
+    for (int round = 0; round < rounds; ++round) {
+        bool flushed = false;
+        juce::MessageManager::callAsync([&flushed] { flushed = true; });
 
-    for (int i = 0; i < 200 && !flushed; ++i)
-        juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        for (int i = 0; i < 200 && !flushed; ++i)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+    }
 }
 
 /** Runs numBlocks 512-sample blocks through the test engine's hosted audio device. */

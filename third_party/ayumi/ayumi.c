@@ -135,7 +135,19 @@ static void update_mixer(struct ayumi* ay) {
     out = (update_tone(ay, i) | ay->channels[i].t_off) & (noise | ay->channels[i].n_off);
     out *= ay->channels[i].e_on ? envelope : ay->channels[i].volume * 2 + 1;
     ay->channel_out[i] = ay->dac_table[out];
+    ay->raw_sum[i] += ay->channel_out[i];
   }
+  ay->raw_ticks += 1;
+}
+
+static void update_raw(struct ayumi* ay) {
+  int i;
+  for (i = 0; i < TONE_CHANNELS; i += 1) {
+    /* A sample with no chip tick, at a low clock and a high sample rate, holds the level */
+    ay->raw[i] = ay->raw_ticks > 0 ? ay->raw_sum[i] / ay->raw_ticks : ay->channel_out[i];
+    ay->raw_sum[i] = 0;
+  }
+  ay->raw_ticks = 0;
 }
 
 int ayumi_configure(struct ayumi* ay, int is_ym, double clock_rate, int sr) {
@@ -312,24 +324,6 @@ void ayumi_process(struct ayumi* ay) {
   ay->fir_index = (ay->fir_index + 1) % (FIR_SIZE / DECIMATE_FACTOR - 1);
 
   switch (ay->output_mode) {
-    case AYUMI_MONO: {
-      c0 = ay->outputs[0].interpolator.c;
-      fir0 = &ay->outputs[0].fir[FIR_SIZE - ay->fir_index * DECIMATE_FACTOR];
-
-      for (i = DECIMATE_FACTOR - 1; i >= 0; i -= 1) {
-        ay->x += ay->step;
-        while (ay->x >= 1) {
-          ay->x -= 1;
-          update_mixer(ay);
-          update_interpolator(&ay->outputs[0].interpolator,
-                             (ay->channel_out[0] + ay->channel_out[1] + ay->channel_out[2]) / 2.0);
-        }
-        fir0[i] = (c0[2] * ay->x + c0[1]) * ay->x + c0[0];
-      }
-      ay->outputs[0].value = decimate(fir0);
-      break;
-    }
-
     case AYUMI_STEREO: {
       c0 = ay->outputs[0].interpolator.c;
       c1 = ay->outputs[1].interpolator.c;
@@ -388,6 +382,7 @@ void ayumi_process(struct ayumi* ay) {
       break;
     }
   }
+  update_raw(ay);
 }
 
 static double dc_filter(struct dc_filter* dc, int index, double x) {
@@ -397,37 +392,23 @@ static double dc_filter(struct dc_filter* dc, int index, double x) {
 }
 
 void ayumi_remove_dc(struct ayumi* ay) {
-  int i, num_outputs;
+  int i;
   struct ayumi_output* out;
 
-  num_outputs = ay->output_mode + 1;
-  for (i = 0; i < num_outputs; i += 1) {
+  for (i = 0; i < (int) ay->output_mode; i += 1) {
     out = &ay->outputs[i];
     out->value = dc_filter(&out->dc, ay->dc_index, out->value);
   }
   ay->dc_index = (ay->dc_index + 1) & (DC_FILTER_SIZE - 1);
 }
 
+/* STEREO mode only */
 void ayumi_get_stereo_output(struct ayumi* ay, double* left, double* right) {
-  if (ay->output_mode == AYUMI_SEPARATE) {
-    // When in SEPARATE mode, manually mix the three channels to stereo using pan values
-    *left = ay->outputs[0].value * ay->channels[0].pan_left +
-            ay->outputs[1].value * ay->channels[1].pan_left +
-            ay->outputs[2].value * ay->channels[2].pan_left;
-    *right = ay->outputs[0].value * ay->channels[0].pan_right +
-             ay->outputs[1].value * ay->channels[1].pan_right +
-             ay->outputs[2].value * ay->channels[2].pan_right;
-  } else if (ay->output_mode == AYUMI_MONO) {
-    // MONO mode - use left channel for both outputs
-    *left = ay->outputs[0].value;
-    *right = ay->outputs[0].value;
-  } else {
-    // STEREO mode - outputs are already mixed
-    *left = ay->outputs[0].value;
-    *right = ay->outputs[1].value;
-  }
+  *left = ay->outputs[0].value;
+  *right = ay->outputs[1].value;
 }
 
+/* SEPARATE mode only */
 void ayumi_get_separate_output(struct ayumi* ay, double* out_a, double* out_b, double* out_c) {
   *out_a = ay->outputs[0].value;
   *out_b = ay->outputs[1].value;

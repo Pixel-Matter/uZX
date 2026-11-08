@@ -4,6 +4,8 @@
 
 #include <common/Utilities.h>  // from Tracktion, for FlaggedAsyncUpdater
 
+#include "PlayheadClock.h"
+
 namespace MoTool {
 
 namespace IDs
@@ -11,6 +13,8 @@ namespace IDs
     #define DECLARE_ID(name)  const Identifier name(#name);
     DECLARE_ID(EDITVIEWSTATE)
     DECLARE_ID(headersWidth)
+    DECLARE_ID(vizScopesWidth)
+    DECLARE_ID(footersWidth)
     DECLARE_ID(preservePsgTimingOnTempoChange)
     DECLARE_ID(snapPlayheadToGrid)
 
@@ -46,7 +50,8 @@ public:
         virtual void playheadMoved() {}
     };
 
-    ZoomViewState(te::Edit& e);
+    /** Scrolls and zooms by `state`, the edit's ZOOMVIEWSTATE or a copy of it. */
+    ZoomViewState(te::Edit& e, ValueTree state);
     ~ZoomViewState() override;
 
     void addListener(Listener* l);
@@ -82,8 +87,26 @@ public:
     double getViewY() const;
 
     /** Where the playhead is drawn and the view follows while playing: the transport position,
-        minus the audio device's output latency while playing, so it matches what is heard. */
+        minus the audio device's output latency while playing, so it matches what is heard.
+        While display frames run, this is the position latched for the current frame. */
     te::TimePosition getPlayheadPosition() const;
+
+    /** Called once per display frame (see VBlankAttachment) with its timestamp in seconds.
+        While playing, latches a steady playhead for the moment the frame is seen, follows it
+        and tells the listeners at once, so everything they repaint lands in this frame. */
+    void advanceFrame(double timestampSec);
+
+    /** How many display frames ahead of the vblank the playhead is drawn, for the frame to be
+        on screen by then. */
+    static constexpr double frameLead = 1.0;
+
+    /** For a video rendered offline: from now on the playhead is `pos`, whatever the transport does,
+        and the view follows it as it does in playback. Tells the listeners at once. */
+    void showOfflineFrame(te::TimePosition pos);
+
+    /** While playing, unless the user holds or has just scrolled the view, and in offline frames:
+        the view keeps the playhead in its left third, scrolling by whole pixels. */
+    bool isFollowingPlayhead() const;
 
     /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
     void beginDrag();
@@ -112,6 +135,15 @@ private:
     // Where playback last started, was moved to or looped back to, and the last transport position seen
     te::TimePosition lastJumpPosition, lastTransportPosition;
 
+    // Display frames: the playhead latched for the current one, and when frames last ran while playing
+    PlayheadClock playheadClock;
+    te::TimePosition framePlayhead;
+    bool framePlayheadValid = false;
+    bool offlineFrames = false;  // showOfflineFrame() drives the playhead
+    double lastFrameMs = -1.0e9, lastFrameTimestampSec = 0.0;
+    FramePeriod framePeriod;
+    static constexpr double framesStopAfterMs = 100.0;
+
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;
     // Tracktion's synchronous play/stop notifications
     void startVideo() override;
@@ -119,20 +151,30 @@ private:
     void handleAsyncUpdate() override;
     static bool isZoomProperty(const juce::Identifier& id);
     void handlePlaybackScrolling();
-    bool isFollowingPlayhead() const;
+    /** Keeps pos in the view's left third, scrolling by whole pixels. */
+    void followPlayhead(te::TimePosition pos);
     void zoomAroundXByScale(double timePerPixelScale, int anchorX);
     bool jumpToPosition(te::TimePosition pos);
     bool jumpToCurrentPosition();
+    /** The transport position minus the output latency, held at the last jump until that is heard. */
+    te::TimePosition getHeardPosition() const;
+    void reportHeardPosition();
+    bool areFramesRunning() const;
 };
 
 
 class EditViewState {
 public:
-    EditViewState(te::Edit& e, te::SelectionManager& s);
+    /** A detached view starts from copies of the edit's view settings and keeps its scrolling and widths
+        to itself: the off-screen view that renders a video moves without the one on screen. */
+    EditViewState(te::Edit& e, te::SelectionManager& s, bool detached = false);
 
     // Saved with the edit, but not undoable: these are view settings, not edits
     CachedValue<bool> preservePsgTimingOnTempoChange, snapPlayheadToGrid;
     CachedValue<int> headersWidth;  // Studio's; written only while headers are shown
+    CachedValue<int> vizScopesWidth;  // written only in Viz mode
+    CachedValue<int> footersWidth;  // the Player's track devices; written only outside Viz mode
+    static constexpr int minVizScopesWidth = 120;
     static constexpr int minHeadersWidth = 110, maxHeadersWidth = 300;
 
     ValueTree state;
@@ -146,8 +188,20 @@ public:
     bool shouldSnapPlayheadToGrid() const;
 
     int getTrackHeaderWidth() const;
+    /** Width of the track devices at the right of each track row, or in Viz mode of the scopes;
+        0 when footers are hidden. */
+    int getTrackFooterWidth() const {
+        if (! showFooters)
+            return 0;
+        return vizMode ? jmax(minVizScopesWidth, vizScopesWidth.get()) : jmax(footerWidth, footersWidth.get());
+    }
+
+    static constexpr int footerWidth = 264;  // the narrowest: an AY chip and a level meter, 8 apart and from each side
 
     bool showHeaders = true;  // per app, not saved: the Player hides them
+    bool showFooters = false;  // per app, not saved: the Player shows them
+    bool showClipHeaders = true;  // per app, not saved: the Player draws warnings and the legend over the notes
+    bool vizMode = false;  // the Player's Viz mode, not saved: notes and each chip's scopes, no ruler or controls
     bool transparentClips = false;
     bool disableClipSelection = false;
 

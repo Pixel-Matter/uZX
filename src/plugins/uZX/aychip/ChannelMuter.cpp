@@ -17,6 +17,37 @@ ChannelMuter::~ChannelMuter() {
     channelC.removeListener(this);
 }
 
+void ChannelMuter::referTo(ValueTree& v, UndoManager* um) {
+    ParamsBase<ChannelMuter>::referTo(v, um);
+    for (size_t chan = 0; chan < 3; ++chan) {
+        getSoloParam(chan).referTo(v, nullptr);  // not a step in Undo, as track solo isn't
+        getSoloParam(chan).addListener(this);
+    }
+    updateSoloMask();
+}
+
+ParameterValue<bool>& ChannelMuter::getChannelParam(size_t chan) noexcept {
+    jassert(chan < 3);
+    return chan == 0 ? channelA : chan == 1 ? channelB : channelC;
+}
+
+ParameterValue<bool>& ChannelMuter::getSoloParam(size_t chan) noexcept {
+    jassert(chan < 3);
+    return chan == 0 ? soloA : chan == 1 ? soloB : soloC;
+}
+
+bool ChannelMuter::hasSolo() const {
+    return soloA.getStoredValue() || soloB.getStoredValue() || soloC.getStoredValue();
+}
+
+void ChannelMuter::updateSoloMask() {
+    uint8_t mask = 0;
+    for (size_t chan = 0; chan < 3; ++chan)
+        if (getSoloParam(chan).getStoredValue())
+            mask = static_cast<uint8_t>(mask | (1u << chan));
+    soloMask_ = mask;
+}
+
 void ChannelMuter::applyToRegsFrame(PsgRegsFrame& regs) const noexcept {
     for (size_t chan = 0; chan < 3; ++chan) {
         if (!getChannelEfecctivelyEnabled(chan)) {
@@ -50,6 +81,7 @@ void ChannelMuter::applyToChip(AYInterface& chip) const noexcept {
 }
 
 void ChannelMuter::valueChanged(Value&) {
+    updateSoloMask();
 }
 
 bool ChannelMuter::getChannelEnabled(size_t chan) const noexcept {
@@ -62,7 +94,11 @@ bool ChannelMuter::getChannelEnabled(size_t chan) const noexcept {
 }
 
 bool ChannelMuter::getChannelEfecctivelyEnabled(size_t c) const noexcept {
-    return getChannelEnabled(c) && (getToneEnabled(c) || getNoiseEnabled(c) || getEnvelopeEnabled(c));
+    const auto solos = soloMask_.load(std::memory_order_relaxed);
+    const bool soloed = (solos & (1u << c)) != 0;
+    if (solos != 0 && ! soloed)
+        return false;
+    return (getChannelEnabled(c) || soloed) && (getToneEnabled(c) || getNoiseEnabled(c) || getEnvelopeEnabled(c));
 }
 
 bool ChannelMuter::getToneEnabled(size_t chan) const noexcept {

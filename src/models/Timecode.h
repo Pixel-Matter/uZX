@@ -11,9 +11,8 @@ namespace MoTool {
 /** The display layout of the timeline timecode, independent of the frame rate.
     The frame rate is edit-global and lives in the IDs::projectFps property. */
 enum class TimecodeDisplayMode {
-    seconds,          // MM:SS.mmm
-    barsBeats,        // bars | beats
-    barsBeatsFrames,  // bars | beats | frames at the project fps
+    seconds,          // MM:SS:FF at the project fps
+    barsBeatsFrames,  // bar.beat.frame at the project fps
     framesOnly,       // absolute frames at the project fps
 };
 
@@ -25,13 +24,11 @@ struct LegacyTimecodeFormat {
 };
 
 /** Parses the legacy te::IDs::timecodeFormat property values ("seconds", "beats",
-    "fps50", "barsBeatsFps50", ...). Unknown or empty strings map to the default
-    barsBeatsFrames mode with no fps. */
+    "fps50", "barsBeatsFps50", ...). Unknown or empty strings, and the dropped
+    frameless "beats", map to the default barsBeatsFrames mode with no fps. */
 inline LegacyTimecodeFormat parseLegacyTimecodeFormat(const juce::String& v) {
     if (v == "seconds")
         return { TimecodeDisplayMode::seconds, {} };
-    if (v == "beats")
-        return { TimecodeDisplayMode::barsBeats, {} };
 
     auto fpsFrom = [](const juce::String& s) -> std::optional<double> {
         auto fps = s.getDoubleValue();
@@ -54,7 +51,6 @@ template<>
 struct VariantConverter<MoTool::TimecodeDisplayMode> {
     static MoTool::TimecodeDisplayMode fromVar(const var& v) {
         if (v == "seconds")    return MoTool::TimecodeDisplayMode::seconds;
-        if (v == "barsBeats")  return MoTool::TimecodeDisplayMode::barsBeats;
         if (v == "framesOnly") return MoTool::TimecodeDisplayMode::framesOnly;
         return MoTool::TimecodeDisplayMode::barsBeatsFrames;
     }
@@ -62,7 +58,6 @@ struct VariantConverter<MoTool::TimecodeDisplayMode> {
     static var toVar(MoTool::TimecodeDisplayMode mode) {
         switch (mode) {
             case MoTool::TimecodeDisplayMode::seconds:         return "seconds";
-            case MoTool::TimecodeDisplayMode::barsBeats:       return "barsBeats";
             case MoTool::TimecodeDisplayMode::barsBeatsFrames: return "barsBeatsFrames";
             case MoTool::TimecodeDisplayMode::framesOnly:      return "framesOnly";
         }

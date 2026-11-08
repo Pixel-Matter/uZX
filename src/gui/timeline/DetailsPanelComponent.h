@@ -7,6 +7,7 @@
 namespace MoTool {
 
 class TimelineGrid;
+class TrackDevicesPanel;
 
 class DetailsPanelComponent: public Component,
                              public juce::ChangeListener {
@@ -24,6 +25,7 @@ private:
     EditViewState& editViewState;
 
     TabbedComponent tabbedComponent {TabbedButtonBar::TabsAtLeft};
+    TrackDevicesPanel* devicesPanel;  // owned by tabbedComponent
 
     void updateTabVisibility();
 };

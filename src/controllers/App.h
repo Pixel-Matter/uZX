@@ -50,6 +50,8 @@ public:
     }
 
     static Target getTarget();
+    /** MIDI learn, CC mapping and MIDI channel choice; off in the Player, which only plays files. */
+    static bool hasMidiControl();
     static const char* getTargetVersion();
 
     const MoLookAndFeel& getLookAndFeel() const { return lookAndFeel_; }

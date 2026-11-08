@@ -5,6 +5,7 @@
 #include "../../controllers/EditState.h"
 #include "../../utils/StringLiterals.h"
 
+#include "LevelMeter.h"
 #include "ParamBindings.h"
 #include "LookAndFeel.h"
 
@@ -60,6 +61,8 @@ private:
 
     Slider masterVolumeSlider_ { Slider::SliderStyle::RotaryVerticalDrag, Slider::TextEntryBoxPosition::NoTextBox };
     SliderParamEndpointBinding masterAttachment_ {masterVolumeSlider_, edit_.getMasterSliderPosParameter()};
+    MasterLevelMeter masterMeter_ {edit_};
+    CpuLoadMeter cpuMeter_ {edit_.engine};
 
     TextButton rewindButton_    { "⏮"_u },
     //    stepLeftButton_  { "<" },
@@ -70,12 +73,12 @@ private:
     //    stepRightButton_ { ">" };
 
     // Readout group: value box + adjacent unit label, laid out as
-    //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ DIVS ] DIV   [ 4/4 ] SIG
+    //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ 7 6 7 6 ] GRV   [ 4/4 ] SIG
     EditableReadout bpmControl_;
     EditableReadout fpbControl_;
     Label fpsLabel_;        // click opens a popup of allowed rates
     Label divControl_;
-    Label timeSigLabel_;
+    Label timeSigLabel_;    // editable: "3/4", "6/8" or a bare numerator
     Label bpmUnitLabel_, fpsUnitLabel_, fpbUnitLabel_, divUnitLabel_, sigUnitLabel_;
 
     Label posLabel_;          // "Pos" prefix, left of the editable position box
@@ -92,10 +95,10 @@ private:
     void updatePlayButtonText(bool isPlaying);
     void updateRecordButtonText(bool isRecording);
     void updateAutomationButtons();
-    String getTimecode(te::TimePosition pos) const;
     void updateTimeLabels(te::TimePosition pos);
     void commitEditedPosition();
     void commitEditedDivisions();
+    void commitEditedTimeSig();
     void showFpsMenu();
 
     ReadoutLookAndFeel readoutLookAndFeel_;

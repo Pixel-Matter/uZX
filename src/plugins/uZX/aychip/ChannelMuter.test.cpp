@@ -1,5 +1,6 @@
 #include <JuceHeader.h>
 #include "ChannelMuter.h"
+#include "../../../util/TestHelpers.h"
 
 namespace MoTool::uZX {
 
@@ -31,6 +32,43 @@ public:
             // (tone-off would set signal high, causing audible clicks with non-zero volume)
             expectEquals(regs.getVolume(0), static_cast<uint8_t>(0), "Volume should be 0");
             expect(!regs.getEnvMod(0), "Envelope mod should be disabled");
+        }
+
+        beginTest("Soloed channels play alone, several at once, muted or not");
+        {
+            ValueTree state("ChannelMuter");
+            ChannelMuter muter;
+            muter.referTo(state, nullptr);
+
+            auto volumes = [&] {
+                PsgRegsFrame regs;
+                for (size_t chan = 0; chan < 3; ++chan) {
+                    regs.setToneOn(chan, true);
+                    regs.setVolume(chan, 15);
+                }
+                muter.applyToRegsFrame(regs);
+                String s;
+                for (size_t chan = 0; chan < 3; ++chan)
+                    s << (regs.getVolume(chan) > 0 ? "ABC"[chan] : '-');
+                return s;
+            };
+
+            muter.soloB.setStoredValue(true);
+            TestHelpers::flushMessageQueue();
+            expectEquals(volumes(), String("-B-"));
+            expect(muter.channelA.getStoredValue() && muter.channelC.getStoredValue(), "the others aren't muted");
+
+            muter.soloC.setStoredValue(true);
+            TestHelpers::flushMessageQueue();
+            expectEquals(volumes(), String("-BC"), "several solos");
+
+            muter.channelC.setStoredValue(false);
+            expectEquals(volumes(), String("-BC"), "solo wins over mute");
+
+            muter.soloB.setStoredValue(false);
+            muter.soloC.setStoredValue(false);
+            TestHelpers::flushMessageQueue();
+            expectEquals(volumes(), String("AB-"), "unsoloed, C is muted again");
         }
 
         beginTest("Disabling tone only should preserve noise and volume");

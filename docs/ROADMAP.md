@@ -8,72 +8,47 @@ Open work only, highest priority first. Finished work goes to [CHANGELOG.md](../
 
 **Done** means: I can write a whole track in µZX Studio, from MIDI to a PSG export, and play it on real hardware; and play live from a MIDI controller through the AY emulator or even a real AY on a Spectrum (MIDI → PC → AY MIDI → ZX → audio). That is a far goal, so work goes milestone by milestone; each milestone below states its own goal.
 
-**Out of scope:** anything not on this roadmap. For the current milestone (Player alpha for testers) that includes other chips, video, the node system, tracker UI and mobile.
+**Out of scope:** anything not on this roadmap. For the current milestone (v1.0) that includes other chips, the node system, tracker UI and mobile.
 
 ## µZX Player
 
-Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
+Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. **Global master volume** — first P1 below
-
-### Alpha for testers
-
-**Goal:** a build you can hand to a few people without explaining workarounds.
-
-#### P0 — Blockers
-
-None.
-
-#### P1 — Important
-
-- [ ] **Global master volume** — save in app settings and apply to every opened file (stored per edit now)
-- [ ] **Last opened edit** — reopening works in code; reproduce the "not always" report or close it
-- [ ] **Save / Save As** in the Player (Cmd+S does nothing)
-- [ ] **Shortcut consistency** across macOS, Windows and Linux
-- [ ] **Turbo-sound** load 2-3 PSGs at the same time
-- [ ] **Level meter** in transport bar to the left or right of global volume, stereo
-- [ ] **Audit** and fix render smoothness
-- [ ] Fix **tab bars** look and feel to match design system (after plugins panes)
-
-#### P2 — Nice to have
-
-- [ ] **Global default AY settings** (clock, stereo, channels) for PSG files opened from Finder or the command line
-- [ ] **Solo** per AY channel (mute exists)
-- [ ] **BPM, FPB, DIV** detection
-- [ ] **Note lanes** and tuning table detection
-
----
+1. **Alpha feedback** — crashes and UX issues testers report
+2. **v1.0 P0** below
 
 ### v1.0 — First public release (macOS)
 
-**Goal:** a signed macOS app anyone can download from GitHub and open without a Gatekeeper workaround.
+**Goal:** a macOS app anyone can download from GitHub and open with one documented first-launch step. No paid Apple Developer Program, so no Developer ID signing or notarization.
 
 #### P0 — Blockers
 
-- [ ] **Code signing + notarization in CI** — release automation exists; the macOS build is an unsigned zip
+- [ ] **Ad-hoc signing in CI** — sign the whole bundle with `codesign --sign -`, so the first launch is **Open Anyway** in System Settings → Privacy & Security rather than `xattr` in Terminal; README and the user guide show that step
 - [ ] **DMG packaging** with an Applications symlink
 - [ ] **Tracktion Engine** — move from v3.2.0 + fork patches to the latest stable, or decide to stay
-- [ ] **Release notes** — CHANGELOG entry for the tag
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
+- [ ] **UX quality review** review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
+- [ ] **Release notes** — CHANGELOG entry for the tag
 
 #### P1 — Important
 
 - [ ] **About dialog** — GitHub link (only pixelmatter.org now), greets scroller
-- [ ] **Turbosound** — open or drop 2–3 PSG files at once (Import PSG → New Track adds them one at a time)
+- [ ] **TAYM** (needs Timer fx, see [TODO.md](TODO.md))
 - [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
-- [ ] **Time signature editing** — BPM, FPS, FPB and DIV are editable; SIG is read-only
 - [ ] **Loop range** on the ruler
+- [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Nicer transport icons**
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
+- [ ] **Tab bars** in Studio's details panel match the design system (the Player has none)
 
 #### P2 — Nice to have
 
 - [ ] **DMG background image**
-- [ ] **Visualizer mode** — fullscreen oscilloscopes without controls (for streaming)
 - [ ] **Channel split mode** — each AY channel in its own lane
 - [ ] **Minimap** on the horizontal scroller
+- [ ] **Clock-mode frame grid** — frame ticks restart every second, so at 24 fps 5-frame ticks run …20, 24, 29; the frame field widens to three digits at 100/200 fps
 
 ---
 
@@ -83,21 +58,24 @@ Grouped by theme, not ordered.
 
 **Platforms**
 
-- [ ] Windows installer (NSIS or WiX) and code signing — CI ships a zip
+- [ ] Windows installer (NSIS or WiX) and code signing — CI ships a zip. Signing through [SignPath Foundation](https://signpath.org), free for open-source projects: needs a published code signing policy, MFA for everyone, and a manual approval of each release
 - [ ] Linux AppImage — CI ships a tar.gz
 - [ ] iOS and Android — JUCE supports mobile platforms; the Player is a natural fit
+
+**Sound**
+
+- [ ] **Three-channel AY rendering** — ayumi renders channels A, B and C as three separate outputs, with options to turn off its filter and to remove DC
 
 **Export**
 
 - [ ] WAV export with a save dialog (Studio's internal Render to audio exists)
 - [ ] MP3/OGG export
 - [ ] PSG export and optimization
-- [ ] Rendering to video
+- [ ] **Render Video options** — File → Render Video renders Viz mode as on screen; next: what to show (note lanes, piano keys, grid, timecode, scope layout left/right/top/bottom and size), a zoom picker, vertical 9:16 video with vertical scrolling, and rendering from the command line
 
 **Import**
 
-- [ ] ChipNomad (CN)
-- [ ] ProTracker 3 / Vortex Tracker II (PT3/VT2)
+- [ ] **Tracker modules**, converted to PSG or TAYM on open: ProTracker 3 / Vortex Tracker II (PT3/VT2), Bitphase, ChipNomad (CN); conversion by zxtune123, its sources added as a submodule
 - [ ] AY and SNDH containers
 
 **Views**
@@ -110,15 +88,11 @@ Grouped by theme, not ordered.
 - [ ] Tracker-like scrolling pattern view
 - [ ] Skins/themes
 
-**Analysis**
-
-- [ ] Tuning analyzer — detect the tuning system of a PSG file
-- [ ] Beat detection — estimate BPM and groove
-
 **Quality**
 
-- [ ] Smooth 60 FPS on modest hardware: PSG clip paint cache, async PSG loading with progress
+- [ ] Smooth 60 FPS on modest hardware: async PSG loading with progress (PSG clips already paint from a cache)
 - [ ] Crash reports and UX issues from 1.0 feedback
+- [ ] Tracktion timecode (MMC, hosted plugins) follows the project FPS — it is always 24 now
 
 ---
 
@@ -135,6 +109,7 @@ Grouped by theme, not ordered.
 
 ### Editors
 
+- [ ] **Cut, Copy and Paste** of clips — the Edit menu lists them with `Cmd+X`, `Cmd+C` and `Cmd+V`, but they do nothing yet
 - [ ] **MIDI note editor** — piano roll note editing
 - [ ] **MIDI CC editor**
 - [ ] **Automation editor**

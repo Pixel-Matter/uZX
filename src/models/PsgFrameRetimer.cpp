@@ -1,8 +1,9 @@
 #include "PsgFrameRetimer.h"
-#include "PsgClip.h"
-#include "EditUtilities.h"
 
 #include <unordered_set>
+
+#include "EditUtilities.h"
+#include "PsgClip.h"
 
 namespace MoTool {
 
@@ -12,7 +13,7 @@ template <typename Fn>
 void forEachPsgClip(te::Edit& edit, Fn&& fn) {
     std::unordered_set<PsgClip*> seen;
 
-    auto visit = [&] (auto&& self, te::Clip* clip) -> void {
+    auto visit = [&](auto&& self, te::Clip* clip) -> void {
         if (auto* psgClip = dynamic_cast<PsgClip*>(clip))
             if (seen.insert(psgClip).second)
                 fn(*psgClip);
@@ -39,7 +40,7 @@ void scalePsgFramesPerBeat(te::Edit& edit, double scale) {
 
     auto* um = &edit.getUndoManager();
 
-    forEachPsgClip(edit, [um, scale] (PsgClip& clip) {
+    forEachPsgClip(edit, [um, scale](PsgClip& clip) {
         auto& psg = clip.getPsg();
         const auto framesPerBeat = psg.getFramesPerBeat();
         if (framesPerBeat > 0.0) {
@@ -53,20 +54,19 @@ te::TempoSetting& tempoAtTransport(te::Edit& edit) {
     return edit.tempoSequence.getTempoAt(edit.getTransport().getPosition());
 }
 
-double beatSecondsAt(te::Edit& edit, double bpm) {
-    return 240.0 / (bpm * tempoAtTransport(edit).getMatchingTimeSig().denominator);
+double beatSecondsAt(te::TempoSetting& tempo, double bpm) {
+    return 240.0 / (bpm * tempo.getMatchingTimeSig().denominator);
 }
 
-double bpmForBeatSeconds(te::Edit& edit, double seconds) {
-    return 240.0 / (seconds * tempoAtTransport(edit).getMatchingTimeSig().denominator);
+double bpmForBeatSeconds(te::TempoSetting& tempo, double seconds) {
+    return 240.0 / (seconds * tempo.getMatchingTimeSig().denominator);
 }
 
 }  // namespace
 
 namespace PsgTiming {
 
-void setTempoBpmRetimingFrames(te::Edit& edit, te::TempoSetting& tempo, double bpm,
-                               bool preserveAbsoluteFrameTimes) {
+void setTempoBpmRetimingFrames(te::Edit& edit, te::TempoSetting& tempo, double bpm, bool preserveAbsoluteFrameTimes) {
     const auto oldBeatLength = preserveAbsoluteFrameTimes ? tempo.getApproxBeatLength().inSeconds() : 0.0;
 
     if (preserveAbsoluteFrameTimes)
@@ -81,21 +81,37 @@ void setTempoBpmRetimingFrames(te::Edit& edit, te::TempoSetting& tempo, double b
     }
 }
 
+void setTimeSig(te::Edit& edit, te::TimeSigSetting& timeSig, int numerator, int denominator) {
+    jassert(numerator > 0 && denominator > 0);
+    const int oldDenominator = timeSig.denominator.get();
+    timeSig.numerator = numerator;
+    timeSig.denominator = denominator;
+    // a beat lasts 240 / (bpm * denominator) seconds
+    if (oldDenominator > 0 && denominator != oldDenominator)
+        scalePsgFramesPerBeat(edit, (double) oldDenominator / denominator);
+}
+
 double getFramesPerBeat(te::Edit& edit) {
-    return Helpers::getProjectFps(edit) * beatSecondsAt(edit, tempoAtTransport(edit).getBpm());
+    auto& tempo = tempoAtTransport(edit);
+    return Helpers::getProjectFps(edit) * beatSecondsAt(tempo, tempo.getBpm());
+}
+
+void setFramesPerBeat(te::Edit& edit, te::TempoSetting& tempo, int framesPerBeat, bool preserveAbsoluteFrameTimes) {
+    jassert(framesPerBeat > 0);
+    const auto bpm = bpmForBeatSeconds(tempo, framesPerBeat / Helpers::getProjectFps(edit));
+    setTempoBpmRetimingFrames(
+        edit, tempo, jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm), preserveAbsoluteFrameTimes);
 }
 
 void setFramesPerBeat(te::Edit& edit, int framesPerBeat, bool preserveAbsoluteFrameTimes) {
-    jassert(framesPerBeat > 0);
-    const auto bpm = bpmForBeatSeconds(edit, framesPerBeat / Helpers::getProjectFps(edit));
-    setTempoBpmRetimingFrames(edit, tempoAtTransport(edit), jlimit(te::TempoSetting::minBPM, te::TempoSetting::maxBPM, bpm),
-                              preserveAbsoluteFrameTimes);
+    setFramesPerBeat(edit, tempoAtTransport(edit), framesPerBeat, preserveAbsoluteFrameTimes);
 }
 
 double setBpmSnappedToFrames(te::Edit& edit, double bpm, bool preserveAbsoluteFrameTimes) {
     const auto fps = Helpers::getProjectFps(edit);
-    const auto snappedBpm = bpmForBeatSeconds(edit, roundToInt(fps * beatSecondsAt(edit, bpm)) / fps);
-    setTempoBpmRetimingFrames(edit, tempoAtTransport(edit), snappedBpm, preserveAbsoluteFrameTimes);
+    auto& tempo = tempoAtTransport(edit);
+    const auto snappedBpm = bpmForBeatSeconds(tempo, roundToInt(fps * beatSecondsAt(tempo, bpm)) / fps);
+    setTempoBpmRetimingFrames(edit, tempo, snappedBpm, preserveAbsoluteFrameTimes);
     return snappedBpm;
 }
 

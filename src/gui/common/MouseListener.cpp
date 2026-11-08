@@ -20,7 +20,7 @@ void MouseListenerWithCallback::setRmbCallback(std::function<void()> cb)
 
 void MouseListenerWithCallback::mouseDown(const MouseEvent& e)
 {
-    if (rmbCallback && e.mods.isRightButtonDown()) {
+    if (rmbCallback && e.mods.isPopupMenu()) {
         rmbCallback();
     }
 }

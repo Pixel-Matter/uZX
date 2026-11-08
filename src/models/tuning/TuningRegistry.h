@@ -24,6 +24,8 @@ struct BuiltinTuningEnum {
         CustomPT_3_REAL,      // ProTracker #3 (REAL)
         CustomVT_4_NATURAL,   // ProTracker #4 (Natural Cmaj/Am)
         RoschinFixed,         // IvanRoschin Fixed (Natural Cmaj/Am)
+        CustomPT_0_PT33,      // ProTracker #0 as PT 3.3 and older play it
+        CustomPT_2_ASM33,     // ProTracker #2 as PT 3.3 and older play it
     };
 
     static inline constexpr std::string_view shortLabels[] {
@@ -37,6 +39,8 @@ struct BuiltinTuningEnum {
         "PT #3",
         "VT #4",
         "VT #4 Fix",
+        "PT #0 (3.3)",
+        "PT #2 (3.3)",
     };
 
     static inline constexpr std::string_view labels[] {
@@ -50,6 +54,8 @@ struct BuiltinTuningEnum {
         "ProTracker #3",
         "Ivan Roschin's #4",
         "Ivan Roschin's Fixed",
+        "ProTracker #0 (3.3)",
+        "ProTracker #2 (3.3)",
     };
 
     static inline constexpr std::string_view longLabels[] {
@@ -63,6 +69,8 @@ struct BuiltinTuningEnum {
         "ProTracker #3 (REAL)",
         "Ivan Roschin's #4 (NATURAL Cmaj/Am)",
         "Ivan Roschin's Fixed (Natural D#maj)",
+        "ProTracker #0 (PT, PT 3.3 and older)",
+        "ProTracker #2 (ASM, PT 3.3 and older)",
     };
 };
 

@@ -64,6 +64,8 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     addAndMakeVisible(posLabel_);
     addAndMakeVisible(transportReadout_);
     addAndMakeVisible(masterVolumeSlider_);
+    addAndMakeVisible(masterMeter_);
+    addAndMakeVisible(cpuMeter_);
 
     if (options_.showRecord)
         addAndMakeVisible(recordButton_);
@@ -90,7 +92,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
                 edit_.engine.getUIBehaviour().getApplicationCommandManager()->invokeDirectly(MainAppCommands::transportRecordStop, false);
             }
         };
-        recordButton_.setColour(TextButton::textColourOnId, Colours::red);
+        recordButton_.setColour(TextButton::textColourOnId, Colors::Theme::error);
     }
 
     if (options_.showAutomation) {
@@ -101,7 +103,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         };
 
         autoWriteButton_.setClickingTogglesState(true);
-        autoWriteButton_.setColour(TextButton::buttonOnColourId, Colours::red);
+        autoWriteButton_.setColour(TextButton::buttonOnColourId, Colors::Theme::error);
         autoWriteButton_.onClick = [this] {
             auto& arm = edit_.getAutomationRecordManager();
             arm.setWritingAutomation(!arm.isWritingAutomation());
@@ -142,11 +144,13 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     transportReadout_.onTextChange = [this] { commitEditedPosition(); };
     divControl_.setEditable(true, true, false);
     divControl_.onTextChange = [this] { commitEditedDivisions(); };
+    timeSigLabel_.setEditable(true, true, false);
+    timeSigLabel_.onTextChange = [this] { commitEditedTimeSig(); };
 
     // Unit / prefix labels sit next to their value box as plain, non-interactive text.
     struct { Label& label; const char* text; } units[] = {
         { bpmUnitLabel_, "BPM" }, { fpsUnitLabel_, "FPS" },
-        { fpbUnitLabel_, "FPB" }, { divUnitLabel_, "DIV" }, { sigUnitLabel_, "SIG" },
+        { fpbUnitLabel_, "FPB" }, { divUnitLabel_, "GRV" }, { sigUnitLabel_, "SIG" },
         { posLabel_, "Pos" },
     };
     for (auto& u : units) {
@@ -183,6 +187,18 @@ void TransportBar::resized() {
     static constexpr int spacing = 8;
     b.reduce(spacing, spacing);
     int w = b.getHeight();
+
+    // Output section on the right, reserved first so the centred block can't overlap it.
+    // ponytail: 60 px puts the knob centre 92 px from the right edge, midway between the Player's
+    // AY panel Width and Volume knobs; re-derive if either layout changes.
+    static constexpr int meterWidth = 60;
+    masterMeter_.setBounds(b.removeFromRight(meterWidth).withSizeKeepingCentre(meterWidth, w / 2));
+    b.removeFromRight(spacing);
+    masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
+    b.removeFromRight(spacing);
+    static constexpr int cpuMeterWidth = 62;
+    cpuMeter_.setBounds(b.removeFromRight(cpuMeterWidth));
+    b.removeFromRight(spacing);
 
     // Components that make up the left-aligned block, collected so we can shift the
     // whole block to horizontal centre afterwards.
@@ -231,8 +247,6 @@ void TransportBar::resized() {
     auto shiftBy = b.getWidth() / 2;
     for (auto* c : block)
         c->setBounds(c->getBounds().withX(c->getX() + shiftBy));
-
-    masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
 }
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
@@ -280,7 +294,7 @@ void TransportBar::updatePlayButtonText(bool isPlaying) {
 
 void TransportBar::updateRecordButtonText(bool isRecording) {
     recordButton_.setButtonText(isRecording ? "⏹"_u : "⏺"_u);
-    recordButton_.setColour(TextButton::textColourOnId, Colours::red);
+    recordButton_.setColour(TextButton::textColourOnId, Colors::Theme::error);
     // recordButton_.setColour(TextButton::buttonOnColourId, isRecording ?
     //                         recordButton_.findColour(TextButton::textColourOnId)
     //                         : Colours::red);
@@ -292,13 +306,9 @@ void TransportBar::updateAutomationButtons() {
     autoWriteButton_.setToggleState(arm.isWritingAutomation(), dontSendNotification);
 }
 
-String TransportBar::getTimecode(te::TimePosition pos) const {
-    return te::TimecodeDisplayFormat::toFullTimecode(pos, 100, true);
-}
-
 void TransportBar::updateTimeLabels(te::TimePosition pos) {
     auto& ts = edit_.tempoSequence;
-    transportReadout_.setText(getTimecode(pos), dontSendNotification);
+    transportReadout_.setText(Helpers::makeSnapLadder(edit_, pos).getPositionLabel(pos, ts), dontSendNotification);
 
     bpmControl_.setValue(ts.getBpmAt(pos), 2);
     timeSigLabel_.setText(ts.getTimeSigAt(pos).getStringTimeSig(), dontSendNotification);
@@ -311,30 +321,10 @@ void TransportBar::updateTimeLabels(te::TimePosition pos) {
 }
 
 void TransportBar::commitEditedPosition() {
-    // Parse the same layout getTimecode() emits: HH:MM:SS:CC (centiseconds),
-    // shorter inputs are read from the least-significant end (e.g. "SS:CC" or "SS").
-    auto parts = StringArray::fromTokens(transportReadout_.getText().trim(), ":", "");
-    parts.trim();
-    parts.removeEmptyStrings();
-    if (parts.isEmpty()) {
-        updateTimeLabels(transport_.getPosition());  // restore display
-        return;
-    }
-
-    double hours = 0, mins = 0, secs = 0, centis = 0;
-    switch (parts.size()) {
-        case 1: secs = parts[0].getDoubleValue(); break;
-        case 2: secs = parts[0].getIntValue(); centis = parts[1].getIntValue(); break;
-        case 3: mins = parts[0].getIntValue(); secs = parts[1].getIntValue(); centis = parts[2].getIntValue(); break;
-        default:
-            hours = parts[0].getIntValue(); mins = parts[1].getIntValue();
-            secs = parts[2].getIntValue(); centis = parts[3].getIntValue();
-            break;
-    }
-
-    auto totalSeconds = jmax(0.0, hours * 3600.0 + mins * 60.0 + secs + centis / 100.0);
-    transport_.setPosition(te::TimePosition::fromSeconds(totalSeconds));
-    updateTimeLabels(transport_.getPosition());  // re-normalise the display
+    const auto pos = transport_.getPosition();
+    if (auto parsed = Helpers::makeSnapLadder(edit_, pos).parsePosition(transportReadout_.getText(), edit_.tempoSequence))
+        transport_.setPosition(*parsed);
+    updateTimeLabels(transport_.getPosition());  // shows the result, or restores the old one
 }
 
 void TransportBar::commitEditedDivisions() {
@@ -344,6 +334,13 @@ void TransportBar::commitEditedDivisions() {
     divControl_.setText(Helpers::formatGridSubdivisionPattern(
                             Helpers::getGridSubdivisionPattern(edit_, framesPerBeat)),
                         dontSendNotification);
+}
+
+void TransportBar::commitEditedTimeSig() {
+    auto& timeSig = edit_.tempoSequence.getTimeSigAt(transport_.getPosition());
+    if (const auto parsed = Helpers::parseTimeSig(timeSigLabel_.getText(), timeSig.denominator.get()))
+        PsgTiming::setTimeSig(edit_, timeSig, parsed->first, parsed->second);
+    updateTimeLabels(transport_.getPosition());  // shows the result, or restores the old one
 }
 
 void TransportBar::mouseDown(const MouseEvent& e) {

@@ -10,6 +10,9 @@ File getRecentEditsDirectory();
 
 void setRecentEditsDirectory(const File& fileOrDir);
 
+/** True for an edit that has never been saved by the user: it lives in the app's temp folder. */
+bool isTempEdit(tracktion::Edit& edit);
+
 File suffestSaveAsFileName(tracktion::Edit& edit);
 
 String getAppFileGlob();

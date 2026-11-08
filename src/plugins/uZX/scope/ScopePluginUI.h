@@ -13,21 +13,28 @@
 
 #include <vector>
 #include <array>
+#include <utility>
 
 namespace MoTool::uZX {
 
+/**
+ * Reduces samples to one vertical span per pixel column, so a peak between columns is never lost
+ * as it would be by skipping samples. Each column takes an equal slice plus the last sample of
+ * the slice before, so the spans join up; a span runs from min to max on a rise, max to min on a fall.
+ */
+std::vector<std::pair<float, float>> minMaxColumns(const float* samples, int numSamples, int columns);
+
 //==============================================================================
 /**
- * Single channel waveform display component.
+ * Single channel waveform display component. Updates once per display frame, in step with the
+ * timeline, and repaints only when the triggered window or the display settings changed.
  */
-class WaveformDisplay : public juce::Component,
-                        private juce::Timer {
+class WaveformDisplay : public juce::Component {
 public:
     WaveformDisplay(juce::Colour colour,
                     const juce::String& label,
                     const ScopeBuffer& buffer,
                     ScopeSettings& settings);
-    ~WaveformDisplay() override;
 
     /**
      * Update display parameters.
@@ -41,17 +48,28 @@ public:
     void resized() override;
     void mouseDown(const juce::MouseEvent& event) override;
 
+    /** Takes the latest window from the buffer and repaints if it changed: once per display frame,
+        or per video frame when a video is rendered off screen. */
+    void refresh();
+
 private:
-    void timerCallback() override;
-    void updateWaveform();
+    /** Takes the triggered window from the buffer; false if it is the one already shown. */
+    bool updateWaveform();
     int findTriggerPoint();
     void buildPath();
     void showPopupMenu();
+
+    /** The y of a zero sample, and pixels per unit: at gain 1 the signal's range spans 90% of the height. */
+    struct YAxis { float zero, scale; };
+    YAxis yAxis(float height) const;
 
     const ScopeBuffer& sourceBuffer_;
     ScopeSettings& scopeSettings_;
     std::vector<float> displaySamples_;
     std::vector<float> workBuffer_;  // Larger buffer for trigger search
+    std::vector<float> syncWork_;       // The work buffer's sync, searched instead in Chip Sync mode
+    std::vector<float> amplitudeWork_;  // The work buffer's amplitude, which centres a chip channel
+    float centre_{0.0f};                // Half the shown window's highest amplitude: a chip channel's middle
     juce::Path waveformPath_;
 
     juce::Colour colour_;
@@ -61,9 +79,11 @@ private:
     float gain_{1.0f};
     TriggerStrategy triggerStrategy_;
     float triggerLevel_{0.0f};
+    bool settingsChanged_{true};
 
-    static constexpr int kRefreshRateHz = 30;
     static constexpr int kTriggerSearchMultiplier = 2;  // Search in 2x window for trigger
+
+    juce::VBlankAttachment vblank_{this, [this] { refresh(); }};  // last: detaches before the rest goes
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WaveformDisplay)
 };

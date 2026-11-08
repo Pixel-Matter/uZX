@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include "SnapLadder.h"
 #include "Timecode.h"
 
 namespace te = tracktion;
@@ -9,7 +10,7 @@ namespace te = tracktion;
 namespace MoTool::Helpers {
 
 /** The frame rates the project fps may take. */
-inline constexpr double kAllowedProjectFps[] = { 24, 25, 30, 48, 50, 60, 100, 200 };
+inline constexpr double kAllowedProjectFps[] = {24, 25, 30, 48, 50, 60, 100, 200};
 
 /** The timecode display mode of the timeline ruler/grid. Falls back to parsing
     the legacy combined te::IDs::timecodeFormat property for edits saved before
@@ -39,6 +40,11 @@ std::vector<int> parseGridSubdivisionPattern(const juce::String& text, int frame
 
 juce::String formatGridSubdivisionPattern(const std::vector<int>& pattern);
 
+/** Parses a typed time signature: "3/4", "6/8", or a bare numerator ("3") that
+    keeps the current denominator. The numerator must be 1 to 32 and the
+    denominator a power of two from 1 to 32; anything else gives nothing. */
+juce::Optional<std::pair<int, int>> parseTimeSig(const juce::String& text, int currentDenominator);
+
 /** Frame counts per subdivision group within one beat (e.g. {6, 7, 6, 7} for a
     swing grid at 26 frames per beat), or the default pattern when unset. */
 std::vector<int> getGridSubdivisionPattern(te::Edit& edit, int framesPerBeat);
@@ -47,6 +53,10 @@ std::vector<int> getGridSubdivisionPattern(te::Edit& edit, int framesPerBeat);
     groups clears it. */
 void setGridSubdivisionPattern(te::Edit& edit, const std::vector<int>& pattern);
 
+/** The grid/snap ladder for the edit's timecode mode, fps and subdivision
+    pattern, with frames per beat taken from the tempo at the given time. */
+SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt);
+
 juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit);
 
-} // namespace MoTool::Helpers
+}  // namespace MoTool::Helpers

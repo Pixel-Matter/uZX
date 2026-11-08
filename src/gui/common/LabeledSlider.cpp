@@ -1,4 +1,5 @@
 #include "LabeledSlider.h"
+#include "LookAndFeel.h"
 
 namespace MoTool {
 
@@ -39,7 +40,7 @@ void LabeledSlider::paint(Graphics& g) {
     // Draw a small indicator in top-left corner if parameter is mapped to MIDI CC
     // TODO indicator for automation as well?
     if (binding.midiMapping.isParameterMapped()) {
-        g.setColour(Colours::orange);
+        g.setColour(Colors::Theme::warning);
         g.fillRect(0, 0, 4, 4);
     }
 }

@@ -1,6 +1,10 @@
 #include "Helpers.h"
 #include "../formats/psg/PsgFile.h"
+#include "../formats/psg/TurboSound.h"
 #include "../models/PsgClip.h"
+#include "../models/PsgTempoDetector.h"
+
+#include <list>
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../gui/common/Utilities.h"
 #include "../util/FileOps.h"
@@ -116,39 +120,84 @@ bool readPsgOrShowError(uZX::PsgFile& psgFile) {
     return false;
 }
 
+uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track) {
+    if (auto* chip = track.pluginList.findFirstPluginOfType<uZX::AYChipPlugin>())
+        return *chip;
+    auto plugin = track.edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
+    track.pluginList.insertPlugin(plugin, 0, nullptr);
+    return *dynamic_cast<uZX::AYChipPlugin*>(plugin.get());
+}
+
+Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::TimePosition start,
+                               te::AudioTrack* firstTrack) {
+    Array<PsgClip*> clips;
+    std::list<uZX::PsgFile> psgFiles;  // their data, for the tempo detection below
+    std::vector<const uZX::PsgData*> chips;
+    for (const auto& f : files) {
+        auto& psgFile = psgFiles.emplace_back(f);
+        if (! readPsgOrShowError(psgFile))
+            continue;
+
+        auto* track = clips.isEmpty() && firstTrack != nullptr ? firstTrack : addAudioTrackAfter(edit, nullptr);
+        if (track->getClips().isEmpty())
+            track->setName(f.getFileNameWithoutExtension());
+
+        te::ClipPosition pos = {{start, te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
+        // TODO make it ThreadBackgroundJob
+        if (auto clip = PsgClip::insertTo(*track, psgFile, pos)) {
+            track->changed();
+            ensureAYPluginOnTrack(*track);
+            clips.add(clip.get());
+            chips.push_back(&psgFile.getData());
+        }
+    }
+    if (clips.size() > 1)
+        PsgClip::linkAsOneTune(clips);
+    PsgTempo::applyToEdit(clips, chips);
+    return clips;
+}
+
+void withTurboSoundSet(const Array<File>& files, std::function<void (const Array<File>&)> callback) {
+    const auto set = files.size() == 1 ? uZX::findTurboSoundSet(files[0]) : Array<File>();
+    if (set.isEmpty()) {
+        callback(files);
+        return;
+    }
+
+    StringArray names;
+    for (const auto& f : set)
+        names.add(f.getFileName());
+
+    auto options = MessageBoxOptions()
+        .withIconType(MessageBoxIconType::QuestionIcon)
+        .withTitle("Turbo Sound")
+        .withMessage("\"" + files[0].getFileName() + "\" looks like one chip of a Turbo Sound tune: "
+                     + names.joinIntoString(", ") + ". Open all of them, each on its own track?")
+        .withButton("All " + String(set.size()) + " Files")
+        .withButton("This File Only")
+        .withButton("Cancel");
+
+    NativeMessageBox::showAsync(options, [files, set, callback = std::move(callback)](int result) {
+        if (result == 0)
+            callback(set);
+        else if (result == 1)
+            callback(files);
+    });
+}
+
 void importPsgAsClip(te::Edit& targetEdit, te::SelectionManager& selectionManager, bool insertAtCursor) {
     // The macOS file panel is not modal: the edit may be closed before a file is picked.
-    browseForPSGFile(targetEdit.engine, [safeEdit = te::SafeSelectable<te::Edit>(targetEdit), &selectionManager,
-                                        insertAtCursor](const File& f) {
-        if (safeEdit == nullptr)
-            return;
-        auto& edit = *safeEdit.get();
-        auto psgFile = uZX::PsgFile(f);
-        if (! readPsgOrShowError(psgFile))
-            return;
-
-        auto track = getSelectedOrInsertAudioTrack(edit, selectionManager, f.getFileNameWithoutExtension());
-        jassert(track != nullptr);
-        if (track->getClips().size() == 0) {
-            track->setName(f.getFileNameWithoutExtension());
-        }
-        te::TimePosition insertTime;
-        if (insertAtCursor) {
-            insertTime = edit.getTransport().getPosition();
-        }
-        te::ClipPosition pos = {{insertTime, te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
-        // TODO make it ThreadBackgroundJob
-        if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
-            track->changed();
-            // make sure AYChipPlugin is added to the track
-            for (auto& p : track->pluginList) {
-                if (dynamic_cast<uZX::AYChipPlugin*>(p)) {
-                    return;
-                }
-            }
-            auto plugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
-            track->pluginList.insertPlugin(plugin, 0, nullptr);
-        }
+    browseForPSGFiles(targetEdit.engine, [safeEdit = te::SafeSelectable<te::Edit>(targetEdit), &selectionManager,
+                                         insertAtCursor](const Array<File>& picked) {
+        withTurboSoundSet(picked, [safeEdit, &selectionManager, insertAtCursor](const Array<File>& files) {
+            if (safeEdit == nullptr)
+                return;
+            auto& edit = *safeEdit.get();
+            auto* selected = files.size() == 1 ? dynamic_cast<te::AudioTrack*>(selectionManager.getSelectedObject(0))
+                                               : nullptr;
+            importPsgFiles(edit, files, insertAtCursor ? edit.getTransport().getPosition() : te::TimePosition(),
+                           selected);
+        });
     });
 }
 
@@ -295,43 +344,6 @@ te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionMa
     selectionManager.select({added});
     return added;
 }
-
-// juce::String formatTimecodeDisplay(const TempoSequence& tempo, const TimePosition time, bool isRelative) const
-// {
-//     if (type == TimecodeType::barsBeats)
-//     {
-//         tempo::BarsAndBeats barsBeats;
-//         int bars, beats;
-//         BeatDuration fraction;
-
-//         if (! isRelative)
-//         {
-//             barsBeats = tempo.toBarsAndBeats (time + nudge);
-//             bars = barsBeats.bars + 1;
-//             beats = barsBeats.getWholeBeats() + 1;
-//             fraction = barsBeats.getFractionalBeats();
-//         }
-//         else if (time < 0s)
-//         {
-//             barsBeats = tempo.toBarsAndBeats (time - nudge);
-//             bars = -barsBeats.bars - 1;
-//             beats = (tempo.getTimeSig(0)->numerator - 1) - barsBeats.getWholeBeats();
-//             fraction = BeatDuration::fromBeats (1.0) - barsBeats.getFractionalBeats();
-//         }
-//         else
-//         {
-//             barsBeats = tempo.toBarsAndBeats (time + nudge);
-//             bars = barsBeats.bars + 1;
-//             beats = barsBeats.getWholeBeats() + 1;
-//             fraction = barsBeats.getFractionalBeats();
-//         }
-
-//         auto s = juce::String::formatted ("%d|%d|%03d", bars, beats, (int) (fraction.inBeats() * Edit::ticksPerQuarterNote));
-//         return time < 0s ? ("-" + s) : s;
-//     }
-
-//     return TimecodeDisplayFormat::toFullTimecode (time, getSubSecondDivisions());
-// }
 
 File getLastCsvExportDirectory() {
     PropertiesFile::Options options;

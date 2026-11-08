@@ -8,11 +8,10 @@ namespace MoTool {
 PlayerDocumentComponent::PlayerDocumentComponent(te::Edit& edit, EditViewState& evs)
     : transportBar_ {evs, {.showRecord = false, .showAutomation = false}}
     , editComponent_ {edit, evs, {.showDetailsPanel = false, .autoFitTrackHeights = true, .transparentClips = true, .disableClipSelection = true}}
-    , ayPanel_ {edit, MoToolApp::getSelectionManager()}
 {
-    addAndMakeVisible(transportBar_);
+    if (! evs.vizMode)
+        addAndMakeVisible(transportBar_);
     addAndMakeVisible(editComponent_);
-    addAndMakeVisible(ayPanel_);
 }
 
 PlayerDocumentComponent::~PlayerDocumentComponent() {}
@@ -20,10 +19,9 @@ PlayerDocumentComponent::~PlayerDocumentComponent() {}
 void PlayerDocumentComponent::resized() {
     auto r = getLocalBounds();
     static constexpr int transportBarHeight = 40;
-    static constexpr int ayPanelWidth = 240;
 
-    transportBar_.setBounds(r.removeFromTop(transportBarHeight));
-    ayPanel_.setBounds(r.removeFromRight(ayPanelWidth));
+    if (transportBar_.isVisible())
+        transportBar_.setBounds(r.removeFromTop(transportBarHeight));
     editComponent_.setBounds(r.withTrimmedLeft(8));
 }
 
@@ -36,15 +34,11 @@ bool PlayerDocumentComponent::isInterestedInFileDrag(const StringArray& files) {
     return false;
 }
 
-void PlayerDocumentComponent::filesDropped(const StringArray& files, int /*x*/, int /*y*/) {
-    for (auto& path : files) {
-        File f(path);
-        auto ext = f.getFileExtension().toLowerCase();
-        if (ext == ".psg" || ext == ".uzx") {
-            MoToolApp::getPlayerController().handleOpenFile(f);
-            return;
-        }
-    }
+void PlayerDocumentComponent::filesDropped(const StringArray& paths, int /*x*/, int /*y*/) {
+    Array<File> files;
+    for (auto& path : paths)
+        files.add(File(path));
+    MoToolApp::getPlayerController().handleOpenFiles(files);
 }
 
 }  // namespace MoTool

@@ -58,7 +58,7 @@ public:
     void runTest() override {
         using namespace tracktion::literals;
         auto edit = te::Edit::createSingleTrackEdit(*te::Engine::getEngines()[0]);
-        ZoomViewState zoom {*edit};
+        ZoomViewState zoom {*edit, edit->state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr)};
         auto& undo = edit->getUndoManager();
         undo.clearUndoHistory();
 
@@ -142,7 +142,7 @@ public:
 
         auto edit = te::Edit::createSingleTrackEdit(engine);
         auto& transport = edit->getTransport();
-        ZoomViewState zoom {*edit};
+        ZoomViewState zoom {*edit, edit->state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr)};
         const auto playhead = [&] { return zoom.getPlayheadPosition().inSeconds(); };
         const auto heard = [&] { return transport.getPosition().inSeconds() - 0.25; };
 
@@ -177,7 +177,28 @@ public:
         play(40);
         expectWithinAbsoluteError(playhead(), heard(), 1.0e-9);
 
+        beginTest("Frames: each latches one playhead near what is heard, follows it and tells listeners at once");
+        {
+            PosListener listener;
+            zoom.addListener(&listener);
+            zoom.setViewWidthPx(1000);
+            zoom.setRange({100_tp, 10_td});
+            zoom.advanceFrame(1.0);
+            const auto latched = playhead();
+            expectGreaterOrEqual(latched, heard() - 0.02);
+            expectLessThan(latched, heard() + 0.1);  // ahead by a frame or so, for the display
+            expectGreaterThan(listener.calls, 0, "dispatched inside the frame, not later");
+            expectLessThan(zoom.getStart().inSeconds(), latched, "the view follows the frame's playhead");
+            TestHelpers::processBlocks(engine, 2);
+            expectEquals(playhead(), latched, "the same position for the whole frame");
+            zoom.removeListener(&listener);
+
+            Thread::sleep(150);  // no more frames: back to the transport
+            expectWithinAbsoluteError(playhead(), heard(), 1.0e-9);
+        }
+
         beginTest("Seek while playing: the playhead lands on the target and waits there");
+        zoom.advanceFrame(2.0);  // even right after a frame
         transport.setPosition(5_tp);
         expectEquals(playhead(), 5.0);
         seek(5_tp);

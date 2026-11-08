@@ -6,6 +6,7 @@
 #include "../gui/common/Utilities.h"
 #include "../models/PsgClip.h"
 #include "../models/EditUtilities.h"
+#include "../formats/psg/TurboSound.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../util/FileOps.h"
 #include "../util/Helpers.h"
@@ -59,8 +60,11 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 
     window_.clearContentComponent();
     MoToolApp::getSelectionManager().deselectAll();
+    const auto vizScopesWidth = editViewState_ != nullptr ? editViewState_->vizScopesWidth.get() : 0;
+    const auto footersWidth = editViewState_ != nullptr ? editViewState_->footersWidth.get() : 0;
     editViewState_.reset();
     playWholeEdit_.reset();
+    rememberedStereo_.reset();
 
     if (edit_ != nullptr) {
         edit_->getTempDirectory(false).deleteRecursively();
@@ -71,43 +75,83 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     rescaleAllMidiClipsToFit(*edit_);
 
     edit_->playInStopEnabled = true;
-    setTimecodeDisplayMode(*edit_, TimecodeDisplayMode::seconds);
+    migrateTimecodeDisplaySettings(*edit_);  // as in Studio: a new edit shows bars | beats | frames
+    useGlobalMasterVolume();
 
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
     playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);
+    rememberedStereo_ = std::make_unique<RememberedStereo>(*edit_);
     EditFileOps::saveEdit(*edit_, true, true, false);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
     editViewState_->showHeaders = false;
+    editViewState_->showFooters = true;
+    editViewState_->showClipHeaders = false;
+    editViewState_->vizMode = vizMode_;
+    if (vizScopesWidth > 0) {  // the devices and scopes keep their widths in the next file
+        editViewState_->vizScopesWidth = vizScopesWidth;
+        editViewState_->footersWidth = footersWidth;
+    }
 
     window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), true);
-    setMainWindowTitle(makePlayerWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension()));
+    updateWindowTitle();
     window_.setSize(w, h);
     window_.repaint();
+}
+
+void PlayerController::setVizMode(bool on) {
+    if (on == vizMode_ || edit_ == nullptr)
+        return;
+
+    vizMode_ = on;
+    editViewState_->vizMode = on;
+    window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), false);
+    window_.setFullScreen(on);
+}
+
+void PlayerController::updateWindowTitle() {
+    setMainWindowTitle(makePlayerWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension()));
+}
+
+void PlayerController::handleSave() {
+    if (edit_ == nullptr) return;
+
+    if (EditFileOps::isTempEdit(*edit_))
+        handleSaveAs();
+    else
+        EditFileOps::saveEdit(*edit_, true, true, false);
+}
+
+void PlayerController::handleSaveAs() {
+    if (edit_ != nullptr && EditFileOps::saveEditAsWithDialog(*edit_))
+        updateWindowTitle();
 }
 
 void PlayerController::handleOpen() {
     auto location = EditFileOps::getRecentEditsDirectory();
     FileChooser fc("Open file", location, "*.uzx;*.psg");
-    if (fc.browseForFileToOpen()) {
-        auto selectedFile = fc.getResult();
-        if (selectedFile.existsAsFile()) {
-            handleOpenFile(selectedFile);
-        }
-    }
+    if (fc.browseForMultipleFilesToOpen())
+        handleOpenFiles(fc.getResults());
 }
 
-void PlayerController::handleOpenFile(const File& file) {
-    if (!file.existsAsFile()) return;
+void PlayerController::handleOpenFiles(const Array<File>& files) {
+    Array<File> psgs;
+    for (const auto& f : files)
+        if (f.hasFileExtension("psg") && f.existsAsFile())
+            psgs.add(f);
 
-    auto ext = file.getFileExtension().toLowerCase();
-    if (ext == ".psg") {
-        importPsgToNewEdit(file);
-    } else if (ext == ".uzx") {
-        EditFileOps::setRecentEditsDirectory(file);
-        auto newEdit = createOrLoadEdit(file);
-        setEdit(std::move(newEdit), true);
+    if (! psgs.isEmpty()) {
+        Helpers::withTurboSoundSet(psgs, [this](const Array<File>& set) { importPsgsToNewEdit(set); });
+        return;
+    }
+
+    for (const auto& f : files) {
+        if (f.hasFileExtension("uzx") && f.existsAsFile()) {
+            EditFileOps::setRecentEditsDirectory(f);
+            setEdit(createOrLoadEdit(f), true);
+            return;
+        }
     }
 }
 
@@ -137,100 +181,65 @@ void PlayerController::handleClearRecentFiles() {
 void PlayerController::handleImportPsgReplace() {
     if (edit_ == nullptr) return;
 
-    Helpers::browseForPSGFile(engine_, [this](const File& f) {
-        if (!f.existsAsFile()) return;
+    Helpers::browseForPSGFiles(engine_, [this](const Array<File>& picked) {
+        Helpers::withTurboSoundSet(picked, [this](const Array<File>& files) {
+            if (files.isEmpty()) return;
 
-        auto options = MessageBoxOptions()
-            .withTitle("Import PSG")
-            .withMessage("How would you like to import \"" + f.getFileNameWithoutExtension() + "\"?")
-            .withButton("New Track")
-            .withButton("New Edit")
-            .withButton("Cancel");
+            const auto what = files.size() == 1 ? "\"" + files[0].getFileNameWithoutExtension() + "\""
+                                                : String(files.size()) + " files";
+            auto options = MessageBoxOptions()
+                .withTitle("Import PSG")
+                .withMessage("How would you like to import " + what + "?")
+                .withButton(files.size() == 1 ? "New Track" : "New Tracks")
+                .withButton("New Edit")
+                .withButton("Cancel");
 
-        NativeMessageBox::showAsync(options, [this, f](int result) {
-            DBG("Import result: " << result);
-            if (result == 0)
-                importPsgToNewTrack(f);
-            else if (result == 1)
-                importPsgToNewEdit(f);
+            NativeMessageBox::showAsync(options, [this, files](int result) {
+                if (result == 0)
+                    importPsgsToNewTracks(files);
+                else if (result == 1)
+                    importPsgsToNewEdit(files);
+            });
         });
     });
 }
 
-void PlayerController::importPsgToNewTrack(const File& f) {
-    auto psgFile = uZX::PsgFile(f);
-    if (! Helpers::readPsgOrShowError(psgFile))
-        return;
-
-    auto& transport = edit_->getTransport();
-    transport.stop(false, false);
-
-    auto track = edit_->insertNewAudioTrack(te::TrackInsertPoint(nullptr, te::getAudioTracks(*edit_).getLast()), nullptr);
-    jassert(track != nullptr);
-
-    te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
-
-    if (auto inserted = PsgClip::insertTo(*track, psgFile, pos)) {
-        track->changed();
-        ensureAYPluginOnTrack(*track);
-        track->setName(f.getFileNameWithoutExtension());
+void PlayerController::importPsgsToNewTracks(const Array<File>& files) {
+    edit_->getTransport().stop(false, false);
+    const auto clips = Helpers::importPsgFiles(*edit_, files);
+    for (auto* clip : clips)
+        RememberedStereo::apply(Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack()));
+    if (! clips.isEmpty())
         zoomToFitHorizontally();
-    }
 }
 
-void PlayerController::importPsgToNewEdit(const File& f) {
-    auto psgFile = uZX::PsgFile(f);
-    if (! Helpers::readPsgOrShowError(psgFile))
+void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
+    // Populate a new edit before setting it on the UI; a fresh edit has one empty track for the first file
+    auto newEditFile = EditFileOps::getTempEditFile();
+    auto newEdit = createOrLoadEdit(newEditFile);
+    const auto clips = Helpers::importPsgFiles(*newEdit, files, {}, te::getAudioTracks(*newEdit).getFirst());
+    if (clips.isEmpty())
         return;
+
+    for (auto* clip : clips) {
+        auto& chip = Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack());
+        RememberedStereo::apply(chip);
+        // A PSG stores no clock. A fitted tuning names the machine the tune was written
+        // for, so the opened tune plays at that clock; a tracker table leaves it as it is.
+        if (const auto& fit = clip->getTuning().fit)
+            chip.staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
+    }
 
     edit_->getTransport().stop(false, false);
 
-    // Create a new edit and populate it before setting it on the UI
-    auto newEditFile = EditFileOps::getTempEditFile();
-    auto newEdit = createOrLoadEdit(newEditFile);
-    newEdit->ensureNumberOfAudioTracks(1);
-    auto* track = te::getAudioTracks(*newEdit).getFirst();
-    jassert(track != nullptr);
-
-    te::ClipPosition pos = {{te::TimePosition(), te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
-
-    if (PsgClip::insertTo(*track, psgFile, pos)) {
-        track->changed();
-
-        // Ensure AY plugin using the new edit's plugin cache
-        bool hasAY = false;
-        for (auto& p : track->pluginList) {
-            if (dynamic_cast<uZX::AYChipPlugin*>(p)) {
-                hasAY = true;
-                break;
-            }
-        }
-        if (!hasAY) {
-            auto plugin = newEdit->getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
-            track->pluginList.insertPlugin(plugin, 0, nullptr);
-        }
-
-        track->setName(f.getFileNameWithoutExtension());
-    }
-
-    // Update the edit file name to match the imported PSG file
-    auto namedFile = newEditFile.getSiblingFile(f.getFileNameWithoutExtension())
-        .withFileExtension(EditFileOps::getDefaultEditFileSuffix());
+    // Name the edit file after the imported PSG files
+    const auto name = uZX::getSetName(files);
+    auto namedFile = newEditFile.getSiblingFile(name).withFileExtension(EditFileOps::getDefaultEditFileSuffix());
     newEdit->editFileRetriever = [namedFile] { return namedFile; };
 
-    // Set the fully-prepared edit (rebuilds UI with clip already present)
     setEdit(std::move(newEdit), true);
-    setMainWindowTitle(makePlayerWindowTitle(f.getFileNameWithoutExtension()));
+    setMainWindowTitle(makePlayerWindowTitle(name));
     zoomToFitHorizontally();
-}
-
-void PlayerController::ensureAYPluginOnTrack(te::AudioTrack& track) {
-    for (auto& p : track.pluginList) {
-        if (dynamic_cast<uZX::AYChipPlugin*>(p))
-            return;
-    }
-    auto plugin = edit_->getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
-    track.pluginList.insertPlugin(plugin, 0, nullptr);
 }
 
 }  // namespace MoTool

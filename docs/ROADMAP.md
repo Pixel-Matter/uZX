@@ -8,34 +8,16 @@ Open work only, highest priority first. Finished work goes to [CHANGELOG.md](../
 
 **Done** means: I can write a whole track in µZX Studio, from MIDI to a PSG export, and play it on real hardware; and play live from a MIDI controller through the AY emulator or even a real AY on a Spectrum (MIDI → PC → AY MIDI → ZX → audio). That is a far goal, so work goes milestone by milestone; each milestone below states its own goal.
 
-**Out of scope:** anything not on this roadmap. For the current milestone (Player alpha for testers) that includes other chips, video, the node system, tracker UI and mobile.
+**Out of scope:** anything not on this roadmap. For the current milestone (v1.0) that includes other chips, the node system, tracker UI and mobile.
 
 ## µZX Player
 
-Current release: `v0.5.0-alpha` (unsigned builds for macOS, Windows and Linux).
+Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macOS, Windows and Linux).
 
 ### Next up
 
-1. **Cut the alpha for testers** — no P0 or P1 left
-
-### Alpha for testers
-
-**Goal:** a build you can hand to a few people without explaining workarounds.
-
-#### P0 — Blockers
-
-None.
-
-#### P1 — Important
-
-None.
-
-#### P2 — Nice to have
-
-- [x] **BPM, FPB, GRV, SIG** detection — set on PSG import from the tracker row grid and bar-level repetition (3/4 or 4/4); dumps without a grid (speed 1, heavy volume ornaments) keep the current tempo
-- [ ] Full combined tuning table + music key and beat grid detection for TS.
-
----
+1. **Alpha feedback** — crashes and UX issues testers report
+2. **v1.0 P0** below
 
 ### v1.0 — First public release (macOS)
 
@@ -55,7 +37,6 @@ None.
 - [ ] **About dialog** — GitHub link (only pixelmatter.org now), greets scroller
 - [ ] **TAYM** (needs Timer fx, see [TODO.md](TODO.md))
 - [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
-- [x] **Time signature editing** — SIG is editable in the transport bar; PSG clips keep their timing
 - [ ] **Loop range** on the ruler
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Nicer transport icons**
@@ -65,7 +46,6 @@ None.
 #### P2 — Nice to have
 
 - [ ] **DMG background image**
-- [ ] **Visualizer mode** — fullscreen oscilloscopes without controls (for streaming)
 - [ ] **Channel split mode** — each AY channel in its own lane
 - [ ] **Minimap** on the horizontal scroller
 - [ ] **Clock-mode frame grid** — frame ticks restart every second, so at 24 fps 5-frame ticks run …20, 24, 29; the frame field widens to three digits at 100/200 fps
@@ -91,7 +71,7 @@ Grouped by theme, not ordered.
 - [ ] WAV export with a save dialog (Studio's internal Render to audio exists)
 - [ ] MP3/OGG export
 - [ ] PSG export and optimization
-- [ ] **Rendering to video** — a view mode for recording or exporting a visualization clip, also from the command line: resolution, frame rate (common rates or custom), frame format (4:3, 16:10, 16:9), what to show (lanes, keys, ruler, oscilloscopes with their width and layout, note decorations, colours, background colour, the PSG base name), zoom (a set level or the current view)
+- [ ] **Render Video options** — File → Render Video renders Viz mode as on screen; next: what to show (note lanes, piano keys, grid, timecode, scope layout left/right/top/bottom and size), a zoom picker, vertical 9:16 video with vertical scrolling, and rendering from the command line
 
 **Import**
 
@@ -108,14 +88,9 @@ Grouped by theme, not ordered.
 - [ ] Tracker-like scrolling pattern view
 - [ ] Skins/themes
 
-**Analysis**
-
-- [ ] Tuning analyzer — detect the tuning system of a PSG file
-- [ ] Beat detection — estimate BPM and groove
-
 **Quality**
 
-- [ ] Smooth 60 FPS on modest hardware: PSG clip paint cache, async PSG loading with progress
+- [ ] Smooth 60 FPS on modest hardware: async PSG loading with progress (PSG clips already paint from a cache)
 - [ ] Crash reports and UX issues from 1.0 feedback
 - [ ] Tracktion timecode (MMC, hosted plugins) follows the project FPS — it is always 24 now
 

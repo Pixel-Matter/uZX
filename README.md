@@ -56,6 +56,7 @@ A modern tool for composing and playing back chiptune music for platforms using 
 - Visual tuning grid with note tooltips and scale highlighting
 - Configurable chip clock frequency and A4 reference
 - CSV export of tuning tables
+- Tuning table, key and tempo detection for imported PSG files, Turbo Sound sets as one tune
 
 **Visualization & Interaction:**
 
@@ -63,6 +64,7 @@ A modern tool for composing and playing back chiptune music for platforms using 
 - Integrated oscilloscope displays per AY channel with live monitoring
 - Standalone scope plugin
 - Smooth timeline scrolling and zooming with click-to-seek
+- Viz mode: full-screen notes and scopes, and File → Render Video to an MP4 through ffmpeg
 
 ## Download
 

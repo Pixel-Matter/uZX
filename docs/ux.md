@@ -13,8 +13,8 @@ In order of how often people do them.
    Now: no action; the view follows the playhead.
 3. **Change the chip settings (clock, stereo, mute) and save the result.**
    Now: one click per setting, then `Cmd+S`; an edit opened from a PSG file adds a save dialog.
-4. **Record or export a visualization video clip** — for some users, not for the alpha (video is out of its scope).
-   Now: not possible. What it needs is under **Rendering to video** in [ROADMAP.md](ROADMAP.md).
+4. **Record or export a visualization video clip** — for some users.
+   Now: **File → Render Video...**, then **Render...** in its one-page dialog; it shows Viz mode as on screen. More options are under **Render Video options** in [ROADMAP.md](ROADMAP.md).
 
 ## Always visible
 

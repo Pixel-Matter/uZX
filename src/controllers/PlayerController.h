@@ -36,7 +36,8 @@ private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
     void updateWindowTitle();
-    /** Rebuilds the view for Viz mode or out of it, telling what Viz mode shows when that changes. */
+    /** Rebuilds the view for Viz mode or out of it, telling what Viz mode shows when its layout or
+        scopes change. */
     void showView(VizOptions options);
     /** The app settings changed: maybe the Viz options, from the View menu, the V key or Render Video. */
     void appSettingsChanged();

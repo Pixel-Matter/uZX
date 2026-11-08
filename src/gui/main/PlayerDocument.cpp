@@ -6,19 +6,20 @@
 namespace MoTool {
 
 //==============================================================================
-/** The layouts Viz mode can show, the one it shows lit, and the keys: on top for a moment, then fading. */
+/** What Viz mode can show, a line per key with the choice shown lit, and how to leave: on top for
+    a moment, then fading. The scopes' line is dim while there are no scopes to arrange. */
 class VizHint : public Component,
                 private Timer
 {
 public:
-    explicit VizHint(VizOptions::Layout shown) : shown_((int) shown) {
+    explicit VizHint(const VizOptions& shown)
+        : lines_ {{{VizOptions::layoutNames, (int) shown.layout, "V", true},
+                   {VizOptions::scopesNames, (int) shown.scopes, "S", shown.showsScopes()}}} {
         setInterceptsMouseClicks(false, false);
-        const auto& names = VizOptions::layoutNames;
-        int namesWidth = gap * (names.size() - 1);
-        for (auto& name : names)
-            namesWidth += GlyphArrangement::getStringWidthInt(nameFont(), name);
-        setSize(jmax(namesWidth, GlyphArrangement::getStringWidthInt(keysFont(), keys)) + pad * 4,
-                pad * 2 + nameHeight + keysHeight);
+        int width = GlyphArrangement::getStringWidthInt(smallFont(), leave);
+        for (auto& line : lines_)
+            width = jmax(width, namesWidth(line.names) + gap + keyWidth);
+        setSize(width + pad * 4, pad * 2 + lineHeight * (int) lines_.size() + leaveHeight);
         startTimer(shownMs);
     }
 
@@ -27,32 +28,50 @@ public:
         g.fillRoundedRectangle(getLocalBounds().toFloat(), (float) pad);
 
         auto r = getLocalBounds().reduced(pad * 2, pad);
-        const auto& names = VizOptions::layoutNames;
-        int x = r.getX();
-        g.setFont(nameFont());
-        for (int i = 0; i < names.size(); ++i) {
-            const int width = GlyphArrangement::getStringWidthInt(nameFont(), names[i]);
-            g.setColour(i == shown_ ? Colors::Theme::textPrimary : Colors::Theme::textDisabled);
-            g.drawText(names[i], x, r.getY(), width, nameHeight, Justification::centred);
-            x += width + gap;
+        for (auto& line : lines_) {
+            auto row = r.removeFromTop(lineHeight);
+            const auto dim = Colors::Theme::textDisabled.withMultipliedAlpha(line.active ? 1.0f : 0.5f);
+            g.setFont(nameFont());
+            g.setColour(line.active ? Colors::Theme::textSecondary : dim);
+            g.drawText(line.key, row.removeFromRight(keyWidth), Justification::centredRight);
+            for (int i = 0; i < line.names.size(); ++i) {
+                const int width = GlyphArrangement::getStringWidthInt(nameFont(), line.names[i]);
+                g.setColour(i == line.shown && line.active ? Colors::Theme::textPrimary : dim);
+                g.drawText(line.names[i], row.removeFromLeft(width), Justification::centredLeft);
+                row.removeFromLeft(gap);
+            }
         }
-        g.setFont(keysFont());
+        g.setFont(smallFont());
         g.setColour(Colors::Theme::textSecondary);
-        g.drawText(keys, r.withTrimmedTop(nameHeight), Justification::centred);
+        g.drawText(leave, r, Justification::centred);
     }
 
 private:
+    struct Line
+    {
+        StringArray names;
+        int shown;
+        String key;
+        bool active;
+    };
+
     void timerCallback() override {
         stopTimer();
         Desktop::getInstance().getAnimator().fadeOut(this, 400);
     }
 
     static Font nameFont() { return Font(FontOptions(15.0f)); }
-    static Font keysFont() { return Font(FontOptions(12.0f)); }
+    static Font smallFont() { return Font(FontOptions(12.0f)); }
+    static int namesWidth(const StringArray& names) {
+        int width = gap * (names.size() - 1);
+        for (auto& name : names)
+            width += GlyphArrangement::getStringWidthInt(nameFont(), name);
+        return width;
+    }
 
-    static constexpr int pad = 8, gap = 24, nameHeight = 22, keysHeight = 18, shownMs = 2500;
-    inline static const String keys = String::fromUTF8("V switches · Esc leaves");
-    const int shown_;
+    static constexpr int pad = 8, gap = 24, keyWidth = 16, lineHeight = 24, leaveHeight = 20, shownMs = 2500;
+    inline static const String leave = "Esc leaves";
+    const std::array<Line, 2> lines_;
 };
 
 //==============================================================================
@@ -71,7 +90,7 @@ PlayerDocumentComponent::~PlayerDocumentComponent() {}
 void PlayerDocumentComponent::showVizHint() {
     if (! editViewState_.vizMode)
         return;
-    vizHint_ = std::make_unique<VizHint>(editViewState_.vizOptions.layout);
+    vizHint_ = std::make_unique<VizHint>(editViewState_.vizOptions);
     addAndMakeVisible(*vizHint_);
     resized();
 }

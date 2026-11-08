@@ -16,12 +16,17 @@
 namespace MoTool::uZX {
 
 //==============================================================================
-/** The chip's A, B and C oscilloscopes, stacked, following its scope settings: each in its channel's
-    colour, or classic white on black with grey rules between. */
+/** The chip's A, B and C oscilloscopes, following its scope settings. */
 class AYScopes : public Component,
                  private juce::Value::Listener {
 public:
-    explicit AYScopes(AYChipPlugin& plugin, bool classic = false);
+    struct Look
+    {
+        bool classic = false;     // white on black with grey rules between, else each in its channel's colour
+        bool sideBySide = false;  // A | B | C, else A over B over C
+    };
+
+    AYScopes(AYChipPlugin& plugin, Look look);
     ~AYScopes() override;
 
     void paint(Graphics& g) override;
@@ -35,7 +40,7 @@ private:
 
     ScopeSettings& settings_;
     std::array<std::unique_ptr<WaveformDisplay>, 3> displays_;
-    const bool classic_;
+    const Look look_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AYScopes)
 };
@@ -127,7 +132,7 @@ private:
 
     std::array<ChannelGroup*, 3> channelGroups { &channelA, &channelB, &channelC };
 
-    AYScopes scopes_ {plugin_};
+    AYScopes scopes_ {plugin_, {}};
 
     void setupToggleButtons();
     void layoutChannelToggles(Rectangle<int>& r);

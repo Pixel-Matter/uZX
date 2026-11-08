@@ -73,13 +73,18 @@ Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler;
 
 **View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
 
-`V` switches what Viz mode shows: **Notes and Scopes**, then **Notes** alone across the whole row, then **Scopes** alone, each chip's A, B and C stacked across the whole row. For a moment after you enter Viz mode or switch what it shows, the top of the screen names the three, the one shown lit, with the keys to switch and to leave. **View → Viz Options** picks a layout directly, and a colour scheme: **Slate**, as above, or **Classic Black and White**, black throughout with white scopes and thin grey lines between them; the notes keep their A, B and C colours. µZX remembers these options, and **File → Render Video...** draws them too.
+Each chip has a row of its own, in track order, and two keys arrange the rows:
+
+- `V` switches what each row shows: **Notes and Scopes**, then **Notes** alone across the whole row, then **Scopes** alone across the whole row.
+- `S` switches how a chip's A, B and C scopes are tiled: **Stacked**, A over B over C, in a column at the right of the notes; or **Side by Side**, A | B | C, in a band under the notes, whose gap above you drag to make the band taller or shorter. With the scopes alone, Stacked lists every channel down the screen and Side by Side makes a grid, a chip per row. `S` does nothing while the notes are shown alone.
+
+For a moment after you enter Viz mode or press either key, the top of the screen shows both choices, each with the current one lit, and the key to leave. **View → Viz Options** picks a layout and a tiling directly, and a colour scheme: **Slate**, as above, or **Classic Black and White**, black throughout with white scopes and thin grey lines between them; the notes keep their A, B and C colours. µZX remembers these options, and **File → Render Video...** draws them too.
 
 ### Rendering a Video
 
 **File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes or what **View → Viz Options** chooses, at the zoom you see on screen, and the view follows the playhead from the start of the tune to 3 seconds after its end. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, µZX offers to show the file. The sound is the tune at full level: the master volume knob doesn't change it.
 
-- **Show** and **Colours** are Viz mode's options, as in **View → Viz Options**: notes and scopes, notes or scopes, in Slate or Classic Black and White. Changing them here changes Viz mode too; in the Player, the view behind the dialog shows each choice.
+- **Show**, **Scopes** and **Colours** are Viz mode's options, as in **View → Viz Options**: notes and scopes, notes or scopes; the scopes stacked or side by side; Slate or Classic Black and White. Changing them here changes Viz mode too; in the Player, the view behind the dialog shows each choice.
 - **ffmpeg** encodes the video. µZX looks for it on the `PATH` and in `/opt/homebrew/bin` and `/usr/local/bin`. If it isn't found, install it (`brew install ffmpeg`, or from [ffmpeg.org](https://ffmpeg.org/download.html)), or click **Choose...** to point to it.
 - **Render** is the size the frames are drawn at, from 1280 × 720 to 3840 × 2160: the notes, scopes and labels are laid out as in a window that size. **Output** scales the frames up by a whole number, up to 8K, each drawn pixel becoming a sharp square block: 1280 × 720 at ×3 makes a 4K video of a 720p view.
 - **Frame rate**: 60, 50, 48, 30, 25 or 24 fps. At 60 the notes scroll most smoothly on most screens.
@@ -312,6 +317,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Cmd+,` | Audio/MIDI settings; on macOS, **Settings...** in the app menu, next to **About** | Player, Studio |
 | `F` | Viz mode on / off: full screen, only the notes and each chip's scopes | Player |
 | `V` | In Viz mode, show notes and scopes, then notes, then scopes | Player |
+| `S` | In Viz mode, stack each chip's scopes or set them side by side | Player |
 | `Esc` | Close the Settings, Plugins, or About window; in the Player, leave Viz mode | Player, Studio |
 | `Cmd+Q` | Quit | Player, Studio |
 
@@ -329,7 +335,8 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Middle-drag | Tracks | Same as dragging the ruler |
 | `Shift+Wheel` | Ruler or tracks | Scroll horizontally |
 | Drag | Scrollbar under the tracks | Scroll horizontally |
-| Drag | Gap left of the AY chips, or of the scopes in Viz mode showing notes and scopes (Player) | Make them wider or narrower |
+| Drag | Gap left of the AY chips, or of the stacked scopes in Viz mode (Player) | Make them wider or narrower |
+| Drag | Gap above the side-by-side scopes in Viz mode (Player) | Make them taller or shorter |
 | `Cmd+Wheel` | Ruler, tracks or scrollbar | Zoom around the mouse pointer, or around the playhead while it is followed |
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |

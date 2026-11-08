@@ -62,13 +62,20 @@ public:
 
         beginTest("Notes and scopes in Slate until chosen otherwise, and a choice is remembered");
         expect(VizOptions::load(settings) == VizOptions{});
-        const VizOptions chosen{Layout::scopes, VizOptions::Colours::classic};
+        const VizOptions chosen{Layout::scopes, VizOptions::Colours::classic, VizOptions::Scopes::sideBySide};
         chosen.save(settings);
         expect(VizOptions::load(settings) == chosen);
 
         beginTest("A setting from a newer build, out of range, keeps the default");
         settings.setValue("vizLayout", 7);
         expect(VizOptions::load(settings).layout == Layout::notesAndScopes);
+
+        beginTest("The scopes switch between stacked and side by side");
+        VizOptions scopes;
+        scopes.scopes = scopes.otherScopes();
+        expect(scopes.areScopesSideBySide());
+        scopes.scopes = scopes.otherScopes();
+        expect(! scopes.areScopesSideBySide());
 
         beginTest("Next layout goes round all three");
         VizOptions o;
@@ -87,6 +94,16 @@ public:
         expect(! view.showFooters && view.getTrackFooterWidth() == 0 && view.isVizClassic(), "notes");
         view.showAsPlayer(true, {Layout::scopes});
         expect(view.showFooters && ! view.showsNotes() && ! view.isVizClassic(), "scopes");
+
+        beginTest("Scopes side by side go under the notes, taking a share of the row");
+        view.showAsPlayer(true, {.scopes = VizOptions::Scopes::sideBySide});
+        expect(view.areVizScopesUnderNotes() && view.getTrackFooterWidth() == 0, "no column at the right");
+        view.vizScopesShare = 50;
+        expectEquals(view.getVizScopesHeight(200), 100);
+        view.vizScopesShare = 99;  // as an edited file could hold
+        expectEquals(view.getVizScopesHeight(200), 200 * EditViewState::maxVizScopesShare / 100);
+        view.showAsPlayer(true, {Layout::scopes, VizOptions::Colours::slate, VizOptions::Scopes::sideBySide});
+        expect(! view.areVizScopesUnderNotes(), "the scopes alone take the whole row");
     }
 };
 

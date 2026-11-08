@@ -14,6 +14,7 @@ namespace IDs
     DECLARE_ID(EDITVIEWSTATE)
     DECLARE_ID(headersWidth)
     DECLARE_ID(vizScopesWidth)
+    DECLARE_ID(vizScopesShare)
     DECLARE_ID(footersWidth)
     DECLARE_ID(preservePsgTimingOnTempoChange)
     DECLARE_ID(snapPlayheadToGrid)
@@ -170,18 +171,24 @@ struct VizOptions
 {
     enum class Layout { notesAndScopes, notes, scopes };
     enum class Colours { slate, classic };
+    /** A chip's A, B and C: stacked, in a column beside its notes; or side by side, in a band under them. */
+    enum class Scopes { stacked, sideBySide };
 
     Layout layout = Layout::notesAndScopes;
     Colours colours = Colours::slate;
+    Scopes scopes = Scopes::stacked;
 
     /** As the menus and the Render Video dialog name them, in enum order. */
     static inline const StringArray layoutNames {"Notes and Scopes", "Notes", "Scopes"};
     static inline const StringArray colourNames {"Slate", "Classic Black and White"};
+    static inline const StringArray scopesNames {"Stacked", "Side by Side"};
 
     bool showsNotes() const { return layout != Layout::scopes; }
     bool showsScopes() const { return layout != Layout::notes; }
+    bool areScopesSideBySide() const { return scopes == Scopes::sideBySide; }
     /** The layout after this one, and the first after the last. */
     Layout nextLayout() const { return (Layout) (((int) layout + 1) % layoutNames.size()); }
+    Scopes otherScopes() const { return areScopesSideBySide() ? Scopes::stacked : Scopes::sideBySide; }
 
     bool operator==(const VizOptions&) const = default;
 
@@ -201,8 +208,10 @@ public:
     CachedValue<bool> preservePsgTimingOnTempoChange, snapPlayheadToGrid;
     CachedValue<int> headersWidth;  // Studio's; written only while headers are shown
     CachedValue<int> vizScopesWidth;  // written only in Viz mode
+    CachedValue<int> vizScopesShare;  // in Viz mode, the percent of a row's height the scopes take under its notes
     CachedValue<int> footersWidth;  // the Player's track devices; written only outside Viz mode
     static constexpr int minVizScopesWidth = 120;
+    static constexpr int minVizScopesShare = 15, maxVizScopesShare = 70;
     static constexpr int minHeadersWidth = 110, maxHeadersWidth = 300;
 
     ValueTree state;
@@ -219,7 +228,7 @@ public:
     /** Width of the track devices at the right of each track row, or in Viz mode of the scopes;
         0 when footers are hidden. */
     int getTrackFooterWidth() const {
-        if (! showFooters)
+        if (! showFooters || areVizScopesUnderNotes())
             return 0;
         return vizMode ? jmax(minVizScopesWidth, vizScopesWidth.get()) : jmax(footerWidth, footersWidth.get());
     }
@@ -240,6 +249,14 @@ public:
     void showAsPlayer(bool viz, VizOptions options);
     /** False only in Viz mode showing the scopes alone. */
     bool showsNotes() const { return ! vizMode || vizOptions.showsNotes(); }
+    /** Viz mode with notes and scopes side by side: the scopes in a band under each row's notes. */
+    bool areVizScopesUnderNotes() const {
+        return vizMode && vizOptions.layout == VizOptions::Layout::notesAndScopes && vizOptions.areScopesSideBySide();
+    }
+    /** The scopes' height under a row's notes that `rowHeight` tall, as the share dragged sets it. */
+    int getVizScopesHeight(int rowHeight) const {
+        return rowHeight * jlimit(minVizScopesShare, maxVizScopesShare, vizScopesShare.get()) / 100;
+    }
     /** Viz mode in Classic colours: black, with white scopes. */
     bool isVizClassic() const { return vizMode && vizOptions.colours == VizOptions::Colours::classic; }
 

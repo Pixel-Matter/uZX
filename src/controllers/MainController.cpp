@@ -54,6 +54,13 @@ PopupMenu buildVizOptionsMenu(ApplicationCommandManager& commands, PropertiesFil
     }
     menu.addCommandItem(&commands, MainAppCommands::viewNextVizLayout);
     menu.addSeparator();
+    for (int i = 0; i < VizOptions::scopesNames.size(); ++i) {
+        const auto scopes = (VizOptions::Scopes) i;
+        menu.addItem(VizOptions::scopesNames[i], true, current.scopes == scopes,
+                     choose([scopes](VizOptions& o) { o.scopes = scopes; }));
+    }
+    menu.addCommandItem(&commands, MainAppCommands::viewSwitchVizScopes);
+    menu.addSeparator();
     for (int i = 0; i < VizOptions::colourNames.size(); ++i) {
         const auto colours = (VizOptions::Colours) i;
         menu.addItem(VizOptions::colourNames[i], true, current.colours == colours,
@@ -556,6 +563,11 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             result.setActive(isPlayer && MoToolApp::getPlayerController().isVizMode());
             break;
 
+        case MainAppCommands::viewSwitchVizScopes:
+            result.setActive(isPlayer && MoToolApp::getPlayerController().isVizMode()
+                             && VizOptions::load(engine_.getPropertyStorage().getPropertiesFile()).showsScopes());
+            break;
+
         case MainAppCommands::viewSnapPlayheadToGrid:
             if (auto* editViewState = controller.getEditViewState()) {
                 result.setActive(true);
@@ -789,6 +801,14 @@ bool AppController::perform(const InvocationInfo& info) {
             auto& settings = engine_.getPropertyStorage().getPropertiesFile();
             auto options = VizOptions::load(settings);
             options.layout = options.nextLayout();
+            options.save(settings);  // the Player shows it
+            break;
+        }
+
+        case MainAppCommands::viewSwitchVizScopes: {
+            auto& settings = engine_.getPropertyStorage().getPropertiesFile();
+            auto options = VizOptions::load(settings);
+            options.scopes = options.otherScopes();
             options.save(settings);  // the Player shows it
             break;
         }

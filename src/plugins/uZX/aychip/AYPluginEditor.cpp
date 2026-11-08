@@ -97,14 +97,14 @@ void AYPluginUI::ChannelGroup::updateTNEState() {
 //==============================================================================
 // AYScopes
 //==============================================================================
-AYScopes::AYScopes(AYChipPlugin& plugin, bool classic) : settings_(plugin.scopeSettings), classic_(classic) {
+AYScopes::AYScopes(AYChipPlugin& plugin, Look look) : settings_(plugin.scopeSettings), look_(look) {
     static const std::array<juce::Colour, 3> colours {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
     static const std::array<const char*, 3> labels {"A", "B", "C"};
 
     for (size_t i = 0; i < 3; ++i) {
         displays_[i] = std::make_unique<WaveformDisplay>(colours[i], labels[i],
                                                          *plugin.getVizChannelBuffer(static_cast<int>(i)), settings_);
-        if (classic_)
+        if (look_.classic)
             displays_[i]->setColours(Colors::VizClassic::trace, Colors::VizClassic::background);
         addAndMakeVisible(*displays_[i]);
     }
@@ -138,20 +138,30 @@ void AYScopes::applySettings() {
 }
 
 void AYScopes::paint(Graphics& g) {
-    if (! classic_)
+    if (! look_.classic)
         return;
     // A rule in the middle of each gap, between the scopes
     g.setColour(Colors::VizClassic::rule);
-    for (size_t i = 1; i < displays_.size(); ++i)
-        g.fillRect(0, displays_[i]->getY() - spacing / 2, getWidth(), 1);
+    for (size_t i = 1; i < displays_.size(); ++i) {
+        if (look_.sideBySide)
+            g.fillRect(displays_[i]->getX() - spacing / 2, 0, 1, getHeight());
+        else
+            g.fillRect(0, displays_[i]->getY() - spacing / 2, getWidth(), 1);
+    }
 }
 
 void AYScopes::resized() {
     auto r = getLocalBounds();
-    const float h = ((float) r.getHeight() - spacing * 2.0f) / 3.0f;
+    const auto across = look_.sideBySide ? r.getWidth() : r.getHeight();
+    const float size = ((float) across - spacing * 2.0f) / 3.0f;
     for (auto& display : displays_) {
-        display->setBounds(r.removeFromTop(roundToInt(h)));
-        r.removeFromTop(spacing);
+        if (look_.sideBySide) {
+            display->setBounds(r.removeFromLeft(roundToInt(size)));
+            r.removeFromLeft(spacing);
+        } else {
+            display->setBounds(r.removeFromTop(roundToInt(size)));
+            r.removeFromTop(spacing);
+        }
     }
 }
 

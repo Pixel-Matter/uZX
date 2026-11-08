@@ -325,6 +325,7 @@ void ZoomViewState::handleAsyncUpdate() {
 namespace {
     constexpr auto vizLayoutSetting = "vizLayout";
     constexpr auto vizColoursSetting = "vizColours";
+    constexpr auto vizScopesSetting = "vizScopes";
 
     template <typename Enum>
     Enum loadVizEnum(PropertiesFile& p, const char* name, Enum fallback, const StringArray& names) {
@@ -337,12 +338,14 @@ VizOptions VizOptions::load(PropertiesFile& p) {
     VizOptions o;
     o.layout = loadVizEnum(p, vizLayoutSetting, o.layout, layoutNames);
     o.colours = loadVizEnum(p, vizColoursSetting, o.colours, colourNames);
+    o.scopes = loadVizEnum(p, vizScopesSetting, o.scopes, scopesNames);
     return o;
 }
 
 void VizOptions::save(PropertiesFile& p) const {
     p.setValue(vizLayoutSetting, (int) layout);
     p.setValue(vizColoursSetting, (int) colours);
+    p.setValue(vizScopesSetting, (int) scopes);
 }
 
 //==============================================================================
@@ -372,6 +375,7 @@ EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s, bool detached
     snapPlayheadToGrid.referTo(state, IDs::snapPlayheadToGrid, nullptr, true);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, minHeadersWidth);
     vizScopesWidth.referTo(state, IDs::vizScopesWidth, nullptr, footerWidth);
+    vizScopesShare.referTo(state, IDs::vizScopesShare, nullptr, 35);
     footersWidth.referTo(state, IDs::footersWidth, nullptr, footerWidth);
 }
 

@@ -216,6 +216,32 @@ private:
             expect(findChild<PsgLegendComponent>(scopes) == nullptr, "no legend");
         }
 
+        beginTest("Scopes side by side: under each row's notes, A | B | C, the notes across the whole width");
+        {
+            EditViewState bandView(*edit, selectionManager);
+            bandView.showAsPlayer(true, {.scopes = VizOptions::Scopes::sideBySide});
+            bandView.vizScopesShare = 40;
+            EditComponent band(*edit, bandView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+            band.setSize(1000, 400);
+            TestHelpers::flushMessageQueue();
+            auto* bandRow = findDescendant<TrackRowComponent>(band);
+            expect(bandRow != nullptr && bandRow->footer != nullptr, "scopes");
+            if (bandRow != nullptr && bandRow->footer != nullptr) {
+                expectEquals(bandRow->body.getRight(), bandRow->getWidth(), "the notes reach the right edge");
+                expect(bandRow->footer->getY() > bandRow->body.getBottom(), "the scopes under the notes");
+                expectEquals(bandRow->footer->getRight(), bandRow->getWidth() - 8, "apart from the window edge");
+                const auto& scopes = bandRow->footer->getChildren();
+                expect(scopes.size() == 3 && scopes[0]->getY() == scopes[2]->getY()
+                           && scopes[0]->getRight() < scopes[1]->getX(), "A | B | C");
+
+                const int scopesTop = bandRow->footer->getY();
+                bandView.vizScopesShare = 60;  // what dragging the gap above the scopes does
+                expect(bandRow->footer->getY() < scopesTop, "a bigger share raises the scopes");
+            }
+            expect(findDescendant<TrackFooterOverlayComponent>(band) == nullptr, "no column gap");
+            expect(findChild<PlayheadComponent>(band)->getCoveredAreas != nullptr, "the playhead keeps off the scopes");
+        }
+
         beginTest("Classic colours: the scopes are drawn on black");
         {
             EditViewState classicView(*edit, selectionManager);

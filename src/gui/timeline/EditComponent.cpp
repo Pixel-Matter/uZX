@@ -32,6 +32,13 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
 
     addChildComponent(playhead);
     playhead.setVisible(editViewState.showsNotes());
+    if (editViewState.areVizScopesUnderNotes())
+        playhead.getCoveredAreas = [this] {
+            auto areas = tracksContainer.getScopesBands();
+            for (auto& area : areas)
+                area = playhead.getLocalArea(&tracksContainer, area);
+            return areas;
+        };
     addAndMakeVisible(ruler);
     addAndMakeVisible(trackViewport);
     timeScrollBar.setAutoHide(false);
@@ -61,6 +68,8 @@ void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Ide
     if (v.hasType(IDs::EDITVIEWSTATE)) {
         if (i == IDs::headersWidth || i == IDs::vizScopesWidth || i == IDs::footersWidth) {
             markAndUpdate(updateSizes);
+        } else if (i == IDs::vizScopesShare) {
+            tracksContainer.resized();  // the rows keep their size, and share it anew
         }
     } else if (te::Clip::isClipState(v) && (i == te::IDs::start || i == te::IDs::length)) {
         markAndUpdate(updateScrollRange);

@@ -18,7 +18,7 @@ public:
     ~PlayerDocumentComponent() override;
 
     /** In Viz mode, which hides every control: tells for a moment at the top what it can show, which
-        of that it shows, and the keys to switch and to leave. Only on screen, never in a video. */
+        of that it shows, and the keys to switch (V, S) and to leave. Only on screen, never in a video. */
     void showVizHint();
 
     void paint(Graphics& g) override;

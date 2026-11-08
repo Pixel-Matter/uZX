@@ -87,6 +87,19 @@ private:
 
 
 //==============================================================================
+/** In Viz mode with the scopes side by side under the notes, the gap between them: drag it to give the
+    scopes more or less of every row. In Classic colours it is drawn as a rule. */
+class VizScopesGap : public Component {
+public:
+    explicit VizScopesGap(EditViewState& evs);
+    void paint(Graphics& g) override;
+    void mouseDrag(const MouseEvent& e) override;
+
+private:
+    EditViewState& editViewState;
+};
+
+//==============================================================================
 /**
  * Container component for track row, handling resizing and height synchronization
  * Its function is to only resize the track row as a whole
@@ -117,12 +130,19 @@ public:
     std::unique_ptr<Component> footer;
     /** Level with the clips, apart from them and from the window edge. */
     static inline const BorderSize<int> footerPadding {ClipComponent::ringWidth, 8, ClipComponent::ringWidth, 8};
+    /** Scopes under the notes: below the gap to drag, level with the notes, apart from the window edge. */
+    static inline const BorderSize<int> scopesBandPadding {8, 0, ClipComponent::ringWidth, 8};
 
 private:
+    /** Takes the footer's area from the row's: the devices, or Viz mode's scopes beside, under or
+        instead of the notes. */
+    Rectangle<int> takeFooterArea(Rectangle<int>& r);
+
     EditViewState& editViewState;
     te::Track::Ptr track;
     TrackViewState trackViewState;
     ResizableEdgeComponent resizer;
+    VizScopesGap scopesGap {editViewState};
 };
 
 
@@ -192,6 +212,10 @@ public:
 
     std::function<void()> onRowsChanged;  // the rows were rebuilt, so their minimum height may differ
 
+    /** In Viz mode with the scopes under the notes, each row's from the gap above them to the row's
+        bottom, in this component's coordinates: no timeline there. */
+    Array<Rectangle<int>> getScopesBands() const;
+
 private:
     te::Edit& edit;
     EditViewState& editViewState;
@@ -218,7 +242,9 @@ private:
     void handleAsyncUpdate() override;
     void buildTracks();
     /** The devices or scopes have a column of their own at the right, after a gap to drag. */
-    bool hasFooterGap() const { return editViewState.showFooters && editViewState.showsNotes(); }
+    bool hasFooterGap() const {
+        return editViewState.showFooters && editViewState.showsNotes() && ! editViewState.areVizScopesUnderNotes();
+    }
 };
 
 

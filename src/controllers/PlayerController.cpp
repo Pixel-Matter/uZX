@@ -114,13 +114,17 @@ PropertiesFile& PlayerController::getAppSettings() {
 
 void PlayerController::appSettingsChanged() {
     const auto options = VizOptions::load(getAppSettings());
-    if (vizMode_ && editViewState_ != nullptr && options != editViewState_->vizOptions)
+    if (vizMode_ && editViewState_ != nullptr && options != editViewState_->vizOptions) {
         showView(options);
+        MoToolApp::getCommandManager().commandStatusChanged();  // the menu ticks, and S only with scopes
+    }
 }
 
 void PlayerController::showView(VizOptions options) {
     const auto& shown = *editViewState_;
-    const bool newLayout = vizMode_ && (! shown.vizMode || options.layout != shown.vizOptions.layout);
+    const bool newLayout = vizMode_
+                           && (! shown.vizMode || options.layout != shown.vizOptions.layout
+                               || options.scopes != shown.vizOptions.scopes);
     editViewState_->showAsPlayer(vizMode_, options);
     auto* document = new PlayerDocumentComponent(*edit_, *editViewState_);
     window_.setContentOwned(document, false);

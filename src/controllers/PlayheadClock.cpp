@@ -39,4 +39,14 @@ void FramePeriod::add(double intervalSec) {
     period = sorted[sorted.size() / 2];
 }
 
+void DisplayFrames::add(double timestampSec, double nowMs) {
+    const auto interval = timestampSec - lastTimestampSec;
+    lastTimestampSec = timestampSec;
+    if (interval > 1.0 / 240.0 && interval < 1.0 / 20.0)
+        period.add(interval);
+
+    const auto onTime = frameMs + interval * 1000.0;
+    frameMs = nowMs < onTime || nowMs - onTime > period.get() * 1000.0 ? nowMs : onTime;
+}
+
 }  // namespace MoTool

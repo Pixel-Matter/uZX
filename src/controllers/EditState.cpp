@@ -148,11 +148,8 @@ bool ZoomViewState::areFramesRunning() const {
 }
 
 void ZoomViewState::advanceFrame(double timestampSec) {
-    // The display's frame period, for drawing the playhead where it is by the time the frame is seen
-    const auto interval = timestampSec - lastFrameTimestampSec;
-    lastFrameTimestampSec = timestampSec;
-    if (interval > 1.0 / 240.0 && interval < 1.0 / 20.0)
-        framePeriod.add(interval);
+    // Every frame, playing or not, so the frames' period and times are ready when playback starts
+    displayFrames.add(timestampSec, Time::getMillisecondCounterHiRes());
 
     auto& transport = edit.getTransport();
     if (!transport.isPlaying() && !transport.isRecording())
@@ -160,9 +157,10 @@ void ZoomViewState::advanceFrame(double timestampSec) {
 
     // ponytail: frameLead is a fixed one frame of display pipeline; tune it by eye against the sound,
     // or measure the presentation time per platform if that varies.
+    // Where the playhead is by the time the frame is seen
     lastFrameMs = Time::getMillisecondCounterHiRes();
     auto pos = te::TimePosition::fromSeconds(
-        playheadClock.positionAt(lastFrameMs + framePeriod.get() * frameLead * 1000.0));
+        playheadClock.positionAt(displayFrames.getFrameMs() + displayFrames.getPeriod() * frameLead * 1000.0));
     if (transport.looping)
         pos = std::min(pos, transport.getLoopRange().getEnd());  // the wrap report comes later
     framePlayhead = pos;

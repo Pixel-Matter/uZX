@@ -29,25 +29,17 @@ AYChipPlugin::~AYChipPlugin() {
     notifyListenersOfDeletion();
 }
 
-// void AYChipPlugin::getChannelNames(StringArray* ins, StringArray* outs) {
-//     Plugin::getChannelNames(ins, outs);
-//     if (outs != nullptr) {
-//         staticParams.numOutputChannels.forceUpdateOfCachedValue();
-//         const int numChannels = staticParams.numOutputChannels.getStoredValue();
-//         DBG("AYChipPlugin::getChannelNames: numChannels from state=" << numChannels);
-//         if (numChannels > 2) {
-//             // Stereo mode outputs 5 channels: L, R, A, B, C
-//             outs->add("Channel A");
-//             outs->add("Channel B");
-//             outs->add("Channel C");
-//         }
-//         // output channel names to console
-//         DBG("AYChipPlugin::getChannelNames: output channels:");
-//         for (int i = 0; i < outs->size(); ++i) {
-//             DBG("  " << i << ": " << outs->getReference(i));
-//         }
-//     }
-// }
+void AYChipPlugin::toggleSolo(size_t channel) {
+    auto& solo = channelMuter.getSoloParam(channel);
+    const bool soloing = ! solo.getStoredValue();
+    solo.setStoredValue(soloing);
+    if (soloing)  // a channel is on, muted or soloed: a muted one is soloed instead
+        channelMuter.getChannelParam(channel).setStoredValue(true);
+
+    // The track is soloed while any of its chip's channels is, so the other tracks go silent.
+    if (auto* track = getOwnerTrack())
+        track->setSolo(channelMuter.hasSolo());
+}
 
 void AYChipPlugin::valueTreeChanged() {
     te::Plugin::valueTreeChanged();
@@ -61,7 +53,7 @@ void AYChipPlugin::updateDynamicParams() {
 void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) {
     // TODO staticParams.isParamProperty(id);
     if (v == state) {
-        if (id == IDs::clock || id == IDs::chip || id == IDs::numChannels) {
+        if (id == IDs::clock || id == IDs::chip) {
             reset();
         } else if (id == IDs::midi) {
             if (chip != nullptr) {
@@ -98,7 +90,7 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
 void AYChipPlugin::initialise(const te::PluginInitialisationInfo& info) {
     reset();
     const ScopedLock sl(lock);  // an old graph may still be rendering into this buffer
-    separateChannelBuffer_.setSize(kNumVizChannels, info.blockSizeSamples);
+    scopeLanes_.setSize(3 * kNumVizChannels, info.blockSizeSamples);
 }
 
 void AYChipPlugin::deinitialise() {
@@ -113,22 +105,12 @@ void AYChipPlugin::midiPanic() {
 
 void AYChipPlugin::reset() {
     const ScopedLock sl(lock);
-    // staticParams.numOutputChannels.forceUpdateOfCachedValue();
-    // const int numChannels = staticParams.numOutputChannels.getStoredValue();
-    // // Ayumi mode: 1=MONO, 3=SEPARATE (for stereo+separate output via processBlockStereoPlusSeparate)
-    // const int ayumiMode = (numChannels >= 2) ? 3 : 1;
-
-    // Ayumi mode: 1=MONO, 3=SEPARATE (for stereo+separate output via processBlockStereoPlusSeparate)
-    const int ayumiMode = 3;
-
     if (chip == nullptr) {
         chip = std::make_unique<AyumiEmulator>(static_cast<int>(sampleRate), staticParams.chipClock.getStoredValue() * MHz,
-                                               staticParams.chipType.getStoredValue(),
-                                               ayumiMode);
+                                               staticParams.chipType.getStoredValue());
     } else {
         chip->reset(static_cast<int>(sampleRate), staticParams.chipClock.getStoredValue() * MHz,
-                                                  staticParams.chipType.getStoredValue(),
-                                                  ayumiMode);
+                    staticParams.chipType.getStoredValue());
     }
     updateDynamicParams();
     midiParamsReader.reset();
@@ -182,14 +164,12 @@ void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept 
     // }
 }
 
-bool AYChipPlugin::needsSeparateRendering() const noexcept {
-    return true;
-}
-
 void AYChipPlugin::copyTempBufferToVizBuffer() {
     for (size_t chan = 0; chan < kNumVizChannels; ++chan) {
-        auto* src = separateChannelBuffer_.getReadPointer(static_cast<int>(chan));
-        vizBuffers_[chan].pushSamples(src, separateChannelBuffer_.getNumSamples());
+        const auto c = static_cast<int>(chan);
+        vizBuffers_[chan].pushSamples(scopeLanes_.getReadPointer(c), scopeLanes_.getNumSamples(),
+                                      scopeLanes_.getReadPointer(kNumVizChannels + c),
+                                      scopeLanes_.getReadPointer(2 * kNumVizChannels + c));
     }
 }
 
@@ -197,23 +177,12 @@ void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int current
     const auto samples = static_cast<size_t>(timeSample - currentSample);
     auto left = fc.destBuffer->getWritePointer(0, currentSample);
     auto right = fc.destBuffer->getWritePointer(1, currentSample);
-    auto removeDC = staticParams.removeDC.getStoredValue();
-    if (needsSeparateRendering()) {
-        // Separate mode: Output 5 channels (L, R, A, B, C)
-        // const int numChannels = staticParams.numOutputChannels.getStoredValue();
-        // const int actualChannels = fc.destBuffer->getNumChannels();
-        separateChannelBuffer_.setSize(kNumVizChannels, static_cast<int>(samples), false, false, true);
-        jassert(separateChannelBuffer_.getNumSamples() >= static_cast<int>(samples));
-
-        chip->processBlockStereoPlusSeparate(left, right,
-                                             separateChannelBuffer_.getWritePointer(0, 0),  // Channel A
-                                             separateChannelBuffer_.getWritePointer(1, 0),  // Channel B
-                                             separateChannelBuffer_.getWritePointer(2, 0),  // Channel C
-                                             samples, removeDC);
+    scopeLanes_.setSize(3 * kNumVizChannels, static_cast<int>(samples), false, false, true);
+    auto* const* lanes = scopeLanes_.getArrayOfWritePointers();
+    chip->processBlockStereo(left, right, samples, staticParams.removeDC.getStoredValue(),
+                             {lanes, lanes + kNumVizChannels, lanes + 2 * kNumVizChannels});
+    if (fc.isPlaying)  // stopped, the scopes keep the last frame that played
         copyTempBufferToVizBuffer();
-    } else {
-        chip->processBlockStereo(left, right, samples, removeDC);
-    }
 }
 
 void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {

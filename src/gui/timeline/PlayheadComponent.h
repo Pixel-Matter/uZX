@@ -24,6 +24,9 @@ public:
     void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override;
     void mouseMagnify(const MouseEvent&, float scale) override;
 
+    /** Areas the line stays out of, in this component's coordinates: Viz mode's scopes under the notes. */
+    std::function<Array<Rectangle<int>>()> getCoveredAreas;
+
 private:
     void viewRangeChanged() override;
     void playheadMoved() override;

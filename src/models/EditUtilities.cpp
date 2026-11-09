@@ -1,9 +1,9 @@
 
 #include "EditUtilities.h"
 
-#include "Ids.h"
-
 #include <numeric>
+
+#include "Ids.h"
 
 namespace te = tracktion;
 
@@ -19,15 +19,13 @@ TimecodeDisplayMode getTimecodeDisplayMode(te::Edit& edit) {
 }
 
 void setTimecodeDisplayMode(te::Edit& edit, TimecodeDisplayMode mode) {
-    edit.state.setProperty(IDs::timecodeDisplayMode,
-                           VariantConverter<TimecodeDisplayMode>::toVar(mode),
-                           &edit.getUndoManager());
+    // A view setting: saved with the edit, but outside undo, so switching it
+    // neither lands on Cmd+Z nor marks the edit as changed.
+    edit.state.setProperty(IDs::timecodeDisplayMode, VariantConverter<TimecodeDisplayMode>::toVar(mode), nullptr);
 
     // Keep the te-native property on a value Tracktion understands.
-    const bool musical = mode == TimecodeDisplayMode::barsBeats
-                      || mode == TimecodeDisplayMode::barsBeatsFrames;
-    edit.state.setProperty(te::IDs::timecodeFormat, musical ? "beats" : "seconds",
-                           &edit.getUndoManager());
+    const bool musical = mode == TimecodeDisplayMode::barsBeatsFrames;
+    edit.state.setProperty(te::IDs::timecodeFormat, musical ? "beats" : "seconds", nullptr);
 }
 
 void migrateTimecodeDisplaySettings(te::Edit& edit) {
@@ -35,7 +33,7 @@ void migrateTimecodeDisplaySettings(te::Edit& edit) {
         return;
 
     const auto legacy = parseLegacyTimecodeFormat(edit.state[te::IDs::timecodeFormat].toString());
-    if (! edit.state.hasProperty(IDs::projectFps)) {
+    if (!edit.state.hasProperty(IDs::projectFps)) {
         if (legacy.fps.has_value())
             setProjectFps(edit, *legacy.fps);
     }
@@ -99,7 +97,7 @@ std::vector<int> parseGridSubdivisionPattern(const juce::String& text, int frame
         pattern.back() += framesPerBeat - sum;
     } else if (sum > framesPerBeat) {
         auto excess = sum - framesPerBeat;
-        while (excess > 0 && ! pattern.empty()) {
+        while (excess > 0 && !pattern.empty()) {
             auto& last = pattern.back();
             const auto reduction = std::min(last, excess);
             last -= reduction;
@@ -115,10 +113,24 @@ std::vector<int> parseGridSubdivisionPattern(const juce::String& text, int frame
 }
 
 std::vector<int> getGridSubdivisionPattern(te::Edit& edit, int framesPerBeat) {
-    if (! edit.state.hasProperty(IDs::gridSubdivision))
+    if (!edit.state.hasProperty(IDs::gridSubdivision))
         return getDefaultGridSubdivisionPattern(framesPerBeat);
 
     return parseGridSubdivisionPattern(edit.state[IDs::gridSubdivision].toString(), framesPerBeat);
+}
+
+juce::Optional<std::pair<int, int>> parseTimeSig(const juce::String& text, int currentDenominator) {
+    const auto trimmed = text.trim();
+    const auto numeratorText = trimmed.upToFirstOccurrenceOf("/", false, false).trim();
+    const auto denominatorText = trimmed.fromFirstOccurrenceOf("/", false, false).trim();
+    if (!numeratorText.containsOnly("0123456789") || numeratorText.isEmpty()
+        || (trimmed.containsChar('/') && (denominatorText.isEmpty() || !denominatorText.containsOnly("0123456789"))))
+        return {};
+    const int numerator = numeratorText.getIntValue();
+    const int denominator = trimmed.containsChar('/') ? denominatorText.getIntValue() : currentDenominator;
+    if (numerator < 1 || numerator > 32 || denominator < 1 || denominator > 32 || !juce::isPowerOfTwo(denominator))
+        return {};
+    return std::pair{numerator, denominator};
 }
 
 String formatGridSubdivisionPattern(const std::vector<int>& pattern) {
@@ -137,6 +149,14 @@ void setGridSubdivisionPattern(te::Edit& edit, const std::vector<int>& pattern) 
     edit.state.setProperty(IDs::gridSubdivision, formatGridSubdivisionPattern(pattern), &edit.getUndoManager());
 }
 
+SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt) {
+    const auto fps = getProjectFps(edit);
+    const auto& tempo = edit.tempoSequence.getTempoAt(tempoAt);
+    const auto framesPerBeat = jmax(1, roundToInt(fps * tempo.getApproxBeatLength().inSeconds()));
+
+    return SnapLadder(getTimecodeDisplayMode(edit), fps, framesPerBeat, getGridSubdivisionPattern(edit, framesPerBeat));
+}
+
 juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit) {
     const auto current = getTimecodeDisplayMode(edit);
 
@@ -148,18 +168,15 @@ juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit) {
         it.itemID = nextId++;
         it.text = name;
         it.isTicked = (current == mode);
-        it.action = [&edit, mode] {
-            setTimecodeDisplayMode(edit, mode);
-        };
+        it.action = [&edit, mode] { setTimecodeDisplayMode(edit, mode); };
         return it;
     };
 
     PopupMenu menu;
-    menu.addItem(item("Bars | Beats", TimecodeDisplayMode::barsBeats));
-    menu.addItem(item("Bars | Beats | Frames", TimecodeDisplayMode::barsBeatsFrames));
-    menu.addItem(item("Seconds", TimecodeDisplayMode::seconds));
-    menu.addItem(item("Frames Only", TimecodeDisplayMode::framesOnly));
+    menu.addItem(item("Bars.Beats.Frames", TimecodeDisplayMode::barsBeatsFrames));
+    menu.addItem(item("Minutes:Seconds:Frames", TimecodeDisplayMode::seconds));
+    menu.addItem(item("Frames", TimecodeDisplayMode::framesOnly));
     return menu;
 }
 
-} // namespace MoTool::Helpers
+}  // namespace MoTool::Helpers

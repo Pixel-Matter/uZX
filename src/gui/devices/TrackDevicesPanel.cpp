@@ -62,20 +62,18 @@ void AddButtonComponent::timerCallback() {
 }
 
 //==============================================================================
-TrackDevicesPanel::TrackDevicesPanel(EditViewState& evs)
+TrackDevicesPanel::TrackDevicesPanel(EditViewState& evs, bool editable)
     : editViewState(evs)
+    , editable_(editable)
+    , padding_(deviceSpacing, 0, deviceSpacing, 0)
 {
     viewport.setViewedComponent(&content, false);
     viewport.setScrollBarsShown(false, true);
 
     addAndMakeVisible(viewport);
-
-    editViewState.selectionManager.addChangeListener(this);
 }
 
 TrackDevicesPanel::~TrackDevicesPanel() {
-    editViewState.selectionManager.removeChangeListener(this);
-
     if (currentTrack.get())
         currentTrack.get()->state.removeListener(this);
 
@@ -93,6 +91,11 @@ void TrackDevicesPanel::addButtonClicked(int index) {
     }
 }
 
+void TrackDevicesPanel::setPadding(juce::BorderSize<int> padding) {
+    padding_ = padding;
+    layoutDeviceComponents();
+}
+
 void TrackDevicesPanel::setCurrentTrack(tracktion::Track* track) {
     if (currentTrack.get() == track)
         return;
@@ -107,18 +110,14 @@ void TrackDevicesPanel::setCurrentTrack(tracktion::Track* track) {
     if (currentTrack.get())
         currentTrack.get()->state.addListener(this);
 
-    markAndUpdate(updateDevices);
+    buildPlugins();
 }
 
-void TrackDevicesPanel::changeListenerCallback(juce::ChangeBroadcaster* source) {
-    if (source == &editViewState.selectionManager) {
-        if (auto* selectedTrack = editViewState.selectionManager.getFirstItemOfType<tracktion::Track>()) {
-            setCurrentTrack(selectedTrack);
-        }
-        // else {
-        //     setCurrentTrack(nullptr);
-        // }
-    }
+int TrackDevicesPanel::getMinimumHeight() const {
+    int height = 0;
+    for (auto* device : devices)
+        height = juce::jmax(height, device->getMinimumHeight());
+    return height + padding_.getTopAndBottom();
 }
 
 bool TrackDevicesPanel::shouldBeShown(tracktion::Plugin* p) {
@@ -130,6 +129,9 @@ bool TrackDevicesPanel::shouldBeShown(tracktion::Plugin* p) {
 }
 
 void TrackDevicesPanel::createAndAddNewPluginButton(int index) {
+    if (! editable_)
+        return;
+
     auto addButton = new AddButtonComponent{};
     addButton->button.onClick = [this, index] {
         addButtonClicked(index);
@@ -178,7 +180,7 @@ void TrackDevicesPanel::buildPlugins() {
                 item = std::make_unique<FramelessDeviceItem>(std::move(deviceUI));
             } else {
                 // Framed for regular plugins
-                item = std::make_unique<FramedDeviceItem>(std::move(deviceUI));
+                item = std::make_unique<FramedDeviceItem>(std::move(deviceUI), editable_);
             }
             canHasPlusButtonAfter = item->getDeviceUI()->canHasPlusButtonAfter();
         } else {
@@ -186,7 +188,7 @@ void TrackDevicesPanel::buildPlugins() {
             // TODO move fallback to registry.createDeviceUI method?
             auto genericUI = GenericPluginUIFactory::createGenericUI(plugin);
             if (genericUI) {
-                item = std::make_unique<FramedDeviceItem>(std::move(genericUI));
+                item = std::make_unique<FramedDeviceItem>(std::move(genericUI), editable_);
                 canHasPlusButtonAfter = item->getDeviceUI()->canHasPlusButtonAfter();
             }
         }
@@ -252,20 +254,40 @@ void TrackDevicesPanel::layoutDeviceComponents() {
     juce::ScopedValueSetter<bool> rebuildingGuard(rebuildingDevices_, true, false);
 
     auto height = getHeight();
-    const int childHeight = juce::jmax(0, height - (2 * deviceSpacing));
-    int x = 0;
+    const int childHeight = juce::jmax(0, height - padding_.getTopAndBottom());
+    int x = padding_.getLeft();
+
+    // Without "+" buttons (the Player) the devices fill the width: expanded framed ones share
+    // what the others leave, never below the width they were made with
+    auto stretches = [](Component* c) {
+        auto* framed = dynamic_cast<FramedDeviceItem*>(c);
+        return framed != nullptr && ! framed->isCollapsed() ? framed : nullptr;
+    };
+    int spare = 0, numStretching = 0;
+    if (! editable_) {
+        int natural = padding_.getLeftAndRight() + deviceSpacing * juce::jmax(0, devices.size() - 1);
+        for (auto* device : devices) {
+            auto* framed = stretches(device);
+            natural += framed != nullptr ? framed->getMinimumWidth() : device->getWidth();
+            numStretching += framed != nullptr ? 1 : 0;
+        }
+        spare = juce::jmax(0, getWidth() - natural);
+    }
 
     for (int i = 0; i < content.getNumChildComponents(); ++i) {
         auto* child = content.getChildComponent(i);
         if (child == nullptr || dynamic_cast<DevicePanelItemBase*>(child) == nullptr) {
             continue;
         }
-        const int width = child->getWidth();
-        child->setBounds(x, deviceSpacing, width, childHeight);
+        if (! editable_ && x > padding_.getLeft())
+            x += deviceSpacing;  // no "+" buttons to keep devices apart
+        auto* framed = editable_ ? nullptr : stretches(child);
+        const int width = framed != nullptr ? framed->getMinimumWidth() + spare / numStretching : child->getWidth();
+        child->setBounds(x, padding_.getTop(), width, childHeight);
         x += width;
     }
 
-    content.setSize(x, height);
+    content.setSize(x + padding_.getRight(), height);
 
     viewport.getViewedComponent()->repaint();
     repaint();

@@ -199,7 +199,8 @@ void MoLookAndFeel::drawButtonBackground(Graphics& g, Button& button,
 
 //==============================================================================
 Font MoLookAndFeel::getSmallFont(float pointHeigth) {
-    return withDefaultMetrics(FontOptions().withPointHeight(jmin(16.0f, pointHeigth)));
+    // a control squeezed below the font's size still gets a valid font, too small to read
+    return withDefaultMetrics(FontOptions().withPointHeight(jlimit(1.0f, 16.0f, pointHeigth)));
 }
 
 Font MoLookAndFeel::getComboBoxFont(ComboBox& box) {
@@ -376,6 +377,8 @@ void MoLookAndFeel::drawRotarySlider(Graphics& g,
     auto toAngle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
     auto lineW = jmax(2.0f, radius * 0.15f);
     auto arcRadius = radius - lineW * 0.5f;
+    if (arcRadius - lineW * 1.5f <= 0.0f)  // squeezed below the arc and the body: nothing to draw
+        return;
 
     Path backgroundArc;
     backgroundArc.addCentredArc(

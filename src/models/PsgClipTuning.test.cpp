@@ -15,13 +15,16 @@ class PsgClipTuningTest : public UnitTest
 public:
     PsgClipTuningTest() : UnitTest("PsgClipTuning", "MoTool") {}
 
-    /** A clip playing every PT #1 note of an A minor scale on channel A, one frame each. */
-    static uZX::PsgData aMinorOnPt1() {
+    /** A clip playing every PT #1 note of an A minor scale on channel A, one frame each;
+        only the pitch classes `keep` accepts, when given. */
+    static uZX::PsgData aMinorOnPt1(std::function<bool (int)> keep = {}) {
         uZX::PsgData data{{}, {50.0, 1}};
         const auto& grid = getBuiltinPeriodGrid(BuiltinTuningType::CustomPT_1_ST);
         for (const auto& [period, note] : grid) {
             const int pc = note % 12;
             if (note < 45 || note > 81 || !(pc == 9 || pc == 11 || pc == 0 || pc == 2 || pc == 4 || pc == 5 || pc == 7))
+                continue;
+            if (keep && ! keep(pc))
                 continue;
             const int weight = pc == 9 ? 6 : pc == 4 || pc == 0 ? 3 : 1;  // tonic, fifth, third lead
             for (int k = 0; k < weight; ++k)
@@ -70,7 +73,7 @@ public:
             auto held = insert(data);
             expect(held != nullptr);
             if (held != nullptr) {
-                const auto hist = held->buildPitchHistogram();
+                const auto hist = held->getPitchHistogram();
                 expectEquals(
                     hist.tone.at(periodOf(57)), 250, "both held As count every frame, the last to the clip end");
                 expectEquals(hist.tone.at(periodOf(60)), 2);
@@ -137,15 +140,44 @@ public:
         beginTest("A stored A4 wins over a stored table; a damaged A4 is ignored");
         {
             clip->state.setProperty(IDs::clipTuningA4, 436.0, nullptr);
-            expect(clip->getTuning().isEqualTemperament && !clip->getTuning().table.has_value());
+            expect(clip->getTuning().fit.has_value() && !clip->getTuning().table.has_value());
             expectEquals(clip->getTuning().tableLabel, String("12TET 436 Hz"));
             for (const var& damaged : {var(0.0), var(-440.0), var(std::nan("")), var("abc"), var(5000.0)}) {
                 clip->state.setProperty(IDs::clipTuningA4, damaged, nullptr);
-                expect(!clip->getTuning().isEqualTemperament, "ignored A4 " + damaged.toString());
+                expect(!clip->getTuning().fit.has_value(), "ignored A4 " + damaged.toString());
                 expect(clip->getTuning().table.has_value()
                        && *clip->getTuning().table == BuiltinTuningType::CustomPT_2_ASM);
             }
+            clip->state.setProperty(IDs::clipTuningA4, 440.0, nullptr);
+            clip->state.setProperty(IDs::clipTuningClock, 2000000.0, nullptr);
+            expectEquals(clip->getTuning().tableLabel, String("12TET 440 Hz Atari ST"));
+            for (const var& damaged : {var(0.0), var(std::nan("")), var("abc"), var(1.0e9)}) {
+                clip->state.setProperty(IDs::clipTuningClock, damaged, nullptr);
+                expect(!clip->getTuning().fit.has_value(), "ignored clock " + damaged.toString());
+            }
+            clip->state.removeProperty(IDs::clipTuningClock, nullptr);
             clip->state.removeProperty(IDs::clipTuningA4, nullptr);
+        }
+
+        beginTest("A chosen fit stores its system, tonic, A4 and clock");
+        {
+            const double pentagon = uZX::ChipClockEnum::clockValues[uZX::ChipClockEnum::Pentagon_1_75_MHz];
+            clip->chooseFit({TuningSystemType::Just5Limit, Scale::Tonic::D, 433.0, pentagon});
+            const auto& tuning = clip->getTuning();
+            expect(tuning.tableChosen && tuning.fit.has_value() && !tuning.table.has_value());
+            expectEquals(tuning.tableLabel, String("5LJI D 433 Hz Pentagon"));
+            expect(tuning.grid == makeFitGrid({TuningSystemType::Just5Limit, Scale::Tonic::D, 433.0, pentagon}));
+            for (const auto& [id, damaged] : {std::pair{&IDs::clipTuningSystem, var("NoSuchSystem")},
+                                              std::pair{&IDs::clipTuningSystem, var("CustomRational")},
+                                              std::pair{&IDs::clipTuningTonic, var(12)}}) {
+                const auto kept = clip->state[*id];
+                clip->state.setProperty(*id, damaged, nullptr);
+                expect(!clip->getTuning().fit.has_value(), "ignored " + id->toString() + " " + damaged.toString());
+                clip->state.setProperty(*id, kept, nullptr);
+            }
+            clip->chooseTuningTable(BuiltinTuningType::CustomPT_2_ASM);
+            for (const auto* id : {&IDs::clipTuningA4, &IDs::clipTuningClock, &IDs::clipTuningSystem, &IDs::clipTuningTonic})
+                expect(!clip->state.hasProperty(*id), "a table choice drops " + id->toString());
         }
 
         beginTest("An unknown table name falls back to the detection");
@@ -181,6 +213,41 @@ public:
                 quiet->chooseTuningTable(BuiltinTuningType::CustomPT_1_ST);
                 expectEquals(quiet->getTuning().tableLabel, String("PT #1"));
             }
+        }
+
+        beginTest("Clips played together are detected together, as a Turbo Sound tune");
+        {
+            auto setEdit = te::Edit::createSingleTrackEdit(engine);
+            setEdit->ensureNumberOfAudioTracks(2);
+            const auto tracks = te::getAudioTracks(*setEdit);
+            const auto insertOn = [](te::AudioTrack& track, uZX::PsgData data) {
+                const auto length = te::TimeDuration::fromSeconds(data.getLengthSeconds());
+                return PsgClip::insertTo(track, data, {{te::TimePosition(), length}, {}}, "t");
+            };
+            // the tonic triad on one chip, the rest of the scale on the other
+            auto triad = insertOn(*tracks[0], aMinorOnPt1([](int pc) { return pc == 9 || pc == 0 || pc == 4; }));
+            auto rest = insertOn(*tracks[1], aMinorOnPt1([](int pc) { return pc == 11 || pc == 2 || pc == 5 || pc == 7; }));
+            const auto together = detectTuningTogether({triad.get(), rest.get()});
+            expect(together.hasNotes);
+            expectEquals(together.keys.front().getName(), String("A minor"));
+            expectEquals(together.getTableLabel(), String("PT #1"));
+            expectEquals(together.histogram.getTotal(),
+                         triad->getTuningDetection().histogram.getTotal() + rest->getTuningDetection().histogram.getTotal());
+
+            // Linked as one tune, every clip has the tune's detection, and a choice on one is on all.
+            PsgClip::linkAsOneTune({triad.get(), rest.get()});
+            for (auto* clip : {triad.get(), rest.get()}) {
+                expectEquals(clip->getTuneClips().size(), 2);
+                expectEquals(clip->getTuningDetection().histogram.getTotal(), together.histogram.getTotal());
+                expectEquals(clip->getTuning().key.getName(), String("A minor"));
+                expectEquals(clip->getTuning().tableLabel, String("PT #1"));
+            }
+            rest->chooseKey({Scale::Tonic(0), false, 1.0f});
+            expectEquals(triad->getTuning().key.getName(), String("C major"));
+            expect(triad->getTuning().keyChosen);
+            triad->clearTuningChoice();
+            expect(! rest->getTuning().keyChosen);
+            expectEquals(rest->getTuning().key.getName(), String("A minor"));
         }
     }
 };

@@ -10,6 +10,7 @@
 #include "../gui/main/MainDocument.h"
 #include "../gui/main/AboutDialog.h"
 #include "../gui/timeline/PsgClipComponent.h"
+#include "../gui/video/RenderVideoDialog.h"
 
 #include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
@@ -31,6 +32,43 @@ using namespace MoTool::Commands;
 using namespace MoTool::Helpers;
 
 namespace MoTool {
+
+namespace {
+/** View > Viz Options: what Viz mode, and a rendered video, show and in which colours. The Player
+    shows a change as it is saved. */
+PopupMenu buildVizOptionsMenu(ApplicationCommandManager& commands, PropertiesFile& settings) {
+    const auto current = VizOptions::load(settings);
+    auto choose = [&settings](std::function<void(VizOptions&)> change) {
+        return [&settings, change] {
+            auto options = VizOptions::load(settings);
+            change(options);
+            options.save(settings);
+        };
+    };
+
+    PopupMenu menu;
+    for (int i = 0; i < VizOptions::layoutNames.size(); ++i) {
+        const auto layout = (VizOptions::Layout) i;
+        menu.addItem(VizOptions::layoutNames[i], true, current.layout == layout,
+                     choose([layout](VizOptions& o) { o.layout = layout; }));
+    }
+    menu.addCommandItem(&commands, MainAppCommands::viewNextVizLayout);
+    menu.addSeparator();
+    for (int i = 0; i < VizOptions::scopesNames.size(); ++i) {
+        const auto scopes = (VizOptions::Scopes) i;
+        menu.addItem(VizOptions::scopesNames[i], true, current.scopes == scopes,
+                     choose([scopes](VizOptions& o) { o.scopes = scopes; }));
+    }
+    menu.addCommandItem(&commands, MainAppCommands::viewSwitchVizScopes);
+    menu.addSeparator();
+    for (int i = 0; i < VizOptions::colourNames.size(); ++i) {
+        const auto colours = (VizOptions::Colours) i;
+        menu.addItem(VizOptions::colourNames[i], true, current.colours == colours,
+                     choose([colours](VizOptions& o) { o.colours = colours; }));
+    }
+    return menu;
+}
+}  // namespace
 
 void registerPlugins(te::Engine& engine) {
     engine.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
@@ -88,7 +126,13 @@ void AppController::initialize() {
     setApplicationCommandManagerToWatch(&commandManager_);
 
     #if JUCE_MAC
-    setMacMainMenu(this);
+    // macOS puts About and Settings in the app menu, next to the Quit item it adds itself
+    PopupMenu appMenu;
+    appMenu.addCommandItem(&commandManager_, MainAppCommands::helpAbout,
+                           "About " + JUCEApplication::getInstance()->getApplicationName());
+    appMenu.addSeparator();
+    appMenu.addCommandItem(&commandManager_, MainAppCommands::settingsAudioMidi, "Settings...");
+    setMacMainMenu(this, &appMenu);
     #else
     // Menu bar is set on the window in ArrangerController::initialize()
     #endif
@@ -265,9 +309,16 @@ void AppController::showAboutDialog() {
 // MenuBarModel
 //==============================================================================
 StringArray AppController::getMenuBarNames() {
-    if (MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer)
-        return { "File", "Transport", "View", "Settings", "Help" };
-    return MainAppCommands::getMenuBarNames();
+    const bool isPlayer = MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer;
+    auto names = isPlayer ? StringArray { "File", "Edit", "Transport", "View", "Settings", "Help" }
+                          : MainAppCommands::getMenuBarNames();
+   #if JUCE_MAC
+    // About and Settings are in the app menu, see initialize()
+    names.removeString("Help");
+    if (isPlayer)
+        names.removeString("Settings");
+   #endif
+    return names;
 }
 
 PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menuName) {
@@ -297,18 +348,20 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
 
         menu.addSeparator();
 
-        if (!isPlayer) {
-            menu.addCommandItem(&commandManager_, MainAppCommands::fileSave);
-            menu.addCommandItem(&commandManager_, MainAppCommands::fileSaveAs);
-            menu.addCommandItem(&commandManager_, MainAppCommands::fileReveal);
-            menu.addSeparator();
-        }
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileSave);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileSaveAs);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileReveal);
+        menu.addSeparator();
 
         menu.addCommandItem(&commandManager_, MainAppCommands::fileImportPsg);
         if (!isPlayer)
             menu.addCommandItem(&commandManager_, MainAppCommands::fileImportAudio);
         menu.addSeparator();
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileRenderVideo);
+       #if ! JUCE_MAC  // macOS has Quit in the app menu
+        menu.addSeparator();
         menu.addCommandItem(&commandManager_, MainAppCommands::fileQuit);
+       #endif
 
         return menu;
     }
@@ -316,7 +369,10 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
     if (isPlayer) {
         // Reduced menu set for player
         PopupMenu menu;
-        if (menuName == "Transport") {
+        if (menuName == "Edit") {
+            menu.addCommandItem(&commandManager_, MainAppCommands::editUndo);
+            menu.addCommandItem(&commandManager_, MainAppCommands::editRedo);
+        } else if (menuName == "Transport") {
             menu.addCommandItem(&commandManager_, MainAppCommands::transportPlay);
             menu.addCommandItem(&commandManager_, MainAppCommands::transportToStart);
             menu.addSeparator();
@@ -328,6 +384,11 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::viewSnapPlayheadToGrid);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewNoteLanes);
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewPianoKeys);
+            menu.addSeparator();
+            menu.addCommandItem(&commandManager_, MainAppCommands::viewVizMode);
+            menu.addSubMenu("Viz Options",
+                            buildVizOptionsMenu(commandManager_, engine_.getPropertyStorage().getPropertiesFile()));
             if (auto* edit = MoToolApp::getPlayerController().getEdit()) {
                 menu.addSeparator();
                 menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
@@ -384,6 +445,11 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::fileReveal:
+            // the Player's opened PSG files live in the temp folder until saved
+            result.setActive(edit != nullptr && (!isPlayer || !EditFileOps::isTempEdit(*edit)));
+            break;
+
+        case MainAppCommands::fileRenderVideo:
             result.setActive(edit != nullptr);
             break;
 
@@ -420,6 +486,12 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
 
         case MainAppCommands::editRedo:
             result.setActive(edit != nullptr && edit->getUndoManager().canRedo());
+            break;
+
+        // the Player can't add tracks or chips back, and has no Tuning window
+        case MainAppCommands::editDelete:
+        case MainAppCommands::settingsTuningTables:
+            result.setActive(!isPlayer);
             break;
 
         // TODO  Theese commands are not being updated on selection change, only transportPlay and transportRecordStop are updated
@@ -476,6 +548,26 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             result.setTicked(areNoteLanesShown(engine_));
             break;
 
+        case MainAppCommands::viewPianoKeys:
+            result.setActive(areNoteLanesShown(engine_));
+            result.setTicked(arePianoKeysShown(engine_));
+            break;
+
+        case MainAppCommands::viewVizMode:
+            result.setActive(isPlayer && edit != nullptr);
+            result.setTicked(isPlayer && MoToolApp::getPlayerController().isVizMode());
+            break;
+
+        case MainAppCommands::viewExitVizMode:
+        case MainAppCommands::viewNextVizLayout:
+            result.setActive(isPlayer && MoToolApp::getPlayerController().isVizMode());
+            break;
+
+        case MainAppCommands::viewSwitchVizScopes:
+            result.setActive(isPlayer && MoToolApp::getPlayerController().isVizMode()
+                             && VizOptions::load(engine_.getPropertyStorage().getPropertiesFile()).showsScopes());
+            break;
+
         case MainAppCommands::viewSnapPlayheadToGrid:
             if (auto* editViewState = controller.getEditViewState()) {
                 result.setActive(true);
@@ -528,20 +620,23 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::fileSave:
-            if (!isPlayer) te::AppFunctions::saveEdit();
+            if (isPlayer)
+                MoToolApp::getPlayerController().handleSave();
+            else
+                te::AppFunctions::saveEdit();
             break;
 
         case MainAppCommands::fileSaveAs:
-            if (!isPlayer) MoToolApp::getArrangerController().handleSaveAs();
+            if (isPlayer)
+                MoToolApp::getPlayerController().handleSaveAs();
+            else
+                MoToolApp::getArrangerController().handleSaveAs();
             break;
 
         case MainAppCommands::fileReveal:
-            if (!isPlayer) {
-                auto* edit = MoToolApp::getArrangerController().getEdit();
-                if (edit != nullptr) {
-                    EditFileOps::saveEdit(*edit, false, true, false);
-                    te::EditFileOperations(*edit).getEditFile().revealToUser();
-                }
+            if (auto* edit = MoToolApp::getActiveController().getEdit()) {
+                EditFileOps::saveEdit(*edit, false, true, false);
+                te::EditFileOperations(*edit).getEditFile().revealToUser();
             }
             break;
 
@@ -563,6 +658,11 @@ bool AppController::perform(const InvocationInfo& info) {
                     importAudioAsClip(*edit, selectionManager_);
                 }
             }
+            break;
+
+        case MainAppCommands::fileRenderVideo:
+            if (auto* edit = MoToolApp::getActiveController().getEdit())
+                showRenderVideoDialog(*edit);
             break;
 
         case MainAppCommands::fileQuit:
@@ -683,6 +783,36 @@ bool AppController::perform(const InvocationInfo& info) {
             commandManager_.commandStatusChanged();
             break;
 
+        case MainAppCommands::viewPianoKeys:
+            setPianoKeysShown(engine_, ! arePianoKeysShown(engine_));
+            commandManager_.commandStatusChanged();
+            break;
+
+        case MainAppCommands::viewVizMode:
+        case MainAppCommands::viewExitVizMode:
+            if (isPlayer) {
+                auto& player = MoToolApp::getPlayerController();
+                player.setVizMode(info.commandID == MainAppCommands::viewVizMode && ! player.isVizMode());
+                commandManager_.commandStatusChanged();
+            }
+            break;
+
+        case MainAppCommands::viewNextVizLayout: {
+            auto& settings = engine_.getPropertyStorage().getPropertiesFile();
+            auto options = VizOptions::load(settings);
+            options.layout = options.nextLayout();
+            options.save(settings);  // the Player shows it
+            break;
+        }
+
+        case MainAppCommands::viewSwitchVizScopes: {
+            auto& settings = engine_.getPropertyStorage().getPropertiesFile();
+            auto options = VizOptions::load(settings);
+            options.scopes = options.otherScopes();
+            options.save(settings);  // the Player shows it
+            break;
+        }
+
         // Settings commands
         case MainAppCommands::settingsAudioMidi:
             te::AppFunctions::showSettingsScreen();
@@ -744,6 +874,7 @@ BaseController::~BaseController() {
 
 void BaseController::initialize() {
     engine_.getDeviceManager().addChangeListener(this);
+    masterVolume_.addListener(this);
 
     auto edit = createOrLoadStartupEdit();
     if (edit == nullptr)  // the last project is unreadable: start with an empty one
@@ -752,6 +883,20 @@ void BaseController::initialize() {
 
     window_.restoreWindowBounds();
     window_.addKeyListener(MoToolApp::getCommandManager().getKeyMappings());
+}
+
+static const char* const masterVolumeDbKey = "masterVolumeDb";
+
+void BaseController::useGlobalMasterVolume() {
+    auto& storage = dynamic_cast<PropertyStorage&>(engine_.getPropertyStorage());
+    auto masterVolume = edit_->getMasterVolumePlugin();
+    masterVolume->setVolumeDb(static_cast<float>(storage.getCustomProperty(masterVolumeDbKey, 0.0)));
+    masterVolume_.referTo(masterVolume->state.getPropertyAsValue(te::IDs::volume, nullptr));
+}
+
+void BaseController::valueChanged(Value&) {
+    auto& storage = dynamic_cast<PropertyStorage&>(engine_.getPropertyStorage());
+    storage.setCustomProperty(masterVolumeDbKey, edit_->getMasterVolumePlugin()->getVolumeDb());
 }
 
 void BaseController::bringWindowToFront() {
@@ -991,6 +1136,7 @@ void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) 
 
     edit_->playInStopEnabled = true;
     migrateTimecodeDisplaySettings(*edit_);
+    useGlobalMasterVolume();
 
     createTracksAndAssignInputs();
     playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);

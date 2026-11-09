@@ -22,10 +22,9 @@ namespace {
     }
 }
 
-ZoomViewState::ZoomViewState(te::Edit& e)
-  : edit(e)
+ZoomViewState::ZoomViewState(te::Edit& e, ValueTree s)
+  : edit(e), state(s)
 {
-    state = edit.state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr);
     // Saved with the edit, but kept out of undo: scrolling and zooming are not edits
     viewStartTime.referTo(state, IDs::viewStartTime, nullptr, 0s);
     viewTimePerPixel.referTo(state, IDs::viewTimePerPixel, nullptr, 60s / (double) viewWidthPx.load());
@@ -118,10 +117,18 @@ bool ZoomViewState::jumpToCurrentPosition() {
 }
 
 te::TimePosition ZoomViewState::getPlayheadPosition() const {
+    if (offlineFrames)
+        return framePlayhead;
     auto& transport = edit.getTransport();
     if (!transport.isPlaying() && !transport.isRecording())
         return transport.getPosition();
+    if (framePlayheadValid && areFramesRunning())
+        return framePlayhead;
+    return getHeardPosition();
+}
 
+te::TimePosition ZoomViewState::getHeardPosition() const {
+    auto& transport = edit.getTransport();
     // Tracktion already takes the graph's own latency off the transport position, but the device
     // sounds each block only after its output latency (buffer, driver, Bluetooth...). After a jump,
     // wait at the new position until it is heard rather than stepping back before it.
@@ -129,6 +136,47 @@ te::TimePosition ZoomViewState::getPlayheadPosition() const {
     // map the wrap if that shows with long latencies.
     auto latency = te::TimeDuration::fromSeconds(edit.engine.getDeviceManager().getOutputLatencySeconds());
     return std::max(transport.getPosition() - latency, lastJumpPosition);
+}
+
+void ZoomViewState::reportHeardPosition() {
+    const auto heard = getHeardPosition();
+    playheadClock.report(heard.inSeconds(), Time::getMillisecondCounterHiRes(), heard > lastJumpPosition);
+}
+
+bool ZoomViewState::areFramesRunning() const {
+    return Time::getMillisecondCounterHiRes() - lastFrameMs < framesStopAfterMs;
+}
+
+void ZoomViewState::advanceFrame(double timestampSec) {
+    // Every frame, playing or not, so the frames' period and times are ready when playback starts
+    displayFrames.add(timestampSec, Time::getMillisecondCounterHiRes());
+
+    auto& transport = edit.getTransport();
+    if (!transport.isPlaying() && !transport.isRecording())
+        return;  // nothing moves by itself
+
+    // ponytail: frameLead is a fixed one frame of display pipeline; tune it by eye against the sound,
+    // or measure the presentation time per platform if that varies.
+    // Where the playhead is by the time the frame is seen
+    lastFrameMs = Time::getMillisecondCounterHiRes();
+    auto pos = te::TimePosition::fromSeconds(
+        playheadClock.positionAt(displayFrames.getFrameMs() + displayFrames.getPeriod() * frameLead * 1000.0));
+    if (transport.looping)
+        pos = std::min(pos, transport.getLoopRange().getEnd());  // the wrap report comes later
+    framePlayhead = pos;
+    framePlayheadValid = true;
+
+    handlePlaybackScrolling();
+    markAndUpdate(updatePlayhead);
+    handleUpdateNowIfNeeded();
+}
+
+void ZoomViewState::showOfflineFrame(te::TimePosition pos) {
+    offlineFrames = true;
+    framePlayhead = pos;
+    followPlayhead(pos);
+    markAndUpdate(updatePlayhead);
+    handleUpdateNowIfNeeded();
 }
 
 void ZoomViewState::zoomHorizontally(double factor) {
@@ -194,16 +242,25 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
             // << " dragging: " << (int) tc.isUserDragging()
             // << " playing: " << (int) tc.isPlaying());
         auto pos = tc.getPosition();
-        if (!tc.isPositionUpdatingFromPlayhead() || pos < lastTransportPosition)
+        const bool jumped = !tc.isPositionUpdatingFromPlayhead() || pos < lastTransportPosition;
+        if (jumped) {
             lastJumpPosition = pos;
+            framePlayheadValid = false;  // show the jump now, not the frame's old position
+        }
         lastTransportPosition = pos;
-        handlePlaybackScrolling();
-        markAndUpdate(updatePlayhead);
+        reportHeardPosition();
+        // While frames run they move the playhead and the view; reports only feed the clock
+        if (jumped || !areFramesRunning()) {
+            handlePlaybackScrolling();
+            markAndUpdate(updatePlayhead);
+        }
     }
     handleUpdateNowIfNeeded();
 }
 
 bool ZoomViewState::isFollowingPlayhead() const {
+    if (offlineFrames)
+        return true;  // as in playback, which lets clips scroll their cached content
     auto& transport = edit.getTransport();
     return (transport.isPlaying() || transport.isRecording()) && !userDraggingView
         && Time::getMillisecondCounter() - lastWheelScrollMs >= wheelFollowPauseMs;
@@ -212,18 +269,8 @@ bool ZoomViewState::isFollowingPlayhead() const {
 void ZoomViewState::handlePlaybackScrolling() {
     auto& transport = edit.getTransport();
     if (transport.isPlaying() || transport.isRecording()) {
-        if (!isFollowingPlayhead())
-            return;  // the user holds or has just scrolled the view
-        auto pos = getPlayheadPosition();
-        // DBG("ZoomViewState::handlePlaybackScrolling, pos: " << pos.inSeconds());
-        auto range = getRange();
-        auto leftRange = range.getLength() / 3.0;
-        if (pos < viewStartTime || pos > viewStartTime + leftRange) {
-            auto newX1 = jmax(te::TimePosition(), pos - leftRange);
-            if (newX1 != viewStartTime) {
-                setStart(newX1);
-            }
-        }
+        if (isFollowingPlayhead())  // else the user holds or has just scrolled the view
+            followPlayhead(getPlayheadPosition());
     } else if (!transport.isUserDragging() && !userDraggingView) {
         // assuming autojump to current position when stopped
         // DBG("ZoomViewState::handlePlaybackScrolling, jumping to pos (not dragging, not playing)");
@@ -233,11 +280,28 @@ void ZoomViewState::handlePlaybackScrolling() {
     }
 }
 
+void ZoomViewState::followPlayhead(te::TimePosition pos) {
+    const auto leftRange = getViewSpan() / 3.0;
+    if (pos < viewStartTime || pos > viewStartTime + leftRange) {
+        // On the timeline's whole pixels, so what is drawn keeps its place within a pixel and
+        // clips can blit their cached content (PsgClipComponent) in line with the ruler and the playhead
+        const auto timePerPixel = getTimePerPixel();
+        auto newX1 = te::TimePosition() + timePerPixel * std::floor(jmax(te::TimePosition(), pos - leftRange)
+                                                                         .inSeconds() / timePerPixel.inSeconds());
+        if (newX1 != viewStartTime)
+            setStart(newX1);
+    }
+}
+
 void ZoomViewState::startVideo() {
     lastJumpPosition = lastTransportPosition = edit.getTransport().getPosition();
+    framePlayheadValid = false;
+    reportHeardPosition();
 }
 
 void ZoomViewState::stopVideo() {
+    framePlayheadValid = false;
+    lastFrameMs = -1.0e9;  // stopped, the transport moves the playhead again
     // the playhead goes back to the transport position, which does not change on stop
     markAndUpdate(updatePlayhead);
 }
@@ -254,16 +318,63 @@ void ZoomViewState::handleAsyncUpdate() {
 }
 
 //==============================================================================
+// VizOptions
+
+namespace {
+    constexpr auto vizLayoutSetting = "vizLayout";
+    constexpr auto vizColoursSetting = "vizColours";
+    constexpr auto vizScopesSetting = "vizScopes";
+
+    template <typename Enum>
+    Enum loadVizEnum(PropertiesFile& p, const char* name, Enum fallback, const StringArray& names) {
+        const int value = p.getIntValue(name, (int) fallback);
+        return isPositiveAndBelow(value, names.size()) ? (Enum) value : fallback;
+    }
+}
+
+VizOptions VizOptions::load(PropertiesFile& p) {
+    VizOptions o;
+    o.layout = loadVizEnum(p, vizLayoutSetting, o.layout, layoutNames);
+    o.colours = loadVizEnum(p, vizColoursSetting, o.colours, colourNames);
+    o.scopes = loadVizEnum(p, vizScopesSetting, o.scopes, scopesNames);
+    return o;
+}
+
+void VizOptions::save(PropertiesFile& p) const {
+    p.setValue(vizLayoutSetting, (int) layout);
+    p.setValue(vizColoursSetting, (int) colours);
+    p.setValue(vizScopesSetting, (int) scopes);
+}
+
+//==============================================================================
 // EditViewState
 
-EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s)
-  : state(e.state.getOrCreateChildWithName(IDs::EDITVIEWSTATE, nullptr))
-  , zoom(e)
+namespace {
+    ValueTree viewSettings(te::Edit& e, const Identifier& type, bool detached) {
+        auto settings = e.state.getOrCreateChildWithName(type, nullptr);
+        return detached ? settings.createCopy() : settings;
+    }
+}
+
+void EditViewState::showAsPlayer(bool viz, VizOptions options) {
+    showHeaders = false;
+    showClipHeaders = false;
+    vizMode = viz;
+    vizOptions = options;
+    showFooters = ! viz || options.showsScopes();
+}
+
+EditViewState::EditViewState(te::Edit& e, te::SelectionManager& s, bool detached)
+  : state(viewSettings(e, IDs::EDITVIEWSTATE, detached))
+  , zoom(e, viewSettings(e, IDs::ZOOMVIEWSTATE, detached))
   , selectionManager(s), edit(e)
 {
     preservePsgTimingOnTempoChange.referTo(state, IDs::preservePsgTimingOnTempoChange, nullptr, true);
     snapPlayheadToGrid.referTo(state, IDs::snapPlayheadToGrid, nullptr, true);
     headersWidth.referTo(state, IDs::headersWidth, nullptr, minHeadersWidth);
+    vizScopesWidth.referTo(state, IDs::vizScopesWidth, nullptr, footerWidth);
+    vizScopesShare.referTo(state, IDs::vizScopesShare, nullptr, 35);
+    footersWidth.referTo(state, IDs::footersWidth, nullptr, footerWidth);
 }
 
 void EditViewState::setPreservePsgTimingOnTempoChange(bool shouldPreserve) {

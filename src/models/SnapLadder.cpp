@@ -27,6 +27,14 @@ constexpr std::array barMultiples { 1, 2, 4, 8, 16, 64, 128, 256, 1024 };
 
 constexpr int roundDownDir = -1, roundNearestDir = 0, roundUpDir = 1;
 
+/** MM:SS:FF at the project fps; minutes keep counting past the hour. */
+String clockLabel(te::TimePosition t, double fps) {
+    const auto framesPerSecond = std::max(1, roundToInt(fps));
+    const auto frames = roundToInt(std::max(0.0, t.inSeconds()) * fps);
+    const auto seconds = frames / framesPerSecond;
+    return String::formatted("%02d:%02d:%02d", seconds / 60, seconds % 60, frames % framesPerSecond);
+}
+
 double snapToIntegerFrame(double frame) {
     auto rounded = std::round(frame);
     return std::abs(frame - rounded) < frameTolerance ? rounded : frame;
@@ -57,14 +65,6 @@ SnapLadder::SnapLadder(TimecodeDisplayMode mode, double fps, int framesPerBeat,
     };
 
     switch (mode_) {
-        case TimecodeDisplayMode::seconds:
-            addTeLevels(te::TimecodeType::millisecs, 0, 12);
-            break;
-
-        case TimecodeDisplayMode::barsBeats:
-            addTeLevels(te::TimecodeType::barsBeats, 0, 18);
-            break;
-
         case TimecodeDisplayMode::barsBeatsFrames: {
             auto bounds = groupBoundariesFor(std::max(1, framesPerBeat));
             auto minGroup = std::max(1, framesPerBeat);
@@ -87,6 +87,7 @@ SnapLadder::SnapLadder(TimecodeDisplayMode mode, double fps, int framesPerBeat,
             break;
         }
 
+        case TimecodeDisplayMode::seconds:
         case TimecodeDisplayMode::framesOnly: {
             addFrameLevels(std::max(1, roundToInt(fps_)), frameMultiples);
             firstTeLevel_ = (int) levels_.size();
@@ -107,7 +108,7 @@ SnapLadder::LevelKind SnapLadder::getKind(int level) const noexcept {
 SnapLadder::FrameContext SnapLadder::frameContextAt(te::TimePosition t, const te::TempoSequence& ts) const {
     FrameContext ctx;
 
-    if (mode_ == TimecodeDisplayMode::framesOnly) {
+    if (isClock()) {
         const auto framesPerSecond = std::max(1, roundToInt(fps_));
         const auto totalFrames = snapToIntegerFrame(std::max(0.0, t.inSeconds()) * fps_);
         const auto second = std::floor(totalFrames / framesPerSecond);
@@ -338,7 +339,7 @@ int SnapLadder::getMilestoneAfter(int level) const {
 
     switch (getKind(level)) {
         case LevelKind::frames:
-            if (mode_ == TimecodeDisplayMode::framesOnly)
+            if (isClock())
                 return firstTeLevel_;
             if (beatLevel_ > 0 && levels_[(size_t) beatLevel_ - 1].kind == LevelKind::subdivision)
                 return beatLevel_ - 1;
@@ -349,16 +350,8 @@ int SnapLadder::getMilestoneAfter(int level) const {
             return barLevel_;
         case LevelKind::bar:
             return clampLevel(level + 2);
-        case LevelKind::teSnap: {
-            if (mode_ == TimecodeDisplayMode::barsBeats) {
-                const auto teLevel = levels_[(size_t) level].snap.getLevel();
-                if (teLevel < 9)
-                    return clampLevel(9);
-                if (teLevel == 9)
-                    return clampLevel(10);
-            }
+        case LevelKind::teSnap:
             return clampLevel(level + 2);
-        }
     }
 
     jassertfalse;
@@ -367,12 +360,14 @@ int SnapLadder::getMilestoneAfter(int level) const {
 
 //==============================================================================
 String SnapLadder::getLabel(int level, te::TimePosition t, const te::TempoSequence& ts) const {
+    if (mode_ == TimecodeDisplayMode::seconds)
+        return clockLabel(t, fps_);
+    if (mode_ == TimecodeDisplayMode::framesOnly)
+        return String(roundToInt(t.inSeconds() * fps_));
+
     const auto& lvl = levels_[(size_t) level];
 
     if (lvl.kind == LevelKind::frames || lvl.kind == LevelKind::subdivision) {
-        if (mode_ == TimecodeDisplayMode::framesOnly)
-            return te::TimecodeDisplayFormat::toFullTimecode(t, roundToInt(fps_));
-
         // The maximum value we can add without shoving a time into the next slot.
         static constexpr auto nudge = te::TimeDuration::fromSeconds(0.05 / 96000.0);
 
@@ -390,6 +385,47 @@ String SnapLadder::getLabel(int level, te::TimePosition t, const te::TempoSequen
     }
 
     return lvl.snap.getTimecodeString(t, ts, false).replace("|", ".").replace("Bar ", "");
+}
+
+String SnapLadder::getPositionLabel(te::TimePosition t, const te::TempoSequence& ts) const {
+    return getLabel(0, roundNearest(0, t, ts), ts);
+}
+
+juce::Optional<te::TimePosition> SnapLadder::parsePosition(const String& text, const te::TempoSequence& ts) const {
+    if (mode_ == TimecodeDisplayMode::framesOnly) {
+        const auto frames = text.trim();
+        if (frames.isEmpty() || ! frames.containsOnly("0123456789"))
+            return {};
+        return te::TimePosition::fromSeconds(frames.getIntValue() / fps_);
+    }
+
+    const bool musical = mode_ == TimecodeDisplayMode::barsBeatsFrames;
+    auto parts = StringArray::fromTokens(text, musical ? ".|:, " : ": ", "");
+    parts.removeEmptyStrings();
+
+    if (! musical && parts.size() == 1 && parts[0].containsOnly("0123456789.") && parts[0].containsAnyOf("0123456789"))
+        return te::TimePosition::fromSeconds(parts[0].getDoubleValue());
+
+    if (parts.isEmpty() || parts.size() > 3)
+        return {};
+    for (const auto& p : parts)
+        if (! p.containsOnly("0123456789"))
+            return {};
+
+    if (musical) {
+        const int bar = std::max(1, parts[0].getIntValue());
+        const int beat = parts.size() > 1 ? std::max(1, parts[1].getIntValue()) : 1;
+        const int frame = parts.size() > 2 ? parts[2].getIntValue() : 0;
+        const auto beatStart = ts.toTime(te::tempo::BarsAndBeats { bar - 1, te::BeatDuration::fromBeats(beat - 1) });
+        return frameToTime(frameContextAt(beatStart, ts), frame);
+    }
+
+    // Clock parts read right to left: frames, seconds, minutes.
+    double seconds = parts[parts.size() - 1].getIntValue() / fps_;
+    double scale = 1.0;
+    for (int i = parts.size() - 2; i >= 0; --i, scale *= 60.0)
+        seconds += parts[i].getIntValue() * scale;
+    return te::TimePosition::fromSeconds(seconds);
 }
 
 }  // namespace MoTool

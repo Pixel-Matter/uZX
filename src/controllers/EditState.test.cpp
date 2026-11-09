@@ -50,6 +50,66 @@ public:
 static TrackViewStateTest trackViewStateTest;
 
 //==============================================================================
+class VizOptionsTest : public UnitTest
+{
+public:
+    VizOptionsTest() : UnitTest("VizOptions", "MoTool") {}
+
+    void runTest() override {
+        using Layout = VizOptions::Layout;
+        TemporaryFile file;
+        PropertiesFile settings(file.getFile(), {});
+
+        beginTest("Notes and scopes in Slate until chosen otherwise, and a choice is remembered");
+        expect(VizOptions::load(settings) == VizOptions{});
+        const VizOptions chosen{Layout::scopes, VizOptions::Colours::classic, VizOptions::Scopes::sideBySide};
+        chosen.save(settings);
+        expect(VizOptions::load(settings) == chosen);
+
+        beginTest("A setting from a newer build, out of range, keeps the default");
+        settings.setValue("vizLayout", 7);
+        expect(VizOptions::load(settings).layout == Layout::notesAndScopes);
+
+        beginTest("The scopes switch between stacked and side by side");
+        VizOptions scopes;
+        scopes.scopes = scopes.otherScopes();
+        expect(scopes.areScopesSideBySide());
+        scopes.scopes = scopes.otherScopes();
+        expect(! scopes.areScopesSideBySide());
+
+        beginTest("Next layout goes round all three");
+        VizOptions o;
+        for (auto expected : {Layout::notes, Layout::scopes, Layout::notesAndScopes}) {
+            o.layout = o.nextLayout();
+            expect(o.layout == expected);
+        }
+
+        beginTest("The Player's view shows the scopes' column only in a layout with both notes and scopes");
+        auto edit = te::Edit::createSingleTrackEdit(*te::Engine::getEngines()[0]);
+        te::SelectionManager selectionManager(edit->engine);
+        EditViewState view(*edit, selectionManager);
+        view.showAsPlayer(false, {Layout::notes});
+        expect(view.showFooters && view.showsNotes() && ! view.isVizClassic(), "out of Viz mode: the devices");
+        view.showAsPlayer(true, {Layout::notes, VizOptions::Colours::classic});
+        expect(! view.showFooters && view.getTrackFooterWidth() == 0 && view.isVizClassic(), "notes");
+        view.showAsPlayer(true, {Layout::scopes});
+        expect(view.showFooters && ! view.showsNotes() && ! view.isVizClassic(), "scopes");
+
+        beginTest("Scopes side by side go under the notes, taking a share of the row");
+        view.showAsPlayer(true, {.scopes = VizOptions::Scopes::sideBySide});
+        expect(view.areVizScopesUnderNotes() && view.getTrackFooterWidth() == 0, "no column at the right");
+        view.vizScopesShare = 50;
+        expectEquals(view.getVizScopesHeight(200), 100);
+        view.vizScopesShare = 99;  // as an edited file could hold
+        expectEquals(view.getVizScopesHeight(200), 200 * EditViewState::maxVizScopesShare / 100);
+        view.showAsPlayer(true, {Layout::scopes, VizOptions::Colours::slate, VizOptions::Scopes::sideBySide});
+        expect(! view.areVizScopesUnderNotes(), "the scopes alone take the whole row");
+    }
+};
+
+static VizOptionsTest vizOptionsTest;
+
+//==============================================================================
 class ZoomViewStateTest : public UnitTest
 {
 public:
@@ -58,7 +118,7 @@ public:
     void runTest() override {
         using namespace tracktion::literals;
         auto edit = te::Edit::createSingleTrackEdit(*te::Engine::getEngines()[0]);
-        ZoomViewState zoom {*edit};
+        ZoomViewState zoom {*edit, edit->state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr)};
         auto& undo = edit->getUndoManager();
         undo.clearUndoHistory();
 
@@ -142,7 +202,7 @@ public:
 
         auto edit = te::Edit::createSingleTrackEdit(engine);
         auto& transport = edit->getTransport();
-        ZoomViewState zoom {*edit};
+        ZoomViewState zoom {*edit, edit->state.getOrCreateChildWithName(IDs::ZOOMVIEWSTATE, nullptr)};
         const auto playhead = [&] { return zoom.getPlayheadPosition().inSeconds(); };
         const auto heard = [&] { return transport.getPosition().inSeconds() - 0.25; };
 
@@ -177,7 +237,28 @@ public:
         play(40);
         expectWithinAbsoluteError(playhead(), heard(), 1.0e-9);
 
+        beginTest("Frames: each latches one playhead near what is heard, follows it and tells listeners at once");
+        {
+            PosListener listener;
+            zoom.addListener(&listener);
+            zoom.setViewWidthPx(1000);
+            zoom.setRange({100_tp, 10_td});
+            zoom.advanceFrame(1.0);
+            const auto latched = playhead();
+            expectGreaterOrEqual(latched, heard() - 0.02);
+            expectLessThan(latched, heard() + 0.1);  // ahead by a frame or so, for the display
+            expectGreaterThan(listener.calls, 0, "dispatched inside the frame, not later");
+            expectLessThan(zoom.getStart().inSeconds(), latched, "the view follows the frame's playhead");
+            TestHelpers::processBlocks(engine, 2);
+            expectEquals(playhead(), latched, "the same position for the whole frame");
+            zoom.removeListener(&listener);
+
+            Thread::sleep(150);  // no more frames: back to the transport
+            expectWithinAbsoluteError(playhead(), heard(), 1.0e-9);
+        }
+
         beginTest("Seek while playing: the playhead lands on the target and waits there");
+        zoom.advanceFrame(2.0);  // even right after a frame
         transport.setPosition(5_tp);
         expectEquals(playhead(), 5.0);
         seek(5_tp);

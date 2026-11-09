@@ -4,8 +4,76 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
-### Fixed
-- With more than eight recent projects, the app reopened an older project at startup and Open Recent omitted the newest ones
+### Video and Viz mode
+- Viz mode and Render Video show notes and scopes, notes alone, or scopes alone: `V` in Viz mode switches, **View → Viz Options** and the Render Video dialog choose
+- **Classic Black and White** colours for Viz mode and video: black, white scopes, thin grey lines between them
+- `S` in Viz mode stacks each chip's scopes beside its notes or sets them side by side under them; scopes alone make a column or a grid, a chip per row (3×1 for one AY, 3×2 for Turbo Sound)
+- Entering Viz mode, or pressing `V` or `S`, shows both choices for a moment, with the key to leave
+
+### Smoothness
+- Fixed: the timeline no longer scrolls a few pixels too far and then too little when a frame starts drawing a few milliseconds late
+
+### Tracker modules
+- Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop
+- Turbo Sound modules (PT3 pairs, Vortex files with a module per chip) open on a track per chip, as one tune
+- The module's title names the tracks; its note table becomes the clip's tuning table, with Sound Tracker's own (`ST`) as a new table; its rows set the tempo, so only beats and meter are detected
+- Vortex Tracker modules bring their chip clock and frame rate, such as a Pentagon's 1.75 MHz and 48.828 Hz
+- macOS: the Player opens tracker modules and `.uzx` files from Finder when no other app claims them; `.psg` files open in it by default
+
+## [v0.6.0-alpha] - 2026-11-08
+
+### Video and Viz mode
+- **File → Render Video...** (Player and Studio) renders Viz mode to MP4 through ffmpeg: 720p to 4K, pixel-sharp upscaling to 8K, 24–60 fps, H.264, HEVC or AV1 with AAC, Opus or ALAC
+- **View → Viz Mode** (`F`) in the Player: full screen with only the notes and scopes; `F` or `Esc` leaves it
+
+### PSG import and detection
+- Open several PSG files at once, each on its own track and AY chip; a file from a Turbo Sound set (`song_1.psg`, …) offers to open the whole set
+- Tuning table and key detection, shown in the clip header and editable in **Tuning and key…**; knows PT 3.3's older tables #0 and #2
+- Fitted tunings (12TET, just intonations) with a guessed chip clock (ZX Spectrum 128 or Pentagon); the Player plays at that clock and warns on a mismatch
+- Tempo detection on import: BPM, frames per beat, groove and 3/4 or 4/4; lead-in frames are trimmed so the first row starts a bar
+- Files imported together, such as a Turbo Sound set, are detected as one tune
+- Fixed: pause markers no longer shift later frames; files with a `0xFF` version byte open
+
+### Notes view
+- Note lanes from the detected table (**View → Note Lanes**) and **View → Piano Keys** with the key's notes named on the keys
+- Every clip has a header in its colour: name, warnings, tuning and key. The Player shows them over the notes instead
+- Fixed: bar and beat lines no longer cross notes and keys; clips line up with the ruler to the pixel
+
+### AY chip
+- Solo channels with `Alt`-click (`Option`-click on a Mac) on A, B or C; several at once, saved with the file
+- Scopes show the chip's raw channel levels, centred, triggered by **Chip Sync**, and keep the last frame when stopped
+- Player: every track shows its own chip and level meter; drag the gap to their left to widen them
+- Player: the stereo layout and width carry over to the next PSG file
+- Fixed: Undo and Redo of chip settings change the sound again; showing a level meter is no longer an Undo step; Linux shows the level meter's LEDs
+
+### Transport and timeline
+- Master level meter, and DSP and GUI CPU meters
+- Editable SIG; GRV (groove) replaces the subdivision readout
+- The Pos readout shows and takes positions in the ruler's timecode format
+- Timecode formats: Bars.Beats.Frames, `MM:SS:FF` and Frames; switching is no longer an Undo step. The Player uses bars | beats | frames too
+- Master volume is an app setting, remembered across launches
+- Fixed: clip FPS warnings update as soon as the project FPS changes
+
+### Player
+- Save and Save As (`Cmd+S`, `Cmd+Shift+S`), Reveal in Finder, and an Edit menu with Undo and Redo
+- No MIDI learn or CC mapping
+- Fixed: `Delete` and `Backspace` no longer remove a track with its chip
+
+### Menus and shortcuts
+- macOS: About and Settings... (`Cmd+,`) are in the app menu
+- Windows and Linux: `Ctrl+Y` redoes; Reveal in Finder reads Show in Explorer or Show in Folder
+- Fixed: zoom in works where `=` needs Shift, and `+` zooms in too; `Ctrl`+click opens the MIDI mapping menu on a Mac
+- Fixed: Player and Studio reopen the last edit on launch
+
+### Look
+- Clip, channel and accent colours share one OKLCH lightness and chroma, so no hue outshines another
+- A selected clip is lighter with a ring; clip bodies use the track's slate
+
+### Smoothness
+- The timeline moves once per display frame and holds 60 fps while playing, from cached clip painting
+- Scopes update once per display frame
+- macOS 14+: frames are drawn in step with the screen
+- Fixed: a late frame no longer throws the view ahead and holds it
 
 ## [v0.5.0-alpha] - 2026-10-29
 

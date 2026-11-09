@@ -1,3 +1,7 @@
 [submodule "third_party/tracktion_engine"]
 	path = third_party/tracktion_engine
 	url = https://github.com/Pixel-Matter/tracktion_engine.git
+[submodule "third_party/zxtune"]
+	path = third_party/zxtune
+	url = https://github.com/Pixel-Matter/zxtune.git
+	branch = uzx

@@ -10,7 +10,6 @@ namespace {
     static inline constexpr auto MOTOOL_EDIT_FILE_SUFFIX = ".motool";
     static inline constexpr auto UZX_EDIT_FILE_SUFFIX = ".uzx";
     static inline constexpr auto RECENT_EDITS_KEY = "recentEdits";
-    static inline constexpr int MAX_RECENT_EDITS = 8;  // one per Open Recent command
 }
 
 String getDefaultEditFileSuffix() {
@@ -54,12 +53,15 @@ void setRecentEditsDirectory(te::PropertyStorage& storage, const File& fileOrDir
     }
 }
 
+bool isTempEdit(te::Edit& edit) {
+    return te::EditFileOperations(edit).getEditFile().getParentDirectory() == getTempEditsLocation();
+}
+
 File suffestSaveAsFileName(te::Edit& edit) {
     auto efo = te::EditFileOperations(edit);
     auto currentFile = efo.getEditFile();
 
-    bool isTemp = currentFile.getParentDirectory() == getTempEditsLocation();
-    File defaultLocation = !isTemp && currentFile.existsAsFile()
+    File defaultLocation = !isTempEdit(edit) && currentFile.existsAsFile()
                                ? currentFile.getParentDirectory()
                                : File::getSpecialLocation(File::userDocumentsDirectory)
                                      .getChildFile(getAppName());
@@ -84,7 +86,7 @@ StringArray getRecentEdits(te::PropertyStorage& storage) {
         }
     }
 
-    files.removeRange(MAX_RECENT_EDITS, files.size());  // newest first: drop the oldest
+    files.removeRange(8, files.size());  // newest first: drop the oldest
     return files;
 }
 

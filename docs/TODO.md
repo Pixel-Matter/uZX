@@ -37,11 +37,11 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [x] Ruler timecode is saved with the edit
 - [x] Grid level 0 subdivisions are strange
 - [x] Playhead snaps to grid
-- [ ] Pos readout/editing in different timecode formats (always HH:MM:SS:CC now)
+- [x] Pos readout/editing in current timecode formats
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)
 - [x] Better BPM editing
-- [ ] Clip names are visible on audio and MIDI clips (PSG clips show them)
+- [x] Clip names are visible on audio and MIDI clips (PSG clips show them)
 - [ ] Virtual MIDI keyboard (see audio plugin host)
 - [ ] Loop region and looped playback (Loop toggle exists, no range UI)
 - [ ] Track level knob/slider
@@ -50,17 +50,20 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] Moving clips around
 - [ ] Moving tracks around
 - [ ] BPM automation
-- [ ] Time sig editing (SIG is read-only)
+- [x] Time sig editing
 - [ ] Time sig automation
 
 ## Global
 
 - [ ] Icons (fontaudio, Font Awesome, octicons, nerd-fonts)
-- [ ] CPU usage ticker in the status bar
+- [x] CPU usage meters (DSP and GUI, in the transport bar)
 - [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds
 - [ ] Reopening the project that is already open (Open Recent item 0, drop of the current .uzx) loses unsaved changes: `setEdit` saves the old edit, then force-saves the stale freshly loaded copy over it; both edits share a project ID, so deleting the old temp folder also wipes the new one's
 - [ ] A second Player instance fully initialises and saves the shared startup edit before quitting (`moreThanOneInstanceAllowed` is checked after the `MoToolApp` constructor)
 - [ ] Crash audit leftover, not exercised live: quit while a render progress dialog is up (Studio)
+- [ ] Device UIs register themselves from static objects (`REGISTER_PLUGIN_UI_ADAPTER`), which the linker drops from the `motool_common` static library unless each platform links all of it (`-force_load`, `/WHOLEARCHIVE`, `--whole-archive`; Linux lacked it until the level meter showed as a generic plugin). Replace the three flags with one of:
+  - an OBJECT library: every object is always linked, no platform flags
+  - an explicit `registerDeviceUIs()` called at startup: nothing depends on the linker, at the price of one central list
 
 ## ChipInstrument plugin
 
@@ -98,7 +101,7 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 
 ## AY Chip Emulator plugin
 
-- [ ] Consider keeping chip emulator state for every keyframe
+- [ ] Timer fx support (for TAYM import/export)
 
 ## Tuning System
 
@@ -109,6 +112,7 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] Show defined notes in the grid
 - [ ] Show VT tracker notes range
 - [ ] Auto-tune to note (adjust A4 or clock frequency)
+- [ ] Custom note tables from Vortex Tracker modules: a `.vt2` can carry its own table (`CustomNoteTable=`, 96 periods, as Bitphase reads it; Vortex loads custom tables in its options). `TuningTable` holds any periods, but an edit stores only a `BuiltinTuningType` name, so a clip's table must be serialised with the edit first; then import sets it as the clip's table instead of detecting one.
 
 ## PSG Param Editor
 

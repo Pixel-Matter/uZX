@@ -18,18 +18,18 @@ public:
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
         auto renderData = [&engine](uZX::PsgData data, int width = 100, int height = 300,
-                                    bool header = false) {
-            return Tests::renderPsgClip(engine, std::move(data), width, height, {}, header);
+                                    bool legend = false) {
+            return Tests::renderPsgClip(engine, std::move(data), width, height, {}, legend);
         };
         auto render = [&renderData](uint8_t mixer, uint8_t volumeA, uint8_t volumeB, uint8_t volumeC = 0,
-                                    bool header = false, int width = 100, int height = 300) {
+                                    bool legend = false, int width = 100, int height = 300) {
             const uZX::PsgData data {
                 {{{uZX::PsgRegType::Mixer, mixer}, {uZX::PsgRegType::NoisePeriod, 16},
                   {uZX::PsgRegType::VolumeA, volumeA}, {uZX::PsgRegType::VolumeB, volumeB},
                   {uZX::PsgRegType::VolumeC, volumeC}}},
                 {50.0, 1}
             };
-            return renderData(data, width, height, header);
+            return renderData(data, width, height, legend);
         };
         auto isBlank = [](const Image& image) {
             for (int y = 0; y < image.getHeight(); ++y)
@@ -375,7 +375,7 @@ public:
         expect(hasOutline, "Tone-off must not hide envelope channel ownership");
         expect(hasHatching, "Envelope hatching keeps the envelope color");
 
-        beginTest("Header shows A/B/C colors and a padded outlined envelope swatch");
+        beginTest("Legend shows A/B/C colors and a padded outlined envelope swatch");
         const auto header = render(0x3f, 0, 0, 0, true);
         const std::array<Colour, 3> colors {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
         for (int ch = 0; ch < 3; ++ch) {
@@ -407,7 +407,7 @@ public:
         expect(std::abs(int(noiseCenter.getRed()) - int(Colors::PSG::Mix.getRed())) <= 2);
         expect(std::abs(int(noiseCenter.getGreen()) - int(Colors::PSG::Mix.getGreen())) <= 2);
         expect(std::abs(int(noiseCenter.getBlue()) - int(Colors::PSG::Mix.getBlue())) <= 2);
-        expect(header.getPixelAt(68, 8).isTransparent(), "Padding follows N before the clip name");
+        expect(header.getPixelAt(68, 8).isTransparent(), "The legend ends with N");
 
         beginTest("Frame hover shows the full state as a right-aligned table, changes bright");
         using T = PsgParamType;
@@ -438,6 +438,20 @@ public:
         const auto unchangedB = std::find_if(runs.begin(), runs.end(), [] (const auto& run) { return run.first == "1000"; });
         expect(unchangedB != runs.end() && unchangedB->second == Colors::PSG::B.withMultipliedAlpha(0.5f),
                "Unchanged values use the half-alpha legend colour");
+
+        beginTest("Clock warning: the tuning's clock @ the track's, and how far the notes sound off");
+        {
+            using Clock = uZX::ChipClockEnum;
+            const double zx = Clock::clockValues[Clock::ZX_Spectrum_1_77_MHz];
+            const double pentagon = Clock::clockValues[Clock::Pentagon_1_75_MHz];
+            const double st = Clock::clockValues[Clock::Atari_ST_2_MHz];
+            const String warn = String::fromUTF8("\xE2\x9A\xA0 "), cent = String::fromUTF8("\xC2\xA2");
+            expectEquals(getClockMismatchText(pentagon, zx), warn + "Pentagon @ ZX Spectrum +23" + cent);
+            expectEquals(getClockMismatchText(st, zx), warn + "Atari ST @ ZX Spectrum -208" + cent);
+            expectEquals(getClockMismatchText(pentagon, 1.79 * uZX::MHz), warn + "Pentagon @ 1.7900 MHz +39" + cent);
+            expect(getClockMismatchText(zx, zx).isEmpty());
+            expect(getClockMismatchText(zx, 1.7734 * uZX::MHz).isEmpty(), "the AY plugin's MHz must still match");
+        }
     }
 };
 
@@ -513,29 +527,269 @@ public:
             TimelineGrid grid(view);
             PsgClipComponent component(view, grid, clip);
             component.setSize(500, 300);
+            // Direct2D images (Windows) expose painted pixels only after the Graphics is destroyed.
             Image image(Image::ARGB, 500, 300, true);
-            Graphics g(image);
-            component.paintNoteLanes(g);
+            {
+                Graphics g(image);
+                component.paintNoteLanes(g);
+            }
 
-            // Lane lines are faint (alpha <= 0.16, 0.23 over the tonic band); names are
-            // drawn at 0.45 or more, so a brighter pixel near the left edge is a name.
+            // Lane lines and the tonic band are opaque greys; names are white at 0.45 or more, so a
+            // white pixel that solid near the left edge is a name.
             bool nameNearLeftEdge = false;
             for (int y = 0; y < image.getHeight() && ! nameNearLeftEdge; ++y)
-                for (int x = 0; x < 45 && ! nameNearLeftEdge; ++x)
-                    nameNearLeftEdge = image.getPixelAt(x, y).getFloatAlpha() > 0.35f;
+                for (int x = 0; x < 45 && ! nameNearLeftEdge; ++x) {
+                    const auto c = image.getPixelAt(x, y);
+                    nameNearLeftEdge = c.getFloatAlpha() > 0.35f && c.getBrightness() > 0.9f;
+                }
             expect(nameNearLeftEdge, "note names must be drawn at the clip's own left edge");
+
+            beginTest("Piano Keys lay a keyboard over the grid's left edge, the key's notes named on it");
+            const bool wasPianoKeys = arePianoKeysShown(engine);
+            setPianoKeysShown(engine, true);
+            const auto paintKeys = [&](int height) {
+                component.setSize(500, height);
+                Image image(Image::ARGB, 500, height, true);
+                {
+                    Graphics g(image);
+                    component.paintNoteLanes(g);
+                }
+                return image;
+            };
+            clip->chooseKey({Scale::Tonic(4), true});  // E minor: F# is its one black key, F is out
+            const auto keys = paintKeys(300);
+            clip->chooseKey({Scale::Tonic(6), true});  // F# minor, in a clip that names tonics only without keys
+            const auto tonicKeys = paintKeys(100);  // lanes ~6.7 px: keys, but too short to name them all
+            component.setSize(500, 300);
+            setPianoKeysShown(engine, wasPianoKeys);
+
+            // A row's key colour is what the black keys' width shows besides a name, which is
+            // neither black nor white on either key. A key is named when light pixels are on it,
+            // if black, or dark ones right of the black keys, if white; a run of same-coloured
+            // rows is one key.
+            enum { none = -1, black, white };
+            struct KeysRead
+            {
+                int named[2] = {}, unnamed[2] = {};
+                bool whiteNameLeftOfBlackKeys = false, blackNameAtLeftEnd = false;
+            };
+            const auto readKeys = [](const Image& image) {
+                const auto colourAt = [&](int y) {
+                    int dark = 0, light = 0;
+                    for (int x = 0; x < 18; ++x) {
+                        const auto c = image.getPixelAt(x, y);
+                        dark += c.getFloatAlpha() > 0.8f && c.getBrightness() < 0.3f;
+                        light += c.getFloatAlpha() > 0.8f && c.getBrightness() > 0.9f;
+                    }
+                    return dark > light ? black : light > dark ? white : none;
+                };
+                KeysRead read;
+                for (int y = 0; y < image.getHeight();) {
+                    const int colour = colourAt(y);
+                    bool hasName = false;
+                    for (; y < image.getHeight() && colourAt(y) == colour; ++y)
+                        for (int x = 0; x < 32 && colour != none; ++x) {
+                            const float brightness = image.getPixelAt(x, y).getBrightness();
+                            if (colour == black) {
+                                hasName = hasName || (x < 18 && brightness > 0.4f);
+                                read.blackNameAtLeftEnd = read.blackNameAtLeftEnd || (x < 2 && brightness > 0.4f);
+                            } else if (x < 18) {
+                                read.whiteNameLeftOfBlackKeys = read.whiteNameLeftOfBlackKeys || brightness < 0.6f;
+                            } else {
+                                hasName = hasName || brightness < 0.6f;
+                            }
+                        }
+                    if (colour != none)
+                        ++(hasName ? read.named : read.unnamed)[colour];
+                }
+                return read;
+            };
+
+            int gridPixels = 0;
+            for (int y = 0; y < keys.getHeight(); ++y)
+                for (int x = 50; x < keys.getWidth(); ++x)
+                    gridPixels += keys.getPixelAt(x, y).getFloatAlpha() > 0.0f;
+            expect(gridPixels > 0, "the grid stays across the clip");
+            const auto read = readKeys(keys);
+            expect(read.named[white] > 0 && read.named[black] > 0, "the key's notes are named, F# on its black key");
+            expect(read.unnamed[white] > 0 && read.unnamed[black] > 0, "notes out of the key, F and C#, stay unnamed");
+            expect(! read.whiteNameLeftOfBlackKeys, "a white key's name sits right of the black keys");
+            expect(read.blackNameAtLeftEnd, "a black key's name starts at the key's left end");
+
+            const auto tonicRead = readKeys(tonicKeys);
+            expect(tonicRead.unnamed[black] > 0 && tonicRead.unnamed[white] > 0, "the keys are drawn");
+            expect(tonicRead.named[black] == 0 && tonicRead.named[white] == 0,
+                   "over the keys, a clip too short to name every lane names none");
+        }
+
+        beginTest("Lane names stay on the same pixels while the view scrolls by fractions of a pixel");
+        {
+            auto& engine = *te::Engine::getEngines()[0];
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto& pt1 = getBuiltinPeriodGrid(BuiltinTuningType::CustomPT_1_ST);
+            const int a3 = std::find_if(pt1.begin(), pt1.end(), [](auto& e) { return e.second == 57; })->first;
+            uZX::PsgData data{{}, {50.0, 1}};
+            data.frames.push_back({{uZX::PsgRegType::VolumeA, 12},
+                                   {uZX::PsgRegType::TonePeriodFineA, static_cast<uint8_t>(a3 & 0xff)},
+                                   {uZX::PsgRegType::TonePeriodCoarseA, static_cast<uint8_t>(a3 >> 8)}});
+            for (int i = 0; i < 2999; ++i)
+                data.frames.push_back({});
+            auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                          {{te::TimePosition(), te::TimeDuration::fromSeconds(60.0)}, {}}, "long");
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(1000);
+            TimelineGrid grid(view);
+            PsgClipComponent component(view, grid, clip);
+
+            // Placed and drawn the way the track body does it, into the view's own pixels
+            const auto renderAt = [&](double viewStartSec) {
+                view.zoom.setRange({te::TimePosition::fromSeconds(viewStartSec), te::TimeDuration::fromSeconds(10.0)});
+                const int x = roundToInt(view.zoom.timeToX(te::TimePosition()));
+                component.setBounds(x, 0, roundToInt(view.zoom.timeToX(te::TimePosition::fromSeconds(60.0))) - x, 300);
+                Image image(Image::ARGB, 1000, 300, true);
+                {
+                    Graphics g(image);
+                    g.setOrigin(component.getPosition());
+                    component.paintNoteLanes(g);
+                }
+                return image;
+            };
+            const auto before = renderAt(20.0), after = renderAt(20.0 + 0.0137);  // 1.37 px later
+            int differing = 0;
+            for (int y = 0; y < 300; ++y)
+                for (int x = 0; x < 45; ++x)
+                    differing += before.getPixelAt(x, y) != after.getPixelAt(x, y);
+            expectEquals(differing, 0, "names pinned to the view's left edge must not shift or blur");
         }
 
         beginTest("Level of detail follows the lane height");
         auto detail = [](float height) { const auto d = getLaneDetail(height); return std::pair{d.lines, d.labels}; };
         expect(detail(12.0f) == std::pair{LaneDetail::All, LaneDetail::All});
-        expect(detail(5.0f) == std::pair{LaneDetail::All, LaneDetail::Tonic});
+        expect(detail(7.0f) == std::pair{LaneDetail::All, LaneDetail::Tonic});
+        expect(detail(3.0f) == std::pair{LaneDetail::Tonic, LaneDetail::Tonic}, "too short for a line per lane");
         expect(detail(0.5f) == std::pair{LaneDetail::Tonic, LaneDetail::None});
         expect(detail(0.1f) == std::pair{LaneDetail::None, LaneDetail::None});
     }
 };
 
 static PsgNoteLanesTest psgNoteLanesTest;
+
+//==============================================================================
+/** While the view follows playback, a PSG clip blits its content from cached tiles. They must
+    draw what painting the view draws, as the view scrolls by whole pixels (and by a fraction,
+    zooms or changes mode, which repaint the tiles). */
+class PsgClipContentTilesTest : public UnitTest
+{
+public:
+    PsgClipContentTilesTest() : UnitTest("PsgClipContentTiles", "MoTool") {}
+
+    struct CachedClip : PsgClipComponent
+    {
+        using PsgClipComponent::PsgClipComponent;
+        bool shouldCacheContent() const override { return true; }
+    };
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        // Tones only: noise fringes and low-envelope arrows near the view's edges are allowed to differ
+        uZX::PsgData data{{}, {50.0, 1}};
+        for (int i = 0; i < 600; ++i) {
+            const int a = 100 + (i * 37) % 900, b = 300 + (i * 11) % 500;
+            data.frames.push_back({{uZX::PsgRegType::Mixer, 0x3c},
+                                   {uZX::PsgRegType::VolumeA, static_cast<uint8_t>(6 + i % 10)},
+                                   {uZX::PsgRegType::VolumeB, static_cast<uint8_t>(15 - i % 7)},
+                                   {uZX::PsgRegType::TonePeriodFineA, static_cast<uint8_t>(a & 0xff)},
+                                   {uZX::PsgRegType::TonePeriodCoarseA, static_cast<uint8_t>(a >> 8)},
+                                   {uZX::PsgRegType::TonePeriodFineB, static_cast<uint8_t>(b & 0xff)},
+                                   {uZX::PsgRegType::TonePeriodCoarseB, static_cast<uint8_t>(b >> 8)}});
+        }
+        auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                      {{te::TimePosition::fromSeconds(1.0), te::TimeDuration::fromSeconds(12.0)}, {}},
+                                      "tiles");
+        te::SelectionManager selection(engine);
+        EditViewState view(*edit, selection);
+        view.zoom.setViewWidthPx(1000);
+        TimelineGrid grid(view);
+        PsgClipComponent direct(view, grid, clip);
+        CachedClip cached(view, grid, clip);
+        const bool wereLanes = areNoteLanesShown(engine), wereKeys = arePianoKeysShown(engine);
+        setNoteLanesShown(engine, true);
+        setPianoKeysShown(engine, true);
+
+        // Placed and drawn the way the track body does it, into the view's own pixels at Retina scale
+        const auto render = [&](PsgClipComponent& component) {
+            const auto range = clip->getEditTimeRange();
+            const int x = roundToInt(view.zoom.timeToX(range.getStart()));
+            component.setBounds(x, 0, roundToInt(view.zoom.timeToX(range.getEnd())) - x, 300);
+            Image image(Image::ARGB, 2000, 600, true);
+            {
+                Graphics g(image);
+                g.addTransform(AffineTransform::scale(2.0f));
+                g.setOrigin(component.getPosition());
+                g.reduceClipRegion(component.getLocalBounds());  // as the track body clips it
+                component.paint(g);
+            }
+            return image;
+        };
+        const auto expectSameAt = [&](double startPx, double timePerPixelSec, const String& what) {
+            const auto timePerPixel = te::TimeDuration::fromSeconds(timePerPixelSec);
+            view.zoom.setRange({te::TimePosition() + timePerPixel * startPx, timePerPixel * 1000.0});
+            const auto expected = render(direct), actual = render(cached);
+            int worst = 0, differing = 0;
+            Point<int> at;
+            for (int y = 0; y < expected.getHeight(); ++y)
+                for (int x = 0; x < expected.getWidth(); ++x) {
+                    const auto e = expected.getPixelAt(x, y), a = actual.getPixelAt(x, y);
+                    const int d = std::max({std::abs(e.getRed() - a.getRed()), std::abs(e.getGreen() - a.getGreen()),
+                                            std::abs(e.getBlue() - a.getBlue()), std::abs(e.getAlpha() - a.getAlpha())});
+                    differing += d > 2;
+                    if (d > worst) {
+                        worst = d;
+                        at = {x, y};
+                    }
+                }
+            // The tiles hold the content alone, composited over the clip's fill: rounding only. Direct2D
+            // antialiases the same fractional note edge a few percent differently in a tile's bitmap than in
+            // the view's (50 edge pixels off by up to 17 seen), so there a few edge pixels may differ that much.
+           #if JUCE_WINDOWS
+            constexpr int tolerance = 24, allowedPixels = 100;
+           #else
+            constexpr int tolerance = 2, allowedPixels = 0;
+           #endif
+            const bool same = worst <= 2 || (worst <= tolerance && differing <= allowedPixels);
+            expect(same, what + ": " + String(differing) + " device pixels differ, up to " + String(worst)
+                                   + " at " + at.toString() + " (clip at " + String(direct.getX() * 2) + "): "
+                                   + expected.getPixelAt(at.x, at.y).toDisplayString(true) + " drawn, "
+                                   + actual.getPixelAt(at.x, at.y).toDisplayString(true) + " cached");
+        };
+
+        beginTest("Tiles draw what the view draws while it scrolls by whole pixels");
+        for (const double startPx : {100.0, 113.0, 126.0, 139.0, 400.0, 1500.0, 1513.0})
+            expectSameAt(startPx, 0.004, "at " + String(startPx) + " px");
+
+        beginTest("Tiles are repainted when the view moves by a fraction of a pixel or zooms");
+        expectSameAt(1513.37, 0.004, "a fraction later");
+        expectSameAt(1513.37 * 0.004 / 0.0031, 0.0031, "zoomed in");
+
+        beginTest("Tiles are repainted in the Registers view");
+        clip->state.setProperty(IDs::paintMode, 1, nullptr);
+        expectSameAt(800.0, 0.0031, "registers");
+        expectSameAt(813.0, 0.0031, "registers, scrolled");
+        clip->state.setProperty(IDs::paintMode, 0, nullptr);
+
+        beginTest("Lane names without keys: the lines under them, then the grid column stretched");
+        setPianoKeysShown(engine, false);
+        for (const double startPx : {100.0, 113.0, 900.0, 913.0})
+            expectSameAt(startPx, 0.0031, "no keys, at " + String(startPx) + " px");
+
+        setNoteLanesShown(engine, wereLanes);
+        setPianoKeysShown(engine, wereKeys);
+    }
+};
+
+static PsgClipContentTilesTest psgClipContentTilesTest;
 
 //==============================================================================
 /** The tuning picker must never keep a clip alive past its Edit: a clip's destructor

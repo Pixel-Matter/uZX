@@ -30,8 +30,6 @@ private:
     void timerCallback() override;
 
     void updateLevels();
-    void drawLevelMeter(juce::Graphics& g, juce::Rectangle<int> area, int ledHeight, float level, bool isMidi = false);
-    juce::Colour getLevelColour(float level, bool isMidi = false) const;
 
     // Audio level tracking
     float leftLevel = 0.0f;

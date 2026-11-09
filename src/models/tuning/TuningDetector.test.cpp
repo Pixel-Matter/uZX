@@ -26,18 +26,43 @@ public:
     void runTest() override {
         runCorpusReport();
 
-        beginTest("Every built-in table is detected from its own periods");
+        beginTest("Every tracker table is detected from its own periods");
         {
             for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i) {
                 const BuiltinTuningType table(i);
+                if (!isTrackerTable(table))
+                    continue;  // a computed preset, not a candidate
                 const auto result = detectTuning(histogramOf(getBuiltinPeriodGrid(table)));
-                expect(!result.usesEqualTemperament, "table " + String(i) + " fell back to 12TET");
-                expectWithinAbsoluteError(result.share, 1.0f, 0.001f);
+                expect(!result.usesFit, "table " + String(i) + " fell back to 12TET");
+                // Sound Tracker's table is only set from modules: detected, it is PT #1 but for two notes.
+                if (table == BuiltinTuningType::CustomST)
+                    expectGreaterThan(result.share, 0.9f);
+                else
+                    expectWithinAbsoluteError(result.share, 1.0f, 0.001f);
                 // PT #0 and PT #3 are one grid shifted a semitone: the later entry names it.
                 const int expected = i == static_cast<int>(BuiltinTuningType::CustomPT_0_PT)
                                          ? static_cast<int>(BuiltinTuningType::CustomPT_3_REAL)
+                                     : i == static_cast<int>(BuiltinTuningType::CustomST)
+                                         ? static_cast<int>(BuiltinTuningType::CustomPT_1_ST)
                                          : i;
                 expectEquals(static_cast<int>(result.tables.front().table), expected);
+            }
+        }
+
+        beginTest("A tracker table's clock and A4 describe its periods");
+        {
+            // The registry gives each table the clock and A4 its sources name; measured at
+            // them, its notes must sit near that reference (PT #1 is not exact 12TET).
+            for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i) {
+                const BuiltinTuningType table(i);
+                if (!isTrackerTable(table))
+                    continue;
+                const auto tuning = makeBuiltinTuning(table);
+                std::vector<double> offsets;
+                for (int note = 36; note < 96; ++note)
+                    offsets.push_back(std::abs(tuning->getOfftune(note)));
+                std::nth_element(offsets.begin(), offsets.begin() + long(offsets.size() / 2), offsets.end());
+                expectLessThan(offsets[offsets.size() / 2], 5.0, String(table.getShortLabel().data()) + " median cents");
             }
         }
 
@@ -53,10 +78,89 @@ public:
         beginTest("Equal temperament fallback finds A4 when no table fits");
         {
             const auto result = detectTuning(histogramOf(makeEqualTemperamentGrid(436.0, 1773400.0)));
-            expect(result.usesEqualTemperament);
-            expectWithinAbsoluteError(result.equalTemperament.a4Frequency, 436.0, 0.5);
+            expect(result.usesFit);
+            expectWithinAbsoluteError(result.getFit().a4Frequency, 436.0, 0.5);
             expectGreaterThan(result.share, 0.95f);
             expectEquals(result.getTableLabel(), String("12TET 436 Hz"));
+        }
+
+        beginTest("Equal temperament names the clock at which A4 is 440 Hz");
+        {
+            using Clock = uZX::ChipClockEnum;
+            const double st = Clock::clockValues[Clock::Atari_ST_2_MHz];
+            // Only the ZX scene's clocks are guessed: a 440 Hz tune at the Atari ST clock
+            // reads as a ZX one, two semitones lower, until the ST is chosen by hand.
+            const auto atari = detectTuning(histogramOf(makeEqualTemperamentGrid(440.0, st)));
+            expect(atari.usesFit);
+            expectWithinAbsoluteError(atari.getFit().chipClock, tuningGridClock, 1e-9);
+            expectEquals(atari.getTableLabel(), String("12TET 438 Hz"));
+            const auto chosen = atClock(atari.getFit(), st);
+            expectWithinAbsoluteError(chosen.a4Frequency, 440.0, 0.5);
+            expectEquals(getFitLabel(chosen), String("12TET 440 Hz Atari ST"));
+            const int a4Period = roundToInt(st / 16.0 / 440.0);
+            const auto chosenGrid = makeFitGrid(chosen);
+            expect(chosenGrid.count(a4Period) && chosenGrid.at(a4Period) == 69, "notes must be named at the chosen clock");
+
+            // The 12TET preset is a shortcut, not a candidate. 12TET at 440 Hz on the ZX clock
+            // is PT 3.3's table #2 to within a period, and the tracker table wins the draw.
+            const auto zx = detectTuning(histogramOf(makeEqualTemperamentGrid(440.0, tuningGridClock)));
+            for (const auto& candidate : zx.tables)
+                expect(candidate.table != BuiltinTuningType::EqualTemperament, "presets are not candidates");
+            expect(!zx.usesFit);
+            expectEquals(zx.getTableLabel(), String("PT #2 (3.3)"));
+            expectWithinAbsoluteError(zx.getFit().chipClock, tuningGridClock, 1e-9);
+
+            // PT #2 is 12TET at 440 Hz on the Pentagon clock: the tracker table still wins,
+            // while the fit names its clock.
+            const auto pentagon = detectTuning(
+                histogramOf(makeEqualTemperamentGrid(440.0, Clock::clockValues[Clock::Pentagon_1_75_MHz])));
+            expect(!pentagon.usesFit);
+            expectEquals(static_cast<int>(pentagon.tables.front().table),
+                         static_cast<int>(BuiltinTuningType::CustomPT_2_ASM));
+            expectWithinAbsoluteError(pentagon.getFit().chipClock, Clock::clockValues[Clock::Pentagon_1_75_MHz], 1e-9);
+        }
+
+        beginTest("Just intonations are fitted with their tonic, A4 and clock");
+        {
+            using Clock = uZX::ChipClockEnum;
+            const double pentagon = Clock::clockValues[Clock::Pentagon_1_75_MHz];
+            const TuningFit justE{TuningSystemType::Just5Limit, Scale::Tonic::E, 440.0, tuningGridClock};
+            const auto ji = detectTuning(histogramOf(makeFitGrid(justE)));
+            expect(ji.usesFit);
+            expect(ji.getFit().system == TuningSystemType::Just5Limit, ji.getTableLabel());
+            expectEquals(static_cast<int>(ji.getFit().tonic.asUnderlying()), 4);
+            expectWithinAbsoluteError(ji.getFit().a4Frequency, 440.0, 0.5);
+            expectEquals(ji.getTableLabel(), String("5LJI E 440 Hz"));
+            for (const auto& [period, note] : makeFitGrid(justE))
+                if (note >= 36 && note < 84)
+                    expect(ji.grid.count(period) && ji.grid.at(period) == note, "the fit must name period " + String(period));
+
+            const TuningFit pythagoreanC{TuningSystemType::Pythagorean, Scale::Tonic::C, 440.0, pentagon};
+            const auto pyth = detectTuning(histogramOf(makeFitGrid(pythagoreanC)));
+            expect(pyth.getFit().system == TuningSystemType::Pythagorean, pyth.getTableLabel());
+            expectEquals(pyth.getTableLabel(), String("3LJI C 440 Hz Pentagon"));
+
+            // A 12TET tune fits every just intonation in part; 12TET must still lead.
+            const auto tet = detectTuning(histogramOf(makeEqualTemperamentGrid(436.0, tuningGridClock)));
+            expect(tet.getFit().system == TuningSystemType::EqualTemperament);
+            expectEquals(static_cast<int>(tet.fits.size()), static_cast<int>(std::size(fittedSystems)));
+        }
+
+        beginTest("A fit at another clock keeps its periods and renames its notes");
+        {
+            const double st = uZX::ChipClockEnum::clockValues[uZX::ChipClockEnum::Atari_ST_2_MHz];
+            const TuningFit justE{TuningSystemType::Just5Limit, Scale::Tonic::E, 436.0, tuningGridClock};
+            const auto there = atClock(justE, st);
+            expectEquals(static_cast<int>(there.tonic.asUnderlying()), 6, "two semitones up at the Atari ST clock");
+            const auto before = makeFitGrid(justE), after = makeFitGrid(there);
+            for (const auto& [period, note] : before)
+                if (note >= 36 && note < 96) {
+                    const auto it = after.find(period);
+                    expect(it != after.end() && it->second == note + 2, "period " + String(period));
+                }
+            const auto back = atClock(there, tuningGridClock);
+            expectEquals(static_cast<int>(back.tonic.asUnderlying()), 4);
+            expectWithinAbsoluteError(back.a4Frequency, 436.0, 1e-6);
         }
 
         beginTest("Envelope pitches match within half an envelope step");
@@ -153,7 +257,7 @@ public:
             const Expected expected[] = {
                 {"01_Klav", BuiltinTuningType::CustomPT_1_ST, false, "A minor"},
                 {"08_D-Juice", BuiltinTuningType::CustomPT_2_ASM, false, "C minor"},
-                {"04_Igoval", BuiltinTuningType::EqualTemperament, false, "A minor"},
+                {"04_Igoval", BuiltinTuningType::CustomPT_2_ASM33, false, "A minor"},  // 12TET 440 Hz at ZX
                 {"21_Quiet", BuiltinTuningType::CustomPT_2_ASM, false, "E major"},
                 {"16_Factor6", BuiltinTuningType::EqualTemperament, true, "F"},  // F♯ minor vs A major tie
             };
@@ -176,14 +280,14 @@ public:
                         PsgClip::insertTo(*te::getAudioTracks(*edit)[0], psg, {{te::TimePosition(), length}, {}});
                     expect(clip != nullptr);
                     if (clip != nullptr) {
-                        const auto imported = clip->buildPitchHistogram();
+                        const auto imported = clip->getPitchHistogram();
                         expect(imported.tone == hist.tone && imported.envelope == hist.envelope,
                                String(e.prefix) + " import path histogram");
                     }
                 }
                 logMessage(String(e.prefix) + ": tone-frames " + String(sumFrames(hist.tone)) + ", env-frames "
                            + String(sumFrames(hist.envelope)));
-                expect(result.usesEqualTemperament == e.tet, String(e.prefix) + " fallback");
+                expect(result.usesFit == e.tet, String(e.prefix) + " fallback");
                 if (!e.tet)
                     expectEquals(static_cast<int>(result.tables.front().table),
                                  static_cast<int>(e.table),
@@ -196,14 +300,15 @@ public:
             }
             const auto factor6 =
                 detectTuning(histogramOfFile(dir.findChildFiles(File::findFiles, false, "16_Factor6*.psg").getFirst()));
-            expectWithinAbsoluteError(factor6.equalTemperament.a4Frequency, 436.0, 1.0);
+            expectWithinAbsoluteError(factor6.getFit().a4Frequency, 436.0, 1.0);
             expect(factor6.keyTie);
         }
     }
 
     /** Development report, run only when UZX_TUNING_CORPUS names a folder of PSG files:
         one tab-separated "TUNING" line per file with the chosen grid, its share, the key,
-        the tie flags and the pitch-class histogram. scripts/validate_tuning_detection.py
+        the tie flags and the pitch-class histogram, and a "FITS" line with every fitted
+        system's label and share, best first. scripts/validate_tuning_detection.py
         compares it against PT3 ground truth. */
     void runCorpusReport() {
         const auto dirName = SystemStats::getEnvironmentVariable("UZX_TUNING_CORPUS", {});
@@ -213,15 +318,19 @@ public:
         for (const auto& file : File(dirName).findChildFiles(File::findFiles, false, "*.psg")) {
             const auto r = detectTuning(histogramOfFile(file));
             const String grid =
-                r.usesEqualTemperament ? String("12TET") : String(std::string(r.tables.front().table.getEnumName()));
+                r.usesFit ? r.getTableLabel() : String(std::string(r.tables.front().table.getEnumName()));
             StringArray pcs;
             for (auto pc : r.pitchClasses)
                 pcs.add(String(pc, 4));
             logMessage("TUNING\t" + file.getFileNameWithoutExtension() + "\t" + grid + "\t"
-                       + String(r.equalTemperament.a4Frequency, 1) + "\t" + String(r.share, 3) + "\t"
+                       + String(r.getFit().a4Frequency, 1) + "\t" + String(r.share, 3) + "\t"
                        + String((int) r.tableTie) + "\t" + String(static_cast<int>(r.getKey().tonic)) + "\t"
                        + String((int) r.getKey().minor) + "\t" + String((int) r.keyTie) + "\t"
                        + pcs.joinIntoString(","));
+            StringArray fits;
+            for (const auto& fit : r.fits)
+                fits.add(getFitLabel(fit) + " " + String(fit.share, 3));
+            logMessage("FITS\t" + file.getFileNameWithoutExtension() + "\t" + fits.joinIntoString("\t"));
         }
     }
 

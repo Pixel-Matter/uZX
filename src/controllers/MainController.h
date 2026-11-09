@@ -76,7 +76,9 @@ private:
 };
 
 
-class BaseController : private ChangeListener {
+class BaseController : private ChangeListener,
+                       private Value::Listener
+{
 public:
     explicit BaseController(te::Engine& e);
     ~BaseController() override;
@@ -103,6 +105,10 @@ protected:
     virtual void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) = 0;
     virtual void devicesChanged() {}
 
+    /** Master volume is an app setting, not part of the file: applies the saved level to edit_
+        and saves the knob from now on. Call from setEdit() once edit_ is replaced. */
+    void useGlobalMasterVolume();
+
     te::Engine& engine_;
     MainWindow window_ {engine_};
     std::unique_ptr<te::Edit> edit_;
@@ -112,6 +118,9 @@ protected:
 private:
     // Called when the selection changes
     void changeListenerCallback(ChangeBroadcaster*) override;
+    void valueChanged(Value&) override;
+
+    Value masterVolume_;  // edit_'s master volume slider position
 };
 
 

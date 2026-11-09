@@ -21,6 +21,7 @@ public:
         testGridSubdivisionPattern();
         testDefaultGridSubdivisionPattern();
         testParseGridSubdivisionPattern();
+        testParseTimeSig();
     }
 
 private:
@@ -50,8 +51,8 @@ private:
         }
         {
             auto result = parseLegacyTimecodeFormat("beats");
-            expect(result.mode == TimecodeDisplayMode::barsBeats,
-                   "beats should map to barsBeats");
+            expect(result.mode == TimecodeDisplayMode::barsBeatsFrames,
+                   "the dropped frameless beats mode should map to barsBeatsFrames");
             expect(! result.fps.has_value(), "beats should carry no fps");
         }
         {
@@ -93,10 +94,12 @@ private:
 
         auto& engine = *te::Engine::getEngines()[0];
         auto edit = te::Edit::createSingleTrackEdit(engine);
+        edit->getUndoManager().clearUndoHistory();
 
         Helpers::setTimecodeDisplayMode(*edit, TimecodeDisplayMode::framesOnly);
         expect(Helpers::getTimecodeDisplayMode(*edit) == TimecodeDisplayMode::framesOnly,
                "framesOnly mode should round-trip");
+        expect(! edit->getUndoManager().canUndo(), "switching the display mode is not undoable");
         expectEquals(edit->state[te::IDs::timecodeFormat].toString(),
                      juce::String("seconds"),
                      "framesOnly should write te timecodeFormat as 'seconds'");
@@ -132,6 +135,11 @@ private:
         expectEquals(edit->state[te::IDs::timecodeFormat].toString(),
                      juce::String("beats"),
                      "legacy te timecodeFormat should be rewritten only after migration");
+
+        beginTest("A new edit shows bars, beats and frames");
+        auto fresh = te::createEmptyEdit(engine, File::getSpecialLocation(File::tempDirectory).getChildFile("fresh.uzx"));
+        Helpers::migrateTimecodeDisplaySettings(*fresh);
+        expect(Helpers::getTimecodeDisplayMode(*fresh) == TimecodeDisplayMode::barsBeatsFrames);
     }
 
     void testGridSubdivisionPattern() {
@@ -179,6 +187,20 @@ private:
                "overflow should reduce trailing divisions");
         expect(Helpers::parseGridSubdivisionPattern("30", 26).empty(),
                "one normalized division is not a subdivision pattern");
+    }
+
+    void testParseTimeSig() {
+        beginTest("parseTimeSig reads n/d or a bare numerator and rejects the rest");
+
+        expect(Helpers::parseTimeSig("3/4", 4) == std::pair{3, 4});
+        expect(Helpers::parseTimeSig(" 6 / 8 ", 4) == std::pair{6, 8}, "spaces are allowed");
+        expect(Helpers::parseTimeSig("7", 8) == std::pair{7, 8}, "a bare numerator keeps the denominator");
+        expect(!Helpers::parseTimeSig("3/5", 4), "the denominator must be a power of two");
+        expect(!Helpers::parseTimeSig("0/4", 4), "the numerator must be positive");
+        expect(!Helpers::parseTimeSig("33/4", 4), "the numerator is capped at 32");
+        expect(!Helpers::parseTimeSig("abc", 4));
+        expect(!Helpers::parseTimeSig("3/", 4));
+        expect(!Helpers::parseTimeSig("", 4));
     }
 };
 

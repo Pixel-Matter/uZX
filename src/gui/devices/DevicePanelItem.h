@@ -36,6 +36,9 @@ public:
     // Pure virtual method to access the underlying device UI for plus button logic
     PluginDeviceUI* getDeviceUI() const { return ui_.get(); }
 
+    /** Height the device needs, frame included. */
+    virtual int getMinimumHeight() const;
+
 protected:
     tracktion::Plugin::Ptr plugin_;
     std::unique_ptr<PluginDeviceUI> ui_;
@@ -85,7 +88,7 @@ protected:
  */
 class TitleBar : public Component {
 public:
-    TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI);
+    TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI, bool removable);
 
     void setCollapseToggle(std::function<void()> handler);
     void setCollapsed(bool collapsed);
@@ -103,6 +106,7 @@ private:
     void refreshMenuButtonState();
     tracktion::Plugin::Ptr plugin_;
     PluginDeviceUI* deviceUI_ = nullptr;
+    const bool removable_;
     BackgroundlessTextButton enableButton_;
     BackgroundlessTextButton menuButton_;
     std::function<void()> toggleCollapsed_;
@@ -121,7 +125,7 @@ private:
  */
 class FramedDeviceItem : public DeviceItem {
 public:
-    FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui);
+    explicit FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui, bool removable = true);
 
     // Component overrides
     void resized() override;
@@ -129,12 +133,16 @@ public:
 
     void setCollapsed(bool collapsed);
     [[nodiscard]] bool isCollapsed() const { return isCollapsed_; }
+    int getMinimumHeight() const override;
+    /** The width it was made with; a wider frame gives the rest to the device. */
+    int getMinimumWidth() const { return minimumWidth_; }
 
     static constexpr float cornerSize = 4.0f;
 private:
     void updateCollapsedInternal();
 
     CachedValue<bool> isCollapsed_;
+    int minimumWidth_ = 0;
     int expandedWidth_ = 0;
     int expandedHeight_ = 0;
 

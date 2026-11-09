@@ -66,13 +66,22 @@ private:
 //==============================================================================
 TuningPickerComponent::TuningPickerComponent(PsgClip& clip)
     : clip_(clip), clipState_(clip.state), histogramView_(std::make_unique<HistogramView>()) {
+    for (size_t i = 0; i < std::size(tuningClocks); ++i)
+        clockBox_.addItem(String(tuningClocks[i].name) + "  " + String(tuningClocks[i].hz / 1.0e6, 4) + " MHz",
+                          static_cast<int>(i) + 1);
+    clockBox_.onChange = [this] {
+        auto* c = clip_.get();
+        const int selected = clockBox_.getSelectedId();
+        if (c != nullptr && c->getTuning().fit && selected > 0 && selected <= static_cast<int>(std::size(tuningClocks)))
+            c->chooseFit(atClock(*c->getTuning().fit, tuningClocks[static_cast<size_t>(selected - 1)].hz));
+    };
     tableBox_.onChange = [this] {
         auto* c = clip_.get();
         const int selected = tableBox_.getSelectedId();
         if (c == nullptr)
             return;
-        if (selected == equalTemperamentItemId)
-            c->chooseEqualTemperament(listedA4_);
+        if (selected >= firstFitItemId && selected < firstFitItemId + static_cast<int>(listedFits_.size()))
+            c->chooseFit(listedFits_[static_cast<size_t>(selected - firstFitItemId)]);
         else if (selected > 0 && selected <= static_cast<int>(listedTables_.size()))
             c->chooseTuningTable(listedTables_[static_cast<size_t>(selected - 1)]);
     };
@@ -88,7 +97,8 @@ TuningPickerComponent::TuningPickerComponent(PsgClip& clip)
     };
 
     for (auto* c : std::initializer_list<Component*>{
-             &tableLabel_, &tableBox_, &keyLabel_, &keyBox_, &detectedButton_, histogramView_.get()})
+             &tableLabel_, &tableBox_, &detectedButton_, &clockLabel_, &clockBox_, &a4Label_, &keyLabel_, &keyBox_,
+             histogramView_.get()})
         addAndMakeVisible(c);
 
     clip.addSelectableListener(this);
@@ -112,7 +122,7 @@ void TuningPickerComponent::show(PsgClip& clip) {
     o.resizable = true;
     o.useBottomRightCornerResizer = true;
     auto* content = new TuningPickerComponent(clip);
-    content->setSize(560, 340);
+    content->setSize(560, 370);
     o.content.setOwned(content);
     o.launchAsync();
 }
@@ -142,6 +152,11 @@ void TuningPickerComponent::resized() {
     tableBox_.setBounds(row.reduced(4, 0));
     area.removeFromTop(6);
     row = area.removeFromTop(24);
+    clockLabel_.setBounds(row.removeFromLeft(90));
+    clockBox_.setBounds(row.removeFromLeft(220).reduced(4, 0));
+    a4Label_.setBounds(row);
+    area.removeFromTop(6);
+    row = area.removeFromTop(24);
     keyLabel_.setBounds(row.removeFromLeft(90));
     keyBox_.setBounds(row.reduced(4, 0));
     area.removeFromTop(10);
@@ -161,13 +176,14 @@ void TuningPickerComponent::rebuildLists(const PsgClip& clip) {
     const auto& detection = clip.getTuningDetection();
     listedDataVersion_ = clip.getPsg().getDataVersion();
 
-    // Detection ranks one table per group of near-identical grids. The tables it merged
-    // away (PT #0, a semitone from PT #3) are listed after, so a tune written for them
-    // can still be named right.
+    // Detection ranks one tracker table per group of near-identical grids. The tables it
+    // merged away (PT #0, a semitone from PT #3) are listed after, so a tune written for
+    // them can still be named right. The fitted tunings follow, each at its guessed clock.
     std::vector<TuningCandidate> candidates = detection.tables;
     for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i) {
         const BuiltinTuningType table(i);
-        if (std::none_of(candidates.begin(), candidates.end(), [&](const auto& c) { return c.table == table; }))
+        if (isTrackerTable(table)
+            && std::none_of(candidates.begin(), candidates.end(), [&](const auto& c) { return c.table == table; }))
             candidates.push_back({table, detection.histogram.getShareOnGrid(getBuiltinPeriodGrid(table))});
     }
     listedTables_.clear();
@@ -178,12 +194,17 @@ void TuningPickerComponent::rebuildLists(const PsgClip& clip) {
                               + String(roundToInt(candidate.share * 100)) + "%",
                           static_cast<int>(listedTables_.size()));
     }
-    listedA4_ = detection.equalTemperament.a4Frequency;
-    tableBox_.addItem(getEqualTemperamentLabel(listedA4_) + "  "
-                          + String(roundToInt(detection.equalTemperament.share * 100)) + "%",
-                      equalTemperamentItemId);
+    tableBox_.addSeparator();
+    listedFits_ = detection.fits;
+    for (size_t i = 0; i < listedFits_.size(); ++i)
+        tableBox_.addItem(getListedFitText(i), firstFitItemId + static_cast<int>(i));
 
     listedKeys_.clear();  // scores changed with the data: refresh() lists them again
+}
+
+String TuningPickerComponent::getListedFitText(size_t index) const {
+    const auto& fit = listedFits_[index];
+    return getFitLabel(fit) + "  " + String(roundToInt(fit.share * 100)) + "%";
 }
 
 void TuningPickerComponent::rebuildKeyList(const std::vector<DetectedKey>& keys) {
@@ -201,20 +222,32 @@ void TuningPickerComponent::refresh() {
     const auto& detection = c->getTuningDetection();
     const auto& tuning = c->getTuning();
 
-    // Select the table in effect. A chosen 12TET keeps its own A4, which may differ from
-    // the current fit, so its item shows that A4.
-    if (tuning.isEqualTemperament) {
-        tableBox_.changeItemText(equalTemperamentItemId,
-                                 tuning.tableChosen
-                                     ? tuning.tableLabel
-                                     : getEqualTemperamentLabel(listedA4_) + "  "
-                                           + String(roundToInt(detection.equalTemperament.share * 100)) + "%");
-        tableBox_.setSelectedId(equalTemperamentItemId, dontSendNotification);
-    } else if (tuning.table) {
+    // Select the tuning in effect. A chosen fit keeps its own A4 and clock, which may differ
+    // from the detected fit of its system, so that item shows them.
+    for (size_t i = 0; i < listedFits_.size(); ++i) {
+        const int id = firstFitItemId + static_cast<int>(i);
+        const bool inEffect = tuning.fit && tuning.fit->system == listedFits_[i].system;
+        tableBox_.changeItemText(id, inEffect && tuning.tableChosen ? tuning.tableLabel : getListedFitText(i));
+        if (inEffect)
+            tableBox_.setSelectedId(id, dontSendNotification);
+    }
+    if (tuning.table) {
         for (size_t i = 0; i < listedTables_.size(); ++i)
             if (listedTables_[i] == *tuning.table)
                 tableBox_.setSelectedId(static_cast<int>(i) + 1, dontSendNotification);
     }
+
+    // The clock only names a fitted tuning's notes; a tracker table is the same at any clock.
+    clockBox_.setEnabled(tuning.fit.has_value());
+    clockBox_.setSelectedId(0, dontSendNotification);
+    a4Label_.setText({}, dontSendNotification);
+    if (tuning.fit) {
+        for (size_t i = 0; i < std::size(tuningClocks); ++i)
+            if (exactlyEqual(tuningClocks[i].hz, tuning.fit->chipClock))
+                clockBox_.setSelectedId(static_cast<int>(i) + 1, dontSendNotification);
+        a4Label_.setText("A4 = " + String(tuning.fit->a4Frequency, 1) + " Hz", dontSendNotification);
+    }
+
     // Keys are ranked on the grid in effect, so choosing a table can reorder them.
     const bool sameRanking =
         listedKeys_.size() == tuning.keys.size()

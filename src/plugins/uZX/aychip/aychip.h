@@ -19,9 +19,6 @@ namespace MoTool::uZX {
     Hardware AY/YM
     Realtime digital (maybe midi) link to a real hardware computer with some client
     Realtime software link to emulated computer with some client
-
-    ## TODO
-    - Output to thee separate channels instead of mixing them to stereo panorama
 */
 
 extern "C" {
@@ -145,6 +142,17 @@ using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
 using EnvShape = MoTool::Util::EnumChoice<EnvShapeEnum>;
 
 
+/** What channels A, B and C show on their scopes; each lane, if given, takes a pointer per channel. */
+struct ScopeLanes {
+    /** The chip's DAC levels 0..1: unfiltered, before the mix and the volume. */
+    float* const* levels = nullptr;
+    /** 1 or 0: the tone if on, else the envelope's segment if on, else 0, so noise and the envelope don't
+        move the phase a scope triggers on. */
+    float* const* sync = nullptr;
+    /** The highest level the channel's volume reaches: 1 when the envelope drives it. */
+    float* const* amplitude = nullptr;
+};
+
 class AYInterface {
 public:
 
@@ -153,7 +161,7 @@ public:
     AYInterface() {}
     virtual ~AYInterface() {}
 
-    virtual auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::AY, int numChannels = 2) -> void = 0;
+    virtual auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::AY) -> void = 0;
     virtual auto muteSound() -> void = 0;
     virtual auto canChangeClock() const -> bool = 0;
     virtual auto canChangeClockContinously() const -> bool = 0;
@@ -179,15 +187,14 @@ public:
     // Channel muting interface (public access for ChannelMuter)
     void applyChannelMute(int chan, bool toneEnabled, bool noiseEnabled, bool envelopeEnabled, bool channelEnabled) noexcept;
 
-    // Output mode configuration
-    virtual auto setOutputMode(int numChannels) -> void = 0;  // 1=mono, 2=stereo, 3=three-channel
-
-    // Processing
-    virtual auto processBlockMono(float* outMono, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
-    virtual auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
-    virtual auto processBlockSeparate(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
-    virtual auto processBlockStereoPlusSeparate(float* outLeft, float* outRight, float* outCh0, float* outCh1, float* outCh2,
-                                                size_t numSamples, bool removeDC = true, size_t stride = 1) -> void = 0;
+    /**
+        Renders the stereo mix, or channels A, B and C apart for mixing them elsewhere: filtered, DC-removed if asked,
+        at master volume, and the channels' scope lanes.
+    */
+    virtual auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true,
+                                    const ScopeLanes& scope = {}) -> void = 0;
+    virtual auto processBlockSeparate(float* outA, float* outB, float* outC, size_t numSamples, bool removeDC = true,
+                                      const ScopeLanes& scope = {}) -> void = 0;
 
 protected:
     // AY functions
@@ -263,10 +270,10 @@ private:
 
 class AyumiEmulator : public AYInterface {
 public:
-    AyumiEmulator(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM, int numChannels = 2);
+    AyumiEmulator(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM);
     ~AyumiEmulator() override;
 
-    auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM, int numChannels = 2) -> void override;
+    auto reset(int sampleRate = 44100, double clock = 2000000, ChipType type = TypeEnum::YM) -> void override;
     auto muteSound() -> void override;
 
     auto canChangeClock() const -> bool override;
@@ -303,19 +310,15 @@ public:
     auto setMasterVolume(float volume) -> void override;
     auto getMasterVolume() const -> float override;
 
-    // Output mode configuration
-    auto setOutputMode(int numChannels) -> void override;
-
-    // Processing
-    auto processBlockMono(float* outMono, size_t numSamples, bool removeDC = true, size_t stride = 1) -> void override;
-    auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true, size_t stride = 1)
-        -> void override;
-    auto processBlockSeparate(float* outCh0, float* outCh1, float* outCh2, size_t numSamples, bool removeDC = true,
-                              size_t stride = 1) -> void override;
-    auto processBlockStereoPlusSeparate(float* outLeft, float* outRight, float* outCh0, float* outCh1, float* outCh2,
-                                        size_t numSamples, bool removeDC = true, size_t stride = 1) -> void override;
+    auto processBlockStereo(float* outLeft, float* outRight, size_t numSamples, bool removeDC = true,
+                            const ScopeLanes& scope = {}) -> void override;
+    auto processBlockSeparate(float* outA, float* outB, float* outC, size_t numSamples, bool removeDC = true,
+                              const ScopeLanes& scope = {}) -> void override;
 
   private:
+    /** The mode follows the call, so a reset can't leave the chip rendering fewer outputs than asked for. */
+    void render(ayumi_output_mode mode, float* const* out, size_t numSamples, bool removeDC, const ScopeLanes& scope);
+
     ayumi Ayumi_;
     ChipType Type_;
     double ClockRate_;

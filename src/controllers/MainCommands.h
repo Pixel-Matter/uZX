@@ -29,6 +29,7 @@ public:
         fileImportPsg,
         fileImportAudio,
         fileQuit,
+        fileRenderVideo,
 
         // Edit Menu
         editUndo             = 100,
@@ -62,6 +63,11 @@ public:
         viewZoomOut,
         viewSnapPlayheadToGrid,
         viewNoteLanes,
+        viewPianoKeys,
+        viewVizMode,
+        viewExitVizMode,
+        viewNextVizLayout,
+        viewSwitchVizScopes,
 
         // Settings Menu
         settingsAudioMidi    = 600,
@@ -85,7 +91,7 @@ public:
             fileOpenRecent1, fileOpenRecent2, fileOpenRecent3, fileOpenRecent4,
             fileOpenRecent5, fileOpenRecent6, fileOpenRecent7, fileOpenRecent8,
             fileClearRecentFiles,
-            fileSave, fileSaveAs, fileReveal, fileImportPsg, fileImportAudio, fileQuit,
+            fileSave, fileSaveAs, fileReveal, fileImportPsg, fileImportAudio, fileQuit, fileRenderVideo,
             editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
             transportPreservePsgTiming,
@@ -93,7 +99,8 @@ public:
             // addAutomationTrack,
             trackRenderToAudio,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
-            viewSnapPlayheadToGrid, viewNoteLanes,
+            viewSnapPlayheadToGrid, viewNoteLanes, viewPianoKeys, viewVizMode, viewExitVizMode,
+            viewNextVizLayout, viewSwitchVizScopes,
             settingsAudioMidi, settingsPlugins, settingsTuningTables,
             helpAbout
         };
@@ -163,8 +170,11 @@ public:
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::viewSnapPlayheadToGrid);
             menu.addCommandItem(manager, MainAppCommands::viewNoteLanes);
+            menu.addCommandItem(manager, MainAppCommands::viewPianoKeys);
         } else if (menuName == "Settings") {
+           #if ! JUCE_MAC  // in the app menu on macOS
             menu.addCommandItem(manager, MainAppCommands::settingsAudioMidi);
+           #endif
             menu.addCommandItem(manager, MainAppCommands::settingsPlugins);
             menu.addCommandItem(manager, MainAppCommands::settingsTuningTables);
         } else if (menuName == "Help") {
@@ -234,7 +244,13 @@ public:
                 break;
 
             case fileReveal:
+               #if JUCE_MAC
                 result.setInfo("Reveal in Finder", "Reveal the current edit in Finder", "File", 0);
+               #elif JUCE_WINDOWS
+                result.setInfo("Show in Explorer", "Show the current edit in Explorer", "File", 0);
+               #else
+                result.setInfo("Show in Folder", "Show the folder of the current edit", "File", 0);
+               #endif
                 break;
 
             case fileImportPsg:
@@ -244,6 +260,10 @@ public:
 
             case fileImportAudio:
                 result.setInfo("Import Audio...", "Import audio file", "File", 0);
+                break;
+
+            case fileRenderVideo:
+                result.setInfo("Render Video...", "Render the tune as a video of its notes and scopes", "File", 0);
                 break;
 
             case fileQuit:
@@ -260,6 +280,9 @@ public:
             case editRedo:
                 result.setInfo("Redo", "Redo the last action", "Edit", 0);
                 result.addDefaultKeypress('z', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
+               #if ! JUCE_MAC
+                result.addDefaultKeypress('y', ModifierKeys::commandModifier);
+               #endif
                 break;
 
             case editDelete:
@@ -351,6 +374,10 @@ public:
             case viewZoomIn:
                 result.setInfo("Zoom in", "Zoom in", "View", 0);
                 result.addDefaultKeypress('=', 0);
+                // keys arrive with their Shift: German = is Shift+0 and + has its own key, US + is Shift+=
+                result.addDefaultKeypress('=', ModifierKeys::shiftModifier);
+                result.addDefaultKeypress('+', 0);
+                result.addDefaultKeypress('+', ModifierKeys::shiftModifier);
                 break;
 
             case viewZoomOut:
@@ -368,6 +395,32 @@ public:
                 result.setInfo("Note Lanes",
                                "Draw the tuning table's notes as lanes behind PSG clips in the Notes view",
                                "View", 0);
+                break;
+
+            case viewPianoKeys:
+                result.setInfo("Piano Keys",
+                               "Draw a short piano keyboard over the note lanes at the left edge",
+                               "View", 0);
+                break;
+
+            case viewVizMode:
+                result.setInfo("Viz Mode", "Full screen with only the notes and each chip's scopes", "View", 0);
+                result.addDefaultKeypress('f', 0);
+                break;
+
+            case viewExitVizMode:
+                result.setInfo("Exit Viz Mode", "Leave Viz mode", "View", 0);
+                result.addDefaultKeypress(KeyPress::escapeKey, 0);
+                break;
+
+            case viewNextVizLayout:
+                result.setInfo("Next Layout", "In Viz mode, show notes and scopes, then notes, then scopes", "View", 0);
+                result.addDefaultKeypress('v', 0);
+                break;
+
+            case viewSwitchVizScopes:
+                result.setInfo("Switch Scopes", "In Viz mode, stack the scopes or set them side by side", "View", 0);
+                result.addDefaultKeypress('s', 0);
                 break;
 
             // Settings commands

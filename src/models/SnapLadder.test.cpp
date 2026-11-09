@@ -179,7 +179,9 @@ public:
             expectEquals(ladder.getLabel(bar, te::TimePosition::fromSeconds(2.0), ts), juce::String("2"), "bar label");
 
             SnapLadder frames(TimecodeDisplayMode::framesOnly, fps, 25);
-            expectEquals(frames.getLabel(0, frameTime(5.0), ts), juce::String("0:00:05"), "frames-only label");
+            expectEquals(frames.getLabel(0, frameTime(5.0), ts), juce::String("5"), "frames-only label");
+            expectEquals(frames.getLabel(frames.getNumLevels() - 1, te::TimePosition::fromSeconds(60.0), ts),
+                         juce::String("3000"), "frames-only labels stay frames at coarse levels");
         }
 
         beginTest("Frames-only grid restarts at each second");
@@ -226,18 +228,43 @@ public:
             }
         }
 
-        beginTest("barsBeats mode wraps the native te snap levels");
+        beginTest("Position readout formats and parses in every mode");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);
-            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);  // beat = 0.5s = 25 frames, bar = 2s
             const auto& ts = edit->tempoSequence;
+            const auto at = [](double s) { return te::TimePosition::fromSeconds(s); };
 
-            SnapLadder ladder(TimecodeDisplayMode::barsBeats, fps, 25);
-            expectEquals(ladder.getNumLevels(), 19, "all te barsBeats levels present");
-            expectEquals(ladder.getMilestoneAfter(5), 9, "milestone above sub-beat levels is the beat");
-            expectEquals(ladder.getMilestoneAfter(9), 10, "milestone above the beat is the bar");
-            expectEquals(ladder.getLabel(9, te::TimePosition::fromSeconds(0.5), ts), juce::String("1.2"), "beat label normalized");
-            expectEquals(ladder.getLabel(10, te::TimePosition::fromSeconds(2.0), ts), juce::String("2"), "bar label normalized");
+            auto check = [&](TimecodeDisplayMode mode, double seconds, const juce::String& label) {
+                SnapLadder ladder(mode, fps, 25);
+                expectEquals(ladder.getPositionLabel(at(seconds), ts), label, "label " + label);
+                const auto parsed = ladder.parsePosition(label, ts);
+                expect(parsed.hasValue(), "parses " + label);
+                if (parsed.hasValue())
+                    expectTime(*parsed, at(seconds), "round-trip " + label);
+            };
+            check(TimecodeDisplayMode::barsBeatsFrames, 3.1, "2.3.05");
+            check(TimecodeDisplayMode::seconds, 65.24, "01:05:12");
+            check(TimecodeDisplayMode::framesOnly, 65.24, "3262");
+
+            SnapLadder bbf(TimecodeDisplayMode::barsBeatsFrames, fps, 25);
+            expectEquals(bbf.getPositionLabel(at(3.1 + 0.004), ts), juce::String("2.3.05"), "rounds to the nearest frame");
+            expectTime(*bbf.parsePosition("2", ts), at(2.0), "bare bar");
+            expectTime(*bbf.parsePosition("2|3", ts), at(3.0), "bar and beat, te separator");
+            expect(! bbf.parsePosition("1.2.3.4", ts).hasValue(), "too many parts");
+            expect(! bbf.parsePosition("1.x", ts).hasValue(), "non-numeric part");
+
+            SnapLadder secs(TimecodeDisplayMode::seconds, fps, 25);
+            expectTime(*secs.parsePosition("1.5", ts), at(1.5), "lone number is seconds");
+            expectTime(*secs.parsePosition("60:00:00", ts), at(3600.0), "minutes past the hour");
+            expect(! secs.parsePosition("1:00:00:00", ts).hasValue(), "no hours part");
+            expectTime(*secs.parsePosition("5:20", ts), at(5.4), "seconds and frames");
+            expect(secs.getKind(0) == SnapLadder::LevelKind::frames, "seconds mode snaps to frames");
+            expect(! secs.parsePosition("", ts).hasValue(), "empty");
+            expect(! secs.parsePosition("abc", ts).hasValue(), "garbage");
+
+            SnapLadder frames(TimecodeDisplayMode::framesOnly, fps, 25);
+            expect(! frames.parsePosition("1:05", ts).hasValue(), "frames-only takes a bare frame count");
         }
     }
 };

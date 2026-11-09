@@ -11,6 +11,8 @@
 
 namespace MoTool {
 
+class TrackDevicesPanel;
+
 //==============================================================================
 /**
  * Component for track header containing track name and controls
@@ -77,11 +79,25 @@ private:
     TimelineGrid& grid;
 
     OwnedArray<ClipComponent> clips;
+    OwnedArray<ClipHeader> clipHeaders;
     std::unique_ptr<RecordingClipComponent> recordingClip;
 
-    bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false, updateZoom = false;
+    bool updateClips = false, updatePositions = false, updateRecordClips = false, updateSelection = false;
 };
 
+
+//==============================================================================
+/** In Viz mode with the scopes side by side under the notes, the gap between them: drag it to give the
+    scopes more or less of every row. In Classic colours it is drawn as a rule. */
+class VizScopesGap : public Component {
+public:
+    explicit VizScopesGap(EditViewState& evs);
+    void paint(Graphics& g) override;
+    void mouseDrag(const MouseEvent& e) override;
+
+private:
+    EditViewState& editViewState;
+};
 
 //==============================================================================
 /**
@@ -96,21 +112,37 @@ public:
     ~TrackRowComponent() override;
 
     void mouseDown(const MouseEvent& e) override;
+    void paint(Graphics& g) override;
     void resized() override;
 
     void trackViewStateChanged() override;
 
     int getTrackHeight() const noexcept;
+    /** Height the row needs for its devices; 0 without them. */
+    int getMinimumHeight() const;
     void setResizerVisible(bool visible);
+
+    static constexpr int resizerHeight = 2;
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
+    /** The track's devices, fixed, when the view shows footers; in Viz mode its chip's scopes. */
+    std::unique_ptr<Component> footer;
+    /** Level with the clips, apart from them and from the window edge. */
+    static inline const BorderSize<int> footerPadding {ClipComponent::ringWidth, 8, ClipComponent::ringWidth, 8};
+    /** Scopes under the notes: below the gap to drag, level with the notes, apart from the window edge. */
+    static inline const BorderSize<int> scopesBandPadding {8, 0, ClipComponent::ringWidth, 8};
 
 private:
+    /** Takes the footer's area from the row's: the devices, or Viz mode's scopes beside, under or
+        instead of the notes. */
+    Rectangle<int> takeFooterArea(Rectangle<int>& r);
+
     EditViewState& editViewState;
     te::Track::Ptr track;
     TrackViewState trackViewState;
     ResizableEdgeComponent resizer;
+    VizScopesGap scopesGap {editViewState};
 };
 
 
@@ -128,6 +160,25 @@ private:
     EditViewState& editViewState;
     ComponentBoundsConstrainer constrainer;
     ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::rightEdge};
+};
+
+//==============================================================================
+/** The column at the right of the track rows when the view shows footers: the devices, or in
+    Viz mode the scopes. Drag the gap at its left edge, before the devices or scopes, to resize it. */
+class TrackFooterOverlayComponent : public Component, private te::ValueTreeAllEventListener {
+public:
+    TrackFooterOverlayComponent(EditViewState& evs);
+    ~TrackFooterOverlayComponent() override;
+    void paint(Graphics& g) override;
+    void resized() override;
+    void setMaximumWidth(int width) { constrainer.setMaximumWidth(width); }
+    void valueTreeChanged() override {}
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
+
+private:
+    EditViewState& editViewState;
+    ComponentBoundsConstrainer constrainer;
+    ResizableEdgeComponent resizer {this, &constrainer, ResizableEdgeComponent::Edge::leftEdge};
 };
 
 //==============================================================================
@@ -151,13 +202,26 @@ public:
     void resized() override;
     void paint(Graphics& g) override;
     int getIdealHeight() const;
+    /** Height the rows need when they fit the view. */
+    int getMinimumHeight() const;
     void setAutoFitTrackHeights(bool enabled);
+
+    /** Shares `total` among rows in proportion to their current heights; a row that would get
+        less than its minimum keeps the minimum and the others share the rest. */
+    static Array<int> fitHeights(const Array<int>& current, const Array<int>& minimum, int total);
+
+    std::function<void()> onRowsChanged;  // the rows were rebuilt, so their minimum height may differ
+
+    /** In Viz mode with the scopes under the notes, each row's from the gap above them to the row's
+        bottom, in this component's coordinates: no timeline there. */
+    Array<Rectangle<int>> getScopesBands() const;
 
 private:
     te::Edit& edit;
     EditViewState& editViewState;
     OwnedArray<TrackRowComponent> trackRows;
     TrackHeaderOverlayComponent trackHeaderOverlay {editViewState};
+    TrackFooterOverlayComponent trackFooterOverlay {editViewState};
     bool updateTracks = false;
     bool needsRepaint = false;
     bool needsResize = false;
@@ -177,6 +241,10 @@ private:
 
     void handleAsyncUpdate() override;
     void buildTracks();
+    /** The devices or scopes have a column of their own at the right, after a gap to drag. */
+    bool hasFooterGap() const {
+        return editViewState.showFooters && editViewState.showsNotes() && ! editViewState.areVizScopesUnderNotes();
+    }
 };
 
 

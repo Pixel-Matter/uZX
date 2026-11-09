@@ -308,7 +308,7 @@ public:
             expect(hasTickAtX(40), "Expected a grid tick at the second 50 fps frame.");
             expect(hasTickAtX(60), "Expected a grid tick at the third 50 fps frame.");
             expect(! hasTickAtX(16), "Frames-only grid should not use musical beat ticks.");
-            expect(labels.contains("0:00:05"), "Expected extended frames-only labels to use SMPTE-style frames.");
+            expect(labels.contains("5"), "Expected frames-only labels to be absolute frame counts.");
             expect(! labels.contains("1.1"), "Frames-only labels should not use bars/beats.");
         }
 

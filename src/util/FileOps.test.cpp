@@ -1,59 +1,53 @@
-#include "FileOps.h"
-
 #include <JuceHeader.h>
+
+#include "FileOps.h"
 
 namespace MoTool::Tests {
 
-namespace te = tracktion;
-
-class RecentEditsTests : public juce::UnitTest
-{
+class RecentEditsTest : public juce::UnitTest {
 public:
-    RecentEditsTests() : UnitTest("RecentEdits", "MoTool") {}
+    RecentEditsTest() : UnitTest("RecentEdits", "MoTool") {}
 
     void runTest() override {
-        auto& storage = te::Engine::getEngines()[0]->getPropertyStorage();
-        auto dir = File::createTempFile("RecentEditsTests");
-        dir.createDirectory();
-
-        Array<File> files;
-        for (int i = 0; i < 10; ++i) {
-            files.add(dir.getChildFile(String(i) + ".uzx"));
-            files.getLast().create();
-        }
-
+        auto& storage = tracktion::Engine::getEngines()[0]->getPropertyStorage();
         EditFileOps::clearRecentEdits(storage);
 
-        beginTest("Newest first, oldest dropped beyond the limit");
+        auto root = File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("uzx-recent", "", false);
+        root.createDirectory();
+        Array<File> files;
+        for (int i = 0; i < 10; ++i) {
+            files.add(root.getChildFile("edit" + String(i) + ".uzx"));
+            files.getReference(i).create();
+        }
+
+        beginTest("A full list keeps the newest edits, newest first");
         {
             for (auto& f : files)
                 EditFileOps::addToRecentEdits(storage, f);
 
-            auto recent = EditFileOps::getRecentEdits(storage);
+            const auto recent = EditFileOps::getRecentEdits(storage);
             expectEquals(recent.size(), 8);
-            expectEquals(recent[0], files[9].getFullPathName());
-            expectEquals(recent[7], files[2].getFullPathName());
+            for (int i = 0; i < recent.size(); ++i)
+                expectEquals(recent[i], files[9 - i].getFullPathName());
             expectEquals(EditFileOps::getStartupEditFile(storage).getFullPathName(), files[9].getFullPathName());
         }
 
-        beginTest("Re-adding moves a file to the front without duplicates");
+        beginTest("Missing files don't take slots");
         {
-            EditFileOps::addToRecentEdits(storage, files[5]);
-
-            auto recent = EditFileOps::getRecentEdits(storage);
+            files[9].deleteFile();
+            const auto recent = EditFileOps::getRecentEdits(storage);
             expectEquals(recent.size(), 8);
-            expectEquals(recent[0], files[5].getFullPathName());
-            expectEquals(recent[1], files[9].getFullPathName());
-            expectEquals(recent.indexOf(files[5].getFullPathName(), false, 1), -1);
+            expectEquals(recent[0], files[8].getFullPathName());
         }
 
-        beginTest("Missing files are skipped");
+        beginTest("Re-adding moves an edit to the front without duplicates");
         {
-            files[5].deleteFile();
-
-            auto recent = EditFileOps::getRecentEdits(storage);
-            expect(!recent.contains(files[5].getFullPathName()));
-            expectEquals(recent[0], files[9].getFullPathName());
+            EditFileOps::addToRecentEdits(storage, files[5]);
+            const auto recent = EditFileOps::getRecentEdits(storage);
+            expectEquals(recent.size(), 8);
+            expectEquals(recent[0], files[5].getFullPathName());
+            expectEquals(recent[1], files[8].getFullPathName());
+            expectEquals(recent.indexOf(files[5].getFullPathName(), false, 1), -1);
         }
 
         beginTest("Clearing empties the list read from the same storage");
@@ -62,10 +56,10 @@ public:
             expect(EditFileOps::getRecentEdits(storage).isEmpty());
         }
 
-        dir.deleteRecursively();
+        root.deleteRecursively();
     }
 };
 
-static RecentEditsTests recentEditsTests;
+static RecentEditsTest recentEditsTest;
 
 }  // namespace MoTool::Tests

@@ -2,6 +2,7 @@
 #include "ChipClockPresets.h"
 #include "../../../gui/common/LookAndFeel.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
+#include "../../../controllers/App.h"
 
 
 namespace MoTool::uZX {
@@ -15,19 +16,23 @@ AYPluginUI::ChannelGroup::ChannelGroup(AYChipPlugin& plugin,
                                         ParameterValue<bool>& channelParam,
                                         ParameterValue<bool>& toneParam,
                                         ParameterValue<bool>& noiseParam,
-                                        ParameterValue<bool>& envelopeParam)
+                                        ParameterValue<bool>& envelopeParam,
+                                        ParameterValue<bool>& soloParam)
     : channelOn   { plugin, channelParam }
     , toneOn      { plugin, toneParam }
     , noiseOn     { plugin, noiseParam }
     , envelopeOn  { plugin, envelopeParam }
     , channelParam_(channelParam)
+    , soloParam_(soloParam)
 {
     channelParam_.addListener(this);
+    soloParam_.addListener(this);
     updateTNEState();
 }
 
 AYPluginUI::ChannelGroup::~ChannelGroup() {
     channelParam_.removeListener(this);
+    soloParam_.removeListener(this);
 }
 
 void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
@@ -38,8 +43,6 @@ void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
 }
 
 void AYPluginUI::ChannelGroup::setupButtonColours(ToggleButton& button) {
-    // button .setColour(TextButton::buttonOnColourId, Colors::Theme::soloed);
-
     // if logic is inverted, use Theme::surface as on color
     button.setColour(TextButton::buttonOnColourId, Colors::Theme::surface);
     button.setColour(TextButton::buttonColourId,   Colors::Theme::muted);
@@ -52,6 +55,7 @@ void AYPluginUI::ChannelGroup::setupWidgets() {
     setupButtonColours(toneOn);
     setupButtonColours(noiseOn);
     setupButtonColours(envelopeOn);
+    updateSoloColour();
 
     // Set connected edges for buttons
     channelOn.setConnectedEdges(Button::ConnectedOnRight);
@@ -72,13 +76,93 @@ void AYPluginUI::ChannelGroup::layoutButtons(Rectangle<int> bounds) {
 
 void AYPluginUI::ChannelGroup::valueChanged(Value&) {
     updateTNEState();
+    updateSoloColour();
+}
+
+void AYPluginUI::ChannelGroup::updateSoloColour() {
+    // a soloed channel plays, muted or not
+    const bool soloed = soloParam_.getStoredValue();
+    channelOn.setColour(TextButton::buttonOnColourId, soloed ? Colors::Theme::soloed : Colors::Theme::surface);
+    channelOn.setColour(TextButton::buttonColourId, soloed ? Colors::Theme::soloed : Colors::Theme::muted);
+    channelOn.setColour(TextButton::textColourOffId, soloed ? Colors::Theme::textPrimary : Colors::Theme::background);
 }
 
 void AYPluginUI::ChannelGroup::updateTNEState() {
-    bool enabled = channelParam_.getStoredValue();
+    bool enabled = channelParam_.getStoredValue() || soloParam_.getStoredValue();
     toneOn.setEnabled(enabled);
     noiseOn.setEnabled(enabled);
     envelopeOn.setEnabled(enabled);
+}
+
+//==============================================================================
+// AYScopes
+//==============================================================================
+AYScopes::AYScopes(AYChipPlugin& plugin, Look look) : settings_(plugin.scopeSettings), look_(look) {
+    static const std::array<juce::Colour, 3> colours {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
+    static const std::array<const char*, 3> labels {"A", "B", "C"};
+
+    for (size_t i = 0; i < 3; ++i) {
+        displays_[i] = std::make_unique<WaveformDisplay>(colours[i], labels[i],
+                                                         *plugin.getVizChannelBuffer(static_cast<int>(i)), settings_);
+        if (look_.classic)
+            displays_[i]->setColours(Colors::VizClassic::trace, Colors::VizClassic::background);
+        addAndMakeVisible(*displays_[i]);
+    }
+
+    settings_.windowSamples.addListener(this);
+    settings_.gain.addListener(this);
+    settings_.triggerMode.addListener(this);
+    settings_.triggerLevel.addListener(this);
+    applySettings();
+}
+
+AYScopes::~AYScopes() {
+    settings_.windowSamples.removeListener(this);
+    settings_.gain.removeListener(this);
+    settings_.triggerMode.removeListener(this);
+    settings_.triggerLevel.removeListener(this);
+}
+
+void AYScopes::valueChanged(juce::Value&) {
+    applySettings();
+}
+
+void AYScopes::applySettings() {
+    const auto strategy = TriggerStrategy::fromMode(settings_.triggerMode.getStoredValue());
+    for (auto& display : displays_) {
+        display->setWindowSize(settings_.windowSamples.getStoredValue());
+        display->setGain(settings_.gain.getStoredValue());
+        display->setTriggerStrategy(strategy);
+        display->setTriggerLevel(settings_.triggerLevel.getStoredValue());
+    }
+}
+
+void AYScopes::paint(Graphics& g) {
+    if (! look_.classic)
+        return;
+    // A rule in the middle of each gap, between the scopes
+    g.setColour(Colors::VizClassic::rule);
+    for (size_t i = 1; i < displays_.size(); ++i) {
+        if (look_.sideBySide)
+            g.fillRect(displays_[i]->getX() - spacing / 2, 0, 1, getHeight());
+        else
+            g.fillRect(0, displays_[i]->getY() - spacing / 2, getWidth(), 1);
+    }
+}
+
+void AYScopes::resized() {
+    auto r = getLocalBounds();
+    const auto across = look_.sideBySide ? r.getWidth() : r.getHeight();
+    const float size = ((float) across - spacing * 2.0f) / 3.0f;
+    for (auto& display : displays_) {
+        if (look_.sideBySide) {
+            display->setBounds(r.removeFromLeft(roundToInt(size)));
+            r.removeFromLeft(spacing);
+        } else {
+            display->setBounds(r.removeFromTop(roundToInt(size)));
+            r.removeFromTop(spacing);
+        }
+    }
 }
 
 //==============================================================================
@@ -102,68 +186,30 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
 
     setupToggleButtons();
 
-    // Initialize scope displays for channels A, B, C
-    static const std::array<juce::Colour, 3> channelColours{
-        Colors::PSG::A,  // Blue
-        Colors::PSG::B,  // Emerald
-        Colors::PSG::C   // Amber
-    };
-    static const std::array<const char*, 3> channelLabels{"A", "B", "C"};
-
-    for (size_t i = 0; i < 3; ++i) {
-        scopeDisplays_[i] = std::make_unique<WaveformDisplay>(
-            channelColours[i],
-            juce::String(channelLabels[i]),
-            *plugin_.getVizChannelBuffer(static_cast<int>(i)),
-            plugin_.scopeSettings
-        );
-        addAndMakeVisible(*scopeDisplays_[i]);
-    }
-
-    // Listen to scope settings changes
-    plugin_.scopeSettings.windowSamples.addListener(this);
-    plugin_.scopeSettings.gain.addListener(this);
-    plugin_.scopeSettings.triggerMode.addListener(this);
-    plugin_.scopeSettings.triggerLevel.addListener(this);
-
-    // Apply initial scope settings to all displays
-    updateScopeDisplayParams();
+    addAndMakeVisible(scopes_);
 }
 
-AYPluginUI::~AYPluginUI() {
-    plugin_.scopeSettings.windowSamples.removeListener(this);
-    plugin_.scopeSettings.gain.removeListener(this);
-    plugin_.scopeSettings.triggerMode.removeListener(this);
-    plugin_.scopeSettings.triggerLevel.removeListener(this);
-}
-
-void AYPluginUI::valueChanged(juce::Value&) {
-    updateScopeDisplayParams();
-}
-
-void AYPluginUI::updateScopeDisplayParams() {
-    const int window = plugin_.scopeSettings.windowSamples.getStoredValue();
-    const float gain = plugin_.scopeSettings.gain.getStoredValue();
-    const auto mode = plugin_.scopeSettings.triggerMode.getStoredValue();
-    const float level = plugin_.scopeSettings.triggerLevel.getStoredValue();
-
-    auto strategy = TriggerStrategy::fromMode(mode);
-
-    // Apply settings to all 3 scope displays
-    for (auto& display : scopeDisplays_) {
-        if (display) {
-            display->setWindowSize(window);
-            display->setGain(gain);
-            display->setTriggerStrategy(strategy);
-            display->setTriggerLevel(level);
-        }
-    }
-}
+AYPluginUI::~AYPluginUI() = default;
 
 void AYPluginUI::setupToggleButtons() {
-    for (auto* group : channelGroups) {
-        group->addToComponent(*this);
-        group->setupWidgets();
+    for (size_t chan = 0; chan < channelGroups.size(); ++chan) {
+        auto& group = *channelGroups[chan];
+        group.addToComponent(*this);
+        group.setupWidgets();
+
+        auto& button = group.channelOn;
+       #if JUCE_MAC
+        button.setTooltip(button.getTooltip() + ". Option-click: solo");
+       #else
+        button.setTooltip(button.getTooltip() + ". Alt-click: solo");
+       #endif
+        // a channel is on, muted or soloed: a click turns a muted or soloed one back on
+        button.onClick = [this, chan, toggle = std::move(button.onClick)] {
+            if (ModifierKeys::currentModifiers.isAltDown() || plugin_.channelMuter.getSoloParam(chan).getStoredValue())
+                plugin_.toggleSolo(chan);
+            else
+                toggle();
+        };
     }
 }
 
@@ -176,7 +222,7 @@ void AYPluginUI::resized() {
 
     // static
     auto staticRow = r.removeFromTop(itemHeight);
-    auto buttonWidth = staticRow.getWidth() / 4 - 8;
+    const auto buttonWidth = jmin(staticRow.getWidth() / 4 - 8, maxButtonWidth);
     chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, itemHeight));
     staticRow.removeFromLeft(8);
     chipClockCombo.setBounds(staticRow.withSizeKeepingCentre(staticRow.getWidth(), 20));
@@ -196,24 +242,21 @@ void AYPluginUI::resized() {
     auto col = r.removeFromLeft(buttonWidth);
     const float h = ((float) col.getHeight() - itemSpacing * 2.0f) / 3.0f;
 
-    // Add spacing between channel groups and scopes
-    r.removeFromLeft(itemSpacing * 2);
-
-    // Layout scope displays to the right of channel groups
-    auto scopeArea = r;
-
-    for (int i = 0; i < 3; ++i) {
-        channelGroups[i]->layoutButtons(col.removeFromTop(roundToInt(h)));
-
-        // Layout corresponding scope display
-        auto scopeBounds = scopeArea.removeFromTop(roundToInt(h));
-        if (scopeDisplays_[static_cast<size_t>(i)]) {
-            scopeDisplays_[static_cast<size_t>(i)]->setBounds(scopeBounds);
-        }
-
+    for (auto* group : channelGroups) {
+        group->layoutButtons(col.removeFromTop(roundToInt(h)));
         col.removeFromTop(itemSpacing);
-        scopeArea.removeFromTop(itemSpacing);
     }
+
+    // the scopes to the right, level with the channel groups
+    r.removeFromLeft(itemSpacing * 2);
+    scopes_.setBounds(r);
+}
+
+int AYPluginUI::getMinimumHeight() const {
+    // as resized() lays it out: margins, the chip row, the knobs, then three channel groups of T, N and E
+    constexpr int margins = 2 * 8, gaps = 2 * (2 * itemSpacing);
+    constexpr int channels = 3 * (3 * minToggleHeight) + 2 * itemSpacing;
+    return margins + itemHeight + gaps + 2 * itemHeight + channels;
 }
 
 ComponentBoundsConstrainer* AYPluginUI::getBoundsConstrainer() {
@@ -225,10 +268,11 @@ bool AYPluginUI::hasDeviceMenu() const {
 }
 
 void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
-    addMidiRangeMenu(menu, plugin_.staticParams.baseMidiChannel, plugin_.staticParams.baseMidiChannel.definition.description, 4);
+    if (MoToolApp::hasMidiControl())
+        addMidiRangeMenu(menu, plugin_.staticParams.baseMidiChannel, plugin_.staticParams.baseMidiChannel.definition.description, 4);
     // addDiscreteIntegerParameterMenu(menu, plugin_.staticParams.numOutputChannels, plugin_.staticParams.numOutputChannels.definition.description);
 
-    // Monitor mode toggle
+   #if JUCE_DEBUG  // its output goes through DBG, which Release builds drop
     const bool monitorEnabled = plugin_.staticParams.monitorMode.getStoredValue();
     menu.addItem(plugin_.staticParams.monitorMode.definition.description,
                  true,
@@ -237,6 +281,7 @@ void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
                      plugin_.staticParams.monitorMode.setStoredValue(
                          !plugin_.staticParams.monitorMode.getStoredValue());
                  });
+   #endif
 
     menu.addSeparator();
 

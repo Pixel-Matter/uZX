@@ -17,10 +17,12 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 GUIDE = ROOT / "docs/user-guide.md"
-EXAMPLE = ROOT / "docs/examples/Guide melody.uzx"
+EXAMPLE = ROOT / "tests/fixtures/Guide demo.uzx"  # scripts/make_guide_fixture.py writes both
+PLAYER_EXAMPLE = ROOT / "tests/fixtures/Turbo Sound demo.uzx"  # one clip per track, as the Player opens files
+TRACK = "Lead"  # the example's first track, whose first clip and devices the figures show
 FIGURES = {
-    "player-overview": ("Player transport and timeline", "The transport sits above the timeline; the AY controls are on the right."),
-    "player-ay-panel": ("Player AY side panel", "Chip type and clock, stereo controls, and the three channel strips."),
+    "player-overview": ("Player transport and timeline", "The transport sits above the timeline; each track ends in its AY chip and level meter."),
+    "player-ay-panel": ("Player track devices", "Chip type and clock, stereo controls, the three channel strips, and the track's level meter."),
     "studio-layout": ("Studio layout with a selected PSG clip", "Track headers are on the left, clips above, and the selected clip's parameter editor below."),
     "studio-psg-editor": ("PSG parameter editor", "Choose a register parameter in the list to inspect its values against the timeline grid."),
     "studio-devices": ("Studio track device chain", "Selecting the track reveals its devices, including the AY chip emulator."),
@@ -130,6 +132,8 @@ def demo_startup(settings, project):
     if recent is None:
         recent = ET.SubElement(properties, "VALUE", {"name": "recentEdits"})
     recent.set("val", str(project))
+    for volume in properties.findall("VALUE[@name='masterVolumeDb']"):
+        properties.remove(volume)  # figures show the default level, not the user's
     if original is not None:
         replace_bytes(backup, original)
     try:
@@ -144,14 +148,14 @@ def demo_startup(settings, project):
 
 
 @contextmanager
-def application(build, target, work):
+def application(build, target, work, example):
     name = "μZX Player" if target == "uZXPlayer" else "μZX Studio"
     bundle = build / f"src/{target}_artefacts/Debug/{name}.app"
     info = plistlib.loads((bundle / "Contents/Info.plist").read_bytes())
     project_dir = work / target
     project_dir.mkdir()
-    project = project_dir / EXAMPLE.name
-    shutil.copyfile(EXAMPLE, project)
+    project = project_dir / example.name
+    shutil.copyfile(example, project)
     command = [str(bundle / "Contents/MacOS" / info["CFBundleExecutable"])]
     settings = Path.home() / f"Library/Application Support/{name}/{name}.settings"
     with demo_startup(settings, project), (work / f"{target}.log").open("w") as log:
@@ -173,23 +177,23 @@ def application(build, target, work):
 
 
 def capture_figures(build, work):
-    with application(build, "uZXPlayer", work) as (pid, window):
-        resize(pid, window, 1280, 650)
+    with application(build, "uZXPlayer", work, PLAYER_EXAMPLE) as (pid, window):
+        resize(pid, window, 1280, 650)  # fits the demo's two chips at the tracks' minimum height
         menu(pid, "View > Zoom to project")
         scene = observe(pid, window, work / "player-overview.png")
-        if EXAMPLE.stem not in scene["window_title"]:
+        if PLAYER_EXAMPLE.stem not in scene["window_title"]:
             raise RuntimeError("Player did not load the example project")
         width, height = scene["coordinate_context"]["delivered_image_size"]
-        # shortcut: PlayerDocument has a fixed 240-point AY panel and 40-point transport;
-        # update this crop if that layout changes.
-        observe(pid, window, work / "player-ay-panel.png", (width - 240, 72, 240, height - 72))
+        # shortcut: track rows end in a fixed 264-point devices footer (EditViewState::footerWidth)
+        # under a 40-point transport; update this crop if that layout changes.
+        observe(pid, window, work / "player-ay-panel.png", (width - 264, 72, 264, height - 72))
         print("Captured Player transport/timeline and AY panel", flush=True)
 
-    with application(build, "uZX", work) as (pid, window):
+    with application(build, "uZX", work, EXAMPLE) as (pid, window):
         resize(pid, window, 1280, 800)
         menu(pid, "View > Zoom to project")
         scene = observe(pid, window, work / "studio-before.png")
-        track = element(scene, EXAMPLE.stem, "textField")
+        track = element(scene, TRACK, "textField")
         origin = scene["coordinate_context"]["logical_bounds"][0]
         b = track["bounds"]
         click_at(pid, window, scene, b["x"] + b["width"] + 40 - origin[0], b["y"] + 60 - origin[1])
@@ -202,7 +206,7 @@ def capture_figures(build, work):
         top = round(element(scene, "Clip Parameters")["bounds"]["y"] - origin[1] - 8)
         observe(pid, window, work / "studio-psg-editor.png", (0, top, width, height - top))
         scene = observe(pid, window, work / "studio-before-devices.png")
-        b = element(scene, EXAMPLE.stem, "textField")["bounds"]
+        b = element(scene, TRACK, "textField")["bounds"]
         click_at(pid, window, scene, b["x"] + b["width"] / 2 - origin[0], b["y"] + 90 - origin[1])
         # shortcut: the demo has one AY device; widen the crop when adding more devices.
         scene = observe(pid, window, work / "studio-devices.png", (0, top, min(width, 360), height - top))

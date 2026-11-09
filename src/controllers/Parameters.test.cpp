@@ -167,7 +167,30 @@ public:
                 autoParam.updateFromAttachedParamValue();
                 expectEquals(parameter.getLiveValue(), ChipType(ChipType::AY),
                              "Live reader updates from ValueTree change");
+
+                parameter.setStoredValue(ChipType::YM);
+                expectEquals(parameter.getLiveValue(), ChipType(ChipType::YM),
+                             "Live value follows a stored value set by code, undo or redo");
             }
+        }
+
+        beginTest("Undo and redo of a stored value reach the parameter");
+        {
+            ValueTree pluginState {te::IDs::PLUGIN};
+            pluginState.setProperty(te::IDs::type, "TestPlugin", nullptr);
+            UndoManager undoManager;
+
+            ParameterValue<ChipType> parameter {{"chip", "chip", "Chip", "Chip type", ChipType::AY}};
+            parameter.referTo(pluginState, &undoManager);
+            TestPlugin plugin({*edit, pluginState, true});
+            BindedAutoParameter<ChipType> autoParam(plugin, parameter);
+
+            undoManager.beginNewTransaction();
+            parameter.setStoredValue(ChipType::YM);
+            undoManager.undo();
+            expectEquals(parameter.getLiveValue(), ChipType(ChipType::AY), "Undo");
+            undoManager.redo();
+            expectEquals(parameter.getLiveValue(), ChipType(ChipType::YM), "Redo");
         }
 
     }

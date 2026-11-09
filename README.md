@@ -56,6 +56,7 @@ A modern tool for composing and playing back chiptune music for platforms using 
 - Visual tuning grid with note tooltips and scale highlighting
 - Configurable chip clock frequency and A4 reference
 - CSV export of tuning tables
+- Tuning table, key and tempo detection for imported PSG files, Turbo Sound sets as one tune
 
 **Visualization & Interaction:**
 
@@ -63,6 +64,7 @@ A modern tool for composing and playing back chiptune music for platforms using 
 - Integrated oscilloscope displays per AY channel with live monitoring
 - Standalone scope plugin
 - Smooth timeline scrolling and zooming with click-to-seek
+- Viz mode: full-screen notes and scopes, and File → Render Video to an MP4 through ffmpeg
 
 ## Download
 
@@ -78,6 +80,11 @@ xattr -rd com.apple.quarantine /Applications/μZX\ Studio.app
 ```
 
 (Replace app paths as needed. Adjust for your installation location, e.g., `~/Applications/` if installed there.)
+
+### Known Issues
+
+- **macOS: playback scrolling drops some frames on a MacBook Pro's built-in display.** On that XDR panel, at a fixed 50 Hz, about one frame in 25 reaches the screen a refresh late, so scrolling hitches now and then. Drawing a frame there takes about 10 ms, half of it macOS checking the picture for HDR content, which leaves little room before the screen's deadline. An external display is not affected. Before macOS 14 the timeline can also drop frames on other displays and in Viz mode, because there µZX can't time its frames to the screen.
+- **macOS: with two displays on, playback scrolling stutters in waves.** When the displays refresh at slightly different rates, such as an external display at 59.95 Hz beside a MacBook's panel at 60 Hz, macOS shows some frames a refresh late for a few seconds every 20 seconds or so. µZX hands every frame over on time; the stutter comes from macOS. Using a single display, for example a MacBook with its lid closed, avoids it.
 
 ## Building from Source
 
@@ -112,6 +119,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for build setu
 - [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/) — audio engine foundation
 - [JUCE](https://juce.com/) — cross-platform C++ framework
 - [ayumi](https://github.com/true-grue/ayumi) by Peter Sovietov (true-grue) — AY-3-8910/YM2149 emulation
+- [zxtune](https://github.com/vitamin-caig/zxtune) by Vitamin/CAIG — tracker module players (LGPL-3.0), built from the [uzx branch](https://github.com/Pixel-Matter/zxtune/tree/uzx) of our fork
 
 Greets to diver, spke, n1k-o, bfox, wbcbz7, Pator, Megus, Volutar and all ZX Spectrum musicians and demosceners!
 

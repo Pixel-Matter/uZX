@@ -11,7 +11,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Entering Viz mode, or pressing `V` or `S`, shows both choices for a moment, with the key to leave
 
 ### Tracker modules
-- Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`, early `.txt`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop
+- Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop
 - Turbo Sound modules (PT3 pairs, Vortex files with a module per chip) open on a track per chip, as one tune
 - The module's title names the tracks; its note table becomes the clip's tuning table, with Sound Tracker's own (`ST`) as a new table; its rows set the tempo, so only beats and meter are detected
 - Vortex Tracker modules bring their chip clock and frame rate, such as a Pentagon's 1.75 MHz and 48.828 Hz

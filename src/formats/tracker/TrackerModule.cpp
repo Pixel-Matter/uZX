@@ -62,7 +62,8 @@ std::optional<TrackerModule> readTrackerModule(const juce::MemoryBlock& bytes) {
 
 const juce::StringArray& getTrackerModuleExtensions() {
     // zxtune finds the format from the content; these are the names the files usually have.
-    // Vortex Tracker II saves its text modules as .txt.
+    // Vortex Tracker II saves its text modules as .txt. The Player registers the others with Finder
+    // (PLAYER_MODULE_EXTENSIONS in src/CMakeLists.txt).
     static const juce::StringArray extensions {"pt3", "pt2", "pt1", "stc", "st1", "st3", "stp", "asc", "as0",
                                                "sqt", "psc", "psm", "gtr", "ftc", "txt"};
     return extensions;

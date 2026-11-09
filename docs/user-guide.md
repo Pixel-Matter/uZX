@@ -26,7 +26,8 @@ A minimal player for listening to PSG chip music files.
 
 - **Drag and drop** a `.psg` file, a tracker module or a `.uzx` file onto the window.
 - **File menu → Open** (`Cmd+O` / `Ctrl+O`).
-- **Double-click** a `.psg` or `.uzx` file in Finder / Explorer (file association registered on install).
+- **Double-click** a file in Finder (macOS). µZX Player is the default app for `.psg` files. Tracker modules and `.uzx` files open in it when no other app claims them, such as a zxtune player for modules, or µZX Studio, which opens `.uzx` files when it is installed. To pick the Player anyway, use **Open With**, or **Get Info → Open with → Change All…** for every file of that type. Vortex Tracker's `.txt` modules are not registered.
+- On Windows and Linux the Player registers no file types: choose it in the file manager's **Open with**, which passes the file on the command line.
 - Pass a file path as a command-line argument.
 
 Drop or open several `.psg` files at once to play them together, each on its own track with its own AY chip, as a Turbo Sound tune has one file per chip. They replace the open edit, which is named after the start their names share: `song_1.psg` and `song_2.psg` open as `song`.

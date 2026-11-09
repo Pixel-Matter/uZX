@@ -29,6 +29,28 @@ juce_add_gui_app(${TUNING_TARGET_NAME}
     BUNDLE_ID "org.pixelmatter.${TUNING_TARGET_NAME}"
 )
 
+# The Player's file types on macOS. The rank tells Finder how strong its claim is: the default app
+# for .psg; for tracker modules (zxtune's players or a tracker may be the user's choice) and for .uzx
+# (Studio's), an alternate one, which opens them only when no app claims them more strongly. Not
+# DOCUMENT_EXTENSIONS: JUCE gives all of those one entry ranked Default.
+# The modules are getTrackerModuleExtensions() (src/formats/tracker/TrackerModule.cpp) without
+# Vortex Tracker's .txt, so that the Player isn't offered for every text file.
+set(PLAYER_MODULE_EXTENSIONS pt3 pt2 pt1 stc st1 st3 stp asc as0 sqt psc psm gtr ftc)
+list(TRANSFORM PLAYER_MODULE_EXTENSIONS PREPEND "<string>")
+list(TRANSFORM PLAYER_MODULE_EXTENSIONS APPEND "</string>")
+list(JOIN PLAYER_MODULE_EXTENSIONS "" PLAYER_MODULE_EXTENSIONS)
+set(PLAYER_DOCUMENT_TYPES "<plist><dict><key>CFBundleDocumentTypes</key><array>
+  <dict><key>CFBundleTypeName</key><string>PSG File</string>
+    <key>CFBundleTypeExtensions</key><array><string>psg</string></array>
+    <key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Default</string></dict>
+  <dict><key>CFBundleTypeName</key><string>Tracker Module</string>
+    <key>CFBundleTypeExtensions</key><array>${PLAYER_MODULE_EXTENSIONS}</array>
+    <key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string></dict>
+  <dict><key>CFBundleTypeName</key><string>µZX Project</string>
+    <key>CFBundleTypeExtensions</key><array><string>uzx</string></array>
+    <key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string></dict>
+</array></dict></plist>")
+
 # JUCE Player Application Setup
 juce_add_gui_app(${PLAYER_TARGET_NAME}
     VERSION "${UZX_PLAYER_VERSION}"
@@ -37,7 +59,7 @@ juce_add_gui_app(${PLAYER_TARGET_NAME}
     BUNDLE_ID "org.pixelmatter.${PLAYER_TARGET_NAME}"
     ICON_BIG "${CMAKE_SOURCE_DIR}/resources/icon_player_big.png"
     ICON_SMALL "${CMAKE_SOURCE_DIR}/resources/icon_player_small.png"
-    DOCUMENT_EXTENSIONS psg
+    PLIST_TO_MERGE "${PLAYER_DOCUMENT_TYPES}"
 )
 
 juce_add_console_app(${TEST_TARGET_NAME})

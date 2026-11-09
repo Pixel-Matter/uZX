@@ -44,7 +44,7 @@ PlayerController::~PlayerController() {
 }
 
 std::unique_ptr<te::Edit> PlayerController::createOrLoadStartupEdit() {
-    return createOrLoadEdit(EditFileOps::getStartupEditFile());
+    return createOrLoadEdit(EditFileOps::getStartupEditFile(engine_.getPropertyStorage()));
 }
 
 void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
@@ -88,7 +88,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
 }
 
 void PlayerController::handleOpen() {
-    auto location = EditFileOps::getRecentEditsDirectory();
+    auto location = EditFileOps::getRecentEditsDirectory(engine_.getPropertyStorage());
     FileChooser fc("Open file", location, "*.uzx;*.psg");
     if (fc.browseForFileToOpen()) {
         auto selectedFile = fc.getResult();
@@ -105,14 +105,14 @@ void PlayerController::handleOpenFile(const File& file) {
     if (ext == ".psg") {
         importPsgToNewEdit(file);
     } else if (ext == ".uzx") {
-        EditFileOps::setRecentEditsDirectory(file);
+        EditFileOps::setRecentEditsDirectory(engine_.getPropertyStorage(), file);
         auto newEdit = createOrLoadEdit(file);
         setEdit(std::move(newEdit), true);
     }
 }
 
 void PlayerController::handleOpenRecent(int fileIndex) {
-    auto recentFiles = EditFileOps::getRecentEdits();
+    auto recentFiles = EditFileOps::getRecentEdits(engine_.getPropertyStorage());
     if (fileIndex >= 0 && fileIndex < recentFiles.size()) {
         File selectedFile(recentFiles[fileIndex]);
         if (selectedFile.existsAsFile()) {
@@ -129,8 +129,7 @@ void PlayerController::handleOpenRecent(int fileIndex) {
 }
 
 void PlayerController::handleClearRecentFiles() {
-    auto& storage = dynamic_cast<PropertyStorage&>(engine_.getPropertyStorage());
-    storage.setCustomProperty("recentEdits", "");
+    EditFileOps::clearRecentEdits(engine_.getPropertyStorage());
     MoToolApp::getCommandManager().commandStatusChanged();
 }
 

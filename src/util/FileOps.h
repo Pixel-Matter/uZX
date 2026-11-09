@@ -6,25 +6,26 @@ namespace MoTool::EditFileOps {
 
 String getDefaultEditFileSuffix();
 
-File getRecentEditsDirectory();
+File getRecentEditsDirectory(tracktion::PropertyStorage& storage);
 
-void setRecentEditsDirectory(const File& fileOrDir);
+void setRecentEditsDirectory(tracktion::PropertyStorage& storage, const File& fileOrDir);
 
 File suffestSaveAsFileName(tracktion::Edit& edit);
 
 String getAppFileGlob();
 
-StringArray getRecentEdits();
+/** Existing recent edit files, newest first. */
+StringArray getRecentEdits(tracktion::PropertyStorage& storage);
 
-void addToRecentEdits(const File& f);
+void addToRecentEdits(tracktion::PropertyStorage& storage, const File& f);
+
+void clearRecentEdits(tracktion::PropertyStorage& storage);
 
 File findRecentEditInDir(const File& dir, const String& fileGlob);
 
-File getRecentEditFile();
-
 File getTempEditFile();
 
-File getStartupEditFile();
+File getStartupEditFile(tracktion::PropertyStorage& storage);
 
 File getRendersDirectory(tracktion::Edit& edit);
 

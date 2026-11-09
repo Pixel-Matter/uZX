@@ -38,14 +38,14 @@ public:
     }
 
     bool isInterestedInFileDrag(const StringArray& paths) override {
-        return std::ranges::any_of(paths, [](const String& path) { return File(path).hasFileExtension("psg"); });
+        return std::ranges::any_of(paths, [](const String& path) { return Helpers::isTuneFile(File(path)); });
     }
 
-    /** Adds the dropped PSG files on new tracks. */
+    /** Adds the dropped PSG files and tracker modules on new tracks. */
     void filesDropped(const StringArray& paths, int /*x*/, int /*y*/) override {
         Array<File> files;
         for (auto& path : paths)
-            if (File(path).hasFileExtension("psg"))
+            if (Helpers::isTuneFile(File(path)))
                 files.add(File(path));
 
         Helpers::withTurboSoundSet(files, [safeEdit = te::SafeSelectable<te::Edit>(edit_)](const Array<File>& set) {

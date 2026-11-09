@@ -34,10 +34,16 @@ public:
                     continue;  // a computed preset, not a candidate
                 const auto result = detectTuning(histogramOf(getBuiltinPeriodGrid(table)));
                 expect(!result.usesFit, "table " + String(i) + " fell back to 12TET");
-                expectWithinAbsoluteError(result.share, 1.0f, 0.001f);
+                // Sound Tracker's table is only set from modules: detected, it is PT #1 but for two notes.
+                if (table == BuiltinTuningType::CustomST)
+                    expectGreaterThan(result.share, 0.9f);
+                else
+                    expectWithinAbsoluteError(result.share, 1.0f, 0.001f);
                 // PT #0 and PT #3 are one grid shifted a semitone: the later entry names it.
                 const int expected = i == static_cast<int>(BuiltinTuningType::CustomPT_0_PT)
                                          ? static_cast<int>(BuiltinTuningType::CustomPT_3_REAL)
+                                     : i == static_cast<int>(BuiltinTuningType::CustomST)
+                                         ? static_cast<int>(BuiltinTuningType::CustomPT_1_ST)
                                          : i;
                 expectEquals(static_cast<int>(result.tables.front().table), expected);
             }

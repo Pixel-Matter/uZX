@@ -152,7 +152,7 @@ void PlayerController::handleSaveAs() {
 
 void PlayerController::handleOpen() {
     auto location = EditFileOps::getRecentEditsDirectory();
-    FileChooser fc("Open file", location, "*.uzx;*.psg");
+    FileChooser fc("Open file", location, "*.uzx;" + Helpers::getTuneFileWildcard());
     if (fc.browseForMultipleFilesToOpen())
         handleOpenFiles(fc.getResults());
 }
@@ -160,7 +160,7 @@ void PlayerController::handleOpen() {
 void PlayerController::handleOpenFiles(const Array<File>& files) {
     Array<File> psgs;
     for (const auto& f : files)
-        if (f.hasFileExtension("psg") && f.existsAsFile())
+        if (Helpers::isTuneFile(f) && f.existsAsFile())
             psgs.add(f);
 
     if (! psgs.isEmpty()) {
@@ -247,7 +247,8 @@ void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
         auto& chip = Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack());
         RememberedStereo::apply(chip);
         // A PSG stores no clock. A fitted tuning names the machine the tune was written
-        // for, so the opened tune plays at that clock; a tracker table leaves it as it is.
+        // for, so the opened tune plays at that clock; a tracker table leaves the clock
+        // as it is: the module's own (Vortex Tracker's) or the default.
         if (const auto& fit = clip->getTuning().fit)
             chip.staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
     }

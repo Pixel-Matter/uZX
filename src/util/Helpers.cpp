@@ -1,10 +1,13 @@
 #include "Helpers.h"
 #include "../formats/psg/PsgFile.h"
 #include "../formats/psg/TurboSound.h"
+#include "../formats/tracker/TrackerModule.h"
 #include "../models/PsgClip.h"
 #include "../models/PsgTempoDetector.h"
 
+#include <algorithm>
 #include <list>
+#include <optional>
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../gui/common/Utilities.h"
 #include "../util/FileOps.h"
@@ -109,15 +112,45 @@ te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& sel
 //     return added;
 // }
 
-bool readPsgOrShowError(uZX::PsgFile& psgFile) {
-    if (psgFile.ensureRead())
-        return true;
+namespace {
+
+const StringArray psgExtensions {"psg", "ay"};
+
+/** Reads a PSG file, else a tracker module; shows an error and returns nothing when the file is
+    neither or holds no music. A PSG file reads as a module of one chip without a title, table
+    or rows. */
+std::optional<uZX::TrackerModule> readTuneOrShowError(const File& file) {
+    uZX::PsgFile psg(file);
+    if (psg.ensureRead())
+        return uZX::TrackerModule{{std::move(psg.getData())}, {}, {}, {}};
+
+    // The largest Vortex Tracker text modules are a few hundred KB.
+    constexpr int64 maxModuleSize = 4 * 1024 * 1024;
+    MemoryBlock bytes;
+    if (file.getSize() <= maxModuleSize && file.loadFileAsData(bytes))
+        if (auto module = uZX::readTrackerModule(bytes))
+            return module;
 
     AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
-        "Can't Open PSG File",
-        "'" + psgFile.getFile().getFileName() + "' is not a PSG file or contains no music.",
+        "Can't Open File",
+        "'" + file.getFileName() + "' is not a PSG file or a tracker module, or contains no music.",
         "OK");
-    return false;
+    return {};
+}
+
+}  // namespace
+
+bool isTuneFile(const File& file) {
+    return file.hasFileExtension(psgExtensions.joinIntoString(";") + ";"
+                                 + uZX::getTrackerModuleExtensions().joinIntoString(";"));
+}
+
+String getTuneFileWildcard() {
+    StringArray patterns;
+    for (const auto* extensions : {&psgExtensions, &uZX::getTrackerModuleExtensions()})
+        for (const auto& extension : *extensions)
+            patterns.add("*." + extension);
+    return patterns.joinIntoString(";");
 }
 
 uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track) {
@@ -131,29 +164,46 @@ uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track) {
 Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::TimePosition start,
                                te::AudioTrack* firstTrack) {
     Array<PsgClip*> clips;
-    std::list<uZX::PsgFile> psgFiles;  // their data, for the tempo detection below
+    std::list<uZX::TrackerModule> tunes;  // their data, for the tempo detection below
     std::vector<const uZX::PsgData*> chips;
     for (const auto& f : files) {
-        auto& psgFile = psgFiles.emplace_back(f);
-        if (! readPsgOrShowError(psgFile))
+        auto read = readTuneOrShowError(f);
+        if (! read)
             continue;
 
-        auto* track = clips.isEmpty() && firstTrack != nullptr ? firstTrack : addAudioTrackAfter(edit, nullptr);
-        if (track->getClips().isEmpty())
-            track->setName(f.getFileNameWithoutExtension());
+        auto& tune = tunes.emplace_back(std::move(*read));
+        const auto name = tune.title.isNotEmpty() ? tune.title : f.getFileNameWithoutExtension();
+        for (size_t i = 0; i < tune.chips.size(); ++i) {
+            auto& data = tune.chips[i];
+            const auto chipName = tune.chips.size() > 1 ? name + " " + String((int) i + 1) : name;
+            auto* track = clips.isEmpty() && firstTrack != nullptr ? firstTrack : addAudioTrackAfter(edit, nullptr);
+            const bool emptyTrack = track->getClips().isEmpty();
+            if (emptyTrack)
+                track->setName(chipName);
 
-        te::ClipPosition pos = {{start, te::TimeDuration::fromSeconds(psgFile.getData().getLengthSeconds())}, {}};
-        // TODO make it ThreadBackgroundJob
-        if (auto clip = PsgClip::insertTo(*track, psgFile, pos)) {
-            track->changed();
-            ensureAYPluginOnTrack(*track);
-            clips.add(clip.get());
-            chips.push_back(&psgFile.getData());
+            te::ClipPosition pos = {{start, te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}};
+            // TODO make it ThreadBackgroundJob
+            if (auto clip = PsgClip::insertTo(*track, data, pos, chipName)) {
+                track->changed();
+                auto& chip = ensureAYPluginOnTrack(*track);
+                // The clock a module was written for, on a track no other clip plays at its own clock
+                if (emptyTrack && tune.chipClock)
+                    chip.staticParams.chipClock.setStoredValue(*tune.chipClock / uZX::MHz);
+                clips.add(clip.get());
+                chips.push_back(&data);
+            }
         }
     }
+    if (clips.isEmpty())
+        return clips;
     if (clips.size() > 1)
         PsgClip::linkAsOneTune(clips);
-    PsgTempo::applyToEdit(clips, chips);
+
+    // Files imported together are one tune: the first module's table and rows stand for it.
+    const auto module = std::find_if(tunes.begin(), tunes.end(), [](const auto& t) { return ! t.rowStarts.empty(); });
+    if (module != tunes.end() && module->table)
+        clips.getFirst()->chooseTuningTable(*module->table);
+    PsgTempo::applyToEdit(clips, chips, module != tunes.end() ? module->rowStarts : std::vector<size_t>{});
     return clips;
 }
 

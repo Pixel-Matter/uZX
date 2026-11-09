@@ -47,6 +47,11 @@ juce::Optional<Result> detect(const uZX::PsgData&);
 /** The chips of one tune detected as one: a Turbo Sound tune spreads its notes and
     drums over them. They share the first chip's frame rate. */
 juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips);
+/** Same, on the row grid a tracker module knows (the frame every row starts at, see
+    uZX::TrackerModule): its rows replace the grid detection, the first row is the downbeat,
+    and how many rows make a beat and the meter are still detected. Too few rows to make a
+    grid (fewer than 2) mean detection, as above. */
+juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, const std::vector<size_t>& knownRows);
 
 /** When the clips (the chips of one tune, each loaded from its dump in `chips`) are the
     only clips in their edit, detects the tempo of the dumps together and
@@ -60,8 +65,10 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips);
     Musical pickups (notes before the first downbeat on the row grid) are not
     detected: in tracker dumps the first row is the downbeat in about 97% of
     tunes, and no register cue tried could tell the rest apart without moving
-    correct ones. */
-void applyToEdit(const juce::Array<PsgClip*>& clips, const std::vector<const uZX::PsgData*>& chips);
+    correct ones. With `knownRows`, a module's row grid, the tempo follows its rows instead. */
+void applyToEdit(const juce::Array<PsgClip*>& clips,
+                 const std::vector<const uZX::PsgData*>& chips,
+                 const std::vector<size_t>& knownRows = {});
 
 }  // namespace PsgTempo
 

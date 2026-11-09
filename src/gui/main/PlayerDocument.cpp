@@ -2,6 +2,9 @@
 
 #include "../../controllers/App.h"
 #include "../../controllers/PlayerController.h"
+#include "../../util/Helpers.h"
+
+#include <algorithm>
 
 namespace MoTool {
 
@@ -112,12 +115,9 @@ void PlayerDocumentComponent::resized() {
 }
 
 bool PlayerDocumentComponent::isInterestedInFileDrag(const StringArray& files) {
-    for (auto& path : files) {
-        auto ext = File(path).getFileExtension().toLowerCase();
-        if (ext == ".psg" || ext == ".uzx")
-            return true;
-    }
-    return false;
+    return std::ranges::any_of(files, [](const String& path) {
+        return Helpers::isTuneFile(File(path)) || File(path).hasFileExtension("uzx");
+    });
 }
 
 void PlayerDocumentComponent::filesDropped(const StringArray& paths, int /*x*/, int /*y*/) {

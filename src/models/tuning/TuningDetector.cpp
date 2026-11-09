@@ -437,13 +437,14 @@ String TuningDetection::getTableLabel() const {
 /** Tracker tables with near-identical grids merged; the later registry entry names a
     group (PT #3 absorbs PT #0, the same list a semitone away). The tables the registry
     computes (12TET, just intonations) are composing presets, not lists a tracker plays:
-    equal temperament is fitted instead. Data-independent. */
+    equal temperament is fitted instead. Sound Tracker's table is PT #1 but for two notes:
+    a tracker module names it, detection leaves the group to PT #1. Data-independent. */
 static const std::vector<BuiltinTuningType>& getCandidateTables() {
     static const auto candidates = [] {
         std::vector<BuiltinTuningType> reps;
         for (int i = 0; i < static_cast<int>(BuiltinTuningType::size()); ++i) {
             const BuiltinTuningType table(i);
-            if (! isTrackerTable(table))
+            if (! isTrackerTable(table) || table == BuiltinTuningType::CustomST)
                 continue;
             auto same = std::find_if(reps.begin(), reps.end(), [&](auto rep) {
                 return gridOverlap(getBuiltinPeriodGrid(rep), getBuiltinPeriodGrid(table)) > 0.9f;

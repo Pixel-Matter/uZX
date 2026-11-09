@@ -10,6 +10,7 @@ namespace {
     static inline constexpr auto MOTOOL_EDIT_FILE_SUFFIX = ".motool";
     static inline constexpr auto UZX_EDIT_FILE_SUFFIX = ".uzx";
     static inline constexpr auto RECENT_EDITS_KEY = "recentEdits";
+    static inline constexpr int MAX_RECENT_EDITS = 8;  // one per Open Recent command
 }
 
 String getDefaultEditFileSuffix() {
@@ -75,9 +76,6 @@ StringArray getRecentEdits(te::PropertyStorage& storage) {
     files.trim();
     files.removeEmptyStrings();
 
-    while (files.size() > 8)
-        files.remove(0);
-
     for (int i = files.size(); --i >= 0;) {
         const File f(files.getReference(i));
 
@@ -86,6 +84,7 @@ StringArray getRecentEdits(te::PropertyStorage& storage) {
         }
     }
 
+    files.removeRange(MAX_RECENT_EDITS, files.size());  // newest first: drop the oldest
     return files;
 }
 
@@ -181,8 +180,7 @@ bool saveEditAsWithDialog(te::Edit& edit) {
     juce::FileChooser fc("Save As...", newEditName, getAppFileGlob());
     if (fc.browseForFileToSave(false)) {
         auto savedFile = fc.getResult().withFileExtension(getDefaultEditFileSuffix());
-        saveEditAs(edit, savedFile);
-        return true;
+        return saveEditAs(edit, savedFile);
     }
     return false;
 }

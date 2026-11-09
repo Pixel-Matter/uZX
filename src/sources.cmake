@@ -99,6 +99,7 @@ set(TEST_SOURCES
     ## models/CustomClip.test.cpp
 
     util/enumchoice.test.cpp
+    util/FileOps.test.cpp
 
     formats/psg/PsgFile.test.cpp
 

@@ -4,6 +4,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Fixed
+- With more than eight recent projects, the app reopened an older project at startup and Open Recent omitted the newest ones
+
 ## [v0.5.0-alpha] - 2026-10-29
 
 ### Added

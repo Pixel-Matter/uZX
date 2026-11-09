@@ -10,7 +10,7 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] 2. [Consolidate AY plugin setup during PSG import](refactoring.md#2-consolidate-ay-plugin-setup-during-psg-import), using the destination track's owning edit.
 - [ ] 3. [Remove the parameter display's unsupported editing contract](refactoring.md#3-remove-the-parameter-displays-unsupported-editing-contract) after checking inherited selection, zoom, and input behavior.
 - [ ] 4. [Move timecode menu construction into the GUI layer](refactoring.md#4-move-timecode-menu-construction-into-the-gui-layer), shared by ruler and main-menu callers.
-- [ ] 5. [Separate persistence results and recent-file ownership](refactoring.md#5-separate-persistence-results-and-recent-file-ownership), including failed-save reporting and newest-first history limits.
+- [x] 5. [Separate persistence results and recent-file ownership](refactoring.md#5-separate-persistence-results-and-recent-file-ownership), including failed-save reporting and newest-first history limits.
 - [ ] 6. [Establish audio-thread ownership of mutable runtime state](refactoring.md#6-establish-audio-thread-ownership-of-mutable-runtime-state), reviewing render locks and the existing mapper race together.
 - [ ] 7. [Make clock coordination between plugins explicit](refactoring.md#7-make-clock-coordination-between-plugins-explicit), including chain order and persisted settings.
 - [ ] 8. [Separate PSG metadata, clip timing, and project policy](refactoring.md#8-separate-psg-metadata-clip-timing-and-project-policy), extending the existing import-timing tasks.

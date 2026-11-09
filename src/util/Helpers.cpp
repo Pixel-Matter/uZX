@@ -177,14 +177,18 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
             auto& data = tune.chips[i];
             const auto chipName = tune.chips.size() > 1 ? name + " " + String((int) i + 1) : name;
             auto* track = clips.isEmpty() && firstTrack != nullptr ? firstTrack : addAudioTrackAfter(edit, nullptr);
-            if (track->getClips().isEmpty())
+            const bool emptyTrack = track->getClips().isEmpty();
+            if (emptyTrack)
                 track->setName(chipName);
 
             te::ClipPosition pos = {{start, te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}};
             // TODO make it ThreadBackgroundJob
             if (auto clip = PsgClip::insertTo(*track, data, pos, chipName)) {
                 track->changed();
-                ensureAYPluginOnTrack(*track);
+                auto& chip = ensureAYPluginOnTrack(*track);
+                // The clock a module was written for, on a track no other clip plays at its own clock
+                if (emptyTrack && tune.chipClock)
+                    chip.staticParams.chipClock.setStoredValue(*tune.chipClock / uZX::MHz);
                 clips.add(clip.get());
                 chips.push_back(&data);
             }

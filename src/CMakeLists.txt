@@ -34,8 +34,8 @@ juce_add_gui_app(${TUNING_TARGET_NAME}
 # (Studio's), an alternate one, which opens them only when no app claims them more strongly. Not
 # DOCUMENT_EXTENSIONS: JUCE gives all of those one entry ranked Default.
 # The modules are getTrackerModuleExtensions() (src/formats/tracker/TrackerModule.cpp) without
-# Vortex Tracker's .txt, so that the Player isn't offered for every text file.
-set(PLAYER_MODULE_EXTENSIONS pt3 pt2 pt1 stc st1 st3 stp asc as0 sqt psc psm gtr ftc)
+# early Vortex Tracker's .txt, so that the Player isn't offered for every text file.
+set(PLAYER_MODULE_EXTENSIONS pt3 pt2 pt1 stc st1 st3 stp asc as0 sqt psc psm gtr ftc vt2)
 list(TRANSFORM PLAYER_MODULE_EXTENSIONS PREPEND "<string>")
 list(TRANSFORM PLAYER_MODULE_EXTENSIONS APPEND "</string>")
 list(JOIN PLAYER_MODULE_EXTENSIONS "" PLAYER_MODULE_EXTENSIONS)

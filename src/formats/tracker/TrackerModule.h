@@ -15,12 +15,13 @@ namespace MoTool::uZX {
     pair, ...) as zxtune's players play it, up to its loop.
 */
 struct TrackerModule {
-    std::vector<PsgData> chips;  // the AY registers of every frame, one per chip (two for Turbo
-                                 // Sound), all the same length
+    std::vector<PsgData> chips;  // the AY registers of every frame, one per chip (two or three for
+                                 // Turbo Sound), all the same length, at the module's frame rate
     juce::String title;          // empty when the module stores none
     /** The tracker's note table, when it is one of uZX's presets; else left to detection. */
     std::optional<BuiltinTuningType> table;
     std::vector<size_t> rowStarts;  // the frame each pattern row starts at, in play order
+    std::optional<double> chipClock;  // Hz, when the module stores it (Vortex Tracker's text modules do)
 };
 
 /** Empty when the bytes are not a module of a supported format. */

@@ -57,15 +57,17 @@ std::optional<TrackerModule> readTrackerModule(const juce::MemoryBlock& bytes) {
     module.title = juce::String::fromUTF8(tune->Title.data(), (int) tune->Title.size()).trim();
     module.table = presetFor(tune->NoteTable);
     module.rowStarts = tune->RowStarts;
+    if (tune->ChipClock > 0)
+        module.chipClock = tune->ChipClock;
     return module;
 }
 
 const juce::StringArray& getTrackerModuleExtensions() {
     // zxtune finds the format from the content; these are the names the files usually have.
-    // Vortex Tracker II saves its text modules as .txt. The Player registers the others with Finder
-    // (PLAYER_MODULE_EXTENSIONS in src/CMakeLists.txt).
+    // Vortex Tracker II saves its text modules as .vt2, its early versions as .txt. The Player
+    // registers all but .txt with Finder (PLAYER_MODULE_EXTENSIONS in src/CMakeLists.txt).
     static const juce::StringArray extensions {"pt3", "pt2", "pt1", "stc", "st1", "st3", "stp", "asc", "as0",
-                                               "sqt", "psc", "psm", "gtr", "ftc", "txt"};
+                                               "sqt", "psc", "psm", "gtr", "ftc", "vt2", "txt"};
     return extensions;
 }
 

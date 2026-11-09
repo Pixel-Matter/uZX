@@ -87,6 +87,7 @@ Granular tasks and implementation notes for µZX Studio and the shared engine. P
 - [ ] Show defined notes in the grid
 - [ ] Show VT tracker notes range
 - [ ] Auto-tune to note (adjust A4 or clock frequency)
+- [ ] Custom note tables from Vortex Tracker modules: a `.vt2` can carry its own table (`CustomNoteTable=`, 96 periods, as Bitphase reads it; Vortex loads custom tables in its options). `TuningTable` holds any periods, but an edit stores only a `BuiltinTuningType` name, so a clip's table must be serialised with the edit first; then import sets it as the clip's table instead of detecting one.
 
 ## PSG Param Editor
 

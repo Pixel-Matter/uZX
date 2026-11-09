@@ -11,7 +11,7 @@ public:
     void runTest() override {
         beginTest("Each format plays as zxtune's own register dump");
         for (const auto* name : {"Agent-X_-_Film_Music_002.stc", "13.pt2", "hypergy.pt3", ";-).pt3", "3-EYE.stp",
-                                 "zx-sos.asc", "sol.psm", "little+girl+with+big+yellow+bow.txt"}) {
+                                 "zx-sos.asc", "sol.psm"}) {
             const auto module = readTrackerModule(load(name));
             if (! expectSingleChip(module, name))
                 continue;
@@ -40,7 +40,8 @@ public:
             };
             for (const auto& expected : samples) {
                 const auto module = readTrackerModule(load(expected.file));
-                if (! expectSingleChip(module, expected.file))
+                expect(module.has_value(), String(expected.file) + " reads as a module");
+                if (! module)
                     continue;
                 expectEquals(module->title, String(expected.title), expected.file);
                 expect(module->table.has_value() == expected.table.has_value(), String(expected.file) + ": table");
@@ -73,6 +74,31 @@ public:
                 expect(module->rowStarts == alone->rowStarts, "the first module's rows");
                 expectEquals(module->title, String("hypergy #2/:-)"), "both titles, as they differ");
                 expect(module->table.has_value(), "both on PT #2: one table");
+            }
+        }
+
+        beginTest("A Vortex Tracker text module per chip plays as Turbo Sound");
+        {
+            // zxtune's sample is a Turbo Sound tune: two modules, one after another, each with its own dump.
+            const auto name = String("little+girl+with+big+yellow+bow.txt");
+            const auto module = readTrackerModule(load(name));
+            expectTurboSoundAsDumped(module, name);
+            if (module) {
+                expectWithinAbsoluteError(module->chips[0].getFrameRate(), 50.0, 1e-9, "no IntFreq: 50 Hz");
+                expect(! module->chipClock.has_value(), "no ChipFreq");
+                expectEquals(module->title, String("little girl with big yellow bow"), "one title, as they are the same");
+            }
+        }
+
+        beginTest("Vortex Tracker 2.5's text modules play as earlier ones, at their clock and rate");
+        {
+            const auto name = String("little+girl+with+big+yellow+bow.txt");
+            const auto text = asVortex25(load(name));
+            const auto module = readTrackerModule(MemoryBlock(text.toRawUTF8(), text.getNumBytesAsUTF8()));
+            expectTurboSoundAsDumped(module, "VT 2.5");
+            if (module) {
+                expectWithinAbsoluteError(module->chips[0].getFrameRate(), 48.828, 1e-9, "IntFreq in mHz");
+                expect(module->chipClock == 1750000.0, "ChipFreq");
             }
         }
 
@@ -115,6 +141,36 @@ private:
             frames.push_back(frame);
         }
         return frames;
+    }
+
+    /** zxtune's Vortex Tracker sample: two chips, each as zxtune dumps its module, the second for the
+        first one's length. */
+    void expectTurboSoundAsDumped(const std::optional<TrackerModule>& module, const String& what) {
+        const auto name = String("little+girl+with+big+yellow+bow.txt");
+        expect(module.has_value() && module->chips.size() == 2, what + ": two chips");
+        if (! module || module->chips.size() != 2)
+            return;
+        expectSameFrames(module->chips[0].frames, readDebugAY(sample(name + ".debugay")), what + ": chip 1");
+        expectSameFrames(module->chips[1].frames, readDebugAY(sample(name + "+51079.debugay")), what + ": chip 2");
+        expectRows(module->rowStarts, {2, 6}, what);
+    }
+
+    /** A Vortex Tracker text module as version 2.5 and later save it: '.' for what a sample line
+        turns off, where earlier versions wrote the lower case letter; two blank lines after the
+        header; the chip clock (Hz) and interrupt rate (mHz) in it. */
+    static String asVortex25(const MemoryBlock& module) {
+        auto lines = StringArray::fromLines(module.toString());
+        bool inSample = false;
+        for (auto& line : lines) {
+            if (line.startsWith("["))
+                inSample = line.startsWith("[Sample");
+            else if (inSample && line.length() > 3)
+                line = line.substring(0, 3).replaceCharacters("tne", "...") + line.substring(3);
+            else if (line.startsWith("Speed="))
+                line << "\nChipFreq=1750000\nIntFreq=48828";
+        }
+        lines.insert(lines.indexOf(String()), String());
+        return lines.joinIntoString("\n");
     }
 
     /** "PT3!", first module's size, "PT3!", second's size (16-bit little endian), "02TS". */

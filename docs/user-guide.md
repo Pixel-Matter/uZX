@@ -26,13 +26,13 @@ A minimal player for listening to PSG chip music files.
 
 - **Drag and drop** a `.psg` file, a tracker module or a `.uzx` file onto the window.
 - **File menu → Open** (`Cmd+O` / `Ctrl+O`).
-- **Double-click** a file in Finder (macOS). µZX Player is the default app for `.psg` files. Tracker modules and `.uzx` files open in it when no other app claims them, such as a zxtune player for modules, or µZX Studio, which opens `.uzx` files when it is installed. To pick the Player anyway, use **Open With**, or **Get Info → Open with → Change All…** for every file of that type. Vortex Tracker's `.txt` modules are not registered.
+- **Double-click** a file in Finder (macOS). µZX Player is the default app for `.psg` files. Tracker modules and `.uzx` files open in it when no other app claims them, such as a zxtune player for modules, or µZX Studio, which opens `.uzx` files when it is installed. To pick the Player anyway, use **Open With**, or **Get Info → Open with → Change All…** for every file of that type. Early Vortex Tracker's `.txt` modules are not registered.
 - On Windows and Linux the Player registers no file types: choose it in the file manager's **Open with**, which passes the file on the command line.
 - Pass a file path as a command-line argument.
 
 Drop or open several `.psg` files at once to play them together, each on its own track with its own AY chip, as a Turbo Sound tune has one file per chip. They replace the open edit, which is named after the start their names share: `song_1.psg` and `song_2.psg` open as `song`.
 
-**Tracker modules.** µZX opens ZX Spectrum tracker modules as well: Pro Tracker 1, 2 and 3 (`.pt1`, `.pt2`, `.pt3`, Turbo Sound PT3 files included), Vortex Tracker II text modules (`.txt`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro (`.stp`), ASC Sound Master (`.asc`, `.as0`), SQ-Tracker (`.sqt`), Pro Sound Creator (`.psc`), Pro Sound Maker (`.psm`), Global Tracker (`.gtr`) and Fast Tracker (`.ftc`). The format is recognised from the file's content. µZX plays the module with [zxtune](https://github.com/vitamin-caig/zxtune)'s players up to where the tune loops and opens the result like a PSG file: each AY chip on its own track, two for Turbo Sound, named after the module's title, or after the file when the module has none. The module also brings what a PSG file lacks: its note table becomes the tune's tuning table when µZX has that table (see **Tuning table and key** under µZX Studio's Timeline below), and its rows set the tempo (see the BPM control under [Transport Bar](#transport-bar)). A tracker module stores no chip type, clock or stereo layout, so those stay as they are.
+**Tracker modules.** µZX opens ZX Spectrum tracker modules as well: Pro Tracker 1, 2 and 3 (`.pt1`, `.pt2`, `.pt3`, Turbo Sound PT3 files included), Vortex Tracker II text modules (`.vt2`, or `.txt` from its early versions; Turbo Sound files included), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro (`.stp`), ASC Sound Master (`.asc`, `.as0`), SQ-Tracker (`.sqt`), Pro Sound Creator (`.psc`), Pro Sound Maker (`.psm`), Global Tracker (`.gtr`) and Fast Tracker (`.ftc`). The format is recognised from the file's content. µZX plays the module with [zxtune](https://github.com/vitamin-caig/zxtune)'s players up to where the tune loops and opens the result like a PSG file: each AY chip on its own track, two or three for Turbo Sound, named after the module's title, or after the file when the module has none. The module also brings what a PSG file lacks: its note table becomes the tune's tuning table when µZX has that table (see **Tuning table and key** under µZX Studio's Timeline below), and its rows set the tempo (see the BPM control under [Transport Bar](#transport-bar)). A Vortex Tracker module also brings the chip clock and the frame rate it was written for, such as a Pentagon's 1.75 MHz and 48.828 Hz; the clock is set on the tracks the module gets to itself, and the frame rate on the project. Other tracker modules store neither, and none stores the chip type or stereo layout, so those stay as they are.
 
 **Turbo Sound sets.** When a single `.psg` file's name ends in a chip number 1 to 3 after `_`, `-`, `.` or a space (`song_1.psg`, or `song.1.psg` as Vortex Tracker exports them), and files with the other numbers lie next to it with as many frames and the same PSG header, µZX asks whether to open the whole set or only that file. This applies however a single file comes in: opening, dropping, Finder / Explorer, and **Import PSG** in both apps.
 
@@ -143,7 +143,7 @@ Same controls as µZX Player, plus:
 
 ### Importing PSG Files
 
-**File → Import PSG** (`Cmd+I`) picks one or more `.psg` files or tracker modules (see [Opening Files](#opening-files)). One file goes on the selected track, or a new track when no track is selected; several files go on new tracks, one each, as does the second chip of a Turbo Sound module. Dropping `.psg` files or tracker modules onto the window adds each on a new track. Clips start at the beginning of the project. A file of a Turbo Sound set brings up the same question as in the Player (see [Opening Files](#opening-files)).
+**File → Import PSG** (`Cmd+I`) picks one or more `.psg` files or tracker modules (see [Opening Files](#opening-files)). One file goes on the selected track, or a new track when no track is selected; several files go on new tracks, one each, as do the other chips of a Turbo Sound module. Dropping `.psg` files or tracker modules onto the window adds each on a new track. Clips start at the beginning of the project. A file of a Turbo Sound set brings up the same question as in the Player (see [Opening Files](#opening-files)).
 
 ### Rendering a Video
 
@@ -357,7 +357,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Extension | Description |
 |-----------|-------------|
 | `.psg` | Raw PSG register dump — standard format for AY chip music |
-| `.pt3`, `.pt2`, `.pt1`, `.txt`, `.stc`, `.st1`, `.st3`, `.stp`, `.asc`, `.as0`, `.sqt`, `.psc`, `.psm`, `.gtr`, `.ftc` | ZX Spectrum tracker modules, opened and imported as PSG register dumps with their title, note table and rows (see [Opening Files](#opening-files)) |
+| `.pt3`, `.pt2`, `.pt1`, `.vt2`, `.txt`, `.stc`, `.st1`, `.st3`, `.stp`, `.asc`, `.as0`, `.sqt`, `.psc`, `.psm`, `.gtr`, `.ftc` | ZX Spectrum tracker modules, opened and imported as PSG register dumps with their title, note table and rows (see [Opening Files](#opening-files)) |
 | `.uzx` | µZX project format — timeline edit with multiple tracks and metadata |
 
 ---

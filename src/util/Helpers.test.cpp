@@ -104,6 +104,24 @@ public:
             }
         }
 
+        beginTest("A Vortex Tracker module brings its chip clock and frame rate");
+        {
+            MemoryBlock text;
+            File(UZX_ZXTUNE_REGRESSION_DIR).getChildFile("little+girl+with+big+yellow+bow.txt").loadFileAsData(text);
+            const auto vt2 = text.toString().replace("Speed=", "ChipFreq=1750000\nIntFreq=48828\nSpeed=");
+            auto file = root.getChildFile("girl.vt2");
+            file.replaceWithText(vt2);
+
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto clips = Helpers::importPsgFiles(*edit, {file}, {}, te::getAudioTracks(*edit).getFirst());
+            expectEquals(clips.size(), 2, "a Turbo Sound module");
+            for (auto* clip : clips) {
+                auto& chip = Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack());
+                expectWithinAbsoluteError(chip.staticParams.chipClock.getStoredValue(), 1.75, 1e-9, "Pentagon clock");
+            }
+            expectWithinAbsoluteError(Helpers::getProjectFps(*edit), 48.828, 1e-9, "Pentagon interrupt rate");
+        }
+
         root.deleteRecursively();
     }
 };

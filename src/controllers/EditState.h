@@ -141,8 +141,8 @@ private:
     te::TimePosition framePlayhead;
     bool framePlayheadValid = false;
     bool offlineFrames = false;  // showOfflineFrame() drives the playhead
-    double lastFrameMs = -1.0e9, lastFrameTimestampSec = 0.0;
-    FramePeriod framePeriod;
+    double lastFrameMs = -1.0e9;
+    DisplayFrames displayFrames;
     static constexpr double framesStopAfterMs = 100.0;
 
     void valueTreePropertyChanged(ValueTree&, const Identifier& prop) override;

@@ -57,4 +57,30 @@ private:
     double period = 1.0 / 60.0;
 };
 
+/**
+    Display frames from their vblank callbacks: the frame period, and the time each frame is for.
+
+    The message thread runs a callback a few ms late at times, while its vblank came on time and
+    the frame is still shown on time. So a frame's time steps by the vblanks' own intervals, from
+    the earliest callback seen, and goes by the callback alone when the two part by more than a
+    frame (the first frame, a stalled thread).
+*/
+class DisplayFrames {
+public:
+    /** Takes a vblank's timestamp in seconds and the time its callback runs, in milliseconds of
+        Time::getMillisecondCounterHiRes(). Only the timestamps' intervals count, so they may
+        be on any clock. */
+    void add(double timestampSec, double nowMs);
+
+    /** The display's frame period in seconds. */
+    double getPeriod() const noexcept { return period.get(); }
+
+    /** The time of the last frame in milliseconds, on the callbacks' clock. */
+    double getFrameMs() const noexcept { return frameMs; }
+
+private:
+    FramePeriod period;
+    double lastTimestampSec = 0.0, frameMs = -1.0e9;
+};
+
 }  // namespace MoTool

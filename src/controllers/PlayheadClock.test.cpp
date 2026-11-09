@@ -110,26 +110,48 @@ private:
         expectWithinAbsoluteError(period.get(), 0.02, 1e-12);
     }
 
-    void testLateFrame() {
-        beginTest("After a late frame the playhead catches up once, without overshooting and then holding");
-        // As ZoomViewState::advanceFrame does it: the position one frame period after the callback
+    /** The playhead's step in ms at each frame, as ZoomViewState::advanceFrame shows it: one frame
+        period after the frame's time. vblankMs and callbackMs give each frame's times from frame 1;
+        playback reports where it truly is as each callback runs. */
+    static std::vector<double> playheadSteps(int frames, const std::function<double(int)>& vblankMs,
+                                             const std::function<double(int)>& callbackMs) {
         PlayheadClock clock;
-        FramePeriod period;
-        clock.report(0.0, 0.0, true);
-        double previous = 0.0, nowMs = 0.0;
+        DisplayFrames display;
+        clock.report(callbackMs(0) / 1000.0, callbackMs(0), true);
+        display.add(vblankMs(0) / 1000.0, callbackMs(0));
+        double previous = clock.positionAt(display.getFrameMs() + display.getPeriod() * 1000.0);
         std::vector<double> steps;
-        for (int frame = 1; frame <= 12; ++frame) {
-            const double interval = frame == 6 ? 45.0 : frameMs;
-            nowMs += interval;
-            clock.report(nowMs / 1000.0, nowMs, true);  // playback where it truly is
-            period.add(interval / 1000.0);
-            const auto shown = clock.positionAt(nowMs + period.get() * 1000.0);
+        for (int frame = 1; frame <= frames; ++frame) {
+            clock.report(callbackMs(frame) / 1000.0, callbackMs(frame), true);
+            display.add(vblankMs(frame) / 1000.0, callbackMs(frame));
+            const auto shown = clock.positionAt(display.getFrameMs() + display.getPeriod() * 1000.0);
             steps.push_back((shown - previous) * 1000.0);
             previous = shown;
         }
-        expectWithinAbsoluteError(steps[5], 45.0, 1.0, "the late frame steps by the time that passed");
+        return steps;
+    }
+
+    void testLateFrame() {
+        beginTest("After a missed vblank the playhead catches up once, without overshooting and then holding");
+        // Frame 6 comes two vblanks after frame 5
+        const auto vblank = [](int i) { return 5000.0 + (i < 6 ? i : i + 1) * frameMs; };
+        const auto steps = playheadSteps(12, vblank, vblank);
+        expectWithinAbsoluteError(steps[5], 2 * frameMs, 1.0, "the late frame steps by the time that passed");
         for (size_t i = 6; i < steps.size(); ++i)
             expectWithinAbsoluteError(steps[i], frameMs, 1.0, "frames after it step evenly, frame " + String((int) i));
+
+        beginTest("A callback a few ms late on an even vblank steps the playhead evenly: its frame is shown on time");
+        const auto even = [](int i) { return 5000.0 + i * frameMs; };
+        const auto late = [&even](int i) { return even(i) + (i == 30 ? 4.6 : 0.5); };  // as measured
+        const auto lateSteps = playheadSteps(60, even, late);
+        for (size_t i = 0; i < lateSteps.size(); ++i)
+            expectWithinAbsoluteError(lateSteps[i], frameMs, 0.5, "frame " + String((int) i + 1));
+
+        beginTest("Vblank timestamps on another clock (CVDisplayLink's video time) count by their intervals");
+        const auto videoTime = [](int i) { return 123.0 + i * frameMs; };
+        const auto otherClockSteps = playheadSteps(60, videoTime, late);
+        for (size_t i = 0; i < otherClockSteps.size(); ++i)
+            expectWithinAbsoluteError(otherClockSteps[i], frameMs, 0.5, "frame " + String((int) i + 1));
     }
 };
 

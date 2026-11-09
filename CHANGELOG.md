@@ -10,6 +10,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - `S` in Viz mode stacks each chip's scopes beside its notes or sets them side by side under them; scopes alone make a column or a grid, a chip per row (3×1 for one AY, 3×2 for Turbo Sound)
 - Entering Viz mode, or pressing `V` or `S`, shows both choices for a moment, with the key to leave
 
+### Smoothness
+- Fixed: the timeline no longer scrolls a few pixels too far and then too little when a frame starts drawing a few milliseconds late
+
 ### Tracker modules
 - Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop
 - Turbo Sound modules (PT3 pairs, Vortex files with a module per chip) open on a track per chip, as one tune

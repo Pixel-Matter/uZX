@@ -47,7 +47,7 @@ PlayerController::~PlayerController() {
 }
 
 std::unique_ptr<te::Edit> PlayerController::createOrLoadStartupEdit() {
-    return createOrLoadEdit(EditFileOps::getStartupEditFile());
+    return createOrLoadEdit(EditFileOps::getStartupEditFile(engine_.getPropertyStorage()));
 }
 
 void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
@@ -151,7 +151,7 @@ void PlayerController::handleSaveAs() {
 }
 
 void PlayerController::handleOpen() {
-    auto location = EditFileOps::getRecentEditsDirectory();
+    auto location = EditFileOps::getRecentEditsDirectory(engine_.getPropertyStorage());
     FileChooser fc("Open file", location, "*.uzx;" + Helpers::getTuneFileWildcard());
     if (fc.browseForMultipleFilesToOpen())
         handleOpenFiles(fc.getResults());
@@ -170,7 +170,7 @@ void PlayerController::handleOpenFiles(const Array<File>& files) {
 
     for (const auto& f : files) {
         if (f.hasFileExtension("uzx") && f.existsAsFile()) {
-            EditFileOps::setRecentEditsDirectory(f);
+            EditFileOps::setRecentEditsDirectory(engine_.getPropertyStorage(), f);
             setEdit(createOrLoadEdit(f), true);
             return;
         }
@@ -178,7 +178,7 @@ void PlayerController::handleOpenFiles(const Array<File>& files) {
 }
 
 void PlayerController::handleOpenRecent(int fileIndex) {
-    auto recentFiles = EditFileOps::getRecentEdits();
+    auto recentFiles = EditFileOps::getRecentEdits(engine_.getPropertyStorage());
     if (fileIndex >= 0 && fileIndex < recentFiles.size()) {
         File selectedFile(recentFiles[fileIndex]);
         if (selectedFile.existsAsFile()) {
@@ -195,8 +195,7 @@ void PlayerController::handleOpenRecent(int fileIndex) {
 }
 
 void PlayerController::handleClearRecentFiles() {
-    auto& storage = dynamic_cast<PropertyStorage&>(engine_.getPropertyStorage());
-    storage.setCustomProperty("recentEdits", "");
+    EditFileOps::clearRecentEdits(engine_.getPropertyStorage());
     MoToolApp::getCommandManager().commandStatusChanged();
 }
 

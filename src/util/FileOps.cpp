@@ -9,6 +9,7 @@ namespace te = tracktion;
 namespace {
     static inline constexpr auto MOTOOL_EDIT_FILE_SUFFIX = ".motool";
     static inline constexpr auto UZX_EDIT_FILE_SUFFIX = ".uzx";
+    static inline constexpr auto RECENT_EDITS_KEY = "recentEdits";
 }
 
 String getDefaultEditFileSuffix() {
@@ -28,16 +29,7 @@ String getAppFileGlob() {
     return "*" + getDefaultEditFileSuffix();
 }
 
-static inline MoTool::PropertyStorage& getMoToolPropertyStorage() {
-    auto e = te::Engine::getEngines()[0];
-    jassert (e != nullptr);
-    auto casted = dynamic_cast<MoTool::PropertyStorage*>(&e->getPropertyStorage());
-    jassert(casted != nullptr);
-    return *casted;
-}
-
-File getRecentEditsDirectory() {
-    auto& storage = getMoToolPropertyStorage();
+File getRecentEditsDirectory(te::PropertyStorage& storage) {
     return storage.getDefaultLoadSaveDirectory("edits");
 }
 
@@ -51,13 +43,13 @@ static File getTempEditsLocation() {
     return d;
 }
 
-void setRecentEditsDirectory(const File& fileOrDir) {
+void setRecentEditsDirectory(te::PropertyStorage& storage, const File& fileOrDir) {
     if (fileOrDir.isDirectory()) {
         if(fileOrDir != getTempEditsLocation())
-            getMoToolPropertyStorage().setDefaultLoadSaveDirectory("edits", fileOrDir);
+            storage.setDefaultLoadSaveDirectory("edits", fileOrDir);
     } else {
         if (fileOrDir.getParentDirectory() != getTempEditsLocation())
-            getMoToolPropertyStorage().setDefaultLoadSaveDirectory("edits", fileOrDir.getParentDirectory());
+            storage.setDefaultLoadSaveDirectory("edits", fileOrDir.getParentDirectory());
     }
 }
 
@@ -80,10 +72,9 @@ File suffestSaveAsFileName(te::Edit& edit) {
     return newEditName;
 }
 
-StringArray getRecentEdits() {
+StringArray getRecentEdits(te::PropertyStorage& storage) {
     StringArray files;
-    auto& storage = getMoToolPropertyStorage();
-    files.addTokens(storage.getCustomProperty("recentEdits").toString(), ";", {});
+    files.addTokens(storage.getPropertiesFile().getValue(RECENT_EDITS_KEY), ";", {});
     files.trim();
     files.removeEmptyStrings();
 
@@ -99,13 +90,17 @@ StringArray getRecentEdits() {
     return files;
 }
 
-void addToRecentEdits(const File& f) {
-    auto files = getRecentEdits();
+void addToRecentEdits(te::PropertyStorage& storage, const File& f) {
+    auto files = getRecentEdits(storage);
 
     files.removeString(f.getFullPathName());
     files.insert(0, f.getFullPathName());
 
-    getMoToolPropertyStorage().setCustomProperty("recentEdits", files.joinIntoString(";"));
+    storage.getPropertiesFile().setValue(RECENT_EDITS_KEY, files.joinIntoString(";"));
+}
+
+void clearRecentEdits(te::PropertyStorage& storage) {
+    storage.getPropertiesFile().removeValue(RECENT_EDITS_KEY);
 }
 
 File findRecentEditInDir(const File& dir, const String& fileGlob) {
@@ -118,8 +113,8 @@ File findRecentEditInDir(const File& dir, const String& fileGlob) {
     return {};
 }
 
-File getRecentEditFile() {
-    auto recent = getRecentEdits();
+static File getRecentEditFile(te::PropertyStorage& storage) {
+    auto recent = getRecentEdits(storage);
     // fins first existing file in recent edits
     for (auto& f : recent) {
         File file(f);
@@ -141,8 +136,8 @@ File getTempEditFile() {
     return getTempEditsLocation().getNonexistentChildFile("Unnamed", getDefaultEditFileSuffix(), false);
 }
 
-File getStartupEditFile() {
-    auto f = getRecentEditFile();
+File getStartupEditFile(te::PropertyStorage& storage) {
+    auto f = getRecentEditFile(storage);
     if (!f.existsAsFile()) {
         f = getTempEditFile();
     }
@@ -162,8 +157,8 @@ File getRendersDirectory(te::Edit& edit) {
 bool saveEdit(te::Edit& edit, bool warnOfFailure, bool forceSaveEvenIfNotModified, bool offerToDiscardChanges) {
     auto efo = te::EditFileOperations(edit);
     if (efo.save(warnOfFailure, forceSaveEvenIfNotModified, offerToDiscardChanges)) {
-        addToRecentEdits(efo.getEditFile());
-        setRecentEditsDirectory(efo.getEditFile());
+        addToRecentEdits(edit.engine.getPropertyStorage(), efo.getEditFile());
+        setRecentEditsDirectory(edit.engine.getPropertyStorage(), efo.getEditFile());
         return true;
     }
     return false;
@@ -174,8 +169,8 @@ bool saveEditAs(te::Edit& edit, const File& file) {
     if (efo.saveAs(file)) {
         edit.editFileRetriever = [file] { return file; };
 
-        addToRecentEdits(file);
-        setRecentEditsDirectory(file);
+        addToRecentEdits(edit.engine.getPropertyStorage(), file);
+        setRecentEditsDirectory(edit.engine.getPropertyStorage(), file);
         return true;
     }
     return false;
@@ -187,8 +182,7 @@ bool saveEditAsWithDialog(te::Edit& edit) {
     juce::FileChooser fc("Save As...", newEditName, getAppFileGlob());
     if (fc.browseForFileToSave(false)) {
         auto savedFile = fc.getResult().withFileExtension(getDefaultEditFileSuffix());
-        saveEditAs(edit, savedFile);
-        return true;
+        return saveEditAs(edit, savedFile);
     }
     return false;
 }

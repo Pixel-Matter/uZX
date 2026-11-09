@@ -332,7 +332,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         menu.addCommandItem(&commandManager_, MainAppCommands::fileOpen);
 
         // Recent files submenu - populate dynamically
-        auto recentFiles = EditFileOps::getRecentEdits();
+        auto recentFiles = EditFileOps::getRecentEdits(engine_.getPropertyStorage());
         if (recentFiles.size() > 0) {
             PopupMenu recentMenu;
 
@@ -461,7 +461,7 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
         case MainAppCommands::fileOpenRecent6:
         case MainAppCommands::fileOpenRecent7:
         case MainAppCommands::fileOpenRecent8: {
-            auto recentFiles = EditFileOps::getRecentEdits();
+            auto recentFiles = EditFileOps::getRecentEdits(engine_.getPropertyStorage());
             int fileIndex = commandID - MainAppCommands::fileOpenRecent1;
             if (fileIndex < recentFiles.size()) {
                 File recentFile(recentFiles[fileIndex]);
@@ -475,7 +475,7 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
         }
 
         case MainAppCommands::fileClearRecentFiles: {
-            auto recentFiles = EditFileOps::getRecentEdits();
+            auto recentFiles = EditFileOps::getRecentEdits(engine_.getPropertyStorage());
             result.setActive(recentFiles.size() > 0);
             break;
         }
@@ -1010,12 +1010,12 @@ void ArrangerController::handleNew() {
 }
 
 void ArrangerController::handleOpen() {
-    auto location = EditFileOps::getRecentEditsDirectory();
+    auto location = EditFileOps::getRecentEditsDirectory(engine_.getPropertyStorage());
     FileChooser fc("Open file", location, EditFileOps::getAppFileGlob());
     if (fc.browseForFileToOpen()) {
         auto selectedFile = fc.getResult();
         if (selectedFile.existsAsFile()) {
-            EditFileOps::setRecentEditsDirectory(selectedFile);
+            EditFileOps::setRecentEditsDirectory(engine_.getPropertyStorage(), selectedFile);
         }
         auto newEdit = createOrLoadEdit(selectedFile);
         setEdit(std::move(newEdit), true);
@@ -1023,7 +1023,7 @@ void ArrangerController::handleOpen() {
 }
 
 void ArrangerController::handleOpenRecent(int fileIndex) {
-    auto recentFiles = EditFileOps::getRecentEdits();
+    auto recentFiles = EditFileOps::getRecentEdits(engine_.getPropertyStorage());
     if (fileIndex >= 0 && fileIndex < recentFiles.size()) {
         File selectedFile(recentFiles[fileIndex]);
         if (selectedFile.existsAsFile()) {
@@ -1042,8 +1042,7 @@ void ArrangerController::handleOpenRecent(int fileIndex) {
 }
 
 void ArrangerController::handleClearRecentFiles() {
-    auto& storage = dynamic_cast<PropertyStorage&>(engine_.getPropertyStorage());
-    storage.setCustomProperty("recentEdits", "");
+    EditFileOps::clearRecentEdits(engine_.getPropertyStorage());
     MoToolApp::getCommandManager().commandStatusChanged(); // Refresh menu to show empty state
 }
 
@@ -1101,7 +1100,7 @@ void ArrangerController::handleRecord() {
 // }
 
 std::unique_ptr<te::Edit> ArrangerController::createOrLoadStartupEdit() {
-    return createOrLoadEdit(EditFileOps::getStartupEditFile());
+    return createOrLoadEdit(EditFileOps::getStartupEditFile(engine_.getPropertyStorage()));
 }
 
 

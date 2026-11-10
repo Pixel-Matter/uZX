@@ -63,6 +63,7 @@ public:
         for (auto* label : {&showLabel,
                             &scopesLabel,
                             &coloursLabel,
+                            &spectrumLabel,
                             &ffmpegLabel,
                             &renderLabel,
                             &outputLabel,
@@ -74,7 +75,8 @@ public:
                             &note})
             addAndMakeVisible(label);
         for (auto* box :
-             {&showBox, &scopesBox, &coloursBox, &renderBox, &outputBox, &fpsBox, &codecBox, &qualityBox, &audioBox})
+             {&showBox, &scopesBox, &coloursBox, &spectrumBox, &renderBox, &outputBox, &fpsBox, &codecBox,
+              &qualityBox, &audioBox})
             addAndMakeVisible(box);
 
         // Viz mode's own options, saved as they change: the Player's view behind shows each choice
@@ -93,6 +95,11 @@ public:
         coloursBox.setSelectedId((int) viz.colours + 1, juce::dontSendNotification);
         coloursBox.onChange = [this] {
             changeViz([this](VizOptions& o) { o.colours = (VizOptions::Colours) (coloursBox.getSelectedId() - 1); });
+        };
+        spectrumBox.addItemList(VizOptions::spectrumNames, 1);
+        spectrumBox.setSelectedId((int) viz.spectrum + 1, juce::dontSendNotification);
+        spectrumBox.onChange = [this] {
+            changeViz([this](VizOptions& o) { o.spectrum = (VizOptions::Spectrum) (spectrumBox.getSelectedId() - 1); });
         };
         for (auto* button : {&chooseButton, &cancelButton, &renderButton})
             addAndMakeVisible(button);
@@ -155,7 +162,8 @@ public:
 
         auto r = pair(row(), showLabel, showBox, boxWidth);
         pair(r, scopesLabel, scopesBox, r.getWidth() - labelWidth);
-        pair(row(), coloursLabel, coloursBox, boxWidth);
+        r = pair(row(), coloursLabel, coloursBox, boxWidth);
+        pair(r, spectrumLabel, spectrumBox, r.getWidth() - labelWidth);
 
         r = row();
         ffmpegLabel.setBounds(r.removeFromLeft(labelWidth));
@@ -302,11 +310,13 @@ private:
     Video::Settings settings;
     juce::Optional<Video::Ffmpeg> ffmpeg;
 
-    juce::Label showLabel{{}, "Show"}, scopesLabel{{}, "Scopes"}, coloursLabel{{}, "Colours"};
+    juce::Label showLabel{{}, "Show"}, scopesLabel{{}, "Scopes"}, coloursLabel{{}, "Colours"},
+        spectrumLabel{{}, "Spectrum"};
     juce::Label ffmpegLabel{{}, "ffmpeg"}, renderLabel{{}, "Render"}, outputLabel{{}, "Output"},
         fpsLabel{{}, "Frame rate"}, videoLabel{{}, "Video"}, qualityLabel{{}, "Quality"}, audioLabel{{}, "Audio"},
         ffmpegPath, note;
-    juce::ComboBox showBox, scopesBox, coloursBox, renderBox, outputBox, fpsBox, codecBox, qualityBox, audioBox;
+    juce::ComboBox showBox, scopesBox, coloursBox, spectrumBox, renderBox, outputBox, fpsBox, codecBox, qualityBox,
+        audioBox;
     juce::TextButton chooseButton{"Choose..."}, cancelButton{"Cancel"}, renderButton{"Render..."};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RenderVideoComponent)

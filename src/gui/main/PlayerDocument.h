@@ -10,9 +10,11 @@ namespace MoTool {
 //==============================================================================
 
 class VizHint;
+namespace uZX { class SpectrumPanel; }
 
 class PlayerDocumentComponent : public Component,
-                                public FileDragAndDropTarget {
+                                public FileDragAndDropTarget,
+                                private ValueTree::Listener {
 public:
     PlayerDocumentComponent(te::Edit& edit, EditViewState& evs);
     ~PlayerDocumentComponent() override;
@@ -30,9 +32,12 @@ public:
 
 private:
     EditViewState& editViewState_;
+    std::unique_ptr<uZX::SpectrumPanel> spectrum_;  // in Viz mode, at the left or along the bottom, if shown
     TransportBar transportBar_;
     EditComponent editComponent_;
     std::unique_ptr<VizHint> vizHint_;
+
+    void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerDocumentComponent)
 };

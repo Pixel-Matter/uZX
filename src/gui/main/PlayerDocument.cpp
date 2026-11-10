@@ -2,6 +2,7 @@
 
 #include "../../controllers/App.h"
 #include "../../controllers/PlayerController.h"
+#include "../../plugins/uZX/analyzer/SpectrumPanel.h"
 #include "../../util/Helpers.h"
 
 #include <algorithm>
@@ -83,12 +84,24 @@ PlayerDocumentComponent::PlayerDocumentComponent(te::Edit& edit, EditViewState& 
     , transportBar_ {evs, {.showRecord = false, .showAutomation = false}}
     , editComponent_ {edit, evs, {.showDetailsPanel = false, .autoFitTrackHeights = true, .transparentClips = true, .disableClipSelection = true}}
 {
+    if (evs.showsVizSpectrum()) {
+        spectrum_ = std::make_unique<uZX::SpectrumPanel>(edit, evs);
+        addAndMakeVisible(*spectrum_);
+        evs.state.addListener(this);  // its size, as its edge is dragged
+    }
     if (! evs.vizMode)
         addAndMakeVisible(transportBar_);
     addAndMakeVisible(editComponent_);
 }
 
-PlayerDocumentComponent::~PlayerDocumentComponent() {}
+PlayerDocumentComponent::~PlayerDocumentComponent() {
+    editViewState_.state.removeListener(this);
+}
+
+void PlayerDocumentComponent::valueTreePropertyChanged(ValueTree&, const Identifier& id) {
+    if (id == IDs::vizSpectrumWidth || id == IDs::vizSpectrumHeight)
+        resized();
+}
 
 void PlayerDocumentComponent::showVizHint() {
     if (! editViewState_.vizMode)
@@ -109,7 +122,19 @@ void PlayerDocumentComponent::resized() {
 
     if (transportBar_.isVisible())
         transportBar_.setBounds(r.removeFromTop(transportBarHeight));
-    editComponent_.setBounds(r.withTrimmedLeft(8));
+    // The spectrum takes at most half the window
+    const bool spectrumAtLeft =
+        spectrum_ != nullptr && editViewState_.vizOptions.spectrum == VizOptions::Spectrum::left;
+    if (spectrumAtLeft) {
+        constexpr int narrowest = EditViewState::minVizSpectrumWidth;
+        spectrum_->setBounds(r.removeFromLeft(
+            jlimit(narrowest, jmax(narrowest, getWidth() / 2), editViewState_.vizSpectrumWidth.get())));
+    } else if (spectrum_ != nullptr) {
+        constexpr int lowest = EditViewState::minVizSpectrumHeight;
+        spectrum_->setBounds(r.removeFromBottom(
+            jlimit(lowest, jmax(lowest, getHeight() / 2), editViewState_.vizSpectrumHeight.get())));
+    }
+    editComponent_.setBounds(spectrumAtLeft ? r : r.withTrimmedLeft(8));
     if (vizHint_ != nullptr)
         vizHint_->setTopLeftPosition((getWidth() - vizHint_->getWidth()) / 2, 24);
 }

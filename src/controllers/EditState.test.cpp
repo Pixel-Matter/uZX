@@ -62,13 +62,16 @@ public:
 
         beginTest("Notes and scopes in Slate until chosen otherwise, and a choice is remembered");
         expect(VizOptions::load(settings) == VizOptions{});
-        const VizOptions chosen{Layout::scopes, VizOptions::Colours::classic, VizOptions::Scopes::sideBySide};
+        const VizOptions chosen{Layout::scopes, VizOptions::Colours::classic, VizOptions::Scopes::sideBySide,
+                                VizOptions::Spectrum::bottom};
         chosen.save(settings);
         expect(VizOptions::load(settings) == chosen);
 
         beginTest("A setting from a newer build, out of range, keeps the default");
         settings.setValue("vizLayout", 7);
+        settings.setValue("vizSpectrum", 3);
         expect(VizOptions::load(settings).layout == Layout::notesAndScopes);
+        expect(! VizOptions::load(settings).showsSpectrum());
 
         beginTest("The scopes switch between stacked and side by side");
         VizOptions scopes;
@@ -94,6 +97,14 @@ public:
         expect(! view.showFooters && view.getTrackFooterWidth() == 0 && view.isVizClassic(), "notes");
         view.showAsPlayer(true, {Layout::scopes});
         expect(view.showFooters && ! view.showsNotes() && ! view.isVizClassic(), "scopes");
+
+        beginTest("The spectrum analyzer's panel shows only in Viz mode");
+        view.showAsPlayer(false, {.spectrum = VizOptions::Spectrum::left});
+        expect(! view.showsVizSpectrum());
+        view.showAsPlayer(true, {.spectrum = VizOptions::Spectrum::left});
+        expect(view.showsVizSpectrum());
+        view.showAsPlayer(true, {});
+        expect(! view.showsVizSpectrum());
 
         beginTest("Scopes side by side go under the notes, taking a share of the row");
         view.showAsPlayer(true, {.scopes = VizOptions::Scopes::sideBySide});

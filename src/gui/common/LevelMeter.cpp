@@ -19,7 +19,7 @@ float dbToFill(float dB) {
     return jlimit(0.0f, 1.0f, (dB - minDb) / -minDb);
 }
 
-static Colour ledColour(float position, bool isMidi) {
+Colour ledColour(float position, bool isMidi) {
     if (isMidi)
         return Colors::Meter::midi;
     if (position < 0.6f)

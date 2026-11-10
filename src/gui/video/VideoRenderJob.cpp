@@ -3,18 +3,22 @@
 #include <cmath>
 #include <cstring>
 
+#include "../../plugins/uZX/analyzer/SpectrumPanel.h"
 #include "../../plugins/uZX/scope/ScopePluginUI.h"
+#include "../../util/Helpers.h"
 #include "../main/PlayerDocument.h"
 
 namespace MoTool {
 
 namespace {
-// Off screen there is no display frame to pull the scopes' sound: each video frame does
-void refreshScopes(juce::Component& component) {
+// Off screen there is no display frame to pull the scopes' and the spectrum's sound: each video frame does
+void refreshScopes(juce::Component& component, double seconds) {
     if (auto* scope = dynamic_cast<uZX::WaveformDisplay*>(&component))
         scope->refresh();
+    else if (auto* spectrum = dynamic_cast<uZX::SpectrumPanel*>(&component))
+        spectrum->refresh(seconds);
     for (auto* child : component.getChildren())
-        refreshScopes(*child);
+        refreshScopes(*child, seconds);
 }
 }  // namespace
 
@@ -27,7 +31,10 @@ VideoRenderJob::VideoRenderJob(tracktion::Edit& e,
       totalFrames(juce::jmax(1, (int) std::ceil((e.getLength().inSeconds() + Video::Settings::tailSeconds) * s.fps))),
       output(dest), selection(e.engine), view(e, selection, true) {
     // The Player's Viz mode, on its own copy of the view settings: the view on screen stays where it is
-    view.showAsPlayer(true, VizOptions::load(e.engine.getPropertyStorage().getPropertiesFile()));
+    const auto viz = VizOptions::load(e.engine.getPropertyStorage().getPropertiesFile());
+    view.showAsPlayer(true, viz);
+    Helpers::setMasterSpectrumAnalyzer(edit, viz.showsSpectrum());  // as the Player does, for a render from Studio
+    analyzer = edit.getMasterPluginList().findFirstPluginOfType<uZX::SpectrumAnalyzerPlugin>();
     document = std::make_unique<PlayerDocumentComponent>(edit, view);
     document->setSize(width, height);
     frame = juce::Image(juce::Image::ARGB, width, height, true);
@@ -35,6 +42,8 @@ VideoRenderJob::VideoRenderJob(tracktion::Edit& e,
 
     edit.getTransport().stop(false, false);
     renderStatus = std::make_unique<tracktion::Edit::ScopedRenderStatus>(edit, true);
+    if (analyzer != nullptr)  // what played on screen before the render
+        analyzer->forget();
     tracktion::Renderer::turnOffAllPlugins(edit);
 
     tracktion::Renderer::Parameters r(edit);
@@ -152,7 +161,7 @@ void VideoRenderJob::finishMuxing() {
 bool VideoRenderJob::drawFrame(tracktion::TimePosition playhead) {
     return juce::MessageManager::callSync([this, playhead] {
         view.zoom.showOfflineFrame(playhead);
-        refreshScopes(*document);
+        refreshScopes(*document, playhead.inSeconds());
         {
             juce::Graphics g(frame);
             g.fillAll(document->getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
@@ -166,7 +175,11 @@ bool VideoRenderJob::drawFrame(tracktion::TimePosition playhead) {
     });
 }
 
-void VideoRenderJob::addBlock(juce::int64 sampleNumberInSource, const juce::AudioBuffer<float>&, int, int numSamples) {
+void VideoRenderJob::addBlock(juce::int64 sampleNumberInSource, const juce::AudioBuffer<float>& buffer, int start,
+                              int numSamples) {
+    // The render leaves out the master plugins, the listener's volume among them: the analyzer hears the mix here
+    if (analyzer != nullptr)
+        analyzer->capture(buffer, start, numSamples, Video::Settings::sampleRate);
     samplesRendered = sampleNumberInSource + numSamples;
 }
 

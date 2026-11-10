@@ -15,6 +15,8 @@ namespace IDs
     DECLARE_ID(headersWidth)
     DECLARE_ID(vizScopesWidth)
     DECLARE_ID(vizScopesShare)
+    DECLARE_ID(vizSpectrumWidth)
+    DECLARE_ID(vizSpectrumHeight)
     DECLARE_ID(footersWidth)
     DECLARE_ID(preservePsgTimingOnTempoChange)
     DECLARE_ID(snapPlayheadToGrid)
@@ -173,19 +175,25 @@ struct VizOptions
     enum class Colours { slate, classic };
     /** A chip's A, B and C: stacked, in a column beside its notes; or side by side, in a band under them. */
     enum class Scopes { stacked, sideBySide };
+    /** A spectrum analyzer of the master mix, in a panel at the left or along the bottom; it needs one on the
+        master (Helpers::setMasterSpectrumAnalyzer). */
+    enum class Spectrum { none, left, bottom };
 
     Layout layout = Layout::notesAndScopes;
     Colours colours = Colours::slate;
     Scopes scopes = Scopes::stacked;
+    Spectrum spectrum = Spectrum::none;
 
     /** As the menus and the Render Video dialog name them, in enum order. */
     static inline const StringArray layoutNames {"Notes and Scopes", "Notes", "Scopes"};
     static inline const StringArray colourNames {"Slate", "Classic Black and White"};
     static inline const StringArray scopesNames {"Stacked", "Side by Side"};
+    static inline const StringArray spectrumNames {"None", "Left", "Bottom"};
 
     bool showsNotes() const { return layout != Layout::scopes; }
     bool showsScopes() const { return layout != Layout::notes; }
     bool areScopesSideBySide() const { return scopes == Scopes::sideBySide; }
+    bool showsSpectrum() const { return spectrum != Spectrum::none; }
     /** The layout after this one, and the first after the last. */
     Layout nextLayout() const { return (Layout) (((int) layout + 1) % layoutNames.size()); }
     Scopes otherScopes() const { return areScopesSideBySide() ? Scopes::stacked : Scopes::sideBySide; }
@@ -209,9 +217,11 @@ public:
     CachedValue<int> headersWidth;  // Studio's; written only while headers are shown
     CachedValue<int> vizScopesWidth;  // written only in Viz mode
     CachedValue<int> vizScopesShare;  // in Viz mode, the percent of a row's height the scopes take under its notes
+    CachedValue<int> vizSpectrumWidth, vizSpectrumHeight;  // in Viz mode, the spectrum at the left, at the bottom
     CachedValue<int> footersWidth;  // the Player's track devices; written only outside Viz mode
     static constexpr int minVizScopesWidth = 120;
     static constexpr int minVizScopesShare = 15, maxVizScopesShare = 70;
+    static constexpr int minVizSpectrumWidth = 80, minVizSpectrumHeight = 60;
     static constexpr int minHeadersWidth = 110, maxHeadersWidth = 300;
 
     ValueTree state;
@@ -259,6 +269,8 @@ public:
     }
     /** Viz mode in Classic colours: black, with white scopes. */
     bool isVizClassic() const { return vizMode && vizOptions.colours == VizOptions::Colours::classic; }
+    /** Viz mode with the spectrum analyzer's panel, at the left or along the bottom. */
+    bool showsVizSpectrum() const { return vizMode && vizOptions.showsSpectrum(); }
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditViewState)

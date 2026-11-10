@@ -936,6 +936,9 @@ te::Engine& BaseController::getEngine() {
 }
 
 std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
+    // Already open: a second copy would be saved over the first and lose its unsaved changes
+    if (edit_ != nullptr && editFile == te::EditFileOperations(*edit_).getEditFile())
+        return nullptr;
     if (!editFile.existsAsFile())
         return te::createEmptyEdit(engine_, editFile);
 

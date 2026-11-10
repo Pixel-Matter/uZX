@@ -101,6 +101,7 @@ public:
 
 protected:
     virtual std::unique_ptr<te::Edit> createOrLoadStartupEdit() = 0;
+    /** Nullptr, so setEdit() keeps the current edit, for a file that is unreadable (reported) or already open. */
     virtual std::unique_ptr<te::Edit> createOrLoadEdit(File editFile);
     virtual void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) = 0;
     virtual void devicesChanged() {}

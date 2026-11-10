@@ -74,8 +74,7 @@ TrackDevicesPanel::TrackDevicesPanel(EditViewState& evs, bool editable)
 }
 
 TrackDevicesPanel::~TrackDevicesPanel() {
-    if (currentTrack.get())
-        currentTrack.get()->state.removeListener(this);
+    trackState.removeListener(this);
 
     for (auto* device : devices) {
         if (device != nullptr)
@@ -97,19 +96,15 @@ void TrackDevicesPanel::setPadding(juce::BorderSize<int> padding) {
 }
 
 void TrackDevicesPanel::setCurrentTrack(tracktion::Track* track) {
-    if (currentTrack.get() == track)
-        return;
+    if (currentTrack.get() != track)
+        showTrack(track);
+}
 
-    // Remove listener from old track
-    if (currentTrack.get())
-        currentTrack.get()->state.removeListener(this);
-
+void TrackDevicesPanel::showTrack(tracktion::Track* track) {
+    trackState.removeListener(this);
     currentTrack = track;
-
-    // Add listener to new track
-    if (currentTrack.get())
-        currentTrack.get()->state.addListener(this);
-
+    trackState = track != nullptr ? track->state : juce::ValueTree();
+    trackState.addListener(this);
     buildPlugins();
 }
 
@@ -235,10 +230,19 @@ void TrackDevicesPanel::valueTreeChildOrderChanged(juce::ValueTree&, int, int) {
     markAndUpdate(updateDevices);
 }
 
+void TrackDevicesPanel::valueTreeParentChanged(juce::ValueTree&) {
+    markAndUpdate(updateDevices);
+}
+
 // FlaggedAsyncUpdater method
 void TrackDevicesPanel::handleAsyncUpdate() {
-    if (compareAndReset(updateDevices))
-        buildPlugins();
+    if (compareAndReset(updateDevices)) {
+        // A deleted track, or one in a deleted folder, has left the edit
+        if (trackState.isValid() && ! trackState.isAChildOf(editViewState.edit.state))
+            showTrack(nullptr);
+        else
+            buildPlugins();
+    }
 }
 
 void TrackDevicesPanel::componentMovedOrResized(juce::Component& component, bool, bool wasResized) {

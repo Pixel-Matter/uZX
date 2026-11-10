@@ -156,6 +156,7 @@ set(TEST_SOURCES
     gui/timeline/PsgVisualGuide.test.cpp
     gui/timeline/PsgPaintingBenchmark.test.cpp
     gui/video/VideoRenderJob.test.cpp
+    gui/devices/TrackDevicesPanel.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/aychip/AYPlugin.test.cpp

@@ -63,6 +63,7 @@ public:
     void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) override;
     void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) override;
     void valueTreeChildOrderChanged(juce::ValueTree&, int, int) override;
+    void valueTreeParentChanged(juce::ValueTree&) override;
 
     // FlaggedAsyncUpdater override
     void handleAsyncUpdate() override;
@@ -75,6 +76,9 @@ private:
     const bool editable_;
     juce::BorderSize<int> padding_;
     tracktion::SafeSelectable<tracktion::Track> currentTrack;
+    juce::ValueTree trackState;  // outlives a deleted track, so the listener always comes off
+
+    void showTrack(tracktion::Track* track);
 
     // TODO this belongs to some ViewModel class
     static bool shouldBeShown(tracktion::Plugin* p);

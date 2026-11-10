@@ -37,6 +37,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Studio
 - Fixed: **Track → Render to audio** supports cancellation and adds the audio track only after a successful render. Undo restores the source track's previous mute state.
 - Fixed: opening the project that is already open, from Open Recent or by dropping it, keeps it as it is instead of losing unsaved changes (in the Player too)
+- The Edit menu no longer lists Cut, Copy and Paste, which did nothing yet
 - Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together, and passes MIDI on other channels through at its own time instead of later
 
 ## [v0.6.0-alpha] - 2026-11-08

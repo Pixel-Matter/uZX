@@ -19,7 +19,7 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [x] 12. [Make widget bindings own callback teardown](refactoring.md#12-make-widget-bindings-own-callback-teardown), including slider text conversion and widget reuse.
 - [ ] 13. [Centralize persisted PSG parameter mapping](refactoring.md#13-centralize-persisted-psg-parameter-mapping), preserving property names, sparse masks, and legacy normalization.
 - [ ] 17. [Make MIDI sample-range semantics consistent](refactoring.md#17-make-midi-sample-range-semantics-consistent), checking nonzero starts and final render spans.
-- [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities), including unhandled clipboard commands.
+- [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities).
 
 ## Arranger mode
 

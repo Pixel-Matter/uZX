@@ -495,9 +495,7 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         // TODO  Theese commands are not being updated on selection change, only transportPlay and transportRecordStop are updated
-        // case AppCommands::editDelete: [[fallthrough]];
-        // case AppCommands::editCut:    [[fallthrough]];
-        // case AppCommands::editCopy:
+        // case AppCommands::editDelete:
         //     if (edit_ != nullptr) {
         //         if (auto sm = edit_->engine.getUIBehaviour().getCurrentlyFocusedSelectionManager()) {
         //             DBG("Selected objects: " << sm->getSelectedObjects().size());

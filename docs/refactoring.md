@@ -148,9 +148,9 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 ## 18. Align command registration with supported app capabilities
 
-**Evidence:** [MainCommands.h](../src/controllers/MainCommands.h) registers Cut, Copy, and Paste, supplies their keyboard shortcuts, and adds them to the Studio Edit menu. `AppController::perform` in [MainController.cpp](../src/controllers/MainController.cpp) has no handlers for these IDs and returns false through its default case; `getNextCommandTarget` returns null. App-specific capability rules are also spread across menu construction, command status, and dispatch, each testing `isPlayer` on its own.
+**Evidence:** App-specific capability rules are spread across menu construction in [MainCommands.h](../src/controllers/MainCommands.h), and command status and dispatch in [MainController.cpp](../src/controllers/MainController.cpp), each testing `isPlayer` on its own. Cut, Copy, and Paste were registered with shortcuts and no handlers; they are removed until clipboard editing exists.
 
-**Problem:** advertised command availability and implemented behavior have separate owners. The application-level Cut/Copy/Paste routes have no implementation. This does not mean focused text editors lack their own clipboard behavior. Native menu and keyboard invocation have not been tested during the review.
+**Problem:** advertised command availability and implemented behavior have separate owners, so a command can be listed with nothing behind it, as the clipboard commands were.
 
 **Proposed boundary:** define supported command IDs per app in one place and use that knowledge for registration/menu availability and status checks. Keep dispatch explicit and preserve stable IDs. Remove or disable unsupported actions until there is concrete behavior; implementing clipboard editing is a separate feature. Avoid replacing the existing command system with a generic dispatch framework.
 

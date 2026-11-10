@@ -250,7 +250,7 @@ TuningSystem& NotesToPsgMapper::getTuningSystem() {
 }
 
 void NotesToPsgMapper::setTuningSystem(std::shared_ptr<TuningSystem> tuning) {
-    // TODO locking for thread safety
+    const ScopedLock sl(lock_);
     tuningSystem_ = std::move(tuning);
     for (auto& voice : voices_) {
         voice.setTuningSystem(tuningSystem_);
@@ -258,15 +258,18 @@ void NotesToPsgMapper::setTuningSystem(std::shared_ptr<TuningSystem> tuning) {
 }
 
 void NotesToPsgMapper::setBaseChannel(int channel) {
-    baseChannel_ = juce::jlimit(1, 16 - (int) voices_.size() + 1, channel);
-    // Update midiChannel in voices
+    const ScopedLock sl(lock_);
+    const auto base = juce::jlimit(1, 16 - (int) voices_.size() + 1, channel);
+    // Releases the held notes, which must still find their voices on the old channels
+    mpeInstrument_.setLegacyModeChannelRange({base, base + static_cast<int>(voices_.size())});
+    baseChannel_ = base;
     for (size_t i = 0; i < voices_.size(); ++i) {
         voices_[i].midiChannel = baseChannel_ + static_cast<int>(i);
     }
-    mpeInstrument_.setLegacyModeChannelRange({baseChannel_, baseChannel_ + static_cast<int>(voices_.size())});
 }
 
 void NotesToPsgMapper::reset() {
+    const ScopedLock sl(lock_);
     for (auto& voice : voices_) {
         voice.reset();
         voice.render();
@@ -324,6 +327,7 @@ void NotesToPsgMapper::handleMidiMessage(const te::MidiMessageWithSource& msg) {
 
 // Process MIDI input
 void NotesToPsgMapper::operator()(MidiBufferContext& c) {
+    const ScopedLock sl(lock_);
     te::MidiMessageArray tempBuffer;
 
     if (c.isAllNotesOff()) {

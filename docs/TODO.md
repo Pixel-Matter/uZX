@@ -6,7 +6,7 @@ Granular open tasks for µZX Studio and the shared engine. Player priorities are
 
 See the [review scope and implementation order](refactoring.md#implementation-order). Numbers are the findings' stable IDs, not execution order; finished findings are deleted.
 
-- [ ] 6. [Establish audio-thread ownership of mutable runtime state](refactoring.md#6-establish-audio-thread-ownership-of-mutable-runtime-state), reviewing render locks and the existing mapper race together.
+- [ ] 6. [Establish audio-thread ownership of mutable runtime state](refactoring.md#6-establish-audio-thread-ownership-of-mutable-runtime-state), measuring how configuration contends with rendering for the locks.
 - [ ] 7. [Make clock coordination between plugins explicit](refactoring.md#7-make-clock-coordination-between-plugins-explicit), including chain order and persisted settings.
 - [ ] 8. [Separate PSG metadata, clip timing, and project policy](refactoring.md#8-separate-psg-metadata-clip-timing-and-project-policy), extending the existing import-timing tasks.
 - [ ] 9. [Extract tuning export formatting](refactoring.md#9-extract-tuning-export-formatting), preserving CSV output and filename behavior.
@@ -58,7 +58,6 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 
 - [ ] UI for MIDI to PSG plugin with tuning editor button
 - [ ] Sync tuning scale with Edit scales and keys
-- [ ] Thread safety (crash risk): `NotesToPsgMapper::setTuningSystem` / `reset` / `setBaseChannel` run on the message thread without a lock while the audio thread uses `tuning_`, `midiBuffer_` and `voices_[channel - baseChannel_]` — use-after-free of the old `TuningSystem`, concurrent `juce::Array` writes, out-of-range voice index. Easiest to hit in uZXTuning by changing root/A4/clock/table while a scale plays
 
 ## PSG Clip / PSG data
 

@@ -40,6 +40,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Tuning
 - Fixed: a cancelled preview stays silent, and a newer preview keeps its own playback length and note highlights
 - Fixed: the detected table and key, and the rankings in **Tuning and key…**, follow changes to a clip's length, the tempo or frames per beat, and clips linked as one tune
+- Fixed: changing the tuning while notes play no longer crashes, and moving MIDI to PSG's channel range silences a held note instead of leaving it on
 
 ### Studio
 - Fixed: **Track → Render to audio** supports cancellation and adds the audio track only after a successful render. Undo restores the source track's previous mute state.

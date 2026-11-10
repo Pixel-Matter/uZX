@@ -8,6 +8,9 @@
 #include "../../../models/tuning/Scales.h"
 #include "../../../models/PsgMidi.h"
 
+#include <atomic>
+#include <thread>
+
 namespace MoTool::Tests {
 
 using namespace MoTool::uZX;
@@ -234,6 +237,39 @@ public:
 
             expectCCEquals(messages, MidiCCType::Volume, 0, "Note off should mute the channel");
             expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Note off should not emit redundant tone switch");
+        }
+
+        beginTest("Moving the channel range releases a held note");
+        {
+            NotesToPsgMapper mapper;
+            mapper.setBaseChannel(1);
+            mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8) 100), 0});
+            ignoreUnused(mapper.renderVoices());
+
+            mapper.setBaseChannel(5);
+            expect(!mapper.getVoice(5).isActive(), "the voice that held the note is free");
+            expectCCEquals(mapper.renderVoices(), MidiCCType::Volume, 0, "and silenced");
+        }
+
+        beginTest("Retuning while the audio thread renders");
+        {
+            NotesToPsgMapper mapper;
+            std::atomic<bool> done {false};
+            std::thread audio([&] {
+                while (!done) {
+                    te::MidiMessageArray buffer;
+                    buffer.addMidiMessage(MidiMessage::noteOn(1, 60, (uint8) 100), {});
+                    buffer.addMidiMessage(MidiMessage::pitchWheel(1, 9000).withTimeStamp(0.001), {});
+                    buffer.addMidiMessage(MidiMessage::noteOff(1, 60).withTimeStamp(0.002), {});
+                    MidiBufferContext context {buffer, 0, 480, {}, 48000.0};
+                    mapper(context);
+                }
+            });
+            for (int i = 0; i < 50000; ++i)
+                mapper.setTuningSystem(createTestTuning());
+            done = true;
+            audio.join();
+            expect(true, "no crash");
         }
 
         beginTest("Period encoding correctness");

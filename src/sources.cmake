@@ -139,6 +139,7 @@ set(TEST_SOURCES
     models/tuning/RationalTuning.test.cpp
 
     controllers/EditState.test.cpp
+    controllers/MainCommands.test.cpp
     controllers/PlayheadClock.test.cpp
     controllers/PlayWholeEdit.test.cpp
     controllers/RememberedStereo.test.cpp

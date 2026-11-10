@@ -12,7 +12,6 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] 8. [Separate PSG metadata, clip timing, and project policy](refactoring.md#8-separate-psg-metadata-clip-timing-and-project-policy), extending the existing import-timing tasks.
 - [ ] 9. [Extract tuning export formatting](refactoring.md#9-extract-tuning-export-formatting), preserving CSV output and filename behavior.
 - [ ] 17. [Make MIDI sample-range semantics consistent](refactoring.md#17-make-midi-sample-range-semantics-consistent), checking nonzero starts and final render spans.
-- [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities).
 
 ## Arranger mode
 

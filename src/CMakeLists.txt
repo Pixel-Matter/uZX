@@ -223,11 +223,49 @@ add_custom_target(project_generate_juce_headers
 
 add_dependencies(motool_common project_generate_juce_headers)
 
-# AboutDialog.cpp (in motool_common) includes the generated version.h, so the
-# header must exist before motool_common compiles. Attaching the dependency to
-# motool_common covers every consumer (all app targets and uZXTests) — a clean
-# CI build otherwise fails with "version.h: No such file or directory".
-add_dependencies(motool_common generate_version_header)
+# Build metadata (git hash, dirty flag, build time) lives in a generated version.cpp in its own tiny library,
+# so a new stamp costs a relink, not a recompile. The stamp is rewritten only when the code (motool_common)
+# or git's HEAD changed, so a build with nothing to do stays a no-op.
+set(VERSION_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
+set(_version_depends
+    ${CMAKE_SOURCE_DIR}/cmake/version.cpp.in
+    ${CMAKE_SOURCE_DIR}/cmake/GenerateVersion.cmake
+    ${CMAKE_SOURCE_DIR}/versions.cmake
+    motool_common
+)
+set(_version_command
+    ${CMAKE_COMMAND}
+    "-DPROJECT_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+    "-DINPUT_TEMPLATE=${CMAKE_SOURCE_DIR}/cmake/version.cpp.in"
+    "-DOUTPUT_FILE=${VERSION_SOURCE}"
+    "-DPROJECT_VERSION_BASE=${PROJECT_CORE_VERSION}"
+    "-DPROJECT_CHANNEL=${PROJECT_CHANNEL}"
+)
+if(GIT_EXECUTABLE)
+    list(APPEND _version_command "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}")
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --absolute-git-dir
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE _git_dir
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    # Appended to on every commit, checkout and reset
+    if(_git_dir AND EXISTS "${_git_dir}/logs/HEAD")
+        list(APPEND _version_depends "${_git_dir}/logs/HEAD")
+    endif()
+endif()
+add_custom_command(
+    OUTPUT ${VERSION_SOURCE}
+    COMMAND ${_version_command} -P "${CMAKE_SOURCE_DIR}/cmake/GenerateVersion.cmake"
+    DEPENDS ${_version_depends}
+    COMMENT "Generating version.cpp"
+    VERBATIM
+)
+add_library(uzx_version STATIC ${VERSION_SOURCE})
+target_include_directories(uzx_version PRIVATE ${CMAKE_SOURCE_DIR}/src)
+unset(_version_command)
+unset(_version_depends)
 
 # Tracktion Utils
 # include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/tracktion_engine/tests/utils.cmake")
@@ -308,10 +346,10 @@ target_compile_definitions(${PLAYER_TARGET_NAME} PRIVATE ${JUCE_DEFINITIONS})
 target_compile_definitions(${TEST_TARGET_NAME}   PRIVATE ${JUCE_DEFINITIONS})
 target_compile_definitions(${TEST_TARGET_NAME}   PRIVATE UZX_FIXTURES_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures")
 
-target_link_libraries(${STUDIO_TARGET_NAME} PRIVATE motool_common ${COMMON_APP_LINK_LIBS})
-target_link_libraries(${TUNING_TARGET_NAME} PRIVATE motool_common ${COMMON_APP_LINK_LIBS})
-target_link_libraries(${PLAYER_TARGET_NAME} PRIVATE motool_common ${COMMON_APP_LINK_LIBS})
-target_link_libraries(${TEST_TARGET_NAME}   PRIVATE motool_common ${COMMON_APP_LINK_LIBS})
+target_link_libraries(${STUDIO_TARGET_NAME} PRIVATE motool_common uzx_version ${COMMON_APP_LINK_LIBS})
+target_link_libraries(${TUNING_TARGET_NAME} PRIVATE motool_common uzx_version ${COMMON_APP_LINK_LIBS})
+target_link_libraries(${PLAYER_TARGET_NAME} PRIVATE motool_common uzx_version ${COMMON_APP_LINK_LIBS})
+target_link_libraries(${TEST_TARGET_NAME}   PRIVATE motool_common uzx_version ${COMMON_APP_LINK_LIBS})
 
 # Platform-Specific Settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

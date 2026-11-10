@@ -9,7 +9,7 @@ All targets — `uZX` (Studio), `uZXTuning`, `uZXPlayer`, `uZXTests` — link th
 ## Build, Test, and Development Commands
 
 - `git submodule update --init --depth=1`: fetch JUCE, Tracktion, zxtune, and ayumi dependencies after cloning.
-- `cmake --preset default`: configure a Debug build in `build/`.
+- `cmake --preset default`: configure a Ninja Debug build in `build/`, arm64-only on macOS (Release stays universal). A `build/` made by another generator must be removed first.
 - `cmake --preset release` then `cmake --build --preset release --parallel`: a Release build in `build-release/`, as CI ships; measure GUI performance here, not in Debug.
 - `cmake --build --preset default --parallel`: build the default targets.
 - `cmake --build build --target uZX --parallel`: build Studio; use `uZXTuning`, `uZXPlayer`, or `uZXTests` for other targets. Always pass `--parallel` to CMake build commands.

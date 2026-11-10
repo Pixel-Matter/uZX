@@ -379,9 +379,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::transportLoop);
         } else if (menuName == "View") {
-            menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomToProject);
-            menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomIn);
-            menu.addCommandItem(&commandManager_, MainAppCommands::viewZoomOut);
+            menu.addSubMenu("Zoom", MainAppCommands::createZoomMenu(&commandManager_, false));
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::viewSnapPlayheadToGrid);
             menu.addCommandItem(&commandManager_, MainAppCommands::viewNoteLanes);
@@ -540,8 +538,21 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::viewZoomToSelection:
-            result.setActive(edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
+            result.setActive(!isPlayer && edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
             break;
+
+        case MainAppCommands::viewZoomFrames:
+        case MainAppCommands::viewZoomRows:
+        case MainAppCommands::viewZoomBeats:
+        case MainAppCommands::viewZoomBars:
+            result.setActive(controller.getEditViewState() != nullptr);
+            break;
+
+        case MainAppCommands::viewZoomBack: {
+            auto* view = controller.getEditViewState();
+            result.setActive(view != nullptr && view->zoom.canZoomBack());
+            break;
+        }
 
         case MainAppCommands::viewNoteLanes:
             result.setTicked(areNoteLanesShown(engine_));
@@ -751,6 +762,27 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         // View commands
+        case MainAppCommands::viewZoomFrames:
+        case MainAppCommands::viewZoomRows:
+        case MainAppCommands::viewZoomBeats:
+        case MainAppCommands::viewZoomBars:
+            if (auto* view = MoToolApp::getActiveController().getEditViewState()) {
+                static_assert(MainAppCommands::viewZoomBars - MainAppCommands::viewZoomFrames
+                              == (int) ZoomViewState::ZoomLevel::bars, "zoom commands follow ZoomLevel order");
+                const auto level =
+                    static_cast<ZoomViewState::ZoomLevel>(info.commandID - MainAppCommands::viewZoomFrames);
+                view->zoom.zoomToLevel(level);
+                commandManager_.commandStatusChanged();
+            }
+            break;
+
+        case MainAppCommands::viewZoomBack:
+            if (auto* view = MoToolApp::getActiveController().getEditViewState()) {
+                view->zoom.zoomBack();
+                commandManager_.commandStatusChanged();
+            }
+            break;
+
         case MainAppCommands::viewZoomToProject:
             // TODO maybe invert this, put implementation here
             // and te::AppFunctions::zoomToFitHorizontally() invokes this command
@@ -923,11 +955,15 @@ void BaseController::zoomHorizontal(float increment) {
         editViewState_->zoom.zoomHorizontally(increment);
 }
 
-void BaseController::zoomToFitHorizontally() {
+void BaseController::zoomToFitHorizontally(bool rememberZoom) {
     if (editViewState_ == nullptr)
         return;
-    if (auto range = Helpers::getEffectiveClipsTimeRange(*edit_); !range.isEmpty())
-        editViewState_->zoom.setRange(range);
+    if (auto range = Helpers::getEffectiveClipsTimeRange(*edit_); !range.isEmpty()) {
+        if (rememberZoom)
+            editViewState_->zoom.zoomToRange(range);
+        else
+            editViewState_->zoom.setRange(range);
+    }
 }
 
 te::Engine& BaseController::getEngine() {
@@ -1153,7 +1189,7 @@ void ArrangerController::zoomToSelection() {
     auto range = te::getTimeRangeForSelectedItems(objects);
     auto viewState = getEditViewState();
     if (viewState != nullptr && !range.isEmpty()) {
-        viewState->zoom.setRange(range);
+        viewState->zoom.zoomToRange(range);
     }
 }
 

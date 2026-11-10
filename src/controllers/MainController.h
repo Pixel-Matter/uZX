@@ -97,7 +97,7 @@ public:
 
     void zoomHorizontal(float increment);
     virtual void zoomToSelection() {}
-    void zoomToFitHorizontally();
+    void zoomToFitHorizontally(bool rememberZoom = true);
 
 protected:
     virtual std::unique_ptr<te::Edit> createOrLoadStartupEdit() = 0;

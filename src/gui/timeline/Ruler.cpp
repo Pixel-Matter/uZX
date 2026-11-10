@@ -59,18 +59,9 @@ void RulerComponent::paint(Graphics& g) {
 void RulerComponent::mouseDown(const MouseEvent& e) {
     if (e.mods.isPopupMenu()) {
         PopupMenu m;
-        m.addItem("Zoom in", [] {
-            te::AppFunctions::zoomIn();
-        });
-        m.addItem("Zoom out", [] {
-            te::AppFunctions::zoomOut();
-        });
-        m.addItem("Zoom to selection", [this] {
-            edit.engine.getUIBehaviour().zoomToSelection();
-        });
-        m.addItem("Zoom fit", [this] {
-            edit.engine.getUIBehaviour().zoomToFitHorizontally();
-        });
+        if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager())
+            m.addSubMenu("Zoom",
+                         Commands::MainAppCommands::createZoomMenu(manager, !editViewState.disableClipSelection));
         m.addSeparator();
         m.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(edit));
         if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager()) {

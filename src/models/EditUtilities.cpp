@@ -150,11 +150,15 @@ void setGridSubdivisionPattern(te::Edit& edit, const std::vector<int>& pattern) 
 }
 
 SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt) {
+    return makeSnapLadder(edit, tempoAt, getTimecodeDisplayMode(edit));
+}
+
+SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt, TimecodeDisplayMode mode) {
     const auto fps = getProjectFps(edit);
     const auto& tempo = edit.tempoSequence.getTempoAt(tempoAt);
     const auto framesPerBeat = jmax(1, roundToInt(fps * tempo.getApproxBeatLength().inSeconds()));
 
-    return SnapLadder(getTimecodeDisplayMode(edit), fps, framesPerBeat, getGridSubdivisionPattern(edit, framesPerBeat));
+    return SnapLadder(mode, fps, framesPerBeat, getGridSubdivisionPattern(edit, framesPerBeat));
 }
 
 }  // namespace MoTool::Helpers

@@ -61,6 +61,7 @@ void Settings::load(juce::PropertiesFile& p) {
     codec = loadEnum(p, "codec", codec, Codec::av1);
     quality = loadEnum(p, "quality", quality, Quality::nearLossless);
     audio = loadEnum(p, "audio", audio, Audio::alac);
+    zoom = loadEnum(p, "zoom", zoom, Zoom::bars);
     ffmpeg = loadFile(p, "ffmpeg");
     folder = loadFile(p, "folder");
 }
@@ -72,6 +73,7 @@ void Settings::save(juce::PropertiesFile& p) const {
     p.setValue(key("codec"), (int) codec);
     p.setValue(key("quality"), (int) quality);
     p.setValue(key("audio"), (int) audio);
+    p.setValue(key("zoom"), (int) zoom);
     p.setValue(key("ffmpeg"), ffmpeg.getFullPathName());
     p.setValue(key("folder"), folder.getFullPathName());
 }

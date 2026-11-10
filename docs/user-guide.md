@@ -72,6 +72,10 @@ Clips in the Player have no header: the notes take the whole track. A clip's war
 
 Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
 
+**View → Zoom**, or **Zoom** in the ruler or PSG clip context menu, offers **Frames**, **Groove Rows**, **Beats** and **Bars**, plus fit, previous zoom and zoom in/out. The four levels give one frame, an average groove row, a beat or a bar 16 pixels, using the tempo and meter at the playhead. Without a subdivision pattern, Groove Rows uses a quarter beat. The scale is the same in musical, seconds and frames timecode formats; the visible grid and snap spacing can differ.
+
+**Previous Zoom** restores the previous horizontal position and scale without moving playback or undoing edits. Each zoom command or drag is one step; a continuous wheel or pinch gesture, or a held `=` or `-`, is one step. Scrolling and automatic playback following do not add steps. During playback, returning to a previous zoom pauses following for one second. History holds the last 64 views for the session and is not saved with the project.
+
 ### Viz Mode
 
 **View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden, and so are tracks without clips. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
@@ -85,9 +89,10 @@ For a moment after you enter Viz mode or press either key, the top of the screen
 
 ### Rendering a Video
 
-**File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes or what **View → Viz Options** chooses, at the zoom you see on screen, and the view follows the playhead from the start of the tune to 3 seconds after its end. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, µZX offers to show the file. The sound is the tune at full level: the master volume knob doesn't change it.
+**File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes or what **View → Viz Options** chooses, and the view follows the playhead from the start of the tune to 3 seconds after its end. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, µZX offers to show the file. The sound is the tune at full level: the master volume knob doesn't change it.
 
 - **Show**, **Scopes** and **Colours** are Viz mode's options, as in **View → Viz Options**: notes and scopes, notes or scopes; the scopes stacked or side by side; Slate or Classic Black and White. Changing them here changes Viz mode too; in the Player, the view behind the dialog shows each choice.
+- **Zoom** is the timeline zoom of the video: **As on screen**, the zoom of the view you see, or **Frames**, **Groove Rows**, **Beats** or **Bars**, the **View → Zoom** levels, which give one frame, row, beat or bar 16 pixels of the **Render** size, using the tempo and meter at the start of the tune.
 - **ffmpeg** encodes the video. µZX looks for it on the `PATH` and in `/opt/homebrew/bin` and `/usr/local/bin`. If it isn't found, install it (`brew install ffmpeg`, or from [ffmpeg.org](https://ffmpeg.org/download.html)), or click **Choose...** to point to it.
 - **Render** is the size the frames are drawn at, from 1280 × 720 to 3840 × 2160: the notes, scopes and labels are laid out as in a window that size. **Output** scales the frames up by a whole number, up to 8K, each drawn pixel becoming a sharp square block: 1280 × 720 at ×3 makes a 4K video of a 720p view.
 - **Frame rate**: 60, 50, 48, 30, 25 or 24 fps. At 60 the notes scroll most smoothly on most screens.
@@ -310,6 +315,11 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Cmd+L` | Loop the whole project on / off | Player, Studio |
 | `=` or `+` | Zoom in around the playhead | Player, Studio |
 | `-` | Zoom out around the playhead | Player, Studio |
+| `Cmd+1` | Zoom to Frames (16 px per frame) | Player, Studio |
+| `Cmd+2` | Zoom to Groove Rows (16 px per average row; a quarter beat without subdivisions) | Player, Studio |
+| `Cmd+3` | Zoom to Beats (16 px per beat) | Player, Studio |
+| `Cmd+4` | Zoom to Bars (16 px per bar) | Player, Studio |
+| `X` | Previous zoom: restore horizontal position and scale | Player, Studio |
 | `Shift+Z` | Zoom to fit the project | Player, Studio |
 | `Z` | Zoom to selection | Studio |
 | `Cmd+O` | Open file | Player, Studio |

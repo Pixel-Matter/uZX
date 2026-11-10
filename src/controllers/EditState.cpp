@@ -57,9 +57,13 @@ te::TimeRange ZoomViewState::getRange() const {
 }
 
 void ZoomViewState::setRange(te::TimeRange range) {
-    viewStartTime = range.getStart();
-    viewTimePerPixel = range.getLength() / getViewWidthPx();
-    // DBG("viewTimePerPixel == " << viewTimePerPixel);
+    continuousZoom_ = false;
+    applyView(range.getStart(), range.getLength() / getViewWidthPx());
+}
+
+void ZoomViewState::applyView(te::TimePosition start, te::TimeDuration timePerPixel) {
+    viewStartTime = start;
+    viewTimePerPixel = timePerPixel;
     markAndUpdate(updateViewRange);
 }
 
@@ -180,9 +184,76 @@ void ZoomViewState::showOfflineFrame(te::TimePosition pos) {
 }
 
 void ZoomViewState::zoomHorizontally(double factor) {
-    const auto newSpan = clampTimePerPixel(getTimePerPixel() * zoomStepScale(factor)) * getViewWidthPx();
-    setRange({jmax(te::TimePosition(), getPlayheadPosition() - newSpan / 2.0), newSpan});
+    zoomToTimePerPixel(getTimePerPixel() * zoomStepScale(factor), true);  // a held key is one history step
+}
+
+void ZoomViewState::zoomToTimePerPixel(te::TimeDuration timePerPixel, bool continuous) {
+    timePerPixel = clampTimePerPixel(timePerPixel);
+    const auto newSpan = timePerPixel * getViewWidthPx();
+    applyZoom(jmax(te::TimePosition(), getPlayheadPosition() - newSpan / 2.0), timePerPixel, continuous);
     handlePlaybackScrolling();
+    handleUpdateNowIfNeeded();
+}
+
+void ZoomViewState::zoomToLevel(ZoomLevel level) {
+    const auto pos = getPlayheadPosition();
+    const auto& tempo = edit.tempoSequence.getTempoAt(pos);
+    const auto ladder = Helpers::makeSnapLadder(edit, pos, TimecodeDisplayMode::barsBeatsFrames);
+    const int beat = ladder.getBeatLevel();
+    auto interval = ladder.getApproxInterval(beat, tempo, false);
+    switch (level) {
+        case ZoomLevel::frames:
+            interval = ladder.getApproxInterval(0, tempo, false);
+            break;
+        case ZoomLevel::rows:
+            interval = beat > 0 && ladder.getKind(beat - 1) == SnapLadder::LevelKind::subdivision
+                           ? ladder.getApproxInterval(beat - 1, tempo, false)
+                           : interval / 4.0;
+            break;
+        case ZoomLevel::beats:
+            break;
+        case ZoomLevel::bars:
+            interval = ladder.getApproxInterval(ladder.getBarLevel(), tempo, false);
+            break;
+    }
+    zoomToTimePerPixel(interval / 16.0);
+}
+
+void ZoomViewState::rememberZoom(ZoomSnapshot snapshot) {
+    if (zoomHistory_.size() == maxZoomHistory)
+        zoomHistory_.erase(zoomHistory_.begin());
+    zoomHistory_.push_back(snapshot);
+}
+
+void ZoomViewState::applyZoom(te::TimePosition start, te::TimeDuration timePerPixel, bool continuous) {
+    continuousZoom_ = continuousZoom_ && continuous;
+    if (approximatelyEqual(start.inSeconds(), getStart().inSeconds())
+        && approximatelyEqual(timePerPixel.inSeconds(), getTimePerPixel().inSeconds()))
+        return;
+    const auto now = Time::getMillisecondCounter();
+    if (!continuousZoom_ || now - lastZoomGestureMs_ >= zoomGestureGapMs)
+        rememberZoom({getStart(), getTimePerPixel()});
+    continuousZoom_ = continuous;
+    lastZoomGestureMs_ = now;
+    applyView(start, timePerPixel);
+}
+
+void ZoomViewState::zoomToRange(te::TimeRange range) {
+    continuousZoom_ = false;
+    if (!range.isEmpty()) {
+        applyZoom(jmax(te::TimePosition(), range.getStart()), range.getLength() / getViewWidthPx());
+        handleUpdateNowIfNeeded();
+    }
+}
+
+void ZoomViewState::zoomBack() {
+    continuousZoom_ = false;
+    if (!canZoomBack())
+        return;
+    const auto previous = zoomHistory_.back();
+    zoomHistory_.pop_back();
+    lastWheelScrollMs = Time::getMillisecondCounter();  // let the restored view stay visible during playback
+    applyView(previous.start, previous.timePerPixel);
     handleUpdateNowIfNeeded();
 }
 
@@ -191,6 +262,8 @@ void ZoomViewState::zoomAroundX(double factor, int anchorX) {
 }
 
 void ZoomViewState::magnifyAroundX(float scale, int anchorX) {
+    if (!std::isfinite(scale) || scale <= 0.0f)
+        return;
     zoomAroundXByScale(1.0 / scale, anchorX);
 }
 
@@ -199,12 +272,12 @@ void ZoomViewState::zoomAroundXByScale(double timePerPixelScale, int anchorX) {
         anchorX = roundToInt(timeToX(getPlayheadPosition()));  // else following would jump the view back to it
     const auto anchorTime = xToTime(anchorX);
     const auto newTimePerPixel = clampTimePerPixel(getTimePerPixel() * timePerPixelScale);
-    setRange({jmax(te::TimePosition(), anchorTime - newTimePerPixel * (double) anchorX),
-              newTimePerPixel * getViewWidthPx()});
+    applyZoom(jmax(te::TimePosition(), anchorTime - newTimePerPixel * (double) anchorX), newTimePerPixel, true);
     handleUpdateNowIfNeeded();
 }
 
 void ZoomViewState::scrollBy(double pixels) {
+    continuousZoom_ = false;
     setStart(jmax(te::TimePosition(), getStart() + getTimePerPixel() * pixels));
 }
 
@@ -214,6 +287,8 @@ void ZoomViewState::scrollByWheel(const MouseWheelDetails& wheel) {
 }
 
 void ZoomViewState::beginDrag() {
+    continuousZoom_ = false;
+    dragZoomRecorded_ = false;
     userDraggingView = true;
     dragStartViewStart = getStart();
     dragStartTimePerPixel = getTimePerPixel();
@@ -223,7 +298,11 @@ void ZoomViewState::dragBy(int anchorX, int deltaX, int deltaY) {
     auto newTimePerPixel = clampTimePerPixel(dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01));
     auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) anchorX;
     auto newStart = jmax(te::TimePosition(), anchorTime - newTimePerPixel * (double) (anchorX + deltaX));
-    setRange({newStart, newTimePerPixel * getViewWidthPx()});
+    if (!dragZoomRecorded_ && !approximatelyEqual(newTimePerPixel.inSeconds(), dragStartTimePerPixel.inSeconds())) {
+        rememberZoom({dragStartViewStart, dragStartTimePerPixel});
+        dragZoomRecorded_ = true;
+    }
+    applyView(newStart, newTimePerPixel);
 }
 
 void ZoomViewState::endDrag() {

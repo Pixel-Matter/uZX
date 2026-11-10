@@ -30,6 +30,12 @@ VideoRenderJob::VideoRenderJob(tracktion::Edit& e,
     view.showAsPlayer(true, VizOptions::load(e.engine.getPropertyStorage().getPropertiesFile()));
     document = std::make_unique<PlayerDocumentComponent>(edit, view);
     document->setSize(width, height);
+    if (settings.zoom != Video::Settings::Zoom::asOnScreen) {
+        using Level = ZoomViewState::ZoomLevel;
+        static_assert((int) Video::Settings::Zoom::bars - 1 == (int) Level::bars, "Zoom follows ZoomLevel order");
+        view.zoom.showOfflineFrame({});  // the level takes its tempo and meter from the start of the tune
+        view.zoom.zoomToLevel((Level) ((int) settings.zoom - 1));
+    }
     frame = juce::Image(juce::Image::ARGB, width, height, true);
     pixels.resize((size_t) width * (size_t) height * 4);
 

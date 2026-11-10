@@ -201,7 +201,7 @@ void PlayerController::importPsgsToNewTracks(const Array<File>& files) {
     for (auto* clip : clips)
         RememberedStereo::apply(Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack()));
     if (! clips.isEmpty())
-        zoomToFitHorizontally();
+        zoomToFitHorizontally(false);
 }
 
 void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
@@ -231,7 +231,7 @@ void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
 
     setEdit(std::move(newEdit), true);
     setMainWindowTitle(makePlayerWindowTitle(name));
-    zoomToFitHorizontally();
+    zoomToFitHorizontally(false);
 }
 
 }  // namespace MoTool

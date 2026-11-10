@@ -1,6 +1,6 @@
-# µZX Player UX
+# µZX UX
 
-The yardstick for polishing the Player: a change is worth making when it takes a step out of one of these tasks or makes what the task needs easier to see.
+Shared interaction decisions, then the yardstick for polishing the Player: a change is worth making when it takes a step out of one of these tasks or makes what the task needs easier to see.
 
 ## Tasks
 
@@ -25,3 +25,11 @@ In the Player window at any size; nothing below gets hidden or squeezed out. Viz
 - Each chip's level meter
 - The master volume knob and the master level meter
 - The file name, in the window title
+
+## Keyboard and timeline zoom
+
+Use a Bitwig-like scheme as the reference for new editing, tool and grid shortcuts, rather than mixing defaults from several editors. This is a direction, not full Bitwig compatibility: existing shortcuts are not all migrated. Reserve plain digits for tools and Cmd/Ctrl+1…9 for zoom; only the first four zoom commands are assigned. Marker navigation should be sequential when implemented. `X` for previous zoom is an intentional exception inspired by Live. The implemented bindings live in [Keyboard and Mouse](user-guide.md#keyboard-and-mouse).
+
+Player and Studio share **View → Zoom** and the timeline context menus. Frames, Groove Rows, Beats and Bars each give their reference interval 16 pixels. Use the tempo and meter at the playhead and the average groove row, falling back to a quarter beat without subdivisions. Calculate these intervals with the musical snap ladder even when the ruler shows seconds or frames: changing the timecode format changes the grid and labels, not the preset scale. The actual visible snap interval still comes from that format's grid.
+
+Previous Zoom restores horizontal position and scale without seeking or undoing edits. Each command or drag is one history step; wheel, pinch and zoom in/out events less than 500 ms apart form one step. Scrolling and automatic playback following do not add steps. History keeps up to 64 views for the current view session and is not saved in the project. No zoom toolbar yet.

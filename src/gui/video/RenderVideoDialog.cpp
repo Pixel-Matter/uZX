@@ -64,6 +64,7 @@ public:
         for (auto* label : {&showLabel,
                             &scopesLabel,
                             &coloursLabel,
+                            &zoomLabel,
                             &ffmpegLabel,
                             &renderLabel,
                             &outputLabel,
@@ -75,7 +76,7 @@ public:
                             &note})
             addAndMakeVisible(label);
         for (auto* box :
-             {&showBox, &scopesBox, &coloursBox, &renderBox, &outputBox, &fpsBox, &codecBox, &qualityBox, &audioBox})
+             {&showBox, &scopesBox, &coloursBox, &zoomBox, &renderBox, &outputBox, &fpsBox, &codecBox, &qualityBox, &audioBox})
             addAndMakeVisible(box);
 
         // Viz mode's own options, saved as they change: the Player's view behind shows each choice
@@ -95,6 +96,9 @@ public:
         coloursBox.onChange = [this] {
             changeViz([this](VizOptions& o) { o.colours = (VizOptions::Colours) (coloursBox.getSelectedId() - 1); });
         };
+        zoomBox.addItemList({"As on screen", "Frames", "Groove Rows", "Beats", "Bars"}, 1);
+        zoomBox.setSelectedId((int) settings.zoom + 1, juce::dontSendNotification);
+        zoomBox.onChange = [this] { settings.zoom = (Video::Settings::Zoom) (zoomBox.getSelectedId() - 1); };
         for (auto* button : {&chooseButton, &cancelButton, &renderButton})
             addAndMakeVisible(button);
 
@@ -125,7 +129,7 @@ public:
         codecBox.onChange = [this] { settings.codec = (Video::Settings::Codec) (codecBox.getSelectedId() - 1); };
         audioBox.onChange = [this] { settings.audio = (Video::Settings::Audio) (audioBox.getSelectedId() - 1); };
 
-        note.setText("Each frame shows Viz mode at the zoom on screen, from the start of the tune to "
+        note.setText("Each frame shows Viz mode, from the start of the tune to "
                          + juce::String(Video::Settings::tailSeconds) + " seconds after its end.",
                      juce::dontSendNotification);
         note.setJustificationType(juce::Justification::topLeft);
@@ -156,7 +160,8 @@ public:
 
         auto r = pair(row(), showLabel, showBox, boxWidth);
         pair(r, scopesLabel, scopesBox, r.getWidth() - labelWidth);
-        pair(row(), coloursLabel, coloursBox, boxWidth);
+        r = pair(row(), coloursLabel, coloursBox, boxWidth);
+        pair(r, zoomLabel, zoomBox, r.getWidth() - labelWidth);
 
         r = row();
         ffmpegLabel.setBounds(r.removeFromLeft(labelWidth));
@@ -303,11 +308,11 @@ private:
     Video::Settings settings;
     juce::Optional<Video::Ffmpeg> ffmpeg;
 
-    juce::Label showLabel{{}, "Show"}, scopesLabel{{}, "Scopes"}, coloursLabel{{}, "Colours"};
+    juce::Label showLabel{{}, "Show"}, scopesLabel{{}, "Scopes"}, coloursLabel{{}, "Colours"}, zoomLabel{{}, "Zoom"};
     juce::Label ffmpegLabel{{}, "ffmpeg"}, renderLabel{{}, "Render"}, outputLabel{{}, "Output"},
         fpsLabel{{}, "Frame rate"}, videoLabel{{}, "Video"}, qualityLabel{{}, "Quality"}, audioLabel{{}, "Audio"},
         ffmpegPath, note;
-    juce::ComboBox showBox, scopesBox, coloursBox, renderBox, outputBox, fpsBox, codecBox, qualityBox, audioBox;
+    juce::ComboBox showBox, scopesBox, coloursBox, zoomBox, renderBox, outputBox, fpsBox, codecBox, qualityBox, audioBox;
     juce::TextButton chooseButton{"Choose..."}, cancelButton{"Cancel"}, renderButton{"Render..."};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RenderVideoComponent)

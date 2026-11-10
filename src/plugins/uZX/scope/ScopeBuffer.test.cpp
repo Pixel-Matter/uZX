@@ -59,7 +59,7 @@ public:
 
             buffer.pushSamples(input.data(), capacity, inverted.data(), input.data());
             std::latch start{2};
-            std::jthread producer([&] {
+            std::thread producer([&] {
                 start.arrive_and_wait();
                 for (int i = 0; i < blocks; ++i) {
                     const auto offset = capacity + i * blockSize;

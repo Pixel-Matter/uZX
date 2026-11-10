@@ -1,5 +1,6 @@
 #include <JuceHeader.h>
 #include "ScopePluginUI.h"
+#include "../../../util/TestHelpers.h"
 
 namespace MoTool::uZX {
 
@@ -87,6 +88,74 @@ public:
 };
 
 static ScopeTriggerModesTest scopeTriggerModesTest;
+
+class ScopeDisplaySettingsTest : public juce::UnitTest
+{
+public:
+    ScopeDisplaySettingsTest() : UnitTest("ScopeDisplaySettings", "MoTool") {}
+
+    void runTest() override {
+        for (const auto signal : {ScopeSettings::Signal::Audio, ScopeSettings::Signal::ChipLevels}) {
+            const bool chip = signal == ScopeSettings::Signal::ChipLevels;
+            beginTest(chip ? "Chip scopes share live settings" : "Audio scopes share live settings");
+
+            juce::ValueTree state{"PLUGIN"};
+            state.setProperty(ScopeIDs::windowSamples, 512, nullptr);
+            state.setProperty(ScopeIDs::gain, 2.0, nullptr);
+            state.setProperty(chip ? ScopeIDs::chipTriggerMode : ScopeIDs::triggerMode, "FallingEdge", nullptr);
+            state.setProperty(ScopeIDs::triggerLevel, 0.1, nullptr);
+            ScopeSettings settings{signal};
+            settings.referTo(state, nullptr);
+            ScopeBuffer buffer;
+            WaveformDisplay first(juce::Colours::white, "1", buffer, settings);
+            auto second = std::make_unique<WaveformDisplay>(juce::Colours::white, "2", buffer, settings);
+
+            const auto check = [this](const WaveformDisplay& display, int window, float gain,
+                                     TriggerMode mode, float level) {
+                expectEquals(display.windowSize_, window);
+                expectEquals(static_cast<int>(display.workBuffer_.size()), window * 2);
+                expect(juce::exactlyEqual(display.gain_, gain));
+                expect(display.triggerStrategy_.mode == mode);
+                expect(juce::exactlyEqual(display.triggerLevel_, level));
+            };
+            check(first, 512, 2.0f, TriggerMode::FallingEdge, 0.1f);
+            check(*second, 512, 2.0f, TriggerMode::FallingEdge, 0.1f);
+
+            juce::PopupMenu menu;
+            addScopeSettingsMenu(menu, settings, chip ? "Scope Settings" : "");
+            expectEquals(menu.getNumItems(), chip ? 1 : 4);
+            juce::PopupMenu::MenuItemIterator items(menu, true);
+            bool checkedGain = false;
+            bool hasChipSync = false;
+            while (items.next()) {
+                const auto& item = items.getItem();
+                if (item.text == "2.0x")
+                    checkedGain = item.isTicked;
+                if (item.text == "Chip Sync")
+                    hasChipSync = true;
+                if (item.text == "5.0x" && item.action)
+                    item.action();
+            }
+            expect(checkedGain);
+            expectEquals(int(hasChipSync), int(chip));
+
+            const TriggerMode newMode = chip ? TriggerMode::ChipSync : TriggerMode::FreeRunning;
+            settings.windowSamples.setStoredValue(4096);
+            settings.triggerMode.setStoredValue(newMode);
+            settings.triggerLevel.setStoredValue(0.5f);
+            TestHelpers::flushMessageQueue();
+            check(first, 4096, 5.0f, newMode, 0.5f);
+            check(*second, 4096, 5.0f, newMode, 0.5f);
+
+            settings.gain.setStoredValue(1.0f);
+            second.reset();
+            TestHelpers::flushMessageQueue();
+            check(first, 4096, 1.0f, newMode, 0.5f);
+        }
+    }
+};
+
+static ScopeDisplaySettingsTest scopeDisplaySettingsTest;
 
 class ScopePluginBufferTest : public juce::UnitTest
 {

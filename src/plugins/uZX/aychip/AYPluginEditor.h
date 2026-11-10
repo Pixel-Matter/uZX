@@ -17,8 +17,8 @@ namespace MoTool::uZX {
 
 //==============================================================================
 /** The chip's A, B and C oscilloscopes, following its scope settings. */
-class AYScopes : public Component,
-                 private juce::Value::Listener {
+class AYScopes : public Component
+{
 public:
     struct Look
     {
@@ -27,7 +27,6 @@ public:
     };
 
     AYScopes(AYChipPlugin& plugin, Look look);
-    ~AYScopes() override;
 
     void paint(Graphics& g) override;
     void resized() override;
@@ -35,10 +34,6 @@ public:
     static constexpr int spacing = 4;
 
 private:
-    void valueChanged(juce::Value&) override;
-    void applySettings();
-
-    ScopeSettings& settings_;
     std::array<std::unique_ptr<WaveformDisplay>, 3> displays_;
     const Look look_;
 

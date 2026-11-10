@@ -13,4 +13,7 @@ void browseForMidiFile(te::Engine& engine, std::function<void (const File&)> fil
 /** Lets several files be picked; calls back with the existing ones, empty if cancelled. */
 void browseForPSGFiles(te::Engine& engine, std::function<void (const Array<File>&)> filesChosenCallback);
 
+/** Display-mode picker for the timeline ruler/grid; the frame rate stays the project fps. */
+juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit);
+
 }  // namespace MoTool::Helpers

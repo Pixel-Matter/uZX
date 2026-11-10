@@ -8,6 +8,7 @@
 
 #include "../gui/main/MainWindow.h"
 #include "../gui/main/MainDocument.h"
+#include "../gui/common/Utilities.h"
 #include "../gui/main/AboutDialog.h"
 #include "../gui/timeline/PsgClipComponent.h"
 #include "../gui/video/RenderVideoDialog.h"

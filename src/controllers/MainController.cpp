@@ -328,8 +328,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
     if (menuName == "File") {
         PopupMenu menu;
 
-        if (!isPlayer)
-            menu.addCommandItem(&commandManager_, MainAppCommands::fileNew);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileNew);
         menu.addCommandItem(&commandManager_, MainAppCommands::fileOpen);
 
         // Recent files submenu - populate dynamically
@@ -355,8 +354,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         menu.addSeparator();
 
         menu.addCommandItem(&commandManager_, MainAppCommands::fileImportPsg);
-        if (!isPlayer)
-            menu.addCommandItem(&commandManager_, MainAppCommands::fileImportAudio);
+        menu.addCommandItem(&commandManager_, MainAppCommands::fileImportAudio);
         menu.addSeparator();
         menu.addCommandItem(&commandManager_, MainAppCommands::fileRenderVideo);
        #if ! JUCE_MAC  // macOS has Quit in the app menu
@@ -421,7 +419,7 @@ ApplicationCommandTarget* AppController::getNextCommandTarget() {
 }
 
 void AppController::getAllCommands(Array<CommandID>& commands) {
-    commands.addArray(MainAppCommands::getCommandIDs());
+    commands.addArray(MainAppCommands::getCommandIDs(MoToolApp::getTarget() == MoToolApp::Target::uZXPlayer));
 }
 
 void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) {
@@ -487,12 +485,6 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             result.setActive(edit != nullptr && edit->getUndoManager().canRedo());
             break;
 
-        // the Player can't add tracks or chips back, and has no Tuning window
-        case MainAppCommands::editDelete:
-        case MainAppCommands::settingsTuningTables:
-            result.setActive(!isPlayer);
-            break;
-
         // TODO  Theese commands are not being updated on selection change, only transportPlay and transportRecordStop are updated
         // case AppCommands::editDelete:
         //     if (edit_ != nullptr) {
@@ -510,11 +502,11 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::transportRecord:
-            result.setActive(!isPlayer && edit != nullptr && !edit->getTransport().isRecording());
+            result.setActive(edit != nullptr && !edit->getTransport().isRecording());
             break;
 
         case MainAppCommands::transportRecordStop:
-            result.setActive(!isPlayer && edit != nullptr && edit->getTransport().isRecording());
+            result.setActive(edit != nullptr && edit->getTransport().isRecording());
             break;
 
         case MainAppCommands::transportToStart:
@@ -526,19 +518,17 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::transportPreservePsgTiming:
-            if (!isPlayer) {
-                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
-                    result.setActive(true);
-                    result.setTicked(editViewState->shouldPreservePsgTimingOnTempoChange());
-                    break;
-                }
+            if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
+                result.setActive(true);
+                result.setTicked(editViewState->shouldPreservePsgTimingOnTempoChange());
+                break;
             }
 
             result.setActive(false);
             break;
 
         case MainAppCommands::viewZoomToSelection:
-            result.setActive(!isPlayer && edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
+            result.setActive(edit != nullptr && selectionManager_.getSelectedObjects().size() > 0);
             break;
 
         case MainAppCommands::viewZoomFrames:
@@ -564,17 +554,17 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::viewVizMode:
-            result.setActive(isPlayer && edit != nullptr);
-            result.setTicked(isPlayer && MoToolApp::getPlayerController().isVizMode());
+            result.setActive(edit != nullptr);
+            result.setTicked(MoToolApp::getPlayerController().isVizMode());
             break;
 
         case MainAppCommands::viewExitVizMode:
         case MainAppCommands::viewNextVizLayout:
-            result.setActive(isPlayer && MoToolApp::getPlayerController().isVizMode());
+            result.setActive(MoToolApp::getPlayerController().isVizMode());
             break;
 
         case MainAppCommands::viewSwitchVizScopes:
-            result.setActive(isPlayer && MoToolApp::getPlayerController().isVizMode()
+            result.setActive(MoToolApp::getPlayerController().isVizMode()
                              && VizOptions::load(engine_.getPropertyStorage().getPropertiesFile()).showsScopes());
             break;
 
@@ -598,7 +588,7 @@ bool AppController::perform(const InvocationInfo& info) {
 
     switch (info.commandID) {
         case MainAppCommands::fileNew:
-            if (!isPlayer) MoToolApp::getArrangerController().handleNew();
+            MoToolApp::getArrangerController().handleNew();
             break;
 
         case MainAppCommands::fileOpen:
@@ -662,12 +652,8 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::fileImportAudio:
-            if (!isPlayer) {
-                auto* edit = MoToolApp::getArrangerController().getEdit();
-                if (edit != nullptr) {
-                    importAudioAsClip(*edit, selectionManager_);
-                }
-            }
+            if (auto* edit = MoToolApp::getArrangerController().getEdit())
+                importAudioAsClip(*edit, selectionManager_);
             break;
 
         case MainAppCommands::fileRenderVideo:
@@ -706,11 +692,8 @@ bool AppController::perform(const InvocationInfo& info) {
         }
 
         case MainAppCommands::transportRecord:
-            if (!isPlayer) MoToolApp::getArrangerController().handleRecord();
-            break;
-
         case MainAppCommands::transportRecordStop:
-            if (!isPlayer) MoToolApp::getArrangerController().handleRecord();
+            MoToolApp::getArrangerController().handleRecord();
             break;
 
         case MainAppCommands::transportToStart:
@@ -726,23 +709,17 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::transportPreservePsgTiming:
-            if (!isPlayer) {
-                if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
-                    editViewState->setPreservePsgTimingOnTempoChange(
-                        ! editViewState->shouldPreservePsgTimingOnTempoChange());
-                    commandManager_.commandStatusChanged();
-                }
+            if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
+                editViewState->setPreservePsgTimingOnTempoChange(
+                    ! editViewState->shouldPreservePsgTimingOnTempoChange());
+                commandManager_.commandStatusChanged();
             }
             break;
 
         // Add commands
         case MainAppCommands::addAudioTrack:
-            if (!isPlayer) {
-                auto* edit = MoToolApp::getArrangerController().getEdit();
-                if (edit != nullptr) {
-                    Helpers::addAndSelectAudioTrack(*edit, selectionManager_);
-                }
-            }
+            if (auto* edit = MoToolApp::getArrangerController().getEdit())
+                Helpers::addAndSelectAudioTrack(*edit, selectionManager_);
             break;
 
         // case AppCommands::addAutomationTrack:
@@ -753,12 +730,8 @@ bool AppController::perform(const InvocationInfo& info) {
 
         // Track commands
         case MainAppCommands::trackRenderToAudio:
-            if (!isPlayer) {
-                auto* edit = MoToolApp::getArrangerController().getEdit();
-                if (edit != nullptr) {
-                    Helpers::renderSelectedTracksToAudioTrack(*edit, selectionManager_);
-                }
-            }
+            if (auto* edit = MoToolApp::getArrangerController().getEdit())
+                Helpers::renderSelectedTracksToAudioTrack(*edit, selectionManager_);
             break;
 
         // View commands
@@ -820,13 +793,12 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::viewVizMode:
-        case MainAppCommands::viewExitVizMode:
-            if (isPlayer) {
-                auto& player = MoToolApp::getPlayerController();
-                player.setVizMode(info.commandID == MainAppCommands::viewVizMode && ! player.isVizMode());
-                commandManager_.commandStatusChanged();
-            }
+        case MainAppCommands::viewExitVizMode: {
+            auto& player = MoToolApp::getPlayerController();
+            player.setVizMode(info.commandID == MainAppCommands::viewVizMode && ! player.isVizMode());
+            commandManager_.commandStatusChanged();
             break;
+        }
 
         case MainAppCommands::viewNextVizLayout: {
             auto& settings = engine_.getPropertyStorage().getPropertiesFile();

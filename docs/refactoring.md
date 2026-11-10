@@ -10,7 +10,7 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 1. **Small extractions:** 3 (inspect the inherited parameter-editor behavior before replacing its base class).
 2. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 7 (plugin clock coordination), 8 (import timing).
-3. **Contracts:** 17 (establish supported nonzero-start callers first), 18 (command capabilities).
+3. **Contracts:** 17 (establish supported nonzero-start callers first).
 4. **Low priority:** 9 (export formatting).
 
 ## 3. Remove the parameter display's unsupported editing contract
@@ -72,16 +72,6 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 **Review boundary:** decide whether effects support arbitrary context starts. If they do, define the exclusive end once from start plus length and use it for event inclusion and remaining render spans. If zero-start processing is intentionally required, make that restriction explicit at the appropriate entry boundary while preserving nonzero voice sub-blocks. Do not fix only the event comparison and leave the tail calculation inconsistent.
 
 **Validation:** add focused MPE effect cases for zero and nonzero start, no events, events at start/end, and an event inside the range; verify total rendered samples and nonnegative slice lengths. Inspect production context construction and slicing callers before changing assumptions. The existing TODO already notes missing instrument/voice tests; this supplies a concrete first regression case.
-
-## 18. Align command registration with supported app capabilities
-
-**Evidence:** App-specific capability rules are spread across menu construction in [MainCommands.h](../src/controllers/MainCommands.h), and command status and dispatch in [MainController.cpp](../src/controllers/MainController.cpp), each testing `isPlayer` on its own. Cut, Copy, and Paste were registered with shortcuts and no handlers; they are removed until clipboard editing exists.
-
-**Problem:** advertised command availability and implemented behavior have separate owners, so a command can be listed with nothing behind it, as the clipboard commands were.
-
-**Proposed boundary:** define supported command IDs per app in one place and use that knowledge for registration/menu availability and status checks. Keep dispatch explicit and preserve stable IDs. Remove or disable unsupported actions until there is concrete behavior; implementing clipboard editing is a separate feature. Avoid replacing the existing command system with a generic dispatch framework.
-
-**Validation:** verify every exposed command has a supported handler for that app without blindly invoking destructive commands in a test loop. Add focused checks for unsupported IDs, Player capabilities, and selection-dependent enablement. Exercise Studio Edit menu and keyboard routes, including text-field focus. Update the user guide if visible commands or bindings change.
 
 ## Deferred review notes
 

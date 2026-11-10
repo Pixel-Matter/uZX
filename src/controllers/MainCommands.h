@@ -128,6 +128,31 @@ public:
         return menu;
     }
 
+    /** Whether the Player or Studio has the command. Only these are registered, so a command an app
+        lacks has no shortcut, menu item, or handler there. */
+    static bool isSupported(CommandID id, bool isPlayer) {
+        switch (id) {
+            case viewVizMode: case viewExitVizMode: case viewNextVizLayout: case viewSwitchVizScopes:
+                return isPlayer;
+
+            // the Player can't add tracks or chips back, records nothing, and has no Studio windows
+            case fileNew: case fileImportAudio: case editDelete:
+            case transportRecord: case transportRecordStop: case transportPreservePsgTiming:
+            case addAudioTrack: case trackRenderToAudio: case viewZoomToSelection:
+            case settingsPlugins: case settingsTuningTables:
+                return ! isPlayer;
+
+            default:
+                return true;
+        }
+    }
+
+    static Array<CommandID> getCommandIDs(bool isPlayer) {
+        auto ids = getCommandIDs();
+        ids.removeIf([isPlayer](CommandID id) { return ! isSupported(id, isPlayer); });
+        return ids;
+    }
+
     static PopupMenu createMenu(ApplicationCommandManager* manager, const String& menuName) {
         PopupMenu menu;
         if (menuName == "File") {

@@ -156,9 +156,9 @@ struct Timeline {
     };
 
     static inline const std::array<Colour, 3> trackGridTickColors = {
-        Palette::slate500.withAlpha(0.1f),
-        Palette::slate500.withAlpha(0.33f),
-        Palette::slate500.withAlpha(0.66f),
+        Palette::slate400.withAlpha(0.1f),
+        Palette::slate400.withAlpha(0.33f),
+        Palette::slate400.withAlpha(0.66f),
     };
 
     static inline const std::array<Colour, 3> trackGridLabelColors = {

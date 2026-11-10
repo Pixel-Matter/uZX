@@ -1,5 +1,7 @@
 # MoTool Design Document
 
+> **Status: initial design notes (February 2025), not implemented.** Written before µZX existed as an app; the video FX node system below was never built and is not on the [roadmap](../ROADMAP.md). It does not describe the current architecture: for that see [the docs index](../README.md). Kept as background for [the MoTool vision](vision.md).
+
 MoTool is a specialized demoscene production tool that bridges modern production workflows with retro platform
 constraints. It combines DAW-like music editing, motion graphics prototyping, and direct machine code development
 in a unified timeline-based interface.

@@ -106,12 +106,11 @@ New source files must be added to `src/sources.cmake`:
 
 ## Architecture Overview
 
-MoTool is built on [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/) and [JUCE](https://juce.com/). Key architectural docs are in the `docs/` directory:
+MoTool is built on [Tracktion Engine](https://github.com/Tracktion/tracktion_engine/) and [JUCE](https://juce.com/). The source layout is described in [AGENTS.md](AGENTS.md). Design notes are in `docs/design/`, indexed in [docs/README.md](docs/README.md):
 
-- `docs/Design.md` — overall architecture
-- `docs/OVM Design pattern.md` — state management pattern
-- `docs/Parameter binding.md` — parameter binding system
-- `docs/Tuning Systems.md` — tuning system design
+- `docs/design/parameter-binding.md` — parameter binding system
+- `docs/design/tuning.md` — tuning model and detection
+- `docs/design/psg-timing.md` — PSG frame timing
 
 ## Submitting Changes
 

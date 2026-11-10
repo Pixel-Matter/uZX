@@ -40,7 +40,7 @@ A modern tool for composing and playing back chiptune music for platforms using 
 
 ## Vision
 
-µZX is being developed as the music subsystem of **MoTool** — a planned demotool for retrocomputer demoscene production. MoTool does not exist as a release yet; it will launch as a separate project on the shared codebase once the timeline supports video material and emulator integration. See [docs/Vision.md](docs/Vision.md) for the full picture.
+µZX is being developed as the music subsystem of **MoTool** — a planned demotool for retrocomputer demoscene production. MoTool does not exist as a release yet; it will launch as a separate project on the shared codebase once the timeline supports video material and emulator integration. See [docs/motool/vision.md](docs/motool/vision.md) for the full picture.
 
 **Music composition:**
 
@@ -99,12 +99,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, prerequi
 
 ## Documentation
 
-- [Design](docs/Design.md) — architecture overview
-- [Tuning Systems](docs/Tuning%20Systems.md) — tuning system design
-- [Parameter Binding](docs/Parameter%20binding.md) — parameter binding system
-- [OVM Design Pattern](docs/OVM%20Design%20pattern.md) — state management
+- [User Guide](docs/user-guide.md) — everything in Player, Studio and Tuning, with all shortcuts
 - [Roadmap](docs/ROADMAP.md) — planned features and release milestones
-- [Vision](docs/Vision.md) — full MoTool vision and long-term goals
+- [Design notes](docs/README.md) — tuning, PSG timing, parameter binding, and the index of all docs
+- [Vision](docs/motool/vision.md) — the initial MoTool vision and long-term direction
 
 ## Community
 

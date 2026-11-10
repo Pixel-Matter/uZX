@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-uZX is a C++23 JUCE/Tracktion Engine application. App and library code lives under `src/`: `controllers`, `models`, `viewmodels`, `gui`, `plugins/uZX`, `formats`, and `util`. `src/sources.cmake` is authoritative for source membership: add shared code to `SHARED_SOURCES`, UI/app-only code to `GUI_SOURCES`, and tests to `TEST_SOURCES`. Unit tests are colocated with implementation as `*.test.cpp`; `tests/main.cpp` provides the JUCE test runner. Assets live in `resources/`, docs in `docs/`, CMake helpers in `cmake/`, and vendored dependencies in `third_party/`.
+uZX is a C++23 JUCE/Tracktion Engine application. App and library code lives under `src/`: `controllers`, `models`, `viewmodels`, `gui`, `plugins/uZX`, `formats`, and `util`. `src/sources.cmake` is authoritative for source membership: add shared code to `SHARED_SOURCES`, UI/app-only code to `GUI_SOURCES`, and tests to `TEST_SOURCES`. Unit tests are colocated with implementation as `*.test.cpp`; `tests/main.cpp` provides the JUCE test runner. Assets live in `resources/`, docs in `docs/` (index and upkeep rules in `docs/README.md`), CMake helpers in `cmake/`, and vendored dependencies in `third_party/`.
 
 All targets — `uZX` (Studio), `uZXTuning`, `uZXPlayer`, `uZXTests` — link the `motool_common` static library and share one entry point. Per-target behavior is keyed on `ProjectInfo::projectName` in `src/controllers/App.cpp`.
 

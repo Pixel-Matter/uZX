@@ -1,16 +1,15 @@
 # µZX Development TODO
 
-Granular tasks and implementation notes for µZX Studio and the shared engine. Player priorities are in [ROADMAP.md](ROADMAP.md); finished work goes to [CHANGELOG.md](../CHANGELOG.md).
+Granular open tasks for µZX Studio and the shared engine. Player priorities are in [ROADMAP.md](ROADMAP.md). A finished task is deleted here; what it changed for users goes to [CHANGELOG.md](../CHANGELOG.md).
 
 ## Refactoring
 
-See the [review scope and implementation order](refactoring.md#implementation-order). Numbers below match the detailed findings, not execution order.
+See the [review scope and implementation order](refactoring.md#implementation-order). Numbers are the findings' stable IDs, not execution order; finished findings are deleted.
 
 - [ ] 1. [Centralize edit replacement lifecycle](refactoring.md#1-centralize-edit-replacement-lifecycle) shared by Studio and Player, preserving app-specific policy and teardown order.
 - [ ] 2. [Consolidate AY plugin setup during PSG import](refactoring.md#2-consolidate-ay-plugin-setup-during-psg-import), using the destination track's owning edit.
 - [ ] 3. [Remove the parameter display's unsupported editing contract](refactoring.md#3-remove-the-parameter-displays-unsupported-editing-contract) after checking inherited selection, zoom, and input behavior.
 - [ ] 4. [Move timecode menu construction into the GUI layer](refactoring.md#4-move-timecode-menu-construction-into-the-gui-layer), shared by ruler and main-menu callers.
-- [x] 5. [Separate persistence results and recent-file ownership](refactoring.md#5-separate-persistence-results-and-recent-file-ownership), including failed-save reporting and newest-first history limits.
 - [ ] 6. [Establish audio-thread ownership of mutable runtime state](refactoring.md#6-establish-audio-thread-ownership-of-mutable-runtime-state), reviewing render locks and the existing mapper race together.
 - [ ] 7. [Make clock coordination between plugins explicit](refactoring.md#7-make-clock-coordination-between-plugins-explicit), including chain order and persisted settings.
 - [ ] 8. [Separate PSG metadata, clip timing, and project policy](refactoring.md#8-separate-psg-metadata-clip-timing-and-project-policy), extending the existing import-timing tasks.
@@ -19,29 +18,13 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] 11. [Include timing context in tuning cache dependencies](refactoring.md#11-include-timing-context-in-tuning-cache-dependencies), preserving explicit choices while refreshing automatic results.
 - [ ] 12. [Make widget bindings own callback teardown](refactoring.md#12-make-widget-bindings-own-callback-teardown), including slider text conversion and widget reuse.
 - [ ] 13. [Centralize persisted PSG parameter mapping](refactoring.md#13-centralize-persisted-psg-parameter-mapping), preserving property names, sparse masks, and legacy normalization.
-- [x] 14. [Give deferred preview requests cancellation semantics](refactoring.md#14-give-deferred-preview-requests-cancellation-semantics), rejecting starts superseded by Stop or a newer preview.
-- [x] 15. [Give track rendering a single commit and rollback boundary](refactoring.md#15-give-track-rendering-a-single-commit-and-rollback-boundary), preserving source state on failure and cancellation.
-- [x] 16. [Move scope menu policy out of generic device UI](refactoring.md#16-move-scope-menu-policy-out-of-generic-device-ui), retaining one helper for AY and Scope callers.
 - [ ] 17. [Make MIDI sample-range semantics consistent](refactoring.md#17-make-midi-sample-range-semantics-consistent), checking nonzero starts and final render spans.
-- [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities), including unhandled clipboard commands and Player save shortcuts.
-- [x] 19. [Make scope sample publication data-race-free](refactoring.md#19-make-scope-sample-publication-data-race-free), protecting sample slots as well as the write index.
-- [x] 20. [Let scope displays own their settings binding](refactoring.md#20-let-scope-displays-own-their-settings-binding), removing duplicated AY and Scope parent bindings.
+- [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities), including unhandled clipboard commands.
 
 ## Arranger mode
 
-- [x] Bug with playhead in uZX Studio (not in uZX Player) — root cause: failed audio device freezes audible time; now detected with an error alert + Audio Settings
-- [x] Timecode switching (frames, seconds, bars/beats)
-- [x] Ruler respects timecode format
-- [x] Grid respect new timecode format with beats and frames
-- [x] FPS editing of timecode or of a separate edit FPS setting
-- [x] Ruler timecode is saved with the edit
-- [x] Grid level 0 subdivisions are strange
-- [x] Playhead snaps to grid
-- [x] Pos readout/editing in current timecode formats
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)
-- [x] Better BPM editing
-- [x] Clip names are visible on audio and MIDI clips (PSG clips show them)
 - [ ] Virtual MIDI keyboard (see audio plugin host)
 - [ ] Loop region and looped playback (Loop toggle exists, no range UI)
 - [ ] Track level knob/slider
@@ -50,13 +33,11 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] Moving clips around
 - [ ] Moving tracks around
 - [ ] BPM automation
-- [x] Time sig editing
 - [ ] Time sig automation
 
 ## Global
 
 - [ ] Icons (fontaudio, Font Awesome, octicons, nerd-fonts)
-- [x] CPU usage meters (DSP and GUI, in the transport bar)
 - [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds
 - [ ] Reopening the project that is already open (Open Recent item 0, drop of the current .uzx) loses unsaved changes: `setEdit` saves the old edit, then force-saves the stale freshly loaded copy over it; both edits share a project ID, so deleting the old temp folder also wipes the new one's
 - [ ] A second Player instance fully initialises and saves the shared startup edit before quitting (`moreThanOneInstanceAllowed` is checked after the `MoToolApp` constructor)
@@ -92,7 +73,6 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 
 ## PSG Clip / PSG data
 
-- [x] Send initial PSG state on play start (noise-on bug when not in PSG file)
 - [ ] PSG export
 - [ ] Route every tempo change through `PsgTiming::setTempoBpmRetimingFrames` — today only `PsgTiming::setFramesPerBeat` / `setBpmSnappedToFrames` (the transport bar's FPB and BPM boxes) rescale `framesPerBeat`; tempo edits from any other path (Tracktion tempo editing, future tempo track/automation) skip preserve-timing compensation
 - [ ] `PsgList::loadFrom` should not write edit-wide project fps (`Helpers::setProjectFps`) — move that decision to the import caller (clip/controller)
@@ -101,7 +81,7 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 
 ## AY Chip Emulator plugin
 
-- [ ] Timer fx support (for TAYM import/export)
+- [ ] Timer fx support (for TAYM import/export); design in [timer-fx.md](design/timer-fx.md)
 
 ## Tuning System
 

@@ -1,5 +1,7 @@
 # MoTool is a planned modern PC-based *de*motool for retrocomputer demoscene production
 
+> **Status: initial vision (2025).** MoTool is the planned demotool that µZX is the music subsystem of. Nothing below beyond the music timeline exists in code, and none of it is scheduled; what is planned is in [ROADMAP.md](../ROADMAP.md). Kept as the long-term direction.
+
 ```text
         █▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌
         █▌  █▌    █▌      █▌    █▌█▌    █▌

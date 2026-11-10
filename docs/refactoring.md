@@ -1,25 +1,18 @@
 # Refactoring plan
 
-Review started: 2026-11-09. Bounded source-inspection passes cover controller lifecycle and commands, persistence, PSG import and serialization, timeline components, derived-state caches, parameter bindings, tuning export and preview, device UI integration, track rendering, scope publication/settings, and selected audio configuration/instrument paths. Findings distinguish confirmed code structure and result-handling errors from runtime risks that still need reproduction. Builds, tests, native UI checks, and audio contention measurements have not been run during the review. This is not an exhaustive repository audit.
+Open findings from a source-inspection review (November 2026) of controller lifecycle and commands, PSG import and serialization, timeline components, derived-state caches, parameter bindings, tuning export, and audio configuration paths. Findings separate confirmed code structure from runtime risks that still need reproduction; nothing here was established by running the app. It is not an exhaustive audit.
 
-Track completion in [TODO.md](TODO.md#refactoring). Keep each step small and behavior-preserving: establish the ownership boundary first, then make any behavior changes separately. Do not introduce a general framework for these extractions.
+[TODO.md](TODO.md#refactoring) is the checklist. A finished finding is deleted from both files, so numbers have gaps; they are stable IDs, not an order.
+
+Keep each step small and behavior-preserving: establish the ownership boundary first, then change behavior separately. Do not introduce a general framework for these extractions. If a step changes anything users can see or do, update `user-guide.md` in the same commit.
 
 ## Implementation order
 
-1. **Finding 2:** consolidate AY plugin setup, the smallest duplicated operation.
-2. **Finding 4:** move timecode menu construction out of model utilities.
-3. **Finding 1:** consolidate edit replacement after establishing lifecycle coverage.
-4. **Finding 3:** inspect the inherited parameter-editor behavior before replacing its base class.
-
-Review and validate one step at a time. Use focused tests for the changed behavior and native UI checks where needed; do not repeat a repository-wide audit for each step. If a step changes anything users can see or do, update `user-guide.md` in the same commit.
-
-The next review priorities are **5** (persistence, coordinated with 1), **6** (audio ownership), **7** (plugin clock coordination), and **8** (import timing). These require checking behavior before settling the implementation. **9** (export formatting) is a lower-priority extraction. The small refactors above remain useful independent steps; they do not replace the correctness reviews.
-
-The third pass adds **10–11** (PSG mutation and cache dependencies), **12** (widget callback lifetime), and **13** (duplicated persisted parameter mapping). Review 10 and 11 together, with separate regression cases. The small mapping extraction in 13 can precede changes to frame-state reconstruction in 10. These concrete ownership issues take precedence over the cosmetic benefit of splitting large files.
-
-The fourth pass adds **14** (deferred preview requests), **15** (render rollback), **16** (scope menu ownership), and **17** (MIDI sample-range contracts). Prioritize failure/cancellation behavior in 14–15; 16 is an independent small extraction. For 17, establish supported nonzero-start callers before broadening the processing contract.
-
-The fifth pass adds **18** (command capabilities), **19** (scope sample publication), and **20** (duplicated scope settings binding). Review 19 alongside the other audio ownership work in 6: it identifies a concrete unsynchronized sample-storage path. Findings 16 and 20 can share a small scope-UI cleanup, while the publication fix in 19 should have separate concurrency validation.
+1. **Small extractions:** 2 (AY plugin setup), then 4 (timecode menu), then 1 (edit replacement, after establishing lifecycle coverage), then 3 (inspect the inherited parameter-editor behavior before replacing its base class).
+2. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 7 (plugin clock coordination), 8 (import timing).
+3. **PSG derived state:** 13 (mapping table) can precede 10; review 10 and 11 together, with separate regression cases.
+4. **Contracts:** 12 (widget callback lifetime), 17 (establish supported nonzero-start callers first), 18 (command capabilities).
+5. **Low priority:** 9 (export formatting).
 
 ## 1. Centralize edit replacement lifecycle
 
@@ -62,16 +55,6 @@ The fifth pass adds **18** (command capabilities), **19** (scope sample publicat
 **Proposed boundary:** move menu construction and its declaration into a shared GUI helper, using the existing GUI utilities if appropriate. Keep timecode accessors, persistence, and legacy migration in `models/EditUtilities`. Update all ruler and main-menu callers; do not duplicate the menu at each call site.
 
 **Validation:** retain menu labels, order, checked states, and callback behavior. Verify ruler and main-menu selections update the display mode without changing project FPS. Run the existing `ProjectFps` tests for the state/migration behavior and check both menu entry points in the UI.
-
-## 5. Separate persistence results and recent-file ownership
-
-**Evidence:** [FileOps.cpp](../src/util/FileOps.cpp) combines save operations, file dialogs, application identity, and recent-file storage. `saveEditAsWithDialog` ignores the boolean returned by `saveEditAs` and returns true after a file is selected. `addToRecentEdits` inserts newest entries at index zero, but `getRecentEdits` trims lists longer than eight by removing index zero. Storage is resolved through `Engine::getEngines()[0]`; controllers also clear the `recentEdits` property directly.
-
-**Problem:** a failed save is reported to the caller as success, and an over-limit recent-file list drops its newest entries. These result/order errors follow directly from the code; disk-failure and native-dialog scenarios have not been exercised. Global storage lookup also hides which engine owns the operation and complicates isolated tests.
-
-**Proposed boundary:** separate choosing a destination from saving it, preserve the save result, and give recent-file operations an explicit storage dependency. Centralize recent-file ordering, limits, and clearing. Establish the boundary before correcting behavior; do not build a general persistence framework.
-
-**Validation:** test save failure and cancellation, newest-first ordering beyond eight entries, duplicates, missing files, and clearing the same storage used for reads. No direct FileOps tests were found. Coordinate with finding 1 and the existing same-project reopen issue; those involve additional edit lifetime and save-order behavior.
 
 ## 6. Establish audio-thread ownership of mutable runtime state
 
@@ -153,36 +136,6 @@ The fifth pass adds **18** (command capabilities), **19** (scope sample publicat
 
 **Validation:** add a round-trip case covering every persisted parameter, including envelope retrigger, absent versus zero-valued fields, string-valued legacy state, and unknown properties. Use the current `PsgList.test.cpp` round-trip coverage as a starting point. Coordinate property-removal semantics with finding 10.
 
-## 14. Give deferred preview requests cancellation semantics
-
-**Evidence:** `MultitrackMidiPreview::startPlayback` in [MultitrackMidiPreview.cpp](../src/viewmodels/tuning/MultitrackMidiPreview.cpp) posts a message-thread callback holding a weak object reference and a captured playback duration. `stopPlayback` stops the transport but does not invalidate pending start callbacks. `TuningPlayer::stopNotes` and its tuning-change handler in [TuningPlayer.cpp](../src/viewmodels/tuning/TuningPlayer.cpp) use that stop operation.
-
-**Problem:** object lifetime and request lifetime are different. If start is queued and stop is called before the queue drains, the callback still requests playback. Several queued starts can also apply old durations to the latest mutable clips. The weak reference prevents use after destruction, but does not reject work that has been superseded. This ordering follows from the source; an audible/UI reproduction has not been run.
-
-**Proposed boundary:** make the preview object own the current playback request as well as transport access. A request revision checked by the deferred callback, invalidated by stop and replacement, is sufficient if all these operations remain on the message thread. Keep the existing weak lifetime check and re-check request validity around any operation that may dispatch pending work. Do not introduce a task framework for this one queue.
-
-**Validation:** extend `MultitrackMidiPreview.test.cpp` with start-then-stop before queue drain, two starts with different durations, tuning-change cancellation, and destruction with a pending request. Existing tests flush the message queue after preparing clips but do not establish cancellation or supersession behavior. Verify note highlights agree with the final transport state.
-
-## 15. Give track rendering a single commit and rollback boundary
-
-**Evidence:** `renderSelectedTracksToAudioTrack` in [Helpers.cpp](../src/util/Helpers.cpp) chooses a file, temporarily unmutes the source, builds render parameters, runs rendering, inserts a destination track/clip, mutes the source, and updates selection. It restores the source mute state when the output file is absent, but if `insertWaveClip` returns null it still mutes the source and selects the newly added empty track.
-
-**Problem:** success is spread across several side effects with incomplete rollback. A failed clip insertion is treated as a completed render-to-track operation. Output-file existence is also used as the completion check, so cancellation and partial-output behavior need verification against the engine API before deciding how to classify them.
-
-**Proposed boundary:** separate preparing/running the render from committing its result to the edit. Make temporary source-state restoration scoped, and commit source muting and selection only after the destination clip exists. On failure, restore the original mute state and remove only the newly created empty destination. Define ownership of partial output and cleanup explicitly; retain warnings and undo behavior. Keep this as a focused operation rather than a generic transaction framework.
-
-**Validation:** cover render failure, cancellation, clip insertion failure, and success with initially muted and unmuted sources. Check track count, selection, mute state, and output-file handling after each outcome. No dedicated render-operation tests were found. Inspect Tracktion render completion semantics and perform native render/cancel checks. The existing TODO about quitting during a render remains a related, separate lifetime check.
-
-## 16. Move scope menu policy out of generic device UI
-
-**Evidence:** [PluginDeviceUI.h](../src/gui/devices/PluginDeviceUI.h) declares `addScopeSettingsMenu`, and [PluginDeviceUI.cpp](../src/gui/devices/PluginDeviceUI.cpp) includes scope-specific settings/trigger types and defines their presets. Its callers are [AYPluginEditor.cpp](../src/plugins/uZX/aychip/AYPluginEditor.cpp) and two entry points in [ScopePluginUI.cpp](../src/plugins/uZX/scope/ScopePluginUI.cpp).
-
-**Problem:** the shared device UI abstraction owns one visualization's settings policy. Scope preset changes therefore alter the generic module, even though the helper is already correctly shared by its consumers. This is a layering cleanup, not an observed runtime failure.
-
-**Proposed boundary:** move the helper into a scope-specific UI module and update all three callers. Keep generic parameter menu helpers in `PluginDeviceUI` if they remain shared. Reuse one scope helper; do not duplicate it for AY and Scope or add another registry.
-
-**Validation:** preserve labels, presets, checked states, and settings mutations at all three menu entry points. Update `src/sources.cmake` if a source file is added and build the affected GUI consumers. No behavior change or new format is needed.
-
 ## 17. Make MIDI sample-range semantics consistent
 
 **Evidence:** `MidiBufferContext` in [MidiEffect.h](../src/plugins/uZX/midi_effects/MidiEffect.h) stores a start sample and a sample count; `sliced` retains sample coordinates relative to the original buffer. `MPEInstrumentFx::operator()` in [MPEInstrumentFx.h](../src/plugins/uZX/midi_effects/MPEInstrumentFx.h) starts at `c.start`, but rejects events at `eventSample >= c.length` and creates its final slice with `c.length - currentSample`.
@@ -195,33 +148,13 @@ The fifth pass adds **18** (command capabilities), **19** (scope sample publicat
 
 ## 18. Align command registration with supported app capabilities
 
-**Evidence:** [MainCommands.h](../src/controllers/MainCommands.h) registers Cut, Copy, and Paste, supplies their keyboard shortcuts, and adds them to the Studio Edit menu. `AppController::perform` in [MainController.cpp](../src/controllers/MainController.cpp) has no handlers for these IDs and returns false through its default case; `getNextCommandTarget` returns null. App-specific capability rules are also spread across menu construction, command status, and dispatch: Player registers Save/Save As, can report them active with an edit, but skips their actions and returns true.
+**Evidence:** [MainCommands.h](../src/controllers/MainCommands.h) registers Cut, Copy, and Paste, supplies their keyboard shortcuts, and adds them to the Studio Edit menu. `AppController::perform` in [MainController.cpp](../src/controllers/MainController.cpp) has no handlers for these IDs and returns false through its default case; `getNextCommandTarget` returns null. App-specific capability rules are also spread across menu construction, command status, and dispatch, each testing `isPlayer` on its own.
 
-**Problem:** advertised command availability and implemented behavior have separate owners. The application-level Cut/Copy/Paste routes have no implementation; Player can silently consume unsupported save commands. This does not mean focused text editors lack their own clipboard behavior. Native menu and keyboard invocation have not been tested during the review.
+**Problem:** advertised command availability and implemented behavior have separate owners. The application-level Cut/Copy/Paste routes have no implementation. This does not mean focused text editors lack their own clipboard behavior. Native menu and keyboard invocation have not been tested during the review.
 
 **Proposed boundary:** define supported command IDs per app in one place and use that knowledge for registration/menu availability and status checks. Keep dispatch explicit and preserve stable IDs. Remove or disable unsupported actions until there is concrete behavior; implementing clipboard editing is a separate feature. Avoid replacing the existing command system with a generic dispatch framework.
 
 **Validation:** verify every exposed command has a supported handler for that app without blindly invoking destructive commands in a test loop. Add focused checks for unsupported IDs, Player capabilities, and selection-dependent enablement. Exercise Studio Edit menu and keyboard routes, including text-field focus. Update the user guide if visible commands or bindings change.
-
-## 19. Make scope sample publication data-race-free
-
-**Evidence:** [ScopeBuffer.h](../src/plugins/uZX/scope/ScopeBuffer.h) stores samples in an ordinary `std::array<float, 8192>`. The producer writes these slots then publishes an atomic write index; `copyTo` acquires the index and copies the slots with `memcpy` while production can continue. [ScopePlugin.cpp](../src/plugins/uZX/scope/ScopePlugin.cpp) and [AYPlugin.cpp](../src/plugins/uZX/aychip/AYPlugin.cpp) push from rendering; [ScopePluginUI.cpp](../src/plugins/uZX/scope/ScopePluginUI.cpp) copies on the UI timer. A supported 4096-sample display window requests 8192 samples for trigger search, covering the entire ring.
-
-**Problem:** publishing the index orders earlier writes, but does not stop subsequent writes from overlapping the reader's ordinary sample accesses. The buffer has no ownership handoff or protection for overwritten slots, so overlapping reads/writes constitute a C++ data race. Lossy visualization is acceptable; unsynchronized memory access is not. The unsafe path is established from source, but sanitizer reproduction and visible waveform effects have not been measured.
-
-**Proposed boundary:** make `ScopeBuffer` own a race-free publication contract for visualization data. Evaluate atomic sample slots if they are lock-free on supported targets and mixed-generation snapshots are acceptable; otherwise use a bounded ownership handoff for snapshots. Preserve a nonblocking audio producer and explicit dropped-frame policy. Audit the documented UI-thread `clear` operation too; its current production use is initialization, not proof of a live clear race. An atomic index alone, or a retry counter around ordinary `memcpy`, does not establish safe sample access.
-
-**Validation:** add focused wraparound and concurrent producer/consumer coverage, including the full-capacity read used by the largest window. Use a thread sanitizer run for publication changes where supported and measure audio-thread overhead. Verify both standalone Scope and AY visualization consumers. Coordinate with finding 6, but keep this buffer contract testable independently of emulator configuration.
-
-## 20. Let scope displays own their settings binding
-
-**Evidence:** `AYPluginUI::updateScopeDisplayParams` in [AYPluginEditor.cpp](../src/plugins/uZX/aychip/AYPluginEditor.cpp) and `ScopePluginUI::updateDisplayParams` in [ScopePluginUI.cpp](../src/plugins/uZX/scope/ScopePluginUI.cpp) repeat the same four setting reads, trigger-strategy conversion, and per-display setter calls. Both parents also duplicate listener registration and removal for those settings. `WaveformDisplay` already receives and retains `ScopeSettings&` for its menu.
-
-**Problem:** each parent must know how the same display consumes scope settings. Adding a setting or changing its interpretation requires editing both parent bindings even though the display already has access to the authoritative settings object. This is a confirmed duplication/ownership seam, not an observed behavior failure.
-
-**Proposed boundary:** move settings subscription, initial application, and teardown into `WaveformDisplay`, which already holds the settings reference. Let parents choose channels, layout, labels, and colors. Remove their duplicated settings propagation, retaining the settings object's existing lifetime relative to the displays. Check notification cost with multiple displays; no general binding framework is needed.
-
-**Validation:** verify initial persisted values and live changes to window, gain, trigger mode, and level for both AY and standalone Scope. Exercise creation/destruction of multiple displays sharing settings, confirm listeners detach, and retain existing waveform/menu behavior. This complements finding 16 without coupling the UI cleanup to the sample-publication change in 19.
 
 ## Deferred review notes
 

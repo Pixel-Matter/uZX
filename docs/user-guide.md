@@ -369,5 +369,5 @@ Click a cell to preview the note through the AY emulator using the current play 
 ## See Also
 
 - [ROADMAP.md](ROADMAP.md) — planned features and release milestones
-- [docs/Tuning Systems.md](Tuning%20Systems.md) — background on tuning theory used in µZX Tuning
-- [docs/Vision.md](Vision.md) — long-term project vision
+- [Tuning systems](design/tuning.md) — background on tuning theory used in µZX Tuning
+- [Vision](motool/vision.md) — long-term project vision

@@ -35,6 +35,13 @@ inline te::AutomatableParameter::Ptr resolveParamFromValue(ParameterValueType& v
 } // namespace detail
 
 //==============================================================================
+/**
+    Connects a widget to a parameter endpoint.
+
+    The widget must outlive its binding. Each binding removes the widget callbacks
+    it installed when it is destroyed; a callback that something else has replaced
+    since is left alone.
+*/
 class WidgetParamEndpointBinding : private ParameterEndpoint::Listener {
 public:
     WidgetParamEndpointBinding(Component &c, std::unique_ptr<ParameterEndpoint> endpointIn);
@@ -85,6 +92,8 @@ public:
         : SliderParamEndpointBinding(s, makeResolveParamEndpoint(paramValue, std::move(parameterIn)))
     {}
 
+    ~SliderParamEndpointBinding() override;
+
 private:
     void configureWidget();
     void configureWidgetHandlers();
@@ -111,6 +120,8 @@ public:
     ComboBoxParamEndpointBinding(ComboBox& s, ParameterValue<Type>& paramValue, te::AutomatableParameter::Ptr parameterIn = {})
         : ComboBoxParamEndpointBinding(s, makeResolveParamEndpoint(paramValue, std::move(parameterIn)))
     {}
+
+    ~ComboBoxParamEndpointBinding() override;
 
 private:
     void configureWidget();
@@ -140,6 +151,8 @@ public:
     ButtonParamEndpointBinding(Button& b, ParameterValue<Type>& paramValue, te::AutomatableParameter::Ptr parameterIn = {})
         : ButtonParamEndpointBinding(b, makeResolveParamEndpoint(paramValue, std::move(parameterIn)))
     {}
+
+    ~ButtonParamEndpointBinding() override;
 
 private:
     void configureWidget();
@@ -172,6 +185,8 @@ public:
     ToggleParamEndpointBinding(Button& b, ParameterValue<Type>& paramValue, te::AutomatableParameter::Ptr parameterIn = {})
         : ToggleParamEndpointBinding(b, makeResolveParamEndpoint(paramValue, std::move(parameterIn)), paramValue.definition.shortLabel)
     {}
+
+    ~ToggleParamEndpointBinding() override;
 
 private:
     void configureWidget();

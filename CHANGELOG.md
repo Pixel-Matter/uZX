@@ -16,6 +16,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - AY and Scope use 0.5× display gain by default
 - Fixed: held PSG notes show no seams between frames and line up with the grid when frames are a pixel wide or wider
 
+### PSG clips
+- The envelope pitch is a filled, hatched purple note instead of an outline; the E legend swatch is filled too
+
 ### Tracker modules
 - Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop
 - Turbo Sound modules (PT3 pairs, Vortex files with a module per chip) open on a track per chip, as one tune

@@ -1336,34 +1336,19 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                 const auto noteColor = note.isEnvelopePitch ? Colors::PSG::Env : getChannelMaskColor(note.channelMask);
                 const auto noteRect = Rectangle<float>(x, subY, width, jmax(1.0f, subH));
 
-                if (note.isEnvelopePitch) {
-                    if (drawMods)
-                        drawEnvelopeStripes(
-                            g,
-                            noteRect.getX(),
-                            noteRect.getY(),
-                            noteRect.getWidth(),
-                            noteRect.getHeight(),
-                            envShape,
-                            noteColor
-                        );
-                    g.setColour(getChannelMaskColor(note.channelMask));
-                    g.drawRect(noteRect, 1.0f);
-                } else {
-                    g.setColour(noteColor.withAlpha(note.alpha));
-                    g.fillRect(noteRect);
+                g.setColour(noteColor.withAlpha(note.alpha));
+                g.fillRect(noteRect);
 
-                    if (drawMods && note.hasEnvMod)
-                        drawEnvelopeStripes(
-                            g,
-                            noteRect.getX(),
-                            noteRect.getY(),
-                            noteRect.getWidth(),
-                            noteRect.getHeight(),
-                            envShape,
-                            noteColor.brighter(0.8f).withAlpha(0.85f)
-                        );
-                }
+                if (drawMods && (note.hasEnvMod || note.isEnvelopePitch))
+                    drawEnvelopeStripes(
+                        g,
+                        noteRect.getX(),
+                        noteRect.getY(),
+                        noteRect.getWidth(),
+                        noteRect.getHeight(),
+                        envShape,
+                        noteColor.brighter(0.8f).withAlpha(0.85f)
+                    );
             }
         }
         if (envelopePeriodToTonePeriod(frameData.getRaw(PsgParamType::EnvelopePeriod))
@@ -1499,17 +1484,15 @@ void paintPsgLegend(Graphics& g, Rectangle<int> area) {
         area.removeFromLeft(legendSpacing);
         if (item.style == LegendStyle::Noise) {
             drawNoiseBand(g, swatch.toFloat(), 0.9f);
-        } else if (item.style == LegendStyle::Envelope) {
-            drawEnvelopeStripes(g, (float) swatch.getX(), (float) swatch.getY(),
-                                (float) swatch.getWidth(), (float) swatch.getHeight(),
-                                0x8, item.color);
-            g.setColour(item.color);
-            g.drawRect(swatch);
         } else {
             g.setColour(item.color);
             g.fillRect(swatch);
+            if (item.style == LegendStyle::Envelope)
+                drawEnvelopeStripes(g, (float) swatch.getX(), (float) swatch.getY(),
+                                    (float) swatch.getWidth(), (float) swatch.getHeight(),
+                                    0x8, item.color.brighter(0.8f).withAlpha(0.85f));
         }
-        g.setColour(item.style == LegendStyle::Channel ? Colours::black : Colours::white);
+        g.setColour(item.style == LegendStyle::Noise ? Colours::white : Colours::black);
         g.drawText(item.label, swatch, Justification::centred);
     });
 }
@@ -1552,7 +1535,7 @@ PsgLegendComponent::PsgLegendComponent() {
 }
 
 void PsgLegendComponent::paint(Graphics& g) {
-    // The envelope and noise swatches are see-through, drawn for the dark body.
+    // The noise swatch is see-through, drawn for the dark body.
     g.setColour(Colors::Theme::backgroundAlt);
     g.fillRoundedRectangle(getLocalBounds().toFloat(), 2.0f);
     paintPsgLegend(g, getLocalBounds().reduced(1));

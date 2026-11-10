@@ -142,10 +142,13 @@ ScrollerComponent::ScrollerComponent(String text)
 }
 
 void ScrollerComponent::advance(double timestampSec) {
-    static constexpr double pixelsPerSecond = 50.0;
+    static constexpr double pixelsPerSecond = 50.0, holdSec = 5.0;
     if (startSec_ < 0.0)
         startSec_ = timestampSec;
-    offset_ = (timestampSec - startSec_) * pixelsPerSecond;
+    const auto elapsed = timestampSec - startSec_ - holdSec;
+    if (elapsed <= 0.0)
+        return;
+    offset_ = elapsed * pixelsPerSecond;
     repaint();
 }
 

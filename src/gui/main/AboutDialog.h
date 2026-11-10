@@ -35,7 +35,8 @@ private:
     int layoutWidth_ { -1 };
 };
 
-/** A demoscene scroller: one line of text moving right to left, round and round, fading in and out at the ends. */
+/** A demoscene scroller: one line of text that holds still for a few seconds, then moves right to left, round and
+    round, fading in and out at the ends. */
 class ScrollerComponent : public juce::Component {
 public:
     explicit ScrollerComponent(juce::String text);

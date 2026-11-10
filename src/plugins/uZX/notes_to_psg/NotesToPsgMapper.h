@@ -91,7 +91,10 @@ public:
 
     // MIDI processing
     tracktion::MidiMessageArray takeOutputMessages();
-    void clearOutput() { midiBuffer_.clear(); }
+    void clearOutput() {
+        const juce::ScopedLock sl(lock_);
+        midiBuffer_.clear();
+    }
     void handleMidiMessage(const tracktion::MidiMessageWithSource& msg);
 
     // MIDI fx processor callback
@@ -149,6 +152,11 @@ private:
     bool passthruUnprocessedMIDI_ = false;
 
     std::shared_ptr<TuningSystem> tuningSystem_ {};
+
+    // Configuration runs on the message thread, operator() on the audio thread; both hold this, so a replaced
+    // tuning is destroyed by the thread replacing it, never under a rendering voice.
+    // ponytail: the audio thread can wait out a setter, as in AYChipPlugin; a block-boundary handoff if that is heard
+    juce::CriticalSection lock_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgMapper)
 };

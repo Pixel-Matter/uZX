@@ -14,13 +14,13 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 ## 6. Establish audio-thread ownership of mutable runtime state
 
-**Evidence:** [AYPlugin.cpp](../src/plugins/uZX/aychip/AYPlugin.cpp), in `applyToBuffer`, holds a blocking lock across event processing and rendering. `reset`, configuration callbacks, and register reads use the same lock. The MIDI-to-PSG mapper's unsynchronized configuration changes are already recorded in TODO.
+**Evidence:** [AYPlugin.cpp](../src/plugins/uZX/aychip/AYPlugin.cpp), in `applyToBuffer`, holds a blocking lock across event processing and rendering. `reset`, configuration callbacks, and register reads use the same lock. `NotesToPsgMapper` follows the same pattern: its setters, reset and render hold one lock.
 
 **Problem:** UI/configuration work can contend with the render callback. The lock scope is confirmed, but audible glitches and their frequency have not been measured. Removing locks without a replacement ownership contract would introduce races.
 
 **Review boundary:** trace every writer and reader of emulator/mapper state, including startup, reset, panic, configuration, diagnostics, and shutdown. Evaluate applying pending configuration at audio-block boundaries so one thread owns mutable processing state. Account for object allocation and destruction as well as field writes; do not assume an atomic pointer alone solves real-time ownership.
 
-**Validation:** inspect `AYPlugin.test.cpp`, `AYChip.test.cpp`, and `NotesToPsgMapper.test.cpp`; cover configuration and reset while processing, note silencing, and shutdown. Measure callback contention under repeated UI changes. This extends the existing mapper race task rather than duplicating it as a new discovery.
+**Validation:** inspect `AYPlugin.test.cpp`, `AYChip.test.cpp`, and `NotesToPsgMapper.test.cpp`; cover configuration and reset while processing, note silencing, and shutdown. Measure callback contention under repeated UI changes.
 
 ## 7. Make clock coordination between plugins explicit
 

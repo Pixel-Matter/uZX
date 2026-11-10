@@ -59,6 +59,21 @@ public:
     void removeListener(Listener* l);
 
     void zoomHorizontally(double factor);
+    enum class ZoomLevel
+    {
+        frames,
+        rows,
+        beats,
+        bars
+    };
+    /** Fits one musical interval at the playhead into 16 pixels, in every timecode format.
+        Rows use the average groove row, or a quarter beat when there is no subdivision. */
+    void zoomToLevel(ZoomLevel level);
+    /** Fits a user-selected range and remembers the previous view. */
+    void zoomToRange(te::TimeRange range);
+    bool canZoomBack() const noexcept { return !zoomHistory_.empty(); }
+    /** Restores position and scale, without seeking the transport or changing edit undo. */
+    void zoomBack();
     /** Zooms by a wheel delta around anchorX, or around the playhead while the view follows it. */
     void zoomAroundX(double factor, int anchorX);
     /** The same for a pinch, where scale > 1 zooms in. */
@@ -76,6 +91,7 @@ public:
 
     te::TimeDuration getViewSpan() const;
     te::TimeRange getRange() const;
+    /** Sets up a view without adding to zoom history. */
     void setRange(te::TimeRange range);
     te::TimePosition getStart() const noexcept;
     void setStart(te::TimePosition start);
@@ -132,6 +148,16 @@ private:
     static constexpr uint32 wheelFollowPauseMs = 1000;
     te::TimePosition dragStartViewStart;
     te::TimeDuration dragStartTimePerPixel;
+    struct ZoomSnapshot
+    {
+        te::TimePosition start;
+        te::TimeDuration timePerPixel;
+    };
+    std::vector<ZoomSnapshot> zoomHistory_;
+    bool continuousZoom_ = false, dragZoomRecorded_ = false;
+    uint32 lastZoomGestureMs_ = 0;
+    static constexpr uint32 zoomGestureGapMs = 500;
+    static constexpr size_t maxZoomHistory = 64;
 
     // Where playback last started, was moved to or looped back to, and the last transport position seen
     te::TimePosition lastJumpPosition, lastTransportPosition;
@@ -155,6 +181,10 @@ private:
     /** Keeps pos in the view's left third, scrolling by whole pixels. */
     void followPlayhead(te::TimePosition pos);
     void zoomAroundXByScale(double timePerPixelScale, int anchorX);
+    void applyView(te::TimePosition start, te::TimeDuration timePerPixel);
+    void applyZoom(te::TimePosition start, te::TimeDuration timePerPixel, bool continuous = false);
+    void rememberZoom(ZoomSnapshot snapshot);
+    void zoomToTimePerPixel(te::TimeDuration timePerPixel, bool continuous = false);
     bool jumpToPosition(te::TimePosition pos);
     bool jumpToCurrentPosition();
     /** The transport position minus the output latency, held at the last jump until that is heard. */

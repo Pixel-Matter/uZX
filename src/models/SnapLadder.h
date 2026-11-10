@@ -34,6 +34,8 @@ public:
 
     /** Index of the beat level, or -1 for modes without one. */
     int getBeatLevel() const noexcept  { return beatLevel_; }
+    /** Index of the one-bar level, or -1 for modes without one. */
+    int getBarLevel() const noexcept  { return barLevel_; }
 
     te::TimePosition roundDown(int level, te::TimePosition, const te::TempoSequence&) const;
     te::TimePosition roundNearest(int level, te::TimePosition, const te::TempoSequence&) const;

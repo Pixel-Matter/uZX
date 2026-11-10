@@ -3,6 +3,7 @@
 #include "PsgClipComponent.h"
 #include "TuningPickerComponent.h"
 #include "../common/LookAndFeel.h"
+#include "../../controllers/MainCommands.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
 #include "../../plugins/uZX/aychip/AYPlugin.h"
@@ -741,7 +742,7 @@ void PsgClipComponent::paintContent(Graphics& g, const PaintView& view) {
 }
 
 /** The right-click menu of a PSG clip's body and header. */
-static void showPsgClipMenu(PsgClip& psgClip) {
+static void showPsgClipMenu(PsgClip& psgClip, const EditViewState& view) {
     const int mode = psgClip.state.getProperty(IDs::paintMode, 0);
 
     // The body repaints on the paint mode change.
@@ -753,6 +754,11 @@ static void showPsgClipMenu(PsgClip& psgClip) {
         clip->state.setProperty(IDs::paintMode, 1, nullptr);
     });
     auto& engine = psgClip.edit.engine;
+    if (auto* manager = engine.getUIBehaviour().getApplicationCommandManager()) {
+        m.addSeparator();
+        m.addSubMenu("Zoom", Commands::MainAppCommands::createZoomMenu(manager, !view.disableClipSelection));
+        m.addSeparator();
+    }
     m.addItem("Note Lanes", mode == 0, areNoteLanesShown(engine), [&engine] {
         setNoteLanesShown(engine, ! areNoteLanesShown(engine));
     });
@@ -778,7 +784,7 @@ void PsgClipComponent::mouseDown(const MouseEvent& e) {
     if (! e.mods.isPopupMenu())
         ClipComponent::mouseDown(e);
     else if (auto* psgClip = getPsgClip())
-        showPsgClipMenu(*psgClip);
+        showPsgClipMenu(*psgClip, editViewState);
 }
 
 void PsgClipComponent::mouseMove(const MouseEvent&) {
@@ -1407,7 +1413,7 @@ void PsgClipHeader::mouseDown(const MouseEvent& e) {
     if (! e.mods.isPopupMenu())
         ClipHeader::mouseDown(e);
     else if (auto* psgClip = dynamic_cast<PsgClip*>(clip.get()))
-        showPsgClipMenu(*psgClip);
+        showPsgClipMenu(*psgClip, editViewState);
 }
 
 StringArray getPsgClipWarnings(PsgClip& psgClip) {

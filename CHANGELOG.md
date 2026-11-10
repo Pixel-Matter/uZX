@@ -4,6 +4,10 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Timeline
+- Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format
+- `X` restores the previous timeline position and zoom; wheel/pinch gestures and drags each return in one step, separately from edit undo
+
 ### Video and Viz mode
 - Viz mode and Render Video show notes and scopes, notes alone, or scopes alone: `V` in Viz mode switches, **View → Viz Options** and the Render Video dialog choose
 - **Classic Black and White** colours for Viz mode and video: black, white scopes, thin grey lines between them

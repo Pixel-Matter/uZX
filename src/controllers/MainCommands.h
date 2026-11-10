@@ -65,6 +65,11 @@ public:
         viewExitVizMode,
         viewNextVizLayout,
         viewSwitchVizScopes,
+        viewZoomFrames,
+        viewZoomRows,
+        viewZoomBeats,
+        viewZoomBars,
+        viewZoomBack,
 
         // Settings Menu
         settingsAudioMidi    = 600,
@@ -98,11 +103,29 @@ public:
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
             viewSnapPlayheadToGrid, viewNoteLanes, viewPianoKeys, viewVizMode, viewExitVizMode,
             viewNextVizLayout, viewSwitchVizScopes,
+            viewZoomFrames, viewZoomRows, viewZoomBeats, viewZoomBars, viewZoomBack,
             settingsAudioMidi, settingsPlugins, settingsTuningTables,
             helpAbout
         };
 
         return Array<CommandID>(ids, numElementsInArray(ids));
+    }
+
+    static PopupMenu createZoomMenu(ApplicationCommandManager* manager, bool includeSelection = true) {
+        PopupMenu menu;
+        menu.addCommandItem(manager, viewZoomFrames);
+        menu.addCommandItem(manager, viewZoomRows);
+        menu.addCommandItem(manager, viewZoomBeats);
+        menu.addCommandItem(manager, viewZoomBars);
+        menu.addSeparator();
+        menu.addCommandItem(manager, viewZoomToProject);
+        if (includeSelection)
+            menu.addCommandItem(manager, viewZoomToSelection);
+        menu.addCommandItem(manager, viewZoomBack);
+        menu.addSeparator();
+        menu.addCommandItem(manager, viewZoomIn);
+        menu.addCommandItem(manager, viewZoomOut);
+        return menu;
     }
 
     static PopupMenu createMenu(ApplicationCommandManager* manager, const String& menuName) {
@@ -157,10 +180,7 @@ public:
         } else if (menuName == "Track") {
             menu.addCommandItem(manager, MainAppCommands::trackRenderToAudio);
         } else if (menuName == "View") {
-            menu.addCommandItem(manager, MainAppCommands::viewZoomToProject);
-            menu.addCommandItem(manager, MainAppCommands::viewZoomToSelection);
-            menu.addCommandItem(manager, MainAppCommands::viewZoomIn);
-            menu.addCommandItem(manager, MainAppCommands::viewZoomOut);
+            menu.addSubMenu("Zoom", createZoomMenu(manager));
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::viewSnapPlayheadToGrid);
             menu.addCommandItem(manager, MainAppCommands::viewNoteLanes);
@@ -340,6 +360,34 @@ public:
                 break;
 
             // View commands
+            case viewZoomFrames:
+                result.setInfo("Frames", "Show each frame at 16 pixels", "View", 0);
+                result.addDefaultKeypress('1', ModifierKeys::commandModifier);
+                break;
+
+            case viewZoomRows:
+                result.setInfo("Groove Rows",
+                               "Show an average groove row at 16 pixels, or a quarter beat without a groove",
+                               "View",
+                               0);
+                result.addDefaultKeypress('2', ModifierKeys::commandModifier);
+                break;
+
+            case viewZoomBeats:
+                result.setInfo("Beats", "Show each beat at 16 pixels", "View", 0);
+                result.addDefaultKeypress('3', ModifierKeys::commandModifier);
+                break;
+
+            case viewZoomBars:
+                result.setInfo("Bars", "Show each bar at 16 pixels", "View", 0);
+                result.addDefaultKeypress('4', ModifierKeys::commandModifier);
+                break;
+
+            case viewZoomBack:
+                result.setInfo("Previous Zoom", "Restore the previous timeline position and zoom", "View", 0);
+                result.addDefaultKeypress('X', 0);
+                break;
+
             case viewZoomToProject:
                 result.setInfo("Zoom to project", "Zoom to project", "View", 0);
                 result.addDefaultKeypress('Z', ModifierKeys::shiftModifier);

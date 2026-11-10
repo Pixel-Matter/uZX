@@ -15,6 +15,37 @@ public:
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
 
+        beginTest("Musical zoom presets keep their scale while each timecode mode chooses its visible snap");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            Helpers::setProjectFps(*edit, 50.0);
+            Helpers::setGridSubdivisionPattern(*edit, {6, 6, 6, 7});
+            te::SelectionManager selectionManager(engine);
+            EditViewState view(*edit, selectionManager);
+            view.zoom.setViewWidthPx(1000);
+            TimelineGrid grid(view);
+            using Level = ZoomViewState::ZoomLevel;
+            for (auto mode : {TimecodeDisplayMode::barsBeatsFrames,
+                              TimecodeDisplayMode::seconds,
+                              TimecodeDisplayMode::framesOnly}) {
+                Helpers::setTimecodeDisplayMode(*edit, mode);
+                const double snappedMusical[]{0.08, 0.12, 0.5, 2.0};
+                const double snappedClock[]{0.08, 0.1, 1.0, 2.0};
+                const double probes[]{0.085, 0.13, 0.6, 1.6};
+                for (auto level : {Level::frames, Level::rows, Level::beats, Level::bars}) {
+                    const auto index = (int) level;
+                    view.zoom.zoomToLevel(level);
+                    const auto expected =
+                        mode == TimecodeDisplayMode::barsBeatsFrames ? snappedMusical[index] : snappedClock[index];
+                    expectWithinAbsoluteError(
+                        grid.snapTimeToVisibleGrid(te::TimePosition::fromSeconds(probes[index])).inSeconds(),
+                        expected,
+                        1e-9);
+                }
+            }
+        }
+
         beginTest("A click puts the playhead at its time, never before 0, snapped only when snapping is on");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);

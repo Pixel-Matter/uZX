@@ -179,7 +179,7 @@ def application(build, target, work, example):
 def capture_figures(build, work):
     with application(build, "uZXPlayer", work, PLAYER_EXAMPLE) as (pid, window):
         resize(pid, window, 1280, 650)  # fits the demo's two chips at the tracks' minimum height
-        menu(pid, "View > Zoom to project")
+        menu(pid, "View > Zoom > Zoom to project")
         scene = observe(pid, window, work / "player-overview.png")
         if PLAYER_EXAMPLE.stem not in scene["window_title"]:
             raise RuntimeError("Player did not load the example project")
@@ -191,7 +191,7 @@ def capture_figures(build, work):
 
     with application(build, "uZX", work, EXAMPLE) as (pid, window):
         resize(pid, window, 1280, 800)
-        menu(pid, "View > Zoom to project")
+        menu(pid, "View > Zoom > Zoom to project")
         scene = observe(pid, window, work / "studio-before.png")
         track = element(scene, TRACK, "textField")
         origin = scene["coordinate_context"]["logical_bounds"][0]

@@ -56,5 +56,7 @@ void setGridSubdivisionPattern(te::Edit& edit, const std::vector<int>& pattern);
 /** The grid/snap ladder for the edit's timecode mode, fps and subdivision
     pattern, with frames per beat taken from the tempo at the given time. */
 SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt);
+/** Uses an explicit mode without changing the edit's ruler format. */
+SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt, TimecodeDisplayMode mode);
 
 }  // namespace MoTool::Helpers

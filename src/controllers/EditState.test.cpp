@@ -1,4 +1,6 @@
 #include "EditState.h"
+
+#include "../models/EditUtilities.h"
 #include "../util/TestHelpers.h"
 
 namespace MoTool {
@@ -186,6 +188,168 @@ public:
 };
 
 static ZoomViewStateTest zoomViewStateTest;
+
+//==============================================================================
+class ZoomNavigationTest : public UnitTest
+{
+public:
+    ZoomNavigationTest() : UnitTest("ZoomNavigation", "MoTool") {}
+
+    void runTest() override {
+        using namespace tracktion::literals;
+        using Level = ZoomViewState::ZoomLevel;
+        auto edit = te::Edit::createSingleTrackEdit(*te::Engine::getEngines()[0]);
+        ZoomViewState zoom{*edit, ValueTree(IDs::ZOOMVIEWSTATE)};
+        zoom.setViewWidthPx(1000);
+        auto& transport = edit->getTransport();
+        auto& tempo = *edit->tempoSequence.getTempo(0);
+        tempo.setBpm(120.0);
+        Helpers::setProjectFps(*edit, 50.0);
+
+        auto expectView = [&](double start, double timePerPixel) {
+            expectWithinAbsoluteError(zoom.getStart().inSeconds(), start, 1e-9);
+            expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), timePerPixel, 1e-12);
+        };
+        auto clearHistory = [&] {
+            while (zoom.canZoomBack())
+                zoom.zoomBack();
+        };
+
+        beginTest("Four musical scales are identical in all timecode modes");
+        for (auto mode :
+             {TimecodeDisplayMode::barsBeatsFrames, TimecodeDisplayMode::seconds, TimecodeDisplayMode::framesOnly}) {
+            Helpers::setTimecodeDisplayMode(*edit, mode);
+            for (auto level : {Level::frames, Level::rows, Level::beats, Level::bars}) {
+                const double intervals[]{0.02, 0.125, 0.5, 2.0};
+                zoom.zoomToLevel(level);
+                expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), intervals[(int) level] / 16.0, 1e-12);
+                expect(Helpers::getTimecodeDisplayMode(*edit) == mode, "zoom does not change the ruler format");
+            }
+        }
+
+        beginTest("Uneven groove rows use their average duration");
+        Helpers::setGridSubdivisionPattern(*edit, {6, 6, 6, 7});
+        zoom.zoomToLevel(Level::rows);
+        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.125 / 16.0, 1e-12);
+        Helpers::setGridSubdivisionPattern(*edit, {12, 13});
+        zoom.zoomToLevel(Level::rows);
+        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.25 / 16.0, 1e-12);
+
+        beginTest("Frames follow FPS; beats and bars follow the local tempo and meter");
+        Helpers::setProjectFps(*edit, 60.0);
+        zoom.zoomToLevel(Level::frames);
+        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 1.0 / 60.0 / 16.0, 1e-12);
+        edit->tempoSequence.insertTempo(te::BeatPosition::fromBeats(8.0), 60.0, 1.0f);
+        edit->tempoSequence.getTimeSig(0)->numerator = 3;
+        transport.setPosition(10_tp);
+        zoom.zoomToLevel(Level::beats);
+        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 1.0 / 16.0, 1e-12);
+        zoom.zoomToLevel(Level::bars);
+        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 3.0 / 16.0, 1e-12);
+
+        beginTest("Zoom back restores nested views and stays out of edit undo");
+        clearHistory();
+        edit->getUndoManager().clearUndoHistory();
+        zoom.setRange({2_tp, 10_td});
+        zoom.zoomToLevel(Level::frames);
+        const auto framesStart = zoom.getStart().inSeconds();
+        const auto framesScale = zoom.getTimePerPixel().inSeconds();
+        zoom.zoomToRange({20_tp, 5_td});
+        zoom.setViewWidthPx(800);  // restore scale, not the old window's duration
+        zoom.zoomBack();
+        expectView(framesStart, framesScale);
+        zoom.zoomBack();
+        expectView(2.0, 0.01);
+        expect(!zoom.canZoomBack());
+        expect(!edit->getUndoManager().canUndo());
+        expectWithinAbsoluteError(transport.getPosition().inSeconds(), 10.0, 1e-9);
+
+        beginTest("Fit still shows the whole range beyond the manual zoom limits");
+        zoom.zoomToRange({0_tp, 10000_td});
+        expectWithinAbsoluteError(zoom.getViewSpan().inSeconds(), 10000.0, 1e-9);
+        zoom.zoomBack();
+        expectView(2.0, 0.01);
+
+        beginTest("Repeating a preset does not add a history entry");
+        zoom.zoomToLevel(Level::frames);
+        zoom.zoomToLevel(Level::frames);
+        zoom.zoomBack();
+        expectView(2.0, 0.01);
+        expect(!zoom.canZoomBack());
+
+        beginTest("Wheel and pinch events are coalesced; scrolling separates gestures");
+        zoom.setViewWidthPx(1000);
+        zoom.setRange({2_tp, 10_td});
+        zoom.zoomAroundX(0.1, 100);
+        zoom.zoomAroundX(0.1, 100);
+        zoom.magnifyAroundX(1.2f, 100);
+        zoom.zoomBack();
+        expectView(2.0, 0.01);
+        expect(!zoom.canZoomBack());
+        zoom.zoomAroundX(0.1, 100);
+        zoom.scrollBy(20.0);
+        const auto scrolledStart = zoom.getStart().inSeconds();
+        const auto scrolledScale = zoom.getTimePerPixel().inSeconds();
+        zoom.zoomAroundX(0.1, 100);
+        zoom.zoomBack();
+        expectView(scrolledStart, scrolledScale);
+        zoom.zoomBack();
+        expectView(2.0, 0.01);
+        expect(!zoom.canZoomBack());
+
+        beginTest("A held zoom key is one step; a preset repeated off-screen recentres on the playhead");
+        zoom.zoomHorizontally(0.5);
+        zoom.zoomHorizontally(0.5);
+        zoom.zoomBack();
+        expectView(2.0, 0.01);
+        expect(!zoom.canZoomBack());
+        zoom.zoomToLevel(Level::beats);
+        const auto beatsStart = zoom.getStart().inSeconds();
+        zoom.scrollBy(5000.0);
+        zoom.zoomToLevel(Level::beats);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), beatsStart, 1e-9);
+        clearHistory();
+        zoom.setRange({2_tp, 10_td});
+
+        beginTest("A drag records its original view once, even after an initial pan");
+        zoom.beginDrag();
+        zoom.dragBy(500, 100, 0);
+        expect(!zoom.canZoomBack());
+        zoom.dragBy(500, 100, 50);
+        zoom.dragBy(500, 200, 100);
+        zoom.endDrag();
+        zoom.zoomBack();
+        expectView(2.0, 0.01);
+        expect(!zoom.canZoomBack());
+
+        beginTest("Empty fits, neutral gestures and zoom limits do not create history");
+        zoom.zoomToRange({2_tp, 0_td});
+        zoom.zoomAroundX(0.0, 100);
+        zoom.magnifyAroundX(1.0f, 100);
+        expect(!zoom.canZoomBack());
+        zoom.setRange({0_tp, ZoomViewState::MinTimePerPixel * 1000.0});
+        zoom.zoomAroundX(1.0, 0);
+        expect(!zoom.canZoomBack());
+
+        beginTest("Autoscrolling does not add history and back pauses following without seeking");
+        zoom.setRange({100_tp, 10_td});
+        zoom.zoomToRange({0_tp, 2_td});
+        transport.play(false);
+        transport.setPosition(20_tp);
+        zoom.zoomBack();
+        expectView(100.0, 0.01);
+        expect(!zoom.canZoomBack());
+        transport.setPosition(21_tp);
+        expectView(100.0, 0.01);
+        transport.stop(false, false);
+
+        beginTest("History belongs to a view, not to the saved project");
+        ZoomViewState other{*edit, ValueTree(IDs::ZOOMVIEWSTATE)};
+        expect(!other.canZoomBack());
+    }
+};
+
+static ZoomNavigationTest zoomNavigationTest;
 
 //==============================================================================
 /** Plays through a hosted device that reports 0.25 s of output latency and checks the

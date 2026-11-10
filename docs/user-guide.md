@@ -74,7 +74,7 @@ Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler;
 
 ### Viz Mode
 
-**View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
+**View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden, and so are tracks without clips. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
 
 Each chip has a row of its own, in track order, and two keys arrange the rows:
 
@@ -149,7 +149,7 @@ Same controls as µZX Player, plus:
 
 ### Rendering a Video
 
-**File → Render Video...** works as in the Player: see [Rendering a Video](#rendering-a-video). Every track is drawn as Viz mode shows it, a chip's scopes at the right of its row.
+**File → Render Video...** works as in the Player: see [Rendering a Video](#rendering-a-video). Every track with clips is drawn as Viz mode shows it, a chip's scopes at the right of its row; tracks without clips are left out.
 
 ### Timeline
 

@@ -806,12 +806,12 @@ void TracksContainerComponent::paint(Graphics& g) {
 }
 
 void TracksContainerComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& c) {
-    if (te::TrackList::isTrack(c))
+    if (te::TrackList::isTrack(c) || (editViewState.vizMode && te::Clip::isClipState(c)))
         markAndUpdate(updateTracks);
 }
 
 void TracksContainerComponent::valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& c, int) {
-    if (te::TrackList::isTrack(c))
+    if (te::TrackList::isTrack(c) || (editViewState.vizMode && te::Clip::isClipState(c)))
         markAndUpdate(updateTracks);
 }
 
@@ -849,6 +849,9 @@ void TracksContainerComponent::buildTracks() {
     for (auto t : getAllTracks(edit)) {
         if (t->isMasterTrack() || t->isTempoTrack() || t->isMarkerTrack() || t->isChordTrack() || t->isArrangerTrack())
             continue;  // only the content tracks are shown
+        auto* clipTrack = dynamic_cast<te::ClipTrack*>(t);
+        if (editViewState.vizMode && (clipTrack == nullptr || clipTrack->getClips().isEmpty()))
+            continue;  // Viz mode displays the tune: an empty track would only be a blank band
 
         auto* c = new TrackRowComponent(editViewState, grid, t);
         trackRows.add(c);

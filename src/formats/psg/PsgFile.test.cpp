@@ -71,6 +71,19 @@ public:
             expect(frames[5].isSet(8));
         }
 
+        beginTest("Pause runs stop at the frame limit, keeping the frames before it");
+        {
+            TemporaryFile temp(".psg");
+            auto bytes = withHeader({0xFF, 0x08, 0x0F});
+            for (size_t i = 0; i <= PsgFile::maxFrames / 1020; ++i)
+                bytes.insert(bytes.end(), {0xFE, 0xFF});  // 1,020 empty frames each
+            temp.getFile().replaceWithData(bytes.data(), bytes.size());
+            PsgFile file(temp.getFile());
+            expect(file.ensureRead());
+            expectEquals(file.getData().frames.size(), PsgFile::maxFrames);
+            expect(file.getData().frames[0].isSet(8));
+        }
+
         beginTest("A 0xFF version byte means frames start right after the magic");
         {
             TemporaryFile temp(".psg");

@@ -68,7 +68,7 @@ public:
     /** Scrolls by a wheel or swipe, along its dominant axis. Playback does not scroll the view for a moment after. */
     void scrollByWheel(const MouseWheelDetails& wheel);
 
-    static constexpr auto MinTimePerPixel = te::TimeDuration::fromSeconds(0.00001);
+    static constexpr auto MinTimePerPixel = te::TimeDuration::fromSeconds(1.0/200.0/32.0);  // 1/200 is min frame
     static constexpr auto MaxTimePerPixel = te::TimeDuration::fromSeconds(2.0);
 
     inline int getViewWidthPx() const noexcept { return viewWidthPx.load(); }

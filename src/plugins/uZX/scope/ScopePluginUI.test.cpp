@@ -95,6 +95,14 @@ public:
     ScopeDisplaySettingsTest() : UnitTest("ScopeDisplaySettings", "MoTool") {}
 
     void runTest() override {
+        beginTest("New audio and chip scopes start at half gain");
+        for (const auto signal : {ScopeSettings::Signal::Audio, ScopeSettings::Signal::ChipLevels}) {
+            juce::ValueTree state{"PLUGIN"};
+            ScopeSettings settings{signal};
+            settings.referTo(state, nullptr);
+            expect(juce::exactlyEqual(settings.gain.getStoredValue(), 0.5f));
+        }
+
         for (const auto signal : {ScopeSettings::Signal::Audio, ScopeSettings::Signal::ChipLevels}) {
             const bool chip = signal == ScopeSettings::Signal::ChipLevels;
             beginTest(chip ? "Chip scopes share live settings" : "Audio scopes share live settings");

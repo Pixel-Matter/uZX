@@ -80,7 +80,7 @@ private:
     juce::String label_;
 
     int windowSize_{0};
-    float gain_{1.0f};
+    float gain_{};
     TriggerStrategy triggerStrategy_;
     float triggerLevel_{0.0f};
     bool settingsChanged_{true};

@@ -107,6 +107,8 @@ Each track ends on the right in its own AY chip and level meter, so a Turbo Soun
 
 The A, B and C scopes show each channel as the chip outputs it, before the stereo mix and the volume. Each scope centres its channel on half the level the channel's volume reaches, or half the full scale while the envelope drives it, so the waveform holds still as it plays; at Gain 1 a channel at volume 15 fills the scope's height, and a silent one is a line across the middle. When playback stops, the scopes keep the last frame that played. If a refresh overlaps a sample update, the scopes hold the previous frame until the next successful refresh. Their trigger is Chip Sync unless you pick another in the scope menu: each picture is centred on a rise of its channel's tone, or of its envelope when the tone is off, so noise and the envelope don't shake it; a channel with only noise runs free.
 
+AY and standalone Scope displays start at 0.5× gain when the project has no saved gain.
+
 The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with scope settings; in Studio the menu also sets the chip's MIDI channels. Chips can't be removed or added in the Player, and its controls take no MIDI mapping.
 
 A track is never shorter than its AY chip needs to show every control. When the tracks need more height than the window has, they scroll up and down.

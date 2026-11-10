@@ -13,9 +13,6 @@ ProgressDialog::ProgressDialog(const String& title,
                    true)
     , job(j)
     , jobManager(jm) {
-    content.taskLabel.setJustificationType(Justification::centred);
-    content.taskLabel.setText(job.getJobName(), dontSendNotification);
-
     content.cancelButton.setButtonText("Cancel");
     if (job.canCancel()) {
         content.cancelButton.setEnabled(true);
@@ -29,9 +26,9 @@ ProgressDialog::ProgressDialog(const String& title,
 
     content.addAndMakeVisible(content.progressBar);
     content.addAndMakeVisible(content.cancelButton);
-    content.addAndMakeVisible(content.taskLabel);
 
-    content.setSize(400, 100);
+    content.setSize(400, 80);
+    setUsingNativeTitleBar(true);  // as the other dialogs: the system's close button and corners
     setContentOwned(&content, true);
     centreAroundComponent(nullptr, getWidth(), getHeight());
 
@@ -50,6 +47,11 @@ void ProgressDialog::backgroundJobsChanged() {
         exitModalState(0);
         return;
     }
+
+    // The title is the job's first name; a job with stages renames itself for each, shown by the percentage
+    const auto percent = String(roundToInt(content.progress * 100.0)) + "%";
+    const auto stage = job.getJobName();
+    content.progressBar.setTextToDisplay(stage == getName() ? percent : stage + "  " + percent);
 }
 
 void ProgressDialog::timerCallback() {
@@ -64,9 +66,6 @@ void ProgressDialog::ContentComponent::resized() {
 
     bounds.removeFromBottom(6);
     progressBar.setBounds(bounds.removeFromBottom(24));
-
-    bounds.removeFromBottom(6);
-    taskLabel.setBounds(bounds);
 }
 
 } // namespace MoTool

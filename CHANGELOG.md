@@ -10,6 +10,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - `S` in Viz mode stacks each chip's scopes beside its notes or sets them side by side under them; scopes alone make a column or a grid, a chip per row (3×1 for one AY, 3×2 for Turbo Sound)
 - Entering Viz mode, or pressing `V` or `S`, shows both choices for a moment, with the key to leave
 - Viz mode and Render Video leave out tracks without clips
+- Progress windows have the system title bar, name the job once, and show the stage beside the percentage, such as Encoding and Adding sound for a video
+- Fixed: the progress bar has the buttons' corners, and its percentage stays readable as the bar fills under it
 
 ### Smoothness
 - Fixed: the timeline no longer scrolls a few pixels too far and then too little when a frame starts drawing a few milliseconds late

@@ -28,7 +28,6 @@ private:
         void resized() override;
 
         ProgressBar progressBar { progress };
-        Label taskLabel;
         TextButton cancelButton;
         double progress = 0.0;
     };

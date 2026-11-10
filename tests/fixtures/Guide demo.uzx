@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <EDIT appVersion="0.6.1" projectFps="50.0" timecodeDisplayMode="barsBeatsFrames"
-      timecodeFormat="beats" projectID="0/3adf1d" creationTime="1794305005412"
+      timecodeFormat="beats" projectID="0/3161598" creationTime="1794305005412"
       modifiedBy="DQueue PrintServer">
   <TRANSPORT endToEnd="1" loopPoint1="0.0" loopPoint2="29.0" position="0.0"/>
   <PITCHSEQUENCE>
@@ -14,7 +14,7 @@
   <VIDEO/>
   <CLICKTRACK level="0.6000000238418579"/>
   <MASTERVOLUME>
-    <PLUGIN id="1001" type="volume" volume="1.0" enabled="1">
+    <PLUGIN id="1001" type="volume" volume="0.5003125071525574" enabled="1">
       <MODIFIERASSIGNMENTS/>
     </PLUGIN>
   </MASTERVOLUME>
@@ -36,7 +36,7 @@
   <TRACK id="1007" name="Lead">
     <MODIFIERS/>
     <CLIPSLOTS/>
-    <VIEWSTATE height="130"/>
+    <VIEWSTATE height="240"/>
     <PSGCLIP id="1011" name="Lead 1" start="0.0" length="4.0" offset="0.0"
              currentTake="0" speed="1.0" colour="ff7bb76e">
       <AUTOMATIONCURVES/>
@@ -1220,7 +1220,7 @@
   <TRACK id="1017" name="Bass">
     <MODIFIERS/>
     <CLIPSLOTS/>
-    <VIEWSTATE height="130"/>
+    <VIEWSTATE height="240"/>
     <PSGCLIP id="1021" name="Bass 1" start="0.0" length="2.0" offset="0.0"
              currentTake="0" speed="1.0" colour="ff78a5ef">
       <AUTOMATIONCURVES/>
@@ -1854,7 +1854,7 @@
   <TRACK id="1027" name="Arp">
     <MODIFIERS/>
     <CLIPSLOTS/>
-    <VIEWSTATE height="130"/>
+    <VIEWSTATE height="240"/>
     <PSGCLIP id="1031" name="Arp 1" start="0.0" length="1.0" offset="0.0"
              currentTake="0" speed="1.0" colour="ffe68485">
       <AUTOMATIONCURVES/>

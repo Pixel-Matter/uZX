@@ -6,7 +6,6 @@ Granular open tasks for µZX Studio and the shared engine. Player priorities are
 
 See the [review scope and implementation order](refactoring.md#implementation-order). Numbers are the findings' stable IDs, not execution order; finished findings are deleted.
 
-- [ ] 1. [Centralize edit replacement lifecycle](refactoring.md#1-centralize-edit-replacement-lifecycle) shared by Studio and Player, preserving app-specific policy and teardown order.
 - [ ] 3. [Remove the parameter display's unsupported editing contract](refactoring.md#3-remove-the-parameter-displays-unsupported-editing-contract) after checking inherited selection, zoom, and input behavior.
 - [ ] 6. [Establish audio-thread ownership of mutable runtime state](refactoring.md#6-establish-audio-thread-ownership-of-mutable-runtime-state), reviewing render locks and the existing mapper race together.
 - [ ] 7. [Make clock coordination between plugins explicit](refactoring.md#7-make-clock-coordination-between-plugins-explicit), including chain order and persisted settings.

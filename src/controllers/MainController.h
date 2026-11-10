@@ -103,12 +103,17 @@ protected:
     virtual std::unique_ptr<te::Edit> createOrLoadStartupEdit() = 0;
     /** Nullptr, so setEdit() keeps the current edit, for a file that is unreadable (reported) or already open. */
     virtual std::unique_ptr<te::Edit> createOrLoadEdit(File editFile);
-    virtual void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) = 0;
+    /** Replaces edit_, keeping the current edit when edit is null (unreadable, already reported).
+        Saves the old edit if asked and releases everything referring to it (window content,
+        selection, releaseEditDependents(), view and playback state) before destroying it and its
+        temp folder; then prepares and saves the new edit, gives it a view state and calls showEdit().
+        The window keeps its size. */
+    virtual void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false);
+    /** Drops the app's own references to edit_ before it is replaced; editViewState_ is still alive. */
+    virtual void releaseEditDependents() {}
+    /** Builds the app's own state for the new edit_, the window content and the title. */
+    virtual void showEdit() = 0;
     virtual void devicesChanged() {}
-
-    /** Master volume is an app setting, not part of the file: applies the saved level to edit_
-        and saves the knob from now on. Call from setEdit() once edit_ is replaced. */
-    void useGlobalMasterVolume();
 
     te::Engine& engine_;
     MainWindow window_ {engine_};
@@ -120,6 +125,10 @@ private:
     // Called when the selection changes
     void changeListenerCallback(ChangeBroadcaster*) override;
     void valueChanged(Value&) override;
+
+    /** Master volume is an app setting, not part of the file: applies the saved level to edit_
+        and saves the knob from now on. */
+    void useGlobalMasterVolume();
 
     Value masterVolume_;  // edit_'s master volume slider position
 };
@@ -144,8 +153,7 @@ public:
 
 private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
-    void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
-    void createTracksAndAssignInputs();
+    void showEdit() override;
 
     void devicesChanged() override;
 

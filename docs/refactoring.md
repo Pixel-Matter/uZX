@@ -8,23 +8,11 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 ## Implementation order
 
-1. **Small extractions:** 1 (edit replacement, after establishing lifecycle coverage), then 3 (inspect the inherited parameter-editor behavior before replacing its base class).
+1. **Small extractions:** 3 (inspect the inherited parameter-editor behavior before replacing its base class).
 2. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 7 (plugin clock coordination), 8 (import timing).
 3. **PSG derived state:** 13 (mapping table) can precede 10; review 10 and 11 together, with separate regression cases.
 4. **Contracts:** 17 (establish supported nonzero-start callers first), 18 (command capabilities).
 5. **Low priority:** 9 (export formatting).
-
-## 1. Centralize edit replacement lifecycle
-
-**Evidence:** `ArrangerController::setEdit` in [MainController.cpp](../src/controllers/MainController.cpp) and `PlayerController::setEdit` in [PlayerController.cpp](../src/controllers/PlayerController.cpp) repeat the same ordered lifecycle: optionally save the previous edit, clear window content and selection, release view/playback state, remove the old temporary directory, install the new edit, and rebuild playback and view state.
-
-**Problem:** the ordering protects references to the old edit, but two implementations own that knowledge. A lifetime fix can reach one app and leave the other unchanged. The existing `BaseController` already owns the edit, window, playback helper, and view state.
-
-**Proposed boundary:** move shared teardown and installation into the existing `BaseController`. Keep Studio and Player policy explicit at the call sites: timecode migration versus seconds display, document type, headers, and window title. Preserve current ordering and error handling; avoid a new inheritance hierarchy or a generic callback framework.
-
-**Validation:** cover null replacement retaining the current edit, dependent objects being released before the old edit, and successful replacement in both apps. Existing `PlayWholeEdit` and `EditState` tests cover related pieces, but do not establish the complete controller lifecycle. Exercise opening and switching projects in Studio and Player with the native UX harness.
-
-**Related issue:** the Global TODO already records data loss when reopening the current project. Treat that as a separate behavior fix with its own regression case; consolidation alone does not resolve it.
 
 ## 3. Remove the parameter display's unsupported editing contract
 

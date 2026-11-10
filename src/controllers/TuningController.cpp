@@ -46,13 +46,17 @@ void TuningController::setEdit(std::unique_ptr<te::Edit> edit, bool /*savePrev*/
     edit_->getTransport().ensureContextAllocated();
     // te::EditFileOperations(*edit_).save(true, true, false);
 
+    showEdit();
+    window_.setSize(w, h);
+    window_.repaint();
+}
+
+void TuningController::showEdit() {
     viewModel_ = std::make_unique<TuningViewModel>(*edit_);
     tuningPlayer_ = std::make_unique<TuningPlayer>(*viewModel_);
 
     window_.setContentOwned(new TuningPreviewComponent(*viewModel_, *tuningPlayer_), true);
     window_.setName("Tuning");
-    window_.setSize(w, h);
-    window_.repaint();
 }
 
 void TuningController::devicesChanged() {

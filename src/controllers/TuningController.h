@@ -19,7 +19,9 @@ public:
 
 private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
+    /** Tuning edits are scratch: not saved, no shared selection or view state. */
     void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
+    void showEdit() override;
     void devicesChanged() override;
 
     std::unique_ptr<TuningViewModel> viewModel_;

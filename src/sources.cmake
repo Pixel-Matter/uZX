@@ -152,10 +152,12 @@ set(TEST_SOURCES
     gui/timeline/ClipComponents.test.cpp
     gui/timeline/EditComponent.test.cpp
     gui/timeline/PsgClipComponent.test.cpp
+    gui/timeline/PsgParamEditorComponent.test.cpp
     gui/timeline/PsgClipTestHelpers.h
     gui/timeline/PsgVisualGuide.test.cpp
     gui/timeline/PsgPaintingBenchmark.test.cpp
     gui/video/VideoRenderJob.test.cpp
+    gui/devices/TrackDevicesPanel.test.cpp
 
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/aychip/AYPlugin.test.cpp

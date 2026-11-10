@@ -50,6 +50,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: dialogs open at the size they ask for, without an empty strip at the bottom; the About window's spacing is even
 - Release builds no longer list the MIDI Logger debugging device among the devices to add
 - Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together, and passes MIDI on other channels through at its own time instead of later
+- Fixed: deleting the track shown in the Track Devices panel empties the panel instead of leaving its devices on screen
+- Fixed: Clip Parameters no longer reads a deleted clip, and clicking one of its points selects the clip instead of clearing the selection
 
 ## [v0.6.0-alpha] - 2026-11-08
 

@@ -8,20 +8,9 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 ## Implementation order
 
-1. **Small extractions:** 3 (inspect the inherited parameter-editor behavior before replacing its base class).
-2. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 7 (plugin clock coordination), 8 (import timing).
-3. **Contracts:** 17 (establish supported nonzero-start callers first).
-4. **Low priority:** 9 (export formatting).
-
-## 3. Remove the parameter display's unsupported editing contract
-
-**Evidence:** [PsgParamEditorComponent.h](../src/gui/timeline/PsgParamEditorComponent.h) derives from Tracktion `CurveEditor`. In [PsgParamEditorComponent.cpp](../src/gui/timeline/PsgParamEditorComponent.cpp), `removePoint`, `addPoint`, `movePoint`, `createPoint`, and several Bézier methods are empty or return placeholder values.
-
-**Problem:** the component exposes editing operations it does not implement and carries an unrelated API surface to support its current display behavior. This is an abstraction mismatch; whether inherited mouse or keyboard interactions produce a visible failure was not established during the review.
-
-**Proposed boundary:** first inspect Tracktion's `CurveEditor` implementation and identify the selection listeners, coordinate conversion, tooltips, zoom, and input behavior the component actually uses. Then replace the unsupported editing inheritance with a display component, retaining only the needed behavior. Do not implement PSG editing as part of this refactor; that is a separate feature in TODO.
-
-**Validation:** establish focused coverage for no clip, selected clip, clip deletion, parameter switching, zoom, and selection updates. Check mouse and keyboard behavior with the native UX harness. Existing `PsgClipComponent` rendering tests exercise a different component and are not sufficient for this change.
+1. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 7 (plugin clock coordination), 8 (import timing).
+2. **Contracts:** 17 (establish supported nonzero-start callers first).
+3. **Low priority:** 9 (export formatting).
 
 ## 6. Establish audio-thread ownership of mutable runtime state
 

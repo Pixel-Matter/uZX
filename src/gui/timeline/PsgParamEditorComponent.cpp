@@ -49,12 +49,6 @@ PsgParamEditorWrapper::PsgParamEditorWrapper(EditViewState& evs, TimelineGrid& g
     // Select default parameter (NoiseIsOnA = row 3)
     paramList_.selectRow(3, false, false);
     editor_.setCurrentParam(PsgParamType(paramTypes_[3]));
-
-    // // Hide param list when no clip is selected
-    // editor_.onClipChanged = [this]() {
-    //     paramList_.setVisible(editor_.hasClip());
-    // };
-    // paramList_.setVisible(false);
 }
 
 PsgParamEditorWrapper::~PsgParamEditorWrapper() {
@@ -202,210 +196,55 @@ float PsgParamList::getValueAt(te::TimePosition time) const {
 
 // PsgParamEditorComponent implementation
 PsgParamEditorComponent::PsgParamEditorComponent(EditViewState& evs, TimelineGrid& g)
-    : CurveEditor(evs.edit, evs.selectionManager)
-    , editViewState(evs)
+    : editViewState(evs)
     , grid(g)
     , currentParam(PsgParamType::TonePeriodA)  // Initialize to match wrapper's default selection
 {
-    setTimes(editViewState.zoom.getRange().getStart(), editViewState.zoom.getRange().getEnd());
     evs.zoom.addListener(this);
     grid.addListener(this);
+    evs.selectionManager.addChangeListener(this);
 }
 
 PsgParamEditorComponent::~PsgParamEditorComponent() {
+    editViewState.selectionManager.removeChangeListener(this);
     editViewState.zoom.removeListener(this);
     grid.removeListener(this);
 }
 
-void PsgParamEditorComponent::viewRangeChanged() {
-    setTimes(editViewState.zoom.getRange().getStart(), editViewState.zoom.getRange().getEnd());
-    repaint();
-}
-
-void PsgParamEditorComponent::gridChanged() {
-    repaint();
-}
-
-void PsgParamEditorComponent::setCurrentClip(PsgClip* c) {
-    currentClip = c;
-    if (currentClip.get() != nullptr) {
-        paramList.emplace(*currentClip, currentParam);
-    } else {
-        paramList.reset();
-    }
-}
-
 void PsgParamEditorComponent::setCurrentParam(PsgParamType param) {
     currentParam = param;
-    if (currentClip.get() != nullptr) {
-        paramList.emplace(*currentClip, currentParam);
-    }
     repaint();
 }
 
-void PsgParamEditorComponent::changeListenerCallback(ChangeBroadcaster* cb) {
-    if (cb == &editViewState.selectionManager) {
-        if (auto* s = editViewState.selectionManager.getFirstItemOfType<PsgClip>()) {
-            setCurrentClip(s);
-        } else {
-            // setCurrentClip(nullptr);
-        }
-        if (onClipChanged)
-            onClipChanged();
-    }
-    te::CurveEditor::changeListenerCallback(cb);
+void PsgParamEditorComponent::changeListenerCallback(ChangeBroadcaster*) {
+    // Keeps showing the last PSG clip while something else is selected
+    if (auto* s = editViewState.selectionManager.getFirstItemOfType<PsgClip>())
+        currentClip = s;
+    repaint();
 }
 
-void PsgParamEditorComponent::selectableObjectChanged(te::Selectable* s) {
-    if (auto psgClip = dynamic_cast<PsgClip*>(s)) {
-        setCurrentClip(psgClip);
-    } else {
-        setCurrentClip(nullptr);
-    }
-    if (onClipChanged)
-        onClipChanged();
-    te::CurveEditor::selectableObjectChanged(s);
+void PsgParamEditorComponent::mouseDown(const MouseEvent& e) {
+    if (auto* clip = currentClip.get())
+        editViewState.selectionManager.select(clip, e.mods.isShiftDown());
 }
 
-String PsgParamEditorComponent::getTooltip() {
-    return "PSG Parameters editor";
+float PsgParamEditorComponent::timeToX(te::TimePosition t) const {
+    const auto range = editViewState.zoom.getRange();
+    return (float) (getWidth() * ((t - range.getStart()) / range.getLength()));
 }
 
-float PsgParamEditorComponent::getValue(int idx) const {
-    return paramList->getValue(idx);
+te::TimePosition PsgParamEditorComponent::xToTime(float x) const {
+    const auto range = editViewState.zoom.getRange();
+    return te::TimePosition::fromSeconds(
+        std::max(0.0, range.getStart().inSeconds() + x * range.getLength().inSeconds() / getWidth()));
 }
 
-float PsgParamEditorComponent::getValueAt(te::EditPosition time) {
-    return paramList->getValueAt(tracktion::toTime(time, edit.tempoSequence));
+float PsgParamEditorComponent::valueToY(float value) const {
+    return 1.0f + (1.0f - value) * (getHeight() - 2);
 }
 
-te::EditPosition PsgParamEditorComponent::getPointPosition(int idx) {
-    return paramList->getTime(idx);
-}
-
-float PsgParamEditorComponent::getPointValue(int idx) {
-    return paramList->getValue(idx);
-}
-
-float PsgParamEditorComponent::getPointCurve(int /*idx*/) {
-    return -1.0f;
-}
-
-void PsgParamEditorComponent::removePoint(int /*index*/) {
-}
-
-int PsgParamEditorComponent::addPoint(te::EditPosition /*time*/, float /*value*/, float /*curve*/) {
-    return 0;
-}
-
-int PsgParamEditorComponent::getNumPoints() {
-    return paramList.has_value() ? paramList->size() : 0;
-}
-
-te::CurvePoint PsgParamEditorComponent::getBezierHandle(int /*idx*/) {
-    return {};
-}
-
-te::CurvePoint PsgParamEditorComponent::getBezierPoint(int /*idx*/) {
-    return {};
-}
-
-int PsgParamEditorComponent::nextIndexAfter(te::EditPosition time) {
-    auto idx = paramList->findIndex(tracktion::toTime(time, edit.tempoSequence));
-    if (idx < 0 || idx >= paramList->size()) {
-        return 0;  // No points found, return 0
-    } else {
-        return idx;
-    }
-}
-
-void PsgParamEditorComponent::getBezierEnds(int /*index*/, double& x1out, float& y1out, double& x2out, float& y2out) {
-    x1out = 0;
-    y1out = 0;
-    x2out = 0;
-    y2out = 0;
-}
-
-std::pair<te::CurvePoint, te::CurvePoint> PsgParamEditorComponent::getBezierEnds(int /*index*/) {
-    return { {}, {} };
-}
-
-int PsgParamEditorComponent::movePoint(int /*index*/, te::EditPosition /*newTime*/, float /*newValue*/, bool /*removeInterveningPoints*/) {
-    return 0;
-}
-
-void PsgParamEditorComponent::setValueWhenNoPoints(float /*value*/) {
-    // If no points add one anyway
-}
-
-te::CurveEditorPoint* PsgParamEditorComponent::createPoint(int /*idx*/) {
-    return nullptr;
-}
-
-int PsgParamEditorComponent::curvePoint(int /*index*/, float /*newCurve*/) {
-    return 0;
-}
-
-String PsgParamEditorComponent::getCurveName() {
-    if (currentClip.get() != nullptr) {
-        return std::string(currentParam.getLabel());
-    }
-    return {};
-}
-
-int PsgParamEditorComponent::getCurveNameOffset() {
-    return 0;
-}
-
-te::Selectable* PsgParamEditorComponent::getItem() {
-    return currentClip.get();
-}
-
-bool PsgParamEditorComponent::isShowingCurve() const {
-    return currentClip.get() != nullptr;
-}
-
-void PsgParamEditorComponent::updateFromTrack() {
-    // TODO
-}
-
-Colour PsgParamEditorComponent::getCurrentLineColour() {
-    return Colours::white;
-}
-
-Colour PsgParamEditorComponent::getCurrentFillColour() {
-    return Colours::transparentBlack;
-}
-
-Colour PsgParamEditorComponent::getDefaultLineColour() const {
-    return Colours::black;
-}
-
-Colour PsgParamEditorComponent::getSelectedLineColour() const {
-    return Colors::Theme::highlight;
-}
-
-Colour PsgParamEditorComponent::getBackgroundColour() const {
-    return Colours::white;
-}
-
-Colour PsgParamEditorComponent::getCurveNameTextBackgroundColour() const {
-    return Colours::white;  // TODO color of the current PSG param
-}
-
-Colour PsgParamEditorComponent::getPointOutlineColour() const {
-    return Colours::black;
-}
-
-Range<float> PsgParamEditorComponent::getParameterRange() const {
-    return Range<float>(0.0f, 1.0f);
-}
-
-double PsgParamEditorComponent::timeScale() const {
-    // seconds per pixel
-    auto leftTimePos = tracktion::toTime(leftTime, edit.tempoSequence);
-    auto rightTimePos = tracktion::toTime(rightTime, edit.tempoSequence);
-    return (rightTimePos - leftTimePos).inSeconds() / getWidth();
+Point<float> PsgParamEditorComponent::getPosition(const PsgParamList& params, int idx) const {
+    return {timeToX(params.getTime(idx)), valueToY(params.getValue(idx))};
 }
 
 void PsgParamEditorComponent::paintGrid(Graphics& g) {
@@ -417,217 +256,111 @@ void PsgParamEditorComponent::paintGrid(Graphics& g) {
 }
 
 void PsgParamEditorComponent::paint(Graphics& g) {
-    using namespace tracktion;
-    CRASH_TRACER
-
-    auto leftTimePos = tracktion::toTime(leftTime, edit.tempoSequence);
-    auto rightTimePos = tracktion::toTime(rightTime, edit.tempoSequence);
-    if ((rightTimePos - leftTimePos) == tracktion::TimeDuration())
+    auto* clip = currentClip.get();
+    const auto view = editViewState.zoom.getRange();
+    if (clip == nullptr || view.isEmpty())
         return;
 
-    const int numPoints = getNumPoints();
-    if (numPoints == 0) {
+    const PsgParamList params(*clip, currentParam);
+    const int numPoints = params.size();
+    if (numPoints == 0)
         return;
-    }
 
     paintGrid(g);
 
-    const bool isOver = isMouseOverOrDragging();
-    // auto curveColour = getCurrentLineColour();
-    auto backgroundColour = getBackgroundColour();
+    const bool highlighted = isMouseOverOrDragging() || editViewState.selectionManager.isSelected(clip);
 
-    // draw the name of the curve
-    if (isOver || isCurveSelected) {
-        g.setColour(getCurveNameTextBackgroundColour());
-        auto text = getCurveName();
+    if (highlighted) {
+        const String text(std::string(currentParam.getLabel()));
         g.setFont(13.0f);
-    #if JUCE_MAJOR_VERSION >= 8
-        auto tw = GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text);
-    #else
-        auto tw = g.getCurrentFont().getStringWidth (text);
-    #endif
-        auto tx = getCurveNameOffset() + 8;
-        g.fillRect(tx, 0, tw + 8, 16);
-
-        g.setColour(getDefaultLineColour());
-        g.drawText(text, tx + 4, 0, tw + 6, 16, Justification::left, true);
+        const auto tw = GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text);
+        g.setColour(Colours::white);
+        g.fillRect(8, 0, tw + 8, 16);
+        g.setColour(Colours::black);
+        g.drawText(text, 12, 0, tw + 6, 16, Justification::left, true);
     }
 
-    const int start = jmax(0, paramList->findPrevActiveIndex(paramList->findIndex(leftTimePos)));
-    auto clipBounds = g.getClipBounds();
+    const int start = jmax(0, params.findPrevActiveIndex(params.findIndex(view.getStart())));
+    const auto clipBounds = g.getClipBounds();
     {
-        const int preStart = paramList->findPrevActiveIndex(start - 1);
+        const int preStart = params.findPrevActiveIndex(start - 1);
         const auto startX = std::max(0.0f, timeToX({}));
-        auto lastY = valueToY(getValue(preStart));
+        auto lastY = valueToY(params.getValue(preStart));
         Path curvePath;
         curvePath.startNewSubPath(startX, lastY);
         curvePath.preallocateSpace((numPoints - start) * 2 + 2);
 
-        // int counter = 0;
-        auto p1 = getPosition(start);
+        auto p1 = getPosition(params, start);
         curvePath.lineTo(p1.getX(), lastY);
         curvePath.lineTo(p1);
-        lastY = p1.y;
         for (int index = start; index < numPoints - 1; ++index) {
-
-            if (!paramList->isActive(index + 1)) {
+            if (!params.isActive(index + 1))
                 continue;
-            }
 
-            auto p2 = getPosition(index + 1);
-            auto c = getPointCurve(index);
-
-            if (c <= -1.0f) {
-                curvePath.lineTo(p2.getX(), lastY);
-                curvePath.lineTo(p2);
-            } else if (c == 0.0f) {
-                curvePath.lineTo(p2);
-            } else {
-                // auto bp = getPosition(getBezierPoint(index));
-
-                // if (c >= -0.5 && c <= 0.5) {
-                //     curvePath.quadraticTo(bp, p2);
-                // } else {
-                //     double lineX1, lineX2;
-                //     float lineY1, lineY2;
-                //     getBezierEnds(index, lineX1, lineY1, lineX2, lineY2);
-
-                //     curvePath.lineTo(getPosition({ TimePosition::fromSeconds(lineX1), lineY1 }));
-                //     curvePath.quadraticTo(bp, getPosition({ TimePosition::fromSeconds(lineX2), lineY2 }));
-                //     curvePath.lineTo(p2);
-                // }
-            }
-
+            // A value holds until the next frame that sets it
+            auto p2 = getPosition(params, index + 1);
+            curvePath.lineTo(p2.getX(), lastY);
+            curvePath.lineTo(p2);
             lastY = p2.y;
-            // ++counter;
 
             if (p2.x > clipBounds.getRight())
                 break;
         }
 
-        // curvePath.lineTo((float) getWidth(), lastY);
-
-        if (auto fillCol = getCurrentFillColour(); ! fillCol.isTransparent()) {
-            Path fillPath(curvePath);
-            const auto y = getHeight() + 1.0f;
-            fillPath.lineTo((float) getWidth(), y);
-            fillPath.lineTo(startX, y);
-            fillPath.closeSubPath();
-
-            g.setColour(fillCol);
-            g.fillPath(fillPath);
-        }
-
-        g.setColour(getCurrentLineColour());
-        g.strokePath(curvePath, PathStrokeType(lineThickness / 2));
+        g.setColour(Colours::white);
+        g.strokePath(curvePath, PathStrokeType(highlighted ? 1.0f : 0.5f));
     }
 
-    //=========================================================================================
-    // fast check if the scale allows drawing the points
-    if (timeScale() > 1 / 50.0f / 4.0f) {
+    // Points only when frames are far enough apart: under 1/200 s per pixel
+    if (!highlighted || view.getLength().inSeconds() / getWidth() > 1 / 50.0f / 4.0f)
         return;
+
+    RectangleList<float> rects, fills;
+    rects.ensureStorageAllocated(numPoints - start);
+    fills.ensureStorageAllocated(numPoints - start);
+
+    for (int i = start; i < numPoints; ++i) {
+        if (!params.isActive(i))
+            continue;
+        auto pos = getPosition(params, i);
+        auto r = Rectangle<float>(pos.x - pointRadius, pos.y - pointRadius, pointRadius * 2, pointRadius * 2).reduced(2);
+
+        if (r.getX() > clipBounds.getRight())
+            break;
+
+        rects.addWithoutMerging(r);
+        fills.addWithoutMerging(r.reduced(1.0f));
     }
 
-    // draw the points along the line - the points, the add point and the curve point
-    const bool anySelected = areAnyPointsSelected();
-
-    if (isOver || isCurveSelected || anySelected) {
-        RectangleList<float> rects, selectedRects, fills;
-        rects.ensureStorageAllocated(numPoints - start);
-
-        if (anySelected)
-            fills.ensureStorageAllocated(numPoints - start);
-
-        // draw the white points
-        for (int i = start; i < numPoints; ++i) {
-            if (!paramList->isActive(i))
-                continue;
-            auto pos = getPosition(i);
-
-            Rectangle<float> r(pos.x - pointRadius, pos.y - pointRadius,
-                                     pointRadius * 2, pointRadius * 2);
-            r = r.reduced(2);
-
-            if (r.getX() > clipBounds.getRight())
-                break;
-
-            const bool isSelected = isPointSelected(i);
-
-            if (isSelected)
-                selectedRects.addWithoutMerging(r);
-            else
-                rects.addWithoutMerging(r);
-
-            if (!isSelected && i != pointUnderMouse)
-                fills.addWithoutMerging(r.reduced(1.0f));
-        }
-
-        g.setColour(getPointOutlineColour());
-        g.fillRectList(rects);
-
-        g.setColour(backgroundColour);
-        g.fillRectList(fills);
-
-        g.setColour(getSelectedLineColour());
-        g.fillRectList(selectedRects);
-
-        // // draw the curve points
-        // for (int i = start; i < numPoints - 1; ++i) {
-        //     auto pos = getPosition(getBezierHandle(i));
-
-        //     Rectangle<float> r (pos.x - pointRadius,
-        //                             pos.y - pointRadius,
-        //                             pointRadius * 2,
-        //                             pointRadius * 2);
-        //     r = r.reduced (2);
-
-        //     if (r.getX() > clipBounds.getRight())
-        //         break;
-
-        //     g.setColour (curveColour);
-        //     g.fillEllipse (r);
-
-        //     if (i != curveUnderMouse && ! isPointSelected (i))
-        //     {
-        //         g.setColour (backgroundColour);
-        //         g.fillEllipse (r.reduced (1.0f));
-        //     }
-        // }
-    }
+    g.setColour(Colours::black);
+    g.fillRectList(rects);
+    g.setColour(Colours::white);
+    g.fillRectList(fills);
 }
 
 bool PsgParamEditorComponent::hitTest(int x, int y) {
-    if (currentClip.get() == nullptr)
+    auto* clip = currentClip.get();
+    if (clip == nullptr)
         return false;
-    auto py1 = valueToY(getValueAt(xToTime(x - 3.0f)));
-    auto py2 = valueToY(getValueAt(xToTime(x + 3.0f)));
+
+    const PsgParamList params(*clip, currentParam);
+    auto py1 = valueToY(params.getValueAt(xToTime(x - 3.0f)));
+    auto py2 = valueToY(params.getValueAt(xToTime(x + 3.0f)));
 
     if (y > std::min(py1, py2) - 4.0f && y < std::max(py1, py2) + 4.0f)
         return true;
 
-    for (int i = firstIndexOnScreen; i < getNumPoints(); ++i) {
-        auto t = getPointPosition(i);
-
-        if (tracktion::greaterThanOrEqualTo(t, rightTime, edit.tempoSequence))
+    const auto end = editViewState.zoom.getRange().getEnd();
+    for (int i = jmax(0, params.findIndex(xToTime(x - pointRadius))); i < params.size(); ++i) {
+        if (params.getTime(i) >= end)
             break;
 
-        auto px = timeToX(t);
-        auto py = valueToY(getPointValue(i));
-
-        if (std::abs(x - px) < pointRadius
-             && std::abs(y - py) < pointRadius + 2)
+        auto p = getPosition(params, i);
+        if (std::abs(x - p.x) < pointRadius && std::abs(y - p.y) < pointRadius + 2)
             return true;
     }
 
     return false;
-}
-
-void PsgParamEditorComponent::showBubbleForPointUnderMouse() {
-    DBG("showBubbleForPointUnderMouse");
-}
-
-void PsgParamEditorComponent::hideBubble() {
-    DBG("hideBubble");
 }
 
 }  // namespace MoTool

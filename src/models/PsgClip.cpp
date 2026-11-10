@@ -104,17 +104,20 @@ juce::Range<float> PsgClip::getPitchRange() const {
 }
 
 //==============================================================================
-PitchHistogram PsgClip::buildPitchHistogram() const {
-    // The list keeps only frames that change a register, so each state sounds until the
-    // next stored frame: weight it by that many machine frames. The last state lasts to
-    // the end of the clip's source, so a held final note counts in full too.
-    const auto& frames = getPsg().getFrames();
+/** The machine frame the clip's source ends at: where the last stored state stops sounding. */
+int PsgClip::getHistogramEndIndex() const {
     double fps = getPsg().getEffectiveFps(*this);
     if (fps <= 0.0)
         fps = getPsg().getFrameRate();
     const auto position = getPosition();
-    const int endIndex = roundToInt((position.getOffset() + position.getLength()).inSeconds() * fps);
+    return roundToInt((position.getOffset() + position.getLength()).inSeconds() * fps);
+}
 
+PitchHistogram PsgClip::buildPitchHistogram(int endIndex) const {
+    // The list keeps only frames that change a register, so each state sounds until the
+    // next stored frame: weight it by that many machine frames. The last state lasts to
+    // the end of the clip's source, so a held final note counts in full too.
+    const auto& frames = getPsg().getFrames();
     PitchHistogram::Builder builder;
     for (int i = 0; i < frames.size(); ++i) {
         const int start = frames[i]->getFrameIndex();
@@ -125,10 +128,10 @@ PitchHistogram PsgClip::buildPitchHistogram() const {
 }
 
 const PitchHistogram& PsgClip::getPitchHistogram() const {
-    const auto version = getPsg().getDataVersion();
-    if (! histogram_ || histogramVersion_ != version) {
-        histogramVersion_ = version;
-        histogram_ = buildPitchHistogram();
+    const std::pair key {getPsg().getDataVersion(), getHistogramEndIndex()};
+    if (! histogram_ || histogramKey_ != key) {
+        histogramKey_ = key;
+        histogram_ = buildPitchHistogram(key.second);
         ++histogramRevision_;  // never restarts, unlike a new list's data version
     }
     return *histogram_;

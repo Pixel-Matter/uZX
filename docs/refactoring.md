@@ -10,9 +10,8 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 1. **Small extractions:** 3 (inspect the inherited parameter-editor behavior before replacing its base class).
 2. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 7 (plugin clock coordination), 8 (import timing).
-3. **PSG derived state:** 11 (tuning cache timing).
-4. **Contracts:** 17 (establish supported nonzero-start callers first), 18 (command capabilities).
-5. **Low priority:** 9 (export formatting).
+3. **Contracts:** 17 (establish supported nonzero-start callers first), 18 (command capabilities).
+4. **Low priority:** 9 (export formatting).
 
 ## 3. Remove the parameter display's unsupported editing contract
 
@@ -63,16 +62,6 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 **Proposed boundary:** move serialization and filename formatting into a focused format helper. Keep selection of the current tuning data in the viewmodel and the save interaction in the GUI. Preserve output exactly and avoid adding an exporter interface for one format.
 
 **Validation:** preserve the existing CSV and filename assertions in `TuningViewModel.test.cpp`, adding helper-level cases only where useful. Verify the GUI still exports the selected tuning and reports write failure. Tooltip formatting in a presentation viewmodel is not, by itself, a reason for another split.
-
-## 11. Include timing context in tuning cache dependencies
-
-**Evidence:** `PsgClip::buildPitchHistogram` in [PsgClip.cpp](../src/models/PsgClip.cpp) weights the final stored frame through an end index derived from clip offset, length, and effective FPS. Effective FPS depends on frames per beat and tempo at the clip start. `getTuningDetection` caches solely by PSG data version; `getTuning` additionally checks user choices, but not this timing context.
-
-**Problem:** a length, offset, or timing change can alter histogram weights without changing the cache key. Repainting the component does not invalidate these model caches. This is a mismatch between calculation inputs and cache dependencies; frame data changes already advance the PSG data version. A change need not alter the winning key to require recalculation of rankings and confidence.
-
-**Proposed boundary:** define the effective histogram inputs once and use them consistently for detection and resolved-tuning cache validity. A key containing the derived end-frame index and data version may be sufficient for the current histogram; verify the complete dependency chain before choosing it. Preserve explicit table/key choices while updating automatic rankings and the tuning revision consumed by the UI.
-
-**Validation:** prime both caches, then change clip length/offset, frames per beat, and tempo context; compare against freshly computed detection. Cover moving across a tempo boundary and undo/redo. Extend `PsgClipTuning.test.cpp`, whose current cache test checks reuse and explicit choice changes. Decide source-versus-visible-clip histogram semantics separately from the cache fix.
 
 ## 17. Make MIDI sample-range semantics consistent
 

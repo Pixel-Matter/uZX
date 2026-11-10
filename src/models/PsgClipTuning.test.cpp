@@ -137,6 +137,59 @@ public:
             expect(clip->getTuning().tableChosen && *clip->getTuning().table == BuiltinTuningType::CustomPT_2_ASM);
         }
 
+        beginTest("Clip length, offset and tempo context rebuild the cached detection");
+        {
+            // 400 sounds from frame 0, 200 from frame 10 to the clip's end at frame 20.
+            uZX::PsgData data{{}, {50.0, 1}};
+            for (int period : {400, 200}) {
+                data.frames.push_back({{uZX::PsgRegType::VolumeA, 12},
+                                       {uZX::PsgRegType::TonePeriodFineA, static_cast<uint8_t>(period & 0xff)},
+                                       {uZX::PsgRegType::TonePeriodCoarseA, static_cast<uint8_t>(period >> 8)}});
+                for (int i = 0; i < 9; ++i)
+                    data.frames.push_back({});
+            }
+            auto timed = insert(data);
+            auto& um = edit->getUndoManager();
+            auto lastNoteFrames = [&timed] { return timed->getTuningDetection().histogram.tone.at(200); };
+            const auto start = timed->getPosition().getStart();
+            expectEquals(lastNoteFrames(), 10);
+            timed->chooseKey({Scale::Tonic(2), false});
+
+            const int detectionRevision = timed->getTuningDetectionRevision();
+            const int tuningRevision = timed->getTuning().revision;
+            um.beginNewTransaction();
+            timed->setLength(te::TimeDuration::fromSeconds(0.6), false);
+            expectEquals(lastNoteFrames(), 20, "a longer clip holds the last note longer");
+            expect(timed->getTuningDetectionRevision() != detectionRevision, "the picker sees a new detection");
+            expect(timed->getTuning().revision != tuningRevision, "the painter sees a new tuning");
+            expect(timed->getTuning().keyChosen && timed->getTuning().key.getName() == "D major",
+                   "an explicit key survives the rebuild");
+            um.undo();
+            expectEquals(lastNoteFrames(), 10, "undo restores the length");
+            um.redo();
+            expectEquals(lastNoteFrames(), 20, "redo extends it again");
+            um.undo();
+
+            timed->setPosition({{start, te::TimeDuration::fromSeconds(0.4)}, te::TimeDuration::fromSeconds(0.1)});
+            expectEquals(lastNoteFrames(), 15, "an offset moves the source end");
+            timed->setPosition({{start, te::TimeDuration::fromSeconds(0.4)}, {}});
+            expectEquals(lastNoteFrames(), 10);
+
+            const auto framesPerBeat = timed->getPsg().getFramesPerBeat();
+            timed->getPsg().setFramesPerBeat(framesPerBeat * 2, nullptr);
+            expectEquals(lastNoteFrames(), 30, "frames per beat sets how many frames the clip spans");
+            timed->getPsg().setFramesPerBeat(framesPerBeat, nullptr);
+            expectEquals(lastNoteFrames(), 10);
+
+            // A tempo twice as fast at 10 s: moved past it, the clip spans twice the frames.
+            auto& tempos = edit->tempoSequence;
+            const double bpm = tempos.getTempoAt(start).getBpm();
+            tempos.insertTempo(tempos.toBeats(te::TimePosition::fromSeconds(10.0)), bpm * 2, 0.0f);
+            const auto clipLength = timed->getPosition().getLength();
+            timed->setPosition({{te::TimePosition::fromSeconds(20.0), clipLength}, {}});
+            expectEquals(lastNoteFrames(), 30, "crossing a tempo change rebuilds the detection");
+        }
+
         beginTest("A stored A4 wins over a stored table; a damaged A4 is ignored");
         {
             clip->state.setProperty(IDs::clipTuningA4, 436.0, nullptr);

@@ -10,9 +10,8 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 1. **Small extractions:** 3 (inspect the inherited parameter-editor behavior before replacing its base class).
 2. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 7 (plugin clock coordination), 8 (import timing).
-3. **PSG derived state:** 13 (mapping table) can precede 10; review 10 and 11 together, with separate regression cases.
-4. **Contracts:** 17 (establish supported nonzero-start callers first), 18 (command capabilities).
-5. **Low priority:** 9 (export formatting).
+3. **Contracts:** 17 (establish supported nonzero-start callers first), 18 (command capabilities).
+4. **Low priority:** 9 (export formatting).
 
 ## 3. Remove the parameter display's unsupported editing contract
 
@@ -63,36 +62,6 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 **Proposed boundary:** move serialization and filename formatting into a focused format helper. Keep selection of the current tuning data in the viewmodel and the save interaction in the GUI. Preserve output exactly and avoid adding an exporter interface for one format.
 
 **Validation:** preserve the existing CSV and filename assertions in `TuningViewModel.test.cpp`, adding helper-level cases only where useful. Verify the GUI still exports the selected tuning and reports write failure. Tooltip formatting in a presentation viewmodel is not, by itself, a reason for another split.
-
-## 10. Give PSG mutations one derived-state invalidation owner
-
-**Evidence:** [PsgList.cpp](../src/models/PsgList.cpp) increments `dataVersion_` only in `recomputeAccumulatedState`. Each `addFrameEvent` overload invokes that method, while `removeFrameEvent` and `removeAllFrames` only change the ValueTree. `EventList` in [PsgList.h](../src/models/PsgList.h) updates frame objects and sorting after tree changes but does not notify the owning list to rebuild accumulated values or advance its version. `PsgClip` caches pitch and tuning results using that version.
-
-**Problem:** callers must know which mutation paths repair derived state. Removing a frame after priming a clip cache leaves the cache version unchanged; removing a frame that supplied a register value can also leave later accumulated snapshots carrying that value. Direct property changes and undo/redo need the same audit. Frame property refresh currently sets present fields without clearing masks for removed properties. These are source-backed invalidation gaps; no runtime regression has been executed yet.
-
-**Proposed boundary:** make `PsgList` own invalidation for supported mutations, including ValueTree notifications and undo/redo. Establish an explicit distinction between stored per-frame changes and accumulated playback/display state. Preserve efficient bulk import with batching or lazy rebuilding rather than recomputing the entire list for every imported property.
-
-**Validation:** extend `PsgList.test.cpp` and `PsgClipTuning.test.cpp` with primed-cache cases for deletion, clearing, frame movement, property replacement/removal, and undo/redo. Check later inherited register values as well as pitch/tuning results. Existing round-trip and whole-clip redo tests do not establish these mutation contracts.
-
-## 11. Include timing context in tuning cache dependencies
-
-**Evidence:** `PsgClip::buildPitchHistogram` in [PsgClip.cpp](../src/models/PsgClip.cpp) weights the final stored frame through an end index derived from clip offset, length, and effective FPS. Effective FPS depends on frames per beat and tempo at the clip start. `getTuningDetection` caches solely by PSG data version; `getTuning` additionally checks user choices, but not this timing context.
-
-**Problem:** a length, offset, or timing change can alter histogram weights without changing the cache key. Repainting the component does not invalidate these model caches. This is a mismatch between calculation inputs and cache dependencies, separate from missing data-version updates in finding 10. A change need not alter the winning key to require recalculation of rankings and confidence.
-
-**Proposed boundary:** define the effective histogram inputs once and use them consistently for detection and resolved-tuning cache validity. A key containing the derived end-frame index and data version may be sufficient for the current histogram; verify the complete dependency chain before choosing it. Preserve explicit table/key choices while updating automatic rankings and the tuning revision consumed by the UI.
-
-**Validation:** prime both caches, then change clip length/offset, frames per beat, and tempo context; compare against freshly computed detection. Cover moving across a tempo boundary and undo/redo. Extend `PsgClipTuning.test.cpp`, whose current cache test checks reuse and explicit choice changes. Decide source-versus-visible-clip histogram semantics separately from the cache fix.
-
-## 13. Centralize persisted PSG parameter mapping
-
-**Evidence:** [PsgList.cpp](../src/models/PsgList.cpp) repeats parameter/property knowledge in `convertPsgFrameFromStrings`, `PsgParamFrame::createPsgFrameValueTree`, and `PsgParamFrame::updatePropertiesFromState`: an explicit conversion list, a serialization switch, and a deserialization if/else chain. `RetriggerEnvelope` maps to `IDs::re` in the reader/writer but is absent from the string-conversion list.
-
-**Problem:** adding or changing one persisted parameter requires synchronized edits in three representations. The envelope-retrigger omission demonstrates drift, though downstream numeric conversion may mask its runtime effect; this is not a claim of proven data loss.
-
-**Proposed boundary:** keep one explicit parameter-to-property mapping at the persistence boundary and reuse it for writing, reading, and legacy string normalization. Keep frame-index/version metadata separate. Preserve existing property names, sparse masks, and unknown-property handling; use a small table or equivalent existing mechanism, not a reflection framework.
-
-**Validation:** add a round-trip case covering every persisted parameter, including envelope retrigger, absent versus zero-valued fields, string-valued legacy state, and unknown properties. Use the current `PsgList.test.cpp` round-trip coverage as a starting point. Coordinate property-removal semantics with finding 10.
 
 ## 17. Make MIDI sample-range semantics consistent
 

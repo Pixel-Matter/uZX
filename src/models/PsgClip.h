@@ -54,9 +54,12 @@ public:
     static void linkAsOneTune(const juce::Array<PsgClip*>& clips);
 
     /** Tuning table and key detection over the tune's clips (see getTuneClips), run once
-        per change of their data. */
+        per change of their histograms. */
     const TuningDetection& getTuningDetection() const;
-    /** This clip's own pitches, cached until its data changes. */
+    /** Advances whenever getTuningDetection() is recomputed. */
+    int getTuningDetectionRevision() const { getTuningDetection(); return detectionRevision_; }
+    /** This clip's own pitches, cached until its data or its end frame (clip offset and
+        length at the effective frame rate) changes. */
     const PitchHistogram& getPitchHistogram() const;
 
     /** The grid and key in effect: the user's choice stored in the clip state, else the
@@ -108,7 +111,7 @@ private:
     mutable juce::Range<float> cachedPitchRange_ { 0.0f, 1.0f };
     mutable int pitchRangeVersion_ = -1;
     mutable std::optional<PitchHistogram> histogram_;
-    mutable int histogramVersion_ = -1;
+    mutable std::pair<int, int> histogramKey_ {-1, -1};  // data version, end frame
     mutable int histogramRevision_ = 0;
     mutable std::optional<TuningDetection> detection_;
     mutable std::vector<std::pair<const PsgClip*, int>> detectionKey_;  // tune clips and histogram revisions
@@ -119,7 +122,8 @@ private:
     mutable int tuningRevision_ = 0;
 
     Tuning resolveTuning() const;
-    PitchHistogram buildPitchHistogram() const;
+    int getHistogramEndIndex() const;
+    PitchHistogram buildPitchHistogram(int endIndex) const;
 
     void loadFrom(uZX::PsgData &data);
 

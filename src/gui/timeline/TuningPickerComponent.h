@@ -37,7 +37,7 @@ private:
 
     te::SafeSelectable<PsgClip> clip_;
     juce::ValueTree clipState_;  // kept so the listener can be removed after the clip is gone
-    int listedDataVersion_ = -1;
+    int listedDetectionRevision_ = -1;
 
     Label tableLabel_{{}, "Tuning"};
     Label clockLabel_{{}, "Chip clock"};

@@ -168,14 +168,14 @@ void TuningPickerComponent::handleAsyncUpdate() {
     auto* c = clip_.get();
     if (c == nullptr)
         return;
-    if (listedDataVersion_ != c->getPsg().getDataVersion())
+    if (listedDetectionRevision_ != c->getTuningDetectionRevision())
         rebuildLists(*c);
     refresh();
 }
 
 void TuningPickerComponent::rebuildLists(const PsgClip& clip) {
     const auto& detection = clip.getTuningDetection();
-    listedDataVersion_ = clip.getPsg().getDataVersion();
+    listedDetectionRevision_ = clip.getTuningDetectionRevision();
 
     // Detection ranks one tracker table per group of near-identical grids. The tables it
     // merged away (PT #0, a semitone from PT #3) are listed after, so a tune written for

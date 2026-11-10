@@ -28,33 +28,30 @@ static double getBeatLengthSecondsAt(te::Edit& edit, te::TimePosition pos) {
 }
 
 namespace {
+    /** The persisted property of each PSG parameter, indexed by PsgParamType. */
+    const juce::Identifier& paramPropertyId(size_t type) {
+        static const juce::Identifier ids[] {
+            IDs::va, IDs::vb, IDs::vc,  // Volume
+            IDs::pa, IDs::pb, IDs::pc,  // TonePeriod
+            IDs::ta, IDs::tb, IDs::tc,  // ToneIsOn
+            IDs::na, IDs::nb, IDs::nc,  // NoiseIsOn
+            IDs::ea, IDs::eb, IDs::ec,  // EnvelopeIsOn
+            IDs::n,  IDs::e,  IDs::s,   // NoisePeriod, EnvelopePeriod, EnvelopeShape
+            IDs::ra, IDs::rb, IDs::rc,  // RetriggerTone
+            IDs::re,                    // RetriggerEnvelope
+        };
+        static_assert(std::extent_v<decltype(ids)> == PsgParamType::size());
+        return ids[type];
+    }
+
     void convertPsgFrameFromStrings(juce::ValueTree& frames) {
         if (frames.hasType(IDs::FRAME)) {
             te::convertPropertyToType<double>(frames, te::IDs::b);
             te::convertPropertyToType<int>   (frames, IDs::i); // machine-frame index
             // te::convertPropertyToType<int>   (frames, te::IDs::metadata);
 
-            te::convertPropertyToType<int> (frames, IDs::va); // VolumeA
-            te::convertPropertyToType<int> (frames, IDs::vb); // VolumeB
-            te::convertPropertyToType<int> (frames, IDs::vc); // VolumeC
-            te::convertPropertyToType<int> (frames, IDs::pa); // TonePitchA
-            te::convertPropertyToType<int> (frames, IDs::pb); // TonePitchB
-            te::convertPropertyToType<int> (frames, IDs::pc); // TonePitchC
-            te::convertPropertyToType<int> (frames, IDs::ta); // ToneIsOnA
-            te::convertPropertyToType<int> (frames, IDs::tb); // ToneIsOnB
-            te::convertPropertyToType<int> (frames, IDs::tc); // ToneIsOnC
-            te::convertPropertyToType<int> (frames, IDs::na); // NoiseIsOnA
-            te::convertPropertyToType<int> (frames, IDs::nb); // NoiseIsOnB
-            te::convertPropertyToType<int> (frames, IDs::nc); // NoiseIsOnC
-            te::convertPropertyToType<int> (frames, IDs::ea); // EnvelopeIsOnA
-            te::convertPropertyToType<int> (frames, IDs::eb); // EnvelopeIsOnB
-            te::convertPropertyToType<int> (frames, IDs::ec); // EnvelopeIsOnC
-            te::convertPropertyToType<int> (frames, IDs::ra); // RetriggerA
-            te::convertPropertyToType<int> (frames, IDs::rb); // RetriggerB
-            te::convertPropertyToType<int> (frames, IDs::rc); // RetriggerC
-            te::convertPropertyToType<int> (frames, IDs::n);  // NoisePitch
-            te::convertPropertyToType<int> (frames, IDs::e);  // EnvelopePitch
-            te::convertPropertyToType<int> (frames, IDs::s);  // EnvelopeShape
+            for (size_t t = 0; t < PsgParamType::size(); ++t)
+                te::convertPropertyToType<int>(frames, paramPropertyId(t));
         }
         for (auto v : frames)
             convertPsgFrameFromStrings(v);
@@ -81,36 +78,9 @@ juce::ValueTree PsgParamFrame::createPsgFrameValueTree(int frameIndex, const Psg
     auto v = te::createValueTree(IDs::FRAME,
         IDs::i, frameIndex
     );
-    PsgParamType::forEach([&v, &data](auto paramTypeVal) {
-        auto paramType = paramTypeVal();  // Extract enum value from integral_constant
-        if (data.isSet(paramType)) {
-            switch(paramType) {
-                case PsgParamType::VolumeA:           v.setProperty(IDs::va, *data[paramType], nullptr); break;
-                case PsgParamType::VolumeB:           v.setProperty(IDs::vb, *data[paramType], nullptr); break;
-                case PsgParamType::VolumeC:           v.setProperty(IDs::vc, *data[paramType], nullptr); break;
-                case PsgParamType::TonePeriodA:       v.setProperty(IDs::pa, *data[paramType], nullptr); break;
-                case PsgParamType::TonePeriodB:       v.setProperty(IDs::pb, *data[paramType], nullptr); break;
-                case PsgParamType::TonePeriodC:       v.setProperty(IDs::pc, *data[paramType], nullptr); break;
-                case PsgParamType::ToneIsOnA:         v.setProperty(IDs::ta, *data[paramType], nullptr); break;
-                case PsgParamType::ToneIsOnB:         v.setProperty(IDs::tb, *data[paramType], nullptr); break;
-                case PsgParamType::ToneIsOnC:         v.setProperty(IDs::tc, *data[paramType], nullptr); break;
-                case PsgParamType::NoiseIsOnA:        v.setProperty(IDs::na, *data[paramType], nullptr); break;
-                case PsgParamType::NoiseIsOnB:        v.setProperty(IDs::nb, *data[paramType], nullptr); break;
-                case PsgParamType::NoiseIsOnC:        v.setProperty(IDs::nc, *data[paramType], nullptr); break;
-                case PsgParamType::EnvelopeIsOnA:     v.setProperty(IDs::ea, *data[paramType], nullptr); break;
-                case PsgParamType::EnvelopeIsOnB:     v.setProperty(IDs::eb, *data[paramType], nullptr); break;
-                case PsgParamType::EnvelopeIsOnC:     v.setProperty(IDs::ec, *data[paramType], nullptr); break;
-                case PsgParamType::RetriggerToneA:    v.setProperty(IDs::ra, *data[paramType], nullptr); break;
-                case PsgParamType::RetriggerToneB:    v.setProperty(IDs::rb, *data[paramType], nullptr); break;
-                case PsgParamType::RetriggerToneC:    v.setProperty(IDs::rc, *data[paramType], nullptr); break;
-                case PsgParamType::RetriggerEnvelope: v.setProperty(IDs::re, *data[paramType], nullptr); break;
-                case PsgParamType::NoisePeriod:       v.setProperty(IDs::n,  *data[paramType], nullptr); break;
-                case PsgParamType::EnvelopePeriod:    v.setProperty(IDs::e,  *data[paramType], nullptr); break;
-                case PsgParamType::EnvelopeShape:     v.setProperty(IDs::s,  *data[paramType], nullptr); break;
-                default: break;
-            }
-        }
-    });
+    for (size_t t = 0; t < PsgParamType::size(); ++t)
+        if (const auto value = data[PsgParamType(static_cast<int>(t))])
+            v.setProperty(paramPropertyId(t), *value, nullptr);
     return v;
 }
 
@@ -173,64 +143,10 @@ void PsgParamFrame::removeLegacyBeatProperty(juce::UndoManager* um) {
 
 void PsgParamFrame::updatePropertiesFromState() noexcept {
     frameIndex  = static_cast<int>(state.getProperty(IDs::i, -1));
-    // TODO update other properties
-    // Why not use CahedValue<>? Too slow?
-    // read all properties from state
-    PsgParamType type = PsgParamType::undefined();
-    for (int i = 0; i < state.getNumProperties(); ++i) {
-        // TODO optimize somehow
-        auto p = state.getPropertyName(i);
-        if (p == IDs::va) {
-            type = PsgParamType::VolumeA;
-        } else if (p == IDs::vb) {
-            type = PsgParamType::VolumeB;
-        } else if (p == IDs::vc) {
-            type = PsgParamType::VolumeC;
-        } else if (p == IDs::pa) {
-            type = PsgParamType::TonePeriodA;
-        } else if (p == IDs::pb) {
-            type = PsgParamType::TonePeriodB;
-        } else if (p == IDs::pc) {
-            type = PsgParamType::TonePeriodC;
-        } else if (p == IDs::ta) {
-            type = PsgParamType::ToneIsOnA;
-        } else if (p == IDs::tb) {
-            type = PsgParamType::ToneIsOnB;
-        } else if (p == IDs::tc) {
-            type = PsgParamType::ToneIsOnC;
-        } else if (p == IDs::na) {
-            type = PsgParamType::NoiseIsOnA;
-        } else if (p == IDs::nb) {
-            type = PsgParamType::NoiseIsOnB;
-        } else if (p == IDs::nc) {
-            type = PsgParamType::NoiseIsOnC;
-        } else if (p == IDs::ea) {
-            type = PsgParamType::EnvelopeIsOnA;
-        } else if (p == IDs::eb) {
-            type = PsgParamType::EnvelopeIsOnB;
-        } else if (p == IDs::ec) {
-            type = PsgParamType::EnvelopeIsOnC;
-        } else if (p == IDs::ra) {
-            type = PsgParamType::RetriggerToneA;
-        } else if (p == IDs::rb) {
-            type = PsgParamType::RetriggerToneB;
-        } else if (p == IDs::rc) {
-            type = PsgParamType::RetriggerToneC;
-        } else if (p == IDs::re) {
-            type = PsgParamType::RetriggerEnvelope;
-        } else if (p == IDs::n) {
-            type = PsgParamType::NoisePeriod;
-        } else if (p == IDs::e) {
-            type = PsgParamType::EnvelopePeriod;
-        } else if (p == IDs::s) {
-            type = PsgParamType::EnvelopeShape;
-        } else {
-            continue; // unknown property
-        }
-        if (type.isValid()) {
-            data.set(type, static_cast<uint16>(static_cast<int>(state.getProperty(p))));
-        }
-    }
+    data = {};  // the owning list refills the accumulated values
+    for (size_t t = 0; t < PsgParamType::size(); ++t)
+        if (const auto* value = state.getPropertyPointer(paramPropertyId(t)))
+            data.set(PsgParamType(static_cast<int>(t)), static_cast<uint16>(static_cast<int>(*value)));
 }
 
 template<>
@@ -305,7 +221,6 @@ void PsgList::initialise(juce::UndoManager* um) {
     framesPerBeat_.referTo(state, IDs::framesPerBeat, um, 0.0);
 
     framesList = std::make_unique<EventList<PsgParamFrame>>(state);
-    recomputeAccumulatedState();
 }
 
 double PsgList::getFrameRate() const noexcept {
@@ -384,15 +299,13 @@ void PsgList::migrateToFrameIndicesIfNeeded(const PsgClip& clip, double frameRat
     for (int i = 1; i < frames.size(); ++i)
         jassert(frames[i]->getFrameIndex() != frames[i - 1]->getFrameIndex());
    #endif
-
-    recomputeAccumulatedState();
 }
 
-void PsgList::recomputeAccumulatedState() {
+void PsgList::recomputeAccumulatedState(const juce::Array<PsgParamFrame*>& frames) const {
     ++dataVersion_;
     PsgParamFrameData accumulated;
     accumulated.resetMixer();
-    for (auto* frame : getFrames()) {
+    for (auto* frame : frames) {
         // Merge this frame's changes into accumulated state
         for (size_t i = 0; i < PsgParamType::size(); ++i) {
             if (frame->data.isSet(PsgParamType(static_cast<int>(i)))) {
@@ -413,70 +326,17 @@ void PsgList::clear (juce::UndoManager* um) {
     importedName = {};
 }
 
-void PsgList::copyFrom(const PsgList& other, juce::UndoManager* um) {
-    if (this != &other) {
-        clear(um);
-        state.copyPropertiesFrom(other.state, um);
-        addFrom(other, um);
-    }
-}
-
-void PsgList::moveFrom(PsgList& other, juce::UndoManager* um) {
-    if (this != &other) {
-        clear(um);
-        // Fastest way
-        // TODO detach other from parent if any
-        state.removeChild(state.getChildWithName(IDs::PSG), um);
-        state.addChild(other.state, -1, um);
-    }
-}
-
-void PsgList::addFrom(const PsgList& other, juce::UndoManager* um) {
-    if (this != &other) {
-        for (int i = 0; i < other.state.getNumChildren(); ++i) {
-            auto child = other.state.getChild(i).createCopy();
-            if (child.hasType(IDs::FRAME))
-                child.removeProperty(te::IDs::b, nullptr);
-            state.addChild(std::move(child), -1, um);
-        }
-    }
-}
-
 void PsgList::setMidiChannel(te::MidiChannel newChannel) {
     midiChannel = newChannel;
-}
-
-PsgParamFrame* PsgList::addFrameEvent(const PsgParamFrame& event, juce::UndoManager* um) {
-    auto v = event.state.createCopy();
-    v.removeProperty(te::IDs::b, nullptr);
-    state.addChild(v, -1, um);
-    recomputeAccumulatedState();
-    return framesList->getEventFor(v);
 }
 
 PsgParamFrame* PsgList::addFrameEvent(int frameIndex, const PsgParamFrameData& data, juce::UndoManager* um) {
     auto v = PsgParamFrame::createPsgFrameValueTree(frameIndex, data);
     state.addChild(v, -1, um);
-    recomputeAccumulatedState();
     return framesList->getEventFor(v);
 }
 
-PsgParamFrame* PsgList::addFrameEvent(int frameIndex, const uZX::PsgRegsFrame& regs, juce::UndoManager* um) {
-    auto v = PsgParamFrame::createPsgFrameValueTree(frameIndex, PsgParamFrameData {regs});
-    state.addChild(v, -1, um);
-    recomputeAccumulatedState();
-    return framesList->getEventFor(v);
-}
 
-void PsgList::removeFrameEvent(PsgParamFrame& e, juce::UndoManager* um) {
-    state.removeChild(e.state, um);
-}
-
-void PsgList::removeAllFrames(juce::UndoManager* um) {
-    for (int i = state.getNumChildren(); --i >= 0;)
-        if (state.getChild(i).hasType(IDs::FRAME))
-            state.removeChild(i, um);
-}
 
 void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager* um) {
     PsgParamFrameData params;
@@ -536,8 +396,6 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
         auto v = PsgParamFrame::createPsgFrameValueTree(static_cast<int>(i), params);
         state.addChild(v, -1, um);
     }
-
-    recomputeAccumulatedState();
 }
 
 void PsgList::loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager* um) {
@@ -553,7 +411,12 @@ void PsgList::loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoMa
 
 const juce::Array<PsgParamFrame*>& PsgList::getFrames() const {
     jassert (framesList != nullptr);
-    return getEventsChecked(framesList->getSortedList());
+    const auto& frames = getEventsChecked(framesList->getSortedList());
+    if (framesList->dataChanged) {
+        framesList->dataChanged = false;
+        recomputeAccumulatedState(frames);
+    }
+    return frames;
 }
 
 //==============================================================================

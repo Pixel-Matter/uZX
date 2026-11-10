@@ -152,6 +152,7 @@ set(TEST_SOURCES
     gui/timeline/ClipComponents.test.cpp
     gui/timeline/EditComponent.test.cpp
     gui/timeline/PsgClipComponent.test.cpp
+    gui/timeline/PsgParamEditorComponent.test.cpp
     gui/timeline/PsgClipTestHelpers.h
     gui/timeline/PsgVisualGuide.test.cpp
     gui/timeline/PsgPaintingBenchmark.test.cpp

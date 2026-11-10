@@ -1,7 +1,6 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include <optional>
 
 #include "TimelineGrid.h"
 #include "../../controllers/EditState.h"
@@ -34,9 +33,11 @@ private:
 };
 
 
-class PsgParamEditorComponent: public te::CurveEditor,
-                               public ZoomViewState::Listener,
-                               private TimelineGrid::Listener
+/** Shows one parameter of the last selected PSG clip as a stepped line. Display only: a click selects the clip. */
+class PsgParamEditorComponent: public Component,
+                               private ZoomViewState::Listener,
+                               private TimelineGrid::Listener,
+                               private ChangeListener
 {
 public:
     PsgParamEditorComponent(EditViewState& evs, TimelineGrid& g);
@@ -44,64 +45,33 @@ public:
 
     void setCurrentParam(PsgParamType param);
     PsgParamType getCurrentParam() const { return currentParam; }
+    /** False once the shown clip is deleted. */
     bool hasClip() const { return currentClip.get() != nullptr; }
 
-    std::function<void()> onClipChanged;
-
-    // ZoomViewState::Listener overrides
-    void viewRangeChanged() override;
-    void gridChanged() override;
-    void setCurrentClip(PsgClip* c);
-    void changeListenerCallback(ChangeBroadcaster* cb) override;
-    void selectableObjectChanged(te::Selectable* s) override;
-
-    // CurveEditor overrides
-    String getTooltip() override;
-    float getValue(int idx) const;
-    float getValueAt(te::EditPosition time) override;
-    te::EditPosition getPointPosition(int idx) override;
-    float getPointValue(int idx) override;
-    float getPointCurve(int /*idx*/) override;
-    void removePoint(int /*index*/) override;
-    int addPoint(te::EditPosition /*time*/, float /*value*/, float /*curve*/) override;
-    int getNumPoints() override;
-    te::CurvePoint getBezierHandle(int /*idx*/) override;
-    te::CurvePoint getBezierPoint(int /*idx*/) override;
-    int nextIndexAfter(te::EditPosition time) override;
-    void getBezierEnds(int /*index*/, double& x1out, float& y1out, double& x2out, float& y2out) override;
-    std::pair<te::CurvePoint, te::CurvePoint> getBezierEnds(int /*index*/) override;
-    int movePoint(int /*index*/, te::EditPosition /*newTime*/, float /*newValue*/, bool /*removeInterveningPoints*/) override;
-    void setValueWhenNoPoints(float /*value*/) override;
-    te::CurveEditorPoint* createPoint(int /*idx*/) override;
-    int curvePoint(int /*index*/, float /*newCurve*/) override;
-    String getCurveName() override;
-    int getCurveNameOffset() override;
-    te::Selectable* getItem() override;
-    bool isShowingCurve() const override;
-    void updateFromTrack() override;
-    Colour getCurrentLineColour() override;
-    Colour getCurrentFillColour() override;
-    Colour getDefaultLineColour() const override;
-    Colour getSelectedLineColour() const override;
-    Colour getBackgroundColour() const override;
-    Colour getCurveNameTextBackgroundColour() const override;
-    Colour getPointOutlineColour() const override;
-    Range<float> getParameterRange() const override;
-    double timeScale() const;
     void paint(Graphics& g) override;
     bool hitTest(int x, int y) override;
-
-protected:
-    void paintGrid(Graphics& g);
-    void showBubbleForPointUnderMouse() override;
-    void hideBubble() override;
+    void mouseDown(const MouseEvent& e) override;
+    void mouseEnter(const MouseEvent&) override { repaint(); }
+    void mouseExit(const MouseEvent&) override { repaint(); }
 
 private:
+    void viewRangeChanged() override { repaint(); }
+    void gridChanged() override { repaint(); }
+    void changeListenerCallback(ChangeBroadcaster* cb) override;
+
+    float timeToX(te::TimePosition t) const;
+    te::TimePosition xToTime(float x) const;
+    float valueToY(float value) const;
+    Point<float> getPosition(const PsgParamList& params, int idx) const;
+    void paintGrid(Graphics& g);
+
+    static constexpr float pointRadius = 5.0f;
+
     EditViewState& editViewState;
     TimelineGrid& grid;
+    // Frames are read through the clip at each use, so a deleted clip leaves nothing dangling
     tracktion::SafeSelectable<PsgClip> currentClip;
     PsgParamType currentParam;
-    std::optional<PsgParamList> paramList;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgParamEditorComponent)
 };

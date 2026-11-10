@@ -272,6 +272,9 @@ public:
     // Custom tooltip drawing
     void drawTooltip(Graphics& g, const String& text, int width, int height) override;
 
+    void drawProgressBar(Graphics& g, ProgressBar& bar, int width, int height, double progress,
+                         const String& textToShow) override;
+
     // Timeline specific drawing methods
     void drawTimelineCursor(Graphics& g, float position, int height);
 

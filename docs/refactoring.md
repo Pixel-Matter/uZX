@@ -8,33 +8,11 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 ## Implementation order
 
-1. **Small extractions:** 2 (AY plugin setup), then 4 (timecode menu), then 1 (edit replacement, after establishing lifecycle coverage), then 3 (inspect the inherited parameter-editor behavior before replacing its base class).
+1. **Small extractions:** 3 (inspect the inherited parameter-editor behavior before replacing its base class).
 2. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 7 (plugin clock coordination), 8 (import timing).
 3. **PSG derived state:** 13 (mapping table) can precede 10; review 10 and 11 together, with separate regression cases.
-4. **Contracts:** 12 (widget callback lifetime), 17 (establish supported nonzero-start callers first), 18 (command capabilities).
+4. **Contracts:** 17 (establish supported nonzero-start callers first), 18 (command capabilities).
 5. **Low priority:** 9 (export formatting).
-
-## 1. Centralize edit replacement lifecycle
-
-**Evidence:** `ArrangerController::setEdit` in [MainController.cpp](../src/controllers/MainController.cpp) and `PlayerController::setEdit` in [PlayerController.cpp](../src/controllers/PlayerController.cpp) repeat the same ordered lifecycle: optionally save the previous edit, clear window content and selection, release view/playback state, remove the old temporary directory, install the new edit, and rebuild playback and view state.
-
-**Problem:** the ordering protects references to the old edit, but two implementations own that knowledge. A lifetime fix can reach one app and leave the other unchanged. The existing `BaseController` already owns the edit, window, playback helper, and view state.
-
-**Proposed boundary:** move shared teardown and installation into the existing `BaseController`. Keep Studio and Player policy explicit at the call sites: timecode migration versus seconds display, document type, headers, and window title. Preserve current ordering and error handling; avoid a new inheritance hierarchy or a generic callback framework.
-
-**Validation:** cover null replacement retaining the current edit, dependent objects being released before the old edit, and successful replacement in both apps. Existing `PlayWholeEdit` and `EditState` tests cover related pieces, but do not establish the complete controller lifecycle. Exercise opening and switching projects in Studio and Player with the native UX harness.
-
-**Related issue:** the Global TODO already records data loss when reopening the current project. Treat that as a separate behavior fix with its own regression case; consolidation alone does not resolve it.
-
-## 2. Consolidate AY plugin setup during PSG import
-
-**Evidence:** [PlayerController.cpp](../src/controllers/PlayerController.cpp) contains both `ensureAYPluginOnTrack` and a separate scan/create/insert sequence in `importPsgToNewEdit`. [Helpers.cpp](../src/util/Helpers.cpp), in `importPsgAsClip`, contains a third implementation.
-
-**Problem:** the Player helper implicitly uses `edit_` for plugin creation, so it cannot serve the newly prepared edit before that edit becomes current. This hidden dependency causes duplication of the rule that a PSG import must have an AY plugin on its destination track.
-
-**Proposed boundary:** extract one track-level operation that ensures the plugin exists and uses the track's owning edit for its plugin cache. Route all three implementations through it. Keep file dialogs, validation messages, transport decisions, track selection, cursor placement, naming, and zooming in their current workflows.
-
-**Validation:** check that a track without an AY plugin receives one, an existing AY plugin is retained without duplication, and a track belonging to a newly prepared edit uses that edit's cache. Existing PSG clip insertion tests do not cover plugin assignment. Smoke-test Studio import and both Player import destinations.
 
 ## 3. Remove the parameter display's unsupported editing contract
 
@@ -45,16 +23,6 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 **Proposed boundary:** first inspect Tracktion's `CurveEditor` implementation and identify the selection listeners, coordinate conversion, tooltips, zoom, and input behavior the component actually uses. Then replace the unsupported editing inheritance with a display component, retaining only the needed behavior. Do not implement PSG editing as part of this refactor; that is a separate feature in TODO.
 
 **Validation:** establish focused coverage for no clip, selected clip, clip deletion, parameter switching, zoom, and selection updates. Check mouse and keyboard behavior with the native UX harness. Existing `PsgClipComponent` rendering tests exercise a different component and are not sufficient for this change.
-
-## 4. Move timecode menu construction into the GUI layer
-
-**Evidence:** `buildTimecodeFormatMenu` in [EditUtilities.cpp](../src/models/EditUtilities.cpp), declared in [EditUtilities.h](../src/models/EditUtilities.h), constructs a `PopupMenu`, labels, checked states, and callbacks alongside persisted timecode settings and migration logic. Callers exist in both [Ruler.cpp](../src/gui/timeline/Ruler.cpp) and [MainController.cpp](../src/controllers/MainController.cpp).
-
-**Problem:** model utilities own UI presentation as well as edit state. Menu changes therefore touch a model implementation used by PSG and timing code.
-
-**Proposed boundary:** move menu construction and its declaration into a shared GUI helper, using the existing GUI utilities if appropriate. Keep timecode accessors, persistence, and legacy migration in `models/EditUtilities`. Update all ruler and main-menu callers; do not duplicate the menu at each call site.
-
-**Validation:** retain menu labels, order, checked states, and callback behavior. Verify ruler and main-menu selections update the display mode without changing project FPS. Run the existing `ProjectFps` tests for the state/migration behavior and check both menu entry points in the UI.
 
 ## 6. Establish audio-thread ownership of mutable runtime state
 
@@ -115,16 +83,6 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 **Proposed boundary:** define the effective histogram inputs once and use them consistently for detection and resolved-tuning cache validity. A key containing the derived end-frame index and data version may be sufficient for the current histogram; verify the complete dependency chain before choosing it. Preserve explicit table/key choices while updating automatic rankings and the tuning revision consumed by the UI.
 
 **Validation:** prime both caches, then change clip length/offset, frames per beat, and tempo context; compare against freshly computed detection. Cover moving across a tempo boundary and undo/redo. Extend `PsgClipTuning.test.cpp`, whose current cache test checks reuse and explicit choice changes. Decide source-versus-visible-clip histogram semantics separately from the cache fix.
-
-## 12. Make widget bindings own callback teardown
-
-**Evidence:** [ParamBindings.cpp](../src/gui/common/ParamBindings.cpp) installs widget callbacks capturing the binding's `this`: slider value, drag, and text-conversion callbacks; combo change; and button/toggle click handlers. Its base destructor removes the endpoint listener, but the derived bindings in [ParamBindings.h](../src/gui/common/ParamBindings.h) do not remove those widget callbacks. The mouse-listener member does detach its own registration.
-
-**Problem:** a widget that survives destruction of its binding retains callbacks into the destroyed binding. Existing compound controls generally destroy binding and widget together, so this review does not establish a crash in their current normal teardown. The reusable binding classes nevertheless expose an incomplete lifetime contract for independently scoped bindings or widget reuse.
-
-**Proposed boundary:** give each binding explicit ownership of the callbacks it installs and detach them during destruction, including slider formatting/parsing callbacks. Check the policy for pre-existing or subsequently replaced callbacks before implementing cleanup; do not erase callbacks owned by a newer binding. Document that the widget must outlive its attachment and avoid a general callback registry.
-
-**Validation:** extend `ParamBindings.test.cpp` to destroy a binding while retaining its widget, then exercise value changes, drag gestures, text conversion, and clicks. Check rebinding and owner destruction order. Do not confuse endpoint-listener removal with widget callback cleanup.
 
 ## 13. Centralize persisted PSG parameter mapping
 

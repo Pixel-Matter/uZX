@@ -8,6 +8,7 @@
 
 #include "../gui/main/MainWindow.h"
 #include "../gui/main/MainDocument.h"
+#include "../gui/common/Utilities.h"
 #include "../gui/main/AboutDialog.h"
 #include "../gui/timeline/PsgClipComponent.h"
 #include "../gui/video/RenderVideoDialog.h"
@@ -949,6 +950,42 @@ std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
     return edit;
 }
 
+void BaseController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
+    if (edit == nullptr)  // unreadable file, already reported: keep the current edit
+        return;
+
+    if (savePrev && edit_ != nullptr)
+        EditFileOps::saveEdit(*edit_, true, true, false);
+
+    const auto w = window_.getWidth(), h = window_.getHeight();
+
+    // Release everything referring to the old edit before destroying it
+    window_.clearContentComponent();
+    MoToolApp::getSelectionManager().deselectAll();
+    releaseEditDependents();
+    editViewState_.reset();
+    playWholeEdit_.reset();
+
+    if (edit_ != nullptr)
+        edit_->getTempDirectory(false).deleteRecursively();
+
+    edit_ = std::move(edit);
+
+    rescaleAllMidiClipsToFit(*edit_);
+    edit_->playInStopEnabled = true;
+    migrateTimecodeDisplaySettings(*edit_);  // a new edit shows bars | beats | frames
+    useGlobalMasterVolume();
+    edit_->getTransport().ensureContextAllocated();
+    edit_->ensureNumberOfAudioTracks(1);
+    playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);
+    EditFileOps::saveEdit(*edit_, true, true, false);
+
+    editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
+    showEdit();
+    window_.setSize(w, h);
+    window_.repaint();
+}
+
 // ================================= MainController =============================================
 void ArrangerController::initialize() {
     auto title = String::fromUTF8("Pixel Matter μZX Studio v") + MoToolApp::getApp().getApplicationVersion();
@@ -1105,55 +1142,9 @@ std::unique_ptr<te::Edit> ArrangerController::createOrLoadStartupEdit() {
 }
 
 
-void ArrangerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
-    if (edit == nullptr)  // unreadable file, already reported: keep the current edit
-        return;
-
-    if (savePrev && edit_ != nullptr) {
-        EditFileOps::saveEdit(*edit_, true, true, false);
-    }
-
-    auto w = window_.getWidth(), h = window_.getHeight();
-
-    // Clear UI components first to release any references to the old edit
-    window_.clearContentComponent();
-
-    // Clear selection manager references to old edit objects
-    MoToolApp::getSelectionManager().deselectAll();
-
-    // Reset view state before replacing edit
-    editViewState_.reset();
-    playWholeEdit_.reset();
-
-    // Clean up old edit temp directory if it exists
-    if (edit_ != nullptr) {
-        edit_->getTempDirectory(false).deleteRecursively();
-    }
-
-    // Replace the edit
-    edit_ = std::move(edit);
-
-    rescaleAllMidiClipsToFit(*edit_);
-
-    edit_->playInStopEnabled = true;
-    migrateTimecodeDisplaySettings(*edit_);
-    useGlobalMasterVolume();
-
-    createTracksAndAssignInputs();
-    playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);
-    EditFileOps::saveEdit(*edit_, true, true, false);
-
-    editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
-
+void ArrangerController::showEdit() {
     window_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
     setMainWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
-    window_.setSize(w, h);
-    window_.repaint();
-}
-
-void ArrangerController::createTracksAndAssignInputs() {
-    edit_->getTransport().ensureContextAllocated();
-    edit_->ensureNumberOfAudioTracks(1);
 }
 
 void ArrangerController::zoomToSelection() {

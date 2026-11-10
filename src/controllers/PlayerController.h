@@ -34,7 +34,8 @@ public:
 private:
     PropertiesFile& getAppSettings();
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
-    void setEdit(std::unique_ptr<te::Edit> edit, bool savePrev = false) override;
+    void releaseEditDependents() override;
+    void showEdit() override;
     void updateWindowTitle();
     /** Rebuilds the view for Viz mode or out of it, telling what Viz mode shows when its layout or
         scopes change. */
@@ -47,6 +48,7 @@ private:
 
     std::unique_ptr<RememberedStereo> rememberedStereo_;
     bool vizMode_ = false;
+    int keptVizScopesWidth_ = 0, keptFootersWidth_ = 0;  // from the edit being replaced
 
     struct AppSettingsListener : juce::ChangeListener
     {

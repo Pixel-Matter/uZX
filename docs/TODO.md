@@ -6,17 +6,13 @@ Granular open tasks for µZX Studio and the shared engine. Player priorities are
 
 See the [review scope and implementation order](refactoring.md#implementation-order). Numbers are the findings' stable IDs, not execution order; finished findings are deleted.
 
-- [ ] 1. [Centralize edit replacement lifecycle](refactoring.md#1-centralize-edit-replacement-lifecycle) shared by Studio and Player, preserving app-specific policy and teardown order.
-- [ ] 2. [Consolidate AY plugin setup during PSG import](refactoring.md#2-consolidate-ay-plugin-setup-during-psg-import), using the destination track's owning edit.
 - [ ] 3. [Remove the parameter display's unsupported editing contract](refactoring.md#3-remove-the-parameter-displays-unsupported-editing-contract) after checking inherited selection, zoom, and input behavior.
-- [ ] 4. [Move timecode menu construction into the GUI layer](refactoring.md#4-move-timecode-menu-construction-into-the-gui-layer), shared by ruler and main-menu callers.
 - [ ] 6. [Establish audio-thread ownership of mutable runtime state](refactoring.md#6-establish-audio-thread-ownership-of-mutable-runtime-state), reviewing render locks and the existing mapper race together.
 - [ ] 7. [Make clock coordination between plugins explicit](refactoring.md#7-make-clock-coordination-between-plugins-explicit), including chain order and persisted settings.
 - [ ] 8. [Separate PSG metadata, clip timing, and project policy](refactoring.md#8-separate-psg-metadata-clip-timing-and-project-policy), extending the existing import-timing tasks.
 - [ ] 9. [Extract tuning export formatting](refactoring.md#9-extract-tuning-export-formatting), preserving CSV output and filename behavior.
 - [ ] 10. [Give PSG mutations one derived-state invalidation owner](refactoring.md#10-give-psg-mutations-one-derived-state-invalidation-owner), covering removal, property edits, and undo/redo.
 - [ ] 11. [Include timing context in tuning cache dependencies](refactoring.md#11-include-timing-context-in-tuning-cache-dependencies), preserving explicit choices while refreshing automatic results.
-- [x] 12. [Make widget bindings own callback teardown](refactoring.md#12-make-widget-bindings-own-callback-teardown), including slider text conversion and widget reuse.
 - [ ] 13. [Centralize persisted PSG parameter mapping](refactoring.md#13-centralize-persisted-psg-parameter-mapping), preserving property names, sparse masks, and legacy normalization.
 - [ ] 17. [Make MIDI sample-range semantics consistent](refactoring.md#17-make-midi-sample-range-semantics-consistent), checking nonzero starts and final render spans.
 - [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities).

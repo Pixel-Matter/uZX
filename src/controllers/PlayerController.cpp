@@ -50,53 +50,23 @@ std::unique_ptr<te::Edit> PlayerController::createOrLoadStartupEdit() {
     return createOrLoadEdit(EditFileOps::getStartupEditFile(engine_.getPropertyStorage()));
 }
 
-void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
-    if (edit == nullptr)  // unreadable file, already reported: keep the current edit
-        return;
-
-    if (savePrev && edit_ != nullptr) {
-        EditFileOps::saveEdit(*edit_, true, true, false);
-    }
-
-    auto w = window_.getWidth(), h = window_.getHeight();
-
-    window_.clearContentComponent();
-    MoToolApp::getSelectionManager().deselectAll();
-    const auto vizScopesWidth = editViewState_ != nullptr ? editViewState_->vizScopesWidth.get() : 0;
-    const auto footersWidth = editViewState_ != nullptr ? editViewState_->footersWidth.get() : 0;
-    editViewState_.reset();
-    playWholeEdit_.reset();
+void PlayerController::releaseEditDependents() {
+    // The devices and scopes keep their widths in the next file
+    keptVizScopesWidth_ = editViewState_ != nullptr ? editViewState_->vizScopesWidth.get() : 0;
+    keptFootersWidth_ = editViewState_ != nullptr ? editViewState_->footersWidth.get() : 0;
     rememberedStereo_.reset();
+}
 
-    if (edit_ != nullptr) {
-        edit_->getTempDirectory(false).deleteRecursively();
-    }
-
-    edit_ = std::move(edit);
-
-    rescaleAllMidiClipsToFit(*edit_);
-
-    edit_->playInStopEnabled = true;
-    migrateTimecodeDisplaySettings(*edit_);  // as in Studio: a new edit shows bars | beats | frames
-    useGlobalMasterVolume();
-
-    edit_->getTransport().ensureContextAllocated();
-    edit_->ensureNumberOfAudioTracks(1);
-    playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);
+void PlayerController::showEdit() {
     rememberedStereo_ = std::make_unique<RememberedStereo>(*edit_);
-    EditFileOps::saveEdit(*edit_, true, true, false);
-
-    editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
     editViewState_->showAsPlayer(vizMode_, VizOptions::load(getAppSettings()));
-    if (vizScopesWidth > 0) {  // the devices and scopes keep their widths in the next file
-        editViewState_->vizScopesWidth = vizScopesWidth;
-        editViewState_->footersWidth = footersWidth;
+    if (keptVizScopesWidth_ > 0) {
+        editViewState_->vizScopesWidth = keptVizScopesWidth_;
+        editViewState_->footersWidth = keptFootersWidth_;
     }
 
     window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), true);
     updateWindowTitle();
-    window_.setSize(w, h);
-    window_.repaint();
 }
 
 void PlayerController::setVizMode(bool on) {

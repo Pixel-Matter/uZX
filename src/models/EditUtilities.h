@@ -57,6 +57,4 @@ void setGridSubdivisionPattern(te::Edit& edit, const std::vector<int>& pattern);
     pattern, with frames per beat taken from the tempo at the given time. */
 SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt);
 
-juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit);
-
 }  // namespace MoTool::Helpers

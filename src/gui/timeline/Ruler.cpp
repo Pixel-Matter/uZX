@@ -1,7 +1,7 @@
 #include "Ruler.h"
 
 #include "../../controllers/MainCommands.h"
-#include "../../models/EditUtilities.h"
+#include "../common/Utilities.h"
 
 namespace MoTool {
 

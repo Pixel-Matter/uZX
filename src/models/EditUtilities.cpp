@@ -157,26 +157,4 @@ SnapLadder makeSnapLadder(te::Edit& edit, te::TimePosition tempoAt) {
     return SnapLadder(getTimecodeDisplayMode(edit), fps, framesPerBeat, getGridSubdivisionPattern(edit, framesPerBeat));
 }
 
-juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit) {
-    const auto current = getTimecodeDisplayMode(edit);
-
-    // The menu picks a display *mode* only; the frame rate stays the project fps
-    // (changed separately via the transport fps readout).
-    int nextId = 1;
-    auto item = [&edit, current, &nextId](const String& name, TimecodeDisplayMode mode) {
-        PopupMenu::Item it;
-        it.itemID = nextId++;
-        it.text = name;
-        it.isTicked = (current == mode);
-        it.action = [&edit, mode] { setTimecodeDisplayMode(edit, mode); };
-        return it;
-    };
-
-    PopupMenu menu;
-    menu.addItem(item("Bars.Beats.Frames", TimecodeDisplayMode::barsBeatsFrames));
-    menu.addItem(item("Minutes:Seconds:Frames", TimecodeDisplayMode::seconds));
-    menu.addItem(item("Frames", TimecodeDisplayMode::framesOnly));
-    return menu;
-}
-
 }  // namespace MoTool::Helpers

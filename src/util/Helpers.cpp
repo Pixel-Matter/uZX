@@ -10,6 +10,7 @@
 #include <list>
 #include <optional>
 #include "../plugins/uZX/aychip/AYPlugin.h"
+#include "../plugins/uZX/analyzer/SpectrumAnalyzerPlugin.h"
 #include "../gui/common/Utilities.h"
 #include "../util/FileOps.h"
 
@@ -160,6 +161,16 @@ uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track) {
     auto plugin = track.edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {});
     track.pluginList.insertPlugin(plugin, 0, nullptr);
     return *dynamic_cast<uZX::AYChipPlugin*>(plugin.get());
+}
+
+void setMasterSpectrumAnalyzer(te::Edit& edit, bool present) {
+    auto& master = edit.getMasterPluginList();
+    auto* analyzer = master.findFirstPluginOfType<uZX::SpectrumAnalyzerPlugin>();
+    if (analyzer != nullptr && ! present)
+        analyzer->deleteFromParent();
+    else if (analyzer == nullptr && present)
+        master.insertPlugin(edit.getPluginCache().createNewPlugin(uZX::SpectrumAnalyzerPlugin::xmlTypeName, {}), 0,
+                            nullptr);
 }
 
 Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::TimePosition start,

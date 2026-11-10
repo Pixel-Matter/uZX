@@ -9,6 +9,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - **Classic Black and White** colours for Viz mode and video: black, white scopes, thin grey lines between them
 - `S` in Viz mode stacks each chip's scopes beside its notes or sets them side by side under them; scopes alone make a column or a grid, a chip per row (3×1 for one AY, 3×2 for Turbo Sound)
 - Entering Viz mode, or pressing `V` or `S`, shows both choices for a moment, with the key to leave
+- **Spectrum Analyzer** for Viz mode and video (**View → Viz Options**, the Render Video dialog): 1/3-octave bars of the mix with falling peak caps, in the level meters' colours, in a panel at the left or along the bottom; drag its edge to resize it
 
 ### Smoothness
 - Fixed: the timeline no longer scrolls a few pixels too far and then too little when a frame starts drawing a few milliseconds late

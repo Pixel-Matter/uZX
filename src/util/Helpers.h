@@ -30,6 +30,10 @@ String getTuneFileWildcard();
 /** The track's AY chip, added first if the track has none. */
 uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track);
 
+/** Puts a spectrum analyzer on the master, for Viz mode to draw behind the notes, or takes it off; nothing
+    when the master already has one or none as asked. */
+void setMasterSpectrumAnalyzer(te::Edit& edit, bool present);
+
 /** Adds each PSG file or tracker module at `start` on a new track named after it, the first one
     on `firstTrack` instead when given; skips unreadable files with an error. A module adds a track
     per AY chip (two for Turbo Sound) named after its title, else its file. The files play

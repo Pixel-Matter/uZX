@@ -64,6 +64,8 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     MoToolApp::getSelectionManager().deselectAll();
     const auto vizScopesWidth = editViewState_ != nullptr ? editViewState_->vizScopesWidth.get() : 0;
     const auto footersWidth = editViewState_ != nullptr ? editViewState_->footersWidth.get() : 0;
+    const auto vizSpectrumWidth = editViewState_ != nullptr ? editViewState_->vizSpectrumWidth.get() : 0;
+    const auto vizSpectrumHeight = editViewState_ != nullptr ? editViewState_->vizSpectrumHeight.get() : 0;
     editViewState_.reset();
     playWholeEdit_.reset();
     rememberedStereo_.reset();
@@ -79,6 +81,7 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     edit_->playInStopEnabled = true;
     migrateTimecodeDisplaySettings(*edit_);  // as in Studio: a new edit shows bars | beats | frames
     useGlobalMasterVolume();
+    Helpers::setMasterSpectrumAnalyzer(*edit_, VizOptions::load(getAppSettings()).showsSpectrum());
 
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
@@ -91,6 +94,8 @@ void PlayerController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     if (vizScopesWidth > 0) {  // the devices and scopes keep their widths in the next file
         editViewState_->vizScopesWidth = vizScopesWidth;
         editViewState_->footersWidth = footersWidth;
+        editViewState_->vizSpectrumWidth = vizSpectrumWidth;
+        editViewState_->vizSpectrumHeight = vizSpectrumHeight;
     }
 
     window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), true);
@@ -114,6 +119,8 @@ PropertiesFile& PlayerController::getAppSettings() {
 
 void PlayerController::appSettingsChanged() {
     const auto options = VizOptions::load(getAppSettings());
+    if (edit_ != nullptr)
+        Helpers::setMasterSpectrumAnalyzer(*edit_, options.showsSpectrum());
     if (vizMode_ && editViewState_ != nullptr && options != editViewState_->vizOptions) {
         showView(options);
         MoToolApp::getCommandManager().commandStatusChanged();  // the menu ticks, and S only with scopes

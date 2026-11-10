@@ -20,6 +20,7 @@
 #include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 #include "../plugins/uZX/midi_logger/MidiLoggerPlugin.h"
 #include "../plugins/uZX/scope/ScopePlugin.h"
+#include "../plugins/uZX/analyzer/SpectrumAnalyzerPlugin.h"
 
 #include "../util/FileOps.h"
 #include "../util/Helpers.h"
@@ -66,6 +67,14 @@ PopupMenu buildVizOptionsMenu(ApplicationCommandManager& commands, PropertiesFil
         menu.addItem(VizOptions::colourNames[i], true, current.colours == colours,
                      choose([colours](VizOptions& o) { o.colours = colours; }));
     }
+    menu.addSeparator();
+    PopupMenu spectrum;
+    for (int i = 0; i < VizOptions::spectrumNames.size(); ++i) {
+        const auto where = (VizOptions::Spectrum) i;
+        spectrum.addItem(VizOptions::spectrumNames[i], true, current.spectrum == where,
+                         choose([where](VizOptions& o) { o.spectrum = where; }));
+    }
+    menu.addSubMenu("Spectrum Analyzer", spectrum);
     return menu;
 }
 }  // namespace
@@ -76,6 +85,7 @@ void registerPlugins(te::Engine& engine) {
     engine.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
     engine.getPluginManager().createBuiltInType<uZX::MidiLoggerPlugin>();
     engine.getPluginManager().createBuiltInType<uZX::ScopePlugin>();
+    engine.getPluginManager().createBuiltInType<uZX::SpectrumAnalyzerPlugin>();
 }
 
 AppController::AppController()

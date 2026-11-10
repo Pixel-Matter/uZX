@@ -11,6 +11,9 @@ namespace LedMeter {
 /** Maps a measured level to meter fill: -60 dB and below is empty, 0 dB is full. */
 float dbToFill(float dB);
 
+/** An LED's colour at a position along the meter, 0 at the bottom: audio ramps green, yellow, red; MIDI is cyan. */
+Colour ledColour(float position, bool isMidi = false);
+
 /** Draws LEDs lit from the bottom, or from the left when horizontal. Audio LEDs ramp
     green, yellow, red along the meter; MIDI LEDs are cyan. */
 void draw(Graphics& g, Rectangle<int> area, int ledSize, int gap, float fill, bool horizontal, bool isMidi = false);

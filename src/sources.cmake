@@ -42,6 +42,7 @@ set(SHARED_SOURCES
     plugins/uZX/instrument/ChipInstrumentVoice.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
     plugins/uZX/scope/ScopePlugin.cpp
+    plugins/uZX/analyzer/SpectrumAnalyzerPlugin.cpp
 )
 
 # GUI-specific files
@@ -103,6 +104,7 @@ set(GUI_SOURCES
     plugins/uZX/instrument/ChipInstrumentUI.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPluginUI.cpp
     plugins/uZX/scope/ScopePluginUI.cpp
+    plugins/uZX/analyzer/SpectrumPanel.cpp
 )
 
 # Test-specific files to include in the test target
@@ -163,6 +165,7 @@ set(TEST_SOURCES
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
     plugins/uZX/scope/ScopeBuffer.test.cpp
     plugins/uZX/scope/ScopePluginUI.test.cpp
+    plugins/uZX/analyzer/SpectrumAnalyzer.test.cpp
 
     gui/timeline/TimelineGrid.test.cpp
 

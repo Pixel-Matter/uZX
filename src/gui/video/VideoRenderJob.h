@@ -13,6 +13,7 @@
 namespace MoTool {
 
 class PlayerDocumentComponent;
+namespace uZX { class SpectrumAnalyzerPlugin; }
 
 //==============================================================================
 /**
@@ -67,6 +68,7 @@ private:
 
     tracktion::SelectionManager selection;
     EditViewState view;
+    juce::ReferenceCountedObjectPtr<uZX::SpectrumAnalyzerPlugin> analyzer;  // the master's, fed the mix here
     std::unique_ptr<PlayerDocumentComponent> document;
     juce::Image frame;
     std::vector<juce::uint8> pixels;

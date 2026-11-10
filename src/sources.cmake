@@ -161,6 +161,7 @@ set(TEST_SOURCES
     plugins/uZX/aychip/ChannelMuter.test.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
+    plugins/uZX/scope/ScopeBuffer.test.cpp
     plugins/uZX/scope/ScopePluginUI.test.cpp
 
     gui/timeline/TimelineGrid.test.cpp

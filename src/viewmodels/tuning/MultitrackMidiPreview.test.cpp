@@ -1,4 +1,5 @@
 #include "MultitrackMidiPreview.h"
+#include "TuningPlayer.h"
 #include "../../models/PsgMidi.h"
 #include "../../util/TestHelpers.h"
 #include <JuceHeader.h>
@@ -261,6 +262,80 @@ public:
             TestHelpers::flushMessageQueue();
         }
         DBGCI("test6: after scope (preview+edit destroyed)");
+
+        beginTest("Stop cancels a preview before its queued start");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            MultitrackMidiPreview preview(*edit);
+            preview.playSingleNote(60);
+            preview.stopPlayback();
+            TestHelpers::flushMessageQueue();
+            expect(!edit->getTransport().isPlaying());
+        }
+
+        beginTest("A replacement uses the latest preview duration");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            MultitrackMidiPreview preview(*edit);
+            auto& transport = edit->getTransport();
+            bool stoppedBeforeReplacement = false;
+            preview.playSingleNote(60, 0.5);
+            expect(juce::MessageManager::callAsync([&] { stoppedBeforeReplacement = !transport.isPlaying(); }));
+            preview.playArpeggio({64, 67, 72}, 1.0);
+            TestHelpers::flushMessageQueue();
+
+            expect(stoppedBeforeReplacement, "Only the newer request may start the transport");
+            expect(transport.isPlaying());
+        }
+
+        beginTest("A tuning change cancels the queued start and clears note highlights");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
+            TuningPlayer player(viewModel);
+            TestHelpers::flushMessageQueue();
+            player.playSingleNote(60);
+            expect(player.isNotePlaying(60));
+
+            auto& transport = edit->getTransport();
+            bool stayedStopped = false;
+            expect(juce::MessageManager::callAsync([&] { stayedStopped = !transport.isPlaying(); }));
+            viewModel.setCurrentTonic(Scale::Tonic::A);
+            viewModel.dispatchPendingMessages();
+            TestHelpers::flushMessageQueue();
+            expect(stayedStopped, "The cancelled note must not start, even briefly");
+            expect(!transport.isPlaying());
+            expect(!player.isNotePlaying(60));
+        }
+
+        beginTest("A stop notification for the old note preserves the queued note's highlight");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            TuningViewModel viewModel(*edit);
+            TuningPlayer player(viewModel);
+            TestHelpers::flushMessageQueue();
+            player.playSingleNote(60);
+            TestHelpers::flushMessageQueue();
+            auto& transport = edit->getTransport();
+            expect(transport.isPlaying());
+            transport.sendChangeMessage();
+            player.playSingleNote(64);
+            TestHelpers::flushMessageQueue();
+            expect(transport.isPlaying());
+            expect(player.isNotePlaying(64));
+            expect(!player.isNotePlaying(60));
+        }
+
+        beginTest("Destroying the preview discards its queued start");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            {
+                MultitrackMidiPreview preview(*edit);
+                preview.playSingleNote(60);
+            }
+            TestHelpers::flushMessageQueue();
+            expect(!edit->getTransport().isPlaying());
+        }
     }
 };
 

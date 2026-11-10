@@ -97,43 +97,16 @@ void AYPluginUI::ChannelGroup::updateTNEState() {
 //==============================================================================
 // AYScopes
 //==============================================================================
-AYScopes::AYScopes(AYChipPlugin& plugin, Look look) : settings_(plugin.scopeSettings), look_(look) {
+AYScopes::AYScopes(AYChipPlugin& plugin, Look look) : look_(look) {
     static const std::array<juce::Colour, 3> colours {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
     static const std::array<const char*, 3> labels {"A", "B", "C"};
 
     for (size_t i = 0; i < 3; ++i) {
-        displays_[i] = std::make_unique<WaveformDisplay>(colours[i], labels[i],
-                                                         *plugin.getVizChannelBuffer(static_cast<int>(i)), settings_);
+        displays_[i] = std::make_unique<WaveformDisplay>(
+            colours[i], labels[i], *plugin.getVizChannelBuffer(static_cast<int>(i)), plugin.scopeSettings);
         if (look_.classic)
             displays_[i]->setColours(Colors::VizClassic::trace, Colors::VizClassic::background);
         addAndMakeVisible(*displays_[i]);
-    }
-
-    settings_.windowSamples.addListener(this);
-    settings_.gain.addListener(this);
-    settings_.triggerMode.addListener(this);
-    settings_.triggerLevel.addListener(this);
-    applySettings();
-}
-
-AYScopes::~AYScopes() {
-    settings_.windowSamples.removeListener(this);
-    settings_.gain.removeListener(this);
-    settings_.triggerMode.removeListener(this);
-    settings_.triggerLevel.removeListener(this);
-}
-
-void AYScopes::valueChanged(juce::Value&) {
-    applySettings();
-}
-
-void AYScopes::applySettings() {
-    const auto strategy = TriggerStrategy::fromMode(settings_.triggerMode.getStoredValue());
-    for (auto& display : displays_) {
-        display->setWindowSize(settings_.windowSamples.getStoredValue());
-        display->setGain(settings_.gain.getStoredValue());
-        display->setTriggerStrategy(strategy);
-        display->setTriggerLevel(settings_.triggerLevel.getStoredValue());
     }
 }
 
@@ -286,7 +259,7 @@ void AYPluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
     menu.addSeparator();
 
     // Add scope settings as submenu
-    MoTool::addScopeSettingsMenu(menu, plugin_.scopeSettings, "Scope Settings");
+    addScopeSettingsMenu(menu, plugin_.scopeSettings, "Scope Settings");
 }
 
 REGISTER_PLUGIN_UI_ADAPTER(AYChipPlugin, AYPluginUI)

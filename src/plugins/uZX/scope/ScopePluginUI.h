@@ -17,6 +17,9 @@
 
 namespace MoTool::uZX {
 
+/** Add the scope presets directly or group them under a submenu when a title is supplied. */
+void addScopeSettingsMenu(juce::PopupMenu& menu, ScopeSettings& settings, const juce::String& title = {});
+
 /**
  * Reduces samples to one vertical span per pixel column, so a peak between columns is never lost
  * as it would be by skipping samples. Each column takes an equal slice plus the last sample of
@@ -29,20 +32,15 @@ std::vector<std::pair<float, float>> minMaxColumns(const float* samples, int num
  * Single channel waveform display component. Updates once per display frame, in step with the
  * timeline, and repaints only when the triggered window or the display settings changed.
  */
-class WaveformDisplay : public juce::Component {
+class WaveformDisplay : public juce::Component, private juce::Value::Listener
+{
 public:
     WaveformDisplay(juce::Colour colour,
                     const juce::String& label,
                     const ScopeBuffer& buffer,
                     ScopeSettings& settings);
+    ~WaveformDisplay() override;
 
-    /**
-     * Update display parameters.
-     */
-    void setWindowSize(int samples);
-    void setGain(float gain);
-    void setTriggerStrategy(const TriggerStrategy& strategy);
-    void setTriggerLevel(float level);
     /** The trace, and its label, in one colour on another: Viz mode's Classic colours. */
     void setColours(juce::Colour trace, juce::Colour background);
 
@@ -55,6 +53,10 @@ public:
     void refresh();
 
 private:
+    friend class ScopeDisplaySettingsTest;
+    void applySettings();
+    void valueChanged(juce::Value&) override { applySettings(); }
+
     /** Takes the triggered window from the buffer; false if it is the one already shown. */
     bool updateWaveform();
     int findTriggerPoint();
@@ -77,8 +79,8 @@ private:
     juce::Colour colour_, background_;
     juce::String label_;
 
-    int windowSize_{1024};
-    float gain_{1.0f};
+    int windowSize_{0};
+    float gain_{};
     TriggerStrategy triggerStrategy_;
     float triggerLevel_{0.0f};
     bool settingsChanged_{true};
@@ -95,11 +97,10 @@ private:
 /**
  * Plugin UI for ScopePlugin - shows multiple waveform displays.
  */
-class ScopePluginUI : public PluginDeviceUI,
-                      private juce::Value::Listener {
+class ScopePluginUI : public PluginDeviceUI
+{
 public:
     explicit ScopePluginUI(tracktion::Plugin::Ptr pluginPtr);
-    ~ScopePluginUI() override;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -114,9 +115,6 @@ public:
     static constexpr int kSpacing = 4;
 
 private:
-    void valueChanged(juce::Value& value) override;
-    void updateDisplayParams();
-
     ScopePlugin& plugin_;
     juce::ComponentBoundsConstrainer constrainer_;
 

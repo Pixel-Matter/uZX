@@ -18,7 +18,7 @@ ScopePlugin::~ScopePlugin() {
 void ScopePlugin::initialise(const te::PluginInitialisationInfo&) {
     // Clear buffers on init
     for (auto& buffer : buffers_)
-        buffer.clear();
+        buffer.requestClear();
 }
 
 void ScopePlugin::deinitialise() {

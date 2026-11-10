@@ -204,22 +204,29 @@ void MultitrackMidiPreview::playArpeggio(const std::vector<int>& midiNotes, doub
 }
 
 void MultitrackMidiPreview::startPlayback(double duration) {
-    auto beatLastPos = tracktion::BeatPosition::fromBeats(duration);
-    auto timeDuration = edit.tempoSequence.toTime(beatLastPos);
-    // DBG("Starting playback from start to " << timeDuration << "s");
+    jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+    const auto revision = ++playbackRevision_;
+    const auto end = edit.tempoSequence.toTime(tracktion::BeatPosition::fromBeats(duration));
+    const juce::WeakReference<MultitrackMidiPreview> weakThis(this);
 
-    // Defer playback preparing and start to release GUI thread
-    auto weakThis = juce::WeakReference<MultitrackMidiPreview>(this);
-    juce::MessageManager::callAsync([weakThis, timeDuration]() {
-        if (auto* preview = weakThis.get()) {
-            // to recreate nodes with new clips; guard against preview being destroyed
-            preview->edit.dispatchPendingUpdatesSynchronously();
-            preview->transport.playSectionAndReset(tracktion::TimeRange(tracktion::TimePosition(), timeDuration));
+    playbackPending_ = juce::MessageManager::callAsync([weakThis, revision, end] {
+        auto* preview = weakThis.get();
+        if (preview == nullptr || preview->playbackRevision_ != revision)
+            return;
+
+        // Rebuilding playback nodes can dispatch work that cancels or replaces this request.
+        preview->edit.dispatchPendingUpdatesSynchronously();
+        if (auto* current = weakThis.get(); current != nullptr && current->playbackRevision_ == revision) {
+            current->playbackPending_ = false;
+            current->transport.playSectionAndReset({tracktion::TimePosition{}, end});
         }
     });
 }
 
 void MultitrackMidiPreview::stopPlayback() {
+    jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+    ++playbackRevision_;
+    playbackPending_ = false;
     transport.stop(false, false);
 }
 

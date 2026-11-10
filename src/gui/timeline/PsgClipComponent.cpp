@@ -263,23 +263,34 @@ struct ClipVisibility {
         return clipRange.getIntersectionWith({start, jmax(start, end)});
     }
 
+    /** A frame edge's x. Frames a pixel wide or wider snap to whole pixels, as the grid's ticks do:
+        each edge rounded from its own time alone, a frame ends exactly where the next one starts,
+        with no seam, and still keeps a pixel. Narrower frames would round away, so stay fractional. */
     float timeToX(te::TimePosition time) const {
-        return toX(time);
+        const float x = toX(time);
+        return pixelsPerFrame >= 1.0f ? std::round(x) : x;
     }
 
-    /** Calls fn(frameArrayIndex, frame, x) for every frame inside the visible range. */
+    /** Calls fn(frameArrayIndex, frame, x, width) for every frame inside the visible range.
+        Only frames that change something are stored, so a held frame lasts until the next stored
+        one or the clip's end, as the chip holds its state; otherwise a frame takes its own slot. */
     template <typename Fn>
-    void forEachVisibleFrame(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, Fn&& fn) const {
-        for (int i = startIdx; i < frames.size(); ++i) {
+    void forEachVisibleFrame(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, bool held, Fn&& fn) const {
+        // A held frame starting before the range can still sound in it.
+        for (int i = held ? jmax(0, startIdx - 1) : startIdx; i < frames.size(); ++i) {
             const auto& frame = *frames[i];
             const auto t = frame.getEditTime(clip);
+            const auto end = ! held ? t + frameDur
+                : i + 1 < frames.size() ? jmin(frames[i + 1]->getEditTime(clip), clipRange.getEnd())
+                : clipRange.getEnd();
 
-            if (t < range.getStart())
+            if (end <= range.getStart())
                 continue;
             if (t >= range.getEnd())
                 break;
 
-            fn(i, frame, timeToX(t));
+            const float x = timeToX(t);
+            fn(i, frame, x, timeToX(end) - x);
         }
     }
 };
@@ -704,9 +715,10 @@ void PsgClipComponent::paint(Graphics& g) {
     if (! editViewState.showClipHeaders)
         paintWarnings(g);
 
-   #if JUCE_DEBUG
-    paintMeasurer_.drawOverlay(g, getShownArea(*this));
-   #endif
+    // Paint timing overlay, opt-in: UZX_PAINT_STATS=1
+    static const bool showPaintStats = SystemStats::getEnvironmentVariable("UZX_PAINT_STATS", {}).getIntValue() != 0;
+    if (showPaintStats)
+        paintMeasurer_.drawOverlay(g, getShownArea(*this));
 }
 
 PsgClipComponent::PaintView PsgClipComponent::getViewPaintView() const {
@@ -850,7 +862,7 @@ void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
     g.setFont(Font(FontOptions(12.0f).withStyle("Bold")));
 
     uZX::PsgRegsFrame regsFrame;
-    vis.forEachVisibleFrame(frames, *psgClip, [&] (int, const PsgParamFrame& frame, float x) {
+    vis.forEachVisibleFrame(frames, *psgClip, false, [&] (int, const PsgParamFrame& frame, float x, float width) {
         regsFrame.clear();
         frame.getData().updateRegisters(regsFrame);
 
@@ -865,13 +877,13 @@ void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
             if (showHexValues) {
                 const auto hexValue = String::toHexString(value).paddedLeft('0', 2).toUpperCase();
                 g.setColour(color);
-                g.fillRect(x, y, vis.pixelsPerFrame, laneHeight);
+                g.fillRect(x, y, width, laneHeight);
                 g.setColour(Colours::black);
-                g.drawText(hexValue, Rectangle<float>(x, y, vis.pixelsPerFrame, laneHeight), Justification::centred);
+                g.drawText(hexValue, Rectangle<float>(x, y, width, laneHeight), Justification::centred);
             } else {
                 const auto brightness = static_cast<float>(value) / 255.0f;
                 g.setColour(color.withAlpha(0.5f + brightness / 2.0f));
-                g.fillRect(x, y, vis.pixelsPerFrame, laneHeight);
+                g.fillRect(x, y, width, laneHeight);
             }
         }
     });
@@ -1097,7 +1109,7 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView) {
 
         const int degree = ((lane.note - tonic) % 12 + 12) % 12;
         const bool isTonic = degree == 0;
-        if (tuning.hasKey && isTonic && detail.lines == LaneDetail::All) {
+        if (tuning.hasKey && isTonic && detail.lines == LaneDetail::All && right > gridX) {
             // In the lines' colour and on their rows, from the line above to its own: one even stripe,
             // with no soft edge or gap against them. Its own line, an octave's on C, goes over it.
             const int bandTop = roundToInt(top), bandBottom = roundToInt(bottom);
@@ -1232,7 +1244,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     const Range<float> visibleX = layout.visibleX;
     const Rectangle<float> viewport {visibleX.getStart(), 0.0f, visibleX.getLength(), float(vis.rect.getHeight())};
 
-    vis.forEachVisibleFrame(frames, *psgClip, [&] (int frameIndex, const PsgParamFrame& frame, float x) {
+    vis.forEachVisibleFrame(frames, *psgClip, true, [&] (int frameIndex, const PsgParamFrame& frame, float x, float width) {
         const auto& frameData = frame.getData();
         const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
 
@@ -1244,7 +1256,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             const auto noiseRange = getNoisePeriodYRange(period);
             const float noiseY = noiseRange.getStart() * static_cast<float>(vis.rect.getHeight());
             const float noiseH = jmax(2.0f, noiseRange.getLength() * static_cast<float>(vis.rect.getHeight()));
-            noiseBounds = {x, noiseY, vis.pixelsPerFrame, noiseH};
+            noiseBounds = {x, noiseY, width, noiseH};
             const int stripHeight = roundToInt(noiseH * g.getInternalContext().getPhysicalPixelScaleFactor());
             if (noiseBand_.getHeight() != stripHeight)
                 noiseBand_ = renderNoiseBandStrip(stripHeight);  // noiseH >= 2: never empty
@@ -1280,7 +1292,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
 
         const std::span<const FrameNote> pitchNotes(notes.data(), static_cast<size_t>(noteCount));
         if (noiseLevel > 0.0f)
-            drawNoiseFringe(g, {x, float(roundToInt(noiseBounds.getCentreY())), vis.pixelsPerFrame, 0.0f},
+            drawNoiseFringe(g, {x, float(roundToInt(noiseBounds.getCentreY())), width, 0.0f},
                            noiseSpread, static_cast<uint8_t>(~pitchChannels & 0x7u), noiseLevels, frameIndex,
                            viewport, pitchNotes);
 
@@ -1309,7 +1321,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                 for (int i = groupStart; i < gi; ++i)
                     owners |= notes[i].isEnvelopePitch
                         ? static_cast<uint8_t>(notes[i].channelMask & ~toneChannels) : notes[i].channelMask;
-                drawNoiseFringe(g, {x, groupY, vis.pixelsPerFrame, groupH}, noiseSpread,
+                drawNoiseFringe(g, {x, groupY, width, groupH}, noiseSpread,
                                owners, noiseLevels, frameIndex, viewport, pitchNotes);
             }
 
@@ -1328,36 +1340,21 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                 }
 
                 const auto noteColor = note.isEnvelopePitch ? Colors::PSG::Env : getChannelMaskColor(note.channelMask);
-                const auto noteRect = Rectangle<float>(x, subY, vis.pixelsPerFrame, jmax(1.0f, subH));
+                const auto noteRect = Rectangle<float>(x, subY, width, jmax(1.0f, subH));
 
-                if (note.isEnvelopePitch) {
-                    if (drawMods)
-                        drawEnvelopeStripes(
-                            g,
-                            noteRect.getX(),
-                            noteRect.getY(),
-                            noteRect.getWidth(),
-                            noteRect.getHeight(),
-                            envShape,
-                            noteColor
-                        );
-                    g.setColour(getChannelMaskColor(note.channelMask));
-                    g.drawRect(noteRect, 1.0f);
-                } else {
-                    g.setColour(noteColor.withAlpha(note.alpha));
-                    g.fillRect(noteRect);
+                g.setColour(noteColor.withAlpha(note.alpha));
+                g.fillRect(noteRect);
 
-                    if (drawMods && note.hasEnvMod)
-                        drawEnvelopeStripes(
-                            g,
-                            noteRect.getX(),
-                            noteRect.getY(),
-                            noteRect.getWidth(),
-                            noteRect.getHeight(),
-                            envShape,
-                            noteColor.brighter(0.8f).withAlpha(0.85f)
-                        );
-                }
+                if (drawMods && (note.hasEnvMod || note.isEnvelopePitch))
+                    drawEnvelopeStripes(
+                        g,
+                        noteRect.getX(),
+                        noteRect.getY(),
+                        noteRect.getWidth(),
+                        noteRect.getHeight(),
+                        envShape,
+                        noteColor.brighter(0.8f).withAlpha(0.85f)
+                    );
             }
         }
         if (envelopePeriodToTonePeriod(frameData.getRaw(PsgParamType::EnvelopePeriod))
@@ -1367,7 +1364,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                 if (frameData.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0)
                     owners |= static_cast<uint8_t>(1u << ch);
             if (owners != 0) {
-                const auto visible = Range<float>(x, x + vis.pixelsPerFrame).getIntersectionWith(visibleX);
+                const auto visible = Range<float>(x, x + width).getIntersectionWith(visibleX);
                 const float height = drawMods ? jlimit(8.0f, 12.0f, noteHeight * 1.5f)
                                               : jlimit(1.0f, 3.0f, noteHeight);
                 const float width = jmin(visible.getLength(), jmin(18.0f, jmax(8.0f, height * 1.6f)));
@@ -1493,17 +1490,15 @@ void paintPsgLegend(Graphics& g, Rectangle<int> area) {
         area.removeFromLeft(legendSpacing);
         if (item.style == LegendStyle::Noise) {
             drawNoiseBand(g, swatch.toFloat(), 0.9f);
-        } else if (item.style == LegendStyle::Envelope) {
-            drawEnvelopeStripes(g, (float) swatch.getX(), (float) swatch.getY(),
-                                (float) swatch.getWidth(), (float) swatch.getHeight(),
-                                0x8, item.color);
-            g.setColour(item.color);
-            g.drawRect(swatch);
         } else {
             g.setColour(item.color);
             g.fillRect(swatch);
+            if (item.style == LegendStyle::Envelope)
+                drawEnvelopeStripes(g, (float) swatch.getX(), (float) swatch.getY(),
+                                    (float) swatch.getWidth(), (float) swatch.getHeight(),
+                                    0x8, item.color.brighter(0.8f).withAlpha(0.85f));
         }
-        g.setColour(item.style == LegendStyle::Channel ? Colours::black : Colours::white);
+        g.setColour(item.style == LegendStyle::Noise ? Colours::white : Colours::black);
         g.drawText(item.label, swatch, Justification::centred);
     });
 }
@@ -1546,7 +1541,7 @@ PsgLegendComponent::PsgLegendComponent() {
 }
 
 void PsgLegendComponent::paint(Graphics& g) {
-    // The envelope and noise swatches are see-through, drawn for the dark body.
+    // The noise swatch is see-through, drawn for the dark body.
     g.setColour(Colors::Theme::backgroundAlt);
     g.fillRoundedRectangle(getLocalBounds().toFloat(), 2.0f);
     paintPsgLegend(g, getLocalBounds().reduced(1));

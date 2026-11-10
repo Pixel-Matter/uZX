@@ -34,7 +34,6 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 
 #### P1 — Important
 
-- [ ] **About dialog** — GitHub link (only pixelmatter.org now), greets scroller
 - [ ] **TAYM** (needs Timer fx, see [design/timer-fx.md](design/timer-fx.md))
 - [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
 - [ ] **Loop range** on the ruler
@@ -109,7 +108,7 @@ Grouped by theme, not ordered.
 
 ### Editors
 
-- [ ] **Cut, Copy and Paste** of clips — the Edit menu lists them with `Cmd+X`, `Cmd+C` and `Cmd+V`, but they do nothing yet
+- [ ] **Cut, Copy and Paste** of clips, in the Edit menu with `Cmd+X`, `Cmd+C` and `Cmd+V`
 - [ ] **MIDI note editor** — piano roll note editing
 - [ ] **MIDI CC editor**
 - [ ] **Automation editor**

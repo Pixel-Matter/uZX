@@ -35,9 +35,6 @@ public:
         editUndo             = 100,
         editRedo,
         editDelete,
-        editCut,
-        editCopy,
-        editPaste,
 
         // Transport Menu
         transportPlay        = 200,
@@ -92,7 +89,7 @@ public:
             fileOpenRecent5, fileOpenRecent6, fileOpenRecent7, fileOpenRecent8,
             fileClearRecentFiles,
             fileSave, fileSaveAs, fileReveal, fileImportPsg, fileImportAudio, fileQuit, fileRenderVideo,
-            editUndo, editRedo, editDelete, editCut, editCopy, editPaste,
+            editUndo, editRedo, editDelete,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
             transportPreservePsgTiming,
             addAudioTrack,
@@ -144,9 +141,6 @@ public:
             menu.addCommandItem(manager, MainAppCommands::editRedo);
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::editDelete);
-            menu.addCommandItem(manager, MainAppCommands::editCut);
-            menu.addCommandItem(manager, MainAppCommands::editCopy);
-            menu.addCommandItem(manager, MainAppCommands::editPaste);
         } else if (menuName == "Transport") {
             menu.addCommandItem(manager, MainAppCommands::transportPlay);
             menu.addCommandItem(manager, MainAppCommands::transportRecord);
@@ -289,21 +283,6 @@ public:
                 result.setInfo("Delete", "Delete the selected item", "Edit", 0);
                 result.addDefaultKeypress(KeyPress::deleteKey, 0);
                 result.addDefaultKeypress(KeyPress::backspaceKey, 0);
-                break;
-
-            case editCut:
-                result.setInfo("Cut", "Cut the selected content", "Edit", 0);
-                result.addDefaultKeypress('x', ModifierKeys::commandModifier);
-                break;
-
-            case editCopy:
-                result.setInfo("Copy", "Copy the selected content", "Edit", 0);
-                result.addDefaultKeypress('c', ModifierKeys::commandModifier);
-                break;
-
-            case editPaste:
-                result.setInfo("Paste", "Paste the clipboard content", "Edit", 0);
-                result.addDefaultKeypress('v', ModifierKeys::commandModifier);
                 break;
 
             // Transport commands

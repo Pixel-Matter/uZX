@@ -9,11 +9,21 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - **Classic Black and White** colours for Viz mode and video: black, white scopes, thin grey lines between them
 - `S` in Viz mode stacks each chip's scopes beside its notes or sets them side by side under them; scopes alone make a column or a grid, a chip per row (3×1 for one AY, 3×2 for Turbo Sound)
 - Entering Viz mode, or pressing `V` or `S`, shows both choices for a moment, with the key to leave
+- Viz mode and Render Video leave out tracks without clips
+- Progress windows have the system title bar, name the job once, and show the stage beside the percentage, such as Encoding and Adding sound for a video
+- Fixed: the progress bar has the buttons' corners, and its percentage stays readable as the bar fills under it
 
 ### Smoothness
 - Fixed: the timeline no longer scrolls a few pixels too far and then too little when a frame starts drawing a few milliseconds late
 - Fixed: oscilloscopes keep the previous frame when a refresh overlaps a sample update
 - AY and Scope use 0.5× display gain by default
+- Fixed: held PSG notes show no seams between frames and line up with the grid when frames are a pixel wide or wider
+
+### PSG clips
+- The envelope pitch is a filled, hatched purple note instead of an outline; the E legend swatch is filled too
+- The timeline grid and the pitch lanes are a step lighter
+- Fixed: a note lasts through the frames that change nothing, until the next change, instead of showing for one frame
+- Fixed: a damaged or crafted PSG file can no longer fill the memory with pauses: a file is read up to four hours at 50 Hz
 
 ### Tracker modules
 - Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop
@@ -27,6 +37,11 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Studio
 - Fixed: **Track → Render to audio** supports cancellation and adds the audio track only after a successful render. Undo restores the source track's previous mute state.
+- Fixed: opening the project that is already open, from Open Recent or by dropping it, keeps it as it is instead of losing unsaved changes (in the Player too)
+- The Edit menu no longer lists Cut, Copy and Paste, which did nothing yet
+- The About window links to the project on GitHub, credits zxtune, and scrolls its greets
+- Release builds no longer list the MIDI Logger debugging device among the devices to add
+- Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together, and passes MIDI on other channels through at its own time instead of later
 
 ## [v0.6.0-alpha] - 2026-11-08
 

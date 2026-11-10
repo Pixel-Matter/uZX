@@ -176,7 +176,9 @@ void PluginTreeGroup::createUZXItems(int& num, te::Plugin::Type /*types*/) {
     addInternalPlugin<uZX::AYChipPlugin>(*this, num);
     addInternalPlugin<uZX::ChipInstrumentPlugin>(*this, num);
     addInternalPlugin<uZX::NotesToPsgPlugin>(*this, num);
+   #if JUCE_DEBUG  // a debugging aid; release builds still create it for the Tuning preview
     addInternalPlugin<uZX::MidiLoggerPlugin>(*this, num);
+   #endif
     addInternalPlugin<uZX::ScopePlugin>(*this, num);
 }
 

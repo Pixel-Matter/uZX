@@ -155,6 +155,10 @@ public:
         return file_;
     }
 
+    /** Frames read at most, four hours at 50 Hz: a pause adds up to 1,020 empty frames for
+        2 bytes, so a crafted file of a few MB would otherwise fill the memory. The rest is dropped. */
+    static constexpr size_t maxFrames = 4 * 60 * 60 * 50;
+
     /** Reads the file once. Returns false if it holds nothing playable: missing, not a
         PSG file, or no frames. A damaged tail (e.g. a 0xFD end marker) is dropped and the
         frames before it are kept, so read() failing alone doesn't make a file unreadable. */
@@ -214,7 +218,7 @@ private:
         remaining -= (size_t) header->bytesRead;
 
         bool expectFrame = false;
-        while (remaining > 0) {
+        while (remaining > 0 && psgData_.frames.size() < maxFrames) {
             if (expectFrame) {
                 // auto oldRemaining = remaining;
                 const auto frame = readNextFrame(d, remaining);
@@ -256,7 +260,8 @@ private:
                 return false;
             }
         }
-        return true;
+        psgData_.frames.resize(std::min(psgData_.frames.size(), maxFrames));  // a pause can overshoot
+        return remaining == 0;
     }
 
     /** Writes the PSG data as a PSG file.

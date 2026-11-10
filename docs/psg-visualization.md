@@ -11,7 +11,7 @@ Each image is painted by `PsgClipComponent::paintNotes()`, the same code used in
 | Orange, green, blue-violet | Channel A, B, C |
 | Filled channel-colored note | Tone pitch; opacity follows fixed volume |
 | Filled note with brighter channel-colored hatching | Tone pitch with envelope-controlled volume |
-| Envelope-colored hatching with a channel-colored outline | Shared envelope pitch; outline identifies its users |
+| Envelope-colored note with brighter envelope-colored hatching | Shared envelope pitch |
 | Faint gray band | Shared noise period |
 | Channel-colored rectangles outside note silhouettes | Noise enabled on those visible pitch sources |
 | Channel-colored rectangles around the noise-band center | Noise ownership when that channel has no visible pitched mark |
@@ -20,7 +20,7 @@ Each image is painted by `PsgClipComponent::paintNotes()`, the same code used in
 
 ![The A/B/C/E/N legend](images/psg-visualization/legend.png)
 
-The envelope color is purple. An envelope-controlled tone keeps its channel color. The separate envelope-pitch mark uses purple hatching.
+The envelope color is purple. An envelope-controlled tone keeps its channel color. The separate envelope-pitch mark is a purple note with brighter purple hatching.
 
 Hatching indicates envelope shape: attack-first shapes use rising diagonals, decay-first shapes use falling diagonals, and shapes A/E use zigzags. This is a shape cue, not a trace of the instantaneous envelope level. One-shot shapes also receive a schematic pitch mark when their period lies within the display window.
 
@@ -34,7 +34,7 @@ Hatching indicates envelope shape: attack-first shapes use rising diagonals, dec
 | 1 | 0 | 0 | Tone pitch only |
 | 0 | 1 | 0 | Noise band with scattered channel-colored ownership rectangles |
 | 1 | 1 | 0 | Tone pitch and noise band |
-| 0 | 0 | 1 | Envelope pitch with a green B outline, even though tone is off |
+| 0 | 0 | 1 | Envelope pitch only; nothing shows that B uses it |
 | 1 | 0 | 1 | Tone pitch and shared envelope pitch; they may match or differ |
 | 0 | 1 | 1 | Envelope pitch and envelope-controlled noise |
 | 1 | 1 | 1 | Tone pitch, shared envelope pitch, and noise |
@@ -49,17 +49,7 @@ In this flag sheet, envelope pitch stays fixed. The tone moves to meet it in the
 
 There is one shared envelope-pitch mark for all channels using the envelope. Two envelope-enabled channels with tone off produce **one E mark**, not two independent envelope pitches.
 
-The outline uses combination colors:
-
-| Envelope users | Outline |
-| --- | --- |
-| A | Orange |
-| B | Green |
-| C | Blue-violet |
-| A+B | Yellow |
-| A+C | Pink |
-| B+C | Cyan |
-| A+B+C | Pale slate |
+The E mark looks the same whichever channels use it. Its users show on their own marks: a tone with envelope-controlled volume is hatched, and a channel's noise decorates the E mark when that channel has no visible tone.
 
 Noise ownership follows a per-channel priority:
 
@@ -79,7 +69,7 @@ The next sheet shows envelope ownership, noise alone, and noise around tones for
 
 ![All seven channel groups: envelope ownership, noise alone, and noise outside tones](images/psg-visualization/ownership.png)
 
-**Ambiguity:** combination-colored outlines require learning another palette. They do not directly show individual owners as clearly as the channel-colored noise rectangles do.
+**Ambiguity:** a channel that uses the envelope with tone and noise both off leaves no mark of its own, so the E mark alone does not say which channels use it. They do not directly show individual owners as clearly as the channel-colored noise rectangles do.
 
 ## Matching and different pitches
 
@@ -89,7 +79,7 @@ The following sheet includes all **15 equality groupings** of A tone, B tone, C 
 
 The renderer divides overlapping notes into thin vertical slices within the pitch row. Tone slices are painted before the envelope slice at an exactly matching pitch. If there is less than one pixel per slice, marks are painted on top of each other instead.
 
-**Ambiguity:** the thin slices can lose their pattern, and a one-pixel outline can cover the envelope-colored interior entirely. A picture may therefore fail to reveal every enabled source.
+**Ambiguity:** the thin slices can lose their pattern. A picture may therefore fail to reveal every enabled source.
 
 ## Level of detail
 
@@ -158,3 +148,5 @@ An opt-in benchmark, [PsgPaintingBenchmark.test.cpp](../src/gui/timeline/PsgPain
 ```sh
 UZX_PSG_PAINT_BENCHMARK=/tmp/psg-paint.json build/src/uZXTests_artefacts/Debug/uZXTests PsgPaintingBenchmark
 ```
+
+For live paint times in the app, start it with `UZX_PAINT_STATS=1` to draw each PSG clip's timing overlay.

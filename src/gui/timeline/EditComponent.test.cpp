@@ -159,7 +159,9 @@ private:
     void runVizModeTests(te::Engine& engine) {
         beginTest("Viz mode: no ruler or scrollbar, and each track row ends in its chip's scopes");
         auto edit = te::Edit::createSingleTrackEdit(engine);
-        Helpers::ensureAYPluginOnTrack(*te::getAudioTracks(*edit)[0]);
+        auto* track = te::getAudioTracks(*edit)[0];
+        Helpers::ensureAYPluginOnTrack(*track);
+        track->insertMIDIClip({te::TimePosition(), te::TimeDuration::fromSeconds(1.0)}, nullptr);
         te::SelectionManager selectionManager(engine);
         EditViewState vizView(*edit, selectionManager);
         vizView.showAsPlayer(true, {});
@@ -180,6 +182,22 @@ private:
             expectEquals(row->body.getRight(), row->getWidth() - 400, "the notes end where the scopes' column starts");
             expectEquals(row->footer->getX(), row->getWidth() - 400 + TrackRowComponent::footerPadding.getLeft(),
                          "the scopes start after the gap");
+        }
+
+        beginTest("Viz mode leaves out tracks without clips, and shows one once it gets a clip");
+        {
+            auto* empty = edit->insertNewAudioTrack(te::TrackInsertPoint::getEndOfTracks(*edit), nullptr).get();
+            TestHelpers::flushMessageQueue();
+            expectEquals(countDescendants<TrackRowComponent>(viz), 1, "the empty track is left out");
+            EditViewState studioView(*edit, selectionManager);
+            EditComponent studio(*edit, studioView, {});
+            TestHelpers::flushMessageQueue();
+            expectEquals(countDescendants<TrackRowComponent>(studio), 2, "outside Viz mode it is shown");
+            empty->insertMIDIClip({te::TimePosition(), te::TimeDuration::fromSeconds(1.0)}, nullptr);
+            TestHelpers::flushMessageQueue();
+            expectEquals(countDescendants<TrackRowComponent>(viz), 2, "with a clip it is shown");
+            edit->deleteTrack(empty);
+            TestHelpers::flushMessageQueue();
         }
 
         beginTest("Viz mode showing the notes alone: no scopes and no gap, the notes fill the row");
@@ -371,6 +389,14 @@ private:
                 return c;
         }
         return nullptr;
+    }
+
+    template <typename T>
+    static int countDescendants(Component& parent) {
+        int count = 0;
+        for (auto* child : parent.getChildren())
+            count += (dynamic_cast<T*>(child) != nullptr ? 1 : 0) + countDescendants<T>(*child);
+        return count;
     }
 
     template <typename T>

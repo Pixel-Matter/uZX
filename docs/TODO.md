@@ -19,7 +19,7 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [x] 12. [Make widget bindings own callback teardown](refactoring.md#12-make-widget-bindings-own-callback-teardown), including slider text conversion and widget reuse.
 - [ ] 13. [Centralize persisted PSG parameter mapping](refactoring.md#13-centralize-persisted-psg-parameter-mapping), preserving property names, sparse masks, and legacy normalization.
 - [ ] 17. [Make MIDI sample-range semantics consistent](refactoring.md#17-make-midi-sample-range-semantics-consistent), checking nonzero starts and final render spans.
-- [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities), including unhandled clipboard commands.
+- [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities).
 
 ## Arranger mode
 
@@ -38,8 +38,6 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 ## Global
 
 - [ ] Icons (fontaudio, Font Awesome, octicons, nerd-fonts)
-- [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds
-- [ ] Reopening the project that is already open (Open Recent item 0, drop of the current .uzx) loses unsaved changes: `setEdit` saves the old edit, then force-saves the stale freshly loaded copy over it; both edits share a project ID, so deleting the old temp folder also wipes the new one's
 - [ ] A second Player instance fully initialises and saves the shared startup edit before quitting (`moreThanOneInstanceAllowed` is checked after the `MoToolApp` constructor)
 - [ ] Undoing a plugin deletion loses its MIDI CC mappings: the deletion removes them from `ParameterControlMappings` in memory, the restored plugin is a new object that is not mapped again, and the next save drops them from the project
 - [ ] Crash audit leftover, not exercised live: quit while a render progress dialog is up (Studio)
@@ -70,7 +68,6 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] UI for MIDI to PSG plugin with tuning editor button
 - [ ] Sync tuning scale with Edit scales and keys
 - [ ] Thread safety (crash risk): `NotesToPsgMapper::setTuningSystem` / `reset` / `setBaseChannel` run on the message thread without a lock while the audio thread uses `tuning_`, `midiBuffer_` and `voices_[channel - baseChannel_]` — use-after-free of the old `TuningSystem`, concurrent `juce::Array` writes, out-of-range voice index. Easiest to hit in uZXTuning by changing root/A4/clock/table while a scale plays
-- [ ] Out-of-window MIDI is passed through with its timestamp and then merged again with an offset, roughly doubling it (`NotesToPsgMapper.cpp:298-299, 346, 352`); the AY plugin now clamps, but the mapper is still wrong
 
 ## PSG Clip / PSG data
 
@@ -78,7 +75,6 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] Route every tempo change through `PsgTiming::setTempoBpmRetimingFrames` — today only `PsgTiming::setFramesPerBeat` / `setBpmSnappedToFrames` (the transport bar's FPB and BPM boxes) rescale `framesPerBeat`; tempo edits from any other path (Tracktion tempo editing, future tempo track/automation) skip preserve-timing compensation
 - [ ] `PsgList::loadFrom` should not write edit-wide project fps (`Helpers::setProjectFps`) — move that decision to the import caller (clip/controller)
 - [ ] `PsgList::loadFrom` derives `framesPerBeat` from the beat length at 0, while migration uses the clip start — use the clip start in both
-- [ ] PSG pause runs (`FE xx`, up to 1,020 empty frames per 2 bytes) can exhaust memory on a crafted file of a few MB; past 2³¹ frames `static_cast<int>(i)` in `PsgList.cpp:533` overflows — cap total frames
 
 ## AY Chip Emulator plugin
 

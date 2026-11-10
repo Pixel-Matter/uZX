@@ -495,9 +495,7 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         // TODO  Theese commands are not being updated on selection change, only transportPlay and transportRecordStop are updated
-        // case AppCommands::editDelete: [[fallthrough]];
-        // case AppCommands::editCut:    [[fallthrough]];
-        // case AppCommands::editCopy:
+        // case AppCommands::editDelete:
         //     if (edit_ != nullptr) {
         //         if (auto sm = edit_->engine.getUIBehaviour().getCurrentlyFocusedSelectionManager()) {
         //             DBG("Selected objects: " << sm->getSelectedObjects().size());
@@ -936,6 +934,9 @@ te::Engine& BaseController::getEngine() {
 }
 
 std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
+    // Already open: a second copy would be saved over the first and lose its unsaved changes
+    if (edit_ != nullptr && editFile == te::EditFileOperations(*edit_).getEditFile())
+        return nullptr;
     if (!editFile.existsAsFile())
         return te::createEmptyEdit(engine_, editFile);
 

@@ -24,8 +24,8 @@ inline Image renderPsgClip(te::Engine& engine, uZX::PsgData data, int width, int
                         frameDuration * visibleFrames.getLength()});
     TimelineGrid grid(view);
     PsgClipComponent component(view, grid, clip);
-    const int frameWidth = width / visibleFrames.getLength();
-    component.setSize(frameWidth * static_cast<int>(data.frames.size()), height);
+    const double frameWidth = static_cast<double>(width) / visibleFrames.getLength();
+    component.setSize(roundToInt(frameWidth * static_cast<double>(data.frames.size())), height);
     Image image(Image::ARGB, width, height, true);
     Graphics graphics(image);
     if (! repaint.isEmpty())

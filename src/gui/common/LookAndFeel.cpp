@@ -197,6 +197,38 @@ void MoLookAndFeel::drawButtonBackground(Graphics& g, Button& button,
     }
 }
 
+void MoLookAndFeel::drawProgressBar(Graphics& g, ProgressBar& bar, int width, int height, double progress,
+                                    const String& textToShow) {
+    if (bar.getResolvedStyle() != ProgressBar::Style::linear || progress < 0.0 || progress > 1.0) {
+        LookAndFeel_V4::drawProgressBar(g, bar, width, height, progress, textToShow);  // spinning or circular
+        return;
+    }
+
+    // Corners as the buttons'; the fill is clipped to the track, so its corners are the track's
+    Path track;
+    track.addRoundedRectangle(bar.getLocalBounds().toFloat(), 4.0f);
+    g.reduceClipRegion(track);
+    const auto filled = bar.getLocalBounds().withWidth(roundToInt(width * progress));
+
+    // Colours as an off and an on button's, the text in each where it lies over it
+    g.fillAll(findColour(TextButton::buttonColourId));
+    g.setColour(findColour(TextButton::buttonOnColourId));
+    g.fillRect(filled);
+
+    if (textToShow.isEmpty())
+        return;
+    g.setFont((float) height * 0.6f);
+    for (bool over : {false, true}) {
+        Graphics::ScopedSaveState state(g);
+        if (over)
+            g.reduceClipRegion(filled);
+        else
+            g.excludeClipRegion(filled);
+        g.setColour(findColour(over ? TextButton::textColourOnId : TextButton::textColourOffId));
+        g.drawText(textToShow, 0, 0, width, height, Justification::centred, false);
+    }
+}
+
 //==============================================================================
 Font MoLookAndFeel::getSmallFont(float pointHeigth) {
     // a control squeezed below the font's size still gets a valid font, too small to read

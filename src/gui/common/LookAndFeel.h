@@ -156,9 +156,9 @@ struct Timeline {
     };
 
     static inline const std::array<Colour, 3> trackGridTickColors = {
-        Palette::slate500.withAlpha(0.1f),
-        Palette::slate500.withAlpha(0.33f),
-        Palette::slate500.withAlpha(0.66f),
+        Palette::slate400.withAlpha(0.1f),
+        Palette::slate400.withAlpha(0.33f),
+        Palette::slate400.withAlpha(0.66f),
     };
 
     static inline const std::array<Colour, 3> trackGridLabelColors = {
@@ -271,6 +271,9 @@ public:
 
     // Custom tooltip drawing
     void drawTooltip(Graphics& g, const String& text, int width, int height) override;
+
+    void drawProgressBar(Graphics& g, ProgressBar& bar, int width, int height, double progress,
+                         const String& textToShow) override;
 
     // Timeline specific drawing methods
     void drawTimelineCursor(Graphics& g, float position, int height);

@@ -116,7 +116,7 @@ void VideoRenderJob::renderFrames() {
 
     if (soundDone) {
         encoder.closeInput();
-        stage = Stage::encoding;
+        setStage(Stage::encoding, "Encoding");
     }
 }
 
@@ -132,7 +132,7 @@ void VideoRenderJob::finishEncoding() {
                           log.getFile()))
         error = "Could not start ffmpeg at " + ffmpeg.getFullPathName() + ".";
     else
-        stage = Stage::muxing;
+        setStage(Stage::muxing, "Adding sound");
 }
 
 void VideoRenderJob::finishMuxing() {
@@ -147,6 +147,12 @@ void VideoRenderJob::finishMuxing() {
         error = "Could not write " + output.getTargetFile().getFullPathName() + ".";
     else
         stage = Stage::done;
+}
+
+void VideoRenderJob::setStage(Stage next, const juce::String& name) {
+    stage = next;
+    // On the message thread, where the progress dialog reads the name
+    juce::MessageManager::callSync([this, name] { setName(name); });
 }
 
 bool VideoRenderJob::drawFrame(tracktion::TimePosition playhead) {

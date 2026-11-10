@@ -46,6 +46,8 @@ private:
         done
     };
 
+    /** Moves on to the next stage, named in the progress dialog. */
+    void setStage(Stage, const juce::String& name);
     void renderFrames();
     void finishEncoding();
     void finishMuxing();

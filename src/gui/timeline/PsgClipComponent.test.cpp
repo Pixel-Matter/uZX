@@ -225,7 +225,14 @@ public:
                 if (! noteBounds.contains(x, y))
                     expect(unrelatedNoise.getPixelAt(x, y).getFloatAlpha() <= 0.3f);
 
-        beginTest("Noise fringe stops before a neighboring hollow envelope note");
+        const auto hasEnvelopeFill = [](const Image& image, int y) {
+            for (int x = 0; x < image.getWidth(); ++x)
+                if (image.getPixelAt(x, y) == Colors::PSG::Env)
+                    return true;
+            return false;
+        };
+
+        beginTest("Noise fringe stops before a neighboring envelope note");
         auto neighbors = withTones(1, 0, 2);
         neighbors.frames[0].setTonePeriod(0, 512);
         neighbors.frames[0].setEnvelopePeriod(34);
@@ -234,7 +241,7 @@ public:
         const auto noisyNeighbors = renderData(neighbors);
         int envelopeRows = 0;
         for (int y = 0; y < plainNeighbors.getHeight(); ++y) {
-            if (plainNeighbors.getPixelAt(0, y) != Colors::PSG::B)
+            if (! hasEnvelopeFill(plainNeighbors, y))
                 continue;
             ++envelopeRows;
             for (int x = 0; x < plainNeighbors.getWidth(); ++x)
@@ -270,7 +277,7 @@ public:
         const auto noNoiseDual = renderData(withTones(2, 0, 2));
         int envTop = 300, envBottom = 0;
         for (int y = 150; y < 300; ++y) {
-            if (noNoiseDual.getPixelAt(0, y) == Colors::PSG::B) {
+            if (hasEnvelopeFill(noNoiseDual, y)) {
                 envTop = jmin(envTop, y);
                 envBottom = y + 1;
             }
@@ -355,27 +362,31 @@ public:
         expect(hasEnvelopeColor, "Envelope pitch uses the shared envelope color");
         expect(hasChannelColor, "Envelope-controlled tone keeps channel B's color");
 
-        beginTest("Envelope-only channel B retains a green outline around envelope-colored hatching");
-        const uZX::PsgData envelopeOnlyData {
+        beginTest("The envelope note is envelope-colored whichever channels use it");
+        const auto envelopeB = renderData({
             {{{uZX::PsgRegType::Mixer, 0x3f}, {uZX::PsgRegType::VolumeB, 16},
               {uZX::PsgRegType::EnvelopePeriodFine, 100}, {uZX::PsgRegType::EnvelopeShape, 8}}},
             {50.0, 1}
-        };
-        const auto envelopeOnlyImage = renderData(envelopeOnlyData);
-        bool hasOutline = false, hasHatching = false;
-        for (int y = 0; y < envelopeOnlyImage.getHeight(); ++y) {
-            const auto edge = envelopeOnlyImage.getPixelAt(0, y);
-            if (! edge.isTransparent()) {
-                expect(edge == Colors::PSG::B, "The envelope note outline identifies channel B");
-                hasOutline = true;
+        });
+        const auto envelopeAC = renderData({
+            {{{uZX::PsgRegType::Mixer, 0x3f}, {uZX::PsgRegType::VolumeA, 16}, {uZX::PsgRegType::VolumeC, 16},
+              {uZX::PsgRegType::EnvelopePeriodFine, 100}, {uZX::PsgRegType::EnvelopeShape, 8}}},
+            {50.0, 1}
+        });
+        bool hasFill = false, hasHatching = false;
+        for (int y = 0; y < envelopeB.getHeight(); ++y) {
+            for (int x = 0; x < envelopeB.getWidth(); ++x) {
+                const auto color = envelopeB.getPixelAt(x, y);
+                hasFill = hasFill || color == Colors::PSG::Env;
+                hasHatching = hasHatching || color.getGreen() > Colors::PSG::Env.getGreen() + 16;
             }
-            for (int x = 1; x < envelopeOnlyImage.getWidth() - 1; ++x)
-                hasHatching = hasHatching || envelopeOnlyImage.getPixelAt(x, y) == Colors::PSG::Env;
         }
-        expect(hasOutline, "Tone-off must not hide envelope channel ownership");
-        expect(hasHatching, "Envelope hatching keeps the envelope color");
+        expect(hasFill, "The envelope note is filled with the envelope color");
+        expect(hasHatching, "The envelope note keeps its brighter hatching");
+        expect(equalImages(envelopeB, envelopeAC),
+               "Owners show on their own notes, not as a tint of the envelope note");
 
-        beginTest("Legend shows A/B/C colors and a padded outlined envelope swatch");
+        beginTest("Legend shows A/B/C colors and a padded filled envelope swatch");
         const auto header = render(0x3f, 0, 0, 0, true);
         const std::array<Colour, 3> colors {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
         for (int ch = 0; ch < 3; ++ch) {
@@ -383,21 +394,19 @@ public:
             expect(header.getPixelAt(x, 14) == colors[static_cast<size_t>(ch)]);
             expect(header.getPixelAt(x, 15).isTransparent());
         }
-        expect(header.getPixelAt(42, 14) == Colors::PSG::Env, "E outline matches the envelope pitch color");
         expect(header.getPixelAt(42, 15).isTransparent(), "E keeps bottom padding");
-        bool hasUnfilledInterior = false;
-        bool hasEnvelopeHatching = false;
+        bool hasLegendFill = false, hasEnvelopeHatching = false;
         for (int y = 4; y < 14; ++y) {
             for (int x = 43; x < 53; ++x) {
                 const auto color = header.getPixelAt(x, y);
-                hasUnfilledInterior = hasUnfilledInterior || color.isTransparent();
+                expect(! color.isTransparent(), "E is filled");
+                hasLegendFill = hasLegendFill || color == Colors::PSG::Env;
                 hasEnvelopeHatching = hasEnvelopeHatching
-                    || (color.getFloatAlpha() > 0.0f && color.getFloatAlpha() < 0.4f
-                        && color.getRed() > color.getGreen() && color.getBlue() > color.getGreen());
+                    || color.getGreen() > Colors::PSG::Env.getGreen() + 16;
             }
         }
-        expect(hasUnfilledInterior, "E interior stays unfilled behind its label and hatching");
-        expect(hasEnvelopeHatching, "E uses colored envelope hatching behind its label");
+        expect(hasLegendFill, "E is filled with the envelope pitch color");
+        expect(hasEnvelopeHatching, "E keeps the brighter envelope hatching");
         beginTest("N legend uses the band color with vertical fading and bottom padding");
         const auto noiseCenter = header.getPixelAt(55, 9);
         expect(noiseCenter.getFloatAlpha() > 0.7f);
@@ -451,6 +460,43 @@ public:
             expectEquals(getClockMismatchText(pentagon, 1.79 * uZX::MHz), warn + "Pentagon @ 1.7900 MHz +39" + cent);
             expect(getClockMismatchText(zx, zx).isEmpty());
             expect(getClockMismatchText(zx, 1.7734 * uZX::MHz).isEmpty(), "the AY plugin's MHz must still match");
+        }
+
+        beginTest("A held note has no seams between frames at a fractional frame width");
+        {
+            const uZX::PsgRegsFrame tone {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15},
+                                          {uZX::PsgRegType::TonePeriodFineA, 200}};
+            const auto image = renderData({{tone, tone, tone}, {50.0, 1}});  // 33⅓ px a frame
+            int row = -1;
+            for (int y = 0; y < image.getHeight() && row < 0; ++y)
+                if (image.getPixelAt(1, y).isOpaque())
+                    row = y;
+            expect(row >= 0, "the note must be painted");
+            for (int x = 0; row >= 0 && x < image.getWidth(); ++x)
+                expect(image.getPixelAt(x, row) == image.getPixelAt(1, row), "seam at x = " + String(x));
+
+            // Narrower than a pixel, a frame is not snapped to one: a lone note would round away
+            const uZX::PsgRegsFrame silence {{uZX::PsgRegType::Mixer, 0x3f}, {uZX::PsgRegType::VolumeA, 0}};
+            std::vector<uZX::PsgRegsFrame> frames(300, silence);
+            frames[152] = tone;  // x 50.67..51: rounded, no pixel
+            expect(! isBlank(renderData({frames, {50.0, 1}})), "a note a third of a pixel wide must still show");
+        }
+
+        beginTest("A note holds through frames that change nothing, also scrolled past its start");
+        {
+            const uZX::PsgRegsFrame tone {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15},
+                                          {uZX::PsgRegType::TonePeriodFineA, 200}};
+            const uZX::PsgData held {{tone, {}, {}, {}}, {50.0, 1}};  // empty frames are not stored
+            const auto image = renderData(held, 400);
+            int row = -1;
+            for (int y = 0; y < image.getHeight() && row < 0; ++y)
+                if (image.getPixelAt(1, y).isOpaque())
+                    row = y;
+            expect(row >= 0, "the note must be painted");
+            for (int x = 0; row >= 0 && x < image.getWidth(); x += 50)
+                expect(image.getPixelAt(x, row) == image.getPixelAt(1, row), "gap at x = " + String(x));
+            const auto scrolled = Tests::renderPsgClip(engine, held, 200, 300, {2, 4});
+            expect(equalImages(image.getClippedImage({200, 0, 200, 300}), scrolled));
         }
     }
 };

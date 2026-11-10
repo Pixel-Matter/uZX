@@ -35,6 +35,22 @@ private:
     int layoutWidth_ { -1 };
 };
 
+/** A demoscene scroller: one line of text moving right to left, round and round, fading in and out at the ends. */
+class ScrollerComponent : public juce::Component {
+public:
+    explicit ScrollerComponent(juce::String text);
+
+    void paint(juce::Graphics& g) override;
+
+private:
+    void advance(double timestampSec);
+
+    const juce::String text_;
+    const juce::Font font_ { juce::FontOptions(14.0f, juce::Font::plain) };
+    double startSec_ = -1.0, offset_ = 0.0;
+    juce::VBlankAttachment vblank_ { this, [this](double t) { advance(t); } };  // last: detaches before the rest goes
+};
+
 class AboutDialogComponent : public juce::Component {
 public:
     AboutDialogComponent();
@@ -43,10 +59,15 @@ public:
     void resized() override;
 
 private:
+    /** Places the parts top to bottom across this width; returns the height they take. */
+    int layOut(int width);
+
     juce::Label titleLabel_;
     juce::Label companyLabel_;
     MultiLineTextComponent infoText_;
     juce::HyperlinkButton websiteLink_ { "pixelmatter.org", juce::URL("https://pixelmatter.org") };
+    juce::HyperlinkButton githubLink_ { "github.com/Pixel-Matter/uZX", juce::URL("https://github.com/Pixel-Matter/uZX") };
+    ScrollerComponent greets_;
     juce::Label copyrightLabel_;
     juce::TextButton closeButton_;
 };

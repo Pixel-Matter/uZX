@@ -452,6 +452,26 @@ public:
             expect(getClockMismatchText(zx, zx).isEmpty());
             expect(getClockMismatchText(zx, 1.7734 * uZX::MHz).isEmpty(), "the AY plugin's MHz must still match");
         }
+
+        beginTest("A held note has no seams between frames at a fractional frame width");
+        {
+            const uZX::PsgRegsFrame tone {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15},
+                                          {uZX::PsgRegType::TonePeriodFineA, 200}};
+            const auto image = renderData({{tone, tone, tone}, {50.0, 1}});  // 33⅓ px a frame
+            int row = -1;
+            for (int y = 0; y < image.getHeight() && row < 0; ++y)
+                if (image.getPixelAt(1, y).isOpaque())
+                    row = y;
+            expect(row >= 0, "the note must be painted");
+            for (int x = 0; row >= 0 && x < image.getWidth(); ++x)
+                expect(image.getPixelAt(x, row) == image.getPixelAt(1, row), "seam at x = " + String(x));
+
+            // Narrower than a pixel, a frame is not snapped to one: a lone note would round away
+            const uZX::PsgRegsFrame silence {{uZX::PsgRegType::Mixer, 0x3f}, {uZX::PsgRegType::VolumeA, 0}};
+            std::vector<uZX::PsgRegsFrame> frames(300, silence);
+            frames[152] = tone;  // x 50.67..51: rounded, no pixel
+            expect(! isBlank(renderData({frames, {50.0, 1}})), "a note a third of a pixel wide must still show");
+        }
     }
 };
 

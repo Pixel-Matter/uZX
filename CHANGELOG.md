@@ -14,6 +14,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: the timeline no longer scrolls a few pixels too far and then too little when a frame starts drawing a few milliseconds late
 - Fixed: oscilloscopes keep the previous frame when a refresh overlaps a sample update
 - AY and Scope use 0.5× display gain by default
+- Fixed: held PSG notes show no seams between frames and line up with the grid when frames are a pixel wide or wider
 
 ### Tracker modules
 - Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop

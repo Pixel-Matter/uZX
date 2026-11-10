@@ -48,7 +48,8 @@ private:
 
     const juce::String text_;
     const juce::Font font_ { juce::FontOptions(14.0f, juce::Font::plain) };
-    double startSec_ = -1.0, offset_ = 0.0;
+    static constexpr float fadeWidth = 32.0f;
+    double startSec_ = -1.0, offset_ = -fadeWidth;  // the text rests clear of the left fade
     juce::VBlankAttachment vblank_ { this, [this](double t) { advance(t); } };  // last: detaches before the rest goes
 };
 

@@ -148,7 +148,7 @@ void ScrollerComponent::advance(double timestampSec) {
     const auto elapsed = timestampSec - startSec_ - holdSec;
     if (elapsed <= 0.0)
         return;
-    offset_ = elapsed * pixelsPerSecond;
+    offset_ = elapsed * pixelsPerSecond - fadeWidth;
     repaint();
 }
 
@@ -161,12 +161,11 @@ void ScrollerComponent::paint(Graphics& g) {
         g.drawText(text_, bounds.withX(left).withWidth(loop), Justification::centredLeft, false);
 
     const auto background = Colors::Theme::backgroundAlt;  // the dialog's
-    const float fade = 32.0f;
-    g.setGradientFill({background, 0.0f, 0.0f, background.withAlpha(0.0f), fade, 0.0f, false});
-    g.fillRect(bounds.withWidth(fade));
-    g.setGradientFill({background.withAlpha(0.0f), bounds.getRight() - fade, 0.0f,
+    g.setGradientFill({background, 0.0f, 0.0f, background.withAlpha(0.0f), fadeWidth, 0.0f, false});
+    g.fillRect(bounds.withWidth(fadeWidth));
+    g.setGradientFill({background.withAlpha(0.0f), bounds.getRight() - fadeWidth, 0.0f,
                        background, bounds.getRight(), 0.0f, false});
-    g.fillRect(bounds.withTrimmedLeft(bounds.getWidth() - fade));
+    g.fillRect(bounds.withTrimmedLeft(bounds.getWidth() - fadeWidth));
 }
 
 AboutDialogComponent::AboutDialogComponent()

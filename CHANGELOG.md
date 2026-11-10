@@ -12,6 +12,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Smoothness
 - Fixed: the timeline no longer scrolls a few pixels too far and then too little when a frame starts drawing a few milliseconds late
+- Fixed: oscilloscopes keep the previous frame when a refresh overlaps a sample update
+- AY and Scope use 0.5× display gain by default
 
 ### Tracker modules
 - Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop
@@ -19,6 +21,12 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The module's title names the tracks; its note table becomes the clip's tuning table, with Sound Tracker's own (`ST`) as a new table; its rows set the tempo, so only beats and meter are detected
 - Vortex Tracker modules bring their chip clock and frame rate, such as a Pentagon's 1.75 MHz and 48.828 Hz
 - macOS: the Player opens tracker modules and `.uzx` files from Finder when no other app claims them; `.psg` files open in it by default
+
+### Tuning
+- Fixed: a cancelled preview stays silent, and a newer preview keeps its own playback length and note highlights
+
+### Studio
+- Fixed: **Track → Render to audio** supports cancellation and adds the audio track only after a successful render. Undo restores the source track's previous mute state.
 
 ## [v0.6.0-alpha] - 2026-11-08
 

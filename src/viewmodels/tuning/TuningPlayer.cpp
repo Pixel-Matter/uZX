@@ -29,7 +29,7 @@ void TuningPlayer::changeListenerCallback(ChangeBroadcaster* source) {
     } else if (source == &midiPreview.getTransport()) {
         // Transport state changed
         auto& transport = midiPreview.getTransport();
-        if (!transport.isPlaying()) {
+        if (!transport.isPlaying() && !midiPreview.hasPendingPlayback()) {
             // Transport stopped - clear playing notes
             playingNotes_.clear();
             notifyPlayingNotes();

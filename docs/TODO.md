@@ -19,13 +19,13 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] 11. [Include timing context in tuning cache dependencies](refactoring.md#11-include-timing-context-in-tuning-cache-dependencies), preserving explicit choices while refreshing automatic results.
 - [ ] 12. [Make widget bindings own callback teardown](refactoring.md#12-make-widget-bindings-own-callback-teardown), including slider text conversion and widget reuse.
 - [ ] 13. [Centralize persisted PSG parameter mapping](refactoring.md#13-centralize-persisted-psg-parameter-mapping), preserving property names, sparse masks, and legacy normalization.
-- [ ] 14. [Give deferred preview requests cancellation semantics](refactoring.md#14-give-deferred-preview-requests-cancellation-semantics), rejecting starts superseded by Stop or a newer preview.
-- [ ] 15. [Give track rendering a single commit and rollback boundary](refactoring.md#15-give-track-rendering-a-single-commit-and-rollback-boundary), preserving source state on failure and cancellation.
-- [ ] 16. [Move scope menu policy out of generic device UI](refactoring.md#16-move-scope-menu-policy-out-of-generic-device-ui), retaining one helper for AY and Scope callers.
+- [x] 14. [Give deferred preview requests cancellation semantics](refactoring.md#14-give-deferred-preview-requests-cancellation-semantics), rejecting starts superseded by Stop or a newer preview.
+- [x] 15. [Give track rendering a single commit and rollback boundary](refactoring.md#15-give-track-rendering-a-single-commit-and-rollback-boundary), preserving source state on failure and cancellation.
+- [x] 16. [Move scope menu policy out of generic device UI](refactoring.md#16-move-scope-menu-policy-out-of-generic-device-ui), retaining one helper for AY and Scope callers.
 - [ ] 17. [Make MIDI sample-range semantics consistent](refactoring.md#17-make-midi-sample-range-semantics-consistent), checking nonzero starts and final render spans.
 - [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities), including unhandled clipboard commands and Player save shortcuts.
-- [ ] 19. [Make scope sample publication data-race-free](refactoring.md#19-make-scope-sample-publication-data-race-free), protecting sample slots as well as the write index.
-- [ ] 20. [Let scope displays own their settings binding](refactoring.md#20-let-scope-displays-own-their-settings-binding), removing duplicated AY and Scope parent bindings.
+- [x] 19. [Make scope sample publication data-race-free](refactoring.md#19-make-scope-sample-publication-data-race-free), protecting sample slots as well as the write index.
+- [x] 20. [Let scope displays own their settings binding](refactoring.md#20-let-scope-displays-own-their-settings-binding), removing duplicated AY and Scope parent bindings.
 
 ## Arranger mode
 

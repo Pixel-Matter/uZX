@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include <array>
+#include <cstdint>
 
 #include <common/Utilities.h>  // from Tracktion
 #include "../../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
@@ -18,13 +19,13 @@ public:
     void playSingleNote(int midiNote, double noteLength = 0.5, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
     void playArpeggio(const std::vector<int>& midiNotes, double noteLength = 0.25, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
 
-    void startPlayback(double duration);
     void stopPlayback();
 
     void setTuningSystem(std::shared_ptr<TuningSystem> ts);
 
     // Access to transport for state monitoring
     tracktion::TransportControl& getTransport() { return transport; }
+    bool hasPendingPlayback() const { return playbackPending_; }
 
     // // MIDI device management
     // void reassignInputs();
@@ -40,6 +41,8 @@ private:
     tracktion::AudioTrack* track;
     std::array<tracktion::MidiClip::Ptr, NUM_CHANNELS> channelClips;
     uZX::NotesToPsgPlugin::Ptr NotesToPsgPlugin { nullptr };
+    std::uint64_t playbackRevision_ = 0;
+    bool playbackPending_ = false;
 
     // ChangeListener overrides
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
@@ -49,6 +52,7 @@ private:
     void setupTracksAndPlugins();
     void setupChannelClips();
     void clearAllChannelClips();
+    void startPlayback(double duration);
 
     void placeNote(int channelIndex, int midiNote, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
 

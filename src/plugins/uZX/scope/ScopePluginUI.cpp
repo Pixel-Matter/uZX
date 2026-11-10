@@ -6,6 +6,96 @@
 
 namespace MoTool::uZX {
 
+void addScopeSettingsMenu(juce::PopupMenu& parentMenu, ScopeSettings& settings, const juce::String& title) {
+    // Determine target menu - use parent directly or create submenu
+    juce::PopupMenu* targetMenu = &parentMenu;
+    juce::PopupMenu scopeSubmenu;
+    if (title.isNotEmpty()) {
+        targetMenu = &scopeSubmenu;
+    }
+
+    // Window size presets
+    juce::PopupMenu windowMenu;
+    const int currentWindow = settings.windowSamples.getStoredValue();
+    const std::array<int, 5> windowPresets = {256, 512, 1024, 2048, 4096};
+    for (int preset : windowPresets) {
+        windowMenu.addItem(juce::String(preset) + " samples",
+            true,
+            preset == currentWindow,
+            [&settings, preset]() {
+                settings.windowSamples.setStoredValue(preset);
+            });
+    }
+    targetMenu->addSubMenu("Window Size (" + juce::String(currentWindow) + ")", windowMenu);
+
+    // Gain presets
+    juce::PopupMenu gainMenu;
+    const float currentGain = settings.gain.getStoredValue();
+    const std::array<float, 5> gainPresets = {0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
+    for (float preset : gainPresets) {
+        gainMenu.addItem(juce::String(preset, 1) + "x",
+            true,
+            std::abs(preset - currentGain) < 0.01f,
+            [&settings, preset]() {
+                settings.gain.setStoredValue(preset);
+            });
+    }
+    targetMenu->addSubMenu("Gain (" + juce::String(currentGain, 1) + "x)", gainMenu);
+
+    // Trigger mode
+    juce::PopupMenu triggerMenu;
+    const auto currentMode = settings.triggerMode.getStoredValue();
+    triggerMenu.addItem("Free Running",
+        true,
+        currentMode == TriggerMode::FreeRunning,
+        [&settings]() {
+            settings.triggerMode.setStoredValue(TriggerMode::FreeRunning);
+        });
+    triggerMenu.addItem("Rising Edge",
+        true,
+        currentMode == TriggerMode::RisingEdge,
+        [&settings]() {
+            settings.triggerMode.setStoredValue(TriggerMode::RisingEdge);
+        });
+    triggerMenu.addItem("Falling Edge",
+        true,
+        currentMode == TriggerMode::FallingEdge,
+        [&settings]() {
+            settings.triggerMode.setStoredValue(TriggerMode::FallingEdge);
+        });
+    if (settings.signal == ScopeSettings::Signal::ChipLevels) {
+        triggerMenu.addItem("Chip Sync",
+            true,
+            currentMode == TriggerMode::ChipSync,
+            [&settings]() {
+                settings.triggerMode.setStoredValue(TriggerMode::ChipSync);
+            });
+    }
+    targetMenu->addSubMenu("Trigger Mode", triggerMenu);
+
+    // Trigger level presets: around zero for audio, above the silence for a chip channel's levels
+    juce::PopupMenu levelMenu;
+    const float currentLevel = settings.triggerLevel.getStoredValue();
+    const auto levelPresets = settings.signal == ScopeSettings::Signal::ChipLevels
+                                  ? std::vector<float> {0.0f, 0.1f, 0.25f, 0.5f}
+                                  : std::vector<float> {-0.5f, -0.1f, 0.0f, 0.1f, 0.5f};
+    for (float preset : levelPresets) {
+        levelMenu.addItem(juce::String(preset, 2),
+            true,
+            std::abs(preset - currentLevel) < 0.01f,
+            [&settings, preset]() {
+                settings.triggerLevel.setStoredValue(preset);
+            });
+    }
+    const bool usesLevel = currentMode == TriggerMode::RisingEdge || currentMode == TriggerMode::FallingEdge;
+    targetMenu->addSubMenu("Trigger Level (" + juce::String(currentLevel, 2) + ")", levelMenu, usesLevel);
+
+    // If title was provided, add the submenu to parent
+    if (title.isNotEmpty()) {
+        parentMenu.addSubMenu(title, scopeSubmenu);
+    }
+}
+
 std::vector<std::pair<float, float>> minMaxColumns(const float* samples, int numSamples, int columns) {
     jassert(columns > 0 && numSamples >= columns);
     std::vector<std::pair<float, float>> spans;
@@ -35,37 +125,28 @@ WaveformDisplay::WaveformDisplay(juce::Colour colour,
     , colour_(colour)
     , background_(Colors::Theme::backgroundDark)
     , label_(label)
-    , triggerStrategy_(TriggerStrategy::risingEdge())
 {
-    displaySamples_.resize(static_cast<size_t>(windowSize_));
-    workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
-    syncWork_.resize(workBuffer_.size());
-    amplitudeWork_.resize(workBuffer_.size());
+    applySettings();
+    scopeSettings_.addListener(this);
 }
 
-void WaveformDisplay::setWindowSize(int samples) {
+WaveformDisplay::~WaveformDisplay() {
+    scopeSettings_.removeListener(this);
+}
+
+void WaveformDisplay::applySettings() {
+    const int samples = scopeSettings_.windowSamples.getStoredValue();
     if (windowSize_ != samples) {
         windowSize_ = samples;
         displaySamples_.resize(static_cast<size_t>(windowSize_));
         workBuffer_.resize(static_cast<size_t>(windowSize_ * kTriggerSearchMultiplier));
         syncWork_.resize(workBuffer_.size());
         amplitudeWork_.resize(workBuffer_.size());
-        settingsChanged_ = true;
     }
-}
 
-void WaveformDisplay::setGain(float gain) {
-    gain_ = gain;
-    settingsChanged_ = true;
-}
-
-void WaveformDisplay::setTriggerStrategy(const TriggerStrategy& strategy) {
-    triggerStrategy_ = strategy;
-    settingsChanged_ = true;
-}
-
-void WaveformDisplay::setTriggerLevel(float level) {
-    triggerLevel_ = level;
+    gain_ = scopeSettings_.gain.getStoredValue();
+    triggerStrategy_ = TriggerStrategy::fromMode(scopeSettings_.triggerMode.getStoredValue());
+    triggerLevel_ = scopeSettings_.triggerLevel.getStoredValue();
     settingsChanged_ = true;
 }
 
@@ -88,7 +169,8 @@ void WaveformDisplay::refresh() {
 bool WaveformDisplay::updateWaveform() {
     // Copy samples from ring buffer into work buffer for trigger search
     const int workSamples = windowSize_ * kTriggerSearchMultiplier;
-    sourceBuffer_.copyTo(workBuffer_.data(), workSamples, syncWork_.data(), amplitudeWork_.data());
+    if (sourceBuffer_.copyTo(workBuffer_.data(), workSamples, syncWork_.data(), amplitudeWork_.data()) == 0)
+        return false;
 
     // The trigger lands in the window's centre, with half a window on each side of it
     const int triggerOffset = findTriggerPoint();
@@ -210,7 +292,7 @@ void WaveformDisplay::showPopupMenu() {
     juce::PopupMenu menu;
 
     // Add scope settings directly to menu (no submenu grouping)
-    MoTool::addScopeSettingsMenu(menu, scopeSettings_, "");
+    addScopeSettingsMenu(menu, scopeSettings_);
 
     menu.showMenuAsync(juce::PopupMenu::Options());
 }
@@ -250,48 +332,9 @@ ScopePluginUI::ScopePluginUI(tracktion::Plugin::Ptr pluginPtr)
     addAndMakeVisible(gainSlider_);
     addAndMakeVisible(levelSlider_);
 
-    // Listen for parameter changes
-    plugin_.scopeSettings.triggerMode.addListener(this);
-    plugin_.scopeSettings.windowSamples.addListener(this);
-    plugin_.scopeSettings.gain.addListener(this);
-    plugin_.scopeSettings.triggerLevel.addListener(this);
-
-    // Initial setup
-    updateDisplayParams();
-
     // Initial size - match AY plugin width
     setSize(224, kChannelHeight * 2 + kControlsHeight + kSpacing * 3);
 }
-
-ScopePluginUI::~ScopePluginUI() {
-    plugin_.scopeSettings.triggerMode.removeListener(this);
-    plugin_.scopeSettings.windowSamples.removeListener(this);
-    plugin_.scopeSettings.gain.removeListener(this);
-    plugin_.scopeSettings.triggerLevel.removeListener(this);
-}
-
-void ScopePluginUI::valueChanged(juce::Value&) {
-    updateDisplayParams();
-}
-
-void ScopePluginUI::updateDisplayParams() {
-    const int window = plugin_.scopeSettings.windowSamples.getStoredValue();
-    const float gain = plugin_.scopeSettings.gain.getStoredValue();
-    const auto mode = plugin_.scopeSettings.triggerMode.getStoredValue();
-    const float level = plugin_.scopeSettings.triggerLevel.getStoredValue();
-
-    auto strategy = TriggerStrategy::fromMode(mode);
-
-    for (auto& display : displays_) {
-        if (display) {
-            display->setWindowSize(window);
-            display->setGain(gain);
-            display->setTriggerStrategy(strategy);
-            display->setTriggerLevel(level);
-        }
-    }
-}
-
 
 void ScopePluginUI::paint(juce::Graphics& g) {
     // Background handled by displays and parent
@@ -337,7 +380,7 @@ bool ScopePluginUI::hasDeviceMenu() const {
 
 void ScopePluginUI::populateDeviceMenu(juce::PopupMenu& menu) {
     // Add scope settings directly (Window, Gain, Trigger Mode, Trigger Level)
-    MoTool::addScopeSettingsMenu(menu, plugin_.scopeSettings, "");
+    addScopeSettingsMenu(menu, plugin_.scopeSettings);
 }
 
 //==============================================================================

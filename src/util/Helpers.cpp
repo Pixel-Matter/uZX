@@ -6,6 +6,7 @@
 #include "../models/PsgTempoDetector.h"
 
 #include <algorithm>
+#include <atomic>
 #include <list>
 #include <optional>
 #include "../plugins/uZX/aychip/AYPlugin.h"
@@ -331,67 +332,154 @@ File getFreezeFileForTrack(const te::AudioTrack& track) {
     return file;
 }
 
-te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
-    auto sel = selectionManager.getSelectedObject(0);
-    auto track = dynamic_cast<te::AudioTrack*>(sel);
-    if (track == nullptr) {
-        edit.engine.getUIBehaviour().showWarningMessage("No track selected");
-        return nullptr;
+namespace {
+
+class TrackRenderTask : public te::Renderer::RenderTask
+{
+public:
+    enum class Outcome { Incomplete, Succeeded, Failed };
+
+    TrackRenderTask(const String& description, const te::Renderer::Parameters& parameters)
+        : RenderTask(description, parameters, nullptr, nullptr) {}
+
+    bool canCancel() const override { return true; }
+    Outcome getOutcome() const { return outcome_.load(); }
+
+    float getCurrentTaskProgress() override {
+        // Tracktion's progress can reach 100% while the render tail is still running.
+        return getOutcome() == Outcome::Incomplete ? std::min(0.99f, RenderTask::getCurrentTaskProgress()) : 1.0f;
     }
 
-    // render selected tracks to added track
+    JobStatus runJob() override {
+        const auto status = RenderTask::runJob();
+        // The progress dialog also signals exit when closing after a successful run.
+        if (status == jobHasFinished && !shouldExit())
+            outcome_.store(errorMessage.isEmpty() ? Outcome::Succeeded : Outcome::Failed);
+        return status;
+    }
 
-    const bool shouldBeMuted = track->isMuted(true);
-    track->setMute(false);
+private:
+    std::atomic<Outcome> outcome_{Outcome::Incomplete};
+};
 
-    auto freezeFile = getFreezeFileForTrack(*track);
-    // DBG("Freeze file: " << freezeFile.getFullPathName());
+struct ScopedTrackUnmute
+{
+    explicit ScopedTrackUnmute(te::AudioTrack& source) : track(source), wasMuted(source.isMuted(false)) {
+        track.setMute(false);
+    }
+    ~ScopedTrackUnmute() { track.setMute(wasMuted); }
 
+    te::AudioTrack& track;
+    const bool wasMuted;
+};
+
+te::Renderer::Parameters makeTrackRenderParameters(te::AudioTrack& track, const File& destination) {
+    auto& edit = track.edit;
     auto& dm = edit.engine.getDeviceManager();
-    juce::Array<te::EditItemID> trackIDs { track->itemID };
+    juce::Array<te::EditItemID> trackIDs { track.itemID };
 
-    juce::BigInteger trackNum;
-    trackNum.setBit(track->getIndexInEditTrackList());
-
-    te::Renderer::Parameters r (edit);
-    r.tracksToDo = trackNum;
-    r.destFile = freezeFile;
+    te::Renderer::Parameters r(edit);
+    r.tracksToDo.setBit(track.getIndexInEditTrackList());
+    r.destFile = destination;
     r.audioFormat = edit.engine.getAudioFileFormatManager().getDefaultFormat();
     r.blockSizeForAudio = dm.getBlockSize();
     r.sampleRateForAudio = dm.getSampleRate();
-    r.time = { {}, track->getLengthIncludingInputTracks() };
+    r.time = { {}, track.getLengthIncludingInputTracks() };
     r.endAllowance = te::RenderOptions::findEndAllowance(edit, &trackIDs, nullptr);
     r.checkNodesForAudio = false;
     r.canRenderInMono = true;
     r.mustRenderInMono = false;
     r.usePlugins = true;
     r.useMasterPlugins = false;
+    return r;
+}
 
-    const te::Edit::ScopedRenderStatus srs (edit, true);
-    const auto desc = String("Rendering track \"") + track->getName() + "\" to audio";
-
-    if (getProjectForEdit(edit) != nullptr) {
-        te::Renderer::renderToProjectItem(desc, r, te::ProjectItem::Category::frozen);
-    } else {
-        te::Renderer::renderToFile(desc, r);
+bool renderTrackToFile(te::AudioTrack& track, const te::Renderer::Parameters& parameters) {
+    auto& edit = track.edit;
+    auto& ui = edit.engine.getUIBehaviour();
+    const auto samples = te::toSamples(parameters.time.getLength(), parameters.sampleRateForAudio);
+    if (samples <= 0) {
+        ui.showWarningMessage("This track has no audio to render.");
+        return false;
     }
 
-    if (!r.destFile.existsAsFile()) {
-        edit.engine.getUIBehaviour().showWarningMessage("Render failed");
-        track->setMute(shouldBeMuted);
+    const te::Edit::ScopedRenderStatus renderStatus(edit, true);
+    const ScopedTrackUnmute unmute(track);
+    te::TransportControl::stopAllTransports(edit.engine, false, true);
+    te::Renderer::turnOffAllPlugins(edit);
+    TrackRenderTask task(String("Rendering track \"") + track.getName() + "\" to audio", parameters);
+    ui.runTaskWithProgressBar(task);
+    if (task.getOutcome() == TrackRenderTask::Outcome::Incomplete)
+        return false;
+
+    if (task.getOutcome() == TrackRenderTask::Outcome::Failed) {
+        ui.showWarningMessage(task.errorMessage);
+        return false;
+    }
+
+    std::unique_ptr<juce::AudioFormatReader> reader(
+        te::AudioFileUtils::createReaderFor(edit.engine, parameters.destFile));
+    if (reader == nullptr || reader->lengthInSamples < samples) {
+        ui.showWarningMessage("The render did not produce a complete audio file.");
+        return false;
+    }
+
+    return true;
+}
+
+}  // namespace
+
+te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
+    auto& ui = edit.engine.getUIBehaviour();
+    const te::AudioTrack::Ptr track(dynamic_cast<te::AudioTrack*>(selectionManager.getSelectedObject(0)));
+    if (track == nullptr || !te::containsTrack(edit, *track)) {
+        ui.showWarningMessage("Select an audio track to render.");
         return nullptr;
     }
 
-    // add audio file to added track (name, file, position, deleteExistingClips)
-    auto added = addAudioTrackAfter(edit, track);
-    auto clip = added->insertWaveClip(String("Frozen ") + track->getName(), freezeFile, {r.time, {}}, true);
-    if (clip != nullptr) {
-        clip->setAutoTempo(false);
-        clip->setAutoPitch(false);
+    const auto freezeFile = getFreezeFileForTrack(*track);
+    if (!freezeFile.getParentDirectory().isDirectory()) {
+        ui.showWarningMessage("Could not create the folder for rendered audio.");
+        return nullptr;
     }
 
-    track->setMute(true);  // mute original track
+    const juce::TemporaryFile staging(freezeFile, juce::TemporaryFile::useHiddenFile);
+    const auto parameters = makeTrackRenderParameters(*track, staging.getFile());
+    if (!renderTrackToFile(*track, parameters))
+        return nullptr;
+
+    if (!te::containsTrack(edit, *track)) {
+        ui.showWarningMessage("The source track was removed during rendering.");
+        return nullptr;
+    }
+
+    if (freezeFile.exists() || !staging.getFile().moveFileTo(freezeFile)) {
+        ui.showWarningMessage("Could not save the rendered audio file.");
+        return nullptr;
+    }
+
+    auto& undo = edit.getUndoManager();
+    undo.beginNewTransaction("Render to audio");
+    auto* added = addAudioTrackAfter(edit, track.get());
+    auto clip = added != nullptr
+        ? added->insertWaveClip(String("Frozen ") + track->getName(), freezeFile, {parameters.time, {}}, false)
+        : te::WaveAudioClip::Ptr{};
+    if (clip == nullptr) {
+        undo.undoCurrentTransactionOnly();
+        if (freezeFile.deleteFile())
+            ui.showWarningMessage("Could not add the rendered audio to a new track.");
+        else
+            ui.showWarningMessage("Could not add the rendered audio to a new track. "
+                                  "The audio file is still in the Renders folder.");
+        return nullptr;
+    }
+
+    clip->setAutoTempo(false);
+    clip->setAutoPitch(false);
+    track->state.setProperty(te::IDs::mute, true, &undo);
     selectionManager.select({added});
+    // Restart Tracktion's undo timer before deferred clip setup runs.
+    undo.dispatchPendingMessages();
     return added;
 }
 

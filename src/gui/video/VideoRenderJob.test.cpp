@@ -35,6 +35,7 @@ public:
         settings.renderHeight = 720;
         settings.scale = 2;
         settings.fps = 25;
+        settings.zoom = Video::Settings::Zoom::beats;
         juce::TemporaryFile dest{".mp4"};
         {
             VideoRenderJob job(*edit, settings, ffmpeg->program, dest.getFile());

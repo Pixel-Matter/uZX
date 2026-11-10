@@ -84,6 +84,7 @@ public:
             saved.codec = Settings::Codec::av1;
             saved.quality = Settings::Quality::high;
             saved.audio = Settings::Audio::alac;
+            saved.zoom = Settings::Zoom::beats;
             saved.ffmpeg = temp.getChildFile("ffmpeg");
             saved.save(props);
 
@@ -95,6 +96,7 @@ public:
             expect(loaded.codec == Settings::Codec::av1);
             expect(loaded.quality == Settings::Quality::high);
             expect(loaded.audio == Settings::Audio::alac);
+            expect(loaded.zoom == Settings::Zoom::beats);
             expect(loaded.ffmpeg == saved.ffmpeg);
 
             props.setValue("renderVideo.fps", 59);

@@ -32,6 +32,15 @@ struct Settings
         opus,
         alac
     };
+    /** The timeline zoom of the frames: the view's own, or a View > Zoom level, in that menu's order. */
+    enum class Zoom
+    {
+        asOnScreen,
+        frames,
+        rows,
+        beats,
+        bars
+    };
 
     int renderHeight = 720;
     int scale = 3;
@@ -39,6 +48,7 @@ struct Settings
     Codec codec = Codec::h264;
     Quality quality = Quality::veryHigh;
     Audio audio = Audio::aac;
+    Zoom zoom = Zoom::asOnScreen;
     juce::File ffmpeg;  // as chosen by the user; empty: looked up
     juce::File folder;  // where the last video went
 

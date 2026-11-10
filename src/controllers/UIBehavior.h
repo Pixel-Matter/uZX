@@ -140,7 +140,7 @@ public:
         o.resizable = true;
         // Sized to fit the device selector content - avoids the large empty area below it.
         o.content->setSize(500, 470);
-        o.launchAsync();
+        Helpers::launchDialogAsync(o);
     }
 
     void showEditScreen()                                       override {}

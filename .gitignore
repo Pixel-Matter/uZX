@@ -50,7 +50,6 @@ Testing/
 .DS_Store
 
 .claude/settings.local.json
-src/version.h
 DEVLOG.md
 
 # Local output of a full tests/generate-psg-visual-guide.sh run

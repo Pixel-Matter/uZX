@@ -3,23 +3,29 @@
     "configurePresets": [
         {
             "name": "default",
+            "generator": "Ninja",
             "binaryDir": "build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_OSX_ARCHITECTURES": "arm64",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
         },
         {
             "name": "asan",
             "displayName": "Debug + AddressSanitizer",
+            "generator": "Ninja",
             "binaryDir": "build-asan",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_OSX_ARCHITECTURES": "arm64",
                 "ENABLE_ASAN": "ON"
             }
         },
         {
             "name": "release",
             "displayName": "Release",
+            "generator": "Ninja",
             "binaryDir": "build-release",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"

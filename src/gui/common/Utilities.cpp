@@ -82,4 +82,13 @@ juce::PopupMenu buildTimecodeFormatMenu(te::Edit& edit) {
     return menu;
 }
 
+juce::DialogWindow* launchDialogAsync(juce::DialogWindow::LaunchOptions& options) {
+    const auto size = options.content->getBounds();
+    auto* window = options.create();
+    window->setContentComponentSize(size.getWidth(), size.getHeight());
+    window->centreAroundComponent(options.componentToCentreAround, window->getWidth(), window->getHeight());
+    window->enterModalState(true, nullptr, true);
+    return window;
+}
+
 }  // namespace MoTool::Helpers

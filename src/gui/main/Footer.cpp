@@ -1,5 +1,7 @@
 #include "Footer.h"
 
+#include "../common/Utilities.h"
+
 using namespace juce;
 
 namespace MoTool {
@@ -7,7 +9,7 @@ namespace MoTool {
 FooterBar::FooterBar(te::Engine& engine)
     : engine_ {engine}
 {
-    Helpers::addAndMakeVisible (*this, {
+    ::Helpers::addAndMakeVisible (*this, {  // Tracktion's
         &pluginListButton_,
         &audioSettingsButton_
     });
@@ -33,7 +35,7 @@ FooterBar::FooterBar(te::Engine& engine)
                                           std::addressof (engine_.getPropertyStorage().getPropertiesFile()));
         v->setSize (800, 600);
         o.content.setOwned (v);
-        o.launchAsync();
+        Helpers::launchDialogAsync (o);
     };
 }
 

@@ -142,10 +142,13 @@ ScrollerComponent::ScrollerComponent(String text)
 }
 
 void ScrollerComponent::advance(double timestampSec) {
-    static constexpr double pixelsPerSecond = 50.0;
+    static constexpr double pixelsPerSecond = 50.0, holdSec = 5.0;
     if (startSec_ < 0.0)
         startSec_ = timestampSec;
-    offset_ = (timestampSec - startSec_) * pixelsPerSecond;
+    const auto elapsed = timestampSec - startSec_ - holdSec;
+    if (elapsed <= 0.0)
+        return;
+    offset_ = elapsed * pixelsPerSecond - fadeWidth;
     repaint();
 }
 
@@ -158,12 +161,11 @@ void ScrollerComponent::paint(Graphics& g) {
         g.drawText(text_, bounds.withX(left).withWidth(loop), Justification::centredLeft, false);
 
     const auto background = Colors::Theme::backgroundAlt;  // the dialog's
-    const float fade = 32.0f;
-    g.setGradientFill({background, 0.0f, 0.0f, background.withAlpha(0.0f), fade, 0.0f, false});
-    g.fillRect(bounds.withWidth(fade));
-    g.setGradientFill({background.withAlpha(0.0f), bounds.getRight() - fade, 0.0f,
+    g.setGradientFill({background, 0.0f, 0.0f, background.withAlpha(0.0f), fadeWidth, 0.0f, false});
+    g.fillRect(bounds.withWidth(fadeWidth));
+    g.setGradientFill({background.withAlpha(0.0f), bounds.getRight() - fadeWidth, 0.0f,
                        background, bounds.getRight(), 0.0f, false});
-    g.fillRect(bounds.withTrimmedLeft(bounds.getWidth() - fade));
+    g.fillRect(bounds.withTrimmedLeft(bounds.getWidth() - fadeWidth));
 }
 
 AboutDialogComponent::AboutDialogComponent()
@@ -223,7 +225,7 @@ AboutDialogComponent::AboutDialogComponent()
     infoText_.setColour(Colors::Theme::textPrimary);
     infoText_.setJustification(Justification::centred);
     infoText_.setLineSpacing(1.5f);
-    infoText_.setPadding(BorderSize<int>(2, 0, 0, 0));
+    infoText_.setPadding(BorderSize<int>(4, 0, 4, 0));
     auto infoContent = infoLines.joinIntoString("\n");
     infoText_.setText(infoContent);
     addAndMakeVisible(infoText_);
@@ -250,10 +252,6 @@ AboutDialogComponent::AboutDialogComponent()
 
 void AboutDialogComponent::paint(Graphics& g) {
     g.fillAll(Colors::Theme::backgroundAlt);
-
-    auto bounds = getLocalBounds().toFloat().reduced(0.5f);
-    g.setColour(Colors::Theme::border);
-    g.drawRoundedRectangle(bounds, 8.0f, 1.0f);
 }
 
 void AboutDialogComponent::resized() {
@@ -261,31 +259,32 @@ void AboutDialogComponent::resized() {
 }
 
 int AboutDialogComponent::layOut(int width) {
-    auto bounds = Rectangle<int>(width, std::numeric_limits<int>::max() / 2).reduced(24);
+    // Each row is its text with about 4 px above and below, as the info lines' 1.5 spacing gives them; groups are
+    // `gap` apart, so the space between groups and around them reads as one 20 px.
+    static constexpr int gap = 12, margin = 16;
+    auto bounds = Rectangle<int>(width, std::numeric_limits<int>::max() / 2).reduced(24, margin);
 
     companyLabel_.setBounds(bounds.removeFromTop(24));
+    titleLabel_.setBounds(bounds.removeFromTop(56));
 
-    bounds.removeFromTop(4);
-    titleLabel_.setBounds(bounds.removeFromTop(48));
-
-    bounds.removeFromTop(4);
+    bounds.removeFromTop(gap);
     websiteLink_.setBounds(bounds.removeFromTop(24));
     githubLink_.setBounds(bounds.removeFromTop(24));
 
-    bounds.removeFromTop(24);
+    bounds.removeFromTop(gap);
     infoText_.setBounds(bounds.removeFromTop(jmax(infoText_.getPreferredHeight(bounds.getWidth()), 0)));
 
-    bounds.removeFromTop(12);
-    greets_.setBounds(bounds.removeFromTop(24));
+    bounds.removeFromTop(gap);
+    greets_.setBounds(bounds.removeFromTop(22));
 
-    bounds.removeFromTop(12);
+    bounds.removeFromTop(gap);
     copyrightLabel_.setBounds(bounds.removeFromTop(24));
 
-    bounds.removeFromTop(12);
-    const auto buttonArea = bounds.removeFromTop(44);
-    closeButton_.setBounds(Rectangle<int>(120, 32).withCentre(buttonArea.getCentre()));
+    bounds.removeFromTop(gap);
+    const auto buttonArea = bounds.removeFromTop(40);
+    closeButton_.setBounds(buttonArea.withSizeKeepingCentre(120, 32));
 
-    return buttonArea.getBottom() + 24;
+    return buttonArea.getBottom() + margin;
 }
 
 } // namespace MoTool

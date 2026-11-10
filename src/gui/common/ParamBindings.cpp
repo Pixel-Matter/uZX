@@ -7,6 +7,39 @@ using namespace juce;
 namespace MoTool {
 
 //==============================================================================
+/**
+    Widget callbacks tagged with the binding that installed them, so a binding
+    can remove its own callbacks and no one else's.
+*/
+namespace {
+
+template <typename Signature>
+struct BoundCallback;
+
+template <typename Result, typename... Args>
+struct BoundCallback<Result(Args...)> {
+    const void* owner;
+    std::function<Result(Args...)> callback;
+
+    Result operator()(Args... args) const {
+        return callback(std::forward<Args>(args)...);
+    }
+};
+
+template <typename Signature>
+void installCallback(std::function<Signature>& slot, const void* owner,
+                     std::type_identity_t<std::function<Signature>> callback) {
+    slot = BoundCallback<Signature> {owner, std::move(callback)};
+}
+
+template <typename Signature>
+void releaseCallback(std::function<Signature>& slot, const void* owner) {
+    if (const auto* bound = slot.template target<BoundCallback<Signature>>(); bound != nullptr && bound->owner == owner)
+        slot = nullptr;
+}
+
+} // namespace
+
 //==============================================================================
 WidgetParamEndpointBinding::WidgetParamEndpointBinding(Component &c, std::unique_ptr<ParameterEndpoint> endpointIn)
     : ownedEndpoint(std::move(endpointIn))
@@ -50,6 +83,14 @@ void WidgetParamEndpointBinding::liveValueChanged(ParameterEndpoint&, float) {
 }
 
 //==============================================================================
+SliderParamEndpointBinding::~SliderParamEndpointBinding() {
+    releaseCallback(slider.onValueChange, this);
+    releaseCallback(slider.onDragStart, this);
+    releaseCallback(slider.onDragEnd, this);
+    releaseCallback(slider.textFromValueFunction, this);
+    releaseCallback(slider.valueFromTextFunction, this);
+}
+
 void SliderParamEndpointBinding::configureWidget() {
     slider.setTooltip(endpoint().getDescription());
     slider.setPopupDisplayEnabled(true, true, nullptr);
@@ -62,16 +103,16 @@ void SliderParamEndpointBinding::configureWidget() {
 
     slider.setNumDecimalPlacesToDisplay(endpoint().getDecimalPlaces());
 
-    slider.textFromValueFunction = [this](double value) {
+    installCallback(slider.textFromValueFunction, this, [this](double value) {
         return endpoint().formatValue(value);
-    };
+    });
 
-    slider.valueFromTextFunction = [this](const String& text) -> double {
+    installCallback(slider.valueFromTextFunction, this, [this](const String& text) -> double {
         double parsed {};
         if (endpoint().parseValue(text, parsed))
             return parsed;
         return slider.getValue();
-    };
+    });
 
     const auto units = endpoint().getUnits();
     if (units.isNotEmpty())
@@ -79,21 +120,21 @@ void SliderParamEndpointBinding::configureWidget() {
 }
 
 void SliderParamEndpointBinding::configureWidgetHandlers() {
-    slider.onValueChange = [this] {
+    installCallback(slider.onValueChange, this, [this] {
         if (updating)
             return;
 
         ScopedValueSetter<bool> svs(updating, true);
         endpoint().setStoredFloatValue(static_cast<float>(slider.getValue()));
-    };
+    });
 
-    slider.onDragStart = [this] {
+    installCallback(slider.onDragStart, this, [this] {
         endpoint().beginGesture();
-    };
+    });
 
-    slider.onDragEnd = [this] {
+    installCallback(slider.onDragEnd, this, [this] {
         endpoint().endGesture();
-    };
+    });
 
     slider.setPopupMenuEnabled(false);
 }
@@ -107,19 +148,23 @@ void SliderParamEndpointBinding::refreshFromSource() {
 }
 
 //==============================================================================
+ComboBoxParamEndpointBinding::~ComboBoxParamEndpointBinding() {
+    releaseCallback(comboBox.onChange, this);
+}
+
 void ComboBoxParamEndpointBinding::configureWidget() {
     comboBox.setTooltip(endpoint().getDescription());
     fillItems();
 }
 
 void ComboBoxParamEndpointBinding::configureWidgetHandlers() {
-    comboBox.onChange = [this] {
+    installCallback(comboBox.onChange, this, [this] {
         if (updating)
             return;
 
         ScopedValueSetter<bool> svs(updating, true);
         endpoint().setStoredFloatValue(static_cast<float>(comboBox.getSelectedId() - 1));
-    };
+    });
 }
 
 void ComboBoxParamEndpointBinding::fillItems() {
@@ -140,15 +185,19 @@ void ComboBoxParamEndpointBinding::refreshFromSource() {
 
 //============================================================================
 
+ButtonParamEndpointBinding::~ButtonParamEndpointBinding() {
+    releaseCallback(button.onClick, this);
+}
+
 void ButtonParamEndpointBinding::configureWidget() {
     button.setTooltip(endpoint().getDescription());
     button.setEnabled(endpoint().numberOfStates() > 0);
 }
 
 void ButtonParamEndpointBinding::configureWidgetHandlers() {
-    button.onClick = [this] {
+    installCallback(button.onClick, this, [this] {
         handleClick();
-    };
+    });
 }
 
 void ButtonParamEndpointBinding::handleClick() {
@@ -202,13 +251,17 @@ int ButtonParamEndpointBinding::wrapIndex(int index) const {
 
 //============================================================================
 
+ToggleParamEndpointBinding::~ToggleParamEndpointBinding() {
+    releaseCallback(button.onClick, this);
+}
+
 void ToggleParamEndpointBinding::configureWidget() {
     button.setTooltip(endpoint().getDescription());
     button.setButtonText(buttonLabel);
 }
 
 void ToggleParamEndpointBinding::configureWidgetHandlers() {
-    button.onClick = [this] {
+    installCallback(button.onClick, this, [this] {
         if (updating)
             return;
 
@@ -220,7 +273,7 @@ void ToggleParamEndpointBinding::configureWidgetHandlers() {
         endpoint().beginGesture();
         endpoint().setStoredFloatValue(newState ? 1.0f : 0.0f);
         endpoint().endGesture();
-    };
+    });
 }
 
 void ToggleParamEndpointBinding::refreshFromSource() {

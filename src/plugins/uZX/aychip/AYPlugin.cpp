@@ -54,7 +54,14 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
     // TODO staticParams.isParamProperty(id);
     if (v == state) {
         if (id == IDs::clock || id == IDs::chip) {
-            reset();
+            if (chip != nullptr) {
+                const ScopedLock sl(lock);
+                // A setting, not a stop: the chip keeps its registers and the frame being read
+                staticParams.chipClock.forceUpdateOfCachedValue();
+                staticParams.chipType.forceUpdateOfCachedValue();
+                chip->setClock(staticParams.chipClock.getStoredValue() * MHz);
+                chip->setType(staticParams.chipType.getStoredValue());
+            }
         } else if (id == IDs::midi) {
             if (chip != nullptr) {
                 const ScopedLock sl(lock);

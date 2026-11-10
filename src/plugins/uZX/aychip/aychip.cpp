@@ -10,57 +10,39 @@ namespace MoTool::uZX {
 
 
 void AYInterface::setRegister(size_t index, unsigned char value) noexcept {
-    if (index >= 14) {
+    if (index >= numRegisters) {
         return;
     }
+    regs_[index] = value;
     switch (index) {
-        case 0: setR0(value); break;
-        case 1: setR1(value); break;
-        case 2: setR2(value); break;
-        case 3: setR3(value); break;
-        case 4: setR4(value); break;
-        case 5: setR5(value); break;
-        case 6: setR6(value); break;
-        case 7: setR7(value); break;
-        case 8: setR8(value); break;
-        case 9: setR9(value); break;
-        case 10: setR10(value); break;
-        case 11: setR11(value); break;
-        case 12: setR12(value); break;
-        case 13: setR13(value); break;
+        case 0: case 1: setTonePeriod(0, periodAt(0)); break;
+        case 2: case 3: setTonePeriod(1, periodAt(2)); break;
+        case 4: case 5: setTonePeriod(2, periodAt(4)); break;
+        case 6: setNoisePeriod(value); break;
+        case 7:
+            for (int chan = 0; chan < 3; ++chan) {
+                setChannelFromRegisters(chan);
+            }
+            break;
+        case 8: case 9: case 10: setChannelFromRegisters(static_cast<int>(index) - 8); break;
+        case 11: case 12: setEnvelopePeriod(periodAt(11)); break;
+        case 13: setEnvelopeShape(static_cast<EnvShape>(value)); break;
     }
 }
 
 unsigned char AYInterface::getRegister(size_t index) const noexcept {
-    const auto fine   = [](int period) { return static_cast<unsigned char>(period & 0xff); };
-    const auto coarse = [](int period) { return static_cast<unsigned char>(period >> 8); };
-    switch (index) {
-        case 0: return fine  (getTonePeriod(0));
-        case 1: return coarse(getTonePeriod(0));
-        case 2: return fine  (getTonePeriod(1));
-        case 3: return coarse(getTonePeriod(1));
-        case 4: return fine  (getTonePeriod(2));
-        case 5: return coarse(getTonePeriod(2));
-        case 6: return static_cast<unsigned char>(getNoisePeriod());
-        case 7: {
-            unsigned char mixer = 0;  // inverted: a set bit turns tone or noise off
-            for (int chan = 0; chan < 3; ++chan) {
-                const auto [toneOn, noiseOn, envOn] = getMixer(chan);
-                juce::ignoreUnused(envOn);
-                mixer |= static_cast<unsigned char>((toneOn ? 0 : 0x01 << chan) | (noiseOn ? 0 : 0x08 << chan));
-            }
-            return mixer;
-        }
-        case 8: case 9: case 10: {
-            const int chan = static_cast<int>(index) - 8;
-            const bool envOn = std::get<2>(getMixer(chan));
-            return static_cast<unsigned char>(getVolume(chan) | (envOn ? 0x10 : 0));
-        }
-        case 11: return fine  (getEnvelopePeriod());
-        case 12: return coarse(getEnvelopePeriod());
-        case 13: return static_cast<unsigned char>(getEnvelopeShape().asEnum());
-        default: return 0;
-    }
+    return index < numRegisters ? regs_[index] : 0;
+}
+
+void AYInterface::setChannelFromRegisters(int chan) noexcept {
+    //   7   |   6   |    5    |    4    |    3    |   2    |   1    |   0
+    // I/O B | I/O A | Noise C | Noise B | Noise A | Tone C | Tone B | Tone A
+    const auto mixer = regs_[7];
+    const auto volume = regs_[8 + static_cast<size_t>(chan)];
+    setToneOn(chan, ! ((mixer >> chan) & 1));
+    setNoiseOn(chan, ! ((mixer >> (chan + 3)) & 1));
+    setVolume(chan, volume & 0x0f);
+    setEnvelopeOn(chan, volume & 0x10);
 }
 
 void AYInterface::applyChannelMute(int chan, bool toneEnabled, bool noiseEnabled, bool envelopeEnabled, bool channelEnabled) noexcept {
@@ -68,6 +50,8 @@ void AYInterface::applyChannelMute(int chan, bool toneEnabled, bool noiseEnabled
         return;
     }
 
+    // Mutes apply over the registers as written, so a channel comes back when they turn off
+    setChannelFromRegisters(chan);
     if (!channelEnabled) {
         // When channel is disabled, set volume to 0 and envelope off
         // to prevent audible clicks (tone-off sets signal high)
@@ -128,7 +112,20 @@ auto AyumiEmulator::reset(int sampleRate, double clock, ChipType type) -> void {
     ignoreUnused(result);
     for (int i = 0; i < TONE_CHANNELS; ++i) {
         setChannelPan(i, Pan_[i]);
-        setMixer(i, false, false, false);
+    }
+    for (size_t i = 0; i < numRegisters; ++i) {
+        setRegister(i, i == 7 ? 0x3f : 0);  // tone and noise off, silent
+    }
+}
+
+auto AyumiEmulator::reconfigure(int sampleRate, double clock, ChipType type) -> void {
+    std::array<unsigned char, numRegisters> regs;
+    for (size_t i = 0; i < numRegisters; ++i) {
+        regs[i] = getRegister(i);
+    }
+    reset(sampleRate, clock, type);
+    for (size_t i = 0; i < numRegisters; ++i) {
+        setRegister(i, regs[i]);
     }
 }
 
@@ -145,7 +142,7 @@ auto AyumiEmulator::getClockValues() const -> std::vector<float> {
 }
 
 auto AyumiEmulator::setSampleRate(int sampleRate) -> void {
-    reset(sampleRate, ClockRate_, Type_);
+    reconfigure(sampleRate, ClockRate_, Type_);
 }
 
 auto AyumiEmulator::getSampleRate() const -> int {
@@ -153,7 +150,7 @@ auto AyumiEmulator::getSampleRate() const -> int {
 }
 
 auto AyumiEmulator::setType(ChipType type) -> void {
-    reset(SampleRate_, ClockRate_, type);
+    reconfigure(SampleRate_, ClockRate_, type);
 }
 
 auto AyumiEmulator::getType() const -> ChipType {
@@ -165,7 +162,7 @@ auto AyumiEmulator::getClock() const -> double {
 }
 
 auto AyumiEmulator::setClock(double rate) -> void {
-    reset(SampleRate_, rate, Type_);
+    reconfigure(SampleRate_, rate, Type_);
 }
 
 auto AyumiEmulator::setLayoutAndStereoWidth(ChannelsLayout layout, double stereoWidth) -> void {

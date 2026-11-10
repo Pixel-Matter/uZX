@@ -51,6 +51,20 @@ public:
             expectRegisters(chip.getChipRegisters(), data.frames[0]);
         }
 
+        beginTest("Changing the clock or the chip type while playing keeps every register");
+        {
+            const auto before = chip.getChipRegisters();
+            chip.staticParams.chipClock.setStoredValue(1.75);
+            expectRegisters(chip.getChipRegisters(), before);
+            chip.staticParams.chipType.setStoredValue(ChipType::YM);
+            expectRegisters(chip.getChipRegisters(), before);
+            TestHelpers::processBlocks(engine, 2);
+
+            chip.staticParams.chipClock.setStoredValue(1.7734);
+            chip.staticParams.chipType.setStoredValue(ChipType::AY);
+            expectRegisters(chip.getChipRegisters(), before);
+        }
+
         beginTest("Stopped, the scopes keep the last frame that played");
         {
             transport.stop(false, false);

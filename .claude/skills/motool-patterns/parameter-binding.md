@@ -53,7 +53,7 @@ Traditional parameter systems face challenges:
 - `src/controllers/BindedAutoParameter.h` - Automation bridge
 - `src/controllers/ParamEndpoint.h` - Widget endpoints
 - `src/gui/common/ParamBindings.h` - Widget bindings
-- `docs/Parameter binding.md` - Full architecture documentation
+- `docs/design/parameter-binding.md` - Full architecture documentation
 
 ## Core Components
 
@@ -636,7 +636,7 @@ public:
 
 ## References
 
-- **Full Documentation**: `docs/Parameter binding.md` (comprehensive architecture guide)
+- **Full Documentation**: `docs/design/parameter-binding.md` (comprehensive architecture guide)
 - **Implementation**:
   - `src/controllers/Parameters.h`
   - `src/controllers/BindedAutoParameter.h`

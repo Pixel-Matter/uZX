@@ -1,5 +1,7 @@
 # Plan: Video clips on video tracks, synced & audio-delay-aware
 
+> **Status: proposal (October 2026), not implemented and not scheduled.** A plan for video clips on timeline tracks, part of [the MoTool vision](vision.md). File and line references are from the time of writing. The latency-aware playhead that step 7 asks for shipped separately, in a different way; File → Render Video is a different feature and does not use this design.
+
 ## Context
 
 uZX is a PSG music editor built on JUCE + tracktion_engine. The goal is to add **video

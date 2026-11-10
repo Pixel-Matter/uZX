@@ -4,7 +4,7 @@ Open work only, highest priority first. Finished work goes to [CHANGELOG.md](../
 
 ## Goal
 
-µZX is a modern tool for composing and playing back chiptune music, and the music subsystem of [MoTool](Vision.md).
+µZX is a modern tool for composing and playing back chiptune music, and the music subsystem of [MoTool](motool/vision.md).
 
 **Done** means: I can write a whole track in µZX Studio, from MIDI to a PSG export, and play it on real hardware; and play live from a MIDI controller through the AY emulator or even a real AY on a Spectrum (MIDI → PC → AY MIDI → ZX → audio). That is a far goal, so work goes milestone by milestone; each milestone below states its own goal.
 
@@ -35,7 +35,7 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 #### P1 — Important
 
 - [ ] **About dialog** — GitHub link (only pixelmatter.org now), greets scroller
-- [ ] **TAYM** (needs Timer fx, see [TODO.md](TODO.md))
+- [ ] **TAYM** (needs Timer fx, see [design/timer-fx.md](design/timer-fx.md))
 - [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
 - [ ] **Loop range** on the ruler
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
@@ -133,8 +133,8 @@ Grouped by theme, not ordered.
 - [ ] **Live mode** — scenes and clips to launch
 - [ ] **Node system** — tracks, sequencer clips, launch clips, and internal plugin host; nodes linked 1:1 with timeline clips for params, data buffers, and image streams
 
-See [docs/TODO.md](TODO.md) for granular implementation tasks.
+See [TODO.md](TODO.md) for granular implementation tasks.
 
 ### Full MoTool vision
 
-µZX is the music subsystem of the larger MoTool project — a demotool for retrocomputer demoscene production. The full vision includes video/FX composing tracks, machine emulation tracks, and a node system for linking music, graphics, and code. See [docs/Vision.md](Vision.md) for details.
+µZX is the music subsystem of the larger MoTool project — a demotool for retrocomputer demoscene production. The full vision includes video/FX composing tracks, machine emulation tracks, and a node system for linking music, graphics, and code. See [motool/vision.md](motool/vision.md) for details; it is the initial vision, and only the items listed under **Video & FX** above are tracked.

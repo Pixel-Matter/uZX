@@ -1,4 +1,6 @@
-# Timer FX (TAYM-style timed AY writes) in uZX: design notes
+# Timer FX (TAYM-style timed AY writes): design notes
+
+> **Status: not implemented.** Design for the Timer fx support that TAYM import needs ([ROADMAP.md](../ROADMAP.md), v1.0 P1).
 
 Notes from the pyayay `render` / absolute-timeline work (pyayay branch
 `feature/render-frame`, files `src/wrapper.cpp`, `src/aychip.{h,cpp}`,

@@ -128,7 +128,7 @@ auto ui = registry.createDeviceUI(plugin);
 - `src/controllers/BindedAutoParameter.h` - Automation bridge
 - `src/controllers/ParamEndpoint.h` - Widget endpoints
 - `src/gui/common/ParamBindings.h` - Widget bindings
-- `docs/Parameter binding.md` - Comprehensive architecture documentation
+- `docs/design/parameter-binding.md` - Comprehensive architecture documentation
 
 **See**: [parameter-binding.md](parameter-binding.md) for detailed documentation
 
@@ -195,7 +195,7 @@ These patterns emerged from solving real problems in this domain but are general
 
 ## Additional Resources
 
-- **Project documentation**: `docs/Parameter binding.md`, `docs/Design.md`
+- **Project documentation**: `docs/design/parameter-binding.md`
 - **JUCE patterns**: Use the `juce-programming` skill
 - **Tracktion patterns**: Use the `tracktion-engine` skill
 - **Repository**: All examples from working code at `github.com/ruguevara/MoTool`

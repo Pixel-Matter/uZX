@@ -88,7 +88,8 @@ void WaveformDisplay::refresh() {
 bool WaveformDisplay::updateWaveform() {
     // Copy samples from ring buffer into work buffer for trigger search
     const int workSamples = windowSize_ * kTriggerSearchMultiplier;
-    sourceBuffer_.copyTo(workBuffer_.data(), workSamples, syncWork_.data(), amplitudeWork_.data());
+    if (sourceBuffer_.copyTo(workBuffer_.data(), workSamples, syncWork_.data(), amplitudeWork_.data()) == 0)
+        return false;
 
     // The trigger lands in the window's centre, with half a window on each side of it
     const int triggerOffset = findTriggerPoint();

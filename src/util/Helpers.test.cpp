@@ -3,7 +3,9 @@
 #include "../models/EditUtilities.h"
 #include "../models/PsgClip.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
+#include "FileOps.h"
 #include "Helpers.h"
+#include "TestHelpers.h"
 
 namespace MoTool::Tests {
 
@@ -127,5 +129,135 @@ public:
 };
 
 static ImportPsgFilesTest importPsgFilesTest;
+
+class RenderTrackTest : public juce::UnitTest
+{
+public:
+    RenderTrackTest() : UnitTest("RenderTrack", "MoTool") {}
+
+    void runTest() override {
+        struct TestStorage : tracktion::PropertyStorage {
+            explicit TestStorage(const File& folder) : PropertyStorage("RenderTrackTest"), root(folder) {}
+            File getAppPrefsFolder() override { return root; }
+            File root;
+        };
+
+        struct TestEngine : tracktion::EngineBehaviour {
+            bool autoInitialiseDeviceManager() override { return false; }
+            bool addSystemAudioIODeviceTypes() override { return false; }
+            tracktion::EditLimits getEditLimits() override {
+                auto limits = tracktion::EngineBehaviour::getEditLimits();
+                limits.maxClipsInTrack = clipLimit;
+                return limits;
+            }
+            int clipLimit = 1500;
+        };
+
+        struct TestUI : tracktion::UIBehaviour {
+            void showWarningMessage(const String& message) override { warning = message; }
+            void runTaskWithProgressBar(tracktion::ThreadPoolJobWithProgress& job) override {
+                if (cancel) {
+                    auto& task = dynamic_cast<tracktion::Renderer::RenderTask&>(job);
+                    job.runJob();
+                    canCancel = job.canCancel();
+                    partialFileWritten = task.params.destFile.existsAsFile();
+                } else {
+                    while (job.runJob() == juce::ThreadPoolJob::jobNeedsRunningAgain) {}
+                }
+                job.signalJobShouldExit();
+            }
+            String warning;
+            bool cancel = false;
+            bool canCancel = false;
+            bool partialFileWritten = false;
+        };
+
+        beginTest("A failed output directory leaves the project and existing file intact");
+        const juce::TemporaryFile workspace(String{});
+        auto root = workspace.getFile();
+        expect(root.createDirectory().wasOk());
+        {
+            auto ui = std::make_unique<TestUI>();
+            auto behaviour = std::make_unique<TestEngine>();
+            auto& testUI = *ui;
+            auto& testEngine = *behaviour;
+            tracktion::Engine engine(std::make_unique<TestStorage>(root), std::move(ui), std::move(behaviour));
+            tracktion::HostedAudioDeviceInterface::Parameters deviceParams;
+            deviceParams.useMidiDevices = false;
+            engine.getDeviceManager().getHostedAudioDeviceInterface().initialise(deviceParams);
+
+            const auto editFile = root.getChildFile("RenderTrack.uzx");
+            expect(editFile.create().wasOk());
+            auto edit = tracktion::Edit::createSingleTrackEdit(engine);
+            edit->editFileRetriever = [editFile] { return editFile; };
+            auto* source = tracktion::getAudioTracks(*edit).getFirst();
+            expect(source->insertMIDIClip("Source", {0_tp, 0.15_tp}, nullptr) != nullptr);
+            tracktion::SelectionManager selection(engine);
+            selection.selectOnly(source);
+            const auto renders = EditFileOps::getRendersDirectory(*edit);
+            const auto trackCount = tracktion::getAudioTracks(*edit).size();
+            const auto checkUnchanged = [&](bool muted) {
+                expectEquals(tracktion::getAudioTracks(*edit).size(), trackCount);
+                expect(selection.getSelectedObject(0) == source);
+                expectEquals(int(source->isMuted(false)), int(muted));
+                expect(renders.findChildFiles(File::findFiles, false).isEmpty());
+            };
+
+            source->setMute(true);
+            expect(renders.replaceWithText("existing"));
+            expect(Helpers::renderSelectedTracksToAudioTrack(*edit, selection) == nullptr);
+            checkUnchanged(true);
+            expect(testUI.warning.isNotEmpty());
+            expectEquals(renders.loadFileAsString(), String("existing"));
+            expect(renders.deleteFile());
+
+            beginTest("Cancellation cleans up the partial file without adding a track");
+            source->setMute(false);
+            testUI.warning.clear();
+            testUI.cancel = true;
+            expect(Helpers::renderSelectedTracksToAudioTrack(*edit, selection) == nullptr);
+            expect(testUI.canCancel && testUI.partialFileWritten);
+            checkUnchanged(false);
+            expect(testUI.warning.isEmpty());
+            testUI.cancel = false;
+
+            beginTest("Clip insertion failure rolls back only the new track and its file");
+            source->setMute(true);
+            testEngine.clipLimit = 0;
+            edit->getUndoManager().clearUndoHistory();
+            expect(Helpers::renderSelectedTracksToAudioTrack(*edit, selection) == nullptr);
+            checkUnchanged(true);
+            expect(!edit->getUndoManager().canUndo() && !edit->getUndoManager().canRedo());
+            expect(testUI.warning.contains("add the rendered audio"));
+            testEngine.clipLimit = 1500;
+
+            for (bool initiallyMuted : {false, true}) {
+                beginTest(initiallyMuted ? "Rendering a muted track commits the clip"
+                                         : "Rendering commits the clip and mutes the source");
+                source->setMute(initiallyMuted);
+                edit->getUndoManager().clearUndoHistory();
+                auto* rendered = Helpers::renderSelectedTracksToAudioTrack(*edit, selection);
+                expect(rendered != nullptr);
+                if (rendered != nullptr) {
+                    expectEquals(tracktion::getAudioTracks(*edit).size(), trackCount + 1);
+                    expect(selection.getSelectedObject(0) == rendered);
+                    expect(source->isMuted(false));
+                    expectEquals(rendered->getClips().size(), 1);
+                    expectEquals(renders.findChildFiles(File::findFiles, false, "*.wav").size(), 1);
+                    TestHelpers::flushMessageQueue();
+                    expect(edit->getUndoManager().canUndo());
+                    edit->undo();
+                    expectEquals(tracktion::getAudioTracks(*edit).size(), trackCount);
+                    expectEquals(int(source->isMuted(false)), int(initiallyMuted));
+                    Helpers::removeUnusedRenderFiles(*edit);
+                }
+                selection.selectOnly(source);
+            }
+        }
+        expect(root.deleteRecursively());
+    }
+};
+
+static RenderTrackTest renderTrackTest;
 
 }  // namespace MoTool::Tests

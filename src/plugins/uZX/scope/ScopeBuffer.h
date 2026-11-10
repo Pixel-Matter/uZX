@@ -1,9 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <atomic>
-#include <algorithm>
-#include <cstring>
+#include <cstddef>
+#include <cstdint>
 
 namespace MoTool::uZX {
 
@@ -13,21 +14,15 @@ namespace MoTool::uZX {
  * Audio thread pushes samples via pushSamples() (non-blocking write).
  * UI thread reads snapshots via copyTo() (non-blocking read).
  *
- * Uses relaxed atomics for write index since we only need eventual consistency
- * for visualization purposes - dropped frames are acceptable.
+ * Readers skip a snapshot if a publication overlaps the copy. Competing producers
+ * (such as during a graph handoff) skip a block if another producer is publishing.
  */
-class ScopeBuffer {
+class ScopeBuffer
+{
 public:
     static constexpr int kBufferSize = 8192;  // ~185ms at 44.1kHz
 
-    ScopeBuffer() {
-        for (auto& lane : lanes_)
-            lane.fill(0.0f);
-    }
-
-    inline constexpr static int size() noexcept {
-        return kBufferSize;
-    }
+    inline constexpr static int size() noexcept { return kBufferSize; }
 
     /**
      * Push samples from audio thread (non-blocking).
@@ -35,26 +30,43 @@ public:
      * `sync` and `amplitude`, if given, are a chip channel's trigger and the highest level its volume reaches;
      * they share each sample's slot, so they never drift apart from it.
      */
-    void pushSamples(const float* samples, int numSamples, const float* sync = nullptr,
+    void pushSamples(const float* samples,
+                     int numSamples,
+                     const float* sync = nullptr,
                      const float* amplitude = nullptr) noexcept {
         if (samples == nullptr || numSamples <= 0)
             return;
 
-        const std::array<const float*, kNumLanes> sources {samples, sync, amplitude};
-        int writePos = writeIndex_.load(std::memory_order_relaxed);
+        auto revision = revision_.load(std::memory_order_relaxed);
+        if ((revision & 1) != 0
+            || !revision_.compare_exchange_strong(
+                revision, revision + 1, std::memory_order_acquire, std::memory_order_relaxed))
+            return;
 
-        for (int i = 0; i < numSamples; ++i) {
-            for (size_t lane = 0; lane < kNumLanes; ++lane)
-                lanes_[lane][static_cast<size_t>(writePos)] = sources[lane] != nullptr ? sources[lane][i] : 0.0f;
-            writePos = (writePos + 1) % kBufferSize;
+        // Pair with the reader's acquire fence so any in-flight store also exposes the busy revision.
+        std::atomic_thread_fence(std::memory_order_release);
+
+        const bool cleared = clearRequested_.exchange(false, std::memory_order_relaxed);
+        const int available = cleared ? 0 : available_.load(std::memory_order_relaxed);
+        const int writePos = writeIndex_.load(std::memory_order_relaxed);
+
+        const std::array<const float*, kNumLanes> sources{samples, sync, amplitude};
+        for (size_t lane = 0; lane < kNumLanes; ++lane) {
+            const auto* source = sources[lane];
+            for (int i = 0; i < numSamples; ++i)
+                lanes_[lane][ringIndex(writePos, i)].store(source != nullptr ? source[i] : 0.0f,
+                                                           std::memory_order_relaxed);
         }
 
-        writeIndex_.store(writePos, std::memory_order_release);
+        writeIndex_.store(static_cast<int>(ringIndex(writePos, numSamples)), std::memory_order_relaxed);
+        available_.store(available + std::min(numSamples, kBufferSize - available), std::memory_order_relaxed);
+        revision_.store(revision + 2, std::memory_order_release);
     }
 
     /**
      * Copy most recent samples to destination buffer (UI thread).
-     * Returns the number of samples actually copied.
+     * Returns the number of samples copied, with leading zeros if history is short.
+     * A return of zero means the destination must be ignored.
      *
      * @param dest Destination buffer (must have capacity for numSamples)
      * @param numSamples Number of samples to copy (will be clamped to buffer size)
@@ -67,48 +79,53 @@ public:
 
         numSamples = std::min(numSamples, kBufferSize);
 
-        // Read write index with acquire to synchronize with audio thread
-        int writePos = writeIndex_.load(std::memory_order_acquire);
+        const auto revision = revision_.load(std::memory_order_acquire);
+        if ((revision & 1) != 0)
+            return 0;
 
-        // Calculate start position (numSamples before current write position)
-        int startPos = (writePos - numSamples + kBufferSize) % kBufferSize;
+        const int writePos = writeIndex_.load(std::memory_order_relaxed);
+        const int available = clearRequested_.load(std::memory_order_relaxed)
+                                  ? 0
+                                  : std::min(available_.load(std::memory_order_relaxed), numSamples);
+        const int leadingZeros = numSamples - available;
+        const int startPos = writePos - available + kBufferSize;
 
-        const std::array<float*, kNumLanes> dests {dest, syncDest, amplitudeDest};
-        for (size_t lane = 0; lane < kNumLanes; ++lane)
-            if (dests[lane] != nullptr)
-                copyRing(lanes_[lane], dests[lane], startPos, numSamples);
+        const std::array<float*, kNumLanes> dests{dest, syncDest, amplitudeDest};
+        for (size_t lane = 0; lane < kNumLanes; ++lane) {
+            auto* output = dests[lane];
+            if (output == nullptr)
+                continue;
 
-        return numSamples;
+            std::fill_n(output, leadingZeros, 0.0f);
+            for (int i = 0; i < available; ++i)
+                output[leadingZeros + i] = lanes_[lane][ringIndex(startPos, i)].load(std::memory_order_relaxed);
+        }
+
+        std::atomic_thread_fence(std::memory_order_acquire);
+        return revision_.load(std::memory_order_relaxed) == revision ? numSamples : 0;
     }
 
     /**
-     * Clear the buffer (call from UI thread when resetting display).
+     * Discard history without writing sample slots from the caller's thread.
+     * Readers see silence until a producer starts publishing fresh samples.
      */
-    void clear() noexcept {
-        for (auto& lane : lanes_)
-            lane.fill(0.0f);
-        writeIndex_.store(0, std::memory_order_release);
-    }
+    void requestClear() noexcept { clearRequested_.store(true, std::memory_order_relaxed); }
 
 private:
     static constexpr size_t kNumLanes = 3;  // samples, sync, amplitude
-    using Ring = std::array<float, kBufferSize>;
+    using Ring = std::array<std::atomic<float>, kBufferSize>;
+    static_assert(std::atomic<float>::is_always_lock_free && std::atomic<std::uint64_t>::is_always_lock_free
+                  && std::atomic<int>::is_always_lock_free && std::atomic<bool>::is_always_lock_free);
 
-    static void copyRing(const Ring& ring, float* dest, int startPos, int numSamples) noexcept {
-        // Copy samples, handling wrap-around
-        if (startPos + numSamples <= kBufferSize) {
-            // No wrap-around needed
-            std::memcpy(dest, ring.data() + startPos, numSamples * sizeof(float));
-        } else {
-            // Wrap-around: copy in two parts
-            int firstPart = kBufferSize - startPos;
-            std::memcpy(dest, ring.data() + startPos, firstPart * sizeof(float));
-            std::memcpy(dest + firstPart, ring.data(), (numSamples - firstPart) * sizeof(float));
-        }
+    static size_t ringIndex(int start, int offset) noexcept {
+        return (static_cast<size_t>(start) + static_cast<size_t>(offset)) % kBufferSize;
     }
 
-    std::array<Ring, kNumLanes> lanes_;
+    std::array<Ring, kNumLanes> lanes_{};
+    std::atomic<std::uint64_t> revision_{0};  // odd while the producer owns the ring
     std::atomic<int> writeIndex_{0};
+    std::atomic<int> available_{0};
+    std::atomic<bool> clearRequested_{false};
 };
 
 }  // namespace MoTool::uZX

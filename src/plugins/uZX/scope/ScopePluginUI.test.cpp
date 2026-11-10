@@ -88,4 +88,39 @@ public:
 
 static ScopeTriggerModesTest scopeTriggerModesTest;
 
+class ScopePluginBufferTest : public juce::UnitTest
+{
+public:
+    ScopePluginBufferTest() : UnitTest("ScopePluginBuffer", "MoTool") {}
+
+    void runTest() override {
+        beginTest("Stereo scopes receive their own audio and drop old history on initialisation");
+
+        auto edit = tracktion::Edit::createSingleTrackEdit(*tracktion::Engine::getEngines()[0]);
+        auto plugin = edit->getPluginCache().createNewPlugin(ScopePlugin::xmlTypeName, {});
+        auto& scope = dynamic_cast<ScopePlugin&>(*plugin);
+        const tracktion::PluginInitialisationInfo info{{}, 44100.0, 4};
+        scope.initialise(info);
+
+        juce::AudioBuffer<float> audio(2, 4);
+        audio.clear();
+        audio.setSample(0, 3, 0.25f);
+        audio.setSample(1, 3, 0.75f);
+        scope.applyToBuffer(
+            {&audio, juce::AudioChannelSet::stereo(), 0, 4, nullptr, 0.0, {}, true, false, false, false});
+
+        float sample = 0.0f;
+        expectEquals(scope.getBuffer(0)->copyTo(&sample, 1), 1);
+        expect(juce::exactlyEqual(sample, 0.25f));
+        expectEquals(scope.getBuffer(1)->copyTo(&sample, 1), 1);
+        expect(juce::exactlyEqual(sample, 0.75f));
+
+        scope.initialise(info);
+        expectEquals(scope.getBuffer(1)->copyTo(&sample, 1), 1);
+        expect(juce::exactlyEqual(sample, 0.0f));
+    }
+};
+
+static ScopePluginBufferTest scopePluginBufferTest;
+
 }  // namespace MoTool::uZX

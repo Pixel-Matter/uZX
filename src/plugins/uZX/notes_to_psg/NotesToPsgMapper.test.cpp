@@ -189,6 +189,27 @@ public:
             expectEquals(messages[0].getControllerValue(), 100, "Should preserve controller value");
         }
 
+        beginTest("A block's output keeps each message's time, passed-through ones too");
+        {
+            NotesToPsgMapper mapper;
+            mapper.setBaseChannel(1);
+            mapper.setTuningSystem(createTestTuning());
+            te::MidiMessageArray buffer;
+            buffer.addMidiMessage(MidiMessage::noteOn(1, 60, (uint8) 100).withTimeStamp(0.1), {});
+            buffer.addMidiMessage(MidiMessage::noteOn(9, 60, (uint8) 100).withTimeStamp(0.25), {});
+            buffer.addMidiMessage(MidiMessage::noteOff(1, 60).withTimeStamp(0.5), {});
+            MidiBufferContext context {buffer, 0, 48000, {}, 48000.0};
+            mapper(context);
+
+            for (const auto& m : buffer) {
+                if (m.getChannel() == 9)
+                    expectWithinAbsoluteError(m.getTimeStamp(), 0.25, 1e-9, "passed through at its own time");
+                else if (m.isController() && m.getControllerNumber() == (int) MidiCCType::Volume)
+                    expectWithinAbsoluteError(m.getTimeStamp(), m.getControllerValue() > 0 ? 0.1 : 0.5, 1e-9,
+                                              "the note's volume at the note on and off");
+            }
+        }
+
         beginTest("Optimized tone switching");
         {
             NotesToPsgMapper mapper;

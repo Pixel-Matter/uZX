@@ -69,7 +69,6 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] UI for MIDI to PSG plugin with tuning editor button
 - [ ] Sync tuning scale with Edit scales and keys
 - [ ] Thread safety (crash risk): `NotesToPsgMapper::setTuningSystem` / `reset` / `setBaseChannel` run on the message thread without a lock while the audio thread uses `tuning_`, `midiBuffer_` and `voices_[channel - baseChannel_]` — use-after-free of the old `TuningSystem`, concurrent `juce::Array` writes, out-of-range voice index. Easiest to hit in uZXTuning by changing root/A4/clock/table while a scale plays
-- [ ] Out-of-window MIDI is passed through with its timestamp and then merged again with an offset, roughly doubling it (`NotesToPsgMapper.cpp:298-299, 346, 352`); the AY plugin now clamps, but the mapper is still wrong
 
 ## PSG Clip / PSG data
 

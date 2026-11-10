@@ -296,7 +296,7 @@ void NotesToPsgMapper::handleMidiMessage(const te::MidiMessageWithSource& msg) {
     auto channel = msg.getChannel();
     if (!isChannelInRange(channel)) {
         if (passthruOutsideChannels_) {
-            midiBuffer_.addMidiMessage(msg, msg.mpeSourceID);
+            midiBuffer_.addMidiMessage(juce::MidiMessage(msg, 0.0), msg.mpeSourceID);  // at the output's offset
         }
         return;
     }
@@ -310,7 +310,7 @@ void NotesToPsgMapper::handleMidiMessage(const te::MidiMessageWithSource& msg) {
         auto& voice = getVoice(channel);
         voice.controllerChange(static_cast<MidiCCType>(msg.getControllerNumber()), msg.getControllerValue());
     } else if (passthruUnprocessedMIDI_) {
-        midiBuffer_.addMidiMessage(msg, msg.mpeSourceID);
+        midiBuffer_.addMidiMessage(juce::MidiMessage(msg, 0.0), msg.mpeSourceID);
     }
     // Other mesages can be handled here if needed
 }
@@ -339,11 +339,12 @@ void NotesToPsgMapper::operator()(MidiBufferContext& c) {
     // DBG(">---");
     // c.debugMidiBuffer();
 
-    double lastTimestamp = 0.0f;
+    // The output is relative: each batch of messages at one time renders at that time
+    double lastTimestamp = 0.0;
     for (const auto& m : c.buffer) {
         auto timestamp = m.getTimeStamp();
         if (timestamp > lastTimestamp) {
-            tempBuffer.mergeFromWithOffset(renderVoices(), timestamp);
+            tempBuffer.mergeFromWithOffset(renderVoices(), lastTimestamp);
         }
         handleMidiMessage(m);
         lastTimestamp = timestamp;

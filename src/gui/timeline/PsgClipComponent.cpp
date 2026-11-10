@@ -704,9 +704,10 @@ void PsgClipComponent::paint(Graphics& g) {
     if (! editViewState.showClipHeaders)
         paintWarnings(g);
 
-   #if JUCE_DEBUG
-    paintMeasurer_.drawOverlay(g, getShownArea(*this));
-   #endif
+    // Paint timing overlay, opt-in: UZX_PAINT_STATS=1
+    static const bool showPaintStats = SystemStats::getEnvironmentVariable("UZX_PAINT_STATS", {}).getIntValue() != 0;
+    if (showPaintStats)
+        paintMeasurer_.drawOverlay(g, getShownArea(*this));
 }
 
 PsgClipComponent::PaintView PsgClipComponent::getViewPaintView() const {
@@ -1097,7 +1098,7 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView) {
 
         const int degree = ((lane.note - tonic) % 12 + 12) % 12;
         const bool isTonic = degree == 0;
-        if (tuning.hasKey && isTonic && detail.lines == LaneDetail::All) {
+        if (tuning.hasKey && isTonic && detail.lines == LaneDetail::All && right > gridX) {
             // In the lines' colour and on their rows, from the line above to its own: one even stripe,
             // with no soft edge or gap against them. Its own line, an octave's on C, goes over it.
             const int bandTop = roundToInt(top), bandBottom = roundToInt(bottom);

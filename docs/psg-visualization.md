@@ -158,3 +158,5 @@ An opt-in benchmark, [PsgPaintingBenchmark.test.cpp](../src/gui/timeline/PsgPain
 ```sh
 UZX_PSG_PAINT_BENCHMARK=/tmp/psg-paint.json build/src/uZXTests_artefacts/Debug/uZXTests PsgPaintingBenchmark
 ```
+
+For live paint times in the app, start it with `UZX_PAINT_STATS=1` to draw each PSG clip's timing overlay.

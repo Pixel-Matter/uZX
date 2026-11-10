@@ -21,6 +21,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### PSG clips
 - The envelope pitch is a filled, hatched purple note instead of an outline; the E legend swatch is filled too
+- The timeline grid and the pitch lanes are a step lighter
 - Fixed: a note lasts through the frames that change nothing, until the next change, instead of showing for one frame
 - Fixed: a damaged or crafted PSG file can no longer fill the memory with pauses: a file is read up to four hours at 50 Hz
 

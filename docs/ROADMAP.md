@@ -34,7 +34,6 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 
 #### P1 — Important
 
-- [ ] **About dialog** — GitHub link (only pixelmatter.org now), greets scroller
 - [ ] **TAYM** (needs Timer fx, see [design/timer-fx.md](design/timer-fx.md))
 - [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
 - [ ] **Loop range** on the ruler

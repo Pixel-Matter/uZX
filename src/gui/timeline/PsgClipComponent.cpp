@@ -271,20 +271,26 @@ struct ClipVisibility {
         return pixelsPerFrame >= 1.0f ? std::round(x) : x;
     }
 
-    /** Calls fn(frameArrayIndex, frame, x, width) for every frame inside the visible range. */
+    /** Calls fn(frameArrayIndex, frame, x, width) for every frame inside the visible range.
+        Only frames that change something are stored, so a held frame lasts until the next stored
+        one or the clip's end, as the chip holds its state; otherwise a frame takes its own slot. */
     template <typename Fn>
-    void forEachVisibleFrame(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, Fn&& fn) const {
-        for (int i = startIdx; i < frames.size(); ++i) {
+    void forEachVisibleFrame(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, bool held, Fn&& fn) const {
+        // A held frame starting before the range can still sound in it.
+        for (int i = held ? jmax(0, startIdx - 1) : startIdx; i < frames.size(); ++i) {
             const auto& frame = *frames[i];
             const auto t = frame.getEditTime(clip);
+            const auto end = ! held ? t + frameDur
+                : i + 1 < frames.size() ? jmin(frames[i + 1]->getEditTime(clip), clipRange.getEnd())
+                : clipRange.getEnd();
 
-            if (t < range.getStart())
+            if (end <= range.getStart())
                 continue;
             if (t >= range.getEnd())
                 break;
 
             const float x = timeToX(t);
-            fn(i, frame, x, timeToX(t + frameDur) - x);
+            fn(i, frame, x, timeToX(end) - x);
         }
     }
 };
@@ -856,7 +862,7 @@ void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
     g.setFont(Font(FontOptions(12.0f).withStyle("Bold")));
 
     uZX::PsgRegsFrame regsFrame;
-    vis.forEachVisibleFrame(frames, *psgClip, [&] (int, const PsgParamFrame& frame, float x, float width) {
+    vis.forEachVisibleFrame(frames, *psgClip, false, [&] (int, const PsgParamFrame& frame, float x, float width) {
         regsFrame.clear();
         frame.getData().updateRegisters(regsFrame);
 
@@ -1238,7 +1244,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     const Range<float> visibleX = layout.visibleX;
     const Rectangle<float> viewport {visibleX.getStart(), 0.0f, visibleX.getLength(), float(vis.rect.getHeight())};
 
-    vis.forEachVisibleFrame(frames, *psgClip, [&] (int frameIndex, const PsgParamFrame& frame, float x, float width) {
+    vis.forEachVisibleFrame(frames, *psgClip, true, [&] (int frameIndex, const PsgParamFrame& frame, float x, float width) {
         const auto& frameData = frame.getData();
         const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
 

@@ -481,6 +481,23 @@ public:
             frames[152] = tone;  // x 50.67..51: rounded, no pixel
             expect(! isBlank(renderData({frames, {50.0, 1}})), "a note a third of a pixel wide must still show");
         }
+
+        beginTest("A note holds through frames that change nothing, also scrolled past its start");
+        {
+            const uZX::PsgRegsFrame tone {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15},
+                                          {uZX::PsgRegType::TonePeriodFineA, 200}};
+            const uZX::PsgData held {{tone, {}, {}, {}}, {50.0, 1}};  // empty frames are not stored
+            const auto image = renderData(held, 400);
+            int row = -1;
+            for (int y = 0; y < image.getHeight() && row < 0; ++y)
+                if (image.getPixelAt(1, y).isOpaque())
+                    row = y;
+            expect(row >= 0, "the note must be painted");
+            for (int x = 0; row >= 0 && x < image.getWidth(); x += 50)
+                expect(image.getPixelAt(x, row) == image.getPixelAt(1, row), "gap at x = " + String(x));
+            const auto scrolled = Tests::renderPsgClip(engine, held, 200, 300, {2, 4});
+            expect(equalImages(image.getClippedImage({200, 0, 200, 300}), scrolled));
+        }
     }
 };
 

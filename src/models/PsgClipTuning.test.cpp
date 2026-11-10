@@ -249,6 +249,34 @@ public:
             expect(! rest->getTuning().keyChosen);
             expectEquals(rest->getTuning().key.getName(), String("A minor"));
         }
+
+        beginTest("Removing a frame, and undoing it, rebuilds the cached histogram");
+        {
+            auto noteFrame = [](int period) {
+                return uZX::PsgRegsFrame{{uZX::PsgRegType::VolumeA, 12},
+                                         {uZX::PsgRegType::TonePeriodFineA, static_cast<uint8_t>(period & 0xff)},
+                                         {uZX::PsgRegType::TonePeriodCoarseA, static_cast<uint8_t>(period >> 8)}};
+            };
+            uZX::PsgData data{{}, {50.0, 1}};
+            for (int period : {400, 200}) {
+                data.frames.push_back(noteFrame(period));
+                for (int i = 0; i < 9; ++i)
+                    data.frames.push_back({});
+            }
+            auto clip = insert(data);
+            auto& psg = clip->getPsg();
+            auto& um = edit->getUndoManager();
+            expectEquals(clip->getPitchHistogram().tone.at(200), 10);
+
+            um.beginNewTransaction();
+            psg.state.removeChild(psg.getFrames()[1]->state, &um);
+            expectEquals(clip->getPitchHistogram().tone.count(200), size_t(0), "the removed note is gone");
+            expectEquals(clip->getPitchHistogram().tone.at(400), 20, "the first note now sounds to the clip end");
+
+            um.undo();
+            expectEquals(clip->getPitchHistogram().tone.at(200), 10, "undo brings the note back");
+            expectEquals(clip->getPitchHistogram().tone.at(400), 10);
+        }
     }
 };
 

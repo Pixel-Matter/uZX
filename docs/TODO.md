@@ -11,9 +11,7 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] 7. [Make clock coordination between plugins explicit](refactoring.md#7-make-clock-coordination-between-plugins-explicit), including chain order and persisted settings.
 - [ ] 8. [Separate PSG metadata, clip timing, and project policy](refactoring.md#8-separate-psg-metadata-clip-timing-and-project-policy), extending the existing import-timing tasks.
 - [ ] 9. [Extract tuning export formatting](refactoring.md#9-extract-tuning-export-formatting), preserving CSV output and filename behavior.
-- [ ] 10. [Give PSG mutations one derived-state invalidation owner](refactoring.md#10-give-psg-mutations-one-derived-state-invalidation-owner), covering removal, property edits, and undo/redo.
 - [ ] 11. [Include timing context in tuning cache dependencies](refactoring.md#11-include-timing-context-in-tuning-cache-dependencies), preserving explicit choices while refreshing automatic results.
-- [ ] 13. [Centralize persisted PSG parameter mapping](refactoring.md#13-centralize-persisted-psg-parameter-mapping), preserving property names, sparse masks, and legacy normalization.
 - [ ] 17. [Make MIDI sample-range semantics consistent](refactoring.md#17-make-midi-sample-range-semantics-consistent), checking nonzero starts and final render spans.
 - [ ] 18. [Align command registration with supported app capabilities](refactoring.md#18-align-command-registration-with-supported-app-capabilities).
 

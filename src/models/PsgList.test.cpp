@@ -231,6 +231,81 @@ public:
                 expectEquals(int(f.getRaw(PsgParamType::VolumeB)), 8, "addFrame F2: VolumeB accumulated=8");
             }
         }
+
+        beginTest("Every parameter survives a text round trip; absent and unknown properties are ignored");
+        {
+            PsgParamFrameData all;
+            for (size_t t = 0; t < PsgParamType::size(); ++t)
+                all.set(PsgParamType(static_cast<int>(t)), static_cast<uint16>(t + 1));
+            PsgParamFrameData zeroB;
+            zeroB.set(PsgParamType::VolumeB, 0);
+
+            PsgList original;
+            original.addFrameEvent(0, all, nullptr);
+            original.addFrameEvent(1, zeroB, nullptr);
+
+            // XML turns every property into a string, as a saved project does.
+            auto reloaded = ValueTree::fromXml(original.state.toXmlString());
+            reloaded.getChild(1).setProperty("unknown", 7, nullptr);
+            PsgList loaded(reloaded, nullptr);
+
+            const auto& frames = loaded.getFrames();
+            expectEquals(frames.size(), 2);
+            for (size_t t = 0; t < PsgParamType::size(); ++t) {
+                const PsgParamType type(static_cast<int>(t));
+                const auto label = String(std::string(type.getLabel()));
+                expect(frames[0]->getData().isSet(type), label + " should be set");
+                expectEquals(int(frames[0]->getData().getRaw(type)), int(t) + 1, label);
+            }
+            const auto& s0 = frames[0]->state;
+            for (int i = 0; i < s0.getNumProperties(); ++i)
+                expect(! s0[s0.getPropertyName(i)].isString(), s0.getPropertyName(i).toString() + " should load as a number");
+
+            const auto& f1 = frames[1]->getData();
+            expect(f1.isSet(PsgParamType::VolumeB) && f1.getRaw(PsgParamType::VolumeB) == 0,
+                   "A zero value is stored, not dropped");
+            expect(! f1.isSet(PsgParamType::VolumeA), "An absent property stays unset");
+            expectEquals(int(f1.getRaw(PsgParamType::VolumeA)), 1, "An absent property inherits the previous value");
+        }
+
+        beginTest("Frame tree changes, undo included, rebuild accumulated state and advance the data version");
+        {
+            UndoManager um;
+            PsgList psg;
+            PsgParamFrameData volumeA, volumeB;
+            volumeA.set(PsgParamType::VolumeA, 10);
+            volumeB.set(PsgParamType::VolumeB, 8);
+            psg.addFrameEvent(0, volumeA, nullptr);
+            psg.addFrameEvent(2, volumeB, nullptr);
+            expectEquals(int(psg.getFrames()[1]->getData().getRaw(PsgParamType::VolumeA)), 10);
+
+            auto version = psg.getDataVersion();
+            expectEquals(psg.getDataVersion(), version, "Reading does not advance the version");
+
+            um.beginNewTransaction();
+            psg.state.removeChild(psg.getFrames()[0]->state, &um);
+            expect(psg.getDataVersion() != version, "Removing a frame advances the version");
+            expectEquals(psg.getNumFrames(), 1);
+            expectEquals(int(psg.getFrames()[0]->getData().getRaw(PsgParamType::VolumeA)), 0,
+                         "A removed frame's value is no longer inherited");
+
+            version = psg.getDataVersion();
+            um.undo();
+            expect(psg.getDataVersion() != version, "Undo advances the version");
+            expectEquals(psg.getNumFrames(), 2);
+            expectEquals(int(psg.getFrames()[1]->getData().getRaw(PsgParamType::VolumeA)), 10,
+                         "Undo restores the inherited value");
+
+            psg.getFrames()[0]->state.removeProperty(IDs::va, nullptr);
+            expect(! psg.getFrames()[0]->getData().isSet(PsgParamType::VolumeA), "A removed property is no longer set");
+            expectEquals(int(psg.getFrames()[1]->getData().getRaw(PsgParamType::VolumeA)), 0,
+                         "A removed property is no longer inherited");
+
+            psg.getFrames()[0]->state.setProperty(IDs::i, 5, nullptr);  // move the first frame after B
+            expect(psg.getFrames()[0]->getData().isSet(PsgParamType::VolumeB), "Moving a frame re-sorts the list");
+            expectEquals(int(psg.getFrames()[1]->getData().getRaw(PsgParamType::VolumeB)), 8,
+                         "The moved frame inherits from the frames now before it");
+        }
     }
 };
 

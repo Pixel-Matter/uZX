@@ -91,15 +91,6 @@ public:
 
     static juce::ValueTree createPsgList();
 
-    /** Clears the current list and copies the others contents and properties. */
-    void copyFrom(const PsgList&, juce::UndoManager*);
-
-    /** Clears the current list and moves the others contents and properties. */
-    void moveFrom(PsgList&, juce::UndoManager*);
-
-    /** Adds copies of the events in another list to this one. */
-    void addFrom(const PsgList&, juce::UndoManager*);
-
     /** Loads from Psg data. */
     void loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager*);
 
@@ -107,7 +98,9 @@ public:
     void loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager*);
 
     //==============================================================================
-    /** Returns the frames sorted array. No copy made */
+    /** Returns the frames sorted array, each frame holding the accumulated register
+        state. No copy made. Any change to the frame trees, undo/redo included, is
+        picked up here. */
     const juce::Array<PsgParamFrame*>& getFrames() const;
 
     template <typename Visitor>
@@ -117,7 +110,8 @@ public:
     }
 
     //==============================================================================
-    int getDataVersion() const noexcept                             { return dataVersion_; }
+    /** Advances whenever the frame data changes; restarts with each new list. */
+    int getDataVersion() const                                      { getFrames(); return dataVersion_; }
 
     //==============================================================================
     /** Source machine frame rate (Hz) the frame indices came from. 0 if unknown
@@ -169,12 +163,7 @@ public:
     PsgParamFrame* getFrame(int index) const                  { return getFrames()[index]; }
     const PsgParamFrame* getFrameAtIndex(int frameIndex) const;
 
-    PsgParamFrame* addFrameEvent(const PsgParamFrame&, juce::UndoManager*);
     PsgParamFrame* addFrameEvent(int frameIndex, const PsgParamFrameData&, juce::UndoManager*);
-    PsgParamFrame* addFrameEvent(int frameIndex, const uZX::PsgRegsFrame&, juce::UndoManager*);
-
-    void removeFrameEvent(PsgParamFrame&, juce::UndoManager*);
-    void removeAllFrames(juce::UndoManager*);
 
     /** Get time according to MIDI timing */
     double getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::MidiList::TimeBase timeBase) const;
@@ -201,13 +190,13 @@ private:
     juce::CachedValue<te::MidiChannel> midiChannel;
     juce::CachedValue<double> frameRate_;
     juce::CachedValue<double> framesPerBeat_;
-    int dataVersion_ = 0;
+    mutable int dataVersion_ = 0;
 
     juce::String importedFileName;
     juce::String importedName;
 
     void initialise(juce::UndoManager*);
-    void recomputeAccumulatedState();
+    void recomputeAccumulatedState(const juce::Array<PsgParamFrame*>&) const;
 
     template<typename EventType>
     struct EventDelegate {
@@ -240,14 +229,16 @@ private:
         bool isSuitableType(const juce::ValueTree& v) const override   { return EventDelegate<EventType>::isSuitableType(v); }
         EventType* createNewObject(const juce::ValueTree& v) override  { return new EventType (v); }
         void deleteObject(EventType* m) override                       { delete m; }
-        void newObjectAdded(EventType*) override                       { triggerSort(); }
-        void objectRemoved(EventType* m) override                      { EventDelegate<EventType>::removeFromSelection(m); triggerSort(); }
+        void newObjectAdded(EventType*) override                       { triggerSort(); dataChanged = true; }
+        void objectRemoved(EventType* m) override                      { EventDelegate<EventType>::removeFromSelection(m); triggerSort(); dataChanged = true; }
         void objectOrderChanged() override                             { triggerSort(); }
 
         void valueTreePropertyChanged (juce::ValueTree& v, const juce::Identifier& i) override {
-            if (auto e = getEventFor(v))
+            if (auto e = getEventFor(v)) {
+                dataChanged = true;
                 if (EventDelegate<EventType>::updateObject(*e, i))
                     triggerSort();
+            }
         }
 
         void triggerSort() {
@@ -270,6 +261,7 @@ private:
         }
 
         bool needsSorting = true;
+        bool dataChanged = true;  // the owning list rebuilds derived state; message thread only
         juce::Array<EventType*> sortedEvents;
         juce::CriticalSection lock;
 

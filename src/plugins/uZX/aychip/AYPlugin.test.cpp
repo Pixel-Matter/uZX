@@ -2,6 +2,7 @@
 
 #include "AYPlugin.h"
 #include "AYPluginEditor.h"
+#include "../../../gui/common/MidiParameterMapping.h"
 #include "../../../models/PsgClip.h"
 #include "../../../util/TestHelpers.h"
 
@@ -235,5 +236,54 @@ public:
 };
 
 static AYChipSoloTests ayChipSoloTests;
+
+//==============================================================================
+/** Follows a MIDI-mapped parameter and its live-reader slot through the plugin's deletion. */
+class AYChipMappedParameterTests : public juce::UnitTest {
+public:
+    AYChipMappedParameterTests() : UnitTest("AYChipMappedParameter", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        auto* track = te::getAudioTracks(*edit)[0];
+        auto& mappings = edit->getParameterControlMappings();
+        const int cc7 = 0x10000 + 7;
+
+        te::Plugin::Ptr plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+        track->pluginList.insertPlugin(plugin, 0, nullptr);
+        auto* chip = dynamic_cast<AYChipPlugin*>(plugin.get());
+        auto* volume = plugin->getAutomatableParameterByID("volume").get();
+        te::SafeSelectable<te::Plugin> pluginRef(*plugin);
+        te::SafeSelectable<te::AutomatableParameter> volumeRef(*volume);
+
+        beginTest("A mapped parameter has one live reader and follows its controller");
+        {
+            MidiParameterMapping(volume).mapToMidiCC(cc7);
+            expect(mappings.isParameterMapped(*volume));
+            expectEquals(volume->getReferenceCount(), 2, "Held by the plugin and the mapping");
+            expect(chip->dynamicParams.volume.getLiveContext() == volume, "The slot points at the plugin's parameter");
+
+            mappings.sendChange(cc7, 1.0f, 1);
+            expectWithinAbsoluteError(chip->dynamicParams.volume.getLiveValue(), 1.0f, 1e-6f);
+            TestHelpers::flushMessageQueue();
+            expectWithinAbsoluteError(chip->dynamicParams.volume.getStoredValue(), 1.0f, 1e-6f);
+        }
+
+        beginTest("The mapping does not keep the parameter alive after its plugin");
+        {
+            plugin->deleteFromParent();
+            plugin = nullptr;
+            chip = nullptr;
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(1500);  // the plugin cache drops it on a timer
+
+            expect(pluginRef == nullptr, "Plugin destroyed");
+            expect(volumeRef == nullptr, "Parameter destroyed with it");
+            mappings.sendChange(cc7, 0.0f, 1);  // nothing left to call
+        }
+    }
+};
+
+static AYChipMappedParameterTests ayChipMappedParameterTests;
 
 }  // namespace MoTool::Tests

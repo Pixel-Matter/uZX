@@ -312,6 +312,101 @@ public:
             expectEquals(button.getButtonText(), String("TestBtn"), "Button displays shortLabel");
         }
 
+        beginTest("Slider outlives its binding");
+        {
+            ValueTree state {te::IDs::PLUGIN};
+            ParameterValue<float> value {{"testParam", "testParam", "Test Param", "A parameter for testing", 0.5f, {0.f, 1.0f}}};
+            value.referTo(state, nullptr);
+
+            Slider slider;
+            {
+                SliderParamEndpointBinding binding(slider, value);
+                expect(slider.onValueChange != nullptr && slider.onDragStart != nullptr && slider.onDragEnd != nullptr,
+                       "Binding installs value and drag callbacks");
+                expect(slider.textFromValueFunction != nullptr && slider.valueFromTextFunction != nullptr,
+                       "Binding installs text conversion callbacks");
+            }
+
+            expect(slider.onValueChange == nullptr, "Value callback removed");
+            expect(slider.onDragStart == nullptr, "Drag start callback removed");
+            expect(slider.onDragEnd == nullptr, "Drag end callback removed");
+            expect(slider.textFromValueFunction == nullptr, "Text formatting callback removed");
+            expect(slider.valueFromTextFunction == nullptr, "Text parsing callback removed");
+
+            slider.setValue(0.3, sendNotificationSync);
+            expectWithinAbsoluteError(slider.getValueFromText(slider.getTextFromValue(0.25)), 0.25, 1e-6,
+                                      "Slider converts text without its binding");
+            expectWithinAbsoluteError(static_cast<double>(value.getStoredValue()), 0.5, 1e-6,
+                                      "Parameter unchanged by an unbound slider");
+        }
+
+        beginTest("ComboBox and buttons outlive their bindings");
+        {
+            ValueTree state {te::IDs::PLUGIN};
+            ParameterValue<ChipType> chip {{"chip", "chip", "Chip", "Chip type", ChipType::AY}};
+            ParameterValue<bool> toggle {{"toggle", "toggle", "T", "Toggle test", false}};
+            chip.referTo(state, nullptr);
+            toggle.referTo(state, nullptr);
+
+            ComboBox comboBox;
+            TextButton choiceButton, toggleButton;
+            {
+                ComboBoxParamEndpointBinding comboBinding(comboBox, chip);
+                ButtonParamEndpointBinding choiceBinding(choiceButton, chip);
+                ToggleParamEndpointBinding toggleBinding(toggleButton, toggle);
+                expect(comboBox.onChange != nullptr && choiceButton.onClick != nullptr
+                           && toggleButton.onClick != nullptr,
+                       "Bindings install their callbacks");
+            }
+
+            expect(comboBox.onChange == nullptr, "ComboBox callback removed");
+            expect(choiceButton.onClick == nullptr, "Choice button callback removed");
+            expect(toggleButton.onClick == nullptr, "Toggle button callback removed");
+
+            comboBox.setSelectedId(2, sendNotificationSync);
+            choiceButton.triggerClick();
+            toggleButton.triggerClick();
+            TestHelpers::flushMessageQueue();
+
+            expectEquals(chip.getStoredValue(), ChipType(ChipType::AY), "Choice unchanged by unbound widgets");
+            expect(!toggle.getStoredValue(), "Toggle unchanged by an unbound button");
+        }
+
+        beginTest("Destroyed binding keeps callbacks it no longer owns");
+        {
+            ValueTree state {te::IDs::PLUGIN};
+            ParameterValue<float> first {{"first", "first", "First", "First parameter", 0.5f, {0.f, 1.0f}}};
+            ParameterValue<float> second {{"second", "second", "Second", "Second parameter", 0.5f, {0.f, 1.0f}}};
+            first.referTo(state, nullptr);
+            second.referTo(state, nullptr);
+
+            Slider slider;
+            auto older = std::make_unique<SliderParamEndpointBinding>(slider, first);
+            SliderParamEndpointBinding newer(slider, second);
+            older.reset();
+
+            slider.setValue(0.3, sendNotificationSync);
+            expectWithinAbsoluteError(static_cast<double>(second.getStoredValue()), 0.3, 1e-6,
+                                      "Rebound slider still drives the newer binding");
+            expectWithinAbsoluteError(static_cast<double>(first.getStoredValue()), 0.5, 1e-6,
+                                      "Older parameter is detached");
+            expect(slider.textFromValueFunction != nullptr, "Newer binding keeps its text formatting");
+
+            ParameterValue<bool> toggle {{"toggle", "toggle", "T", "Toggle test", false}};
+            toggle.referTo(state, nullptr);
+
+            TextButton button;
+            int clicks = 0;
+            {
+                ToggleParamEndpointBinding binding(button, toggle);
+                button.onClick = [&clicks] { ++clicks; };
+            }
+
+            button.triggerClick();
+            TestHelpers::flushMessageQueue();
+            expectEquals(clicks, 1, "Callback set after binding survives the binding");
+        }
+
     }
 };
 

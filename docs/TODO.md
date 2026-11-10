@@ -17,7 +17,7 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] 9. [Extract tuning export formatting](refactoring.md#9-extract-tuning-export-formatting), preserving CSV output and filename behavior.
 - [ ] 10. [Give PSG mutations one derived-state invalidation owner](refactoring.md#10-give-psg-mutations-one-derived-state-invalidation-owner), covering removal, property edits, and undo/redo.
 - [ ] 11. [Include timing context in tuning cache dependencies](refactoring.md#11-include-timing-context-in-tuning-cache-dependencies), preserving explicit choices while refreshing automatic results.
-- [ ] 12. [Make widget bindings own callback teardown](refactoring.md#12-make-widget-bindings-own-callback-teardown), including slider text conversion and widget reuse.
+- [x] 12. [Make widget bindings own callback teardown](refactoring.md#12-make-widget-bindings-own-callback-teardown), including slider text conversion and widget reuse.
 - [ ] 13. [Centralize persisted PSG parameter mapping](refactoring.md#13-centralize-persisted-psg-parameter-mapping), preserving property names, sparse masks, and legacy normalization.
 - [x] 14. [Give deferred preview requests cancellation semantics](refactoring.md#14-give-deferred-preview-requests-cancellation-semantics), rejecting starts superseded by Stop or a newer preview.
 - [x] 15. [Give track rendering a single commit and rollback boundary](refactoring.md#15-give-track-rendering-a-single-commit-and-rollback-boundary), preserving source state on failure and cancellation.
@@ -60,6 +60,7 @@ See the [review scope and implementation order](refactoring.md#implementation-or
 - [ ] Hide the MIDI Logger debug plugin from the plugin list in release builds
 - [ ] Reopening the project that is already open (Open Recent item 0, drop of the current .uzx) loses unsaved changes: `setEdit` saves the old edit, then force-saves the stale freshly loaded copy over it; both edits share a project ID, so deleting the old temp folder also wipes the new one's
 - [ ] A second Player instance fully initialises and saves the shared startup edit before quitting (`moreThanOneInstanceAllowed` is checked after the `MoToolApp` constructor)
+- [ ] Undoing a plugin deletion loses its MIDI CC mappings: the deletion removes them from `ParameterControlMappings` in memory, the restored plugin is a new object that is not mapped again, and the next save drops them from the project
 - [ ] Crash audit leftover, not exercised live: quit while a render progress dialog is up (Studio)
 - [ ] Device UIs register themselves from static objects (`REGISTER_PLUGIN_UI_ADAPTER`), which the linker drops from the `motool_common` static library unless each platform links all of it (`-force_load`, `/WHOLEARCHIVE`, `--whole-archive`; Linux lacked it until the level meter showed as a generic plugin). Replace the three flags with one of:
   - an OBJECT library: every object is always linked, no platform flags

@@ -1,5 +1,6 @@
 #include <JuceHeader.h>
 #include "ChannelMuter.h"
+#include "aychip.h"
 #include "../../../util/TestHelpers.h"
 
 namespace MoTool::uZX {
@@ -202,6 +203,33 @@ public:
             expect(regs.getToneOn(2), "C: tone still on");
             expect(!regs.getNoiseOn(2), "C: noise off");
             expectEquals(regs.getVolume(2), static_cast<uint8_t>(10), "C: volume preserved");
+        }
+
+        beginTest("Unmuting brings back the channel the registers last set");
+        {
+            ValueTree state("ChannelMuter");
+            ChannelMuter filter;
+            filter.referTo(state, nullptr);
+            AyumiEmulator chip;
+            chip.setRegister(7, 0x3e);  // tone A on
+            chip.setRegister(8, 0x1f);  // A at 15 with the envelope
+
+            filter.channelA.setStoredValue(false);
+            filter.applyToChip(chip);
+            expectEquals(chip.getVolume(0), 0, "muted");
+
+            filter.channelA.setStoredValue(true);
+            filter.toneA.setStoredValue(false);
+            filter.envelopeA.setStoredValue(false);
+            filter.applyToChip(chip);
+            expectEquals(chip.getVolume(0), 15, "the volume is back");
+            expect(! std::get<0>(chip.getMixer(0)) && ! std::get<2>(chip.getMixer(0)), "tone and envelope muted");
+
+            filter.toneA.setStoredValue(true);
+            filter.envelopeA.setStoredValue(true);
+            filter.applyToChip(chip);
+            expect(std::get<0>(chip.getMixer(0)) && std::get<2>(chip.getMixer(0)), "tone and envelope are back");
+            expectEquals(int(chip.getRegister(8)), 0x1f, "the registers stay as written");
         }
     }
 };

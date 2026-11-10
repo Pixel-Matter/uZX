@@ -64,7 +64,7 @@ public:
             emulator.setTonePeriod(0, 42);
             expect(emulator.getTonePeriod(0) == 42, "Tone period should be 42");
 
-            expect(emulator.getNoisePeriod() == 0, "Noise period should be 0");
+            expect(emulator.getNoisePeriod() == 1, "Noise period should be 1");
             emulator.setNoisePeriod(31);
             expect(emulator.getNoisePeriod() == 31, "Noise period should be 42");
 
@@ -268,6 +268,32 @@ public:
 
             expect(mean(outC.data(), 44100) > 0.2, "Channel C should be audible");
             expect(mean(outA.data(), 44100) < 0.01, "Channel A should be silent");
+        }
+        beginTest("AYEmulator composes a period from its registers as written");
+        {
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            emulator.setRegister(0, 0xff);
+            emulator.setRegister(0, 0x00);  // the period is 0 for a moment, which the chip plays as 1
+            emulator.setRegister(1, 0x01);
+            expectEquals(emulator.getTonePeriod(0), 0x100);
+            emulator.setRegister(11, 0x00);
+            emulator.setRegister(12, 0x02);
+            expectEquals(emulator.getEnvelopePeriod(), 0x200);
+        }
+        beginTest("AYEmulator keeps its registers through a clock, type or sample rate change");
+        {
+            auto emulator = AyumiEmulator {44100, 2000000, ChipType::AY};
+            const std::array<unsigned char, 14> regs {0x23, 0x01, 0x34, 0x02, 0x45, 0x03, 0x11, 0x38,
+                                                      0x0f, 0x1a, 0x07, 0x00, 0x02, 0x0e};
+            for (size_t i = 0; i < regs.size(); ++i)
+                emulator.setRegister(i, regs[i]);
+            emulator.setClock(1773400);
+            emulator.setType(ChipType::YM);
+            emulator.setSampleRate(48000);
+            for (size_t i = 0; i < regs.size(); ++i)
+                expectEquals(int(emulator.getRegister(i)), int(regs[i]), "R" + juce::String(i));
+            expectEquals(emulator.getVolume(0), 15);
+            expect(std::get<2>(emulator.getMixer(1)), "B's envelope is on");
         }
     }
 };

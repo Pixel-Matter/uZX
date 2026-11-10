@@ -180,8 +180,11 @@ public:
     virtual auto setMasterVolume(float volume) -> void = 0;
     virtual auto getMasterVolume() const -> float = 0;
 
-    // TODO maybe just store registers in an ordinary byte array and after setting them update the chip?
+    static constexpr size_t numRegisters = 14;
+
+    /** Sets R0-R13 as the real chip does: a period's fine and coarse halves are kept apart. */
     void setRegister(size_t index, unsigned char value) noexcept;
+    /** R0-R13 as last written, before the channel mutes. */
     unsigned char getRegister(size_t index) const noexcept;
 
     // Channel muting interface (public access for ChannelMuter)
@@ -215,56 +218,12 @@ protected:
     virtual auto getEnvelopePeriod() const -> int = 0;
 
 private:
-    inline void setFineTonePeriod(int chan, unsigned char fine) noexcept {
-        const int oldPeriod = getTonePeriod(chan);
-        setTonePeriod(chan, (oldPeriod & 0xff00) | (fine & 0xff));
-    }
-    inline void setCoarseTonePeriod(int chan, unsigned char coarse) noexcept {
-        const int oldPeriod = getTonePeriod(chan);
-        setTonePeriod(chan, (oldPeriod & 0xff) | (coarse << 8));
-    }
-    // TODO Actually to be able to record and set R0-R13 registers
-    // we need to do things in reverse: setPeriod, setMixer, setVolume,
-    // setEnvelope, setNoise, setTone should work with R0-R13 registers
-    // And AY implementation should implement functions setR0-R13 or
-    // setFineTonePeriod, setCoarseTonePeriod, setNoisePeriod, setMixer, setVolume, setEnvelope
-    inline void setR0(unsigned char finePeriodA)   noexcept { setFineTonePeriod  (0, finePeriodA); }
-    inline void setR1(unsigned char coarsePeriodA) noexcept { setCoarseTonePeriod(0, coarsePeriodA); }
-    inline void setR2(unsigned char finePeriodB)   noexcept { setFineTonePeriod  (1, finePeriodB); }
-    inline void setR3(unsigned char coarsePeriodB) noexcept { setCoarseTonePeriod(1, coarsePeriodB); }
-    inline void setR4(unsigned char finePeriodC)   noexcept { setFineTonePeriod  (2, finePeriodC); }
-    inline void setR5(unsigned char coarsePeriodC) noexcept { setCoarseTonePeriod(2, coarsePeriodC); }
-    inline void setR6(unsigned char noisePeriod)   noexcept { setNoisePeriod     (   noisePeriod); }
-    inline void setR7(unsigned char mixer) noexcept {
-        //   7   |   6   |    5    |    4    |    3    |   2    |   1    |   0
-        // I/O B | I/O A | Noise C | Noise B | Noise A | Tone C | Tone B | Tone A
-        const bool Atone = !(mixer & 1);
-        const bool Btone = !((mixer >> 1) & 1);
-        const bool Ctone = !((mixer >> 2) & 1);
-        const bool Anoise = !((mixer >> 3) & 1);
-        const bool Bnoise = !((mixer >> 4) & 1);
-        const bool Cnoise = !((mixer >> 5) & 1);
-        setToneOn(0, Atone);
-        setToneOn(1, Btone);
-        setToneOn(2, Ctone);
-        setNoiseOn(0, Anoise);
-        setNoiseOn(1, Bnoise);
-        setNoiseOn(2, Cnoise);
-    }
-    inline void setR8 (unsigned char volumeA) noexcept { setVolume(0, volumeA & 0x0f); setEnvelopeOn(0, volumeA & 0x10); }
-    inline void setR9 (unsigned char volumeB) noexcept { setVolume(1, volumeB & 0x0f); setEnvelopeOn(1, volumeB & 0x10); }
-    inline void setR10(unsigned char volumeC) noexcept { setVolume(2, volumeC & 0x0f); setEnvelopeOn(2, volumeC & 0x10); }
-    inline void setR11(unsigned char envFinePeriod) noexcept {
-        const int oldPeriod = getEnvelopePeriod();
-        setEnvelopePeriod((oldPeriod & 0xff00) | (envFinePeriod & 0xff));
-    }
-    inline void setR12(unsigned char envCoarsePeriod) noexcept {
-        const int oldPeriod = getEnvelopePeriod();
-        setEnvelopePeriod((oldPeriod & 0xff) | (envCoarsePeriod << 8));
-    }
-    inline void setR13(unsigned char envShape) noexcept {
-        setEnvelopeShape(static_cast<EnvShape>(envShape));
-    }
+    // The chip plays a zero period as 1, so a period read back from it can't be composed with a new half
+    std::array<unsigned char, numRegisters> regs_ {};
+
+    int periodAt(size_t fine) const noexcept { return regs_[fine] | (regs_[fine + 1] << 8); }
+    /** Sets a channel's tone, noise, volume and envelope from R7 and its volume register. */
+    void setChannelFromRegisters(int chan) noexcept;
 };
 
 
@@ -316,6 +275,8 @@ public:
                               const ScopeLanes& scope = {}) -> void override;
 
   private:
+    /** Resets the chip with new settings and sets its registers again, so it keeps playing what it played. */
+    void reconfigure(int sampleRate, double clock, ChipType type);
     /** The mode follows the call, so a reset can't leave the chip rendering fewer outputs than asked for. */
     void render(ayumi_output_mode mode, float* const* out, size_t numSamples, bool removeDC, const ScopeLanes& scope);
 

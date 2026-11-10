@@ -227,7 +227,16 @@ The fifth pass adds **18** (command capabilities), **19** (scope sample publicat
 
 The build/test inventory contains a duplicate `TimelineGrid.test.cpp` entry, two commented-out prototype test sources (`CustomClip.test.cpp` and `PsgTrack.test.cpp`), and an empty `CustomTuning.test.cpp`. Their presence alone does not establish missing coverage of supported behavior. Check prototype intent and replacement tests before deleting or re-enabling them; no build-system redesign is justified by this inventory alone.
 
-A parameter live-reader slot also has implicit exclusive-ownership assumptions. No overlapping-owner production path was established, so this is not promoted to a separate refactoring task. Revisit it only if lifecycle tracing demonstrates overlapping attachment or replacement.
+A parameter live-reader slot also has implicit exclusive-ownership assumptions: `BindedAutoParameter` sets the slot of its `ParameterValue` in its constructor and clears it unconditionally in its destructor. Lifecycle tracing, including MIDI mapping, found no overlapping attachment or replacement, so this is not promoted to a refactoring task:
+
+- `PluginBase::addParam` is the only place a `BindedAutoParameter` is created, once per `ParameterValue`, in the constructors of the AY and ChipInstrument plugins. Each `ParameterValue` is a member of one plugin instance, and no code rebuilds a plugin's parameter list.
+- MIDI mapping creates no parameters. `MidiParameterMapping`, the widget endpoints, and Tracktion's `ParameterControlMappings` hold reference-counted pointers to the plugin's existing parameter and never write the slot.
+- The mapping's reference does not let the parameter outlive the `ParameterValue` it refers to. The plugin destructors call `notifyListenersOfDeletion`, which reaches `AutomatableEditItem::deleteAutomatableParameters`; that removes the mapping and the plugin's own reference while the plugin's members are still alive. Device UIs hold a `Plugin::Ptr`, so their parameter pointers cannot outlive the plugin either.
+- Mapped controller values are delivered on the message thread (`MidiInputDevice` posts them through an async updater), so they do not race the slot.
+
+The `AYChipMappedParameter` tests cover the mapped case. The contract depends on every plugin with bound parameters calling `notifyListenersOfDeletion` in its destructor; a plugin that omits it would leave a mapped parameter clearing the slot of a destroyed `ParameterValue`.
+
+The same tracing found a mapping defect unrelated to the slot, recorded in the Global TODO: deleting a plugin removes its controller mappings from `ParameterControlMappings` in memory, and undoing the deletion creates a new plugin object that is never mapped again, although the edit state still lists the mapping. The next save then rewrites the state from memory and drops it.
 
 Async UI actions need a separate lifetime check: `TitleBar::showDeviceMenu` in [DevicePanelItem.cpp](../src/gui/devices/DevicePanelItem.cpp) captures `this` for Remove Device; the transport FPS menu does likewise, and file-chooser callbacks retain engine/controller references. Native menu/chooser cancellation guarantees on component destruction were not verified, so these captures alone are not reported as proven crashes. Trace dismissal and shutdown first; where an action should survive its view, capture the appropriate model owner, and where it should be cancelled, use a lifetime guard. Do not keep a whole edit alive accidentally just to preserve a menu action.
 

@@ -5,6 +5,7 @@
 
 #include "../../models/Ids.h"
 #include "../common/LookAndFeel.h"
+#include "../common/Utilities.h"
 
 namespace MoTool {
 
@@ -124,7 +125,7 @@ void TuningPickerComponent::show(PsgClip& clip) {
     auto* content = new TuningPickerComponent(clip);
     content->setSize(560, 370);
     o.content.setOwned(content);
-    o.launchAsync();
+    Helpers::launchDialogAsync(o);
 }
 
 void TuningPickerComponent::selectableObjectAboutToBeDeleted(te::Selectable*) {

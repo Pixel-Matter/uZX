@@ -288,7 +288,7 @@ void AppController::handlePluginManager() {
                                       std::addressof(engine_.getPropertyStorage().getPropertiesFile()));
     v->setSize(800, 600);
     o.content.setOwned(v);
-    o.launchAsync();
+    Helpers::launchDialogAsync(o);
 }
 
 void AppController::showAboutDialog() {
@@ -302,7 +302,7 @@ void AppController::showAboutDialog() {
     // TODO getCurrentFocusedDesktopWindow
     // options.componentToCentreAround      = &mainWindow_;
     options.content.setOwned(new AboutDialogComponent());
-    options.runModal();
+    Helpers::launchDialogAsync(options)->runModalLoop();
 }
 
 

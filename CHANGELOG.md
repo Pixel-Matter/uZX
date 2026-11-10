@@ -40,6 +40,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: opening the project that is already open, from Open Recent or by dropping it, keeps it as it is instead of losing unsaved changes (in the Player too)
 - The Edit menu no longer lists Cut, Copy and Paste, which did nothing yet
 - The About window links to the project on GitHub, credits zxtune, and scrolls its greets after five seconds
+- Fixed: dialogs open at the size they ask for, without an empty strip at the bottom; the About window's spacing is even
 - Release builds no longer list the MIDI Logger debugging device among the devices to add
 - Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together, and passes MIDI on other channels through at its own time instead of later
 

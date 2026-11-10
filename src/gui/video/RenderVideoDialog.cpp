@@ -2,6 +2,7 @@
 
 #include "../../controllers/EditState.h"
 #include "../../formats/video/VideoExport.h"
+#include "../common/Utilities.h"
 #include "VideoRenderJob.h"
 
 namespace MoTool {
@@ -323,7 +324,7 @@ void showRenderVideoDialog(tracktion::Edit& edit) {
     o.useNativeTitleBar = true;
     o.escapeKeyTriggersCloseButton = true;
     o.resizable = false;
-    o.launchAsync();
+    Helpers::launchDialogAsync(o);
 }
 
 }  // namespace MoTool

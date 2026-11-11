@@ -11,18 +11,20 @@ namespace {
 
 struct SpanFx;
 
-/** A voice that records the sample range of every sub-block it renders. */
+/** A voice that records the sample range of every sub-block it renders and counts its note changes. */
 struct SpanVoice : MPEEffectVoice<SpanVoice, SpanFx>
 {
     using MPEEffectVoice::MPEEffectVoice;
 
     void noteStarted() {}
     void noteStopped(bool) { clearCurrentNote(); }
-    void notePressureChanged() {}
-    void notePitchbendChanged() {}
-    void noteTimbreChanged() {}
+    void notePressureChanged() { ++changes; }
+    void notePitchbendChanged() { ++changes; }
+    void noteTimbreChanged() { ++changes; }
     void setCurrentPlayRate(double) {}
     void renderNextBlock(MidiBufferContext& c);
+
+    int changes = 0;
 };
 
 struct SpanFx : MPEInstrumentFx<SpanVoice, SpanFx>
@@ -30,6 +32,7 @@ struct SpanFx : MPEInstrumentFx<SpanVoice, SpanFx>
     SpanFx() : MPEInstrumentFx(*this) {}
 
     bool isPlaying() { return voices.getVoice(0)->isActive(); }
+    int changesOf(int voice) { return voices.getVoice(voice)->changes; }
 
     std::vector<std::pair<int, int>> spans;  // start, length
 };
@@ -95,6 +98,21 @@ public:
 
             process(fx, 64, 64, {at(MidiMessage::noteOff(1, 60), 127)});
             expect(!fx.isPlaying(), "a note off on the last sample is in the range");
+        }
+
+        beginTest("Pitchbend, pressure and timbre reach only the voice playing the note");
+        {
+            SpanFx fx;
+            process(fx,
+                    0,
+                    64,
+                    {at(MidiMessage::noteOn(1, 60, (uint8) 100), 0),
+                     at(MidiMessage::pitchWheel(1, 9000), 1),
+                     at(MidiMessage::channelPressureChange(1, 90), 2),
+                     at(MidiMessage::controllerEvent(1, 74, 90), 3)});
+            expectEquals(fx.changesOf(0), 3);
+            expectEquals(fx.changesOf(1), 0, "an idle voice is not told");
+            expectEquals(fx.changesOf(2), 0, "an idle voice is not told");
         }
     }
 };

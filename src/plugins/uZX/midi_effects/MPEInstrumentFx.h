@@ -82,7 +82,7 @@ public:
             if (eventSample < currentSample) {
                 continue;
             }
-            if (eventSample >= c.length) {
+            if (eventSample >= c.end()) {
                 break;
             }
             // if (m.getTimeStamp() > time.inSeconds()) {
@@ -98,7 +98,7 @@ public:
             //     << " local " << m.getTimeStamp());
         }
         // render block from last time to end of buffer
-        auto subBlock = outBlock.sliced(currentSample, c.length - currentSample);
+        auto subBlock = outBlock.sliced(currentSample, c.end() - currentSample);
         renderNextSubBlock(subBlock);
 
         midiOut.sortByTimestamp();

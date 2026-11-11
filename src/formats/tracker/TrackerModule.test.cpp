@@ -102,6 +102,20 @@ public:
             }
         }
 
+        beginTest("A Turbo Sound PT3 written for 200 Hz reads as two chips at 50 Hz: PT3 stores no rate");
+        {
+            // zxart.ee/tune/86777: n1k-o's Frontiers, for a YM at 1.75 MHz and 200 Hz interrupts (Atari)
+            MemoryBlock bytes;
+            const auto file = File(UZX_FIXTURES_DIR).getChildFile("modules/nq - Frontiers (2016).pt3");
+            expect(file.loadFileAsData(bytes), "missing fixture");
+            const auto module = readTrackerModule(bytes);
+            expect(module.has_value() && module->chips.size() == 2, "two chips");
+            if (module && module->chips.size() == 2) {
+                expectWithinAbsoluteError(module->chips[0].getFrameRate(), 50.0, 1e-9, "the 200 Hz is not in the file");
+                expect(! module->chipClock.has_value(), "nor the clock");
+            }
+        }
+
         beginTest("Other data is not a module");
         expect(! readTrackerModule({}).has_value());
         expect(! readTrackerModule(MemoryBlock("not a tracker module at all", 27)).has_value());

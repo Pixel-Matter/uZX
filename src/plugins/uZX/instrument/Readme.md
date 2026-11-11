@@ -63,12 +63,10 @@ classDiagram
         -te::LinEnvelope ampAdsr
         -te::LinEnvelope pitchAdsr
         -double pitchDepth
-        -double pitchBendRange
         -bool triggerNote
         +noteStarted()
         +noteStopped()
-        +renderNextStep()
-        +renderNextBlock()
+        +renderFrame(NoteFrame)
         +computeCurrentLevel()
         +computeCurrentNotePitch()
     }

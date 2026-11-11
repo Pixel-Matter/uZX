@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cmath>
+#include <utility>
 #include "../midi_effects/MPEEffectVoice.h"
-#include "../midi_effects/MidiEffect.h"
+#include "../midi_effects/NoteFrame.h"
 
 namespace MoTool::uZX {
 
@@ -31,17 +32,14 @@ class ChipInstrumentVoice
 public:
     ChipInstrumentVoice(OwnerMidiFx& owner)
         : MPEEffectVoice<ChipInstrumentVoice<OwnerMidiFx>, OwnerMidiFx>(owner) {
-        // FIXME hardcoded parameters
-        ampAdsr.setSampleRate(playRate);
-        pitchAdsr.setSampleRate(playRate);
+        // The envelopes advance once a frame
+        ampAdsr.setSampleRate(noteFrameRate);
+        pitchAdsr.setSampleRate(noteFrameRate);
 
         // pitchAdsr.setParameters({ 0.0f, 0.0f, 1.0f, 0.5f });
         pitchAdsr.setParameters({ 0.0f, 0.0f, 0.0f, 0.0f });
         pitchDepth = 0.0; // in semitones
         ampLevel = 1.0f;  // 100% default
-
-        lastLevel = -1;
-        lastNotePitch = -1.0f;
     }
 
     //==============================================================================
@@ -78,7 +76,7 @@ public:
             //     << " state = " << currentlyPlayingNote.keyState
             //     << "\n---------------------------"
             // );
-            // we should not call clearCurrentNote() here because we should emit NoteOff in renderNextStep after that
+            // not clearCurrentNote() here: the note ends in renderFrame, where the encoder sees it gone
         }
         // DBG("ADSR: " << ampAdsr);
     }
@@ -122,134 +120,24 @@ public:
         ampLevel = params.ampLevel.getLiveValue() / 100.0f;
     }
 
-    void renderNextStep(MidiBufferContext& c, double timeOffset) {
-        // DBG("renderNextStep for note " << currentlyPlayingNote.initialNote
-        //     << "(" << (int) noteOnOrder << ")"
-        //     << " at time = " << c.playPosition.inSeconds() + timeOffset
-        //     << (firstStep ? " (first step)" : "")
-        // );
-        // DBG("ADSR: " << ampAdsr);
-
-        // 1. Advance envelopes
+    /** Plays the next frame: adds this voice to it, or ends the note once its amp envelope has. */
+    void renderFrame(NoteFrame& frame) {
         // To always reach peak value between A/D phases we should sample after advance, not before
         ampAdsr.getNextSample();
         pitchAdsr.getNextSample();
 
-        // 2. Get current values
-        auto level = computeCurrentLevel();
-        auto notePitch = computeCurrentNotePitch();
-
-        // 4. Render MIDI events if needed
-
         if (shouldStop() && !triggerNote) {
-            // DBG("Emit NoteOff " << currentlyPlayingNote.initialNote
-            //     << "(" << (int) noteOnOrder << ")"
-            //     << ", state = " << currentlyPlayingNote.keyState
-            //     << " time = " << c.playPosition.inSeconds() + timeOffset
-            // );
-            c.buffer.addMidiMessage(
-                MidiMessage::noteOff(
-                    this->currentlyPlayingNote.midiChannel,
-                    this->currentlyPlayingNote.initialNote,
-                    0.0f
-                ),
-                timeOffset, 0
-            );
-
             resetNote();
             return;
         }
 
-        jassert(this->isActive());
-
-        if (!approximatelyEqual(lastNotePitch, notePitch)) {
-            // DBG("Emit PitchBend " << currentlyPlayingNote.initialNote
-            //     << "(" << (int) noteOnOrder << ")"
-            //     << " to " << notePitch - currentlyPlayingNote.initialNote
-            //     << ", time = " << c.playPosition.inSeconds() + timeOffset
-            // );
-            auto pitchBendValue = juce::jlimit(0, 16383,
-                8192 + roundToInt(((notePitch - this->currentlyPlayingNote.initialNote) / pitchBendRange) * 8191.0f)
-            );
-            // TODO we SHOULD use MPE on MIDI output, so we should send pitch bend on note channel
-            // so for example modify output MPENote and then send it to MPEChannelAssigner
-            // See MidiClip MIDI MPE output for example tracktion_MidiList.cpp:1981
-            c.buffer.addMidiMessage(
-                MidiMessage::pitchWheel(
-                    this->currentlyPlayingNote.midiChannel,
-                    pitchBendValue
-                ),
-                timeOffset, 0
-            );
-            lastNotePitch = notePitch;
-        }
-
-        if (triggerNote) {
-            triggerNote = false;
-            // DBG("Emit NoteOn " << currentlyPlayingNote.initialNote << " (" << (int) noteOnOrder << ")"
-            //     << " velocity = " << currentlyPlayingNote.noteOnVelocity.asUnsignedFloat()
-            //     << " time = " << c.playPosition.inSeconds() + timeOffset);
-            c.buffer.addMidiMessage(
-                MidiMessage::noteOn(
-                    this->currentlyPlayingNote.midiChannel,
-                    this->currentlyPlayingNote.initialNote,
-                    level
-                ),
-                timeOffset, 0
-            );
-            lastLevel = level;
-        } else {
-            // TODO fix comparison of floats
-            if (!approximatelyEqual(level, lastLevel)) {
-                // DBG("Emit Aftertouch " << currentlyPlayingNote.initialNote << " (" << (int) noteOnOrder << ")"
-                //     << " level = " << level
-                //     << " state = " << currentlyPlayingNote.keyState
-                //     << " ampAdsr = " << ampAdsr
-                //     << ", time = " << c.playPosition.inSeconds() + timeOffset
-                // );
-                c.buffer.addMidiMessage(
-                    MidiMessage::aftertouchChange(
-                        this->currentlyPlayingNote.midiChannel,
-                        this->currentlyPlayingNote.initialNote,
-                        roundToInt(level * 127.0f)
-                    ),
-                    timeOffset, 0
-                );
-                lastLevel = level;
-            }
-        }
-    }
-
-    /** Renders the next block of MIDI output for this voice. */
-    void renderNextBlock(MidiBufferContext& c) {
-        // current block may not contain time point for midi output (block length is less than playRate)
-        // I do not sure if we should chop it here but not in parent midi instrument
-        // below is placeholder implementation
-
-        // We shouldn't quantize in floats!
-        const auto step = roundToInt(c.sampleRate / playRate);
-        const auto timeSamples = roundToInt(c.playPosition.inSeconds() * c.sampleRate);
-        const int remainder = timeSamples % step;
-        const auto sampleQuant = (remainder == 0) ? timeSamples : timeSamples + (step - remainder);
-        const auto startSampleQuant = sampleQuant - timeSamples;
-
-        // DBG("voice block " << currentlyPlayingNote.initialNote << "(" << (int) noteOnOrder << ") "
-        //     << c.processStartTime() << " - " << c.processEndTime()
-        //     << " / " << startSampleQuant << " - " << c.end()
-        // );
-
-        for (auto s = startSampleQuant; s < c.end(); s += step) {
-            if (s < c.start)
-                continue;
-            auto timeOffset = s / c.sampleRate;
-            // DBG("rendering step at sample: " << s << " timeOffset: " << timeOffset);
-            renderNextStep(c, timeOffset);
-        }
-        // if (c.buffer.isNotEmpty()) {
-        //     DBG("-->" << currentlyPlayingNote.initialNote << "(" << (int) noteOnOrder << ")");
-        //     c.debugMidiBuffer();
-        //     DBG("/--");
-        // }
+        frame.add({
+            .channel = this->currentlyPlayingNote.midiChannel,
+            .key = this->currentlyPlayingNote.initialNote,
+            .pitch = computeCurrentNotePitch(),
+            .level = computeCurrentLevel(),
+            .attack = std::exchange(triggerNote, false)
+        });
     }
 
 private:
@@ -260,8 +148,6 @@ private:
     void resetNote() {
         ampAdsr.reset();
         pitchAdsr.reset();
-        lastLevel = -1;
-        lastNotePitch = -1.0f;
         this->clearCurrentNote();
     }
 
@@ -283,25 +169,17 @@ private:
     //==============================================================================
 
     // Parameters
-    constexpr inline static double playRate = 50.0;
     te::LinEnvelope ampAdsr;
     te::LinEnvelope pitchAdsr;
-    double pitchDepth;  // for pitchAdsr, in semitones, can not be more than pitchBendRange
+    double pitchDepth;  // for pitchAdsr, in semitones, can not be more than notePitchBendRange
     float ampLevel;     // overall amplitude level (0.0 to 1.0)
 
-    // TODO as a parameter, for deeper pitch bend range
-    // TODO emit MIDI systems messages for pitch bend range on start/reset
-    double pitchBendRange = 2.0; // in semitones
     // TODO keyfollow modifier for pitchBend for example will give us desired effect
     // on chord starting out of tune for every note and then going to tune
 
     // Note state
     juce::LinearSmoothedValue<float> activeNote;
     bool triggerNote = false;
-
-    // Last state
-    float lastLevel = -1;
-    double lastNotePitch = -1.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChipInstrumentVoice)
 };

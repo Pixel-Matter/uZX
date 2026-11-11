@@ -1,6 +1,6 @@
 # MIDI to AY pipeline
 
-> **Status: target design, partly implemented.** The PSG controller wire (`PsgCC`) and the plugins under [What exists today](#what-exists-today) are in the code. `NoteFrame`, the shared decoder and encoder, and the chip mixer are not.
+> **Status: target design, partly implemented.** The PSG controller wire (`PsgCC`), `NoteFrame` with its encoder, and the plugins under [What exists today](#what-exists-today) are in the code. The shared decoder, a voice's priority and timbre, chip effects and the chip mixer are not.
 
 How notes played on a keyboard or written in a clip become AY register writes. Code: `src/plugins/uZX/instrument/`, `src/plugins/uZX/midi_effects/`, `src/plugins/uZX/notes_to_psg/`, `src/plugins/uZX/aychip/`, `src/models/PsgCC.*`.
 
@@ -60,6 +60,8 @@ MIDI in ─► decoder ─► NoteFrame ─► logic ─► NoteFrame ─► enc
 
 The decoder and encoder own everything that is about MIDI: held notes and their note-offs, per-note pitch and level, controller values, all-notes-off, transport jumps and resets, frame boundaries, what was last sent, and sending on a block with no input. After a reset or a jump the encoder forgets what it sent, so the next frame goes out whole.
 
+`NoteFrame`, `NoteVoice` and `NoteEncoder` are in `src/plugins/uZX/midi_effects/NoteFrame.*`. `MPEInstrumentFx` is this shape for an instrument, whose input is performance MIDI: JUCE's `MPEInstrument` and `VoiceManager` decode, each voice's `renderFrame` adds itself to the frame, and the encoder sends what changed. The decoder for the chip-note stream comes with the first stage that reads it.
+
 The logic owns only musical state: an envelope's phase, an LFO's phase, an arpeggio's step, an echo's history. Vibrato is `pitch += lfo(frame)`. Its test feeds frames and compares frames.
 
 A plugin is then one decoder, a chain of frame functions, and one encoder, which is why "inside the instrument or a separate effect" stops mattering: the same function fits either.
@@ -97,7 +99,7 @@ Both wires share a track's sixteen channels. Routing them apart is the user's bu
 
 | Target role | Today | Gap |
 | --- | --- | --- |
-| Chip instrument | `ChipInstrumentPlugin`, `ChipInstrumentVoice` on `MPEInstrumentFx` | Sends pitch bend on the note's own channel rather than one channel per voice; fixed 50 Hz; tracks its own MIDI state |
+| Chip instrument | `ChipInstrumentPlugin`, `ChipInstrumentVoice` on `MPEInstrumentFx` | Sends every voice on the channel its note came in on, so a chord's voices share one pitch wheel; fixed 50 Hz (`noteFrameRate`) |
 | Chip effects | None | |
 | Chip mixer | `NotesToPsgPlugin`, `NotesToPsgMapper` | Treats MIDI channel n as AY channel n, one note per channel, no allocation; tracks its own MIDI state; passes controllers through untouched |
 | PSG codec | `PsgCC` | An envelope period above 14 bits does not fit two controllers; switches are sent as 1 by a PSG clip and 127 by the mapper; volume is the raw 0–15 |
@@ -108,7 +110,7 @@ Both wires share a track's sixteen channels. Routing them apart is the user's bu
 
 Refactor first, then change behaviour.
 
-1. `NoteFrame` with the shared decoder and encoder; the instrument moves onto them with the same behaviour.
+1. The decoder for the chip-note stream; a voice's priority and timbre.
 2. The mapper becomes the mixer with the trivial allocation, channel n to AY channel n, same behaviour.
 3. Voice allocation and priority; MPE output from the instrument; the PSG wire on the last four channels by default.
 4. Wire changes: a full 16-bit envelope period, one meaning for switch and volume values.

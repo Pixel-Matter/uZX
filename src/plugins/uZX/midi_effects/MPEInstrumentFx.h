@@ -4,6 +4,7 @@
 
 #include "MidiEffect.h"
 #include "MPEEffectVoice.h"
+#include "NoteFrame.h"
 #include "VoiceManager.h"
 
 
@@ -34,14 +35,23 @@ public:
     //==========================================================================
     // Render
 
-    // render all voices and merge output
+    // Renders the frames that start in the range: each active voice adds itself to the frame, the encoder
+    // sends what changed. Frames sit on a grid counted from the start of time, whatever the block size.
     void renderNextSubBlock(MidiBufferContext& c) {
-        // if (c.buffer.isNotEmpty()) {
-        //     DBG("Rendering sub-block " << c.processStartTime() << " - " << c.processEndTime());
-        // }
-        voices.forEachActiveVoice([&c](auto* voice) {
-            voice->renderNextBlock(c);
-        });
+        const auto step = roundToInt(c.sampleRate / noteFrameRate);
+        const auto timeSamples = roundToInt(c.playPosition.inSeconds() * c.sampleRate);
+        const int remainder = timeSamples % step;
+        const auto first = remainder == 0 ? 0 : step - remainder;
+
+        for (auto s = first; s < c.end(); s += step) {
+            if (s < c.start)
+                continue;
+            NoteFrame frame;
+            voices.forEachActiveVoice([&frame](auto* voice) {
+                voice->renderFrame(frame);
+            });
+            encoder.encode(frame, c.buffer, s / c.sampleRate);
+        }
     }
 
     void handleMidiEvent(const MidiMessage& m) {
@@ -167,6 +177,7 @@ protected:
 
 private:
     MPEInstrument mpeInstrument;
+    NoteEncoder encoder;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MPEInstrumentFx)
 };

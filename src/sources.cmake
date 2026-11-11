@@ -39,6 +39,7 @@ set(SHARED_SOURCES
     plugins/uZX/midi_logger/MidiLoggerPlugin.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp
+    plugins/uZX/midi_effects/NoteFrame.cpp
     plugins/uZX/instrument/ChipInstrument.cpp
     plugins/uZX/instrument/ChipInstrumentVoice.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
@@ -165,6 +166,7 @@ set(TEST_SOURCES
     plugins/uZX/aychip/AYPlugin.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp
     plugins/uZX/midi_effects/MPEInstrumentFx.test.cpp
+    plugins/uZX/instrument/ChipInstrument.test.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.test.cpp

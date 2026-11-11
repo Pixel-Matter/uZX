@@ -1,5 +1,6 @@
 #include "NotesToPsgMapper.h"
 #include "../../../models/tuning/TuningRegistry.h"
+#include "../midi_effects/NoteFrame.h"
 
 #include <cstddef>
 #include <memory>
@@ -236,7 +237,7 @@ NotesToPsgMapper::NotesToPsgMapper()
     // Default to standard 12-TET tuning
     setTuningSystem(makeBuiltinTuning(BuiltinTuningType::EqualTemperament));
 
-    mpeInstrument_.enableLegacyMode(2, {baseChannel_, baseChannel_ + 4});
+    mpeInstrument_.enableLegacyMode(notePitchBendRange, {baseChannel_, baseChannel_ + 4});
     mpeInstrument_.addListener(this);
 }
 

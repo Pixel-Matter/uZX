@@ -31,6 +31,7 @@ void MultitrackMidiPreview::setupTracksAndPlugins() {
     if (auto ayPlugin = edit.getPluginCache().createNewPlugin(uZX::AYChipPlugin::xmlTypeName, {})) {
         track->pluginList.insertPlugin(*ayPlugin, 0, nullptr);
         auto AYPlugin = dynamic_cast<uZX::AYChipPlugin*>(ayPlugin.get());
+        chip = AYPlugin;
         AYPlugin->dynamicParams.layout.setStoredValue(ChannelsLayout::ACB);
         AYPlugin->staticParams.monitorMode.setStoredValue(true);
     }
@@ -84,6 +85,9 @@ void MultitrackMidiPreview::setupChannelClips() {
 
 
 void MultitrackMidiPreview::setTuningSystem(std::shared_ptr<TuningSystem> ts) {
+    // The preview plays the tuning at the clock the Tuning window chose; the converter follows the chip
+    if (chip != nullptr)
+        chip->staticParams.chipClock.setStoredValue(ts->getClockFrequency() / uZX::MHz);
     if (NotesToPsgPlugin != nullptr) {
         NotesToPsgPlugin->setTuningSystem(std::move(ts));
     }

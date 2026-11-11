@@ -2,6 +2,7 @@
 #include "../../../gui/common/LookAndFeel.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 #include "../../../models/tuning/TemperamentSystem.h"
+#include "../../../models/tuning/TuningDetector.h"
 
 namespace MoTool::uZX {
 
@@ -89,7 +90,10 @@ void NotesToPsgPluginUI::InfoGroup::update() {
 
     tuningType.setText(String(tuning.getType().getLongLabel().data()) + " to:", dontSendNotification);
     refTuning.setText(referenceTuning->getType().getLongLabel().data(), dontSendNotification);
-    chipClock.setText(String(tuning.getClockFrequency() / MHz, 4) + " MHz", dontSendNotification);
+    // The chip's clock, or how far a tracker table made for another clock sounds off on it
+    const auto mismatch = getClockMismatchText(tuning.getClockFrequency(), plugin.getChipClock());
+    chipClock.setText(mismatch.isNotEmpty() ? mismatch : String(plugin.getChipClock() / MHz, 4) + " MHz",
+                      dontSendNotification);
     a4Frequency.setText(String(referenceTuning->getA4Frequency(), 2) + " Hz", dontSendNotification);
 
     bool isRationalTuning = dynamic_cast<RationalTuning*>(referenceTuning) != nullptr;

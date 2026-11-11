@@ -235,10 +235,10 @@ public:
 
         // DBG("voice block " << currentlyPlayingNote.initialNote << "(" << (int) noteOnOrder << ") "
         //     << c.processStartTime() << " - " << c.processEndTime()
-        //     << " / " << startSampleQuant << " - " << c.start + c.length
+        //     << " / " << startSampleQuant << " - " << c.end()
         // );
 
-        for (auto s = startSampleQuant; s < c.start + c.length; s += step) {
+        for (auto s = startSampleQuant; s < c.end(); s += step) {
             if (s < c.start)
                 continue;
             auto timeOffset = s / c.sampleRate;

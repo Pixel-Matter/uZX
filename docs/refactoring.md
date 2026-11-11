@@ -8,8 +8,7 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 ## Implementation order
 
-1. **Contracts:** 17 (establish supported nonzero-start callers first).
-2. **Low priority:** 9 (export formatting).
+1. **Low priority:** 9 (export formatting).
 
 ## 9. Extract tuning export formatting
 
@@ -20,16 +19,6 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 **Proposed boundary:** move serialization and filename formatting into a focused format helper. Keep selection of the current tuning data in the viewmodel and the save interaction in the GUI. Preserve output exactly and avoid adding an exporter interface for one format.
 
 **Validation:** preserve the existing CSV and filename assertions in `TuningViewModel.test.cpp`, adding helper-level cases only where useful. Verify the GUI still exports the selected tuning and reports write failure. Tooltip formatting in a presentation viewmodel is not, by itself, a reason for another split.
-
-## 17. Make MIDI sample-range semantics consistent
-
-**Evidence:** `MidiBufferContext` in [MidiEffect.h](../src/plugins/uZX/midi_effects/MidiEffect.h) stores a start sample and a sample count; `sliced` retains sample coordinates relative to the original buffer. `MPEInstrumentFx::operator()` in [MPEInstrumentFx.h](../src/plugins/uZX/midi_effects/MPEInstrumentFx.h) starts at `c.start`, but rejects events at `eventSample >= c.length` and creates its final slice with `c.length - currentSample`.
-
-**Problem:** a count is treated as an absolute end in two places. For start 64 and length 64, an event at sample 96 belongs to the range [64, 128), but is rejected; the final slice can also have the wrong length. The host wrapper currently asserts `bufferStartSample == 0`, so the review establishes a mismatch in the reusable context contract, not a confirmed failure of the current normal host path.
-
-**Review boundary:** decide whether effects support arbitrary context starts. If they do, define the exclusive end once from start plus length and use it for event inclusion and remaining render spans. If zero-start processing is intentionally required, make that restriction explicit at the appropriate entry boundary while preserving nonzero voice sub-blocks. Do not fix only the event comparison and leave the tail calculation inconsistent.
-
-**Validation:** add focused MPE effect cases for zero and nonzero start, no events, events at start/end, and an event inside the range; verify total rendered samples and nonnegative slice lengths. Inspect production context construction and slicing callers before changing assumptions. The existing TODO already notes missing instrument/voice tests; this supplies a concrete first regression case.
 
 ## Deferred review notes
 

@@ -10,7 +10,6 @@
 #include "aychip.h"
 #include "ChannelMuter.h"
 
-#include <atomic>
 #include <array>
 #include <cstddef>
 #include <vector>
@@ -142,8 +141,6 @@ private:
     // PsgRegsMidiReader midiRegsReader;  // old version
     PsgRegsFrame registersFrame;
     std::unique_ptr<AYInterface> chip;
-
-    std::atomic<bool> isProcessing {false};
 
     //==============================================================================
     // Scope buffer access for visualization (used by ScopePlugin)

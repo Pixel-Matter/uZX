@@ -6,7 +6,6 @@ Granular open tasks for µZX Studio and the shared engine. Player priorities are
 
 See the [review scope and implementation order](refactoring.md#implementation-order). Numbers are the findings' stable IDs, not execution order; finished findings are deleted.
 
-- [ ] 6. [Establish audio-thread ownership of mutable runtime state](refactoring.md#6-establish-audio-thread-ownership-of-mutable-runtime-state), measuring how configuration contends with rendering for the locks.
 - [ ] 9. [Extract tuning export formatting](refactoring.md#9-extract-tuning-export-formatting), preserving CSV output and filename behavior.
 - [ ] 17. [Make MIDI sample-range semantics consistent](refactoring.md#17-make-midi-sample-range-semantics-consistent), checking nonzero starts and final render spans.
 

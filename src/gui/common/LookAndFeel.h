@@ -269,6 +269,13 @@ public:
     void drawGroupComponentOutline(Graphics& g, int width, int height,
                                    const String& text, const Justification& position, GroupComponent& group) override;
 
+    // Tabs: flat, the front one in its page's colour with an accent on its outer edge
+    int getTabButtonOverlap(int) override { return 0; }
+    int getTabButtonBestWidth(TabBarButton& button, int tabDepth) override;
+    Font getTabButtonFont(TabBarButton&, float height) override;
+    void drawTabButton(TabBarButton& button, Graphics& g, bool isMouseOver, bool isMouseDown) override;
+    void drawTabAreaBehindFrontButton(TabbedButtonBar&, Graphics&, int, int) override {}
+
     // Custom tooltip drawing
     void drawTooltip(Graphics& g, const String& text, int width, int height) override;
 

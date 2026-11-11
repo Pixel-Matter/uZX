@@ -604,6 +604,50 @@ void MoLookAndFeel::drawTooltip(Graphics& g, const String& text, int width, int 
     });
 }
 
+int MoLookAndFeel::getTabButtonBestWidth(TabBarButton& button, int tabDepth) {
+    const auto textWidth = GlyphArrangement::getStringWidthInt(getTabButtonFont(button, (float) tabDepth),
+                                                               button.getButtonText().trim());
+    return jlimit(tabDepth * 2, tabDepth * 8, textWidth + tabDepth);
+}
+
+Font MoLookAndFeel::getTabButtonFont(TabBarButton&, float) {
+    return withDefaultMetrics(FontOptions(13.0f));  // as the rows of the lists the tabs hold
+}
+
+void MoLookAndFeel::drawTabButton(TabBarButton& button, Graphics& g, bool isMouseOver, bool isMouseDown) {
+    const auto area = button.getActiveArea();
+    const auto orientation = button.getTabbedButtonBar().getOrientation();
+
+    if (button.isFrontTab()) {
+        g.setColour(button.getTabBackgroundColour());
+        g.fillRect(area);
+
+        constexpr int accent = 2;
+        g.setColour(Colors::Theme::primary);
+        switch (orientation) {
+            case TabbedButtonBar::TabsAtLeft:   g.fillRect(area.withWidth(accent)); break;
+            case TabbedButtonBar::TabsAtRight:  g.fillRect(area.withTrimmedLeft(area.getWidth() - accent)); break;
+            case TabbedButtonBar::TabsAtTop:    g.fillRect(area.withHeight(accent)); break;
+            case TabbedButtonBar::TabsAtBottom: g.fillRect(area.withTrimmedTop(area.getHeight() - accent)); break;
+        }
+    }
+
+    const bool lit = button.isFrontTab() || isMouseOver || isMouseDown;
+    g.setColour(! button.isEnabled() ? Colors::Theme::textDisabled : lit ? Colors::Theme::textPrimary : Colors::Theme::textSecondary);
+    g.setFont(getTabButtonFont(button, 0.0f));
+
+    // Side tabs read upwards on the left and downwards on the right
+    auto text = button.getTextArea().toFloat();
+    if (orientation == TabbedButtonBar::TabsAtLeft) {
+        g.addTransform(AffineTransform::rotation(-MathConstants<float>::halfPi).translated(text.getX(), text.getBottom()));
+        text = {text.getHeight(), text.getWidth()};
+    } else if (orientation == TabbedButtonBar::TabsAtRight) {
+        g.addTransform(AffineTransform::rotation(MathConstants<float>::halfPi).translated(text.getRight(), text.getY()));
+        text = {text.getHeight(), text.getWidth()};
+    }
+    g.drawText(button.getButtonText().trim(), text, Justification::centred, true);
+}
+
 void MoLookAndFeel::drawGroupComponentOutline(Graphics& g, int width, int height,
                                               const String& text, const Justification& position,
                                               GroupComponent& group) {

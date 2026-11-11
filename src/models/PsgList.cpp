@@ -350,7 +350,6 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
 
     setFrameRate(data.getFrameRate(), um);
     setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, 0_tp), um);
-    Helpers::setProjectFps(edit, data.getFrameRate());
 
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];

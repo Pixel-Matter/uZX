@@ -2,6 +2,7 @@
 #include "../formats/psg/PsgFile.h"
 #include "../formats/psg/TurboSound.h"
 #include "../formats/tracker/TrackerModule.h"
+#include "../models/EditUtilities.h"
 #include "../models/PsgClip.h"
 #include "../models/PsgTempoDetector.h"
 
@@ -186,6 +187,7 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
             // TODO make it ThreadBackgroundJob
             if (auto clip = PsgClip::insertTo(*track, data, pos, chipName)) {
                 track->changed();
+                setProjectFps(edit, data.getFrameRate());
                 auto& chip = ensureAYPluginOnTrack(*track);
                 // The clock a module was written for, on a track no other clip plays at its own clock
                 if (emptyTrack && tune.chipClock)

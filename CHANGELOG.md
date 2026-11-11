@@ -53,6 +53,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: changing the chip type or clock during playback keeps the tones, mixer, volumes, noise and envelope playing, instead of going silent until the tune sets them again
 - Fixed: unmuting a channel, or its tone, noise or envelope, brings it back at once instead of after the tune next sets it
 - Fixed: a tone or envelope period that passes through 0 while being written (fine before coarse) plays at its value instead of one step off
+- Fixed: an AY chip played by MIDI controllers keeps what a message does not name: turning one channel's tone on no longer turns on the other channels' tone and noise, and after a mute an envelope switch no longer brings the old volume back
 
 ### Tuning
 - Fixed: a cancelled preview stays silent, and a newer preview keeps its own playback length and note highlights

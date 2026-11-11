@@ -76,7 +76,7 @@ The mixer takes the chip-note stream on all channels and produces one `PsgPatch`
 
 **Note wire, instrument to mixer.** MPE: one voice per MIDI channel, so pitch (pitch bend) and level (pressure) are per note. The instrument spreads a chord over its channel range. That caps the stream at sixteen voices before the mixer; MIDI 2 or an in-process path would replace only the note codec.
 
-**PSG wire, mixer or PSG clip to chip.** Implemented as `PsgCC` in `src/models/PsgCC.*`: one table that `PsgParamsMidiWriter`, `PsgParamsMidiReader` and the mapper all use. Channels count from the chip's base channel.
+**PSG wire, mixer or PSG clip to chip.** Implemented as `PsgCC` in `src/models/PsgCC.*`: one table that `PsgParamsMidiWriter` (PSG clips), the mapper and `AYChipPlugin` all use. Channels count from the chip's base channel.
 
 | Parameter | Channel | Controller |
 | --- | --- | --- |
@@ -101,15 +101,14 @@ Both wires share a track's sixteen channels. Routing them apart is the user's bu
 | Chip effects | None | |
 | Chip mixer | `NotesToPsgPlugin`, `NotesToPsgMapper` | Treats MIDI channel n as AY channel n, one note per channel, no allocation; tracks its own MIDI state; passes controllers through untouched |
 | PSG codec | `PsgCC` | An envelope period above 14 bits does not fit two controllers; switches are sent as 1 by a PSG clip and 127 by the mapper; volume is the raw 0–15 |
-| AY chip | `AYChipPlugin` | Keeps a second copy of the chip's state in `PsgParamsMidiReader` beside the registers |
+| AY chip | `AYChipPlugin` | None: it decodes each frame's controllers over the registers the chip holds, and keeps nothing else |
 | Tuning preview | `MultitrackMidiPreview` | Writes PSG switches into note clips by hand and relies on the mapper passing them through |
 
 ## Order of work
 
 Refactor first, then change behaviour.
 
-1. Registers as the chip's only state.
-2. `NoteFrame` with the shared decoder and encoder; the instrument moves onto them with the same behaviour.
-3. The mapper becomes the mixer with the trivial allocation, channel n to AY channel n, same behaviour.
-4. Voice allocation and priority; MPE output from the instrument; the PSG wire on the last four channels by default.
-5. Wire changes: a full 16-bit envelope period, one meaning for switch and volume values.
+1. `NoteFrame` with the shared decoder and encoder; the instrument moves onto them with the same behaviour.
+2. The mapper becomes the mixer with the trivial allocation, channel n to AY channel n, same behaviour.
+3. Voice allocation and priority; MPE output from the instrument; the PSG wire on the last four channels by default.
+4. Wire changes: a full 16-bit envelope period, one meaning for switch and volume values.

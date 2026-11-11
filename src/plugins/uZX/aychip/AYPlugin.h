@@ -131,8 +131,9 @@ private:
     Colour colour;
     CriticalSection lock;
 
-    PsgParamsMidiReader midiParamsReader;
-    PsgRegsFrame registersFrame;
+    // What the current frame's messages set, over the values the chip held when the frame began. The registers
+    // are the chip's only lasting state: this is empty between frames.
+    PsgParamFrameData frameParams;
     std::unique_ptr<AYInterface> chip;
 
     //==============================================================================
@@ -153,7 +154,7 @@ private:
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
-    void updateRegistersFromMidiParams() noexcept;
+    PsgRegsFrame readRegisters() const noexcept;
     void updateChip() noexcept;
     void handleMidiEvent(const te::MidiMessageWithSource& m) noexcept;
 

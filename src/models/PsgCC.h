@@ -2,7 +2,6 @@
 
 #include <JuceHeader.h>
 #include <array>
-#include <limits>
 
 #include "../formats/psg/PsgData.h"
 #include "PsgClip.h"
@@ -209,35 +208,6 @@ public:
 private:
     int channelNumber = 1;
     juce::MidiMessageSequence sequence {};
-};
-
-//==============================================================================
-/**
- * Reads PSG parameters from MIDI messages
- */
-class PsgParamsMidiReader {
-public:
-    PsgParamsMidiReader(int chan) noexcept
-        : baseChannel(chan)
-    {
-        params.resetMixer();
-    }
-
-    std::optional<PsgParamFrameData> read(const juce::MidiMessage& m);
-
-    PsgParamFrameData& getParams() noexcept { return params; }
-    const PsgParamFrameData& getParams() const noexcept { return params; }
-
-    void reset() noexcept {
-        params.clear();
-    }
-
-    void setBaseChannel(int chan) noexcept { baseChannel = chan; }
-
-private:
-    int baseChannel = 1;
-    double currentTimestamp = std::numeric_limits<double>::lowest();
-    PsgParamFrameData params {};
 };
 
 }  // namespace MoTool

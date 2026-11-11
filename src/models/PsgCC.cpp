@@ -80,23 +80,4 @@ void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
             sequence.addEvent(juce::MidiMessage::controllerEvent(channelNumber + m.channel, static_cast<int>(m.controller), m.value), time);
 }
 
-//===============================================================================
-// PsgParamsMidiReader class
-//===============================================================================
-std::optional<PsgParamFrameData> PsgParamsMidiReader::read(const juce::MidiMessage& m) {
-    std::optional<PsgParamFrameData> result {};
-    const auto ts = m.getTimeStamp();
-    if (ts > currentTimestamp) {
-        // now we can emit the previous frame
-        if (!params.isEmpty()) {
-            result = params;
-        }
-        params.clear();
-    }
-    currentTimestamp = ts;
-    if (m.isController())
-        PsgCC::decode(m.getChannel() - baseChannel, m.getControllerNumber(), m.getControllerValue(), params);
-    return result;
-}
-
 }  // namespace MoTool

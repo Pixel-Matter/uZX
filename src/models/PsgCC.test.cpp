@@ -5,8 +5,10 @@
 #include "PsgCC.h"
 
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
+#include <vector>
 
 
 namespace MoTool::Tests {
@@ -497,6 +499,25 @@ public:
         sequence.addEvent(juce::MidiMessage::controllerEvent(channel, static_cast<int>(type), value), time);
     }
 
+    /** The frames a sequence carries, one per timestamp, as a chip on `baseChannel` reads them. */
+    static std::vector<PsgParamFrameData> decodeFrames(const juce::MidiMessageSequence& sequence, int baseChannel) {
+        std::vector<PsgParamFrameData> frames;
+        PsgParamFrameData params;
+        params.resetMixer();
+        auto time = std::numeric_limits<double>::lowest();
+        for (auto e : sequence) {
+            const auto& m = e->message;
+            if (m.getTimeStamp() > time && ! params.isEmpty()) {
+                frames.push_back(params);
+                params.clear();
+            }
+            time = m.getTimeStamp();
+            PsgCC::decode(m.getChannel() - baseChannel, m.getControllerNumber(), m.getControllerValue(), params);
+        }
+        frames.push_back(params);
+        return frames;
+    }
+
     void runTest() override {
         beginTest("PsgParamsMidiWriterTests write");
         {
@@ -541,7 +562,7 @@ public:
             compareEvents(seq, expectedEvents);
         }
 
-        beginTest("PsgParamsMidiReader read");
+        beginTest("Decoding a sequence into frames");
         {
             juce::MidiMessageSequence seq;
             addEvent(seq, 0.00, 1, MidiCCType::Volume, 3);
@@ -565,15 +586,7 @@ public:
             addEvent(seq, 0.02, 4, MidiCCType::CC52PeriodFine, 18);
             addEvent(seq, 0.02, 4, MidiCCType::SoundVariation, 8);
 
-            PsgParamsMidiReader reader {1};
-            std::vector<PsgParamFrameData> frames;
-            for (auto e : seq) {
-                auto newParams = reader.read(e->message);
-                if (newParams.has_value()) {
-                    frames.push_back(newParams.value());
-                }
-            }
-            frames.push_back(reader.getParams());
+            const auto frames = decodeFrames(seq, 1);
             // frames[0].debugPrint();
             // DBG("----------------------------------------------");
 
@@ -634,12 +647,10 @@ public:
             PsgParamsMidiWriter writer {5};
             writer.write(0.0, params);
 
-            PsgParamsMidiReader reader {5};
-            for (auto e : writer.getSequence())
-                ignoreUnused(reader.read(e->message));
+            const auto read = decodeFrames(writer.getSequence(), 5).back();
             PsgParamType::forEach([&](auto e) {
                 const PsgParamType type {e};
-                expectEquals(int(reader.getParams()[type].value_or(0xFFFF)), type.getScale().end, String(type));
+                expectEquals(int(read[type].value_or(0xFFFF)), type.getScale().end, String(type));
             });
         }
 
@@ -650,10 +661,8 @@ public:
             PsgParamsMidiWriter writer {1};
             writer.write(0.0, params);
 
-            PsgParamsMidiReader reader {1};
-            for (auto e : writer.getSequence())
-                ignoreUnused(reader.read(e->message));
-            expectEquals(int(reader.getParams().getRaw(PsgParamType::EnvelopePeriod)), 0xC350);
+            const auto read = decodeFrames(writer.getSequence(), 1).back();
+            expectEquals(int(read.getRaw(PsgParamType::EnvelopePeriod)), 0xC350);
         }
     }
 };

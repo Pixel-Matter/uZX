@@ -313,6 +313,63 @@ public:
 static AYChipSoloTests ayChipSoloTests;
 
 //==============================================================================
+/** Plays bare PSG controllers from a MIDI clip into the chip: a message changes what it names
+    and leaves the rest of the registers as the chip holds them. */
+class AYChipPluginControllerTests : public juce::UnitTest {
+public:
+    AYChipPluginControllerTests() : UnitTest("AYChipPluginControllers", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        auto* track = te::getAudioTracks(*edit)[0];
+
+        const te::TimeRange range {te::TimePosition(), te::TimePosition::fromSeconds(8.0)};
+        auto* clip = dynamic_cast<te::MidiClip*>(track->insertNewClip(te::TrackItem::Type::midi, "cc", range, nullptr));
+        const auto controller = [&](double beat, MidiCCType type, int value) {
+            clip->getSequence().addControllerEvent(te::BeatPosition::fromBeats(beat), static_cast<int>(type), value << 7, nullptr);
+        };
+        controller(0.0, MidiCCType::Volume, 12);
+        controller(0.0, MidiCCType::GPB1ToneSwitch, 1);
+        controller(4.0, MidiCCType::GPB3EnvSwitch, 0);
+
+        auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+        track->pluginList.insertPlugin(plugin, 0, nullptr);
+        auto& chip = dynamic_cast<AYChipPlugin&>(*plugin);
+
+        engine.getDeviceManager().dispatchPendingUpdates();
+        edit->dispatchPendingUpdatesSynchronously();
+        auto& transport = edit->getTransport();
+        transport.setPosition(te::TimePosition());
+        transport.play(false);
+        TestHelpers::processBlocks(engine, 10);
+
+        beginTest("Turning one channel's tone on leaves the other mixer switches off, as a reset chip has them");
+        {
+            const auto regs = chip.getChipRegisters();
+            expectEquals(int(regs.getVolume(0)), 12, "the clip reached the chip");
+            expect(regs.getToneOn(0), "tone A is on");
+            expect(! regs.getNoiseOn(0), "noise A stays off");
+            expect(! regs.getToneOn(1) && ! regs.getNoiseOn(1), "tone and noise B stay off");
+        }
+
+        beginTest("After a mute, a message for the envelope switch alone does not bring the volume back");
+        {
+            chip.midiPanic();
+            expectEquals(int(chip.getChipRegisters().getVolume(0)), 0, "muted");
+
+            int blocks = 0;
+            while (transport.getPosition() < edit->tempoSequence.toTime(te::BeatPosition::fromBeats(4.5)) && ++blocks < 2000)
+                TestHelpers::processBlocks(engine, 10);
+            expectEquals(int(chip.getChipRegisters().getVolume(0)), 0, "still muted after the envelope switch");
+        }
+        transport.stop(false, false);
+    }
+};
+
+static AYChipPluginControllerTests ayChipPluginControllerTests;
+
+//==============================================================================
 /** Follows a MIDI-mapped parameter and its live-reader slot through the plugin's deletion. */
 class AYChipMappedParameterTests : public juce::UnitTest {
 public:

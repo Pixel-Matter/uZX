@@ -323,7 +323,6 @@ void PsgList::clear (juce::UndoManager* um) {
     // Timing metadata (frameRate, framesPerBeat) is kept: it describes the list's
     // relation to tempo, not its content.
     state.removeAllChildren(um);
-    importedName = {};
 }
 
 void PsgList::setMidiChannel(te::MidiChannel newChannel) {
@@ -394,17 +393,6 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
 
         auto v = PsgParamFrame::createPsgFrameValueTree(static_cast<int>(i), params);
         state.addChild(v, -1, um);
-    }
-}
-
-void PsgList::loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager* um) {
-    loadFrom(psgFile.getData(), edit, um);
-    if (psgFile.getFile().existsAsFile()) {
-        importedName = psgFile.getFile().getFileNameWithoutExtension();
-        importedFileName = psgFile.getFile().getFullPathName();
-    } else {
-        importedName = {};
-        importedFileName = {};
     }
 }
 

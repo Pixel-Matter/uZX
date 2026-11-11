@@ -8,6 +8,7 @@ set(SHARED_SOURCES
     formats/psg/TurboSound.cpp
 
     formats/tracker/TrackerModule.cpp
+    formats/tuning/TuningCsv.cpp
 
     controllers/ParamEndpoint.cpp
 
@@ -122,6 +123,7 @@ set(TEST_SOURCES
     formats/psg/TurboSound.test.cpp
 
     formats/tracker/TrackerModule.test.cpp
+    formats/tuning/TuningCsv.test.cpp
 
     models/PsgMidi.test.cpp
     models/PsgParameter.test.cpp

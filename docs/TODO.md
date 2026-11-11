@@ -4,9 +4,7 @@ Granular open tasks for µZX Studio and the shared engine. Player priorities are
 
 ## Refactoring
 
-See the [review scope and implementation order](refactoring.md#implementation-order). Numbers are the findings' stable IDs, not execution order; finished findings are deleted.
-
-- [ ] 9. [Extract tuning export formatting](refactoring.md#9-extract-tuning-export-formatting), preserving CSV output and filename behavior.
+No open findings. [refactoring.md](refactoring.md) holds the review's scope and its deferred notes; new findings are listed here by their number there.
 
 ## Arranger mode
 

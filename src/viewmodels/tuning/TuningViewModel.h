@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../../controllers/Parameters.h"
+#include "../../formats/tuning/TuningCsv.h"
 
 #include "../../models/tuning/TemperamentSystem.h"
 #include "../../models/tuning/TuningSystemBase.h"
@@ -11,7 +12,6 @@
 
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../../util/convert.h"
-#include "../../utils/StringLiterals.h"
 
 #include <algorithm>
 #include <array>
@@ -560,88 +560,23 @@ public:
         return isEnvelopePeriodsShown() ? TuningSystem::Envelope : TuningSystem::Tone;
     }
 
+    /** The notes in MIDI range as a CSV table. */
     String exportToCSV() const {
-        String csv;
-
-        // CSV Header with metadata
-        // csv += "# Tuning System Export\n";
-        // csv += "# Tuning: " + getTuningName() + "\n";
-        // csv += "# Type: " + getTuningTypeName() + "\n";
-        // csv += "# Scale: " + getScaleName() + "\n";
-        // csv += "# Clock Frequency: " + String(getClockFrequency(), 0) + " Hz\n";
-        // csv += "# A4 Frequency: " + String(getA4Frequency(), 1) + " Hz\n";
-        // csv += "#\n";
-
-        // CSV Data Header
-        csv += "MIDI,Note,Period\n";
-
-        // Export data for each octave
+        std::vector<TuningCsv::Row> rows;
         auto octaveRange = getOctaveRange();
-        for (int octave = octaveRange.getStart(); octave < octaveRange.getEnd(); ++octave) {
-            auto octaveNotes = getOctaveNotes(octave);
-            for (const auto& note : octaveNotes) {
-                // Skip notes beyond MIDI range
-                if (!note.isInMidiRange()) {
-                    continue;
-                }
-
-                // MIDI note
-                csv += String(note.midiNote) + ",";
-
-                // Note name - convert to ASCII compatible format
-                String asciiNoteName = note.name;
-                asciiNoteName = asciiNoteName.replace("♯"_u, "#");
-                asciiNoteName = asciiNoteName.replace("♭"_u, "b");
-                if (asciiNoteName.length() == 2) {
-                    // insert dash between 0th and 1st character for compatibility
-                    asciiNoteName = asciiNoteName.substring(0, 1) + "-" + asciiNoteName.substring(1);
-                }
-                csv += asciiNoteName + ",";
-
-                // Period
-                csv += String(note.period) + "\n";
-            }
-        }
-
-        return csv;
+        for (int octave = octaveRange.getStart(); octave < octaveRange.getEnd(); ++octave)
+            for (const auto& note : getOctaveNotes(octave))
+                if (note.isInMidiRange())
+                    rows.push_back({note.midiNote, note.name, note.period});
+        return TuningCsv::format(rows);
     }
 
     String getDefaultExportFilename() const {
-        // Create a descriptive filename from tuning details
         jassert(tuningSystem != nullptr);
-
-        String filename = tuningSystem->getReferenceTuning()->getTypeName() + " " + tuningSystem->getTypeName() + " " + getScaleName();
-
-        // Add clock frequency info
-        filename += " " + String(selectedParams.clockFrequencyMhz.getStoredValue(), 2).replace(".", "_") + "MHz";
-
-        // Add A4 frequency
-        filename += " A4=" + String(selectedParams.a4Frequency.getStoredValue(), 0);
-
-        // Replace invalid filename characters
-        filename = filename.replaceCharacter('/', '-')
-                          .replaceCharacter('\\', '-')
-                          .replaceCharacter(':', '-')
-                          .replaceCharacter('*', '-')
-                          .replaceCharacter('?', '-')
-                          .replaceCharacter('"', '\'')
-                          .replaceCharacter('<', '-')
-                          .replaceCharacter('>', '-')
-                          .replaceCharacter('|', '-')
-                          .replaceCharacter('#', '-');
-
-        // Remove multiple consecutive spaces and dashes
-        while (filename.contains("  ")) {
-            filename = filename.replace("  ", " ");
-        }
-        while (filename.contains("--")) {
-            filename = filename.replace("--", "-");
-        }
-
-        // Add extension
-        filename += ".csv";
-
-        return filename;
+        return TuningCsv::fileName(tuningSystem->getReferenceTuning()->getTypeName() + " " + tuningSystem->getTypeName()
+                                   + " " + getScaleName() + " "
+                                   + String(selectedParams.clockFrequencyMhz.getStoredValue(), 2).replace(".", "_")
+                                   + "MHz A4=" + String(selectedParams.a4Frequency.getStoredValue(), 0));
     }
 
     EnvShape getEnvelopeShape() const {

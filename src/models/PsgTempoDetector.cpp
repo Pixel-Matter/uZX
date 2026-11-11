@@ -528,4 +528,36 @@ void applyToEdit(const juce::Array<PsgClip*>& clips,
     }
 }
 
+void setFrameRate(const juce::Array<PsgClip*>& clips, double fps) {
+    if (clips.isEmpty())
+        return;
+    for (auto* clip : clips)
+        PsgTiming::setClipFrameRate(*clip, fps);
+    if (! areOnlyClipsInEdit(clips))
+        return;
+
+    Helpers::setProjectFps(clips.getFirst()->edit, fps);
+    // ponytail: the clips keep their start, so a first row that import moved onto a bar line can sit
+    // off it at the new rate; re-place them as applyToEdit does if that shows up.
+    std::vector<uZX::PsgData> dumps;
+    for (auto* clip : clips)
+        dumps.push_back(clip->getPsg().toPsgData());
+    std::vector<const uZX::PsgData*> chips;
+    for (const auto& dump : dumps)
+        chips.push_back(&dump);
+    if (const auto result = detect(chips))
+        applyTempo(clips, *result);
+}
+
+void setProjectFrameRate(tracktion::Edit& edit, double fps) {
+    const auto oldFps = Helpers::getProjectFps(edit);
+    juce::Array<PsgClip*> clips;
+    for (auto* track : tracktion::getClipTracks(edit))
+        for (auto* clip : track->getClips())
+            if (auto* psg = dynamic_cast<PsgClip*>(clip); psg != nullptr && ! psg->getPsg().hasFpsMismatch(*psg, oldFps))
+                clips.add(psg);
+    Helpers::setProjectFps(edit, fps);
+    setFrameRate(clips, fps);
+}
+
 }  // namespace MoTool::PsgTempo

@@ -6,6 +6,7 @@
 #include "../../controllers/MainCommands.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
+#include "../../models/PsgTempoDetector.h"
 #include "../../plugins/uZX/aychip/AYPlugin.h"
 
 #include <algorithm>
@@ -763,6 +764,15 @@ static void showPsgClipMenu(PsgClip& psgClip, const EditViewState& view) {
         settings.setValue(hexHoverSetting, ! settings.getBoolValue(hexHoverSetting));
     });
     m.addSeparator();
+    PopupMenu rates;
+    const auto clipFps = roundToInt(psgClip.getPsg().getEffectiveFps(psgClip));
+    for (double fps : Helpers::kAllowedProjectFps)
+        rates.addItem(String(roundToInt(fps)) + " fps", true, roundToInt(fps) == clipFps,
+                      [safeClip = te::SafeSelectable<PsgClip>(&psgClip), fps] {
+                          if (auto* c = safeClip.get())
+                              PsgTempo::setFrameRate(c->getTuneClips(), fps);
+                      });
+    m.addSubMenu("Frame Rate", rates);
     m.addItem("Tuning and key...", psgClip.getTuningDetection().hasNotes, false,
               [safeClip = te::SafeSelectable<PsgClip>(&psgClip)] {
                   if (auto* c = safeClip.get())

@@ -70,6 +70,14 @@ void applyToEdit(const juce::Array<PsgClip*>& clips,
                  const std::vector<const uZX::PsgData*>& chips,
                  const std::vector<size_t>& knownRows = {});
 
+/** Plays the clips at another frame rate (see PsgTiming::setClipFrameRate). When they are the
+    only clips in their edit, the project's fps follows and the tempo, grid and meter are detected
+    again from them, as on import; the clips stay where they are. */
+void setFrameRate(const juce::Array<PsgClip*>& clips, double fps);
+
+/** Sets the project's fps; the PSG clips that played at the old one follow it, as in setFrameRate. */
+void setProjectFrameRate(tracktion::Edit&, double fps);
+
 }  // namespace PsgTempo
 
 }  // namespace MoTool

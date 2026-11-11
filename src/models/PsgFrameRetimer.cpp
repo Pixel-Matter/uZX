@@ -81,6 +81,22 @@ void setTempoBpmRetimingFrames(te::Edit& edit, te::TempoSetting& tempo, double b
     }
 }
 
+void setClipFrameRate(PsgClip& clip, double fps) {
+    auto& psg = clip.getPsg();
+    const auto current = psg.getEffectiveFps(clip);
+    if (fps <= 0.0 || current <= 0.0)
+        return;
+
+    const auto ratio = fps / current;
+    auto* um = &clip.edit.getUndoManager();
+    psg.setFramesPerBeat(psg.getFramesPerBeat() * ratio, um);
+    psg.setFrameRate(fps, um);
+    const auto position = clip.getPosition();
+    clip.setPosition({{position.getStart(), te::TimeDuration::fromSeconds(position.getLength().inSeconds() / ratio)},
+                      te::TimeDuration::fromSeconds(position.getOffset().inSeconds() / ratio)});
+    clip.changed();
+}
+
 void setTimeSig(te::Edit& edit, te::TimeSigSetting& timeSig, int numerator, int denominator) {
     jassert(numerator > 0 && denominator > 0);
     const int oldDenominator = timeSig.denominator.get();

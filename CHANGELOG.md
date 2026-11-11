@@ -31,6 +31,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: a damaged or crafted PSG file can no longer fill the memory with pauses: a file is read up to four hours at 50 Hz
 - A PSG file of version 10 or later plays at the frame rate its header gives; older files play at 50 Hz, as before
 - Fixed: a PSG clip imported where the tempo differs from the project's start plays at its file's frame rate instead of drifting from it
+- A tune written for another frame rate, such as 200 Hz, plays at it: pick the rate under **FPS** in the transport bar, for the clips at the project's rate, or under **Frame Rate** in a clip's menu, for its tune. A tune alone in the project gets its tempo, groove and meter detected again
 
 ### Tracker modules
 - Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop

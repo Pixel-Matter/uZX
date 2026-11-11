@@ -6,6 +6,7 @@
 #include "formats/psg/PsgData.h"
 #include "formats/psg/PsgFile.h"
 #include "models/EditUtilities.h"
+#include "models/PsgFrameRetimer.h"
 
 namespace MoTool::Tests {
 
@@ -429,7 +430,112 @@ public:
         }
 
         testCorpusFixtures();
+        testFrameRateChanges();
         runCorpusReport();
+    }
+
+    /** "200%" by Abstract 64, Natt, Pator and wbcbz7: a Turbo Sound tune at 200 Hz whose PSG
+        files give no rate, so it opens at 50 Hz and four times too slow. */
+    void testFrameRateChanges() {
+        const auto dir = File(UZX_FIXTURES_DIR).getChildFile("psg");
+        PsgFile first(dir.getChildFile("200_percent_partyfinal.1.psg"));
+        PsgFile second(dir.getChildFile("200_percent_partyfinal.2.psg"));
+        expect(first.ensureRead() && second.ensureRead(), "fixtures read");
+        if (first.getData().frames.empty() || second.getData().frames.empty())
+            return;
+        auto& engine = *tracktion::Engine::getEngines()[0];
+        const auto length = tracktion::TimeDuration::fromSeconds(first.getData().getLengthSeconds());
+
+        /** Imports both chips at 50 Hz, as opening the files does. */
+        const auto open = [&](Edit& edit) {
+            auto a = PsgClip::insertTo(*getAudioTracks(edit)[0], first.getData(), {{0_tp, length}, {}}, "1");
+            auto b = PsgClip::insertTo(*getAudioTracks(edit)[1], second.getData(), {{0_tp, length}, {}}, "2");
+            PsgClip::linkAsOneTune({a.get(), b.get()});
+            Helpers::setProjectFps(edit, 50.0);
+            PsgTempo::applyToEdit({a.get(), b.get()}, {&first.getData(), &second.getData()});
+            return juce::Array<PsgClip*>{a.get(), b.get()};
+        };
+
+        beginTest("A clip gives back the dump it was loaded from, for detection");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], first.getData(), {{0_tp, length}, {}});
+            const auto dump = clip->getPsg().toPsgData();
+            const auto fromFile = PsgTempo::detect(first.getData());
+            const auto fromClip = PsgTempo::detect(dump);
+            expect(fromFile && fromClip, "both detect");
+            if (fromFile && fromClip) {
+                expect(fromClip->rowFrames == fromFile->rowFrames, "rows");
+                expectEquals(fromClip->framesPerBeat, fromFile->framesPerBeat, "frames per beat");
+            }
+        }
+
+        beginTest("A tune alone in its project plays at the rate picked for it, and the project follows");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->ensureNumberOfAudioTracks(2);
+            const auto clips = open(*edit);
+            const auto bpm = edit->tempoSequence.getTempoAt(0_tp).getBpm();  // the two chips give no tempo
+
+            PsgTempo::setFrameRate(clips[0]->getTuneClips(), 200.0);
+            expectEquals(Helpers::getProjectFps(*edit), 200.0, "the project follows");
+            for (auto* clip : clips) {
+                expectWithinAbsoluteError(clip->getPsg().getEffectiveFps(*clip), 200.0, 1e-6, "plays at 200 Hz");
+                expectWithinAbsoluteError(clip->getPosition().getLength().inSeconds(), 185.78, 0.01, "3:05.78");
+                expect(! clip->getPsg().hasFpsMismatch(*clip, 200.0), "no warning");
+            }
+            expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), bpm, 0.01,
+                                      "no tempo detected at 200 Hz either: it stays");
+        }
+
+        beginTest("A tune's tempo and grid are detected again at its new rate");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], first.getData(), {{0_tp, length}, {}});
+            Helpers::setProjectFps(*edit, 50.0);
+            PsgTempo::applyToEdit({clip.get()}, {&first.getData()});
+
+            PsgTempo::setFrameRate({clip.get()}, 200.0);
+            auto at200 = first.getData();
+            at200.options.frameRate = 200.0;
+            const auto expected = PsgTempo::detect(at200);
+            expect(static_cast<bool>(expected), "chip 1 has a tempo at 200 Hz");
+            if (expected) {
+                expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), expected->bpm, 0.01, "tempo");
+                expect(Helpers::getGridSubdivisionPattern(*edit, expected->framesPerBeat) == expected->subdivisionPattern(),
+                       "grid");
+            }
+        }
+
+        beginTest("The project's fps retimes the clips that played at the old one");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->ensureNumberOfAudioTracks(3);
+            const auto clips = open(*edit);
+            auto other = PsgClip::insertTo(*getAudioTracks(*edit)[2], first.getData(), {{0_tp, length}, {}}, "other");
+            PsgTiming::setClipFrameRate(*other, 60.0);
+            const auto bpm = edit->tempoSequence.getTempoAt(0_tp).getBpm();
+
+            PsgTempo::setProjectFrameRate(*edit, 200.0);
+            expectEquals(Helpers::getProjectFps(*edit), 200.0);
+            for (auto* clip : clips)
+                expectWithinAbsoluteError(clip->getPsg().getEffectiveFps(*clip), 200.0, 1e-6, "followed");
+            expectWithinAbsoluteError(other->getPsg().getEffectiveFps(*other), 60.0, 1e-6, "kept its own rate");
+            expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), bpm, 0.01,
+                                      "with other clips, the tempo stays");
+        }
+
+        beginTest("A tune among other clips changes alone: the project and its tempo stay");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->ensureNumberOfAudioTracks(3);
+            const auto clips = open(*edit);
+            PsgClip::insertTo(*getAudioTracks(*edit)[2], first.getData(), {{0_tp, length}, {}}, "other");
+
+            PsgTempo::setFrameRate(clips, 200.0);
+            expectEquals(Helpers::getProjectFps(*edit), 50.0);
+            expect(clips[0]->getPsg().hasFpsMismatch(*clips[0], 50.0), "the clip warns");
+        }
     }
 
     /** Tempos set by ear in the uZX Player (scripts/psg_tempo_labels.csv) for tunes of the

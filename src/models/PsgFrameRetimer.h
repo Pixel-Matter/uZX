@@ -6,6 +6,8 @@ namespace te = tracktion;
 
 namespace MoTool {
 
+class PsgClip;
+
 //==============================================================================
 /** Helper for changing an edit's tempo with optional PSG timing preservation.
 
@@ -35,6 +37,10 @@ void setFramesPerBeat(te::Edit&, te::TempoSetting&, int framesPerBeat, bool pres
     not depend on the preserve-timing option. Same single-tempo assumption as
     setTempoBpmRetimingFrames. */
 void setTimeSig(te::Edit&, te::TimeSigSetting&, int numerator, int denominator);
+
+/** Plays a PSG clip's frames at another rate: its frame rate and frames per beat follow, and its
+    offset and length scale so it keeps its first and last frame; its start stays. */
+void setClipFrameRate(PsgClip&, double fps);
 
 // The functions below work on the tempo at the transport position, at the project fps.
 

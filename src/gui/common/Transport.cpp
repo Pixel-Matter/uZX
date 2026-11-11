@@ -4,6 +4,7 @@
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
 #include "../../models/PsgFrameRetimer.h"
+#include "../../models/PsgTempoDetector.h"
 #include "LookAndFeel.h"
 #include "../../utils/StringLiterals.h"
 
@@ -355,7 +356,7 @@ void TransportBar::showFpsMenu() {
     for (double fps : Helpers::kAllowedProjectFps) {
         const int rounded = roundToInt(fps);
         menu.addItem(String(rounded) + " fps", true, rounded == currentFps,
-                     [this, fps] { Helpers::setProjectFps(edit_, fps); });
+                     [this, fps] { PsgTempo::setProjectFrameRate(edit_, fps); });
     }
     menu.showMenuAsync(PopupMenu::Options().withTargetComponent(&fpsLabel_));
 }

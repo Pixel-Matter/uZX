@@ -155,7 +155,8 @@ private:
 
     // Configuration runs on the message thread, operator() on the audio thread; both hold this, so a replaced
     // tuning is destroyed by the thread replacing it, never under a rendering voice.
-    // ponytail: the audio thread can wait out a setter, as in AYChipPlugin; a block-boundary handoff if that is heard
+    // ponytail: the audio thread can wait out a setter, as in AYChipPlugin; measured (2026-11) as a few microseconds
+    // at thousands of changes a second, so a block-boundary handoff only if a glitch is ever heard
     juce::CriticalSection lock_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgMapper)

@@ -39,7 +39,7 @@ public:
 
             auto edit = Edit::createSingleTrackEdit(engine);
             PsgList psgList;
-            psgList.loadFrom(data, *edit, nullptr);
+            psgList.loadFrom(data, *edit, {}, nullptr);
 
             auto& frames = psgList.getFrames();
             expectEquals(int(frames.size()), 3, "Should have 3 non-empty frames");
@@ -97,7 +97,7 @@ public:
 
             auto edit = Edit::createSingleTrackEdit(engine);
             PsgList psgList;
-            psgList.loadFrom(data, *edit, nullptr);
+            psgList.loadFrom(data, *edit, {}, nullptr);
 
             auto& frames = psgList.getFrames();
             expectEquals(int(frames.size()), 2, "Should have 2 frames");
@@ -126,7 +126,7 @@ public:
 
             auto edit = Edit::createSingleTrackEdit(engine);
             PsgList psgList;
-            psgList.loadFrom(data, *edit, nullptr);
+            psgList.loadFrom(data, *edit, {}, nullptr);
 
             auto& frames = psgList.getFrames();
             expectEquals(int(frames.size()), 3, "Should have 3 non-empty frames");
@@ -158,7 +158,7 @@ public:
 
             auto edit = Edit::createSingleTrackEdit(engine);
             PsgList original;
-            original.loadFrom(data, *edit, nullptr);
+            original.loadFrom(data, *edit, {}, nullptr);
 
             // Copy the ValueTree state (simulates saving/loading a file)
             auto stateCopy = original.state.createCopy();
@@ -339,7 +339,7 @@ public:
             auto* psgClip = dynamic_cast<PsgClip*>(clip);
             expect(psgClip != nullptr, "PsgClip created");
 
-            psgClip->getPsg().loadFrom(data, *edit, nullptr);
+            psgClip->getPsg().loadFrom(data, *edit, {}, nullptr);
 
             auto seq = psgClip->getPsg().exportToPlaybackMidiSequence(
                 *psgClip, te::MidiList::TimeBase::seconds);
@@ -423,6 +423,24 @@ public:
                                       "Frames per beat should match 50 fps at 120 BPM");
             expectWithinAbsoluteError(clip->getPsg().getEffectiveFps(*clip), 50.0, 1.0e-9,
                                       "Imported PSG should initially play at its source frame rate");
+        }
+
+        beginTest("A clip imported away from time zero takes its frames per beat from the tempo at its start");
+        {
+            auto edit = Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            edit->tempoSequence.insertTempo(BeatPosition::fromBeats(8), 150.0, 0.0f);  // at 4 s
+
+            auto data = makeOffGridFrameData();
+            data.options.frameRate = 60.0;
+            auto track = getAudioTracks(*edit)[0];
+            auto early = PsgClip::insertTo(*track, data, {{0_tp, 4_td}, {}}, "early");
+            auto late = PsgClip::insertTo(*track, data, {{8_tp, 4_td}, {}}, "late");
+
+            expectWithinAbsoluteError(early->getPsg().getFramesPerBeat(), 30.0, 1.0e-9, "60 fps at 120 BPM");
+            expectWithinAbsoluteError(late->getPsg().getFramesPerBeat(), 24.0, 1.0e-9, "60 fps at 150 BPM");
+            expectWithinAbsoluteError(late->getPsg().getEffectiveFps(*late), 60.0, 1.0e-9,
+                                      "The clip plays at its source rate where it starts");
         }
 
         beginTest("Imported PSG frames store only frame indices");

@@ -91,8 +91,8 @@ public:
 
     static juce::ValueTree createPsgList();
 
-    /** Loads from Psg data. */
-    void loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager*);
+    /** Loads from Psg data, for a clip starting at clipStart: its frames per beat follow the tempo there. */
+    void loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePosition clipStart, juce::UndoManager*);
 
     //==============================================================================
     /** Returns the frames sorted array, each frame holding the accumulated register

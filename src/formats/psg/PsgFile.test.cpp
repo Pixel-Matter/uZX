@@ -93,6 +93,21 @@ public:
             expect(file.ensureRead());
             expectEquals((int) file.getData().frames.size(), 2);
         }
+
+        beginTest("Version 10 and later give the frame rate; older files play at 50 Hz");
+        {
+            const auto rateOf = [] (uint8 version, uint8 rate) {
+                const std::vector<uint8> bytes {'P', 'S', 'G', 0x1A, version, rate, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0x08, 0x0F};
+                TemporaryFile temp(".psg");
+                temp.getFile().replaceWithData(bytes.data(), bytes.size());
+                PsgFile file(temp.getFile());
+                file.ensureRead();
+                return file.getData().getFrameRate();
+            };
+            expectEquals(rateOf(10, 60), 60.0);
+            expectEquals(rateOf(0, 60), 50.0, "the rate byte means nothing before version 10");
+            expectEquals(rateOf(10, 0), 50.0, "a zero rate is no rate");
+        }
     }
 };
 

@@ -424,7 +424,7 @@ void PsgClip::loadFrom(uZX::PsgData &data) {
         // Build the list detached and without undo; attaching it below is the
         // single undoable step.
         PsgList psg;
-        psg.loadFrom(data, edit, nullptr);
+        psg.loadFrom(data, edit, getPosition().getStart(), nullptr);
         state.removeChild(state.getChildWithName(IDs::PSG), um);
         state.addChild(psg.state, -1, um);
         initialise();

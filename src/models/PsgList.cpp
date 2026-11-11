@@ -337,7 +337,7 @@ PsgParamFrame* PsgList::addFrameEvent(int frameIndex, const PsgParamFrameData& d
 
 
 
-void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager* um) {
+void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePosition clipStart, juce::UndoManager* um) {
     PsgParamFrameData params;
     uZX::PsgRegsFrame regsState;
     // uZX::PsgRegsFrame regsFromParamsState;
@@ -348,7 +348,7 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
     bool lastRetriggerState = false;  // Track if last frame had retrigger=1
 
     setFrameRate(data.getFrameRate(), um);
-    setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, 0_tp), um);
+    setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, clipStart), um);
 
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];

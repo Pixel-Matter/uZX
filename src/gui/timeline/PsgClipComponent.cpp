@@ -423,14 +423,6 @@ void setPianoKeysShown(te::Engine& engine, bool shouldShow) {
     engine.getPropertyStorage().getPropertiesFile().setValue(pianoKeysSetting, shouldShow);
 }
 
-String getClockMismatchText(double tuningClock, double trackClock) {
-    const int cents = roundToInt(1200.0 * std::log2(trackClock / tuningClock));
-    if (cents == 0)
-        return {};
-    return String::fromUTF8("\xE2\x9A\xA0 ") + getClockName(tuningClock) + " @ " + getClockName(trackClock)  // ⚠
-         + String::formatted(" %+d", cents) + String::fromUTF8("\xC2\xA2");                                  // ¢
-}
-
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex) {
     using T = PsgParamType;
     std::vector<std::pair<String, Colour>> runs;

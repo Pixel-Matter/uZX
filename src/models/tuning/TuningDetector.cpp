@@ -247,6 +247,14 @@ String getClockName(double chipClock) {
     return named != std::end(tuningClocks) ? String(named->name) : String(chipClock / 1.0e6, 4) + " MHz";
 }
 
+String getClockMismatchText(double tuningClock, double chipClock) {
+    const int cents = roundToInt(1200.0 * std::log2(chipClock / tuningClock));
+    if (cents == 0)
+        return {};
+    return String::fromUTF8("\xE2\x9A\xA0 ") + getClockName(tuningClock) + " @ " + getClockName(chipClock)  // ⚠
+         + String::formatted(" %+d", cents) + String::fromUTF8("\xC2\xA2");                                  // ¢
+}
+
 /** " Pentagon" after a label for a grid at that clock; nothing at the ZX clock. */
 static String getClockSuffix(double chipClock) {
     return exactlyEqual(chipClock, tuningGridClock) ? String() : " " + getClockName(chipClock);

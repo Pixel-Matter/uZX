@@ -163,6 +163,20 @@ public:
             expectWithinAbsoluteError(back.a4Frequency, 436.0, 1e-6);
         }
 
+        beginTest("Clock warning: the tuning's clock @ the chip's, and how far the notes sound off");
+        {
+            using Clock = uZX::ChipClockEnum;
+            const double zx = Clock::clockValues[Clock::ZX_Spectrum_1_77_MHz];
+            const double pentagon = Clock::clockValues[Clock::Pentagon_1_75_MHz];
+            const double st = Clock::clockValues[Clock::Atari_ST_2_MHz];
+            const String warn = String::fromUTF8("\xE2\x9A\xA0 "), cent = String::fromUTF8("\xC2\xA2");
+            expectEquals(getClockMismatchText(pentagon, zx), warn + "Pentagon @ ZX Spectrum +23" + cent);
+            expectEquals(getClockMismatchText(st, zx), warn + "Atari ST @ ZX Spectrum -208" + cent);
+            expectEquals(getClockMismatchText(pentagon, 1.79 * uZX::MHz), warn + "Pentagon @ 1.7900 MHz +39" + cent);
+            expect(getClockMismatchText(zx, zx).isEmpty());
+            expect(getClockMismatchText(zx, 1.7734 * uZX::MHz).isEmpty(), "the AY plugin's MHz must still match");
+        }
+
         beginTest("Envelope pitches match within half an envelope step");
         {
             const auto& grid = getBuiltinPeriodGrid(BuiltinTuningType::CustomPT_1_ST);

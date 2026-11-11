@@ -7,10 +7,11 @@
 namespace MoTool::uZX {
 
 //==============================================================================
-NotesToPsgMapper::ChannelVoice::ChannelVoice(tracktion::MidiMessageArray& buffer, int chan, bool isEnv)
+NotesToPsgMapper::ChannelVoice::ChannelVoice(tracktion::MidiMessageArray& buffer, int midiChan, int psgChan)
         : midiBuffer_(buffer)
-        , midiChannel(chan)
-        , isEnvChannel(isEnv) // Channel 4 is env channel
+        , midiChannel(midiChan)
+        , psgChannel(psgChan)
+        , isEnvChannel(psgChan == 3)
     {
         reset();
     }
@@ -123,36 +124,35 @@ void NotesToPsgMapper::ChannelVoice::emitControllerChange(MidiCCType controller,
     // TODO keep track of current CC states?
 }
 
+void NotesToPsgMapper::ChannelVoice::emitParam(PsgParamType param, int value) {
+    for (const auto& m : PsgCC::encode(param, value)) {
+        jassert(m.channel == psgChannel);  // a voice writes only its own channel's parameters
+        emitControllerChange(m.controller, m.value);
+    }
+}
+
 void NotesToPsgMapper::ChannelVoice::emitVolume(int volume) {
-    // DBG("Emitting Volume CC: Channel " << midiChannel << ", Volume " << volume);
-    emitControllerChange(MidiCCType::Volume, volume);
+    emitParam(PsgParamType::VolumeA + psgChannel, volume);
     lastState.volume = volume;
 }
 
 void NotesToPsgMapper::ChannelVoice::emitPeriod(int p) {
-    // DBG("Emitting Period: " << midiChannel << ", period " << p);
-
-    // Split 12-bit period into coarse (high 5 bits) and fine (low 7 bits)
-    int coarse = (p >> 7) & 0x7F;  // bits 7-11 -> 0-31 (high 5 bits)
-    int fine = p & 0x7F;           // bits 0-6 -> 0-127 (low 7 bits)
-
-    emitControllerChange(MidiCCType::CC20PeriodCoarse, coarse);
-    emitControllerChange(MidiCCType::CC52PeriodFine, fine);
+    emitParam(isEnvChannel ? PsgParamType::EnvelopePeriod : PsgParamType::TonePeriodA + psgChannel, p);
     lastState.period = p;
 }
 
 void NotesToPsgMapper::ChannelVoice::emitToneSwitch(bool on) {
-    emitControllerChange(MidiCCType::GPB1ToneSwitch, on ? 127 : 0);
+    emitParam(PsgParamType::ToneIsOnA + psgChannel, on ? 127 : 0);
     lastState.toneOn = on;
 }
 
 void NotesToPsgMapper::ChannelVoice::emitNoiseSwitch(bool on) {
-    emitControllerChange(MidiCCType::GPB2NoiseSwitch, on ? 127 : 0);
+    emitParam(PsgParamType::NoiseIsOnA + psgChannel, on ? 127 : 0);
     lastState.noiseOn = on;
 }
 
 void NotesToPsgMapper::ChannelVoice::emitEnvSwitch(bool on) {
-    emitControllerChange(MidiCCType::GPB3EnvSwitch, on ? 127 : 0);
+    emitParam(PsgParamType::EnvelopeIsOnA + psgChannel, on ? 127 : 0);
     lastState.envOn = on;
 }
 
@@ -227,10 +227,10 @@ void NotesToPsgMapper::ChannelVoice::debug() const {
 //==============================================================================
 NotesToPsgMapper::NotesToPsgMapper()
     : voices_ {
-        ChannelVoice(midiBuffer_, baseChannel_ + 0),
-        ChannelVoice(midiBuffer_, baseChannel_ + 1),
-        ChannelVoice(midiBuffer_, baseChannel_ + 2),
-        ChannelVoice(midiBuffer_, baseChannel_ + 3, true)
+        ChannelVoice(midiBuffer_, baseChannel_ + 0, 0),
+        ChannelVoice(midiBuffer_, baseChannel_ + 1, 1),
+        ChannelVoice(midiBuffer_, baseChannel_ + 2, 2),
+        ChannelVoice(midiBuffer_, baseChannel_ + 3, 3)
     }
 {
     // Default to standard 12-TET tuning

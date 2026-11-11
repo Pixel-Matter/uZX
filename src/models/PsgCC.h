@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <array>
 #include <limits>
 
 #include "../formats/psg/PsgData.h"
@@ -159,61 +160,37 @@ enum class MidiCCType {
 
 //==============================================================================
 /**
- * Utility functions for PSG MIDI conversion
+ * How PSG parameters travel as MIDI controllers: the one description of that wire, for everything that
+ * writes or reads it. A chip takes four consecutive MIDI channels from its base channel: A, B, C, then one
+ * for the envelope and the noise.
  */
-void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgData& data);
+namespace PsgCC {
 
-//==============================================================================
-class PsgRegsMidiWriter {
-public:
-    PsgRegsMidiWriter(int chan) noexcept
-        : channelNumber(chan)
-    {}
+inline constexpr int numChannels = 4;
 
-    double getTimeInBase(const te::MidiControllerEvent& controller) const;
-
-    juce::MidiMessageSequence& getSequence() noexcept { return sequence; }
-    inline void write(double time, int type, int value);
-
-private:
-    int channelNumber = 1;
-    juce::MidiMessageSequence sequence {};
-
+/** A controller message on a channel counted from the chip's base channel. */
+struct Message {
+    int channel;
+    MidiCCType controller;
+    int value;
 };
 
-juce::MidiMessageSequence createPsgPlaybackMidiSequence(const te::MidiList& list, const te::MidiClip& clip, te::MidiList::TimeBase timeBase);
+/** The one or two messages that carry a parameter. */
+struct Messages {
+    std::array<Message, 2> items {};
+    size_t count = 0;
 
-//==============================================================================
-/**
- * Reads PSG register data from MIDI messages
- */
-class PsgRegsMidiReader {
-public:
-    struct MaybeRegPair {
-        int reg = -1;
-        uint8_t value = 0;
-
-        bool isValid() const noexcept { return reg >= 0; }
-        operator bool() const noexcept { return isValid(); }
-    };
-
-    MaybeRegPair read(const te::MidiMessageWithSource& m);
-
-    void reset() noexcept {
-        registers = {};
-    }
-
-    uZX::PsgRegsFrame getRegisters() const noexcept {
-        return registers;
-    }
-
-    void clear() noexcept {
-        registers.clear();
-    }
-
-private:
-    uZX::PsgRegsFrame registers = {};
+    const Message* begin() const noexcept { return items.data(); }
+    const Message* end() const noexcept { return items.data() + count; }
 };
+
+/** A period goes as two controllers, 7 high bits and 7 low bits; anything else as its raw value in one. */
+Messages encode(PsgParamType param, int value) noexcept;
+
+/** Stores what a controller message carries into `into`. Returns false if no parameter travels there. */
+bool decode(int channel, int controller, int value, PsgParamFrameData& into) noexcept;
+
+}  // namespace PsgCC
 
 //==============================================================================
 /**
@@ -232,9 +209,6 @@ public:
 private:
     int channelNumber = 1;
     juce::MidiMessageSequence sequence {};
-
-    inline void addEvent(double time, int psgChan, MidiCCType type, int value);
-
 };
 
 //==============================================================================
@@ -260,12 +234,10 @@ public:
 
     void setBaseChannel(int chan) noexcept { baseChannel = chan; }
 
-    private:
+private:
     int baseChannel = 1;
     double currentTimestamp = std::numeric_limits<double>::lowest();
     PsgParamFrameData params {};
-
-    void nextFrame() noexcept;
 };
 
 }  // namespace MoTool

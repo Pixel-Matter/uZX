@@ -136,20 +136,9 @@ void AYChipPlugin::updateRegistersFromMidiParams() noexcept {
     params.clear();  // clear params after update
 }
 
-void AYChipPlugin::updateRegistersFromMidiRegs() noexcept {
-    // DBG("updateRegistersFromMidiRegs");
-    // registersFrame = midiRegsReader.getRegisters();
-    // midiRegsReader.clear();
-}
-
 // called under lock
 void AYChipPlugin::updateChip() noexcept {
-    if (midiReaderMode == MidiReaderMode::Params) {
-        updateRegistersFromMidiParams();
-    }
-    // else if (midiReaderMode == MidiReaderMode::Regs) {
-    //     // updateRegistersFromMidiRegs();
-    // }
+    updateRegistersFromMidiParams();
 
     // Set registers from the frame to the chip
     for (size_t i = 0; i < registersFrame.size(); ++i) {
@@ -164,12 +153,7 @@ void AYChipPlugin::updateChip() noexcept {
 }
 
 void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept {
-    if (midiReaderMode == MidiReaderMode::Params) {
-        midiParamsReader.read(m);
-    }
-    // else if (midiReaderMode == MidiReaderMode::Regs) {
-    //     // midiRegsReader.read(m);
-    // }
+    midiParamsReader.read(m);
 }
 
 void AYChipPlugin::copyTempBufferToVizBuffer() {

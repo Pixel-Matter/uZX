@@ -1,6 +1,6 @@
 #include "MultitrackMidiPreview.h"
 #include "TuningPlayer.h"
-#include "../../models/PsgMidi.h"
+#include "../../models/PsgCC.h"
 #include "../../util/TestHelpers.h"
 #include <JuceHeader.h>
 #include <iostream>
@@ -262,6 +262,22 @@ public:
             TestHelpers::flushMessageQueue();
         }
         DBGCI("test6: after scope (preview+edit destroyed)");
+
+        beginTest("The first note with tone off plays without tone");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            MultitrackMidiPreview preview(*edit);
+            preview.playSingleNote(60, 0.5, false, true, 8, 0);  // envelope only
+            TestHelpers::flushMessageQueue();
+            TestHelpers::processBlocks(engine, 10);
+
+            const auto regs = preview.chip->getChipRegisters();
+            const auto chan = static_cast<size_t>(MultitrackMidiPreview::SINGLE_NOTE_CHANNEL);
+            expect(regs.getEnvMod(chan), "the note reached the chip: its envelope is on");
+            expect(!regs.getToneOn(chan), "and its tone is off");
+            preview.stopPlayback();
+            TestHelpers::flushMessageQueue();
+        }
 
         beginTest("Stop cancels a preview before its queued start");
         {

@@ -6,7 +6,7 @@
 #include "../../../models/tuning/TuningRegistry.h"
 #include "../../../models/tuning/TemperamentSystem.h"
 #include "../../../models/tuning/Scales.h"
-#include "../../../models/PsgMidi.h"
+#include "../../../models/PsgCC.h"
 
 #include <atomic>
 #include <thread>
@@ -249,6 +249,21 @@ public:
             mapper.setBaseChannel(5);
             expect(!mapper.getVoice(5).isActive(), "the voice that held the note is free");
             expectCCEquals(mapper.renderVoices(), MidiCCType::Volume, 0, "and silenced");
+        }
+
+        beginTest("A reset between blocks silences the held note in the next block, even an empty one");
+        {
+            NotesToPsgMapper mapper;
+            mapper.setTuningSystem(createTestTuning());
+            te::MidiMessageArray buffer;
+            buffer.addMidiMessage(MidiMessage::noteOn(1, 60, (uint8) 100), {});
+            MidiBufferContext context {buffer, 0, 480, {}, 48000.0};
+            mapper(context);
+
+            mapper.reset();  // as a MIDI panic or a channel change does, on the message thread
+            buffer.clear();
+            mapper(context);
+            expectCCEquals(buffer, MidiCCType::Volume, 0, "the block after the reset carries the silence");
         }
 
         beginTest("Retuning while the audio thread renders");

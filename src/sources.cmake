@@ -12,7 +12,7 @@ set(SHARED_SOURCES
 
     controllers/ParamEndpoint.cpp
 
-    models/PsgMidi.cpp
+    models/PsgCC.cpp
     models/PsgList.cpp
     models/PsgClip.cpp
     models/PsgFrameRetimer.cpp
@@ -125,7 +125,7 @@ set(TEST_SOURCES
     formats/tracker/TrackerModule.test.cpp
     formats/tuning/TuningCsv.test.cpp
 
-    models/PsgMidi.test.cpp
+    models/PsgCC.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
     models/PsgClipTuning.test.cpp

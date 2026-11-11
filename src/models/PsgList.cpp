@@ -1,6 +1,6 @@
 #include "PsgList.h"
 #include "PsgClip.h"
-#include "PsgMidi.h"
+#include "PsgCC.h"
 #include "Ids.h"
 #include "EditUtilities.h"
 

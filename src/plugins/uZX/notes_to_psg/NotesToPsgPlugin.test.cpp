@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../aychip/AYPlugin.h"
+#include "../../../util/TestHelpers.h"
 
 namespace MoTool::Tests {
 
@@ -103,5 +104,94 @@ public:
 };
 
 static NotesToPsgPluginClockTests notesToPsgPluginClockTests;
+
+//==============================================================================
+/** Plays a held note from a MIDI clip through the converter into an AY chip
+    and checks the registers the chip ends up with. */
+class NotesToPsgPluginPlaybackTests : public juce::UnitTest
+{
+public:
+    NotesToPsgPluginPlaybackTests() : UnitTest("NotesToPsgPluginPlayback", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+
+        beginTest("A chip that replaces the first one plays the next note");
+        {
+            Rig rig(engine);
+            rig.play();
+            expectNoteOnChannelA(rig, "the first chip");
+
+            rig.edit->getTransport().stop(false, false);
+            TestHelpers::processBlocks(engine, 2);
+            rig.chip->deleteFromParent();
+            rig.addChip();
+            rig.play();
+            expectNoteOnChannelA(rig, "the chip that replaced it");
+        }
+
+        beginTest("Moving the converter to other MIDI channels silences the note it holds");
+        {
+            Rig rig(engine);
+            rig.play();
+            expectNoteOnChannelA(rig, "before the move");
+
+            rig.converter->staticParams.baseMidiChannel.setStoredValue(5);
+            TestHelpers::processBlocks(engine, 4);
+            expectEquals(int(rig.chip->getChipRegisters().getVolume(0)), 0, "channel A's volume after the move");
+        }
+    }
+
+private:
+    static constexpr int note = 60;
+
+    /** A track with a clip holding one long note on MIDI channel 1, the converter and a chip after it. */
+    struct Rig {
+        explicit Rig(te::Engine& e) : engine(e), edit(te::Edit::createSingleTrackEdit(e)) {
+            track = te::getAudioTracks(*edit)[0];
+            const te::TimeRange range {te::TimePosition(), te::TimePosition::fromSeconds(4.0)};
+            auto* clip = dynamic_cast<te::MidiClip*>(track->insertNewClip(te::TrackItem::Type::midi, "note", range, nullptr));
+            clip->getSequence().addNote(note, te::BeatPosition(), te::BeatDuration::fromBeats(8.0), 100, 0, nullptr);
+
+            auto plugin = edit->getPluginCache().createNewPlugin(NotesToPsgPlugin::xmlTypeName, {});
+            track->pluginList.insertPlugin(plugin, 0, nullptr);
+            converter = dynamic_cast<NotesToPsgPlugin*>(plugin.get());
+            addChip();
+        }
+
+        void addChip() {
+            auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+            track->pluginList.insertPlugin(plugin, 1, nullptr);
+            chip = dynamic_cast<AYChipPlugin*>(plugin.get());
+        }
+
+        /** Plays from the start to a point inside the note. */
+        void play() {
+            engine.getDeviceManager().dispatchPendingUpdates();
+            edit->dispatchPendingUpdatesSynchronously();
+            auto& transport = edit->getTransport();
+            transport.setPosition(te::TimePosition());
+            transport.play(false);
+            TestHelpers::processBlocks(engine, 10);
+        }
+
+        te::Engine& engine;
+        std::unique_ptr<te::Edit> edit;
+        te::AudioTrack* track = nullptr;
+        NotesToPsgPlugin::Ptr converter;
+        juce::ReferenceCountedObjectPtr<AYChipPlugin> chip;
+    };
+
+    void expectNoteOnChannelA(Rig& rig, const juce::String& where) {
+        const auto regs = rig.chip->getChipRegisters();
+        expect(regs.getVolume(0) > 0, "volume on " + where);
+        expect(regs.getToneOn(0), "tone on " + where);
+        expectEquals(int(regs.getTonePeriod(0)),
+                     rig.converter->getTuningSystem().midiNoteToPeriod(note, TuningSystem::PeriodMode::Tone),
+                     "tone period on " + where);
+    }
+};
+
+static NotesToPsgPluginPlaybackTests notesToPsgPluginPlaybackTests;
 
 }  // namespace MoTool::Tests

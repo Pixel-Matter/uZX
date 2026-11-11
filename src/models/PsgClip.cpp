@@ -1,6 +1,6 @@
 #include "PsgClip.h"
 #include "Ids.h"
-#include "PsgMidi.h"
+#include "PsgCC.h"
 #include "PsgList.h"
 #include "PsgParameter.h"
 #include "EditUtilities.h"
@@ -436,14 +436,9 @@ void PsgClip::loadFrom(uZX::PsgData &data) {
     // 2. remove old sequence from the state
     // 3. add the new sequence tree directly to the clips state in one operation
     getSequence().clear(um);
-    // auto seqState = getSequence().state.createCopy();
     double timeElapsed;
     {
         juce::ScopedTimeMeasurement measurement(timeElapsed);
-        // loadMidiListStateFrom(edit, seqState, data);
-        // state.removeChild(state.getChildWithName(te::IDs::SEQUENCE), um);
-        // state.addChild(seqState, -1, um);
-
         // Build the list detached and without undo; attaching it below is the
         // single undoable step.
         PsgList psg;

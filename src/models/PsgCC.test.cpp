@@ -2,7 +2,7 @@
 #include "formats/psg/PsgData.h"
 #include "Ids.h"
 #include "PsgList.h"
-#include "PsgMidi.h"
+#include "PsgCC.h"
 
 #include <cstdint>
 #include <optional>
@@ -622,6 +622,38 @@ public:
                 + std::to_string(frames[1][PsgParamType::EnvelopePeriod].value_or(-1)));
             expect(frames[1][PsgParamType::EnvelopeShape]  == 8,            "Expected EnvelopeShape be 8");
 
+        }
+
+        beginTest("Every parameter survives the trip through MIDI");
+        {
+            PsgParamFrameData params {};
+            PsgParamType::forEach([&](auto e) {
+                const PsgParamType type {e};
+                params.set(type, static_cast<uint16_t>(type.getScale().end));
+            });
+            PsgParamsMidiWriter writer {5};
+            writer.write(0.0, params);
+
+            PsgParamsMidiReader reader {5};
+            for (auto e : writer.getSequence())
+                ignoreUnused(reader.read(e->message));
+            PsgParamType::forEach([&](auto e) {
+                const PsgParamType type {e};
+                expectEquals(int(reader.getParams()[type].value_or(0xFFFF)), type.getScale().end, String(type));
+            });
+        }
+
+        beginTest("An envelope period above 14 bits survives the trip through MIDI");
+        {
+            PsgParamFrameData params {};
+            params.set(PsgParamType::EnvelopePeriod, 0xC350);
+            PsgParamsMidiWriter writer {1};
+            writer.write(0.0, params);
+
+            PsgParamsMidiReader reader {1};
+            for (auto e : writer.getSequence())
+                ignoreUnused(reader.read(e->message));
+            expectEquals(int(reader.getParams().getRaw(PsgParamType::EnvelopePeriod)), 0xC350);
         }
     }
 };

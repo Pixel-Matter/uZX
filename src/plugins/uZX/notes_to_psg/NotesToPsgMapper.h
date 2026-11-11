@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 #include "../../../models/tuning/TuningSystemBase.h"
 #include "../../../models/tuning/TuningRegistry.h"
-#include "../../../models/PsgMidi.h"
+#include "../../../models/PsgCC.h"
 #include "../midi_effects/MidiEffect.h"
 
 #include <array>
@@ -39,14 +39,15 @@ public:
         std::shared_ptr<TuningSystem> tuning_ {};
     public:
         int midiChannel;
-        bool isEnvChannel = false;
+        int psgChannel;  // 0..2 for A, B, C; 3 for the envelope
+        bool isEnvChannel;
         tracktion::MPESourceID mpeSourceId_ = 0;
 
         MPENote mpeNote;
         ChannelState state;
         ChannelState lastState;
 
-        ChannelVoice(tracktion::MidiMessageArray& buffer, int chan, bool isEnv = false);
+        ChannelVoice(tracktion::MidiMessageArray& buffer, int midiChan, int psgChan);
 
         void reset();
         void setTuningSystem(std::shared_ptr<TuningSystem> tuning);
@@ -62,6 +63,7 @@ public:
         void pitchbendChange(MPENote changedNote);
 
         void emitControllerChange(MidiCCType controller, int value);
+        void emitParam(PsgParamType param, int value);
         void emitVolume(int volume);
         void emitPeriod(int period);
         void emitToneSwitch(bool on);
@@ -145,7 +147,7 @@ private:
 
     int baseChannel_ = 1;
     tracktion::MPESourceID mpeSourceId_ = 0;
-    inline static constexpr int numChannels_ = 4;
+    inline static constexpr int numChannels_ = PsgCC::numChannels;
     std::array<ChannelVoice, numChannels_> voices_;
     tracktion::MidiMessageArray midiBuffer_;
     bool passthruOutsideChannels_ = true;

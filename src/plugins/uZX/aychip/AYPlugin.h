@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../../../formats/psg/PsgData.h"
-#include "../../../models/PsgMidi.h"
+#include "../../../models/PsgCC.h"
 #include "../../../controllers/BindedAutoParameter.h"
 #include "../scope/ScopeBuffer.h"
 #include "../scope/ScopeSettings.h"
@@ -109,13 +109,6 @@ public:
     ChannelMuter channelMuter;
     ScopeSettings scopeSettings {ScopeSettings::Signal::ChipLevels};
 
-    enum class MidiReaderMode {
-        Params,
-        Regs
-    };
-
-    MidiReaderMode midiReaderMode = MidiReaderMode::Params;
-
     /**
      * Get visualization buffer for raw channel output (0=A, 1=B, 2=C): the chip's DAC levels 0..1,
      * unfiltered and before the stereo mix and the volume.
@@ -139,7 +132,6 @@ private:
     CriticalSection lock;
 
     PsgParamsMidiReader midiParamsReader;
-    // PsgRegsMidiReader midiRegsReader;  // old version
     PsgRegsFrame registersFrame;
     std::unique_ptr<AYInterface> chip;
 
@@ -162,7 +154,6 @@ private:
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
     void updateRegistersFromMidiParams() noexcept;
-    void updateRegistersFromMidiRegs() noexcept;
     void updateChip() noexcept;
     void handleMidiEvent(const te::MidiMessageWithSource& m) noexcept;
 

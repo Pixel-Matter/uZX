@@ -5,7 +5,7 @@
 #include "formats/psg/PsgData.h"
 #include "PsgClip.h"
 #include "PsgList.h"
-#include "PsgMidi.h"
+#include "PsgCC.h"
 #include "PsgParameter.h"
 
 namespace MoTool::Tests {

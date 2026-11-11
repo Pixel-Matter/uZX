@@ -31,6 +31,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: a damaged or crafted PSG file can no longer fill the memory with pauses: a file is read up to four hours at 50 Hz
 - A PSG file of version 10 or later plays at the frame rate its header gives; older files play at 50 Hz, as before
 - Fixed: a PSG clip imported where the tempo differs from the project's start plays at its file's frame rate instead of drifting from it
+- Fixed: a change to a PSG clip, such as its frame rate, is heard at once instead of after reopening the project
 - Fixed: Turbo Sound files whose recording stopped mid-frame, one chip a frame longer, open together as a set
 - A tune written for another frame rate, such as 200 Hz, plays at it: pick the rate under **FPS** in the transport bar, for the clips at the project's rate, or under **Frame Rate** in a clip's menu, for its tune. A tune alone in the project gets its tempo, groove and meter detected again
 

@@ -147,27 +147,28 @@ public:
         Helpers::setProjectFps(*edit, 50.0);
         engine.getDeviceManager().dispatchPendingUpdates();
 
+        // The transport keeps its playback graph, as in the app, so the change has to rebuild it.
+        auto& transport = edit->getTransport();
+        transport.play(false);
+        TestHelpers::processBlocks(engine, 2);
         const auto periodAfterOneSecond = [&] {
-            auto& transport = edit->getTransport();
-            transport.stop(false, false);
             TestHelpers::flushMessageQueue();
             transport.setPosition(1_tp);
-            transport.play(false);
-            TestHelpers::processBlocks(engine, 1);
+            TestHelpers::processBlocks(engine, 2);
             return int(chip.getChipRegisters().getTonePeriod(0)) - 1;  // the frame index
         };
 
         beginTest("At 50 Hz, one second in plays frame 50");
         {
             const auto frame = periodAfterOneSecond();
-            expect(frame >= 50 && frame <= 51, "frame " + String(frame));
+            expect(frame >= 50 && frame <= 53, "frame " + String(frame));  // up to 60 ms of blocks past the seek
         }
 
-        beginTest("Switched to 200 Hz, one second in plays frame 200");
+        beginTest("Switched to 200 Hz while playing, one second in plays frame 200");
         {
             PsgTempo::setFrameRate({clip.get()}, 200.0);
             const auto frame = periodAfterOneSecond();
-            expect(frame >= 200 && frame <= 203, "frame " + String(frame));
+            expect(frame >= 200 && frame <= 212, "frame " + String(frame));
         }
     }
 };

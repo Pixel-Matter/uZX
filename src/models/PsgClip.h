@@ -106,7 +106,17 @@ public:
         String name = {}
     );
 
+protected:
+    // Tracktion rebuilds playback when its own clip types move or their notes change. A PSG clip's
+    // events come from its PSG list, so it asks for the rebuild when the list or its position changes.
+    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
+    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override;
+    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override;
+
 private:
+    /** The PSG list's tree or one inside it: frames, frame rate, frames per beat. */
+    bool isInPsgList(const juce::ValueTree&) const;
+
     std::unique_ptr<PsgList> psgList;
     mutable juce::Range<float> cachedPitchRange_ { 0.0f, 1.0f };
     mutable int pitchRangeVersion_ = -1;

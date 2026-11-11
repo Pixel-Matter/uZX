@@ -1,24 +1,10 @@
 # Refactoring plan
 
-Open findings from a source-inspection review (November 2026) of controller lifecycle and commands, PSG import and serialization, timeline components, derived-state caches, parameter bindings, tuning export, and audio configuration paths. Findings separate confirmed code structure from runtime risks that still need reproduction; nothing here was established by running the app. It is not an exhaustive audit.
+Findings from a source-inspection review (November 2026) of controller lifecycle and commands, PSG import and serialization, timeline components, derived-state caches, parameter bindings, tuning export, and audio configuration paths. Findings separate confirmed code structure from runtime risks that still need reproduction; nothing here was established by running the app. It is not an exhaustive audit.
 
-[TODO.md](TODO.md#refactoring) is the checklist. A finished finding is deleted from both files, so numbers have gaps; they are stable IDs, not an order.
+All of its findings are done and deleted; new ones go here with the next free number, and on the [TODO.md](TODO.md#refactoring) checklist. Numbers are stable IDs, not an order. The deferred notes below were inspected and not promoted to findings.
 
 Keep each step small and behavior-preserving: establish the ownership boundary first, then change behavior separately. Do not introduce a general framework for these extractions. If a step changes anything users can see or do, update `user-guide.md` in the same commit.
-
-## Implementation order
-
-1. **Low priority:** 9 (export formatting).
-
-## 9. Extract tuning export formatting
-
-**Evidence:** [TuningViewModel.h](../src/viewmodels/tuning/TuningViewModel.h) implements `exportToCSV` and `getDefaultExportFilename`, including column order, ASCII note spelling, and filename sanitization. [TuningPreview.cpp](../src/gui/tuning/TuningPreview.cpp) owns the chooser, write, directory preference, and result alerts.
-
-**Problem:** export-format policy lives in the stateful viewmodel alongside tuning selection and notifications. This is a lower-priority separation opportunity, not an observed correctness failure.
-
-**Proposed boundary:** move serialization and filename formatting into a focused format helper. Keep selection of the current tuning data in the viewmodel and the save interaction in the GUI. Preserve output exactly and avoid adding an exporter interface for one format.
-
-**Validation:** preserve the existing CSV and filename assertions in `TuningViewModel.test.cpp`, adding helper-level cases only where useful. Verify the GUI still exports the selected tuning and reports write failure. Tooltip formatting in a presentation viewmodel is not, by itself, a reason for another split.
 
 ## Deferred review notes
 

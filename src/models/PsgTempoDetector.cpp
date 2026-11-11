@@ -482,6 +482,19 @@ bool areOnlyClipsInEdit(const juce::Array<PsgClip*>& clips) {
 
 }  // namespace
 
+/** Sets the tempo, grid and meter at the clips' start from a detection, keeping when the clips sound. */
+static void applyTempo(const juce::Array<PsgClip*>& clips, const Result& result) {
+    auto& edit = clips.getFirst()->edit;
+    const auto clipStart = clips.getFirst()->getPosition().getStart();
+    PsgTiming::setFramesPerBeat(edit,
+                                edit.tempoSequence.getTempoAt(clipStart),
+                                result.framesPerBeat,
+                                /*preserveAbsoluteFrameTimes=*/true);
+    Helpers::setGridSubdivisionPattern(edit, result.subdivisionPattern());
+    if (result.meterClear)
+        edit.tempoSequence.getTimeSigAt(clipStart).numerator = result.beatsPerBar;
+}
+
 void applyToEdit(const juce::Array<PsgClip*>& clips,
                  const std::vector<const uZX::PsgData*>& chips,
                  const std::vector<size_t>& knownRows) {
@@ -491,16 +504,9 @@ void applyToEdit(const juce::Array<PsgClip*>& clips,
     if (!result)
         return;
 
+    applyTempo(clips, *result);
     auto& edit = clips.getFirst()->edit;
-    const auto clipStart = clips.getFirst()->getPosition().getStart();
-    PsgTiming::setFramesPerBeat(edit,
-                                edit.tempoSequence.getTempoAt(clipStart),
-                                result->framesPerBeat,
-                                /*preserveAbsoluteFrameTimes=*/true);
-    Helpers::setGridSubdivisionPattern(edit, result->subdivisionPattern());
-    auto& timeSig = edit.tempoSequence.getTimeSigAt(clipStart);
-    if (result->meterClear)
-        timeSig.numerator = result->beatsPerBar;
+    auto& timeSig = edit.tempoSequence.getTimeSigAt(clips.getFirst()->getPosition().getStart());
 
     if (result->firstRowFrame <= 0)
         return;

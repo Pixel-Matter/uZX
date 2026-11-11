@@ -40,7 +40,6 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Nicer transport icons**
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
-- [ ] **Tab bars** in Studio's details panel match the design system (the Player has none)
 
 #### P2 — Nice to have
 

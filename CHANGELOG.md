@@ -33,7 +33,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: a PSG clip imported where the tempo differs from the project's start plays at its file's frame rate instead of drifting from it
 - Fixed: a change to a PSG clip, such as its frame rate, is heard at once instead of after reopening the project
 - Fixed: Turbo Sound files whose recording stopped mid-frame, one chip a frame longer, open together as a set
-- A tune written for another frame rate, such as 200 Hz, plays at it: pick the rate under **FPS** in the transport bar, for the clips at the project's rate, or under **Frame Rate** in a clip's menu, for its tune. A tune alone in the project gets its tempo, groove and meter detected again
+- A tune written for another frame rate, such as 200 Hz, plays at it: pick the rate under **FPS** in the transport bar, for the clips at the project's rate, or under **Frame Rate** in a clip's menu, for its tune. A tune alone in the project scales its tempo with the rate, keeping its rows and groove
+- Tempo detection counts rows per beat as at 50 Hz, so a tune at 100 or 200 Hz gets two or four times the BPM (up to 300)
 
 ### Tracker modules
 - Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop

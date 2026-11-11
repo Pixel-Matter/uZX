@@ -7,6 +7,7 @@
 #include "formats/psg/PsgFile.h"
 #include "models/EditUtilities.h"
 #include "models/PsgFrameRetimer.h"
+#include "formats/tracker/TrackerModule.h"
 
 namespace MoTool::Tests {
 
@@ -456,17 +457,44 @@ public:
             return juce::Array<PsgClip*>{a.get(), b.get()};
         };
 
-        beginTest("A clip gives back the dump it was loaded from, for detection");
+        beginTest("Detection reads rows per beat at 50 Hz: the same rows at 100 Hz have twice the BPM");
         {
-            auto edit = Edit::createSingleTrackEdit(engine);
-            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], first.getData(), {{0_tp, length}, {}});
-            const auto dump = clip->getPsg().toPsgData();
-            const auto fromFile = PsgTempo::detect(first.getData());
-            const auto fromClip = PsgTempo::detect(dump);
-            expect(fromFile && fromClip, "both detect");
-            if (fromFile && fromClip) {
-                expect(fromClip->rowFrames == fromFile->rowFrames, "rows");
-                expectEquals(fromClip->framesPerBeat, fromFile->framesPerBeat, "frames per beat");
+            const auto at = [&](double fps) {
+                auto data = first.getData();
+                data.options.frameRate = fps;
+                return PsgTempo::detect(data);
+            };
+            const auto at50 = at(50.0), at100 = at(100.0), at200 = at(200.0);
+            expect(at50 && at100 && at200, "detected at every rate");
+            if (at50 && at100 && at200) {
+                expectEquals(at50->rowsPerBeat, 2, "15-frame rows, 2 a beat");
+                expectWithinAbsoluteError(at50->bpm, 100.0, 0.01);
+                expectEquals(at100->rowsPerBeat, 2);
+                expectWithinAbsoluteError(at100->bpm, 200.0, 0.01);
+                expectEquals(at200->rowsPerBeat, 4, "400 BPM is past Tracktion's 300: a beat of twice the rows");
+                expectWithinAbsoluteError(at200->bpm, 200.0, 0.01);
+            }
+        }
+
+        beginTest("A tracker module's rows give the same rows per beat at 200 Hz");
+        {
+            MemoryBlock bytes;
+            File(UZX_FIXTURES_DIR).getChildFile("modules/nq - Frontiers (2016).pt3").loadFileAsData(bytes);
+            auto module = uZX::readTrackerModule(bytes);
+            expect(module.has_value(), "Frontiers reads");
+            if (module) {
+                std::vector<const PsgData*> chips;
+                for (const auto& chip : module->chips)
+                    chips.push_back(&chip);
+                const auto at50 = PsgTempo::detect(chips, module->rowStarts);
+                for (auto& chip : module->chips)
+                    chip.options.frameRate = 200.0;
+                const auto at200 = PsgTempo::detect(chips, module->rowStarts);
+                expect(at50 && at200, "detected at both rates");
+                if (at50 && at200 && at50->bpm * 4.0 <= tracktion::TempoSetting::maxBPM) {
+                    expectEquals(at200->rowsPerBeat, at50->rowsPerBeat);
+                    expectWithinAbsoluteError(at200->bpm, at50->bpm * 4.0, 0.01);
+                }
             }
         }
 
@@ -484,27 +512,32 @@ public:
                 expectWithinAbsoluteError(clip->getPosition().getLength().inSeconds(), 185.78, 0.01, "3:05.78");
                 expect(! clip->getPsg().hasFpsMismatch(*clip, 200.0), "no warning");
             }
-            expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), bpm, 0.01,
-                                      "no tempo detected at 200 Hz either: it stays");
+            expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), bpm * 4.0 / 2.0, 0.01,
+                                      "four times the tempo, halved under 300 BPM");
         }
 
-        beginTest("A tune's tempo and grid are detected again at its new rate");
+        beginTest("A tune's tempo scales with its rate: a beat keeps its frames, the grid its groove");
         {
             auto edit = Edit::createSingleTrackEdit(engine);
-            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], first.getData(), {{0_tp, length}, {}});
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], first.getData(), {{2_tp, length}, {}});
             Helpers::setProjectFps(*edit, 50.0);
             PsgTempo::applyToEdit({clip.get()}, {&first.getData()});
+            expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), 100.0, 0.01, "100 BPM at 50 Hz");
+            const auto groove = Helpers::getGridSubdivisionPattern(*edit, 30);
+
+            PsgTempo::setFrameRate({clip.get()}, 100.0);
+            expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), 200.0, 0.01, "twice the tempo");
+            expectWithinAbsoluteError(PsgTiming::getFramesPerBeat(*edit), 30.0, 1e-6, "the same frames a beat");
+            expect(Helpers::getGridSubdivisionPattern(*edit, 30) == groove, "the same groove");
+            expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), 1.0, 1e-9, "100 frames in, as before");
 
             PsgTempo::setFrameRate({clip.get()}, 200.0);
-            auto at200 = first.getData();
-            at200.options.frameRate = 200.0;
-            const auto expected = PsgTempo::detect(at200);
-            expect(static_cast<bool>(expected), "chip 1 has a tempo at 200 Hz");
-            if (expected) {
-                expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), expected->bpm, 0.01, "tempo");
-                expect(Helpers::getGridSubdivisionPattern(*edit, expected->framesPerBeat) == expected->subdivisionPattern(),
-                       "grid");
-            }
+            expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), 200.0, 0.01,
+                                      "400 BPM is past 300: a beat of twice the frames");
+            expectWithinAbsoluteError(PsgTiming::getFramesPerBeat(*edit), 60.0, 1e-6);
+            auto twice = groove;
+            twice.insert(twice.end(), groove.begin(), groove.end());
+            expect(Helpers::getGridSubdivisionPattern(*edit, 60) == twice, "the groove twice a beat");
         }
 
         beginTest("The project's fps retimes the clips that played at the old one");

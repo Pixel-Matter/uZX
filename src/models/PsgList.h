@@ -100,10 +100,6 @@ public:
         picked up here. */
     const juce::Array<PsgParamFrame*>& getFrames() const;
 
-    /** The register writes of every machine frame up to the last stored one, at the list's frame
-        rate: the dump the list was loaded from, as tempo detection reads it. */
-    uZX::PsgData toPsgData() const;
-
     template <typename Visitor>
     void visitFrames(Visitor&& visitor) const {
         for (auto* frame : getFrames())

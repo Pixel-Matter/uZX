@@ -71,8 +71,9 @@ void applyToEdit(const juce::Array<PsgClip*>& clips,
                  const std::vector<size_t>& knownRows = {});
 
 /** Plays the clips at another frame rate (see PsgTiming::setClipFrameRate). When they are the
-    only clips in their edit, the project's fps follows and the tempo, grid and meter are detected
-    again from them, as on import; the clips stay where they are. */
+    only clips in their edit, the project's fps follows and its tempo scales with the rate, so a
+    beat keeps its frames and the grid its groove; past Tracktion's tempo limits a beat takes
+    twice (or half) the frames. The clips stay where they are. */
 void setFrameRate(const juce::Array<PsgClip*>& clips, double fps);
 
 /** Sets the project's fps; the PSG clips that played at the old one follow it, as in setFrameRate. */

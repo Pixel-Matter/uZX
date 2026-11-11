@@ -91,7 +91,7 @@ xattr -rd com.apple.quarantine /Applications/μZX\ Studio.app
 Most `.psg` files don't record the frame rate they were written for, so µZX opens them at 50 Hz, and a tune made for 100 or 200 Hz (Atari, multi-speed players) plays two or four times too slowly. To play it at its rate:
 
 1. Open or import the file as usual (`Cmd+O` in the Player, `Cmd+I` in Studio).
-2. Click **FPS** in the transport bar and pick the rate, such as **200 fps**. Every clip that played at the old rate follows; a tune alone in the project also gets its tempo, groove and meter detected again.
+2. Click **FPS** in the transport bar and pick the rate, such as **200 fps**. Every clip that played at the old rate follows. A tune alone in the project takes its timeline along: its tempo scales with the rate (41 BPM at 50 Hz is 164 BPM at 200 Hz), keeping its rows, groove and meter.
 3. Or right-click a clip and pick **Frame Rate** to change only that tune, all its Turbo Sound chips included.
 
 Save the project (`.uzx`) to keep the rate. See [Opening Files](docs/user-guide.md#opening-files) in the User Guide.

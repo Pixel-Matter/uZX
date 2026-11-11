@@ -141,6 +141,9 @@ public:
         }
         PsgData data {std::move(frames), {50.0, 1}};
         auto clip = PsgClip::insertTo(*track, data, {{0_tp, te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
+        // Another clip keeps the tempo as it is: only the clip's own change can rebuild playback.
+        edit->ensureNumberOfAudioTracks(2);
+        PsgClip::insertTo(*te::getAudioTracks(*edit)[1], data, {{0_tp, te::TimeDuration::fromSeconds(1.0)}, {}});
         auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
         track->pluginList.insertPlugin(plugin, 0, nullptr);
         auto& chip = dynamic_cast<AYChipPlugin&>(*plugin);
@@ -151,24 +154,27 @@ public:
         auto& transport = edit->getTransport();
         transport.play(false);
         TestHelpers::processBlocks(engine, 2);
-        const auto periodAfterOneSecond = [&] {
+        // The frame playing just after a seek; the seek follows a block, as the app's audio runs on,
+        // so a tempo change has moved the playhead to its beat first.
+        const auto frameAfterSeekTo = [&](te::TimePosition time) {
             TestHelpers::flushMessageQueue();
-            transport.setPosition(1_tp);
+            TestHelpers::processBlocks(engine, 1);
+            transport.setPosition(time);
             TestHelpers::processBlocks(engine, 2);
             return int(chip.getChipRegisters().getTonePeriod(0)) - 1;  // the frame index
         };
 
         beginTest("At 50 Hz, one second in plays frame 50");
         {
-            const auto frame = periodAfterOneSecond();
+            const auto frame = frameAfterSeekTo(1_tp);
             expect(frame >= 50 && frame <= 53, "frame " + String(frame));  // up to 60 ms of blocks past the seek
         }
 
-        beginTest("Switched to 200 Hz while playing, one second in plays frame 200");
+        beginTest("Switched to 200 Hz while playing, two seconds in plays frame 400");
         {
             PsgTempo::setFrameRate({clip.get()}, 200.0);
-            const auto frame = periodAfterOneSecond();
-            expect(frame >= 200 && frame <= 212, "frame " + String(frame));
+            const auto frame = frameAfterSeekTo(2_tp);
+            expect(frame >= 400 && frame <= 412, "frame " + String(frame));
         }
     }
 };

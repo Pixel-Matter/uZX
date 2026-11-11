@@ -396,17 +396,6 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePositio
     }
 }
 
-uZX::PsgData PsgList::toPsgData() const {
-    uZX::PsgData data;
-    data.options.frameRate = getFrameRate();
-    const auto& frames = getFrames();
-    if (! frames.isEmpty())
-        data.frames.resize(static_cast<size_t>(frames.getLast()->getFrameIndex()) + 1);
-    for (auto* frame : frames)
-        data.frames[static_cast<size_t>(frame->getFrameIndex())] = frame->getData().toRegisters();
-    return data;
-}
-
 const juce::Array<PsgParamFrame*>& PsgList::getFrames() const {
     jassert (framesList != nullptr);
     const auto& frames = getEventsChecked(framesList->getSortedList());

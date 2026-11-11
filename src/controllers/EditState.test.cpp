@@ -64,7 +64,8 @@ public:
 
         beginTest("Notes and scopes in Slate until chosen otherwise, and a choice is remembered");
         expect(VizOptions::load(settings) == VizOptions{});
-        const VizOptions chosen{Layout::scopes, VizOptions::Colours::classic, VizOptions::Scopes::sideBySide};
+        const VizOptions chosen{Layout::scopes, VizOptions::Colours::classic, VizOptions::Scopes::sideBySide,
+                                VizOptions::Decorations::always};
         chosen.save(settings);
         expect(VizOptions::load(settings) == chosen);
 
@@ -96,6 +97,12 @@ public:
         expect(! view.showFooters && view.getTrackFooterWidth() == 0 && view.isVizClassic(), "notes");
         view.showAsPlayer(true, {Layout::scopes});
         expect(view.showFooters && ! view.showsNotes() && ! view.isVizClassic(), "scopes");
+
+        beginTest("Always decorations hold only in Viz mode");
+        view.showAsPlayer(false, {.decorations = VizOptions::Decorations::always});
+        expect(! view.areVizDecorationsAlways(), "the timeline decides by zoom");
+        view.showAsPlayer(true, {.decorations = VizOptions::Decorations::always});
+        expect(view.areVizDecorationsAlways());
 
         beginTest("Scopes side by side go under the notes, taking a share of the row");
         view.showAsPlayer(true, {.scopes = VizOptions::Scopes::sideBySide});

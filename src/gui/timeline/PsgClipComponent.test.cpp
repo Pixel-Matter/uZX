@@ -61,6 +61,18 @@ public:
         expect(! isBlank(render(0x37, 15, 0, 0, false, 6)), "Show noise at six pixels per frame");
         expect(isBlank(render(0x37, 15, 0, 0, false, 100, 100)), "Hide noise when note rows are too short");
 
+        beginTest("Viz mode's Always decorations draw the noise band at any zoom");
+        {
+            const uZX::PsgData noise {{{{uZX::PsgRegType::Mixer, 0x37}, {uZX::PsgRegType::NoisePeriod, 16},
+                                        {uZX::PsgRegType::VolumeA, 15}}},
+                                      {50.0, 1}};
+            const auto inViz = [&](VizOptions::Decorations decorations) {
+                return Tests::renderPsgClip(engine, noise, 5, 300, {}, false, {}, VizOptions{.decorations = decorations});
+            };
+            expect(isBlank(inViz(VizOptions::Decorations::automatic)), "Auto hides it below six pixels per frame");
+            expect(! isBlank(inViz(VizOptions::Decorations::always)), "Always draws it");
+        }
+
         auto withTones = [](int toneMask, int noiseMask, int envMask = 0) {
             uZX::PsgRegsFrame frame;
             frame.mask.fill(true);

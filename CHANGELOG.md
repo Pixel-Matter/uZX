@@ -12,6 +12,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Render Video has a **Zoom** choice: as on screen, or Frames, Groove Rows, Beats or Bars
 - Viz mode and Render Video show notes and scopes, notes alone, or scopes alone: `V` in Viz mode switches, **View → Viz Options** and the Render Video dialog choose
 - **Classic Black and White** colours for Viz mode and video: black, white scopes, thin grey lines between them
+- **Note Decorations** in **View → Viz Options** and the Render Video dialog: Auto, once a frame is 6 pixels wide, or Always, which keeps the noise band and envelope stripes at any zoom
 - `S` in Viz mode stacks each chip's scopes beside its notes or sets them side by side under them; scopes alone make a column or a grid, a chip per row (3×1 for one AY, 3×2 for Turbo Sound)
 - Entering Viz mode, or pressing `V` or `S`, shows both choices for a moment, with the key to leave
 - Viz mode and Render Video leave out tracks without clips

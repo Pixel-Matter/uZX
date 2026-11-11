@@ -203,15 +203,20 @@ struct VizOptions
     enum class Colours { slate, classic };
     /** A chip's A, B and C: stacked, in a column beside its notes; or side by side, in a band under them. */
     enum class Scopes { stacked, sideBySide };
+    /** The notes' noise band, envelope stripes and low-envelope markers: once a frame is wide enough to
+        show them, as on the timeline, or at any zoom. */
+    enum class Decorations { automatic, always };
 
     Layout layout = Layout::notesAndScopes;
     Colours colours = Colours::slate;
     Scopes scopes = Scopes::stacked;
+    Decorations decorations = Decorations::automatic;
 
     /** As the menus and the Render Video dialog name them, in enum order. */
     static inline const StringArray layoutNames {"Notes and Scopes", "Notes", "Scopes"};
     static inline const StringArray colourNames {"Slate", "Classic Black and White"};
     static inline const StringArray scopesNames {"Stacked", "Side by Side"};
+    static inline const StringArray decorationsNames {"Auto", "Always"};
 
     bool showsNotes() const { return layout != Layout::scopes; }
     bool showsScopes() const { return layout != Layout::notes; }
@@ -289,6 +294,10 @@ public:
     }
     /** Viz mode in Classic colours: black, with white scopes. */
     bool isVizClassic() const { return vizMode && vizOptions.colours == VizOptions::Colours::classic; }
+    /** Viz mode drawing the notes' decorations at any zoom. */
+    bool areVizDecorationsAlways() const {
+        return vizMode && vizOptions.decorations == VizOptions::Decorations::always;
+    }
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditViewState)

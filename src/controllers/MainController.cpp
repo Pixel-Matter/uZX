@@ -67,6 +67,14 @@ PopupMenu buildVizOptionsMenu(ApplicationCommandManager& commands, PropertiesFil
         menu.addItem(VizOptions::colourNames[i], true, current.colours == colours,
                      choose([colours](VizOptions& o) { o.colours = colours; }));
     }
+    menu.addSeparator();
+    PopupMenu decorations;
+    for (int i = 0; i < VizOptions::decorationsNames.size(); ++i) {
+        const auto choice = (VizOptions::Decorations) i;
+        decorations.addItem(VizOptions::decorationsNames[i], true, current.decorations == choice,
+                            choose([choice](VizOptions& o) { o.decorations = choice; }));
+    }
+    menu.addSubMenu("Note Decorations", decorations);
     return menu;
 }
 }  // namespace

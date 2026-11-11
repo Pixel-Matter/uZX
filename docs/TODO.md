@@ -50,6 +50,11 @@ No open findings. [refactoring.md](refactoring.md) holds the review's scope and 
 
 ## MIDI to PSG Plugin
 
+- [ ] Rework into the chip mixer, in the [pipeline's order of work](design/midi-ay-pipeline.md#order-of-work)
+- [ ] A chip that replaces another gets only the volume of the next note, not its tone switch and period (the mapper sends only what changed since it last sent)
+- [ ] Moving MIDI to PSG to other channels, or a reset between blocks, leaves the held note sounding
+- [ ] Tuning preview: the first note with tone off plays with tone
+- [ ] An envelope period above 14 bits is truncated on its way to the chip
 - [ ] UI for MIDI to PSG plugin with tuning editor button
 - [ ] Sync tuning scale with Edit scales and keys
 

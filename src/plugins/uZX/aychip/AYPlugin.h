@@ -64,6 +64,9 @@ public:
     void restorePluginStateFromValueTree (const ValueTree&) override;
     std::unique_ptr<te::Plugin::EditorComponent> createEditor() override;
 
+    /** The ZX Spectrum 128's clock, a chip's until it is set. */
+    static constexpr double defaultClockMhz = 1.7734;
+
     class StaticParams : public ParamsBase<StaticParams> {
     public:
         using ParamsBase<StaticParams>::ParamsBase;
@@ -79,7 +82,7 @@ public:
 
         ParameterValue<int> baseMidiChannel   {{"midi",        IDs::midi,        "MIDI",            "MIDI channel range",             1,      {1, 16 - 3, 1}}};
         ParameterValue<ChipType> chipType     {{"chip",        IDs::chip,        "Chip",            "Chip type",                      ChipType::AY}};
-        ParameterValue<double> chipClock      {{"clock",       IDs::clock,       "Clock",           "Clock frequncy",                 1.7734, {0.894887, 2.0, 0.01}, "MHz"}};
+        ParameterValue<double> chipClock      {{"clock",       IDs::clock,       "Clock",           "Clock frequncy",                 defaultClockMhz, {0.894887, 2.0, 0.01}, "MHz"}};
         ParameterValue<bool> removeDC         {{"noDC",        IDs::noDC,        "Remove DC",       "Remove DC from output",          true}};
         ParameterValue<bool> monitorMode      {{"monitor",     IDs::monitor,     "Monitor",         "Chip debug to console",         false}};
     };

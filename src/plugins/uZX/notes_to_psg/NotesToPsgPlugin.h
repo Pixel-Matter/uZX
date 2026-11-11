@@ -76,6 +76,9 @@ public:
 
     // specific for MidiToPsg methods
     TuningSystem& getTuningSystem() const;
+    /** The clock of the chip the notes play on: the first AY chip after this plugin, or the AY's
+        default without one. The chip owns it; this plugin follows it and never sets it. */
+    double getChipClock() const { return chipClock_; }
     void setTuningSystem(std::shared_ptr<TuningSystem> tuningSystem);
 
     // Scale::ScaleType getScaleType() const;
@@ -87,6 +90,28 @@ private:
     //==============================================================================
     NotesToPsgMapper transformer;
 
+    /** Listens to the list this plugin is in for a chip added, removed, moved or set to another clock. */
+    class ChipClockWatcher : public ValueTree::Listener {
+    public:
+        explicit ChipClockWatcher(NotesToPsgPlugin& p) : plugin(p) {}
+        ~ChipClockWatcher() override { list.removeListener(this); }
+        void watch(ValueTree);
+
+    private:
+        NotesToPsgPlugin& plugin;
+        ValueTree list;
+
+        void valueTreePropertyChanged(ValueTree&, const Identifier&) override;
+        void valueTreeChildAdded(ValueTree& parent, ValueTree&) override;
+        void valueTreeChildRemoved(ValueTree& parent, ValueTree&, int) override;
+        void valueTreeChildOrderChanged(ValueTree& parent, int, int) override;
+    };
+
+    double chipClock_;
+    ChipClockWatcher chipClockWatcher {*this};
+
+    void followChipClock();
+    void valueTreeParentChanged(ValueTree&) override;
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
     void recreateTuningSystem();

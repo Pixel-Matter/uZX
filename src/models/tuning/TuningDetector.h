@@ -30,6 +30,10 @@ struct TuningClock
 };
 /** "Pentagon" for a listed clock, else its frequency: "1.7897 MHz". */
 String getClockName(double chipClock);
+/** The warning when a tuning's clock is not the clock its chip plays at,
+    e.g. "⚠ Pentagon @ ZX Spectrum +23¢": every note sounds that many cents off its name.
+    Empty when the clocks agree to within a cent. */
+String getClockMismatchText(double tuningClock, double chipClock);
 
 inline constexpr TuningClock tuningClocks[] {
     {tuningGridClock, "ZX Spectrum", true},

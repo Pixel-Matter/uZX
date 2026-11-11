@@ -14,11 +14,6 @@ namespace MoTool {
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex);
 
 //==============================================================================
-/** The header's warning when a fitted tuning's clock is not the clock its track plays at,
-    e.g. "⚠ Pentagon @ ZX Spectrum +23¢": every note sounds that many cents off its name.
-    Empty when the clocks agree to within a cent. */
-String getClockMismatchText(double tuningClock, double trackClock);
-
 /** A PSG clip's warnings: its fps against the project's, and its tuning's clock against its track's. */
 StringArray getPsgClipWarnings(PsgClip&);
 /** A PSG clip's tuning table and key, "?" after a detection tie nobody settled. */

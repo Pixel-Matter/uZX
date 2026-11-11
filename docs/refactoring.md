@@ -8,7 +8,7 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 ## Implementation order
 
-1. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 7 (plugin clock coordination), 8 (import timing).
+1. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 8 (import timing).
 2. **Contracts:** 17 (establish supported nonzero-start callers first).
 3. **Low priority:** 9 (export formatting).
 
@@ -21,16 +21,6 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 **Review boundary:** trace every writer and reader of emulator/mapper state, including startup, reset, panic, configuration, diagnostics, and shutdown. Evaluate applying pending configuration at audio-block boundaries so one thread owns mutable processing state. Account for object allocation and destruction as well as field writes; do not assume an atomic pointer alone solves real-time ownership.
 
 **Validation:** inspect `AYPlugin.test.cpp`, `AYChip.test.cpp`, and `NotesToPsgMapper.test.cpp`; cover configuration and reset while processing, note silencing, and shutdown. Measure callback contention under repeated UI changes.
-
-## 7. Make clock coordination between plugins explicit
-
-**Evidence:** `NotesToPsgPlugin::setTuningSystem` in [NotesToPsgPlugin.cpp](../src/plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp) searches for a downstream AY plugin and writes its `staticParams.chipClock`. The AY plugin independently owns and persists that setting in [AYPlugin.h](../src/plugins/uZX/aychip/AYPlugin.h).
-
-**Problem:** configuring the converter mutates another plugin's persisted state. The effective clock policy is split between plugins and depends on chain presence/order. The source already hints at this dependency problem; whether the current mutation is the desired product behavior still needs checking.
-
-**Review boundary:** define who owns the effective clock for a converter/synth pair. Move coordination to the owning track or plugin-chain boundary, preserving current behavior first. Avoid a converter reaching through another plugin's parameter internals; do not invent a general plugin messaging system.
-
-**Validation:** test absent, present, reordered, and multiple AY plugins; clock changes from each UI; and save/reload. Mapper and AY unit tests cover individual parts, but a chain-level case is needed. Coordinate the update mechanism with finding 6.
 
 ## 8. Separate PSG metadata, clip timing, and project policy
 

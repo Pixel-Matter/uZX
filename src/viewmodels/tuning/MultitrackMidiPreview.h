@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include <common/Utilities.h>  // from Tracktion
+#include "../../plugins/uZX/aychip/AYPlugin.h"
 #include "../../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 
 namespace MoTool {
@@ -41,6 +42,7 @@ private:
     tracktion::AudioTrack* track;
     std::array<tracktion::MidiClip::Ptr, NUM_CHANNELS> channelClips;
     uZX::NotesToPsgPlugin::Ptr NotesToPsgPlugin { nullptr };
+    juce::ReferenceCountedObjectPtr<uZX::AYChipPlugin> chip;
     std::uint64_t playbackRevision_ = 0;
     bool playbackPending_ = false;
 

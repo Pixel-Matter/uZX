@@ -217,6 +217,8 @@ Choose a register parameter in the list to inspect its values against the timeli
 
 When a track is selected, the Devices panel shows the plugin chain on that track (e.g., the AY chip instrument plugin). Click **+** between device slots to insert a new plugin.
 
+**MIDI to PSG** turns MIDI notes into notes for the first AY chip after it on the track, at that chip's clock: set the clock in the AY chip, never in MIDI to PSG. Its **Tuning preset** picks the notes. Equal temperament and the just intonations are computed for the chip's clock, so they stay in tune on any clock. A tracker table plays its own periods, made for one clock; when the chip runs at another, the panel shows how far every note sounds off, such as `⚠ Pentagon @ ZX Spectrum +23¢`. Set the chip's clock to the table's to play the table as written.
+
 **Track → Render to audio** renders the selected track to a WAV. When the render succeeds, Studio adds and selects a new audio track and mutes the source. **Undo** removes the new track and restores the source's previous mute state. Choose **Cancel** in the progress window to discard the render and keep the source as it was.
 
 <!-- guide-figure:studio-devices -->

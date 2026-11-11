@@ -12,6 +12,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Render Video has a **Zoom** choice: as on screen, or Frames, Groove Rows, Beats or Bars
 - Viz mode and Render Video show notes and scopes, notes alone, or scopes alone: `V` in Viz mode switches, **View → Viz Options** and the Render Video dialog choose
 - **Classic Black and White** colours for Viz mode and video: black, white scopes, thin grey lines between them
+- **Note Decorations** in **View → Viz Options** and the Render Video dialog: Auto, once a frame is 6 pixels wide, or Always, which keeps the noise band and envelope stripes at any zoom
 - `S` in Viz mode stacks each chip's scopes beside its notes or sets them side by side under them; scopes alone make a column or a grid, a chip per row (3×1 for one AY, 3×2 for Turbo Sound)
 - Entering Viz mode, or pressing `V` or `S`, shows both choices for a moment, with the key to leave
 - Viz mode and Render Video leave out tracks without clips
@@ -29,6 +30,12 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The timeline grid and the pitch lanes are a step lighter
 - Fixed: a note lasts through the frames that change nothing, until the next change, instead of showing for one frame
 - Fixed: a damaged or crafted PSG file can no longer fill the memory with pauses: a file is read up to four hours at 50 Hz
+- A PSG file of version 10 or later plays at the frame rate its header gives; older files play at 50 Hz, as before
+- Fixed: a PSG clip imported where the tempo differs from the project's start plays at its file's frame rate instead of drifting from it
+- Fixed: a change to a PSG clip, such as its frame rate, is heard at once instead of after reopening the project
+- Fixed: Turbo Sound files whose recording stopped mid-frame, one chip a frame longer, open together as a set
+- A tune written for another frame rate, such as 200 Hz, plays at it: pick the rate under **FPS** in the transport bar, for the clips at the project's rate, or under **Frame Rate** in a clip's menu, for its tune. A tune alone in the project scales its tempo with the rate, keeping its rows and groove
+- Tempo detection counts rows per beat as at 50 Hz, so a tune at 100 or 200 Hz gets two or four times the BPM (up to 300)
 
 ### Tracker modules
 - Open and import ZX Spectrum tracker modules like PSG files: Pro Tracker 1–3 (`.pt1`, `.pt2`, `.pt3`), Vortex Tracker II (`.vt2`), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, played by zxtune up to the loop

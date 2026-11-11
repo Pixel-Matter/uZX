@@ -1,6 +1,8 @@
 #include "TurboSound.h"
 #include "PsgFile.h"
 
+#include <cstdlib>
+
 namespace MoTool::uZX {
 
 static const String separators {"_-. "};
@@ -19,11 +21,13 @@ Array<File> findTurboSoundSet(const File& file) {
     if (! opened.ensureRead())
         return {};
 
+    // An emulator stopped mid-frame can leave one chip's file a frame longer ("200%" by Abstract 64 et al.).
     const auto matches = [&opened] (PsgFile& other) {
         const auto& a = opened.getHeader();
         const auto& b = other.getHeader();
+        const auto frames = static_cast<long>(opened.getData().frames.size());
         return other.getFile().existsAsFile() && other.ensureRead()
-            && other.getData().frames.size() == opened.getData().frames.size()
+            && std::abs(static_cast<long>(other.getData().frames.size()) - frames) <= 1
             && a.version == b.version && a.interruptRate == b.interruptRate;
     };
 

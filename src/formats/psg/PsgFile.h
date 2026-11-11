@@ -194,7 +194,7 @@ private:
         @returns true if the stream was read successfully
     */
     bool read() {
-        psgData_.clear();
+        psgData_ = {};
 
         using namespace PsgFileHelpers;
 
@@ -214,6 +214,9 @@ private:
             return false;
 
         header_ = *header;
+        // Version 10 and later give the interrupt rate; older files play at 50 Hz
+        if (header->version >= 10 && header->interruptRate > 0)
+            psgData_.options.frameRate = header->interruptRate;
         d += header->bytesRead;
         remaining -= (size_t) header->bytesRead;
 

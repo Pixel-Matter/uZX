@@ -3,10 +3,13 @@
 #include "PsgClipComponent.h"
 #include "TimelineGrid.h"
 
+#include <optional>
+
 namespace MoTool::Tests {
 
 inline Image renderPsgClip(te::Engine& engine, uZX::PsgData data, int width, int height,
-                           Range<int> visibleFrames = {}, bool legend = false, Rectangle<int> repaint = {}) {
+                           Range<int> visibleFrames = {}, bool legend = false, Rectangle<int> repaint = {},
+                           std::optional<VizOptions> viz = {}) {
     jassert(! data.frames.empty());
     if (visibleFrames.isEmpty())
         visibleFrames = {0, static_cast<int>(data.frames.size())};
@@ -18,6 +21,8 @@ inline Image renderPsgClip(te::Engine& engine, uZX::PsgData data, int width, int
                                 {{te::TimePosition(), duration}, {}}, "PSG example");
     te::SelectionManager selection(engine);
     EditViewState view(*edit, selection);
+    if (viz)
+        view.showAsPlayer(true, *viz);
     const auto frameDuration = duration / static_cast<double>(data.frames.size());
     view.zoom.setViewWidthPx(width);
     view.zoom.setRange({te::TimePosition() + frameDuration * visibleFrames.getStart(),

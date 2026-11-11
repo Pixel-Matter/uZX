@@ -41,6 +41,21 @@ public:
             expect(findTurboSoundSet(s1) == Array<File>({s1, s3}));
         }
 
+        beginTest("A sibling a frame longer or shorter still belongs: an emulator stopped mid-frame");
+        {
+            Dir dir;
+            const auto s1 = dir.psg("song.1.psg", 4);
+            const auto s2 = dir.psg("song.2.psg", 3);
+            expect(findTurboSoundSet(s1) == Array<File>({s1, s2}));
+            expect(findTurboSoundSet(s2) == Array<File>({s1, s2}));
+        }
+        {
+            const auto dir = File(UZX_FIXTURES_DIR).getChildFile("psg");
+            const auto s1 = dir.getChildFile("200_percent_partyfinal.1.psg");
+            const auto s2 = dir.getChildFile("200_percent_partyfinal.2.psg");
+            expect(findTurboSoundSet(s2) == Array<File>({s1, s2}), "200%: 37,156 and 37,155 frames");
+        }
+
         beginTest("Siblings with another frame count are left out");
         {
             Dir dir;

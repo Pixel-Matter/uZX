@@ -403,6 +403,7 @@ namespace {
     constexpr auto vizLayoutSetting = "vizLayout";
     constexpr auto vizColoursSetting = "vizColours";
     constexpr auto vizScopesSetting = "vizScopes";
+    constexpr auto vizDecorationsSetting = "vizDecorations";
 
     template <typename Enum>
     Enum loadVizEnum(PropertiesFile& p, const char* name, Enum fallback, const StringArray& names) {
@@ -416,6 +417,7 @@ VizOptions VizOptions::load(PropertiesFile& p) {
     o.layout = loadVizEnum(p, vizLayoutSetting, o.layout, layoutNames);
     o.colours = loadVizEnum(p, vizColoursSetting, o.colours, colourNames);
     o.scopes = loadVizEnum(p, vizScopesSetting, o.scopes, scopesNames);
+    o.decorations = loadVizEnum(p, vizDecorationsSetting, o.decorations, decorationsNames);
     return o;
 }
 
@@ -423,6 +425,7 @@ void VizOptions::save(PropertiesFile& p) const {
     p.setValue(vizLayoutSetting, (int) layout);
     p.setValue(vizColoursSetting, (int) colours);
     p.setValue(vizScopesSetting, (int) scopes);
+    p.setValue(vizDecorationsSetting, (int) decorations);
 }
 
 //==============================================================================

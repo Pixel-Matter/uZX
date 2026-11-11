@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "../formats/psg/PsgFile.h"
+#include "../formats/psg/PsgData.h"
 #include "PsgParameter.h"
 
 #include <algorithm>
@@ -91,11 +91,8 @@ public:
 
     static juce::ValueTree createPsgList();
 
-    /** Loads from Psg data. */
-    void loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager*);
-
-    /** Loads from Psg file. */
-    void loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager*);
+    /** Loads from Psg data, for a clip starting at clipStart: its frames per beat follow the tempo there. */
+    void loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePosition clipStart, juce::UndoManager*);
 
     //==============================================================================
     /** Returns the frames sorted array, each frame holding the accumulated register
@@ -145,13 +142,6 @@ public:
     /** Gives the list a channel number that it'll use when generating real midi messages. Value is 1 to 16. */
     void setMidiChannel(te::MidiChannel chanNum);
 
-    /** If the data was pulled from a PSG file then this may have a useful name describing its purpose. */
-    juce::String getImportedPsgTrackName() const noexcept           { return importedName; }
-
-    /** Set the imported file name if you want it to appear on the clip */
-    juce::String getImportedFileName() const noexcept               { return importedFileName; }
-    void setImportedFileName (const juce::String& n)                { importedFileName = n; }
-
     //==============================================================================
     bool isEmpty() const noexcept                                   { return state.getNumChildren() == 0; }
 
@@ -192,8 +182,6 @@ private:
     juce::CachedValue<double> framesPerBeat_;
     mutable int dataVersion_ = 0;
 
-    juce::String importedFileName;
-    juce::String importedName;
 
     void initialise(juce::UndoManager*);
     void recomputeAccumulatedState(const juce::Array<PsgParamFrame*>&) const;

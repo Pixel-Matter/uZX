@@ -8,7 +8,7 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 
 ## Implementation order
 
-1. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership), 8 (import timing).
+1. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership).
 2. **Contracts:** 17 (establish supported nonzero-start callers first).
 3. **Low priority:** 9 (export formatting).
 
@@ -21,16 +21,6 @@ Keep each step small and behavior-preserving: establish the ownership boundary f
 **Review boundary:** trace every writer and reader of emulator/mapper state, including startup, reset, panic, configuration, diagnostics, and shutdown. Evaluate applying pending configuration at audio-block boundaries so one thread owns mutable processing state. Account for object allocation and destruction as well as field writes; do not assume an atomic pointer alone solves real-time ownership.
 
 **Validation:** inspect `AYPlugin.test.cpp`, `AYChip.test.cpp`, and `NotesToPsgMapper.test.cpp`; cover configuration and reset while processing, note silencing, and shutdown. Measure callback contention under repeated UI changes.
-
-## 8. Separate PSG metadata, clip timing, and project policy
-
-**Evidence:** [PsgFile.h](../src/formats/psg/PsgFile.h) parses header interrupt rate but does not transfer it to [PsgData](../src/formats/psg/PsgData.h), whose frame rate defaults to 50. `PsgList::loadFrom` in [PsgList.cpp](../src/models/PsgList.cpp) sets project-wide FPS and derives frames per beat at time zero. The project-FPS side effect and time-zero mismatch are already in TODO.
-
-**Problem:** file decoding, clip-local timing, and project settings lack a clear ownership boundary. Header metadata can be lost before import, while importing one clip changes an edit-wide setting. The exact handling of supported file versions and non-default interrupt rates needs fixture-based verification before changing defaults.
-
-**Review boundary:** trace header metadata into decoded data, clip timing, and explicit import policy. Keep parsing responsible for source metadata, clip conversion responsible for its supplied timing context, and the import caller responsible for project-setting decisions. Preserve legacy migration behavior separately.
-
-**Validation:** inspect `PsgFile.test.cpp`, `PsgList.test.cpp`, and `ProjectFps.test.cpp`; add cases for non-default rates, imports away from time zero, multiple clips, and legacy files. Retain damaged-tail handling and the existing parser resource-limit task. Do not duplicate those existing TODOs as newly discovered bugs.
 
 ## 9. Extract tuning export formatting
 

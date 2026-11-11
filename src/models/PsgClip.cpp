@@ -55,6 +55,29 @@ void PsgClip::initialise() {
     // ensureHasAYPlugin();
 }
 
+bool PsgClip::isInPsgList(const juce::ValueTree& v) const {
+    const auto psg = state.getChildWithName(IDs::PSG);
+    return psg.isValid() && (v == psg || v.isAChildOf(psg));
+}
+
+void PsgClip::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& id) {
+    te::MidiClip::valueTreePropertyChanged(v, id);
+    if ((v == state && (id == te::IDs::start || id == te::IDs::length || id == te::IDs::offset)) || isInPsgList(v))
+        edit.restartPlayback();
+}
+
+void PsgClip::valueTreeChildAdded(juce::ValueTree& parent, juce::ValueTree& child) {
+    te::MidiClip::valueTreeChildAdded(parent, child);
+    if (child.hasType(IDs::PSG) || isInPsgList(parent))
+        edit.restartPlayback();
+}
+
+void PsgClip::valueTreeChildRemoved(juce::ValueTree& parent, juce::ValueTree& child, int index) {
+    te::MidiClip::valueTreeChildRemoved(parent, child, index);
+    if (child.hasType(IDs::PSG) || isInPsgList(parent))
+        edit.restartPlayback();
+}
+
 String PsgClip::getSelectableDescription() {
     return "PSG AY data clip - " + getName();
 }
@@ -424,7 +447,7 @@ void PsgClip::loadFrom(uZX::PsgData &data) {
         // Build the list detached and without undo; attaching it below is the
         // single undoable step.
         PsgList psg;
-        psg.loadFrom(data, edit, nullptr);
+        psg.loadFrom(data, edit, getPosition().getStart(), nullptr);
         state.removeChild(state.getChildWithName(IDs::PSG), um);
         state.addChild(psg.state, -1, um);
         initialise();

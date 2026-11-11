@@ -65,6 +65,7 @@ public:
                             &scopesLabel,
                             &coloursLabel,
                             &zoomLabel,
+                            &decorationsLabel,
                             &ffmpegLabel,
                             &renderLabel,
                             &outputLabel,
@@ -76,7 +77,7 @@ public:
                             &note})
             addAndMakeVisible(label);
         for (auto* box :
-             {&showBox, &scopesBox, &coloursBox, &zoomBox, &renderBox, &outputBox, &fpsBox, &codecBox, &qualityBox, &audioBox})
+             {&showBox, &scopesBox, &coloursBox, &zoomBox, &decorationsBox, &renderBox, &outputBox, &fpsBox, &codecBox, &qualityBox, &audioBox})
             addAndMakeVisible(box);
 
         // Viz mode's own options, saved as they change: the Player's view behind shows each choice
@@ -95,6 +96,13 @@ public:
         coloursBox.setSelectedId((int) viz.colours + 1, juce::dontSendNotification);
         coloursBox.onChange = [this] {
             changeViz([this](VizOptions& o) { o.colours = (VizOptions::Colours) (coloursBox.getSelectedId() - 1); });
+        };
+        decorationsBox.addItemList(VizOptions::decorationsNames, 1);
+        decorationsBox.setSelectedId((int) viz.decorations + 1, juce::dontSendNotification);
+        decorationsBox.onChange = [this] {
+            changeViz([this](VizOptions& o) {
+                o.decorations = (VizOptions::Decorations) (decorationsBox.getSelectedId() - 1);
+            });
         };
         zoomBox.addItemList({"As on screen", "Frames", "Groove Rows", "Beats", "Bars"}, 1);
         zoomBox.setSelectedId((int) settings.zoom + 1, juce::dontSendNotification);
@@ -141,7 +149,7 @@ public:
         renderButton.addShortcut(juce::KeyPress(juce::KeyPress::returnKey));
 
         showFfmpeg();
-        setSize(540, 328);
+        setSize(540, 360);
     }
 
     void resized() override {
@@ -162,6 +170,7 @@ public:
         pair(r, scopesLabel, scopesBox, r.getWidth() - labelWidth);
         r = pair(row(), coloursLabel, coloursBox, boxWidth);
         pair(r, zoomLabel, zoomBox, r.getWidth() - labelWidth);
+        pair(row(), decorationsLabel, decorationsBox, boxWidth);
 
         r = row();
         ffmpegLabel.setBounds(r.removeFromLeft(labelWidth));
@@ -308,11 +317,12 @@ private:
     Video::Settings settings;
     juce::Optional<Video::Ffmpeg> ffmpeg;
 
-    juce::Label showLabel{{}, "Show"}, scopesLabel{{}, "Scopes"}, coloursLabel{{}, "Colours"}, zoomLabel{{}, "Zoom"};
+    juce::Label showLabel{{}, "Show"}, scopesLabel{{}, "Scopes"}, coloursLabel{{}, "Colours"}, zoomLabel{{}, "Zoom"},
+        decorationsLabel{{}, "Decorations"};
     juce::Label ffmpegLabel{{}, "ffmpeg"}, renderLabel{{}, "Render"}, outputLabel{{}, "Output"},
         fpsLabel{{}, "Frame rate"}, videoLabel{{}, "Video"}, qualityLabel{{}, "Quality"}, audioLabel{{}, "Audio"},
         ffmpegPath, note;
-    juce::ComboBox showBox, scopesBox, coloursBox, zoomBox, renderBox, outputBox, fpsBox, codecBox, qualityBox, audioBox;
+    juce::ComboBox showBox, scopesBox, coloursBox, zoomBox, decorationsBox, renderBox, outputBox, fpsBox, codecBox, qualityBox, audioBox;
     juce::TextButton chooseButton{"Choose..."}, cancelButton{"Cancel"}, renderButton{"Render..."};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RenderVideoComponent)

@@ -3,7 +3,9 @@
 #include "AYPlugin.h"
 #include "AYPluginEditor.h"
 #include "../../../gui/common/MidiParameterMapping.h"
+#include "../../../models/EditUtilities.h"
 #include "../../../models/PsgClip.h"
+#include "../../../models/PsgTempoDetector.h"
 #include "../../../util/TestHelpers.h"
 
 namespace MoTool::Tests {
@@ -119,6 +121,65 @@ private:
 };
 
 static AYChipPluginPlaybackTests ayChipPluginPlaybackTests;
+
+//==============================================================================
+/** A clip opened at 50 Hz and switched to 200 Hz plays its frames four times as fast. */
+class AYChipFrameRatePlaybackTests : public juce::UnitTest {
+public:
+    AYChipFrameRatePlaybackTests() : UnitTest("AYChipFrameRatePlayback", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        auto* track = te::getAudioTracks(*edit)[0];
+
+        // Frame k sets tone A's period to k, so the period tells which frame played last.
+        std::vector<PsgRegsFrame> frames(1000);
+        frames[0] = {{PsgRegType::Mixer, 0x3E}, {PsgRegType::VolumeA, 0x0F}};
+        for (size_t k = 0; k < frames.size(); ++k) {
+            frames[k].setTonePeriod(0, static_cast<uint16_t>(k + 1));
+        }
+        PsgData data {std::move(frames), {50.0, 1}};
+        auto clip = PsgClip::insertTo(*track, data, {{0_tp, te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
+        // Another clip keeps the tempo as it is: only the clip's own change can rebuild playback.
+        edit->ensureNumberOfAudioTracks(2);
+        PsgClip::insertTo(*te::getAudioTracks(*edit)[1], data, {{0_tp, te::TimeDuration::fromSeconds(1.0)}, {}});
+        auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+        track->pluginList.insertPlugin(plugin, 0, nullptr);
+        auto& chip = dynamic_cast<AYChipPlugin&>(*plugin);
+        Helpers::setProjectFps(*edit, 50.0);
+        engine.getDeviceManager().dispatchPendingUpdates();
+
+        // The transport keeps its playback graph, as in the app, so the change has to rebuild it.
+        auto& transport = edit->getTransport();
+        transport.play(false);
+        TestHelpers::processBlocks(engine, 2);
+        // The frame playing just after a seek; the seek follows a block, as the app's audio runs on,
+        // so a tempo change has moved the playhead to its beat first.
+        const auto frameAfterSeekTo = [&](te::TimePosition time) {
+            TestHelpers::flushMessageQueue();
+            TestHelpers::processBlocks(engine, 1);
+            transport.setPosition(time);
+            TestHelpers::processBlocks(engine, 2);
+            return int(chip.getChipRegisters().getTonePeriod(0)) - 1;  // the frame index
+        };
+
+        beginTest("At 50 Hz, one second in plays frame 50");
+        {
+            const auto frame = frameAfterSeekTo(1_tp);
+            expect(frame >= 50 && frame <= 53, "frame " + String(frame));  // up to 60 ms of blocks past the seek
+        }
+
+        beginTest("Switched to 200 Hz while playing, two seconds in plays frame 400");
+        {
+            PsgTempo::setFrameRate({clip.get()}, 200.0);
+            const auto frame = frameAfterSeekTo(2_tp);
+            expect(frame >= 400 && frame <= 412, "frame " + String(frame));
+        }
+    }
+};
+
+static AYChipFrameRatePlaybackTests ayChipFrameRatePlaybackTests;
 
 //==============================================================================
 /** Seeks landing just before a frame: Tracktion chases the clip's controllers at the seek point,

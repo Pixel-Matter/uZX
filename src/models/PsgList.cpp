@@ -323,7 +323,6 @@ void PsgList::clear (juce::UndoManager* um) {
     // Timing metadata (frameRate, framesPerBeat) is kept: it describes the list's
     // relation to tempo, not its content.
     state.removeAllChildren(um);
-    importedName = {};
 }
 
 void PsgList::setMidiChannel(te::MidiChannel newChannel) {
@@ -338,7 +337,7 @@ PsgParamFrame* PsgList::addFrameEvent(int frameIndex, const PsgParamFrameData& d
 
 
 
-void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManager* um) {
+void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePosition clipStart, juce::UndoManager* um) {
     PsgParamFrameData params;
     uZX::PsgRegsFrame regsState;
     // uZX::PsgRegsFrame regsFromParamsState;
@@ -349,8 +348,7 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
     bool lastRetriggerState = false;  // Track if last frame had retrigger=1
 
     setFrameRate(data.getFrameRate(), um);
-    setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, 0_tp), um);
-    Helpers::setProjectFps(edit, data.getFrameRate());
+    setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, clipStart), um);
 
     for (size_t i = 0; i < data.frames.size(); i++) {
         auto &frame = data.frames[i];
@@ -395,17 +393,6 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, juce::UndoManag
 
         auto v = PsgParamFrame::createPsgFrameValueTree(static_cast<int>(i), params);
         state.addChild(v, -1, um);
-    }
-}
-
-void PsgList::loadFrom(const uZX::PsgFile &psgFile, te::Edit& edit, juce::UndoManager* um) {
-    loadFrom(psgFile.getData(), edit, um);
-    if (psgFile.getFile().existsAsFile()) {
-        importedName = psgFile.getFile().getFileNameWithoutExtension();
-        importedFileName = psgFile.getFile().getFullPathName();
-    } else {
-        importedName = {};
-        importedFileName = {};
     }
 }
 

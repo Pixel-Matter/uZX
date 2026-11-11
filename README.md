@@ -86,6 +86,16 @@ xattr -rd com.apple.quarantine /Applications/μZX\ Studio.app
 - **macOS: playback scrolling drops some frames on a MacBook Pro's built-in display.** On that XDR panel, at a fixed 50 Hz, about one frame in 25 reaches the screen a refresh late, so scrolling hitches now and then. Drawing a frame there takes about 10 ms, half of it macOS checking the picture for HDR content, which leaves little room before the screen's deadline. An external display is not affected. Before macOS 14 the timeline can also drop frames on other displays and in Viz mode, because there µZX can't time its frames to the screen.
 - **macOS: with two displays on, playback scrolling stutters in waves.** When the displays refresh at slightly different rates, such as an external display at 59.95 Hz beside a MacBook's panel at 60 Hz, macOS shows some frames a refresh late for a few seconds every 20 seconds or so. µZX hands every frame over on time; the stutter comes from macOS. Using a single display, for example a MacBook with its lid closed, avoids it.
 
+### Tunes at 100 or 200 Hz
+
+Most `.psg` files don't record the frame rate they were written for, so µZX opens them at 50 Hz, and a tune made for 100 or 200 Hz (Atari, multi-speed players) plays two or four times too slowly. To play it at its rate:
+
+1. Open or import the file as usual (`Cmd+O` in the Player, `Cmd+I` in Studio).
+2. Click **FPS** in the transport bar and pick the rate, such as **200 fps**. Every clip that played at the old rate follows. A tune alone in the project takes its timeline along: its tempo scales with the rate (41 BPM at 50 Hz is 164 BPM at 200 Hz), keeping its rows, groove and meter.
+3. Or right-click a clip and pick **Frame Rate** to change only that tune, all its Turbo Sound chips included.
+
+Save the project (`.uzx`) to keep the rate. See [Opening Files](docs/user-guide.md#opening-files) in the User Guide.
+
 ## Building from Source
 
 ```bash

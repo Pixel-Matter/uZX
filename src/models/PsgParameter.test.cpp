@@ -79,7 +79,7 @@ public:
             auto& engine = *Engine::getEngines()[0];
             auto edit = Edit::createSingleTrackEdit(engine);
             PsgList psgList;
-            psgList.loadFrom(data, *edit, nullptr);
+            psgList.loadFrom(data, *edit, {}, nullptr);
 
             auto& frames = psgList.getFrames();
 

@@ -25,6 +25,9 @@ constexpr int minSpeed = 2;
 constexpr int maxSpeed = 16;
 constexpr double minBpm = 80.0;  // rows per beat is halved or doubled to land in this range
 constexpr double maxBpm = 170.0;
+// The range is read at 50 Hz, as trackers count their rows, so a tune at 200 Hz gets the same rows
+// per beat and four times the BPM, up to Tracktion's tempo limit.
+constexpr double bpmRangeFps = 50.0;
 constexpr double minMeterMargin = 0.1;    // one bar length must explain repetition this much better
 constexpr double minOpeningOnGrid = 0.8;  // share of early note starts that must sit on row starts
 constexpr int minOpeningOnsets = 4;       // fewer early note starts than this: leave the clip where it is
@@ -308,7 +311,7 @@ int detectRowsPerBeat(const std::vector<RowFeature>& rows,
     const double rowLength = speed.meanRow();
     auto fitToBpmRange = [&](int rowsPerBeat) {
         const int minRowsPerBeat = (int) speed.rows.size();
-        double bpm = dataFps * 60.0 / (rowLength * rowsPerBeat);
+        double bpm = bpmRangeFps * 60.0 / (rowLength * rowsPerBeat);
         while (bpm < minBpm && rowsPerBeat % 2 == 0 && rowsPerBeat / 2 >= minRowsPerBeat) {
             rowsPerBeat /= 2;
             bpm *= 2.0;
@@ -317,6 +320,8 @@ int detectRowsPerBeat(const std::vector<RowFeature>& rows,
             rowsPerBeat *= 2;
             bpm /= 2.0;
         }
+        while (dataFps * 60.0 / (rowLength * rowsPerBeat) > tracktion::TempoSetting::maxBPM)
+            rowsPerBeat *= 2;
         return rowsPerBeat;
     };
 
@@ -482,6 +487,19 @@ bool areOnlyClipsInEdit(const juce::Array<PsgClip*>& clips) {
 
 }  // namespace
 
+/** Sets the tempo, grid and meter at the clips' start from a detection, keeping when the clips sound. */
+static void applyTempo(const juce::Array<PsgClip*>& clips, const Result& result) {
+    auto& edit = clips.getFirst()->edit;
+    const auto clipStart = clips.getFirst()->getPosition().getStart();
+    PsgTiming::setFramesPerBeat(edit,
+                                edit.tempoSequence.getTempoAt(clipStart),
+                                result.framesPerBeat,
+                                /*preserveAbsoluteFrameTimes=*/true);
+    Helpers::setGridSubdivisionPattern(edit, result.subdivisionPattern());
+    if (result.meterClear)
+        edit.tempoSequence.getTimeSigAt(clipStart).numerator = result.beatsPerBar;
+}
+
 void applyToEdit(const juce::Array<PsgClip*>& clips,
                  const std::vector<const uZX::PsgData*>& chips,
                  const std::vector<size_t>& knownRows) {
@@ -491,16 +509,9 @@ void applyToEdit(const juce::Array<PsgClip*>& clips,
     if (!result)
         return;
 
+    applyTempo(clips, *result);
     auto& edit = clips.getFirst()->edit;
-    const auto clipStart = clips.getFirst()->getPosition().getStart();
-    PsgTiming::setFramesPerBeat(edit,
-                                edit.tempoSequence.getTempoAt(clipStart),
-                                result->framesPerBeat,
-                                /*preserveAbsoluteFrameTimes=*/true);
-    Helpers::setGridSubdivisionPattern(edit, result->subdivisionPattern());
-    auto& timeSig = edit.tempoSequence.getTimeSigAt(clipStart);
-    if (result->meterClear)
-        timeSig.numerator = result->beatsPerBar;
+    auto& timeSig = edit.tempoSequence.getTimeSigAt(clips.getFirst()->getPosition().getStart());
 
     if (result->firstRowFrame <= 0)
         return;
@@ -520,6 +531,53 @@ void applyToEdit(const juce::Array<PsgClip*>& clips,
             clip->setStart(position.getStart() + tracktion::TimeDuration::fromSeconds(shift / fps), false, true);
         }
     }
+}
+
+void setFrameRate(const juce::Array<PsgClip*>& clips, double fps) {
+    if (clips.isEmpty() || fps <= 0.0)
+        return;
+    auto* first = clips.getFirst();
+    const auto oldFps = first->getPsg().getEffectiveFps(*first);
+    for (auto* clip : clips)
+        PsgTiming::setClipFrameRate(*clip, fps);
+    if (oldFps <= 0.0 || ! areOnlyClipsInEdit(clips))
+        return;
+
+    // Alone in its project, the tune sets it: the whole timeline scales with the rate. The clips
+    // start as many frames in, the tempo scales, so a beat keeps its frames and the grid its groove,
+    // and a first row on a bar line stays on it. Past Tracktion's tempo limits a beat takes twice or
+    // half the frames.
+    for (auto* clip : clips)
+        clip->setStart(tracktion::TimePosition::fromSeconds(clip->getPosition().getStart().inSeconds() * oldFps / fps),
+                       false, true);
+    auto& edit = first->edit;
+    auto& tempo = edit.tempoSequence.getTempoAt(first->getPosition().getStart());
+    auto pattern = Helpers::getGridSubdivisionPattern(edit, juce::jmax(1, juce::roundToInt(PsgTiming::getFramesPerBeat(edit))));
+    auto bpm = tempo.getBpm() * fps / oldFps;
+    bool regroup = false;
+    for (; bpm > tracktion::TempoSetting::maxBPM; bpm /= 2.0, regroup = true) {
+        const auto beat = pattern;
+        pattern.insert(pattern.end(), beat.begin(), beat.end());
+    }
+    for (; bpm < tracktion::TempoSetting::minBPM; bpm *= 2.0, regroup = true)
+        pattern.clear();  // ponytail: a beat shorter than its groove goes back to the default grid
+    Helpers::setProjectFps(edit, fps);
+    PsgTiming::setTempoBpmRetimingFrames(edit, tempo, bpm, /*preserveAbsoluteFrameTimes=*/true);
+    if (regroup)
+        Helpers::setGridSubdivisionPattern(edit, pattern.empty()
+            ? Helpers::getDefaultGridSubdivisionPattern(juce::jmax(1, juce::roundToInt(PsgTiming::getFramesPerBeat(edit))))
+            : pattern);
+}
+
+void setProjectFrameRate(tracktion::Edit& edit, double fps) {
+    const auto oldFps = Helpers::getProjectFps(edit);
+    juce::Array<PsgClip*> clips;
+    for (auto* track : tracktion::getClipTracks(edit))
+        for (auto* clip : track->getClips())
+            if (auto* psg = dynamic_cast<PsgClip*>(clip); psg != nullptr && ! psg->getPsg().hasFpsMismatch(*psg, oldFps))
+                clips.add(psg);
+    Helpers::setProjectFps(edit, fps);
+    setFrameRate(clips, fps);
 }
 
 }  // namespace MoTool::PsgTempo

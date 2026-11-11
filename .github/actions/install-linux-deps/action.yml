@@ -6,9 +6,10 @@ runs:
   steps:
     - name: Install dependencies
       shell: bash
+      # A mirror outage makes apt retry for over an hour; fail in minutes instead
       run: |
-        sudo apt-get update -q
-        sudo apt-get install -y \
+        sudo timeout 5m apt-get update -q
+        sudo timeout 10m apt-get install -y \
           libasound2-dev \
           libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
           libxinerama-dev libxrandr-dev libxrender-dev \

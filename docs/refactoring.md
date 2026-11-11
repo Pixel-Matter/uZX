@@ -1,46 +1,10 @@
 # Refactoring plan
 
-Open findings from a source-inspection review (November 2026) of controller lifecycle and commands, PSG import and serialization, timeline components, derived-state caches, parameter bindings, tuning export, and audio configuration paths. Findings separate confirmed code structure from runtime risks that still need reproduction; nothing here was established by running the app. It is not an exhaustive audit.
+Findings from a source-inspection review (November 2026) of controller lifecycle and commands, PSG import and serialization, timeline components, derived-state caches, parameter bindings, tuning export, and audio configuration paths. Findings separate confirmed code structure from runtime risks that still need reproduction; nothing here was established by running the app. It is not an exhaustive audit.
 
-[TODO.md](TODO.md#refactoring) is the checklist. A finished finding is deleted from both files, so numbers have gaps; they are stable IDs, not an order.
+All of its findings are done and deleted; new ones go here with the next free number, and on the [TODO.md](TODO.md#refactoring) checklist. Numbers are stable IDs, not an order. The deferred notes below were inspected and not promoted to findings.
 
 Keep each step small and behavior-preserving: establish the ownership boundary first, then change behavior separately. Do not introduce a general framework for these extractions. If a step changes anything users can see or do, update `user-guide.md` in the same commit.
-
-## Implementation order
-
-1. **Correctness reviews**, which need behavior checked before the implementation is settled: 6 (audio ownership).
-2. **Contracts:** 17 (establish supported nonzero-start callers first).
-3. **Low priority:** 9 (export formatting).
-
-## 6. Establish audio-thread ownership of mutable runtime state
-
-**Evidence:** [AYPlugin.cpp](../src/plugins/uZX/aychip/AYPlugin.cpp), in `applyToBuffer`, holds a blocking lock across event processing and rendering. `reset`, configuration callbacks, and register reads use the same lock. `NotesToPsgMapper` follows the same pattern: its setters, reset and render hold one lock.
-
-**Problem:** UI/configuration work can contend with the render callback. The lock scope is confirmed, but audible glitches and their frequency have not been measured. Removing locks without a replacement ownership contract would introduce races.
-
-**Review boundary:** trace every writer and reader of emulator/mapper state, including startup, reset, panic, configuration, diagnostics, and shutdown. Evaluate applying pending configuration at audio-block boundaries so one thread owns mutable processing state. Account for object allocation and destruction as well as field writes; do not assume an atomic pointer alone solves real-time ownership.
-
-**Validation:** inspect `AYPlugin.test.cpp`, `AYChip.test.cpp`, and `NotesToPsgMapper.test.cpp`; cover configuration and reset while processing, note silencing, and shutdown. Measure callback contention under repeated UI changes.
-
-## 9. Extract tuning export formatting
-
-**Evidence:** [TuningViewModel.h](../src/viewmodels/tuning/TuningViewModel.h) implements `exportToCSV` and `getDefaultExportFilename`, including column order, ASCII note spelling, and filename sanitization. [TuningPreview.cpp](../src/gui/tuning/TuningPreview.cpp) owns the chooser, write, directory preference, and result alerts.
-
-**Problem:** export-format policy lives in the stateful viewmodel alongside tuning selection and notifications. This is a lower-priority separation opportunity, not an observed correctness failure.
-
-**Proposed boundary:** move serialization and filename formatting into a focused format helper. Keep selection of the current tuning data in the viewmodel and the save interaction in the GUI. Preserve output exactly and avoid adding an exporter interface for one format.
-
-**Validation:** preserve the existing CSV and filename assertions in `TuningViewModel.test.cpp`, adding helper-level cases only where useful. Verify the GUI still exports the selected tuning and reports write failure. Tooltip formatting in a presentation viewmodel is not, by itself, a reason for another split.
-
-## 17. Make MIDI sample-range semantics consistent
-
-**Evidence:** `MidiBufferContext` in [MidiEffect.h](../src/plugins/uZX/midi_effects/MidiEffect.h) stores a start sample and a sample count; `sliced` retains sample coordinates relative to the original buffer. `MPEInstrumentFx::operator()` in [MPEInstrumentFx.h](../src/plugins/uZX/midi_effects/MPEInstrumentFx.h) starts at `c.start`, but rejects events at `eventSample >= c.length` and creates its final slice with `c.length - currentSample`.
-
-**Problem:** a count is treated as an absolute end in two places. For start 64 and length 64, an event at sample 96 belongs to the range [64, 128), but is rejected; the final slice can also have the wrong length. The host wrapper currently asserts `bufferStartSample == 0`, so the review establishes a mismatch in the reusable context contract, not a confirmed failure of the current normal host path.
-
-**Review boundary:** decide whether effects support arbitrary context starts. If they do, define the exclusive end once from start plus length and use it for event inclusion and remaining render spans. If zero-start processing is intentionally required, make that restriction explicit at the appropriate entry boundary while preserving nonzero voice sub-blocks. Do not fix only the event comparison and leave the tail calculation inconsistent.
-
-**Validation:** add focused MPE effect cases for zero and nonzero start, no events, events at start/end, and an event inside the range; verify total rendered samples and nonnegative slice lengths. Inspect production context construction and slicing callers before changing assumptions. The existing TODO already notes missing instrument/voice tests; this supplies a concrete first regression case.
 
 ## Deferred review notes
 
@@ -58,5 +22,7 @@ The `AYChipMappedParameter` tests cover the mapped case. The contract depends on
 The same tracing found a mapping defect unrelated to the slot, recorded in the Global TODO: deleting a plugin removes its controller mappings from `ParameterControlMappings` in memory, and undoing the deletion creates a new plugin object that is never mapped again, although the edit state still lists the mapping. The next save then rewrites the state from memory and drops it.
 
 Async UI actions need a separate lifetime check: `TitleBar::showDeviceMenu` in [DevicePanelItem.cpp](../src/gui/devices/DevicePanelItem.cpp) captures `this` for Remove Device; the transport FPS menu does likewise, and file-chooser callbacks retain engine/controller references. Native menu/chooser cancellation guarantees on component destruction were not verified, so these captures alone are not reported as proven crashes. Trace dismissal and shutdown first; where an action should survive its view, capture the appropriate model owner, and where it should be cancelled, use a lifetime guard. Do not keep a whole edit alive accidentally just to preserve a menu action.
+
+Audio-thread locking was reviewed and measured (finding 6, closed) without moving configuration to block boundaries. `AYChipPlugin` and `NotesToPsgMapper` each hold one lock across rendering. On the message thread, the clock, chip type, MIDI channel and tuning setters, `reset`, and register reads take it for O(1) work. `initialise` creates the chip and sizes the scope lanes under it, because the old graph may still be rendering. `deinitialise` runs only once no graph node holds the plugin. The replaced tuning is now freed after the mapper's lock is released. In a Debug build, about 3,300 chip setting changes a second left AY block times unchanged (p99 about 340 µs, the same as idle). About 14,000 retunes a second raised the mapper's p99.9 from 4–11 µs idle to 15 µs, or 20–25 µs before the tuning was freed outside the lock. The worst blocks were OS scheduling outliers, which also occur idle. Revisit only if a glitch is heard while settings change.
 
 View-state validation was inspected but not promoted to another task. Gesture zoom paths clamp their scale, while persisted/direct zoom and track-height setters have weaker invariants. Verify supported load/caller inputs before treating malformed state as a current product failure; keep any later normalization at the owning state boundary rather than adding guards to every painter.

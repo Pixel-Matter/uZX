@@ -230,9 +230,10 @@ public:
         for (auto i = voices.size(); --i >= 0;) {
             auto* voice = voices.getUnchecked(i);
 
-            if (voice->isCurrentlyPlayingNote(bendNote))
+            if (voice->isCurrentlyPlayingNote(bendNote)) {
                 voice->currentlyPlayingNote = bendNote;
                 voice->notePitchbendChanged();
+            }
         }
     }
 
@@ -242,9 +243,10 @@ public:
         for (auto i = voices.size(); --i >= 0;) {
             auto* voice = voices.getUnchecked(i);
 
-            if (voice->isCurrentlyPlayingNote(pressureNote))
+            if (voice->isCurrentlyPlayingNote(pressureNote)) {
                 voice->currentlyPlayingNote = pressureNote;
                 voice->notePressureChanged();
+            }
         }
     }
 
@@ -254,9 +256,10 @@ public:
         for (auto i = voices.size(); --i >= 0;) {
             auto* voice = voices.getUnchecked(i);
 
-            if (voice->isCurrentlyPlayingNote(timbreNote))
+            if (voice->isCurrentlyPlayingNote(timbreNote)) {
                 voice->currentlyPlayingNote = timbreNote;
                 voice->noteTimbreChanged();
+            }
         }
     }
 

@@ -107,7 +107,8 @@ void AYChipPlugin::deinitialise() {
 
 void AYChipPlugin::midiPanic() {
     const ScopedLock sl(lock);
-    chip->muteSound();
+    if (chip != nullptr)  // none until initialised and after deinitialise
+        chip->muteSound();
 }
 
 void AYChipPlugin::reset() {

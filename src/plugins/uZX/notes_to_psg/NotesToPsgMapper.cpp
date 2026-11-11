@@ -250,11 +250,14 @@ TuningSystem& NotesToPsgMapper::getTuningSystem() {
 }
 
 void NotesToPsgMapper::setTuningSystem(std::shared_ptr<TuningSystem> tuning) {
-    const ScopedLock sl(lock_);
-    tuningSystem_ = std::move(tuning);
-    for (auto& voice : voices_) {
-        voice.setTuningSystem(tuningSystem_);
+    {
+        const ScopedLock sl(lock_);
+        std::swap(tuningSystem_, tuning);
+        for (auto& voice : voices_) {
+            voice.setTuningSystem(tuningSystem_);
+        }
     }
+    // `tuning` is the old one now, freed here without keeping the audio thread waiting
 }
 
 void NotesToPsgMapper::setBaseChannel(int channel) {

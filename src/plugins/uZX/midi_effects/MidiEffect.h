@@ -21,8 +21,8 @@ struct MidiBufferContext {
     // MIDI buffer can contain events prior to this sample, ignore them.
     const int start = 0;
 
-    // Length of the buffer to process in samples.
-    // MIDI buffer can contain events beyond this length, ignore them.
+    // Length of the range to process in samples, from start.
+    // MIDI buffer can contain events from end() on, ignore them.
     const int length;
 
     // Position in the edit (or just a free running time) of the buffer start
@@ -30,6 +30,11 @@ struct MidiBufferContext {
 
     // Sample rate for converting time to sample numbers and back
     const double sampleRate = 0.0f;
+
+    // The sample just past the range to process
+    inline int end() const noexcept {
+        return start + length;
+    }
 
     inline bool isAllNotesOff() const noexcept {
         return buffer.isAllNotesOff;
@@ -78,7 +83,7 @@ struct MidiBufferContext {
     void debugMidiBuffer() const {
         for (const auto& m : buffer) {
             auto sample = getSampleForTimeRel(m.getTimeStamp());
-            if (sample < start || sample >= start + length) {
+            if (sample < start || sample >= end()) {
                 DBG("Midi message out of range: " << m.getDescription()
                     << " at " << m.getTimeStamp() + playPosition.inSeconds()
                     << " local " << m.getTimeStamp());

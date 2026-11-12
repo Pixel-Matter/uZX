@@ -125,9 +125,42 @@ private:
 
 //==============================================================================
 /**
-    Reads the stream back into frames: the notes that sound, each with the pitch wheel, the timbre, the pan
-    and the priority of its channel. A frame is wherever the stream has messages, so a reader takes one after
-    the messages of each time.
+    The stream's controllers as they were last set on each MIDI channel, for the voices of that channel:
+    timbre, pan, priority and the envelope's restart.
+*/
+class NoteControllers
+{
+public:
+    /** Takes a controller of the stream. Returns false for a message that is not one. */
+    bool decode(const juce::MidiMessage& m) noexcept;
+
+    /** Gives each voice of a frame what the controllers of its channel say. Its priority is its channel's
+        number until the priority controller sets another, and it asks for no place until the pan controller
+        names one.
+
+        A voice has `restartEnvelope` set in the first frame it is in after its channel got the restart controller
+        or another envelope shape, which cannot sound without a restart. A note starting does not set it: the
+        envelope's pitch can move, and a note last, with the envelope running on.
+    */
+    void applyTo(NoteFrame& frame) noexcept;
+
+private:
+    struct Channel
+    {
+        NoteTimbre timbre{};
+        bool restartEnvelope = false;  // asked for, and no voice of the channel has taken it yet
+        int priority = -1;             // the channel's number until the controller sets one
+        std::optional<float> pan{};
+    };
+
+    std::array<Channel, 16> channels_{};
+};
+
+//==============================================================================
+/**
+    Reads the stream back into frames: the notes that sound, each with the pitch wheel and the controllers
+    of its channel. A frame is wherever the stream has messages, so a reader takes one after the messages of
+    each time.
 
     It alone remembers which notes are held and what the controllers were last set to.
 
@@ -141,30 +174,16 @@ public:
     /** Takes a message of the stream. Returns false for one that is no part of it. */
     bool decode(const juce::MidiMessage& m) noexcept;
 
-    /** The voices sounding now, oldest first. A voice has `attack` set in the first frame taken after it started.
-        Its priority is its channel's number until the priority controller sets another, and it asks for
-        no place until the pan controller names one.
-
-        A voice has `restartEnvelope` set in the first frame it is in after its channel got the restart controller
-        or another envelope shape, which cannot sound without a restart. A note starting does not set it: the
-        envelope's pitch can move, and a note last, with the envelope running on.
-    */
+    /** The voices sounding now, oldest first, each with what NoteControllers gives it. A voice has `attack`
+        set in the first frame taken after it started. */
     NoteFrame takeFrame() noexcept;
 
     /** Forgets the notes and the controllers, as an all-notes-off or a transport jump asks. */
     void reset() noexcept { *this = {}; }
 
 private:
-    struct Channel
-    {
-        double bend = 0.0;  // semitones
-        NoteTimbre timbre{};
-        bool restartEnvelope = false;  // asked for, and no voice of the channel has taken it yet
-        int priority = -1;             // the channel's number until the controller sets one
-        std::optional<float> pan{};
-    };
-
-    std::array<Channel, 16> channels_{};
+    std::array<double, 16> bends_{};  // semitones, by channel
+    NoteControllers controllers_;
     NoteFrame held_;  // without pitch and timbre, which a frame gets from its channel as it is taken
 };
 

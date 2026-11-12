@@ -34,15 +34,14 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 
 #### P1 — Important
 
-- [ ] **TAYM** (needs Timer fx, see [design/timer-fx.md](design/timer-fx.md))
-- [ ] **Separate visualizer window** — oscilloscopes with horizontal and vertical layouts
 - [ ] **Loop range** on the ruler
-- [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Nicer transport icons**
-- [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
+- [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
+- [ ] **TAYM** (needs Timer fx, see [design/timer-fx.md](design/timer-fx.md))
 
 #### P2 — Nice to have
 
+- [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
 - [ ] **DMG background image**
 - [ ] **Channel split mode** — each AY channel in its own lane
 - [ ] **Minimap** on the horizontal scroller

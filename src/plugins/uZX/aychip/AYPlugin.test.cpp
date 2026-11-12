@@ -242,6 +242,170 @@ private:
 static AYChipSeekStateTests ayChipSeekStateTests;
 
 //==============================================================================
+/** An envelope note across five beats, as one clip and as two, played and sought into.
+
+    beat 0: tone and envelope on A, the shape written
+    beat 1: the envelope's pitch changes, no restart
+    beat 2: the same shape written again, a restart
+    beat 3: the tone's pitch changes; where the second clip starts
+    beat 4: the same shape written again, a restart
+
+    The shape decays once and stays silent, so a restart is heard as the level coming back. */
+class AYChipEnvelopeRestartTests : public juce::UnitTest {
+public:
+    AYChipEnvelopeRestartTests() : UnitTest("AYChipEnvelopeRestart", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+
+        beginTest("The tune plays the same as one clip and as two");
+        const auto data = makeTune();
+        for (const bool split : {false, true}) {
+            const String name = split ? "two clips" : "one clip";
+            Rig rig(engine, split);
+            const auto steps = rig.play(0.0, 5.0);
+            expectEquals(restartsAfterBeats(steps), String("R-R-R"), name + ": restarts on beats 0, 2 and 4 only");
+            for (int k = 0; k < 5; ++k)
+                expectEquals(registersAt(steps, k + 0.5), registersOf(data, k + 0.5), name + ", beat " + String(k));
+        }
+
+        beginTest("A seek restarts the envelope where the tune does, or where the chip holds another shape");
+        for (const bool split : {false, true}) {
+            const String name = split ? "two clips" : "one clip";
+            Rig played(engine, split);
+            played.play(0.0, 5.0);  // leaves the tune's shape in the chip, its envelope run out
+
+            for (const double t : {0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5}) {
+                const String where = name + ", seek to beat " + String(t, 1);
+                const bool tuneRestartsHere = t == 0.0 || t == 2.0 || t == 4.0;
+
+                const auto warm = played.play(t, t + 0.45);
+                expect(restartsIn(warm, t, t + 0.2) == tuneRestartsHere, where + ", the chip holding the tune's shape");
+                expectEquals(registersAt(warm, t + 0.4), registersOf(data, t + 0.4), where);
+
+                Rig fresh(engine, split);  // a chip after a reset holds another shape
+                const auto cold = fresh.play(t, t + 0.45);
+                expect(restartsIn(cold, t, t + 0.2), where + ", the chip holding another shape");
+                expectEquals(registersAt(cold, t + 0.4), registersOf(data, t + 0.4), where + ", a fresh chip");
+            }
+        }
+    }
+
+private:
+    struct Step {
+        double beat;
+        float peak;
+        PsgRegsFrame regs;
+    };
+
+    static constexpr int framesPerBeat = 25;  // 50 Hz at 120 BPM
+
+    static PsgData makeTune() {
+        std::vector<PsgRegsFrame> frames(5 * framesPerBeat + 2);
+        frames[0] = {
+            {PsgRegType::Mixer,              0x3E},  // tone A alone
+            {PsgRegType::VolumeA,            0x10},  // the envelope sets its level
+            {PsgRegType::TonePeriodFineA,    0xC0}, {PsgRegType::TonePeriodCoarseA, 0x01},
+            {PsgRegType::EnvelopePeriodFine, 0x58}, {PsgRegType::EnvelopePeriodCoarse, 0x02},  // 600
+            {PsgRegType::EnvelopeShape,      0x09},
+        };
+        frames[1 * framesPerBeat] = {{PsgRegType::EnvelopePeriodFine, 0x84}, {PsgRegType::EnvelopePeriodCoarse, 0x03}};  // 900
+        frames[2 * framesPerBeat] = {{PsgRegType::EnvelopeShape, 0x09}};
+        frames[3 * framesPerBeat] = {{PsgRegType::TonePeriodFineA, 0x50}};
+        frames[4 * framesPerBeat] = {{PsgRegType::EnvelopeShape, 0x09}};
+        frames[5 * framesPerBeat + 1] = {{PsgRegType::VolumeB, 0x00}};  // keeps the clip running to the end
+        return {std::move(frames), {50.0, 1}};
+    }
+
+    struct Rig {
+        Rig(te::Engine& e, bool split) : engine(e), edit(te::Edit::createSingleTrackEdit(e)) {
+            auto* track = te::getAudioTracks(*edit)[0];
+            auto data = makeTune();
+            auto clip = PsgClip::insertTo(*track, data, {{0_tp, te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
+            if (split)
+                track->splitClip(*clip, timeOf(3.0));
+            auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+            track->pluginList.insertPlugin(plugin, 0, nullptr);
+            chip = dynamic_cast<AYChipPlugin*>(plugin.get());
+            engine.getDeviceManager().dispatchPendingUpdates();
+        }
+
+        ~Rig() { edit->getTransport().stop(false, false); }
+
+        te::TimePosition timeOf(double beat) const {
+            return edit->tempoSequence.toTime(te::BeatPosition::fromBeats(beat));
+        }
+
+        /** Seeks, plays to `toBeat`, and stops: the level and the chip's registers after every block. */
+        std::vector<Step> play(double fromBeat, double toBeat) {
+            auto& transport = edit->getTransport();
+            transport.setPosition(timeOf(fromBeat));
+            transport.play(false);
+            auto& audioIO = engine.getDeviceManager().getHostedAudioDeviceInterface();
+            juce::AudioBuffer<float> buffer(2, 512);
+            juce::MidiBuffer midi;
+            // The block after a seek starts at the seek point
+            const auto blockBeats = edit->tempoSequence.toBeats(te::TimePosition::fromSeconds(
+                buffer.getNumSamples() / engine.getDeviceManager().getSampleRate())).inBeats();
+            std::vector<Step> steps;
+            for (double beat = fromBeat; beat < toBeat; beat += blockBeats) {
+                buffer.clear();
+                audioIO.processBlock(buffer, midi);
+                steps.push_back({beat, buffer.getMagnitude(0, buffer.getNumSamples()), chip->getChipRegisters()});
+            }
+            transport.stop(false, false);
+            TestHelpers::processBlocks(engine, 2);
+            return steps;
+        }
+
+        te::Engine& engine;
+        std::unique_ptr<te::Edit> edit;
+        AYChipPlugin* chip = nullptr;
+    };
+
+    /** The level comes back within a fifth of a beat only if the envelope restarted. */
+    static bool restartsIn(const std::vector<Step>& steps, double from, double to) {
+        float peak = 0.0f;
+        for (const auto& s : steps)
+            if (s.beat >= from && s.beat < to)
+                peak = jmax(peak, s.peak);
+        return peak > 0.02f;
+    }
+
+    static String restartsAfterBeats(const std::vector<Step>& steps) {
+        String text;
+        for (int k = 0; k < 5; ++k)
+            text << (restartsIn(steps, k + 0.02, k + 0.2) ? "R" : "-");
+        return text;
+    }
+
+    static String hex(const PsgRegsFrame& regs) {
+        String text;
+        for (size_t reg = 0; reg < PsgRegsFrame::size(); ++reg)
+            text << String::toHexString(int(regs.getRaw(reg))).paddedLeft('0', 2) << (reg == 5 || reg == 10 ? " " : "");
+        return text;
+    }
+
+    /** The registers the tune's file has written by `beat`. */
+    static String registersOf(const PsgData& data, double beat) {
+        PsgRegsFrame regs;
+        for (size_t i = 0; i <= static_cast<size_t>(beat * framesPerBeat); ++i)
+            regs.update(data.frames[i]);
+        return hex(regs);
+    }
+
+    static String registersAt(const std::vector<Step>& steps, double beat) {
+        for (const auto& s : steps) {
+            if (s.beat >= beat)
+                return hex(s.regs);
+        }
+        return "(not reached)";
+    }
+};
+
+static AYChipEnvelopeRestartTests ayChipEnvelopeRestartTests;
+
+//==============================================================================
 class AYChipSoloTests : public juce::UnitTest {
 public:
     AYChipSoloTests() : UnitTest("AYChipSolo", "MoTool") {}

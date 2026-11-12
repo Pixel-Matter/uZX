@@ -418,7 +418,30 @@ double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::Mid
     // DBG("Exporting PSG to MIDI sequence, channel " << getMidiChannel().getChannelNumber() << ", timebase " << (timeBase == te::MidiList::TimeBase::beats ? "beats" : "seconds"));
     PsgParamsMidiWriter writer {getMidiChannel().getChannelNumber()};
     const auto& frames = getFrames();
-    for (int i = 0; i < frames.size(); ++i) {
+
+    // A clip can start part-way through its frames: trimmed at its start, or the later part of a split.
+    // In the time bases counted from the clip's start, the frames before it have no time of their own.
+    // (In raw beats Tracktion takes the offset off and chases the controllers itself.)
+    const auto isBeforeClip = [&](const PsgParamFrame& f) {
+        constexpr double tolerance = 1.0e-6;  // a frame at the start itself plays
+        if (timeBase == te::MidiList::TimeBase::beats)
+            return (f.getEditBeats(clip) - toDuration(clip.getStartBeat())).inBeats() < -tolerance;
+        if (timeBase == te::MidiList::TimeBase::seconds)
+            return (f.getEditTime(clip) - toDuration(clip.getPosition().getStart())).inSeconds() < -tolerance;
+        return false;
+    };
+    int first = 0;
+    while (first < frames.size() && isBeforeClip(*frames[first]))
+        ++first;
+    if (first > 0) {
+        // What those frames left, as values. Playing them all at the clip's start would restart the envelope
+        // there, where the tune does not
+        auto held = frames[first - 1]->getData();
+        held.clear();
+        writer.writeAll(0.0, held);
+    }
+
+    for (int i = first; i < frames.size(); ++i) {
         auto* f = frames[i];
         if (i == 0) {
             // Export the complete accumulated initial state at time 0.

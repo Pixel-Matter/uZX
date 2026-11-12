@@ -163,7 +163,7 @@ public:
 
         beginTest("The MPE chord example starts as a cluster and plays a major seventh from two seconds on");
         {
-            // scripts/make_mpe_fixture.py: C3 and B3 in a clip in MPE mode, E4 with its envelope on and G2
+            // scripts/make_mpe_fixture.py: C3 and G4 in a clip in MPE mode, B3 with its envelope on and E3
             // driving the envelope on channels of their own, each starting bent toward A3 and gliding into tune
             auto edit = te::loadEditFromFile(engine, juce::File(UZX_FIXTURES_DIR).getChildFile("MPE chord.uzx"));
             NotesToPsgPlugin* converter = nullptr;
@@ -199,27 +199,27 @@ public:
             auto periods = tonePeriods();
             expectEquals(periods.size(), 3, "three voices on the chip's channels");
             if (periods.size() == 3) {
-                expect(periods[0] > period(64.0 - 5.0) && periods[0] < period(57.0), "E4 starts over five semitones flat");
+                expect(periods[0] > period(67.0 - 8.0) && periods[0] < period(57.0), "G4 starts over eight semitones flat");
                 expect(periods[1] > period(59.0 - 1.0) && periods[1] < period(57.0), "B3 over one flat");
                 expect(periods[2] < period(48.0 + 7.0) && periods[2] > period(57.0), "C3 over seven sharp");
             }
-            expect(int(chip->getChipRegisters().getEnvelopePeriod()) < period(43.0 + 10.0, TuningSystem::Envelope),
-                   "and the envelope over ten sharp: all four within a few semitones of A3");
+            expect(int(chip->getChipRegisters().getEnvelopePeriod()) < period(52.0 + 3.0, TuningSystem::Envelope),
+                   "and the envelope over three sharp: all four within a few semitones of A3");
 
             TestHelpers::processBlocks(engine, 252);  // past two seconds, inside the four
             periods = tonePeriods();
-            expect(periods == juce::Array<int>{period(64.0), period(59.0),
+            expect(periods == juce::Array<int>{period(67.0), period(59.0),
                                                period(48.0)},
-                   "E4, B3 and C3 in tune");
+                   "G4, B3 and C3 in tune");
             const auto regs = chip->getChipRegisters();
-            expectEquals(int(regs.getEnvelopePeriod()), period(43.0, TuningSystem::Envelope),
-                         "the envelope at G2, on no chip channel of its own");
+            expectEquals(int(regs.getEnvelopePeriod()), period(52.0, TuningSystem::Envelope),
+                         "the envelope at E3, a fifth under the tone it shapes, on no chip channel of its own");
             expectEquals(int(regs.getEnvelopeShape()), 12, "as a sawtooth");
             int shaped = 0;
             for (int n = 0; n < 3; ++n)
                 if (regs.getEnvMod(n)) {
                     ++shaped;
-                    expectEquals(int(regs.getTonePeriod(n)), period(64.0), "E4 is the tone it shapes");
+                    expectEquals(int(regs.getTonePeriod(n)), period(59.0), "B3 is the tone it shapes");
                     expect(regs.getToneOn(n), "with its tone on");
                 }
             expectEquals(shaped, 1, "one tone has its envelope on");

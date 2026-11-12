@@ -4,11 +4,14 @@
 One track with MIDI to PSG and an AY chip, and a wide C major seventh that starts as a cluster and opens
 into tune over two seconds of its four. Each voice starts bent toward A3, by 0.85 of a semitone for every key
 it is away, so the four start within about three semitones of each other, none of them on a note: the lowest
-voice almost twelve semitones sharp, the highest six flat.
+voice almost eight semitones sharp, the highest over eight flat.
 
-- "Tones", a clip in MPE mode: C3 and B3, a bend each. MPE mode gives every note a channel from 2 up.
-- "Envelope tone", on channel 15: E4 with its envelope on, so the chip's envelope shapes its level.
-- "Envelope", on channel 16: G2 with its tone off, driving the envelope as a sawtooth. It takes no chip channel.
+- "Tones", a clip in MPE mode: C3 and G4, a bend each. MPE mode gives every note a channel from 2 up.
+- "Envelope tone", on channel 15: B3 with its envelope on, so the chip's envelope shapes its level.
+- "Envelope", on channel 16: E3 with its tone off, driving the envelope as a sawtooth. It takes no chip channel.
+
+The tone and the envelope that shapes it are a fifth apart, three cycles of B3 to two of the envelope, so
+the shaped tone repeats and sounds as one steady timbre.
 
 A clip in MPE mode holds a bend, a pressure and one timbre value for each note, and no switches, so a voice
 that needs its own switches has a clip and a channel of its own. NotesToPsgPlugin.test.cpp plays the file."""
@@ -71,9 +74,9 @@ def channel_voice(key, controllers):
 def main():
     ids = iter(range(1100, 10000))
     clips = [
-        clip_xml(ids, "Tones", 1, mpe_note(48) + mpe_note(59), mpe=True),
-        clip_xml(ids, "Envelope tone", 15, channel_voice(64, [(82, 127)])),
-        clip_xml(ids, "Envelope", 16, channel_voice(43, [(85, 127), (80, 0), (70, SAWTOOTH)])),
+        clip_xml(ids, "Tones", 1, mpe_note(48) + mpe_note(67), mpe=True),
+        clip_xml(ids, "Envelope tone", 15, channel_voice(59, [(82, 127)])),
+        clip_xml(ids, "Envelope", 16, channel_voice(52, [(85, 127), (80, 0), (70, SAWTOOTH)])),
     ]
     track = f'''  <TRACK id="{next(ids)}" name="MPE chord">
     <MODIFIERS />

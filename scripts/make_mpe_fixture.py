@@ -22,6 +22,7 @@ FIXTURE = ROOT / "tests/fixtures/MPE chord.uzx"
 BEATS = 8.0          # 4 s at 120 BPM
 GLIDE_BEATS = 4.0    # in tune after 2 s
 FRAME_BEATS = 0.04   # a 50 Hz frame
+VELOCITY = 127       # the chip's full volume, 15
 KEY_CENTRE, SEMITONES_PER_KEY = 57, 0.12
 MEMBER_BEND_RANGE = 48.0  # semitones, on channels 2 to 16
 PITCH_WHEEL = 0x1005      # tracktion::MidiControllerEvent::pitchWheelType
@@ -53,14 +54,14 @@ def clip_xml(ids, name, channel, body, mpe=False):
 
 def mpe_note(key):
     points = bend_points(key)
-    lines = [f'        <NOTE p="{key}" b="0.0" l="{BEATS}" v="100" c="0" bend="{points[0][1]}">']
+    lines = [f'        <NOTE p="{key}" b="0.0" l="{BEATS}" v="{VELOCITY}" c="0" bend="{points[0][1]}">']
     lines += [f'          <PITCHBEND b="{beat}" v="{semitones}" />' for beat, semitones in points[1:]]
     return lines + ['        </NOTE>']
 
 
 def channel_voice(key, controllers):
     """A note alone on its channel: its switches as controllers, its bend as the channel's pitch wheel."""
-    lines = [f'        <NOTE p="{key}" b="0.0" l="{BEATS}" v="100" c="0" />']
+    lines = [f'        <NOTE p="{key}" b="0.0" l="{BEATS}" v="{VELOCITY}" c="0" />']
     lines += [f'        <CONTROL b="0.0" type="{number}" val="{value << 7}" />' for number, value in controllers]
     return lines + [f'        <CONTROL b="{beat}" type="{PITCH_WHEEL}" val="{wheel(semitones)}" />'
                     for beat, semitones in bend_points(key)]

@@ -48,7 +48,7 @@
       <QUANTISATION />
       <GROOVE />
       <SEQUENCE ver="1" channelNumber="1">
-        <NOTE p="48" b="0.0" l="8.0" v="100" c="0" bend="-1.08">
+        <NOTE p="48" b="0.0" l="8.0" v="127" c="0" bend="-1.08">
           <PITCHBEND b="0.04" v="-1.0692" />
           <PITCHBEND b="0.08" v="-1.0584" />
           <PITCHBEND b="0.12" v="-1.0476" />
@@ -150,7 +150,7 @@
           <PITCHBEND b="3.96" v="-0.0108" />
           <PITCHBEND b="4.0" v="-0.0" />
         </NOTE>
-        <NOTE p="59" b="0.0" l="8.0" v="100" c="0" bend="0.24">
+        <NOTE p="59" b="0.0" l="8.0" v="127" c="0" bend="0.24">
           <PITCHBEND b="0.04" v="0.2376" />
           <PITCHBEND b="0.08" v="0.2352" />
           <PITCHBEND b="0.12" v="0.2328" />
@@ -259,7 +259,7 @@
       <QUANTISATION />
       <GROOVE />
       <SEQUENCE ver="1" channelNumber="15">
-        <NOTE p="64" b="0.0" l="8.0" v="100" c="0" />
+        <NOTE p="64" b="0.0" l="8.0" v="127" c="0" />
         <CONTROL b="0.0" type="82" val="16256" />
         <CONTROL b="0.0" type="4101" val="8335" />
         <CONTROL b="0.04" type="4101" val="8333" />
@@ -369,7 +369,7 @@
       <QUANTISATION />
       <GROOVE />
       <SEQUENCE ver="1" channelNumber="16">
-        <NOTE p="43" b="0.0" l="8.0" v="100" c="0" />
+        <NOTE p="43" b="0.0" l="8.0" v="127" c="0" />
         <CONTROL b="0.0" type="85" val="16256" />
         <CONTROL b="0.0" type="80" val="0" />
         <CONTROL b="0.0" type="70" val="4608" />

@@ -223,7 +223,34 @@ public:
                     expect(regs.getToneOn(n), "with its tone on");
                 }
             expectEquals(shaped, 1, "one tone has its envelope on");
+            for (int n = 0; n < 3; ++n)
+                expectEquals(int(regs.getVolume(n)), 15, "every voice at the chip's full volume");
             edit->getTransport().stop(false, false);
+
+            // To listen to the example: UZX_RENDER_TO=<file.wav> uZXTests NotesToPsgPluginPlayback
+            if (const juce::File wavFile(juce::SystemStats::getEnvironmentVariable("UZX_RENDER_TO", {}));
+                wavFile != juce::File()) {
+                constexpr int blockSize = 512;
+                const double sampleRate = engine.getDeviceManager().getSampleRate();
+                const int blocks = int(4.4 * sampleRate / blockSize);
+                juce::AudioBuffer<float> all(2, blocks * blockSize), block(2, blockSize);
+                juce::MidiBuffer midi;
+                TestHelpers::processBlocks(engine, 4);  // the stop
+                edit->getTransport().setPosition(te::TimePosition());
+                edit->getTransport().play(false);
+                for (int i = 0; i < blocks; ++i) {
+                    block.clear();
+                    engine.getDeviceManager().getHostedAudioDeviceInterface().processBlock(block, midi);
+                    for (int ch = 0; ch < 2; ++ch)
+                        all.copyFrom(ch, i * blockSize, block, ch, 0, blockSize);
+                }
+                edit->getTransport().stop(false, false);
+                wavFile.deleteFile();
+                juce::WavAudioFormat wav;
+                if (std::unique_ptr<juce::AudioFormatWriter> writer {
+                        wav.createWriterFor(new juce::FileOutputStream(wavFile), sampleRate, 2, 16, {}, 0)})
+                    writer->writeFromAudioSampleBuffer(all, 0, all.getNumSamples());
+            }
         }
 
         beginTest("A chord and its controllers on one MIDI channel reach the chip through the instrument");

@@ -272,9 +272,13 @@ public:
             TestHelpers::processBlocks(engine, 10);
 
             const auto regs = preview.chip->getChipRegisters();
-            const auto chan = static_cast<size_t>(MultitrackMidiPreview::SINGLE_NOTE_CHANNEL);
-            expect(regs.getEnvMod(chan), "the note reached the chip: its envelope is on");
-            expect(!regs.getToneOn(chan), "and its tone is off");
+            expect(regs.getEnvMod(0), "the note reached the chip, on its first free channel: its envelope is on");
+            expect(!regs.getToneOn(0), "and its tone is off");
+            expect(!regs.getEnvMod(1) && !regs.getEnvMod(2), "the envelope's own voice takes no chip channel");
+            expectEquals(int(regs.getEnvelopePeriod()),
+                         preview.NotesToPsgPlugin->getTuningSystem().midiNoteToPeriod(60.0, TuningSystem::Envelope),
+                         "and its pitch is the envelope's");
+            expectEquals(int(regs.getEnvelopeShape()), 8);
             preview.stopPlayback();
             TestHelpers::flushMessageQueue();
         }

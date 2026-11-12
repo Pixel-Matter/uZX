@@ -58,7 +58,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Tuning
 - Fixed: a cancelled preview stays silent, and a newer preview keeps its own playback length and note highlights
 - Fixed: the detected table and key, and the rankings in **Tuning and key…**, follow changes to a clip's length, the tempo or frames per beat, and clips linked as one tune
-- Fixed: changing the tuning while notes play no longer crashes, and moving MIDI to PSG's channel range silences a held note instead of leaving it on
+- Fixed: changing the tuning while notes play no longer crashes, and moving MIDI to PSG's output channels silences a held note instead of leaving it on
 - Fixed: previewing a note with the tone off and the envelope on no longer plays the tone as well
 - MIDI to PSG plays at the clock of the AY chip after it and no longer sets that clock: equal temperament and just intonations stay in tune on any clock, and a tracker table made for another clock shows how far it sounds off
 - Fixed: opening a project or picking a tuning preset no longer resets the AY chip's clock set by hand
@@ -71,11 +71,12 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The About window links to the project on GitHub, credits zxtune, and scrolls its greets after five seconds
 - Fixed: dialogs open at the size they ask for, without an empty strip at the bottom; the About window's spacing is even
 - Release builds no longer list the MIDI Logger debugging device among the devices to add
-- Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together, and passes MIDI on other channels through at its own time instead of later
+- Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together
 - Fixed: deleting the track shown in the Track Devices panel empties the panel instead of leaving its devices on screen
 - Fixed: Clip Parameters no longer reads a deleted clip, and clicking one of its points selects the clip instead of clearing the selection
 - Fixed: an AY chip added in place of another plays the next note after a stop in full, not just its volume; a MIDI panic silences a note held by MIDI to PSG at once, not at the next MIDI event
-- MIDI to PSG reads the tone, noise and envelope switches (controllers 80 to 82), the envelope shape (70) and the noise period (2) as the timbre of the notes on their channel, and controller 83 on its fourth channel as the envelope restart, so an envelope note can start or last without restarting the envelope, and no longer passes other controllers on its four channels to the chip; when the last note played on a channel ends, an older one still held sounds again
+- MIDI to PSG plays notes on every MIDI channel, chords on one channel too, and gives the chip's three channels to the notes with the highest priority: a note's MIDI channel number or controller 86, the newest among equals. A note that lost its place returns when a channel frees, a note keeps its chip channel while it plays, and controller 10 (pan) asks for the chip channel nearest to that place in the chip's layout. Its **MIDI** setting, now **PSG output channels**, is where the chip's controllers go out, and no MIDI passes through it
+- MIDI to PSG reads the tone, noise and envelope switches (controllers 80 to 82), the envelope shape (70) and the noise period (2) as the timbre of the notes on their channel. Controller 85 makes a channel's notes drive the chip's envelope, in place of notes on the fourth channel: such a note can start or last without restarting the envelope, and controller 83 restarts it
 - Fixed: a chip instrument note that starts at level 0, as with a slow attack, is no longer sent as a note off
 - **Envelope: Retrigger** in the PSG parameter editor has a point on every restart of the envelope, not only where the shape repeats, and the envelope's rows mark each restart with a line down the row
 - Fixed: the AY chip restarts the envelope on controller 83 of its fourth channel, or when controller 70 brings another shape, and no longer when the same shape is sent again; a PSG clip that starts part-way through its tune, such as the later part of a split, keeps an envelope note running across its start instead of restarting it, and a seek into a note restarts the envelope only if the chip held another shape

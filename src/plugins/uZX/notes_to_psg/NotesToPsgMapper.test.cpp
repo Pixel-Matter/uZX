@@ -28,75 +28,162 @@ public:
             return params.isSet(param) ? int(params.getRaw(param)) : -1;
         };
 
-        beginTest("A voice gives its channel a volume, a period and its switches; the other channels are silenced");
-        {
+        // The voice on each chip channel as its tone period's key, "." for a silent one: "60 . 64"
+        const auto keys = [&](const PsgParamFrameData& params) {
+            StringArray text;
+            for (int n = 0; n < ChipMixer::numToneChannels; ++n) {
+                String key(".");
+                for (int k = 0; k < 128; ++k)
+                    if (value(params, P::VolumeA + n) > 0 && value(params, P::TonePeriodA + n) == tuning->midiNoteToPeriod(k))
+                        key = String(k);
+                text.add(key);
+            }
+            return text.joinIntoString(" ");
+        };
+        const auto voice = [](int channel, int key, int priority = 0) {
+            return NoteVoice{.channel = channel, .key = key, .pitch = double(key), .level = 1.0f, .priority = priority};
+        };
+        const auto frameOf = [](std::initializer_list<NoteVoice> voices) {
             NoteFrame frame;
-            frame.add({.channel = 2, .key = 60, .pitch = 60.0, .level = 1.0f});
-            const auto params = mixVoices(frame, *tuning, 1);
+            for (const auto& v : voices)
+                frame.add(v);
+            return frame;
+        };
 
-            expectEquals(value(params, P::VolumeB), 15);
-            expectEquals(value(params, P::TonePeriodB), tuning->midiNoteToPeriod(60.0));
-            expectEquals(value(params, P::ToneIsOnB), 1);
-            expectEquals(value(params, P::NoiseIsOnB), 0);
-            expectEquals(value(params, P::EnvelopeIsOnB), 0);
+        beginTest("A voice gives a chip channel a volume, a period and its switches; the other channels are silenced");
+        {
+            ChipMixer mixer;
+            const auto params = mixer.mix(frameOf({voice(7, 60)}), *tuning);
 
-            expectEquals(value(params, P::VolumeA), 0);
+            expectEquals(value(params, P::VolumeA), 15, "whatever its MIDI channel");
+            expectEquals(value(params, P::TonePeriodA), tuning->midiNoteToPeriod(60.0));
+            expectEquals(value(params, P::ToneIsOnA), 1);
+            expectEquals(value(params, P::NoiseIsOnA), 0);
             expectEquals(value(params, P::EnvelopeIsOnA), 0);
-            expect(!params.isSet(P::ToneIsOnA) && !params.isSet(P::TonePeriodA), "a silent channel keeps the rest");
-            expect(!params.isSet(P::EnvelopePeriod) && !params.isSet(P::EnvelopeShape), "no envelope voice");
+
+            expectEquals(value(params, P::VolumeB), 0);
+            expectEquals(value(params, P::EnvelopeIsOnB), 0);
+            expect(!params.isSet(P::ToneIsOnB) && !params.isSet(P::TonePeriodB), "a silent channel keeps the rest");
+            expect(!params.isSet(P::EnvelopePeriod) && !params.isSet(P::EnvelopeShape), "nothing drives the envelope");
+            expect(!params.isSet(P::NoisePeriod), "and no voice has the noise on");
         }
 
         beginTest("A voice's pitch, not its key, sets the period");
         {
+            ChipMixer mixer;
             NoteFrame frame;
             frame.add({.channel = 1, .key = 60, .pitch = 61.5, .level = 0.5f});
-            expectEquals(value(mixVoices(frame, *tuning, 1), P::TonePeriodA), tuning->midiNoteToPeriod(61.5));
+            const auto params = mixer.mix(frame, *tuning);
+            expectEquals(value(params, P::TonePeriodA), tuning->midiNoteToPeriod(61.5));
+            expectEquals(value(params, P::VolumeA), 8);
         }
 
         beginTest("Timbre becomes the switches");
         {
+            ChipMixer mixer;
             NoteFrame frame;
             frame.add({.channel = 1,
                        .key = 60,
                        .pitch = 60.0,
                        .level = 1.0f,
-                       .timbre = {.tone = false, .noise = true, .envelope = true}});
-            const auto params = mixVoices(frame, *tuning, 1);
+                       .timbre = {.tone = false, .noise = true, .envelope = true, .noisePeriod = 7}});
+            const auto params = mixer.mix(frame, *tuning);
             expectEquals(value(params, P::ToneIsOnA), 0);
             expectEquals(value(params, P::NoiseIsOnA), 1);
             expectEquals(value(params, P::EnvelopeIsOnA), 1);
-        }
-
-        beginTest("The last voice to start on a channel takes it");
-        {
-            NoteFrame frame;
-            frame.add({.channel = 1, .key = 60, .pitch = 60.0, .level = 1.0f});
-            frame.add({.channel = 1, .key = 64, .pitch = 64.0, .level = 0.6f});
-            const auto params = mixVoices(frame, *tuning, 1);
-            expectEquals(value(params, P::TonePeriodA), tuning->midiNoteToPeriod(64.0));
-            expectEquals(value(params, P::VolumeA), 9);
-        }
-
-        beginTest("The voice on the fourth channel plays the envelope, and restarts it only when asked");
-        {
-            NoteFrame frame;
-            frame.add({.channel = 8,
-                       .key = 36,
-                       .pitch = 36.0,
-                       .level = 1.0f,
-                       .attack = true,
-                       .timbre = {.envelopeShape = 10, .noisePeriod = 7}});
-            auto params = mixVoices(frame, *tuning, 5);
-            expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(36.0, TuningSystem::Envelope));
             expectEquals(value(params, P::NoisePeriod), 7);
-            expectEquals(value(params, P::VolumeA), 0, "it has no channel of its own");
+        }
+
+        beginTest("Three voices play; of more, the higher priority, then the later in the frame");
+        {
+            expectEquals(keys(ChipMixer().mix(frameOf({voice(1, 60), voice(1, 62), voice(1, 64)}), *tuning)),
+                         String("64 62 60"), "a chord on one MIDI channel, the best voice on the first chip channel");
+            expectEquals(keys(ChipMixer().mix(frameOf({voice(1, 60), voice(1, 62), voice(1, 64), voice(1, 65)}), *tuning)),
+                         String("65 64 62"), "the earliest of four equals waits");
+            expectEquals(
+                keys(ChipMixer().mix(frameOf({voice(1, 60, 9), voice(1, 62), voice(1, 64), voice(1, 65)}), *tuning)),
+                String("60 65 64"), "unless its priority is higher");
+        }
+
+        beginTest("A voice keeps its chip channel while it plays, and one that waited plays when a channel frees");
+        {
+            ChipMixer mixer;
+            expectEquals(keys(mixer.mix(frameOf({voice(1, 60)}), *tuning)), String("60 . ."));
+            expectEquals(keys(mixer.mix(frameOf({voice(1, 60), voice(2, 62)}), *tuning)), String("60 62 ."),
+                         "a better voice arrives and the first stays where it is");
+            expectEquals(keys(mixer.mix(frameOf({voice(2, 62)}), *tuning)), String(". 62 ."));
+            expectEquals(keys(mixer.mix(frameOf({voice(2, 62), voice(3, 64), voice(4, 65), voice(5, 67)}), *tuning)),
+                         String("67 65 64"), "the voice that had a channel loses it to three better ones");
+            expectEquals(keys(mixer.mix(frameOf({voice(2, 62), voice(3, 64), voice(4, 65)}), *tuning)),
+                         String("62 65 64"), "and comes back on the one that frees");
+        }
+
+        beginTest("A panned voice takes the chip channel that sounds nearest, the better voice first");
+        {
+            ChipMixer mixer;  // A left, B centre, C right
+            const auto panned = [&](int channel, int key, float pan, int priority = 0) {
+                auto v = voice(channel, key, priority);
+                v.pan = pan;
+                return v;
+            };
+            expectEquals(keys(mixer.mix(frameOf({panned(1, 60, 1.0f)}), *tuning)), String(". . 60"));
+            expectEquals(keys(mixer.mix(frameOf({panned(1, 60, 1.0f), voice(1, 62), panned(1, 64, 0.4f)}), *tuning)),
+                         String("62 64 60"), "one without a pan takes what is left");
+            expectEquals(keys(mixer.mix(frameOf({panned(1, 60, 1.0f), panned(1, 65, 0.9f, 5)}), *tuning)),
+                         String("60 . 65"), "a better voice asks for the same place, and the other moves");
+
+            mixer.setChannelPans({0.0, 1.0, 0.5});  // the chip's ACB layout
+            expectEquals(keys(ChipMixer(mixer).mix(frameOf({panned(1, 60, 1.0f)}), *tuning)), String(". 60 ."));
+        }
+
+        beginTest("A voice whose pitch drives the envelope sets its period and shape, and restarts it only when asked");
+        {
+            ChipMixer mixer;
+            auto driver = voice(8, 36);
+            driver.attack = true;
+            driver.timbre = {.tone = false, .drivesEnvelope = true, .envelopeShape = 10, .noisePeriod = 7};
+            auto params = mixer.mix(frameOf({driver}), *tuning);
+            expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(36.0, TuningSystem::Envelope));
             expectEquals(value(params, P::EnvelopeShape), 10, "the shape is a value to hold");
             expect(!params.isSet(P::RetriggerEnvelope), "a note starting lets the envelope run");
+            expectEquals(value(params, P::VolumeA), 0, "with nothing to sound it takes no channel");
+            expect(!params.isSet(P::NoisePeriod), "the noise period is not its to set");
 
-            frame.begin()->attack = false;
-            frame.begin()->restartEnvelope = true;
-            expectEquals(value(mixVoices(frame, *tuning, 5), P::RetriggerEnvelope), 1,
+            driver.attack = false;
+            driver.restartEnvelope = true;
+            expectEquals(value(mixer.mix(frameOf({driver}), *tuning), P::RetriggerEnvelope), 1,
                          "a restart, inside a lasting note too");
+
+            driver.timbre.envelope = true;
+            params = mixer.mix(frameOf({driver}), *tuning);
+            expectEquals(value(params, P::EnvelopeIsOnA), 1, "a buzzer: one voice is the envelope and its channel");
+            expectEquals(value(params, P::ToneIsOnA), 0);
+        }
+
+        beginTest("Of two voices that drive the envelope the better one does, with or without a channel");
+        {
+            ChipMixer mixer;
+            auto low = voice(2, 36, 2);
+            low.timbre = {.drivesEnvelope = true, .envelopeShape = 8};
+            auto high = voice(9, 43, 9);
+            high.timbre = {.tone = false, .drivesEnvelope = true, .envelopeShape = 12};
+            const auto params = mixer.mix(frameOf({high, low, voice(3, 60, 3), voice(4, 62, 4), voice(5, 64, 5)}), *tuning);
+            expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(43.0, TuningSystem::Envelope));
+            expectEquals(value(params, P::EnvelopeShape), 12);
+            expectEquals(keys(params), String("64 62 60"), "the other one found no channel either");
+        }
+
+        beginTest("The noise period comes from the best voice with the noise on that got a channel");
+        {
+            ChipMixer mixer;
+            auto waiting = voice(1, 60, 1);
+            waiting.timbre = {.noise = true, .noisePeriod = 3};
+            auto quiet = voice(1, 62, 5);
+            quiet.timbre = {.noise = true, .noisePeriod = 9};
+            auto loud = voice(1, 64, 6);
+            loud.timbre = {.noise = true, .noisePeriod = 20};
+            expectEquals(value(mixer.mix(frameOf({waiting, quiet, loud, voice(1, 65, 7), voice(1, 67, 8)}), *tuning),
+                               P::NoisePeriod), 20);
         }
     }
 };
@@ -183,19 +270,25 @@ public:
             expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(62.0 + notePitchBendRange));
         }
 
-        beginTest("The last note played on a channel sounds, and an older held one returns when it ends");
+        beginTest("Notes on one MIDI channel play together; a fourth takes the oldest one's place and gives it back");
         {
             NotesToPsgMapper mapper;
             mapper.setTuningSystem(createTestTuning());
+            auto& tuning = mapper.getTuningSystem();
             play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100)});
 
             auto messages = play(mapper, {MidiMessage::noteOn(1, 64, (uint8) 100)});
-            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(64.0));
-            expectEquals(valuesOf(messages, 1, MidiCCType::GPB1ToneSwitch), String(), "the tone is on already");
+            expectEquals(periodOf(messages, 2), tuning.midiNoteToPeriod(64.0), "on the next chip channel");
+            expectEquals(valuesOf(messages, 2, MidiCCType::Volume), String("12"));
+            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String(), "the first note plays on");
 
-            messages = play(mapper, {MidiMessage::noteOff(1, 64)});
-            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(60.0));
-            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String(), "at the same level");
+            play(mapper, {MidiMessage::noteOn(1, 67, (uint8) 100)});
+            messages = play(mapper, {MidiMessage::noteOn(1, 72, (uint8) 100)});
+            expectEquals(messages.size(), 2, "the period of the first chip channel alone");
+            expectEquals(periodOf(messages, 1), tuning.midiNoteToPeriod(72.0));
+
+            messages = play(mapper, {MidiMessage::noteOff(1, 72)});
+            expectEquals(periodOf(messages, 1), tuning.midiNoteToPeriod(60.0), "the held note returns");
         }
 
         beginTest("Timbre controllers set the note's switches and are not passed on");
@@ -215,56 +308,68 @@ public:
             expectEquals(valuesOf(messages, 1, MidiCCType::GPB3EnvSwitch), String("1"));
         }
 
-        beginTest("A note on the fourth channel plays the envelope; controller 83 or another shape restarts it");
+        beginTest("A note told to drive the envelope sets its pitch; controller 83 or another shape restarts it");
         {
             NotesToPsgMapper mapper;
             mapper.setTuningSystem(createTestTuning());
             auto& tuning = mapper.getTuningSystem();
-            auto messages =
-                play(mapper, {MidiMessage::controllerEvent(4, 70, 10), MidiMessage::noteOn(4, 36, (uint8) 100)});
+            // On MIDI channel 9: controller 85 makes its notes drive the envelope, and with the tone off they
+            // take no chip channel. The envelope's PSG goes out on the fourth channel from the base
+            auto messages = play(mapper,
+                                 {MidiMessage::controllerEvent(9, 85, 127),
+                                  MidiMessage::controllerEvent(9, 80, 0),
+                                  MidiMessage::controllerEvent(9, 70, 10),
+                                  MidiMessage::noteOn(9, 36, (uint8) 100)});
             expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(36.0, TuningSystem::Envelope));
             expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"), "another shape is written");
             expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1 0"));
+            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("0"), "no chip channel sounds");
 
-            messages = play(mapper, {MidiMessage::noteOff(4, 36), MidiMessage::noteOn(4, 38, (uint8) 100)});
+            messages = play(mapper, {MidiMessage::noteOff(9, 36), MidiMessage::noteOn(9, 38, (uint8) 100)});
             expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(38.0, TuningSystem::Envelope));
             expectEquals(messages.size(), 2, "another note moves the envelope's pitch and lets it run");
 
-            messages = play(mapper, {MidiMessage::controllerEvent(4, 83, 127)});
+            messages = play(mapper, {MidiMessage::controllerEvent(9, 83, 127)});
             expectEquals(messages.size(), 2, "a restart inside the lasting note, and nothing else");
             expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1 0"));
 
-            messages = play(mapper, {MidiMessage::controllerEvent(4, 83, 0), MidiMessage::controllerEvent(4, 70, 10)});
+            messages = play(mapper, {MidiMessage::controllerEvent(9, 83, 0), MidiMessage::controllerEvent(9, 70, 10)});
             expectEquals(messages.size(), 0, "the release and the same shape again do nothing");
         }
 
-        beginTest("Other channels pass through and are not played");
+        beginTest("Notes on any MIDI channel play, the higher channel first, and the PSG goes out from the base channel");
         {
             NotesToPsgMapper mapper;
             mapper.setBaseChannel(2);
             mapper.setTuningSystem(createTestTuning());
+            auto& tuning = mapper.getTuningSystem();
 
             auto messages =
-                play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100), MidiMessage::noteOn(6, 60, (uint8) 100)});
-            expectEquals(messages.size(), 2);
-            expect(messages[0].isNoteOn() && messages[1].isNoteOn(), "channels 1 and 6 are outside 2 to 5");
+                play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100), MidiMessage::noteOn(16, 64, (uint8) 100)});
+            expectEquals(periodOf(messages, 2), tuning.midiNoteToPeriod(64.0), "the first chip channel is on channel 2");
+            expectEquals(periodOf(messages, 3), tuning.midiNoteToPeriod(60.0));
+            for (const auto& m : messages)
+                expect(m.isController(), "no note goes on to the chip");
 
-            messages = play(mapper, {MidiMessage::noteOn(2, 60, (uint8) 100)});
-            expectEquals(
-                valuesOf(messages, 2, MidiCCType::Volume), String("12"), "channel 2 is the first chip channel");
+            messages = play(mapper, {MidiMessage::controllerEvent(1, 86, 100), MidiMessage::noteOn(14, 67, (uint8) 100),
+                                     MidiMessage::noteOn(15, 69, (uint8) 100)});
+            expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(69.0), "channel 15 takes the last chip channel");
+            expectEquals(messages.size(), 5, "its volume, period and two switches, so channel 14 waits");
+            expectEquals(valuesOf(messages, 3, MidiCCType::CC20PeriodCoarse), String(),
+                         "and channel 1 plays on, at the priority controller 86 gave it");
         }
 
-        beginTest("A block's output keeps each message's time, passed-through ones too");
+        beginTest("A block's output keeps each message's time; what has no channel passes through");
         {
             NotesToPsgMapper mapper;
             mapper.setTuningSystem(createTestTuning());
             auto messages = play(mapper,
                                  {MidiMessage::noteOn(1, 60, (uint8) 100).withTimeStamp(0.1),
-                                  MidiMessage::noteOn(9, 60, (uint8) 100).withTimeStamp(0.25),
+                                  MidiMessage::createSysExMessage("uZX", 3).withTimeStamp(0.25),
                                   MidiMessage::noteOff(1, 60).withTimeStamp(0.5)});
             int checked = 0;
             for (const auto& m : messages) {
-                if (m.getChannel() == 9) {
+                if (m.isSysEx()) {
                     expectWithinAbsoluteError(m.getTimeStamp(), 0.25, 1e-9, "passed through at its own time");
                     ++checked;
                 } else if (m.getChannel() == 1 && m.isController()

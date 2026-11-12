@@ -57,17 +57,44 @@ public:
             decoder.decode(MidiMessage::controllerEvent(1, 82, 1));
             decoder.decode(MidiMessage::controllerEvent(1, 70, 12));
             decoder.decode(MidiMessage::controllerEvent(1, 2, 5));
+            decoder.decode(MidiMessage::controllerEvent(1, 85, 127));
 
             const auto frame = decoder.takeFrame();
             const auto& first = frame.begin()[0].timbre;
-            expect(!first.tone && first.noise && first.envelope);
+            expect(!first.tone && first.noise && first.envelope && first.drivesEnvelope);
             expectEquals(first.envelopeShape, 12);
             expectEquals(first.noisePeriod, 5);
             const auto& second = frame.begin()[1].timbre;
-            expect(second.tone && !second.noise && !second.envelope, "another channel keeps the default timbre");
+            expect(second.tone && !second.noise && !second.envelope && !second.drivesEnvelope,
+                   "another channel keeps the default timbre");
 
             expect(!decoder.decode(MidiMessage::controllerEvent(1, 64, 127)),
                    "the sustain pedal is no part of the stream");
+        }
+
+        beginTest("A voice's priority is its channel's number until controller 86 sets one");
+        {
+            NoteDecoder decoder;
+            decoder.decode(MidiMessage::noteOn(3, 60, (uint8) 127));
+            decoder.decode(MidiMessage::noteOn(9, 60, (uint8) 127));
+            expectEquals(decoder.takeFrame().begin()[0].priority, 3);
+            expectEquals(decoder.takeFrame().begin()[1].priority, 9);
+
+            decoder.decode(MidiMessage::controllerEvent(3, 86, 100));
+            expectEquals(decoder.takeFrame().begin()[0].priority, 100, "of a sounding voice too");
+            decoder.decode(MidiMessage::controllerEvent(3, 86, 0));
+            expectEquals(decoder.takeFrame().begin()[0].priority, 0);
+        }
+
+        beginTest("A voice asks for no place until controller 10 pans its channel");
+        {
+            NoteDecoder decoder;
+            decoder.decode(MidiMessage::noteOn(3, 60, (uint8) 127));
+            expect(!decoder.takeFrame().begin()->pan.has_value());
+            decoder.decode(MidiMessage::controllerEvent(3, 10, 127));
+            expectEquals(decoder.takeFrame().begin()->pan.value_or(-1.0f), 1.0f);
+            decoder.decode(MidiMessage::controllerEvent(3, 10, 0));
+            expectEquals(decoder.takeFrame().begin()->pan.value_or(-1.0f), 0.0f);
         }
 
         beginTest("The envelope restarts on its controller or another shape, not on a note");

@@ -75,7 +75,7 @@ void MultitrackMidiPreview::setupChannelClips() {
         if (auto* midiClip = dynamic_cast<tracktion::MidiClip*>(trackClips[trackClips.size() - 1])) {
             channelClips[i] = midiClip;
 
-            // Set MIDI channel for each clip (PSG uses channels 1-4)
+            // A MIDI channel each, so each clip's notes have their own timbre controllers
             int midiChannel = static_cast<int>(i + 1);
             midiClip->setMidiChannel(tracktion::MidiChannel(midiChannel));
             // DBG("Setting MIDI channel " << midiChannel << " for channel " << i);
@@ -131,6 +131,11 @@ void MultitrackMidiPreview::placeNote(int channelIndex, int midiNote, double not
         sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime + noteLength),
         static_cast<int>(MidiCCType::GPB3EnvSwitch), 0, nullptr);
 
+        // The envelope's own voice: its pitch drives the envelope, and with the tone off it takes no chip channel
+        envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
+                                        static_cast<int>(uZX::NoteCC::EnvelopeDriver), 127 << 7, nullptr);
+        envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
+                                        static_cast<int>(uZX::NoteCC::Tone), 0, nullptr);
         // The shape is a value; the restart is what starts the envelope again with each previewed note
         envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
                                         static_cast<int>(MidiCCType::SoundVariation), envelopeShape << 7, nullptr);
@@ -184,8 +189,8 @@ void MultitrackMidiPreview::playChord(const std::vector<int>& midiNotes, double 
     stopPlayback();
     clearAllChannelClips();
 
-    // Distribute notes across channels (max 3 notes for chord, channel 3 reserved for envelope)
-    size_t noteCount = std::min(midiNotes.size(), static_cast<size_t>(NUM_CHANNELS - 1)); // Reserve channel 3 for envelope
+    // A clip for each note of the chord, up to the chip's three channels; the last clip is the envelope's
+    size_t noteCount = std::min(midiNotes.size(), static_cast<size_t>(NUM_CHANNELS - 1));
 
     for (size_t i = 0; i < noteCount; ++i) {
         bool envelopeForThisNote = enableEnvelope && (i == 0); // Only first note gets envelope

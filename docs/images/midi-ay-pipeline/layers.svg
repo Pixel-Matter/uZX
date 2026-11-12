@@ -83,7 +83,7 @@ rect { stroke-width: 0.75; }
 
 <g class="teal"><rect x="140" y="256" width="110" height="56" rx="8"/><text class="t m" x="195" y="274">Voices</text><text class="s m" x="195" y="292">ADSR, quantize</text></g>
 <g class="teal"><rect class="todo" x="270" y="256" width="110" height="56" rx="8"/><text class="t m" x="325" y="274">Effects</text><text class="s m" x="325" y="292">vibrato, echo</text></g>
-<g class="teal"><rect x="400" y="256" width="110" height="56" rx="8"/><text class="t m" x="455" y="274">mixVoices</text><text class="s m" x="455" y="292">allocate, tune</text></g>
+<g class="teal"><rect x="400" y="256" width="110" height="56" rx="8"/><text class="t m" x="455" y="274">ChipMixer</text><text class="s m" x="455" y="292">allocate, tune</text></g>
 <g class="teal"><rect x="530" y="256" width="110" height="56" rx="8"/><text class="t m" x="585" y="274">AY emulation</text><text class="s m" x="585" y="292">makes audio</text></g>
 
 <g class="gray"><rect x="140" y="342" width="313" height="28" rx="4"/><text class="s m" x="296" y="356">Note domain: NoteFrame, voices per frame</text></g>

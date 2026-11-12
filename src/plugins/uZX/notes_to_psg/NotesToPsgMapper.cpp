@@ -1,37 +1,68 @@
 #include "NotesToPsgMapper.h"
 
-#include <array>
+#include <algorithm>
+#include <cmath>
+#include <utility>
 
 #include "../../../models/tuning/TuningRegistry.h"
 
 namespace MoTool::uZX {
 
 //==============================================================================
-namespace {
-
-constexpr int numToneChannels = 3;
-
-/** Which voice plays each of the chip's channels and generators in a frame; none where it is null. */
-struct ChipVoices
-{
-    std::array<const NoteVoice*, numToneChannels> channels{};
-    const NoteVoice* envelope = nullptr;  // its pitch is the envelope's period; it carries the shape and the restart
-    const NoteVoice* noise = nullptr;     // it carries the noise period
-};
-
-ChipVoices allocate(const NoteFrame& frame, int baseChannel) {
-    std::array<const NoteVoice*, PsgCC::numChannels> onChannel{};
+ChipMixer::Voices ChipMixer::allocate(const NoteFrame& frame) noexcept {
+    // Best first: the higher priority, then the later voice in the frame
+    std::array<const NoteVoice*, NoteFrame::maxVoices> best{};
+    size_t count = 0;
     for (const auto& voice : frame)
-        if (const auto n = voice.channel - baseChannel; isPositiveAndBelow(n, PsgCC::numChannels))
-            onChannel[static_cast<size_t>(n)] = &voice;
+        best[count++] = &voice;
+    std::sort(best.begin(), best.begin() + count, [](const NoteVoice* a, const NoteVoice* b) {
+        return a->priority != b->priority ? a->priority > b->priority : a > b;
+    });
 
-    return {.channels = {onChannel[0], onChannel[1], onChannel[2]},
-            .envelope = onChannel[numToneChannels],
-            .noise = onChannel[numToneChannels]};
+    Voices voices;
+    std::array<const NoteVoice*, numToneChannels> playing{};  // those that get a channel, best first
+    size_t numPlaying = 0;
+    for (size_t i = 0; i < count; ++i) {
+        const auto* voice = best[i];
+        const auto& timbre = voice->timbre;
+        if (voices.envelope == nullptr && timbre.drivesEnvelope)
+            voices.envelope = voice;
+        if (numPlaying == numToneChannels || !(timbre.tone || timbre.noise || timbre.envelope))
+            continue;
+        playing[numPlaying++] = voice;
+        if (voices.noise == nullptr && timbre.noise)
+            voices.noise = voice;
+    }
+
+    const auto idOf = [](const NoteVoice& voice) { return VoiceId{voice.channel, voice.key}; };
+    const auto place = [&](size_t i, size_t n) {
+        if (playing[i] != nullptr && voices.channels[n] == nullptr)
+            voices.channels[n] = std::exchange(playing[i], nullptr);
+    };
+    // Where it asks to sound
+    for (size_t i = 0; i < numPlaying; ++i)
+        if (const auto pan = playing[i]->pan) {
+            const auto nearest = std::min_element(pans_.begin(), pans_.end(), [&](double a, double b) {
+                return std::abs(a - double(*pan)) < std::abs(b - double(*pan));
+            });
+            place(i, static_cast<size_t>(nearest - pans_.begin()));
+        }
+    // The channel it had
+    for (size_t i = 0; i < numPlaying; ++i)
+        for (size_t n = 0; n < numToneChannels; ++n)
+            if (playing[i] != nullptr && held_[n] == idOf(*playing[i]))
+                place(i, n);
+    // The lowest free one
+    for (size_t i = 0; i < numPlaying; ++i)
+        for (size_t n = 0; n < numToneChannels; ++n)
+            place(i, n);
+
+    for (size_t n = 0; n < numToneChannels; ++n)
+        held_[n] = voices.channels[n] != nullptr ? idOf(*voices.channels[n]) : VoiceId{};
+    return voices;
 }
 
-/** The chip's parameters for the voices it plays: pitch to periods, timbre to switches. */
-PsgParamFrameData render(const ChipVoices& voices, const TuningSystem& tuning) {
+PsgParamFrameData ChipMixer::render(const Voices& voices, const TuningSystem& tuning) noexcept {
     PsgParamFrameData params;
     const auto set = [&](PsgParamType param, int value) { params.set(param, static_cast<uint16_t>(value)); };
     // A note the tuning has no period for leaves the period as it is
@@ -65,10 +96,8 @@ PsgParamFrameData render(const ChipVoices& voices, const TuningSystem& tuning) {
     return params;
 }
 
-}  // namespace
-
-PsgParamFrameData mixVoices(const NoteFrame& frame, const TuningSystem& tuning, int baseChannel) {
-    return render(allocate(frame, baseChannel), tuning);
+PsgParamFrameData ChipMixer::mix(const NoteFrame& frame, const TuningSystem& tuning) noexcept {
+    return render(allocate(frame), tuning);
 }
 
 //==============================================================================
@@ -90,6 +119,11 @@ void NotesToPsgMapper::setTuningSystem(std::shared_ptr<TuningSystem> tuning) {
     // `tuning` is the old one now, freed here without keeping the audio thread waiting
 }
 
+void NotesToPsgMapper::setChannelPans(const std::array<double, ChipMixer::numToneChannels>& pans) {
+    const ScopedLock sl(lock_);
+    mixer_.setChannelPans(pans);
+}
+
 void NotesToPsgMapper::setBaseChannel(int channel) {
     const ScopedLock sl(lock_);
     reset();  // while the chip that heard the notes is still on these channels
@@ -100,16 +134,12 @@ void NotesToPsgMapper::reset() {
     const ScopedLock sl(lock_);
     decoder_.reset();
     if (encoder_.hasSent())
-        render(pending_, 0.0);  // no voices: what silences the chip
+        render(pending_, 0.0);  // no voices: what silences the chip, and the mixer forgets who played where
     encoder_.reset();
 }
 
-bool NotesToPsgMapper::isChannelInRange(int channel) const {
-    return isPositiveAndBelow(channel - baseChannel_, PsgCC::numChannels);
-}
-
 void NotesToPsgMapper::render(tracktion::MidiMessageArray& out, double time) {
-    encoder_.encode(mixVoices(decoder_.takeFrame(), *tuningSystem_, baseChannel_), out, time, baseChannel_);
+    encoder_.encode(mixer_.mix(decoder_.takeFrame(), *tuningSystem_), out, time, baseChannel_);
 }
 
 void NotesToPsgMapper::operator()(MidiBufferContext& c) {
@@ -131,8 +161,8 @@ void NotesToPsgMapper::operator()(MidiBufferContext& c) {
                 render(out, time);
             time = m.getTimeStamp();
         }
-        if (isChannelInRange(m.getChannel()))
-            changed = decoder_.decode(m) || changed;
+        if (m.getChannel() > 0)
+            changed = decoder_.decode(m) || changed;  // read or not, it goes no further
         else
             out.add(m);
     }

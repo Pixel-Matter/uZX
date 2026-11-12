@@ -21,6 +21,12 @@ static double clockOf(const ValueTree& chip) {
     return static_cast<double>(chip.getProperty(IDs::clock, AYChipPlugin::defaultClockMhz)) * MHz;
 }
 
+// ponytail: the layout as stored; an automated layout is not followed until something needs it
+static std::array<double, 3> channelPansOf(const ValueTree& chip) {
+    return channelPans(chip.hasProperty(IDs::layout) ? VariantConverter<ChannelsLayout>::fromVar(chip[IDs::layout])
+                                                     : ChannelsLayout(AYChipPlugin::defaultLayout));
+}
+
 void NotesToPsgPlugin::ChipWatcher::watch(ValueTree newList) {
     list.removeListener(this);
     list = std::move(newList);
@@ -28,7 +34,7 @@ void NotesToPsgPlugin::ChipWatcher::watch(ValueTree newList) {
 }
 
 void NotesToPsgPlugin::ChipWatcher::valueTreePropertyChanged(ValueTree&, const Identifier& id) {
-    if (id == IDs::clock)
+    if (id == IDs::clock || id == IDs::layout)
         plugin.followChip();
 }
 
@@ -58,6 +64,7 @@ NotesToPsgPlugin::NotesToPsgPlugin(te::PluginCreationInfo info)
     chipWatcher.watch(state.getParent());
 
     midiEffect.setBaseChannel(static_cast<int>(staticParams.baseMidiChannel.getStoredValue()));
+    midiEffect.setChannelPans(channelPansOf(findChipAfter(state)));
 }
 
 NotesToPsgPlugin::~NotesToPsgPlugin() {
@@ -101,7 +108,9 @@ void NotesToPsgPlugin::valueTreeParentChanged(ValueTree& v) {
 }
 
 void NotesToPsgPlugin::followChip() {
-    const auto clock = clockOf(findChipAfter(state));
+    const auto chip = findChipAfter(state);
+    midiEffect.setChannelPans(channelPansOf(chip));
+    const auto clock = clockOf(chip);
     if (exactlyEqual(clock, chipClock_))
         return;
     chipClock_ = clock;

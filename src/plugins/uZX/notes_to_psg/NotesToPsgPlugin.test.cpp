@@ -140,6 +140,25 @@ public:
             TestHelpers::processBlocks(engine, 4);
             expectEquals(int(rig.chip->getChipRegisters().getVolume(0)), 0, "channel A's volume after the move");
         }
+
+        beginTest("A note panned right plays on the chip channel that the chip's layout puts on the right");
+        {
+            const auto volumes = [](Rig& rig) {
+                const auto regs = rig.chip->getChipRegisters();
+                return juce::String(regs.getVolume(0) > 0 ? "A" : "") + (regs.getVolume(1) > 0 ? "B" : "")
+                       + (regs.getVolume(2) > 0 ? "C" : "");
+            };
+            Rig acb(engine);
+            acb.clip->getSequence().addControllerEvent(te::BeatPosition(), 10, 127 << 7, nullptr);
+            acb.play();
+            expectEquals(volumes(acb), juce::String("B"), "the chip's own layout, ACB");
+
+            Rig abc(engine);
+            abc.clip->getSequence().addControllerEvent(te::BeatPosition(), 10, 127 << 7, nullptr);
+            abc.chip->dynamicParams.layout.setStoredValue(ChannelsLayout::ABC);
+            abc.play();
+            expectEquals(volumes(abc), juce::String("C"), "after the chip is set to ABC");
+        }
     }
 
 private:
@@ -150,7 +169,7 @@ private:
         explicit Rig(te::Engine& e) : engine(e), edit(te::Edit::createSingleTrackEdit(e)) {
             track = te::getAudioTracks(*edit)[0];
             const te::TimeRange range {te::TimePosition(), te::TimePosition::fromSeconds(4.0)};
-            auto* clip = dynamic_cast<te::MidiClip*>(track->insertNewClip(te::TrackItem::Type::midi, "note", range, nullptr));
+            clip = dynamic_cast<te::MidiClip*>(track->insertNewClip(te::TrackItem::Type::midi, "note", range, nullptr));
             clip->getSequence().addNote(note, te::BeatPosition(), te::BeatDuration::fromBeats(8.0), 100, 0, nullptr);
 
             auto plugin = edit->getPluginCache().createNewPlugin(NotesToPsgPlugin::xmlTypeName, {});
@@ -178,6 +197,7 @@ private:
         te::Engine& engine;
         std::unique_ptr<te::Edit> edit;
         te::AudioTrack* track = nullptr;
+        te::MidiClip* clip = nullptr;
         NotesToPsgPlugin::Ptr converter;
         juce::ReferenceCountedObjectPtr<AYChipPlugin> chip;
     };

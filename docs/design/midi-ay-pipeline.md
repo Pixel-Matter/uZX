@@ -1,6 +1,6 @@
 # MIDI to AY pipeline
 
-> **Status: target design, partly implemented.** Both values with their encoders and decoders, and the chip mixer without voice allocation, are in the code; [What exists today](#what-exists-today) lists each stage and its gap. A voice's priority, voice allocation, the envelope voice as a timbre field, MPE output from the instrument and chip effects are not. The hardware setups in [Where the stages run](#where-the-stages-run) are a goal with nothing built.
+> **Status: target design, partly implemented.** Both values with their encoders and decoders, and the chip mixer with voice allocation, are in the code; [What exists today](#what-exists-today) lists each stage and its gap. MPE output from the instrument, timbre and priority set by the instrument, and chip effects are not. The hardware setups in [Where the stages run](#where-the-stages-run) are a goal with nothing built.
 
 How notes played on a keyboard or written in a clip become AY register writes. Code: `src/plugins/uZX/instrument/`, `src/plugins/uZX/midi_effects/`, `src/plugins/uZX/notes_to_psg/`, `src/plugins/uZX/aychip/`, `src/models/PsgCC.*`.
 
@@ -48,7 +48,7 @@ Each domain has one value and one codec:
 
 | Domain | Value | Codec | State |
 | --- | --- | --- | --- |
-| Note | `NoteFrame`: the voices sounding in one frame. A voice has a channel, a pitch in fractional semitones, a level, a priority, and timbre fields (tone, noise and envelope mix, noise pitch, envelope shape) | Note codec: one voice per MIDI channel, MPE | In the shared decoder and encoder |
+| Note | `NoteFrame`: the voices sounding in one frame. A voice has a channel, a pitch in fractional semitones, a level, a priority, an optional pan, and timbre fields (tone, noise and envelope on, whether its pitch drives the envelope, envelope shape, noise period) | Note codec: one voice per MIDI channel, MPE | In the shared decoder and encoder |
 | PSG | `PsgPatch`: the PSG parameters set in one frame. The envelope shape is a value to hold, and the envelope retrigger is the event that writes the register and restarts the envelope; a frame can then state the shape without restarting, as the first frame of a clip that begins inside an envelope note must. Today this is `PsgParamFrameData` | `PsgCC` | The chip's registers |
 
 Every note-domain stage has the same shape:
@@ -63,7 +63,7 @@ The decoder and encoder own everything that is about MIDI: held notes and their 
 `NoteFrame`, `NoteVoice`, `NoteEncoder` and `NoteDecoder` are in `src/plugins/uZX/midi_effects/NoteFrame.*`; `PsgEncoder`, which remembers what the chip was last sent, is in `src/models/PsgCC.*`. Two stages have this shape today:
 
 - `MPEInstrumentFx`, an instrument, whose input is performance MIDI: JUCE's `MPEInstrument` and `VoiceManager` decode, each voice's `renderFrame` adds itself to the frame, and `NoteEncoder` sends what changed.
-- `NotesToPsgMapper`, the mixer: `NoteDecoder` reads the stream, `mixVoices` turns a frame into the chip's parameters, and `PsgEncoder` sends what changed.
+- `NotesToPsgMapper`, the mixer: `NoteDecoder` reads the stream, `ChipMixer` turns a frame into the chip's parameters, and `PsgEncoder` sends what changed.
 
 The chip-note stream carries its own frame grid: a frame is wherever the stream has messages, so a reader takes one after the messages of each time and adds no delay of its own.
 
@@ -71,20 +71,27 @@ All four stages by layer. In a bookkeeping box the upper name reads the wire and
 
 ![The four stages across, with transport, bookkeeping and logic as rows](../images/midi-ay-pipeline/layers.svg)
 
-The logic owns only musical state: an envelope's phase, an LFO's phase, an arpeggio's step, an echo's history. Vibrato is `pitch += lfo(frame)`. Its test feeds frames and compares frames.
+The logic owns only musical state: an envelope's phase, an LFO's phase, an arpeggio's step, an echo's history, which voice has which chip channel. Vibrato is `pitch += lfo(frame)`. Its test feeds frames and compares frames.
 
 A plugin is then one decoder, a chain of frame functions, and one encoder, which is why "inside the instrument or a separate effect" stops mattering: the same function fits either.
 
 ## The chip mixer
 
-The mixer takes the chip-note stream on all channels and produces one `PsgPatch` per frame:
+The mixer takes the chip-note stream on all channels and produces one `PsgPatch` per frame. The chip has three channels and two generators shared by them, the envelope and the noise. Each is a resource that voices ask for, and where more ask than fit, the best voice gets it: the higher priority, then the later voice in the frame, which from a keyboard is the newer note.
 
-- **Allocation.** More voices can sound than the chip has channels. Each voice carries a priority, by default its channel number, and the simplest policy is "higher channel number wins". Richer policies come when something needs them.
-- **Pitch.** The tuning turns a voice's pitch into a tone period, or an envelope period for an envelope voice, at the clock of the chip the mixer plays on.
-- **Timbre.** The voice's timbre fields become the tone, noise and envelope switches, the noise period and the envelope shape.
-- **The envelope voice.** The chip has one envelope generator, and some voice's pitch has to set its period. The target is a timbre field on the voice that says "this voice's pitch drives the envelope", so any voice on any channel can be the envelope voice and the mixer picks among them by priority like any other. Until allocation exists, the voice on the fourth channel of the mixer's input range is the envelope voice, and it also carries the envelope shape and the noise period. The mixer writes the shape, which restarts the envelope, only when the voice asks for a restart: a note on that channel can start, move the envelope's pitch or last with the envelope running on.
+| Resource | A voice asks for it by | Who gets it |
+| --- | --- | --- |
+| A chip channel | Having tone, noise or envelope on | The three best |
+| The envelope: period, shape, restart | A timbre field saying its pitch drives the envelope | The best |
+| The noise: period | Having noise on | The best of those that got a chip channel |
 
-`mixVoices` in `src/plugins/uZX/notes_to_psg/NotesToPsgMapper.*` is this function. A chip channel without a voice gets volume 0 and its envelope off. After an all-notes-off, a reset or a move to other MIDI channels the mixer silences the chip and forgets what it sent, so the next frame goes out whole: a chip that replaced another gets everything it needs.
+- **Priority** is a value of the voice, not its channel: under MPE the channel a note lands on means nothing. A voice that nothing gave a priority has its channel's number, which is "the higher channel wins" for plain MIDI. Echo adds voices at a lower priority.
+- **The envelope and the channels are asked for apart.** A voice that drives the envelope with its tone, noise and envelope off takes no chip channel: it only moves the envelope under the other voices, as a tracker's envelope column does. A voice that drives the envelope and has its envelope on is a buzzer by itself. A buzzer whose envelope is an interval away from its tone is two voices, one for each pitch.
+- **Which chip channel** a voice gets is heard in stereo. A voice with a pan takes the channel that sounds nearest to it, if no better voice asked for the same; otherwise a voice keeps the channel it had in the frame before; otherwise it takes the lowest free one. A pan is matched to where the chip's stereo layout puts A, B and C, which the plugin reads from the first AY chip after it, as it does the clock.
+- **Pitch.** The tuning turns a voice's pitch into a tone period, or an envelope period for the voice that drives the envelope, at the clock of the chip the mixer plays on.
+- **Timbre.** The voice's timbre fields become the tone, noise and envelope switches. The voice that drives the envelope gives the envelope shape in every frame and the retrigger only when it asks for a restart: a note can start, move the envelope's pitch or last with the envelope running on.
+
+`ChipMixer` in `src/plugins/uZX/notes_to_psg/NotesToPsgMapper.*` is this logic; its only state is which voice had which chip channel. A chip channel without a voice gets volume 0 and its envelope off. After an all-notes-off, a reset or a move to other MIDI channels the mixer silences the chip and forgets what it sent, so the next frame goes out whole: a chip that replaced another gets everything it needs.
 
 ## The wires
 
@@ -96,10 +103,13 @@ The mixer takes the chip-note stream on all channels and produces one `PsgPatch`
 | Level | Note-on velocity, then polyphonic aftertouch |
 | Pitch | The pitch wheel of its channel, ±2 semitones from the key (`notePitchBendRange`) |
 | Tone, noise, envelope on | Controllers 80, 81, 82 on its channel; on for any value but 0 |
+| Its pitch drives the envelope | Controller 85 on its channel; on for any value but 0 |
 | Envelope shape, noise period | Controllers 70 and 2 on its channel |
-| Envelope restart | Controller 83 on the channel of the voice that plays the envelope, for any value but 0; another shape on controller 70 restarts too, since it cannot sound without a write |
+| Envelope restart | Controller 83 on the channel of a voice that drives the envelope, for any value but 0; another shape on controller 70 restarts too, since it cannot sound without a write |
+| Priority | Controller 86 on its channel, 0 to 127; the channel's number until it is sent |
+| Pan | Controller 10 on its channel, 0 left to 127 right; no place asked for until it is sent |
 
-A note clip or a keyboard can send the timbre controllers, and the mixer reads them. `NoteEncoder` does not write them yet, because nothing that makes frames sets a timbre. Controllers hold their value from note to note on a channel; a reset returns them to tone on, noise and envelope off.
+A note clip or a keyboard can send these controllers, and the mixer reads them. `NoteEncoder` does not write them yet, because nothing that makes frames sets a timbre, a priority or a pan. Controllers hold their value from note to note on a channel; a reset returns them to tone on, noise and envelope off, no pan and the channel's own priority.
 
 **PSG wire, mixer or PSG clip to chip.** Implemented as `PsgCC` in `src/models/PsgCC.*`: one table that `PsgParamsMidiWriter` (PSG clips), the mapper and `AYChipPlugin` all use. Channels count from the chip's base channel.
 
@@ -120,7 +130,7 @@ The envelope shape and its restart are two things in every part of the pipeline 
 
 `PsgEncoder` sends a retrigger each time it is set, and everything else only when it differs from what was sent.
 
-Both wires share a track's sixteen channels. Routing them apart is the user's business, as in any DAW; the safer default is the PSG wire on the last four channels (13–16), which leaves the low channels to notes. Today both the chip and MIDI to PSG default to base channel 1.
+Both wires use a track's sixteen channels, on either side of the mixer: it reads notes on all sixteen, passes nothing with a channel on, and writes the PSG wire on four channels from its base channel. A PSG clip before a mixer on the same track is therefore read as notes. The safer default is the PSG wire on the last four channels (13–16); today both the chip and MIDI to PSG default to base channel 1.
 
 ## Where the stages run
 
@@ -144,16 +154,15 @@ What this asks of the design:
 | --- | --- | --- |
 | Chip instrument | `ChipInstrumentPlugin`, `ChipInstrumentVoice` on `MPEInstrumentFx` | Sends every voice on the channel its note came in on, so a chord's voices share one pitch wheel; sets no timbre; fixed 50 Hz (`noteFrameRate`) |
 | Chip effects | None | |
-| Chip mixer | `NotesToPsgPlugin`, `NotesToPsgMapper`, `mixVoices` | No allocation: it reads four MIDI channels from its base channel, channel n plays chip channel n (the last note to start, if several), and the fourth plays the envelope. Its PSG output goes out on the same four channels |
+| Chip mixer | `NotesToPsgPlugin`, `NotesToPsgMapper`, `ChipMixer` | It follows the chip's stored stereo layout, not an automated one |
 | PSG codec | `PsgCC`, `PsgEncoder` | An envelope period above 14 bits does not fit two controllers; a switch is 0 or 1 and volume the raw 0–15, not the 0–127 a knob sends |
 | AY chip | `AYChipPlugin` | None: it decodes each frame's controllers over the registers the chip holds, and keeps nothing else |
-| Tuning preview | `MultitrackMidiPreview` | Plays note clips with timbre controllers into the mixer, and counts on channel n being chip channel n and the fourth the envelope |
+| Tuning preview | `MultitrackMidiPreview` | None: it plays note clips with timbre controllers into the mixer, one of them a voice that only drives the envelope |
 
 ## Order of work
 
 Refactor first, then change behaviour.
 
-1. Voice allocation in the mixer: voices on any channel, assigned to chip channels by priority. With it, the envelope voice becomes a timbre field saying the voice's pitch drives the envelope, in place of the fourth channel, and the tuning preview stops counting on channel numbers.
-2. MPE output from the instrument; timbre from the instrument, written by `NoteEncoder`; the PSG wire on the last four channels by default.
-3. Chip effects.
-4. Wire changes: a full 16-bit envelope period, one meaning for switch and volume values. These come before any firmware reads the wire.
+1. MPE output from the instrument; timbre, priority and pan from the instrument, written by `NoteEncoder`; the PSG wire on the last four channels by default.
+2. Chip effects.
+3. Wire changes: a full 16-bit envelope period, one meaning for switch and volume values. These come before any firmware reads the wire.

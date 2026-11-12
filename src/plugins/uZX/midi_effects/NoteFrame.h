@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <utility>
 
 namespace MoTool::uZX {
@@ -22,15 +23,18 @@ inline constexpr double noteFrameRate = 50.0;
 // TODO as a parameter, for a deeper range, sent downstream as the pitch bend sensitivity RPN
 inline constexpr int notePitchBendRange = 2;
 
-/** The controllers that carry a voice's timbre, and the envelope's restart, on the voice's channel. */
-enum class NoteTimbreCC
+/** The controllers of the stream, on a voice's channel: its timbre, the envelope's restart, its place and priority. */
+enum class NoteCC
 {
     NoisePeriod = 2,
+    Pan = 10,
     EnvelopeShape = 70,
     Tone = 80,
     Noise = 81,
     Envelope = 82,
     EnvelopeRestart = 83,  ///< an event, for any value but 0
+    EnvelopeDriver = 85,
+    Priority = 86,
 };
 
 /** How a voice sounds on the chip. */
@@ -39,8 +43,9 @@ struct NoteTimbre
     bool tone = true;       ///< the square wave sounds
     bool noise = false;     ///< the noise sounds
     bool envelope = false;  ///< the chip's envelope shapes the level
-    int envelopeShape = 0;  ///< the chip's envelope shape, 0..15, from the voice that plays the envelope
-    int noisePeriod = 0;    ///< the chip's noise period, 0..31, from the voice that plays the envelope
+    bool drivesEnvelope = false;  ///< its pitch is the pitch of the chip's envelope
+    int envelopeShape = 0;  ///< the chip's envelope shape, 0..15, from the voice that drives the envelope
+    int noisePeriod = 0;    ///< the chip's noise period, 0..31, from a voice with the noise on
 };
 
 /** One voice sounding in a frame. */
@@ -51,7 +56,9 @@ struct NoteVoice
     double pitch = 0.0;   ///< what sounds, in semitones on the MIDI note scale
     float level = 0.0f;   ///< 0..1
     bool attack = false;  ///< starts in this frame, even if the same voice sounded in the frame before
-    bool restartEnvelope = false;  ///< restarts the chip's envelope in this frame, if it plays the envelope
+    bool restartEnvelope = false;  ///< restarts the chip's envelope in this frame, if it drives the envelope
+    int priority = 0;  ///< who plays when the chip has too few channels: the higher, then the later in the frame
+    std::optional<float> pan{};  ///< where it asks to sound, 0 left .. 1 right; anywhere without one
     NoteTimbre timbre{};
 };
 
@@ -118,15 +125,15 @@ private:
 
 //==============================================================================
 /**
-    Reads the stream back into frames: the notes that sound, each with the pitch wheel and the timbre
-    controllers of its channel. A frame is wherever the stream has messages, so a reader takes one after
+    Reads the stream back into frames: the notes that sound, each with the pitch wheel, the timbre, the pan
+    and the priority of its channel. A frame is wherever the stream has messages, so a reader takes one after
     the messages of each time.
 
     It alone remembers which notes are held and what the controllers were last set to.
 
-    ponytail: the timbre it reads comes from clips and keyboards only. NoteEncoder writes none, because
-    nothing that makes frames sets it yet; when the instrument or an effect does, the encoder sends these
-    controllers and a frame's timbre survives the trip like its pitch and level.
+    ponytail: the timbre, pan and priority it reads come from clips and keyboards only. NoteEncoder writes none,
+    because nothing that makes frames sets them yet; when the instrument or an effect does, the encoder sends
+    these controllers and they survive the trip like a voice's pitch and level.
 */
 class NoteDecoder
 {
@@ -135,6 +142,8 @@ public:
     bool decode(const juce::MidiMessage& m) noexcept;
 
     /** The voices sounding now, oldest first. A voice has `attack` set in the first frame taken after it started.
+        Its priority is its channel's number until the priority controller sets another, and it asks for
+        no place until the pan controller names one.
 
         A voice has `restartEnvelope` set in the first frame it is in after its channel got the restart controller
         or another envelope shape, which cannot sound without a restart. A note starting does not set it: the
@@ -151,6 +160,8 @@ private:
         double bend = 0.0;  // semitones
         NoteTimbre timbre{};
         bool restartEnvelope = false;  // asked for, and no voice of the channel has taken it yet
+        int priority = -1;             // the channel's number until the controller sets one
+        std::optional<float> pan{};
     };
 
     std::array<Channel, 16> channels_{};

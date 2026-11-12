@@ -57,25 +57,34 @@ bool NoteDecoder::decode(const juce::MidiMessage& m) noexcept {
         // ponytail: a switch is on for any value but 0, as the chip reads its own; MIDI's 64 and up when the
         // wires get one meaning for a switch
         const auto value = m.getControllerValue();
-        switch (static_cast<NoteTimbreCC>(m.getControllerNumber())) {
-            case NoteTimbreCC::Tone:
+        switch (static_cast<NoteCC>(m.getControllerNumber())) {
+            case NoteCC::Tone:
                 chan.timbre.tone = value != 0;
                 break;
-            case NoteTimbreCC::Noise:
+            case NoteCC::Noise:
                 chan.timbre.noise = value != 0;
                 break;
-            case NoteTimbreCC::Envelope:
+            case NoteCC::Envelope:
                 chan.timbre.envelope = value != 0;
                 break;
-            case NoteTimbreCC::EnvelopeShape:
+            case NoteCC::EnvelopeShape:
                 chan.restartEnvelope = chan.restartEnvelope || chan.timbre.envelopeShape != value;
                 chan.timbre.envelopeShape = value;
                 break;
-            case NoteTimbreCC::EnvelopeRestart:
+            case NoteCC::EnvelopeRestart:
                 chan.restartEnvelope = chan.restartEnvelope || value != 0;
                 break;
-            case NoteTimbreCC::NoisePeriod:
+            case NoteCC::EnvelopeDriver:
+                chan.timbre.drivesEnvelope = value != 0;
+                break;
+            case NoteCC::NoisePeriod:
                 chan.timbre.noisePeriod = value;
+                break;
+            case NoteCC::Priority:
+                chan.priority = value;
+                break;
+            case NoteCC::Pan:
+                chan.pan = static_cast<float>(value) / 127.0f;
                 break;
             default:
                 return false;
@@ -93,6 +102,8 @@ NoteFrame NoteDecoder::takeFrame() noexcept {
         voice.pitch = voice.key + chan.bend;
         voice.timbre = chan.timbre;
         voice.restartEnvelope = chan.restartEnvelope;
+        voice.priority = chan.priority >= 0 ? chan.priority : voice.channel;
+        voice.pan = chan.pan;
     }
     for (auto& voice : held_) {
         voice.attack = false;

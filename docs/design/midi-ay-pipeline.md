@@ -49,7 +49,7 @@ Each domain has one value and one codec:
 | Domain | Value | Codec | State |
 | --- | --- | --- | --- |
 | Note | `NoteFrame`: the voices sounding in one frame. A voice has a channel, a pitch in fractional semitones, a level, a priority, and timbre fields (tone, noise and envelope mix, noise pitch, envelope shape) | Note codec: one voice per MIDI channel, MPE | In the shared decoder and encoder |
-| PSG | `PsgPatch`: the PSG parameters set in one frame. A parameter that is set is written; a set envelope shape restarts the envelope, the same shape too, as a write of the register does on the chip. Today this is `PsgParamFrameData` | `PsgCC` | The chip's registers |
+| PSG | `PsgPatch`: the PSG parameters set in one frame. The envelope shape is a value to hold, and the envelope retrigger is the event that writes the register and restarts the envelope; a frame can then state the shape without restarting, as the first frame of a clip that begins inside an envelope note must. Today this is `PsgParamFrameData` | `PsgCC` | The chip's registers |
 
 Every note-domain stage has the same shape:
 
@@ -116,9 +116,9 @@ A note clip or a keyboard can send the timbre controllers, and the mixer reads t
 | Envelope shape | 3 | 70 |
 | Restart envelope | 3 | 83, pressed (1) and released (0) |
 
-The envelope shape is the one parameter whose value and write travel apart, on this wire as on the note wire: on both, controller 70 is the shape and controller 83 the restart. In a `PsgPatch` a set shape is a write, and a write restarts the envelope. But MIDI sends a controller's value again where nothing was written: a clip's first frame restates everything the chip should hold, a clip that starts part-way through its frames (trimmed at its start, or the later part of a split) restates what the frames before it left, and Tracktion resends the last value of each controller when play starts inside a clip. So controller 70 is the shape as a value, and controller 83 is the restart. A write goes out as both; the chip writes the register on a restart, or when controller 70 brings another shape than it holds, and not when it brings the same one. The restart is released at once, so the value a host sends again is the released one. A tune cut into clips therefore keeps an envelope note running across the cut.
+The envelope shape and its restart are two things in every part of the pipeline but the chip's registers: on the note wire, in a `PsgPatch`, in a PSG clip's frames, and on this wire. Controller 70 is the shape, a value to hold; controller 83 is the retrigger, an event. The reason is that a value gets stated again where nothing happened: a clip's first frame restates everything the chip should hold, a clip that starts part-way through its frames (trimmed at its start, or the later part of a split) restates what the frames before it left, and Tracktion resends the last value of each controller when play starts inside a clip. The chip writes the shape register on a retrigger, or when controller 70 brings another shape than it holds, which cannot sound without a write; the same shape again does nothing. The retrigger is released at once, so the value a host sends again is the released one. Importing a PSG file sets the retrigger on every write of the shape register.
 
-`PsgEncoder` sends a shape each time it is set, and everything else but a tone retrigger only when it differs from what was sent.
+`PsgEncoder` sends a retrigger each time it is set, and everything else only when it differs from what was sent.
 
 Both wires share a track's sixteen channels. Routing them apart is the user's business, as in any DAW; the safer default is the PSG wire on the last four channels (13–16), which leaves the low channels to notes. Today both the chip and MIDI to PSG default to base channel 1.
 

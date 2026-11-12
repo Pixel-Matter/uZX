@@ -38,6 +38,7 @@ namespace {
             IDs::ea, IDs::eb, IDs::ec,  // EnvelopeIsOn
             IDs::n,  IDs::e,  IDs::s,   // NoisePeriod, EnvelopePeriod, EnvelopeShape
             IDs::ra, IDs::rb, IDs::rc,  // RetriggerTone
+            IDs::re,                    // RetriggerEnvelope
         };
         static_assert(std::extent_v<decltype(ids)> == PsgParamType::size());
         return ids[type];
@@ -51,8 +52,6 @@ namespace {
 
             for (size_t t = 0; t < PsgParamType::size(); ++t)
                 te::convertPropertyToType<int>(frames, paramPropertyId(t));
-            // Clips saved before a set shape was the restart: the flag came with the shape, which is enough
-            frames.removeProperty(IDs::re, nullptr);
         }
         for (auto v : frames)
             convertPsgFrameFromStrings(v);
@@ -183,16 +182,29 @@ const juce::Array<EventType*>& getEventsChecked(const juce::Array<EventType*>& e
 }
 
 //==============================================================================
+namespace {
+    // 2: the envelope restarts where a frame sets the retrigger, not wherever it sets the shape
+    constexpr int currentVersion = 2;
+
+    /** Before version 2 every frame that set the shape restarted the envelope. */
+    void retriggerEnvelopeOnEveryShape(juce::ValueTree& frames) {
+        if (frames.hasType(IDs::FRAME) && frames.hasProperty(IDs::s))
+            frames.setProperty(IDs::re, 1, nullptr);
+        for (auto v : frames)
+            retriggerEnvelopeOnEveryShape(v);
+    }
+}
+
 juce::ValueTree PsgList::createPsgList() {
     return createValueTree(IDs::PSG,
-                           te::IDs::ver, 1,
+                           te::IDs::ver, currentVersion,
                            IDs::frameRate, 50.0,
                            IDs::framesPerBeat, 0.0,
                            te::IDs::channelNumber, te::MidiChannel(1));
 }
 
 PsgList::PsgList() : state (IDs::PSG) {
-    state.setProperty(te::IDs::ver, 1, nullptr);
+    state.setProperty(te::IDs::ver, currentVersion, nullptr);
     state.setProperty(IDs::frameRate, 50.0, nullptr);
     state.setProperty(IDs::framesPerBeat, 0.0, nullptr);
     state.setProperty(te::IDs::channelNumber, te::MidiChannel(1), nullptr);
@@ -203,7 +215,9 @@ PsgList::PsgList(const juce::ValueTree& v, juce::UndoManager* um)
     : state (v)
 {
     jassert (state.hasType(IDs::PSG));
-    state.setProperty(te::IDs::ver, 1, um);
+    if (static_cast<int>(state[te::IDs::ver]) < 2)
+        retriggerEnvelopeOnEveryShape(state);
+    state.setProperty(te::IDs::ver, currentVersion, um);
     state.setProperty(te::IDs::channelNumber, te::MidiChannel(1), um);
     convertPsgFrameFromStrings(state);
 
@@ -358,9 +372,11 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePositio
         params.clear();
         params.update(regsState);  // tracks really changed params
 
-        // A write of the shape restarts the envelope, so it is kept even when the shape is the same
-        if (frame.hasEnvelopeShapeSet())
+        // Every write of the shape register restarts the envelope, the same shape too
+        if (frame.hasEnvelopeShapeSet()) {
             params.set(PsgParamType::EnvelopeShape, frame.getEnvelopeShape());
+            params.set(PsgParamType::RetriggerEnvelope, 1);
+        }
 
         auto v = PsgParamFrame::createPsgFrameValueTree(static_cast<int>(i), params);
         state.addChild(v, -1, um);

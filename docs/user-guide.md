@@ -209,6 +209,7 @@ When a PSG clip is selected, the parameter editor appears. It shows an automatio
 - **Parameter list** — left sidebar lists available parameters (Tone Period A/B/C, Noise Period, Envelope Period, Volume, etc.). Click to switch.
 - **Curve area** — shows the value of the parameter across the clip duration. Click to add points; drag points to edit.
 - The curve aligns with the timeline grid.
+- On the envelope's rows (**Envelope: Period**, **Envelope: Shape**, **Envelope: Retrigger**) a line down the row marks each restart of the envelope, including one with the same shape, where the curve stays flat.
 
 <!-- guide-figure:studio-psg-editor -->
 ![PSG parameter editor](images/user-guide/studio-psg-editor.png)

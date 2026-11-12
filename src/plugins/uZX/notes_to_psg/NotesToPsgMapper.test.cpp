@@ -90,12 +90,13 @@ public:
             expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(36.0, TuningSystem::Envelope));
             expectEquals(value(params, P::NoisePeriod), 7);
             expectEquals(value(params, P::VolumeA), 0, "it has no channel of its own");
-            expect(!params.isSet(P::EnvelopeShape), "a note starting lets the envelope run");
+            expectEquals(value(params, P::EnvelopeShape), 10, "the shape is a value to hold");
+            expect(!params.isSet(P::RetriggerEnvelope), "a note starting lets the envelope run");
 
             frame.begin()->attack = false;
             frame.begin()->restartEnvelope = true;
-            expectEquals(value(mixVoices(frame, *tuning, 5), P::EnvelopeShape), 10,
-                         "a restart, inside a lasting note too, writes the shape");
+            expectEquals(value(mixVoices(frame, *tuning, 5), P::RetriggerEnvelope), 1,
+                         "a restart, inside a lasting note too");
         }
     }
 };
@@ -230,8 +231,7 @@ public:
             expectEquals(messages.size(), 2, "another note moves the envelope's pitch and lets it run");
 
             messages = play(mapper, {MidiMessage::controllerEvent(4, 83, 127)});
-            expectEquals(messages.size(), 3, "a restart inside the lasting note writes the shape, and nothing else");
-            expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"));
+            expectEquals(messages.size(), 2, "a restart inside the lasting note, and nothing else");
             expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1 0"));
 
             messages = play(mapper, {MidiMessage::controllerEvent(4, 83, 0), MidiMessage::controllerEvent(4, 70, 10)});

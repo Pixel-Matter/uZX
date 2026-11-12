@@ -184,19 +184,12 @@ struct Messages {
 };
 
 /** A period goes as two controllers, 7 high bits and 7 low bits; anything else as its raw value in one.
-
-    The envelope shape is the exception. In the parameters a set shape is a write of the register, and a
-    write restarts the envelope. MIDI sends a controller's value again where nothing was written (a clip's
-    first frame, a host as play starts), so the shape goes as its value and a restart, pressed and released.
-*/
+    The envelope retrigger goes pressed and released, and as nothing when it is 0. */
 Messages encode(PsgParamType param, int value) noexcept;
 
-/** A parameter as the value a chip should hold, with no restart: for restating what was not written. */
-Messages encodeValue(PsgParamType param, int value) noexcept;
-
 /** Stores what a controller message carries into `into`, which holds the chip's values from before.
-    The envelope shape gets set, and so written, by a restart or by another shape than `into` holds.
-    Returns false if no parameter travels there. */
+    Another envelope shape than `into` holds sets the envelope retrigger as well: it cannot sound without
+    a write of the register. Returns false if no parameter travels there. */
 bool decode(int channel, int controller, int value, PsgParamFrameData& into) noexcept;
 
 }  // namespace PsgCC
@@ -214,8 +207,8 @@ public:
     /** Writes the parameters `data` sets. */
     void write(double time, const PsgParamFrameData& data);
 
-    /** Writes every parameter of `data`, set or not, as a clip's first frame restates what the chip should
-        hold. The envelope restarts only if `data` sets the shape. */
+    /** Writes every value of `data`, set or not, as a clip's first frame restates what the chip should
+        hold, and the retriggers it sets. */
     void writeAll(double time, const PsgParamFrameData& data);
 
     juce::MidiMessageSequence& getSequence() noexcept { return sequence; }
@@ -230,8 +223,8 @@ private:
 //==============================================================================
 /**
     Writes the parameters a chip should hold as controllers, sending those that differ from what it was
-    last sent. Two kinds are events, not values to hold, and are sent every time they are set: a tone
-    retrigger, and the envelope shape, which is a write and goes out with its restart.
+    last sent. A retrigger, of a tone or of the envelope, is an event, not a value to hold: it is sent
+    every time it is set.
 
     It alone remembers what was sent, so whatever makes the parameters keeps no MIDI state.
 */

@@ -36,7 +36,7 @@ public:
 
             // expect(sizeof(PsgParamFrameData::values) == 42, "Expected 42 bytes, got " + std::to_string(sizeof(PsgParamFrameData::values)));
             // expect(sizeof(PsgParamFrameData::masks) == 21, "Expected 21 bytes, got " + std::to_string(sizeof(PsgParamFrameData::masks)));
-            expectEquals(sizeof(PsgParamFrameData), size_t{64});  // 21 parameters, a value and a mask each
+            expectEquals(sizeof(PsgParamFrameData), size_t{66});  // 22 parameters, a value and a mask each
 
             expectEquals(data.getParams().size(), size_t{2});
             expect(data.getParams()[1].first == PsgParamType::EnvelopeShape, "Expected EnvelopeShape");
@@ -371,6 +371,7 @@ public:
                 {PsgParamType::RetriggerToneA,    18},
                 {PsgParamType::RetriggerToneB,    19},
                 {PsgParamType::RetriggerToneC,    20},
+                {PsgParamType::RetriggerEnvelope, 21},
             };
             PsgParamFrameData data {fullChange};
             expect(data.getParams() == fullChange, "Expected all params to be set");
@@ -400,6 +401,7 @@ public:
                 {PsgParamType::RetriggerToneA,    18, false},
                 {PsgParamType::RetriggerToneB,    19, false},
                 {PsgParamType::RetriggerToneC,    20, false},
+                {PsgParamType::RetriggerEnvelope, 21, false},
             }};
             data.update(partialData);
             expect(data.getParams() == std::vector<std::pair<PsgParamType, uint16_t>> {
@@ -433,7 +435,8 @@ public:
                 {PsgParamType::EnvelopeIsOnC, 0},
                 {PsgParamType::NoisePeriod, 0x10},
                 {PsgParamType::EnvelopePeriod, 0x4321},
-                {PsgParamType::EnvelopeShape, 2}
+                {PsgParamType::EnvelopeShape, 2},
+                {PsgParamType::RetriggerEnvelope, 1}
             };
             auto regs = data.toRegisters();
 
@@ -554,9 +557,7 @@ public:
                     "Controller Breath controller (coarse): 16 Channel 4",
                     "Controller 20: 104 Channel 4",
                     "Controller 52: 18 Channel 4",
-                    "Controller Sound Variation: 8 Channel 4",
-                    "Controller General Purpose Button 4 (on/off): 1 Channel 4",
-                    "Controller General Purpose Button 4 (on/off): 0 Channel 4"
+                    "Controller Sound Variation: 8 Channel 4"
                 }}
             };
             compareEvents(seq, expectedEvents);
@@ -593,8 +594,8 @@ public:
             expect(frames.size() == 2, "Expected 2 frames, got " + std::to_string(frames.size()));
             expect(frames[0].getParams().size() == 7,
                 "Expected 7 params, got " + std::to_string(frames[0].getParams().size()));
-            expect(frames[1].getParams().size() == 9,
-                "Expected 9 params, got " + std::to_string(frames[1].getParams().size()));
+            expect(frames[1].getParams().size() == 10,  // another envelope shape brings its retrigger
+                "Expected 10 params, got " + std::to_string(frames[1].getParams().size()));
 
             expect(frames[0][PsgParamType::VolumeA] == 3, "Expected VolumeA to be 3");
             expect(frames[0][PsgParamType::VolumeB] == std::nullopt,
@@ -654,17 +655,17 @@ public:
             });
         }
 
-        beginTest("The envelope shape travels as a value and a restart");
+        beginTest("The envelope shape travels as a value, its retrigger pressed and released");
         {
-            const auto shapeMessages = [](const PsgCC::Messages& messages) {
-                StringArray text;
+            const auto text = [](const PsgCC::Messages& messages) {
+                StringArray items;
                 for (const auto& m : messages)
-                    text.add(String(m.channel) + ":" + String(static_cast<int>(m.controller)) + "=" + String(m.value));
-                return text.joinIntoString(" ");
+                    items.add(String(m.channel) + ":" + String(static_cast<int>(m.controller)) + "=" + String(m.value));
+                return items.joinIntoString(" ");
             };
-            expectEquals(shapeMessages(PsgCC::encode(PsgParamType::EnvelopeShape, 10)), String("3:70=10 3:83=1 3:83=0"),
-                         "a write: the value, then the restart pressed and released");
-            expectEquals(shapeMessages(PsgCC::encodeValue(PsgParamType::EnvelopeShape, 10)), String("3:70=10"));
+            expectEquals(text(PsgCC::encode(PsgParamType::EnvelopeShape, 10)), String("3:70=10"));
+            expectEquals(text(PsgCC::encode(PsgParamType::RetriggerEnvelope, 1)), String("3:83=1 3:83=0"));
+            expectEquals(text(PsgCC::encode(PsgParamType::RetriggerEnvelope, 0)), String(), "no event");
 
             // What the chip does: each frame starts from the values it holds, with nothing set
             PsgParamFrameData chip;
@@ -676,10 +677,10 @@ public:
             };
             expect(frame({{70, 10}}), "another shape is written");
             expect(! frame({{70, 10}}), "the shape it holds, sent again, is not: the envelope runs on");
-            expect(frame({{70, 10}, {83, 1}, {83, 0}}), "a restart writes the shape");
-            expect(frame({{83, 1}}), "a restart alone writes the shape the chip holds");
+            expect(frame({{70, 10}, {83, 1}, {83, 0}}), "a retrigger writes the shape");
+            expect(frame({{83, 1}}), "a retrigger alone writes the shape the chip holds");
             expectEquals(int(chip.toRegisters().getEnvelopeShape()), 10);
-            expect(! frame({{83, 0}}), "the released restart does nothing");
+            expect(! frame({{83, 0}}), "the release does nothing");
             expect(frame({{83, 1}, {70, 12}}), "in either order");
             expectEquals(int(chip.toRegisters().getEnvelopeShape()), 12);
         }

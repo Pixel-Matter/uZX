@@ -99,6 +99,7 @@ struct PsgParamTypeEnum {
         RetriggerToneA,
         RetriggerToneB,
         RetriggerToneC,
+        RetriggerEnvelope,
     };
 
     static inline constexpr std::string_view labels[] {
@@ -123,6 +124,7 @@ struct PsgParamTypeEnum {
         "A: Retrigger Tone",
         "B: Retrigger Tone",
         "C: Retrigger Tone",
+        "Envelope: Retrigger",
     };
 };
 
@@ -152,6 +154,7 @@ public:
             case RetriggerToneA:
             case RetriggerToneB:
             case RetriggerToneC:
+            case RetriggerEnvelope:
                 return {0, 1, ScaleType::Linear, {}};
             case NoisePeriod:
                 return {0, 31, ScaleType::Linear, {}};
@@ -276,8 +279,8 @@ public:
         if (isSet(PsgParamType::EnvelopePeriod)) {
             regs.setEnvelopePeriod(getRaw(PsgParamType::EnvelopePeriod));
         }
-        // A set shape is a write of the register, and a write restarts the envelope even with the same value
-        if (isSet(PsgParamType::EnvelopeShape)) {
+        // The shape is a value to hold; the retrigger is the write of the register, which restarts the envelope
+        if (isSet(PsgParamType::RetriggerEnvelope) && getRaw(PsgParamType::RetriggerEnvelope) != 0) {
             regs.setEnvelopeShape(static_cast<uint8>(getRaw(PsgParamType::EnvelopeShape)));
         }
         // TODO retrigger tone

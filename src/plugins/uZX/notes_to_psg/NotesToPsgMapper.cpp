@@ -37,10 +37,10 @@ PsgParamFrameData mixVoices(const NoteFrame& frame, const TuningSystem& tuning, 
     if (const auto* voice = onChannel[numToneChannels]) {
         setPeriod(PsgParamType::EnvelopePeriod, *voice, TuningSystem::Envelope);
         set(PsgParamType::NoisePeriod, voice->timbre.noisePeriod);
-        // Setting the shape writes it, and a write restarts the envelope: only when the voice asks.
-        // A note that starts or lasts lets the envelope run
+        set(PsgParamType::EnvelopeShape, voice->timbre.envelopeShape);
+        // Only when the voice asks: a note that starts or lasts lets the envelope run
         if (voice->restartEnvelope)
-            set(PsgParamType::EnvelopeShape, voice->timbre.envelopeShape);
+            set(PsgParamType::RetriggerEnvelope, 1);
     }
     return params;
 }

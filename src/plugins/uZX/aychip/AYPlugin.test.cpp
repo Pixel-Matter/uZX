@@ -260,8 +260,8 @@ public:
 
         beginTest("The tune plays the same as one clip and as two");
         const auto data = makeTune();
-        for (const bool split : {false, true}) {
-            const String name = split ? "two clips" : "one clip";
+        for (const auto split : {Clips::one, Clips::softSplit, Clips::hardSplit}) {
+            const String name = nameOf(split);
             Rig rig(engine, split);
             const auto steps = rig.play(0.0, 5.0);
             expectEquals(restartsAfterBeats(steps), String("R-R-R"), name + ": restarts on beats 0, 2 and 4 only");
@@ -270,8 +270,8 @@ public:
         }
 
         beginTest("A seek restarts the envelope where the tune does, or where the chip holds another shape");
-        for (const bool split : {false, true}) {
-            const String name = split ? "two clips" : "one clip";
+        for (const auto split : {Clips::one, Clips::softSplit, Clips::hardSplit}) {
+            const String name = nameOf(split);
             Rig played(engine, split);
             played.play(0.0, 5.0);  // leaves the tune's shape in the chip, its envelope run out
 
@@ -292,6 +292,14 @@ public:
     }
 
 private:
+    /** One clip; that clip split, each part keeping every frame; or two clips made apart, the second
+        holding only its own frames. */
+    enum class Clips { one, softSplit, hardSplit };
+
+    static String nameOf(Clips clips) {
+        return clips == Clips::one ? "one clip" : clips == Clips::softSplit ? "a split clip" : "two separate clips";
+    }
+
     struct Step {
         double beat;
         float peak;
@@ -318,12 +326,33 @@ private:
     }
 
     struct Rig {
-        Rig(te::Engine& e, bool split) : engine(e), edit(te::Edit::createSingleTrackEdit(e)) {
+        Rig(te::Engine& e, Clips clips) : engine(e), edit(te::Edit::createSingleTrackEdit(e)) {
             auto* track = te::getAudioTracks(*edit)[0];
             auto data = makeTune();
-            auto clip = PsgClip::insertTo(*track, data, {{0_tp, te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
-            if (split)
-                track->splitClip(*clip, timeOf(3.0));
+            const auto lengthOf = [](const PsgData& d) { return te::TimeDuration::fromSeconds(d.getLengthSeconds()); };
+            if (clips == Clips::hardSplit) {
+                // The second clip holds nothing from before beat 3. Its first frame states what the chip
+                // holds there, the envelope shape too, and retriggers nothing
+                PsgRegsFrame held;
+                for (int i = 0; i <= 3 * framesPerBeat; ++i)
+                    held.update(data.frames[static_cast<size_t>(i)]);
+                std::vector<PsgRegsFrame> rest(data.frames.begin() + 3 * framesPerBeat, data.frames.end());
+                rest[0] = {};
+                rest[1 * framesPerBeat] = {};
+                PsgData second {std::move(rest), {50.0, 1}};
+                data.frames.resize(3 * framesPerBeat);
+
+                PsgClip::insertTo(*track, data, {{0_tp, lengthOf(data)}, {}});
+                auto clip = PsgClip::insertTo(*track, second, {{timeOf(3.0), lengthOf(second)}, {}});
+                clip->getPsg().addFrameEvent(0, PsgParamFrameData {held}, nullptr);
+                PsgParamFrameData restart;
+                restart.set(PsgParamType::RetriggerEnvelope, 1);
+                clip->getPsg().addFrameEvent(1 * framesPerBeat, restart, nullptr);
+            } else {
+                auto clip = PsgClip::insertTo(*track, data, {{0_tp, lengthOf(data)}, {}});
+                if (clips == Clips::softSplit)
+                    track->splitClip(*clip, timeOf(3.0));
+            }
             auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
             track->pluginList.insertPlugin(plugin, 0, nullptr);
             chip = dynamic_cast<AYChipPlugin*>(plugin.get());

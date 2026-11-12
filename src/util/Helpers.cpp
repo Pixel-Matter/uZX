@@ -408,7 +408,6 @@ bool renderTrackToFile(te::AudioTrack& track, const te::Renderer::Parameters& pa
     const te::Edit::ScopedRenderStatus renderStatus(edit, true);
     const ScopedTrackUnmute unmute(track);
     te::TransportControl::stopAllTransports(edit.engine, false, true);
-    te::Renderer::turnOffAllPlugins(edit);
     TrackRenderTask task(String("Rendering track \"") + track.getName() + "\" to audio", parameters);
     ui.runTaskWithProgressBar(task);
     if (task.getOutcome() == TrackRenderTask::Outcome::Incomplete)

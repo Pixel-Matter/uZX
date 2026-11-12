@@ -49,6 +49,7 @@ public:
     String getShortName (int) override            { return "AY"; }
     String getSelectableDescription() override    { return "AY Chip plugin based on Ayumi emulator"; }
     bool isSynth() override                       { return true; }
+    BusLayout getBusses() const override          { return BusLayout::singleStereoInOut(); }
 
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;

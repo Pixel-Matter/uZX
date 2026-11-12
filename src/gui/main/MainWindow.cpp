@@ -67,7 +67,7 @@ void MainWindow::restoreWindowBounds() {
     // The constrainer will automatically enforce minimum size
     Rectangle<int> bounds(x, y, width, height);
     constrainer_.checkBounds(bounds, getBounds(),
-                            Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea,
+                            Desktop::getInstance().getDisplays().getPrimaryDisplay()->userBounds.toNearestInt(),
                             false, false, false, false);
 
     if (x >= 0 && y >= 0) {
@@ -77,7 +77,7 @@ void MainWindow::restoreWindowBounds() {
         bool onScreen = false;
 
         for (auto& display : displays.displays) {
-            if (display.userArea.contains(bounds.getTopLeft())) {
+            if (display.userBounds.toNearestInt().contains(bounds.getTopLeft())) {
                 onScreen = true;
                 break;
             }

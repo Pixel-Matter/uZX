@@ -41,7 +41,6 @@ VideoRenderJob::VideoRenderJob(tracktion::Edit& e,
 
     edit.getTransport().stop(false, false);
     renderStatus = std::make_unique<tracktion::Edit::ScopedRenderStatus>(edit, true);
-    tracktion::Renderer::turnOffAllPlugins(edit);
 
     tracktion::Renderer::Parameters r(edit);
     r.tracksToDo = tracktion::toBitSet(tracktion::getAllTracks(edit));
@@ -66,7 +65,6 @@ VideoRenderJob::VideoRenderJob(tracktion::Edit& e,
 
 VideoRenderJob::~VideoRenderJob() {
     audioRender.reset();  // its graph goes on the message thread, which this is
-    tracktion::Renderer::turnOffAllPlugins(edit);
     renderStatus.reset();  // playback comes back, and the plugins with it at the device's rate
 }
 

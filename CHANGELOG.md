@@ -4,6 +4,10 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Engine
+- Tracktion Engine is updated to its October 2026 development version and JUCE to 8.0.17, which hardens the reading of XML, WAV, AIFF, PNG and ZIP files
+- The audio device settings are converted to the engine's new format on first launch; an older µZX build does not read them back
+
 ### Timeline
 - Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format
 - `X` restores the previous timeline position and zoom; wheel/pinch gestures and drags each return in one step, separately from edit undo
@@ -67,6 +71,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together, and passes MIDI on other channels through at its own time instead of later
 - Fixed: deleting the track shown in the Track Devices panel empties the panel instead of leaving its devices on screen
 - Fixed: Clip Parameters no longer reads a deleted clip, and clicking one of its points selects the clip instead of clearing the selection
+- Fixed: Clip Parameters no longer draws a sloped line at the left edge of a scrolled view; every value holds level until the next change
 - The Clip Parameters and Track Devices tabs are flat, in the app's colours and font: the open tab joins its page and has a blue edge, and each tab is as long as its name
 
 ### Releases

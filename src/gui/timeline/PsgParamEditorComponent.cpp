@@ -293,6 +293,7 @@ void PsgParamEditorComponent::paint(Graphics& g) {
         auto p1 = getPosition(params, start);
         curvePath.lineTo(p1.getX(), lastY);
         curvePath.lineTo(p1);
+        lastY = p1.y;
         for (int index = start; index < numPoints - 1; ++index) {
             if (!params.isActive(index + 1))
                 continue;

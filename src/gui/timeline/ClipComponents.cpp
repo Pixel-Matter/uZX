@@ -238,6 +238,13 @@ void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::Sma
 
     const bool usesTimeStretchedProxy = c.usesTimeStretchedProxy();
 
+    const auto activeChannels = c.getActiveChannelConfiguration().toChannelSet();
+    const auto isActive = [&](juce::AudioChannelSet::ChannelType type) {
+        return activeChannels.size() == 0 || activeChannels.getChannelIndexForType(type) != -1;
+    };
+    const bool leftActive = isActive(juce::AudioChannelSet::left);
+    const bool rightActive = isActive(juce::AudioChannelSet::right);
+
     const auto clipPos = c.getPosition();
     auto offset = clipPos.getOffset();
     auto speedRatio = c.getSpeedRatio();
@@ -253,8 +260,8 @@ void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::Sma
                          thumb,
                          area,
                          region,
-                         c.isLeftChannelActive(),
-                         c.isRightChannelActive(),
+                         leftActive,
+                         rightActive,
                          gainL,
                          gainR);
         }
@@ -266,8 +273,8 @@ void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::Sma
                      thumb,
                      area,
                      {t1, t2},
-                     c.isLeftChannelActive(),
-                     c.isRightChannelActive(),
+                     leftActive,
+                     rightActive,
                      gainL,
                      gainR);
     }

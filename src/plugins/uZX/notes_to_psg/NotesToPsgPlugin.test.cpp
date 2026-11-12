@@ -161,6 +161,71 @@ public:
             expectEquals(volumes(abc), juce::String("C"), "after the chip is set to ABC");
         }
 
+        beginTest("The MPE chord example starts out of tune and plays a major seventh from two seconds on");
+        {
+            // scripts/make_mpe_fixture.py: C3 and B3 in a clip in MPE mode, E4 with its envelope on and G2
+            // driving the envelope on channels of their own, each gliding into tune from its own bend
+            auto edit = te::loadEditFromFile(engine, juce::File(UZX_FIXTURES_DIR).getChildFile("MPE chord.uzx"));
+            NotesToPsgPlugin* converter = nullptr;
+            AYChipPlugin* chip = nullptr;
+            for (auto* p : te::getAudioTracks(*edit)[0]->pluginList) {
+                if (auto* c = dynamic_cast<NotesToPsgPlugin*>(p))
+                    converter = c;
+                if (auto* c = dynamic_cast<AYChipPlugin*>(p))
+                    chip = c;
+            }
+            expect(converter != nullptr && chip != nullptr);
+            if (converter == nullptr || chip == nullptr)
+                return;
+            // Asked for anew each time: the converter makes its tuning again when playback starts
+            const auto period = [&](double note, TuningSystem::PeriodMode mode = TuningSystem::Tone) {
+                return converter->getTuningSystem().midiNoteToPeriod(note, mode);
+            };
+            const auto tonePeriods = [&] {
+                const auto regs = chip->getChipRegisters();
+                juce::Array<int> periods;
+                for (int n = 0; n < 3; ++n)
+                    if (regs.getVolume(n) > 0)
+                        periods.addUsingDefaultSort(int(regs.getTonePeriod(n)));
+                return periods;
+            };
+
+            engine.getDeviceManager().dispatchPendingUpdates();
+            edit->dispatchPendingUpdatesSynchronously();
+            edit->getTransport().setPosition(te::TimePosition());
+            edit->getTransport().play(false);
+
+            TestHelpers::processBlocks(engine, 8);  // about a tenth of a second in
+            auto periods = tonePeriods();
+            expectEquals(periods.size(), 3, "three voices on the chip's channels");
+            if (periods.size() == 3) {
+                expect(periods[0] < period(64.0), "E4 starts sharp");
+                expect(periods[1] < period(59.0), "B3 starts sharp, by less");
+                expect(periods[2] > period(48.0), "C3 starts flat");
+            }
+            expect(int(chip->getChipRegisters().getEnvelopePeriod()) > period(43.0, TuningSystem::Envelope),
+                   "and the envelope starts flat, further off than any of them");
+
+            TestHelpers::processBlocks(engine, 252);  // past two seconds, inside the four
+            periods = tonePeriods();
+            expect(periods == juce::Array<int>{period(64.0), period(59.0),
+                                               period(48.0)},
+                   "E4, B3 and C3 in tune");
+            const auto regs = chip->getChipRegisters();
+            expectEquals(int(regs.getEnvelopePeriod()), period(43.0, TuningSystem::Envelope),
+                         "the envelope at G2, on no chip channel of its own");
+            expectEquals(int(regs.getEnvelopeShape()), 12, "as a sawtooth");
+            int shaped = 0;
+            for (int n = 0; n < 3; ++n)
+                if (regs.getEnvMod(n)) {
+                    ++shaped;
+                    expectEquals(int(regs.getTonePeriod(n)), period(64.0), "E4 is the tone it shapes");
+                    expect(regs.getToneOn(n), "with its tone on");
+                }
+            expectEquals(shaped, 1, "one tone has its envelope on");
+            edit->getTransport().stop(false, false);
+        }
+
         beginTest("A chord and its controllers on one MIDI channel reach the chip through the instrument");
         {
             Rig rig(engine);

@@ -54,16 +54,19 @@ public:
             decoder.decode(MidiMessage::noteOn(1, 60, (uint8) 127));
             decoder.decode(MidiMessage::noteOn(2, 60, (uint8) 127));
             decoder.decode(MidiMessage::controllerEvent(1, 81, 127));
-            decoder.decode(MidiMessage::controllerEvent(1, 82, 1));
-            decoder.decode(MidiMessage::controllerEvent(1, 70, 12));
-            decoder.decode(MidiMessage::controllerEvent(1, 2, 5));
+            decoder.decode(MidiMessage::controllerEvent(1, 82, 64));
+            decoder.decode(MidiMessage::controllerEvent(1, 70, 48));
+            decoder.decode(MidiMessage::controllerEvent(1, 2, 20));
             decoder.decode(MidiMessage::controllerEvent(1, 85, 127));
 
             const auto frame = decoder.takeFrame();
             const auto& first = frame.begin()[0].timbre;
             expect(!first.tone && first.noise && first.envelope && first.drivesEnvelope);
-            expectEquals(first.envelopeShape, 12);
-            expectEquals(first.noisePeriod, 5);
+            expect(first.envelopeShape == EnvelopeShape::SawDown, "the fourth sixteen of the controller's range");
+            expectEquals(first.noisePeriod, 5, "a controller's four values to a noise period");
+
+            decoder.decode(MidiMessage::controllerEvent(1, 82, 63));
+            expect(!decoder.takeFrame().begin()->timbre.envelope, "a switch is on from 64, as a pedal is");
             const auto& second = frame.begin()[1].timbre;
             expect(second.tone && !second.noise && !second.envelope && !second.drivesEnvelope,
                    "another channel keeps the default timbre");
@@ -117,7 +120,7 @@ public:
             expectEquals(restarts(), String("-"), "another shape is a value; the chip restarts when it gets one");
 
             decoder.decode(MidiMessage::noteOff(4, 36));
-            decoder.decode(MidiMessage::controllerEvent(4, 83, 1));
+            decoder.decode(MidiMessage::controllerEvent(4, 83, 64));
             expectEquals(restarts(), String(), "no voice on the channel yet");
             decoder.decode(MidiMessage::noteOn(4, 38, (uint8) 100));
             decoder.decode(MidiMessage::noteOn(5, 38, (uint8) 100));
@@ -146,7 +149,7 @@ public:
         {
             NoteDecoder decoder;
             for (const auto& m : {MidiMessage::controllerEvent(3, 81, 127), MidiMessage::controllerEvent(3, 10, 0),
-                                  MidiMessage::controllerEvent(3, 86, 100), MidiMessage::controllerEvent(3, 83, 1),
+                                  MidiMessage::controllerEvent(3, 86, 100), MidiMessage::controllerEvent(3, 83, 127),
                                   MidiMessage::pitchWheel(3, 0), MidiMessage::noteOn(3, 60, (uint8) 127),
                                   MidiMessage::allControllersOff(3)})
                 decoder.decode(m);
@@ -201,7 +204,7 @@ public:
                 StringArray voices;
                 for (const auto& v : frame)
                     voices.add(String(int(v.timbre.tone)) + String(int(v.timbre.noise)) + String(int(v.timbre.envelope))
-                               + String(int(v.timbre.drivesEnvelope)) + " " + String(v.timbre.envelopeShape) + " "
+                               + String(int(v.timbre.drivesEnvelope)) + " " + String(toRegister(v.timbre.envelopeShape)) + " "
                                + String(v.timbre.noisePeriod) + " " + String(v.priority) + " "
                                + (v.pan ? String(*v.pan, 1) : String("-")) + (v.restartEnvelope ? " R" : ""));
                 return voices.joinIntoString("; ");
@@ -217,11 +220,11 @@ public:
                            .priority = 100,
                            .pan = 1.0f,
                            .timbre = {.tone = false, .noise = true, .envelope = true, .drivesEnvelope = true,
-                                      .envelopeShape = 10, .noisePeriod = 7}};
+                                      .envelopeShape = EnvelopeShape::TriangleDown, .noisePeriod = 7}};
             NoteFrame frame;
             frame.add(plain);
             frame.add(buzz);
-            expectEquals(controls(trip(frame)), String("1000 0 0 7 -; 0111 10 7 100 1.0 R"),
+            expectEquals(controls(trip(frame)), String("1000 14 0 7 -; 0111 10 7 100 1.0 R"),
                          "the priority a voice had on the channel it came from goes with it");
 
             plain.attack = buzz.attack = false;
@@ -232,7 +235,24 @@ public:
             NoteFrame next;
             next.add(plain);
             next.add(buzz);
-            expectEquals(controls(trip(next)), String("1000 0 0 7 0.0; 0011 10 7 3 1.0"));
+            expectEquals(controls(trip(next)), String("1000 14 0 7 0.0; 0011 10 7 3 1.0"));
+        }
+
+        beginTest("Every noise period and envelope shape has its own part of a controller's range");
+        {
+            for (int period = 0; period < numNoisePeriods; ++period)
+                expectEquals(controllerToStep(stepToController(period, numNoisePeriods), numNoisePeriods), period);
+            const int numShapes = static_cast<int>(EnvelopeShape::size());
+            for (int shape = 0; shape < numShapes; ++shape)
+                expectEquals(controllerToStep(stepToController(shape, numShapes), numShapes), shape);
+            expectEquals(stepToController(numNoisePeriods - 1, numNoisePeriods), 127, "the last step is the top of the range");
+            expectEquals(controllerToStep(127, numShapes), numShapes - 1);
+
+            juce::String registers;
+            for (int shape = 0; shape < numShapes; ++shape)
+                registers << toRegister(EnvelopeShape(shape)) << " ";
+            expectEquals(registers, juce::String("14 12 10 8 9 13 11 15 "),
+                         "triangle and sawtooth, the two turned over, then the four that play once");
         }
 
         beginTest("A channel used again starts from a reset, not with what the voice before left on it");

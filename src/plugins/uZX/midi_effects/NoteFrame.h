@@ -7,6 +7,8 @@
 #include <optional>
 #include <utility>
 
+#include "../aychip/EnvelopeShape.h"
+
 namespace MoTool::uZX {
 
 //==============================================================================
@@ -23,19 +25,29 @@ inline constexpr double noteFrameRate = 50.0;
 // TODO as a parameter, for a deeper range, sent downstream as the pitch bend sensitivity RPN
 inline constexpr int notePitchBendRange = 2;
 
-/** The controllers of the stream, on a voice's channel: its timbre, the envelope's restart, its place and priority. */
+/** The controllers of the stream, on a voice's channel: its timbre, the envelope's restart, its place and priority.
+
+    They are read as MIDI reads its own, not as chip numbers: a switch is on from 64, and a value with fewer
+    steps than a controller has takes the controller's whole range, an equal part of it for each step.
+*/
 enum class NoteCC
 {
-    NoisePeriod = 2,
+    NoisePeriod = 2,       ///< the 32 noise periods
     Pan = 10,
-    EnvelopeShape = 70,
-    Tone = 80,
-    Noise = 81,
-    Envelope = 82,
-    EnvelopeRestart = 83,  ///< an event, for any value but 0
-    EnvelopeDriver = 85,
+    EnvelopeShape = 70,    ///< the 8 envelope shapes
+    Tone = 80,             ///< a switch
+    Noise = 81,            ///< a switch
+    Envelope = 82,         ///< a switch
+    EnvelopeRestart = 83,  ///< an event, from 64
+    EnvelopeDriver = 85,   ///< a switch
     Priority = 86,
 };
+
+/** A controller's value for the step `value` of `steps`, and the step a controller's value means. */
+constexpr int stepToController(int value, int steps) noexcept { return value * 127 / (steps - 1); }
+constexpr int controllerToStep(int controller, int steps) noexcept { return controller * steps / 128; }
+
+inline constexpr int numNoisePeriods = 32;
 
 /** How a voice sounds on the chip. */
 struct NoteTimbre
@@ -44,7 +56,7 @@ struct NoteTimbre
     bool noise = false;     ///< the noise sounds
     bool envelope = false;  ///< the chip's envelope shapes the level
     bool drivesEnvelope = false;  ///< its pitch is the pitch of the chip's envelope
-    int envelopeShape = 0;  ///< the chip's envelope shape, 0..15, from the voice that drives the envelope
+    EnvelopeShape envelopeShape{};  ///< the chip's envelope shape, from the voice that drives the envelope
     int noisePeriod = 0;    ///< the chip's noise period, 0..31, from a voice with the noise on
 };
 

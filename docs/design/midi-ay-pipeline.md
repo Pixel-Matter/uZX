@@ -104,10 +104,11 @@ The channel a voice has in a frame is not the channel it is sent on. It says, wi
 | Start and end | Note on, note off; a note on for a key that sounds starts it again |
 | Level | Note-on velocity, then polyphonic aftertouch |
 | Pitch | The pitch wheel of its channel, ±2 semitones from the key (`notePitchBendRange`) |
-| Tone, noise, envelope on | Controllers 80, 81, 82 on its channel; on for any value but 0 |
-| Its pitch drives the envelope | Controller 85 on its channel; on for any value but 0 |
-| Envelope shape, noise period | Controllers 70 and 2 on its channel |
-| Envelope restart | Controller 83 on the channel of a voice that drives the envelope, for any value but 0. Another shape on controller 70 is only a value here; the chip restarts when it gets one, since it cannot sound without a write |
+| Tone, noise, envelope on | Controllers 80, 81, 82 on its channel; on from 64 |
+| Its pitch drives the envelope | Controller 85 on its channel; on from 64 |
+| Envelope shape | Controller 70 on its channel: the eight shapes over 0 to 127, sixteen values each |
+| Noise period | Controller 2 on its channel: the 32 periods over 0 to 127, four values each |
+| Envelope restart | Controller 83 on the channel of a voice that drives the envelope, from 64. Another shape on controller 70 is only a value here; the chip restarts when it gets one, since it cannot sound without a write |
 | Priority | Controller 86 on its channel, 0 to 127; the channel's number until it is sent |
 | Pan | Controller 10 on its channel, 0 left to 127 right; no place asked for until it is sent |
 
@@ -117,7 +118,22 @@ The wire is not strict MPE: level is polyphonic aftertouch where MPE has channel
 
 A note clip or a keyboard can send these controllers straight to the mixer, on any channels. Sent to the instrument, they apply to the notes played on their channel: the instrument reads them with the same `NoteControllers` the decoder uses, so a controller means the same before and after it. Controllers hold their value from note to note on a channel.
 
-**PSG wire, mixer or PSG clip to chip.** Implemented as `PsgCC` in `src/models/PsgCC.*`: one table that `PsgParamsMidiWriter` (PSG clips), the mapper and `AYChipPlugin` all use. Channels count from the chip's base channel.
+The note wire reads controllers as MIDI reads its own, not as chip numbers, since keyboards, knobs and clip lanes write it: a switch is on from 64, and a value with fewer steps than a controller takes the controller's whole range, an equal part for each step (`stepToController`, `controllerToStep`). The encoder sends a switch as 127 or 0 and the last step as 127.
+
+The envelope shape on this wire, in a voice's timbre and anywhere the interface offers one is `EnvelopeShape` in `src/plugins/uZX/aychip/EnvelopeShape.h`: the eight shapes the envelope can have, where the chip's register has sixteen values for them. The oscillator shapes come first, the usual two and then each turned over, and the shapes that play once after. `toRegister` gives the register value the mixer sends on.
+
+| Controller 70 | Shape | | Register |
+| --- | --- | --- | --- |
+| 0–15 | Triangle | `/\/\` | 14 |
+| 16–31 | Sawtooth | `////` | 12 |
+| 32–47 | Triangle, falling first | `\/\/` | 10 |
+| 48–63 | Sawtooth, falling | `\\\\` | 8 |
+| 64–79 | Decay | `\___` | 9, and 0 to 3 |
+| 80–95 | Attack | `/‾‾‾` | 13 |
+| 96–111 | Decay, then full | `\‾‾‾` | 11 |
+| 112–127 | Attack, then silent | `/___` | 15, and 4 to 7 |
+
+**PSG wire, mixer or PSG clip to chip.** Implemented as `PsgCC` in `src/models/PsgCC.*`: one table that `PsgParamsMidiWriter` (PSG clips), the mapper and `AYChipPlugin` all use. Channels count from the chip's base channel. Unlike the note wire, a controller here carries the register's own value: volume 0 to 15, noise period 0 to 31, shape 0 to 15, a switch 0 or 1 (on for any value but 0). A PSG clip replays a file's register writes exactly, a device writes what it receives, and knobs reach the chip through the mixer, not this wire.
 
 | Parameter | Channel | Controller |
 | --- | --- | --- |
@@ -163,7 +179,7 @@ What this asks of the design:
 | Chip instrument | `ChipInstrumentPlugin`, `ChipInstrumentVoice` on `MPEInstrumentFx` | No timbre parameters of its own; a pitch more than two semitones from its key does not fit the wheel; fixed 50 Hz (`noteFrameRate`) |
 | Chip effects | None | |
 | Chip mixer | `NotesToPsgPlugin`, `NotesToPsgMapper`, `ChipMixer` | It follows the chip's stored stereo layout, not an automated one |
-| PSG codec | `PsgCC`, `PsgEncoder` | A switch is 0 or 1 and volume the raw 0–15, not the 0–127 a knob sends |
+| PSG codec | `PsgCC`, `PsgEncoder` | None |
 | AY chip | `AYChipPlugin` | None: it decodes each frame's controllers over the registers the chip holds, and keeps nothing else |
 | Tuning preview | `MultitrackMidiPreview` | None: it plays note clips with timbre controllers into the mixer, one of them a voice that only drives the envelope |
 
@@ -172,4 +188,3 @@ What this asks of the design:
 Refactor first, then change behaviour.
 
 1. Chip effects.
-2. Wire changes: one meaning for switch and volume values. These come before any firmware reads the wire.

@@ -59,7 +59,7 @@ public:
             size_t ch = 1;
 
             // Play a single note with envelope enabled
-            preview.playSingleNote(60, 0.5, true, true, 5, 12);
+            preview.playSingleNote(60, 0.5, true, true, uZX::EnvelopeShape::Saw, 12);
 
             // Inspect the sequence on track 0 (main note)
             auto& clips = preview.getChannelClips();
@@ -108,7 +108,7 @@ public:
             MultitrackMidiPreview preview(edit);
 
             // Test envelope shape by playing a single note with envelope enabled
-            preview.playSingleNote(60, 0.5, false, true, 7, 0);
+            preview.playSingleNote(60, 0.5, false, true, uZX::EnvelopeShape::SawDown, 0);
 
             auto& clips = preview.getChannelClips();
             auto& sequence = clips[3]->getSequence(); // Check envelope channel
@@ -118,7 +118,7 @@ public:
             for (auto ccEvent : controllers) {
                 if (ccEvent->getType() == static_cast<int>(MidiCCType::SoundVariation)) {
                     foundShapeCC = true;
-                    expectEquals(ccEvent->getControllerValue(), 7 << 7, "Envelope shape should be 7 << 7");
+                    expectEquals(ccEvent->getControllerValue(), 54 << 7, "the fourth of the eight shapes, of the controller's range");
                 }
             }
 
@@ -267,7 +267,7 @@ public:
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);
             MultitrackMidiPreview preview(*edit);
-            preview.playSingleNote(60, 0.5, false, true, 8, 0);  // envelope only
+            preview.playSingleNote(60, 0.5, false, true, uZX::EnvelopeShape::SawDown, 0);  // envelope only
             TestHelpers::flushMessageQueue();
             TestHelpers::processBlocks(engine, 10);
 
@@ -278,7 +278,7 @@ public:
             expectEquals(int(regs.getEnvelopePeriod()),
                          preview.NotesToPsgPlugin->getTuningSystem().midiNoteToPeriod(60.0, TuningSystem::Envelope),
                          "and its pitch is the envelope's");
-            expectEquals(int(regs.getEnvelopeShape()), 8);
+            expectEquals(int(regs.getEnvelopeShape()), 8, "the falling sawtooth is the chip's shape 8");
             preview.stopPlayback();
             TestHelpers::flushMessageQueue();
         }

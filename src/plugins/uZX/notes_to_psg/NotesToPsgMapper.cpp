@@ -88,7 +88,7 @@ PsgParamFrameData ChipMixer::render(const Voices& voices, const TuningSystem& tu
 
     if (const auto* voice = voices.envelope) {
         setPeriod(PsgParamType::EnvelopePeriod, *voice, TuningSystem::Envelope);
-        set(PsgParamType::EnvelopeShape, voice->timbre.envelopeShape);
+        set(PsgParamType::EnvelopeShape, toRegister(voice->timbre.envelopeShape));
         // Only when the voice asks: a note that starts or lasts lets the envelope run
         if (voice->restartEnvelope)
             set(PsgParamType::RetriggerEnvelope, 1);

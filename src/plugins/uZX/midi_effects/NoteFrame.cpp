@@ -21,8 +21,12 @@ void sendControllers(const NoteVoice& before, const NoteVoice& now, int channel,
     sendIfChanged(NoteCC::Noise, onOff(before.timbre.noise), onOff(now.timbre.noise));
     sendIfChanged(NoteCC::Envelope, onOff(before.timbre.envelope), onOff(now.timbre.envelope));
     sendIfChanged(NoteCC::EnvelopeDriver, onOff(before.timbre.drivesEnvelope), onOff(now.timbre.drivesEnvelope));
-    sendIfChanged(NoteCC::EnvelopeShape, before.timbre.envelopeShape, now.timbre.envelopeShape);
-    sendIfChanged(NoteCC::NoisePeriod, before.timbre.noisePeriod, now.timbre.noisePeriod);
+    const auto shapeOf = [](const NoteVoice& voice) {
+        return stepToController(voice.timbre.envelopeShape.asUnderlying(), static_cast<int>(EnvelopeShape::size()));
+    };
+    sendIfChanged(NoteCC::EnvelopeShape, shapeOf(before), shapeOf(now));
+    sendIfChanged(NoteCC::NoisePeriod, stepToController(before.timbre.noisePeriod, numNoisePeriods),
+                  stepToController(now.timbre.noisePeriod, numNoisePeriods));
     sendIfChanged(NoteCC::Priority, before.priority, jlimit(0, 127, now.priority));
     // ponytail: a voice cannot give its pan up while it sounds; a reset and everything again if one ever does
     if (panOf(now) >= 0)
@@ -109,30 +113,29 @@ bool NoteControllers::decode(const juce::MidiMessage& m) noexcept {
         return true;
     }
 
-    // ponytail: a switch is on for any value but 0, as the chip reads its own; MIDI's 64 and up when the
-    // wires get one meaning for a switch
     const auto value = m.getControllerValue();
+    const bool on = value >= 64;
     switch (static_cast<NoteCC>(m.getControllerNumber())) {
         case NoteCC::Tone:
-            chan.timbre.tone = value != 0;
+            chan.timbre.tone = on;
             break;
         case NoteCC::Noise:
-            chan.timbre.noise = value != 0;
+            chan.timbre.noise = on;
             break;
         case NoteCC::Envelope:
-            chan.timbre.envelope = value != 0;
+            chan.timbre.envelope = on;
             break;
         case NoteCC::EnvelopeShape:
-            chan.timbre.envelopeShape = value;
+            chan.timbre.envelopeShape = controllerToStep(value, static_cast<int>(EnvelopeShape::size()));
             break;
         case NoteCC::EnvelopeRestart:
-            chan.restartEnvelope = chan.restartEnvelope || value != 0;
+            chan.restartEnvelope = chan.restartEnvelope || on;
             break;
         case NoteCC::EnvelopeDriver:
-            chan.timbre.drivesEnvelope = value != 0;
+            chan.timbre.drivesEnvelope = on;
             break;
         case NoteCC::NoisePeriod:
-            chan.timbre.noisePeriod = value;
+            chan.timbre.noisePeriod = controllerToStep(value, numNoisePeriods);
             break;
         case NoteCC::Priority:
             chan.priority = value;

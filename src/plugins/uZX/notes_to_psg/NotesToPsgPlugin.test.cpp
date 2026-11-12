@@ -171,7 +171,7 @@ public:
             sequence.addNote(64, te::BeatPosition(), te::BeatDuration::fromBeats(8.0), 100, 0, nullptr);
             sequence.addNote(67, te::BeatPosition(), te::BeatDuration::fromBeats(8.0), 100, 0, nullptr);
             sequence.addControllerEvent(te::BeatPosition(), 81, 127 << 7, nullptr);  // noise on
-            sequence.addControllerEvent(te::BeatPosition(), 2, 9 << 7, nullptr);     // noise period
+            sequence.addControllerEvent(te::BeatPosition(), 2, 36 << 7, nullptr);    // noise period 9 of 32
             rig.play();
 
             const auto regs = rig.chip->getChipRegisters();

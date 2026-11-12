@@ -141,10 +141,10 @@ public:
             ChipMixer mixer;
             auto driver = voice(8, 36);
             driver.attack = true;
-            driver.timbre = {.tone = false, .drivesEnvelope = true, .envelopeShape = 10, .noisePeriod = 7};
+            driver.timbre = {.tone = false, .drivesEnvelope = true, .envelopeShape = EnvelopeShape::TriangleDown, .noisePeriod = 7};
             auto params = mixer.mix(frameOf({driver}), *tuning);
             expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(36.0, TuningSystem::Envelope));
-            expectEquals(value(params, P::EnvelopeShape), 10, "the shape is a value to hold");
+            expectEquals(value(params, P::EnvelopeShape), 10, "the shape is a value to hold, as the chip's register has it");
             expect(!params.isSet(P::RetriggerEnvelope), "a note starting lets the envelope run");
             expectEquals(value(params, P::VolumeA), 0, "with nothing to sound it takes no channel");
             expect(!params.isSet(P::NoisePeriod), "the noise period is not its to set");
@@ -164,9 +164,9 @@ public:
         {
             ChipMixer mixer;
             auto low = voice(2, 36, 2);
-            low.timbre = {.drivesEnvelope = true, .envelopeShape = 8};
+            low.timbre = {.drivesEnvelope = true, .envelopeShape = EnvelopeShape::SawDown};
             auto high = voice(9, 43, 9);
-            high.timbre = {.tone = false, .drivesEnvelope = true, .envelopeShape = 12};
+            high.timbre = {.tone = false, .drivesEnvelope = true, .envelopeShape = EnvelopeShape::Saw};
             const auto params = mixer.mix(frameOf({high, low, voice(3, 60, 3), voice(4, 62, 4), voice(5, 64, 5)}), *tuning);
             expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(43.0, TuningSystem::Envelope));
             expectEquals(value(params, P::EnvelopeShape), 12);
@@ -318,10 +318,10 @@ public:
             auto messages = play(mapper,
                                  {MidiMessage::controllerEvent(9, 85, 127),
                                   MidiMessage::controllerEvent(9, 80, 0),
-                                  MidiMessage::controllerEvent(9, 70, 10),
+                                  MidiMessage::controllerEvent(9, 70, 36),  // the third shape of eight
                                   MidiMessage::noteOn(9, 36, (uint8) 100)});
             expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(36.0, TuningSystem::Envelope));
-            expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"));
+            expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"), "which is the chip's shape 10");
             expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String(),
                          "the shape goes as a value: the chip restarts by itself if it held another");
             expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("0"), "no chip channel sounds");
@@ -334,7 +334,7 @@ public:
             expectEquals(messages.size(), 2, "a restart inside the lasting note, and nothing else");
             expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1 0"));
 
-            messages = play(mapper, {MidiMessage::controllerEvent(9, 83, 0), MidiMessage::controllerEvent(9, 70, 10)});
+            messages = play(mapper, {MidiMessage::controllerEvent(9, 83, 0), MidiMessage::controllerEvent(9, 70, 36)});
             expectEquals(messages.size(), 0, "the release and the same shape again do nothing");
         }
 

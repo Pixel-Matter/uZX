@@ -225,7 +225,20 @@ When a track is selected, the Devices panel shows the plugin chain on that track
 
 MIDI to PSG plays the notes of every MIDI channel on the chip's three channels, several notes of one MIDI channel too. Velocity and polyphonic aftertouch set a note's volume, and the pitch wheel bends the notes of its channel up to two semitones. When more than three notes sound, the ones with the highest priority play: a note's priority is its MIDI channel's number, or the value of controller 86 on that channel, and among equals the newest note plays. A note that lost its place comes back when a chip channel frees. A note stays on its chip channel while it plays; controller 10 (pan) on its MIDI channel asks for the chip channel nearest to that place in the AY chip's **Layout**.
 
-Controllers on a MIDI channel set how its notes sound. Controllers 80, 81 and 82 turn the tone, noise and envelope on (any value but 0) or off, and controller 2 sets the noise period. Controller 85 (any value but 0) makes the channel's notes drive the chip's envelope: their pitch is the envelope's pitch. With the tone off as well, such a note takes no chip channel and only moves the envelope under the other notes; with its envelope on, it is a buzzer by itself. A note that drives the envelope lets it run on; controller 83 on its channel (any value but 0) restarts the envelope, with a note or inside one. Controller 70 sets the envelope shape, restarting the envelope when the shape is another.
+Controllers on a MIDI channel set how its notes sound. A switch is on from 64 and off below, so a button or the upper half of a knob turns it on. Controllers 80, 81 and 82 switch the tone, noise and envelope, and controller 2 sweeps the noise period from the highest noise at 0 to the lowest at 127. Controller 85 is a switch that makes the channel's notes drive the chip's envelope: their pitch is the envelope's pitch. With the tone off as well, such a note takes no chip channel and only moves the envelope under the other notes; with its envelope on, it is a buzzer by itself. A note that drives the envelope lets it run on; controller 83 on its channel, from 64, restarts the envelope, with a note or inside one.
+
+Controller 70 picks the envelope shape, restarting the envelope when the shape is another. The eight shapes share the controller's range:
+
+| Controller 70 | Shape | |
+| --- | --- | --- |
+| 0–15 | Triangle | `/\/\` |
+| 16–31 | Sawtooth | `////` |
+| 32–47 | Triangle, falling first | `\/\/` |
+| 48–63 | Sawtooth, falling | `\\\\` |
+| 64–79 | Decay | `\___` |
+| 80–95 | Attack | `/‾‾‾` |
+| 96–111 | Decay, then full | `\‾‾‾` |
+| 112–127 | Attack, then silent | `/___` |
 
 **μZX Instrument** before MIDI to PSG shapes each note with its amp and pitch envelopes and sends it on a MIDI channel of its own, from 2 to 16, so every note of a chord has its own pitch. It plays up to fifteen notes at once and leaves it to MIDI to PSG which three sound. The controllers above still go to the instrument on the channel the notes are played on: they apply to those notes, and a note's priority is that channel's number.
 

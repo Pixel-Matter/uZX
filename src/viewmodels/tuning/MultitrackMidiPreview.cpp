@@ -101,7 +101,7 @@ void MultitrackMidiPreview::clearAllChannelClips() {
     }
 }
 
-void MultitrackMidiPreview::placeNote(int channelIndex, int midiNote, double noteLength, double startTime, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
+void MultitrackMidiPreview::placeNote(int channelIndex, int midiNote, double noteLength, double startTime, bool enableTone, bool enableEnvelope, uZX::EnvelopeShape envelopeShape, int envInterval) {
     if (channelIndex < 0 || channelIndex >= static_cast<int>(NUM_CHANNELS) || !channelClips[static_cast<size_t>(channelIndex)]) return;
 
     auto& sequence = channelClips[static_cast<size_t>(channelIndex)]->getSequence();
@@ -138,7 +138,9 @@ void MultitrackMidiPreview::placeNote(int channelIndex, int midiNote, double not
                                         static_cast<int>(uZX::NoteCC::Tone), 0, nullptr);
         // The shape is a value; the restart is what starts the envelope again with each previewed note
         envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
-                                        static_cast<int>(MidiCCType::SoundVariation), envelopeShape << 7, nullptr);
+                                        static_cast<int>(uZX::NoteCC::EnvelopeShape),
+                                        uZX::stepToController(envelopeShape.asUnderlying(), static_cast<int>(uZX::EnvelopeShape::size())) << 7,
+                                        nullptr);
         envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
                                         static_cast<int>(MidiCCType::GPB4RetriggerSwitch), 127 << 7, nullptr);
         envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime + noteLength),
@@ -171,7 +173,7 @@ void MultitrackMidiPreview::placeNote(int channelIndex, int midiNote, double not
     // DBG("=== End of notes ===");
 }
 
-void MultitrackMidiPreview::playSingleNote(int midiNote, double noteLength, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
+void MultitrackMidiPreview::playSingleNote(int midiNote, double noteLength, bool enableTone, bool enableEnvelope, uZX::EnvelopeShape envelopeShape, int envInterval) {
     stopPlayback();
     clearAllChannelClips();
     // DBG("Playing single note: " << midiNote
@@ -185,7 +187,7 @@ void MultitrackMidiPreview::playSingleNote(int midiNote, double noteLength, bool
     startPlayback(noteLength);
 }
 
-void MultitrackMidiPreview::playChord(const std::vector<int>& midiNotes, double noteLength, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
+void MultitrackMidiPreview::playChord(const std::vector<int>& midiNotes, double noteLength, bool enableTone, bool enableEnvelope, uZX::EnvelopeShape envelopeShape, int envInterval) {
     stopPlayback();
     clearAllChannelClips();
 
@@ -200,7 +202,7 @@ void MultitrackMidiPreview::playChord(const std::vector<int>& midiNotes, double 
     startPlayback(noteLength);
 }
 
-void MultitrackMidiPreview::playArpeggio(const std::vector<int>& midiNotes, double noteLength, bool enableTone, bool enableEnvelope, int envelopeShape, int envInterval) {
+void MultitrackMidiPreview::playArpeggio(const std::vector<int>& midiNotes, double noteLength, bool enableTone, bool enableEnvelope, uZX::EnvelopeShape envelopeShape, int envInterval) {
     stopPlayback();
     clearAllChannelClips();
 

@@ -48,7 +48,7 @@ void TuningPlayer::playSingleNote(int midiNote) {
 
     bool tone = viewModel.isToneEnabled();
     bool env = viewModel.isEnvelopeEnabled();
-    int envelopeShape = viewModel.getEnvelopeShape();
+    const auto envelopeShape = viewModel.getEnvelopeShape();
     int envelopeInterval = viewModel.getEnvelopeInterval();
 
     // DBG("========== playSingleNote " << midiNote << " ==========");
@@ -104,7 +104,7 @@ void TuningPlayer::playChord(const std::vector<int>& midiNotes) {
     updateTuning();
     auto tone = viewModel.isToneEnabled();
     auto env = viewModel.isEnvelopeEnabled();
-    int envelopeShape = viewModel.getEnvelopeShape();
+    const auto envelopeShape = viewModel.getEnvelopeShape();
     int modulationSemitones = viewModel.getEnvelopeInterval();
 
     stopNotes(/*notify=*/ false);
@@ -123,7 +123,7 @@ void TuningPlayer::playArpeggio(const std::vector<int>& midiNotes) {
     updateTuning();
     auto tone = viewModel.isToneEnabled();
     auto env = viewModel.isEnvelopeEnabled();
-    int envelopeShape = viewModel.getEnvelopeShape();
+    const auto envelopeShape = viewModel.getEnvelopeShape();
     int envelopeInterval = viewModel.getEnvelopeInterval();
 
     if (midiNotes.empty()) return;

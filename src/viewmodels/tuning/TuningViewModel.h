@@ -11,6 +11,7 @@
 #include "../../models/tuning/Scales.h"
 
 #include "../../plugins/uZX/aychip/aychip.h"
+#include "../../plugins/uZX/aychip/EnvelopeShape.h"
 #include "../../util/convert.h"
 
 #include <algorithm>
@@ -579,15 +580,9 @@ public:
                                    + "MHz A4=" + String(selectedParams.a4Frequency.getStoredValue(), 0));
     }
 
-    EnvShape getEnvelopeShape() const {
-        switch (selectedParams.envelopeShape.getStoredValue()) {
-            case EnvShapeSimpleEnum::Triangle:
-                return EnvShape::UP_DOWN_E;
-            case EnvShapeSimpleEnum::Sawtooth:
-                return EnvShape::UP_UP_C;
-            default:
-                return EnvShape::UP_DOWN_E; // Default to Triangle if unknown
-        }
+    uZX::EnvelopeShape getEnvelopeShape() const {
+        return selectedParams.envelopeShape.getStoredValue() == EnvShapeSimpleEnum::Sawtooth ? uZX::EnvelopeShape::Saw
+                                                                                              : uZX::EnvelopeShape::Triangle;
     }
 
     TuningSystemType getTuningType() const {

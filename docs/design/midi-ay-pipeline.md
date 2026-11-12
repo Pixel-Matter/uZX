@@ -136,7 +136,7 @@ The envelope shape and its restart are two things in every part of the pipeline 
 
 `PsgEncoder` sends a retrigger each time it is set, and everything else only when it differs from what was sent.
 
-Both wires use a track's sixteen channels, on either side of the mixer: it reads notes on all sixteen, passes nothing with a channel on, and writes the PSG wire on four channels from its base channel. A PSG clip before a mixer on the same track is therefore read as notes. The safer default is the PSG wire on the last four channels (13–16); today both the chip and MIDI to PSG default to base channel 1.
+Both wires use a track's sixteen channels, on either side of the mixer: it reads notes on all sixteen, passes nothing with a channel on, and writes the PSG wire on four channels from its base channel. A PSG clip before a mixer on the same track is therefore read as notes. The two wires never share a stretch of a track, so the PSG wire stays on channels 1 to 4 by default, for the chip, the mixer and PSG clips alike.
 
 ## Where the stages run
 

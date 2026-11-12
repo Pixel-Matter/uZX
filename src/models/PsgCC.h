@@ -210,4 +210,26 @@ private:
     juce::MidiMessageSequence sequence {};
 };
 
+//==============================================================================
+/**
+    Writes the parameters a chip should hold as controllers, sending those that differ from what it was
+    last sent. A retrigger is an event, not a value to hold: it is sent every time it is set.
+
+    It alone remembers what was sent, so whatever makes the parameters keeps no MIDI state.
+*/
+class PsgEncoder {
+public:
+    /** Adds to `out`, at `time`, the messages that bring the chip on `baseChannel` to `params`. */
+    void encode(const PsgParamFrameData& params, tracktion::MidiMessageArray& out, double time, int baseChannel);
+
+    /** Forgets what was sent, so the next parameters go out whole: for a chip that may not hold them any more. */
+    void reset() noexcept { sent_ = {}; }
+
+    /** True if the chip was sent anything since the last reset. */
+    bool hasSent() const noexcept { return !sent_.isEmpty(); }
+
+private:
+    PsgParamFrameData sent_;
+};
+
 }  // namespace MoTool

@@ -72,7 +72,6 @@ void NotesToPsgPlugin::midiPanic() {
 }
 
 void NotesToPsgPlugin::reset() {
-    midiEffect.clearOutput();
     midiEffect.reset();
 }
 
@@ -126,11 +125,8 @@ void NotesToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& 
 }
 
 void NotesToPsgPlugin::updateParams() {
-    // first reset to clear state and to silence any hanging notes
-    reset();
+    // Silences any hanging notes as well
     midiEffect.setBaseChannel(static_cast<int>(staticParams.baseMidiChannel.getStoredValue()));
-    // then reset again to init
-    reset();
 }
 
 void NotesToPsgPlugin::recreateTuningSystem() {

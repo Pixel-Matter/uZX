@@ -1,159 +1,66 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "../../../models/tuning/TuningSystemBase.h"
-#include "../../../models/tuning/TuningRegistry.h"
+
+#include <memory>
+
 #include "../../../models/PsgCC.h"
+#include "../../../models/tuning/TuningSystemBase.h"
 #include "../midi_effects/MidiEffect.h"
-
-#include <array>
-#include <vector>
-#include <optional>
-
-namespace MoTool::Tests {
-class MidiToPsgConverterTests;
-}
+#include "../midi_effects/NoteFrame.h"
 
 namespace MoTool::uZX {
 
 using namespace MoTool;
 
+//==============================================================================
 /**
- * Core converter class that processes MIDI note events and generates PSG MIDI CC messages.
- * This class is designed to be testable and reusable.
- */
-class NotesToPsgMapper : private MPEInstrument::Listener {
+    The chip mixer's logic: the parameters the chip needs to play a frame of voices. Voices take the chip's
+    channels, the tuning turns pitch into periods, timbre becomes the mixer and envelope switches.
+    A channel without a voice is silenced. See docs/design/midi-ay-pipeline.md.
+
+    ponytail: no allocation. The voice on MIDI channel `baseChannel + n` plays chip channel n, the last one to
+    start if there are several, and the voice on `baseChannel + 3` plays the envelope and carries its shape and
+    the noise period. To come: voices on any channel assigned by priority, and a timbre field saying the voice's
+    pitch drives the envelope, in place of the fourth channel.
+*/
+PsgParamFrameData mixVoices(const NoteFrame& frame, const TuningSystem& tuning, int baseChannel);
+
+//==============================================================================
+/**
+    The chip mixer as a MIDI effect. It reads the chip-note stream on four MIDI channels from its base channel
+    and writes PSG controllers on the same four; what arrives on other channels passes through.
+
+    All MIDI state is in the decoder and the encoder. A frame is wherever the input has messages.
+*/
+class NotesToPsgMapper
+{
 public:
-    struct ChannelState {
-        int period = 0;       // Period value for tone/noise
-        int volume = 0;       // Volume level 0-15
-        bool toneOn = false;
-        bool noiseOn = true;
-        bool envOn = false;   // Envelope is off by default
-        EnvShape envShape = EnvShape::DOWN_HOLD_BOTTOM_0;
-    };
-
-    struct ChannelVoice {
-    private:
-        tracktion::MidiMessageArray& midiBuffer_;
-        std::shared_ptr<TuningSystem> tuning_ {};
-    public:
-        int midiChannel;
-        int psgChannel;  // 0..2 for A, B, C; 3 for the envelope
-        bool isEnvChannel;
-        tracktion::MPESourceID mpeSourceId_ = 0;
-
-        MPENote mpeNote;
-        ChannelState state;
-        ChannelState lastState;
-
-        ChannelVoice(tracktion::MidiMessageArray& buffer, int midiChan, int psgChan);
-
-        void reset();
-        void setTuningSystem(std::shared_ptr<TuningSystem> tuning);
-
-        bool isActive() const;
-        int getEffectiveChipVolume() const;
-        int getEffectiveChipPeriod() const;
-
-        void noteOn(MPENote newNote);
-        void noteOff(MPENote offNote);
-        void aftertouch(MPENote changedNote);
-        void controllerChange(MidiCCType controller, int value);
-        void pitchbendChange(MPENote changedNote);
-
-        void emitControllerChange(MidiCCType controller, int value);
-        void emitParam(PsgParamType param, int value);
-        void emitVolume(int volume);
-        void emitPeriod(int period);
-        void emitToneSwitch(bool on);
-        void emitNoiseSwitch(bool on);
-        void emitEnvSwitch(bool on);
-
-        //==============================================================================
-        // Rendering
-        void updatePeriod();
-        void updateVolume();
-        void updateModulation();
-        void render();
-
-        void debug() const;
-    };
-
     NotesToPsgMapper();
-    ~NotesToPsgMapper() override;
-
-    // explicit NotesToPsgMapper(int baseChannel = 1, int numChannels = 3);
 
     // Configuration
     TuningSystem& getTuningSystem();
     void setTuningSystem(std::shared_ptr<TuningSystem> tuning);
-    void setBaseChannel(int channel);
-    void reset();
 
-    // MIDI processing
-    tracktion::MidiMessageArray takeOutputMessages();
-    void clearOutput() {
-        const juce::ScopedLock sl(lock_);
-        midiBuffer_.clear();
-    }
-    void handleMidiMessage(const tracktion::MidiMessageWithSource& msg);
+    /** Moves the four channels, silencing the chip on the ones it leaves. */
+    void setBaseChannel(int channel);
+
+    /** Forgets the held notes. The next block starts by silencing the chip, and what follows is sent whole. */
+    void reset();
 
     // MIDI fx processor callback
     void operator()(MidiBufferContext& c);
 
-    // For debugging
-    void debugChannelVoices() const;
-
-    friend struct ChannelVoice;
-    friend class MoTool::Tests::MidiToPsgConverterTests;
-
 private:
-    void setPassthruOutsideChannels(bool enable) { passthruOutsideChannels_ = enable; }
-    void setPassthruUnprocessedMIDI(bool enable) { passthruUnprocessedMIDI_ = enable; }
-
-    // Helper methods
     bool isChannelInRange(int channel) const;
-    const ChannelVoice& getVoice(int channel) const;
-    ChannelVoice& getVoice(int channel);
+    void render(tracktion::MidiMessageArray& out, double time);
 
-    [[nodiscard]] te::MidiMessageArray renderVoices();
-
-    //==============================================================================
-    // MPEInstrument::Listener callbacks (connect MPE events to voice management)
-
-    /** Called when a new MPE note is added. */
-    void noteAdded(MPENote newNote) override;
-
-    /** Called when an MPE note is released. */
-    void noteReleased(MPENote finishedNote) override;
-
-    /** Called when an MPE note's pressure changes. */
-    void notePressureChanged(MPENote changedNote) override;
-
-    /** Called when an MPE note's pitchbend changes. */
-    void notePitchbendChanged(MPENote changedNote) override;
-
-    /** Called when an MPE note's timbre changes. */
-    void noteTimbreChanged(MPENote changedNote) override;
-
-    // Do not need key state changes for now
-    // /** Called when an MPE note's key state changes. */
-    // void noteKeyStateChanged(MPENote changedNote) override;
-
-    //==============================================================================
-
-    MPEInstrument mpeInstrument_;
-
+    NoteDecoder decoder_;
+    PsgEncoder encoder_;
     int baseChannel_ = 1;
-    tracktion::MPESourceID mpeSourceId_ = 0;
-    inline static constexpr int numChannels_ = PsgCC::numChannels;
-    std::array<ChannelVoice, numChannels_> voices_;
-    tracktion::MidiMessageArray midiBuffer_;
-    bool passthruOutsideChannels_ = true;
-    bool passthruUnprocessedMIDI_ = false;
+    tracktion::MidiMessageArray pending_;  // what a reset left for the start of the next block
 
-    std::shared_ptr<TuningSystem> tuningSystem_ {};
+    std::shared_ptr<TuningSystem> tuningSystem_{};
 
     // Configuration runs on the message thread, operator() on the audio thread; both hold this, so a replaced
     // tuning is destroyed by the thread replacing it, never under a rendering voice.
@@ -164,4 +71,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NotesToPsgMapper)
 };
 
-} // namespace MoTool::uZX
+}  // namespace MoTool::uZX

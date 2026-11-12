@@ -12,20 +12,86 @@ void NoteEncoder::encode(const NoteFrame& frame, tracktion::MidiMessageArray& ou
     for (const auto& voice : frame) {
         const auto* last = voice.attack ? nullptr : sent_.find(voice.channel, voice.key);
 
-        if (last == nullptr || ! approximatelyEqual(last->pitch, voice.pitch)) {
+        if (last == nullptr || !approximatelyEqual(last->pitch, voice.pitch)) {
             const auto bend = (voice.pitch - voice.key) / notePitchBendRange;
-            out.addMidiMessage(MidiMessage::pitchWheel(voice.channel, jlimit(0, 16383, 8192 + roundToInt(bend * 8191.0))),
-                               time, 0);
+            out.addMidiMessage(
+                MidiMessage::pitchWheel(voice.channel, jlimit(0, 16383, 8192 + roundToInt(bend * 8191.0))), time, 0);
         }
 
+        // At least 1: a note on with velocity 0 is a note off
         if (last == nullptr)
-            out.addMidiMessage(MidiMessage::noteOn(voice.channel, voice.key, voice.level), time, 0);
-        else if (! approximatelyEqual(last->level, voice.level))
-            out.addMidiMessage(MidiMessage::aftertouchChange(voice.channel, voice.key, roundToInt(voice.level * 127.0f)),
-                               time, 0);
+            out.addMidiMessage(
+                MidiMessage::noteOn(
+                    voice.channel, voice.key, static_cast<uint8>(jlimit(1, 127, roundToInt(voice.level * 127.0f)))),
+                time,
+                0);
+        else if (!approximatelyEqual(last->level, voice.level))
+            out.addMidiMessage(
+                MidiMessage::aftertouchChange(voice.channel, voice.key, roundToInt(voice.level * 127.0f)), time, 0);
     }
 
     sent_ = frame;
+}
+
+//==============================================================================
+bool NoteDecoder::decode(const juce::MidiMessage& m) noexcept {
+    const auto channel = m.getChannel();
+    if (channel < 1 || channel > 16)
+        return false;
+    auto& chan = channels_[static_cast<size_t>(channel - 1)];
+
+    if (m.isNoteOn()) {
+        // ponytail: a seventeenth note is dropped; steal the oldest if anything ever plays that many
+        held_.remove(channel, m.getNoteNumber());
+        held_.add({.channel = channel, .key = m.getNoteNumber(), .level = m.getFloatVelocity(), .attack = true});
+    } else if (m.isNoteOff()) {
+        held_.remove(channel, m.getNoteNumber());
+    } else if (m.isAftertouch()) {
+        if (auto* voice = held_.find(channel, m.getNoteNumber()))
+            voice->level = static_cast<float>(m.getAfterTouchValue()) / 127.0f;
+    } else if (m.isPitchWheel()) {
+        chan.bend = (m.getPitchWheelValue() - 8192) / 8191.0 * notePitchBendRange;
+    } else if (m.isAllNotesOff() || m.isAllSoundOff()) {
+        held_.removeIf([=](const NoteVoice& v) { return v.channel == channel; });
+    } else if (m.isController()) {
+        // ponytail: a switch is on for any value but 0, as the chip reads its own; MIDI's 64 and up when the
+        // wires get one meaning for a switch
+        const auto value = m.getControllerValue();
+        switch (static_cast<NoteTimbreCC>(m.getControllerNumber())) {
+            case NoteTimbreCC::Tone:
+                chan.timbre.tone = value != 0;
+                break;
+            case NoteTimbreCC::Noise:
+                chan.timbre.noise = value != 0;
+                break;
+            case NoteTimbreCC::Envelope:
+                chan.timbre.envelope = value != 0;
+                break;
+            case NoteTimbreCC::EnvelopeShape:
+                chan.timbre.envelopeShape = value;
+                break;
+            case NoteTimbreCC::NoisePeriod:
+                chan.timbre.noisePeriod = value;
+                break;
+            default:
+                return false;
+        }
+    } else {
+        return false;
+    }
+    return true;
+}
+
+NoteFrame NoteDecoder::takeFrame() noexcept {
+    auto frame = held_;
+    for (auto& voice : frame) {
+        const auto& chan = channels_[static_cast<size_t>(voice.channel - 1)];
+        voice.pitch = voice.key + chan.bend;
+        voice.timbre = chan.timbre;
+    }
+    for (auto& voice : held_)
+        voice.attack = false;
+    return frame;
 }
 
 }  // namespace MoTool::uZX

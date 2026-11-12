@@ -80,4 +80,32 @@ void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
             sequence.addEvent(juce::MidiMessage::controllerEvent(channelNumber + m.channel, static_cast<int>(m.controller), m.value), time);
 }
 
+//===============================================================================
+// PsgEncoder class
+//===============================================================================
+static constexpr bool isRetrigger(PsgParamType param) noexcept {
+    return param == PsgParamType::RetriggerToneA || param == PsgParamType::RetriggerToneB
+        || param == PsgParamType::RetriggerToneC || param == PsgParamType::RetriggerEnvelope;
+}
+
+void PsgEncoder::encode(const PsgParamFrameData& params, tracktion::MidiMessageArray& out, double time, int baseChannel) {
+    for (int i = 0; i < static_cast<int>(params.size()); ++i) {
+        const PsgParamType param {i};
+        if (!params.isSet(param))
+            continue;
+        const auto value = params.getRaw(param);
+        if (isRetrigger(param)) {
+            if (value == 0)
+                continue;
+        } else if (sent_.isSet(param) && sent_.getRaw(param) == value) {
+            continue;
+        } else {
+            sent_.set(param, value);
+        }
+        for (const auto& m : PsgCC::encode(param, value))
+            out.addMidiMessage(juce::MidiMessage::controllerEvent(baseChannel + m.channel, static_cast<int>(m.controller), m.value),
+                               time, 0);
+    }
+}
+
 }  // namespace MoTool

@@ -166,6 +166,7 @@ set(TEST_SOURCES
     plugins/uZX/aychip/AYPlugin.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp
     plugins/uZX/midi_effects/MPEInstrumentFx.test.cpp
+    plugins/uZX/midi_effects/NoteFrame.test.cpp
     plugins/uZX/instrument/ChipInstrument.test.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp

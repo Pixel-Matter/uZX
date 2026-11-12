@@ -59,6 +59,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: a cancelled preview stays silent, and a newer preview keeps its own playback length and note highlights
 - Fixed: the detected table and key, and the rankings in **Tuning and key…**, follow changes to a clip's length, the tempo or frames per beat, and clips linked as one tune
 - Fixed: changing the tuning while notes play no longer crashes, and moving MIDI to PSG's channel range silences a held note instead of leaving it on
+- Fixed: previewing a note with the tone off and the envelope on no longer plays the tone as well
 - MIDI to PSG plays at the clock of the AY chip after it and no longer sets that clock: equal temperament and just intonations stay in tune on any clock, and a tracker table made for another clock shows how far it sounds off
 - Fixed: opening a project or picking a tuning preset no longer resets the AY chip's clock set by hand
 
@@ -73,6 +74,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together, and passes MIDI on other channels through at its own time instead of later
 - Fixed: deleting the track shown in the Track Devices panel empties the panel instead of leaving its devices on screen
 - Fixed: Clip Parameters no longer reads a deleted clip, and clicking one of its points selects the clip instead of clearing the selection
+- Fixed: an AY chip added in place of another plays the next note after a stop in full, not just its volume; a MIDI panic silences a note held by MIDI to PSG at once, not at the next MIDI event
+- MIDI to PSG reads the tone, noise and envelope switches (controllers 80 to 82), the envelope shape (70) and the noise period (2) as the timbre of the notes on their channel, and no longer passes other controllers on its four channels to the chip; when the last note played on a channel ends, an older one still held sounds again
+- Fixed: a chip instrument note that starts at level 0, as with a slow attack, is no longer sent as a note off
 - Fixed: the chip instrument ends a note that loses its voice to a new one, and a note whose key is played again during its release, with a note off; with audio buffers longer than a 50 Hz frame it no longer sends stray note offs after a note ends
 - Fixed: Clip Parameters no longer draws a sloped line at the left edge of a scrolled view; every value holds level until the next change
 - The Clip Parameters and Track Devices tabs are flat, in the app's colours and font: the open tab joins its page and has a blue edge, and each tab is as long as its name

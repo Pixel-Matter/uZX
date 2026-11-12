@@ -1,283 +1,325 @@
-#include <JuceHeader.h>
-
 #include "NotesToPsgMapper.h"
 
-#include "../../../models/tuning/TuningSystemBase.h"
-#include "../../../models/tuning/TuningRegistry.h"
-#include "../../../models/tuning/TemperamentSystem.h"
-#include "../../../models/tuning/Scales.h"
-#include "../../../models/PsgCC.h"
+#include <JuceHeader.h>
 
 #include <atomic>
 #include <thread>
+
+#include "../../../models/PsgCC.h"
+#include "../../../models/tuning/TuningRegistry.h"
+#include "../../../models/tuning/TuningSystemBase.h"
 
 namespace MoTool::Tests {
 
 using namespace MoTool::uZX;
 using namespace juce;
 
-class MidiToPsgConverterTests : public UnitTest {
+//==============================================================================
+/** Frames in, the chip's parameters out: no MIDI. */
+class ChipMixerTests : public UnitTest
+{
+public:
+    ChipMixerTests() : UnitTest("ChipMixer", "MoTool") {}
+
+    void runTest() override {
+        const std::shared_ptr<TuningSystem> tuning = makeBuiltinTuning(BuiltinTuningType::EqualTemperament);
+        using P = PsgParamType;
+        const auto value = [](const PsgParamFrameData& params, PsgParamType param) {
+            return params.isSet(param) ? int(params.getRaw(param)) : -1;
+        };
+
+        beginTest("A voice gives its channel a volume, a period and its switches; the other channels are silenced");
+        {
+            NoteFrame frame;
+            frame.add({.channel = 2, .key = 60, .pitch = 60.0, .level = 1.0f});
+            const auto params = mixVoices(frame, *tuning, 1);
+
+            expectEquals(value(params, P::VolumeB), 15);
+            expectEquals(value(params, P::TonePeriodB), tuning->midiNoteToPeriod(60.0));
+            expectEquals(value(params, P::ToneIsOnB), 1);
+            expectEquals(value(params, P::NoiseIsOnB), 0);
+            expectEquals(value(params, P::EnvelopeIsOnB), 0);
+
+            expectEquals(value(params, P::VolumeA), 0);
+            expectEquals(value(params, P::EnvelopeIsOnA), 0);
+            expect(!params.isSet(P::ToneIsOnA) && !params.isSet(P::TonePeriodA), "a silent channel keeps the rest");
+            expect(!params.isSet(P::EnvelopePeriod) && !params.isSet(P::EnvelopeShape), "no envelope voice");
+        }
+
+        beginTest("A voice's pitch, not its key, sets the period");
+        {
+            NoteFrame frame;
+            frame.add({.channel = 1, .key = 60, .pitch = 61.5, .level = 0.5f});
+            expectEquals(value(mixVoices(frame, *tuning, 1), P::TonePeriodA), tuning->midiNoteToPeriod(61.5));
+        }
+
+        beginTest("Timbre becomes the switches");
+        {
+            NoteFrame frame;
+            frame.add({.channel = 1,
+                       .key = 60,
+                       .pitch = 60.0,
+                       .level = 1.0f,
+                       .timbre = {.tone = false, .noise = true, .envelope = true}});
+            const auto params = mixVoices(frame, *tuning, 1);
+            expectEquals(value(params, P::ToneIsOnA), 0);
+            expectEquals(value(params, P::NoiseIsOnA), 1);
+            expectEquals(value(params, P::EnvelopeIsOnA), 1);
+        }
+
+        beginTest("The last voice to start on a channel takes it");
+        {
+            NoteFrame frame;
+            frame.add({.channel = 1, .key = 60, .pitch = 60.0, .level = 1.0f});
+            frame.add({.channel = 1, .key = 64, .pitch = 64.0, .level = 0.6f});
+            const auto params = mixVoices(frame, *tuning, 1);
+            expectEquals(value(params, P::TonePeriodA), tuning->midiNoteToPeriod(64.0));
+            expectEquals(value(params, P::VolumeA), 9);
+        }
+
+        beginTest("The voice on the fourth channel plays the envelope and restarts it as it starts");
+        {
+            NoteFrame frame;
+            frame.add({.channel = 8,
+                       .key = 36,
+                       .pitch = 36.0,
+                       .level = 1.0f,
+                       .attack = true,
+                       .timbre = {.envelopeShape = 10, .noisePeriod = 7}});
+            auto params = mixVoices(frame, *tuning, 5);
+            expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(36.0, TuningSystem::Envelope));
+            expectEquals(value(params, P::EnvelopeShape), 10);
+            expectEquals(value(params, P::NoisePeriod), 7);
+            expectEquals(value(params, P::RetriggerEnvelope), 1);
+            expectEquals(value(params, P::VolumeA), 0, "it has no channel of its own");
+
+            frame.begin()->attack = false;
+            expect(!mixVoices(frame, *tuning, 5).isSet(P::RetriggerEnvelope), "a held voice lets the envelope run");
+        }
+    }
+};
+
+static ChipMixerTests chipMixerTests;
+
+//==============================================================================
+/** The mixer as a MIDI effect: the chip-note stream in, PSG controllers out. */
+class MidiToPsgConverterTests : public UnitTest
+{
 public:
     MidiToPsgConverterTests() : UnitTest("NotesToPsgMapper", "MoTool") {}
 
 private:
-    ChipCapabilities testCaps {16, Range<int>(1, 4096)};
-
     std::unique_ptr<TuningSystem> createTestTuning() {
-        TuningOptions options {
-            .builtinTable = BuiltinTuningEnum::EqualTemperament
-        };
+        TuningOptions options{.builtinTable = BuiltinTuningEnum::EqualTemperament};
         return makeBuiltinTuning(options);
     }
 
-    // Helper to count specific CC messages
-    int countCC(const tracktion::MidiMessageArray& messages, MidiCCType ccType, int value = -1) {
-        int count = 0;
-        for (const auto& msg : messages) {
-            if (msg.isController() && msg.getControllerNumber() == static_cast<int>(ccType)) {
-                if (value == -1 || msg.getControllerValue() == value) {
-                    count++;
-                }
-            }
-        }
-        return count;
+    /** Runs a block through the mapper and returns what it wrote. */
+    static tracktion::MidiMessageArray
+    play(NotesToPsgMapper& mapper, std::initializer_list<MidiMessage> messages, bool allNotesOff = false) {
+        tracktion::MidiMessageArray buffer;
+        buffer.isAllNotesOff = allNotesOff;
+        for (const auto& m : messages)
+            buffer.addMidiMessage(m, {});
+        MidiBufferContext context{buffer, 0, 480, {}, 48000.0};
+        mapper(context);
+        return buffer;
     }
 
-    // Helper to check if CC is present
-    void expectCC(const te::MidiMessageArray& messages, MidiCCType ccType, const String& description) {
-        expect(countCC(messages, ccType) > 0, description);
+    /** The values a controller is sent with on a MIDI channel, in order, as "v v v". */
+    static String valuesOf(const tracktion::MidiMessageArray& messages, int channel, MidiCCType controller) {
+        StringArray values;
+        for (const auto& m : messages)
+            if (m.isController() && m.getChannel() == channel
+                && m.getControllerNumber() == static_cast<int>(controller))
+                values.add(String(m.getControllerValue()));
+        return values.joinIntoString(" ");
     }
 
-    // Helper to check if CC is absent
-    void expectNoCC(const te::MidiMessageArray& messages, MidiCCType ccType, const String& description) {
-        expectEquals(countCC(messages, ccType), 0, description);
-    }
-
-    // Helper to check CC value
-    void expectCCEquals(const te::MidiMessageArray& messages, MidiCCType ccType, int expectedValue, const String& description) {
-        expectEquals(countCC(messages, ccType, expectedValue), 1, description);
-    }
-
-    // Helper to debug mesagesa
-    void debugMessages(const te::MidiMessageArray& messages) {
-        for (const auto& msg : messages) {
-            juce::ignoreUnused(msg);
-            DBG(msg.getDescription());
-        }
-    }
-
-    // Helper to check mapper state
-    void expectChannelState(const NotesToPsgMapper& mapper, int channel, int expectedNote, const String& description) {
-        const auto& constmapper = static_cast<const NotesToPsgMapper&>(mapper);
-        const auto& voice = constmapper.getVoice(channel);
-        expectEquals(static_cast<int>(voice.mpeNote.initialNote), expectedNote, description);
+    static int periodOf(const tracktion::MidiMessageArray& messages, int channel) {
+        return (valuesOf(messages, channel, MidiCCType::CC20PeriodCoarse).getIntValue() << 7)
+               | valuesOf(messages, channel, MidiCCType::CC52PeriodFine).getIntValue();
     }
 
 public:
     void runTest() override {
-        beginTest("Basic note on/off");
+        beginTest("A note sets its channel's volume, period and switches; its end only the volume");
         {
             NotesToPsgMapper mapper;
             mapper.setTuningSystem(createTestTuning());
 
-            // Test note on
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
-            auto messages = mapper.renderVoices();
+            auto messages = play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100)});
+            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("12"));
+            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(60.0));
+            expectEquals(valuesOf(messages, 1, MidiCCType::GPB1ToneSwitch), String("1"));
+            expectEquals(valuesOf(messages, 1, MidiCCType::GPB2NoiseSwitch), String("0"));
+            expectEquals(valuesOf(messages, 1, MidiCCType::GPB3EnvSwitch), String("0"));
+            expectEquals(valuesOf(messages, 2, MidiCCType::Volume), String("0"), "the first frame silences the others");
+            expectEquals(valuesOf(messages, 3, MidiCCType::Volume), String("0"));
 
-            expectEquals(messages.size(), 5); // Volume, PeriodCoarse, PeriodFine, ToneSwitch
-
-            expectCC(messages, MidiCCType::Volume,           "Should emit volume CC");
-            expectCC(messages, MidiCCType::CC20PeriodCoarse, "Should emit period coarse CC");
-            expectCC(messages, MidiCCType::CC52PeriodFine,   "Should emit period fine CC");
-            expectCC(messages, MidiCCType::GPB1ToneSwitch,   "Should emit tone switch CC");
-            expectCC(messages, MidiCCType::GPB2NoiseSwitch,  "Should emit noise switch CC (off)");
-
-            expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 127, "Tone switch should be 127 for note on");
-            expectCCEquals(messages, MidiCCType::GPB2NoiseSwitch, 0,   "Noise switch should be 0 (off) for note on");
-
-            // Test note off
-            mapper.handleMidiMessage({MidiMessage::noteOff(1, 60), 0});
-            messages = mapper.renderVoices();
-
+            messages = play(mapper, {MidiMessage::noteOff(1, 60)});
             expectEquals(messages.size(), 1);
-            expectCCEquals(messages, MidiCCType::Volume, 0, "Volume should be 0");
+            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("0"));
         }
 
-        beginTest("Channel filtering");
+        beginTest("Only what changes is sent");
+        {
+            NotesToPsgMapper mapper;
+            mapper.setTuningSystem(createTestTuning());
+            play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100)});
+
+            auto messages = play(mapper, {MidiMessage::noteOff(1, 60), MidiMessage::noteOn(1, 62, (uint8) 100)});
+            expectEquals(messages.size(), 2, "a new note at the same level: its period alone");
+            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(62.0));
+
+            messages = play(mapper, {MidiMessage::aftertouchChange(1, 62, 127)});
+            expectEquals(messages.size(), 1);
+            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("15"));
+
+            messages = play(mapper, {MidiMessage::pitchWheel(1, 16383)});
+            expectEquals(messages.size(), 2);
+            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(62.0 + notePitchBendRange));
+        }
+
+        beginTest("The last note played on a channel sounds, and an older held one returns when it ends");
+        {
+            NotesToPsgMapper mapper;
+            mapper.setTuningSystem(createTestTuning());
+            play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100)});
+
+            auto messages = play(mapper, {MidiMessage::noteOn(1, 64, (uint8) 100)});
+            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(64.0));
+            expectEquals(valuesOf(messages, 1, MidiCCType::GPB1ToneSwitch), String(), "the tone is on already");
+
+            messages = play(mapper, {MidiMessage::noteOff(1, 64)});
+            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(60.0));
+            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String(), "at the same level");
+        }
+
+        beginTest("Timbre controllers set the note's switches and are not passed on");
+        {
+            NotesToPsgMapper mapper;
+            mapper.setTuningSystem(createTestTuning());
+            auto messages = play(mapper,
+                                 {MidiMessage::controllerEvent(1, 80, 0),
+                                  MidiMessage::controllerEvent(1, 82, 127),
+                                  MidiMessage::controllerEvent(1, 64, 100)});
+            expectEquals(valuesOf(messages, 1, MidiCCType::GPB1ToneSwitch), String(), "no note yet");
+            expectEquals(
+                valuesOf(messages, 1, MidiCCType::SustainOnOff), String(), "and what is not timbre stops here");
+
+            messages = play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100)});
+            expectEquals(valuesOf(messages, 1, MidiCCType::GPB1ToneSwitch), String("0"));
+            expectEquals(valuesOf(messages, 1, MidiCCType::GPB3EnvSwitch), String("1"));
+        }
+
+        beginTest("A note on the fourth channel plays the envelope");
+        {
+            NotesToPsgMapper mapper;
+            mapper.setTuningSystem(createTestTuning());
+            auto messages =
+                play(mapper, {MidiMessage::controllerEvent(4, 70, 10), MidiMessage::noteOn(4, 36, (uint8) 100)});
+            expectEquals(periodOf(messages, 4),
+                         mapper.getTuningSystem().midiNoteToPeriod(36.0, TuningSystem::Envelope));
+            expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"));
+            expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1"));
+
+            messages = play(mapper, {MidiMessage::noteOff(4, 36), MidiMessage::noteOn(4, 36, (uint8) 100)});
+            expectEquals(messages.size(), 1, "the same note again");
+            expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1"), "restarts the envelope");
+        }
+
+        beginTest("Other channels pass through and are not played");
         {
             NotesToPsgMapper mapper;
             mapper.setBaseChannel(2);
-            mapper.setPassthruOutsideChannels(false); // Disable passthrough for test
             mapper.setTuningSystem(createTestTuning());
 
-            // Test channel 1 (should be ignored)
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
-            auto messages = mapper.renderVoices();
-            expectEquals(messages.size(), 0, "Channel 1 should be ignored");
+            auto messages =
+                play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100), MidiMessage::noteOn(6, 60, (uint8) 100)});
+            expectEquals(messages.size(), 2);
+            expect(messages[0].isNoteOn() && messages[1].isNoteOn(), "channels 1 and 6 are outside 2 to 5");
 
-            // Test channel 2 (should work)
-            mapper.handleMidiMessage({MidiMessage::noteOn(2, 60, (uint8)100), 0});
-            messages = mapper.renderVoices();
-            expect(messages.size() > 0, "Channel 2 should work");
-
-            // Test channel 6 (should be ignored)
-            mapper.clearOutput();
-            mapper.handleMidiMessage({MidiMessage::noteOn(6, 60, (uint8)100), 0});
-            messages = mapper.renderVoices();
-            expectEquals(messages.size(), 0, "Channel 6 should be ignored");
-        }
-
-        beginTest("Monophonic behavior");
-        {
-            NotesToPsgMapper mapper;
-            mapper.setBaseChannel(1);
-            mapper.setTuningSystem(createTestTuning());
-
-            // Play first note
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
-            expectChannelState(mapper, 1, 60, "Should track first note");
-            ignoreUnused(mapper.renderVoices());
-
-            // Play second note (should replace first without tone off)
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 62, (uint8)120), 0});
-            expectChannelState(mapper, 1, 62, "Should track second note");
-            auto messages = mapper.renderVoices();
-
-            // Should NOT have tone switch messages - tone is already on
-            expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Should NOT have tone switch messages when switching notes");
-
-            // Should update volume due to different velocity (100 vs 120)
-            expectCC(messages, MidiCCType::Volume, "Should update volume when velocity changes between notes");
-
-            // Play third note with same velocity (should not emit volume CC)
-            mapper.clearOutput();
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 64, (uint8)120), 0});
-            expectChannelState(mapper, 1, 64, "Should track third note");
-
-            auto messages2 = mapper.renderVoices();
-            expectNoCC(messages2, MidiCCType::Volume,         "Should NOT emit volume CC when velocity stays the same");
-            expectNoCC(messages2, MidiCCType::GPB1ToneSwitch, "Should NOT emit tone switch for third note");
-            expectCC(messages2, MidiCCType::CC20PeriodCoarse, "Should emit period coarse for third note");
-            expectCC(messages2, MidiCCType::CC52PeriodFine,   "Should emit period fine for third note");
-        }
-
-        beginTest("Velocity and aftertouch mapping");
-        {
-            NotesToPsgMapper mapper;
-            mapper.setBaseChannel(1);
-            mapper.setTuningSystem(createTestTuning());
-
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
-            auto messages = mapper.renderVoices();
-
-            expectCC(messages, MidiCCType::Volume, "Volume should be present for note on");
-
-            mapper.handleMidiMessage({MidiMessage::aftertouchChange(1, 60, 120), 0});
-            messages = mapper.renderVoices();
-
-            expectCC(messages, MidiCCType::Volume, "Aftertouch should update volume");
-        }
-
-        beginTest("CC passthrough");
-        {
-            NotesToPsgMapper mapper;
-            mapper.setBaseChannel(1);
-
-            mapper.handleMidiMessage({MidiMessage::controllerEvent(1, 64, 100), 0});
-            auto messages = mapper.renderVoices();
-
-            expectEquals(messages.size(), 1, "Should pass through CC");
-            expect(messages[0].isController(), "Should be controller message");
-            expectEquals(messages[0].getControllerNumber(), 64, "Should preserve controller number");
-            expectEquals(messages[0].getControllerValue(), 100, "Should preserve controller value");
+            messages = play(mapper, {MidiMessage::noteOn(2, 60, (uint8) 100)});
+            expectEquals(
+                valuesOf(messages, 2, MidiCCType::Volume), String("12"), "channel 2 is the first chip channel");
         }
 
         beginTest("A block's output keeps each message's time, passed-through ones too");
         {
             NotesToPsgMapper mapper;
-            mapper.setBaseChannel(1);
             mapper.setTuningSystem(createTestTuning());
-            te::MidiMessageArray buffer;
-            buffer.addMidiMessage(MidiMessage::noteOn(1, 60, (uint8) 100).withTimeStamp(0.1), {});
-            buffer.addMidiMessage(MidiMessage::noteOn(9, 60, (uint8) 100).withTimeStamp(0.25), {});
-            buffer.addMidiMessage(MidiMessage::noteOff(1, 60).withTimeStamp(0.5), {});
-            MidiBufferContext context {buffer, 0, 48000, {}, 48000.0};
-            mapper(context);
-
-            for (const auto& m : buffer) {
-                if (m.getChannel() == 9)
+            auto messages = play(mapper,
+                                 {MidiMessage::noteOn(1, 60, (uint8) 100).withTimeStamp(0.1),
+                                  MidiMessage::noteOn(9, 60, (uint8) 100).withTimeStamp(0.25),
+                                  MidiMessage::noteOff(1, 60).withTimeStamp(0.5)});
+            int checked = 0;
+            for (const auto& m : messages) {
+                if (m.getChannel() == 9) {
                     expectWithinAbsoluteError(m.getTimeStamp(), 0.25, 1e-9, "passed through at its own time");
-                else if (m.isController() && m.getControllerNumber() == (int) MidiCCType::Volume)
-                    expectWithinAbsoluteError(m.getTimeStamp(), m.getControllerValue() > 0 ? 0.1 : 0.5, 1e-9,
+                    ++checked;
+                } else if (m.getChannel() == 1 && m.isController()
+                           && m.getControllerNumber() == (int) MidiCCType::Volume) {
+                    expectWithinAbsoluteError(m.getTimeStamp(),
+                                              m.getControllerValue() > 0 ? 0.1 : 0.5,
+                                              1e-9,
                                               "the note's volume at the note on and off");
+                    ++checked;
+                }
             }
+            expectEquals(checked, 3);
         }
 
-        beginTest("Optimized tone switching");
+        beginTest("Moving the channel range silences a held note on the channels it leaves");
         {
             NotesToPsgMapper mapper;
-            mapper.setBaseChannel(1);
             mapper.setTuningSystem(createTestTuning());
-
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
-            auto messages = mapper.renderVoices();
-
-            expectCCEquals(messages, MidiCCType::GPB1ToneSwitch, 127, "First note should turn tone ON");
-
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 62, (uint8)120), 0});
-            messages = mapper.renderVoices();
-
-            expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Second note should NOT send tone switch");
-            expectCC(messages, MidiCCType::Volume, "Second note should send volume");
-            expectCC(messages, MidiCCType::CC20PeriodCoarse, "Second note should send period coarse");
-            expectCC(messages, MidiCCType::CC52PeriodFine, "Second note should send period fine");
-
-            mapper.handleMidiMessage({MidiMessage::noteOff(1, 62), 0});
-            messages = mapper.renderVoices();
-
-            expectCCEquals(messages, MidiCCType::Volume, 0, "Note off should mute the channel");
-            expectNoCC(messages, MidiCCType::GPB1ToneSwitch, "Note off should not emit redundant tone switch");
-        }
-
-        beginTest("Moving the channel range releases a held note");
-        {
-            NotesToPsgMapper mapper;
-            mapper.setBaseChannel(1);
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8) 100), 0});
-            ignoreUnused(mapper.renderVoices());
+            play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100)});
 
             mapper.setBaseChannel(5);
-            expect(!mapper.getVoice(5).isActive(), "the voice that held the note is free");
-            expectCCEquals(mapper.renderVoices(), MidiCCType::Volume, 0, "and silenced");
+            const auto messages = play(mapper, {});
+            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("0"));
+            expectEquals(valuesOf(messages, 5, MidiCCType::Volume), String(), "nothing on the new ones yet");
         }
 
         beginTest("A reset between blocks silences the held note in the next block, even an empty one");
         {
             NotesToPsgMapper mapper;
             mapper.setTuningSystem(createTestTuning());
-            te::MidiMessageArray buffer;
-            buffer.addMidiMessage(MidiMessage::noteOn(1, 60, (uint8) 100), {});
-            MidiBufferContext context {buffer, 0, 480, {}, 48000.0};
-            mapper(context);
+            play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100)});
 
-            mapper.reset();  // as a MIDI panic or a channel change does, on the message thread
-            buffer.clear();
-            mapper(context);
-            expectCCEquals(buffer, MidiCCType::Volume, 0, "the block after the reset carries the silence");
+            mapper.reset();  // as a MIDI panic does, on the message thread
+            expectEquals(valuesOf(play(mapper, {}), 1, MidiCCType::Volume), String("0"));
+            expectEquals(play(mapper, {}).size(), 0, "once");
+        }
+
+        beginTest("After an all-notes-off the chip is silenced, told so, and sent the next note whole");
+        {
+            NotesToPsgMapper mapper;
+            mapper.setTuningSystem(createTestTuning());
+            play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100)});
+
+            auto messages = play(mapper, {}, true);
+            expect(messages.isAllNotesOff, "the chip after the mapper hears the all-notes-off too");
+            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("0"));
+
+            // The chip may be another one by now, as after a stop: it needs the period and the switches again
+            messages = play(mapper, {MidiMessage::noteOn(1, 60, (uint8) 100)});
+            expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("12"));
+            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(60.0));
+            expectEquals(valuesOf(messages, 1, MidiCCType::GPB1ToneSwitch), String("1"));
         }
 
         beginTest("Retuning while the audio thread renders");
         {
             NotesToPsgMapper mapper;
-            std::atomic<bool> done {false};
+            std::atomic<bool> done{false};
             std::thread audio([&] {
                 while (!done) {
-                    te::MidiMessageArray buffer;
-                    buffer.addMidiMessage(MidiMessage::noteOn(1, 60, (uint8) 100), {});
-                    buffer.addMidiMessage(MidiMessage::pitchWheel(1, 9000).withTimeStamp(0.001), {});
-                    buffer.addMidiMessage(MidiMessage::noteOff(1, 60).withTimeStamp(0.002), {});
-                    MidiBufferContext context {buffer, 0, 480, {}, 48000.0};
-                    mapper(context);
+                    play(mapper,
+                         {MidiMessage::noteOn(1, 60, (uint8) 100),
+                          MidiMessage::pitchWheel(1, 9000).withTimeStamp(0.001),
+                          MidiMessage::noteOff(1, 60).withTimeStamp(0.002)});
                 }
             });
             for (int i = 0; i < 50000; ++i)
@@ -286,54 +328,9 @@ public:
             audio.join();
             expect(true, "no crash");
         }
-
-        beginTest("Period encoding correctness");
-        {
-            NotesToPsgMapper mapper;
-            mapper.setBaseChannel(1);
-            mapper.setTuningSystem(createTestTuning());
-
-            mapper.handleMidiMessage({MidiMessage::noteOn(1, 60, (uint8)100), 0});
-            auto messages = mapper.renderVoices();
-
-            expectCC(messages, MidiCCType::CC20PeriodCoarse, "Should find coarse period value");
-            expectCC(messages, MidiCCType::CC52PeriodFine, "Should find fine period value");
-
-            int coarseValue = -1, fineValue = -1;
-            for (const auto& msg : messages) {
-                if (!msg.isController()) {
-                    continue;
-                }
-
-                if (msg.getControllerNumber() == static_cast<int>(MidiCCType::CC20PeriodCoarse)) {
-                    coarseValue = msg.getControllerValue();
-                } else if (msg.getControllerNumber() == static_cast<int>(MidiCCType::CC52PeriodFine)) {
-                    fineValue = msg.getControllerValue();
-                }
-            }
-
-            auto reconstructedPeriod = (coarseValue << 7) | fineValue;
-            auto originalPeriod = mapper.getTuningSystem().midiNoteToPeriod(60.0);
-
-            expectEquals(reconstructedPeriod, originalPeriod,
-                "Reconstructed period should match original: coarse=" + String(coarseValue) +
-                " fine=" + String(fineValue) + " reconstructed=" + String(reconstructedPeriod) +
-                " original=" + String(originalPeriod));
-
-            std::vector<int> testPeriods {1, 127, 128, 1000, 2000, 4095};
-
-            for (auto testPeriod : testPeriods) {
-                auto coarse = (testPeriod >> 7) & 0x7F;
-                auto fine = testPeriod & 0x7F;
-                auto decoded = (coarse << 7) | fine;
-
-                expectEquals(decoded, testPeriod,
-                    "Period encoding/decoding should be lossless for period " + String(testPeriod));
-            }
-        }
     }
 };
 
 static MidiToPsgConverterTests midiToPsgmapperTests;
 
-} // namespace MoTool::Tests
+}  // namespace MoTool::Tests

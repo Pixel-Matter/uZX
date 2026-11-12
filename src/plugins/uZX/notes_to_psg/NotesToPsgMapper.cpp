@@ -7,13 +7,31 @@
 namespace MoTool::uZX {
 
 //==============================================================================
-PsgParamFrameData mixVoices(const NoteFrame& frame, const TuningSystem& tuning, int baseChannel) {
-    constexpr int numToneChannels = 3;
+namespace {
+
+constexpr int numToneChannels = 3;
+
+/** Which voice plays each of the chip's channels and generators in a frame; none where it is null. */
+struct ChipVoices
+{
+    std::array<const NoteVoice*, numToneChannels> channels{};
+    const NoteVoice* envelope = nullptr;  // its pitch is the envelope's period; it carries the shape and the restart
+    const NoteVoice* noise = nullptr;     // it carries the noise period
+};
+
+ChipVoices allocate(const NoteFrame& frame, int baseChannel) {
     std::array<const NoteVoice*, PsgCC::numChannels> onChannel{};
     for (const auto& voice : frame)
         if (const auto n = voice.channel - baseChannel; isPositiveAndBelow(n, PsgCC::numChannels))
             onChannel[static_cast<size_t>(n)] = &voice;
 
+    return {.channels = {onChannel[0], onChannel[1], onChannel[2]},
+            .envelope = onChannel[numToneChannels],
+            .noise = onChannel[numToneChannels]};
+}
+
+/** The chip's parameters for the voices it plays: pitch to periods, timbre to switches. */
+PsgParamFrameData render(const ChipVoices& voices, const TuningSystem& tuning) {
     PsgParamFrameData params;
     const auto set = [&](PsgParamType param, int value) { params.set(param, static_cast<uint16_t>(value)); };
     // A note the tuning has no period for leaves the period as it is
@@ -23,7 +41,7 @@ PsgParamFrameData mixVoices(const NoteFrame& frame, const TuningSystem& tuning, 
     };
 
     for (int n = 0; n < numToneChannels; ++n) {
-        const auto* voice = onChannel[static_cast<size_t>(n)];
+        const auto* voice = voices.channels[static_cast<size_t>(n)];
         // With its envelope on a channel sounds whatever its volume, so silence turns both off
         set(PsgParamType::VolumeA + n, voice != nullptr ? roundToInt(voice->level * 15.0f) : 0);
         set(PsgParamType::EnvelopeIsOnA + n, voice != nullptr && voice->timbre.envelope);
@@ -34,15 +52,23 @@ PsgParamFrameData mixVoices(const NoteFrame& frame, const TuningSystem& tuning, 
         set(PsgParamType::NoiseIsOnA + n, voice->timbre.noise);
     }
 
-    if (const auto* voice = onChannel[numToneChannels]) {
-        setPeriod(PsgParamType::EnvelopePeriod, *voice, TuningSystem::Envelope);
+    if (const auto* voice = voices.noise)
         set(PsgParamType::NoisePeriod, voice->timbre.noisePeriod);
+
+    if (const auto* voice = voices.envelope) {
+        setPeriod(PsgParamType::EnvelopePeriod, *voice, TuningSystem::Envelope);
         set(PsgParamType::EnvelopeShape, voice->timbre.envelopeShape);
         // Only when the voice asks: a note that starts or lasts lets the envelope run
         if (voice->restartEnvelope)
             set(PsgParamType::RetriggerEnvelope, 1);
     }
     return params;
+}
+
+}  // namespace
+
+PsgParamFrameData mixVoices(const NoteFrame& frame, const TuningSystem& tuning, int baseChannel) {
+    return render(allocate(frame, baseChannel), tuning);
 }
 
 //==============================================================================

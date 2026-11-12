@@ -6,6 +6,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Engine
 - Tracktion Engine is updated to its October 2026 development version and JUCE to 8.0.17, which hardens the reading of XML, WAV, AIFF, PNG and ZIP files
+- Fixed: the About window shows the Tracktion Engine version in use and its commit, instead of 3.1.0
 - The audio device settings are converted to the engine's new format on first launch; an older µZX build does not read them back
 
 ### Timeline

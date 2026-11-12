@@ -9,4 +9,5 @@ extern const bool gitDirty;
 extern const char* const coreVersion;
 extern const char* const buildTimestamp;
 extern const char* const channel;
+extern const char* const tracktionVersion;
 }

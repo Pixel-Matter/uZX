@@ -90,11 +90,11 @@ private:
     //==============================================================================
     NotesToPsgMapper transformer;
 
-    /** Listens to the list this plugin is in for a chip added, removed, moved or set to another clock. */
-    class ChipClockWatcher : public ValueTree::Listener {
+    /** Listens to the list this plugin is in for a chip added, removed, moved or set differently. */
+    class ChipWatcher : public ValueTree::Listener {
     public:
-        explicit ChipClockWatcher(NotesToPsgPlugin& p) : plugin(p) {}
-        ~ChipClockWatcher() override { list.removeListener(this); }
+        explicit ChipWatcher(NotesToPsgPlugin& p) : plugin(p) {}
+        ~ChipWatcher() override { list.removeListener(this); }
         void watch(ValueTree);
 
     private:
@@ -108,9 +108,9 @@ private:
     };
 
     double chipClock_;
-    ChipClockWatcher chipClockWatcher {*this};
+    ChipWatcher chipWatcher {*this};
 
-    void followChipClock();
+    void followChip();
     void valueTreeParentChanged(ValueTree&) override;
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;

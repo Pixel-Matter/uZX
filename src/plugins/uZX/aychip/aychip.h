@@ -141,6 +141,16 @@ using ChipType = MoTool::Util::EnumChoice<TypeEnum>;
 using ChannelsLayout = MoTool::Util::EnumChoice<LayoutEnum>;
 using EnvShape = MoTool::Util::EnumChoice<EnvShapeEnum>;
 
+/** Where a layout puts the chip's channels A, B and C: 0 left, 1 right, at full stereo width. */
+inline std::array<double, 3> channelPans(ChannelsLayout layout) {
+    static constexpr std::array<std::array<double, 3>, 3> pans = {{
+        {{0.0, 0.5, 1.0}},  // ABC
+        {{0.0, 1.0, 0.5}},  // ACB
+        {{0.5, 0.0, 1.0}}   // BAC
+    }};
+    return pans[static_cast<size_t>(layout)];
+}
+
 
 /** What channels A, B and C show on their scopes; each lane, if given, takes a pointer per channel. */
 struct ScopeLanes {
@@ -288,15 +298,6 @@ public:
     float MasterVolume_;
     ChannelsLayout ChannelsLayout_;
     double StereoWidth_;
-
-    static inline constexpr std::array<std::array<double, TONE_CHANNELS>, 6>
-    // TODO move to AYInterface protected section
-    ChannelPans_ = {{
-        {{0.0, 0.5, 1.0}},  // ABC
-        {{0.0, 1.0, 0.5}},  // ACB
-        {{0.5, 0.0, 1.0}}   // BAC
-    }};
-
 };
 
 } // namespace MoTool::uZX

@@ -166,8 +166,7 @@ auto AyumiEmulator::setClock(double rate) -> void {
 }
 
 auto AyumiEmulator::setLayoutAndStereoWidth(ChannelsLayout layout, double stereoWidth) -> void {
-    std::array<double, TONE_CHANNELS> pan = {0.0, 0.0, 0.0};
-    pan = ChannelPans_[static_cast<size_t>(layout)];
+    const auto pan = channelPans(layout);
     for (size_t i = 0; i < TONE_CHANNELS; ++i) {
         // use stereoWidth to adjust pan.
         // stereoWidth == 0.0 — pan is 0.5,

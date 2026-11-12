@@ -67,6 +67,9 @@ public:
     /** The ZX Spectrum 128's clock, a chip's until it is set. */
     static constexpr double defaultClockMhz = 1.7734;
 
+    /** A chip's stereo layout until it is set. */
+    static constexpr auto defaultLayout = LayoutEnum::ACB;
+
     class StaticParams : public ParamsBase<StaticParams> {
     public:
         using ParamsBase<StaticParams>::ParamsBase;
@@ -101,7 +104,7 @@ public:
         }
 
         ParameterValue<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
-        ParameterValue<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", ChannelsLayout::ACB}};
+        ParameterValue<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", defaultLayout}};
         ParameterValue<float> stereoWidth     {{"stereo", IDs::stereo, "Width",  "Stereo width",  0.5f, {0.f, 1.0f}}};
     };
 

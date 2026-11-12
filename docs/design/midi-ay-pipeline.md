@@ -103,7 +103,7 @@ The channel a voice has in a frame is not the channel it is sent on. It says, wi
 | --- | --- |
 | Start and end | Note on, note off; a note on for a key that sounds starts it again |
 | Level | Note-on velocity, then polyphonic aftertouch |
-| Pitch | The pitch wheel of its channel, ±2 semitones from the key (`notePitchBendRange`) |
+| Pitch | The pitch wheel of its channel, from the key: ±48 semitones on channels 2 to 16 and ±2 on channel 1, an MPE lower zone's ranges (`notePitchBendRange`) |
 | Tone, noise, envelope on | Controllers 80, 81, 82 on its channel; on from 64 |
 | Its pitch drives the envelope | Controller 85 on its channel; on from 64 |
 | Envelope shape | Controller 70 on its channel: the eight shapes over 0 to 127, sixteen values each |
@@ -114,7 +114,7 @@ The channel a voice has in a frame is not the channel it is sent on. It says, wi
 
 | A fresh channel | Controller 121, reset all controllers: tone on, noise and envelope off, no pan, the channel's own priority, the wheel in the middle |
 
-The wire is not strict MPE: level is polyphonic aftertouch where MPE has channel pressure, the bend range is two semitones, and controller 121 here resets pan and the envelope shape as well, which MIDI's recommended practice leaves alone.
+The wire is not strict MPE: level is polyphonic aftertouch where MPE has channel pressure, channel 1 is read as one more channel of voices and not as the zone's master, and controller 121 here resets pan and the envelope shape as well, which MIDI's recommended practice leaves alone.
 
 A note clip or a keyboard can send these controllers straight to the mixer, on any channels. Sent to the instrument, they apply to the notes played on their channel: the instrument reads them with the same `NoteControllers` the decoder uses, so a controller means the same before and after it. Controllers hold their value from note to note on a channel.
 
@@ -176,7 +176,7 @@ What this asks of the design:
 
 | Target role | Today | Gap |
 | --- | --- | --- |
-| Chip instrument | `ChipInstrumentPlugin`, `ChipInstrumentVoice` on `MPEInstrumentFx` | No timbre parameters of its own; a pitch more than two semitones from its key does not fit the wheel; fixed 50 Hz (`noteFrameRate`) |
+| Chip instrument | `ChipInstrumentPlugin`, `ChipInstrumentVoice` on `MPEInstrumentFx` | No timbre parameters of its own; fixed 50 Hz (`noteFrameRate`) |
 | Chip effects | None | |
 | Chip mixer | `NotesToPsgPlugin`, `NotesToPsgMapper`, `ChipMixer` | It follows the chip's stored stereo layout, not an automated one |
 | PSG codec | `PsgCC`, `PsgEncoder` | None |

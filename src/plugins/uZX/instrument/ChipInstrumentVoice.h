@@ -171,7 +171,7 @@ private:
     // Parameters
     te::LinEnvelope ampAdsr;
     te::LinEnvelope pitchAdsr;
-    double pitchDepth;  // for pitchAdsr, in semitones, can not be more than notePitchBendRange
+    double pitchDepth;  // for pitchAdsr, in semitones
     float ampLevel;     // overall amplitude level (0.0 to 1.0)
 
     // TODO keyfollow modifier for pitchBend for example will give us desired effect

@@ -59,7 +59,7 @@ public:
             rig.fx.oscParams.pitchDecay.setStoredValue(0.04f);
             rig.fx.oscParams.pitchDepth.setStoredValue(1.0f);
             rig.play(4, {{0, on(60)}});
-            expectEquals(rig.take(), start(0, 2) + "0 Pitch wheel 10240 Channel 2; 0 Note on C3 Velocity 100 Channel 2; "
+            expectEquals(rig.take(), start(0, 2) + "0 Pitch wheel 8277 Channel 2; 0 Note on C3 Velocity 100 Channel 2; "
                                                    "960 Pitch wheel 8192 Channel 2");
         }
 
@@ -79,7 +79,7 @@ public:
             rig.take();
             rig.play(1, {{0, on(64)}});
             expectEquals(rig.take(), String("960 Pitch wheel 8192 Channel 2; ") + start(960, 3)
-                                         + "960 Pitch wheel 10240 Channel 3; 960 Note on E3 Velocity 100 Channel 3",
+                                         + "960 Pitch wheel 8277 Channel 3; 960 Note on E3 Velocity 100 Channel 3",
                          "the first note's pitch settles while the second one's starts");
             rig.play(1, {{0, off(60)}});
             expectEquals(rig.take(), String("1920 Note off C3 Velocity 0 Channel 2; 1920 Pitch wheel 8192 Channel 3"));

@@ -267,7 +267,7 @@ public:
 
             messages = play(mapper, {MidiMessage::pitchWheel(1, 16383)});
             expectEquals(messages.size(), 2);
-            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(62.0 + notePitchBendRange));
+            expectEquals(periodOf(messages, 1), mapper.getTuningSystem().midiNoteToPeriod(62.0 + notePitchBendRange(1)));
         }
 
         beginTest("Notes on one MIDI channel play together; a fourth takes the oldest one's place and gives it back");

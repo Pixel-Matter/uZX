@@ -27,15 +27,16 @@ public:
             expect(decoder.takeFrame().isEmpty());
         }
 
-        beginTest("Aftertouch is a note's level, the pitch wheel bends its channel");
+        beginTest("Aftertouch is a note's level; the wheel bends its channel, 2 semitones on channel 1 and 48 on the others");
         {
             NoteDecoder decoder;
             decoder.decode(MidiMessage::noteOn(1, 60, (uint8) 127));
             decoder.decode(MidiMessage::noteOn(2, 64, (uint8) 127));
             decoder.takeFrame();
             decoder.decode(MidiMessage::aftertouchChange(1, 60, 0));
+            decoder.decode(MidiMessage::pitchWheel(1, 16383));
             decoder.decode(MidiMessage::pitchWheel(2, 16383));
-            expectEquals(describe(decoder.takeFrame()), String("1:60 60.00 0.0; 2:64 66.00 1.0"));
+            expectEquals(describe(decoder.takeFrame()), String("1:60 62.00 0.0; 2:64 112.00 1.0"));
         }
 
         beginTest("A key played again while it sounds starts again");
@@ -135,7 +136,7 @@ public:
             decoder.decode(MidiMessage::noteOn(1, 60, (uint8) 127));
             decoder.decode(MidiMessage::noteOn(2, 64, (uint8) 127));
             decoder.decode(MidiMessage::allNotesOff(1));
-            expectEquals(describe(decoder.takeFrame()), String("2:64 62.00 1.0 attack"));
+            expectEquals(describe(decoder.takeFrame()), String("2:64 16.00 1.0 attack"));
 
             decoder.reset();
             expect(decoder.takeFrame().isEmpty());

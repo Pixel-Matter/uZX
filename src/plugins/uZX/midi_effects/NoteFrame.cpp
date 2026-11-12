@@ -82,9 +82,9 @@ void NoteEncoder::encode(const NoteFrame& frame, tracktion::MidiMessageArray& ou
         sendControllers(before, voice, channel, out, time);
 
         if (starts || !approximatelyEqual(before.pitch, voice.pitch)) {
-            const auto bend = (voice.pitch - voice.key) / notePitchBendRange;
-            out.addMidiMessage(
-                MidiMessage::pitchWheel(channel, jlimit(0, 16383, 8192 + roundToInt(bend * 8191.0))), time, 0);
+            const auto range = static_cast<float>(notePitchBendRange(channel));
+            const auto bend = jlimit(-range, range, static_cast<float>(voice.pitch - voice.key));
+            out.addMidiMessage(MidiMessage::pitchWheel(channel, MidiMessage::pitchbendToPitchwheelPos(bend, range)), time, 0);
         }
 
         // At least 1: a note on with velocity 0 is a note off
@@ -177,7 +177,8 @@ bool NoteDecoder::decode(const juce::MidiMessage& m) noexcept {
         if (auto* voice = held_.find(channel, m.getNoteNumber()))
             voice->level = static_cast<float>(m.getAfterTouchValue()) / 127.0f;
     } else if (m.isPitchWheel()) {
-        bends_[static_cast<size_t>(channel - 1)] = (m.getPitchWheelValue() - 8192) / 8191.0 * notePitchBendRange;
+        bends_[static_cast<size_t>(channel - 1)] =
+            double(MPEValue::from14BitInt(m.getPitchWheelValue()).asSignedFloat()) * notePitchBendRange(channel);
     } else if (m.isAllNotesOff() || m.isAllSoundOff()) {
         held_.removeIf([=](const NoteVoice& v) { return v.channel == channel; });
     } else {

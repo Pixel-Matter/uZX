@@ -21,9 +21,10 @@ namespace MoTool::uZX {
 // ponytail: fixed 50 Hz; the project's or track's frame rate when that becomes a setting
 inline constexpr double noteFrameRate = 50.0;
 
-/** Semitones a full pitch wheel bends a voice from its key, for everything that writes or reads the stream. */
-// TODO as a parameter, for a deeper range, sent downstream as the pitch bend sensitivity RPN
-inline constexpr int notePitchBendRange = 2;
+/** Semitones a full pitch wheel bends the voices of a channel from their keys, for everything that writes or
+    reads the stream. The stream is an MPE lower zone: 48 on its member channels, 2 to 16, where each voice has
+    a channel of its own, and 2 on channel 1, where a keyboard's wheel plays. */
+constexpr int notePitchBendRange(int channel) noexcept { return channel == 1 ? 2 : 48; }
 
 /** The controllers of the stream, on a voice's channel: its timbre, the envelope's restart, its place and priority.
 

@@ -251,8 +251,8 @@ public:
             juce::String registers;
             for (int shape = 0; shape < numShapes; ++shape)
                 registers << toRegister(EnvelopeShape(shape)) << " ";
-            expectEquals(registers, juce::String("14 12 10 8 9 13 11 15 "),
-                         "triangle and sawtooth, the two turned over, then the four that play once");
+            expectEquals(registers, juce::String("14 10 12 8 13 9 15 11 "),
+                         "in pairs, rising first: triangles, sawtooths, then the two pairs that play once");
         }
 
         beginTest("A channel used again starts from a reset, not with what the voice before left on it");

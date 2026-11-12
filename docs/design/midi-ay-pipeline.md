@@ -120,18 +120,18 @@ A note clip or a keyboard can send these controllers straight to the mixer, on a
 
 The note wire reads controllers as MIDI reads its own, not as chip numbers, since keyboards, knobs and clip lanes write it: a switch is on from 64, and a value with fewer steps than a controller takes the controller's whole range, an equal part for each step (`stepToController`, `controllerToStep`). The encoder sends a switch as 127 or 0 and the last step as 127.
 
-The envelope shape on this wire, in a voice's timbre and anywhere the interface offers one is `EnvelopeShape` in `src/plugins/uZX/aychip/EnvelopeShape.h`: the eight shapes the envelope can have, where the chip's register has sixteen values for them. The oscillator shapes come first, the usual two and then each turned over, and the shapes that play once after. `toRegister` gives the register value the mixer sends on.
+The envelope shape on this wire, in a voice's timbre and anywhere the interface offers one is `EnvelopeShape` in `src/plugins/uZX/aychip/EnvelopeShape.h`: the eight shapes the envelope can have, where the chip's register has sixteen values for them. They come in pairs, a shape that starts rising and the same one starting to fall: triangle and sawtooth first, then the two that play once. `toRegister` gives the register value the mixer sends on.
 
 | Controller 70 | Shape | | Register |
 | --- | --- | --- | --- |
 | 0–15 | Triangle | `/\/\` | 14 |
-| 16–31 | Sawtooth | `////` | 12 |
-| 32–47 | Triangle, falling first | `\/\/` | 10 |
+| 16–31 | Triangle, falling first | `\/\/` | 10 |
+| 32–47 | Sawtooth | `////` | 12 |
 | 48–63 | Sawtooth, falling | `\\\\` | 8 |
-| 64–79 | Decay | `\___` | 9, and 0 to 3 |
-| 80–95 | Attack | `/‾‾‾` | 13 |
-| 96–111 | Decay, then full | `\‾‾‾` | 11 |
-| 112–127 | Attack, then silent | `/___` | 15, and 4 to 7 |
+| 64–79 | Attack | `/‾‾‾` | 13 |
+| 80–95 | Decay | `\___` | 9, and 0 to 3 |
+| 96–111 | Attack, then silent | `/___` | 15, and 4 to 7 |
+| 112–127 | Decay, then full | `\‾‾‾` | 11 |
 
 **PSG wire, mixer or PSG clip to chip.** Implemented as `PsgCC` in `src/models/PsgCC.*`: one table that `PsgParamsMidiWriter` (PSG clips), the mapper and `AYChipPlugin` all use. Channels count from the chip's base channel. Unlike the note wire, a controller here carries the register's own value: volume 0 to 15, noise period 0 to 31, shape 0 to 15, a switch 0 or 1 (on for any value but 0). A PSG clip replays a file's register writes exactly, a device writes what it receives, and knobs reach the chip through the mixer, not this wire.
 

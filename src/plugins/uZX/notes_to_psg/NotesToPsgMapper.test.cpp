@@ -318,7 +318,7 @@ public:
             auto messages = play(mapper,
                                  {MidiMessage::controllerEvent(9, 85, 127),
                                   MidiMessage::controllerEvent(9, 80, 0),
-                                  MidiMessage::controllerEvent(9, 70, 36),  // the third shape of eight
+                                  MidiMessage::controllerEvent(9, 70, 18),  // the second shape of eight
                                   MidiMessage::noteOn(9, 36, (uint8) 100)});
             expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(36.0, TuningSystem::Envelope));
             expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"), "which is the chip's shape 10");
@@ -334,7 +334,7 @@ public:
             expectEquals(messages.size(), 2, "a restart inside the lasting note, and nothing else");
             expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1 0"));
 
-            messages = play(mapper, {MidiMessage::controllerEvent(9, 83, 0), MidiMessage::controllerEvent(9, 70, 36)});
+            messages = play(mapper, {MidiMessage::controllerEvent(9, 83, 0), MidiMessage::controllerEvent(9, 70, 18)});
             expectEquals(messages.size(), 0, "the release and the same shape again do nothing");
         }
 

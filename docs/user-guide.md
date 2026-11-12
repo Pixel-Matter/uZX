@@ -232,13 +232,13 @@ Controller 70 picks the envelope shape, restarting the envelope when the shape i
 | Controller 70 | Shape | |
 | --- | --- | --- |
 | 0–15 | Triangle | `/\/\` |
-| 16–31 | Sawtooth | `////` |
-| 32–47 | Triangle, falling first | `\/\/` |
+| 16–31 | Triangle, falling first | `\/\/` |
+| 32–47 | Sawtooth | `////` |
 | 48–63 | Sawtooth, falling | `\\\\` |
-| 64–79 | Decay | `\___` |
-| 80–95 | Attack | `/‾‾‾` |
-| 96–111 | Decay, then full | `\‾‾‾` |
-| 112–127 | Attack, then silent | `/___` |
+| 64–79 | Attack | `/‾‾‾` |
+| 80–95 | Decay | `\___` |
+| 96–111 | Attack, then silent | `/___` |
+| 112–127 | Decay, then full | `\‾‾‾` |
 
 **μZX Instrument** before MIDI to PSG shapes each note with its amp and pitch envelopes and sends it on a MIDI channel of its own, from 2 to 16, so every note of a chord has its own pitch. It plays up to fifteen notes at once and leaves it to MIDI to PSG which three sound. The controllers above still go to the instrument on the channel the notes are played on: they apply to those notes, and a note's priority is that channel's number.
 

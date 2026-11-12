@@ -33,7 +33,7 @@ public:
             position.time.getEnd() = Edit::getMaximumEditEnd();
 
         if (auto track = dynamic_cast<Track*> (&parent))
-            track->setFrozen(false, Track::groupFreeze);
+            track->unfreeze(Track::groupFreeze);
 
         if (deleteExistingClips == DeleteExistingClips::yes)
             deleteRegion(parent, position.time);

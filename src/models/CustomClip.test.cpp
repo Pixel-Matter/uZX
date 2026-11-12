@@ -53,7 +53,7 @@ public:
         beginTest("Edit loading by copying the state");
         {
             auto editStateCopy = edit->state.createCopy();
-            Edit editCopy ({ engine, editStateCopy, ProjectItemID::createNewID(0) });
+            Edit editCopy ({ engine, editStateCopy, ProjectItemID::createNewID(ProjectID(0)) });
             jassert(getAudioTracks(editCopy).size() == 1);
             auto t = getAudioTracks(editCopy)[0];
             auto& clips = t->getClips();

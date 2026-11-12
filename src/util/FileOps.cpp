@@ -156,7 +156,12 @@ File getRendersDirectory(te::Edit& edit) {
 
 bool saveEdit(te::Edit& edit, bool warnOfFailure, bool forceSaveEvenIfNotModified, bool offerToDiscardChanges) {
     auto efo = te::EditFileOperations(edit);
-    if (efo.save(warnOfFailure, forceSaveEvenIfNotModified, offerToDiscardChanges)) {
+    // ponytail: the callback runs before save() returns unless offerToDiscardChanges asks a
+    // question; no caller passes true. Make saveEdit take a callback if one ever does.
+    jassert(!offerToDiscardChanges);
+    bool saved = false;
+    efo.save(warnOfFailure, forceSaveEvenIfNotModified, offerToDiscardChanges, [&saved](bool ok) { saved = ok; });
+    if (saved) {
         addToRecentEdits(edit.engine.getPropertyStorage(), efo.getEditFile());
         setRecentEditsDirectory(edit.engine.getPropertyStorage(), efo.getEditFile());
         return true;
@@ -166,7 +171,10 @@ bool saveEdit(te::Edit& edit, bool warnOfFailure, bool forceSaveEvenIfNotModifie
 
 bool saveEditAs(te::Edit& edit, const File& file) {
     auto efo = te::EditFileOperations(edit);
-    if (efo.saveAs(file)) {
+    // Overwriting is forced: the file chooser has already asked, and the engine's own prompt is async.
+    bool saved = false;
+    efo.saveAs(file, true, [&saved](bool ok) { saved = ok; });
+    if (saved) {
         edit.editFileRetriever = [file] { return file; };
 
         addToRecentEdits(edit.engine.getPropertyStorage(), file);

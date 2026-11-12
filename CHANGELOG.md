@@ -4,6 +4,10 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Engine
+- Tracktion Engine is updated to its October 2026 development version and JUCE to 8.0.17, which hardens the reading of XML, WAV, AIFF, PNG and ZIP files
+- The audio device settings are converted to the engine's new format on first launch; an older µZX build does not read them back
+
 ### Timeline
 - Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format
 - `X` restores the previous timeline position and zoom; wheel/pinch gestures and drags each return in one step, separately from edit undo

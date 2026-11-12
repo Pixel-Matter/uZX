@@ -67,7 +67,7 @@ public:
 
         beginTest("A reloaded edit keeps the chip's clock and the converter follows it");
         {
-            auto reloaded = te::Edit::createEdit({engine, edit->state.createCopy(), te::ProjectItemID::createNewID(0)});
+            auto reloaded = te::Edit::createEdit({engine, edit->state.createCopy(), te::ProjectItemID::createNewID(te::ProjectID(0))});
             NotesToPsgPlugin* reloadedConverter = nullptr;
             AYChipPlugin* reloadedChip = nullptr;
             for (auto* p : te::getAudioTracks(*reloaded)[0]->pluginList) {

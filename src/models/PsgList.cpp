@@ -424,12 +424,11 @@ double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::Mid
             // Export the complete accumulated initial state at time 0.
             // PSG frames only mask registers that changed, but recomputeAccumulatedState()
             // copies the full accumulated values (including the resetMixer baseline and
-            // defaults) into every frame. Forcing all masks on at frame 0 emits a complete
+            // defaults) into every frame. Writing them all at frame 0 emits a complete
             // AY register snapshot, so playback/reposition always starts from a deterministic
             // state instead of inheriting stale registers from a previous play.
-            PsgParamFrameData fullState = f->getData();
-            std::fill(fullState.masks.begin(), fullState.masks.end(), true);
-            writer.write(getTimeInBase(*f, clip, timeBase), fullState);
+            // The envelope shape goes as a value: a clip cut from a tune must not restart the envelope
+            writer.writeAll(getTimeInBase(*f, clip, timeBase), f->getData());
         } else {
             writer.write(getTimeInBase(*f, clip, timeBase), f->getData());
         }

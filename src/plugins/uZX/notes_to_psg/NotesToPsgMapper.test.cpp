@@ -221,11 +221,12 @@ public:
             expectEquals(periodOf(messages, 4),
                          mapper.getTuningSystem().midiNoteToPeriod(36.0, TuningSystem::Envelope));
             expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"));
+            expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1 0"));
 
             messages = play(mapper, {MidiMessage::noteOff(4, 36), MidiMessage::noteOn(4, 36, (uint8) 100)});
-            expectEquals(messages.size(), 1, "the same note again");
-            expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"),
-                         "the same shape written again restarts the envelope");
+            expectEquals(messages.size(), 3, "the same note again writes the shape again, and nothing else");
+            expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"));
+            expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1 0"), "restarts the envelope");
         }
 
         beginTest("Other channels pass through and are not played");

@@ -76,7 +76,8 @@ public:
             auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], data, {{TimePosition(), length}, {}}, "SkyTrain Funk");
             const auto sequence = clip->getPsg().exportToPlaybackMidiSequence(*clip, MidiList::TimeBase::seconds);
 
-            // What the chip writes: the controllers of one time make a frame, and a frame with a shape writes it
+            // What the chip writes: the controllers of one time make a frame over the values it holds, and a
+            // frame with a shape set writes it. The clip's first frame sends every value and must write no shape
             std::map<int, int> played;
             PsgParamFrameData params;
             const auto endFrame = [&](double time) {
@@ -102,10 +103,6 @@ public:
                 written[static_cast<int>(i)] = shape;
                 restarts += shape == std::exchange(last, shape);
             }
-            // The first frame of a clip sends every parameter, the shape too
-            played.erase(0);
-            written.erase(0);
-
             logMessage(String(written.size()) + " shape writes, " + String(restarts) + " of them the shape before again");
             expect(restarts > 100, "the tune restarts the envelope with the same shape");
             expectEquals(static_cast<int>(played.size()), static_cast<int>(written.size()));

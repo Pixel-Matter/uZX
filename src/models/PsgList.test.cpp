@@ -319,6 +319,33 @@ public:
     void runTest() override {
         auto& engine = *te::Engine::getEngines()[0];
 
+        beginTest("A clip's first frame sends the envelope shape without restarting the envelope");
+        {
+            // A clip cut from a tune where an envelope note sounds across the cut
+            PsgData data {
+                {
+                    {{PsgRegType::VolumeA, 16}},       // F0: no write of the shape
+                    {{PsgRegType::EnvelopeShape, 8}},  // F1: a write
+                },
+                {50.0, 1}
+            };
+            auto edit = Edit::createSingleTrackEdit(engine);
+            auto* clip = dynamic_cast<PsgClip*>(CustomClip::insertClipWithState(*te::getAudioTracks(*edit)[0], {}, {},
+                CustomClip::Type::psg, {{0_tp, 4_td}, {}}, te::DeleteExistingClips::no, false));
+            clip->getPsg().loadFrom(data, *edit, {}, nullptr);
+            const auto seq = clip->getPsg().exportToPlaybackMidiSequence(*clip, te::MidiList::TimeBase::seconds);
+
+            const int channel = clip->getPsg().getMidiChannel().getChannelNumber() + 3;
+            StringArray first, second;
+            for (auto* e : seq) {
+                const auto& m = e->message;
+                if (m.getChannel() == channel && (m.getControllerNumber() == 70 || m.getControllerNumber() == 83))
+                    (m.getTimeStamp() < 0.01 ? first : second).add(String(m.getControllerNumber()) + "=" + String(m.getControllerValue()));
+            }
+            expectEquals(first.joinIntoString(" "), String("70=0"), "the shape as a value");
+            expectEquals(second.joinIntoString(" "), String("70=8 83=1 83=0"), "a write restarts");
+        }
+
         beginTest("exportToPlaybackMidiSequence emits all params at time 0");
         {
             // PSG data where frame 0 only sets VolumeA — a typical sparse PSG start

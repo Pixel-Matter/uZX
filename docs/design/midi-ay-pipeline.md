@@ -113,8 +113,11 @@ A note clip or a keyboard can send the timbre controllers, and the mixer reads t
 | Noise period | 3 | 2 |
 | Envelope period | 3 | 20 and 52 |
 | Envelope shape | 3 | 70 |
+| Restart envelope | 3 | 83, pressed (1) and released (0) |
 
-Every envelope shape message writes the register and so restarts the envelope; there is no separate restart. `PsgEncoder` sends it each time it is set, and everything else but a tone retrigger only when it differs from what was sent.
+The envelope shape is the one parameter whose value and write travel apart, and only on this wire. In a `PsgPatch` a set shape is a write, and a write restarts the envelope. But MIDI sends a controller's value again where nothing was written: a clip's first frame restates everything the chip should hold, and a host resends the last value of each controller as play starts or a loop wraps. So controller 70 is the shape as a value, and controller 83 is the restart. A write goes out as both; the chip writes the register on a restart, or when controller 70 brings another shape than it holds, and not when it brings the same one. The restart is released at once, so the value a host sends again is the released one. A tune cut into clips therefore keeps an envelope note running across the cut.
+
+`PsgEncoder` sends a shape each time it is set, and everything else but a tone retrigger only when it differs from what was sent.
 
 Both wires share a track's sixteen channels. Routing them apart is the user's business, as in any DAW; the safer default is the PSG wire on the last four channels (13–16), which leaves the low channels to notes. Today both the chip and MIDI to PSG default to base channel 1.
 
@@ -131,7 +134,7 @@ Both wires share a track's sixteen channels. Routing them apart is the user's bu
 What this asks of the design:
 
 - **The PSG wire becomes a protocol** that firmware implements, so the wire changes in [Order of work](#order-of-work) come before any firmware.
-- **The link to the device is a transport, and need not be MIDI.** Over a MIDI port the device decodes `PsgCC`. A 5-pin MIDI cable carries about 62 bytes per 50 Hz frame, 20 controller messages of three bytes; a whole frame after a reset is up to 22 and spills into the next frame, while an ordinary frame, where `PsgEncoder` sends only what changed, is far smaller. Over a serial link that only this pipeline uses (RS-232 into a Spectrum, USB serial into an Arduino) a second codec for the same value is the better fit: the registers that changed, as a mask and their bytes, 16 bytes a frame at most. That fits 9600 baud (19 bytes per frame) and takes a few instructions to decode on a Z80. It is one more encoder in the bookkeeping row; the logic does not change.
+- **The link to the device is a transport, and need not be MIDI.** Over a MIDI port the device decodes `PsgCC`. A 5-pin MIDI cable carries about 62 bytes per 50 Hz frame, 20 controller messages of three bytes; a whole frame after a reset is up to 24 and spills into the next frame, while an ordinary frame, where `PsgEncoder` sends only what changed, is far smaller. Over a serial link that only this pipeline uses (RS-232 into a Spectrum, USB serial into an Arduino) a second codec for the same value is the better fit: the registers that changed, as a mask and their bytes, 16 bytes a frame at most, where a shape in the mask is a write and needs no restart message. That fits 9600 baud (19 bytes per frame) and takes a few instructions to decode on a Z80. It is one more encoder in the bookkeeping row; the logic does not change.
 - **Stage logic stays free of MIDI state**, so it ports in shape. The codecs take JUCE and Tracktion message types today and would be written again over raw bytes. No portability layer is built before a port starts.
 
 ## What exists today

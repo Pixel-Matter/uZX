@@ -554,7 +554,9 @@ public:
                     "Controller Breath controller (coarse): 16 Channel 4",
                     "Controller 20: 104 Channel 4",
                     "Controller 52: 18 Channel 4",
-                    "Controller Sound Variation: 8 Channel 4"
+                    "Controller Sound Variation: 8 Channel 4",
+                    "Controller General Purpose Button 4 (on/off): 1 Channel 4",
+                    "Controller General Purpose Button 4 (on/off): 0 Channel 4"
                 }}
             };
             compareEvents(seq, expectedEvents);
@@ -650,6 +652,36 @@ public:
                 const PsgParamType type {e};
                 expectEquals(int(read[type].value_or(0xFFFF)), type.getScale().end, String(type));
             });
+        }
+
+        beginTest("The envelope shape travels as a value and a restart");
+        {
+            const auto shapeMessages = [](const PsgCC::Messages& messages) {
+                StringArray text;
+                for (const auto& m : messages)
+                    text.add(String(m.channel) + ":" + String(static_cast<int>(m.controller)) + "=" + String(m.value));
+                return text.joinIntoString(" ");
+            };
+            expectEquals(shapeMessages(PsgCC::encode(PsgParamType::EnvelopeShape, 10)), String("3:70=10 3:83=1 3:83=0"),
+                         "a write: the value, then the restart pressed and released");
+            expectEquals(shapeMessages(PsgCC::encodeValue(PsgParamType::EnvelopeShape, 10)), String("3:70=10"));
+
+            // What the chip does: each frame starts from the values it holds, with nothing set
+            PsgParamFrameData chip;
+            const auto frame = [&](std::initializer_list<std::pair<int, int>> controllers) {
+                chip.clear();
+                for (auto [controller, value] : controllers)
+                    PsgCC::decode(3, controller, value, chip);
+                return chip.toRegisters().hasEnvelopeShapeSet();
+            };
+            expect(frame({{70, 10}}), "another shape is written");
+            expect(! frame({{70, 10}}), "the shape it holds, sent again, is not: the envelope runs on");
+            expect(frame({{70, 10}, {83, 1}, {83, 0}}), "a restart writes the shape");
+            expect(frame({{83, 1}}), "a restart alone writes the shape the chip holds");
+            expectEquals(int(chip.toRegisters().getEnvelopeShape()), 10);
+            expect(! frame({{83, 0}}), "the released restart does nothing");
+            expect(frame({{83, 1}, {70, 12}}), "in either order");
+            expectEquals(int(chip.toRegisters().getEnvelopeShape()), 12);
         }
 
         beginTest("An envelope period above 14 bits survives the trip through MIDI");

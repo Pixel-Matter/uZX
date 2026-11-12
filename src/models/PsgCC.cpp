@@ -32,6 +32,10 @@ constexpr PsgCCRow psgCcRows[] {
     {PsgParamType::EnvelopeShape,     1, 3, MidiCCType::SoundVariation,      false},
 };
 
+// The envelope's restart has no parameter of its own: it is the write of the shape
+constexpr int envelopeChannel = 3;
+constexpr auto envelopeRestart = MidiCCType::GPB4RetriggerSwitch;
+
 // MIDI pairs a coarse controller below 32 with the fine one 32 above it
 constexpr int fineOffset = 32;
 static_assert(static_cast<int>(MidiCCType::CC52PeriodFine) == static_cast<int>(MidiCCType::CC20PeriodCoarse) + fineOffset);
@@ -39,6 +43,16 @@ static_assert(static_cast<int>(MidiCCType::CC52PeriodFine) == static_cast<int>(M
 }  // namespace
 
 PsgCC::Messages PsgCC::encode(PsgParamType param, int value) noexcept {
+    auto messages = encodeValue(param, value);
+    if (param == PsgParamType::EnvelopeShape) {
+        // Released at once, so the value a host sends again is the released one
+        messages.items[messages.count++] = {envelopeChannel, envelopeRestart, 1};
+        messages.items[messages.count++] = {envelopeChannel, envelopeRestart, 0};
+    }
+    return messages;
+}
+
+PsgCC::Messages PsgCC::encodeValue(PsgParamType param, int value) noexcept {
     for (const auto& row : psgCcRows) {
         if (!row.has(param))
             continue;
@@ -53,12 +67,19 @@ PsgCC::Messages PsgCC::encode(PsgParamType param, int value) noexcept {
 }
 
 bool PsgCC::decode(int channel, int controller, int value, PsgParamFrameData& into) noexcept {
+    if (channel == envelopeChannel && controller == static_cast<int>(envelopeRestart)) {
+        if (value != 0)
+            into.set(PsgParamType::EnvelopeShape, into.getRaw(PsgParamType::EnvelopeShape));
+        return true;
+    }
     for (const auto& row : psgCcRows) {
         if (!juce::isPositiveAndBelow(channel - row.channel, row.count))
             continue;
         const PsgParamType param {static_cast<int>(row.first) + channel - row.channel};
         const int coarse = static_cast<int>(row.controller);
         const auto raw = into.getRaw(param);
+        if (controller == coarse && param == PsgParamType::EnvelopeShape && ! into.isSet(param) && raw == value)
+            return true;  // the shape the chip holds, sent again: not a write
         if (controller == coarse)
             into.set(param, static_cast<uint16_t>(row.isPeriod ? (value << 7) | (raw & 0x7F) : value));
         else if (row.isPeriod && controller == coarse + fineOffset)
@@ -73,10 +94,22 @@ bool PsgCC::decode(int channel, int controller, int value, PsgParamFrameData& in
 //===============================================================================
 // PsgParamsMidiWriter class
 //===============================================================================
+void PsgParamsMidiWriter::add(double time, const PsgCC::Messages& messages) {
+    for (const auto& m : messages)
+        sequence.addEvent(juce::MidiMessage::controllerEvent(channelNumber + m.channel, static_cast<int>(m.controller), m.value), time);
+}
+
 void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
     for (auto [type, value] : data.getParams())
-        for (const auto& m : PsgCC::encode(type, value))
-            sequence.addEvent(juce::MidiMessage::controllerEvent(channelNumber + m.channel, static_cast<int>(m.controller), m.value), time);
+        add(time, PsgCC::encode(type, value));
+}
+
+void PsgParamsMidiWriter::writeAll(double time, const PsgParamFrameData& data) {
+    for (int i = 0; i < static_cast<int>(data.size()); ++i) {
+        const PsgParamType param {i};
+        const auto value = data.getRaw(param);
+        add(time, data.isSet(param) ? PsgCC::encode(param, value) : PsgCC::encodeValue(param, value));
+    }
 }
 
 //===============================================================================

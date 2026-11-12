@@ -15,8 +15,9 @@ namespace te = tracktion;
 template <class Voice, class OwnerMidiFx>
 class MPEInstrumentFx : public MPEInstrument::Listener {
 public:
+    // As many voices as the wire carries: which of them the chip plays is the mixer's to choose
     MPEInstrumentFx(OwnerMidiFx& owner)
-        : voices(owner)
+        : voices(owner, NoteEncoder::maxVoices)
     {
         mpeInstrument.enableLegacyMode();
         mpeInstrument.addListener(this);

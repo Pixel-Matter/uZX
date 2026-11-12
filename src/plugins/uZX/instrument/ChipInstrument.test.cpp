@@ -25,9 +25,9 @@ public:
         // What a note starts with on its own channel: the channel's controllers reset, then its priority,
         // which is the number of the channel it was played on
         const auto start = [](int sample, int channel, int priority = 1) {
-            const auto at = String(sample) + " Controller ";
-            const auto on = " Channel " + String(channel) + "; ";
-            return at + "All Controllers Off: 0" + on + at + "86: " + String(priority) + on;
+            const auto controller = String(sample) + " Controller ";
+            const auto onChannel = " Channel " + String(channel) + "; ";
+            return controller + "All Controllers Off: 0" + onChannel + controller + "86: " + String(priority) + onChannel;
         };
 
         beginTest("A note starts on a channel of its own with a reset, its priority, the pitch wheel and a note on");
@@ -105,15 +105,24 @@ public:
                          "the tone off and an envelope restart reach the note that sounds, and only it");
         }
 
-        beginTest("A fourth note takes a voice from a held one");
+        beginTest("A fourth note plays beside the three held ones; a sixteenth takes a voice from one");
         {
             Rig rig;
             rig.play(1, {{0, on(60)}, {0, on(64)}, {0, on(67)}});
             rig.take();
             rig.play(1, {{0, on(72)}});
-            expectEquals(rig.take(), String("960 Note off E3 Velocity 0 Channel 3; ") + start(960, 5)
-                                         + "960 Pitch wheel 8192 Channel 5; 960 Note on C4 Velocity 100 Channel 5",
-                         "the note that lost its voice gets a note off, and the new one the channel free the longest");
+            expectEquals(rig.take(), start(960, 5) + "960 Pitch wheel 8192 Channel 5; 960 Note on C4 Velocity 100 Channel 5",
+                         "which of the four the chip plays is the mixer's to choose");
+
+            std::vector<std::pair<int, MidiMessage>> more;
+            for (int key = 80; key < 91; ++key)
+                more.push_back({0, on(key)});
+            rig.play(1, more);
+            rig.take();
+            rig.play(1, {{0, on(100)}});
+            expectEquals(rig.take(), String("2880 Note off E3 Velocity 0 Channel 3; ") + start(2880, 3)
+                                         + "2880 Pitch wheel 8192 Channel 3; 2880 Note on E6 Velocity 100 Channel 3",
+                         "the note that lost its voice gets a note off, and the new one its channel");
         }
 
         beginTest("A key played again while its note is released starts the note again");

@@ -158,7 +158,7 @@ What this asks of the design:
 
 | Target role | Today | Gap |
 | --- | --- | --- |
-| Chip instrument | `ChipInstrumentPlugin`, `ChipInstrumentVoice` on `MPEInstrumentFx` | No timbre parameters of its own; three voices, stolen by the instrument before the mixer can choose; a pitch more than two semitones from its key does not fit the wheel; fixed 50 Hz (`noteFrameRate`) |
+| Chip instrument | `ChipInstrumentPlugin`, `ChipInstrumentVoice` on `MPEInstrumentFx` | No timbre parameters of its own; a pitch more than two semitones from its key does not fit the wheel; fixed 50 Hz (`noteFrameRate`) |
 | Chip effects | None | |
 | Chip mixer | `NotesToPsgPlugin`, `NotesToPsgMapper`, `ChipMixer` | It follows the chip's stored stereo layout, not an automated one |
 | PSG codec | `PsgCC`, `PsgEncoder` | An envelope period above 14 bits does not fit two controllers; a switch is 0 or 1 and volume the raw 0–15, not the 0–127 a knob sends |

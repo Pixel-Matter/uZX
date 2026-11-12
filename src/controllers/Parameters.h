@@ -593,7 +593,13 @@ public:
 
     void restoreStateFromValueTree(const ValueTree& v) {
         static_cast<Derived*>(this)->visit([&v] (auto& prop) {
-            tracktion::copyPropertiesToCachedValues(v, prop.getCachedValue() );
+            // Not tracktion::copyPropertiesToCachedValues: it converts with var::operator T, which
+            // leaves out types built from a var, such as EnumChoice.
+            auto& cached = prop.getCachedValue();
+            if (auto p = v.getPropertyPointer(cached.getPropertyID()))
+                cached = std::decay_t<decltype(cached.get())>(*p);
+            else
+                cached.resetToDefault();
         });
     }
 

@@ -45,6 +45,7 @@ public:
     juce::String getShortName(int) override         { return "Scope"; }
     juce::String getSelectableDescription() override { return "Oscilloscope display"; }
     bool isSynth() override                         { return false; }
+    BusLayout getBusses() const override            { return BusLayout::singlePassThrough(); }
 
     void initialise(const te::PluginInitialisationInfo&) override;
     void deinitialise() override;

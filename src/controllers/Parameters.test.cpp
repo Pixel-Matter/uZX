@@ -22,6 +22,7 @@ class ParameterBindingTests  : public UnitTest {
         String getName() const override { return "TestPlugin"; }
         String getSelectableDescription() override { return "Test Plugin for unit tests"; }
         String getPluginType() override { return "TestPlugin"; }
+        BusLayout getBusses() const override { return {}; }
         void initialise(const te::PluginInitialisationInfo&) override {}
         void deinitialise() override {}
         void applyToBuffer(const te::PluginRenderContext&) noexcept override {}

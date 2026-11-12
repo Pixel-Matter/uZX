@@ -232,6 +232,7 @@ public:
     String getVendor() override { return "PixelMatter"; }
     double getLatencySeconds() override { return 0.0; }
     int getNumOutputChannelsGivenInputs(int) override { return 0; }
+    BusLayout getBusses() const override { return {}; }
     void getChannelNames(juce::StringArray*, juce::StringArray*) override {}
     bool takesAudioInput() override { return false; }
     bool canBeAddedToClip() override { return false; }

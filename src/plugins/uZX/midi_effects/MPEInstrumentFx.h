@@ -35,8 +35,9 @@ public:
     //==========================================================================
     // Render
 
-    // Renders the frames that start in the range: each active voice adds itself to the frame, the encoder
-    // sends what changed. Frames sit on a grid counted from the start of time, whatever the block size.
+    // Renders the frames that start in the range: each active voice adds itself to the frame, the controllers
+    // of the channel it was played on give it its timbre, pan and priority, the encoder sends what changed.
+    // Frames sit on a grid counted from the start of time, whatever the block size.
     void renderNextSubBlock(MidiBufferContext& c) {
         const auto step = roundToInt(c.sampleRate / noteFrameRate);
         const auto timeSamples = roundToInt(c.playPosition.inSeconds() * c.sampleRate);
@@ -50,6 +51,7 @@ public:
             voices.forEachActiveVoice([&frame](auto* voice) {
                 voice->renderFrame(frame);
             });
+            controllers.applyTo(frame);
             encoder.encode(frame, c.buffer, s / c.sampleRate);
         }
     }
@@ -61,7 +63,7 @@ public:
         mpeInstrument.processNextMidiEvent(m);
 
         if (m.isController())
-            handleController(m.getChannel(), m.getControllerNumber(), m.getControllerValue());
+            controllers.decode(m);
         else if (m.isProgramChange())
             handleProgramChange(m.getChannel(), m.getProgramChangeNumber());
     }
@@ -161,13 +163,6 @@ protected:
         // DBG("Note key state changed: " << changedNote.initialNote);
     }
 
-    /** Called when a MIDI controller changes. */
-    void handleController(int midiChannel, int controllerNumber, int controllerValue) {
-        ignoreUnused(midiChannel, controllerNumber, controllerValue);
-        // DBG("Controller changed: " << controllerNumber << " = " << controllerValue);
-        // Implement controller handling logic here
-    }
-
     void handleProgramChange(int midiChannel, int programNumber) {
         ignoreUnused(midiChannel, programNumber);
         DBG("Program change: " << programNumber);
@@ -178,6 +173,7 @@ protected:
 
 private:
     MPEInstrument mpeInstrument;
+    NoteControllers controllers;  // of the channels the notes are played on
     NoteEncoder encoder;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MPEInstrumentFx)

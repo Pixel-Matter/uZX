@@ -51,8 +51,8 @@ struct NoteTimbre
 /** One voice sounding in a frame. */
 struct NoteVoice
 {
-    int channel = 1;      ///< MIDI channel
-    int key = 0;          ///< the MIDI note it started as; with the channel, which voice this is
+    int channel = 1;      ///< the MIDI channel it was played or read on; with the key, which voice this is
+    int key = 0;          ///< the MIDI note it started as
     double pitch = 0.0;   ///< what sounds, in semitones on the MIDI note scale
     float level = 0.0f;   ///< 0..1
     bool attack = false;  ///< starts in this frame, even if the same voice sounded in the frame before
@@ -108,19 +108,31 @@ private:
 
 //==============================================================================
 /**
-    Writes frames as MIDI: a note on at the level a voice starts at, its level after that as polyphonic
-    aftertouch, its pitch as the pitch wheel of its channel, a note off when it is gone.
+    Writes frames as MIDI, each voice on a MIDI channel of its own, so its pitch wheel and its controllers
+    are its alone: the member channels of an MPE lower zone, 2 to 16. A voice keeps its channel while it
+    sounds, and a new voice takes the one that has been free the longest. The channel a voice has in a frame
+    only says which voice it is; what it meant goes with the voice as its priority.
+
+    A voice starts with a reset of its channel's controllers, the controllers that differ from that, the
+    pitch wheel and a note on at the level it starts at. While it sounds its level is polyphonic aftertouch,
+    and pitch and controllers go out as they change. A note off when it is gone.
 
     It alone remembers what was sent, so the logic that makes the frames keeps no MIDI state.
 */
 class NoteEncoder
 {
 public:
+    /** The voices it sends at once. */
+    static constexpr int maxVoices = 15;
+
     /** Adds to `out`, at `time`, the messages that turn the last frame sent into `frame`. */
     void encode(const NoteFrame& frame, tracktion::MidiMessageArray& out, double time);
 
 private:
-    NoteFrame sent_;
+    static constexpr int firstChannel = 2;
+
+    std::array<std::optional<NoteVoice>, maxVoices> sent_{};  // the voice on each channel, from firstChannel
+    size_t next_ = 0;  // where the search for a free channel starts
 };
 
 //==============================================================================
@@ -131,7 +143,8 @@ private:
 class NoteControllers
 {
 public:
-    /** Takes a controller of the stream. Returns false for a message that is not one. */
+    /** Takes a controller of the stream; a reset of all controllers returns its channel to tone on, noise and
+        envelope off, no pan and the channel's own priority. Returns false for a message that is neither. */
     bool decode(const juce::MidiMessage& m) noexcept;
 
     /** Gives each voice of a frame what the controllers of its channel say. Its priority is its channel's
@@ -165,9 +178,6 @@ private:
 
     It alone remembers which notes are held and what the controllers were last set to.
 
-    ponytail: the timbre, pan and priority it reads come from clips and keyboards only. NoteEncoder writes none,
-    because nothing that makes frames sets them yet; when the instrument or an effect does, the encoder sends
-    these controllers and they survive the trip like a voice's pitch and level.
 */
 class NoteDecoder
 {

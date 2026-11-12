@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../aychip/AYPlugin.h"
+#include "../instrument/ChipInstrumentPlugin.h"
 #include "../../../util/TestHelpers.h"
 
 namespace MoTool::Tests {
@@ -158,6 +159,33 @@ public:
             abc.chip->dynamicParams.layout.setStoredValue(ChannelsLayout::ABC);
             abc.play();
             expectEquals(volumes(abc), juce::String("C"), "after the chip is set to ABC");
+        }
+
+        beginTest("A chord and its controllers on one MIDI channel reach the chip through the instrument");
+        {
+            Rig rig(engine);
+            auto instrument = rig.edit->getPluginCache().createNewPlugin(ChipInstrumentPlugin::xmlTypeName, {});
+            rig.track->pluginList.insertPlugin(instrument, 0, nullptr);
+
+            auto& sequence = rig.clip->getSequence();
+            sequence.addNote(64, te::BeatPosition(), te::BeatDuration::fromBeats(8.0), 100, 0, nullptr);
+            sequence.addNote(67, te::BeatPosition(), te::BeatDuration::fromBeats(8.0), 100, 0, nullptr);
+            sequence.addControllerEvent(te::BeatPosition(), 81, 127 << 7, nullptr);  // noise on
+            sequence.addControllerEvent(te::BeatPosition(), 2, 9 << 7, nullptr);     // noise period
+            rig.play();
+
+            const auto regs = rig.chip->getChipRegisters();
+            auto& tuning = rig.converter->getTuningSystem();
+            juce::Array<int> periods;
+            for (int n = 0; n < 3; ++n) {
+                periods.addUsingDefaultSort(int(regs.getTonePeriod(n)));
+                expect(regs.getVolume(n) > 0 && regs.getToneOn(n) && regs.getNoiseOn(n),
+                       "chip channel " + juce::String(n) + " plays a note with the noise on");
+            }
+            expect(periods == juce::Array<int>{tuning.midiNoteToPeriod(67.0), tuning.midiNoteToPeriod(64.0),
+                                               tuning.midiNoteToPeriod(60.0)},
+                   "the three notes, one on each chip channel");
+            expectEquals(int(regs.getNoisePeriod()), 9);
         }
     }
 

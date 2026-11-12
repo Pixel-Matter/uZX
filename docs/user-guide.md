@@ -227,6 +227,8 @@ MIDI to PSG plays the notes of every MIDI channel on the chip's three channels, 
 
 Controllers on a MIDI channel set how its notes sound. Controllers 80, 81 and 82 turn the tone, noise and envelope on (any value but 0) or off, and controller 2 sets the noise period. Controller 85 (any value but 0) makes the channel's notes drive the chip's envelope: their pitch is the envelope's pitch. With the tone off as well, such a note takes no chip channel and only moves the envelope under the other notes; with its envelope on, it is a buzzer by itself. A note that drives the envelope lets it run on; controller 83 on its channel (any value but 0) restarts the envelope, with a note or inside one. Controller 70 sets the envelope shape, restarting the envelope when the shape is another.
 
+**μZX Instrument** before MIDI to PSG shapes each note with its amp and pitch envelopes and sends it on a MIDI channel of its own, from 2 to 16, so every note of a chord has its own pitch. The controllers above still go to the instrument on the channel the notes are played on: they apply to those notes, and a note's priority is that channel's number.
+
 **PSG output channels** in the device's menu are the four MIDI channels MIDI to PSG sends the chip's controllers on; set them to the AY chip's **MIDI channel range**. No MIDI on any channel passes through MIDI to PSG.
 
 **Track → Render to audio** renders the selected track to a WAV. When the render succeeds, Studio adds and selects a new audio track and mutes the source. **Undo** removes the new track and restores the source's previous mute state. Choose **Cancel** in the progress window to discard the render and keep the source as it was.

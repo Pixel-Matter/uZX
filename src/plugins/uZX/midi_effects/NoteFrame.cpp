@@ -2,35 +2,99 @@
 
 namespace MoTool::uZX {
 
+namespace {
+
+/** The controllers that turn what a channel was last sent into what a voice is now. */
+void sendControllers(const NoteVoice& before, const NoteVoice& now, int channel, tracktion::MidiMessageArray& out,
+                     double time) {
+    const auto send = [&](NoteCC controller, int value) {
+        out.addMidiMessage(MidiMessage::controllerEvent(channel, static_cast<int>(controller), value), time, 0);
+    };
+    const auto sendIfChanged = [&](NoteCC controller, int was, int is) {
+        if (was != is)
+            send(controller, is);
+    };
+    const auto onOff = [](bool on) { return on ? 127 : 0; };
+    const auto panOf = [](const NoteVoice& voice) { return voice.pan ? roundToInt(*voice.pan * 127.0f) : -1; };
+
+    sendIfChanged(NoteCC::Tone, onOff(before.timbre.tone), onOff(now.timbre.tone));
+    sendIfChanged(NoteCC::Noise, onOff(before.timbre.noise), onOff(now.timbre.noise));
+    sendIfChanged(NoteCC::Envelope, onOff(before.timbre.envelope), onOff(now.timbre.envelope));
+    sendIfChanged(NoteCC::EnvelopeDriver, onOff(before.timbre.drivesEnvelope), onOff(now.timbre.drivesEnvelope));
+    sendIfChanged(NoteCC::EnvelopeShape, before.timbre.envelopeShape, now.timbre.envelopeShape);
+    sendIfChanged(NoteCC::NoisePeriod, before.timbre.noisePeriod, now.timbre.noisePeriod);
+    sendIfChanged(NoteCC::Priority, before.priority, jlimit(0, 127, now.priority));
+    // ponytail: a voice cannot give its pan up while it sounds; a reset and everything again if one ever does
+    if (panOf(now) >= 0)
+        sendIfChanged(NoteCC::Pan, panOf(before), panOf(now));
+    if (now.restartEnvelope) {
+        // Released at once, so the value a host sends again is the released one
+        send(NoteCC::EnvelopeRestart, 127);
+        send(NoteCC::EnvelopeRestart, 0);
+    }
+}
+
+}  // namespace
+
 void NoteEncoder::encode(const NoteFrame& frame, tracktion::MidiMessageArray& out, double time) {
-    for (const auto& old : sent_) {
-        const auto* now = frame.find(old.channel, old.key);
-        if (now == nullptr || now->attack)
-            out.addMidiMessage(MidiMessage::noteOff(old.channel, old.key, 0.0f), time, 0);
+    const auto channelOf = [](size_t slot) { return firstChannel + static_cast<int>(slot); };
+
+    // Voices that are gone, or start again: their channels are free
+    for (size_t slot = 0; slot < sent_.size(); ++slot) {
+        if (!sent_[slot])
+            continue;
+        const auto* now = frame.find(sent_[slot]->channel, sent_[slot]->key);
+        if (now == nullptr || now->attack) {
+            out.addMidiMessage(MidiMessage::noteOff(channelOf(slot), sent_[slot]->key, 0.0f), time, 0);
+            sent_[slot].reset();
+        }
     }
 
     for (const auto& voice : frame) {
-        const auto* last = voice.attack ? nullptr : sent_.find(voice.channel, voice.key);
+        auto slot = static_cast<size_t>(
+            std::find_if(sent_.begin(), sent_.end(), [&](const std::optional<NoteVoice>& s) {
+                return s && s->channel == voice.channel && s->key == voice.key;
+            }) - sent_.begin());
+        const bool starts = slot == sent_.size();
 
-        if (last == nullptr || !approximatelyEqual(last->pitch, voice.pitch)) {
+        if (starts) {
+            // The channel after the last one taken that is free: of the free ones, free the longest
+            for (size_t i = 0; i < sent_.size() && slot == sent_.size(); ++i)
+                if (const auto candidate = (next_ + i) % sent_.size(); !sent_[candidate])
+                    slot = candidate;
+            // ponytail: a voice beyond the fifteen channels is not sent; a second zone if anything plays that many
+            if (slot == sent_.size())
+                continue;
+            next_ = (slot + 1) % sent_.size();
+        }
+
+        const int channel = channelOf(slot);
+        // A new voice finds the controllers of whichever voice had the channel before, so they are reset
+        NoteVoice before{.priority = -1};
+        if (starts)
+            out.addMidiMessage(MidiMessage::allControllersOff(channel), time, 0);
+        else
+            before = *sent_[slot];
+        sendControllers(before, voice, channel, out, time);
+
+        if (starts || !approximatelyEqual(before.pitch, voice.pitch)) {
             const auto bend = (voice.pitch - voice.key) / notePitchBendRange;
             out.addMidiMessage(
-                MidiMessage::pitchWheel(voice.channel, jlimit(0, 16383, 8192 + roundToInt(bend * 8191.0))), time, 0);
+                MidiMessage::pitchWheel(channel, jlimit(0, 16383, 8192 + roundToInt(bend * 8191.0))), time, 0);
         }
 
         // At least 1: a note on with velocity 0 is a note off
-        if (last == nullptr)
+        if (starts)
             out.addMidiMessage(
-                MidiMessage::noteOn(
-                    voice.channel, voice.key, static_cast<uint8>(jlimit(1, 127, roundToInt(voice.level * 127.0f)))),
+                MidiMessage::noteOn(channel, voice.key, static_cast<uint8>(jlimit(1, 127, roundToInt(voice.level * 127.0f)))),
                 time,
                 0);
-        else if (!approximatelyEqual(last->level, voice.level))
-            out.addMidiMessage(
-                MidiMessage::aftertouchChange(voice.channel, voice.key, roundToInt(voice.level * 127.0f)), time, 0);
-    }
+        else if (!approximatelyEqual(before.level, voice.level))
+            out.addMidiMessage(MidiMessage::aftertouchChange(channel, voice.key, roundToInt(voice.level * 127.0f)), time, 0);
 
-    sent_ = frame;
+        sent_[slot] = voice;
+        sent_[slot]->priority = jlimit(0, 127, voice.priority);
+    }
 }
 
 //==============================================================================
@@ -39,6 +103,11 @@ bool NoteControllers::decode(const juce::MidiMessage& m) noexcept {
     if (channel < 1 || channel > 16 || !m.isController())
         return false;
     auto& chan = channels_[static_cast<size_t>(channel - 1)];
+
+    if (m.isResetAllControllers()) {
+        chan = {};
+        return true;
+    }
 
     // ponytail: a switch is on for any value but 0, as the chip reads its own; MIDI's 64 and up when the
     // wires get one meaning for a switch
@@ -109,6 +178,8 @@ bool NoteDecoder::decode(const juce::MidiMessage& m) noexcept {
     } else if (m.isAllNotesOff() || m.isAllSoundOff()) {
         held_.removeIf([=](const NoteVoice& v) { return v.channel == channel; });
     } else {
+        if (m.isResetAllControllers())
+            bends_[static_cast<size_t>(channel - 1)] = 0.0;  // the wheel is one of them
         return controllers_.decode(m);
     }
     return true;

@@ -41,7 +41,6 @@ No open findings. [refactoring.md](refactoring.md) holds the review's scope and 
   - [ ] ampVelocity
   - [ ] Snap to envelope period (tune2env)
   - [ ] LFO for pitch, amp, noise, shape
-- [ ] MPE on MIDI output: send pitch bend on note channel via MPEChannelAssigner
 - [ ] Tests on ChipInstrumentVoice and everything else
 - [ ] Velocity and pressure sensitivity module (offset, gain, curve with plot)
 - [ ] Render MIDI to another track

@@ -308,7 +308,7 @@ public:
             expectEquals(valuesOf(messages, 1, MidiCCType::GPB3EnvSwitch), String("1"));
         }
 
-        beginTest("A note told to drive the envelope sets its pitch; controller 83 or another shape restarts it");
+        beginTest("A note told to drive the envelope sets its pitch and shape; controller 83 restarts it");
         {
             NotesToPsgMapper mapper;
             mapper.setTuningSystem(createTestTuning());
@@ -321,8 +321,9 @@ public:
                                   MidiMessage::controllerEvent(9, 70, 10),
                                   MidiMessage::noteOn(9, 36, (uint8) 100)});
             expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(36.0, TuningSystem::Envelope));
-            expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"), "another shape is written");
-            expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1 0"));
+            expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"));
+            expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String(),
+                         "the shape goes as a value: the chip restarts by itself if it held another");
             expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("0"), "no chip channel sounds");
 
             messages = play(mapper, {MidiMessage::noteOff(9, 36), MidiMessage::noteOn(9, 38, (uint8) 100)});

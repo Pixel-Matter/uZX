@@ -138,9 +138,10 @@ public:
         number until the priority controller sets another, and it asks for no place until the pan controller
         names one.
 
-        A voice has `restartEnvelope` set in the first frame it is in after its channel got the restart controller
-        or another envelope shape, which cannot sound without a restart. A note starting does not set it: the
-        envelope's pitch can move, and a note last, with the envelope running on.
+        A voice has `restartEnvelope` set in the first frame it is in after its channel got the restart
+        controller. A note starting does not set it: the envelope's pitch can move, and a note last, with the
+        envelope running on. Nor does another envelope shape, which is a value here; the chip restarts by itself
+        when the shape it is given is another, since that cannot sound without a write.
     */
     void applyTo(NoteFrame& frame) noexcept;
 

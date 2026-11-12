@@ -54,7 +54,6 @@ bool NoteControllers::decode(const juce::MidiMessage& m) noexcept {
             chan.timbre.envelope = value != 0;
             break;
         case NoteCC::EnvelopeShape:
-            chan.restartEnvelope = chan.restartEnvelope || chan.timbre.envelopeShape != value;
             chan.timbre.envelopeShape = value;
             break;
         case NoteCC::EnvelopeRestart:

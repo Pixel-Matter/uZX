@@ -97,7 +97,7 @@ public:
             expectEquals(decoder.takeFrame().begin()->pan.value_or(-1.0f), 0.0f);
         }
 
-        beginTest("The envelope restarts on its controller or another shape, not on a note");
+        beginTest("The envelope restarts on its controller, not on a note or another shape");
         {
             NoteDecoder decoder;
             const auto restarts = [&] {
@@ -114,9 +114,7 @@ public:
             decoder.decode(MidiMessage::controllerEvent(4, 83, 0));
             expectEquals(restarts(), String("-"), "the release does nothing");
             decoder.decode(MidiMessage::controllerEvent(4, 70, 10));
-            expectEquals(restarts(), String("R"), "another shape cannot sound without a restart");
-            decoder.decode(MidiMessage::controllerEvent(4, 70, 10));
-            expectEquals(restarts(), String("-"), "the same shape sent again is not one");
+            expectEquals(restarts(), String("-"), "another shape is a value; the chip restarts when it gets one");
 
             decoder.decode(MidiMessage::noteOff(4, 36));
             decoder.decode(MidiMessage::controllerEvent(4, 83, 1));

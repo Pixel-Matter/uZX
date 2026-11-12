@@ -105,7 +105,7 @@ The mixer takes the chip-note stream on all channels and produces one `PsgPatch`
 | Tone, noise, envelope on | Controllers 80, 81, 82 on its channel; on for any value but 0 |
 | Its pitch drives the envelope | Controller 85 on its channel; on for any value but 0 |
 | Envelope shape, noise period | Controllers 70 and 2 on its channel |
-| Envelope restart | Controller 83 on the channel of a voice that drives the envelope, for any value but 0; another shape on controller 70 restarts too, since it cannot sound without a write |
+| Envelope restart | Controller 83 on the channel of a voice that drives the envelope, for any value but 0. Another shape on controller 70 is only a value here; the chip restarts when it gets one, since it cannot sound without a write |
 | Priority | Controller 86 on its channel, 0 to 127; the channel's number until it is sent |
 | Pan | Controller 10 on its channel, 0 left to 127 right; no place asked for until it is sent |
 

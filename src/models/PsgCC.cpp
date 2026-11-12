@@ -30,7 +30,6 @@ constexpr PsgCCRow psgCcRows[] {
     {PsgParamType::NoisePeriod,       1, 3, MidiCCType::Breath,              false},
     {PsgParamType::EnvelopePeriod,    1, 3, MidiCCType::CC20PeriodCoarse,    true},
     {PsgParamType::EnvelopeShape,     1, 3, MidiCCType::SoundVariation,      false},
-    {PsgParamType::RetriggerEnvelope, 1, 3, MidiCCType::GPB4RetriggerSwitch, false},
 };
 
 // MIDI pairs a coarse controller below 32 with the fine one 32 above it
@@ -83,9 +82,9 @@ void PsgParamsMidiWriter::write(double time, const PsgParamFrameData& data) {
 //===============================================================================
 // PsgEncoder class
 //===============================================================================
-static constexpr bool isRetrigger(PsgParamType param) noexcept {
+static constexpr bool isRetriggerTone(PsgParamType param) noexcept {
     return param == PsgParamType::RetriggerToneA || param == PsgParamType::RetriggerToneB
-        || param == PsgParamType::RetriggerToneC || param == PsgParamType::RetriggerEnvelope;
+        || param == PsgParamType::RetriggerToneC;
 }
 
 void PsgEncoder::encode(const PsgParamFrameData& params, tracktion::MidiMessageArray& out, double time, int baseChannel) {
@@ -94,12 +93,13 @@ void PsgEncoder::encode(const PsgParamFrameData& params, tracktion::MidiMessageA
         if (!params.isSet(param))
             continue;
         const auto value = params.getRaw(param);
-        if (isRetrigger(param)) {
+        if (isRetriggerTone(param)) {
             if (value == 0)
                 continue;
-        } else if (sent_.isSet(param) && sent_.getRaw(param) == value) {
-            continue;
         } else {
+            // A set envelope shape is a write that restarts the envelope, so it goes out with the same value too
+            if (param != PsgParamType::EnvelopeShape && sent_.isSet(param) && sent_.getRaw(param) == value)
+                continue;
             sent_.set(param, value);
         }
         for (const auto& m : PsgCC::encode(param, value))

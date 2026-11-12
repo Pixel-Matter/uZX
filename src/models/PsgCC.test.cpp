@@ -36,7 +36,7 @@ public:
 
             // expect(sizeof(PsgParamFrameData::values) == 42, "Expected 42 bytes, got " + std::to_string(sizeof(PsgParamFrameData::values)));
             // expect(sizeof(PsgParamFrameData::masks) == 21, "Expected 21 bytes, got " + std::to_string(sizeof(PsgParamFrameData::masks)));
-            expectEquals(sizeof(PsgParamFrameData), size_t{66});
+            expectEquals(sizeof(PsgParamFrameData), size_t{64});  // 21 parameters, a value and a mask each
 
             expectEquals(data.getParams().size(), size_t{2});
             expect(data.getParams()[1].first == PsgParamType::EnvelopeShape, "Expected EnvelopeShape");
@@ -371,7 +371,6 @@ public:
                 {PsgParamType::RetriggerToneA,    18},
                 {PsgParamType::RetriggerToneB,    19},
                 {PsgParamType::RetriggerToneC,    20},
-                {PsgParamType::RetriggerEnvelope, 21},
             };
             PsgParamFrameData data {fullChange};
             expect(data.getParams() == fullChange, "Expected all params to be set");
@@ -401,7 +400,6 @@ public:
                 {PsgParamType::RetriggerToneA,    18, false},
                 {PsgParamType::RetriggerToneB,    19, false},
                 {PsgParamType::RetriggerToneC,    20, false},
-                {PsgParamType::RetriggerEnvelope, 21, false},
             }};
             data.update(partialData);
             expect(data.getParams() == std::vector<std::pair<PsgParamType, uint16_t>> {

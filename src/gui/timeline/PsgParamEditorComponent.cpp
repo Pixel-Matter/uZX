@@ -30,8 +30,7 @@ PsgParamEditorWrapper::PsgParamEditorWrapper(EditViewState& evs, TimelineGrid& g
         PsgParamType::EnvelopeIsOnC,
         PsgParamType::NoisePeriod,
         PsgParamType::EnvelopePeriod,
-        PsgParamType::EnvelopeShape,
-        PsgParamType::RetriggerEnvelope
+        PsgParamType::EnvelopeShape
     };
 
     paramList_.setModel(this);

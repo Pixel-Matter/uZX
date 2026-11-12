@@ -213,7 +213,8 @@ private:
 //==============================================================================
 /**
     Writes the parameters a chip should hold as controllers, sending those that differ from what it was
-    last sent. A retrigger is an event, not a value to hold: it is sent every time it is set.
+    last sent. Two kinds are events, not values to hold, and are sent every time they are set: a tone
+    retrigger, and the envelope shape, whose write restarts the envelope.
 
     It alone remembers what was sent, so whatever makes the parameters keeps no MIDI state.
 */

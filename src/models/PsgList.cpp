@@ -38,7 +38,6 @@ namespace {
             IDs::ea, IDs::eb, IDs::ec,  // EnvelopeIsOn
             IDs::n,  IDs::e,  IDs::s,   // NoisePeriod, EnvelopePeriod, EnvelopeShape
             IDs::ra, IDs::rb, IDs::rc,  // RetriggerTone
-            IDs::re,                    // RetriggerEnvelope
         };
         static_assert(std::extent_v<decltype(ids)> == PsgParamType::size());
         return ids[type];
@@ -52,6 +51,8 @@ namespace {
 
             for (size_t t = 0; t < PsgParamType::size(); ++t)
                 te::convertPropertyToType<int>(frames, paramPropertyId(t));
+            // Clips saved before a set shape was the restart: the flag came with the shape, which is enough
+            frames.removeProperty(IDs::re, nullptr);
         }
         for (auto v : frames)
             convertPsgFrameFromStrings(v);
@@ -343,10 +344,6 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePositio
     // uZX::PsgRegsFrame regsFromParamsState;
     params.resetMixer();  // because AY regs after reset has all NNNTTT flags set (bits==0)
 
-    // Track last envelope shape and retrigger state for state transitions
-    std::optional<uint8_t> lastEnvelopeShape;
-    bool lastRetriggerState = false;  // Track if last frame had retrigger=1
-
     setFrameRate(data.getFrameRate(), um);
     setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, clipStart), um);
 
@@ -361,35 +358,9 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePositio
         params.clear();
         params.update(regsState);  // tracks really changed params
 
-        bool currentRetriggerState = false;
-
-        // Detect envelope shape retrigger and manage state transitions
-        if (frame.hasEnvelopeShapeSet()) {
-            auto currentShape = frame.getEnvelopeShape();
-
-            if (lastEnvelopeShape.has_value() && lastEnvelopeShape.value() == currentShape) {
-                // Same envelope shape = retrigger!
-                params.set(PsgParamType::RetriggerEnvelope, 1);
-                params.set(PsgParamType::EnvelopeShape, currentShape);
-                currentRetriggerState = true;
-            } else {
-                // Value changed or first write - explicitly turn off retrigger if it was on
-                if (lastRetriggerState) {
-                    params.set(PsgParamType::RetriggerEnvelope, 0);
-                }
-                currentRetriggerState = false;
-            }
-
-            lastEnvelopeShape = currentShape;
-        } else {
-            // No envelope shape write this frame - turn off retrigger if it was on
-            if (lastRetriggerState) {
-                params.set(PsgParamType::RetriggerEnvelope, 0);
-            }
-            currentRetriggerState = false;
-        }
-
-        lastRetriggerState = currentRetriggerState;
+        // A write of the shape restarts the envelope, so it is kept even when the shape is the same
+        if (frame.hasEnvelopeShapeSet())
+            params.set(PsgParamType::EnvelopeShape, frame.getEnvelopeShape());
 
         auto v = PsgParamFrame::createPsgFrameValueTree(static_cast<int>(i), params);
         state.addChild(v, -1, um);

@@ -49,7 +49,7 @@ Each domain has one value and one codec:
 | Domain | Value | Codec | State |
 | --- | --- | --- | --- |
 | Note | `NoteFrame`: the voices sounding in one frame. A voice has a channel, a pitch in fractional semitones, a level, a priority, and timbre fields (tone, noise and envelope mix, noise pitch, envelope shape) | Note codec: one voice per MIDI channel, MPE | In the shared decoder and encoder |
-| PSG | `PsgPatch`: the PSG parameters set in one frame. Today this is `PsgParamFrameData` | `PsgCC` | The chip's registers |
+| PSG | `PsgPatch`: the PSG parameters set in one frame. A parameter that is set is written; a set envelope shape restarts the envelope, the same shape too, as a write of the register does on the chip. Today this is `PsgParamFrameData` | `PsgCC` | The chip's registers |
 
 Every note-domain stage has the same shape:
 
@@ -82,7 +82,7 @@ The mixer takes the chip-note stream on all channels and produces one `PsgPatch`
 - **Allocation.** More voices can sound than the chip has channels. Each voice carries a priority, by default its channel number, and the simplest policy is "higher channel number wins". Richer policies come when something needs them.
 - **Pitch.** The tuning turns a voice's pitch into a tone period, or an envelope period for an envelope voice, at the clock of the chip the mixer plays on.
 - **Timbre.** The voice's timbre fields become the tone, noise and envelope switches, the noise period and the envelope shape.
-- **The envelope voice.** The chip has one envelope generator, and some voice's pitch has to set its period. The target is a timbre field on the voice that says "this voice's pitch drives the envelope", so any voice on any channel can be the envelope voice and the mixer picks among them by priority like any other. Until allocation exists, the voice on the fourth channel of the mixer's input range is the envelope voice, and it also carries the envelope shape and the noise period.
+- **The envelope voice.** The chip has one envelope generator, and some voice's pitch has to set its period. The target is a timbre field on the voice that says "this voice's pitch drives the envelope", so any voice on any channel can be the envelope voice and the mixer picks among them by priority like any other. Until allocation exists, the voice on the fourth channel of the mixer's input range is the envelope voice, and it also carries the envelope shape and the noise period. The mixer sets the shape in the frame the voice starts, and that write is the restart.
 
 `mixVoices` in `src/plugins/uZX/notes_to_psg/NotesToPsgMapper.*` is this function. A chip channel without a voice gets volume 0 and its envelope off. After an all-notes-off, a reset or a move to other MIDI channels the mixer silences the chip and forgets what it sent, so the next frame goes out whole: a chip that replaced another gets everything it needs.
 
@@ -113,7 +113,8 @@ A note clip or a keyboard can send the timbre controllers, and the mixer reads t
 | Noise period | 3 | 2 |
 | Envelope period | 3 | 20 and 52 |
 | Envelope shape | 3 | 70 |
-| Retrigger envelope | 3 | 83 |
+
+Every envelope shape message writes the register and so restarts the envelope; there is no separate restart. `PsgEncoder` sends it each time it is set, and everything else but a tone retrigger only when it differs from what was sent.
 
 Both wires share a track's sixteen channels. Routing them apart is the user's business, as in any DAW; the safer default is the PSG wire on the last four channels (13–16), which leaves the low channels to notes. Today both the chip and MIDI to PSG default to base channel 1.
 
@@ -130,7 +131,7 @@ Both wires share a track's sixteen channels. Routing them apart is the user's bu
 What this asks of the design:
 
 - **The PSG wire becomes a protocol** that firmware implements, so the wire changes in [Order of work](#order-of-work) come before any firmware.
-- **The link to the device is a transport, and need not be MIDI.** Over a MIDI port the device decodes `PsgCC`. A 5-pin MIDI cable carries about 62 bytes per 50 Hz frame, 20 controller messages of three bytes; a whole frame after a reset is up to 23 and spills into the next frame, while an ordinary frame, where `PsgEncoder` sends only what changed, is far smaller. Over a serial link that only this pipeline uses (RS-232 into a Spectrum, USB serial into an Arduino) a second codec for the same value is the better fit: the registers that changed, as a mask and their bytes, 16 bytes a frame at most. That fits 9600 baud (19 bytes per frame) and takes a few instructions to decode on a Z80. It is one more encoder in the bookkeeping row; the logic does not change.
+- **The link to the device is a transport, and need not be MIDI.** Over a MIDI port the device decodes `PsgCC`. A 5-pin MIDI cable carries about 62 bytes per 50 Hz frame, 20 controller messages of three bytes; a whole frame after a reset is up to 22 and spills into the next frame, while an ordinary frame, where `PsgEncoder` sends only what changed, is far smaller. Over a serial link that only this pipeline uses (RS-232 into a Spectrum, USB serial into an Arduino) a second codec for the same value is the better fit: the registers that changed, as a mask and their bytes, 16 bytes a frame at most. That fits 9600 baud (19 bytes per frame) and takes a few instructions to decode on a Z80. It is one more encoder in the bookkeeping row; the logic does not change.
 - **Stage logic stays free of MIDI state**, so it ports in shape. The codecs take JUCE and Tracktion message types today and would be written again over raw bytes. No portability layer is built before a port starts.
 
 ## What exists today

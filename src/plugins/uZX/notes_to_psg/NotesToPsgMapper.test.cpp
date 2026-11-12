@@ -88,13 +88,12 @@ public:
                        .timbre = {.envelopeShape = 10, .noisePeriod = 7}});
             auto params = mixVoices(frame, *tuning, 5);
             expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(36.0, TuningSystem::Envelope));
-            expectEquals(value(params, P::EnvelopeShape), 10);
+            expectEquals(value(params, P::EnvelopeShape), 10, "a write of the shape restarts the envelope");
             expectEquals(value(params, P::NoisePeriod), 7);
-            expectEquals(value(params, P::RetriggerEnvelope), 1);
             expectEquals(value(params, P::VolumeA), 0, "it has no channel of its own");
 
             frame.begin()->attack = false;
-            expect(!mixVoices(frame, *tuning, 5).isSet(P::RetriggerEnvelope), "a held voice lets the envelope run");
+            expect(!mixVoices(frame, *tuning, 5).isSet(P::EnvelopeShape), "a held voice lets the envelope run");
         }
     }
 };
@@ -222,11 +221,11 @@ public:
             expectEquals(periodOf(messages, 4),
                          mapper.getTuningSystem().midiNoteToPeriod(36.0, TuningSystem::Envelope));
             expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"));
-            expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1"));
 
             messages = play(mapper, {MidiMessage::noteOff(4, 36), MidiMessage::noteOn(4, 36, (uint8) 100)});
             expectEquals(messages.size(), 1, "the same note again");
-            expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String("1"), "restarts the envelope");
+            expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"),
+                         "the same shape written again restarts the envelope");
         }
 
         beginTest("Other channels pass through and are not played");

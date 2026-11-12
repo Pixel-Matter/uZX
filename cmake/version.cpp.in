@@ -8,4 +8,5 @@ const bool gitDirty = @PROJECT_GIT_DIRTY@;
 const char* const coreVersion = "@PROJECT_VERSION_BASE@";
 const char* const buildTimestamp = "@VERSION_BUILD_TIME@";
 const char* const channel = "@PROJECT_CHANNEL@";
+const char* const tracktionVersion = "@TRACKTION_VERSION@";
 }

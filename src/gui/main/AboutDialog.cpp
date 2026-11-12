@@ -217,7 +217,7 @@ AboutDialogComponent::AboutDialogComponent()
     }
 
     infoLines.add(String("Powered by ") + SystemStats::getJUCEVersion()
-                  + " and " + te::Engine::getVersion());
+                  + " and Tracktion Engine " + MoTool::Build::tracktionVersion);
     infoLines.add("Includes ayumi library by Peter Sovietov (true-grue)");
     infoLines.add("Opens tracker modules with zxtune by Vitamin/CAIG");
 

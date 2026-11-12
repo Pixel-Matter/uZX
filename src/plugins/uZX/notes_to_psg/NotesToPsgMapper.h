@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "../../../models/PsgCC.h"
+#include "../../../models/PsgRecorder.h"
 #include "../../../models/tuning/TuningSystemBase.h"
 #include "../midi_effects/MidiEffect.h"
 #include "../midi_effects/NoteFrame.h"
@@ -84,6 +85,10 @@ public:
     /** Moves the PSG output to the four channels from `channel`, silencing the chip on the ones it leaves. */
     void setBaseChannel(int channel);
 
+    /** Gives the PSG it writes from now on to a recorder as well, at each message's time from the start of
+        the edit; null stops that. The caller keeps the recorder alive until it has set another or none. */
+    void setRecorder(PsgRecorder* recorder);
+
     /** Forgets the held notes. The next block starts by silencing the chip, and what follows is sent whole. */
     void reset();
 
@@ -98,6 +103,7 @@ private:
     PsgEncoder encoder_;
     int baseChannel_ = 1;
     tracktion::MidiMessageArray pending_;  // what a reset left for the start of the next block
+    PsgRecorder* recorder_ = nullptr;
 
     std::shared_ptr<TuningSystem> tuningSystem_{};
 

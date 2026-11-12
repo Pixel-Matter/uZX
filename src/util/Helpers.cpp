@@ -11,6 +11,7 @@
 #include <list>
 #include <optional>
 #include "../plugins/uZX/aychip/AYPlugin.h"
+#include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 #include "../gui/common/Utilities.h"
 #include "../util/FileOps.h"
 
@@ -396,7 +397,7 @@ te::Renderer::Parameters makeTrackRenderParameters(te::AudioTrack& track, const 
     return r;
 }
 
-bool renderTrackToFile(te::AudioTrack& track, const te::Renderer::Parameters& parameters) {
+bool renderTrackToFile(te::AudioTrack& track, const te::Renderer::Parameters& parameters, const String& what = "audio") {
     auto& edit = track.edit;
     auto& ui = edit.engine.getUIBehaviour();
     const auto samples = te::toSamples(parameters.time.getLength(), parameters.sampleRateForAudio);
@@ -408,7 +409,7 @@ bool renderTrackToFile(te::AudioTrack& track, const te::Renderer::Parameters& pa
     const te::Edit::ScopedRenderStatus renderStatus(edit, true);
     const ScopedTrackUnmute unmute(track);
     te::TransportControl::stopAllTransports(edit.engine, false, true);
-    TrackRenderTask task(String("Rendering track \"") + track.getName() + "\" to audio", parameters);
+    TrackRenderTask task(String("Rendering track \"") + track.getName() + "\" to " + what, parameters);
     ui.runTaskWithProgressBar(task);
     if (task.getOutcome() == TrackRenderTask::Outcome::Incomplete)
         return false;
@@ -480,6 +481,88 @@ te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionMa
     track->state.setProperty(te::IDs::mute, true, &undo);
     selectionManager.select({added});
     // Restart Tracktion's undo timer before deferred clip setup runs.
+    undo.dispatchPendingMessages();
+    return added;
+}
+
+static uZX::NotesToPsgPlugin* findMixerOnSelectedTrack(te::SelectionManager& selectionManager) {
+    auto* track = dynamic_cast<te::AudioTrack*>(selectionManager.getSelectedObject(0));
+    return track != nullptr ? track->pluginList.findFirstPluginOfType<uZX::NotesToPsgPlugin>() : nullptr;
+}
+
+bool canRenderSelectedTrackToPsg(te::SelectionManager& selectionManager) {
+    return findMixerOnSelectedTrack(selectionManager) != nullptr;
+}
+
+te::AudioTrack* renderSelectedTrackToPsgTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
+    auto& ui = edit.engine.getUIBehaviour();
+    const te::AudioTrack::Ptr track(dynamic_cast<te::AudioTrack*>(selectionManager.getSelectedObject(0)));
+    const uZX::NotesToPsgPlugin::Ptr mixer(findMixerOnSelectedTrack(selectionManager));
+    if (mixer == nullptr || !te::containsTrack(edit, *track)) {
+        ui.showWarningMessage("Select a track with MIDI to PSG to render.");
+        return nullptr;
+    }
+
+    auto rendersDir = EditFileOps::getRendersDirectory(edit);
+    rendersDir.createDirectory();
+    if (!rendersDir.isDirectory()) {
+        ui.showWarningMessage("Could not create the folder for rendered files.");
+        return nullptr;
+    }
+
+    // The track plays as for a render to audio, which runs its plugins offline; the audio is thrown away and
+    // what MIDI to PSG writes on the way is kept
+    const juce::TemporaryFile audio(rendersDir.getChildFile("psg.wav"), juce::TemporaryFile::useHiddenFile);
+    const auto parameters = makeTrackRenderParameters(*track, audio.getFile());
+    PsgRecorder recorder(uZX::noteFrameRate);
+    mixer->setRecorder(&recorder);
+    const bool rendered = renderTrackToFile(*track, parameters, "PSG");
+    mixer->setRecorder(nullptr);
+    if (!rendered)
+        return nullptr;
+
+    if (!te::containsTrack(edit, *track)) {
+        ui.showWarningMessage("The source track was removed during rendering.");
+        return nullptr;
+    }
+
+    auto data = recorder.finish(parameters.time.getLength().inSeconds());
+    if (std::all_of(data.frames.begin(), data.frames.end(), [](const auto& frame) { return frame.isEmpty(); })) {
+        ui.showWarningMessage("The track sent nothing to the chip, so there is no PSG to render.");
+        return nullptr;
+    }
+
+    const auto psgFile = te::getNonExistentSiblingWithIncrementedNumberSuffix(
+        rendersDir.getChildFile(File::createLegalFileName(track->getName()) + ".psg"), false);
+    {
+        uZX::PsgFile file(psgFile);
+        file.getData() = data;
+        FileOutputStream stream(psgFile);
+        if (!stream.openedOk() || !file.writeTo(stream)) {
+            stream.flush();
+            psgFile.deleteFile();
+            ui.showWarningMessage("Could not save the PSG file.");
+            return nullptr;
+        }
+    }
+
+    auto& undo = edit.getUndoManager();
+    undo.beginNewTransaction("Render to PSG");
+    auto* added = addAudioTrackAfter(edit, track.get());
+    const te::ClipPosition position {{te::TimePosition(), te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}};
+    auto clip = added != nullptr ? PsgClip::insertTo(*added, data, position, track->getName()) : PsgClip::Ptr {};
+    if (clip == nullptr) {
+        undo.undoCurrentTransactionOnly();
+        ui.showWarningMessage("Could not add the rendered PSG to a new track. The file is in the Renders folder: "
+                              + psgFile.getFileName());
+        return nullptr;
+    }
+
+    added->setName(track->getName() + " PSG");
+    // The periods were made for the clock MIDI to PSG played at
+    ensureAYPluginOnTrack(*added).staticParams.chipClock.setStoredValue(mixer->getChipClock() / uZX::MHz);
+    track->state.setProperty(te::IDs::mute, true, &undo);
+    selectionManager.select({added});
     undo.dispatchPendingMessages();
     return added;
 }

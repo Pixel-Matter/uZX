@@ -14,6 +14,7 @@ set(SHARED_SOURCES
 
     models/PsgCC.cpp
     models/PsgList.cpp
+    models/PsgRecorder.cpp
     models/PsgClip.cpp
     models/PsgFrameRetimer.cpp
     models/PsgTempoDetector.cpp
@@ -129,6 +130,7 @@ set(TEST_SOURCES
     models/PsgCC.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
+    models/PsgRecorder.test.cpp
     models/PsgClipTuning.test.cpp
     models/PsgTempoDetector.test.cpp
     models/ProjectFps.test.cpp

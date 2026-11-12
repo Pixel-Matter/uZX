@@ -52,6 +52,15 @@ void removeUnusedRenderFiles(te::Edit& edit);
 File getFreezeFileForTrack(const te::AudioTrack& track);
 te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager);
 
+/** True if the selected track has MIDI to PSG, whose output a render to PSG keeps. */
+bool canRenderSelectedTrackToPsg(te::SelectionManager& selectionManager);
+
+/** Plays the selected track as a render to audio does and keeps what its MIDI to PSG tells the chip: as a
+    .psg file in the project's Renders folder, and as a PSG clip on a new track with an AY chip at the clock
+    the notes were tuned for. Mutes the source and selects the new track, which it returns; nothing is
+    changed and null returned if the render fails or is cancelled. */
+te::AudioTrack* renderSelectedTrackToPsgTrack(te::Edit& edit, te::SelectionManager& selectionManager);
+
 // CSV export directory persistence
 File getLastCsvExportDirectory();
 void setLastCsvExportDirectory(const File& directory);

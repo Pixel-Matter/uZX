@@ -71,7 +71,7 @@ rect { stroke-width: 0.75; }
 <g class="purple"><rect x="140" y="156" width="110" height="56" rx="8"/><text class="s" x="150" y="174">MPEInstrument</text><text class="s e" x="240" y="194">NoteEncoder</text></g>
 <g class="purple"><rect class="todo" x="270" y="156" width="110" height="56" rx="8"/><text class="s" x="280" y="174">NoteDecoder</text><text class="s e" x="370" y="194">NoteEncoder</text></g>
 <g class="purple"><rect x="400" y="156" width="110" height="56" rx="8"/><text class="s" x="410" y="174">NoteDecoder</text><text class="s e" x="500" y="194">PsgEncoder</text></g>
-<g class="purple"><rect x="530" y="156" width="110" height="56" rx="8"/><text class="s" x="540" y="174">PsgCC decoder</text><text class="s e" x="630" y="194">chip registers</text></g>
+<g class="purple"><rect x="530" y="156" width="110" height="56" rx="8"/><text class="s" x="540" y="174">PsgDecoder</text><text class="s e" x="630" y="194">chip registers</text></g>
 
 <line class="arr" x1="160" y1="214" x2="160" y2="252" marker-end="url(#arrow)"/>
 <line class="arr" x1="290" y1="214" x2="290" y2="252" marker-end="url(#arrow)"/>

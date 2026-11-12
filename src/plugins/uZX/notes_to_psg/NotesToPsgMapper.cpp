@@ -130,6 +130,11 @@ void NotesToPsgMapper::setBaseChannel(int channel) {
     baseChannel_ = juce::jlimit(1, 16 - PsgCC::numChannels + 1, channel);
 }
 
+void NotesToPsgMapper::setRecorder(PsgRecorder* recorder) {
+    const ScopedLock sl(lock_);
+    recorder_ = recorder;
+}
+
 void NotesToPsgMapper::reset() {
     const ScopedLock sl(lock_);
     decoder_.reset();
@@ -168,6 +173,12 @@ void NotesToPsgMapper::operator()(MidiBufferContext& c) {
     }
     if (changed)
         render(out, time);
+
+    if (recorder_ != nullptr)
+        for (const auto& m : out)
+            if (m.isController())
+                recorder_->add(c.playPosition.inSeconds() + m.getTimeStamp(), m.getChannel() - baseChannel_,
+                               m.getControllerNumber(), m.getControllerValue());
 
     c.buffer.swapWith(out);
 }

@@ -246,6 +246,8 @@ Controller 70 picks the envelope shape, restarting the envelope when the shape i
 
 **Track → Render to audio** renders the selected track to a WAV. When the render succeeds, Studio adds and selects a new audio track and mutes the source. **Undo** removes the new track and restores the source's previous mute state. Choose **Cancel** in the progress window to discard the render and keep the source as it was.
 
+**Track → Render to PSG** renders what the selected track's MIDI to PSG tells the chip, as register writes at 50 frames a second. It is available when the selected track has MIDI to PSG. When the render succeeds, Studio writes a `.psg` file named after the track into the project's Renders folder (a folder named after the project with `.Renders` at its end, beside the `.uzx` file), adds and selects a new track with the rendered PSG clip and an AY chip at the clock the notes were tuned for, and mutes the source. **Undo** removes the new track and restores the source's previous mute state; the file stays. **Cancel** in the progress window discards the render.
+
 <!-- guide-figure:studio-devices -->
 ![Studio track device chain](images/user-guide/studio-devices.png)
 

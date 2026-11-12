@@ -54,7 +54,7 @@ No open findings. [refactoring.md](refactoring.md) holds the review's scope and 
 
 ## PSG Clip / PSG data
 
-- [ ] PSG export
+- [ ] PSG export of PSG clips and whole projects (Track → Render to PSG covers a track with MIDI to PSG)
 - [ ] Route every tempo change through `PsgTiming::setTempoBpmRetimingFrames` — today only `PsgTiming::setFramesPerBeat` / `setBpmSnappedToFrames` (the transport bar's FPB and BPM boxes) rescale `framesPerBeat`; tempo edits from any other path (Tracktion tempo editing, future tempo track/automation) skip preserve-timing compensation
 
 ## AY Chip Emulator plugin

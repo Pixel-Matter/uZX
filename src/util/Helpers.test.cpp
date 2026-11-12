@@ -1,8 +1,11 @@
 #include <JuceHeader.h>
 
+#include "../models/Behavior.h"
 #include "../models/EditUtilities.h"
 #include "../models/PsgClip.h"
+#include "../formats/psg/PsgFile.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
+#include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 #include "FileOps.h"
 #include "Helpers.h"
 #include "TestHelpers.h"
@@ -142,7 +145,8 @@ public:
             File root;
         };
 
-        struct TestEngine : tracktion::EngineBehaviour {
+        // The app's behaviour, which makes PSG clips, with no devices and a clip limit to set
+        struct TestEngine : ExtEngineBehaviour {
             bool autoInitialiseDeviceManager() override { return false; }
             bool addSystemAudioIODeviceTypes() override { return false; }
             tracktion::EditLimits getEditLimits() override {
@@ -252,6 +256,130 @@ public:
                     Helpers::removeUnusedRenderFiles(*edit);
                 }
                 selection.selectOnly(source);
+            }
+
+            beginTest("A render to PSG needs MIDI to PSG on the selected track");
+            source->setMute(false);
+            testUI.warning.clear();
+            expect(!Helpers::canRenderSelectedTrackToPsg(selection));
+            expect(Helpers::renderSelectedTrackToPsgTrack(*edit, selection) == nullptr);
+            checkUnchanged(false);
+            expect(testUI.warning.contains("MIDI to PSG"));
+
+            beginTest("A render to PSG keeps what the chip is told: a file, and a clip on a new track with a chip");
+            engine.getPluginManager().createBuiltInType<uZX::NotesToPsgPlugin>();
+            engine.getPluginManager().createBuiltInType<uZX::AYChipPlugin>();
+            source->pluginList.insertPlugin(edit->getPluginCache().createNewPlugin(uZX::NotesToPsgPlugin::xmlTypeName, {}),
+                                            0, nullptr);
+            // A4 for a tenth of a second, in a clip of 0.15 s
+            dynamic_cast<tracktion::MidiClip*>(source->getClips()[0])
+                ->getSequence()
+                .addNote(69, tracktion::BeatPosition(), tracktion::BeatDuration::fromBeats(0.2), 127, 0, nullptr);
+            edit->getUndoManager().clearUndoHistory();
+            testUI.warning.clear();
+            expect(Helpers::canRenderSelectedTrackToPsg(selection));
+
+            testEngine.clipLimit = 0;
+            expect(Helpers::renderSelectedTrackToPsgTrack(*edit, selection) == nullptr,
+                   "a track that takes no clip is rolled back");
+            expectEquals(tracktion::getAudioTracks(*edit).size(), trackCount);
+            expect(!source->isMuted(false) && selection.getSelectedObject(0) == source);
+            expect(testUI.warning.contains("Renders folder"), "and the warning says where the file is");
+            for (const auto& left : renders.findChildFiles(File::findFiles, false))
+                expect(left.deleteFile());
+            testEngine.clipLimit = 1500;
+            edit->getUndoManager().clearUndoHistory();
+            testUI.warning.clear();
+
+            auto* rendered = Helpers::renderSelectedTrackToPsgTrack(*edit, selection);
+            expect(rendered != nullptr, testUI.warning);
+            if (rendered != nullptr) {
+                expectEquals(tracktion::getAudioTracks(*edit).size(), trackCount + 1);
+                expect(selection.getSelectedObject(0) == rendered);
+                expect(source->isMuted(false));
+                expectEquals(rendered->getClips().size(), 1);
+                expect(dynamic_cast<PsgClip*>(rendered->getClips()[0]) != nullptr, "a PSG clip");
+                expect(rendered->pluginList.findFirstPluginOfType<uZX::AYChipPlugin>() != nullptr, "and a chip to play it");
+
+                const auto files = renders.findChildFiles(File::findFiles, false, "*.psg");
+                expectEquals(files.size(), 1);
+                expectEquals(renders.findChildFiles(File::findFiles, false).size(), 1, "the audio it played is not kept");
+                if (files.size() == 1) {
+                    uZX::PsgFile file(files[0]);
+                    expect(file.ensureRead());
+                    const auto& frames = file.getData().frames;
+                    expect(frames.size() >= 6, "0.15 s at 50 frames a second, or the frame the note ends in");
+                    if (frames.size() >= 6) {
+                        expectEquals(int(frames[0].getVolume(0)), 15, "the note starts at full volume");
+                        expectEquals(int(frames[0].getTonePeriod(0)), 252, "A4 at the chip's default clock");
+                        // Tracktion ends a note a hair early, so the frame before the tenth of a second it lasts
+                        size_t end = 1;
+                        while (end < frames.size() && !frames[end].isSet(uZX::PsgRegType::VolumeA))
+                            ++end;
+                        expect(end == 4 || end == 5, "and ends a tenth of a second on: frame " + String(int(end)));
+                        expect(end < frames.size() && frames[end].getVolume(0) == 0);
+                    }
+                    expect(files[0].deleteFile());
+                }
+                TestHelpers::flushMessageQueue();
+                expect(edit->getUndoManager().canUndo());
+                edit->undo();
+                expectEquals(tracktion::getAudioTracks(*edit).size(), trackCount);
+                expect(!source->isMuted(false));
+            }
+
+            beginTest("The MPE chord example renders to a PSG of the chord it plays");
+            {
+                // tests/fixtures/MPE chord.uzx, see scripts/make_mpe_fixture.py: a cluster that opens, over two
+                // seconds of four, into C3, B3 and E4 with the envelope at G2 as a sawtooth
+                auto chord = tracktion::loadEditFromFile(engine, File(UZX_FIXTURES_DIR).getChildFile("MPE chord.uzx"));
+                const auto chordFile = root.getChildFile("MPE chord.uzx");
+                chord->editFileRetriever = [chordFile] { return chordFile; };
+                expect(chordFile.create().wasOk());
+                tracktion::SelectionManager chordSelection(engine);
+                chordSelection.selectOnly(tracktion::getAudioTracks(*chord).getFirst());
+                testUI.warning.clear();
+                expect(Helpers::renderSelectedTrackToPsgTrack(*chord, chordSelection) != nullptr, testUI.warning);
+
+                const auto files = EditFileOps::getRendersDirectory(*chord).findChildFiles(File::findFiles, false, "*.psg");
+                expectEquals(files.size(), 1);
+                if (files.size() == 1) {
+                    uZX::PsgFile file(files[0]);
+                    expect(file.ensureRead());
+                    // What a chip that played the file holds after each frame
+                    std::vector<uZX::PsgRegsFrame> held;
+                    uZX::PsgRegsFrame chip;
+                    int shapeWrites = 0;
+                    for (const auto& frame : file.getData().frames) {
+                        chip.update(frame);
+                        held.push_back(chip);
+                        shapeWrites += frame.hasEnvelopeShapeSet() ? 1 : 0;
+                    }
+                    expect(held.size() >= 200, "four seconds at 50 frames a second");
+                    if (held.size() >= 200) {
+                        const auto periods = [](const uZX::PsgRegsFrame& regs) {
+                            juce::Array<int> all;
+                            for (size_t n = 0; n < 3; ++n)
+                                all.addUsingDefaultSort(int(regs.getTonePeriod(n)));
+                            return all;
+                        };
+                        // 1773400 / 16 / the frequency of E4, B3 and C3; / 256 / that of G2 for the envelope
+                        expect(periods(held[150]) == juce::Array<int> {336, 449, 847}, "in tune from two seconds on");
+                        expectEquals(int(held[150].getEnvelopePeriod()), 71);
+                        expect(periods(held[0]) != periods(held[150]) && periods(held[50]) != periods(held[150]),
+                               "and gliding there before");
+                        expectEquals(int(held[150].getEnvelopeShape()), 12);
+                        expectEquals(shapeWrites, 1, "the shape is written once: the envelope runs on");
+                        for (size_t n = 0; n < 3; ++n) {
+                            expect(held[150].getVolume(n) == 15 || held[150].getEnvMod(n), "every voice sounds");
+                            expect(held.back().getVolume(n) == 0 && !held.back().getEnvMod(n),
+                                   "and the file ends in silence");
+                        }
+                    }
+                    // To take the file: UZX_RENDER_PSG_TO=<file.psg> uZXTests RenderTrack
+                    if (const File copy(juce::SystemStats::getEnvironmentVariable("UZX_RENDER_PSG_TO", {})); copy != File())
+                        expect(files[0].copyFileTo(copy));
+                }
             }
         }
         expect(root.deleteRecursively());

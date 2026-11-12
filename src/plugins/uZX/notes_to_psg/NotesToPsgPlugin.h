@@ -82,6 +82,9 @@ public:
     double getChipClock() const { return chipClock_; }
     void setTuningSystem(std::shared_ptr<TuningSystem> tuningSystem);
 
+    /** Gives the PSG the plugin writes to a recorder as well; see NotesToPsgMapper::setRecorder. */
+    void setRecorder(PsgRecorder* recorder) { midiEffect.setRecorder(recorder); }
+
     // Scale::ScaleType getScaleType() const;
     // void setScaleType(Scale::ScaleType scaleType);
 

@@ -353,9 +353,9 @@ PsgClip::Ptr PsgClip::insertTo(
         te::DeleteExistingClips::yes,
         false
     ));
-    jassert(clip != nullptr);
-    // Same undo transaction as the insert: one undo removes the whole import.
-    clip->loadFrom(data);
+    // Null when the owner takes no more clips
+    if (clip != nullptr)
+        clip->loadFrom(data);  // same undo transaction as the insert: one undo removes the whole import
     return clip;
 }
 

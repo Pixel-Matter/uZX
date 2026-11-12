@@ -16,9 +16,16 @@ allowed-tools: Read, Edit, Bash, Glob, Grep, AskUserQuestion
 
 `main` is protected — requires PRs and passing CI. Never push directly to `main`.
 
-## Version File
+## Apps, Versions and Tags
 
-Version is defined in `versions.cmake` as `PROJECT_CORE_VERSION`. This value propagates to all app targets (Studio, Tuning, Player).
+Each app ships from its own tags and has its own version in `versions.cmake`:
+
+| App | Tag | Version variable | Artifacts |
+|-----|-----|------------------|-----------|
+| Studio | `vX.Y.Z[-suffix]` | `PROJECT_CORE_VERSION` (Studio and Tuning follow it) | `uZX-*` |
+| Player | `player-vX.Y.Z[-suffix]` | `UZX_PLAYER_VERSION` | `uZXPlayer-*` |
+
+The flows below show Studio. For Player: bump `UZX_PLAYER_VERSION`, commit `bump player version to X.Y.Z`, tag `player-vX.Y.Z[-suffix]`. If the user doesn't say which app, ask.
 
 ## Release Flows
 
@@ -51,19 +58,16 @@ Requires PR from `develop` to `main`. Steps:
 - Runs `build` job (Debug, tests only) on macOS, Linux, Windows
 - Uses ccache (macOS/Linux) and sccache (Windows)
 
-### Tag push (`v*`) — Release Pipeline
+### Tag push (`v*` or `player-v*`) — Release Pipeline
 Triggers regardless of which branch the tag points to.
 
 1. **`create-release`** — Creates a draft GitHub Release
    - Sets `prerelease: true` if tag contains `-alpha` or `-beta`
    - Generates release notes automatically
 2. **`release-macos`** / **`release-linux`** / **`release-windows`** — Build + test + package + upload (in parallel)
-   - Builds Release config for targets: `uZX`, `uZXPlayer`, `uZXTests`
+   - `APP_TARGET` is `uZXPlayer` for `player-v*` tags, else `uZX`; builds Release config for `APP_TARGET` and `uZXTests`
    - Runs tests
-   - Packages and uploads artifacts:
-     - macOS: `uZX-{ver}-macOS.zip`, `uZXPlayer-{ver}-macOS.zip`
-     - Linux: `uZX-{ver}-linux-x86_64.tar.gz`, `uZXPlayer-{ver}-linux-x86_64.tar.gz`
-     - Windows: `uZX-{ver}-windows-x64.zip`, `uZXPlayer-{ver}-windows-x64.zip`
+   - Packages and uploads `{APP_TARGET}-{ver}-macOS.zip`, `{APP_TARGET}-{ver}-linux-x86_64.tar.gz`, `{APP_TARGET}-{ver}-windows-x64.zip`
 3. **`publish-release`** — After all platforms finish:
    - Downloads all artifacts, generates `SHA256SUMS.txt`
    - Publishes the release (removes draft status)
@@ -77,7 +81,7 @@ Triggers regardless of which branch the tag points to.
 When the user asks to create a release:
 
 1. **Verify branch**: Must be on `develop` for alpha/dev, or have a clean `develop` for stable.
-2. **Check current version**: Read `versions.cmake` to know the current version.
+2. **Check current version**: Read `versions.cmake` for the app being released (Studio or Player).
 3. **Ask if needed**: If the user doesn't specify a version or tag suffix, ask.
 4. **Bump version**: Edit `versions.cmake` if the version needs changing.
 5. **Commit and push**: Stage, commit with message `bump version to X.Y.Z`, push to the correct branch.

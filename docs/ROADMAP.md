@@ -30,6 +30,7 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 - [x] **Tracktion Engine** — the fork now sits on upstream `develop` @ `9d622faa` (2026-10-20), the last commit before upstream moved to JUCE 9, with JUCE 8.0.17-security. v3.2.0 is still upstream's latest tag; revisit JUCE 9 when v3.5 is tagged
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
 - [ ] **UX quality review** review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
+- [ ] **Edit file format version** — Player 1.0 promises to open what it saves, and Studio keeps changing the shared edit format. Write a format version integer to the edit file, separate from app versions (Tracktion's `appVersion` attribute holds the app version, not the format), and decide what an older app does with a newer file: refuse with a clear message, or open it and ignore unknown parts
 - [ ] **Release notes** — CHANGELOG entry for the tag
 
 #### P1 — Important

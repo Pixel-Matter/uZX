@@ -46,17 +46,15 @@ endif()
 
 include(versions.cmake)
 
-set(PROJECT_CHANNEL "alpha" CACHE STRING "Release channel")
+set(PROJECT_CHANNEL "alpha" CACHE STRING "Release channel; empty for a stable release")
 set_property(CACHE PROJECT_CHANNEL PROPERTY STRINGS alpha beta rc demo dev)
 string(TOLOWER "${PROJECT_CHANNEL}" PROJECT_CHANNEL_LOWER)
 set(_version_valid_channels alpha beta rc demo dev)
-list(FIND _version_valid_channels "${PROJECT_CHANNEL_LOWER}" _version_channel_index)
-if(_version_channel_index EQUAL -1)
-    message(FATAL_ERROR "Invalid release channel: ${PROJECT_CHANNEL}. Allowed values: alpha, beta, rc, demo, dev")
+if(PROJECT_CHANNEL_LOWER AND NOT PROJECT_CHANNEL_LOWER IN_LIST _version_valid_channels)
+    message(FATAL_ERROR "Invalid release channel: ${PROJECT_CHANNEL}. Allowed values: alpha, beta, rc, demo, dev, or empty for stable")
 endif()
-set(PROJECT_CHANNEL "${PROJECT_CHANNEL_LOWER}" CACHE STRING "Release channel" FORCE)
+set(PROJECT_CHANNEL "${PROJECT_CHANNEL_LOWER}" CACHE STRING "Release channel; empty for a stable release" FORCE)
 unset(_version_valid_channels)
-unset(_version_channel_index)
 
 find_package(Git QUIET)
 

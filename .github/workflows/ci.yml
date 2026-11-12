@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     branches: [main, develop]
-    tags: ['v*']
+    tags: ['v*', 'player-v*']
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -170,7 +170,7 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref_type == 'tag'
     timeout-minutes: 5
     permissions:
       contents: write
@@ -181,12 +181,15 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') }}
 
+  # Each app ships from its own tags: v* releases Studio, player-v* releases Player.
   release-macos:
     runs-on: macos-15
     needs: create-release
     timeout-minutes: 90
     permissions:
       contents: write
+    env:
+      APP_TARGET: ${{ startsWith(github.ref_name, 'player-') && 'uZXPlayer' || 'uZX' }}
 
     steps:
       - name: Checkout
@@ -211,15 +214,27 @@ jobs:
             build-cache-macos-15-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-
             build-cache-macos-15-
 
+      # player-v1.0.1-alpha -> VERSION=1.0.1-alpha, RELEASE_CHANNEL=alpha; v0.7.0 -> stable, empty channel.
+      - name: Version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#player-}"
+          VERSION="${VERSION#v}"
+          CHANNEL=""
+          if [[ "$VERSION" == *-* ]]; then CHANNEL="${VERSION#*-}"; fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "RELEASE_CHANNEL=$CHANNEL" >> "$GITHUB_ENV"
+
       - name: Configure
         run: >
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release
+          -DPROJECT_CHANNEL=${{ env.RELEASE_CHANNEL }}
           -DCMAKE_C_COMPILER_LAUNCHER=ccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel 3 --target ${{ env.APP_TARGET }} --target uZXTests
 
       - name: Show ccache stats
         run: ccache --show-stats
@@ -229,17 +244,10 @@ jobs:
 
       - name: Package and Upload to GitHub Release
         run: |
-          VERSION="${TAG_NAME#v}"
+          ZIP="${APP_TARGET}-${VERSION}-macOS.zip"
 
-          cd build/src/uZX_artefacts/Release
-          zip -r "uZX-${VERSION}-macOS.zip" *.app
-          cd -
-          cd build/src/uZXPlayer_artefacts/Release
-          zip -r "uZXPlayer-${VERSION}-macOS.zip" *.app
-          cd -
-          gh release upload "${TAG_NAME}" \
-            "build/src/uZX_artefacts/Release/uZX-${VERSION}-macOS.zip" \
-            "build/src/uZXPlayer_artefacts/Release/uZXPlayer-${VERSION}-macOS.zip"
+          (cd "build/src/${APP_TARGET}_artefacts/Release" && zip -r "${GITHUB_WORKSPACE}/${ZIP}" *.app)
+          gh release upload "${TAG_NAME}" "${ZIP}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}
@@ -250,6 +258,8 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: write
+    env:
+      APP_TARGET: ${{ startsWith(github.ref_name, 'player-') && 'uZXPlayer' || 'uZX' }}
 
     steps:
       - name: Checkout
@@ -277,15 +287,27 @@ jobs:
             build-cache-ubuntu-24.04-${{ hashFiles('versions.cmake', 'src/sources.cmake') }}-
             build-cache-ubuntu-24.04-
 
+      # player-v1.0.1-alpha -> VERSION=1.0.1-alpha, RELEASE_CHANNEL=alpha; v0.7.0 -> stable, empty channel.
+      - name: Version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#player-}"
+          VERSION="${VERSION#v}"
+          CHANNEL=""
+          if [[ "$VERSION" == *-* ]]; then CHANNEL="${VERSION#*-}"; fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "RELEASE_CHANNEL=$CHANNEL" >> "$GITHUB_ENV"
+
       - name: Configure
         run: >
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release
+          -DPROJECT_CHANNEL=${{ env.RELEASE_CHANNEL }}
           -DCMAKE_C_COMPILER_LAUNCHER=ccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel 3 --target ${{ env.APP_TARGET }} --target uZXTests
 
       - name: Show ccache stats
         run: ccache --show-stats
@@ -295,19 +317,11 @@ jobs:
 
       - name: Package and Upload to GitHub Release
         run: |
-          VERSION="${TAG_NAME#v}"
-          mkdir -p staging
+          TARBALL="${APP_TARGET}-${VERSION}-linux-x86_64.tar.gz"
+          if [ "$APP_TARGET" = uZXPlayer ]; then BIN="μZX Player"; else BIN="μZX Studio"; fi
 
-          cp "build/src/uZX_artefacts/Release/μZX Studio" staging/
-          tar -czf "uZX-${VERSION}-linux-x86_64.tar.gz" -C staging "μZX Studio"
-          rm staging/*
-
-          cp "build/src/uZXPlayer_artefacts/Release/μZX Player" staging/
-          tar -czf "uZXPlayer-${VERSION}-linux-x86_64.tar.gz" -C staging "μZX Player"
-
-          gh release upload "${TAG_NAME}" \
-            "uZX-${VERSION}-linux-x86_64.tar.gz" \
-            "uZXPlayer-${VERSION}-linux-x86_64.tar.gz"
+          tar -czf "${TARBALL}" -C "build/src/${APP_TARGET}_artefacts/Release" "${BIN}"
+          gh release upload "${TAG_NAME}" "${TARBALL}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}
@@ -320,6 +334,7 @@ jobs:
       contents: write
     env:
       SCCACHE_GHA_ENABLED: "true"
+      APP_TARGET: ${{ startsWith(github.ref_name, 'player-') && 'uZXPlayer' || 'uZX' }}
 
     steps:
       - name: Checkout
@@ -338,35 +353,38 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.11
 
+      # player-v1.0.1-alpha -> VERSION=1.0.1-alpha, RELEASE_CHANNEL=alpha; v0.7.0 -> stable, empty channel.
+      - name: Version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#player-}"
+          VERSION="${VERSION#v}"
+          CHANNEL=""
+          if [[ "$VERSION" == *-* ]]; then CHANNEL="${VERSION#*-}"; fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "RELEASE_CHANNEL=$CHANNEL" >> "$GITHUB_ENV"
+
       - name: Configure
         run: >
           cmake -S . -B build
           -G Ninja
           -DCMAKE_BUILD_TYPE=Release
+          -DPROJECT_CHANNEL=${{ env.RELEASE_CHANNEL }}
           -DCMAKE_C_COMPILER_LAUNCHER="${{ env.SCCACHE_PATH }}"
           -DCMAKE_CXX_COMPILER_LAUNCHER="${{ env.SCCACHE_PATH }}"
 
       - name: Build
-        run: cmake --build build --parallel 3 --target uZX --target uZXPlayer --target uZXTests
+        run: cmake --build build --parallel 3 --target ${{ env.APP_TARGET }} --target uZXTests
 
       - name: Run tests
         run: .\build\src\uZXTests_artefacts\Release\uZXTests.exe
 
       - name: Package and Upload to GitHub Release
         run: |
-          $version = $env:TAG_NAME -replace '^v', ''
+          $zip = "$env:APP_TARGET-$env:VERSION-windows-x64.zip"
 
-          Compress-Archive `
-            -Path "build\src\uZX_artefacts\Release\μZX Studio.exe" `
-            -DestinationPath "uZX-${version}-windows-x64.zip"
-
-          Compress-Archive `
-            -Path "build\src\uZXPlayer_artefacts\Release\μZX Player.exe" `
-            -DestinationPath "uZXPlayer-${version}-windows-x64.zip"
-
-          gh release upload "$env:TAG_NAME" `
-            "uZX-${version}-windows-x64.zip" `
-            "uZXPlayer-${version}-windows-x64.zip"
+          Compress-Archive -Path "build\src\$($env:APP_TARGET)_artefacts\Release\*.exe" -DestinationPath $zip
+          gh release upload "$env:TAG_NAME" $zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}
@@ -374,7 +392,7 @@ jobs:
   publish-release:
     runs-on: ubuntu-latest
     needs: [release-macos, release-linux, release-windows]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref_type == 'tag'
     timeout-minutes: 5
     permissions:
       contents: write

@@ -37,6 +37,12 @@ constexpr PsgCCRow psgCcRows[] {
 constexpr int fineOffset = 32;
 static_assert(static_cast<int>(MidiCCType::CC52PeriodFine) == static_cast<int>(MidiCCType::CC20PeriodCoarse) + fineOffset);
 
+// The pair holds 14 bits, enough for a tone period's 12. The envelope period has 16: its two top bits go in a
+// controller of their own, so a period under 16384 has the same coarse and fine as it always had
+constexpr auto envelopePeriodTop = static_cast<MidiCCType>(21);
+constexpr int pairBits = 14;
+constexpr int pairMask = (1 << pairBits) - 1;
+
 }  // namespace
 
 PsgCC::Messages PsgCC::encode(PsgParamType param, int value) noexcept {
@@ -50,7 +56,12 @@ PsgCC::Messages PsgCC::encode(PsgParamType param, int value) noexcept {
         if (!row.isPeriod)
             return {{{{channel, row.controller, value}}}, 1};
         const auto fine = static_cast<MidiCCType>(static_cast<int>(row.controller) + fineOffset);
-        return {{{{channel, row.controller, (value >> 7) & 0x7F}, {channel, fine, value & 0x7F}}}, 2};
+        const Message coarsePart {channel, row.controller, (value >> 7) & 0x7F};
+        const Message finePart {channel, fine, value & 0x7F};
+        // The fine part last: a device that writes a register as each message arrives can wait for it
+        if (param == PsgParamType::EnvelopePeriod)
+            return {{{{channel, envelopePeriodTop, value >> pairBits}, coarsePart, finePart}}, 3};
+        return {{{coarsePart, finePart}}, 2};
     }
     jassertfalse;
     return {};
@@ -72,9 +83,11 @@ bool PsgCC::decode(int channel, int controller, int value, PsgParamFrameData& in
         if (controller == coarse && param == PsgParamType::EnvelopeShape && raw != value)
             into.set(PsgParamType::RetriggerEnvelope, 1);
         if (controller == coarse)
-            into.set(param, static_cast<uint16_t>(row.isPeriod ? (value << 7) | (raw & 0x7F) : value));
+            into.set(param, static_cast<uint16_t>(row.isPeriod ? (raw & ~0x3F80) | (value << 7) : value));
         else if (row.isPeriod && controller == coarse + fineOffset)
-            into.set(param, static_cast<uint16_t>((raw & 0xFF80) | value));
+            into.set(param, static_cast<uint16_t>((raw & ~0x7F) | value));
+        else if (param == PsgParamType::EnvelopePeriod && controller == static_cast<int>(envelopePeriodTop))
+            into.set(param, static_cast<uint16_t>((raw & pairMask) | ((value & 0x3) << pairBits)));
         else
             continue;
         return true;

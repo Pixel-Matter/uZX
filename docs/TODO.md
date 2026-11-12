@@ -49,7 +49,6 @@ No open findings. [refactoring.md](refactoring.md) holds the review's scope and 
 
 ## MIDI to PSG Plugin
 
-- [ ] An envelope period above 14 bits is truncated on its way to the chip
 - [ ] UI for MIDI to PSG plugin with tuning editor button
 - [ ] Sync tuning scale with Edit scales and keys
 

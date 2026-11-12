@@ -328,7 +328,7 @@ public:
 
             messages = play(mapper, {MidiMessage::noteOff(9, 36), MidiMessage::noteOn(9, 38, (uint8) 100)});
             expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(38.0, TuningSystem::Envelope));
-            expectEquals(messages.size(), 2, "another note moves the envelope's pitch and lets it run");
+            expectEquals(messages.size(), 3, "another note moves the envelope's pitch, in three parts, and lets it run");
 
             messages = play(mapper, {MidiMessage::controllerEvent(9, 83, 127)});
             expectEquals(messages.size(), 2, "a restart inside the lasting note, and nothing else");

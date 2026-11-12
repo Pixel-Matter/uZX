@@ -128,9 +128,11 @@ A note clip or a keyboard can send these controllers straight to the mixer, on a
 | Envelope on A, B, C | 0, 1, 2 | 82 |
 | Retrigger tone A, B, C | 0, 1, 2 | 83 |
 | Noise period | 3 | 2 |
-| Envelope period | 3 | 20 and 52 |
+| Envelope period | 3 | 21 (2 top bits), then 20 and 52 |
 | Envelope shape | 3 | 70 |
 | Restart envelope | 3 | 83, pressed (1) and released (0) |
+
+A period is split over a coarse controller and its fine pair, 7 bits each, which holds a tone period's 12 bits. The envelope period has 16: its two top bits go in controller 21, so a period under 16384 has the coarse and fine parts it always had, and a stream that never sends controller 21 reads as before. The three go out in that order, the fine part last, so a device that writes a register as each message arrives can wait for the fine part and write the period once. No single MIDI message holds 16 bits: a controller pair, the pitch wheel and an NRPN all stop at 14, and a system exclusive message is not restated by a host when play starts inside a clip.
 
 The envelope shape and its restart are two things in every part of the pipeline but the chip's registers: on the note wire, in a `PsgPatch`, in a PSG clip's frames, and on this wire. Controller 70 is the shape, a value to hold; controller 83 is the retrigger, an event. The reason is that a value gets stated again where nothing happened: a clip's first frame restates everything the chip should hold, a clip that starts part-way through its frames (trimmed at its start, or the later part of a split) restates what the frames before it left, and Tracktion resends the last value of each controller when play starts inside a clip. The chip writes the shape register on a retrigger, or when controller 70 brings another shape than it holds, which cannot sound without a write; the same shape again does nothing. The retrigger is released at once, so the value a host sends again is the released one. Importing a PSG file sets the retrigger on every write of the shape register.
 
@@ -151,7 +153,7 @@ Both wires use a track's sixteen channels, on either side of the mixer: it reads
 What this asks of the design:
 
 - **The PSG wire becomes a protocol** that firmware implements, so the wire changes in [Order of work](#order-of-work) come before any firmware.
-- **The link to the device is a transport, and need not be MIDI.** Over a MIDI port the device decodes `PsgCC`. A 5-pin MIDI cable carries about 62 bytes per 50 Hz frame, 20 controller messages of three bytes; a whole frame after a reset is up to 24 and spills into the next frame, while an ordinary frame, where `PsgEncoder` sends only what changed, is far smaller. Over a serial link that only this pipeline uses (RS-232 into a Spectrum, USB serial into an Arduino) a second codec for the same value is the better fit: the registers that changed, as a mask and their bytes, 16 bytes a frame at most, where a shape in the mask is a write and needs no restart message. That fits 9600 baud (19 bytes per frame) and takes a few instructions to decode on a Z80. It is one more encoder in the bookkeeping row; the logic does not change.
+- **The link to the device is a transport, and need not be MIDI.** Over a MIDI port the device decodes `PsgCC`. A 5-pin MIDI cable carries about 62 bytes per 50 Hz frame, 20 controller messages of three bytes; a whole frame after a reset is up to 25 and spills into the next frame, while an ordinary frame, where `PsgEncoder` sends only what changed, is far smaller. Over a serial link that only this pipeline uses (RS-232 into a Spectrum, USB serial into an Arduino) a second codec for the same value is the better fit: the registers that changed, as a mask and their bytes, 16 bytes a frame at most, where a shape in the mask is a write and needs no restart message. That fits 9600 baud (19 bytes per frame) and takes a few instructions to decode on a Z80. It is one more encoder in the bookkeeping row; the logic does not change.
 - **Stage logic stays free of MIDI state**, so it ports in shape. The codecs take JUCE and Tracktion message types today and would be written again over raw bytes. No portability layer is built before a port starts.
 
 ## What exists today
@@ -161,7 +163,7 @@ What this asks of the design:
 | Chip instrument | `ChipInstrumentPlugin`, `ChipInstrumentVoice` on `MPEInstrumentFx` | No timbre parameters of its own; a pitch more than two semitones from its key does not fit the wheel; fixed 50 Hz (`noteFrameRate`) |
 | Chip effects | None | |
 | Chip mixer | `NotesToPsgPlugin`, `NotesToPsgMapper`, `ChipMixer` | It follows the chip's stored stereo layout, not an automated one |
-| PSG codec | `PsgCC`, `PsgEncoder` | An envelope period above 14 bits does not fit two controllers; a switch is 0 or 1 and volume the raw 0–15, not the 0–127 a knob sends |
+| PSG codec | `PsgCC`, `PsgEncoder` | A switch is 0 or 1 and volume the raw 0–15, not the 0–127 a knob sends |
 | AY chip | `AYChipPlugin` | None: it decodes each frame's controllers over the registers the chip holds, and keeps nothing else |
 | Tuning preview | `MultitrackMidiPreview` | None: it plays note clips with timbre controllers into the mixer, one of them a voice that only drives the envelope |
 
@@ -170,4 +172,4 @@ What this asks of the design:
 Refactor first, then change behaviour.
 
 1. Chip effects.
-2. Wire changes: a full 16-bit envelope period, one meaning for switch and volume values. These come before any firmware reads the wire.
+2. Wire changes: one meaning for switch and volume values. These come before any firmware reads the wire.

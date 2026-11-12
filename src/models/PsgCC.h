@@ -183,7 +183,8 @@ struct Messages {
     const Message* end() const noexcept { return items.data() + count; }
 };
 
-/** A period goes as two controllers, 7 high bits and 7 low bits; anything else as its raw value in one.
+/** A period goes as two controllers, 7 high bits and 7 low bits, and the envelope period's two bits above
+    those in a third, sent first; anything else as its raw value in one.
     The envelope retrigger goes pressed and released, and as nothing when it is 0. */
 Messages encode(PsgParamType param, int value) noexcept;
 

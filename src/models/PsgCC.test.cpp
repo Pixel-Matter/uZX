@@ -555,6 +555,7 @@ public:
                     "Controller General Purpose Button 2 (on/off): 0 Channel 1",
                     "Controller General Purpose Button 3 (on/off): 1 Channel 2",
                     "Controller Breath controller (coarse): 16 Channel 4",
+                    "Controller 21: 0 Channel 4",
                     "Controller 20: 104 Channel 4",
                     "Controller 52: 18 Channel 4",
                     "Controller Sound Variation: 8 Channel 4"
@@ -694,6 +695,34 @@ public:
 
             const auto read = decodeFrames(writer.getSequence(), 1).back();
             expectEquals(int(read.getRaw(PsgParamType::EnvelopePeriod)), 0xC350);
+        }
+
+        beginTest("The envelope period's two top bits travel in controller 21, ahead of the coarse and fine parts");
+        {
+            const auto text = [](const PsgCC::Messages& messages) {
+                StringArray items;
+                for (const auto& m : messages)
+                    items.add(String(m.channel) + ":" + String(static_cast<int>(m.controller)) + "=" + String(m.value));
+                return items.joinIntoString(" ");
+            };
+            expectEquals(text(PsgCC::encode(PsgParamType::EnvelopePeriod, 0xC350)), String("3:21=3 3:20=6 3:52=80"));
+            expectEquals(text(PsgCC::encode(PsgParamType::EnvelopePeriod, 0x3FFF)), String("3:21=0 3:20=127 3:52=127"),
+                         "a period under 16384 has the coarse and fine parts it always had");
+            expectEquals(text(PsgCC::encode(PsgParamType::TonePeriodB, 0xFFF)), String("1:20=31 1:52=127"),
+                         "a tone period fits the pair");
+
+            PsgParamFrameData chip;
+            const auto period = [&] { return int(chip.getRaw(PsgParamType::EnvelopePeriod)); };
+            PsgCC::decode(3, 20, 6, chip);
+            PsgCC::decode(3, 52, 80, chip);
+            expectEquals(period(), 0x0350, "a stream that never sends the top bits reads as before");
+            PsgCC::decode(3, 21, 3, chip);
+            expectEquals(period(), 0xC350, "each part changes its own bits, in any order");
+            PsgCC::decode(3, 20, 0, chip);
+            expectEquals(period(), 0xC050);
+            PsgCC::decode(3, 52, 0, chip);
+            expectEquals(period(), 0xC000);
+            expect(! PsgCC::decode(0, 21, 3, chip), "a tone period has no top part");
         }
     }
 };

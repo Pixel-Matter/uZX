@@ -131,11 +131,13 @@ void MultitrackMidiPreview::placeNote(int channelIndex, int midiNote, double not
         sequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime + noteLength),
         static_cast<int>(MidiCCType::GPB3EnvSwitch), 0, nullptr);
 
-        // TODO only when env retriggered or if shape changed.
-        // I.e to support legato env notes we need to not add this CC
-        // DBG("Adding envelope shape for channel " << 3 << " at beat " << currentTime);
+        // The shape is a value; the restart is what starts the envelope again with each previewed note
         envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
                                         static_cast<int>(MidiCCType::SoundVariation), envelopeShape << 7, nullptr);
+        envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime),
+                                        static_cast<int>(MidiCCType::GPB4RetriggerSwitch), 127 << 7, nullptr);
+        envSequence.addControllerEvent(tracktion::BeatPosition::fromBeats(currentTime + noteLength),
+                                        static_cast<int>(MidiCCType::GPB4RetriggerSwitch), 0, nullptr);
 
         // DBG("Adding envelope note " << (midiNote + envInterval) << " on channel 3 at beat " << currentTime);
         envSequence.addNote(midiNote + envInterval,

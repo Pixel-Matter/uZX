@@ -68,7 +68,11 @@ bool NoteDecoder::decode(const juce::MidiMessage& m) noexcept {
                 chan.timbre.envelope = value != 0;
                 break;
             case NoteTimbreCC::EnvelopeShape:
+                chan.restartEnvelope = chan.restartEnvelope || chan.timbre.envelopeShape != value;
                 chan.timbre.envelopeShape = value;
+                break;
+            case NoteTimbreCC::EnvelopeRestart:
+                chan.restartEnvelope = chan.restartEnvelope || value != 0;
                 break;
             case NoteTimbreCC::NoisePeriod:
                 chan.timbre.noisePeriod = value;
@@ -88,9 +92,12 @@ NoteFrame NoteDecoder::takeFrame() noexcept {
         const auto& chan = channels_[static_cast<size_t>(voice.channel - 1)];
         voice.pitch = voice.key + chan.bend;
         voice.timbre = chan.timbre;
+        voice.restartEnvelope = chan.restartEnvelope;
     }
-    for (auto& voice : held_)
+    for (auto& voice : held_) {
         voice.attack = false;
+        channels_[static_cast<size_t>(voice.channel - 1)].restartEnvelope = false;
+    }
     return frame;
 }
 

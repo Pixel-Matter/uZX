@@ -70,6 +70,35 @@ public:
                    "the sustain pedal is no part of the stream");
         }
 
+        beginTest("The envelope restarts on its controller or another shape, not on a note");
+        {
+            NoteDecoder decoder;
+            const auto restarts = [&] {
+                String text;
+                for (const auto& v : decoder.takeFrame())
+                    text << (v.restartEnvelope ? "R" : "-");
+                return text;
+            };
+            decoder.decode(MidiMessage::noteOn(4, 36, (uint8) 100));
+            expectEquals(restarts(), String("-"), "a note starting lets the envelope run");
+            decoder.decode(MidiMessage::controllerEvent(4, 83, 127));
+            expectEquals(restarts(), String("R"), "inside a lasting note");
+            expectEquals(restarts(), String("-"), "once");
+            decoder.decode(MidiMessage::controllerEvent(4, 83, 0));
+            expectEquals(restarts(), String("-"), "the release does nothing");
+            decoder.decode(MidiMessage::controllerEvent(4, 70, 10));
+            expectEquals(restarts(), String("R"), "another shape cannot sound without a restart");
+            decoder.decode(MidiMessage::controllerEvent(4, 70, 10));
+            expectEquals(restarts(), String("-"), "the same shape sent again is not one");
+
+            decoder.decode(MidiMessage::noteOff(4, 36));
+            decoder.decode(MidiMessage::controllerEvent(4, 83, 1));
+            expectEquals(restarts(), String(), "no voice on the channel yet");
+            decoder.decode(MidiMessage::noteOn(4, 38, (uint8) 100));
+            decoder.decode(MidiMessage::noteOn(5, 38, (uint8) 100));
+            expectEquals(restarts(), String("R-"), "it waits for a voice of its channel");
+        }
+
         beginTest("An all-notes-off controller ends its channel's notes; a reset ends all and forgets the controllers");
         {
             NoteDecoder decoder;

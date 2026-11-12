@@ -22,7 +22,7 @@ inline constexpr double noteFrameRate = 50.0;
 // TODO as a parameter, for a deeper range, sent downstream as the pitch bend sensitivity RPN
 inline constexpr int notePitchBendRange = 2;
 
-/** The controllers that carry a voice's timbre, on the voice's channel. */
+/** The controllers that carry a voice's timbre, and the envelope's restart, on the voice's channel. */
 enum class NoteTimbreCC
 {
     NoisePeriod = 2,
@@ -30,6 +30,7 @@ enum class NoteTimbreCC
     Tone = 80,
     Noise = 81,
     Envelope = 82,
+    EnvelopeRestart = 83,  ///< an event, for any value but 0
 };
 
 /** How a voice sounds on the chip. */
@@ -50,6 +51,7 @@ struct NoteVoice
     double pitch = 0.0;   ///< what sounds, in semitones on the MIDI note scale
     float level = 0.0f;   ///< 0..1
     bool attack = false;  ///< starts in this frame, even if the same voice sounded in the frame before
+    bool restartEnvelope = false;  ///< restarts the chip's envelope in this frame, if it plays the envelope
     NoteTimbre timbre{};
 };
 
@@ -132,7 +134,12 @@ public:
     /** Takes a message of the stream. Returns false for one that is no part of it. */
     bool decode(const juce::MidiMessage& m) noexcept;
 
-    /** The voices sounding now, oldest first. A voice has `attack` set in the first frame taken after it started. */
+    /** The voices sounding now, oldest first. A voice has `attack` set in the first frame taken after it started.
+
+        A voice has `restartEnvelope` set in the first frame it is in after its channel got the restart controller
+        or another envelope shape, which cannot sound without a restart. A note starting does not set it: the
+        envelope's pitch can move, and a note last, with the envelope running on.
+    */
     NoteFrame takeFrame() noexcept;
 
     /** Forgets the notes and the controllers, as an all-notes-off or a transport jump asks. */
@@ -143,6 +150,7 @@ private:
     {
         double bend = 0.0;  // semitones
         NoteTimbre timbre{};
+        bool restartEnvelope = false;  // asked for, and no voice of the channel has taken it yet
     };
 
     std::array<Channel, 16> channels_{};

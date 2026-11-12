@@ -82,7 +82,7 @@ The mixer takes the chip-note stream on all channels and produces one `PsgPatch`
 - **Allocation.** More voices can sound than the chip has channels. Each voice carries a priority, by default its channel number, and the simplest policy is "higher channel number wins". Richer policies come when something needs them.
 - **Pitch.** The tuning turns a voice's pitch into a tone period, or an envelope period for an envelope voice, at the clock of the chip the mixer plays on.
 - **Timbre.** The voice's timbre fields become the tone, noise and envelope switches, the noise period and the envelope shape.
-- **The envelope voice.** The chip has one envelope generator, and some voice's pitch has to set its period. The target is a timbre field on the voice that says "this voice's pitch drives the envelope", so any voice on any channel can be the envelope voice and the mixer picks among them by priority like any other. Until allocation exists, the voice on the fourth channel of the mixer's input range is the envelope voice, and it also carries the envelope shape and the noise period. The mixer sets the shape in the frame the voice starts, and that write is the restart.
+- **The envelope voice.** The chip has one envelope generator, and some voice's pitch has to set its period. The target is a timbre field on the voice that says "this voice's pitch drives the envelope", so any voice on any channel can be the envelope voice and the mixer picks among them by priority like any other. Until allocation exists, the voice on the fourth channel of the mixer's input range is the envelope voice, and it also carries the envelope shape and the noise period. The mixer writes the shape, which restarts the envelope, only when the voice asks for a restart: a note on that channel can start, move the envelope's pitch or last with the envelope running on.
 
 `mixVoices` in `src/plugins/uZX/notes_to_psg/NotesToPsgMapper.*` is this function. A chip channel without a voice gets volume 0 and its envelope off. After an all-notes-off, a reset or a move to other MIDI channels the mixer silences the chip and forgets what it sent, so the next frame goes out whole: a chip that replaced another gets everything it needs.
 
@@ -97,6 +97,7 @@ The mixer takes the chip-note stream on all channels and produces one `PsgPatch`
 | Pitch | The pitch wheel of its channel, ±2 semitones from the key (`notePitchBendRange`) |
 | Tone, noise, envelope on | Controllers 80, 81, 82 on its channel; on for any value but 0 |
 | Envelope shape, noise period | Controllers 70 and 2 on its channel |
+| Envelope restart | Controller 83 on the channel of the voice that plays the envelope, for any value but 0; another shape on controller 70 restarts too, since it cannot sound without a write |
 
 A note clip or a keyboard can send the timbre controllers, and the mixer reads them. `NoteEncoder` does not write them yet, because nothing that makes frames sets a timbre. Controllers hold their value from note to note on a channel; a reset returns them to tone on, noise and envelope off.
 
@@ -115,7 +116,7 @@ A note clip or a keyboard can send the timbre controllers, and the mixer reads t
 | Envelope shape | 3 | 70 |
 | Restart envelope | 3 | 83, pressed (1) and released (0) |
 
-The envelope shape is the one parameter whose value and write travel apart, and only on this wire. In a `PsgPatch` a set shape is a write, and a write restarts the envelope. But MIDI sends a controller's value again where nothing was written: a clip's first frame restates everything the chip should hold, and a host resends the last value of each controller as play starts or a loop wraps. So controller 70 is the shape as a value, and controller 83 is the restart. A write goes out as both; the chip writes the register on a restart, or when controller 70 brings another shape than it holds, and not when it brings the same one. The restart is released at once, so the value a host sends again is the released one. A tune cut into clips therefore keeps an envelope note running across the cut.
+The envelope shape is the one parameter whose value and write travel apart, on this wire as on the note wire: on both, controller 70 is the shape and controller 83 the restart. In a `PsgPatch` a set shape is a write, and a write restarts the envelope. But MIDI sends a controller's value again where nothing was written: a clip's first frame restates everything the chip should hold, and a host resends the last value of each controller as play starts or a loop wraps. So controller 70 is the shape as a value, and controller 83 is the restart. A write goes out as both; the chip writes the register on a restart, or when controller 70 brings another shape than it holds, and not when it brings the same one. The restart is released at once, so the value a host sends again is the released one. A tune cut into clips therefore keeps an envelope note running across the cut.
 
 `PsgEncoder` sends a shape each time it is set, and everything else but a tone retrigger only when it differs from what was sent.
 

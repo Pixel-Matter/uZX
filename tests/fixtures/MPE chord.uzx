@@ -369,7 +369,7 @@
       <QUANTISATION />
       <GROOVE />
       <SEQUENCE ver="1" channelNumber="16">
-        <NOTE p="64" b="0.0" l="8.0" v="127" c="0" />
+        <NOTE p="52" b="0.0" l="8.0" v="127" c="0" />
         <CONTROL b="0.0" type="85" val="16256" />
         <CONTROL b="0.0" type="80" val="0" />
         <CONTROL b="0.0" type="70" val="0" />

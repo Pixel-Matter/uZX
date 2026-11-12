@@ -124,6 +124,7 @@ struct TuningNote {
     double frequency;      // Calculated frequency in Hz
     int period;            // Chip period value (for AY-3-8910, etc.)
     int envPeriod;          //Chip envelope period value
+    int tonePeriodsPerEnvPeriod = 16;  // of the envelope shape the periods are for
     String name;           // Note name (e.g., "C3", "A#4")
 
     inline static constexpr int trackerNoteOffset = 12; // Tracker note number offset from MIDI number
@@ -145,7 +146,7 @@ struct TuningNote {
     }
 
     bool isSafeForEnvelope() const {
-        return period % 16 == 0;
+        return period % tonePeriodsPerEnvPeriod == 0;
     }
 
     String getTooltip() const {
@@ -330,6 +331,7 @@ public:
             TuningNote note;
             note.midiNote = (octave + 1) * 12 + noteName.noteNumber; // MIDI note number
             note.isInScale = noteName.isInScale;
+            note.tonePeriodsPerEnvPeriod = TuningSystem::tonePeriodsPer(getEnvelopePeriodMode());
             if (!tuningSystem) {
                 note.frequency = 0.0; // Default frequency
                 note.period = 0;
@@ -337,9 +339,9 @@ public:
             } else {
                 if (mode == TuningSystem::Tone) {
                     note.period = tuningSystem->midiNoteToPeriod(note.midiNote, TuningSystem::Tone); // Calculate period for the mode
-                    note.envPeriod = tuningSystem->midiNoteToPeriod(note.midiNote, TuningSystem::Envelope); // Calculate period for the mode
+                    note.envPeriod = tuningSystem->midiNoteToPeriod(note.midiNote, getEnvelopePeriodMode());
                 } else {
-                    note.period = tuningSystem->midiNoteToPeriod(note.midiNote, TuningSystem::Envelope); // Calculate period for the mode
+                    note.period = tuningSystem->midiNoteToPeriod(note.midiNote, mode);
                     note.envPeriod = -1;   // no env period, for tooltip purposes
                 }
 
@@ -558,7 +560,12 @@ public:
     }
 
     TuningSystem::PeriodMode getCurrentPeriodMode() const {
-        return isEnvelopePeriodsShown() ? TuningSystem::Envelope : TuningSystem::Tone;
+        return isEnvelopePeriodsShown() ? getEnvelopePeriodMode() : TuningSystem::Tone;
+    }
+
+    /** The periods of the envelope shape chosen for the preview, so the grid shows what the preview plays. */
+    TuningSystem::PeriodMode getEnvelopePeriodMode() const {
+        return uZX::envelopePeriodMode(getEnvelopeShape());
     }
 
     /** The notes in MIDI range as a CSV table. */

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string_view>
 
+#include "../../../models/tuning/TuningSystemBase.h"
 #include "../../../util/enumchoice.h"
 
 namespace MoTool::uZX {
@@ -59,6 +60,13 @@ using EnvelopeShape = MoTool::Util::EnumChoice<EnvelopeShapeEnum>;
 constexpr int toRegister(EnvelopeShape shape) noexcept {
     constexpr std::array<int, 8> registers{14, 10, 12, 8, 13, 9, 15, 11};
     return registers[static_cast<size_t>(shape.asUnderlying())];
+}
+
+/** How the tuning turns a pitch into the period of an envelope of this shape, so that the shape sounds at
+    that pitch: a triangle takes two periods to repeat where a sawtooth takes one. */
+constexpr TuningSystem::PeriodMode envelopePeriodMode(EnvelopeShape shape) noexcept {
+    return shape == EnvelopeShape::Triangle || shape == EnvelopeShape::TriangleDown ? TuningSystem::EnvelopeTriangle
+                                                                                    : TuningSystem::Envelope;
 }
 
 }  // namespace MoTool::uZX

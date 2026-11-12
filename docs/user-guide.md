@@ -225,7 +225,7 @@ When a track is selected, the Devices panel shows the plugin chain on that track
 
 MIDI to PSG plays the notes of every MIDI channel on the chip's three channels, several notes of one MIDI channel too. Velocity and polyphonic aftertouch set a note's volume, and the pitch wheel bends the notes of its channel: up to two semitones on channel 1, where a keyboard plays, and up to 48 on channels 2 to 16, as MPE does, so a clip in MPE mode plays each note with its own bend. When more than three notes sound, the ones with the highest priority play: a note's priority is its MIDI channel's number, or the value of controller 86 on that channel, and among equals the newest note plays. A note that lost its place comes back when a chip channel frees. A note stays on its chip channel while it plays; controller 10 (pan) on its MIDI channel asks for the chip channel nearest to that place in the AY chip's **Layout**.
 
-Controllers on a MIDI channel set how its notes sound. A switch is on from 64 and off below, so a button or the upper half of a knob turns it on. Controllers 80, 81 and 82 switch the tone, noise and envelope, and controller 2 sweeps the noise period from the highest noise at 0 to the lowest at 127. Controller 85 is a switch that makes the channel's notes drive the chip's envelope: their pitch is the envelope's pitch. With the tone off as well, such a note takes no chip channel and only moves the envelope under the other notes; with its envelope on, it is a buzzer by itself. A note that drives the envelope lets it run on; controller 83 on its channel, from 64, restarts the envelope, with a note or inside one.
+Controllers on a MIDI channel set how its notes sound. A switch is on from 64 and off below, so a button or the upper half of a knob turns it on. Controllers 80, 81 and 82 switch the tone, noise and envelope, and controller 2 sweeps the noise period from the highest noise at 0 to the lowest at 127. Controller 85 is a switch that makes the channel's notes drive the chip's envelope: their pitch is the envelope's pitch, whatever its shape. A triangle takes two of the envelope's periods to repeat, so it gets half the period a sawtooth has at the same note. With the tone off as well, such a note takes no chip channel and only moves the envelope under the other notes; with its envelope on, it is a buzzer by itself. A note that drives the envelope lets it run on; controller 83 on its channel, from 64, restarts the envelope, with a note or inside one.
 
 Controller 70 picks the envelope shape, restarting the envelope when the shape is another. The eight shapes share the controller's range:
 
@@ -313,7 +313,7 @@ Allows auditioning notes directly through the AY chip emulator.
 | Play Tone | Enable tone generator for preview |
 | Retrigger Tone | Retrigger note on each click |
 | Play Envelope | Enable AY envelope generator |
-| Envelope Shape | Select AY envelope shape (0–15) |
+| Envelope Shape | Triangle or sawtooth |
 | Modulation Mode | Choose modulation behavior |
 
 Click a cell in the tuning grid to hear the corresponding note. Starting another preview replaces the current one. Changing the tuning stops the preview and clears its note highlights.
@@ -324,7 +324,7 @@ Click **Export to CSV** to save the current tuning table as a `.csv` file for us
 
 ### Tuning Grid
 
-The main grid displays the computed AY period register values for each note across multiple octaves. Columns are notes, rows are octaves. The cell color indicates the tuning error relative to the ideal frequency (cents deviation).
+The main grid displays the computed AY period register values for each note across multiple octaves. Columns are notes, rows are octaves. The cell color indicates the tuning error relative to the ideal frequency (cents deviation). Envelope periods are those of the chosen **Envelope Shape**, as the preview plays them: a triangle's period at a note is half a sawtooth's, and a tone keeps in step with it when its period is a multiple of 32, where a sawtooth needs 16.
 
 Click a cell to preview the note through the AY emulator using the current play control settings.
 

@@ -143,7 +143,9 @@ public:
             driver.attack = true;
             driver.timbre = {.tone = false, .drivesEnvelope = true, .envelopeShape = EnvelopeShape::TriangleDown, .noisePeriod = 7};
             auto params = mixer.mix(frameOf({driver}), *tuning);
-            expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(36.0, TuningSystem::Envelope));
+            expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(36.0, TuningSystem::EnvelopeTriangle),
+                         "a triangle takes two periods to repeat, so half a sawtooth's period sounds at the voice's pitch");
+            expectEquals(value(params, P::EnvelopePeriod), tuning->midiNoteToPeriod(48.0, TuningSystem::Envelope));
             expectEquals(value(params, P::EnvelopeShape), 10, "the shape is a value to hold, as the chip's register has it");
             expect(!params.isSet(P::RetriggerEnvelope), "a note starting lets the envelope run");
             expectEquals(value(params, P::VolumeA), 0, "with nothing to sound it takes no channel");
@@ -320,14 +322,15 @@ public:
                                   MidiMessage::controllerEvent(9, 80, 0),
                                   MidiMessage::controllerEvent(9, 70, 18),  // the second shape of eight
                                   MidiMessage::noteOn(9, 36, (uint8) 100)});
-            expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(36.0, TuningSystem::Envelope));
+            // No shape is sent, so it is the first one, a triangle
+            expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(36.0, TuningSystem::EnvelopeTriangle));
             expectEquals(valuesOf(messages, 4, MidiCCType::SoundVariation), String("10"), "which is the chip's shape 10");
             expectEquals(valuesOf(messages, 4, MidiCCType::GPB4RetriggerSwitch), String(),
                          "the shape goes as a value: the chip restarts by itself if it held another");
             expectEquals(valuesOf(messages, 1, MidiCCType::Volume), String("0"), "no chip channel sounds");
 
             messages = play(mapper, {MidiMessage::noteOff(9, 36), MidiMessage::noteOn(9, 38, (uint8) 100)});
-            expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(38.0, TuningSystem::Envelope));
+            expectEquals(periodOf(messages, 4), tuning.midiNoteToPeriod(38.0, TuningSystem::EnvelopeTriangle));
             expectEquals(messages.size(), 3, "another note moves the envelope's pitch, in three parts, and lets it run");
 
             messages = play(mapper, {MidiMessage::controllerEvent(9, 83, 127)});

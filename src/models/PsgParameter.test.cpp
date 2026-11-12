@@ -1,5 +1,8 @@
 #include <JuceHeader.h>
 #include "formats/psg/PsgData.h"
+#include "formats/psg/PsgFile.h"
+#include "PsgCC.h"
+#include "PsgClip.h"
 #include "PsgList.h"
 #include "PsgParameter.h"
 
@@ -55,6 +58,58 @@ public:
                 shapes << (shape ? String(int(*shape)) : String("-")) << " ";
             }
             expectEquals(shapes, String("8 8 10 10 - 10 "));
+        }
+
+        beginTest("SkyTrain Funk plays the shape writes of its file, each one and no other");
+        {
+            // The tune leans on the envelope restarting on some notes and running on through others
+            PsgFile file(File(UZX_FIXTURES_DIR).getChildFile("psg").getChildFile("SkyTrain Funk.psg"));
+            if (! file.ensureRead()) {
+                logMessage("fixture missing at " + file.getFile().getFullPathName() + ", skipping");
+                return;
+            }
+            auto& data = file.getData();
+
+            auto& engine = *Engine::getEngines()[0];
+            auto edit = Edit::createSingleTrackEdit(engine);
+            const auto length = TimeDuration::fromSeconds(data.getLengthSeconds());
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], data, {{TimePosition(), length}, {}}, "SkyTrain Funk");
+            const auto sequence = clip->getPsg().exportToPlaybackMidiSequence(*clip, MidiList::TimeBase::seconds);
+
+            // What the chip writes: the controllers of one time make a frame, and a frame with a shape writes it
+            std::map<int, int> played;
+            PsgParamFrameData params;
+            const auto endFrame = [&](double time) {
+                if (const auto regs = params.toRegisters(); regs.hasEnvelopeShapeSet())
+                    played[roundToInt(time * data.getFrameRate())] = regs.getEnvelopeShape();
+                params.clear();
+            };
+            double time = 0.0;
+            for (auto* e : sequence) {
+                if (e->message.getTimeStamp() > time)
+                    endFrame(std::exchange(time, e->message.getTimeStamp()));
+                PsgCC::decode(e->message.getChannel() - 1, e->message.getControllerNumber(),
+                              e->message.getControllerValue(), params);
+            }
+            endFrame(time);
+
+            std::map<int, int> written;
+            int restarts = 0, last = -1;
+            for (size_t i = 0; i < data.frames.size(); ++i) {
+                if (! data.frames[i].hasEnvelopeShapeSet())
+                    continue;
+                const int shape = data.frames[i].getEnvelopeShape();
+                written[static_cast<int>(i)] = shape;
+                restarts += shape == std::exchange(last, shape);
+            }
+            // The first frame of a clip sends every parameter, the shape too
+            played.erase(0);
+            written.erase(0);
+
+            logMessage(String(written.size()) + " shape writes, " + String(restarts) + " of them the shape before again");
+            expect(restarts > 100, "the tune restarts the envelope with the same shape");
+            expectEquals(static_cast<int>(played.size()), static_cast<int>(written.size()));
+            expect(played == written, "a restart is played in each frame the file writes the shape, and in no other");
         }
     }
 };

@@ -161,10 +161,10 @@ public:
             expectEquals(volumes(abc), juce::String("C"), "after the chip is set to ABC");
         }
 
-        beginTest("The MPE chord example starts out of tune and plays a major seventh from two seconds on");
+        beginTest("The MPE chord example starts as a cluster and plays a major seventh from two seconds on");
         {
             // scripts/make_mpe_fixture.py: C3 and B3 in a clip in MPE mode, E4 with its envelope on and G2
-            // driving the envelope on channels of their own, each gliding into tune from its own bend
+            // driving the envelope on channels of their own, each starting bent toward A3 and gliding into tune
             auto edit = te::loadEditFromFile(engine, juce::File(UZX_FIXTURES_DIR).getChildFile("MPE chord.uzx"));
             NotesToPsgPlugin* converter = nullptr;
             AYChipPlugin* chip = nullptr;
@@ -199,12 +199,12 @@ public:
             auto periods = tonePeriods();
             expectEquals(periods.size(), 3, "three voices on the chip's channels");
             if (periods.size() == 3) {
-                expect(periods[0] < period(64.0), "E4 starts sharp");
-                expect(periods[1] < period(59.0), "B3 starts sharp, by less");
-                expect(periods[2] > period(48.0), "C3 starts flat");
+                expect(periods[0] > period(64.0 - 5.0) && periods[0] < period(57.0), "E4 starts over five semitones flat");
+                expect(periods[1] > period(59.0 - 1.0) && periods[1] < period(57.0), "B3 over one flat");
+                expect(periods[2] < period(48.0 + 7.0) && periods[2] > period(57.0), "C3 over seven sharp");
             }
-            expect(int(chip->getChipRegisters().getEnvelopePeriod()) > period(43.0, TuningSystem::Envelope),
-                   "and the envelope starts flat, further off than any of them");
+            expect(int(chip->getChipRegisters().getEnvelopePeriod()) < period(43.0 + 10.0, TuningSystem::Envelope),
+                   "and the envelope over ten sharp: all four within a few semitones of A3");
 
             TestHelpers::processBlocks(engine, 252);  // past two seconds, inside the four
             periods = tonePeriods();

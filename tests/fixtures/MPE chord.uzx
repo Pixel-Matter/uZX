@@ -48,209 +48,209 @@
       <QUANTISATION />
       <GROOVE />
       <SEQUENCE ver="1" channelNumber="1">
-        <NOTE p="48" b="0.0" l="8.0" v="127" c="0" bend="-1.08">
-          <PITCHBEND b="0.04" v="-1.0692" />
-          <PITCHBEND b="0.08" v="-1.0584" />
-          <PITCHBEND b="0.12" v="-1.0476" />
-          <PITCHBEND b="0.16" v="-1.0368" />
-          <PITCHBEND b="0.2" v="-1.026" />
-          <PITCHBEND b="0.24" v="-1.0152" />
-          <PITCHBEND b="0.28" v="-1.0044" />
-          <PITCHBEND b="0.32" v="-0.9936" />
-          <PITCHBEND b="0.36" v="-0.9828" />
-          <PITCHBEND b="0.4" v="-0.972" />
-          <PITCHBEND b="0.44" v="-0.9612" />
-          <PITCHBEND b="0.48" v="-0.9504" />
-          <PITCHBEND b="0.52" v="-0.9396" />
-          <PITCHBEND b="0.56" v="-0.9288" />
-          <PITCHBEND b="0.6" v="-0.918" />
-          <PITCHBEND b="0.64" v="-0.9072" />
-          <PITCHBEND b="0.68" v="-0.8964" />
-          <PITCHBEND b="0.72" v="-0.8856" />
-          <PITCHBEND b="0.76" v="-0.8748" />
-          <PITCHBEND b="0.8" v="-0.864" />
-          <PITCHBEND b="0.84" v="-0.8532" />
-          <PITCHBEND b="0.88" v="-0.8424" />
-          <PITCHBEND b="0.92" v="-0.8316" />
-          <PITCHBEND b="0.96" v="-0.8208" />
-          <PITCHBEND b="1.0" v="-0.81" />
-          <PITCHBEND b="1.04" v="-0.7992" />
-          <PITCHBEND b="1.08" v="-0.7884" />
-          <PITCHBEND b="1.12" v="-0.7776" />
-          <PITCHBEND b="1.16" v="-0.7668" />
-          <PITCHBEND b="1.2" v="-0.756" />
-          <PITCHBEND b="1.24" v="-0.7452" />
-          <PITCHBEND b="1.28" v="-0.7344" />
-          <PITCHBEND b="1.32" v="-0.7236" />
-          <PITCHBEND b="1.36" v="-0.7128" />
-          <PITCHBEND b="1.4" v="-0.702" />
-          <PITCHBEND b="1.44" v="-0.6912" />
-          <PITCHBEND b="1.48" v="-0.6804" />
-          <PITCHBEND b="1.52" v="-0.6696" />
-          <PITCHBEND b="1.56" v="-0.6588" />
-          <PITCHBEND b="1.6" v="-0.648" />
-          <PITCHBEND b="1.64" v="-0.6372" />
-          <PITCHBEND b="1.68" v="-0.6264" />
-          <PITCHBEND b="1.72" v="-0.6156" />
-          <PITCHBEND b="1.76" v="-0.6048" />
-          <PITCHBEND b="1.8" v="-0.594" />
-          <PITCHBEND b="1.84" v="-0.5832" />
-          <PITCHBEND b="1.88" v="-0.5724" />
-          <PITCHBEND b="1.92" v="-0.5616" />
-          <PITCHBEND b="1.96" v="-0.5508" />
-          <PITCHBEND b="2.0" v="-0.54" />
-          <PITCHBEND b="2.04" v="-0.5292" />
-          <PITCHBEND b="2.08" v="-0.5184" />
-          <PITCHBEND b="2.12" v="-0.5076" />
-          <PITCHBEND b="2.16" v="-0.4968" />
-          <PITCHBEND b="2.2" v="-0.486" />
-          <PITCHBEND b="2.24" v="-0.4752" />
-          <PITCHBEND b="2.28" v="-0.4644" />
-          <PITCHBEND b="2.32" v="-0.4536" />
-          <PITCHBEND b="2.36" v="-0.4428" />
-          <PITCHBEND b="2.4" v="-0.432" />
-          <PITCHBEND b="2.44" v="-0.4212" />
-          <PITCHBEND b="2.48" v="-0.4104" />
-          <PITCHBEND b="2.52" v="-0.3996" />
-          <PITCHBEND b="2.56" v="-0.3888" />
-          <PITCHBEND b="2.6" v="-0.378" />
-          <PITCHBEND b="2.64" v="-0.3672" />
-          <PITCHBEND b="2.68" v="-0.3564" />
-          <PITCHBEND b="2.72" v="-0.3456" />
-          <PITCHBEND b="2.76" v="-0.3348" />
-          <PITCHBEND b="2.8" v="-0.324" />
-          <PITCHBEND b="2.84" v="-0.3132" />
-          <PITCHBEND b="2.88" v="-0.3024" />
-          <PITCHBEND b="2.92" v="-0.2916" />
-          <PITCHBEND b="2.96" v="-0.2808" />
-          <PITCHBEND b="3.0" v="-0.27" />
-          <PITCHBEND b="3.04" v="-0.2592" />
-          <PITCHBEND b="3.08" v="-0.2484" />
-          <PITCHBEND b="3.12" v="-0.2376" />
-          <PITCHBEND b="3.16" v="-0.2268" />
-          <PITCHBEND b="3.2" v="-0.216" />
-          <PITCHBEND b="3.24" v="-0.2052" />
-          <PITCHBEND b="3.28" v="-0.1944" />
-          <PITCHBEND b="3.32" v="-0.1836" />
-          <PITCHBEND b="3.36" v="-0.1728" />
-          <PITCHBEND b="3.4" v="-0.162" />
-          <PITCHBEND b="3.44" v="-0.1512" />
-          <PITCHBEND b="3.48" v="-0.1404" />
-          <PITCHBEND b="3.52" v="-0.1296" />
-          <PITCHBEND b="3.56" v="-0.1188" />
-          <PITCHBEND b="3.6" v="-0.108" />
-          <PITCHBEND b="3.64" v="-0.0972" />
-          <PITCHBEND b="3.68" v="-0.0864" />
-          <PITCHBEND b="3.72" v="-0.0756" />
-          <PITCHBEND b="3.76" v="-0.0648" />
-          <PITCHBEND b="3.8" v="-0.054" />
-          <PITCHBEND b="3.84" v="-0.0432" />
-          <PITCHBEND b="3.88" v="-0.0324" />
-          <PITCHBEND b="3.92" v="-0.0216" />
-          <PITCHBEND b="3.96" v="-0.0108" />
-          <PITCHBEND b="4.0" v="-0.0" />
-        </NOTE>
-        <NOTE p="59" b="0.0" l="8.0" v="127" c="0" bend="0.24">
-          <PITCHBEND b="0.04" v="0.2376" />
-          <PITCHBEND b="0.08" v="0.2352" />
-          <PITCHBEND b="0.12" v="0.2328" />
-          <PITCHBEND b="0.16" v="0.2304" />
-          <PITCHBEND b="0.2" v="0.228" />
-          <PITCHBEND b="0.24" v="0.2256" />
-          <PITCHBEND b="0.28" v="0.2232" />
-          <PITCHBEND b="0.32" v="0.2208" />
-          <PITCHBEND b="0.36" v="0.2184" />
-          <PITCHBEND b="0.4" v="0.216" />
-          <PITCHBEND b="0.44" v="0.2136" />
-          <PITCHBEND b="0.48" v="0.2112" />
-          <PITCHBEND b="0.52" v="0.2088" />
-          <PITCHBEND b="0.56" v="0.2064" />
-          <PITCHBEND b="0.6" v="0.204" />
-          <PITCHBEND b="0.64" v="0.2016" />
-          <PITCHBEND b="0.68" v="0.1992" />
-          <PITCHBEND b="0.72" v="0.1968" />
-          <PITCHBEND b="0.76" v="0.1944" />
-          <PITCHBEND b="0.8" v="0.192" />
-          <PITCHBEND b="0.84" v="0.1896" />
-          <PITCHBEND b="0.88" v="0.1872" />
-          <PITCHBEND b="0.92" v="0.1848" />
-          <PITCHBEND b="0.96" v="0.1824" />
-          <PITCHBEND b="1.0" v="0.18" />
-          <PITCHBEND b="1.04" v="0.1776" />
-          <PITCHBEND b="1.08" v="0.1752" />
-          <PITCHBEND b="1.12" v="0.1728" />
-          <PITCHBEND b="1.16" v="0.1704" />
-          <PITCHBEND b="1.2" v="0.168" />
-          <PITCHBEND b="1.24" v="0.1656" />
-          <PITCHBEND b="1.28" v="0.1632" />
-          <PITCHBEND b="1.32" v="0.1608" />
-          <PITCHBEND b="1.36" v="0.1584" />
-          <PITCHBEND b="1.4" v="0.156" />
-          <PITCHBEND b="1.44" v="0.1536" />
-          <PITCHBEND b="1.48" v="0.1512" />
-          <PITCHBEND b="1.52" v="0.1488" />
-          <PITCHBEND b="1.56" v="0.1464" />
-          <PITCHBEND b="1.6" v="0.144" />
-          <PITCHBEND b="1.64" v="0.1416" />
-          <PITCHBEND b="1.68" v="0.1392" />
-          <PITCHBEND b="1.72" v="0.1368" />
-          <PITCHBEND b="1.76" v="0.1344" />
-          <PITCHBEND b="1.8" v="0.132" />
-          <PITCHBEND b="1.84" v="0.1296" />
-          <PITCHBEND b="1.88" v="0.1272" />
-          <PITCHBEND b="1.92" v="0.1248" />
-          <PITCHBEND b="1.96" v="0.1224" />
-          <PITCHBEND b="2.0" v="0.12" />
-          <PITCHBEND b="2.04" v="0.1176" />
-          <PITCHBEND b="2.08" v="0.1152" />
-          <PITCHBEND b="2.12" v="0.1128" />
-          <PITCHBEND b="2.16" v="0.1104" />
-          <PITCHBEND b="2.2" v="0.108" />
-          <PITCHBEND b="2.24" v="0.1056" />
-          <PITCHBEND b="2.28" v="0.1032" />
-          <PITCHBEND b="2.32" v="0.1008" />
-          <PITCHBEND b="2.36" v="0.0984" />
-          <PITCHBEND b="2.4" v="0.096" />
-          <PITCHBEND b="2.44" v="0.0936" />
-          <PITCHBEND b="2.48" v="0.0912" />
-          <PITCHBEND b="2.52" v="0.0888" />
-          <PITCHBEND b="2.56" v="0.0864" />
-          <PITCHBEND b="2.6" v="0.084" />
-          <PITCHBEND b="2.64" v="0.0816" />
-          <PITCHBEND b="2.68" v="0.0792" />
-          <PITCHBEND b="2.72" v="0.0768" />
-          <PITCHBEND b="2.76" v="0.0744" />
-          <PITCHBEND b="2.8" v="0.072" />
-          <PITCHBEND b="2.84" v="0.0696" />
-          <PITCHBEND b="2.88" v="0.0672" />
-          <PITCHBEND b="2.92" v="0.0648" />
-          <PITCHBEND b="2.96" v="0.0624" />
-          <PITCHBEND b="3.0" v="0.06" />
-          <PITCHBEND b="3.04" v="0.0576" />
-          <PITCHBEND b="3.08" v="0.0552" />
-          <PITCHBEND b="3.12" v="0.0528" />
-          <PITCHBEND b="3.16" v="0.0504" />
-          <PITCHBEND b="3.2" v="0.048" />
-          <PITCHBEND b="3.24" v="0.0456" />
-          <PITCHBEND b="3.28" v="0.0432" />
-          <PITCHBEND b="3.32" v="0.0408" />
-          <PITCHBEND b="3.36" v="0.0384" />
-          <PITCHBEND b="3.4" v="0.036" />
-          <PITCHBEND b="3.44" v="0.0336" />
-          <PITCHBEND b="3.48" v="0.0312" />
-          <PITCHBEND b="3.52" v="0.0288" />
-          <PITCHBEND b="3.56" v="0.0264" />
-          <PITCHBEND b="3.6" v="0.024" />
-          <PITCHBEND b="3.64" v="0.0216" />
-          <PITCHBEND b="3.68" v="0.0192" />
-          <PITCHBEND b="3.72" v="0.0168" />
-          <PITCHBEND b="3.76" v="0.0144" />
-          <PITCHBEND b="3.8" v="0.012" />
-          <PITCHBEND b="3.84" v="0.0096" />
-          <PITCHBEND b="3.88" v="0.0072" />
-          <PITCHBEND b="3.92" v="0.0048" />
-          <PITCHBEND b="3.96" v="0.0024" />
+        <NOTE p="48" b="0.0" l="8.0" v="127" c="0" bend="7.65">
+          <PITCHBEND b="0.04" v="7.5735" />
+          <PITCHBEND b="0.08" v="7.497" />
+          <PITCHBEND b="0.12" v="7.4205" />
+          <PITCHBEND b="0.16" v="7.344" />
+          <PITCHBEND b="0.2" v="7.2675" />
+          <PITCHBEND b="0.24" v="7.191" />
+          <PITCHBEND b="0.28" v="7.1145" />
+          <PITCHBEND b="0.32" v="7.038" />
+          <PITCHBEND b="0.36" v="6.9615" />
+          <PITCHBEND b="0.4" v="6.885" />
+          <PITCHBEND b="0.44" v="6.8085" />
+          <PITCHBEND b="0.48" v="6.732" />
+          <PITCHBEND b="0.52" v="6.6555" />
+          <PITCHBEND b="0.56" v="6.579" />
+          <PITCHBEND b="0.6" v="6.5025" />
+          <PITCHBEND b="0.64" v="6.426" />
+          <PITCHBEND b="0.68" v="6.3495" />
+          <PITCHBEND b="0.72" v="6.273" />
+          <PITCHBEND b="0.76" v="6.1965" />
+          <PITCHBEND b="0.8" v="6.12" />
+          <PITCHBEND b="0.84" v="6.0435" />
+          <PITCHBEND b="0.88" v="5.967" />
+          <PITCHBEND b="0.92" v="5.8905" />
+          <PITCHBEND b="0.96" v="5.814" />
+          <PITCHBEND b="1.0" v="5.7375" />
+          <PITCHBEND b="1.04" v="5.661" />
+          <PITCHBEND b="1.08" v="5.5845" />
+          <PITCHBEND b="1.12" v="5.508" />
+          <PITCHBEND b="1.16" v="5.4315" />
+          <PITCHBEND b="1.2" v="5.355" />
+          <PITCHBEND b="1.24" v="5.2785" />
+          <PITCHBEND b="1.28" v="5.202" />
+          <PITCHBEND b="1.32" v="5.1255" />
+          <PITCHBEND b="1.36" v="5.049" />
+          <PITCHBEND b="1.4" v="4.9725" />
+          <PITCHBEND b="1.44" v="4.896" />
+          <PITCHBEND b="1.48" v="4.8195" />
+          <PITCHBEND b="1.52" v="4.743" />
+          <PITCHBEND b="1.56" v="4.6665" />
+          <PITCHBEND b="1.6" v="4.59" />
+          <PITCHBEND b="1.64" v="4.5135" />
+          <PITCHBEND b="1.68" v="4.437" />
+          <PITCHBEND b="1.72" v="4.3605" />
+          <PITCHBEND b="1.76" v="4.284" />
+          <PITCHBEND b="1.8" v="4.2075" />
+          <PITCHBEND b="1.84" v="4.131" />
+          <PITCHBEND b="1.88" v="4.0545" />
+          <PITCHBEND b="1.92" v="3.978" />
+          <PITCHBEND b="1.96" v="3.9015" />
+          <PITCHBEND b="2.0" v="3.825" />
+          <PITCHBEND b="2.04" v="3.7485" />
+          <PITCHBEND b="2.08" v="3.672" />
+          <PITCHBEND b="2.12" v="3.5955" />
+          <PITCHBEND b="2.16" v="3.519" />
+          <PITCHBEND b="2.2" v="3.4425" />
+          <PITCHBEND b="2.24" v="3.366" />
+          <PITCHBEND b="2.28" v="3.2895" />
+          <PITCHBEND b="2.32" v="3.213" />
+          <PITCHBEND b="2.36" v="3.1365" />
+          <PITCHBEND b="2.4" v="3.06" />
+          <PITCHBEND b="2.44" v="2.9835" />
+          <PITCHBEND b="2.48" v="2.907" />
+          <PITCHBEND b="2.52" v="2.8305" />
+          <PITCHBEND b="2.56" v="2.754" />
+          <PITCHBEND b="2.6" v="2.6775" />
+          <PITCHBEND b="2.64" v="2.601" />
+          <PITCHBEND b="2.68" v="2.5245" />
+          <PITCHBEND b="2.72" v="2.448" />
+          <PITCHBEND b="2.76" v="2.3715" />
+          <PITCHBEND b="2.8" v="2.295" />
+          <PITCHBEND b="2.84" v="2.2185" />
+          <PITCHBEND b="2.88" v="2.142" />
+          <PITCHBEND b="2.92" v="2.0655" />
+          <PITCHBEND b="2.96" v="1.989" />
+          <PITCHBEND b="3.0" v="1.9125" />
+          <PITCHBEND b="3.04" v="1.836" />
+          <PITCHBEND b="3.08" v="1.7595" />
+          <PITCHBEND b="3.12" v="1.683" />
+          <PITCHBEND b="3.16" v="1.6065" />
+          <PITCHBEND b="3.2" v="1.53" />
+          <PITCHBEND b="3.24" v="1.4535" />
+          <PITCHBEND b="3.28" v="1.377" />
+          <PITCHBEND b="3.32" v="1.3005" />
+          <PITCHBEND b="3.36" v="1.224" />
+          <PITCHBEND b="3.4" v="1.1475" />
+          <PITCHBEND b="3.44" v="1.071" />
+          <PITCHBEND b="3.48" v="0.9945" />
+          <PITCHBEND b="3.52" v="0.918" />
+          <PITCHBEND b="3.56" v="0.8415" />
+          <PITCHBEND b="3.6" v="0.765" />
+          <PITCHBEND b="3.64" v="0.6885" />
+          <PITCHBEND b="3.68" v="0.612" />
+          <PITCHBEND b="3.72" v="0.5355" />
+          <PITCHBEND b="3.76" v="0.459" />
+          <PITCHBEND b="3.8" v="0.3825" />
+          <PITCHBEND b="3.84" v="0.306" />
+          <PITCHBEND b="3.88" v="0.2295" />
+          <PITCHBEND b="3.92" v="0.153" />
+          <PITCHBEND b="3.96" v="0.0765" />
           <PITCHBEND b="4.0" v="0.0" />
+        </NOTE>
+        <NOTE p="59" b="0.0" l="8.0" v="127" c="0" bend="-1.7">
+          <PITCHBEND b="0.04" v="-1.683" />
+          <PITCHBEND b="0.08" v="-1.666" />
+          <PITCHBEND b="0.12" v="-1.649" />
+          <PITCHBEND b="0.16" v="-1.632" />
+          <PITCHBEND b="0.2" v="-1.615" />
+          <PITCHBEND b="0.24" v="-1.598" />
+          <PITCHBEND b="0.28" v="-1.581" />
+          <PITCHBEND b="0.32" v="-1.564" />
+          <PITCHBEND b="0.36" v="-1.547" />
+          <PITCHBEND b="0.4" v="-1.53" />
+          <PITCHBEND b="0.44" v="-1.513" />
+          <PITCHBEND b="0.48" v="-1.496" />
+          <PITCHBEND b="0.52" v="-1.479" />
+          <PITCHBEND b="0.56" v="-1.462" />
+          <PITCHBEND b="0.6" v="-1.445" />
+          <PITCHBEND b="0.64" v="-1.428" />
+          <PITCHBEND b="0.68" v="-1.411" />
+          <PITCHBEND b="0.72" v="-1.394" />
+          <PITCHBEND b="0.76" v="-1.377" />
+          <PITCHBEND b="0.8" v="-1.36" />
+          <PITCHBEND b="0.84" v="-1.343" />
+          <PITCHBEND b="0.88" v="-1.326" />
+          <PITCHBEND b="0.92" v="-1.309" />
+          <PITCHBEND b="0.96" v="-1.292" />
+          <PITCHBEND b="1.0" v="-1.275" />
+          <PITCHBEND b="1.04" v="-1.258" />
+          <PITCHBEND b="1.08" v="-1.241" />
+          <PITCHBEND b="1.12" v="-1.224" />
+          <PITCHBEND b="1.16" v="-1.207" />
+          <PITCHBEND b="1.2" v="-1.19" />
+          <PITCHBEND b="1.24" v="-1.173" />
+          <PITCHBEND b="1.28" v="-1.156" />
+          <PITCHBEND b="1.32" v="-1.139" />
+          <PITCHBEND b="1.36" v="-1.122" />
+          <PITCHBEND b="1.4" v="-1.105" />
+          <PITCHBEND b="1.44" v="-1.088" />
+          <PITCHBEND b="1.48" v="-1.071" />
+          <PITCHBEND b="1.52" v="-1.054" />
+          <PITCHBEND b="1.56" v="-1.037" />
+          <PITCHBEND b="1.6" v="-1.02" />
+          <PITCHBEND b="1.64" v="-1.003" />
+          <PITCHBEND b="1.68" v="-0.986" />
+          <PITCHBEND b="1.72" v="-0.969" />
+          <PITCHBEND b="1.76" v="-0.952" />
+          <PITCHBEND b="1.8" v="-0.935" />
+          <PITCHBEND b="1.84" v="-0.918" />
+          <PITCHBEND b="1.88" v="-0.901" />
+          <PITCHBEND b="1.92" v="-0.884" />
+          <PITCHBEND b="1.96" v="-0.867" />
+          <PITCHBEND b="2.0" v="-0.85" />
+          <PITCHBEND b="2.04" v="-0.833" />
+          <PITCHBEND b="2.08" v="-0.816" />
+          <PITCHBEND b="2.12" v="-0.799" />
+          <PITCHBEND b="2.16" v="-0.782" />
+          <PITCHBEND b="2.2" v="-0.765" />
+          <PITCHBEND b="2.24" v="-0.748" />
+          <PITCHBEND b="2.28" v="-0.731" />
+          <PITCHBEND b="2.32" v="-0.714" />
+          <PITCHBEND b="2.36" v="-0.697" />
+          <PITCHBEND b="2.4" v="-0.68" />
+          <PITCHBEND b="2.44" v="-0.663" />
+          <PITCHBEND b="2.48" v="-0.646" />
+          <PITCHBEND b="2.52" v="-0.629" />
+          <PITCHBEND b="2.56" v="-0.612" />
+          <PITCHBEND b="2.6" v="-0.595" />
+          <PITCHBEND b="2.64" v="-0.578" />
+          <PITCHBEND b="2.68" v="-0.561" />
+          <PITCHBEND b="2.72" v="-0.544" />
+          <PITCHBEND b="2.76" v="-0.527" />
+          <PITCHBEND b="2.8" v="-0.51" />
+          <PITCHBEND b="2.84" v="-0.493" />
+          <PITCHBEND b="2.88" v="-0.476" />
+          <PITCHBEND b="2.92" v="-0.459" />
+          <PITCHBEND b="2.96" v="-0.442" />
+          <PITCHBEND b="3.0" v="-0.425" />
+          <PITCHBEND b="3.04" v="-0.408" />
+          <PITCHBEND b="3.08" v="-0.391" />
+          <PITCHBEND b="3.12" v="-0.374" />
+          <PITCHBEND b="3.16" v="-0.357" />
+          <PITCHBEND b="3.2" v="-0.34" />
+          <PITCHBEND b="3.24" v="-0.323" />
+          <PITCHBEND b="3.28" v="-0.306" />
+          <PITCHBEND b="3.32" v="-0.289" />
+          <PITCHBEND b="3.36" v="-0.272" />
+          <PITCHBEND b="3.4" v="-0.255" />
+          <PITCHBEND b="3.44" v="-0.238" />
+          <PITCHBEND b="3.48" v="-0.221" />
+          <PITCHBEND b="3.52" v="-0.204" />
+          <PITCHBEND b="3.56" v="-0.187" />
+          <PITCHBEND b="3.6" v="-0.17" />
+          <PITCHBEND b="3.64" v="-0.153" />
+          <PITCHBEND b="3.68" v="-0.136" />
+          <PITCHBEND b="3.72" v="-0.119" />
+          <PITCHBEND b="3.76" v="-0.102" />
+          <PITCHBEND b="3.8" v="-0.085" />
+          <PITCHBEND b="3.84" v="-0.068" />
+          <PITCHBEND b="3.88" v="-0.051" />
+          <PITCHBEND b="3.92" v="-0.034" />
+          <PITCHBEND b="3.96" v="-0.017" />
+          <PITCHBEND b="4.0" v="-0.0" />
         </NOTE>
       </SEQUENCE>
     </MIDICLIP>
@@ -261,106 +261,106 @@
       <SEQUENCE ver="1" channelNumber="15">
         <NOTE p="64" b="0.0" l="8.0" v="127" c="0" />
         <CONTROL b="0.0" type="82" val="16256" />
-        <CONTROL b="0.0" type="4101" val="8335" />
-        <CONTROL b="0.04" type="4101" val="8333" />
-        <CONTROL b="0.08" type="4101" val="8332" />
-        <CONTROL b="0.12" type="4101" val="8331" />
-        <CONTROL b="0.16" type="4101" val="8329" />
-        <CONTROL b="0.2" type="4101" val="8328" />
-        <CONTROL b="0.24" type="4101" val="8326" />
-        <CONTROL b="0.28" type="4101" val="8325" />
-        <CONTROL b="0.32" type="4101" val="8323" />
-        <CONTROL b="0.36" type="4101" val="8322" />
-        <CONTROL b="0.4" type="4101" val="8321" />
-        <CONTROL b="0.44" type="4101" val="8319" />
-        <CONTROL b="0.48" type="4101" val="8318" />
-        <CONTROL b="0.52" type="4101" val="8316" />
-        <CONTROL b="0.56" type="4101" val="8315" />
-        <CONTROL b="0.6" type="4101" val="8313" />
-        <CONTROL b="0.64" type="4101" val="8312" />
-        <CONTROL b="0.68" type="4101" val="8310" />
-        <CONTROL b="0.72" type="4101" val="8309" />
-        <CONTROL b="0.76" type="4101" val="8308" />
-        <CONTROL b="0.8" type="4101" val="8306" />
-        <CONTROL b="0.84" type="4101" val="8305" />
-        <CONTROL b="0.88" type="4101" val="8303" />
-        <CONTROL b="0.92" type="4101" val="8302" />
-        <CONTROL b="0.96" type="4101" val="8300" />
-        <CONTROL b="1.0" type="4101" val="8299" />
-        <CONTROL b="1.04" type="4101" val="8298" />
-        <CONTROL b="1.08" type="4101" val="8296" />
-        <CONTROL b="1.12" type="4101" val="8295" />
-        <CONTROL b="1.16" type="4101" val="8293" />
-        <CONTROL b="1.2" type="4101" val="8292" />
-        <CONTROL b="1.24" type="4101" val="8290" />
-        <CONTROL b="1.28" type="4101" val="8289" />
-        <CONTROL b="1.32" type="4101" val="8288" />
-        <CONTROL b="1.36" type="4101" val="8286" />
-        <CONTROL b="1.4" type="4101" val="8285" />
-        <CONTROL b="1.44" type="4101" val="8283" />
-        <CONTROL b="1.48" type="4101" val="8282" />
-        <CONTROL b="1.52" type="4101" val="8280" />
-        <CONTROL b="1.56" type="4101" val="8279" />
-        <CONTROL b="1.6" type="4101" val="8278" />
-        <CONTROL b="1.64" type="4101" val="8276" />
-        <CONTROL b="1.68" type="4101" val="8275" />
-        <CONTROL b="1.72" type="4101" val="8273" />
-        <CONTROL b="1.76" type="4101" val="8272" />
-        <CONTROL b="1.8" type="4101" val="8270" />
-        <CONTROL b="1.84" type="4101" val="8269" />
-        <CONTROL b="1.88" type="4101" val="8267" />
-        <CONTROL b="1.92" type="4101" val="8266" />
-        <CONTROL b="1.96" type="4101" val="8265" />
-        <CONTROL b="2.0" type="4101" val="8263" />
-        <CONTROL b="2.04" type="4101" val="8262" />
-        <CONTROL b="2.08" type="4101" val="8260" />
-        <CONTROL b="2.12" type="4101" val="8259" />
-        <CONTROL b="2.16" type="4101" val="8257" />
-        <CONTROL b="2.2" type="4101" val="8256" />
-        <CONTROL b="2.24" type="4101" val="8255" />
-        <CONTROL b="2.28" type="4101" val="8253" />
-        <CONTROL b="2.32" type="4101" val="8252" />
-        <CONTROL b="2.36" type="4101" val="8250" />
-        <CONTROL b="2.4" type="4101" val="8249" />
-        <CONTROL b="2.44" type="4101" val="8247" />
-        <CONTROL b="2.48" type="4101" val="8246" />
-        <CONTROL b="2.52" type="4101" val="8245" />
-        <CONTROL b="2.56" type="4101" val="8243" />
-        <CONTROL b="2.6" type="4101" val="8242" />
-        <CONTROL b="2.64" type="4101" val="8240" />
-        <CONTROL b="2.68" type="4101" val="8239" />
-        <CONTROL b="2.72" type="4101" val="8237" />
-        <CONTROL b="2.76" type="4101" val="8236" />
-        <CONTROL b="2.8" type="4101" val="8235" />
-        <CONTROL b="2.84" type="4101" val="8233" />
-        <CONTROL b="2.88" type="4101" val="8232" />
-        <CONTROL b="2.92" type="4101" val="8230" />
-        <CONTROL b="2.96" type="4101" val="8229" />
-        <CONTROL b="3.0" type="4101" val="8227" />
-        <CONTROL b="3.04" type="4101" val="8226" />
-        <CONTROL b="3.08" type="4101" val="8224" />
-        <CONTROL b="3.12" type="4101" val="8223" />
-        <CONTROL b="3.16" type="4101" val="8222" />
-        <CONTROL b="3.2" type="4101" val="8220" />
-        <CONTROL b="3.24" type="4101" val="8219" />
-        <CONTROL b="3.28" type="4101" val="8217" />
-        <CONTROL b="3.32" type="4101" val="8216" />
-        <CONTROL b="3.36" type="4101" val="8214" />
-        <CONTROL b="3.4" type="4101" val="8213" />
-        <CONTROL b="3.44" type="4101" val="8212" />
-        <CONTROL b="3.48" type="4101" val="8210" />
-        <CONTROL b="3.52" type="4101" val="8209" />
-        <CONTROL b="3.56" type="4101" val="8207" />
-        <CONTROL b="3.6" type="4101" val="8206" />
-        <CONTROL b="3.64" type="4101" val="8204" />
-        <CONTROL b="3.68" type="4101" val="8203" />
-        <CONTROL b="3.72" type="4101" val="8202" />
-        <CONTROL b="3.76" type="4101" val="8200" />
-        <CONTROL b="3.8" type="4101" val="8199" />
-        <CONTROL b="3.84" type="4101" val="8197" />
-        <CONTROL b="3.88" type="4101" val="8196" />
-        <CONTROL b="3.92" type="4101" val="8194" />
-        <CONTROL b="3.96" type="4101" val="8193" />
+        <CONTROL b="0.0" type="4101" val="7176" />
+        <CONTROL b="0.04" type="4101" val="7186" />
+        <CONTROL b="0.08" type="4101" val="7196" />
+        <CONTROL b="0.12" type="4101" val="7206" />
+        <CONTROL b="0.16" type="4101" val="7217" />
+        <CONTROL b="0.2" type="4101" val="7227" />
+        <CONTROL b="0.24" type="4101" val="7237" />
+        <CONTROL b="0.28" type="4101" val="7247" />
+        <CONTROL b="0.32" type="4101" val="7257" />
+        <CONTROL b="0.36" type="4101" val="7267" />
+        <CONTROL b="0.4" type="4101" val="7278" />
+        <CONTROL b="0.44" type="4101" val="7288" />
+        <CONTROL b="0.48" type="4101" val="7298" />
+        <CONTROL b="0.52" type="4101" val="7308" />
+        <CONTROL b="0.56" type="4101" val="7318" />
+        <CONTROL b="0.6" type="4101" val="7328" />
+        <CONTROL b="0.64" type="4101" val="7339" />
+        <CONTROL b="0.68" type="4101" val="7349" />
+        <CONTROL b="0.72" type="4101" val="7359" />
+        <CONTROL b="0.76" type="4101" val="7369" />
+        <CONTROL b="0.8" type="4101" val="7379" />
+        <CONTROL b="0.84" type="4101" val="7389" />
+        <CONTROL b="0.88" type="4101" val="7399" />
+        <CONTROL b="0.92" type="4101" val="7410" />
+        <CONTROL b="0.96" type="4101" val="7420" />
+        <CONTROL b="1.0" type="4101" val="7430" />
+        <CONTROL b="1.04" type="4101" val="7440" />
+        <CONTROL b="1.08" type="4101" val="7450" />
+        <CONTROL b="1.12" type="4101" val="7460" />
+        <CONTROL b="1.16" type="4101" val="7471" />
+        <CONTROL b="1.2" type="4101" val="7481" />
+        <CONTROL b="1.24" type="4101" val="7491" />
+        <CONTROL b="1.28" type="4101" val="7501" />
+        <CONTROL b="1.32" type="4101" val="7511" />
+        <CONTROL b="1.36" type="4101" val="7521" />
+        <CONTROL b="1.4" type="4101" val="7531" />
+        <CONTROL b="1.44" type="4101" val="7542" />
+        <CONTROL b="1.48" type="4101" val="7552" />
+        <CONTROL b="1.52" type="4101" val="7562" />
+        <CONTROL b="1.56" type="4101" val="7572" />
+        <CONTROL b="1.6" type="4101" val="7582" />
+        <CONTROL b="1.64" type="4101" val="7592" />
+        <CONTROL b="1.68" type="4101" val="7603" />
+        <CONTROL b="1.72" type="4101" val="7613" />
+        <CONTROL b="1.76" type="4101" val="7623" />
+        <CONTROL b="1.8" type="4101" val="7633" />
+        <CONTROL b="1.84" type="4101" val="7643" />
+        <CONTROL b="1.88" type="4101" val="7653" />
+        <CONTROL b="1.92" type="4101" val="7663" />
+        <CONTROL b="1.96" type="4101" val="7674" />
+        <CONTROL b="2.0" type="4101" val="7684" />
+        <CONTROL b="2.04" type="4101" val="7694" />
+        <CONTROL b="2.08" type="4101" val="7704" />
+        <CONTROL b="2.12" type="4101" val="7714" />
+        <CONTROL b="2.16" type="4101" val="7724" />
+        <CONTROL b="2.2" type="4101" val="7735" />
+        <CONTROL b="2.24" type="4101" val="7745" />
+        <CONTROL b="2.28" type="4101" val="7755" />
+        <CONTROL b="2.32" type="4101" val="7765" />
+        <CONTROL b="2.36" type="4101" val="7775" />
+        <CONTROL b="2.4" type="4101" val="7785" />
+        <CONTROL b="2.44" type="4101" val="7795" />
+        <CONTROL b="2.48" type="4101" val="7806" />
+        <CONTROL b="2.52" type="4101" val="7816" />
+        <CONTROL b="2.56" type="4101" val="7826" />
+        <CONTROL b="2.6" type="4101" val="7836" />
+        <CONTROL b="2.64" type="4101" val="7846" />
+        <CONTROL b="2.68" type="4101" val="7856" />
+        <CONTROL b="2.72" type="4101" val="7867" />
+        <CONTROL b="2.76" type="4101" val="7877" />
+        <CONTROL b="2.8" type="4101" val="7887" />
+        <CONTROL b="2.84" type="4101" val="7897" />
+        <CONTROL b="2.88" type="4101" val="7907" />
+        <CONTROL b="2.92" type="4101" val="7917" />
+        <CONTROL b="2.96" type="4101" val="7927" />
+        <CONTROL b="3.0" type="4101" val="7938" />
+        <CONTROL b="3.04" type="4101" val="7948" />
+        <CONTROL b="3.08" type="4101" val="7958" />
+        <CONTROL b="3.12" type="4101" val="7968" />
+        <CONTROL b="3.16" type="4101" val="7978" />
+        <CONTROL b="3.2" type="4101" val="7988" />
+        <CONTROL b="3.24" type="4101" val="7999" />
+        <CONTROL b="3.28" type="4101" val="8009" />
+        <CONTROL b="3.32" type="4101" val="8019" />
+        <CONTROL b="3.36" type="4101" val="8029" />
+        <CONTROL b="3.4" type="4101" val="8039" />
+        <CONTROL b="3.44" type="4101" val="8049" />
+        <CONTROL b="3.48" type="4101" val="8059" />
+        <CONTROL b="3.52" type="4101" val="8070" />
+        <CONTROL b="3.56" type="4101" val="8080" />
+        <CONTROL b="3.6" type="4101" val="8090" />
+        <CONTROL b="3.64" type="4101" val="8100" />
+        <CONTROL b="3.68" type="4101" val="8110" />
+        <CONTROL b="3.72" type="4101" val="8120" />
+        <CONTROL b="3.76" type="4101" val="8131" />
+        <CONTROL b="3.8" type="4101" val="8141" />
+        <CONTROL b="3.84" type="4101" val="8151" />
+        <CONTROL b="3.88" type="4101" val="8161" />
+        <CONTROL b="3.92" type="4101" val="8171" />
+        <CONTROL b="3.96" type="4101" val="8181" />
         <CONTROL b="4.0" type="4101" val="8192" />
       </SEQUENCE>
     </MIDICLIP>
@@ -373,106 +373,106 @@
         <CONTROL b="0.0" type="85" val="16256" />
         <CONTROL b="0.0" type="80" val="0" />
         <CONTROL b="0.0" type="70" val="4608" />
-        <CONTROL b="0.0" type="4101" val="7905" />
-        <CONTROL b="0.04" type="4101" val="7908" />
-        <CONTROL b="0.08" type="4101" val="7911" />
-        <CONTROL b="0.12" type="4101" val="7913" />
-        <CONTROL b="0.16" type="4101" val="7916" />
-        <CONTROL b="0.2" type="4101" val="7919" />
-        <CONTROL b="0.24" type="4101" val="7922" />
-        <CONTROL b="0.28" type="4101" val="7925" />
-        <CONTROL b="0.32" type="4101" val="7928" />
-        <CONTROL b="0.36" type="4101" val="7931" />
-        <CONTROL b="0.4" type="4101" val="7933" />
-        <CONTROL b="0.44" type="4101" val="7936" />
-        <CONTROL b="0.48" type="4101" val="7939" />
-        <CONTROL b="0.52" type="4101" val="7942" />
-        <CONTROL b="0.56" type="4101" val="7945" />
-        <CONTROL b="0.6" type="4101" val="7948" />
-        <CONTROL b="0.64" type="4101" val="7951" />
-        <CONTROL b="0.68" type="4101" val="7954" />
-        <CONTROL b="0.72" type="4101" val="7956" />
-        <CONTROL b="0.76" type="4101" val="7959" />
-        <CONTROL b="0.8" type="4101" val="7962" />
-        <CONTROL b="0.84" type="4101" val="7965" />
-        <CONTROL b="0.88" type="4101" val="7968" />
-        <CONTROL b="0.92" type="4101" val="7971" />
-        <CONTROL b="0.96" type="4101" val="7974" />
-        <CONTROL b="1.0" type="4101" val="7976" />
-        <CONTROL b="1.04" type="4101" val="7979" />
-        <CONTROL b="1.08" type="4101" val="7982" />
-        <CONTROL b="1.12" type="4101" val="7985" />
-        <CONTROL b="1.16" type="4101" val="7988" />
-        <CONTROL b="1.2" type="4101" val="7991" />
-        <CONTROL b="1.24" type="4101" val="7994" />
-        <CONTROL b="1.28" type="4101" val="7997" />
-        <CONTROL b="1.32" type="4101" val="7999" />
-        <CONTROL b="1.36" type="4101" val="8002" />
-        <CONTROL b="1.4" type="4101" val="8005" />
-        <CONTROL b="1.44" type="4101" val="8008" />
-        <CONTROL b="1.48" type="4101" val="8011" />
-        <CONTROL b="1.52" type="4101" val="8014" />
-        <CONTROL b="1.56" type="4101" val="8017" />
-        <CONTROL b="1.6" type="4101" val="8019" />
-        <CONTROL b="1.64" type="4101" val="8022" />
-        <CONTROL b="1.68" type="4101" val="8025" />
-        <CONTROL b="1.72" type="4101" val="8028" />
-        <CONTROL b="1.76" type="4101" val="8031" />
-        <CONTROL b="1.8" type="4101" val="8034" />
-        <CONTROL b="1.84" type="4101" val="8037" />
-        <CONTROL b="1.88" type="4101" val="8040" />
-        <CONTROL b="1.92" type="4101" val="8042" />
-        <CONTROL b="1.96" type="4101" val="8045" />
-        <CONTROL b="2.0" type="4101" val="8048" />
-        <CONTROL b="2.04" type="4101" val="8051" />
-        <CONTROL b="2.08" type="4101" val="8054" />
-        <CONTROL b="2.12" type="4101" val="8057" />
-        <CONTROL b="2.16" type="4101" val="8060" />
-        <CONTROL b="2.2" type="4101" val="8062" />
-        <CONTROL b="2.24" type="4101" val="8065" />
-        <CONTROL b="2.28" type="4101" val="8068" />
-        <CONTROL b="2.32" type="4101" val="8071" />
-        <CONTROL b="2.36" type="4101" val="8074" />
-        <CONTROL b="2.4" type="4101" val="8077" />
-        <CONTROL b="2.44" type="4101" val="8080" />
-        <CONTROL b="2.48" type="4101" val="8083" />
-        <CONTROL b="2.52" type="4101" val="8085" />
-        <CONTROL b="2.56" type="4101" val="8088" />
-        <CONTROL b="2.6" type="4101" val="8091" />
-        <CONTROL b="2.64" type="4101" val="8094" />
-        <CONTROL b="2.68" type="4101" val="8097" />
-        <CONTROL b="2.72" type="4101" val="8100" />
-        <CONTROL b="2.76" type="4101" val="8103" />
-        <CONTROL b="2.8" type="4101" val="8105" />
-        <CONTROL b="2.84" type="4101" val="8108" />
-        <CONTROL b="2.88" type="4101" val="8111" />
-        <CONTROL b="2.92" type="4101" val="8114" />
-        <CONTROL b="2.96" type="4101" val="8117" />
-        <CONTROL b="3.0" type="4101" val="8120" />
-        <CONTROL b="3.04" type="4101" val="8123" />
-        <CONTROL b="3.08" type="4101" val="8126" />
-        <CONTROL b="3.12" type="4101" val="8128" />
-        <CONTROL b="3.16" type="4101" val="8131" />
-        <CONTROL b="3.2" type="4101" val="8134" />
-        <CONTROL b="3.24" type="4101" val="8137" />
-        <CONTROL b="3.28" type="4101" val="8140" />
-        <CONTROL b="3.32" type="4101" val="8143" />
-        <CONTROL b="3.36" type="4101" val="8146" />
-        <CONTROL b="3.4" type="4101" val="8148" />
-        <CONTROL b="3.44" type="4101" val="8151" />
-        <CONTROL b="3.48" type="4101" val="8154" />
-        <CONTROL b="3.52" type="4101" val="8157" />
-        <CONTROL b="3.56" type="4101" val="8160" />
-        <CONTROL b="3.6" type="4101" val="8163" />
-        <CONTROL b="3.64" type="4101" val="8166" />
-        <CONTROL b="3.68" type="4101" val="8169" />
-        <CONTROL b="3.72" type="4101" val="8171" />
-        <CONTROL b="3.76" type="4101" val="8174" />
-        <CONTROL b="3.8" type="4101" val="8177" />
-        <CONTROL b="3.84" type="4101" val="8180" />
-        <CONTROL b="3.88" type="4101" val="8183" />
-        <CONTROL b="3.92" type="4101" val="8186" />
-        <CONTROL b="3.96" type="4101" val="8189" />
+        <CONTROL b="0.0" type="4101" val="10222" />
+        <CONTROL b="0.04" type="4101" val="10202" />
+        <CONTROL b="0.08" type="4101" val="10182" />
+        <CONTROL b="0.12" type="4101" val="10161" />
+        <CONTROL b="0.16" type="4101" val="10141" />
+        <CONTROL b="0.2" type="4101" val="10121" />
+        <CONTROL b="0.24" type="4101" val="10100" />
+        <CONTROL b="0.28" type="4101" val="10080" />
+        <CONTROL b="0.32" type="4101" val="10060" />
+        <CONTROL b="0.36" type="4101" val="10039" />
+        <CONTROL b="0.4" type="4101" val="10019" />
+        <CONTROL b="0.44" type="4101" val="9999" />
+        <CONTROL b="0.48" type="4101" val="9979" />
+        <CONTROL b="0.52" type="4101" val="9958" />
+        <CONTROL b="0.56" type="4101" val="9938" />
+        <CONTROL b="0.6" type="4101" val="9918" />
+        <CONTROL b="0.64" type="4101" val="9897" />
+        <CONTROL b="0.68" type="4101" val="9877" />
+        <CONTROL b="0.72" type="4101" val="9857" />
+        <CONTROL b="0.76" type="4101" val="9836" />
+        <CONTROL b="0.8" type="4101" val="9816" />
+        <CONTROL b="0.84" type="4101" val="9796" />
+        <CONTROL b="0.88" type="4101" val="9775" />
+        <CONTROL b="0.92" type="4101" val="9755" />
+        <CONTROL b="0.96" type="4101" val="9735" />
+        <CONTROL b="1.0" type="4101" val="9715" />
+        <CONTROL b="1.04" type="4101" val="9694" />
+        <CONTROL b="1.08" type="4101" val="9674" />
+        <CONTROL b="1.12" type="4101" val="9654" />
+        <CONTROL b="1.16" type="4101" val="9633" />
+        <CONTROL b="1.2" type="4101" val="9613" />
+        <CONTROL b="1.24" type="4101" val="9593" />
+        <CONTROL b="1.28" type="4101" val="9572" />
+        <CONTROL b="1.32" type="4101" val="9552" />
+        <CONTROL b="1.36" type="4101" val="9532" />
+        <CONTROL b="1.4" type="4101" val="9511" />
+        <CONTROL b="1.44" type="4101" val="9491" />
+        <CONTROL b="1.48" type="4101" val="9471" />
+        <CONTROL b="1.52" type="4101" val="9451" />
+        <CONTROL b="1.56" type="4101" val="9430" />
+        <CONTROL b="1.6" type="4101" val="9410" />
+        <CONTROL b="1.64" type="4101" val="9390" />
+        <CONTROL b="1.68" type="4101" val="9369" />
+        <CONTROL b="1.72" type="4101" val="9349" />
+        <CONTROL b="1.76" type="4101" val="9329" />
+        <CONTROL b="1.8" type="4101" val="9308" />
+        <CONTROL b="1.84" type="4101" val="9288" />
+        <CONTROL b="1.88" type="4101" val="9268" />
+        <CONTROL b="1.92" type="4101" val="9247" />
+        <CONTROL b="1.96" type="4101" val="9227" />
+        <CONTROL b="2.0" type="4101" val="9207" />
+        <CONTROL b="2.04" type="4101" val="9187" />
+        <CONTROL b="2.08" type="4101" val="9166" />
+        <CONTROL b="2.12" type="4101" val="9146" />
+        <CONTROL b="2.16" type="4101" val="9126" />
+        <CONTROL b="2.2" type="4101" val="9105" />
+        <CONTROL b="2.24" type="4101" val="9085" />
+        <CONTROL b="2.28" type="4101" val="9065" />
+        <CONTROL b="2.32" type="4101" val="9044" />
+        <CONTROL b="2.36" type="4101" val="9024" />
+        <CONTROL b="2.4" type="4101" val="9004" />
+        <CONTROL b="2.44" type="4101" val="8983" />
+        <CONTROL b="2.48" type="4101" val="8963" />
+        <CONTROL b="2.52" type="4101" val="8943" />
+        <CONTROL b="2.56" type="4101" val="8923" />
+        <CONTROL b="2.6" type="4101" val="8902" />
+        <CONTROL b="2.64" type="4101" val="8882" />
+        <CONTROL b="2.68" type="4101" val="8862" />
+        <CONTROL b="2.72" type="4101" val="8841" />
+        <CONTROL b="2.76" type="4101" val="8821" />
+        <CONTROL b="2.8" type="4101" val="8801" />
+        <CONTROL b="2.84" type="4101" val="8780" />
+        <CONTROL b="2.88" type="4101" val="8760" />
+        <CONTROL b="2.92" type="4101" val="8740" />
+        <CONTROL b="2.96" type="4101" val="8719" />
+        <CONTROL b="3.0" type="4101" val="8699" />
+        <CONTROL b="3.04" type="4101" val="8679" />
+        <CONTROL b="3.08" type="4101" val="8659" />
+        <CONTROL b="3.12" type="4101" val="8638" />
+        <CONTROL b="3.16" type="4101" val="8618" />
+        <CONTROL b="3.2" type="4101" val="8598" />
+        <CONTROL b="3.24" type="4101" val="8577" />
+        <CONTROL b="3.28" type="4101" val="8557" />
+        <CONTROL b="3.32" type="4101" val="8537" />
+        <CONTROL b="3.36" type="4101" val="8516" />
+        <CONTROL b="3.4" type="4101" val="8496" />
+        <CONTROL b="3.44" type="4101" val="8476" />
+        <CONTROL b="3.48" type="4101" val="8455" />
+        <CONTROL b="3.52" type="4101" val="8435" />
+        <CONTROL b="3.56" type="4101" val="8415" />
+        <CONTROL b="3.6" type="4101" val="8395" />
+        <CONTROL b="3.64" type="4101" val="8374" />
+        <CONTROL b="3.68" type="4101" val="8354" />
+        <CONTROL b="3.72" type="4101" val="8334" />
+        <CONTROL b="3.76" type="4101" val="8313" />
+        <CONTROL b="3.8" type="4101" val="8293" />
+        <CONTROL b="3.84" type="4101" val="8273" />
+        <CONTROL b="3.88" type="4101" val="8252" />
+        <CONTROL b="3.92" type="4101" val="8232" />
+        <CONTROL b="3.96" type="4101" val="8212" />
         <CONTROL b="4.0" type="4101" val="8192" />
       </SEQUENCE>
     </MIDICLIP>

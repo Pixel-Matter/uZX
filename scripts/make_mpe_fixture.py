@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Write tests/fixtures/MPE chord.uzx: a check of the note wire by ear and by test.
 
-One track with MIDI to PSG and an AY chip, and a wide C major seventh that starts out of tune and comes into
-tune over two seconds of its four. Each voice bends from its own start, the further its key is from A3 the
-further off, lower keys flat and higher keys sharp:
+One track with MIDI to PSG and an AY chip, and a wide C major seventh that starts as a cluster and opens
+into tune over two seconds of its four. Each voice starts bent toward A3, by 0.85 of a semitone for every key
+it is away, so the four start within about three semitones of each other, none of them on a note: the lowest
+voice almost twelve semitones sharp, the highest six flat.
 
 - "Tones", a clip in MPE mode: C3 and B3, a bend each. MPE mode gives every note a channel from 2 up.
 - "Envelope tone", on channel 15: E4 with its envelope on, so the chip's envelope shapes its level.
@@ -23,7 +24,7 @@ BEATS = 8.0          # 4 s at 120 BPM
 GLIDE_BEATS = 4.0    # in tune after 2 s
 FRAME_BEATS = 0.04   # a 50 Hz frame
 VELOCITY = 127       # the chip's full volume, 15
-KEY_CENTRE, SEMITONES_PER_KEY = 57, 0.12
+KEY_CENTRE, SEMITONES_PER_KEY = 57, -0.85
 MEMBER_BEND_RANGE = 48.0  # semitones, on channels 2 to 16
 PITCH_WHEEL = 0x1005      # tracktion::MidiControllerEvent::pitchWheelType
 SAWTOOTH = 2 * 127 // 7   # the third of the eight envelope shapes, as controller 70

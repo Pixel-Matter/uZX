@@ -137,7 +137,16 @@ MoTool is built on [Tracktion Engine](https://github.com/Tracktion/tracktion_eng
 
 ## Release Process
 
-Releases are triggered by pushing a `v*` tag. Tags can be created on either `develop` or `main`:
+Releases are triggered by pushing a tag. Each app ships from its own tags and has its own version in `versions.cmake`:
+
+| App | Tag | Version variable |
+|-----|-----|------------------|
+| µZX Studio | `v*` (e.g. `v0.7.0-alpha`) | `PROJECT_CORE_VERSION` |
+| µZX Player | `player-v*` (e.g. `player-v1.0.0`) | `UZX_PLAYER_VERSION` |
+
+The flows below show Studio; for Player, bump `UZX_PLAYER_VERSION` and prefix the tag with `player-`.
+
+Tags can be created on either `develop` or `main`:
 - **`develop`** — alpha/dev pre-releases (tagged with `-alpha`, `-dev`, etc.)
 - **`main`** — stable releases only (tagged without suffix)
 
@@ -198,8 +207,10 @@ Both flows trigger the full release pipeline: build + test + package on macOS/Li
 | `v0.5.0` | `main` | Stable release |
 | `v0.4.9-alpha` | `develop` | Alpha pre-release |
 | `v0.4.9-dev` | `develop` | Dev pre-release |
+| `player-v1.0.0` | `main` | Stable Player release |
+| `player-v1.0.1-alpha` | `develop` | Player alpha pre-release |
 
-The version in `versions.cmake` (`PROJECT_CORE_VERSION`) should match the numeric part of the tag.
+The numeric part of the tag must match the app's version in `versions.cmake`.
 
 ### What CI Does
 
@@ -207,7 +218,7 @@ The version in `versions.cmake` (`PROJECT_CORE_VERSION`) should match the numeri
 |---|---|
 | Push to `main` or `develop` | Build + test on all platforms |
 | PR to `main` or `develop` | Build + test on all platforms |
-| Tag push (`v*`) | Create GitHub Release, build + test + package + upload on all platforms, generate SHA256SUMS.txt |
+| Tag push (`v*` / `player-v*`) | Create GitHub Release, build + test + package + upload Studio / Player on all platforms, generate SHA256SUMS.txt |
 
 ## Reporting Issues
 

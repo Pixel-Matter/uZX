@@ -30,6 +30,7 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 - [ ] **Tracktion Engine** — move from v3.2.0 + fork patches to the latest stable, or decide to stay
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
 - [ ] **UX quality review** review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
+- [ ] **Edit file format version** — Player 1.0 promises to open what it saves, and Studio keeps changing the shared edit format. Write a format version integer to the edit file, separate from app versions (Tracktion's `appVersion` attribute holds the app version, not the format), and decide what an older app does with a newer file: refuse with a clear message, or open it and ignore unknown parts
 - [ ] **Release notes** — CHANGELOG entry for the tag
 
 #### P1 — Important

@@ -39,7 +39,7 @@ static_assert(static_cast<int>(MidiCCType::CC52PeriodFine) == static_cast<int>(M
 
 // The pair holds 14 bits, enough for a tone period's 12. The envelope period has 16: its two top bits go in a
 // controller of their own, so a period under 16384 has the same coarse and fine as it always had
-constexpr auto envelopePeriodTop = static_cast<MidiCCType>(21);
+constexpr auto envelopePeriodTop = MidiCCType::CC21PeriodTop;
 constexpr int pairBits = 14;
 constexpr int pairMask = (1 << pairBits) - 1;
 

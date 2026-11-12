@@ -40,7 +40,8 @@ enum class MidiCCType {
     GPC4              = 19,  ///< General Purpose Controller #4 (Slider)
 
     CC20PeriodCoarse  = 20,  ///< Tone period (Coarse)
-    // unused         = 21-31 (10)
+    CC21PeriodTop     = 21,  ///< Envelope period, the two bits above Coarse
+    // unused         = 22-31 (10)
 
     //---Main controllers, fine tuning (LSB for CC 0-31)---
     BankSelectLSB     = 32,  ///< Bank Select LSB

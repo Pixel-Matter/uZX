@@ -112,6 +112,7 @@ public:
         renderNextSubBlock(subBlock);
 
         midiOut.sortByTimestamp();
+        midiOut.isAllNotesOff = c.isAllNotesOff();  // for what comes after as well
 
         c.buffer.swapWith(midiOut);
 

@@ -104,6 +104,7 @@ public:
             rig.take();
             rig.play(1, {}, true);
             expectEquals(rig.take(), String("960 Note off C3 Velocity 0 Channel 1; 960 Note off E3 Velocity 0 Channel 1"));
+            expect(rig.allNotesOffSent, "what comes after the instrument hears the all-notes-off too");
         }
     }
 
@@ -116,6 +117,7 @@ private:
         ChipInstrumentFx fx {state};
         int position = 0;
         juce::StringArray sent;
+        bool allNotesOffSent = false;  // by the last block played
 
         /** Plays the next `frames` frames with the events at their sample offsets, and collects what goes out. */
         void play(int frames, std::vector<std::pair<int, MidiMessage>> events = {}, bool allNotesOff = false) {
@@ -125,6 +127,7 @@ private:
                 buffer.addMidiMessage(m.withTimeStamp(sample / sampleRate), {});
             MidiBufferContext c {buffer, 0, frames * frame, te::TimePosition::fromSeconds(position / sampleRate), sampleRate};
             fx(c);
+            allNotesOffSent = buffer.isAllNotesOff;
             for (auto& m : buffer)
                 sent.add(String(position + roundToInt(m.getTimeStamp() * sampleRate)) + " " + m.getDescription());
             position += frames * frame;

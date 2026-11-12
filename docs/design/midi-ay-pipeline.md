@@ -1,6 +1,6 @@
 # MIDI to AY pipeline
 
-> **Status: target design, partly implemented.** Both values with their encoders and decoders, and the chip mixer without voice allocation, are in the code; [What exists today](#what-exists-today) lists each stage and its gap. A voice's priority, voice allocation, the envelope voice as a timbre field, MPE output from the instrument and chip effects are not.
+> **Status: target design, partly implemented.** Both values with their encoders and decoders, and the chip mixer without voice allocation, are in the code; [What exists today](#what-exists-today) lists each stage and its gap. A voice's priority, voice allocation, the envelope voice as a timbre field, MPE output from the instrument and chip effects are not. The hardware setups in [Where the stages run](#where-the-stages-run) are a goal with nothing built.
 
 How notes played on a keyboard or written in a clip become AY register writes. Code: `src/plugins/uZX/instrument/`, `src/plugins/uZX/midi_effects/`, `src/plugins/uZX/notes_to_psg/`, `src/plugins/uZX/aychip/`, `src/models/PsgCC.*`.
 
@@ -67,6 +67,10 @@ The decoder and encoder own everything that is about MIDI: held notes and their 
 
 The chip-note stream carries its own frame grid: a frame is wherever the stream has messages, so a reader takes one after the messages of each time and adds no delay of its own.
 
+All four stages by layer. In a bookkeeping box the upper name reads the wire and the lower name writes it; the chip writes nothing back, and its registers are its state. A PSG clip writes the PSG wire as the mixer does.
+
+![The four stages across, with transport, bookkeeping and logic as rows](../images/midi-ay-pipeline/layers.svg)
+
 The logic owns only musical state: an envelope's phase, an LFO's phase, an arpeggio's step, an echo's history. Vibrato is `pitch += lfo(frame)`. Its test feeds frames and compares frames.
 
 A plugin is then one decoder, a chain of frame functions, and one encoder, which is why "inside the instrument or a separate effect" stops mattering: the same function fits either.
@@ -113,6 +117,22 @@ A note clip or a keyboard can send the timbre controllers, and the mixer reads t
 
 Both wires share a track's sixteen channels. Routing them apart is the user's business, as in any DAW; the safer default is the PSG wire on the last four channels (13–16), which leaves the low channels to notes. Today both the chip and MIDI to PSG default to base channel 1.
 
+## Where the stages run
+
+> **Only the first row exists.** The two hardware rows are a goal: live performance on a real chip. No firmware is written.
+
+![The same four stages in µZX, with a real chip, and standalone on an Arduino](../images/midi-ay-pipeline/where-it-runs.svg)
+
+- **In µZX.** Every stage is a plugin on the computer, and the chip is emulated.
+- **A real chip.** µZX runs the instrument, the effects and the mixer, and the PSG wire leaves the computer for a real AY: in a ZX Spectrum, or on an Arduino. The device needs a decoder and register writes, nothing else.
+- **Standalone.** An Arduino with an AY runs the instrument, the effects and the mixer as well, ported to C, so a MIDI keyboard plays the chip with no computer. Inside one program the wires between the stages are not needed: one decoder reads the keyboard, the frame functions are called in a row, and the result is written to the registers.
+
+What this asks of the design:
+
+- **The PSG wire becomes a protocol** that firmware implements, so the wire changes in [Order of work](#order-of-work) come before any firmware.
+- **The link to the device is a transport, and need not be MIDI.** Over a MIDI port the device decodes `PsgCC`. A 5-pin MIDI cable carries about 62 bytes per 50 Hz frame, 20 controller messages of three bytes; a whole frame after a reset is up to 23 and spills into the next frame, while an ordinary frame, where `PsgEncoder` sends only what changed, is far smaller. Over a serial link that only this pipeline uses (RS-232 into a Spectrum, USB serial into an Arduino) a second codec for the same value is the better fit: the registers that changed, as a mask and their bytes, 16 bytes a frame at most. That fits 9600 baud (19 bytes per frame) and takes a few instructions to decode on a Z80. It is one more encoder in the bookkeeping row; the logic does not change.
+- **Stage logic stays free of MIDI state**, so it ports in shape. The codecs take JUCE and Tracktion message types today and would be written again over raw bytes. No portability layer is built before a port starts.
+
 ## What exists today
 
 | Target role | Today | Gap |
@@ -131,4 +151,4 @@ Refactor first, then change behaviour.
 1. Voice allocation in the mixer: voices on any channel, assigned to chip channels by priority. With it, the envelope voice becomes a timbre field saying the voice's pitch drives the envelope, in place of the fourth channel, and the tuning preview stops counting on channel numbers.
 2. MPE output from the instrument; timbre from the instrument, written by `NoteEncoder`; the PSG wire on the last four channels by default.
 3. Chip effects.
-4. Wire changes: a full 16-bit envelope period, one meaning for switch and volume values.
+4. Wire changes: a full 16-bit envelope period, one meaning for switch and volume values. These come before any firmware reads the wire.

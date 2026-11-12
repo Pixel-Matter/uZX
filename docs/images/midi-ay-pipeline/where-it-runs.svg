@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="244" viewBox="0 0 680 244" role="img">
+<title>Where each stage of the pipeline runs</title>
+<desc>Three setups over the same four stages. In µZX all four stages run on the computer with an emulated chip. With a real chip, the instrument, effects and mixer run in µZX and the PSG wire goes by MIDI to a real AY in a ZX Spectrum or on an Arduino. Standalone, all four stages run on the Arduino as one program, passing frames in memory.</desc>
+<style>
+text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; dominant-baseline: central; }
+rect { stroke-width: 0.75; }
+.bg { fill: #ffffff; stroke: none; }
+.t { font-size: 13px; font-weight: 600; fill: #2c2c2a; }
+.s { font-size: 12px; fill: #5f5e5a; }
+.m { text-anchor: middle; }
+.arr, .head { stroke: #5f5e5a; stroke-width: 1.5; fill: none; }
+.teal rect, rect.teal { fill: #e1f5ee; stroke: #0f6e56; }
+.teal .t { fill: #085041; }
+.coral rect, rect.coral { fill: #faece7; stroke: #993c1d; }
+.coral .t { fill: #712b13; }
+@media (prefers-color-scheme: dark) {
+    .bg { fill: #1f1f1e; }
+    .t { fill: #f1efe8; }
+    .s { fill: #b4b2a9; }
+    .arr, .head { stroke: #b4b2a9; }
+    .teal rect, rect.teal { fill: #085041; stroke: #5dcaa5; }
+    .teal .t { fill: #9fe1cb; }
+    .coral rect, rect.coral { fill: #712b13; stroke: #f0997b; }
+    .coral .t { fill: #f5c4b3; }
+}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="head" d="M2 1L8 5L2 9" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect class="bg" width="680" height="244"/>
+
+<text class="t m" x="195" y="30">Chip instrument</text>
+<text class="t m" x="325" y="30">Chip effects</text>
+<text class="t m" x="455" y="30">Chip mixer</text>
+<text class="t m" x="585" y="30">AY chip</text>
+
+<text class="t" x="42" y="60">In µZX</text>
+<text class="s" x="42" y="77">emulated chip</text>
+<text class="t" x="42" y="112">Real chip</text>
+<text class="s" x="42" y="129">ZX or Arduino</text>
+<text class="t" x="42" y="164">Standalone</text>
+<text class="s" x="42" y="181">Arduino + AY</text>
+
+<g class="teal"><rect x="140" y="50" width="110" height="36" rx="8"/><text class="t m" x="195" y="68">Instrument</text></g>
+<g class="teal"><rect x="270" y="50" width="110" height="36" rx="8"/><text class="t m" x="325" y="68">Effects</text></g>
+<g class="teal"><rect x="400" y="50" width="110" height="36" rx="8"/><text class="t m" x="455" y="68">Mixer</text></g>
+<g class="teal"><rect x="530" y="50" width="110" height="36" rx="8"/><text class="t m" x="585" y="68">Emulated AY</text></g>
+<line class="arr" x1="252" y1="68" x2="267" y2="68" marker-end="url(#arrow)"/>
+<line class="arr" x1="382" y1="68" x2="397" y2="68" marker-end="url(#arrow)"/>
+<line class="arr" x1="512" y1="68" x2="527" y2="68" marker-end="url(#arrow)"/>
+
+<g class="teal"><rect x="140" y="102" width="110" height="36" rx="8"/><text class="t m" x="195" y="120">Instrument</text></g>
+<g class="teal"><rect x="270" y="102" width="110" height="36" rx="8"/><text class="t m" x="325" y="120">Effects</text></g>
+<g class="teal"><rect x="400" y="102" width="110" height="36" rx="8"/><text class="t m" x="455" y="120">Mixer</text></g>
+<g class="coral"><rect x="530" y="102" width="110" height="36" rx="8"/><text class="t m" x="585" y="120">Real AY</text></g>
+<line class="arr" x1="252" y1="120" x2="267" y2="120" marker-end="url(#arrow)"/>
+<line class="arr" x1="382" y1="120" x2="397" y2="120" marker-end="url(#arrow)"/>
+<line class="arr" x1="512" y1="120" x2="527" y2="120" marker-end="url(#arrow)"/>
+
+<rect class="coral" x="250" y="166" width="20" height="12"/>
+<rect class="coral" x="380" y="166" width="20" height="12"/>
+<rect class="coral" x="510" y="166" width="20" height="12"/>
+<g class="coral"><rect x="140" y="154" width="110" height="36" rx="8"/><text class="t m" x="195" y="172">Instrument</text></g>
+<g class="coral"><rect x="270" y="154" width="110" height="36" rx="8"/><text class="t m" x="325" y="172">Effects</text></g>
+<g class="coral"><rect x="400" y="154" width="110" height="36" rx="8"/><text class="t m" x="455" y="172">Mixer</text></g>
+<g class="coral"><rect x="530" y="154" width="110" height="36" rx="8"/><text class="t m" x="585" y="172">Real AY</text></g>
+
+<rect class="teal" x="140" y="210" width="14" height="14" rx="3"/>
+<text class="s" x="160" y="217">In µZX</text>
+<rect class="coral" x="216" y="210" width="14" height="14" rx="3"/>
+<text class="s" x="236" y="217">On the device, C or Z80</text>
+<line class="arr" x1="398" y1="217" x2="416" y2="217" marker-end="url(#arrow)"/>
+<text class="s" x="424" y="217">On a wire</text>
+<rect class="coral" x="472" y="211" width="20" height="12"/>
+<text class="s" x="500" y="217">In memory</text>
+</svg>

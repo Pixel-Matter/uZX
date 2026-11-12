@@ -198,6 +198,43 @@ bool decode(int channel, int controller, int value, PsgParamFrameData& into) noe
 
 //==============================================================================
 /**
+    Reads the PSG wire as a chip does, a frame of controllers at a time. A frame starts from the registers
+    the chip holds, so a message for half a period, one mixer switch or one half of a volume register keeps
+    the rest as it is.
+*/
+class PsgDecoder {
+public:
+    /** Takes a controller on a channel counted from the chip's base channel. `readHeld` gives the registers
+        the chip holds, as a PsgRegsFrame with every register set; it is asked when a frame starts.
+        Returns false if no parameter travels there. */
+    template <typename ReadHeld>
+    bool decode(int channel, int controller, int value, ReadHeld&& readHeld) noexcept {
+        if (frame_.isEmpty()) {
+            frame_ = PsgParamFrameData {readHeld()};
+            frame_.clear();
+        }
+        return PsgCC::decode(channel, controller, value, frame_);
+    }
+
+    /** True if the frame writes nothing so far. */
+    bool isEmpty() const noexcept { return frame_.isEmpty(); }
+
+    /** The parameters the frame has set so far. */
+    const PsgParamFrameData& getFrame() const noexcept { return frame_; }
+
+    /** The registers the frame writes; the next message starts another frame. */
+    uZX::PsgRegsFrame takeRegisters() noexcept {
+        const auto regs = frame_.toRegisters();
+        frame_.clear();
+        return regs;
+    }
+
+private:
+    PsgParamFrameData frame_;
+};
+
+//==============================================================================
+/**
  * Writes PSG parameters to MIDI messages
  */
 class PsgParamsMidiWriter {

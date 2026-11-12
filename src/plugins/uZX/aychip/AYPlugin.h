@@ -136,7 +136,7 @@ private:
 
     // What the current frame's messages set, over the values the chip held when the frame began. The registers
     // are the chip's only lasting state: this is empty between frames.
-    PsgParamFrameData frameParams;
+    PsgDecoder frameDecoder;  // the controllers since the chip was last written
     std::unique_ptr<AYInterface> chip;
 
     //==============================================================================

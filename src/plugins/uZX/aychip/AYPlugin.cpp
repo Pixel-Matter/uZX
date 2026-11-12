@@ -118,7 +118,7 @@ void AYChipPlugin::reset() {
                     staticParams.chipType.getStoredValue());
     }
     updateDynamicParams();
-    frameParams = {};
+    frameDecoder = {};
 }
 
 // called under lock
@@ -133,17 +133,16 @@ PsgRegsFrame AYChipPlugin::readRegisters() const noexcept {
 
 // called under lock
 void AYChipPlugin::updateChip() noexcept {
-    if (! frameParams.isEmpty()) {
+    if (! frameDecoder.isEmpty()) {
         if (staticParams.monitorMode.getStoredValue()) {
-            frameParams.debugPrintSet();
+            frameDecoder.getFrame().debugPrintSet();
         }
-        const auto regs = frameParams.toRegisters();
+        const auto regs = frameDecoder.takeRegisters();
         for (size_t i = 0; i < regs.size(); ++i) {
             if (regs.isSet(i)) {
                 chip->setRegister(i, regs.getRaw(i));
             }
         }
-        frameParams.clear();
     }
 
     // Apply channel and effect filters directly to chip registers
@@ -155,14 +154,8 @@ void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept 
     if (! m.isController()) {
         return;
     }
-    // A frame starts from the registers the chip holds, so a message for half a period, one mixer switch or
-    // one half of a volume register keeps the rest as it is
-    if (frameParams.isEmpty()) {
-        frameParams = PsgParamFrameData {readRegisters()};
-        frameParams.clear();
-    }
-    PsgCC::decode(m.getChannel() - staticParams.baseMidiChannel.getStoredValue(), m.getControllerNumber(),
-                  m.getControllerValue(), frameParams);
+    frameDecoder.decode(m.getChannel() - staticParams.baseMidiChannel.getStoredValue(), m.getControllerNumber(),
+                        m.getControllerValue(), [this] { return readRegisters(); });
 }
 
 void AYChipPlugin::copyTempBufferToVizBuffer() {

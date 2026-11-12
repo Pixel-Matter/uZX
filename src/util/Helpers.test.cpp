@@ -331,7 +331,7 @@ public:
             beginTest("The MPE chord example renders to a PSG of the chord it plays");
             {
                 // tests/fixtures/MPE chord.uzx, see scripts/make_mpe_fixture.py: a cluster that opens, over two
-                // seconds of four, into C3, B3 and G4 with the envelope at E3 as a sawtooth
+                // seconds of four, into C3, B3 and G4 with the envelope at E3 as a triangle
                 auto chord = tracktion::loadEditFromFile(engine, File(UZX_FIXTURES_DIR).getChildFile("MPE chord.uzx"));
                 const auto chordFile = root.getChildFile("MPE chord.uzx");
                 chord->editFileRetriever = [chordFile] { return chordFile; };
@@ -363,12 +363,12 @@ public:
                                 all.addUsingDefaultSort(int(regs.getTonePeriod(n)));
                             return all;
                         };
-                        // 1773400 / 16 / the frequency of G4, B3 and C3; / 256 / that of E3 for the envelope
+                        // 1773400 / 16 / the frequency of G4, B3 and C3; / 512 / that of E3 for the envelope, a triangle
                         expect(periods(held[150]) == juce::Array<int> {283, 449, 847}, "in tune from two seconds on");
-                        expectEquals(int(held[150].getEnvelopePeriod()), 42);
+                        expectEquals(int(held[150].getEnvelopePeriod()), 21);
                         expect(periods(held[0]) != periods(held[150]) && periods(held[50]) != periods(held[150]),
                                "and gliding there before");
-                        expectEquals(int(held[150].getEnvelopeShape()), 12);
+                        expectEquals(int(held[150].getEnvelopeShape()), 14);
                         expectEquals(shapeWrites, 1, "the shape is written once: the envelope runs on");
                         for (size_t n = 0; n < 3; ++n) {
                             expect(held[150].getVolume(n) == 15 || held[150].getEnvMod(n), "every voice sounds");

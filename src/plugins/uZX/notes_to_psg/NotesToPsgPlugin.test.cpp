@@ -163,8 +163,8 @@ public:
 
         beginTest("The MPE chord example starts as a cluster and plays a major seventh from two seconds on");
         {
-            // scripts/make_mpe_fixture.py: C3 and G4 in a clip in MPE mode, B3 with its envelope on and E3
-            // driving the envelope on channels of their own, each starting bent toward A3 and gliding into tune
+            // scripts/make_mpe_fixture.py: C3 and G4 in a clip in MPE mode, B3 with its envelope on and a
+            // triangle at E3, an octave under its note, driving the envelope on channels of their own, each starting bent toward A3 and gliding into tune
             auto edit = te::loadEditFromFile(engine, juce::File(UZX_FIXTURES_DIR).getChildFile("MPE chord.uzx"));
             NotesToPsgPlugin* converter = nullptr;
             AYChipPlugin* chip = nullptr;
@@ -203,7 +203,7 @@ public:
                 expect(periods[1] > period(59.0 - 1.0) && periods[1] < period(57.0), "B3 over one flat");
                 expect(periods[2] < period(48.0 + 7.0) && periods[2] > period(57.0), "C3 over seven sharp");
             }
-            expect(int(chip->getChipRegisters().getEnvelopePeriod()) < period(52.0 + 3.0, TuningSystem::Envelope),
+            expect(int(chip->getChipRegisters().getEnvelopePeriod()) < period(64.0 + 3.0, TuningSystem::Envelope),
                    "and the envelope over three sharp: all four within a few semitones of A3");
 
             TestHelpers::processBlocks(engine, 252);  // past two seconds, inside the four
@@ -212,9 +212,9 @@ public:
                                                period(48.0)},
                    "G4, B3 and C3 in tune");
             const auto regs = chip->getChipRegisters();
-            expectEquals(int(regs.getEnvelopePeriod()), period(52.0, TuningSystem::Envelope),
-                         "the envelope at E3, a fifth under the tone it shapes, on no chip channel of its own");
-            expectEquals(int(regs.getEnvelopeShape()), 12, "as a sawtooth");
+            expectEquals(int(regs.getEnvelopePeriod()), period(64.0, TuningSystem::Envelope),
+                         "the envelope at the period of E4, on no chip channel of its own");
+            expectEquals(int(regs.getEnvelopeShape()), 14, "as a triangle, so it sounds at E3");
             int shaped = 0;
             for (int n = 0; n < 3; ++n)
                 if (regs.getEnvMod(n)) {

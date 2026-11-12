@@ -8,7 +8,9 @@ voice almost eight semitones sharp, the highest over eight flat.
 
 - "Tones", a clip in MPE mode: C3 and G4, a bend each. MPE mode gives every note a channel from 2 up.
 - "Envelope tone", on channel 15: B3 with its envelope on, so the chip's envelope shapes its level.
-- "Envelope", on channel 16: E3 with its tone off, driving the envelope as a sawtooth. It takes no chip channel.
+- "Envelope", on channel 16: a voice with its tone off, driving the envelope as a triangle at E3. It takes no
+  chip channel. A triangle takes two of the envelope's periods, so it sounds an octave under the note that
+  sets the period: the note in the clip is E4, bent as E3 is.
 
 The tone and the envelope that shapes it are a fifth apart, three cycles of B3 to two of the envelope, so
 the shaped tone repeats and sounds as one steady timbre.
@@ -30,11 +32,11 @@ VELOCITY = 127       # the chip's full volume, 15
 KEY_CENTRE, SEMITONES_PER_KEY = 57, -0.85
 MEMBER_BEND_RANGE = 48.0  # semitones, on channels 2 to 16
 PITCH_WHEEL = 0x1005      # tracktion::MidiControllerEvent::pitchWheelType
-SAWTOOTH = 2 * 127 // 7   # the third of the eight envelope shapes, as controller 70
+TRIANGLE = 0              # the first of the eight envelope shapes, as controller 70
 
 
 def bend_points(key):
-    """(beat, semitones) for every frame of the glide, from the key's starting bend to none."""
+    """(beat, semitones) for every frame of the glide, from the starting bend of a voice that sounds at key to none."""
     start = (key - KEY_CENTRE) * SEMITONES_PER_KEY
     frames = round(GLIDE_BEATS / FRAME_BEATS)
     return [(round(i * FRAME_BEATS, 6), round(start * (1 - i / frames), 6)) for i in range(frames + 1)]
@@ -63,9 +65,10 @@ def mpe_note(key):
     return lines + ['        </NOTE>']
 
 
-def channel_voice(key, controllers):
-    """A note alone on its channel: its switches as controllers, its bend as the channel's pitch wheel."""
-    lines = [f'        <NOTE p="{key}" b="0.0" l="{BEATS}" v="{VELOCITY}" c="0" />']
+def channel_voice(key, controllers, octaves_under=0):
+    """A note alone on its channel: its switches as controllers, its bend as the channel's pitch wheel.
+    The note in the clip is octaves_under octaves over key, for a voice that sounds that much under its note."""
+    lines = [f'        <NOTE p="{key + 12 * octaves_under}" b="0.0" l="{BEATS}" v="{VELOCITY}" c="0" />']
     lines += [f'        <CONTROL b="0.0" type="{number}" val="{value << 7}" />' for number, value in controllers]
     return lines + [f'        <CONTROL b="{beat}" type="{PITCH_WHEEL}" val="{wheel(semitones)}" />'
                     for beat, semitones in bend_points(key)]
@@ -76,7 +79,7 @@ def main():
     clips = [
         clip_xml(ids, "Tones", 1, mpe_note(48) + mpe_note(67), mpe=True),
         clip_xml(ids, "Envelope tone", 15, channel_voice(59, [(82, 127)])),
-        clip_xml(ids, "Envelope", 16, channel_voice(52, [(85, 127), (80, 0), (70, SAWTOOTH)])),
+        clip_xml(ids, "Envelope", 16, channel_voice(52, [(85, 127), (80, 0), (70, TRIANGLE)], octaves_under=1)),
     ]
     track = f'''  <TRACK id="{next(ids)}" name="MPE chord">
     <MODIFIERS />

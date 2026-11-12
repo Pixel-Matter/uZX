@@ -71,6 +71,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together, and passes MIDI on other channels through at its own time instead of later
 - Fixed: deleting the track shown in the Track Devices panel empties the panel instead of leaving its devices on screen
 - Fixed: Clip Parameters no longer reads a deleted clip, and clicking one of its points selects the clip instead of clearing the selection
+- Fixed: Clip Parameters no longer draws a sloped line at the left edge of a scrolled view; every value holds level until the next change
 - The Clip Parameters and Track Devices tabs are flat, in the app's colours and font: the open tab joins its page and has a blue edge, and each tab is as long as its name
 
 ## [v0.6.0-alpha] - 2026-11-08

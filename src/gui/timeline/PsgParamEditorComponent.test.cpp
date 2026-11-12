@@ -50,6 +50,26 @@ public:
         settle();
         expect(! editor.hasClip());
         expect(! editor.hitTest(0, 20));
+
+        beginTest("A value changed before the view holds level until the next change");
+        uZX::PsgData steps {std::vector<uZX::PsgRegsFrame>(50), {50.0, 1}};
+        // Every frame sets something, so the frames between the volume changes stay in the clip
+        for (size_t i = 0; i < steps.frames.size(); ++i)
+            steps.frames[i] = {{uZX::PsgRegType::VolumeB, static_cast<uint8_t>(i % 16)}};
+        steps.frames[0] = {{uZX::PsgRegType::VolumeA, 15}};
+        steps.frames[1] = {{uZX::PsgRegType::VolumeA, 0}};
+        steps.frames[49] = {{uZX::PsgRegType::VolumeA, 15}};
+        clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], steps,
+                                 {{te::TimePosition(), te::TimeDuration::fromSeconds(1.0)}, {}}, "steps");
+        selection.selectOnly(clip.get());
+        // The view starts after the drop to 0 at frame 1
+        view.zoom.setRange({te::TimePosition::fromSeconds(0.1), te::TimePosition::fromSeconds(1.0)});
+        settle();
+        const auto image = editor.createComponentSnapshot(editor.getLocalBounds(), true, 1.0f);
+        bool level = true;
+        for (int y = 2; y < 90; ++y)
+            level = level && image.getPixelAt(200, y) == image.getPixelAt(200, 2);
+        expect(level, "no line crosses the middle of the view above the 0 level");
     }
 };
 

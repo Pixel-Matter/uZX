@@ -14,6 +14,14 @@ The screenshots show the macOS build using the [Guide demo project](../tests/fix
 | **µZX Player** | Lightweight player with visualization for `.psg` files, tracker modules (`.pt3`, `.stc`, …) and `.uzx` files |
 | **µZX Tuning** | Tuning table (note table) editor/viewer. Supports equal temperament and just-intonation |
 
+### Installing on macOS
+
+1. Download the `.dmg` from [Releases](https://github.com/Pixel-Matter/uZX/releases), open it and drag the app to **Applications**.
+2. Open the app. macOS says it can't verify the app, because it isn't notarized by Apple. Click **Done**.
+3. In **System Settings → Privacy & Security**, click **Open Anyway** beside the app's name, then **Open Anyway** again and enter your password.
+
+Later launches open the app directly.
+
 ---
 
 ## µZX Player

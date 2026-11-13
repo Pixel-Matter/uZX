@@ -72,14 +72,7 @@ See [Releases](https://github.com/Pixel-Matter/uZX/releases) for pre-built binar
 
 ### macOS Setup
 
-If you encounter a quarantine warning when opening the app, clear it with:
-
-```bash
-xattr -rd com.apple.quarantine /Applications/μZX\ Player.app
-xattr -rd com.apple.quarantine /Applications/μZX\ Studio.app
-```
-
-(Replace app paths as needed. Adjust for your installation location, e.g., `~/Applications/` if installed there.)
+Open the `.dmg` and drag the app to **Applications**. The app isn't notarized by Apple, so the first launch needs **Open Anyway** in System Settings → Privacy & Security; see [Installing on macOS](docs/user-guide.md#installing-on-macos).
 
 ### Known Issues
 

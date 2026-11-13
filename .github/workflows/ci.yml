@@ -190,6 +190,9 @@ jobs:
       contents: write
     env:
       APP_TARGET: ${{ startsWith(github.ref_name, 'player-') && 'uZXPlayer' || 'uZX' }}
+      # Ad-hoc signs the whole bundle after the build (src/CMakeLists.txt), so a downloaded
+      # app gets Open Anyway in Privacy & Security instead of "is damaged"
+      CODESIGN_IDENTITY: "-"
 
     steps:
       - name: Checkout
@@ -244,10 +247,21 @@ jobs:
 
       - name: Package and Upload to GitHub Release
         run: |
-          ZIP="${APP_TARGET}-${VERSION}-macOS.zip"
+          DMG="${APP_TARGET}-${VERSION}-macOS.dmg"
+          STAGE="${RUNNER_TEMP}/dmg"
+          mkdir "$STAGE"
+          cp -R "build/src/${APP_TARGET}_artefacts/Release/"*.app "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          APP=$(basename "$STAGE"/*.app)
+          codesign --verify --deep --strict "$STAGE/$APP"
 
-          (cd "build/src/${APP_TARGET}_artefacts/Release" && zip -r "${GITHUB_WORKSPACE}/${ZIP}" *.app)
-          gh release upload "${TAG_NAME}" "${ZIP}"
+          # hdiutil create sometimes fails with "Resource busy" on hosted runners
+          for i in 1 2 3; do
+            hdiutil create -volname "${APP%.app}" -srcfolder "$STAGE" -format UDZO -ov "$DMG" && break
+            [ "$i" = 3 ] && exit 1
+            sleep 5
+          done
+          gh release upload "${TAG_NAME}" "${DMG}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}

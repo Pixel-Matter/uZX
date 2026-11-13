@@ -54,6 +54,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The module's title names the tracks; its note table becomes the clip's tuning table, with Sound Tracker's own (`ST`) as a new table; its rows set the tempo, so only beats and meter are detected
 - Vortex Tracker modules bring their chip clock and frame rate, such as a Pentagon's 1.75 MHz and 48.828 Hz
 - macOS: the Player opens tracker modules and `.uzx` files from Finder when no other app claims them; `.psg` files open in it by default
+- Fixed: undoing the import of a PSG file or tracker module takes out only its tracks, and redo brings them back, instead of also removing part of the project's saved view
 
 ### AY chip
 - Fixed: changing the chip type or clock during playback keeps the tones, mixer, volumes, noise and envelope playing, instead of going silent until the tune sets them again

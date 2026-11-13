@@ -22,6 +22,7 @@ struct TrackerModule {
     std::optional<BuiltinTuningType> table;
     std::vector<size_t> rowStarts;  // the frame each pattern row starts at, in play order
     std::optional<double> chipClock;  // Hz, when the module stores it (Vortex Tracker's text modules do)
+    size_t loopFrame = 0;             // the frame the tune loops back to; 0 when it loops to its start
 };
 
 /** Empty when the bytes are not a module of a supported format. */

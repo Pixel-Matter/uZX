@@ -4,6 +4,7 @@
 #include "../models/EditUtilities.h"
 #include "../models/PsgClip.h"
 #include "../formats/psg/PsgFile.h"
+#include "../formats/tracker/TrackerModule.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
 #include "../plugins/uZX/notes_to_psg/NotesToPsgPlugin.h"
 #include "FileOps.h"
@@ -125,6 +126,21 @@ public:
                 expectWithinAbsoluteError(chip.staticParams.chipClock.getStoredValue(), 1.75, 1e-9, "Pentagon clock");
             }
             expectWithinAbsoluteError(Helpers::getProjectFps(*edit), 48.828, 1e-9, "Pentagon interrupt rate");
+
+            // It loops back to its fifth position: the loop range runs from there to the end of the tune
+            const auto loopFrame = (int) uZX::readTrackerModule(MemoryBlock(vt2.toRawUTF8(), vt2.getNumBytesAsUTF8()))
+                                       ->loopFrame;
+            expect(loopFrame > 0, "the module loops past its start");
+            const auto loop = edit->getTransport().getLoopRange();
+            const auto& frames = clips.isEmpty() ? Array<PsgParamFrame*>() : clips[0]->getPsg().getFrames();
+            const auto loopRow = std::find_if(frames.begin(), frames.end(),
+                                              [loopFrame](auto* f) { return f->getFrameIndex() == loopFrame; });
+            expect(loopRow != frames.end(), "the loop's first row writes registers");
+            if (loopRow != frames.end()) {
+                expectWithinAbsoluteError(loop.getStart().inSeconds(), (*loopRow)->getRawEditTime(*clips[0]).inSeconds(),
+                                          1e-6, "where the clip plays the loop's first frame");
+                expectWithinAbsoluteError(loop.getEnd().inSeconds(), clips[0]->getPosition().getEnd().inSeconds(), 1e-9);
+            }
         }
 
         root.deleteRecursively();

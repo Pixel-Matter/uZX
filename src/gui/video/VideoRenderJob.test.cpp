@@ -54,6 +54,23 @@ public:
         expect(info.contains("25 fps"), info);
         expect(info.contains("Audio: aac") && info.contains("48000 Hz") && info.contains("stereo"), info);
 
+        beginTest("With loops, the video plays the loop range again before the rest and the tail");
+        {
+            edit->getTransport().setLoopRange({tracktion::TimePosition::fromSeconds(0.5),
+                                               tracktion::TimePosition::fromSeconds(1.5)});
+            auto looped = settings;
+            looped.loops = 2;
+            VideoRenderJob job(*edit, looped, ffmpeg->program, dest.getFile());
+            engine.getUIBehaviour().runTaskWithProgressBar(job);
+            expect(job.hasWritten(), job.getError());
+
+            juce::ChildProcess loopedProbe;
+            expect(loopedProbe.start(juce::StringArray{
+                ffmpeg->program.getFullPathName(), "-hide_banner", "-i", dest.getFile().getFullPathName()}));
+            const auto loopedInfo = loopedProbe.readAllProcessOutput();
+            expect(loopedInfo.contains("Duration: 00:00:07.00"), loopedInfo);  // 2 s, twice 1 s more, the tail
+        }
+
         beginTest("A cancelled render leaves the file it would replace as it was, and nothing beside it");
         {
             dest.getFile().replaceWithText("keep");

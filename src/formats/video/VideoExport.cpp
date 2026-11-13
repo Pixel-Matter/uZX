@@ -79,6 +79,35 @@ void Settings::save(juce::PropertiesFile& p) const {
 }
 
 //==============================================================================
+juce::Array<juce::Range<double>> playedSections(double end, juce::Range<double> loop, int loops) {
+    const auto tail = (double) Settings::tailSeconds;
+    if (loops <= 0 || loop.getStart() < 0.0 || loop.getLength() <= 0.0)
+        return {juce::Range<double>(0.0, end + tail)};
+
+    juce::Array<juce::Range<double>> sections{juce::Range<double>(0.0, loop.getEnd())};
+    for (int i = 0; i < loops; ++i)
+        sections.add(loop);
+    sections.add({loop.getEnd(), juce::jmax(end, loop.getEnd()) + tail});
+    return sections;
+}
+
+double playedLength(const juce::Array<juce::Range<double>>& sections) {
+    double length = 0.0;
+    for (const auto& section : sections)
+        length += section.getLength();
+    return length;
+}
+
+double timelineTimeAt(const juce::Array<juce::Range<double>>& sections, double seconds) {
+    for (const auto& section : sections) {
+        if (seconds < section.getLength())
+            return section.getStart() + seconds;
+        seconds -= section.getLength();
+    }
+    return sections.isEmpty() ? 0.0 : sections.getLast().getEnd();
+}
+
+//==============================================================================
 juce::String encoderFor(Settings::Codec codec) {
     switch (codec) {
         case Settings::Codec::h264:

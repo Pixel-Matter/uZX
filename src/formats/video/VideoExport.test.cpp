@@ -23,6 +23,23 @@ public:
             expectEquals(Settings::nearestScale(1440, 2160), 1, "else the nearest");
         }
 
+        beginTest("A video plays the tune and its tail; with loops, the loop range again before the rest");
+        {
+            using R = juce::Range<double>;
+            const auto tail = (double) Settings::tailSeconds;
+            expect(playedSections(10.0, {4.0, 8.0}, 0) == juce::Array<R>{R(0.0, 10.0 + tail)});
+            expect(playedSections(10.0, {4.0, 4.0}, 2) == juce::Array<R>{R(0.0, 10.0 + tail)}, "no loop to play");
+            const auto looped = playedSections(10.0, {4.0, 8.0}, 2);
+            expect(looped == juce::Array<R>{R(0.0, 8.0), R(4.0, 8.0), R(4.0, 8.0), R(8.0, 10.0 + tail)});
+            expectEquals(playedLength(looped), 10.0 + 8.0 + tail);
+            expectEquals(timelineTimeAt(looped, 7.0), 7.0);
+            expectEquals(timelineTimeAt(looped, 9.0), 5.0, "into the first repeat");
+            expectEquals(timelineTimeAt(looped, 17.0), 9.0, "after the repeats");
+            expectEquals(timelineTimeAt(looped, 100.0), 10.0 + tail, "past the end");
+            expect(playedSections(10.0, {4.0, 12.0}, 1) == juce::Array<R>{R(0.0, 12.0), R(4.0, 12.0), R(12.0, 12.0 + tail)},
+                   "a loop past the end: the tail follows the loop");
+        }
+
         beginTest("Every frame rate takes a whole number of samples: a block of sound per frame");
         for (auto fps : Settings::frameRates)
             expectEquals(Settings::sampleRate % fps, 0, juce::String(fps) + " fps");

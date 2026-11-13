@@ -16,11 +16,14 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Timeline
 - Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format
 - `X` restores the previous timeline position and zoom; wheel/pinch gestures and drags each return in one step, separately from edit undo
+- **Loop range** on the ruler, in Player and Studio: the ruler's lower half shows it, lit while looping; drag there to set a range, drag an edge or the range to change it (snapped to the grid, or to frames with `Cmd`), double-click to loop on or off. `Cmd+L` loops this range instead of the whole project
+- The loop range covers the whole project, following its end, until you set another one; it is saved with the project
 - Fixed: in the seconds and frames timecode formats, frame ticks are evenly spaced at every frame rate: 24 and 48 fps step in 6 and 12 frames instead of 5 and 10, and 25 fps skips the 2-frame step
 - Fixed: at 200 fps, Minutes:Seconds:Frames labels keep three frame digits (`00:01:005`) instead of widening partway through each second
 
 ### Video and Viz mode
 - Render Video has a **Zoom** choice: as on screen, or Frames, Groove Rows, Beats or Bars
+- Render Video has **Loops**: how many more times the loop range plays before the rest of the tune; 0 by default
 - Viz mode and Render Video show notes and scopes, notes alone, or scopes alone: `V` in Viz mode switches, **View → Viz Options** and the Render Video dialog choose
 - **Classic Black and White** colours for Viz mode and video: black, white scopes, thin grey lines between them
 - **Note Decorations** in **View → Viz Options** and the Render Video dialog: Auto, once a frame is 6 pixels wide, or Always, which keeps the noise band and envelope stripes at any zoom
@@ -53,6 +56,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Turbo Sound modules (PT3 pairs, Vortex files with a module per chip) open on a track per chip, as one tune
 - The module's title names the tracks; its note table becomes the clip's tuning table, with Sound Tracker's own (`ST`) as a new table; its rows set the tempo, so only beats and meter are detected
 - Vortex Tracker modules bring their chip clock and frame rate, such as a Pentagon's 1.75 MHz and 48.828 Hz
+- A module that loops back past its start, after an intro, sets the loop range from its loop to its end
 - macOS: the Player opens tracker modules and `.uzx` files from Finder when no other app claims them; `.psg` files open in it by default
 
 ### AY chip

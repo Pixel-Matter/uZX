@@ -57,6 +57,7 @@ std::optional<TrackerModule> readTrackerModule(const juce::MemoryBlock& bytes) {
     module.title = juce::String::fromUTF8(tune->Title.data(), (int) tune->Title.size()).trim();
     module.table = presetFor(tune->NoteTable);
     module.rowStarts = tune->RowStarts;
+    module.loopFrame = tune->LoopFrame;
     if (tune->ChipClock > 0)
         module.chipClock = tune->ChipClock;
     return module;

@@ -42,7 +42,7 @@ Drop or open several `.psg` files at once to play them together, each on its own
 
 A PSG file plays at 50 frames a second, or at the rate its header gives when the file is version 10 or later. The project takes the frame rate of the file opened last. Most files don't say their rate, so a tune written for 100 or 200 Hz opens two or four times too slow: pick its rate under **FPS** in the transport bar, or under **Frame Rate** in the clip's right-click menu. The clips play at the new rate. When they are the only clips in the project, the whole timeline scales: the clips start as many frames in, and the tempo scales with the rate, so a beat keeps its frames and the grid its groove, and a module's own row timing is kept: 41 BPM at 50 Hz becomes 164 BPM at 200 Hz. Past 300 BPM, the most the tempo goes to, a beat takes twice the frames. Otherwise the clips keep where they start and the tempo stays.
 
-**Tracker modules.** µZX opens ZX Spectrum tracker modules as well: Pro Tracker 1, 2 and 3 (`.pt1`, `.pt2`, `.pt3`, Turbo Sound PT3 files included), Vortex Tracker II text modules (`.vt2`, or `.txt` from its early versions; Turbo Sound files included), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro (`.stp`), ASC Sound Master (`.asc`, `.as0`), SQ-Tracker (`.sqt`), Pro Sound Creator (`.psc`), Pro Sound Maker (`.psm`), Global Tracker (`.gtr`) and Fast Tracker (`.ftc`). The format is recognised from the file's content. µZX plays the module with [zxtune](https://github.com/vitamin-caig/zxtune)'s players up to where the tune loops and opens the result like a PSG file: each AY chip on its own track, two or three for Turbo Sound, named after the module's title, or after the file when the module has none. The module also brings what a PSG file lacks: its note table becomes the tune's tuning table when µZX has that table (see **Tuning table and key** under µZX Studio's Timeline below), and its rows set the tempo (see the BPM control under [Transport Bar](#transport-bar)). A Vortex Tracker module also brings the chip clock and the frame rate it was written for, such as a Pentagon's 1.75 MHz and 48.828 Hz; the clock is set on the tracks the module gets to itself, and the frame rate on the project. Other tracker modules store neither, and none stores the chip type or stereo layout, so those stay as they are.
+**Tracker modules.** µZX opens ZX Spectrum tracker modules as well: Pro Tracker 1, 2 and 3 (`.pt1`, `.pt2`, `.pt3`, Turbo Sound PT3 files included), Vortex Tracker II text modules (`.vt2`, or `.txt` from its early versions; Turbo Sound files included), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro (`.stp`), ASC Sound Master (`.asc`, `.as0`), SQ-Tracker (`.sqt`), Pro Sound Creator (`.psc`), Pro Sound Maker (`.psm`), Global Tracker (`.gtr`) and Fast Tracker (`.ftc`). The format is recognised from the file's content. µZX plays the module with [zxtune](https://github.com/vitamin-caig/zxtune)'s players up to where the tune loops and opens the result like a PSG file: each AY chip on its own track, two or three for Turbo Sound, named after the module's title, or after the file when the module has none. The module also brings what a PSG file lacks: its note table becomes the tune's tuning table when µZX has that table (see **Tuning table and key** under µZX Studio's Timeline below), and its rows set the tempo (see the BPM control under [Transport Bar](#transport-bar)). A module that loops back past its start, after an intro, sets the loop range from its loop to its end (see **Loop range** under [Timeline](#timeline)). A Vortex Tracker module also brings the chip clock and the frame rate it was written for, such as a Pentagon's 1.75 MHz and 48.828 Hz; the clock is set on the tracks the module gets to itself, and the frame rate on the project. Other tracker modules store neither, and none stores the chip type or stereo layout, so those stay as they are.
 
 **Turbo Sound sets.** When a single `.psg` file's name ends in a chip number 1 to 3 after `_`, `-`, `.` or a space (`song_1.psg`, or `song.1.psg` as Vortex Tracker exports them), and files with the other numbers lie next to it with as many frames (give or take one, where the recording stopped mid-frame) and the same PSG header, µZX asks whether to open the whole set or only that file. This applies however a single file comes in: opening, dropping, Finder / Explorer, and **Import PSG** in both apps.
 
@@ -81,7 +81,9 @@ The timeline shows the loaded file as a clip on a track. Click anywhere on the r
 
 Clips in the Player have no header: the notes take the whole track. A clip's warnings, such as an fps or chip clock that differs from the project's, sit over the top-left corner of its notes. The legend of the colours (channels A, B and C, the envelope E and noise N) appears once, at the top right of the tracks. The tuning table and key are in the corner above the AY chips; for a Turbo Sound tune they are detected from all its chips together, since each chip plays only part of the music, so the tune gets one key.
 
-Scroll with the scrollbar under the tracks, the wheel, or by dragging the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
+**Loop range.** The lower half of the ruler is the loop strip. It shows the loop range, lit while looping is on (`Cmd+L`, or **Loop** in the Transport menu) and dim while it is off; with looping on, playback repeats the range, and when it starts before the range it plays into it first. Drag on the strip outside the range to set a new one, drag an edge to move it, or drag the range to move it whole; edges snap to the grid, or to single frames while you hold `Cmd`. Double-click the strip to turn looping on or off. A click on the strip moves the playhead, as anywhere on the ruler. The range covers the whole project, and follows its end as clips change, until you set another one; a tracker module that loops back past its start sets it from its loop to its end. The range and whether looping is on are saved with the project.
+
+Scroll with the scrollbar under the tracks, the wheel, or by dragging the upper half of the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
 
 **View → Zoom**, or **Zoom** in the ruler or PSG clip context menu, offers **Frames**, **Groove Rows**, **Beats** and **Bars**, plus fit, previous zoom and zoom in/out. The four levels give one frame, an average groove row, a beat or a bar 16 pixels, using the tempo and meter at the playhead. Without a subdivision pattern, Groove Rows uses a quarter beat. The scale is the same in musical, seconds and frames timecode formats; the visible grid and snap spacing can differ.
 
@@ -100,7 +102,7 @@ For a moment after you enter Viz mode or press either key, the top of the screen
 
 ### Rendering a Video
 
-**File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes or what **View → Viz Options** chooses, and the view follows the playhead from the start of the tune to 3 seconds after its end. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, µZX offers to show the file. The sound is the tune at full level: the master volume knob doesn't change it.
+**File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes or what **View → Viz Options** chooses, and the view follows the playhead from the start of the tune to 3 seconds after its end. **Loops** in the dialog plays the loop range on the ruler that many more times: up to the end of the loop, the loop again, then on to the end of the tune and the 3 seconds; it is 0, no repeats, each time the dialog opens. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, µZX offers to show the file. The sound is the tune at full level: the master volume knob doesn't change it.
 
 - **Show**, **Scopes**, **Colours** and **Decorations** are Viz mode's options, as in **View → Viz Options**: notes and scopes, notes or scopes; the scopes stacked or side by side; Slate or Classic Black and White; the notes' decorations Auto, once a frame is 6 pixels wide, or Always, which keeps them in a video zoomed out to beats or bars. Changing them here changes Viz mode too; in the Player, the view behind the dialog shows each choice.
 - **Zoom** is the timeline zoom of the video: **As on screen**, the zoom of the view you see, or **Frames**, **Groove Rows**, **Beats** or **Bars**, the **View → Zoom** levels, which give one frame, row, beat or bar 16 pixels of the **Render** size, using the tempo and meter at the start of the tune.
@@ -197,7 +199,7 @@ Click a clip to select it. The Details Panel updates to show clip-specific edito
 
 #### Ruler
 
-A time ruler runs along the top of the timeline. The display format switches between bars/beats/frames and mm:ss depending on settings.
+A time ruler runs along the top of the timeline. The display format switches between bars/beats/frames and mm:ss depending on settings. Its lower half is the loop strip, as in the Player: see **Loop range** under [Timeline](#timeline).
 
 #### Zoom and Scroll
 
@@ -349,7 +351,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Space` | Play / Pause | Player, Studio |
 | `Home` or `Cmd+Left` | Rewind to start | Player, Studio |
 | `End` or `Cmd+Right` | Jump to end | Player, Studio |
-| `Cmd+L` | Loop the whole project on / off | Player, Studio |
+| `Cmd+L` | Loop on / off: playback repeats the loop range on the ruler | Player, Studio |
 | `=` or `+` | Zoom in around the playhead | Player, Studio |
 | `-` | Zoom out around the playhead | Player, Studio |
 | `Cmd+1` | Zoom to Frames (16 px per frame) | Player, Studio |
@@ -385,8 +387,12 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Wheel or swipe | Ruler or scrollbar | Scroll horizontally |
 | Wheel or swipe | Tracks (Player) | Scroll horizontally; when the tracks don't fit the window, the wheel scrolls them vertically and a sideways swipe scrolls the timeline |
 | Sideways swipe | Tracks | Scroll horizontally |
-| Drag | Ruler | Sideways scrolls, up/down zooms (down zooms out) |
-| Middle-drag | Tracks | Same as dragging the ruler |
+| Drag | Upper half of the ruler | Sideways scrolls, up/down zooms (down zooms out) |
+| Drag | Loop strip (lower half of the ruler), outside the loop range | Set a new loop range, snapped to the grid |
+| Drag a loop edge, or the loop range | Loop strip | Move that edge, or the whole range, snapped to the grid |
+| `Cmd`+drag | Loop strip | Same, snapped to single frames |
+| Double-click | Loop strip | Loop on / off |
+| Middle-drag | Tracks | Same as dragging the upper half of the ruler |
 | `Shift+Wheel` | Ruler or tracks | Scroll horizontally |
 | Drag | Scrollbar under the tracks | Scroll horizontally |
 | Drag | Gap left of the AY chips, or of the stacked scopes in Viz mode (Player) | Make them wider or narrower |

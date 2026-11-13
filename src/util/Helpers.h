@@ -35,8 +35,9 @@ uZX::AYChipPlugin& ensureAYPluginOnTrack(te::AudioTrack& track);
     per AY chip (two for Turbo Sound) named after its title, else its file. The files play
     together as one tune (the chips of a Turbo Sound tune): their tempo is detected together (see
     PsgTempo::applyToEdit), and so are their tuning and key (see PsgClip::linkAsOneTune). A
-    module's note table, when uZX has it, is chosen for the tune, and its rows set the tempo
-    grid. Returns the clips added. */
+    module's note table, when uZX has it, is chosen for the tune, its rows set the tempo
+    grid, and a loop that goes back past its start sets the loop range, from there to the end of
+    the clip. Returns the clips added. */
 Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::TimePosition start = {},
                                te::AudioTrack* firstTrack = nullptr);
 

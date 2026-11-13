@@ -1,6 +1,7 @@
 #include "Ruler.h"
 
 #include "../../controllers/MainCommands.h"
+#include "../../models/EditUtilities.h"
 #include "../common/Utilities.h"
 
 namespace MoTool {
@@ -12,29 +13,58 @@ RulerComponent::RulerComponent(te::Edit& ed, EditViewState& evs, TimelineGrid& g
 {
     editViewState.zoom.addListener(this);
     grid.addListener(this);
+    edit.getTransport().state.addListener(this);
 }
 
 RulerComponent::~RulerComponent() {
     editViewState.zoom.removeListener(this);
     grid.removeListener(this);
+    edit.getTransport().state.removeListener(this);
 }
 
 void RulerComponent::viewRangeChanged() {
     repaint();
 }
 
+void RulerComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& prop) {
+    if (prop == te::IDs::loopPoint1 || prop == te::IDs::loopPoint2 || prop == te::IDs::looping)
+        repaint();
+}
+
 void RulerComponent::paint(Graphics& g) {
     auto ticks = grid.getTicks();
     auto bounds = getLocalBounds();
     g.fillAll(Colors::Theme::background);
+
+    const auto bottom = (float) bounds.getHeight();
+    const auto stripTop = (float) loopStripTop();
+
+    // The loop range, under the ticks: its bottom edge spans the range exactly, its ends slope in towards the top
+    auto& transport = edit.getTransport();
+    const auto loop = transport.getLoopRange();
+    if (!loop.isEmpty()) {
+        const auto& zoom = editViewState.zoom;
+        const auto x1 = zoom.timeToX(loop.getStart()), x2 = zoom.timeToX(loop.getEnd());
+        const auto slope = jmin((bottom - stripTop) * 0.5f, (x2 - x1) / 3.0f);  // narrow ranges slope less
+        Path band;
+        band.startNewSubPath(x1, bottom);
+        band.lineTo(x1 + slope, stripTop);
+        band.lineTo(x2 - slope, stripTop);
+        band.lineTo(x2, bottom);
+        band.closeSubPath();
+        g.setColour(transport.looping ? Colors::Timeline::loopOn : Colors::Timeline::loopOff);
+        g.fillPath(band);
+    }
+
     g.setFont(13.0f);
 
+    // The finest ticks fill the loop strip, the next reach halfway up the rest, the coarsest the full height
     for (const auto& tick : ticks) {
         if (tick.x > bounds.getWidth())
             continue;
         g.setColour(Colors::Timeline::trackGridTickColors[tick.level]);
-        auto y = (float) bounds.getHeight() - (float) bounds.getHeight() / (float) (3 - tick.level);
-        g.drawVerticalLine(tick.x, y, (float)bounds.getHeight());
+        const auto top = stripTop * (float) (2 - (int) tick.level) / 2.0f;
+        g.drawVerticalLine(tick.x, top, bottom);
     }
 
     // Resolve text collisions here, where the actual font is known; structural labels win.
@@ -72,6 +102,9 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         m.showMenuAsync({});
     } else {
         isDragging = false;
+        loopDrag = isInLoopStrip(e) ? loopDragAt(e.x) : LoopDrag::none;
+        loopAtDragStart = edit.getTransport().getLoopRange();
+        dragStartTime = snappedTimeAt(e.x, e.mods);
     }
 }
 
@@ -81,20 +114,88 @@ void RulerComponent::mouseDrag(const MouseEvent& e) {
 
     if (!isDragging && e.getDistanceFromDragStart() >= dragThreshold) {
         isDragging = true;
-        editViewState.zoom.beginDrag();
+        if (loopDrag == LoopDrag::none)
+            editViewState.zoom.beginDrag();
     }
 
-    if (isDragging)
+    if (!isDragging)
+        return;
+
+    if (loopDrag == LoopDrag::none) {
         editViewState.zoom.dragBy(e.getMouseDownX(), e.getDistanceFromDragStartX(), e.getDistanceFromDragStartY());
+        return;
+    }
+
+    const auto loop = draggedLoop(loopDrag, loopAtDragStart, dragStartTime, snappedTimeAt(e.x, e.mods));
+    if (!loop.isEmpty())
+        edit.getTransport().setLoopRange(loop);
 }
 
 void RulerComponent::mouseUp(const MouseEvent& e) {
-    if (isDragging)  // whatever modifiers are held now, or following stays off
-        editViewState.zoom.endDrag();
-    else if (!e.mods.isPopupMenu())
+    if (isDragging) {
+        if (loopDrag == LoopDrag::none)  // whatever modifiers are held now, or following stays off
+            editViewState.zoom.endDrag();
+    } else if (!e.mods.isPopupMenu()) {
         edit.getTransport().setPosition(grid.playheadTimeAtX(e.x));
+    }
 
     isDragging = false;
+    loopDrag = LoopDrag::none;
+}
+
+void RulerComponent::mouseDoubleClick(const MouseEvent& e) {
+    if (!isInLoopStrip(e) || e.mods.isPopupMenu())
+        return;
+    if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager())
+        manager->invokeDirectly(Commands::MainAppCommands::transportLoop, true);
+}
+
+void RulerComponent::mouseMove(const MouseEvent& e) {
+    const auto drag = isInLoopStrip(e) ? loopDragAt(e.x) : LoopDrag::none;
+    setMouseCursor(drag == LoopDrag::start || drag == LoopDrag::end ? MouseCursor::LeftRightResizeCursor
+                   : drag == LoopDrag::move                         ? MouseCursor::DraggingHandCursor
+                                                                    : MouseCursor::NormalCursor);
+}
+
+RulerComponent::LoopDrag RulerComponent::loopDragAt(int x) const {
+    const auto loop = edit.getTransport().getLoopRange();
+    if (loop.isEmpty())
+        return LoopDrag::create;
+
+    const auto& zoom = editViewState.zoom;
+    const auto startDistance = std::abs((float) x - zoom.timeToX(loop.getStart()));
+    const auto endDistance = std::abs((float) x - zoom.timeToX(loop.getEnd()));
+    if (std::min(startDistance, endDistance) <= (float) loopEdgeWidth)
+        return startDistance < endDistance ? LoopDrag::start : LoopDrag::end;
+    return loop.contains(zoom.xToTime(x)) ? LoopDrag::move : LoopDrag::create;
+}
+
+te::TimePosition RulerComponent::snappedTimeAt(int x, const ModifierKeys& mods) const {
+    const auto time = jmax(te::TimePosition(), editViewState.zoom.xToTime(x));
+    if (!mods.isCommandDown())
+        return grid.snapTimeToVisibleGrid(time);
+    const auto fps = Helpers::getProjectFps(edit);
+    return te::TimePosition::fromSeconds(std::round(time.inSeconds() * fps) / fps);
+}
+
+te::TimeRange RulerComponent::draggedLoop(LoopDrag drag, te::TimeRange original, te::TimePosition from,
+                                          te::TimePosition to) {
+    switch (drag) {
+        case LoopDrag::create:
+            return te::TimeRange::between(from, to);
+        case LoopDrag::start:
+            return te::TimeRange::between(to, original.getEnd());
+        case LoopDrag::end:
+            return te::TimeRange::between(original.getStart(), to);
+        case LoopDrag::move: {
+            const auto moved = original + (to - from);
+            return moved.getStart() < te::TimePosition() ? moved + (te::TimePosition() - moved.getStart()) : moved;
+        }
+        case LoopDrag::none:
+            return original;
+    }
+    jassertfalse;
+    return original;
 }
 
 void RulerComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {

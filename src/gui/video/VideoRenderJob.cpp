@@ -23,9 +23,13 @@ VideoRenderJob::VideoRenderJob(tracktion::Edit& e,
                                const juce::File& program,
                                const juce::File& dest)
     : ThreadPoolJobWithProgress("Rendering video"), edit(e), settings(s), ffmpeg(program),
+      sections(Video::playedSections(e.getLength().inSeconds(),
+                                     {e.getTransport().getLoopRange().getStart().inSeconds(),
+                                      e.getTransport().getLoopRange().getEnd().inSeconds()},
+                                     s.loops)),
       width(Video::Settings::widthFor(s.renderHeight)), height(s.renderHeight),
-      totalFrames(juce::jmax(1, (int) std::ceil((e.getLength().inSeconds() + Video::Settings::tailSeconds) * s.fps))),
-      output(dest), selection(e.engine), view(e, selection, true) {
+      totalFrames(juce::jmax(1, (int) std::ceil(Video::playedLength(sections) * s.fps))),
+      output(dest), selection(e.engine), view(e, selection, true), renderParams(e) {
     // The Player's Viz mode, on its own copy of the view settings: the view on screen stays where it is
     view.showAsPlayer(true, VizOptions::load(e.engine.getPropertyStorage().getPropertiesFile()));
     document = std::make_unique<PlayerDocumentComponent>(edit, view);
@@ -42,22 +46,18 @@ VideoRenderJob::VideoRenderJob(tracktion::Edit& e,
     edit.getTransport().stop(false, false);
     renderStatus = std::make_unique<tracktion::Edit::ScopedRenderStatus>(edit, true);
 
-    tracktion::Renderer::Parameters r(edit);
+    auto& r = renderParams;
     r.tracksToDo = tracktion::toBitSet(tracktion::getAllTracks(edit));
-    r.destFile = sound.getFile();
     r.audioFormat = edit.engine.getAudioFileFormatManager().getWavFormat();
     r.bitDepth = 24;
     r.ditheringEnabled = true;
     r.blockSizeForAudio = settings.samplesPerFrame();  // a block a frame: each frame's scopes draw its own sound
     r.sampleRateForAudio = Video::Settings::sampleRate;
-    r.time = tracktion::TimeRange(tracktion::TimePosition(),
-                                  tracktion::TimeDuration::fromSeconds(totalFrames / (double) settings.fps));
     r.canRenderInMono = false;
     r.checkNodesForAudio = false;
     r.useMasterPlugins = false;  // the master volume is the listener's, not part of the tune
-    audioRender = tracktion::render_utils::createRenderTask(r, getJobName(), nullptr, this);
 
-    if (audioRender == nullptr)
+    if (!startSection())
         error = "There is nothing to render.";
     else if (!encoder.start(ffmpegCommand(Video::encodeArgs(settings, video.getFile())), log.getFile()))
         error = "Could not start ffmpeg at " + ffmpeg.getFullPathName() + ".";
@@ -96,18 +96,54 @@ float VideoRenderJob::getCurrentTaskProgress() {
     return finished ? 1.0f : 0.95f * (float) framesDone.load() / (float) totalFrames;
 }
 
+bool VideoRenderJob::startSection() {
+    auto r = renderParams;
+    auto played = sections[section];
+    if (section + 1 == sections.size())  // on to the end of the last video frame
+        played = played.withEnd(played.getEnd() + totalFrames / (double) settings.fps - Video::playedLength(sections));
+    r.time = {tracktion::TimePosition::fromSeconds(played.getStart()),
+              tracktion::TimePosition::fromSeconds(played.getEnd())};
+    r.destFile = sectionSounds.add(new juce::TemporaryFile(".wav"))->getFile();
+    audioRender = tracktion::render_utils::createRenderTask(r, getJobName(), nullptr, this);
+    return audioRender != nullptr;
+}
+
+bool VideoRenderJob::joinSections() {
+    auto& formats = edit.engine.getAudioFileFormatManager();
+    std::unique_ptr<juce::AudioFormatWriter> writer;
+    for (auto* part : sectionSounds) {
+        std::unique_ptr<juce::AudioFormatReader> reader(formats.readFormatManager.createReaderFor(part->getFile()));
+        if (reader == nullptr)
+            return false;
+        if (writer == nullptr) {  // as the sections were written
+            std::unique_ptr<juce::OutputStream> out = sound.getFile().createOutputStream();
+            writer = formats.getWavFormat()->createWriterFor(out,
+                                                             juce::AudioFormatWriterOptions()
+                                                                 .withSampleRate(reader->sampleRate)
+                                                                 .withNumChannels((int) reader->numChannels)
+                                                                 .withBitsPerSample((int) reader->bitsPerSample));
+        }
+        if (writer == nullptr || !writer->writeFromAudioReader(*reader, 0, reader->lengthInSamples))
+            return false;
+    }
+    return writer != nullptr;
+}
+
 void VideoRenderJob::renderFrames() {
-    const bool soundDone = audioRender->runJob() == jobHasFinished;  // a frame of sound, or of the warm-up before it
-    if (soundDone && audioRender->errorMessage.isNotEmpty()) {
+    // A frame of the section's sound, or of the warm-up before it
+    const bool sectionDone = audioRender->runJob() == jobHasFinished;
+    if (sectionDone && audioRender->errorMessage.isNotEmpty()) {
         error = audioRender->errorMessage;
         return;
     }
+    const bool soundDone = sectionDone && section + 1 == sections.size();
 
     // A frame is drawn once its sound is: the playhead at the frame's start, the scopes drawing the sound
     // heard while the frame is shown
     const auto samplesPerFrame = (juce::int64) settings.samplesPerFrame();
     while (framesDone < totalFrames && (soundDone || samplesRendered >= (framesDone + 1) * samplesPerFrame)) {
-        if (!drawFrame(tracktion::TimePosition::fromSeconds(framesDone / (double) settings.fps))) {
+        const auto played = Video::timelineTimeAt(sections, framesDone / (double) settings.fps);
+        if (!drawFrame(tracktion::TimePosition::fromSeconds(played))) {
             error = "Rendering was interrupted.";
             return;
         }
@@ -118,9 +154,18 @@ void VideoRenderJob::renderFrames() {
         ++framesDone;
     }
 
-    if (soundDone) {
+    if (sectionDone && !soundDone) {
+        samplesBeforeSection = samplesRendered;
+        ++section;
+        // The finished render's graph goes on the message thread, as the next one's comes
+        if (!juce::MessageManager::callSync([this] { return startSection(); }).value_or(false))
+            error = "There is nothing to render.";
+    } else if (soundDone) {
         encoder.closeInput();
-        setStage(Stage::encoding, "Encoding");
+        if (!joinSections())
+            error = "Could not write the sound.";
+        else
+            setStage(Stage::encoding, "Encoding");
     }
 }
 
@@ -177,7 +222,7 @@ bool VideoRenderJob::drawFrame(tracktion::TimePosition playhead) {
 }
 
 void VideoRenderJob::addBlock(juce::int64 sampleNumberInSource, const juce::AudioBuffer<float>&, int, int numSamples) {
-    samplesRendered = sampleNumberInSource + numSamples;
+    samplesRendered = samplesBeforeSection + sampleNumberInSource + numSamples;
 }
 
 juce::StringArray VideoRenderJob::ffmpegCommand(const juce::StringArray& args) const {

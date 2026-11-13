@@ -279,9 +279,8 @@ public:
         if (isSet(PsgParamType::EnvelopePeriod)) {
             regs.setEnvelopePeriod(getRaw(PsgParamType::EnvelopePeriod));
         }
-        // Write envelope shape if shape changed OR retrigger=1
-        if (isSet(PsgParamType::EnvelopeShape) ||
-            (isSet(PsgParamType::RetriggerEnvelope) && getRaw(PsgParamType::RetriggerEnvelope) == 1)) {
+        // The shape is a value to hold; the retrigger is the write of the register, which restarts the envelope
+        if (isSet(PsgParamType::RetriggerEnvelope) && getRaw(PsgParamType::RetriggerEnvelope) != 0) {
             regs.setEnvelopeShape(static_cast<uint8>(getRaw(PsgParamType::EnvelopeShape)));
         }
         // TODO retrigger tone

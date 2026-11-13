@@ -1,6 +1,6 @@
 #include "PsgList.h"
 #include "PsgClip.h"
-#include "PsgMidi.h"
+#include "PsgCC.h"
 #include "Ids.h"
 #include "EditUtilities.h"
 
@@ -182,16 +182,29 @@ const juce::Array<EventType*>& getEventsChecked(const juce::Array<EventType*>& e
 }
 
 //==============================================================================
+namespace {
+    // 2: the envelope restarts where a frame sets the retrigger, not wherever it sets the shape
+    constexpr int currentVersion = 2;
+
+    /** Before version 2 every frame that set the shape restarted the envelope. */
+    void retriggerEnvelopeOnEveryShape(juce::ValueTree& frames) {
+        if (frames.hasType(IDs::FRAME) && frames.hasProperty(IDs::s))
+            frames.setProperty(IDs::re, 1, nullptr);
+        for (auto v : frames)
+            retriggerEnvelopeOnEveryShape(v);
+    }
+}
+
 juce::ValueTree PsgList::createPsgList() {
     return createValueTree(IDs::PSG,
-                           te::IDs::ver, 1,
+                           te::IDs::ver, currentVersion,
                            IDs::frameRate, 50.0,
                            IDs::framesPerBeat, 0.0,
                            te::IDs::channelNumber, te::MidiChannel(1));
 }
 
 PsgList::PsgList() : state (IDs::PSG) {
-    state.setProperty(te::IDs::ver, 1, nullptr);
+    state.setProperty(te::IDs::ver, currentVersion, nullptr);
     state.setProperty(IDs::frameRate, 50.0, nullptr);
     state.setProperty(IDs::framesPerBeat, 0.0, nullptr);
     state.setProperty(te::IDs::channelNumber, te::MidiChannel(1), nullptr);
@@ -202,7 +215,9 @@ PsgList::PsgList(const juce::ValueTree& v, juce::UndoManager* um)
     : state (v)
 {
     jassert (state.hasType(IDs::PSG));
-    state.setProperty(te::IDs::ver, 1, um);
+    if (static_cast<int>(state[te::IDs::ver]) < 2)
+        retriggerEnvelopeOnEveryShape(state);
+    state.setProperty(te::IDs::ver, currentVersion, um);
     state.setProperty(te::IDs::channelNumber, te::MidiChannel(1), um);
     convertPsgFrameFromStrings(state);
 
@@ -343,10 +358,6 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePositio
     // uZX::PsgRegsFrame regsFromParamsState;
     params.resetMixer();  // because AY regs after reset has all NNNTTT flags set (bits==0)
 
-    // Track last envelope shape and retrigger state for state transitions
-    std::optional<uint8_t> lastEnvelopeShape;
-    bool lastRetriggerState = false;  // Track if last frame had retrigger=1
-
     setFrameRate(data.getFrameRate(), um);
     setFramesPerBeat(data.getFrameRate() * getBeatLengthSecondsAt(edit, clipStart), um);
 
@@ -361,35 +372,11 @@ void PsgList::loadFrom(const uZX::PsgData &data, te::Edit& edit, te::TimePositio
         params.clear();
         params.update(regsState);  // tracks really changed params
 
-        bool currentRetriggerState = false;
-
-        // Detect envelope shape retrigger and manage state transitions
+        // Every write of the shape register restarts the envelope, the same shape too
         if (frame.hasEnvelopeShapeSet()) {
-            auto currentShape = frame.getEnvelopeShape();
-
-            if (lastEnvelopeShape.has_value() && lastEnvelopeShape.value() == currentShape) {
-                // Same envelope shape = retrigger!
-                params.set(PsgParamType::RetriggerEnvelope, 1);
-                params.set(PsgParamType::EnvelopeShape, currentShape);
-                currentRetriggerState = true;
-            } else {
-                // Value changed or first write - explicitly turn off retrigger if it was on
-                if (lastRetriggerState) {
-                    params.set(PsgParamType::RetriggerEnvelope, 0);
-                }
-                currentRetriggerState = false;
-            }
-
-            lastEnvelopeShape = currentShape;
-        } else {
-            // No envelope shape write this frame - turn off retrigger if it was on
-            if (lastRetriggerState) {
-                params.set(PsgParamType::RetriggerEnvelope, 0);
-            }
-            currentRetriggerState = false;
+            params.set(PsgParamType::EnvelopeShape, frame.getEnvelopeShape());
+            params.set(PsgParamType::RetriggerEnvelope, 1);
         }
-
-        lastRetriggerState = currentRetriggerState;
 
         auto v = PsgParamFrame::createPsgFrameValueTree(static_cast<int>(i), params);
         state.addChild(v, -1, um);
@@ -447,18 +434,40 @@ double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::Mid
     // DBG("Exporting PSG to MIDI sequence, channel " << getMidiChannel().getChannelNumber() << ", timebase " << (timeBase == te::MidiList::TimeBase::beats ? "beats" : "seconds"));
     PsgParamsMidiWriter writer {getMidiChannel().getChannelNumber()};
     const auto& frames = getFrames();
-    for (int i = 0; i < frames.size(); ++i) {
+
+    // A clip can start part-way through its frames: trimmed at its start, or the later part of a split.
+    // In the time bases counted from the clip's start, the frames before it have no time of their own.
+    // (In raw beats Tracktion takes the offset off and chases the controllers itself.)
+    const auto isBeforeClip = [&](const PsgParamFrame& f) {
+        constexpr double tolerance = 1.0e-6;  // a frame at the start itself plays
+        if (timeBase == te::MidiList::TimeBase::beats)
+            return (f.getEditBeats(clip) - toDuration(clip.getStartBeat())).inBeats() < -tolerance;
+        if (timeBase == te::MidiList::TimeBase::seconds)
+            return (f.getEditTime(clip) - toDuration(clip.getPosition().getStart())).inSeconds() < -tolerance;
+        return false;
+    };
+    int first = 0;
+    while (first < frames.size() && isBeforeClip(*frames[first]))
+        ++first;
+    if (first > 0) {
+        // What those frames left, as values. Playing them all at the clip's start would restart the envelope
+        // there, where the tune does not
+        auto held = frames[first - 1]->getData();
+        held.clear();
+        writer.writeAll(0.0, held);
+    }
+
+    for (int i = first; i < frames.size(); ++i) {
         auto* f = frames[i];
         if (i == 0) {
             // Export the complete accumulated initial state at time 0.
             // PSG frames only mask registers that changed, but recomputeAccumulatedState()
             // copies the full accumulated values (including the resetMixer baseline and
-            // defaults) into every frame. Forcing all masks on at frame 0 emits a complete
+            // defaults) into every frame. Writing them all at frame 0 emits a complete
             // AY register snapshot, so playback/reposition always starts from a deterministic
             // state instead of inheriting stale registers from a previous play.
-            PsgParamFrameData fullState = f->getData();
-            std::fill(fullState.masks.begin(), fullState.masks.end(), true);
-            writer.write(getTimeInBase(*f, clip, timeBase), fullState);
+            // The envelope shape goes as a value: a clip cut from a tune must not restart the envelope
+            writer.writeAll(getTimeInBase(*f, clip, timeBase), f->getData());
         } else {
             writer.write(getTimeInBase(*f, clip, timeBase), f->getData());
         }

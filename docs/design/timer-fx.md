@@ -58,7 +58,7 @@ code lineage (`uZX::Chip`, `AYInterface`), so the core ports almost line for lin
    (nearest) for MIDI. Mixing that with ceil for timer writes can reorder a MIDI write and a
    timer write less than a sample apart. Convert MIDI timestamps to cycles and use ceil for both.
 5. **Ownership (TAYM S13.1).** An active timer owns its target registers; background
-   (PSG/MIDI `registersFrame`) skips owned regs and re-asserts them when the timer releases.
+   (the PSG/MIDI frame writes in `AYChipPlugin::updateChip`) skips owned regs and re-asserts them when the timer releases.
    Push background registers only when changed: re-writing R8/R11/R12/R13 resets the
    envelope mid-buzz. `channelMuter.applyToChip` must run after every write segment or be
    folded into `apply`.

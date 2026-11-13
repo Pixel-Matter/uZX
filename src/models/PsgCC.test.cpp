@@ -2,11 +2,13 @@
 #include "formats/psg/PsgData.h"
 #include "Ids.h"
 #include "PsgList.h"
-#include "PsgMidi.h"
+#include "PsgCC.h"
 
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
+#include <vector>
 
 
 namespace MoTool::Tests {
@@ -34,7 +36,7 @@ public:
 
             // expect(sizeof(PsgParamFrameData::values) == 42, "Expected 42 bytes, got " + std::to_string(sizeof(PsgParamFrameData::values)));
             // expect(sizeof(PsgParamFrameData::masks) == 21, "Expected 21 bytes, got " + std::to_string(sizeof(PsgParamFrameData::masks)));
-            expectEquals(sizeof(PsgParamFrameData), size_t{66});
+            expectEquals(sizeof(PsgParamFrameData), size_t{66});  // 22 parameters, a value and a mask each
 
             expectEquals(data.getParams().size(), size_t{2});
             expect(data.getParams()[1].first == PsgParamType::EnvelopeShape, "Expected EnvelopeShape");
@@ -433,7 +435,8 @@ public:
                 {PsgParamType::EnvelopeIsOnC, 0},
                 {PsgParamType::NoisePeriod, 0x10},
                 {PsgParamType::EnvelopePeriod, 0x4321},
-                {PsgParamType::EnvelopeShape, 2}
+                {PsgParamType::EnvelopeShape, 2},
+                {PsgParamType::RetriggerEnvelope, 1}
             };
             auto regs = data.toRegisters();
 
@@ -497,6 +500,25 @@ public:
         sequence.addEvent(juce::MidiMessage::controllerEvent(channel, static_cast<int>(type), value), time);
     }
 
+    /** The frames a sequence carries, one per timestamp, as a chip on `baseChannel` reads them. */
+    static std::vector<PsgParamFrameData> decodeFrames(const juce::MidiMessageSequence& sequence, int baseChannel) {
+        std::vector<PsgParamFrameData> frames;
+        PsgParamFrameData params;
+        params.resetMixer();
+        auto time = std::numeric_limits<double>::lowest();
+        for (auto e : sequence) {
+            const auto& m = e->message;
+            if (m.getTimeStamp() > time && ! params.isEmpty()) {
+                frames.push_back(params);
+                params.clear();
+            }
+            time = m.getTimeStamp();
+            PsgCC::decode(m.getChannel() - baseChannel, m.getControllerNumber(), m.getControllerValue(), params);
+        }
+        frames.push_back(params);
+        return frames;
+    }
+
     void runTest() override {
         beginTest("PsgParamsMidiWriterTests write");
         {
@@ -533,6 +555,7 @@ public:
                     "Controller General Purpose Button 2 (on/off): 0 Channel 1",
                     "Controller General Purpose Button 3 (on/off): 1 Channel 2",
                     "Controller Breath controller (coarse): 16 Channel 4",
+                    "Controller 21: 0 Channel 4",
                     "Controller 20: 104 Channel 4",
                     "Controller 52: 18 Channel 4",
                     "Controller Sound Variation: 8 Channel 4"
@@ -541,7 +564,7 @@ public:
             compareEvents(seq, expectedEvents);
         }
 
-        beginTest("PsgParamsMidiReader read");
+        beginTest("Decoding a sequence into frames");
         {
             juce::MidiMessageSequence seq;
             addEvent(seq, 0.00, 1, MidiCCType::Volume, 3);
@@ -565,23 +588,15 @@ public:
             addEvent(seq, 0.02, 4, MidiCCType::CC52PeriodFine, 18);
             addEvent(seq, 0.02, 4, MidiCCType::SoundVariation, 8);
 
-            PsgParamsMidiReader reader {1};
-            std::vector<PsgParamFrameData> frames;
-            for (auto e : seq) {
-                auto newParams = reader.read(e->message);
-                if (newParams.has_value()) {
-                    frames.push_back(newParams.value());
-                }
-            }
-            frames.push_back(reader.getParams());
+            const auto frames = decodeFrames(seq, 1);
             // frames[0].debugPrint();
             // DBG("----------------------------------------------");
 
             expect(frames.size() == 2, "Expected 2 frames, got " + std::to_string(frames.size()));
             expect(frames[0].getParams().size() == 7,
                 "Expected 7 params, got " + std::to_string(frames[0].getParams().size()));
-            expect(frames[1].getParams().size() == 9,
-                "Expected 9 params, got " + std::to_string(frames[1].getParams().size()));
+            expect(frames[1].getParams().size() == 10,  // another envelope shape brings its retrigger
+                "Expected 10 params, got " + std::to_string(frames[1].getParams().size()));
 
             expect(frames[0][PsgParamType::VolumeA] == 3, "Expected VolumeA to be 3");
             expect(frames[0][PsgParamType::VolumeB] == std::nullopt,
@@ -622,6 +637,92 @@ public:
                 + std::to_string(frames[1][PsgParamType::EnvelopePeriod].value_or(-1)));
             expect(frames[1][PsgParamType::EnvelopeShape]  == 8,            "Expected EnvelopeShape be 8");
 
+        }
+
+        beginTest("Every parameter survives the trip through MIDI");
+        {
+            PsgParamFrameData params {};
+            PsgParamType::forEach([&](auto e) {
+                const PsgParamType type {e};
+                params.set(type, static_cast<uint16_t>(type.getScale().end));
+            });
+            PsgParamsMidiWriter writer {5};
+            writer.write(0.0, params);
+
+            const auto read = decodeFrames(writer.getSequence(), 5).back();
+            PsgParamType::forEach([&](auto e) {
+                const PsgParamType type {e};
+                expectEquals(int(read[type].value_or(0xFFFF)), type.getScale().end, String(type.getLabel().data()));
+            });
+        }
+
+        beginTest("The envelope shape travels as a value, its retrigger pressed and released");
+        {
+            const auto text = [](const PsgCC::Messages& messages) {
+                StringArray items;
+                for (const auto& m : messages)
+                    items.add(String(m.channel) + ":" + String(static_cast<int>(m.controller)) + "=" + String(m.value));
+                return items.joinIntoString(" ");
+            };
+            expectEquals(text(PsgCC::encode(PsgParamType::EnvelopeShape, 10)), String("3:70=10"));
+            expectEquals(text(PsgCC::encode(PsgParamType::RetriggerEnvelope, 1)), String("3:83=1 3:83=0"));
+            expectEquals(text(PsgCC::encode(PsgParamType::RetriggerEnvelope, 0)), String(), "no event");
+
+            // What the chip does: each frame starts from the values it holds, with nothing set
+            PsgParamFrameData chip;
+            const auto frame = [&](std::initializer_list<std::pair<int, int>> controllers) {
+                chip.clear();
+                for (auto [controller, value] : controllers)
+                    PsgCC::decode(3, controller, value, chip);
+                return chip.toRegisters().hasEnvelopeShapeSet();
+            };
+            expect(frame({{70, 10}}), "another shape is written");
+            expect(! frame({{70, 10}}), "the shape it holds, sent again, is not: the envelope runs on");
+            expect(frame({{70, 10}, {83, 1}, {83, 0}}), "a retrigger writes the shape");
+            expect(frame({{83, 1}}), "a retrigger alone writes the shape the chip holds");
+            expectEquals(int(chip.toRegisters().getEnvelopeShape()), 10);
+            expect(! frame({{83, 0}}), "the release does nothing");
+            expect(frame({{83, 1}, {70, 12}}), "in either order");
+            expectEquals(int(chip.toRegisters().getEnvelopeShape()), 12);
+        }
+
+        beginTest("An envelope period above 14 bits survives the trip through MIDI");
+        {
+            PsgParamFrameData params {};
+            params.set(PsgParamType::EnvelopePeriod, 0xC350);
+            PsgParamsMidiWriter writer {1};
+            writer.write(0.0, params);
+
+            const auto read = decodeFrames(writer.getSequence(), 1).back();
+            expectEquals(int(read.getRaw(PsgParamType::EnvelopePeriod)), 0xC350);
+        }
+
+        beginTest("The envelope period's two top bits travel in controller 21, ahead of the coarse and fine parts");
+        {
+            const auto text = [](const PsgCC::Messages& messages) {
+                StringArray items;
+                for (const auto& m : messages)
+                    items.add(String(m.channel) + ":" + String(static_cast<int>(m.controller)) + "=" + String(m.value));
+                return items.joinIntoString(" ");
+            };
+            expectEquals(text(PsgCC::encode(PsgParamType::EnvelopePeriod, 0xC350)), String("3:21=3 3:20=6 3:52=80"));
+            expectEquals(text(PsgCC::encode(PsgParamType::EnvelopePeriod, 0x3FFF)), String("3:21=0 3:20=127 3:52=127"),
+                         "a period under 16384 has the coarse and fine parts it always had");
+            expectEquals(text(PsgCC::encode(PsgParamType::TonePeriodB, 0xFFF)), String("1:20=31 1:52=127"),
+                         "a tone period fits the pair");
+
+            PsgParamFrameData chip;
+            const auto period = [&] { return int(chip.getRaw(PsgParamType::EnvelopePeriod)); };
+            PsgCC::decode(3, 20, 6, chip);
+            PsgCC::decode(3, 52, 80, chip);
+            expectEquals(period(), 0x0350, "a stream that never sends the top bits reads as before");
+            PsgCC::decode(3, 21, 3, chip);
+            expectEquals(period(), 0xC350, "each part changes its own bits, in any order");
+            PsgCC::decode(3, 20, 0, chip);
+            expectEquals(period(), 0xC050);
+            PsgCC::decode(3, 52, 0, chip);
+            expectEquals(period(), 0xC000);
+            expect(! PsgCC::decode(0, 21, 3, chip), "a tone period has no top part");
         }
     }
 };

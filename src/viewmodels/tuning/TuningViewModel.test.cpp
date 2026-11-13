@@ -289,6 +289,24 @@ public:
             TestHelpers::flushMessageQueue();
         }
 
+        beginTest("Envelope periods are those of the chosen shape: a triangle's is half a sawtooth's");
+        {
+            TuningViewModel viewModel(*edit);
+            viewModel.selectedParams.playTone.setStoredValue(false);
+            viewModel.selectedParams.playEnvelope.setStoredValue(true);
+            const auto envelopeOfA = [&](EnvShapeSimpleEnum::Enum shape) {
+                viewModel.selectedParams.envelopeShape.setStoredValue(shape);
+                return viewModel.getOctaveNotes(2)[9];  // A2, 110 Hz
+            };
+            const auto saw = envelopeOfA(EnvShapeSimpleEnum::Sawtooth);
+            const auto triangle = envelopeOfA(EnvShapeSimpleEnum::Triangle);
+            expectEquals(saw.midiNote, 45);
+            expectWithinAbsoluteError(saw.period, 2 * triangle.period, 1);
+            expectWithinAbsoluteError(triangle.frequency, 110.0, 2.0, "and it sounds at the note, not an octave under");
+            expectEquals(saw.tonePeriodsPerEnvPeriod, 16);
+            expectEquals(triangle.tonePeriodsPerEnvPeriod, 32, "a tone keeps in step with it at multiples of 32");
+        }
+
         beginTest("Default export filename generation");
         {
             TuningViewModel viewModel(*edit);

@@ -312,6 +312,22 @@ void PsgParamEditorComponent::paint(Graphics& g) {
         g.strokePath(curvePath, PathStrokeType(highlighted ? 1.0f : 0.5f));
     }
 
+    // Where the envelope restarts, on the envelope's rows: a tick down the row at any zoom, since a
+    // restart with the same shape leaves the line flat
+    if (currentParam == PsgParamType::EnvelopeShape || currentParam == PsgParamType::EnvelopePeriod
+        || currentParam == PsgParamType::RetriggerEnvelope) {
+        const PsgParamList restarts(*clip, PsgParamType::RetriggerEnvelope);
+        g.setColour(Colours::white.withAlpha(0.4f));
+        for (int i = jmax(0, restarts.findIndex(view.getStart()) - 1); i < restarts.size(); ++i) {
+            if (! restarts.isActive(i) || restarts.getValue(i) <= 0.0f)
+                continue;
+            const auto x = timeToX(restarts.getTime(i));
+            if (x > clipBounds.getRight())
+                break;
+            g.fillRect(std::floor(x), 0.0f, 1.0f, static_cast<float>(getHeight()));
+        }
+    }
+
     // Points only when frames are far enough apart: under 1/200 s per pixel
     if (!highlighted || view.getLength().inSeconds() / getWidth() > 1 / 50.0f / 4.0f)
         return;

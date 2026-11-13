@@ -52,6 +52,7 @@ public:
 
         // Track menu
         trackRenderToAudio   = 400,
+        trackRenderToPsg,
 
         // View menu
         viewZoomToProject    = 500,
@@ -99,7 +100,7 @@ public:
             transportPreservePsgTiming,
             addAudioTrack,
             // addAutomationTrack,
-            trackRenderToAudio,
+            trackRenderToAudio, trackRenderToPsg,
             viewZoomToProject, viewZoomToSelection, viewZoomIn, viewZoomOut,
             viewSnapPlayheadToGrid, viewNoteLanes, viewPianoKeys, viewVizMode, viewExitVizMode,
             viewNextVizLayout, viewSwitchVizScopes,
@@ -138,7 +139,7 @@ public:
             // the Player can't add tracks or chips back, records nothing, and has no Studio windows
             case fileNew: case fileImportAudio: case editDelete:
             case transportRecord: case transportRecordStop: case transportPreservePsgTiming:
-            case addAudioTrack: case trackRenderToAudio: case viewZoomToSelection:
+            case addAudioTrack: case trackRenderToAudio: case trackRenderToPsg: case viewZoomToSelection:
             case settingsPlugins: case settingsTuningTables:
                 return ! isPlayer;
 
@@ -204,6 +205,7 @@ public:
             // menu.addCommandItem(manager, AppCommands::addAutomationTrack);
         } else if (menuName == "Track") {
             menu.addCommandItem(manager, MainAppCommands::trackRenderToAudio);
+            menu.addCommandItem(manager, MainAppCommands::trackRenderToPsg);
         } else if (menuName == "View") {
             menu.addSubMenu("Zoom", createZoomMenu(manager));
             menu.addSeparator();
@@ -382,6 +384,9 @@ public:
             // Track commands
             case trackRenderToAudio:
                 result.setInfo("Render to audio", "Render track to audio track", "Track", 0);
+                break;
+            case trackRenderToPsg:
+                result.setInfo("Render to PSG", "Render what the track's MIDI to PSG plays to a PSG clip and file", "Track", 0);
                 break;
 
             // View commands

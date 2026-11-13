@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../../../formats/psg/PsgData.h"
-#include "../../../models/PsgMidi.h"
+#include "../../../models/PsgCC.h"
 #include "../../../controllers/BindedAutoParameter.h"
 #include "../scope/ScopeBuffer.h"
 #include "../scope/ScopeSettings.h"
@@ -67,6 +67,9 @@ public:
     /** The ZX Spectrum 128's clock, a chip's until it is set. */
     static constexpr double defaultClockMhz = 1.7734;
 
+    /** A chip's stereo layout until it is set. */
+    static constexpr auto defaultLayout = LayoutEnum::ACB;
+
     class StaticParams : public ParamsBase<StaticParams> {
     public:
         using ParamsBase<StaticParams>::ParamsBase;
@@ -101,20 +104,13 @@ public:
         }
 
         ParameterValue<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
-        ParameterValue<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", ChannelsLayout::ACB}};
+        ParameterValue<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", defaultLayout}};
         ParameterValue<float> stereoWidth     {{"stereo", IDs::stereo, "Width",  "Stereo width",  0.5f, {0.f, 1.0f}}};
     };
 
     DynamicParams dynamicParams;
     ChannelMuter channelMuter;
     ScopeSettings scopeSettings {ScopeSettings::Signal::ChipLevels};
-
-    enum class MidiReaderMode {
-        Params,
-        Regs
-    };
-
-    MidiReaderMode midiReaderMode = MidiReaderMode::Params;
 
     /**
      * Get visualization buffer for raw channel output (0=A, 1=B, 2=C): the chip's DAC levels 0..1,
@@ -138,9 +134,9 @@ private:
     Colour colour;
     CriticalSection lock;
 
-    PsgParamsMidiReader midiParamsReader;
-    // PsgRegsMidiReader midiRegsReader;  // old version
-    PsgRegsFrame registersFrame;
+    // What the current frame's messages set, over the values the chip held when the frame began. The registers
+    // are the chip's only lasting state: this is empty between frames.
+    PsgDecoder frameDecoder;  // the controllers since the chip was last written
     std::unique_ptr<AYInterface> chip;
 
     //==============================================================================
@@ -161,8 +157,7 @@ private:
 
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
-    void updateRegistersFromMidiParams() noexcept;
-    void updateRegistersFromMidiRegs() noexcept;
+    PsgRegsFrame readRegisters() const noexcept;
     void updateChip() noexcept;
     void handleMidiEvent(const te::MidiMessageWithSource& m) noexcept;
 

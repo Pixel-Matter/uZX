@@ -4,7 +4,7 @@
 #include <JuceHeader.h>
 
 #include "PsgClip.h"
-#include "PsgMidi.h"
+#include "PsgCC.h"
 
 
 namespace te = tracktion;
@@ -47,7 +47,6 @@ public:
         // DBG("ExtEngineBehaviour::createPlaybackMidiSequence for clip " << clip.getName());
         if (auto psgClip = dynamic_cast<PsgClip*>(&clip)) {
             return psgClip->getPsg().exportToPlaybackMidiSequence(*psgClip, tb);
-            // return createPsgPlaybackMidiSequence(list, clip, tb);
         }
         auto seq = te::MidiList::createDefaultPlaybackMidiSequence(list, clip, tb, generateMPE);
         // for (auto& msg : seq) {

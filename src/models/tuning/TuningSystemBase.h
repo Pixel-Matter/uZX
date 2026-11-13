@@ -32,7 +32,8 @@ class TuningSystem {
 public:
     enum PeriodMode : size_t {
         Tone = 0,
-        Envelope = 1
+        Envelope = 1,         ///< An envelope that repeats every period: a sawtooth
+        EnvelopeTriangle = 2  ///< One that takes two periods to repeat, so half the period plays the same note
     };
 
     TuningSystem(double chipClock, std::unique_ptr<ReferenceTuningSystem> refTuning)
@@ -48,6 +49,12 @@ public:
         return getType().getLongLabel().data();
     }
     virtual TuningType getType() const = 0;
+    /** How many tone periods one period of this mode lasts: a tone at a multiple of it keeps in step with
+        an envelope of this mode at the same note. */
+    constexpr static int tonePeriodsPer(PeriodMode mode) {
+        return getPeriodMode(mode).divider / getPeriodMode(Tone).divider;
+    }
+
     virtual int midiNoteToPeriod(double midiNote, PeriodMode mode = Tone) const = 0;
     virtual double periodToMidiNote(int period, PeriodMode mode = Tone) const = 0;
     virtual bool isDefined(int midiNote) const = 0;
@@ -83,9 +90,10 @@ public:
     // virtual void setState(const juce::ValueTree& state) = 0;
 protected:
     // TODO use CachedValues refTo-ed to a state value in a tree
-    constexpr static inline std::array<ChipCapabilities, 2> periodModes {{
-        {16,      Range<int>(1, 4096)},  // Tone
-        {16 * 16, Range<int>(0, 65535)}  // Envelope
+    constexpr static inline std::array<ChipCapabilities, 3> periodModes {{
+        {16,      Range<int>(1, 4096)},   // Tone
+        {16 * 16, Range<int>(0, 65535)},  // Envelope
+        {16 * 32, Range<int>(0, 65535)}   // EnvelopeTriangle
     }};
 
     double clockFrequency;

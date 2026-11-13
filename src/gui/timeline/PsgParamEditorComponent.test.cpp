@@ -44,6 +44,39 @@ public:
                           Time::getCurrentTime(), 1, false});
         expect(selection.isSelected(clip.get()));
 
+        beginTest("The envelope's rows mark each restart, the same shape again too");
+        {
+            // The shape is written at 0.25 s and again, the same, at 0.5 s: the line stays flat there
+            std::vector<uZX::PsgRegsFrame> frames(50);
+            frames[0] = {{uZX::PsgRegType::VolumeA, 12}};
+            frames[12] = {{uZX::PsgRegType::EnvelopeShape, 8}};
+            frames[25] = {{uZX::PsgRegType::EnvelopeShape, 8}};
+            uZX::PsgData tune {std::move(frames), {50.0, 1}};
+            auto restarting = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], tune,
+                                                {{te::TimePosition::fromSeconds(2.0), te::TimeDuration::fromSeconds(1.0)}, {}}, "restarts");
+            view.zoom.setRange({te::TimePosition::fromSeconds(2.0), te::TimeDuration::fromSeconds(1.0)});
+            selection.selectOnly(restarting.get());
+            settle();
+            const auto pixelBelowLine = [&](PsgParamType row, int x) {
+                editor.setCurrentParam(row);
+                // A finished snapshot: on Windows an image gets what is drawn only when its Graphics ends
+                return editor.createComponentSnapshot(editor.getLocalBounds(), true, 1.0f).getPixelAt(x, 95);
+            };
+            // Against another row of the same clip, which has the same grid and no marks
+            const auto isMarked = [&](int x) {
+                return pixelBelowLine(PsgParamType::EnvelopeShape, x) != pixelBelowLine(PsgParamType::VolumeA, x);
+            };
+            expect(isMarked(200), "the restart at 0.5 s");
+            expect(isMarked(96), "the first write at 0.24 s");
+            expect(! isMarked(300), "nothing at 0.75 s");
+            expect(pixelBelowLine(PsgParamType::RetriggerEnvelope, 200) == pixelBelowLine(PsgParamType::EnvelopeShape, 200),
+                   "the retrigger row has them too");
+            restarting->removeFromParent();
+            editor.setCurrentParam(PsgParamType::VolumeA);
+            selection.selectOnly(clip.get());
+            settle();
+        }
+
         beginTest("Forgets a deleted clip instead of reading its frames");
         clip->removeFromParent();
         clip = nullptr;

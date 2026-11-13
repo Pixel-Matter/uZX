@@ -1,7 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include <limits>
+#include <array>
 
 #include "../formats/psg/PsgData.h"
 #include "PsgClip.h"
@@ -40,7 +40,8 @@ enum class MidiCCType {
     GPC4              = 19,  ///< General Purpose Controller #4 (Slider)
 
     CC20PeriodCoarse  = 20,  ///< Tone period (Coarse)
-    // unused         = 21-31 (10)
+    CC21PeriodTop     = 21,  ///< Envelope period, the two bits above Coarse
+    // unused         = 22-31 (10)
 
     //---Main controllers, fine tuning (LSB for CC 0-31)---
     BankSelectLSB     = 32,  ///< Bank Select LSB
@@ -159,60 +160,77 @@ enum class MidiCCType {
 
 //==============================================================================
 /**
- * Utility functions for PSG MIDI conversion
+ * How PSG parameters travel as MIDI controllers: the one description of that wire, for everything that
+ * writes or reads it. A chip takes four consecutive MIDI channels from its base channel: A, B, C, then one
+ * for the envelope and the noise.
  */
-void loadMidiListStateFrom(const te::Edit& edit, ValueTree &seqState, const uZX::PsgData& data);
+namespace PsgCC {
 
-//==============================================================================
-class PsgRegsMidiWriter {
-public:
-    PsgRegsMidiWriter(int chan) noexcept
-        : channelNumber(chan)
-    {}
+inline constexpr int numChannels = 4;
 
-    double getTimeInBase(const te::MidiControllerEvent& controller) const;
-
-    juce::MidiMessageSequence& getSequence() noexcept { return sequence; }
-    inline void write(double time, int type, int value);
-
-private:
-    int channelNumber = 1;
-    juce::MidiMessageSequence sequence {};
-
+/** A controller message on a channel counted from the chip's base channel. */
+struct Message {
+    int channel;
+    MidiCCType controller;
+    int value;
 };
 
-juce::MidiMessageSequence createPsgPlaybackMidiSequence(const te::MidiList& list, const te::MidiClip& clip, te::MidiList::TimeBase timeBase);
+/** The one to three messages that carry a parameter. */
+struct Messages {
+    std::array<Message, 3> items {};
+    size_t count = 0;
+
+    const Message* begin() const noexcept { return items.data(); }
+    const Message* end() const noexcept { return items.data() + count; }
+};
+
+/** A period goes as two controllers, 7 high bits and 7 low bits, and the envelope period's two bits above
+    those in a third, sent first; anything else as its raw value in one.
+    The envelope retrigger goes pressed and released, and as nothing when it is 0. */
+Messages encode(PsgParamType param, int value) noexcept;
+
+/** Stores what a controller message carries into `into`, which holds the chip's values from before.
+    Another envelope shape than `into` holds sets the envelope retrigger as well: it cannot sound without
+    a write of the register. Returns false if no parameter travels there. */
+bool decode(int channel, int controller, int value, PsgParamFrameData& into) noexcept;
+
+}  // namespace PsgCC
 
 //==============================================================================
 /**
- * Reads PSG register data from MIDI messages
- */
-class PsgRegsMidiReader {
+    Reads the PSG wire as a chip does, a frame of controllers at a time. A frame starts from the registers
+    the chip holds, so a message for half a period, one mixer switch or one half of a volume register keeps
+    the rest as it is.
+*/
+class PsgDecoder {
 public:
-    struct MaybeRegPair {
-        int reg = -1;
-        uint8_t value = 0;
-
-        bool isValid() const noexcept { return reg >= 0; }
-        operator bool() const noexcept { return isValid(); }
-    };
-
-    MaybeRegPair read(const te::MidiMessageWithSource& m);
-
-    void reset() noexcept {
-        registers = {};
+    /** Takes a controller on a channel counted from the chip's base channel. `readHeld` gives the registers
+        the chip holds, as a PsgRegsFrame with every register set; it is asked when a frame starts.
+        Returns false if no parameter travels there. */
+    template <typename ReadHeld>
+    bool decode(int channel, int controller, int value, ReadHeld&& readHeld) noexcept {
+        if (frame_.isEmpty()) {
+            frame_ = PsgParamFrameData {readHeld()};
+            frame_.clear();
+        }
+        return PsgCC::decode(channel, controller, value, frame_);
     }
 
-    uZX::PsgRegsFrame getRegisters() const noexcept {
-        return registers;
-    }
+    /** True if the frame writes nothing so far. */
+    bool isEmpty() const noexcept { return frame_.isEmpty(); }
 
-    void clear() noexcept {
-        registers.clear();
+    /** The parameters the frame has set so far. */
+    const PsgParamFrameData& getFrame() const noexcept { return frame_; }
+
+    /** The registers the frame writes; the next message starts another frame. */
+    uZX::PsgRegsFrame takeRegisters() noexcept {
+        const auto regs = frame_.toRegisters();
+        frame_.clear();
+        return regs;
     }
 
 private:
-    uZX::PsgRegsFrame registers = {};
+    PsgParamFrameData frame_;
 };
 
 //==============================================================================
@@ -225,47 +243,43 @@ public:
         : channelNumber(chan)
     {}
 
+    /** Writes the parameters `data` sets. */
     void write(double time, const PsgParamFrameData& data);
+
+    /** Writes every value of `data`, set or not, as a clip's first frame restates what the chip should
+        hold, and the retriggers it sets. */
+    void writeAll(double time, const PsgParamFrameData& data);
 
     juce::MidiMessageSequence& getSequence() noexcept { return sequence; }
 
 private:
+    void add(double time, const PsgCC::Messages& messages);
+
     int channelNumber = 1;
     juce::MidiMessageSequence sequence {};
-
-    inline void addEvent(double time, int psgChan, MidiCCType type, int value);
-
 };
 
 //==============================================================================
 /**
- * Reads PSG parameters from MIDI messages
- */
-class PsgParamsMidiReader {
+    Writes the parameters a chip should hold as controllers, sending those that differ from what it was
+    last sent. A retrigger, of a tone or of the envelope, is an event, not a value to hold: it is sent
+    every time it is set.
+
+    It alone remembers what was sent, so whatever makes the parameters keeps no MIDI state.
+*/
+class PsgEncoder {
 public:
-    PsgParamsMidiReader(int chan) noexcept
-        : baseChannel(chan)
-    {
-        params.resetMixer();
-    }
+    /** Adds to `out`, at `time`, the messages that bring the chip on `baseChannel` to `params`. */
+    void encode(const PsgParamFrameData& params, tracktion::MidiMessageArray& out, double time, int baseChannel);
 
-    std::optional<PsgParamFrameData> read(const juce::MidiMessage& m);
+    /** Forgets what was sent, so the next parameters go out whole: for a chip that may not hold them any more. */
+    void reset() noexcept { sent_ = {}; }
 
-    PsgParamFrameData& getParams() noexcept { return params; }
-    const PsgParamFrameData& getParams() const noexcept { return params; }
+    /** True if the chip was sent anything since the last reset. */
+    bool hasSent() const noexcept { return !sent_.isEmpty(); }
 
-    void reset() noexcept {
-        params.clear();
-    }
-
-    void setBaseChannel(int chan) noexcept { baseChannel = chan; }
-
-    private:
-    int baseChannel = 1;
-    double currentTimestamp = std::numeric_limits<double>::lowest();
-    PsgParamFrameData params {};
-
-    void nextFrame() noexcept;
+private:
+    PsgParamFrameData sent_;
 };
 
 }  // namespace MoTool

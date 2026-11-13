@@ -1,5 +1,8 @@
 #include <JuceHeader.h>
 #include "formats/psg/PsgData.h"
+#include "formats/psg/PsgFile.h"
+#include "PsgCC.h"
+#include "PsgClip.h"
 #include "PsgList.h"
 #include "PsgParameter.h"
 
@@ -13,65 +16,32 @@ using namespace std::literals;
 using namespace MoTool::uZX;
 
 //==============================================================================
-class RetriggerEnvelopeTests : public UnitTest {
+class EnvelopeRestartTests : public UnitTest {
 public:
-    RetriggerEnvelopeTests() : UnitTest("RetriggerEnvelope", "MoTool") {}
+    EnvelopeRestartTests() : UnitTest("EnvelopeRestart", "MoTool") {}
 
     void runTest() override {
-        beginTest("RetriggerEnvelope=1 forces envelope shape register write even if value unchanged");
+        beginTest("The retrigger writes the shape register; the shape alone is a value to hold");
         {
-            PsgParamFrameData frame1;
-            frame1.set(PsgParamType::EnvelopeShape, 8);
-            frame1.set(PsgParamType::RetriggerEnvelope, 0);  // Explicit no retrigger
+            PsgParamFrameData frame;
+            frame.set(PsgParamType::EnvelopeShape, 8);
+            expect(! frame.toRegisters().hasEnvelopeShapeSet(), "no write, the envelope runs on");
 
-            auto regs1 = frame1.toRegisters();
-            expect(regs1.hasEnvelopeShapeSet(), "Frame 1 should have envelope shape set");
-
-            // Frame 2: Same envelope shape, but with retrigger=1
-            PsgParamFrameData frame2;
-            frame2.set(PsgParamType::EnvelopeShape, 8);  // Same value
-            frame2.set(PsgParamType::RetriggerEnvelope, 1);  // Force retrigger
-
-            auto regs2 = frame2.toRegisters();
-            expect(regs2.hasEnvelopeShapeSet(), "Frame 2 should have envelope shape set (retrigger)");
-            expectEquals(int(regs2.getEnvelopeShape()), 8, "Envelope shape should be 8");
+            frame.set(PsgParamType::RetriggerEnvelope, 1);
+            expect(frame.toRegisters().hasEnvelopeShapeSet());
+            expectEquals(int(frame.toRegisters().getEnvelopeShape()), 8);
         }
 
-        beginTest("RetriggerEnvelope state transitions (1 -> 0 -> 1)");
-        {
-            PsgParamFrameData state;
-
-            // Frame 1: Set retrigger=1
-            PsgParamFrameData frame1;
-            frame1.set(PsgParamType::RetriggerEnvelope, 1);
-            state.update(frame1);
-            expect(state.isSet(PsgParamType::RetriggerEnvelope), "Retrigger should be set");
-            expectEquals(int(state[PsgParamType::RetriggerEnvelope].value_or(-1)), 1, "Should be 1");
-
-            // Frame 2: Explicitly set retrigger=0 (turn off)
-            PsgParamFrameData frame2;
-            frame2.set(PsgParamType::RetriggerEnvelope, 0);
-            state.update(frame2);
-            expect(state.isSet(PsgParamType::RetriggerEnvelope), "Retrigger should still be set");
-            expectEquals(int(state[PsgParamType::RetriggerEnvelope].value_or(-1)), 0, "Should be 0");
-
-            // Frame 3: Set retrigger=1 again
-            PsgParamFrameData frame3;
-            frame3.set(PsgParamType::RetriggerEnvelope, 1);
-            state.update(frame3);
-            expectEquals(int(state[PsgParamType::RetriggerEnvelope].value_or(-1)), 1, "Should be 1 again");
-        }
-
-        beginTest("PSG import auto-detects retriggers and manages state transitions");
+        beginTest("PSG import keeps every write of the shape as a retrigger, the same shape too");
         {
             PsgData data {
                 {
-                    {{PsgRegType::EnvelopeShape, 8}},  // Frame 0: shape=8 (first write)
-                    {{PsgRegType::EnvelopeShape, 8}},  // Frame 1: shape=8 again (retrigger)
-                    {{PsgRegType::EnvelopeShape, 10}}, // Frame 2: shape=10 (value change)
-                    {{PsgRegType::EnvelopeShape, 10}}, // Frame 3: shape=10 again (retrigger)
-                    {},                               // Frame 4: no envelope shape write
-                    {{PsgRegType::EnvelopeShape, 10}}  // Frame 5: shape=10 again (retrigger after gap)
+                    {{PsgRegType::EnvelopeShape, 8}},   // Frame 0: first write
+                    {{PsgRegType::EnvelopeShape, 8}},   // Frame 1: the same shape again
+                    {{PsgRegType::EnvelopeShape, 10}},  // Frame 2: another shape
+                    {{PsgRegType::EnvelopeShape, 10}},  // Frame 3: the same again
+                    {{PsgRegType::VolumeA, 5}},         // Frame 4: no write of the shape
+                    {{PsgRegType::EnvelopeShape, 10}}   // Frame 5: again after a gap
                 },
                 {50.0, 1}
             };
@@ -81,51 +51,80 @@ public:
             PsgList psgList;
             psgList.loadFrom(data, *edit, {}, nullptr);
 
-            auto& frames = psgList.getFrames();
-
-            // Verify retrigger flags
-            expect(frames.size() >= 5, "Should have at least 5 frames");
-
-            // Frame 0: No retrigger (first write)
-            expect(!frames[0]->getData().isSet(PsgParamType::RetriggerEnvelope),
-                "Frame 0 should NOT have retrigger");
-
-            // Frame 1: Retrigger=1 (same value 8)
-            expect(frames[1]->getData()[PsgParamType::RetriggerEnvelope] == 1,
-                "Frame 1 should have retrigger=1");
-
-            // Frame 2: Retrigger=0 (value changed to 10)
-            expect(frames[2]->getData()[PsgParamType::RetriggerEnvelope] == 0,
-                "Frame 2 should have retrigger=0 (state change)");
-
-            // Frame 3: Retrigger=1 (same value 10)
-            expect(frames[3]->getData()[PsgParamType::RetriggerEnvelope] == 1,
-                "Frame 3 should have retrigger=1");
-
-            // Frame 4: Empty frame - retrigger should turn off
-            // This frame is sparse, but if it exists it should have retrigger=0
-            // Actually, sparse representation means it might not exist
-
-            // Frame 5: Retrigger=1 (same value 10 after gap)
-            int frame5Idx = -1;
-            for (int i = 4; i < frames.size(); ++i) {
-                if (frames[i]->getData().isSet(PsgParamType::EnvelopeShape) &&
-                    frames[i]->getData()[PsgParamType::EnvelopeShape] == 10) {
-                    frame5Idx = static_cast<int>(i);
-                    break;
-                }
+            String shapes, retriggers;
+            for (auto* frame : psgList.getFrames()) {
+                const auto shape = frame->getData()[PsgParamType::EnvelopeShape];
+                shapes << (shape ? String(int(*shape)) : String("-")) << " ";
+                retriggers << (frame->getData()[PsgParamType::RetriggerEnvelope] == 1 ? "R" : "-");
             }
-            expect(frame5Idx >= 0, "Should find frame 5 with shape=10");
-            if (frame5Idx >= 0) {
-                expect(frames[frame5Idx]->getData()[PsgParamType::RetriggerEnvelope] == 1,
-                    "Frame 5 should have retrigger=1");
-            }
+            expectEquals(shapes, String("8 8 10 10 - 10 "));
+            expectEquals(retriggers, String("RRRR-R"));
+        }
 
+        beginTest("A clip saved before the retrigger came back restarts the envelope on every shape, as it did");
+        {
+            auto state = PsgList::createPsgList();
+            state.setProperty(tracktion::IDs::ver, 1, nullptr);
+            juce::ValueTree frame(IDs::FRAME);
+            frame.setProperty(IDs::i, 0, nullptr);
+            frame.setProperty(IDs::s, 8, nullptr);
+            state.addChild(frame, -1, nullptr);
+            PsgList psgList(state, nullptr);
+            expect(psgList.getFrames()[0]->getData()[PsgParamType::RetriggerEnvelope] == 1);
+        }
+
+        beginTest("SkyTrain Funk plays the shape writes of its file, each one and no other");
+        {
+            // The tune leans on the envelope restarting on some notes and running on through others
+            PsgFile file(File(UZX_FIXTURES_DIR).getChildFile("psg").getChildFile("SkyTrain Funk.psg"));
+            if (! file.ensureRead()) {
+                logMessage("fixture missing at " + file.getFile().getFullPathName() + ", skipping");
+                return;
+            }
+            auto& data = file.getData();
+
+            auto& engine = *Engine::getEngines()[0];
+            auto edit = Edit::createSingleTrackEdit(engine);
+            const auto length = TimeDuration::fromSeconds(data.getLengthSeconds());
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], data, {{TimePosition(), length}, {}}, "SkyTrain Funk");
+            const auto sequence = clip->getPsg().exportToPlaybackMidiSequence(*clip, MidiList::TimeBase::seconds);
+
+            // What the chip writes: the controllers of one time make a frame over the values it holds, and a
+            // frame with a shape set writes it. The clip's first frame sends every value and must write no shape
+            std::map<int, int> played;
+            PsgParamFrameData params;
+            const auto endFrame = [&](double time) {
+                if (const auto regs = params.toRegisters(); regs.hasEnvelopeShapeSet())
+                    played[roundToInt(time * data.getFrameRate())] = regs.getEnvelopeShape();
+                params.clear();
+            };
+            double time = 0.0;
+            for (auto* e : sequence) {
+                if (e->message.getTimeStamp() > time)
+                    endFrame(std::exchange(time, e->message.getTimeStamp()));
+                PsgCC::decode(e->message.getChannel() - 1, e->message.getControllerNumber(),
+                              e->message.getControllerValue(), params);
+            }
+            endFrame(time);
+
+            std::map<int, int> written;
+            int restarts = 0, last = -1;
+            for (size_t i = 0; i < data.frames.size(); ++i) {
+                if (! data.frames[i].hasEnvelopeShapeSet())
+                    continue;
+                const int shape = data.frames[i].getEnvelopeShape();
+                written[static_cast<int>(i)] = shape;
+                restarts += shape == std::exchange(last, shape);
+            }
+            logMessage(String(written.size()) + " shape writes, " + String(restarts) + " of them the shape before again");
+            expect(restarts > 100, "the tune restarts the envelope with the same shape");
+            expectEquals(static_cast<int>(played.size()), static_cast<int>(written.size()));
+            expect(played == written, "a restart is played in each frame the file writes the shape, and in no other");
         }
     }
 };
 
-static RetriggerEnvelopeTests retriggerEnvelopeTests;
+static EnvelopeRestartTests envelopeRestartTests;
 
 //==============================================================================
 class ParameterScaleTests : public UnitTest {

@@ -143,7 +143,7 @@ static Optional<PsgRegsFrame> readNextFrame(const uint8*& data, size_t& remainin
 
 //==============================================================================
 /**
- * PsgFile - Reader for PSG (Programmable Sound Generator) files
+ * PsgFile - Reader and writer for PSG (Programmable Sound Generator) files
  */
 class PsgFile {
 public:
@@ -267,12 +267,43 @@ private:
         return remaining == 0;
     }
 
-    /** Writes the PSG data as a PSG file.
-        @param destStream        the destination stream
-        @returns true if the operation succeeded.
+public:
+    /** Writes the data as a PSG file of version 10, which carries the frame rate: each frame as its
+        marker and the registers it sets. Frames at the end that set nothing go as a marker each for up
+        to three and a pause for the rest, so the file never ends in a marker, which not every reader
+        takes for a frame.
+        @returns true if the stream took everything.
     */
-    // TODO implement
-    bool writeTo(OutputStream& destStream) const;
+    bool writeTo(OutputStream& destStream) const {
+        const auto& frames = psgData_.frames;
+        size_t used = frames.size();
+        while (used > 0 && frames[used - 1].isEmpty())
+            --used;
+
+        const auto put = [&](int byte) { return destStream.writeByte(static_cast<char>(byte)); };
+        bool ok = destStream.write("PSG\x1A", 4) && put(10) && put(jlimit(1, 255, roundToInt(psgData_.options.frameRate)));
+        for (int i = 0; i < 10; ++i)
+            ok = ok && put(0);
+
+        for (size_t f = 0; f < used; ++f) {
+            ok = ok && put(0xFF);
+            for (size_t reg = 0; reg < PsgRegsFrame::size(); ++reg)
+                if (frames[f].mask[reg])
+                    ok = ok && put(static_cast<int>(reg)) && put(frames[f].registers[reg]);
+        }
+
+        size_t empty = frames.size() - used;
+        if (empty == 0)
+            return ok;
+        for (; empty % 4 != 0; --empty)
+            ok = ok && put(0xFF);
+        do {
+            const auto pause = std::min(empty / 4, size_t(255));
+            ok = ok && put(0xFE) && put(static_cast<int>(pause));
+            empty -= pause * 4;
+        } while (empty > 0);
+        return ok;
+    }
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PsgFile)

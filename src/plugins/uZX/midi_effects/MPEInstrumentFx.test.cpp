@@ -9,10 +9,11 @@ namespace MoTool::uZX {
 
 namespace {
 
-struct SpanFx;
+struct FrameFx;
 
-/** A voice that records the sample range of every sub-block it renders and counts its note changes. */
-struct SpanVoice : MPEEffectVoice<SpanVoice, SpanFx>
+/** A voice that sounds at its note's pitch, at a level that changes every frame, so every frame it renders
+    sends a message at the frame's time. It also counts its note changes. */
+struct FrameVoice : MPEEffectVoice<FrameVoice, FrameFx>
 {
     using MPEEffectVoice::MPEEffectVoice;
 
@@ -22,37 +23,49 @@ struct SpanVoice : MPEEffectVoice<SpanVoice, SpanFx>
     void notePitchbendChanged() { ++changes; }
     void noteTimbreChanged() { ++changes; }
     void setCurrentPlayRate(double) {}
-    void renderNextBlock(MidiBufferContext& c);
+
+    void renderFrame(NoteFrame& frame) {
+        level = level > 0.5f ? 0.25f : 0.75f;
+        frame.add({.channel = currentlyPlayingNote.midiChannel,
+                   .key = currentlyPlayingNote.initialNote,
+                   .pitch = currentlyPlayingNote.initialNote + currentlyPlayingNote.totalPitchbendInSemitones,
+                   .level = level,
+                   .attack = false});
+    }
 
     int changes = 0;
+    float level = 0.25f;
 };
 
-struct SpanFx : MPEInstrumentFx<SpanVoice, SpanFx>
+struct FrameFx : MPEInstrumentFx<FrameVoice, FrameFx>
 {
-    SpanFx() : MPEInstrumentFx(*this) {}
+    FrameFx() : MPEInstrumentFx(*this) {}
 
     bool isPlaying() { return voices.getVoice(0)->isActive(); }
     int changesOf(int voice) { return voices.getVoice(voice)->changes; }
-
-    std::vector<std::pair<int, int>> spans;  // start, length
 };
 
-void SpanVoice::renderNextBlock(MidiBufferContext& c) {
-    midiFx.spans.emplace_back(c.start, c.length);
-}
-
-constexpr double sampleRate = 48000.0;
+constexpr double sampleRate = 16.0 * noteFrameRate;  // a frame is 16 samples
 
 MidiMessage at(MidiMessage m, int sample) {
     return m.withTimeStamp(sample / sampleRate);
 }
 
-void process(SpanFx& fx, int start, int length, std::vector<MidiMessage> events) {
+/** Processes the range and returns the samples its output messages are at: all of them, or the pitch wheels. */
+std::vector<int> process(FrameFx& fx, int start, int length, std::vector<MidiMessage> events, bool pitchWheels = false) {
     te::MidiMessageArray buffer;
     for (auto& m : events)
         buffer.addMidiMessage(m, {});
     MidiBufferContext c{buffer, start, length, {}, sampleRate};
     fx(c);
+
+    std::vector<int> samples;
+    for (auto& m : buffer) {
+        const int sample = roundToInt(m.getTimeStamp() * sampleRate);
+        if ((! pitchWheels || m.isPitchWheel()) && (samples.empty() || samples.back() != sample))
+            samples.push_back(sample);
+    }
+    return samples;
 }
 
 }  // namespace
@@ -63,36 +76,40 @@ public:
     MPEInstrumentFxTests() : UnitTest("MPEInstrumentFx", "MoTool") {}
 
     void runTest() override {
-        using Spans = std::vector<std::pair<int, int>>;
+        using Samples = std::vector<int>;
+        const auto noteOn = at(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
 
-        // Each case holds a note started in an earlier block, so its voice renders the whole range
-        auto spansOf = [](int start, int length, std::vector<MidiMessage> events) {
-            SpanFx fx;
-            process(fx, 0, 1, {at(MidiMessage::noteOn(1, 60, (uint8) 100), 0)});
-            fx.spans.clear();
-            process(fx, start, length, std::move(events));
-            return fx.spans;
+        // Each case holds a note started in an earlier block, so its voice renders every frame of the range
+        auto framesOf = [&](int start, int length) {
+            FrameFx fx;
+            process(fx, 0, 1, {noteOn});
+            return process(fx, start, length, {});
+        };
+        auto bendsOf = [&](int start, int length, int bendSample) {
+            FrameFx fx;
+            process(fx, 0, 1, {noteOn});
+            return process(fx, start, length, {at(MidiMessage::pitchWheel(1, 9000), bendSample)}, true);
         };
 
-        beginTest("A range without events renders as one sub-block");
+        beginTest("A range renders the frames that start in it");
         {
-            expect(spansOf(0, 64, {}) == Spans{{0, 64}});
-            expect(spansOf(64, 64, {}) == Spans{{64, 64}});
+            expect(framesOf(0, 64) == Samples{0, 16, 32, 48});
+            expect(framesOf(64, 64) == Samples{64, 80, 96, 112});
+            expect(framesOf(60, 8) == Samples{64});
+            expect(framesOf(65, 15) == Samples{});
         }
 
-        beginTest("An event inside a range that starts past zero splits it there");
+        beginTest("An event is heard from the first frame at or after it");
         {
-            const auto bend = at(MidiMessage::pitchWheel(1, 9000), 96);
-            expect(spansOf(64, 64, {bend}) == Spans{{64, 32}, {96, 32}});
+            expect(bendsOf(64, 64, 96) == Samples{96});
+            expect(bendsOf(64, 64, 97) == Samples{112});
+            expect(bendsOf(64, 64, 64) == Samples{64}, "an event at the start of the range");
         }
 
-        beginTest("Events at the start do not split the range, events from its end are left out");
+        beginTest("Events from the end of the range are left out");
         {
-            const auto bend = at(MidiMessage::pitchWheel(1, 9000), 64);
-            expect(spansOf(64, 64, {bend}) == Spans{{64, 64}});
-
-            SpanFx fx;
-            process(fx, 0, 1, {at(MidiMessage::noteOn(1, 60, (uint8) 100), 0)});
+            FrameFx fx;
+            process(fx, 0, 1, {noteOn});
             process(fx, 64, 64, {at(MidiMessage::noteOff(1, 60), 128)});
             expect(fx.isPlaying(), "a note off at the end belongs to the next range");
 
@@ -102,7 +119,7 @@ public:
 
         beginTest("Pitchbend, pressure and timbre reach only the voice playing the note");
         {
-            SpanFx fx;
+            FrameFx fx;
             process(fx,
                     0,
                     64,

@@ -41,7 +41,6 @@ No open findings. [refactoring.md](refactoring.md) holds the review's scope and 
   - [ ] ampVelocity
   - [ ] Snap to envelope period (tune2env)
   - [ ] LFO for pitch, amp, noise, shape
-- [ ] MPE on MIDI output: send pitch bend on note channel via MPEChannelAssigner
 - [ ] Tests on ChipInstrumentVoice and everything else
 - [ ] Velocity and pressure sensitivity module (offset, gain, curve with plot)
 - [ ] Render MIDI to another track
@@ -55,7 +54,7 @@ No open findings. [refactoring.md](refactoring.md) holds the review's scope and 
 
 ## PSG Clip / PSG data
 
-- [ ] PSG export
+- [ ] PSG export of PSG clips and whole projects (Track → Render to PSG covers a track with MIDI to PSG)
 - [ ] Route every tempo change through `PsgTiming::setTempoBpmRetimingFrames` — today only `PsgTiming::setFramesPerBeat` / `setBpmSnappedToFrames` (the transport bar's FPB and BPM boxes) rescale `framesPerBeat`; tempo edits from any other path (Tracktion tempo editing, future tempo track/automation) skip preserve-timing compensation
 
 ## AY Chip Emulator plugin

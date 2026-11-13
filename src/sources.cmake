@@ -12,8 +12,9 @@ set(SHARED_SOURCES
 
     controllers/ParamEndpoint.cpp
 
-    models/PsgMidi.cpp
+    models/PsgCC.cpp
     models/PsgList.cpp
+    models/PsgRecorder.cpp
     models/PsgClip.cpp
     models/PsgFrameRetimer.cpp
     models/PsgTempoDetector.cpp
@@ -39,6 +40,7 @@ set(SHARED_SOURCES
     plugins/uZX/midi_logger/MidiLoggerPlugin.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.cpp
+    plugins/uZX/midi_effects/NoteFrame.cpp
     plugins/uZX/instrument/ChipInstrument.cpp
     plugins/uZX/instrument/ChipInstrumentVoice.cpp
     plugins/uZX/instrument/ChipInstrumentPlugin.cpp
@@ -125,9 +127,10 @@ set(TEST_SOURCES
     formats/tracker/TrackerModule.test.cpp
     formats/tuning/TuningCsv.test.cpp
 
-    models/PsgMidi.test.cpp
+    models/PsgCC.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
+    models/PsgRecorder.test.cpp
     models/PsgClipTuning.test.cpp
     models/PsgTempoDetector.test.cpp
     models/ProjectFps.test.cpp
@@ -165,6 +168,8 @@ set(TEST_SOURCES
     plugins/uZX/aychip/AYPlugin.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp
     plugins/uZX/midi_effects/MPEInstrumentFx.test.cpp
+    plugins/uZX/midi_effects/NoteFrame.test.cpp
+    plugins/uZX/instrument/ChipInstrument.test.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.test.cpp
     plugins/uZX/notes_to_psg/NotesToPsgPlugin.test.cpp

@@ -56,7 +56,7 @@ public:
         using ParamsBase<StaticParams>::ParamsBase;
         using TunType = BuiltinTuningType;
 
-        ParameterValue<int>     baseMidiChannel {{"midiBase",    IDs::midiBase,    "MIDI",          "MIDI channel range",
+        ParameterValue<int>     baseMidiChannel {{"midiBase",    IDs::midiBase,    "MIDI",          "PSG output channels",
                                                   1, {1, 16 - 3, 1}}};
         ParameterValue<TunType> tuningTable     {{"tuningTable", IDs::tuningTable, "Tuning preset", "Selected tuning table",
                                                   TunType::EqualTemperament, TunType::getLabels()}};
@@ -77,9 +77,13 @@ public:
     // specific for MidiToPsg methods
     TuningSystem& getTuningSystem() const;
     /** The clock of the chip the notes play on: the first AY chip after this plugin, or the AY's
-        default without one. The chip owns it; this plugin follows it and never sets it. */
+        default without one. The chip owns it; this plugin follows it and never sets it. The same
+        chip's stereo layout says which chip channel a panned note takes. */
     double getChipClock() const { return chipClock_; }
     void setTuningSystem(std::shared_ptr<TuningSystem> tuningSystem);
+
+    /** Gives the PSG the plugin writes to a recorder as well; see NotesToPsgMapper::setRecorder. */
+    void setRecorder(PsgRecorder* recorder) { midiEffect.setRecorder(recorder); }
 
     // Scale::ScaleType getScaleType() const;
     // void setScaleType(Scale::ScaleType scaleType);
@@ -90,11 +94,11 @@ private:
     //==============================================================================
     NotesToPsgMapper transformer;
 
-    /** Listens to the list this plugin is in for a chip added, removed, moved or set to another clock. */
-    class ChipClockWatcher : public ValueTree::Listener {
+    /** Listens to the list this plugin is in for a chip added, removed, moved or set differently. */
+    class ChipWatcher : public ValueTree::Listener {
     public:
-        explicit ChipClockWatcher(NotesToPsgPlugin& p) : plugin(p) {}
-        ~ChipClockWatcher() override { list.removeListener(this); }
+        explicit ChipWatcher(NotesToPsgPlugin& p) : plugin(p) {}
+        ~ChipWatcher() override { list.removeListener(this); }
         void watch(ValueTree);
 
     private:
@@ -108,9 +112,9 @@ private:
     };
 
     double chipClock_;
-    ChipClockWatcher chipClockWatcher {*this};
+    ChipWatcher chipWatcher {*this};
 
-    void followChipClock();
+    void followChip();
     void valueTreeParentChanged(ValueTree&) override;
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;

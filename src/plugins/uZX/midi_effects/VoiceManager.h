@@ -24,8 +24,8 @@ template <class Voice, class OwnerMidiFx>
 class VoiceManager {
 public:
     //==============================================================================
-    VoiceManager(OwnerMidiFx& owner) : midiFx(owner) {
-        ensureNumVoices(3);
+    VoiceManager(OwnerMidiFx& owner, int numVoices) : midiFx(owner) {
+        ensureNumVoices(numVoices);
         setReuseSameVoiceForSameNote(true);
     }
 

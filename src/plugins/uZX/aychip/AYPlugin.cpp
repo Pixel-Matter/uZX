@@ -9,7 +9,6 @@ const char* AYChipPlugin::xmlTypeName = "aychip";
 
 AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     : PluginBase(info)
-    , midiParamsReader(1)
 {
     staticParams.referTo(state, getUndoManager());
     dynamicParams.referTo(state, getUndoManager());
@@ -22,7 +21,6 @@ AYChipPlugin::AYChipPlugin(te::PluginCreationInfo info)
     });
     channelMuter.setupLinkedToggleBehavior();
     scopeSettings.referTo(state, getUndoManager());
-    midiParamsReader.setBaseChannel(staticParams.baseMidiChannel.getStoredValue());
 }
 
 AYChipPlugin::~AYChipPlugin() {
@@ -68,7 +66,6 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 // it a static params, so it is ok to mute sounds
                 chip->muteSound();
                 staticParams.baseMidiChannel.forceUpdateOfCachedValue();
-                midiParamsReader.setBaseChannel(staticParams.baseMidiChannel.getStoredValue());
             }
         }
         // Commented out because updateFromDynamicParams is called in applyToBuffer
@@ -121,41 +118,30 @@ void AYChipPlugin::reset() {
                     staticParams.chipType.getStoredValue());
     }
     updateDynamicParams();
-    midiParamsReader.reset();
-    registersFrame = {};
+    frameDecoder = {};
 }
 
-void AYChipPlugin::updateRegistersFromMidiParams() noexcept {
-    // DBG("updateRegistersFromMidiParams");
-    auto& params = midiParamsReader.getParams();
-    if (staticParams.monitorMode.getStoredValue()) {
-        params.debugPrintSet();
+// called under lock
+PsgRegsFrame AYChipPlugin::readRegisters() const noexcept {
+    PsgRegsFrame regs;
+    for (size_t i = 0; i < regs.size(); ++i) {
+        regs.registers[i] = chip->getRegister(i);
+        regs.mask[i] = true;
     }
-    registersFrame.clear();
-    params.updateRegisters(registersFrame);
-    params.clear();  // clear params after update
-}
-
-void AYChipPlugin::updateRegistersFromMidiRegs() noexcept {
-    // DBG("updateRegistersFromMidiRegs");
-    // registersFrame = midiRegsReader.getRegisters();
-    // midiRegsReader.clear();
+    return regs;
 }
 
 // called under lock
 void AYChipPlugin::updateChip() noexcept {
-    if (midiReaderMode == MidiReaderMode::Params) {
-        updateRegistersFromMidiParams();
-    }
-    // else if (midiReaderMode == MidiReaderMode::Regs) {
-    //     // updateRegistersFromMidiRegs();
-    // }
-
-    // Set registers from the frame to the chip
-    for (size_t i = 0; i < registersFrame.size(); ++i) {
-        if (registersFrame.isSet(i)) {
-            // DBG("" << i << " = " << registersFrame.getRaw(i));
-            chip->setRegister(i, registersFrame.getRaw(i));
+    if (! frameDecoder.isEmpty()) {
+        if (staticParams.monitorMode.getStoredValue()) {
+            frameDecoder.getFrame().debugPrintSet();
+        }
+        const auto regs = frameDecoder.takeRegisters();
+        for (size_t i = 0; i < regs.size(); ++i) {
+            if (regs.isSet(i)) {
+                chip->setRegister(i, regs.getRaw(i));
+            }
         }
     }
 
@@ -163,13 +149,13 @@ void AYChipPlugin::updateChip() noexcept {
     channelMuter.applyToChip(*chip);
 }
 
+// called under lock
 void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept {
-    if (midiReaderMode == MidiReaderMode::Params) {
-        midiParamsReader.read(m);
+    if (! m.isController()) {
+        return;
     }
-    // else if (midiReaderMode == MidiReaderMode::Regs) {
-    //     // midiRegsReader.read(m);
-    // }
+    frameDecoder.decode(m.getChannel() - staticParams.baseMidiChannel.getStoredValue(), m.getControllerNumber(),
+                        m.getControllerValue(), [this] { return readRegisters(); });
 }
 
 void AYChipPlugin::copyTempBufferToVizBuffer() {
@@ -211,8 +197,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
     for (auto& m : *fc.bufferForMidiMessages) {
         updateDynamicParams();
 
-        // Apply the pending frame before reading a newer one, even within the same sample:
-        // the reader drops unapplied values once the timestamp advances.
+        // Apply the pending frame before reading a newer one, even within the same sample
         if (m.getTimeStamp() > lastTimestamp) {
             updateChip();
             lastTimestamp = m.getTimeStamp();
@@ -237,14 +222,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 
 PsgRegsFrame AYChipPlugin::getChipRegisters() const {
     const ScopedLock sl(lock);
-    PsgRegsFrame regs;
-    if (chip != nullptr) {
-        for (size_t i = 0; i < regs.size(); ++i) {
-            regs.registers[i] = chip->getRegister(i);
-            regs.mask[i] = true;
-        }
-    }
-    return regs;
+    return chip != nullptr ? readRegisters() : PsgRegsFrame {};
 }
 
 void AYChipPlugin::restorePluginStateFromValueTree(const ValueTree& v) {

@@ -33,8 +33,12 @@ File getStartupEditFile(tracktion::PropertyStorage& storage);
 File getRendersDirectory(tracktion::Edit& edit);
 
 /** The edit format this build writes, separate from app versions. Bump it when an older app
-    would misread a newer edit: an app refuses to open a file with a higher version. */
-inline constexpr int editFormatVersion = 1;
+    would misread a newer edit: an app refuses to open a file with a higher version.
+
+    2: a PSG clip's frame restarts the envelope where it sets the retrigger, not wherever it sets the shape
+       (PsgList converts older clips); the chip controllers in MIDI clips have MIDI's value ranges: a switch
+       is on from 64, controller 70 is one of eight envelope shapes, controller 2 sweeps the noise periods. */
+inline constexpr int editFormatVersion = 2;
 
 /** The format version an edit file was saved with: 0 for files from before versioning or non-XML ones. */
 int readEditFormatVersion(const File& editFile);

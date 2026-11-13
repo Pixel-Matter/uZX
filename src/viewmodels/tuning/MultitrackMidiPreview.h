@@ -16,9 +16,9 @@ public:
     ~MultitrackMidiPreview() override;
 
     // Playback methods
-    void playChord(const std::vector<int>& midiNotes, double noteLength = 0.5, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
-    void playSingleNote(int midiNote, double noteLength = 0.5, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
-    void playArpeggio(const std::vector<int>& midiNotes, double noteLength = 0.25, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
+    void playChord(const std::vector<int>& midiNotes, double noteLength = 0.5, bool enableTone = true, bool enableEnvelope = false, uZX::EnvelopeShape envelopeShape = {}, int modulationSemitones = 0);
+    void playSingleNote(int midiNote, double noteLength = 0.5, bool enableTone = true, bool enableEnvelope = false, uZX::EnvelopeShape envelopeShape = {}, int modulationSemitones = 0);
+    void playArpeggio(const std::vector<int>& midiNotes, double noteLength = 0.25, bool enableTone = true, bool enableEnvelope = false, uZX::EnvelopeShape envelopeShape = {}, int modulationSemitones = 0);
 
     void stopPlayback();
 
@@ -56,7 +56,7 @@ private:
     void clearAllChannelClips();
     void startPlayback(double duration);
 
-    void placeNote(int channelIndex, int midiNote, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, int envelopeShape = 0, int modulationSemitones = 0);
+    void placeNote(int channelIndex, int midiNote, double noteLength, double startTime = 0.0, bool enableTone = true, bool enableEnvelope = false, uZX::EnvelopeShape envelopeShape = {}, int modulationSemitones = 0);
 
     // Test access method
     friend class MultitrackMidiPreviewTest;

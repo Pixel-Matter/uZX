@@ -108,6 +108,41 @@ public:
             expectEquals(rateOf(0, 60), 50.0, "the rate byte means nothing before version 10");
             expectEquals(rateOf(10, 0), 50.0, "a zero rate is no rate");
         }
+
+        beginTest("A written file reads back the same: frames, the registers each sets, the frame rate");
+        {
+            const auto frameOf = [] (std::initializer_list<std::pair<size_t, uint8>> writes) {
+                PsgRegsFrame frame;
+                for (const auto& [reg, value] : writes) {
+                    frame.registers[reg] = value;
+                    frame.mask[reg] = true;
+                }
+                return frame;
+            };
+            // A frame that sets nothing in the middle, and 0 to 9 of them at the end
+            for (size_t trailing = 0; trailing < 10; ++trailing) {
+                PsgData data;
+                data.options.frameRate = trailing % 2 == 0 ? 50.0 : 100.0;
+                data.frames = {frameOf({{0, 0x85}, {1, 1}, {7, 0x38}, {8, 15}}), {}, frameOf({{13, 8}}), frameOf({{8, 0}})};
+                data.frames.resize(data.frames.size() + trailing);
+
+                TemporaryFile temp(".psg");
+                {
+                    PsgFile file(temp.getFile());
+                    file.getData() = data;
+                    FileOutputStream stream(temp.getFile());
+                    expect(stream.openedOk() && file.writeTo(stream));
+                }
+                PsgFile file(temp.getFile());
+                expect(file.ensureRead());
+                const auto& read = file.getData();
+                expectEquals(read.getFrameRate(), data.getFrameRate());
+                expectEquals(read.frames.size(), data.frames.size(), String(trailing) + " frames that set nothing at the end");
+                for (size_t i = 0; i < std::min(read.frames.size(), data.frames.size()); ++i)
+                    expect(read.frames[i].mask == data.frames[i].mask && read.frames[i].matches(data.frames[i]),
+                           "frame " + String(i));
+            }
+        }
     }
 };
 

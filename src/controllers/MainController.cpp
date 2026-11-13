@@ -458,6 +458,10 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             result.setActive(edit != nullptr);
             break;
 
+        case MainAppCommands::trackRenderToPsg:
+            result.setActive(edit != nullptr && Helpers::canRenderSelectedTrackToPsg(selectionManager_));
+            break;
+
         case MainAppCommands::fileOpenRecent1:
         case MainAppCommands::fileOpenRecent2:
         case MainAppCommands::fileOpenRecent3:
@@ -740,6 +744,11 @@ bool AppController::perform(const InvocationInfo& info) {
         case MainAppCommands::trackRenderToAudio:
             if (auto* edit = MoToolApp::getArrangerController().getEdit())
                 Helpers::renderSelectedTracksToAudioTrack(*edit, selectionManager_);
+            break;
+
+        case MainAppCommands::trackRenderToPsg:
+            if (auto* edit = MoToolApp::getArrangerController().getEdit())
+                Helpers::renderSelectedTrackToPsgTrack(*edit, selectionManager_);
             break;
 
         // View commands

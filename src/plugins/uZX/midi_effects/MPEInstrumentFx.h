@@ -4,6 +4,7 @@
 
 #include "MidiEffect.h"
 #include "MPEEffectVoice.h"
+#include "NoteFrame.h"
 #include "VoiceManager.h"
 
 
@@ -14,8 +15,9 @@ namespace te = tracktion;
 template <class Voice, class OwnerMidiFx>
 class MPEInstrumentFx : public MPEInstrument::Listener {
 public:
+    // As many voices as the wire carries: which of them the chip plays is the mixer's to choose
     MPEInstrumentFx(OwnerMidiFx& owner)
-        : voices(owner)
+        : voices(owner, NoteEncoder::maxVoices)
     {
         mpeInstrument.enableLegacyMode();
         mpeInstrument.addListener(this);
@@ -34,14 +36,25 @@ public:
     //==========================================================================
     // Render
 
-    // render all voices and merge output
+    // Renders the frames that start in the range: each active voice adds itself to the frame, the controllers
+    // of the channel it was played on give it its timbre, pan and priority, the encoder sends what changed.
+    // Frames sit on a grid counted from the start of time, whatever the block size.
     void renderNextSubBlock(MidiBufferContext& c) {
-        // if (c.buffer.isNotEmpty()) {
-        //     DBG("Rendering sub-block " << c.processStartTime() << " - " << c.processEndTime());
-        // }
-        voices.forEachActiveVoice([&c](auto* voice) {
-            voice->renderNextBlock(c);
-        });
+        const auto step = roundToInt(c.sampleRate / noteFrameRate);
+        const auto timeSamples = roundToInt(c.playPosition.inSeconds() * c.sampleRate);
+        const int remainder = timeSamples % step;
+        const auto first = remainder == 0 ? 0 : step - remainder;
+
+        for (auto s = first; s < c.end(); s += step) {
+            if (s < c.start)
+                continue;
+            NoteFrame frame;
+            voices.forEachActiveVoice([&frame](auto* voice) {
+                voice->renderFrame(frame);
+            });
+            controllers.applyTo(frame);
+            encoder.encode(frame, c.buffer, s / c.sampleRate);
+        }
     }
 
     void handleMidiEvent(const MidiMessage& m) {
@@ -51,7 +64,7 @@ public:
         mpeInstrument.processNextMidiEvent(m);
 
         if (m.isController())
-            handleController(m.getChannel(), m.getControllerNumber(), m.getControllerValue());
+            controllers.decode(m);
         else if (m.isProgramChange())
             handleProgramChange(m.getChannel(), m.getProgramChangeNumber());
     }
@@ -102,6 +115,7 @@ public:
         renderNextSubBlock(subBlock);
 
         midiOut.sortByTimestamp();
+        midiOut.isAllNotesOff = c.isAllNotesOff();  // for what comes after as well
 
         c.buffer.swapWith(midiOut);
 
@@ -150,13 +164,6 @@ protected:
         // DBG("Note key state changed: " << changedNote.initialNote);
     }
 
-    /** Called when a MIDI controller changes. */
-    void handleController(int midiChannel, int controllerNumber, int controllerValue) {
-        ignoreUnused(midiChannel, controllerNumber, controllerValue);
-        // DBG("Controller changed: " << controllerNumber << " = " << controllerValue);
-        // Implement controller handling logic here
-    }
-
     void handleProgramChange(int midiChannel, int programNumber) {
         ignoreUnused(midiChannel, programNumber);
         DBG("Program change: " << programNumber);
@@ -167,6 +174,8 @@ protected:
 
 private:
     MPEInstrument mpeInstrument;
+    NoteControllers controllers;  // of the channels the notes are played on
+    NoteEncoder encoder;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MPEInstrumentFx)
 };

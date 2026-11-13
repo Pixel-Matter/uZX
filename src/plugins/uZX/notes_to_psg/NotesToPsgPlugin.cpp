@@ -6,41 +6,51 @@ namespace MoTool::uZX {
 
 
 //==============================================================================
-/** The clock of the first AY chip after the plugin in its list, read from the edit state, so a chip
-    whose plugin object is not created yet counts as well. */
-static double findChipClockAfter(const ValueTree& pluginState) {
+/** The first AY chip after the plugin in its list, as its state in the edit, so a chip whose plugin
+    object is not created yet counts as well. Without one, a state that has nothing set. */
+static ValueTree findChipAfter(const ValueTree& pluginState) {
     const auto list = pluginState.getParent();
     for (int i = list.indexOf(pluginState) + 1; i < list.getNumChildren(); ++i)
         if (const auto p = list.getChild(i);
             p.hasType(te::IDs::PLUGIN) && p[te::IDs::type].toString() == AYChipPlugin::xmlTypeName)
-            return static_cast<double>(p.getProperty(IDs::clock, AYChipPlugin::defaultClockMhz)) * MHz;
-    return AYChipPlugin::defaultClockMhz * MHz;
+            return p;
+    return {};
 }
 
-void NotesToPsgPlugin::ChipClockWatcher::watch(ValueTree newList) {
+static double clockOf(const ValueTree& chip) {
+    return static_cast<double>(chip.getProperty(IDs::clock, AYChipPlugin::defaultClockMhz)) * MHz;
+}
+
+// ponytail: the layout as stored; an automated layout is not followed until something needs it
+static std::array<double, 3> channelPansOf(const ValueTree& chip) {
+    return channelPans(chip.hasProperty(IDs::layout) ? VariantConverter<ChannelsLayout>::fromVar(chip[IDs::layout])
+                                                     : ChannelsLayout(AYChipPlugin::defaultLayout));
+}
+
+void NotesToPsgPlugin::ChipWatcher::watch(ValueTree newList) {
     list.removeListener(this);
     list = std::move(newList);
     list.addListener(this);
 }
 
-void NotesToPsgPlugin::ChipClockWatcher::valueTreePropertyChanged(ValueTree&, const Identifier& id) {
-    if (id == IDs::clock)
-        plugin.followChipClock();
+void NotesToPsgPlugin::ChipWatcher::valueTreePropertyChanged(ValueTree&, const Identifier& id) {
+    if (id == IDs::clock || id == IDs::layout)
+        plugin.followChip();
 }
 
-void NotesToPsgPlugin::ChipClockWatcher::valueTreeChildAdded(ValueTree& parent, ValueTree&) {
+void NotesToPsgPlugin::ChipWatcher::valueTreeChildAdded(ValueTree& parent, ValueTree&) {
     if (parent == list)
-        plugin.followChipClock();
+        plugin.followChip();
 }
 
-void NotesToPsgPlugin::ChipClockWatcher::valueTreeChildRemoved(ValueTree& parent, ValueTree&, int) {
+void NotesToPsgPlugin::ChipWatcher::valueTreeChildRemoved(ValueTree& parent, ValueTree&, int) {
     if (parent == list)
-        plugin.followChipClock();
+        plugin.followChip();
 }
 
-void NotesToPsgPlugin::ChipClockWatcher::valueTreeChildOrderChanged(ValueTree& parent, int, int) {
+void NotesToPsgPlugin::ChipWatcher::valueTreeChildOrderChanged(ValueTree& parent, int, int) {
     if (parent == list)
-        plugin.followChipClock();
+        plugin.followChip();
 }
 
 //==============================================================================
@@ -48,12 +58,13 @@ const char* NotesToPsgPlugin::xmlTypeName = "uzxmidi2psg";
 
 NotesToPsgPlugin::NotesToPsgPlugin(te::PluginCreationInfo info)
     : MidiFxPluginBase<NotesToPsgMapper>(info, transformer)
-    , chipClock_(findChipClockAfter(state))
+    , chipClock_(clockOf(findChipAfter(state)))
 {
     staticParams.referTo(state, getUndoManager());
-    chipClockWatcher.watch(state.getParent());
+    chipWatcher.watch(state.getParent());
 
     midiEffect.setBaseChannel(static_cast<int>(staticParams.baseMidiChannel.getStoredValue()));
+    midiEffect.setChannelPans(channelPansOf(findChipAfter(state)));
 }
 
 NotesToPsgPlugin::~NotesToPsgPlugin() {
@@ -72,7 +83,6 @@ void NotesToPsgPlugin::midiPanic() {
 }
 
 void NotesToPsgPlugin::reset() {
-    midiEffect.clearOutput();
     midiEffect.reset();
 }
 
@@ -93,12 +103,14 @@ std::unique_ptr<te::Plugin::EditorComponent> NotesToPsgPlugin::createEditor() {
 
 void NotesToPsgPlugin::valueTreeParentChanged(ValueTree& v) {
     MidiFxPluginBase<NotesToPsgMapper>::valueTreeParentChanged(v);
-    chipClockWatcher.watch(state.getParent());
-    followChipClock();
+    chipWatcher.watch(state.getParent());
+    followChip();
 }
 
-void NotesToPsgPlugin::followChipClock() {
-    const auto clock = findChipClockAfter(state);
+void NotesToPsgPlugin::followChip() {
+    const auto chip = findChipAfter(state);
+    midiEffect.setChannelPans(channelPansOf(chip));
+    const auto clock = clockOf(chip);
     if (exactlyEqual(clock, chipClock_))
         return;
     chipClock_ = clock;
@@ -126,11 +138,8 @@ void NotesToPsgPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& 
 }
 
 void NotesToPsgPlugin::updateParams() {
-    // first reset to clear state and to silence any hanging notes
-    reset();
+    // Silences any hanging notes as well
     midiEffect.setBaseChannel(static_cast<int>(staticParams.baseMidiChannel.getStoredValue()));
-    // then reset again to init
-    reset();
 }
 
 void NotesToPsgPlugin::recreateTuningSystem() {

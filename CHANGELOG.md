@@ -57,11 +57,13 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: changing the chip type or clock during playback keeps the tones, mixer, volumes, noise and envelope playing, instead of going silent until the tune sets them again
 - Fixed: unmuting a channel, or its tone, noise or envelope, brings it back at once instead of after the tune next sets it
 - Fixed: a tone or envelope period that passes through 0 while being written (fine before coarse) plays at its value instead of one step off
+- Fixed: an AY chip played by MIDI controllers keeps what a message does not name: turning one channel's tone on no longer turns on the other channels' tone and noise, and after a mute an envelope switch no longer brings the old volume back
 
 ### Tuning
 - Fixed: a cancelled preview stays silent, and a newer preview keeps its own playback length and note highlights
 - Fixed: the detected table and key, and the rankings in **Tuning and key…**, follow changes to a clip's length, the tempo or frames per beat, and clips linked as one tune
-- Fixed: changing the tuning while notes play no longer crashes, and moving MIDI to PSG's channel range silences a held note instead of leaving it on
+- Fixed: changing the tuning while notes play no longer crashes, and moving MIDI to PSG's output channels silences a held note instead of leaving it on
+- Fixed: previewing a note with the tone off and the envelope on no longer plays the tone as well
 - MIDI to PSG plays at the clock of the AY chip after it and no longer sets that clock: equal temperament and just intonations stay in tune on any clock, and a tracker table made for another clock shows how far it sounds off
 - Fixed: opening a project or picking a tuning preset no longer resets the AY chip's clock set by hand
 
@@ -73,14 +75,28 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The About window links to the project on GitHub, credits zxtune, and scrolls its greets after five seconds
 - Fixed: dialogs open at the size they ask for, without an empty strip at the bottom; the About window's spacing is even
 - Release builds no longer list the MIDI Logger debugging device among the devices to add
-- Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together, and passes MIDI on other channels through at its own time instead of later
+- Fixed: MIDI to PSG plays each note at its own time when several MIDI events arrive together
 - Fixed: deleting the track shown in the Track Devices panel empties the panel instead of leaving its devices on screen
 - Fixed: Clip Parameters no longer reads a deleted clip, and clicking one of its points selects the clip instead of clearing the selection
+- Fixed: an AY chip added in place of another plays the next note after a stop in full, not just its volume; a MIDI panic silences a note held by MIDI to PSG at once, not at the next MIDI event
+- MIDI to PSG plays notes on every MIDI channel, chords on one channel too, and gives the chip's three channels to the notes with the highest priority: a note's MIDI channel number or controller 86, the newest among equals. A note that lost its place returns when a channel frees, a note keeps its chip channel while it plays, and controller 10 (pan) asks for the chip channel nearest to that place in the chip's layout. Its **MIDI** setting, now **PSG output channels**, is where the chip's controllers go out, and no MIDI passes through it
+- MIDI to PSG reads the tone, noise and envelope switches (controllers 80 to 82), the envelope shape (70) and the noise period (2) as the timbre of the notes on their channel. Controller 85 makes a channel's notes drive the chip's envelope, in place of notes on the fourth channel: such a note can start or last without restarting the envelope, and controller 83 restarts it
+- MIDI to PSG reads the pitch wheel as MPE does, 48 semitones on channels 2 to 16 and 2 on channel 1, so a MIDI clip in MPE mode plays each note with its own bend, and μZX Instrument's pitch envelope is no longer cut at two semitones
+- These controllers follow MIDI's conventions, so knobs and buttons work on them: a switch is on from 64 instead of for any value but 0, controller 2 sweeps the 32 noise periods over its whole range, and controller 70 picks one of the eight envelope shapes, sixteen values each, in pairs that start rising and falling: triangles, sawtooths, then the shapes that play once
+- A note that drives the envelope as a triangle sounds at its own pitch, not an octave under it: MIDI to PSG gives a triangle half the period of a sawtooth. The tuning tool's grid shows the envelope periods of the chosen shape, and marks a tone as in step with a triangle when its period is a multiple of 32
+- **Track → Render to PSG** renders what a track's MIDI to PSG tells the chip to a `.psg` file in the project's Renders folder and to a PSG clip on a new track with an AY chip, and mutes the source; it is available when the selected track has MIDI to PSG
+- Fixed: an envelope period above 16383, a slow envelope, reaches the AY chip whole from a PSG clip or MIDI to PSG instead of losing its top bits; they travel as controller 21 on the chip's fourth channel
+- Fixed: a chip instrument note that starts at level 0, as with a slow attack, is no longer sent as a note off
+- μZX Instrument sends each note on a MIDI channel of its own (2 to 16), so its pitch envelope no longer bends all notes of a chord together, and gives a note the tone, noise, envelope, pan and priority controllers of the channel it is played on, so these reach MIDI to PSG through the instrument. It plays up to fifteen notes at once instead of three, so MIDI to PSG chooses which sound and a held note returns when a newer one ends
+- **Envelope: Retrigger** in the PSG parameter editor has a point on every restart of the envelope, not only where the shape repeats, and the envelope's rows mark each restart with a line down the row
+- Fixed: the AY chip restarts the envelope on controller 83 of its fourth channel, or when controller 70 brings another shape, and no longer when the same shape is sent again; a PSG clip that starts part-way through its tune, such as the later part of a split, keeps an envelope note running across its start instead of restarting it, and a seek into a note restarts the envelope only if the chip held another shape
+- Fixed: the chip instrument ends a note that loses its voice to a new one, and a note whose key is played again during its release, with a note off; with audio buffers longer than a 50 Hz frame it no longer sends stray note offs after a note ends
 - Fixed: Clip Parameters no longer draws a sloped line at the left edge of a scrolled view; every value holds level until the next change
 - The Clip Parameters and Track Devices tabs are flat, in the app's colours and font: the open tab joins its page and has a blue edge, and each tab is as long as its name
 
 ### Projects
 - Projects record the version of their format; a project saved by a newer µZX doesn't open in an older one, which says so instead of saving over it. v0.6.0-alpha and older don't check
+- Projects saved by this version don't open in older ones: a PSG clip stores the envelope's restarts apart from its shape, and the chip controllers in MIDI clips have new values. Older projects open, and their PSG clips are converted; MIDI clips that set the old controller values are not
 
 ### Releases
 - The Player has its own version and its own releases, tagged `player-v…`; `v…` releases ship Studio alone

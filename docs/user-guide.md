@@ -217,6 +217,7 @@ When a PSG clip is selected, the parameter editor appears. It shows an automatio
 - **Parameter list** — left sidebar lists available parameters (Tone Period A/B/C, Noise Period, Envelope Period, Volume, etc.). Click to switch.
 - **Curve area** — shows the value of the parameter across the clip duration. Click to add points; drag points to edit.
 - The curve aligns with the timeline grid.
+- On the envelope's rows (**Envelope: Period**, **Envelope: Shape**, **Envelope: Retrigger**) a line down the row marks each restart of the envelope, including one with the same shape, where the curve stays flat.
 
 <!-- guide-figure:studio-psg-editor -->
 ![PSG parameter editor](images/user-guide/studio-psg-editor.png)
@@ -230,7 +231,30 @@ When a track is selected, the Devices panel shows the plugin chain on that track
 
 **MIDI to PSG** turns MIDI notes into notes for the first AY chip after it on the track, at that chip's clock: set the clock in the AY chip, never in MIDI to PSG. Its **Tuning preset** picks the notes. Equal temperament and the just intonations are computed for the chip's clock, so they stay in tune on any clock. A tracker table plays its own periods, made for one clock; when the chip runs at another, the panel shows how far every note sounds off, such as `⚠ Pentagon @ ZX Spectrum +23¢`. Set the chip's clock to the table's to play the table as written.
 
+MIDI to PSG plays the notes of every MIDI channel on the chip's three channels, several notes of one MIDI channel too. Velocity and polyphonic aftertouch set a note's volume, and the pitch wheel bends the notes of its channel: up to two semitones on channel 1, where a keyboard plays, and up to 48 on channels 2 to 16, as MPE does, so a clip in MPE mode plays each note with its own bend. When more than three notes sound, the ones with the highest priority play: a note's priority is its MIDI channel's number, or the value of controller 86 on that channel, and among equals the newest note plays. A note that lost its place comes back when a chip channel frees. A note stays on its chip channel while it plays; controller 10 (pan) on its MIDI channel asks for the chip channel nearest to that place in the AY chip's **Layout**.
+
+Controllers on a MIDI channel set how its notes sound. A switch is on from 64 and off below, so a button or the upper half of a knob turns it on. Controllers 80, 81 and 82 switch the tone, noise and envelope, and controller 2 sweeps the noise period from the highest noise at 0 to the lowest at 127. Controller 85 is a switch that makes the channel's notes drive the chip's envelope: their pitch is the envelope's pitch, whatever its shape. A triangle takes two of the envelope's periods to repeat, so it gets half the period a sawtooth has at the same note. With the tone off as well, such a note takes no chip channel and only moves the envelope under the other notes; with its envelope on, it is a buzzer by itself. A note that drives the envelope lets it run on; controller 83 on its channel, from 64, restarts the envelope, with a note or inside one.
+
+Controller 70 picks the envelope shape, restarting the envelope when the shape is another. The eight shapes share the controller's range:
+
+| Controller 70 | Shape | |
+| --- | --- | --- |
+| 0–15 | Triangle | `/\/\` |
+| 16–31 | Triangle, falling first | `\/\/` |
+| 32–47 | Sawtooth | `////` |
+| 48–63 | Sawtooth, falling | `\\\\` |
+| 64–79 | Attack | `/‾‾‾` |
+| 80–95 | Decay | `\___` |
+| 96–111 | Attack, then silent | `/___` |
+| 112–127 | Decay, then full | `\‾‾‾` |
+
+**μZX Instrument** before MIDI to PSG shapes each note with its amp and pitch envelopes and sends it on a MIDI channel of its own, from 2 to 16, so every note of a chord has its own pitch. It plays up to fifteen notes at once and leaves it to MIDI to PSG which three sound. The controllers above still go to the instrument on the channel the notes are played on: they apply to those notes, and a note's priority is that channel's number.
+
+**PSG output channels** in the device's menu are the four MIDI channels MIDI to PSG sends the chip's controllers on; set them to the AY chip's **MIDI channel range**. No MIDI on any channel passes through MIDI to PSG.
+
 **Track → Render to audio** renders the selected track to a WAV. When the render succeeds, Studio adds and selects a new audio track and mutes the source. **Undo** removes the new track and restores the source's previous mute state. Choose **Cancel** in the progress window to discard the render and keep the source as it was.
+
+**Track → Render to PSG** renders what the selected track's MIDI to PSG tells the chip, as register writes at 50 frames a second. It is available when the selected track has MIDI to PSG. When the render succeeds, Studio writes a `.psg` file named after the track into the project's Renders folder (a folder named after the project with `.Renders` at its end, beside the `.uzx` file), adds and selects a new track with the rendered PSG clip and an AY chip at the clock the notes were tuned for, and mutes the source. **Undo** removes the new track and restores the source's previous mute state; the file stays. **Cancel** in the progress window discards the render.
 
 <!-- guide-figure:studio-devices -->
 ![Studio track device chain](images/user-guide/studio-devices.png)
@@ -297,7 +321,7 @@ Allows auditioning notes directly through the AY chip emulator.
 | Play Tone | Enable tone generator for preview |
 | Retrigger Tone | Retrigger note on each click |
 | Play Envelope | Enable AY envelope generator |
-| Envelope Shape | Select AY envelope shape (0–15) |
+| Envelope Shape | Triangle or sawtooth |
 | Modulation Mode | Choose modulation behavior |
 
 Click a cell in the tuning grid to hear the corresponding note. Starting another preview replaces the current one. Changing the tuning stops the preview and clears its note highlights.
@@ -308,7 +332,7 @@ Click **Export to CSV** to save the current tuning table as a `.csv` file for us
 
 ### Tuning Grid
 
-The main grid displays the computed AY period register values for each note across multiple octaves. Columns are notes, rows are octaves. The cell color indicates the tuning error relative to the ideal frequency (cents deviation).
+The main grid displays the computed AY period register values for each note across multiple octaves. Columns are notes, rows are octaves. The cell color indicates the tuning error relative to the ideal frequency (cents deviation). Envelope periods are those of the chosen **Envelope Shape**, as the preview plays them: a triangle's period at a note is half a sawtooth's, and a tone keeps in step with it when its period is a multiple of 32, where a sawtooth needs 16.
 
 Click a cell to preview the note through the AY emulator using the current play control settings.
 

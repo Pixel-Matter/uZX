@@ -3,6 +3,7 @@
 #include "../../../gui/common/LookAndFeel.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 #include "../../../controllers/App.h"
+#include "../../../models/PsgClip.h"
 
 
 namespace MoTool::uZX {
@@ -10,21 +11,50 @@ namespace MoTool::uZX {
 namespace te = tracktion;
 
 //==============================================================================
+void drawStopwatch(Graphics& g, Rectangle<float> area, Colour colour) {
+    const float size = jmin(area.getWidth(), area.getHeight());
+    const auto box = area.withSizeKeepingCentre(size, size);
+    const float stroke = jmax(1.0f, size / 10.0f);
+    const float crown = size * 0.16f;  // the button on top
+    const auto face = box.withTrimmedTop(crown).reduced(stroke * 0.5f)
+                         .withSizeKeepingCentre(size - crown - stroke, size - crown - stroke);
+    const auto centre = face.getCentre();
+    const float radius = face.getWidth() * 0.5f;
+
+    g.setColour(colour);
+    g.drawEllipse(face, stroke);
+    g.fillRect(Rectangle<float>(jmax(2.0f, size * 0.26f), crown).withCentre({centre.x, box.getY() + crown * 0.5f}));
+    // the hand, a little past one o'clock
+    g.drawLine(centre.x, centre.y, centre.x + radius * 0.42f, centre.y - radius * 0.5f, stroke);
+}
+
+//==============================================================================
 // ChannelGroup implementation
 //==============================================================================
+void AYPluginUI::TimersToggle::paintButton(Graphics& g, bool highlighted, bool down) {
+    auto& lf = getLookAndFeel();
+    lf.drawButtonBackground(g, *this, findColour(getToggleState() ? buttonOnColourId : buttonColourId), highlighted, down);
+    const auto colour = findColour(getToggleState() ? textColourOnId : textColourOffId).withMultipliedAlpha(isEnabled() ? 1.0f : 0.5f);
+    const float size = jmin(11.0f, static_cast<float>(jmin(getWidth(), getHeight())) - 4.0f);
+    drawStopwatch(g, getLocalBounds().toFloat().withSizeKeepingCentre(size, size), colour);
+}
+
 AYPluginUI::ChannelGroup::ChannelGroup(AYChipPlugin& plugin,
                                         ParameterValue<bool>& channelParam,
                                         ParameterValue<bool>& toneParam,
                                         ParameterValue<bool>& noiseParam,
                                         ParameterValue<bool>& envelopeParam,
+                                        ParameterValue<bool>& timersParam,
                                         ParameterValue<bool>& soloParam)
     : channelOn   { plugin, channelParam }
     , toneOn      { plugin, toneParam }
     , noiseOn     { plugin, noiseParam }
     , envelopeOn  { plugin, envelopeParam }
+    , timersOn    { plugin, timersParam }
     , channelParam_(channelParam)
     , soloParam_(soloParam)
 {
+    timersOn.setComponentID("timers");
     channelParam_.addListener(this);
     soloParam_.addListener(this);
     updateTNEState();
@@ -40,6 +70,7 @@ void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
     parent.addAndMakeVisible(toneOn);
     parent.addAndMakeVisible(noiseOn);
     parent.addAndMakeVisible(envelopeOn);
+    parent.addChildComponent(timersOn);
 }
 
 void AYPluginUI::ChannelGroup::setupButtonColours(ToggleButton& button) {
@@ -55,6 +86,7 @@ void AYPluginUI::ChannelGroup::setupWidgets() {
     setupButtonColours(toneOn);
     setupButtonColours(noiseOn);
     setupButtonColours(envelopeOn);
+    setupButtonColours(timersOn);
     updateSoloColour();
 
     // Set connected edges for buttons
@@ -62,6 +94,12 @@ void AYPluginUI::ChannelGroup::setupWidgets() {
     toneOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnBottom);
     noiseOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnTop | Button::ConnectedOnBottom);
     envelopeOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnTop);
+    timersOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnTop);
+}
+
+void AYPluginUI::ChannelGroup::setTimersShown(bool shown) {
+    timersOn.setVisible(shown);
+    envelopeOn.setConnectedEdges(Button::ConnectedOnLeft | Button::ConnectedOnTop | (shown ? Button::ConnectedOnBottom : 0));
 }
 
 void AYPluginUI::ChannelGroup::layoutButtons(Rectangle<int> bounds) {
@@ -69,9 +107,12 @@ void AYPluginUI::ChannelGroup::layoutButtons(Rectangle<int> bounds) {
 
     channelOn.setBounds(bounds.removeFromLeft(buttonSize));
     auto column = bounds.removeFromLeft(buttonSize);
-    toneOn.setBounds(column.removeFromTop(column.getHeight() / 3));
-    noiseOn.setBounds(column.removeFromTop(column.getHeight() / 2));
-    envelopeOn.setBounds(column);
+    int rows = timersOn.isVisible() ? 4 : 3;
+    toneOn.setBounds(column.removeFromTop(column.getHeight() / rows--));
+    noiseOn.setBounds(column.removeFromTop(column.getHeight() / rows--));
+    if (timersOn.isVisible())
+        envelopeOn.setBounds(column.removeFromTop(column.getHeight() / rows--));
+    (timersOn.isVisible() ? static_cast<Button&>(timersOn) : envelopeOn).setBounds(column);
 }
 
 void AYPluginUI::ChannelGroup::valueChanged(Value&) {
@@ -92,12 +133,16 @@ void AYPluginUI::ChannelGroup::updateTNEState() {
     toneOn.setEnabled(enabled);
     noiseOn.setEnabled(enabled);
     envelopeOn.setEnabled(enabled);
+    timersOn.setEnabled(enabled);
 }
 
 //==============================================================================
 // AYScopes
 //==============================================================================
-AYScopes::AYScopes(AYChipPlugin& plugin, Look look) : look_(look) {
+AYScopes::AYScopes(AYChipPlugin& plugin, Look look) : plugin_(plugin), look_(look) {
+    if (look_.timerSigns)
+        startTimerHz(20);
+
     static const std::array<juce::Colour, 3> colours {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
     static const std::array<const char*, 3> labels {"A", "B", "C"};
 
@@ -120,6 +165,43 @@ void AYScopes::paint(Graphics& g) {
             g.fillRect(displays_[i]->getX() - spacing / 2, 0, 1, getHeight());
         else
             g.fillRect(0, displays_[i]->getY() - spacing / 2, getWidth(), 1);
+    }
+}
+
+Rectangle<int> AYScopes::getTimerSignBounds(size_t chan) const {
+    constexpr int size = 11, margin = 4;
+    const auto scope = displays_[chan]->getBounds();
+    return {scope.getRight() - size - margin, scope.getY() + margin, size, size};
+}
+
+uint8_t AYScopes::findTimerSigns() const {
+    // Lit while a timer drives the channel; dimmed while the channel's timers switch is off
+    const auto driven = plugin_.getTimerChannels();
+    uint8_t signs = driven;
+    for (size_t chan = 0; chan < 3; ++chan)
+        if ((driven & (1u << chan)) != 0 && ! plugin_.channelMuter.getTimersParam(chan).getStoredValue())
+            signs = static_cast<uint8_t>(signs | (0x10u << chan));
+    return signs;
+}
+
+void AYScopes::timerCallback() {
+    const auto signs = findTimerSigns();
+    if (signs == shownTimerSigns_)
+        return;
+    shownTimerSigns_ = signs;
+    for (size_t chan = 0; chan < displays_.size(); ++chan)
+        repaint(getTimerSignBounds(chan));
+}
+
+void AYScopes::paintOverChildren(Graphics& g) {
+    if (! look_.timerSigns)
+        return;
+    static const std::array<juce::Colour, 3> colours {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
+    for (size_t chan = 0; chan < displays_.size(); ++chan) {
+        if ((shownTimerSigns_ & (1u << chan)) == 0)
+            continue;
+        const bool dimmed = (shownTimerSigns_ & (0x10u << chan)) != 0;
+        drawStopwatch(g, getTimerSignBounds(chan).toFloat(), colours[chan].withAlpha(dimmed ? 0.35f : 1.0f));
     }
 }
 
@@ -168,13 +250,26 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
     startTimerHz(4);
 }
 
+bool AYPluginUI::trackHasTimers() const {
+    if (auto* track = dynamic_cast<te::ClipTrack*>(plugin_.getOwnerTrack()))
+        for (auto* clip : track->getClips())
+            if (auto* psg = dynamic_cast<PsgClip*>(clip); psg != nullptr && ! psg->getTimers().isEmpty())
+                return true;
+    return false;
+}
+
 void AYPluginUI::timerCallback() {
     const auto warnings = plugin_.getTimerWarnings();
-    if (warnings == shownTimerWarnings_)
+    const bool timers = trackHasTimers();
+    if (warnings == shownTimerWarnings_ && timers == timersShown_)
         return;
     shownTimerWarnings_ = warnings;
     timerWarning_.setTooltip(AYChipPlugin::describeTimerWarnings(warnings));
     timerWarning_.setVisible(warnings != 0);
+    // The timers switches are there while the track has a clip with timers
+    timersShown_ = timers;
+    for (auto* group : channelGroups)
+        group->setTimersShown(timers);
     resized();
 }
 

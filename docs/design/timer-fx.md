@@ -91,12 +91,18 @@ A command the chip cannot play is ignored and the rest plays. `ChipTimers::takeF
 
 The warning stays until the chip is reset; one about the bank also ends when a bank is found.
 
+## In the interface
+
+- **In the clip.** `ClipTimers::getSpans` gives what each timer does from one command to its next: the registers it holds, the chip cycles its values and intervals take to come round (`loopCycles`), and its duty. A tone of period `loopCycles / 16` has the same pitch, which is where `paintTimerNotes` in `src/gui/timeline/PsgClipComponent.cpp` draws the note. The clip's pitch range takes the timers in. `formatTimerFrame` writes the frame hover's lines.
+- **In the AY panel.** `AYChipPlugin::getTimerChannels` says which channels a timer drives; `AYScopes` draws a stopwatch in the corner of those scopes. `ChannelMuter` has a timers switch per channel, shown while the chip's track has a clip with timers.
+- **Muting.** A channel's timers switch mutes its volume and tone period registers (`ChipTimers::setMuted`). A timer still owns a muted register and runs on, so it comes back in step; its writes are dropped, and the frames' writes go to the chip as if no timer had it.
+
 ## Limits
 
 - Twelve timers a chip; timer lane and action indexes up to 16383; 127 actions a command. A file past these opens without those timers' effects, and the import says so.
 - A timer whose rate drops to zero fires once every 1/50 s, whatever the tune's frame rate.
 - Chips other than AY and YM are left out.
-- Timers show nowhere in the interface: a clip looks like its PSG.
+- Viz mode and rendered video draw the timers' notes; their scopes have no stopwatch.
 
 ## Not built
 

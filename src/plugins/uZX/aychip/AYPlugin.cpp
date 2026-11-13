@@ -117,6 +117,7 @@ void AYChipPlugin::midiPanic() {
 void AYChipPlugin::resetTimers() noexcept {
     timers.reset();
     timerDecoder.reset();
+    timerChannels.store(0, std::memory_order_relaxed);
 }
 
 juce::String AYChipPlugin::describeTimerWarnings(uint32_t warnings) {
@@ -165,6 +166,8 @@ PsgRegsFrame AYChipPlugin::readRegisters() const noexcept {
 
 // called under lock
 void AYChipPlugin::updateChip() noexcept {
+    timers.setMuted(channelMuter.getMutedTimerRegisters(), *chip);
+
     const bool hasRegisters = ! frameDecoder.isEmpty();
     if (hasRegisters && staticParams.monitorMode.getStoredValue()) {
         frameDecoder.getFrame().debugPrintSet();
@@ -195,6 +198,7 @@ void AYChipPlugin::updateChip() noexcept {
         if ((faults & (ChipTimers::commandRefused | ChipTimers::tablesFailed)) != 0)
             warnings |= timerCommandIgnored;
         timerWarnings.store(warnings, std::memory_order_relaxed);
+        timerChannels.store(findTimerChannels(), std::memory_order_relaxed);
     }
 
     // Apply channel and effect filters directly to chip registers
@@ -312,7 +316,25 @@ void AYChipPlugin::writeTimersBefore(uint64_t cycle) {
     }
 }
 
+uint8_t AYChipPlugin::findTimerChannels() const noexcept {
+    const auto owned = timers.getOwned();
+    if (owned == 0)
+        return 0;
+    const auto has = [owned] (size_t reg) { return (owned & (1u << reg)) != 0; };
+    const bool envelope = has(11) || has(12) || has(13);
+    uint8_t channels = 0;
+    for (size_t chan = 0; chan < 3; ++chan) {
+        const bool usesEnvelope = (chip->getRegister(8 + chan) & 0x10) != 0;
+        const bool noiseOn = ((chip->getRegister(7) >> (3 + chan)) & 1) == 0;
+        if (has(8 + chan) || has(2 * chan) || has(2 * chan + 1) || has(7) || (envelope && usesEnvelope) || (has(6) && noiseOn))
+            channels = static_cast<uint8_t>(channels | (1u << chan));
+    }
+    return channels;
+}
+
 void AYChipPlugin::writeTimerRegister(const TaymTimerWrite& write) noexcept {
+    if (timers.isMuted(write.target))
+        return;  // its timers are switched off: the register has what the frames give it
     chip->setRegister(write.target, static_cast<unsigned char>(write.value));
     // A mute holds over the registers as written: a write to the mixer or a volume would undo it
     if (write.target >= 7 && write.target <= 10)

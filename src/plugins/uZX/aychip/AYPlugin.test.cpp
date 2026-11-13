@@ -745,6 +745,58 @@ public:
             expect(loudest < 1.0e-3f, "nothing but silence");
         }
 
+        beginTest("A channel's timers switch mutes what timers do to its volume, and the timer comes back with it");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 5}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.render({1024});
+            const auto volume = [&] { return int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)); };
+            expect(volume() == 15 || volume() == 9, "the timer has channel A's volume");
+
+            rig.chip().channelMuter.getTimersParam(0).setStoredValue(false);
+            const auto muted = rig.render({2048});
+            expectEquals(volume(), 5, "switched off: the frames' volume");
+            bool steady = true;
+            for (size_t i = 600; i < muted.size(); ++i)
+                steady = steady && std::abs(muted[i] - rig.levelOf(5)) < 1.0e-3f;
+            expect(steady, "and nothing of the timer is heard");
+
+            rig.frame(0.0, {{PsgRegType::VolumeA, 6}});
+            rig.render({512});
+            expectEquals(volume(), 6, "a frame's write reaches the chip while the timer is muted");
+
+            rig.chip().channelMuter.getTimersParam(0).setStoredValue(true);
+            rig.render({1024});
+            expect(volume() == 15 || volume() == 9, "switched on again, the timer has it, without a new start");
+        }
+
+        beginTest("The chip says which channels a timer drives");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 5}, {PsgRegType::VolumeB, 0x10}});  // B on the envelope
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0, "no timer");
+
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));   // A's volume
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0b001);
+
+            rig.timer(0.0, 1, timerStart(222, 4));   // the envelope's shape, which B uses
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0b011);
+
+            rig.timer(0.0, 0, timerStop());
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0b010);
+
+            rig.allNotesOff();
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0, "play jumped: the timers stopped");
+        }
+
         beginTest("When play jumps or stops, a timer stops and stays silent until its next start");
         {
             Rig rig(engine);
@@ -853,14 +905,85 @@ public:
                 expect(! sign->isVisible(), "the bank is found");
             }
         }
+
+        beginTest("The panel has a timers switch per channel while the track has a clip with timers, and a stopwatch on the scope of a channel a timer drives");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            auto* track = te::getAudioTracks(*edit)[0];
+            PsgData data {std::vector<PsgRegsFrame>(50), {50.0, 1}};
+            data.frames[0] = {{PsgRegType::Mixer, 0x3F}};
+            data.frames[49] = {{PsgRegType::VolumeB, 0}};
+            const auto clip = PsgClip::insertTo(*track, data, {{te::TimePosition(), te::TimeDuration::fromSeconds(1.0)}, {}});
+            auto chipPlugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+            track->pluginList.insertPlugin(chipPlugin, 0, nullptr);
+            Rig rig(engine, chipPlugin);
+
+            AYPluginUI panel {chipPlugin};
+            panel.setSize(260, 420);
+            const auto pump = [] { juce::MessageManager::getInstance()->runDispatchLoopUntil(400); };
+            const auto switchesShown = [&] {
+                int shown = 0;
+                for (auto* child : panel.getChildren())
+                    if (child->getComponentID() == "timers" && child->isVisible())
+                        ++shown;
+                return shown;
+            };
+            AYScopes* scopes = nullptr;
+            for (auto* child : panel.getChildren())
+                if (auto* found = dynamic_cast<AYScopes*>(child))
+                    scopes = found;
+            expect(scopes != nullptr);
+            // True if the sign's place on a channel's scope has pixels of the channel's colour that bright
+            const auto signShown = [&] (size_t chan, Colour colour, float minBrightness) {
+                const auto image = panel.createComponentSnapshot(panel.getLocalBounds(), true, 1.0f);
+                const auto area = scopes->getTimerSignBounds(chan) + scopes->getPosition();
+                for (int y = area.getY(); y < area.getBottom(); ++y)
+                    for (int x = area.getX(); x < area.getRight(); ++x)
+                        if (const auto pixel = image.getPixelAt(x, y);
+                            std::abs(pixel.getHue() - colour.getHue()) < 0.03f && pixel.getSaturation() > 0.3f
+                            && pixel.getBrightness() >= minBrightness)
+                            return true;
+                return false;
+            };
+
+            pump();
+            expectEquals(switchesShown(), 0, "a track of plain PSG clips has none");
+            clip->getTimers().set(makeTestTaym(), 0, {{10, 0, timerStart(222, 0)}}, nullptr);
+            pump();
+            expectEquals(switchesShown(), 3, "one under each channel's T, N and E");
+            if (scopes != nullptr) {
+                expect(! signShown(0, Colors::PSG::A, 0.5f), "no timer runs: no sign");
+
+                rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+                rig.bank(0.0, registration->getNumber());
+                rig.timer(0.0, 0, timerStart(222, 0));
+                rig.render({512});
+                pump();
+                expect(signShown(0, Colors::PSG::A, 0.6f), "a stopwatch on A's scope, in A's colour");
+                expect(! signShown(1, Colors::PSG::B, 0.3f), "none on B's");
+
+                rig.chip().channelMuter.getTimersParam(0).setStoredValue(false);
+                rig.render({512});
+                pump();
+                expect(! signShown(0, Colors::PSG::A, 0.6f) && signShown(0, Colors::PSG::A, 0.1f), "dimmed while A's timers are switched off");
+            }
+            clip->getTimers().set({}, 0, {}, nullptr);
+            pump();
+            expectEquals(switchesShown(), 0, "gone with the clip's timers");
+        }
     }
 
 private:
     /** A chip outside any playback graph, fed blocks of MIDI. */
     struct Rig {
         explicit Rig(te::Engine& engine)
-            : edit(te::Edit::createSingleTrackEdit(engine))
-            , plugin(edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {}))
+            : Rig(engine, {})
+        {}
+
+        /** With `existing`, drives that chip: one on a track of an edit of the caller's. */
+        Rig(te::Engine& engine, te::Plugin::Ptr existing)
+            : edit(existing == nullptr ? te::Edit::createSingleTrackEdit(engine) : nullptr)
+            , plugin(existing != nullptr ? existing : edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {}))
         {
             chip().staticParams.removeDC.setStoredValue(false);
             chip().staticParams.chipClock.setStoredValue(1.7734);

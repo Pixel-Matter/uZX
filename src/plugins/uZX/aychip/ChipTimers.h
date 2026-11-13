@@ -81,6 +81,24 @@ public:
 
     /** True if a timer owns register `reg`. */
     bool owns(size_t reg) const noexcept { return (owned_ & (1u << reg)) != 0; }
+    /** A bit for each register a timer owns. */
+    uint16_t getOwned() const noexcept { return owned_; }
+
+    /** Mutes the timers on some registers, a bit each: a timer still owns a muted register and runs on, but
+        its writes to it are for the caller to drop (isMuted), and the background has it as if no timer did.
+        A register muted while a timer owns it gets the background's value at once; unmuted, it gets the
+        timer's at the timer's next write. */
+    template <typename Chip>
+    void setMuted(uint16_t registers, Chip& chip) noexcept {
+        if (registers == muted_)
+            return;
+        const auto goingQuiet = static_cast<uint16_t>(registers & ~muted_ & owned_);
+        for (size_t reg = 0; reg < PsgRegsFrame::size(); ++reg)
+            if ((goingQuiet & (1u << reg)) != 0)
+                chip.setRegister(reg, held_[reg]);
+        muted_ = registers;
+    }
+    bool isMuted(size_t reg) const noexcept { return (muted_ & (1u << reg)) != 0; }
 
     /** Applies one frame at `cycle`: the timers' commands, then the background.
 
@@ -99,9 +117,11 @@ public:
             if ((acquired & bit) != 0)
                 held_[reg] = chip.getRegister(reg);
             if (background.isSet(reg)) {
+                // An owned register's write is held for when the timer lets go; a muted timer does not keep
+                // it from the chip
                 if ((owned_ & bit) != 0)
                     held_[reg] = background.getRaw(reg);
-                else
+                if ((owned_ & bit & ~muted_) == 0)
                     chip.setRegister(reg, background.getRaw(reg));
             } else if ((released & bit) != 0) {
                 chip.setRegister(reg, held_[reg]);
@@ -119,6 +139,7 @@ private:
     TaymTimerBank timers_ {};
     uint32_t clockHz_ = 1773400;
     uint16_t owned_ = 0;                                     // a bit per register a timer owns
+    uint16_t muted_ = 0;                                     // a bit per register whose timers are muted
     std::array<uint8_t, PsgRegsFrame::size()> held_ {};      // the background's value of each owned register
     std::array<TaymTimerWrite, 128> writes_ {};
     uint32_t faults_ = 0;

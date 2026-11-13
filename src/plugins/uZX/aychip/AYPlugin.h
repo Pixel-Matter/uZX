@@ -136,6 +136,10 @@ public:
     };
     uint32_t getTimerWarnings() const noexcept { return timerWarnings.load(std::memory_order_relaxed); }
 
+    /** A bit for each channel A, B, C a timer drives now: one that holds its volume or tone period, the
+        mixer, the envelope while the channel uses it, or the noise while the channel has it on. */
+    uint8_t getTimerChannels() const noexcept { return timerChannels.load(std::memory_order_relaxed); }
+
     /** What the warnings say, a line each; empty when there are none. */
     static juce::String describeTimerWarnings(uint32_t warnings);
 
@@ -160,6 +164,7 @@ private:
     ChipTime chipTime;           // the chip's clock against the samples rendered
     uint64_t samplesRendered = 0;  // since the last reset: where a frame or a timer's write is in chip time
     std::atomic<uint32_t> timerWarnings {0};  // TimerWarning bits, written on the audio thread
+    std::atomic<uint8_t> timerChannels {0};   // the channels a timer drives, written on the audio thread
 
     //==============================================================================
     // Scope buffer access for visualization (used by ScopePlugin)
@@ -193,6 +198,8 @@ private:
     /** Writes the timers' writes before `cycle` to the chip where it is rendered up to. */
     void writeTimersBefore(uint64_t cycle);
     void writeTimerRegister(const TaymTimerWrite&) noexcept;
+    /** The channels the timers drive, from the registers they own and what the chip holds. */
+    uint8_t findTimerChannels() const noexcept;
     /** Stops the timers and forgets what their controllers held. */
     void resetTimers() noexcept;
     /** The chip's clock in whole Hz, as chip time counts it. */

@@ -23,6 +23,9 @@ namespace IDs {
     DECLARE_ID(envelopeA)
     DECLARE_ID(envelopeB)
     DECLARE_ID(envelopeC)
+    DECLARE_ID(timersA)
+    DECLARE_ID(timersB)
+    DECLARE_ID(timersC)
     DECLARE_ID(soloA)
     DECLARE_ID(soloB)
     DECLARE_ID(soloC)
@@ -62,6 +65,9 @@ public:
         visitor(envelopeA);
         visitor(envelopeB);
         visitor(envelopeC);
+        visitor(timersA);
+        visitor(timersB);
+        visitor(timersC);
     }
 
     // Channel enables
@@ -84,6 +90,12 @@ public:
     ParameterValue<bool> envelopeB  {{"envelopeB", IDs::envelopeB, "E", "Envelope B enable", true}};
     ParameterValue<bool> envelopeC  {{"envelopeC", IDs::envelopeC, "E", "Envelope C enable", true}};
 
+    // Timer enables: what the chip's timers do to the channel's own volume and pitch. Timers on what the
+    // channels share stay under those switches: the envelope under E, the noise under N
+    ParameterValue<bool> timersA    {{"timersA", IDs::timersA, "Tm", "Timers on A enable", true}};
+    ParameterValue<bool> timersB    {{"timersB", IDs::timersB, "Tm", "Timers on B enable", true}};
+    ParameterValue<bool> timersC    {{"timersC", IDs::timersC, "Tm", "Timers on C enable", true}};
+
     // Not visited: solo is not automatable
     ParameterValue<bool> soloA      {{"soloA", IDs::soloA, "S", "Channel A solo", false}};
     ParameterValue<bool> soloB      {{"soloB", IDs::soloB, "S", "Channel B solo", false}};
@@ -97,6 +109,11 @@ public:
 
     /** The on/off toggle of channel A, B or C (0, 1, 2). */
     ParameterValue<bool>& getChannelParam(size_t chan) noexcept;
+    /** The timers switch of channel A, B or C (0, 1, 2). */
+    ParameterValue<bool>& getTimersParam(size_t chan) noexcept;
+    /** A bit for each register R0..R13 whose timers are muted: the volume and tone period of a channel whose
+        timers switch is off. For the audio thread. */
+    uint16_t getMutedTimerRegisters() const noexcept;
     /** The solo of channel A, B or C (0, 1, 2). */
     ParameterValue<bool>& getSoloParam(size_t chan) noexcept;
     bool hasSolo() const;

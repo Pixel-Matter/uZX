@@ -154,6 +154,34 @@ public:
             expectEquals(int(chip.regs[8]), 3, "the write that came during the handoff");
         }
 
+        beginTest("A muted register has what the background gives it, while its timer runs on and still owns it");
+        {
+            ChipTimers timers;
+            RegisterChip chip;
+            timers.setBank(makeTestBank());
+            chip.regs[8] = 10;
+            timers.applyFrame(only(0, timerStart(222, 0)), {}, 0, chip);
+            collectAll(timers, 1, chip);
+            expectEquals(int(chip.regs[8]), 15);
+
+            timers.setMuted(1u << 8, chip);
+            expectEquals(int(chip.regs[8]), 10, "muted: what the chip held before the timer");
+            expect(timers.isMuted(8) && ! timers.isMuted(9) && timers.owns(8), "it is still the timer's");
+            timers.applyFrame({}, PsgRegsFrame {{PsgRegType::VolumeA, 12}}, 100, chip);
+            expectEquals(int(chip.regs[8]), 12, "the background's write goes through");
+
+            // The timer has run on: its writes are there for the caller to drop
+            std::span<const TaymTimerWrite> writes;
+            timers.collect(interval + 1, false, writes);
+            expectEquals(writes.size(), size_t {1});
+
+            timers.setMuted(0, chip);
+            collectAll(timers, 2 * interval + 1, chip);
+            expectEquals(int(chip.regs[8]), 15, "unmuted, the timer's next write");
+            timers.applyFrame(only(0, timerStop()), {}, 3 * interval, chip);
+            expectEquals(int(chip.regs[8]), 12, "and at its stop, the background's last write");
+        }
+
         beginTest("A new bank, another clock or a reset stops the timers");
         {
             ChipTimers timers;

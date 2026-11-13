@@ -652,7 +652,7 @@ public:
             const auto read = decodeFrames(writer.getSequence(), 5).back();
             PsgParamType::forEach([&](auto e) {
                 const PsgParamType type {e};
-                expectEquals(int(read[type].value_or(0xFFFF)), type.getScale().end, String(type));
+                expectEquals(int(read[type].value_or(0xFFFF)), type.getScale().end, String(type.getLabel().data()));
             });
         }
 

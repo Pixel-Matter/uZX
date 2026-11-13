@@ -39,21 +39,22 @@ void RulerComponent::paint(Graphics& g) {
     const auto bottom = (float) bounds.getHeight();
     const auto stripTop = (float) loopStripTop();
 
-    // The loop range, under the ticks: its bottom edge spans the range exactly, its ends slope in towards the top
+    // The loop range, under the ticks, with a triangle at each end pointing in
     auto& transport = edit.getTransport();
     const auto loop = transport.getLoopRange();
     if (!loop.isEmpty()) {
         const auto& zoom = editViewState.zoom;
         const auto x1 = zoom.timeToX(loop.getStart()), x2 = zoom.timeToX(loop.getEnd());
-        const auto slope = jmin((bottom - stripTop) * 0.5f, (x2 - x1) / 3.0f);  // narrow ranges slope less
-        Path band;
-        band.startNewSubPath(x1, bottom);
-        band.lineTo(x1 + slope, stripTop);
-        band.lineTo(x2 - slope, stripTop);
-        band.lineTo(x2, bottom);
-        band.closeSubPath();
         g.setColour(transport.looping ? Colors::Timeline::loopOn : Colors::Timeline::loopOff);
-        g.fillPath(band);
+        g.fillRect(Rectangle<float>::leftTopRightBottom(x1, stripTop, x2, bottom));
+
+        const auto mid = (stripTop + bottom) * 0.5f;
+        const auto size = jmin((bottom - stripTop) * 0.75f, (x2 - x1) / 3.0f);  // narrow ranges get smaller ones
+        Path ends;
+        ends.addTriangle(x1, stripTop, x1, bottom, x1 + size, mid);
+        ends.addTriangle(x2, stripTop, x2, bottom, x2 - size, mid);
+        g.setColour(transport.looping ? Colors::Timeline::loopEndOn : Colors::Timeline::loopEndOff);
+        g.fillPath(ends);
     }
 
     g.setFont(13.0f);

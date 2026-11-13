@@ -191,33 +191,33 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
         chip->muteSound();
     }
 
-    // Process PSG register events
-    int currentSample = 0;
-    auto lastTimestamp = std::numeric_limits<double>::lowest();
+    // A frame is the messages of one time. It reaches the chip when a message of a later time arrives, after
+    // the samples before that time are rendered, or at the end of the block
+    int position = 0;
+    auto frameTime = std::numeric_limits<double>::lowest();
     for (auto& m : *fc.bufferForMidiMessages) {
         updateDynamicParams();
 
-        // Apply the pending frame before reading a newer one, even within the same sample
-        if (m.getTimeStamp() > lastTimestamp) {
+        if (m.getTimeStamp() > frameTime) {
+            // Apply the frame read so far before reading a newer one, even within the same sample
             updateChip();
-            lastTimestamp = m.getTimeStamp();
-        }
-
-        // Upstream plugins can pass events stamped past the block end; never render beyond it.
-        const int timeSample = jmin(fc.bufferNumSamples, roundToInt(m.getTimeStamp() * sampleRate));
-        if (timeSample > currentSample) {
-            renderChannels(fc, currentSample, timeSample);
-            currentSample = timeSample;
+            frameTime = m.getTimeStamp();
+            // Upstream plugins can pass events stamped past the block end; never render beyond it.
+            position = renderTo(fc, position, jmin(fc.bufferNumSamples, roundToInt(frameTime * sampleRate)));
         }
         // DBG("AY in midi " << m.getDescription());
         handleMidiEvent(m);
     }
     updateDynamicParams();
-    // process to the end of the block
     updateChip();
-    if (currentSample < fc.bufferNumSamples) {
-        renderChannels(fc, currentSample, fc.bufferNumSamples);
-    }
+    renderTo(fc, position, fc.bufferNumSamples);
+}
+
+int AYChipPlugin::renderTo(const te::PluginRenderContext& fc, int from, int to) {
+    if (to <= from)
+        return from;
+    renderChannels(fc, from, to);
+    return to;
 }
 
 PsgRegsFrame AYChipPlugin::getChipRegisters() const {

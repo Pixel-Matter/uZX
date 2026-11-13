@@ -163,6 +163,8 @@ private:
 
     void updateDynamicParams();
 
+    /** Renders the block's samples from `from` up to `to`, and returns where the block is rendered to. */
+    int renderTo(const te::PluginRenderContext& fc, int from, int to);
     void renderChannels(const te::PluginRenderContext& fc, int currentSample, int timeSample);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)

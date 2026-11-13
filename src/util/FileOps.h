@@ -32,6 +32,16 @@ File getStartupEditFile(tracktion::PropertyStorage& storage);
 
 File getRendersDirectory(tracktion::Edit& edit);
 
+/** The edit format this build writes, separate from app versions. Bump it when an older app
+    would misread a newer edit: an app refuses to open a file with a higher version. */
+inline constexpr int editFormatVersion = 1;
+
+/** The format version an edit file was saved with: 0 for files from before versioning or non-XML ones. */
+int readEditFormatVersion(const File& editFile);
+
+/** Marks the edit as being in this build's format; every save from then on writes it. */
+void stampEditFormatVersion(tracktion::Edit& edit);
+
 bool saveEdit(tracktion::Edit& edit, bool warnOfFailure, bool forceSaveEvenIfNotModified, bool offerToDiscardChanges);
 
 bool saveEditAs(tracktion::Edit& edit, const File& file);

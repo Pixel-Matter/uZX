@@ -9,6 +9,7 @@
 #include "../scope/ScopeSettings.h"
 #include "aychip.h"
 #include "ChannelMuter.h"
+#include "ChipTimers.h"
 
 #include <array>
 #include <cstddef>
@@ -139,6 +140,13 @@ private:
     PsgDecoder frameDecoder;  // the controllers since the chip was last written
     std::unique_ptr<AYInterface> chip;
 
+    // Timed writes between frames. The timers' controllers are read a frame at a time as the chip's are;
+    // what they hold lasts until a reset, as the timers do
+    TimerDecoder timerDecoder;
+    ChipTimers timers;
+    ChipTime chipTime;           // the chip's clock against the samples rendered
+    uint64_t samplesRendered = 0;  // since the last reset: where a frame or a timer's write is in chip time
+
     //==============================================================================
     // Scope buffer access for visualization (used by ScopePlugin)
     static constexpr int kNumVizChannels = 3;  // A, B, C
@@ -163,8 +171,15 @@ private:
 
     void updateDynamicParams();
 
-    /** Renders the block's samples from `from` up to `to`, and returns where the block is rendered to. */
+    /** Renders the block's samples from `from` up to `to`, with the timers' writes that fall among them
+        each at its sample, and returns where the block is rendered to. */
     int renderTo(const te::PluginRenderContext& fc, int from, int to);
+    /** Renders up to the last of the timers' writes before sample `to`, and returns where that is. */
+    int renderTimerWrites(const te::PluginRenderContext& fc, int from, int to);
+    /** Stops the timers and forgets what their controllers held. */
+    void resetTimers() noexcept;
+    /** The chip's clock in whole Hz, as chip time counts it. */
+    uint32_t getClockHz() const;
     void renderChannels(const te::PluginRenderContext& fc, int currentSample, int timeSample);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)

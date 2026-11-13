@@ -59,12 +59,16 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 staticParams.chipType.forceUpdateOfCachedValue();
                 chip->setClock(staticParams.chipClock.getStoredValue() * MHz);
                 chip->setType(staticParams.chipType.getStoredValue());
+                // The timers count in the chip's clock: another clock stops them
+                chipTime.clockHz = getClockHz();
+                timers.setClock(getClockHz());
             }
         } else if (id == IDs::midi) {
             if (chip != nullptr) {
                 const ScopedLock sl(lock);
                 // it a static params, so it is ok to mute sounds
                 chip->muteSound();
+                resetTimers();
                 staticParams.baseMidiChannel.forceUpdateOfCachedValue();
             }
         }
@@ -104,8 +108,19 @@ void AYChipPlugin::deinitialise() {
 
 void AYChipPlugin::midiPanic() {
     const ScopedLock sl(lock);
-    if (chip != nullptr)  // none until initialised and after deinitialise
+    if (chip != nullptr) {  // none until initialised and after deinitialise
         chip->muteSound();
+        resetTimers();
+    }
+}
+
+void AYChipPlugin::resetTimers() noexcept {
+    timers.reset();
+    timerDecoder.reset();
+}
+
+uint32_t AYChipPlugin::getClockHz() const {
+    return static_cast<uint32_t>(roundToInt(staticParams.chipClock.getStoredValue() * MHz));
 }
 
 void AYChipPlugin::reset() {
@@ -119,6 +134,11 @@ void AYChipPlugin::reset() {
     }
     updateDynamicParams();
     frameDecoder = {};
+
+    chipTime = {getClockHz(), static_cast<uint64_t>(jmax(1.0, sampleRate))};
+    samplesRendered = 0;
+    timers.setClock(getClockHz());
+    resetTimers();
 }
 
 // called under lock
@@ -133,16 +153,17 @@ PsgRegsFrame AYChipPlugin::readRegisters() const noexcept {
 
 // called under lock
 void AYChipPlugin::updateChip() noexcept {
-    if (! frameDecoder.isEmpty()) {
-        if (staticParams.monitorMode.getStoredValue()) {
-            frameDecoder.getFrame().debugPrintSet();
-        }
-        const auto regs = frameDecoder.takeRegisters();
-        for (size_t i = 0; i < regs.size(); ++i) {
-            if (regs.isSet(i)) {
-                chip->setRegister(i, regs.getRaw(i));
-            }
-        }
+    const bool hasRegisters = ! frameDecoder.isEmpty();
+    if (hasRegisters && staticParams.monitorMode.getStoredValue()) {
+        frameDecoder.getFrame().debugPrintSet();
+    }
+    if (hasRegisters || ! timerDecoder.isEmpty()) {
+        // The frame takes effect at the sample rendered up to: its timers start there, and the registers no
+        // timer owns are written
+        if (const auto bank = timerDecoder.takeBank())
+            timers.setBank(TimerBankRegistry::getInstance().find(*bank));
+        timers.applyFrame(timerDecoder.takeCommands(), hasRegisters ? frameDecoder.takeRegisters() : PsgRegsFrame {},
+                          chipTime.cycleAt(samplesRendered), *chip);
     }
 
     // Apply channel and effect filters directly to chip registers
@@ -154,8 +175,12 @@ void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept 
     if (! m.isController()) {
         return;
     }
-    frameDecoder.decode(m.getChannel() - staticParams.baseMidiChannel.getStoredValue(), m.getControllerNumber(),
-                        m.getControllerValue(), [this] { return readRegisters(); });
+    const int channel = m.getChannel() - staticParams.baseMidiChannel.getStoredValue();
+    // The chip's four channels, then a channel for each timer; the timers' bank is on the fourth
+    if (channel < PsgCC::numChannels
+        && frameDecoder.decode(channel, m.getControllerNumber(), m.getControllerValue(), [this] { return readRegisters(); }))
+        return;
+    timerDecoder.decode(channel, m.getControllerNumber(), m.getControllerValue());
 }
 
 void AYChipPlugin::copyTempBufferToVizBuffer() {
@@ -189,6 +214,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 
     if (fc.bufferForMidiMessages->isAllNotesOff) {
         chip->muteSound();
+        resetTimers();  // play jumped or stopped: a timer is silent until its next start
     }
 
     // A frame is the messages of one time. It reaches the chip when a message of a later time arrives, after
@@ -216,8 +242,36 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 int AYChipPlugin::renderTo(const te::PluginRenderContext& fc, int from, int to) {
     if (to <= from)
         return from;
-    renderChannels(fc, from, to);
+    const int rendered = timers.isIdle() ? from : renderTimerWrites(fc, from, to);
+    if (to > rendered)
+        renderChannels(fc, rendered, to);
+    samplesRendered += static_cast<uint64_t>(to - from);
     return to;
+}
+
+int AYChipPlugin::renderTimerWrites(const te::PluginRenderContext& fc, int from, int to) {
+    // Sample `from` of the block is sample samplesRendered of chip time
+    const auto endCycle = chipTime.firstCycleOf(samplesRendered + static_cast<uint64_t>(to - from));
+    const bool ym = staticParams.chipType.getStoredValue() == TypeEnum::YM;
+    int position = from;
+
+    for (bool more = true; more;) {
+        std::span<const TaymTimerWrite> writes;
+        more = timers.collect(endCycle, ym, writes);
+        for (const auto& write : writes) {
+            const auto sample = static_cast<int64>(chipTime.sampleAt(write.cycle)) - static_cast<int64>(samplesRendered);
+            const int at = from + static_cast<int>(jlimit<int64>(position - from, to - from, sample));
+            if (at > position) {
+                renderChannels(fc, position, at);
+                position = at;
+            }
+            chip->setRegister(write.target, static_cast<unsigned char>(write.value));
+            // A mute holds over the registers as written: a write to the mixer or a volume would undo it
+            if (write.target >= 7 && write.target <= 10)
+                channelMuter.applyToChip(*chip);
+        }
+    }
+    return position;
 }
 
 PsgRegsFrame AYChipPlugin::getChipRegisters() const {

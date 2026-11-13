@@ -159,6 +159,13 @@ public:
         2 bytes, so a crafted file of a few MB would otherwise fill the memory. The rest is dropped. */
     static constexpr size_t maxFrames = 4 * 60 * 60 * 50;
 
+    /** Reads a PSG held in memory, such as one embedded in another file, in place of the file.
+        Returns false if it holds nothing playable; a damaged tail is dropped as ensureRead() drops it. */
+    bool readFrom(const void* data, size_t size) {
+        parse(static_cast<const uint8*>(data), size);
+        return ! psgData_.isEmpty();
+    }
+
     /** Reads the file once. Returns false if it holds nothing playable: missing, not a
         PSG file, or no frames. A damaged tail (e.g. a 0xFD end marker) is dropped and the
         frames before it are kept, so read() failing alone doesn't make a file unreadable. */
@@ -196,8 +203,6 @@ private:
     bool read() {
         psgData_ = {};
 
-        using namespace PsgFileHelpers;
-
         FileInputStream sourceStream(file_);
         MemoryBlock data;
 
@@ -206,8 +211,14 @@ private:
         if (!sourceStream.readIntoMemoryBlock(data, maxSensibleMidiFileSize))
             return false;
 
-        auto remaining = data.getSize();
-        auto d = static_cast<const uint8*> (data.getData());
+        return parse(static_cast<const uint8*> (data.getData()), data.getSize());
+    }
+
+    /** Parses a PSG's bytes into the data. @returns true if all of them were read */
+    bool parse(const uint8* d, size_t remaining) {
+        psgData_ = {};
+
+        using namespace PsgFileHelpers;
 
         const auto header = parsePsgHeader(d, remaining);
         if (!header.hasValue())

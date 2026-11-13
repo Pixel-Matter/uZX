@@ -81,6 +81,16 @@ if(ENABLE_LTO)
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/ayumi)
+
+# TAYM, the timer-tricks interchange format: its C reader and timer engine, as the format's own repository
+# has them. That repository has no CMake of its own, and its frame walker and tests are not needed here.
+add_library(taym STATIC
+    ${CMAKE_SOURCE_DIR}/third_party/taym/c/src/taym.c
+    ${CMAKE_SOURCE_DIR}/third_party/taym/c/src/taym_timers.c
+    ${CMAKE_SOURCE_DIR}/third_party/taym/c/src/taym_ay.c
+)
+target_include_directories(taym PUBLIC ${CMAKE_SOURCE_DIR}/third_party/taym/c/include)
+set_target_properties(taym PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED ON)
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/zxtune)
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules/juce ./cmake_build_juce)
 add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/tracktion_engine/modules ./cmake_build_tracktion)

@@ -19,20 +19,26 @@ constexpr double timeTolerance = 1.0e-6;
 // Round-number frame multiples, the same family the grid always used.
 constexpr std::array beatFrameMultiples { 1, 4, 5, 10, 20, 25, 50, 60, 100, 200, 400 };
 
-// Round-number in-beat frame multiples.
+// Round-number in-second frame multiples. Clock-mode frame ticks restart every
+// second, so a step must divide it: rates that 5 doesn't divide (24, 48 fps)
+// step in sixths and twelfths instead.
 constexpr std::array frameMultiples { 1, 2, 5, 10, 20, 25, 50, 100, 200, 500 };
+constexpr std::array filmFrameMultiples { 1, 2, 6, 12 };
 
 // Bar multiples matching te::TimecodeSnapType levels 10..18.
 constexpr std::array barMultiples { 1, 2, 4, 8, 16, 64, 128, 256, 1024 };
 
 constexpr int roundDownDir = -1, roundNearestDir = 0, roundUpDir = 1;
 
-/** MM:SS:FF at the project fps; minutes keep counting past the hour. */
+/** MM:SS:FF at the project fps; minutes keep counting past the hour. The frame
+    field is as wide as the second's last frame, so 200 fps reads MM:SS:FFF. */
 String clockLabel(te::TimePosition t, double fps) {
     const auto framesPerSecond = std::max(1, roundToInt(fps));
     const auto frames = roundToInt(std::max(0.0, t.inSeconds()) * fps);
     const auto seconds = frames / framesPerSecond;
-    return String::formatted("%02d:%02d:%02d", seconds / 60, seconds % 60, frames % framesPerSecond);
+    const auto frameDigits = std::max(2, String(framesPerSecond - 1).length());
+    return String::formatted("%02d:%02d:", seconds / 60, seconds % 60)
+         + String(frames % framesPerSecond).paddedLeft('0', frameDigits);
 }
 
 double snapToIntegerFrame(double frame) {
@@ -58,9 +64,10 @@ SnapLadder::SnapLadder(TimecodeDisplayMode mode, double fps, int framesPerBeat,
     };
 
     // Prune coarse multiples, but always retain single frames for deep zoom.
+    // A clock step must also divide the second its ticks restart at.
     auto addFrameLevels = [this](int containerFrames, const auto& multiples) {
         for (auto m : multiples)
-            if (m == 1 || m * 4 <= containerFrames)
+            if (m == 1 || (m * 4 <= containerFrames && (! isClock() || containerFrames % m == 0)))
                 levels_.push_back({ LevelKind::frames, m, {} });
     };
 
@@ -89,7 +96,11 @@ SnapLadder::SnapLadder(TimecodeDisplayMode mode, double fps, int framesPerBeat,
 
         case TimecodeDisplayMode::seconds:
         case TimecodeDisplayMode::framesOnly: {
-            addFrameLevels(std::max(1, roundToInt(fps_)), frameMultiples);
+            const auto framesPerSecond = std::max(1, roundToInt(fps_));
+            if (framesPerSecond % 5 == 0)
+                addFrameLevels(framesPerSecond, frameMultiples);
+            else
+                addFrameLevels(framesPerSecond, filmFrameMultiples);
             firstTeLevel_ = (int) levels_.size();
             addTeLevels(te::TimecodeType::millisecs, 4, 12);  // second .. 30 minutes
             break;

@@ -203,6 +203,44 @@ public:
                        te::TimePosition::fromSeconds(1.0 + 10.0 / 60.0), "and restarts after it");
         }
 
+        beginTest("Clock frame steps divide the second evenly");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto& ts = edit->tempoSequence;
+
+            for (auto rate : { 24.0, 25.0, 30.0, 48.0, 50.0, 60.0, 100.0, 200.0 }) {
+                SnapLadder ladder(TimecodeDisplayMode::seconds, rate, 25);
+                const auto second = te::TimePosition::fromSeconds(1.0);
+                for (int level = 0; ladder.getKind(level) == SnapLadder::LevelKind::frames; ++level) {
+                    // The last tick before the second boundary is one full step before it.
+                    const auto last = ladder.roundDown(level, second - te::TimeDuration::fromSeconds(1.0e-6), ts);
+                    const auto step = ladder.getNextTick(level, last, ts) - last;
+                    const auto first = ladder.getNextTick(level, te::TimePosition(), ts);
+                    expectWithinAbsoluteError(step.inSeconds(), first.inSeconds(), 1.0e-9,
+                                              juce::String(rate) + " fps, level " + juce::String(level));
+                }
+            }
+
+            SnapLadder film(TimecodeDisplayMode::seconds, 24.0, 25);
+            expectTime(film.getNextTick(2, te::TimePosition(), ts), te::TimePosition::fromSeconds(6.0 / 24.0),
+                       "24 fps steps in sixths after 1 and 2 frames");
+        }
+
+        beginTest("Clock label frame field fits the last frame of a second");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto& ts = edit->tempoSequence;
+            const auto at = [](double s) { return te::TimePosition::fromSeconds(s); };
+
+            SnapLadder hundred(TimecodeDisplayMode::seconds, 100.0, 25);
+            expectEquals(hundred.getPositionLabel(at(1.05), ts), juce::String("00:01:05"), "100 fps keeps two digits");
+
+            SnapLadder twoHundred(TimecodeDisplayMode::seconds, 200.0, 25);
+            expectEquals(twoHundred.getPositionLabel(at(1.025), ts), juce::String("00:01:005"), "200 fps pads to three");
+            expectEquals(twoHundred.getPositionLabel(at(1.995), ts), juce::String("00:01:199"), "last frame");
+            expectTime(*twoHundred.parsePosition("00:01:005", ts), at(1.025), "three-digit frames parse");
+        }
+
         beginTest("Tick iteration advances strictly across many beat boundaries");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);

@@ -82,6 +82,15 @@ A project with such a clip opens in an older µZX, which plays the frames withou
 
 A chip's frame data is a standard PSG and is read by `PsgFile`, as a `.psg` file is: every write kept, a repeated one too, and a pause as four frames for each count. TAYM's Python reference and C walker differ on both (they drop a write that repeats the held value, and count a pause once), which the specification's text does not support; µZX follows the text.
 
+## What the chip cannot play
+
+A command the chip cannot play is ignored and the rest plays. `ChipTimers::takeFaults` says what was ignored; `AYChipPlugin::getTimerWarnings` keeps it for the interface, and the AY panel shows a `⚠` with the reason:
+
+- the bank chosen for the timers is not registered, or a timer is started with no bank chosen;
+- a command names a timer its chip does not have, or a lane or an action its bank does not have.
+
+The warning stays until the chip is reset; one about the bank also ends when a bank is found.
+
 ## Limits
 
 - Twelve timers a chip; timer lane and action indexes up to 16383; 127 actions a command. A file past these opens without those timers' effects, and the import says so.

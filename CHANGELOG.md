@@ -11,6 +11,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### TAYM
 - Player and Studio open `.taym` files: AY tunes with timer effects (pulse-width modulation, sync-buzzer, samples), as trackers such as Bitphase export them. The effects play in the AY chip, each register write at its own sample
 - A TAYM brings its chip clock, chip type and frame rate, and opens like a PSG file: by Open, drop, Import PSG, or from Finder, where the Player is the default app for `.taym`
+- The AY chip shows a `⚠` when timer effects reach it that it cannot play, with the reason on hover; those are left out and the rest plays
 
 ### Engine
 - Tracktion Engine is updated to its October 2026 development version and JUCE to 8.0.17, which hardens the reading of XML, WAV, AIFF, PNG and ZIP files

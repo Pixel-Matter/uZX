@@ -160,6 +160,22 @@ AYPluginUI::AYPluginUI(te::Plugin::Ptr pluginPtr)
     setupToggleButtons();
 
     addAndMakeVisible(scopes_);
+
+    timerWarning_.setText(String::fromUTF8("\xE2\x9A\xA0"), dontSendNotification);  // ⚠
+    timerWarning_.setJustificationType(Justification::centred);
+    timerWarning_.setColour(Label::textColourId, Colors::Theme::warning);
+    addChildComponent(timerWarning_);
+    startTimerHz(4);
+}
+
+void AYPluginUI::timerCallback() {
+    const auto warnings = plugin_.getTimerWarnings();
+    if (warnings == shownTimerWarnings_)
+        return;
+    shownTimerWarnings_ = warnings;
+    timerWarning_.setTooltip(AYChipPlugin::describeTimerWarnings(warnings));
+    timerWarning_.setVisible(warnings != 0);
+    resized();
 }
 
 AYPluginUI::~AYPluginUI() = default;
@@ -198,6 +214,8 @@ void AYPluginUI::resized() {
     const auto buttonWidth = jmin(staticRow.getWidth() / 4 - 8, maxButtonWidth);
     chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, itemHeight));
     staticRow.removeFromLeft(8);
+    if (timerWarning_.isVisible())
+        timerWarning_.setBounds(staticRow.removeFromRight(itemHeight));
     chipClockCombo.setBounds(staticRow.withSizeKeepingCentre(staticRow.getWidth(), 20));
 
     // automatable

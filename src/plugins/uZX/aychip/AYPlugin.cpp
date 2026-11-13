@@ -119,6 +119,17 @@ void AYChipPlugin::resetTimers() noexcept {
     timerDecoder.reset();
 }
 
+juce::String AYChipPlugin::describeTimerWarnings(uint32_t warnings) {
+    juce::StringArray lines;
+    if ((warnings & timerBankNotFound) != 0)
+        lines.add("Timer effects are not playing: the lanes and actions they read were not found.");
+    if ((warnings & timerCommandNoBank) != 0)
+        lines.add("Timer effects are not playing: timers were started with nothing chosen for them to read.");
+    if ((warnings & timerCommandIgnored) != 0)
+        lines.add("Some timer effects are not playing: their commands name timers, lanes or actions that are not there.");
+    return lines.joinIntoString("\n");
+}
+
 uint32_t AYChipPlugin::getClockHz() const {
     return static_cast<uint32_t>(roundToInt(staticParams.chipClock.getStoredValue() * MHz));
 }
@@ -137,6 +148,7 @@ void AYChipPlugin::reset() {
 
     chipTime = {getClockHz(), static_cast<uint64_t>(jmax(1.0, sampleRate))};
     samplesRendered = 0;
+    timerWarnings.store(0, std::memory_order_relaxed);
     timers.setClock(getClockHz());
     resetTimers();
 }
@@ -165,10 +177,24 @@ void AYChipPlugin::updateChip() noexcept {
         const auto cycle = chipTime.cycleAt(samplesRendered);
         if (! timers.isIdle())
             writeTimersBefore(cycle);
-        if (const auto bank = timerDecoder.takeBank())
-            timers.setBank(TimerBankRegistry::getInstance().find(*bank));
+        uint32_t warnings = timerWarnings.load(std::memory_order_relaxed);
+        if (const auto bank = timerDecoder.takeBank()) {
+            auto found = TimerBankRegistry::getInstance().find(*bank);
+            // A bank that is found, or none asked for, ends what was wrong about the bank
+            warnings &= ~uint32_t {timerBankNotFound | timerCommandNoBank};
+            if (found == nullptr && *bank != 0)
+                warnings |= timerBankNotFound;
+            timers.setBank(std::move(found));
+        }
         timers.applyFrame(timerDecoder.takeCommands(), hasRegisters ? frameDecoder.takeRegisters() : PsgRegsFrame {},
                           cycle, *chip);
+        const auto faults = timers.takeFaults();
+        // With a bank that was not found, its commands have none: that is the one thing wrong
+        if ((faults & ChipTimers::commandWithoutBank) != 0 && (warnings & timerBankNotFound) == 0)
+            warnings |= timerCommandNoBank;
+        if ((faults & (ChipTimers::commandRefused | ChipTimers::tablesFailed)) != 0)
+            warnings |= timerCommandIgnored;
+        timerWarnings.store(warnings, std::memory_order_relaxed);
     }
 
     // Apply channel and effect filters directly to chip registers

@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <utility>
 
 namespace MoTool::uZX {
 
@@ -55,6 +56,16 @@ struct ChipTime {
 class ChipTimers {
 public:
     using Commands = std::array<TaymMods, TimerCC::maxTimers>;
+
+    /** What the timers had to ignore; each is a bit. */
+    enum Fault : uint32_t {
+        commandWithoutBank = 1,  ///< a start or a modulate came with no bank to read
+        commandRefused = 2,      ///< a command named a lane, an action or values its bank does not have
+        tablesFailed = 4,        ///< a running timer read past its bank's tables, and all were stopped
+    };
+
+    /** The faults since the last call. */
+    uint32_t takeFaults() noexcept { return std::exchange(faults_, uint32_t {0}); }
 
     /** The tables the timers read; null for none. Stops every timer. */
     void setBank(TimerBank::Ptr bank) noexcept;
@@ -110,6 +121,7 @@ private:
     uint16_t owned_ = 0;                                     // a bit per register a timer owns
     std::array<uint8_t, PsgRegsFrame::size()> held_ {};      // the background's value of each owned register
     std::array<TaymTimerWrite, 128> writes_ {};
+    uint32_t faults_ = 0;
 
     void restart() noexcept;
     void runCommands(const Commands& commands, uint64_t cycle) noexcept;

@@ -44,7 +44,8 @@ private:
 //==============================================================================
 // Editor for AYChipPlugin
 //==============================================================================
-class AYPluginUI : public PluginDeviceUI {
+class AYPluginUI : public PluginDeviceUI,
+                   private juce::Timer {
 public:
     AYPluginUI(tracktion::Plugin::Ptr pluginPtr);
     ~AYPluginUI() override;
@@ -129,6 +130,11 @@ private:
 
     AYScopes scopes_ {plugin_, {}};
 
+    // Shown at the right of the chip row while the chip has timer commands it could not play
+    Label timerWarning_;
+    uint32_t shownTimerWarnings_ = 0;
+
+    void timerCallback() override;
     void setupToggleButtons();
     void layoutChannelToggles(Rectangle<int>& r);
 

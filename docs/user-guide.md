@@ -127,6 +127,8 @@ The A, B and C scopes show each channel as the chip outputs it, before the stere
 
 AY and standalone Scope displays start at 0.5× gain when the project has no saved gain.
 
+When a tune's timer effects reach a chip that cannot play them, an orange `⚠` appears at the right of the chip's top row; hover it for the reason. It means the lanes and actions the timers read were not found, or a command names a timer, lane or action that is not there; those timer effects are left out and the rest plays. The sign stays until play starts again or the chip finds what was missing.
+
 The chip's title bar turns it on or off (`⏻`) and has a menu (`☰`) with scope settings; in Studio the menu also sets the chip's MIDI channels. Chips can't be removed or added in the Player, and its controls take no MIDI mapping.
 
 A track is never shorter than its AY chip needs to show every control. When the tracks need more height than the window has, they scroll up and down.

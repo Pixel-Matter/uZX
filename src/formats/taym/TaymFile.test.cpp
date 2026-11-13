@@ -370,6 +370,37 @@ public:
             transport.stop(false, false);
         }
 
+        beginTest("The example tune plays, and plays on after a jump, with nothing for the chip to warn of");
+        {
+            juce::MemoryBlock bytes;
+            exampleTune().loadFileAsData(bytes);
+            const auto tune = readTaymModule(bytes);
+            expect(tune.has_value());
+            if (tune) {
+                auto edit = te::Edit::createSingleTrackEdit(engine);
+                auto* track = te::getAudioTracks(*edit)[0];
+                auto data = tune->chips[0];
+                const auto clip = PsgClip::insertTo(*track, data, {{te::TimePosition(), te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
+                clip->getTimers().set(tune->timers[0].bank, tune->timers[0].chipIndex, tune->timers[0].events, nullptr);
+                auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+                track->pluginList.insertPlugin(plugin, 0, nullptr);
+                auto& chip = dynamic_cast<AYChipPlugin&>(*plugin);
+                engine.getDeviceManager().dispatchPendingUpdates();
+                edit->dispatchPendingUpdatesSynchronously();
+
+                auto& transport = edit->getTransport();
+                transport.setPosition(te::TimePosition());
+                transport.play(false);
+                TestHelpers::processBlocks(engine, 300);  // three and a half seconds
+                expectEquals(int(chip.getTimerWarnings()), 0, "from the start");
+                TestHelpers::flushMessageQueue();
+                transport.setPosition(te::TimePosition::fromSeconds(20.0));  // inside running timers
+                TestHelpers::processBlocks(engine, 300);
+                expectEquals(int(chip.getTimerWarnings()), 0, "after a jump");
+                transport.stop(false, false);
+            }
+        }
+
         // To listen to the example tune as the engine plays it:
         //     UZX_RENDER_TAYM_TO=<file.wav> uZXTests TaymImport
         // UZX_RENDER_TAYM_SECONDS=<n> sets how much of it (30); UZX_RENDER_TAYM_TIMERS=0 leaves the timers out.

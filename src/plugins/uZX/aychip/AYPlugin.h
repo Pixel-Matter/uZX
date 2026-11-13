@@ -12,6 +12,7 @@
 #include "ChipTimers.h"
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <vector>
 
@@ -126,6 +127,18 @@ public:
     /** The emulated chip's registers R0-R13 as playback has set them. */
     PsgRegsFrame getChipRegisters() const;
 
+    /** Timer commands the chip could not play, each a bit. They stay until the chip is reset or, for the
+        two about the bank, until a bank is found: a tune that goes wrong once shows it after it stops. */
+    enum TimerWarning : uint32_t {
+        timerBankNotFound = 1,    ///< the bank chosen for the timers is not registered
+        timerCommandNoBank = 2,   ///< a timer was started with no bank chosen
+        timerCommandIgnored = 4,  ///< a command named a timer, lane or action its bank does not have
+    };
+    uint32_t getTimerWarnings() const noexcept { return timerWarnings.load(std::memory_order_relaxed); }
+
+    /** What the warnings say, a line each; empty when there are none. */
+    static juce::String describeTimerWarnings(uint32_t warnings);
+
     /** Solos channel 0-2, turning it on if muted, or unsolos it; several can be soloed, on any chips of the edit. */
     void toggleSolo(size_t channel);
 
@@ -146,6 +159,7 @@ private:
     ChipTimers timers;
     ChipTime chipTime;           // the chip's clock against the samples rendered
     uint64_t samplesRendered = 0;  // since the last reset: where a frame or a timer's write is in chip time
+    std::atomic<uint32_t> timerWarnings {0};  // TimerWarning bits, written on the audio thread
 
     //==============================================================================
     // Scope buffer access for visualization (used by ScopePlugin)

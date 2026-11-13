@@ -772,18 +772,86 @@ public:
                    "the next start runs it again");
         }
 
-        beginTest("A timer with no bank chosen, or a bank that is gone, writes nothing");
+        beginTest("A timer with no bank chosen, or a bank that is gone, writes nothing, and the chip says so");
         {
             Rig rig(engine);
             rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerWarnings()), 0, "a chip with no timers has nothing to warn of");
+
             rig.timer(0.0, 0, timerStart(222, 0));
             rig.render({1024});
             expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 4, "no bank");
+            expectEquals(int(rig.chip().getTimerWarnings()), int(AYChipPlugin::timerCommandNoBank));
 
             rig.bank(0.0, 16000);  // a number nothing is registered under
             rig.timer(0.0, 0, timerStart(222, 0));
             rig.render({1024});
             expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 4, "a bank that is gone");
+            expectEquals(int(rig.chip().getTimerWarnings()), int(AYChipPlugin::timerBankNotFound),
+                         "the bank is what is wrong, not each command after it");
+            expect(AYChipPlugin::describeTimerWarnings(rig.chip().getTimerWarnings()).isNotEmpty());
+
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.render({1024});
+            expectEquals(int(rig.chip().getTimerWarnings()), 0, "a bank that is found ends the warning");
+            const int held = rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA);
+            expect(held == 15 || held == 9, "and the timer runs");
+        }
+
+        beginTest("A command its bank cannot play is ignored, the rest plays, and the warning stays");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 99));  // an action the bank does not have
+            rig.timer(0.0, 5, timerStart(222, 0));   // a timer the chip's bank does not have
+            rig.render({1024});
+            expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 4, "nothing started");
+            expectEquals(int(rig.chip().getTimerWarnings()), int(AYChipPlugin::timerCommandIgnored));
+
+            rig.timer(0.0, 1, timerStart(222, 0));   // a good one
+            rig.render({1024});
+            const int held = rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA);
+            expect(held == 15 || held == 9, "a command that can be played is");
+            expectEquals(int(rig.chip().getTimerWarnings()), int(AYChipPlugin::timerCommandIgnored), "the warning stays to be seen");
+
+            rig.chip().reset();
+            expectEquals(int(rig.chip().getTimerWarnings()), 0, "until the chip is reset");
+        }
+
+        beginTest("The chip's panel shows a warning sign while there is something to warn of, with the reason");
+        {
+            Rig rig(engine);
+            AYPluginUI panel {te::Plugin::Ptr(&rig.chip())};
+            panel.setSize(260, 360);
+            const auto findSign = [&]() -> juce::Label* {
+                for (auto* child : panel.getChildren())
+                    if (auto* label = dynamic_cast<juce::Label*>(child); label != nullptr && label->getText() == juce::String::fromUTF8("\xE2\x9A\xA0"))
+                        return label;
+                return nullptr;
+            };
+            auto* sign = findSign();
+            expect(sign != nullptr);
+            if (sign != nullptr) {
+                juce::MessageManager::getInstance()->runDispatchLoopUntil(400);
+                expect(! sign->isVisible(), "nothing to warn of");
+
+                rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+                rig.bank(0.0, 16000);
+                rig.timer(0.0, 0, timerStart(222, 0));
+                rig.render({1024});
+                juce::MessageManager::getInstance()->runDispatchLoopUntil(400);
+                expect(sign->isVisible(), "a bank that is not there");
+                expect(sign->getTooltip().isNotEmpty());
+                expect(sign->getRight() <= panel.getWidth() - 8 && sign->getY() == 8, "at the right of the chip row");
+
+                rig.bank(0.0, registration->getNumber());
+                rig.render({512});
+                juce::MessageManager::getInstance()->runDispatchLoopUntil(400);
+                expect(! sign->isVisible(), "the bank is found");
+            }
         }
     }
 

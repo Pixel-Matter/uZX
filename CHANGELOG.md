@@ -4,6 +4,10 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Download
+- The macOS release is a disk image: drag the app to Applications
+- The macOS app is ad-hoc signed, so the first launch takes **Open Anyway** in System Settings → Privacy & Security instead of a Terminal command
+
 ### Engine
 - Tracktion Engine is updated to its October 2026 development version and JUCE to 8.0.17, which hardens the reading of XML, WAV, AIFF, PNG and ZIP files
 - Fixed: the About window shows the Tracktion Engine version in use and its commit, instead of 3.1.0

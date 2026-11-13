@@ -67,7 +67,7 @@ Triggers regardless of which branch the tag points to.
 2. **`release-macos`** / **`release-linux`** / **`release-windows`** — Build + test + package + upload (in parallel)
    - `APP_TARGET` is `uZXPlayer` for `player-v*` tags, else `uZX`; builds Release config for `APP_TARGET` and `uZXTests`
    - Runs tests
-   - Packages and uploads `{APP_TARGET}-{ver}-macOS.zip`, `{APP_TARGET}-{ver}-linux-x86_64.tar.gz`, `{APP_TARGET}-{ver}-windows-x64.zip`
+   - Ad-hoc signs the macOS app (`CODESIGN_IDENTITY=-`), packages and uploads `{APP_TARGET}-{ver}-macOS.dmg` (app + Applications link), `{APP_TARGET}-{ver}-linux-x86_64.tar.gz`, `{APP_TARGET}-{ver}-windows-x64.zip`
 3. **`publish-release`** — After all platforms finish:
    - Downloads all artifacts, generates `SHA256SUMS.txt`
    - Publishes the release (removes draft status)

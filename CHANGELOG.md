@@ -92,6 +92,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Projects
 - Projects record the version of their format; a project saved by a newer µZX doesn't open in an older one, which says so instead of saving over it. v0.6.0-alpha and older don't check
+- Projects saved by this version don't open in older ones: a PSG clip stores the envelope's restarts apart from its shape, and the chip controllers in MIDI clips have new values. Older projects open, and their PSG clips are converted; MIDI clips that set the old controller values are not
 
 ### Releases
 - The Player has its own version and its own releases, tagged `player-v…`; `v…` releases ship Studio alone

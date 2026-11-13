@@ -401,11 +401,24 @@ public:
             expect(under == 15 || under == 9, "under the timer, one of its two values: " + juce::String(under));
             expectEquals(playFor(0.35), 3, "once it stops, the frame's volume again");
 
-            // Play that lands inside the timer's run: the timer stays silent, and the chip has the frame's volume
+            // Play that lands inside the timer's run: the timer starts there
             TestHelpers::flushMessageQueue();
             TestHelpers::processBlocks(engine, 1);
             transport.setPosition(te::TimePosition::fromSeconds(0.2));
-            expectEquals(playFor(0.1), 3, "landed inside the timer's run, the timer is silent");
+            const int landed = playFor(0.1);
+            expect(landed == 15 || landed == 9, "landed inside the timer's run, the timer plays: " + juce::String(landed));
+            expectEquals(playFor(0.3), 3, "and stops where the tune stops it");
+
+            // Paused, and resumed inside the run. The transport's position does not follow the audio here, so
+            // the place play stopped at is set
+            transport.stop(false, false);
+            TestHelpers::flushMessageQueue();
+            TestHelpers::processBlocks(engine, 4);
+            transport.setPosition(te::TimePosition::fromSeconds(0.3));
+            TestHelpers::flushMessageQueue();
+            transport.play(false);
+            const int resumed = playFor(0.05);
+            expect(resumed == 15 || resumed == 9, "resumed inside the timer's run, the timer plays: " + juce::String(resumed));
             transport.stop(false, false);
         }
 

@@ -61,7 +61,7 @@ The numbers avoid controllers 0 and 32 and the RPN and NRPN ones: Tracktion keep
 
 **The bank does not travel.** A timer's lanes and actions can be thousands of values. Whatever plays timer commands registers their bank with `TimerBankRegistry` and sends its number; the chip looks it up. A device on a real wire would be sent the bank ahead of time under the same number.
 
-**No chase.** When play jumps or stops the timers stop (`isAllNotesOff`). Tracktion then states each controller's last value again, which has the start released, so a timer that is on with no start since stays silent until its next one. Its phase at the place play landed is not worked out.
+**Resuming inside a timer's run.** When play jumps or stops the timers stop (`isAllNotesOff`). Where play resumes Tracktion states each controller's last value again, which has the start released; `TimerDecoder` reads a timer that comes on with no start as a start, so a timer that was running there runs again. It starts from its lanes' first elements: where it had got to does not travel, so a pulse wave is in another phase, which is not heard, and a one-shot lane (a sample) plays from its beginning. A timer whose values are stated again while it runs is left alone.
 
 `TimerEncoder` states every value at a timer's first start, since the chip may hold another clip's, and after that only what changed.
 

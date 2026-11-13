@@ -21,7 +21,9 @@ namespace MoTool {
     As everywhere on this wire, what a timer holds is values, and its start is an event: the base value,
     the timer lane and the actions are controllers that hold, a start is controller 83 pressed and released,
     and a value that changes without a start modulates the running timer. A host that states the values
-    again where nothing happened, as Tracktion does when play starts inside a clip, restarts nothing.
+    again where nothing happened restarts nothing. After a reset, which play stopping or jumping is, a timer
+    stated as on is started where play resumes, as Tracktion states it when play starts inside a clip: from
+    its lanes' first elements, since where it had got to does not travel.
 
     The lanes and actions themselves do not travel: they are a bank, chosen by number on the chip's fourth
     channel (TimerBankRegistry).
@@ -95,8 +97,8 @@ private:
     Reads the timers' controllers a frame at a time, as PsgDecoder reads the chip's, and gives each frame's
     commands in TAYM's terms.
 
-    A timer that is on without having been started since the last reset gets no command: its start was before
-    play began, and it stays silent until its next one.
+    A timer that comes on without a start is started: it ran when play last stopped or jumped, and its values
+    are stated again where play resumes.
 */
 class TimerDecoder {
 public:
@@ -113,7 +115,7 @@ public:
     /** The bank, if the frame chose another; call before takeCommands. */
     std::optional<int> takeBank() noexcept;
 
-    /** Forgets everything held: every timer is off and unstarted. The bank stays. */
+    /** Forgets everything held: every timer is off. The bank stays. */
     void reset() noexcept;
 
 private:

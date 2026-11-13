@@ -113,18 +113,24 @@ public:
             expectEquals(changed.items[4].value, 180 & 0x7F);
         }
 
-        beginTest("Values stated again with no start, as a host does when play starts inside a clip, start nothing");
+        beginTest("Values stated again with no start, as a host does when play starts inside a clip, start a timer that was off and leave a running one alone");
         {
             TimerEncoder encoder;
             TimerDecoder decoder;
             const auto began = encoder.encode(1, start(222, 3, 10, 2));
 
-            // A chip that never saw the start gets what the controllers were left at: the start released
+            // A chip that never saw the start, or was reset since, gets what the controllers were left at: the
+            // start released
             for (const auto& m : began)
                 if (static_cast<int>(m.controller) != 83)
                     decoder.decode(m.channel, static_cast<int>(m.controller), m.value);
             decoder.decode(5, 83, 0);
-            expectEquals(int(decoder.takeCommands()[1].command), int(TAYM_CMD_EMPTY), "on with no start is no command");
+            const auto resumed = decoder.takeCommands()[1];
+            expectEquals(int(resumed.command), int(TAYM_CMD_START), "on with no start, from off: it starts");
+            expectEquals(int(resumed.base_timer_value), 222);
+            expectEquals(int(resumed.timer_lane_ref), 3);
+            expectEquals(int(resumed.first_action), 10);
+            expectEquals(int(resumed.action_count), 2);
 
             // A chip that did see it gets the same values again
             decoder.reset();

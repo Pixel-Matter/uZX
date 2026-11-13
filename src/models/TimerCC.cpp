@@ -199,7 +199,9 @@ std::array<TaymMods, TimerCC::maxTimers> TimerDecoder::takeCommands() noexcept {
         auto now = frame_[index];
         auto& command = commands[index];
 
-        if ((starts_ & bit) != 0) {
+        // A timer that comes on with no start was stopped by a reset while it ran, and its values are stated
+        // again where play resumes: it starts there, from its lanes' first elements
+        if ((starts_ & bit) != 0 || (! held.on && now.on)) {
             now.on = true;
             command.command = TAYM_CMD_START;
             command.base_timer_value = now.base;
@@ -209,8 +211,7 @@ std::array<TaymMods, TimerCC::maxTimers> TimerDecoder::takeCommands() noexcept {
         } else if (held.on && ! now.on) {
             command.command = TAYM_CMD_STOP;
         } else if (held.on && now.on && now != held) {
-            // Values that changed with no start. The chip's timers ignore this for a timer that was never
-            // started, which is one that came on with no start: its start was before play began
+            // Values that changed with no start
             command.command = TAYM_CMD_MODULATE;
             command.base_timer_value = now.base != held.base ? now.base : 0;
             command.timer_lane_ref = now.lane != held.lane ? timerLaneRefOf(now.lane) : TAYM_TLAN_UNCHANGED;

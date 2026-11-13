@@ -255,7 +255,7 @@ void AYChipPlugin::applyToBuffer(const te::PluginRenderContext& fc) noexcept {
 
     if (fc.bufferForMidiMessages->isAllNotesOff) {
         chip->muteSound();
-        resetTimers();  // play jumped or stopped: a timer is silent until its next start
+        resetTimers();  // play jumped or stopped: a timer starts again when its values are stated where play resumes
     }
 
     // A frame is the messages of one time. It reaches the chip when a message of a later time arrives, after

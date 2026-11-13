@@ -843,7 +843,7 @@ public:
                                                            + String(scopeOf(rig, 0).second.size()));
         }
 
-        beginTest("When play jumps or stops, a timer stops and stays silent until its next start");
+        beginTest("When play jumps or stops, a timer stops, and starts again where its values are stated");
         {
             Rig rig(engine);
             rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
@@ -851,23 +851,24 @@ public:
             rig.timer(0.0, 0, timerStart(222, 0));
             rig.render({882});
 
-            // The jump, and the values a host states again where play lands: everything but the start
+            // The stop alone: the level is the frame's, with no timer over it
             rig.allNotesOff();
-            TimerEncoder encoder;
-            for (const auto& m : encoder.encode(0, timerStart(222, 0)))
-                if (static_cast<int>(m.controller) != 83)
-                    rig.controller(0.0, m);
             rig.frame(0.0, {{PsgRegType::VolumeA, 5}});
             const auto out = rig.render({2048});
             bool steady = true;
             for (size_t i = 400; i < out.size(); ++i)
                 steady = steady && std::abs(out[i] - rig.levelOf(5)) < 1.0e-3f;
-            expect(steady, "the level is the frame's, with no timer over it");
+            expect(steady, "stopped, with nothing stated: no timer");
 
-            rig.timer(0.0, 0, timerStart(222, 0));
+            // Play resumes inside the timer's run: the host states the values it holds, everything but the start
+            rig.allNotesOff();
+            TimerEncoder encoder;
+            for (const auto& m : encoder.encode(0, timerStart(222, 0)))
+                if (static_cast<int>(m.controller) != 83)
+                    rig.controller(0.0, m);
             const auto again = rig.render({2048});
             expect(std::abs(again[44] - rig.levelOf(15)) < 1.0e-3f && std::abs(again[132] - rig.levelOf(9)) < 1.0e-3f,
-                   "the next start runs it again");
+                   "the timer runs again from where play resumed");
         }
 
         beginTest("A timer with no bank chosen, or a bank that is gone, writes nothing, and the chip says so");

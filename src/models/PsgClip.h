@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <memory>
 
+#include "ClipTimers.h"
 #include "CustomClip.h"
 #include "PsgList.h"
 #include "../formats/psg/PsgFile.h"
@@ -23,6 +24,7 @@ public:
 
     PsgClip(const juce::ValueTree& v, te::EditItemID id, te::ClipOwner& parent_)
         : te::MidiClip(v, id, parent_)
+        , timers_(state)
     {}
 
     void initialise() override;
@@ -41,6 +43,14 @@ public:
         jassert(psgList != nullptr);
         return *psgList;
     }
+
+    /** The clip's timers, as a TAYM has them: timed register writes between its frames. Empty for a plain
+        PSG clip. */
+    ClipTimers& getTimers() noexcept { return timers_; }
+    const ClipTimers& getTimers() const noexcept { return timers_; }
+
+    /** The MIDI that plays the clip: its frames as PSG controllers, and its timers' commands with them. */
+    [[nodiscard]] juce::MidiMessageSequence createPlaybackMidiSequence(te::MidiList::TimeBase);
 
     /** Returns the normalized pitch range across all frames in the clip.
         Cached and automatically invalidated when PSG data changes. */
@@ -118,6 +128,7 @@ private:
     bool isInPsgList(const juce::ValueTree&) const;
 
     std::unique_ptr<PsgList> psgList;
+    ClipTimers timers_;
     mutable juce::Range<float> cachedPitchRange_ { 0.0f, 1.0f };
     mutable int pitchRangeVersion_ = -1;
     mutable std::optional<PitchHistogram> histogram_;

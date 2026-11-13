@@ -1,93 +1,91 @@
-# Timer FX (TAYM-style timed AY writes): design notes
+# Timers: timed AY writes between frames
 
-> **Status: not implemented.** Design for the Timer fx support that TAYM import needs ([ROADMAP.md](../ROADMAP.md), v1.0 P1).
+How the AY chip plays TAYM's timer effects: register writes many times within a frame, which make pulse-width modulation, sync-buzzer and samples. Code: `src/plugins/uZX/aychip/ChipTimers.*`, `src/models/TimerCC.*`, `src/models/TimerBank.*`, `src/models/ClipTimers.*`, `src/formats/taym/`, and the format's own C engine in `third_party/taym/c`.
 
-Notes from the pyayay `render` / absolute-timeline work (pyayay branch
-`feature/render-frame`, files `src/wrapper.cpp`, `src/aychip.{h,cpp}`,
-`tests/test_render.py`). uZX's `src/plugins/uZX/aychip/aychip.h` is the same
-code lineage (`uZX::Chip`, `AYInterface`), so the core ports almost line for line.
+[TAYM](https://github.com/ruguevara/taym) is an interchange format: a chip's frames as a PSG, and timers that own some of its registers for a while and write them from lanes of values at their own rate. Its repository holds the specification and the engine used here; section numbers below are the specification's.
 
-## Core: writes on an absolute AY-cycle timeline
+## Where it sits
 
-- A write is `(t, reg, value)`, `t` = absolute AY clock cycle (uint64).
-- It is applied right before absolute sample `ceil(t * sample_rate / clock)`.
-  Writes at the same sample apply in order (last wins; every R13 write restarts the envelope).
-- A block of `n` samples starting at absolute sample `S` takes exactly the writes with
-  `t <= floor((S + n) * clock / sample_rate)`. A write landing exactly on `S + n`
-  takes effect at the start of the next block.
-- Exact integer math, no 128-bit ints (MSVC has none): split into quotient and remainder,
-  `a * mul / div = (a / div) * mul + (a % div) * mul / div` (round the second term up for ceil).
-  Needs `clock` and `sample_rate` as integers below 2^32: round `chipClock * MHz` to whole Hz.
-- Property this gives: block boundaries do not affect output. One block, 50 Hz frames and
-  random host block sizes render identical samples, so timer phase never glitches at frame
-  boundaries even when a frame is not a whole number of cycles (1773447 Hz @ 44100 Hz =
-  35468.94 cycles per 882-sample frame).
-- Copy from pyayay `src/wrapper.cpp`: `mulDiv`, `sampleAt`, `cycleAt`, `renderTimed`.
+```
+PSG wire ─► PsgDecoder ───► the frame's registers ─┐
+        └─► TimerDecoder ─► the frame's commands ──┼─► ChipTimers ─► register writes, each at its sample ─► chip
+bank, by number ◄── TimerBankRegistry ◄── clip ────┘
+```
 
-## What changes in a plugin (AYChipPlugin)
+A frame brings the chip its ordinary register writes, the background, and at most one command for each timer: start, modulate or stop. `AYChipPlugin` applies a frame at the sample it is rendered up to; `ChipTimers` runs the commands, then decides what the background's writes do:
 
-1. **Absolute time = host transport, not a free counter.** Each block, take the start sample
-   from the playhead (`AudioPlayHead::PositionInfo::getTimeInSamples()` / Tracktion edit time
-   in samples). If it is not previous start + previous block size, it is a jump (loop, seek,
-   scrub, stop/start): chase timer state at the new position, like CC chasing. TAYM timers are
-   deterministic from the last START/MODULATE plus intervals, so the next expiry after `t` can
-   be computed directly. Ayumi's own state (tone counters, envelope phase) is not seekable and
-   does not need to be: re-assert registers and continue. Bonus: offline bounce == realtime play.
-2. **Generate timer writes inside the chip plugin.** MIDI/automation carry the slow part
-   (start/stop, rate, targets, duty, lanes); the plugin's timer engine emits
-   `(cycle, reg, value)` for the current block. A 5 kHz PWM is 10k writes/s, unusable as MIDI.
-3. **One merged, sorted event list per block** (MIDI-derived register changes + timer writes),
-   then the segment loop:
+- A running timer **owns** the registers its actions name. The background's write to an owned register is held back.
+- A register a timer takes has the chip's value saved; one it lets go of gets the held write, or the saved value.
 
-   ```cpp
-   // block covers absolute samples [S, S + n)
-   const uint64_t endCycle = cycleAt(S + n);
-   events.clear();                                   // preallocated
-   for (auto& m : midi) events.push({cycleOf(m), FromMidi, ...});
-   timers.emitUntil(endCycle, events);
-   events.sortStable();                              // by cycle; define who wins at equal cycles
-   size_t pos = 0;
-   for (auto& e : events) {
-       const size_t k = sampleAt(e.cycle) - S;       // 0..n
-       if (k > pos) { render(pos, k); pos = k; }
-       apply(e);
-   }
-   if (pos < n) render(pos, n);
-   ```
-4. **One placement rule.** `applyToBuffer` currently uses `roundToInt(timestamp * sampleRate)`
-   (nearest) for MIDI. Mixing that with ceil for timer writes can reorder a MIDI write and a
-   timer write less than a sample apart. Convert MIDI timestamps to cycles and use ceil for both.
-5. **Ownership (TAYM S13.1).** An active timer owns its target registers; background
-   (the PSG/MIDI frame writes in `AYChipPlugin::updateChip`) skips owned regs and re-asserts them when the timer releases.
-   Push background registers only when changed: re-writing R8/R11/R12/R13 resets the
-   envelope mid-buzz. `channelMuter.applyToChip` must run after every write segment or be
-   folded into `apply`.
-6. **Render variants.** Mono / stereo / separate / stereo+separate: make the segment loop
-   generic over a "render [a, b)" lambda so timing logic exists once.
-7. **Realtime safety.** No allocation on the audio thread: fixed-capacity event and scratch
-   buffers sized in `initialise()`. If capacity is hit, collapse writes at the same sample
-   (only the last per register matters; repeated R13 restarts in one sample sound like one).
-8. Variable host block sizes are fine; host sample rates are integers in practice. At 96 kHz
-   the sample-grid jitter halves (1 sample = ~18 AY cycles at 1.77 MHz).
+Between frames `AYChipPlugin::renderTo` asks for the timers' writes that fall in the samples it is about to render and applies each at its own sample. A mute is applied again after a write to the mixer or a volume, since a mute holds over the registers as written.
 
-Accuracy note: writes land on the sample grid (~40 AY cycles at 44.1 kHz). This matches
-taym's current engine. If it ever becomes audible, apply writes inside `ayumi_process` at
-Ayumi's internal tick (clock/8) instead; that needs the oversampling loop in `ayumi.c` to
-stop at a given tick.
+The engine itself is TAYM's: `taym_timers.c` is chip-agnostic and reports raw target values; `taym_ay.c` makes AY register writes of them (bytes, the envelope shape's four bits, a sample amplitude combined with a volume through the chip's curve). `ChipTimers` wraps both. Nothing in it allocates or locks.
 
-## MIDI ideas
+## Chip time
 
-- **Timer FX as an instrument voice** (sync-buzzer, PWM): note-on = START; note number +
-  pitch bend = timer rate through the existing tuning tables (like tone period); velocity =
-  amplitude; CCs = duty / envelope period; note-off = STOP. Fits next to ChipInstrument /
-  NotesToPsg, playable and editable as notes. MPE for per-voice rate glides.
-- **Precise rates:** 7-bit CC is not enough. Use 14-bit CC pairs (as CC20/CC52 for tone period),
-  NRPN, or pitch bend for the fine part.
-- **Raw timed writes between uZX plugins** (TAYM import, emulator capture): one SysEx per
-  frame/block with packed entries `(delta_cycles as 7-bit varint, reg, value)`; the message
-  timestamp marks the block start, deltas give sub-sample timing. Only inside uZX/Tracktion:
-  VST3 does not pass SysEx to plugins at all, and AU/VST2 hosts are inconsistent.
-- **NRPN register writes** (CC99/98 select reg, CC6 value): fine for a 50 Hz register stream,
-  too heavy for timer fx.
-- **External DAW (VSTi):** notes + automatable parameters driving the in-plugin timer engine.
-  This is the only option portable across VST3 / AU / CLAP.
+`ChipTime` counts the chip's clock cycles against rendered samples, both from the plugin's last reset, in whole numbers:
+
+- a frame at sample `s` is at cycle `s · clock / rate`, rounded down;
+- a write at cycle `c` sounds from sample `c · rate / clock`, rounded up.
+
+So a timer started in a frame writes first at that frame's sample, and its later writes are whole intervals on in cycles, however the host cuts time into blocks. The tests pin both: a timer's writes sound bit for bit as frames at the same samples do, and one block, ragged blocks and 32-sample blocks render the same audio.
+
+A timer's rate is in the chip's clock, so the chip's clock setting changes its pitch as it would on hardware; a rate given in Hz stays in Hz. Changing the clock stops the timers.
+
+The chip's output filter delays every write alike by about a dozen samples. That is the emulator's, and applies to frames as well.
+
+## On the wire
+
+Timers travel on the PSG wire ([midi-ay-pipeline.md](midi-ay-pipeline.md)), a MIDI channel each after the chip's four: twelve timers for a chip on base channel 1. `TimerCC` in `src/models/TimerCC.*` is the one description of it, with `TimerEncoder` and `TimerDecoder`.
+
+What a timer holds is values, and its start is an event, as with the envelope. A value that changes with no start modulates the running timer, which is TAYM's own split between START and MODULATE (S12).
+
+| A timer's | Controller, on its channel | |
+| --- | --- | --- |
+| On | 80 | Off stops it |
+| Start | 83, pressed and released | Starts it with the values held |
+| Base value, 32 bits | 21 (bits 28–31), 18 and 50 (bits 14–27), 20 and 52 (bits 0–13) | Sent whole, 52 last; a base under 16384 has the two parts a tone period has |
+| Timer lane | 16 and 48 | The lane's index + 1; 0 for none |
+| First action | 17 and 49 | |
+| Number of actions | 19 | |
+
+| The chip's | Controller, on its fourth channel | |
+| --- | --- | --- |
+| Bank | 16 and 48 | 1 to 16383; 0 for none |
+
+The numbers avoid controllers 0 and 32 and the RPN and NRPN ones: Tracktion keeps those for the program change or parameter they belong to and does not state them again when play starts inside a clip. A SysEx message per command was not used for the same reason, and because it allocates on its way through the graph and a VST3 host does not pass it.
+
+**The bank does not travel.** A timer's lanes and actions can be thousands of values. Whatever plays timer commands registers their bank with `TimerBankRegistry` and sends its number; the chip looks it up. A device on a real wire would be sent the bank ahead of time under the same number.
+
+**No chase.** When play jumps or stops the timers stop (`isAllNotesOff`). Tracktion then states each controller's last value again, which has the start released, so a timer that is on with no start since stays silent until its next one. Its phase at the place play landed is not worked out.
+
+`TimerEncoder` states every value at a timer's first start, since the chip may hold another clip's, and after that only what changed.
+
+## In a clip
+
+A TAYM opens as a PSG clip with timers (`ClipTimers`, in the clip's state as a `TIMERS` child):
+
+- **The bank**: a TAYM with the file's chips, timers and tables and nothing else, as bytes. `TimerBank` parses it once; the clip registers it for as long as it lives.
+- **The commands**: a `TIMER` for each, with its frame's index in the clip's PSG list. They are on the list's frame grid, so tempo and frame-rate changes move them with the frames, and a clip trimmed at its start plays them from its start on.
+
+`PsgClip::createPlaybackMidiSequence` adds them to the frames' controllers. Commands before the clip's start are left out; a timer running across it is silent until its next start.
+
+A project with such a clip opens in an older µZX, which plays the frames without the timers and keeps the timers when it saves. That is why the edit format version is not raised: raising it would lock every project out of older versions.
+
+## Reading a TAYM
+
+`readTaymModule` in `src/formats/taym/TaymFile.*` gives a `TrackerModule`: each AY chip's frames, the tune's title, clock and chip type, and each chip's timers. It goes through the same import as a PSG file or a tracker module (`Helpers::importPsgFiles`).
+
+A chip's frame data is a standard PSG and is read by `PsgFile`, as a `.psg` file is: every write kept, a repeated one too, and a pause as four frames for each count. TAYM's Python reference and C walker differ on both (they drop a write that repeats the held value, and count a pause once), which the specification's text does not support; µZX follows the text.
+
+## Limits
+
+- Twelve timers a chip; timer lane and action indexes up to 16383; 127 actions a command. A file past these opens without those timers' effects, and the import says so.
+- A timer whose rate drops to zero fires once every 1/50 s, whatever the tune's frame rate.
+- Chips other than AY and YM are left out.
+- Timers show nowhere in the interface: a clip looks like its PSG.
+
+## Not built
+
+- **Timer effects as an instrument voice** (sync-buzzer, PWM played from notes): a note starts a timer, its pitch sets the rate through the tuning, the chip mixer writes this wire. Nothing of it exists.
+- **Writing a TAYM**: Render to PSG records frames only.

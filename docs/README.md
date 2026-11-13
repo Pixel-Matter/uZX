@@ -14,7 +14,7 @@
 | Design | [design/psg-timing.md](design/psg-timing.md) | Frame indexes, `framesPerBeat`, and what tempo changes do |
 | Design | [design/midi-ay-pipeline.md](design/midi-ay-pipeline.md) | Partly implemented: note domain and PSG domain, instrument → chip effects → chip mixer → chip, the PSG controller wire, running on real hardware |
 | Design | [design/parameter-binding.md](design/parameter-binding.md) | Parameter definitions, automation bridge, widget bindings |
-| Design | [design/timer-fx.md](design/timer-fx.md) | Not implemented: timed AY writes for TAYM |
+| Design | [design/timer-fx.md](design/timer-fx.md) | TAYM's timers in the AY chip: timed register writes between frames, their controllers on the PSG wire, timers in a clip |
 | Vision | [motool/](motool/vision.md) | The initial MoTool demotool vision and its early design notes; not implemented, not scheduled |
 
 Build, test, style and branching rules are in [CONTRIBUTING.md](../CONTRIBUTING.md) and [AGENTS.md](../AGENTS.md); released changes in [CHANGELOG.md](../CHANGELOG.md).

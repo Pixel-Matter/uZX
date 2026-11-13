@@ -8,6 +8,7 @@ set(SHARED_SOURCES
     formats/psg/TurboSound.cpp
 
     formats/tracker/TrackerModule.cpp
+    formats/taym/TaymFile.cpp
     formats/tuning/TuningCsv.cpp
 
     controllers/ParamEndpoint.cpp
@@ -18,6 +19,7 @@ set(SHARED_SOURCES
     models/PsgList.cpp
     models/PsgRecorder.cpp
     models/PsgClip.cpp
+    models/ClipTimers.cpp
     models/PsgFrameRetimer.cpp
     models/PsgTempoDetector.cpp
     models/Selectable.cpp
@@ -128,6 +130,7 @@ set(TEST_SOURCES
     formats/psg/TurboSound.test.cpp
 
     formats/tracker/TrackerModule.test.cpp
+    formats/taym/TaymFile.test.cpp
     formats/tuning/TuningCsv.test.cpp
 
     models/PsgCC.test.cpp

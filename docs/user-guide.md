@@ -11,7 +11,7 @@ The screenshots show the macOS build using the [Guide demo project](../tests/fix
 | App | Description |
 |-----|-------------|
 | **µZX Studio** | Full-featured PSG music editor with timeline, instruments, and automation (Work in progress) |
-| **µZX Player** | Lightweight player with visualization for `.psg` files, tracker modules (`.pt3`, `.stc`, …) and `.uzx` files |
+| **µZX Player** | Lightweight player with visualization for `.psg` files, `.taym` files, tracker modules (`.pt3`, `.stc`, …) and `.uzx` files |
 | **µZX Tuning** | Tuning table (note table) editor/viewer. Supports equal temperament and just-intonation |
 
 ### Installing on macOS
@@ -32,9 +32,9 @@ A minimal player for listening to PSG chip music files.
 
 ### Opening Files
 
-- **Drag and drop** a `.psg` file, a tracker module or a `.uzx` file onto the window.
+- **Drag and drop** a `.psg` file, a `.taym` file, a tracker module or a `.uzx` file onto the window.
 - **File menu → Open** (`Cmd+O` / `Ctrl+O`).
-- **Double-click** a file in Finder (macOS). µZX Player is the default app for `.psg` files. Tracker modules and `.uzx` files open in it when no other app claims them, such as a zxtune player for modules, or µZX Studio, which opens `.uzx` files when it is installed. To pick the Player anyway, use **Open With**, or **Get Info → Open with → Change All…** for every file of that type. Early Vortex Tracker's `.txt` modules are not registered.
+- **Double-click** a file in Finder (macOS). µZX Player is the default app for `.psg` and `.taym` files. Tracker modules and `.uzx` files open in it when no other app claims them, such as a zxtune player for modules, or µZX Studio, which opens `.uzx` files when it is installed. To pick the Player anyway, use **Open With**, or **Get Info → Open with → Change All…** for every file of that type. Early Vortex Tracker's `.txt` modules are not registered.
 - On Windows and Linux the Player registers no file types: choose it in the file manager's **Open with**, which passes the file on the command line.
 - Pass a file path as a command-line argument.
 
@@ -43,6 +43,8 @@ Drop or open several `.psg` files at once to play them together, each on its own
 A PSG file plays at 50 frames a second, or at the rate its header gives when the file is version 10 or later. The project takes the frame rate of the file opened last. Most files don't say their rate, so a tune written for 100 or 200 Hz opens two or four times too slow: pick its rate under **FPS** in the transport bar, or under **Frame Rate** in the clip's right-click menu. The clips play at the new rate. When they are the only clips in the project, the whole timeline scales: the clips start as many frames in, and the tempo scales with the rate, so a beat keeps its frames and the grid its groove, and a module's own row timing is kept: 41 BPM at 50 Hz becomes 164 BPM at 200 Hz. Past 300 BPM, the most the tempo goes to, a beat takes twice the frames. Otherwise the clips keep where they start and the tempo stays.
 
 **Tracker modules.** µZX opens ZX Spectrum tracker modules as well: Pro Tracker 1, 2 and 3 (`.pt1`, `.pt2`, `.pt3`, Turbo Sound PT3 files included), Vortex Tracker II text modules (`.vt2`, or `.txt` from its early versions; Turbo Sound files included), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro (`.stp`), ASC Sound Master (`.asc`, `.as0`), SQ-Tracker (`.sqt`), Pro Sound Creator (`.psc`), Pro Sound Maker (`.psm`), Global Tracker (`.gtr`) and Fast Tracker (`.ftc`). The format is recognised from the file's content. µZX plays the module with [zxtune](https://github.com/vitamin-caig/zxtune)'s players up to where the tune loops and opens the result like a PSG file: each AY chip on its own track, two or three for Turbo Sound, named after the module's title, or after the file when the module has none. The module also brings what a PSG file lacks: its note table becomes the tune's tuning table when µZX has that table (see **Tuning table and key** under µZX Studio's Timeline below), and its rows set the tempo (see the BPM control under [Transport Bar](#transport-bar)). A Vortex Tracker module also brings the chip clock and the frame rate it was written for, such as a Pentagon's 1.75 MHz and 48.828 Hz; the clock is set on the tracks the module gets to itself, and the frame rate on the project. Other tracker modules store neither, and none stores the chip type or stereo layout, so those stay as they are.
+
+**TAYM files.** µZX opens `.taym` files: [TAYM](https://github.com/ruguevara/taym) is an interchange format for AY music with timer effects, exported by trackers such as Bitphase. A timer effect writes chip registers many times within a frame, which makes sounds a PSG file cannot hold: pulse-width modulation, sync-buzzer, samples. A TAYM opens like a PSG file, each AY chip on its own track named after the tune's title, and its timer effects play with it, each write at its own sample. The clip shows the tune's frames as a PSG clip does; the timer effects are heard and not drawn. The file's chip clock and chip type (AY or YM) are set on the tracks the tune gets to itself, and its frame rate on the project. When play starts or lands inside a timer effect, that effect is silent until the tune starts it again. A chip plays up to twelve timers; a file that needs more opens without those effects and µZX says so. Chips other than AY and YM are left out.
 
 **Turbo Sound sets.** When a single `.psg` file's name ends in a chip number 1 to 3 after `_`, `-`, `.` or a space (`song_1.psg`, or `song.1.psg` as Vortex Tracker exports them), and files with the other numbers lie next to it with as many frames (give or take one, where the recording stopped mid-frame) and the same PSG header, µZX asks whether to open the whole set or only that file. This applies however a single file comes in: opening, dropping, Finder / Explorer, and **Import PSG** in both apps.
 
@@ -161,7 +163,7 @@ Same controls as µZX Player, plus:
 
 ### Importing PSG Files
 
-**File → Import PSG** (`Cmd+I`) picks one or more `.psg` files or tracker modules (see [Opening Files](#opening-files)). One file goes on the selected track, or a new track when no track is selected; several files go on new tracks, one each, as do the other chips of a Turbo Sound module. Dropping `.psg` files or tracker modules onto the window adds each on a new track. Clips start at the beginning of the project. A file of a Turbo Sound set brings up the same question as in the Player (see [Opening Files](#opening-files)).
+**File → Import PSG** (`Cmd+I`) picks one or more `.psg` files, `.taym` files or tracker modules (see [Opening Files](#opening-files)). One file goes on the selected track, or a new track when no track is selected; several files go on new tracks, one each, as do the other chips of a Turbo Sound module. Dropping `.psg` files, `.taym` files or tracker modules onto the window adds each on a new track. Clips start at the beginning of the project. A file of a Turbo Sound set brings up the same question as in the Player (see [Opening Files](#opening-files)).
 
 ### Rendering a Video
 
@@ -360,7 +362,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Shift+Z` | Zoom to fit the project | Player, Studio |
 | `Z` | Zoom to selection | Studio |
 | `Cmd+O` | Open file | Player, Studio |
-| `Cmd+I` | Import PSG files or tracker modules — Studio adds one to the selected track, several on new tracks; Player asks whether to add them on new tracks or open them in a new edit | Player, Studio |
+| `Cmd+I` | Import PSG files, TAYM files or tracker modules — Studio adds one to the selected track, several on new tracks; Player asks whether to add them on new tracks or open them in a new edit | Player, Studio |
 | `Cmd+N` | New edit | Studio |
 | `Cmd+S` | Save | Player, Studio |
 | `Cmd+Shift+S` | Save As | Player, Studio |
@@ -409,6 +411,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Extension | Description |
 |-----------|-------------|
 | `.psg` | Raw PSG register dump — standard format for AY chip music |
+| `.taym` | TAYM: an AY tune's frames with timer effects (PWM, sync-buzzer, samples), opened as a PSG clip that plays them (see [Opening Files](#opening-files)) |
 | `.pt3`, `.pt2`, `.pt1`, `.vt2`, `.txt`, `.stc`, `.st1`, `.st3`, `.stp`, `.asc`, `.as0`, `.sqt`, `.psc`, `.psm`, `.gtr`, `.ftc` | ZX Spectrum tracker modules, opened and imported as PSG register dumps with their title, note table and rows (see [Opening Files](#opening-files)) |
 | `.uzx` | µZX project format — timeline edit with multiple tracks and metadata. A project saved by a newer µZX doesn't open in an older one: it says so and leaves the file untouched |
 

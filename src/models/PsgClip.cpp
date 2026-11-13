@@ -36,6 +36,7 @@ void PsgClip::initialise() {
         state.addChild(psg, -1, um);
     }
     psgList = std::make_unique<PsgList>(psg, um);
+    timers_.reload();
     // A new list restarts its data version, so caches keyed on it must start over.
     pitchRangeVersion_ = -1;
     histogram_.reset();
@@ -68,14 +69,24 @@ void PsgClip::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifie
 
 void PsgClip::valueTreeChildAdded(juce::ValueTree& parent, juce::ValueTree& child) {
     te::MidiClip::valueTreeChildAdded(parent, child);
-    if (child.hasType(IDs::PSG) || isInPsgList(parent))
+    if (parent == state && child.hasType(IDs::TIMERS))
+        timers_.reload();
+    if (child.hasType(IDs::PSG) || child.hasType(IDs::TIMERS) || isInPsgList(parent))
         edit.restartPlayback();
 }
 
 void PsgClip::valueTreeChildRemoved(juce::ValueTree& parent, juce::ValueTree& child, int index) {
     te::MidiClip::valueTreeChildRemoved(parent, child, index);
-    if (child.hasType(IDs::PSG) || isInPsgList(parent))
+    if (parent == state && child.hasType(IDs::TIMERS))
+        timers_.reload();
+    if (child.hasType(IDs::PSG) || child.hasType(IDs::TIMERS) || isInPsgList(parent))
         edit.restartPlayback();
+}
+
+juce::MidiMessageSequence PsgClip::createPlaybackMidiSequence(te::MidiList::TimeBase timeBase) {
+    auto sequence = getPsg().exportToPlaybackMidiSequence(*this, timeBase);
+    timers_.addToPlaybackSequence(sequence, *this, timeBase);
+    return sequence;
 }
 
 String PsgClip::getSelectableDescription() {

@@ -4,6 +4,7 @@
 #include "../../../models/TimerTestBank.h"
 
 #include <array>
+#include <span>
 #include <vector>
 
 namespace MoTool::Tests {

@@ -9,6 +9,11 @@
 #include "../../../models/TimerTestBank.h"
 #include "../../../util/TestHelpers.h"
 
+#include <algorithm>
+#include <cmath>
+#include <utility>
+#include <vector>
+
 namespace MoTool::Tests {
 
 using namespace MoTool::uZX;

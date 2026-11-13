@@ -2,7 +2,9 @@
 
 #include <JuceHeader.h>
 
+#include "../../models/ClipTimers.h"
 #include "../../models/tuning/TuningRegistry.h"
+#include "../../plugins/uZX/aychip/aychip.h"
 #include "../psg/PsgData.h"
 
 #include <optional>
@@ -22,6 +24,16 @@ struct TrackerModule {
     std::optional<BuiltinTuningType> table;
     std::vector<size_t> rowStarts;  // the frame each pattern row starts at, in play order
     std::optional<double> chipClock;  // Hz, when the module stores it (Vortex Tracker's text modules do)
+    std::optional<ChipType> chipType; // AY or YM, when the tune says which (a TAYM does)
+
+    /** A chip's timers: timed register writes between its frames, which a TAYM has. */
+    struct Timers {
+        juce::MemoryBlock bank;                 // the lanes and actions the commands index, as ClipTimers keeps them
+        int chipIndex = 0;                      // the chip in that bank
+        std::vector<ClipTimers::Event> events;  // the commands in frame order; empty for a chip without timers
+        bool unplayable = false;                // true if some of the chip's timers cannot be played here
+    };
+    std::vector<Timers> timers;  // one for each of `chips` when the tune has timers; else empty
 };
 
 /** Empty when the bytes are not a module of a supported format. */

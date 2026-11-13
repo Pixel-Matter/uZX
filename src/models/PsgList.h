@@ -158,6 +158,22 @@ public:
     /** Get time according to MIDI timing */
     double getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::MidiList::TimeBase timeBase) const;
 
+    //==============================================================================
+    // Where a machine frame of the clip's list plays, by its index: for frames, and for anything else that
+    // is on the list's frame grid.
+    static te::BeatPosition getFrameBeatPosition(const PsgClip&, int frameIndex);
+    static te::BeatPosition getRawEditBeats(const PsgClip&, int frameIndex);
+    static te::BeatPosition getEditBeats(const PsgClip&, int frameIndex);
+    static te::TimePosition getEditTime(const PsgClip&, int frameIndex);
+
+    /** A frame's time in a playback sequence's time base. */
+    static double getFrameTimeInBase(int frameIndex, const PsgClip&, te::MidiList::TimeBase);
+
+    /** True if the frame is before the clip's start: trimmed off, or the earlier part of a split. In the
+        time bases counted from the clip's start such a frame has no time of its own. (In raw beats Tracktion
+        takes the offset off and chases the controllers itself.) */
+    static bool isFrameBeforeClip(int frameIndex, const PsgClip&, te::MidiList::TimeBase);
+
     /** Creates a juce::MidiMessageSequence from the list in order to be played back
         The sequence will be in terms of edit time, either in seconds or beats
         @param PsgClip      The clip boundries to use

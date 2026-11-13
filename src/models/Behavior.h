@@ -46,7 +46,7 @@ public:
     MidiMessageSequence createPlaybackMidiSequence(const te::MidiList& list, te::MidiClip& clip, te::MidiList::TimeBase tb, bool generateMPE) override {
         // DBG("ExtEngineBehaviour::createPlaybackMidiSequence for clip " << clip.getName());
         if (auto psgClip = dynamic_cast<PsgClip*>(&clip)) {
-            return psgClip->getPsg().exportToPlaybackMidiSequence(*psgClip, tb);
+            return psgClip->createPlaybackMidiSequence(tb);
         }
         auto seq = te::MidiList::createDefaultPlaybackMidiSequence(list, clip, tb, generateMPE);
         // for (auto& msg : seq) {

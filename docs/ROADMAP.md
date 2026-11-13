@@ -38,6 +38,8 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 - [ ] **Nicer transport icons**
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **TAYM** (needs Timer fx, see [design/timer-fx.md](design/timer-fx.md))
+- [ ] **Scrubbing** with playhead produces sound, holding it at one frame plays that frame and holds it sound
+- [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.
 
 #### P2 — Nice to have
 

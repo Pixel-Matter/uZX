@@ -378,7 +378,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 |-----------|-------------|
 | `.psg` | Raw PSG register dump — standard format for AY chip music |
 | `.pt3`, `.pt2`, `.pt1`, `.vt2`, `.txt`, `.stc`, `.st1`, `.st3`, `.stp`, `.asc`, `.as0`, `.sqt`, `.psc`, `.psm`, `.gtr`, `.ftc` | ZX Spectrum tracker modules, opened and imported as PSG register dumps with their title, note table and rows (see [Opening Files](#opening-files)) |
-| `.uzx` | µZX project format — timeline edit with multiple tracks and metadata |
+| `.uzx` | µZX project format — timeline edit with multiple tracks and metadata. A project saved by a newer µZX doesn't open in an older one: it says so and leaves the file untouched |
 
 ---
 

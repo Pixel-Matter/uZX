@@ -42,6 +42,15 @@ CI builds with Clang (macOS), GCC (Linux), and MSVC (Windows). Clang is the most
 
 Add JUCE `UnitTest` classes in adjacent `*.test.cpp` files and register them with a static instance. Name tests by feature, such as `TuningViewModel` or `AYChip`, so direct binary filtering remains useful. Cover changed model, tuning, plugin, and controller behavior; add regression tests for bug fixes. Remember to list new test files in `TEST_SOURCES`.
 
+## Edit File Format Version
+
+`EditFileOps::editFormatVersion` in `src/util/FileOps.h` is the version of the `.uzx` format. Every app shares it, and it is separate from the Core and Player versions: releases never bump it. Every save writes it as `uzxFormatVersion` on the root `EDIT`, and an app refuses to open a file whose version is higher than its own, because opening means saving it back.
+
+- Bump it by one in the same commit as a change an older app would misread, or lose on its next save: a removed or renamed tree or attribute, a value with a new meaning or unit, or a new clip, plugin or track type older apps can't load.
+- Don't bump it for additions an older app can safely ignore, such as a new attribute whose absence means the old behavior.
+- A newer app opens every older format: convert old files in `BaseController::setEdit`, before `stampEditFormatVersion`, and add a regression test that loads a file in the old format.
+- The CHANGELOG entry for a bump says that older versions can't open projects saved by this one.
+
 ## User Documentation
 
 A change to anything a user can see or do updates `docs/user-guide.md` in the same commit. That covers key bindings (`addDefaultKeypress` in `src/controllers/MainCommands.h`), mouse and wheel handlers, menus, and controls. **Keyboard and Mouse** in the guide is the single list of shortcuts and gestures; it must match what the code actually does in each app. Don't document a binding that does nothing.

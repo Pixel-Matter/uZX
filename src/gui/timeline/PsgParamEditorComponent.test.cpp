@@ -59,10 +59,8 @@ public:
             settle();
             const auto pixelBelowLine = [&](PsgParamType row, int x) {
                 editor.setCurrentParam(row);
-                Image image(Image::ARGB, 400, 100, true);
-                Graphics g(image);
-                editor.paint(g);
-                return image.getPixelAt(x, 95);
+                // A finished snapshot: on Windows an image gets what is drawn only when its Graphics ends
+                return editor.createComponentSnapshot(editor.getLocalBounds(), true, 1.0f).getPixelAt(x, 95);
             };
             // Against another row of the same clip, which has the same grid and no marks
             const auto isMarked = [&](int x) {

@@ -516,38 +516,43 @@ public:
 
             expectEquals(marked(formatTimerFrame(timers, 9, 0, 1773400.0, false)), String(), "no timer runs yet");
             expectEquals(marked(formatTimerFrame(timers, 10, 0, 1773400.0, false)),
-                         String("[T1   ]  [start]  [249.6Hz]  [duty 50%]\n"
-                                "       interval          222\n"
-                                "       A vol     lane 0   15    9"));
+                         String("[T1   ] [start]  [249.6Hz]  [duty 50%]\n"
+                                "      interval          222\n"
+                                "      A vol     lane 0   15    9"));
             expectEquals(marked(formatTimerFrame(timers, 15, 0, 1773400.0, false)),
-                         String("T1            249.6Hz  duty 50%\n"
-                                "       interval          222\n"
-                                "       A vol     lane 0   15    9\n"
-                                "T2            499.3Hz\n"
-                                "       interval   222\n"
-                                "       env shape   12"));
+                         String("T1           249.6Hz  duty 50%\n"
+                                "      interval          222\n"
+                                "      A vol     lane 0   15    9\n"
+                                "T2           499.3Hz\n"
+                                "      interval   222\n"
+                                "      env shape   12"));
             expectEquals(marked(formatTimerFrame(timers, 20, 0, 1773400.0, true)),
-                         String("[T1   ]  [mod  ]  [554.2Hz]  [duty 50%]\n"
-                                "       interval          0064\n"
-                                "       A vol     lane 0    0F    09\n"
-                                "T2            499.3Hz\n"
-                                "       interval   00DE\n"
-                                "       env shape    0C"));
+                         String("[T1   ] [mod  ]  [554.2Hz]  [duty 50%]\n"
+                                "      interval          0064\n"
+                                "      A vol     lane 0    0F    09\n"
+                                "T2           499.3Hz\n"
+                                "      interval   00DE\n"
+                                "      env shape    0C"));
             const auto runs = formatTimerFrame(timers, 15, 0, 1773400.0, false);
             expect(runs.front().second == Colors::PSG::A.withMultipliedAlpha(0.5f), "a timer on A's volume is in A's colour");
             expect(runs.back().second == Colors::PSG::Env.withMultipliedAlpha(0.5f), "one on the envelope's shape in the envelope's");
             expectEquals(marked(formatTimerFrame(timers, 15, 11, 1773400.0, false)),
-                         String("T2            499.3Hz\n"
-                                "       interval   222\n"
-                                "       env shape   12"),
+                         String("T2           499.3Hz\n"
+                                "      interval   222\n"
+                                "      env shape   12"),
                          "a timer started before the clip's first played frame is not playing");
 
             // With the clip's tuning, the timer's pitch is named too: a repeat of 3552 cycles is a tone of period 222,
             // and the grid's B4 is 224
             const auto grid = makeEqualTemperamentGrid(440.0, 1773400.0);
             expect(marked(formatTimerFrame(timers, 15, 11, 1773400.0, false, grid)).startsWith(
-                       String::fromUTF8("T2            499.3Hz  B4 +16\xC2\xA2\n")),
+                       String::fromUTF8("T2           499.3Hz  B4 +16\xC2\xA2\n")),
                    marked(formatTimerFrame(timers, 15, 11, 1773400.0, false, grid)));
+
+            // Under a chip's rows the pitch and the note stand in their columns: right of periods 4 wide, the
+            // Hz right-aligned in 8, the note's name in 3 and its cents in 5
+            const auto aligned = marked(formatTimerFrame(timers, 15, 11, 1773400.0, false, grid, {4, 8, 3, 5}));
+            expect(aligned.startsWith(String::fromUTF8("T2            499.3Hz  B4   +16\xC2\xA2\n")), aligned);
         }
 
         beginTest("A timer is drawn as a note at the pitch of what it writes, from its start to its stop, in its channel's colour");

@@ -15,7 +15,13 @@ namespace MoTool {
     column after the Hz names the grid's note nearest each pitch and how many cents the pitch is
     above or below it, as `F#4 +12¢`. */
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex,
-                                                      const PeriodGrid& grid = {});
+                                                      const PeriodGrid& grid = {}, struct PsgFrameColumns* columns = nullptr);
+
+/** The widths, in characters, of the columns formatPsgFrame() laid its rows out in, for rows under them. */
+struct PsgFrameColumns
+{
+    int period = 4, hz = 0, note = 0, cents = 0;
+};
 
 /** The grid's note nearest a tone period and the cents the period sounds above it (below, if negative).
     The grid is continued by octaves past the table's ends, as the note lanes are. An empty name if the
@@ -27,9 +33,10 @@ std::pair<String, int> getNearestNote(const PeriodGrid& grid, double tonePeriod)
     the pitch and duty of what it writes, its base value and timer lane; then a line for each register it
     holds, with the lane or the one value it writes. In the colour of what the timer drives, half-alpha
     unless its command is at this frame. A timer started before frame `firstPlayed` is left out: a clip
-    trimmed at its start does not play it. */
+    trimmed at its start does not play it. A timer's pitch and note stand in `columns`, under the chip's. */
 std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers&, int frameIndex, int firstPlayed,
-                                                        double chipClockHz, bool hex, const PeriodGrid& grid = {});
+                                                        double chipClockHz, bool hex, const PeriodGrid& grid = {},
+                                                        const PsgFrameColumns& columns = {});
 
 /** Everything the frame hover says of the clip's frame sounding at `time`: where the frame is, as
     `Time mm:ss:ff   Frame n   Bar bar.beat.frame`; the chip's rows, with the notes of the clip's tuning; then

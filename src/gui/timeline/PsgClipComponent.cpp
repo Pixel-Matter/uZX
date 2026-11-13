@@ -420,7 +420,7 @@ static std::pair<String, String> describeNote(const PeriodGrid& grid, double ton
 }
 
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex,
-                                                      const PeriodGrid& grid) {
+                                                      const PeriodGrid& grid, PsgFrameColumns* columns) {
     using T = PsgParamType;
     std::vector<std::pair<String, Colour>> runs;
     Colour rowColour;
@@ -469,6 +469,8 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
         return width;
     };
     const int periodWidth = widest(periods), hzWidth = widest(freqs), volumeWidth = widest(volumes);
+    if (columns != nullptr)
+        *columns = {periodWidth, hzWidth, noteWidth, centsWidth};
     const auto cell = [&] (const String& text, int width, bool changed) {
         add("  ");
         add(text.paddedLeft(' ', width), changed);
@@ -518,7 +520,8 @@ static Colour getTimerColour(const ClipTimers::Span& span) {
 }
 
 std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers, int frameIndex, int firstPlayed,
-                                                        double chipClockHz, bool hex, const PeriodGrid& grid) {
+                                                        double chipClockHz, bool hex, const PeriodGrid& grid,
+                                                        const PsgFrameColumns& columns) {
     std::vector<std::pair<String, Colour>> runs;
     const auto bank = timers.getBank();
     if (bank == nullptr)
@@ -529,7 +532,10 @@ std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers
     };
     static const char* const registerNames[] {"A tone lo", "A tone hi", "B tone lo", "B tone hi", "C tone lo", "C tone hi",
                                               "noise", "mixer", "A vol", "B vol", "C vol", "env lo", "env hi", "env shape"};
-    constexpr int indent = 7;        // under the chip's rows: past their label
+    // A timer's rows stand in the chip's columns: what began it ends where the periods do, so its pitch and
+    // note come under theirs, and its steps start under it
+    constexpr int labelWidth = 5, wordWidth = 5;
+    const int indent = jmax(labelWidth, columns.period + 2);
     constexpr uint32_t shown = 8;    // a lane's first steps: enough to tell a pulse from a wave, not a whole sample
 
     /** A row of a timer's steps: what it is, where its values come from, and the values. */
@@ -564,16 +570,16 @@ std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers
             add("\n");
 
         // The timer's own line: what began this stretch if it began here, and what is heard
-        add(("T" + String(timer + 1)).paddedRight(' ', 5), here);
-        add("  ");
-        add(String(here ? (span->starts ? "start" : "mod") : "").paddedRight(' ', 5), here);
+        add(("T" + String(timer + 1)).paddedRight(' ', labelWidth), here);
+        add(String::repeatedString(" ", indent - labelWidth));
+        add(String(here ? (span->starts ? "start" : "mod") : "").paddedRight(' ', wordWidth), here);
         if (span->loopCycles > 0.0) {
             add("  ");
-            add(String(chipClockHz / span->loopCycles, 1) + "Hz", here);
+            add((String(chipClockHz / span->loopCycles, 1) + "Hz").paddedLeft(' ', columns.hz), here);
             // a tone of a sixteenth its repeat has the same pitch
             if (const auto [name, cents] = describeNote(grid, span->loopCycles / 16.0); name.isNotEmpty()) {
                 add("  ");
-                add(name + " " + cents, here);
+                add(name.paddedRight(' ', columns.note) + " " + cents.paddedLeft(' ', columns.cents), here);
             }
         }
         if (span->duty >= 0.0f) {
@@ -970,11 +976,12 @@ std::vector<std::pair<String, Colour>> describePsgClipFrame(PsgClip& psgClip, te
 
     const double clockHz = getTrackChipClock(psgClip).value_or(tuningGridClock);
     const auto& grid = psgClip.getTuning().grid;  // empty for a clip with no table: no note names then
-    const auto chipRuns = formatPsgFrame(data, clockHz, hex, grid);
+    PsgFrameColumns columns;
+    const auto chipRuns = formatPsgFrame(data, clockHz, hex, grid, &columns);
     runs.insert(runs.end(), chipRuns.begin(), chipRuns.end());
 
     if (! psgClip.getTimers().isEmpty()) {
-        const auto timerRuns = formatTimerFrame(psgClip.getTimers(), frameIndex, getFirstPlayedFrame(psgClip), clockHz, hex, grid);
+        const auto timerRuns = formatTimerFrame(psgClip.getTimers(), frameIndex, getFirstPlayedFrame(psgClip), clockHz, hex, grid, columns);
         if (! timerRuns.empty()) {
             runs.emplace_back("\n", Colours::transparentBlack);
             runs.insert(runs.end(), timerRuns.begin(), timerRuns.end());

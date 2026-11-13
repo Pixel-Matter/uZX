@@ -324,7 +324,8 @@ void PsgParamEditorComponent::paint(Graphics& g) {
             const auto x = timeToX(restarts.getTime(i));
             if (x > clipBounds.getRight())
                 break;
-            g.fillRect(std::floor(x), 0.0f, 1.0f, static_cast<float>(getHeight()));
+            // The nearest pixel: a time a hair under a pixel's edge is still that pixel's
+            g.fillRect(std::round(x), 0.0f, 1.0f, static_cast<float>(getHeight()));
         }
     }
 

@@ -71,6 +71,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Studio
 - Fixed: **Track → Render to audio** supports cancellation and adds the audio track only after a successful render. Undo restores the source track's previous mute state.
+- Fixed: one Undo after **Track → Render to audio** or **Render to PSG** removes the whole render on a slow machine too, where the first Undo could undo nothing visible
 - Fixed: opening the project that is already open, from Open Recent or by dropping it, keeps it as it is instead of losing unsaved changes (in the Player too)
 - The Edit menu no longer lists Cut, Copy and Paste, which did nothing yet
 - Fixed: each app only takes the keys it uses. In the Player, `Delete` and `Backspace` no longer beep and `Cmd+N`, `Cmd+T` and `Z` do nothing; in Studio, `F`, `V`, `S` and `Esc` no longer belong to Viz mode

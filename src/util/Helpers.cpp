@@ -80,6 +80,9 @@ te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
 te::AudioTrack* addAudioTrackAfter(te::Edit& edit, te::Track* track) {
     auto insertPoint = (track != nullptr) ? track : getAllTracks(edit).getLast();
     edit.getTransport().stopIfRecording();
+    // Tracktion makes the scene list on first use, undoably, and a new audio track is that use: inside the
+    // track's own insertion, so the two undo in the wrong order. Made here, it is no part of the undo.
+    edit.state.getOrCreateChildWithName(te::IDs::SCENES, nullptr);
     return edit.insertNewAudioTrack(te::TrackInsertPoint(nullptr, insertPoint), nullptr).get();
 }
 

@@ -127,6 +127,26 @@ public:
             expectWithinAbsoluteError(Helpers::getProjectFps(*edit), 48.828, 1e-9, "Pentagon interrupt rate");
         }
 
+        beginTest("One undo takes the import out of the edit, and nothing else");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->getUndoManager().clearUndoHistory();
+            expectEquals(Helpers::importPsgFiles(*edit, files).size(), 2);
+            // The app keeps its view state at the end of the edit's, from when the edit is shown. Tracktion's
+            // scene list, made undoably inside the first new track's insertion, undid after the track:
+            // at an index by then past the end (a ValueTree assertion), or at this child's.
+            auto view = edit->state.getOrCreateChildWithName("EDITVIEWSTATE", nullptr);
+            TestHelpers::flushMessageQueue();
+
+            edit->undo();
+            expectEquals(te::getAudioTracks(*edit).size(), 1);
+            expect(! edit->getUndoManager().canUndo(), "the import is one step");
+            expect(view.getParent() == edit->state, "the view state stays");
+
+            edit->redo();
+            expectEquals(te::getAudioTracks(*edit).size(), 3);
+        }
+
         root.deleteRecursively();
     }
 };

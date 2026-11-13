@@ -102,7 +102,7 @@ The channel a voice has in a frame is not the channel it is sent on. It says, wi
 | A voice's | Travels as |
 | --- | --- |
 | Start and end | Note on, note off; a note on for a key that sounds starts it again |
-| Level | Note-on velocity, then polyphonic aftertouch |
+| Level | Note-on velocity, then the pressure of its channel, from the frame after it starts |
 | Pitch | The pitch wheel of its channel, from the key: ±48 semitones on channels 2 to 16 and ±2 on channel 1, an MPE lower zone's ranges (`notePitchBendRange`) |
 | Tone, noise, envelope on | Controllers 80, 81, 82 on its channel; on from 64 |
 | Its pitch drives the envelope | Controller 85 on its channel; on from 64 |
@@ -114,9 +114,11 @@ The channel a voice has in a frame is not the channel it is sent on. It says, wi
 
 | A fresh channel | Controller 121, reset all controllers: tone on, noise and envelope off, no pan, the channel's own priority, the wheel in the middle |
 
-The wire is not strict MPE: level is polyphonic aftertouch where MPE has channel pressure, channel 1 is read as one more channel of voices and not as the zone's master, and controller 121 here resets pan and the envelope shape as well, which MIDI's recommended practice leaves alone.
+Level travels as MPE's pressure does, so a voice's level is a message of two bytes and a clip in MPE mode can hold it. A reader takes the pressure of channels 2 to 16 only: on channel 1 a keyboard's one pressure would level every note it holds, so those notes keep their velocity. A note that starts in a frame sounds at its velocity whatever pressure the frame has, since an MPE clip sends a pressure of 0 with every note on. Polyphonic aftertouch is read as a note's level on any channel, for a keyboard that has it; `NoteEncoder` does not send it.
 
-**What a MIDI clip can hold of this wire.** A clip plays on one channel, with its controllers and its pitch wheel, so a clip per voice on a channel each writes the wire in full. A clip in MPE mode gives every note a channel from 2 up and holds a bend for each note, in semitones with points along the note, which the mixer reads as that voice's pitch. It holds no switches for a note: MPE has a pressure and one timbre value (controller 74) per note, neither of which this wire reads. A voice that needs its own switches therefore has a clip and a channel of its own, clear of the channels an MPE clip hands out. `tests/fixtures/MPE chord.uzx`, written by `scripts/make_mpe_fixture.py`, is such a project: two tones in an MPE clip, a tone with its envelope on and a voice that drives the envelope on channels 15 and 16, all on one track with the mixer and a chip.
+The wire is not strict MPE: channel 1 is read as one more channel of voices and not as the zone's master, and controller 121 here resets pan and the envelope shape as well, which MIDI's recommended practice leaves alone.
+
+**What a MIDI clip can hold of this wire.** A clip plays on one channel, with its controllers and its pitch wheel, so a clip per voice on a channel each writes the wire in full. A clip in MPE mode gives every note a channel from 2 up and holds a bend and a pressure for each note, with points along the note, which the mixer reads as that voice's pitch and level. It holds no switches for a note: MPE's third value per note is one timbre (controller 74), which this wire does not read. A voice that needs its own switches therefore has a clip and a channel of its own, clear of the channels an MPE clip hands out. `tests/fixtures/MPE chord.uzx`, written by `scripts/make_mpe_fixture.py`, is such a project: two tones in an MPE clip, a tone with its envelope on and a voice that drives the envelope on channels 15 and 16, all on one track with the mixer and a chip.
 
 A note clip or a keyboard can send these controllers straight to the mixer, on any channels. Sent to the instrument, they apply to the notes played on their channel: the instrument reads them with the same `NoteControllers` the decoder uses, so a controller means the same before and after it. Controllers hold their value from note to note on a channel.
 

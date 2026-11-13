@@ -94,7 +94,7 @@ void NoteEncoder::encode(const NoteFrame& frame, tracktion::MidiMessageArray& ou
                 time,
                 0);
         else if (!approximatelyEqual(before.level, voice.level))
-            out.addMidiMessage(MidiMessage::aftertouchChange(channel, voice.key, roundToInt(voice.level * 127.0f)), time, 0);
+            out.addMidiMessage(MidiMessage::channelPressureChange(channel, roundToInt(voice.level * 127.0f)), time, 0);
 
         sent_[slot] = voice;
         sent_[slot]->priority = jlimit(0, 127, voice.priority);
@@ -176,6 +176,13 @@ bool NoteDecoder::decode(const juce::MidiMessage& m) noexcept {
     } else if (m.isAftertouch()) {
         if (auto* voice = held_.find(channel, m.getNoteNumber()))
             voice->level = static_cast<float>(m.getAfterTouchValue()) / 127.0f;
+    } else if (m.isChannelPressure()) {
+        // Not on channel 1, where a keyboard's one pressure would level all the notes it holds. And not a note
+        // that starts in this frame: it sounds at its velocity, whichever of the two messages came first.
+        if (channel != 1)
+            for (auto& voice : held_)
+                if (voice.channel == channel && !voice.attack)
+                    voice.level = static_cast<float>(m.getChannelPressureValue()) / 127.0f;
     } else if (m.isPitchWheel()) {
         bends_[static_cast<size_t>(channel - 1)] =
             double(MPEValue::from14BitInt(m.getPitchWheelValue()).asSignedFloat()) * notePitchBendRange(channel);

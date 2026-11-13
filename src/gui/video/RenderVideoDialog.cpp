@@ -70,6 +70,7 @@ public:
                             &renderLabel,
                             &outputLabel,
                             &fpsLabel,
+                            &loopsLabel,
                             &videoLabel,
                             &qualityLabel,
                             &audioLabel,
@@ -77,7 +78,8 @@ public:
                             &note})
             addAndMakeVisible(label);
         for (auto* box :
-             {&showBox, &scopesBox, &coloursBox, &zoomBox, &decorationsBox, &renderBox, &outputBox, &fpsBox, &codecBox, &qualityBox, &audioBox})
+             {&showBox, &scopesBox, &coloursBox, &zoomBox, &decorationsBox, &renderBox, &outputBox, &fpsBox, &loopsBox,
+              &codecBox, &qualityBox, &audioBox})
             addAndMakeVisible(box);
 
         // Viz mode's own options, saved as they change: the Player's view behind shows each choice
@@ -127,6 +129,12 @@ public:
         fpsBox.setSelectedId(settings.fps, juce::dontSendNotification);
         fpsBox.onChange = [this] { settings.fps = fpsBox.getSelectedId(); };
 
+        // How many more times the loop range on the ruler plays; 0 each time the dialog opens
+        for (int loops = 0; loops <= maxLoops; ++loops)
+            loopsBox.addItem(juce::String(loops), loops + 1);
+        loopsBox.setSelectedId(settings.loops + 1, juce::dontSendNotification);
+        loopsBox.onChange = [this] { settings.loops = loopsBox.getSelectedId() - 1; };
+
         codecBox.addItemList({"H.264", "HEVC (H.265)", "AV1"}, 1);
         qualityBox.addItemList({"High", "Very high", "Near lossless"}, 1);
         qualityBox.setSelectedId((int) settings.quality + 1, juce::dontSendNotification);
@@ -138,7 +146,8 @@ public:
         audioBox.onChange = [this] { settings.audio = (Video::Settings::Audio) (audioBox.getSelectedId() - 1); };
 
         note.setText("Each frame shows Viz mode, from the start of the tune to "
-                         + juce::String(Video::Settings::tailSeconds) + " seconds after its end.",
+                         + juce::String(Video::Settings::tailSeconds)
+                         + " seconds after its end. Loops plays the loop range on the ruler that many more times.",
                      juce::dontSendNotification);
         note.setJustificationType(juce::Justification::topLeft);
         ffmpegPath.setMinimumHorizontalScale(0.5f);
@@ -179,7 +188,8 @@ public:
 
         r = pair(row(), renderLabel, renderBox, boxWidth);
         pair(r, outputLabel, outputBox, r.getWidth() - labelWidth);
-        pair(row(), fpsLabel, fpsBox, boxWidth);
+        r = pair(row(), fpsLabel, fpsBox, boxWidth);
+        pair(r, loopsLabel, loopsBox, r.getWidth() - labelWidth);
         r = pair(row(), videoLabel, codecBox, boxWidth);
         pair(r, qualityLabel, qualityBox, r.getWidth() - labelWidth);
         pair(row(), audioLabel, audioBox, boxWidth);
@@ -320,9 +330,11 @@ private:
     juce::Label showLabel{{}, "Show"}, scopesLabel{{}, "Scopes"}, coloursLabel{{}, "Colours"}, zoomLabel{{}, "Zoom"},
         decorationsLabel{{}, "Decorations"};
     juce::Label ffmpegLabel{{}, "ffmpeg"}, renderLabel{{}, "Render"}, outputLabel{{}, "Output"},
-        fpsLabel{{}, "Frame rate"}, videoLabel{{}, "Video"}, qualityLabel{{}, "Quality"}, audioLabel{{}, "Audio"},
+        fpsLabel{{}, "Frame rate"}, loopsLabel{{}, "Loops"}, videoLabel{{}, "Video"}, qualityLabel{{}, "Quality"}, audioLabel{{}, "Audio"},
         ffmpegPath, note;
-    juce::ComboBox showBox, scopesBox, coloursBox, zoomBox, decorationsBox, renderBox, outputBox, fpsBox, codecBox, qualityBox, audioBox;
+    juce::ComboBox showBox, scopesBox, coloursBox, zoomBox, decorationsBox, renderBox, outputBox, fpsBox, loopsBox, codecBox,
+        qualityBox, audioBox;
+    static constexpr int maxLoops = 16;
     juce::TextButton chooseButton{"Choose..."}, cancelButton{"Cancel"}, renderButton{"Render..."};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RenderVideoComponent)

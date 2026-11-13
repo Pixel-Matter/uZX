@@ -211,6 +211,15 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
     if (module != tunes.end() && module->table)
         clips.getFirst()->chooseTuningTable(*module->table);
     PsgTempo::applyToEdit(clips, chips, module != tunes.end() ? module->rowStarts : std::vector<size_t>{});
+
+    // A module that loops back past its start loops there; the frames keep their times through the tempo above
+    if (module != tunes.end() && module->loopFrame > 0) {
+        const auto position = clips.getFirst()->getPosition();
+        const auto loopStart = position.getStartOfSource()
+                               + te::TimeDuration::fromSeconds((double) module->loopFrame
+                                                               / module->chips.front().getFrameRate());
+        edit.getTransport().setLoopRange({loopStart, position.getEnd()});
+    }
     return clips;
 }
 

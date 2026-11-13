@@ -5,13 +5,14 @@
 namespace MoTool {
 
 /** Playback covers the whole edit: it stops once the end has been heard, unless recording
-    or looping, and the loop range follows the edit from its start to its end.
+    or looping. An empty loop range becomes the whole edit, and a loop range that is the whole
+    edit follows its end as clips change; any other loop range stays where it was set.
     Rides on the transport's periodic position updates; create one per edit. */
 class PlayWholeEdit : private juce::ValueTree::Listener,
                       private juce::AsyncUpdater
 {
 public:
-    explicit PlayWholeEdit(tracktion::Edit& e) : edit_{e} {
+    explicit PlayWholeEdit(tracktion::Edit& e) : edit_{e}, end_{getEnd(e)} {
         edit_.state.addListener(this);
         handleAsyncUpdate();
     }
@@ -30,15 +31,24 @@ public:
 
 private:
     tracktion::Edit& edit_;
+    tracktion::TimePosition end_;  // the edit's end when the loop range was last checked
 
     static tracktion::TimePosition getEnd(tracktion::Edit& edit) {
         return tracktion::toPosition(edit.getLength());
     }
 
     // Async: the edit's cached length is invalidated by its own listener, which may run after this one.
-    // ponytail: overwrites any loop range; keep a user-set one once the ruler can set it (v1.0 Loop range)
     void handleAsyncUpdate() override {
-        edit_.getTransport().setLoopRange({tracktion::TimePosition(), getEnd(edit_)});
+        auto& transport = edit_.getTransport();
+        const auto loop = transport.getLoopRange();
+        const auto end = getEnd(edit_);
+        // Within a microsecond: a saved edit reads its times back from text
+        constexpr double tolerance = 1.0e-6;
+        const bool wholeEdit = loop.getStart().inSeconds() < tolerance
+                               && std::abs((loop.getEnd() - end_).inSeconds()) < tolerance;
+        if (loop.getLength().inSeconds() < tolerance || wholeEdit)
+            transport.setLoopRange({tracktion::TimePosition(), end});
+        end_ = end;
     }
 
     void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& child) override {

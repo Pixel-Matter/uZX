@@ -159,10 +159,14 @@ public:
         2 bytes, so a crafted file of a few MB would otherwise fill the memory. The rest is dropped. */
     static constexpr size_t maxFrames = 4 * 60 * 60 * 50;
 
+    /** Frames a pause's count stands for: four, as the format has it. */
+    static constexpr int standardPauseFrames = 4;
+
     /** Reads a PSG held in memory, such as one embedded in another file, in place of the file.
+        `pauseFrames` is how many frames each count of a pause stands for: some writers mean one.
         Returns false if it holds nothing playable; a damaged tail is dropped as ensureRead() drops it. */
-    bool readFrom(const void* data, size_t size) {
-        parse(static_cast<const uint8*>(data), size);
+    bool readFrom(const void* data, size_t size, int pauseFrames = standardPauseFrames) {
+        parse(static_cast<const uint8*>(data), size, pauseFrames);
         return ! psgData_.isEmpty();
     }
 
@@ -215,7 +219,7 @@ private:
     }
 
     /** Parses a PSG's bytes into the data. @returns true if all of them were read */
-    bool parse(const uint8* d, size_t remaining) {
+    bool parse(const uint8* d, size_t remaining, int pauseFrames = standardPauseFrames) {
         psgData_ = {};
 
         using namespace PsgFileHelpers;
@@ -252,8 +256,8 @@ private:
                 const auto pause = tryRead<uint8>(d, remaining);
                 if (!pause.hasValue())
                     return false;
-                // add pause * 4 empty frames
-                for (int i = 0; i < *pause * 4; ++i) {
+                // a pause of that many empty frames
+                for (int i = 0; i < *pause * pauseFrames; ++i) {
                     psgData_.frames.push_back({});
                 }
                 // The next interrupt starts with its own 0xFF marker. Register pairs that

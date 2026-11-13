@@ -140,6 +140,26 @@ public:
             expectEquals(shapeWrites, 109);
         }
 
+        beginTest("A pause in the frame data counts in fours or in ones, whichever fills the track");
+        {
+            // A frame, a pause of 3, a frame: 14 frames if a pause counts in fours, 5 if in ones
+            const std::vector<uint8_t> psg {'P', 'S', 'G', 0x1A, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                            0xFF, 8, 15, 0xFE, 3, 0xFF, 8, 7, 0xFD};
+            const auto lastVolume = [&](uint32_t frames) {
+                const auto read = readTaymModule(makeTestTaym(frames, {}, psg));
+                expect(read.has_value() && read->chips[0].frames.size() == frames);
+                int at = -1;
+                if (read)
+                    for (size_t i = 0; i < read->chips[0].frames.size(); ++i)
+                        if (read->chips[0].frames[i].hasVolumeOrEnvModSet(0) && read->chips[0].frames[i].getVolume(0) == 7)
+                            at = static_cast<int>(i);
+                return at;
+            };
+            expectEquals(lastVolume(14), 13, "in fours, as a PSG file has it");
+            expectEquals(lastVolume(5), 4, "in ones, as TAYM's own tools write it");
+            expectEquals(lastVolume(9), -1, "neither fits: fours, and the frame past the track's end is cut off");
+        }
+
         beginTest("Other bytes are not a TAYM");
         {
             expect(! readTaymModule(juce::MemoryBlock("PSG\x1a and so on", 14)).has_value());

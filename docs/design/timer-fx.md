@@ -80,7 +80,7 @@ A project with such a clip opens in an older µZX, which plays the frames withou
 
 `readTaymModule` in `src/formats/taym/TaymFile.*` gives a `TrackerModule`: each AY chip's frames, the tune's title, clock and chip type, and each chip's timers. It goes through the same import as a PSG file or a tracker module (`Helpers::importPsgFiles`).
 
-A chip's frame data is a standard PSG and is read by `PsgFile`, as a `.psg` file is: every write kept, a repeated one too, and a pause as four frames for each count. TAYM's Python reference and C walker differ on both (they drop a write that repeats the held value, and count a pause once), which the specification's text does not support; µZX follows the text.
+A chip's frame data is a standard PSG and is read by `PsgFile`, as a `.psg` file is, with every write kept: a shape written again restarts the envelope. A pause counts four frames for each unit in a PSG, but TAYM's own tools write and read it as one; the track states its frame count, so the reader takes whichever gives that count, fours first.
 
 ## What the chip cannot play
 

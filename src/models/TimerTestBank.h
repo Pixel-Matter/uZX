@@ -18,8 +18,10 @@ namespace MoTool::Tests {
         action 3   R9 from lane 0
         action 4   R13, always 0x0C
 
-    `frames` is the track's length; `commands`, if given, holds a command per timer per frame. */
-inline juce::MemoryBlock makeTestTaym(uint32_t frames = 1, const std::vector<TaymMods>& commands = {}) {
+    `frames` is the track's length; `commands`, if given, holds a command per timer per frame; `psg`, if
+    given, is the chip's frame data, a whole PSG file. */
+inline juce::MemoryBlock makeTestTaym(uint32_t frames = 1, const std::vector<TaymMods>& commands = {},
+                                      const std::vector<uint8_t>& psg = {}) {
     constexpr size_t numTimers = 2;
 
     Taym taym;
@@ -34,6 +36,17 @@ inline juce::MemoryBlock makeTestTaym(uint32_t frames = 1, const std::vector<Tay
     std::memcpy(chip.name, "AY", 2);
     taym.chips = &chip;
     taym.chip_count = 1;
+
+    auto frameData = psg;
+    TaymChunk chunk {};
+    if (! frameData.empty()) {
+        std::memcpy(chip.frame_data_tag, "PSG0", 4);
+        std::memcpy(chunk.tag, "PSG0", 4);
+        chunk.data = frameData.data();
+        chunk.size = frameData.size();
+        taym.chunks = &chunk;
+        taym.chunk_count = 1;
+    }
 
     TaymTimr timers[numTimers] {};
     for (auto& timer : timers) {

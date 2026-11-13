@@ -35,12 +35,22 @@ juce::String readInfo(const Taym& taym, juce::StringRef key) {
     return {};
 }
 
-/** The chip's frames: its PSG chunk read as a PSG file, made the track's length. */
+/** The chip's frames: its PSG chunk read as a PSG file, made the track's length.
+
+    A pause in a PSG counts in fours, but TAYM's own tools write and read it in ones. The track says how many
+    frames there are, so the reading that gives that many is the right one: fours first, as the format has it. */
 PsgData readFrames(const Taym& taym, const TaymChip& chip) {
     PsgFile psg {juce::File()};
-    if (! taym_tag_is_zero(chip.frame_data_tag))
-        if (const auto* chunk = taym_find_chunk(&taym, chip.frame_data_tag))
+    if (! taym_tag_is_zero(chip.frame_data_tag)) {
+        if (const auto* chunk = taym_find_chunk(&taym, chip.frame_data_tag)) {
             psg.readFrom(chunk->data, chunk->size);
+            if (psg.getData().frames.size() != taym.trak.frame_count) {
+                PsgFile inOnes {juce::File()};
+                if (inOnes.readFrom(chunk->data, chunk->size, 1) && inOnes.getData().frames.size() == taym.trak.frame_count)
+                    psg.getData() = std::move(inOnes.getData());
+            }
+        }
+    }
 
     PsgData data = std::move(psg.getData());
     data.options = {taym_from_fix16(taym.trak.frame_rate), 1};

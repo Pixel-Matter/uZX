@@ -90,6 +90,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: Clip Parameters no longer draws a sloped line at the left edge of a scrolled view; every value holds level until the next change
 - The Clip Parameters and Track Devices tabs are flat, in the app's colours and font: the open tab joins its page and has a blue edge, and each tab is as long as its name
 
+### Projects
+- Projects record the version of their format; a project saved by a newer µZX doesn't open in an older one, which says so instead of saving over it. v0.6.0-alpha and older don't check
+
 ### Releases
 - The Player has its own version and its own releases, tagged `player-v…`; `v…` releases ship Studio alone
 - Fixed: the About window of a stable release shows its version without `-alpha`; a pre-release shows the channel its tag names, such as `-beta`

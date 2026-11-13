@@ -966,6 +966,16 @@ std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
     if (!editFile.existsAsFile())
         return te::createEmptyEdit(engine_, editFile);
 
+    // Not even loaded: setEdit() saves at once, which would drop what this build doesn't know
+    if (EditFileOps::readEditFormatVersion(editFile) > EditFileOps::editFormatVersion) {
+        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+            "Can't Open Project",
+            "'" + editFile.getFileName() + "' was saved by a newer " + String::fromUTF8("µZX")
+                + ". Update this app to open it.",
+            "OK");
+        return nullptr;
+    }
+
     auto edit = te::loadEditFromFile(engine_, editFile);
     if (edit == nullptr)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
@@ -999,6 +1009,7 @@ void BaseController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     rescaleAllMidiClipsToFit(*edit_);
     edit_->playInStopEnabled = true;
     migrateTimecodeDisplaySettings(*edit_);  // a new edit shows bars | beats | frames
+    EditFileOps::stampEditFormatVersion(*edit_);
     useGlobalMasterVolume();
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);

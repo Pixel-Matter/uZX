@@ -10,6 +10,7 @@ namespace {
     static inline constexpr auto MOTOOL_EDIT_FILE_SUFFIX = ".motool";
     static inline constexpr auto UZX_EDIT_FILE_SUFFIX = ".uzx";
     static inline constexpr auto RECENT_EDITS_KEY = "recentEdits";
+    static inline constexpr auto FORMAT_VERSION_ATTR = "uzxFormatVersion";
 }
 
 String getDefaultEditFileSuffix() {
@@ -152,6 +153,16 @@ File getRendersDirectory(te::Edit& edit) {
             .getChildFile(getAppName()).getChildFile("Renders");
 
     return rendersDir;
+}
+
+int readEditFormatVersion(const File& editFile) {
+    // The root element alone: the version sits on EDIT, no need to parse the whole edit
+    auto root = XmlDocument(editFile).getDocumentElement(true);
+    return root != nullptr ? root->getIntAttribute(FORMAT_VERSION_ATTR) : 0;
+}
+
+void stampEditFormatVersion(te::Edit& edit) {
+    edit.state.setProperty(FORMAT_VERSION_ATTR, editFormatVersion, nullptr);
 }
 
 bool saveEdit(te::Edit& edit, bool warnOfFailure, bool forceSaveEvenIfNotModified, bool offerToDiscardChanges) {

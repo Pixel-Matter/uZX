@@ -62,4 +62,48 @@ public:
 
 static RecentEditsTest recentEditsTest;
 
+class EditFormatVersionTest : public juce::UnitTest {
+public:
+    EditFormatVersionTest() : UnitTest("EditFormatVersion", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *tracktion::Engine::getEngines()[0];
+        auto root = File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("uzx-format", "", false);
+        root.createDirectory();
+
+        beginTest("A stamped edit saves its format version");
+        {
+            const auto file = root.getChildFile("stamped.uzx");
+            auto edit = tracktion::createEmptyEdit(engine, file);
+            EditFileOps::stampEditFormatVersion(*edit);
+            bool saved = false;
+            tracktion::EditFileOperations(*edit).save(false, true, false, [&saved](bool ok) { saved = ok; });
+            expect(saved);
+            expectEquals(EditFileOps::readEditFormatVersion(file), EditFileOps::editFormatVersion);
+        }
+
+        beginTest("Files from before versioning, and non-XML ones, read as 0");
+        {
+            const auto old = root.getChildFile("old.uzx");
+            old.replaceWithText(R"(<EDIT appVersion="uZX 0.6.0"><TRACKS/></EDIT>)");
+            expectEquals(EditFileOps::readEditFormatVersion(old), 0);
+
+            const auto junk = root.getChildFile("junk.uzx");
+            junk.replaceWithText("not xml");
+            expectEquals(EditFileOps::readEditFormatVersion(junk), 0);
+        }
+
+        beginTest("A newer file reads its own version");
+        {
+            const auto newer = root.getChildFile("newer.uzx");
+            newer.replaceWithText(R"(<EDIT uzxFormatVersion="99"><TRACKS/></EDIT>)");
+            expectEquals(EditFileOps::readEditFormatVersion(newer), 99);
+        }
+
+        root.deleteRecursively();
+    }
+};
+
+static EditFormatVersionTest editFormatVersionTest;
+
 }  // namespace MoTool::Tests

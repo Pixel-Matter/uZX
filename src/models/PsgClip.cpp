@@ -70,7 +70,7 @@ void PsgClip::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifie
 void PsgClip::valueTreeChildAdded(juce::ValueTree& parent, juce::ValueTree& child) {
     te::MidiClip::valueTreeChildAdded(parent, child);
     if (parent == state && child.hasType(IDs::TIMERS))
-        timers_.reload();
+        timersChanged();
     if (child.hasType(IDs::PSG) || child.hasType(IDs::TIMERS) || isInPsgList(parent))
         edit.restartPlayback();
 }
@@ -78,9 +78,15 @@ void PsgClip::valueTreeChildAdded(juce::ValueTree& parent, juce::ValueTree& chil
 void PsgClip::valueTreeChildRemoved(juce::ValueTree& parent, juce::ValueTree& child, int index) {
     te::MidiClip::valueTreeChildRemoved(parent, child, index);
     if (parent == state && child.hasType(IDs::TIMERS))
-        timers_.reload();
+        timersChanged();
     if (child.hasType(IDs::PSG) || child.hasType(IDs::TIMERS) || isInPsgList(parent))
         edit.restartPlayback();
+}
+
+void PsgClip::timersChanged() {
+    timers_.reload();
+    pitchRangeVersion_ = -1;  // the timers' notes are part of the range
+    changed();
 }
 
 juce::MidiMessageSequence PsgClip::createPlaybackMidiSequence(te::MidiList::TimeBase timeBase) {
@@ -112,6 +118,20 @@ juce::Range<float> PsgClip::getPitchRange() const {
             min = jmin(min, note.pitch);
             max = jmax(max, note.pitch);
         });
+    }
+
+    // A timer is drawn as a note at the pitch of what it writes: where a tone of a sixteenth its repeat is
+    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
+    for (int timer = 0; timer < timers_.getNumTimers(); ++timer) {
+        for (const auto& span : timers_.getSpans(timer)) {
+            const double tonePeriod = span.loopCycles / 16.0;
+            if (tonePeriod < 1.0 || tonePeriod > static_cast<double>(toneScale.end))
+                continue;
+            const float pitch = toneScale.valueToNormalized(static_cast<float>(tonePeriod));
+            hasNotes = true;
+            min = jmin(min, pitch);
+            max = jmax(max, pitch);
+        }
     }
 
     if (! hasNotes) {

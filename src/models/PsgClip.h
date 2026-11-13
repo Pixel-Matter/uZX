@@ -124,6 +124,9 @@ protected:
     void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override;
 
 private:
+    /** Reads the timers again and tells whoever draws the clip. */
+    void timersChanged();
+
     /** The PSG list's tree or one inside it: frames, frame rate, frames per beat. */
     bool isInPsgList(const juce::ValueTree&) const;
 

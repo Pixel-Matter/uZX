@@ -498,6 +498,71 @@ public:
                          "a timer started before the clip's first played frame is not playing");
         }
 
+        beginTest("A timer is drawn as a note at the pitch of what it writes, from its start to its stop, in its channel's colour");
+        {
+            // Fifty silent frames, and a timer on A's volume from frame 10 to 30: 15 and 9 turn about, 7104
+            // cycles a repeat, the pitch of a tone of period 444
+            const uZX::PsgData silent {
+                {{{uZX::PsgRegType::Mixer, 0x3f}}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                 {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                 {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {{uZX::PsgRegType::VolumeB, 0}}},
+                {50.0, 1}
+            };
+            const auto withTimers = [&] (std::vector<ClipTimers::Event> events, int height = 300) {
+                return Tests::renderPsgClip(engine, silent, 100, height, {}, false, {}, {},
+                    [&] (PsgClip& clip) { clip.getTimers().set(Tests::makeTestTaym(), 0, events, nullptr); });
+            };
+            TaymMods stop {};
+            stop.command = TAYM_CMD_STOP;
+
+            expect(isBlank(renderData(silent)), "the frames alone draw nothing");
+            const auto image = withTimers({{10, 0, Tests::timerStart(222, 0)}, {30, 0, stop}});
+            int left = image.getWidth(), right = -1, top = image.getHeight(), bottom = -1;
+            bool channelHue = true, dimBody = false, brightEdge = false;
+            for (int y = 0; y < image.getHeight(); ++y) {
+                for (int x = 0; x < image.getWidth(); ++x) {
+                    const auto colour = image.getPixelAt(x, y);
+                    if (colour.isTransparent())
+                        continue;
+                    left = jmin(left, x); right = jmax(right, x); top = jmin(top, y); bottom = jmax(bottom, y);
+                    channelHue = channelHue && std::abs(colour.getHue() - Colors::PSG::A.getHue()) < 0.03f;
+                    dimBody = dimBody || colour.getAlpha() < 160;
+                    brightEdge = brightEdge || colour.getAlpha() > 200;
+                }
+            }
+            expectEquals(left, 20, "from the start's frame: two pixels a frame");
+            expectEquals(right, 59, "to the stop's");
+            expect(channelHue, "in channel A's colour");
+            expect(dimBody && brightEdge, "a body between two bright edges");
+            expect(bottom - top <= 30, "one note, with its start's tick: rows " + String(top) + " to " + String(bottom));
+
+            // Two timers in one clip: on A's volume, and twice as fast on B's
+            const auto both = withTimers({{10, 0, Tests::timerStart(222, 0)}, {10, 1, Tests::timerStart(111, 3)}});
+            const auto topOf = [&] (Colour channel) {
+                for (int y = 0; y < both.getHeight(); ++y)
+                    for (int x = 30; x < 50; ++x)
+                        if (const auto colour = both.getPixelAt(x, y);
+                            ! colour.isTransparent() && std::abs(colour.getHue() - channel.getHue()) < 0.03f)
+                            return y;
+                return -1;
+            };
+            const int slower = topOf(Colors::PSG::A), faster = topOf(Colors::PSG::B);
+            expect(slower >= 0 && faster >= 0, "each in its channel's colour");
+            // The clip's pitch range has every tone period over the height: an octave is a twelfth or so of it
+            expect(faster < slower - 10, "a timer twice as fast is drawn higher: rows " + String(faster) + " and " + String(slower));
+
+            const auto shape = withTimers({{10, 1, Tests::timerStart(222, 4)}});  // R13, never stopped
+            bool envelopeHue = false, toTheEnd = false;
+            for (int y = 0; y < shape.getHeight(); ++y)
+                for (int x = 0; x < shape.getWidth(); ++x)
+                    if (const auto colour = shape.getPixelAt(x, y); ! colour.isTransparent()) {
+                        envelopeHue = envelopeHue || std::abs(colour.getHue() - Colors::PSG::Env.getHue()) < 0.03f;
+                        toTheEnd = toTheEnd || x == shape.getWidth() - 1;
+                    }
+            expect(envelopeHue, "a timer on the envelope's shape is in the envelope's colour");
+            expect(toTheEnd, "a timer nothing stops runs to the clip's end");
+        }
+
         beginTest("A held note has no seams between frames at a fractional frame width");
         {
             const uZX::PsgRegsFrame tone {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15},

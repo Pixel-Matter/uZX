@@ -1322,6 +1322,81 @@ void PsgClipComponent::paintCachedContent(Graphics& g, const PaintView& view) {
                   });
 }
 
+/** Draws the clip's timers as notes: each stretch of a timer at the pitch of what it writes, in the colour
+    of what it drives.
+
+    A timer's note is told from a tone's by its make: a body between two bright edges. The body is denser the
+    larger the duty, and a note tall enough has a bright band inside as tall as its duty, so a pulse whose
+    duty sweeps shows as a band that widens and narrows. A tick marks a start. A timer whose writes do not repeat, or repeat too slowly to be a pitch, is a bar along the
+    clip's bottom. */
+static void paintTimerNotes(Graphics& g, const PsgClip& clip, const ClipVisibility& vis, const NotesLayout& layout) {
+    const auto& timers = clip.getTimers();
+    if (timers.isEmpty())
+        return;
+
+    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
+    const int firstPlayed = getFirstPlayedFrame(clip);
+    const auto timeOf = [&] (int frame) {
+        return frame == ClipTimers::Span::toTheEnd ? vis.clipRange.getEnd()
+                                                   : jmin(PsgList::getEditTime(clip, frame), vis.clipRange.getEnd());
+    };
+    const float noteHeight = layout.noteHeight;
+    const float clipHeight = static_cast<float>(vis.rect.getHeight());
+
+    for (int timer = 0; timer < timers.getNumTimers(); ++timer) {
+        const auto& spans = timers.getSpans(timer);
+        // A timer's spans follow one another, so the first that reaches into view is found by halving
+        auto span = std::partition_point(spans.begin(), spans.end(), [&] (const ClipTimers::Span& s) {
+            return timeOf(s.endFrame) <= vis.range.getStart();
+        });
+        for (; span != spans.end(); ++span) {
+            const auto start = timeOf(span->startFrame);
+            if (start >= vis.range.getEnd())
+                break;
+            if (span->startedFrame < firstPlayed)
+                continue;  // started before a trimmed clip's start: it does not play
+
+            const float x = vis.timeToX(start);
+            const float width = jmax(1.0f, vis.timeToX(timeOf(span->endFrame)) - x);
+            const auto colour = getTimerColour(*span);
+            const double tonePeriod = span->loopCycles / 16.0;  // the period of a tone of the same pitch
+
+            if (tonePeriod < 1.0 || tonePeriod > static_cast<double>(toneScale.end)) {
+                const float barHeight = jlimit(2.0f, 4.0f, noteHeight);
+                g.setColour(colour.withAlpha(0.8f));
+                g.fillRect(x, clipHeight - barHeight, width, barHeight);
+                continue;
+            }
+
+            const float top = layout.normToY(toneScale.valueToNormalized(static_cast<float>(tonePeriod))) - noteHeight * 0.5f;
+            const float y = static_cast<float>(roundToInt(top));
+            const float height = jmax(1.0f, static_cast<float>(roundToInt(top + noteHeight)) - y);
+            const auto bright = colour.brighter(0.6f);
+
+            if (height < 4.0f) {
+                g.setColour(colour.withAlpha(0.75f));
+                g.fillRect(x, y, width, height);
+            } else {
+                // The body is denser the longer the pulse is on, which reads at any height; a note tall
+                // enough also has the band
+                g.setColour(colour.withAlpha(span->duty >= 0.0f ? 0.15f + 0.6f * span->duty : 0.35f));
+                g.fillRect(x, y, width, height);
+                g.setColour(bright.withAlpha(0.9f));
+                g.fillRect(x, y, width, 1.0f);
+                g.fillRect(x, y + height - 1.0f, width, 1.0f);
+                if (span->duty >= 0.0f && height >= 8.0f) {
+                    const float band = jlimit(1.0f, height - 4.0f, std::round((height - 4.0f) * span->duty));
+                    g.fillRect(x, y + std::floor((height - band) * 0.5f), width, band);
+                }
+            }
+            if (span->starts && vis.pixelsPerFrame >= 3.0f) {
+                g.setColour(bright);
+                g.fillRect(x, y - 2.0f, 1.0f, height + 4.0f);
+            }
+        }
+    }
+}
+
 void PsgClipComponent::paintNotes(Graphics& g) {
     paintNotes(g, getViewPaintView());
 }
@@ -1479,6 +1554,8 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
         }
 
     });
+
+    paintTimerNotes(g, *psgClip, vis, layout);
 }
 
 //==============================================================================

@@ -341,6 +341,9 @@ public:
                     }
                     expect(files[0].deleteFile());
                 }
+                // Past Tracktion's 350 ms undo timer, as a slow machine is: the track's deferred sort still
+                // belongs to the render's undo step
+                Thread::sleep(400);
                 TestHelpers::flushMessageQueue();
                 expect(edit->getUndoManager().canUndo());
                 edit->undo();

@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "ClipComponents.h"
+#include "NoteLanes.h"
 #include "PsgParamEditorComponent.h"
 #include "../../models/PsgClip.h"
 #include "../common/GUIPaintMeasurer.h"
@@ -25,39 +26,9 @@ void paintPsgLegend(Graphics& g, Rectangle<int> area);
     together, as the chips of a Turbo Sound tune. Empty without PSG clips or pitches. */
 String getPsgSetInfo(te::Edit&);
 
-/** One piano-roll lane of the Notes view: a grid note's band in normalized pitch,
-    bounded by the midpoints to its neighbours. */
-struct NoteLane
-{
-    float lo, hi;
-    int note;
-    String label;
-};
-
 /** Lanes for every note of a grid, lowest first, continued by octaves past the grid's
     ends to the limits of the tone range. */
 std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid);
-
-/** How much of the lanes the Notes view draws at a lane height (one semitone, in px). */
-struct LaneDetail
-{
-    enum Level { None, Tonic, All };
-    Level lines = None;
-    Level labels = None;
-};
-
-LaneDetail getLaneDetail(float noteHeight);
-
-/** Whether the Notes view draws note lanes (View > Note Lanes). An app setting rather than
-    an edit property: the Player opens every file into a fresh edit, where an edit property
-    would reset. Every PsgClipComponent repaints when the settings change. */
-bool areNoteLanesShown(te::Engine&);
-void setNoteLanesShown(te::Engine&, bool shouldShow);
-
-/** Whether the note lanes get a short piano keyboard over their left edge in the view
-    (View > Piano Keys). An app setting, like areNoteLanesShown(). */
-bool arePianoKeysShown(te::Engine&);
-void setPianoKeysShown(te::Engine&, bool shouldShow);
 
 //==============================================================================
 class PsgClipComponent : public MidiClipComponent,

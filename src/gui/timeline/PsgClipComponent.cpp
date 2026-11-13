@@ -402,27 +402,8 @@ bool isTuningProperty(const juce::Identifier& property) {
 
 /** Global app setting: show periods and volumes in hex in the frame hover. */
 constexpr auto hexHoverSetting = "psgHoverHexParams";
-constexpr auto noteLanesSetting = "showNoteLanes";
-constexpr auto pianoKeysSetting = "noteLanesAsPianoKeys";
 
 } // namespace
-
-bool areNoteLanesShown(te::Engine& engine) {
-    return engine.getPropertyStorage().getPropertiesFile().getBoolValue(noteLanesSetting, true);
-}
-
-void setNoteLanesShown(te::Engine& engine, bool shouldShow) {
-    // The settings file broadcasts the change; every PsgClipComponent repaints on it.
-    engine.getPropertyStorage().getPropertiesFile().setValue(noteLanesSetting, shouldShow);
-}
-
-bool arePianoKeysShown(te::Engine& engine) {
-    return engine.getPropertyStorage().getPropertiesFile().getBoolValue(pianoKeysSetting, false);
-}
-
-void setPianoKeysShown(te::Engine& engine, bool shouldShow) {
-    engine.getPropertyStorage().getPropertiesFile().setValue(pianoKeysSetting, shouldShow);
-}
 
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex) {
     using T = PsgParamType;
@@ -897,19 +878,6 @@ void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
     });
 }
 
-/** Vertical mapping of the Notes view: the clip's pitch range over the component
-    height, the height of one semitone, and the visible slice of the clip in x. */
-struct NotesLayout {
-    Range<float> pitchRange;
-    float noteHeight;
-    Range<float> visibleX;  // as PaintView's
-    float height;
-
-    float normToY(float norm) const {
-        return (pitchRange.getEnd() - norm) / pitchRange.getLength() * height;
-    }
-};
-
 static NotesLayout makeNotesLayout(const PsgClip& clip, Rectangle<int> bounds, Range<float> visibleX) {
     const auto pitchRange = clip.getPitchRange();
     const auto height = static_cast<float>(bounds.getHeight());
@@ -972,98 +940,12 @@ std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid) {
     return lanes;
 }
 
-// A line under every lane needs a few pixels, names about a line of small text. When a single
-// lane is too short, one per octave can still be shown, down to a few pixels an octave: the line
-// under each C, and the tonic's name. Piano keys need lanes tall enough to tell apart.
-constexpr float minLaneHeight = 4.0f, minOctaveHeight = 3.0f, minLabelHeight = 8.0f, minPianoKeyHeight = 4.0f;
-
-// A black key holds a sharp's name, C#4; right of it, a white key holds its own.
-constexpr float whiteKeyWidth = 32.0f, blackKeyWidth = 18.0f, keyNameGap = 2.0f;
-constexpr float laneLabelGap = 3.0f, laneLabelWidth = 40.0f;
-
-LaneDetail getLaneDetail(float noteHeight) {
-    auto level = [noteHeight](float minLane, float minOctave) {
-        return noteHeight >= minLane ? LaneDetail::All
-             : noteHeight * 12.0f >= minOctave ? LaneDetail::Tonic
-             : LaneDetail::None;
-    };
-    return { level(minLaneHeight, minOctaveHeight), level(minLabelHeight, minLabelHeight) };
-}
-
-/** The note lanes as the Notes view draws them now. */
-struct LaneView {
-    NotesLayout layout;
-    LaneDetail detail;
-    bool pianoKeys;  // keys too short to tell apart leave just the grid
-
-    /** Where the names start: right of the black keys when the keys are shown, but a black
-        key's own name starts at its left end. */
-    float getLabelX() const {
-        return layout.visibleX.getStart() + (pianoKeys ? blackKeyWidth + keyNameGap : laneLabelGap);
-    }
-    /** Where the keys and names end: right of it is clear of them. */
-    float getGutterRight() const {
-        if (pianoKeys)
-            return layout.visibleX.getStart() + whiteKeyWidth;
-        return getLabelX() + (detail.labels != LaneDetail::None ? laneLabelWidth : 0.0f);
-    }
-    /** The whole pixels of the view's part of the clip, and where the grid starts in them, right of
-        the keys and names. */
-    Range<int> getViewX() const {
-        return {static_cast<int>(std::floor(layout.visibleX.getStart())),
-                static_cast<int>(std::ceil(layout.visibleX.getEnd()))};
-    }
-    int getGridX() const {
-        const auto viewX = getViewX();
-        if (detail.labels == LaneDetail::None && ! pianoKeys)
-            return viewX.getStart();
-        return jlimit(viewX.getStart(), viewX.getEnd(), static_cast<int>(std::ceil(getGutterRight())));
-    }
-};
-
 /** None when the lanes are off, the clip is empty, the tuning has no grid, or the lanes are
     too short to draw. */
 static std::optional<LaneView> getLaneView(const PsgClip& clip, Rectangle<int> bounds, Range<float> visibleX) {
-    if (clip.getPsg().isEmpty() || ! areNoteLanesShown(clip.edit.engine) || clip.getTuning().grid.size() < 2)
+    if (clip.getPsg().isEmpty() || clip.getTuning().grid.size() < 2)
         return std::nullopt;
-    const auto layout = makeNotesLayout(clip, bounds, visibleX);
-    auto detail = getLaneDetail(layout.noteHeight);
-    if (detail.lines == LaneDetail::None)
-        return std::nullopt;
-    const bool pianoKeys = arePianoKeysShown(clip.edit.engine) && layout.noteHeight >= minPianoKeyHeight;
-    // A tonic's name alone would spill over the keys around it, which show where C is anyway.
-    if (pianoKeys && detail.labels == LaneDetail::Tonic)
-        detail.labels = LaneDetail::None;
-    return LaneView {layout, detail, pianoKeys};
-}
-
-/** Piano Keys mode: a short keyboard over the grid at the view's left edge, just enough to
-    show the groups of two and three black keys that tell where C is. Each lane is one key;
-    white keys meet halfway along the black key between them, as on a piano. */
-static void paintPianoKeys(Graphics& g, const std::vector<NoteLane>& lanes, const NotesLayout& layout) {
-    const float x = layout.visibleX.getStart();
-    const auto damage = g.getClipBounds().toFloat();
-    if (damage.getX() >= x + whiteKeyWidth || damage.getRight() <= x)
-        return;
-
-    g.setColour(Colours::white.withAlpha(0.85f));
-    g.fillRect(x, 0.0f, whiteKeyWidth, layout.height);
-    for (const auto& lane : lanes) {
-        // Whole pixels, so neighbouring keys neither overlap nor leave seams.
-        const float top = std::round(layout.normToY(lane.hi)), bottom = std::round(layout.normToY(lane.lo));
-        if (bottom < damage.getY() || top > damage.getBottom())
-            continue;
-
-        if (MidiMessage::isMidiNoteBlack(lane.note)) {
-            g.setColour(Colours::black.withAlpha(0.85f));
-            g.fillRect(x, top, blackKeyWidth, bottom - top);
-            g.setColour(Colours::black.withAlpha(0.5f));
-            g.drawHorizontalLine(roundToInt((top + bottom) * 0.5f), x + blackKeyWidth, x + whiteKeyWidth);
-        } else if (lane.note % 12 == 0 || lane.note % 12 == 5) {  // B|C and E|F have no black key between
-            g.setColour(Colours::black.withAlpha(0.5f));
-            g.drawHorizontalLine(roundToInt(bottom), x, x + whiteKeyWidth);
-        }
-    }
+    return makeLaneView(clip.edit.engine, makeNotesLayout(clip, bounds, visibleX));
 }
 
 /** Piano-roll lanes for the clip's tuning grid, under the notes, which are never snapped
@@ -1081,94 +963,19 @@ void PsgClipComponent::paintNoteLanes(Graphics& g, const PaintView& paintView) {
         return;
 
     const auto& tuning = psgClip->getTuning();
-    const auto& layout = view->layout;
-    const auto detail = view->detail;
-    const bool pianoKeys = view->pianoKeys;
-
     if (lanesRevision_ != tuning.revision) {
         lanes_ = makeNoteLanes(tuning.grid);
         lanesRevision_ = tuning.revision;
     }
-
-    // Without a key the octave anchor falls back to C and no lane is shaded; the keys name C major.
-    const int tonic = tuning.hasKey ? static_cast<int>(tuning.key.tonic) : 0;
-    const Scale scale(tuning.hasKey ? tuning.key.getScaleType() : Scale::ScaleType(Scale::ScaleType::IonianOrMajor));
-    const float x = layout.visibleX.getStart(), right = layout.visibleX.getEnd();
-    const float gridX = pianoKeys ? x + whiteKeyWidth : x;  // the keys take the grid's left end
-    const float labelX = view->getLabelX(), labelWidth = view->getGutterRight() - labelX;
-    const auto damage = g.getClipBounds().toFloat();
-    constexpr float tonicLabelHeight = 10.0f;
-    // As the timeline grid's finest and medium ticks look on the clip
-    const auto background = getBackground();
-    const auto laneLine = background.overlaidWith(Colors::Timeline::trackGridTickColors[0]);
-    const auto octaveLine = background.overlaidWith(Colors::Timeline::trackGridTickColors[1]);
-    const bool labelsInDamage = detail.labels != LaneDetail::None
-        && damage.getX() < labelX + labelWidth && damage.getRight() > x;
-    if (labelsInDamage)
-        g.setFont(Font(FontOptions(detail.labels == LaneDetail::All ? jmin(11.0f, layout.noteHeight - 2.0f) : 9.0f)));
-    if (pianoKeys)
-        paintPianoKeys(g, lanes_, layout);
-
-    for (const auto& lane : lanes_) {
-        const float top = layout.normToY(lane.hi), bottom = layout.normToY(lane.lo);
-        // A tonic label hangs above the lane's bottom boundary and may overflow a short lane.
-        if (bottom < damage.getY() || jmin(top, bottom - tonicLabelHeight) > damage.getBottom())
-            continue;
-
-        const int degree = ((lane.note - tonic) % 12 + 12) % 12;
-        const bool isTonic = degree == 0;
-        if (tuning.hasKey && isTonic && detail.lines == LaneDetail::All && right > gridX) {
-            // In the lines' colour and on their rows, from the line above to its own: one even stripe,
-            // with no soft edge or gap against them. Its own line, an octave's on C, goes over it.
-            const int bandTop = roundToInt(top), bandBottom = roundToInt(bottom);
-            g.setColour(laneLine);
-            g.fillRect(gridX, static_cast<float>(bandTop), right - gridX, static_cast<float>(bandBottom - bandTop + 1));
-        }
-        // Octaves start on C whatever the key; the lines are opaque, so the timeline grid under them
-        // does not add up to a brighter dot where they cross
-        const bool octave = lane.note % 12 == 0;
-        if (detail.lines == LaneDetail::All || octave) {
-            g.setColour(octave ? octaveLine : laneLine);
-            g.drawHorizontalLine(roundToInt(bottom), gridX, right);
-        }
-        if (! labelsInDamage)
-            continue;
-        if (detail.labels == LaneDetail::All) {
-            // Over the keys only the key's notes are named, each on its own key: light at a black
-            // key's left end, dark right of the black keys on a white one.
-            if (pianoKeys && ! scale.isIntervalInScale(degree))
-                continue;
-            const bool onBlackKey = pianoKeys && MidiMessage::isMidiNoteBlack(lane.note);
-            const float nameX = onBlackKey ? x : labelX;
-            const auto ink = pianoKeys && ! onBlackKey ? Colours::black : Colours::white;
-            g.setColour(ink.withAlpha(isTonic ? 0.8f : 0.45f));
-            g.drawText(lane.label, Rectangle<float>(nameX, top, labelX + labelWidth - nameX, bottom - top),
-                       Justification::centredLeft, false);
-        } else if (isTonic) {
-            g.setColour(Colours::white.withAlpha(0.45f));
-            g.drawText(lane.label, Rectangle<float>(labelX, bottom - tonicLabelHeight, labelWidth, tonicLabelHeight),
-                       Justification::bottomLeft, false);
-        }
-    }
+    const auto key = tuning.hasKey ? std::optional<LaneKey>{{static_cast<int>(tuning.key.tonic), tuning.key.getScaleType()}}
+                                   : std::nullopt;
+    MoTool::paintNoteLanes(g, *view, lanes_, key, getBackground());
 }
 
-/** The timeline grid's beat and bar ticks over the lanes' grid, opaque, so where one crosses a lane
-    line the brighter of the two shows, not their blend. The finest ticks stay under the lanes, the
-    colour of their lines; none cross the keys and names. */
 void PsgClipComponent::paintTicksOverLanes(Graphics& g, const PaintView& view) {
     auto* psgClip = getPsgClip();
-    const auto lanes = psgClip != nullptr ? getLaneView(*psgClip, getLocalBounds(), view.visibleX) : std::nullopt;
-    if (! lanes)
-        return;
-    const Range<int> gridX {lanes->getGridX(), lanes->getViewX().getEnd()};
-    const auto background = getBackground();
-    for (const auto& tick : grid.getTicks()) {
-        const int x = tick.x - getX();  // ticks are in the track body's x
-        if (tick.level == 0 || tick.level >= Colors::Timeline::trackGridTickColors.size() || ! gridX.contains(x))
-            continue;
-        g.setColour(background.overlaidWith(Colors::Timeline::trackGridTickColors[tick.level]));
-        g.drawVerticalLine(x, 0.0f, static_cast<float>(getHeight()));
-    }
+    if (const auto lanes = psgClip != nullptr ? getLaneView(*psgClip, getLocalBounds(), view.visibleX) : std::nullopt)
+        MoTool::paintTicksOverLanes(g, *lanes, grid, getX(), getBackground());
 }
 
 void PsgClipComponent::paintWarnings(Graphics& g) {

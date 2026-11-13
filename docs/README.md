@@ -13,6 +13,7 @@
 | Design | [design/just-intonation-on-ay.md](design/just-intonation-on-ay.md) | Essay: why just intonation suits the AY chip |
 | Design | [design/psg-timing.md](design/psg-timing.md) | Frame indexes, `framesPerBeat`, and what tempo changes do |
 | Design | [design/midi-ay-pipeline.md](design/midi-ay-pipeline.md) | Partly implemented: note domain and PSG domain, instrument → chip effects → chip mixer → chip, the PSG controller wire, running on real hardware |
+| Design | [design/midi-editor.md](design/midi-editor.md) | Not implemented: editing notes in place on the timeline, an instrument per note as its colour, the project's instrument palette and its selector controller |
 | Design | [design/parameter-binding.md](design/parameter-binding.md) | Parameter definitions, automation bridge, widget bindings |
 | Design | [design/timer-fx.md](design/timer-fx.md) | Not implemented: timed AY writes for TAYM |
 | Vision | [motool/](motool/vision.md) | The initial MoTool demotool vision and its early design notes; not implemented, not scheduled |

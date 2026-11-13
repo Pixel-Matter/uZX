@@ -86,6 +86,7 @@ set(GUI_SOURCES
     gui/timeline/ClipComponents.cpp
     gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
+    gui/timeline/NoteLanes.cpp
     gui/timeline/PsgClipComponent.cpp
     gui/timeline/TuningPickerComponent.cpp
     gui/timeline/PsgParamEditorComponent.cpp

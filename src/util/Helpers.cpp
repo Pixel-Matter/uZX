@@ -441,6 +441,14 @@ bool renderTrackToFile(te::AudioTrack& track, const te::Renderer::Parameters& pa
     return true;
 }
 
+/** Keeps the edit's undo transaction open until the messages queued by now have run. Tracktion sorts a track's
+    children after a clip is added, later and as an undoable change, and starts a new transaction 350 ms after
+    the last change: on a slow machine the sort would be an undo step of its own, and the first undo after a
+    render would undo only that. */
+void keepUndoTransactionForQueuedMessages(te::Edit& edit) {
+    juce::MessageManager::callAsync([inhibitor = te::Edit::UndoTransactionInhibitor(edit)] {});
+}
+
 }  // namespace
 
 te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
@@ -492,8 +500,7 @@ te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionMa
     clip->setAutoPitch(false);
     track->state.setProperty(te::IDs::mute, true, &undo);
     selectionManager.select({added});
-    // Restart Tracktion's undo timer before deferred clip setup runs.
-    undo.dispatchPendingMessages();
+    keepUndoTransactionForQueuedMessages(edit);
     return added;
 }
 
@@ -575,7 +582,7 @@ te::AudioTrack* renderSelectedTrackToPsgTrack(te::Edit& edit, te::SelectionManag
     ensureAYPluginOnTrack(*added).staticParams.chipClock.setStoredValue(mixer->getChipClock() / uZX::MHz);
     track->state.setProperty(te::IDs::mute, true, &undo);
     selectionManager.select({added});
-    undo.dispatchPendingMessages();
+    keepUndoTransactionForQueuedMessages(edit);
     return added;
 }
 

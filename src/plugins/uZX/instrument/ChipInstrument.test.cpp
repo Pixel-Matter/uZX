@@ -11,7 +11,7 @@ using namespace MoTool::uZX;
 
 //==============================================================================
 /** The MIDI the chip instrument sends for the notes it is played, each on a channel of its own: a note on
-    at the level its envelope starts at, the level after that as polyphonic aftertouch, the pitch as the
+    at the level its envelope starts at, the level after that as its channel's pressure, the pitch as the
     pitch wheel, what changed once a 50 Hz frame. */
 class ChipInstrumentFxTests : public juce::UnitTest
 {
@@ -39,7 +39,7 @@ public:
             expectEquals(rig.take(), String("2880 Note off C3 Velocity 0 Channel 2"));
         }
 
-        beginTest("The amp envelope goes out as aftertouch, a message a frame while the level changes");
+        beginTest("The amp envelope goes out as channel pressure, a message a frame while the level changes");
         {
             Rig rig;
             rig.fx.oscParams.ampAttack.setStoredValue(0.04f);
@@ -48,7 +48,7 @@ public:
             rig.fx.oscParams.ampRelease.setStoredValue(0.04f);
             rig.play(6, {{0, on(60)}});
             expectEquals(rig.take(), start(0, 2) + "0 Pitch wheel 8192 Channel 2; 0 Note on C3 Velocity 50 Channel 2; "
-                                                   "960 Aftertouch C3: 100 Channel 2; 1920 Aftertouch C3: 50 Channel 2");
+                                                   "960 Channel pressure 100 Channel 2; 1920 Channel pressure 50 Channel 2");
             rig.play(4, {{0, off(60)}});
             expectEquals(rig.take(), String("5760 Note off C3 Velocity 0 Channel 2"), "one note off, in a block of four frames");
         }

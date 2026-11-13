@@ -76,6 +76,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Studio
 - Fixed: **Track → Render to audio** supports cancellation and adds the audio track only after a successful render. Undo restores the source track's previous mute state.
+- Fixed: one Undo after **Track → Render to audio** or **Render to PSG** removes the whole render on a slow machine too, where the first Undo could undo nothing visible
 - Fixed: opening the project that is already open, from Open Recent or by dropping it, keeps it as it is instead of losing unsaved changes (in the Player too)
 - The Edit menu no longer lists Cut, Copy and Paste, which did nothing yet
 - Fixed: each app only takes the keys it uses. In the Player, `Delete` and `Backspace` no longer beep and `Cmd+N`, `Cmd+T` and `Z` do nothing; in Studio, `F`, `V`, `S` and `Esc` no longer belong to Viz mode
@@ -90,6 +91,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - MIDI to PSG reads the tone, noise and envelope switches (controllers 80 to 82), the envelope shape (70) and the noise period (2) as the timbre of the notes on their channel. Controller 85 makes a channel's notes drive the chip's envelope, in place of notes on the fourth channel: such a note can start or last without restarting the envelope, and controller 83 restarts it
 - MIDI to PSG reads the pitch wheel as MPE does, 48 semitones on channels 2 to 16 and 2 on channel 1, so a MIDI clip in MPE mode plays each note with its own bend, and μZX Instrument's pitch envelope is no longer cut at two semitones
 - These controllers follow MIDI's conventions, so knobs and buttons work on them: a switch is on from 64 instead of for any value but 0, controller 2 sweeps the 32 noise periods over its whole range, and controller 70 picks one of the eight envelope shapes, sixteen values each, in pairs that start rising and falling: triangles, sawtooths, then the shapes that play once
+- μZX Instrument sends a note's volume as channel pressure, as MPE does, instead of polyphonic aftertouch. MIDI to PSG reads channel pressure on channels 2 to 16 as the volume of the channel's notes, so a MIDI clip in MPE mode plays each note with its own pressure; polyphonic aftertouch still works on any channel
 - A note that drives the envelope as a triangle sounds at its own pitch, not an octave under it: MIDI to PSG gives a triangle half the period of a sawtooth. The tuning tool's grid shows the envelope periods of the chosen shape, and marks a tone as in step with a triangle when its period is a multiple of 32
 - **Track → Render to PSG** renders what a track's MIDI to PSG tells the chip to a `.psg` file in the project's Renders folder and to a PSG clip on a new track with an AY chip, and mutes the source; it is available when the selected track has MIDI to PSG
 - Fixed: an envelope period above 16383, a slow envelope, reaches the AY chip whole from a PSG clip or MIDI to PSG instead of losing its top bits; they travel as controller 21 on the chip's fourth channel

@@ -49,6 +49,7 @@ struct Settings
     Quality quality = Quality::veryHigh;
     Audio audio = Audio::aac;
     Zoom zoom = Zoom::asOnScreen;
+    int loops = 0;      // how many more times the loop range plays; chosen per render, not saved
     juce::File ffmpeg;  // as chosen by the user; empty: looked up
     juce::File folder;  // where the last video went
 
@@ -70,6 +71,17 @@ struct Settings
     void load(juce::PropertiesFile&);
     void save(juce::PropertiesFile&) const;
 };
+
+/** The stretches of the timeline a video plays, in seconds, one after another: from the start to `end`
+    and on through the tail. With loops, up to the loop's end, the loop that many more times, then on to
+    `end` (or the loop's end, if later) and through the tail. */
+juce::Array<juce::Range<double>> playedSections(double end, juce::Range<double> loop, int loops);
+
+/** How long the sections play, one after another. */
+double playedLength(const juce::Array<juce::Range<double>>& sections);
+
+/** Where on the timeline the video is, `seconds` into the sections; past them, at the end of the last. */
+double timelineTimeAt(const juce::Array<juce::Range<double>>& sections, double seconds);
 
 /** The ffmpeg encoder each choice needs. */
 juce::String encoderFor(Settings::Codec);

@@ -39,6 +39,22 @@ public:
             expectEquals(describe(decoder.takeFrame()), String("1:60 62.00 0.0; 2:64 112.00 1.0"));
         }
 
+        beginTest("Channel pressure is the level of the notes on channels 2 to 16, after the frame they start in");
+        {
+            NoteDecoder decoder;
+            decoder.decode(MidiMessage::channelPressureChange(2, 0));  // as an MPE clip sends before each note
+            decoder.decode(MidiMessage::noteOn(2, 64, (uint8) 127));
+            decoder.decode(MidiMessage::channelPressureChange(2, 0));
+            decoder.decode(MidiMessage::noteOn(1, 60, (uint8) 127));
+            expectEquals(describe(decoder.takeFrame()), String("2:64 64.00 1.0 attack; 1:60 60.00 1.0 attack"),
+                         "a note starts at its velocity, whichever came first");
+
+            decoder.decode(MidiMessage::channelPressureChange(2, 0));
+            decoder.decode(MidiMessage::channelPressureChange(1, 0));
+            expectEquals(describe(decoder.takeFrame()), String("2:64 64.00 0.0; 1:60 60.00 1.0"),
+                         "channel 1 is a keyboard's: its pressure would level every note it holds");
+        }
+
         beginTest("A key played again while it sounds starts again");
         {
             NoteDecoder decoder;

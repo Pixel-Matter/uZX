@@ -81,6 +81,9 @@ te::TimeRange getEffectiveClipsTimeRange(te::Edit& edit) {
 te::AudioTrack* addAudioTrackAfter(te::Edit& edit, te::Track* track) {
     auto insertPoint = (track != nullptr) ? track : getAllTracks(edit).getLast();
     edit.getTransport().stopIfRecording();
+    // Tracktion makes the scene list on first use, undoably, and a new audio track is that use: inside the
+    // track's own insertion, so the two undo in the wrong order. Made here, it is no part of the undo.
+    edit.state.getOrCreateChildWithName(te::IDs::SCENES, nullptr);
     return edit.insertNewAudioTrack(te::TrackInsertPoint(nullptr, insertPoint), nullptr).get();
 }
 
@@ -233,6 +236,15 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
     if (module != tunes.end() && module->table)
         clips.getFirst()->chooseTuningTable(*module->table);
     PsgTempo::applyToEdit(clips, chips, module != tunes.end() ? module->rowStarts : std::vector<size_t>{});
+
+    // A module that loops back past its start loops there; the frames keep their times through the tempo above
+    if (module != tunes.end() && module->loopFrame > 0) {
+        const auto position = clips.getFirst()->getPosition();
+        const auto loopStart = position.getStartOfSource()
+                               + te::TimeDuration::fromSeconds((double) module->loopFrame
+                                                               / module->chips.front().getFrameRate());
+        edit.getTransport().setLoopRange({loopStart, position.getEnd()});
+    }
     return clips;
 }
 
@@ -454,6 +466,14 @@ bool renderTrackToFile(te::AudioTrack& track, const te::Renderer::Parameters& pa
     return true;
 }
 
+/** Keeps the edit's undo transaction open until the messages queued by now have run. Tracktion sorts a track's
+    children after a clip is added, later and as an undoable change, and starts a new transaction 350 ms after
+    the last change: on a slow machine the sort would be an undo step of its own, and the first undo after a
+    render would undo only that. */
+void keepUndoTransactionForQueuedMessages(te::Edit& edit) {
+    juce::MessageManager::callAsync([inhibitor = te::Edit::UndoTransactionInhibitor(edit)] {});
+}
+
 }  // namespace
 
 te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionManager& selectionManager) {
@@ -505,8 +525,7 @@ te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionMa
     clip->setAutoPitch(false);
     track->state.setProperty(te::IDs::mute, true, &undo);
     selectionManager.select({added});
-    // Restart Tracktion's undo timer before deferred clip setup runs.
-    undo.dispatchPendingMessages();
+    keepUndoTransactionForQueuedMessages(edit);
     return added;
 }
 
@@ -588,7 +607,7 @@ te::AudioTrack* renderSelectedTrackToPsgTrack(te::Edit& edit, te::SelectionManag
     ensureAYPluginOnTrack(*added).staticParams.chipClock.setStoredValue(mixer->getChipClock() / uZX::MHz);
     track->state.setProperty(te::IDs::mute, true, &undo);
     selectionManager.select({added});
-    undo.dispatchPendingMessages();
+    keepUndoTransactionForQueuedMessages(edit);
     return added;
 }
 

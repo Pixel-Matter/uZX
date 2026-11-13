@@ -34,8 +34,8 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 
 #### P1 — Important
 
-- [ ] **Loop range** on the ruler
-- [ ] **Nicer transport icons**
+- [ ] **Nicer transport icons**, loop toggle icon
+- [ ] **Transport follow mode** toggle (now is always follow)
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Scrubbing** with playhead produces sound, holding it at one frame plays that frame and holds it sound
 - [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.

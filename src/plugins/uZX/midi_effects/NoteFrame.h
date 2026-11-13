@@ -127,8 +127,8 @@ private:
     only says which voice it is; what it meant goes with the voice as its priority.
 
     A voice starts with a reset of its channel's controllers, the controllers that differ from that, the
-    pitch wheel and a note on at the level it starts at. While it sounds its level is polyphonic aftertouch,
-    and pitch and controllers go out as they change. A note off when it is gone.
+    pitch wheel and a note on at the level it starts at. While it sounds its level is its channel's pressure,
+    as MPE has it, and pitch and controllers go out as they change. A note off when it is gone.
 
     It alone remembers what was sent, so the logic that makes the frames keeps no MIDI state.
 */
@@ -188,6 +188,9 @@ private:
     Reads the stream back into frames: the notes that sound, each with the pitch wheel and the controllers
     of its channel. A frame is wherever the stream has messages, so a reader takes one after the messages of
     each time.
+
+    A note starts at its velocity. After the frame it starts in, its level is the pressure of its channel on
+    channels 2 to 16, where a voice has a channel of its own, or its polyphonic aftertouch on any channel.
 
     It alone remembers which notes are held and what the controllers were last set to.
 

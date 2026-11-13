@@ -91,6 +91,7 @@ set(GUI_SOURCES
     gui/timeline/ClipComponents.cpp
     gui/timeline/TrackComponents.cpp
     gui/timeline/EditComponent.cpp
+    gui/timeline/NoteLanes.cpp
     gui/timeline/PsgClipComponent.cpp
     gui/timeline/TuningPickerComponent.cpp
     gui/timeline/PsgParamEditorComponent.cpp
@@ -162,6 +163,7 @@ set(TEST_SOURCES
     viewmodels/tuning/MultitrackMidiPreview.test.cpp
 
     gui/timeline/TimelineGrid.test.cpp
+    gui/timeline/Ruler.test.cpp
     gui/timeline/ClipComponents.test.cpp
     gui/timeline/EditComponent.test.cpp
     gui/timeline/PsgClipComponent.test.cpp

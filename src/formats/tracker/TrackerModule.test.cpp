@@ -87,6 +87,10 @@ public:
                 expectWithinAbsoluteError(module->chips[0].getFrameRate(), 50.0, 1e-9, "no IntFreq: 50 Hz");
                 expect(! module->chipClock.has_value(), "no ChipFreq");
                 expectEquals(module->title, String("little girl with big yellow bow"), "one title, as they are the same");
+                // PlayOrder=0,1,0,13,L2,...: patterns of 64, 64, 64 and 62 rows come before the loop
+                expect(module->rowStarts.size() > 254, "rows past the loop start");
+                if (module->rowStarts.size() > 254)
+                    expectEquals((int) module->loopFrame, (int) module->rowStarts[254], "loops to its fifth position");
             }
         }
 

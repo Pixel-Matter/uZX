@@ -797,6 +797,52 @@ public:
             expectEquals(int(rig.chip().getTimerChannels()), 0, "play jumped: the timers stopped");
         }
 
+        beginTest("A scope triggers where a timer's output repeats, on the channels the timer drives");
+        {
+            // The last `count` samples a channel's scope was given: its levels, and the samples its sync rises at
+            constexpr int count = 4096;
+            const auto scopeOf = [] (Rig& rig, int chan) {
+                std::vector<float> levels(count), sync(count);
+                rig.chip().getVizChannelBuffer(chan)->copyTo(levels.data(), count, sync.data());
+                std::vector<int> rises;
+                for (int i = 1; i < count; ++i)
+                    if (sync[size_t(i) - 1] <= 0.5f && sync[size_t(i)] > 0.5f)
+                        rises.push_back(i);
+                return std::pair {levels, rises};
+            };
+
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}, {PsgRegType::VolumeB, 9}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));  // A's volume 15, 9: a repeat every 7104 cycles, 176.7 samples
+            rig.render({1000, 3000, 4096});
+            {
+                const auto [levels, rises] = scopeOf(rig, 0);
+                expect(rises.size() >= 22 && rises.size() <= 24, "once a repeat: " + String(rises.size()));
+                bool onTheStep = ! rises.empty(), evenly = true;
+                for (size_t i = 0; i < rises.size(); ++i) {
+                    const auto at = static_cast<size_t>(rises[i]);
+                    onTheStep = onTheStep && levels[at] > levels[at - 1];
+                    evenly = evenly && (i == 0 || rises[i] - rises[i - 1] == 176 || rises[i] - rises[i - 1] == 177);
+                }
+                expect(onTheStep, "at the sample the level steps up to the lane's first value");
+                expect(evenly, "a repeat apart");
+                expect(scopeOf(rig, 1).second.empty(), "B has no timer and no tone: nothing to trigger on");
+            }
+
+            rig.chip().channelMuter.getTimersParam(0).setStoredValue(false);
+            rig.render({4096, 4096});
+            expect(scopeOf(rig, 0).second.empty(), "A's timers switched off: the chip's own sync, and no tone");
+            rig.chip().channelMuter.getTimersParam(0).setStoredValue(true);
+
+            // A timer too slow to be a pitch leaves the tone's sync: 4000 * 16 * 2 cycles is 14 repeats a second
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3E}, {PsgRegType::TonePeriodFineA, 100}, {PsgRegType::TonePeriodCoarseA, 0}});
+            rig.timer(0.0, 0, timerStart(4000, 0));
+            rig.render({4096, 4096, 4096});
+            expect(scopeOf(rig, 0).second.size() > 80, "the tone's 1108 Hz, not the timer's 14: "
+                                                           + String(scopeOf(rig, 0).second.size()));
+        }
+
         beginTest("When play jumps or stops, a timer stops and stays silent until its next start");
         {
             Rig rig(engine);

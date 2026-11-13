@@ -166,6 +166,18 @@ private:
     std::atomic<uint32_t> timerWarnings {0};  // TimerWarning bits, written on the audio thread
     std::atomic<uint8_t> timerChannels {0};   // the channels a timer drives, written on the audio thread
 
+    // The scopes' trigger on a channel a timer drives. A timer's writes leave the tone and the envelope out of
+    // step with what the channel plays, or stop them, so such a channel's sync rises where the timer's output
+    // repeats instead. A repeat too slow to be a pitch is a modulation: the chip's own sync stays
+    struct TimerSync {
+        int8_t timer = -1;          // the timer triggered on: the lowest that wrote to the channel this frame
+        bool due = false;           // the next sample rendered starts a repeat
+        bool pitched = false;       // the last repeat was short enough to be a pitch
+        uint32_t sinceRepeat = 0;   // samples since the last repeat started
+    };
+    std::array<TimerSync, 3> timerSync_;
+    uint8_t timerSyncChannels_ = 0;  // a bit per channel that a timer, not muted, drives
+
     //==============================================================================
     // Scope buffer access for visualization (used by ScopePlugin)
     static constexpr int kNumVizChannels = 3;  // A, B, C
@@ -198,8 +210,10 @@ private:
     /** Writes the timers' writes before `cycle` to the chip where it is rendered up to. */
     void writeTimersBefore(uint64_t cycle);
     void writeTimerRegister(const TaymTimerWrite&) noexcept;
-    /** The channels the timers drive, from the registers they own and what the chip holds. */
-    uint8_t findTimerChannels() const noexcept;
+    /** The channels that timers on `registers`, a bit each, drive, by what the chip holds. */
+    uint8_t findTimerChannels(uint16_t registers) const noexcept;
+    /** Puts the timers' repeats in place of the chip's sync in the scope lanes just rendered. */
+    void writeTimerSync(float* const* sync, size_t numSamples) noexcept;
     /** Stops the timers and forgets what their controllers held. */
     void resetTimers() noexcept;
     /** The chip's clock in whole Hz, as chip time counts it. */

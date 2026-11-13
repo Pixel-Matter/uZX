@@ -118,6 +118,8 @@ void AYChipPlugin::resetTimers() noexcept {
     timers.reset();
     timerDecoder.reset();
     timerChannels.store(0, std::memory_order_relaxed);
+    timerSync_ = {};
+    timerSyncChannels_ = 0;
 }
 
 juce::String AYChipPlugin::describeTimerWarnings(uint32_t warnings) {
@@ -198,7 +200,10 @@ void AYChipPlugin::updateChip() noexcept {
         if ((faults & (ChipTimers::commandRefused | ChipTimers::tablesFailed)) != 0)
             warnings |= timerCommandIgnored;
         timerWarnings.store(warnings, std::memory_order_relaxed);
-        timerChannels.store(findTimerChannels(), std::memory_order_relaxed);
+        timerChannels.store(findTimerChannels(timers.getOwned()), std::memory_order_relaxed);
+        timerSyncChannels_ = findTimerChannels(static_cast<uint16_t>(timers.getOwned() & ~timers.getMuted()));
+        for (auto& sync : timerSync_)
+            sync.timer = -1;  // a timer that stopped no longer keeps a higher one from the channel's trigger
     }
 
     // Apply channel and effect filters directly to chip registers
@@ -235,6 +240,7 @@ void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int current
     auto* const* lanes = scopeLanes_.getArrayOfWritePointers();
     chip->processBlockStereo(left, right, samples, staticParams.removeDC.getStoredValue(),
                              {lanes, lanes + kNumVizChannels, lanes + 2 * kNumVizChannels});
+    writeTimerSync(lanes + kNumVizChannels, samples);
     if (fc.isPlaying)  // stopped, the scopes keep the last frame that played
         copyTempBufferToVizBuffer();
 }
@@ -316,8 +322,30 @@ void AYChipPlugin::writeTimersBefore(uint64_t cycle) {
     }
 }
 
-uint8_t AYChipPlugin::findTimerChannels() const noexcept {
-    const auto owned = timers.getOwned();
+void AYChipPlugin::writeTimerSync(float* const* sync, size_t numSamples) noexcept {
+    // Below 20 Hz a repeat is not a pitch
+    const auto longestRepeat = static_cast<uint32_t>(sampleRate / 20.0);
+    for (size_t chan = 0; chan < timerSync_.size(); ++chan) {
+        auto& state = timerSync_[chan];
+        const bool starts = std::exchange(state.due, false);
+        if (starts) {
+            state.pitched = state.sinceRepeat <= longestRepeat;
+            state.sinceRepeat = 0;
+        } else if (state.sinceRepeat > longestRepeat) {
+            state.pitched = false;
+        }
+        state.sinceRepeat += static_cast<uint32_t>(jmin(numSamples, size_t {1} << 30));
+        state.sinceRepeat = jmin(state.sinceRepeat, uint32_t {1} << 30);
+
+        if (state.pitched && (timerSyncChannels_ & (1u << chan)) != 0) {
+            std::fill_n(sync[chan], numSamples, 0.0f);
+            if (starts)
+                sync[chan][0] = 1.0f;
+        }
+    }
+}
+
+uint8_t AYChipPlugin::findTimerChannels(uint16_t owned) const noexcept {
     if (owned == 0)
         return 0;
     const auto has = [owned] (size_t reg) { return (owned & (1u << reg)) != 0; };
@@ -339,6 +367,18 @@ void AYChipPlugin::writeTimerRegister(const TaymTimerWrite& write) noexcept {
     // A mute holds over the registers as written: a write to the mixer or a volume would undo it
     if (write.target >= 7 && write.target <= 10)
         channelMuter.applyToChip(*chip);
+
+    // The scopes of the channels this register reaches trigger where the lowest such timer's output repeats
+    const auto reached = findTimerChannels(static_cast<uint16_t>(1u << write.target));
+    for (size_t chan = 0; chan < timerSync_.size(); ++chan) {
+        if ((reached & (1u << chan)) == 0)
+            continue;
+        auto& sync = timerSync_[chan];
+        if (sync.timer < 0 || write.timer < sync.timer)
+            sync.timer = static_cast<int8_t>(write.timer);
+        if (sync.timer == write.timer && write.loop_start != 0)
+            sync.due = true;
+    }
 }
 
 PsgRegsFrame AYChipPlugin::getChipRegisters() const {

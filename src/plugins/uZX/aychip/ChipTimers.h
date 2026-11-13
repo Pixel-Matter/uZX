@@ -83,6 +83,8 @@ public:
     bool owns(size_t reg) const noexcept { return (owned_ & (1u << reg)) != 0; }
     /** A bit for each register a timer owns. */
     uint16_t getOwned() const noexcept { return owned_; }
+    /** A bit for each register whose timers are muted: see setMuted. */
+    uint16_t getMuted() const noexcept { return muted_; }
 
     /** Mutes the timers on some registers, a bit each: a timer still owns a muted register and runs on, but
         its writes to it are for the caller to drop (isMuted), and the background has it as if no timer did.

@@ -10,8 +10,16 @@ namespace MoTool {
 //==============================================================================
 /** Frame hover popup text as coloured runs: A/B/C, Env and Noise as a borderless
     table with right-aligned numbers, in legend colours, half-alpha unless this frame
-    changed the value. With hex, periods and volumes are zero-padded hex. */
-std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex);
+    changed the value. With hex, periods and volumes are zero-padded hex. With a tuning grid, a
+    column after the Hz names the grid's note nearest each pitch and how many cents the pitch is
+    above or below it, as `F#4 +12¢`. */
+std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex,
+                                                      const PeriodGrid& grid = {});
+
+/** The grid's note nearest a tone period and the cents the period sounds above it (below, if negative).
+    The grid is continued by octaves past the table's ends, as the note lanes are. An empty name if the
+    grid has no notes. */
+std::pair<String, int> getNearestNote(const PeriodGrid& grid, double tonePeriod);
 
 /** The frame hover's lines for a clip's timers at a frame, as coloured runs; empty when none runs there.
     A line for each running timer: what began this stretch of it if it began at this frame (start or mod),
@@ -20,7 +28,15 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, 
     unless its command is at this frame. A timer started before frame `firstPlayed` is left out: a clip
     trimmed at its start does not play it. */
 std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers&, int frameIndex, int firstPlayed,
-                                                        double chipClockHz, bool hex);
+                                                        double chipClockHz, bool hex, const PeriodGrid& grid = {});
+
+/** Everything the frame hover says of the clip's frame sounding at `time`: where the frame is, as
+    `Time mm:ss:ff   Frame n   Bar bar.beat.frame`; the chip's rows, with the notes of the clip's tuning; then
+    its timers'. Empty before the clip's first frame. */
+std::vector<std::pair<String, Colour>> describePsgClipFrame(PsgClip&, te::TimePosition time, bool hex);
+
+/** The frame hover's popup showing these runs, sized to them. */
+std::unique_ptr<Component> createPsgFrameHover(const std::vector<std::pair<String, Colour>>& runs);
 
 //==============================================================================
 /** A PSG clip's warnings: its fps against the project's, and its tuning's clock against its track's. */
@@ -127,8 +143,7 @@ private:
     void showFrameHover();
     void hideFrameHover();
 
-    class FrameHover;
-    std::unique_ptr<FrameHover> frameHover_;
+    std::unique_ptr<Component> frameHover_;
 
     std::vector<NoteLane> lanes_;  // rebuilt when the clip's tuning revision changes
     int lanesRevision_ = -1;

@@ -430,7 +430,16 @@ void setPianoKeysShown(te::Engine& engine, bool shouldShow) {
     engine.getPropertyStorage().getPropertiesFile().setValue(pianoKeysSetting, shouldShow);
 }
 
-std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex) {
+/** A pitch as the grid's nearest note and the cents it is off it: the name, then the cents with their sign. */
+static std::pair<String, String> describeNote(const PeriodGrid& grid, double tonePeriod) {
+    const auto [name, cents] = getNearestNote(grid, tonePeriod);
+    if (name.isEmpty())
+        return {};
+    return {name, (cents > 0 ? "+" : "") + String(cents) + String::fromUTF8("\xC2\xA2")};  // ¢
+}
+
+std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex,
+                                                      const PeriodGrid& grid) {
     using T = PsgParamType;
     std::vector<std::pair<String, Colour>> runs;
     Colour rowColour;
@@ -456,6 +465,22 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
     periods[3] = number(envPeriod, 4);
     freqs[3] = hz(envelopePeriodToTonePeriod(envPeriod));
     periods[4] = number(data.getRaw(T::NoisePeriod), 2);
+
+    // The note each pitch is nearest in the clip's tuning, and how far off: A, B, C and the envelope
+    std::array<std::pair<String, String>, 4> notes;
+    int noteWidth = 0, centsWidth = 0;
+    for (size_t row = 0; row < notes.size(); ++row) {
+        const int period = row < 3 ? data.getRaw(T(T::TonePeriodA + int(row))) : envelopePeriodToTonePeriod(envPeriod);
+        notes[row] = describeNote(grid, jmax(1, period));
+        noteWidth = jmax(noteWidth, notes[row].first.length());
+        centsWidth = jmax(centsWidth, notes[row].second.length());
+    }
+    const auto noteCell = [&] (size_t row, bool changed) {
+        if (noteWidth == 0)
+            return;
+        add("  ");
+        add(notes[row].first.paddedRight(' ', noteWidth) + " " + notes[row].second.paddedLeft(' ', centsWidth), changed);
+    };
     const auto widest = [] (const std::array<String, 5>& column) {
         int width = 0;
         for (const auto& text : column)
@@ -480,6 +505,7 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
         label(String::charToString(juce_wchar('A' + ch)), rowChanged);
         cell(periods[ch], periodWidth, data.isSet(period));
         cell(freqs[ch], hzWidth, data.isSet(period));
+        noteCell(ch, data.isSet(period));
         cell(volumes[ch], volumeWidth, data.isSet(volume));
         add("  ");
         for (size_t i = 0; i < 3; ++i)
@@ -492,6 +518,7 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
     label("Env", shapeChanged || envPeriodChanged);
     cell(periods[3], periodWidth, envPeriodChanged);
     cell(freqs[3], hzWidth, envPeriodChanged);
+    noteCell(3, envPeriodChanged);
     add("  shape ");
     add(String::toHexString(data.getRaw(T::EnvelopeShape)).toUpperCase(), shapeChanged);
     add("\n");
@@ -510,7 +537,7 @@ static Colour getTimerColour(const ClipTimers::Span& span) {
 }
 
 std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers, int frameIndex, int firstPlayed,
-                                                        double chipClockHz, bool hex) {
+                                                        double chipClockHz, bool hex, const PeriodGrid& grid) {
     std::vector<std::pair<String, Colour>> runs;
     const auto bank = timers.getBank();
     if (bank == nullptr)
@@ -519,21 +546,29 @@ std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers
     const auto number = [hex] (uint32_t value, int hexDigits) {
         return hex ? String::toHexString(static_cast<int64>(value)).paddedLeft('0', hexDigits).toUpperCase() : String(value);
     };
-    // A lane's first values: enough to tell a pulse from a wave, not a whole sample
-    const auto values = [&] (uint32_t offset, uint32_t length, uint8_t valueType, int hexDigits) {
-        constexpr uint32_t shown = 8;
-        StringArray out;
-        for (uint32_t i = 0; i < jmin(length, shown); ++i) {
-            const auto index = static_cast<size_t>(offset) + i;
+    static const char* const registerNames[] {"A tone lo", "A tone hi", "B tone lo", "B tone hi", "C tone lo", "C tone hi",
+                                              "noise", "mixer", "A vol", "B vol", "C vol", "env lo", "env hi", "env shape"};
+    constexpr int indent = 7;        // under the chip's rows: past their label
+    constexpr uint32_t shown = 8;    // a lane's first steps: enough to tell a pulse from a wave, not a whole sample
+
+    /** A row of a timer's steps: what it is, where its values come from, and the values. */
+    struct Row {
+        String name, source;
+        StringArray values;
+        bool more = false;  // the lane goes on past what is shown
+    };
+    const auto laneRow = [&] (const String& name, const String& source, uint32_t offset, uint32_t length,
+                              uint8_t valueType, int hexDigits) {
+        Row row {name, source, {}, length > shown};
+        for (uint32_t step = 0; step < jmin(length, shown); ++step) {
+            const auto index = static_cast<size_t>(offset) + step;
             const uint32_t value = valueType == TAYM_VT_U8  ? (index < tables.vu08_count ? tables.vu08[index] : 0)
                                  : valueType == TAYM_VT_U16 ? (index < tables.vu16_count ? tables.vu16[index] : 0)
                                                             : (index < tables.vu32_count ? tables.vu32[index] : 0);
-            out.add(number(value, hexDigits));
+            row.values.add(number(value, hexDigits));
         }
-        return out.joinIntoString(" ") + (length > shown ? String::fromUTF8(" \xE2\x80\xA6") : String());  // …
+        return row;
     };
-    static const char* const registerNames[] {"A tone lo", "A tone hi", "B tone lo", "B tone hi", "C tone lo", "C tone hi",
-                                              "noise", "mixer", "A vol", "B vol", "C vol", "env lo", "env hi", "env shape"};
 
     for (int timer = 0; timer < timers.getNumTimers(); ++timer) {
         const auto* span = timers.findSpan(timer, frameIndex);
@@ -547,33 +582,60 @@ std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers
         if (! runs.empty())
             add("\n");
 
+        // The timer's own line: what began this stretch if it began here, and what is heard
         add(("T" + String(timer + 1)).paddedRight(' ', 5), here);
         add("  ");
         add(String(here ? (span->starts ? "start" : "mod") : "").paddedRight(' ', 5), here);
         if (span->loopCycles > 0.0) {
             add("  ");
             add(String(chipClockHz / span->loopCycles, 1) + "Hz", here);
+            // a tone of a sixteenth its repeat has the same pitch
+            if (const auto [name, cents] = describeNote(grid, span->loopCycles / 16.0); name.isNotEmpty()) {
+                add("  ");
+                add(name + " " + cents, here);
+            }
         }
         if (span->duty >= 0.0f) {
             add("  ");
             add("duty " + String(roundToInt(span->duty * 100.0f)) + "%", here);
         }
-        add("  base " + number(span->base, 4));
+
+        // Then its steps as a table, a column a step: the interval each lasts, and what each register gets
+        std::vector<Row> rows;
         if (span->timerLane >= 0 && static_cast<size_t>(span->timerLane) < tables.tlane_count) {
+            add("  base " + number(span->base, 4));  // the lane's intervals stand for it, or scale it
             const auto& lane = tables.tlanes[span->timerLane];
-            add("  lane " + String(span->timerLane) + ": " + values(lane.value_offset, lane.length, TAYM_VT_U32, 4));
+            rows.push_back(laneRow("interval", "lane " + String(span->timerLane), lane.value_offset, lane.length, TAYM_VT_U32, 4));
+        } else {
+            rows.push_back({"interval", {}, {number(span->base, 4)}, false});
         }
         for (size_t i = 0; i < span->numTargets; ++i) {
             const auto& target = span->targets[i];
-            add("\n       ");
-            add(String(target.id <= 13 ? registerNames[target.id] : target.id == TAYM_TGT_SAMPLE_AMPLITUDE ? "amplitude" : "target")
-                    .paddedRight(' ', 9));
+            const String name = target.id <= 13 ? registerNames[target.id]
+                              : target.id == TAYM_TGT_SAMPLE_AMPLITUDE ? "amplitude" : "target";
             if (target.lane >= 0 && static_cast<size_t>(target.lane) < tables.lane_count) {
                 const auto& lane = tables.lanes[target.lane];
-                add("  lane " + String(target.lane) + ": " + values(lane.value_offset, lane.length, lane.value_type, 2));
+                rows.push_back(laneRow(name, "lane " + String(target.lane), lane.value_offset, lane.length, lane.value_type, 2));
             } else {
-                add("  = " + number(target.value, 2));
+                rows.push_back({name, {}, {number(target.value, 2)}, false});
             }
+        }
+        int nameWidth = 0, sourceWidth = 0, valueWidth = 0;
+        for (const auto& row : rows) {
+            nameWidth = jmax(nameWidth, row.name.length());
+            sourceWidth = jmax(sourceWidth, row.source.length());
+            for (const auto& value : row.values)
+                valueWidth = jmax(valueWidth, value.length());
+        }
+        for (const auto& row : rows) {
+            String line = "\n" + String::repeatedString(" ", indent) + row.name.paddedRight(' ', nameWidth);
+            if (sourceWidth > 0)
+                line << "  " << row.source.paddedRight(' ', sourceWidth);
+            for (const auto& value : row.values)
+                line << "  " << value.paddedLeft(' ', valueWidth);
+            if (row.more)
+                line << "  " << String::fromUTF8("\xE2\x80\xA6");  // …
+            add(line.trimEnd());
         }
     }
     return runs;
@@ -581,9 +643,9 @@ std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers
 
 //==============================================================================
 /** Tooltip-styled popup showing formatPsgFrame() runs. */
-class PsgClipComponent::FrameHover : public Component {
+class PsgFrameHover : public Component {
 public:
-    FrameHover() {
+    PsgFrameHover() {
         setInterceptsMouseClicks(false, false);
         setAlwaysOnTop(true);
     }
@@ -886,41 +948,66 @@ void PsgClipComponent::timerCallback() {
     showFrameHover();
 }
 
-std::vector<std::pair<String, Colour>> PsgClipComponent::describeFrameAt(int x) {
-    auto* psgClip = getPsgClip();
-    if (psgClip == nullptr)
-        return {};
+std::unique_ptr<Component> createPsgFrameHover(const std::vector<std::pair<String, Colour>>& runs) {
+    auto hover = std::make_unique<PsgFrameHover>();
+    hover->setText(runs);
+    return hover;
+}
 
+std::vector<std::pair<String, Colour>> describePsgClipFrame(PsgClip& psgClip, te::TimePosition time, bool hex) {
     // The frame sounding at time is the last one starting at or before it.
-    const auto& frames = psgClip->getPsg().getFrames();
-    const auto time = editViewState.zoom.xToTime(x + getX());
-    int i = bisectFindPosition(frames, *psgClip, time);
-    if (i == frames.size() || frames[i]->getEditTime(*psgClip) > time)
+    const auto& frames = psgClip.getPsg().getFrames();
+    int i = bisectFindPosition(frames, psgClip, time);
+    if (i == frames.size() || frames[i]->getEditTime(psgClip) > time)
         --i;
     if (i < 0)
         return {};
 
     // Past the frame's own slot its state just holds, so nothing changes there.
     auto data = frames[i]->getData();
-    if (time >= frames[i]->getEditTime(*psgClip) + getClipFrameDuration(*psgClip))
+    if (time >= frames[i]->getEditTime(psgClip) + getClipFrameDuration(psgClip))
         data.clear();
 
-    const double clockHz = getTrackChipClock(*psgClip).value_or(tuningGridClock);
-    const bool hex = clip->edit.engine.getPropertyStorage().getPropertiesFile().getBoolValue(hexHoverSetting);
-    auto runs = formatPsgFrame(data, clockHz, hex);
+    // The frame under the pointer, which may be one the list has nothing stored for
+    const auto frameDuration = getClipFrameDuration(psgClip);
+    const int frameIndex = frames[i]->getFrameIndex()
+                         + static_cast<int>(std::floor((time - frames[i]->getEditTime(psgClip)) / frameDuration + 1.0e-6));
 
-    // The clip's timers at the frame under the pointer, which may be a frame the list has nothing stored for
-    if (! psgClip->getTimers().isEmpty()) {
-        const auto frameDuration = getClipFrameDuration(*psgClip);
-        const int frameIndex = frames[i]->getFrameIndex()
-                             + static_cast<int>(std::floor((time - frames[i]->getEditTime(*psgClip)) / frameDuration + 1.0e-6));
-        const auto timerRuns = formatTimerFrame(psgClip->getTimers(), frameIndex, getFirstPlayedFrame(*psgClip), clockHz, hex);
+    // Where the frame is, in each of the timeline's timecodes: minutes, seconds and frames; frames alone;
+    // bars, beats and frames. Each with its name, dimmed
+    std::vector<std::pair<String, Colour>> runs;
+    const auto frameTime = PsgList::getEditTime(psgClip, frameIndex);
+    const auto timecode = [&] (const String& name, TimecodeDisplayMode mode) {
+        runs.emplace_back(name, Colors::Theme::textPrimary.withMultipliedAlpha(0.5f));
+        runs.emplace_back(Helpers::makeSnapLadder(psgClip.edit, frameTime, mode).getPositionLabel(frameTime, psgClip.edit.tempoSequence),
+                          Colors::Theme::textPrimary);
+    };
+    timecode(String("Time").paddedRight(' ', 5) + "  ", TimecodeDisplayMode::seconds);  // as the rows under it: a name, then its values
+    timecode("   Frame ", TimecodeDisplayMode::framesOnly);
+    timecode("   Bar ", TimecodeDisplayMode::barsBeatsFrames);
+    runs.emplace_back("\n", Colours::transparentBlack);
+
+    const double clockHz = getTrackChipClock(psgClip).value_or(tuningGridClock);
+    const auto& grid = psgClip.getTuning().grid;  // empty for a clip with no table: no note names then
+    const auto chipRuns = formatPsgFrame(data, clockHz, hex, grid);
+    runs.insert(runs.end(), chipRuns.begin(), chipRuns.end());
+
+    if (! psgClip.getTimers().isEmpty()) {
+        const auto timerRuns = formatTimerFrame(psgClip.getTimers(), frameIndex, getFirstPlayedFrame(psgClip), clockHz, hex, grid);
         if (! timerRuns.empty()) {
             runs.emplace_back("\n", Colours::transparentBlack);
             runs.insert(runs.end(), timerRuns.begin(), timerRuns.end());
         }
     }
     return runs;
+}
+
+std::vector<std::pair<String, Colour>> PsgClipComponent::describeFrameAt(int x) {
+    auto* psgClip = getPsgClip();
+    if (psgClip == nullptr)
+        return {};
+    const bool hex = clip->edit.engine.getPropertyStorage().getPropertiesFile().getBoolValue(hexHoverSetting);
+    return describePsgClipFrame(*psgClip, editViewState.zoom.xToTime(x + getX()), hex);
 }
 
 void PsgClipComponent::showFrameHover() {
@@ -930,8 +1017,7 @@ void PsgClipComponent::showFrameHover() {
     if (top == this || text.empty())
         return;
 
-    frameHover_ = std::make_unique<FrameHover>();
-    frameHover_->setText(text);
+    frameHover_ = createPsgFrameHover(text);
     top->addAndMakeVisible(*frameHover_);
 
     // Same placement as MoLookAndFeel::getTooltipBounds: away from the cursor, towards the centre.
@@ -1017,39 +1103,78 @@ static NotesLayout makeNotesLayout(const PsgClip& clip, Rectangle<int> bounds, R
     };
 }
 
-std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid) {
-    // Grid notes by rising pitch, in the normalized space the painter uses, so a lane is
-    // centred exactly where a note on that grid period is drawn.
-    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
-    std::vector<std::pair<float, int>> notes;
-    notes.reserve(grid.size() + 48);
-    for (auto it = grid.rbegin(); it != grid.rend(); ++it)
-        notes.emplace_back(toneScale.valueToNormalized(it->first), it->second);
-    if (notes.size() < 2)
-        return {};
+/** A grid's notes and their tone periods, continued past the table's ends.
 
-    // Tables stop at C1 and B8, but tone periods reach down to the octave below C1 and up
-    // to period 8, up to a whole octave above B8. Lanes continue past both ends by octaves
-    // of the outermost table octave, with exact (unrounded) periods so they stay even.
+    Tables stop at C1 and B8, but tone periods reach down to the octave below C1 and up to period 8,
+    up to a whole octave above B8. The notes continue past both ends by octaves of the outermost
+    table octave, with exact (unrounded) periods so they stay even. */
+static std::map<int, double> getNotePeriods(const PeriodGrid& grid) {
+    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
     std::map<int, double> periodOf;
     for (const auto& [period, note] : grid)
         periodOf.try_emplace(note, period);
+    if (periodOf.empty())
+        return periodOf;
     const int lowest = periodOf.begin()->first, highest = periodOf.rbegin()->first;
-    std::vector<std::pair<float, int>> below, above;
     for (int note = lowest - 1; note >= 0; --note) {
         auto octaveUp = periodOf.find(note + 12);
         if (octaveUp == periodOf.end() || octaveUp->second * 2.0 > toneScale.end * 2.0)
             break;
         periodOf[note] = octaveUp->second * 2.0;
-        below.emplace_back(toneScale.valueToNormalized(static_cast<float>(periodOf[note])), note);
     }
     for (int note = highest + 1;; ++note) {
         auto octaveDown = periodOf.find(note - 12);
         if (octaveDown == periodOf.end() || octaveDown->second / 2.0 < 4.0)
             break;
         periodOf[note] = octaveDown->second / 2.0;
-        above.emplace_back(toneScale.valueToNormalized(static_cast<float>(periodOf[note])), note);
     }
+    return periodOf;
+}
+
+/** A note's name with its octave. Composed rather than getMidiNoteName(): notes above B8 go past MIDI note 127. */
+static String getNoteName(int note) {
+    return MidiMessage::getMidiNoteName(note % 12, true, false, 4) + String(note / 12 - 1);
+}
+
+std::pair<String, int> getNearestNote(const PeriodGrid& grid, double tonePeriod) {
+    const auto periodOf = getNotePeriods(grid);
+    if (periodOf.empty() || tonePeriod <= 0.0)
+        return {};
+    // A shorter period sounds higher: the cents above a note are those its period is longer by
+    int nearest = periodOf.begin()->first;
+    double cents = 1200.0 * std::log2(periodOf.begin()->second / tonePeriod);
+    for (const auto& [note, period] : periodOf) {
+        const double above = 1200.0 * std::log2(period / tonePeriod);
+        if (std::abs(above) < std::abs(cents)) {
+            nearest = note;
+            cents = above;
+        }
+    }
+    return {getNoteName(nearest), roundToInt(cents)};
+}
+
+std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid) {
+    // Grid notes by rising pitch, in the normalized space the painter uses, so a lane is
+    // centred exactly where a note on that grid period is drawn.
+    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
+    std::vector<std::pair<float, int>> notes;
+    notes.reserve(grid.size() + 48);
+    int lowest = std::numeric_limits<int>::max(), highest = std::numeric_limits<int>::min();
+    for (auto it = grid.rbegin(); it != grid.rend(); ++it) {
+        notes.emplace_back(toneScale.valueToNormalized(it->first), it->second);
+        lowest = jmin(lowest, it->second);
+        highest = jmax(highest, it->second);
+    }
+    if (notes.size() < 2)
+        return {};
+
+    // The lanes continue past the table's ends with the notes its octaves continue to
+    const auto periodOf = getNotePeriods(grid);
+    std::vector<std::pair<float, int>> below, above;
+    for (auto note = periodOf.find(lowest - 1); note != periodOf.end(); note = periodOf.find(note->first - 1))
+        below.emplace_back(toneScale.valueToNormalized(static_cast<float>(note->second)), note->first);
+    for (auto note = periodOf.find(highest + 1); note != periodOf.end(); note = periodOf.find(note->first + 1))
+        above.emplace_back(toneScale.valueToNormalized(static_cast<float>(note->second)), note->first);
     notes.insert(notes.begin(), below.rbegin(), below.rend());
     notes.insert(notes.end(), above.begin(), above.end());
 
@@ -1060,10 +1185,8 @@ std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid) {
         // The outermost lanes mirror their inner neighbour's spacing.
         const float below = i > 0 ? notes[i - 1].first : centre - (notes[i + 1].first - centre);
         const float above = i + 1 < notes.size() ? notes[i + 1].first : centre + (centre - notes[i - 1].first);
-        // Composed rather than getMidiNoteName(): lanes above B8 go past MIDI note 127.
         const int note = notes[i].second;
-        lanes.push_back({ (below + centre) * 0.5f, (centre + above) * 0.5f, note,
-                          MidiMessage::getMidiNoteName(note % 12, true, false, 4) + String(note / 12 - 1) });
+        lanes.push_back({ (below + centre) * 0.5f, (centre + above) * 0.5f, note, getNoteName(note) });
     }
     return lanes;
 }

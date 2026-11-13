@@ -13,6 +13,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - A TAYM brings its chip clock, chip type and frame rate, and opens like a PSG file: by Open, drop, Import PSG, or from Finder, where the Player is the default app for `.taym`
 - The AY chip shows a `⚠` when timer effects reach it that it cannot play, with the reason on hover; those are left out and the rest plays
 - A clip draws its timer effects as notes at the pitch of what they write, in the colour of the channel or envelope they drive, fuller the longer the pulse; the frame hover lists the timers running at the frame
+- The PSG frame hover opens with where the frame is, as `Time`, `Frame` and `Bar`, and names each pitch's nearest note in the clip's tuning with the cents it is off
 - A stopwatch in the corner of a channel's scope shows while a timer drives it, and each channel has a timers switch under T, N and E on tracks with timer effects
 
 ### Engine

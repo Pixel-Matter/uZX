@@ -8,6 +8,7 @@
 #include "../common/LookAndFeel.h"
 #include "../../formats/psg/PsgData.h"
 #include "../../models/TimerTestBank.h"
+#include "../../formats/taym/TaymFile.h"
 
 namespace MoTool {
 
@@ -461,6 +462,44 @@ public:
         expect(unchangedB != runs.end() && unchangedB->second == Colors::PSG::B.withMultipliedAlpha(0.5f),
                "Unchanged values use the half-alpha legend colour");
 
+        beginTest("With a tuning, the frame hover names each pitch's nearest note and its cents off it");
+        {
+            const auto grid = makeEqualTemperamentGrid(440.0, 1773400.0);  // A4 at period 252
+            expect(getNearestNote(grid, 252.0) == std::pair<String, int> {"A4", 0});
+            expect(getNearestNote(grid, 126.0) == std::pair<String, int> {"A5", 0});
+            expect(getNearestNote(grid, 254.0) == std::pair<String, int> {"A4", -14}, "a longer period is flat");
+            expect(getNearestNote(grid, 250.0) == std::pair<String, int> {"A4", 14}, "a shorter one sharp");
+            expect(getNearestNote(grid, 8.0).first == "A9", "past the table's top, by octaves: " + getNearestNote(grid, 8.0).first);
+            expect(getNearestNote({}, 252.0).first.isEmpty(), "no tuning, no name");
+
+            expectEquals(marked(formatPsgFrame(frame, 1773400.0, false, grid)),
+                         String::fromUTF8("[A    ]  [ 254]  [436.4Hz]  [A4  -14\xC2\xA2]  15  T--\n"
+                                          "[B    ]  1000  110.8Hz  A2  +14\xC2\xA2  [ 8]  ---\n"
+                                          "[C    ]  4095   27.1Hz  A0  -28\xC2\xA2   0  --[E]\n"
+                                          "[Env  ]   120   57.7Hz  A#1 -16\xC2\xA2  shape [E]\n"
+                                          "Noise     5"));
+        }
+
+        beginTest("The frame hover opens with where the frame is, in each of the timeline's timecodes");
+        {
+            // Frame 75 of a 50 Hz clip at the start of an edit at 120 bpm: a second and a half in, the fourth beat
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            uZX::PsgData data {std::vector<uZX::PsgRegsFrame>(100), {50.0, 1}};
+            data.frames[0] = {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15}, {uZX::PsgRegType::TonePeriodFineA, 252}};
+            data.frames[99] = {{uZX::PsgRegType::VolumeA, 0}};
+            auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                          {{te::TimePosition(), te::TimeDuration::fromSeconds(2.0)}, {}});
+            const auto runs = describePsgClipFrame(*clip, te::TimePosition::fromSeconds(1.505), false);
+            String header;
+            for (const auto& [text, colour] : runs) {
+                if (text == "\n")
+                    break;
+                header << (colour == Colors::Theme::textPrimary ? "[" + text + "]" : text);  // values bright, names dimmed
+            }
+            expectEquals(header, String("Time   [00:01:25]   Frame [75]   Bar [1.4.00]"));
+            expect(describePsgClipFrame(*clip, te::TimePosition::fromSeconds(-1.0), false).empty(), "before the clip's first frame");
+        }
+
         beginTest("Frame hover lists the timers running at the frame: what each drives, its pitch, duty and values");
         {
             juce::ValueTree clipState {"PSGCLIP"};
@@ -477,25 +516,38 @@ public:
 
             expectEquals(marked(formatTimerFrame(timers, 9, 0, 1773400.0, false)), String(), "no timer runs yet");
             expectEquals(marked(formatTimerFrame(timers, 10, 0, 1773400.0, false)),
-                         String("[T1   ]  [start]  [249.6Hz]  [duty 50%]  base 222\n"
-                                "       A vol      lane 0: 15 9"));
+                         String("[T1   ]  [start]  [249.6Hz]  [duty 50%]\n"
+                                "       interval          222\n"
+                                "       A vol     lane 0   15    9"));
             expectEquals(marked(formatTimerFrame(timers, 15, 0, 1773400.0, false)),
-                         String("T1            249.6Hz  duty 50%  base 222\n"
-                                "       A vol      lane 0: 15 9\n"
-                                "T2            499.3Hz  base 222\n"
-                                "       env shape  = 12"));
+                         String("T1            249.6Hz  duty 50%\n"
+                                "       interval          222\n"
+                                "       A vol     lane 0   15    9\n"
+                                "T2            499.3Hz\n"
+                                "       interval   222\n"
+                                "       env shape   12"));
             expectEquals(marked(formatTimerFrame(timers, 20, 0, 1773400.0, true)),
-                         String("[T1   ]  [mod  ]  [554.2Hz]  [duty 50%]  base 0064\n"
-                                "       A vol      lane 0: 0F 09\n"
-                                "T2            499.3Hz  base 00DE\n"
-                                "       env shape  = 0C"));
+                         String("[T1   ]  [mod  ]  [554.2Hz]  [duty 50%]\n"
+                                "       interval          0064\n"
+                                "       A vol     lane 0    0F    09\n"
+                                "T2            499.3Hz\n"
+                                "       interval   00DE\n"
+                                "       env shape    0C"));
             const auto runs = formatTimerFrame(timers, 15, 0, 1773400.0, false);
             expect(runs.front().second == Colors::PSG::A.withMultipliedAlpha(0.5f), "a timer on A's volume is in A's colour");
             expect(runs.back().second == Colors::PSG::Env.withMultipliedAlpha(0.5f), "one on the envelope's shape in the envelope's");
             expectEquals(marked(formatTimerFrame(timers, 15, 11, 1773400.0, false)),
-                         String("T2            499.3Hz  base 222\n"
-                                "       env shape  = 12"),
+                         String("T2            499.3Hz\n"
+                                "       interval   222\n"
+                                "       env shape   12"),
                          "a timer started before the clip's first played frame is not playing");
+
+            // With the clip's tuning, the timer's pitch is named too: a repeat of 3552 cycles is a tone of period 222,
+            // and the grid's B4 is 224
+            const auto grid = makeEqualTemperamentGrid(440.0, 1773400.0);
+            expect(marked(formatTimerFrame(timers, 15, 11, 1773400.0, false, grid)).startsWith(
+                       String::fromUTF8("T2            499.3Hz  B4 +16\xC2\xA2\n")),
+                   marked(formatTimerFrame(timers, 15, 11, 1773400.0, false, grid)));
         }
 
         beginTest("A timer is drawn as a note at the pitch of what it writes, from its start to its stop, in its channel's colour");
@@ -561,6 +613,29 @@ public:
                     }
             expect(envelopeHue, "a timer on the envelope's shape is in the envelope's colour");
             expect(toTheEnd, "a timer nothing stops runs to the clip's end");
+        }
+
+        // To look at the frame hover on a real tune, the TAYM repository's example:
+        //     UZX_SNAPSHOT_FRAME_HOVER=<file.png> uZXTests PsgClipPainting
+        // UZX_SNAPSHOT_FRAME=<n> picks the frame (3072: a timer on two registers); a second file, -hex, has hex values.
+        if (const juce::File out(juce::SystemStats::getEnvironmentVariable("UZX_SNAPSHOT_FRAME_HOVER", {})); out != juce::File()) {
+            juce::MemoryBlock bytes;
+            juce::File(UZX_TAYM_EXAMPLES_DIR).getChildFile("atarized.taym").loadFileAsData(bytes);
+            if (const auto tune = uZX::readTaymModule(bytes)) {
+                auto edit = te::Edit::createSingleTrackEdit(engine);
+                auto data = tune->chips[0];
+                auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                              {{te::TimePosition(), te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
+                clip->getTimers().set(tune->timers[0].bank, 0, tune->timers[0].events, nullptr);
+                const int frame = juce::SystemStats::getEnvironmentVariable("UZX_SNAPSHOT_FRAME", "3072").getIntValue();
+                for (bool hex : {false, true}) {
+                    const auto hover = createPsgFrameHover(describePsgClipFrame(*clip, te::TimePosition::fromSeconds((frame + 0.25) / 50.0), hex));
+                    const auto file = hex ? out.getSiblingFile(out.getFileNameWithoutExtension() + "-hex.png") : out;
+                    file.deleteFile();
+                    juce::FileOutputStream stream(file);
+                    juce::PNGImageFormat().writeImageToStream(hover->createComponentSnapshot(hover->getLocalBounds(), true, 2.0f), stream);
+                }
+            }
         }
 
         beginTest("A held note has no seams between frames at a fractional frame width");

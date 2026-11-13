@@ -369,6 +369,54 @@ public:
             expectEquals(playFor(0.1), 3, "landed inside the timer's run, the timer is silent");
             transport.stop(false, false);
         }
+
+        // To listen to the example tune as the engine plays it:
+        //     UZX_RENDER_TAYM_TO=<file.wav> uZXTests TaymImport
+        // UZX_RENDER_TAYM_SECONDS=<n> sets how much of it (30); UZX_RENDER_TAYM_TIMERS=0 leaves the timers out.
+        if (const juce::File wavFile(juce::SystemStats::getEnvironmentVariable("UZX_RENDER_TAYM_TO", {})); wavFile != juce::File())
+            renderExample(engine, wavFile);
+    }
+
+private:
+    void renderExample(te::Engine& engine, const juce::File& wavFile) {
+        juce::MemoryBlock bytes;
+        exampleTune().loadFileAsData(bytes);
+        const auto tune = readTaymModule(bytes);
+        if (! tune)
+            return;
+        const double seconds = juce::SystemStats::getEnvironmentVariable("UZX_RENDER_TAYM_SECONDS", "30").getDoubleValue();
+        const bool withTimers = juce::SystemStats::getEnvironmentVariable("UZX_RENDER_TAYM_TIMERS", "1").getIntValue() != 0;
+
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        auto* track = te::getAudioTracks(*edit)[0];
+        auto data = tune->chips[0];
+        const auto clip = PsgClip::insertTo(*track, data, {{te::TimePosition(), te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
+        if (withTimers)
+            clip->getTimers().set(tune->timers[0].bank, tune->timers[0].chipIndex, tune->timers[0].events, nullptr);
+        auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+        track->pluginList.insertPlugin(plugin, 0, nullptr);
+        engine.getDeviceManager().dispatchPendingUpdates();
+        edit->dispatchPendingUpdatesSynchronously();
+
+        constexpr int blockSize = 512;
+        const double sampleRate = engine.getDeviceManager().getSampleRate();
+        const int blocks = int(seconds * sampleRate / blockSize);
+        juce::AudioBuffer<float> all(2, blocks * blockSize), block(2, blockSize);
+        juce::MidiBuffer midi;
+        edit->getTransport().setPosition(te::TimePosition());
+        edit->getTransport().play(false);
+        for (int i = 0; i < blocks; ++i) {
+            block.clear();
+            engine.getDeviceManager().getHostedAudioDeviceInterface().processBlock(block, midi);
+            for (int ch = 0; ch < 2; ++ch)
+                all.copyFrom(ch, i * blockSize, block, ch, 0, blockSize);
+        }
+        edit->getTransport().stop(false, false);
+        wavFile.deleteFile();
+        juce::WavAudioFormat wav;
+        if (std::unique_ptr<juce::AudioFormatWriter> writer {
+                wav.createWriterFor(new juce::FileOutputStream(wavFile), sampleRate, 2, 16, {}, 0)})
+            writer->writeFromAudioSampleBuffer(all, 0, all.getNumSamples());
     }
 };
 

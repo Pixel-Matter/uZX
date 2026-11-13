@@ -176,6 +176,9 @@ private:
     int renderTo(const te::PluginRenderContext& fc, int from, int to);
     /** Renders up to the last of the timers' writes before sample `to`, and returns where that is. */
     int renderTimerWrites(const te::PluginRenderContext& fc, int from, int to);
+    /** Writes the timers' writes before `cycle` to the chip where it is rendered up to. */
+    void writeTimersBefore(uint64_t cycle);
+    void writeTimerRegister(const TaymTimerWrite&) noexcept;
     /** Stops the timers and forgets what their controllers held. */
     void resetTimers() noexcept;
     /** The chip's clock in whole Hz, as chip time counts it. */

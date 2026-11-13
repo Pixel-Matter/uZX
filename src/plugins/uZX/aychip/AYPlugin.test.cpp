@@ -665,6 +665,38 @@ public:
             expect(held == 15 || held == 9, "the chip holds one of the timer's values");
         }
 
+        beginTest("An expiry in a frame's sample but before its cycle comes first: it keeps the interval it had");
+        {
+            // The timer's fifth expiry is at cycle 17760, in sample 442, whose frame is at cycle 17774. That
+            // frame changes the base to 100: the expiry at 17760 was before it, so the next one is a whole old
+            // interval on, at 21312, and only the ones after that are 1600 cycles apart
+            const ChipTime time {1773400, 44100};
+            expect(time.sampleAt(17760) == 442 && time.cycleAt(442) > 17760, "the case this test is about");
+            TaymMods faster {};
+            faster.command = TAYM_CMD_MODULATE;
+            faster.base_timer_value = 100;
+            faster.timer_lane_ref = TAYM_TLAN_UNCHANGED;
+
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.timer(442.0 / Rig::sampleRate, 0, faster);
+            const auto out = rig.render({2048});
+
+            std::vector<uint64_t> expiries;
+            for (uint64_t cycle = 0; cycle <= 21312; cycle += 3552)
+                expiries.push_back(cycle);
+            for (uint64_t cycle = 21312 + 1600; time.sampleAt(cycle) < 2048; cycle += 1600)
+                expiries.push_back(cycle);
+            Rig frames(engine);
+            frames.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            for (size_t k = 0; k < expiries.size(); ++k)
+                frames.frame(static_cast<double>(time.sampleAt(expiries[k])) / Rig::sampleRate,
+                             {{PsgRegType::VolumeA, static_cast<uint8_t>(k % 2 == 0 ? 15 : 9)}});
+            expect(frames.render({2048}) == out);
+        }
+
         beginTest("The audio is the same however the time is cut into blocks");
         {
             const auto play = [&](std::vector<int> blocks) {

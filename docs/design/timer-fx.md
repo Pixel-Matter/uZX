@@ -30,6 +30,10 @@ The engine itself is TAYM's: `taym_timers.c` is chip-agnostic and reports raw ta
 
 So a timer started in a frame writes first at that frame's sample, and its later writes are whole intervals on in cycles, however the host cuts time into blocks. The tests pin both: a timer's writes sound bit for bit as frames at the same samples do, and one block, ragged blocks and 32-sample blocks render the same audio.
 
+A sample is some forty cycles, so a timer can expire in a frame's sample but before the frame's cycle. That expiry is written first (`AYChipPlugin::writeTimersBefore`), as it comes first in the chip's time: it takes its next interval from the values it had, not from those the frame's command brings. Applied the other way round, a timer drifts a few samples off at every such frame.
+
+To hear a whole tune as the engine plays it, or to compare it with TAYM's Python reference render: `UZX_RENDER_TAYM_TO=<file.wav> uZXTests TaymImport` renders the repository's example tune.
+
 A timer's rate is in the chip's clock, so the chip's clock setting changes its pitch as it would on hardware; a rate given in Hz stays in Hz. Changing the clock stops the timers.
 
 The chip's output filter delays every write alike by about a dozen samples. That is the emulator's, and applies to frames as well.

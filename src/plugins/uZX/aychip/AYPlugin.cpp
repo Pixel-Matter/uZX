@@ -159,11 +159,16 @@ void AYChipPlugin::updateChip() noexcept {
     }
     if (hasRegisters || ! timerDecoder.isEmpty()) {
         // The frame takes effect at the sample rendered up to: its timers start there, and the registers no
-        // timer owns are written
+        // timer owns are written. A sample is some forty of the chip's cycles, and a timer can expire in this
+        // one before the frame's cycle: that expiry comes first, as it does in the chip's time, so that it
+        // takes its next interval from the values the frame is about to change
+        const auto cycle = chipTime.cycleAt(samplesRendered);
+        if (! timers.isIdle())
+            writeTimersBefore(cycle);
         if (const auto bank = timerDecoder.takeBank())
             timers.setBank(TimerBankRegistry::getInstance().find(*bank));
         timers.applyFrame(timerDecoder.takeCommands(), hasRegisters ? frameDecoder.takeRegisters() : PsgRegsFrame {},
-                          chipTime.cycleAt(samplesRendered), *chip);
+                          cycle, *chip);
     }
 
     // Apply channel and effect filters directly to chip registers
@@ -265,13 +270,27 @@ int AYChipPlugin::renderTimerWrites(const te::PluginRenderContext& fc, int from,
                 renderChannels(fc, position, at);
                 position = at;
             }
-            chip->setRegister(write.target, static_cast<unsigned char>(write.value));
-            // A mute holds over the registers as written: a write to the mixer or a volume would undo it
-            if (write.target >= 7 && write.target <= 10)
-                channelMuter.applyToChip(*chip);
+            writeTimerRegister(write);
         }
     }
     return position;
+}
+
+void AYChipPlugin::writeTimersBefore(uint64_t cycle) {
+    const bool ym = staticParams.chipType.getStoredValue() == TypeEnum::YM;
+    for (bool more = true; more;) {
+        std::span<const TaymTimerWrite> writes;
+        more = timers.collect(cycle, ym, writes);
+        for (const auto& write : writes)
+            writeTimerRegister(write);
+    }
+}
+
+void AYChipPlugin::writeTimerRegister(const TaymTimerWrite& write) noexcept {
+    chip->setRegister(write.target, static_cast<unsigned char>(write.value));
+    // A mute holds over the registers as written: a write to the mixer or a volume would undo it
+    if (write.target >= 7 && write.target <= 10)
+        channelMuter.applyToChip(*chip);
 }
 
 PsgRegsFrame AYChipPlugin::getChipRegisters() const {

@@ -7,6 +7,7 @@
 #include "TuningPickerComponent.h"
 #include "../common/LookAndFeel.h"
 #include "../../formats/psg/PsgData.h"
+#include "../../models/TimerTestBank.h"
 
 namespace MoTool {
 
@@ -459,6 +460,43 @@ public:
         const auto unchangedB = std::find_if(runs.begin(), runs.end(), [] (const auto& run) { return run.first == "1000"; });
         expect(unchangedB != runs.end() && unchangedB->second == Colors::PSG::B.withMultipliedAlpha(0.5f),
                "Unchanged values use the half-alpha legend colour");
+
+        beginTest("Frame hover lists the timers running at the frame: what each drives, its pitch, duty and values");
+        {
+            juce::ValueTree clipState {"PSGCLIP"};
+            ClipTimers timers {clipState};
+            TaymMods faster {};
+            faster.command = TAYM_CMD_MODULATE;
+            faster.base_timer_value = 100;
+            faster.timer_lane_ref = TAYM_TLAN_UNCHANGED;
+            timers.set(Tests::makeTestTaym(), 0, {
+                {10, 0, Tests::timerStart(222, 0)},   // R8 from lane 0 (15, 9): 3552 cycles an expiry
+                {12, 1, Tests::timerStart(222, 4)},   // R13, always 0x0C
+                {20, 0, faster},
+            }, nullptr);
+
+            expectEquals(marked(formatTimerFrame(timers, 9, 0, 1773400.0, false)), String(), "no timer runs yet");
+            expectEquals(marked(formatTimerFrame(timers, 10, 0, 1773400.0, false)),
+                         String("[T1   ]  [start]  [249.6Hz]  [duty 50%]  base 222\n"
+                                "       A vol      lane 0: 15 9"));
+            expectEquals(marked(formatTimerFrame(timers, 15, 0, 1773400.0, false)),
+                         String("T1            249.6Hz  duty 50%  base 222\n"
+                                "       A vol      lane 0: 15 9\n"
+                                "T2            499.3Hz  base 222\n"
+                                "       env shape  = 12"));
+            expectEquals(marked(formatTimerFrame(timers, 20, 0, 1773400.0, true)),
+                         String("[T1   ]  [mod  ]  [554.2Hz]  [duty 50%]  base 0064\n"
+                                "       A vol      lane 0: 0F 09\n"
+                                "T2            499.3Hz  base 00DE\n"
+                                "       env shape  = 0C"));
+            const auto runs = formatTimerFrame(timers, 15, 0, 1773400.0, false);
+            expect(runs.front().second == Colors::PSG::A.withMultipliedAlpha(0.5f), "a timer on A's volume is in A's colour");
+            expect(runs.back().second == Colors::PSG::Env.withMultipliedAlpha(0.5f), "one on the envelope's shape in the envelope's");
+            expectEquals(marked(formatTimerFrame(timers, 15, 11, 1773400.0, false)),
+                         String("T2            499.3Hz  base 222\n"
+                                "       env shape  = 12"),
+                         "a timer started before the clip's first played frame is not playing");
+        }
 
         beginTest("A held note has no seams between frames at a fractional frame width");
         {

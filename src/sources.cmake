@@ -135,6 +135,7 @@ set(TEST_SOURCES
 
     models/PsgCC.test.cpp
     models/TimerCC.test.cpp
+    models/ClipTimers.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
     models/PsgRecorder.test.cpp

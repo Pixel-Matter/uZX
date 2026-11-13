@@ -13,6 +13,15 @@ namespace MoTool {
     changed the value. With hex, periods and volumes are zero-padded hex. */
 std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData&, double chipClockHz, bool hex);
 
+/** The frame hover's lines for a clip's timers at a frame, as coloured runs; empty when none runs there.
+    A line for each running timer: what began this stretch of it if it began at this frame (start or mod),
+    the pitch and duty of what it writes, its base value and timer lane; then a line for each register it
+    holds, with the lane or the one value it writes. In the colour of what the timer drives, half-alpha
+    unless its command is at this frame. A timer started before frame `firstPlayed` is left out: a clip
+    trimmed at its start does not play it. */
+std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers&, int frameIndex, int firstPlayed,
+                                                        double chipClockHz, bool hex);
+
 //==============================================================================
 /** A PSG clip's warnings: its fps against the project's, and its tuning's clock against its track's. */
 StringArray getPsgClipWarnings(PsgClip&);

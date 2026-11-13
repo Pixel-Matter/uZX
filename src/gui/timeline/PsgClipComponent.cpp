@@ -197,6 +197,12 @@ te::TimeDuration getClipFrameDuration(const PsgClip& clip) {
     return te::TimeDuration::fromSeconds(1.0 / fps);
 }
 
+/** The first of the clip's frames that plays: 0, or later for a clip trimmed at its start. */
+int getFirstPlayedFrame(const PsgClip& clip) {
+    const auto before = clip.getPosition().getStart() - PsgList::getEditTime(clip, 0);
+    return jmax(0, static_cast<int>(std::ceil(before / getClipFrameDuration(clip) - 1.0e-6)));
+}
+
 }  // namespace
 
 /** x of an edit time in a clip component: the timeline's own x, less the whole-pixel x where
@@ -493,6 +499,83 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
     rowColour = Colors::Theme::textPrimary;
     label("Noise", data.isSet(T::NoisePeriod));
     cell(periods[4], periodWidth, data.isSet(T::NoisePeriod));
+    return runs;
+}
+
+/** The colour of what a timer drives: its channels', else the envelope's, else plain text's. */
+static Colour getTimerColour(const ClipTimers::Span& span) {
+    if (span.channels != 0)
+        return getChannelMaskColor(span.channels);
+    return span.envelope ? Colors::PSG::Env : Colors::Theme::textPrimary;
+}
+
+std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers, int frameIndex, int firstPlayed,
+                                                        double chipClockHz, bool hex) {
+    std::vector<std::pair<String, Colour>> runs;
+    const auto bank = timers.getBank();
+    if (bank == nullptr)
+        return runs;
+    const auto& tables = bank->getTables();
+    const auto number = [hex] (uint32_t value, int hexDigits) {
+        return hex ? String::toHexString(static_cast<int64>(value)).paddedLeft('0', hexDigits).toUpperCase() : String(value);
+    };
+    // A lane's first values: enough to tell a pulse from a wave, not a whole sample
+    const auto values = [&] (uint32_t offset, uint32_t length, uint8_t valueType, int hexDigits) {
+        constexpr uint32_t shown = 8;
+        StringArray out;
+        for (uint32_t i = 0; i < jmin(length, shown); ++i) {
+            const auto index = static_cast<size_t>(offset) + i;
+            const uint32_t value = valueType == TAYM_VT_U8  ? (index < tables.vu08_count ? tables.vu08[index] : 0)
+                                 : valueType == TAYM_VT_U16 ? (index < tables.vu16_count ? tables.vu16[index] : 0)
+                                                            : (index < tables.vu32_count ? tables.vu32[index] : 0);
+            out.add(number(value, hexDigits));
+        }
+        return out.joinIntoString(" ") + (length > shown ? String::fromUTF8(" \xE2\x80\xA6") : String());  // …
+    };
+    static const char* const registerNames[] {"A tone lo", "A tone hi", "B tone lo", "B tone hi", "C tone lo", "C tone hi",
+                                              "noise", "mixer", "A vol", "B vol", "C vol", "env lo", "env hi", "env shape"};
+
+    for (int timer = 0; timer < timers.getNumTimers(); ++timer) {
+        const auto* span = timers.findSpan(timer, frameIndex);
+        if (span == nullptr || span->startedFrame < firstPlayed)
+            continue;
+        const bool here = span->startFrame == frameIndex;
+        const auto colour = getTimerColour(*span);
+        const auto add = [&] (const String& text, bool bright = false) {
+            runs.emplace_back(text, bright ? colour : colour.withMultipliedAlpha(0.5f));
+        };
+        if (! runs.empty())
+            add("\n");
+
+        add(("T" + String(timer + 1)).paddedRight(' ', 5), here);
+        add("  ");
+        add(String(here ? (span->starts ? "start" : "mod") : "").paddedRight(' ', 5), here);
+        if (span->loopCycles > 0.0) {
+            add("  ");
+            add(String(chipClockHz / span->loopCycles, 1) + "Hz", here);
+        }
+        if (span->duty >= 0.0f) {
+            add("  ");
+            add("duty " + String(roundToInt(span->duty * 100.0f)) + "%", here);
+        }
+        add("  base " + number(span->base, 4));
+        if (span->timerLane >= 0 && static_cast<size_t>(span->timerLane) < tables.tlane_count) {
+            const auto& lane = tables.tlanes[span->timerLane];
+            add("  lane " + String(span->timerLane) + ": " + values(lane.value_offset, lane.length, TAYM_VT_U32, 4));
+        }
+        for (size_t i = 0; i < span->numTargets; ++i) {
+            const auto& target = span->targets[i];
+            add("\n       ");
+            add(String(target.id <= 13 ? registerNames[target.id] : target.id == TAYM_TGT_SAMPLE_AMPLITUDE ? "amplitude" : "target")
+                    .paddedRight(' ', 9));
+            if (target.lane >= 0 && static_cast<size_t>(target.lane) < tables.lane_count) {
+                const auto& lane = tables.lanes[target.lane];
+                add("  lane " + String(target.lane) + ": " + values(lane.value_offset, lane.length, lane.value_type, 2));
+            } else {
+                add("  = " + number(target.value, 2));
+            }
+        }
+    }
     return runs;
 }
 
@@ -824,7 +907,20 @@ std::vector<std::pair<String, Colour>> PsgClipComponent::describeFrameAt(int x) 
 
     const double clockHz = getTrackChipClock(*psgClip).value_or(tuningGridClock);
     const bool hex = clip->edit.engine.getPropertyStorage().getPropertiesFile().getBoolValue(hexHoverSetting);
-    return formatPsgFrame(data, clockHz, hex);
+    auto runs = formatPsgFrame(data, clockHz, hex);
+
+    // The clip's timers at the frame under the pointer, which may be a frame the list has nothing stored for
+    if (! psgClip->getTimers().isEmpty()) {
+        const auto frameDuration = getClipFrameDuration(*psgClip);
+        const int frameIndex = frames[i]->getFrameIndex()
+                             + static_cast<int>(std::floor((time - frames[i]->getEditTime(*psgClip)) / frameDuration + 1.0e-6));
+        const auto timerRuns = formatTimerFrame(psgClip->getTimers(), frameIndex, getFirstPlayedFrame(*psgClip), clockHz, hex);
+        if (! timerRuns.empty()) {
+            runs.emplace_back("\n", Colours::transparentBlack);
+            runs.insert(runs.end(), timerRuns.begin(), timerRuns.end());
+        }
+    }
+    return runs;
 }
 
 void PsgClipComponent::showFrameHover() {

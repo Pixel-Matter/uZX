@@ -198,6 +198,25 @@ public:
             expect(sameWrites(played, expected), "every write, at its cycle");
         }
 
+        beginTest("The tune's timers come out as spans with the pitch and duty of what they write");
+        {
+            // Frame 798: timer 0 is modulated to timer lane 34 (166, 428) with R8 from lane 7 (12, 0), and its
+            // timers count the clock in eights: a repeat of 8 * (166 + 428) cycles, 12 for 166 of each 594
+            const auto* span = clip->getTimers().findSpan(0, 798);
+            expect(span != nullptr);
+            if (span != nullptr) {
+                expectEquals(span->startFrame, 798);
+                expectEquals(span->endFrame, 799);
+                expect(! span->starts && span->channels == 1 && span->timerLane == 34);
+                expectWithinAbsoluteError(span->loopCycles, 8.0 * 594.0, 1.0e-9);
+                expectWithinAbsoluteError(double(span->duty), 166.0 / 594.0, 1.0e-6);
+            }
+            size_t spans = 0;
+            for (int timer = 0; timer < clip->getTimers().getNumTimers(); ++timer)
+                spans += clip->getTimers().getSpans(timer).size();
+            expectEquals(spans, size_t {396 + 5401}, "one for every start and modulate");
+        }
+
         beginTest("The timers are in the clip's state: they survive a save and a copy");
         {
             const auto xml = clip->state.toXmlString();

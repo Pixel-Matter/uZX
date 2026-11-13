@@ -140,8 +140,7 @@ void AYPluginUI::ChannelGroup::updateTNEState() {
 // AYScopes
 //==============================================================================
 AYScopes::AYScopes(AYChipPlugin& plugin, Look look) : plugin_(plugin), look_(look) {
-    if (look_.timerSigns)
-        startTimerHz(20);
+    startTimerHz(20);
 
     static const std::array<juce::Colour, 3> colours {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
     static const std::array<const char*, 3> labels {"A", "B", "C"};
@@ -194,14 +193,15 @@ void AYScopes::timerCallback() {
 }
 
 void AYScopes::paintOverChildren(Graphics& g) {
-    if (! look_.timerSigns)
-        return;
+    // Read here, not in the timer: a video frame is painted with no message loop running in between
+    shownTimerSigns_ = findTimerSigns();
     static const std::array<juce::Colour, 3> colours {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};
     for (size_t chan = 0; chan < displays_.size(); ++chan) {
         if ((shownTimerSigns_ & (1u << chan)) == 0)
             continue;
         const bool dimmed = (shownTimerSigns_ & (0x10u << chan)) != 0;
-        drawStopwatch(g, getTimerSignBounds(chan).toFloat(), colours[chan].withAlpha(dimmed ? 0.35f : 1.0f));
+        const auto colour = look_.classic ? Colors::VizClassic::trace : colours[chan];
+        drawStopwatch(g, getTimerSignBounds(chan).toFloat(), colour.withAlpha(dimmed ? 0.35f : 1.0f));
     }
 }
 

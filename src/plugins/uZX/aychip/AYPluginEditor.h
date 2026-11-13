@@ -20,7 +20,8 @@ namespace MoTool::uZX {
 void drawStopwatch(Graphics& g, Rectangle<float> area, Colour colour);
 
 //==============================================================================
-/** The chip's A, B and C oscilloscopes, following its scope settings. */
+/** The chip's A, B and C oscilloscopes, following its scope settings. A stopwatch shows in a scope's corner while a
+    timer drives its channel. */
 class AYScopes : public Component,
                  private juce::Timer
 {
@@ -29,7 +30,6 @@ public:
     {
         bool classic = false;     // white on black with grey rules between, else each in its channel's colour
         bool sideBySide = false;  // A | B | C, else A over B over C
-        bool timerSigns = false;  // a stopwatch in a scope's corner while a timer drives its channel
     };
 
     AYScopes(AYChipPlugin& plugin, Look look);
@@ -155,7 +155,7 @@ private:
 
     std::array<ChannelGroup*, 3> channelGroups { &channelA, &channelB, &channelC };
 
-    AYScopes scopes_ {plugin_, {false, false, true}};
+    AYScopes scopes_ {plugin_, {}};
 
     // Shown at the right of the chip row while the chip has timer commands it could not play
     Label timerWarning_;

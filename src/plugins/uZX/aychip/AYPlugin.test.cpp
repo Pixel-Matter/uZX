@@ -934,9 +934,9 @@ public:
                     scopes = found;
             expect(scopes != nullptr);
             // True if the sign's place on a channel's scope has pixels of the channel's colour that bright
-            const auto signShown = [&] (size_t chan, Colour colour, float minBrightness) {
-                const auto image = panel.createComponentSnapshot(panel.getLocalBounds(), true, 1.0f);
-                const auto area = scopes->getTimerSignBounds(chan) + scopes->getPosition();
+            const auto signShownIn = [] (Component& root, AYScopes& in, size_t chan, Colour colour, float minBrightness) {
+                const auto image = root.createComponentSnapshot(root.getLocalBounds(), true, 1.0f);
+                const auto area = in.getTimerSignBounds(chan) + (&in == &root ? Point<int>() : in.getPosition());
                 for (int y = area.getY(); y < area.getBottom(); ++y)
                     for (int x = area.getX(); x < area.getRight(); ++x)
                         if (const auto pixel = image.getPixelAt(x, y);
@@ -944,6 +944,9 @@ public:
                             && pixel.getBrightness() >= minBrightness)
                             return true;
                 return false;
+            };
+            const auto signShown = [&] (size_t chan, Colour colour, float minBrightness) {
+                return signShownIn(panel, *scopes, chan, colour, minBrightness);
             };
 
             pump();
@@ -961,6 +964,12 @@ public:
                 pump();
                 expect(signShown(0, Colors::PSG::A, 0.6f), "a stopwatch on A's scope, in A's colour");
                 expect(! signShown(1, Colors::PSG::B, 0.3f), "none on B's");
+
+                // Viz mode's scopes, painted as a video frame is: with no message loop run since they were made
+                AYScopes viz {rig.chip(), {.sideBySide = true}};
+                viz.setSize(600, 120);
+                expect(signShownIn(viz, viz, 0, Colors::PSG::A, 0.6f), "Viz mode's scopes show it too");
+                expect(! signShownIn(viz, viz, 1, Colors::PSG::B, 0.3f), "and none on B's there");
 
                 rig.chip().channelMuter.getTimersParam(0).setStoredValue(false);
                 rig.render({512});

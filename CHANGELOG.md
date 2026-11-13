@@ -16,6 +16,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Timeline
 - Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format
 - `X` restores the previous timeline position and zoom; wheel/pinch gestures and drags each return in one step, separately from edit undo
+- Fixed: in the seconds and frames timecode formats, frame ticks are evenly spaced at every frame rate: 24 and 48 fps step in 6 and 12 frames instead of 5 and 10, and 25 fps skips the 2-frame step
+- Fixed: at 200 fps, Minutes:Seconds:Frames labels keep three frame digits (`00:01:005`) instead of widening partway through each second
 
 ### Video and Viz mode
 - Render Video has a **Zoom** choice: as on screen, or Frames, Groove Rows, Beats or Bars

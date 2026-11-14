@@ -105,10 +105,8 @@ void PlayerDocumentComponent::paint(Graphics& g) {
 
 void PlayerDocumentComponent::resized() {
     auto r = getLocalBounds();
-    static constexpr int transportBarHeight = 40;
-
     if (transportBar_.isVisible())
-        transportBar_.setBounds(r.removeFromTop(transportBarHeight));
+        transportBar_.setBounds(r.removeFromTop(TransportBar::height));
     editComponent_.setBounds(r.withTrimmedLeft(8));
     if (vizHint_ != nullptr)
         vizHint_->setTopLeftPosition((getWidth() - vizHint_->getWidth()) / 2, 24);

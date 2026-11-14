@@ -35,8 +35,10 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: at 200 fps, Minutes:Seconds:Frames labels keep three frame digits (`00:01:005`) instead of widening partway through each second
 
 ### Transport
-- The transport buttons are square, with drawn icons that look alike on macOS, Windows and Linux, instead of text symbols that Windows showed as colour emoji; so are the power and menu buttons of a device's title bar
+- The transport buttons are larger and square. They and the power and menu buttons of a device's title bar have drawn icons that look alike on macOS, Windows and Linux, instead of text symbols that Windows showed as colour emoji
 - A Loop button in the transport bar turns looping on or off, as `Cmd+L` does, and is lit while looping
+- The transport bar's labels are small and grey, so its values and buttons stand out, and the transport buttons sit in the middle of the bar; in a narrow window, play/pause and the position stay clear of the level meters
+- Play/Pause is lit while playing
 
 ### Video and Viz mode
 - Render Video has a **Zoom** choice: as on screen, or Frames, Groove Rows, Beats or Bars

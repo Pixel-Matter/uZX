@@ -48,6 +48,12 @@ public:
     explicit TransportBar(EditViewState& evs, TransportBarOptions opts = {});
     ~TransportBar() override;
 
+    /** Sizes and gaps are on a 4 px grid. The transport buttons fill the bar's height inside the margin;
+        readouts and meters are shorter. */
+    static constexpr int grid = 4;
+    static constexpr int margin = 2 * grid, buttonSize = 8 * grid, readoutHeight = 6 * grid;
+    static constexpr int height = buttonSize + 2 * margin;
+
     void paint(Graphics& g) override;
     void resized() override;
     void mouseDown(const MouseEvent&) override;
@@ -71,8 +77,8 @@ private:
     TextButton autoReadButton_  { "Read" },
                autoWriteButton_ { "Write" };
 
-    // Readout group: value box + adjacent unit label, laid out as
-    //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ 7 6 7 6 ] GRV   [ 4/4 ] SIG
+    // Readouts: a value box and its unit label, laid out with the transport buttons in the middle as
+    //   [ 125.00 ] bpm  [ 50 ] fps  [ 24 ] fpb  [ 6 6 6 6 ] groove  [ 4/4 ] sig   (buttons)   pos [ 5.2.12 ]
     EditableReadout bpmControl_;
     EditableReadout fpbControl_;
     Label fpsLabel_;        // click opens a popup of allowed rates
@@ -80,7 +86,7 @@ private:
     Label timeSigLabel_;    // editable: "3/4", "6/8" or a bare numerator
     Label bpmUnitLabel_, fpsUnitLabel_, fpbUnitLabel_, divUnitLabel_, sigUnitLabel_;
 
-    Label posLabel_;          // "Pos" prefix, left of the editable position box
+    Label posLabel_;          // "pos" prefix, left of the editable position box
     Label transportReadout_;  // editable timecode; committing it seeks the transport
     Label automationLabel_;
     te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};

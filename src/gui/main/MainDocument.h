@@ -32,8 +32,7 @@ public:
 
     void resized() override {
         auto r = getLocalBounds();
-        auto transportBarHeight = 40;
-        transportBar_.setBounds(r.removeFromTop(transportBarHeight));
+        transportBar_.setBounds(r.removeFromTop(TransportBar::height));
         editComponent_.setBounds(r);
     }
 

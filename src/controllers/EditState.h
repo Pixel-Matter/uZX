@@ -23,6 +23,7 @@ namespace IDs
     DECLARE_ID(viewStartTime)
     DECLARE_ID(viewTimePerPixel)
     DECLARE_ID(viewY)
+    DECLARE_ID(followPlayback)
 
     DECLARE_ID(VIEWSTATE)
     DECLARE_ID(height)
@@ -121,9 +122,15 @@ public:
         and the view follows it as it does in playback. Tells the listeners at once. */
     void showOfflineFrame(te::TimePosition pos);
 
-    /** While playing, unless the user holds or has just scrolled the view, and in offline frames:
-        the view keeps the playhead in its left third, scrolling by whole pixels. */
+    /** While playing with Follow on or forced, unless the user holds or has just scrolled the view, and
+        in offline frames: the view keeps the playhead in its left third, scrolling by whole pixels. */
     bool isFollowingPlayhead() const;
+
+    /** Follow: whether playback scrolls the view. Saved with the edit; on by default. */
+    bool followsPlayback() const { return followPlayback.get(); }
+    void setFollowsPlayback(bool shouldFollow) { followPlayback = shouldFollow; }
+    /** Viz mode: playback scrolls the view whatever Follow says. Not saved. */
+    void setFollowForced(bool forced) { followForced = forced; }
 
     /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
     void beginDrag();
@@ -137,6 +144,7 @@ private:
     CachedValue<te::TimePosition> viewStartTime;
     CachedValue<te::TimeDuration> viewTimePerPixel;
     CachedValue<double> viewY;
+    CachedValue<bool> followPlayback;
     ListenerList<Listener> listeners;
 
     // transient state
@@ -144,6 +152,7 @@ private:
 
     bool updateViewRange = false, updatePlayhead = false;
     bool userDraggingView = false;
+    bool followForced = false;
     uint32 lastWheelScrollMs = 0;
     static constexpr uint32 wheelFollowPauseMs = 1000;
     te::TimePosition dragStartViewStart;

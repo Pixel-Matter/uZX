@@ -28,6 +28,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - `X` restores the previous timeline position and zoom; wheel/pinch gestures and drags each return in one step, separately from edit undo
 - **Loop range** on the ruler, in Player and Studio: the ruler's lower half shows it, lit while looping; drag there to set a range, drag an edge or the range to change it (snapped to the grid, or to frames with `Cmd`), double-click to loop on or off. `Cmd+L` loops this range instead of the whole project
 - The loop range covers the whole project, following its end, until you set another one; it is saved with the project
+- **Follow** (`Cmd+Shift+F`, in the Transport and ruler menus) turns off the view following the playhead during playback; it is saved with the project. Viz mode and Render Video always follow
 - Fixed: in the seconds and frames timecode formats, frame ticks are evenly spaced at every frame rate: 24 and 48 fps step in 6 and 12 frames instead of 5 and 10, and 25 fps skips the 2-frame step
 - Fixed: a click in a clip's body only moves the playhead; only its header selects the clip
 - Fixed: the PSG frame hover stays open while Shift, Ctrl, Option or Cmd is pressed, so a screenshot shortcut can capture it

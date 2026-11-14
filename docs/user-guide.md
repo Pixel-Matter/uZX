@@ -85,7 +85,7 @@ Clips in the Player have no header: the notes take the whole track. A clip's war
 
 **Loop range.** The lower half of the ruler is the loop strip. It shows the loop range as a band with a triangle at each end, lit while looping is on (`Cmd+L`, or **Loop** in the Transport menu) and dim while it is off; with looping on, playback repeats the range, and when it starts before the range it plays into it first. Drag on the strip outside the range to set a new one, drag an edge to move it, or drag the range to move it whole; edges snap to the grid, or to single frames while you hold `Cmd`. Double-click the strip to turn looping on or off. A click on the strip moves the playhead, as anywhere on the ruler. The range covers the whole project, and follows its end as clips change, until you set another one; a tracker module that loops back past its start sets it from its loop to its end. The range and whether looping is on are saved with the project.
 
-Scroll with the scrollbar under the tracks, the wheel, or by dragging the upper half of the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel.
+Scroll with the scrollbar under the tracks, the wheel, or by dragging the upper half of the ruler; zoom with the wheel, the ruler, or `=` and `-` (see [Keyboard and Mouse](#keyboard-and-mouse)). During playback the view follows the playhead, except while you drag the ruler, the scrollbar, the playhead, or the tracks with the middle button, and for a second after you scroll with the wheel. **Follow** in the Transport menu or the ruler's right-click menu (`Cmd+Shift+F`) turns following off, so the view stays where you put it while the tune plays; it is on by default and saved with the project.
 
 **View → Zoom**, or **Zoom** in the ruler or PSG clip context menu, offers **Frames**, **Groove Rows**, **Beats** and **Bars**, plus fit, previous zoom and zoom in/out. The four levels give one frame, an average groove row, a beat or a bar 16 pixels, using the tempo and meter at the playhead. Without a subdivision pattern, Groove Rows uses a quarter beat. The scale is the same in musical, seconds and frames timecode formats; the visible grid and snap spacing can differ.
 
@@ -93,7 +93,7 @@ Scroll with the scrollbar under the tracks, the wheel, or by dragging the upper 
 
 ### Viz Mode
 
-**View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden, and so are tracks without clips. `Space` still plays and pauses, and the view follows the playhead. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
+**View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden, and so are tracks without clips. `Space` still plays and pauses, and the view follows the playhead, even with **Follow** off. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
 
 Each chip has a row of its own, in track order, and two keys arrange the rows:
 
@@ -358,6 +358,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Home` or `Cmd+Left` | Rewind to start | Player, Studio |
 | `End` or `Cmd+Right` | Jump to end | Player, Studio |
 | `Cmd+L` | Loop on / off: playback repeats the loop range on the ruler | Player, Studio |
+| `Cmd+Shift+F` | Follow on / off: playback scrolls the view to the playhead | Player, Studio |
 | `=` or `+` | Zoom in around the playhead | Player, Studio |
 | `-` | Zoom out around the playhead | Player, Studio |
 | `Cmd+1` | Zoom to Frames (16 px per frame) | Player, Studio |
@@ -406,7 +407,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Cmd+Wheel` | Ruler, tracks or scrollbar | Zoom around the mouse pointer, or around the playhead while it is followed |
 | Pinch | Ruler, tracks or scrollbar | Same as `Cmd+Wheel` |
 | Wheel | Tracks (Studio) | Scroll tracks vertically |
-| Right-click | Ruler | Zoom, timecode format, and snap options |
+| Right-click | Ruler | Zoom, timecode format, Follow, and snap options |
 | `Option`+click | A, B or C button of an AY chip | Solo the channel, a muted one too, or unsolo it (emerald when soloed); while any channel is soloed, on any chip, only soloed ones play. A plain click turns a soloed or muted channel back on |
 | Right-click | Knob, slider, or switch (Studio) | MIDI mapping: learn a controller, pick a CC, or clear it |
 | Right-click | PSG clip | Notes / Registers view, note lanes, piano keys, hex values on hover, the tune's frame rate, tuning table and key picker |

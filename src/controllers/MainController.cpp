@@ -384,6 +384,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addCommandItem(&commandManager_, MainAppCommands::transportToStart);
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::transportLoop);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportFollow);
         } else if (menuName == "View") {
             menu.addSubMenu("Zoom", MainAppCommands::createZoomMenu(&commandManager_, false));
             menu.addSeparator();
@@ -528,6 +529,13 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
         case MainAppCommands::transportLoop:
             result.setTicked(edit != nullptr && edit->getTransport().looping);
             break;
+
+        case MainAppCommands::transportFollow: {
+            auto* view = controller.getEditViewState();
+            result.setActive(view != nullptr);
+            result.setTicked(view != nullptr && view->zoom.followsPlayback());
+            break;
+        }
 
         case MainAppCommands::transportPreservePsgTiming:
             if (auto* editViewState = MoToolApp::getArrangerController().getEditViewState()) {
@@ -718,6 +726,13 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::transportLoop:
             te::AppFunctions::toggleLoop();
+            break;
+
+        case MainAppCommands::transportFollow:
+            if (auto* view = MoToolApp::getActiveController().getEditViewState()) {
+                view->zoom.setFollowsPlayback(! view->zoom.followsPlayback());
+                commandManager_.commandStatusChanged();
+            }
             break;
 
         case MainAppCommands::transportPreservePsgTiming:

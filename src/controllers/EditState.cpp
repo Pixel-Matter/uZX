@@ -29,6 +29,7 @@ ZoomViewState::ZoomViewState(te::Edit& e, ValueTree s)
     viewStartTime.referTo(state, IDs::viewStartTime, nullptr, 0s);
     viewTimePerPixel.referTo(state, IDs::viewTimePerPixel, nullptr, 60s / (double) viewWidthPx.load());
     viewY.referTo(state, IDs::viewY, nullptr, 0);
+    followPlayback.referTo(state, IDs::followPlayback, nullptr, true);
     edit.getTransport().state.addListener(this);
     edit.getTransport().addListener(this);
     state.addListener(this);
@@ -341,7 +342,7 @@ bool ZoomViewState::isFollowingPlayhead() const {
     if (offlineFrames)
         return true;  // as in playback, which lets clips scroll their cached content
     auto& transport = edit.getTransport();
-    return (transport.isPlaying() || transport.isRecording()) && !userDraggingView
+    return (followPlayback.get() || followForced) && (transport.isPlaying() || transport.isRecording()) && !userDraggingView
         && Time::getMillisecondCounter() - lastWheelScrollMs >= wheelFollowPauseMs;
 }
 
@@ -442,6 +443,7 @@ void EditViewState::showAsPlayer(bool viz, VizOptions options) {
     showHeaders = false;
     showClipHeaders = false;
     vizMode = viz;
+    zoom.setFollowForced(viz);  // Viz mode is for watching the tune play
     vizOptions = options;
     showFooters = ! viz || options.showsScopes();
 }

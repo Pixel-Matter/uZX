@@ -44,6 +44,7 @@ public:
         transportToEnd,
         transportLoop,
         transportPreservePsgTiming,
+        transportFollow,
 
         // Add Menu
         addAudioTrack        = 300,
@@ -97,7 +98,7 @@ public:
             fileSave, fileSaveAs, fileReveal, fileImportPsg, fileImportAudio, fileQuit, fileRenderVideo,
             editUndo, editRedo, editDelete,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
-            transportPreservePsgTiming,
+            transportPreservePsgTiming, transportFollow,
             addAudioTrack,
             // addAutomationTrack,
             trackRenderToAudio, trackRenderToPsg,
@@ -198,6 +199,7 @@ public:
             menu.addCommandItem(manager, MainAppCommands::transportToEnd);
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::transportLoop);
+            menu.addCommandItem(manager, MainAppCommands::transportFollow);
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::transportPreservePsgTiming);
         } else if (menuName == "Add") {
@@ -363,6 +365,11 @@ public:
             case transportLoop:
                 result.setInfo("Loop", "Toggle loop playback", "Transport", 0);
                 result.addDefaultKeypress('l', ModifierKeys::commandModifier);
+                break;
+
+            case transportFollow:
+                result.setInfo("Follow", "Scroll the view to keep the playhead in sight during playback", "Transport", 0);
+                result.addDefaultKeypress('f', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
                 break;
 
             case transportPreservePsgTiming:

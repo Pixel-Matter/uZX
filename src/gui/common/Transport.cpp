@@ -53,6 +53,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     addAndMakeVisible(rewindButton_);
     addAndMakeVisible(playPauseButton_);
     addAndMakeVisible(loopButton_);
+    addAndMakeVisible(followButton_);
     addAndMakeVisible(bpmControl_);
     addAndMakeVisible(bpmUnitLabel_);
     addAndMakeVisible(fpsLabel_);
@@ -84,8 +85,11 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         rewindButton_.setCommandToTrigger(mgr, MainAppCommands::transportToStart, true);
         playPauseButton_.setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);
         loopButton_.setCommandToTrigger(mgr, MainAppCommands::transportLoop, true);
+        followButton_.setCommandToTrigger(mgr, MainAppCommands::transportFollow, true);
     }
     loopButton_.setToggleState(transport_.looping, dontSendNotification);
+    viewState_.zoom.addListener(this);
+    followChanged();
 
     if (options_.showRecord) {
         recordButton_.onClick = [this] {
@@ -176,6 +180,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 TransportBar::~TransportBar() {
     fpsLabel_.removeMouseListener(this);
 
+    viewState_.zoom.removeListener(this);
     transport_.removeChangeListener(this);
     transport_.state.removeListener(this);
     edit_.state.removeListener(this);
@@ -233,6 +238,7 @@ void TransportBar::resized() {
     if (options_.showRecord)
         placeButton(recordButton_, w * 2);
     placeButton(loopButton_, w * 2);
+    placeButton(followButton_, w * 2);
 
     // Position readout: "Pos" prefix label, then the editable timecode box.
     posLabel_.setBounds(b.removeFromLeft(static_cast<int>(w * 2)));
@@ -293,6 +299,13 @@ void TransportBar::valueTreeChildRemoved(ValueTree&, ValueTree& child, int) {
 
 void TransportBar::automationModeChanged() {
     updateAutomationButtons();
+}
+
+void TransportBar::followChanged() {
+    const auto& zoom = viewState_.zoom;
+    followButton_.setToggleState(zoom.followsPlayback(), dontSendNotification);
+    followButton_.setColour(TextButton::buttonOnColourId,
+                            zoom.isFollowSuspended() ? Colors::Theme::primary.withAlpha(0.35f) : Colors::Theme::primary);
 }
 
 void TransportBar::updatePlayButtonText(bool isPlaying) {

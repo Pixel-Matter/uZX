@@ -42,6 +42,7 @@ struct TransportBarOptions {
 class TransportBar  : public Component,
                       private ValueTree::Listener,
                       private ChangeListener,
+                      private ZoomViewState::Listener,
                       private tracktion::AutomationRecordManager::Listener
 {
 public:
@@ -69,6 +70,7 @@ private:
        playPauseButton_ { "▶"_u },
        recordButton_    { "⏺"_u },
        loopButton_      { "↻"_u },  // lit while looping
+       followButton_    { "⇢"_u },  // lit while Follow is on, dim while suspended
        autoReadButton_  { "Read" },
        autoWriteButton_ { "Write" };
     //    stepRightButton_ { ">" };
@@ -92,6 +94,8 @@ private:
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;
     void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
     void automationModeChanged() override;
+    void viewRangeChanged() override {}
+    void followChanged() override;
 
     void updatePlayButtonText(bool isPlaying);
     void updateRecordButtonText(bool isRecording);

@@ -30,7 +30,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The loop range covers the whole project, following its end, until you set another one; it is saved with the project
 - With looping on, playback starts at the playhead and goes back to the loop start only from the loop end: from before the loop it plays into it, from after it, or a click there, it plays on to the end
 - Fixed: turning the loop off while stopped at its end no longer moves the playhead to its start
-- **Follow** (`Cmd+Shift+F`, in the Transport and ruler menus) turns off the view following the playhead during playback; it is saved with the project. Viz mode and Render Video always follow
+- **Follow** (the ⇢ button in the transport bar, `Cmd+Shift+F`, or the Transport and ruler menus) turns off the view following the playhead during playback; it is saved with the project. Viz mode and Render Video always follow
+- Scrolling the view by hand during playback suspends following, and dims the Follow button, until playback starts, stops or jumps, or you click the button; it no longer pulls the view back after a second
 - Fixed: in the seconds and frames timecode formats, frame ticks are evenly spaced at every frame rate: 24 and 48 fps step in 6 and 12 frames instead of 5 and 10, and 25 fps skips the 2-frame step
 - Fixed: a click in a clip's body only moves the playhead; only its header selects the clip
 - Fixed: the PSG frame hover stays open while Shift, Ctrl, Option or Cmd is pressed, so a screenshot shortcut can capture it

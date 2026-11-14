@@ -179,17 +179,31 @@ public:
         expectWithinAbsoluteError(zoom.getViewSpan().inSeconds(), 5.0, 1e-9);
         expectWithinAbsoluteError(zoom.timeToX(3_tp), 300.0f, 0.5f);
 
-        beginTest("After a wheel scroll, playback leaves the view alone for a moment, then follows again");
+        beginTest("A wheel scroll during playback suspends following, with Follow on, until a jump");
         MouseWheelDetails wheel {};
         wheel.deltaY = -0.5f;  // 100 px later
         zoom.setRange({100_tp, 10_td});
         zoom.scrollByWheel(wheel);
         expectWithinAbsoluteError(zoom.getStart().inSeconds(), 101.0, 1e-9);
-        transport.setPosition(1_tp);
-        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 101.0, 1e-9);
-        Thread::sleep(1100);
-        transport.setPosition(2_tp);
+        expect(zoom.isFollowSuspended());
+        expect(!zoom.isFollowingPlayhead(), "however long it has been");
+        transport.setPosition(2_tp);  // a seek, as is a loop wrap
+        expect(!zoom.isFollowSuspended());
         expectLessThan(zoom.getStart().inSeconds(), 2.0);
+
+        beginTest("A view drag suspends following; resuming, or stopping, follows again");
+        zoom.beginDrag();
+        zoom.dragBy(500, 100, 0);
+        zoom.endDrag();
+        expect(zoom.isFollowSuspended());
+        zoom.resumeFollow();  // the Follow button
+        expect(zoom.isFollowingPlayhead());
+        zoom.scrollByWheel(wheel);
+        transport.stop(false, false);
+        expect(!zoom.isFollowSuspended());
+        zoom.scrollByWheel(wheel);
+        expect(!zoom.isFollowSuspended(), "stopped, there is nothing to suspend");
+        transport.play(false);
 
         beginTest("With Follow off, playback leaves the view alone unless Viz mode forces it; on again, it follows");
         expect(zoom.followsPlayback(), "on by default");
@@ -201,6 +215,9 @@ public:
         zoom.setFollowForced(true);  // Viz mode
         transport.setPosition(2_tp);
         expectLessThan(zoom.getStart().inSeconds(), 2.0, "forced, it follows with Follow off");
+        zoom.setFollowsPlayback(true);
+        zoom.scrollByWheel(wheel);
+        expect(zoom.isFollowingPlayhead(), "forced, it follows while suspended");
         zoom.setFollowForced(false);
         zoom.setFollowsPlayback(true);
         zoom.setRange({100_tp, 10_td});
@@ -354,7 +371,7 @@ public:
         zoom.zoomAroundX(1.0, 0);
         expect(!zoom.canZoomBack());
 
-        beginTest("Autoscrolling does not add history and back pauses following without seeking");
+        beginTest("Autoscrolling does not add history and back suspends following without seeking");
         zoom.setRange({100_tp, 10_td});
         zoom.zoomToRange({0_tp, 2_td});
         transport.play(false);
@@ -362,8 +379,8 @@ public:
         zoom.zoomBack();
         expectView(100.0, 0.01);
         expect(!zoom.canZoomBack());
-        transport.setPosition(21_tp);
-        expectView(100.0, 0.01);
+        expect(zoom.isFollowSuspended());
+        expectEquals(transport.getPosition().inSeconds(), 20.0);
         transport.stop(false, false);
 
         beginTest("History belongs to a view, not to the saved project");

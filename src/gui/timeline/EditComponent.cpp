@@ -172,6 +172,7 @@ void EditComponent::mouseUp(const MouseEvent&) {
 
 void EditComponent::TimeScrollBar::mouseDown(const MouseEvent& e) {
     zoom.beginDrag();
+    zoom.suspendFollow();  // grabbing the scrollbar takes the view by hand
     ScrollBar::mouseDown(e);
 }
 

@@ -730,7 +730,11 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::transportFollow:
             if (auto* view = MoToolApp::getActiveController().getEditViewState()) {
-                view->zoom.setFollowsPlayback(! view->zoom.followsPlayback());
+                auto& zoom = view->zoom;
+                if (zoom.isFollowSuspended())  // resumes rather than turning Follow off
+                    zoom.resumeFollow();
+                else
+                    zoom.setFollowsPlayback(! zoom.followsPlayback());
                 commandManager_.commandStatusChanged();
             }
             break;

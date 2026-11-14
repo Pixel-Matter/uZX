@@ -50,6 +50,8 @@ public:
         virtual ~Listener() = default;
         virtual void viewRangeChanged() = 0;
         virtual void playheadMoved() {}
+        /** Follow turned on or off, suspended or resumed. */
+        virtual void followChanged() {}
     };
 
     /** Scrolls and zooms by `state`, the edit's ZOOMVIEWSTATE or a copy of it. */
@@ -81,7 +83,7 @@ public:
     void magnifyAroundX(float scale, int anchorX);
     /** Scrolls by pixels, positive towards later times. */
     void scrollBy(double pixels);
-    /** Scrolls by a wheel or swipe, along its dominant axis. Playback does not scroll the view for a moment after. */
+    /** Scrolls by a wheel or swipe, along its dominant axis, and suspends following. */
     void scrollByWheel(const MouseWheelDetails& wheel);
 
     static constexpr auto MinTimePerPixel = te::TimeDuration::fromSeconds(1.0/200.0/32.0);  // 1/200 is min frame
@@ -122,19 +124,26 @@ public:
         and the view follows it as it does in playback. Tells the listeners at once. */
     void showOfflineFrame(te::TimePosition pos);
 
-    /** While playing with Follow on or forced, unless the user holds or has just scrolled the view, and
-        in offline frames: the view keeps the playhead in its left third, scrolling by whole pixels. */
+    /** While playing with Follow on and not suspended, or forced, unless the user holds the view, and in
+        offline frames: the view keeps the playhead in its left third, scrolling by whole pixels. */
     bool isFollowingPlayhead() const;
 
-    /** Follow: whether playback scrolls the view. Saved with the edit; on by default. */
+    /** Follow: whether playback scrolls the view. Saved with the edit; on by default. Setting it resumes. */
     bool followsPlayback() const { return followPlayback.get(); }
-    void setFollowsPlayback(bool shouldFollow) { followPlayback = shouldFollow; }
-    /** Viz mode: playback scrolls the view whatever Follow says. Not saved. */
+    void setFollowsPlayback(bool shouldFollow);
+    /** Viz mode: playback scrolls the view whatever Follow says, suspended or not. Not saved. */
     void setFollowForced(bool forced) { followForced = forced; }
+
+    /** Scrolling the view by hand during playback suspends following, with Follow still on, until playback
+        starts, stops or jumps (a seek or a loop wrap), or resumeFollow(). */
+    void suspendFollow();
+    void resumeFollow();
+    bool isFollowSuspended() const { return followPlayback.get() && followSuspended; }
 
     /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
     void beginDrag();
-    /** Sideways scrolls, vertically zooms around anchorX (down zooms out); deltas are from the drag start. */
+    /** Sideways scrolls, vertically zooms around anchorX (down zooms out); deltas are from the drag start.
+        Suspends following. */
     void dragBy(int anchorX, int deltaX, int deltaY);
     void endDrag();
 
@@ -150,11 +159,9 @@ private:
     // transient state
     std::atomic<int> viewWidthPx = 1024;  // not stored in ValueTree
 
-    bool updateViewRange = false, updatePlayhead = false;
+    bool updateViewRange = false, updatePlayhead = false, updateFollow = false;
     bool userDraggingView = false;
-    bool followForced = false;
-    uint32 lastWheelScrollMs = 0;
-    static constexpr uint32 wheelFollowPauseMs = 1000;
+    bool followForced = false, followSuspended = false;
     te::TimePosition dragStartViewStart;
     te::TimeDuration dragStartTimePerPixel;
     struct ZoomSnapshot

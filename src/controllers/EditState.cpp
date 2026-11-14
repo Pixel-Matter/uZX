@@ -254,7 +254,7 @@ void ZoomViewState::zoomBack() {
         return;
     const auto previous = zoomHistory_.back();
     zoomHistory_.pop_back();
-    lastWheelScrollMs = Time::getMillisecondCounter();  // let the restored view stay visible during playback
+    suspendFollow();  // the restored view stays during playback
     applyView(previous.start, previous.timePerPixel);
     handleUpdateNowIfNeeded();
 }
@@ -284,7 +284,7 @@ void ZoomViewState::scrollBy(double pixels) {
 }
 
 void ZoomViewState::scrollByWheel(const MouseWheelDetails& wheel) {
-    lastWheelScrollMs = Time::getMillisecondCounter();
+    suspendFollow();
     scrollBy(-200.0 * (std::abs(wheel.deltaY) >= std::abs(wheel.deltaX) ? wheel.deltaY : wheel.deltaX));
 }
 
@@ -297,6 +297,7 @@ void ZoomViewState::beginDrag() {
 }
 
 void ZoomViewState::dragBy(int anchorX, int deltaX, int deltaY) {
+    suspendFollow();
     auto newTimePerPixel = clampTimePerPixel(dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01));
     auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) anchorX;
     auto newStart = jmax(te::TimePosition(), anchorTime - newTimePerPixel * (double) (anchorX + deltaX));
@@ -314,6 +315,8 @@ void ZoomViewState::endDrag() {
 void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& prop) {
     if (tree == state && isZoomProperty(prop)) {
         markAndUpdate(updateViewRange);
+    } else if (tree == state && prop == IDs::followPlayback) {
+        markAndUpdate(updateFollow);
     } else if (auto& tc = edit.getTransport(); tree == tc.state && prop == te::IDs::position) {
         if (!approximatelyEqual((double) tc.state[te::IDs::position], tc.getPosition().inSeconds())) {
             // because this callback could be called before tc.position is updated from state
@@ -327,6 +330,7 @@ void ZoomViewState::valueTreePropertyChanged(ValueTree& tree, const Identifier& 
         if (jumped) {
             lastJumpPosition = pos;
             framePlayheadValid = false;  // show the jump now, not the frame's old position
+            resumeFollow();
         }
         lastTransportPosition = pos;
         reportHeardPosition();
@@ -343,8 +347,28 @@ bool ZoomViewState::isFollowingPlayhead() const {
     if (offlineFrames)
         return true;  // as in playback, which lets clips scroll their cached content
     auto& transport = edit.getTransport();
-    return (followPlayback.get() || followForced) && (transport.isPlaying() || transport.isRecording()) && !userDraggingView
-        && Time::getMillisecondCounter() - lastWheelScrollMs >= wheelFollowPauseMs;
+    return (transport.isPlaying() || transport.isRecording()) && !userDraggingView
+        && (followForced || (followPlayback.get() && !followSuspended));
+}
+
+void ZoomViewState::setFollowsPlayback(bool shouldFollow) {
+    followPlayback = shouldFollow;  // tells listeners through the state
+    resumeFollow();
+}
+
+void ZoomViewState::suspendFollow() {
+    auto& transport = edit.getTransport();
+    if (!followSuspended && (transport.isPlaying() || transport.isRecording())) {
+        followSuspended = true;
+        markAndUpdate(updateFollow);
+    }
+}
+
+void ZoomViewState::resumeFollow() {
+    if (followSuspended) {
+        followSuspended = false;
+        markAndUpdate(updateFollow);
+    }
 }
 
 void ZoomViewState::handlePlaybackScrolling() {
@@ -375,12 +399,14 @@ void ZoomViewState::followPlayhead(te::TimePosition pos) {
 }
 
 void ZoomViewState::startVideo() {
+    resumeFollow();
     lastJumpPosition = lastTransportPosition = edit.getTransport().getPosition();
     framePlayheadValid = false;
     reportHeardPosition();
 }
 
 void ZoomViewState::stopVideo() {
+    resumeFollow();
     framePlayheadValid = false;
     lastFrameMs = -1.0e9;  // stopped, the transport moves the playhead again
     // the playhead goes back to the transport position, which does not change on stop
@@ -396,6 +422,8 @@ void ZoomViewState::handleAsyncUpdate() {
     if (compareAndReset(updateViewRange)) {
         listeners.call(&ZoomViewState::Listener::viewRangeChanged);
     }
+    if (compareAndReset(updateFollow))
+        listeners.call(&ZoomViewState::Listener::followChanged);
 }
 
 //==============================================================================

@@ -476,6 +476,15 @@ public:
         expectGreaterOrEqual(playhead(), 1.0);
         expectLessThan(playhead(), 1.5);
 
+        beginTest("Past the loop: frames show the playhead playing on, not held at the loop end");
+        transport.stop(false, false);
+        seek(2.5_tp);
+        transport.play(false);
+        MessageManager::getInstance()->runDispatchLoopUntil(250);
+        play(40);
+        zoom.advanceFrame(3.0);
+        expectGreaterThan(playhead(), 2.5);
+
         transport.stop(false, false);
         transport.looping = false;
     }

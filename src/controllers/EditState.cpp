@@ -166,8 +166,9 @@ void ZoomViewState::advanceFrame(double timestampSec) {
     lastFrameMs = Time::getMillisecondCounterHiRes();
     auto pos = te::TimePosition::fromSeconds(
         playheadClock.positionAt(displayFrames.getFrameMs() + displayFrames.getPeriod() * frameLead * 1000.0));
-    if (transport.looping)
-        pos = std::min(pos, transport.getLoopRange().getEnd());  // the wrap report comes later
+    // In or before the loop, playback wraps at its end, but the wrap report comes later; past it, it plays on
+    if (const auto loopEnd = transport.getLoopRange().getEnd(); transport.looping && lastTransportPosition < loopEnd)
+        pos = std::min(pos, loopEnd);
     framePlayhead = pos;
     framePlayheadValid = true;
 

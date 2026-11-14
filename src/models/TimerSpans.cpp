@@ -2,6 +2,7 @@
 
 #include "PsgParameter.h"
 
+#include <algorithm>
 #include <numeric>
 
 namespace MoTool {
@@ -117,11 +118,14 @@ void describeRepeat(TimerSpan& span, const TimerBank& bank, double baseInterval)
     if (period < 2)
         return;
 
-    // Duty: the time on the highest value of the target that is heard most plainly, a volume if there is one
-    size_t heard = 0;
+    // Duty: the time on the highest value of a volume it writes; what other registers hold has none
+    std::optional<size_t> volume;
     for (size_t i = 0; i < span.numTargets; ++i)
         if (span.targets[i].id >= 8 && span.targets[i].id <= 10)
-            heard = i;
+            volume = i;
+    if (! volume)
+        return;
+    const size_t heard = *volume;
     uint32_t highest = 0;
     bool varies = false;
     for (size_t i = 0; i < period; ++i) {
@@ -154,12 +158,8 @@ void describeTargets(TimerSpan& span, const TaymTimerState& state, const TimerBa
         span.envelope = span.envelope || (id >= 11 && id <= 13);
         amplitude = amplitude || id == TAYM_TGT_SAMPLE_AMPLITUDE;
 
-        if (id >= 8 && id <= 10) {
-            // Every value it may write, the lane's start too: a sample plays it once
-            auto& loudest = span.loudestVolumes[static_cast<size_t>(id - 8)];
-            const auto take = [&loudest](uint32_t value) {
-                loudest = static_cast<uint8_t>(juce::jmax(loudest & 0x0F, static_cast<int>(value & 0x0F)) | ((loudest | value) & 0x10));
-            };
+        // Every value it may write, the lane's start too: a sample plays it once
+        const auto forEachValue = [&](auto&& take) {
             if (target.has_lane) {
                 const auto& lane = t.lanes[target.lane_index];
                 for (uint32_t step = 0; step < lane.length; ++step)
@@ -167,6 +167,16 @@ void describeTargets(TimerSpan& span, const TaymTimerState& state, const TimerBa
             } else {
                 take(target.inline_value);
             }
+        };
+        if (id >= 8 && id <= 10) {
+            auto& loudest = span.loudestVolumes[static_cast<size_t>(id - 8)];
+            forEachValue([&loudest](uint32_t value) {
+                loudest = static_cast<uint8_t>(juce::jmax(loudest & 0x0F, static_cast<int>(value & 0x0F)) | ((loudest | value) & 0x10));
+            });
+        } else if (id == 13) {
+            std::array<int, 16> written {};
+            forEachValue([&written](uint32_t value) { ++written[value & 0x0F]; });
+            span.envelopeShape = static_cast<int>(std::max_element(written.begin(), written.end()) - written.begin());
         }
     }
     span.numTargets = state.target_count;

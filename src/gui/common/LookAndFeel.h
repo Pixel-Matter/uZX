@@ -10,8 +10,10 @@ namespace Colors {
     lightness and chroma, so only its hue sets it apart and none outshines
     another. L 0.68, C 0.168 is about the most chroma the PSG channel hues
     share in sRGB: indigo caps it. */
+inline constexpr float accentLightness = 0.68f;
+
 inline Colour accent(float hue) {
-    return Oklch::toColour({0.68f, 0.168f, hue});
+    return Oklch::toColour({accentLightness, 0.168f, hue});
 }
 
 // Tailwind CSS color palette
@@ -189,6 +191,9 @@ struct PSG {
 
     inline static const auto Env = accent(307.1f);
     inline static const auto Mix = Palette::slate500;
+
+    // What no channel owns that a timer writes, the mixer and the noise period: the accents' lightness, no hue
+    inline static const auto Grey = Oklch::toColour({accentLightness, 0.0f, 0.0f});
 };
 
 } // namespace Colors

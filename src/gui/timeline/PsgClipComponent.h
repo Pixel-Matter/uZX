@@ -1,5 +1,7 @@
 #include <JuceHeader.h>
 
+#include <optional>
+
 #include "ClipComponents.h"
 #include "NoteLanes.h"
 #include "PsgParamEditorComponent.h"
@@ -121,6 +123,8 @@ private:
     void hideFrameHover();
 
     std::unique_ptr<Component> frameHover_;
+    std::optional<Point<float>> hoverMouse_;  // where the mouse last moved to over the clip
+    friend class PsgClipPaintingTest;
 
     std::vector<NoteLane> lanes_;  // rebuilt when the clip's tuning revision changes
     int lanesRevision_ = -1;

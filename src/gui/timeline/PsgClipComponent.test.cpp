@@ -239,9 +239,9 @@ public:
                 if (! noteBounds.contains(x, y))
                     expect(unrelatedNoise.getPixelAt(x, y).getFloatAlpha() <= 0.3f);
 
-        const auto hasEnvelopeFill = [](const Image& image, int y) {
+        const auto hasEnvelopeFill = [](const Image& image, int y, Colour fill = Colors::PSG::Env) {
             for (int x = 0; x < image.getWidth(); ++x)
-                if (image.getPixelAt(x, y) == Colors::PSG::Env)
+                if (image.getPixelAt(x, y) == fill)
                     return true;
             return false;
         };
@@ -255,7 +255,7 @@ public:
         const auto noisyNeighbors = renderData(neighbors);
         int envelopeRows = 0;
         for (int y = 0; y < plainNeighbors.getHeight(); ++y) {
-            if (! hasEnvelopeFill(plainNeighbors, y))
+            if (! hasEnvelopeFill(plainNeighbors, y, Colors::PSG::B))  // B plays the envelope alone
                 continue;
             ++envelopeRows;
             for (int x = 0; x < plainNeighbors.getWidth(); ++x)
@@ -376,7 +376,7 @@ public:
         expect(hasEnvelopeColor, "Envelope pitch uses the shared envelope color");
         expect(hasChannelColor, "Envelope-controlled tone keeps channel B's color");
 
-        beginTest("The envelope note is envelope-colored whichever channels use it");
+        beginTest("An envelope several channels play is envelope-colored, not a tint of theirs");
         const auto envelopeB = renderData({
             {{{uZX::PsgRegType::Mixer, 0x3f}, {uZX::PsgRegType::VolumeB, 16},
               {uZX::PsgRegType::EnvelopePeriodFine, 100}, {uZX::PsgRegType::EnvelopeShape, 8}}},
@@ -387,18 +387,18 @@ public:
               {uZX::PsgRegType::EnvelopePeriodFine, 100}, {uZX::PsgRegType::EnvelopeShape, 8}}},
             {50.0, 1}
         });
-        bool hasFill = false, hasHatching = false;
-        for (int y = 0; y < envelopeB.getHeight(); ++y) {
-            for (int x = 0; x < envelopeB.getWidth(); ++x) {
-                const auto color = envelopeB.getPixelAt(x, y);
+        bool hasFill = false, hasHatching = false, hasChannelFill = false;
+        for (int y = 0; y < envelopeAC.getHeight(); ++y) {
+            for (int x = 0; x < envelopeAC.getWidth(); ++x) {
+                const auto color = envelopeAC.getPixelAt(x, y);
                 hasFill = hasFill || color == Colors::PSG::Env;
                 hasHatching = hasHatching || color.getGreen() > Colors::PSG::Env.getGreen() + 16;
+                hasChannelFill = hasChannelFill || envelopeB.getPixelAt(x, y) == Colors::PSG::B;
             }
         }
         expect(hasFill, "The envelope note is filled with the envelope color");
         expect(hasHatching, "The envelope note keeps its brighter hatching");
-        expect(equalImages(envelopeB, envelopeAC),
-               "Owners show on their own notes, not as a tint of the envelope note");
+        expect(hasChannelFill, "An envelope B plays alone, with no tone of its own, is B's sound: in B's colour");
 
         beginTest("Legend shows A/B/C colors and a padded filled envelope swatch");
         const auto header = render(0x3f, 0, 0, 0, true);
@@ -500,6 +500,39 @@ public:
             expect(describePsgClipFrame(*clip, te::TimePosition::fromSeconds(-1.0), false).empty(), "before the clip's first frame");
         }
 
+        beginTest("The frame hover stays when a modifier key sends a move to where the mouse already is");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            uZX::PsgData data {std::vector<uZX::PsgRegsFrame>(100), {50.0, 1}};
+            data.frames[0] = {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15}, {uZX::PsgRegType::TonePeriodFineA, 252}};
+            auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
+                                          {{te::TimePosition(), te::TimeDuration::fromSeconds(2.0)}, {}});
+            te::SelectionManager selection(engine);
+            EditViewState view(*edit, selection);
+            view.zoom.setViewWidthPx(400);
+            view.zoom.setRange({te::TimePosition(), te::TimeDuration::fromSeconds(2.0)});
+            TimelineGrid grid(view);
+            Component top;
+            top.setSize(400, 200);
+            PsgClipComponent component(view, grid, clip);
+            top.addAndMakeVisible(component);
+            component.setBounds(0, 0, 400, 200);
+            const auto moveTo = [&] (Point<float> pos) {
+                const auto now = Time::getCurrentTime();
+                component.mouseMove({Desktop::getInstance().getMainMouseSource(), pos, ModifierKeys {},
+                                     MouseInputSource::defaultPressure, MouseInputSource::defaultOrientation,
+                                     MouseInputSource::defaultRotation, MouseInputSource::defaultTiltX,
+                                     MouseInputSource::defaultTiltY, &component, &component, now, pos, now, 0, false});
+            };
+            moveTo({100.0f, 50.0f});
+            component.timerCallback();  // the pointer rested
+            expectEquals(top.getNumChildComponents(), 2, "the hover opens");
+            moveTo({100.0f, 50.0f});  // as JUCE sends for a modifier key
+            expectEquals(top.getNumChildComponents(), 2, "a move to where the mouse is keeps it");
+            moveTo({120.0f, 50.0f});
+            expectEquals(top.getNumChildComponents(), 1, "a move elsewhere hides it");
+        }
+
         beginTest("Frame hover lists the timers running at the frame: what each drives, its pitch, duty and values");
         {
             juce::ValueTree clipState {"PSGCLIP"};
@@ -583,7 +616,7 @@ public:
             const auto image = withTimers({{10, 0, Tests::timerStart(222, 0)}, {30, 0, stop}},
                                           VizOptions {.decorations = VizOptions::Decorations::always});
             int left = image.getWidth(), right = -1, top = image.getHeight(), bottom = -1;
-            bool channelHue = true, dimBody = false, brightEdge = false;
+            bool channelHue = true, dimBody = false, brightFill = false;
             for (int y = 0; y < image.getHeight(); ++y) {
                 for (int x = 0; x < image.getWidth(); ++x) {
                     const auto colour = image.getPixelAt(x, y);
@@ -592,26 +625,31 @@ public:
                     left = jmin(left, x); right = jmax(right, x); top = jmin(top, y); bottom = jmax(bottom, y);
                     channelHue = channelHue && std::abs(colour.getHue() - Colors::PSG::A.getHue()) < 0.03f;
                     dimBody = dimBody || colour.getAlpha() < 160;
-                    brightEdge = brightEdge || colour.getAlpha() > 200;
+                    brightFill = brightFill || colour.getAlpha() > 200;
                 }
             }
             expectEquals(left, 20, "from the start's frame: two pixels a frame");
             expectEquals(right, 59, "to the stop's");
             expect(channelHue, "in channel A's colour");
-            expect(dimBody && brightEdge, "a body between two bright edges");
+            expect(dimBody && brightFill, "a dim body between bright edges, and a bright fill");
             expect(bottom - top <= 30, "one note, with its start's tick: rows " + String(top) + " to " + String(bottom));
 
-            // At a duty of 50% the band is half the note: the bright rows away from the tick are its two
-            // edges and the band
+            // At a duty of 50% the bottom half of the note is filled, away from the tick; above the fill, the
+            // bright top edge
             int noteRows = 0, brightRows = 0;
+            bool fromBottom = true;
             for (int y = 0; y < image.getHeight(); ++y)
                 if (const auto colour = image.getPixelAt(40, y); ! colour.isTransparent()) {
-                    ++noteRows;
-                    brightRows += colour.getAlpha() > 200 ? 1 : 0;
+                    if (noteRows++ == 0)
+                        continue;  // the top edge
+                    const bool bright = colour.getAlpha() > 200;
+                    fromBottom = fromBottom && (bright || brightRows == 0);  // no dim row under a bright one
+                    brightRows += bright ? 1 : 0;
                 }
-            expect(noteRows >= 8, "tall enough for a band: " + String(noteRows));
-            expect(std::abs((brightRows - 2) - noteRows / 2) <= 1,
-                   "a band of " + String(brightRows - 2) + " rows in a note of " + String(noteRows));
+            expect(noteRows >= 8, "tall enough for the fill: " + String(noteRows));
+            expect(fromBottom, "the fill rises from the note's bottom");
+            expect(std::abs(brightRows - noteRows / 2) <= 1,
+                   "a fill of " + String(brightRows) + " rows in a note of " + String(noteRows));
             bool plain = true;
             const auto undecorated = withTimers({{10, 0, Tests::timerStart(222, 0)}, {30, 0, stop}});
             for (int y = 0; y < undecorated.getHeight(); ++y)
@@ -657,6 +695,78 @@ public:
                         toTheEnd = toTheEnd || x == shape.getWidth() - 1;
                     }
             expect(envelopeHue, "a timer on the envelope's shape is in the envelope's colour");
+
+            // Each register a timer holds is decorated as a frame's notes show it, drawn always here
+            const VizOptions always {.decorations = VizOptions::Decorations::always};
+            const auto middleRow = [] (const Image& drawn, int x) {
+                int top = -1, bottom = -1;
+                for (int y = 0; y < drawn.getHeight(); ++y)
+                    if (drawn.getPixelAt(x, y).getAlpha() > 0) {
+                        top = top < 0 ? y : top;
+                        bottom = y;
+                    }
+                return (top + bottom) / 2;
+            };
+            // A's tone period from lane 0 (15, 9): thin vertical lines every third pixel, in A's colour
+            const auto periodNote = withTimers({{10, 0, Tests::timerStart(222, 6)}, {30, 0, stop}}, always);
+            const int toneRow = middleRow(periodNote, 40);
+            std::vector<uint8> row;
+            for (int x = 24; x < 56; ++x)
+                row.push_back(periodNote.getPixelAt(x, toneRow).getAlpha());
+            bool everyThird = *std::max_element(row.begin(), row.end()) > *std::min_element(row.begin(), row.end());
+            for (size_t i = 3; i < row.size(); ++i)
+                everyThird = everyThird && row[i] == row[i - 3];
+            expect(everyThird, "a tone period's lines, every third pixel");
+            expect(std::abs(periodNote.getPixelAt(40, toneRow).getHue() - Colors::PSG::A.getHue()) < 0.03f, "in A's colour");
+
+            // The noise period and the mixer belong to no channel: grey, the noise period hatched as a tone's
+            const auto isGrey = [] (const Image& drawn) {
+                bool grey = true, any = false;
+                for (int y = 0; y < drawn.getHeight(); ++y)
+                    for (int x = 0; x < drawn.getWidth(); ++x)
+                        if (const auto colour = drawn.getPixelAt(x, y); colour.getAlpha() > 0) {
+                            any = true;
+                            grey = grey && colour.getSaturation() < 0.05f;
+                        }
+                return any && grey;
+            };
+            const auto noiseNote = withTimers({{10, 1, Tests::timerStart(222, 7)}, {30, 1, stop}}, always);
+            expect(isGrey(noiseNote), "a timer on the noise period is grey");
+            const int noiseRow = middleRow(noiseNote, 40);
+            expect(noiseNote.getPixelAt(40, noiseRow) != noiseNote.getPixelAt(41, noiseRow)
+                       || noiseNote.getPixelAt(41, noiseRow) != noiseNote.getPixelAt(42, noiseRow),
+                   "and hatched");
+            expect(isGrey(withTimers({{10, 1, Tests::timerStart(222, 5)}, {30, 1, stop}}, always)),
+                   "a timer on the mixer is grey");
+
+            // The envelope's shape C restarted: rising stripes, brighter than the note
+            const auto restarts = withTimers({{10, 1, Tests::timerStart(222, 4)}, {30, 1, stop}}, always);
+            const int restartsRow = middleRow(restarts, 40);
+            int faintest = 255, strongest = 0;
+            for (int x = 22; x < 58; ++x) {
+                const int alpha = restarts.getPixelAt(x, restartsRow).getAlpha();
+                faintest = jmin(faintest, alpha);
+                strongest = jmax(strongest, alpha);
+            }
+            expect(strongest > faintest + 50, "the envelope's stripes on a timer that restarts it, across its middle");
+
+            // Where B plays the envelope alone, the envelope and the timer that restarts it are B's sound
+            auto onB = silent;
+            onB.frames[0] = {{uZX::PsgRegType::Mixer, 0x3f}, {uZX::PsgRegType::VolumeB, 16},
+                             {uZX::PsgRegType::EnvelopePeriodFine, 22}, {uZX::PsgRegType::EnvelopeShape, 12}};
+            onB.frames.back() = {};  // B keeps the envelope to the end
+            const auto shapeOnB = Tests::renderPsgClip(engine, onB, 100, 300, {}, false, {}, {}, [&] (PsgClip& clip) {
+                clip.getTimers().set(Tests::makeTestTaym(), 0, {{10, 1, Tests::timerStart(222, 4)}}, nullptr);
+            });
+            int drawnAfterStart = 0;
+            bool allB = true;
+            for (int y = 0; y < shapeOnB.getHeight(); ++y)
+                for (int x = 0; x < shapeOnB.getWidth(); ++x)
+                    if (const auto colour = shapeOnB.getPixelAt(x, y); colour.getAlpha() > 100) {
+                        allB = allB && std::abs(colour.getHue() - Colors::PSG::B.getHue()) < 0.03f;
+                        drawnAfterStart += x >= 20 ? 1 : 0;
+                    }
+            expect(drawnAfterStart > 0 && allB, "the envelope's note and the timer's, both in B's colour");
             expect(toTheEnd, "a timer nothing stops runs to the clip's end");
 
             // A tone the frames leave at volume 0 sounds where a timer writes its channel's volume: it is drawn

@@ -991,7 +991,7 @@ public:
             }
         }
 
-        beginTest("The panel has a timers switch per channel while the track has a clip with timers, and a stopwatch on the scope of a channel a timer drives");
+        beginTest("The panel puts a stopwatch on the scope of a channel a timer drives; its timers switches are hidden for now");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);
             auto* track = te::getAudioTracks(*edit)[0];
@@ -1038,7 +1038,7 @@ public:
             expectEquals(switchesShown(), 0, "a track of plain PSG clips has none");
             clip->getTimers().set(makeTestTaym(), 0, {{10, 0, timerStart(222, 0)}}, nullptr);
             pump();
-            expectEquals(switchesShown(), 3, "one under each channel's T, N and E");
+            expectEquals(switchesShown(), 0, "hidden for now: a fourth row makes T, N and E too small");
             if (scopes != nullptr) {
                 expect(! signShown(0, Colors::PSG::A, 0.5f), "no timer runs: no sign");
 

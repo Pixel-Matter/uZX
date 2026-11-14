@@ -62,9 +62,11 @@ struct TimerSpan {
         that long, so it is the period of what is heard. 0 if it is no pitch: a timer lane that ends, no
         rate, or every expiry alike, unless each restarts the envelope. */
     double loopCycles = 0.0;
-    /** The part of a repeat spent on its highest value, or on its first interval when the values are all
-        one: a pulse's duty. Negative if every step is alike. */
+    /** The part of a repeat spent on the highest volume it writes, or on its first interval when its volumes
+        are all one: a pulse's duty. Negative if it writes no volume, or every step is alike. */
     float duty = -1.0f;
+    /** The envelope shape it writes most often, if it holds R13; else -1. */
+    int envelopeShape = -1;
 
     /** The pitch of what it writes on the tone scale, normalized as a frame's notes are: a tone of period
         `loopCycles / 16` sounds the same. None if it is no pitch, or past the chip's tone periods. */

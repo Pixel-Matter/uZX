@@ -266,10 +266,12 @@ void AYPluginUI::timerCallback() {
     shownTimerWarnings_ = warnings;
     timerWarning_.setTooltip(AYChipPlugin::describeTimerWarnings(warnings));
     timerWarning_.setVisible(warnings != 0);
-    // The timers switches are there while the track has a clip with timers
+    // The timers switches are there while the track has a clip with timers.
+    // ponytail: hidden for now, a fourth row makes T, N and E too small; their parameters still automate.
+    // Show them again once the channel group has room for them.
     timersShown_ = timers;
-    for (auto* group : channelGroups)
-        group->setTimersShown(timers);
+    // for (auto* group : channelGroups)
+    //     group->setTimersShown(timers);
     resized();
 }
 

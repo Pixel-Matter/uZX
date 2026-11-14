@@ -80,6 +80,7 @@ struct FrameNote {
     bool isEnvelopePitch;
     bool hasEnvMod;
     const TimerSpan* timer = nullptr;  // a timer's note; else the frames'
+    Colour colour {};
 };
 
 Colour getChannelMaskColor(uint8_t channelMask) {
@@ -530,11 +531,32 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
     return runs;
 }
 
-/** The colour of what a timer drives: its channels', else the envelope's, else plain text's. */
-static Colour getTimerColour(const TimerSpan& span) {
+/** The colour of the envelope in a frame: of the one channel that plays it, unless that channel's tone is
+    on at another pitch, so the two are told apart; the envelope's own when it plays on several channels, as
+    a tint of theirs would read as none of them, or on none. */
+static Colour getEnvelopeColour(const PsgParamFrameData& data) {
+    int owner = -1;
+    for (int ch = 0; ch < 3; ++ch) {
+        if (data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) == 0)
+            continue;
+        if (owner >= 0)
+            return Colors::PSG::Env;
+        owner = ch;
+    }
+    if (owner < 0)
+        return Colors::PSG::Env;
+    const bool toneApart = data.getRaw(PsgParamType(PsgParamType::ToneIsOnA + owner)) > 0
+        && data.getRaw(PsgParamType(PsgParamType::TonePeriodA + owner))
+               != envelopePeriodToTonePeriod(data.getRaw(PsgParamType::EnvelopePeriod));
+    return toneApart ? Colors::PSG::Env : getChannelMaskColor(static_cast<uint8_t>(1u << owner));
+}
+
+/** The colour of what a timer drives: its channels', else the envelope's, else the grey of what no channel
+    owns, as the mixer and the noise period. */
+static Colour getTimerColour(const TimerSpan& span, Colour envelope = Colors::PSG::Env) {
     if (span.channels != 0)
         return getChannelMaskColor(span.channels);
-    return span.envelope ? Colors::PSG::Env : Colors::Theme::textPrimary;
+    return span.envelope ? envelope : Colors::PSG::Grey;
 }
 
 /** How opaque a note at a channel's volume is drawn: in full under the envelope. */
@@ -966,12 +988,17 @@ void PsgClipComponent::mouseDown(const MouseEvent& e) {
         showPsgClipMenu(*psgClip, editViewState);
 }
 
-void PsgClipComponent::mouseMove(const MouseEvent&) {
+void PsgClipComponent::mouseMove(const MouseEvent& e) {
+    // A modifier key sends a move where the mouse already is: the hover stays, for a screenshot's keys
+    if (hoverMouse_ == e.position)
+        return;
+    hoverMouse_ = e.position;
     hideFrameHover();
     startTimer(2000);
 }
 
 void PsgClipComponent::mouseExit(const MouseEvent&) {
+    hoverMouse_.reset();
     hideFrameHover();
 }
 
@@ -1045,9 +1072,11 @@ std::vector<std::pair<String, Colour>> PsgClipComponent::describeFrameAt(int x) 
 
 void PsgClipComponent::showFrameHover() {
     auto* top = getTopLevelComponent();
-    const auto mouse = getMouseXYRelative();
+    if (top == this || ! hoverMouse_)
+        return;
+    const auto mouse = hoverMouse_->roundToInt();
     const auto text = describeFrameAt(mouse.x);
-    if (top == this || text.empty())
+    if (text.empty())
         return;
 
     frameHover_ = createPsgFrameHover(text);
@@ -1307,13 +1336,28 @@ void PsgClipComponent::paintCachedContent(Graphics& g, const PaintView& view) {
 /** Draws a timer's note in its place among the frame's notes, in the colour of what the timer drives, as
     opaque as a tone at the loudest volume it writes.
 
-    A timer's note is told from a tone's by its make: a body between two bright edges. The body is denser the
-    larger the duty, and a note tall enough has a bright band inside as tall as its duty, so a pulse whose
-    duty sweeps shows as a band that widens and narrows. A tick marks a start. Without the decorations, as
-    when the envelope's stripes are left out, it is filled as a tone's. */
-static void drawTimerNote(Graphics& g, Rectangle<float> note, const TimerSpan& span, float alpha, bool decorate,
-                          bool tick) {
-    const auto colour = getTimerColour(span).withAlpha(alpha);
+    A timer's note is told from a tone's by its make: a dim body between two bright edges, denser the larger
+    the duty, and in a note tall enough a bright fill from its bottom as high as its duty, so a pulse whose duty
+    sweeps rises and falls like a meter. A tick marks a start. Without the decorations, as when the envelope's stripes are left out,
+    it is filled as a tone's. */
+/** Thin vertical lines over a note, every third pixel from `phase`: a timer that writes a period. Placed by the
+    view's x, not the note's, so they run on across the stretches a note is drawn in. */
+static void drawPeriodHatching(Graphics& g, Rectangle<float> note, Colour colour, int phase) {
+    constexpr int spacing = 3;
+    const int left = static_cast<int>(std::ceil(note.getX()));
+    g.setColour(colour);
+    for (int x = left + ((phase - left) % spacing + spacing) % spacing; static_cast<float>(x) < note.getRight(); x += spacing)
+        g.fillRect(static_cast<float>(x), note.getY(), 1.0f, note.getHeight());
+}
+
+/** What a frame's envelope is: the colour its notes have there, and its shape. */
+struct FrameEnvelope {
+    Colour colour;
+    uint8_t shape = 0;
+};
+
+static void drawTimerNote(Graphics& g, Rectangle<float> note, Colour colour, const TimerSpan& span,
+                          FrameEnvelope envelope, bool decorate, bool tick) {
     const auto bright = colour.brighter(0.6f);
     const float x = note.getX(), y = note.getY(), width = note.getWidth(), height = note.getHeight();
 
@@ -1327,17 +1371,33 @@ static void drawTimerNote(Graphics& g, Rectangle<float> note, const TimerSpan& s
         g.fillRect(note);
     } else {
         // The body is denser the longer the pulse is on, which reads at any height; a note tall
-        // enough also has the band
+        // enough also has the fill
         g.setColour(colour.withMultipliedAlpha(span.duty >= 0.0f ? 0.15f + 0.6f * span.duty : 0.35f));
         g.fillRect(note);
         g.setColour(bright.withMultipliedAlpha(0.9f));
         g.fillRect(x, y, width, 1.0f);
         g.fillRect(x, y + height - 1.0f, width, 1.0f);
         if (span.duty >= 0.0f && height >= 8.0f) {
-            // The duty's share of the whole note, its edges included
-            const float band = jlimit(1.0f, height, std::round(height * span.duty));
-            g.fillRect(x, y + std::floor((height - band) * 0.5f), width, band);
+            // Not rounded to whole pixels: a part of one is drawn fainter, so a slow sweep moves smoothly
+            const float fill = height * span.duty;
+            g.fillRect(Rectangle<float> {x, y + height - fill, width, fill});
         }
+
+        // What it does to the registers it holds, each as a frame's notes show it: the envelope's stripes
+        // where it restarts the envelope or puts a channel on it, lines where it changes a period
+        bool onEnvelope = false;
+        for (size_t chan = 0; chan < span.loudestVolumes.size(); ++chan)
+            onEnvelope = onEnvelope || ((span.registers & (1u << (8 + chan))) != 0 && (span.loudestVolumes[chan] & 0x10) != 0);
+        if (span.envelopeShape >= 0 || onEnvelope)
+            drawEnvelopeStripes(g, x, y, width, height,
+                                span.envelopeShape >= 0 ? static_cast<uint8_t>(span.envelopeShape) : envelope.shape,
+                                colour.brighter(0.8f).withMultipliedAlpha(0.85f));
+        if ((span.registers & 0x3Fu) != 0)
+            drawPeriodHatching(g, note, colour.brighter(0.8f).withMultipliedAlpha(0.85f), 0);
+        if ((span.registers & (1u << 6)) != 0)
+            drawPeriodHatching(g, note, Colors::PSG::Grey.brighter(0.8f).withAlpha(colour.getFloatAlpha() * 0.85f), 1);
+        if ((span.registers & (3u << 11)) != 0)
+            drawPeriodHatching(g, note, envelope.colour.brighter(0.8f).withAlpha(colour.getFloatAlpha() * 0.85f), 2);
     }
     if (tick) {
         g.setColour(bright);
@@ -1397,6 +1457,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
         // pitch, all sharing lanes alike
         std::array<FrameNote, 4 + TAYM_MAX_TIMERS> notes;
         int noteCount = 0;
+        const auto envelopeColour = getEnvelopeColour(frameData);
         uint8_t toneChannels = 0, pitchChannels = 0;
         const auto addNote = [&] (float pitch, FrameNote note) {
             const float top = normToY(pitch) - noteHeight * 0.5f;
@@ -1410,7 +1471,8 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             if (! n.isEnvelopePitch)
                 toneChannels |= n.channelMask;
             addNote(n.pitch, {0.0f, 0.0f, n.isEnvelopePitch ? 1.0f : getVolumeAlpha(n.volume, n.hasEnvMod),
-                              n.channelMask, n.isEnvelopePitch, n.hasEnvMod});
+                              n.channelMask, n.isEnvelopePitch, n.hasEnvMod, nullptr,
+                              n.isEnvelopePitch ? envelopeColour : getChannelMaskColor(n.channelMask)});
         });
 
         // A timer whose writes are no pitch is a bar along the clip's bottom instead
@@ -1421,7 +1483,8 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             if (span == nullptr)
                 continue;
             if (const auto pitch = span->getPitch())
-                addNote(*pitch, {0.0f, 0.0f, getTimerAlpha(*span), span->channels, false, false, span});
+                addNote(*pitch, {0.0f, 0.0f, getTimerAlpha(*span), span->channels, false, false, span,
+                                 getTimerColour(*span, envelopeColour)});
             else
                 bars[static_cast<size_t>(barCount++)] = span;
         }
@@ -1481,11 +1544,12 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
 
                 const auto noteRect = Rectangle<float>(x, subY, width, jmax(1.0f, subH));
                 if (note.timer != nullptr) {
-                    drawTimerNote(g, noteRect, *note.timer, note.alpha, drawMods,
+                    drawTimerNote(g, noteRect, note.colour.withAlpha(note.alpha), *note.timer,
+                                  {envelopeColour, envShape}, drawMods,
                                   note.timer->starts && note.timer->startFrame == firstFrame);
                     continue;
                 }
-                const auto noteColor = note.isEnvelopePitch ? Colors::PSG::Env : getChannelMaskColor(note.channelMask);
+                const auto noteColor = note.colour;
 
                 g.setColour(noteColor.withAlpha(note.alpha));
                 g.fillRect(noteRect);
@@ -1521,7 +1585,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
         const float barHeight = jlimit(2.0f, 4.0f, noteHeight);
         for (int i = 0; i < barCount; ++i) {
             const auto& span = *bars[static_cast<size_t>(i)];
-            g.setColour(getTimerColour(span).withAlpha(getTimerAlpha(span) * 0.8f));
+            g.setColour(getTimerColour(span, envelopeColour).withAlpha(getTimerAlpha(span) * 0.8f));
             g.fillRect(x, float(vis.rect.getHeight()) - barHeight, width, barHeight);
         }
     });

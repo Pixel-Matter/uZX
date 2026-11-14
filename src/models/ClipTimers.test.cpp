@@ -91,6 +91,9 @@ public:
                 expect(steady->loopCycles == 0.0 && ! steady->getPitch(), "one value at every expiry is no pitch");
                 expect(steady->duty < 0.0f, "no duty where every step is alike");
                 expectWithinAbsoluteError(shape->loopCycles, 3552.0, 1.0e-9);           // a restart every expiry
+                expectEquals(shape->envelopeShape, 0x0C, "the shape it restarts the envelope with");
+                expect(shape->duty < 0.0f, "a restart has no duty: only a volume has");
+                expectEquals(pulse->envelopeShape, -1, "a volume is no shape");
             }
         }
 

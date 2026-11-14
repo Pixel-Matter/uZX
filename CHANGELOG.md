@@ -13,10 +13,10 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - A TAYM brings each chip's clock and type, and its frame rate, and opens like a PSG file: by Open, drop, Import PSG, or from Finder, where the Player is the default app for `.taym`
 - A timer effect plays from where play starts, lands or resumes inside it, and from the start of a clip trimmed inside it; a PSG clip without timer effects stops those of the clip before it
 - The AY chip shows a `⚠` when timer effects reach it that it cannot play, with the reason on hover; those are left out and the rest plays
-- A clip draws its timer effects as notes at the pitch of what they write, in the colour of the channel or envelope they drive, as opaque as a tone at the loudest volume they write, fuller the longer the pulse (a note decoration), sharing a lane with a tone at the same pitch as tones do, and draws a tone the frames leave silent where a timer effect gives its channel a volume; the frame hover lists the timers running at the frame, bright where the frame's command set them
+- A clip draws its timer effects as notes at the pitch of what they write, in the colour of the channel or envelope they drive, as opaque as a tone at the loudest volume they write, between bright edges and filled from the bottom as high as the pulse stays on, with the envelope's stripes where it restarts the envelope and vertical lines where it changes a period (note decorations); timers on the mixer or the noise period are grey, sharing a lane with a tone at the same pitch as tones do, and draws a tone the frames leave silent where a timer effect gives its channel a volume; the frame hover lists the timers running at the frame, bright where the frame's command set them
 - The PSG frame hover opens with where the frame is, as `Time`, `Frame` and `Bar`, and names each pitch's nearest note in the clip's tuning with the cents it is off
 - A scope holds a timer effect's wave still: Chip Sync triggers where the timer's pattern starts over
-- A stopwatch in the corner of a channel's scope shows while a timer drives it, in Viz mode and rendered video too, and each channel has a timers switch under T, N and E on tracks with timer effects
+- A stopwatch in the corner of a channel's scope shows while a timer drives it, in Viz mode and rendered video too, and each channel has a Timers parameter, for automation, that turns its timers off
 
 ### Engine
 - Tracktion Engine is updated to its October 2026 development version and JUCE to 8.0.17, which hardens the reading of XML, WAV, AIFF, PNG and ZIP files
@@ -30,6 +30,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The loop range covers the whole project, following its end, until you set another one; it is saved with the project
 - Fixed: in the seconds and frames timecode formats, frame ticks are evenly spaced at every frame rate: 24 and 48 fps step in 6 and 12 frames instead of 5 and 10, and 25 fps skips the 2-frame step
 - Fixed: a click in a clip's body only moves the playhead; only its header selects the clip
+- Fixed: the PSG frame hover stays open while Shift, Ctrl, Option or Cmd is pressed, so a screenshot shortcut can capture it
+- An envelope one channel plays alone, its tone off or at the same pitch, is drawn in that channel's colour, as is a timer effect that restarts it; shared by channels, or beside a tone at another pitch, it stays purple
 - Fixed: at 200 fps, Minutes:Seconds:Frames labels keep three frame digits (`00:01:005`) instead of widening partway through each second
 
 ### Video and Viz mode

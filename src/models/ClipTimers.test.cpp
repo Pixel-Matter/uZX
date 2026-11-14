@@ -52,8 +52,7 @@ public:
                 expect(first[0].startFrame == 10 && first[0].endFrame == 20 && first[0].starts);
                 expect(first[1].startFrame == 20 && first[1].endFrame == 30 && ! first[1].starts);
                 expect(first[2].startFrame == 30 && first[2].endFrame == 40 && ! first[2].starts);
-                expect(first[1].startedFrame == 10 && first[2].startedFrame == 10, "a modulate keeps its timer's start");
-                expect(first[3].startFrame == 60 && first[3].endFrame == ClipTimers::Span::toTheEnd, "nothing ends the last");
+                expect(first[3].startFrame == 60 && first[3].endFrame == TimerSpan::toTheEnd, "nothing ends the last");
             }
             expect(timers.findSpan(0, 9) == nullptr, "before its start");
             expect(timers.findSpan(0, 10) != nullptr && timers.findSpan(0, 19) == timers.findSpan(0, 10));
@@ -89,10 +88,35 @@ public:
                 expectWithinAbsoluteError(pulse->loopCycles, 2.0 * 3552.0, 1.0e-9);     // 15 for one expiry, 9 for the next
                 expectWithinAbsoluteError(double(pulse->duty), 0.5, 1.0e-6);
                 expectWithinAbsoluteError(faster->loopCycles, 2.0 * 1600.0, 1.0e-9);    // the new base, the same lane
-                expectWithinAbsoluteError(steady->loopCycles, 1600.0, 1.0e-9);          // one value: every expiry is alike
+                expect(steady->loopCycles == 0.0 && ! steady->getPitch(), "one value at every expiry is no pitch");
                 expect(steady->duty < 0.0f, "no duty where every step is alike");
                 expectWithinAbsoluteError(shape->loopCycles, 3552.0, 1.0e-9);           // a restart every expiry
             }
+        }
+
+        beginTest("A command its bank's tables cannot play has no span, as the chip refuses it");
+        {
+            // The test bank with lane 1 emptied: action 2 reads it
+            juce::MemoryBlock broken;
+            Taym taym;
+            taym_init(&taym);
+            if (taym_read_bytes(static_cast<const uint8_t*>(bank.getData()), bank.getSize(), &taym) == TAYM_OK) {
+                taym.lanes[1].length = 0;
+                uint8_t* bytes = nullptr;
+                size_t size = 0;
+                if (taym_write_bytes(&taym, &bytes, &size) == TAYM_OK) {
+                    broken.append(bytes, size);
+                    taym_free_bytes(bytes);
+                }
+            }
+            taym_free(&taym);
+
+            juce::ValueTree state {"PSGCLIP"};
+            ClipTimers withEmptyLane {state};
+            withEmptyLane.set(broken, 0, {{10, 0, timerStart(222, 2, 2)}, {20, 1, timerStart(222, 0)}}, nullptr);
+            expect(withEmptyLane.getBank() != nullptr, "the bank reads");
+            expect(withEmptyLane.getSpans(0).empty(), "a start whose action reads an empty lane is refused");
+            expectEquals(withEmptyLane.getSpans(1).size(), size_t {1}, "the rest are as ever");
         }
 
         beginTest("A clip that loses its timers has no spans");

@@ -59,9 +59,12 @@ void AYChipPlugin::valueTreePropertyChanged(ValueTree& v, const Identifier& id) 
                 staticParams.chipType.forceUpdateOfCachedValue();
                 chip->setClock(staticParams.chipClock.getStoredValue() * MHz);
                 chip->setType(staticParams.chipType.getStoredValue());
-                // The timers count in the chip's clock: another clock stops them
+                // The timers count in the chip's clock: another clock stops them, and a frame with nothing in
+                // it gives the registers they owned back to the frames' values now, not at the next frame
                 chipTime.clockHz = getClockHz();
                 timers.setClock(getClockHz());
+                timers.applyFrame({}, {}, chipTime.cycleAt(samplesRendered), *chip);
+                channelMuter.applyToChip(*chip);
             }
         } else if (id == IDs::midi) {
             if (chip != nullptr) {
@@ -167,6 +170,16 @@ PsgRegsFrame AYChipPlugin::readRegisters() const noexcept {
 }
 
 // called under lock
+PsgRegsFrame AYChipPlugin::readBackground() const noexcept {
+    PsgRegsFrame regs;
+    for (size_t i = 0; i < regs.size(); ++i) {
+        regs.registers[i] = timers.readBackground(i, *chip);
+        regs.mask[i] = true;
+    }
+    return regs;
+}
+
+// called under lock
 void AYChipPlugin::updateChip() noexcept {
     timers.setMuted(channelMuter.getMutedTimerRegisters(), *chip);
 
@@ -201,9 +214,18 @@ void AYChipPlugin::updateChip() noexcept {
             warnings |= timerCommandIgnored;
         timerWarnings.store(warnings, std::memory_order_relaxed);
         timerChannels.store(findTimerChannels(timers.getOwned()), std::memory_order_relaxed);
-        timerSyncChannels_ = findTimerChannels(static_cast<uint16_t>(timers.getOwned() & ~timers.getMuted()));
+
+        // A channel's scope triggers on the lowest timer that drives it and is not muted
+        timerSyncChannels_ = 0;
         for (auto& sync : timerSync_)
-            sync.timer = -1;  // a timer that stopped no longer keeps a higher one from the channel's trigger
+            sync.timer = -1;
+        for (size_t timer = 0; timer < timers.getNumTimers(); ++timer) {
+            const auto channels = findTimerChannels(static_cast<uint16_t>(timers.getRegistersOf(timer) & ~timers.getMuted()));
+            for (size_t chan = 0; chan < timerSync_.size(); ++chan)
+                if ((channels & (1u << chan)) != 0 && timerSync_[chan].timer < 0)
+                    timerSync_[chan].timer = static_cast<int8_t>(timer);
+            timerSyncChannels_ = static_cast<uint8_t>(timerSyncChannels_ | channels);
+        }
     }
 
     // Apply channel and effect filters directly to chip registers
@@ -218,7 +240,7 @@ void AYChipPlugin::handleMidiEvent(const te::MidiMessageWithSource& m) noexcept 
     const int channel = m.getChannel() - staticParams.baseMidiChannel.getStoredValue();
     // The chip's four channels, then a channel for each timer; the timers' bank is on the fourth
     if (channel < PsgCC::numChannels
-        && frameDecoder.decode(channel, m.getControllerNumber(), m.getControllerValue(), [this] { return readRegisters(); }))
+        && frameDecoder.decode(channel, m.getControllerNumber(), m.getControllerValue(), [this] { return readBackground(); }))
         return;
     timerDecoder.decode(channel, m.getControllerNumber(), m.getControllerValue());
 }
@@ -368,17 +390,11 @@ void AYChipPlugin::writeTimerRegister(const TaymTimerWrite& write) noexcept {
     if (write.target >= 7 && write.target <= 10)
         channelMuter.applyToChip(*chip);
 
-    // The scopes of the channels this register reaches trigger where the lowest such timer's output repeats
-    const auto reached = findTimerChannels(static_cast<uint16_t>(1u << write.target));
-    for (size_t chan = 0; chan < timerSync_.size(); ++chan) {
-        if ((reached & (1u << chan)) == 0)
-            continue;
-        auto& sync = timerSync_[chan];
-        if (sync.timer < 0 || write.timer < sync.timer)
-            sync.timer = static_cast<int8_t>(write.timer);
-        if (sync.timer == write.timer && write.loop_start != 0)
-            sync.due = true;
-    }
+    // The scopes of the channels this timer triggers start where its output repeats
+    if (write.loop_start != 0)
+        for (auto& sync : timerSync_)
+            if (sync.timer == write.timer)
+                sync.due = true;
 }
 
 PsgRegsFrame AYChipPlugin::getChipRegisters() const {

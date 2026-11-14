@@ -36,7 +36,6 @@ void PsgClip::initialise() {
         state.addChild(psg, -1, um);
     }
     psgList = std::make_unique<PsgList>(psg, um);
-    timers_.reload();
     // A new list restarts its data version, so caches keyed on it must start over.
     pitchRangeVersion_ = -1;
     histogram_.reset();
@@ -84,8 +83,9 @@ void PsgClip::valueTreeChildRemoved(juce::ValueTree& parent, juce::ValueTree& ch
 }
 
 void PsgClip::timersChanged() {
-    timers_.reload();
-    pitchRangeVersion_ = -1;  // the timers' notes are part of the range
+    // The timers' notes and the volumes they hold are part of the range and the histogram
+    pitchRangeVersion_ = -1;
+    histogram_.reset();
     changed();
 }
 
@@ -111,28 +111,21 @@ juce::Range<float> PsgClip::getPitchRange() const {
     bool hasNotes = false;
     float min = 1.0f;
     float max = 0.0f;
+    const auto take = [&] (float pitch) {
+        hasNotes = true;
+        min = jmin(min, pitch);
+        max = jmax(max, pitch);
+    };
 
-    for (auto* frame : getPsg().getFrames()) {
-        visitFrameNotes(frame->getData(), [&] (const PsgFrameNote& note) {
-            hasNotes = true;
-            min = jmin(min, note.pitch);
-            max = jmax(max, note.pitch);
-        });
-    }
+    forEachSoundingState(TimerSpan::toTheEnd, [&] (int, int, const PsgParamFrameData& data) {
+        visitFrameNotes(data, [&] (const PsgFrameNote& note) { take(note.pitch); });
+    });
 
-    // A timer is drawn as a note at the pitch of what it writes: where a tone of a sixteenth its repeat is
-    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
-    for (int timer = 0; timer < timers_.getNumTimers(); ++timer) {
-        for (const auto& span : timers_.getSpans(timer)) {
-            const double tonePeriod = span.loopCycles / 16.0;
-            if (tonePeriod < 1.0 || tonePeriod > static_cast<double>(toneScale.end))
-                continue;
-            const float pitch = toneScale.valueToNormalized(static_cast<float>(tonePeriod));
-            hasNotes = true;
-            min = jmin(min, pitch);
-            max = jmax(max, pitch);
-        }
-    }
+    // A timer is drawn as a note at the pitch of what it writes
+    for (int timer = 0; timer < timers_.getNumTimers(); ++timer)
+        for (const auto& span : timers_.getSpans(timer))
+            if (const auto pitch = span.getPitch())
+                take(*pitch);
 
     if (! hasNotes) {
         min = 0.0f;
@@ -171,13 +164,10 @@ PitchHistogram PsgClip::buildPitchHistogram(int endIndex) const {
     // The list keeps only frames that change a register, so each state sounds until the
     // next stored frame: weight it by that many machine frames. The last state lasts to
     // the end of the clip's source, so a held final note counts in full too.
-    const auto& frames = getPsg().getFrames();
     PitchHistogram::Builder builder;
-    for (int i = 0; i < frames.size(); ++i) {
-        const int start = frames[i]->getFrameIndex();
-        const int end = i + 1 < frames.size() ? frames[i + 1]->getFrameIndex() : endIndex;
-        builder.addFrame(frames[i]->getData(), jmax(1, end - start));
-    }
+    forEachSoundingState(endIndex, [&] (int start, int end, const PsgParamFrameData& data) {
+        builder.addFrame(data, jmax(1, end - start));
+    });
     return builder.build();
 }
 

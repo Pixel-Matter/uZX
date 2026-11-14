@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <map>
 #include <memory>
+#include <span>
 
 namespace MoTool {
 
@@ -27,12 +28,15 @@ public:
 
     ~TimerBank();
 
-    /** The whole file as parsed: every chip and timer. */
-    const Taym& getTaym() const noexcept { return taym_; }
-    size_t getChipIndex() const noexcept { return chipIndex_; }
+    /** The clock of the chip the timers belong to, as the file has it, in Hz. */
+    uint32_t getClockHz() const noexcept { return taym_.chips[chipIndex_].clock_hz; }
 
     /** The tables in the engine's terms; they live as long as the bank. */
     const TaymTimerTables& getTables() const noexcept { return tables_; }
+
+    /** Element `index` of the pool of `valueType` (a TAYM_VT_*), widened; 0 past the pool's end. A value
+        lane's element `step` is at its value_offset + step, a timer lane's in the 32-bit pool. */
+    uint32_t getPoolValue(uint8_t valueType, size_t index) const noexcept;
 
     /** The chip's timers in the order their commands are numbered on the wire. */
     size_t getNumTimers() const noexcept { return numTimers_; }
@@ -41,9 +45,10 @@ public:
     /** The file's index of the chip's timer `timer`: its column among the file's commands. */
     size_t getFileTimerIndex(size_t timer) const noexcept { return fileTimers_[timer]; }
 
-    /** A TAYM with the same chips, timers and tables and nothing else: one frame, no commands, no frame
-        data. A clip keeps this; its commands and frames are the clip's own. Empty if it cannot be written. */
-    juce::MemoryBlock toBankBytes() const;
+    /** A TAYM with the same chips, timers and tables, `moreActions` after its own actions, and nothing
+        else: one frame, no commands, no frame data. A clip keeps this; its commands and frames are the
+        clip's own. Empty if it cannot be written. */
+    juce::MemoryBlock toBankBytes(std::span<const TaymActn> moreActions = {}) const;
 
 private:
     TimerBank() noexcept;

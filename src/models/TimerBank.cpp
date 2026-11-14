@@ -51,11 +51,26 @@ TimerBank::Ptr TimerBank::fromTaym(const void* data, size_t size, size_t chipInd
     return bank;
 }
 
-juce::MemoryBlock TimerBank::toBankBytes() const {
+uint32_t TimerBank::getPoolValue(uint8_t valueType, size_t index) const noexcept {
+    const auto& t = tables_;
+    switch (valueType) {
+        case TAYM_VT_U8:  return index < t.vu08_count ? t.vu08[index] : 0;
+        case TAYM_VT_U16: return index < t.vu16_count ? t.vu16[index] : 0;
+        case TAYM_VT_U32: return index < t.vu32_count ? t.vu32[index] : 0;
+        default:          return 0;
+    }
+}
+
+juce::MemoryBlock TimerBank::toBankBytes(std::span<const TaymActn> moreActions) const {
     // The same tables, borrowed, under a track of one frame that commands nothing and has no frame data
     Taym bank = taym_;
     bank.trak.frame_count = 1;
     bank.trak.loop_frame = TAYM_NO_LOOP;
+
+    std::vector<TaymActn> actions(taym_.actions, taym_.actions + taym_.action_count);
+    actions.insert(actions.end(), moreActions.begin(), moreActions.end());
+    bank.actions = actions.data();
+    bank.action_count = actions.size();
 
     std::vector<TaymMods> noCommands(taym_.timer_count);  // zeroed: TAYM_CMD_EMPTY
     bank.mods = noCommands.data();

@@ -79,6 +79,7 @@ struct FrameNote {
     uint8_t channelMask;
     bool isEnvelopePitch;
     bool hasEnvMod;
+    const TimerSpan* timer = nullptr;  // a timer's note; else the frames'
 };
 
 Colour getChannelMaskColor(uint8_t channelMask) {
@@ -197,12 +198,6 @@ te::TimeDuration getClipFrameDuration(const PsgClip& clip) {
     return te::TimeDuration::fromSeconds(1.0 / fps);
 }
 
-/** The first of the clip's frames that plays: 0, or later for a clip trimmed at its start. */
-int getFirstPlayedFrame(const PsgClip& clip) {
-    const auto before = clip.getPosition().getStart() - PsgList::getEditTime(clip, 0);
-    return jmax(0, static_cast<int>(std::ceil(before / getClipFrameDuration(clip) - 1.0e-6)));
-}
-
 }  // namespace
 
 /** x of an edit time in a clip component: the timeline's own x, less the whole-pixel x where
@@ -279,18 +274,14 @@ struct ClipVisibility {
         return pixelsPerFrame >= 1.0f ? std::round(x) : x;
     }
 
-    /** Calls fn(frameArrayIndex, frame, x, width) for every frame inside the visible range.
-        Only frames that change something are stored, so a held frame lasts until the next stored
-        one or the clip's end, as the chip holds its state; otherwise a frame takes its own slot. */
+    /** Calls fn(frameArrayIndex, frame, x, width) for every stored frame inside the visible range, each
+        in its own frame's slot. */
     template <typename Fn>
-    void forEachVisibleFrame(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, bool held, Fn&& fn) const {
-        // A held frame starting before the range can still sound in it.
-        for (int i = held ? jmax(0, startIdx - 1) : startIdx; i < frames.size(); ++i) {
+    void forEachVisibleFrame(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, Fn&& fn) const {
+        for (int i = startIdx; i < frames.size(); ++i) {
             const auto& frame = *frames[i];
             const auto t = frame.getEditTime(clip);
-            const auto end = ! held ? t + frameDur
-                : i + 1 < frames.size() ? jmin(frames[i + 1]->getEditTime(clip), clipRange.getEnd())
-                : clipRange.getEnd();
+            const auto end = t + frameDur;
 
             if (end <= range.getStart())
                 continue;
@@ -299,6 +290,33 @@ struct ClipVisibility {
 
             const float x = timeToX(t);
             fn(i, frame, x, timeToX(end) - x);
+        }
+    }
+
+    /** Calls fn(frameArrayIndex, firstFrame, data, x, width) for every stretch inside the visible range in
+        which the chip's parameters and the running timers stay the same, as PsgClip::forEachSoundingState
+        has them. Only frames that change something are stored, so a frame lasts until the next stored one
+        or the clip's end, as the chip holds its state, unless a timer starts, changes or stops in between. */
+    template <typename Fn>
+    void forEachVisibleState(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, Fn&& fn) const {
+        const auto& timers = clip.getTimers();
+        // A held frame starting before the range can still sound in it.
+        for (int i = jmax(0, startIdx - 1); i < frames.size(); ++i) {
+            const auto& frame = *frames[i];
+            if (frame.getEditTime(clip) >= range.getEnd())
+                break;
+            const int next = i + 1 < frames.size() ? frames[i + 1]->getFrameIndex() : TimerSpan::toTheEnd;
+            timers.forEachStretch(frame.getFrameIndex(), next, [&] (int from, int to) {
+                const auto start = PsgList::getEditTime(clip, from);
+                const auto end = to == TimerSpan::toTheEnd ? clipRange.getEnd()
+                                                           : jmin(PsgList::getEditTime(clip, to), clipRange.getEnd());
+                if (end <= range.getStart() || start >= range.getEnd())
+                    return;
+                auto data = frame.getData();
+                timers.applyVolumes(data, from);
+                const float x = timeToX(start);
+                fn(i, from, data, x, timeToX(end) - x);
+            });
         }
     }
 };
@@ -513,15 +531,29 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
 }
 
 /** The colour of what a timer drives: its channels', else the envelope's, else plain text's. */
-static Colour getTimerColour(const ClipTimers::Span& span) {
+static Colour getTimerColour(const TimerSpan& span) {
     if (span.channels != 0)
         return getChannelMaskColor(span.channels);
     return span.envelope ? Colors::PSG::Env : Colors::Theme::textPrimary;
 }
 
-std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers, int frameIndex, int firstPlayed,
-                                                        double chipClockHz, bool hex, const PeriodGrid& grid,
-                                                        const PsgFrameColumns& columns) {
+/** How opaque a note at a channel's volume is drawn: in full under the envelope. */
+static float getVolumeAlpha(int volume, bool envelope) {
+    return envelope ? 1.0f : static_cast<float>(volume) / 15.0f * 0.8f + 0.2f;
+}
+
+/** How opaque a timer's note is drawn: as a tone at the loudest volume the timer writes, in full if it
+    writes none. */
+static float getTimerAlpha(const TimerSpan& span) {
+    float alpha = 0.0f;
+    for (size_t chan = 0; chan < span.loudestVolumes.size(); ++chan)
+        if ((span.registers & (1u << (8 + chan))) != 0)
+            alpha = jmax(alpha, getVolumeAlpha(span.loudestVolumes[chan] & 0x0F, (span.loudestVolumes[chan] & 0x10) != 0));
+    return alpha > 0.0f ? alpha : 1.0f;
+}
+
+std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers, int frameIndex, double chipClockHz,
+                                                        bool hex, const PeriodGrid& grid, const PsgFrameColumns& columns) {
     std::vector<std::pair<String, Colour>> runs;
     const auto bank = timers.getBank();
     if (bank == nullptr)
@@ -547,21 +579,46 @@ std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers
     const auto laneRow = [&] (const String& name, const String& source, uint32_t offset, uint32_t length,
                               uint8_t valueType, int hexDigits) {
         Row row {name, source, {}, length > shown};
-        for (uint32_t step = 0; step < jmin(length, shown); ++step) {
-            const auto index = static_cast<size_t>(offset) + step;
-            const uint32_t value = valueType == TAYM_VT_U8  ? (index < tables.vu08_count ? tables.vu08[index] : 0)
-                                 : valueType == TAYM_VT_U16 ? (index < tables.vu16_count ? tables.vu16[index] : 0)
-                                                            : (index < tables.vu32_count ? tables.vu32[index] : 0);
-            row.values.add(number(value, hexDigits));
-        }
+        for (uint32_t step = 0; step < jmin(length, shown); ++step)
+            row.values.add(number(bank->getPoolValue(valueType, size_t {offset} + step), hexDigits));
         return row;
+    };
+    // Its steps as a table, a column a step: the interval each lasts, and what each register gets
+    const auto rowsOf = [&] (const TimerSpan& span) {
+        std::vector<Row> rows;
+        if (span.timerLane >= 0 && static_cast<size_t>(span.timerLane) < tables.tlane_count) {
+            const auto& lane = tables.tlanes[span.timerLane];
+            rows.push_back(laneRow("interval", "lane " + String(span.timerLane), lane.value_offset, lane.length, TAYM_VT_U32, 4));
+        } else {
+            rows.push_back({"interval", {}, {number(span.base, 4)}, false});
+        }
+        for (size_t i = 0; i < span.numTargets; ++i) {
+            const auto& target = span.targets[i];
+            const String name = target.id <= 13 ? registerNames[target.id]
+                              : target.id == TAYM_TGT_SAMPLE_AMPLITUDE ? "amplitude" : "target";
+            if (target.lane >= 0 && static_cast<size_t>(target.lane) < tables.lane_count) {
+                const auto& lane = tables.lanes[target.lane];
+                rows.push_back(laneRow(name, "lane " + String(target.lane), lane.value_offset, lane.length, lane.value_type, 2));
+            } else {
+                rows.push_back({name, {}, {number(target.value, 2)}, false});
+            }
+        }
+        return rows;
     };
 
     for (int timer = 0; timer < timers.getNumTimers(); ++timer) {
         const auto* span = timers.findSpan(timer, frameIndex);
-        if (span == nullptr || span->startedFrame < firstPlayed)
+        if (span == nullptr)
             continue;
         const bool here = span->startFrame == frameIndex;
+        // A modulate here changes some of what ran before it; a start sets all of it
+        const auto* before = here && ! span->starts ? timers.findSpan(timer, frameIndex - 1) : nullptr;
+        const auto rowsBefore = before != nullptr ? rowsOf(*before) : std::vector<Row> {};
+        const auto isNew = [&] (const Row& row) {
+            return here && std::none_of(rowsBefore.begin(), rowsBefore.end(), [&] (const Row& old) {
+                return old.name == row.name && old.source == row.source && old.values == row.values;
+            });
+        };
         const auto colour = getTimerColour(*span);
         const auto add = [&] (const String& text, bool bright = false) {
             runs.emplace_back(text, bright ? colour : colour.withMultipliedAlpha(0.5f));
@@ -587,26 +644,13 @@ std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers
             add("duty " + String(roundToInt(span->duty * 100.0f)) + "%", here);
         }
 
-        // Then its steps as a table, a column a step: the interval each lasts, and what each register gets
-        std::vector<Row> rows;
         if (span->timerLane >= 0 && static_cast<size_t>(span->timerLane) < tables.tlane_count) {
-            add("  base " + number(span->base, 4));  // the lane's intervals stand for it, or scale it
-            const auto& lane = tables.tlanes[span->timerLane];
-            rows.push_back(laneRow("interval", "lane " + String(span->timerLane), lane.value_offset, lane.length, TAYM_VT_U32, 4));
-        } else {
-            rows.push_back({"interval", {}, {number(span->base, 4)}, false});
+            add("  ");  // the lane's intervals stand for the base, or scale it
+            add("base " + number(span->base, 4), here && (before == nullptr || before->base != span->base));
         }
-        for (size_t i = 0; i < span->numTargets; ++i) {
-            const auto& target = span->targets[i];
-            const String name = target.id <= 13 ? registerNames[target.id]
-                              : target.id == TAYM_TGT_SAMPLE_AMPLITUDE ? "amplitude" : "target";
-            if (target.lane >= 0 && static_cast<size_t>(target.lane) < tables.lane_count) {
-                const auto& lane = tables.lanes[target.lane];
-                rows.push_back(laneRow(name, "lane " + String(target.lane), lane.value_offset, lane.length, lane.value_type, 2));
-            } else {
-                rows.push_back({name, {}, {number(target.value, 2)}, false});
-            }
-        }
+
+        // Then its steps, a row bright where this frame's command set it
+        const auto rows = rowsOf(*span);
         int nameWidth = 0, sourceWidth = 0, valueWidth = 0;
         for (const auto& row : rows) {
             nameWidth = jmax(nameWidth, row.name.length());
@@ -615,14 +659,15 @@ std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers
                 valueWidth = jmax(valueWidth, value.length());
         }
         for (const auto& row : rows) {
-            String line = "\n" + String::repeatedString(" ", indent) + row.name.paddedRight(' ', nameWidth);
+            String line = row.name.paddedRight(' ', nameWidth);
             if (sourceWidth > 0)
                 line << "  " << row.source.paddedRight(' ', sourceWidth);
             for (const auto& value : row.values)
                 line << "  " << value.paddedLeft(' ', valueWidth);
             if (row.more)
                 line << "  " << String::fromUTF8("\xE2\x80\xA6");  // …
-            add(line.trimEnd());
+            add("\n" + String::repeatedString(" ", indent));
+            add(line.trimEnd(), isNew(row));
         }
     }
     return runs;
@@ -981,7 +1026,7 @@ std::vector<std::pair<String, Colour>> describePsgClipFrame(PsgClip& psgClip, te
     runs.insert(runs.end(), chipRuns.begin(), chipRuns.end());
 
     if (! psgClip.getTimers().isEmpty()) {
-        const auto timerRuns = formatTimerFrame(psgClip.getTimers(), frameIndex, getFirstPlayedFrame(psgClip), clockHz, hex, grid, columns);
+        const auto timerRuns = formatTimerFrame(psgClip.getTimers(), frameIndex, clockHz, hex, grid, columns);
         if (! timerRuns.empty()) {
             runs.emplace_back("\n", Colours::transparentBlack);
             runs.insert(runs.end(), timerRuns.begin(), timerRuns.end());
@@ -1040,7 +1085,7 @@ void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
     g.setFont(Font(FontOptions(12.0f).withStyle("Bold")));
 
     uZX::PsgRegsFrame regsFrame;
-    vis.forEachVisibleFrame(frames, *psgClip, false, [&] (int, const PsgParamFrame& frame, float x, float width) {
+    vis.forEachVisibleFrame(frames, *psgClip, [&] (int, const PsgParamFrame& frame, float x, float width) {
         regsFrame.clear();
         frame.getData().updateRegisters(regsFrame);
 
@@ -1259,78 +1304,44 @@ void PsgClipComponent::paintCachedContent(Graphics& g, const PaintView& view) {
                   });
 }
 
-/** Draws the clip's timers as notes: each stretch of a timer at the pitch of what it writes, in the colour
-    of what it drives.
+/** Draws a timer's note in its place among the frame's notes, in the colour of what the timer drives, as
+    opaque as a tone at the loudest volume it writes.
 
     A timer's note is told from a tone's by its make: a body between two bright edges. The body is denser the
     larger the duty, and a note tall enough has a bright band inside as tall as its duty, so a pulse whose
-    duty sweeps shows as a band that widens and narrows. A tick marks a start. A timer whose writes do not repeat, or repeat too slowly to be a pitch, is a bar along the
-    clip's bottom. */
-static void paintTimerNotes(Graphics& g, const PsgClip& clip, const ClipVisibility& vis, const NotesLayout& layout) {
-    const auto& timers = clip.getTimers();
-    if (timers.isEmpty())
+    duty sweeps shows as a band that widens and narrows. A tick marks a start. Without the decorations, as
+    when the envelope's stripes are left out, it is filled as a tone's. */
+static void drawTimerNote(Graphics& g, Rectangle<float> note, const TimerSpan& span, float alpha, bool decorate,
+                          bool tick) {
+    const auto colour = getTimerColour(span).withAlpha(alpha);
+    const auto bright = colour.brighter(0.6f);
+    const float x = note.getX(), y = note.getY(), width = note.getWidth(), height = note.getHeight();
+
+    if (! decorate) {
+        g.setColour(colour);
+        g.fillRect(note);
         return;
-
-    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
-    const int firstPlayed = getFirstPlayedFrame(clip);
-    const auto timeOf = [&] (int frame) {
-        return frame == ClipTimers::Span::toTheEnd ? vis.clipRange.getEnd()
-                                                   : jmin(PsgList::getEditTime(clip, frame), vis.clipRange.getEnd());
-    };
-    const float noteHeight = layout.noteHeight;
-    const float clipHeight = static_cast<float>(vis.rect.getHeight());
-
-    for (int timer = 0; timer < timers.getNumTimers(); ++timer) {
-        const auto& spans = timers.getSpans(timer);
-        // A timer's spans follow one another, so the first that reaches into view is found by halving
-        auto span = std::partition_point(spans.begin(), spans.end(), [&] (const ClipTimers::Span& s) {
-            return timeOf(s.endFrame) <= vis.range.getStart();
-        });
-        for (; span != spans.end(); ++span) {
-            const auto start = timeOf(span->startFrame);
-            if (start >= vis.range.getEnd())
-                break;
-            if (span->startedFrame < firstPlayed)
-                continue;  // started before a trimmed clip's start: it does not play
-
-            const float x = vis.timeToX(start);
-            const float width = jmax(1.0f, vis.timeToX(timeOf(span->endFrame)) - x);
-            const auto colour = getTimerColour(*span);
-            const double tonePeriod = span->loopCycles / 16.0;  // the period of a tone of the same pitch
-
-            if (tonePeriod < 1.0 || tonePeriod > static_cast<double>(toneScale.end)) {
-                const float barHeight = jlimit(2.0f, 4.0f, noteHeight);
-                g.setColour(colour.withAlpha(0.8f));
-                g.fillRect(x, clipHeight - barHeight, width, barHeight);
-                continue;
-            }
-
-            const float top = layout.normToY(toneScale.valueToNormalized(static_cast<float>(tonePeriod))) - noteHeight * 0.5f;
-            const float y = static_cast<float>(roundToInt(top));
-            const float height = jmax(1.0f, static_cast<float>(roundToInt(top + noteHeight)) - y);
-            const auto bright = colour.brighter(0.6f);
-
-            if (height < 4.0f) {
-                g.setColour(colour.withAlpha(0.75f));
-                g.fillRect(x, y, width, height);
-            } else {
-                // The body is denser the longer the pulse is on, which reads at any height; a note tall
-                // enough also has the band
-                g.setColour(colour.withAlpha(span->duty >= 0.0f ? 0.15f + 0.6f * span->duty : 0.35f));
-                g.fillRect(x, y, width, height);
-                g.setColour(bright.withAlpha(0.9f));
-                g.fillRect(x, y, width, 1.0f);
-                g.fillRect(x, y + height - 1.0f, width, 1.0f);
-                if (span->duty >= 0.0f && height >= 8.0f) {
-                    const float band = jlimit(1.0f, height - 4.0f, std::round((height - 4.0f) * span->duty));
-                    g.fillRect(x, y + std::floor((height - band) * 0.5f), width, band);
-                }
-            }
-            if (span->starts && vis.pixelsPerFrame >= 3.0f) {
-                g.setColour(bright);
-                g.fillRect(x, y - 2.0f, 1.0f, height + 4.0f);
-            }
+    }
+    if (height < 4.0f) {
+        g.setColour(colour.withMultipliedAlpha(0.75f));
+        g.fillRect(note);
+    } else {
+        // The body is denser the longer the pulse is on, which reads at any height; a note tall
+        // enough also has the band
+        g.setColour(colour.withMultipliedAlpha(span.duty >= 0.0f ? 0.15f + 0.6f * span.duty : 0.35f));
+        g.fillRect(note);
+        g.setColour(bright.withMultipliedAlpha(0.9f));
+        g.fillRect(x, y, width, 1.0f);
+        g.fillRect(x, y + height - 1.0f, width, 1.0f);
+        if (span.duty >= 0.0f && height >= 8.0f) {
+            // The duty's share of the whole note, its edges included
+            const float band = jlimit(1.0f, height, std::round(height * span.duty));
+            g.fillRect(x, y + std::floor((height - band) * 0.5f), width, band);
         }
+    }
+    if (tick) {
+        g.setColour(bright);
+        g.fillRect(x, y - 2.0f, 1.0f, height + 4.0f);
     }
 }
 
@@ -1360,8 +1371,9 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     const Range<float> visibleX = layout.visibleX;
     const Rectangle<float> viewport {visibleX.getStart(), 0.0f, visibleX.getLength(), float(vis.rect.getHeight())};
 
-    vis.forEachVisibleFrame(frames, *psgClip, true, [&] (int frameIndex, const PsgParamFrame& frame, float x, float width) {
-        const auto& frameData = frame.getData();
+    const auto& timers = psgClip->getTimers();
+    vis.forEachVisibleState(frames, *psgClip, [&] (int frameIndex, int firstFrame, const PsgParamFrameData& frameData,
+                                                   float x, float width) {
         const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
 
         const auto noiseLevels = drawMods ? getNoiseChannelLevels(frameData) : std::array<float, 3> {};
@@ -1381,30 +1393,38 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             g.setOpacity(1.0f);
         }
 
-        // Collect this frame's notes: up to one per channel plus the envelope
-        std::array<FrameNote, 4> notes;
+        // Collect this stretch's notes: up to one per channel plus the envelope, and one per timer with a
+        // pitch, all sharing lanes alike
+        std::array<FrameNote, 4 + TAYM_MAX_TIMERS> notes;
         int noteCount = 0;
         uint8_t toneChannels = 0, pitchChannels = 0;
+        const auto addNote = [&] (float pitch, FrameNote note) {
+            const float top = normToY(pitch) - noteHeight * 0.5f;
+            note.y = static_cast<float>(roundToInt(top));
+            note.height = static_cast<float>(roundToInt(top + noteHeight)) - note.y;
+            notes[static_cast<size_t>(noteCount++)] = note;
+        };
 
         visitFrameNotes(frameData, [&] (const PsgFrameNote& n) {
             pitchChannels |= n.channelMask;
             if (! n.isEnvelopePitch)
                 toneChannels |= n.channelMask;
-            const float alpha = (n.hasEnvMod || n.isEnvelopePitch)
-                ? 1.0f
-                : (static_cast<float>(n.volume) / 15.0f * 0.8f + 0.2f);
-            const float top = normToY(n.pitch) - noteHeight * 0.5f;
-            const float topRound = static_cast<float>(roundToInt(top));
-            const float heightRound = static_cast<float>(roundToInt(top + noteHeight)) - topRound;
-            notes[noteCount++] = {
-                topRound,
-                heightRound,
-                alpha,
-                n.channelMask,
-                n.isEnvelopePitch,
-                n.hasEnvMod
-            };
+            addNote(n.pitch, {0.0f, 0.0f, n.isEnvelopePitch ? 1.0f : getVolumeAlpha(n.volume, n.hasEnvMod),
+                              n.channelMask, n.isEnvelopePitch, n.hasEnvMod});
         });
+
+        // A timer whose writes are no pitch is a bar along the clip's bottom instead
+        std::array<const TimerSpan*, TAYM_MAX_TIMERS> bars {};
+        int barCount = 0;
+        for (int timer = 0; timer < timers.getNumTimers(); ++timer) {
+            const auto* span = timers.findSpan(timer, firstFrame);
+            if (span == nullptr)
+                continue;
+            if (const auto pitch = span->getPitch())
+                addNote(*pitch, {0.0f, 0.0f, getTimerAlpha(*span), span->channels, false, false, span});
+            else
+                bars[static_cast<size_t>(barCount++)] = span;
+        }
 
         const std::span<const FrameNote> pitchNotes(notes.data(), static_cast<size_t>(noteCount));
         if (noiseLevel > 0.0f)
@@ -1412,9 +1432,12 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                            noiseSpread, static_cast<uint8_t>(~pitchChannels & 0x7u), noiseLevels, frameIndex,
                            viewport, pitchNotes);
 
-        std::sort(notes.begin(), notes.begin() + noteCount, [] (const FrameNote& a, const FrameNote& b) {
-            return std::tie(a.y, a.isEnvelopePitch, a.channelMask)
-                 < std::tie(b.y, b.isEnvelopePitch, b.channelMask);
+        // At one height the tones come first, then the timers, then the envelope
+        const auto order = [] (const FrameNote& n) {
+            return std::tuple(n.y, n.isEnvelopePitch, n.timer != nullptr ? n.timer->timer : -1, n.channelMask);
+        };
+        std::sort(notes.begin(), notes.begin() + noteCount, [&] (const FrameNote& a, const FrameNote& b) {
+            return order(a) < order(b);
         });
 
         // Paint notes, subdividing overlapping groups. Notes are sorted by y,
@@ -1435,8 +1458,9 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             if (noiseLevel > 0.0f) {
                 uint8_t owners = 0;
                 for (int i = groupStart; i < gi; ++i)
-                    owners |= notes[i].isEnvelopePitch
-                        ? static_cast<uint8_t>(notes[i].channelMask & ~toneChannels) : notes[i].channelMask;
+                    if (notes[i].timer == nullptr)
+                        owners |= notes[i].isEnvelopePitch
+                            ? static_cast<uint8_t>(notes[i].channelMask & ~toneChannels) : notes[i].channelMask;
                 drawNoiseFringe(g, {x, groupY, width, groupH}, noiseSpread,
                                owners, noiseLevels, frameIndex, viewport, pitchNotes);
             }
@@ -1455,8 +1479,13 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                         subH = groupBottom - subY;
                 }
 
-                const auto noteColor = note.isEnvelopePitch ? Colors::PSG::Env : getChannelMaskColor(note.channelMask);
                 const auto noteRect = Rectangle<float>(x, subY, width, jmax(1.0f, subH));
+                if (note.timer != nullptr) {
+                    drawTimerNote(g, noteRect, *note.timer, note.alpha, drawMods,
+                                  note.timer->starts && note.timer->startFrame == firstFrame);
+                    continue;
+                }
+                const auto noteColor = note.isEnvelopePitch ? Colors::PSG::Env : getChannelMaskColor(note.channelMask);
 
                 g.setColour(noteColor.withAlpha(note.alpha));
                 g.fillRect(noteRect);
@@ -1489,10 +1518,13 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                                             float(vis.rect.getHeight()) - height, width, height}, owners, drawMods);
             }
         }
-
+        const float barHeight = jlimit(2.0f, 4.0f, noteHeight);
+        for (int i = 0; i < barCount; ++i) {
+            const auto& span = *bars[static_cast<size_t>(i)];
+            g.setColour(getTimerColour(span).withAlpha(getTimerAlpha(span) * 0.8f));
+            g.fillRect(x, float(vis.rect.getHeight()) - barHeight, width, barHeight);
+        }
     });
-
-    paintTimerNotes(g, *psgClip, vis, layout);
 }
 
 //==============================================================================

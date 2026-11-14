@@ -16,6 +16,8 @@ A frame brings the chip its ordinary register writes, the background, and at mos
 
 - A running timer **owns** the registers its actions name. The background's write to an owned register is held back.
 - A register a timer takes has the chip's value saved; one it lets go of gets the held write, or the saved value.
+- What the timers own is worked out again at every frame, so timers a new bank stopped give their registers back in the same frame.
+- A frame that sets part of a register, such as a volume without its envelope switch, adds to the background's value, not the timer's: `PsgDecoder` reads the registers through `ChipTimers::readBackground`, which has the held write for an owned one.
 
 Between frames `AYChipPlugin::renderTo` asks for the timers' writes that fall in the samples it is about to render and applies each at its own sample. A mute is applied again after a write to the mixer or a volume, since a mute holds over the registers as written.
 
@@ -32,9 +34,9 @@ So a timer started in a frame writes first at that frame's sample, and its later
 
 A sample is some forty cycles, so a timer can expire in a frame's sample but before the frame's cycle. That expiry is written first (`AYChipPlugin::writeTimersBefore`), as it comes first in the chip's time: it takes its next interval from the values it had, not from those the frame's command brings. Applied the other way round, a timer drifts a few samples off at every such frame.
 
-To hear a whole tune as the engine plays it, or to compare it with TAYM's Python reference render: `UZX_RENDER_TAYM_TO=<file.wav> uZXTests TaymImport` renders the repository's example tune.
+To hear a whole tune as the engine plays it, or to compare it with TAYM's Python reference render: `UZX_RENDER_TAYM_TO=<file.wav> uZXTests TaymImport` renders the example tune, `tests/fixtures/taym/atarized.taym`.
 
-A timer's rate is in the chip's clock, so the chip's clock setting changes its pitch as it would on hardware; a rate given in Hz stays in Hz. Changing the clock stops the timers.
+A timer's rate is in the chip's clock, so the chip's clock setting changes its pitch as it would on hardware; a rate given in Hz stays in Hz. Changing the clock stops the timers, and an empty frame applied at once gives their registers back to the frames' values.
 
 The chip's output filter delays every write alike by about a dozen samples. That is the emulator's, and applies to frames as well.
 
@@ -61,7 +63,9 @@ The numbers avoid controllers 0 and 32 and the RPN and NRPN ones: Tracktion keep
 
 **The bank does not travel.** A timer's lanes and actions can be thousands of values. Whatever plays timer commands registers their bank with `TimerBankRegistry` and sends its number; the chip looks it up. A device on a real wire would be sent the bank ahead of time under the same number.
 
-**Resuming inside a timer's run.** When play jumps or stops the timers stop (`isAllNotesOff`). Where play resumes Tracktion states each controller's last value again, which has the start released; `TimerDecoder` reads a timer that comes on with no start as a start, so a timer that was running there runs again. It starts from its lanes' first elements: where it had got to does not travel, so a pulse wave is in another phase, which is not heard, and a one-shot lane (a sample) plays from its beginning. A timer whose values are stated again while it runs is left alone.
+**Resuming inside a timer's run.** When play jumps or stops the timers stop (`isAllNotesOff`). Where play resumes Tracktion states each controller's last value again, which has the start released; `TimerDecoder` reads a timer that comes on with no start as a start, so a timer that was running there runs again. It starts from its lanes' first elements: where it had got to does not travel, so a pulse wave is in another phase, which is not heard, and a one-shot lane (a sample) plays from its beginning. A timer whose values are stated again while it runs is left alone, and a start of a timer the same frame turns off starts nothing.
+
+**A timer's actions are all its targets.** The wire holds a timer's actions as a slice, a value like the others (`TimerCC::apply`), while TAYM's modulate patches only the targets its actions name. The two agree because a modulate on the wire names every target of its timer: `readTaymModule` gives a modulate that names some of them a slice that names all, with each one's source as the modulate leaves it, in actions it adds to the bank after the file's. The chip plays that alike, and a timer started again where play resumes has all its targets.
 
 `TimerEncoder` states every value at a timer's first start, since the chip may hold another clip's, and after that only what changed.
 
@@ -72,13 +76,16 @@ A TAYM opens as a PSG clip with timers (`ClipTimers`, in the clip's state as a `
 - **The bank**: a TAYM with the file's chips, timers and tables and nothing else, as bytes. `TimerBank` parses it once; the clip registers it for as long as it lives.
 - **The commands**: a `TIMER` for each, with its frame's index in the clip's PSG list. They are on the list's frame grid, so tempo and frame-rate changes move them with the frames, and a clip trimmed at its start plays them from its start on.
 
-`PsgClip::createPlaybackMidiSequence` adds them to the frames' controllers. Commands before the clip's start are left out; a timer running across it is silent until its next start.
+`ClipTimers` follows its clip's state, so a set, an undo or a copy reads it again in one place. `PsgClip::createPlaybackMidiSequence` adds the commands to the frames' controllers:
+
+- Every clip chooses its bank where it begins; a clip without timers chooses none, which stops the timers a clip before it left running.
+- A clip trimmed at its start leaves out the commands before it, and starts the timers they leave running where it starts, as play that resumes there does (`TimerEncoder::skip` and `restart`). In raw beats nothing is left out: Tracktion chases the controllers, and the chip starts a timer stated as on.
 
 A project with such a clip opens in an older µZX, which plays the frames without the timers and keeps the timers when it saves. That is why the edit format version is not raised: raising it would lock every project out of older versions.
 
 ## Reading a TAYM
 
-`readTaymModule` in `src/formats/taym/TaymFile.*` gives a `TrackerModule`: each AY chip's frames, the tune's title, clock and chip type, and each chip's timers. It goes through the same import as a PSG file or a tracker module (`Helpers::importPsgFiles`).
+`readTaymModule` in `src/formats/taym/TaymFile.*` gives a `TrackerModule`: for each AY chip its frames, clock, chip type and timers, and the tune's title. It goes through the same import as a PSG file or a tracker module (`Helpers::importPsgFiles`), which sets each chip's clock and type on the track it gets to itself.
 
 A chip's frame data is a standard PSG and is read by `PsgFile`, as a `.psg` file is, with every write kept: a shape written again restarts the envelope. A pause counts four frames for each unit in a PSG, but TAYM's own tools write and read it as one; the track states its frame count, so the reader takes whichever gives that count, fours first.
 
@@ -93,9 +100,10 @@ The warning stays until the chip is reset; one about the bank also ends when a b
 
 ## In the interface
 
-- **In the clip.** `ClipTimers::getSpans` gives what each timer does from one command to its next: the registers it holds, the chip cycles its values and intervals take to come round (`loopCycles`), and its duty. A tone of period `loopCycles / 16` has the same pitch, which is where `paintTimerNotes` in `src/gui/timeline/PsgClipComponent.cpp` draws the note. The clip's pitch range takes the timers in. `formatTimerFrame` writes the frame hover's lines.
+- **In the clip.** `findTimerSpans` in `src/models/TimerSpans.*` runs the clip's commands through TAYM's engine, so a command the chip would refuse changes nothing here either, and gives what each timer does from one command to its next: the registers it holds, the chip cycles its values and intervals take to come round (`loopCycles`), its duty, and the loudest volume it writes to each channel. A tone of period `loopCycles / 16` has the same pitch (`TimerSpan::getPitch`), which is where `paintTimerNotes` in `src/gui/timeline/PsgClipComponent.cpp` draws the note; a timer whose every expiry writes the same values has no pitch, unless each one restarts the envelope. The clip's pitch range takes the timers in. `formatTimerFrame` writes the frame hover's lines.
+- **The frames' notes under a timer.** Where a timer holds a channel's volume, the chip's volume is the timer's, not the frames'. The clip's notes, its pitch range and its tuning histogram take the loudest volume the timer writes there (`PsgClip::forEachSoundingState`, cut at every frame a timer starts, changes or stops), so a tone the frames leave at volume 0 under a pulse-width timer is drawn and counted.
 - **In the AY panel.** `AYChipPlugin::getTimerChannels` says which channels a timer drives; `AYScopes` draws a stopwatch in the corner of those scopes, in Viz mode and rendered video too; it reads the chip as it paints, since a video frame is painted with no message loop in between. `ChannelMuter` has a timers switch per channel, shown while the chip's track has a clip with timers.
-- **Scope sync.** A timer leaves the tone and the envelope out of step with what a channel plays, or stops them, so Chip Sync has nothing right to trigger on. The engine marks the expiry a timer's output repeats from (`TaymTimerWrite::loop_start`: every lane back on the element it loops to), and `AYChipPlugin::writeTimerSync` puts a rise there in place of the chip's sync, on the channels the write's register reaches. With two timers on a channel the lower one is the trigger. A repeat slower than 20 Hz is a modulation, not a pitch, and leaves the chip's sync; so does a muted timer.
+- **Scope sync.** A timer leaves the tone and the envelope out of step with what a channel plays, or stops them, so Chip Sync has nothing right to trigger on. The engine marks the expiry a timer's output repeats from (`TaymTimerWrite::loop_start`: every lane back on the element it loops to), and `AYChipPlugin::writeTimerSync` puts a rise there in place of the chip's sync, on the channels the write's register reaches. With two timers on a channel the lower one is the trigger, as each frame leaves them owning registers, whichever writes first. A repeat slower than 20 Hz is a modulation, not a pitch, and leaves the chip's sync; so does a muted timer.
 - **Muting.** A channel's timers switch mutes its volume and tone period registers (`ChipTimers::setMuted`). A timer still owns a muted register and runs on, so it comes back in step; its writes are dropped, and the frames' writes go to the chip as if no timer had it.
 
 ## Limits

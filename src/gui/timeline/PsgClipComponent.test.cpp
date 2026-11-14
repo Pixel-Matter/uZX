@@ -508,51 +508,57 @@ public:
             faster.command = TAYM_CMD_MODULATE;
             faster.base_timer_value = 100;
             faster.timer_lane_ref = TAYM_TLAN_UNCHANGED;
+            auto otherLane = faster;  // R8 from lane 1 (3, 0)
+            otherLane.base_timer_value = 0;
+            otherLane.first_action = 2;
+            otherLane.action_count = 1;
             timers.set(Tests::makeTestTaym(), 0, {
                 {10, 0, Tests::timerStart(222, 0)},   // R8 from lane 0 (15, 9): 3552 cycles an expiry
                 {12, 1, Tests::timerStart(222, 4)},   // R13, always 0x0C
                 {20, 0, faster},
+                {25, 0, otherLane},
             }, nullptr);
 
-            expectEquals(marked(formatTimerFrame(timers, 9, 0, 1773400.0, false)), String(), "no timer runs yet");
-            expectEquals(marked(formatTimerFrame(timers, 10, 0, 1773400.0, false)),
+            expectEquals(marked(formatTimerFrame(timers, 9, 1773400.0, false)), String(), "no timer runs yet");
+            expectEquals(marked(formatTimerFrame(timers, 10, 1773400.0, false)),
                          String("[T1   ] [start]  [249.6Hz]  [duty 50%]\n"
-                                "      interval          222\n"
-                                "      A vol     lane 0   15    9"));
-            expectEquals(marked(formatTimerFrame(timers, 15, 0, 1773400.0, false)),
+                                "      [interval          222]\n"
+                                "      [A vol     lane 0   15    9]"));
+            expectEquals(marked(formatTimerFrame(timers, 15, 1773400.0, false)),
                          String("T1           249.6Hz  duty 50%\n"
                                 "      interval          222\n"
                                 "      A vol     lane 0   15    9\n"
                                 "T2           499.3Hz\n"
                                 "      interval   222\n"
                                 "      env shape   12"));
-            expectEquals(marked(formatTimerFrame(timers, 20, 0, 1773400.0, true)),
+            expectEquals(marked(formatTimerFrame(timers, 20, 1773400.0, true)),
                          String("[T1   ] [mod  ]  [554.2Hz]  [duty 50%]\n"
-                                "      interval          0064\n"
+                                "      [interval          0064]\n"
                                 "      A vol     lane 0    0F    09\n"
                                 "T2           499.3Hz\n"
                                 "      interval   00DE\n"
                                 "      env shape    0C"));
-            const auto runs = formatTimerFrame(timers, 15, 0, 1773400.0, false);
+            // A modulate's rows are bright where it changed them: here its base, then its volume's lane
+            expectEquals(marked(formatTimerFrame(timers, 25, 1773400.0, false)),
+                         String("[T1   ] [mod  ]  [554.2Hz]  [duty 50%]\n"
+                                "      interval          100\n"
+                                "      [A vol     lane 1    3    0]\n"
+                                "T2           499.3Hz\n"
+                                "      interval   222\n"
+                                "      env shape   12"));
+            const auto runs = formatTimerFrame(timers, 15, 1773400.0, false);
             expect(runs.front().second == Colors::PSG::A.withMultipliedAlpha(0.5f), "a timer on A's volume is in A's colour");
             expect(runs.back().second == Colors::PSG::Env.withMultipliedAlpha(0.5f), "one on the envelope's shape in the envelope's");
-            expectEquals(marked(formatTimerFrame(timers, 15, 11, 1773400.0, false)),
-                         String("T2           499.3Hz\n"
-                                "      interval   222\n"
-                                "      env shape   12"),
-                         "a timer started before the clip's first played frame is not playing");
-
             // With the clip's tuning, the timer's pitch is named too: a repeat of 3552 cycles is a tone of period 222,
             // and the grid's B4 is 224
             const auto grid = makeEqualTemperamentGrid(440.0, 1773400.0);
-            expect(marked(formatTimerFrame(timers, 15, 11, 1773400.0, false, grid)).startsWith(
-                       String::fromUTF8("T2           499.3Hz  B4 +16\xC2\xA2\n")),
-                   marked(formatTimerFrame(timers, 15, 11, 1773400.0, false, grid)));
+            const auto named = marked(formatTimerFrame(timers, 15, 1773400.0, false, grid));
+            expect(named.contains(String::fromUTF8("\nT2           499.3Hz  B4 +16\xC2\xA2\n")), named);
 
             // Under a chip's rows the pitch and the note stand in their columns: right of periods 4 wide, the
             // Hz right-aligned in 8, the note's name in 3 and its cents in 5
-            const auto aligned = marked(formatTimerFrame(timers, 15, 11, 1773400.0, false, grid, {4, 8, 3, 5}));
-            expect(aligned.startsWith(String::fromUTF8("T2            499.3Hz  B4   +16\xC2\xA2\n")), aligned);
+            const auto aligned = marked(formatTimerFrame(timers, 15, 1773400.0, false, grid, {4, 8, 3, 5}));
+            expect(aligned.contains(String::fromUTF8("\nT2            499.3Hz  B4   +16\xC2\xA2\n")), aligned);
         }
 
         beginTest("A timer is drawn as a note at the pitch of what it writes, from its start to its stop, in its channel's colour");
@@ -565,15 +571,17 @@ public:
                  {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {{uZX::PsgRegType::VolumeB, 0}}},
                 {50.0, 1}
             };
-            const auto withTimers = [&] (std::vector<ClipTimers::Event> events, int height = 300) {
-                return Tests::renderPsgClip(engine, silent, 100, height, {}, false, {}, {},
+            const auto withTimers = [&] (std::vector<TimerEvent> events, std::optional<VizOptions> viz = {}) {
+                return Tests::renderPsgClip(engine, silent, 100, 300, {}, false, {}, viz,
                     [&] (PsgClip& clip) { clip.getTimers().set(Tests::makeTestTaym(), 0, events, nullptr); });
             };
             TaymMods stop {};
             stop.command = TAYM_CMD_STOP;
 
             expect(isBlank(renderData(silent)), "the frames alone draw nothing");
-            const auto image = withTimers({{10, 0, Tests::timerStart(222, 0)}, {30, 0, stop}});
+            // Two pixels a frame leave the decorations out, unless they are drawn always, as the envelope's are
+            const auto image = withTimers({{10, 0, Tests::timerStart(222, 0)}, {30, 0, stop}},
+                                          VizOptions {.decorations = VizOptions::Decorations::always});
             int left = image.getWidth(), right = -1, top = image.getHeight(), bottom = -1;
             bool channelHue = true, dimBody = false, brightEdge = false;
             for (int y = 0; y < image.getHeight(); ++y) {
@@ -592,6 +600,38 @@ public:
             expect(channelHue, "in channel A's colour");
             expect(dimBody && brightEdge, "a body between two bright edges");
             expect(bottom - top <= 30, "one note, with its start's tick: rows " + String(top) + " to " + String(bottom));
+
+            // At a duty of 50% the band is half the note: the bright rows away from the tick are its two
+            // edges and the band
+            int noteRows = 0, brightRows = 0;
+            for (int y = 0; y < image.getHeight(); ++y)
+                if (const auto colour = image.getPixelAt(40, y); ! colour.isTransparent()) {
+                    ++noteRows;
+                    brightRows += colour.getAlpha() > 200 ? 1 : 0;
+                }
+            expect(noteRows >= 8, "tall enough for a band: " + String(noteRows));
+            expect(std::abs((brightRows - 2) - noteRows / 2) <= 1,
+                   "a band of " + String(brightRows - 2) + " rows in a note of " + String(noteRows));
+            bool plain = true;
+            const auto undecorated = withTimers({{10, 0, Tests::timerStart(222, 0)}, {30, 0, stop}});
+            for (int y = 0; y < undecorated.getHeight(); ++y)
+                for (int x = 0; x < undecorated.getWidth(); ++x)
+                    if (const auto colour = undecorated.getPixelAt(x, y); ! colour.isTransparent())
+                        plain = plain && colour.getAlpha() > 200;
+            expect(plain, "without the decorations, a timer at volume 15 is filled as a tone at it");
+
+            // A timer is as opaque as the loudest volume it writes, as a tone at it is
+            const auto mostOpaque = [] (const Image& drawn) {
+                uint8 most = 0;
+                for (int y = 0; y < drawn.getHeight(); ++y)
+                    for (int x = 0; x < drawn.getWidth(); ++x)
+                        most = jmax(most, drawn.getPixelAt(x, y).getAlpha());
+                return most;
+            };
+            const auto quiet = withTimers({{10, 0, Tests::timerStart(222, 2)}, {30, 0, stop}});  // R8 from lane 1: 3, 0
+            expect(mostOpaque(quiet) > 0, "a quiet timer is drawn");
+            expect(mostOpaque(quiet) < mostOpaque(image) / 2,
+                   "at 3 fainter than at 15: " + String(mostOpaque(quiet)) + " and " + String(mostOpaque(image)));
 
             // Two timers in one clip: on A's volume, and twice as fast on B's
             const auto both = withTimers({{10, 0, Tests::timerStart(222, 0)}, {10, 1, Tests::timerStart(111, 3)}});
@@ -618,20 +658,67 @@ public:
                     }
             expect(envelopeHue, "a timer on the envelope's shape is in the envelope's colour");
             expect(toTheEnd, "a timer nothing stops runs to the clip's end");
+
+            // A tone the frames leave at volume 0 sounds where a timer writes its channel's volume: it is drawn
+            // there, and counted for the tuning
+            auto tone = silent;
+            tone.frames[0] = {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::TonePeriodFineA, 200},
+                              {uZX::PsgRegType::TonePeriodCoarseA, 0}, {uZX::PsgRegType::VolumeA, 0}};
+            int counted = -1;
+            const auto underTimer = Tests::renderPsgClip(engine, tone, 100, 300, {}, false, {}, {}, [&] (PsgClip& clip) {
+                clip.getTimers().set(Tests::makeTestTaym(), 0, {{10, 0, Tests::timerStart(222, 0)}, {30, 0, stop}}, nullptr);
+                const auto& histogram = clip.getPitchHistogram();
+                counted = histogram.tone.contains(200) ? histogram.tone.at(200) : 0;
+            });
+            expectEquals(counted, 20, "the frames from the timer's start to its stop");
+            const auto notesAt = [&] (int x) {
+                int notes = 0;
+                for (int y = 0; y < underTimer.getHeight(); ++y)
+                    if (! underTimer.getPixelAt(x, y).isTransparent() && (y == 0 || underTimer.getPixelAt(x, y - 1).isTransparent()))
+                        ++notes;
+                return notes;
+            };
+            expectEquals(notesAt(10), 0, "before the timer the tone is silent");
+            expectEquals(notesAt(40), 2, "under it, the tone and the timer's own note");
+            expectEquals(notesAt(80), 0, "after its stop, silent again");
+
+            // A tone at the timer's pitch shares its lane, as two tones do: the tone above, the timer below
+            auto samePitch = silent;
+            samePitch.frames[0] = {{uZX::PsgRegType::Mixer, 0x3d}, {uZX::PsgRegType::TonePeriodFineB, 444 & 0xFF},
+                                   {uZX::PsgRegType::TonePeriodCoarseB, 444 >> 8}, {uZX::PsgRegType::VolumeB, 15}};
+            const auto shared = Tests::renderPsgClip(engine, samePitch, 100, 300, {}, false, {}, {}, [&] (PsgClip& clip) {
+                clip.getTimers().set(Tests::makeTestTaym(), 0, {{10, 0, Tests::timerStart(222, 0)}, {30, 0, stop}}, nullptr);
+            });
+            int toneTop = -1, toneBottom = -1, timerTop = -1, timerBottom = -1;
+            for (int y = 0; y < shared.getHeight(); ++y) {
+                const auto colour = shared.getPixelAt(40, y);
+                if (colour.isTransparent())
+                    continue;
+                const bool isTone = std::abs(colour.getHue() - Colors::PSG::B.getHue()) < 0.03f;
+                const bool isTimer = std::abs(colour.getHue() - Colors::PSG::A.getHue()) < 0.03f;
+                expect(isTone || isTimer, "no row of one drawn over the other: row " + String(y));
+                auto& first = isTone ? toneTop : timerTop;
+                (isTone ? toneBottom : timerBottom) = y;
+                if (first < 0)
+                    first = y;
+            }
+            expect(toneTop >= 0 && timerTop >= 0, "both are drawn");
+            expect(toneBottom < timerTop, "the tone's half above the timer's: rows " + String(toneTop) + "-" + String(toneBottom)
+                                              + " and " + String(timerTop) + "-" + String(timerBottom));
         }
 
-        // To look at the frame hover on a real tune, the TAYM repository's example:
+        // To look at the frame hover on a real tune, the fixtures' example:
         //     UZX_SNAPSHOT_FRAME_HOVER=<file.png> uZXTests PsgClipPainting
         // UZX_SNAPSHOT_FRAME=<n> picks the frame (3072: a timer on two registers); a second file, -hex, has hex values.
         if (const juce::File out(juce::SystemStats::getEnvironmentVariable("UZX_SNAPSHOT_FRAME_HOVER", {})); out != juce::File()) {
             juce::MemoryBlock bytes;
-            juce::File(UZX_TAYM_EXAMPLES_DIR).getChildFile("atarized.taym").loadFileAsData(bytes);
+            juce::File(UZX_FIXTURES_DIR).getChildFile("taym/atarized.taym").loadFileAsData(bytes);
             if (const auto tune = uZX::readTaymModule(bytes)) {
                 auto edit = te::Edit::createSingleTrackEdit(engine);
-                auto data = tune->chips[0];
+                auto data = tune->chips[0].psg;
                 auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
                                               {{te::TimePosition(), te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
-                clip->getTimers().set(tune->timers[0].bank, 0, tune->timers[0].events, nullptr);
+                clip->getTimers().set(tune->chips[0].timers.bank, 0, tune->chips[0].timers.events, nullptr);
                 const int frame = juce::SystemStats::getEnvironmentVariable("UZX_SNAPSHOT_FRAME", "3072").getIntValue();
                 for (bool hex : {false, true}) {
                     const auto hover = createPsgFrameHover(describePsgClipFrame(*clip, te::TimePosition::fromSeconds((frame + 0.25) / 50.0), hex));

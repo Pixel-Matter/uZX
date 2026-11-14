@@ -153,6 +153,31 @@ public:
             expectEquals(stopped.items[0].value, 0);
         }
 
+        beginTest("Commands skipped before where play begins leave each running timer to be started there with all it holds");
+        {
+            TimerEncoder encoder;
+            encoder.skip(0, start(222, 3, 10, 2));
+            encoder.skip(0, modulate(180, TAYM_TLAN_UNCHANGED));
+            encoder.skip(1, start(100, TAYM_TLAN_NONE, 0, 1));
+            encoder.skip(1, stop());
+            expectEquals(encoder.restart(1).count, size_t {0}, "a stopped timer is not started");
+            expectEquals(encoder.restart(2).count, size_t {0}, "nor one never started");
+
+            TimerDecoder decoder;
+            for (const auto& m : encoder.restart(0))
+                decoder.decode(m.channel, static_cast<int>(m.controller), m.value);
+            const auto started = decoder.takeCommands()[0];
+            expect(same(started, start(180, 3, 10, 2)), describe(started));
+
+            // A command of the clip's first frame comes in the same frame: a stop there leaves the timer off
+            TimerDecoder another;
+            for (const auto& m : encoder.restart(0))
+                another.decode(m.channel, static_cast<int>(m.controller), m.value);
+            for (const auto& m : encoder.encode(0, stop()))
+                another.decode(m.channel, static_cast<int>(m.controller), m.value);
+            expectEquals(int(another.takeCommands()[0].command), int(TAYM_CMD_EMPTY), "a start the frame turns off starts nothing");
+        }
+
         beginTest("A reset turns every timer off and forgets its start");
         {
             TimerEncoder encoder;

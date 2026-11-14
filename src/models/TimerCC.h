@@ -69,27 +69,42 @@ Messages encodeBank(int bank) noexcept;
 /** True if a command fits the wire: its timer has a channel and its indexes are in range. */
 bool fits(int timer, const TaymMods& command) noexcept;
 
+/** What a timer holds after a command (TAYM S12): a start sets every value and turns it on, a modulate of a
+    running timer sets the values it gives, a stop turns it off.
+
+    A modulate's actions take the place of the timer's slice, while the chip patches only the targets they
+    name: the two agree because a modulate on the wire names every target of its timer (readTaymModule
+    makes it so), and that is what lets a timer stated again where play resumes have all its targets. */
+Values apply(Values, const TaymMods& command) noexcept;
+
 }  // namespace TimerCC
 
 //==============================================================================
 /**
     Writes timer commands as controllers, sending the values that differ from what the chip was last sent.
-    It alone remembers what was sent.
+    It alone remembers what the timers hold.
 
-    A timer's first start states every value, since the chip may hold another clip's. A modulate before that
-    start is dropped: the timer it would change was started before these commands began, and stays silent.
+    A timer's first start states every value, since the chip may hold another clip's.
 */
 class TimerEncoder {
 public:
-    /** The messages that carry `command` to timer `timer`; none for an empty command or one that does not fit. */
+    /** The messages that carry `command` to timer `timer`; none for an empty command, a modulate of a timer
+        that is not running, or a command that does not fit. */
     TimerCC::Messages encode(int timer, const TaymMods& command) noexcept;
+
+    /** Takes a command the chip is not sent, one before where the commands start playing: the timer holds
+        what it gives all the same. */
+    void skip(int timer, const TaymMods& command) noexcept;
+
+    /** A start of `timer` with every value it holds, if it is on: for where play begins inside its run. */
+    TimerCC::Messages restart(int timer) noexcept;
 
     /** Forgets what was sent. */
     void reset() noexcept { *this = {}; }
 
 private:
-    std::array<TimerCC::Values, TimerCC::maxTimers> sent_ {};
-    std::array<bool, TimerCC::maxTimers> started_ {};
+    std::array<TimerCC::Values, TimerCC::maxTimers> held_ {};  // what each timer holds, as the commands so far leave it
+    std::array<bool, TimerCC::maxTimers> told_ {};              // the chip was sent all of the timer's values
 };
 
 //==============================================================================
@@ -98,7 +113,8 @@ private:
     commands in TAYM's terms.
 
     A timer that comes on without a start is started: it ran when play last stopped or jumped, and its values
-    are stated again where play resumes.
+    are stated again where play resumes. A start of a timer that is off when the frame ends starts nothing:
+    it was stated running where a clip begins, and stopped by that clip's first frame.
 */
 class TimerDecoder {
 public:

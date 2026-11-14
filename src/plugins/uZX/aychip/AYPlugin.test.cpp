@@ -731,6 +731,40 @@ public:
             expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 6);
         }
 
+        beginTest("A frame that sets half of a register a timer holds adds to the frames' other half, not the timer's");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 0x1A}});  // volume 10, on the envelope
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));  // A's volume: 15, 9, off the envelope
+            rig.render({512});
+            for (const auto& m : PsgCC::encode(PsgParamType::VolumeA, 5))  // the volume alone
+                rig.controller(0.0, m);
+            rig.render({512});
+            rig.timer(0.0, 0, timerStop());
+            rig.render({512});
+            expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 0x15,
+                         "the frames' envelope switch, with their new volume");
+        }
+
+        beginTest("A change of the chip's clock stops its timers and gives their registers back at once");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 5}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.render({1024});
+            const auto volume = [&] { return int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)); };
+            expect(volume() == 15 || volume() == 9, "the timer has channel A's volume");
+            rig.chip().staticParams.chipClock.setStoredValue(1.75);
+            expectEquals(volume(), 5, "the frames' volume, with no frame to bring it");
+            const auto out = rig.render({2048});
+            bool steady = true;
+            for (size_t i = 600; i < out.size(); ++i)
+                steady = steady && std::abs(out[i] - rig.levelOf(5)) < 1.0e-3f;
+            expect(steady, "and the timer is not heard");
+        }
+
         beginTest("A muted channel stays silent under a timer that writes its volume");
         {
             Rig rig(engine);
@@ -799,18 +833,6 @@ public:
 
         beginTest("A scope triggers where a timer's output repeats, on the channels the timer drives");
         {
-            // The last `count` samples a channel's scope was given: its levels, and the samples its sync rises at
-            constexpr int count = 4096;
-            const auto scopeOf = [] (Rig& rig, int chan) {
-                std::vector<float> levels(count), sync(count);
-                rig.chip().getVizChannelBuffer(chan)->copyTo(levels.data(), count, sync.data());
-                std::vector<int> rises;
-                for (int i = 1; i < count; ++i)
-                    if (sync[size_t(i) - 1] <= 0.5f && sync[size_t(i)] > 0.5f)
-                        rises.push_back(i);
-                return std::pair {levels, rises};
-            };
-
             Rig rig(engine);
             rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}, {PsgRegType::VolumeB, 9}});
             rig.bank(0.0, registration->getNumber());
@@ -841,6 +863,22 @@ public:
             rig.render({4096, 4096, 4096});
             expect(scopeOf(rig, 0).second.size() > 80, "the tone's 1108 Hz, not the timer's 14: "
                                                            + String(scopeOf(rig, 0).second.size()));
+        }
+
+        beginTest("A channel two timers drive triggers on the lower one, whichever writes first after a frame");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}, {PsgRegType::VolumeB, 9}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));  // A's volume: a repeat every 7104 cycles
+            rig.timer(0.0, 1, timerStart(50, 5));   // the mixer, which reaches every channel: an expiry every 800
+            // Frames between, after each of which the higher timer writes first
+            for (int k = 1; k < 28; ++k)
+                rig.frame(k * 300.0 / Rig::sampleRate, {{PsgRegType::VolumeB, static_cast<uint8_t>(k % 2 == 0 ? 9 : 8)}});
+            rig.render({4096, 4096});
+            const auto rises = scopeOf(rig, 0).second;
+            expect(risesEvery7104Cycles(rises), "only where the lower timer repeats: " + String(rises.size()));
+            expect(scopeOf(rig, 1).second.size() > 150, "B's, where the only timer that drives it does");
         }
 
         beginTest("When play jumps or stops, a timer stops, and starts again where its values are stated");
@@ -1119,6 +1157,27 @@ private:
         std::array<float, 16> levels {};
         bool jump = false;
     };
+
+    /** The last 4096 samples a channel's scope was given: its levels, and the samples its sync rises at. */
+    static std::pair<std::vector<float>, std::vector<int>> scopeOf(Rig& rig, int chan) {
+        constexpr int count = 4096;
+        std::vector<float> levels(count), sync(count);
+        rig.chip().getVizChannelBuffer(chan)->copyTo(levels.data(), count, sync.data());
+        std::vector<int> rises;
+        for (int i = 1; i < count; ++i)
+            if (sync[size_t(i) - 1] <= 0.5f && sync[size_t(i)] > 0.5f)
+                rises.push_back(i);
+        return {levels, rises};
+    }
+
+    /** True if the scope's sync rises once a repeat of the test bank's first lane at a base of 222: every
+        176.7 samples. */
+    bool risesEvery7104Cycles(const std::vector<int>& rises) {
+        bool evenly = rises.size() >= 22 && rises.size() <= 24;
+        for (size_t i = 1; i < rises.size(); ++i)
+            evenly = evenly && (rises[i] - rises[i - 1] == 176 || rises[i] - rises[i - 1] == 177);
+        return evenly;
+    }
 };
 
 static AYChipTimerTests ayChipTimerTests;

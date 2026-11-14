@@ -17,6 +17,7 @@ namespace MoTool::Tests {
         action 2   R8 from lane 1
         action 3   R9 from lane 0
         action 4   R13, always 0x0C
+        action 5   R7, always 0x3F: the mixer, every channel off
 
     `frames` is the track's length; `commands`, if given, holds a command per timer per frame; `psg`, if
     given, is the chip's frame data, a whole PSG file. */
@@ -63,14 +64,15 @@ inline juce::MemoryBlock makeTestTaym(uint32_t frames = 1, const std::vector<Tay
     taym.mods = mods.data();
     taym.mod_count = mods.size();
 
-    TaymActn actions[5] {};
+    TaymActn actions[6] {};
     actions[0] = {0, 0x08, TAYM_SRC_BIND_LANE};
     actions[1] = {7, 0x08, TAYM_SRC_INLINE_VALUE};
     actions[2] = {1, 0x08, TAYM_SRC_BIND_LANE};
     actions[3] = {0, 0x09, TAYM_SRC_BIND_LANE};
     actions[4] = {0x0C, 0x0D, TAYM_SRC_INLINE_VALUE};
+    actions[5] = {0x3F, 0x07, TAYM_SRC_INLINE_VALUE};
     taym.actions = actions;
-    taym.action_count = 5;
+    taym.action_count = 6;
 
     TaymLane lanes[2] {};
     lanes[0] = {0, 2, 0, TAYM_VT_U8};

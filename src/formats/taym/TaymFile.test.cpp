@@ -9,6 +9,7 @@
 #include "../../util/Helpers.h"
 #include "../../util/TestHelpers.h"
 
+#include <cstring>
 #include <map>
 #include <algorithm>
 #include <array>
@@ -92,7 +93,40 @@ CommandsByFrame commandsOnTheWire(PsgClip& clip, int firstFrame, int& bankSeen) 
 }
 
 juce::File exampleTune() {
-    return juce::File(UZX_TAYM_EXAMPLES_DIR).getChildFile("atarized.taym");
+    return juce::File(UZX_FIXTURES_DIR).getChildFile("taym/atarized.taym");
+}
+
+/** A TAYM of the test bank's chip and a second, a YM at 2 MHz with no timers, on the same frames. */
+juce::MemoryBlock makeTwoChipTaym() {
+    const std::vector<uint8_t> psg {'P', 'S', 'G', 0x1A, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0xFF, 7, 0x3E, 8, 15, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
+    const auto one = makeTestTaym(5, {}, psg);
+    juce::MemoryBlock two;
+    Taym taym;
+    taym_init(&taym);
+    if (taym_read_bytes(static_cast<const uint8_t*>(one.getData()), one.getSize(), &taym) == TAYM_OK) {
+        // Each chip's frames in a chunk of its own: the format has no two chips share one
+        TaymChunk chunks[2] {*taym_find_chunk(&taym, taym.chips[0].frame_data_tag), {}};
+        chunks[1] = chunks[0];
+        std::memcpy(chunks[1].tag, "PSG1", 4);
+        TaymChip chips[2] {taym.chips[0], taym.chips[0]};
+        std::memcpy(chips[1].frame_data_tag, "PSG1", 4);
+        chips[1].clock_hz = 2000000;
+        chips[1].variant = TAYM_AY_VARIANT_YM;
+        auto both = taym;
+        both.chips = chips;
+        both.chip_count = 2;
+        both.chunks = chunks;
+        both.chunk_count = 2;
+        uint8_t* bytes = nullptr;
+        size_t size = 0;
+        if (taym_write_bytes(&both, &bytes, &size) == TAYM_OK) {
+            two.append(bytes, size);
+            taym_free_bytes(bytes);
+        }
+    }
+    taym_free(&taym);
+    return two;
 }
 
 }  // namespace
@@ -111,22 +145,21 @@ public:
 
         beginTest("A TAYM reads as a tune: its chip's frames, clock and title, and its timers' commands");
         {
-            expect(loaded, "the TAYM repository's example tune is there");
+            expect(loaded, "the example tune is there");
             expect(tune.has_value());
             if (tune) {
                 expectEquals(tune->chips.size(), size_t {1});
-                expectEquals(tune->chips[0].frames.size(), size_t {9477});
-                expectEquals(tune->chips[0].getFrameRate(), 50.0);
+                expectEquals(tune->chips[0].psg.frames.size(), size_t {9477});
+                expectEquals(tune->chips[0].psg.getFrameRate(), 50.0);
                 expectEquals(tune->title, juce::String("atarized"));
-                expect(tune->chipClock == std::optional<double> {1773400.0});
-                expect(tune->chipType.has_value() && *tune->chipType == ChipType {TypeEnum::AY});
-                expectEquals(tune->timers.size(), size_t {1});
+                expect(tune->chips[0].clock == std::optional<double> {1773400.0});
+                expect(tune->chips[0].type.has_value() && *tune->chips[0].type == ChipType {TypeEnum::AY});
                 // 396 starts, 5401 modulates and 26 stops, as `python -m taym stats` counts them
-                expectEquals(tune->timers[0].events.size(), size_t {396 + 5401 + 26});
-                expect(! tune->timers[0].unplayable);
-                const auto bank = TimerBank::fromTaym(tune->timers[0].bank.getData(), tune->timers[0].bank.getSize(), 0);
+                expectEquals(tune->chips[0].timers.events.size(), size_t {396 + 5401 + 26});
+                expect(! tune->chips[0].timers.unplayable);
+                const auto bank = TimerBank::fromTaym(tune->chips[0].timers.bank.getData(), tune->chips[0].timers.bank.getSize(), 0);
                 expect(bank != nullptr && bank->getNumTimers() == 3, "the bank reads back with the chip's three timers");
-                expect(tune->timers[0].bank.getSize() < bytes.getSize() / 4, "without the file's frames and commands");
+                expect(tune->chips[0].timers.bank.getSize() < bytes.getSize() / 4, "without the file's frames and commands");
             }
         }
 
@@ -135,7 +168,7 @@ public:
             // The tune's frame data writes the envelope shape 109 times, twice with the shape it had
             int shapeWrites = 0;
             if (tune)
-                for (const auto& frame : tune->chips[0].frames)
+                for (const auto& frame : tune->chips[0].psg.frames)
                     shapeWrites += frame.hasEnvelopeShapeSet() ? 1 : 0;
             expectEquals(shapeWrites, 109);
         }
@@ -147,17 +180,73 @@ public:
                                             0xFF, 8, 15, 0xFE, 3, 0xFF, 8, 7, 0xFD};
             const auto lastVolume = [&](uint32_t frames) {
                 const auto read = readTaymModule(makeTestTaym(frames, {}, psg));
-                expect(read.has_value() && read->chips[0].frames.size() == frames);
+                expect(read.has_value() && read->chips[0].psg.frames.size() == frames);
                 int at = -1;
                 if (read)
-                    for (size_t i = 0; i < read->chips[0].frames.size(); ++i)
-                        if (read->chips[0].frames[i].hasVolumeOrEnvModSet(0) && read->chips[0].frames[i].getVolume(0) == 7)
+                    for (size_t i = 0; i < read->chips[0].psg.frames.size(); ++i)
+                        if (read->chips[0].psg.frames[i].hasVolumeOrEnvModSet(0) && read->chips[0].psg.frames[i].getVolume(0) == 7)
                             at = static_cast<int>(i);
                 return at;
             };
             expectEquals(lastVolume(14), 13, "in fours, as a PSG file has it");
             expectEquals(lastVolume(5), 4, "in ones, as TAYM's own tools write it");
             expectEquals(lastVolume(9), -1, "neither fits: fours, and the frame past the track's end is cut off");
+        }
+
+        beginTest("Each chip has its own clock and type");
+        {
+            const auto tune = readTaymModule(makeTwoChipTaym());
+            expect(tune.has_value() && tune->chips.size() == 2);
+            if (tune && tune->chips.size() == 2) {
+                expect(tune->chips[0].clock == std::optional<double> {1773400.0});
+                expect(tune->chips[0].type == std::optional<ChipType> {ChipType {TypeEnum::AY}});
+                expect(tune->chips[1].clock == std::optional<double> {2000000.0}, "the second chip's, not the first's");
+                expect(tune->chips[1].type == std::optional<ChipType> {ChipType {TypeEnum::YM}});
+                expect(tune->chips[1].timers.events.empty(), "the timers are the first chip's");
+            }
+        }
+
+        beginTest("A modulate that names some of its timer's targets is given a slice that names all of them");
+        {
+            // Timer 0 on A's volume from lane 1 and B's from lane 0; then A's alone made 7, twice
+            constexpr uint32_t frames = 10;
+            std::vector<TaymMods> commands(frames * 2);
+            commands[1 * 2] = timerStart(222, 2, 2);
+            TaymMods aAlone {};
+            aAlone.command = TAYM_CMD_MODULATE;
+            aAlone.timer_lane_ref = TAYM_TLAN_UNCHANGED;
+            aAlone.first_action = 1;  // A's volume, always 7
+            aAlone.action_count = 1;
+            commands[3 * 2] = aAlone;
+            commands[5 * 2] = aAlone;
+            const auto tune = readTaymModule(makeTestTaym(frames, commands));
+            expect(tune.has_value() && tune->chips[0].timers.events.size() == 3);
+            if (tune && tune->chips[0].timers.events.size() == 3) {
+                const auto& timers = tune->chips[0].timers;
+                const auto& modulate = timers.events[1].command;
+                expectEquals(int(modulate.action_count), 2, "both targets");
+                expect(modulate.first_action >= 6, "in actions added after the file's");
+                expect(timers.events[2].command.first_action == modulate.first_action, "added once for the same slice");
+
+                // Stated again where play resumes, with what the wire holds of it, the timer has both targets:
+                // A's from the modulate, B's from the start
+                TimerCC::Values held {};
+                for (const auto& event : timers.events)
+                    held = TimerCC::apply(held, event.command);
+                const auto bank = TimerBank::fromTaym(timers.bank.getData(), timers.bank.getSize(), 0);
+                expect(bank != nullptr);
+                if (bank != nullptr) {
+                    TaymTimerBank engine {};
+                    taym_timers_init(&engine, &bank->getTables(), bank->getTimerClocks(), bank->getNumTimers(), bank->getClockHz());
+                    const auto resumed = timerStart(held.base, static_cast<uint32_t>(held.actionFirst),
+                                                    static_cast<uint8_t>(held.actionCount));
+                    expect(taym_timers_command(&engine, 0, &resumed, 0) == TAYM_OK);
+                    const auto& targets = engine.timers[0].targets;
+                    expect(engine.timers[0].target_count == 2
+                           && targets[0].target_id == 8 && ! targets[0].has_lane && targets[0].inline_value == 7
+                           && targets[1].target_id == 9 && targets[1].has_lane && targets[1].lane_index == 0);
+                }
+            }
         }
 
         beginTest("Other bytes are not a TAYM");
@@ -173,14 +262,14 @@ public:
             return;
         auto edit = te::Edit::createSingleTrackEdit(engine);
         auto* track = te::getAudioTracks(*edit)[0];
-        auto data = tune->chips[0];
+        auto data = tune->chips[0].psg;
         const int frames = static_cast<int>(data.frames.size());
         const auto clip = PsgClip::insertTo(*track, data, {{te::TimePosition(), te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
-        clip->getTimers().set(tune->timers[0].bank, tune->timers[0].chipIndex, tune->timers[0].events, nullptr);
+        clip->getTimers().set(tune->chips[0].timers.bank, tune->chips[0].timers.chipIndex, tune->chips[0].timers.events, nullptr);
         const auto bank = clip->getTimers().getBank();
 
         CommandsByFrame inFile;
-        for (const auto& event : tune->timers[0].events)
+        for (const auto& event : tune->chips[0].timers.events)
             inFile[event.frameIndex][static_cast<size_t>(event.timer)] = event.command;
 
         beginTest("A clip's playback MIDI runs the timers exactly as the file's commands do");
@@ -222,14 +311,13 @@ public:
             const auto xml = clip->state.toXmlString();
             const auto restored = juce::ValueTree::fromXml(xml);
             ClipTimers timers {restored};
-            timers.reload();
-            expectEquals(timers.getEvents().size(), tune->timers[0].events.size());
+            expectEquals(timers.getEvents().size(), tune->chips[0].timers.events.size());
             expect(timers.getBank() != nullptr);
             expect(timers.getBankNumber() != clip->getTimers().getBankNumber(), "a copy has a bank number of its own");
-            bool same = timers.getEvents().size() == tune->timers[0].events.size();
+            bool same = timers.getEvents().size() == tune->chips[0].timers.events.size();
             for (size_t i = 0; same && i < timers.getEvents().size(); ++i) {
                 const auto& a = timers.getEvents()[i];
-                const auto& b = tune->timers[0].events[i];
+                const auto& b = tune->chips[0].timers.events[i];
                 same = a.frameIndex == b.frameIndex && a.timer == b.timer && a.command.command == b.command.command
                     && a.command.base_timer_value == b.command.base_timer_value
                     && a.command.timer_lane_ref == b.command.timer_lane_ref
@@ -238,23 +326,32 @@ public:
             expect(same, "every command as it was");
         }
 
-        beginTest("A clip trimmed at its start plays the commands from there, each timer from its next start");
+        beginTest("A clip trimmed at its start plays the commands from there, and starts the timers running there");
         {
             const int cut = 1000;  // 20 seconds in
             clip->setStart(te::TimePosition::fromSeconds(cut / 50.0), true, false);
 
+            // A timer running at the cut starts there with what it holds, from its lanes' first elements, as
+            // it does where play resumes inside its run
             CommandsByFrame fromTheCut;
-            std::array<bool, TimerCC::maxTimers> started {};
-            for (const auto& event : tune->timers[0].events) {
-                if (event.frameIndex < cut)
-                    continue;
+            std::array<TimerCC::Values, TimerCC::maxTimers> atTheCut {};
+            for (const auto& event : tune->chips[0].timers.events) {
                 const auto timer = static_cast<size_t>(event.timer);
-                if (event.command.command == TAYM_CMD_START)
-                    started[timer] = true;
-                if (event.command.command == TAYM_CMD_MODULATE && ! started[timer])
-                    continue;  // its timer was started before the cut
-                fromTheCut[event.frameIndex][timer] = event.command;
+                if (event.frameIndex <= cut)
+                    atTheCut[timer] = TimerCC::apply(atTheCut[timer], event.command);
+                else
+                    fromTheCut[event.frameIndex][timer] = event.command;
             }
+            int running = 0;
+            for (size_t timer = 0; timer < atTheCut.size(); ++timer) {
+                if (const auto& held = atTheCut[timer]; held.on) {
+                    fromTheCut[cut][timer] = timerStart(held.base, static_cast<uint32_t>(held.actionFirst),
+                                                        static_cast<uint8_t>(held.actionCount),
+                                                        held.lane == 0 ? TAYM_TLAN_NONE : static_cast<uint32_t>(held.lane - 1));
+                    ++running;
+                }
+            }
+            expect(running > 0, "the case this test is about");
 
             int bankSeen = 0;
             const auto onTheWire = commandsOnTheWire(*clip, cut, bankSeen);
@@ -309,6 +406,31 @@ public:
             }
         }
 
+        beginTest("A TAYM's chips open on tracks of their own, each with its chip's clock and type");
+        {
+            const auto file = juce::File::createTempFile(".taym");
+            const auto bytes = makeTwoChipTaym();
+            expect(file.replaceWithData(bytes.getData(), bytes.getSize()));
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto clips = Helpers::importPsgFiles(*edit, {file});
+            expectEquals(clips.size(), 2);
+            if (clips.size() == 2) {
+                const auto chipOf = [](PsgClip* clip) {
+                    return dynamic_cast<te::AudioTrack*>(clip->getTrack())->pluginList.findFirstPluginOfType<AYChipPlugin>();
+                };
+                auto* first = chipOf(clips[0]);
+                auto* second = chipOf(clips[1]);
+                expect(first != nullptr && second != nullptr && first != second);
+                if (first != nullptr && second != nullptr) {
+                    expectWithinAbsoluteError(first->staticParams.chipClock.getStoredValue(), 1.7734, 1.0e-6);
+                    expect(first->staticParams.chipType.getStoredValue() == ChipType {TypeEnum::AY});
+                    expectWithinAbsoluteError(second->staticParams.chipClock.getStoredValue(), 2.0, 1.0e-6);
+                    expect(second->staticParams.chipType.getStoredValue() == ChipType {TypeEnum::YM});
+                }
+            }
+            file.deleteFile();
+        }
+
         beginTest("A project saved with a TAYM's clip opens with its timers");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);
@@ -343,17 +465,17 @@ public:
             const auto tune = readTaymModule(bytes);
             expect(tune.has_value());
             if (tune) {
-                auto data = tune->chips[0];
+                auto data = tune->chips[0].psg;
                 const auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
                                                     {{te::TimePosition(), te::TimeDuration::fromSeconds(10.0)}, {}});
                 auto& um = edit->getUndoManager();
                 um.beginNewTransaction();
-                clip->getTimers().set(tune->timers[0].bank, 0, tune->timers[0].events, &um);
+                clip->getTimers().set(tune->chips[0].timers.bank, 0, tune->chips[0].timers.events, &um);
                 expect(! clip->getTimers().isEmpty());
                 um.undo();
                 expect(clip->getTimers().isEmpty() && clip->getTimers().getBankNumber() == 0, "undone");
                 um.redo();
-                expectEquals(clip->getTimers().getEvents().size(), tune->timers[0].events.size(), "redone");
+                expectEquals(clip->getTimers().getEvents().size(), tune->chips[0].timers.events.size(), "redone");
                 expect(clip->getTimers().getBankNumber() > 0);
             }
         }
@@ -368,17 +490,17 @@ public:
             commands[25 * 2] = timerStop();
             const auto taym = makeTestTaym(frames, commands);
             const auto tune = readTaymModule(taym);
-            expect(tune.has_value() && tune->timers.size() == 1 && tune->timers[0].events.size() == 2);
+            expect(tune.has_value() && tune->chips.size() == 1 && tune->chips[0].timers.events.size() == 2);
             if (! tune)
                 return;
 
             auto edit = te::Edit::createSingleTrackEdit(engine);
             auto* track = te::getAudioTracks(*edit)[0];
-            auto data = tune->chips[0];
+            auto data = tune->chips[0].psg;
             data.frames[0] = {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 3}};
             data.frames[frames - 1] = {{PsgRegType::VolumeB, 1}};  // keeps the clip running to its end
             const auto clip = PsgClip::insertTo(*track, data, {{te::TimePosition(), te::TimeDuration::fromSeconds(1.0)}, {}});
-            clip->getTimers().set(tune->timers[0].bank, 0, tune->timers[0].events, nullptr);
+            clip->getTimers().set(tune->chips[0].timers.bank, 0, tune->chips[0].timers.events, nullptr);
             auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
             track->pluginList.insertPlugin(plugin, 0, nullptr);
             auto& chip = dynamic_cast<AYChipPlugin&>(*plugin);
@@ -422,6 +544,47 @@ public:
             transport.stop(false, false);
         }
 
+        beginTest("A plain PSG clip after a clip with timers stops them where it begins");
+        {
+            constexpr int frames = 50;
+            std::vector<TaymMods> commands(static_cast<size_t>(frames) * 2);
+            commands[5 * 2] = timerStart(222, 0);  // never stopped
+            const auto tune = readTaymModule(makeTestTaym(frames, commands));
+            expect(tune.has_value());
+            if (! tune)
+                return;
+
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            auto* track = te::getAudioTracks(*edit)[0];
+            const auto second = te::TimeDuration::fromSeconds(1.0);
+            auto data = tune->chips[0].psg;
+            data.frames[0] = {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 3}};
+            data.frames[frames - 1] = {{PsgRegType::VolumeB, 1}};  // keeps the clip running to its end
+            PsgClip::insertTo(*track, data, {{te::TimePosition(), second}, {}})
+                ->getTimers().set(tune->chips[0].timers.bank, 0, tune->chips[0].timers.events, nullptr);
+            auto plain = data;
+            plain.frames[0] = {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 5}};
+            PsgClip::insertTo(*track, plain, {{te::TimePosition() + second, second}, {}});
+            auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+            track->pluginList.insertPlugin(plugin, 0, nullptr);
+            auto& chip = dynamic_cast<AYChipPlugin&>(*plugin);
+            engine.getDeviceManager().dispatchPendingUpdates();
+            edit->dispatchPendingUpdatesSynchronously();
+
+            auto& transport = edit->getTransport();
+            const double sampleRate = engine.getDeviceManager().getSampleRate();
+            const auto playFor = [&](double seconds) {
+                TestHelpers::processBlocks(engine, juce::roundToInt(std::ceil(seconds * sampleRate / 512.0)));
+                return int(chip.getChipRegisters().getRaw(PsgRegType::VolumeA));
+            };
+            transport.setPosition(te::TimePosition::fromSeconds(0.8));
+            transport.play(false);
+            const int under = playFor(0.1);
+            expect(under == 15 || under == 9, "the timer runs in its clip: " + juce::String(under));
+            expectEquals(playFor(0.3), 5, "the plain clip's volume, with no timer over it");
+            transport.stop(false, false);
+        }
+
         beginTest("The example tune plays, and plays on after a jump, with nothing for the chip to warn of");
         {
             juce::MemoryBlock bytes;
@@ -431,9 +594,9 @@ public:
             if (tune) {
                 auto edit = te::Edit::createSingleTrackEdit(engine);
                 auto* track = te::getAudioTracks(*edit)[0];
-                auto data = tune->chips[0];
+                auto data = tune->chips[0].psg;
                 const auto clip = PsgClip::insertTo(*track, data, {{te::TimePosition(), te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
-                clip->getTimers().set(tune->timers[0].bank, tune->timers[0].chipIndex, tune->timers[0].events, nullptr);
+                clip->getTimers().set(tune->chips[0].timers.bank, tune->chips[0].timers.chipIndex, tune->chips[0].timers.events, nullptr);
                 auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
                 track->pluginList.insertPlugin(plugin, 0, nullptr);
                 auto& chip = dynamic_cast<AYChipPlugin&>(*plugin);
@@ -472,10 +635,10 @@ private:
 
         auto edit = te::Edit::createSingleTrackEdit(engine);
         auto* track = te::getAudioTracks(*edit)[0];
-        auto data = tune->chips[0];
+        auto data = tune->chips[0].psg;
         const auto clip = PsgClip::insertTo(*track, data, {{te::TimePosition(), te::TimeDuration::fromSeconds(data.getLengthSeconds())}, {}});
         if (withTimers)
-            clip->getTimers().set(tune->timers[0].bank, tune->timers[0].chipIndex, tune->timers[0].events, nullptr);
+            clip->getTimers().set(tune->chips[0].timers.bank, tune->chips[0].timers.chipIndex, tune->chips[0].timers.events, nullptr);
         auto plugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
         track->pluginList.insertPlugin(plugin, 0, nullptr);
         engine.getDeviceManager().dispatchPendingUpdates();

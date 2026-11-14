@@ -170,7 +170,7 @@ private:
     // step with what the channel plays, or stop them, so such a channel's sync rises where the timer's output
     // repeats instead. A repeat too slow to be a pitch is a modulation: the chip's own sync stays
     struct TimerSync {
-        int8_t timer = -1;          // the timer triggered on: the lowest that wrote to the channel this frame
+        int8_t timer = -1;          // the timer triggered on: the lowest that drives the channel, not muted
         bool due = false;           // the next sample rendered starts a repeat
         bool pitched = false;       // the last repeat was short enough to be a pitch
         uint32_t sinceRepeat = 0;   // samples since the last repeat started
@@ -197,6 +197,9 @@ private:
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
     PsgRegsFrame readRegisters() const noexcept;
+    /** The registers as the frames left them, which a frame adds to: where a timer owns one, the frames'
+        value held back for it, not the timer's. */
+    PsgRegsFrame readBackground() const noexcept;
     void updateChip() noexcept;
     void handleMidiEvent(const te::MidiMessageWithSource& m) noexcept;
 

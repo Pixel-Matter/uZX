@@ -9,7 +9,7 @@ constexpr uint32_t noRateFramesPerSecond = 50;
 }  // namespace
 
 void ChipTimers::restart() noexcept {
-    owned_ = 0;
+    // What the timers owned stays owned until the next frame finds them stopped and gives it back
     timers_ = {};
     if (bank_ == nullptr)
         return;
@@ -45,16 +45,20 @@ bool ChipTimers::isIdle() const noexcept {
     return true;
 }
 
-uint16_t ChipTimers::findOwned() const noexcept {
-    uint16_t owned = 0;
-    for (size_t reg = 0; reg < PsgRegsFrame::size(); ++reg)
-        if (taym_timers_owns_target(&timers_, static_cast<uint8_t>(reg)))
-            owned = static_cast<uint16_t>(owned | (1u << reg));
-    return owned;
+uint16_t ChipTimers::getRegistersOf(size_t timer) const noexcept {
+    if (timer >= timers_.timer_count)
+        return 0;
+    const auto& state = timers_.timers[timer];
+    if (! state.active && ! state.quiescent)
+        return 0;
+    uint16_t registers = 0;
+    for (size_t i = 0; i < state.target_count; ++i)
+        if (state.targets[i].target_id < PsgRegsFrame::size())
+            registers = static_cast<uint16_t>(registers | (1u << state.targets[i].target_id));
+    return registers;
 }
 
 void ChipTimers::runCommands(const Commands& commands, uint64_t cycle) noexcept {
-    bool any = false;
     for (size_t timer = 0; timer < commands.size(); ++timer) {
         const auto& command = commands[timer];
         if (command.command == TAYM_CMD_EMPTY)
@@ -69,10 +73,7 @@ void ChipTimers::runCommands(const Commands& commands, uint64_t cycle) noexcept 
         // A command that names a lane or an action the bank does not have is refused and changes nothing
         if (taym_timers_command(&timers_, timer, &command, cycle) != TAYM_OK)
             faults_ |= commandRefused;
-        any = true;
     }
-    if (any)
-        owned_ = findOwned();
 }
 
 bool ChipTimers::collect(uint64_t endCycle, bool ym, std::span<const TaymTimerWrite>& writes) noexcept {

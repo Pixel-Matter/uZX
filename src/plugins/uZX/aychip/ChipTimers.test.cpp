@@ -238,8 +238,11 @@ public:
                 expectEquals(again->getNumTimers(), size_t {2});
                 expectEquals(again->getTables().action_count, original->getTables().action_count);
                 expectEquals(again->getTables().lane_count, original->getTables().lane_count);
-                expectEquals(int(again->getTaym().trak.frame_count), 1);
+                expect(again->getClockHz() == original->getClockHz());
             }
+            const auto longer = makeTestTaym(100);
+            expect(TimerBank::fromTaym(longer.getData(), longer.getSize(), 0)->toBankBytes() == bytes,
+                   "a longer tune's bank is the same: no frames or commands are kept");
             expect(TimerBank::fromTaym(bytes.getData(), bytes.getSize(), 1) == nullptr, "a chip the file does not have");
             expect(TimerBank::fromTaym("not a taym", 10, 0) == nullptr);
         }

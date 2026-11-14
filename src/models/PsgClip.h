@@ -52,6 +52,23 @@ public:
     /** The MIDI that plays the clip: its frames as PSG controllers, and its timers' commands with them. */
     [[nodiscard]] juce::MidiMessageSequence createPlaybackMidiSequence(te::MidiList::TimeBase);
 
+    /** Calls fn(from, to, data) for each stretch of machine frames, from `from` to before `to`, in which the
+        chip's parameters stay the same: a stored frame's, with the volumes the timers running then hold.
+        The last stretch ends at `endIndex`. What the clip's notes are ranged and counted from. */
+    template <typename Fn>
+    void forEachSoundingState(int endIndex, Fn&& fn) const {
+        const auto& frames = getPsg().getFrames();
+        for (int i = 0; i < frames.size(); ++i) {
+            const int start = frames[i]->getFrameIndex();
+            const int end = i + 1 < frames.size() ? frames[i + 1]->getFrameIndex() : endIndex;
+            timers_.forEachStretch(start, end, [&] (int from, int to) {
+                auto data = frames[i]->getData();
+                timers_.applyVolumes(data, from);
+                fn(from, to, data);
+            });
+        }
+    }
+
     /** Returns the normalized pitch range across all frames in the clip.
         Cached and automatically invalidated when PSG data changes. */
     juce::Range<float> getPitchRange() const;

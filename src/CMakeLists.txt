@@ -159,9 +159,6 @@ target_sources(${TEST_TARGET_NAME} PRIVATE
 # zxtune's sample modules with its register dumps, for the TrackerModule tests.
 target_compile_definitions(${TEST_TARGET_NAME} PRIVATE
     UZX_ZXTUNE_REGRESSION_DIR="${CMAKE_SOURCE_DIR}/third_party/zxtune/regression")
-# The TAYM repository's example tunes, for the TAYM import tests.
-target_compile_definitions(${TEST_TARGET_NAME} PRIVATE
-    UZX_TAYM_EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/third_party/taym/examples")
 
 set(PROJECT_DISCOVERY_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/DiscoverJuceTests.cmake")
 set(PROJECT_DISCOVERY_FILE "${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_NAME}_discovered.cmake")

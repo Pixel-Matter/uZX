@@ -67,10 +67,12 @@ public:
     /** The faults since the last call. */
     uint32_t takeFaults() noexcept { return std::exchange(faults_, uint32_t {0}); }
 
-    /** The tables the timers read; null for none. Stops every timer. */
+    /** The tables the timers read; null for none. Stops every timer: the next frame gives the registers
+        they owned the frames' values. */
     void setBank(TimerBank::Ptr bank) noexcept;
 
-    /** The chip's clock in Hz. A changed clock stops every timer: their time was counted in the old one. */
+    /** The chip's clock in Hz. A changed clock stops every timer, as setBank does: their time was counted
+        in the old one. */
     void setClock(uint32_t clockHz) noexcept;
 
     /** Stops every timer and forgets what they owned, without writing anything. */
@@ -83,6 +85,17 @@ public:
     bool owns(size_t reg) const noexcept { return (owned_ & (1u << reg)) != 0; }
     /** A bit for each register a timer owns. */
     uint16_t getOwned() const noexcept { return owned_; }
+    /** A bit for each register timer `timer` holds, running or done; none for a timer the bank does not have. */
+    uint16_t getRegistersOf(size_t timer) const noexcept;
+    /** The timers the bank has. */
+    size_t getNumTimers() const noexcept { return timers_.timer_count; }
+
+    /** Register `reg` as the frames left it: what the chip holds, or for a register a timer owns, the frames'
+        write held back for when it lets go. What a frame that sets part of a register adds to. */
+    template <typename Chip>
+    uint8_t readBackground(size_t reg, const Chip& chip) const noexcept {
+        return owns(reg) ? held_[reg] : chip.getRegister(reg);
+    }
     /** A bit for each register whose timers are muted: see setMuted. */
     uint16_t getMuted() const noexcept { return muted_; }
 
@@ -111,6 +124,9 @@ public:
     void applyFrame(const Commands& commands, const PsgRegsFrame& background, uint64_t cycle, Chip& chip) noexcept {
         const auto before = owned_;
         runCommands(commands, cycle);
+        owned_ = 0;
+        for (size_t timer = 0; timer < getNumTimers(); ++timer)
+            owned_ = static_cast<uint16_t>(owned_ | getRegistersOf(timer));
         const auto acquired = static_cast<uint16_t>(owned_ & ~before);
         const auto released = static_cast<uint16_t>(before & ~owned_);
 
@@ -148,7 +164,6 @@ private:
 
     void restart() noexcept;
     void runCommands(const Commands& commands, uint64_t cycle) noexcept;
-    uint16_t findOwned() const noexcept;
 };
 
 }  // namespace MoTool::uZX

@@ -74,44 +74,45 @@ bool TimerCC::fits(int timer, const TaymMods& command) noexcept {
         && command.action_count <= maxActionCount;
 }
 
+TimerCC::Values TimerCC::apply(Values held, const TaymMods& command) noexcept {
+    switch (command.command) {
+        case TAYM_CMD_START:
+            return {true, command.base_timer_value, laneOf(command.timer_lane_ref),
+                    static_cast<int>(command.first_action), static_cast<int>(command.action_count)};
+        case TAYM_CMD_MODULATE:
+            if (! held.on)
+                return held;  // the chip ignores it
+            if (command.base_timer_value != 0)
+                held.base = command.base_timer_value;
+            if (command.timer_lane_ref != TAYM_TLAN_UNCHANGED)
+                held.lane = laneOf(command.timer_lane_ref);
+            if (command.action_count != 0) {
+                held.actionFirst = static_cast<int>(command.first_action);
+                held.actionCount = static_cast<int>(command.action_count);
+            }
+            return held;
+        case TAYM_CMD_STOP:
+            held.on = false;
+            return held;
+        default:
+            return held;
+    }
+}
+
 //==============================================================================
 TimerCC::Messages TimerEncoder::encode(int timer, const TaymMods& command) noexcept {
     TimerCC::Messages out;
-    if (! TimerCC::fits(timer, command))
+    if (! TimerCC::fits(timer, command) || command.command == TAYM_CMD_EMPTY)
         return out;
 
     const auto index = static_cast<size_t>(timer);
     const int channel = TimerCC::firstChannel + timer;
-    auto& sent = sent_[index];
-    auto next = sent;
+    const auto sent = held_[index];
+    const auto next = TimerCC::apply(sent, command);
     const bool starts = command.command == TAYM_CMD_START;
 
-    switch (command.command) {
-        case TAYM_CMD_START:
-            next = {true, command.base_timer_value, laneOf(command.timer_lane_ref),
-                    static_cast<int>(command.first_action), static_cast<int>(command.action_count)};
-            break;
-        case TAYM_CMD_MODULATE:
-            if (! started_[index])
-                return out;  // the timer it changes was started before these commands began
-            if (command.base_timer_value != 0)
-                next.base = command.base_timer_value;
-            if (command.timer_lane_ref != TAYM_TLAN_UNCHANGED)
-                next.lane = laneOf(command.timer_lane_ref);
-            if (command.action_count != 0) {
-                next.actionFirst = static_cast<int>(command.first_action);
-                next.actionCount = static_cast<int>(command.action_count);
-            }
-            break;
-        case TAYM_CMD_STOP:
-            next.on = false;
-            break;
-        default:
-            return out;
-    }
-
-    // What the chip holds is only known once this encoder has started the timer
-    const bool all = starts && ! started_[index];
+    // What the chip holds is only known once this encoder has told it every value
+    const bool all = starts && ! told_[index];
     if (all || next.base != sent.base)
         addBase(out, channel, next.base);
     if (all || next.lane != sent.lane) {
@@ -124,15 +125,35 @@ TimerCC::Messages TimerEncoder::encode(int timer, const TaymMods& command) noexc
     }
     if (all || next.actionCount != sent.actionCount)
         out.add(channel, actionCount, next.actionCount);
-    if (all || next.on != sent.on || (! started_[index] && ! next.on))
+    if (all || next.on != sent.on || (! told_[index] && command.command == TAYM_CMD_STOP))
         out.add(channel, onSwitch, next.on ? 1 : 0);
     if (starts) {
         out.add(channel, startSwitch, 1);
         out.add(channel, startSwitch, 0);
-        started_[index] = true;
+        told_[index] = true;
     }
-    sent = next;
+    held_[index] = next;
     return out;
+}
+
+void TimerEncoder::skip(int timer, const TaymMods& command) noexcept {
+    if (TimerCC::fits(timer, command))
+        held_[static_cast<size_t>(timer)] = TimerCC::apply(held_[static_cast<size_t>(timer)], command);
+}
+
+TimerCC::Messages TimerEncoder::restart(int timer) noexcept {
+    if (! juce::isPositiveAndBelow(timer, TimerCC::maxTimers) || ! held_[static_cast<size_t>(timer)].on)
+        return {};
+    const auto index = static_cast<size_t>(timer);
+    const auto& held = held_[index];
+    TaymMods start {};
+    start.command = TAYM_CMD_START;
+    start.base_timer_value = held.base;
+    start.timer_lane_ref = timerLaneRefOf(held.lane);
+    start.first_action = static_cast<uint32_t>(held.actionFirst);
+    start.action_count = static_cast<uint8_t>(held.actionCount);
+    told_[index] = false;  // the chip was sent none of what was skipped
+    return encode(timer, start);
 }
 
 //==============================================================================
@@ -200,9 +221,9 @@ std::array<TaymMods, TimerCC::maxTimers> TimerDecoder::takeCommands() noexcept {
         auto& command = commands[index];
 
         // A timer that comes on with no start was stopped by a reset while it ran, and its values are stated
-        // again where play resumes: it starts there, from its lanes' first elements
-        if ((starts_ & bit) != 0 || (! held.on && now.on)) {
-            now.on = true;
+        // again where play resumes: it starts there, from its lanes' first elements. A start of a timer the
+        // frame leaves off starts nothing
+        if (now.on && ((starts_ & bit) != 0 || ! held.on)) {
             command.command = TAYM_CMD_START;
             command.base_timer_value = now.base;
             command.timer_lane_ref = timerLaneRefOf(now.lane);

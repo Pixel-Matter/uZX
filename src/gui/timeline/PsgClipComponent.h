@@ -32,10 +32,9 @@ std::pair<String, int> getNearestNote(const PeriodGrid& grid, double tonePeriod)
     A line for each running timer: what began this stretch of it if it began at this frame (start or mod),
     the pitch and duty of what it writes, its base value and timer lane; then a line for each register it
     holds, with the lane or the one value it writes. In the colour of what the timer drives, half-alpha
-    unless its command is at this frame. A timer started before frame `firstPlayed` is left out: a clip
-    trimmed at its start does not play it. A timer's pitch and note stand in `columns`, under the chip's. */
-std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers&, int frameIndex, int firstPlayed,
-                                                        double chipClockHz, bool hex, const PeriodGrid& grid = {},
+    unless its command is at this frame. A timer's pitch and note stand in `columns`, under the chip's. */
+std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers&, int frameIndex, double chipClockHz,
+                                                        bool hex, const PeriodGrid& grid = {},
                                                         const PsgFrameColumns& columns = {});
 
 /** Everything the frame hover says of the clip's frame sounding at `time`: where the frame is, as

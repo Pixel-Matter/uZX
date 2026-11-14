@@ -15,8 +15,8 @@ public:
             const auto module = readTrackerModule(load(name));
             if (! expectSingleChip(module, name))
                 continue;
-            expectWithinAbsoluteError(module->chips[0].getFrameRate(), 50.0, 1e-9, name);
-            expectSameFrames(module->chips[0].frames, readDebugAY(sample(name + String(".debugay"))), name);
+            expectWithinAbsoluteError(module->chips[0].psg.getFrameRate(), 50.0, 1e-9, name);
+            expectSameFrames(module->chips[0].psg.frames, readDebugAY(sample(name + String(".debugay"))), name);
         }
 
         beginTest("A module names its title, note table and rows");
@@ -65,11 +65,11 @@ public:
             if (module && module->chips.size() == 2) {
                 const auto alone = readTrackerModule(first);
                 const auto& chips = module->chips;
-                expectSameFrames(chips[0].frames, alone->chips[0].frames, "chip 1");
-                const auto secondAlone = readTrackerModule(second)->chips[0].frames;
-                expectEquals((int) chips[1].frames.size(), (int) chips[0].frames.size(), "chip 2 follows chip 1");
-                const auto overlap = (long) std::min(secondAlone.size(), chips[1].frames.size());
-                expectSameFrames({chips[1].frames.begin(), chips[1].frames.begin() + overlap}, secondAlone,
+                expectSameFrames(chips[0].psg.frames, alone->chips[0].psg.frames, "chip 1");
+                const auto secondAlone = readTrackerModule(second)->chips[0].psg.frames;
+                expectEquals((int) chips[1].psg.frames.size(), (int) chips[0].psg.frames.size(), "chip 2 follows chip 1");
+                const auto overlap = (long) std::min(secondAlone.size(), chips[1].psg.frames.size());
+                expectSameFrames({chips[1].psg.frames.begin(), chips[1].psg.frames.begin() + overlap}, secondAlone,
                                  "chip 2 until its own loop");
                 expect(module->rowStarts == alone->rowStarts, "the first module's rows");
                 expectEquals(module->title, String("hypergy #2/:-)"), "both titles, as they differ");
@@ -84,8 +84,8 @@ public:
             const auto module = readTrackerModule(load(name));
             expectTurboSoundAsDumped(module, name);
             if (module) {
-                expectWithinAbsoluteError(module->chips[0].getFrameRate(), 50.0, 1e-9, "no IntFreq: 50 Hz");
-                expect(! module->chipClock.has_value(), "no ChipFreq");
+                expectWithinAbsoluteError(module->chips[0].psg.getFrameRate(), 50.0, 1e-9, "no IntFreq: 50 Hz");
+                expect(! module->chips[0].clock.has_value(), "no ChipFreq");
                 expectEquals(module->title, String("little girl with big yellow bow"), "one title, as they are the same");
                 // PlayOrder=0,1,0,13,L2,...: patterns of 64, 64, 64 and 62 rows come before the loop
                 expect(module->rowStarts.size() > 254, "rows past the loop start");
@@ -101,8 +101,8 @@ public:
             const auto module = readTrackerModule(MemoryBlock(text.toRawUTF8(), text.getNumBytesAsUTF8()));
             expectTurboSoundAsDumped(module, "VT 2.5");
             if (module) {
-                expectWithinAbsoluteError(module->chips[0].getFrameRate(), 48.828, 1e-9, "IntFreq in mHz");
-                expect(module->chipClock == 1750000.0, "ChipFreq");
+                expectWithinAbsoluteError(module->chips[0].psg.getFrameRate(), 48.828, 1e-9, "IntFreq in mHz");
+                expect(module->chips[0].clock == 1750000.0, "ChipFreq");
             }
         }
 
@@ -115,8 +115,8 @@ public:
             const auto module = readTrackerModule(bytes);
             expect(module.has_value() && module->chips.size() == 2, "two chips");
             if (module && module->chips.size() == 2) {
-                expectWithinAbsoluteError(module->chips[0].getFrameRate(), 50.0, 1e-9, "the 200 Hz is not in the file");
-                expect(! module->chipClock.has_value(), "nor the clock");
+                expectWithinAbsoluteError(module->chips[0].psg.getFrameRate(), 50.0, 1e-9, "the 200 Hz is not in the file");
+                expect(! module->chips[0].clock.has_value(), "nor the clock");
             }
         }
 
@@ -168,8 +168,8 @@ private:
         expect(module.has_value() && module->chips.size() == 2, what + ": two chips");
         if (! module || module->chips.size() != 2)
             return;
-        expectSameFrames(module->chips[0].frames, readDebugAY(sample(name + ".debugay")), what + ": chip 1");
-        expectSameFrames(module->chips[1].frames, readDebugAY(sample(name + "+51079.debugay")), what + ": chip 2");
+        expectSameFrames(module->chips[0].psg.frames, readDebugAY(sample(name + ".debugay")), what + ": chip 1");
+        expectSameFrames(module->chips[1].psg.frames, readDebugAY(sample(name + "+51079.debugay")), what + ": chip 2");
         expectRows(module->rowStarts, {2, 6}, what);
     }
 

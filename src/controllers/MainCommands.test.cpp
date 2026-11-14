@@ -32,8 +32,11 @@ public:
             expectEquals(studio.commandFor(KeyPress('s')), 0);
             expectEquals(studio.commandFor(KeyPress(KeyPress::escapeKey)), 0);
 
-            for (auto* r : {&player, &studio})
+            const KeyPress follow('f', ModifierKeys::commandModifier | ModifierKeys::shiftModifier, 0);
+            for (auto* r : {&player, &studio}) {
                 expectEquals(r->commandFor(KeyPress(KeyPress::spaceKey)), (int) MainAppCommands::transportPlay);
+                expectEquals(r->commandFor(follow), (int) MainAppCommands::transportFollow);
+            }
         }
     }
 

@@ -62,6 +62,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     addAndMakeVisible(rewindButton_);
     addAndMakeVisible(playPauseButton_);
     addAndMakeVisible(loopButton_);
+    addAndMakeVisible(followButton_);
     addAndMakeVisible(bpmControl_);
     addAndMakeVisible(bpmUnitLabel_);
     addAndMakeVisible(fpsLabel_);
@@ -94,6 +95,22 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         playPauseButton_.setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);
         loopButton_.setCommandToTrigger(mgr, MainAppCommands::transportLoop, true);
     }
+    followButton_.setTooltip("Follow the playhead during playback (right-click: by Page or by Scroll)");
+    followButton_.onClickWithModifiers = [this](const ModifierKeys& mods) {
+        auto* mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager();
+        if (mgr == nullptr)
+            return;
+        if (!mods.isPopupMenu()) {
+            mgr->invokeDirectly(MainAppCommands::transportFollow, true);
+            return;
+        }
+        PopupMenu menu;
+        menu.addCommandItem(mgr, MainAppCommands::transportFollowByPage);
+        menu.addCommandItem(mgr, MainAppCommands::transportFollowByScroll);
+        menu.showMenuAsync(PopupMenu::Options().withTargetComponent(&followButton_));
+    };
+    viewState_.zoom.addListener(this);
+    followChanged();
 
     if (options_.showRecord) {
         recordButton_.onClick = [this] {
@@ -181,6 +198,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 TransportBar::~TransportBar() {
     fpsLabel_.removeMouseListener(this);
 
+    viewState_.zoom.removeListener(this);
     transport_.removeChangeListener(this);
     transport_.state.removeListener(this);
     edit_.state.removeListener(this);
@@ -250,7 +268,8 @@ void TransportBar::resized() {
     placeButton(playPauseButton_, buttonGap);
     if (options_.showRecord)
         placeButton(recordButton_, buttonGap);
-    placeButton(loopButton_, 0);
+    placeButton(loopButton_, buttonGap);
+    placeButton(followButton_, 0);
     const int buttonsEnd = x;
     x += groupGap;
 
@@ -314,6 +333,14 @@ void TransportBar::valueTreeChildRemoved(ValueTree&, ValueTree& child, int) {
 
 void TransportBar::automationModeChanged() {
     updateAutomationButtons();
+}
+
+void TransportBar::followChanged() {
+    const auto& zoom = viewState_.zoom;
+    followButton_.setIcon(zoom.followsByPage() ? Icons::followPage() : Icons::followScroll());
+    followButton_.setToggleState(zoom.followsPlayback(), dontSendNotification);
+    followButton_.setColour(TextButton::buttonOnColourId,
+                            zoom.isFollowSuspended() ? Colors::Theme::primary.withAlpha(0.35f) : Colors::Theme::primary);
 }
 
 void TransportBar::updatePlayButton(bool isPlaying) {

@@ -36,6 +36,19 @@ const Path& loop() {
     return p;
 }
 
+/** arrow_right_alt */
+const Path& followScroll() {
+    static const Path p = Drawable::parseSVGPath("M16.01 11H4v2h12.01v3L20 12l-3.99-4z");
+    return p;
+}
+
+/** keyboard_tab */
+const Path& followPage() {
+    static const Path p = Drawable::parseSVGPath(
+        "M11.59 7.41L15.17 11H1v2h14.17l-3.59 3.59L13 18l6-6-6-6-1.41 1.41zM20 6v12h2V6h-2z");
+    return p;
+}
+
 /** power_settings_new */
 const Path& power() {
     static const Path p = Drawable::parseSVGPath(

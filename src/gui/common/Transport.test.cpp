@@ -53,13 +53,13 @@ public:
                 return nullptr;
             };
             auto* rewind = find("Rewind");
-            auto* loop = find("Loop");
-            expect(rewind != nullptr && loop != nullptr);
-            if (rewind == nullptr || loop == nullptr)
+            auto* follow = find("Follow");
+            expect(rewind != nullptr && follow != nullptr);
+            if (rewind == nullptr || follow == nullptr)
                 return;
 
             bar.setSize(1600, TransportBar::height);
-            expectWithinAbsoluteError((rewind->getX() + loop->getRight()) / 2, 800, 1);
+            expectWithinAbsoluteError((rewind->getX() + follow->getRight()) / 2, 800, 1);
 
             bar.setSize(800, TransportBar::height);  // the narrowest window
             int outputLeft = bar.getWidth();

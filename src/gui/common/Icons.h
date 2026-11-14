@@ -17,6 +17,8 @@ const Path& stop();
 const Path& record();
 const Path& toStart();
 const Path& loop();
+const Path& followScroll();  // an arrow
+const Path& followPage();    // an arrow to a bar
 const Path& power();
 const Path& menu();
 const Path& add();

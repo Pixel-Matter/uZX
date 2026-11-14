@@ -179,17 +179,65 @@ public:
         expectWithinAbsoluteError(zoom.getViewSpan().inSeconds(), 5.0, 1e-9);
         expectWithinAbsoluteError(zoom.timeToX(3_tp), 300.0f, 0.5f);
 
-        beginTest("After a wheel scroll, playback leaves the view alone for a moment, then follows again");
+        beginTest("A wheel scroll during playback suspends following, with Follow on, until a jump");
         MouseWheelDetails wheel {};
         wheel.deltaY = -0.5f;  // 100 px later
         zoom.setRange({100_tp, 10_td});
         zoom.scrollByWheel(wheel);
         expectWithinAbsoluteError(zoom.getStart().inSeconds(), 101.0, 1e-9);
-        transport.setPosition(1_tp);
-        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 101.0, 1e-9);
-        Thread::sleep(1100);
-        transport.setPosition(2_tp);
+        expect(zoom.isFollowSuspended());
+        expect(!zoom.isFollowingPlayhead(), "however long it has been");
+        transport.setPosition(2_tp);  // a seek, as is a loop wrap
+        expect(!zoom.isFollowSuspended());
         expectLessThan(zoom.getStart().inSeconds(), 2.0);
+
+        beginTest("A view drag suspends following; resuming, or stopping, follows again");
+        zoom.beginDrag();
+        zoom.dragBy(500, 100, 0);
+        zoom.endDrag();
+        expect(zoom.isFollowSuspended());
+        zoom.resumeFollow();  // the Follow button
+        expect(zoom.isFollowingPlayhead());
+        zoom.scrollByWheel(wheel);
+        transport.stop(false, false);
+        expect(!zoom.isFollowSuspended());
+        zoom.scrollByWheel(wheel);
+        expect(!zoom.isFollowSuspended(), "stopped, there is nothing to suspend");
+        transport.play(false);
+
+        beginTest("With Follow off, playback leaves the view alone unless Viz mode forces it; on again, it follows");
+        expect(zoom.followsPlayback(), "on by default");
+        zoom.setFollowsPlayback(false);
+        zoom.setRange({100_tp, 10_td});
+        transport.setPosition(1_tp);
+        expect(! zoom.isFollowingPlayhead());
+        expectEquals(zoom.getStart().inSeconds(), 100.0);
+        zoom.setFollowForced(true);  // Viz mode
+        transport.setPosition(2_tp);
+        expectLessThan(zoom.getStart().inSeconds(), 2.0, "forced, it follows with Follow off");
+        zoom.setFollowsPlayback(true);
+        zoom.scrollByWheel(wheel);
+        expect(zoom.isFollowingPlayhead(), "forced, it follows while suspended");
+        zoom.setFollowForced(false);
+        zoom.setFollowsPlayback(true);
+        zoom.setRange({100_tp, 10_td});
+        transport.setPosition(3_tp);
+        expectLessThan(zoom.getStart().inSeconds(), 3.0);
+
+        beginTest("By page, the view stays until the playhead passes its edge, then starts at it; Viz mode scrolls");
+        zoom.setFollowsByPage(true);
+        zoom.setRange({0_tp, 10_td});  // 10 ms a pixel
+        transport.setPosition(5_tp);
+        expectEquals(zoom.getStart().inSeconds(), 0.0, "on the page; by scroll it would keep a third");
+        transport.setPosition(10.5_tp);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 10.5, 0.011);
+        transport.setPosition(2_tp);  // back before the view, as a loop wrap
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 2.0, 0.011);
+        zoom.setFollowForced(true);
+        transport.setPosition(8_tp);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 8.0 - 10.0 / 3.0, 0.011);
+        zoom.setFollowForced(false);
+        zoom.setFollowsByPage(false);  // an app setting: leave it as found
         transport.stop(false, false);
     }
 };
@@ -338,7 +386,7 @@ public:
         zoom.zoomAroundX(1.0, 0);
         expect(!zoom.canZoomBack());
 
-        beginTest("Autoscrolling does not add history and back pauses following without seeking");
+        beginTest("Autoscrolling does not add history and back suspends following without seeking");
         zoom.setRange({100_tp, 10_td});
         zoom.zoomToRange({0_tp, 2_td});
         transport.play(false);
@@ -346,8 +394,8 @@ public:
         zoom.zoomBack();
         expectView(100.0, 0.01);
         expect(!zoom.canZoomBack());
-        transport.setPosition(21_tp);
-        expectView(100.0, 0.01);
+        expect(zoom.isFollowSuspended());
+        expectEquals(transport.getPosition().inSeconds(), 20.0);
         transport.stop(false, false);
 
         beginTest("History belongs to a view, not to the saved project");
@@ -459,6 +507,15 @@ public:
         expectLessThan(transport.getPosition().inSeconds(), 1.5);
         expectGreaterOrEqual(playhead(), 1.0);
         expectLessThan(playhead(), 1.5);
+
+        beginTest("Past the loop: frames show the playhead playing on, not held at the loop end");
+        transport.stop(false, false);
+        seek(2.5_tp);
+        transport.play(false);
+        MessageManager::getInstance()->runDispatchLoopUntil(250);
+        play(40);
+        zoom.advanceFrame(3.0);
+        expectGreaterThan(playhead(), 2.5);
 
         transport.stop(false, false);
         transport.looping = false;

@@ -42,6 +42,7 @@ struct TransportBarOptions {
 class TransportBar  : public Component,
                       private ValueTree::Listener,
                       private ChangeListener,
+                      private ZoomViewState::Listener,
                       private tracktion::AutomationRecordManager::Listener
 {
 public:
@@ -59,6 +60,18 @@ public:
     void mouseDown(const MouseEvent&) override;
 
 private:
+    /** Lit while Follow is on, dim while suspended; its icon shows by page or by scroll. A click invokes Follow,
+        a right-click offers Follow by Page or by Scroll: a command trigger would invoke on right-clicks too. */
+    struct FollowButton : IconButton
+    {
+        using IconButton::IconButton;
+        std::function<void(const ModifierKeys&)> onClickWithModifiers;
+        void clicked(const ModifierKeys& mods) override {
+            if (onClickWithModifiers)
+                onClickWithModifiers(mods);
+        }
+    };
+
     TransportBarOptions options_;
     EditViewState& viewState_;
     te::Edit& edit_;
@@ -74,6 +87,7 @@ private:
                playPauseButton_ { "Play", Icons::play() },
                recordButton_    { "Record", Icons::record() },
                loopButton_      { "Loop", Icons::loop() };  // lit while looping
+    FollowButton followButton_  { "Follow", Icons::followScroll() };
     TextButton autoReadButton_  { "Read" },
                autoWriteButton_ { "Write" };
 
@@ -96,6 +110,8 @@ private:
     void valueTreeChildAdded(ValueTree&, ValueTree&) override;
     void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
     void automationModeChanged() override;
+    void viewRangeChanged() override {}
+    void followChanged() override;
 
     void updatePlayButton(bool isPlaying);
     void updateRecordButton(bool isRecording);

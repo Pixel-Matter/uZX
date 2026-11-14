@@ -18,6 +18,8 @@ public:
                                    &Icons::record(),
                                    &Icons::toStart(),
                                    &Icons::loop(),
+                                   &Icons::followScroll(),
+                                   &Icons::followPage(),
                                    &Icons::power(),
                                    &Icons::menu(),
                                    &Icons::add(),

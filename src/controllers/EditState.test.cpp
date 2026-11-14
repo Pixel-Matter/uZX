@@ -223,6 +223,21 @@ public:
         zoom.setRange({100_tp, 10_td});
         transport.setPosition(3_tp);
         expectLessThan(zoom.getStart().inSeconds(), 3.0);
+
+        beginTest("By page, the view stays until the playhead passes its edge, then starts at it; Viz mode scrolls");
+        zoom.setFollowsByPage(true);
+        zoom.setRange({0_tp, 10_td});  // 10 ms a pixel
+        transport.setPosition(5_tp);
+        expectEquals(zoom.getStart().inSeconds(), 0.0, "on the page; by scroll it would keep a third");
+        transport.setPosition(10.5_tp);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 10.5, 0.011);
+        transport.setPosition(2_tp);  // back before the view, as a loop wrap
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 2.0, 0.011);
+        zoom.setFollowForced(true);
+        transport.setPosition(8_tp);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 8.0 - 10.0 / 3.0, 0.011);
+        zoom.setFollowForced(false);
+        zoom.setFollowsByPage(false);  // an app setting: leave it as found
         transport.stop(false, false);
     }
 };

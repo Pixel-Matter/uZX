@@ -385,6 +385,8 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::transportLoop);
             menu.addCommandItem(&commandManager_, MainAppCommands::transportFollow);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportFollowByPage);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportFollowByScroll);
         } else if (menuName == "View") {
             menu.addSubMenu("Zoom", MainAppCommands::createZoomMenu(&commandManager_, false));
             menu.addSeparator();
@@ -534,6 +536,15 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             auto* view = controller.getEditViewState();
             result.setActive(view != nullptr);
             result.setTicked(view != nullptr && view->zoom.followsPlayback());
+            break;
+        }
+
+        case MainAppCommands::transportFollowByPage:
+        case MainAppCommands::transportFollowByScroll: {
+            auto* view = controller.getEditViewState();
+            result.setActive(view != nullptr);
+            result.setTicked(view != nullptr
+                             && view->zoom.followsByPage() == (commandID == MainAppCommands::transportFollowByPage));
             break;
         }
 
@@ -735,6 +746,14 @@ bool AppController::perform(const InvocationInfo& info) {
                     zoom.resumeFollow();
                 else
                     zoom.setFollowsPlayback(! zoom.followsPlayback());
+                commandManager_.commandStatusChanged();
+            }
+            break;
+
+        case MainAppCommands::transportFollowByPage:
+        case MainAppCommands::transportFollowByScroll:
+            if (auto* view = MoToolApp::getActiveController().getEditViewState()) {
+                view->zoom.setFollowsByPage(info.commandID == MainAppCommands::transportFollowByPage);
                 commandManager_.commandStatusChanged();
             }
             break;

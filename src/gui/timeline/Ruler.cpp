@@ -98,6 +98,8 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
             m.addSeparator();
             m.addCommandItem(manager, Commands::MainAppCommands::transportFollow);
+            m.addCommandItem(manager, Commands::MainAppCommands::transportFollowByPage);
+            m.addCommandItem(manager, Commands::MainAppCommands::transportFollowByScroll);
             m.addCommandItem(manager, Commands::MainAppCommands::viewSnapPlayheadToGrid);
             m.addCommandItem(manager, Commands::MainAppCommands::transportPreservePsgTiming);
         }

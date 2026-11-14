@@ -45,6 +45,8 @@ public:
         transportLoop,
         transportPreservePsgTiming,
         transportFollow,
+        transportFollowByPage,
+        transportFollowByScroll,
 
         // Add Menu
         addAudioTrack        = 300,
@@ -98,7 +100,7 @@ public:
             fileSave, fileSaveAs, fileReveal, fileImportPsg, fileImportAudio, fileQuit, fileRenderVideo,
             editUndo, editRedo, editDelete,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
-            transportPreservePsgTiming, transportFollow,
+            transportPreservePsgTiming, transportFollow, transportFollowByPage, transportFollowByScroll,
             addAudioTrack,
             // addAutomationTrack,
             trackRenderToAudio, trackRenderToPsg,
@@ -200,6 +202,8 @@ public:
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::transportLoop);
             menu.addCommandItem(manager, MainAppCommands::transportFollow);
+            menu.addCommandItem(manager, MainAppCommands::transportFollowByPage);
+            menu.addCommandItem(manager, MainAppCommands::transportFollowByScroll);
             menu.addSeparator();
             menu.addCommandItem(manager, MainAppCommands::transportPreservePsgTiming);
         } else if (menuName == "Add") {
@@ -370,6 +374,18 @@ public:
             case transportFollow:
                 result.setInfo("Follow", "Scroll the view to keep the playhead in sight during playback", "Transport", 0);
                 result.addDefaultKeypress('f', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
+                break;
+
+            case transportFollowByPage:
+                result.setInfo("Follow by Page",
+                               "During playback, jump the view a screen on when the playhead reaches its edge",
+                               "Transport", 0);
+                break;
+
+            case transportFollowByScroll:
+                result.setInfo("Follow by Scroll",
+                               "During playback, keep the playhead in the left third and scroll the tune under it",
+                               "Transport", 0);
                 break;
 
             case transportPreservePsgTiming:

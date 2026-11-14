@@ -356,6 +356,19 @@ void ZoomViewState::setFollowsPlayback(bool shouldFollow) {
     resumeFollow();
 }
 
+namespace {
+    constexpr auto followByPageSetting = "followByPage";
+}
+
+bool ZoomViewState::followsByPage() const {
+    return edit.engine.getPropertyStorage().getPropertiesFile().getBoolValue(followByPageSetting, false);
+}
+
+void ZoomViewState::setFollowsByPage(bool byPage) {
+    edit.engine.getPropertyStorage().getPropertiesFile().setValue(followByPageSetting, byPage);
+    markAndUpdate(updateFollow);
+}
+
 void ZoomViewState::suspendFollow() {
     auto& transport = edit.getTransport();
     if (!followSuspended && (transport.isPlaying() || transport.isRecording())) {
@@ -386,12 +399,15 @@ void ZoomViewState::handlePlaybackScrolling() {
 }
 
 void ZoomViewState::followPlayhead(te::TimePosition pos) {
-    const auto leftRange = getViewSpan() / 3.0;
-    if (pos < viewStartTime || pos > viewStartTime + leftRange) {
+    // How far past the view start the playhead runs, and where a new view puts it
+    const bool byPage = followsByPage() && !followForced && !offlineFrames;
+    const auto keepWithin = byPage ? getViewSpan() : getViewSpan() / 3.0;
+    const auto lead = byPage ? te::TimeDuration() : keepWithin;
+    if (pos < viewStartTime || pos > viewStartTime + keepWithin) {
         // On the timeline's whole pixels, so what is drawn keeps its place within a pixel and
         // clips can blit their cached content (PsgClipComponent) in line with the ruler and the playhead
         const auto timePerPixel = getTimePerPixel();
-        auto newX1 = te::TimePosition() + timePerPixel * std::floor(jmax(te::TimePosition(), pos - leftRange)
+        auto newX1 = te::TimePosition() + timePerPixel * std::floor(jmax(te::TimePosition(), pos - lead)
                                                                          .inSeconds() / timePerPixel.inSeconds());
         if (newX1 != viewStartTime)
             setStart(newX1);

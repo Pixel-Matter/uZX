@@ -54,6 +54,17 @@ public:
     void mouseDown(const MouseEvent&) override;
 
 private:
+    /** Lit while Follow is on, dim while suspended; ⇥ by page, ⇢ by scroll. A click invokes Follow, a
+        right-click offers Follow by Page or by Scroll: a command trigger would invoke on right-clicks too. */
+    struct FollowButton : TextButton
+    {
+        std::function<void(const ModifierKeys&)> onClickWithModifiers;
+        void clicked(const ModifierKeys& mods) override {
+            if (onClickWithModifiers)
+                onClickWithModifiers(mods);
+        }
+    };
+
     TransportBarOptions options_;
     EditViewState& viewState_;
     te::Edit& edit_;
@@ -70,13 +81,14 @@ private:
        playPauseButton_ { "▶"_u },
        recordButton_    { "⏺"_u },
        loopButton_      { "↻"_u },  // lit while looping
-       followButton_    { "⇢"_u },  // lit while Follow is on, dim while suspended
        autoReadButton_  { "Read" },
        autoWriteButton_ { "Write" };
     //    stepRightButton_ { ">" };
 
     // Readout group: value box + adjacent unit label, laid out as
     //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ 7 6 7 6 ] GRV   [ 4/4 ] SIG
+    FollowButton followButton_;
+
     EditableReadout bpmControl_;
     EditableReadout fpbControl_;
     Label fpsLabel_;        // click opens a popup of allowed rates

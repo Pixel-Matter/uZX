@@ -5,7 +5,7 @@
 namespace MoTool {
 
 /** Playback covers the whole edit: it stops once the end has been heard, unless recording
-    or looping. An empty loop range becomes the whole edit, and a loop range that is the whole
+    or looping with the loop end still ahead. An empty loop range becomes the whole edit, and a loop range that is the whole
     edit follows its end as clips change; any other loop range stays where it was set.
     Rides on the transport's periodic position updates; create one per edit. */
 class PlayWholeEdit : private juce::ValueTree::Listener,
@@ -68,11 +68,13 @@ private:
 
         auto& transport = edit_.getTransport();
         if (tree != transport.state || prop != tracktion::IDs::position
-            || !transport.isPlaying() || transport.isRecording() || transport.looping)
+            || !transport.isPlaying() || transport.isRecording())
             return;
 
         const auto end = getEnd(edit_);
         const auto position = tracktion::TimePosition::fromSeconds(static_cast<double>(tree[tracktion::IDs::position]));
+        if (transport.looping && position < transport.getLoopRange().getEnd())
+            return;  // the loop end takes it back; past it, playback plays on to the end
         auto* context = transport.getCurrentPlaybackContext();
         if (position < end || (context != nullptr && context->getAudibleTimelineTime() < end))
             return;

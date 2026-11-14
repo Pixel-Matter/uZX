@@ -68,6 +68,7 @@ private:
     //    stepLeftButton_  { "<" },
        playPauseButton_ { "▶"_u },
        recordButton_    { "⏺"_u },
+       loopButton_      { "↻"_u },  // lit while looping
        autoReadButton_  { "Read" },
        autoWriteButton_ { "Write" };
     //    stepRightButton_ { ">" };

@@ -190,6 +190,22 @@ public:
         Thread::sleep(1100);
         transport.setPosition(2_tp);
         expectLessThan(zoom.getStart().inSeconds(), 2.0);
+
+        beginTest("With Follow off, playback leaves the view alone unless Viz mode forces it; on again, it follows");
+        expect(zoom.followsPlayback(), "on by default");
+        zoom.setFollowsPlayback(false);
+        zoom.setRange({100_tp, 10_td});
+        transport.setPosition(1_tp);
+        expect(! zoom.isFollowingPlayhead());
+        expectEquals(zoom.getStart().inSeconds(), 100.0);
+        zoom.setFollowForced(true);  // Viz mode
+        transport.setPosition(2_tp);
+        expectLessThan(zoom.getStart().inSeconds(), 2.0, "forced, it follows with Follow off");
+        zoom.setFollowForced(false);
+        zoom.setFollowsPlayback(true);
+        zoom.setRange({100_tp, 10_td});
+        transport.setPosition(3_tp);
+        expectLessThan(zoom.getStart().inSeconds(), 3.0);
         transport.stop(false, false);
     }
 };
@@ -459,6 +475,15 @@ public:
         expectLessThan(transport.getPosition().inSeconds(), 1.5);
         expectGreaterOrEqual(playhead(), 1.0);
         expectLessThan(playhead(), 1.5);
+
+        beginTest("Past the loop: frames show the playhead playing on, not held at the loop end");
+        transport.stop(false, false);
+        seek(2.5_tp);
+        transport.play(false);
+        MessageManager::getInstance()->runDispatchLoopUntil(250);
+        play(40);
+        zoom.advanceFrame(3.0);
+        expectGreaterThan(playhead(), 2.5);
 
         transport.stop(false, false);
         transport.looping = false;

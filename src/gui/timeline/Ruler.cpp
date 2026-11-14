@@ -97,6 +97,7 @@ void RulerComponent::mouseDown(const MouseEvent& e) {
         m.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(edit));
         if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
             m.addSeparator();
+            m.addCommandItem(manager, Commands::MainAppCommands::transportFollow);
             m.addCommandItem(manager, Commands::MainAppCommands::viewSnapPlayheadToGrid);
             m.addCommandItem(manager, Commands::MainAppCommands::transportPreservePsgTiming);
         }
@@ -142,13 +143,6 @@ void RulerComponent::mouseUp(const MouseEvent& e) {
 
     isDragging = false;
     loopDrag = LoopDrag::none;
-}
-
-void RulerComponent::mouseDoubleClick(const MouseEvent& e) {
-    if (!isInLoopStrip(e) || e.mods.isPopupMenu())
-        return;
-    if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager())
-        manager->invokeDirectly(Commands::MainAppCommands::transportLoop, true);
 }
 
 void RulerComponent::mouseMove(const MouseEvent& e) {

@@ -14,9 +14,9 @@ namespace MoTool {
 
 //==============================================================================
 /**
- * AddButton - Button that draws only text, no background
+ * AddButton - Button that draws only its plus, no background
  */
-class AddButton : public BackgroundlessTextButton {
+class AddButton : public BackgroundlessIconButton {
 public:
     AddButton();
 };

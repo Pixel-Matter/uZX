@@ -28,7 +28,7 @@ static te::Plugin::Ptr showMenuAndCreatePlugin(te::Edit& edit) {
 //==============================================================================
 // AddButton implementation
 AddButton::AddButton()
-    : BackgroundlessTextButton("+")
+    : BackgroundlessIconButton("Add Plugin", Icons::add())
 {
     setTooltip("Add Plugin");
 }

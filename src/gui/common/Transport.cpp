@@ -6,7 +6,6 @@
 #include "../../models/PsgFrameRetimer.h"
 #include "../../models/PsgTempoDetector.h"
 #include "LookAndFeel.h"
-#include "../../utils/StringLiterals.h"
 
 #include <common/Utilities.h>
 
@@ -38,6 +37,16 @@ void EditableReadout::commitEditedText() {
     setValue(resolved, decimals_);
 }
 
+
+/** Where `label` puts its text's baseline, from its top, as LookAndFeel_V2::drawLabel lays the text out. */
+static float getTextBaseline(Label& label) {
+    auto& lf = label.getLookAndFeel();
+    const auto area = lf.getLabelBorderSize(label).subtractedFrom(label.getLocalBounds()).toFloat();
+    GlyphArrangement glyphs;
+    glyphs.addFittedText(lf.getLabelFont(label), "0", area.getX(), area.getY(), area.getWidth(), area.getHeight(),
+                         label.getJustificationType(), 1, label.getMinimumHorizontalScale());
+    return glyphs.getNumGlyphs() > 0 ? glyphs.getGlyph(0).getBaselineY() : area.getBottom();
+}
 
 TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     : options_{opts}
@@ -100,7 +109,6 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         menu.addCommandItem(mgr, MainAppCommands::transportFollowByScroll);
         menu.showMenuAsync(PopupMenu::Options().withTargetComponent(&followButton_));
     };
-    loopButton_.setToggleState(transport_.looping, dontSendNotification);
     viewState_.zoom.addListener(this);
     followChanged();
 
@@ -130,13 +138,12 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
             arm.setWritingAutomation(!arm.isWritingAutomation());
         };
 
-        automationLabel_.setText("Automation:", dontSendNotification);
-        automationLabel_.setJustificationType(Justification::centredRight);
     }
 
-    updatePlayButtonText(transport_.isPlaying());
+    updatePlayButton(transport_.isPlaying());
+    loopButton_.setToggleState(transport_.looping, dontSendNotification);
     if (options_.showRecord)
-        updateRecordButtonText(transport_.isRecording());
+        updateRecordButton(transport_.isRecording());
     if (options_.showAutomation)
         updateAutomationButtons();
 
@@ -168,20 +175,18 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     timeSigLabel_.setEditable(true, true, false);
     timeSigLabel_.onTextChange = [this] { commitEditedTimeSig(); };
 
-    // Unit / prefix labels sit next to their value box as plain, non-interactive text.
+    // Unit and prefix labels: small and grey, so the values and the buttons stand out
     struct { Label& label; const char* text; } units[] = {
-        { bpmUnitLabel_, "BPM" }, { fpsUnitLabel_, "FPS" },
-        { fpbUnitLabel_, "FPB" }, { divUnitLabel_, "GRV" }, { sigUnitLabel_, "SIG" },
-        { posLabel_, "Pos" },
+        { bpmUnitLabel_, "bpm" }, { fpsUnitLabel_, "fps" }, { fpbUnitLabel_, "fpb" },
+        { divUnitLabel_, "groove" }, { sigUnitLabel_, "sig" }, { posLabel_, "pos" },
+        { automationLabel_, "Automation" },
     };
     for (auto& u : units) {
         u.label.setText(u.text, dontSendNotification);
-        u.label.setFont(readoutLookAndFeel_.getNumericReadoutFont());
-        u.label.setColour(Label::textColourId, Colors::Theme::primary);
+        u.label.setFont(FontOptions(15.0f));
+        u.label.setColour(Label::textColourId, Colors::Theme::textSecondary);
+        u.label.setBorderSize({});  // laid out at the width of its text
     }
-
-    // "Pos" is a prefix, so hug it against the timecode box on its right.
-    posLabel_.setJustificationType(Justification::centredRight);
 
     // The fps readout picks from a fixed set of rates via a popup, not free text.
     fpsLabel_.setEditable(false, false, false);
@@ -205,79 +210,94 @@ void TransportBar::paint(Graphics& g) {
 }
 
 void TransportBar::resized() {
-    auto b = getLocalBounds();
-    static constexpr int spacing = 8;
-    b.reduce(spacing, spacing);
-    int w = b.getHeight();
+    static constexpr int spacing = margin;
+    auto b = getLocalBounds().reduced(margin);
+    const int w = readoutHeight;  // the unit of the readouts' widths
 
     // Output section on the right, reserved first so the centred block can't overlap it.
     // ponytail: 60 px puts the knob centre 92 px from the right edge, midway between the Player's
     // AY panel Width and Volume knobs; re-derive if either layout changes.
-    static constexpr int meterWidth = 60;
+    static constexpr int meterWidth = 15 * grid;
     masterMeter_.setBounds(b.removeFromRight(meterWidth).withSizeKeepingCentre(meterWidth, w / 2));
     b.removeFromRight(spacing);
-    masterVolumeSlider_.setBounds(b.removeFromRight(w + 8).expanded(4, 4));
+    static constexpr int knobWidth = 8 * grid;
+    masterVolumeSlider_.setBounds(
+        b.removeFromRight(knobWidth).withSizeKeepingCentre(knobWidth, w).expanded(grid, grid));
     b.removeFromRight(spacing);
-    static constexpr int cpuMeterWidth = 62;
-    cpuMeter_.setBounds(b.removeFromRight(cpuMeterWidth));
+    static constexpr int cpuMeterWidth = 16 * grid;
+    cpuMeter_.setBounds(b.removeFromRight(cpuMeterWidth).withSizeKeepingCentre(cpuMeterWidth, w));
     b.removeFromRight(spacing);
 
-    // Components that make up the left-aligned block, collected so we can shift the
-    // whole block to horizontal centre afterwards.
+    // The block is laid out from x = 0, then shifted into place. Gaps show what belongs together:
+    // a label hugs its value, readouts stand apart, groups further apart, the transport buttons close.
+    static constexpr int labelGap = grid, buttonGap = 2 * grid, readoutGap = 3 * grid, groupGap = 6 * grid;
     std::vector<Component*> block;
-
-    // A readout is a value box followed by an adjacent unit label.
-    auto placeReadout = [&](Component& value, Label& unit, int valueW, int unitW) {
-        value.setBounds(b.removeFromLeft(valueW));
-        unit.setBounds(b.removeFromLeft(unitW));
-        b.removeFromLeft(spacing);
-        block.push_back(&value);
-        block.push_back(&unit);
-    };
-    auto placeButton = [&](Component& c, int cw) {
-        c.setBounds(b.removeFromLeft(cw));
-        b.removeFromLeft(spacing);
+    int x = 0;
+    // Readouts and labels are readoutHeight tall, centred on the bar
+    auto place = [&](Component& c, int width, int gapAfter) {
+        c.setBounds(Rectangle<int>(x, b.getY(), width, b.getHeight()).withSizeKeepingCentre(width, w));
+        x += width + gapAfter;
         block.push_back(&c);
     };
+    // Transport buttons are squares of the bar's height
+    auto placeButton = [&](Component& c, int gapAfter) {
+        c.setBounds(x, b.getY(), b.getHeight(), b.getHeight());
+        x += b.getHeight() + gapAfter;
+        block.push_back(&c);
+    };
+    auto textWidth = [](const Label& l) { return GlyphArrangement::getStringWidthInt(l.getFont(), l.getText()) + 1; };
+    // A label's text sits on its value's baseline, though the two fonts sit differently in their boxes
+    auto alignBaseline = [](Label& label, Label& value) {
+        label.setTopLeftPosition(label.getX(),
+                                 value.getY() + roundToInt(getTextBaseline(value) - getTextBaseline(label)));
+    };
+    auto placeReadout = [&](Label& value, int valueW, Label& unit, int gapAfter) {
+        place(value, valueW, labelGap);
+        place(unit, textWidth(unit), gapAfter);
+        alignBaseline(unit, value);
+    };
 
-    placeReadout(bpmControl_, bpmUnitLabel_, w * 3, w * 2);
-    placeReadout(fpsLabel_,   fpsUnitLabel_, w * 2, w * 2);
-    placeReadout(fpbControl_, fpbUnitLabel_, w * 2, w * 2);
-    placeReadout(divControl_, divUnitLabel_, w * 3, w * 2);
-    placeReadout(timeSigLabel_, sigUnitLabel_, w * 2, w * 2);
+    placeReadout(bpmControl_, w * 3, bpmUnitLabel_, readoutGap);
+    placeReadout(fpsLabel_, w * 2, fpsUnitLabel_, readoutGap);
+    placeReadout(fpbControl_, w * 2, fpbUnitLabel_, readoutGap);
+    placeReadout(divControl_, w * 3, divUnitLabel_, readoutGap);
+    placeReadout(timeSigLabel_, w * 2, sigUnitLabel_, groupGap);
 
-    placeButton(rewindButton_, w * 2);
-    placeButton(playPauseButton_, w * 2);
+    const int buttonsStart = x;
+    placeButton(rewindButton_, buttonGap);
+    placeButton(playPauseButton_, buttonGap);
     if (options_.showRecord)
-        placeButton(recordButton_, w * 2);
-    placeButton(loopButton_, w * 2);
-    placeButton(followButton_, w * 2);
+        placeButton(recordButton_, buttonGap);
+    placeButton(loopButton_, buttonGap);
+    placeButton(followButton_, 0);
+    const int buttonsEnd = x;
+    x += groupGap;
 
-    // Position readout: "Pos" prefix label, then the editable timecode box.
-    posLabel_.setBounds(b.removeFromLeft(static_cast<int>(w * 2)));
-    transportReadout_.setBounds(b.removeFromLeft(static_cast<int>(w * 5)));
-    b.removeFromLeft(spacing);
-    block.push_back(&posLabel_);
-    block.push_back(&transportReadout_);
+    place(posLabel_, textWidth(posLabel_), labelGap);  // a prefix, before its value
+    place(transportReadout_, w * 5, 0);
+    alignBaseline(posLabel_, transportReadout_);
 
     if (options_.showAutomation) {
-        placeButton(automationLabel_, w * 3);
-        placeButton(autoReadButton_, w * 2);
-        placeButton(autoWriteButton_, w * 2);
+        x += groupGap;
+        place(automationLabel_, textWidth(automationLabel_), labelGap);
+        place(autoReadButton_, w * 2, buttonGap);
+        place(autoWriteButton_, w * 2, 0);
     }
 
-    //----------------------------------------------------------------------
-    // shift the whole block to the horizontal centre of the remaining space
-    auto shiftBy = b.getWidth() / 2;
+    // The transport buttons sit in the middle of the whole bar. Where the block doesn't fit there, it moves
+    // to stay clear of the output section first, so play/pause and the position stay visible.
+    auto shift = getLocalBounds().getCentreX() - (buttonsStart + buttonsEnd) / 2;
+    shift = jmax(shift, b.getX());
+    shift = jmin(shift, b.getRight() - x);
     for (auto* c : block)
-        c->setBounds(c->getBounds().withX(c->getX() + shiftBy));
+        c->setBounds(c->getBounds().translated(shift, 0));
 }
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
     // TODO use flagged async updater to avoid too many updates
-    updatePlayButtonText(transport_.isPlaying());
+    updatePlayButton(transport_.isPlaying());
     if (options_.showRecord)
-        updateRecordButtonText(transport_.isRecording());
+        updateRecordButton(transport_.isRecording());
     // TODO separate updating of tempo, timsig and fps controls
     updateTimeLabels(transport_.getPosition());
 }
@@ -288,7 +308,8 @@ void TransportBar::valueTreePropertyChanged(ValueTree& tree, const Identifier& p
     } else if (tree == transport_.state && prop == te::IDs::position) {
         updateTimeLabels(transport_.getPosition());
     } else if (tree == transport_.state && prop == te::IDs::looping) {
-        loopButton_.setToggleState((bool) tree[prop], dontSendNotification);  // the CachedValue may lag
+        // From the tree: the transport's cached value may not have caught up yet
+        loopButton_.setToggleState(static_cast<bool>(tree[prop]), dontSendNotification);
     } else if (tree == edit_.state && prop == IDs::timecodeDisplayMode) {
         updateTimeLabels(transport_.getPosition());
     } else if (tree == edit_.state && prop == IDs::projectFps) {
@@ -316,18 +337,28 @@ void TransportBar::automationModeChanged() {
 
 void TransportBar::followChanged() {
     const auto& zoom = viewState_.zoom;
-    followButton_.setButtonText(zoom.followsByPage() ? "⇥"_u : "⇢"_u);
+    followButton_.setIcon(zoom.followsByPage() ? Icons::followPage() : Icons::followScroll());
     followButton_.setToggleState(zoom.followsPlayback(), dontSendNotification);
     followButton_.setColour(TextButton::buttonOnColourId,
                             zoom.isFollowSuspended() ? Colors::Theme::primary.withAlpha(0.35f) : Colors::Theme::primary);
 }
 
-void TransportBar::updatePlayButtonText(bool isPlaying) {
-    playPauseButton_.setButtonText(isPlaying ? "⏸"_u : "▶"_u);
+void TransportBar::updatePlayButton(bool isPlaying) {
+    playPauseButton_.setIcon(isPlaying ? Icons::pause() : Icons::play());
+    // Lit while playing, in the on colours of a toggle such as Loop. Colours, not the toggle state: the button
+    // triggers a command, and JUCE resets a command button's toggle state to the command's tick.
+    auto& play = playPauseButton_;
+    if (isPlaying) {
+        play.setColour(TextButton::buttonColourId, play.findColour(TextButton::buttonOnColourId));
+        play.setColour(TextButton::textColourOffId, play.findColour(TextButton::textColourOnId));
+    } else {
+        play.removeColour(TextButton::buttonColourId);
+        play.removeColour(TextButton::textColourOffId);
+    }
 }
 
-void TransportBar::updateRecordButtonText(bool isRecording) {
-    recordButton_.setButtonText(isRecording ? "⏹"_u : "⏺"_u);
+void TransportBar::updateRecordButton(bool isRecording) {
+    recordButton_.setIcon(isRecording ? Icons::stop() : Icons::record());
     recordButton_.setColour(TextButton::textColourOnId, Colors::Theme::error);
     // recordButton_.setColour(TextButton::buttonOnColourId, isRecording ?
     //                         recordButton_.findColour(TextButton::textColourOnId)

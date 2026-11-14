@@ -3,8 +3,8 @@
 #include <JuceHeader.h>
 
 #include "../../controllers/EditState.h"
-#include "../../utils/StringLiterals.h"
 
+#include "Icons.h"
 #include "LevelMeter.h"
 #include "ParamBindings.h"
 #include "LookAndFeel.h"
@@ -49,15 +49,22 @@ public:
     explicit TransportBar(EditViewState& evs, TransportBarOptions opts = {});
     ~TransportBar() override;
 
+    /** Sizes and gaps are on a 4 px grid. The transport buttons fill the bar's height inside the margin;
+        readouts and meters are shorter. */
+    static constexpr int grid = 4;
+    static constexpr int margin = 2 * grid, buttonSize = 8 * grid, readoutHeight = 6 * grid;
+    static constexpr int height = buttonSize + 2 * margin;
+
     void paint(Graphics& g) override;
     void resized() override;
     void mouseDown(const MouseEvent&) override;
 
 private:
-    /** Lit while Follow is on, dim while suspended; ⇥ by page, ⇢ by scroll. A click invokes Follow, a
-        right-click offers Follow by Page or by Scroll: a command trigger would invoke on right-clicks too. */
-    struct FollowButton : TextButton
+    /** Lit while Follow is on, dim while suspended; its icon shows by page or by scroll. A click invokes Follow,
+        a right-click offers Follow by Page or by Scroll: a command trigger would invoke on right-clicks too. */
+    struct FollowButton : IconButton
     {
+        using IconButton::IconButton;
         std::function<void(const ModifierKeys&)> onClickWithModifiers;
         void clicked(const ModifierKeys& mods) override {
             if (onClickWithModifiers)
@@ -76,19 +83,16 @@ private:
     MasterLevelMeter masterMeter_ {edit_};
     CpuLoadMeter cpuMeter_ {edit_.engine};
 
-    TextButton rewindButton_    { "⏮"_u },
-    //    stepLeftButton_  { "<" },
-       playPauseButton_ { "▶"_u },
-       recordButton_    { "⏺"_u },
-       loopButton_      { "↻"_u },  // lit while looping
-       autoReadButton_  { "Read" },
-       autoWriteButton_ { "Write" };
-    //    stepRightButton_ { ">" };
+    IconButton rewindButton_    { "Rewind", Icons::toStart() },
+               playPauseButton_ { "Play", Icons::play() },
+               recordButton_    { "Record", Icons::record() },
+               loopButton_      { "Loop", Icons::loop() };  // lit while looping
+    FollowButton followButton_  { "Follow", Icons::followScroll() };
+    TextButton autoReadButton_  { "Read" },
+               autoWriteButton_ { "Write" };
 
-    // Readout group: value box + adjacent unit label, laid out as
-    //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ 7 6 7 6 ] GRV   [ 4/4 ] SIG
-    FollowButton followButton_;
-
+    // Readouts: a value box and its unit label, laid out with the transport buttons in the middle as
+    //   [ 125.00 ] bpm  [ 50 ] fps  [ 24 ] fpb  [ 6 6 6 6 ] groove  [ 4/4 ] sig   (buttons)   pos [ 5.2.12 ]
     EditableReadout bpmControl_;
     EditableReadout fpbControl_;
     Label fpsLabel_;        // click opens a popup of allowed rates
@@ -96,7 +100,7 @@ private:
     Label timeSigLabel_;    // editable: "3/4", "6/8" or a bare numerator
     Label bpmUnitLabel_, fpsUnitLabel_, fpbUnitLabel_, divUnitLabel_, sigUnitLabel_;
 
-    Label posLabel_;          // "Pos" prefix, left of the editable position box
+    Label posLabel_;          // "pos" prefix, left of the editable position box
     Label transportReadout_;  // editable timecode; committing it seeks the transport
     Label automationLabel_;
     te::TimePosition lastPosition_ {te::TimePosition::fromSeconds(-1.0)};
@@ -109,8 +113,8 @@ private:
     void viewRangeChanged() override {}
     void followChanged() override;
 
-    void updatePlayButtonText(bool isPlaying);
-    void updateRecordButtonText(bool isRecording);
+    void updatePlayButton(bool isPlaying);
+    void updateRecordButton(bool isRecording);
     void updateAutomationButtons();
     void updateTimeLabels(te::TimePosition pos);
     void commitEditedPosition();

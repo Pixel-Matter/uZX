@@ -26,11 +26,11 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Timeline
 - Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format
 - `X` restores the previous timeline position and zoom; wheel/pinch gestures and drags each return in one step, separately from edit undo
-- **Loop range** on the ruler, in Player and Studio: the ruler's lower half shows it, lit while looping; drag there to set a range, drag an edge or the range to change it (snapped to the grid, or to frames with `Cmd`). The loop button ↻ in the transport bar, lit while looping, or `Cmd+L` loops this range instead of the whole project
+- **Loop range** on the ruler, in Player and Studio: the ruler's lower half shows it, lit while looping; drag there to set a range, drag an edge or the range to change it (snapped to the grid, or to frames with `Cmd`). The Loop button in the transport bar, lit while looping, or `Cmd+L` loops this range instead of the whole project
 - The loop range covers the whole project, following its end, until you set another one; it is saved with the project
 - With looping on, playback starts at the playhead and goes back to the loop start only from the loop end: from before the loop it plays into it, from after it, or a click there, it plays on to the end
 - Fixed: turning the loop off while stopped at its end no longer moves the playhead to its start
-- **Follow** (the ⇢ button in the transport bar, `Cmd+Shift+F`, or the Transport and ruler menus) turns off the view following the playhead during playback; it is saved with the project. Viz mode and Render Video always follow
+- **Follow** (the Follow button in the transport bar, `Cmd+Shift+F`, or the Transport and ruler menus) turns off the view following the playhead during playback; it is saved with the project. Viz mode and Render Video always follow
 - **Follow by Page** or **Follow by Scroll** (Transport and ruler menus, or right-click the Follow button): by page, the view stays still and turns a screen when the playhead reaches its edge; by scroll, the default, the playhead stays in the left third. Each app remembers it
 - Scrolling the view by hand during playback suspends following, and dims the Follow button, until playback starts, stops or jumps, or you click the button; it no longer pulls the view back after a second
 - Fixed: in the seconds and frames timecode formats, frame ticks are evenly spaced at every frame rate: 24 and 48 fps step in 6 and 12 frames instead of 5 and 10, and 25 fps skips the 2-frame step
@@ -38,6 +38,11 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: the PSG frame hover stays open while Shift, Ctrl, Option or Cmd is pressed, so a screenshot shortcut can capture it
 - An envelope one channel plays alone, its tone off or at the same pitch, is drawn in that channel's colour, as is a timer effect that restarts it; shared by channels, or beside a tone at another pitch, it stays purple
 - Fixed: at 200 fps, Minutes:Seconds:Frames labels keep three frame digits (`00:01:005`) instead of widening partway through each second
+
+### Transport
+- The transport buttons are larger and square. They and the power and menu buttons of a device's title bar have drawn icons that look alike on macOS, Windows and Linux, instead of text symbols that Windows showed as colour emoji
+- The transport bar's labels are small and grey, so its values and buttons stand out, and the transport buttons sit in the middle of the bar; in a narrow window, play/pause and the position stay clear of the level meters
+- Play/Pause is lit while playing
 
 ### Video and Viz mode
 - Render Video has a **Zoom** choice: as on screen, or Frames, Groove Rows, Beats or Bars

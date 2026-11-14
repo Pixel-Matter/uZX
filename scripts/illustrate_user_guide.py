@@ -185,8 +185,8 @@ def capture_figures(build, work):
             raise RuntimeError("Player did not load the example project")
         width, height = scene["coordinate_context"]["delivered_image_size"]
         # shortcut: track rows end in a fixed 264-point devices footer (EditViewState::footerWidth)
-        # under a 40-point transport; update this crop if that layout changes.
-        observe(pid, window, work / "player-ay-panel.png", (width - 264, 72, 264, height - 72))
+        # under a 48-point transport (TransportBar::height); update this crop if that layout changes.
+        observe(pid, window, work / "player-ay-panel.png", (width - 264, 80, 264, height - 80))
         print("Captured Player transport/timeline and AY panel", flush=True)
 
     with application(build, "uZX", work, EXAMPLE) as (pid, window):

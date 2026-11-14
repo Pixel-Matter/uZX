@@ -85,8 +85,7 @@ void ClipComponent::paint(Graphics& g) {
 void ClipComponent::mouseDown(const MouseEvent& e) {
     if (e.mods.isMiddleButtonDown())
         return;  // view navigation, see EditComponent
-    if (!editViewState.disableClipSelection)
-        editViewState.selectionManager.selectOnly(clip.get());
+    // Only seeks: the header selects the clip
     clip->edit.getTransport().setPosition(grid.playheadTimeAtX(e.x + getX()));
 }
 

@@ -158,6 +158,8 @@ The envelope shape and its restart are two things in every part of the pipeline 
 
 `PsgEncoder` sends a retrigger each time it is set, and everything else only when it differs from what was sent. `PsgDecoder` reads the wire as a chip does, a frame of controllers decoded over the registers the chip holds; the AY chip uses it, and so does `PsgRecorder` in `src/models/PsgRecorder.*`, which keeps the registers written in each 50 Hz frame as a PSG file has them. **Track → Render to PSG** plays a track offline with a recorder on its mixer and writes the result as a `.psg` file and a PSG clip: the same register writes a device on this wire would make.
 
+**Timers.** A chip's timers, TAYM's timed register writes between frames, travel on this wire too: a channel each after the chip's four, with the same split between values that hold and a start that is an event, and their lanes and actions as a bank chosen by number on the fourth channel. [timer-fx.md](timer-fx.md) has the controllers and what the chip does with them. Only a clip opened from a TAYM writes them today.
+
 Both wires use a track's sixteen channels, on either side of the mixer: it reads notes on all sixteen, passes nothing with a channel on, and writes the PSG wire on four channels from its base channel. A PSG clip before a mixer on the same track is therefore read as notes. The two wires never share a stretch of a track, so the PSG wire stays on channels 1 to 4 by default, for the chip, the mixer and PSG clips alike.
 
 ## Where the stages run
@@ -184,7 +186,7 @@ What this asks of the design:
 | Chip effects | None | |
 | Chip mixer | `NotesToPsgPlugin`, `NotesToPsgMapper`, `ChipMixer` | It follows the chip's stored stereo layout, not an automated one |
 | PSG codec | `PsgCC`, `PsgEncoder` | None |
-| AY chip | `AYChipPlugin` | None: it decodes each frame's controllers over the registers the chip holds, and keeps nothing else |
+| AY chip | `AYChipPlugin`, `ChipTimers` | None: it decodes each frame's controllers over the registers the chip holds; its timers hold their own state until play jumps |
 | Tuning preview | `MultitrackMidiPreview` | None: it plays note clips with timbre controllers into the mixer, one of them a voice that only drives the envelope |
 
 ## Order of work

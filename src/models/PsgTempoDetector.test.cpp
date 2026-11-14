@@ -485,10 +485,10 @@ public:
             if (module) {
                 std::vector<const PsgData*> chips;
                 for (const auto& chip : module->chips)
-                    chips.push_back(&chip);
+                    chips.push_back(&chip.psg);
                 const auto at50 = PsgTempo::detect(chips, module->rowStarts);
                 for (auto& chip : module->chips)
-                    chip.options.frameRate = 200.0;
+                    chip.psg.options.frameRate = 200.0;
                 const auto at200 = PsgTempo::detect(chips, module->rowStarts);
                 expect(at50 && at200, "detected at both rates");
                 if (at50 && at200 && at50->bpm * 4.0 <= tracktion::TempoSetting::maxBPM) {

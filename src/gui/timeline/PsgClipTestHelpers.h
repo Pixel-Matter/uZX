@@ -3,13 +3,14 @@
 #include "PsgClipComponent.h"
 #include "TimelineGrid.h"
 
+#include <functional>
 #include <optional>
 
 namespace MoTool::Tests {
 
 inline Image renderPsgClip(te::Engine& engine, uZX::PsgData data, int width, int height,
                            Range<int> visibleFrames = {}, bool legend = false, Rectangle<int> repaint = {},
-                           std::optional<VizOptions> viz = {}) {
+                           std::optional<VizOptions> viz = {}, std::function<void (PsgClip&)> prepare = {}) {
     jassert(! data.frames.empty());
     if (visibleFrames.isEmpty())
         visibleFrames = {0, static_cast<int>(data.frames.size())};
@@ -19,6 +20,8 @@ inline Image renderPsgClip(te::Engine& engine, uZX::PsgData data, int width, int
     const auto duration = te::TimeDuration::fromSeconds(data.getLengthSeconds());
     auto clip = PsgClip::insertTo(*te::getAudioTracks(*edit)[0], data,
                                 {{te::TimePosition(), duration}, {}}, "PSG example");
+    if (prepare)
+        prepare(*clip);  // such as giving it timers
     te::SelectionManager selection(engine);
     EditViewState view(*edit, selection);
     if (viz)

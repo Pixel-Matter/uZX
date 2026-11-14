@@ -59,7 +59,7 @@ No open findings. [refactoring.md](refactoring.md) holds the review's scope and 
 
 ## AY Chip Emulator plugin
 
-- [ ] Timer fx support (for TAYM import/export); design in [timer-fx.md](design/timer-fx.md)
+- [ ] TAYM export, and timer effects as an instrument voice; what exists is in [timer-fx.md](design/timer-fx.md)
 
 ## Tuning System
 

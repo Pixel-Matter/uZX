@@ -40,7 +40,7 @@ std::optional<TrackerModule> readTrackerModule(const juce::MemoryBlock& bytes) {
 
     TrackerModule module;
     for (const auto& played : tune->Chips) {
-        auto& chip = module.chips.emplace_back();
+        auto& chip = module.chips.emplace_back().psg;
         chip.options.frameRate = tune->FrameRate;
         chip.frames.reserve(played.size());
         for (const auto& source : played) {
@@ -59,7 +59,8 @@ std::optional<TrackerModule> readTrackerModule(const juce::MemoryBlock& bytes) {
     module.rowStarts = tune->RowStarts;
     module.loopFrame = tune->LoopFrame;
     if (tune->ChipClock > 0)
-        module.chipClock = tune->ChipClock;
+        for (auto& chip : module.chips)
+            chip.clock = tune->ChipClock;
     return module;
 }
 

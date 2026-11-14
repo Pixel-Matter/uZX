@@ -69,6 +69,16 @@ namespace IDs {
     DECLARE_ID(clipKeyTonic)    // user-chosen key tonic (0 = C .. 11 = B) for a PSG clip; absent = detected
     DECLARE_ID(clipKeyMinor)    // user-chosen key mode for a PSG clip (true = minor)
     DECLARE_ID(psgTune)         // id shared by PSG clips imported as one tune (Turbo Sound chips); absent = alone
+    DECLARE_ID(TIMERS)          // a PSG clip's timers (ClipTimers): the bank, and a TIMER for each command
+    DECLARE_ID(TIMER)
+    DECLARE_ID(bank)            // TIMERS: the bank's bytes, a TAYM
+    DECLARE_ID(chip)            // TIMERS: the chip in the bank whose timers these are
+    DECLARE_ID(timer)           // TIMER: the chip's timer the command is for; its frame is `i`
+    DECLARE_ID(cmd)             // TIMER: TAYM's command: 1 start, 2 modulate, 3 stop
+    DECLARE_ID(base)            // TIMER: base timer value
+    DECLARE_ID(lane)            // TIMER: timer lane index; -1 none, -2 unchanged
+    DECLARE_ID(first)           // TIMER: first action
+    DECLARE_ID(count)           // TIMER: number of actions
     DECLARE_ID(projectFps)
     DECLARE_ID(timecodeDisplayMode) // TimecodeDisplayMode of the timeline ruler/grid
     DECLARE_ID(gridSubdivision) // space-separated frame counts per subdivision group within a beat

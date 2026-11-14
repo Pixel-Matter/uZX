@@ -84,8 +84,8 @@ juce::ValueTree PsgParamFrame::createPsgFrameValueTree(int frameIndex, const Psg
     return v;
 }
 
-te::BeatPosition PsgParamFrame::getFrameBeatPosition(const PsgClip& c) const {
-    if (! hasFrameIndex())
+te::BeatPosition PsgList::getFrameBeatPosition(const PsgClip& c, int frameIndex) {
+    if (frameIndex < 0)
         return {};
 
     // PsgClip::initialise guarantees framesPerBeat > 0 for any clip-attached list.
@@ -97,12 +97,28 @@ te::BeatPosition PsgParamFrame::getFrameBeatPosition(const PsgClip& c) const {
     return te::BeatPosition::fromBeats((double) frameIndex / framesPerBeat);
 }
 
+te::BeatPosition PsgList::getRawEditBeats(const PsgClip& c, int frameIndex) {
+    return getFrameBeatPosition(c, frameIndex) - toDuration(c.getLoopStartBeats()) + toDuration(c.getContentStartBeat());
+}
+
+te::BeatPosition PsgList::getEditBeats(const PsgClip& c, int frameIndex) {
+    return c.getQuantisation().roundBeatToNearest(getRawEditBeats(c, frameIndex));
+}
+
+te::TimePosition PsgList::getEditTime(const PsgClip& c, int frameIndex) {
+    return c.edit.tempoSequence.toTime(getEditBeats(c, frameIndex));
+}
+
+te::BeatPosition PsgParamFrame::getFrameBeatPosition(const PsgClip& c) const {
+    return PsgList::getFrameBeatPosition(c, frameIndex);
+}
+
 te::BeatPosition PsgParamFrame::getRawEditBeats(const PsgClip& c) const {
-    return getFrameBeatPosition(c) - toDuration(c.getLoopStartBeats()) + toDuration(c.getContentStartBeat());
+    return PsgList::getRawEditBeats(c, frameIndex);
 }
 
 te::BeatPosition PsgParamFrame::getEditBeats(const PsgClip& c) const {
-    return c.getQuantisation().roundBeatToNearest(getRawEditBeats(c));
+    return PsgList::getEditBeats(c, frameIndex);
 }
 
 te::TimePosition PsgParamFrame::getRawEditTime(const PsgClip& c) const {
@@ -110,7 +126,7 @@ te::TimePosition PsgParamFrame::getRawEditTime(const PsgClip& c) const {
 }
 
 te::TimePosition PsgParamFrame::getEditTime(const PsgClip& c) const {
-    return c.edit.tempoSequence.toTime(getEditBeats(c));
+    return PsgList::getEditTime(c, frameIndex);
 }
 
 void PsgParamFrame::setFrameIndex(int newFrameIndex, juce::UndoManager* um) {
@@ -418,16 +434,29 @@ const PsgParamFrame* PsgList::getFrameAtIndex(int frameIndex) const {
 }
 
 double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::MidiList::TimeBase timeBase) const {
+    return getFrameTimeInBase(frame.getFrameIndex(), clip, timeBase);
+}
+
+double PsgList::getFrameTimeInBase(int frameIndex, const PsgClip& clip, te::MidiList::TimeBase timeBase) {
     switch (timeBase) {
         case te::MidiList::TimeBase::beatsRaw:
-            return frame.getFrameBeatPosition(clip).inBeats();
+            return getFrameBeatPosition(clip, frameIndex).inBeats();
         case te::MidiList::TimeBase::beats:
-            return std::max(0_bp, frame.getEditBeats(clip) - toDuration(clip.getStartBeat())).inBeats();
+            return std::max(0_bp, getEditBeats(clip, frameIndex) - toDuration(clip.getStartBeat())).inBeats();
         case te::MidiList::TimeBase::seconds:
             [[fallthrough]];
         default:
-            return std::max(0_tp, frame.getEditTime(clip) - toDuration(clip.getPosition().getStart())).inSeconds();
+            return std::max(0_tp, getEditTime(clip, frameIndex) - toDuration(clip.getPosition().getStart())).inSeconds();
     }
+}
+
+bool PsgList::isFrameBeforeClip(int frameIndex, const PsgClip& clip, te::MidiList::TimeBase timeBase) {
+    constexpr double tolerance = 1.0e-6;  // a frame at the start itself plays
+    if (timeBase == te::MidiList::TimeBase::beats)
+        return (getEditBeats(clip, frameIndex) - toDuration(clip.getStartBeat())).inBeats() < -tolerance;
+    if (timeBase == te::MidiList::TimeBase::seconds)
+        return (getEditTime(clip, frameIndex) - toDuration(clip.getPosition().getStart())).inSeconds() < -tolerance;
+    return false;
 }
 
 [[nodiscard]] juce::MidiMessageSequence PsgList::exportToPlaybackMidiSequence(PsgClip& clip, te::MidiList::TimeBase timeBase) const {
@@ -438,16 +467,8 @@ double PsgList::getTimeInBase(const PsgParamFrame& frame, PsgClip& clip, te::Mid
     // A clip can start part-way through its frames: trimmed at its start, or the later part of a split.
     // In the time bases counted from the clip's start, the frames before it have no time of their own.
     // (In raw beats Tracktion takes the offset off and chases the controllers itself.)
-    const auto isBeforeClip = [&](const PsgParamFrame& f) {
-        constexpr double tolerance = 1.0e-6;  // a frame at the start itself plays
-        if (timeBase == te::MidiList::TimeBase::beats)
-            return (f.getEditBeats(clip) - toDuration(clip.getStartBeat())).inBeats() < -tolerance;
-        if (timeBase == te::MidiList::TimeBase::seconds)
-            return (f.getEditTime(clip) - toDuration(clip.getPosition().getStart())).inSeconds() < -tolerance;
-        return false;
-    };
     int first = 0;
-    while (first < frames.size() && isBeforeClip(*frames[first]))
+    while (first < frames.size() && isFrameBeforeClip(frames[first]->getFrameIndex(), clip, timeBase))
         ++first;
     if (first > 0) {
         // What those frames left, as values. Playing them all at the clip's start would restart the envelope

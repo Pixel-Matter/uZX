@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <memory>
 
+#include "ClipTimers.h"
 #include "CustomClip.h"
 #include "PsgList.h"
 #include "../formats/psg/PsgFile.h"
@@ -23,6 +24,7 @@ public:
 
     PsgClip(const juce::ValueTree& v, te::EditItemID id, te::ClipOwner& parent_)
         : te::MidiClip(v, id, parent_)
+        , timers_(state)
     {}
 
     void initialise() override;
@@ -40,6 +42,31 @@ public:
     PsgList& getPsg() const noexcept {
         jassert(psgList != nullptr);
         return *psgList;
+    }
+
+    /** The clip's timers, as a TAYM has them: timed register writes between its frames. Empty for a plain
+        PSG clip. */
+    ClipTimers& getTimers() noexcept { return timers_; }
+    const ClipTimers& getTimers() const noexcept { return timers_; }
+
+    /** The MIDI that plays the clip: its frames as PSG controllers, and its timers' commands with them. */
+    [[nodiscard]] juce::MidiMessageSequence createPlaybackMidiSequence(te::MidiList::TimeBase);
+
+    /** Calls fn(from, to, data) for each stretch of machine frames, from `from` to before `to`, in which the
+        chip's parameters stay the same: a stored frame's, with the volumes the timers running then hold.
+        The last stretch ends at `endIndex`. What the clip's notes are ranged and counted from. */
+    template <typename Fn>
+    void forEachSoundingState(int endIndex, Fn&& fn) const {
+        const auto& frames = getPsg().getFrames();
+        for (int i = 0; i < frames.size(); ++i) {
+            const int start = frames[i]->getFrameIndex();
+            const int end = i + 1 < frames.size() ? frames[i + 1]->getFrameIndex() : endIndex;
+            timers_.forEachStretch(start, end, [&] (int from, int to) {
+                auto data = frames[i]->getData();
+                timers_.applyVolumes(data, from);
+                fn(from, to, data);
+            });
+        }
     }
 
     /** Returns the normalized pitch range across all frames in the clip.
@@ -114,10 +141,14 @@ protected:
     void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override;
 
 private:
+    /** Reads the timers again and tells whoever draws the clip. */
+    void timersChanged();
+
     /** The PSG list's tree or one inside it: frames, frame rate, frames per beat. */
     bool isInPsgList(const juce::ValueTree&) const;
 
     std::unique_ptr<PsgList> psgList;
+    ClipTimers timers_;
     mutable juce::Range<float> cachedPitchRange_ { 0.0f, 1.0f };
     mutable int pitchRangeVersion_ = -1;
     mutable std::optional<PitchHistogram> histogram_;

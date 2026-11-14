@@ -8,14 +8,19 @@ set(SHARED_SOURCES
     formats/psg/TurboSound.cpp
 
     formats/tracker/TrackerModule.cpp
+    formats/taym/TaymFile.cpp
     formats/tuning/TuningCsv.cpp
 
     controllers/ParamEndpoint.cpp
 
     models/PsgCC.cpp
+    models/TimerCC.cpp
+    models/TimerBank.cpp
     models/PsgList.cpp
     models/PsgRecorder.cpp
     models/PsgClip.cpp
+    models/ClipTimers.cpp
+    models/TimerSpans.cpp
     models/PsgFrameRetimer.cpp
     models/PsgTempoDetector.cpp
     models/Selectable.cpp
@@ -36,6 +41,7 @@ set(SHARED_SOURCES
 
     plugins/uZX/aychip/aychip.cpp
     plugins/uZX/aychip/AYPlugin.cpp
+    plugins/uZX/aychip/ChipTimers.cpp
     plugins/uZX/aychip/ChannelMuter.cpp
     plugins/uZX/midi_logger/MidiLoggerPlugin.cpp
     plugins/uZX/notes_to_psg/NotesToPsgMapper.cpp
@@ -126,9 +132,12 @@ set(TEST_SOURCES
     formats/psg/TurboSound.test.cpp
 
     formats/tracker/TrackerModule.test.cpp
+    formats/taym/TaymFile.test.cpp
     formats/tuning/TuningCsv.test.cpp
 
     models/PsgCC.test.cpp
+    models/TimerCC.test.cpp
+    models/ClipTimers.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
     models/PsgRecorder.test.cpp
@@ -168,6 +177,7 @@ set(TEST_SOURCES
 
     plugins/uZX/aychip/AYChip.test.cpp
     plugins/uZX/aychip/AYPlugin.test.cpp
+    plugins/uZX/aychip/ChipTimers.test.cpp
     plugins/uZX/aychip/ChannelMuter.test.cpp
     plugins/uZX/midi_effects/MPEInstrumentFx.test.cpp
     plugins/uZX/midi_effects/NoteFrame.test.cpp

@@ -79,6 +79,8 @@ struct FrameNote {
     uint8_t channelMask;
     bool isEnvelopePitch;
     bool hasEnvMod;
+    const TimerSpan* timer = nullptr;  // a timer's note; else the frames'
+    Colour colour {};
 };
 
 Colour getChannelMaskColor(uint8_t channelMask) {
@@ -273,18 +275,14 @@ struct ClipVisibility {
         return pixelsPerFrame >= 1.0f ? std::round(x) : x;
     }
 
-    /** Calls fn(frameArrayIndex, frame, x, width) for every frame inside the visible range.
-        Only frames that change something are stored, so a held frame lasts until the next stored
-        one or the clip's end, as the chip holds its state; otherwise a frame takes its own slot. */
+    /** Calls fn(frameArrayIndex, frame, x, width) for every stored frame inside the visible range, each
+        in its own frame's slot. */
     template <typename Fn>
-    void forEachVisibleFrame(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, bool held, Fn&& fn) const {
-        // A held frame starting before the range can still sound in it.
-        for (int i = held ? jmax(0, startIdx - 1) : startIdx; i < frames.size(); ++i) {
+    void forEachVisibleFrame(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, Fn&& fn) const {
+        for (int i = startIdx; i < frames.size(); ++i) {
             const auto& frame = *frames[i];
             const auto t = frame.getEditTime(clip);
-            const auto end = ! held ? t + frameDur
-                : i + 1 < frames.size() ? jmin(frames[i + 1]->getEditTime(clip), clipRange.getEnd())
-                : clipRange.getEnd();
+            const auto end = t + frameDur;
 
             if (end <= range.getStart())
                 continue;
@@ -293,6 +291,33 @@ struct ClipVisibility {
 
             const float x = timeToX(t);
             fn(i, frame, x, timeToX(end) - x);
+        }
+    }
+
+    /** Calls fn(frameArrayIndex, firstFrame, data, x, width) for every stretch inside the visible range in
+        which the chip's parameters and the running timers stay the same, as PsgClip::forEachSoundingState
+        has them. Only frames that change something are stored, so a frame lasts until the next stored one
+        or the clip's end, as the chip holds its state, unless a timer starts, changes or stops in between. */
+    template <typename Fn>
+    void forEachVisibleState(const juce::Array<PsgParamFrame*>& frames, const PsgClip& clip, Fn&& fn) const {
+        const auto& timers = clip.getTimers();
+        // A held frame starting before the range can still sound in it.
+        for (int i = jmax(0, startIdx - 1); i < frames.size(); ++i) {
+            const auto& frame = *frames[i];
+            if (frame.getEditTime(clip) >= range.getEnd())
+                break;
+            const int next = i + 1 < frames.size() ? frames[i + 1]->getFrameIndex() : TimerSpan::toTheEnd;
+            timers.forEachStretch(frame.getFrameIndex(), next, [&] (int from, int to) {
+                const auto start = PsgList::getEditTime(clip, from);
+                const auto end = to == TimerSpan::toTheEnd ? clipRange.getEnd()
+                                                           : jmin(PsgList::getEditTime(clip, to), clipRange.getEnd());
+                if (end <= range.getStart() || start >= range.getEnd())
+                    return;
+                auto data = frame.getData();
+                timers.applyVolumes(data, from);
+                const float x = timeToX(start);
+                fn(i, from, data, x, timeToX(end) - x);
+            });
         }
     }
 };
@@ -405,7 +430,16 @@ constexpr auto hexHoverSetting = "psgHoverHexParams";
 
 } // namespace
 
-std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex) {
+/** A pitch as the grid's nearest note and the cents it is off it: the name, then the cents with their sign. */
+static std::pair<String, String> describeNote(const PeriodGrid& grid, double tonePeriod) {
+    const auto [name, cents] = getNearestNote(grid, tonePeriod);
+    if (name.isEmpty())
+        return {};
+    return {name, (cents > 0 ? "+" : "") + String(cents) + String::fromUTF8("\xC2\xA2")};  // ¢
+}
+
+std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& data, double chipClockHz, bool hex,
+                                                      const PeriodGrid& grid, PsgFrameColumns* columns) {
     using T = PsgParamType;
     std::vector<std::pair<String, Colour>> runs;
     Colour rowColour;
@@ -431,6 +465,22 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
     periods[3] = number(envPeriod, 4);
     freqs[3] = hz(envelopePeriodToTonePeriod(envPeriod));
     periods[4] = number(data.getRaw(T::NoisePeriod), 2);
+
+    // The note each pitch is nearest in the clip's tuning, and how far off: A, B, C and the envelope
+    std::array<std::pair<String, String>, 4> notes;
+    int noteWidth = 0, centsWidth = 0;
+    for (size_t row = 0; row < notes.size(); ++row) {
+        const int period = row < 3 ? data.getRaw(T(T::TonePeriodA + int(row))) : envelopePeriodToTonePeriod(envPeriod);
+        notes[row] = describeNote(grid, jmax(1, period));
+        noteWidth = jmax(noteWidth, notes[row].first.length());
+        centsWidth = jmax(centsWidth, notes[row].second.length());
+    }
+    const auto noteCell = [&] (size_t row, bool changed) {
+        if (noteWidth == 0)
+            return;
+        add("  ");
+        add(notes[row].first.paddedRight(' ', noteWidth) + " " + notes[row].second.paddedLeft(' ', centsWidth), changed);
+    };
     const auto widest = [] (const std::array<String, 5>& column) {
         int width = 0;
         for (const auto& text : column)
@@ -438,6 +488,8 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
         return width;
     };
     const int periodWidth = widest(periods), hzWidth = widest(freqs), volumeWidth = widest(volumes);
+    if (columns != nullptr)
+        *columns = {periodWidth, hzWidth, noteWidth, centsWidth};
     const auto cell = [&] (const String& text, int width, bool changed) {
         add("  ");
         add(text.paddedLeft(' ', width), changed);
@@ -455,6 +507,7 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
         label(String::charToString(juce_wchar('A' + ch)), rowChanged);
         cell(periods[ch], periodWidth, data.isSet(period));
         cell(freqs[ch], hzWidth, data.isSet(period));
+        noteCell(ch, data.isSet(period));
         cell(volumes[ch], volumeWidth, data.isSet(volume));
         add("  ");
         for (size_t i = 0; i < 3; ++i)
@@ -467,6 +520,7 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
     label("Env", shapeChanged || envPeriodChanged);
     cell(periods[3], periodWidth, envPeriodChanged);
     cell(freqs[3], hzWidth, envPeriodChanged);
+    noteCell(3, envPeriodChanged);
     add("  shape ");
     add(String::toHexString(data.getRaw(T::EnvelopeShape)).toUpperCase(), shapeChanged);
     add("\n");
@@ -477,11 +531,175 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
     return runs;
 }
 
+/** The colour of the envelope in a frame: of the one channel that plays it, unless that channel's tone is
+    on at another pitch, so the two are told apart; the envelope's own when it plays on several channels, as
+    a tint of theirs would read as none of them, or on none. */
+static Colour getEnvelopeColour(const PsgParamFrameData& data) {
+    int owner = -1;
+    for (int ch = 0; ch < 3; ++ch) {
+        if (data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) == 0)
+            continue;
+        if (owner >= 0)
+            return Colors::PSG::Env;
+        owner = ch;
+    }
+    if (owner < 0)
+        return Colors::PSG::Env;
+    const bool toneApart = data.getRaw(PsgParamType(PsgParamType::ToneIsOnA + owner)) > 0
+        && data.getRaw(PsgParamType(PsgParamType::TonePeriodA + owner))
+               != envelopePeriodToTonePeriod(data.getRaw(PsgParamType::EnvelopePeriod));
+    return toneApart ? Colors::PSG::Env : getChannelMaskColor(static_cast<uint8_t>(1u << owner));
+}
+
+/** The colour of what a timer drives: its channels', else the envelope's, else the grey of what no channel
+    owns, as the mixer and the noise period. */
+static Colour getTimerColour(const TimerSpan& span, Colour envelope = Colors::PSG::Env) {
+    if (span.channels != 0)
+        return getChannelMaskColor(span.channels);
+    return span.envelope ? envelope : Colors::PSG::Grey;
+}
+
+/** How opaque a note at a channel's volume is drawn: in full under the envelope. */
+static float getVolumeAlpha(int volume, bool envelope) {
+    return envelope ? 1.0f : static_cast<float>(volume) / 15.0f * 0.8f + 0.2f;
+}
+
+/** How opaque a timer's note is drawn: as a tone at the loudest volume the timer writes, in full if it
+    writes none. */
+static float getTimerAlpha(const TimerSpan& span) {
+    float alpha = 0.0f;
+    for (size_t chan = 0; chan < span.loudestVolumes.size(); ++chan)
+        if ((span.registers & (1u << (8 + chan))) != 0)
+            alpha = jmax(alpha, getVolumeAlpha(span.loudestVolumes[chan] & 0x0F, (span.loudestVolumes[chan] & 0x10) != 0));
+    return alpha > 0.0f ? alpha : 1.0f;
+}
+
+std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers, int frameIndex, double chipClockHz,
+                                                        bool hex, const PeriodGrid& grid, const PsgFrameColumns& columns) {
+    std::vector<std::pair<String, Colour>> runs;
+    const auto bank = timers.getBank();
+    if (bank == nullptr)
+        return runs;
+    const auto& tables = bank->getTables();
+    const auto number = [hex] (uint32_t value, int hexDigits) {
+        return hex ? String::toHexString(static_cast<int64>(value)).paddedLeft('0', hexDigits).toUpperCase() : String(value);
+    };
+    static const char* const registerNames[] {"A tone lo", "A tone hi", "B tone lo", "B tone hi", "C tone lo", "C tone hi",
+                                              "noise", "mixer", "A vol", "B vol", "C vol", "env lo", "env hi", "env shape"};
+    // A timer's rows stand in the chip's columns: what began it ends where the periods do, so its pitch and
+    // note come under theirs, and its steps start under it
+    constexpr int labelWidth = 5, wordWidth = 5;
+    const int indent = jmax(labelWidth, columns.period + 2);
+    constexpr uint32_t shown = 8;    // a lane's first steps: enough to tell a pulse from a wave, not a whole sample
+
+    /** A row of a timer's steps: what it is, where its values come from, and the values. */
+    struct Row {
+        String name, source;
+        StringArray values;
+        bool more = false;  // the lane goes on past what is shown
+    };
+    const auto laneRow = [&] (const String& name, const String& source, uint32_t offset, uint32_t length,
+                              uint8_t valueType, int hexDigits) {
+        Row row {name, source, {}, length > shown};
+        for (uint32_t step = 0; step < jmin(length, shown); ++step)
+            row.values.add(number(bank->getPoolValue(valueType, size_t {offset} + step), hexDigits));
+        return row;
+    };
+    // Its steps as a table, a column a step: the interval each lasts, and what each register gets
+    const auto rowsOf = [&] (const TimerSpan& span) {
+        std::vector<Row> rows;
+        if (span.timerLane >= 0 && static_cast<size_t>(span.timerLane) < tables.tlane_count) {
+            const auto& lane = tables.tlanes[span.timerLane];
+            rows.push_back(laneRow("interval", "lane " + String(span.timerLane), lane.value_offset, lane.length, TAYM_VT_U32, 4));
+        } else {
+            rows.push_back({"interval", {}, {number(span.base, 4)}, false});
+        }
+        for (size_t i = 0; i < span.numTargets; ++i) {
+            const auto& target = span.targets[i];
+            const String name = target.id <= 13 ? registerNames[target.id]
+                              : target.id == TAYM_TGT_SAMPLE_AMPLITUDE ? "amplitude" : "target";
+            if (target.lane >= 0 && static_cast<size_t>(target.lane) < tables.lane_count) {
+                const auto& lane = tables.lanes[target.lane];
+                rows.push_back(laneRow(name, "lane " + String(target.lane), lane.value_offset, lane.length, lane.value_type, 2));
+            } else {
+                rows.push_back({name, {}, {number(target.value, 2)}, false});
+            }
+        }
+        return rows;
+    };
+
+    for (int timer = 0; timer < timers.getNumTimers(); ++timer) {
+        const auto* span = timers.findSpan(timer, frameIndex);
+        if (span == nullptr)
+            continue;
+        const bool here = span->startFrame == frameIndex;
+        // A modulate here changes some of what ran before it; a start sets all of it
+        const auto* before = here && ! span->starts ? timers.findSpan(timer, frameIndex - 1) : nullptr;
+        const auto rowsBefore = before != nullptr ? rowsOf(*before) : std::vector<Row> {};
+        const auto isNew = [&] (const Row& row) {
+            return here && std::none_of(rowsBefore.begin(), rowsBefore.end(), [&] (const Row& old) {
+                return old.name == row.name && old.source == row.source && old.values == row.values;
+            });
+        };
+        const auto colour = getTimerColour(*span);
+        const auto add = [&] (const String& text, bool bright = false) {
+            runs.emplace_back(text, bright ? colour : colour.withMultipliedAlpha(0.5f));
+        };
+        if (! runs.empty())
+            add("\n");
+
+        // The timer's own line: what began this stretch if it began here, and what is heard
+        add(("T" + String(timer + 1)).paddedRight(' ', labelWidth), here);
+        add(String::repeatedString(" ", indent - labelWidth));
+        add(String(here ? (span->starts ? "start" : "mod") : "").paddedRight(' ', wordWidth), here);
+        if (span->loopCycles > 0.0) {
+            add("  ");
+            add((String(chipClockHz / span->loopCycles, 1) + "Hz").paddedLeft(' ', columns.hz), here);
+            // a tone of a sixteenth its repeat has the same pitch
+            if (const auto [name, cents] = describeNote(grid, span->loopCycles / 16.0); name.isNotEmpty()) {
+                add("  ");
+                add(name.paddedRight(' ', columns.note) + " " + cents.paddedLeft(' ', columns.cents), here);
+            }
+        }
+        if (span->duty >= 0.0f) {
+            add("  ");
+            add("duty " + String(roundToInt(span->duty * 100.0f)) + "%", here);
+        }
+
+        if (span->timerLane >= 0 && static_cast<size_t>(span->timerLane) < tables.tlane_count) {
+            add("  ");  // the lane's intervals stand for the base, or scale it
+            add("base " + number(span->base, 4), here && (before == nullptr || before->base != span->base));
+        }
+
+        // Then its steps, a row bright where this frame's command set it
+        const auto rows = rowsOf(*span);
+        int nameWidth = 0, sourceWidth = 0, valueWidth = 0;
+        for (const auto& row : rows) {
+            nameWidth = jmax(nameWidth, row.name.length());
+            sourceWidth = jmax(sourceWidth, row.source.length());
+            for (const auto& value : row.values)
+                valueWidth = jmax(valueWidth, value.length());
+        }
+        for (const auto& row : rows) {
+            String line = row.name.paddedRight(' ', nameWidth);
+            if (sourceWidth > 0)
+                line << "  " << row.source.paddedRight(' ', sourceWidth);
+            for (const auto& value : row.values)
+                line << "  " << value.paddedLeft(' ', valueWidth);
+            if (row.more)
+                line << "  " << String::fromUTF8("\xE2\x80\xA6");  // …
+            add("\n" + String::repeatedString(" ", indent));
+            add(line.trimEnd(), isNew(row));
+        }
+    }
+    return runs;
+}
+
 //==============================================================================
 /** Tooltip-styled popup showing formatPsgFrame() runs. */
-class PsgClipComponent::FrameHover : public Component {
+class PsgFrameHover : public Component {
 public:
-    FrameHover() {
+    PsgFrameHover() {
         setInterceptsMouseClicks(false, false);
         setAlwaysOnTop(true);
     }
@@ -770,12 +988,17 @@ void PsgClipComponent::mouseDown(const MouseEvent& e) {
         showPsgClipMenu(*psgClip, editViewState);
 }
 
-void PsgClipComponent::mouseMove(const MouseEvent&) {
+void PsgClipComponent::mouseMove(const MouseEvent& e) {
+    // A modifier key sends a move where the mouse already is: the hover stays, for a screenshot's keys
+    if (hoverMouse_ == e.position)
+        return;
+    hoverMouse_ = e.position;
     hideFrameHover();
     startTimer(2000);
 }
 
 void PsgClipComponent::mouseExit(const MouseEvent&) {
+    hoverMouse_.reset();
     hideFrameHover();
 }
 
@@ -784,39 +1007,79 @@ void PsgClipComponent::timerCallback() {
     showFrameHover();
 }
 
-std::vector<std::pair<String, Colour>> PsgClipComponent::describeFrameAt(int x) {
-    auto* psgClip = getPsgClip();
-    if (psgClip == nullptr)
-        return {};
+std::unique_ptr<Component> createPsgFrameHover(const std::vector<std::pair<String, Colour>>& runs) {
+    auto hover = std::make_unique<PsgFrameHover>();
+    hover->setText(runs);
+    return hover;
+}
 
+std::vector<std::pair<String, Colour>> describePsgClipFrame(PsgClip& psgClip, te::TimePosition time, bool hex) {
     // The frame sounding at time is the last one starting at or before it.
-    const auto& frames = psgClip->getPsg().getFrames();
-    const auto time = editViewState.zoom.xToTime(x + getX());
-    int i = bisectFindPosition(frames, *psgClip, time);
-    if (i == frames.size() || frames[i]->getEditTime(*psgClip) > time)
+    const auto& frames = psgClip.getPsg().getFrames();
+    int i = bisectFindPosition(frames, psgClip, time);
+    if (i == frames.size() || frames[i]->getEditTime(psgClip) > time)
         --i;
     if (i < 0)
         return {};
 
     // Past the frame's own slot its state just holds, so nothing changes there.
     auto data = frames[i]->getData();
-    if (time >= frames[i]->getEditTime(*psgClip) + getClipFrameDuration(*psgClip))
+    if (time >= frames[i]->getEditTime(psgClip) + getClipFrameDuration(psgClip))
         data.clear();
 
-    const double clockHz = getTrackChipClock(*psgClip).value_or(tuningGridClock);
+    // The frame under the pointer, which may be one the list has nothing stored for
+    const auto frameDuration = getClipFrameDuration(psgClip);
+    const int frameIndex = frames[i]->getFrameIndex()
+                         + static_cast<int>(std::floor((time - frames[i]->getEditTime(psgClip)) / frameDuration + 1.0e-6));
+
+    // Where the frame is, in each of the timeline's timecodes: minutes, seconds and frames; frames alone;
+    // bars, beats and frames. Each with its name, dimmed
+    std::vector<std::pair<String, Colour>> runs;
+    const auto frameTime = PsgList::getEditTime(psgClip, frameIndex);
+    const auto timecode = [&] (const String& name, TimecodeDisplayMode mode) {
+        runs.emplace_back(name, Colors::Theme::textPrimary.withMultipliedAlpha(0.5f));
+        runs.emplace_back(Helpers::makeSnapLadder(psgClip.edit, frameTime, mode).getPositionLabel(frameTime, psgClip.edit.tempoSequence),
+                          Colors::Theme::textPrimary);
+    };
+    timecode(String("Time").paddedRight(' ', 5) + "  ", TimecodeDisplayMode::seconds);  // as the rows under it: a name, then its values
+    timecode("   Frame ", TimecodeDisplayMode::framesOnly);
+    timecode("   Bar ", TimecodeDisplayMode::barsBeatsFrames);
+    runs.emplace_back("\n", Colours::transparentBlack);
+
+    const double clockHz = getTrackChipClock(psgClip).value_or(tuningGridClock);
+    const auto& grid = psgClip.getTuning().grid;  // empty for a clip with no table: no note names then
+    PsgFrameColumns columns;
+    const auto chipRuns = formatPsgFrame(data, clockHz, hex, grid, &columns);
+    runs.insert(runs.end(), chipRuns.begin(), chipRuns.end());
+
+    if (! psgClip.getTimers().isEmpty()) {
+        const auto timerRuns = formatTimerFrame(psgClip.getTimers(), frameIndex, clockHz, hex, grid, columns);
+        if (! timerRuns.empty()) {
+            runs.emplace_back("\n", Colours::transparentBlack);
+            runs.insert(runs.end(), timerRuns.begin(), timerRuns.end());
+        }
+    }
+    return runs;
+}
+
+std::vector<std::pair<String, Colour>> PsgClipComponent::describeFrameAt(int x) {
+    auto* psgClip = getPsgClip();
+    if (psgClip == nullptr)
+        return {};
     const bool hex = clip->edit.engine.getPropertyStorage().getPropertiesFile().getBoolValue(hexHoverSetting);
-    return formatPsgFrame(data, clockHz, hex);
+    return describePsgClipFrame(*psgClip, editViewState.zoom.xToTime(x + getX()), hex);
 }
 
 void PsgClipComponent::showFrameHover() {
     auto* top = getTopLevelComponent();
-    const auto mouse = getMouseXYRelative();
+    if (top == this || ! hoverMouse_)
+        return;
+    const auto mouse = hoverMouse_->roundToInt();
     const auto text = describeFrameAt(mouse.x);
-    if (top == this || text.empty())
+    if (text.empty())
         return;
 
-    frameHover_ = std::make_unique<FrameHover>();
-    frameHover_->setText(text);
+    frameHover_ = createPsgFrameHover(text);
     top->addAndMakeVisible(*frameHover_);
 
     // Same placement as MoLookAndFeel::getTooltipBounds: away from the cursor, towards the centre.
@@ -851,7 +1114,7 @@ void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
     g.setFont(Font(FontOptions(12.0f).withStyle("Bold")));
 
     uZX::PsgRegsFrame regsFrame;
-    vis.forEachVisibleFrame(frames, *psgClip, false, [&] (int, const PsgParamFrame& frame, float x, float width) {
+    vis.forEachVisibleFrame(frames, *psgClip, [&] (int, const PsgParamFrame& frame, float x, float width) {
         regsFrame.clear();
         frame.getData().updateRegisters(regsFrame);
 
@@ -889,39 +1152,78 @@ static NotesLayout makeNotesLayout(const PsgClip& clip, Rectangle<int> bounds, R
     };
 }
 
-std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid) {
-    // Grid notes by rising pitch, in the normalized space the painter uses, so a lane is
-    // centred exactly where a note on that grid period is drawn.
-    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
-    std::vector<std::pair<float, int>> notes;
-    notes.reserve(grid.size() + 48);
-    for (auto it = grid.rbegin(); it != grid.rend(); ++it)
-        notes.emplace_back(toneScale.valueToNormalized(it->first), it->second);
-    if (notes.size() < 2)
-        return {};
+/** A grid's notes and their tone periods, continued past the table's ends.
 
-    // Tables stop at C1 and B8, but tone periods reach down to the octave below C1 and up
-    // to period 8, up to a whole octave above B8. Lanes continue past both ends by octaves
-    // of the outermost table octave, with exact (unrounded) periods so they stay even.
+    Tables stop at C1 and B8, but tone periods reach down to the octave below C1 and up to period 8,
+    up to a whole octave above B8. The notes continue past both ends by octaves of the outermost
+    table octave, with exact (unrounded) periods so they stay even. */
+static std::map<int, double> getNotePeriods(const PeriodGrid& grid) {
+    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
     std::map<int, double> periodOf;
     for (const auto& [period, note] : grid)
         periodOf.try_emplace(note, period);
+    if (periodOf.empty())
+        return periodOf;
     const int lowest = periodOf.begin()->first, highest = periodOf.rbegin()->first;
-    std::vector<std::pair<float, int>> below, above;
     for (int note = lowest - 1; note >= 0; --note) {
         auto octaveUp = periodOf.find(note + 12);
         if (octaveUp == periodOf.end() || octaveUp->second * 2.0 > toneScale.end * 2.0)
             break;
         periodOf[note] = octaveUp->second * 2.0;
-        below.emplace_back(toneScale.valueToNormalized(static_cast<float>(periodOf[note])), note);
     }
     for (int note = highest + 1;; ++note) {
         auto octaveDown = periodOf.find(note - 12);
         if (octaveDown == periodOf.end() || octaveDown->second / 2.0 < 4.0)
             break;
         periodOf[note] = octaveDown->second / 2.0;
-        above.emplace_back(toneScale.valueToNormalized(static_cast<float>(periodOf[note])), note);
     }
+    return periodOf;
+}
+
+/** A note's name with its octave. Composed rather than getMidiNoteName(): notes above B8 go past MIDI note 127. */
+static String getNoteName(int note) {
+    return MidiMessage::getMidiNoteName(note % 12, true, false, 4) + String(note / 12 - 1);
+}
+
+std::pair<String, int> getNearestNote(const PeriodGrid& grid, double tonePeriod) {
+    const auto periodOf = getNotePeriods(grid);
+    if (periodOf.empty() || tonePeriod <= 0.0)
+        return {};
+    // A shorter period sounds higher: the cents above a note are those its period is longer by
+    int nearest = periodOf.begin()->first;
+    double cents = 1200.0 * std::log2(periodOf.begin()->second / tonePeriod);
+    for (const auto& [note, period] : periodOf) {
+        const double above = 1200.0 * std::log2(period / tonePeriod);
+        if (std::abs(above) < std::abs(cents)) {
+            nearest = note;
+            cents = above;
+        }
+    }
+    return {getNoteName(nearest), roundToInt(cents)};
+}
+
+std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid) {
+    // Grid notes by rising pitch, in the normalized space the painter uses, so a lane is
+    // centred exactly where a note on that grid period is drawn.
+    const auto toneScale = PsgParamType{PsgParamType::TonePeriodA}.getScale();
+    std::vector<std::pair<float, int>> notes;
+    notes.reserve(grid.size() + 48);
+    int lowest = std::numeric_limits<int>::max(), highest = std::numeric_limits<int>::min();
+    for (auto it = grid.rbegin(); it != grid.rend(); ++it) {
+        notes.emplace_back(toneScale.valueToNormalized(it->first), it->second);
+        lowest = jmin(lowest, it->second);
+        highest = jmax(highest, it->second);
+    }
+    if (notes.size() < 2)
+        return {};
+
+    // The lanes continue past the table's ends with the notes its octaves continue to
+    const auto periodOf = getNotePeriods(grid);
+    std::vector<std::pair<float, int>> below, above;
+    for (auto note = periodOf.find(lowest - 1); note != periodOf.end(); note = periodOf.find(note->first - 1))
+        below.emplace_back(toneScale.valueToNormalized(static_cast<float>(note->second)), note->first);
+    for (auto note = periodOf.find(highest + 1); note != periodOf.end(); note = periodOf.find(note->first + 1))
+        above.emplace_back(toneScale.valueToNormalized(static_cast<float>(note->second)), note->first);
     notes.insert(notes.begin(), below.rbegin(), below.rend());
     notes.insert(notes.end(), above.begin(), above.end());
 
@@ -932,10 +1234,8 @@ std::vector<NoteLane> makeNoteLanes(const PeriodGrid& grid) {
         // The outermost lanes mirror their inner neighbour's spacing.
         const float below = i > 0 ? notes[i - 1].first : centre - (notes[i + 1].first - centre);
         const float above = i + 1 < notes.size() ? notes[i + 1].first : centre + (centre - notes[i - 1].first);
-        // Composed rather than getMidiNoteName(): lanes above B8 go past MIDI note 127.
         const int note = notes[i].second;
-        lanes.push_back({ (below + centre) * 0.5f, (centre + above) * 0.5f, note,
-                          MidiMessage::getMidiNoteName(note % 12, true, false, 4) + String(note / 12 - 1) });
+        lanes.push_back({ (below + centre) * 0.5f, (centre + above) * 0.5f, note, getNoteName(note) });
     }
     return lanes;
 }
@@ -1033,6 +1333,78 @@ void PsgClipComponent::paintCachedContent(Graphics& g, const PaintView& view) {
                   });
 }
 
+/** Draws a timer's note in its place among the frame's notes, in the colour of what the timer drives, as
+    opaque as a tone at the loudest volume it writes.
+
+    A timer's note is told from a tone's by its make: a dim body between two bright edges, denser the larger
+    the duty, and in a note tall enough a bright fill from its bottom as high as its duty, so a pulse whose duty
+    sweeps rises and falls like a meter. A tick marks a start. Without the decorations, as when the envelope's stripes are left out,
+    it is filled as a tone's. */
+/** Thin vertical lines over a note, every third pixel from `phase`: a timer that writes a period. Placed by the
+    view's x, not the note's, so they run on across the stretches a note is drawn in. */
+static void drawPeriodHatching(Graphics& g, Rectangle<float> note, Colour colour, int phase) {
+    constexpr int spacing = 3;
+    const int left = static_cast<int>(std::ceil(note.getX()));
+    g.setColour(colour);
+    for (int x = left + ((phase - left) % spacing + spacing) % spacing; static_cast<float>(x) < note.getRight(); x += spacing)
+        g.fillRect(static_cast<float>(x), note.getY(), 1.0f, note.getHeight());
+}
+
+/** What a frame's envelope is: the colour its notes have there, and its shape. */
+struct FrameEnvelope {
+    Colour colour;
+    uint8_t shape = 0;
+};
+
+static void drawTimerNote(Graphics& g, Rectangle<float> note, Colour colour, const TimerSpan& span,
+                          FrameEnvelope envelope, bool decorate, bool tick) {
+    const auto bright = colour.brighter(0.6f);
+    const float x = note.getX(), y = note.getY(), width = note.getWidth(), height = note.getHeight();
+
+    if (! decorate) {
+        g.setColour(colour);
+        g.fillRect(note);
+        return;
+    }
+    if (height < 4.0f) {
+        g.setColour(colour.withMultipliedAlpha(0.75f));
+        g.fillRect(note);
+    } else {
+        // The body is denser the longer the pulse is on, which reads at any height; a note tall
+        // enough also has the fill
+        g.setColour(colour.withMultipliedAlpha(span.duty >= 0.0f ? 0.15f + 0.6f * span.duty : 0.35f));
+        g.fillRect(note);
+        g.setColour(bright.withMultipliedAlpha(0.9f));
+        g.fillRect(x, y, width, 1.0f);
+        g.fillRect(x, y + height - 1.0f, width, 1.0f);
+        if (span.duty >= 0.0f && height >= 8.0f) {
+            // Not rounded to whole pixels: a part of one is drawn fainter, so a slow sweep moves smoothly
+            const float fill = height * span.duty;
+            g.fillRect(Rectangle<float> {x, y + height - fill, width, fill});
+        }
+
+        // What it does to the registers it holds, each as a frame's notes show it: the envelope's stripes
+        // where it restarts the envelope or puts a channel on it, lines where it changes a period
+        bool onEnvelope = false;
+        for (size_t chan = 0; chan < span.loudestVolumes.size(); ++chan)
+            onEnvelope = onEnvelope || ((span.registers & (1u << (8 + chan))) != 0 && (span.loudestVolumes[chan] & 0x10) != 0);
+        if (span.envelopeShape >= 0 || onEnvelope)
+            drawEnvelopeStripes(g, x, y, width, height,
+                                span.envelopeShape >= 0 ? static_cast<uint8_t>(span.envelopeShape) : envelope.shape,
+                                colour.brighter(0.8f).withMultipliedAlpha(0.85f));
+        if ((span.registers & 0x3Fu) != 0)
+            drawPeriodHatching(g, note, colour.brighter(0.8f).withMultipliedAlpha(0.85f), 0);
+        if ((span.registers & (1u << 6)) != 0)
+            drawPeriodHatching(g, note, Colors::PSG::Grey.brighter(0.8f).withAlpha(colour.getFloatAlpha() * 0.85f), 1);
+        if ((span.registers & (3u << 11)) != 0)
+            drawPeriodHatching(g, note, envelope.colour.brighter(0.8f).withAlpha(colour.getFloatAlpha() * 0.85f), 2);
+    }
+    if (tick) {
+        g.setColour(bright);
+        g.fillRect(x, y - 2.0f, 1.0f, height + 4.0f);
+    }
+}
+
 void PsgClipComponent::paintNotes(Graphics& g) {
     paintNotes(g, getViewPaintView());
 }
@@ -1059,8 +1431,9 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     const Range<float> visibleX = layout.visibleX;
     const Rectangle<float> viewport {visibleX.getStart(), 0.0f, visibleX.getLength(), float(vis.rect.getHeight())};
 
-    vis.forEachVisibleFrame(frames, *psgClip, true, [&] (int frameIndex, const PsgParamFrame& frame, float x, float width) {
-        const auto& frameData = frame.getData();
+    const auto& timers = psgClip->getTimers();
+    vis.forEachVisibleState(frames, *psgClip, [&] (int frameIndex, int firstFrame, const PsgParamFrameData& frameData,
+                                                   float x, float width) {
         const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
 
         const auto noiseLevels = drawMods ? getNoiseChannelLevels(frameData) : std::array<float, 3> {};
@@ -1080,30 +1453,41 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             g.setOpacity(1.0f);
         }
 
-        // Collect this frame's notes: up to one per channel plus the envelope
-        std::array<FrameNote, 4> notes;
+        // Collect this stretch's notes: up to one per channel plus the envelope, and one per timer with a
+        // pitch, all sharing lanes alike
+        std::array<FrameNote, 4 + TAYM_MAX_TIMERS> notes;
         int noteCount = 0;
+        const auto envelopeColour = getEnvelopeColour(frameData);
         uint8_t toneChannels = 0, pitchChannels = 0;
+        const auto addNote = [&] (float pitch, FrameNote note) {
+            const float top = normToY(pitch) - noteHeight * 0.5f;
+            note.y = static_cast<float>(roundToInt(top));
+            note.height = static_cast<float>(roundToInt(top + noteHeight)) - note.y;
+            notes[static_cast<size_t>(noteCount++)] = note;
+        };
 
         visitFrameNotes(frameData, [&] (const PsgFrameNote& n) {
             pitchChannels |= n.channelMask;
             if (! n.isEnvelopePitch)
                 toneChannels |= n.channelMask;
-            const float alpha = (n.hasEnvMod || n.isEnvelopePitch)
-                ? 1.0f
-                : (static_cast<float>(n.volume) / 15.0f * 0.8f + 0.2f);
-            const float top = normToY(n.pitch) - noteHeight * 0.5f;
-            const float topRound = static_cast<float>(roundToInt(top));
-            const float heightRound = static_cast<float>(roundToInt(top + noteHeight)) - topRound;
-            notes[noteCount++] = {
-                topRound,
-                heightRound,
-                alpha,
-                n.channelMask,
-                n.isEnvelopePitch,
-                n.hasEnvMod
-            };
+            addNote(n.pitch, {0.0f, 0.0f, n.isEnvelopePitch ? 1.0f : getVolumeAlpha(n.volume, n.hasEnvMod),
+                              n.channelMask, n.isEnvelopePitch, n.hasEnvMod, nullptr,
+                              n.isEnvelopePitch ? envelopeColour : getChannelMaskColor(n.channelMask)});
         });
+
+        // A timer whose writes are no pitch is a bar along the clip's bottom instead
+        std::array<const TimerSpan*, TAYM_MAX_TIMERS> bars {};
+        int barCount = 0;
+        for (int timer = 0; timer < timers.getNumTimers(); ++timer) {
+            const auto* span = timers.findSpan(timer, firstFrame);
+            if (span == nullptr)
+                continue;
+            if (const auto pitch = span->getPitch())
+                addNote(*pitch, {0.0f, 0.0f, getTimerAlpha(*span), span->channels, false, false, span,
+                                 getTimerColour(*span, envelopeColour)});
+            else
+                bars[static_cast<size_t>(barCount++)] = span;
+        }
 
         const std::span<const FrameNote> pitchNotes(notes.data(), static_cast<size_t>(noteCount));
         if (noiseLevel > 0.0f)
@@ -1111,9 +1495,12 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                            noiseSpread, static_cast<uint8_t>(~pitchChannels & 0x7u), noiseLevels, frameIndex,
                            viewport, pitchNotes);
 
-        std::sort(notes.begin(), notes.begin() + noteCount, [] (const FrameNote& a, const FrameNote& b) {
-            return std::tie(a.y, a.isEnvelopePitch, a.channelMask)
-                 < std::tie(b.y, b.isEnvelopePitch, b.channelMask);
+        // At one height the tones come first, then the timers, then the envelope
+        const auto order = [] (const FrameNote& n) {
+            return std::tuple(n.y, n.isEnvelopePitch, n.timer != nullptr ? n.timer->timer : -1, n.channelMask);
+        };
+        std::sort(notes.begin(), notes.begin() + noteCount, [&] (const FrameNote& a, const FrameNote& b) {
+            return order(a) < order(b);
         });
 
         // Paint notes, subdividing overlapping groups. Notes are sorted by y,
@@ -1134,8 +1521,9 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             if (noiseLevel > 0.0f) {
                 uint8_t owners = 0;
                 for (int i = groupStart; i < gi; ++i)
-                    owners |= notes[i].isEnvelopePitch
-                        ? static_cast<uint8_t>(notes[i].channelMask & ~toneChannels) : notes[i].channelMask;
+                    if (notes[i].timer == nullptr)
+                        owners |= notes[i].isEnvelopePitch
+                            ? static_cast<uint8_t>(notes[i].channelMask & ~toneChannels) : notes[i].channelMask;
                 drawNoiseFringe(g, {x, groupY, width, groupH}, noiseSpread,
                                owners, noiseLevels, frameIndex, viewport, pitchNotes);
             }
@@ -1154,8 +1542,14 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                         subH = groupBottom - subY;
                 }
 
-                const auto noteColor = note.isEnvelopePitch ? Colors::PSG::Env : getChannelMaskColor(note.channelMask);
                 const auto noteRect = Rectangle<float>(x, subY, width, jmax(1.0f, subH));
+                if (note.timer != nullptr) {
+                    drawTimerNote(g, noteRect, note.colour.withAlpha(note.alpha), *note.timer,
+                                  {envelopeColour, envShape}, drawMods,
+                                  note.timer->starts && note.timer->startFrame == firstFrame);
+                    continue;
+                }
+                const auto noteColor = note.colour;
 
                 g.setColour(noteColor.withAlpha(note.alpha));
                 g.fillRect(noteRect);
@@ -1188,7 +1582,12 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                                             float(vis.rect.getHeight()) - height, width, height}, owners, drawMods);
             }
         }
-
+        const float barHeight = jlimit(2.0f, 4.0f, noteHeight);
+        for (int i = 0; i < barCount; ++i) {
+            const auto& span = *bars[static_cast<size_t>(i)];
+            g.setColour(getTimerColour(span, envelopeColour).withAlpha(getTimerAlpha(span) * 0.8f));
+            g.fillRect(x, float(vis.rect.getHeight()) - barHeight, width, barHeight);
+        }
     });
 }
 

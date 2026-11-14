@@ -31,6 +31,20 @@ ParameterValue<bool>& ChannelMuter::getChannelParam(size_t chan) noexcept {
     return chan == 0 ? channelA : chan == 1 ? channelB : channelC;
 }
 
+ParameterValue<bool>& ChannelMuter::getTimersParam(size_t chan) noexcept {
+    jassert(chan < 3);
+    return chan == 0 ? timersA : chan == 1 ? timersB : timersC;
+}
+
+uint16_t ChannelMuter::getMutedTimerRegisters() const noexcept {
+    uint16_t muted = 0;
+    const std::array<const ParameterValue<bool>*, 3> switches {&timersA, &timersB, &timersC};
+    for (size_t chan = 0; chan < 3; ++chan)
+        if (! switches[chan]->getLiveValue())
+            muted = static_cast<uint16_t>(muted | (1u << (8 + chan)) | (0x3u << (2 * chan)));  // volume, tone period
+    return muted;
+}
+
 ParameterValue<bool>& ChannelMuter::getSoloParam(size_t chan) noexcept {
     jassert(chan < 3);
     return chan == 0 ? soloA : chan == 1 ? soloB : soloC;

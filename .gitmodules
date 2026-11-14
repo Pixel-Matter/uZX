@@ -5,3 +5,6 @@
 	path = third_party/zxtune
 	url = https://github.com/Pixel-Matter/zxtune.git
 	branch = uzx
+[submodule "third_party/taym"]
+	path = third_party/taym
+	url = https://github.com/ruguevara/taym

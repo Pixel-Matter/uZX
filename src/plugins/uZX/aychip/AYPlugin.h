@@ -9,8 +9,10 @@
 #include "../scope/ScopeSettings.h"
 #include "aychip.h"
 #include "ChannelMuter.h"
+#include "ChipTimers.h"
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <vector>
 
@@ -125,6 +127,22 @@ public:
     /** The emulated chip's registers R0-R13 as playback has set them. */
     PsgRegsFrame getChipRegisters() const;
 
+    /** Timer commands the chip could not play, each a bit. They stay until the chip is reset or, for the
+        two about the bank, until a bank is found: a tune that goes wrong once shows it after it stops. */
+    enum TimerWarning : uint32_t {
+        timerBankNotFound = 1,    ///< the bank chosen for the timers is not registered
+        timerCommandNoBank = 2,   ///< a timer was started with no bank chosen
+        timerCommandIgnored = 4,  ///< a command named a timer, lane or action its bank does not have
+    };
+    uint32_t getTimerWarnings() const noexcept { return timerWarnings.load(std::memory_order_relaxed); }
+
+    /** A bit for each channel A, B, C a timer drives now: one that holds its volume or tone period, the
+        mixer, the envelope while the channel uses it, or the noise while the channel has it on. */
+    uint8_t getTimerChannels() const noexcept { return timerChannels.load(std::memory_order_relaxed); }
+
+    /** What the warnings say, a line each; empty when there are none. */
+    static juce::String describeTimerWarnings(uint32_t warnings);
+
     /** Solos channel 0-2, turning it on if muted, or unsolos it; several can be soloed, on any chips of the edit. */
     void toggleSolo(size_t channel);
 
@@ -138,6 +156,27 @@ private:
     // are the chip's only lasting state: this is empty between frames.
     PsgDecoder frameDecoder;  // the controllers since the chip was last written
     std::unique_ptr<AYInterface> chip;
+
+    // Timed writes between frames. The timers' controllers are read a frame at a time as the chip's are;
+    // what they hold lasts until a reset, as the timers do
+    TimerDecoder timerDecoder;
+    ChipTimers timers;
+    ChipTime chipTime;           // the chip's clock against the samples rendered
+    uint64_t samplesRendered = 0;  // since the last reset: where a frame or a timer's write is in chip time
+    std::atomic<uint32_t> timerWarnings {0};  // TimerWarning bits, written on the audio thread
+    std::atomic<uint8_t> timerChannels {0};   // the channels a timer drives, written on the audio thread
+
+    // The scopes' trigger on a channel a timer drives. A timer's writes leave the tone and the envelope out of
+    // step with what the channel plays, or stop them, so such a channel's sync rises where the timer's output
+    // repeats instead. A repeat too slow to be a pitch is a modulation: the chip's own sync stays
+    struct TimerSync {
+        int8_t timer = -1;          // the timer triggered on: the lowest that drives the channel, not muted
+        bool due = false;           // the next sample rendered starts a repeat
+        bool pitched = false;       // the last repeat was short enough to be a pitch
+        uint32_t sinceRepeat = 0;   // samples since the last repeat started
+    };
+    std::array<TimerSync, 3> timerSync_;
+    uint8_t timerSyncChannels_ = 0;  // a bit per channel that a timer, not muted, drives
 
     //==============================================================================
     // Scope buffer access for visualization (used by ScopePlugin)
@@ -158,11 +197,30 @@ private:
     void valueTreeChanged() override;
     void valueTreePropertyChanged(ValueTree& v, const Identifier& id) override;
     PsgRegsFrame readRegisters() const noexcept;
+    /** The registers as the frames left them, which a frame adds to: where a timer owns one, the frames'
+        value held back for it, not the timer's. */
+    PsgRegsFrame readBackground() const noexcept;
     void updateChip() noexcept;
     void handleMidiEvent(const te::MidiMessageWithSource& m) noexcept;
 
     void updateDynamicParams();
 
+    /** Renders the block's samples from `from` up to `to`, with the timers' writes that fall among them
+        each at its sample, and returns where the block is rendered to. */
+    int renderTo(const te::PluginRenderContext& fc, int from, int to);
+    /** Renders up to the last of the timers' writes before sample `to`, and returns where that is. */
+    int renderTimerWrites(const te::PluginRenderContext& fc, int from, int to);
+    /** Writes the timers' writes before `cycle` to the chip where it is rendered up to. */
+    void writeTimersBefore(uint64_t cycle);
+    void writeTimerRegister(const TaymTimerWrite&) noexcept;
+    /** The channels that timers on `registers`, a bit each, drive, by what the chip holds. */
+    uint8_t findTimerChannels(uint16_t registers) const noexcept;
+    /** Puts the timers' repeats in place of the chip's sync in the scope lanes just rendered. */
+    void writeTimerSync(float* const* sync, size_t numSamples) noexcept;
+    /** Stops the timers and forgets what their controllers held. */
+    void resetTimers() noexcept;
+    /** The chip's clock in whole Hz, as chip time counts it. */
+    uint32_t getClockHz() const;
     void renderChannels(const te::PluginRenderContext& fc, int currentSample, int timeSample);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AYChipPlugin)

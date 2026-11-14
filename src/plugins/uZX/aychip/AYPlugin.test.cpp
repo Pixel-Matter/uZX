@@ -6,7 +6,13 @@
 #include "../../../models/EditUtilities.h"
 #include "../../../models/PsgClip.h"
 #include "../../../models/PsgTempoDetector.h"
+#include "../../../models/TimerTestBank.h"
 #include "../../../util/TestHelpers.h"
+
+#include <algorithm>
+#include <cmath>
+#include <utility>
+#include <vector>
 
 namespace MoTool::Tests {
 
@@ -610,5 +616,570 @@ public:
 };
 
 static AYChipMappedParameterTests ayChipMappedParameterTests;
+
+//==============================================================================
+/** Drives the chip block by block with its own MIDI, so a timer's writes can be placed to the sample.
+
+    The chip plays no tone or noise, so channel A's output is its volume: a timer that alternates R8 between
+    15 and 9 every 3552 cycles (88.33 samples at 44.1 kHz) is heard as a level that steps at those samples. */
+class AYChipTimerTests : public juce::UnitTest {
+public:
+    AYChipTimerTests() : UnitTest("AYChipTimers", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *te::Engine::getEngines()[0];
+        const auto bank = makeTestBank();
+        const auto registration = TimerBankRegistry::getInstance().add(bank);
+
+        beginTest("A started timer steps the level at whole intervals from its frame, to the sample");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            const auto out = rig.render({4096});
+
+            // 15 from the frame, 9 from 3552 cycles on, 15 again from 7104, ...
+            const ChipTime time {1773400, 44100};
+            // The level alternates between volume 15 and 9, an interval each. (The chip's output filter delays
+            // every write alike by a dozen samples, so only the middle of an interval is looked at here.)
+            int wrongMiddles = 0;
+            for (uint64_t k = 0; k < 40; ++k) {
+                const auto from = static_cast<size_t>(time.sampleAt(k * 3552));
+                const auto to = static_cast<size_t>(time.sampleAt((k + 1) * 3552));
+                if (std::abs(out[(from + to) / 2] - rig.levelOf(k % 2 == 0 ? 15 : 9)) > 1.0e-3f)
+                    ++wrongMiddles;
+            }
+            expectEquals(wrongMiddles, 0);
+            expect(rig.levelOf(15) > rig.levelOf(9) + 0.1f, "the two levels are far apart");
+
+            // Where each step is: the same writes as ordinary frames at the samples the timer's expiries
+            // fall on sound exactly the same
+            Rig frames(engine);
+            frames.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            for (uint64_t k = 0; time.sampleAt(k * 3552) < 4096; ++k)
+                frames.frame(static_cast<double>(time.sampleAt(k * 3552)) / Rig::sampleRate,
+                             {{PsgRegType::VolumeA, static_cast<uint8_t>(k % 2 == 0 ? 15 : 9)}});
+            expect(frames.render({4096}) == out, "a timer's write sounds from the first sample at or after its cycle");
+            const int held = rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA);
+            expect(held == 15 || held == 9, "the chip holds one of the timer's values");
+        }
+
+        beginTest("An expiry in a frame's sample but before its cycle comes first: it keeps the interval it had");
+        {
+            // The timer's fifth expiry is at cycle 17760, in sample 442, whose frame is at cycle 17774. That
+            // frame changes the base to 100: the expiry at 17760 was before it, so the next one is a whole old
+            // interval on, at 21312, and only the ones after that are 1600 cycles apart
+            const ChipTime time {1773400, 44100};
+            expect(time.sampleAt(17760) == 442 && time.cycleAt(442) > 17760, "the case this test is about");
+            TaymMods faster {};
+            faster.command = TAYM_CMD_MODULATE;
+            faster.base_timer_value = 100;
+            faster.timer_lane_ref = TAYM_TLAN_UNCHANGED;
+
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.timer(442.0 / Rig::sampleRate, 0, faster);
+            const auto out = rig.render({2048});
+
+            std::vector<uint64_t> expiries;
+            for (uint64_t cycle = 0; cycle <= 21312; cycle += 3552)
+                expiries.push_back(cycle);
+            for (uint64_t cycle = 21312 + 1600; time.sampleAt(cycle) < 2048; cycle += 1600)
+                expiries.push_back(cycle);
+            Rig frames(engine);
+            frames.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            for (size_t k = 0; k < expiries.size(); ++k)
+                frames.frame(static_cast<double>(time.sampleAt(expiries[k])) / Rig::sampleRate,
+                             {{PsgRegType::VolumeA, static_cast<uint8_t>(k % 2 == 0 ? 15 : 9)}});
+            expect(frames.render({2048}) == out);
+        }
+
+        beginTest("The audio is the same however the time is cut into blocks");
+        {
+            const auto play = [&](std::vector<int> blocks) {
+                Rig rig(engine);
+                rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+                rig.bank(0.0, registration->getNumber());
+                rig.timer(0.0, 0, timerStart(222, 0));
+                rig.timer(0.05, 0, timerStart(100, 0));   // a faster one, started mid-way
+                rig.timer(0.07, 0, timerStop());
+                return rig.render(std::move(blocks));
+            };
+            const auto whole = play({4096});
+            const auto ragged = play({64, 100, 37, 1, 512, 3, 882, 441, 1024, 1032});
+            const auto small = play(std::vector<int>(4096 / 32, 32));
+            expectEquals(ragged.size(), whole.size());
+            expect(ragged == whole, "ragged blocks");
+            expect(small == whole, "32-sample blocks");
+        }
+
+        beginTest("A stopped timer gives its register back to the frames");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.frame(0.02, {{PsgRegType::VolumeA, 6}});   // while the timer has R8
+            rig.timer(0.04, 0, timerStop());
+            const auto out = rig.render({882, 882, 882});
+
+            expect(std::abs(out[882 + 441] - rig.levelOf(6)) > 0.01f, "the frame's volume does not sound under the timer");
+            expect(std::abs(out[2 * 882 + 441] - rig.levelOf(6)) < 1.0e-3f, "it sounds once the timer stops");
+            expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 6);
+        }
+
+        beginTest("A frame that sets half of a register a timer holds adds to the frames' other half, not the timer's");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 0x1A}});  // volume 10, on the envelope
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));  // A's volume: 15, 9, off the envelope
+            rig.render({512});
+            for (const auto& m : PsgCC::encode(PsgParamType::VolumeA, 5))  // the volume alone
+                rig.controller(0.0, m);
+            rig.render({512});
+            rig.timer(0.0, 0, timerStop());
+            rig.render({512});
+            expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 0x15,
+                         "the frames' envelope switch, with their new volume");
+        }
+
+        beginTest("A change of the chip's clock stops its timers and gives their registers back at once");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 5}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.render({1024});
+            const auto volume = [&] { return int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)); };
+            expect(volume() == 15 || volume() == 9, "the timer has channel A's volume");
+            rig.chip().staticParams.chipClock.setStoredValue(1.75);
+            expectEquals(volume(), 5, "the frames' volume, with no frame to bring it");
+            const auto out = rig.render({2048});
+            bool steady = true;
+            for (size_t i = 600; i < out.size(); ++i)
+                steady = steady && std::abs(out[i] - rig.levelOf(5)) < 1.0e-3f;
+            expect(steady, "and the timer is not heard");
+        }
+
+        beginTest("A muted channel stays silent under a timer that writes its volume");
+        {
+            Rig rig(engine);
+            rig.chip().channelMuter.getChannelParam(0).setStoredValue(false);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            const auto out = rig.render({2048});
+            float loudest = 0.0f;
+            for (size_t i = 200; i < out.size(); ++i)
+                loudest = juce::jmax(loudest, std::abs(out[i] - rig.levelOf(0)));
+            expect(loudest < 1.0e-3f, "nothing but silence");
+        }
+
+        beginTest("A channel's timers switch mutes what timers do to its volume, and the timer comes back with it");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 5}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.render({1024});
+            const auto volume = [&] { return int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)); };
+            expect(volume() == 15 || volume() == 9, "the timer has channel A's volume");
+
+            rig.chip().channelMuter.getTimersParam(0).setStoredValue(false);
+            const auto muted = rig.render({2048});
+            expectEquals(volume(), 5, "switched off: the frames' volume");
+            bool steady = true;
+            for (size_t i = 600; i < muted.size(); ++i)
+                steady = steady && std::abs(muted[i] - rig.levelOf(5)) < 1.0e-3f;
+            expect(steady, "and nothing of the timer is heard");
+
+            rig.frame(0.0, {{PsgRegType::VolumeA, 6}});
+            rig.render({512});
+            expectEquals(volume(), 6, "a frame's write reaches the chip while the timer is muted");
+
+            rig.chip().channelMuter.getTimersParam(0).setStoredValue(true);
+            rig.render({1024});
+            expect(volume() == 15 || volume() == 9, "switched on again, the timer has it, without a new start");
+        }
+
+        beginTest("The chip says which channels a timer drives");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 5}, {PsgRegType::VolumeB, 0x10}});  // B on the envelope
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0, "no timer");
+
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));   // A's volume
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0b001);
+
+            rig.timer(0.0, 1, timerStart(222, 4));   // the envelope's shape, which B uses
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0b011);
+
+            rig.timer(0.0, 0, timerStop());
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0b010);
+
+            rig.allNotesOff();
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerChannels()), 0, "play jumped: the timers stopped");
+        }
+
+        beginTest("A scope triggers where a timer's output repeats, on the channels the timer drives");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}, {PsgRegType::VolumeB, 9}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));  // A's volume 15, 9: a repeat every 7104 cycles, 176.7 samples
+            rig.render({1000, 3000, 4096});
+            {
+                const auto [levels, rises] = scopeOf(rig, 0);
+                expect(rises.size() >= 22 && rises.size() <= 24, "once a repeat: " + String(rises.size()));
+                bool onTheStep = ! rises.empty(), evenly = true;
+                for (size_t i = 0; i < rises.size(); ++i) {
+                    const auto at = static_cast<size_t>(rises[i]);
+                    onTheStep = onTheStep && levels[at] > levels[at - 1];
+                    evenly = evenly && (i == 0 || rises[i] - rises[i - 1] == 176 || rises[i] - rises[i - 1] == 177);
+                }
+                expect(onTheStep, "at the sample the level steps up to the lane's first value");
+                expect(evenly, "a repeat apart");
+                expect(scopeOf(rig, 1).second.empty(), "B has no timer and no tone: nothing to trigger on");
+            }
+
+            rig.chip().channelMuter.getTimersParam(0).setStoredValue(false);
+            rig.render({4096, 4096});
+            expect(scopeOf(rig, 0).second.empty(), "A's timers switched off: the chip's own sync, and no tone");
+            rig.chip().channelMuter.getTimersParam(0).setStoredValue(true);
+
+            // A timer too slow to be a pitch leaves the tone's sync: 4000 * 16 * 2 cycles is 14 repeats a second
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3E}, {PsgRegType::TonePeriodFineA, 100}, {PsgRegType::TonePeriodCoarseA, 0}});
+            rig.timer(0.0, 0, timerStart(4000, 0));
+            rig.render({4096, 4096, 4096});
+            expect(scopeOf(rig, 0).second.size() > 80, "the tone's 1108 Hz, not the timer's 14: "
+                                                           + String(scopeOf(rig, 0).second.size()));
+        }
+
+        beginTest("A channel two timers drive triggers on the lower one, whichever writes first after a frame");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}, {PsgRegType::VolumeB, 9}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));  // A's volume: a repeat every 7104 cycles
+            rig.timer(0.0, 1, timerStart(50, 5));   // the mixer, which reaches every channel: an expiry every 800
+            // Frames between, after each of which the higher timer writes first
+            for (int k = 1; k < 28; ++k)
+                rig.frame(k * 300.0 / Rig::sampleRate, {{PsgRegType::VolumeB, static_cast<uint8_t>(k % 2 == 0 ? 9 : 8)}});
+            rig.render({4096, 4096});
+            const auto rises = scopeOf(rig, 0).second;
+            expect(risesEvery7104Cycles(rises), "only where the lower timer repeats: " + String(rises.size()));
+            expect(scopeOf(rig, 1).second.size() > 150, "B's, where the only timer that drives it does");
+        }
+
+        beginTest("When play jumps or stops, a timer stops, and starts again where its values are stated");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.render({882});
+
+            // The stop alone: the level is the frame's, with no timer over it
+            rig.allNotesOff();
+            rig.frame(0.0, {{PsgRegType::VolumeA, 5}});
+            const auto out = rig.render({2048});
+            bool steady = true;
+            for (size_t i = 400; i < out.size(); ++i)
+                steady = steady && std::abs(out[i] - rig.levelOf(5)) < 1.0e-3f;
+            expect(steady, "stopped, with nothing stated: no timer");
+
+            // Play resumes inside the timer's run: the host states the values it holds, everything but the start
+            rig.allNotesOff();
+            TimerEncoder encoder;
+            for (const auto& m : encoder.encode(0, timerStart(222, 0)))
+                if (static_cast<int>(m.controller) != 83)
+                    rig.controller(0.0, m);
+            const auto again = rig.render({2048});
+            expect(std::abs(again[44] - rig.levelOf(15)) < 1.0e-3f && std::abs(again[132] - rig.levelOf(9)) < 1.0e-3f,
+                   "the timer runs again from where play resumed");
+        }
+
+        beginTest("A timer with no bank chosen, or a bank that is gone, writes nothing, and the chip says so");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.render({512});
+            expectEquals(int(rig.chip().getTimerWarnings()), 0, "a chip with no timers has nothing to warn of");
+
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.render({1024});
+            expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 4, "no bank");
+            expectEquals(int(rig.chip().getTimerWarnings()), int(AYChipPlugin::timerCommandNoBank));
+
+            rig.bank(0.0, 16000);  // a number nothing is registered under
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.render({1024});
+            expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 4, "a bank that is gone");
+            expectEquals(int(rig.chip().getTimerWarnings()), int(AYChipPlugin::timerBankNotFound),
+                         "the bank is what is wrong, not each command after it");
+            expect(AYChipPlugin::describeTimerWarnings(rig.chip().getTimerWarnings()).isNotEmpty());
+
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 0));
+            rig.render({1024});
+            expectEquals(int(rig.chip().getTimerWarnings()), 0, "a bank that is found ends the warning");
+            const int held = rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA);
+            expect(held == 15 || held == 9, "and the timer runs");
+        }
+
+        beginTest("A command its bank cannot play is ignored, the rest plays, and the warning stays");
+        {
+            Rig rig(engine);
+            rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+            rig.bank(0.0, registration->getNumber());
+            rig.timer(0.0, 0, timerStart(222, 99));  // an action the bank does not have
+            rig.timer(0.0, 5, timerStart(222, 0));   // a timer the chip's bank does not have
+            rig.render({1024});
+            expectEquals(int(rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA)), 4, "nothing started");
+            expectEquals(int(rig.chip().getTimerWarnings()), int(AYChipPlugin::timerCommandIgnored));
+
+            rig.timer(0.0, 1, timerStart(222, 0));   // a good one
+            rig.render({1024});
+            const int held = rig.chip().getChipRegisters().getRaw(PsgRegType::VolumeA);
+            expect(held == 15 || held == 9, "a command that can be played is");
+            expectEquals(int(rig.chip().getTimerWarnings()), int(AYChipPlugin::timerCommandIgnored), "the warning stays to be seen");
+
+            rig.chip().reset();
+            expectEquals(int(rig.chip().getTimerWarnings()), 0, "until the chip is reset");
+        }
+
+        beginTest("The chip's panel shows a warning sign while there is something to warn of, with the reason");
+        {
+            Rig rig(engine);
+            AYPluginUI panel {te::Plugin::Ptr(&rig.chip())};
+            panel.setSize(260, 360);
+            const auto findSign = [&]() -> juce::Label* {
+                for (auto* child : panel.getChildren())
+                    if (auto* label = dynamic_cast<juce::Label*>(child); label != nullptr && label->getText() == juce::String::fromUTF8("\xE2\x9A\xA0"))
+                        return label;
+                return nullptr;
+            };
+            auto* sign = findSign();
+            expect(sign != nullptr);
+            if (sign != nullptr) {
+                juce::MessageManager::getInstance()->runDispatchLoopUntil(400);
+                expect(! sign->isVisible(), "nothing to warn of");
+
+                rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+                rig.bank(0.0, 16000);
+                rig.timer(0.0, 0, timerStart(222, 0));
+                rig.render({1024});
+                juce::MessageManager::getInstance()->runDispatchLoopUntil(400);
+                expect(sign->isVisible(), "a bank that is not there");
+                expect(sign->getTooltip().isNotEmpty());
+                expect(sign->getRight() <= panel.getWidth() - 8 && sign->getY() == 8, "at the right of the chip row");
+
+                rig.bank(0.0, registration->getNumber());
+                rig.render({512});
+                juce::MessageManager::getInstance()->runDispatchLoopUntil(400);
+                expect(! sign->isVisible(), "the bank is found");
+            }
+        }
+
+        beginTest("The panel puts a stopwatch on the scope of a channel a timer drives; its timers switches are hidden for now");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            auto* track = te::getAudioTracks(*edit)[0];
+            PsgData data {std::vector<PsgRegsFrame>(50), {50.0, 1}};
+            data.frames[0] = {{PsgRegType::Mixer, 0x3F}};
+            data.frames[49] = {{PsgRegType::VolumeB, 0}};
+            const auto clip = PsgClip::insertTo(*track, data, {{te::TimePosition(), te::TimeDuration::fromSeconds(1.0)}, {}});
+            auto chipPlugin = edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {});
+            track->pluginList.insertPlugin(chipPlugin, 0, nullptr);
+            Rig rig(engine, chipPlugin);
+
+            AYPluginUI panel {chipPlugin};
+            panel.setSize(260, 420);
+            const auto pump = [] { juce::MessageManager::getInstance()->runDispatchLoopUntil(400); };
+            const auto switchesShown = [&] {
+                int shown = 0;
+                for (auto* child : panel.getChildren())
+                    if (child->getComponentID() == "timers" && child->isVisible())
+                        ++shown;
+                return shown;
+            };
+            AYScopes* scopes = nullptr;
+            for (auto* child : panel.getChildren())
+                if (auto* found = dynamic_cast<AYScopes*>(child))
+                    scopes = found;
+            expect(scopes != nullptr);
+            // True if the sign's place on a channel's scope has pixels of the channel's colour that bright
+            const auto signShownIn = [] (Component& root, AYScopes& in, size_t chan, Colour colour, float minBrightness) {
+                const auto image = root.createComponentSnapshot(root.getLocalBounds(), true, 1.0f);
+                const auto area = in.getTimerSignBounds(chan) + (&in == &root ? Point<int>() : in.getPosition());
+                for (int y = area.getY(); y < area.getBottom(); ++y)
+                    for (int x = area.getX(); x < area.getRight(); ++x)
+                        if (const auto pixel = image.getPixelAt(x, y);
+                            std::abs(pixel.getHue() - colour.getHue()) < 0.03f && pixel.getSaturation() > 0.3f
+                            && pixel.getBrightness() >= minBrightness)
+                            return true;
+                return false;
+            };
+            const auto signShown = [&] (size_t chan, Colour colour, float minBrightness) {
+                return signShownIn(panel, *scopes, chan, colour, minBrightness);
+            };
+
+            pump();
+            expectEquals(switchesShown(), 0, "a track of plain PSG clips has none");
+            clip->getTimers().set(makeTestTaym(), 0, {{10, 0, timerStart(222, 0)}}, nullptr);
+            pump();
+            expectEquals(switchesShown(), 0, "hidden for now: a fourth row makes T, N and E too small");
+            if (scopes != nullptr) {
+                expect(! signShown(0, Colors::PSG::A, 0.5f), "no timer runs: no sign");
+
+                rig.frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, 4}});
+                rig.bank(0.0, registration->getNumber());
+                rig.timer(0.0, 0, timerStart(222, 0));
+                rig.render({512});
+                pump();
+                expect(signShown(0, Colors::PSG::A, 0.6f), "a stopwatch on A's scope, in A's colour");
+                expect(! signShown(1, Colors::PSG::B, 0.3f), "none on B's");
+
+                // Viz mode's scopes, painted as a video frame is: with no message loop run since they were made
+                AYScopes viz {rig.chip(), {.sideBySide = true}};
+                viz.setSize(600, 120);
+                expect(signShownIn(viz, viz, 0, Colors::PSG::A, 0.6f), "Viz mode's scopes show it too");
+                expect(! signShownIn(viz, viz, 1, Colors::PSG::B, 0.3f), "and none on B's there");
+
+                rig.chip().channelMuter.getTimersParam(0).setStoredValue(false);
+                rig.render({512});
+                pump();
+                expect(! signShown(0, Colors::PSG::A, 0.6f) && signShown(0, Colors::PSG::A, 0.1f), "dimmed while A's timers are switched off");
+            }
+            clip->getTimers().set({}, 0, {}, nullptr);
+            pump();
+            expectEquals(switchesShown(), 0, "gone with the clip's timers");
+        }
+    }
+
+private:
+    /** A chip outside any playback graph, fed blocks of MIDI. */
+    struct Rig {
+        explicit Rig(te::Engine& engine)
+            : Rig(engine, {})
+        {}
+
+        /** With `existing`, drives that chip: one on a track of an edit of the caller's. */
+        Rig(te::Engine& engine, te::Plugin::Ptr existing)
+            : edit(existing == nullptr ? te::Edit::createSingleTrackEdit(engine) : nullptr)
+            , plugin(existing != nullptr ? existing : edit->getPluginCache().createNewPlugin(AYChipPlugin::xmlTypeName, {}))
+        {
+            chip().staticParams.removeDC.setStoredValue(false);
+            chip().staticParams.chipClock.setStoredValue(1.7734);
+            chip().dynamicParams.layout.setStoredValue(LayoutEnum::ABC);  // A alone on the left
+            chip().dynamicParams.stereoWidth.setStoredValue(1.0f);
+            plugin->baseClassInitialise({te::TimePosition(), sampleRate, 4096});
+            // The levels a volume gives, by playing each alone
+            for (int volume : {0, 5, 6, 9, 15}) {
+                frame(0.0, {{PsgRegType::Mixer, 0x3F}, {PsgRegType::VolumeA, static_cast<uint8_t>(volume)}});
+                levels[static_cast<size_t>(volume)] = render({2048}).back();
+            }
+            plugin->baseClassDeinitialise();
+            plugin->baseClassInitialise({te::TimePosition(), sampleRate, 4096});
+        }
+
+        ~Rig() { plugin->baseClassDeinitialise(); }
+
+        AYChipPlugin& chip() { return dynamic_cast<AYChipPlugin&>(*plugin); }
+        float levelOf(int volume) const { return levels[static_cast<size_t>(volume)]; }
+
+        /** A message at `seconds` from where the next render starts, on a channel counted from the chip's. */
+        void controller(double seconds, const PsgCC::Message& m) {
+            pending.push_back({seconds, juce::MidiMessage::controllerEvent(1 + m.channel, static_cast<int>(m.controller), m.value)});
+        }
+
+        void frame(double seconds, const PsgRegsFrame& regs) {
+            const PsgParamFrameData params {regs};
+            PsgParamsMidiWriter writer {1};
+            writer.write(seconds, params);
+            for (const auto* event : writer.getSequence())
+                pending.push_back({seconds, event->message});
+        }
+
+        void bank(double seconds, int number) {
+            for (const auto& m : TimerCC::encodeBank(number))
+                controller(seconds, m);
+        }
+
+        void timer(double seconds, int index, const TaymMods& command) {
+            for (const auto& m : encoder.encode(index, command))
+                controller(seconds, m);
+        }
+
+        void allNotesOff() { jump = true; }
+
+        /** Renders blocks of these sizes and returns the left channel. Pending messages go into the block
+            their time falls in. */
+        std::vector<float> render(std::vector<int> blocks) {
+            std::stable_sort(pending.begin(), pending.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+            std::vector<float> out;
+            double blockStart = 0.0;
+            size_t next = 0;
+            for (int size : blocks) {
+                const double blockEnd = blockStart + size / sampleRate;
+                te::MidiMessageArray midi;
+                midi.isAllNotesOff = std::exchange(jump, false);
+                for (; next < pending.size() && pending[next].first < blockEnd - 1.0e-9; ++next)
+                    midi.addMidiMessage(pending[next].second, juce::jmax(0.0, pending[next].first - blockStart), 0);
+                juce::AudioBuffer<float> buffer(2, size);
+                buffer.clear();
+                const te::PluginRenderContext fc(&buffer, 0, size, &midi, 0.0, {}, true, false, false, false);
+                plugin->applyToBuffer(fc);
+                out.insert(out.end(), buffer.getReadPointer(0), buffer.getReadPointer(0) + size);
+                blockStart = blockEnd;
+            }
+            pending.erase(pending.begin(), pending.begin() + static_cast<std::ptrdiff_t>(next));
+            for (auto& [time, message] : pending)
+                time -= blockStart;
+            return out;
+        }
+
+        static constexpr double sampleRate = 44100.0;
+        std::unique_ptr<te::Edit> edit;
+        te::Plugin::Ptr plugin;
+        TimerEncoder encoder;
+        std::vector<std::pair<double, juce::MidiMessage>> pending;
+        std::array<float, 16> levels {};
+        bool jump = false;
+    };
+
+    /** The last 4096 samples a channel's scope was given: its levels, and the samples its sync rises at. */
+    static std::pair<std::vector<float>, std::vector<int>> scopeOf(Rig& rig, int chan) {
+        constexpr int count = 4096;
+        std::vector<float> levels(count), sync(count);
+        rig.chip().getVizChannelBuffer(chan)->copyTo(levels.data(), count, sync.data());
+        std::vector<int> rises;
+        for (int i = 1; i < count; ++i)
+            if (sync[size_t(i) - 1] <= 0.5f && sync[size_t(i)] > 0.5f)
+                rises.push_back(i);
+        return {levels, rises};
+    }
+
+    /** True if the scope's sync rises once a repeat of the test bank's first lane at a base of 222: every
+        176.7 samples. */
+    bool risesEvery7104Cycles(const std::vector<int>& rises) {
+        bool evenly = rises.size() >= 22 && rises.size() <= 24;
+        for (size_t i = 1; i < rises.size(); ++i)
+            evenly = evenly && (rises[i] - rises[i - 1] == 176 || rises[i] - rises[i - 1] == 177);
+        return evenly;
+    }
+};
+
+static AYChipTimerTests ayChipTimerTests;
 
 }  // namespace MoTool::Tests

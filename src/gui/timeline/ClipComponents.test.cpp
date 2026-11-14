@@ -129,6 +129,25 @@ public:
         expect(selection.isSelected(clip.get()));
         expectEquals(transport.getPosition().inSeconds(), 0.25);
 
+        beginTest("Clicking a clip's body moves the playhead and selects nothing");
+        {
+            TimelineGrid grid(view);
+            PsgClipComponent body(view, grid, clip);
+            body.setBounds(0, 0, 400, 100);
+            selection.deselectAll();
+            const auto now = Time::getCurrentTime();
+            const Point<float> pos {200.0f, 50.0f};
+            body.mouseDown({Desktop::getInstance().getMainMouseSource(), pos, ModifierKeys::leftButtonModifier,
+                            MouseInputSource::defaultPressure, MouseInputSource::defaultOrientation,
+                            MouseInputSource::defaultRotation, MouseInputSource::defaultTiltX,
+                            MouseInputSource::defaultTiltY, &body, &body, now, pos, now, 1, false});
+            expect(! selection.isSelected(clip.get()), "only the header selects the clip");
+            expect(std::abs(transport.getPosition().inSeconds() - grid.playheadTimeAtX(200).inSeconds()) < 1e-9
+                       && std::abs(transport.getPosition().inSeconds() - 0.25) > 1e-3,
+                   "the playhead moves to the click: " + String(transport.getPosition().inSeconds()));
+            transport.setPosition(te::TimePosition::fromSeconds(0.25));
+        }
+
         beginTest("The Player, where clips cannot be selected, always shows the legend");
         selection.deselectAll();
         view.disableClipSelection = true;

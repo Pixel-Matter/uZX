@@ -30,7 +30,7 @@ juce_add_gui_app(${TUNING_TARGET_NAME}
 )
 
 # The Player's file types on macOS. The rank tells Finder how strong its claim is: the default app
-# for .psg; for tracker modules (zxtune's players or a tracker may be the user's choice) and for .uzx
+# for .psg and .taym; for tracker modules (zxtune's players or a tracker may be the user's choice) and for .uzx
 # (Studio's), an alternate one, which opens them only when no app claims them more strongly. Not
 # DOCUMENT_EXTENSIONS: JUCE gives all of those one entry ranked Default.
 # The modules are getTrackerModuleExtensions() (src/formats/tracker/TrackerModule.cpp) without
@@ -42,6 +42,9 @@ list(JOIN PLAYER_MODULE_EXTENSIONS "" PLAYER_MODULE_EXTENSIONS)
 set(PLAYER_DOCUMENT_TYPES "<plist><dict><key>CFBundleDocumentTypes</key><array>
   <dict><key>CFBundleTypeName</key><string>PSG File</string>
     <key>CFBundleTypeExtensions</key><array><string>psg</string></array>
+    <key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Default</string></dict>
+  <dict><key>CFBundleTypeName</key><string>TAYM File</string>
+    <key>CFBundleTypeExtensions</key><array><string>taym</string></array>
     <key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Default</string></dict>
   <dict><key>CFBundleTypeName</key><string>Tracker Module</string>
     <key>CFBundleTypeExtensions</key><array>${PLAYER_MODULE_EXTENSIONS}</array>
@@ -105,6 +108,8 @@ target_sources(motool_common PRIVATE
 target_compile_features(motool_common PUBLIC cxx_std_23)
 # Tracker module import: only zxtune's uzx/ay_module.h is visible here.
 target_link_libraries(motool_common PRIVATE zxtune_aym)
+# TAYM: its headers are in the models' and the AY chip's own, so everything that includes those sees them.
+target_link_libraries(motool_common PUBLIC taym)
 target_include_directories(motool_common
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src

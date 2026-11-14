@@ -8,7 +8,7 @@ In order of how often people do them.
 
 1. **Open a PSG file (or a Turbo Sound set) and listen to it.**
    Now: double-click it in Finder, then `Space` (2 actions). A Turbo Sound set adds one question.
-   Later: TAYM files and tracker modules (PT3, Vortex Tracker, Bitphase, ChipNomad, …) the same way, each converted to PSG or TAYM on open; the formats are under **Import** in [ROADMAP.md](ROADMAP.md).
+   Later: more tracker modules (Bitphase, ChipNomad, …) the same way, each converted to PSG or TAYM on open; the formats are under **Import** in [ROADMAP.md](ROADMAP.md).
 2. **See what each AY channel is doing while it plays** — notes, envelope, level.
    Now: no action; the view follows the playhead.
 3. **Change the chip settings (clock, stereo, mute) and save the result.**

@@ -1,6 +1,7 @@
 #include "Helpers.h"
 #include "../formats/psg/PsgFile.h"
 #include "../formats/psg/TurboSound.h"
+#include "../formats/taym/TaymFile.h"
 #include "../formats/tracker/TrackerModule.h"
 #include "../models/EditUtilities.h"
 #include "../models/PsgClip.h"
@@ -122,24 +123,44 @@ namespace {
 
 const StringArray psgExtensions {"psg", "ay"};
 
-/** Reads a PSG file, else a tracker module; shows an error and returns nothing when the file is
-    neither or holds no music. A PSG file reads as a module of one chip without a title, table
-    or rows. */
+/** Reads a PSG file, else a TAYM, else a tracker module; shows an error and returns nothing when the
+    file is none of them or holds no music. A PSG file reads as a module of one chip without a title,
+    table or rows. */
 std::optional<uZX::TrackerModule> readTuneOrShowError(const File& file) {
     uZX::PsgFile psg(file);
-    if (psg.ensureRead())
-        return uZX::TrackerModule{{std::move(psg.getData())}, {}, {}, {}};
+    if (psg.ensureRead()) {
+        uZX::TrackerModule tune;
+        tune.chips.emplace_back().psg = std::move(psg.getData());
+        return tune;
+    }
 
-    // The largest Vortex Tracker text modules are a few hundred KB.
+    // The largest Vortex Tracker text modules are a few hundred KB. A TAYM has a command for every timer
+    // in every frame: a megabyte or two for a long tune.
     constexpr int64 maxModuleSize = 4 * 1024 * 1024;
+    constexpr int64 maxTaymSize = 64 * 1024 * 1024;
     MemoryBlock bytes;
-    if (file.getSize() <= maxModuleSize && file.loadFileAsData(bytes))
-        if (auto module = uZX::readTrackerModule(bytes))
-            return module;
+    if (file.getSize() <= maxTaymSize && file.loadFileAsData(bytes)) {
+        if (uZX::looksLikeTaym(bytes)) {
+            if (auto tune = uZX::readTaymModule(bytes)) {
+                const bool unplayable = std::any_of(tune->chips.begin(), tune->chips.end(),
+                                                    [](const auto& chip) { return chip.timers.unplayable; });
+                if (unplayable)
+                    AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+                        "Timer Effects Left Out",
+                        "'" + file.getFileName() + "' has more timers on a chip, or more timer lanes or actions, "
+                        "than can be played here. It opens without those timer effects.",
+                        "OK");
+                return tune;
+            }
+        } else if (bytes.getSize() <= static_cast<size_t>(maxModuleSize)) {
+            if (auto module = uZX::readTrackerModule(bytes))
+                return module;
+        }
+    }
 
     AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
         "Can't Open File",
-        "'" + file.getFileName() + "' is not a PSG file or a tracker module, or contains no music.",
+        "'" + file.getFileName() + "' is not a PSG file, a TAYM file or a tracker module, or contains no music.",
         "OK");
     return {};
 }
@@ -148,12 +169,13 @@ std::optional<uZX::TrackerModule> readTuneOrShowError(const File& file) {
 
 bool isTuneFile(const File& file) {
     return file.hasFileExtension(psgExtensions.joinIntoString(";") + ";"
+                                 + uZX::getTaymExtensions().joinIntoString(";") + ";"
                                  + uZX::getTrackerModuleExtensions().joinIntoString(";"));
 }
 
 String getTuneFileWildcard() {
     StringArray patterns;
-    for (const auto* extensions : {&psgExtensions, &uZX::getTrackerModuleExtensions()})
+    for (const auto* extensions : {&psgExtensions, &uZX::getTaymExtensions(), &uZX::getTrackerModuleExtensions()})
         for (const auto& extension : *extensions)
             patterns.add("*." + extension);
     return patterns.joinIntoString(";");
@@ -180,7 +202,8 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
         auto& tune = tunes.emplace_back(std::move(*read));
         const auto name = tune.title.isNotEmpty() ? tune.title : f.getFileNameWithoutExtension();
         for (size_t i = 0; i < tune.chips.size(); ++i) {
-            auto& data = tune.chips[i];
+            const auto& tuneChip = tune.chips[i];
+            auto& data = tune.chips[i].psg;
             const auto chipName = tune.chips.size() > 1 ? name + " " + String((int) i + 1) : name;
             auto* track = clips.isEmpty() && firstTrack != nullptr ? firstTrack : addAudioTrackAfter(edit, nullptr);
             const bool emptyTrack = track->getClips().isEmpty();
@@ -194,8 +217,13 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
                 setProjectFps(edit, data.getFrameRate());
                 auto& chip = ensureAYPluginOnTrack(*track);
                 // The clock a module was written for, on a track no other clip plays at its own clock
-                if (emptyTrack && tune.chipClock)
-                    chip.staticParams.chipClock.setStoredValue(*tune.chipClock / uZX::MHz);
+                if (emptyTrack && tuneChip.clock)
+                    chip.staticParams.chipClock.setStoredValue(*tuneChip.clock / uZX::MHz);
+                if (emptyTrack && tuneChip.type)
+                    chip.staticParams.chipType.setStoredValue(*tuneChip.type);
+                // Timer effects, part of the same undo step as the clip
+                if (const auto& timers = tuneChip.timers; ! timers.events.empty())
+                    clip->getTimers().set(timers.bank, timers.chipIndex, timers.events, &edit.getUndoManager());
                 clips.add(clip.get());
                 chips.push_back(&data);
             }
@@ -217,7 +245,7 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
         const auto position = clips.getFirst()->getPosition();
         const auto loopStart = position.getStartOfSource()
                                + te::TimeDuration::fromSeconds((double) module->loopFrame
-                                                               / module->chips.front().getFrameRate());
+                                                               / module->chips.front().psg.getFrameRate());
         edit.getTransport().setLoopRange({loopStart, position.getEnd()});
     }
     return clips;

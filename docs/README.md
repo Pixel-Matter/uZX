@@ -15,7 +15,7 @@
 | Design | [design/midi-ay-pipeline.md](design/midi-ay-pipeline.md) | Partly implemented: note domain and PSG domain, instrument → chip effects → chip mixer → chip, the PSG controller wire, running on real hardware |
 | Design | [design/midi-editor.md](design/midi-editor.md) | Not implemented: editing notes in place on the timeline, an instrument per note as its colour, the project's instrument palette and its selector controller |
 | Design | [design/parameter-binding.md](design/parameter-binding.md) | Parameter definitions, automation bridge, widget bindings |
-| Design | [design/timer-fx.md](design/timer-fx.md) | Not implemented: timed AY writes for TAYM |
+| Design | [design/timer-fx.md](design/timer-fx.md) | TAYM's timers in the AY chip: timed register writes between frames, their controllers on the PSG wire, timers in a clip |
 | Vision | [motool/](motool/vision.md) | The initial MoTool demotool vision and its early design notes; not implemented, not scheduled |
 
 Build, test, style and branching rules are in [CONTRIBUTING.md](../CONTRIBUTING.md) and [AGENTS.md](../AGENTS.md); released changes in [CHANGELOG.md](../CHANGELOG.md).

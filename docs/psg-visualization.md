@@ -11,7 +11,8 @@ Each image is painted by `PsgClipComponent::paintNotes()`, the same code used in
 | Orange, green, blue-violet | Channel A, B, C |
 | Filled channel-colored note | Tone pitch; opacity follows fixed volume |
 | Filled note with brighter channel-colored hatching | Tone pitch with envelope-controlled volume |
-| Envelope-colored note with brighter envelope-colored hatching | Shared envelope pitch |
+| Envelope-colored note with brighter envelope-colored hatching | Envelope pitch shared by channels, or beside its channel's tone at another pitch |
+| Channel-colored note with brighter channel-colored hatching, at the envelope's pitch | Envelope pitch that one channel plays alone, its tone off or at the same pitch |
 | Faint gray band | Shared noise period |
 | Channel-colored rectangles outside note silhouettes | Noise enabled on those visible pitch sources |
 | Channel-colored rectangles around the noise-band center | Noise ownership when that channel has no visible pitched mark |
@@ -20,7 +21,7 @@ Each image is painted by `PsgClipComponent::paintNotes()`, the same code used in
 
 ![The A/B/C/E/N legend](images/psg-visualization/legend.png)
 
-The envelope color is purple. An envelope-controlled tone keeps its channel color. The separate envelope-pitch mark is a purple note with brighter purple hatching.
+The envelope color is purple. An envelope-controlled tone keeps its channel color. The separate envelope-pitch mark is a purple note with brighter purple hatching, unless one channel plays the envelope alone: then the envelope is that channel's sound, and its mark has the channel's color, as a timer effect that restarts the envelope does.
 
 Hatching indicates envelope shape: attack-first shapes use rising diagonals, decay-first shapes use falling diagonals, and shapes A/E use zigzags. This is a shape cue, not a trace of the instantaneous envelope level. One-shot shapes also receive a schematic pitch mark when their period lies within the display window.
 
@@ -34,10 +35,10 @@ Hatching indicates envelope shape: attack-first shapes use rising diagonals, dec
 | 1 | 0 | 0 | Tone pitch only |
 | 0 | 1 | 0 | Noise band with scattered channel-colored ownership rectangles |
 | 1 | 1 | 0 | Tone pitch and noise band |
-| 0 | 0 | 1 | Envelope pitch only; nothing shows that B uses it |
-| 1 | 0 | 1 | Tone pitch and shared envelope pitch; they may match or differ |
-| 0 | 1 | 1 | Envelope pitch and envelope-controlled noise |
-| 1 | 1 | 1 | Tone pitch, shared envelope pitch, and noise |
+| 0 | 0 | 1 | Envelope pitch in B's color: B plays it alone |
+| 1 | 0 | 1 | Tone pitch and envelope pitch: purple where they differ, both green where they match |
+| 0 | 1 | 1 | Envelope pitch in B's color and envelope-controlled noise |
+| 1 | 1 | 1 | Tone pitch, envelope pitch, and noise; purple where they differ |
 
 ![All channel B flags, including matching and different tone/envelope pitches](images/psg-visualization/flags.png)
 
@@ -49,7 +50,7 @@ In this flag sheet, envelope pitch stays fixed. The tone moves to meet it in the
 
 There is one shared envelope-pitch mark for all channels using the envelope. Two envelope-enabled channels with tone off produce **one E mark**, not two independent envelope pitches.
 
-The E mark looks the same whichever channels use it. Its users show on their own marks: a tone with envelope-controlled volume is hatched, and a channel's noise decorates the E mark when that channel has no visible tone.
+The E mark is purple when two or more channels use it: a tint of their colors would read as none of them. Its users show on their own marks: a tone with envelope-controlled volume is hatched, and a channel's noise decorates the E mark when that channel has no visible tone.
 
 Noise ownership follows a per-channel priority:
 
@@ -69,7 +70,7 @@ The next sheet shows envelope ownership, noise alone, and noise around tones for
 
 ![All seven channel groups: envelope ownership, noise alone, and noise outside tones](images/psg-visualization/ownership.png)
 
-**Ambiguity:** a channel that uses the envelope with tone and noise both off leaves no mark of its own, so the E mark alone does not say which channels use it. They do not directly show individual owners as clearly as the channel-colored noise rectangles do.
+**Ambiguity:** when channels share the envelope, one that uses it with tone and noise both off leaves no mark of its own, so the purple E mark alone does not say which channels use it. They do not directly show individual owners as clearly as the channel-colored noise rectangles do.
 
 ## Matching and different pitches
 

@@ -1,36 +1,31 @@
 #include "DevicePanelItem.h"
 #include "PluginDeviceUI.h"
-#include "../../utils/StringLiterals.h"
 
 
 namespace MoTool {
 
 //==============================================================================
-// BackgroundlessTextButton implementation
+// BackgroundlessIconButton implementation
 
-BackgroundlessTextButton::BackgroundlessTextButton() {
-    setupColors();
-}
-
-BackgroundlessTextButton::BackgroundlessTextButton(const String& buttonText)
-    : TextButton(buttonText)
+BackgroundlessIconButton::BackgroundlessIconButton(const String& name, const Path& icon)
+    : IconButton(name, icon)
 {
     setupColors();
 }
 
-void BackgroundlessTextButton::setupColors() {
+void BackgroundlessIconButton::setupColors() {
     setColour(TextButton::buttonColourId, Colours::transparentBlack);
     setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
     setColour(TextButton::textColourOffId, Colors::Theme::textDisabled);
     setColour(TextButton::textColourOnId, Colors::Theme::primary);
 }
 
-Colour BackgroundlessTextButton::getHighlightedTextColor(Colour textColor) const {
+Colour BackgroundlessIconButton::getHighlightedTextColor(Colour textColor) const {
     return textColor.brighter(0.4f);
 }
 
-void BackgroundlessTextButton::paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) {
-    // Only draw the text, no background
+void BackgroundlessIconButton::paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) {
+    // Only the icon, no background
     Colour textColour;
     if (getToggleState()) {
         textColour = findColour(TextButton::textColourOnId);
@@ -44,13 +39,7 @@ void BackgroundlessTextButton::paintButton(Graphics& g, bool shouldDrawButtonAsH
     if (shouldDrawButtonAsDown)
         textColour = textColour.darker(0.3f);
 
-    g.setColour(textColour);
-    auto font = getLookAndFeel().withDefaultMetrics(
-        FontOptions(-1, Font::bold).withPointHeight(jmin(16.0f, (float) getHeight()))
-    );
-    g.setFont(font);
-    g.drawText(getButtonText(), getLocalBounds(), Justification::centred, true);
-    // g.drawSingleLineText(getButtonText(), 2, getHeight() - 2, Justification::left);
+    Icons::draw(g, getIcon(), getLocalBounds().toFloat(), textColour);
 }
 
 //==============================================================================
@@ -63,8 +52,6 @@ TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI, bool
     setSize(getWidth(), titleBarHeight);
 
     // Setup enable/disable button
-    enableButton_.setButtonText("⏻"_u);
-    // enableButton_.setButtonText("●"_u);
     enableButton_.setSize(buttonWidth, buttonWidth);
     enableButton_.setToggleable(true);
     enableButton_.setToggleState(plugin->isEnabled(), dontSendNotification);
@@ -74,7 +61,6 @@ TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI, bool
     };
     addAndMakeVisible(enableButton_);
 
-    menuButton_.setButtonText("☰"_u);
     menuButton_.setTooltip("Plugin options");
     menuButton_.onClick = [this]() { showDeviceMenu(&menuButton_); };
     addAndMakeVisible(menuButton_);

@@ -34,6 +34,10 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - An envelope one channel plays alone, its tone off or at the same pitch, is drawn in that channel's colour, as is a timer effect that restarts it; shared by channels, or beside a tone at another pitch, it stays purple
 - Fixed: at 200 fps, Minutes:Seconds:Frames labels keep three frame digits (`00:01:005`) instead of widening partway through each second
 
+### Transport
+- The transport buttons are square, with drawn icons that look alike on macOS, Windows and Linux, instead of text symbols that Windows showed as colour emoji; so are the power and menu buttons of a device's title bar
+- A Loop button in the transport bar turns looping on or off, as `Cmd+L` does, and is lit while looping
+
 ### Video and Viz mode
 - Render Video has a **Zoom** choice: as on screen, or Frames, Groove Rows, Beats or Bars
 - Render Video has **Loops**: how many more times the loop range plays before the rest of the tune; 0 by default

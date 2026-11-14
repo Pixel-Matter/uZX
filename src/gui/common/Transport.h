@@ -3,8 +3,8 @@
 #include <JuceHeader.h>
 
 #include "../../controllers/EditState.h"
-#include "../../utils/StringLiterals.h"
 
+#include "Icons.h"
 #include "LevelMeter.h"
 #include "ParamBindings.h"
 #include "LookAndFeel.h"
@@ -64,13 +64,12 @@ private:
     MasterLevelMeter masterMeter_ {edit_};
     CpuLoadMeter cpuMeter_ {edit_.engine};
 
-    TextButton rewindButton_    { "⏮"_u },
-    //    stepLeftButton_  { "<" },
-       playPauseButton_ { "▶"_u },
-       recordButton_    { "⏺"_u },
-       autoReadButton_  { "Read" },
-       autoWriteButton_ { "Write" };
-    //    stepRightButton_ { ">" };
+    IconButton rewindButton_    { "Rewind", Icons::toStart() },
+               playPauseButton_ { "Play", Icons::play() },
+               recordButton_    { "Record", Icons::record() },
+               loopButton_      { "Loop", Icons::loop() };  // lit while looping
+    TextButton autoReadButton_  { "Read" },
+               autoWriteButton_ { "Write" };
 
     // Readout group: value box + adjacent unit label, laid out as
     //   [ BPM ] BPM   [ FPS ] FPS   [ FPB ] FPB   [ 7 6 7 6 ] GRV   [ 4/4 ] SIG
@@ -92,8 +91,8 @@ private:
     void valueTreeChildRemoved(ValueTree&, ValueTree&, int) override;
     void automationModeChanged() override;
 
-    void updatePlayButtonText(bool isPlaying);
-    void updateRecordButtonText(bool isRecording);
+    void updatePlayButton(bool isPlaying);
+    void updateRecordButton(bool isRecording);
     void updateAutomationButtons();
     void updateTimeLabels(te::TimePosition pos);
     void commitEditedPosition();

@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include "../../controllers/EditState.h"
+#include "../common/Icons.h"
 #include "../common/LookAndFeel.h"
 #include "juce_gui_basics/juce_gui_basics.h"
 
@@ -68,12 +69,11 @@ private:
 
 //==============================================================================
 /**
- * BackgroundlessButton - Button that draws only text, no background
+ * BackgroundlessIconButton - Button that draws only its icon, no background
  */
-class BackgroundlessTextButton : public TextButton {
+class BackgroundlessIconButton : public IconButton {
 public:
-    BackgroundlessTextButton();
-    explicit BackgroundlessTextButton(const String& buttonText);
+    BackgroundlessIconButton(const String& name, const Path& icon);
     void paintButton(Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
 
     virtual Colour getHighlightedTextColor(Colour textColor) const;
@@ -107,8 +107,8 @@ private:
     tracktion::Plugin::Ptr plugin_;
     PluginDeviceUI* deviceUI_ = nullptr;
     const bool removable_;
-    BackgroundlessTextButton enableButton_;
-    BackgroundlessTextButton menuButton_;
+    BackgroundlessIconButton enableButton_ { "Enabled", Icons::power() };
+    BackgroundlessIconButton menuButton_ { "Plugin options", Icons::menu() };
     std::function<void()> toggleCollapsed_;
 
     bool isCollapsed_ = false;

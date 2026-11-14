@@ -67,6 +67,7 @@ set(GUI_SOURCES
     gui/common/MidiParameterMapping.cpp
     gui/common/MouseListener.cpp
     gui/common/LevelMeter.cpp
+    gui/common/Icons.cpp
 
     controllers/MainController.cpp
     controllers/TuningController.cpp
@@ -192,4 +193,6 @@ set(TEST_SOURCES
 
     gui/common/ParamBindings.test.cpp
     gui/common/LookAndFeel.test.cpp
+    gui/common/Icons.test.cpp
+    gui/common/Transport.test.cpp
 )

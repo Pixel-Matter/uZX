@@ -1,5 +1,6 @@
 #include "AYPluginEditor.h"
 #include "ChipClockPresets.h"
+#include "../../../gui/common/Icons.h"
 #include "../../../gui/common/LookAndFeel.h"
 #include "../../../gui/devices/PluginUIAdapterRegistry.h"
 #include "../../../controllers/App.h"
@@ -11,32 +12,14 @@ namespace MoTool::uZX {
 namespace te = tracktion;
 
 //==============================================================================
-void drawStopwatch(Graphics& g, Rectangle<float> area, Colour colour) {
-    const float size = jmin(area.getWidth(), area.getHeight());
-    const auto box = area.withSizeKeepingCentre(size, size);
-    const float stroke = jmax(1.0f, size / 10.0f);
-    const float crown = size * 0.16f;  // the button on top
-    const auto face = box.withTrimmedTop(crown).reduced(stroke * 0.5f)
-                         .withSizeKeepingCentre(size - crown - stroke, size - crown - stroke);
-    const auto centre = face.getCentre();
-    const float radius = face.getWidth() * 0.5f;
-
-    g.setColour(colour);
-    g.drawEllipse(face, stroke);
-    g.fillRect(Rectangle<float>(jmax(2.0f, size * 0.26f), crown).withCentre({centre.x, box.getY() + crown * 0.5f}));
-    // the hand, a little past one o'clock
-    g.drawLine(centre.x, centre.y, centre.x + radius * 0.42f, centre.y - radius * 0.5f, stroke);
-}
-
-//==============================================================================
 // ChannelGroup implementation
 //==============================================================================
 void AYPluginUI::TimersToggle::paintButton(Graphics& g, bool highlighted, bool down) {
     auto& lf = getLookAndFeel();
     lf.drawButtonBackground(g, *this, findColour(getToggleState() ? buttonOnColourId : buttonColourId), highlighted, down);
-    const auto colour = findColour(getToggleState() ? textColourOnId : textColourOffId).withMultipliedAlpha(isEnabled() ? 1.0f : 0.5f);
-    const float size = jmin(11.0f, static_cast<float>(jmin(getWidth(), getHeight())) - 4.0f);
-    drawStopwatch(g, getLocalBounds().toFloat().withSizeKeepingCentre(size, size), colour);
+    // The icon's 24-unit grid has its own margin: 13 px shows the stopwatch about 11 px tall
+    const float size = jmin(13.0f, static_cast<float>(jmin(getWidth(), getHeight())) - 2.0f);
+    Icons::drawOnButton(g, *this, Icons::stopwatch(), getLocalBounds().toFloat().withSizeKeepingCentre(size, size));
 }
 
 AYPluginUI::ChannelGroup::ChannelGroup(AYChipPlugin& plugin,
@@ -168,7 +151,7 @@ void AYScopes::paint(Graphics& g) {
 }
 
 Rectangle<int> AYScopes::getTimerSignBounds(size_t chan) const {
-    constexpr int size = 11, margin = 4;
+    constexpr int size = 13, margin = 3;  // the icon's grid has its own margin: the stopwatch is about 11 px
     const auto scope = displays_[chan]->getBounds();
     return {scope.getRight() - size - margin, scope.getY() + margin, size, size};
 }
@@ -201,7 +184,7 @@ void AYScopes::paintOverChildren(Graphics& g) {
             continue;
         const bool dimmed = (shownTimerSigns_ & (0x10u << chan)) != 0;
         const auto colour = look_.classic ? Colors::VizClassic::trace : colours[chan];
-        drawStopwatch(g, getTimerSignBounds(chan).toFloat(), colour.withAlpha(dimmed ? 0.35f : 1.0f));
+        Icons::draw(g, Icons::stopwatch(), getTimerSignBounds(chan).toFloat(), colour.withAlpha(dimmed ? 0.35f : 1.0f));
     }
 }
 

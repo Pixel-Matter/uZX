@@ -6,7 +6,6 @@
 #include "../../models/PsgFrameRetimer.h"
 #include "../../models/PsgTempoDetector.h"
 #include "LookAndFeel.h"
-#include "../../utils/StringLiterals.h"
 
 #include <common/Utilities.h>
 
@@ -52,6 +51,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 
     addAndMakeVisible(rewindButton_);
     addAndMakeVisible(playPauseButton_);
+    addAndMakeVisible(loopButton_);
     addAndMakeVisible(bpmControl_);
     addAndMakeVisible(bpmUnitLabel_);
     addAndMakeVisible(fpsLabel_);
@@ -82,6 +82,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
         rewindButton_.setCommandToTrigger(mgr, MainAppCommands::transportToStart, true);
         playPauseButton_.setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);
+        loopButton_.setCommandToTrigger(mgr, MainAppCommands::transportLoop, true);
     }
 
     if (options_.showRecord) {
@@ -114,9 +115,10 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         automationLabel_.setJustificationType(Justification::centredRight);
     }
 
-    updatePlayButtonText(transport_.isPlaying());
+    updatePlayButton(transport_.isPlaying());
+    loopButton_.setToggleState(transport_.looping, dontSendNotification);
     if (options_.showRecord)
-        updateRecordButtonText(transport_.isRecording());
+        updateRecordButton(transport_.isRecording());
     if (options_.showAutomation)
         updateAutomationButtons();
 
@@ -225,10 +227,11 @@ void TransportBar::resized() {
     placeReadout(divControl_, divUnitLabel_, w * 3, w * 2);
     placeReadout(timeSigLabel_, sigUnitLabel_, w * 2, w * 2);
 
-    placeButton(rewindButton_, w * 2);
-    placeButton(playPauseButton_, w * 2);
+    placeButton(rewindButton_, w);
+    placeButton(playPauseButton_, w);
     if (options_.showRecord)
-        placeButton(recordButton_, w * 2);
+        placeButton(recordButton_, w);
+    placeButton(loopButton_, w);
 
     // Position readout: "Pos" prefix label, then the editable timecode box.
     posLabel_.setBounds(b.removeFromLeft(static_cast<int>(w * 2)));
@@ -252,9 +255,9 @@ void TransportBar::resized() {
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
     // TODO use flagged async updater to avoid too many updates
-    updatePlayButtonText(transport_.isPlaying());
+    updatePlayButton(transport_.isPlaying());
     if (options_.showRecord)
-        updateRecordButtonText(transport_.isRecording());
+        updateRecordButton(transport_.isRecording());
     // TODO separate updating of tempo, timsig and fps controls
     updateTimeLabels(transport_.getPosition());
 }
@@ -264,6 +267,9 @@ void TransportBar::valueTreePropertyChanged(ValueTree& tree, const Identifier& p
         updateTimeLabels(transport_.getPosition());
     } else if (tree == transport_.state && prop == te::IDs::position) {
         updateTimeLabels(transport_.getPosition());
+    } else if (tree == transport_.state && prop == te::IDs::looping) {
+        // From the tree: the transport's cached value may not have caught up yet
+        loopButton_.setToggleState(static_cast<bool>(tree[prop]), dontSendNotification);
     } else if (tree == edit_.state && prop == IDs::timecodeDisplayMode) {
         updateTimeLabels(transport_.getPosition());
     } else if (tree == edit_.state && prop == IDs::projectFps) {
@@ -289,12 +295,12 @@ void TransportBar::automationModeChanged() {
     updateAutomationButtons();
 }
 
-void TransportBar::updatePlayButtonText(bool isPlaying) {
-    playPauseButton_.setButtonText(isPlaying ? "⏸"_u : "▶"_u);
+void TransportBar::updatePlayButton(bool isPlaying) {
+    playPauseButton_.setIcon(isPlaying ? Icons::pause() : Icons::play());
 }
 
-void TransportBar::updateRecordButtonText(bool isRecording) {
-    recordButton_.setButtonText(isRecording ? "⏹"_u : "⏺"_u);
+void TransportBar::updateRecordButton(bool isRecording) {
+    recordButton_.setIcon(isRecording ? Icons::stop() : Icons::record());
     recordButton_.setColour(TextButton::textColourOnId, Colors::Theme::error);
     // recordButton_.setColour(TextButton::buttonOnColourId, isRecording ?
     //                         recordButton_.findColour(TextButton::textColourOnId)

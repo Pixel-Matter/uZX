@@ -16,10 +16,6 @@
 namespace MoTool::uZX {
 
 //==============================================================================
-/** A stopwatch, the sign of the chip's timers, drawn to fit `area`. */
-void drawStopwatch(Graphics& g, Rectangle<float> area, Colour colour);
-
-//==============================================================================
 /** The chip's A, B and C oscilloscopes, following its scope settings. A stopwatch shows in a scope's corner while a
     timer drives its channel. */
 class AYScopes : public Component,

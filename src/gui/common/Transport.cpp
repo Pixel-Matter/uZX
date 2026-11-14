@@ -85,8 +85,21 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         rewindButton_.setCommandToTrigger(mgr, MainAppCommands::transportToStart, true);
         playPauseButton_.setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);
         loopButton_.setCommandToTrigger(mgr, MainAppCommands::transportLoop, true);
-        followButton_.setCommandToTrigger(mgr, MainAppCommands::transportFollow, true);
     }
+    followButton_.setTooltip("Follow the playhead during playback (right-click: by Page or by Scroll)");
+    followButton_.onClickWithModifiers = [this](const ModifierKeys& mods) {
+        auto* mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager();
+        if (mgr == nullptr)
+            return;
+        if (!mods.isPopupMenu()) {
+            mgr->invokeDirectly(MainAppCommands::transportFollow, true);
+            return;
+        }
+        PopupMenu menu;
+        menu.addCommandItem(mgr, MainAppCommands::transportFollowByPage);
+        menu.addCommandItem(mgr, MainAppCommands::transportFollowByScroll);
+        menu.showMenuAsync(PopupMenu::Options().withTargetComponent(&followButton_));
+    };
     loopButton_.setToggleState(transport_.looping, dontSendNotification);
     viewState_.zoom.addListener(this);
     followChanged();
@@ -303,6 +316,7 @@ void TransportBar::automationModeChanged() {
 
 void TransportBar::followChanged() {
     const auto& zoom = viewState_.zoom;
+    followButton_.setButtonText(zoom.followsByPage() ? "⇥"_u : "⇢"_u);
     followButton_.setToggleState(zoom.followsPlayback(), dontSendNotification);
     followButton_.setColour(TextButton::buttonOnColourId,
                             zoom.isFollowSuspended() ? Colors::Theme::primary.withAlpha(0.35f) : Colors::Theme::primary);

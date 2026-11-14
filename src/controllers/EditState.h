@@ -140,6 +140,11 @@ public:
     void resumeFollow();
     bool isFollowSuspended() const { return followPlayback.get() && followSuspended; }
 
+    /** By page, the view stays still until the playhead passes its edge, then starts at the playhead; by
+        scroll, the default, the playhead stays in its left third. An app setting; Viz mode and videos scroll. */
+    bool followsByPage() const;
+    void setFollowsByPage(bool byPage);
+
     /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
     void beginDrag();
     /** Sideways scrolls, vertically zooms around anchorX (down zooms out); deltas are from the drag start.

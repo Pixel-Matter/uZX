@@ -145,13 +145,6 @@ void RulerComponent::mouseUp(const MouseEvent& e) {
     loopDrag = LoopDrag::none;
 }
 
-void RulerComponent::mouseDoubleClick(const MouseEvent& e) {
-    if (!isInLoopStrip(e) || e.mods.isPopupMenu())
-        return;
-    if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager())
-        manager->invokeDirectly(Commands::MainAppCommands::transportLoop, true);
-}
-
 void RulerComponent::mouseMove(const MouseEvent& e) {
     const auto drag = isInLoopStrip(e) ? loopDragAt(e.x) : LoopDrag::none;
     setMouseCursor(drag == LoopDrag::start || drag == LoopDrag::end ? MouseCursor::LeftRightResizeCursor

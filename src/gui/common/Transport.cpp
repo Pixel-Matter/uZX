@@ -52,6 +52,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 
     addAndMakeVisible(rewindButton_);
     addAndMakeVisible(playPauseButton_);
+    addAndMakeVisible(loopButton_);
     addAndMakeVisible(bpmControl_);
     addAndMakeVisible(bpmUnitLabel_);
     addAndMakeVisible(fpsLabel_);
@@ -82,7 +83,9 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
         rewindButton_.setCommandToTrigger(mgr, MainAppCommands::transportToStart, true);
         playPauseButton_.setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);
+        loopButton_.setCommandToTrigger(mgr, MainAppCommands::transportLoop, true);
     }
+    loopButton_.setToggleState(transport_.looping, dontSendNotification);
 
     if (options_.showRecord) {
         recordButton_.onClick = [this] {
@@ -229,6 +232,7 @@ void TransportBar::resized() {
     placeButton(playPauseButton_, w * 2);
     if (options_.showRecord)
         placeButton(recordButton_, w * 2);
+    placeButton(loopButton_, w * 2);
 
     // Position readout: "Pos" prefix label, then the editable timecode box.
     posLabel_.setBounds(b.removeFromLeft(static_cast<int>(w * 2)));
@@ -264,6 +268,8 @@ void TransportBar::valueTreePropertyChanged(ValueTree& tree, const Identifier& p
         updateTimeLabels(transport_.getPosition());
     } else if (tree == transport_.state && prop == te::IDs::position) {
         updateTimeLabels(transport_.getPosition());
+    } else if (tree == transport_.state && prop == te::IDs::looping) {
+        loopButton_.setToggleState((bool) tree[prop], dontSendNotification);  // the CachedValue may lag
     } else if (tree == edit_.state && prop == IDs::timecodeDisplayMode) {
         updateTimeLabels(transport_.getPosition());
     } else if (tree == edit_.state && prop == IDs::projectFps) {

@@ -39,6 +39,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### AY chip
 - Fixed: changing the chip type or clock during playback, or unmuting a channel, keeps it sounding instead of silent until the tune sets it again
+- Fixed: on Windows, an envelope that ends in silence (shapes 0–7, 9 and 15) no longer jumps back to full volume and stays there
 - Fixed: a tone or envelope period that passes 0 while being written plays at its value
 - Scopes and the AY chip use 0.5× display gain by default
 

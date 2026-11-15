@@ -68,9 +68,11 @@ Triggers regardless of which branch the tag points to.
    - `APP_TARGET` is `uZXPlayer` for `player-v*` tags, else `uZX`; builds Release config for `APP_TARGET` and `uZXTests`
    - Runs tests
    - Ad-hoc signs the macOS app (`CODESIGN_IDENTITY=-`), packages and uploads `{APP_TARGET}-{ver}-macOS.dmg` (app + Applications link), `{APP_TARGET}-{ver}-linux-x86_64.tar.gz`, `{APP_TARGET}-{ver}-windows-x64.zip`
-3. **`publish-release`** — After all platforms finish:
+3. **`publish-release`** — After all platforms finish, waits for approval in the `release` environment (required reviewer: the user), then:
    - Downloads all artifacts, generates `SHA256SUMS.txt`
    - Publishes the release (removes draft status)
+
+   Until approved, the release is a draft only maintainers can see: the user downloads and tests its files there.
 
 ### Concurrency
 - Branch runs are auto-cancelled when superseded
@@ -86,6 +88,7 @@ When the user asks to create a release:
 4. **Bump version**: Edit `versions.cmake` if the version needs changing.
 5. **Commit and push**: Stage, commit with message `bump version to X.Y.Z`, push to the correct branch.
 6. **Tag and push**: Create the tag and push it. This triggers the CI release pipeline.
+   When the builds pass, the run waits for the user's approval to publish: tell them the draft is ready to test. Never approve the deployment yourself; it is the user's test gate.
 7. **For stable releases**: Create the PR to `main` first, wait for merge, then tag `origin/main`.
 
 Always confirm before pushing tags or creating PRs — these are visible actions that trigger CI pipelines.

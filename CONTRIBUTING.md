@@ -218,7 +218,11 @@ The numeric part of the tag must match the app's version in `versions.cmake`.
 |---|---|
 | Push to `main` or `develop` | Build + test on all platforms |
 | PR to `main` or `develop` | Build + test on all platforms |
-| Tag push (`v*` / `player-v*`) | Create GitHub Release, build + test + package + upload Studio / Player on all platforms, generate SHA256SUMS.txt |
+| Tag push (`v*` / `player-v*`) | Create a draft GitHub Release, build + test + package + upload Studio / Player on all platforms, then wait for approval to generate SHA256SUMS.txt and publish |
+
+### Testing a Release Before It's Public
+
+A tag's release stays a draft, which only the repository's maintainers can see, until a reviewer of the `release` environment approves the run's last job. Download the files from the draft in a browser (so macOS shows the first-launch steps a tester would see) and try them, then open the run and choose **Review deployments → Approve and deploy** to publish. If something is wrong, reject it, delete the draft and the tag, and tag again after the fix.
 
 ## Reporting Issues
 

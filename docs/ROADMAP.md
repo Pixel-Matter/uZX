@@ -37,7 +37,7 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 - [x] **Nicer transport icons**, loop toggle icon
 - [x] **Transport follow mode** toggle — **Follow** (`Cmd+Shift+F`); Viz mode and Render Video always follow
 - [ ] Decorate **env restarts** with vertical line, like timer starts
-- [ ] **Readouts align right**
+- [x] **Readouts align right**
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Scrubbing** with playhead produces sound, holding it at one frame plays that frame and holds it sound
 - [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.

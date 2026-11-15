@@ -43,6 +43,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The transport buttons are larger and square. They and the power and menu buttons of a device's title bar have drawn icons that look alike on macOS, Windows and Linux, instead of text symbols that Windows showed as colour emoji
 - The transport bar's labels are small and grey, so its values and buttons stand out, and the transport buttons sit in the middle of the bar; in a narrow window, play/pause and the position stay clear of the level meters
 - The level and DSP/GUI meters are taller, with larger captions, to fill the taller transport bar
+- The transport bar's values are right-aligned, beside their units, and stay put when clicked to edit
 - Play/Pause is lit while playing
 
 ### Video and Viz mode

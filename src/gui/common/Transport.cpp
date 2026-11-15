@@ -167,6 +167,9 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     readoutLookAndFeel_.setupReadoutLabel(timeSigLabel_);
     readoutLookAndFeel_.setupReadoutLabel(fpsLabel_);
     readoutLookAndFeel_.setupReadoutLabel(transportReadout_);
+    // Values end at their units, on their right; the position's label is on its left
+    for (auto* value : std::initializer_list<Label*> {&bpmControl_, &fpsLabel_, &fpbControl_, &divControl_, &timeSigLabel_})
+        value->setJustificationType(Justification::right);
 
     // Editing the position box seeks the transport.
     transportReadout_.onTextChange = [this] { commitEditedPosition(); };

@@ -1350,6 +1350,12 @@ static void drawPeriodHatching(Graphics& g, Rectangle<float> note, Colour colour
         g.fillRect(static_cast<float>(x), note.getY(), 1.0f, note.getHeight());
 }
 
+/** A start, of a timer or a restart of the envelope: a bright line across the note, a little past its edges. */
+static void drawStartTick(Graphics& g, Rectangle<float> note, Colour colour) {
+    g.setColour(colour.brighter(0.6f));
+    g.fillRect(note.getX(), note.getY() - 2.0f, 1.0f, note.getHeight() + 4.0f);
+}
+
 /** What a frame's envelope is: the colour its notes have there, and its shape. */
 struct FrameEnvelope {
     Colour colour;
@@ -1399,10 +1405,8 @@ static void drawTimerNote(Graphics& g, Rectangle<float> note, Colour colour, con
         if ((span.registers & (3u << 11)) != 0)
             drawPeriodHatching(g, note, envelope.colour.brighter(0.8f).withAlpha(colour.getFloatAlpha() * 0.85f), 2);
     }
-    if (tick) {
-        g.setColour(bright);
-        g.fillRect(x, y - 2.0f, 1.0f, height + 4.0f);
-    }
+    if (tick)
+        drawStartTick(g, note, colour);
 }
 
 void PsgClipComponent::paintNotes(Graphics& g) {
@@ -1435,6 +1439,10 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     vis.forEachVisibleState(frames, *psgClip, [&] (int frameIndex, int firstFrame, const PsgParamFrameData& frameData,
                                                    float x, float width) {
         const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
+        // The frame writes the shape, the same one too, restarting the envelope: at its first stretch
+        const bool envelopeRestarts = firstFrame == frames[frameIndex]->getFrameIndex()
+                                      && frameData.isSet(PsgParamType::RetriggerEnvelope)
+                                      && frameData.getRaw(PsgParamType::RetriggerEnvelope) != 0;
 
         const auto noiseLevels = drawMods ? getNoiseChannelLevels(frameData) : std::array<float, 3> {};
         const auto noiseLevel = *std::max_element(noiseLevels.begin(), noiseLevels.end());
@@ -1554,7 +1562,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                 g.setColour(noteColor.withAlpha(note.alpha));
                 g.fillRect(noteRect);
 
-                if (drawMods && (note.hasEnvMod || note.isEnvelopePitch))
+                if (drawMods && (note.hasEnvMod || note.isEnvelopePitch)) {
                     drawEnvelopeStripes(
                         g,
                         noteRect.getX(),
@@ -1564,6 +1572,9 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                         envShape,
                         noteColor.brighter(0.8f).withAlpha(0.85f)
                     );
+                    if (envelopeRestarts)
+                        drawStartTick(g, noteRect, noteColor.withAlpha(note.alpha));
+                }
             }
         }
         if (envelopePeriodToTonePeriod(frameData.getRaw(PsgParamType::EnvelopePeriod))

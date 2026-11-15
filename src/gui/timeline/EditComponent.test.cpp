@@ -308,8 +308,8 @@ private:
         auto* chip = findDescendant<uZX::AYPluginUI>(*devices);
         expect(chip != nullptr && chip->getMinimumHeight() > 0);
         const int minimum = row->getMinimumHeight();
-        expectEquals(minimum, chip->getMinimumHeight() + 2 * ClipComponent::ringWidth
-                                  + TrackRowComponent::resizerHeight);
+        expectEquals(minimum, chip->getMinimumHeight() + TrackRowComponent::playerDividerHeight,
+                     "the chip at the track's full height, then the divider: the first of two rows");
 
         player.setSize(1000, 300);  // two rows can't fit
         TestHelpers::flushMessageQueue();

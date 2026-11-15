@@ -38,6 +38,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: the PSG frame hover stays open while Shift, Ctrl, Option or Cmd is pressed, so a screenshot shortcut can capture it
 - An envelope one channel plays alone, its tone off or at the same pitch, is drawn in that channel's colour, as is a timer effect that restarts it; shared by channels, or beside a tone at another pitch, it stays purple
 - Fixed: at 200 fps, Minutes:Seconds:Frames labels keep three frame digits (`00:01:005`) instead of widening partway through each second
+- In the Player, each AY chip and its scopes span the track's full height, level with its notes, and tracks are 8 px apart, in Viz mode and rendered video too; the last track reaches the scrollbar
 
 ### Transport
 - The transport buttons are larger and square. They and the power and menu buttons of a device's title bar have drawn icons that look alike on macOS, Windows and Linux, instead of text symbols that Windows showed as colour emoji

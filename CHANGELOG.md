@@ -4,6 +4,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Notes view
+- A note's opacity follows its volume as the chip's DAC does, halving every three steps, so notes that sound far apart look far apart; the noise band follows it too
+
 ## [v0.7.1-alpha, player-v0.7.1-alpha] - 2026-11-15
 
 ### Transport

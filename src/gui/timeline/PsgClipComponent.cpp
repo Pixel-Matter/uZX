@@ -106,6 +106,14 @@ Range<float> getNoisePeriodYRange(int noisePeriod) {
     return { Y - 0.1f, Y + 0.1f };
 }
 
+/** How loud a channel's volume sounds, 0 to 1: halving every three steps, as the AY's and YM's DACs fall
+    in steps of a few dB rather than evenly; in full under the envelope. */
+static float getVolumeLevel(int volume, bool envelope) {
+    if (envelope)
+        return 1.0f;
+    return volume > 0 ? std::exp2(static_cast<float>(volume - 15) / 3.0f) : 0.0f;
+}
+
 std::array<float, 3> getNoiseChannelLevels(const PsgParamFrameData& data) {
     std::array<float, 3> levels {};
 
@@ -116,7 +124,7 @@ std::array<float, 3> getNoiseChannelLevels(const PsgParamFrameData& data) {
 
         const auto rawVolume = data.getRaw(PsgParamType(PsgParamType::VolumeA + ch));
         const bool hasEnvMod = data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0;
-        levels[static_cast<size_t>(ch)] = hasEnvMod ? 1.0f : static_cast<float>(rawVolume) / 15.0f;
+        levels[static_cast<size_t>(ch)] = getVolumeLevel(static_cast<int>(rawVolume), hasEnvMod);
     }
 
     return levels;
@@ -559,9 +567,9 @@ static Colour getTimerColour(const TimerSpan& span, Colour envelope = Colors::PS
     return span.envelope ? envelope : Colors::PSG::Grey;
 }
 
-/** How opaque a note at a channel's volume is drawn: in full under the envelope. */
+/** How opaque a note at a channel's volume is drawn: as loud as it sounds, but never invisible. */
 static float getVolumeAlpha(int volume, bool envelope) {
-    return envelope ? 1.0f : static_cast<float>(volume) / 15.0f * 0.8f + 0.2f;
+    return getVolumeLevel(volume, envelope) * 0.8f + 0.2f;
 }
 
 /** How opaque a timer's note is drawn: as a tone at the loudest volume the timer writes, in full if it

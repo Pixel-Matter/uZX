@@ -4,6 +4,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Transport
+- Fixed: the groove readout was empty when the beat has no groove, as at an odd fpb; it shows the beat as one group, such as `25`
+
 ## [v0.7.0-alpha, player-v0.7.0-alpha] - 2026-11-15
 
 ### Download

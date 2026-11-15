@@ -382,9 +382,7 @@ void TransportBar::updateTimeLabels(te::TimePosition pos) {
     timeSigLabel_.setText(ts.getTimeSigAt(pos).getStringTimeSig(), dontSendNotification);
     const auto framesPerBeat = jmax(1, roundToInt(PsgTiming::getFramesPerBeat(edit_)));
     fpbControl_.setValue(framesPerBeat, 0);
-    divControl_.setText(Helpers::formatGridSubdivisionPattern(
-                            Helpers::getGridSubdivisionPattern(edit_, framesPerBeat)),
-                        dontSendNotification);
+    showGroove(framesPerBeat);
     fpsLabel_.setText(String(roundToInt(Helpers::getProjectFps(edit_))), dontSendNotification);
 }
 
@@ -399,9 +397,15 @@ void TransportBar::commitEditedDivisions() {
     const auto framesPerBeat = jmax(1, roundToInt(PsgTiming::getFramesPerBeat(edit_)));
     const auto pattern = Helpers::parseGridSubdivisionPattern(divControl_.getText(), framesPerBeat);
     Helpers::setGridSubdivisionPattern(edit_, pattern);
-    divControl_.setText(Helpers::formatGridSubdivisionPattern(
-                            Helpers::getGridSubdivisionPattern(edit_, framesPerBeat)),
-                        dontSendNotification);
+    showGroove(framesPerBeat);
+}
+
+void TransportBar::showGroove(int framesPerBeat) {
+    // One group is no groove, as typing a single number sets: an empty box would look broken
+    auto pattern = Helpers::getGridSubdivisionPattern(edit_, framesPerBeat);
+    if (pattern.empty())
+        pattern = {framesPerBeat};
+    divControl_.setText(Helpers::formatGridSubdivisionPattern(pattern), dontSendNotification);
 }
 
 void TransportBar::commitEditedTimeSig() {

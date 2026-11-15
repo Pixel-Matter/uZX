@@ -119,6 +119,8 @@ private:
     void updateTimeLabels(te::TimePosition pos);
     void commitEditedPosition();
     void commitEditedDivisions();
+    /** The groove's frame counts; without one, as at an odd or small fpb, the beat as one group. */
+    void showGroove(int framesPerBeat);
     void commitEditedTimeSig();
     void showFpsMenu();
 

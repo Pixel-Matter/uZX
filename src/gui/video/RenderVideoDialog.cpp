@@ -291,7 +291,7 @@ private:
         const auto folder = settings.folder.isDirectory()
                                 ? settings.folder
                                 : juce::File::getSpecialLocation(juce::File::userMoviesDirectory);
-        const auto name = tracktion::EditFileOperations(*e).getEditFile().getFileNameWithoutExtension();
+        const auto name = e->editFileRetriever().getFileNameWithoutExtension();
         auto chooser = std::make_shared<juce::FileChooser>("Render Video", folder.getChildFile(name + ".mp4"), "*.mp4");
         chooser->launchAsync(
             juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles

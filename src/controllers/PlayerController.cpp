@@ -103,7 +103,7 @@ void PlayerController::showView(VizOptions options) {
 }
 
 void PlayerController::updateWindowTitle() {
-    setMainWindowTitle(makePlayerWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension()));
+    setMainWindowTitle(makePlayerWindowTitle(edit_->editFileRetriever().getFileNameWithoutExtension()));
 }
 
 void PlayerController::handleSave() {

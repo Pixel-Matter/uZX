@@ -4,6 +4,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+## [v0.7.0-alpha, player-v0.7.0-alpha] - 2026-11-15
+
 ### Download
 - The macOS release is a disk image: drag the app to Applications
 - The macOS app is ad-hoc signed, so the first launch takes **Open Anyway** in System Settings → Privacy & Security instead of a Terminal command

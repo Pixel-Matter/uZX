@@ -12,7 +12,7 @@ Open work only, highest priority first. Finished work goes to [CHANGELOG.md](../
 
 ## µZX Player
 
-Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macOS, Windows and Linux).
+Current release: `player-v0.7.0-alpha`, the alpha for testers (ad-hoc signed builds for macOS, unsigned for Windows and Linux).
 
 ### Next up
 

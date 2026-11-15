@@ -65,7 +65,8 @@ void PlayerController::showEdit() {
         editViewState_->footersWidth = keptFootersWidth_;
     }
 
-    window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), true);
+    // The window keeps its size: fitted to the new document, made at 0 x 0, it would shrink and move
+    window_.setContentOwned(new PlayerDocumentComponent(*edit_, *editViewState_), false);
     updateWindowTitle();
 }
 

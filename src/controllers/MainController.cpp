@@ -1217,7 +1217,8 @@ std::unique_ptr<te::Edit> ArrangerController::createOrLoadStartupEdit() {
 
 
 void ArrangerController::showEdit() {
-    window_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
+    // The window keeps its size: fitted to the new document, made at 0 x 0, it would shrink and move
+    window_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), false);
     setMainWindowTitle(edit_->editFileRetriever().getFileNameWithoutExtension());
 }
 

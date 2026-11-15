@@ -4,12 +4,14 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
-### Windows
-- Fixed: opening a project, from Open, Open Recent or Finder, or importing a tune no longer shrinks or moves the Player's or Studio's window
+## [v0.7.1-alpha, player-v0.7.1-alpha] - 2026-11-15
 
 ### Transport
 - An odd number of frames per beat gets a default groove of 3, 5 or 7 equal groups, such as `5 5 5 5 5` at 25
 - Fixed: the groove readout was empty when the beat has no groove, as at a prime fpb; it shows the beat as one group, such as `23`
+
+### Projects
+- Fixed: opening a project, from Open, Open Recent or Finder, or importing a tune no longer shrinks or moves the Player's or Studio's window
 
 ## [v0.7.0-alpha, player-v0.7.0-alpha] - 2026-11-15
 

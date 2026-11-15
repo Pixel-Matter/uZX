@@ -39,6 +39,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - An envelope one channel plays alone, its tone off or at the same pitch, is drawn in that channel's colour, as is a timer effect that restarts it; shared by channels, or beside a tone at another pitch, it stays purple
 - Fixed: at 200 fps, Minutes:Seconds:Frames labels keep three frame digits (`00:01:005`) instead of widening partway through each second
 - A frame that restarts the envelope, by writing its shape, the same one too, marks the envelope's notes with a tick, as a timer's start (a note decoration)
+- Note decorations show once a frame is 3 pixels wide, instead of 6, and **Groove Rows** (`Cmd+2`) gives a row 32 pixels, a step closer, so it shows them
 - In the Player, each AY chip and its scopes span the track's full height, level with its notes, and tracks are 8 px apart, in Viz mode and rendered video too; the last track reaches the scrollbar
 
 ### Transport

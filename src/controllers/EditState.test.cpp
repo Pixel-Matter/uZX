@@ -275,9 +275,10 @@ public:
              {TimecodeDisplayMode::barsBeatsFrames, TimecodeDisplayMode::seconds, TimecodeDisplayMode::framesOnly}) {
             Helpers::setTimecodeDisplayMode(*edit, mode);
             for (auto level : {Level::frames, Level::rows, Level::beats, Level::bars}) {
-                const double intervals[]{0.02, 0.125, 0.5, 2.0};
+                const double intervals[]{0.02, 0.125, 0.5, 2.0}, pixels[]{16.0, 32.0, 16.0, 16.0};
                 zoom.zoomToLevel(level);
-                expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), intervals[(int) level] / 16.0, 1e-12);
+                expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(),
+                                          intervals[(int) level] / pixels[(int) level], 1e-12);
                 expect(Helpers::getTimecodeDisplayMode(*edit) == mode, "zoom does not change the ruler format");
             }
         }
@@ -285,10 +286,10 @@ public:
         beginTest("Uneven groove rows use their average duration");
         Helpers::setGridSubdivisionPattern(*edit, {6, 6, 6, 7});
         zoom.zoomToLevel(Level::rows);
-        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.125 / 16.0, 1e-12);
+        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.125 / 32.0, 1e-12);
         Helpers::setGridSubdivisionPattern(*edit, {12, 13});
         zoom.zoomToLevel(Level::rows);
-        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.25 / 16.0, 1e-12);
+        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.25 / 32.0, 1e-12);
 
         beginTest("Frames follow FPS; beats and bars follow the local tempo and meter");
         Helpers::setProjectFps(*edit, 60.0);

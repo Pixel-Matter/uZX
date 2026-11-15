@@ -30,6 +30,7 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 - [x] **Tracktion Engine** — the fork now sits on upstream `develop` @ `9d622faa` (2026-10-20), the last commit before upstream moved to JUCE 9, with JUCE 8.0.17-security. v3.2.0 is still upstream's latest tag; revisit JUCE 9 when v3.5 is tagged
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
 - [ ] **UX quality review** review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
+- [ ] Good human proof-read **user guide**
 - [ ] **Release notes** — CHANGELOG entry for the tag
 
 #### P1 — Important
@@ -38,6 +39,7 @@ Current release: `v0.6.0-alpha`, the alpha for testers (unsigned builds for macO
 - [x] **Transport follow mode** toggle — **Follow** (`Cmd+Shift+F`); Viz mode and Render Video always follow
 - [x] Decorate **env restarts** with vertical line, like timer starts
 - [x] **Readouts align right**
+- [x] Cmd-2 zoom level should be one level into, decaration limit one level outer
 - [ ] Investigate **devices level** meter zones, master level zones, level knobs
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Scrubbing** with playhead produces sound, holding it at one frame plays that frame and holds it sound

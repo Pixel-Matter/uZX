@@ -59,8 +59,8 @@ public:
         expect(! isBlank(render(0x37, 16, 0)));
 
         beginTest("Noise bands follow envelope-pattern level of detail");
-        expect(isBlank(render(0x37, 15, 0, 0, false, 5)), "Hide noise below six pixels per frame");
-        expect(! isBlank(render(0x37, 15, 0, 0, false, 6)), "Show noise at six pixels per frame");
+        expect(isBlank(render(0x37, 15, 0, 0, false, 2)), "Hide noise below three pixels per frame");
+        expect(! isBlank(render(0x37, 15, 0, 0, false, 3)), "Show noise at three pixels per frame");
         expect(isBlank(render(0x37, 15, 0, 0, false, 100, 100)), "Hide noise when note rows are too short");
 
         beginTest("Viz mode's Always decorations draw the noise band at any zoom");
@@ -69,9 +69,9 @@ public:
                                         {uZX::PsgRegType::VolumeA, 15}}},
                                       {50.0, 1}};
             const auto inViz = [&](VizOptions::Decorations decorations) {
-                return Tests::renderPsgClip(engine, noise, 5, 300, {}, false, {}, VizOptions{.decorations = decorations});
+                return Tests::renderPsgClip(engine, noise, 2, 300, {}, false, {}, VizOptions{.decorations = decorations});
             };
-            expect(isBlank(inViz(VizOptions::Decorations::automatic)), "Auto hides it below six pixels per frame");
+            expect(isBlank(inViz(VizOptions::Decorations::automatic)), "Auto hides it below three pixels per frame");
             expect(! isBlank(inViz(VizOptions::Decorations::always)), "Always draws it");
         }
 
@@ -229,7 +229,7 @@ public:
         expect(equalImages(expanded.getClippedImage(noiseDamage), repainted.getClippedImage(noiseDamage)));
 
         beginTest("Noise fringe follows envelope-pattern LOD");
-        expect(equalImages(renderData(withTones(7, 7), 5), renderData(withTones(7, 0), 5)));
+        expect(equalImages(renderData(withTones(7, 7), 2), renderData(withTones(7, 0), 2)));
 
         beginTest("Noise on a channel without a silhouette does not decorate another channel's note");
         const auto unrelatedNoise = renderData(withTones(1, 2));

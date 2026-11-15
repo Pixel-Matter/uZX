@@ -1427,7 +1427,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
 
     const auto pitchRange = layout.pitchRange;
     const float noteHeight = layout.noteHeight;
-    const bool drawMods = editViewState.areVizDecorationsAlways() || (vis.pixelsPerFrame >= 6.0f && noteHeight >= 2.0f);
+    const bool drawMods = editViewState.areVizDecorationsAlways() || (vis.pixelsPerFrame >= 3.0f && noteHeight >= 2.0f);
     constexpr float NoiseSpreadInNoteHeights = 0.75f;
     const int noiseSpread = static_cast<int>(std::floor(noteHeight * NoiseSpreadInNoteHeights));
 

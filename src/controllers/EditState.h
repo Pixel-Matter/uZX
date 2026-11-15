@@ -69,7 +69,7 @@ public:
         beats,
         bars
     };
-    /** Fits one musical interval at the playhead into 16 pixels, in every timecode format.
+    /** Fits one musical interval at the playhead into 16 pixels, a row into 32, in every timecode format.
         Rows use the average groove row, or a quarter beat when there is no subdivision. */
     void zoomToLevel(ZoomLevel level);
     /** Fits a user-selected range and remembers the previous view. */

@@ -218,7 +218,8 @@ void ZoomViewState::zoomToLevel(ZoomLevel level) {
             interval = ladder.getApproxInterval(ladder.getBarLevel(), tempo, false);
             break;
     }
-    zoomToTimePerPixel(interval / 16.0);
+    // A row is a step closer than the others, so its frames are wide enough for the note decorations
+    zoomToTimePerPixel(interval / (level == ZoomLevel::rows ? 32.0 : 16.0));
 }
 
 void ZoomViewState::rememberZoom(ZoomSnapshot snapshot) {

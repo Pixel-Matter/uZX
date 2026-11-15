@@ -60,12 +60,11 @@ std::vector<int> getDefaultGridSubdivisionPattern(int framesPerBeat) {
     if (framesPerBeat < 6)
         return {};
 
-    if (framesPerBeat % 4 == 0)
-        return std::vector<int>(4, framesPerBeat / 4);
-
-    if (framesPerBeat % 2 == 0)
-        return std::vector<int>(2, framesPerBeat / 2);
-
+    // An odd beat in thirds, fifths or sevenths, as rows of 3, 5 or 7 frames make it; a group of
+    // one frame would only repeat the frame grid
+    for (int groups : {4, 2, 3, 5, 7})
+        if (framesPerBeat % groups == 0 && framesPerBeat / groups >= 2)
+            return std::vector<int>((size_t) groups, framesPerBeat / groups);
     return {};
 }
 

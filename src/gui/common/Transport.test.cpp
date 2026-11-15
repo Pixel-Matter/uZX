@@ -1,4 +1,5 @@
 #include "Transport.h"
+#include "../../models/PsgFrameRetimer.h"
 
 #include <JuceHeader.h>
 
@@ -37,6 +38,33 @@ public:
             expect(!loop->getToggleState());
             transport.looping = true;
             expect(loop->getToggleState());
+        }
+
+        beginTest("Without a groove, as at a prime fpb, the groove readout shows the beat as one group");
+        {
+            auto edit = tracktion::Edit::createSingleTrackEdit(engine);
+            PsgTiming::setFramesPerBeat(*edit, 23, false);  // no default groove: 23 splits into no equal groups
+            tracktion::SelectionManager selectionManager(engine);
+            EditViewState viewState(*edit, selectionManager);
+            TransportBar bar(viewState, {.showRecord = false, .showAutomation = false});
+            bar.setSize(1200, TransportBar::height);
+
+            // The readout is the box just left of its "groove" label
+            Label* unit = nullptr;
+            for (auto* child : bar.getChildren())
+                if (auto* label = dynamic_cast<Label*>(child); label != nullptr && label->getText() == "groove")
+                    unit = label;
+            expect(unit != nullptr);
+            if (unit == nullptr)
+                return;
+            Label* groove = nullptr;
+            for (auto* child : bar.getChildren())
+                if (auto* label = dynamic_cast<Label*>(child); label != nullptr && label->getRight() <= unit->getX()
+                    && (groove == nullptr || label->getRight() > groove->getRight()))
+                    groove = label;
+            expect(groove != nullptr);
+            if (groove != nullptr)
+                expectEquals(groove->getText(), String("23"));
         }
 
         beginTest("The transport buttons sit in the middle of the bar; in a narrow one, clear of the output section");

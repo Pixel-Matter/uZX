@@ -30,8 +30,8 @@ double getProjectFps(te::Edit& edit);
 
 void setProjectFps(te::Edit& edit, double fps);
 
-/** Default frame subdivision pattern for a frames-per-beat value:
-    quarters when divisible by 4, halves when divisible by 2, otherwise empty. */
+/** Default frame subdivision pattern for a frames-per-beat value: quarters when divisible by 4,
+    halves by 2, else thirds, fifths or sevenths of at least 2 frames each; otherwise empty. */
 std::vector<int> getDefaultGridSubdivisionPattern(int framesPerBeat);
 
 /** Parses positive integers from any non-digit-delimited text and adjusts the

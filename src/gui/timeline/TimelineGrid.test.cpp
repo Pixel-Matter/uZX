@@ -97,7 +97,8 @@ public:
             expect(hasTickAtX(40), "Expected a grid tick at the second 50 fps frame.");
             expect(hasTickAtX(60), "Expected a grid tick at the third 50 fps frame.");
             expect(! hasTickAtX(16), "Grid should not use 1/32-beat ticks when the selected format is frames.");
-            expect(labels.contains("1.1.04"), "Expected ruler labels to use 50 fps frame counts.");
+            // 25 frames a beat: the default groove makes rows of 5, labelled in 50 fps frame counts
+            expect(labels.contains("1.1.05"), "Expected ruler labels to use 50 fps frame counts.");
             expect(! labels.contains("1.1.120"),
                    "Ruler labels should not use Tracktion beat ticks for bars/beats/frames.");
             expect(labels.contains("1.2"), "Beat labels should match the native bars/beats format.");
@@ -202,12 +203,14 @@ public:
             MessageManager::getInstance()->runDispatchLoopUntil(50);
             TimelineGrid grid(view);
             const auto before = grid.getTicks();
-            expect(std::any_of(before.begin(), before.end(), [](const auto& tick) { return tick.x == 20; }));
+            // Rows of 5 frames, the default groove of 25 frames a beat, 25 px apart
+            expect(std::any_of(before.begin(), before.end(), [](const auto& tick) { return tick.x == 25; }));
+            const auto snapped = grid.snapTimeToVisibleGrid(te::TimePosition::fromSeconds(0.08)).inSeconds();
 
             edit->getTransport().setPosition(te::TimePosition::fromSeconds(2.1));
             MessageManager::getInstance()->runDispatchLoopUntil(50);
             expectWithinAbsoluteError(grid.snapTimeToVisibleGrid(te::TimePosition::fromSeconds(0.08)).inSeconds(),
-                                      0.08, 1.0e-9, "Seeking must not change the grid under a stationary viewport");
+                                      snapped, 1.0e-9, "Seeking must not change the grid under a stationary viewport");
 
             // Rebuild the cache at the same view range: its ticks must still match.
             view.zoom.setRange(view.zoom.getRange());
@@ -242,8 +245,9 @@ public:
                     labels.add(tick.label);
             }
 
-            expect(labels.contains("1.1.08"), "Expected middle-of-beat frame labels to remain visible.");
-            expect(labels.contains("1.1.04"), "The ruler decides whether a label fits after the beat start.");
+            // 25 frames a beat in the default groove's rows of 5
+            expect(labels.contains("1.1.10"), "Expected middle-of-beat frame labels to remain visible.");
+            expect(labels.contains("1.1.05"), "The ruler decides whether a label fits after the beat start.");
             expect(labels.contains("1.1.20"), "The ruler decides whether a label fits before the next beat.");
             expect(labels.contains("1.2"), "Expected native beat labels to remain visible.");
         }

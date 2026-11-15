@@ -81,12 +81,15 @@ static void slide_down(struct ayumi* ay) {
   }
 }
 
+/* The holds keep the level reset_segment gave them. Their bodies must differ: reset_segment tells them
+   apart by address, and MSVC's Release linker (/OPT:ICF) folds identical functions into one, which made
+   hold_bottom hold at the top in Windows builds. */
 static void hold_top(struct ayumi* ay) {
-  (void) ay;
+  ay->envelope = 31;
 }
 
 static void hold_bottom(struct ayumi* ay) {
-  (void) ay;
+  ay->envelope = 0;
 }
 
 static void (* const Envelopes[][2])(struct ayumi*) = {

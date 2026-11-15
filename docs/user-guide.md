@@ -34,7 +34,7 @@ A minimal player for listening to PSG chip music files.
 
 - **Drag and drop** a `.psg` file, a `.taym` file, a tracker module or a `.uzx` file onto the window.
 - **File menu → Open** (`Cmd+O` / `Ctrl+O`).
-- **Double-click** a file in Finder (macOS). µZX Player is the default app for `.psg` and `.taym` files. Tracker modules and `.uzx` files open in it when no other app claims them, such as a zxtune player for modules, or µZX Studio, which opens `.uzx` files when it is installed. To pick the Player anyway, use **Open With**, or **Get Info → Open with → Change All…** for every file of that type. Early Vortex Tracker's `.txt` modules are not registered.
+- **Double-click** a file in Finder (macOS). µZX Player is the default app for `.psg` and `.taym` files and tracker modules. `.uzx` files open in it when no other app claims them, such as µZX Studio, which opens them when it is installed. When another app already opens a file type, such as a zxtune player for modules, Finder may keep it; to pick the Player, use **Open With**, or **Get Info → Open with → Change All…** for every file of that type. Early Vortex Tracker's `.txt` modules are not registered.
 - On Windows and Linux the Player registers no file types: choose it in the file manager's **Open with**, which passes the file on the command line.
 - Pass a file path as a command-line argument.
 

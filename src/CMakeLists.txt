@@ -30,8 +30,8 @@ juce_add_gui_app(${TUNING_TARGET_NAME}
 )
 
 # The Player's file types on macOS. The rank tells Finder how strong its claim is: the default app
-# for .psg and .taym; for tracker modules (zxtune's players or a tracker may be the user's choice) and for .uzx
-# (Studio's), an alternate one, which opens them only when no app claims them more strongly. Not
+# for .psg, .taym and tracker modules; for .uzx (Studio's), an alternate one, which opens them only when
+# no app claims them more strongly. Not
 # DOCUMENT_EXTENSIONS: JUCE gives all of those one entry ranked Default.
 # The modules are getTrackerModuleExtensions() (src/formats/tracker/TrackerModule.cpp) without
 # early Vortex Tracker's .txt, so that the Player isn't offered for every text file.
@@ -48,7 +48,7 @@ set(PLAYER_DOCUMENT_TYPES "<plist><dict><key>CFBundleDocumentTypes</key><array>
     <key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Default</string></dict>
   <dict><key>CFBundleTypeName</key><string>Tracker Module</string>
     <key>CFBundleTypeExtensions</key><array>${PLAYER_MODULE_EXTENSIONS}</array>
-    <key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string></dict>
+    <key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Default</string></dict>
   <dict><key>CFBundleTypeName</key><string>µZX Project</string>
     <key>CFBundleTypeExtensions</key><array><string>uzx</string></array>
     <key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string></dict>

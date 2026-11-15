@@ -31,6 +31,7 @@ Current release: `player-v0.7.0-alpha`, the alpha for testers (ad-hoc signed bui
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
 - [ ] **UX quality review** review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
 - [ ] Good human proof-read **user guide**
+- [ ] **PixelMatter.org/uZX** page, synced on releases
 - [ ] **Release notes** — CHANGELOG entry for the tag
 
 #### P1 — Important

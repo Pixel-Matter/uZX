@@ -24,7 +24,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The audio device settings are converted to the engine's new format on first launch; an older µZX build does not read them back
 
 ### Timeline
-- Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format
+- Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format; the level the view is already at leaves it be while the playhead is in view, so playback scrolls on
 - `X` restores the previous timeline position and zoom; wheel/pinch gestures and drags each return in one step, separately from edit undo
 - **Loop range** on the ruler, in Player and Studio: the ruler's lower half shows it, lit while looping; drag there to set a range, drag an edge or the range to change it (snapped to the grid, or to frames with `Cmd`). The Loop button in the transport bar, lit while looping, or `Cmd+L` loops this range instead of the whole project
 - The loop range covers the whole project, following its end, until you set another one; it is saved with the project
@@ -38,10 +38,15 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: the PSG frame hover stays open while Shift, Ctrl, Option or Cmd is pressed, so a screenshot shortcut can capture it
 - An envelope one channel plays alone, its tone off or at the same pitch, is drawn in that channel's colour, as is a timer effect that restarts it; shared by channels, or beside a tone at another pitch, it stays purple
 - Fixed: at 200 fps, Minutes:Seconds:Frames labels keep three frame digits (`00:01:005`) instead of widening partway through each second
+- A frame that restarts the envelope, by writing its shape, the same one too, marks the envelope's notes with a tick, as a timer's start (a note decoration)
+- Note decorations show once a frame is 3 pixels wide, instead of 6, and **Groove Rows** (`Cmd+2`) gives a row 32 pixels, a step closer, so it shows them
+- In the Player, each AY chip and its scopes span the track's full height, level with its notes, and tracks are 8 px apart, in Viz mode and rendered video too; the last track reaches the scrollbar
 
 ### Transport
 - The transport buttons are larger and square. They and the power and menu buttons of a device's title bar have drawn icons that look alike on macOS, Windows and Linux, instead of text symbols that Windows showed as colour emoji
 - The transport bar's labels are small and grey, so its values and buttons stand out, and the transport buttons sit in the middle of the bar; in a narrow window, play/pause and the position stay clear of the level meters
+- The level and DSP/GUI meters are taller, with larger captions, to fill the taller transport bar
+- The transport bar's values are right-aligned, beside their units, and stay put when clicked to edit
 - Play/Pause is lit while playing
 
 ### Video and Viz mode
@@ -89,6 +94,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: unmuting a channel, or its tone, noise or envelope, brings it back at once instead of after the tune next sets it
 - Fixed: a tone or envelope period that passes through 0 while being written (fine before coarse) plays at its value instead of one step off
 - Fixed: an AY chip played by MIDI controllers keeps what a message does not name: turning one channel's tone on no longer turns on the other channels' tone and noise, and after a mute an envelope switch no longer brings the old volume back
+- The Player's AY chips have no title bar: right-click a scope for the scope settings
 
 ### Tuning
 - Fixed: a cancelled preview stays silent, and a newer preview keeps its own playback length and note highlights
@@ -97,6 +103,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: previewing a note with the tone off and the envelope on no longer plays the tone as well
 - MIDI to PSG plays at the clock of the AY chip after it and no longer sets that clock: equal temperament and just intonations stay in tune on any clock, and a tracker table made for another clock shows how far it sounds off
 - Fixed: opening a project or picking a tuning preset no longer resets the AY chip's clock set by hand
+- The Player no longer shows the tuning table and key above the AY chips
 
 ### Studio
 - Fixed: **Track → Render to audio** supports cancellation and adds the audio track only after a successful render. Undo restores the source track's previous mute state.

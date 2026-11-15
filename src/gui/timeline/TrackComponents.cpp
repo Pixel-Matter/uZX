@@ -482,9 +482,7 @@ TrackRowComponent::TrackRowComponent(EditViewState& evs, TimelineGrid& g, te::Tr
         devices->setCurrentTrack(track.get());
         addAndMakeVisible(*devices);
         footer = std::move(devices);
-
-        auto& constrainer = trackViewState.getConstrainer();
-        constrainer.setMinimumHeight(jmax(constrainer.getMinimumHeight(), getMinimumHeight()));
+        updateMinimumHeight();
     }
 
     trackViewState.addListener(this);
@@ -500,19 +498,26 @@ int TrackRowComponent::getTrackHeight() const noexcept {
 
 int TrackRowComponent::getMinimumHeight() const {
     if (auto* devices = dynamic_cast<TrackDevicesPanel*>(footer.get()))
-        return devices->getMinimumHeight() + resizerHeight;
+        return devices->getMinimumHeight() + dividerHeight_;
     return 0;
 }
 
-void TrackRowComponent::setResizerVisible(bool visible) {
-    resizer.setVisible(visible);
+void TrackRowComponent::updateMinimumHeight() {
+    auto& constrainer = trackViewState.getConstrainer();
+    constrainer.setMinimumHeight(jmax(constrainer.getMinimumHeight(), getMinimumHeight()));
+}
+
+void TrackRowComponent::setDividerHeight(int height) {
+    dividerHeight_ = height;
+    resizer.setVisible(height > 0);
+    updateMinimumHeight();
 }
 
 void TrackRowComponent::paint(Graphics& g) {
     // Classic colours draw a rule between rows, as between the scopes
     if (editViewState.isVizClassic() && resizer.isVisible()) {
         g.setColour(Colors::VizClassic::rule);
-        g.fillRect(resizer.getBounds().withHeight(1));
+        g.fillRect(resizer.getBounds().withTrimmedTop(resizer.getHeight() / 2).withHeight(1));  // mid-gap, as the column's
     }
 }
 
@@ -542,7 +547,7 @@ void TrackRowComponent::resized() {
 
     const int headerWidth = editViewState.getTrackHeaderWidth();
     auto r = getLocalBounds();
-    resizer.setBounds(r.removeFromBottom(resizerHeight));
+    resizer.setBounds(r.removeFromBottom(dividerHeight_));
 
     header.setBounds(r.removeFromLeft(headerWidth));
     if (footer != nullptr)
@@ -861,8 +866,9 @@ void TracksContainerComponent::buildTracks() {
 
     if (autoFitTrackHeights_) {
         lastFitHeight_ = 0;
+        // Rows apart on the Player's grid, none under the last
         for (int i = 0; i < trackRows.size(); ++i)
-            trackRows[i]->setResizerVisible(i < trackRows.size() - 1);
+            trackRows[i]->setDividerHeight(i < trackRows.size() - 1 ? TrackRowComponent::playerDividerHeight : 0);
     }
 
     markAndUpdate(needsResize);

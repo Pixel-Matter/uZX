@@ -44,10 +44,9 @@ void BackgroundlessIconButton::paintButton(Graphics& g, bool shouldDrawButtonAsH
 
 //==============================================================================
 // TitleBar implementation
-TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI, bool removable)
+TitleBar::TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI)
     : plugin_(plugin)
     , deviceUI_(deviceUI)
-    , removable_(removable)
 {
     setSize(getWidth(), titleBarHeight);
 
@@ -151,7 +150,7 @@ void TitleBar::resized() {
 
 void TitleBar::refreshMenuButtonState() {
     const bool hasCustomMenu = deviceUI_ != nullptr && deviceUI_->hasDeviceMenu();
-    const bool hasPluginMenu = plugin_ != nullptr && removable_;
+    const bool hasPluginMenu = plugin_ != nullptr;
     const bool shouldShowMenu = hasCustomMenu || hasPluginMenu;
     menuButton_.setVisible(shouldShowMenu);
     menuButton_.setInterceptsMouseClicks(shouldShowMenu, shouldShowMenu);
@@ -201,7 +200,7 @@ void TitleBar::showDeviceMenu(Component* target) {
     }
 
     const bool hasCustomItems = customItems.getNumItems() > 0;
-    const bool hasPluginActions = plugin_ != nullptr && removable_;
+    const bool hasPluginActions = plugin_ != nullptr;
 
     if (hasInfoSection && (hasCustomItems || hasPluginActions))
         menu.addSeparator();
@@ -270,39 +269,41 @@ namespace IDs {
 //==============================================================================
 // FramedDeviceItem implementation
 
-FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui, bool removable)
+FramedDeviceItem::FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui, bool editable)
     : DeviceItem(std::move(ui))
-    , titleBar_(plugin_, getDeviceUI(), removable)
+    , titleBarHeight_(editable ? TitleBar::height : 0)
+    , titleBar_(plugin_, getDeviceUI())
 {
+    // Before setSize, whose resized() reads it
+    if (plugin_ != nullptr && editable)  // only the title bar collapses it
+        isCollapsed_.referTo(plugin_->state, IDs::viewCollapsed, nullptr, false);
+
     if (ui_) {
-        // Create and add title bar
-        addAndMakeVisible(titleBar_);
+        if (editable)
+            addAndMakeVisible(titleBar_);
         addAndMakeVisible(ui_.get());
 
         // Size the frame to accommodate the plugin UI plus title bar
         static constexpr int frameWidth = 0;  // 2px border on each side
         setSize(ui_->getWidth() + frameWidth,
-                ui_->getHeight() + TitleBar::height + frameWidth);
+                ui_->getHeight() + titleBarHeight_ + frameWidth);
     }
     minimumWidth_ = getWidth();
     expandedWidth_ = getWidth();
     expandedHeight_ = getHeight();
 
-    if (plugin_ != nullptr) {
-        isCollapsed_.referTo(plugin_->state, IDs::viewCollapsed, nullptr, false);
-    }
     titleBar_.setCollapseToggle([this]() {
-        setCollapsed(!isCollapsed_);
+        setCollapsed(!isCollapsed());
     });
     updateCollapsedInternal();
 }
 
 int FramedDeviceItem::getMinimumHeight() const {
-    return TitleBar::height + DeviceItem::getMinimumHeight();
+    return titleBarHeight_ + DeviceItem::getMinimumHeight();
 }
 
 void FramedDeviceItem::resized() {
-    if (isCollapsed_) {
+    if (isCollapsed()) {
         auto bounds = getLocalBounds();
         auto collapsedWidth = TitleBar::height;
         titleBar_.setBounds(bounds.removeFromLeft(collapsedWidth));
@@ -311,7 +312,7 @@ void FramedDeviceItem::resized() {
         }
     } else {
         auto bounds = getLocalBounds();
-        auto titleBarBounds = bounds.removeFromTop(TitleBar::height);
+        auto titleBarBounds = bounds.removeFromTop(titleBarHeight_);
         titleBar_.setBounds(titleBarBounds);
         if (ui_) {
             ui_->setBounds(bounds);
@@ -323,7 +324,7 @@ void FramedDeviceItem::resized() {
 
 void FramedDeviceItem::paint(Graphics& g) {
     auto bounds = getLocalBounds().toFloat();
-    if (isCollapsed_) {
+    if (isCollapsed()) {
         auto backgroundArea = bounds;
         backgroundArea.removeFromLeft((float) titleBar_.getWidth());
         if (!backgroundArea.isEmpty()) {
@@ -333,44 +334,45 @@ void FramedDeviceItem::paint(Graphics& g) {
         return;
     }
 
-    bounds.removeFromTop((float) TitleBar::height);
+    bounds.removeFromTop((float) titleBarHeight_);
+    const bool roundTop = titleBarHeight_ == 0;  // else the title bar rounds the top
     Path path;
     path.addRoundedRectangle(
         bounds.getX(), bounds.getY(),
         bounds.getWidth(), bounds.getHeight(),
         cornerSize, cornerSize,
-        false, false, true, true
+        roundTop, roundTop, true, true
     );
     g.setColour(Colors::Theme::backgroundAlt);
     g.fillPath(path);
 }
 
 void FramedDeviceItem::updateCollapsedInternal() {
-    titleBar_.setCollapsed(isCollapsed_);
+    titleBar_.setCollapsed(isCollapsed());
 
     if (ui_) {
-        ui_->setVisible(!isCollapsed_);
+        ui_->setVisible(!isCollapsed());
     }
 
-    if (isCollapsed_) {
+    if (isCollapsed()) {
         const auto targetHeight = expandedHeight_ > 0 ? expandedHeight_ : getHeight();
         setSize(TitleBar::height, targetHeight);
     } else {
         const auto restoreWidth = expandedWidth_ > 0 ? expandedWidth_
                                                     : (ui_ ? ui_->getWidth() : getWidth());
         const auto restoreHeight = expandedHeight_ > 0 ? expandedHeight_
-                                                      : (ui_ ? ui_->getHeight() + TitleBar::height : getHeight());
+                                                      : (ui_ ? ui_->getHeight() + titleBarHeight_ : getHeight());
         setSize(restoreWidth, restoreHeight);
     }
 }
 
 void FramedDeviceItem::setCollapsed(bool collapsed) {
-    if (isCollapsed_ == collapsed)
+    if (isCollapsed() == collapsed)
         return;
 
     isCollapsed_ = collapsed;
 
-    if (isCollapsed_) {
+    if (isCollapsed()) {
         expandedWidth_ = getWidth();
         expandedHeight_ = getHeight();
     }

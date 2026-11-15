@@ -193,11 +193,12 @@ void AYScopes::resized() {
     const auto across = look_.sideBySide ? r.getWidth() : r.getHeight();
     const float size = ((float) across - spacing * 2.0f) / 3.0f;
     for (auto& display : displays_) {
+        const bool last = display == displays_.back();  // takes the rounding, so it ends at the edge
         if (look_.sideBySide) {
-            display->setBounds(r.removeFromLeft(roundToInt(size)));
+            display->setBounds(last ? r : r.removeFromLeft(roundToInt(size)));
             r.removeFromLeft(spacing);
         } else {
-            display->setBounds(r.removeFromTop(roundToInt(size)));
+            display->setBounds(last ? r : r.removeFromTop(roundToInt(size)));
             r.removeFromTop(spacing);
         }
     }
@@ -314,7 +315,7 @@ void AYPluginUI::resized() {
     const float h = ((float) col.getHeight() - itemSpacing * 2.0f) / 3.0f;
 
     for (auto* group : channelGroups) {
-        group->layoutButtons(col.removeFromTop(roundToInt(h)));
+        group->layoutButtons(group == channelGroups.back() ? col : col.removeFromTop(roundToInt(h)));  // as the scopes
         col.removeFromTop(itemSpacing);
     }
 

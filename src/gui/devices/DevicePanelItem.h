@@ -88,7 +88,7 @@ protected:
  */
 class TitleBar : public Component {
 public:
-    TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI, bool removable);
+    TitleBar(tracktion::Plugin::Ptr plugin, PluginDeviceUI* deviceUI);
 
     void setCollapseToggle(std::function<void()> handler);
     void setCollapsed(bool collapsed);
@@ -106,7 +106,6 @@ private:
     void refreshMenuButtonState();
     tracktion::Plugin::Ptr plugin_;
     PluginDeviceUI* deviceUI_ = nullptr;
-    const bool removable_;
     BackgroundlessIconButton enableButton_ { "Enabled", Icons::power() };
     BackgroundlessIconButton menuButton_ { "Plugin options", Icons::menu() };
     std::function<void()> toggleCollapsed_;
@@ -120,19 +119,20 @@ private:
 
 //==============================================================================
 /**
- * Framed wrapper for regular device UIs.
- * Provides a title bar with plugin name and wraps the PluginDeviceUI directly.
+ * Framed wrapper for regular device UIs. When editable, a title bar with the plugin's name, on/off
+ * and menu sits on top; without one (the Player), only the frame: a scope's right-click has its settings.
  */
 class FramedDeviceItem : public DeviceItem {
 public:
-    explicit FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui, bool removable = true);
+    explicit FramedDeviceItem(std::unique_ptr<PluginDeviceUI> ui, bool editable = true);
 
     // Component overrides
     void resized() override;
     void paint(Graphics& g) override;
 
     void setCollapsed(bool collapsed);
-    [[nodiscard]] bool isCollapsed() const { return isCollapsed_; }
+    /** Only the title bar collapses it: without one, never. */
+    [[nodiscard]] bool isCollapsed() const { return titleBarHeight_ > 0 && isCollapsed_.get(); }
     int getMinimumHeight() const override;
     /** The width it was made with; a wider frame gives the rest to the device. */
     int getMinimumWidth() const { return minimumWidth_; }
@@ -141,10 +141,11 @@ public:
 private:
     void updateCollapsedInternal();
 
-    CachedValue<bool> isCollapsed_;
+    CachedValue<bool> isCollapsed_;  // unset without a title bar: CachedValue leaves it uninitialised until referTo()
     int minimumWidth_ = 0;
     int expandedWidth_ = 0;
     int expandedHeight_ = 0;
+    const int titleBarHeight_;  // 0 without a title bar
 
     TitleBar titleBar_;
 

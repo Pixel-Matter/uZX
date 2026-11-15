@@ -1350,6 +1350,12 @@ static void drawPeriodHatching(Graphics& g, Rectangle<float> note, Colour colour
         g.fillRect(static_cast<float>(x), note.getY(), 1.0f, note.getHeight());
 }
 
+/** A start, of a timer or a restart of the envelope: a bright line across the note, a little past its edges. */
+static void drawStartTick(Graphics& g, Rectangle<float> note, Colour colour) {
+    g.setColour(colour.brighter(0.6f));
+    g.fillRect(note.getX(), note.getY() - 2.0f, 1.0f, note.getHeight() + 4.0f);
+}
+
 /** What a frame's envelope is: the colour its notes have there, and its shape. */
 struct FrameEnvelope {
     Colour colour;
@@ -1399,10 +1405,8 @@ static void drawTimerNote(Graphics& g, Rectangle<float> note, Colour colour, con
         if ((span.registers & (3u << 11)) != 0)
             drawPeriodHatching(g, note, envelope.colour.brighter(0.8f).withAlpha(colour.getFloatAlpha() * 0.85f), 2);
     }
-    if (tick) {
-        g.setColour(bright);
-        g.fillRect(x, y - 2.0f, 1.0f, height + 4.0f);
-    }
+    if (tick)
+        drawStartTick(g, note, colour);
 }
 
 void PsgClipComponent::paintNotes(Graphics& g) {
@@ -1423,7 +1427,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
 
     const auto pitchRange = layout.pitchRange;
     const float noteHeight = layout.noteHeight;
-    const bool drawMods = editViewState.areVizDecorationsAlways() || (vis.pixelsPerFrame >= 6.0f && noteHeight >= 2.0f);
+    const bool drawMods = editViewState.areVizDecorationsAlways() || (vis.pixelsPerFrame >= 3.0f && noteHeight >= 2.0f);
     constexpr float NoiseSpreadInNoteHeights = 0.75f;
     const int noiseSpread = static_cast<int>(std::floor(noteHeight * NoiseSpreadInNoteHeights));
 
@@ -1435,6 +1439,10 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     vis.forEachVisibleState(frames, *psgClip, [&] (int frameIndex, int firstFrame, const PsgParamFrameData& frameData,
                                                    float x, float width) {
         const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
+        // The frame writes the shape, the same one too, restarting the envelope: at its first stretch
+        const bool envelopeRestarts = firstFrame == frames[frameIndex]->getFrameIndex()
+                                      && frameData.isSet(PsgParamType::RetriggerEnvelope)
+                                      && frameData.getRaw(PsgParamType::RetriggerEnvelope) != 0;
 
         const auto noiseLevels = drawMods ? getNoiseChannelLevels(frameData) : std::array<float, 3> {};
         const auto noiseLevel = *std::max_element(noiseLevels.begin(), noiseLevels.end());
@@ -1554,7 +1562,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                 g.setColour(noteColor.withAlpha(note.alpha));
                 g.fillRect(noteRect);
 
-                if (drawMods && (note.hasEnvMod || note.isEnvelopePitch))
+                if (drawMods && (note.hasEnvMod || note.isEnvelopePitch)) {
                     drawEnvelopeStripes(
                         g,
                         noteRect.getX(),
@@ -1564,6 +1572,9 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                         envShape,
                         noteColor.brighter(0.8f).withAlpha(0.85f)
                     );
+                    if (envelopeRestarts)
+                        drawStartTick(g, noteRect, noteColor.withAlpha(note.alpha));
+                }
             }
         }
         if (envelopePeriodToTonePeriod(frameData.getRaw(PsgParamType::EnvelopePeriod))
@@ -1726,29 +1737,6 @@ void PsgClipHeader::paintLegend(Graphics& g, Rectangle<int> area) {
 }
 
 //==============================================================================
-String getPsgSetInfo(te::Edit& edit) {
-    Array<PsgClip*> clips;
-    for (auto* track : te::getAudioTracks(edit))
-        for (auto* clip : track->getClips())
-            if (auto* psgClip = dynamic_cast<PsgClip*>(clip))
-                clips.add(psgClip);
-
-    if (clips.isEmpty())
-        return {};
-    // One tune (the clips imported together): its detection and choices are shared.
-    if (clips[0]->getTuneClips().size() == clips.size())
-        return getPsgClipInfo(*clips[0]);
-
-    // Several tunes, or clips from before tunes were linked: detected together, ignoring choices.
-    const auto detection = detectTuningTogether(clips);
-    if (! detection.hasNotes)
-        return {};
-    auto text = detection.getTableLabel() + "  " + detection.keys.front().getName();
-    if (detection.tableTie || isKeyTie(detection.keys))
-        text << " ?";
-    return text;
-}
-
 PsgLegendComponent::PsgLegendComponent() {
     setInterceptsMouseClicks(false, false);
     setSize(getPsgLegendWidth() + 2, 14);
@@ -1759,46 +1747,6 @@ void PsgLegendComponent::paint(Graphics& g) {
     g.setColour(Colors::Theme::backgroundAlt);
     g.fillRoundedRectangle(getLocalBounds().toFloat(), 2.0f);
     paintPsgLegend(g, getLocalBounds().reduced(1));
-}
-
-PsgSetInfoComponent::PsgSetInfoComponent(te::Edit& edit)
-    : edit_(edit)
-{
-    setInterceptsMouseClicks(false, false);
-    edit_.state.addListener(this);
-    triggerAsyncUpdate();  // the clips may come after this
-}
-
-PsgSetInfoComponent::~PsgSetInfoComponent() {
-    edit_.state.removeListener(this);
-}
-
-void PsgSetInfoComponent::paint(Graphics& g) {
-    g.setColour(Colors::Theme::textPrimary);
-    g.setFont(FontOptions(11.0f));
-    g.drawText(text_, getLocalBounds().reduced(ClipHeader::pad * 3, 0), Justification::centredLeft, true);
-}
-
-void PsgSetInfoComponent::handleAsyncUpdate() {
-    if (auto text = getPsgSetInfo(edit_); text != text_) {
-        text_ = text;
-        repaint();
-    }
-}
-
-void PsgSetInfoComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& child) {
-    if (te::Clip::isClipState(child))
-        triggerAsyncUpdate();
-}
-
-void PsgSetInfoComponent::valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& child, int) {
-    if (te::Clip::isClipState(child))
-        triggerAsyncUpdate();
-}
-
-void PsgSetInfoComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
-    if (isTuningProperty(property))
-        triggerAsyncUpdate();
 }
 
 }  // namespace MoTool

@@ -740,6 +740,11 @@ void ReadoutLookAndFeel::setupReadoutLabel(Label& label) {
     label.setKeyboardType(TextInputTarget::decimalKeyboard);
     label.setFont(getNumericReadoutFont());
     label.setEditable(true, true, false);  // editable on single click, double click, no loss of focus
+    // Label's editor ignores its justification: text that moves when clicked looks like a bug
+    label.onEditorShow = [&label] {
+        if (auto* editor = label.getCurrentTextEditor())
+            editor->setJustification(label.getJustificationType());
+    };
 
     label.setColour(Label::textColourId, Colors::Theme::primary);
     label.setColour(Label::backgroundColourId, Colors::Theme::backgroundDark);

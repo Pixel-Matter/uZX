@@ -55,9 +55,6 @@ String getPsgClipInfo(const PsgClip&);
 /** The A B C E N channel legend: its width, then the swatches from area's left edge, area's height tall. */
 int getPsgLegendWidth();
 void paintPsgLegend(Graphics& g, Rectangle<int> area);
-/** The tuning table and key of an edit's PSG clips: one clip's own, or several detected
-    together, as the chips of a Turbo Sound tune. Empty without PSG clips or pitches. */
-String getPsgSetInfo(te::Edit&);
 
 /** Lanes for every note of a grid, lowest first, continued by octaves past the grid's
     ends to the limits of the tone range. */
@@ -195,28 +192,6 @@ class PsgLegendComponent : public Component {
 public:
     PsgLegendComponent();
     void paint(Graphics& g) override;
-};
-
-/** The tuning table and key of all PSG clips (getPsgSetInfo), for views without clip
-    headers (the Player); follows clips coming and going and their tuning choices. */
-class PsgSetInfoComponent : public Component,
-                            private juce::ValueTree::Listener,
-                            private juce::AsyncUpdater {
-public:
-    explicit PsgSetInfoComponent(te::Edit&);
-    ~PsgSetInfoComponent() override;
-
-    void paint(Graphics& g) override;
-    const String& getText() const noexcept { return text_; }
-
-private:
-    void handleAsyncUpdate() override;
-    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override;
-    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override;
-    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
-
-    te::Edit& edit_;
-    String text_;
 };
 
 }  // namespace MoTool

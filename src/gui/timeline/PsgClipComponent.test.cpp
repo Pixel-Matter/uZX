@@ -59,8 +59,8 @@ public:
         expect(! isBlank(render(0x37, 16, 0)));
 
         beginTest("Noise bands follow envelope-pattern level of detail");
-        expect(isBlank(render(0x37, 15, 0, 0, false, 5)), "Hide noise below six pixels per frame");
-        expect(! isBlank(render(0x37, 15, 0, 0, false, 6)), "Show noise at six pixels per frame");
+        expect(isBlank(render(0x37, 15, 0, 0, false, 2)), "Hide noise below three pixels per frame");
+        expect(! isBlank(render(0x37, 15, 0, 0, false, 3)), "Show noise at three pixels per frame");
         expect(isBlank(render(0x37, 15, 0, 0, false, 100, 100)), "Hide noise when note rows are too short");
 
         beginTest("Viz mode's Always decorations draw the noise band at any zoom");
@@ -69,9 +69,9 @@ public:
                                         {uZX::PsgRegType::VolumeA, 15}}},
                                       {50.0, 1}};
             const auto inViz = [&](VizOptions::Decorations decorations) {
-                return Tests::renderPsgClip(engine, noise, 5, 300, {}, false, {}, VizOptions{.decorations = decorations});
+                return Tests::renderPsgClip(engine, noise, 2, 300, {}, false, {}, VizOptions{.decorations = decorations});
             };
-            expect(isBlank(inViz(VizOptions::Decorations::automatic)), "Auto hides it below six pixels per frame");
+            expect(isBlank(inViz(VizOptions::Decorations::automatic)), "Auto hides it below three pixels per frame");
             expect(! isBlank(inViz(VizOptions::Decorations::always)), "Always draws it");
         }
 
@@ -229,7 +229,7 @@ public:
         expect(equalImages(expanded.getClippedImage(noiseDamage), repainted.getClippedImage(noiseDamage)));
 
         beginTest("Noise fringe follows envelope-pattern LOD");
-        expect(equalImages(renderData(withTones(7, 7), 5), renderData(withTones(7, 0), 5)));
+        expect(equalImages(renderData(withTones(7, 7), 2), renderData(withTones(7, 0), 2)));
 
         beginTest("Noise on a channel without a silhouette does not decorate another channel's note");
         const auto unrelatedNoise = renderData(withTones(1, 2));
@@ -300,7 +300,7 @@ public:
         for (int y = envTop - 10; y < envBottom + 10; ++y) {
             if (y >= envTop && y < envBottom)
                 continue;
-            for (int x = 0; x < 100; ++x)
+            for (int x = 1; x < 100; ++x)  // column 0: the frame writes the shape, so the envelope's restart tick
                 expect(dualImage.getPixelAt(x, y).getFloatAlpha() <= 0.3f,
                        "Only the faint gray band remains outside the envelope silhouette");
         }
@@ -311,7 +311,7 @@ public:
         for (int y = envTop - 10; y < envBottom + 10; ++y) {
             if (y >= envTop && y < envBottom)
                 continue;
-            for (int x = 0; x < 100; ++x) {
+            for (int x = 1; x < 100; ++x) {  // past the restart tick, as above
                 const auto color = sharedNoise.getPixelAt(x, y);
                 if (color.getFloatAlpha() > 0.3f) {
                     expect(color.getGreen() > color.getRed() && color.getGreen() > color.getBlue());
@@ -592,6 +592,29 @@ public:
             // Hz right-aligned in 8, the note's name in 3 and its cents in 5
             const auto aligned = marked(formatTimerFrame(timers, 15, 1773400.0, false, grid, {4, 8, 3, 5}));
             expect(aligned.contains(String::fromUTF8("\nT2            499.3Hz  B4   +16\xC2\xA2\n")), aligned);
+        }
+
+        beginTest("A frame that restarts the envelope marks its notes with a tick, as a timer's start");
+        {
+            // A plays the envelope alone; frames 0, 10 and 20 write its shape, 20 the same one again
+            using R = uZX::PsgRegType;
+            std::vector<uZX::PsgRegsFrame> frames(30);
+            frames[0] = {{R::Mixer, 0x3f}, {R::VolumeA, 0x10}, {R::EnvelopePeriodFine, 0x40}, {R::EnvelopeShape, 8}};
+            frames[10] = {{R::EnvelopeShape, 10}};
+            frames[20] = {{R::EnvelopeShape, 10}};
+            const auto image = Tests::renderPsgClip(engine, {frames, {50.0, 1}}, 120, 300, {}, false, {},
+                                                    VizOptions {.decorations = VizOptions::Decorations::always});
+            const auto topAt = [&](int x) {
+                for (int y = 0; y < image.getHeight(); ++y)
+                    if (! image.getPixelAt(x, y).isTransparent())
+                        return y;
+                return -1;
+            };
+            const int noteTop = topAt(60);  // frame 15: no restart
+            expect(noteTop > 2, "the envelope's note");
+            expectEquals(topAt(40), noteTop - 2, "frame 10's restart sticks out above the note");
+            expectEquals(topAt(80), noteTop - 2, "and frame 20's, the same shape again");
+            expectEquals(topAt(41), noteTop, "a line, one pixel wide");
         }
 
         beginTest("A timer is drawn as a note at the pitch of what it writes, from its start to its stop, in its channel's colour");

@@ -167,6 +167,9 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     readoutLookAndFeel_.setupReadoutLabel(timeSigLabel_);
     readoutLookAndFeel_.setupReadoutLabel(fpsLabel_);
     readoutLookAndFeel_.setupReadoutLabel(transportReadout_);
+    // Values end at their units, on their right; the position's label is on its left
+    for (auto* value : std::initializer_list<Label*> {&bpmControl_, &fpsLabel_, &fpbControl_, &divControl_, &timeSigLabel_})
+        value->setJustificationType(Justification::right);
 
     // Editing the position box seeks the transport.
     transportReadout_.onTextChange = [this] { commitEditedPosition(); };
@@ -218,14 +221,14 @@ void TransportBar::resized() {
     // ponytail: 60 px puts the knob centre 92 px from the right edge, midway between the Player's
     // AY panel Width and Volume knobs; re-derive if either layout changes.
     static constexpr int meterWidth = 15 * grid;
-    masterMeter_.setBounds(b.removeFromRight(meterWidth).withSizeKeepingCentre(meterWidth, w / 2));
+    masterMeter_.setBounds(b.removeFromRight(meterWidth).withSizeKeepingCentre(meterWidth, b.getHeight() / 2));
     b.removeFromRight(spacing);
     static constexpr int knobWidth = 8 * grid;
     masterVolumeSlider_.setBounds(
         b.removeFromRight(knobWidth).withSizeKeepingCentre(knobWidth, w).expanded(grid, grid));
     b.removeFromRight(spacing);
-    static constexpr int cpuMeterWidth = 16 * grid;
-    cpuMeter_.setBounds(b.removeFromRight(cpuMeterWidth).withSizeKeepingCentre(cpuMeterWidth, w));
+    static constexpr int cpuMeterWidth = 18 * grid;
+    cpuMeter_.setBounds(b.removeFromRight(cpuMeterWidth));
     b.removeFromRight(spacing);
 
     // The block is laid out from x = 0, then shifted into place. Gaps show what belongs together:

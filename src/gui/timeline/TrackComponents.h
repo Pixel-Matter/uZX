@@ -120,18 +120,20 @@ public:
     int getTrackHeight() const noexcept;
     /** Height the row needs for its devices; 0 without them. */
     int getMinimumHeight() const;
-    void setResizerVisible(bool visible);
+    /** The divider under the row, which drags its height: 0 for none. */
+    void setDividerHeight(int height);
 
-    static constexpr int resizerHeight = 2;
+    static constexpr int resizerHeight = 2;        // Studio's divider
+    static constexpr int playerDividerHeight = 8;  // the Player's and Viz mode's, on their 8 px grid
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
     /** The track's devices, fixed, when the view shows footers; in Viz mode its chip's scopes. */
     std::unique_ptr<Component> footer;
-    /** Level with the clips, apart from them and from the window edge. */
-    static inline const BorderSize<int> footerPadding {ClipComponent::ringWidth, 8, ClipComponent::ringWidth, 8};
-    /** Scopes under the notes: below the gap to drag, level with the notes, apart from the window edge. */
-    static inline const BorderSize<int> scopesBandPadding {8, 0, ClipComponent::ringWidth, 8};
+    /** The track's full height, as its notes, apart from them and from the window edge. */
+    static inline const BorderSize<int> footerPadding {0, 8, 0, 8};
+    /** Scopes under the notes: below the gap to drag, to the row's bottom, apart from the window edge. */
+    static inline const BorderSize<int> scopesBandPadding {8, 0, 0, 8};
 
 private:
     /** Takes the footer's area from the row's: the devices, or Viz mode's scopes beside, under or
@@ -142,6 +144,10 @@ private:
     te::Track::Ptr track;
     TrackViewState trackViewState;
     ResizableEdgeComponent resizer;
+    int dividerHeight_ = resizerHeight;
+
+    /** A drag can't make the row shorter than its devices need. */
+    void updateMinimumHeight();
     VizScopesGap scopesGap {editViewState};
 };
 

@@ -308,8 +308,8 @@ private:
         auto* chip = findDescendant<uZX::AYPluginUI>(*devices);
         expect(chip != nullptr && chip->getMinimumHeight() > 0);
         const int minimum = row->getMinimumHeight();
-        expectEquals(minimum, chip->getMinimumHeight() + TitleBar::height + 2 * ClipComponent::ringWidth
-                                  + TrackRowComponent::resizerHeight);
+        expectEquals(minimum, chip->getMinimumHeight() + TrackRowComponent::playerDividerHeight,
+                     "the chip at the track's full height, then the divider: the first of two rows");
 
         player.setSize(1000, 300);  // two rows can't fit
         TestHelpers::flushMessageQueue();
@@ -342,15 +342,14 @@ private:
     }
 
     void runPlayerOverlayTests(te::Engine& engine) {
-        beginTest("Without clip headers the notes start at the top, with one legend and the tune's key");
+        beginTest("Without clip headers the notes start at the top, with one legend");
         auto edit = te::Edit::createSingleTrackEdit(engine);
         edit->ensureNumberOfAudioTracks(2);
-        Array<PsgClip*> clips;
         for (auto* track : te::getAudioTracks(*edit)) {
             const uZX::PsgRegsFrame tone {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::TonePeriodFineA, 0xfc},
                                           {uZX::PsgRegType::VolumeA, 15}};
             uZX::PsgData data {std::vector<uZX::PsgRegsFrame>(50, tone), {50.0, 1}};
-            clips.add(PsgClip::insertTo(*track, data, {{0_tp, 1_td}, {}}, "PSG").get());
+            PsgClip::insertTo(*track, data, {{0_tp, 1_td}, {}}, "PSG");
         }
         te::SelectionManager selectionManager(engine);
         EditViewState playerView(*edit, selectionManager);
@@ -368,16 +367,6 @@ private:
         for (auto* child : player.getChildren())
             legends += dynamic_cast<PsgLegendComponent*>(child) != nullptr ? 1 : 0;
         expectEquals(legends, 1);
-
-        auto* setInfo = findChild<PsgSetInfoComponent>(player);
-        expect(setInfo != nullptr);
-        const auto together = detectTuningTogether(clips);
-        expect(together.hasNotes);
-        if (setInfo != nullptr && together.hasNotes) {
-            expect(setInfo->getText().startsWith(together.getTableLabel()), setInfo->getText());
-            expect(setInfo->getText().contains(together.keys.front().getName()), setInfo->getText());
-            expectEquals(setInfo->getX(), findChild<RulerComponent>(player)->getRight(), "in the corner above the devices");
-        }
     }
 
     template <typename T>

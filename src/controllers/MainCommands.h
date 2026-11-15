@@ -420,7 +420,7 @@ public:
 
             case viewZoomRows:
                 result.setInfo("Groove Rows",
-                               "Show an average groove row at 16 pixels, or a quarter beat without a groove",
+                               "Show an average groove row at 32 pixels, or a quarter beat without a groove",
                                "View",
                                0);
                 result.addDefaultKeypress('2', ModifierKeys::commandModifier);

@@ -191,6 +191,11 @@ void ZoomViewState::zoomHorizontally(double factor) {
 
 void ZoomViewState::zoomToTimePerPixel(te::TimeDuration timePerPixel, bool continuous) {
     timePerPixel = clampTimePerPixel(timePerPixel);
+    // Already at this scale with the playhead in view, as when a zoom key is pressed again during playback:
+    // re-centring would only jolt the view and stall its scrolling. Off screen, it brings the playhead back
+    if (approximatelyEqual(timePerPixel.inSeconds(), getTimePerPixel().inSeconds())
+        && getRange().contains(getPlayheadPosition()))
+        return;
     const auto newSpan = timePerPixel * getViewWidthPx();
     applyZoom(jmax(te::TimePosition(), getPlayheadPosition() - newSpan / 2.0), timePerPixel, continuous);
     handlePlaybackScrolling();
@@ -218,7 +223,8 @@ void ZoomViewState::zoomToLevel(ZoomLevel level) {
             interval = ladder.getApproxInterval(ladder.getBarLevel(), tempo, false);
             break;
     }
-    zoomToTimePerPixel(interval / 16.0);
+    // A row is a step closer than the others, so its frames are wide enough for the note decorations
+    zoomToTimePerPixel(interval / (level == ZoomLevel::rows ? 32.0 : 16.0));
 }
 
 void ZoomViewState::rememberZoom(ZoomSnapshot snapshot) {

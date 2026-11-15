@@ -270,14 +270,30 @@ public:
                 zoom.zoomBack();
         };
 
+        beginTest("A zoom level chosen again with the playhead in view leaves the view where it is");
+        {
+            transport.setPosition(20_tp);
+            const auto before = zoom.getTimePerPixel().inSeconds();
+            zoom.zoomToLevel(Level::beats);
+            const auto moved = zoom.getStart() + 1_td;  // followed the playhead since, which is still in view
+            zoom.setStart(moved);
+            zoom.zoomToLevel(Level::beats);
+            expectEquals(zoom.getStart().inSeconds(), moved.inSeconds(), "not re-centred on the playhead");
+            zoom.zoomBack();
+            expectEquals(zoom.getTimePerPixel().inSeconds(), before, "one step in the zoom history: the first press");
+            expect(! zoom.canZoomBack());
+            transport.setPosition(0_tp);
+        }
+
         beginTest("Four musical scales are identical in all timecode modes");
         for (auto mode :
              {TimecodeDisplayMode::barsBeatsFrames, TimecodeDisplayMode::seconds, TimecodeDisplayMode::framesOnly}) {
             Helpers::setTimecodeDisplayMode(*edit, mode);
             for (auto level : {Level::frames, Level::rows, Level::beats, Level::bars}) {
-                const double intervals[]{0.02, 0.125, 0.5, 2.0};
+                const double intervals[]{0.02, 0.125, 0.5, 2.0}, pixels[]{16.0, 32.0, 16.0, 16.0};
                 zoom.zoomToLevel(level);
-                expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), intervals[(int) level] / 16.0, 1e-12);
+                expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(),
+                                          intervals[(int) level] / pixels[(int) level], 1e-12);
                 expect(Helpers::getTimecodeDisplayMode(*edit) == mode, "zoom does not change the ruler format");
             }
         }
@@ -285,10 +301,10 @@ public:
         beginTest("Uneven groove rows use their average duration");
         Helpers::setGridSubdivisionPattern(*edit, {6, 6, 6, 7});
         zoom.zoomToLevel(Level::rows);
-        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.125 / 16.0, 1e-12);
+        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.125 / 32.0, 1e-12);
         Helpers::setGridSubdivisionPattern(*edit, {12, 13});
         zoom.zoomToLevel(Level::rows);
-        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.25 / 16.0, 1e-12);
+        expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(), 0.25 / 32.0, 1e-12);
 
         beginTest("Frames follow FPS; beats and bars follow the local tempo and meter");
         Helpers::setProjectFps(*edit, 60.0);

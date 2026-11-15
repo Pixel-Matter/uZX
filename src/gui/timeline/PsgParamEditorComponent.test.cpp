@@ -23,7 +23,12 @@ public:
         PsgParamEditorComponent editor(view, grid);
         editor.setSize(400, 100);
         editor.setCurrentParam(PsgParamType::VolumeA);
-        const auto settle = [] { MessageManager::getInstance()->runDispatchLoopUntil(50); };
+        // The selection's change message is delivered here, not left to the loop's 50 ms, which a busy CI
+        // runner can let pass before the message comes
+        const auto settle = [&] {
+            selection.dispatchPendingMessages();
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+        };
 
         beginTest("Without a PSG clip there is nothing to hit");
         expect(! editor.hasClip());

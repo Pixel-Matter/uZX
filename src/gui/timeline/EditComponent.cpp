@@ -51,10 +51,6 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
     if (! editViewState.showClipHeaders && editViewState.showsNotes()) {
         legend = std::make_unique<PsgLegendComponent>();
         addAndMakeVisible(*legend);
-        if (! editViewState.vizMode) {
-            setInfo = std::make_unique<PsgSetInfoComponent>(edit);
-            addAndMakeVisible(*setInfo);
-        }
     }
 }
 
@@ -138,8 +134,6 @@ void EditComponent::resized() {
     playhead.setBounds(timeline(r));
     const auto rulerRow = r.removeFromTop(rulerHeight);
     ruler.setBounds(timeline(rulerRow));
-    if (setInfo != nullptr)
-        setInfo->setBounds(rulerRow.withLeft(ruler.getRight()));
     if (legend != nullptr)
         legend->setTopRightPosition(timeline(r).getRight() - ClipHeader::pad,
                                     r.getY() + ClipComponent::ringWidth + ClipHeader::pad);

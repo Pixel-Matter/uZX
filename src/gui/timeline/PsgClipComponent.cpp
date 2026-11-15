@@ -1726,29 +1726,6 @@ void PsgClipHeader::paintLegend(Graphics& g, Rectangle<int> area) {
 }
 
 //==============================================================================
-String getPsgSetInfo(te::Edit& edit) {
-    Array<PsgClip*> clips;
-    for (auto* track : te::getAudioTracks(edit))
-        for (auto* clip : track->getClips())
-            if (auto* psgClip = dynamic_cast<PsgClip*>(clip))
-                clips.add(psgClip);
-
-    if (clips.isEmpty())
-        return {};
-    // One tune (the clips imported together): its detection and choices are shared.
-    if (clips[0]->getTuneClips().size() == clips.size())
-        return getPsgClipInfo(*clips[0]);
-
-    // Several tunes, or clips from before tunes were linked: detected together, ignoring choices.
-    const auto detection = detectTuningTogether(clips);
-    if (! detection.hasNotes)
-        return {};
-    auto text = detection.getTableLabel() + "  " + detection.keys.front().getName();
-    if (detection.tableTie || isKeyTie(detection.keys))
-        text << " ?";
-    return text;
-}
-
 PsgLegendComponent::PsgLegendComponent() {
     setInterceptsMouseClicks(false, false);
     setSize(getPsgLegendWidth() + 2, 14);
@@ -1759,46 +1736,6 @@ void PsgLegendComponent::paint(Graphics& g) {
     g.setColour(Colors::Theme::backgroundAlt);
     g.fillRoundedRectangle(getLocalBounds().toFloat(), 2.0f);
     paintPsgLegend(g, getLocalBounds().reduced(1));
-}
-
-PsgSetInfoComponent::PsgSetInfoComponent(te::Edit& edit)
-    : edit_(edit)
-{
-    setInterceptsMouseClicks(false, false);
-    edit_.state.addListener(this);
-    triggerAsyncUpdate();  // the clips may come after this
-}
-
-PsgSetInfoComponent::~PsgSetInfoComponent() {
-    edit_.state.removeListener(this);
-}
-
-void PsgSetInfoComponent::paint(Graphics& g) {
-    g.setColour(Colors::Theme::textPrimary);
-    g.setFont(FontOptions(11.0f));
-    g.drawText(text_, getLocalBounds().reduced(ClipHeader::pad * 3, 0), Justification::centredLeft, true);
-}
-
-void PsgSetInfoComponent::handleAsyncUpdate() {
-    if (auto text = getPsgSetInfo(edit_); text != text_) {
-        text_ = text;
-        repaint();
-    }
-}
-
-void PsgSetInfoComponent::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& child) {
-    if (te::Clip::isClipState(child))
-        triggerAsyncUpdate();
-}
-
-void PsgSetInfoComponent::valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree& child, int) {
-    if (te::Clip::isClipState(child))
-        triggerAsyncUpdate();
-}
-
-void PsgSetInfoComponent::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
-    if (isTuningProperty(property))
-        triggerAsyncUpdate();
 }
 
 }  // namespace MoTool

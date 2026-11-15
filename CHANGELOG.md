@@ -90,6 +90,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: unmuting a channel, or its tone, noise or envelope, brings it back at once instead of after the tune next sets it
 - Fixed: a tone or envelope period that passes through 0 while being written (fine before coarse) plays at its value instead of one step off
 - Fixed: an AY chip played by MIDI controllers keeps what a message does not name: turning one channel's tone on no longer turns on the other channels' tone and noise, and after a mute an envelope switch no longer brings the old volume back
+- The Player's AY chips have no title bar: right-click a scope for the scope settings
 
 ### Tuning
 - Fixed: a cancelled preview stays silent, and a newer preview keeps its own playback length and note highlights
@@ -98,6 +99,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: previewing a note with the tone off and the envelope on no longer plays the tone as well
 - MIDI to PSG plays at the clock of the AY chip after it and no longer sets that clock: equal temperament and just intonations stay in tune on any clock, and a tracker table made for another clock shows how far it sounds off
 - Fixed: opening a project or picking a tuning preset no longer resets the AY chip's clock set by hand
+- The Player no longer shows the tuning table and key above the AY chips
 
 ### Studio
 - Fixed: **Track → Render to audio** supports cancellation and adds the audio track only after a successful render. Undo restores the source track's previous mute state.

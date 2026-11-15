@@ -24,7 +24,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - The audio device settings are converted to the engine's new format on first launch; an older µZX build does not read them back
 
 ### Timeline
-- Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format
+- Player and Studio share **View → Zoom** and ruler/PSG clip zoom menus: `Cmd/Ctrl+1…4` selects Frames, Groove Rows, Beats or Bars, with the same scale in every timecode format; the level the view is already at leaves it be while the playhead is in view, so playback scrolls on
 - `X` restores the previous timeline position and zoom; wheel/pinch gestures and drags each return in one step, separately from edit undo
 - **Loop range** on the ruler, in Player and Studio: the ruler's lower half shows it, lit while looping; drag there to set a range, drag an edge or the range to change it (snapped to the grid, or to frames with `Cmd`). The Loop button in the transport bar, lit while looping, or `Cmd+L` loops this range instead of the whole project
 - The loop range covers the whole project, following its end, until you set another one; it is saved with the project

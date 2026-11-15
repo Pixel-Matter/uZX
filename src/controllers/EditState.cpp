@@ -191,6 +191,11 @@ void ZoomViewState::zoomHorizontally(double factor) {
 
 void ZoomViewState::zoomToTimePerPixel(te::TimeDuration timePerPixel, bool continuous) {
     timePerPixel = clampTimePerPixel(timePerPixel);
+    // Already at this scale with the playhead in view, as when a zoom key is pressed again during playback:
+    // re-centring would only jolt the view and stall its scrolling. Off screen, it brings the playhead back
+    if (approximatelyEqual(timePerPixel.inSeconds(), getTimePerPixel().inSeconds())
+        && getRange().contains(getPlayheadPosition()))
+        return;
     const auto newSpan = timePerPixel * getViewWidthPx();
     applyZoom(jmax(te::TimePosition(), getPlayheadPosition() - newSpan / 2.0), timePerPixel, continuous);
     handlePlaybackScrolling();

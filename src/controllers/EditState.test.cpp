@@ -270,6 +270,21 @@ public:
                 zoom.zoomBack();
         };
 
+        beginTest("A zoom level chosen again with the playhead in view leaves the view where it is");
+        {
+            transport.setPosition(20_tp);
+            const auto before = zoom.getTimePerPixel().inSeconds();
+            zoom.zoomToLevel(Level::beats);
+            const auto moved = zoom.getStart() + 1_td;  // followed the playhead since, which is still in view
+            zoom.setStart(moved);
+            zoom.zoomToLevel(Level::beats);
+            expectEquals(zoom.getStart().inSeconds(), moved.inSeconds(), "not re-centred on the playhead");
+            zoom.zoomBack();
+            expectEquals(zoom.getTimePerPixel().inSeconds(), before, "one step in the zoom history: the first press");
+            expect(! zoom.canZoomBack());
+            transport.setPosition(0_tp);
+        }
+
         beginTest("Four musical scales are identical in all timecode modes");
         for (auto mode :
              {TimecodeDisplayMode::barsBeatsFrames, TimecodeDisplayMode::seconds, TimecodeDisplayMode::framesOnly}) {

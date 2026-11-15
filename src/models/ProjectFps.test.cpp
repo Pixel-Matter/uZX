@@ -171,6 +171,11 @@ private:
         expect(Helpers::getDefaultGridSubdivisionPattern(10) == std::vector<int>({5, 5}), "10 FPB halves");
         expect(Helpers::getDefaultGridSubdivisionPattern(12) == std::vector<int>({3, 3, 3, 3}), "12 FPB quarters");
         expect(Helpers::getDefaultGridSubdivisionPattern(14) == std::vector<int>({7, 7}), "14 FPB halves");
+        expect(Helpers::getDefaultGridSubdivisionPattern(9) == std::vector<int>({3, 3, 3}), "9 FPB thirds");
+        expect(Helpers::getDefaultGridSubdivisionPattern(15) == std::vector<int>({5, 5, 5}), "15 FPB thirds before fifths");
+        expect(Helpers::getDefaultGridSubdivisionPattern(25) == std::vector<int>({5, 5, 5, 5, 5}), "25 FPB fifths");
+        expect(Helpers::getDefaultGridSubdivisionPattern(49) == std::vector<int>(7, 7), "49 FPB sevenths");
+        expect(Helpers::getDefaultGridSubdivisionPattern(23).empty(), "a prime FPB has no equal default");
         expect(Helpers::getDefaultGridSubdivisionPattern(16) == std::vector<int>({4, 4, 4, 4}), "16 FPB quarters");
     }
 

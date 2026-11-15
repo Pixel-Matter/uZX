@@ -170,6 +170,7 @@ public:
         beginTest("Grid lines cross a clip's empty part and pass under an opaque note");
         auto& engine = *te::Engine::getEngines()[0];
         auto edit = te::Edit::createSingleTrackEdit(engine);
+        edit->tempoSequence.getTimeSig(0)->numerator = 2;  // a bar line mid-view, so ticks of every level show
         // Channel A at full volume, an opaque note, for two seconds of 50 fps frames
         uZX::PsgData data {{}, {50.0, 1}};
         for (int i = 0; i < 100; ++i)

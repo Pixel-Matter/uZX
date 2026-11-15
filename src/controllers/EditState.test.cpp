@@ -290,7 +290,8 @@ public:
              {TimecodeDisplayMode::barsBeatsFrames, TimecodeDisplayMode::seconds, TimecodeDisplayMode::framesOnly}) {
             Helpers::setTimecodeDisplayMode(*edit, mode);
             for (auto level : {Level::frames, Level::rows, Level::beats, Level::bars}) {
-                const double intervals[]{0.02, 0.125, 0.5, 2.0}, pixels[]{16.0, 32.0, 16.0, 16.0};
+                // 25 frames a beat: rows of 5 frames, the default groove
+                const double intervals[]{0.02, 0.1, 0.5, 2.0}, pixels[]{16.0, 32.0, 16.0, 16.0};
                 zoom.zoomToLevel(level);
                 expectWithinAbsoluteError(zoom.getTimePerPixel().inSeconds(),
                                           intervals[(int) level] / pixels[(int) level], 1e-12);

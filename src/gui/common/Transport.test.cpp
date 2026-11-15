@@ -40,10 +40,10 @@ public:
             expect(loop->getToggleState());
         }
 
-        beginTest("Without a groove, as at an odd fpb, the groove readout shows the beat as one group");
+        beginTest("Without a groove, as at a prime fpb, the groove readout shows the beat as one group");
         {
             auto edit = tracktion::Edit::createSingleTrackEdit(engine);
-            PsgTiming::setFramesPerBeat(*edit, 25, false);  // no default groove: 25 splits into neither 4 nor 2
+            PsgTiming::setFramesPerBeat(*edit, 23, false);  // no default groove: 23 splits into no equal groups
             tracktion::SelectionManager selectionManager(engine);
             EditViewState viewState(*edit, selectionManager);
             TransportBar bar(viewState, {.showRecord = false, .showAutomation = false});
@@ -64,7 +64,7 @@ public:
                     groove = label;
             expect(groove != nullptr);
             if (groove != nullptr)
-                expectEquals(groove->getText(), String("25"));
+                expectEquals(groove->getText(), String("23"));
         }
 
         beginTest("The transport buttons sit in the middle of the bar; in a narrow one, clear of the output section");

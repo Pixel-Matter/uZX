@@ -667,7 +667,7 @@ bool AppController::perform(const InvocationInfo& info) {
         case MainAppCommands::fileReveal:
             if (auto* edit = MoToolApp::getActiveController().getEdit()) {
                 EditFileOps::saveEdit(*edit, false, true, false);
-                te::EditFileOperations(*edit).getEditFile().revealToUser();
+                edit->editFileRetriever().revealToUser();
             }
             break;
 
@@ -999,7 +999,7 @@ te::Engine& BaseController::getEngine() {
 
 std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
     // Already open: a second copy would be saved over the first and lose its unsaved changes
-    if (edit_ != nullptr && editFile == te::EditFileOperations(*edit_).getEditFile())
+    if (edit_ != nullptr && editFile == edit_->editFileRetriever())
         return nullptr;
     if (!editFile.existsAsFile())
         return te::createEmptyEdit(engine_, editFile);
@@ -1163,7 +1163,7 @@ void ArrangerController::handleSaveAs() {
 
     if (EditFileOps::saveEditAsWithDialog(*edit_)) {
         // TODO use listener or callback to update title when edit file changes
-        auto name = te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension();
+        auto name = edit_->editFileRetriever().getFileNameWithoutExtension();
         setMainWindowTitle(name);
     }
 }
@@ -1218,7 +1218,7 @@ std::unique_ptr<te::Edit> ArrangerController::createOrLoadStartupEdit() {
 
 void ArrangerController::showEdit() {
     window_.setContentOwned(new MainDocumentComponent(*edit_, *editViewState_), true);
-    setMainWindowTitle(te::EditFileOperations(*edit_).getEditFile().getFileNameWithoutExtension());
+    setMainWindowTitle(edit_->editFileRetriever().getFileNameWithoutExtension());
 }
 
 void ArrangerController::zoomToSelection() {

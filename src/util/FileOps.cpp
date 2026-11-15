@@ -55,12 +55,12 @@ void setRecentEditsDirectory(te::PropertyStorage& storage, const File& fileOrDir
 }
 
 bool isTempEdit(te::Edit& edit) {
-    return te::EditFileOperations(edit).getEditFile().getParentDirectory() == getTempEditsLocation();
+    // Not through te::EditFileOperations: a temporary one re-reads the whole edit file, and the File menu asks this
+    return edit.editFileRetriever().getParentDirectory() == getTempEditsLocation();
 }
 
 File suffestSaveAsFileName(te::Edit& edit) {
-    auto efo = te::EditFileOperations(edit);
-    auto currentFile = efo.getEditFile();
+    auto currentFile = edit.editFileRetriever();
 
     File defaultLocation = !isTempEdit(edit) && currentFile.existsAsFile()
                                ? currentFile.getParentDirectory()

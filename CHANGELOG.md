@@ -61,6 +61,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: oscilloscopes keep the previous frame when a refresh overlaps a sample update
 - AY and Scope use 0.5× display gain by default
 - Fixed: held PSG notes show no seams between frames and line up with the grid when frames are a pixel wide or wider
+- Fixed: in the Player, clicking a control during playback (Loop, Follow, a readout, a device's knob or menu) no longer freezes the playhead for a moment and then makes it jump
 
 ### PSG clips
 - The envelope pitch is a filled, hatched purple note instead of an outline; the E legend swatch is filled too

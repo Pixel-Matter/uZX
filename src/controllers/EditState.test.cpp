@@ -136,15 +136,31 @@ public:
         zoom.setRange({1_tp, 2_td});
         expect(!undo.canUndo());
 
-        beginTest("Dragging the view scrolls sideways and zooms around the anchor");
+        beginTest("A drag locks to the axis it starts along: sideways scrolls, up or down zooms, diagonally both");
         zoom.setViewWidthPx(1000);
         zoom.setRange({10_tp, 10_td});  // 10 ms per pixel
         zoom.beginDrag();
-        zoom.dragBy(500, 100, 0);
+        zoom.dragBy(500, 5, 5);  // too short to tell which way
+        expectEquals(zoom.getStart().inSeconds(), 10.0);
+        zoom.dragBy(500, 100, 20);
+        zoom.dragBy(500, 100, 100);  // up and down no longer zoom
         expectWithinAbsoluteError(zoom.getStart().inSeconds(), 9.0, 1e-9);
-        zoom.dragBy(500, 0, 100);  // down zooms out 2x around the time under x = 500
+        expectWithinAbsoluteError(zoom.getViewSpan().inSeconds(), 10.0, 1e-9);
+        zoom.endDrag();
+
+        zoom.setRange({10_tp, 10_td});
+        zoom.beginDrag();
+        zoom.dragBy(500, 20, 100);   // down zooms out 2x around the time under x = 500
+        zoom.dragBy(500, 100, 100);  // sideways no longer scrolls
         expectWithinAbsoluteError(zoom.getViewSpan().inSeconds(), 20.0, 1e-9);
         expectWithinAbsoluteError(zoom.xToTime(500).inSeconds(), 15.0, 1e-9);
+        zoom.endDrag();
+
+        zoom.setRange({10_tp, 10_td});
+        zoom.beginDrag();
+        zoom.dragBy(500, 100, 100);  // the anchor time zooms and moves with the pointer
+        expectWithinAbsoluteError(zoom.getViewSpan().inSeconds(), 20.0, 1e-9);
+        expectWithinAbsoluteError(zoom.xToTime(600).inSeconds(), 15.0, 1e-9);
         zoom.endDrag();
 
         beginTest("Playback does not scroll the view while the user drags it, and follows again on release");
@@ -383,10 +399,14 @@ public:
         clearHistory();
         zoom.setRange({2_tp, 10_td});
 
-        beginTest("A drag records its original view once, even after an initial pan");
+        beginTest("A zooming drag records its original view once, a sideways one none");
         zoom.beginDrag();
         zoom.dragBy(500, 100, 0);
+        zoom.dragBy(500, 100, 50);
+        zoom.endDrag();
         expect(!zoom.canZoomBack());
+        zoom.setRange({2_tp, 10_td});
+        zoom.beginDrag();
         zoom.dragBy(500, 100, 50);
         zoom.dragBy(500, 200, 100);
         zoom.endDrag();

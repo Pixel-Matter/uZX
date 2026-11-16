@@ -297,12 +297,24 @@ void ZoomViewState::scrollByWheel(const MouseWheelDetails& wheel) {
 void ZoomViewState::beginDrag() {
     continuousZoom_ = false;
     dragZoomRecorded_ = false;
+    dragScrolls_ = dragZooms_ = false;
     userDraggingView = true;
     dragStartViewStart = getStart();
     dragStartTimePerPixel = getTimePerPixel();
 }
 
 void ZoomViewState::dragBy(int anchorX, int deltaX, int deltaY) {
+    if (!dragScrolls_ && !dragZooms_) {  // the axes aren't locked yet
+        if (deltaX * deltaX + deltaY * deltaY < dragLockDistancePx * dragLockDistancePx)
+            return;
+        dragScrolls_ = std::abs(deltaX) * dragLockRatio >= std::abs(deltaY);
+        dragZooms_ = std::abs(deltaY) * dragLockRatio >= std::abs(deltaX);
+    }
+    if (!dragScrolls_)
+        deltaX = 0;
+    if (!dragZooms_)
+        deltaY = 0;
+
     suspendFollow();
     auto newTimePerPixel = clampTimePerPixel(dragStartTimePerPixel * std::pow(2.0, deltaY * 0.01));
     auto anchorTime = dragStartViewStart + dragStartTimePerPixel * (double) anchorX;

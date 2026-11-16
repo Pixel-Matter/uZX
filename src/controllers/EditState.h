@@ -148,7 +148,8 @@ public:
     /** Dragging the view by hand. Until endDrag(), playback does not scroll the view. */
     void beginDrag();
     /** Sideways scrolls, vertically zooms around anchorX (down zooms out); deltas are from the drag start.
-        Suspends following. */
+        The drag locks to the axis it starts along, once it has moved dragLockDistancePx: mostly sideways
+        only scrolls, mostly up or down only zooms, diagonally does both. Suspends following. */
     void dragBy(int anchorX, int deltaX, int deltaY);
     void endDrag();
 
@@ -176,6 +177,9 @@ private:
     };
     std::vector<ZoomSnapshot> zoomHistory_;
     bool continuousZoom_ = false, dragZoomRecorded_ = false;
+    bool dragScrolls_ = false, dragZooms_ = false;  // both false until the drag picks its axes
+    static constexpr int dragLockDistancePx = 8;     // how far a drag goes before its direction is read
+    static constexpr int dragLockRatio = 2;          // one axis 2x the other locks to it, ~27° either side
     uint32 lastZoomGestureMs_ = 0;
     static constexpr uint32 zoomGestureGapMs = 500;
     static constexpr size_t maxZoomHistory = 64;

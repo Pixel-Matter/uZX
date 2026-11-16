@@ -44,7 +44,6 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] Investigate **devices level** meter zones, master level zones, level knobs
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Scrubbing** with playhead produces sound, holding it at one frame plays that frame and holds it sound
-- [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.
 
 #### P2 — Nice to have
 
@@ -53,6 +52,7 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [ ] **PDF user guide**
 - [ ] **Channel split mode** — each AY channel in its own lane
 - [ ] **Minimap** on the horizontal scroller
+- [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.
 - [x] **Clock-mode frame grid** — frame steps divide the second (sixths and twelfths at 24/48 fps), so ticks no longer run …20, 24, 29; the frame field is three digits wide throughout at 200 fps
 
 ---

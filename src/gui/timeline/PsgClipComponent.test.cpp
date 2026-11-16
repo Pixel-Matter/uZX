@@ -321,6 +321,40 @@ public:
         }
         expect(greenFringe > 0);
 
+        beginTest("Noise on a channel a timer plays is dotted around the timer's note, not in the band");
+        {
+            // A's tone off, its noise on at period 16: the band about row 230. B's tone at period 444, and a timer
+            // on A's volume at its pitch: one lane, in the middle of the clip's range
+            const auto noiseOnA = [&](uint8_t mixer, bool timer) {
+                std::vector<uZX::PsgRegsFrame> frames(20);
+                frames[0] = {{uZX::PsgRegType::Mixer, mixer}, {uZX::PsgRegType::NoisePeriod, 16},
+                             {uZX::PsgRegType::VolumeA, 15}, {uZX::PsgRegType::VolumeB, 15},
+                             {uZX::PsgRegType::TonePeriodFineB, 0xbc}, {uZX::PsgRegType::TonePeriodCoarseB, 1}};
+                return Tests::renderPsgClip(engine, {frames, {50.0, 1}}, 100, 300, {}, false, {}, {},
+                    [&] (PsgClip& clip) {
+                        if (timer)
+                            clip.getTimers().set(Tests::makeTestTaym(), 0, {{0, 0, Tests::timerStart(222, 0)}}, nullptr);
+                    });
+            };
+            // A's dots: opaque in A's hue where nothing is drawn without the noise, in the band or elsewhere
+            const auto dotsOfA = [&](bool timer) {
+                const auto drawn = noiseOnA(0x35, timer), noiseless = noiseOnA(0x3d, timer);
+                std::pair<int, int> inBandAndOut;
+                for (int y = 0; y < drawn.getHeight(); ++y)
+                    for (int x = 5; x < drawn.getWidth(); ++x)  // past the timer's start tick
+                        if (const auto c = drawn.getPixelAt(x, y); noiseless.getPixelAt(x, y).isTransparent()
+                            && c.getFloatAlpha() > 0.5f && std::abs(c.getHue() - Colors::PSG::A.getHue()) < 0.03f)
+                            ++(y >= 200 ? inBandAndOut.first : inBandAndOut.second);
+                return inBandAndOut;
+            };
+            const auto [bandAlone, outAlone] = dotsOfA(false);
+            expect(bandAlone > 0 && outAlone == 0, "without a note of A, its dots are in the band: "
+                                                       + String(bandAlone) + " in it, " + String(outAlone) + " out");
+            const auto [bandTimer, aroundTimer] = dotsOfA(true);
+            expect(bandTimer == 0 && aroundTimer > 0, "with a timer's, around that: " + String(bandTimer)
+                                                          + " in the band, " + String(aroundTimer) + " around it");
+        }
+
         beginTest("Low envelope period draws an owner-outlined envelope-colored bottom arrow");
         auto lowEnvelope = withTones(2, 0, 2);
         lowEnvelope.frames[0].setEnvelopePeriod(256);
@@ -399,6 +433,52 @@ public:
         expect(hasFill, "The envelope note is filled with the envelope color");
         expect(hasHatching, "The envelope note keeps its brighter hatching");
         expect(hasChannelFill, "An envelope B plays alone, with no tone of its own, is B's sound: in B's colour");
+
+        beginTest("A channel a few cents above another shares its lane above it at every height");
+        {
+            // C's period one below A's: about 5 cents higher, under a pixel at these heights
+            const uZX::PsgData detuned {
+                {{{uZX::PsgRegType::Mixer, 0x3a}, {uZX::PsgRegType::VolumeA, 15}, {uZX::PsgRegType::VolumeC, 15},
+                  {uZX::PsgRegType::TonePeriodFineA, 64}, {uZX::PsgRegType::TonePeriodCoarseA, 1},
+                  {uZX::PsgRegType::TonePeriodFineC, 63}, {uZX::PsgRegType::TonePeriodCoarseC, 1}}},
+                {50.0, 1}
+            };
+            StringArray aOnTop;
+            for (int height = 100; height < 160; ++height) {
+                const auto image = renderData(detuned, 100, height);
+                int top = 0;
+                while (top < height && image.getPixelAt(50, top).isTransparent())
+                    ++top;
+                if (top == height || image.getPixelAt(50, top) != Colors::PSG::C)
+                    aOnTop.add(String(height));
+            }
+            expect(aOnTop.isEmpty(), "C not on top at heights " + aOnTop.joinIntoString(", "));
+        }
+
+        beginTest("The envelope's stripes run on unchanged across the stretches a held note is drawn in");
+        {
+            // A on the envelope, held for 7 frames: once in one stretch, once in 7, split by noise periods
+            // that change nothing drawn, the noise being off
+            const auto held = [&](bool split) {
+                std::vector<uZX::PsgRegsFrame> frames(7);
+                frames[0] = {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 16},
+                             {uZX::PsgRegType::TonePeriodFineA, 64}, {uZX::PsgRegType::TonePeriodCoarseA, 1},
+                             {uZX::PsgRegType::EnvelopePeriodFine, 100}, {uZX::PsgRegType::EnvelopeShape, 8}};
+                for (size_t i = 1; split && i < frames.size(); ++i)
+                    frames[i] = {{uZX::PsgRegType::NoisePeriod, static_cast<uint8_t>(i)}};
+                return renderData({frames, {50.0, 1}});
+            };
+            // The same strokes, cut at other edges, antialias a level or two differently
+            const auto one = held(false), seven = held(true);
+            int worst = 0;
+            for (int y = 0; y < one.getHeight(); ++y)
+                for (int x = 0; x < one.getWidth(); ++x) {
+                    const auto a = one.getPixelAt(x, y), b = seven.getPixelAt(x, y);
+                    worst = std::max({worst, std::abs(a.getRed() - b.getRed()), std::abs(a.getGreen() - b.getGreen()),
+                                      std::abs(a.getBlue() - b.getBlue()), std::abs(a.getAlpha() - b.getAlpha())});
+                }
+            expect(worst <= 2, "Stretches 14 or 15 px wide stripe as one 100 px wide, off by up to " + String(worst));
+        }
 
         beginTest("Legend shows A/B/C colors and a padded filled envelope swatch");
         const auto header = render(0x3f, 0, 0, 0, true);

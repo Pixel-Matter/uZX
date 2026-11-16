@@ -89,6 +89,9 @@ public:
 
             expectWithinAbsoluteError((double) value.getStoredValue(), 0.3, 1e-6,
                                       "ParameterValue updated from slider");
+
+            expect(slider.isDoubleClickReturnEnabled(), "a double-click returns the slider to the default");
+            expectWithinAbsoluteError(slider.getDoubleClickReturnValue(), 0.5, 1e-6);
         }
 
         beginTest("ParameterValue<ChipType> interaction");
@@ -311,6 +314,43 @@ public:
             ToggleParamEndpointBinding binding(button, value);
 
             expectEquals(button.getButtonText(), String("TestBtn"), "Button displays shortLabel");
+        }
+
+        beginTest("In a window, a slider's value bubble is the window's and stays inside it");
+        {
+            ValueTree state {te::IDs::PLUGIN};
+            ParameterValue<float> value {{"testParam", "testParam", "Test Param", "A parameter for testing", 0.5f, {0.f, 1.0f}}};
+            value.referTo(state, nullptr);
+
+            Slider slider {Slider::RotaryVerticalDrag, Slider::NoTextBox};
+            SliderParamEndpointBinding binding(slider, value);
+
+            Component content;
+            content.setSize(600, 200);
+            DocumentWindow window("test", Colours::black, 0, false);
+            window.setContentNonOwned(&content, true);
+            content.addAndMakeVisible(slider);
+            slider.setBounds(content.getWidth() - 44, 4, 40, 40);  // at the right edge, as the master volume knob
+
+            const auto& mouse = Desktop::getInstance().getMainMouseSource();
+            const auto press = [&](bool down) {
+                const MouseEvent event(mouse, {20.0f, 20.0f}, {}, MouseInputSource::defaultPressure,
+                                       MouseInputSource::defaultOrientation, MouseInputSource::defaultRotation,
+                                       MouseInputSource::defaultTiltX, MouseInputSource::defaultTiltY,
+                                       &slider, &slider, Time::getCurrentTime(), {20.0f, 20.0f},
+                                       Time::getCurrentTime(), 1, false);
+                down ? slider.mouseDown(event) : slider.mouseUp(event);
+            };
+            press(true);  // a drag shows the bubble, as a hover does
+            Component* bubble = nullptr;
+            for (auto* child : content.getChildren())
+                if (dynamic_cast<BubbleComponent*>(child) != nullptr)
+                    bubble = child;
+            expect(bubble != nullptr, "the bubble is the window content's child");
+            if (bubble != nullptr)  // beside the knob, on the side with room; its shadow's margin may pass the top
+                expect(bubble->getX() >= 0 && bubble->getRight() <= slider.getX() + slider.getWidth() / 2,
+                       "to the knob's left, inside the window: " + bubble->getBounds().toString());
+            press(false);
         }
 
         beginTest("Slider outlives its binding");

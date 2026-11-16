@@ -40,6 +40,25 @@ public:
         engine.getDeviceManager().dispatchPendingUpdates();
         auto& transport = edit->getTransport();
 
+        beginTest("Volume reads in dB against its default, and its knob has the master knob's taper");
+        {
+            expectEquals(AYChipPlugin::volumeToText(0.5f), String("+0.00 dB"));
+            expectEquals(AYChipPlugin::volumeToText(1.0f), String("+6.02 dB"));
+            expectEquals(AYChipPlugin::volumeToText(0.25f), String("-6.02 dB"));
+            expectEquals(AYChipPlugin::volumeToText(0.0f), String("-INF dB"));
+            expectWithinAbsoluteError(AYChipPlugin::textToVolume("-6.02 dB"), 0.25f, 1.0e-3f);
+            expectWithinAbsoluteError(AYChipPlugin::textToVolume("+3"), 0.5f * 1.4125f, 1.0e-3f);
+            expectEquals(AYChipPlugin::textToVolume("-INF dB"), 0.0f);
+            expectEquals(AYChipPlugin::textToVolume("+20 dB"), 1.0f, "no further than the knob turns");
+
+            const auto range = chip.dynamicParams.volume.definition.getFloatValueRange();
+            expectWithinAbsoluteError(range.convertTo0to1(AYChipPlugin::defaultVolume),
+                                      te::decibelsToVolumeFaderPosition(0.0f), 1.0e-3f, "0 dB where the master has it");
+            expectWithinAbsoluteError(range.convertTo0to1(0.25f), te::decibelsToVolumeFaderPosition(-6.0f), 2.0e-3f);
+            expectEquals(AYChipPlugin::defaultVolumeFor(1), 0.5f);
+            expectEquals(AYChipPlugin::defaultVolumeFor(2), 0.25f);
+        }
+
         beginTest("Playback started mid-file sets every register to the PSG state at that point");
         {
             transport.setPosition(2_tp);

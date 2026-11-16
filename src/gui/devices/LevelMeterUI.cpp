@@ -8,6 +8,11 @@ namespace MoTool {
 
 namespace te = tracktion;
 
+// A note's velocity as the engine reports it, in dB: -60 and below is empty, full velocity is full
+static float midiToFill(float dB) {
+    return juce::jlimit(0.0f, 1.0f, (dB + 60.0f) / 60.0f);
+}
+
 LevelMeterUI::LevelMeterUI(tracktion::Plugin::Ptr p)
     : PluginDeviceUI(p)
 {
@@ -21,7 +26,7 @@ LevelMeterUI::LevelMeterUI(tracktion::Plugin::Ptr p)
         levelMeterPlugin->measurer.addClient(measurerClient);
     }
 
-    startTimerHz(30);
+    startTimerHz(LedMeter::levelRefreshHz);
 }
 
 LevelMeterUI::~LevelMeterUI() {
@@ -42,25 +47,29 @@ void LevelMeterUI::timerCallback() {
 }
 
 void LevelMeterUI::updateLevels() {
-    leftLevel = LedMeter::dbToFill(measurerClient.getAndClearAudioLevel(0).dB);
-    rightLevel = LedMeter::dbToFill(measurerClient.getAndClearAudioLevel(1).dB);
+    leftDb = LedMeter::fallTo(leftDb, measurerClient.getAndClearAudioLevel(0).dB);
+    rightDb = LedMeter::fallTo(rightDb, measurerClient.getAndClearAudioLevel(1).dB);
     // MIDI activity decays faster than the audio levels
-    midiActivity = juce::jmax(LedMeter::dbToFill(measurerClient.getAndClearMidiLevel().dB), midiActivity * 0.85f);
+    midiActivity = juce::jmax(midiToFill(measurerClient.getAndClearMidiLevel().dB), midiActivity * 0.85f);
 }
 
 void LevelMeterUI::paint(juce::Graphics& g) {
     auto bounds = getLocalBounds();
 
-    // MIDI activity section at top
-    auto midiArea = bounds.removeFromTop(MIDI_SECTION_HEIGHT);
-    LedMeter::draw(g, midiArea, MIDI_LED_HEIGHT, LED_GAP, midiActivity, false, true);
+    if (showsMidi) {
+        // MIDI activity section at top
+        auto midiArea = bounds.removeFromTop(MIDI_SECTION_HEIGHT);
+        LedMeter::draw(g, midiArea, MIDI_LED_HEIGHT, LED_GAP, midiActivity, false, LedMeter::levelZones, true);
 
-    bounds.removeFromTop(8);  // gap
+        bounds.removeFromTop(8);  // gap
+    }
 
     // Audio level meters at bottom, left and right channels
     int halfWidth = (bounds.getWidth() - LED_GAP) / 2;
-    LedMeter::draw(g, bounds.removeFromLeft(halfWidth), LED_HEIGHT, LED_GAP, leftLevel, false);
-    LedMeter::draw(g, bounds.removeFromRight(halfWidth), LED_HEIGHT, LED_GAP, rightLevel, false);
+    LedMeter::draw(g, bounds.removeFromLeft(halfWidth), LED_HEIGHT, LED_GAP, LedMeter::dbToFill(leftDb), false,
+                   LedMeter::levelZones);
+    LedMeter::draw(g, bounds.removeFromRight(halfWidth), LED_HEIGHT, LED_GAP, LedMeter::dbToFill(rightDb), false,
+                   LedMeter::levelZones);
 }
 
 // Auto-register tracktion plugin adapters

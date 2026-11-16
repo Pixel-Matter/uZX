@@ -49,8 +49,8 @@ VideoRenderJob::VideoRenderJob(tracktion::Edit& e,
     auto& r = renderParams;
     r.tracksToDo = tracktion::toBitSet(tracktion::getAllTracks(edit));
     r.audioFormat = edit.engine.getAudioFileFormatManager().getWavFormat();
-    r.bitDepth = 24;
-    r.ditheringEnabled = true;
+    r.bitDepth = 32;  // floats, which keep what goes over full scale: joinSections brings it back under
+    r.ditheringEnabled = false;
     r.blockSizeForAudio = settings.samplesPerFrame();  // a block a frame: each frame's scopes draw its own sound
     r.sampleRateForAudio = Video::Settings::sampleRate;
     r.canRenderInMono = false;
@@ -110,23 +110,42 @@ bool VideoRenderJob::startSection() {
 
 bool VideoRenderJob::joinSections() {
     auto& formats = edit.engine.getAudioFileFormatManager();
-    std::unique_ptr<juce::AudioFormatWriter> writer;
+    juce::OwnedArray<juce::AudioFormatReader> readers;
+    float peak = 0.0f;
     for (auto* part : sectionSounds) {
-        std::unique_ptr<juce::AudioFormatReader> reader(formats.readFormatManager.createReaderFor(part->getFile()));
+        auto* reader = readers.add(formats.readFormatManager.createReaderFor(part->getFile()));
         if (reader == nullptr)
             return false;
-        if (writer == nullptr) {  // as the sections were written
-            std::unique_ptr<juce::OutputStream> out = sound.getFile().createOutputStream();
-            writer = formats.getWavFormat()->createWriterFor(out,
-                                                             juce::AudioFormatWriterOptions()
-                                                                 .withSampleRate(reader->sampleRate)
-                                                                 .withNumChannels((int) reader->numChannels)
-                                                                 .withBitsPerSample((int) reader->bitsPerSample));
-        }
-        if (writer == nullptr || !writer->writeFromAudioReader(*reader, 0, reader->lengthInSamples))
-            return false;
+        float lowLeft = 0.0f, highLeft = 0.0f, lowRight = 0.0f, highRight = 0.0f;
+        reader->readMaxLevels(0, reader->lengthInSamples, lowLeft, highLeft, lowRight, highRight);
+        peak = juce::jmax(peak, juce::jmax(-lowLeft, highLeft, -lowRight, highRight));
     }
-    return writer != nullptr;
+    if (readers.isEmpty())
+        return false;
+
+    // 24 bits, where anything still over full scale clips
+    const float gain = settings.normalize ? Video::normalizeGain(peak) : 1.0f;
+    std::unique_ptr<juce::OutputStream> out = sound.getFile().createOutputStream();
+    auto writer = formats.getWavFormat()->createWriterFor(out,
+                                                          juce::AudioFormatWriterOptions()
+                                                              .withSampleRate(readers[0]->sampleRate)
+                                                              .withNumChannels((int) readers[0]->numChannels)
+                                                              .withBitsPerSample(24));
+    if (writer == nullptr)
+        return false;
+
+    juce::AudioBuffer<float> block((int) readers[0]->numChannels, 1 << 15);
+    for (auto* reader : readers) {
+        for (juce::int64 at = 0; at < reader->lengthInSamples; at += block.getNumSamples()) {
+            const int count = (int) juce::jmin((juce::int64) block.getNumSamples(), reader->lengthInSamples - at);
+            if (!reader->read(&block, 0, count, at, true, true))
+                return false;
+            block.applyGain(0, count, gain);
+            if (!writer->writeFromAudioSampleBuffer(block, 0, count))
+                return false;
+        }
+    }
+    return true;
 }
 
 void VideoRenderJob::renderFrames() {

@@ -76,7 +76,8 @@ private:
 };
 
 //==============================================================================
-class SliderParamEndpointBinding : public WidgetParamEndpointBinding {
+class SliderParamEndpointBinding : public WidgetParamEndpointBinding,
+                                   private ComponentListener {
 public:
     SliderParamEndpointBinding(Slider& s, auto&& endpoint)
         : WidgetParamEndpointBinding(s, std::forward<decltype(endpoint)>(endpoint))
@@ -98,6 +99,8 @@ private:
     void configureWidget();
     void configureWidgetHandlers();
     void refreshFromSource() override;
+    /** The slider came into a window or left one: its value bubble goes with it. */
+    void componentParentHierarchyChanged(Component&) override;
 
     Slider& slider;
 

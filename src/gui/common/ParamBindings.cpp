@@ -84,6 +84,7 @@ void WidgetParamEndpointBinding::liveValueChanged(ParameterEndpoint&, float) {
 
 //==============================================================================
 SliderParamEndpointBinding::~SliderParamEndpointBinding() {
+    slider.removeComponentListener(this);
     releaseCallback(slider.onValueChange, this);
     releaseCallback(slider.onDragStart, this);
     releaseCallback(slider.onDragEnd, this);
@@ -93,7 +94,8 @@ SliderParamEndpointBinding::~SliderParamEndpointBinding() {
 
 void SliderParamEndpointBinding::configureWidget() {
     slider.setTooltip(endpoint().getDescription());
-    slider.setPopupDisplayEnabled(true, true, nullptr);
+    slider.addComponentListener(this);
+    componentParentHierarchyChanged(slider);
 
     const auto range = endpoint().getRange();
     slider.setRange(static_cast<double>(range.start),
@@ -117,6 +119,18 @@ void SliderParamEndpointBinding::configureWidget() {
     const auto units = endpoint().getUnits();
     if (units.isNotEmpty())
         slider.setTextValueSuffix(units);
+
+    if (const auto defaultValue = endpoint().getDefaultValue())
+        slider.setDoubleClickReturnValue(true, static_cast<double>(*defaultValue));
+}
+
+void SliderParamEndpointBinding::componentParentHierarchyChanged(Component&) {
+    // In a window the value bubble is the window's, placed within it. A bubble of the desktop's is measured
+    // against the wrong screen when there are two, and can end up past the edge of the one it is on.
+    Component* parent = nullptr;
+    if (auto* window = dynamic_cast<ResizableWindow*>(slider.getTopLevelComponent()))
+        parent = window->getContentComponent();
+    slider.setPopupDisplayEnabled(true, true, parent);
 }
 
 void SliderParamEndpointBinding::configureWidgetHandlers() {

@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "Parameters.h"
@@ -42,6 +43,8 @@ public:
     virtual String getName() const = 0;
     virtual String getDescription() const = 0;
     virtual String getUnits() const = 0;
+    /** The value a double-click on the parameter's control returns it to, if it has one. */
+    virtual std::optional<float> getDefaultValue() const = 0;
 
     virtual bool isAutomatable() const noexcept {
         return false;
@@ -179,6 +182,10 @@ public:
             return {};
     }
 
+    std::optional<float> getDefaultValue() const override {
+        return ParameterConversionTraits<Type>::template to<float>(parameterValue.definition.defaultValue);
+    }
+
 private:
     void valueChanged(Value&) override {
         notifyStoredValueChanged(getStoredFloatValue());
@@ -217,6 +224,7 @@ public:
     String getName() const override;
     String getDescription() const override;
     String getUnits() const override;
+    std::optional<float> getDefaultValue() const override;
 
     inline bool isAutomatable() const noexcept override {
         return true;

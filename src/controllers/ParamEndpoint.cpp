@@ -163,6 +163,13 @@ String AutomatableParamEndpoint::getUnits() const {
     return parameter->getLabel();
 }
 
+std::optional<float> AutomatableParamEndpoint::getDefaultValue() const {
+    if (!ensureIsValid())
+        return {};
+
+    return parameter->getDefaultValue();
+}
+
 void AutomatableParamEndpoint::curveHasChanged(te::AutomatableParameter& p) {
     notifyLiveValueChanged(p.getCurrentValue());
 }

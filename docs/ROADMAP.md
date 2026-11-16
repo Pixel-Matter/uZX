@@ -41,7 +41,7 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] Decorate **env restarts** with vertical line, like timer starts
 - [x] **Readouts align right**
 - [x] Cmd-2 zoom level should be one level into, decaration limit one level outer
-- [ ] Investigate **devices level** meter zones, master level zones, level knobs
+- [x] Investigate **devices level** meter zones, master level zones, level knobs
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Scrubbing** with playhead produces sound, holding it at one frame plays that frame and holds it sound
 - [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.

@@ -131,7 +131,8 @@ struct ParameterDef {
     constexpr NormalisableRange<float> getFloatValueRange() const {
         return {static_cast<float>(valueRange.start),
                 static_cast<float>(valueRange.end),
-                static_cast<float>(valueRange.interval)};
+                static_cast<float>(valueRange.interval),
+                static_cast<float>(valueRange.skew)};
     }
 
     String toString() const {

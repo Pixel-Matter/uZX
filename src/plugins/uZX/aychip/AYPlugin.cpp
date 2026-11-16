@@ -273,7 +273,7 @@ void AYChipPlugin::renderChannels(const te::PluginRenderContext& fc, int current
     chip->processBlockStereo(left, right, samples, staticParams.removeDC.getStoredValue(),
                              {lanes, lanes + kNumVizChannels, lanes + 2 * kNumVizChannels});
     writeTimerSync(lanes + kNumVizChannels, samples);
-    if (fc.isPlaying)  // stopped, the scopes keep the last frame that played
+    if (fc.isPlaying || fc.isScrubbing)  // stopped, the scopes keep the last frame that played or was held
         copyTempBufferToVizBuffer();
 }
 

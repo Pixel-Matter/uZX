@@ -106,6 +106,50 @@ public:
             expect(std::any_of(onStop.begin(), onStop.end(), [](float x) { return x > 0.0f; }), "A's tone is shown");
             expect(onStop == later, "A's scope holds still");
         }
+
+        auto atFrame50 = data.frames[0];
+        atFrame50.update(data.frames[50]);
+
+        beginTest("Stopped, a held playhead sounds the frame under it, each move another, and the release silences the chip");
+        {
+            transport.setUserDragging(true);
+            transport.setPosition(1_tp);  // where frame 50 starts
+            TestHelpers::processBlocks(engine, 2);
+            expectRegisters(chip.getChipRegisters(), atFrame50);
+            expect(! transport.isPlaying());
+
+            TestHelpers::processBlocks(engine, 40);
+            expectRegisters(chip.getChipRegisters(), atFrame50);
+            const auto quieter = scopePeak(chip);  // A at volume 8
+
+            transport.setPosition(te::TimePosition::fromSeconds(0.99));  // the playhead moves a frame back
+            TestHelpers::processBlocks(engine, 40);
+            expectRegisters(chip.getChipRegisters(), data.frames[0]);
+            expectGreaterThan(scopePeak(chip), quieter, "the scopes show the held frame: A at volume 15");
+
+            transport.setUserDragging(false);
+            TestHelpers::processBlocks(engine, 2);
+            expectSilent(chip);
+            expectWithinAbsoluteError(transport.getCurrentPlaybackContext()->getPosition().inSeconds(), 0.99, 1.0e-4,
+                                      "the playhead stays where it was put");
+        }
+
+        beginTest("A playhead grabbed while playing holds the frame play stopped at");
+        {
+            transport.setPosition(2_tp);
+            transport.play(false);
+            TestHelpers::processBlocks(engine, 10);
+
+            transport.stop(false, false);  // as a press on the playhead does
+            transport.setUserDragging(true);
+            TestHelpers::processBlocks(engine, 4);
+            expectRegisters(chip.getChipRegisters(), atFrame50);
+
+            transport.setUserDragging(false);
+            TestHelpers::processBlocks(engine, 2);
+            expectSilent(chip);
+            expect(! transport.isPlaying(), "play does not resume");
+        }
     }
 
 private:
@@ -114,6 +158,19 @@ private:
             expectEquals(int(actual.getRaw(reg)), int(expected.getRaw(reg)),
                          juce::String(PsgRegType::getLabel(reg).data()));
         }
+    }
+
+    void expectSilent(AYChipPlugin& chip) {
+        const auto regs = chip.getChipRegisters();
+        for (auto reg : {PsgRegType::VolumeA, PsgRegType::VolumeB, PsgRegType::VolumeC})
+            expectEquals(int(regs.getRaw(size_t(reg))), 0, juce::String(PsgRegType::getLabel(size_t(reg)).data()));
+    }
+
+    /** The highest level in channel A's scope. */
+    static float scopePeak(AYChipPlugin& chip) {
+        std::array<float, ScopeBuffer::kBufferSize> scope {};
+        chip.getVizChannelBuffer(0)->copyTo(scope.data(), ScopeBuffer::kBufferSize);
+        return *std::max_element(scope.begin(), scope.end());
     }
 
     /** Frame 0 sets every register, as a PSG file's first frame does. One second in,

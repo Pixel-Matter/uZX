@@ -41,7 +41,7 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] Decorate **env restarts** with vertical line, like timer starts
 - [x] **Readouts align right**
 - [x] Cmd-2 zoom level should be one level into, decaration limit one level outer
-- [ ] Investigate **devices level** meter zones, master level zones, level knobs
+- [x] Investigate **devices level** meter zones, master level zones, level knobs
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] **Scrubbing** with playhead produces sound, holding it at one frame plays that frame and holds it sound
 - [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.
@@ -49,7 +49,8 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 #### P2 — Nice to have
 
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
-- [ ] **DMG background image**
+- [ ] **DMG background image**, note in background how to pass the gatekeeper with "Open anyway"
+- [ ] **PDF user guide**
 - [ ] **Channel split mode** — each AY channel in its own lane
 - [ ] **Minimap** on the horizontal scroller
 - [x] **Clock-mode frame grid** — frame steps divide the second (sixths and twelfths at 24/48 fps), so ticks no longer run …20, 24, 29; the frame field is three digits wide throughout at 200 fps

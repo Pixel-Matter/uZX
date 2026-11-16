@@ -40,6 +40,14 @@ public:
                    "a loop past the end: the tail follows the loop");
         }
 
+        beginTest("Normalizing brings the loudest peak to 1 dB below full scale, up or down; silence stays");
+        {
+            const float target = juce::Decibels::decibelsToGain(Settings::normalizePeakDb);
+            expectWithinAbsoluteError(normalizeGain(1.5f) * 1.5f, target, 1.0e-6f, "over full scale: down");
+            expectWithinAbsoluteError(normalizeGain(0.25f) * 0.25f, target, 1.0e-6f, "quiet: up");
+            expectEquals(normalizeGain(0.0f), 1.0f);
+        }
+
         beginTest("Every frame rate takes a whole number of samples: a block of sound per frame");
         for (auto fps : Settings::frameRates)
             expectEquals(Settings::sampleRate % fps, 0, juce::String(fps) + " fps");
@@ -102,12 +110,15 @@ public:
             saved.quality = Settings::Quality::high;
             saved.audio = Settings::Audio::alac;
             saved.zoom = Settings::Zoom::beats;
+            saved.normalize = false;
             saved.ffmpeg = temp.getChildFile("ffmpeg");
             saved.save(props);
 
             Settings loaded;
             loaded.load(props);
             expectEquals(loaded.renderHeight, 1080);
+            expect(! loaded.normalize);
+            expect(Settings().normalize, "on until it is turned off");
             expectEquals(loaded.scale, 4);
             expectEquals(loaded.fps, 50);
             expect(loaded.codec == Settings::Codec::av1);

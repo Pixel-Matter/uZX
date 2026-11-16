@@ -6,6 +6,20 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Notes view
 - A note's opacity follows its volume as the chip's DAC does, halving every three steps, so notes that sound far apart look far apart; the noise band follows it too
+- Fixed: channels a few cents apart that share a lane, such as a detuned bass doubled on two channels, keep their order at every zoom, the higher one on top
+- Fixed: the envelope's stripes keep one slope along a note, also through a slide or while other channels change; they no longer steepen and flatten from frame to frame
+- Fixed: a channel's noise is dotted around the note of a timer effect that plays it, such as a sync-buzzer, instead of in the noise band
+
+### Levels
+- Level meters show how close the sound is to clipping: −54 to +6 dBFS, green up to −6 dB, yellow up to 0 dB, red only above 0 dB, where the output distorts; a peak falls back smoothly instead of flickering
+- The transport's meter keeps its last LED red once the output has clipped; click it to clear
+- A chip's **Volume** knob reads in dB, 0 dB where it starts and +6 dB at the end, and turns like the master volume knob; saved projects sound as before
+- Double-click a knob or slider to return it to its default
+- Player: a track's level meter shows the level alone, over its whole height, without the MIDI activity LEDs
+- The chips of a Turbo Sound tune start lower, −6 dB each for two and −9.5 dB for three, so the tune no longer clips
+- Render Video: **Normalize audio**, on by default, brings the loudest peak to −1 dB
+- Fixed: the sound of a tune of several chips clipped in a rendered video
+- Fixed: with two displays, a knob's value bubble could be drawn past the edge of the screen
 
 ## [v0.7.1-alpha, player-v0.7.1-alpha] - 2026-11-15
 

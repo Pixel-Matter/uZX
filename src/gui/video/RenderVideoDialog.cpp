@@ -111,6 +111,11 @@ public:
         zoomBox.onChange = [this] { settings.zoom = (Video::Settings::Zoom) (zoomBox.getSelectedId() - 1); };
         for (auto* button : {&chooseButton, &cancelButton, &renderButton})
             addAndMakeVisible(button);
+        addAndMakeVisible(normalizeButton);
+        normalizeButton.setToggleState(settings.normalize, juce::dontSendNotification);
+        normalizeButton.setTooltip("Scales the sound so its loudest peak is 1 dB below full scale: "
+                                   "a tune of several chips doesn't clip, and a quiet one comes up");
+        normalizeButton.onClick = [this] { settings.normalize = normalizeButton.getToggleState(); };
 
         for (auto height : Video::Settings::renderHeights)
             renderBox.addItem(sizeText(height), height);
@@ -192,7 +197,8 @@ public:
         pair(r, loopsLabel, loopsBox, r.getWidth() - labelWidth);
         r = pair(row(), videoLabel, codecBox, boxWidth);
         pair(r, qualityLabel, qualityBox, r.getWidth() - labelWidth);
-        pair(row(), audioLabel, audioBox, boxWidth);
+        r = pair(row(), audioLabel, audioBox, boxWidth);
+        normalizeButton.setBounds(r.withTrimmedLeft(labelWidth));
 
         auto buttons = area.removeFromBottom(28);
         renderButton.setBounds(buttons.removeFromRight(100));
@@ -336,6 +342,7 @@ private:
         qualityBox, audioBox;
     static constexpr int maxLoops = 16;
     juce::TextButton chooseButton{"Choose..."}, cancelButton{"Cancel"}, renderButton{"Render..."};
+    juce::ToggleButton normalizeButton{"Normalize audio"};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RenderVideoComponent)
 };

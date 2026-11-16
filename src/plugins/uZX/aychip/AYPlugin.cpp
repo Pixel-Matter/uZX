@@ -39,6 +39,16 @@ void AYChipPlugin::toggleSolo(size_t channel) {
         track->setSolo(channelMuter.hasSolo());
 }
 
+String AYChipPlugin::volumeToText(float volume) {
+    return Decibels::toString(Decibels::gainToDecibels(volume / defaultVolume));
+}
+
+float AYChipPlugin::textToVolume(const String& text) {
+    if (text.containsIgnoreCase("inf"))
+        return 0.0f;
+    return jlimit(0.0f, 1.0f, defaultVolume * Decibels::decibelsToGain(text.getFloatValue()));
+}
+
 void AYChipPlugin::valueTreeChanged() {
     te::Plugin::valueTreeChanged();
 }

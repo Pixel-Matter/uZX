@@ -49,12 +49,14 @@ struct Settings
     Quality quality = Quality::veryHigh;
     Audio audio = Audio::aac;
     Zoom zoom = Zoom::asOnScreen;
+    bool normalize = true;  // the sound scaled so its loudest peak is normalizePeakDb
     int loops = 0;      // how many more times the loop range plays; chosen per render, not saved
     juce::File ffmpeg;  // as chosen by the user; empty: looked up
     juce::File folder;  // where the last video went
 
     static constexpr int sampleRate = 48000;  // every frame rate below takes a whole number of samples
     static constexpr int tailSeconds = 3;     // after the tune, for the last notes to ring out
+    static constexpr float normalizePeakDb = -1.0f;  // room for what a lossy codec adds to the peaks
     static constexpr std::array renderHeights{720, 1080, 1440, 2160};
     static constexpr std::array frameRates{60, 50, 48, 30, 25, 24};
 
@@ -82,6 +84,10 @@ double playedLength(const juce::Array<juce::Range<double>>& sections);
 
 /** Where on the timeline the video is, `seconds` into the sections; past them, at the end of the last. */
 double timelineTimeAt(const juce::Array<juce::Range<double>>& sections, double seconds);
+
+/** What to multiply a sound whose loudest sample is `peak` by, so that it peaks at
+    Settings::normalizePeakDb; 1 for silence. */
+float normalizeGain(float peak);
 
 /** The ffmpeg encoder each choice needs. */
 juce::String encoderFor(Settings::Codec);

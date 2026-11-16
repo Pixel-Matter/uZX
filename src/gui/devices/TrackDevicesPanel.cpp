@@ -169,6 +169,8 @@ void TrackDevicesPanel::buildPlugins() {
         bool canHasPlusButtonAfter = true;
 
         if (auto deviceUI = registry.createDeviceUI(plugin)) {
+            if (! editable_)
+                deviceUI->showForPlayer();
             // Custom device UI from registry - check if it needs framing
             if (deviceUI->hasCustomDeviceUI()) {
                 // Frameless for custom UIs like LevelMeter

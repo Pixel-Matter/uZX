@@ -38,7 +38,7 @@ A minimal player for listening to PSG chip music files.
 - On Windows and Linux the Player registers no file types: choose it in the file manager's **Open with**, which passes the file on the command line.
 - Pass a file path as a command-line argument.
 
-Drop or open several `.psg` files at once to play them together, each on its own track with its own AY chip, as a Turbo Sound tune has one file per chip. They replace the open edit, which is named after the start their names share: `song_1.psg` and `song_2.psg` open as `song`.
+Drop or open several `.psg` files at once to play them together, each on its own track with its own AY chip, as a Turbo Sound tune has one file per chip. The chips' sound adds up, so each starts lower, at **Volume** −6 dB for two chips and −9.5 dB for three, and together they are no louder than one chip alone (a tracker module of several chips does the same). They replace the open edit, which is named after the start their names share: `song_1.psg` and `song_2.psg` open as `song`.
 
 A PSG file plays at 50 frames a second, or at the rate its header gives when the file is version 10 or later. The project takes the frame rate of the file opened last. Most files don't say their rate, so a tune written for 100 or 200 Hz opens two or four times too slow: pick its rate under **fps** in the transport bar, or under **Frame Rate** in the clip's right-click menu. The clips play at the new rate. When they are the only clips in the project, the whole timeline scales: the clips start as many frames in, and the tempo scales with the rate, so a beat keeps its frames and the grid its groove, and a module's own row timing is kept: 41 BPM at 50 Hz becomes 164 BPM at 200 Hz. Past 300 BPM, the most the tempo goes to, a beat takes twice the frames. Otherwise the clips keep where they start and the tempo stays.
 
@@ -73,8 +73,8 @@ The transport sits above the timeline; each track ends in its AY chip and level 
 | Groove | Frame counts of the grid groups within one beat, such as 6 6 6 6, or 7 6 7 6 for a swing; a single number, the frames per beat, when the beat has no groups. Without a groove of its own, the beat is split into 4, 2, 3, 5 or 7 equal groups of at least 2 frames, the first that fits, such as 5 5 5 5 5 at 25 fpb; a prime, such as 23, stays whole. Click and type your own. Importing a PSG into an empty project sets it from the detected rows, grouped four to a beat (three or five where the beat divides that way) |
 | Time signature (sig) | Click and type a new one, such as 3/4 or 6/8; a bare number keeps the denominator. PSG clips keep playing at the same times. Importing a PSG into an empty project sets 3/4 when its drum and bass patterns clearly repeat every three beats, 4/4 when they clearly repeat every four, and otherwise leaves it as is |
 | Frame rate (fps) | Frames a second of the project's timecode and grid. Click it to pick another rate: the PSG clips that played at the old one play at the new one (see [Opening Files](#opening-files)), and clips at their own rate keep it. A clip's own rate is under **Frame Rate** in its right-click menu, which changes all the clips of its tune; a clip at another rate than the project's shows a warning such as `⚠ 50 @ 200 fps` |
-| Master volume knob | Output level; each app remembers it across files and launches |
-| Level meter | Stereo output level, after the master volume |
+| Master volume knob | Output volume in dB, from silence to +6 dB; rest the pointer on it or drag it to see the value. 0 dB, the tune as it is, sits about three quarters of the way round: double-click the knob to return to it. Each app remembers the volume across files and launches |
+| Level meter | Stereo output level in dBFS, after the master volume, from −54 to +6 dB, 3 dB an LED. Green up to −6 dB, yellow for the last 6 dB below 0, and red only above 0 dB, where the output clips and the sound distorts. A peak shows at once and falls back at 48 dB a second. Once a channel has clipped, its last LED stays red: turn the master volume or the chips down, and click the meter to clear it |
 | CPU meter | Left of the master volume knob. DSP: how much of each audio buffer's time the sound engine needs; near full, the sound can crackle. GUI: how busy the app's main thread is, which draws the window; near full, the timeline and scopes can stutter |
 
 For keys, see [Keyboard and Mouse](#keyboard-and-mouse).
@@ -106,7 +106,7 @@ For a moment after you enter Viz mode or press either key, the top of the screen
 
 ### Rendering a Video
 
-**File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes or what **View → Viz Options** chooses, and the view follows the playhead from the start of the tune to 3 seconds after its end. **Loops** in the dialog plays the loop range on the ruler that many more times: up to the end of the loop, the loop again, then on to the end of the tune and the 3 seconds; it is 0, no repeats, each time the dialog opens. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, µZX offers to show the file. The sound is the tune at full level: the master volume knob doesn't change it.
+**File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes or what **View → Viz Options** chooses, and the view follows the playhead from the start of the tune to 3 seconds after its end. **Loops** in the dialog plays the loop range on the ruler that many more times: up to the end of the loop, the loop again, then on to the end of the tune and the 3 seconds; it is 0, no repeats, each time the dialog opens. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, µZX offers to show the file. The sound is the tune without the master volume: that knob doesn't change it.
 
 - **Show**, **Scopes**, **Colours** and **Decorations** are Viz mode's options, as in **View → Viz Options**: notes and scopes, notes or scopes; the scopes stacked or side by side; Slate or Classic Black and White; the notes' decorations Auto, once a frame is 3 pixels wide, or Always, which keeps them in a video zoomed out to beats or bars. Changing them here changes Viz mode too; in the Player, the view behind the dialog shows each choice.
 - **Zoom** is the timeline zoom of the video: **As on screen**, the zoom of the view you see, or **Frames**, **Groove Rows**, **Beats** or **Bars**, the **View → Zoom** levels, which give one frame, beat or bar 16 pixels of the **Render** size, and a row 32, using the tempo and meter at the start of the tune.
@@ -114,7 +114,7 @@ For a moment after you enter Viz mode or press either key, the top of the screen
 - **Render** is the size the frames are drawn at, from 1280 × 720 to 3840 × 2160: the notes, scopes and labels are laid out as in a window that size. **Output** scales the frames up by a whole number, up to 8K, each drawn pixel becoming a sharp square block: 1280 × 720 at ×3 makes a 4K video of a 720p view.
 - **Frame rate**: 60, 50, 48, 30, 25 or 24 fps. At 60 the notes scroll most smoothly on most screens.
 - **Video**: H.264 plays everywhere; HEVC (H.265) and AV1 make smaller files, for 4K and 8K. **Quality** is High, Very high or Near lossless. A codec your ffmpeg can't encode is greyed out.
-- **Audio**: AAC 384 kbps, Opus 256 kbps or ALAC (lossless), 48 kHz stereo.
+- **Audio**: AAC 384 kbps, Opus 256 kbps or ALAC (lossless), 48 kHz stereo. **Normalize audio**, on unless you turn it off, scales the whole sound so its loudest peak is 1 dB below full scale: a tune that would clip comes down, a quiet one comes up, and the chips' **Volume** knobs then set only their balance. Off, the sound is as the chips play it, and anything over full scale clips.
 - **Render...** asks where to save the `.mp4` file.
 
 µZX remembers these settings, and the folder, for the next render.
@@ -124,8 +124,11 @@ For a moment after you enter Viz mode or press either key, the top of the screen
 Each track ends on the right in its own AY chip and level meter, so a Turbo Sound tune shows one chip per track. Drag the gap to the left of the chips to make them wider, for wider scopes, or back down to their narrowest. Here you can adjust:
 
 - **Chip clock frequency** — affects pitch of the whole output
+- **Volume** — the chip's output volume in dB. At 0 dB, where a chip starts, its loudest peaks stay just under full scale; the knob goes from silence to +6 dB, which clips unless the tune is quiet. Double-click it, or any knob, to return to the default
 - **Stereo mode** — mono, ABC, ACB, or custom channel panning. The Player remembers the layout and width last chosen and gives them to every PSG file it opens next; a saved `.uzx` file keeps its own
 - Channel-level output settings: T, N and E turn a channel's tone, noise and envelope on or off. Each of A, B and C is on, muted (red) or soloed (emerald): a click mutes a channel that is on and turns a muted or soloed one back on; `Option`+click (`Alt`+click on Windows and Linux) solos it, a muted one too, or unsolos it. Several channels can be soloed, on any chips: while any is, only the soloed channels play. Soloing doesn't change the other buttons, and it isn't a step in Undo
+
+The level meter to the right of the chip shows the track's level on the same scale and in the same colours as the transport's (see [Transport Bar](#transport-bar)): red is a level over 0 dB. A track over 0 dB is harmless by itself; what counts is the transport's meter, the sum of all tracks after the master volume.
 
 The A, B and C scopes show each channel as the chip outputs it, before the stereo mix and the volume. Each scope centres its channel on half the level the channel's volume reaches, or half the full scale while the envelope drives it, so the waveform holds still as it plays; at Gain 1 a channel at volume 15 fills the scope's height, and a silent one is a line across the middle. When playback stops, the scopes keep the last frame that played. If a refresh overlaps a sample update, the scopes hold the previous frame until the next successful refresh. Their trigger is Chip Sync unless you pick another in a scope's right-click menu: each picture is centred on a rise of its channel's tone, or of its envelope when the tone is off, so noise and the envelope don't shake it; a channel with only noise runs free. A channel a timer effect drives is centred where the timer's pattern starts over instead, so a pulse-width or sync-buzzer wave holds still; a timer slower than 20 repeats a second, and one playing a sample, leave the trigger to the tone and the envelope.
 
@@ -308,7 +311,7 @@ Select a preset from the dropdown or type a custom value.
 
 #### A4 Frequency
 
-Sets the concert pitch reference for A4 in Hz (default 440 Hz). Drag the slider or double-click to type a value.
+Sets the concert pitch reference for A4 in Hz (default 440 Hz). Drag the slider or click the number to type a value; double-click the slider to return to 440 Hz.
 
 #### Reference Tuning
 
@@ -416,6 +419,8 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Rest the pointer for 2 s | PSG clip | The frame under it as a table: where it is (`Time` in minutes, seconds and frames, `Frame`, `Bar` in bars, beats and frames); each channel's period, Hz, nearest note of the clip's tuning with the cents off it, volume and tone, noise and envelope switches; the envelope's and the noise's; then each timer running there with what began it, its pitch, note and duty, and a column for each of its steps: the interval, and the value each register it holds gets. What the frame changed is bright, the rest dimmed. Moving the pointer closes it; Shift, Ctrl, Option and Cmd don't, so a screenshot shortcut can capture it |
 | Click | fps in the transport bar | Pick the project's frame rate; the PSG clips at the old one follow |
 | Double-click | Track name (Studio) | Rename |
+| Double-click | Knob or slider | Return it to its default: 0 dB for the master volume and a chip's Volume |
+| Click | Level meter in the transport bar | Clear the red LED that a clipped output leaves lit |
 | Drop `.psg` files | Anywhere in the window | Player: open them together, each on its own track (or drop a `.uzx` project to open it); Studio: add each on a new track |
 
 ---

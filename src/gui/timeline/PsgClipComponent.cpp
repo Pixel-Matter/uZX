@@ -81,6 +81,7 @@ struct FrameNote {
     bool hasEnvMod;
     const TimerSpan* timer = nullptr;  // a timer's note; else the frames'
     Colour colour {};
+    float pitchTop = 0.0f;  // y before rounding to pixels: orders notes that round to one row
 };
 
 Colour getChannelMaskColor(uint8_t channelMask) {
@@ -330,50 +331,41 @@ struct ClipVisibility {
     }
 };
 
-/** Draw stripe pattern for envelope modulation based on envelope shape direction */
-void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float height, uint8_t shape, Colour color) {
+/** Stripes for the envelope's shape over a note: //// rising first, \\\\ falling first, a zigzag for a
+    triangle. Laid from originX, not from the note's x, and never stretched to fit it, so they run on
+    unchanged across the stretches a note is drawn in, whatever their widths. */
+void drawEnvelopeStripes(Graphics& g, float x, float y, float width, float height, uint8_t shape, Colour color,
+                         float originX) {
     g.setColour(color);
     constexpr float nominalSpacing = 4.0f;
     constexpr float strokeWidth = 2.0f;
 
-    // Determine direction based on envelope shape:
     // Up-first shapes: 4-7, C-F (attack first)
     // Down-first shapes: 0-3, 8-B (decay first)
     // Triangle shapes: A (down-up), E (up-down)
     bool isUpFirst = (shape >= 4 && shape <= 7) || (shape >= 0xC);
     bool isTriangle = (shape == 0xA || shape == 0xE);
 
-    // For diagonal stripes, one period on x-axis = height (the line travels height pixels
-    // horizontally). Fit a whole number of periods into the note width.
-    // For zigzag, one V period = 2 * half-width on x.
-    float periodX = isTriangle ? nominalSpacing * 2.0f : height;
-    int numPeriods = jmax(1, roundToInt(width / periodX));
-    float adjustedPeriod = width / (float)numPeriods;
-
+    // A diagonal crosses the note at 45°: one period on x is the note's height. A zigzag's V is
+    // two spacings wide.
+    const float period = isTriangle ? nominalSpacing * 2.0f : height;
+    // From one period before the first that reaches x, to one starting within a stroke past the right edge:
+    // the ends of their strokes still show at the note's edges. Each start is counted from originX, not
+    // added up, so every stretch places a stripe alike.
     Path stripes;
-    if (isTriangle) {
-        float halfPeriod = adjustedPeriod * 0.5f;
-        for (int p = 0; p < numPeriods; ++p) {
-            float startX = x + (float)p * adjustedPeriod;
-            // Up stroke
-            stripes.startNewSubPath(startX, y + height);
-            stripes.lineTo(startX + halfPeriod, y);
-            // Down stroke
-            stripes.lineTo(startX + adjustedPeriod, y + height);
-        }
-    } else if (isUpFirst) {
-        // Forward stripes //// (attack) - one period = one diagonal line spanning height on x
-        for (int p = 0; p < numPeriods; ++p) {
-            float offset = (float)p * adjustedPeriod;
-            stripes.startNewSubPath(x + offset, y + height);
-            stripes.lineTo(x + offset + adjustedPeriod, y);
-        }
-    } else {
-        // Backward stripes \\\\ (decay)
-        for (int p = 0; p < numPeriods; ++p) {
-            float offset = (float)p * adjustedPeriod;
-            stripes.startNewSubPath(x + offset, y);
-            stripes.lineTo(x + offset + adjustedPeriod, y + height);
+    for (float k = std::floor((x - originX) / period) - 1.0f; originX + k * period < x + width + strokeWidth;
+         k += 1.0f) {
+        const float start = originX + k * period;
+        if (isTriangle) {
+            stripes.startNewSubPath(start, y + height);
+            stripes.lineTo(start + period * 0.5f, y);
+            stripes.lineTo(start + period, y + height);
+        } else if (isUpFirst) {
+            stripes.startNewSubPath(start, y + height);
+            stripes.lineTo(start + period, y);
+        } else {
+            stripes.startNewSubPath(start, y);
+            stripes.lineTo(start + period, y + height);
         }
     }
 
@@ -410,8 +402,10 @@ void drawLowEnvelopeArrow(Graphics& g, Rectangle<float> bounds, uint8_t owners, 
     if (drawDetails) {
         g.saveState();
         g.reduceClipRegion(arrow);
-        drawEnvelopeStripes(g, bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(), 8, color);
-        drawEnvelopeStripes(g, bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(), 12, color);
+        drawEnvelopeStripes(g, bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(), 8, color,
+                            bounds.getX());
+        drawEnvelopeStripes(g, bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(), 12, color,
+                            bounds.getX());
         g.restoreState();
     }
     g.setColour(getChannelMaskColor(owners));
@@ -1405,7 +1399,7 @@ static void drawTimerNote(Graphics& g, Rectangle<float> note, Colour colour, con
         if (span.envelopeShape >= 0 || onEnvelope)
             drawEnvelopeStripes(g, x, y, width, height,
                                 span.envelopeShape >= 0 ? static_cast<uint8_t>(span.envelopeShape) : envelope.shape,
-                                colour.brighter(0.8f).withMultipliedAlpha(0.85f));
+                                colour.brighter(0.8f).withMultipliedAlpha(0.85f), 0.0f);
         if ((span.registers & 0x3Fu) != 0)
             drawPeriodHatching(g, note, colour.brighter(0.8f).withMultipliedAlpha(0.85f), 0);
         if ((span.registers & (1u << 6)) != 0)
@@ -1474,9 +1468,12 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
         std::array<FrameNote, 4 + TAYM_MAX_TIMERS> notes;
         int noteCount = 0;
         const auto envelopeColour = getEnvelopeColour(frameData);
-        uint8_t toneChannels = 0, pitchChannels = 0;
+        // A channel's noise is dotted around one note of it: its tone, else a timer's in its colour, else the
+        // envelope's; with none of them, in the noise band
+        uint8_t toneChannels = 0, timerChannels = 0, pitchChannels = 0;
         const auto addNote = [&] (float pitch, FrameNote note) {
             const float top = normToY(pitch) - noteHeight * 0.5f;
+            note.pitchTop = top;
             note.y = static_cast<float>(roundToInt(top));
             note.height = static_cast<float>(roundToInt(top + noteHeight)) - note.y;
             notes[static_cast<size_t>(noteCount++)] = note;
@@ -1498,10 +1495,12 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             const auto* span = timers.findSpan(timer, firstFrame);
             if (span == nullptr)
                 continue;
-            if (const auto pitch = span->getPitch())
+            if (const auto pitch = span->getPitch()) {
+                timerChannels |= span->channels;
+                pitchChannels |= span->channels;
                 addNote(*pitch, {0.0f, 0.0f, getTimerAlpha(*span), span->channels, false, false, span,
                                  getTimerColour(*span, envelopeColour)});
-            else
+            } else
                 bars[static_cast<size_t>(barCount++)] = span;
         }
 
@@ -1511,9 +1510,12 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                            noiseSpread, static_cast<uint8_t>(~pitchChannels & 0x7u), noiseLevels, frameIndex,
                            viewport, pitchNotes);
 
-        // At one height the tones come first, then the timers, then the envelope
+        // Higher pitch first, by the pitch itself and not the row it rounds to: a channel a few cents above
+        // another stays above it at every zoom. At one pitch the tones come first, then the timers, then the
+        // envelope. Rounding keeps the order, so the rows come sorted too.
         const auto order = [] (const FrameNote& n) {
-            return std::tuple(n.y, n.isEnvelopePitch, n.timer != nullptr ? n.timer->timer : -1, n.channelMask);
+            return std::tuple(n.pitchTop, n.isEnvelopePitch, n.timer != nullptr ? n.timer->timer : -1,
+                              n.channelMask);
         };
         std::sort(notes.begin(), notes.begin() + noteCount, [&] (const FrameNote& a, const FrameNote& b) {
             return order(a) < order(b);
@@ -1536,10 +1538,13 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             const float groupH = groupBottom - groupY;
             if (noiseLevel > 0.0f) {
                 uint8_t owners = 0;
-                for (int i = groupStart; i < gi; ++i)
-                    if (notes[i].timer == nullptr)
-                        owners |= notes[i].isEnvelopePitch
-                            ? static_cast<uint8_t>(notes[i].channelMask & ~toneChannels) : notes[i].channelMask;
+                for (int i = groupStart; i < gi; ++i) {
+                    const auto& note = notes[i];
+                    const uint8_t outranked = note.timer != nullptr ? toneChannels
+                                            : note.isEnvelopePitch  ? toneChannels | timerChannels
+                                                                    : 0;
+                    owners |= static_cast<uint8_t>(note.channelMask & ~outranked);
+                }
                 drawNoiseFringe(g, {x, groupY, width, groupH}, noiseSpread,
                                owners, noiseLevels, frameIndex, viewport, pitchNotes);
             }
@@ -1571,15 +1576,8 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                 g.fillRect(noteRect);
 
                 if (drawMods && (note.hasEnvMod || note.isEnvelopePitch)) {
-                    drawEnvelopeStripes(
-                        g,
-                        noteRect.getX(),
-                        noteRect.getY(),
-                        noteRect.getWidth(),
-                        noteRect.getHeight(),
-                        envShape,
-                        noteColor.brighter(0.8f).withAlpha(0.85f)
-                    );
+                    drawEnvelopeStripes(g, noteRect.getX(), noteRect.getY(), noteRect.getWidth(),
+                                        noteRect.getHeight(), envShape, noteColor.brighter(0.8f).withAlpha(0.85f), 0.0f);
                     if (envelopeRestarts)
                         drawStartTick(g, noteRect, noteColor.withAlpha(note.alpha));
                 }
@@ -1729,7 +1727,7 @@ void paintPsgLegend(Graphics& g, Rectangle<int> area) {
             if (item.style == LegendStyle::Envelope)
                 drawEnvelopeStripes(g, (float) swatch.getX(), (float) swatch.getY(),
                                     (float) swatch.getWidth(), (float) swatch.getHeight(),
-                                    0x8, item.color.brighter(0.8f).withAlpha(0.85f));
+                                    0x8, item.color.brighter(0.8f).withAlpha(0.85f), (float) swatch.getX());
         }
         g.setColour(item.style == LegendStyle::Noise ? Colours::white : Colours::black);
         g.drawText(item.label, swatch, Justification::centred);

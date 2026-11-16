@@ -21,9 +21,12 @@ public:
     void mouseDrag(const MouseEvent&) override;
     void mouseDown(const MouseEvent&) override;
     void mouseUp(const MouseEvent&) override;
-    void mouseDoubleClick(const MouseEvent&) override;
     void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override;
     void mouseMagnify(const MouseEvent&, float scale) override;
+
+    /** Where the line is drawn but can't be grabbed, in this component's coordinates: the ruler's loop strip,
+        where presses set the loop range, also on a loop edge the line is on. */
+    Rectangle<int> noGrabArea;
 
     /** Areas the line stays out of, in this component's coordinates: Viz mode's scopes under the notes. */
     std::function<Array<Rectangle<int>>()> getCoveredAreas;

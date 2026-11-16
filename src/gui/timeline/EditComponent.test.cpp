@@ -215,10 +215,27 @@ private:
             expect(image.getPixelAt(endX + 1, strip) == Colors::Theme::background, "and not after it");
         }
 
+        auto* playhead = findChild<PlayheadComponent>(component);
+
+        beginTest("The playhead line is grabbed on the upper ruler and the tracks, but not on the loop strip");
+        {
+            // Where a click puts it, so the second click of a double-click on the strip is the ruler's too,
+            // and so is a press on a loop edge the line is on
+            component.setVisible(true);  // getComponentAt finds nothing in a hidden component
+            transport.setPosition(3_tp);
+            view.zoom.setRange({1_tp, 8_td});
+            TestHelpers::flushMessageQueue();
+            const int x = ruler->getX() + roundToInt(view.zoom.timeToX(3_tp));
+            const int upperHalf = ruler->getY() + ruler->getHeight() / 4;
+            const int strip = ruler->getY() + ruler->getHeight() * 3 / 4;
+            expect(component.getComponentAt(x, upperHalf) == playhead, "upper half of the ruler");
+            expect(component.getComponentAt(x, strip) == ruler, "loop strip");
+            expect(component.getComponentAt(x, lines->getBounds().getCentreY()) == playhead, "tracks");
+        }
+
         beginTest("The loop lines let the mouse through, and the playhead line still passes a swipe to the tracks");
         const auto overTracks = lines->getBounds().getCentre();
         expect(component.getComponentAt(overTracks) != lines);
-        auto* playhead = findChild<PlayheadComponent>(component);
         const auto onPlayhead = playhead->getLocalPoint(&component, overTracks).toFloat();
         view.zoom.setRange({4_tp, 2_td});
         playhead->mouseWheelMove(mouseEventFor(*playhead, onPlayhead, onPlayhead), wheel(0.5f, 0.0f));

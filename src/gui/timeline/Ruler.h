@@ -30,6 +30,9 @@ public:
     void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
     void mouseMagnify(const MouseEvent& e, float scale) override;
 
+    /** The loop strip: the lower half, in this component's coordinates. */
+    Rectangle<int> getLoopStripBounds() const { return getLocalBounds().withTop(loopStripTop()); }
+
     /** The right-click menu: zoom, timecode format, Clear Loop, Follow and snap options. */
     PopupMenu createMenu();
 

@@ -10,6 +10,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Double-click the loop strip to loop what is in view; zoomed to fit the project, that loops all of it again
 - A loop range set anew with the mouse turns looping on
 - **Clear Loop** in the ruler's right-click menu puts the loop range back over the whole project and turns looping off
+- Fixed: a loop edge under the playhead can be dragged: on the loop strip a press is the loop's, and the playhead line is grabbed on the upper half of the ruler and on the tracks
 - Fixed: the loop range on the ruler starts and ends on its grid lines' pixels, where it stopped a pixel short of its end and blurred its start
 - Fixed: a drag on the loop strip moved the loop range instead of setting a new one while the range was the whole project, as in a new project, or ran out of view
 

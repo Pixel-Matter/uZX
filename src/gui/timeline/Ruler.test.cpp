@@ -4,7 +4,6 @@
 
 #include "../../controllers/PlayWholeEdit.h"
 #include "../../models/EditUtilities.h"
-#include "PlayheadComponent.h"
 
 namespace MoTool::Tests {
 
@@ -159,17 +158,6 @@ public:
         expect(!clearLoop().isEnabled, "nothing left to clear");
         transport.looping = true;
         expect(clearLoop().isEnabled, "the whole project, looped");
-
-        beginTest("A double-click reaches the strip through the playhead line its first click put there");
-        PlayheadComponent playhead(*edit, view, grid);
-        Component timeline;
-        timeline.setBounds(0, 0, 800, 200);
-        timeline.addAndMakeVisible(ruler);
-        timeline.addAndMakeVisible(playhead);
-        playhead.setBounds(timeline.getLocalBounds());
-        setUp(wholeProject, {2_tp, 4_tp});
-        playhead.mouseDoubleClick(mouseAt(playhead, 400, strip, 400, 2));
-        expect(loopIs(2.0, 4.0) && transport.looping);
     }
 
 private:

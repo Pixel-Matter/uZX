@@ -31,11 +31,8 @@ void PlayheadComponent::paint(Graphics& g) {
     g.drawRect(xPosition, 0, 2, getHeight());
 }
 
-bool PlayheadComponent::hitTest(int x, int) {
-    if (std::abs(x - xPosition) <= 3)
-        return true;
-
-    return false;
+bool PlayheadComponent::hitTest(int x, int y) {
+    return std::abs(x - xPosition) <= 3 && ! noGrabArea.contains(x, y);
 }
 
 void PlayheadComponent::mouseEnter(const MouseEvent&) {
@@ -56,8 +53,8 @@ void PlayheadComponent::mouseUp(const MouseEvent&) {
     editViewState.zoom.endDrag();
 }
 
-// The playhead line sits on top of the timeline: pass wheel, pinch and double-clicks on to what is under it,
-// past anything that lets the mouse through itself, such as the loop lines
+// The playhead line sits on top of the timeline: pass wheel and pinch on to what is under it, past anything
+// that lets the mouse through itself, such as the loop lines
 Component* PlayheadComponent::getSiblingUnder(const MouseEvent& e) const {
     if (auto* parent = getParentComponent()) {
         auto posInParent = e.getEventRelativeTo(parent).getPosition();
@@ -70,12 +67,6 @@ Component* PlayheadComponent::getSiblingUnder(const MouseEvent& e) const {
         }
     }
     return nullptr;
-}
-
-// The first click of a double-click puts the line under the pointer, so the second one lands on it
-void PlayheadComponent::mouseDoubleClick(const MouseEvent& e) {
-    if (auto* sibling = getSiblingUnder(e))
-        sibling->mouseDoubleClick(e.getEventRelativeTo(sibling));
 }
 
 void PlayheadComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {

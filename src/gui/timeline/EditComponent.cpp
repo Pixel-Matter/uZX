@@ -136,6 +136,7 @@ void EditComponent::resized() {
     playhead.setBounds(timeline(r));
     const auto rulerRow = r.removeFromTop(rulerHeight);
     ruler.setBounds(timeline(rulerRow));
+    playhead.noGrabArea = playhead.getLocalArea(&ruler, ruler.getLoopStripBounds());
     loopLines.setBounds(timeline(r));
     if (legend != nullptr)
         legend->setTopRightPosition(timeline(r).getRight() - ClipHeader::pad,

@@ -400,6 +400,27 @@ public:
         expect(hasHatching, "The envelope note keeps its brighter hatching");
         expect(hasChannelFill, "An envelope B plays alone, with no tone of its own, is B's sound: in B's colour");
 
+        beginTest("A channel a few cents above another shares its lane above it at every height");
+        {
+            // C's period one below A's: about 5 cents higher, under a pixel at these heights
+            const uZX::PsgData detuned {
+                {{{uZX::PsgRegType::Mixer, 0x3a}, {uZX::PsgRegType::VolumeA, 15}, {uZX::PsgRegType::VolumeC, 15},
+                  {uZX::PsgRegType::TonePeriodFineA, 64}, {uZX::PsgRegType::TonePeriodCoarseA, 1},
+                  {uZX::PsgRegType::TonePeriodFineC, 63}, {uZX::PsgRegType::TonePeriodCoarseC, 1}}},
+                {50.0, 1}
+            };
+            StringArray aOnTop;
+            for (int height = 100; height < 160; ++height) {
+                const auto image = renderData(detuned, 100, height);
+                int top = 0;
+                while (top < height && image.getPixelAt(50, top).isTransparent())
+                    ++top;
+                if (top == height || image.getPixelAt(50, top) != Colors::PSG::C)
+                    aOnTop.add(String(height));
+            }
+            expect(aOnTop.isEmpty(), "C not on top at heights " + aOnTop.joinIntoString(", "));
+        }
+
         beginTest("Legend shows A/B/C colors and a padded filled envelope swatch");
         const auto header = render(0x3f, 0, 0, 0, true);
         const std::array<Colour, 3> colors {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};

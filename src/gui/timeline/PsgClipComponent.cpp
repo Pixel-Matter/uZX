@@ -81,6 +81,7 @@ struct FrameNote {
     bool hasEnvMod;
     const TimerSpan* timer = nullptr;  // a timer's note; else the frames'
     Colour colour {};
+    float pitchTop = 0.0f;  // y before rounding to pixels: orders notes that round to one row
 };
 
 Colour getChannelMaskColor(uint8_t channelMask) {
@@ -1469,6 +1470,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
         uint8_t toneChannels = 0, pitchChannels = 0;
         const auto addNote = [&] (float pitch, FrameNote note) {
             const float top = normToY(pitch) - noteHeight * 0.5f;
+            note.pitchTop = top;
             note.y = static_cast<float>(roundToInt(top));
             note.height = static_cast<float>(roundToInt(top + noteHeight)) - note.y;
             notes[static_cast<size_t>(noteCount++)] = note;
@@ -1503,9 +1505,12 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                            noiseSpread, static_cast<uint8_t>(~pitchChannels & 0x7u), noiseLevels, frameIndex,
                            viewport, pitchNotes);
 
-        // At one height the tones come first, then the timers, then the envelope
+        // Higher pitch first, by the pitch itself and not the row it rounds to: a channel a few cents above
+        // another stays above it at every zoom. At one pitch the tones come first, then the timers, then the
+        // envelope. Rounding keeps the order, so the rows come sorted too.
         const auto order = [] (const FrameNote& n) {
-            return std::tuple(n.y, n.isEnvelopePitch, n.timer != nullptr ? n.timer->timer : -1, n.channelMask);
+            return std::tuple(n.pitchTop, n.isEnvelopePitch, n.timer != nullptr ? n.timer->timer : -1,
+                              n.channelMask);
         };
         std::sort(notes.begin(), notes.begin() + noteCount, [&] (const FrameNote& a, const FrameNote& b) {
             return order(a) < order(b);

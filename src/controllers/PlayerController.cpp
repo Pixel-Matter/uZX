@@ -216,9 +216,10 @@ void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
     for (auto* clip : clips) {
         auto& chip = Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack());
         RememberedStereo::apply(chip);
-        // A PSG stores no clock. A fitted tuning names the machine the tune was written
-        // for, so the opened tune plays at that clock; a tracker table leaves the clock
-        // as it is: the module's own (Vortex Tracker's) or the default.
+        // A fitted tuning names the machine the tune was written for: the clock its file
+        // states (a TAYM's), else a guess, as a PSG stores none. The opened tune plays at
+        // that clock; a tracker table leaves the clock as it is: the module's own
+        // (Vortex Tracker's) or the default.
         if (const auto& fit = clip->getTuning().fit)
             chip.staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
     }

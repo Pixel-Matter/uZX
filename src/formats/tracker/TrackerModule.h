@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../../models/TimerSpans.h"
+#include "../../models/tuning/TuningDetector.h"
 #include "../../models/tuning/TuningRegistry.h"
 #include "../../plugins/uZX/aychip/aychip.h"
 #include "../psg/PsgData.h"
@@ -37,6 +38,8 @@ struct TrackerModule {
     juce::String title;          // empty when the module stores none
     /** The tracker's note table, when it is one of uZX's presets; else left to detection. */
     std::optional<BuiltinTuningType> table;
+    /** The tracker's computed tuning, when it states one instead of a table (Bitphase's custom 12TET). */
+    std::optional<TuningFit> fit;
     std::vector<size_t> rowStarts;  // the frame each pattern row starts at, in play order
     size_t loopFrame = 0;           // the frame the tune loops back to; 0 when it loops to its start
 };

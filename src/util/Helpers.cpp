@@ -195,6 +195,7 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
     std::list<uZX::TrackerModule> tunes;  // their data, for the tempo detection below
     std::vector<const uZX::PsgData*> chips;
     std::vector<uZX::AYChipPlugin*> newChips;  // on tracks that were empty: their settings are the tune's
+    std::optional<double> tuneClock;  // the first clip's, when its file states the clock
     for (const auto& f : files) {
         auto read = readTuneOrShowError(f);
         if (! read)
@@ -227,6 +228,8 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
                 // Timer effects, part of the same undo step as the clip
                 if (const auto& timers = tuneChip.timers; ! timers.events.empty())
                     clip->getTimers().set(timers.bank, timers.chipIndex, timers.events, &edit.getUndoManager());
+                if (clips.isEmpty())
+                    tuneClock = tuneChip.clock;
                 clips.add(clip.get());
                 chips.push_back(&data);
             }
@@ -241,18 +244,26 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
             chip->dynamicParams.volume.setStoredValue(uZX::AYChipPlugin::defaultVolumeFor(clips.size()));
     }
 
-    // Files imported together are one tune: the first module's table and rows stand for it.
+    // Files imported together are one tune: the first that states a tuning, and the first that states rows,
+    // stand for it.
     const auto module = std::find_if(tunes.begin(), tunes.end(), [](const auto& t) { return ! t.rowStarts.empty(); });
-    if (module != tunes.end() && module->table)
-        clips.getFirst()->chooseTuningTable(*module->table);
+    const auto tuned = std::find_if(tunes.begin(), tunes.end(), [](const auto& t) { return t.table || t.fit; });
+    if (tuned != tunes.end() && tuned->table)
+        clips.getFirst()->chooseTuningTable(*tuned->table);
+    else if (tuned != tunes.end())
+        clips.getFirst()->chooseFit(*tuned->fit);
+    // A fitted tuning only guesses the clock; a tune that states it was written for that one
+    else if (const auto& fit = clips.getFirst()->getTuning().fit; fit && tuneClock)
+        clips.getFirst()->chooseFit(atClock(*fit, *tuneClock));
     PsgTempo::applyToEdit(clips, chips, module != tunes.end() ? module->rowStarts : std::vector<size_t>{});
 
-    // A module that loops back past its start loops there; the frames keep their times through the tempo above
-    if (module != tunes.end() && module->loopFrame > 0) {
+    // A tune that loops back past its start loops there; the frames keep their times through the tempo above
+    const auto looped = std::find_if(tunes.begin(), tunes.end(), [](const auto& t) { return t.loopFrame > 0; });
+    if (looped != tunes.end()) {
         const auto position = clips.getFirst()->getPosition();
         const auto loopStart = position.getStartOfSource()
-                               + te::TimeDuration::fromSeconds((double) module->loopFrame
-                                                               / module->chips.front().psg.getFrameRate());
+                               + te::TimeDuration::fromSeconds((double) looped->loopFrame
+                                                               / looped->chips.front().psg.getFrameRate());
         edit.getTransport().setLoopRange({loopStart, position.getEnd()});
     }
     return clips;

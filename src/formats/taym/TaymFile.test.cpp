@@ -15,6 +15,7 @@
 #include <array>
 #include <cmath>
 #include <span>
+#include <string_view>
 #include <vector>
 
 namespace MoTool::Tests {
@@ -129,6 +130,56 @@ juce::MemoryBlock makeTwoChipTaym() {
     return two;
 }
 
+/** Sets a u32 field of a TAYM's chunk, at `offset` in its payload. */
+void setField(juce::MemoryBlock& bytes, std::string_view chunk, size_t offset, uint32_t value) {
+    const auto* data = static_cast<const char*>(bytes.getData());
+    const auto payload = static_cast<size_t>(std::search(data, data + bytes.getSize(), chunk.begin(), chunk.end()) - data) + 8;
+    for (size_t i = 0; i < 4; ++i)  // little-endian
+        bytes[payload + offset + i] = static_cast<char>(value >> (8 * i));
+}
+
+/** A TAYM at the Atari ST clock: three octaves of 12TET at 440 Hz there, four frames a note. Read at the
+    ZX Spectrum clock, its periods are a 12TET at 438 Hz. */
+juce::MemoryBlock makeAtariStTaym() {
+    constexpr uint32_t clock = 2000000;
+    std::vector<uint8_t> psg {'P', 'S', 'G', 0x1A, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    for (int note = 48; note < 84; ++note) {
+        const auto period = juce::roundToInt(clock / 16.0 / (440.0 * std::pow(2.0, (note - 69) / 12.0)));
+        psg.insert(psg.end(), {0xFF, 0, static_cast<uint8_t>(period & 0xFF), 1, static_cast<uint8_t>(period >> 8),
+                               7, 0x3E, 8, 15, 0xFF, 0xFF, 0xFF});
+    }
+    psg.push_back(0xFD);
+    auto bytes = makeTestTaym(36 * 4, {}, psg);
+    setField(bytes, "CHIP", 0, clock);  // the first chip's clock_hz
+    return bytes;
+}
+
+/** The TAYM with its INFO made of these key=value pairs. */
+juce::MemoryBlock withInfo(const juce::MemoryBlock& bytes, std::initializer_list<std::string_view> pairs) {
+    std::vector<uint8_t> info;
+    for (const auto pair : pairs) {
+        info.insert(info.end(), pair.begin(), pair.end());
+        info.push_back(0);
+    }
+    info.push_back(0);
+    juce::MemoryBlock out;
+    Taym taym;
+    taym_init(&taym);
+    if (taym_read_bytes(static_cast<const uint8_t*>(bytes.getData()), bytes.getSize(), &taym) == TAYM_OK) {
+        auto edited = taym;
+        edited.info = info.data();
+        edited.info_size = info.size();
+        uint8_t* written = nullptr;
+        size_t size = 0;
+        if (taym_write_bytes(&edited, &written, &size) == TAYM_OK) {
+            out.append(written, size);
+            taym_free_bytes(written);
+        }
+    }
+    taym_free(&taym);
+    return out;
+}
+
 }  // namespace
 
 //==============================================================================
@@ -191,6 +242,31 @@ public:
             expectEquals(lastVolume(14), 13, "in fours, as a PSG file has it");
             expectEquals(lastVolume(5), 4, "in ones, as TAYM's own tools write it");
             expectEquals(lastVolume(9), -1, "neither fits: fours, and the frame past the track's end is cut off");
+        }
+
+        beginTest("Bitphase's rows and tuning are the tune's");
+        {
+            const auto custom = readTaymModule(withInfo(makeAtariStTaym(), {"tracker=Bitphase", "tuning=Custom (2.00 MHz)",
+                                                                            "a4=441", "rows=4*36"}));
+            expect(custom.has_value());
+            if (custom) {
+                expectEquals(custom->rowStarts.size(), size_t {36});
+                expect(custom->rowStarts.size() == 36 && custom->rowStarts[1] == 4 && custom->rowStarts.back() == 140);
+                expect(! custom->table.has_value());
+                expect(custom->fit.has_value());
+                if (custom->fit) {
+                    expectEquals(custom->fit->a4Frequency, 441.0);
+                    expectEquals(custom->fit->chipClock, 2.0e6);
+                }
+            }
+
+            const auto table = readTaymModule(withInfo(makeAtariStTaym(), {"tuning=Sound Tracker", "rows=4*35"}));
+            expect(table.has_value());
+            if (table) {
+                expect(table->table == std::optional<BuiltinTuningType> {BuiltinTuningType::CustomPT_1_ST});
+                expect(! table->fit.has_value());
+                expect(table->rowStarts.empty(), "rows that do not cover the track are not the tune's");
+            }
         }
 
         beginTest("Each chip has its own clock and type");
@@ -427,6 +503,63 @@ public:
                     expectWithinAbsoluteError(second->staticParams.chipClock.getStoredValue(), 2.0, 1.0e-6);
                     expect(second->staticParams.chipType.getStoredValue() == ChipType {TypeEnum::YM});
                 }
+            }
+            file.deleteFile();
+        }
+
+        beginTest("A fitted tuning is at the clock a TAYM states, not at a guessed one");
+        {
+            const auto bytes = makeAtariStTaym();
+            const auto file = juce::File::createTempFile(".taym");
+            expect(file.replaceWithData(bytes.getData(), bytes.getSize()));
+
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto clips = Helpers::importPsgFiles(*edit, {file});
+            expectEquals(clips.size(), 1);
+            if (clips.size() == 1) {
+                const auto& fit = clips[0]->getTuning().fit;
+                expect(fit.has_value(), "no tracker table plays 12TET at 440 Hz on 2 MHz");
+                if (fit)
+                    expectWithinAbsoluteError(fit->chipClock, 2.0e6, 1.0e-3);
+                expectEquals(clips[0]->getTuning().tableLabel, juce::String("12TET 440 Hz Atari ST"));
+                auto* ay = dynamic_cast<te::AudioTrack*>(clips[0]->getTrack())->pluginList.findFirstPluginOfType<AYChipPlugin>();
+                expect(ay != nullptr);
+                if (ay != nullptr)
+                    expectWithinAbsoluteError(ay->staticParams.chipClock.getStoredValue(), 2.0, 1.0e-6);
+            }
+            file.deleteFile();
+        }
+
+        beginTest("A tuning a TAYM states is the clip's, not the detected one");
+        {
+            const auto bytes = withInfo(makeAtariStTaym(), {"tuning=Custom (2.00 MHz)", "a4=441"});
+            const auto file = juce::File::createTempFile(".taym");
+            expect(file.replaceWithData(bytes.getData(), bytes.getSize()));
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto clips = Helpers::importPsgFiles(*edit, {file});
+            expectEquals(clips.size(), 1);
+            if (clips.size() == 1)
+                expectEquals(clips[0]->getTuning().tableLabel, juce::String("12TET 441 Hz Atari ST"), "detection says 440 Hz");
+            file.deleteFile();
+        }
+
+        beginTest("A TAYM that loops back past its start loops there");
+        {
+            std::vector<uint8_t> psg {'P', 'S', 'G', 0x1A, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 7, 0x3E, 8, 15};
+            psg.insert(psg.end(), 39, 0xFF);
+            psg.push_back(0xFD);
+            auto bytes = makeTestTaym(40, {}, psg);
+            setField(bytes, "TRAK", 8, 20);  // loop_frame
+            const auto file = juce::File::createTempFile(".taym");
+            expect(file.replaceWithData(bytes.getData(), bytes.getSize()));
+
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto clips = Helpers::importPsgFiles(*edit, {file});
+            expectEquals(clips.size(), 1);
+            if (clips.size() == 1) {
+                const auto loop = edit->getTransport().getLoopRange();
+                expectWithinAbsoluteError(loop.getStart().inSeconds(), 20.0 / 50.0, 1.0e-9);
+                expectWithinAbsoluteError(loop.getEnd().inSeconds(), clips[0]->getPosition().getEnd().inSeconds(), 1.0e-9);
             }
             file.deleteFile();
         }

@@ -55,8 +55,9 @@ The E mark is purple when two or more channels use it: a tint of their colors wo
 Noise ownership follows a per-channel priority:
 
 1. With a visible tone pitch, noise is shown around that tone silhouette only.
-2. Without a visible tone, a visible envelope-pitch mark receives its channel's noise decoration.
-3. With neither pitched mark visible, the same rectangular stipple appears around the gray noise-band center, extending 0.75 of a note height upward and downward. It does not add a note silhouette.
+2. Without a visible tone, a timer effect's note in the channel's color receives its noise decoration: the timer plays the channel, as a pulse-width or sync-buzzer effect on its volume does.
+3. Without either, a visible envelope-pitch mark receives its channel's noise decoration.
+4. With no pitched mark visible, the same rectangular stipple appears around the gray noise-band center, extending 0.75 of a note height upward and downward. It does not add a note silhouette.
 
 The stipple uses whole 2×2 logical-pixel rectangles. Its decoration area extends 0.75 of a note height above and below the silhouette. Rectangle opacity follows channel level and stays uniform with distance from the silhouette or noise-band center. Marks that cannot fit fully inside the frame, viewport, spread area, or free space between notes are omitted rather than cut smaller. Coincident notes share one exterior fringe around their combined pitch row.
 

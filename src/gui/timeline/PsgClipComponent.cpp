@@ -1460,7 +1460,9 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
         std::array<FrameNote, 4 + TAYM_MAX_TIMERS> notes;
         int noteCount = 0;
         const auto envelopeColour = getEnvelopeColour(frameData);
-        uint8_t toneChannels = 0, pitchChannels = 0;
+        // A channel's noise is dotted around one note of it: its tone, else a timer's in its colour, else the
+        // envelope's; with none of them, in the noise band
+        uint8_t toneChannels = 0, timerChannels = 0, pitchChannels = 0;
         const auto addNote = [&] (float pitch, FrameNote note) {
             const float top = normToY(pitch) - noteHeight * 0.5f;
             note.pitchTop = top;
@@ -1485,10 +1487,12 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             const auto* span = timers.findSpan(timer, firstFrame);
             if (span == nullptr)
                 continue;
-            if (const auto pitch = span->getPitch())
+            if (const auto pitch = span->getPitch()) {
+                timerChannels |= span->channels;
+                pitchChannels |= span->channels;
                 addNote(*pitch, {0.0f, 0.0f, getTimerAlpha(*span), span->channels, false, false, span,
                                  getTimerColour(*span, envelopeColour)});
-            else
+            } else
                 bars[static_cast<size_t>(barCount++)] = span;
         }
 
@@ -1526,10 +1530,13 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             const float groupH = groupBottom - groupY;
             if (noiseLevel > 0.0f) {
                 uint8_t owners = 0;
-                for (int i = groupStart; i < gi; ++i)
-                    if (notes[i].timer == nullptr)
-                        owners |= notes[i].isEnvelopePitch
-                            ? static_cast<uint8_t>(notes[i].channelMask & ~toneChannels) : notes[i].channelMask;
+                for (int i = groupStart; i < gi; ++i) {
+                    const auto& note = notes[i];
+                    const uint8_t outranked = note.timer != nullptr ? toneChannels
+                                            : note.isEnvelopePitch  ? toneChannels | timerChannels
+                                                                    : 0;
+                    owners |= static_cast<uint8_t>(note.channelMask & ~outranked);
+                }
                 drawNoiseFringe(g, {x, groupY, width, groupH}, noiseSpread,
                                owners, noiseLevels, frameIndex, viewport, pitchNotes);
             }

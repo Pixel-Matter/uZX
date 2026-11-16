@@ -399,7 +399,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | Wheel or swipe | Ruler or scrollbar | Scroll horizontally |
 | Wheel or swipe | Tracks (Player) | Scroll horizontally; when the tracks don't fit the window, the wheel scrolls them vertically and a sideways swipe scrolls the timeline |
 | Sideways swipe | Tracks | Scroll horizontally |
-| Drag | Upper half of the ruler | Sideways scrolls, up/down zooms (down zooms out) |
+| Drag | Upper half of the ruler | Sideways scrolls, up/down zooms (down zooms out), diagonally both; a drag keeps to the direction it starts in |
 | Drag | Loop strip (lower half of the ruler), outside the loop range | Set a new loop range, snapped to the grid |
 | Drag a loop edge, or the loop range | Loop strip | Move that edge, or the whole range, snapped to the grid |
 | `Cmd`+drag | Loop strip | Same, snapped to single frames |

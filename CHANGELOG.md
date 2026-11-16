@@ -6,6 +6,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Notes view
 - Fixed: channels a few cents apart that share a lane, such as a detuned bass doubled on two channels, keep their order at every zoom, the higher one on top
+- Fixed: the envelope's stripes keep one slope along a note, also through a slide or while other channels change; they no longer steepen and flatten from frame to frame
 
 ## [v0.7.1-alpha, player-v0.7.1-alpha] - 2026-11-15
 

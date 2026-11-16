@@ -421,6 +421,31 @@ public:
             expect(aOnTop.isEmpty(), "C not on top at heights " + aOnTop.joinIntoString(", "));
         }
 
+        beginTest("The envelope's stripes run on unchanged across the stretches a held note is drawn in");
+        {
+            // A on the envelope, held for 7 frames: once in one stretch, once in 7, split by noise periods
+            // that change nothing drawn, the noise being off
+            const auto held = [&](bool split) {
+                std::vector<uZX::PsgRegsFrame> frames(7);
+                frames[0] = {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 16},
+                             {uZX::PsgRegType::TonePeriodFineA, 64}, {uZX::PsgRegType::TonePeriodCoarseA, 1},
+                             {uZX::PsgRegType::EnvelopePeriodFine, 100}, {uZX::PsgRegType::EnvelopeShape, 8}};
+                for (size_t i = 1; split && i < frames.size(); ++i)
+                    frames[i] = {{uZX::PsgRegType::NoisePeriod, static_cast<uint8_t>(i)}};
+                return renderData({frames, {50.0, 1}});
+            };
+            // The same strokes, cut at other edges, antialias a level or two differently
+            const auto one = held(false), seven = held(true);
+            int worst = 0;
+            for (int y = 0; y < one.getHeight(); ++y)
+                for (int x = 0; x < one.getWidth(); ++x) {
+                    const auto a = one.getPixelAt(x, y), b = seven.getPixelAt(x, y);
+                    worst = std::max({worst, std::abs(a.getRed() - b.getRed()), std::abs(a.getGreen() - b.getGreen()),
+                                      std::abs(a.getBlue() - b.getBlue()), std::abs(a.getAlpha() - b.getAlpha())});
+                }
+            expect(worst <= 2, "Stretches 14 or 15 px wide stripe as one 100 px wide, off by up to " + String(worst));
+        }
+
         beginTest("Legend shows A/B/C colors and a padded filled envelope swatch");
         const auto header = render(0x3f, 0, 0, 0, true);
         const std::array<Colour, 3> colors {Colors::PSG::A, Colors::PSG::B, Colors::PSG::C};

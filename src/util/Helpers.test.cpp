@@ -49,6 +49,26 @@ public:
             }
         }
 
+        beginTest("Chips opened together as one tune each play lower, so their sum is as loud as one chip alone");
+        {
+            const auto volumeOf = [](te::AudioTrack* track) {
+                return track->pluginList.findFirstPluginOfType<uZX::AYChipPlugin>()->dynamicParams.volume.getStoredValue();
+            };
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            Helpers::importPsgFiles(*edit, {files[0]}, {}, te::getAudioTracks(*edit).getFirst());
+            expectEquals(volumeOf(te::getAudioTracks(*edit)[0]), 0.5f, "a single chip: 0 dB");
+
+            auto two = te::Edit::createSingleTrackEdit(engine);
+            Helpers::importPsgFiles(*two, files, {}, te::getAudioTracks(*two).getFirst());
+            for (auto* track : te::getAudioTracks(*two))
+                expectEquals(volumeOf(track), 0.25f, "two chips: -6 dB each");
+
+            auto three = te::Edit::createSingleTrackEdit(engine);
+            Helpers::importPsgFiles(*three, {files[0], files[1], files[0]}, {}, te::getAudioTracks(*three).getFirst());
+            for (auto* track : te::getAudioTracks(*three))
+                expectWithinAbsoluteError(volumeOf(track), 0.5f / 3.0f, 1.0e-6f, "three chips: -9.5 dB each");
+        }
+
         beginTest("The first file goes on the given track");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);

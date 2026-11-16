@@ -1,6 +1,8 @@
 #include "LevelMeter.h"
 #include "LookAndFeel.h"
 
+#include <cmath>
+
 #if JUCE_WINDOWS
  #ifndef NOMINMAX
   #define NOMINMAX
@@ -15,30 +17,40 @@ namespace MoTool {
 namespace LedMeter {
 
 float dbToFill(float dB) {
-    constexpr float minDb = -60.0f;
-    return jlimit(0.0f, 1.0f, (dB - minDb) / -minDb);
+    return jlimit(0.0f, 1.0f, (dB - minDb) / (maxDb - minDb));
 }
 
-static Colour ledColour(float position, bool isMidi) {
+int litLeds(float fill, int ledCount) {
+    // A hair short of an LED's start still leaves it dark: a level of exactly 0 dBFS lights no red
+    return jlimit(0, ledCount, static_cast<int>(std::ceil(fill * static_cast<float>(ledCount) - 1.0e-3f)));
+}
+
+float fallTo(float shownDb, float latestDb) {
+    return jmax(latestDb, shownDb - 48.0f / static_cast<float>(levelRefreshHz));
+}
+
+static Colour ledColour(float position, Zones zones, bool isMidi) {
     if (isMidi)
         return Colors::Meter::midi;
-    if (position < 0.6f)
+    if (position < zones.mid)
         return Colors::Meter::low;
-    if (position < 0.85f)
+    if (position < zones.high)
         return Colors::Meter::mid;
     return Colors::Meter::high;
 }
 
-void draw(Graphics& g, juce::Rectangle<int> area, int ledSize, int gap, float fill, bool horizontal, bool isMidi) {
+void draw(Graphics& g, juce::Rectangle<int> area, int ledSize, int gap, float fill, bool horizontal, Zones zones,
+          bool isMidi) {
     const int step = ledSize + gap;
     const int ledCount = (horizontal ? area.getWidth() : area.getHeight()) / step;
-    const int activeLeds = static_cast<int>(jlimit(0.0f, 1.0f, fill) * static_cast<float>(ledCount));
+    const int activeLeds = litLeds(fill, ledCount);
 
     for (int i = 0; i < ledCount; ++i) {
         using R = juce::Rectangle<int>;
         auto led = horizontal ? R(area.getX() + i * step, area.getY(), ledSize, area.getHeight())
                               : R(area.getX(), area.getBottom() - (i + 1) * step, area.getWidth(), ledSize);
-        auto colour = ledColour(static_cast<float>(i) / static_cast<float>(ledCount), isMidi);
+        // An LED takes the colour of where it starts; the hair keeps 0.9 * 20 from landing below LED 18
+        auto colour = ledColour((static_cast<float>(i) + 1.0e-3f) / static_cast<float>(ledCount), zones, isMidi);
         g.setColour(i < activeLeds ? colour : colour.withAlpha(0.1f));
         g.fillRect(led);
     }
@@ -50,8 +62,9 @@ void draw(Graphics& g, juce::Rectangle<int> area, int ledSize, int gap, float fi
 MasterLevelMeter::MasterLevelMeter(tracktion::Edit& edit)
     : edit_{edit}
 {
-    setInterceptsMouseClicks(false, false);
-    startTimerHz(30);
+    setInterceptsMouseClicks(true, false);
+    setTooltip("Output level. The last LED stays red once the output has clipped: click to clear");
+    startTimerHz(LedMeter::levelRefreshHz);
 }
 
 MasterLevelMeter::~MasterLevelMeter() {
@@ -71,8 +84,20 @@ void MasterLevelMeter::timerCallback() {
             current->addClient(client_);
     }
 
-    left_ = LedMeter::dbToFill(client_.getAndClearAudioLevel(0).dB);
-    right_ = LedMeter::dbToFill(client_.getAndClearAudioLevel(1).dB);
+    showLevels(client_.getAndClearAudioLevel(0).dB, client_.getAndClearAudioLevel(1).dB);
+}
+
+void MasterLevelMeter::showLevels(float leftDb, float rightDb) {
+    const float latest[] = {leftDb, rightDb};
+    for (int ch = 0; ch < 2; ++ch) {
+        shownDb_[ch] = LedMeter::fallTo(shownDb_[ch], latest[ch]);
+        clipped_[ch] = clipped_[ch] || latest[ch] > 0.0f;
+    }
+    repaint();
+}
+
+void MasterLevelMeter::mouseDown(const MouseEvent&) {
+    clipped_[0] = clipped_[1] = false;
     repaint();
 }
 
@@ -80,8 +105,15 @@ void MasterLevelMeter::paint(Graphics& g) {
     static constexpr int ledSize = 2, gap = 1;
     auto b = getLocalBounds();
     auto top = b.removeFromTop(b.getHeight() / 2);
-    LedMeter::draw(g, top.withTrimmedBottom(gap), ledSize, gap, left_, true);
-    LedMeter::draw(g, b.withTrimmedTop(gap), ledSize, gap, right_, true);
+    const juce::Rectangle<int> rows[] = {top.withTrimmedBottom(gap), b.withTrimmedTop(gap)};
+    for (int ch = 0; ch < 2; ++ch) {
+        LedMeter::draw(g, rows[ch], ledSize, gap, LedMeter::dbToFill(shownDb_[ch]), true, LedMeter::levelZones);
+        if (clipped_[ch]) {
+            const int ledCount = rows[ch].getWidth() / (ledSize + gap);
+            g.setColour(Colors::Meter::high);
+            g.fillRect(rows[ch].withX(rows[ch].getX() + (ledCount - 1) * (ledSize + gap)).withWidth(ledSize));
+        }
+    }
 }
 
 //==============================================================================
@@ -129,7 +161,8 @@ void CpuLoadMeter::paint(Graphics& g) {
     const auto row = [&](juce::Rectangle<int> r, const char* caption, float load) {
         g.setColour(Colors::Theme::textSecondary);
         g.drawText(caption, r.removeFromLeft(captionWidth), Justification::centredLeft, false);
-        LedMeter::draw(g, r.withSizeKeepingCentre(r.getWidth(), ledHeight), ledSize, gap, load, true);
+        LedMeter::draw(g, r.withSizeKeepingCentre(r.getWidth(), ledHeight), ledSize, gap, load, true,
+                      LedMeter::loadZones);
     };
     row(b.removeFromTop(b.getHeight() / 2), "DSP", audio_);
     row(b, "GUI", message_);

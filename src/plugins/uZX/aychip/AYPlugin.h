@@ -72,6 +72,18 @@ public:
     /** A chip's stereo layout until it is set. */
     static constexpr auto defaultLayout = LayoutEnum::ACB;
 
+    /** A chip's Volume until it is set, 0 dB on its knob: three channels at once reach 1.5 times full
+        scale, and at half of that a chip's loudest peaks stay just under it. The knob's end is +6 dB. */
+    static constexpr float defaultVolume = 0.5f;
+
+    /** The Volume each chip of a tune of `chips` chips starts at: their sound adds up, so each takes its
+        share of what one chip alone is safe at. */
+    static constexpr float defaultVolumeFor(int chips) { return defaultVolume / (float) jmax(1, chips); }
+
+    /** A Volume as its knob shows it, in dB against the default: "+0.00 dB", "-6.02 dB", "-INF dB". */
+    static String volumeToText(float volume);
+    static float textToVolume(const String& text);
+
     class StaticParams : public ParamsBase<StaticParams> {
     public:
         using ParamsBase<StaticParams>::ParamsBase;
@@ -105,7 +117,9 @@ public:
             visitor(stereoWidth);
         }
 
-        ParameterValue<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", 0.5f, {0.f, 1.0f}}};
+        // The skew is Tracktion's fader law, as on the master knob: 0 dB sits at 74 % of the turn
+        ParameterValue<float> volume          {{"volume", IDs::volume, "Volume", "Output volume", defaultVolume, {0.f, 1.0f, 0.f, 0.4343f},
+                                                {}, volumeToText, textToVolume}};
         ParameterValue<ChannelsLayout> layout {{"layout", IDs::layout, "Layout", "Stereo layout", defaultLayout}};
         ParameterValue<float> stereoWidth     {{"stereo", IDs::stereo, "Width",  "Stereo width",  0.5f, {0.f, 1.0f}}};
     };

@@ -194,6 +194,7 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
     Array<PsgClip*> clips;
     std::list<uZX::TrackerModule> tunes;  // their data, for the tempo detection below
     std::vector<const uZX::PsgData*> chips;
+    std::vector<uZX::AYChipPlugin*> newChips;  // on tracks that were empty: their settings are the tune's
     for (const auto& f : files) {
         auto read = readTuneOrShowError(f);
         if (! read)
@@ -221,6 +222,8 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
                     chip.staticParams.chipClock.setStoredValue(*tuneChip.clock / uZX::MHz);
                 if (emptyTrack && tuneChip.type)
                     chip.staticParams.chipType.setStoredValue(*tuneChip.type);
+                if (emptyTrack)
+                    newChips.push_back(&chip);
                 // Timer effects, part of the same undo step as the clip
                 if (const auto& timers = tuneChip.timers; ! timers.events.empty())
                     clip->getTimers().set(timers.bank, timers.chipIndex, timers.events, &edit.getUndoManager());
@@ -231,8 +234,12 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
     }
     if (clips.isEmpty())
         return clips;
-    if (clips.size() > 1)
+    if (clips.size() > 1) {
         PsgClip::linkAsOneTune(clips);
+        // The chips of a Turbo Sound tune add up: each plays lower, so together they don't clip the output
+        for (auto* chip : newChips)
+            chip->dynamicParams.volume.setStoredValue(uZX::AYChipPlugin::defaultVolumeFor(clips.size()));
+    }
 
     // Files imported together are one tune: the first module's table and rows stand for it.
     const auto module = std::find_if(tunes.begin(), tunes.end(), [](const auto& t) { return ! t.rowStarts.empty(); });

@@ -54,6 +54,15 @@ public:
         expect(info.contains("25 fps"), info);
         expect(info.contains("Audio: aac") && info.contains("48000 Hz") && info.contains("stereo"), info);
 
+        // Normalized: the loudest peak about 1 dB below full scale, give or take what AAC does to it
+        juce::ChildProcess loudness;
+        expect(loudness.start(juce::StringArray{ffmpeg->program.getFullPathName(), "-hide_banner", "-i",
+                                                dest.getFile().getFullPathName(), "-vn", "-af", "volumedetect",
+                                                "-f", "null", "-"}));
+        const auto levels = loudness.readAllProcessOutput();
+        const auto maxVolume = levels.fromFirstOccurrenceOf("max_volume:", false, false).getFloatValue();
+        expect(levels.contains("max_volume:") && maxVolume > -2.5f && maxVolume <= 0.0f, levels);
+
         beginTest("With loops, the video plays the loop range again before the rest and the tail");
         {
             edit->getTransport().setLoopRange({tracktion::TimePosition::fromSeconds(0.5),

@@ -62,6 +62,28 @@ public:
             expect(framed->getDeviceUI()->isVisible());
             expectEquals(framed->getNumChildComponents(), 1, "only the device: no title bar");
         }
+
+        beginTest("The Player's level meter has no MIDI LEDs: its tracks put out no MIDI");
+        // The meter's top LED, unlit: cyan where Studio shows MIDI activity, red where the level scale ends
+        const auto topLedOfMeter = [](TrackDevicesPanel& p) {
+            std::function<Component*(Component&)> find = [&](Component& c) -> Component* {
+                if (auto* ui = dynamic_cast<PluginDeviceUI*>(&c);
+                    ui != nullptr && dynamic_cast<te::LevelMeterPlugin*>(ui->getPlugin().get()) != nullptr)
+                    return ui;
+                for (auto* child : c.getChildren())
+                    if (auto* found = find(*child))
+                        return found;
+                return nullptr;
+            };
+            auto* meter = find(p);
+            if (meter == nullptr)
+                return Colour();
+            meter->setSize(16, 200);
+            return meter->createComponentSnapshot(meter->getLocalBounds(), false, 1.0f).getPixelAt(3, 2);  // in the top LED, with or without the MIDI section
+        };
+        const auto studioLed = topLedOfMeter(studio), playerLed = topLedOfMeter(player);
+        expect(studioLed.getBlue() > studioLed.getRed(), "Studio: MIDI LEDs on top, " + studioLed.toString());
+        expect(playerLed.getRed() > playerLed.getBlue(), "Player: the level's red zone on top, " + playerLed.toString());
     }
 };
 

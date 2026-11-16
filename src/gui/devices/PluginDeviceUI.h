@@ -26,6 +26,9 @@ public:
     virtual bool canHasPlusButtonAfter() { return true; }
     virtual bool hasDeviceMenu() const { return false; }
     virtual void populateDeviceMenu(juce::PopupMenu& /*menu*/) {}
+    /** Told in the Player's track devices, which can't be edited: the device leaves out what the
+        Player's tracks don't have. */
+    virtual void showForPlayer() {}
 
 protected:
     tracktion::Plugin::Ptr plugin;

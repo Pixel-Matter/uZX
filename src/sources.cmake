@@ -195,4 +195,5 @@ set(TEST_SOURCES
     gui/common/LookAndFeel.test.cpp
     gui/common/Icons.test.cpp
     gui/common/Transport.test.cpp
+    gui/common/LevelMeter.test.cpp
 )

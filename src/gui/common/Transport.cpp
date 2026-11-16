@@ -87,7 +87,6 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         addAndMakeVisible(autoWriteButton_);
     }
 
-    masterVolumeSlider_.setPopupDisplayEnabled(true, true, nullptr);
     masterVolumeSlider_.setNumDecimalPlacesToDisplay(2);
 
     if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {

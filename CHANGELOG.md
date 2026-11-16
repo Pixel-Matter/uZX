@@ -5,6 +5,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ## [Unreleased]
 
 ### Notes view
+- A note's opacity follows its volume as the chip's DAC does, halving every three steps, so notes that sound far apart look far apart; the noise band follows it too
 - Fixed: channels a few cents apart that share a lane, such as a detuned bass doubled on two channels, keep their order at every zoom, the higher one on top
 - Fixed: the envelope's stripes keep one slope along a note, also through a slide or while other channels change; they no longer steepen and flatten from frame to frame
 - Fixed: a channel's noise is dotted around the note of a timer effect that plays it, such as a sync-buzzer, instead of in the noise band

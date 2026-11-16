@@ -58,6 +58,25 @@ public:
         beginTest("Envelope-driven noise remains visible with zero fixed volume");
         expect(! isBlank(render(0x37, 16, 0)));
 
+        beginTest("A tone fades with its volume as the chip's DAC does, not evenly");
+        {
+            const auto mostOpaque = [] (const Image& drawn) {
+                uint8 most = 0;
+                for (int y = 0; y < drawn.getHeight(); ++y)
+                    for (int x = 0; x < drawn.getWidth(); ++x)
+                        most = jmax(most, drawn.getPixelAt(x, y).getAlpha());
+                return static_cast<int>(most);
+            };
+            const auto tone = [&] (uint8_t volume) {
+                return mostOpaque(renderData({{{{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, volume},
+                                                {uZX::PsgRegType::TonePeriodFineA, 200}}},
+                                              {50.0, 1}}));
+            };
+            const auto loud = tone(15), softer = tone(12), quiet = tone(3);
+            expect(softer * 3 < loud * 2, "three steps down is well fainter: " + String(softer) + " of " + String(loud));
+            expect(quiet > 0 && quiet < softer, "and quiet is fainter still, yet drawn: " + String(quiet));
+        }
+
         beginTest("Noise bands follow envelope-pattern level of detail");
         expect(isBlank(render(0x37, 15, 0, 0, false, 2)), "Hide noise below three pixels per frame");
         expect(! isBlank(render(0x37, 15, 0, 0, false, 3)), "Show noise at three pixels per frame");

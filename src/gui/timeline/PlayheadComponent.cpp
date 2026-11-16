@@ -45,6 +45,9 @@ void PlayheadComponent::mouseEnter(const MouseEvent&) {
 
 void PlayheadComponent::mouseDown(const MouseEvent&) {
     editViewState.zoom.beginDrag();  // the view does not follow the playhead being dragged
+    // Scrubbing: play stops, and while the button is down the engine plays the clips up to the playhead once
+    // for each move. The plugins hold what that leaves them, a chip its frame's registers, until the release
+    edit.getTransport().stop(false, false);
     edit.getTransport().setUserDragging(true);
 }
 

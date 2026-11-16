@@ -24,6 +24,10 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: the sound of a tune of several chips clipped in a rendered video
 - Fixed: with two displays, a knob's value bubble could be drawn past the edge of the screen
 
+### Transport and timeline
+- Scrubbing: press on the playhead line and the chips sound the frame under it and hold it while the button is down; drag, and the sound follows the playhead from frame to frame. The scopes show the held frame
+- Grabbing the playhead during playback pauses it
+
 ## [v0.7.1-alpha, player-v0.7.1-alpha] - 2026-11-15
 
 ### Transport

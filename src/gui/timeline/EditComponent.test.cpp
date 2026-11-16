@@ -23,6 +23,7 @@ public:
         runMinimumHeightTests(engine);
         runPlayerOverlayTests(engine);
         runVizModeTests(engine);
+        runLoopLinesTests(engine);
 
         auto edit = te::Edit::createSingleTrackEdit(engine);
         te::getAudioTracks(*edit)[0]->insertMIDIClip({0_tp, 10_tp}, nullptr);
@@ -156,6 +157,74 @@ private:
         expectEquals(studioView.getTrackHeaderWidth(), EditViewState::minHeadersWidth);
     }
 
+    void runLoopLinesTests(te::Engine& engine) {
+        auto edit = te::Edit::createSingleTrackEdit(engine);
+        te::getAudioTracks(*edit)[0]->insertMIDIClip({0_tp, 10_tp}, nullptr);
+        te::SelectionManager selectionManager(engine);
+        EditViewState view(*edit, selectionManager);
+        EditComponent component(*edit, view, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+        component.setSize(view.getTrackHeaderWidth() + 1000, 300);
+        TestHelpers::flushMessageQueue();
+        auto& transport = edit->getTransport();
+        transport.setLoopRange({2_tp, 4_tp});
+        transport.looping = false;
+        view.zoom.setRange({0_tp, 10_td});
+
+        auto* lines = findChild<LoopLinesComponent>(component);
+        auto* ruler = findChild<RulerComponent>(component);
+        auto* tracks = findChild<Viewport>(component);
+
+        beginTest("Loop lines run down the tracks, under the ruler's loop strip");
+        expect(lines != nullptr && lines->isVisible());
+        expectEquals(lines->getX(), ruler->getX());
+        expectEquals(lines->getRight(), ruler->getRight());
+        expectEquals(lines->getY(), ruler->getBottom());
+        expectEquals(lines->getBottom(), tracks->getBottom());
+
+        beginTest("A line at each end of the loop range, over the clips: grey, and in the loop's colour while looping");
+        const auto pixelAt = [&](te::TimePosition time) {  // of the whole view, as drawn
+            return component.createComponentSnapshot(component.getLocalBounds(), false, 1.0f)
+                .getPixelAt(lines->getX() + roundToInt(view.zoom.timeToX(time)), lines->getBounds().getCentreY());
+        };
+        const auto isLine = [](Colour c) {
+            return c == Colors::Timeline::loopEndOn || c == Colors::Timeline::loopEndOff;
+        };
+        expect(pixelAt(2_tp) == Colors::Timeline::loopEndOff);
+        expect(pixelAt(4_tp) == Colors::Timeline::loopEndOff);
+        expect(! isLine(pixelAt(3_tp)), "nothing between them");
+        transport.looping = true;
+        expect(pixelAt(2_tp) == Colors::Timeline::loopEndOn);
+        expect(pixelAt(4_tp) == Colors::Timeline::loopEndOn);
+        transport.setLoopRange({2_tp, 6_tp});
+        expect(pixelAt(6_tp) == Colors::Timeline::loopEndOn && ! isLine(pixelAt(4_tp)), "they follow the range");
+
+        beginTest("The loop strip on the ruler ends on the pixels of the loop lines, not beside them");
+        {
+            // Ends between grid lines, so no tick is drawn over them, and between pixels
+            const auto start = te::TimePosition::fromSeconds(2.033), end = te::TimePosition::fromSeconds(4.067);
+            transport.setLoopRange({start, end});
+            const auto image = component.createComponentSnapshot(component.getLocalBounds(), false, 1.0f);
+            const int startX = lines->getX() + roundToInt(view.zoom.timeToX(start));
+            const int endX = lines->getX() + roundToInt(view.zoom.timeToX(end));
+            const int strip = ruler->getY() + ruler->getHeight() * 3 / 4, tracksY = lines->getBounds().getCentreY();
+            expect(image.getPixelAt(startX, tracksY) == Colors::Timeline::loopEndOn, "the start line");
+            expect(image.getPixelAt(startX, strip) == Colors::Timeline::loopEndOn, "the strip starts on its pixel");
+            expect(image.getPixelAt(startX - 1, strip) == Colors::Theme::background, "and not before it");
+            expect(image.getPixelAt(endX, tracksY) == Colors::Timeline::loopEndOn, "the end line");
+            expect(image.getPixelAt(endX, strip) == Colors::Timeline::loopEndOn, "the strip ends on its pixel");
+            expect(image.getPixelAt(endX + 1, strip) == Colors::Theme::background, "and not after it");
+        }
+
+        beginTest("The loop lines let the mouse through, and the playhead line still passes a swipe to the tracks");
+        const auto overTracks = lines->getBounds().getCentre();
+        expect(component.getComponentAt(overTracks) != lines);
+        auto* playhead = findChild<PlayheadComponent>(component);
+        const auto onPlayhead = playhead->getLocalPoint(&component, overTracks).toFloat();
+        view.zoom.setRange({4_tp, 2_td});
+        playhead->mouseWheelMove(mouseEventFor(*playhead, onPlayhead, onPlayhead), wheel(0.5f, 0.0f));
+        expect(view.zoom.getStart() != 4_tp, "the timeline scrolled");
+    }
+
     void runVizModeTests(te::Engine& engine) {
         beginTest("Viz mode: no ruler or scrollbar, and each track row ends in its chip's scopes");
         auto edit = te::Edit::createSingleTrackEdit(engine);
@@ -170,6 +239,7 @@ private:
         TestHelpers::flushMessageQueue();
 
         expect(! findChild<RulerComponent>(viz)->isVisible(), "no ruler");
+        expect(! findChild<LoopLinesComponent>(viz)->isVisible(), "no loop lines");
         expect(! findChild<ScrollBar>(viz)->isVisible(), "no scrollbar");
         expect(findChild<Viewport>(viz)->getBounds() == viz.getLocalBounds(), "the tracks fill the view");
         auto* row = findDescendant<TrackRowComponent>(viz);

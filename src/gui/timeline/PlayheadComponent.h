@@ -21,6 +21,7 @@ public:
     void mouseDrag(const MouseEvent&) override;
     void mouseDown(const MouseEvent&) override;
     void mouseUp(const MouseEvent&) override;
+    void mouseDoubleClick(const MouseEvent&) override;
     void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override;
     void mouseMagnify(const MouseEvent&, float scale) override;
 

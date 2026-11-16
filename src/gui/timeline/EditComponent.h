@@ -6,6 +6,7 @@
 #include "DetailsPanelComponent.h"
 #include "Ruler.h"
 #include "PlayheadComponent.h"
+#include "LoopLinesComponent.h"
 #include "TimelineGrid.h"
 
 namespace MoTool {
@@ -66,6 +67,7 @@ private:
     };
 
     PlayheadComponent playhead {edit, editViewState, grid};
+    LoopLinesComponent loopLines {edit, editViewState};
     RulerComponent ruler {edit, editViewState, grid};
     TracksContainerComponent tracksContainer {edit, editViewState, grid};
     ZoomableViewport trackViewport {editViewState};

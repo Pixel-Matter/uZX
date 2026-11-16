@@ -56,15 +56,26 @@ void PlayheadComponent::mouseUp(const MouseEvent&) {
     editViewState.zoom.endDrag();
 }
 
-// The playhead line sits on top of the timeline: pass wheel and pinch on to what is under it
+// The playhead line sits on top of the timeline: pass wheel, pinch and double-clicks on to what is under it,
+// past anything that lets the mouse through itself, such as the loop lines
 Component* PlayheadComponent::getSiblingUnder(const MouseEvent& e) const {
     if (auto* parent = getParentComponent()) {
         auto posInParent = e.getEventRelativeTo(parent).getPosition();
-        for (int i = parent->getNumChildComponents() - 1; i >= 0; --i)
-            if (auto* child = parent->getChildComponent(i); child != this && child->getBounds().contains(posInParent))
+        for (int i = parent->getNumChildComponents() - 1; i >= 0; --i) {
+            auto* child = parent->getChildComponent(i);
+            bool takesMouse = false, childrenTakeMouse = false;
+            child->getInterceptsMouseClicks(takesMouse, childrenTakeMouse);
+            if (child != this && (takesMouse || childrenTakeMouse) && child->getBounds().contains(posInParent))
                 return child;
+        }
     }
     return nullptr;
+}
+
+// The first click of a double-click puts the line under the pointer, so the second one lands on it
+void PlayheadComponent::mouseDoubleClick(const MouseEvent& e) {
+    if (auto* sibling = getSiblingUnder(e))
+        sibling->mouseDoubleClick(e.getEventRelativeTo(sibling));
 }
 
 void PlayheadComponent::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {

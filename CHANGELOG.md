@@ -6,6 +6,12 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Timeline
 - Dragging the ruler, or the tracks with the middle button, keeps to the direction it starts in: sideways only scrolls, up or down only zooms, and a diagonal start does both
+- The loop range's ends show as lines down the tracks: in the loop's colour while looping, grey while not
+- Double-click the loop strip to loop what is in view; zoomed to fit the project, that loops all of it again
+- A loop range set anew with the mouse turns looping on
+- **Clear Loop** in the ruler's right-click menu puts the loop range back over the whole project and turns looping off
+- Fixed: the loop range on the ruler starts and ends on its grid lines' pixels, where it stopped a pixel short of its end and blurred its start
+- Fixed: a drag on the loop strip moved the loop range instead of setting a new one while the range was the whole project, as in a new project, or ran out of view
 
 ### Notes view
 - A note's opacity follows its volume as the chip's DAC does, halving every three steps, so notes that sound far apart look far apart; the noise band follows it too

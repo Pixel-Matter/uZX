@@ -53,6 +53,7 @@ private:
     /** Drops a saved input device that differs from the output device (unplayable on macOS). */
     void sanitizeAudioInputDevice();
     void showAboutDialog();
+    void showUpdateDialog();
 
     /** Returns an error description if the audio output device is not usable, or an empty
         string when audio is working. When requireRunning is true, a device whose callback is

@@ -192,12 +192,8 @@ AboutDialogComponent::AboutDialogComponent()
     }
 
     StringArray infoLines;
-    auto version = String("Version ") + MoToolApp::getTargetVersion();
-
+    auto version = "Version " + MoToolApp::getReleaseVersion();
     auto channelStr = String::fromUTF8(MoTool::Build::channel);
-    if (channelStr.isNotEmpty()) {
-        version += "-" + channelStr;
-    }
 
     auto coreInfo = String("core ") + MoTool::Build::coreVersion;
     auto gitHash = String::fromUTF8(MoTool::Build::gitHash);

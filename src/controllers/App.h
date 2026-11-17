@@ -53,6 +53,10 @@ public:
     /** MIDI learn, CC mapping and MIDI channel choice; off in the Player, which only plays files. */
     static bool hasMidiControl();
     static const char* getTargetVersion();
+    /** The target's version as its release tags have it, with the build's channel: "0.7.1-alpha". */
+    static String getReleaseVersion();
+    /** What the target's release tags put before the version: "player-v" for the Player, "v" for the rest. */
+    static const char* getReleaseTagPrefix();
 
     const MoLookAndFeel& getLookAndFeel() const { return lookAndFeel_; }
 

@@ -35,6 +35,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Scrubbing: press on the playhead line and the chips sound the frame under it and hold it while the button is down; drag, and the sound follows the playhead from frame to frame. The scopes show the held frame
 - Grabbing the playhead during playback pauses it
 
+### Menus
+- **Help → Check for Updates...** (on macOS, in the app menu) tells whether a newer release of the app is out on GitHub, and links to its page, or to all releases when yours is the latest; the Player looks for Player releases and Studio for Studio's
+
 ### Tracker modules and TAYM
 - A TAYM that loops back past its start sets the loop range from its loop to its end, as a tracker module does
 - A TAYM exported by Bitphase opens on its own tuning table (or its A4, for a custom 12TET table) and with the tempo and groove of the rows it mostly repeats, instead of detected ones

@@ -247,11 +247,13 @@ public:
         beginTest("Bitphase's row frames and tuning are the tune's");
         {
             const auto custom = readTaymModule(withInfo(makeAtariStTaym(), {"tracker=Bitphase", "tuning=Custom (2.00 MHz)",
-                                                                            "a4=441", "row_frames=4*36"}));
+                                                                            "a4=441", "row_frames=3,5"}));
             expect(custom.has_value());
             if (custom) {
                 expectEquals(custom->rowStarts.size(), size_t {36});
-                expect(custom->rowStarts.size() == 36 && custom->rowStarts[1] == 4 && custom->rowStarts.back() == 140);
+                expect(custom->rowStarts.size() == 36 && custom->rowStarts[1] == 3 && custom->rowStarts[2] == 8
+                           && custom->rowStarts.back() == 139,
+                       "rows by the cycle from frame 0 to the track's end");
                 expect(! custom->table.has_value());
                 expect(custom->fit.has_value());
                 if (custom->fit) {
@@ -260,12 +262,12 @@ public:
                 }
             }
 
-            const auto table = readTaymModule(withInfo(makeAtariStTaym(), {"tuning=Sound Tracker", "row_frames=4*35"}));
+            const auto table = readTaymModule(withInfo(makeAtariStTaym(), {"tuning=Sound Tracker", "row_frames=4,0"}));
             expect(table.has_value());
             if (table) {
                 expect(table->table == std::optional<BuiltinTuningType> {BuiltinTuningType::CustomPT_1_ST});
                 expect(! table->fit.has_value());
-                expect(table->rowStarts.empty(), "rows that do not cover the track are not the tune's");
+                expect(table->rowStarts.empty(), "a cycle with a length that is not one is no hint");
             }
         }
 

@@ -38,20 +38,19 @@ juce::String readInfo(const Taym& taym, juce::StringRef key) {
     return {};
 }
 
-/** The frame each played row starts at, from the INFO key `row_frames`: the frames each played row lasts, in
-    play order, comma-separated, a run of n rows of v frames written v*n. Empty unless they cover the track exactly. */
-std::vector<size_t> readRowStarts(const Taym& taym) {
-    std::vector<size_t> starts;
-    size_t frame = 0;
-    for (const auto& run : juce::StringArray::fromTokens(readInfo(taym, "row_frames"), ",", {})) {
-        const auto length = run.upToFirstOccurrenceOf("*", false, false).getLargeIntValue();
-        const auto count = run.contains("*") ? run.fromFirstOccurrenceOf("*", false, false).getLargeIntValue() : 1;
-        if (length <= 0 || count <= 0 || frame + static_cast<size_t>(length * count) > taym.trak.frame_count)
+/** The frame each row starts at in the first `frames`, from the INFO key `row_frames`: the row lengths the tune
+    mostly repeats, comma-separated, as a cycle from frame 0. Empty unless every length is a positive number. */
+std::vector<size_t> readRowStarts(const Taym& taym, size_t frames) {
+    std::vector<size_t> cycle;
+    for (const auto& length : juce::StringArray::fromTokens(readInfo(taym, "row_frames"), ",", {})) {
+        if (length.getIntValue() <= 0)
             return {};
-        for (juce::int64 i = 0; i < count; ++i, frame += static_cast<size_t>(length))
-            starts.push_back(frame);
+        cycle.push_back(static_cast<size_t>(length.getIntValue()));
     }
-    return frame == taym.trak.frame_count ? starts : std::vector<size_t> {};
+    std::vector<size_t> starts;
+    for (size_t frame = 0, row = 0; ! cycle.empty() && frame < frames; frame += cycle[row++ % cycle.size()])
+        starts.push_back(frame);
+    return starts;
 }
 
 /** The tune's tuning from the INFO keys `tuning` and `a4`, as Bitphase names its tables: one of the
@@ -204,9 +203,7 @@ std::optional<TrackerModule> readTaymModule(const juce::MemoryBlock& bytes) {
 
     module.title = readInfo(taym, "title");
     readTuning(taym, module);
-    module.rowStarts = readRowStarts(taym);
-    const auto frames = module.chips.front().psg.frames.size();
-    module.rowStarts.erase(std::lower_bound(module.rowStarts.begin(), module.rowStarts.end(), frames), module.rowStarts.end());
+    module.rowStarts = readRowStarts(taym, module.chips.front().psg.frames.size());
     if (taym.trak.loop_frame != TAYM_NO_LOOP && taym.trak.loop_frame < module.chips.front().psg.frames.size())
         module.loopFrame = taym.trak.loop_frame;
     return module;

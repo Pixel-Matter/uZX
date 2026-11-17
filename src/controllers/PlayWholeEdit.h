@@ -29,24 +29,29 @@ public:
             transport.setPosition({});
     }
 
+    /** Where the edit ends, and a loop range over the whole of it with it. */
+    static tracktion::TimePosition getEnd(tracktion::Edit& edit) {
+        return tracktion::toPosition(edit.getLength());
+    }
+
+    /** Whether `loop` is the whole of an edit that ends at `end`: the range an edit has until another is set. */
+    static bool isWholeEdit(tracktion::TimeRange loop, tracktion::TimePosition end) {
+        return loop.getStart().inSeconds() < tolerance && std::abs((loop.getEnd() - end).inSeconds()) < tolerance;
+    }
+
 private:
     tracktion::Edit& edit_;
     tracktion::TimePosition end_;  // the edit's end when the loop range was last checked
 
-    static tracktion::TimePosition getEnd(tracktion::Edit& edit) {
-        return tracktion::toPosition(edit.getLength());
-    }
+    // Within a microsecond: a saved edit reads its times back from text
+    static constexpr double tolerance = 1.0e-6;
 
     // Async: the edit's cached length is invalidated by its own listener, which may run after this one.
     void handleAsyncUpdate() override {
         auto& transport = edit_.getTransport();
         const auto loop = transport.getLoopRange();
         const auto end = getEnd(edit_);
-        // Within a microsecond: a saved edit reads its times back from text
-        constexpr double tolerance = 1.0e-6;
-        const bool wholeEdit = loop.getStart().inSeconds() < tolerance
-                               && std::abs((loop.getEnd() - end_).inSeconds()) < tolerance;
-        if (loop.getLength().inSeconds() < tolerance || wholeEdit)
+        if (loop.getLength().inSeconds() < tolerance || isWholeEdit(loop, end_))
             transport.setLoopRange({tracktion::TimePosition(), end});
         end_ = end;
     }

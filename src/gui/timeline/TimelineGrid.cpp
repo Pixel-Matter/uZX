@@ -62,6 +62,16 @@ te::TimePosition TimelineGrid::snapTimeToVisibleGrid(te::TimePosition time) cons
     return ladder.roundNearest(getVisibleSnapLevel(ladder), time, editViewState.edit.tempoSequence);
 }
 
+te::TimePosition TimelineGrid::snapUpToVisibleGrid(te::TimePosition time) const {
+    const auto ladder = makeSnapLadder();
+    return ladder.roundUp(getVisibleSnapLevel(ladder), time, editViewState.edit.tempoSequence);
+}
+
+te::TimePosition TimelineGrid::snapDownToVisibleGrid(te::TimePosition time) const {
+    const auto ladder = makeSnapLadder();
+    return ladder.roundDown(getVisibleSnapLevel(ladder), time, editViewState.edit.tempoSequence);
+}
+
 std::vector<MoLookAndFeel::TimelineGridTick> TimelineGrid::makeTicks() {
     std::vector<MoLookAndFeel::TimelineGridTick> ticks;
 

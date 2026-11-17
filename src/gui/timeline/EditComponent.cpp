@@ -41,6 +41,8 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
         };
     addAndMakeVisible(ruler);
     addAndMakeVisible(trackViewport);
+    addChildComponent(loopLines);  // over the tracks; the legend and the playhead go over it
+    loopLines.setVisible(! editViewState.vizMode);
     timeScrollBar.setAutoHide(false);
     timeScrollBar.addListener(this);
     addAndMakeVisible(timeScrollBar);
@@ -134,6 +136,8 @@ void EditComponent::resized() {
     playhead.setBounds(timeline(r));
     const auto rulerRow = r.removeFromTop(rulerHeight);
     ruler.setBounds(timeline(rulerRow));
+    playhead.noGrabArea = playhead.getLocalArea(&ruler, ruler.getLoopStripBounds());
+    loopLines.setBounds(timeline(r));
     if (legend != nullptr)
         legend->setTopRightPosition(timeline(r).getRight() - ClipHeader::pad,
                                     r.getY() + ClipComponent::ringWidth + ClipHeader::pad);

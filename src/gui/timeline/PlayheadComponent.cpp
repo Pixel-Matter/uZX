@@ -31,11 +31,8 @@ void PlayheadComponent::paint(Graphics& g) {
     g.drawRect(xPosition, 0, 2, getHeight());
 }
 
-bool PlayheadComponent::hitTest(int x, int) {
-    if (std::abs(x - xPosition) <= 3)
-        return true;
-
-    return false;
+bool PlayheadComponent::hitTest(int x, int y) {
+    return std::abs(x - xPosition) <= 3 && ! noGrabArea.contains(x, y);
 }
 
 void PlayheadComponent::mouseEnter(const MouseEvent&) {
@@ -56,13 +53,18 @@ void PlayheadComponent::mouseUp(const MouseEvent&) {
     editViewState.zoom.endDrag();
 }
 
-// The playhead line sits on top of the timeline: pass wheel and pinch on to what is under it
+// The playhead line sits on top of the timeline: pass wheel and pinch on to what is under it, past anything
+// that lets the mouse through itself, such as the loop lines
 Component* PlayheadComponent::getSiblingUnder(const MouseEvent& e) const {
     if (auto* parent = getParentComponent()) {
         auto posInParent = e.getEventRelativeTo(parent).getPosition();
-        for (int i = parent->getNumChildComponents() - 1; i >= 0; --i)
-            if (auto* child = parent->getChildComponent(i); child != this && child->getBounds().contains(posInParent))
+        for (int i = parent->getNumChildComponents() - 1; i >= 0; --i) {
+            auto* child = parent->getChildComponent(i);
+            bool takesMouse = false, childrenTakeMouse = false;
+            child->getInterceptsMouseClicks(takesMouse, childrenTakeMouse);
+            if (child != this && (takesMouse || childrenTakeMouse) && child->getBounds().contains(posInParent))
                 return child;
+        }
     }
     return nullptr;
 }

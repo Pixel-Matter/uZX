@@ -1,6 +1,7 @@
 #include "Ruler.h"
 
 #include "../../controllers/MainCommands.h"
+#include "../../controllers/PlayWholeEdit.h"
 #include "../../models/EditUtilities.h"
 #include "../common/Utilities.h"
 
@@ -39,12 +40,14 @@ void RulerComponent::paint(Graphics& g) {
     const auto bottom = (float) bounds.getHeight();
     const auto stripTop = (float) loopStripTop();
 
-    // The loop range, under the ticks, with a triangle at each end pointing in
+    // The loop range, under the ticks, with a triangle at each end pointing in. It spans whole pixels, from the
+    // column where the grid draws a line at its start to the one of its end, as the loop lines down the tracks do.
     auto& transport = edit.getTransport();
     const auto loop = transport.getLoopRange();
     if (!loop.isEmpty()) {
         const auto& zoom = editViewState.zoom;
-        const auto x1 = zoom.timeToX(loop.getStart()), x2 = zoom.timeToX(loop.getEnd());
+        const auto x1 = (float) roundToInt(zoom.timeToX(loop.getStart()));
+        const auto x2 = (float) roundToInt(zoom.timeToX(loop.getEnd())) + 1.0f;
         g.setColour(transport.looping ? Colors::Timeline::loopOn : Colors::Timeline::loopOff);
         g.fillRect(Rectangle<float>::leftTopRightBottom(x1, stripTop, x2, bottom));
 
@@ -87,23 +90,42 @@ void RulerComponent::paint(Graphics& g) {
     }
 }
 
+PopupMenu RulerComponent::createMenu() {
+    PopupMenu m;
+    if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager())
+        m.addSubMenu("Zoom", Commands::MainAppCommands::createZoomMenu(manager, !editViewState.disableClipSelection));
+    m.addSeparator();
+    m.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(edit));
+    m.addSeparator();
+    m.addItem("Clear Loop", isLoopSet(), false, [ruler = SafePointer<RulerComponent>(this)] {
+        if (ruler != nullptr)
+            ruler->clearLoop();
+    });
+    if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
+        m.addSeparator();
+        m.addCommandItem(manager, Commands::MainAppCommands::transportFollow);
+        m.addCommandItem(manager, Commands::MainAppCommands::transportFollowByPage);
+        m.addCommandItem(manager, Commands::MainAppCommands::transportFollowByScroll);
+        m.addCommandItem(manager, Commands::MainAppCommands::viewSnapPlayheadToGrid);
+        m.addCommandItem(manager, Commands::MainAppCommands::transportPreservePsgTiming);
+    }
+    return m;
+}
+
+bool RulerComponent::isLoopSet() const {
+    auto& transport = edit.getTransport();
+    return transport.looping || !PlayWholeEdit::isWholeEdit(transport.getLoopRange(), PlayWholeEdit::getEnd(edit));
+}
+
+void RulerComponent::clearLoop() {
+    auto& transport = edit.getTransport();
+    transport.setLoopRange({te::TimePosition(), PlayWholeEdit::getEnd(edit)});
+    transport.looping = false;
+}
+
 void RulerComponent::mouseDown(const MouseEvent& e) {
     if (e.mods.isPopupMenu()) {
-        PopupMenu m;
-        if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager())
-            m.addSubMenu("Zoom",
-                         Commands::MainAppCommands::createZoomMenu(manager, !editViewState.disableClipSelection));
-        m.addSeparator();
-        m.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(edit));
-        if (auto* manager = edit.engine.getUIBehaviour().getApplicationCommandManager()) {
-            m.addSeparator();
-            m.addCommandItem(manager, Commands::MainAppCommands::transportFollow);
-            m.addCommandItem(manager, Commands::MainAppCommands::transportFollowByPage);
-            m.addCommandItem(manager, Commands::MainAppCommands::transportFollowByScroll);
-            m.addCommandItem(manager, Commands::MainAppCommands::viewSnapPlayheadToGrid);
-            m.addCommandItem(manager, Commands::MainAppCommands::transportPreservePsgTiming);
-        }
-        m.showMenuAsync({});
+        createMenu().showMenuAsync({});
     } else {
         isDragging = false;
         loopDrag = isInLoopStrip(e) ? loopDragAt(e.x) : LoopDrag::none;
@@ -131,8 +153,13 @@ void RulerComponent::mouseDrag(const MouseEvent& e) {
     }
 
     const auto loop = draggedLoop(loopDrag, loopAtDragStart, dragStartTime, snappedTimeAt(e.x, e.mods));
-    if (!loop.isEmpty())
-        edit.getTransport().setLoopRange(loop);
+    if (loop.isEmpty())
+        return;
+
+    auto& transport = edit.getTransport();
+    transport.setLoopRange(loop);
+    if (loopDrag == LoopDrag::create)
+        transport.looping = true;
 }
 
 void RulerComponent::mouseUp(const MouseEvent& e) {
@@ -145,6 +172,18 @@ void RulerComponent::mouseUp(const MouseEvent& e) {
 
     isDragging = false;
     loopDrag = LoopDrag::none;
+}
+
+void RulerComponent::mouseDoubleClick(const MouseEvent& e) {
+    // Only where a drag would draw a new range: not on a range that could be moved, or on its edges
+    if (e.mods.isPopupMenu() || !isInLoopStrip(e) || loopDragAt(e.x) != LoopDrag::create)
+        return;
+
+    if (const auto loop = loopOfView(); !loop.isEmpty()) {
+        auto& transport = edit.getTransport();
+        transport.setLoopRange(loop);
+        transport.looping = true;
+    }
 }
 
 void RulerComponent::mouseMove(const MouseEvent& e) {
@@ -160,11 +199,32 @@ RulerComponent::LoopDrag RulerComponent::loopDragAt(int x) const {
         return LoopDrag::create;
 
     const auto& zoom = editViewState.zoom;
-    const auto startDistance = std::abs((float) x - zoom.timeToX(loop.getStart()));
-    const auto endDistance = std::abs((float) x - zoom.timeToX(loop.getEnd()));
+    return loopDragAt((float) x, zoom.timeToX(loop.getStart()), zoom.timeToX(loop.getEnd()), (float) getWidth(),
+                      PlayWholeEdit::isWholeEdit(loop, PlayWholeEdit::getEnd(edit)));
+}
+
+RulerComponent::LoopDrag RulerComponent::loopDragAt(float x, float x1, float x2, float width, bool wholeProject) {
+    const auto startDistance = std::abs(x - x1), endDistance = std::abs(x - x2);
     if (std::min(startDistance, endDistance) <= (float) loopEdgeWidth)
         return startDistance < endDistance ? LoopDrag::start : LoopDrag::end;
-    return loop.contains(zoom.xToTime(x)) ? LoopDrag::move : LoopDrag::create;
+
+    // Half a pixel of slack: zoomed to a range, its ends are on the view's borders, give or take rounding
+    const bool inView = x1 >= -0.5f && x2 <= width + 0.5f;
+    return x > x1 && x < x2 && inView && !wholeProject ? LoopDrag::move : LoopDrag::create;
+}
+
+te::TimeRange RulerComponent::loopOfView() const {
+    const auto& zoom = editViewState.zoom;
+    const auto view = zoom.getRange();
+    // Half a pixel of slack, as in loopDragAt: a line on the view's border is in view, whatever the rounding
+    const auto slack = zoom.getTimePerPixel() * 0.5;
+    const auto viewStart = jmax(te::TimePosition(), view.getStart() - slack), viewEnd = view.getEnd() + slack;
+    const auto projectEnd = PlayWholeEdit::getEnd(edit);
+
+    const auto start = grid.snapUpToVisibleGrid(viewStart);
+    // The project's end ends the loop when in view, on the grid or not: zoomed to the project, all of it loops
+    const auto end = viewEnd >= projectEnd ? projectEnd : grid.snapDownToVisibleGrid(viewEnd);
+    return start < end ? te::TimeRange(start, end) : te::TimeRange();
 }
 
 te::TimePosition RulerComponent::snappedTimeAt(int x, const ModifierKeys& mods) const {

@@ -144,7 +144,8 @@ struct Timeline {
     inline static const Colour cursor       = Theme::primary;
     inline static const Colour clipBg       = Colour::fromString("#FF3B82F6"); // blue-500
     inline static const Colour clipSelected = Colour::fromString("#FF2563EB"); // blue-600
-    /** The loop range on the ruler, and the triangles marking its ends: lit while looping, dim while not. */
+    /** The loop range on the ruler, and the marks of its ends, triangles on the ruler and lines down the tracks:
+        lit while looping, dim while not. */
     inline static const Colour loopOn       = Theme::primary.withAlpha(0.45f);
     inline static const Colour loopOff      = Palette::slate700;
     inline static const Colour loopEndOn    = Theme::primary;

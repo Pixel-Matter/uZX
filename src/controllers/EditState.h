@@ -153,6 +153,10 @@ public:
     void dragBy(int anchorX, int deltaX, int deltaY);
     void endDrag();
 
+    /** Turns the view by whole pages, as Follow by Page does, until it shows `pos`: for a playhead stepped past
+        an edge. A time on the view's right border counts as past it, since the playhead isn't drawn there. */
+    void pageToPosition(te::TimePosition pos);
+
 private:
     te::Edit& edit;
     ValueTree state;

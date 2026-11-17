@@ -121,6 +121,12 @@ bool ZoomViewState::jumpToCurrentPosition() {
     return jumpToPosition(getPlayheadPosition());
 }
 
+void ZoomViewState::pageToPosition(te::TimePosition pos) {
+    const auto span = getViewSpan();
+    if (const auto pages = (int) std::floor((pos - viewStartTime.get()) / span); pages != 0)
+        setStart(jmax(te::TimePosition(), viewStartTime.get() + span * (double) pages));
+}
+
 te::TimePosition ZoomViewState::getPlayheadPosition() const {
     if (offlineFrames)
         return framePlayhead;

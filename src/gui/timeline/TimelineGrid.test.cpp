@@ -445,6 +445,37 @@ public:
             expect(probe.changed, "Grid should notify listeners after tempo changes.");
             grid.removeListener(&probe);
         }
+
+        beginTest("Arrow steps go to the next or previous grid line or frame, off the one the playhead is on");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            edit->tempoSequence.getTempo(0)->setBpm(120.0);
+            Helpers::setProjectFps(*edit, 50.0);
+            te::SelectionManager selectionManager(engine);
+            EditViewState view(*edit, selectionManager);
+            view.zoom.setViewWidthPx(1000);
+            view.zoom.zoomToLevel(ZoomViewState::ZoomLevel::beats);  // a grid line each half second
+            TimelineGrid grid(view);
+            const auto stepped = [&](double from, bool forward) {
+                return grid.stepOnVisibleGrid(te::TimePosition::fromSeconds(from), forward).inSeconds();
+            };
+            const auto framed = [&](double from, bool forward) {
+                return grid.stepByFrame(te::TimePosition::fromSeconds(from), forward).inSeconds();
+            };
+
+            expectWithinAbsoluteError(stepped(1.0, true), 1.5, 1e-9);
+            expectWithinAbsoluteError(stepped(1.0, false), 0.5, 1e-9);
+            expectWithinAbsoluteError(stepped(1.0 - 1e-9, true), 1.5, 1e-9);  // float noise is on the line
+            expectWithinAbsoluteError(stepped(1.2, true), 1.5, 1e-9);
+            expectWithinAbsoluteError(stepped(1.2, false), 1.0, 1e-9);
+            expectEquals(stepped(0.0, false), 0.0);
+
+            expectWithinAbsoluteError(framed(1.0, true), 1.02, 1e-9);
+            expectWithinAbsoluteError(framed(1.0, false), 0.98, 1e-9);
+            expectWithinAbsoluteError(framed(1.01, true), 1.02, 1e-9);
+            expectWithinAbsoluteError(framed(1.01, false), 1.0, 1e-9);
+            expectEquals(framed(0.0, false), 0.0);
+        }
     }
 };
 

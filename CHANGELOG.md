@@ -33,6 +33,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Transport and timeline
 - Scrubbing: press on the playhead line and the chips sound the frame under it and hold it while the button is down; drag, and the sound follows the playhead from frame to frame. The scopes show the held frame
+- Player: `Left` / `Right` step the playhead a grid line, `Option+Left` / `Option+Right` one frame; stopped, each step sounds the frame it lands on while the key is down
 - Grabbing the playhead during playback pauses it
 
 ### Menus

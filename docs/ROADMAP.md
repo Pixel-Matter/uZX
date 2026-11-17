@@ -45,7 +45,8 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] Zoom+scroll mouse guestures works with some threshold on X, Y, X+Y
 - [x] Update zxtune fork
 - [ ] "check for updates" menu item
-- [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
+- [x] **Playhead stepping** — Player: ←/→ a grid line, Option+←/→ a frame; stopped, the step is heard as scrubbing
+- [ ] Rework tempo detection
 - [ ] Cache per-frame PSG draw logic info in PsgClip: visible notes listing, flags, pitch, freqs, etc. Everything that is not XY-scale depentent, and not specific decoration-dependent. Or not in PsgClip. To speedup render further for slower PCs.
 
 #### P2 — Nice to have

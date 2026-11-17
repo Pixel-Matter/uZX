@@ -255,6 +255,21 @@ public:
         zoom.setFollowForced(false);
         zoom.setFollowsByPage(false);  // an app setting: leave it as found
         transport.stop(false, false);
+
+        beginTest("Paging to a time turns whole pages, either way, and stops at zero");
+        zoom.setRange({10_tp, 4_td});
+        zoom.pageToPosition(13_tp);
+        expectEquals(zoom.getStart().inSeconds(), 10.0, "in view: stays");
+        zoom.pageToPosition(14.1_tp);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 14.0, 1e-9, "just past the right edge: next page");
+        zoom.pageToPosition(18_tp);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 18.0, 1e-9, "on the right border: next page");
+        zoom.pageToPosition(17.9_tp);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 14.0, 1e-9, "just before the left edge: page back");
+        zoom.pageToPosition(31_tp);
+        expectWithinAbsoluteError(zoom.getStart().inSeconds(), 30.0, 1e-9, "far off: the page that holds it");
+        zoom.pageToPosition(1_tp);
+        expectEquals(zoom.getStart().inSeconds(), 0.0, "never before zero");
     }
 };
 

@@ -47,6 +47,10 @@ public:
         transportFollow,
         transportFollowByPage,
         transportFollowByScroll,
+        transportStepBack,
+        transportStepForward,
+        transportFrameBack,
+        transportFrameForward,
 
         // Add Menu
         addAudioTrack        = 300,
@@ -102,6 +106,7 @@ public:
             editUndo, editRedo, editDelete,
             transportPlay, transportRecord, transportRecordStop, transportToStart, transportToEnd, transportLoop,
             transportPreservePsgTiming, transportFollow, transportFollowByPage, transportFollowByScroll,
+            transportStepBack, transportStepForward, transportFrameBack, transportFrameForward,
             addAudioTrack,
             // addAutomationTrack,
             trackRenderToAudio, trackRenderToPsg,
@@ -138,6 +143,8 @@ public:
     static bool isSupported(CommandID id, bool isPlayer) {
         switch (id) {
             case viewVizMode: case viewExitVizMode: case viewNextVizLayout: case viewSwitchVizScopes:
+            // Studio keeps the plain arrows for editing
+            case transportStepBack: case transportStepForward: case transportFrameBack: case transportFrameForward:
                 return isPlayer;
 
             // the Player can't add tracks or chips back, records nothing, and has no Studio windows
@@ -366,6 +373,26 @@ public:
                 result.setInfo("End", "Go to the end", "Transport", 0);
                 result.addDefaultKeypress(KeyPress::rightKey, ModifierKeys::commandModifier);
                 result.addDefaultKeypress(KeyPress::endKey, 0);
+                break;
+
+            case transportStepBack:
+                result.setInfo("Step Back", "Move the playhead back to the previous grid line", "Transport", 0);
+                result.addDefaultKeypress(KeyPress::leftKey, 0);
+                break;
+
+            case transportStepForward:
+                result.setInfo("Step Forward", "Move the playhead on to the next grid line", "Transport", 0);
+                result.addDefaultKeypress(KeyPress::rightKey, 0);
+                break;
+
+            case transportFrameBack:
+                result.setInfo("Frame Back", "Move the playhead back one frame", "Transport", 0);
+                result.addDefaultKeypress(KeyPress::leftKey, ModifierKeys::altModifier);
+                break;
+
+            case transportFrameForward:
+                result.setInfo("Frame Forward", "Move the playhead on one frame", "Transport", 0);
+                result.addDefaultKeypress(KeyPress::rightKey, ModifierKeys::altModifier);
                 break;
 
             case transportLoop:

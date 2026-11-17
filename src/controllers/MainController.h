@@ -70,6 +70,15 @@ private:
 
     std::unique_ptr<TuningController> tuningController_;
 
+    /** Moves the playhead for the arrow keys. Stopped, the step sounds the frame it lands on and holds it
+        while an arrow is down, as dragging the playhead does. */
+    void stepPlayhead(CommandID commandID);
+
+    /** Ends the scrub of an arrow key step once no arrow is down. */
+    struct ArrowScrubRelease : Timer {
+        void timerCallback() override;
+    } arrowScrubRelease_;
+
     // Called when the selection changes
     void changeListenerCallback(ChangeBroadcaster*) override;
 

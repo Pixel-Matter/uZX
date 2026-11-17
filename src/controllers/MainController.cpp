@@ -12,6 +12,7 @@
 #include "../gui/main/AboutDialog.h"
 #include "../gui/main/UpdateDialog.h"
 #include "../gui/timeline/PsgClipComponent.h"
+#include "../gui/timeline/TimelineGrid.h"
 #include "../gui/video/RenderVideoDialog.h"
 
 #include "../models/Behavior.h"
@@ -539,6 +540,10 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::transportToStart:
+        case MainAppCommands::transportStepBack:
+        case MainAppCommands::transportStepForward:
+        case MainAppCommands::transportFrameBack:
+        case MainAppCommands::transportFrameForward:
             result.setActive(edit != nullptr);
             break;
 
@@ -625,6 +630,39 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
 
         // Add more dynamic command states...
     }
+}
+
+void AppController::stepPlayhead(CommandID commandID) {
+    auto* view = MoToolApp::getActiveController().getEditViewState();
+    if (view == nullptr)
+        return;
+    const bool forward =
+        commandID == MainAppCommands::transportStepForward || commandID == MainAppCommands::transportFrameForward;
+    const bool byFrame =
+        commandID == MainAppCommands::transportFrameBack || commandID == MainAppCommands::transportFrameForward;
+    const TimelineGrid grid(*view);
+    const auto from = view->zoom.getPlayheadPosition();  // where it is seen, also while playing
+    const auto to = jmin(byFrame ? grid.stepByFrame(from, forward) : grid.stepOnVisibleGrid(from, forward),
+                         PlayWholeEdit::getEnd(view->edit));
+
+    auto& transport = view->edit.getTransport();
+    if (transport.isPlaying()) {
+        transport.setPosition(to);
+        return;
+    }
+    // Dragged and stopped, the engine plays the block up to the cursor at each move (the uZX Tracktion fork)
+    transport.setUserDragging(true);
+    transport.setPosition(to);
+    view->zoom.pageToPosition(to);  // the view doesn't follow a dragged playhead by itself
+    arrowScrubRelease_.startTimer(150);  // after each step, so a tap sounds this long at least
+}
+
+void AppController::ArrowScrubRelease::timerCallback() {
+    if (KeyPress::isKeyCurrentlyDown(KeyPress::leftKey) || KeyPress::isKeyCurrentlyDown(KeyPress::rightKey))
+        return;
+    stopTimer();
+    if (auto* edit = MoToolApp::getActiveController().getEdit())  // looked up again: the edit may have changed
+        edit->getTransport().setUserDragging(false);
 }
 
 bool AppController::perform(const InvocationInfo& info) {
@@ -747,6 +785,13 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::transportToEnd:
             te::AppFunctions::goToEnd();
+            break;
+
+        case MainAppCommands::transportStepBack:
+        case MainAppCommands::transportStepForward:
+        case MainAppCommands::transportFrameBack:
+        case MainAppCommands::transportFrameForward:
+            stepPlayhead(info.commandID);
             break;
 
         case MainAppCommands::transportLoop:

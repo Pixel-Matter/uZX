@@ -31,6 +31,10 @@ public:
     /** Where a click or drag at timeline x puts the playhead: not before 0, and on the visible grid when
         snapping is on. */
     te::TimePosition playheadTimeAtX(int x) const;
+    /** Where an arrow key moves the playhead from `time`: the visible grid's next line, or the project's
+        next frame, after it or before it; never before 0. A time on a line or frame steps off it. */
+    te::TimePosition stepOnVisibleGrid(te::TimePosition time, bool forward) const;
+    te::TimePosition stepByFrame(te::TimePosition time, bool forward) const;
 
     void addListener(Listener* l);
     void removeListener(Listener* l);

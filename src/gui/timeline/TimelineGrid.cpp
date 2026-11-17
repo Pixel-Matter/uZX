@@ -37,6 +37,21 @@ te::TimePosition TimelineGrid::playheadTimeAtX(int x) const {
     return editViewState.shouldSnapPlayheadToGrid() ? snapTimeToVisibleGrid(time) : time;
 }
 
+// A playhead this close to a line or frame is on it: past float noise, far short of a frame (5 ms at 200 fps)
+static constexpr double onStepTolerance = 1.0e-4;
+
+te::TimePosition TimelineGrid::stepOnVisibleGrid(te::TimePosition time, bool forward) const {
+    const auto nudge = te::TimeDuration::fromSeconds(onStepTolerance);
+    return forward ? snapUpToVisibleGrid(time + nudge) : snapDownToVisibleGrid(jmax(te::TimePosition(), time - nudge));
+}
+
+te::TimePosition TimelineGrid::stepByFrame(te::TimePosition time, bool forward) const {
+    const auto fps = Helpers::getProjectFps(editViewState.edit);
+    const auto frame = forward ? std::floor((time.inSeconds() + onStepTolerance) * fps) + 1.0
+                               : std::ceil((time.inSeconds() - onStepTolerance) * fps) - 1.0;
+    return te::TimePosition::fromSeconds(jmax(0.0, frame) / fps);
+}
+
 void TimelineGrid::addListener(Listener* l) { listeners.add(l); }
 void TimelineGrid::removeListener(Listener* l) { listeners.remove(l); }
 

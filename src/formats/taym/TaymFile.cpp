@@ -38,6 +38,40 @@ juce::String readInfo(const Taym& taym, juce::StringRef key) {
     return {};
 }
 
+/** The frame each row starts at in the first `frames`, from the INFO key `row_frames`: the row lengths the tune
+    mostly repeats, comma-separated, as a cycle from frame 0. Empty unless every length is a positive number. */
+std::vector<size_t> readRowStarts(const Taym& taym, size_t frames) {
+    std::vector<size_t> cycle;
+    for (const auto& length : juce::StringArray::fromTokens(readInfo(taym, "row_frames"), ",", {})) {
+        if (length.getIntValue() <= 0)
+            return {};
+        cycle.push_back(static_cast<size_t>(length.getIntValue()));
+    }
+    std::vector<size_t> starts;
+    for (size_t frame = 0, row = 0; ! cycle.empty() && frame < frames; frame += cycle[row++ % cycle.size()])
+        starts.push_back(frame);
+    return starts;
+}
+
+/** The tune's tuning from the INFO keys `tuning` and `a4`, as Bitphase names its tables: one of the
+    ProTracker 3.4 tables, or a 12TET at A4 on the chip's clock. */
+void readTuning(const Taym& taym, TrackerModule& module) {
+    static const std::pair<const char*, BuiltinTuningType> tables[] {
+        {"ProTracker 3.3", BuiltinTuningType::CustomPT_0_PT},  // its periods are PT 3.4's #0, not PT 3.3's
+        {"Sound Tracker", BuiltinTuningType::CustomPT_1_ST},
+        {"ASM or PSC (1.75 MHz)", BuiltinTuningType::CustomPT_2_ASM},
+        {"RealSound", BuiltinTuningType::CustomPT_3_REAL},
+        {"Natural", BuiltinTuningType::CustomVT_4_NATURAL},
+    };
+    const auto name = readInfo(taym, "tuning");
+    for (const auto& [label, table] : tables)
+        if (name == label)
+            module.table = table;
+    const auto a4 = readInfo(taym, "a4").getDoubleValue();
+    if (name.startsWith("Custom") && a4 > 0.0 && module.chips.front().clock)
+        module.fit = TuningFit {TuningSystemEnum::EqualTemperament, Scale::Tonic::C, a4, *module.chips.front().clock};
+}
+
 /** The chip's frames: its PSG chunk read as a PSG file, made the track's length.
 
     A pause in a PSG counts in fours, but TAYM's own tools write and read it in ones. The track says how many
@@ -168,6 +202,10 @@ std::optional<TrackerModule> readTaymModule(const juce::MemoryBlock& bytes) {
         return {};
 
     module.title = readInfo(taym, "title");
+    readTuning(taym, module);
+    module.rowStarts = readRowStarts(taym, module.chips.front().psg.frames.size());
+    if (taym.trak.loop_frame != TAYM_NO_LOOP && taym.trak.loop_frame < module.chips.front().psg.frames.size())
+        module.loopFrame = taym.trak.loop_frame;
     return module;
 }
 

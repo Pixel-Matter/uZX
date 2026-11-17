@@ -44,7 +44,6 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] Investigate **devices level** meter zones, master level zones, level knobs
 - [x] Zoom+scroll mouse guestures works with some threshold on X, Y, X+Y
 - [x] Update zxtune fork
-- [ ] SNDH support
 - [ ] "check for updates" menu item
 - [ ] **Playhead stepping** — ←/→ by one frame or one grid step (only Home/End now)
 - [ ] Cache per-frame PSG draw logic info in PsgClip: visible notes listing, flags, pitch, freqs, etc. Everything that is not XY-scale depentent, and not specific decoration-dependent. Or not in PsgClip. To speedup render further for slower PCs.

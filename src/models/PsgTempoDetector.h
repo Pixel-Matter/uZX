@@ -32,6 +32,7 @@ struct Result
     /** Machine frames before the first row starts; that row is taken as a downbeat.
         0 also when the first two bars don't follow the grid (an intro at another speed). */
     int firstRowFrame = 0;
+    int gridPhase = 0;         ///< machine frame the row grid starts at, kept when firstRowFrame is zeroed
     bool silentLeadIn = true;  ///< nothing is audible before firstRowFrame
 
     /** The beat's groove for the grid: frame counts of 4 groups of rows (3 or 5 when

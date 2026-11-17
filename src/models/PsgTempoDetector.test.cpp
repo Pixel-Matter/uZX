@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include <numeric>
+
 #include "PsgClip.h"
 #include "formats/psg/PsgData.h"
 #include "formats/psg/PsgFile.h"
@@ -261,6 +263,32 @@ public:
             expect(withIntro->rowFrames == std::vector<int>{6}, "the speed 90% of the rows have");
             expectEquals(withIntro->firstRowFrame, 0);
 
+            // An intro at speed 4 before a 5-5-3-3 groove (Hibernation by MmcM): under 90% of the rows
+            // follow the groove by count, but every 16 frames a round starts, intro included.
+            auto afterIntro = rowsOf(160, {4});
+            for (auto start : rowsOf(960, {5, 5, 3, 3}))
+                afterIntro.push_back(160 + start);
+            auto long16 = makeTune(160 + 960, {4}, 4);
+            auto intro = PsgTempo::detect({&long16}, afterIntro);
+            expect(intro->rowFrames == std::vector<int>{5, 5, 3, 3}, rowPattern(intro->rowFrames));
+            expectEquals(intro->framesPerBeat, 32);
+
+            // A groove that varies (Not Picking Up by Pator): every fourth 3-5-3-3 is a 4-4-3-3, so no
+            // row pattern repeats, but the tune is made of 14-frame rounds.
+            const std::vector<int> varied {3, 5, 3, 3, 3, 5, 3, 3, 3, 5, 3, 3, 4, 4, 3, 3};
+            auto variedTune = makeTune(2800, {4}, 4);
+            auto variedRows = PsgTempo::detect({&variedTune}, rowsOf(2800, varied));
+            expect(variedRows->rowFrames == std::vector<int>{3, 5, 3, 3}, rowPattern(variedRows->rowFrames));
+            expectEquals(variedRows->framesPerBeat, 28);
+
+            // Two speeds, neither for 90% of the rows, share no pulse: the commoner one stands.
+            auto twoSpeeds = rowsOf(700, {7});
+            for (auto start : rowsOf(1350, {9}))
+                twoSpeeds.push_back(700 + start);
+            auto twoTune = makeTune(700 + 1350, {4}, 4);
+            auto sections = PsgTempo::detect({&twoTune}, twoSpeeds);
+            expect(sections->rowFrames == std::vector<int>{9}, rowPattern(sections->rowFrames));
+
             // A grid needs no notes once the module gives its rows; one row is no grid.
             auto quiet = makeTune(60, {6}, 4);
             expect(static_cast<bool>(PsgTempo::detect({&quiet}, rowsOf(60, {6}))));
@@ -433,6 +461,7 @@ public:
         testCorpusFixtures();
         testFrameRateChanges();
         runCorpusReport();
+        runModuleRowsReport();
     }
 
     /** "200%" by Abstract 64, Natt, Pator and wbcbz7: a Turbo Sound tune at 200 Hz whose PSG
@@ -648,6 +677,140 @@ public:
             else
                 fields.add("-");
             logMessage(fields.joinIntoString("\t"));
+        }
+    }
+
+    /** How many of the row starts lie on the grid of repeating row lengths through frame `phase`. */
+    static size_t rowsOnGrid(const std::vector<size_t>& starts, const std::vector<int>& rows, size_t phase) {
+        const auto period = (size_t) std::accumulate(rows.begin(), rows.end(), 0);
+        std::vector<bool> onGrid(period, false);
+        for (size_t k = 0, offset = 0; k < rows.size(); offset += (size_t) rows[k++])
+            onGrid[offset] = true;
+        size_t hits = 0;
+        for (auto start : starts)
+            hits += onGrid[(start % period + period - phase % period) % period] ? 1 : 0;
+        return hits;
+    }
+
+    /** The fixed grid that fits a module's row starts best, and how well: for every period up to
+        64 frames, the residues that start a row in at least half of the cycles; the fit is the
+        lower of the share of the rows on them and the share of their frames that start a row.
+        A tune that slips a frame or changes speed stays well below 1. The shortest period within
+        0.005 of the best fit wins, so its row lengths are the tune's groove. */
+    static std::pair<double, std::vector<int>> bestFixedGrid(const std::vector<size_t>& starts) {
+        const auto span = (double) (starts.back() - starts.front() + 1);
+        double bestFit = 0.0;
+        std::vector<int> bestRows;
+        for (size_t period = 2; period <= 64; ++period) {
+            std::vector<size_t> counts(period, 0);
+            for (auto start : starts)
+                ++counts[start % period];
+            const double cycles = span / (double) period;
+            std::vector<size_t> residues;
+            size_t hits = 0;
+            for (size_t r = 0; r < period; ++r)
+                if ((double) counts[r] >= cycles / 2.0) {
+                    residues.push_back(r);
+                    hits += counts[r];
+                }
+            if (residues.empty())
+                continue;
+            const double fit = std::min((double) hits / (double) starts.size(),
+                                        std::min(1.0, (double) hits / ((double) residues.size() * cycles)));
+            if (fit <= bestFit + 0.005)
+                continue;
+            bestFit = fit;
+            bestRows.clear();
+            for (size_t k = 0; k < residues.size(); ++k)
+                bestRows.push_back((int) ((k + 1 < residues.size() ? residues[k + 1] : residues[0] + period) - residues[k]));
+        }
+        return {bestFit, bestRows};
+    }
+
+    /** Development report, run only when UZX_TEMPO_MODULES names a folder of tracker modules. A
+        module knows the frame every row starts at, so each gets a tab-separated "ROWS" line that
+        sets the grid detected from the registers alone against those rows: frames, rows, the
+        row pattern the app takes from the module's rows, the fixed grid that fits the row
+        starts best and its fit (see bestFixedGrid), then the detected pattern or "-", its grid
+        share, the share of the module's rows on the detected grid, the share of the detected
+        rows that are the module's, and rows and frames per beat from the module's rows and
+        from the detected ones.
+        With UZX_TEMPO_DUMP naming a folder, every chip is also written there as <name>.psg
+        (<name>.2.psg for a second chip) and the row starts as <name>.rows, for scripts that
+        study the registers against the rows. scripts/validate_tempo_detection.py --rows sums
+        the lines up. */
+    void runModuleRowsReport() {
+        const auto dirName = SystemStats::getEnvironmentVariable("UZX_TEMPO_MODULES", {});
+        if (dirName.isEmpty())
+            return;
+        beginTest("Row report from UZX_TEMPO_MODULES");
+        const auto dumpName = SystemStats::getEnvironmentVariable("UZX_TEMPO_DUMP", {});
+        for (const auto& file : File(dirName).findChildFiles(File::findFiles, false)) {
+            MemoryBlock bytes;
+            if (!file.loadFileAsData(bytes))
+                continue;
+            const auto module = uZX::readTrackerModule(bytes);
+            if (!module || module->chips.empty() || module->rowStarts.size() < 2)
+                continue;
+            std::vector<const PsgData*> chips;
+            for (const auto& chip : module->chips)
+                chips.push_back(&chip.psg);
+            const auto& starts = module->rowStarts;
+            const auto own = PsgTempo::detect(chips, starts);
+            if (!own)
+                continue;
+            const auto playRate = (int) std::max<size_t>(1, chips.front()->options.playRate);
+            const auto dataRows = [&](const PsgTempo::Result& r) {
+                auto rows = r.rowFrames;
+                for (auto& row : rows)
+                    row /= playRate;
+                return rows;
+            };
+
+            const auto [fit, fixedRows] = bestFixedGrid(starts);
+            StringArray fields{"ROWS",
+                               file.getFileNameWithoutExtension(),
+                               String(chips.front()->frames.size()),
+                               String(starts.size()),
+                               rowPattern(dataRows(*own)),
+                               fixedRows.empty() ? String("-") : rowPattern(fixedRows),
+                               String(fit, 3)};
+
+            if (const auto got = PsgTempo::detect(chips)) {
+                const auto rows = dataRows(*got);
+                const auto phase = (size_t) (got->gridPhase / playRate);
+                std::vector<size_t> span(starts.back() - starts.front() + 1);
+                std::iota(span.begin(), span.end(), starts.front());
+                const auto hits = rowsOnGrid(starts, rows, phase);
+                fields.addArray(StringArray{rowPattern(rows),
+                                            String(got->gridShare, 3),
+                                            String((double) hits / (double) starts.size(), 3),
+                                            String((double) hits / (double) rowsOnGrid(span, rows, phase), 3),
+                                            String(own->rowsPerBeat),
+                                            String(own->framesPerBeat),
+                                            String(got->rowsPerBeat),
+                                            String(got->framesPerBeat)});
+            } else {
+                fields.addArray(StringArray{"-", "0", "0", "0", String(own->rowsPerBeat), String(own->framesPerBeat), "0", "0"});
+            }
+            logMessage(fields.joinIntoString("\t"));
+
+            if (dumpName.isEmpty())
+                continue;
+            const auto dump = File(dumpName);
+            const auto name = file.getFileNameWithoutExtension();
+            for (size_t chip = 0; chip < module->chips.size(); ++chip) {
+                const auto out = dump.getChildFile(name + (chip == 0 ? String() : "." + String(chip + 1)) + ".psg");
+                out.deleteFile();
+                PsgFile psg(out);
+                psg.getData() = module->chips[chip].psg;
+                FileOutputStream stream(out);
+                expect(stream.openedOk() && psg.writeTo(stream), "dump " + out.getFileName());
+            }
+            StringArray rowList;
+            for (auto start : starts)
+                rowList.add(String(start));
+            dump.getChildFile(name + ".rows").replaceWithText(rowList.joinIntoString(" "));
         }
     }
 };

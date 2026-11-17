@@ -177,11 +177,71 @@ juce::Optional<Speed> detectSpeed(const std::vector<double>& energy, double tota
     return *chosen;
 }
 
+constexpr std::array<size_t, 4> grooveSizes{1, 2, 4, 8};  // rows a module's row pattern may have
+constexpr double minRowsFollowing = 0.9;                  // share of a module's rows its pattern must describe
+
+/** One round of a pulse: the tune cut, from its first row on, into runs of whole rows that
+    last `pulse` frames each; a row that starts no such run is passed over. */
+struct PulseRows
+{
+    std::vector<int> rows;  // the commonest run, cut to its shortest repeating unit; empty when nothing lasts a pulse
+    double tiled = 0.0;     // share of the rows inside such runs
+};
+
+PulseRows rowsOfPulse(const std::vector<int>& lengths, int pulse) {
+    std::map<std::vector<int>, size_t> runs;
+    size_t covered = 0;
+    for (size_t i = 0; i < lengths.size();) {
+        int frames = 0;
+        size_t k = 0;
+        while (i + k < lengths.size() && k < grooveSizes.back() && frames < pulse)
+            frames += lengths[i + k++];
+        if (frames != pulse) {
+            ++i;
+            continue;
+        }
+        ++runs[std::vector<int>(lengths.begin() + (std::ptrdiff_t) i, lengths.begin() + (std::ptrdiff_t) (i + k))];
+        covered += k;
+        i += k;
+    }
+    if (runs.empty())
+        return {};
+    auto rows = std::max_element(runs.begin(), runs.end(), [](auto& a, auto& b) { return a.second < b.second; })->first;
+    for (size_t unit = 1; unit < rows.size(); ++unit)
+        if (rows.size() % unit == 0 && std::equal(rows.begin() + (std::ptrdiff_t) unit, rows.end(), rows.begin())) {
+            rows.resize(unit);
+            break;
+        }
+    return {rows, (double) covered / (double) lengths.size()};
+}
+
+/** The pattern turned to the row it starts on for most of the tune's rows, counted from the first. */
+std::vector<int> turnedToRows(std::vector<int> rows, const std::vector<int>& lengths) {
+    size_t bestTurn = 0, bestFollow = 0;
+    for (size_t turn = 0; turn < rows.size(); ++turn) {
+        size_t follow = 0;
+        for (size_t i = 0; i < lengths.size(); ++i)
+            follow += lengths[i] == rows[(i + turn) % rows.size()] ? 1 : 0;
+        if (follow > bestFollow) {
+            bestFollow = follow;
+            bestTurn = turn;
+        }
+    }
+    std::rotate(rows.begin(), rows.begin() + (std::ptrdiff_t) bestTurn, rows.end());
+    return rows;
+}
+
 /** A tracker module's own row grid, from the frame every row starts at: the shortest
     of 1, 2, 4 or 8 row lengths, repeating from the first row, that 90% of the rows follow
-    (an intro or an ending at another speed aside), else the commonest row length. A
-    module knows its rows, so a swing as wide as speeds 2 and 6, or a groove of 8 rows
-    (3-3-3-2-3-2-3-2), is a grid too. */
+    (an intro or an ending at another speed aside). A module knows its rows, so a swing as
+    wide as speeds 2 and 6, or a groove of 8 rows (3-3-3-2-3-2-3-2), is a grid too.
+
+    Rows that don't repeat by count still keep a pulse: a groove lasts the same frames every
+    time round, whether an intro at speed 4 comes before 5-5-3-3 or a 3-5-3-3 turns into 4-4-3-3
+    now and then. So next comes the shortest pulse the rows repeat after (90% of the row starts
+    have another one that many frames later), then the shortest one the tune is made of (runs of
+    whole rows lasting a pulse hold 90% of the rows), each with the rows that fill it most often.
+    Else the tune has no one grid, and the commonest row length stands for it. */
 Speed speedOfRows(const std::vector<size_t>& starts) {
     std::vector<int> lengths;
     for (size_t i = 1; i < starts.size(); ++i)
@@ -193,7 +253,8 @@ Speed speedOfRows(const std::vector<size_t>& starts) {
         return std::max_element(counts.begin(), counts.end(), [](auto& a, auto& b) { return a.second < b.second; })
             ->first;
     };
-    for (size_t n : {1, 2, 4, 8}) {
+    const auto enough = minRowsFollowing * (double) lengths.size();
+    for (size_t n : grooveSizes) {
         if (lengths.size() < n)
             break;
         std::vector<int> rows;
@@ -202,9 +263,26 @@ Speed speedOfRows(const std::vector<size_t>& starts) {
         size_t follow = 0;
         for (size_t i = 0; i < lengths.size(); ++i)
             follow += lengths[i] == rows[i % n] ? 1 : 0;
-        if ((double) follow >= 0.9 * (double) lengths.size())
+        if ((double) follow >= enough)
             return Speed{rows, (int) starts.front(), 1.0};
     }
+
+    // frames -> the row starts that have another row start that many frames on, within a groove's rows
+    std::map<int, size_t> reach;
+    for (size_t i = 0; i < lengths.size(); ++i) {
+        int frames = 0;
+        for (size_t k = 0; k < grooveSizes.back() && i + k < lengths.size(); ++k)
+            ++reach[frames += lengths[i + k]];
+    }
+    for (bool repeating : {true, false})
+        for (const auto& [pulse, count] : reach) {
+            if (pulse <= 0 || (repeating && (double) count < enough))
+                continue;
+            const auto found = rowsOfPulse(lengths, pulse);
+            const bool isGroove = std::find(grooveSizes.begin(), grooveSizes.end(), found.rows.size()) != grooveSizes.end();
+            if (isGroove && (repeating || found.tiled >= minRowsFollowing))
+                return Speed{turnedToRows(found.rows, lengths), (int) starts.front(), 1.0};
+        }
     return Speed{{commonest(1, 0)}, (int) starts.front(), 1.0};
 }
 
@@ -450,6 +528,7 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, con
     result.gridShare = speed->share;
     const auto barFrames = (size_t) (result.framesPerBeat * result.beatsPerBar / playRate);
     const int firstRow = speed->phase;
+    result.gridPhase = firstRow * playRate;
     if (rowsKnown || openingFollowsGrid(energy, *speed, 2 * barFrames))
         result.firstRowFrame = firstRow * playRate;
 

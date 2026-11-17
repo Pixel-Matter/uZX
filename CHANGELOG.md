@@ -56,6 +56,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - A TAYM that loops back past its start sets the loop range from its loop to its end, as a tracker module does
 - A TAYM exported by Bitphase opens on its own tuning table (or its A4, for a custom 12TET table) and with the tempo and groove of the rows it mostly repeats, instead of detected ones
 - Fixed: note slides in Pro Tracker 2 and 3, Vortex Tracker, ASC Sound Master and Fast Tracker modules play as in the trackers (zxtune updated)
+- Fixed: a module whose groove starts after an intro, or varies now and then (3-5-3-3 with a 4-4-3-3), opened at the tempo of its commonest row length instead of its groove's
 - Fixed: the Player played a TAYM at the clock its tuning detection guessed, not at the one the file states; a fitted tuning is now named at the file's clock, for example `12TET 440 Hz Atari ST`
 
 ## [v0.7.1-alpha, player-v0.7.1-alpha] - 2026-11-15

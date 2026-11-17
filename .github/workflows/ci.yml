@@ -97,6 +97,12 @@ jobs:
             configure-extra: -G Ninja
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    # One PR builds at a time: other PRs wait, and a newer waiting one cancels the older (it needs a rebase anyway).
+    # Pushes and tags get a group of their own and never wait.
+    concurrency:
+      group: >-
+        ${{ github.event_name == 'pull_request' && format('pr-build-{0}', matrix.os)
+        || format('build-{0}-{1}', github.run_id, matrix.os) }}
 
     steps:
       - name: Checkout

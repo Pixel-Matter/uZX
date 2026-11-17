@@ -21,8 +21,10 @@ by UZX_TEMPO_CORPUS) and joins each result:
              tracker modules in MODULE_DIR know (the PsgTempo test's row report, enabled by
              UZX_TEMPO_MODULES): exact, coarser (module rows, some skipped), finer (every
              module row and more), wrong, or none, apart for the tunes a fixed grid fits and
-             the ones that slip or change speed; DUMP_DIR also gets every module as a PSG with its row starts
-             (<name>.rows), for scripts that study the registers against the rows
+             the ones that slip or change speed, with how often the beat comes out as from
+             the module's own rows; DUMP_DIR also gets every module as a PSG with its row
+             starts and event cells, which scripts/train_row_evidence.py learns the
+             detector's table from, and the tunes that script held out are summed up apart
 
 Pairs come from scripts/zxart_fetch_pt3.py and scripts/pt3_to_psg.py.
 """
@@ -172,12 +174,17 @@ def check_rows(module_dir, dump_dir, tests):
     stats = Counter(r["verdict"] for r in tunes)
     single = [r for r in tunes if r["single"]]
     print(f"\n{len(tunes)} modules; a fixed grid fits the rows ({SINGLE_GRID:.0%}) in {len(single)}")
-    for name, group in (("all", tunes), ("single-grid", single), ("slips or speed changes", [r for r in tunes if not r["single"]])):
+    groups = [("all", tunes), ("single-grid", single), ("slips or speed changes", [r for r in tunes if not r["single"]])]
+    held_out = dump_dir / "heldout.txt" if dump_dir else None
+    if held_out and held_out.exists():  # the tunes scripts/train_row_evidence.py kept from the table
+        names = set(held_out.read_text().splitlines())
+        groups.append(("held-out authors", [r for r in tunes if r["name"] in names]))
+    for name, group in groups:
         c = Counter(r["verdict"] for r in group)
-        print(f"  {name:22} " + "  ".join(f"{v} {c[v]}" for v in ("exact", "coarser", "finer", "wrong", "none")))
-    answered = [r for r in tunes if r["got"] is not None]
-    same = sum(r["fpb"] == r["own_fpb"] for r in answered)
-    print(f"  frames per beat as from the module's own rows: {same}/{len(answered)} of the tunes with a tempo")
+        answered = [r for r in group if r["got"] is not None]
+        same = sum(r["fpb"] == r["own_fpb"] for r in answered)
+        print(f"  {name:22} " + "  ".join(f"{v} {c[v]:3}" for v in ("exact", "coarser", "finer", "wrong", "none"))
+              + f"   beat as from the module's rows {same}/{len(answered)}")
     return stats
 
 

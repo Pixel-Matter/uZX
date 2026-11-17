@@ -10,6 +10,7 @@
 #include "models/EditUtilities.h"
 #include "models/PsgFrameRetimer.h"
 #include "formats/tracker/TrackerModule.h"
+#include "models/PsgRowEvidence.h"
 
 namespace MoTool::Tests {
 
@@ -736,8 +737,9 @@ public:
         rows that are the module's, and rows and frames per beat from the module's rows and
         from the detected ones.
         With UZX_TEMPO_DUMP naming a folder, every chip is also written there as <name>.psg
-        (<name>.2.psg for a second chip) and the row starts as <name>.rows, for scripts that
-        study the registers against the rows. scripts/validate_tempo_detection.py --rows sums
+        (<name>.2.psg for a second chip) with its event cells as <name>.cells (four little-endian
+        uint16 a frame, see PsgRowEvidence::cellsOf), and the row starts as <name>.rows:
+        scripts/train_row_evidence.py learns the detector's table from them. scripts/validate_tempo_detection.py --rows sums
         the lines up. */
     void runModuleRowsReport() {
         const auto dirName = SystemStats::getEnvironmentVariable("UZX_TEMPO_MODULES", {});
@@ -806,6 +808,14 @@ public:
                 psg.getData() = module->chips[chip].psg;
                 FileOutputStream stream(out);
                 expect(stream.openedOk() && psg.writeTo(stream), "dump " + out.getFileName());
+
+                MemoryOutputStream cells;
+                for (const auto& frame : PsgRowEvidence::cellsOf(module->chips[chip].psg)) {
+                    for (auto cell : frame.channels)
+                        cells.writeShort((short) cell);
+                    cells.writeShort((short) frame.chip);
+                }
+                out.withFileExtension("cells").replaceWithData(cells.getData(), cells.getDataSize());
             }
             StringArray rowList;
             for (auto start : starts)

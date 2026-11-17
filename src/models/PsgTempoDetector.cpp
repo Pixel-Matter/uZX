@@ -10,6 +10,7 @@
 #include "PsgClip.h"
 #include "PsgFrameRetimer.h"
 #include "PsgParameter.h"
+#include "PsgRowEvidence.h"
 
 namespace MoTool::PsgTempo {
 
@@ -21,6 +22,7 @@ constexpr int minOnsetJump = 4;             // volume step (0..15) that counts a
 constexpr double minGridShare = 0.8;        // chance-corrected share of onset energy on the row grid
 constexpr double harmonicTolerance = 0.02;  // a doubled period may lose this much share and still win
 constexpr double minEnergy = 600.0;         // about 40 full-volume hits; below that the tune is too sparse
+constexpr double minEvidence = 240.0;       // the same for learnt row evidence: a clear note start weighs about 6
 constexpr int minSpeed = 2;
 constexpr int maxSpeed = 16;
 constexpr double minBpm = 80.0;  // rows per beat is halved or doubled to land in this range
@@ -480,6 +482,30 @@ std::vector<int> Result::subdivisionPattern() const {
     return pattern;
 }
 
+namespace {
+
+/** The chips play one tune: what each frame holds adds up over them. */
+std::vector<double> summedOverChips(const Chips& chips, std::vector<double> (*perFrame)(const uZX::PsgData&)) {
+    std::vector<double> sum;
+    for (const auto* chip : chips) {
+        const auto values = perFrame(*chip);
+        sum.resize(std::max(sum.size(), values.size()), 0.0);
+        for (size_t i = 0; i < values.size(); ++i)
+            sum[i] += values[i];
+    }
+    return sum;
+}
+
+/** The row grid of a per-frame energy, or nothing when the tune holds less of it than `least`. */
+juce::Optional<Speed> gridOf(const std::vector<double>& energy, double least) {
+    const double total = std::accumulate(energy.begin(), energy.end(), 0.0);
+    if (total < least)
+        return {};
+    return detectSpeed(energy, total);
+}
+
+}  // namespace
+
 juce::Optional<Result> detect(const uZX::PsgData& data) {
     return detect(Chips{&data});
 }
@@ -491,20 +517,23 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips) {
 juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, const std::vector<size_t>& knownRows) {
     if (chips.empty())
         return {};
-    // The chips play one tune: their note starts add up frame by frame.
-    std::vector<double> energy;
-    for (const auto* chip : chips) {
-        const auto chipEnergy = onsetEnergy(*chip);
-        energy.resize(std::max(energy.size(), chipEnergy.size()), 0.0);
-        for (size_t i = 0; i < chipEnergy.size(); ++i)
-            energy[i] += chipEnergy[i];
-    }
-    const double total = std::accumulate(energy.begin(), energy.end(), 0.0);
     const bool rowsKnown = knownRows.size() > 1;
-    if (!rowsKnown && total < minEnergy)
-        return {};
-
-    const auto speed = rowsKnown ? juce::Optional<Speed>(speedOfRows(knownRows)) : detectSpeed(energy, total);
+    const auto noteStarts = summedOverChips(chips, onsetEnergy);
+    // The rows are the module's own, else the grid of the learnt row evidence, else, when that
+    // shows none, the grid of the note starts: cruder, but they don't lean on how a tracker's
+    // player moves the registers.
+    auto energy = noteStarts;
+    juce::Optional<Speed> speed;
+    if (rowsKnown) {
+        speed = speedOfRows(knownRows);
+    } else {
+        auto evidence = summedOverChips(chips, PsgRowEvidence::of);
+        speed = gridOf(evidence, minEvidence);
+        if (speed)
+            energy = std::move(evidence);
+        else
+            speed = gridOf(noteStarts, minEnergy);
+    }
     if (!speed)
         return {};
 
@@ -515,9 +544,9 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, con
         result.rowFrames.push_back(row * playRate);
     const auto starts = rowsKnown ? knownRows : rowStarts(energy.size(), *speed);
     const auto rows = rowFeatures(chips, starts);
-    std::vector<double> accents;
+    std::vector<double> accents;  // how loud a row's notes start, whatever found the rows
     for (auto i : starts)
-        accents.push_back(energy[i]);
+        accents.push_back(noteStarts[i]);
     result.rowsPerBeat = detectRowsPerBeat(rows, accents, *speed, data.getFrameRate() / playRate);
     const auto meterMargin = tripleMeterMargin(rows, result.rowsPerBeat);
     result.beatsPerBar = meterMargin > minMeterMargin ? 3 : 4;

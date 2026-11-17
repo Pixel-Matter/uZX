@@ -52,6 +52,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Menus
 - **Help → Check for Updates...** (on macOS, in the app menu) tells whether a newer release of the app is out on GitHub, and links to its page, or to all releases when yours is the latest; the Player looks for Player releases and Studio for Studio's
 
+### Tempo detection
+- Importing a PSG finds the tracker's rows from more than loud note starts: a legato note, a soft attack and a drum change count too, each weighed by how often it starts a row in tracker modules. More tunes get a tempo, and the grid follows the tracker's own rows more often, such as speed 3 where it showed 6
+
 ### Tracker modules and TAYM
 - A TAYM that loops back past its start sets the loop range from its loop to its end, as a tracker module does
 - A TAYM exported by Bitphase opens on its own tuning table (or its A4, for a custom 12TET table) and with the tempo and groove of the rows it mostly repeats, instead of detected ones

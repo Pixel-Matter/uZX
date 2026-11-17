@@ -25,6 +25,7 @@ set(SHARED_SOURCES
     models/ClipTimers.cpp
     models/TimerSpans.cpp
     models/PsgFrameRetimer.cpp
+    models/PsgRowEvidence.cpp
     models/PsgTempoDetector.cpp
     models/Selectable.cpp
     models/EditUtilities.cpp
@@ -150,6 +151,7 @@ set(TEST_SOURCES
     models/PsgSoundingStates.test.cpp
     models/PsgRecorder.test.cpp
     models/PsgClipTuning.test.cpp
+    models/PsgRowEvidence.test.cpp
     models/PsgTempoDetector.test.cpp
     models/ProjectFps.test.cpp
     models/SnapLadder.test.cpp

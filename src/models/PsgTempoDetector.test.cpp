@@ -184,6 +184,54 @@ public:
             expect(quintuplet->subdivisionPattern() == std::vector<int>{6, 6, 6, 6, 6}, "10 rows show as 5 groups");
         }
 
+        beginTest("A beat of 7 rows is found by how alike the tune is to itself a beat on");
+        {
+            // Nothing in the drums or the bass says 7; the accents come back every 21 frames.
+            auto result = PsgTempo::detect(makeTune(6000, {3}, 7));
+            expect(static_cast<bool>(result));
+            expectEquals(result->rowsPerBeat, 7);
+            expectEquals(result->framesPerBeat, 21);
+        }
+
+        beginTest("Plain rows with a stray note start between them are not a groove");
+        {
+            // Speed 4 on channels A and C. In every strayEvery-th round of three rows, channel B
+            // starts a note two frames into the second row: frames 0, 4, 6 and 8 of 12 then hold
+            // everything, which looks like a 4-2-2-4 groove, and a beat of 24 frames for one of 32.
+            const auto build = [](int strayEvery, int numFrames) {
+                PsgData data;
+                data.options = {50.0, 1};
+                data.frames.resize((size_t) numFrames);
+                data.frames[0].setMixer(0x38);
+                for (int t = 0; t + 2 < numFrames; t += 4) {
+                    data.frames[(size_t) t].setTonePeriod(0, 300);
+                    data.frames[(size_t) t].setVolume(0, 15);
+                    data.frames[(size_t) t].setTonePeriod(2, 500);
+                    data.frames[(size_t) t].setVolume(2, 13);
+                    data.frames[(size_t) t + 2].setVolume(0, 0);
+                    data.frames[(size_t) t + 2].setVolume(2, 0);
+                }
+                for (int t = 12 * strayEvery + 6; t + 2 < numFrames; t += 12 * strayEvery) {
+                    data.frames[(size_t) t].setTonePeriod(1, 200);
+                    data.frames[(size_t) t].setVolume(1, 15);
+                    data.frames[(size_t) t + 2].setVolume(1, 0);
+                }
+                return data;
+            };
+            // The strays must hold more than rows a frame apart may lose (1.5%) and less than a
+            // row of a groove starts (2%): spaced by what a row and a stray weigh as evidence.
+            const auto probe = PsgRowEvidence::of(build(1, 240));
+            const double row = probe[24], stray = probe[18];
+            expect(row > 0.0 && stray > 0.0, "both count as evidence");
+            const int strayEvery = juce::roundToInt(stray * (1.0 - 0.0175) / (0.0175 * 3.0 * row));
+            expect(strayEvery >= 2);
+
+            auto result = PsgTempo::detect(build(strayEvery, 12 * strayEvery * 40));
+            expect(static_cast<bool>(result));
+            expectEquals((int) result->rowFrames.size(), 1, rowPattern(result->rowFrames));
+            expectEquals(result->framesPerBeat, 32);
+        }
+
         beginTest("A slow triplet beat keeps 3 rows instead of halving to 1");
         {
             auto result = PsgTempo::detect(makeBarTune(8000, 4, 3, 16));

@@ -24,7 +24,8 @@ constexpr double harmonicTolerance = 0.02;  // a doubled period may lose this mu
 constexpr double minEnergy = 600.0;         // about 40 full-volume hits; below that the tune is too sparse
 constexpr double minEvidence = 240.0;       // the same for learnt row evidence: a clear note start weighs about 6
 constexpr double pulseStrength = 0.8;       // the pulse repeats this well against the lag that repeats best
-constexpr double tripleMargin = 0.1;        // three pulses to a beat must repeat this much better than two or four
+constexpr double beatMargin = 0.1;          // another grouping of rows or pulses must repeat this much better to win
+constexpr double minRowStarts = 0.02;       // energy share a swing's or groove's row starts, or it starts nothing
 constexpr double minBeatRepeat = 0.4;       // autocorrelation over 1, 2 and 4 beats; below it the tune has no beat
 constexpr int minSpeed = 2;
 constexpr int maxSpeed = 16;
@@ -33,6 +34,9 @@ constexpr double maxBpm = 170.0;
 // The range is read at 50 Hz, as trackers count their rows, so a tune at 200 Hz gets the same rows
 // per beat and four times the BPM, up to Tracktion's tempo limit.
 constexpr double bpmRangeFps = 50.0;
+constexpr int minBeatFrames = 18, maxBeatFrames = 37;  // that range as frames to the beat, at that rate
+static_assert((minBeatFrames - 1) * maxBpm < bpmRangeFps * 60.0 && minBeatFrames * maxBpm >= bpmRangeFps * 60.0);
+static_assert(maxBeatFrames * minBpm <= bpmRangeFps * 60.0 && (maxBeatFrames + 1) * minBpm > bpmRangeFps * 60.0);
 constexpr double minMeterMargin = 0.1;    // one bar length must explain repetition this much better
 constexpr double minOpeningOnGrid = 0.8;  // share of early note starts that must sit on row starts
 constexpr int minOpeningOnsets = 4;       // fewer early note starts than this: leave the clip where it is
@@ -72,6 +76,7 @@ struct GridFit
 {
     double share;
     std::vector<int> phases;
+    std::vector<double> starts;  // share of the energy on each of the phases
 };
 
 /** Share of onset energy on the best numPhases residues mod period, corrected for
@@ -95,7 +100,10 @@ GridFit gridShare(const std::vector<double>& energy, double total, int period, i
     const double chance = (double) numPhases / period;
     std::vector<int> phases(order.begin(), order.begin() + numPhases);
     std::sort(phases.begin(), phases.end());
-    return {(raw - chance) / (1.0 - chance), phases};
+    std::vector<double> starts;
+    for (int phase : phases)
+        starts.push_back(byPhase[(size_t) phase] / total);
+    return {(raw - chance) / (1.0 - chance), phases, starts};
 }
 
 /** The row grid: row lengths in frames, repeating (one length for a uniform
@@ -113,8 +121,11 @@ struct Speed
 
 /** The repeating row lengths that the best numRows residues mod period imply,
     starting at the earliest residue, or nothing when they are implausible: a
-    row outside the speed range, rows more than 2 frames apart, or a pattern a
-    shorter one already describes (all equal, or two halves alike). */
+    row outside the speed range, rows more than 2 frames apart, a pattern a
+    shorter one already describes (all equal, or two halves alike), or plain rows
+    in disguise: a row that starts next to nothing is no row, and when the rows
+    left are evenly spaced the tune has those, with a stray note start between
+    them (4-2-2-4 found at speed 4, where every third row had one). */
 juce::Optional<Speed> patternFrom(const GridFit& fit, int period) {
     const auto n = fit.phases.size();
     std::vector<int> rows;
@@ -125,6 +136,17 @@ juce::Optional<Speed> patternFrom(const GridFit& fit, int period) {
         return {};
     if (n == 4 && rows[0] == rows[2] && rows[1] == rows[3])
         return {};
+    std::vector<int> starting;
+    for (size_t k = 0; k < n; ++k)
+        if (fit.starts[k] >= minRowStarts)
+            starting.push_back(fit.phases[k]);
+    if (starting.size() < n) {
+        bool evenlySpaced = true;
+        for (size_t k = 0; k + 1 < starting.size(); ++k)
+            evenlySpaced = evenlySpaced && starting[k + 1] - starting[k] == starting[0] + period - starting.back();
+        if (evenlySpaced)
+            return {};
+    }
     return Speed{rows, fit.phases[0], fit.share};
 }
 
@@ -205,11 +227,11 @@ std::vector<double> autocorrelation(const std::vector<double>& energy, size_t ma
     frames times a power of two, inside the BPM range, or three pulses times a power of two when
     that repeats clearly better over 1, 2 and 4 beats. The pulse stands for the rows: what lies
     inside it is not known. Nothing when even the beat repeats poorly. */
-juce::Optional<Speed> detectPulse(const std::vector<double>& energy, double total, double dataFps) {
-    const int low = (int) std::ceil(bpmRangeFps * 60.0 / maxBpm), high = (int) std::floor(bpmRangeFps * 60.0 / minBpm);
-    if (energy.size() <= (size_t) (8 * high))
+juce::Optional<Speed>
+detectPulse(const std::vector<double>& energy, double total, const std::vector<double>& repeat, double dataFps) {
+    const int low = minBeatFrames, high = maxBeatFrames;
+    if (repeat.empty())
         return {};
-    const auto repeat = autocorrelation(energy, (size_t) (4 * high));
     const double best = *std::max_element(repeat.begin() + 2, repeat.begin() + 2 * high + 1);
     int pulse = 0;
     for (int lag = 2; lag <= 2 * high && pulse == 0; ++lag) {
@@ -234,7 +256,7 @@ juce::Optional<Speed> detectPulse(const std::vector<double>& energy, double tota
         return chosen;
     };
     int beat = strongest(pulse);
-    if (const int triple = strongest(3 * pulse); triple != 0 && (beat == 0 || over(triple) > over(beat) + tripleMargin))
+    if (const int triple = strongest(3 * pulse); triple != 0 && (beat == 0 || over(triple) > over(beat) + beatMargin))
         beat = triple;
     if (beat == 0 || over(beat) < minBeatRepeat)
         return {};
@@ -447,13 +469,16 @@ double repetition(const std::vector<RowFeature>& rows, size_t lagRows) {
     repeat where the music's beats start, so a wrong beat length lines up rows
     from different parts of the bar. A bar can repeat the same as 4 beats of 3
     rows or 3 beats of 4 (a waltz), so a beat other than the 4-row one also needs
-    its accents (note starts per row) to recur at its own length. A swing pair or
+    its accents (note starts per row) to recur at its own length. A beat of 3, 4, 5
+    or 7 rows also wins when the row evidence is clearly more alike itself that far
+    on (`repeat`, its autocorrelation) than at the beat chosen so. A swing pair or
     groove never splits across beats, so those tunes always group by 4, or by a
     module's 8-row groove. */
 int detectRowsPerBeat(const std::vector<RowFeature>& rows,
                       const std::vector<double>& accents,
                       const Speed& speed,
-                      double dataFps) {
+                      double dataFps,
+                      const std::vector<double>& repeat) {
     const bool swing = speed.rows.size() > 1;
     const double rowLength = speed.meanRow();
     auto fitToBpmRange = [&](int rowsPerBeat) {
@@ -500,6 +525,24 @@ int detectRowsPerBeat(const std::vector<RowFeature>& rows,
             bestScore = score;
         }
     }
+
+    // Drums and bass repeat much alike for beats built of the same rows, and a beat of 7 rows is
+    // none of the three. The row evidence tells them apart: the tune is most alike itself one, two
+    // and four beats on. A beat too long for `repeat` is left to the above.
+    auto alike = [&](int rowsPerBeat) -> juce::Optional<double> {
+        const auto beat = (size_t) juce::roundToInt(rowLength * rowsPerBeat);
+        if (4 * beat >= repeat.size())
+            return {};
+        return (repeat[beat] + repeat[2 * beat] + repeat[4 * beat]) / 3.0;
+    };
+    if (auto score = alike(best))
+        for (int group : {4, 3, 5, 7}) {
+            const int beat = fitToBpmRange(group);
+            if (const auto other = alike(beat); other && *other > *score + beatMargin) {
+                best = beat;
+                score = other;
+            }
+        }
     return best;
 }
 
@@ -591,12 +634,16 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, con
     // The rows are the module's own, else the grid of the learnt row evidence, else, when that
     // shows none, the grid of the note starts: cruder, but they don't lean on how a tracker's
     // player moves the registers. A tune no grid holds through still has a pulse.
+    const auto evidence = summedOverChips(chips, PsgRowEvidence::of);
+    // how alike the row evidence is to itself up to four beats on; empty for a tune too short to tell
+    const auto repeat = evidence.size() > (size_t) (8 * maxBeatFrames)
+                            ? autocorrelation(evidence, (size_t) (4 * maxBeatFrames))
+                            : std::vector<double>{};
     auto energy = noteStarts;
     juce::Optional<Speed> speed;
     if (rowsKnown) {
         speed = speedOfRows(knownRows);
     } else {
-        auto evidence = summedOverChips(chips, PsgRowEvidence::of);
         const double total = std::accumulate(evidence.begin(), evidence.end(), 0.0);
         speed = gridOf(evidence, minEvidence);
         if (!speed)
@@ -604,8 +651,8 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, con
         else
             energy = evidence;
         if (!speed && total >= minEvidence) {
-            speed = detectPulse(evidence, total, data.getFrameRate() / playRate);
-            energy = std::move(evidence);
+            speed = detectPulse(evidence, total, repeat, data.getFrameRate() / playRate);
+            energy = evidence;
         }
     }
     if (!speed)
@@ -620,8 +667,9 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, con
     for (auto i : starts)
         accents.push_back(noteStarts[i]);
     result.rowsArePulse = speed->beatRows > 0;
-    result.rowsPerBeat = result.rowsArePulse ? speed->beatRows
-                                             : detectRowsPerBeat(rows, accents, *speed, data.getFrameRate() / playRate);
+    result.rowsPerBeat = result.rowsArePulse
+                             ? speed->beatRows
+                             : detectRowsPerBeat(rows, accents, *speed, data.getFrameRate() / playRate, repeat);
     const auto meterMargin = tripleMeterMargin(rows, result.rowsPerBeat);
     result.beatsPerBar = meterMargin > minMeterMargin ? 3 : 4;
     result.meterClear = std::abs(meterMargin) > minMeterMargin;

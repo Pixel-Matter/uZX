@@ -234,6 +234,22 @@ public:
             expectEquals(noBars->beatsPerBar, 4, "no bar-level repetition keeps 4/4");
         }
 
+        beginTest("Rows that slip a frame now and then hold no grid, but the tune keeps its beat");
+        {
+            // Speed 6, and every 40th row lasts 7 frames: the rows drift through every phase.
+            std::vector<int> slipping(40, 6);
+            slipping.back() = 7;
+            auto result = PsgTempo::detect(makeTune(6000, slipping, 4));
+            expect(static_cast<bool>(result));
+            if (result) {
+                expect(result->rowsArePulse, "found by what repeats, not as rows");
+                expectEquals(result->framesPerBeat, 24);
+                expectWithinAbsoluteError(result->bpm, 125.0, 0.01);
+                expectEquals(result->firstRowFrame, 0, "nothing says where the first row is");
+            }
+            expect(!PsgTempo::detect(makeTune(6000, {6}, 4))->rowsArePulse, "the same tune without slips has its rows");
+        }
+
         beginTest("A module's own rows replace the grid detection");
         {
             // A swing as wide as speeds 2 and 6: detection only takes rows up to 2 frames apart.
@@ -732,7 +748,7 @@ public:
         module knows the frame every row starts at, so each gets a tab-separated "ROWS" line that
         sets the grid detected from the registers alone against those rows: frames, rows, the
         row pattern the app takes from the module's rows, the fixed grid that fits the row
-        starts best and its fit (see bestFixedGrid), then the detected pattern or "-", its grid
+        starts best and its fit (see bestFixedGrid), then the detected pattern ("~" before a pulse) or "-", its grid
         share, the share of the module's rows on the detected grid, the share of the detected
         rows that are the module's, and rows and frames per beat from the module's rows and
         from the detected ones.
@@ -784,7 +800,7 @@ public:
                 std::vector<size_t> span(starts.back() - starts.front() + 1);
                 std::iota(span.begin(), span.end(), starts.front());
                 const auto hits = rowsOnGrid(starts, rows, phase);
-                fields.addArray(StringArray{rowPattern(rows),
+                fields.addArray(StringArray{(got->rowsArePulse ? "~" : "") + rowPattern(rows),
                                             String(got->gridShare, 3),
                                             String((double) hits / (double) starts.size(), 3),
                                             String((double) hits / (double) rowsOnGrid(span, rows, phase), 3),

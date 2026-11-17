@@ -23,6 +23,9 @@ namespace PsgTempo {
 struct Result
 {
     std::vector<int> rowFrames;  ///< machine frames per row, repeating: {6}, a swing {6, 7}, a groove {4, 4, 3, 3}
+    /** No row grid held through the tune (a row a frame longer now and then, a groove that varies):
+        rowFrames is its pulse, the frames after which it repeats, and what lies inside is not known. */
+    bool rowsArePulse = false;
     int rowsPerBeat = 0;
     int beatsPerBar = 4;      ///< 3 or 4; 4 unless bar-level repetition clearly says 3
     bool meterClear = false;  ///< bar-level repetition clearly favours beatsPerBar over the other choice
@@ -42,8 +45,8 @@ struct Result
     std::vector<int> subdivisionPattern() const;
 };
 
-/** Returns nothing when the dump has too few note starts or no frame grid
-    (speed 1, sample tunes, heavily modulated material). */
+/** Returns nothing when the dump has too few note starts, or neither a row grid nor a
+    beat it repeats at (speed 1, sample tunes, heavily modulated material). */
 juce::Optional<Result> detect(const uZX::PsgData&);
 /** The chips of one tune detected as one: a Turbo Sound tune spreads its notes and
     drums over them. They share the first chip's frame rate. */

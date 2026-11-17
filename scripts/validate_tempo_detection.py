@@ -20,7 +20,8 @@ by UZX_TEMPO_CORPUS) and joins each result:
   --rows     scores the row grid detected from the registers alone against the rows the
              tracker modules in MODULE_DIR know (the PsgTempo test's row report, enabled by
              UZX_TEMPO_MODULES): exact, coarser (module rows, some skipped), finer (every
-             module row and more), wrong, or none, apart for the tunes a fixed grid fits and
+             module row and more), wrong, pulse (no rows, a beat found by what repeats) or
+             none, apart for the tunes a fixed grid fits and
              the ones that slip or change speed, with how often the beat comes out as from
              the module's own rows; DUMP_DIR also gets every module as a PSG with its row
              starts and event cells, which scripts/train_row_evidence.py learns the
@@ -141,6 +142,8 @@ def row_verdict(r):
     row and more; else wrong. A tune no fixed grid fits can't be exact."""
     if r["got"] is None:
         return "none"
+    if r["got"].startswith("~"):  # no row grid held: the detector found the beat by what repeats
+        return "pulse"
     covers, clean = r["recall"] >= COVERED, r["precision"] >= COVERED
     return "exact" if covers and clean else "coarser" if clean else "finer" if covers else "wrong"
 
@@ -166,7 +169,7 @@ def check_rows(module_dir, dump_dir, tests):
     if not tunes:
         sys.exit(f"no ROWS lines from {tests}: build uZXTests first")
 
-    for verdict in ("wrong", "none", "finer", "coarser"):
+    for verdict in ("wrong", "none", "pulse", "finer", "coarser"):
         for r in sorted((r for r in tunes if r["verdict"] == verdict), key=lambda r: -r["fixed"]):
             print(f"{verdict.upper():8} grid={r['grid']:16} fit={r['fixed']:.2f} app={r['own']:9} got={r['got'] or '-':9} "
                   f"share={r['share']:.2f} recall={r['recall']:.2f} precision={r['precision']:.2f} "
@@ -183,7 +186,7 @@ def check_rows(module_dir, dump_dir, tests):
         c = Counter(r["verdict"] for r in group)
         answered = [r for r in group if r["got"] is not None]
         same = sum(r["fpb"] == r["own_fpb"] for r in answered)
-        print(f"  {name:22} " + "  ".join(f"{v} {c[v]:3}" for v in ("exact", "coarser", "finer", "wrong", "none"))
+        print(f"  {name:22} " + "  ".join(f"{v} {c[v]:3}" for v in ("exact", "coarser", "finer", "wrong", "pulse", "none"))
               + f"   beat as from the module's rows {same}/{len(answered)}")
     return stats
 

@@ -23,6 +23,9 @@ constexpr double minGridShare = 0.8;        // chance-corrected share of onset e
 constexpr double harmonicTolerance = 0.02;  // a doubled period may lose this much share and still win
 constexpr double minEnergy = 600.0;         // about 40 full-volume hits; below that the tune is too sparse
 constexpr double minEvidence = 240.0;       // the same for learnt row evidence: a clear note start weighs about 6
+constexpr double pulseStrength = 0.8;       // the pulse repeats this well against the lag that repeats best
+constexpr double tripleMargin = 0.1;        // three pulses to a beat must repeat this much better than two or four
+constexpr double minBeatRepeat = 0.4;       // autocorrelation over 1, 2 and 4 beats; below it the tune has no beat
 constexpr int minSpeed = 2;
 constexpr int maxSpeed = 16;
 constexpr double minBpm = 80.0;  // rows per beat is halved or doubled to land in this range
@@ -102,6 +105,7 @@ struct Speed
     std::vector<int> rows;
     int phase;
     double share;
+    int beatRows = 0;  // rows to the beat when what found the rows also found the beat, else 0
 
     int period() const { return std::accumulate(rows.begin(), rows.end(), 0); }
     double meanRow() const { return (double) period() / (double) rows.size(); }
@@ -177,6 +181,69 @@ juce::Optional<Speed> detectSpeed(const std::vector<double>& energy, double tota
             chosen = &c;
     }
     return *chosen;
+}
+
+/** How alike the energy is to itself `lag` frames on, for every lag up to maxLag: 1 at lag 0. */
+std::vector<double> autocorrelation(const std::vector<double>& energy, size_t maxLag) {
+    const double mean = std::accumulate(energy.begin(), energy.end(), 0.0) / (double) energy.size();
+    std::vector<double> repeat(maxLag + 1, 0.0);
+    for (size_t lag = 0; lag <= maxLag; ++lag)
+        for (size_t i = lag; i < energy.size(); ++i)
+            repeat[lag] += (energy[i] - mean) * (energy[i - lag] - mean);
+    if (repeat[0] > 0.0)
+        for (size_t lag = maxLag + 1; lag-- > 0;)
+            repeat[lag] /= repeat[0];
+    return repeat;
+}
+
+/** The beat of a tune no row grid holds through: one with a row a frame longer now and then, a
+    groove that varies, or parts at other speeds. A grid needs every row to start where the first
+    rows put it; how alike the tune is to itself a while later needs no such thing, and peaks at
+    the pulse (a row, or a groove's round) and at every beat.
+
+    The pulse is the shortest lag that repeats nearly as well as the best one. The beat is that many
+    frames times a power of two, inside the BPM range, or three pulses times a power of two when
+    that repeats clearly better over 1, 2 and 4 beats. The pulse stands for the rows: what lies
+    inside it is not known. Nothing when even the beat repeats poorly. */
+juce::Optional<Speed> detectPulse(const std::vector<double>& energy, double total, double dataFps) {
+    const int low = (int) std::ceil(bpmRangeFps * 60.0 / maxBpm), high = (int) std::floor(bpmRangeFps * 60.0 / minBpm);
+    if (energy.size() <= (size_t) (8 * high))
+        return {};
+    const auto repeat = autocorrelation(energy, (size_t) (4 * high));
+    const double best = *std::max_element(repeat.begin() + 2, repeat.begin() + 2 * high + 1);
+    int pulse = 0;
+    for (int lag = 2; lag <= 2 * high && pulse == 0; ++lag) {
+        const auto at = (size_t) lag;
+        if (best > 0.0 && repeat[at] >= pulseStrength * best && repeat[at] >= repeat[at - 1]
+            && repeat[at] >= repeat[at + 1])
+            pulse = lag;
+    }
+    while (pulse > high && pulse % 2 == 0)
+        pulse /= 2;
+    if (pulse == 0 || pulse > high)
+        return {};
+
+    auto over = [&](int beat) {
+        return (repeat[(size_t) beat] + repeat[(size_t) (2 * beat)] + repeat[(size_t) (4 * beat)]) / 3.0;
+    };
+    auto strongest = [&](int unit) {  // of the unit's doublings inside the BPM range; 0 when none is
+        int chosen = 0;
+        for (int beat = unit; beat <= high; beat *= 2)
+            if (beat >= low && (chosen == 0 || over(beat) >= over(chosen)))
+                chosen = beat;
+        return chosen;
+    };
+    int beat = strongest(pulse);
+    if (const int triple = strongest(3 * pulse); triple != 0 && (beat == 0 || over(triple) > over(beat) + tripleMargin))
+        beat = triple;
+    if (beat == 0 || over(beat) < minBeatRepeat)
+        return {};
+
+    const auto fit = gridShare(energy, total, pulse, 1);
+    Speed speed{{pulse}, fit.phases[0], fit.share, beat / pulse};
+    while (dataFps * 60.0 / (pulse * speed.beatRows) > tracktion::TempoSetting::maxBPM)
+        speed.beatRows *= 2;
+    return speed;
 }
 
 constexpr std::array<size_t, 4> grooveSizes{1, 2, 4, 8};  // rows a module's row pattern may have
@@ -519,26 +586,31 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, con
         return {};
     const bool rowsKnown = knownRows.size() > 1;
     const auto noteStarts = summedOverChips(chips, onsetEnergy);
+    const auto& data = *chips.front();  // the chips of one tune share the frame rate
+    const auto playRate = (int) std::max<size_t>(1, data.options.playRate);  // machine frames per data frame
     // The rows are the module's own, else the grid of the learnt row evidence, else, when that
     // shows none, the grid of the note starts: cruder, but they don't lean on how a tracker's
-    // player moves the registers.
+    // player moves the registers. A tune no grid holds through still has a pulse.
     auto energy = noteStarts;
     juce::Optional<Speed> speed;
     if (rowsKnown) {
         speed = speedOfRows(knownRows);
     } else {
         auto evidence = summedOverChips(chips, PsgRowEvidence::of);
+        const double total = std::accumulate(evidence.begin(), evidence.end(), 0.0);
         speed = gridOf(evidence, minEvidence);
-        if (speed)
-            energy = std::move(evidence);
-        else
+        if (!speed)
             speed = gridOf(noteStarts, minEnergy);
+        else
+            energy = evidence;
+        if (!speed && total >= minEvidence) {
+            speed = detectPulse(evidence, total, data.getFrameRate() / playRate);
+            energy = std::move(evidence);
+        }
     }
     if (!speed)
         return {};
 
-    const auto& data = *chips.front();  // the chips of one tune share the frame rate
-    const auto playRate = (int) std::max<size_t>(1, data.options.playRate);  // machine frames per data frame
     Result result;
     for (int row : speed->rows)
         result.rowFrames.push_back(row * playRate);
@@ -547,7 +619,9 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, con
     std::vector<double> accents;  // how loud a row's notes start, whatever found the rows
     for (auto i : starts)
         accents.push_back(noteStarts[i]);
-    result.rowsPerBeat = detectRowsPerBeat(rows, accents, *speed, data.getFrameRate() / playRate);
+    result.rowsArePulse = speed->beatRows > 0;
+    result.rowsPerBeat = result.rowsArePulse ? speed->beatRows
+                                             : detectRowsPerBeat(rows, accents, *speed, data.getFrameRate() / playRate);
     const auto meterMargin = tripleMeterMargin(rows, result.rowsPerBeat);
     result.beatsPerBar = meterMargin > minMeterMargin ? 3 : 4;
     result.meterClear = std::abs(meterMargin) > minMeterMargin;
@@ -603,7 +677,10 @@ static void applyTempo(const juce::Array<PsgClip*>& clips, const Result& result)
                                 edit.tempoSequence.getTempoAt(clipStart),
                                 result.framesPerBeat,
                                 /*preserveAbsoluteFrameTimes=*/true);
-    Helpers::setGridSubdivisionPattern(edit, result.subdivisionPattern());
+    // a beat that is one pulse has no groove of its own: it gets the grid's usual groups
+    const auto groove = result.subdivisionPattern();
+    Helpers::setGridSubdivisionPattern(
+        edit, groove.size() > 1 ? groove : Helpers::getDefaultGridSubdivisionPattern(result.framesPerBeat));
     if (result.meterClear)
         edit.tempoSequence.getTimeSigAt(clipStart).numerator = result.beatsPerBar;
 }

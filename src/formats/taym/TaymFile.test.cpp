@@ -205,8 +205,9 @@ public:
                 expectEquals(tune->title, juce::String("atarized"));
                 expect(tune->chips[0].clock == std::optional<double> {1773400.0});
                 expect(tune->chips[0].type.has_value() && *tune->chips[0].type == ChipType {TypeEnum::AY});
-                // 396 starts, 5401 modulates and 26 stops, as `python -m taym stats` counts them
-                expectEquals(tune->chips[0].timers.events.size(), size_t {396 + 5401 + 26});
+                // 396 starts, 5401 modulates and 29 stops, 3 of them where the tune loops,
+                // as `python -m taym stats` counts them
+                expectEquals(tune->chips[0].timers.events.size(), size_t {396 + 5401 + 29});
                 expect(! tune->chips[0].timers.unplayable);
                 const auto bank = TimerBank::fromTaym(tune->chips[0].timers.bank.getData(), tune->chips[0].timers.bank.getSize(), 0);
                 expect(bank != nullptr && bank->getNumTimers() == 3, "the bank reads back with the chip's three timers");
@@ -472,7 +473,7 @@ public:
             const auto clips = Helpers::importPsgFiles(*edit, {exampleTune()});
             expectEquals(clips.size(), 1);
             if (clips.size() == 1) {
-                expectEquals(clips[0]->getTimers().getEvents().size(), size_t {396 + 5401 + 26});
+                expectEquals(clips[0]->getTimers().getEvents().size(), size_t {396 + 5401 + 29});
                 expect(clips[0]->getTimers().getBank() != nullptr);
                 expectEquals(clips[0]->getName(), juce::String("atarized"));
                 auto* chip = dynamic_cast<te::AudioTrack*>(clips[0]->getTrack())->pluginList.findFirstPluginOfType<AYChipPlugin>();
@@ -566,6 +567,21 @@ public:
             file.deleteFile();
         }
 
+        beginTest("Bitphase's export opens with its loop, tuning and tempo");
+        {
+            auto edit = te::Edit::createSingleTrackEdit(engine);
+            const auto steps = juce::File(UZX_FIXTURES_DIR).getChildFile("taym/a_bit_steps.taym");
+            const auto clips = Helpers::importPsgFiles(*edit, {steps});
+            expectEquals(clips.size(), 1);
+            if (clips.size() == 1) {
+                expectEquals(clips[0]->getTuning().tableLabel, juce::String("12TET 441 Hz Atari ST"));
+                const auto loop = edit->getTransport().getLoopRange();
+                expectWithinAbsoluteError(loop.getStart().inSeconds(), 212.0 / 60.0, 1.0e-9, "where pattern 05 starts");
+                expectWithinAbsoluteError(edit->tempoSequence.getTempo(0)->getBpm(), 180.0, 1.0e-9,
+                                          "rows of 3 and 2 frames, 8 to a beat");
+            }
+        }
+
         beginTest("A project saved with a TAYM's clip opens with its timers");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);
@@ -582,7 +598,7 @@ public:
                         found = psg;
             expect(found != nullptr);
             if (found != nullptr) {
-                expectEquals(found->getTimers().getEvents().size(), size_t {396 + 5401 + 26});
+                expectEquals(found->getTimers().getEvents().size(), size_t {396 + 5401 + 29});
                 expect(found->getTimers().getBank() != nullptr && found->getTimers().getBank()->getNumTimers() == 3);
                 expect(found->getTimers().getBankNumber() > 0);
                 int bankSeen = 0;

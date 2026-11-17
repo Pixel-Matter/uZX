@@ -244,10 +244,10 @@ public:
             expectEquals(lastVolume(9), -1, "neither fits: fours, and the frame past the track's end is cut off");
         }
 
-        beginTest("Bitphase's rows and tuning are the tune's");
+        beginTest("Bitphase's row frames and tuning are the tune's");
         {
             const auto custom = readTaymModule(withInfo(makeAtariStTaym(), {"tracker=Bitphase", "tuning=Custom (2.00 MHz)",
-                                                                            "a4=441", "rows=4*36"}));
+                                                                            "a4=441", "row_frames=4*36"}));
             expect(custom.has_value());
             if (custom) {
                 expectEquals(custom->rowStarts.size(), size_t {36});
@@ -260,7 +260,7 @@ public:
                 }
             }
 
-            const auto table = readTaymModule(withInfo(makeAtariStTaym(), {"tuning=Sound Tracker", "rows=4*35"}));
+            const auto table = readTaymModule(withInfo(makeAtariStTaym(), {"tuning=Sound Tracker", "row_frames=4*35"}));
             expect(table.has_value());
             if (table) {
                 expect(table->table == std::optional<BuiltinTuningType> {BuiltinTuningType::CustomPT_1_ST});

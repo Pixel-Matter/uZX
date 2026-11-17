@@ -2,6 +2,7 @@
 set(SHARED_SOURCES
     util/Midi.cpp
     util/PipedProcess.cpp
+    util/UpdateCheck.cpp
 
     formats/video/VideoExport.cpp
 
@@ -80,6 +81,7 @@ set(GUI_SOURCES
     # gui/nodes/GraphEditorPanel.cpp
     gui/common/Transport.cpp
     gui/main/AboutDialog.cpp
+    gui/main/UpdateDialog.cpp
     gui/main/MainWindow.cpp
     gui/main/PlayerDocument.cpp
     gui/main/Footer.cpp
@@ -126,6 +128,7 @@ set(TEST_SOURCES
     util/Helpers.test.cpp
     util/FileOps.test.cpp
     util/PipedProcess.test.cpp
+    util/UpdateCheck.test.cpp
 
     formats/video/VideoExport.test.cpp
 

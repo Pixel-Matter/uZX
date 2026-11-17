@@ -281,7 +281,9 @@ set(JUCE_DEFINITIONS
     JUCE_PLUGINHOST_AU=0
     JUCE_PLUGINHOST_LADSPA=0
     JUCE_PLUGINHOST_VST3=0
-    JUCE_USE_CURL=0
+    # Linux only: https for the update check, with libcurl loaded when first needed rather than linked
+    JUCE_USE_CURL=1
+    JUCE_LOAD_CURL_SYMBOLS_LAZILY=1
     JUCE_WEB_BROWSER=0
     JUCE_USE_LAME_AUDIO_FORMAT=0
     JUCE_USE_CDBURNER=0

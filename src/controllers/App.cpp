@@ -2,6 +2,7 @@
 #include "TuningController.h"
 #include "PlayerController.h"
 #include "MainController.h"
+#include "../version.h"
 
 namespace MoTool {
 
@@ -40,6 +41,15 @@ const String MoToolApp::getApplicationVersion() {
 
 const char* MoToolApp::getTargetVersion() {
     return targetVersion_;
+}
+
+String MoToolApp::getReleaseVersion() {
+    const auto channel = String::fromUTF8(Build::channel);
+    return channel.isEmpty() ? String(targetVersion_) : targetVersion_ + ("-" + channel);
+}
+
+const char* MoToolApp::getReleaseTagPrefix() {
+    return target_ == Target::uZXPlayer ? "player-v" : "v";
 }
 
 bool MoToolApp::hasMidiControl() {

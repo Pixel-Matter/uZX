@@ -22,6 +22,10 @@ The screenshots show the macOS build using the [Guide demo project](../tests/fix
 
 Later launches open the app directly.
 
+### Updating
+
+**Help → Check for Updates...** (on macOS, in the app menu under **About**) asks GitHub for the releases of the app you are in and compares the newest with yours. When there is a newer one, the window links to its release page, where the notes and downloads are; when yours is the latest, it links to the list of all releases. The Player and Studio are released apart, so each looks only for its own. Nothing is downloaded or installed for you, and the app looks only when you ask.
+
 ---
 
 ## µZX Player
@@ -388,7 +392,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `F` | Viz mode on / off: full screen, only the notes and each chip's scopes | Player |
 | `V` | In Viz mode, show notes and scopes, then notes, then scopes | Player |
 | `S` | In Viz mode, stack each chip's scopes or set them side by side | Player |
-| `Esc` | Close the Settings, Plugins, or About window; in the Player, leave Viz mode | Player, Studio |
+| `Esc` | Close the Settings, Plugins, About, or Check for Updates window; in the Player, leave Viz mode | Player, Studio |
 | `Cmd+Q` | Quit | Player, Studio |
 
 ### Mouse and trackpad (timeline)

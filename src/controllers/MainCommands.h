@@ -81,7 +81,8 @@ public:
         settingsTuningTables, // Open Tuning Tables window
 
         // Help Menu
-        helpAbout            = 1000
+        helpAbout            = 1000,
+        helpCheckForUpdates
 
         // Add more commands as needed...
     };
@@ -109,7 +110,7 @@ public:
             viewNextVizLayout, viewSwitchVizScopes,
             viewZoomFrames, viewZoomRows, viewZoomBeats, viewZoomBars, viewZoomBack,
             settingsAudioMidi, settingsPlugins, settingsTuningTables,
-            helpAbout
+            helpAbout, helpCheckForUpdates
         };
 
         return Array<CommandID>(ids, numElementsInArray(ids));
@@ -226,6 +227,7 @@ public:
             menu.addCommandItem(manager, MainAppCommands::settingsTuningTables);
         } else if (menuName == "Help") {
             menu.addCommandItem(manager, MainAppCommands::helpAbout);
+            menu.addCommandItem(manager, MainAppCommands::helpCheckForUpdates);
         }
         return menu;
     }
@@ -521,6 +523,10 @@ public:
             // Help commands
             case helpAbout:
                 result.setInfo("About", "Show about dialog", "Help", 0);
+                break;
+
+            case helpCheckForUpdates:
+                result.setInfo("Check for Updates...", "See whether a newer release is out", "Help", 0);
                 break;
 
             // Add more command info...

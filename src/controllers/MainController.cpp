@@ -10,6 +10,7 @@
 #include "../gui/main/MainDocument.h"
 #include "../gui/common/Utilities.h"
 #include "../gui/main/AboutDialog.h"
+#include "../gui/main/UpdateDialog.h"
 #include "../gui/timeline/PsgClipComponent.h"
 #include "../gui/video/RenderVideoDialog.h"
 
@@ -139,6 +140,7 @@ void AppController::initialize() {
     PopupMenu appMenu;
     appMenu.addCommandItem(&commandManager_, MainAppCommands::helpAbout,
                            "About " + JUCEApplication::getInstance()->getApplicationName());
+    appMenu.addCommandItem(&commandManager_, MainAppCommands::helpCheckForUpdates);
     appMenu.addSeparator();
     appMenu.addCommandItem(&commandManager_, MainAppCommands::settingsAudioMidi, "Settings...");
     setMacMainMenu(this, &appMenu);
@@ -299,9 +301,10 @@ void AppController::handlePluginManager() {
     Helpers::launchDialogAsync(o);
 }
 
-void AppController::showAboutDialog() {
+/** Shows `content` in a dialog of its size, and returns when it is closed. */
+static void runInfoDialog(const String& title, Component* content) {
     DialogWindow::LaunchOptions options;
-    options.dialogTitle                  = "About " + JUCEApplication::getInstance()->getApplicationName();
+    options.dialogTitle                  = title;
     options.dialogBackgroundColour       = Colors::Theme::backgroundAlt;
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar            = true;
@@ -309,8 +312,18 @@ void AppController::showAboutDialog() {
     options.useBottomRightCornerResizer  = false;
     // TODO getCurrentFocusedDesktopWindow
     // options.componentToCentreAround      = &mainWindow_;
-    options.content.setOwned(new AboutDialogComponent());
+    options.content.setOwned(content);
     Helpers::launchDialogAsync(options)->runModalLoop();
+}
+
+void AppController::showAboutDialog() {
+    runInfoDialog("About " + JUCEApplication::getInstance()->getApplicationName(), new AboutDialogComponent());
+}
+
+void AppController::showUpdateDialog() {
+    runInfoDialog("Check for Updates",
+                  new UpdateDialogComponent(JUCEApplication::getInstance()->getApplicationName(),
+                                            MoToolApp::getReleaseTagPrefix(), MoToolApp::getReleaseVersion()));
 }
 
 
@@ -405,6 +418,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
             menu.addCommandItem(&commandManager_, MainAppCommands::settingsAudioMidi);
         } else if (menuName == "Help") {
             menu.addCommandItem(&commandManager_, MainAppCommands::helpAbout);
+            menu.addCommandItem(&commandManager_, MainAppCommands::helpCheckForUpdates);
         }
         return menu;
     }
@@ -888,6 +902,10 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::helpAbout:
             showAboutDialog();
+            break;
+
+        case MainAppCommands::helpCheckForUpdates:
+            showUpdateDialog();
             break;
 
         default:

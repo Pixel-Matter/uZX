@@ -23,7 +23,8 @@ by UZX_TEMPO_CORPUS) and joins each result:
              module row and more), wrong, pulse (no rows, a beat found by what repeats) or
              none, apart for the tunes a fixed grid fits and
              the ones that slip or change speed, with how often the beat comes out as from
-             the module's own rows; DUMP_DIR also gets every module as a PSG with its row
+             the module's own rows and, for PT3s with a DUMP_DIR, as the beat their patterns
+             single out (a pattern lasts a power-of-two number of beats); DUMP_DIR also gets every module as a PSG with its row
              starts and event cells, which scripts/train_row_evidence.py learns the
              detector's table from, and the tunes that script held out are summed up apart
 
@@ -39,6 +40,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True  # importing pt3_to_psg must not leave __pycache__ in scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pt3_info  # noqa: E402
 import pt3_to_psg  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +50,7 @@ FIELDS = ["rows", "rpb", "fpb", "bpm", "share", "sig", "clear", "first", "silent
 ROW_FIELDS = ["frames", "rows", "own", "grid", "fixed", "got", "share", "recall", "precision", "own_rpb", "own_fpb", "rpb", "fpb"]
 SINGLE_GRID = 0.9  # a fixed grid fits a module's rows this well: the tune has one tempo and no slips
 COVERED = 0.9      # share of rows that must agree for the detected grid to count as the module's
+BEAT_FRAMES = range(18, 38)  # a beat of 80 to 170 BPM at 50 Hz, the detector's range
 
 
 def detector_report(psg_dir, tests):
@@ -148,12 +151,40 @@ def row_verdict(r):
     return "exact" if covers and clean else "coarser" if clean else "finer" if covers else "wrong"
 
 
+def pattern_beat(module, rows_file):
+    """The beat a PT3's patterns single out, in frames. A pattern starts a bar, so it lasts a whole
+    number of beats, in 4/4 a power of two: the one beat of the detector's range that 90% of the
+    tune's frames lie in such patterns of. None when no beat does, or more than one (a tune in 3/4
+    is one of 4/4 with other beats, as far as its patterns say), or the file is no PT3."""
+    meta = pt3_info.info(module)
+    if meta is None or not rows_file.exists():
+        return None
+    rows = [int(x) for x in rows_file.read_text().split()]
+    if abs(sum(meta["lengths"]) - len(rows)) > 1:  # the module's rows aren't the order list played once
+        return None
+    lengths, at = [], 0
+    for n in meta["lengths"]:
+        if at + n < len(rows):
+            lengths.append(rows[at + n] - rows[at])
+        at += n
+    if len(lengths) < 2:
+        return None
+
+    def duple(beat):
+        fit = sum(l for l in lengths if l % beat == 0 and (l // beat) & (l // beat - 1) == 0)
+        return fit >= 0.9 * sum(lengths)
+
+    beats = [b for b in BEAT_FRAMES if duple(b)]
+    return beats[0] if len(beats) == 1 else None
+
+
 def check_rows(module_dir, dump_dir, tests):
     env = dict(os.environ, UZX_TEMPO_MODULES=str(module_dir))
     if dump_dir:
         dump_dir.mkdir(parents=True, exist_ok=True)
         env["UZX_TEMPO_DUMP"] = str(dump_dir)
     out = subprocess.run([str(tests), "PsgTempo"], env=env, capture_output=True, text=True).stdout
+    modules = {f.stem: f for f in module_dir.iterdir()}
     tunes = []
     for line in out.splitlines():
         if not line.startswith("ROWS\t"):
@@ -165,6 +196,7 @@ def check_rows(module_dir, dump_dir, tests):
             r[k] = float(r[k])
         r["verdict"] = row_verdict(r)
         r["single"] = r["fixed"] >= SINGLE_GRID
+        r["pattern_beat"] = pattern_beat(modules[r["name"]], dump_dir / (r["name"] + ".rows")) if dump_dir else None
         tunes.append(r)
     if not tunes:
         sys.exit(f"no ROWS lines from {tests}: build uZXTests first")
@@ -188,6 +220,12 @@ def check_rows(module_dir, dump_dir, tests):
         same = sum(r["fpb"] == r["own_fpb"] for r in answered)
         print(f"  {name:22} " + "  ".join(f"{v} {c[v]:3}" for v in ("exact", "coarser", "finer", "wrong", "pulse", "none"))
               + f"   beat as from the module's rows {same}/{len(answered)}")
+        known = [r for r in group if r["pattern_beat"]]
+        if known:  # PT3s dumped with their rows: the beat their patterns single out is the truth here
+            hit = lambda field: sum(int(r[field]) == r["pattern_beat"] for r in known)
+            missed = sum(r["got"] is None for r in known)
+            print(f"  {'':22} beat as the patterns say, of {len(known)}: detected {hit('fpb')} (none {missed}), "
+                  f"from the module's rows {hit('own_fpb')}")
     return stats
 
 

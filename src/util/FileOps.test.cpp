@@ -52,6 +52,16 @@ public:
             expectEquals(recent.indexOf(files[5].getFullPathName(), false, 1), -1);
         }
 
+        beginTest("The Open dialog starts in a folder that exists, the nearest to the one last used");
+        {
+            const auto gone = root.getChildFile("moved/away");
+            gone.createDirectory();
+            EditFileOps::setRecentEditsDirectory(storage, gone);
+            expectEquals(EditFileOps::getRecentEditsDirectory(storage).getFullPathName(), gone.getFullPathName());
+            root.getChildFile("moved").deleteRecursively();
+            expectEquals(EditFileOps::getRecentEditsDirectory(storage).getFullPathName(), root.getFullPathName());
+        }
+
         beginTest("Clearing empties the list read from the same storage");
         {
             EditFileOps::clearRecentEdits(storage);

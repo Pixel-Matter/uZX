@@ -6,6 +6,8 @@ namespace MoTool::EditFileOps {
 
 String getDefaultEditFileSuffix();
 
+/** Where the Open dialog starts: the folder last opened from or saved to, or the nearest of its parents
+    that exists. */
 File getRecentEditsDirectory(tracktion::PropertyStorage& storage);
 
 void setRecentEditsDirectory(tracktion::PropertyStorage& storage, const File& fileOrDir);

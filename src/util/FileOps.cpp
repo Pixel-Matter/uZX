@@ -33,7 +33,12 @@ String getAppFileGlob() {
 }
 
 File getRecentEditsDirectory(te::PropertyStorage& storage) {
-    return storage.getDefaultLoadSaveDirectory("edits");
+    // The nearest folder that exists: the default one is made only by a first Save As, and JUCE's own file
+    // dialog, which Linux uses without zenity or kdialog, puts a missing folder's name in its file name box
+    auto dir = storage.getDefaultLoadSaveDirectory("edits");
+    while (! dir.isDirectory() && dir.getParentDirectory() != dir)
+        dir = dir.getParentDirectory();
+    return dir;
 }
 
 static String getAppName() {

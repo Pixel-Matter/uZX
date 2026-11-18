@@ -13,7 +13,6 @@ Not covered yet: a live run on macOS (Gatekeeper, the DMG, Finder associations, 
 ## Low
 
 - **Two different µ characters.** The app names use the Greek μ (U+03BC: `src/CMakeLists.txt`, `App.cpp`); the README, the plist's "µZX Project" and the error dialogs use the micro sign µ (U+00B5), which `Option+M` types on a Mac. Spotlight searched with `Option+M` won't find "μZX Player". Pick one.
-- **Linux packaging.** The tarball holds a bare binary named `μZX Player`, with a space and a non-ASCII letter, and no `.desktop` file or icon (`.github/workflows/ci.yml`). Its Open dialog, JUCE's built-in one when zenity and kdialog are missing, starts with "μZX Player" typed into the file name field.
 - **Windows packaging.** An unsigned `.exe` in a zip triggers SmartScreen, and nothing says so. The ROADMAP defers the installer and signing until after 1.0.
 - **Viz mode with no tune** shows a blank black screen, since tracks without clips are hidden. Disable **Viz Mode** until a tune is open (`AppController::getCommandInfo` checks only for an edit).
 - **The ruler menu adds Studio's "Preserve PSG Timing"** in the Player too; JUCE skips the unregistered command, so nothing shows. Harmless, but it reads as a bug (`src/gui/timeline/Ruler.cpp`).

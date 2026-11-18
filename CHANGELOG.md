@@ -4,6 +4,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Download
+- Linux: the download is a folder with the app as `uzx-player` or `uzx-studio`, its menu entry and icon, and `install.sh`, which adds it to the applications menu, where it was a single binary named `μZX Player`
+
 ### Accessibility
 - Screen readers name the transport's readouts and master volume, the chip's knobs and A, B and C scopes, and the level meters
 - Viz mode's hint shows the options not chosen in a brighter grey, readable at 4.5:1
@@ -22,6 +25,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: the Open dialog listed `.ay` files and a drop accepted them, though µZX can't play them: an AYEmul file holds Z80 code. They are no longer offered
 - Fixed: Windows: a file opened while the Player ran started a whole second Player, which loaded and saved the last project before handing the file over. It hands the file over at once
 - Fixed: Linux: a file opened from the file manager while the Player ran did nothing. It opens in a new Player window
+- Fixed: the Open dialog started in a folder that doesn't exist until a first Save As; on Linux without zenity or kdialog, its name was typed into the file name box. It starts in the nearest folder that exists
 - Fixed: opening a `.uzx` project rewrote it on disk, even when it was only played. It is written when it has changes: on Save, when another file is opened, or on quit
 
 ### Timeline

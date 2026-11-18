@@ -22,6 +22,10 @@ The screenshots show the macOS build using the [Guide demo project](../tests/fix
 
 Later launches open the app directly.
 
+### Installing on Linux
+
+Unpack the `.tar.gz` and run `./install.sh` in the folder it makes. It copies the app to `~/.local/bin`, as `uzx-player` or `uzx-studio`, and adds it with its icon to the applications menu; run it again after unpacking a newer release. To try the app without installing it, run `./uzx-player` in the folder.
+
 ### Updating
 
 **Help → Check for Updates...** (on macOS, in the app menu under **About**) asks GitHub for the releases of the app you are in and compares the newest with yours. When there is a newer one, the window links to its release page, where the notes and downloads are; when yours is the latest, it links to the list of all releases. The Player and Studio are released apart, so each looks only for its own. Nothing is downloaded or installed for you, and the app looks only when you ask.

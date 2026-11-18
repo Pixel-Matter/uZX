@@ -103,7 +103,9 @@ double gridShare(std::span<const double> energy, int period);
 juce::Optional<double> repeatOverBeats(const std::vector<double>& repeat, int beatFrames);
 
 /** detect() with its working shown. */
-Analysis analyse(const std::vector<const uZX::PsgData*>& chips, const std::vector<size_t>& knownRows = {});
+Analysis analyse(const std::vector<const uZX::PsgData*>& chips,
+                 const std::vector<size_t>& knownRows = {},
+                 const std::vector<size_t>& knownPatterns = {});
 
 /** Returns nothing when the dump has too few note starts, or neither a row grid nor a
     beat it repeats at (speed 1, sample tunes, heavily modulated material). */
@@ -113,9 +115,17 @@ juce::Optional<Result> detect(const uZX::PsgData&);
 juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips);
 /** Same, on the row grid a tracker module knows (the frame every row starts at, see
     uZX::TrackerModule): its rows replace the grid detection, the first row is the downbeat,
-    and how many rows make a beat and the meter are still detected. Too few rows to make a
-    grid (fewer than 2) mean detection, as above. */
-juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, const std::vector<size_t>& knownRows);
+    and how many rows make a beat and the meter are still detected. When the rows follow no
+    pattern, a beat lasts as long as that many of them usually do. Too few rows to make a grid
+    (fewer than 2) mean detection, as above.
+
+    `knownPatterns`, the frames the module's patterns start at (uZX::TrackerModule::patternStarts),
+    are bar lines: a beat that would leave patterns a part of a beat, counted in rows and in
+    frames alike, is not taken, and when bars of only 3 or only 4 beats fill the patterns, that is
+    the meter, and clear. */
+juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips,
+                              const std::vector<size_t>& knownRows,
+                              const std::vector<size_t>& knownPatterns = {});
 
 /** When the clips (the chips of one tune, each loaded from its dump in `chips`) are the
     only clips in their edit, detects the tempo of the dumps together and
@@ -129,10 +139,12 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, con
     Musical pickups (notes before the first downbeat on the row grid) are not
     detected: in tracker dumps the first row is the downbeat in about 97% of
     tunes, and no register cue tried could tell the rest apart without moving
-    correct ones. With `knownRows`, a module's row grid, the tempo follows its rows instead. */
+    correct ones. With `knownRows`, a module's row grid, the tempo follows its rows instead, and
+    its beat and meter fill its patterns, `knownPatterns` (see detect). */
 void applyToEdit(const juce::Array<PsgClip*>& clips,
                  const std::vector<const uZX::PsgData*>& chips,
-                 const std::vector<size_t>& knownRows = {});
+                 const std::vector<size_t>& knownRows = {},
+                 const std::vector<size_t>& knownPatterns = {});
 
 /** Plays the clips at another frame rate (see PsgTiming::setClipFrameRate). When they are the
     only clips in their edit, the project's fps follows and its tempo scales with the rate, so a

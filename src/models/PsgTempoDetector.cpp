@@ -110,6 +110,7 @@ struct Speed
     int phase;
     double share;
     int beatRows = 0;  // rows to the beat when what found the rows also found the beat, else 0
+    bool guessed = false;  // a module's rows follow no pattern: `rows` is only their commonest length
 
     int period() const { return std::accumulate(rows.begin(), rows.end(), 0); }
     double meanRow() const { return (double) period() / (double) rows.size(); }
@@ -332,6 +333,17 @@ detectPulse(const std::vector<double>& energy, double total, const std::vector<d
 
 constexpr std::array<size_t, 4> grooveSizes{1, 2, 4, 8};  // rows a module's row pattern may have
 constexpr double minRowsFollowing = 0.9;                  // share of a module's rows its pattern must describe
+constexpr double minPatternsFilled = 0.9;                 // share of a module in patterns a beat or a bar fills
+
+/** The row lengths cut to their shortest repeating unit: 6-7-6-7 is 6-7. */
+std::vector<int> shortestUnit(std::vector<int> rows) {
+    for (size_t unit = 1; unit < rows.size(); ++unit)
+        if (rows.size() % unit == 0 && std::equal(rows.begin() + (std::ptrdiff_t) unit, rows.end(), rows.begin())) {
+            rows.resize(unit);
+            break;
+        }
+    return rows;
+}
 
 /** One round of a pulse: the tune cut, from its first row on, into runs of whole rows that
     last `pulse` frames each; a row that starts no such run is passed over. */
@@ -360,12 +372,7 @@ PulseRows rowsOfPulse(const std::vector<int>& lengths, int pulse) {
     if (runs.empty())
         return {};
     auto rows = std::max_element(runs.begin(), runs.end(), [](auto& a, auto& b) { return a.second < b.second; })->first;
-    for (size_t unit = 1; unit < rows.size(); ++unit)
-        if (rows.size() % unit == 0 && std::equal(rows.begin() + (std::ptrdiff_t) unit, rows.end(), rows.begin())) {
-            rows.resize(unit);
-            break;
-        }
-    return {rows, (double) covered / (double) lengths.size()};
+    return {shortestUnit(rows), (double) covered / (double) lengths.size()};
 }
 
 /** The pattern turned to the row it starts on for most of the tune's rows, counted from the first. */
@@ -383,6 +390,80 @@ std::vector<int> turnedToRows(std::vector<int> rows, const std::vector<int>& len
     std::rotate(rows.begin(), rows.begin() + (std::ptrdiff_t) bestTurn, rows.end());
     return rows;
 }
+
+/** The rows of a module's beat, from how many frames `rowsPerBeat` rows usually last: of the runs
+    of that many rows that last the commonest number of frames, the one that occurs most, cut to
+    its shortest repeating unit and turned to the rows it starts on. A module whose rows follow no
+    short pattern still has a beat of so many frames: rows of 4-4-4-4-4-4-4-3 make one of 31, not
+    of eight times the commonest row. Empty when the tune has no more rows than a beat, or when
+    one of that run's rows is more than a frame off `commonestRow`: a pause, a change of speed or
+    another part of the tune, not the beat that many rows were taken to make. */
+std::vector<int> rowsOfBeat(const std::vector<size_t>& starts, int rowsPerBeat, int commonestRow) {
+    const auto n = (size_t) std::max(0, rowsPerBeat);
+    if (n == 0 || starts.size() <= n)
+        return {};
+    std::vector<int> lengths;
+    for (size_t i = 1; i < starts.size(); ++i)
+        lengths.push_back((int) (starts[i] - starts[i - 1]));
+    auto commonest = [](const auto& counts) {
+        return std::max_element(counts.begin(), counts.end(), [](auto& a, auto& b) { return a.second < b.second; })
+            ->first;
+    };
+    std::map<size_t, size_t> spans;
+    for (size_t i = 0; i + n < starts.size(); ++i)
+        ++spans[starts[i + n] - starts[i]];
+    const auto span = commonest(spans);
+    std::map<std::vector<int>, size_t> runs;
+    for (size_t i = 0; i + n < starts.size(); ++i)
+        if (starts[i + n] - starts[i] == span)
+            ++runs[std::vector<int>(lengths.begin() + (std::ptrdiff_t) i, lengths.begin() + (std::ptrdiff_t) (i + n))];
+    const auto run = commonest(runs);
+    if (std::any_of(run.begin(), run.end(), [&](int row) { return std::abs(row - commonestRow) > 1; }))
+        return {};
+    return turnedToRows(shortestUnit(run), lengths);
+}
+
+/** A module's patterns, which start bars: how many rows each holds and how many frames it lasts,
+    the last one left out, since where it ends is not known. */
+struct Patterns
+{
+    std::vector<size_t> rows, frames;
+
+    Patterns(const std::vector<size_t>& rowStarts, const std::vector<size_t>& patternStarts) {
+        auto rowAt = [&](size_t frame) {
+            const auto row = std::lower_bound(rowStarts.begin(), rowStarts.end(), frame);
+            return (size_t) std::distance(rowStarts.begin(), row);
+        };
+        for (size_t k = 1; k < patternStarts.size(); ++k) {
+            rows.push_back(rowAt(patternStarts[k]) - rowAt(patternStarts[k - 1]));
+            frames.push_back(patternStarts[k] - patternStarts[k - 1]);
+        }
+    }
+
+    bool known() const { return rows.size() > 1; }
+
+    /** Whether a unit, a beat or a bar, of so many rows lasting so many frames fills the patterns:
+        nearly all the tune lies in patterns that hold a whole number of it, counted in rows or in
+        frames. Either will do: the rows of a pattern may differ in length, and the beat is then a
+        time; a beat may not be a whole number of frames (64 rows lasting 252), and it is then so
+        many rows. A unit that fills them neither way is not the tune's. True when too few patterns
+        are known to tell. */
+    bool filledBy(int unitRows, int unitFrames) const {
+        return !known() || wholeIn(rows, unitRows) || wholeIn(frames, unitFrames);
+    }
+
+private:
+    static bool wholeIn(const std::vector<size_t>& lengths, int unit) {
+        if (unit <= 0)
+            return false;
+        size_t whole = 0, all = 0;
+        for (auto length : lengths) {
+            all += length;
+            whole += length % (size_t) unit == 0 ? length : 0;
+        }
+        return (double) whole >= minPatternsFilled * (double) all;
+    }
+};
 
 /** A tracker module's own row grid, from the frame every row starts at: the shortest
     of 1, 2, 4 or 8 row lengths, repeating from the first row, that 90% of the rows follow
@@ -436,7 +517,9 @@ Speed speedOfRows(const std::vector<size_t>& starts) {
             if (isGroove && (repeating || found.tiled >= minRowsFollowing))
                 return Speed{turnedToRows(found.rows, lengths), (int) starts.front(), 1.0};
         }
-    return Speed{{commonest(1, 0)}, (int) starts.front(), 1.0};
+    Speed guess{{commonest(1, 0)}, (int) starts.front(), 1.0};
+    guess.guessed = true;
+    return guess;
 }
 
 /** Frame index of every row start. */
@@ -535,12 +618,15 @@ double repetition(const std::vector<RowFeature>& rows, size_t lagRows) {
     or 7 rows also wins when the row evidence is clearly more alike itself that far
     on (`repeat`, its autocorrelation) than at the beat chosen so. A swing pair or
     groove never splits across beats, so those tunes always group by 4, or by a
-    module's 8-row groove. */
+    module's 8-row groove. A module's patterns start bars, so a beat fills them
+    (see Patterns::filledBy): of the beats tried, those that would leave patterns
+    a part of a beat are out, unless that is every one of them. */
 BeatSearch detectRowsPerBeat(const std::vector<RowFeature>& rows,
                              const std::vector<double>& accents,
                              const Speed& speed,
                              double dataFps,
-                             const std::vector<double>& repeat) {
+                             const std::vector<double>& repeat,
+                             const Patterns& patterns) {
     const bool swing = speed.rows.size() > 1;
     const double rowLength = speed.meanRow();
     auto fitToBpmRange = [&](int rowsPerBeat) {
@@ -589,15 +675,27 @@ BeatSearch detectRowsPerBeat(const std::vector<RowFeature>& rows,
     BeatSearch search{fourRowBeat, {weighed(fourRowBeat)}};
     for (int group : {3, 5, 7})
         search.tried.push_back(weighed(fitToBpmRange(group)));
+    auto fillsThem = [&](int rowsPerBeat) {
+        return patterns.filledBy(rowsPerBeat, juce::roundToInt(rowLength * rowsPerBeat));
+    };
+    const bool someFill = std::any_of(search.tried.begin(), search.tried.end(), [&](const Analysis::Beat& beat) {
+        return fillsThem(beat.rowsPerBeat);
+    });
+    auto allowed = [&](int rowsPerBeat) { return !someFill || fillsThem(rowsPerBeat); };
+
     int best = fourRowBeat;
+    bool fills = allowed(best);  // false: any beat that fills the patterns replaces it
     double bestScore = repeats(fourRowBeat);
     for (int group : {3, 5}) {
         const int beat = fitToBpmRange(group);
+        if (!allowed(beat))
+            continue;
         const double score = repeats(beat);
         const double accent = accentRecurrence(beat);
-        if (score > bestScore && accent > 0.0 && accent > accentRecurrence(fourRowBeat)) {
+        if (!fills || (score > bestScore && accent > 0.0 && accent > accentRecurrence(fourRowBeat))) {
             best = beat;
             bestScore = score;
+            fills = true;
         }
     }
 
@@ -607,11 +705,18 @@ BeatSearch detectRowsPerBeat(const std::vector<RowFeature>& rows,
     if (auto score = alike(best))
         for (int group : {4, 3, 5, 7}) {
             const int beat = fitToBpmRange(group);
-            if (const auto other = alike(beat); other && *other > *score + beatMargin) {
+            if (const auto other = alike(beat); allowed(beat) && other && (!fills || *other > *score + beatMargin)) {
                 best = beat;
                 score = other;
+                fills = true;
             }
         }
+    if (!fills)  // only a beat too long for `repeat` fills the patterns
+        for (const auto& beat : search.tried)
+            if (allowed(beat.rowsPerBeat)) {
+                best = beat.rowsPerBeat;
+                break;
+            }
     search.rowsPerBeat = best;
     return search;
 }
@@ -706,16 +811,21 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips) {
     return detect(chips, {});
 }
 
-juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips, const std::vector<size_t>& knownRows) {
-    return analyse(chips, knownRows).result;
+juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips,
+                              const std::vector<size_t>& knownRows,
+                              const std::vector<size_t>& knownPatterns) {
+    return analyse(chips, knownRows, knownPatterns).result;
 }
 
-Analysis analyse(const std::vector<const uZX::PsgData*>& chips, const std::vector<size_t>& knownRows) {
+Analysis analyse(const std::vector<const uZX::PsgData*>& chips,
+                 const std::vector<size_t>& knownRows,
+                 const std::vector<size_t>& knownPatterns) {
     using RowsFrom = Analysis::RowsFrom;
     Analysis analysis;
     if (chips.empty())
         return analysis;
     const bool rowsKnown = knownRows.size() > 1;
+    const Patterns patterns(knownRows, rowsKnown ? knownPatterns : std::vector<size_t>{});
     analysis.noteStarts = summedOverChips(chips, onsetEnergy);
     const auto& noteStarts = analysis.noteStarts;
     const auto& data = *chips.front();  // the chips of one tune share the frame rate
@@ -771,9 +881,17 @@ Analysis analyse(const std::vector<const uZX::PsgData*>& chips, const std::vecto
     if (result.rowsArePulse) {
         result.rowsPerBeat = speed->beatRows;
     } else {
-        auto beats = detectRowsPerBeat(rows, accents, *speed, dataFps, repeat);
+        auto beats = detectRowsPerBeat(rows, accents, *speed, dataFps, repeat, patterns);
         result.rowsPerBeat = beats.rowsPerBeat;
         analysis.beats = std::move(beats.tried);
+    }
+    // A module whose rows follow no pattern: its beat lasts as long as that many of them usually do
+    if (const auto beat = speed->guessed ? rowsOfBeat(knownRows, result.rowsPerBeat, speed->rows.front())
+                                         : std::vector<int>{};
+        !beat.empty()) {
+        result.rowFrames.clear();
+        for (int row : beat)
+            result.rowFrames.push_back(row * playRate);
     }
     const auto meterMargin = tripleMeterMargin(rows, result.rowsPerBeat);
     analysis.meterMargin = meterMargin;
@@ -782,6 +900,15 @@ Analysis analyse(const std::vector<const uZX::PsgData*>& chips, const std::vecto
     for (int row = 0; row < result.rowsPerBeat; ++row)
         result.framesPerBeat += result.rowFrames[(size_t) row % result.rowFrames.size()];
     result.bpm = data.getFrameRate() * 60.0 / result.framesPerBeat;
+    // A module's patterns start bars: when bars of only 3 or only 4 beats fill them, that is the meter
+    if (patterns.known()) {
+        const int rowsPerBeat = result.rowsPerBeat, beat = result.framesPerBeat / playRate;
+        const bool three = patterns.filledBy(3 * rowsPerBeat, 3 * beat);
+        if (three != patterns.filledBy(4 * rowsPerBeat, 4 * beat)) {
+            result.beatsPerBar = three ? 3 : 4;
+            result.meterClear = true;
+        }
+    }
     result.gridShare = speed->share;
     const auto barFrames = (size_t) (result.framesPerBeat * result.beatsPerBar / playRate);
     const int firstRow = speed->phase;
@@ -842,10 +969,11 @@ static void applyTempo(const juce::Array<PsgClip*>& clips, const Result& result)
 
 void applyToEdit(const juce::Array<PsgClip*>& clips,
                  const std::vector<const uZX::PsgData*>& chips,
-                 const std::vector<size_t>& knownRows) {
+                 const std::vector<size_t>& knownRows,
+                 const std::vector<size_t>& knownPatterns) {
     if (clips.isEmpty() || !areOnlyClipsInEdit(clips))
         return;
-    const auto result = detect(chips, knownRows);
+    const auto result = detect(chips, knownRows, knownPatterns);
     if (!result)
         return;
 

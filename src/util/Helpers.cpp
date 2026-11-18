@@ -255,7 +255,10 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
     // A fitted tuning only guesses the clock; a tune that states it was written for that one
     else if (const auto& fit = clips.getFirst()->getTuning().fit; fit && tuneClock)
         clips.getFirst()->chooseFit(atClock(*fit, *tuneClock));
-    PsgTempo::applyToEdit(clips, chips, module != tunes.end() ? module->rowStarts : std::vector<size_t>{});
+    if (module != tunes.end())
+        PsgTempo::applyToEdit(clips, chips, module->rowStarts, module->patternStarts);
+    else
+        PsgTempo::applyToEdit(clips, chips);
 
     // A tune that loops back past its start loops there; the frames keep their times through the tempo above
     const auto looped = std::find_if(tunes.begin(), tunes.end(), [](const auto& t) { return t.loopFrame > 0; });

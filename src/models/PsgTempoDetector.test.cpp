@@ -373,6 +373,57 @@ public:
             expect(!PsgTempo::detect({&quiet}, {0}), "a single row falls back to detection");
         }
 
+        beginTest("A module whose rows follow no pattern: its beat lasts as long as that many rows usually do");
+        {
+            // Rounds of eight rows with one of 3 frames, at a place of its own in each, and every fourth round
+            // with two: no pattern of 1, 2, 4 or 8 rows holds and no pulse does, most rows are 4 frames, yet
+            // eight rows usually last 31.
+            const std::vector<std::vector<int>> rounds{
+                {4, 4, 4, 4, 4, 4, 4, 3}, {4, 4, 4, 3, 4, 4, 4, 4}, {4, 4, 4, 4, 4, 3, 4, 4}, {4, 4, 3, 4, 4, 4, 3, 4}};
+            std::vector<int> rows;
+            for (const auto& round : rounds)
+                rows.insert(rows.end(), round.begin(), round.end());
+            auto tune = makeTune(6000, rows, 8);
+            auto result = PsgTempo::detect({&tune}, rowsOf(6000, rows));
+            expect(result.hasValue());
+            if (result) {
+                // six or eight rows to the beat, and one of them is the short one
+                expectEquals(result->framesPerBeat, 4 * result->rowsPerBeat - 1, "not so many times the commonest row");
+                expect(std::find(result->rowFrames.begin(), result->rowFrames.end(), 3) != result->rowFrames.end(),
+                       rowPattern(result->rowFrames));
+            }
+        }
+
+        beginTest("A module's patterns are bars: its beat and its meter fill them");
+        {
+            // Speed 3 with accents every third row reads as beats of 6 rows; what the patterns hold decides
+            auto tune = makeBarTune(4000, 4, 3, 3);
+            const auto rows = rowsOf(4000, {3});
+            auto patternsOf = [&](size_t rowsEach) {
+                std::vector<size_t> starts;
+                for (size_t row = 0; row < rows.size(); row += rowsEach)
+                    starts.push_back(rows[row]);
+                return starts;
+            };
+            auto free = PsgTempo::detect({&tune}, rows);
+            expectEquals(free->rowsPerBeat, 6, "by what repeats, without patterns");
+            auto fits = PsgTempo::detect({&tune}, rows, patternsOf(48));
+            expectEquals(fits->rowsPerBeat, 6, "48 rows hold 8 beats of 6 rows");
+            auto vetoed = PsgTempo::detect({&tune}, rows, patternsOf(64));
+            expectEquals(vetoed->rowsPerBeat, 8, "64 rows hold no whole number of 6-row beats");
+            expectEquals(vetoed->framesPerBeat, 24);
+            expect(vetoed->meterClear && vetoed->beatsPerBar == 4, "8 beats a pattern: bars of 4, not of 3");
+
+            // Bars of 3 and of 4 beats both fill a pattern of 12 beats: the meter stays what the repetition says
+            auto plain = makeTune(3000, {6}, 4);
+            const auto plainRows = rowsOf(3000, {6});
+            std::vector<size_t> twelveBeats;
+            for (size_t row = 0; row < plainRows.size(); row += 48)
+                twelveBeats.push_back(plainRows[row]);
+            auto either = PsgTempo::detect({&plain}, plainRows, twelveBeats);
+            expect(! either->meterClear, "an unclear meter is not made clear by patterns both fill");
+        }
+
         beginTest("Too few notes or no grid gives no result");
         {
             expect(!PsgTempo::detect(makeTune(60, {6}, 4)));
@@ -835,7 +886,8 @@ public:
         from the detected ones.
         With UZX_TEMPO_DUMP naming a folder, every chip is also written there as <name>.psg
         (<name>.2.psg for a second chip) with its event cells as <name>.cells (four little-endian
-        uint16 a frame, see PsgRowEvidence::cellsOf), and the row starts as <name>.rows:
+        uint16 a frame, see PsgRowEvidence::cellsOf), the row starts as <name>.rows and the pattern
+        starts as <name>.patterns:
         scripts/train_row_evidence.py learns the detector's table from them. scripts/validate_tempo_detection.py --rows sums
         the lines up. */
     void runModuleRowsReport() {
@@ -855,7 +907,7 @@ public:
             for (const auto& chip : module->chips)
                 chips.push_back(&chip.psg);
             const auto& starts = module->rowStarts;
-            const auto own = PsgTempo::detect(chips, starts);
+            const auto own = PsgTempo::detect(chips, starts, module->patternStarts);
             if (!own)
                 continue;
             const auto playRate = (int) std::max<size_t>(1, chips.front()->options.playRate);
@@ -918,6 +970,10 @@ public:
             for (auto start : starts)
                 rowList.add(String(start));
             dump.getChildFile(name + ".rows").replaceWithText(rowList.joinIntoString(" "));
+            StringArray patternList;
+            for (auto start : module->patternStarts)
+                patternList.add(String(start));
+            dump.getChildFile(name + ".patterns").replaceWithText(patternList.joinIntoString(" "));
         }
     }
 };

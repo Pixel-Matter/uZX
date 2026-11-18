@@ -5,6 +5,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ## [Unreleased]
 
 ### Audio settings
+- Player: the audio settings show only the output, without the audio inputs and MIDI ports it never uses
 - Without a working audio device at startup, a message says what is wrong and offers **Open Audio Settings**, where the settings opened on their own without a word
 
 ### Opening files

@@ -20,11 +20,12 @@ namespace te = tracktion;
 class AudioSettingsComponent : public Component,
                                private ChangeListener {
 public:
-    explicit AudioSettingsComponent(juce::AudioDeviceManager& dm)
+    /** Without inputs, the audio inputs and MIDI ports are left out, for an app that only plays. */
+    AudioSettingsComponent(juce::AudioDeviceManager& dm, bool withInputs)
         : deviceManager_(dm)
     {
         selector_ = std::make_unique<AudioDeviceSelectorComponent>(
-            deviceManager_, 0, 512, 1, 512, true, true, true, false);
+            deviceManager_, 0, withInputs ? 512 : 0, 1, 512, withInputs, withInputs, true, false);
         addAndMakeVisible(*selector_);
 
         // Remember the starting configuration as the baseline to revert to.

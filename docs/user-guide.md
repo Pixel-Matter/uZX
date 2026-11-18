@@ -394,7 +394,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Delete` or `Backspace` | Delete the selected clip, track, or device | Studio |
 | `Cmd+T` | Add track | Studio |
 | `Cmd+Shift+T` | Open Tuning Tables | Studio |
-| `Cmd+,` | Audio/MIDI settings; on macOS, **Settings...** in the app menu, next to **About** | Player, Studio |
+| `Cmd+,` | Audio settings, and in Studio the MIDI ports too; on macOS, **Settings...** in the app menu, next to **About** | Player, Studio |
 | `F` | Viz mode on / off: full screen, only the notes and each chip's scopes | Player |
 | `V` | In Viz mode, show notes and scopes, then notes, then scopes | Player |
 | `S` | In Viz mode, stack each chip's scopes or set them side by side | Player |

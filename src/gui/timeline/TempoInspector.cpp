@@ -944,7 +944,6 @@ private:
         return inspection;
     }
 
-    // ponytail: the transport's position, not the latency-aware playhead the timeline draws: a frame late at most
     tracktion::TimePosition timeOf(const PsgClip& clip, int frame) const {
         const auto position = clip.getPosition();
         return position.getStart() + tracktion::TimeDuration::fromSeconds((frame + clip.getLeadInFrames()) / in.fps)
@@ -987,7 +986,13 @@ private:
                 window->exitModalState(0);
             return;
         }
-        const int frame = frameAt(*c, c->edit.getTransport().getPosition());
+        // The playhead stands where the tune is heard, as the timeline's does: the transport runs ahead of
+        // the sound by the output device's latency.
+        // ponytail: no wait after a jump, which the timeline's playhead has: for one latency it shows the
+        // frames just before the place jumped to.
+        auto& transport = c->edit.getTransport();
+        const auto heard = transport.isPlaying() ? Helpers::getHeardPosition(c->edit) : transport.getPosition();
+        const int frame = frameAt(*c, heard);
         if (frame == in.playFrame)
             return;
         in.playFrame = frame;

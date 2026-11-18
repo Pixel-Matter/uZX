@@ -30,6 +30,12 @@ double getProjectFps(te::Edit& edit);
 
 void setProjectFps(te::Edit& edit, double fps);
 
+/** Where the edit is heard now: the transport's position less the output device's latency. Tracktion
+    already takes the graph's own latency off the transport position, but the device sounds each
+    block only after its output latency (buffer, driver, Bluetooth...). What a playhead drawn against
+    the sound stands at during playback. */
+te::TimePosition getHeardPosition(te::Edit& edit);
+
 /** Default frame subdivision pattern for a frames-per-beat value: quarters when divisible by 4,
     halves by 2, else thirds, fifths or sevenths of at least 2 frames each; otherwise empty. */
 std::vector<int> getDefaultGridSubdivisionPattern(int framesPerBeat);

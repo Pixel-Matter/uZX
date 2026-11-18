@@ -63,6 +63,7 @@ MasterLevelMeter::MasterLevelMeter(tracktion::Edit& edit)
     : edit_{edit}
 {
     setInterceptsMouseClicks(true, false);
+    setTitle("Output level");
     setTooltip("Output level. The last LED stays red once the output has clipped: click to clear");
     startTimerHz(LedMeter::levelRefreshHz);
 }

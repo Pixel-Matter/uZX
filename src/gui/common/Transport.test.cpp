@@ -67,7 +67,7 @@ public:
                 expectEquals(groove->getText(), String("23"));
         }
 
-        beginTest("Each readout's value and unit say in a tooltip how to change it");
+        beginTest("Each readout's value and unit say in a tooltip how to change it, and a screen reader what it is");
         {
             auto edit = tracktion::Edit::createSingleTrackEdit(engine);
             tracktion::SelectionManager selectionManager(engine);
@@ -87,10 +87,14 @@ public:
                 if (label->isEditableOnSingleClick()) {
                     ++editable;
                     expect(label->getTooltip().contains("click to type"), label->getText());
+                    expect(label->getDescription().isNotEmpty(), "a screen reader says what the value is");
                 }
             }
             expectEquals(units, unitNames.size());
             expectEquals(editable, 5, "bpm, fpb, groove, sig and pos");
+            for (auto* child : bar.getChildren())
+                if (auto* knob = dynamic_cast<Slider*>(child))
+                    expectEquals(knob->getTitle(), String("Master volume"));
         }
 
         beginTest("The transport buttons sit in the middle of the bar; in a narrow one, clear of the output section");

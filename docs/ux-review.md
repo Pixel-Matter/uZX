@@ -8,7 +8,7 @@ Not covered yet: a live run on macOS (Gatekeeper, the DMG, Finder associations, 
 
 | # | Finding | Where | Suggested fix |
 | --- | --- | --- | --- |
-| M7 | **Accessibility basics.** Tab does not reach the transport or chip controls. Screen readers get button names but no titles or descriptions for the readouts, knobs or scopes. The dim text colour (slate-500 on slate-900) is about 3.7:1, under the 4.5:1 WCAG asks for small text. | `src/gui/common/LookAndFeel.h`; no `setTitle`/`setDescription` in `src/gui` | Give readouts and knobs a title and the transport a focus order. Raise disabled and hint text to slate-400. |
+| M7 | **Tab does not reach the transport or chip controls.** Screen readers now name the readouts, knobs, scopes and meters, and no text to read is below 4.5:1. Left: no control takes Tab focus, and the look-and-feel draws no focus ring. A focused knob or button would also take the arrows and Space the Player steps and plays with. | `src/gui/common/Transport.cpp`, `src/plugins/uZX/aychip/AYPluginEditor.cpp`, `src/gui/common/LookAndFeel.cpp` | Focus by Tab only (`setMouseClickGrabsKeyboardFocus(false)`), a focus ring in the look-and-feel, and Escape to give the keys back to the transport. |
 
 ## Low
 

@@ -4,6 +4,11 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Accessibility
+- Screen readers name the transport's readouts and master volume, the chip's knobs and A, B and C scopes, and the level meters
+- Viz mode's hint shows the options not chosen in a brighter grey, readable at 4.5:1
+- Fixed: the chip's Volume and Width knobs had "μZX AY Emulator >> volume" as their tooltip; it says what they are, such as "Output volume"
+
 ### Audio settings
 - Player: the audio settings show only the output, without the audio inputs and MIDI ports it never uses
 - Without a working audio device at startup, a message says what is wrong and offers **Open Audio Settings**, where the settings opened on their own without a word

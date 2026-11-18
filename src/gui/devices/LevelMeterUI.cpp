@@ -20,6 +20,7 @@ LevelMeterUI::LevelMeterUI(tracktion::Plugin::Ptr p)
     jassert(levelMeterPlugin != nullptr);
 
     setSize(METER_WIDTH, 100);  // Height will be adjusted by parent
+    setTitle("Track level");
 
     if (levelMeterPlugin) {
         levelMeterPlugin->showMidiActivity.setValue(true, nullptr);  // a display setting: not undoable

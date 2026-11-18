@@ -15,6 +15,9 @@ public:
     using tracktion::AutomatableParameter::AutomatableParameter;
 
     virtual void updateFromAttachedParamValue() = 0;
+
+    /** What the parameter is, from its definition: "Output volume". */
+    virtual String getDescription() const = 0;
 };
 
 //==============================================================================
@@ -52,6 +55,7 @@ public:
 
     String getParameterName() const          override { return definition.identifier; }
     String getParameterShortName (int) const override { return definition.shortLabel; }
+    String getDescription() const            override { return definition.description; }
     // suffix or units
     String getLabel()                        override { return definition.units; }
 

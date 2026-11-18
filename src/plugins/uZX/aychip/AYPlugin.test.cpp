@@ -10,6 +10,7 @@
 #include "../../../util/TestHelpers.h"
 
 #include <algorithm>
+#include <map>
 #include <cmath>
 #include <utility>
 #include <vector>
@@ -545,6 +546,27 @@ public:
 
             chip1.toggleSolo(2);
             expect(! edit->areAnyTracksSolo(), "no solo left");
+        }
+
+        beginTest("A screen reader names the chip's knobs and scopes");
+        {
+            AYPluginUI ui {&chip1};
+            StringArray titles;
+            std::map<String, String> knobTips;
+            std::function<void(Component&)> collect = [&](Component& parent) {
+                for (auto* child : parent.getChildren()) {
+                    if (auto* knob = dynamic_cast<Slider*>(child))
+                        knobTips[knob->getTitle()] = knob->getTooltip();
+                    if (dynamic_cast<Slider*>(child) != nullptr || dynamic_cast<WaveformDisplay*>(child) != nullptr)
+                        titles.add(child->getTitle());
+                    collect(*child);
+                }
+            };
+            collect(ui);
+            for (auto* title : {"Volume", "Width", "Channel A scope", "Channel B scope", "Channel C scope"})
+                expect(titles.contains(title), title);
+            expectEquals(knobTips["Volume"], String("Output volume"), "the tooltip says what it is, not the automation path");
+            expectEquals(knobTips["Width"], String("Stereo width"));
         }
 
         beginTest("A channel is on, muted or soloed, and a click turns a muted or soloed one back on");

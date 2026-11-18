@@ -93,6 +93,7 @@ SliderParamEndpointBinding::~SliderParamEndpointBinding() {
 }
 
 void SliderParamEndpointBinding::configureWidget() {
+    slider.setTitle(endpoint().getName());  // what a screen reader names the knob; it reads the value itself
     slider.setTooltip(endpoint().getDescription());
     slider.addComponentListener(this);
     componentParentHierarchyChanged(slider);
@@ -167,6 +168,7 @@ ComboBoxParamEndpointBinding::~ComboBoxParamEndpointBinding() {
 }
 
 void ComboBoxParamEndpointBinding::configureWidget() {
+    comboBox.setTitle(endpoint().getName());
     comboBox.setTooltip(endpoint().getDescription());
     fillItems();
 }

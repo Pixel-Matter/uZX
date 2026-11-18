@@ -5,6 +5,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ## [Unreleased]
 
 ### Opening files
+- Player: with no tune open, the window says how to open one, where it showed an empty grid and the colour legend; a file dragged over the window outlines it
 - Fixed: several files selected in Finder and opened in the Player, such as the files of a Turbo Sound set, did nothing; so did several paths on the command line. They open together, and a file that can't be found or opened is named in a message
 
 ### Timeline

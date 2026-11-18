@@ -90,8 +90,11 @@ private:
 
     // Without clip headers (the Player): the legend once over the tracks
     std::unique_ptr<PsgLegendComponent> legend;
+    /** The Player with nothing to play: how to open a tune, in place of the legend. */
+    std::unique_ptr<Label> emptyHint;
+    void updateEmptyHint();
 
-    bool updateSizes = false, updateScrollRange = false;
+    bool updateSizes = false, updateScrollRange = false, updateEmpty = false;
     bool middleDragging = false;
 
     // The display's frame clock: the playhead, the view and everything drawn from them move once per frame

@@ -314,6 +314,19 @@ public:
                 expect(result->subdivisionPattern() == std::vector<int>({8, 8, 8, 7}), "the groove the grid shows");
             }
 
+            // The same registers at 200 Hz: the beat of 31 frames is past Tracktion's fastest tempo, so a beat
+            // takes two rounds of the rows
+            auto fast = makeTune(6000, {4, 4, 4, 4, 4, 4, 4, 3}, 6000);
+            fast.options = {200.0, 1};
+            auto fastResult = PsgTempo::detect(fast);
+            expect(fastResult.hasValue());
+            if (fastResult) {
+                expect(fastResult->rowsArePulse, "still the rows read inside the beat");
+                expectEquals(fastResult->rowsPerBeat, 16);
+                expectEquals(fastResult->framesPerBeat, 62);
+                expectWithinAbsoluteError(fastResult->bpm, 12000.0 / 62.0, 0.01);
+            }
+
             // Every second row accented, the short round now and then a frame longer: only the accents stand
             // out, and the rows are read as the pulses they make
             std::vector<int> rounds;

@@ -439,7 +439,8 @@ detectPulse(const std::vector<double>& energy, double total, const std::vector<d
     if (const auto groove = readGroove(energy, beat)) {
         Speed speed{groove->rows, groove->phase, fitGrid(energy, total, beat, groove->rowsPerBeat).share,
                     groove->rowsPerBeat};
-        while (dataFps * 60.0 / beat * speed.beatRows / groove->rowsPerBeat > tracktion::TempoSetting::maxBPM)
+        // past Tracktion's fastest tempo a beat takes twice the rows, and so twice the frames
+        while (dataFps * 60.0 * groove->rowsPerBeat / (beat * speed.beatRows) > tracktion::TempoSetting::maxBPM)
             speed.beatRows *= 2;
         search.grooveAgreement = groove->agreement;
         search.chosen = speed;

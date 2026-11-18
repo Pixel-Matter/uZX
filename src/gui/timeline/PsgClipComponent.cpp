@@ -1404,6 +1404,8 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     });
     const auto visibleStates = states.getStates();
 
+    // A note narrower than this is too faint to show its colour: zoomed out, a frame is a part of a pixel
+    constexpr float minNoteWidth = 1.0f;
     size_t noiseBandEnd = 0;  // the states before this one have their noise band drawn
     for (size_t stateIndex = 0; stateIndex < visibleStates.size(); ++stateIndex) {
         const auto& state = visibleStates[stateIndex];
@@ -1457,6 +1459,17 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                 &n};
         }
 
+        // Whether the next state draws the note on: at the same pitch, by the same channels or timer
+        const auto continuesInNextState = [&] (const PsgSoundingNote& n) {
+            if (stateIndex + 1 >= visibleStates.size())
+                return false;
+            for (const auto& next : states.getNotes(visibleStates[stateIndex + 1]))
+                if (next.channelMask == n.channelMask && next.isEnvelopePitch == n.isEnvelopePitch
+                    && (next.timer != nullptr) == (n.timer != nullptr) && exactlyEqual(next.pitch, n.pitch))
+                    return true;
+            return false;
+        };
+
         const std::span<const FrameNote> pitchNotes(notes.data(), static_cast<size_t>(noteCount));
         if (noiseLevel > 0.0f)
             drawNoiseFringe(g, {x, float(roundToInt(noiseBounds.getCentreY())), width, 0.0f},
@@ -1505,7 +1518,13 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                         subH = groupBottom - subY;
                 }
 
-                const auto noteRect = Rectangle<float>(x, subY, width, jmax(1.0f, subH));
+                auto noteRect = Rectangle<float>(x, subY, width, jmax(1.0f, subH));
+                if (width < minNoteWidth && ! continuesInNextState(*note.sounding)) {
+                    // Its last stretch is drawn a pixel wide, on a whole one: the stretches before it tile up
+                    // to it, so a held note keeps the opacity of its volume
+                    noteRect.setWidth(minNoteWidth);
+                    noteRect.setX(std::floor(x));
+                }
                 if (const auto* timer = note.sounding->timer) {
                     drawTimerNote(g, noteRect, note.colour.withAlpha(note.alpha), *timer,
                                   {envelopeColour, envShape}, drawMods,

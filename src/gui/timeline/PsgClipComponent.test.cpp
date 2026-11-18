@@ -302,6 +302,52 @@ public:
         }
         expect(samePattern);
 
+        beginTest("A note shorter than a pixel is drawn a pixel wide, in its own opacity");
+        {
+            // 400 frames in 100 px: a quarter of a pixel a frame
+            const auto silent = withTones(1, 0).frames.front();
+            uZX::PsgData shortNote {{}, {50.0, 1}};
+            for (int i = 0; i < 400; ++i) {
+                auto frame = silent;
+                frame.setVolumeAndEnvMod(0, i == 202 ? 15 : 0, false);
+                frame.setVolumeAndEnvMod(1, 0, false);
+                frame.setVolumeAndEnvMod(2, 0, false);
+                shortNote.frames.push_back(frame);
+            }
+            const auto image = renderData(shortNote, 100);
+            int opaqueColumns = 0, paintedColumns = 0;
+            for (int x = 0; x < image.getWidth(); ++x) {
+                float alpha = 0.0f;
+                for (int y = 0; y < image.getHeight(); ++y)
+                    alpha = jmax(alpha, image.getPixelAt(x, y).getFloatAlpha());
+                paintedColumns += alpha > 0.0f ? 1 : 0;
+                opaqueColumns += alpha > 0.99f ? 1 : 0;
+            }
+            expectEquals(opaqueColumns, 1, "volume 15 is opaque");
+            expectEquals(paintedColumns, 1, "on one whole pixel");
+
+            // A held note's stretches tile: a change on another channel in every frame does not add them up
+            uZX::PsgData held {{}, {50.0, 1}};
+            for (int i = 0; i < 400; ++i) {
+                auto frame = silent;
+                frame.setVolumeAndEnvMod(0, 9, false);
+                frame.setVolumeAndEnvMod(1, 0, false);
+                frame.setVolumeAndEnvMod(2, 0, false);
+                frame.setTonePeriod(1, static_cast<uint16_t>(100 + i));
+                held.frames.push_back(frame);
+            }
+            auto steady = held;
+            for (auto& frame : steady.frames)
+                frame.setTonePeriod(1, 100);
+            const auto heldImage = renderData(held, 100), steadyImage = renderData(steady, 100);
+            bool sameOpacity = true;
+            for (int y = 0; y < heldImage.getHeight(); ++y)
+                for (int x = 1; x < heldImage.getWidth() - 1; ++x)
+                    sameOpacity = sameOpacity
+                        && std::abs(heldImage.getPixelAt(x, y).getAlpha() - steadyImage.getPixelAt(x, y).getAlpha()) <= 2;
+            expect(sameOpacity);
+        }
+
         beginTest("Noise uses rectangular marks large enough to span two logical pixels");
         const auto rectangles = renderData(withTones(1, 1), 6);
         bool hasTwoByTwo = false;

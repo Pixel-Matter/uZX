@@ -725,14 +725,8 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::fileImportPsg:
-            if (isPlayer) {
-                MoToolApp::getPlayerController().handleImportPsgReplace();
-            } else {
-                auto* edit = MoToolApp::getArrangerController().getEdit();
-                if (edit != nullptr) {
-                    importPsgAsClip(*edit, selectionManager_);
-                }
-            }
+            if (auto* edit = MoToolApp::getArrangerController().getEdit())
+                importPsgAsClip(*edit, selectionManager_);
             break;
 
         case MainAppCommands::fileImportAudio:

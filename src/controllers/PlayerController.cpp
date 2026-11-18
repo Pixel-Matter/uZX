@@ -178,41 +178,6 @@ void PlayerController::handleClearRecentFiles() {
     MoToolApp::getCommandManager().commandStatusChanged();
 }
 
-void PlayerController::handleImportPsgReplace() {
-    if (edit_ == nullptr) return;
-
-    Helpers::browseForPSGFiles(engine_, [this](const Array<File>& picked) {
-        Helpers::withTurboSoundSet(picked, [this](const Array<File>& files) {
-            if (files.isEmpty()) return;
-
-            const auto what = files.size() == 1 ? "\"" + files[0].getFileNameWithoutExtension() + "\""
-                                                : String(files.size()) + " files";
-            auto options = MessageBoxOptions()
-                .withTitle("Import PSG")
-                .withMessage("How would you like to import " + what + "?")
-                .withButton(files.size() == 1 ? "New Track" : "New Tracks")
-                .withButton("New Edit")
-                .withButton("Cancel");
-
-            NativeMessageBox::showAsync(options, [this, files](int result) {
-                if (result == 0)
-                    importPsgsToNewTracks(files);
-                else if (result == 1)
-                    importPsgsToNewEdit(files);
-            });
-        });
-    });
-}
-
-void PlayerController::importPsgsToNewTracks(const Array<File>& files) {
-    edit_->getTransport().stop(false, false);
-    const auto clips = Helpers::importPsgFiles(*edit_, files);
-    for (auto* clip : clips)
-        RememberedStereo::apply(Helpers::ensureAYPluginOnTrack(*clip->getAudioTrack()));
-    if (! clips.isEmpty())
-        zoomToFitHorizontally(false);
-}
-
 void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
     // Populate a new edit before setting it on the UI; a fresh edit has one empty track for the first file
     auto newEditFile = EditFileOps::getTempEditFile();

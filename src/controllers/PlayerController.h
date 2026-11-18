@@ -24,7 +24,6 @@ public:
     /** Saves in place; an edit that only lives in the temp folder goes through Save As. */
     void handleSave();
     void handleSaveAs();
-    void handleImportPsgReplace();
 
     /** Viz mode: full screen with the notes and each chip's scopes, as the VizOptions in the app
         settings choose. An app state, not saved: it stays on for the next file opened. */
@@ -45,7 +44,6 @@ private:
     /** The app settings changed: maybe the Viz options, from the View menu, the V key or Render Video. */
     void appSettingsChanged();
 
-    void importPsgsToNewTracks(const Array<File>& files);
     void importPsgsToNewEdit(const Array<File>& files);
 
     std::unique_ptr<RememberedStereo> rememberedStereo_;

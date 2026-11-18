@@ -47,7 +47,7 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] "check for updates" menu item
 - [x] **Playhead stepping** — Player: ←/→ a grid line, Option+←/→ a frame; stopped, the step is heard as scrubbing
 - [ ] Rework tempo detection
-- [ ] Cache per-frame PSG draw logic info in PsgClip: visible notes listing, flags, pitch, freqs, etc. Everything that is not XY-scale depentent, and not specific decoration-dependent. Or not in PsgClip. To speedup render further for slower PCs.
+- [ ] PSG hover shown only when minor grid step is a frame
 
 #### P2 — Nice to have
 

@@ -18,6 +18,7 @@
 | Design | [design/parameter-binding.md](design/parameter-binding.md) | Parameter definitions, automation bridge, widget bindings |
 | Design | [design/timer-fx.md](design/timer-fx.md) | TAYM's timers in the AY chip: timed register writes between frames, their controllers on the PSG wire, timers in a clip |
 | Design | [design/timeline-markers.md](design/timeline-markers.md) | Proposal: markers on the timeline, a lane above the ruler, pattern markers on module import; options for each open choice |
+| Design | [design/tempo-map.md](design/tempo-map.md) | Research and proposal: sections with their own meter, frames per beat and groove on one frame rate; what Tracktion's tempo sequence gives, how other software does it, open questions |
 | Vision | [motool/](motool/vision.md) | The initial MoTool demotool vision and its early design notes; not implemented, not scheduled |
 
 Build, test, style and branching rules are in [CONTRIBUTING.md](../CONTRIBUTING.md) and [AGENTS.md](../AGENTS.md); released changes in [CHANGELOG.md](../CHANGELOG.md).

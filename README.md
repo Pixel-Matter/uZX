@@ -91,19 +91,21 @@ Open the `.dmg` and drag the app to **Applications**. The app isn't notarized by
 Most `.psg` files don't record the frame rate they were written for, so µZX opens them at 50 Hz, and a tune made for 100 or 200 Hz (Atari, multi-speed players) plays two or four times too slowly. To play it at its rate:
 
 1. Open or import the file as usual (`Cmd+O` in the Player, `Cmd+I` in Studio).
-2. Click **FPS** in the transport bar and pick the rate, such as **200 fps**. Every clip that played at the old rate follows. A tune alone in the project takes its timeline along: its tempo scales with the rate (41 BPM at 50 Hz is 164 BPM at 200 Hz), keeping its rows, groove and meter.
+2. Click **fps** in the transport bar and pick the rate, such as **200 fps**. Every clip that played at the old rate follows. A tune alone in the project takes its timeline along: its tempo scales with the rate (41 BPM at 50 Hz is 164 BPM at 200 Hz), keeping its rows, groove and meter.
 3. Or right-click a clip and pick **Frame Rate** to change only that tune, all its Turbo Sound chips included.
 
-Save the project (`.uzx`) to keep the rate. See [Opening Files](docs/user-guide.md#opening-files) in the User Guide.
+The rate stays: the Player keeps it for that tune and brings it back when you open the tune again, and a `.uzx` project keeps it too. See [Opening Files](docs/user-guide.md#opening-files) in the User Guide.
 
 ## Building from Source
 
 ```bash
 git clone --recursive https://github.com/Pixel-Matter/uZX.git
 cd uZX
-cmake -S . -B build
-cmake --build build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel
 ```
+
+This makes an optimised build, as releases are. With [Ninja](https://ninja-build.org) installed, the presets do the same: `cmake --preset release`, then `cmake --build --preset release --parallel`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, prerequisites, and build targets.
 

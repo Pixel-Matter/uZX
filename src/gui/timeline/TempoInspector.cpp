@@ -89,6 +89,9 @@ struct Inspection
     std::function<void()> lagChanged;
     std::function<void(int)> seek;                 // moves the playhead to a frame
     std::function<void(const juce::String&)> say;  // what is under the mouse
+    /** Where a frame starts in the project's own grid, in beats, and its bar: where the metronome clicks.
+        Unset in a view that knows no project. */
+    std::function<std::pair<double, int>(int)> projectBeatAt;
 
     int numFrames() const { return (int) analysis.evidence.size(); }
     int maxLag() const {
@@ -410,6 +413,19 @@ public:
             if (frame >= first)
                 g.fillRect(xOf(frame), plot.getBottom() + 1.0f, 1.0f, 8.0f);
 
+        // The project's beat lines, where the metronome clicks: at the first frame of each beat, a bar's brighter
+        if (in.projectBeatAt) {
+            auto before = in.projectBeatAt(first - 1);
+            for (int frame = first; frame < first + count; ++frame) {
+                const auto at = in.projectBeatAt(frame);
+                if (std::floor(at.first) != std::floor(before.first)) {
+                    g.setColour(Theme::textPrimary.withAlpha(at.second != before.second ? 0.6f : 0.25f));
+                    g.fillRect(xOf(frame), plot.getY(), 1.0f, plot.getHeight());
+                }
+                before = at;
+            }
+        }
+
         if (in.playFrame >= first && in.playFrame < first + count) {
             g.setColour(Theme::success);
             g.fillRect(xOf(in.playFrame), (float) titleHeight, 1.0f, (float) (getHeight() - titleHeight));
@@ -423,8 +439,9 @@ public:
     }
 
     void mouseMove(const juce::MouseEvent&) override {
-        in.say("Top marks: the detected rows. A long mark is the start of a beat. Bottom marks: the beats of the "
-               "cursor. Click to move the playhead.");
+        in.say("Top marks: the detected rows. A long mark is the start of a detected beat. Bottom marks: the beats of "
+               "the cursor. Lines: the beats of the project, where the metronome clicks. A bar line is brighter. Click "
+               "to move the playhead.");
     }
 };
 
@@ -760,7 +777,10 @@ std::vector<Fact> describe(const Inspection& in) {
 class FactsView : public juce::Component
 {
 public:
-    explicit FactsView(std::vector<Fact> factsToShow) : facts(std::move(factsToShow)) {}
+    void setFacts(std::vector<Fact> factsToShow) {
+        facts = std::move(factsToShow);
+        repaint();
+    }
 
     /** The height the facts take when the view is this wide. */
     int heightFor(int width) const {
@@ -807,7 +827,8 @@ class TempoInspector : public juce::Component, private juce::Timer
 {
 public:
     explicit TempoInspector(PsgClip& clip)
-        : clip_(&clip), clickWasOn_(clip.edit.clickTrackEnabled.get()), map_(in), phases_(in), strip_(in), repeat_(in),
+        : clip_(&clip), clickWasOn_(clip.edit.clickTrackEnabled.get()),
+          barAccentWasOn_(clip.edit.clickTrackEmphasiseBars.get()), map_(in), phases_(in), strip_(in), repeat_(in),
           bars_(in), table_(in), play_(clip.edit) {
         setWantsKeyboardFocus(true);
         for (auto* panel : std::initializer_list<juce::Component*>{&map_, &phases_, &strip_, &repeat_, &bars_, &table_})
@@ -824,13 +845,18 @@ public:
             addAndMakeVisible(text);
         }
         addAndMakeVisible(facts_);
+        showFacts();
         status_.setColour(juce::Label::textColourId, Theme::textSecondary);
         status_.setJustificationType(juce::Justification::topLeft);
 
         metronome_.setToggleState(clickWasOn_, juce::dontSendNotification);
+        // The metronome clicks on every beat and louder on the first of each bar, so the bars can be judged
+        // by ear as well as the tempo
         metronome_.onClick = [this] {
-            if (auto* c = clip_.get())
+            if (auto* c = clip_.get()) {
                 c->edit.clickTrackEnabled = metronome_.getToggleState();
+                c->edit.clickTrackEmphasiseBars = metronome_.getToggleState() || barAccentWasOn_;
+            }
         };
         // The phase map is the one to look at when no row grid holds: the grid map is dark then
         using RowsFrom = Analysis::RowsFrom;
@@ -855,6 +881,13 @@ public:
             repaint();
         };
         in.say = [this](const juce::String& text) { status_.setText(text, juce::dontSendNotification); };
+        in.projectBeatAt = [this](int frame) -> std::pair<double, int> {
+            auto* c = clip_.get();
+            if (c == nullptr)
+                return {};
+            const auto time = timeOf(*c, frame);
+            return {c->edit.tempoSequence.toBeats(time).inBeats(), c->edit.tempoSequence.toBarsAndBeats(time).bars};
+        };
         in.seek = [this](int frame) {
             if (auto* c = clip_.get())
                 c->edit.getTransport().setPosition(timeOf(*c, frame));
@@ -867,8 +900,11 @@ public:
     }
 
     ~TempoInspector() override {
-        if (auto* c = clip_.get())
-            c->edit.clickTrackEnabled = clickWasOn_;  // the metronome is the inspector's: a project doesn't keep it
+        if (auto* c = clip_.get()) {
+            // the metronome is the inspector's: a project doesn't keep it
+            c->edit.clickTrackEnabled = clickWasOn_;
+            c->edit.clickTrackEmphasiseBars = barAccentWasOn_;
+        }
     }
 
     void paint(juce::Graphics& g) override { g.fillAll(Theme::background); }
@@ -962,19 +998,66 @@ private:
         map_.setVisible(!phaseMap_.getToggleState());
     }
 
-    /** The project's tempo becomes the cursor's beat, with the grid's usual groups, so its grid and
-        click run against the tune. The frames keep their times. */
+    /** The project's tempo becomes the cursor's beat, so its grid and click run against the tune.
+        The frames keep their times. On the detected beat the whole detection goes to the project, as
+        an import puts it: the groove of its rows, and its meter when that is clear. Another beat is
+        the user's own, and gets the grid's usual groups; nothing is known of its meter. */
     void applyCursorBeat() {
         auto* c = clip_.get();
         if (c == nullptr)
             return;
         auto& edit = c->edit;
-        const int framesPerBeat = juce::jmax(1, juce::roundToInt(in.lag * Helpers::getProjectFps(edit) / in.fps));
-        PsgTiming::setFramesPerBeat(edit,
-                                    edit.tempoSequence.getTempoAt(c->getPosition().getStart()),
-                                    framesPerBeat,
-                                    /*preserveAbsoluteFrameTimes=*/true);
-        Helpers::setGridSubdivisionPattern(edit, Helpers::getDefaultGridSubdivisionPattern(framesPerBeat));
+        const auto& result = in.analysis.result;
+        const bool sameRate = std::abs(Helpers::getProjectFps(edit) - in.fps) < 1.0e-6;
+        if (result && in.lag == result->framesPerBeat && sameRate) {
+            PsgTempo::applyTempo(c->getTuneClips(), *result);
+        } else {
+            const int framesPerBeat = juce::jmax(1, juce::roundToInt(in.lag * Helpers::getProjectFps(edit) / in.fps));
+            PsgTiming::setFramesPerBeat(edit,
+                                        edit.tempoSequence.getTempoAt(c->getPosition().getStart()),
+                                        framesPerBeat,
+                                        /*preserveAbsoluteFrameTimes=*/true);
+            Helpers::setGridSubdivisionPattern(edit, Helpers::getDefaultGridSubdivisionPattern(framesPerBeat));
+        }
+        showFacts();
+        resized();
+        repaint();
+    }
+
+    /** The detection's answer, then what the project has: its tempo, and where its beat lines are
+        against the detected beats. The metronome clicks on the project's lines, so a detection
+        the import did not move the clip by shows here as clicks before or after its beats. */
+    void showFacts() {
+        auto facts = describe(in);
+        if (auto* c = clip_.get()) {
+            const auto& tempo = c->edit.tempoSequence.getTempoAt(c->getPosition().getStart());
+            const double beatFrames = in.fps * 60.0 / tempo.getBpm();
+            Fact project{"Project",
+                         {juce::String(tempo.getBpm(), 2) + " BPM. A beat is "
+                          + juce::String(beatFrames, 2).trimCharactersAtEnd("0").trimCharactersAtEnd(".")
+                          + " frames. The metronome clicks on the beat lines of the project."}};
+            if (const auto& r = in.analysis.result; r && std::abs(beatFrames - r->framesPerBeat) < 0.01) {
+                const double beat = c->edit.tempoSequence.toBeats(timeOf(*c, r->gridPhase)).inBeats();
+                const int after = juce::roundToInt((beat - std::floor(beat)) * beatFrames) % r->framesPerBeat;
+                // why the two differ, when the import is the reason
+                const juce::String unmoved =
+                    r->firstRowFrame == 0 ? " The start of the tune is not on the detected grid, so the import did not "
+                                            "move the clip."
+                                          : "";
+                if (after == 0)
+                    project.lines.add("The beat lines are on the detected beats.");
+                else if (2 * after <= r->framesPerBeat)
+                    project.lines.add("The beat lines are " + juce::String(after) + " frames before the detected beats."
+                                      + unmoved);
+                else
+                    project.lines.add("The beat lines are " + juce::String(r->framesPerBeat - after)
+                                      + " frames after the detected beats." + unmoved);
+            } else if (in.analysis.result) {
+                project.lines.add("This is not the detected tempo.");
+            }
+            facts.push_back(project);
+        }
+        facts_.setFacts(std::move(facts));
     }
 
     void timerCallback() override {
@@ -1004,7 +1087,7 @@ private:
     }
 
     tracktion::SafeSelectable<PsgClip> clip_;
-    const bool clickWasOn_;
+    const bool clickWasOn_, barAccentWasOn_;
     Inspection in{inspect(*clip_.get())};
     GridMap map_;
     PhaseMap phases_;
@@ -1015,7 +1098,7 @@ private:
     PlayButton play_;
     juce::TextButton apply_{"Set as project tempo"};  // , copy_{"Copy label"};
     juce::ToggleButton metronome_{"Metronome"}, phaseMap_{"Phase map"};
-    FactsView facts_{describe(in)};
+    FactsView facts_;
     juce::Label cursor_, status_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TempoInspector)

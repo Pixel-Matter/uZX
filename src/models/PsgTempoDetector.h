@@ -155,6 +155,12 @@ void applyToEdit(const juce::Array<PsgClip*>& clips,
                  const std::vector<size_t>& knownRows = {},
                  const std::vector<size_t>& knownPatterns = {});
 
+/** Sets the tempo at the clips' start so a beat lasts the detection's framesPerBeat, the grid's
+    groove to its rows, and the time signature to its beatsPerBar when the meter is clear. The
+    frames keep when they sound, and the clips stay where they are. What applyToEdit does before it
+    places the clips, and what the tempo inspector does to put a detection on a project. */
+void applyTempo(const juce::Array<PsgClip*>& clips, const Result& result);
+
 /** Plays the clips at another frame rate (see PsgTiming::setClipFrameRate). When they are the
     only clips in their edit, the project's fps follows and its tempo scales with the rate, so a
     beat keeps its frames and the grid its groove; past Tracktion's tempo limits a beat takes

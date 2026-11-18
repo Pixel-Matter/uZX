@@ -1081,8 +1081,7 @@ bool areOnlyClipsInEdit(const juce::Array<PsgClip*>& clips) {
 
 }  // namespace
 
-/** Sets the tempo, grid and meter at the clips' start from a detection, keeping when the clips sound. */
-static void applyTempo(const juce::Array<PsgClip*>& clips, const Result& result) {
+void applyTempo(const juce::Array<PsgClip*>& clips, const Result& result) {
     auto& edit = clips.getFirst()->edit;
     const auto clipStart = clips.getFirst()->getPosition().getStart();
     PsgTiming::setFramesPerBeat(edit,

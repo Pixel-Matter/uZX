@@ -282,6 +282,22 @@ std::vector<int> shortestUnit(std::vector<int> rows) {
     return rows;
 }
 
+/** The key that a map of counts holds most of; the first of them when several hold as much. */
+template <typename Counts>
+auto commonestOf(const Counts& counts) {
+    return std::max_element(counts.begin(), counts.end(), [](const auto& a, const auto& b) {
+        return a.second < b.second;
+    });
+}
+
+/** How many frames each row lasts, from the frame every row starts at; the last row's length is not known. */
+std::vector<int> rowLengths(const std::vector<size_t>& starts) {
+    std::vector<int> lengths;
+    for (size_t i = 1; i < starts.size(); ++i)
+        lengths.push_back((int) (starts[i] - starts[i - 1]));
+    return lengths;
+}
+
 /** The rows inside a beat, of a tune no row grid holds through. */
 struct Groove
 {
@@ -355,9 +371,7 @@ juce::Optional<Groove> readGroove(const std::vector<double>& energy, int beat) {
     if (agreement < minGrooveAgreement)
         return {};
     // where the rows start in most of the stretches that agree
-    const auto place = std::max_element(winner->second.begin(), winner->second.end(), [](const auto& a, const auto& b) {
-        return a.second < b.second;
-    });
+    const auto place = commonestOf(winner->second);
     const auto& phases = place->first;
     std::vector<int> rows;
     for (size_t k = 0; k < phases.size(); ++k)
@@ -471,8 +485,7 @@ PulseRows rowsOfPulse(const std::vector<int>& lengths, int pulse) {
     }
     if (runs.empty())
         return {};
-    auto rows = std::max_element(runs.begin(), runs.end(), [](auto& a, auto& b) { return a.second < b.second; })->first;
-    return {shortestUnit(rows), (double) covered / (double) lengths.size()};
+    return {shortestUnit(commonestOf(runs)->first), (double) covered / (double) lengths.size()};
 }
 
 /** The pattern turned to the row it starts on for most of the tune's rows, counted from the first. */
@@ -502,22 +515,16 @@ std::vector<int> rowsOfBeat(const std::vector<size_t>& starts, int rowsPerBeat, 
     const auto n = (size_t) std::max(0, rowsPerBeat);
     if (n == 0 || starts.size() <= n)
         return {};
-    std::vector<int> lengths;
-    for (size_t i = 1; i < starts.size(); ++i)
-        lengths.push_back((int) (starts[i] - starts[i - 1]));
-    auto commonest = [](const auto& counts) {
-        return std::max_element(counts.begin(), counts.end(), [](auto& a, auto& b) { return a.second < b.second; })
-            ->first;
-    };
+    const auto lengths = rowLengths(starts);
     std::map<size_t, size_t> spans;
     for (size_t i = 0; i + n < starts.size(); ++i)
         ++spans[starts[i + n] - starts[i]];
-    const auto span = commonest(spans);
+    const auto span = commonestOf(spans)->first;
     std::map<std::vector<int>, size_t> runs;
     for (size_t i = 0; i + n < starts.size(); ++i)
         if (starts[i + n] - starts[i] == span)
             ++runs[std::vector<int>(lengths.begin() + (std::ptrdiff_t) i, lengths.begin() + (std::ptrdiff_t) (i + n))];
-    const auto run = commonest(runs);
+    const auto run = commonestOf(runs)->first;
     if (std::any_of(run.begin(), run.end(), [&](int row) { return std::abs(row - commonestRow) > 1; }))
         return {};
     return turnedToRows(shortestUnit(run), lengths);
@@ -556,8 +563,7 @@ struct Patterns
             held[starts[k] % (size_t) bar] += frames[k];
             all += frames[k];
         }
-        const auto most =
-            std::max_element(held.begin(), held.end(), [](auto& a, auto& b) { return a.second < b.second; });
+        const auto most = commonestOf(held);
         if ((double) most->second < minPatternsOnPhase * (double) all)
             return {};
         return (int) most->first;
@@ -600,15 +606,12 @@ private:
     whole rows lasting a pulse hold 90% of the rows), each with the rows that fill it most often.
     Else the tune has no one grid, and the commonest row length stands for it. */
 Speed speedOfRows(const std::vector<size_t>& starts) {
-    std::vector<int> lengths;
-    for (size_t i = 1; i < starts.size(); ++i)
-        lengths.push_back((int) (starts[i] - starts[i - 1]));
+    const auto lengths = rowLengths(starts);
     auto commonest = [&](size_t n, size_t k) {
         std::map<int, size_t> counts;
         for (size_t i = k; i < lengths.size(); i += n)
             ++counts[lengths[i]];
-        return std::max_element(counts.begin(), counts.end(), [](auto& a, auto& b) { return a.second < b.second; })
-            ->first;
+        return commonestOf(counts)->first;
     };
     const auto enough = minRowsFollowing * (double) lengths.size();
     for (size_t n : grooveSizes) {

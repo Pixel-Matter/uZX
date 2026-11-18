@@ -387,8 +387,8 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Space` | Play / Pause | Player, Studio |
 | `Home` or `Cmd+Left` | Rewind to start | Player, Studio |
 | `End` or `Cmd+Right` | Jump to end | Player, Studio |
-| `Left` / `Right` | Step the playhead to the previous / next grid line; stopped, the frame it lands on sounds while the key is down | Player |
-| `Option+Left` / `Option+Right` | Step the playhead one frame back / on, sounding it the same way | Player |
+| `Left` / `Right` | Step the playhead to the previous / next grid line; stopped, the frame it lands on sounds while the key is down; **Transport → Step Back / Step Forward** in the menu | Player |
+| `Option+Left` / `Option+Right` | Step the playhead one frame back / on, sounding it the same way; **Transport → Frame Back / Frame Forward** in the menu | Player |
 | `Cmd+L` | Loop on / off: playback repeats the loop range on the ruler | Player, Studio |
 | `Cmd+Shift+F` | Follow on / off: playback scrolls the view to the playhead; while suspended, follows again | Player, Studio |
 | `=` or `+` | Zoom in around the playhead | Player, Studio |

@@ -397,6 +397,13 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         } else if (menuName == "Transport") {
             menu.addCommandItem(&commandManager_, MainAppCommands::transportPlay);
             menu.addCommandItem(&commandManager_, MainAppCommands::transportToStart);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportToEnd);
+            menu.addSeparator();
+            // in a menu, the keys that do these show next to them
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportStepBack);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportStepForward);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportFrameBack);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportFrameForward);
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::transportLoop);
             menu.addCommandItem(&commandManager_, MainAppCommands::transportFollow);

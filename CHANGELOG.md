@@ -4,6 +4,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Opening files
+- Fixed: several files selected in Finder and opened in the Player, such as the files of a Turbo Sound set, did nothing; so did several paths on the command line. They open together, and a file that can't be found or opened is named in a message
+
 ### Timeline
 - Dragging the ruler, or the tracks with the middle button, keeps to the direction it starts in: sideways only scrolls, up or down only zooms, and a diagonal start does both
 - The loop range's ends show as lines down the tracks: in the loop's colour while looping, grey while not

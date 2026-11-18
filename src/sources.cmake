@@ -1,5 +1,6 @@
 # Source files used by both GUI app and tests
 set(SHARED_SOURCES
+    util/CommandLine.cpp
     util/Midi.cpp
     util/PipedProcess.cpp
     util/UpdateCheck.cpp
@@ -124,6 +125,7 @@ set(TEST_SOURCES
     ## models/PsgTrack.test.cpp
     ## models/CustomClip.test.cpp
 
+    util/CommandLine.test.cpp
     util/enumchoice.test.cpp
     util/Oklch.test.cpp
     util/Helpers.test.cpp

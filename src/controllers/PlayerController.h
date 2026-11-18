@@ -19,6 +19,8 @@ public:
     /** Opens the PSG files together in a new edit (offering a single PSG's Turbo Sound set),
         or else the first .uzx project. */
     void handleOpenFiles(const Array<File>& files);
+    /** Opens the files a command line names, as handleOpenFiles does, and says which it can't find or open. */
+    void handleOpenCommandLine(const String& commandLine);
     void handleOpenRecent(int fileIndex);
     void handleClearRecentFiles();
     /** Saves in place; an edit that only lives in the temp folder goes through Save As. */

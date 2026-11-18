@@ -1389,8 +1389,25 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     const Range<float> visibleX = layout.visibleX;
     const Rectangle<float> viewport {visibleX.getStart(), 0.0f, visibleX.getLength(), float(vis.rect.getHeight())};
 
-    // What sounds in a stretch is the model's; here it is placed at the view's scale and drawn
-    const auto paintState = [&] (const PsgSoundingStates& states, const PsgSoundingState& state, float x, float width) {
+    // What sounds in each visible stretch is the model's; here it is placed at the view's scale and drawn
+    struct Extent {
+        float x, width;
+    };
+    PsgSoundingStates states;
+    std::vector<Extent> extents;
+    const auto& timers = psgClip->getTimers();
+    vis.forEachVisibleState(frames, *psgClip, [&] (int frameIndex, int firstFrame, int nextFrame,
+                                                   const PsgParamFrameData& frameData, float x, float width) {
+        states.add(firstFrame, nextFrame, frameIndex, firstFrame == frames[frameIndex]->getFrameIndex(), frameData,
+                   timers);
+        extents.push_back({x, width});
+    });
+    const auto visibleStates = states.getStates();
+
+    size_t noiseBandEnd = 0;  // the states before this one have their noise band drawn
+    for (size_t stateIndex = 0; stateIndex < visibleStates.size(); ++stateIndex) {
+        const auto& state = visibleStates[stateIndex];
+        const float x = extents[stateIndex].x, width = extents[stateIndex].width;
         const auto envShape = state.envelopeShape;
         const auto& noiseLevels = state.noiseLevels;
         const auto noiseLevel = drawMods ? state.noiseLevel : 0.0f;
@@ -1400,12 +1417,23 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             const float noiseY = noiseRange.getStart() * static_cast<float>(vis.rect.getHeight());
             const float noiseH = jmax(2.0f, noiseRange.getLength() * static_cast<float>(vis.rect.getHeight()));
             noiseBounds = {x, noiseY, width, noiseH};
-            const int stripHeight = roundToInt(noiseH * g.getInternalContext().getPhysicalPixelScaleFactor());
-            if (noiseBand_.getHeight() != stripHeight)
-                noiseBand_ = renderNoiseBandStrip(stripHeight);  // noiseH >= 2: never empty
-            g.setOpacity(0.15f + 0.1f * noiseLevel);
-            g.drawImage(noiseBand_, noiseBounds);
-            g.setOpacity(1.0f);
+            if (stateIndex >= noiseBandEnd) {
+                // The band is the same along x, so one blit covers the states that follow with the same
+                // noise: a held drum is a band, not one a frame
+                float right = x + width;
+                for (noiseBandEnd = stateIndex + 1; noiseBandEnd < visibleStates.size(); ++noiseBandEnd) {
+                    const auto& next = visibleStates[noiseBandEnd];
+                    if (next.noisePeriod != state.noisePeriod || ! exactlyEqual(next.noiseLevel, state.noiseLevel))
+                        break;
+                    right = extents[noiseBandEnd].x + extents[noiseBandEnd].width;
+                }
+                const int stripHeight = roundToInt(noiseH * g.getInternalContext().getPhysicalPixelScaleFactor());
+                if (noiseBand_.getHeight() != stripHeight)
+                    noiseBand_ = renderNoiseBandStrip(stripHeight);  // noiseH >= 2: never empty
+                g.setOpacity(0.15f + 0.1f * noiseLevel);
+                g.drawImage(noiseBand_, noiseBounds.withRight(right));
+                g.setOpacity(1.0f);
+            }
         }
 
         // This stretch's notes: up to one per channel plus the envelope, and one per timer with a pitch, all
@@ -1512,17 +1540,7 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             g.setColour(getTimerColour(*span, envelopeColour).withAlpha(getLevelAlpha(getTimerLevel(*span)) * 0.8f));
             g.fillRect(x, float(vis.rect.getHeight()) - barHeight, width, barHeight);
         }
-    };
-
-    const auto& timers = psgClip->getTimers();
-    PsgSoundingStates states;
-    vis.forEachVisibleState(frames, *psgClip, [&] (int frameIndex, int firstFrame, int nextFrame,
-                                                   const PsgParamFrameData& frameData, float x, float width) {
-        states.clear();
-        states.add(firstFrame, nextFrame, frameIndex, firstFrame == frames[frameIndex]->getFrameIndex(), frameData,
-                   timers);
-        paintState(states, states.getStates().front(), x, width);
-    });
+    }
 }
 
 

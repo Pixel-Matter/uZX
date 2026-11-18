@@ -75,8 +75,6 @@ public:
         the stretch is its first. */
     void add(int from, int to, int storedFrame, bool startsFrame, const PsgParamFrameData& data, const ClipTimers&);
 
-    void clear() noexcept;
-    void reserve(size_t numStates);
 
     std::span<const PsgSoundingState> getStates() const noexcept { return states_; }
     std::span<const PsgSoundingNote> getNotes(const PsgSoundingState& s) const noexcept {

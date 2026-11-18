@@ -145,6 +145,7 @@ set(TEST_SOURCES
     models/ClipTimers.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
+    models/PsgSoundingStates.test.cpp
     models/PsgRecorder.test.cpp
     models/PsgClipTuning.test.cpp
     models/PsgTempoDetector.test.cpp

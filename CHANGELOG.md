@@ -19,6 +19,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Fixed: channels a few cents apart that share a lane, such as a detuned bass doubled on two channels, keep their order at every zoom, the higher one on top
 - Fixed: the envelope's stripes keep one slope along a note, also through a slide or while other channels change; they no longer steepen and flatten from frame to frame
 - Fixed: a channel's noise is dotted around the note of a timer effect that plays it, such as a sync-buzzer, instead of in the noise band
+- Painting is faster where noise sounds: a noise held over several frames is drawn as one band, where each frame drew its own
 
 ### Levels
 - Level meters show how close the sound is to clipping: −54 to +6 dBFS, green up to −6 dB, yellow up to 0 dB, red only above 0 dB, where the output distorts; a peak falls back smoothly instead of flickering

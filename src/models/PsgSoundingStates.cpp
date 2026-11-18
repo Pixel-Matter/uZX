@@ -44,17 +44,6 @@ int8_t getEnvelopeChannel(const PsgParamFrameData& data) noexcept {
 
 }  // namespace
 
-void PsgSoundingStates::clear() noexcept {
-    states_.clear();
-    notes_.clear();
-    bars_.clear();
-}
-
-void PsgSoundingStates::reserve(size_t numStates) {
-    states_.reserve(numStates);
-    notes_.reserve(numStates * 3);
-}
-
 void PsgSoundingStates::add(int from, int to, int storedFrame, bool startsFrame, const PsgParamFrameData& data,
                             const ClipTimers& timers) {
     PsgSoundingState state;

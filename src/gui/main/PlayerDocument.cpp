@@ -82,7 +82,7 @@ private:
 //==============================================================================
 PlayerDocumentComponent::PlayerDocumentComponent(te::Edit& edit, EditViewState& evs)
     : editViewState_ {evs}
-    , transportBar_ {evs, {.showRecord = false, .showAutomation = false}}
+    , transportBar_ {evs, {.showRecord = false, .showAutomation = false, .readoutsNeedClips = true}}
     , editComponent_ {edit, evs, {.showDetailsPanel = false, .autoFitTrackHeights = true, .transparentClips = true, .disableClipSelection = true}}
 {
     if (! evs.vizMode)

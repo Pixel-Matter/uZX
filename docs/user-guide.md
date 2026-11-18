@@ -44,7 +44,7 @@ A minimal player for listening to PSG chip music files.
 
 ### Opening Files
 
-Until a tune is open, the window says how to open one, and while a file it can open is dragged over the window, an outline shows it will take the drop.
+Until a tune is open, the window says how to open one and the transport bar shows no tempo, groove or position, and while a file it can open is dragged over the window, an outline shows it will take the drop.
 
 - **Drag and drop** a `.psg` file, a `.taym` file, a tracker module or a `.uzx` file onto the window.
 - **File menu → Open** (`Cmd+O` / `Ctrl+O`).

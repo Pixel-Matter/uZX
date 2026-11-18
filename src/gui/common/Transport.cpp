@@ -210,6 +210,14 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     fpsLabel_.addMouseListener(this, false);
 
     updateTimeLabels(transport_.getPosition());
+
+    // ponytail: decided once; the Player builds a new bar for each tune it opens. Watch the clips if one bar
+    // ever has to show them appear.
+    if (options_.readoutsNeedClips && ! Helpers::hasClips(edit_))
+        for (auto& t : tips) {
+            t.value.setVisible(false);
+            t.unit.setVisible(false);
+        }
 }
 
 TransportBar::~TransportBar() {

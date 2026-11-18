@@ -37,6 +37,7 @@ private:
 struct TransportBarOptions {
     bool showRecord = true;
     bool showAutomation = true;
+    bool readoutsNeedClips = false;  // the Player: before a tune is open, it has no tempo or groove to show
 };
 
 //==============================================================================

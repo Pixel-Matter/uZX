@@ -19,6 +19,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Opening files
 - Fixed: Studio, the app for `.uzx` files, opened on its last project when a project was opened from Finder or passed on the command line
 - Player: **Viz Mode** waits until a tune is open, where it showed only a black screen
+- Player: with no tune open, the transport bar shows no readouts, where it showed 120 bpm and a 5 5 5 5 5 groove no tune had given
 - Player: with no tune open, the window says how to open one, where it showed an empty grid and the colour legend; a file dragged over the window outlines it
 - Player: **File → Import PSG** (`Cmd+I`) is gone; **Open** does the same
 - Player: each tune keeps its stereo, mutes and other changes. Opening it again brings them back, and they survive a restart, where the copies lived in the temp folder and opening a tune again reset it. Open Recent lists the tunes

@@ -97,6 +97,31 @@ public:
                     expectEquals(knob->getTitle(), String("Master volume"));
         }
 
+        beginTest("The Player shows no readouts before a tune is open, only values a tune has given");
+        {
+            const auto bpmShown = [](TransportBar& bar) {
+                for (auto* child : bar.getChildren())
+                    if (auto* label = dynamic_cast<Label*>(child); label != nullptr && label->getText() == "bpm")
+                        return label->isVisible();
+                return false;
+            };
+            tracktion::SelectionManager selectionManager(engine);
+
+            auto empty = tracktion::Edit::createSingleTrackEdit(engine);
+            EditViewState emptyView(*empty, selectionManager);
+            TransportBar player(emptyView, {.showRecord = false, .showAutomation = false, .readoutsNeedClips = true});
+            expect(! bpmShown(player), "no 120 bpm that no tune gave it");
+            TransportBar studio(emptyView, {.showRecord = false, .showAutomation = false});
+            expect(bpmShown(studio), "Studio sets a tempo before there are clips");
+
+            auto withTune = tracktion::Edit::createSingleTrackEdit(engine);
+            auto* track = tracktion::getAudioTracks(*withTune).getFirst();
+            track->insertMIDIClip({tracktion::TimePosition(), tracktion::TimePosition::fromSeconds(1.0)}, nullptr);
+            EditViewState tuneView(*withTune, selectionManager);
+            TransportBar playing(tuneView, {.showRecord = false, .showAutomation = false, .readoutsNeedClips = true});
+            expect(bpmShown(playing));
+        }
+
         beginTest("The transport buttons sit in the middle of the bar; in a narrow one, clear of the output section");
         {
             auto edit = tracktion::Edit::createSingleTrackEdit(engine);

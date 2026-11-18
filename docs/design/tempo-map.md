@@ -1,6 +1,6 @@
 # Tempo map for frame-based music
 
-> **Status: research and proposal, not implemented.** For µZX Studio. Detecting sections from imported modules or dumps is out of scope. The proposal rests on assumptions listed under [Open questions](#open-questions); none is confirmed yet.
+> **Status: research and proposal, not implemented.** For µZX Studio. Detecting sections from imported modules or dumps is out of scope. The choices under [Decisions](#decisions) were confirmed on 2026-11-18; one naming question is open.
 
 Sections of a tune with their own meter, tempo and groove: an intro in 3/4, a one-beat pickup bar, a break at half speed, an outro that speeds up. Every section runs on the same frame rate, so a beat is always a whole number of frames and the beat and groove grid changes from section to section. Code it touches: `src/models/PsgFrameRetimer.*` (`PsgTiming`), `src/models/SnapLadder.*`, `src/models/EditUtilities.*`, `src/models/PsgList.*`, `src/gui/timeline/` (`TimelineGrid`, `Ruler`), `src/gui/common/Transport.*`.
 
@@ -117,17 +117,21 @@ Each step stands on its own.
 5. **Speed-up dialog.**
 6. **Notes stay on rows.** With the note editor.
 
+## Decisions
+
+Confirmed on 2026-11-18.
+
+1. **A section is one object**: a start, a meter, a tempo and a groove. Not separate tempo and signature points as in Waveform.
+2. **Speeding up is stepped**, in beats of whole frames. No smooth curves.
+3. **No beats of unequal length** for tempos between whole frame counts, and no groove longer than a beat.
+4. **Later sections move with the bars** when a section changes.
+5. **PSG clips are time-locked**, and preserve-timing goes away.
+6. **Section starts sit on bar lines only.**
+7. **Any denominator**, with frames per beat counted per denominator unit, as the transport box does now.
+8. **A lane of its own** for sections.
+9. **Beats shorter than 10 frames are not needed**, so the engine's 300 BPM limit stays.
+10. **Notes stay on their rows** when a section's frames per beat or groove changes; the notes under the section are rewritten.
+
 ## Open questions
 
-Each has the assumption this note uses.
-
-1. **Is a section one object** (start, meter, tempo, groove) or separate tempo and signature points as in Waveform? Assumed: one object.
-2. **Speeding up**: stepped whole-frame beats, or smooth curves? Assumed: stepped.
-3. **Beats of unequal length** for tempos between whole frame counts, and grooves longer than a beat: needed? Assumed: no.
-4. **Later sections** when one changes: move with the bars, or keep their time? Assumed: move.
-5. **PSG clips time-locked**, with preserve-timing removed? Assumed: yes.
-6. **Section starts only on bar lines?** Assumed: yes.
-7. **Denominators** other than 4, with frames per beat counted per denominator unit? Assumed: yes, as the transport box does now.
-8. **The lane**: its own lane, the ruler, or a property of markers? Assumed: its own lane.
-9. **Beats shorter than 10 frames in x/4** (above 300 BPM at 50 Hz)? Assumed: use x/8 instead of raising the engine's limit.
-10. **Notes stay on rows** when a section's frames per beat or groove changes? Assumed: yes.
+- **The name of the groove.** "Swing" would match OpenMPT's tempo swing and keep the word away from Tracktion's groove templates. "Groove" matches Furnace, LSDj and M8, where it is a cycle of row lengths, and an even split such as 6 6 6 6 is not swung. Tracktion's templates appear nowhere in µZX's UI, and the code already calls the pattern `gridSubdivision`.

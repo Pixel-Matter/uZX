@@ -13,7 +13,6 @@ Not covered yet: a live run on macOS (Gatekeeper, the DMG, Finder associations, 
 ## Low
 
 - **Two different µ characters.** The app names use the Greek μ (U+03BC: `src/CMakeLists.txt`, `App.cpp`); the README, the plist's "µZX Project" and the error dialogs use the micro sign µ (U+00B5), which `Option+M` types on a Mac. Spotlight searched with `Option+M` won't find "μZX Player". Pick one.
-- **The ruler menu adds Studio's "Preserve PSG Timing"** in the Player too; JUCE skips the unregistered command, so nothing shows. Harmless, but it reads as a bug (`src/gui/timeline/Ruler.cpp`).
 - **The empty Player opens at 120 bpm with a "5 5 5 5 5" groove** at 25 fpb, values no tune has given it. They could stay blank until a file is open.
 
 ## Docs and README

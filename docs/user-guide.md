@@ -22,6 +22,10 @@ The screenshots show the macOS build using the [Guide demo project](../tests/fix
 
 Later launches open the app directly.
 
+### Installing on Windows
+
+Unzip the `.zip` and run the `.exe` in it, such as `μZX Player.exe`; it needs no installer. The app isn't signed, so SmartScreen says **Windows protected your PC** the first time: click **More info**, then **Run anyway**. Later launches open the app directly.
+
 ### Installing on Linux
 
 Unpack the `.tar.gz` and run `./install.sh` in the folder it makes. It copies the app to `~/.local/bin`, as `uzx-player` or `uzx-studio`, and adds it with its icon to the applications menu; run it again after unpacking a newer release. To try the app without installing it, run `./uzx-player` in the folder.

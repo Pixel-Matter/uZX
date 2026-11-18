@@ -337,11 +337,23 @@ jobs:
 
       - name: Package and Upload to GitHub Release
         run: |
-          TARBALL="${APP_TARGET}-${VERSION}-linux-x86_64.tar.gz"
-          if [ "$APP_TARGET" = uZXPlayer ]; then BIN="μZX Player"; else BIN="μZX Studio"; fi
+          if [ "$APP_TARGET" = uZXPlayer ]; then
+            BIN="μZX Player"; ID=uzx-player; ICON=icon_player_big.png; CATEGORIES="AudioVideo;Audio;Player;"
+          else
+            BIN="μZX Studio"; ID=uzx-studio; ICON=icon_studio_big.png; CATEGORIES="AudioVideo;Audio;AudioVideoEditing;"
+          fi
 
-          tar -czf "${TARBALL}" -C "build/src/${APP_TARGET}_artefacts/Release" "${BIN}"
-          gh release upload "${TAG_NAME}" "${TARBALL}"
+          # A folder: the binary under an ASCII name without spaces, its menu entry and icon, and
+          # install.sh, which puts them where the desktop finds them
+          DIR="${APP_TARGET}-${VERSION}-linux-x86_64"
+          mkdir "${DIR}"
+          cp "build/src/${APP_TARGET}_artefacts/Release/${BIN}" "${DIR}/${ID}"
+          cp "resources/${ICON}" "${DIR}/${ID}.png"
+          cp resources/linux/install.sh "${DIR}/"
+          printf '%s\n' "[Desktop Entry]" "Type=Application" "Name=${BIN}" "Exec=${ID} %F" "Icon=${ID}" \
+            "Terminal=false" "Categories=${CATEGORIES}" > "${DIR}/${ID}.desktop"
+          tar -czf "${DIR}.tar.gz" "${DIR}"
+          gh release upload "${TAG_NAME}" "${DIR}.tar.gz"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}

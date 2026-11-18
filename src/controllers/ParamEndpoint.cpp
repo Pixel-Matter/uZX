@@ -1,4 +1,5 @@
 #include "ParamEndpoint.h"
+#include "BindedAutoParameter.h"
 
 #include <cmath>
 
@@ -153,6 +154,9 @@ String AutomatableParamEndpoint::getDescription() const {
     if (!ensureIsValid())
         return {};
 
+    // A tooltip and a screen reader's help: the definition says what it is, not "μZX AY Emulator >> volume"
+    if (auto* bound = dynamic_cast<BindedAutoParameterBase*>(parameter.get()))
+        return bound->getDescription();
     return parameter->getPluginAndParamName();
 }
 

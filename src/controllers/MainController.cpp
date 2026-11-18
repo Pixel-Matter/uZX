@@ -397,6 +397,13 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
         } else if (menuName == "Transport") {
             menu.addCommandItem(&commandManager_, MainAppCommands::transportPlay);
             menu.addCommandItem(&commandManager_, MainAppCommands::transportToStart);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportToEnd);
+            menu.addSeparator();
+            // in a menu, the keys that do these show next to them
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportStepBack);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportStepForward);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportFrameBack);
+            menu.addCommandItem(&commandManager_, MainAppCommands::transportFrameForward);
             menu.addSeparator();
             menu.addCommandItem(&commandManager_, MainAppCommands::transportLoop);
             menu.addCommandItem(&commandManager_, MainAppCommands::transportFollow);
@@ -605,7 +612,9 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::viewVizMode:
-            result.setActive(edit != nullptr);
+            // with no tune, Viz mode hides the empty tracks and shows only black; once on, it can be left
+            result.setActive(edit != nullptr
+                             && (Helpers::hasClips(*edit) || MoToolApp::getPlayerController().isVizMode()));
             result.setTicked(MoToolApp::getPlayerController().isVizMode());
             break;
 
@@ -719,7 +728,7 @@ bool AppController::perform(const InvocationInfo& info) {
 
         case MainAppCommands::fileReveal:
             if (auto* edit = MoToolApp::getActiveController().getEdit()) {
-                EditFileOps::saveEdit(*edit, false, true, false);
+                EditFileOps::autoSaveEdit(*edit);
                 edit->editFileRetriever().revealToUser();
             }
             break;
@@ -983,7 +992,7 @@ BaseController::~BaseController() {
     window_.clearContentComponent();
 
     if (edit_ != nullptr) {
-        EditFileOps::saveEdit(*edit_, true, true, false);
+        EditFileOps::autoSaveEdit(*edit_);
         edit_->getTempDirectory(false).deleteRecursively();
     }
 }
@@ -1088,7 +1097,7 @@ std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
     if (!editFile.existsAsFile())
         return te::createEmptyEdit(engine_, editFile);
 
-    // Not even loaded: setEdit() saves at once, which would drop what this build doesn't know
+    // Not even loaded: its next save would drop what this build doesn't know
     if (EditFileOps::readEditFormatVersion(editFile) > EditFileOps::editFormatVersion) {
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
             "Can't Open Project",
@@ -1112,7 +1121,7 @@ void BaseController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
         return;
 
     if (savePrev && edit_ != nullptr)
-        EditFileOps::saveEdit(*edit_, true, true, false);
+        EditFileOps::autoSaveEdit(*edit_);
 
     const auto w = window_.getWidth(), h = window_.getHeight();
 
@@ -1136,7 +1145,9 @@ void BaseController::setEdit(std::unique_ptr<te::Edit> edit, bool savePrev) {
     edit_->getTransport().ensureContextAllocated();
     edit_->ensureNumberOfAudioTracks(1);
     playWholeEdit_ = std::make_unique<PlayWholeEdit>(*edit_);
-    EditFileOps::saveEdit(*edit_, true, true, false);
+    // As opened, converted or not: only what the user changes from here makes a file worth writing
+    edit_->resetChangedStatus();
+    EditFileOps::autoSaveEdit(*edit_);
 
     editViewState_ = std::make_unique<EditViewState>(*edit_, MoToolApp::getSelectionManager());
     showEdit();

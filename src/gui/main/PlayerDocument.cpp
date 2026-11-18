@@ -33,7 +33,9 @@ public:
         auto r = getLocalBounds().reduced(pad * 2, pad);
         for (auto& line : lines_) {
             auto row = r.removeFromTop(lineHeight);
-            const auto dim = Colors::Theme::textDisabled.withMultipliedAlpha(line.active ? 1.0f : 0.5f);
+            // the options not chosen are to be read (4.5:1 and more); a line with nothing to arrange is off
+            const auto dim = line.active ? Colors::Theme::textSecondary
+                                         : Colors::Theme::textDisabled.withMultipliedAlpha(0.5f);
             g.setFont(nameFont());
             g.setColour(line.active ? Colors::Theme::textSecondary : dim);
             g.drawText(line.key, row.removeFromRight(keyWidth), Justification::centredRight);
@@ -80,7 +82,7 @@ private:
 //==============================================================================
 PlayerDocumentComponent::PlayerDocumentComponent(te::Edit& edit, EditViewState& evs)
     : editViewState_ {evs}
-    , transportBar_ {evs, {.showRecord = false, .showAutomation = false}}
+    , transportBar_ {evs, {.showRecord = false, .showAutomation = false, .readoutsNeedClips = true}}
     , editComponent_ {edit, evs, {.showDetailsPanel = false, .autoFitTrackHeights = true, .transparentClips = true, .disableClipSelection = true}}
 {
     if (! evs.vizMode)

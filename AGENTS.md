@@ -44,7 +44,7 @@ Add JUCE `UnitTest` classes in adjacent `*.test.cpp` files and register them wit
 
 ## Edit File Format Version
 
-`EditFileOps::editFormatVersion` in `src/util/FileOps.h` is the version of the `.uzx` format. Every app shares it, and it is separate from the Core and Player versions: releases never bump it. Every save writes it as `uzxFormatVersion` on the root `EDIT`, and an app refuses to open a file whose version is higher than its own, because opening means saving it back.
+`EditFileOps::editFormatVersion` in `src/util/FileOps.h` is the version of the `.uzx` format. Every app shares it, and it is separate from the Core and Player versions: releases never bump it. Every save writes it as `uzxFormatVersion` on the root `EDIT`, and an app refuses to open a file whose version is higher than its own, because the first change saves it back.
 
 - Bump it by one in the same commit as a change an older app would misread, or lose on its next save: a removed or renamed tree or attribute, a value with a new meaning or unit, or a new clip, plugin or track type older apps can't load.
 - Don't bump it for additions an older app can safely ignore, such as a new attribute whose absence means the old behavior.

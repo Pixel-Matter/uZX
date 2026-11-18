@@ -4,11 +4,11 @@
 [![Studio release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=v*&label=studio)](https://github.com/Pixel-Matter/uZX/releases)
 [![Player release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=player-v*&label=player)](https://github.com/Pixel-Matter/uZX/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENCE.md)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20iOS%20%7C%20Android-lightgrey)](https://github.com/Pixel-Matter/uZX/releases)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/Pixel-Matter/uZX/releases)
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-00599C?logo=cplusplus)](https://en.cppreference.com/w/cpp/23)
 [![Built with JUCE](https://img.shields.io/badge/built%20with-JUCE-8DC63F)](https://juce.com/)
 
-A modern tool for composing and playing back chiptune music for platforms using the AY-3-8910/YM2149 sound chips — ZX Spectrum, Amstrad CPC, MSX, Atari ST, and others. While the name references ZX Spectrum, the architecture is chip-agnostic and designed to support additional sound chips in the future. Built with JUCE, targeting macOS, Windows, and Linux, with iOS and Android possible. Features a timeline-based DAW interface with precise chip emulation.
+A modern tool for composing and playing back chiptune music for platforms using the AY-3-8910/YM2149 sound chips — ZX Spectrum, Amstrad CPC, MSX, Atari ST, and others. While the name references ZX Spectrum, the architecture is chip-agnostic and designed to support additional sound chips in the future. Built with JUCE. macOS is the supported platform; the Windows and Linux builds are previews, unsigned and less tested. Features a timeline-based DAW interface with precise chip emulation.
 
 ```text
         █▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌
@@ -74,7 +74,7 @@ A modern tool for composing and playing back chiptune music for platforms using 
 
 The Player and Studio are released separately, on the same [Releases](https://github.com/Pixel-Matter/uZX/releases) page.
 
-- **µZX Player**: take the newest [Player release](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true), tagged `player-v…`, and download `uZXPlayer-<version>-macOS.dmg`. Windows (`-windows-x64.zip`) and Linux (`-linux-x86_64.tar.gz`) builds are there too, unsigned and less tested.
+- **µZX Player**: take the newest [Player release](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true), tagged `player-v…`, and download `uZXPlayer-<version>-macOS.dmg`. Windows (`-windows-x64.zip`) and Linux (`-linux-x86_64.tar.gz`) builds are there too, unsigned and less tested; see [Installing on Windows](docs/user-guide.md#installing-on-windows) and [on Linux](docs/user-guide.md#installing-on-linux).
 - **µZX Studio**: releases tagged `v…`, files named `uZX-<version>-…`. Studio is a work in progress, so its releases are pre-releases.
 
 ### macOS Setup
@@ -91,19 +91,21 @@ Open the `.dmg` and drag the app to **Applications**. The app isn't notarized by
 Most `.psg` files don't record the frame rate they were written for, so µZX opens them at 50 Hz, and a tune made for 100 or 200 Hz (Atari, multi-speed players) plays two or four times too slowly. To play it at its rate:
 
 1. Open or import the file as usual (`Cmd+O` in the Player, `Cmd+I` in Studio).
-2. Click **FPS** in the transport bar and pick the rate, such as **200 fps**. Every clip that played at the old rate follows. A tune alone in the project takes its timeline along: its tempo scales with the rate (41 BPM at 50 Hz is 164 BPM at 200 Hz), keeping its rows, groove and meter.
+2. Click **fps** in the transport bar and pick the rate, such as **200 fps**. Every clip that played at the old rate follows. A tune alone in the project takes its timeline along: its tempo scales with the rate (41 BPM at 50 Hz is 164 BPM at 200 Hz), keeping its rows, groove and meter.
 3. Or right-click a clip and pick **Frame Rate** to change only that tune, all its Turbo Sound chips included.
 
-Save the project (`.uzx`) to keep the rate. See [Opening Files](docs/user-guide.md#opening-files) in the User Guide.
+The rate stays: the Player keeps it for that tune and brings it back when you open the tune again, and a `.uzx` project keeps it too. See [Opening Files](docs/user-guide.md#opening-files) in the User Guide.
 
 ## Building from Source
 
 ```bash
 git clone --recursive https://github.com/Pixel-Matter/uZX.git
 cd uZX
-cmake -S . -B build
-cmake --build build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel
 ```
+
+This makes an optimised build, as releases are. With [Ninja](https://ninja-build.org) installed, the presets do the same: `cmake --preset release`, then `cmake --build --preset release --parallel`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, prerequisites, and build targets.
 

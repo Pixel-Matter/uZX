@@ -133,6 +133,7 @@ AYScopes::AYScopes(AYChipPlugin& plugin, Look look) : plugin_(plugin), look_(loo
             colours[i], labels[i], *plugin.getVizChannelBuffer(static_cast<int>(i)), plugin.scopeSettings);
         if (look_.classic)
             displays_[i]->setColours(Colors::VizClassic::trace, Colors::VizClassic::background);
+        displays_[i]->setTitle("Channel " + String(labels[i]) + " scope");
         addAndMakeVisible(*displays_[i]);
     }
 }

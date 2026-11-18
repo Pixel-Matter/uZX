@@ -121,7 +121,7 @@ te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& sel
 
 namespace {
 
-const StringArray psgExtensions {"psg", "ay"};
+const StringArray psgExtensions {"psg"};  // not .ay: AYEmul files are Z80 code, which needs an emulator to play
 
 /** Reads a PSG file, else a TAYM, else a tracker module; shows an error and returns nothing when the
     file is none of them or holds no music. A PSG file reads as a module of one chip without a title,
@@ -528,7 +528,7 @@ te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionMa
     }
 
     auto& undo = edit.getUndoManager();
-    undo.beginNewTransaction("Render to audio");
+    undo.beginNewTransaction("Render to Audio");
     auto* added = addAudioTrackAfter(edit, track.get());
     auto clip = added != nullptr
         ? added->insertWaveClip(String("Frozen ") + track->getName(), freezeFile, {parameters.time, {}}, false)

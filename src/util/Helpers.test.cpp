@@ -31,6 +31,14 @@ public:
             files.add(file);
         }
 
+        beginTest("Only formats it plays are offered: not .ay, whose Z80 code needs an emulator");
+        {
+            expect(Helpers::isTuneFile(files[0]));
+            expect(! Helpers::isTuneFile(root.getChildFile("tune.ay")));
+            expect(Helpers::getTuneFileWildcard().startsWith("*.psg;"));
+            expect(! Helpers::getTuneFileWildcard().contains("*.ay;"));
+        }
+
         beginTest("Each file lands on a new track after the existing ones");
         {
             auto edit = te::Edit::createSingleTrackEdit(engine);

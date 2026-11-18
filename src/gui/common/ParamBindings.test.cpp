@@ -89,6 +89,8 @@ public:
 
             expectWithinAbsoluteError((double) value.getStoredValue(), 0.3, 1e-6,
                                       "ParameterValue updated from slider");
+            expectEquals(slider.getTitle(), String("Test Param"), "a screen reader names the slider");
+            expectEquals(slider.getTooltip(), String("A parameter for testing"));
 
             expect(slider.isDoubleClickReturnEnabled(), "a double-click returns the slider to the default");
             expectWithinAbsoluteError(slider.getDoubleClickReturnValue(), 0.5, 1e-6);

@@ -107,7 +107,8 @@ PopupMenu RulerComponent::createMenu() {
         m.addCommandItem(manager, Commands::MainAppCommands::transportFollowByPage);
         m.addCommandItem(manager, Commands::MainAppCommands::transportFollowByScroll);
         m.addCommandItem(manager, Commands::MainAppCommands::viewSnapPlayheadToGrid);
-        m.addCommandItem(manager, Commands::MainAppCommands::transportPreservePsgTiming);
+        if (manager->getCommandForID(Commands::MainAppCommands::transportPreservePsgTiming) != nullptr)  // Studio's
+            m.addCommandItem(manager, Commands::MainAppCommands::transportPreservePsgTiming);
     }
     return m;
 }

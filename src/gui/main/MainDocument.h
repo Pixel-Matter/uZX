@@ -57,6 +57,7 @@ private:
     te::Edit& edit_;
     TransportBar transportBar_;
     EditComponent editComponent_;  // former AudioTimeline
+    TooltipWindow tooltips_ {this};  // without one in the window, no tooltip in it shows
     // FooterBar footer_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainDocumentComponent)

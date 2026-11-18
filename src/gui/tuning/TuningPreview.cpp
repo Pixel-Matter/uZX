@@ -368,7 +368,7 @@ void TuningPreviewComponent::setupTuningTableControls() {
 
 
 void TuningPreviewComponent::setupTuningGrid() {
-    tooltipWindow = std::make_unique<MoTooltipWindow>(nullptr, 750);
+    tooltipWindow = std::make_unique<MoTooltipWindow>(this, 750);  // in this window only, as the main window has its own
     tuningGrid.tooltipWindow = tooltipWindow.get();
     addAndMakeVisible(tuningGrid);
 }

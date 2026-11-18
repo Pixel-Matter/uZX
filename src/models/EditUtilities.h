@@ -9,6 +9,9 @@ namespace te = tracktion;
 
 namespace MoTool::Helpers {
 
+/** True when a track has a clip: in the Player, a tune is open. */
+bool hasClips(te::Edit& edit);
+
 /** The frame rates the project fps may take. */
 inline constexpr double kAllowedProjectFps[] = {24, 25, 30, 48, 50, 60, 100, 200};
 

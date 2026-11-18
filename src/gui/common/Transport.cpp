@@ -188,11 +188,36 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         u.label.setBorderSize({});  // laid out at the width of its text
     }
 
+    // Each value and its unit say what the value is and how to change it: nothing else shows they can be.
+    // A screen reader reads the value as the label's title, then what it is, then the tooltip as help.
+    struct { Label& value; Label& unit; const char* what; const char* tip; } tips[] = {
+        { bpmControl_, bpmUnitLabel_, "Tempo", "Tempo in beats per minute: click to type another" },
+        { fpsLabel_, fpsUnitLabel_, "Frame rate", "Frames per second: click to pick another rate" },
+        { fpbControl_, fpbUnitLabel_, "Frames per beat", "Frames per beat: click to type another, from 4 to 150" },
+        { divControl_, divUnitLabel_, "Groove", "Frames in each group of a beat, such as 6 6 6 6: click to type your own" },
+        { timeSigLabel_, sigUnitLabel_, "Time signature", "Time signature: click to type another, such as 3/4 or 6/8" },
+        { transportReadout_, posLabel_, "Position", "Playhead position: click to type one and jump there" },
+    };
+    for (auto& t : tips) {
+        t.value.setDescription(t.what);
+        t.value.setTooltip(t.tip);
+        t.unit.setTooltip(t.tip);
+    }
+    masterVolumeSlider_.setTitle("Master volume");
+
     // The fps readout picks from a fixed set of rates via a popup, not free text.
     fpsLabel_.setEditable(false, false, false);
     fpsLabel_.addMouseListener(this, false);
 
     updateTimeLabels(transport_.getPosition());
+
+    // ponytail: decided once; the Player builds a new bar for each tune it opens. Watch the clips if one bar
+    // ever has to show them appear.
+    if (options_.readoutsNeedClips && ! Helpers::hasClips(edit_))
+        for (auto& t : tips) {
+            t.value.setVisible(false);
+            t.unit.setVisible(false);
+        }
 }
 
 TransportBar::~TransportBar() {

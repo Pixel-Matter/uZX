@@ -24,7 +24,7 @@ te::AudioTrack* addAndSelectAudioTrack(te::Edit& edit, te::SelectionManager& sel
 /** Whether the file's extension is one of a tune uZX imports: a PSG register dump or a tracker
     module (see uZX::getTrackerModuleExtensions). */
 bool isTuneFile(const File& file);
-/** The same extensions as a file chooser wildcard: "*.psg;*.ay;*.pt3;...". */
+/** The same extensions as a file chooser wildcard: "*.psg;*.taym;*.pt3;...". */
 String getTuneFileWildcard();
 
 /** The track's AY chip, added first if the track has none. */

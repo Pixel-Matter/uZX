@@ -9,6 +9,13 @@ namespace te = tracktion;
 
 namespace MoTool::Helpers {
 
+bool hasClips(te::Edit& edit) {
+    for (auto* track : te::getTracksOfType<te::ClipTrack>(edit, true))
+        if (! track->getClips().isEmpty())
+            return true;
+    return false;
+}
+
 te::TimePosition getHeardPosition(te::Edit& edit) {
     const auto latency = te::TimeDuration::fromSeconds(edit.engine.getDeviceManager().getOutputLatencySeconds());
     return edit.getTransport().getPosition() - latency;

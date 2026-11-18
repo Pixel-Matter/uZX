@@ -29,7 +29,7 @@ void TuningPreviewGrid::recreateTooltipWindow() {
 
     if (auto* tuningComponent = dynamic_cast<TuningPreviewComponent*>(parent)) {
         // Reset the tooltip window to restart the show counter
-        tuningComponent->tooltipWindow = std::make_unique<MoTooltipWindow>(nullptr, 750);
+        tuningComponent->tooltipWindow = std::make_unique<MoTooltipWindow>(tuningComponent, 750);
         tooltipWindow = tuningComponent->tooltipWindow.get();
     }
 }

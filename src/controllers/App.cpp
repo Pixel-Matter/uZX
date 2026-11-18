@@ -8,21 +8,6 @@ namespace MoTool {
 
 MoToolApp::MoToolApp() {
     juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel_);
-
-    appController_ = std::make_unique<AppController>();
-
-    if (target_ == Target::uZXPlayer) {
-        playerController_ = std::make_unique<PlayerController>(appController_->getEngine());
-    } else {
-        arrangerController_ = std::make_unique<ArrangerController>(appController_->getEngine());
-    }
-
-    appController_->initialize();
-
-    if (playerController_)
-        playerController_->initialize();
-    else
-        arrangerController_->initialize();
 }
 
 const String MoToolApp::getApplicationName() {
@@ -57,10 +42,34 @@ bool MoToolApp::hasMidiControl() {
 }
 
 bool MoToolApp::moreThanOneInstanceAllowed()  {
+   #if JUCE_LINUX
+    // ponytail: JUCE can't hand a file to the running Player on Linux (MessageManager::broadcastMessage is
+    // a TODO there), so the file wouldn't open at all; each launch runs on its own instead. A socket or a
+    // watched file in the settings folder would let a second launch hand its files over.
+    return true;
+   #else
     return target_ != Target::uZXPlayer;
+   #endif
 }
 
 void MoToolApp::initialise(const String& commandLineParameters) {
+    // Not in the constructor: a second launch that hands its files to the running Player never gets here,
+    // so it doesn't start an engine, or load and save the startup edit, only to quit
+    appController_ = std::make_unique<AppController>();
+
+    if (target_ == Target::uZXPlayer) {
+        playerController_ = std::make_unique<PlayerController>(appController_->getEngine());
+    } else {
+        arrangerController_ = std::make_unique<ArrangerController>(appController_->getEngine());
+    }
+
+    appController_->initialize();
+
+    if (playerController_)
+        playerController_->initialize();
+    else
+        arrangerController_->initialize();
+
     // Linux and Windows pass the files to open on the command line; macOS hands Finder's to anotherInstanceStarted
     if (target_ != Target::uZXTuning)
         getActiveController().handleOpenCommandLine(commandLineParameters);

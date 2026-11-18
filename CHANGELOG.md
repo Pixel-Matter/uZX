@@ -4,16 +4,31 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Download
+- Linux: the download is a folder with the app as `uzx-player` or `uzx-studio`, its menu entry and icon, and `install.sh`, which adds it to the applications menu, where it was a single binary named `μZX Player`
+
+### Accessibility
+- Screen readers name the transport's readouts and master volume, the chip's knobs and A, B and C scopes, and the level meters
+- Viz mode's hint shows the options not chosen in a brighter grey, readable at 4.5:1
+- Fixed: the chip's Volume and Width knobs had "μZX AY Emulator >> volume" as their tooltip; it says what they are, such as "Output volume"
+
 ### Audio settings
 - Player: the audio settings show only the output, without the audio inputs and MIDI ports it never uses
 - Without a working audio device at startup, a message says what is wrong and offers **Open Audio Settings**, where the settings opened on their own without a word
 
 ### Opening files
 - Fixed: Studio, the app for `.uzx` files, opened on its last project when a project was opened from Finder or passed on the command line
+- Player: **Viz Mode** waits until a tune is open, where it showed only a black screen
+- Player: with no tune open, the transport bar shows no readouts, where it showed 120 bpm and a 5 5 5 5 5 groove no tune had given
 - Player: with no tune open, the window says how to open one, where it showed an empty grid and the colour legend; a file dragged over the window outlines it
 - Player: **File → Import PSG** (`Cmd+I`) is gone; **Open** does the same
 - Player: each tune keeps its stereo, mutes and other changes. Opening it again brings them back, and they survive a restart, where the copies lived in the temp folder and opening a tune again reset it. Open Recent lists the tunes
 - Fixed: several files selected in Finder and opened in the Player, such as the files of a Turbo Sound set, did nothing; so did several paths on the command line. They open together, and a file that can't be found or opened is named in a message
+- Fixed: the Open dialog listed `.ay` files and a drop accepted them, though µZX can't play them: an AYEmul file holds Z80 code. They are no longer offered
+- Fixed: Windows: a file opened while the Player ran started a whole second Player, which loaded and saved the last project before handing the file over. It hands the file over at once
+- Fixed: Linux: a file opened from the file manager while the Player ran did nothing. It opens in a new Player window
+- Fixed: the Open dialog started in a folder that doesn't exist until a first Save As; on Linux without zenity or kdialog, its name was typed into the file name box. It starts in the nearest folder that exists
+- Fixed: opening a `.uzx` project rewrote it on disk, even when it was only played. It is written when it has changes: on Save, when another file is opened, or on quit
 
 ### Timeline
 - Dragging the ruler, or the tracks with the middle button, keeps to the direction it starts in: sideways only scrolls, up or down only zooms, and a diagonal start does both
@@ -48,9 +63,13 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Scrubbing: press on the playhead line and the chips sound the frame under it and hold it while the button is down; drag, and the sound follows the playhead from frame to frame. The scopes show the held frame
 - Player: `Left` / `Right` step the playhead a grid line, `Option+Left` / `Option+Right` one frame; stopped, each step sounds the frame it lands on while the key is down
 - Grabbing the playhead during playback pauses it
+- Resting the pointer on a transport readout (bpm, fps, fpb, groove, sig, pos) says what it is and how to change it
+- Fixed: tooltips never showed in the Player's and Studio's windows, such as the Follow button's and the level meter's
 
 ### Menus
 - **Help → Check for Updates...** (on macOS, in the app menu) tells whether a newer release of the app is out on GitHub, and links to its page, or to all releases when yours is the latest; the Player looks for Player releases and Studio for Studio's
+- Player: the Transport menu has **End**, **Step Back** / **Step Forward** and **Frame Back** / **Frame Forward**, each with its key, which no menu showed before
+- Menu items are in title case, and those that open a window end in "...": **Play/Pause**, **Zoom to Project**, **Zoom In**, **Render to Audio**, **Audio Settings...**, **Plugins...**, **Tuning Tables...**, and **Show Hex Values on Hover**, **Tuning and Key...** and **Tempo Inspector...** in the clip menu
 
 ### Tempo detection
 - Importing a PSG finds the tracker's rows from more than loud note starts: a legato note, a soft attack and a drum change count too, each weighed by how often it starts a row in tracker modules. More tunes get a tempo, and the grid follows the tracker's own rows more often, such as speed 3 where it showed 6

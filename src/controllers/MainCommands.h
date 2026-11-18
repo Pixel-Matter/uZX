@@ -244,12 +244,12 @@ public:
         switch (commandID) {
             // File commands
             case fileNew:
-                result.setInfo("New", "Create a new edit", "File", 0);
+                result.setInfo("New", "Create a new project", "File", 0);
                 result.addDefaultKeypress('n', ModifierKeys::commandModifier);
                 break;
 
             case fileOpen:
-                result.setInfo("Open...", "Open an existing edit", "File", 0);
+                result.setInfo("Open...", "Open an existing project", "File", 0);
                 result.addDefaultKeypress('o', ModifierKeys::commandModifier);
                 break;
 
@@ -290,22 +290,22 @@ public:
                 break;
 
             case fileSave:
-                result.setInfo("Save", "Save the current edit", "File", 0);
+                result.setInfo("Save", "Save the current project", "File", 0);
                 result.addDefaultKeypress('s', ModifierKeys::commandModifier);
                 break;
 
             case fileSaveAs:
-                result.setInfo("Save As...", "Save the current edit with a new name", "File", 0);
+                result.setInfo("Save As...", "Save the current project with a new name", "File", 0);
                 result.addDefaultKeypress('s', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
                 break;
 
             case fileReveal:
                #if JUCE_MAC
-                result.setInfo("Reveal in Finder", "Reveal the current edit in Finder", "File", 0);
+                result.setInfo("Reveal in Finder", "Reveal the current project in Finder", "File", 0);
                #elif JUCE_WINDOWS
-                result.setInfo("Show in Explorer", "Show the current edit in Explorer", "File", 0);
+                result.setInfo("Show in Explorer", "Show the current project in Explorer", "File", 0);
                #else
-                result.setInfo("Show in Folder", "Show the folder of the current edit", "File", 0);
+                result.setInfo("Show in Folder", "Show the folder of the current project", "File", 0);
                #endif
                 break;
 
@@ -349,7 +349,7 @@ public:
 
             // Transport commands
             case transportPlay:
-                result.setInfo("Play/Stop", "Start or stop playback", "Transport", 0);
+                result.setInfo("Play/Pause", "Start or pause playback", "Transport", 0);
                 result.addDefaultKeypress(KeyPress::spaceKey, 0);
                 break;
 
@@ -359,7 +359,7 @@ public:
                 break;
 
             case transportRecordStop:
-                result.setInfo("Record stop", "Stop recording", "Transport", 0);
+                result.setInfo("Stop Recording", "Stop recording", "Transport", 0);
                 // result.addDefaultKeypress('r', 0);
                 break;
 
@@ -435,7 +435,7 @@ public:
 
             // Track commands
             case trackRenderToAudio:
-                result.setInfo("Render to audio", "Render track to audio track", "Track", 0);
+                result.setInfo("Render to Audio", "Render track to audio track", "Track", 0);
                 break;
             case trackRenderToPsg:
                 result.setInfo("Render to PSG", "Render what the track's MIDI to PSG plays to a PSG clip and file", "Track", 0);
@@ -471,17 +471,17 @@ public:
                 break;
 
             case viewZoomToProject:
-                result.setInfo("Zoom to project", "Zoom to project", "View", 0);
+                result.setInfo("Zoom to Project", "Fit the whole project in the window", "View", 0);
                 result.addDefaultKeypress('Z', ModifierKeys::shiftModifier);
                 break;
 
             case viewZoomToSelection:
-                result.setInfo("Zoom to selection", "Zoom to selection", "View", 0);
+                result.setInfo("Zoom to Selection", "Fit the selection in the window", "View", 0);
                 result.addDefaultKeypress('Z', 0);
                 break;
 
             case viewZoomIn:
-                result.setInfo("Zoom in", "Zoom in", "View", 0);
+                result.setInfo("Zoom In", "Zoom in", "View", 0);
                 result.addDefaultKeypress('=', 0);
                 // keys arrive with their Shift: German = is Shift+0 and + has its own key, US + is Shift+=
                 result.addDefaultKeypress('=', ModifierKeys::shiftModifier);
@@ -490,7 +490,7 @@ public:
                 break;
 
             case viewZoomOut:
-                result.setInfo("Zoom out", "Zoom out", "View", 0);
+                result.setInfo("Zoom Out", "Zoom out", "View", 0);
                 result.addDefaultKeypress('-', 0);
                 break;
 
@@ -534,16 +534,16 @@ public:
 
             // Settings commands
             case settingsAudioMidi:
-                result.setInfo("Audio/MIDI", "Open audio and MIDI settings", "Settings", 0);
+                result.setInfo("Audio Settings...", "Open the audio and MIDI settings", "Settings", 0);
                 result.addDefaultKeypress(',', ModifierKeys::commandModifier);
                 break;
 
             case settingsPlugins:
-                result.setInfo("Plugins", "Open plugin manager", "Settings", 0);
+                result.setInfo("Plugins...", "Open the plugin manager", "Settings", 0);
                 break;
 
             case settingsTuningTables:
-                result.setInfo("Tuning Tables", "Open the Tuning tables editor in a new window", "Settings", 0);
+                result.setInfo("Tuning Tables...", "Open the tuning tables editor in a new window", "Settings", 0);
                 result.addDefaultKeypress('T', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
                 break;
 

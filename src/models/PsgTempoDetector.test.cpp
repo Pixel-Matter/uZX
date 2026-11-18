@@ -298,6 +298,19 @@ public:
             expect(!PsgTempo::detect(makeTune(6000, {6}, 4))->rowsArePulse, "the same tune without slips has its rows");
         }
 
+        beginTest("A pulse that is not a whole number of frames: the beat follows where the tune repeats");
+        {
+            // rows of 4 frames, every eighth one of 3, none accented: the tune pulses every 4 frames and
+            // goes round in 31, which no multiple of 4 reaches
+            auto result = PsgTempo::detect(makeTune(6000, {4, 4, 4, 4, 4, 4, 4, 3}, 6000));
+            expect(result.hasValue());
+            if (result) {
+                expect(result->rowsArePulse, "no row grid holds");
+                expectEquals(result->framesPerBeat, 31);
+                expectWithinAbsoluteError(result->bpm, 3000.0 / 31.0, 0.01);
+            }
+        }
+
         beginTest("A module's own rows replace the grid detection");
         {
             // A swing as wide as speeds 2 and 6: detection only takes rows up to 2 frames apart.
@@ -705,6 +718,7 @@ public:
             {"05_Sauron", 20, {}},                  // 150 BPM
             {"11_Yerzmyey", 20, {}},                // 150 BPM
             {"24_nq_-_lmao", 24, {}},               // 125 BPM
+            {"18_nq", 31, {}},                      // 96.8 BPM, rows 4-4-4-4-4-4-4-3: no multiple of its 8-frame pulse
             {"26_djnzx48", 28, {}},                 // 107 BPM, a 3-5-3-3 groove
             {"29_nq_-_tiratok", 26, {7, 6, 7, 6}},  // 115 BPM, 4-3-3-3 rows shown in pairs
         };

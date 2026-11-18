@@ -57,6 +57,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - A PSG whose rows hold no one grid, with a row a frame longer now and then or a groove that varies, gets its tempo from the beat it repeats at; such tunes had none
 - **Tempo inspector…** in a PSG clip's right-click menu shows what the tempo detection reads in the tune and why it answers as it does: where a row grid holds over the tune, the row evidence frame by frame, how it repeats, and the beats that were weighed. A beat picked there can be made the project's tempo and judged against a metronome
 - Fixed: a tempo a third too fast or too slow where the beat is 7 rows, or where plain rows with a stray note between them were read as a groove (speed 4 as 4-2-2-4)
+- Fixed: no tempo for a tune whose rows go round in a number of frames no multiple of its pulse reaches, such as rows of 4-4-4-4-4-4-4-3 frames (31 to the beat, where 8 × 4 is 32): the beat now follows where the tune repeats
 
 ### Tracker modules and TAYM
 - A TAYM that loops back past its start sets the loop range from its loop to its end, as a tracker module does

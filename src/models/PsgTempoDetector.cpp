@@ -241,6 +241,31 @@ std::vector<double> autocorrelation(const std::vector<double>& energy, size_t ma
     return repeat;
 }
 
+/** The beat of a pulse that is not a whole number of frames: rows of 4-4-4-4-4-4-4-3 frames pulse
+    every 7.75, which reads as 8, and twice and four times 8 drift off the lags the tune repeats
+    at (31, 62). So each doubling is taken at the lag within a frame of it that repeats best.
+    Returns the beat inside the BPM range that repeats best over 1, 2 and 4 beats taken so, and how
+    well; a beat of 0 when none is in the range. */
+std::pair<int, double> driftingBeat(const std::vector<double>& repeat, int pulse) {
+    const int maxLag = (int) repeat.size() - 1;
+    auto twice = [&](int lag) {
+        const int exact = std::min(2 * lag, maxLag);
+        int best = exact;
+        for (int other : {exact - 1, exact + 1})
+            if (other <= maxLag && repeat[(size_t) other] > repeat[(size_t) best])
+                best = other;
+        return best;
+    };
+    std::pair<int, double> found{0, 0.0};
+    for (int beat = pulse; beat <= maxBeatFrames; beat = twice(beat)) {
+        const int two = twice(beat), four = twice(two);
+        const double over = (repeat[(size_t) beat] + repeat[(size_t) two] + repeat[(size_t) four]) / 3.0;
+        if (beat >= minBeatFrames && (found.first == 0 || over >= found.second))
+            found = {beat, over};
+    }
+    return found;
+}
+
 /** The beat of a tune no row grid holds through: one with a row a frame longer now and then, a
     groove that varies, or parts at other speeds. A grid needs every row to start where the first
     rows put it; how alike the tune is to itself a while later needs no such thing, and peaks at
@@ -249,7 +274,9 @@ std::vector<double> autocorrelation(const std::vector<double>& energy, size_t ma
     The pulse is the shortest lag that repeats nearly as well as the best one. The beat is that many
     frames times a power of two, inside the BPM range, or three pulses times a power of two when
     that repeats clearly better over 1, 2 and 4 beats. The pulse stands for the rows: what lies
-    inside it is not known. Nothing when even the beat repeats poorly. */
+    inside it is not known. When no such beat repeats, the pulse may not be a whole number of
+    frames (see driftingBeat): the beat found by following the peaks then stands for the pulse.
+    Nothing when even that beat repeats poorly. */
 PulseSearch
 detectPulse(const std::vector<double>& energy, double total, const std::vector<double>& repeat, double dataFps) {
     const int low = minBeatFrames, high = maxBeatFrames;
@@ -285,12 +312,19 @@ detectPulse(const std::vector<double>& energy, double total, const std::vector<d
             search.tried.push_back({candidate / pulse, candidate, {}, {}, over(candidate)});
     if (triple != 0 && (beat == 0 || over(triple) > over(beat) + beatMargin))
         beat = triple;
-    if (beat == 0 || over(beat) < minBeatRepeat)
-        return search;
+    int unit = pulse;  // what stands for the rows
+    if (beat == 0 || over(beat) < minBeatRepeat) {
+        const auto [drifting, repeats] = driftingBeat(repeat, pulse);
+        if (drifting != 0)
+            search.tried.push_back({juce::roundToInt((double) drifting / pulse), drifting, {}, {}, repeats});
+        if (drifting == 0 || repeats < minBeatRepeat)
+            return search;
+        beat = unit = drifting;
+    }
 
-    const auto fit = fitGrid(energy, total, pulse, 1);
-    Speed speed{{pulse}, fit.phases[0], fit.share, beat / pulse};
-    while (dataFps * 60.0 / (pulse * speed.beatRows) > tracktion::TempoSetting::maxBPM)
+    const auto fit = fitGrid(energy, total, unit, 1);
+    Speed speed{{unit}, fit.phases[0], fit.share, beat / unit};
+    while (dataFps * 60.0 / (unit * speed.beatRows) > tracktion::TempoSetting::maxBPM)
         speed.beatRows *= 2;
     search.chosen = speed;
     return search;

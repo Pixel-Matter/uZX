@@ -15,6 +15,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Player: each tune keeps its stereo, mutes and other changes. Opening it again brings them back, and they survive a restart, where the copies lived in the temp folder and opening a tune again reset it. Open Recent lists the tunes
 - Fixed: several files selected in Finder and opened in the Player, such as the files of a Turbo Sound set, did nothing; so did several paths on the command line. They open together, and a file that can't be found or opened is named in a message
 - Fixed: the Open dialog listed `.ay` files and a drop accepted them, though µZX can't play them: an AYEmul file holds Z80 code. They are no longer offered
+- Fixed: Windows: a file opened while the Player ran started a whole second Player, which loaded and saved the last project before handing the file over. It hands the file over at once
+- Fixed: Linux: a file opened from the file manager while the Player ran did nothing. It opens in a new Player window
 - Fixed: opening a `.uzx` project rewrote it on disk, even when it was only played. It is written when it has changes: on Save, when another file is opened, or on quit
 
 ### Timeline

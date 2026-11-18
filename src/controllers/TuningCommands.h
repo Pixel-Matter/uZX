@@ -75,12 +75,12 @@ public:
 
             // Settings commands
             case settingsAudioMidi:
-                result.setInfo("Audio/MIDI", "Open audio and MIDI settings", "Settings", 0);
+                result.setInfo("Audio Settings...", "Open the audio and MIDI settings", "Settings", 0);
                 result.addDefaultKeypress(',', ModifierKeys::commandModifier);
                 break;
 
             case settingsPlugins:
-                result.setInfo("Plugins", "Open plugin manager", "Settings", 0);
+                result.setInfo("Plugins...", "Open the plugin manager", "Settings", 0);
                 break;
         }
     }

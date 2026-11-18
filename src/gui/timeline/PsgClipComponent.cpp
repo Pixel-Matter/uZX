@@ -914,7 +914,7 @@ static void showPsgClipMenu(PsgClip& psgClip, const EditViewState& view) {
     });
     m.addSeparator();
     auto& settings = engine.getPropertyStorage().getPropertiesFile();
-    m.addItem("Hex params in hover", true, settings.getBoolValue(hexHoverSetting), [&settings] {
+    m.addItem("Show Hex Values on Hover", true, settings.getBoolValue(hexHoverSetting), [&settings] {
         settings.setValue(hexHoverSetting, ! settings.getBoolValue(hexHoverSetting));
     });
     m.addSeparator();
@@ -927,12 +927,12 @@ static void showPsgClipMenu(PsgClip& psgClip, const EditViewState& view) {
                               PsgTempo::setFrameRate(c->getTuneClips(), fps);
                       });
     m.addSubMenu("Frame Rate", rates);
-    m.addItem("Tuning and key...", psgClip.getTuningDetection().hasNotes, false,
+    m.addItem("Tuning and Key...", psgClip.getTuningDetection().hasNotes, false,
               [safeClip = te::SafeSelectable<PsgClip>(&psgClip)] {
                   if (auto* c = safeClip.get())
                       TuningPickerComponent::show(*c);
               });
-    m.addItem("Tempo inspector...", [safeClip = te::SafeSelectable<PsgClip>(&psgClip)] {
+    m.addItem("Tempo Inspector...", [safeClip = te::SafeSelectable<PsgClip>(&psgClip)] {
         if (auto* c = safeClip.get())
             showTempoInspector(*c);
     });

@@ -106,7 +106,7 @@ void MidiParameterMapping::showMappingMenu() {
     // Check if parameter is currently mapped
     bool isMapped = isParameterMapped();
 
-    menu.addSectionHeader("MIDI mapping");
+    menu.addSectionHeader("MIDI Mapping");
     menu.addSeparator();
 
     if (isMapped) {

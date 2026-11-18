@@ -53,6 +53,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Menus
 - **Help → Check for Updates...** (on macOS, in the app menu) tells whether a newer release of the app is out on GitHub, and links to its page, or to all releases when yours is the latest; the Player looks for Player releases and Studio for Studio's
+- Menu items are in title case, and those that open a window end in "...": **Play/Pause**, **Zoom to Project**, **Zoom In**, **Render to Audio**, **Audio Settings...**, **Plugins...**, **Tuning Tables...**, and **Show Hex Values on Hover**, **Tuning and Key...** and **Tempo Inspector...** in the clip menu
 
 ### Tempo detection
 - Importing a PSG finds the tracker's rows from more than loud note starts: a legato note, a soft attack and a drum change count too, each weighed by how often it starts a row in tracker modules. More tunes get a tempo, and the grid follows the tracker's own rows more often, such as speed 3 where it showed 6

@@ -528,7 +528,7 @@ te::AudioTrack* renderSelectedTracksToAudioTrack(te::Edit& edit, te::SelectionMa
     }
 
     auto& undo = edit.getUndoManager();
-    undo.beginNewTransaction("Render to audio");
+    undo.beginNewTransaction("Render to Audio");
     auto* added = addAudioTrackAfter(edit, track.get());
     auto clip = added != nullptr
         ? added->insertWaveClip(String("Frozen ") + track->getName(), freezeFile, {parameters.time, {}}, false)

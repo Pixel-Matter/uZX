@@ -1125,7 +1125,7 @@ std::unique_ptr<juce::Component> createTempoInspector(PsgClip& clip) {
 
 void showTempoInspector(PsgClip& clip) {
     juce::DialogWindow::LaunchOptions o;
-    o.dialogTitle = "Tempo inspector: " + clip.getName();
+    o.dialogTitle = "Tempo Inspector: " + clip.getName();
     o.dialogBackgroundColour = Theme::background;
     o.escapeKeyTriggersCloseButton = true;
     o.useNativeTitleBar = true;

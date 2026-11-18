@@ -116,7 +116,7 @@ TuningPickerComponent::~TuningPickerComponent() {
 
 void TuningPickerComponent::show(PsgClip& clip) {
     DialogWindow::LaunchOptions o;
-    o.dialogTitle = "Tuning and key: " + clip.getName();
+    o.dialogTitle = "Tuning and Key: " + clip.getName();
     o.dialogBackgroundColour = Colors::Theme::background;
     o.escapeKeyTriggersCloseButton = true;
     o.useNativeTitleBar = true;

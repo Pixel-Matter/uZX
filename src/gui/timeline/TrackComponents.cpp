@@ -46,9 +46,9 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
                 for (auto instance : at->edit.getAllInputDevices()) {
                     if (instance->getTargets().contains(at->itemID)) {
                         auto currentMode = instance->getInputDevice().getMonitorMode();
-                        m.addItem(1000, "Monitoring off", true, currentMode == te::InputDevice::MonitorMode::off);
-                        m.addItem(1001, "Monitoring auto", true, currentMode == te::InputDevice::MonitorMode::automatic);
-                        m.addItem(1002, "Monitoring on", true, currentMode == te::InputDevice::MonitorMode::on);
+                        m.addItem(1000, "Monitoring Off", true, currentMode == te::InputDevice::MonitorMode::off);
+                        m.addItem(1001, "Monitoring Auto", true, currentMode == te::InputDevice::MonitorMode::automatic);
+                        m.addItem(1002, "Monitoring On", true, currentMode == te::InputDevice::MonitorMode::on);
 
                         m.addSeparator();
                         break;

@@ -9,6 +9,11 @@ namespace te = tracktion;
 
 namespace MoTool::Helpers {
 
+te::TimePosition getHeardPosition(te::Edit& edit) {
+    const auto latency = te::TimeDuration::fromSeconds(edit.engine.getDeviceManager().getOutputLatencySeconds());
+    return edit.getTransport().getPosition() - latency;
+}
+
 TimecodeDisplayMode getTimecodeDisplayMode(te::Edit& edit) {
     if (edit.state.hasProperty(IDs::timecodeDisplayMode))
         return VariantConverter<TimecodeDisplayMode>::fromVar(edit.state[IDs::timecodeDisplayMode]);

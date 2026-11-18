@@ -166,6 +166,10 @@ public:
     static te::BeatPosition getEditBeats(const PsgClip&, int frameIndex);
     static te::TimePosition getEditTime(const PsgClip&, int frameIndex);
 
+    /** The other way round: the frame of the clip's list that an edit time falls in, with the part of
+        the frame that has passed (quantising aside). Below 0 before the tune's first frame. */
+    static double getFramePosition(const PsgClip&, te::TimePosition);
+
     /** A frame's time in a playback sequence's time base. */
     static double getFrameTimeInBase(int frameIndex, const PsgClip&, te::MidiList::TimeBase);
 

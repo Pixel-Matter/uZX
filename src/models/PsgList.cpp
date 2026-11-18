@@ -88,6 +88,8 @@ te::BeatPosition PsgList::getFrameBeatPosition(const PsgClip& c, int frameIndex)
     if (frameIndex < 0)
         return {};
 
+    // The clip's lead-in comes first: empty frames inside the clip before the tune's frame 0
+    frameIndex += c.getLeadInFrames();
     // PsgClip::initialise guarantees framesPerBeat > 0 for any clip-attached list.
     const auto framesPerBeat = c.getPsg().getFramesPerBeat();
     jassert(framesPerBeat > 0.0);
@@ -107,6 +109,12 @@ te::BeatPosition PsgList::getEditBeats(const PsgClip& c, int frameIndex) {
 
 te::TimePosition PsgList::getEditTime(const PsgClip& c, int frameIndex) {
     return c.edit.tempoSequence.toTime(getEditBeats(c, frameIndex));
+}
+
+double PsgList::getFramePosition(const PsgClip& c, te::TimePosition time) {
+    const auto beats = c.edit.tempoSequence.toBeats(time) - toDuration(c.getContentStartBeat())
+                       + toDuration(c.getLoopStartBeats());
+    return beats.inBeats() * c.getPsg().getFramesPerBeat() - c.getLeadInFrames();
 }
 
 te::BeatPosition PsgParamFrame::getFrameBeatPosition(const PsgClip& c) const {

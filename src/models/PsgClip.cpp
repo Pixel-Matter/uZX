@@ -62,7 +62,9 @@ bool PsgClip::isInPsgList(const juce::ValueTree& v) const {
 
 void PsgClip::valueTreePropertyChanged(juce::ValueTree& v, const juce::Identifier& id) {
     te::MidiClip::valueTreePropertyChanged(v, id);
-    if ((v == state && (id == te::IDs::start || id == te::IDs::length || id == te::IDs::offset)) || isInPsgList(v))
+    if ((v == state
+         && (id == te::IDs::start || id == te::IDs::length || id == te::IDs::offset || id == IDs::psgLeadIn))
+        || isInPsgList(v))
         edit.restartPlayback();
 }
 
@@ -157,7 +159,7 @@ int PsgClip::getHistogramEndIndex() const {
     if (fps <= 0.0)
         fps = getPsg().getFrameRate();
     const auto position = getPosition();
-    return roundToInt((position.getOffset() + position.getLength()).inSeconds() * fps);
+    return roundToInt((position.getOffset() + position.getLength()).inSeconds() * fps) - getLeadInFrames();
 }
 
 PitchHistogram PsgClip::buildPitchHistogram(int endIndex) const {
@@ -179,6 +181,28 @@ const PitchHistogram& PsgClip::getPitchHistogram() const {
         ++histogramRevision_;  // never restarts, unlike a new list's data version
     }
     return *histogram_;
+}
+
+void PsgClip::setLeadInFrames(int frames, juce::UndoManager* um) {
+    if (frames > 0)
+        state.setProperty(IDs::psgLeadIn, frames, um);
+    else
+        state.removeProperty(IDs::psgLeadIn, um);
+    changed();
+}
+
+uZX::PsgData PsgClip::getRegisterDump() const {
+    uZX::PsgData dump;
+    if (const auto fps = getPsg().getEffectiveFps(*this); fps > 0.0)
+        dump.options.frameRate = fps;
+    for (auto* frame : getPsg().getFrames()) {
+        if (! frame->hasFrameIndex())
+            continue;
+        const auto index = (size_t) frame->getFrameIndex();
+        dump.frames.resize(std::max(dump.frames.size(), index + 1));
+        dump.frames[index] = frame->getData().toRegisters();
+    }
+    return dump;
 }
 
 juce::Array<PsgClip*> PsgClip::getTuneClips() const {

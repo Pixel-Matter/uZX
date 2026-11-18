@@ -89,8 +89,14 @@ public:
                 expectEquals(module->title, String("little girl with big yellow bow"), "one title, as they are the same");
                 // PlayOrder=0,1,0,13,L2,...: patterns of 64, 64, 64 and 62 rows come before the loop
                 expect(module->rowStarts.size() > 254, "rows past the loop start");
-                if (module->rowStarts.size() > 254)
+                if (module->rowStarts.size() > 254) {
                     expectEquals((int) module->loopFrame, (int) module->rowStarts[254], "loops to its fifth position");
+                    expect(module->patternStarts.size() > 4, "a pattern start for every position played");
+                    const size_t firstRows[] = {0, 64, 128, 192, 254};
+                    for (size_t k = 0; k < 5 && k < module->patternStarts.size(); ++k)
+                        expectEquals((int) module->patternStarts[k], (int) module->rowStarts[firstRows[k]],
+                                     "position " + String((int) k + 1) + " starts on its first row");
+                }
             }
         }
 

@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "PsgClipComponent.h"
+#include "TempoInspector.h"
 #include "TuningPickerComponent.h"
 #include "../common/LookAndFeel.h"
 #include "../../controllers/MainCommands.h"
@@ -931,6 +932,10 @@ static void showPsgClipMenu(PsgClip& psgClip, const EditViewState& view) {
                   if (auto* c = safeClip.get())
                       TuningPickerComponent::show(*c);
               });
+    m.addItem("Tempo inspector...", [safeClip = te::SafeSelectable<PsgClip>(&psgClip)] {
+        if (auto* c = safeClip.get())
+            showTempoInspector(*c);
+    });
     m.showMenuAsync({});
 }
 

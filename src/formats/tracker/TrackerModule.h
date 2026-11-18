@@ -41,6 +41,9 @@ struct TrackerModule {
     /** The tracker's computed tuning, when it states one instead of a table (Bitphase's custom 12TET). */
     std::optional<TuningFit> fit;
     std::vector<size_t> rowStarts;  // the frame each pattern row starts at, in play order
+    /** The frame each position of the order list starts at, in play order: every one is a row start,
+        and a bar line as the tracker shows the tune. Empty for a tune that states no patterns (a TAYM). */
+    std::vector<size_t> patternStarts;
     size_t loopFrame = 0;           // the frame the tune loops back to; 0 when it loops to its start
 };
 

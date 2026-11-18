@@ -52,10 +52,24 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Menus
 - **Help → Check for Updates...** (on macOS, in the app menu) tells whether a newer release of the app is out on GitHub, and links to its page, or to all releases when yours is the latest; the Player looks for Player releases and Studio for Studio's
 
+### Tempo detection
+- Importing a PSG finds the tracker's rows from more than loud note starts: a legato note, a soft attack and a drum change count too, each weighed by how often it starts a row in tracker modules. More tunes get a tempo, and the grid follows the tracker's own rows more often, such as speed 3 where it showed 6
+- A PSG whose rows hold no one grid, with a row a frame longer now and then or a groove that varies, gets its tempo from the beat it repeats at; such tunes had none
+- Such a PSG also gets the rows inside its beat as its groove, where stretches of the tune agree on them: `7 8 8 8` for rows of 4-4-4-4-4-4-4-3 frames, or a swing as wide as 4-7, which the row grid search does not take
+- Such a PSG is also placed by its pulse when that is clear: a tune that starts a few frames before a bar line has those frames at the end of bar 1, where the bar lines used to start with the file and every beat line was that much early
+- **Tempo inspector…** in a PSG clip's right-click menu shows what the tempo detection reads in the tune and why it answers as it does: where a row grid holds over the tune, the row evidence frame by frame, how it repeats, and the beats that were weighed. A beat picked there can be made the project's tempo and judged against a metronome, which clicks louder on bar lines; on the detected beat, the detected groove and meter go to the project too, which repairs a project saved with a wrong detection. The project's own beat lines are drawn through the evidence, and a **Project** fact says how far they are from the detected beats. Its **Phase map** folds the tune at that beat: the rows inside the beat are bright lines, their gaps the groove, and a slip is a line that steps
+- Fixed: a tempo a third too fast or too slow where the beat is 7 rows, or where plain rows with a stray note between them were read as a groove (speed 4 as 4-2-2-4)
+- Fixed: no tempo for a tune whose rows go round in a number of frames no multiple of its pulse reaches, such as rows of 4-4-4-4-4-4-4-3 frames (31 to the beat, where 8 × 4 is 32): the beat now follows where the tune repeats
+
 ### Tracker modules and TAYM
 - A TAYM that loops back past its start sets the loop range from its loop to its end, as a tracker module does
 - A TAYM exported by Bitphase opens on its own tuning table (or its A4, for a custom 12TET table) and with the tempo and groove of the rows it mostly repeats, instead of detected ones
 - Fixed: note slides in Pro Tracker 2 and 3, Vortex Tracker, ASC Sound Master and Fast Tracker modules play as in the trackers (zxtune updated)
+- Fixed: a module whose groove starts after an intro, or varies now and then (3-5-3-3 with a 4-4-3-3), opened at the tempo of its commonest row length instead of its groove's
+- A tune that starts before its first bar line, with a pickup or a few frames ahead of its first row, keeps its clip on the bar line: the clip begins with rests, where it used to be moved right to start in the middle of bar 1. Projects saved by this version can't be opened by older ones
+- A tracker module with a pickup, or an intro of an odd length, is placed by its patterns: the bar lines fall where most of them start, so the first full pattern starts bar 2 instead of the first row starting bar 1
+- A tracker module's patterns are bar lines: its beat and its meter fill them. A beat of 3, 6 or 7 rows no longer comes out of a module with 64-row patterns, and the time signature is set whenever only bars of 3 or only bars of 4 beats fill the patterns
+- Fixed: a module whose rows follow no pattern, such as rows of 4-4-4-4-4-4-4-3 frames with a longer round now and then, opened at eight times its commonest row (32 frames to the beat) instead of what its rows usually make (31)
 - Fixed: the Player played a TAYM at the clock its tuning detection guessed, not at the one the file states; a fitted tuning is now named at the file's clock, for example `12TET 440 Hz Atari ST`
 
 ## [v0.7.1-alpha, player-v0.7.1-alpha] - 2026-11-15

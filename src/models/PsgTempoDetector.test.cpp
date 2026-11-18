@@ -2,12 +2,15 @@
 
 #include <JuceHeader.h>
 
+#include <numeric>
+
 #include "PsgClip.h"
 #include "formats/psg/PsgData.h"
 #include "formats/psg/PsgFile.h"
 #include "models/EditUtilities.h"
 #include "models/PsgFrameRetimer.h"
 #include "formats/tracker/TrackerModule.h"
+#include "models/PsgRowEvidence.h"
 
 namespace MoTool::Tests {
 
@@ -181,6 +184,54 @@ public:
             expect(quintuplet->subdivisionPattern() == std::vector<int>{6, 6, 6, 6, 6}, "10 rows show as 5 groups");
         }
 
+        beginTest("A beat of 7 rows is found by how alike the tune is to itself a beat on");
+        {
+            // Nothing in the drums or the bass says 7; the accents come back every 21 frames.
+            auto result = PsgTempo::detect(makeTune(6000, {3}, 7));
+            expect(static_cast<bool>(result));
+            expectEquals(result->rowsPerBeat, 7);
+            expectEquals(result->framesPerBeat, 21);
+        }
+
+        beginTest("Plain rows with a stray note start between them are not a groove");
+        {
+            // Speed 4 on channels A and C. In every strayEvery-th round of three rows, channel B
+            // starts a note two frames into the second row: frames 0, 4, 6 and 8 of 12 then hold
+            // everything, which looks like a 4-2-2-4 groove, and a beat of 24 frames for one of 32.
+            const auto build = [](int strayEvery, int numFrames) {
+                PsgData data;
+                data.options = {50.0, 1};
+                data.frames.resize((size_t) numFrames);
+                data.frames[0].setMixer(0x38);
+                for (int t = 0; t + 2 < numFrames; t += 4) {
+                    data.frames[(size_t) t].setTonePeriod(0, 300);
+                    data.frames[(size_t) t].setVolume(0, 15);
+                    data.frames[(size_t) t].setTonePeriod(2, 500);
+                    data.frames[(size_t) t].setVolume(2, 13);
+                    data.frames[(size_t) t + 2].setVolume(0, 0);
+                    data.frames[(size_t) t + 2].setVolume(2, 0);
+                }
+                for (int t = 12 * strayEvery + 6; t + 2 < numFrames; t += 12 * strayEvery) {
+                    data.frames[(size_t) t].setTonePeriod(1, 200);
+                    data.frames[(size_t) t].setVolume(1, 15);
+                    data.frames[(size_t) t + 2].setVolume(1, 0);
+                }
+                return data;
+            };
+            // The strays must hold more than rows a frame apart may lose (1.5%) and less than a
+            // row of a groove starts (2%): spaced by what a row and a stray weigh as evidence.
+            const auto probe = PsgRowEvidence::of(build(1, 240));
+            const double row = probe[24], stray = probe[18];
+            expect(row > 0.0 && stray > 0.0, "both count as evidence");
+            const int strayEvery = juce::roundToInt(stray * (1.0 - 0.0175) / (0.0175 * 3.0 * row));
+            expect(strayEvery >= 2);
+
+            auto result = PsgTempo::detect(build(strayEvery, 12 * strayEvery * 40));
+            expect(static_cast<bool>(result));
+            expectEquals((int) result->rowFrames.size(), 1, rowPattern(result->rowFrames));
+            expectEquals(result->framesPerBeat, 32);
+        }
+
         beginTest("A slow triplet beat keeps 3 rows instead of halving to 1");
         {
             auto result = PsgTempo::detect(makeBarTune(8000, 4, 3, 16));
@@ -231,6 +282,68 @@ public:
             expectEquals(noBars->beatsPerBar, 4, "no bar-level repetition keeps 4/4");
         }
 
+        beginTest("Rows that slip a frame now and then hold no grid, but the tune keeps its beat");
+        {
+            // Speed 6, and every 40th row lasts 7 frames: the rows drift through every phase.
+            std::vector<int> slipping(40, 6);
+            slipping.back() = 7;
+            auto result = PsgTempo::detect(makeTune(6000, slipping, 4));
+            expect(static_cast<bool>(result));
+            if (result) {
+                expect(result->rowsArePulse, "found by what repeats, not as rows");
+                expectEquals(result->framesPerBeat, 24);
+                expectWithinAbsoluteError(result->bpm, 125.0, 0.01);
+                expectEquals(result->firstRowFrame, 0, "nothing says where the first row is");
+            }
+            expect(!PsgTempo::detect(makeTune(6000, {6}, 4))->rowsArePulse, "the same tune without slips has its rows");
+        }
+
+        beginTest("A pulse that is not a whole number of frames: the beat follows where the tune repeats");
+        {
+            // rows of 4 frames, every eighth one of 3, none accented: the tune pulses every 4 frames and
+            // goes round in 31, which no multiple of 4 reaches
+            auto result = PsgTempo::detect(makeTune(6000, {4, 4, 4, 4, 4, 4, 4, 3}, 6000));
+            expect(result.hasValue());
+            if (result) {
+                expect(result->rowsArePulse, "no row grid holds");
+                expectEquals(result->framesPerBeat, 31);
+                expectWithinAbsoluteError(result->bpm, 3000.0 / 31.0, 0.01);
+                // and with the beat known, the rows inside it are read off the tune, stretch by stretch
+                expect(result->rowFrames == std::vector<int>({4, 4, 4, 4, 4, 4, 4, 3}), rowPattern(result->rowFrames));
+                expectEquals(result->rowsPerBeat, 8);
+                expect(result->subdivisionPattern() == std::vector<int>({8, 8, 8, 7}), "the groove the grid shows");
+            }
+
+            // The same registers at 200 Hz: the beat of 31 frames is past Tracktion's fastest tempo, so a beat
+            // takes two rounds of the rows
+            auto fast = makeTune(6000, {4, 4, 4, 4, 4, 4, 4, 3}, 6000);
+            fast.options = {200.0, 1};
+            auto fastResult = PsgTempo::detect(fast);
+            expect(fastResult.hasValue());
+            if (fastResult) {
+                expect(fastResult->rowsArePulse, "still the rows read inside the beat");
+                expectEquals(fastResult->rowsPerBeat, 16);
+                expectEquals(fastResult->framesPerBeat, 62);
+                expectWithinAbsoluteError(fastResult->bpm, 12000.0 / 62.0, 0.01);
+            }
+
+            // Every second row accented, the short round now and then a frame longer: only the accents stand
+            // out, and the rows are read as the pulses they make
+            std::vector<int> rounds;
+            for (int round = 0; round < 200; ++round)
+                for (int row : {4, 4, 4, 4, 4, 4, 4, round % 5 == 4 ? 4 : 3})
+                    rounds.push_back(row);
+            auto slipping = PsgTempo::detect(makeTune(6000, rounds, 2));
+            expect(slipping.hasValue());
+            if (slipping) {
+                expectEquals(slipping->framesPerBeat, 31);
+                expectEquals(slipping->rowsPerBeat, 4, rowPattern(slipping->rowFrames));
+                auto pulses = slipping->rowFrames;
+                std::sort(pulses.begin(), pulses.end());
+                expect(pulses == std::vector<int>({7, 8, 8, 8}), "8-8-8-7 at some turn");
+            }
+        }
+
         beginTest("A module's own rows replace the grid detection");
         {
             // A swing as wide as speeds 2 and 6: detection only takes rows up to 2 frames apart.
@@ -261,10 +374,122 @@ public:
             expect(withIntro->rowFrames == std::vector<int>{6}, "the speed 90% of the rows have");
             expectEquals(withIntro->firstRowFrame, 0);
 
+            // An intro at speed 4 before a 5-5-3-3 groove (Hibernation by MmcM): under 90% of the rows
+            // follow the groove by count, but every 16 frames a round starts, intro included.
+            auto afterIntro = rowsOf(160, {4});
+            for (auto start : rowsOf(960, {5, 5, 3, 3}))
+                afterIntro.push_back(160 + start);
+            auto long16 = makeTune(160 + 960, {4}, 4);
+            auto intro = PsgTempo::detect({&long16}, afterIntro);
+            expect(intro->rowFrames == std::vector<int>{5, 5, 3, 3}, rowPattern(intro->rowFrames));
+            expectEquals(intro->framesPerBeat, 32);
+
+            // A groove that varies (Not Picking Up by Pator): every fourth 3-5-3-3 is a 4-4-3-3, so no
+            // row pattern repeats, but the tune is made of 14-frame rounds.
+            const std::vector<int> varied {3, 5, 3, 3, 3, 5, 3, 3, 3, 5, 3, 3, 4, 4, 3, 3};
+            auto variedTune = makeTune(2800, {4}, 4);
+            auto variedRows = PsgTempo::detect({&variedTune}, rowsOf(2800, varied));
+            expect(variedRows->rowFrames == std::vector<int>{3, 5, 3, 3}, rowPattern(variedRows->rowFrames));
+            expectEquals(variedRows->framesPerBeat, 28);
+
+            // Two speeds, neither for 90% of the rows, share no pulse: the commoner one stands.
+            auto twoSpeeds = rowsOf(700, {7});
+            for (auto start : rowsOf(1350, {9}))
+                twoSpeeds.push_back(700 + start);
+            auto twoTune = makeTune(700 + 1350, {4}, 4);
+            auto sections = PsgTempo::detect({&twoTune}, twoSpeeds);
+            expect(sections->rowFrames == std::vector<int>{9}, rowPattern(sections->rowFrames));
+
             // A grid needs no notes once the module gives its rows; one row is no grid.
             auto quiet = makeTune(60, {6}, 4);
             expect(static_cast<bool>(PsgTempo::detect({&quiet}, rowsOf(60, {6}))));
             expect(!PsgTempo::detect({&quiet}, {0}), "a single row falls back to detection");
+        }
+
+        beginTest("A module whose rows follow no pattern: its beat lasts as long as that many rows usually do");
+        {
+            // Rounds of eight rows with one of 3 frames, at a place of its own in each, and every fourth round
+            // with two: no pattern of 1, 2, 4 or 8 rows holds and no pulse does, most rows are 4 frames, yet
+            // eight rows usually last 31.
+            const std::vector<std::vector<int>> rounds{
+                {4, 4, 4, 4, 4, 4, 4, 3}, {4, 4, 4, 3, 4, 4, 4, 4}, {4, 4, 4, 4, 4, 3, 4, 4}, {4, 4, 3, 4, 4, 4, 3, 4}};
+            std::vector<int> rows;
+            for (const auto& round : rounds)
+                rows.insert(rows.end(), round.begin(), round.end());
+            auto tune = makeTune(6000, rows, 8);
+            auto result = PsgTempo::detect({&tune}, rowsOf(6000, rows));
+            expect(result.hasValue());
+            if (result) {
+                // six or eight rows to the beat, and one of them is the short one
+                expectEquals(result->framesPerBeat, 4 * result->rowsPerBeat - 1, "not so many times the commonest row");
+                expect(std::find(result->rowFrames.begin(), result->rowFrames.end(), 3) != result->rowFrames.end(),
+                       rowPattern(result->rowFrames));
+            }
+        }
+
+        beginTest("A module's patterns are bars: its beat and its meter fill them");
+        {
+            // Speed 3 with accents every third row reads as beats of 6 rows; what the patterns hold decides
+            auto tune = makeBarTune(4000, 4, 3, 3);
+            const auto rows = rowsOf(4000, {3});
+            auto patternsOf = [&](size_t rowsEach) {
+                std::vector<size_t> starts;
+                for (size_t row = 0; row < rows.size(); row += rowsEach)
+                    starts.push_back(rows[row]);
+                return starts;
+            };
+            auto free = PsgTempo::detect({&tune}, rows);
+            expectEquals(free->rowsPerBeat, 6, "by what repeats, without patterns");
+            auto fits = PsgTempo::detect({&tune}, rows, patternsOf(48));
+            expectEquals(fits->rowsPerBeat, 6, "48 rows hold 8 beats of 6 rows");
+            auto vetoed = PsgTempo::detect({&tune}, rows, patternsOf(64));
+            expectEquals(vetoed->rowsPerBeat, 8, "64 rows hold no whole number of 6-row beats");
+            expectEquals(vetoed->framesPerBeat, 24);
+            expect(vetoed->meterClear && vetoed->beatsPerBar == 4, "8 beats a pattern: bars of 4, not of 3");
+
+            // Bars of 3 and of 4 beats both fill a pattern of 12 beats: the meter stays what the repetition says
+            auto plain = makeTune(3000, {6}, 4);
+            const auto plainRows = rowsOf(3000, {6});
+            std::vector<size_t> twelveBeats;
+            for (size_t row = 0; row < plainRows.size(); row += 48)
+                twelveBeats.push_back(plainRows[row]);
+            auto either = PsgTempo::detect({&plain}, plainRows, twelveBeats);
+            expect(! either->meterClear, "an unclear meter is not made clear by patterns both fill");
+        }
+
+        beginTest("A module with a pickup: its bars start where most of its patterns do");
+        {
+            // Speed 6, 4 rows to the beat. The first pattern is one beat long, the rest 8 beats each.
+            auto tune = makeTune(3000, {6}, 4);
+            const auto rows = rowsOf(3000, {6});
+            std::vector<size_t> patterns{rows[0]};
+            for (size_t row = 4; row < rows.size(); row += 32)
+                patterns.push_back(rows[row]);
+            auto result = PsgTempo::detect({&tune}, rows, patterns);
+            expect(result.hasValue());
+            if (result) {
+                expectEquals(result->framesPerBeat, 24);
+                expectEquals(result->firstRowFrame, 24, "the first bar line comes after the pickup beat");
+                expect(! result->silentLeadIn, "the pickup sounds");
+            }
+            // Patterns that all start on the first row's place in the bar leave it the downbeat
+            std::vector<size_t> plain;
+            for (size_t row = 0; row < rows.size(); row += 32)
+                plain.push_back(rows[row]);
+            expectEquals(PsgTempo::detect({&tune}, rows, plain)->firstRowFrame, 0);
+
+            // On import the clip stays on its bar line and starts with rests, so the bar line after the pickup is bar 2
+            auto& engine = *tracktion::Engine::getEngines()[0];
+            auto edit = Edit::createSingleTrackEdit(engine);
+            const auto length = tracktion::TimeDuration::fromSeconds(tune.getLengthSeconds());
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], tune, {{0_tp, length}, {}}, "pickup");
+            PsgTempo::applyToEdit({clip.get()}, {&tune}, rows, patterns);
+            expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), 0.0, 1.0e-9);
+            expectEquals(clip->getLeadInFrames(), 96 - 24);
+            expectWithinAbsoluteError(PsgList::getEditTime(*clip, 24).inSeconds(), 96.0 / 50.0, 1.0e-6, "bar 2");
+            expectWithinAbsoluteError(PsgList::getFramePosition(*clip, PsgList::getEditTime(*clip, 24)), 24.0, 1.0e-6,
+                                      "and back from the time to the frame, through the rests");
+            expectWithinAbsoluteError(clip->getPosition().getLength().inSeconds(), (3000.0 + 72.0) / 50.0, 1.0e-6);
         }
 
         beginTest("Too few notes or no grid gives no result");
@@ -314,6 +539,25 @@ public:
                 {{tracktion::TimePosition::fromSeconds(70.0), tracktion::TimeDuration::fromSeconds(60.0)}, {}},
                 "second");
             expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), 125.0, 0.01);
+        }
+
+        beginTest("A clip's register dump detects as the file it was imported from");
+        {
+            auto& engine = *tracktion::Engine::getEngines()[0];
+            auto edit = Edit::createSingleTrackEdit(engine);
+            auto tune = makeTune(3000, {4, 4, 3, 3}, 8);
+            const auto length = tracktion::TimeDuration::fromSeconds(tune.getLengthSeconds());
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], tune, {{0_tp, length}, {}}, "tune");
+            const auto dump = clip->getRegisterDump();
+            const auto fromFile = PsgTempo::analyse({&tune}), fromClip = PsgTempo::analyse({&dump});
+            // the dump ends with the last frame that changes a register; the file may go on in silence
+            expect(dump.frames.size() <= tune.frames.size() && dump.frames.size() + 8 > tune.frames.size());
+            expect(std::equal(fromClip.evidence.begin(), fromClip.evidence.end(), fromFile.evidence.begin()),
+                   "the row evidence is the same frame by frame");
+            expect(fromClip.result && fromClip.result->rowFrames == fromFile.result->rowFrames);
+            expectWithinAbsoluteError(fromClip.result->bpm, fromFile.result->bpm, 1e-6);
+            expect(fromFile.rowsFrom == PsgTempo::Analysis::RowsFrom::evidence);
+            expect(! fromFile.grids.empty() && ! fromFile.beats.empty(), "what was tried is listed");
         }
 
         beginTest("Importing into a project that already has clips keeps its tempo and meter");
@@ -382,8 +626,20 @@ public:
             expectWithinAbsoluteError(firstRowTime(*trimmed).inSeconds(), 0.0, 1.0e-6);
 
             auto [audibleEdit, shifted] = import(withLeadIn(makeTune(3000, {6}, 4), 5, true));
-            // 4/4 at 24 frames per beat: a bar is 96 frames, so the clip moves 91 frames right
-            expectWithinAbsoluteError(shifted->getPosition().getStart().inSeconds(), 91.0 / 50.0, 1.0e-9);
+            // 4/4 at 24 frames per beat: a bar is 96 frames, so the clip starts with 91 frames of rests
+            expectWithinAbsoluteError(shifted->getPosition().getStart().inSeconds(), 0.0, 1.0e-9);
+            expectEquals(shifted->getLeadInFrames(), 91);
+            // the rests are the clip's own: they stay when it moves, and its playback starts after them
+            auto played = shifted->createPlaybackMidiSequence(tracktion::MidiList::TimeBase::seconds);
+            double firstNote = -1.0;
+            for (int i = 0; i < played.getNumEvents() && firstNote < 0.0; ++i)
+                if (played.getEventPointer(i)->message.getTimeStamp() > 1.0e-9)
+                    firstNote = played.getEventPointer(i)->message.getTimeStamp();
+            expectWithinAbsoluteError(firstNote, 91.0 / 50.0, 1.0e-6, "nothing plays in the rests");
+            shifted->setStart(tracktion::TimePosition::fromSeconds(4.0), false, true);
+            expectEquals(shifted->getLeadInFrames(), 91, "kept through a move");
+            expectWithinAbsoluteError(firstRowTime(*shifted).inSeconds(), 4.0 + 96.0 / 50.0, 1.0e-6);
+            shifted->setStart(0_tp, false, true);
             expectWithinAbsoluteError(shifted->getPosition().getOffset().inSeconds(), 0.0, 1.0e-9);
             const auto barsBeats = audibleEdit->tempoSequence.toBarsAndBeats(firstRowTime(*shifted));
             expectEquals(barsBeats.bars, 1, "first row starts bar 2");
@@ -424,8 +680,9 @@ public:
             // Each chip plays every third row with noise on, so the meter may well read 3/4.
             const int barFrames = 24 * edit->tempoSequence.getTimeSig(0)->numerator.get();
             for (auto* clip : clips) {
-                // every clip moves alike, so the first row (frame 5) starts bar 2
-                expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), (barFrames - 5) / 50.0, 1.0e-9);
+                // every clip gets the same rests, so the first row (frame 5) starts bar 2
+                expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), 0.0, 1.0e-9);
+                expectEquals(clip->getLeadInFrames(), barFrames - 5);
                 expectWithinAbsoluteError(clip->getPosition().getOffset().inSeconds(), 0.0, 1.0e-9);
             }
         }
@@ -433,6 +690,7 @@ public:
         testCorpusFixtures();
         testFrameRateChanges();
         runCorpusReport();
+        runModuleRowsReport();
     }
 
     /** "200%" by Abstract 64, Natt, Pator and wbcbz7: a Turbo Sound tune at 200 Hz whose PSG
@@ -592,6 +850,7 @@ public:
             {"05_Sauron", 20, {}},                  // 150 BPM
             {"11_Yerzmyey", 20, {}},                // 150 BPM
             {"24_nq_-_lmao", 24, {}},               // 125 BPM
+            {"18_nq", 31, {}},                      // 96.8 BPM, rows 4-4-4-4-4-4-4-3: no multiple of its 8-frame pulse
             {"26_djnzx48", 28, {}},                 // 107 BPM, a 3-5-3-3 groove
             {"29_nq_-_tiratok", 26, {7, 6, 7, 6}},  // 115 BPM, 4-3-3-3 rows shown in pairs
         };
@@ -618,6 +877,21 @@ public:
                                       3000.0 / e.framesPerBeat,
                                       0.01,
                                       String(e.prefix) + " imported tempo");
+        }
+
+        // "Kick Da Break" has only a pulse, 9 frames, four to the beat, and starts 6 frames before a bar
+        // line: the first pattern of its module is that much longer than the others. The opening does not
+        // follow the pulse, a swing's rows being on and off it, so the pulse itself places the tune.
+        if (const auto files = dir.findChildFiles(File::findFiles, false, "09_fatalsnipe*.psg"); files.size() == 1) {
+            PsgFile psg(files.getFirst());
+            expect(psg.ensureRead());
+            const auto result = PsgTempo::detect(psg.getData());
+            expect(result.hasValue());
+            if (result) {
+                expect(result->rowsArePulse && result->rowsPerBeat == 4);
+                expectEquals(result->firstRowFrame, 6, "the first downbeat is the first pulse");
+                expect(!result->silentLeadIn, "the six frames before it sound: a pickup");
+            }
         }
     }
 
@@ -648,6 +922,162 @@ public:
             else
                 fields.add("-");
             logMessage(fields.joinIntoString("\t"));
+        }
+    }
+
+    /** How many of the row starts lie on the grid of repeating row lengths through frame `phase`. */
+    static size_t rowsOnGrid(const std::vector<size_t>& starts, const std::vector<int>& rows, size_t phase) {
+        const auto period = (size_t) std::accumulate(rows.begin(), rows.end(), 0);
+        std::vector<bool> onGrid(period, false);
+        for (size_t k = 0, offset = 0; k < rows.size(); offset += (size_t) rows[k++])
+            onGrid[offset] = true;
+        size_t hits = 0;
+        for (auto start : starts)
+            hits += onGrid[(start % period + period - phase % period) % period] ? 1 : 0;
+        return hits;
+    }
+
+    /** The fixed grid that fits a module's row starts best, and how well: for every period up to
+        64 frames, the residues that start a row in at least half of the cycles; the fit is the
+        lower of the share of the rows on them and the share of their frames that start a row.
+        A tune that slips a frame or changes speed stays well below 1. The shortest period within
+        0.005 of the best fit wins, so its row lengths are the tune's groove. */
+    static std::pair<double, std::vector<int>> bestFixedGrid(const std::vector<size_t>& starts) {
+        const auto span = (double) (starts.back() - starts.front() + 1);
+        double bestFit = 0.0;
+        std::vector<int> bestRows;
+        for (size_t period = 2; period <= 64; ++period) {
+            std::vector<size_t> counts(period, 0);
+            for (auto start : starts)
+                ++counts[start % period];
+            const double cycles = span / (double) period;
+            std::vector<size_t> residues;
+            size_t hits = 0;
+            for (size_t r = 0; r < period; ++r)
+                if ((double) counts[r] >= cycles / 2.0) {
+                    residues.push_back(r);
+                    hits += counts[r];
+                }
+            if (residues.empty())
+                continue;
+            const double fit = std::min((double) hits / (double) starts.size(),
+                                        std::min(1.0, (double) hits / ((double) residues.size() * cycles)));
+            if (fit <= bestFit + 0.005)
+                continue;
+            bestFit = fit;
+            bestRows.clear();
+            for (size_t k = 0; k < residues.size(); ++k)
+                bestRows.push_back((int) ((k + 1 < residues.size() ? residues[k + 1] : residues[0] + period) - residues[k]));
+        }
+        return {bestFit, bestRows};
+    }
+
+    /** Development report, run only when UZX_TEMPO_MODULES names a folder of tracker modules. A
+        module knows the frame every row starts at, so each gets a tab-separated "ROWS" line that
+        sets the grid detected from the registers alone against those rows: frames, rows, the
+        row pattern the app takes from the module's rows, the fixed grid that fits the row
+        starts best and its fit (see bestFixedGrid), then the detected pattern ("~" before a pulse) or "-", its grid
+        share, the share of the module's rows on the detected grid, the share of the detected
+        rows that are the module's, rows and frames per beat from the module's rows and
+        from the detected ones, and where bars start: the frames before the first bar line as the
+        app takes it from the module's patterns, the frame the detected grid starts at, and the
+        frames before the first downbeat as detected.
+        With UZX_TEMPO_DUMP naming a folder, every chip is also written there as <name>.psg
+        (<name>.2.psg for a second chip) with its event cells as <name>.cells (four little-endian
+        uint16 a frame, see PsgRowEvidence::cellsOf), the row starts as <name>.rows and the pattern
+        starts as <name>.patterns:
+        scripts/train_row_evidence.py learns the detector's table from them. scripts/validate_tempo_detection.py --rows sums
+        the lines up. */
+    void runModuleRowsReport() {
+        const auto dirName = SystemStats::getEnvironmentVariable("UZX_TEMPO_MODULES", {});
+        if (dirName.isEmpty())
+            return;
+        beginTest("Row report from UZX_TEMPO_MODULES");
+        const auto dumpName = SystemStats::getEnvironmentVariable("UZX_TEMPO_DUMP", {});
+        for (const auto& file : File(dirName).findChildFiles(File::findFiles, false)) {
+            MemoryBlock bytes;
+            if (!file.loadFileAsData(bytes))
+                continue;
+            const auto module = uZX::readTrackerModule(bytes);
+            if (!module || module->chips.empty() || module->rowStarts.size() < 2)
+                continue;
+            std::vector<const PsgData*> chips;
+            for (const auto& chip : module->chips)
+                chips.push_back(&chip.psg);
+            const auto& starts = module->rowStarts;
+            const auto own = PsgTempo::detect(chips, starts, module->patternStarts);
+            if (!own)
+                continue;
+            const auto playRate = (int) std::max<size_t>(1, chips.front()->options.playRate);
+            const auto dataRows = [&](const PsgTempo::Result& r) {
+                auto rows = r.rowFrames;
+                for (auto& row : rows)
+                    row /= playRate;
+                return rows;
+            };
+
+            const auto got = PsgTempo::detect(chips);
+            const auto [fit, fixedRows] = bestFixedGrid(starts);
+            StringArray fields{"ROWS",
+                               file.getFileNameWithoutExtension(),
+                               String(chips.front()->frames.size()),
+                               String(starts.size()),
+                               rowPattern(dataRows(*own)),
+                               fixedRows.empty() ? String("-") : rowPattern(fixedRows),
+                               String(fit, 3)};
+
+            if (got) {
+                const auto rows = dataRows(*got);
+                const auto phase = (size_t) (got->gridPhase / playRate);
+                std::vector<size_t> span(starts.back() - starts.front() + 1);
+                std::iota(span.begin(), span.end(), starts.front());
+                const auto hits = rowsOnGrid(starts, rows, phase);
+                fields.addArray(StringArray{(got->rowsArePulse ? "~" : "") + rowPattern(rows),
+                                            String(got->gridShare, 3),
+                                            String((double) hits / (double) starts.size(), 3),
+                                            String((double) hits / (double) rowsOnGrid(span, rows, phase), 3),
+                                            String(own->rowsPerBeat),
+                                            String(own->framesPerBeat),
+                                            String(got->rowsPerBeat),
+                                            String(got->framesPerBeat)});
+            } else {
+                fields.addArray(StringArray{"-", "0", "0", "0", String(own->rowsPerBeat), String(own->framesPerBeat), "0", "0"});
+            }
+            // where bars start: as the app takes it from the module's patterns, then the grid's first
+            // row and the frames before the first downbeat as detected from the registers
+            fields.add(String(own->firstRowFrame / playRate));
+            fields.add(String(got ? got->gridPhase / playRate : 0));
+            fields.add(String(got ? got->firstRowFrame / playRate : 0));
+            logMessage(fields.joinIntoString("\t"));
+
+            if (dumpName.isEmpty())
+                continue;
+            const auto dump = File(dumpName);
+            const auto name = file.getFileNameWithoutExtension();
+            for (size_t chip = 0; chip < module->chips.size(); ++chip) {
+                const auto out = dump.getChildFile(name + (chip == 0 ? String() : "." + String(chip + 1)) + ".psg");
+                out.deleteFile();
+                PsgFile psg(out);
+                psg.getData() = module->chips[chip].psg;
+                FileOutputStream stream(out);
+                expect(stream.openedOk() && psg.writeTo(stream), "dump " + out.getFileName());
+
+                MemoryOutputStream cells;
+                for (const auto& frame : PsgRowEvidence::cellsOf(module->chips[chip].psg)) {
+                    for (auto cell : frame.channels)
+                        cells.writeShort((short) cell);
+                    cells.writeShort((short) frame.chip);
+                }
+                out.withFileExtension("cells").replaceWithData(cells.getData(), cells.getDataSize());
+            }
+            StringArray rowList;
+            for (auto start : starts)
+                rowList.add(String(start));
+            dump.getChildFile(name + ".rows").replaceWithText(rowList.joinIntoString(" "));
+            StringArray patternList;
+            for (auto start : module->patternStarts)
+                patternList.add(String(start));
+            dump.getChildFile(name + ".patterns").replaceWithText(patternList.joinIntoString(" "));
         }
     }
 };

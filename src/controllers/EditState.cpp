@@ -139,14 +139,10 @@ te::TimePosition ZoomViewState::getPlayheadPosition() const {
 }
 
 te::TimePosition ZoomViewState::getHeardPosition() const {
-    auto& transport = edit.getTransport();
-    // Tracktion already takes the graph's own latency off the transport position, but the device
-    // sounds each block only after its output latency (buffer, driver, Bluetooth...). After a jump,
-    // wait at the new position until it is heard rather than stepping back before it.
+    // After a jump, wait at the new position until it is heard rather than stepping back before it.
     // ponytail: a loop wrap counts as a jump, so the playhead leaves the loop end one latency early;
     // map the wrap if that shows with long latencies.
-    auto latency = te::TimeDuration::fromSeconds(edit.engine.getDeviceManager().getOutputLatencySeconds());
-    return std::max(transport.getPosition() - latency, lastJumpPosition);
+    return std::max(Helpers::getHeardPosition(edit), lastJumpPosition);
 }
 
 void ZoomViewState::reportHeardPosition() {

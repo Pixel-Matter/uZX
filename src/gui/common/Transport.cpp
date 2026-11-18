@@ -91,7 +91,6 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 
     if (auto mgr = edit_.engine.getUIBehaviour().getApplicationCommandManager()) {
         rewindButton_.setCommandToTrigger(mgr, MainAppCommands::transportToStart, true);
-        playPauseButton_.setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);
         loopButton_.setCommandToTrigger(mgr, MainAppCommands::transportLoop, true);
     }
     followButton_.setTooltip("Follow the playhead during playback (right-click: by Page or by Scroll)");
@@ -139,7 +138,6 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 
     }
 
-    updatePlayButton(transport_.isPlaying());
     loopButton_.setToggleState(transport_.looping, dontSendNotification);
     if (options_.showRecord)
         updateRecordButton(transport_.isRecording());
@@ -297,7 +295,6 @@ void TransportBar::resized() {
 
 void TransportBar::changeListenerCallback(ChangeBroadcaster*) {
     // TODO use flagged async updater to avoid too many updates
-    updatePlayButton(transport_.isPlaying());
     if (options_.showRecord)
         updateRecordButton(transport_.isRecording());
     // TODO separate updating of tempo, timsig and fps controls
@@ -345,17 +342,35 @@ void TransportBar::followChanged() {
                             zoom.isFollowSuspended() ? Colors::Theme::primary.withAlpha(0.35f) : Colors::Theme::primary);
 }
 
-void TransportBar::updatePlayButton(bool isPlaying) {
-    playPauseButton_.setIcon(isPlaying ? Icons::pause() : Icons::play());
+PlayButton::PlayButton(te::Edit& edit) : IconButton("Play", Icons::play()), edit_(&edit) {
+    if (auto* mgr = edit.engine.getUIBehaviour().getApplicationCommandManager())
+        setCommandToTrigger(mgr, MainAppCommands::transportPlay, true);
+    edit.getTransport().addChangeListener(this);
+    showState();
+}
+
+PlayButton::~PlayButton() {
+    if (auto* edit = edit_.get())
+        edit->getTransport().removeChangeListener(this);
+}
+
+void PlayButton::changeListenerCallback(ChangeBroadcaster*) {
+    if (auto* edit = edit_.get(); edit != nullptr && edit->getTransport().isPlaying() != playing_)
+        showState();
+}
+
+void PlayButton::showState() {
+    auto* edit = edit_.get();
+    playing_ = edit != nullptr && edit->getTransport().isPlaying();
+    setIcon(playing_ ? Icons::pause() : Icons::play());
     // Lit while playing, in the on colours of a toggle such as Loop. Colours, not the toggle state: the button
     // triggers a command, and JUCE resets a command button's toggle state to the command's tick.
-    auto& play = playPauseButton_;
-    if (isPlaying) {
-        play.setColour(TextButton::buttonColourId, play.findColour(TextButton::buttonOnColourId));
-        play.setColour(TextButton::textColourOffId, play.findColour(TextButton::textColourOnId));
+    if (playing_) {
+        setColour(TextButton::buttonColourId, findColour(TextButton::buttonOnColourId));
+        setColour(TextButton::textColourOffId, findColour(TextButton::textColourOnId));
     } else {
-        play.removeColour(TextButton::buttonColourId);
-        play.removeColour(TextButton::textColourOffId);
+        removeColour(TextButton::buttonColourId);
+        removeColour(TextButton::textColourOffId);
     }
 }
 

@@ -444,6 +444,36 @@ public:
             expect(! either->meterClear, "an unclear meter is not made clear by patterns both fill");
         }
 
+        beginTest("A module with a pickup: its bars start where most of its patterns do");
+        {
+            // Speed 6, 4 rows to the beat. The first pattern is one beat long, the rest 8 beats each.
+            auto tune = makeTune(3000, {6}, 4);
+            const auto rows = rowsOf(3000, {6});
+            std::vector<size_t> patterns{rows[0]};
+            for (size_t row = 4; row < rows.size(); row += 32)
+                patterns.push_back(rows[row]);
+            auto result = PsgTempo::detect({&tune}, rows, patterns);
+            expect(result.hasValue());
+            if (result) {
+                expectEquals(result->framesPerBeat, 24);
+                expectEquals(result->firstRowFrame, 24, "the first bar line comes after the pickup beat");
+                expect(! result->silentLeadIn, "the pickup sounds");
+            }
+            // Patterns that all start on the first row's place in the bar leave it the downbeat
+            std::vector<size_t> plain;
+            for (size_t row = 0; row < rows.size(); row += 32)
+                plain.push_back(rows[row]);
+            expectEquals(PsgTempo::detect({&tune}, rows, plain)->firstRowFrame, 0);
+
+            // On import the clip moves right, so the bar line after the pickup is bar 2
+            auto& engine = *tracktion::Engine::getEngines()[0];
+            auto edit = Edit::createSingleTrackEdit(engine);
+            const auto length = tracktion::TimeDuration::fromSeconds(tune.getLengthSeconds());
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], tune, {{0_tp, length}, {}}, "pickup");
+            PsgTempo::applyToEdit({clip.get()}, {&tune}, rows, patterns);
+            expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), (96.0 - 24.0) / 50.0, 1.0e-9);
+        }
+
         beginTest("Too few notes or no grid gives no result");
         {
             expect(!PsgTempo::detect(makeTune(60, {6}, 4)));
@@ -902,8 +932,9 @@ public:
         row pattern the app takes from the module's rows, the fixed grid that fits the row
         starts best and its fit (see bestFixedGrid), then the detected pattern ("~" before a pulse) or "-", its grid
         share, the share of the module's rows on the detected grid, the share of the detected
-        rows that are the module's, and rows and frames per beat from the module's rows and
-        from the detected ones.
+        rows that are the module's, rows and frames per beat from the module's rows and
+        from the detected ones, and the frames before the first bar line as the app takes it
+        from the module's patterns.
         With UZX_TEMPO_DUMP naming a folder, every chip is also written there as <name>.psg
         (<name>.2.psg for a second chip) with its event cells as <name>.cells (four little-endian
         uint16 a frame, see PsgRowEvidence::cellsOf), the row starts as <name>.rows and the pattern
@@ -964,6 +995,7 @@ public:
             } else {
                 fields.addArray(StringArray{"-", "0", "0", "0", String(own->rowsPerBeat), String(own->framesPerBeat), "0", "0"});
             }
+            fields.add(String(own->firstRowFrame / playRate));
             logMessage(fields.joinIntoString("\t"));
 
             if (dumpName.isEmpty())

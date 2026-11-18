@@ -34,8 +34,9 @@ struct Result
     int framesPerBeat = 0;    ///< machine frames per beat
     double bpm = 0.0;
     double gridShare = 0.0;  ///< 0..1: how much note-start energy lies on the row grid
-    /** Machine frames before the first row starts; that row is taken as a downbeat.
-        0 also when the first two bars don't follow the grid (an intro at another speed). */
+    /** Machine frames before the first downbeat: the first row, or for a module with patterns the
+        first bar line, where most of its patterns start. 0 also when the first two bars don't
+        follow the grid (an intro at another speed). */
     int firstRowFrame = 0;
     int gridPhase = 0;         ///< machine frame the row grid starts at, kept when firstRowFrame is zeroed
     bool silentLeadIn = true;  ///< nothing is audible before firstRowFrame
@@ -128,7 +129,8 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips);
     `knownPatterns`, the frames the module's patterns start at (uZX::TrackerModule::patternStarts),
     are bar lines: a beat that would leave patterns a part of a beat, counted in rows and in
     frames alike, is not taken, and when bars of only 3 or only 4 beats fill the patterns, that is
-    the meter, and clear. */
+    the meter, and clear. The first bar line is where the patterns that hold two thirds of the
+    tune start, so a pickup or an intro of an odd length comes before it (firstRowFrame). */
 juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips,
                               const std::vector<size_t>& knownRows,
                               const std::vector<size_t>& knownPatterns = {});

@@ -442,6 +442,7 @@ detectPulse(const std::vector<double>& energy, double total, const std::vector<d
 constexpr std::array<size_t, 4> grooveSizes{1, 2, 4, 8};  // rows a module's row pattern may have
 constexpr double minRowsFollowing = 0.9;                  // share of a module's rows its pattern must describe
 constexpr double minPatternsFilled = 0.9;                 // share of a module in patterns a beat or a bar fills
+constexpr double minPatternsOnPhase = 2.0 / 3.0;          // share of a module in patterns that start its bars
 
 /** One round of a pulse: the tune cut, from its first row on, into runs of whole rows that
     last `pulse` frames each; a row that starts no such run is passed over. */
@@ -526,6 +527,7 @@ std::vector<int> rowsOfBeat(const std::vector<size_t>& starts, int rowsPerBeat, 
 struct Patterns
 {
     std::vector<size_t> rows, frames;
+    std::vector<size_t> starts;  // the frame each of them starts at
 
     Patterns(const std::vector<size_t>& rowStarts, const std::vector<size_t>& patternStarts) {
         auto rowAt = [&](size_t frame) {
@@ -535,7 +537,29 @@ struct Patterns
         for (size_t k = 1; k < patternStarts.size(); ++k) {
             rows.push_back(rowAt(patternStarts[k]) - rowAt(patternStarts[k - 1]));
             frames.push_back(patternStarts[k] - patternStarts[k - 1]);
+            starts.push_back(patternStarts[k - 1]);
         }
+    }
+
+    /** The frames before the first bar line, for bars of `bar` frames: where in such a bar the
+        patterns that hold two thirds of the tune start. A pickup, or an intro of an odd length,
+        puts that off the tune's first row. Nothing when no one place holds that much: a beat that
+        is not a whole number of frames, patterns of odd lengths all through, or too few patterns
+        to tell. */
+    juce::Optional<int> barPhase(int bar) const {
+        if (!known() || bar <= 0)
+            return {};
+        std::map<size_t, size_t> held;  // place in the bar -> frames in the patterns that start there
+        size_t all = 0;
+        for (size_t k = 0; k < starts.size(); ++k) {
+            held[starts[k] % (size_t) bar] += frames[k];
+            all += frames[k];
+        }
+        const auto most =
+            std::max_element(held.begin(), held.end(), [](auto& a, auto& b) { return a.second < b.second; });
+        if ((double) most->second < minPatternsOnPhase * (double) all)
+            return {};
+        return (int) most->first;
     }
 
     bool known() const { return rows.size() > 1; }
@@ -1014,10 +1038,17 @@ Analysis analyse(const std::vector<const uZX::PsgData*>& chips,
     result.gridPhase = firstRow * playRate;
     if (rowsKnown || openingFollowsGrid(*energy, *speed, 2 * barFrames))
         result.firstRowFrame = firstRow * playRate;
+    // A module's patterns start bars: the first bar line is where most of them start, not the first row
+    // when a pickup or an intro of an odd length comes before
+    int leadIn = firstRow;
+    if (const auto phase = patterns.barPhase((int) barFrames); phase && *phase != firstRow % (int) barFrames) {
+        leadIn = *phase;
+        result.firstRowFrame = leadIn * playRate;
+    }
 
     for (const auto* chip : chips) {
         uZX::PsgRegsFrame state;
-        for (size_t i = 0; i < (size_t) firstRow && i < chip->frames.size(); ++i) {
+        for (size_t i = 0; i < (size_t) leadIn && i < chip->frames.size(); ++i) {
             state.update(chip->frames[i]);
             for (size_t ch = 0; ch < 3; ++ch)
                 if ((state.getRaw(uZX::PsgRegType::VolumeA + ch) & 0x1f) != 0)

@@ -32,7 +32,6 @@ by UZX_TEMPO_CORPUS) and joins each result:
 Pairs come from scripts/zxart_fetch_pt3.py and scripts/pt3_to_psg.py.
 """
 import csv
-import fractions
 import os
 import subprocess
 import sys

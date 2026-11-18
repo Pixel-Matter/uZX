@@ -32,10 +32,11 @@ constexpr float stripFrameWidth = 3.0f;
 constexpr int grid = 8;
 constexpr int gutter = grid * 4;  // left of every plot, for its labels, so the plots line up
 constexpr int rowHeight = 20;
-constexpr int textHeight = 16;   // of a line of the small font
-constexpr int axisHeight = 18;   // under a plot, for its axis labels
-constexpr int titleHeight = 18;  // over a panel, for its title
-constexpr int nameWidth = 48;    // of the name before a fact of the detection's answer
+constexpr int textHeight = 16;     // of a line of the small font
+constexpr int axisHeight = 18;     // under a plot, for its axis labels
+constexpr int titleHeight = 18;    // over a panel, for its title
+constexpr int nameWidth = 48;      // of the name before a fact of the detection's answer
+constexpr double onLine = 1.0e-6;  // of a frame or a beat: this near a line is on it, whatever the rounding
 
 juce::Font smallFont() {
     return juce::Font(juce::FontOptions(13.0f));
@@ -89,9 +90,15 @@ struct Inspection
     std::function<void()> lagChanged;
     std::function<void(int)> seek;                 // moves the playhead to a frame
     std::function<void(const juce::String&)> say;  // what is under the mouse
-    /** Where a frame starts in the project's own grid, in beats, and its bar: where the metronome clicks.
-        Unset in a view that knows no project. */
-    std::function<std::pair<double, int>(int)> projectBeatAt;
+    /** A beat line of the project: the first frame that starts on it or after it. */
+    struct BeatLine
+    {
+        int frame = 0;
+        bool bar = false;  // a bar line too
+    };
+    /** The project's beat lines from one frame up to another: where the metronome clicks. Unset in a
+        view that knows no project. */
+    std::function<std::vector<BeatLine>(int, int)> projectBeats;
 
     int numFrames() const { return (int) analysis.evidence.size(); }
     int maxLag() const {
@@ -110,9 +117,9 @@ struct Inspection
     }
 
     /** Whether the detection's own row grid is this one. */
-    bool isDetected(const Analysis::Grid& grid) const {
+    bool isDetected(const Analysis::Grid& rowGrid) const {
         return analysis.rowsFrom == Analysis::RowsFrom::evidence && analysis.result
-               && analysis.result->rowFrames == grid.rows;
+               && analysis.result->rowFrames == rowGrid.rows;
     }
 };
 
@@ -187,7 +194,7 @@ public:
         for (int row = 0; row < numRows(); ++row)
             if (row == marked)
                 label(g, rowName(row), rowY(row) + ch / 2, Theme::textPrimary);
-            else if (isNamed(row) && std::abs(row - marked) > 1)
+            else if (isNamed(row) && (marked < 0 || std::abs(row - marked) > 1))
                 label(g, rowName(row), rowY(row) + ch / 2);
         if (marked >= 0) {
             g.setColour(Theme::textPrimary);
@@ -401,7 +408,11 @@ public:
         if (const auto& result = in.analysis.result) {
             g.setColour(Theme::textPrimary);
             const auto& rows = result->rowFrames;
-            for (int frame = result->gridPhase, row = 0; frame < first + count;
+            // from the round of rows the view begins in, not from the tune's first row
+            const int round = std::accumulate(rows.begin(), rows.end(), 0);
+            const int rounds = juce::jmax(0, (first - result->gridPhase) / juce::jmax(1, round));
+            for (int frame = result->gridPhase + rounds * round, row = rounds * (int) rows.size();
+                 frame < first + count;
                  frame += rows[(size_t) row++ % rows.size()])
                 if (frame >= first) {
                     const float height = row % result->rowsPerBeat == 0 ? 8.0f : 4.0f;
@@ -414,17 +425,11 @@ public:
                 g.fillRect(xOf(frame), plot.getBottom() + 1.0f, 1.0f, 8.0f);
 
         // The project's beat lines, where the metronome clicks: at the first frame of each beat, a bar's brighter
-        if (in.projectBeatAt) {
-            auto before = in.projectBeatAt(first - 1);
-            for (int frame = first; frame < first + count; ++frame) {
-                const auto at = in.projectBeatAt(frame);
-                if (std::floor(at.first) != std::floor(before.first)) {
-                    g.setColour(Theme::textPrimary.withAlpha(at.second != before.second ? 0.6f : 0.25f));
-                    g.fillRect(xOf(frame), plot.getY(), 1.0f, plot.getHeight());
-                }
-                before = at;
+        if (in.projectBeats)
+            for (const auto& line : in.projectBeats(first, first + count)) {
+                g.setColour(Theme::textPrimary.withAlpha(line.bar ? 0.6f : 0.25f));
+                g.fillRect(xOf(line.frame), plot.getY(), 1.0f, plot.getHeight());
             }
-        }
 
         if (in.playFrame >= first && in.playFrame < first + count) {
             g.setColour(Theme::success);
@@ -551,9 +556,9 @@ class GridBars : public Panel
 {
 public:
     explicit GridBars(Inspection& inspection) : Panel(inspection, "Row evidence on each grid length, full tune") {
-        for (const auto& grid : in.analysis.grids)
-            if (grid.rows.size() == 1)
-                uniform.push_back(grid);
+        for (const auto& rowGrid : in.analysis.grids)
+            if (rowGrid.rows.size() == 1)
+                uniform.push_back(rowGrid);
     }
 
     void paint(juce::Graphics& g) override {
@@ -571,14 +576,14 @@ public:
         };
         g.setFont(smallFont());
         for (size_t i = 0; i < uniform.size(); ++i) {
-            const auto& grid = uniform[i];
+            const auto& rowGrid = uniform[i];
             const float x = plot.getX() + (float) i * bw;
-            g.setColour(in.isDetected(grid)      ? Theme::primary
-                        : grid.rows[0] == in.lag ? Theme::surfaceElevated
-                                                 : Theme::surface);
-            g.fillRect(x + 1.0f, yOf(grid.share), bw - 2.0f, plot.getBottom() - yOf(grid.share));
-            g.setColour(grid.rows[0] == in.lag ? Theme::textPrimary : Theme::textSecondary);
-            g.drawText(juce::String(grid.rows[0]),
+            g.setColour(in.isDetected(rowGrid)      ? Theme::primary
+                        : rowGrid.rows[0] == in.lag ? Theme::surfaceElevated
+                                                    : Theme::surface);
+            g.fillRect(x + 1.0f, yOf(rowGrid.share), bw - 2.0f, plot.getBottom() - yOf(rowGrid.share));
+            g.setColour(rowGrid.rows[0] == in.lag ? Theme::textPrimary : Theme::textSecondary);
+            g.drawText(juce::String(rowGrid.rows[0]),
                        juce::Rectangle<float>(x - 4.0f, plot.getBottom() + 2.0f, bw + 8.0f, (float) textHeight),
                        juce::Justification::centred);
         }
@@ -590,13 +595,13 @@ public:
     }
 
     void mouseDown(const juce::MouseEvent& e) override {
-        if (const auto* grid = gridAt(e.position.x))
-            in.setLag(grid->rows[0]);
+        if (const auto* rowGrid = gridAt(e.position.x))
+            in.setLag(rowGrid->rows[0]);
     }
 
     void mouseMove(const juce::MouseEvent& e) override {
-        if (const auto* grid = gridAt(e.position.x))
-            in.say("A grid of " + juce::String(grid->rows[0]) + " frames has " + percentText(grid->share)
+        if (const auto* rowGrid = gridAt(e.position.x))
+            in.say("A grid of " + juce::String(rowGrid->rows[0]) + " frames has " + percentText(rowGrid->share)
                    + " of the row evidence in the full tune. The minimum is " + percentText(PsgTempo::minGridShare)
                    + ". Click to set the cursor.");
     }
@@ -711,12 +716,12 @@ std::vector<Fact> describe(const Inspection& in) {
 
     const Analysis::Grid* best = nullptr;
     juce::StringArray patterns;
-    for (const auto& grid : a.grids) {
-        if (grid.rows.size() == 1 && (best == nullptr || grid.share > best->share))
-            best = &grid;
-        if (grid.rows.size() > 1)
-            patterns.add(juce::String(grid.rows.size() == 2 ? "Best swing: " : "Best groove: ") + rowsText(grid.rows)
-                         + " frames, " + percentText(grid.share) + ".");
+    for (const auto& rowGrid : a.grids) {
+        if (rowGrid.rows.size() == 1 && (best == nullptr || rowGrid.share > best->share))
+            best = &rowGrid;
+        if (rowGrid.rows.size() > 1)
+            patterns.add(juce::String(rowGrid.rows.size() == 2 ? "Best swing: " : "Best groove: ")
+                         + rowsText(rowGrid.rows) + " frames, " + percentText(rowGrid.share) + ".");
     }
     Fact rows{"Rows", {}};
     if (a.rowsFrom == RowsFrom::evidence)
@@ -827,7 +832,7 @@ class TempoInspector : public juce::Component, private juce::Timer
 {
 public:
     explicit TempoInspector(PsgClip& clip)
-        : clip_(&clip), clickWasOn_(clip.edit.clickTrackEnabled.get()),
+        : clip_(&clip), edit_(&clip.edit), clickWasOn_(clip.edit.clickTrackEnabled.get()),
           barAccentWasOn_(clip.edit.clickTrackEmphasiseBars.get()), map_(in), phases_(in), strip_(in), repeat_(in),
           bars_(in), table_(in), play_(clip.edit) {
         setWantsKeyboardFocus(true);
@@ -853,9 +858,9 @@ public:
         // The metronome clicks on every beat and louder on the first of each bar, so the bars can be judged
         // by ear as well as the tempo
         metronome_.onClick = [this] {
-            if (auto* c = clip_.get()) {
-                c->edit.clickTrackEnabled = metronome_.getToggleState();
-                c->edit.clickTrackEmphasiseBars = metronome_.getToggleState() || barAccentWasOn_;
+            if (auto* edit = edit_.get()) {
+                edit->clickTrackEnabled = metronome_.getToggleState();
+                edit->clickTrackEmphasiseBars = metronome_.getToggleState() || barAccentWasOn_;
             }
         };
         // The phase map is the one to look at when no row grid holds: the grid map is dark then
@@ -881,12 +886,22 @@ public:
             repaint();
         };
         in.say = [this](const juce::String& text) { status_.setText(text, juce::dontSendNotification); };
-        in.projectBeatAt = [this](int frame) -> std::pair<double, int> {
+        in.projectBeats = [this](int firstFrame, int lastFrame) {
+            std::vector<Inspection::BeatLine> lines;
             auto* c = clip_.get();
             if (c == nullptr)
-                return {};
-            const auto time = timeOf(*c, frame);
-            return {c->edit.tempoSequence.toBeats(time).inBeats(), c->edit.tempoSequence.toBarsAndBeats(time).bars};
+                return lines;
+            const auto& tempo = c->edit.tempoSequence;
+            const double end = tempo.toBeats(timeOf(*c, lastFrame)).inBeats();
+            for (int beat = (int) std::ceil(tempo.toBeats(timeOf(*c, firstFrame)).inBeats() - onLine); beat < end;
+                 ++beat) {
+                const auto time = tempo.toTime(tracktion::BeatPosition::fromBeats(beat));
+                // the bar is asked about half a beat in, where rounding cannot put it in the bar before
+                const auto inBar = tempo.toBarsAndBeats(tempo.toTime(tracktion::BeatPosition::fromBeats(beat + 0.5)));
+                lines.push_back(
+                    {(int) std::ceil(PsgList::getFramePosition(*c, time) - onLine), inBar.getWholeBeats() == 0});
+            }
+            return lines;
         };
         in.seek = [this](int frame) {
             if (auto* c = clip_.get())
@@ -900,10 +915,10 @@ public:
     }
 
     ~TempoInspector() override {
-        if (auto* c = clip_.get()) {
-            // the metronome is the inspector's: a project doesn't keep it
-            c->edit.clickTrackEnabled = clickWasOn_;
-            c->edit.clickTrackEmphasiseBars = barAccentWasOn_;
+        if (auto* edit = edit_.get()) {
+            // the metronome is the inspector's: a project doesn't keep it, also when the clip went first
+            edit->clickTrackEnabled = clickWasOn_;
+            edit->clickTrackEmphasiseBars = barAccentWasOn_;
         }
     }
 
@@ -980,16 +995,13 @@ private:
         return inspection;
     }
 
-    tracktion::TimePosition timeOf(const PsgClip& clip, int frame) const {
-        const auto position = clip.getPosition();
-        return position.getStart() + tracktion::TimeDuration::fromSeconds((frame + clip.getLeadInFrames()) / in.fps)
-               - position.getOffset();
+    /** Frames and edit times, as the clip places its frames: through tempo changes, an offset and a lead-in. */
+    static tracktion::TimePosition timeOf(const PsgClip& clip, int frame) {
+        return PsgList::getEditTime(clip, juce::jmax(0, frame));
     }
 
-    int frameAt(const PsgClip& clip, tracktion::TimePosition time) const {
-        const auto position = clip.getPosition();
-        return (int) std::floor((time - position.getStart() + position.getOffset()).inSeconds() * in.fps)
-               - clip.getLeadInFrames();
+    static int frameAt(const PsgClip& clip, tracktion::TimePosition time) {
+        return (int) std::floor(PsgList::getFramePosition(clip, time) + onLine);
     }
 
     /** The grid map and the phase map share their place: the switch shows one. */
@@ -1041,9 +1053,9 @@ private:
                 const int after = juce::roundToInt((beat - std::floor(beat)) * beatFrames) % r->framesPerBeat;
                 // why the two differ, when the import is the reason
                 const juce::String unmoved =
-                    r->firstRowFrame == 0 ? " The start of the tune is not on the detected grid, so the import did not "
-                                            "move the clip."
-                                          : "";
+                    r->firstRowFrame == 0 && r->gridPhase != 0
+                        ? " The start of the tune is not on the detected grid, so the import did not move the clip."
+                        : "";
                 if (after == 0)
                     project.lines.add("The beat lines are on the detected beats.");
                 else if (2 * after <= r->framesPerBeat)
@@ -1087,6 +1099,7 @@ private:
     }
 
     tracktion::SafeSelectable<PsgClip> clip_;
+    tracktion::SafeSelectable<tracktion::Edit> edit_;  // the clip's; it stays when the clip alone is deleted
     const bool clickWasOn_, barAccentWasOn_;
     Inspection in{inspect(*clip_.get())};
     GridMap map_;

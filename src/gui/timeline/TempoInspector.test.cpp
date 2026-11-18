@@ -121,6 +121,18 @@ public:
             }
             expect(!edit->clickTrackEnabled.get());
             expect(!edit->clickTrackEmphasiseBars.get());
+
+            // also when the clip is deleted while the inspector is open
+            auto inspector = createTempoInspector(*clip);
+            for (auto* child : inspector->getChildren())
+                if (auto* toggle = dynamic_cast<juce::ToggleButton*>(child);
+                    toggle != nullptr && toggle->getButtonText() == "Metronome")
+                    toggle->setToggleState(true, juce::sendNotificationSync);
+            expect(edit->clickTrackEnabled.get());
+            clip->removeFromParent();
+            clip = nullptr;
+            inspector.reset();
+            expect(!edit->clickTrackEnabled.get(), "the edit gets its metronome back without the clip");
         }
 
         runSnapshots();

@@ -111,6 +111,12 @@ te::TimePosition PsgList::getEditTime(const PsgClip& c, int frameIndex) {
     return c.edit.tempoSequence.toTime(getEditBeats(c, frameIndex));
 }
 
+double PsgList::getFramePosition(const PsgClip& c, te::TimePosition time) {
+    const auto beats = c.edit.tempoSequence.toBeats(time) - toDuration(c.getContentStartBeat())
+                       + toDuration(c.getLoopStartBeats());
+    return beats.inBeats() * c.getPsg().getFramesPerBeat() - c.getLeadInFrames();
+}
+
 te::BeatPosition PsgParamFrame::getFrameBeatPosition(const PsgClip& c) const {
     return PsgList::getFrameBeatPosition(c, frameIndex);
 }

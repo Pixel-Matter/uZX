@@ -487,6 +487,8 @@ public:
             expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), 0.0, 1.0e-9);
             expectEquals(clip->getLeadInFrames(), 96 - 24);
             expectWithinAbsoluteError(PsgList::getEditTime(*clip, 24).inSeconds(), 96.0 / 50.0, 1.0e-6, "bar 2");
+            expectWithinAbsoluteError(PsgList::getFramePosition(*clip, PsgList::getEditTime(*clip, 24)), 24.0, 1.0e-6,
+                                      "and back from the time to the frame, through the rests");
             expectWithinAbsoluteError(clip->getPosition().getLength().inSeconds(), (3000.0 + 72.0) / 50.0, 1.0e-6);
         }
 

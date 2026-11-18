@@ -612,7 +612,9 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::viewVizMode:
-            result.setActive(edit != nullptr);
+            // with no tune, Viz mode hides the empty tracks and shows only black; once on, it can be left
+            result.setActive(edit != nullptr
+                             && (Helpers::hasClips(*edit) || MoToolApp::getPlayerController().isVizMode()));
             result.setTicked(MoToolApp::getPlayerController().isVizMode());
             break;
 

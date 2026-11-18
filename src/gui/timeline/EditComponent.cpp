@@ -6,17 +6,11 @@
 #include "PsgClipComponent.h"
 #include "../../controllers/App.h"
 #include "../../controllers/MainCommands.h"
+#include "../../models/EditUtilities.h"
 
 namespace MoTool {
 
 namespace {
-
-bool hasClips(te::Edit& edit) {
-    for (auto* track : te::getTracksOfType<te::ClipTrack>(edit, true))
-        if (! track->getClips().isEmpty())
-            return true;
-    return false;
-}
 
 /** What opens a file, as the menu shows it: "⌘O" on a Mac, "Ctrl+O" elsewhere. */
 String describeOpenKey(te::Edit& edit) {
@@ -95,7 +89,7 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
 }
 
 void EditComponent::updateEmptyHint() {
-    const bool empty = ! hasClips(edit);
+    const bool empty = ! Helpers::hasClips(edit);
     if (emptyHint != nullptr)
         emptyHint->setVisible(empty);
     if (legend != nullptr)

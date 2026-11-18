@@ -119,7 +119,7 @@ Scroll with the scrollbar under the tracks, the wheel, or by dragging the upper 
 
 ### Viz Mode
 
-**View → Viz Mode** (`F`) fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden, and so are tracks without clips. `Space` still plays and pauses, and the view follows the playhead, even with **Follow** off. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
+**View → Viz Mode** (`F`), available once a tune is open, fills the screen with the tune alone: each track's notes, and at the right of each row its chip's A, B and C scopes. The notes sit on the scopes' dark background, so each row reads as one screen; drag the gap between the notes and the scopes to make the scopes wider or narrower. The transport, ruler, scrollbar and chip controls are hidden, and so are tracks without clips. `Space` still plays and pauses, and the view follows the playhead, even with **Follow** off. `F` again or `Esc` leaves Viz mode. It stays on for the next file you open, until you leave it or quit.
 
 Each chip has a row of its own, in track order, and two keys arrange the rows:
 

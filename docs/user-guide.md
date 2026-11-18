@@ -501,6 +501,14 @@ Each chip's clock and chip type (AY or YM) are set on the track it gets, if the 
 
 When play starts, lands or resumes inside a timer effect, the effect plays from there, starting its pattern over; so does a clip trimmed at its start inside one. A PSG clip without timer effects stops those of the clip before it. A chip plays up to twelve timers; a file that needs more opens without those effects and µZX says so. Chips other than AY and YM are left out.
 
+## If Something Goes Wrong
+
+- **No sound.** An **Audio Problem** message says what is wrong with the audio device: none is selected, it could not be opened, it isn't running, or it runs at a sample rate under 44.1 kHz. Click **Open Audio Settings**, or open them later with `Cmd+,` (**Settings → Audio Settings...**; on macOS, **Settings...** in the app menu), and pick an output device at 44.1 kHz or more. If the device works and you still hear nothing, look at the level meters: no output there means the master volume knob, a chip's **Volume**, or its A, B and C channels, muted in red, are turned down.
+- **Crackles.** The **DSP** bar of the CPU meter near full means the sound engine can't keep up: pick a larger buffer size in the audio settings.
+- **A file doesn't open.** **Can't Open File** means it isn't a PSG file, a TAYM file or a tracker module µZX reads, or it holds no music; `.ay` files, which hold Z80 code, aren't among them. **Can't Open Project** saying a project "was saved by a newer µZX" means this app needs [updating](#updating).
+- **A tune plays two or four times too slowly.** It was written for 100 or 200 Hz, which most PSG files don't record: pick its rate under **fps** (see [Opening Files](#opening-files)).
+- **The app doesn't start.** On macOS the first launch needs **Open Anyway** ([Installing on macOS](#installing-on-macos)); on Windows, **More info → Run anyway** ([Installing on Windows](#installing-on-windows)).
+
 ---
 
 ## See Also

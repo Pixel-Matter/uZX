@@ -36,6 +36,7 @@ private:
     TransportBar transportBar_;
     EditComponent editComponent_;
     std::unique_ptr<VizHint> vizHint_;
+    TooltipWindow tooltips_ {this};  // without one in the window, no tooltip in it shows
     bool fileDragOver_ = false;  // a file it opens is dragged over the window
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerDocumentComponent)

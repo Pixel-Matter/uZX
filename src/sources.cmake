@@ -178,6 +178,7 @@ set(TEST_SOURCES
     gui/timeline/Ruler.test.cpp
     gui/timeline/ClipComponents.test.cpp
     gui/timeline/EditComponent.test.cpp
+    gui/main/Documents.test.cpp
     gui/timeline/PsgClipComponent.test.cpp
     gui/timeline/TempoInspector.test.cpp
     gui/timeline/PsgParamEditorComponent.test.cpp

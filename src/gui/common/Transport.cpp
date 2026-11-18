@@ -188,6 +188,20 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
         u.label.setBorderSize({});  // laid out at the width of its text
     }
 
+    // Each value and its unit say what the value is and how to change it: nothing else shows they can be
+    struct { Label& value; Label& unit; const char* tip; } tips[] = {
+        { bpmControl_, bpmUnitLabel_, "Tempo in beats per minute: click to type another" },
+        { fpsLabel_, fpsUnitLabel_, "Frames per second: click to pick another rate" },
+        { fpbControl_, fpbUnitLabel_, "Frames per beat: click to type another, from 4 to 150" },
+        { divControl_, divUnitLabel_, "Frames in each group of a beat, such as 6 6 6 6: click to type your own" },
+        { timeSigLabel_, sigUnitLabel_, "Time signature: click to type another, such as 3/4 or 6/8" },
+        { transportReadout_, posLabel_, "Playhead position: click to type one and jump there" },
+    };
+    for (auto& t : tips) {
+        t.value.setTooltip(t.tip);
+        t.unit.setTooltip(t.tip);
+    }
+
     // The fps readout picks from a fixed set of rates via a popup, not free text.
     fpsLabel_.setEditable(false, false, false);
     fpsLabel_.addMouseListener(this, false);

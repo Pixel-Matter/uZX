@@ -8,7 +8,6 @@ Not covered yet: a live run on macOS (Gatekeeper, the DMG, Finder associations, 
 
 | # | Finding | Where | Suggested fix |
 | --- | --- | --- | --- |
-| M5 | **Transport readouts give no hint they can be edited.** bpm, fpb, groove, sig and pos are click-to-type and fps is click-to-pick, with no tooltip. | `src/gui/common/Transport.cpp` | A one-line tooltip on each readout, such as "Click to type a tempo". |
 | M6 | **Windows and Linux: a second launch starts a whole app before it hands over.** It loads and saves the shared startup edit first (see [TODO.md](TODO.md), Global). On Linux it cannot hand the file over at all, because JUCE's `MessageManager::broadcastMessage` is a TODO there: opening a file from the file manager while the Player runs does nothing. | `MoToolApp` in `src/controllers/App.cpp`; JUCE `juce_Messaging_linux.cpp` | Check for the other instance before constructing the controllers. On Linux, hand files over through a socket or a lock file, or allow several instances. |
 | M7 | **Accessibility basics.** Tab does not reach the transport or chip controls. Screen readers get button names but no titles or descriptions for the readouts, knobs or scopes. The dim text colour (slate-500 on slate-900) is about 3.7:1, under the 4.5:1 WCAG asks for small text. | `src/gui/common/LookAndFeel.h`; no `setTitle`/`setDescription` in `src/gui` | Give readouts and knobs a title and the transport a focus order. Raise disabled and hint text to slate-400. |
 

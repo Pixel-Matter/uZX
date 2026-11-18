@@ -67,6 +67,32 @@ public:
                 expectEquals(groove->getText(), String("23"));
         }
 
+        beginTest("Each readout's value and unit say in a tooltip how to change it");
+        {
+            auto edit = tracktion::Edit::createSingleTrackEdit(engine);
+            tracktion::SelectionManager selectionManager(engine);
+            EditViewState viewState(*edit, selectionManager);
+            TransportBar bar(viewState, {.showRecord = false, .showAutomation = false});
+
+            const StringArray unitNames {"bpm", "fps", "fpb", "groove", "sig", "pos"};
+            int units = 0, editable = 0;
+            for (auto* child : bar.getChildren()) {
+                auto* label = dynamic_cast<Label*>(child);
+                if (label == nullptr)
+                    continue;
+                if (unitNames.contains(label->getText())) {
+                    ++units;
+                    expect(label->getTooltip().contains("click to"), label->getText());
+                }
+                if (label->isEditableOnSingleClick()) {
+                    ++editable;
+                    expect(label->getTooltip().contains("click to type"), label->getText());
+                }
+            }
+            expectEquals(units, unitNames.size());
+            expectEquals(editable, 5, "bpm, fpb, groove, sig and pos");
+        }
+
         beginTest("The transport buttons sit in the middle of the bar; in a narrow one, clear of the output section");
         {
             auto edit = tracktion::Edit::createSingleTrackEdit(engine);

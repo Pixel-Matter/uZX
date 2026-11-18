@@ -72,6 +72,8 @@ Located at the top of the window.
 The transport sits above the timeline; each track ends in its AY chip and level meter.
 <!-- /guide-figure:player-overview -->
 
+Rest the pointer on a readout or its unit to see what it is and how to change it.
+
 | Control | Description |
 |---------|-------------|
 | Rewind | Jump to the beginning |

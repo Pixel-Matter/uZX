@@ -50,6 +50,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Scrubbing: press on the playhead line and the chips sound the frame under it and hold it while the button is down; drag, and the sound follows the playhead from frame to frame. The scopes show the held frame
 - Player: `Left` / `Right` step the playhead a grid line, `Option+Left` / `Option+Right` one frame; stopped, each step sounds the frame it lands on while the key is down
 - Grabbing the playhead during playback pauses it
+- Resting the pointer on a transport readout (bpm, fps, fpb, groove, sig, pos) says what it is and how to change it
+- Fixed: tooltips never showed in the Player's and Studio's windows, such as the Follow button's and the level meter's
 
 ### Menus
 - **Help → Check for Updates...** (on macOS, in the app menu) tells whether a newer release of the app is out on GitHub, and links to its page, or to all releases when yours is the latest; the Player looks for Player releases and Studio for Studio's

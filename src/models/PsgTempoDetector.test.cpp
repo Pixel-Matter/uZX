@@ -409,6 +409,25 @@ public:
             expectWithinAbsoluteError(edit->tempoSequence.getTempoAt(0_tp).getBpm(), 125.0, 0.01);
         }
 
+        beginTest("A clip's register dump detects as the file it was imported from");
+        {
+            auto& engine = *tracktion::Engine::getEngines()[0];
+            auto edit = Edit::createSingleTrackEdit(engine);
+            auto tune = makeTune(3000, {4, 4, 3, 3}, 8);
+            const auto length = tracktion::TimeDuration::fromSeconds(tune.getLengthSeconds());
+            auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], tune, {{0_tp, length}, {}}, "tune");
+            const auto dump = clip->getRegisterDump();
+            const auto fromFile = PsgTempo::analyse({&tune}), fromClip = PsgTempo::analyse({&dump});
+            // the dump ends with the last frame that changes a register; the file may go on in silence
+            expect(dump.frames.size() <= tune.frames.size() && dump.frames.size() + 8 > tune.frames.size());
+            expect(std::equal(fromClip.evidence.begin(), fromClip.evidence.end(), fromFile.evidence.begin()),
+                   "the row evidence is the same frame by frame");
+            expect(fromClip.result && fromClip.result->rowFrames == fromFile.result->rowFrames);
+            expectWithinAbsoluteError(fromClip.result->bpm, fromFile.result->bpm, 1e-6);
+            expect(fromFile.rowsFrom == PsgTempo::Analysis::RowsFrom::evidence);
+            expect(! fromFile.grids.empty() && ! fromFile.beats.empty(), "what was tried is listed");
+        }
+
         beginTest("Importing into a project that already has clips keeps its tempo and meter");
         {
             auto& engine = *tracktion::Engine::getEngines()[0];

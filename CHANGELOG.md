@@ -55,6 +55,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Tempo detection
 - Importing a PSG finds the tracker's rows from more than loud note starts: a legato note, a soft attack and a drum change count too, each weighed by how often it starts a row in tracker modules. More tunes get a tempo, and the grid follows the tracker's own rows more often, such as speed 3 where it showed 6
 - A PSG whose rows hold no one grid, with a row a frame longer now and then or a groove that varies, gets its tempo from the beat it repeats at; such tunes had none
+- **Tempo inspector…** in a PSG clip's right-click menu shows what the tempo detection reads in the tune and why it answers as it does: where a row grid holds over the tune, the row evidence frame by frame, how it repeats, and the beats that were weighed. A beat picked there can be made the project's tempo and judged against a metronome
 - Fixed: a tempo a third too fast or too slow where the beat is 7 rows, or where plain rows with a stray note between them were read as a groove (speed 4 as 4-2-2-4)
 
 ### Tracker modules and TAYM

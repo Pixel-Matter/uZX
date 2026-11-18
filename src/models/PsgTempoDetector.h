@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include <span>
 #include <vector>
 
 #include "../formats/psg/PsgData.h"
@@ -44,6 +45,65 @@ struct Result
         are left to the frame level of the grid. */
     std::vector<int> subdivisionPattern() const;
 };
+
+constexpr double minGridShare = 0.8;   ///< chance-corrected share of the energy a row grid must hold
+constexpr double minBeatRepeat = 0.4;  ///< autocorrelation over 1, 2 and 4 beats; below it the tune has no beat
+constexpr double beatMargin = 0.1;     ///< another grouping of rows or pulses must repeat this much better to win
+constexpr double minMeterMargin = 0.1; ///< one bar length must explain repetition this much better
+/** The beat's length in data frames that the BPM range allows, read at 50 Hz as trackers count rows. */
+constexpr int minBeatFrames = 18, maxBeatFrames = 37;
+
+/** How detect() came to its answer: what it measured and what it weighed, for looking at a tune
+    it gets wrong (see the tempo inspector). Frames are data frames, as the dump has them. */
+struct Analysis
+{
+    enum class RowsFrom
+    {
+        nothing,     ///< no tempo: too little evidence, no grid and no beat the tune repeats at
+        module,      ///< the rows a tracker module states
+        evidence,    ///< the grid of the learnt row evidence
+        noteStarts,  ///< the grid of the cruder note starts, when the evidence shows none
+        pulse        ///< no grid held: the pulse and beat the evidence repeats at
+    };
+
+    /** A row grid tried, and the chance-corrected share of the row evidence on it. */
+    struct Grid
+    {
+        std::vector<int> rows;
+        double share = 0.0;
+    };
+
+    /** A beat tried: so many rows (or pulses) to it, and what speaks for it. */
+    struct Beat
+    {
+        int rowsPerBeat = 0;
+        int frames = 0;
+        juce::Optional<double> patterns;  ///< share of rows whose drums and bass repeat 2, 4 and 8 beats on
+        juce::Optional<double> accents;   ///< how the rows' loudness recurs a beat on, 1 the most
+        juce::Optional<double> repeat;    ///< how alike the row evidence is to itself 1, 2 and 4 beats on
+    };
+
+    juce::Optional<Result> result;
+    RowsFrom rowsFrom = RowsFrom::nothing;
+    std::vector<double> evidence;    ///< per frame, over all chips: PsgRowEvidence::of
+    std::vector<double> noteStarts;  ///< per frame, over all chips: volume jumps that start a note
+    std::vector<double> repeat;      ///< autocorrelation of the evidence by lag; empty for a tune too short
+    std::vector<Grid> grids;         ///< tried on the evidence: every uniform speed, the best swing and groove
+    int pulse = 0;                   ///< frames; 0 unless a pulse was looked for and found
+    std::vector<Beat> beats;         ///< the beats weighed, the result's among them
+    double meterMargin = 0.0;        ///< above minMeterMargin 3/4, below minus that 4/4
+};
+
+/** Chance-corrected share of a per-frame energy on the best phase of a grid of `period` frames: 1
+    when all of it lies on one frame in every `period`, 0 when it is spread evenly or there is none. */
+double gridShare(std::span<const double> energy, int period);
+
+/** How alike a tune is to itself one, two and four beats of `beatFrames` on: the mean of its
+    autocorrelation (Analysis::repeat) there. Nothing for a beat too long for `repeat` to reach. */
+juce::Optional<double> repeatOverBeats(const std::vector<double>& repeat, int beatFrames);
+
+/** detect() with its working shown. */
+Analysis analyse(const std::vector<const uZX::PsgData*>& chips, const std::vector<size_t>& knownRows = {});
 
 /** Returns nothing when the dump has too few note starts, or neither a row grid nor a
     beat it repeats at (speed 1, sample tunes, heavily modulated material). */

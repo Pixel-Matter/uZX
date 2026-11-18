@@ -69,6 +69,11 @@ public:
         }
     }
 
+    /** The clip's frames as a register dump at the rate the clip plays at, a frame per frame index
+        up to the last one that changes a register: the registers that changed, and the envelope
+        shape wherever it restarts. What the tempo detection reads. */
+    uZX::PsgData getRegisterDump() const;
+
     /** Returns the normalized pitch range across all frames in the clip.
         Cached and automatically invalidated when PSG data changes. */
     juce::Range<float> getPitchRange() const;

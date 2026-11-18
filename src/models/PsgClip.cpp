@@ -181,6 +181,20 @@ const PitchHistogram& PsgClip::getPitchHistogram() const {
     return *histogram_;
 }
 
+uZX::PsgData PsgClip::getRegisterDump() const {
+    uZX::PsgData dump;
+    if (const auto fps = getPsg().getEffectiveFps(*this); fps > 0.0)
+        dump.options.frameRate = fps;
+    for (auto* frame : getPsg().getFrames()) {
+        if (! frame->hasFrameIndex())
+            continue;
+        const auto index = (size_t) frame->getFrameIndex();
+        dump.frames.resize(std::max(dump.frames.size(), index + 1));
+        dump.frames[index] = frame->getData().toRegisters();
+    }
+    return dump;
+}
+
 juce::Array<PsgClip*> PsgClip::getTuneClips() const {
     auto* self = const_cast<PsgClip*>(this);
     const auto& tune = state[IDs::psgTune];

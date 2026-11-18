@@ -36,7 +36,13 @@ struct FrameCells
 /** The cells of every frame. The first frame has nothing before it, so its cells are 0. */
 std::vector<FrameCells> cellsOf(const uZX::PsgData&);
 
-/** Per frame, how much the registers speak for a row starting there; never negative. */
+/** What a frame's four events weigh for a row starting there: channels A, B and C, then the
+    chip. Above zero speaks for a row start, below against. */
+using FrameWeights = std::array<double, 4>;
+std::vector<FrameWeights> weightsOf(const uZX::PsgData&);
+
+/** Per frame, how much the registers speak for a row starting there: the frame's weights
+    summed when they make a row start likelier than not, else 0. Never negative. */
 std::vector<double> of(const uZX::PsgData&);
 
 }  // namespace PsgRowEvidence

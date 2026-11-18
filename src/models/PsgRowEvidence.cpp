@@ -126,22 +126,32 @@ std::vector<FrameCells> cellsOf(const uZX::PsgData& data) {
     return cells;
 }
 
+std::vector<FrameWeights> weightsOf(const uZX::PsgData& data) {
+    static const double restartCap = logit(maxRestartProbability) - logit(rowStartShare);
+    const auto cells = cellsOf(data);
+    std::vector<FrameWeights> weights(cells.size());
+    for (size_t i = 0; i < cells.size(); ++i) {
+        const bool restart = cells[i].chip / (envelopePeriodClasses * noisePeriodClasses) > 0;
+        weights[i][3] =
+            restart ? std::min((double) chipWeights[cells[i].chip], restartCap) : chipWeights[cells[i].chip];
+        for (size_t ch = 0; ch < 3; ++ch) {
+            const auto cell = cells[i].channels[ch];
+            const bool fellSilent = cell / (pitchClasses * mixerClasses * envelopeClasses) == volumeFellSilent;
+            weights[i][ch] = fellSilent ? std::min(channelWeights[cell], 0.0f) : channelWeights[cell];
+        }
+    }
+    return weights;
+}
+
 std::vector<double> of(const uZX::PsgData& data) {
     // Weights are logs of odds against the share of frames that start a row, so a frame is
     // likelier than not to start one from this sum up. Below it the frame counts for nothing:
     // faint evidence that recurs at one place in every row would otherwise pass for rows.
     static const double likelierThanNot = -logit(rowStartShare);
-    static const double restartCap = logit(maxRestartProbability) - logit(rowStartShare);
-    const auto cells = cellsOf(data);
-    std::vector<double> evidence(cells.size());
-    for (size_t i = 0; i < cells.size(); ++i) {
-        const bool restart = cells[i].chip / (envelopePeriodClasses * noisePeriodClasses) > 0;
-        double weight =
-            restart ? std::min((double) chipWeights[cells[i].chip], restartCap) : chipWeights[cells[i].chip];
-        for (auto cell : cells[i].channels) {
-            const bool fellSilent = cell / (pitchClasses * mixerClasses * envelopeClasses) == volumeFellSilent;
-            weight += fellSilent ? std::min(channelWeights[cell], 0.0f) : channelWeights[cell];
-        }
+    const auto weights = weightsOf(data);
+    std::vector<double> evidence(weights.size());
+    for (size_t i = 0; i < weights.size(); ++i) {
+        const double weight = weights[i][3] + weights[i][0] + weights[i][1] + weights[i][2];
         evidence[i] = weight >= likelierThanNot ? weight : 0.0;
     }
     return evidence;

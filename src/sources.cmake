@@ -100,6 +100,7 @@ set(GUI_SOURCES
     gui/timeline/EditComponent.cpp
     gui/timeline/NoteLanes.cpp
     gui/timeline/PsgClipComponent.cpp
+    gui/timeline/TempoInspector.cpp
     gui/timeline/TuningPickerComponent.cpp
     gui/timeline/PsgParamEditorComponent.cpp
     gui/timeline/Ruler.cpp
@@ -178,6 +179,7 @@ set(TEST_SOURCES
     gui/timeline/ClipComponents.test.cpp
     gui/timeline/EditComponent.test.cpp
     gui/timeline/PsgClipComponent.test.cpp
+    gui/timeline/TempoInspector.test.cpp
     gui/timeline/PsgParamEditorComponent.test.cpp
     gui/timeline/PsgClipTestHelpers.h
     gui/timeline/PsgVisualGuide.test.cpp

@@ -20,10 +20,9 @@ The user guide matches the code; the problem is readability. A newcomer meets 60
 
 | # | Finding | Where | Suggested fix |
 | --- | --- | --- | --- |
-| D1 | **No quick start.** The Player section opens with file-type details; the TAYM paragraph alone is about 600 words in one block. | `docs/user-guide.md` (Opening Files) | Open the Player section with three steps: drop or open a file, `Space`, `F` for Viz mode. Move format details to a "File formats" section and split long paragraphs. |
 | D3 | **The fpb readout is missing** from the Transport Bar table, though the Player shows it between fps and groove. | `docs/user-guide.md` (Transport Bar) | Add a row. |
 | D4 | **No troubleshooting.** Nothing on no sound or picking an audio device, and nothing for Windows SmartScreen or running the Linux binary. | `docs/user-guide.md` | A short "If something goes wrong" section; install notes per platform, or a line saying v1.0 supports macOS only. |
 | D5 | **The ffmpeg install is macOS-only:** `brew install ffmpeg`. | `docs/user-guide.md` (Render Video) | Add `winget install ffmpeg` and `sudo apt install ffmpeg`. |
 | D6 | **The Discord link is a channel URL**, which opens only for people already in the server. | `README.md` | Use an invite link. |
 | D7 | **README promises more platforms than v1.0 ships.** The badge lists iOS and Android; the intro says macOS, Windows and Linux, while the ROADMAP calls v1.0 a macOS release. | `README.md` | Drop iOS and Android from the badge; say which platforms are supported and which are previews. |
-| D8 | **Small mismatches.** README says **FPS**, the app shows **fps**. README builds with `cmake -S . -B build`, bypassing the presets CONTRIBUTING describes. | `README.md` | Align the wording; use `cmake --preset release` in the README. |
+| D8 | **Small mismatches.** README says **FPS**, the app shows **fps**, and "Save the project (`.uzx`) to keep the rate" predates the Player keeping each tune's changes. README builds with `cmake -S . -B build`, bypassing the presets CONTRIBUTING describes. | `README.md` | Align the wording; use `cmake --preset release` in the README. |

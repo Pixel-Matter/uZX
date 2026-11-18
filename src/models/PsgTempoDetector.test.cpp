@@ -308,6 +308,26 @@ public:
                 expect(result->rowsArePulse, "no row grid holds");
                 expectEquals(result->framesPerBeat, 31);
                 expectWithinAbsoluteError(result->bpm, 3000.0 / 31.0, 0.01);
+                // and with the beat known, the rows inside it are read off the tune, stretch by stretch
+                expect(result->rowFrames == std::vector<int>({4, 4, 4, 4, 4, 4, 4, 3}), rowPattern(result->rowFrames));
+                expectEquals(result->rowsPerBeat, 8);
+                expect(result->subdivisionPattern() == std::vector<int>({8, 8, 8, 7}), "the groove the grid shows");
+            }
+
+            // Every second row accented, the short round now and then a frame longer: only the accents stand
+            // out, and the rows are read as the pulses they make
+            std::vector<int> rounds;
+            for (int round = 0; round < 200; ++round)
+                for (int row : {4, 4, 4, 4, 4, 4, 4, round % 5 == 4 ? 4 : 3})
+                    rounds.push_back(row);
+            auto slipping = PsgTempo::detect(makeTune(6000, rounds, 2));
+            expect(slipping.hasValue());
+            if (slipping) {
+                expectEquals(slipping->framesPerBeat, 31);
+                expectEquals(slipping->rowsPerBeat, 4, rowPattern(slipping->rowFrames));
+                auto pulses = slipping->rowFrames;
+                std::sort(pulses.begin(), pulses.end());
+                expect(pulses == std::vector<int>({7, 8, 8, 8}), "8-8-8-7 at some turn");
             }
         }
 

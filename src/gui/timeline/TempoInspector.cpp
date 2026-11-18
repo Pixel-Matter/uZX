@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <numeric>
 #include <span>
 
 #include "../../models/EditUtilities.h"
@@ -25,6 +26,7 @@ constexpr int mapWindow = 256;                // frames one column of the grid m
 constexpr int mapHop = 128;                   // frames from one column to the next
 constexpr int minPeriod = 2, maxPeriod = 40;  // the grid map's rows: every row grid, and every beat in the BPM range
 constexpr float minMapScale = 0.1f;           // the least share the grid map's brightest colour stands for
+constexpr int phaseMapBeats = 4;              // beats one column of the phase map folds
 constexpr int minMapEvents = 6;  // frames with row evidence a column needs: fewer lie on any grid by chance
 constexpr float stripFrameWidth = 3.0f;
 constexpr int gutter = 44;  // left of every plot, for its labels, so the plots line up
@@ -137,61 +139,50 @@ protected:
 };
 
 //==============================================================================
-/** Where a row grid holds: a column per stretch of the tune, a row per grid period, brighter the
-    more of the stretch's row evidence lies on one phase of that period. A tune at one speed is a
-    bright line across, with its multiples under it; a slip, a change of speed or a groove breaks it.
-    The colours run up to the map's own brightest cell, named under it, so the faint line of a
-    groove of many rows, which no one phase holds much of, shows too. */
-class GridMap : public Panel
+/** A map of the tune over time: a column per stretch of it, a row per whatever the map tells
+    apart, each cell brighter the more it holds. The colours run up to the map's own brightest
+    cell, named under it, so faint structure shows too. A click moves the playhead, and the
+    frames the evidence strip shows are marked under the map. */
+class TimeMap : public Panel
 {
 public:
-    explicit GridMap(Inspection& inspection) : Panel(inspection) {
-        const std::span<const double> evidence(in.analysis.evidence);
-        for (size_t start = 0; start < evidence.size(); start += mapHop) {
-            const auto stretch = evidence.subspan(start, std::min<size_t>(mapWindow, evidence.size() - start));
-            const auto events = std::count_if(stretch.begin(), stretch.end(), [](double e) { return e > 0.0; });
-            auto& column = shares.emplace_back();
-            for (int period = minPeriod; period <= maxPeriod; ++period)
-                column.push_back(events < minMapEvents ? 0.0f : (float) PsgTempo::gridShare(stretch, period));
-            scale = std::max(scale, *std::max_element(column.begin(), column.end()));
-            if (start + mapWindow >= evidence.size())
-                break;
-        }
-    }
+    using Panel::Panel;
 
     void paint(juce::Graphics& g) override {
         const auto plot = plotArea(0, axisHeight);
-        if (shares.empty())
+        if (cells.empty() || numRows() == 0)
             return;
-        const float cw = columnWidth(), ch = plot.getHeight() / (float) (maxPeriod - minPeriod + 1);
-        for (size_t c = 0; c < shares.size(); ++c)
-            for (size_t p = 0; p < shares[c].size(); ++p) {
-                g.setColour(heat(shares[c][p] / scale));
+        const float cw = columnWidth(), ch = plot.getHeight() / (float) numRows();
+        for (size_t c = 0; c < cells.size(); ++c)
+            for (size_t r = 0; r < cells[c].size(); ++r) {
+                g.setColour(heat(cells[c][r] / scale));
                 g.fillRect(plot.getX() + (float) c * cw,
-                           plot.getY() + (float) p * ch,
+                           plot.getY() + (float) r * ch,
                            juce::jmax(1.0f, cw - 1.0f),
                            juce::jmax(1.0f, ch - 1.0f));
             }
 
-        auto rowY = [&](int period) { return plot.getY() + (float) (period - minPeriod) * ch; };
-        for (int period = minPeriod; period <= maxPeriod; ++period)
-            if (period == in.lag)
-                label(g, juce::String(period), rowY(period) + ch / 2, Theme::textPrimary);
-            else if (period % 4 == 0 && std::abs(period - in.lag) > 1)
-                label(g, juce::String(period), rowY(period) + ch / 2);
-        if (in.lag <= maxPeriod) {
+        auto rowY = [&](int row) { return plot.getY() + (float) row * ch; };
+        const int marked = markedRow();
+        for (int row = 0; row < numRows(); ++row)
+            if (row == marked)
+                label(g, rowName(row), rowY(row) + ch / 2, Theme::textPrimary);
+            else if (isNamed(row) && std::abs(row - marked) > 1)
+                label(g, rowName(row), rowY(row) + ch / 2);
+        if (marked >= 0) {
             g.setColour(Theme::textPrimary);
-            g.drawRect(juce::Rectangle<float>(plot.getX(), rowY(in.lag), plot.getWidth(), ch).expanded(1.0f), 1.0f);
+            g.drawRect(juce::Rectangle<float>(plot.getX(), rowY(marked), plot.getWidth(), ch).expanded(1.0f), 1.0f);
         }
+        paintMarks(g, plot, ch);
 
         g.setColour(Theme::textSecondary);
         g.setFont(smallFont());
         const int scaleWidth = 110;  // the right end of the axis names the scale
         const auto step = (size_t) juce::jmax(1, (int) std::ceil(60.0f / cw));
-        for (size_t c = 0; c < shares.size(); c += step)
+        for (size_t c = 0; c < cells.size(); c += step)
             if (const int x = juce::roundToInt(plot.getX() + (float) c * cw);
                 x + 40 < (int) plot.getRight() - scaleWidth)
-                g.drawText(timeText((double) (c * mapHop) / in.fps),
+                g.drawText(timeText((double) ((int) c * framesPerColumn) / in.fps),
                            x,
                            (int) plot.getBottom() + 2,
                            60,
@@ -221,29 +212,133 @@ public:
 
     void mouseMove(const juce::MouseEvent& e) override {
         const auto plot = plotArea(0, axisHeight);
-        const int column = frameAt(e.position.x) / mapHop;
-        const int period =
-            minPeriod + (int) ((e.position.y - plot.getY()) / plot.getHeight() * (float) (maxPeriod - minPeriod + 1));
-        if (!plot.contains(e.position) || column >= (int) shares.size() || period > maxPeriod)
-            return;
-        in.say("At " + timeText(column * mapHop / in.fps) + ", a grid of " + juce::String(period) + " frames has "
-               + percentText(shares[(size_t) column][(size_t) (period - minPeriod)])
-               + " of the row evidence. A row grid must have " + percentText(PsgTempo::minGridShare)
-               + " in the full tune. Click to move the playhead.");
+        const int column = frameAt(e.position.x) / framesPerColumn;
+        const int row = (int) ((e.position.y - plot.getY()) / plot.getHeight() * (float) numRows());
+        if (plot.contains(e.position) && column < (int) cells.size() && row < numRows())
+            in.say(describe(column, row));
     }
 
     int stripFrames = 0;  // how many frames the evidence strip shows, for its mark under the map
 
-private:
-    float columnWidth() const { return plotArea().getWidth() / (float) std::max<size_t>(1, shares.size()); }
-    float xOf(int frame) const { return plotArea().getX() + (float) frame / (float) mapHop * columnWidth(); }
-    int frameAt(float x) const {
-        return juce::jlimit(
-            0, juce::jmax(0, in.numFrames() - 1), (int) ((x - plotArea().getX()) / columnWidth() * (float) mapHop));
+protected:
+    virtual int numRows() const = 0;
+    virtual juce::String rowName(int row) const = 0;
+    virtual bool isNamed(int row) const = 0;  // whether the row's name is always drawn
+    virtual int markedRow() const = 0;        // the beat cursor's row, or -1
+    virtual juce::String describe(int column, int row) const = 0;
+    virtual void paintMarks(juce::Graphics&, juce::Rectangle<float>, float) {}
+
+    /** Whether a stretch holds enough row evidence to say anything: a few frames lie on any grid by chance. */
+    static bool isTelling(std::span<const double> stretch) {
+        return std::count_if(stretch.begin(), stretch.end(), [](double e) { return e > 0.0; }) >= minMapEvents;
     }
 
-    std::vector<std::vector<float>> shares;  // [column][period - minPeriod]
-    float scale = minMapScale;               // the share the brightest colour stands for
+    std::vector<std::vector<float>> cells;  // [column][row], each a share of 0..1
+    float scale = minMapScale;              // the share the brightest colour stands for
+    int framesPerColumn = mapHop;           // from one column's start to the next
+
+private:
+    float columnWidth() const { return plotArea().getWidth() / (float) std::max<size_t>(1, cells.size()); }
+    float xOf(int frame) const { return plotArea().getX() + (float) frame / (float) framesPerColumn * columnWidth(); }
+    int frameAt(float x) const {
+        return juce::jlimit(0,
+                            juce::jmax(0, in.numFrames() - 1),
+                            (int) ((x - plotArea().getX()) / columnWidth() * (float) framesPerColumn));
+    }
+};
+
+//==============================================================================
+/** Where a row grid holds: a row per grid period, brighter the more of the stretch's row evidence
+    lies on one phase of that period. A tune at one speed is a bright line across, with its
+    multiples under it; a slip, a change of speed or a groove breaks it. */
+class GridMap : public TimeMap
+{
+public:
+    explicit GridMap(Inspection& inspection) : TimeMap(inspection) {
+        const std::span<const double> evidence(in.analysis.evidence);
+        for (size_t start = 0; start < evidence.size(); start += mapHop) {
+            const auto stretch = evidence.subspan(start, std::min<size_t>(mapWindow, evidence.size() - start));
+            auto& column = cells.emplace_back();
+            for (int period = minPeriod; period <= maxPeriod; ++period)
+                column.push_back(isTelling(stretch) ? (float) PsgTempo::gridShare(stretch, period) : 0.0f);
+            scale = std::max(scale, *std::max_element(column.begin(), column.end()));
+            if (start + mapWindow >= evidence.size())
+                break;
+        }
+    }
+
+protected:
+    int numRows() const override { return maxPeriod - minPeriod + 1; }
+    juce::String rowName(int row) const override { return juce::String(minPeriod + row); }
+    bool isNamed(int row) const override { return (minPeriod + row) % 4 == 0; }
+    int markedRow() const override { return in.lag <= maxPeriod ? in.lag - minPeriod : -1; }
+
+    juce::String describe(int column, int row) const override {
+        return "At " + timeText(column * framesPerColumn / in.fps) + ", a grid of " + juce::String(minPeriod + row)
+               + " frames has " + percentText(cells[(size_t) column][(size_t) row])
+               + " of the row evidence. A row grid must have " + percentText(PsgTempo::minGridShare)
+               + " in the full tune. Click to move the playhead.";
+    }
+};
+
+//==============================================================================
+/** Where the rows fall inside the beat: the tune folded at the beat cursor, a row per frame of the
+    beat, brighter the more of the stretch's row evidence starts on that frame. The rows of the
+    beat are bright lines across, and the gaps between them are the groove: lines at 0, 8, 16 and
+    24 of 31 frames are 8-8-8-7. A line that steps down is a row a frame longer than the beat
+    allows; lines that slope are a beat the cursor has a little too short or long. The rows the
+    detection read are ticked at the left edge. */
+class PhaseMap : public TimeMap
+{
+public:
+    explicit PhaseMap(Inspection& inspection) : TimeMap(inspection) { refresh(); }
+
+    /** Folds the tune at the beat cursor again. */
+    void refresh() {
+        const std::span<const double> evidence(in.analysis.evidence);
+        const auto beat = (size_t) in.lag;
+        framesPerColumn = phaseMapBeats * in.lag;
+        cells.clear();
+        scale = minMapScale;
+        for (size_t start = 0; start < evidence.size(); start += (size_t) framesPerColumn) {
+            const auto stretch = evidence.subspan(start, std::min((size_t) framesPerColumn, evidence.size() - start));
+            auto& column = cells.emplace_back(beat, 0.0f);
+            const double all = std::accumulate(stretch.begin(), stretch.end(), 0.0);
+            if (!isTelling(stretch) || all <= 0.0)
+                continue;
+            for (size_t i = 0; i < stretch.size(); ++i)
+                column[(start + i) % beat] += (float) (stretch[i] / all);
+            scale = std::max(scale, *std::max_element(column.begin(), column.end()));
+        }
+        repaint();
+    }
+
+protected:
+    int numRows() const override { return in.lag; }
+    juce::String rowName(int row) const override { return juce::String(row); }
+    bool isNamed(int row) const override { return row % (in.lag > 48 ? 16 : 4) == 0; }
+    int markedRow() const override { return -1; }
+
+    juce::String describe(int column, int row) const override {
+        return "At " + timeText(column * framesPerColumn / in.fps) + ", frame " + juce::String(row) + " of the beat of "
+               + juce::String(in.lag) + " frames has " + percentText(cells[(size_t) column][(size_t) row])
+               + " of the row evidence. A bright line is a row of the beat. A line that moves down is a row that is 1 "
+                 "frame longer. Click to move the playhead.";
+    }
+
+    /** The rows the detection read, when the cursor is on its beat: a tick at the frame each starts on. */
+    void paintMarks(juce::Graphics& g, juce::Rectangle<float> plot, float rowHeightPx) override {
+        const auto& result = in.analysis.result;
+        if (!result || result->framesPerBeat != in.lag)
+            return;
+        g.setColour(Theme::textPrimary);
+        int frame = result->gridPhase;
+        for (int row = 0; row < result->rowsPerBeat; ++row) {
+            g.fillRect(
+                plot.getX() - 5.0f, plot.getY() + ((float) (frame % in.lag) + 0.5f) * rowHeightPx - 0.5f, 4.0f, 1.0f);
+            frame += result->rowFrames[(size_t) row % result->rowFrames.size()];
+        }
+    }
 };
 
 //==============================================================================
@@ -555,7 +650,8 @@ juce::String describe(const Inspection& in) {
         juce::String tempo =
             "Tempo: " + juce::String(r->bpm, 2) + " BPM. A beat is " + juce::String(r->framesPerBeat) + " frames";
         if (!r->rowsArePulse || r->rowsPerBeat > 1)
-            tempo << ": " << juce::String(r->rowsPerBeat) << (r->rowsArePulse ? " pulse" : " row")
+            tempo << ": " << juce::String(r->rowsPerBeat)
+                  << (r->rowsArePulse && a.grooveAgreement <= 0.0 ? " pulse" : " row")
                   << (r->rowsPerBeat == 1 ? "" : "s") << " of " << rowsText(r->rowFrames) << " frames";
         lines.add(tempo + ".");
     } else {
@@ -586,14 +682,21 @@ juce::String describe(const Inspection& in) {
     if (a.rowsFrom == RowsFrom::noteStarts)
         rows << " A grid of the note starts has " << percentText(a.result->gridShare)
              << ". The detector uses this grid.";
-    else if (a.rowsFrom == RowsFrom::pulse && a.result->rowFrames[0] == a.pulse)
-        rows << " The evidence repeats after each " << juce::String(a.pulse)
-             << " frames. This pulse replaces the rows.";
-    else if (a.rowsFrom == RowsFrom::pulse)
-        rows << " The evidence repeats after each " << juce::String(a.pulse)
-             << " frames, but 2 and 4 pulses are not at the repeat peaks. The beat is at the nearest peak: "
-             << juce::String(a.result->framesPerBeat) << " frames.";
-    else if (a.rowsFrom == RowsFrom::nothing && a.pulse > 0)
+    else if (a.rowsFrom == RowsFrom::pulse) {
+        const bool whole = a.result->framesPerBeat % a.pulse == 0;  // the beat is a whole number of pulses
+        rows << " The evidence repeats after each " << juce::String(a.pulse) << " frames";
+        if (whole)
+            rows << ".";
+        else
+            rows << ", but 2 and 4 pulses are not at the repeat peaks. The beat is at the nearest peak: "
+                 << juce::String(a.result->framesPerBeat) << " frames.";
+        if (a.grooveAgreement > 0.0)
+            rows << " The rows in the beat are " << rowsText(a.result->rowFrames) << " frames in "
+                 << percentText(a.grooveAgreement) << " of the tune. The minimum is "
+                 << percentText(PsgTempo::minGrooveAgreement) << ".";
+        else if (whole)
+            rows << " This pulse replaces the rows.";
+    } else if (a.rowsFrom == RowsFrom::nothing && a.pulse > 0)
         rows << " The evidence repeats after each " << juce::String(a.pulse)
              << " frames, but no beat of this pulse has the minimum repeat score of "
              << juce::String(PsgTempo::minBeatRepeat, 2) << ".";
@@ -620,12 +723,12 @@ class TempoInspector : public juce::Component, private juce::Timer
 {
 public:
     explicit TempoInspector(PsgClip& clip)
-        : clip_(&clip), clickWasOn_(clip.edit.clickTrackEnabled.get()), map_(in), strip_(in), repeat_(in), bars_(in),
-          table_(in), play_(clip.edit) {
+        : clip_(&clip), clickWasOn_(clip.edit.clickTrackEnabled.get()), map_(in), phases_(in), strip_(in), repeat_(in),
+          bars_(in), table_(in), play_(clip.edit) {
         setWantsKeyboardFocus(true);
-        for (auto* panel : std::initializer_list<juce::Component*>{&map_, &strip_, &repeat_, &bars_, &table_})
+        for (auto* panel : std::initializer_list<juce::Component*>{&map_, &phases_, &strip_, &repeat_, &bars_, &table_})
             addAndMakeVisible(panel);
-        for (auto* button : std::initializer_list<juce::Button*>{&play_, &metronome_, &apply_, &copy_}) {
+        for (auto* button : std::initializer_list<juce::Button*>{&play_, &metronome_, &phaseMap_, &apply_, &copy_}) {
             button->setWantsKeyboardFocus(false);
             addAndMakeVisible(button);
         }
@@ -645,6 +748,12 @@ public:
             if (auto* c = clip_.get())
                 c->edit.clickTrackEnabled = metronome_.getToggleState();
         };
+        // The phase map is the one to look at when no row grid holds: the grid map is dark then
+        using RowsFrom = Analysis::RowsFrom;
+        phaseMap_.setToggleState(in.analysis.rowsFrom != RowsFrom::evidence
+                                     && in.analysis.rowsFrom != RowsFrom::noteStarts,
+                                 juce::dontSendNotification);
+        phaseMap_.onClick = [this] { showMap(); };
         apply_.onClick = [this] { applyCursorBeat(); };
         copy_.onClick = [this] {
             if (auto* c = clip_.get())
@@ -656,6 +765,7 @@ public:
             cursor_.setText("Cursor: " + juce::String(in.lag) + " frames, " + juce::String(in.bpmOf(in.lag), 2)
                                 + " BPM",
                             juce::dontSendNotification);
+            phases_.refresh();
             repaint();
         };
         in.say = [this](const juce::String& text) { status_.setText(text, juce::dontSendNotification); };
@@ -666,6 +776,7 @@ public:
         const auto& result = in.analysis.result;
         in.setLag(result ? result->framesPerBeat : in.analysis.pulse > 0 ? in.analysis.pulse : 24);
         setSize(860, 760);
+        showMap();
         startTimerHz(30);
     }
 
@@ -683,6 +794,7 @@ public:
         play_.setBounds(buttons.removeFromLeft(buttons.getHeight()));  // a square, as in the transport bar
         buttons.removeFromLeft(8);
         metronome_.setBounds(buttons.removeFromLeft(110));
+        phaseMap_.setBounds(buttons.removeFromLeft(110));
         copy_.setBounds(buttons.removeFromRight(100));
         buttons.removeFromRight(8);
         apply_.setBounds(buttons.removeFromRight(180));
@@ -700,7 +812,8 @@ public:
         strip_.setBounds(area.removeFromBottom(100));
         area.removeFromBottom(4);
         map_.setBounds(area);
-        map_.stripFrames = strip_.visibleFrames();
+        phases_.setBounds(area);
+        map_.stripFrames = phases_.stripFrames = strip_.visibleFrames();
     }
 
     bool keyPressed(const juce::KeyPress& key) override {
@@ -743,6 +856,12 @@ private:
         return (int) std::floor((time - position.getStart() + position.getOffset()).inSeconds() * in.fps);
     }
 
+    /** The grid map and the phase map share their place: the switch shows one. */
+    void showMap() {
+        phases_.setVisible(phaseMap_.getToggleState());
+        map_.setVisible(!phaseMap_.getToggleState());
+    }
+
     /** The project's tempo becomes the cursor's beat, with the grid's usual groups, so its grid and
         click run against the tune. The frames keep their times. */
     void applyCursorBeat() {
@@ -774,6 +893,7 @@ private:
         // the strip keeps the playhead a third of the way in
         in.viewFrame = juce::jmax(0, frame - strip_.visibleFrames() / 3);
         map_.repaint();
+        phases_.repaint();
         strip_.repaint();
     }
 
@@ -781,13 +901,14 @@ private:
     const bool clickWasOn_;
     Inspection in{inspect(*clip_.get())};
     GridMap map_;
+    PhaseMap phases_;
     EvidenceStrip strip_;
     RepeatPlot repeat_;
     GridBars bars_;
     BeatTable table_;
     PlayButton play_;
     juce::TextButton apply_{"Set as project tempo"}, copy_{"Copy label"};
-    juce::ToggleButton metronome_{"Metronome"};
+    juce::ToggleButton metronome_{"Metronome"}, phaseMap_{"Phase map"};
     juce::Label trace_, cursor_, status_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TempoInspector)

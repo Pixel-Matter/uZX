@@ -26,6 +26,9 @@ constexpr double pulseStrength = 0.8;       // the pulse repeats this well again
 constexpr double minRowStarts = 0.02;       // energy share a swing's or groove's row starts, or it starts nothing
 constexpr int minSpeed = 2;
 constexpr int maxSpeed = 16;
+constexpr int grooveStretchBeats = 4;      // beats in each stretch that the rows inside the beat are read in
+constexpr double grooveRowStrength = 0.5;  // of the strongest frame's evidence: a frame with it starts a row
+constexpr double minGrooveShare = 0.5;     // the rows of a stretch hold this much of its evidence, or it shows none
 constexpr double minBpm = 80.0;  // rows per beat is halved or doubled to land in this range
 constexpr double maxBpm = 170.0;
 // The range is read at 50 Hz, as trackers count their rows, so a tune at 200 Hz gets the same rows
@@ -127,7 +130,8 @@ struct GridSearch
 struct PulseSearch
 {
     juce::Optional<Speed> chosen;
-    int pulse = 0;  // frames; 0 when nothing repeats well enough
+    int pulse = 0;                 // frames; 0 when nothing repeats well enough
+    double grooveAgreement = 0.0;  // above 0: the chosen rows were read inside the beat, by so many of the stretches
     std::vector<Analysis::Beat> tried;
 };
 
@@ -267,6 +271,99 @@ std::pair<int, double> driftingBeat(const std::vector<double>& repeat, int pulse
     return found;
 }
 
+/** The row lengths cut to their shortest repeating unit: 6-7-6-7 is 6-7. */
+std::vector<int> shortestUnit(std::vector<int> rows) {
+    for (size_t unit = 1; unit < rows.size(); ++unit)
+        if (rows.size() % unit == 0 && std::equal(rows.begin() + (std::ptrdiff_t) unit, rows.end(), rows.begin())) {
+            rows.resize(unit);
+            break;
+        }
+    return rows;
+}
+
+/** The rows inside a beat, of a tune no row grid holds through. */
+struct Groove
+{
+    std::vector<int> rows;   // row lengths, repeating, from the first row of the beat
+    int rowsPerBeat = 0;
+    int phase = 0;           // the frame the first row starts at
+    double agreement = 0.0;  // share of the tune's stretches that read these rows
+};
+
+/** Reads the rows inside a beat of `beat` frames, where a grid cannot: a row a frame longer now and
+    then moves every row after it, so the tune is read in stretches of a few beats, each folded at
+    the beat as it stands. The frames of the beat that hold at least half the evidence of the
+    strongest one start rows; their gaps, turned to their smallest rotation, are the stretch's
+    groove, and the stretches vote. A swing as wide as 4-7 is read so, and rows of 4-4-4-4-4-4-4-3
+    with every second one accented read as 8-8-8-7. A stretch whose rows come out one twice as
+    long as another has a row without a note in it, and does not vote.
+
+    Nothing when too few stretches agree, or when what they agree on is one row length: that is
+    the pulse, which is known. The rows start where they do in most of the stretches that agree. */
+juce::Optional<Groove> readGroove(const std::vector<double>& energy, int beat) {
+    const auto period = (size_t) beat, length = (size_t) (grooveStretchBeats * beat);
+    std::map<std::vector<int>, std::map<std::vector<int>, size_t>> votes;  // groove -> the frames its rows start at
+    size_t stretches = 0;
+    for (size_t start = 0; start + length <= energy.size(); start += length / 2) {
+        std::vector<double> held(period, 0.0);
+        for (size_t i = start; i < start + length; ++i)
+            held[i % period] += energy[i];
+        const double all = std::accumulate(held.begin(), held.end(), 0.0);
+        if (all <= 0.0)
+            continue;
+        ++stretches;
+        const double strongest = *std::max_element(held.begin(), held.end());
+        std::vector<int> phases;
+        double onRows = 0.0;
+        for (size_t phase = 0; phase < period; ++phase)
+            if (held[phase] >= grooveRowStrength * strongest) {
+                phases.push_back((int) phase);
+                onRows += held[phase];
+            }
+        if (onRows < minGrooveShare * all || phases.size() < 2 || 2 * phases.size() > period)
+            continue;
+        std::vector<int> gaps;
+        for (size_t k = 0; k < phases.size(); ++k)
+            gaps.push_back((k + 1 < phases.size() ? phases[k + 1] : phases[0] + beat) - phases[k]);
+        // Two frames side by side are one row that slips inside the stretch, not two rows; a row twice
+        // as long as another is two, one of which starts no note here: the rows were not all read
+        const auto [shortest, longest] = std::minmax_element(gaps.begin(), gaps.end());
+        if (*shortest < minSpeed || *longest >= 2 * *shortest)
+            continue;
+        auto groove = shortestUnit(gaps);
+        auto smallest = groove;
+        for (size_t turn = 1; turn < groove.size(); ++turn) {
+            std::rotate(groove.begin(), groove.begin() + 1, groove.end());
+            smallest = std::min(smallest, groove);
+        }
+        ++votes[smallest][phases];
+    }
+
+    auto count = [](const auto& places) {
+        size_t n = 0;
+        for (const auto& [phases, times] : places)
+            n += times;
+        return n;
+    };
+    const auto winner = std::max_element(votes.begin(), votes.end(), [&](const auto& a, const auto& b) {
+        return count(a.second) < count(b.second);
+    });
+    if (winner == votes.end() || winner->first.size() < 2)
+        return {};
+    const double agreement = (double) count(winner->second) / (double) stretches;
+    if (agreement < minGrooveAgreement)
+        return {};
+    // where the rows start in most of the stretches that agree
+    const auto place = std::max_element(winner->second.begin(), winner->second.end(), [](const auto& a, const auto& b) {
+        return a.second < b.second;
+    });
+    const auto& phases = place->first;
+    std::vector<int> rows;
+    for (size_t k = 0; k < phases.size(); ++k)
+        rows.push_back((k + 1 < phases.size() ? phases[k + 1] : phases[0] + beat) - phases[k]);
+    return Groove{shortestUnit(rows), (int) phases.size(), phases.front(), agreement};
+}
+
 /** The beat of a tune no row grid holds through: one with a row a frame longer now and then, a
     groove that varies, or parts at other speeds. A grid needs every row to start where the first
     rows put it; how alike the tune is to itself a while later needs no such thing, and peaks at
@@ -277,7 +374,8 @@ std::pair<int, double> driftingBeat(const std::vector<double>& repeat, int pulse
     that repeats clearly better over 1, 2 and 4 beats. The pulse stands for the rows: what lies
     inside it is not known. When no such beat repeats, the pulse may not be a whole number of
     frames (see driftingBeat): the beat found by following the peaks then stands for the pulse.
-    Nothing when even that beat repeats poorly. */
+    Nothing when even that beat repeats poorly. With the beat known, the rows inside it are read
+    where stretches of the tune agree on them (see readGroove), and stand in place of the pulse. */
 PulseSearch
 detectPulse(const std::vector<double>& energy, double total, const std::vector<double>& repeat, double dataFps) {
     const int low = minBeatFrames, high = maxBeatFrames;
@@ -323,6 +421,16 @@ detectPulse(const std::vector<double>& energy, double total, const std::vector<d
         beat = unit = drifting;
     }
 
+    if (const auto groove = readGroove(energy, beat)) {
+        Speed speed{groove->rows, groove->phase, fitGrid(energy, total, beat, groove->rowsPerBeat).share,
+                    groove->rowsPerBeat};
+        while (dataFps * 60.0 / beat * speed.beatRows / groove->rowsPerBeat > tracktion::TempoSetting::maxBPM)
+            speed.beatRows *= 2;
+        search.grooveAgreement = groove->agreement;
+        search.chosen = speed;
+        return search;
+    }
+
     const auto fit = fitGrid(energy, total, unit, 1);
     Speed speed{{unit}, fit.phases[0], fit.share, beat / unit};
     while (dataFps * 60.0 / (unit * speed.beatRows) > tracktion::TempoSetting::maxBPM)
@@ -334,16 +442,6 @@ detectPulse(const std::vector<double>& energy, double total, const std::vector<d
 constexpr std::array<size_t, 4> grooveSizes{1, 2, 4, 8};  // rows a module's row pattern may have
 constexpr double minRowsFollowing = 0.9;                  // share of a module's rows its pattern must describe
 constexpr double minPatternsFilled = 0.9;                 // share of a module in patterns a beat or a bar fills
-
-/** The row lengths cut to their shortest repeating unit: 6-7-6-7 is 6-7. */
-std::vector<int> shortestUnit(std::vector<int> rows) {
-    for (size_t unit = 1; unit < rows.size(); ++unit)
-        if (rows.size() % unit == 0 && std::equal(rows.begin() + (std::ptrdiff_t) unit, rows.end(), rows.begin())) {
-            rows.resize(unit);
-            break;
-        }
-    return rows;
-}
 
 /** One round of a pulse: the tune cut, from its first row on, into runs of whole rows that
     last `pulse` frames each; a row that starts no such run is passed over. */
@@ -861,6 +959,7 @@ Analysis analyse(const std::vector<const uZX::PsgData*>& chips,
             speed = pulse.chosen;
             energy = &evidence;
             analysis.pulse = pulse.pulse;
+            analysis.grooveAgreement = pulse.grooveAgreement;
             analysis.beats = std::move(pulse.tried);
             if (speed)
                 analysis.rowsFrom = RowsFrom::pulse;

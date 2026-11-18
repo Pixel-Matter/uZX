@@ -25,7 +25,8 @@ struct Result
 {
     std::vector<int> rowFrames;  ///< machine frames per row, repeating: {6}, a swing {6, 7}, a groove {4, 4, 3, 3}
     /** No row grid held through the tune (a row a frame longer now and then, a groove that varies):
-        rowFrames is its pulse, the frames after which it repeats, and what lies inside is not known. */
+        rowFrames is its pulse, the frames after which it repeats, and what lies inside is not known;
+        or the rows read inside its beat, where stretches of the tune agree on them. */
     bool rowsArePulse = false;
     int rowsPerBeat = 0;
     int beatsPerBar = 4;      ///< 3 or 4; 4 unless bar-level repetition clearly says 3
@@ -50,6 +51,8 @@ constexpr double minGridShare = 0.8;   ///< chance-corrected share of the energy
 constexpr double minBeatRepeat = 0.4;  ///< autocorrelation over 1, 2 and 4 beats; below it the tune has no beat
 constexpr double beatMargin = 0.1;     ///< another grouping of rows or pulses must repeat this much better to win
 constexpr double minMeterMargin = 0.1; ///< one bar length must explain repetition this much better
+/** Share of a tune's stretches that must read the same rows inside the beat. */
+constexpr double minGrooveAgreement = 0.25;
 /** The beat's length in data frames that the BPM range allows, read at 50 Hz as trackers count rows. */
 constexpr int minBeatFrames = 18, maxBeatFrames = 37;
 
@@ -90,6 +93,9 @@ struct Analysis
     std::vector<double> repeat;      ///< autocorrelation of the evidence by lag; empty for a tune too short
     std::vector<Grid> grids;         ///< tried on the evidence: every uniform speed, the best swing and groove
     int pulse = 0;                   ///< frames; 0 unless a pulse was looked for and found
+    /** Above 0: the result's rows were read inside the beat, stretch by stretch, and so many of the
+        stretches read them alike (see minGrooveAgreement). */
+    double grooveAgreement = 0.0;
     std::vector<Beat> beats;         ///< the beats weighed, the result's among them
     double meterMargin = 0.0;        ///< above minMeterMargin 3/4, below minus that 4/4
 };

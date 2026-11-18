@@ -20,7 +20,6 @@ The user guide matches the code; the problem is readability. A newcomer meets 60
 
 | # | Finding | Where | Suggested fix |
 | --- | --- | --- | --- |
-| D3 | **The fpb readout is missing** from the Transport Bar table, though the Player shows it between fps and groove. | `docs/user-guide.md` (Transport Bar) | Add a row. |
 | D4 | **No troubleshooting.** Nothing on no sound or picking an audio device, and nothing for Windows SmartScreen or running the Linux binary. | `docs/user-guide.md` | A short "If something goes wrong" section; install notes per platform, or a line saying v1.0 supports macOS only. |
 | D5 | **The ffmpeg install is macOS-only:** `brew install ffmpeg`. | `docs/user-guide.md` (Render Video) | Add `winget install ffmpeg` and `sudo apt install ffmpeg`. |
 | D6 | **The Discord link is a channel URL**, which opens only for people already in the server. | `README.md` | Use an invite link. |

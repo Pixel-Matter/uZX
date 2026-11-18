@@ -29,10 +29,13 @@ constexpr float minMapScale = 0.1f;           // the least share the grid map's 
 constexpr int phaseMapBeats = 4;              // beats one column of the phase map folds
 constexpr int minMapEvents = 6;  // frames with row evidence a column needs: fewer lie on any grid by chance
 constexpr float stripFrameWidth = 3.0f;
-constexpr int gutter = 44;  // left of every plot, for its labels, so the plots line up
+constexpr int grid = 8;
+constexpr int gutter = grid * 4;  // left of every plot, for its labels, so the plots line up
 constexpr int rowHeight = 20;
-constexpr int textHeight = 16;  // of a line of the small font
-constexpr int axisHeight = 18;  // under a plot, for its axis labels
+constexpr int textHeight = 16;   // of a line of the small font
+constexpr int axisHeight = 18;   // under a plot, for its axis labels
+constexpr int titleHeight = 18;  // over a panel, for its title
+constexpr int nameWidth = 48;    // of the name before a fact of the detection's answer
 
 juce::Font smallFont() {
     return juce::Font(juce::FontOptions(13.0f));
@@ -114,11 +117,23 @@ struct Inspection
 class Panel : public juce::Component
 {
 public:
-    explicit Panel(Inspection& inspection) : in(inspection) {}
+    Panel(Inspection& inspection, juce::String titleToShow) : in(inspection), title(std::move(titleToShow)) {}
 
 protected:
+    /** The plot: right of the gutter and under the title. */
     juce::Rectangle<float> plotArea(int top = 0, int bottom = 0) const {
-        return getLocalBounds().withTrimmedLeft(gutter).withTrimmedTop(top).withTrimmedBottom(bottom).toFloat();
+        return getLocalBounds()
+            .withTrimmedLeft(gutter)
+            .withTrimmedTop(titleHeight + top)
+            .withTrimmedBottom(bottom)
+            .toFloat();
+    }
+
+    /** What the panel shows, over its plot, in a line. */
+    void paintTitle(juce::Graphics& g) const {
+        g.setColour(Theme::textSecondary);
+        g.setFont(smallFont());
+        g.drawText(title, gutter, 0, getWidth() - gutter, textHeight, juce::Justification::centredLeft);
     }
 
     void label(juce::Graphics& g,
@@ -136,6 +151,7 @@ protected:
     }
 
     Inspection& in;
+    juce::String title;
 };
 
 //==============================================================================
@@ -149,6 +165,7 @@ public:
     using Panel::Panel;
 
     void paint(juce::Graphics& g) override {
+        paintTitle(g);
         const auto plot = plotArea(0, axisHeight);
         if (cells.empty() || numRows() == 0)
             return;
@@ -254,7 +271,8 @@ private:
 class GridMap : public TimeMap
 {
 public:
-    explicit GridMap(Inspection& inspection) : TimeMap(inspection) {
+    explicit GridMap(Inspection& inspection)
+        : TimeMap(inspection, "Grid map. Rows: grid length in frames. Bright: much row evidence is on this grid") {
         const std::span<const double> evidence(in.analysis.evidence);
         for (size_t start = 0; start < evidence.size(); start += mapHop) {
             const auto stretch = evidence.subspan(start, std::min<size_t>(mapWindow, evidence.size() - start));
@@ -291,13 +309,15 @@ protected:
 class PhaseMap : public TimeMap
 {
 public:
-    explicit PhaseMap(Inspection& inspection) : TimeMap(inspection) { refresh(); }
+    explicit PhaseMap(Inspection& inspection) : TimeMap(inspection, {}) { refresh(); }
 
     /** Folds the tune at the beat cursor again. */
     void refresh() {
         const std::span<const double> evidence(in.analysis.evidence);
         const auto beat = (size_t) in.lag;
         framesPerColumn = phaseMapBeats * in.lag;
+        title = "Phase map. Rows: frame in the beat of " + juce::String(in.lag)
+                + " frames. Bright: much row evidence starts on this frame";
         cells.clear();
         scale = minMapScale;
         for (size_t start = 0; start < evidence.size(); start += (size_t) framesPerColumn) {
@@ -348,17 +368,21 @@ protected:
 class EvidenceStrip : public Panel
 {
 public:
-    using Panel::Panel;
+    explicit EvidenceStrip(Inspection& inspection)
+        : Panel(inspection,
+                "Row evidence for each frame. A, B, C: channels. E+N: envelope and noise. Sum: all, where a row start "
+                "is probable") {}
 
     int visibleFrames() const { return juce::jmax(1, (int) (plotArea().getWidth() / stripFrameWidth)); }
 
     void paint(juce::Graphics& g) override {
+        paintTitle(g);
         const auto plot = plotArea(10, 10);
         const int first = in.viewFrame, count = visibleFrames();
         const float rh = plot.getHeight() / 5.0f;
         auto xOf = [&](int frame) { return plot.getX() + (float) (frame - first) * stripFrameWidth; };
 
-        static const char* const names[] = {"A", "B", "C", "Chip", "Sum"};
+        static const char* const names[] = {"A", "B", "C", "E+N", "Sum"};
         for (int row = 0; row < 5; ++row) {
             label(g, names[row], plot.getY() + ((float) row + 0.5f) * rh);
             for (int frame = juce::jmax(0, first); frame < first + count; ++frame) {
@@ -388,7 +412,7 @@ public:
 
         if (in.playFrame >= first && in.playFrame < first + count) {
             g.setColour(Theme::success);
-            g.fillRect(xOf(in.playFrame), 0.0f, 1.0f, (float) getHeight());
+            g.fillRect(xOf(in.playFrame), (float) titleHeight, 1.0f, (float) (getHeight() - titleHeight));
         }
     }
 
@@ -411,9 +435,11 @@ public:
 class RepeatPlot : public Panel
 {
 public:
-    using Panel::Panel;
+    explicit RepeatPlot(Inspection& inspection)
+        : Panel(inspection, "Repeat score for each lag in frames: how much the row evidence repeats after the lag") {}
 
     void paint(juce::Graphics& g) override {
+        paintTitle(g);
         const auto plot = plotArea(4, axisHeight);
         const auto& repeat = in.analysis.repeat;
         if (repeat.size() < 3) {
@@ -507,13 +533,14 @@ public:
 class GridBars : public Panel
 {
 public:
-    explicit GridBars(Inspection& inspection) : Panel(inspection) {
+    explicit GridBars(Inspection& inspection) : Panel(inspection, "Row evidence on each grid length, full tune") {
         for (const auto& grid : in.analysis.grids)
             if (grid.rows.size() == 1)
                 uniform.push_back(grid);
     }
 
     void paint(juce::Graphics& g) override {
+        paintTitle(g);
         const auto plot = plotArea(4, axisHeight);
         if (uniform.empty()) {
             g.setColour(Theme::textSecondary);
@@ -572,11 +599,12 @@ private:
 class BeatTable : public Panel
 {
 public:
-    using Panel::Panel;
+    explicit BeatTable(Inspection& inspection) : Panel(inspection, "Beats that the detection compared") {}
 
-    int idealHeight() const { return rowHeight * ((int) in.analysis.beats.size() + 2); }
+    int idealHeight() const { return titleHeight + rowHeight * ((int) in.analysis.beats.size() + 2); }
 
     void paint(juce::Graphics& g) override {
+        paintTitle(g);
         static const char* const headers[] = {"Beat", "Frames", "BPM", "Drums and bass", "Accents", "Repeat"};
         g.setFont(smallFont());
         g.setColour(Theme::textSecondary);
@@ -615,7 +643,7 @@ public:
     }
 
     void mouseDown(const juce::MouseEvent& e) override {
-        const int row = (int) e.position.y / rowHeight - 1;
+        const int row = ((int) e.position.y - titleHeight) / rowHeight - 1;
         if (row >= 0 && row < (int) in.analysis.beats.size())
             in.setLag(in.analysis.beats[(size_t) row].frames);
     }
@@ -632,77 +660,86 @@ private:
         static constexpr float starts[] = {0.0f, 0.32f, 0.44f, 0.56f, 0.74f, 0.87f, 1.0f};
         const float width = (float) (getWidth() - gutter);
         return {(float) gutter + starts[column] * width,
-                (float) (row * rowHeight),
+                (float) (titleHeight + row * rowHeight),
                 (starts[column + 1] - starts[column]) * width,
                 (float) rowHeight};
     }
 };
 
 //==============================================================================
-/** How the detection came to its answer: short sentences, one fact each. */
-juce::String describe(const Inspection& in) {
+/** One thing the detection answered, and what it found about it: a sentence or two to a line. */
+struct Fact
+{
+    juce::String name;
+    juce::StringArray lines;
+};
+
+/** How the detection came to its answer: the tempo, the rows and the meter, in short sentences. */
+std::vector<Fact> describe(const Inspection& in) {
     using RowsFrom = Analysis::RowsFrom;
     const auto& a = in.analysis;
     const auto minimum = " The minimum is " + percentText(PsgTempo::minGridShare) + ".";
-    juce::StringArray lines;
+    std::vector<Fact> facts;
 
     if (const auto& r = a.result) {
-        juce::String tempo =
-            "Tempo: " + juce::String(r->bpm, 2) + " BPM. A beat is " + juce::String(r->framesPerBeat) + " frames";
+        juce::String tempo = juce::String(r->bpm, 2) + " BPM. A beat is " + juce::String(r->framesPerBeat) + " frames";
         if (!r->rowsArePulse || r->rowsPerBeat > 1)
             tempo << ": " << juce::String(r->rowsPerBeat)
                   << (r->rowsArePulse && a.grooveAgreement <= 0.0 ? " pulse" : " row")
                   << (r->rowsPerBeat == 1 ? "" : "s") << " of " << rowsText(r->rowFrames) << " frames";
-        lines.add(tempo + ".");
+        facts.push_back({"Tempo", {tempo + "."}});
     } else {
-        lines.add("Tempo: not detected.");
+        facts.push_back({"Tempo", {"Not detected."}});
     }
 
     const Analysis::Grid* best = nullptr;
-    juce::String patterns;
+    juce::StringArray patterns;
     for (const auto& grid : a.grids) {
         if (grid.rows.size() == 1 && (best == nullptr || grid.share > best->share))
             best = &grid;
         if (grid.rows.size() > 1)
-            patterns << (grid.rows.size() == 2 ? " Best swing: " : " Best groove: ") << rowsText(grid.rows)
-                     << " frames, " << percentText(grid.share) << ".";
+            patterns.add(juce::String(grid.rows.size() == 2 ? "Best swing: " : "Best groove: ") + rowsText(grid.rows)
+                         + " frames, " + percentText(grid.share) + ".");
     }
-    juce::String rows = a.rowsFrom == RowsFrom::evidence     ? "Rows: detected."
-                        : a.rowsFrom == RowsFrom::noteStarts ? "Rows: detected from note starts."
-                                                             : "Rows: not detected.";
+    Fact rows{"Rows", {}};
     if (a.rowsFrom == RowsFrom::evidence)
-        rows << " A grid of " << rowsText(a.result->rowFrames) << " frames has " << percentText(a.result->gridShare)
-             << " of the row evidence." << minimum;
+        rows.lines.add("Detected. A grid of " + rowsText(a.result->rowFrames) + " frames has "
+                       + percentText(a.result->gridShare) + " of the row evidence." + minimum);
     else if (best == nullptr)
-        rows << " The tune has too little row evidence.";
+        rows.lines.add(juce::String(a.rowsFrom == RowsFrom::noteStarts ? "Detected from note starts." : "Not detected.")
+                       + " The tune has too little row evidence.");
     else
-        rows << " The best grid, " << juce::String(best->rows[0]) << " frames, has only " << percentText(best->share)
-             << " of the row evidence." << minimum;
+        rows.lines.add(juce::String(a.rowsFrom == RowsFrom::noteStarts ? "Detected from note starts." : "Not detected.")
+                       + " The best grid, " + juce::String(best->rows[0]) + " frames, has only "
+                       + percentText(best->share) + " of the row evidence." + minimum);
 
-    if (a.rowsFrom == RowsFrom::noteStarts)
-        rows << " A grid of the note starts has " << percentText(a.result->gridShare)
-             << ". The detector uses this grid.";
-    else if (a.rowsFrom == RowsFrom::pulse) {
+    if (a.rowsFrom == RowsFrom::noteStarts) {
+        rows.lines.add("A grid of the note starts has " + percentText(a.result->gridShare)
+                       + ". The detector uses this grid.");
+    } else if (a.rowsFrom == RowsFrom::pulse) {
         const bool whole = a.result->framesPerBeat % a.pulse == 0;  // the beat is a whole number of pulses
-        rows << " The evidence repeats after each " << juce::String(a.pulse) << " frames";
-        if (whole)
-            rows << ".";
+        const auto repeats = "The evidence repeats after each " + juce::String(a.pulse) + " frames";
+        if (!whole)
+            rows.lines.add(repeats
+                           + ", but 2 and 4 pulses are not at the repeat peaks. The beat is at the nearest peak: "
+                           + juce::String(a.result->framesPerBeat) + " frames.");
         else
-            rows << ", but 2 and 4 pulses are not at the repeat peaks. The beat is at the nearest peak: "
-                 << juce::String(a.result->framesPerBeat) << " frames.";
+            rows.lines.add(repeats + (a.grooveAgreement > 0.0 ? "." : ". This pulse replaces the rows."));
         if (a.grooveAgreement > 0.0)
-            rows << " The rows in the beat are " << rowsText(a.result->rowFrames) << " frames in "
-                 << percentText(a.grooveAgreement) << " of the tune. The minimum is "
-                 << percentText(PsgTempo::minGrooveAgreement) << ".";
-        else if (whole)
-            rows << " This pulse replaces the rows.";
-    } else if (a.rowsFrom == RowsFrom::nothing && a.pulse > 0)
-        rows << " The evidence repeats after each " << juce::String(a.pulse)
-             << " frames, but no beat of this pulse has the minimum repeat score of "
-             << juce::String(PsgTempo::minBeatRepeat, 2) << ".";
-    else if (a.rowsFrom == RowsFrom::nothing && best != nullptr)
-        rows << (a.repeat.empty() ? " The tune is too short to measure repeats." : " No interval has a clear repeat.");
-    lines.add(rows + patterns);
+            rows.lines.add("The rows in the beat are " + rowsText(a.result->rowFrames) + " frames in "
+                           + percentText(a.grooveAgreement) + " of the tune. The minimum is "
+                           + percentText(PsgTempo::minGrooveAgreement) + ".");
+    } else if (a.rowsFrom == RowsFrom::nothing && a.pulse > 0) {
+        rows.lines.add("The evidence repeats after each " + juce::String(a.pulse)
+                       + " frames, but no beat of this pulse has the minimum repeat score of "
+                       + juce::String(PsgTempo::minBeatRepeat, 2) + ".");
+    } else if (a.rowsFrom == RowsFrom::nothing && best != nullptr) {
+        rows.lines.add(a.repeat.empty() ? "The tune is too short to measure repeats."
+                                        : "No interval has a clear repeat.");
+    }
+    if (!patterns.isEmpty())
+        rows.lines.add(patterns.joinIntoString(" "));
+    facts.push_back(rows);
 
     if (const auto& r = a.result) {
         const bool triple = a.meterMargin > 0.0;
@@ -710,13 +747,60 @@ juce::String describe(const Inspection& in) {
                                            : "Bars of 4 beats repeat better than bars of 3 beats";
         const auto difference = juce::String(std::abs(a.meterMargin), 2);
         const auto least = " The minimum is " + juce::String(PsgTempo::minMeterMargin, 2) + ".";
-        lines.add(r->meterClear
-                      ? juce::String("Meter: ") + (triple ? "3/4. " : "4/4. ") + better + ". The difference is "
-                            + difference + "." + least
-                      : "Meter: not clear. " + better + ", but the difference is only " + difference + "." + least);
+        facts.push_back(
+            {"Meter",
+             {r->meterClear ? juce::String(triple ? "3/4. " : "4/4. ") + better + ". The difference is " + difference
+                                  + "." + least
+                            : "Not clear. " + better + ", but the difference is only " + difference + "." + least}});
     }
-    return lines.joinIntoString("\n");
+    return facts;
 }
+
+/** The detection's answer: each fact's name, and its lines beside it. */
+class FactsView : public juce::Component
+{
+public:
+    explicit FactsView(std::vector<Fact> factsToShow) : facts(std::move(factsToShow)) {}
+
+    /** The height the facts take when the view is this wide. */
+    int heightFor(int width) const {
+        float height = 0.0f;
+        for (const auto& fact : facts) {
+            for (const auto& line : fact.lines)
+                height += layoutOf(line, Theme::textPrimary, width - nameWidth).getHeight();
+            height += factGap;
+        }
+        return (int) std::ceil(height - factGap);
+    }
+
+    void paint(juce::Graphics& g) override {
+        float y = 0.0f;
+        for (const auto& fact : facts) {
+            // the name is laid out as its lines are, so both sit on one baseline
+            const auto name = layoutOf(fact.name, Theme::textSecondary, nameWidth);
+            name.draw(g, {0.0f, y, (float) nameWidth, name.getHeight()});
+            for (const auto& line : fact.lines) {
+                const auto layout = layoutOf(line, Theme::textPrimary, getWidth() - nameWidth);
+                layout.draw(g, {(float) nameWidth, y, (float) (getWidth() - nameWidth), layout.getHeight()});
+                y += layout.getHeight();
+            }
+            y += factGap;
+        }
+    }
+
+private:
+    static constexpr float factGap = 3.0f;  // between one fact's lines and the next fact
+
+    static juce::TextLayout layoutOf(const juce::String& line, juce::Colour colour, int width) {
+        juce::AttributedString text;
+        text.append(line, smallFont(), colour);
+        juce::TextLayout layout;
+        layout.createLayout(text, (float) juce::jmax(1, width));
+        return layout;
+    }
+
+    std::vector<Fact> facts;
+};
 
 //==============================================================================
 class TempoInspector : public juce::Component, private juce::Timer
@@ -728,18 +812,18 @@ public:
         setWantsKeyboardFocus(true);
         for (auto* panel : std::initializer_list<juce::Component*>{&map_, &phases_, &strip_, &repeat_, &bars_, &table_})
             addAndMakeVisible(panel);
-        for (auto* button : std::initializer_list<juce::Button*>{&play_, &metronome_, &phaseMap_, &apply_, &copy_}) {
+        for (auto* button :
+             std::initializer_list<juce::Button*>{&play_, &metronome_, &phaseMap_, &apply_ /*, &copy_*/}) {
             button->setWantsKeyboardFocus(false);
             addAndMakeVisible(button);
         }
-        for (auto* text : {&trace_, &cursor_, &status_}) {
+        for (auto* text : {&cursor_, &status_}) {
             text->setFont(smallFont());
             text->setBorderSize({});  // its text starts at the plots' left edge
             text->setMinimumHorizontalScale(1.0f);
             addAndMakeVisible(text);
         }
-        trace_.setJustificationType(juce::Justification::topLeft);
-        trace_.setText(describe(in), juce::dontSendNotification);
+        addAndMakeVisible(facts_);
         status_.setColour(juce::Label::textColourId, Theme::textSecondary);
         status_.setJustificationType(juce::Justification::topLeft);
 
@@ -755,11 +839,13 @@ public:
                                  juce::dontSendNotification);
         phaseMap_.onClick = [this] { showMap(); };
         apply_.onClick = [this] { applyCursorBeat(); };
-        copy_.onClick = [this] {
-            if (auto* c = clip_.get())
-                juce::SystemClipboard::copyTextToClipboard(c->getName().quoted() + ","
-                                                           + juce::String(in.bpmOf(in.lag), 2));
-        };
+        // Copy label: the clip's name and the cursor's BPM as a line for scripts/psg_tempo_labels.csv.
+        // Off: nobody labels tunes that way yet.
+        // copy_.onClick = [this] {
+        //     if (auto* c = clip_.get())
+        //         juce::SystemClipboard::copyTextToClipboard(c->getName().quoted() + ","
+        //                                                    + juce::String(in.bpmOf(in.lag), 2));
+        // };
 
         in.lagChanged = [this] {
             cursor_.setText("Cursor: " + juce::String(in.lag) + " frames, " + juce::String(in.bpmOf(in.lag), 2)
@@ -775,7 +861,7 @@ public:
         };
         const auto& result = in.analysis.result;
         in.setLag(result ? result->framesPerBeat : in.analysis.pulse > 0 ? in.analysis.pulse : 24);
-        setSize(860, 760);
+        setSize(880, 860);
         showMap();
         startTimerHz(30);
     }
@@ -788,31 +874,44 @@ public:
     void paint(juce::Graphics& g) override { g.fillAll(Theme::background); }
 
     void resized() override {
-        auto area = getLocalBounds().reduced(10);
+        auto area = getLocalBounds()
+                        .withTrimmedLeft(grid * 2)
+                        .withTrimmedTop(grid * 2)
+                        .withTrimmedRight(grid * 2 + gutter)
+                        .withTrimmedBottom(grid * 2);
         // Buttons and text start where the plots do, right of the gutter that holds the plots' labels
-        auto buttons = area.removeFromTop(28).withTrimmedLeft(gutter);
+        auto buttons = area.removeFromTop(grid * 4).withTrimmedLeft(gutter);
         play_.setBounds(buttons.removeFromLeft(buttons.getHeight()));  // a square, as in the transport bar
-        buttons.removeFromLeft(8);
+        buttons.removeFromLeft(grid * 2);
+
         metronome_.setBounds(buttons.removeFromLeft(110));
         phaseMap_.setBounds(buttons.removeFromLeft(110));
-        copy_.setBounds(buttons.removeFromRight(100));
-        buttons.removeFromRight(8);
+        // copy_.setBounds(buttons.removeFromRight(100));
+        // buttons.removeFromRight(grid * 2);
         apply_.setBounds(buttons.removeFromRight(180));
-        cursor_.setBounds(buttons.withTrimmedLeft(8).withTrimmedRight(8));
-        area.removeFromTop(8);
-        trace_.setBounds(area.removeFromTop(4 * 17).withTrimmedLeft(gutter));  // four lines: the rows' line may wrap
-        area.removeFromTop(4);
-        status_.setBounds(area.removeFromBottom(2 * 17).withTrimmedLeft(gutter));
+        cursor_.setBounds(buttons.withTrimmedLeft(grid).withTrimmedRight(grid));
+        area.removeFromTop(grid * 2);
+
+        facts_.setBounds(area.removeFromTop(facts_.heightFor(area.getWidth() - gutter)).withTrimmedLeft(gutter));
+        area.removeFromTop(grid * 2);
+
+        status_.setBounds(area.removeFromBottom(grid * 4).withTrimmedLeft(gutter));
+        area.removeFromBottom(grid * 2);  // the status line stands apart from the table
+
         table_.setBounds(area.removeFromBottom(table_.idealHeight()));
-        area.removeFromBottom(8);
-        auto plots = area.removeFromBottom(150);
+        area.removeFromBottom(grid * 2);
+
+        auto plots = area.removeFromBottom(150 + titleHeight);
         bars_.setBounds(plots.removeFromRight(300));
         repeat_.setBounds(plots);
-        area.removeFromBottom(8);
-        strip_.setBounds(area.removeFromBottom(100));
-        area.removeFromBottom(4);
+        area.removeFromBottom(grid * 2);
+
+        strip_.setBounds(area.removeFromBottom(100 + titleHeight));
+        area.removeFromBottom(grid * 2);
+
         map_.setBounds(area);
         phases_.setBounds(area);
+
         map_.stripFrames = phases_.stripFrames = strip_.visibleFrames();
     }
 
@@ -909,9 +1008,10 @@ private:
     GridBars bars_;
     BeatTable table_;
     PlayButton play_;
-    juce::TextButton apply_{"Set as project tempo"}, copy_{"Copy label"};
+    juce::TextButton apply_{"Set as project tempo"};  // , copy_{"Copy label"};
     juce::ToggleButton metronome_{"Metronome"}, phaseMap_{"Phase map"};
-    juce::Label trace_, cursor_, status_;
+    FactsView facts_{describe(in)};
+    juce::Label cursor_, status_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TempoInspector)
 };

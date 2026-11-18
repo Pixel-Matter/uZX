@@ -8,7 +8,6 @@
 #include "../models/EditUtilities.h"
 #include "../formats/psg/TurboSound.h"
 #include "../plugins/uZX/aychip/AYPlugin.h"
-#include "../util/CommandLine.h"
 #include "../util/FileOps.h"
 #include "../util/Helpers.h"
 
@@ -149,30 +148,12 @@ void PlayerController::handleOpenFiles(const Array<File>& files) {
     }
 }
 
-void PlayerController::handleOpenCommandLine(const String& commandLine) {
-    Array<File> openable;
-    StringArray missing, unsupported;
-    for (const auto& f : CommandLine::getFiles(commandLine)) {
-        const bool known = Helpers::isTuneFile(f) || f.hasFileExtension("uzx");
-        if (f.existsAsFile() && known)
-            openable.add(f);
-        else if (f.existsAsFile())
-            unsupported.add(f.getFileName());
-        else if (known)  // what isn't a tune or a project may be an option's value
-            missing.add(f.getFullPathName());
-    }
+bool PlayerController::canOpen(const File& file) const {
+    return Helpers::isTuneFile(file) || file.hasFileExtension("uzx");
+}
 
-    if (! missing.isEmpty() || ! unsupported.isEmpty()) {
-        StringArray lines;
-        if (! missing.isEmpty())
-            lines.add("Not found:\n" + missing.joinIntoString("\n"));
-        if (! unsupported.isEmpty())
-            lines.add("Not a PSG file, a TAYM file, a tracker module or a project:\n" + unsupported.joinIntoString("\n"));
-        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Can't Open File", lines.joinIntoString("\n\n"),
-                                         "OK");
-    }
-    if (! openable.isEmpty())
-        handleOpenFiles(openable);
+void PlayerController::openFiles(const Array<File>& files) {
+    handleOpenFiles(files);
 }
 
 void PlayerController::handleOpenRecent(int fileIndex) {

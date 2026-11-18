@@ -62,14 +62,14 @@ bool MoToolApp::moreThanOneInstanceAllowed()  {
 
 void MoToolApp::initialise(const String& commandLineParameters) {
     // Linux and Windows pass the files to open on the command line; macOS hands Finder's to anotherInstanceStarted
-    if (target_ == Target::uZXPlayer)
-        playerController_->handleOpenCommandLine(commandLineParameters);
+    if (target_ != Target::uZXTuning)
+        getActiveController().handleOpenCommandLine(commandLineParameters);
 }
 
 void MoToolApp::anotherInstanceStarted(const String& commandLine) {
-    if (target_ == Target::uZXPlayer && commandLine.isNotEmpty()) {
-        playerController_->handleOpenCommandLine(commandLine);
-        playerController_->bringWindowToFront();
+    if (target_ != Target::uZXTuning && commandLine.isNotEmpty()) {
+        getActiveController().handleOpenCommandLine(commandLine);
+        getActiveController().bringWindowToFront();
     }
 }
 

@@ -24,6 +24,7 @@
 #include "../plugins/uZX/midi_logger/MidiLoggerPlugin.h"
 #include "../plugins/uZX/scope/ScopePlugin.h"
 
+#include "../util/CommandLine.h"
 #include "../util/FileOps.h"
 #include "../util/Helpers.h"
 #include "controllers/App.h"
@@ -1025,6 +1026,32 @@ void BaseController::bringWindowToFront() {
     window_.setVisible(true);
 }
 
+void BaseController::handleOpenCommandLine(const String& commandLine) {
+    Array<File> openable;
+    StringArray missing, unsupported;
+    for (const auto& f : CommandLine::getFiles(commandLine)) {
+        if (f.existsAsFile() && canOpen(f))
+            openable.add(f);
+        else if (f.existsAsFile())
+            unsupported.add(f.getFileName());
+        else if (canOpen(f))  // what the app doesn't open may be an option's value
+            missing.add(f.getFullPathName());
+    }
+
+    if (! missing.isEmpty() || ! unsupported.isEmpty()) {
+        StringArray lines;
+        if (! missing.isEmpty())
+            lines.add("Not found:\n" + missing.joinIntoString("\n"));
+        if (! unsupported.isEmpty())
+            lines.add(JUCEApplication::getInstance()->getApplicationName() + " doesn't open these files:\n"
+                      + unsupported.joinIntoString("\n"));
+        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Can't Open File", lines.joinIntoString("\n\n"),
+                                         "OK");
+    }
+    if (! openable.isEmpty())
+        openFiles(openable);
+}
+
 void BaseController::changeListenerCallback(ChangeBroadcaster* source) {
     if (source == &engine_.getDeviceManager()) {
         devicesChanged();
@@ -1177,6 +1204,15 @@ void ArrangerController::devicesChanged() {
     //     }
     // }
     // edit_->restartPlayback();
+}
+
+bool ArrangerController::canOpen(const File& file) const {
+    return file.hasFileExtension(EditFileOps::getDefaultEditFileSuffix());
+}
+
+void ArrangerController::openFiles(const Array<File>& files) {
+    EditFileOps::setRecentEditsDirectory(engine_.getPropertyStorage(), files.getFirst());
+    setEdit(createOrLoadEdit(files.getFirst()), true);
 }
 
 void ArrangerController::handleNew() {

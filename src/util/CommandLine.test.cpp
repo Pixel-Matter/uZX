@@ -51,7 +51,9 @@ public:
         {
             const auto cwd = juce::File::getCurrentWorkingDirectory();
             dir.setAsCurrentWorkingDirectory();
-            expect(getFiles("song_2.psg") == juce::Array<juce::File>{two});
+            // the working directory is the real path: on macOS the temp folder is a link to /private/var
+            const auto files = getFiles("song_2.psg");
+            expect(files.size() == 1 && files[0].getFileName() == "song_2.psg" && files[0].existsAsFile());
             cwd.setAsCurrentWorkingDirectory();
         }
 

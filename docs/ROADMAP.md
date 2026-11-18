@@ -29,7 +29,7 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] **DMG packaging** with an Applications symlink
 - [x] **Tracktion Engine** — the fork now sits on upstream `develop` @ `9d622faa` (2026-10-20), the last commit before upstream moved to JUCE 9, with JUCE 8.0.17-security. v3.2.0 is still upstream's latest tag; revisit JUCE 9 when v3.5 is tagged
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
-- [ ] **UX quality review** review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
+- [ ] **UX quality review** — open findings in [ux-review.md](ux-review.md); review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
 - [ ] Good human proof-read **user guide**
 - [ ] **PixelMatter.org/uZX** page, synced on releases
 - [ ] **Release notes** — CHANGELOG entry for the tag

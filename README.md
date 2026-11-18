@@ -1,8 +1,12 @@
 # µZX — Chiptune Music Tool
 
 [![CI](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml/badge.svg)](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml)
+[![Studio release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=v*&label=studio)](https://github.com/Pixel-Matter/uZX/releases)
+[![Player release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=player-v*&label=player)](https://github.com/Pixel-Matter/uZX/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENCE.md)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20iOS%20%7C%20Android-lightgrey)]()
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20iOS%20%7C%20Android-lightgrey)](https://github.com/Pixel-Matter/uZX/releases)
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-00599C?logo=cplusplus)](https://en.cppreference.com/w/cpp/23)
+[![Built with JUCE](https://img.shields.io/badge/built%20with-JUCE-8DC63F)](https://juce.com/)
 
 A modern tool for composing and playing back chiptune music for platforms using the AY-3-8910/YM2149 sound chips — ZX Spectrum, Amstrad CPC, MSX, Atari ST, and others. While the name references ZX Spectrum, the architecture is chip-agnostic and designed to support additional sound chips in the future. Built with JUCE, targeting macOS, Windows, and Linux, with iOS and Android possible. Features a timeline-based DAW interface with precise chip emulation.
 

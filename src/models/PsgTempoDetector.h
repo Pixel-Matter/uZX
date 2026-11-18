@@ -36,7 +36,8 @@ struct Result
     double gridShare = 0.0;  ///< 0..1: how much note-start energy lies on the row grid
     /** Machine frames before the first downbeat: the first row, or for a module with patterns the
         first bar line, where most of its patterns start. 0 also when the first two bars don't
-        follow the grid (an intro at another speed). */
+        follow the grid (an intro at another speed), unless the rows are a clear pulse with several
+        to the beat: its first pulse is the downbeat then. */
     int firstRowFrame = 0;
     int gridPhase = 0;         ///< machine frame the row grid starts at, kept when firstRowFrame is zeroed
     bool silentLeadIn = true;  ///< nothing is audible before firstRowFrame

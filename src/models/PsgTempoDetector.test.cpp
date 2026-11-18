@@ -863,6 +863,21 @@ public:
                                       0.01,
                                       String(e.prefix) + " imported tempo");
         }
+
+        // "Kick Da Break" has only a pulse, 9 frames, four to the beat, and starts 6 frames before a bar
+        // line: the first pattern of its module is that much longer than the others. The opening does not
+        // follow the pulse, a swing's rows being on and off it, so the pulse itself places the tune.
+        if (const auto files = dir.findChildFiles(File::findFiles, false, "09_fatalsnipe*.psg"); files.size() == 1) {
+            PsgFile psg(files.getFirst());
+            expect(psg.ensureRead());
+            const auto result = PsgTempo::detect(psg.getData());
+            expect(result.hasValue());
+            if (result) {
+                expect(result->rowsArePulse && result->rowsPerBeat == 4);
+                expectEquals(result->firstRowFrame, 6, "the first downbeat is the first pulse");
+                expect(!result->silentLeadIn, "the six frames before it sound: a pickup");
+            }
+        }
     }
 
     /** Development report, run only when UZX_TEMPO_CORPUS names a folder of PSG files: one
@@ -949,8 +964,9 @@ public:
         starts best and its fit (see bestFixedGrid), then the detected pattern ("~" before a pulse) or "-", its grid
         share, the share of the module's rows on the detected grid, the share of the detected
         rows that are the module's, rows and frames per beat from the module's rows and
-        from the detected ones, and the frames before the first bar line as the app takes it
-        from the module's patterns.
+        from the detected ones, and where bars start: the frames before the first bar line as the
+        app takes it from the module's patterns, the frame the detected grid starts at, and the
+        frames before the first downbeat as detected.
         With UZX_TEMPO_DUMP naming a folder, every chip is also written there as <name>.psg
         (<name>.2.psg for a second chip) with its event cells as <name>.cells (four little-endian
         uint16 a frame, see PsgRowEvidence::cellsOf), the row starts as <name>.rows and the pattern
@@ -985,6 +1001,7 @@ public:
                 return rows;
             };
 
+            const auto got = PsgTempo::detect(chips);
             const auto [fit, fixedRows] = bestFixedGrid(starts);
             StringArray fields{"ROWS",
                                file.getFileNameWithoutExtension(),
@@ -994,7 +1011,7 @@ public:
                                fixedRows.empty() ? String("-") : rowPattern(fixedRows),
                                String(fit, 3)};
 
-            if (const auto got = PsgTempo::detect(chips)) {
+            if (got) {
                 const auto rows = dataRows(*got);
                 const auto phase = (size_t) (got->gridPhase / playRate);
                 std::vector<size_t> span(starts.back() - starts.front() + 1);
@@ -1011,7 +1028,11 @@ public:
             } else {
                 fields.addArray(StringArray{"-", "0", "0", "0", String(own->rowsPerBeat), String(own->framesPerBeat), "0", "0"});
             }
+            // where bars start: as the app takes it from the module's patterns, then the grid's first
+            // row and the frames before the first downbeat as detected from the registers
             fields.add(String(own->firstRowFrame / playRate));
+            fields.add(String(got ? got->gridPhase / playRate : 0));
+            fields.add(String(got ? got->firstRowFrame / playRate : 0));
             logMessage(fields.joinIntoString("\t"));
 
             if (dumpName.isEmpty())

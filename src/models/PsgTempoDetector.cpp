@@ -38,6 +38,7 @@ constexpr double bpmRangeFps = 50.0;
 static_assert((minBeatFrames - 1) * maxBpm < bpmRangeFps * 60.0 && minBeatFrames * maxBpm >= bpmRangeFps * 60.0);
 static_assert(maxBeatFrames * minBpm <= bpmRangeFps * 60.0 && (maxBeatFrames + 1) * minBpm > bpmRangeFps * 60.0);
 constexpr double minOpeningOnGrid = 0.8;  // share of early note starts that must sit on row starts
+constexpr double minPulseShare = 0.35;    // of the evidence on a pulse's own frames, for it to place the clip
 constexpr int minOpeningOnsets = 4;       // fewer early note starts than this: leave the clip where it is
 
 /** Per-frame note-start energy: volume jumps with new-note evidence (the channel
@@ -1036,7 +1037,13 @@ Analysis analyse(const std::vector<const uZX::PsgData*>& chips,
     const auto barFrames = (size_t) (result.framesPerBeat * result.beatsPerBar / playRate);
     const int firstRow = speed->phase;
     result.gridPhase = firstRow * playRate;
-    if (rowsKnown || openingFollowsGrid(*energy, *speed, 2 * barFrames))
+    // A grid that holds through the tune places the clip only when the opening follows it: an intro at
+    // another speed would give a bogus lead-in. A tune with only a pulse hardly ever has its opening on
+    // that for certain, so a clear pulse places the clip by itself: it holds the evidence, and the beat
+    // has several, so the first pulse is the downbeat as the first row is. The one pulse of a beat says
+    // only where the tune is loudest, which may be the backbeat, and places nothing.
+    const bool pulsePlaces = result.rowsArePulse && result.rowsPerBeat > 1 && speed->share >= minPulseShare;
+    if (rowsKnown || pulsePlaces || openingFollowsGrid(*energy, *speed, 2 * barFrames))
         result.firstRowFrame = firstRow * playRate;
     // A module's patterns start bars: the first bar line is where most of them start, not the first row
     // when a pickup or an intro of an odd length comes before

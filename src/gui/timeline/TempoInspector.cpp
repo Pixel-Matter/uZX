@@ -889,7 +889,7 @@ public:
         // copy_.setBounds(buttons.removeFromRight(100));
         // buttons.removeFromRight(grid * 2);
         apply_.setBounds(buttons.removeFromRight(180));
-        cursor_.setBounds(buttons.withTrimmedLeft(grid).withTrimmedRight(grid));
+        cursor_.setBounds(buttons.removeFromRight(180));
         area.removeFromTop(grid * 2);
 
         facts_.setBounds(area.removeFromTop(facts_.heightFor(area.getWidth() - gutter)).withTrimmedLeft(gutter));

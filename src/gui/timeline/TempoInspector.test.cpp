@@ -70,7 +70,7 @@ public:
             expectWithinAbsoluteError(clip->getPsg().getEffectiveFps(*clip), fps, 1e-6);
         }
 
-        beginTest("The inspector's click is not left on in the project");
+        beginTest("The inspector's metronome is not left on in the project");
         {
             auto edit = tracktion::Edit::createSingleTrackEdit(engine);
             auto tune = makeTune(3000, 6);
@@ -79,7 +79,7 @@ public:
                 *tracktion::getAudioTracks(*edit)[0], tune, {{tracktion::TimePosition(), length}, {}}, "tune");
             {
                 auto inspector = createTempoInspector(*clip);
-                edit->clickTrackEnabled = true;  // as the inspector's Click button does
+                edit->clickTrackEnabled = true;  // as the inspector's Metronome switch does
             }
             expect(!edit->clickTrackEnabled.get());
         }

@@ -39,6 +39,24 @@ struct TransportBarOptions {
     bool showAutomation = true;
 };
 
+//==============================================================================
+/** The Play button: it triggers the Play command, shows a pause icon while the edit plays and is
+    lit then. The transport bar's, and that of any other window that plays the edit. */
+class PlayButton : public IconButton,
+                   private ChangeListener
+{
+public:
+    explicit PlayButton(te::Edit&);
+    ~PlayButton() override;
+
+private:
+    void changeListenerCallback(ChangeBroadcaster*) override;
+    void showState();
+
+    te::SafeSelectable<te::Edit> edit_;  // a window may outlive the edit it plays
+    bool playing_ = false;
+};
+
 class TransportBar  : public Component,
                       private ValueTree::Listener,
                       private ChangeListener,
@@ -83,9 +101,9 @@ private:
     MasterLevelMeter masterMeter_ {edit_};
     CpuLoadMeter cpuMeter_ {edit_.engine};
 
-    IconButton rewindButton_    { "Rewind", Icons::toStart() },
-               playPauseButton_ { "Play", Icons::play() },
-               recordButton_    { "Record", Icons::record() },
+    IconButton rewindButton_    { "Rewind", Icons::toStart() };
+    PlayButton playPauseButton_ { edit_ };
+    IconButton recordButton_    { "Record", Icons::record() },
                loopButton_      { "Loop", Icons::loop() };  // lit while looping
     FollowButton followButton_  { "Follow", Icons::followScroll() };
     TextButton autoReadButton_  { "Read" },
@@ -113,7 +131,6 @@ private:
     void viewRangeChanged() override {}
     void followChanged() override;
 
-    void updatePlayButton(bool isPlaying);
     void updateRecordButton(bool isRecording);
     void updateAutomationButtons();
     void updateTimeLabels(te::TimePosition pos);

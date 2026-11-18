@@ -11,6 +11,7 @@
 #include "../../models/PsgRowEvidence.h"
 #include "../../models/PsgTempoDetector.h"
 #include "../common/LookAndFeel.h"
+#include "../common/Transport.h"
 #include "../common/Utilities.h"
 
 namespace MoTool {
@@ -27,10 +28,12 @@ constexpr float minMapScale = 0.1f;           // the least share the grid map's 
 constexpr int minMapEvents = 6;  // frames with row evidence a column needs: fewer lie on any grid by chance
 constexpr float stripFrameWidth = 3.0f;
 constexpr int gutter = 44;  // left of every plot, for its labels, so the plots line up
-constexpr int rowHeight = 18;
+constexpr int rowHeight = 20;
+constexpr int textHeight = 16;  // of a line of the small font
+constexpr int axisHeight = 18;  // under a plot, for its axis labels
 
 juce::Font smallFont() {
-    return juce::Font(juce::FontOptions(11.0f));
+    return juce::Font(juce::FontOptions(13.0f));
 }
 
 juce::String timeText(double seconds) {
@@ -43,6 +46,11 @@ juce::String rowsText(const std::vector<int>& rows) {
     for (int row : rows)
         lengths.add(juce::String(row));
     return lengths.joinIntoString("-");
+}
+
+/** A share of 0..1 in per cent; one under what chance gives reads as 0%. */
+juce::String percentText(double share) {
+    return juce::String(juce::jmax(0, juce::roundToInt(share * 100.0))) + "%";
 }
 
 juce::String scoreText(const juce::Optional<double>& score) {
@@ -117,7 +125,12 @@ protected:
                juce::Colour colour = Theme::textSecondary) const {
         g.setColour(colour);
         g.setFont(smallFont());
-        g.drawText(text, 0, juce::roundToInt(centreY) - 7, gutter - 6, 14, juce::Justification::centredRight);
+        g.drawText(text,
+                   0,
+                   juce::roundToInt(centreY) - textHeight / 2,
+                   gutter - 6,
+                   textHeight,
+                   juce::Justification::centredRight);
     }
 
     Inspection& in;
@@ -147,7 +160,7 @@ public:
     }
 
     void paint(juce::Graphics& g) override {
-        const auto plot = plotArea(0, 16);
+        const auto plot = plotArea(0, axisHeight);
         if (shares.empty())
             return;
         const float cw = columnWidth(), ch = plot.getHeight() / (float) (maxPeriod - minPeriod + 1);
@@ -182,13 +195,13 @@ public:
                            x,
                            (int) plot.getBottom() + 2,
                            60,
-                           14,
+                           textHeight,
                            juce::Justification::centredLeft);
-        g.drawText("Brightest: " + juce::String(scale, 2),
+        g.drawText("Brightest: " + percentText(scale),
                    (int) plot.getRight() - scaleWidth,
                    (int) plot.getBottom() + 2,
                    scaleWidth,
-                   14,
+                   textHeight,
                    juce::Justification::centredRight);
 
         // the frames the strip shows, and the playhead
@@ -198,7 +211,7 @@ public:
                    juce::jmax(2.0f, xOf(in.viewFrame + stripFrames) - xOf(in.viewFrame)),
                    2.0f);
         if (in.playFrame >= 0 && in.playFrame < in.numFrames()) {
-            g.setColour(Theme::highlight);
+            g.setColour(Theme::success);
             g.fillRect(xOf(in.playFrame), plot.getY(), 1.0f, plot.getHeight());
         }
     }
@@ -207,16 +220,16 @@ public:
     void mouseDrag(const juce::MouseEvent& e) override { in.seek(frameAt(e.position.x)); }
 
     void mouseMove(const juce::MouseEvent& e) override {
-        const auto plot = plotArea(0, 16);
+        const auto plot = plotArea(0, axisHeight);
         const int column = frameAt(e.position.x) / mapHop;
         const int period =
             minPeriod + (int) ((e.position.y - plot.getY()) / plot.getHeight() * (float) (maxPeriod - minPeriod + 1));
         if (!plot.contains(e.position) || column >= (int) shares.size() || period > maxPeriod)
             return;
-        in.say("At " + timeText(column * mapHop / in.fps) + ", "
-               + juce::String(shares[(size_t) column][(size_t) (period - minPeriod)], 2)
-               + " of the row evidence lies on one grid of " + juce::String(period) + " frames. A row grid needs "
-               + juce::String(PsgTempo::minGridShare, 2) + " over the whole tune.");
+        in.say("At " + timeText(column * mapHop / in.fps) + ", a grid of " + juce::String(period) + " frames has "
+               + percentText(shares[(size_t) column][(size_t) (period - minPeriod)])
+               + " of the row evidence. A row grid must have " + percentText(PsgTempo::minGridShare)
+               + " in the full tune. Click to move the playhead.");
     }
 
     int stripFrames = 0;  // how many frames the evidence strip shows, for its mark under the map
@@ -250,7 +263,7 @@ public:
         const float rh = plot.getHeight() / 5.0f;
         auto xOf = [&](int frame) { return plot.getX() + (float) (frame - first) * stripFrameWidth; };
 
-        static const char* const names[] = {"A", "B", "C", "chip", "rows"};
+        static const char* const names[] = {"A", "B", "C", "Chip", "Sum"};
         for (int row = 0; row < 5; ++row) {
             label(g, names[row], plot.getY() + ((float) row + 0.5f) * rh);
             for (int frame = juce::jmax(0, first); frame < first + count; ++frame) {
@@ -279,7 +292,7 @@ public:
                 g.fillRect(xOf(frame), plot.getBottom() + 1.0f, 1.0f, 8.0f);
 
         if (in.playFrame >= first && in.playFrame < first + count) {
-            g.setColour(Theme::highlight);
+            g.setColour(Theme::success);
             g.fillRect(xOf(in.playFrame), 0.0f, 1.0f, (float) getHeight());
         }
     }
@@ -291,8 +304,8 @@ public:
     }
 
     void mouseMove(const juce::MouseEvent&) override {
-        in.say("Ticks above: the rows detected, longer where a beat starts. Ticks below: the cursor's beats. "
-               "Click to move the playhead.");
+        in.say("Top marks: the detected rows. A long mark is the start of a beat. Bottom marks: the beats of the "
+               "cursor. Click to move the playhead.");
     }
 };
 
@@ -306,12 +319,12 @@ public:
     using Panel::Panel;
 
     void paint(juce::Graphics& g) override {
-        const auto plot = plotArea(4, 16);
+        const auto plot = plotArea(4, axisHeight);
         const auto& repeat = in.analysis.repeat;
         if (repeat.size() < 3) {
             g.setColour(Theme::textSecondary);
             g.setFont(smallFont());
-            g.drawText("The tune is too short to tell what repeats", plot, juce::Justification::centred);
+            g.drawText("The tune is too short to measure repeats", plot, juce::Justification::centred);
             return;
         }
         const double top = juce::jmax(0.5, *std::max_element(repeat.begin() + 2, repeat.end()));
@@ -365,7 +378,7 @@ public:
                        juce::roundToInt(xOf(lag)) - 20,
                        (int) plot.getBottom() + 2,
                        40,
-                       14,
+                       textHeight,
                        juce::Justification::centred);
     }
 
@@ -373,7 +386,7 @@ public:
 
     /** The cursor goes to the lag under the mouse, or to a peak within two frames of it. */
     void mouseDrag(const juce::MouseEvent& e) override {
-        const auto plot = plotArea(4, 16);
+        const auto plot = plotArea(4, axisHeight);
         const auto& repeat = in.analysis.repeat;
         int lag = juce::jlimit(
             minPeriod,
@@ -388,9 +401,9 @@ public:
     }
 
     void mouseMove(const juce::MouseEvent&) override {
-        in.say("How alike the row evidence is to itself, by lag in frames. Shaded: the beats the BPM range allows. "
-               "Dashed: the "
-               "least a beat must repeat when no row grid holds. Click or drag to set the beat cursor.");
+        in.say("Repeat score for each lag in frames. A high score shows that the row evidence repeats after this lag. "
+               "Band: the beat lengths that the BPM range permits. Dashed line: the minimum score for a beat without a "
+               "row grid. Click or drag to set the cursor.");
     }
 };
 
@@ -406,11 +419,11 @@ public:
     }
 
     void paint(juce::Graphics& g) override {
-        const auto plot = plotArea(4, 16);
+        const auto plot = plotArea(4, axisHeight);
         if (uniform.empty()) {
             g.setColour(Theme::textSecondary);
             g.setFont(smallFont());
-            g.drawText("Too little row evidence for a grid", plot, juce::Justification::centred);
+            g.drawText("The tune has too little row evidence", plot, juce::Justification::centred);
             return;
         }
         const float bw = plot.getWidth() / (float) uniform.size();
@@ -427,14 +440,14 @@ public:
             g.fillRect(x + 1.0f, yOf(grid.share), bw - 2.0f, plot.getBottom() - yOf(grid.share));
             g.setColour(grid.rows[0] == in.lag ? Theme::textPrimary : Theme::textSecondary);
             g.drawText(juce::String(grid.rows[0]),
-                       juce::Rectangle<float>(x - 4.0f, plot.getBottom() + 2.0f, bw + 8.0f, 14.0f),
+                       juce::Rectangle<float>(x - 4.0f, plot.getBottom() + 2.0f, bw + 8.0f, (float) textHeight),
                        juce::Justification::centred);
         }
         g.setColour(Theme::border);
         const float dashes[] = {3.0f, 3.0f};
         g.drawDashedLine(
             {plot.getX(), yOf(PsgTempo::minGridShare), plot.getRight(), yOf(PsgTempo::minGridShare)}, dashes, 2);
-        label(g, juce::String(PsgTempo::minGridShare, 1), yOf(PsgTempo::minGridShare));
+        label(g, percentText(PsgTempo::minGridShare), yOf(PsgTempo::minGridShare));
     }
 
     void mouseDown(const juce::MouseEvent& e) override {
@@ -444,14 +457,14 @@ public:
 
     void mouseMove(const juce::MouseEvent& e) override {
         if (const auto* grid = gridAt(e.position.x))
-            in.say("Rows of " + juce::String(grid->rows[0]) + " frames hold " + juce::String(grid->share, 2)
-                   + " of the whole tune's row evidence; a grid needs " + juce::String(PsgTempo::minGridShare, 2)
-                   + ". Click to put the cursor there.");
+            in.say("A grid of " + juce::String(grid->rows[0]) + " frames has " + percentText(grid->share)
+                   + " of the row evidence in the full tune. The minimum is " + percentText(PsgTempo::minGridShare)
+                   + ". Click to set the cursor.");
     }
 
 private:
     const Analysis::Grid* gridAt(float x) const {
-        const auto plot = plotArea(4, 16);
+        const auto plot = plotArea(4, axisHeight);
         const int index = (int) ((x - plot.getX()) / plot.getWidth() * (float) uniform.size());
         return x >= plot.getX() && index >= 0 && index < (int) uniform.size() ? &uniform[(size_t) index] : nullptr;
     }
@@ -469,7 +482,7 @@ public:
     int idealHeight() const { return rowHeight * ((int) in.analysis.beats.size() + 2); }
 
     void paint(juce::Graphics& g) override {
-        static const char* const headers[] = {"Beat", "Frames", "BPM", "Drums and bass", "Accents", "Evidence"};
+        static const char* const headers[] = {"Beat", "Frames", "BPM", "Drums and bass", "Accents", "Repeat"};
         g.setFont(smallFont());
         g.setColour(Theme::textSecondary);
         for (int column = 0; column < 6; ++column)
@@ -491,11 +504,11 @@ public:
                 g.fillRect(cell(row, 0).withRight((float) getWidth()));
             }
             g.setColour(chosen || isCursor ? Theme::textPrimary : Theme::textSecondary);
-            const juce::String texts[] = {isCursor
-                                              ? juce::String("Cursor")
-                                              : juce::String(about ? "About " : "") + juce::String(beat.rowsPerBeat)
-                                                    + (pulses ? " pulse" : " row") + (beat.rowsPerBeat == 1 ? "" : "s")
-                                                    + (chosen ? ", detected" : ""),
+            const juce::String texts[] = {isCursor ? juce::String("Cursor")
+                                                   : juce::String(about ? "Approximately " : "")
+                                                         + juce::String(beat.rowsPerBeat) + (pulses ? " pulse" : " row")
+                                                         + (beat.rowsPerBeat == 1 ? "" : "s")
+                                                         + (chosen ? " (detected)" : ""),
                                           juce::String(beat.frames),
                                           juce::String(in.bpmOf(beat.frames), 1),
                                           scoreText(beat.patterns),
@@ -513,79 +526,91 @@ public:
     }
 
     void mouseMove(const juce::MouseEvent&) override {
-        in.say("Drums and bass: share of rows that sound like the row 2, 4 and 8 beats before. Accents: how the rows' "
-               "loudness recurs a beat on. Evidence: how alike the row evidence is 1, 2 and 4 beats on. Click a beat "
-               "to put the cursor on it.");
+        in.say("Drums and bass: the part of the rows that sound the same 2, 4 and 8 beats later. Accents: how well "
+               "loud rows repeat after 1 beat. Repeat: the repeat score for 1, 2 and 4 beats. Click a line to set the "
+               "cursor.");
     }
 
 private:
+    /** The beat's name takes the widest column: it can read "Approximately 4 pulses (detected)". */
     juce::Rectangle<float> cell(int row, int column) const {
-        const float width = (float) (getWidth() - gutter) / 6.0f;
-        return {(float) gutter + (float) column * width, (float) (row * rowHeight), width, (float) rowHeight};
+        static constexpr float starts[] = {0.0f, 0.32f, 0.44f, 0.56f, 0.74f, 0.87f, 1.0f};
+        const float width = (float) (getWidth() - gutter);
+        return {(float) gutter + starts[column] * width,
+                (float) (row * rowHeight),
+                (starts[column + 1] - starts[column]) * width,
+                (float) rowHeight};
     }
 };
 
 //==============================================================================
-/** How the detection came to its answer, in words. */
+/** How the detection came to its answer: short sentences, one fact each. */
 juce::String describe(const Inspection& in) {
     using RowsFrom = Analysis::RowsFrom;
     const auto& a = in.analysis;
+    const auto minimum = " The minimum is " + percentText(PsgTempo::minGridShare) + ".";
     juce::StringArray lines;
 
-    if (const auto& r = a.result)
-        lines.add(juce::String(r->bpm, 2) + " BPM: "
-                  + (r->rowsArePulse && r->rowsPerBeat == 1
-                         ? juce::String("a beat of ")
-                         : (r->rowsArePulse ? "a pulse of " : "rows of ") + rowsText(r->rowFrames) + " frames, "
-                               + juce::String(r->rowsPerBeat) + " to a beat of ")
-                  + juce::String(r->framesPerBeat) + " frames, " + juce::String(r->beatsPerBar) + "/4.");
-    else
-        lines.add("No tempo detected.");
+    if (const auto& r = a.result) {
+        juce::String tempo =
+            "Tempo: " + juce::String(r->bpm, 2) + " BPM. A beat is " + juce::String(r->framesPerBeat) + " frames";
+        if (!r->rowsArePulse || r->rowsPerBeat > 1)
+            tempo << ": " << juce::String(r->rowsPerBeat) << (r->rowsArePulse ? " pulse" : " row")
+                  << (r->rowsPerBeat == 1 ? "" : "s") << " of " << rowsText(r->rowFrames) << " frames";
+        lines.add(tempo + ".");
+    } else {
+        lines.add("Tempo: not detected.");
+    }
 
     const Analysis::Grid* best = nullptr;
-    juce::StringArray patterns;
+    juce::String patterns;
     for (const auto& grid : a.grids) {
         if (grid.rows.size() == 1 && (best == nullptr || grid.share > best->share))
             best = &grid;
         if (grid.rows.size() > 1)
-            patterns.add(rowsText(grid.rows) + " holds " + juce::String(grid.share, 2));
+            patterns << (grid.rows.size() == 2 ? " Best swing: " : " Best groove: ") << rowsText(grid.rows)
+                     << " frames, " << percentText(grid.share) << ".";
     }
-    const auto needs = " (a grid needs " + juce::String(PsgTempo::minGridShare, 2) + ")";
-    juce::String rows;
+    juce::String rows = a.rowsFrom == RowsFrom::evidence     ? "Rows: detected."
+                        : a.rowsFrom == RowsFrom::noteStarts ? "Rows: detected from note starts."
+                                                             : "Rows: not detected.";
     if (a.rowsFrom == RowsFrom::evidence)
-        rows = "Rows: a grid of the row evidence, holding " + juce::String(a.result->gridShare, 2) + " of it" + needs
-               + ".";
+        rows << " A grid of " << rowsText(a.result->rowFrames) << " frames has " << percentText(a.result->gridShare)
+             << " of the row evidence." << minimum;
     else if (best == nullptr)
-        rows = "Rows: too little row evidence for a grid.";
+        rows << " The tune has too little row evidence.";
     else
-        rows = "Rows: no grid holds the row evidence; the best, " + juce::String(best->rows[0]) + " frames, holds "
-               + juce::String(best->share, 2) + needs + ".";
+        rows << " The best grid, " << juce::String(best->rows[0]) << " frames, has only " << percentText(best->share)
+             << " of the row evidence." << minimum;
+
     if (a.rowsFrom == RowsFrom::noteStarts)
-        rows << " A grid of the plain note starts does, holding " << juce::String(a.result->gridShare, 2) << ".";
+        rows << " A grid of the note starts has " << percentText(a.result->gridShare)
+             << ". The detector uses this grid.";
+    else if (a.rowsFrom == RowsFrom::pulse && a.result->rowFrames[0] == a.pulse)
+        rows << " The evidence repeats after each " << juce::String(a.pulse)
+             << " frames. This pulse replaces the rows.";
     else if (a.rowsFrom == RowsFrom::pulse)
-        rows << " The evidence repeats every " << juce::String(a.pulse)
-             << (a.result->rowFrames[0] == a.pulse
-                     ? juce::String(" frames: that pulse stands for the rows.")
-                     : " frames, but not in whole frames: its doublings drift off where the tune repeats, so the beat "
-                       "follows the peaks to "
-                           + juce::String(a.result->framesPerBeat) + " frames.");
+        rows << " The evidence repeats after each " << juce::String(a.pulse)
+             << " frames, but 2 and 4 pulses are not at the repeat peaks. The beat is at the nearest peak: "
+             << juce::String(a.result->framesPerBeat) << " frames.";
     else if (a.rowsFrom == RowsFrom::nothing && a.pulse > 0)
-        rows << " It repeats every " << juce::String(a.pulse) << " frames, but no beat of that pulse repeats "
-             << juce::String(PsgTempo::minBeatRepeat, 2) << " over 1, 2 and 4 beats.";
+        rows << " The evidence repeats after each " << juce::String(a.pulse)
+             << " frames, but no beat of this pulse has the minimum repeat score of "
+             << juce::String(PsgTempo::minBeatRepeat, 2) << ".";
     else if (a.rowsFrom == RowsFrom::nothing && best != nullptr)
-        rows << (a.repeat.empty() ? " The tune is too short to tell what repeats."
-                                  : " Nothing repeats clearly enough for a pulse.");
-    if (!patterns.isEmpty())
-        rows << " Best swing or groove: " << patterns.joinIntoString(", ") << ".";
-    lines.add(rows);
+        rows << (a.repeat.empty() ? " The tune is too short to measure repeats." : " No interval has a clear repeat.");
+    lines.add(rows + patterns);
 
     if (const auto& r = a.result) {
         const bool triple = a.meterMargin > 0.0;
-        lines.add(juce::String("Meter: ") + (r->meterClear ? (triple ? "3/4" : "4/4") : "unclear, left as it is")
-                  + ". Bars of "
-                  + (triple ? "3 beats repeat better than bars of 4" : "4 beats repeat better than bars of 3") + " by "
-                  + juce::String(std::abs(a.meterMargin), 2) + " (clear from "
-                  + juce::String(PsgTempo::minMeterMargin, 2) + ").");
+        const juce::String better = triple ? "Bars of 3 beats repeat better than bars of 4 beats"
+                                           : "Bars of 4 beats repeat better than bars of 3 beats";
+        const auto difference = juce::String(std::abs(a.meterMargin), 2);
+        const auto least = " The minimum is " + juce::String(PsgTempo::minMeterMargin, 2) + ".";
+        lines.add(r->meterClear
+                      ? juce::String("Meter: ") + (triple ? "3/4. " : "4/4. ") + better + ". The difference is "
+                            + difference + "." + least
+                      : "Meter: not clear. " + better + ", but the difference is only " + difference + "." + least);
     }
     return lines.joinIntoString("\n");
 }
@@ -596,16 +621,17 @@ class TempoInspector : public juce::Component, private juce::Timer
 public:
     explicit TempoInspector(PsgClip& clip)
         : clip_(&clip), clickWasOn_(clip.edit.clickTrackEnabled.get()), map_(in), strip_(in), repeat_(in), bars_(in),
-          table_(in) {
+          table_(in), play_(clip.edit) {
         setWantsKeyboardFocus(true);
         for (auto* panel : std::initializer_list<juce::Component*>{&map_, &strip_, &repeat_, &bars_, &table_})
             addAndMakeVisible(panel);
-        for (auto* button : std::initializer_list<juce::Button*>{&play_, &click_, &apply_, &copy_}) {
+        for (auto* button : std::initializer_list<juce::Button*>{&play_, &metronome_, &apply_, &copy_}) {
             button->setWantsKeyboardFocus(false);
             addAndMakeVisible(button);
         }
         for (auto* text : {&trace_, &cursor_, &status_}) {
             text->setFont(smallFont());
+            text->setBorderSize({});  // its text starts at the plots' left edge
             text->setMinimumHorizontalScale(1.0f);
             addAndMakeVisible(text);
         }
@@ -614,12 +640,11 @@ public:
         status_.setColour(juce::Label::textColourId, Theme::textSecondary);
         status_.setJustificationType(juce::Justification::topLeft);
 
-        click_.setToggleState(clickWasOn_, juce::dontSendNotification);
-        click_.onClick = [this] {
+        metronome_.setToggleState(clickWasOn_, juce::dontSendNotification);
+        metronome_.onClick = [this] {
             if (auto* c = clip_.get())
-                c->edit.clickTrackEnabled = click_.getToggleState();
+                c->edit.clickTrackEnabled = metronome_.getToggleState();
         };
-        play_.onClick = [this] { togglePlay(); };
         apply_.onClick = [this] { applyCursorBeat(); };
         copy_.onClick = [this] {
             if (auto* c = clip_.get())
@@ -640,28 +665,32 @@ public:
         };
         const auto& result = in.analysis.result;
         in.setLag(result ? result->framesPerBeat : in.analysis.pulse > 0 ? in.analysis.pulse : 24);
-        setSize(860, 720);
+        setSize(860, 760);
         startTimerHz(30);
     }
 
     ~TempoInspector() override {
         if (auto* c = clip_.get())
-            c->edit.clickTrackEnabled = clickWasOn_;  // the click is the inspector's: a project doesn't keep it
+            c->edit.clickTrackEnabled = clickWasOn_;  // the metronome is the inspector's: a project doesn't keep it
     }
 
     void paint(juce::Graphics& g) override { g.fillAll(Theme::background); }
 
     void resized() override {
         auto area = getLocalBounds().reduced(10);
-        auto buttons = area.removeFromTop(24);
-        play_.setBounds(buttons.removeFromLeft(70));
-        click_.setBounds(buttons.removeFromLeft(70).translated(8, 0));
-        copy_.setBounds(buttons.removeFromRight(90));
-        apply_.setBounds(buttons.removeFromRight(170).translated(-8, 0));
-        cursor_.setBounds(buttons.withTrimmedLeft(16).withTrimmedRight(16));
-        area.removeFromTop(6);
-        trace_.setBounds(area.removeFromTop(64));  // four lines: the rows' line may wrap
-        status_.setBounds(area.removeFromBottom(32));
+        // Buttons and text start where the plots do, right of the gutter that holds the plots' labels
+        auto buttons = area.removeFromTop(28).withTrimmedLeft(gutter);
+        play_.setBounds(buttons.removeFromLeft(buttons.getHeight()));  // a square, as in the transport bar
+        buttons.removeFromLeft(8);
+        metronome_.setBounds(buttons.removeFromLeft(110));
+        copy_.setBounds(buttons.removeFromRight(100));
+        buttons.removeFromRight(8);
+        apply_.setBounds(buttons.removeFromRight(180));
+        cursor_.setBounds(buttons.withTrimmedLeft(8).withTrimmedRight(8));
+        area.removeFromTop(8);
+        trace_.setBounds(area.removeFromTop(4 * 17).withTrimmedLeft(gutter));  // four lines: the rows' line may wrap
+        area.removeFromTop(4);
+        status_.setBounds(area.removeFromBottom(2 * 17).withTrimmedLeft(gutter));
         table_.setBounds(area.removeFromBottom(table_.idealHeight()));
         area.removeFromBottom(8);
         auto plots = area.removeFromBottom(150);
@@ -677,7 +706,7 @@ public:
     bool keyPressed(const juce::KeyPress& key) override {
         if (key != juce::KeyPress::spaceKey)
             return false;
-        togglePlay();
+        play_.triggerClick();
         return true;
     }
 
@@ -714,16 +743,6 @@ private:
         return (int) std::floor((time - position.getStart() + position.getOffset()).inSeconds() * in.fps);
     }
 
-    void togglePlay() {
-        if (auto* c = clip_.get()) {
-            auto& transport = c->edit.getTransport();
-            if (transport.isPlaying())
-                transport.stop(false, false);
-            else
-                transport.play(false);
-        }
-    }
-
     /** The project's tempo becomes the cursor's beat, with the grid's usual groups, so its grid and
         click run against the tune. The frames keep their times. */
     void applyCursorBeat() {
@@ -748,9 +767,7 @@ private:
                 window->exitModalState(0);
             return;
         }
-        auto& transport = c->edit.getTransport();
-        play_.setButtonText(transport.isPlaying() ? "Stop" : "Play");
-        const int frame = frameAt(*c, transport.getPosition());
+        const int frame = frameAt(*c, c->edit.getTransport().getPosition());
         if (frame == in.playFrame)
             return;
         in.playFrame = frame;
@@ -768,8 +785,9 @@ private:
     RepeatPlot repeat_;
     GridBars bars_;
     BeatTable table_;
-    juce::TextButton play_{"Play"}, apply_{"Set as project tempo"}, copy_{"Copy label"};
-    juce::ToggleButton click_{"Click"};
+    PlayButton play_;
+    juce::TextButton apply_{"Set as project tempo"}, copy_{"Copy label"};
+    juce::ToggleButton metronome_{"Metronome"};
     juce::Label trace_, cursor_, status_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TempoInspector)

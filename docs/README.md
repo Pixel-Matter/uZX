@@ -17,6 +17,7 @@
 | Design | [design/module-import.md](design/module-import.md) | Not implemented: a tracker module opened as notes, a MIDI track per AY channel with a clip per pattern, samples and ornaments as palette instruments, and the order of work |
 | Design | [design/parameter-binding.md](design/parameter-binding.md) | Parameter definitions, automation bridge, widget bindings |
 | Design | [design/timer-fx.md](design/timer-fx.md) | TAYM's timers in the AY chip: timed register writes between frames, their controllers on the PSG wire, timers in a clip |
+| Design | [design/timeline-markers.md](design/timeline-markers.md) | Proposal: markers on the timeline, a lane above the ruler, pattern markers on module import; options for each open choice |
 | Vision | [motool/](motool/vision.md) | The initial MoTool demotool vision and its early design notes; not implemented, not scheduled |
 
 Build, test, style and branching rules are in [CONTRIBUTING.md](../CONTRIBUTING.md) and [AGENTS.md](../AGENTS.md); released changes in [CHANGELOG.md](../CHANGELOG.md).

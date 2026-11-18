@@ -20,6 +20,7 @@ set(SHARED_SOURCES
     models/PsgList.cpp
     models/PsgRecorder.cpp
     models/PsgClip.cpp
+    models/PsgSoundingStates.cpp
     models/ClipTimers.cpp
     models/TimerSpans.cpp
     models/PsgFrameRetimer.cpp

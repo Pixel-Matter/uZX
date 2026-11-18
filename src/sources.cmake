@@ -20,6 +20,7 @@ set(SHARED_SOURCES
     models/PsgList.cpp
     models/PsgRecorder.cpp
     models/PsgClip.cpp
+    models/PsgSoundingStates.cpp
     models/ClipTimers.cpp
     models/TimerSpans.cpp
     models/PsgFrameRetimer.cpp
@@ -144,6 +145,7 @@ set(TEST_SOURCES
     models/ClipTimers.test.cpp
     models/PsgParameter.test.cpp
     models/PsgList.test.cpp
+    models/PsgSoundingStates.test.cpp
     models/PsgRecorder.test.cpp
     models/PsgClipTuning.test.cpp
     models/PsgTempoDetector.test.cpp

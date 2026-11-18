@@ -6,6 +6,7 @@
 #include "../../controllers/MainCommands.h"
 #include "../../models/EditUtilities.h"
 #include "../../models/Ids.h"
+#include "../../models/PsgSoundingStates.h"
 #include "../../models/PsgTempoDetector.h"
 #include "../../plugins/uZX/aychip/AYPlugin.h"
 
@@ -72,16 +73,13 @@ const std::array<Colour, 14> RegColors = {
     Colors::PSG::Env   // purple-100
 };
 
+/** A sounding note as the Notes view draws it: its rows, and its colour. */
 struct FrameNote {
     float y;
     float height;
     float alpha;
-    uint8_t channelMask;
-    bool isEnvelopePitch;
-    bool hasEnvMod;
-    const TimerSpan* timer = nullptr;  // a timer's note; else the frames'
     Colour colour {};
-    float pitchTop = 0.0f;  // y before rounding to pixels: orders notes that round to one row
+    const PsgSoundingNote* sounding = nullptr;
 };
 
 Colour getChannelMaskColor(uint8_t channelMask) {
@@ -105,30 +103,6 @@ float noisePeriodToYNorm(int noisePeriod) {
 Range<float> getNoisePeriodYRange(int noisePeriod) {
     const float Y = noisePeriodToYNorm(noisePeriod);
     return { Y - 0.1f, Y + 0.1f };
-}
-
-/** How loud a channel's volume sounds, 0 to 1: halving every three steps, as the AY's and YM's DACs fall
-    in steps of a few dB rather than evenly; in full under the envelope. */
-static float getVolumeLevel(int volume, bool envelope) {
-    if (envelope)
-        return 1.0f;
-    return volume > 0 ? std::exp2(static_cast<float>(volume - 15) / 3.0f) : 0.0f;
-}
-
-std::array<float, 3> getNoiseChannelLevels(const PsgParamFrameData& data) {
-    std::array<float, 3> levels {};
-
-    for (int ch = 0; ch < 3; ++ch) {
-        const bool hasNoiseMod = data.getRaw(PsgParamType(PsgParamType::NoiseIsOnA + ch)) > 0;
-        if (! hasNoiseMod)
-            continue;
-
-        const auto rawVolume = data.getRaw(PsgParamType(PsgParamType::VolumeA + ch));
-        const bool hasEnvMod = data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0;
-        levels[static_cast<size_t>(ch)] = getVolumeLevel(static_cast<int>(rawVolume), hasEnvMod);
-    }
-
-    return levels;
 }
 
 void drawNoiseBand(Graphics& g, Rectangle<float> bounds, float alpha) {
@@ -303,7 +277,7 @@ struct ClipVisibility {
         }
     }
 
-    /** Calls fn(frameArrayIndex, firstFrame, data, x, width) for every stretch inside the visible range in
+    /** Calls fn(frameArrayIndex, firstFrame, nextFrame, data, x, width) for every stretch inside the visible range in
         which the chip's parameters and the running timers stay the same, as PsgClip::forEachSoundingState
         has them. Only frames that change something are stored, so a frame lasts until the next stored one
         or the clip's end, as the chip holds its state, unless a timer starts, changes or stops in between. */
@@ -325,7 +299,7 @@ struct ClipVisibility {
                 auto data = frame.getData();
                 timers.applyVolumes(data, from);
                 const float x = timeToX(start);
-                fn(i, from, data, x, timeToX(end) - x);
+                fn(i, from, to, data, x, timeToX(end) - x);
             });
         }
     }
@@ -533,24 +507,12 @@ std::vector<std::pair<String, Colour>> formatPsgFrame(const PsgParamFrameData& d
     return runs;
 }
 
-/** The colour of the envelope in a frame: of the one channel that plays it, unless that channel's tone is
+/** The colour of the envelope in a state: of the one channel that plays it, unless that channel's tone is
     on at another pitch, so the two are told apart; the envelope's own when it plays on several channels, as
     a tint of theirs would read as none of them, or on none. */
-static Colour getEnvelopeColour(const PsgParamFrameData& data) {
-    int owner = -1;
-    for (int ch = 0; ch < 3; ++ch) {
-        if (data.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) == 0)
-            continue;
-        if (owner >= 0)
-            return Colors::PSG::Env;
-        owner = ch;
-    }
-    if (owner < 0)
-        return Colors::PSG::Env;
-    const bool toneApart = data.getRaw(PsgParamType(PsgParamType::ToneIsOnA + owner)) > 0
-        && data.getRaw(PsgParamType(PsgParamType::TonePeriodA + owner))
-               != envelopePeriodToTonePeriod(data.getRaw(PsgParamType::EnvelopePeriod));
-    return toneApart ? Colors::PSG::Env : getChannelMaskColor(static_cast<uint8_t>(1u << owner));
+static Colour getEnvelopeColour(const PsgSoundingState& state) {
+    return state.envelopeChannel >= 0 ? getChannelMaskColor(static_cast<uint8_t>(1u << state.envelopeChannel))
+                                      : Colors::PSG::Env;
 }
 
 /** The colour of what a timer drives: its channels', else the envelope's, else the grey of what no channel
@@ -561,19 +523,9 @@ static Colour getTimerColour(const TimerSpan& span, Colour envelope = Colors::PS
     return span.envelope ? envelope : Colors::PSG::Grey;
 }
 
-/** How opaque a note at a channel's volume is drawn: as loud as it sounds, but never invisible. */
-static float getVolumeAlpha(int volume, bool envelope) {
-    return getVolumeLevel(volume, envelope) * 0.8f + 0.2f;
-}
-
-/** How opaque a timer's note is drawn: as a tone at the loudest volume the timer writes, in full if it
-    writes none. */
-static float getTimerAlpha(const TimerSpan& span) {
-    float alpha = 0.0f;
-    for (size_t chan = 0; chan < span.loudestVolumes.size(); ++chan)
-        if ((span.registers & (1u << (8 + chan))) != 0)
-            alpha = jmax(alpha, getVolumeAlpha(span.loudestVolumes[chan] & 0x0F, (span.loudestVolumes[chan] & 0x10) != 0));
-    return alpha > 0.0f ? alpha : 1.0f;
+/** How opaque a note is drawn: as loud as it sounds, but never invisible. */
+static float getLevelAlpha(float level) {
+    return level * 0.8f + 0.2f;
 }
 
 std::vector<std::pair<String, Colour>> formatTimerFrame(const ClipTimers& timers, int frameIndex, double chipClockHz,
@@ -1437,89 +1389,92 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
     const Range<float> visibleX = layout.visibleX;
     const Rectangle<float> viewport {visibleX.getStart(), 0.0f, visibleX.getLength(), float(vis.rect.getHeight())};
 
+    // What sounds in each visible stretch is the model's; here it is placed at the view's scale and drawn
+    struct Extent {
+        float x, width;
+    };
+    PsgSoundingStates states;
+    std::vector<Extent> extents;
     const auto& timers = psgClip->getTimers();
-    vis.forEachVisibleState(frames, *psgClip, [&] (int frameIndex, int firstFrame, const PsgParamFrameData& frameData,
-                                                   float x, float width) {
-        const auto envShape = static_cast<uint8_t>(frameData.getRaw(PsgParamType::EnvelopeShape));
-        // The frame writes the shape, the same one too, restarting the envelope: at its first stretch
-        const bool envelopeRestarts = firstFrame == frames[frameIndex]->getFrameIndex()
-                                      && frameData.isSet(PsgParamType::RetriggerEnvelope)
-                                      && frameData.getRaw(PsgParamType::RetriggerEnvelope) != 0;
+    vis.forEachVisibleState(frames, *psgClip, [&] (int frameIndex, int firstFrame, int nextFrame,
+                                                   const PsgParamFrameData& frameData, float x, float width) {
+        states.add(firstFrame, nextFrame, frameIndex, firstFrame == frames[frameIndex]->getFrameIndex(), frameData,
+                   timers);
+        extents.push_back({x, width});
+    });
+    const auto visibleStates = states.getStates();
 
-        const auto noiseLevels = drawMods ? getNoiseChannelLevels(frameData) : std::array<float, 3> {};
-        const auto noiseLevel = *std::max_element(noiseLevels.begin(), noiseLevels.end());
+    // A note narrower than this is too faint to show its colour: zoomed out, a frame is a part of a pixel
+    constexpr float minNoteWidth = 1.0f;
+    size_t noiseBandEnd = 0;  // the states before this one have their noise band drawn
+    for (size_t stateIndex = 0; stateIndex < visibleStates.size(); ++stateIndex) {
+        const auto& state = visibleStates[stateIndex];
+        const float x = extents[stateIndex].x, width = extents[stateIndex].width;
+        const auto envShape = state.envelopeShape;
+        const auto& noiseLevels = state.noiseLevels;
+        const auto noiseLevel = drawMods ? state.noiseLevel : 0.0f;
         Rectangle<float> noiseBounds;
         if (noiseLevel > 0.0f) {
-            const auto period = static_cast<int>(frameData.getRaw(PsgParamType::NoisePeriod));
-            const auto noiseRange = getNoisePeriodYRange(period);
+            const auto noiseRange = getNoisePeriodYRange(state.noisePeriod);
             const float noiseY = noiseRange.getStart() * static_cast<float>(vis.rect.getHeight());
             const float noiseH = jmax(2.0f, noiseRange.getLength() * static_cast<float>(vis.rect.getHeight()));
             noiseBounds = {x, noiseY, width, noiseH};
-            const int stripHeight = roundToInt(noiseH * g.getInternalContext().getPhysicalPixelScaleFactor());
-            if (noiseBand_.getHeight() != stripHeight)
-                noiseBand_ = renderNoiseBandStrip(stripHeight);  // noiseH >= 2: never empty
-            g.setOpacity(0.15f + 0.1f * noiseLevel);
-            g.drawImage(noiseBand_, noiseBounds);
-            g.setOpacity(1.0f);
+            if (stateIndex >= noiseBandEnd) {
+                // The band is the same along x, so one blit covers the states that follow with the same
+                // noise: a held drum is a band, not one a frame
+                float right = x + width;
+                for (noiseBandEnd = stateIndex + 1; noiseBandEnd < visibleStates.size(); ++noiseBandEnd) {
+                    const auto& next = visibleStates[noiseBandEnd];
+                    if (next.noisePeriod != state.noisePeriod || ! exactlyEqual(next.noiseLevel, state.noiseLevel))
+                        break;
+                    right = extents[noiseBandEnd].x + extents[noiseBandEnd].width;
+                }
+                const int stripHeight = roundToInt(noiseH * g.getInternalContext().getPhysicalPixelScaleFactor());
+                if (noiseBand_.getHeight() != stripHeight)
+                    noiseBand_ = renderNoiseBandStrip(stripHeight);  // noiseH >= 2: never empty
+                g.setOpacity(0.15f + 0.1f * noiseLevel);
+                g.drawImage(noiseBand_, noiseBounds.withRight(right));
+                g.setOpacity(1.0f);
+            }
         }
 
-        // Collect this stretch's notes: up to one per channel plus the envelope, and one per timer with a
-        // pitch, all sharing lanes alike
+        // This stretch's notes: up to one per channel plus the envelope, and one per timer with a pitch, all
+        // sharing lanes alike. They come higher pitch first, by the pitch itself and not the row it rounds
+        // to: a channel a few cents above another stays above it at every zoom. Rounding keeps the order, so
+        // the rows come sorted too.
         std::array<FrameNote, 4 + TAYM_MAX_TIMERS> notes;
         int noteCount = 0;
-        const auto envelopeColour = getEnvelopeColour(frameData);
+        const auto envelopeColour = getEnvelopeColour(state);
         // A channel's noise is dotted around one note of it: its tone, else a timer's in its colour, else the
         // envelope's; with none of them, in the noise band
-        uint8_t toneChannels = 0, timerChannels = 0, pitchChannels = 0;
-        const auto addNote = [&] (float pitch, FrameNote note) {
-            const float top = normToY(pitch) - noteHeight * 0.5f;
-            note.pitchTop = top;
-            note.y = static_cast<float>(roundToInt(top));
-            note.height = static_cast<float>(roundToInt(top + noteHeight)) - note.y;
-            notes[static_cast<size_t>(noteCount++)] = note;
-        };
-
-        visitFrameNotes(frameData, [&] (const PsgFrameNote& n) {
-            pitchChannels |= n.channelMask;
-            if (! n.isEnvelopePitch)
-                toneChannels |= n.channelMask;
-            addNote(n.pitch, {0.0f, 0.0f, n.isEnvelopePitch ? 1.0f : getVolumeAlpha(n.volume, n.hasEnvMod),
-                              n.channelMask, n.isEnvelopePitch, n.hasEnvMod, nullptr,
-                              n.isEnvelopePitch ? envelopeColour : getChannelMaskColor(n.channelMask)});
-        });
-
-        // A timer whose writes are no pitch is a bar along the clip's bottom instead
-        std::array<const TimerSpan*, TAYM_MAX_TIMERS> bars {};
-        int barCount = 0;
-        for (int timer = 0; timer < timers.getNumTimers(); ++timer) {
-            const auto* span = timers.findSpan(timer, firstFrame);
-            if (span == nullptr)
-                continue;
-            if (const auto pitch = span->getPitch()) {
-                timerChannels |= span->channels;
-                pitchChannels |= span->channels;
-                addNote(*pitch, {0.0f, 0.0f, getTimerAlpha(*span), span->channels, false, false, span,
-                                 getTimerColour(*span, envelopeColour)});
-            } else
-                bars[static_cast<size_t>(barCount++)] = span;
+        const uint8_t toneChannels = state.toneChannels, timerChannels = state.timerChannels;
+        for (const auto& n : states.getNotes(state)) {
+            const float top = normToY(n.pitch) - noteHeight * 0.5f;
+            const auto y = static_cast<float>(roundToInt(top));
+            notes[static_cast<size_t>(noteCount++)] = {
+                y, static_cast<float>(roundToInt(top + noteHeight)) - y, getLevelAlpha(n.level),
+                n.timer != nullptr  ? getTimerColour(*n.timer, envelopeColour)
+                : n.isEnvelopePitch ? envelopeColour
+                                    : getChannelMaskColor(n.channelMask),
+                &n};
         }
+
+        // Whether the next state draws the note on: at the same pitch, by the same channels or timer
+        const auto continuesInNextState = [&] (const PsgSoundingNote& n) {
+            if (stateIndex + 1 >= visibleStates.size())
+                return false;
+            for (const auto& next : states.getNotes(visibleStates[stateIndex + 1]))
+                if (next.channelMask == n.channelMask && next.isEnvelopePitch == n.isEnvelopePitch
+                    && (next.timer != nullptr) == (n.timer != nullptr) && exactlyEqual(next.pitch, n.pitch))
+                    return true;
+            return false;
+        };
 
         const std::span<const FrameNote> pitchNotes(notes.data(), static_cast<size_t>(noteCount));
         if (noiseLevel > 0.0f)
             drawNoiseFringe(g, {x, float(roundToInt(noiseBounds.getCentreY())), width, 0.0f},
-                           noiseSpread, static_cast<uint8_t>(~pitchChannels & 0x7u), noiseLevels, frameIndex,
-                           viewport, pitchNotes);
-
-        // Higher pitch first, by the pitch itself and not the row it rounds to: a channel a few cents above
-        // another stays above it at every zoom. At one pitch the tones come first, then the timers, then the
-        // envelope. Rounding keeps the order, so the rows come sorted too.
-        const auto order = [] (const FrameNote& n) {
-            return std::tuple(n.pitchTop, n.isEnvelopePitch, n.timer != nullptr ? n.timer->timer : -1,
-                              n.channelMask);
-        };
-        std::sort(notes.begin(), notes.begin() + noteCount, [&] (const FrameNote& a, const FrameNote& b) {
-            return order(a) < order(b);
-        });
+                           noiseSpread, static_cast<uint8_t>(~state.pitchChannels & 0x7u), noiseLevels,
+                           state.storedFrame, viewport, pitchNotes);
 
         // Paint notes, subdividing overlapping groups. Notes are sorted by y,
         // so a group extends as long as the next note's top is within the
@@ -1539,14 +1494,14 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
             if (noiseLevel > 0.0f) {
                 uint8_t owners = 0;
                 for (int i = groupStart; i < gi; ++i) {
-                    const auto& note = notes[i];
+                    const auto& note = *notes[i].sounding;
                     const uint8_t outranked = note.timer != nullptr ? toneChannels
                                             : note.isEnvelopePitch  ? toneChannels | timerChannels
                                                                     : 0;
                     owners |= static_cast<uint8_t>(note.channelMask & ~outranked);
                 }
                 drawNoiseFringe(g, {x, groupY, width, groupH}, noiseSpread,
-                               owners, noiseLevels, frameIndex, viewport, pitchNotes);
+                               owners, noiseLevels, state.storedFrame, viewport, pitchNotes);
             }
 
             // Graceful degradation: if sub-lane height < 1px, paint full height
@@ -1563,11 +1518,17 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                         subH = groupBottom - subY;
                 }
 
-                const auto noteRect = Rectangle<float>(x, subY, width, jmax(1.0f, subH));
-                if (note.timer != nullptr) {
-                    drawTimerNote(g, noteRect, note.colour.withAlpha(note.alpha), *note.timer,
+                auto noteRect = Rectangle<float>(x, subY, width, jmax(1.0f, subH));
+                if (width < minNoteWidth && ! continuesInNextState(*note.sounding)) {
+                    // Its last stretch is drawn a pixel wide, on a whole one: the stretches before it tile up
+                    // to it, so a held note keeps the opacity of its volume
+                    noteRect.setWidth(minNoteWidth);
+                    noteRect.setX(std::floor(x));
+                }
+                if (const auto* timer = note.sounding->timer) {
+                    drawTimerNote(g, noteRect, note.colour.withAlpha(note.alpha), *timer,
                                   {envelopeColour, envShape}, drawMods,
-                                  note.timer->starts && note.timer->startFrame == firstFrame);
+                                  timer->starts && timer->startFrame == state.from);
                     continue;
                 }
                 const auto noteColor = note.colour;
@@ -1575,38 +1536,32 @@ void PsgClipComponent::paintNotes(Graphics& g, const PaintView& view) {
                 g.setColour(noteColor.withAlpha(note.alpha));
                 g.fillRect(noteRect);
 
-                if (drawMods && (note.hasEnvMod || note.isEnvelopePitch)) {
+                if (drawMods && (note.sounding->hasEnvMod || note.sounding->isEnvelopePitch)) {
                     drawEnvelopeStripes(g, noteRect.getX(), noteRect.getY(), noteRect.getWidth(),
                                         noteRect.getHeight(), envShape, noteColor.brighter(0.8f).withAlpha(0.85f), 0.0f);
-                    if (envelopeRestarts)
+                    if (state.envelopeRestarts)
                         drawStartTick(g, noteRect, noteColor.withAlpha(note.alpha));
                 }
             }
         }
-        if (envelopePeriodToTonePeriod(frameData.getRaw(PsgParamType::EnvelopePeriod))
-            > PsgParamType{PsgParamType::TonePeriodA}.getScale().end) {
-            uint8_t owners = 0;
-            for (int ch = 0; ch < 3; ++ch)
-                if (frameData.getRaw(PsgParamType(PsgParamType::EnvelopeIsOnA + ch)) > 0)
-                    owners |= static_cast<uint8_t>(1u << ch);
-            if (owners != 0) {
-                const auto visible = Range<float>(x, x + width).getIntersectionWith(visibleX);
-                const float height = drawMods ? jlimit(8.0f, 12.0f, noteHeight * 1.5f)
-                                              : jlimit(1.0f, 3.0f, noteHeight);
-                const float width = jmin(visible.getLength(), jmin(18.0f, jmax(8.0f, height * 1.6f)));
-                if (width > 0.0f)
-                    drawLowEnvelopeArrow(g, {visible.getStart() + (visible.getLength() - width) * 0.5f,
-                                            float(vis.rect.getHeight()) - height, width, height}, owners, drawMods);
-            }
+        if (const uint8_t owners = state.lowEnvelopeChannels; owners != 0) {
+            const auto visible = Range<float>(x, x + width).getIntersectionWith(visibleX);
+            const float height = drawMods ? jlimit(8.0f, 12.0f, noteHeight * 1.5f)
+                                          : jlimit(1.0f, 3.0f, noteHeight);
+            const float arrowWidth = jmin(visible.getLength(), jmin(18.0f, jmax(8.0f, height * 1.6f)));
+            if (arrowWidth > 0.0f)
+                drawLowEnvelopeArrow(g, {visible.getStart() + (visible.getLength() - arrowWidth) * 0.5f,
+                                        float(vis.rect.getHeight()) - height, arrowWidth, height}, owners, drawMods);
         }
+        // A timer whose writes are no pitch is a bar along the clip's bottom instead
         const float barHeight = jlimit(2.0f, 4.0f, noteHeight);
-        for (int i = 0; i < barCount; ++i) {
-            const auto& span = *bars[static_cast<size_t>(i)];
-            g.setColour(getTimerColour(span, envelopeColour).withAlpha(getTimerAlpha(span) * 0.8f));
+        for (const auto* span : states.getBars(state)) {
+            g.setColour(getTimerColour(*span, envelopeColour).withAlpha(getLevelAlpha(getTimerLevel(*span)) * 0.8f));
             g.fillRect(x, float(vis.rect.getHeight()) - barHeight, width, barHeight);
         }
-    });
+    }
 }
+
 
 //==============================================================================
 PsgClipHeader::PsgClipHeader(EditViewState& evs, te::Clip::Ptr c)

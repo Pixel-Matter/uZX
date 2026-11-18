@@ -90,7 +90,7 @@ Envelope hatching, the noise band, and outside-note noise rectangles are drawn o
 - At least **6 pixels per PSG frame** horizontally.
 - At least **2 pixels per note row** vertically, before overlap subdivision.
 
-Tone fills and envelope-pitch outlines remain when details disappear. Outside-note rectangles require room for a full 2×2 mark within the configured spread above or below a silhouette; crowded neighbors can suppress them. The native-size samples below show the same states at normal detail, 5 px/frame, 6 px/frame, and a short lane. Narrow/short samples are centered in their panels without enlargement.
+Tone fills and envelope-pitch outlines remain when details disappear. Zoomed out until a frame is narrower than a pixel, a note that ends is still drawn one whole pixel wide at the opacity of its volume, so short notes keep their colour. Outside-note rectangles require room for a full 2×2 mark within the configured spread above or below a silhouette; crowded neighbors can suppress them. The native-size samples below show the same states at normal detail, 5 px/frame, 6 px/frame, and a short lane. Narrow/short samples are centered in their panels without enlargement.
 
 ![Matching and different pitches at the LOD thresholds](images/psg-visualization/lod.png)
 

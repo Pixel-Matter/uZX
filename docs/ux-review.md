@@ -4,19 +4,6 @@ Open findings of the v1.0 UX readiness review (2026-11-18, `develop` at `984256b
 
 Not covered yet: a live run on macOS (Gatekeeper, the DMG, Finder associations, the menu bar) and audio playback.
 
-## Done in PR #113
-
-Delete this section once [PR #113](https://github.com/Pixel-Matter/uZX/pull/113) is merged; the CHANGELOG has each change.
-
-- [x] **B2.** Opening several files at once from Finder, or several paths on the command line, did nothing. They open together, and a missing or unsupported file is named.
-- [x] **H1.** The first launch showed an empty grid and a colour legend. The empty Player says how to open a tune, and a file dragged over the window outlines it.
-- [x] **H2.** Studio registered `.uzx` but ignored a file passed at launch or from Finder. It opens it.
-- [x] **H3.** With no audio device, Audio Settings opened with no explanation. An alert says what is wrong and offers **Open Audio Settings**.
-- [x] **H4.** The Player's settings offered audio inputs and MIDI ports it never uses. They show the output only.
-- [x] **H5.** Open Recent listed temp files, and a tune's stereo and mutes were lost when it was opened again. Each tune keeps a working copy next to the app's settings.
-- [x] **H6.** The README's Download section only said "see Releases". It names the Player's release and the file for each platform.
-- [x] **Import in the Player** did what Open does. It is Studio-only now, which also removes the "New Track or New Edit" question of M3.
-
 ## Saving
 
 - **B1. A file that was only opened is written.** Auto-save is intended (decided 2026-11-18), but `BaseController::setEdit` saves an edit as soon as it opens, so a `.uzx` someone shared changes on disk when it is merely played. Save only when the edit has changes. The guide's Saving section is D2.

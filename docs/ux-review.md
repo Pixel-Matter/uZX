@@ -20,7 +20,6 @@ The user guide matches the code; the problem is readability. A newcomer meets 60
 
 | # | Finding | Where | Suggested fix |
 | --- | --- | --- | --- |
-| D5 | **The ffmpeg install is macOS-only:** `brew install ffmpeg`. | `docs/user-guide.md` (Render Video) | Add `winget install ffmpeg` and `sudo apt install ffmpeg`. |
 | D6 | **The Discord link is a channel URL**, which opens only for people already in the server. | `README.md` | Use an invite link. |
 | D7 | **README promises more platforms than v1.0 ships.** The badge lists iOS and Android; the intro says macOS, Windows and Linux, while the ROADMAP calls v1.0 a macOS release. | `README.md` | Drop iOS and Android from the badge; say which platforms are supported and which are previews. |
 | D8 | **Small mismatches.** README says **FPS**, the app shows **fps**, and "Save the project (`.uzx`) to keep the rate" predates the Player keeping each tune's changes. README builds with `cmake -S . -B build`, bypassing the presets CONTRIBUTING describes. | `README.md` | Align the wording; use `cmake --preset release` in the README. |

@@ -11,7 +11,6 @@ No open findings. [refactoring.md](refactoring.md) holds the review's scope and 
 - [ ] Double timecode
 - [ ] Double ruler (second is below the timeline)
 - [ ] Virtual MIDI keyboard (see audio plugin host)
-- [ ] Loop region and looped playback (Loop toggle exists, no range UI)
 - [ ] Track level knob/slider
 - [ ] Track devices intermediate level meters
 - [ ] Zoom slider

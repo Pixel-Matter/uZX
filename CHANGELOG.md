@@ -14,6 +14,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Player: **File → Import PSG** (`Cmd+I`) is gone; **Open** does the same
 - Player: each tune keeps its stereo, mutes and other changes. Opening it again brings them back, and they survive a restart, where the copies lived in the temp folder and opening a tune again reset it. Open Recent lists the tunes
 - Fixed: several files selected in Finder and opened in the Player, such as the files of a Turbo Sound set, did nothing; so did several paths on the command line. They open together, and a file that can't be found or opened is named in a message
+- Fixed: opening a `.uzx` project rewrote it on disk, even when it was only played. It is written when it has changes: on Save, when another file is opened, or on quit
 
 ### Timeline
 - Dragging the ruler, or the tracks with the middle button, keeps to the direction it starts in: sideways only scrolls, up or down only zooms, and a diagonal start does both

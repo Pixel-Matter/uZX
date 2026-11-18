@@ -216,6 +216,11 @@ void stampEditFormatVersion(te::Edit& edit) {
     edit.state.setProperty(FORMAT_VERSION_ATTR, editFormatVersion, nullptr);
 }
 
+static void makeMostRecent(te::Edit& edit, const File& file) {
+    addToRecentEdits(edit.engine.getPropertyStorage(), file);
+    setRecentEditsDirectory(edit.engine.getPropertyStorage(), file);
+}
+
 bool saveEdit(te::Edit& edit, bool warnOfFailure, bool forceSaveEvenIfNotModified, bool offerToDiscardChanges) {
     auto efo = te::EditFileOperations(edit);
     // ponytail: the callback runs before save() returns unless offerToDiscardChanges asks a
@@ -223,12 +228,17 @@ bool saveEdit(te::Edit& edit, bool warnOfFailure, bool forceSaveEvenIfNotModifie
     jassert(!offerToDiscardChanges);
     bool saved = false;
     efo.save(warnOfFailure, forceSaveEvenIfNotModified, offerToDiscardChanges, [&saved](bool ok) { saved = ok; });
-    if (saved) {
-        addToRecentEdits(edit.engine.getPropertyStorage(), efo.getEditFile());
-        setRecentEditsDirectory(edit.engine.getPropertyStorage(), efo.getEditFile());
-        return true;
-    }
-    return false;
+    if (saved)
+        makeMostRecent(edit, efo.getEditFile());
+    return saved;
+}
+
+void autoSaveEdit(te::Edit& edit) {
+    // Not save() with force off: it writes a temporary copy next to the file even when nothing changed
+    if (isWorkingEdit(edit) || edit.hasChangedSinceSaved())
+        saveEdit(edit, true, true, false);
+    else
+        makeMostRecent(edit, edit.editFileRetriever());
 }
 
 bool saveEditAs(te::Edit& edit, const File& file) {
@@ -238,12 +248,9 @@ bool saveEditAs(te::Edit& edit, const File& file) {
     efo.saveAs(file, true, [&saved](bool ok) { saved = ok; });
     if (saved) {
         edit.editFileRetriever = [file] { return file; };
-
-        addToRecentEdits(edit.engine.getPropertyStorage(), file);
-        setRecentEditsDirectory(edit.engine.getPropertyStorage(), file);
-        return true;
+        makeMostRecent(edit, file);
     }
-    return false;
+    return saved;
 }
 
 bool saveEditAsWithDialog(te::Edit& edit) {

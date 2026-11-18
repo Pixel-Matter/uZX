@@ -56,7 +56,11 @@ A PSG file plays at 50 frames a second, or at the rate its header gives when the
 
 ### Saving
 
-The Player keeps your changes to the open edit, such as tempo, AY chip settings and mutes, and opens it again on the next launch. Each tune keeps its own: opening a PSG file, TAYM file or tracker module again brings back the changes you made to it, and **File → Open Recent** lists the tunes. If the tune file has changed since, it is opened afresh. The Player keeps the changes of the last 100 tunes, in an `Edits` folder next to its settings. **File → Save** (`Cmd+S`) writes them to the `.uzx` file. A PSG file you opened has no `.uzx` file yet, so Save asks where to put one, as **File → Save As** (`Cmd+Shift+S`) always does. **File → Reveal in Finder** (**Show in Explorer** on Windows, **Show in Folder** on Linux) shows the saved file; it stays off until the edit has one.
+Changes save on their own: there is nothing to press before you open another file or quit, and the Player opens the last project again on the next launch. Each tune keeps its own changes, such as tempo, AY chip settings, stereo and mutes: opening a PSG file, TAYM file or tracker module again brings them back, and **File → Open Recent** lists the tunes. If the tune file has changed since, it is opened afresh. The Player keeps the changes of the last 100 tunes, in an `Edits` folder next to its settings.
+
+A `.uzx` project you open takes your changes in the same way, written to the file when you open another one or quit. A project you only listen to stays as it is on disk, so a file someone shared with you is not rewritten by playing it.
+
+**File → Save** (`Cmd+S`) writes the changes at once. A tune you opened has no `.uzx` file yet, so Save asks where to put one, as **File → Save As** (`Cmd+Shift+S`) always does. **File → Reveal in Finder** (**Show in Explorer** on Windows, **Show in Folder** on Linux) shows the saved file; it stays off until the project has one.
 
 ### Transport Bar
 

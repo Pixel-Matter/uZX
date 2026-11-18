@@ -4,10 +4,6 @@ Open findings of the v1.0 UX readiness review (2026-11-18, `develop` at `984256b
 
 Not covered yet: a live run on macOS (Gatekeeper, the DMG, Finder associations, the menu bar) and audio playback.
 
-## Saving
-
-- **B1. A file that was only opened is written.** Auto-save is intended (decided 2026-11-18), but `BaseController::setEdit` saves an edit as soon as it opens, so a `.uzx` someone shared changes on disk when it is merely played. Save only when the edit has changes. The guide's Saving section is D2.
-
 ## Medium
 
 | # | Finding | Where | Suggested fix |
@@ -36,7 +32,6 @@ The user guide matches the code; the problem is readability. A newcomer meets 60
 | # | Finding | Where | Suggested fix |
 | --- | --- | --- | --- |
 | D1 | **No quick start.** The Player section opens with file-type details; the TAYM paragraph alone is about 600 words in one block. | `docs/user-guide.md` (Opening Files) | Open the Player section with three steps: drop or open a file, `Space`, `F` for Viz mode. Move format details to a "File formats" section and split long paragraphs. |
-| D2 | **Saving is described wrongly.** Changes reach the `.uzx` on quit or when another file is opened, not only on **Save**. | `docs/user-guide.md` (Saving) | Describe auto-save. |
 | D3 | **The fpb readout is missing** from the Transport Bar table, though the Player shows it between fps and groove. | `docs/user-guide.md` (Transport Bar) | Add a row. |
 | D4 | **No troubleshooting.** Nothing on no sound or picking an audio device, and nothing for Windows SmartScreen or running the Linux binary. | `docs/user-guide.md` | A short "If something goes wrong" section; install notes per platform, or a line saying v1.0 supports macOS only. |
 | D5 | **The ffmpeg install is macOS-only:** `brew install ffmpeg`. | `docs/user-guide.md` (Render Video) | Add `winget install ffmpeg` and `sudo apt install ffmpeg`. |

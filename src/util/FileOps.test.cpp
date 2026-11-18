@@ -1,6 +1,8 @@
 #include <JuceHeader.h>
 
 #include "FileOps.h"
+#include "Helpers.h"
+#include "TestHelpers.h"
 
 namespace MoTool::Tests {
 
@@ -174,5 +176,81 @@ public:
 };
 
 static TuneEditsTest tuneEditsTest;
+
+class AutoSaveTest : public juce::UnitTest {
+public:
+    AutoSaveTest() : UnitTest("AutoSave", "MoTool") {}
+
+    void runTest() override {
+        auto& engine = *tracktion::Engine::getEngines()[0];
+        auto& storage = engine.getPropertyStorage();
+        auto root = File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("uzx-autosave", "", false);
+        root.createDirectory();
+
+        // A user's project of a tune, as someone shared it
+        const auto tune = root.getChildFile("tune.psg");
+        const std::vector<uint8> bytes {'P', 'S', 'G', 0x1A, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                        0xFF, 0x08, 0x0F, 0xFF, 0x08, 0x00};
+        tune.replaceWithData(bytes.data(), bytes.size());
+        const auto shared = root.getChildFile("shared.uzx");
+        {
+            auto edit = tracktion::createEmptyEdit(engine, shared);
+            Helpers::importPsgFiles(*edit, {tune});
+            EditFileOps::stampEditFormatVersion(*edit);
+            EditFileOps::saveEdit(*edit, false, true, false);
+        }
+
+        const auto anHourAgo = [] { return Time::getCurrentTime() - RelativeTime::hours(1); };
+        const auto writtenNow = [](const File& f) {
+            return f.getLastModificationTime() > Time::getCurrentTime() - RelativeTime::minutes(1);
+        };
+        // As BaseController::setEdit opens it, and long enough for the engine's own change timers to run
+        const auto open = [&](const File& f) {
+            f.setLastModificationTime(anHourAgo());
+            auto edit = tracktion::loadEditFromFile(engine, f);
+            edit->resetChangedStatus();
+            EditFileOps::autoSaveEdit(*edit);
+            TestHelpers::flushMessageQueue();
+            MessageManager::getInstance()->runDispatchLoopUntil(1000);
+            return edit;
+        };
+
+        beginTest("A user's file that is only opened and played is not written, but is the most recent");
+        {
+            EditFileOps::clearRecentEdits(storage);
+            auto edit = open(shared);
+            int clips = 0;
+            for (auto* track : tracktion::getAudioTracks(*edit))
+                clips += track->getClips().size();
+            expectEquals(clips, 1, "the tune's clip");
+            expect(! edit->hasChangedSinceSaved());
+            EditFileOps::autoSaveEdit(*edit);  // as on quit
+            expect(! writtenNow(shared));
+            expectEquals(EditFileOps::getRecentEdits(storage)[0], shared.getFullPathName());
+        }
+
+        beginTest("A user's file is written once it changes");
+        {
+            auto edit = open(shared);
+            tracktion::getAudioTracks(*edit).getFirst()->setMute(true);
+            EditFileOps::autoSaveEdit(*edit);
+            expect(writtenNow(shared));
+        }
+
+        beginTest("A working edit is written every time");
+        {
+            const auto working = EditFileOps::getUnnamedEditFile(storage);
+            EditFileOps::autoSaveEdit(*tracktion::createEmptyEdit(engine, working));
+            expect(working.existsAsFile(), "a new one is on disk at once");
+            open(working);
+            expect(writtenNow(working), "the copies opened last are the ones pruning keeps");
+            working.deleteFile();
+        }
+
+        root.deleteRecursively();
+    }
+};
+
+static AutoSaveTest autoSaveTest;
 
 }  // namespace MoTool::Tests

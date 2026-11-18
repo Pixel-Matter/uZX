@@ -1,6 +1,7 @@
 #include "FileOps.h"
 
 #include "../controllers/App.h"
+#include "../controllers/PropertyStorage.h"
 
 namespace MoTool::EditFileOps {
 
@@ -11,10 +12,11 @@ namespace {
     static inline constexpr auto UZX_EDIT_FILE_SUFFIX = ".uzx";
     static inline constexpr auto RECENT_EDITS_KEY = "recentEdits";
     static inline constexpr auto FORMAT_VERSION_ATTR = "uzxFormatVersion";
+    static inline constexpr auto TUNE_FILES_TIME_ATTR = "tuneFilesTime";
 }
 
 String getDefaultEditFileSuffix() {
-    switch (MoToolApp::getApp().getTarget()) {
+    switch (MoToolApp::getTarget()) {
         case MoToolApp::Target::uZXStudio:
         case MoToolApp::Target::uZXTuning:
         case MoToolApp::Target::uZXPlayer:
@@ -38,31 +40,80 @@ static String getAppName() {
     return MoToolApp::getApp().getApplicationName();
 }
 
-static File getTempEditsLocation() {
-    auto d = File::getSpecialLocation(File::tempDirectory).getChildFile(getAppName() + " Edits");
+File getWorkingEditsLocation(te::PropertyStorage& storage) {
+    auto d = MoTool::PropertyStorage::getAppDataFolder(storage.getApplicationName()).getChildFile("Edits");
     d.createDirectory();
     return d;
 }
 
-void setRecentEditsDirectory(te::PropertyStorage& storage, const File& fileOrDir) {
-    if (fileOrDir.isDirectory()) {
-        if(fileOrDir != getTempEditsLocation())
-            storage.setDefaultLoadSaveDirectory("edits", fileOrDir);
-    } else {
-        if (fileOrDir.getParentDirectory() != getTempEditsLocation())
-            storage.setDefaultLoadSaveDirectory("edits", fileOrDir.getParentDirectory());
-    }
+static bool isInWorkingEdits(te::PropertyStorage& storage, const File& f) {
+    const auto location = getWorkingEditsLocation(storage);
+    return f == location || f.isAChildOf(location);
 }
 
-bool isTempEdit(te::Edit& edit) {
+void setRecentEditsDirectory(te::PropertyStorage& storage, const File& fileOrDir) {
+    const auto dir = fileOrDir.isDirectory() ? fileOrDir : fileOrDir.getParentDirectory();
+    if (! isInWorkingEdits(storage, dir))
+        storage.setDefaultLoadSaveDirectory("edits", dir);
+}
+
+bool isWorkingEdit(te::Edit& edit) {
     // Not through te::EditFileOperations: a temporary one re-reads the whole edit file, and the File menu asks this
-    return edit.editFileRetriever().getParentDirectory() == getTempEditsLocation();
+    return isInWorkingEdits(edit.engine.getPropertyStorage(), edit.editFileRetriever());
+}
+
+static File getTuneEditDir(te::PropertyStorage& storage, const Array<File>& tuneFiles) {
+    StringArray paths;
+    for (const auto& f : tuneFiles)
+        paths.add(f.getFullPathName());
+    paths.sort(false);
+    return getWorkingEditsLocation(storage).getChildFile(String::toHexString(paths.joinIntoString("\n").hashCode64()));
+}
+
+File getTuneEditFile(te::PropertyStorage& storage, const Array<File>& tuneFiles, const String& name) {
+    return getTuneEditDir(storage, tuneFiles).getChildFile(File::createLegalFileName(name) + getDefaultEditFileSuffix());
+}
+
+static int64 getNewestTime(const Array<File>& files) {
+    int64 newest = 0;
+    for (const auto& f : files)
+        newest = std::max(newest, f.getLastModificationTime().toMilliseconds());
+    return newest;
+}
+
+void stampTuneFiles(te::Edit& edit, const Array<File>& tuneFiles) {
+    // Not the edit file's own time: every open saves it
+    edit.state.setProperty(TUNE_FILES_TIME_ATTR, getNewestTime(tuneFiles), nullptr);
+}
+
+bool isTuneEditCurrent(const File& tuneEdit, const Array<File>& tuneFiles) {
+    if (! tuneEdit.existsAsFile())
+        return false;
+    auto root = XmlDocument(tuneEdit).getDocumentElement(true);
+    return root != nullptr
+           && root->getStringAttribute(TUNE_FILES_TIME_ATTR).getLargeIntValue() == getNewestTime(tuneFiles);
+}
+
+void pruneTuneEdits(te::PropertyStorage& storage, int keep) {
+    // By the edit inside: saving it in place may leave its folder's own time as it was
+    std::vector<std::pair<Time, File>> dirs;
+    for (const auto& dir : getWorkingEditsLocation(storage).findChildFiles(File::findDirectories, false)) {
+        Time newest;
+        for (const auto& f : dir.findChildFiles(File::findFiles, false))
+            newest = std::max(newest, f.getLastModificationTime());
+        dirs.emplace_back(newest, dir);
+    }
+    if (std::ssize(dirs) <= keep)
+        return;
+    std::ranges::sort(dirs, std::greater<>{}, &std::pair<Time, File>::first);
+    for (size_t i = static_cast<size_t>(keep); i < dirs.size(); ++i)
+        dirs[i].second.deleteRecursively();
 }
 
 File suffestSaveAsFileName(te::Edit& edit) {
     auto currentFile = edit.editFileRetriever();
 
-    File defaultLocation = !isTempEdit(edit) && currentFile.existsAsFile()
+    File defaultLocation = !isWorkingEdit(edit) && currentFile.existsAsFile()
                                ? currentFile.getParentDirectory()
                                : File::getSpecialLocation(File::userDocumentsDirectory)
                                      .getChildFile(getAppName());
@@ -124,7 +175,7 @@ static File getRecentEditFile(te::PropertyStorage& storage) {
         }
     }
     // otherwise look in recent edits directory
-    auto f = findRecentEditInDir(getTempEditsLocation(), getAppFileGlob());
+    auto f = findRecentEditInDir(getWorkingEditsLocation(storage), getAppFileGlob());
 
     if (f.existsAsFile()) {
         return f;
@@ -133,14 +184,14 @@ static File getRecentEditFile(te::PropertyStorage& storage) {
     }
 }
 
-File getTempEditFile() {
-    return getTempEditsLocation().getNonexistentChildFile("Unnamed", getDefaultEditFileSuffix(), false);
+File getUnnamedEditFile(te::PropertyStorage& storage) {
+    return getWorkingEditsLocation(storage).getNonexistentChildFile("Unnamed", getDefaultEditFileSuffix(), false);
 }
 
 File getStartupEditFile(te::PropertyStorage& storage) {
     auto f = getRecentEditFile(storage);
     if (!f.existsAsFile()) {
-        f = getTempEditFile();
+        f = getUnnamedEditFile(storage);
     }
     return f;
 }

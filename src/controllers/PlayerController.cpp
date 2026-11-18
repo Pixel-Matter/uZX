@@ -110,7 +110,7 @@ void PlayerController::updateWindowTitle() {
 void PlayerController::handleSave() {
     if (edit_ == nullptr) return;
 
-    if (EditFileOps::isTempEdit(*edit_))
+    if (EditFileOps::isWorkingEdit(*edit_))
         handleSaveAs();
     else
         EditFileOps::saveEdit(*edit_, true, true, false);
@@ -179,9 +179,20 @@ void PlayerController::handleClearRecentFiles() {
 }
 
 void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
-    // Populate a new edit before setting it on the UI; a fresh edit has one empty track for the first file
-    auto newEditFile = EditFileOps::getTempEditFile();
-    auto newEdit = createOrLoadEdit(newEditFile);
+    const auto name = uZX::getSetName(files);
+    const auto tuneEdit = EditFileOps::getTuneEditFile(engine_.getPropertyStorage(), files, name);
+
+    // Opened before, and the tune files unchanged since: its copy keeps the stereo, mutes and clock
+    if (EditFileOps::isTuneEditCurrent(tuneEdit, files)) {
+        setEdit(createOrLoadEdit(tuneEdit), true);
+        zoomToFitHorizontally(false);
+        return;
+    }
+
+    // Populate a new edit before setting it on the UI; a fresh edit has one empty track for the first file.
+    // Not loaded from tuneEdit, which may hold an older import of the tune; saving replaces it.
+    tuneEdit.getParentDirectory().createDirectory();
+    auto newEdit = te::createEmptyEdit(engine_, tuneEdit);
     const auto clips = Helpers::importPsgFiles(*newEdit, files, {}, te::getAudioTracks(*newEdit).getFirst());
     if (clips.isEmpty())
         return;
@@ -197,16 +208,12 @@ void PlayerController::importPsgsToNewEdit(const Array<File>& files) {
             chip.staticParams.chipClock.setStoredValue(fit->chipClock / uZX::MHz);
     }
 
+    EditFileOps::stampTuneFiles(*newEdit, files);
     edit_->getTransport().stop(false, false);
 
-    // Name the edit file after the imported PSG files
-    const auto name = uZX::getSetName(files);
-    auto namedFile = newEditFile.getSiblingFile(name).withFileExtension(EditFileOps::getDefaultEditFileSuffix());
-    newEdit->editFileRetriever = [namedFile] { return namedFile; };
-
     setEdit(std::move(newEdit), true);
-    setMainWindowTitle(makePlayerWindowTitle(name));
     zoomToFitHorizontally(false);
+    EditFileOps::pruneTuneEdits(engine_.getPropertyStorage(), maxTuneEdits);
 }
 
 }  // namespace MoTool

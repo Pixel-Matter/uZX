@@ -10,8 +10,24 @@ File getRecentEditsDirectory(tracktion::PropertyStorage& storage);
 
 void setRecentEditsDirectory(tracktion::PropertyStorage& storage, const File& fileOrDir);
 
-/** True for an edit that has never been saved by the user: it lives in the app's temp folder. */
-bool isTempEdit(tracktion::Edit& edit);
+/** Where edits live that the user hasn't saved anywhere: Studio's Unnamed edits, and the Player's copy
+    of each tune it opens. It sits with the app's settings, so they last across restarts. */
+File getWorkingEditsLocation(tracktion::PropertyStorage& storage);
+
+/** True for an edit that the user has never saved: it lives in the working edits folder. */
+bool isWorkingEdit(tracktion::Edit& edit);
+
+/** The Player's working copy of a tune: one per set of tune files, named after the tune. */
+File getTuneEditFile(tracktion::PropertyStorage& storage, const Array<File>& tuneFiles, const String& name);
+
+/** Records in the edit which versions of the tune files it was imported from. */
+void stampTuneFiles(tracktion::Edit& edit, const Array<File>& tuneFiles);
+
+/** True when the working copy exists and was imported from the tune files as they are now. */
+bool isTuneEditCurrent(const File& tuneEdit, const Array<File>& tuneFiles);
+
+/** Deletes all but the `keep` most recently changed working copies of tunes. */
+void pruneTuneEdits(tracktion::PropertyStorage& storage, int keep);
 
 File suffestSaveAsFileName(tracktion::Edit& edit);
 
@@ -26,7 +42,8 @@ void clearRecentEdits(tracktion::PropertyStorage& storage);
 
 File findRecentEditInDir(const File& dir, const String& fileGlob);
 
-File getTempEditFile();
+/** A new Unnamed edit file in the working edits folder. */
+File getUnnamedEditFile(tracktion::PropertyStorage& storage);
 
 File getStartupEditFile(tracktion::PropertyStorage& storage);
 

@@ -469,8 +469,8 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::fileReveal:
-            // the Player's opened PSG files live in the temp folder until saved
-            result.setActive(edit != nullptr && (!isPlayer || !EditFileOps::isTempEdit(*edit)));
+            // the Player's opened tunes have only a working copy until saved
+            result.setActive(edit != nullptr && (!isPlayer || !EditFileOps::isWorkingEdit(*edit)));
             break;
 
         case MainAppCommands::fileRenderVideo:
@@ -994,7 +994,7 @@ void BaseController::initialize() {
 
     auto edit = createOrLoadStartupEdit();
     if (edit == nullptr)  // the last project is unreadable: start with an empty one
-        edit = createOrLoadEdit(EditFileOps::getTempEditFile());
+        edit = createOrLoadEdit(EditFileOps::getUnnamedEditFile(engine_.getPropertyStorage()));
     setEdit(std::move(edit));
 
     window_.restoreWindowBounds();
@@ -1210,7 +1210,7 @@ void ArrangerController::openFiles(const Array<File>& files) {
 }
 
 void ArrangerController::handleNew() {
-    auto newEdit = createOrLoadEdit(EditFileOps::getTempEditFile());
+    auto newEdit = createOrLoadEdit(EditFileOps::getUnnamedEditFile(engine_.getPropertyStorage()));
     setEdit(std::move(newEdit), true);
 }
 

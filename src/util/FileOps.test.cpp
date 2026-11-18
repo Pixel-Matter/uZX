@@ -106,4 +106,73 @@ public:
 
 static EditFormatVersionTest editFormatVersionTest;
 
+class TuneEditsTest : public juce::UnitTest {
+public:
+    TuneEditsTest() : UnitTest("TuneEdits", "MoTool") {}
+
+    void runTest() override {
+        auto& storage = tracktion::Engine::getEngines()[0]->getPropertyStorage();
+        auto root = File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("uzx-tunes", "", false);
+        root.createDirectory();
+        const auto a = root.getChildFile("a.psg"), b = root.getChildFile("b.psg");
+        a.create();
+        b.create();
+
+        beginTest("Each set of tune files has its own copy, named after the tune, next to the settings");
+        {
+            const auto ab = EditFileOps::getTuneEditFile(storage, { a, b }, "Song");
+            expectEquals(ab.getFileName(), String("Song.uzx"));
+            expect(ab.isAChildOf(EditFileOps::getWorkingEditsLocation(storage)));
+            expect(ab.isAChildOf(storage.getPropertiesFile().getFile().getParentDirectory()), "kept with the settings");
+            expect(ab == EditFileOps::getTuneEditFile(storage, { b, a }, "Song"), "the order of the files doesn't matter");
+            expect(ab.getParentDirectory() != EditFileOps::getTuneEditFile(storage, { a }, "Song").getParentDirectory());
+        }
+
+        beginTest("A copy is current until a tune file changes, however often the copy is saved");
+        {
+            auto& engine = *tracktion::Engine::getEngines()[0];
+            const auto copy = EditFileOps::getTuneEditFile(storage, { a }, "a");
+            expect(! EditFileOps::isTuneEditCurrent(copy, { a }), "no copy yet");
+            copy.getParentDirectory().createDirectory();
+            auto edit = tracktion::createEmptyEdit(engine, copy);
+            EditFileOps::stampTuneFiles(*edit, { a });
+            const auto save = [&edit] {
+                tracktion::EditFileOperations(*edit).save(false, true, false, [](bool) {});
+            };
+            save();
+            expect(EditFileOps::isTuneEditCurrent(copy, { a }));
+            a.setLastModificationTime(a.getLastModificationTime() + RelativeTime::seconds(10));
+            save();
+            expect(! EditFileOps::isTuneEditCurrent(copy, { a }), "the tune changed after the copy was made");
+            edit.reset();
+            copy.getParentDirectory().deleteRecursively();
+        }
+
+        beginTest("Pruning keeps the most recently saved copies");
+        {
+            const auto location = EditFileOps::getWorkingEditsLocation(storage);
+            const auto kept = location.getNumberOfChildFiles(File::findDirectories);
+            Array<File> copies;
+            for (int i = 0; i < 3; ++i) {
+                const auto tune = root.getChildFile("t" + String(i) + ".psg");
+                tune.create();
+                auto copy = EditFileOps::getTuneEditFile(storage, { tune }, "t");
+                copy.getParentDirectory().createDirectory();
+                copy.create();
+                copy.setLastModificationTime(Time::getCurrentTime() + RelativeTime::hours(i + 1));
+                copies.add(copy);
+            }
+            EditFileOps::pruneTuneEdits(storage, kept + 2);
+            expect(! copies[0].exists());
+            expect(copies[1].exists() && copies[2].exists());
+            for (auto& c : copies)
+                c.getParentDirectory().deleteRecursively();
+        }
+
+        root.deleteRecursively();
+    }
+};
+
+static TuneEditsTest tuneEditsTest;
+
 }  // namespace MoTool::Tests
